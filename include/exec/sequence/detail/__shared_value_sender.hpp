@@ -21,9 +21,32 @@
 
 namespace exec { namespace __shared {
   using namespace stdexec;
+
   template <class _ValuesVariant>
   struct __value_state {
     _ValuesVariant __values_{};
+  };
+
+  template <class _Receiver>
+  struct __applier {
+    _Receiver __receiver_;
+
+    template <class... _Args>
+    void operator()(_Args&&... __args) const noexcept {
+      stdexec::set_value((_Receiver&&) __receiver_, (_Args&&) __args...);
+    }
+  };
+
+  template <class _Receiver>
+  struct __visitor {
+    _Receiver __receiver_;
+
+    template <class _Tuple>
+    void operator()(_Tuple&& __tuple) const noexcept {
+      if constexpr (__not_decays_to<_Tuple, std::monostate>) {
+        std::apply(__applier<_Receiver>{(_Receiver&&) __receiver_}, (_Tuple&&) __tuple);
+      }
+    }
   };
 
   template <class _ValuesVariant, class _RcvrId>
@@ -37,16 +60,7 @@ namespace exec { namespace __shared {
 
       friend void tag_invoke(start_t, __t& __self) noexcept {
         std::visit(
-          [&__self]<class _Tuple>(_Tuple&& __tup) noexcept {
-            if constexpr (!same_as<std::monostate, __decay_t<_Tuple>>) {
-              std::apply(
-                [&__self]<class... _Args>(_Args&&... __args) noexcept {
-                  stdexec::set_value(
-                    static_cast<_Rcvr&&>(__self.__rcvr_), static_cast<_Args&&>(__args)...);
-                },
-                static_cast<_Tuple&&>(__tup));
-            }
-          },
+          __visitor<_Rcvr>{static_cast<_Rcvr&&>(__self.__rcvr_)},
           static_cast<_ValuesVariant&&>(__self.__state_->__values_));
       }
     };

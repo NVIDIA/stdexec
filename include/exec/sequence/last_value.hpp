@@ -177,45 +177,60 @@ namespace exec {
           return {__self.__op_, static_cast<_Item&&>(__item)};
         }
 
+        struct __visit_error {
+          __t& __self;
+
+          template <class _Error>
+          void operator()(_Error&& __error) const noexcept {
+            if constexpr (__not_decays_to<_Error, std::monostate>) {
+              stdexec::set_error(
+                static_cast<_Receiver&&>(__self.__op_->__rcvr_), static_cast<_Error&&>(__error));
+            }
+          }
+        };
+
+        struct __apply_value {
+          __t& __self;
+
+          template <class... _Args>
+          void operator()(_Args&&... __args) const noexcept {
+            stdexec::set_value(
+              static_cast<_Receiver&&>(__self.__op_->__rcvr_), static_cast<_Args&&>(__args)...);
+          }
+        };
+
+        struct __visit_value {
+          __t& __self;
+
+          template <class _Value>
+          void operator()(_Value&& __value) const noexcept {
+            if constexpr (__not_decays_to<_Value, std::monostate>) {
+              std::apply(__apply_value{__self}, static_cast<_Value&&>(__value));
+            }
+          }
+        };
+
         template <same_as<set_value_t> _SetValue, same_as<__t> _Self>
         friend void tag_invoke(_SetValue, _Self&& __self) noexcept {
           if (__self.__op_->__errors_.index()) {
             std::visit(
-              [&__self]<class _Error>(_Error&& __error) noexcept {
-                if constexpr (__not_decays_to<_Error, std::monostate>) {
-                  set_error(
-                    static_cast<_Receiver&&>(__self.__op_->__rcvr_),
-                    static_cast<_Error&&>(__error));
-                }
-              },
-              static_cast<_ErrorsVariant&&>(__self.__op_->__errors_));
+              __visit_error{__self}, static_cast<_ErrorsVariant&&>(__self.__op_->__errors_));
           } else if (__self.__op_->__values_.index()) {
             std::visit(
-              [&__self]<class _Value>(_Value&& __value) noexcept {
-                if constexpr (__not_decays_to<_Value, std::monostate>) {
-                  std::apply(
-                    [&__self]<class... _Args>(_Args&&... __args) noexcept {
-                      set_value(
-                        static_cast<_Receiver&&>(__self.__op_->__rcvr_),
-                        static_cast<_Args&&>(__args)...);
-                    },
-                    static_cast<_Value&&>(__value));
-                }
-              },
-              static_cast<_ValuesVariant&&>(__self.__op_->__values_));
+              __visit_value{__self}, static_cast<_ValuesVariant&&>(__self.__op_->__values_));
           } else {
-            set_stopped(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
+            stdexec::set_stopped(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
           }
         }
 
         template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
         friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
-          set_stopped(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
+          stdexec::set_stopped(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
         }
 
         template <same_as<set_error_t> _SetError, same_as<__t> _Self, class _Error>
         friend void tag_invoke(_SetError, _Self&& __self, _Error&& __error) noexcept {
-          set_error(
+          stdexec::set_error(
             static_cast<_Receiver&&>(__self.__op_->__rcvr_), static_cast<_Error&&>(__error));
         }
       };
@@ -242,7 +257,10 @@ namespace exec {
         sequence_connect_result_t<_Sender, __receiver_t> __seq_op_;
 
         __t(_Sender __sndr, _Receiver __rcvr)
-          : __operation_base<_Receiver, _ValuesVariant, _ErrorsVariant>{{}, static_cast<_Receiver&&>(__rcvr)}
+          : __operation_base<
+            _Receiver,
+            _ValuesVariant,
+            _ErrorsVariant>{{}, static_cast<_Receiver&&>(__rcvr)}
           , __seq_op_{exec::sequence_connect(static_cast<_Sender&&>(__sndr), __receiver_t{this})} {
         }
 

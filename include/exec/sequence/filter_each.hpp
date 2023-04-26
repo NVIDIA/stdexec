@@ -26,8 +26,8 @@ namespace exec {
 
     template <class _ReceiverId, class _Predicate>
     struct __operation_base {
-      [[no_unique_address]] __t<_ReceiverId> __rcvr_;
-      [[no_unique_address]] _Predicate __pred_;
+      STDEXEC_NO_UNIQUE_ADDRESS __t<_ReceiverId> __rcvr_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Predicate __pred_;
     };
 
     template <class _ValuesVariant, class _NextReceiverId, class _ReceiverId, class _Predicate>
