@@ -23,20 +23,20 @@
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS::start_detached {
 
   struct detached_receiver_t : stream_receiver_base {
-    template <stdexec::same_as<stdexec::set_value_t> _Tag>
+    template <same_as<set_value_t> _Tag>
     friend void tag_invoke(_Tag, detached_receiver_t&&, auto&&...) noexcept {
     }
 
-    template <stdexec::same_as<stdexec::set_error_t> _Tag>
+    template <same_as<set_error_t> _Tag>
     [[noreturn]] friend void tag_invoke(_Tag, detached_receiver_t&&, auto&&) noexcept {
       std::terminate();
     }
 
-    template <stdexec::same_as<stdexec::set_stopped_t> _Tag>
+    template <same_as<set_stopped_t> _Tag>
     friend void tag_invoke(_Tag, detached_receiver_t&&) noexcept {
     }
 
-    friend stdexec::empty_env tag_invoke(stdexec::get_env_t, const detached_receiver_t&) noexcept {
+    friend empty_env tag_invoke(get_env_t, const detached_receiver_t&) noexcept {
       return {};
     }
   };

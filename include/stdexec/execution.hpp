@@ -3750,7 +3750,7 @@ namespace stdexec {
 
         explicit __t(_CvrefSender&& __sndr, _Env __env)
           : __env_(__make_env((_Env&&) __env, __with_(get_stop_token, __stop_source_.get_token())))
-          , __op_state2_(connect((_CvrefSender&&)__sndr, __receiver_t{*this})) {
+          , __op_state2_(connect((_CvrefSender&&) __sndr, __receiver_t{*this})) {
           start(__op_state2_);
         }
 
@@ -3795,8 +3795,8 @@ namespace stdexec {
        public:
         using __id = __operation;
 
-        __t(                                                                           //
-          _Receiver __rcvr,                                                            //
+        __t(                                                                                //
+          _Receiver __rcvr,                                                                 //
           __intrusive_ptr<stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>> __shared_state) //
           noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
           : __operation_base{__notify}
@@ -3874,7 +3874,8 @@ namespace stdexec {
         using is_sender = void;
 
         explicit __t(_CvrefSender __sndr, _Env __env)
-          : __shared_state_{__make_intrusive<__sh_state_>((_CvrefSender&&)__sndr, (_Env&&) __env)} {
+          : __shared_state_{
+            __make_intrusive<__sh_state_>((_CvrefSender&&) __sndr, (_Env&&) __env)} {
         }
 
         ~__t() {
@@ -3890,7 +3891,8 @@ namespace stdexec {
        private:
         using __sh_state_ = stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>;
         template <class _Receiver>
-        using __operation = stdexec::__t<__operation<_CvrefSenderId, _EnvId, stdexec::__id<_Receiver>>>;
+        using __operation =
+          stdexec::__t<__operation<_CvrefSenderId, _EnvId, stdexec::__id<_Receiver>>>;
 
         template <class... _Tys>
         using __set_value_t = completion_signatures<set_value_t(__decay_t<_Tys>&&...)>;
@@ -3962,8 +3964,7 @@ namespace stdexec {
       __if_c<__ensure_started_sender<_Sender>, __mconst<__first>, __mconstructor_for<__sender_t>>;
 
     template <class _Sender, class _Env>
-    using __dispatcher_for =
-      __make_dispatcher<__cust_sigs, __fallback<_Sender>, _Sender, _Env>;
+    using __dispatcher_for = __make_dispatcher<__cust_sigs, __fallback<_Sender>, _Sender, _Env>;
 
     struct ensure_started_t {
       template <sender _Sender, class _Env = empty_env>

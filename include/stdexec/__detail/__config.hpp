@@ -136,3 +136,8 @@
 #ifndef STDEXEC_ASSERT_FN
 #define STDEXEC_ASSERT_FN assert
 #endif
+
+// BUGBUG
+namespace stdexec {
+}
+namespace STDEXEC = stdexec;

@@ -22,10 +22,10 @@
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
-  namespace transfer {
+  namespace _transfer {
     template <class CvrefSenderId, class ReceiverId>
     struct operation_state_t {
-      using Sender = stdexec::__cvref_t<CvrefSenderId>;
+      using Sender = __cvref_t<CvrefSenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
       using Env = typename operation_state_base_t<ReceiverId>::env_t;
 
@@ -36,12 +36,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         struct receiver_t {
           __t& op_state_;
 
-          template < stdexec::__completion_tag Tag, class... As >
+          template < __completion_tag Tag, class... As >
           friend void tag_invoke(Tag, receiver_t&& self, As&&... as) noexcept {
             Tag()(std::move(self.op_state_.receiver_), (As&&) as...);
           }
 
-          friend Env tag_invoke(stdexec::get_env_t, const receiver_t& self) {
+          friend Env tag_invoke(get_env_t, const receiver_t& self) {
             return self.op_state_.make_env();
           }
         };
@@ -58,10 +58,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         using enqueue_receiver =
           stdexec::__t<stream_enqueue_receiver<stdexec::__id<Env>, variant_t>>;
-        using inner_op_state_t = stdexec::connect_result_t<Sender, enqueue_receiver>;
+        using inner_op_state_t = connect_result_t<Sender, enqueue_receiver>;
         inner_op_state_t inner_op_;
 
-        friend void tag_invoke(stdexec::start_t, __t& op) noexcept {
+        friend void tag_invoke(start_t, __t& op) noexcept {
           op.started_.test_and_set(::cuda::std::memory_order::relaxed);
 
           if (op.status_ != cudaSuccess) {
@@ -70,7 +70,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             return;
           }
 
-          stdexec::start(op.inner_op_);
+          start(op.inner_op_);
         }
 
         __t(Sender&& sender, Receiver&& receiver, context_state_t context_state)
@@ -85,7 +85,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                     this->get_stream(),
                     context_state.pinned_resource_)
                     .release())
-          , inner_op_{stdexec::connect(
+          , inner_op_{connect(
               (Sender&&) sender,
               enqueue_receiver{
                 this->make_env(),
@@ -112,52 +112,49 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class Self, class Receiver>
       using op_state_th = //
         stdexec::__t<
-          transfer::operation_state_t< stdexec::__cvref_id<Self, Sender>, stdexec::__id<Receiver>>>;
+          _transfer::operation_state_t< __cvref_id<Self, Sender>, stdexec::__id<Receiver>>>;
 
       context_state_t context_state_;
       Sender sndr_;
 
       template <class... Ts>
-      using value_completions_t =
-        stdexec::completion_signatures<stdexec::set_value_t(stdexec::__decay_t<Ts>&&...)>;
+      using _set_value_t = completion_signatures<set_value_t(__decay_t<Ts>&&...)>;
 
       template <class Ty>
-      using error_completions_t =
-        stdexec::completion_signatures<stdexec::set_error_t(stdexec::__decay_t<Ty>&&)>;
+      using _set_error_t = completion_signatures<set_error_t(__decay_t<Ty>&&)>;
 
       template <class Self, class Env>
-      using completion_signatures = //
-        stdexec::__try_make_completion_signatures<
-          stdexec::__copy_cvref_t<Self, Sender>,
+      using _completion_signatures_t = //
+        __try_make_completion_signatures<
+          __copy_cvref_t<Self, Sender>,
           Env,
-          stdexec::completion_signatures< //
-            stdexec::set_stopped_t(),
-            stdexec::set_error_t(cudaError_t)>,
-          stdexec::__q<value_completions_t>,
-          stdexec::__q<error_completions_t>>;
+          completion_signatures< //
+            set_stopped_t(),
+            set_error_t(cudaError_t)>,
+          __q<_set_value_t>,
+          __q<_set_error_t>>;
 
-      template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
-        requires stdexec::
-          receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-        friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-          -> op_state_th<Self, Receiver> {
+      template <__decays_to<__t> Self, receiver Receiver>
+        requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
+      friend auto tag_invoke(connect_t, Self&& self, Receiver&& rcvr)
+        -> op_state_th<Self, Receiver> {
         return op_state_th<Self, Receiver>{
           (Sender&&) self.sndr_, (Receiver&&) rcvr, self.context_state_};
       }
 
-      template <stdexec::__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-        -> stdexec::dependent_completion_signatures<Env>;
+      template <__decays_to<__t> Self, class Env>
+      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env)
+        -> dependent_completion_signatures<Env>;
 
-      template <stdexec::__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-        -> completion_signatures<Self, Env>
+      template <__decays_to<__t> Self, class Env>
+      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env)
+        -> _completion_signatures_t<Self, Env>
         requires true;
 
-      friend auto tag_invoke(stdexec::get_env_t, const __t& self) //
-        noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
-          -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
-        return stdexec::get_env(self.sndr_);
+      friend auto tag_invoke(get_env_t, const __t& self) //
+        noexcept(__nothrow_callable<get_env_t, const Sender&>)
+          -> __call_result_t<get_env_t, const Sender&> {
+        return get_env(self.sndr_);
       }
 
       __t(context_state_t context_state, Sender sndr)

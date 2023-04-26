@@ -22,3 +22,10 @@
 #endif
 
 #define STDEXEC_STREAM_DETAIL_NS _strm
+
+namespace stdexec {
+}
+
+namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+  using namespace stdexec;
+}
