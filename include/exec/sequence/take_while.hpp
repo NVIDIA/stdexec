@@ -17,7 +17,8 @@
 #pragma once
 
 #include "../sequence_senders.hpp"
-#include "../variant_sender.hpp"
+
+#include "./detail/__shared_value_sender.hpp"
 
 namespace exec {
   namespace __take_while {
@@ -42,68 +43,176 @@ namespace exec {
 
       [[no_unique_address]] _Receiver __rcvr_;
       [[no_unique_address]] _Predicate __pred_;
-      std::mutex __mutex_;
       in_place_stop_source __stop_source_{};
       std::optional<__on_stop> __on_stop_{};
     };
 
-    template <class _ReceiverId, class _Predicate>
-    struct __next_adaptor {
-      using _Receiver = __t<_ReceiverId>;
-      __operation_base<_ReceiverId, _Predicate>* __op_;
+    template <class _ValuesVariant, class _NextReceiverId, class _ReceiverId, class _Predicate>
+    struct __item_operation_base : __shared::__value_state<_ValuesVariant> {
+      using _NextReceiver = stdexec::__t<_NextReceiverId>;
+      using _NextSender = __next_sender_of_t<
+        stdexec::__t<_ReceiverId>&,
+        __shared::__demat_t<stdexec::__t<__shared::__value_sender<_ValuesVariant>>>>;
+      using __receiver_ref_t = stdexec::__t<__shared::__receiver_ref<_NextReceiverId>>;
+      using _Receiver = stdexec::__t<_ReceiverId>;
+      STDEXEC_NO_UNIQUE_ADDRESS _NextReceiver __next_rcvr_;
+      connect_result_t<_NextSender, __receiver_ref_t> __next_;
+      __operation_base<_ReceiverId, _Predicate>* __base_op_;
 
-      using __just_stopped_t = decltype(stdexec::just_stopped());
-
-      template <class... _Args>
-      using __just_t = decltype(stdexec::just(__declval<_Args>()...));
-
-      template <class... _Args>
-      using __next_t = __next_sender_of_t<_Receiver&, __just_t<_Args...>>;
-
-      template <class... _Args>
-      auto operator()(_Args&&... __args) const noexcept
-        -> variant_sender<__just_stopped_t, __next_t<_Args...>> {
-        std::scoped_lock __lock{__op_->__mutex_};
-        if (__op_->__stop_source_.stop_requested()) {
-          return stdexec::just_stopped();
-        }
-        if (std::invoke(__op_->__pred_, __args...)) {
-          return exec::set_next(__op_->__rcvr_, stdexec::just((_Args&&) __args...));
-        } else {
-          __op_->__stop_source_.request_stop();
-          return stdexec::just_stopped();
-        }
+      explicit __item_operation_base(
+        __operation_base<_ReceiverId, _Predicate>* __base_op,
+        _NextReceiver&& __next_rcvr)
+        : __next_rcvr_(static_cast<_NextReceiver&&>(__next_rcvr))
+        , __next_(stdexec::connect(
+            exec::set_next(
+              __base_op->__rcvr_,
+              exec::dematerialize(stdexec::__t<__shared::__value_sender<_ValuesVariant>>{this})),
+            __receiver_ref_t{&__next_rcvr_}))
+        , __base_op_{__base_op} {
       }
+    };
+
+    template <class _ValuesVariant, class _NextReceiverId, class _ReceiverId, class _Predicate>
+    struct __item_receiver {
+      struct __t {
+        using __id = __item_receiver;
+        using _NextReceiver = stdexec::__t<_NextReceiverId>;
+        __item_operation_base<_ValuesVariant, _NextReceiverId, _ReceiverId, _Predicate>* __op_;
+
+        template <
+          same_as<set_value_t> _SetValue,
+          same_as<__t> _Self,
+          __completion_tag _Tag,
+          class... _Args>
+          requires __callable<set_value_t, _NextReceiver&&>
+        friend void tag_invoke(_SetValue, _Self&& __self, _Tag, _Args&&... __args) noexcept {
+          try {
+            __self.__op_->__values_.template emplace<__decayed_tuple<_Tag, _Args...>>(
+              _Tag{}, static_cast<_Args&&>(__args)...);
+            if constexpr (same_as<set_value_t, _Tag>) {
+              if (std::invoke(*__self.__op_->__base_op_->__pred_, __args...)) {
+                stdexec::start(__self.__op_->__next_);
+              } else {
+                __self.__op_->__base_op_->__stop_source_.request_stop();
+                stdexec::set_stopped(static_cast<_NextReceiver&&>(__self.__op_->__next_rcvr_));
+              }
+            } else {
+              stdexec::start(__self.__op_->__next_);
+            }
+          } catch (...) {
+            __self.__op_->__values_.template emplace<std::tuple<set_error_t, std::exception_ptr>>(
+              stdexec::set_error, std::current_exception());
+            stdexec::start(__self.__op_->__next_);
+          }
+        }
+
+        template <same_as<get_env_t> _GetEnv, same_as<__t> _Self>
+        friend auto tag_invoke(_GetEnv, const _Self& __self) noexcept {
+          return stdexec::get_env(__self.__op_->__next_rcvr_);
+        }
+      };
+    };
+
+    template <class _ItemSender, class _NextReceiverId, class _ReceiverId, class _Predicate>
+    struct __item_operation {
+      using _NextReceiver = stdexec::__t<_NextReceiverId>;
+      using _Env = env_of_t<_NextReceiver>;
+      using _ValuesVariant = __minvoke<
+        __mconcat<__nullable_variant_t>,
+        __types<std::tuple<set_error_t, std::exception_ptr>>,
+        __value_types_of_t< _ItemSender, _Env>>;
+
+      struct __t : __item_operation_base<_ValuesVariant, _NextReceiverId, _ReceiverId, _Predicate> {
+        using __item_receiver_t =
+          stdexec::__t<__item_receiver<_ValuesVariant, _NextReceiverId, _ReceiverId, _Predicate>>;
+
+        connect_result_t<_ItemSender, __item_receiver_t> __receive_item_;
+
+        explicit __t(
+          _ItemSender __item,
+          _NextReceiver __next_rcvr,
+          __operation_base<_ReceiverId, _Predicate>* __base_op)
+          : __item_operation_base< _ValuesVariant, _NextReceiverId, _ReceiverId, _Predicate>(
+            __base_op,
+            static_cast<_NextReceiver&&>(__next_rcvr))
+          , __receive_item_{
+              stdexec::connect(static_cast<_ItemSender&&>(__item), __item_receiver_t{this})} {
+        }
+
+        friend void tag_invoke(start_t, __t& __self) noexcept {
+          stdexec::start(__self.__receive_item_);
+        }
+      };
+    };
+
+    template <class _ItemSenderId, class _ReceiverId, class _Predicate>
+    struct __item_sender {
+      struct __t {
+        using __id = __item_sender;
+        using _ItemSender = stdexec::__t<_ItemSenderId>;
+        using _Receiver = stdexec::__t<_ReceiverId>;
+        STDEXEC_NO_UNIQUE_ADDRESS _ItemSender __item;
+        __operation_base<_ReceiverId, _Predicate>* __base_op_;
+
+        using completion_signatures =
+          stdexec::completion_signatures<set_value_t(), set_stopped_t()>;
+
+        template <class _Self, class _NextRcvr>
+        using __item_operation_t = stdexec::__t< __item_operation<
+          __copy_cvref_t<_Self, _ItemSender>,
+          stdexec::__id<__decay_t<_NextRcvr>>,
+          _ReceiverId,
+          _Predicate>>;
+
+        template <__decays_to<__t> _Self, receiver_of<completion_signatures> _NextRcvr>
+          requires sequence_receiver_of<
+            _Receiver,
+            completion_signatures_of_t<_ItemSender, env_of_t<_NextRcvr>>>
+        friend auto tag_invoke(connect_t, _Self&& __self, _NextRcvr __next_rcvr)
+          -> __item_operation_t<_Self, _NextRcvr> {
+          return __item_operation_t<_Self, _NextRcvr>(
+            static_cast<_Self&&>(__self).__item,
+            static_cast<_NextRcvr&&>(__next_rcvr),
+            __self.__base_op_);
+        }
+      };
     };
 
     template <class _ReceiverId, class _Predicate>
     struct __receiver {
-      using _Receiver = stdexec::__t<_ReceiverId>;
-
       struct __t {
+        using __id = __receiver;
+        using _Receiver = stdexec::__t<_ReceiverId>;
+        template <class _Item>
+        using __item_sender_t = stdexec::__t<
+          __item_sender<stdexec::__id<__shared::__mat_t<_Item>>, _ReceiverId, _Predicate>>;
+
+
         __operation_base<_ReceiverId, _Predicate>* __op_;
 
         template <same_as<set_next_t> _Tag, __decays_to<__t> _Self, sender _Item>
           requires __callable<_Tag, _Receiver&, _Item>
         friend auto tag_invoke(_Tag, _Self&& __self, _Item&& __item) noexcept {
-          return let_value((_Item&&) __item, __next_adaptor<_ReceiverId, _Predicate>{__self.__op_});
+          return __item_sender_t<_Item>{
+            exec::materialize(static_cast<_Item&&>(__item)), __self.__op_};
         }
 
-        template <same_as<set_value_t> _Tag, __decays_to<__t> _Self>
-          requires __callable<_Tag, _Receiver&&>
-        friend void tag_invoke(_Tag, _Self&& __self) noexcept {
+        template <same_as<set_value_t> _SetValue, __decays_to<__t> _Self>
+          requires __callable<_SetValue, _Receiver&&>
+        friend void tag_invoke(_SetValue, _Self&& __self) noexcept {
           __self.__op_->__on_stop_.reset();
-          _Tag{}((_Receiver&&) __self.__op_->__rcvr_);
+          _SetValue{}(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
         }
 
         template <same_as<set_stopped_t> _Tag, __decays_to<__t> _Self>
           requires __callable<_Tag, _Receiver&&>
         friend void tag_invoke(_Tag, _Self&& __self) noexcept {
           __self.__op_->__on_stop_.reset();
-          if (get_stop_token(__self.__op_->__rcvr_).stop_requested()) {
-            stdexec::set_stopped((_Receiver&&) __self.__op_->__rcvr_);
+          auto __token = stdexec::get_stop_token(stdexec::get_env(__self.__op_->__rcvr_));
+          if (__token.stop_requested()) {
+            stdexec::set_stopped(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
           } else {
-            stdexec::set_value((_Receiver&&) __self.__op_->__rcvr_);
+            stdexec::set_value(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
           }
         }
 
@@ -111,11 +220,11 @@ namespace exec {
           requires __callable<_Tag, _Receiver&&, _Error>
         friend void tag_invoke(_Tag, _Self&& __self, _Error&& __error) noexcept {
           __self.__op_->__on_stop_.reset();
-          _Tag{}((_Receiver&&) __self.__op_->__rcvr_, (_Error&&) __error);
+          _Tag{}(static_cast<_Receiver&&>(__self.__op_->__rcvr_), (_Error&&) __error);
         }
 
         friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t& __self) noexcept {
-          return get_env(__self.__op_->__rcvr_);
+          return stdexec::get_env(__self.__op_->__rcvr_);
         }
       };
     };
@@ -131,7 +240,7 @@ namespace exec {
 
         __t(_Sender&& __sndr, _Receiver&& __rcvr, _Predicate __pred)
           : __op_base_t{(_Receiver&&) __rcvr, (_Predicate&&) __pred}
-          , __op_{sequence_connect((_Sender&&) __sndr, __receiver_t{this})} {
+          , __op_{exec::sequence_connect((_Sender&&) __sndr, __receiver_t{this})} {
         }
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
