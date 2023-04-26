@@ -67,7 +67,6 @@ namespace exec {
           same_as<__t> _Self,
           __completion_tag _Tag,
           class... _Args>
-          requires __callable<set_value_t, _NextReceiver&&>
         friend void tag_invoke(_SetValue, _Self&& __self, _Tag, _Args&&... __args) noexcept {
           try {
             __self.__op_->__values_.template emplace<__decayed_tuple<_Tag, _Args...>>(
@@ -149,9 +148,6 @@ namespace exec {
           _Predicate>>;
 
         template <__decays_to<__t> _Self, receiver_of<completion_signatures> _NextRcvr>
-          requires sequence_receiver_of<
-            _Receiver,
-            completion_signatures_of_t<_ItemSender, env_of_t<_NextRcvr>>>
         friend auto tag_invoke(connect_t, _Self&& __self, _NextRcvr __next_rcvr)
           -> __item_operation_t<_Self, _NextRcvr> {
           return __item_operation_t<_Self, _NextRcvr>(
@@ -168,12 +164,13 @@ namespace exec {
         using __id = __receiver;
         using _Receiver = stdexec::__t<_ReceiverId>;
         template <class _Item>
-        using __item_sender_t =
-          stdexec::__t< __item_sender<stdexec::__id<__shared::__mat_t<_Item>>, _ReceiverId, _Predicate>>;
+        using __item_sender_t = stdexec::__t<
+          __item_sender<stdexec::__id<__shared::__mat_t<_Item>>, _ReceiverId, _Predicate>>;
 
         __operation_base<_ReceiverId, _Predicate>* __op_;
 
         template <same_as<set_next_t> _SetNext, same_as<__t> _Self, sender _Item>
+        requires sequence_receiver_of<_Receiver, completion_signatures_of_t<_Item>>
         friend __item_sender_t<_Item> tag_invoke(_SetNext, _Self& __self, _Item&& __item) noexcept {
           return __item_sender_t<_Item>{
             exec::materialize(static_cast<_Item&&>(__item)), __self.__op_};
@@ -252,7 +249,10 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&&, const _Env&)
-          -> completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env>;
+          -> make_completion_signatures<
+            __copy_cvref_t<_Self, _Sender>,
+            _Env,
+            completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr)>>;
       };
     };
 
