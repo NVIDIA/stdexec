@@ -20,7 +20,7 @@
 
 #include "common.cuh"
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS::start_detached {
+namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_start_detached {
 
   struct detached_receiver_t : stream_receiver_base {
     template <same_as<set_value_t> _Tag>

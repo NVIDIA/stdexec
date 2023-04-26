@@ -137,7 +137,5 @@
 #define STDEXEC_ASSERT_FN assert
 #endif
 
-// BUGBUG
 namespace stdexec {
 }
-namespace STDEXEC = stdexec;

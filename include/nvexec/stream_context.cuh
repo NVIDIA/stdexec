@@ -272,7 +272,7 @@ namespace nvexec {
 
     template <stream_completing_sender Sender>
     void tag_invoke(start_detached_t, Sender&& sndr) noexcept(false) {
-      submit::submit_t{}((Sender&&) sndr, start_detached::detached_receiver_t{});
+      _submit::submit_t{}((Sender&&) sndr, _start_detached::detached_receiver_t{});
     }
 
     template <stream_completing_sender... Senders>
