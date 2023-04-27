@@ -153,8 +153,9 @@ namespace exec {
           return __scheduler{__self.__max_recursion_depth_};
         }
 
-        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __schedule_sender& __self, get_env_t) noexcept
-          -> const __schedule_sender& {
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(
+          this const __schedule_sender& __self,
+          get_env_t) noexcept -> const __schedule_sender& {
           return __self;
         }
 

@@ -8,14 +8,14 @@ namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
-TEST_CASE("bulk returns a sender", "[cuda][stream][adaptors][bulk]") {
+TEST_CASE("nvexec bulk returns a sender", "[cuda][stream][adaptors][bulk]") {
   nvexec::stream_context stream_ctx{};
   auto snd = ex::bulk(ex::schedule(stream_ctx.get_scheduler()), 42, [] {});
   STATIC_REQUIRE(ex::sender<decltype(snd)>);
   (void) snd;
 }
 
-TEST_CASE("bulk executes on GPU", "[cuda][stream][adaptors][bulk]") {
+TEST_CASE("nvexec bulk executes on GPU", "[cuda][stream][adaptors][bulk]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t<4> flags_storage{};
@@ -32,7 +32,7 @@ TEST_CASE("bulk executes on GPU", "[cuda][stream][adaptors][bulk]") {
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("bulk forwards values on GPU", "[cuda][stream][adaptors][bulk]") {
+TEST_CASE("nvexec bulk forwards values on GPU", "[cuda][stream][adaptors][bulk]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t<1024> flags_storage{};
@@ -51,7 +51,7 @@ TEST_CASE("bulk forwards values on GPU", "[cuda][stream][adaptors][bulk]") {
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("bulk forwards multiple values on GPU", "[cuda][stream][adaptors][bulk]") {
+TEST_CASE("nvexec bulk forwards multiple values on GPU", "[cuda][stream][adaptors][bulk]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t<2> flags_storage{};
@@ -92,7 +92,7 @@ TEST_CASE(
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("bulk can preceed a sender without values", "[cuda][stream][adaptors][bulk]") {
+TEST_CASE("nvexec bulk can preceed a sender without values", "[cuda][stream][adaptors][bulk]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t<3> flags_storage{};
@@ -116,7 +116,7 @@ TEST_CASE("bulk can preceed a sender without values", "[cuda][stream][adaptors][
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("bulk can succeed a sender", "[cuda][stream][adaptors][bulk]") {
+TEST_CASE("nvexec bulk can succeed a sender", "[cuda][stream][adaptors][bulk]") {
   SECTION("without values") {
     nvexec::stream_context stream_ctx{};
     flags_storage_t<3> flags_storage{};

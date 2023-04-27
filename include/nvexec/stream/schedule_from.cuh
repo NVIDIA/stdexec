@@ -23,10 +23,10 @@
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
-  namespace schedule_from {
+  namespace _sched_from {
     template <class CvrefSenderId, class ReceiverId>
     struct receiver_t {
-      using Sender = stdexec::__cvref_t<CvrefSenderId>;
+      using Sender = __cvref_t<CvrefSenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
       using Env = typename operation_state_base_t<ReceiverId>::env_t;
 
@@ -38,7 +38,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         operation_state_base_t<ReceiverId>& operation_state_;
 
-        template < stdexec::__completion_tag Tag, class... As>
+        template < __completion_tag Tag, class... As>
         friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
           storage_t* storage = static_cast<storage_t*>(self.operation_state_.temp_storage_);
           storage->template emplace<decayed_tuple<Tag, As...>>(Tag(), (As&&) as...);
@@ -54,7 +54,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             *storage);
         }
 
-        STDEXEC_DEFINE_CUSTOM(Env get_env)(this const __t& self, stdexec::get_env_t) {
+        STDEXEC_DEFINE_CUSTOM(Env get_env)(this const __t& self, get_env_t) {
           return self.operation_state_.make_env();
         }
       };
@@ -62,47 +62,45 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     template <class Sender>
     struct source_sender_t : stream_sender_base {
-      template <stdexec::__decays_to<source_sender_t> Self, stdexec::receiver Receiver>
-      friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-        -> stdexec::connect_result_t<stdexec::__copy_cvref_t<Self, Sender>, Receiver> {
-        return stdexec::connect(((Self&&) self).sender_, (Receiver&&) rcvr);
+      template <__decays_to<source_sender_t> Self, receiver Receiver>
+      friend auto tag_invoke(connect_t, Self&& self, Receiver&& rcvr)
+        -> connect_result_t<__copy_cvref_t<Self, Sender>, Receiver> {
+        return connect(((Self&&) self).sender_, (Receiver&&) rcvr);
       }
 
-      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const source_sender_t& self, stdexec::get_env_t) //
-        noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
-          -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
+      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const source_sender_t& self, get_env_t) //
+        noexcept(__nothrow_callable<get_env_t, const Sender&>)
+          -> __call_result_t<get_env_t, const Sender&> {
         // TODO - this code is not exercised by any test
-        return stdexec::get_env(self.sndr_);
+        return get_env(self.sndr_);
       }
 
-      template <stdexec::__decays_to<source_sender_t> _Self, class _Env>
-      friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env)
-        -> stdexec::make_completion_signatures< stdexec::__copy_cvref_t<_Self, Sender>, _Env>;
+      template <__decays_to<source_sender_t> _Self, class _Env>
+      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+        -> make_completion_signatures< __copy_cvref_t<_Self, Sender>, _Env>;
 
       Sender sender_;
     };
 
     template <class... _Ty>
     using value_completions_t = //
-      stdexec::completion_signatures<stdexec::set_value_t(stdexec::__decay_t<_Ty>&&...)>;
+      completion_signatures<set_value_t(__decay_t<_Ty>&&...)>;
 
     template <class _Ty>
     using error_completions_t = //
-      stdexec::completion_signatures<stdexec::set_error_t(stdexec::__decay_t<_Ty>&&)>;
+      completion_signatures<set_error_t(__decay_t<_Ty>&&)>;
   }
 
   template <class Scheduler, class SenderId>
   struct schedule_from_sender_t {
     using Sender = stdexec::__t<SenderId>;
-    using source_sender_th = schedule_from::source_sender_t<Sender>;
+    using source_sender_th = _sched_from::source_sender_t<Sender>;
 
     struct __env {
       context_state_t context_state_;
 
-      template <
-        stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t, stdexec::set_error_t> _Tag>
-      friend Scheduler
-        tag_invoke(stdexec::get_completion_scheduler_t<_Tag>, const __env& __self) noexcept {
+      template < __one_of<set_value_t, set_stopped_t, set_error_t> _Tag>
+      friend Scheduler tag_invoke(get_completion_scheduler_t<_Tag>, const __env& __self) noexcept {
         return {__self.context_state_};
       }
     };
@@ -114,16 +112,15 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <class Self, class Receiver>
       using receiver_t = //
-        stdexec::__t<
-          schedule_from::receiver_t< stdexec::__cvref_id<Self, Sender>, stdexec::__id<Receiver>>>;
+        stdexec::__t< _sched_from::receiver_t< __cvref_id<Self, Sender>, stdexec::__id<Receiver>>>;
 
-      template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
-        requires stdexec::sender_to<stdexec::__copy_cvref_t<Self, source_sender_th>, Receiver>
-      friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) -> stream_op_state_t<
-        stdexec::__copy_cvref_t<Self, source_sender_th>,
+      template <__decays_to<__t> Self, receiver Receiver>
+        requires sender_to<__copy_cvref_t<Self, source_sender_th>, Receiver>
+      friend auto tag_invoke(connect_t, Self&& self, Receiver&& rcvr) -> stream_op_state_t<
+        __copy_cvref_t<Self, source_sender_th>,
         receiver_t<Self, Receiver>,
         Receiver> {
-        return stream_op_state<stdexec::__copy_cvref_t<Self, source_sender_th>>(
+        return stream_op_state<__copy_cvref_t<Self, source_sender_th>>(
           ((Self&&) self).sndr_,
           (Receiver&&) rcvr,
           [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
@@ -133,20 +130,18 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           self.env_.context_state_);
       }
 
-      STDEXEC_DEFINE_CUSTOM(const __env& get_env)(
-        this const __t& __self,
-        stdexec::get_env_t) noexcept {
+      STDEXEC_DEFINE_CUSTOM(const __env& get_env)(this const __t& __self, get_env_t) noexcept {
         return __self.env_;
       }
 
-      template <stdexec::__decays_to<__t> _Self, class _Env>
-      friend auto tag_invoke(stdexec::get_completion_signatures_t, _Self&&, _Env)
-        -> stdexec::make_completion_signatures<
-          stdexec::__copy_cvref_t<_Self, Sender>,
+      template <__decays_to<__t> _Self, class _Env>
+      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+        -> make_completion_signatures<
+          __copy_cvref_t<_Self, Sender>,
           _Env,
-          stdexec::completion_signatures<stdexec::set_error_t(cudaError_t)>,
-          schedule_from::value_completions_t,
-          schedule_from::error_completions_t>;
+          completion_signatures<set_error_t(cudaError_t)>,
+          _sched_from::value_completions_t,
+          _sched_from::error_completions_t>;
 
       __t(context_state_t context_state, Sender sndr)
         : env_{context_state}

@@ -12,7 +12,7 @@ namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
-TEST_CASE("start_detached doesn't block", "[cuda][stream][consumers][start_detached]") {
+TEST_CASE("nvexec start_detached doesn't block", "[cuda][stream][consumers][start_detached]") {
   if (const char* env = std::getenv("CUDA_LAUNCH_BLOCKING")) {
     if (std::strlen(env) >= 1 && env[0] == '1') {
       return; // This test is unable to run when the launch is blocking

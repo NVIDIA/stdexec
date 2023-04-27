@@ -130,7 +130,7 @@ namespace exec {
 
           bulk_task(bulk_shared_state* sh_state)
             : sh_state_(sh_state) {
-            this->__execute = [](task_base* t, std::uint32_t tid) noexcept {
+            this->__execute = [](task_base* t, const std::uint32_t tid) noexcept {
               auto& sh_state = *static_cast<bulk_task*>(t)->sh_state_;
               auto total_threads = sh_state.num_agents_required();
 
@@ -492,7 +492,7 @@ namespace exec {
     explicit operation(static_thread_pool& pool, Receiver&& r)
       : pool_(pool)
       , receiver_((Receiver&&) r) {
-      this->__execute = [](task_base* t, std::uint32_t /* tid */) noexcept {
+      this->__execute = [](task_base* t, const std::uint32_t /* tid */) noexcept {
         auto& op = *static_cast<operation*>(t);
         auto stoken = stdexec::get_stop_token(stdexec::get_env(op.receiver_));
         if constexpr (std::unstoppable_token<decltype(stoken)>) {
@@ -550,30 +550,24 @@ namespace exec {
     }
   }
 
-  inline void static_thread_pool::run(std::uint32_t index) noexcept {
+  inline void static_thread_pool::run(const std::uint32_t threadIndex) noexcept {
+    STDEXEC_ASSERT(threadIndex < threadCount_);
     while (true) {
-      std::uint32_t tid = index;
-
       task_base* task = nullptr;
-      for (std::uint32_t i = 0; i < threadCount_; ++i) {
-        auto queueIndex = (index + i) < threadCount_ ? (index + i) : (index + i - threadCount_);
-        auto& state = threadStates_[queueIndex];
-        task = state.try_pop();
-        if (task != nullptr) {
-          tid = queueIndex;
-          break;
-        }
-      }
+      std::uint32_t queueIndex = threadIndex;
 
-      if (task == nullptr) {
-        task = threadStates_[index].pop();
-        if (task == nullptr) {
-          // request_stop() was called.
-          return;
-        }
-      }
+      // Starting with this thread's queue, try to de-queue a task
+      // from each thread's queue. try_pop() is non-blocking.
+      do {
+        task = threadStates_[queueIndex].try_pop();
+      } while (!task && (++queueIndex %= threadCount_) != threadIndex);
 
-      task->__execute(task, tid);
+      STDEXEC_ASSERT(task || queueIndex == threadIndex);
+      // Make a blocking call to de-queue a task if we don't already have one.
+      if (!task && !(task = threadStates_[queueIndex].pop()))
+        return; // pop() only returns null when request_stop() was called.
+
+      task->__execute(task, queueIndex);
     }
   }
 

@@ -582,6 +582,7 @@ namespace exec {
       _Base __base_;
 
       STDEXEC_CPO_ACCESS(stdexec::start_t);
+
       STDEXEC_DEFINE_CUSTOM(void start)(this __io_task_facade& __self, stdexec::start_t) noexcept {
         __context& __context = __self.__base_.context();
         if (__context.submit(&__self)) {
@@ -959,8 +960,10 @@ namespace exec {
 
        private:
         STDEXEC_CPO_ACCESS(stdexec::get_env_t);
-        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __schedule_sender& __self, stdexec::get_env_t) noexcept
-          -> __schedule_env {
+
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(
+          this const __schedule_sender& __self,
+          stdexec::get_env_t) noexcept -> __schedule_env {
           return __self.__env_;
         }
 
@@ -996,8 +999,10 @@ namespace exec {
 
        private:
         STDEXEC_CPO_ACCESS(stdexec::get_env_t);
-        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __schedule_after_sender& __self, stdexec::get_env_t) noexcept
-          -> __schedule_env {
+
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(
+          this const __schedule_after_sender& __self,
+          stdexec::get_env_t) noexcept -> __schedule_env {
           return __self.__env_;
         }
 

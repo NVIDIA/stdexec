@@ -184,7 +184,8 @@ namespace exec {
       using _Receiver = __t<_ReceiverId>;
 
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS //
-      connect_result_t<_Constrained, __nest_rcvr<_ReceiverId>> __op_;
+        connect_result_t<_Constrained, __nest_rcvr<_ReceiverId>>
+          __op_;
 
       template <__decays_to<_Constrained> _Sender, __decays_to<_Receiver> _Rcvr>
       explicit __nest_op(const __impl* __scope, _Sender&& __c, _Rcvr&& __rcvr)

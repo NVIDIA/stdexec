@@ -8,14 +8,14 @@ namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
-TEST_CASE("let_value returns a sender", "[cuda][stream][adaptors][let_value]") {
+TEST_CASE("nvexec let_value returns a sender", "[cuda][stream][adaptors][let_value]") {
   nvexec::stream_context stream_ctx{};
   auto snd = ex::let_value(ex::schedule(stream_ctx.get_scheduler()), [] { return ex::just(); });
   STATIC_REQUIRE(ex::sender<decltype(snd)>);
   (void) snd;
 }
 
-TEST_CASE("let_value executes on GPU", "[cuda][stream][adaptors][let_value]") {
+TEST_CASE("nvexec let_value executes on GPU", "[cuda][stream][adaptors][let_value]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t flags_storage{};
@@ -33,7 +33,7 @@ TEST_CASE("let_value executes on GPU", "[cuda][stream][adaptors][let_value]") {
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("let_value accepts values on GPU", "[cuda][stream][adaptors][let_value]") {
+TEST_CASE("nvexec let_value accepts values on GPU", "[cuda][stream][adaptors][let_value]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t flags_storage{};
@@ -54,7 +54,9 @@ TEST_CASE("let_value accepts values on GPU", "[cuda][stream][adaptors][let_value
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("let_value accepts multiple values on GPU", "[cuda][stream][adaptors][let_value]") {
+TEST_CASE(
+  "nvexec let_value accepts multiple values on GPU",
+  "[cuda][stream][adaptors][let_value]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t flags_storage{};
@@ -74,7 +76,7 @@ TEST_CASE("let_value accepts multiple values on GPU", "[cuda][stream][adaptors][
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("let_value returns values on GPU", "[cuda][stream][adaptors][let_value]") {
+TEST_CASE("nvexec let_value returns values on GPU", "[cuda][stream][adaptors][let_value]") {
   nvexec::stream_context stream_ctx{};
 
   auto snd = ex::schedule(stream_ctx.get_scheduler()) //
@@ -84,7 +86,9 @@ TEST_CASE("let_value returns values on GPU", "[cuda][stream][adaptors][let_value
   REQUIRE(result == 1);
 }
 
-TEST_CASE("let_value can preceed a sender without values", "[cuda][stream][adaptors][let_value]") {
+TEST_CASE(
+  "nvexec let_value can preceed a sender without values",
+  "[cuda][stream][adaptors][let_value]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t<2> flags_storage{};
@@ -108,7 +112,7 @@ TEST_CASE("let_value can preceed a sender without values", "[cuda][stream][adapt
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("let_value can succeed a sender", "[cuda][stream][adaptors][let_value]") {
+TEST_CASE("nvexec let_value can succeed a sender", "[cuda][stream][adaptors][let_value]") {
   nvexec::stream_context stream_ctx{};
   nvexec::stream_scheduler sch = stream_ctx.get_scheduler();
   flags_storage_t flags_storage{};

@@ -119,25 +119,25 @@
 
 // Before gcc-12, gcc really didn't like tuples or variants of immovable types
 #if STDEXEC_GCC() && (__GNUC__ < 12)
-#define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&)
+#  define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&)
 #else
-#define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&) = delete
+#  define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&) = delete
 #endif
 
 // NVBUG #4067067
 #if STDEXEC_NVHPC()
-#define STDEXEC_NO_UNIQUE_ADDRESS
+#  define STDEXEC_NO_UNIQUE_ADDRESS
 #else
-#define STDEXEC_NO_UNIQUE_ADDRESS [[no_unique_address]]
+#  define STDEXEC_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #endif
 
 // BUG (gcc PR93711): copy elision fails when initializing a
 // [[no_unique_address]] field from a function returning an object
 // of class type by value
 #if STDEXEC_GCC()
-#define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+#  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
 #else
-#define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS [[no_unique_address]]
+#  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #endif
 
 #if STDEXEC_CLANG() && defined(__CUDACC__)
@@ -153,14 +153,14 @@
 #endif
 
 #if STDEXEC_NVHPC()
-#include <nv/target>
-#define STDEXEC_TERMINATE() NV_IF_TARGET(NV_IS_HOST, (std::terminate();), (__trap();)) void()
+#  include <nv/target>
+#  define STDEXEC_TERMINATE() NV_IF_TARGET(NV_IS_HOST, (std::terminate();), (__trap();)) void()
 #elif STDEXEC_CLANG() && defined(__CUDACC__) && defined(__CUDA_ARCH__)
-#define STDEXEC_TERMINATE() \
-  __trap(); \
-  __builtin_unreachable()
+#  define STDEXEC_TERMINATE()                                                                      \
+    __trap();                                                                                      \
+    __builtin_unreachable()
 #else
-#define STDEXEC_TERMINATE() std::terminate()
+#  define STDEXEC_TERMINATE() std::terminate()
 #endif
 
 #ifdef STDEXEC_ASSERT

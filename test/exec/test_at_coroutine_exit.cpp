@@ -22,8 +22,8 @@
 #  include <exec/on_coro_disposition.hpp>
 #  include <catch2/catch.hpp>
 
-#include "../test_common/require_terminate.hpp"
-#include "../test_common/schedulers.hpp"
+#  include "../test_common/require_terminate.hpp"
+#  include "../test_common/schedulers.hpp"
 
 using namespace exec;
 using stdexec::sync_wait;

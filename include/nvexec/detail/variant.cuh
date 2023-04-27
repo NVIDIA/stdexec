@@ -27,6 +27,8 @@
 namespace nvexec {
 
   namespace detail {
+    using namespace stdexec;
+
     template <class T, class... As>
     concept one_of = (std::same_as<T, As> || ...);
 

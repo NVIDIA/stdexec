@@ -8,14 +8,14 @@ namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
-TEST_CASE("then returns a sender", "[cuda][stream][adaptors][then]") {
+TEST_CASE("nvexec then returns a sender", "[cuda][stream][adaptors][then]") {
   nvexec::stream_context stream_ctx{};
   auto snd = ex::then(ex::schedule(stream_ctx.get_scheduler()), [] {});
   STATIC_REQUIRE(ex::sender<decltype(snd)>);
   (void) snd;
 }
 
-TEST_CASE("then executes on GPU", "[cuda][stream][adaptors][then]") {
+TEST_CASE("nvexec then executes on GPU", "[cuda][stream][adaptors][then]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t flags_storage{};
@@ -32,7 +32,7 @@ TEST_CASE("then executes on GPU", "[cuda][stream][adaptors][then]") {
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("then accepts values on GPU", "[cuda][stream][adaptors][then]") {
+TEST_CASE("nvexec then accepts values on GPU", "[cuda][stream][adaptors][then]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t flags_storage{};
@@ -51,7 +51,7 @@ TEST_CASE("then accepts values on GPU", "[cuda][stream][adaptors][then]") {
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("then accepts multiple values on GPU", "[cuda][stream][adaptors][then]") {
+TEST_CASE("nvexec then accepts multiple values on GPU", "[cuda][stream][adaptors][then]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t flags_storage{};
@@ -70,7 +70,7 @@ TEST_CASE("then accepts multiple values on GPU", "[cuda][stream][adaptors][then]
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("then returns values on GPU", "[cuda][stream][adaptors][then]") {
+TEST_CASE("nvexec then returns values on GPU", "[cuda][stream][adaptors][then]") {
   nvexec::stream_context stream_ctx{};
 
   auto snd = ex::schedule(stream_ctx.get_scheduler()) //
@@ -86,7 +86,7 @@ TEST_CASE("then returns values on GPU", "[cuda][stream][adaptors][then]") {
   REQUIRE(result == 42);
 }
 
-TEST_CASE("then can preceed a sender without values", "[cuda][stream][adaptors][then]") {
+TEST_CASE("nvexec then can preceed a sender without values", "[cuda][stream][adaptors][then]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t<2> flags_storage{};
@@ -108,7 +108,7 @@ TEST_CASE("then can preceed a sender without values", "[cuda][stream][adaptors][
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("then can succeed a sender", "[cuda][stream][adaptors][then]") {
+TEST_CASE("nvexec then can succeed a sender", "[cuda][stream][adaptors][then]") {
   SECTION("without values") {
     nvexec::stream_context stream_ctx{};
     flags_storage_t<2> flags_storage{};
@@ -148,7 +148,7 @@ TEST_CASE("then can succeed a sender", "[cuda][stream][adaptors][then]") {
   }
 }
 
-TEST_CASE("then can succeed a receiverless sender", "[cuda][stream][adaptors][then]") {
+TEST_CASE("nvexec then can succeed a receiverless sender", "[cuda][stream][adaptors][then]") {
   SECTION("without values") {
     nvexec::stream_context stream_ctx{};
     flags_storage_t flags_storage{};
@@ -184,7 +184,7 @@ TEST_CASE("then can succeed a receiverless sender", "[cuda][stream][adaptors][th
   }
 }
 
-TEST_CASE("then can return values of non-trivial types", "[cuda][stream][adaptors][then]") {
+TEST_CASE("nvexec then can return values of non-trivial types", "[cuda][stream][adaptors][then]") {
   nvexec::stream_context stream_ctx{};
   flags_storage_t flags_storage{};
   auto flags = flags_storage.get();
@@ -201,7 +201,7 @@ TEST_CASE("then can return values of non-trivial types", "[cuda][stream][adaptor
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("then can preceed a sender with values", "[cuda][stream][adaptors][then]") {
+TEST_CASE("nvexec then can preceed a sender with values", "[cuda][stream][adaptors][then]") {
   nvexec::stream_context stream_ctx{};
 
   auto snd = ex::schedule(stream_ctx.get_scheduler())

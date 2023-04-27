@@ -249,6 +249,8 @@ namespace stdexec {
   template <__completion_tag _CPO>
   inline constexpr get_completion_scheduler_t<_CPO> get_completion_scheduler{};
 
+  template <class _Tag>
+  concept __forwarding_query = forwarding_query(_Tag{});
 
   /////////////////////////////////////////////////////////////////////////////
   // env_of
@@ -1491,7 +1493,9 @@ namespace stdexec {
     struct __promise {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
-      struct __t : __promise_base, __env::__with_await_transform<__t> {
+      struct __t
+        : __promise_base
+        , __env::__with_await_transform<__t> {
         using __id = __promise;
 
         explicit __t(auto&, _Receiver& __rcvr) noexcept
@@ -3668,27 +3672,27 @@ namespace stdexec {
         _BaseEnv,   // NOT TO SPEC
         __with<get_stop_token_t, in_place_stop_token>>;
 
-    template <class _SenderId, class _EnvId>
+    template <class _CvrefSenderId, class _EnvId>
     struct __sh_state;
 
-    template <class _SenderId, class _EnvId>
+    template <class _CvrefSenderId, class _EnvId>
     struct __receiver {
-      using _Sender = stdexec::__t<_SenderId>;
+      using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
       using _Env = stdexec::__t<_EnvId>;
 
       class __t {
-        __intrusive_ptr<stdexec::__t<__sh_state<_SenderId, _EnvId>>> __shared_state_;
+        __intrusive_ptr<stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>> __shared_state_;
 
        public:
         using __id = __receiver;
 
-        explicit __t(stdexec::__t<__sh_state<_SenderId, _EnvId>>& __shared_state) noexcept
+        explicit __t(stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>& __shared_state) noexcept
           : __shared_state_(__shared_state.__intrusive_from_this()) {
         }
 
         template <__completion_tag _Tag, class... _As>
         friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept {
-          stdexec::__t<__sh_state<_SenderId, _EnvId>>& __state = *__self.__shared_state_;
+          stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>& __state = *__self.__shared_state_;
 
           try {
             using __tuple_t = __decayed_tuple<_Tag, _As...>;
@@ -3713,9 +3717,9 @@ namespace stdexec {
       __notify_fn* __notify_{};
     };
 
-    template <class _SenderId, class _EnvId>
+    template <class _CvrefSenderId, class _EnvId>
     struct __sh_state {
-      using _Sender = stdexec::__t<_SenderId>;
+      using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
       using _Env = stdexec::__t<_EnvId>;
 
       struct __t : __enable_intrusive_from_this<__t> {
@@ -3731,29 +3735,29 @@ namespace stdexec {
 
         using __bound_values_t = //
           __value_types_of_t<
-            _Sender,
+            _CvrefSender,
             __env_t<_Env>,
             __mbind_front_q<__decayed_tuple, set_value_t>,
             __q<__bind_tuples>>;
 
         using __variant_t = //
           __error_types_of_t<
-            _Sender,
+            _CvrefSender,
             __env_t<_Env>,
             __transform< __mbind_front_q<__decayed_tuple, set_error_t>, __bound_values_t>>;
 
-        using __receiver_t = stdexec::__t<__receiver<_SenderId, _EnvId>>;
+        using __receiver_t = stdexec::__t<__receiver<_CvrefSenderId, _EnvId>>;
 
         __variant_t __data_;
         in_place_stop_source __stop_source_{};
 
         std::atomic<void*> __op_state1_{nullptr};
         __env_t<_Env> __env_;
-        connect_result_t<_Sender&, __receiver_t> __op_state2_;
+        connect_result_t<_CvrefSender, __receiver_t> __op_state2_;
 
-        explicit __t(_Sender& __sndr, _Env __env)
+        explicit __t(_CvrefSender&& __sndr, _Env __env)
           : __env_(__make_env((_Env&&) __env, __with_(get_stop_token, __stop_source_.get_token())))
-          , __op_state2_(connect(__sndr, __receiver_t{*this})) {
+          , __op_state2_(connect((_CvrefSender&&) __sndr, __receiver_t{*this})) {
           stdexec::start(__op_state2_);
         }
 
@@ -3772,9 +3776,9 @@ namespace stdexec {
       };
     };
 
-    template <class _SenderId, class _EnvId, class _ReceiverId>
+    template <class _CvrefSenderId, class _EnvId, class _ReceiverId>
     struct __operation {
-      using _Sender = stdexec::__t<_SenderId>;
+      using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
       using _Env = stdexec::__t<_EnvId>;
       using _Receiver = stdexec::__t<_ReceiverId>;
 
@@ -3793,14 +3797,14 @@ namespace stdexec {
 
         _Receiver __rcvr_;
         __on_stop __on_stop_{};
-        __intrusive_ptr<stdexec::__t<__sh_state<_SenderId, _EnvId>>> __shared_state_;
+        __intrusive_ptr<stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>> __shared_state_;
 
        public:
         using __id = __operation;
 
-        __t(                                                                           //
-          _Receiver __rcvr,                                                            //
-          __intrusive_ptr<stdexec::__t<__sh_state<_SenderId, _EnvId>>> __shared_state) //
+        __t(                                                                                //
+          _Receiver __rcvr,                                                                 //
+          __intrusive_ptr<stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>> __shared_state) //
           noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
           : __operation_base{__notify}
           , __rcvr_((_Receiver&&) __rcvr)
@@ -3833,7 +3837,7 @@ namespace stdexec {
         }
 
         STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
-          stdexec::__t<__sh_state<_SenderId, _EnvId>>* __shared_state =
+          stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>* __shared_state =
             __self.__shared_state_.get();
           std::atomic<void*>& __op_state1 = __shared_state->__op_state1_;
           void* const __completion_state = static_cast<void*>(__shared_state);
@@ -3867,18 +3871,18 @@ namespace stdexec {
       };
     };
 
-    template <class _SenderId, class _EnvId>
+    template <class _CvrefSenderId, class _EnvId>
     struct __sender {
-      using _Sender = stdexec::__t<_SenderId>;
+      using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
       using _Env = stdexec::__t<_EnvId>;
 
       struct __t {
         using __id = __sender;
         using is_sender = void;
 
-        explicit __t(_Sender __sndr, _Env __env)
-          : __sndr_((_Sender&&) __sndr)
-          , __shared_state_{__make_intrusive<__sh_state_>(__sndr_, (_Env&&) __env)} {
+        explicit __t(_CvrefSender __sndr, _Env __env)
+          : __shared_state_{
+            __make_intrusive<__sh_state_>((_CvrefSender&&) __sndr, (_Env&&) __env)} {
         }
 
         ~__t() {
@@ -3892,9 +3896,10 @@ namespace stdexec {
         __t(__t&&) = default;
 
        private:
-        using __sh_state_ = stdexec::__t<__sh_state<_SenderId, _EnvId>>;
+        using __sh_state_ = stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>;
         template <class _Receiver>
-        using __operation = stdexec::__t<__operation<_SenderId, _EnvId, stdexec::__id<_Receiver>>>;
+        using __operation =
+          stdexec::__t<__operation<_CvrefSenderId, _EnvId, stdexec::__id<_Receiver>>>;
 
         template <class... _Tys>
         using __set_value_t = completion_signatures<set_value_t(__decay_t<_Tys>&&...)>;
@@ -3905,7 +3910,7 @@ namespace stdexec {
         template <class _Self>
         using __completions_t = //
           __try_make_completion_signatures<
-            _Sender&,
+            _CvrefSender,
             __env_t<__mfront<_Env, _Self>>,
             completion_signatures<
               set_error_t(std::exception_ptr&&),
@@ -3913,7 +3918,6 @@ namespace stdexec {
             __q<__set_value_t>,
             __q<__set_error_t>>;
 
-        _Sender __sndr_;
         __intrusive_ptr<__sh_state_> __shared_state_;
 
         template <same_as<__t> _Self, receiver_of<__completions_t<_Self>> _Receiver>
@@ -3932,61 +3936,51 @@ namespace stdexec {
 
     // When looking for user-defined customizations of split, these
     // are the signatures to test against, in order:
-    using _Sender = __0;
+    using _CvrefSender = __0;
     using _Env = __1;
     using __cust_sigs = //
       __types<
         tag_invoke_t(
           ensure_started_t,
-          get_completion_scheduler_t<set_value_t>(get_env_t(_Sender&)),
-          _Sender),
+          get_completion_scheduler_t<set_value_t>(get_env_t(const _CvrefSender&)),
+          _CvrefSender),
         tag_invoke_t(
           ensure_started_t,
-          get_completion_scheduler_t<set_value_t>(get_env_t(_Sender&)),
-          _Sender,
+          get_completion_scheduler_t<set_value_t>(get_env_t(const _CvrefSender&)),
+          _CvrefSender,
           _Env),
-        tag_invoke_t(ensure_started_t, get_scheduler_t(_Env&), _Sender),
-        tag_invoke_t(ensure_started_t, get_scheduler_t(_Env&), _Sender, _Env),
-        tag_invoke_t(ensure_started_t, _Sender),
-        tag_invoke_t(ensure_started_t, _Sender, _Env)>;
+        tag_invoke_t(ensure_started_t, get_scheduler_t(_Env&), _CvrefSender),
+        tag_invoke_t(ensure_started_t, get_scheduler_t(_Env&), _CvrefSender, _Env),
+        tag_invoke_t(ensure_started_t, _CvrefSender),
+        tag_invoke_t(ensure_started_t, _CvrefSender, _Env)>;
 
-    template <class _Sender, class _Env>
+    template <class _CvrefSender, class _Env>
     inline constexpr bool __is_ensure_started_customized =
-      __minvocable<__which<__cust_sigs>, _Sender, _Env>;
+      __minvocable<__which<__cust_sigs>, _CvrefSender, _Env>;
 
     template <class _Sender, class _Env>
     using __sender_t =
-      __t<__sender<stdexec::__id<__decay_t<_Sender>>, stdexec::__id<__decay_t<_Env>>>>;
-
-    template <class _Sender, class _Env>
-    using __receiver_t =
-      __t<__receiver<stdexec::__id<__decay_t<_Sender>>, stdexec::__id<__decay_t<_Env>>>>;
-
-    template <class _Sender, class _Env>
-    using __dispatcher_for =
-      __make_dispatcher<__cust_sigs, __mconstructor_for<__sender_t>, _Sender, _Env>;
-
-    template <class _SenderId, class _EnvId>
-    void __test_ensure_started_sender(__sender<_SenderId, _EnvId> const & __sndr2){};
+      __t<__sender<stdexec::__cvref_id<_Sender, _Sender>, stdexec::__id<__decay_t<_Env>>>>;
 
     template <class _Sender>
     concept __ensure_started_sender = //
-      requires(typename _Sender::__id __sndr1) { __test_ensure_started_sender(__sndr1); };
+      __is_instance_of<__id<__decay_t<_Sender>>, __sender>;
+
+    template <class _Sender>
+    using __fallback =
+      __if_c<__ensure_started_sender<_Sender>, __mconst<__first>, __mconstructor_for<__sender_t>>;
+
+    template <class _Sender, class _Env>
+    using __dispatcher_for = __make_dispatcher<__cust_sigs, __fallback<_Sender>, _Sender, _Env>;
 
     struct ensure_started_t {
       template <sender _Sender, class _Env = empty_env>
-        requires(copy_constructible<__decay_t<_Sender>>
-                 && sender_to<_Sender&, __receiver_t<_Sender, _Env>>)
+        requires(sender_in<_Sender, _Env> && __decay_copyable<env_of_t<_Sender>>)
              || __is_ensure_started_customized<_Sender, _Env>
       auto operator()(_Sender&& __sndr, _Env&& __env = _Env{}) const
         noexcept(__nothrow_callable<__dispatcher_for<_Sender, _Env>, _Sender, _Env>)
           -> __call_result_t<__dispatcher_for<_Sender, _Env>, _Sender, _Env> {
         return __dispatcher_for<_Sender, _Env>{}((_Sender&&) __sndr, (_Env&&) __env);
-      }
-
-      template <__ensure_started_sender _Sender>
-      _Sender operator()(_Sender __sndr) const {
-        return std::move(__sndr);
       }
 
       __binder_back<ensure_started_t> operator()() const {

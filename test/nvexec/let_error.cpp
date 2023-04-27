@@ -8,7 +8,7 @@ namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
-TEST_CASE("let_error returns a sender", "[cuda][stream][adaptors][let_error]") {
+TEST_CASE("nvexec let_error returns a sender", "[cuda][stream][adaptors][let_error]") {
   nvexec::stream_context stream_ctx{};
 
   auto snd = ex::just_error(42) | ex::transfer(stream_ctx.get_scheduler())
@@ -17,7 +17,7 @@ TEST_CASE("let_error returns a sender", "[cuda][stream][adaptors][let_error]") {
   (void) snd;
 }
 
-TEST_CASE("let_error executes on GPU", "[cuda][stream][adaptors][let_error]") {
+TEST_CASE("nvexec let_error executes on GPU", "[cuda][stream][adaptors][let_error]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t flags_storage{};
@@ -36,7 +36,9 @@ TEST_CASE("let_error executes on GPU", "[cuda][stream][adaptors][let_error]") {
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("let_error can preceed a sender without values", "[cuda][stream][adaptors][let_error]") {
+TEST_CASE(
+  "nvexec let_error can preceed a sender without values",
+  "[cuda][stream][adaptors][let_error]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t<2> flags_storage{};
@@ -61,7 +63,7 @@ TEST_CASE("let_error can preceed a sender without values", "[cuda][stream][adapt
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("let_error can succeed a sender", "[cuda][stream][adaptors][let_error]") {
+TEST_CASE("nvexec let_error can succeed a sender", "[cuda][stream][adaptors][let_error]") {
   nvexec::stream_context stream_ctx{};
   nvexec::stream_scheduler sch = stream_ctx.get_scheduler();
   flags_storage_t flags_storage{};

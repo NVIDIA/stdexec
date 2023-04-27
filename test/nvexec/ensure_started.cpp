@@ -12,7 +12,7 @@ namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
-TEST_CASE("ensure_started is eager", "[cuda][stream][adaptors][ensure_started]") {
+TEST_CASE("nvexec ensure_started is eager", "[cuda][stream][adaptors][ensure_started]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t flags_storage{};
@@ -32,7 +32,7 @@ TEST_CASE("ensure_started is eager", "[cuda][stream][adaptors][ensure_started]")
   stdexec::sync_wait(std::move(snd));
 }
 
-TEST_CASE("ensure_started propagates values", "[cuda][stream][adaptors][ensure_started]") {
+TEST_CASE("nvexec ensure_started propagates values", "[cuda][stream][adaptors][ensure_started]") {
   nvexec::stream_context stream_ctx{};
 
   auto snd1 = ex::ensure_started(
@@ -71,7 +71,9 @@ TEST_CASE(
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("ensure_started can succeed a sender", "[cuda][stream][adaptors][ensure_started]") {
+TEST_CASE(
+  "nvexec ensure_started can succeed a sender",
+  "[cuda][stream][adaptors][ensure_started]") {
   SECTION("without values") {
     nvexec::stream_context stream_ctx{};
     flags_storage_t<2> flags_storage{};

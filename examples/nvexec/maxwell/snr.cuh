@@ -203,7 +203,8 @@ namespace repeat_n_detail {
    public:
     template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
     STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-    friend void tag_invoke(_Tag __tag, receiver_t&& __self, _Args&&... __args) noexcept {
+      friend void
+      tag_invoke(_Tag __tag, receiver_t&& __self, _Args&&... __args) noexcept {
       __tag(std::move(__self.op_state_.receiver_), (_Args&&) __args...);
     }
 
@@ -269,7 +270,7 @@ struct repeat_n_t {
           ,
         stdexec::set_error_t(cudaError_t)
 #endif
-      >;
+        >;
 
     Sender sender_;
     Closure closure_;
