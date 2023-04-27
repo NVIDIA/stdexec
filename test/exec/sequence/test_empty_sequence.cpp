@@ -1,0 +1,62 @@
+/*
+ * Copyright (c) 2023 NVIDIA Corporation
+ * Copyright (c) 2023 Maikel Nadolski
+ *
+ * Licensed under the Apache License Version 2.0 with LLVM Exceptions
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ *   https://llvm.org/LICENSE.txt
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "exec/sequence/empty_sequence.hpp"
+
+#include <catch2/catch.hpp>
+
+using namespace stdexec;
+using namespace exec;
+
+TEST_CASE(
+  "sequence_senders - empty_sequence is a sequence sender",
+  "[sequence_senders][empty_sequence]") {
+  using empty_t = decltype(empty_sequence());
+  STATIC_REQUIRE(sequence_sender<empty_t>);
+  STATIC_REQUIRE(same_as<completion_signatures_of_t<empty_t>, completion_signatures<>>);
+  STATIC_REQUIRE(same_as<__sequence_to_sender_sigs_t<completion_signatures_of_t<empty_t>>, completion_signatures<set_value_t()>>);
+}
+
+struct count_set_next_receiver_t {
+  int& count_invocations_;
+
+  friend auto
+    tag_invoke(set_next_t, count_set_next_receiver_t& __self, auto /* item */) noexcept {
+    ++__self.count_invocations_;
+    return just();
+  }
+
+  friend void tag_invoke(set_value_t, count_set_next_receiver_t&&) noexcept {
+  }
+
+  friend empty_env tag_invoke(get_env_t, const count_set_next_receiver_t&) noexcept {
+    return {};
+  }
+};
+
+TEST_CASE(
+  "sequence_senders - empty_sequence is a sequence sender to a minimal receiver of set_value_t()",
+  "[sequence_senders][empty_sequence]") {
+  using empty_t = decltype(empty_sequence());
+  STATIC_REQUIRE(receiver_of<count_set_next_receiver_t, completion_signatures<set_value_t()>>);
+  STATIC_REQUIRE(sequence_sender_to<empty_t, count_set_next_receiver_t>);
+
+  int count{0};
+  auto op = sequence_connect(empty_sequence(), count_set_next_receiver_t{count});
+  start(op);
+  CHECK(count == 0);
+}

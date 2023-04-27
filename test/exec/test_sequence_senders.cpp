@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2023 NVIDIA Corporation
+ * Copyright (c) 2023 Maikel Nadolski
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -15,9 +16,6 @@
  */
 
 #include "exec/sequence_senders.hpp"
-#include "exec/variant_sender.hpp"
-
-#include "exec/sequence/empty_sequence.hpp"
 
 #include <catch2/catch.hpp>
 
