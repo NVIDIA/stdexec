@@ -19,6 +19,8 @@
 #include "../stdexec/execution.hpp"
 
 namespace exec {
+  struct sequence_tag {};
+
   namespace __sequence_sender {
     using namespace stdexec;
 
