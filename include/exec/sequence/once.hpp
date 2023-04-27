@@ -37,7 +37,9 @@ namespace exec {
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sequence_receiver_from<_Receiver, __copy_cvref_t<_Self, _Sender>>
                 && sender_to<__next_t<_Self, _Receiver>, _Receiver>
-        friend auto tag_invoke(sequence_connect_t, _Self&& __self, _Receiver&& __rcvr)
+        friend auto tag_invoke(sequence_connect_t, _Self&& __self, _Receiver&& __rcvr) noexcept(
+          __nothrow_callable<set_next_t, __decay_t<_Receiver>&, __copy_cvref_t<_Self, _Sender>> //
+            && __nothrow_connectable<__copy_cvref_t<_Self, _Sender>, _Receiver>)
           -> connect_result_t<__next_t<_Self, _Receiver>, _Receiver> {
           return stdexec::connect(
             exec::set_next(__rcvr, static_cast<_Self&&>(__self).__sndr_),
@@ -63,8 +65,8 @@ namespace exec {
 
       template <class _Sender>
         requires(!tag_invocable<once_t, _Sender>)
-      auto operator()(_Sender&& __sender) const -> __sender_t<_Sender> {
-        return __sender_t<_Sender>{static_cast<_Sender&&>(__sender)};
+      __sender_t<_Sender> operator()(_Sender&& __sender) const noexcept(__decay_copyable<_Sender>) {
+        return {static_cast<_Sender&&>(__sender)};
       }
 
       __binder_back<once_t> operator()() const noexcept {
