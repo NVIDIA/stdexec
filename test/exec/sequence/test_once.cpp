@@ -79,7 +79,7 @@ TEST_CASE("sequence_senders - once - fires once movable", "[sequence_senders][on
   using sequence_t = __decay_t<decltype(sequence)>;
   STATIC_REQUIRE_FALSE(sequence_sender_to<const sequence_t&, count_receiver<set_value_t(::movable)>>);
   STATIC_REQUIRE(sequence_sender_to<sequence_t&&, count_receiver<set_value_t(::movable)>>);
-  auto op = sequence_connect(std::move(sequence), receiver);
+  auto op = sequence_connect(static_cast<sequence_t&&>(sequence), receiver);
   start(op);
   CHECK(counter == 1);
 }
