@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "exec/sequence/once.hpp"
+#include "exec/sequence/single.hpp"
 
 #include "test_common/type_helpers.hpp"
 

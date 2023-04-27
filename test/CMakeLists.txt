@@ -82,7 +82,7 @@ set(stdexec_test_sources
     exec/test_trampoline_scheduler.cpp
     exec/test_sequence_senders.cpp
     exec/sequence/test_empty_sequence.cpp
-    exec/sequence/test_once.cpp
+    exec/sequence/test_single.cpp
     $<$<BOOL:${STDEXEC_ENABLE_TBB}>:tbbexec/test_tbb_thread_pool.cpp>
     )
 
