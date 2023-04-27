@@ -19,7 +19,7 @@
 #include "../stdexec/execution.hpp"
 
 namespace exec {
-  struct sequence_tag {};
+  struct sequence_tag { };
 
   namespace __sequence_sender {
     using namespace stdexec;
@@ -35,7 +35,6 @@ namespace exec {
 
     template <class _Needles, class _Haystack>
     concept __all_contained_in = __mall_contained_in<_Needles, _Haystack>::value;
-
 
     // This concept checks if a given sender satisfies the requirements to be returned from `set_next`.
     template <class _Sender, class _Env = empty_env>
@@ -56,7 +55,10 @@ namespace exec {
       auto operator()(_Receiver& __rcvr, _Item&& __item) const
         noexcept(nothrow_tag_invocable<set_next_t, _Receiver&, _Item>)
           -> tag_invoke_result_t<set_next_t, _Receiver&, _Item> {
-        static_assert(next_sender<tag_invoke_result_t<set_next_t, _Receiver&, _Item>>);
+        static_assert(
+          next_sender<tag_invoke_result_t<set_next_t, _Receiver&, _Item>>,
+          "The sender returned from set_next is required to complete with set_value_t() or "
+          "set_stopped_t()");
         return tag_invoke(*this, __rcvr, (_Item&&) __item);
       }
     };
@@ -84,6 +86,14 @@ namespace exec {
       }
     };
   } // namespace __sequence_sender
+
+  template <class _Sender>
+  concept __enable_sequence_sender =             //
+    requires { typename _Sender::is_sender; } && //
+    stdexec::same_as<typename _Sender::is_sender, sequence_tag>;
+
+  template <class _Sender>
+  inline constexpr bool enable_sequence_sender = __enable_sequence_sender<_Sender>;
 
   template <class _Signatures, class _Env = stdexec::empty_env>
   using __sequence_to_sender_sigs_t = stdexec::__try_make_completion_signatures<
@@ -143,9 +153,14 @@ namespace exec {
 
   using __sequence_sender::sequence_connect_result_t;
 
+  template <class _Sender>
+  concept sequence_sender =     //
+    stdexec::sender<_Sender> && //
+    enable_sequence_sender<_Sender>;
+
   template <class _Sender, class _Receiver>
   concept sequence_sender_to =
-    stdexec::sender_in<_Sender, stdexec::env_of_t<_Receiver>>
+    sequence_sender<_Sender> && stdexec::sender_in<_Sender, stdexec::env_of_t<_Receiver>>
     && sequence_receiver_from<_Receiver, _Sender>
     && requires(_Sender&& __sndr, _Receiver&& __rcvr) {
          { sequence_connect((_Sender&&) __sndr, (_Receiver&&) __rcvr) };
