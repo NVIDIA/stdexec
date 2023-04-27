@@ -19,7 +19,7 @@
 #include "../sequence_senders.hpp"
 
 namespace exec {
-  namespace __once {
+  namespace __single {
     using namespace stdexec;
 
     template <class _SenderId>
@@ -52,29 +52,29 @@ namespace exec {
       };
     };
 
-    struct once_t {
+    struct single_t {
       template <class _Sender>
       using __sender_t = __t<__sender<__id<__decay_t<_Sender>>>>;
 
       template <class _Sender>
-        requires tag_invocable<once_t, _Sender>
-      auto operator()(_Sender&& __sender) const noexcept(nothrow_tag_invocable<once_t, _Sender>)
-        -> tag_invoke_result_t<once_t, _Sender> {
+        requires tag_invocable<single_t, _Sender>
+      auto operator()(_Sender&& __sender) const noexcept(nothrow_tag_invocable<single_t, _Sender>)
+        -> tag_invoke_result_t<single_t, _Sender> {
         return tag_invoke(*this, static_cast<_Sender&&>(__sender));
       }
 
       template <class _Sender>
-        requires(!tag_invocable<once_t, _Sender>)
+        requires(!tag_invocable<single_t, _Sender>)
       __sender_t<_Sender> operator()(_Sender&& __sender) const noexcept(__decay_copyable<_Sender>) {
         return {static_cast<_Sender&&>(__sender)};
       }
 
-      __binder_back<once_t> operator()() const noexcept {
+      __binder_back<single_t> operator()() const noexcept {
         return {{}, {}, {}};
       }
     };
   }
 
-  using __once::once_t;
-  inline constexpr once_t once{};
+  using __single::single_t;
+  inline constexpr single_t single{};
 }

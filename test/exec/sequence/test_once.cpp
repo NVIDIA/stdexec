@@ -52,29 +52,29 @@ struct count_receiver {
 };
 
 
-TEST_CASE("sequence_senders - once - Test for concepts", "[sequence_senders][once]") {
+TEST_CASE("sequence_senders - single - Test for concepts", "[sequence_senders][single]") {
   using just_t = decltype(just());
-  using just_once_t = decltype(once(just()));
+  using just_single_t = decltype(single(just()));
   STATIC_REQUIRE(sender<just_t>);
-  STATIC_REQUIRE(sender<just_once_t>);
-  STATIC_REQUIRE(same_as<completion_signatures_of_t<just_t>, completion_signatures_of_t<just_once_t>>);
+  STATIC_REQUIRE(sender<just_single_t>);
+  STATIC_REQUIRE(same_as<completion_signatures_of_t<just_t>, completion_signatures_of_t<just_single_t>>);
   STATIC_REQUIRE(sender_to<just_t, count_receiver<>>);
-  STATIC_REQUIRE_FALSE(sender_to<just_once_t, count_receiver<set_value_t()>>);
-  STATIC_REQUIRE(sequence_sender_to<just_once_t, count_receiver<set_value_t()>>);
+  STATIC_REQUIRE_FALSE(sender_to<just_single_t, count_receiver<set_value_t()>>);
+  STATIC_REQUIRE(sequence_sender_to<just_single_t, count_receiver<set_value_t()>>);
 }
 
-TEST_CASE("sequence_senders - once - fires once", "[sequence_senders][once]") {
+TEST_CASE("sequence_senders - single - fires once", "[sequence_senders][single]") {
   int counter = 0;
-  auto sequence = once(just(42));
+  auto sequence = single(just(42));
   auto receiver = count_receiver<set_value_t(int)>{counter};
   auto op = sequence_connect(sequence, receiver);
   start(op);
   CHECK(counter == 1);
 }
 
-TEST_CASE("sequence_senders - once - fires once movable", "[sequence_senders][once]") {
+TEST_CASE("sequence_senders - single - fires once movable", "[sequence_senders][single]") {
   int counter = 0;
-  auto sequence = once(just(::movable(42)));
+  auto sequence = single(just(::movable(42)));
   auto receiver = count_receiver<set_value_t(::movable)>{counter};
   using sequence_t = __decay_t<decltype(sequence)>;
   STATIC_REQUIRE_FALSE(sequence_sender_to<const sequence_t&, count_receiver<set_value_t(::movable)>>);
