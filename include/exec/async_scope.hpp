@@ -160,13 +160,30 @@ namespace exec {
         }
       }
 
-      template < __completion_tag _Tag, class... _As>
+      template <__same_as<set_value_t> _Tag, class... _As>
         requires __callable<_Tag, _Receiver, _As...>
-      friend void tag_invoke(_Tag, __nest_rcvr&& __self, _As&&... __as) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_value)(this __nest_rcvr&& __self, _Tag, _As&&... __as) noexcept {
         auto __scope = __self.__op_->__scope_;
-        _Tag{}(std::move(__self.__op_->__rcvr_), (_As&&) __as...);
-        // do not access __op_
-        // do not access this
+        _Tag()(std::move(__self.__op_->__rcvr_), (_As&&) __as...);
+        // do not access __self
+        __complete(__scope);
+      }
+
+      template <same_as<set_error_t> _Tag, class _Error>
+        requires __callable<_Tag, _Receiver, _Error>
+      STDEXEC_DEFINE_CUSTOM(void set_error)(this __nest_rcvr&& __self, _Tag, _Error&& __err) noexcept {
+        auto __scope = __self.__op_->__scope_;
+        _Tag()(std::move(__self.__op_->__rcvr_), (_Error&&) __err);
+        // do not access __self
+        __complete(__scope);
+      }
+
+      template <same_as<set_stopped_t> _Tag>
+        requires __callable<_Tag, _Receiver>
+      STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __nest_rcvr&& __self, _Tag) noexcept {
+        auto __scope = __self.__op_->__scope_;
+        _Tag()(std::move(__self.__op_->__rcvr_));
+        // do not access __self
         __complete(__scope);
       }
 
@@ -305,7 +322,7 @@ namespace exec {
             std::terminate();
           } else if (get_stop_token(get_env(__rcvr_)).stop_requested()) {
             __guard.unlock();
-            set_stopped((_Receiver&&) __rcvr_);
+            stdexec::set_stopped((_Receiver&&) __rcvr_);
             __guard.lock();
           } else {
             std::visit(
@@ -325,7 +342,7 @@ namespace exec {
               __state->__data_);
           }
         } catch (...) {
-          set_error((_Receiver&&) __rcvr_, std::current_exception());
+          stdexec::set_error((_Receiver&&) __rcvr_, std::current_exception());
         }
       }
 
@@ -341,7 +358,7 @@ namespace exec {
             }
           }
         } catch (...) {
-          set_error((_Receiver&&) __rcvr_, std::current_exception());
+          stdexec::set_error((_Receiver&&) __rcvr_, std::current_exception());
         }
       }
 
@@ -510,8 +527,8 @@ namespace exec {
         }
       }
 
-      template < __completion_tag _Tag, __movable_value... _As>
-      friend void tag_invoke(_Tag, __future_rcvr&& __self, _As&&... __as) noexcept {
+      template <class _Tag, class... _As>
+      static void __complete(_Tag, __future_rcvr&& __self, _As&&... __as) noexcept {
         auto& __state = *__self.__state_;
         try {
           std::unique_lock __guard{__state.__mutex_};
@@ -523,6 +540,22 @@ namespace exec {
           using _Tuple = std::tuple<set_error_t, std::exception_ptr>;
           __state.__data_.template emplace<_Tuple>(set_error_t{}, std::current_exception());
         }
+      }
+
+      // BUGBUG TODO constrain these
+      template <__same_as<set_value_t> _Tag, __movable_value... _As>
+      STDEXEC_DEFINE_CUSTOM(void set_value)(this __future_rcvr&& __self, _Tag, _As&&... __as) noexcept {
+        __complete(_Tag(), (__future_rcvr&&) __self, (_As&&) __as...);
+      }
+
+      template <same_as<set_error_t> _Tag, __movable_value _Error>
+      STDEXEC_DEFINE_CUSTOM(void set_error)(this __future_rcvr&& __self, _Tag, _Error&& __err) noexcept {
+        __complete(_Tag(), (__future_rcvr&&) __self, (_Error&&) __err);
+      }
+
+      template <same_as<set_stopped_t> _Tag>
+      STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __future_rcvr&& __self, _Tag) noexcept {
+        __complete(_Tag(), (__future_rcvr&&) __self);
       }
 
       STDEXEC_DEFINE_CUSTOM(const __env_t<_Env>& get_env)(
@@ -622,16 +655,21 @@ namespace exec {
       __spawn_op_base<_EnvId>* __op_;
       const __impl* __scope_;
 
-      template <__one_of<set_value_t, set_stopped_t> _Tag>
-      friend void tag_invoke(_Tag, __spawn_rcvr&& __self) noexcept {
+      template <same_as<set_value_t> _Tag>
+      STDEXEC_DEFINE_CUSTOM(void set_value)(this __spawn_rcvr&& __self, _Tag) noexcept {
         __self.__op_->__delete_(__self.__op_);
       }
 
       // BUGBUG NOT TO SPEC spawn shouldn't accept senders that can fail.
       template <same_as<set_error_t> _Tag>
-      [[noreturn]] friend void
-        tag_invoke(_Tag, __spawn_rcvr&&, const std::exception_ptr&) noexcept {
+      [[noreturn]] //
+      STDEXEC_DEFINE_CUSTOM(void set_error)(this __spawn_rcvr&& __self, _Tag, const std::exception_ptr&) noexcept {
         std::terminate();
+      }
+
+      template <same_as<set_stopped_t> _Tag>
+      STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __spawn_rcvr&& __self, _Tag) noexcept {
+        __self.__op_->__delete_(__self.__op_);
       }
 
       STDEXEC_DEFINE_CUSTOM(const __env_t<_Env>& get_env)(

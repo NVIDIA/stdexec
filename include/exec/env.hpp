@@ -64,12 +64,12 @@ namespace exec {
         try {
           if constexpr (__callable<_Tag, env_of_t<_Receiver>>) {
             const auto& __env = get_env(__self.__rcvr_);
-            set_value(std::move(__self.__rcvr_), _Tag{}(__env));
+            stdexec::set_value(std::move(__self.__rcvr_), _Tag{}(__env));
           } else {
-            set_value(std::move(__self.__rcvr_), std::move(__self.__default_));
+            stdexec::set_value(std::move(__self.__rcvr_), std::move(__self.__default_));
           }
         } catch (...) {
-          set_error(std::move(__self.__rcvr_), std::current_exception());
+          stdexec::set_error(std::move(__self.__rcvr_), std::current_exception());
         }
       }
     };

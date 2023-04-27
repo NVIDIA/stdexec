@@ -31,13 +31,13 @@ namespace empty_recv {
   using ex::set_value_t;
 
   struct recv0 {
-    friend void tag_invoke(set_value_t, recv0&&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void set_value)(this recv0&&, set_value_t) noexcept {
     }
 
-    friend void tag_invoke(set_stopped_t, recv0&&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void set_stopped)(this recv0&&, set_stopped_t) noexcept {
     }
 
-    friend void tag_invoke(set_error_t, recv0&&, std::exception_ptr) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void set_error)(this recv0&&, set_error_t, std::exception_ptr) noexcept {
     }
 
     STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv0&, get_env_t) noexcept {
@@ -46,13 +46,13 @@ namespace empty_recv {
   };
 
   struct recv_int {
-    friend void tag_invoke(set_value_t, recv_int&&, int) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void set_value)(this recv_int&&, set_value_t, int) noexcept {
     }
 
-    friend void tag_invoke(set_stopped_t, recv_int&&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void set_stopped)(this recv_int&&, set_stopped_t) noexcept {
     }
 
-    friend void tag_invoke(set_error_t, recv_int&&, std::exception_ptr) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void set_error)(this recv_int&&, set_error_t, std::exception_ptr) noexcept {
     }
 
     STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_int&, get_env_t) noexcept {
@@ -61,16 +61,16 @@ namespace empty_recv {
   };
 
   struct recv0_ec {
-    friend void tag_invoke(set_value_t, recv0_ec&&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void set_value)(this recv0_ec&&, set_value_t) noexcept {
     }
 
-    friend void tag_invoke(set_stopped_t, recv0_ec&&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void set_stopped)(this recv0_ec&&, set_stopped_t) noexcept {
     }
 
-    friend void tag_invoke(set_error_t, recv0_ec&&, std::error_code) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void set_error)(this recv0_ec&&, set_error_t, std::error_code) noexcept {
     }
 
-    friend void tag_invoke(set_error_t, recv0_ec&&, std::exception_ptr) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void set_error)(this recv0_ec&&, set_error_t, std::exception_ptr) noexcept {
     }
 
     STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv0_ec&, get_env_t) noexcept {
@@ -79,16 +79,16 @@ namespace empty_recv {
   };
 
   struct recv_int_ec {
-    friend void tag_invoke(set_value_t, recv_int_ec&&, int) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void set_value)(this recv_int_ec&&, set_value_t, int) noexcept {
     }
 
-    friend void tag_invoke(set_stopped_t, recv_int_ec&&) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void set_stopped)(this recv_int_ec&&, set_stopped_t) noexcept {
     }
 
-    friend void tag_invoke(set_error_t, recv_int_ec&&, std::error_code) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void set_error)(this recv_int_ec&&, set_error_t, std::error_code) noexcept {
     }
 
-    friend void tag_invoke(set_error_t, recv_int_ec&&, std::exception_ptr) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void set_error)(this recv_int_ec&&, set_error_t, std::exception_ptr) noexcept {
     }
 
     STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_int_ec&, get_env_t) noexcept {
@@ -103,14 +103,12 @@ class base_expect_receiver {
   std::atomic<bool> called_{false};
   _Env env_{};
 
-  STDEXEC_CPO_ACCESS(ex::get_env_t);
-
+ public:
   template <ex::derived_from<base_expect_receiver> Self>
   STDEXEC_DEFINE_CUSTOM(_Env get_env)(this const Self& self, ex::get_env_t) noexcept {
     return self.env_;
   }
 
- public:
   base_expect_receiver() = default;
 
   ~base_expect_receiver() {
@@ -145,20 +143,20 @@ struct expect_void_receiver : base_expect_receiver<_Env> {
     : base_expect_receiver<_Env>(std::move(env)) {
   }
 
-  friend void tag_invoke(ex::set_value_t, expect_void_receiver&& self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_void_receiver&& self, ex::set_value_t) noexcept {
     self.set_called();
   }
 
   template <typename... Ts>
-  friend void tag_invoke(ex::set_value_t, expect_void_receiver&&, Ts...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_void_receiver&&, ex::set_value_t, Ts...) noexcept {
     FAIL_CHECK("set_value called on expect_void_receiver with some non-void value");
   }
 
-  friend void tag_invoke(ex::set_stopped_t, expect_void_receiver&&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this expect_void_receiver&&, ex::set_stopped_t) noexcept {
     FAIL_CHECK("set_stopped called on expect_void_receiver");
   }
 
-  friend void tag_invoke(ex::set_error_t, expect_void_receiver&&, std::exception_ptr) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_void_receiver&&, ex::set_error_t, std::exception_ptr) noexcept {
     FAIL_CHECK("set_error called on expect_void_receiver");
   }
 };
@@ -168,29 +166,35 @@ struct expect_void_receiver_ex {
     : executed_(&executed) {
   }
 
+#if !STDEXEC_NVHPC()
  private:
-  bool* executed_;
+#endif
+  STDEXEC_CPO_ACCESS(ex::set_value_t);
+  STDEXEC_CPO_ACCESS(ex::set_error_t);
+  STDEXEC_CPO_ACCESS(ex::set_stopped_t);
+  STDEXEC_CPO_ACCESS(ex::get_env_t);
 
   template <class... Ty>
-  friend void tag_invoke(ex::set_value_t, expect_void_receiver_ex&& self, const Ty&...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_void_receiver_ex&& self, ex::set_value_t, const Ty&...) noexcept {
     *self.executed_ = true;
   }
 
-  friend void tag_invoke(ex::set_stopped_t, expect_void_receiver_ex&&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this expect_void_receiver_ex&&, ex::set_stopped_t) noexcept {
     FAIL_CHECK("set_stopped called on expect_void_receiver_ex");
   }
 
-  friend void tag_invoke(ex::set_error_t, expect_void_receiver_ex&&, std::exception_ptr) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_void_receiver_ex&&, ex::set_error_t, std::exception_ptr) noexcept {
     FAIL_CHECK("set_error called on expect_void_receiver_ex");
   }
-
-  STDEXEC_CPO_ACCESS(ex::get_env_t);
 
   STDEXEC_DEFINE_CUSTOM(empty_env get_env)(
     this const expect_void_receiver_ex&,
     ex::get_env_t) noexcept {
     return {};
   }
+
+ private:
+  bool* executed_;
 };
 
 struct env_tag { };
@@ -206,23 +210,23 @@ struct expect_value_receiver : base_expect_receiver<Env> {
     , values_(std::move(vals)...) {
   }
 
-  friend void tag_invoke(ex::set_value_t, expect_value_receiver&& self, const Ts&... vals) //
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_value_receiver&& self, ex::set_value_t, const Ts&... vals) //
     noexcept {
     CHECK(self.values_ == std::tie(vals...));
     self.set_called();
   }
 
   template <typename... Us>
-  friend void tag_invoke(ex::set_value_t, expect_value_receiver&&, const Us&...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_value_receiver&&, ex::set_value_t, const Us&...) noexcept {
     FAIL_CHECK("set_value called with wrong value types on expect_value_receiver");
   }
 
-  friend void tag_invoke(ex::set_stopped_t, expect_value_receiver&& self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this expect_value_receiver&& self, ex::set_stopped_t) noexcept {
     FAIL_CHECK("set_stopped called on expect_value_receiver");
   }
 
   template <typename E>
-  friend void tag_invoke(ex::set_error_t, expect_value_receiver&&, E) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_value_receiver&&, ex::set_error_t, E) noexcept {
     FAIL_CHECK("set_error called on expect_value_receiver");
   }
 
@@ -245,20 +249,20 @@ class expect_value_receiver_ex {
     , env_(std::move(env)) {
   }
 
-  friend void tag_invoke(ex::set_value_t, expect_value_receiver_ex self, T val) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_value_receiver_ex self, ex::set_value_t, T val) noexcept {
     *self.dest_ = val;
   }
 
   template <typename... Ts>
-  friend void tag_invoke(ex::set_value_t, expect_value_receiver_ex, Ts...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_value_receiver_ex, ex::set_value_t, Ts...) noexcept {
     FAIL_CHECK("set_value called with wrong value types on expect_value_receiver_ex");
   }
 
-  friend void tag_invoke(ex::set_stopped_t, expect_value_receiver_ex) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this expect_value_receiver_ex, ex::set_stopped_t) noexcept {
     FAIL_CHECK("set_stopped called on expect_value_receiver_ex");
   }
 
-  friend void tag_invoke(ex::set_error_t, expect_value_receiver_ex, std::exception_ptr) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_value_receiver_ex, ex::set_error_t, std::exception_ptr) noexcept {
     FAIL_CHECK("set_error called on expect_value_receiver_ex");
   }
 
@@ -278,16 +282,16 @@ struct expect_stopped_receiver : base_expect_receiver<Env> {
   }
 
   template <typename... Ts>
-  friend void tag_invoke(ex::set_value_t, expect_stopped_receiver&&, Ts...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_stopped_receiver&&, ex::set_value_t, Ts...) noexcept {
     FAIL_CHECK("set_value called on expect_stopped_receiver");
   }
 
-  friend void tag_invoke(ex::set_stopped_t, expect_stopped_receiver&& self) noexcept {
-    self.set_called();
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_stopped_receiver&&, ex::set_error_t, std::exception_ptr) noexcept {
+    FAIL_CHECK("set_error called on expect_stopped_receiver");
   }
 
-  friend void tag_invoke(ex::set_error_t, expect_stopped_receiver&&, std::exception_ptr) noexcept {
-    FAIL_CHECK("set_error called on expect_stopped_receiver");
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this expect_stopped_receiver&& self, ex::set_stopped_t) noexcept {
+    self.set_called();
   }
 };
 
@@ -302,22 +306,27 @@ struct expect_stopped_receiver_ex {
     , env_(std::move(env)) {
   }
 
+#if !STDEXEC_NVHPC()
  private:
+#endif
+  STDEXEC_CPO_ACCESS(ex::set_value_t);
+  STDEXEC_CPO_ACCESS(ex::set_error_t);
+  STDEXEC_CPO_ACCESS(ex::set_stopped_t);
+  STDEXEC_CPO_ACCESS(ex::get_env_t);
+
   template <typename... Ts>
-  friend void tag_invoke(ex::set_value_t, expect_stopped_receiver_ex&&, Ts...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_stopped_receiver_ex&&, ex::set_value_t, Ts...) noexcept {
     FAIL_CHECK("set_value called on expect_stopped_receiver_ex");
   }
 
-  friend void tag_invoke(ex::set_stopped_t, expect_stopped_receiver_ex&& self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this expect_stopped_receiver_ex&& self, ex::set_stopped_t) noexcept {
     *self.executed_ = true;
   }
 
-  friend void tag_invoke(ex::set_error_t, expect_stopped_receiver_ex&&, std::exception_ptr) //
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_stopped_receiver_ex&&, ex::set_error_t, std::exception_ptr) //
     noexcept {
     FAIL_CHECK("set_error called on expect_stopped_receiver_ex");
   }
-
-  STDEXEC_CPO_ACCESS(ex::get_env_t);
 
   STDEXEC_DEFINE_CUSTOM(Env get_env)(
     this const expect_stopped_receiver_ex& self,
@@ -325,6 +334,7 @@ struct expect_stopped_receiver_ex {
     return self.env_;
   }
 
+ private:
   bool* executed_;
   Env env_;
 };
@@ -369,19 +379,24 @@ struct expect_error_receiver : base_expect_receiver<Env> {
     return *this;
   }
 
+#if !STDEXEC_NVHPC()
  private:
-  std::optional<T> error_;
+#endif
+
+  STDEXEC_CPO_ACCESS(ex::set_value_t);
+  STDEXEC_CPO_ACCESS(ex::set_error_t);
+  STDEXEC_CPO_ACCESS(ex::set_stopped_t);
 
   template <typename... Ts>
-  friend void tag_invoke(ex::set_value_t, expect_error_receiver&&, Ts...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_error_receiver&&, ex::set_value_t, Ts...) noexcept {
     FAIL_CHECK("set_value called on expect_error_receiver");
   }
 
-  friend void tag_invoke(ex::set_stopped_t, expect_error_receiver&& self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this expect_error_receiver&& self, ex::set_stopped_t) noexcept {
     FAIL_CHECK("set_stopped called on expect_error_receiver");
   }
 
-  friend void tag_invoke(ex::set_error_t, expect_error_receiver&& self, T err) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_error_receiver&& self, ex::set_error_t, T err) noexcept {
     self.set_called();
     if (self.error_) {
       CHECK(to_comparable(err) == to_comparable(*self.error_));
@@ -389,9 +404,12 @@ struct expect_error_receiver : base_expect_receiver<Env> {
   }
 
   template <typename E>
-  friend void tag_invoke(ex::set_error_t, expect_error_receiver&& self, E) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_error_receiver&& self, ex::set_error_t, E) noexcept {
     FAIL_CHECK("set_error called on expect_error_receiver with wrong error type");
   }
+
+ private:
+  std::optional<T> error_;
 };
 
 template <class T, class Env = empty_env>
@@ -405,35 +423,41 @@ struct expect_error_receiver_ex {
     , env_(std::move(env)) {
   }
 
+#if !STDEXEC_NVHPC()
  private:
-  T* value_;
-  Env env_{};
+#endif
+  STDEXEC_CPO_ACCESS(ex::set_value_t);
+  STDEXEC_CPO_ACCESS(ex::set_error_t);
+  STDEXEC_CPO_ACCESS(ex::set_stopped_t);
+  STDEXEC_CPO_ACCESS(ex::get_env_t);
 
   template <typename... Ts>
-  friend void tag_invoke(ex::set_value_t, expect_error_receiver_ex&&, Ts...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_error_receiver_ex&&, ex::set_value_t, Ts...) noexcept {
     FAIL_CHECK("set_value called on expect_error_receiver_ex");
   }
 
-  friend void tag_invoke(ex::set_stopped_t, expect_error_receiver_ex&&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this expect_error_receiver_ex&&, ex::set_stopped_t) noexcept {
     FAIL_CHECK("set_stopped called on expect_error_receiver_ex");
   }
 
   template <class Err>
-  friend void tag_invoke(ex::set_error_t, expect_error_receiver_ex&&, Err) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_error_receiver_ex&&, ex::set_error_t, Err) noexcept {
     FAIL_CHECK("set_error called on expect_error_receiver_ex with the wrong error type");
   }
 
-  friend void tag_invoke(ex::set_error_t, expect_error_receiver_ex&& self, T value) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_error_receiver_ex&& self, ex::set_error_t, T value) noexcept {
     *self.value_ = std::move(value);
   }
-
-  STDEXEC_CPO_ACCESS(ex::get_env_t);
 
   STDEXEC_DEFINE_CUSTOM(Env get_env)(
     this const expect_error_receiver_ex& self,
     ex::get_env_t) noexcept {
     return self.env_;
   }
+
+ private:
+  T* value_;
+  Env env_{};
 };
 
 struct logging_receiver {
@@ -441,28 +465,34 @@ struct logging_receiver {
     : state_(&state) {
   }
 
+#if !STDEXEC_NVHPC()
  private:
-  int* state_;
+#endif
+  STDEXEC_CPO_ACCESS(ex::set_value_t);
+  STDEXEC_CPO_ACCESS(ex::set_error_t);
+  STDEXEC_CPO_ACCESS(ex::set_stopped_t);
+  STDEXEC_CPO_ACCESS(ex::get_env_t);
 
   template <typename... Args>
-  friend void tag_invoke(ex::set_value_t, logging_receiver&& self, Args...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this logging_receiver&& self, ex::set_value_t, Args...) noexcept {
     *self.state_ = 0;
   }
 
-  friend void tag_invoke(ex::set_stopped_t, logging_receiver&& self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this logging_receiver&& self, ex::set_stopped_t) noexcept {
     *self.state_ = 1;
   }
 
   template <typename E>
-  friend void tag_invoke(ex::set_error_t, logging_receiver&& self, E) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this logging_receiver&& self, ex::set_error_t, E) noexcept {
     *self.state_ = 2;
   }
-
-  STDEXEC_CPO_ACCESS(ex::get_env_t);
 
   STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const logging_receiver&, ex::get_env_t) noexcept {
     return {};
   }
+
+ private:
+  int* state_;
 };
 
 enum class typecat {
@@ -478,30 +508,30 @@ struct typecat_receiver {
   T* value_;
   typecat* cat_;
 
-  // friend void tag_invoke(ex::set_value_t, typecat_receiver self, T v) noexcept {
+  // STDEXEC_DEFINE_CUSTOM(void set_value)(this typecat_receiver self, ex::set_value_t, T v) noexcept {
   //     *self.value_ = v;
   //     *self.cat_ = typecat::value;
   // }
-  friend void tag_invoke(ex::set_value_t, typecat_receiver self, T& v) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this typecat_receiver self, ex::set_value_t, T& v) noexcept {
     *self.value_ = v;
     *self.cat_ = typecat::ref;
   }
 
-  friend void tag_invoke(ex::set_value_t, typecat_receiver self, const T& v) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this typecat_receiver self, ex::set_value_t, const T& v) noexcept {
     *self.value_ = v;
     *self.cat_ = typecat::cref;
   }
 
-  friend void tag_invoke(ex::set_value_t, typecat_receiver self, T&& v) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this typecat_receiver self, ex::set_value_t, T&& v) noexcept {
     *self.value_ = v;
     *self.cat_ = typecat::rvalref;
   }
 
-  friend void tag_invoke(ex::set_stopped_t, typecat_receiver self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this typecat_receiver self, ex::set_stopped_t) noexcept {
     FAIL_CHECK("set_stopped called");
   }
 
-  friend void tag_invoke(ex::set_error_t, typecat_receiver self, std::exception_ptr) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this typecat_receiver self, ex::set_error_t, std::exception_ptr) noexcept {
     FAIL_CHECK("set_error called");
   }
 
@@ -515,7 +545,7 @@ struct fun_receiver {
   F f_;
 
   template <typename... Ts>
-  friend void tag_invoke(ex::set_value_t, fun_receiver&& self, Ts... vals) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this fun_receiver&& self, ex::set_value_t, Ts... vals) noexcept {
     try {
       std::move(self.f_)((Ts&&) vals...);
     } catch (...) {
@@ -523,11 +553,11 @@ struct fun_receiver {
     }
   }
 
-  friend void tag_invoke(ex::set_stopped_t, fun_receiver) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this fun_receiver, ex::set_stopped_t) noexcept {
     FAIL("Done called");
   }
 
-  friend void tag_invoke(ex::set_error_t, fun_receiver, std::exception_ptr eptr) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this fun_receiver, ex::set_error_t, std::exception_ptr eptr) noexcept {
     try {
       if (eptr)
         std::rethrow_exception(eptr);

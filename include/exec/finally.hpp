@@ -104,45 +104,54 @@ namespace exec {
           : __op_{__op} {
         }
 
+#if !STDEXEC_NVHPC()
        private:
-        __final_operation_base<_ResultType, _ReceiverId>* __op_;
+#endif
+        STDEXEC_CPO_ACCESS(set_value_t);
+        STDEXEC_CPO_ACCESS(set_error_t);
+        STDEXEC_CPO_ACCESS(set_stopped_t);
+        STDEXEC_CPO_ACCESS(get_env_t);
 
-        template <same_as<set_value_t> _Tag, __decays_to<__t> _Self>
-        friend void tag_invoke(_Tag, _Self&& __self) noexcept {
-          if constexpr (std::is_nothrow_move_constructible_v<_ResultType>) {
+        template <bool _CanThrow = false>
+        static void __set_value_(__t&& __self) noexcept(!_CanThrow) {
+          auto& __rcvr = __self.__op_->__receiver_;
+          if constexpr (_CanThrow || std::is_nothrow_move_constructible_v<_ResultType>) {
             _ResultType __result = (_ResultType&&) __self.__op_->__result_;
             __self.__op_->__result_.__destruct();
-            std::visit(
-              __visitor<_Receiver>{(_Receiver&&) __self.__op_->__receiver_},
-              (_ResultType&&) __result);
-          } else {
-            try {
-              _ResultType __result = (_ResultType&&) __self.__op_->__result_;
-              __self.__op_->__result_.__destruct();
-              std::visit(
-                __visitor<_Receiver>{(_Receiver&&) __self.__op_->__receiver_},
-                (_ResultType&&) __result);
-            } catch (...) {
-              stdexec::set_error((_Receiver&&) __self.__op_->__receiver_, std::current_exception());
-            }
+            std::visit(__visitor<_Receiver>{(_Receiver&&) __rcvr}, (_ResultType&&) __result);
+          } else try {
+            __set_value_<true>((__t&&) __self);
+          } catch(...) {
+            stdexec::set_error((_Receiver&&) __rcvr, std::current_exception());
           }
         }
 
-        template <__one_of<set_error_t, set_stopped_t> _Tag, __decays_to<__t> _Self, class... _Error>
-          requires __callable<_Tag, _Receiver&&, _Error...>
-        friend void tag_invoke(_Tag __tag, _Self&& __self, _Error&&... __error) noexcept {
-          __self.__op_->__result_.__destruct();
-          __tag((_Receiver&&) __self.__op_->__receiver_, (_Error&&) __error...);
+        template <same_as<set_value_t> _Tag>
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag) noexcept {
+          __set_value_((__t&&) __self);
         }
 
-        STDEXEC_CPO_ACCESS(get_env_t);
+        template <same_as<set_error_t> _Tag, class _Error>
+          requires __callable<_Tag, _Receiver&&, _Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __self, _Tag, _Error&& __error) noexcept {
+          __self.__op_->__result_.__destruct();
+          _Tag()((_Receiver&&) __self.__op_->__receiver_, (_Error&&) __error);
+        }
 
-        template <std::same_as<__t> _Self>
-        STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(
-          this const _Self& __self,
-          get_env_t) noexcept {
+        template <same_as<set_stopped_t> _Tag>
+          requires __callable<_Tag, _Receiver&&>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag) noexcept {
+          __self.__op_->__result_.__destruct();
+          _Tag()((_Receiver&&) __self.__op_->__receiver_);
+        }
+
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) noexcept //
+          -> env_of_t<_Receiver> {
           return stdexec::get_env(__self.__op_->__receiver_);
         }
+
+       private:
+        __final_operation_base<_ResultType, _ReceiverId>* __op_;
       };
     };
 
@@ -173,27 +182,52 @@ namespace exec {
           : __op_(__op) {
         }
 
+      #if !STDEXEC_NVHPC()
        private:
-        __base_op_t* __op_;
+      #endif
+        STDEXEC_CPO_ACCESS(set_value_t);
+        STDEXEC_CPO_ACCESS(set_error_t);
+        STDEXEC_CPO_ACCESS(set_stopped_t);
+        STDEXEC_CPO_ACCESS(get_env_t);
 
-        template <class _Tag, __decays_to<__t> _Self, class... _Args>
-          requires __callable<_Tag, _Receiver&&, _Args...>
-        friend void tag_invoke(_Tag __tag, _Self&& __self, _Args&&... __args) noexcept {
+        template <same_as<set_value_t> _Tag, class... _Args>
+          requires __callable<_Tag, _Receiver, _Args...>
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag, _Args&&... __args) noexcept {
           try {
-            __self.__op_->__store_result_and_start_next_op(__tag, (_Args&&) __args...);
+            __self.__op_->__store_result_and_start_next_op(_Tag(), (_Args&&) __args...);
           } catch (...) {
-            set_error((_Receiver&&) __self.__op_->__receiver_, std::current_exception());
+            stdexec::set_error((_Receiver&&) __self.__op_->__receiver_, std::current_exception());
           }
         }
 
-        STDEXEC_CPO_ACCESS(get_env_t);
+        template <same_as<set_error_t> _Tag, class _Error>
+          requires __callable<_Tag, _Receiver, _Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __self, _Tag, _Error&& __err) noexcept {
+          try {
+            __self.__op_->__store_result_and_start_next_op(_Tag(), (_Error&&) __err);
+          } catch (...) {
+            stdexec::set_error((_Receiver&&) __self.__op_->__receiver_, std::current_exception());
+          }
+        }
+
+        template <same_as<set_stopped_t> _Tag>
+          requires __callable<_Tag, _Receiver>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag) noexcept {
+          try {
+            __self.__op_->__store_result_and_start_next_op(_Tag());
+          } catch (...) {
+            stdexec::set_error((_Receiver&&) __self.__op_->__receiver_, std::current_exception());
+          }
+        }
 
         template <std::same_as<__t> _Self>
-        STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(
-          this const _Self& __self,
-          get_env_t) noexcept {
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const _Self& __self, get_env_t) noexcept //
+          -> env_of_t<_Receiver> {
           return stdexec::get_env(__self.__op_->__receiver_);
         }
+
+       private:
+        __base_op_t* __op_;
       };
     };
 

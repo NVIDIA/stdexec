@@ -43,9 +43,9 @@ struct fails_alot {
 
     STDEXEC_DEFINE_CUSTOM(void start)(this operation& self, start_t) noexcept {
       if (self.counter_ == 0) {
-        set_value((Receiver&&) self.rcvr_);
+        stdexec::set_value((Receiver&&) self.rcvr_);
       } else {
-        set_error((Receiver&&) self.rcvr_, try_again{});
+        stdexec::set_error((Receiver&&) self.rcvr_, try_again{});
       }
     }
   };

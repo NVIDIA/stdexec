@@ -86,14 +86,14 @@ struct strange_receiver {
     return {{}, 19, std::move(self)};
   }
 
-  friend inline void tag_invoke(ex::set_value_t, strange_receiver, int val) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this strange_receiver, ex::set_value_t, int val) noexcept {
     REQUIRE(val == 19);
   }
 
-  friend void tag_invoke(ex::set_stopped_t, strange_receiver) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this strange_receiver, ex::set_error_t, std::exception_ptr) noexcept {
   }
 
-  friend void tag_invoke(ex::set_error_t, strange_receiver, std::exception_ptr) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this strange_receiver, ex::set_stopped_t) noexcept {
   }
 
   STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const strange_receiver&, ex::get_env_t) noexcept {

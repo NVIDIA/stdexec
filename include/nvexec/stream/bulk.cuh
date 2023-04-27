@@ -47,7 +47,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using __id = receiver_t;
 
         template <same_as<set_value_t> _Tag, class... As>
-        friend void tag_invoke(_Tag, __t&& self, As&&... as) noexcept
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& self, _Tag, As&&... as) noexcept
           requires __callable<Fun, Shape, As&...>
         {
           operation_state_base_t<ReceiverId>& op_state = self.op_state_;
@@ -62,15 +62,20 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
-            op_state.propagate_completion_signal(set_value, (As&&) as...);
+            op_state.propagate_completion_signal(stdexec::set_value, (As&&) as...);
           } else {
-            op_state.propagate_completion_signal(set_error, std::move(status));
+            op_state.propagate_completion_signal(stdexec::set_error, std::move(status));
           }
         }
 
-        template <__one_of<set_error_t, set_stopped_t> Tag, class... As>
-        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
+        template <same_as<set_error_t> Tag, class Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& self, Tag, Error&& err) noexcept {
+          self.op_state_.propagate_completion_signal(Tag(), (Error&&) err);
+        }
+
+        template <same_as<set_stopped_t> Tag>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& self, Tag) noexcept {
+          self.op_state_.propagate_completion_signal(Tag());
         }
 
         STDEXEC_DEFINE_CUSTOM(Env get_env)(this const __t& self, get_env_t) noexcept {
@@ -184,7 +189,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using __id = receiver_t;
 
         template <same_as<set_value_t> _Tag, class... As>
-        friend void tag_invoke(_Tag, __t&& self, As&&... as) noexcept
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& self, _Tag, As&&... as) noexcept
           requires __callable<Fun, Shape, As&...>
         {
           operation_t<CvrefSenderId, ReceiverId, Shape, Fun>& op_state = self.op_state_;
@@ -234,15 +239,20 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
-            op_state.propagate_completion_signal(set_value, (As&&) as...);
+            op_state.propagate_completion_signal(stdexec::set_value, (As&&) as...);
           } else {
-            op_state.propagate_completion_signal(set_error, std::move(status));
+            op_state.propagate_completion_signal(stdexec::set_error, std::move(status));
           }
         }
 
-        template <__one_of<set_error_t, set_stopped_t> Tag, class... As>
-        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
+        template <same_as<set_error_t> Tag, class Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& self, Tag, Error&& err) noexcept {
+          self.op_state_.propagate_completion_signal(Tag(), (Error&&) err);
+        }
+
+        template <same_as<set_stopped_t> Tag>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& self, Tag) noexcept {
+          self.op_state_.propagate_completion_signal(Tag());
         }
 
         STDEXEC_DEFINE_CUSTOM(env_of_t<Receiver> get_env)(this const __t& self, get_env_t) {
@@ -350,7 +360,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
       friend auto tag_invoke(connect_t, Self&& self, Receiver&& rcvr) -> multi_gpu_bulk::
         operation_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun> {
-        auto sch = get_completion_scheduler<set_value_t>(get_env(self.sndr_));
+        auto sch = get_completion_scheduler<set_value_t>(stdexec::get_env(self.sndr_));
         context_state_t context_state = sch.context_state_;
         return multi_gpu_bulk::
           operation_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun>(

@@ -53,21 +53,6 @@ namespace stdexec {
     }
   };
 
-  template <auto _Fun>
-  struct __fun_c_t {
-    using _FunT = decltype(_Fun);
-
-    template <class... _Args>
-      requires __callable<_FunT, _Args...>
-    auto operator()(_Args&&... __args) const noexcept(noexcept(_Fun((_Args&&) __args...)))
-      -> __call_result_t<_FunT, _Args...> {
-      return _Fun((_Args&&) __args...);
-    }
-  };
-
-  template <auto _Fun>
-  inline constexpr __fun_c_t<_Fun> __fun_c{};
-
   // [func.tag_invoke], tag_invoke
   namespace __tag_invoke {
     void tag_invoke();

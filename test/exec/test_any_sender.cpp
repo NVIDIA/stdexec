@@ -54,16 +54,16 @@ struct env {
 struct sink_receiver {
   std::variant<std::monostate, int, std::exception_ptr, set_stopped_t> value_{};
 
-  friend void tag_invoke(set_value_t, sink_receiver&& r, int value) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this sink_receiver&& r, set_value_t, int value) noexcept {
     r.value_ = value;
   }
 
-  friend void tag_invoke(set_error_t, sink_receiver&& r, std::exception_ptr e) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this sink_receiver&& r, set_error_t, std::exception_ptr e) noexcept {
     r.value_ = e;
   }
 
-  friend void tag_invoke(set_stopped_t, sink_receiver&& r) noexcept {
-    r.value_ = set_stopped;
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this sink_receiver&& r, set_stopped_t) noexcept {
+    r.value_ = stdexec::set_stopped;
   }
 
   STDEXEC_DEFINE_CUSTOM(env get_env)(this const sink_receiver& r, get_env_t) noexcept {
@@ -122,19 +122,19 @@ TEST_CASE("any_receiver_ref calls receiver methods", "[types][any_sender]") {
   // Check set value
   CHECK(value.value_.index() == 0);
   receiver_ref ref = value;
-  set_value((receiver_ref&&) ref, 42);
+  stdexec::set_value((receiver_ref&&) ref, 42);
   CHECK(value.value_.index() == 1);
   CHECK(std::get<1>(value.value_) == 42);
   // Check set error
   CHECK(error.value_.index() == 0);
   ref = error;
-  set_error((receiver_ref&&) ref, std::make_exception_ptr(42));
+  stdexec::set_error((receiver_ref&&) ref, std::make_exception_ptr(42));
   CHECK(error.value_.index() == 2);
   CHECK_THROWS_AS(std::rethrow_exception(std::get<2>(error.value_)), int);
   // Check set stopped
   CHECK(stopped.value_.index() == 0);
   ref = stopped;
-  set_stopped((receiver_ref&&) ref);
+  stdexec::set_stopped((receiver_ref&&) ref);
   CHECK(stopped.value_.index() == 3);
 }
 
@@ -345,11 +345,11 @@ struct stopped_receiver : stopped_receiver_base {
   bool expect_stop_{false};
 
   template <class... Args>
-  friend void tag_invoke(set_value_t, const stopped_receiver& r, Args&&...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this const stopped_receiver& r, set_value_t, Args&&...) noexcept {
     CHECK(!r.expect_stop_);
   }
 
-  friend void tag_invoke(set_stopped_t, const stopped_receiver& r) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this const stopped_receiver& r, set_stopped_t) noexcept {
     CHECK(r.expect_stop_);
   }
 

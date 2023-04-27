@@ -297,30 +297,35 @@ namespace nvexec {
        public:
         using __id = stream_enqueue_receiver;
 
-        template <__one_of<set_value_t, set_stopped_t> Tag, class... As>
+        template <same_as<set_value_t> Tag, class... As>
         STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-          friend void
-          tag_invoke(Tag, __t&& self, As&&... as) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& self, Tag, As&&... as) noexcept {
           self.variant_->template emplace<decayed_tuple<Tag, As...>>(Tag(), std::move(as)...);
           self.producer_(self.task_);
         }
 
-        template <same_as<set_error_t> _Tag, class Error>
+        template <same_as<set_error_t> Tag, class Error>
         STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-          friend void
-          tag_invoke(_Tag, __t&& self, Error&& e) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& self, Tag, Error&& e) noexcept {
           if constexpr (__decays_to<Error, std::exception_ptr>) {
             // What is `exception_ptr` but death pending
             self.variant_->template emplace<decayed_tuple<set_error_t, cudaError_t>>(
-              set_error, cudaErrorUnknown);
+              stdexec::set_error, cudaErrorUnknown);
           } else {
             self.variant_->template emplace<decayed_tuple<set_error_t, Error>>(
-              set_error_t{}, std::move(e));
+              stdexec::set_error, std::move(e));
           }
           self.producer_(self.task_);
         }
 
-        STDEXEC_DEFINE_CUSTOM(Env get_env)(this const __t& self, get_env_t) {
+        template <same_as<set_stopped_t> Tag>
+        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& self, Tag) noexcept {
+          self.variant_->template emplace<decayed_tuple<Tag>>(Tag());
+          self.producer_(self.task_);
+        }
+
+        STDEXEC_DEFINE_CUSTOM(const Env& get_env)(this const __t& self, get_env_t) {
           return self.env_;
         }
 
@@ -403,7 +408,7 @@ namespace nvexec {
     template <class OuterReceiverId>
     struct operation_state_base_ {
       using outer_receiver_t = stdexec::__t<OuterReceiverId>;
-      using outer_env_t = env_of_t<outer_receiver_t>;
+      using outer_env_t = __decay_t<env_of_t<outer_receiver_t>>;
       static constexpr bool borrows_stream = borrows_stream_h<outer_env_t>();
 
       struct __t : stream_op_state_base {
@@ -440,7 +445,7 @@ namespace nvexec {
         }
 
         env_t make_env() const {
-          return make_stream_env(get_env(receiver_), get_stream());
+          return make_stream_env(stdexec::get_env(receiver_), get_stream());
         }
 
         template <class Tag, class... As>
@@ -479,9 +484,19 @@ namespace nvexec {
 
         operation_state_base_t<OuterReceiverId>& operation_state_;
 
-        template < __completion_tag Tag, class... As >
-        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
+        template <same_as<set_value_t> Tag, class... As >
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& self, Tag, As&&... as) noexcept {
           self.operation_state_.propagate_completion_signal(Tag(), (As&&) as...);
+        }
+
+        template <same_as<set_error_t> Tag, class Error >
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& self, Tag, Error&& err) noexcept {
+          self.operation_state_.propagate_completion_signal(Tag(), (Error&&) err);
+        }
+
+        template <same_as<set_stopped_t> Tag>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& self, Tag) noexcept {
+          self.operation_state_.propagate_completion_signal(Tag());
         }
 
         STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) noexcept
@@ -513,7 +528,7 @@ namespace nvexec {
 
           if (op.status_ != cudaSuccess) {
             // Couldn't allocate memory for operation state, complete with error
-            op.propagate_completion_signal(set_error, std::move(op.status_));
+            op.propagate_completion_signal(stdexec::set_error, std::move(op.status_));
             return;
           }
 
@@ -523,13 +538,13 @@ namespace nvexec {
                 op.temp_storage_ = op.context_state_.managed_resource_->allocate(
                   inner_receiver_t::memory_allocation_size);
               } catch (...) {
-                op.propagate_completion_signal(set_error, cudaErrorMemoryAllocation);
+                op.propagate_completion_signal(stdexec::set_error, cudaErrorMemoryAllocation);
                 return;
               }
             }
           }
 
-          start(op.inner_op_);
+          stdexec::start(op.inner_op_);
         }
 
         template <__decays_to<outer_receiver_t> OutR, class ReceiverProvider>
@@ -631,7 +646,7 @@ namespace nvexec {
       sender<S> &&                     //
       requires(const S& sndr) {
         {
-          get_completion_scheduler<set_value_t>(get_env(sndr)).context_state_
+          get_completion_scheduler<set_value_t>(stdexec::get_env(sndr)).context_state_
         } -> __decays_to<context_state_t>;
       };
 
@@ -639,7 +654,7 @@ namespace nvexec {
     concept receiver_with_stream_env = //
       receiver<R> &&                   //
       requires(const R& rcvr) {
-        { get_scheduler(get_env(rcvr)).context_state_ } -> __decays_to<context_state_t>;
+        { get_scheduler(stdexec::get_env(rcvr)).context_state_ } -> __decays_to<context_state_t>;
       };
 
     template <class InnerReceiverProvider, class OuterReceiver>
@@ -659,7 +674,7 @@ namespace nvexec {
         Sender&& sndr,
         OuterReceiver&& out_receiver,
         ReceiverProvider receiver_provider) {
-      auto sch = get_completion_scheduler<set_value_t>(get_env(sndr));
+      auto sch = get_completion_scheduler<set_value_t>(stdexec::get_env(sndr));
       context_state_t context_state = sch.context_state_;
 
       return stream_op_state_t<

@@ -97,7 +97,7 @@ namespace nvexec {
           }
 
           STDEXEC_DEFINE_CUSTOM(void start)(this __t& op, start_t) noexcept {
-            op.propagate_completion_signal(set_value);
+            op.propagate_completion_signal(stdexec::set_value);
           }
         };
       };

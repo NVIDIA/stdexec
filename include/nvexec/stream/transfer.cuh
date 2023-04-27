@@ -66,11 +66,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           if (op.status_ != cudaSuccess) {
             // Couldn't allocate memory for operation state, complete with error
-            set_error(std::move(op.receiver_), std::move(op.status_));
+            stdexec::set_error(std::move(op.receiver_), std::move(op.status_));
             return;
           }
 
-          start(op.inner_op_);
+          stdexec::start(op.inner_op_);
         }
 
         __t(Sender&& sender, Receiver&& receiver, context_state_t context_state)
@@ -153,8 +153,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) //
         noexcept(__nothrow_callable<get_env_t, const Sender&>)
-          -> __call_result_t<get_env_t, const Sender&> {
-        return get_env(self.sndr_);
+          -> env_of_t<const Sender&> {
+        return stdexec::get_env(self.sndr_);
       }
 
       __t(context_state_t context_state, Sender sndr)

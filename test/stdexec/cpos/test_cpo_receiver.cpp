@@ -26,15 +26,15 @@ namespace ex = stdexec;
 struct recv_value {
   int* target_;
 
-  friend void tag_invoke(ex::set_value_t, recv_value self, int val) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this recv_value self, ex::set_value_t, int val) noexcept {
     *self.target_ = val;
   }
 
-  friend void tag_invoke(ex::set_error_t, recv_value self, int ec) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this recv_value self, ex::set_error_t, int ec) noexcept {
     *self.target_ = -ec;
   }
 
-  friend void tag_invoke(ex::set_stopped_t, recv_value self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this recv_value self, ex::set_stopped_t) noexcept {
     *self.target_ = INT_MAX;
   }
 
@@ -46,15 +46,15 @@ struct recv_value {
 struct recv_rvalref {
   int* target_;
 
-  friend void tag_invoke(ex::set_value_t, recv_rvalref&& self, int val) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this recv_rvalref&& self, ex::set_value_t, int val) noexcept {
     *self.target_ = val;
   }
 
-  friend void tag_invoke(ex::set_error_t, recv_rvalref&& self, int ec) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this recv_rvalref&& self, ex::set_error_t, int ec) noexcept {
     *self.target_ = -ec;
   }
 
-  friend void tag_invoke(ex::set_stopped_t, recv_rvalref&& self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this recv_rvalref&& self, ex::set_stopped_t) noexcept {
     *self.target_ = INT_MAX;
   }
 
@@ -66,15 +66,15 @@ struct recv_rvalref {
 struct recv_ref {
   int* target_;
 
-  friend void tag_invoke(ex::set_value_t, recv_ref& self, int val) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this recv_ref& self, ex::set_value_t, int val) noexcept {
     *self.target_ = val;
   }
 
-  friend void tag_invoke(ex::set_error_t, recv_ref& self, int ec) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this recv_ref& self, ex::set_error_t, int ec) noexcept {
     *self.target_ = -ec;
   }
 
-  friend void tag_invoke(ex::set_stopped_t, recv_ref& self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this recv_ref& self, ex::set_stopped_t) noexcept {
     *self.target_ = INT_MAX;
   }
 
@@ -86,15 +86,15 @@ struct recv_ref {
 struct recv_cref {
   int* target_;
 
-  friend void tag_invoke(ex::set_value_t, const recv_cref& self, int val) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this const recv_cref& self, ex::set_value_t, int val) noexcept {
     *self.target_ = val;
   }
 
-  friend void tag_invoke(ex::set_error_t, const recv_cref& self, int ec) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this const recv_cref& self, ex::set_error_t, int ec) noexcept {
     *self.target_ = -ec;
   }
 
-  friend void tag_invoke(ex::set_stopped_t, const recv_cref& self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this const recv_cref& self, ex::set_stopped_t) noexcept {
     *self.target_ = INT_MAX;
   }
 

@@ -21,35 +21,35 @@
 // namespace ex = stdexec;
 
 // struct recv_no_set_value {
-//   friend void tag_invoke(ex::set_stopped_t, recv_no_set_value) noexcept {}
-//   friend void tag_invoke(ex::set_error_t, recv_no_set_value, std::exception_ptr) noexcept {}
+//   STDEXEC_DEFINE_CUSTOM(void set_stopped)(this recv_no_set_value, ex::set_stopped_t) noexcept {}
+//   STDEXEC_DEFINE_CUSTOM(void set_error)(this recv_no_set_value, ex::set_error_t, std::exception_ptr) noexcept {}
 //   STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_no_set_value&, ex::get_env_t) noexcept {
 //     return {};
 //   }
 // };
 
 // struct recv_set_value_except {
-//   friend void tag_invoke(ex::set_value_t, recv_set_value_except) {}
-//   friend void tag_invoke(ex::set_stopped_t, recv_set_value_except) noexcept {}
-//   friend void tag_invoke(ex::set_error_t, recv_set_value_except, std::exception_ptr) noexcept {}
+//   STDEXEC_DEFINE_CUSTOM(void set_value)(this recv_set_value_except, ex::set_value_t) {}
+//   STDEXEC_DEFINE_CUSTOM(void set_stopped)(this recv_set_value_except, ex::set_stopped_t) noexcept {}
+//   STDEXEC_DEFINE_CUSTOM(void set_error)(this recv_set_value_except, ex::set_error_t, std::exception_ptr) noexcept {}
 //   STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_set_value_except&, ex::get_env_t) noexcept {
 //     return {};
 //   }
 // };
 
 // struct recv_set_value_noexcept {
-//   friend void tag_invoke(ex::set_value_t, recv_set_value_noexcept) noexcept {}
-//   friend void tag_invoke(ex::set_stopped_t, recv_set_value_noexcept) noexcept {}
-//   friend void tag_invoke(ex::set_error_t, recv_set_value_noexcept, std::exception_ptr) noexcept
+//   STDEXEC_DEFINE_CUSTOM(void set_value)(this recv_set_value_noexcept, ex::set_value_t) noexcept {}
+//   STDEXEC_DEFINE_CUSTOM(void set_stopped)(this recv_set_value_noexcept, ex::set_stopped_t) noexcept {}
+//   STDEXEC_DEFINE_CUSTOM(void set_error)(this recv_set_value_noexcept, ex::set_error_t, std::exception_ptr) noexcept
 //   {} STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_set_value_noexcept&, ex::get_env_t) noexcept {
 //     return {};
 //   }
 // };
 
 // struct recv_set_error_except {
-//   friend void tag_invoke(ex::set_value_t, recv_set_error_except) noexcept {}
-//   friend void tag_invoke(ex::set_stopped_t, recv_set_error_except) noexcept {}
-//   friend void tag_invoke(ex::set_error_t, recv_set_error_except, std::exception_ptr) {
+//   STDEXEC_DEFINE_CUSTOM(void set_value)(this recv_set_error_except, ex::set_value_t) noexcept {}
+//   STDEXEC_DEFINE_CUSTOM(void set_stopped)(this recv_set_error_except, ex::set_stopped_t) noexcept {}
+//   STDEXEC_DEFINE_CUSTOM(void set_error)(this recv_set_error_except, ex::set_error_t, std::exception_ptr) {
 //     throw std::logic_error{"err"};
 //   }
 //   STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_set_error_except&, ex::get_env_t) noexcept {
@@ -57,8 +57,8 @@
 //   }
 // };
 // struct recv_set_stopped_except {
-//   friend void tag_invoke(ex::set_value_t, recv_set_stopped_except) noexcept {}
-//   friend void tag_invoke(ex::set_stopped_t, recv_set_stopped_except) { throw
+//   STDEXEC_DEFINE_CUSTOM(void set_value)(this recv_set_stopped_except, ex::set_value_t) noexcept {}
+//   STDEXEC_DEFINE_CUSTOM(void set_stopped)(this recv_set_stopped_except, ex::set_stopped_t) { throw
 //   std::logic_error{"err"}; } friend void tag_invoke(ex::set_error_t, recv_set_stopped_except,
 //   std::exception_ptr) noexcept {} friend empty_env tag_invoke(ex::get_env_t, const
 //   recv_set_stopped_except&) noexcept {
@@ -74,9 +74,9 @@
 //   recv_non_movable(const recv_non_movable&) = default;
 //   recv_non_movable& operator=(const recv_non_movable&) = default;
 
-//   friend void tag_invoke(ex::set_value_t, recv_non_movable) noexcept {}
-//   friend void tag_invoke(ex::set_stopped_t, recv_non_movable) noexcept {}
-//   friend void tag_invoke(ex::set_error_t, recv_non_movable, std::exception_ptr) noexcept {}
+//   STDEXEC_DEFINE_CUSTOM(void set_value)(this recv_non_movable, ex::set_value_t) noexcept {}
+//   STDEXEC_DEFINE_CUSTOM(void set_stopped)(this recv_non_movable, ex::set_stopped_t) noexcept {}
+//   STDEXEC_DEFINE_CUSTOM(void set_error)(this recv_non_movable, ex::set_error_t, std::exception_ptr) noexcept {}
 //   STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_non_movable&, ex::get_env_t) noexcept {
 //     return {};
 //   }

@@ -24,6 +24,11 @@
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   namespace _sched_from {
+    template <class Variant, class... Ts>
+    concept __result_constructible_from =
+      constructible_from<decayed_tuple<Ts...>, Ts...> &&
+      __valid<Variant::template index_of, decayed_tuple<Ts...>>;
+
     template <class CvrefSenderId, class ReceiverId>
     struct receiver_t {
       using Sender = __cvref_t<CvrefSenderId>;
@@ -38,12 +43,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         operation_state_base_t<ReceiverId>& operation_state_;
 
-        template < __completion_tag Tag, class... As>
-        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
+        template <class Tag, class... As>
+        static void complete_(Tag, __t&& self, As&&... as) noexcept {
           storage_t* storage = static_cast<storage_t*>(self.operation_state_.temp_storage_);
           storage->template emplace<decayed_tuple<Tag, As...>>(Tag(), (As&&) as...);
 
-          visit(
+          nvexec::visit(
             [&](auto& tpl) noexcept {
               ::cuda::std::apply(
                 [&]<class Tag2, class... Bs>(Tag2, Bs&... tas) noexcept {
@@ -52,6 +57,24 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                 tpl);
             },
             *storage);
+        }
+
+        template <same_as<set_value_t> Tag, class... Args>
+          requires __result_constructible_from<storage_t, Tag, Args...>
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& self, Tag, Args&&... args) noexcept {
+          complete_(Tag(), (__t&&) self, (Args&&) args...);
+        }
+
+        template <same_as<set_error_t> Tag, class Error>
+          requires __result_constructible_from<storage_t, Tag, Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& self, Tag, Error&& err) noexcept {
+          complete_(Tag(), (__t&&) self, (Error&&) err);
+        }
+
+        template <same_as<set_stopped_t> Tag>
+          requires __result_constructible_from<storage_t, Tag>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& self, Tag) noexcept {
+          complete_(Tag(), (__t&&) self);
         }
 
         STDEXEC_DEFINE_CUSTOM(Env get_env)(this const __t& self, get_env_t) {
@@ -70,9 +93,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const source_sender_t& self, get_env_t) //
         noexcept(__nothrow_callable<get_env_t, const Sender&>)
-          -> __call_result_t<get_env_t, const Sender&> {
+          -> env_of_t<const Sender&> {
         // TODO - this code is not exercised by any test
-        return get_env(self.sndr_);
+        return stdexec::get_env(self.sndr_);
       }
 
       template <__decays_to<source_sender_t> _Self, class _Env>

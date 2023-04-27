@@ -30,19 +30,31 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_submit {
     struct receiver_t : stream_receiver_base {
       op_state_t* op_state_;
 
-      template < __completion_tag Tag, class... As>
-        requires __callable<Tag, Receiver, As...>
-      friend void tag_invoke(Tag, receiver_t&& self, As&&... as) //
-        noexcept(__nothrow_callable<Tag, Receiver, As...>) {
-        // Delete the state as cleanup:
+      template <same_as<set_value_t> Tag, class... Args>
+        requires __callable<Tag, Receiver, Args...>
+      STDEXEC_DEFINE_CUSTOM(void set_value)(this receiver_t&& self, Tag, Args&&... as) noexcept {
         std::unique_ptr<op_state_t> g{self.op_state_};
-        return Tag()((Receiver&&) self.op_state_->rcvr_, (As&&) as...);
+        return Tag()((Receiver&&) self.op_state_->rcvr_, (Args&&) as...);
+      }
+
+      template <same_as<set_error_t> Tag, class Error>
+        requires __callable<Tag, Receiver, Error>
+      STDEXEC_DEFINE_CUSTOM(void set_error)(this receiver_t&& self, Tag, Error&& err) noexcept {
+        std::unique_ptr<op_state_t> g{self.op_state_};
+        return Tag()((Receiver&&) self.op_state_->rcvr_, (Error&&) err);
+      }
+
+      template <same_as<set_stopped_t> Tag>
+        requires __callable<Tag, Receiver>
+      STDEXEC_DEFINE_CUSTOM(void set_stopped)(this receiver_t&& self, Tag) noexcept {
+        std::unique_ptr<op_state_t> g{self.op_state_};
+        return Tag()((Receiver&&) self.op_state_->rcvr_);
       }
 
       // Forward all receiever queries.
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const receiver_t& self, get_env_t)
         -> env_of_t<Receiver> {
-        return get_env((const Receiver&) self.op_state_->rcvr_);
+        return stdexec::get_env((const Receiver&) self.op_state_->rcvr_);
       }
     };
 
@@ -59,7 +71,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_submit {
   struct submit_t {
     template <receiver Receiver, sender_to<Receiver> Sender>
     void operator()(Sender&& sndr, Receiver&& rcvr) const noexcept(false) {
-      start((new op_state_t<stdexec::__id<Sender>, stdexec::__id<__decay_t<Receiver>>>{
+      stdexec::start((new op_state_t<stdexec::__id<Sender>, stdexec::__id<__decay_t<Receiver>>>{
                (Sender&&) sndr, (Receiver&&) rcvr})
               ->op_state_);
     }

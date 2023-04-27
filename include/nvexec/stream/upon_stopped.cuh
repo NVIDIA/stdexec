@@ -53,8 +53,18 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         constexpr static std::size_t memory_allocation_size = size_of_<result_t>;
 
+        template <same_as<set_value_t> Tag, class... As>
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& self, Tag, As&&... as) noexcept {
+          self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
+        }
+
+        template <same_as<set_error_t> Tag, class Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& self, Tag, Error&& err) noexcept {
+          self.op_state_.propagate_completion_signal(Tag(), (Error&&) err);
+        }
+
         template <same_as<set_stopped_t> _Tag>
-        friend void tag_invoke(_Tag, __t&& self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& self, _Tag) noexcept {
           constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
           cudaStream_t stream = self.op_state_.get_stream();
 
@@ -62,9 +72,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             kernel<<<1, 1, 0, stream>>>(std::move(self.f_));
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
-              self.op_state_.propagate_completion_signal(set_value);
+              self.op_state_.propagate_completion_signal(stdexec::set_value);
             } else {
-              self.op_state_.propagate_completion_signal(set_error, std::move(status));
+              self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
           } else {
             using decayed_result_t = __decay_t<result_t>;
@@ -73,16 +83,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             kernel_with_result<<<1, 1, 0, stream>>>(std::move(self.f_), d_result);
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
-              self.op_state_.propagate_completion_signal(set_value, *d_result);
+              self.op_state_.propagate_completion_signal(stdexec::set_value, *d_result);
             } else {
-              self.op_state_.propagate_completion_signal(set_error, std::move(status));
+              self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
           }
-        }
-
-        template <__one_of<set_value_t, set_error_t> Tag, class... As>
-        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
         }
 
         STDEXEC_DEFINE_CUSTOM(env_t get_env)(this const __t& self, get_env_t) {
@@ -149,8 +154,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) //
         noexcept(__nothrow_callable<get_env_t, const Sender&>)
-          -> __call_result_t<get_env_t, const Sender&> {
-        return get_env(self.sndr_);
+          -> env_of_t<const Sender&> {
+        return stdexec::get_env(self.sndr_);
       }
     };
   };

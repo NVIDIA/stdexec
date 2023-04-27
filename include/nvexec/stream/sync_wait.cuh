@@ -65,7 +65,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
 
       template <same_as<set_value_t> _Tag, class Sender2 = Sender, class... As>
         requires std::constructible_from<sync_wait_result_t<Sender2>, As...>
-      friend void tag_invoke(_Tag, __t&& rcvr, As&&... as) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& rcvr, _Tag, As&&... as) noexcept {
         try {
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
               status == cudaSuccess) {
@@ -80,7 +80,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
       }
 
       template <same_as<set_error_t> _Tag, class Error>
-      friend void tag_invoke(_Tag, __t&& rcvr, Error err) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& rcvr, _Tag, Error err) noexcept {
         if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
             status == cudaSuccess) {
           rcvr.set_error((Error&&) err);
@@ -89,7 +89,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
         }
       }
 
-      friend void tag_invoke(set_stopped_t __d, __t&& rcvr) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& rcvr, set_stopped_t __d) noexcept {
         if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
             status == cudaSuccess) {
           rcvr.state_->data_.template emplace<3>(__d);
@@ -131,7 +131,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
         (Sender&&) __sndr, receiver_t<Sender>{{}, &state, &loop}, context_state);
       state.stream_ = __op_state.get_stream();
 
-      start(__op_state);
+      stdexec::start(__op_state);
 
       // Wait for the variant to be filled in.
       loop.run();

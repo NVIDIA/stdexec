@@ -101,39 +101,60 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         constexpr static std::size_t memory_allocation_size =
           __v<__max_sender_size<_Sender, _Receiver, _Fun, _Let>>;
 
-        template <__one_of<_Let> _Tag, class... _As>
-          requires __minvocable<__result_sender<_Fun>, _As...>
-                && sender_to<__minvoke<__result_sender<_Fun>, _As...>, _Receiver>
-        friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
-          using result_sender_t = __minvoke<__result_sender<_Fun>, _As...>;
-          using op_state_t = __minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
+        struct complete_fn {
+          template <__one_of<_Let> _Tag, class... _As>
+            requires __minvocable<__result_sender<_Fun>, _As...>
+                  && sender_to<__minvoke<__result_sender<_Fun>, _As...>, _Receiver>
+          void operator()(_Tag, __t&& __self, _As&&... __as) const noexcept {
+            using result_sender_t = __minvoke<__result_sender<_Fun>, _As...>;
+            using op_state_t = __minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
 
-          cudaStream_t stream = __self.__op_state_->get_stream();
+            cudaStream_t stream = __self.__op_state_->get_stream();
 
-          result_sender_t* result_sender = static_cast<result_sender_t*>(
-            __self.__op_state_->temp_storage_);
-          kernel_with_result<_As&&...><<<1, 1, 0, stream>>>(
-            std::move(__self.__op_state_->__fun_), result_sender, (_As&&) __as...);
+            result_sender_t* result_sender = static_cast<result_sender_t*>(
+              __self.__op_state_->temp_storage_);
+            kernel_with_result<_As&&...><<<1, 1, 0, stream>>>(
+              std::move(__self.__op_state_->__fun_), result_sender, (_As&&) __as...);
 
-          if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
-              status == cudaSuccess) {
-            auto& __op = __self.__op_state_->__op_state3_.template emplace<op_state_t>(__conv{[&] {
-              return connect(
-                *result_sender,
-                stdexec::__t<propagate_receiver_t<_ReceiverId>>{
-                  {}, static_cast<operation_state_base_t<_ReceiverId>&>(*__self.__op_state_)});
-            }});
-            start(__op);
-          } else {
-            __self.__op_state_->propagate_completion_signal(set_error, std::move(status));
+            if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
+                status == cudaSuccess) {
+              auto& __op = __self.__op_state_->__op_state3_.template emplace<op_state_t>(
+                __conv{[&] {
+                  return connect(
+                    *result_sender,
+                    stdexec::__t<propagate_receiver_t<_ReceiverId>>{
+                      {}, static_cast<operation_state_base_t<_ReceiverId>&>(*__self.__op_state_)});
+                }});
+              stdexec::start(__op);
+            } else {
+              __self.__op_state_->propagate_completion_signal(stdexec::set_error, std::move(status));
+            }
           }
+
+          template < __completion_tag _Tag, class... _As>
+            requires __none_of<_Tag, _Let> && __callable<_Tag, _Receiver, _As...>
+          void operator()(_Tag, __t&& __self, _As&&... __as) const noexcept {
+            static_assert(__nothrow_callable<_Tag, _Receiver, _As...>);
+            __self.__op_state_->propagate_completion_signal(_Tag(), (_As&&) __as...);
+          }
+        };
+
+        template <same_as<set_value_t> Tag, class... Args>
+          requires __callable<complete_fn, Tag, __t, Args...>
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& self, Tag, Args&&... args) noexcept {
+          complete_fn()(Tag(), (__t&&) self, (Args&&) args...);
         }
 
-        template < __completion_tag _Tag, class... _As>
-          requires __none_of<_Tag, _Let> && __callable<_Tag, _Receiver, _As...>
-        friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
-          static_assert(__nothrow_callable<_Tag, _Receiver, _As...>);
-          __self.__op_state_->propagate_completion_signal(_Tag(), (_As&&) __as...);
+        template <same_as<set_error_t> Tag, class Error>
+          requires __callable<complete_fn, Tag, __t, Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& self, Tag, Error&& err) noexcept {
+          complete_fn()(Tag(), (__t&&) self, (Error&&) err);
+        }
+
+        template <same_as<set_stopped_t> Tag>
+          requires __callable<complete_fn, Tag, __t>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& self, Tag) noexcept {
+          complete_fn()(Tag(), (__t&&) self);
         }
 
         STDEXEC_DEFINE_CUSTOM(_Env get_env)(this const __t& __self, get_env_t) {
@@ -180,7 +201,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           [this](operation_state_base_t<stdexec::__id<_Receiver2>>&) -> __receiver_t {
             return __receiver_t{{}, this};
           },
-          get_completion_scheduler<set_value_t>(get_env(__sndr)).context_state_)
+          get_completion_scheduler<set_value_t>(stdexec::get_env(__sndr)).context_state_)
         , __fun_((_Fun&&) __fun) {
       }
 
@@ -236,8 +257,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) //
         noexcept(__nothrow_callable<get_env_t, const _Sender&>)
-          -> __call_result_t<get_env_t, const _Sender&> {
-        return get_env(__self.__sndr_);
+          -> env_of_t<const _Sender&> {
+        return stdexec::get_env(__self.__sndr_);
       }
 
       template <__decays_to<__t> _Self, class _Env>

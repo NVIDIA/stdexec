@@ -32,16 +32,31 @@ namespace exec {
           : __upstream_{(_Receiver&&) __upstream} {
         }
 
+#if !STDEXEC_NVHPC()
        private:
-        _Receiver __upstream_;
+#endif
+        STDEXEC_CPO_ACCESS(set_value_t);
+        STDEXEC_CPO_ACCESS(set_error_t);
+        STDEXEC_CPO_ACCESS(set_stopped_t);
+        STDEXEC_CPO_ACCESS(get_env_t);
 
-        template <__completion_tag _Tag, __decays_to<__t> _Self, class... _Args>
-          requires tag_invocable<set_value_t, _Receiver&&, _Tag, _Args...>
-        friend void tag_invoke(_Tag tag, _Self&& __self, _Args&&... __args) noexcept {
-          set_value((_Receiver&&) __self.__upstream_, _Tag{}, (_Args&&) __args...);
+        template <same_as<set_value_t> _Tag, same_as<__t> _Self, class... _Args>
+          requires __callable<set_value_t, _Receiver, _Tag, _Args...>
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this _Self&& __self, _Tag, _Args&&... __args) noexcept {
+          stdexec::set_value((_Receiver&&) __self.__upstream_, _Tag{}, (_Args&&) __args...);
         }
 
-        STDEXEC_CPO_ACCESS(get_env_t);
+        template <same_as<set_error_t> _Tag, same_as<__t> _Self, class _Error>
+          requires __callable<set_value_t, _Receiver, _Tag, _Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this _Self&& __self, _Tag, _Error&& __err) noexcept {
+          stdexec::set_value((_Receiver&&) __self.__upstream_, _Tag{}, (_Error&&) __err);
+        }
+
+        template <same_as<set_stopped_t> _Tag, same_as<__t> _Self>
+          requires __callable<set_value_t, _Receiver, _Tag>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this _Self&& __self, _Tag) noexcept {
+          stdexec::set_value((_Receiver&&) __self.__upstream_, _Tag{});
+        }
 
         template <std::same_as<__t> _Self>
         STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(
@@ -49,6 +64,9 @@ namespace exec {
           get_env_t) noexcept {
           return stdexec::get_env(__self.__upstream_);
         }
+
+       private:
+        _Receiver __upstream_;
       };
     };
 
@@ -129,26 +147,31 @@ namespace exec {
           : __upstream_{(_Receiver&&) __upstream} {
         }
 
+#if !STDEXEC_NVHPC()
        private:
-        _Receiver __upstream_;
-
-        template <
-          same_as<set_value_t> _Tag,
-          __completion_tag _Tag2,
-          __decays_to<__t> _Self,
-          class... _Args>
-          requires tag_invocable<_Tag2, _Receiver&&, _Args...>
-        friend void tag_invoke(_Tag, _Self&& __self, _Tag2 tag2, _Args&&... __args) noexcept {
-          tag2((_Receiver&&) __self.__upstream_, (_Args&&) __args...);
-        }
-
-        template <__one_of<set_stopped_t, set_error_t> _Tag, __decays_to<__t> _Self, class... _Args>
-          requires tag_invocable<_Tag, _Receiver&&, _Args...>
-        friend void tag_invoke(_Tag tag, _Self&& __self, _Args&&... __args) noexcept {
-          tag((_Receiver&&) __self.__upstream_, (_Args&&) __args...);
-        }
-
+#endif
+        STDEXEC_CPO_ACCESS(set_value_t);
+        STDEXEC_CPO_ACCESS(set_error_t);
+        STDEXEC_CPO_ACCESS(set_stopped_t);
         STDEXEC_CPO_ACCESS(get_env_t);
+
+        template <same_as<set_value_t> _Tag, __completion_tag _Tag2, class... _Args>
+          requires tag_invocable<_Tag2, _Receiver, _Args...>
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag, _Tag2, _Args&&... __args) noexcept {
+          _Tag2()((_Receiver&&) __self.__upstream_, (_Args&&) __args...);
+        }
+
+        template <same_as<set_error_t> _Tag, class _Error>
+          requires tag_invocable<_Tag, _Receiver, _Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __self, _Tag, _Error&& __err) noexcept {
+          _Tag()((_Receiver&&) __self.__upstream_, (_Error&&) __err);
+        }
+
+        template <same_as<set_stopped_t> _Tag>
+          requires tag_invocable<_Tag, _Receiver>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag) noexcept {
+          _Tag()((_Receiver&&) __self.__upstream_);
+        }
 
         template <std::same_as<__t> _Self>
         STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(
@@ -156,6 +179,9 @@ namespace exec {
           get_env_t) noexcept {
           return stdexec::get_env(__self.__upstream_);
         }
+
+       private:
+        _Receiver __upstream_;
       };
     };
 

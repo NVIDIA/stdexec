@@ -52,10 +52,22 @@ namespace exec {
 
     template <class _Env>
     struct __receiver_placeholder {
-      template <__completion_tag _Tag, class... _As>
-      friend void tag_invoke(_Tag, __receiver_placeholder, _As&&...) noexcept {
+      template <same_as<set_value_t> _Tag, class... _As>
+      [[noreturn]] STDEXEC_DEFINE_CUSTOM(void set_value)(this __receiver_placeholder, _Tag, _As&&...) noexcept {
         static_assert(
           __never_true<_Tag, _As...>, "we should never be instantiating the body of this function");
+      }
+
+      template <same_as<set_error_t> _Tag, class _Error>
+      [[noreturn]] STDEXEC_DEFINE_CUSTOM(void set_error)(this __receiver_placeholder, _Tag, _Error&&) noexcept {
+        static_assert(
+          __never_true<_Tag, _Error>, "we should never be instantiating the body of this function");
+      }
+
+      template <same_as<set_stopped_t> _Tag>
+      [[noreturn]] STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __receiver_placeholder, _Tag) noexcept {
+        static_assert(
+          __never_true<_Tag>, "we should never be instantiating the body of this function");
       }
 
       template <same_as<__receiver_placeholder> _Self>

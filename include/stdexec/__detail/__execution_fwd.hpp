@@ -18,22 +18,14 @@
 #include "__config.hpp"
 #include "__meta.hpp"
 #include "__concepts.hpp"
+#include "__cpo.hpp"
 
 namespace stdexec {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __receivers {
-    struct set_value_t;
-    struct set_error_t;
-    struct set_stopped_t;
-  }
-
-  using __receivers::set_value_t;
-  using __receivers::set_error_t;
-  using __receivers::set_stopped_t;
-  extern const set_value_t set_value;
-  extern const set_error_t set_error;
-  extern const set_stopped_t set_stopped;
+  STDEXEC_CPO_FWD(struct set_value_t, set_value);
+  STDEXEC_CPO_FWD(struct set_error_t, set_error);
+  STDEXEC_CPO_FWD(struct set_stopped_t, set_stopped);
 
   template <class _Tag>
   concept __completion_tag = __one_of<_Tag, set_value_t, set_error_t, set_stopped_t>;
@@ -42,12 +34,7 @@ namespace stdexec {
   extern const bool enable_receiver;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __get_env {
-    struct get_env_t;
-  }
-
-  using __get_env::get_env_t;
-  extern const get_env_t get_env;
+  STDEXEC_CPO_FWD(struct get_env_t, get_env);
 
   template <class _EnvProvider>
   using env_of_t = __call_result_t<get_env_t, _EnvProvider>;
@@ -68,7 +55,7 @@ namespace stdexec {
     struct get_delegatee_scheduler_t;
     struct get_allocator_t;
     struct get_stop_token_t;
-    template <__completion_tag _CPO>
+    template <__completion_tag _Tag>
     struct get_completion_scheduler_t;
   } // namespace __queries
 
@@ -90,19 +77,19 @@ namespace stdexec {
   extern const get_delegatee_scheduler_t get_delegatee_scheduler;
   extern const get_allocator_t get_allocator;
   extern const get_stop_token_t get_stop_token;
-  template <__completion_tag _CPO>
-  extern const get_completion_scheduler_t<_CPO> get_completion_scheduler;
+  template <__completion_tag _Tag>
+  extern const get_completion_scheduler_t<_Tag> get_completion_scheduler;
 
   template <class _Tp>
   using stop_token_of_t = __decay_t<__call_result_t<get_stop_token_t, _Tp>>;
 
-  template <class _Sender, class _CPO>
+  template <class _Sender, class _Tag>
   concept __has_completion_scheduler =
-    __callable<get_completion_scheduler_t<_CPO>, __call_result_t<get_env_t, const _Sender&>>;
+    __callable<get_completion_scheduler_t<_Tag>, __call_result_t<get_env_t, const _Sender&>>;
 
-  template <class _Sender, class _CPO>
+  template <class _Sender, class _Tag>
   using __completion_scheduler_for =
-    __call_result_t<get_completion_scheduler_t<_CPO>, __call_result_t<get_env_t, const _Sender&>>;
+    __call_result_t<get_completion_scheduler_t<_Tag>, __call_result_t<get_env_t, const _Sender&>>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __get_completion_signatures {
@@ -133,12 +120,7 @@ namespace stdexec {
   extern const bool enable_sender;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __start {
-    struct start_t;
-  }
-
-  using __start::start_t;
-  extern const start_t start;
+  STDEXEC_CPO_FWD(struct start_t, start);
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __schedule {

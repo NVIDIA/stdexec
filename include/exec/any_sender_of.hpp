@@ -391,8 +391,7 @@ namespace exec {
       }
 
       template <class _Tp>
-      friend void
-        tag_invoke(__move_construct_t, __mtype<_Tp>, __t& __self, __t&& __other) noexcept {
+    friend void tag_invoke(__move_construct_t, __mtype<_Tp>, __t& __self, __t&& __other) noexcept {
         if (!__other.__object_pointer_) {
           return;
         }
@@ -512,14 +511,28 @@ namespace exec {
           : __env_{__create_vtable(__mtype<__vtable_t>{}, __mtype<_Rcvr>{}), &__rcvr} {
         }
 
-        template < __completion_tag _Tag, __decays_to<__ref> _Self, class... _As>
+        template <__same_as<set_value_t> _Tag, same_as<__ref> _Self, class... _As>
           requires __one_of<_Tag(_As...), _Sigs...>
-        friend void tag_invoke(_Tag, _Self&& __self, _As&&... __as) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this _Self&& __self, _Tag, _As&&... __as) noexcept {
           (*static_cast<const __rcvr_vfun<_Tag(_As...)>*>(__self.__env_.__vtable_)->__fn_)(
             ((_Self&&) __self).__env_.__rcvr_, (_As&&) __as...);
         }
 
-        template <std::same_as<__ref> Self>
+        template <same_as<set_error_t> _Tag, same_as<__ref> _Self, class _Error>
+          requires __one_of<_Tag(_Error), _Sigs...>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this _Self&& __self, _Tag, _Error&& __err) noexcept {
+          (*static_cast<const __rcvr_vfun<_Tag(_Error)>*>(__self.__env_.__vtable_)->__fn_)(
+            ((_Self&&) __self).__env_.__rcvr_, (_Error&&) __err);
+        }
+
+        template <same_as<set_stopped_t> _Tag, same_as<__ref> _Self>
+          requires __one_of<_Tag(), _Sigs...>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this _Self&& __self, _Tag) noexcept {
+          (*static_cast<const __rcvr_vfun<_Tag()>*>(__self.__env_.__vtable_)->__fn_)(
+            ((_Self&&) __self).__env_.__rcvr_);
+        }
+
+        template <same_as<__ref> Self>
         STDEXEC_DEFINE_CUSTOM(const __env_t& get_env)(this const Self& __self, get_env_t) noexcept {
           return __self.__env_;
         }
@@ -563,10 +576,22 @@ namespace exec {
         using is_receiver = void;
         __operation_base<_Receiver, _Sigs, _Queries>* __op_;
 
-        template < __completion_tag _CPO, __decays_to<__rec> _Self, class... _Args>
-          requires __callable<_CPO, _Receiver&&, _Args...>
-        friend void tag_invoke(_CPO, _Self&& __self, _Args&&... __args) noexcept {
-          _CPO{}((_Receiver&&) __self.__op_->__receiver_, (_Args&&) __args...);
+        template <__same_as<set_value_t> _Tag, same_as<__rec> _Self, class... _As>
+          requires __callable<_Tag, _Receiver, _As...>
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this _Self&& __self, _Tag, _As&&... __as) noexcept {
+          _Tag()((_Receiver&&) __self.__op_->__receiver_, (_As&&) __as...);
+        }
+
+        template <same_as<set_error_t> _Tag, same_as<__rec> _Self, class _Error>
+          requires __callable<_Tag, _Receiver, _Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this _Self&& __self, _Tag, _Error&& __err) noexcept {
+          _Tag()((_Receiver&&) __self.__op_->__receiver_, (_Error&&) __err);
+        }
+
+        template <same_as<set_stopped_t> _Tag, same_as<__rec> _Self>
+          requires __callable<_Tag, _Receiver>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this _Self&& __self, _Tag) noexcept {
+          _Tag()((_Receiver&&) __self.__op_->__receiver_);
         }
 
         STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __rec& __self, get_env_t) noexcept
@@ -798,11 +823,37 @@ namespace exec {
     using __env_t = stdexec::env_of_t<__receiver_base>;
     __receiver_base __receiver_;
 
-    template <class _Tag, stdexec::__decays_to<any_receiver_ref> Self, class... _As>
-      requires stdexec::tag_invocable< _Tag, stdexec::__copy_cvref_t<Self, __receiver_base>, _As...>
-    friend auto tag_invoke(_Tag, Self&& __self, _As&&... __as) noexcept(
-      std::is_nothrow_invocable_v< _Tag, stdexec::__copy_cvref_t<Self, __receiver_base>, _As...>) {
-      return tag_invoke(_Tag{}, ((Self&&) __self).__receiver_, (_As&&) __as...);
+#if STDEXEC_NVHPC()
+   public:
+#endif
+    STDEXEC_CPO_ACCESS(stdexec::set_value_t);
+    STDEXEC_CPO_ACCESS(stdexec::set_error_t);
+    STDEXEC_CPO_ACCESS(stdexec::set_stopped_t);
+    STDEXEC_CPO_ACCESS(stdexec::get_env_t);
+
+    template <stdexec::same_as<stdexec::set_value_t> _Tag, stdexec::same_as<any_receiver_ref> _Self, class... _As>
+      requires stdexec::__callable<_Tag, __receiver_base, _As...>
+    STDEXEC_DEFINE_CUSTOM(void set_value)(this _Self&& __self, _Tag, _As&&... __as) noexcept {
+      _Tag()((__receiver_base&&) __self.__receiver_, (_As&&) __as...);
+    }
+
+    template <stdexec::same_as<stdexec::set_error_t> _Tag, stdexec::same_as<any_receiver_ref> _Self, class _Error>
+      requires stdexec::__callable<_Tag, __receiver_base, _Error>
+    STDEXEC_DEFINE_CUSTOM(void set_error)(this _Self&& __self, _Tag, _Error&& __err) noexcept {
+      _Tag()((__receiver_base&&) __self.__receiver_, (_Error&&) __err);
+    }
+
+    template <stdexec::same_as<stdexec::set_stopped_t> _Tag, stdexec::same_as<any_receiver_ref> _Self>
+      requires stdexec::__callable<_Tag, __receiver_base>
+    STDEXEC_DEFINE_CUSTOM(void set_stopped)(this _Self&& __self, _Tag) noexcept {
+      _Tag()((__receiver_base&&) __self.__receiver_);
+    }
+
+    template <stdexec::same_as<stdexec::get_env_t> _Tag, stdexec::same_as<any_receiver_ref> _Self>
+    STDEXEC_DEFINE_CUSTOM(auto get_env)(this const _Self& __self, _Tag) //
+      noexcept(stdexec::__nothrow_callable<_Tag, const __receiver_base&>) //
+      -> stdexec::env_of_t<const __receiver_base&> {
+      return _Tag()(__self.__receiver_);
     }
 
    public:
@@ -896,7 +947,7 @@ namespace exec {
           requires stdexec::
             tag_invocable< _Tag, stdexec::__copy_cvref_t<Self, __scheduler_base>, _As...>
           friend auto tag_invoke(_Tag, Self&& __self, _As&&... __as) noexcept(
-            std::is_nothrow_invocable_v<
+            stdexec::nothrow_tag_invocable<
               _Tag,
               stdexec::__copy_cvref_t<Self, __scheduler_base>,
               _As...>) {

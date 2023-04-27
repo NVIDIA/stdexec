@@ -34,6 +34,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       var->template emplace<tuple_t>(Tag(), static_cast<As&&>(as)...);
     }
 
+    template <class SharedState, class... Ts>
+    concept __result_constructible_from =
+      constructible_from<decayed_tuple<Ts...>, Ts...> &&
+      __valid<SharedState::variant_t::template index_of, decayed_tuple<Ts...>>;
+
     template <class SenderId, class SharedState>
     struct receiver_t {
       class __t : public stream_receiver_base {
@@ -44,8 +49,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
        public:
         using __id = receiver_t;
 
-        template < __completion_tag Tag, class... As>
-        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
+        template <class Tag, class... As>
+        static void __complete(Tag, __t&& self, As&&... as) noexcept {
           SharedState& state = self.sh_state_;
 
           if constexpr (stream_sender<Sender>) {
@@ -60,6 +65,24 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
 
           state.notify();
+        }
+
+        template <same_as<set_value_t> Tag, class... Args>
+          requires __result_constructible_from<SharedState, Tag, Args...>
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& self, Tag, Args&&... as) noexcept {
+          __complete(Tag(), (__t&&) self, (Args&&) as...);
+        }
+
+        template <same_as<set_error_t> Tag, class Error>
+          requires __result_constructible_from<SharedState, Tag, Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& self, Tag, Error&& __err) noexcept {
+          __complete(Tag(), (__t&&) self, (Error&&) __err);
+        }
+
+        template <same_as<set_stopped_t> Tag>
+          requires __result_constructible_from<SharedState, Tag>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& self, Tag) noexcept {
+          __complete(Tag(), (__t&&) self);
         }
 
         STDEXEC_DEFINE_CUSTOM(env_t get_env)(this const __t& self, get_env_t) {
@@ -251,7 +274,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               *op->shared_state_->data_,
               op->shared_state_->index_);
           } else {
-            op->propagate_completion_signal(set_error, std::as_const(status));
+            op->propagate_completion_signal(stdexec::set_error, std::as_const(status));
           }
         }
 
@@ -263,7 +286,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           if (old != completion_state) {
             self.on_stop_.emplace(
-              get_stop_token(get_env(self.receiver_)),
+              get_stop_token(stdexec::get_env(self.receiver_)),
               on_stop_requested{shared_state->stop_source_});
           }
 
@@ -285,7 +308,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               shared_state->notify();
             } else {
               shared_state->started_.test_and_set(::cuda::memory_order_relaxed);
-              start(shared_state->op_state2_);
+              stdexec::start(shared_state->op_state2_);
             }
           }
         }
@@ -317,9 +340,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) //
-        noexcept(__nothrow_callable<get_env_t, const Sender&>)
-          -> __call_result_t<get_env_t, const Sender&> {
-        return get_env(self.sndr_);
+        noexcept(__nothrow_callable<get_env_t, Sender&>) //
+        -> env_of_t<Sender> {
+        return stdexec::get_env(self.sndr_);
       }
 
       template <class... Tys>

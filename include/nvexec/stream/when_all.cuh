@@ -140,7 +140,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
 
           template <class Error>
-          void set_error(Error&& err, _when_all::state_t expected) noexcept {
+          void set_error_(Error&& err, _when_all::state_t expected) noexcept {
             // TODO: _What memory orderings are actually needed here?
             if (op_state_->state_.compare_exchange_strong(expected, _when_all::error)) {
               op_state_->stop_source_.request_stop();
@@ -177,7 +177,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           template <class Error>
             requires tag_invocable<set_error_t, Receiver, Error>
           void set_error(Error&& err) && noexcept {
-            set_error((Error&&) err, _when_all::started);
+            set_error_((Error&&) err, _when_all::started);
           }
 
           void set_stopped() && noexcept {
@@ -272,7 +272,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                   [this](auto&... opt_vals) -> void {
                     std::apply(
                       [this](auto&... all_vals) -> void {
-                        set_value((Receiver&&) recvr_, std::move(all_vals)...);
+                        stdexec::set_value((Receiver&&) recvr_, std::move(all_vals)...);
                       },
                       std::tuple_cat(::cuda::std::apply(
                         [](auto&... vals) { return std::tie(vals...); }, opt_vals)...));
@@ -282,16 +282,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               break;
             case _when_all::error:
               std::visit(
-                [this](auto& err) noexcept { set_error((Receiver&&) recvr_, std::move(err)); },
+                [this](auto& err) noexcept { stdexec::set_error((Receiver&&) recvr_, std::move(err)); },
                 errors_);
               break;
             case _when_all::stopped:
-              set_stopped((Receiver&&) recvr_);
+              stdexec::set_stopped((Receiver&&) recvr_);
               break;
             default:;
             }
           } else {
-            set_error((Receiver&&) recvr_, std::move(status_));
+            stdexec::set_error((Receiver&&) recvr_, std::move(status_));
           }
         }
 
@@ -301,7 +301,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           , child_states_{__conv{[&when_all, this]() {
             operation_t* parent_op = this;
             auto sch = get_completion_scheduler<set_value_t>(
-              get_env(std::get<Is>(when_all.sndrs_)));
+              stdexec::get_env(std::get<Is>(when_all.sndrs_)));
             context_state_t context_state = sch.context_state_;
             STDEXEC_DBG_ERR(cudaStreamCreate(&this->streams_[Is]));
 
@@ -338,17 +338,18 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         STDEXEC_DEFINE_CUSTOM(void start)(this operation_t& self, start_t) noexcept {
           // register stop callback:
           self.on_stop_.emplace(
-            get_stop_token(get_env(self.recvr_)), _when_all::on_stop_requested{self.stop_source_});
+            get_stop_token(stdexec::get_env(self.recvr_)),
+            _when_all::on_stop_requested{self.stop_source_});
           if (self.stop_source_.stop_requested()) {
             // Stop has already been requested. Don't bother starting
             // the child operations.
-            set_stopped((Receiver&&) self.recvr_);
+            stdexec::set_stopped((Receiver&&) self.recvr_);
           } else {
             if constexpr (sizeof...(SenderIds) == 0) {
               self.complete();
             } else {
               std::apply(
-                [](auto&&... __child_ops) noexcept -> void { (start(__child_ops), ...); },
+                [](auto&&... __child_ops) noexcept -> void { (stdexec::start(__child_ops), ...); },
                 self.child_states_);
             }
           }

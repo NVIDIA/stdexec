@@ -288,10 +288,16 @@ namespace exec {
           }
         }
 
-        template <stdexec::__one_of<stdexec::set_error_t, stdexec::set_stopped_t> Tag, class... As>
-        friend void tag_invoke(Tag tag, bulk_receiver&& self, As&&... as) noexcept {
+        template <stdexec::same_as<stdexec::set_error_t> Tag, class Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this bulk_receiver&& self, Tag tag, Error&& err) noexcept {
           shared_state& state = self.shared_state_;
-          tag((Receiver&&) state.receiver_, (As&&) as...);
+          tag((Receiver&&) state.receiver_, (Error&&) err);
+        }
+
+        template <stdexec::same_as<stdexec::set_stopped_t> Tag>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this bulk_receiver&& self, Tag tag) noexcept {
+          shared_state& state = self.shared_state_;
+          tag((Receiver&&) state.receiver_);
         }
 
         STDEXEC_DEFINE_CUSTOM(auto get_env)(this const bulk_receiver& self, stdexec::get_env_t)

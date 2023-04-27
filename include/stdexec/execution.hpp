@@ -210,21 +210,21 @@ namespace stdexec {
       auto operator()() const noexcept;
     };
 
-    template <class _Queryable, class _CPO>
+    template <class _Queryable, class _Tag>
     concept __has_completion_scheduler_for =
       queryable<_Queryable> && //
-      tag_invocable<get_completion_scheduler_t<_CPO>, const _Queryable&>;
+      tag_invocable<get_completion_scheduler_t<_Tag>, const _Queryable&>;
 
-    template <__completion_tag _CPO>
-    struct get_completion_scheduler_t : __query<get_completion_scheduler_t<_CPO>> {
+    template <__completion_tag _Tag>
+    struct get_completion_scheduler_t : __query<get_completion_scheduler_t<_Tag>> {
       friend constexpr bool
-        tag_invoke(forwarding_query_t, const get_completion_scheduler_t<_CPO>&) noexcept {
+        tag_invoke(forwarding_query_t, const get_completion_scheduler_t<_Tag>&) noexcept {
         return true;
       }
 
-      template <__has_completion_scheduler_for<_CPO> _Queryable>
+      template <__has_completion_scheduler_for<_Tag> _Queryable>
       auto operator()(const _Queryable& __queryable) const noexcept
-        -> tag_invoke_result_t<get_completion_scheduler_t<_CPO>, const _Queryable&>;
+        -> tag_invoke_result_t<get_completion_scheduler_t<_Tag>, const _Queryable&>;
     };
   } // namespace __queries
 
@@ -246,8 +246,19 @@ namespace stdexec {
   inline constexpr get_delegatee_scheduler_t get_delegatee_scheduler{};
   inline constexpr get_allocator_t get_allocator{};
   inline constexpr get_stop_token_t get_stop_token{};
-  template <__completion_tag _CPO>
-  inline constexpr get_completion_scheduler_t<_CPO> get_completion_scheduler{};
+
+#if STDEXEC_GCC()
+  // Work-around for a strange GCC linker issue:
+  template <>
+  inline constexpr get_completion_scheduler_t<set_value_t> get_completion_scheduler<set_value_t>{};
+  template <>
+  inline constexpr get_completion_scheduler_t<set_error_t> get_completion_scheduler<set_error_t>{};
+  template <>
+  inline constexpr get_completion_scheduler_t<set_stopped_t> get_completion_scheduler<set_stopped_t>{};
+#else
+  template <__completion_tag _Tag>
+  inline constexpr get_completion_scheduler_t<_Tag> get_completion_scheduler{};
+#endif
 
   template <class _Tag>
   concept __forwarding_query = forwarding_query(_Tag{});
@@ -448,74 +459,53 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
-  namespace __receivers {
-    struct set_value_t {
-      template <class _Fn, class... _Args>
-      using __f = __minvoke<_Fn, _Args...>;
+  STDEXEC_DEFINE_CPO(struct set_value_t, set_value) {
+    template <class _Fn, class... _Args>
+    using __f = __minvoke<_Fn, _Args...>;
 
-      template <class _Receiver, class... _As>
-        requires tag_invocable<set_value_t, _Receiver, _As...>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        void
-        operator()(_Receiver&& __rcvr, _As&&... __as) const noexcept {
-        static_assert(nothrow_tag_invocable<set_value_t, _Receiver, _As...>);
-        (void) tag_invoke(set_value_t{}, (_Receiver&&) __rcvr, (_As&&) __as...);
-      }
-    };
+    template <class _Receiver, class... _As>
+      requires tag_invocable<set_value_t, _Receiver, _As...>
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+      void
+      operator()(_Receiver&& __rcvr, _As&&... __as) const noexcept {
+      static_assert(nothrow_tag_invocable<set_value_t, _Receiver, _As...>);
+      (void) tag_invoke(set_value_t{}, (_Receiver&&) __rcvr, (_As&&) __as...);
+    }
+  };
 
-    struct set_error_t {
-      template <class _Fn, class... _Args>
-        requires(sizeof...(_Args) == 1)
-      using __f = __minvoke<_Fn, _Args...>;
+  STDEXEC_DEFINE_CPO(struct set_error_t, set_error) {
+    template <class _Fn, class... _Args>
+      requires(sizeof...(_Args) == 1)
+    using __f = __minvoke<_Fn, _Args...>;
 
-      template <class _Receiver, class _Error>
-        requires tag_invocable<set_error_t, _Receiver, _Error>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        void
-        operator()(_Receiver&& __rcvr, _Error&& __err) const noexcept {
-        static_assert(nothrow_tag_invocable<set_error_t, _Receiver, _Error>);
-        (void) tag_invoke(set_error_t{}, (_Receiver&&) __rcvr, (_Error&&) __err);
-      }
-    };
+    template <class _Receiver, class _Error>
+      requires tag_invocable<set_error_t, _Receiver, _Error>
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+      void
+      operator()(_Receiver&& __rcvr, _Error&& __err) const noexcept {
+      static_assert(nothrow_tag_invocable<set_error_t, _Receiver, _Error>);
+      (void) tag_invoke(set_error_t{}, (_Receiver&&) __rcvr, (_Error&&) __err);
+    }
+  };
 
-    struct set_stopped_t {
-      template <class _Fn, class... _Args>
-        requires(sizeof...(_Args) == 0)
-      using __f = __minvoke<_Fn, _Args...>;
+  STDEXEC_DEFINE_CPO(struct set_stopped_t, set_stopped) {
+    template <class _Fn, class... _Args>
+      requires(sizeof...(_Args) == 0)
+    using __f = __minvoke<_Fn, _Args...>;
 
-      template <class _Receiver>
-        requires tag_invocable<set_stopped_t, _Receiver>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        void
-        operator()(_Receiver&& __rcvr) const noexcept {
-        static_assert(nothrow_tag_invocable<set_stopped_t, _Receiver>);
-        (void) tag_invoke(set_stopped_t{}, (_Receiver&&) __rcvr);
-      }
-    };
-  } // namespace __receivers
+    template <class _Receiver>
+      requires tag_invocable<set_stopped_t, _Receiver>
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+      void
+      operator()(_Receiver&& __rcvr) const noexcept {
+      static_assert(nothrow_tag_invocable<set_stopped_t, _Receiver>);
+      (void) tag_invoke(set_stopped_t{}, (_Receiver&&) __rcvr);
+    }
+  };
 
-  using __receivers::set_value_t;
-  using __receivers::set_error_t;
-  using __receivers::set_stopped_t;
   inline constexpr set_value_t set_value{};
   inline constexpr set_error_t set_error{};
   inline constexpr set_stopped_t set_stopped{};
-
-  inline constexpr struct __try_call_t {
-    template <class _Receiver, class _Fun, class... _Args>
-      requires __callable<_Fun, _Args...>
-    void operator()(_Receiver&& __rcvr, _Fun __fun, _Args&&... __args) const noexcept {
-      if constexpr (__nothrow_callable<_Fun, _Args...>) {
-        ((_Fun&&) __fun)((_Args&&) __args...);
-      } else {
-        try {
-          ((_Fun&&) __fun)((_Args&&) __args...);
-        } catch (...) {
-          set_error((_Receiver&&) __rcvr, std::current_exception());
-        }
-      }
-    }
-  } __try_call{};
 
   /////////////////////////////////////////////////////////////////////////////
   // completion_signatures
@@ -745,8 +735,7 @@ namespace stdexec {
       template <derived_from<__valid_completions> _Self, class _Tag, class... _Args>
         requires __one_of<_Tag (*)(_Args&&...), _Sigs...>
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        friend void
-        tag_invoke(_Tag, _Self&&, _Args&&...) noexcept {
+      friend void tag_invoke(_Tag, _Self&&, _Args&&...) noexcept {
         STDEXEC_TERMINATE();
       }
     };
@@ -1503,7 +1492,7 @@ namespace stdexec {
         }
 
         __coro::coroutine_handle<> unhandled_stopped() noexcept {
-          set_stopped((_Receiver&&) __rcvr_);
+          stdexec::set_stopped((_Receiver&&) __rcvr_);
           // Returning noop_coroutine here causes the __connect_awaitable
           // coroutine to never resume past the point where it co_await's
           // the awaitable.
@@ -1563,13 +1552,13 @@ namespace stdexec {
         std::exception_ptr __eptr;
         try {
           if constexpr (same_as<__result_t, void>)
-            co_await (co_await (_Awaitable&&) __await, __co_call(set_value, (_Receiver&&) __rcvr));
+            co_await (co_await (_Awaitable&&) __await, __co_call(stdexec::set_value, (_Receiver&&) __rcvr));
           else
-            co_await __co_call(set_value, (_Receiver&&) __rcvr, co_await (_Awaitable&&) __await);
+            co_await __co_call(stdexec::set_value, (_Receiver&&) __rcvr, co_await (_Awaitable&&) __await);
         } catch (...) {
           __eptr = std::current_exception();
         }
-        co_await __co_call(set_error, (_Receiver&&) __rcvr, (std::exception_ptr&&) __eptr);
+        co_await __co_call(stdexec::set_error, (_Receiver&&) __rcvr, (std::exception_ptr&&) __eptr);
       }
 
       template <receiver _Receiver, class _Awaitable>
@@ -1711,10 +1700,10 @@ namespace stdexec {
         __qf<__tag_of_sig_t<_SetSig>>,
         __q<__types>>>;
 
-  template <class _Fun, class _CPO, class _Sender, class... _As>
+  template <class _Fun, class _Tag, class _Sender, class... _As>
   concept __tag_invocable_with_completion_scheduler =
-    __has_completion_scheduler<_Sender, _CPO>
-    && tag_invocable<_Fun, __completion_scheduler_for<_Sender, _CPO>, _Sender, _As...>;
+    __has_completion_scheduler<_Sender, _Tag>
+    && tag_invocable<_Fun, __completion_scheduler_for<_Sender, _Tag>, _Sender, _As...>;
 
 #if !STDEXEC_STD_NO_COROUTINES_
   /////////////////////////////////////////////////////////////////////////////
@@ -1733,17 +1722,17 @@ namespace stdexec {
     struct __receiver_base {
       template <same_as<set_value_t> _Tag, class... _Us>
         requires constructible_from<__value_or_void_t<_Value>, _Us...>
-      friend void tag_invoke(_Tag, __receiver_base&& __self, _Us&&... __us) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_value)(this __receiver_base&& __self, _Tag, _Us&&... __us) noexcept {
         try {
           __self.__result_->template emplace<1>((_Us&&) __us...);
           __self.__continuation_.resume();
         } catch (...) {
-          set_error((__receiver_base&&) __self, std::current_exception());
+          stdexec::set_error((__receiver_base&&) __self, std::current_exception());
         }
       }
 
       template <same_as<set_error_t> _Tag, class _Error>
-      friend void tag_invoke(_Tag, __receiver_base&& __self, _Error&& __err) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_error)(this __receiver_base&& __self, _Tag, _Error&& __err) noexcept {
         if constexpr (__decays_to<_Error, std::exception_ptr>)
           __self.__result_->template emplace<2>((_Error&&) __err);
         else if constexpr (__decays_to<_Error, std::error_code>)
@@ -1765,7 +1754,7 @@ namespace stdexec {
         using __id = __receiver;
 
         template <same_as<set_stopped_t> _Tag>
-        friend void tag_invoke(_Tag, __t&& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag) noexcept {
           auto __continuation = __coro::coroutine_handle<_Promise>::from_address(
             __self.__continuation_.address());
           __coro::coroutine_handle<> __stopped_continuation =
@@ -2030,13 +2019,25 @@ namespace stdexec {
         __operation_base<_ReceiverId>* __op_state_;
 
         // Forward all the receiver ops, and delete the operation state.
-        template <__completion_tag _Tag, class... _As>
+        template <__same_as<set_value_t> _Tag, class... _As>
           requires __callable<_Tag, _Receiver, _As...>
-        friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept(
-          __nothrow_callable<_Tag, _Receiver, _As...>) {
-          // Delete the state as cleanup:
-          auto __g = __scope_guard{__self.__op_state_->__delete_, __self.__op_state_};
-          return __tag((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag, _As&&... __as) noexcept {
+          [[maybe_unused]] auto __g = __scope_guard{__self.__op_state_->__delete_, __self.__op_state_};
+          _Tag()((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
+        }
+
+        template <same_as<set_error_t> _Tag, class _Error>
+          requires __callable<_Tag, _Receiver, _Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __self, _Tag, _Error&& __err) noexcept {
+          [[maybe_unused]] auto __g = __scope_guard{__self.__op_state_->__delete_, __self.__op_state_};
+          _Tag()((_Receiver&&) __self.__op_state_->__rcvr_, (_Error&&) __err);
+        }
+
+        template <same_as<set_stopped_t> _Tag>
+          requires __callable<_Tag, _Receiver>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag) noexcept {
+          [[maybe_unused]] auto __g = __scope_guard{__self.__op_state_->__delete_, __self.__op_state_};
+          _Tag()((_Receiver&&) __self.__op_state_->__rcvr_);
         }
 
         // Forward all receiever queries.
@@ -2093,7 +2094,7 @@ namespace stdexec {
         _Receiver __recv_;
 
         STDEXEC_DEFINE_CUSTOM(void start)(this __op& __self, start_t) noexcept {
-          set_value((_Receiver&&) __self.__recv_);
+          stdexec::set_value((_Receiver&&) __self.__recv_);
         }
       };
 
@@ -2129,16 +2130,17 @@ namespace stdexec {
         STDEXEC_NO_UNIQUE_ADDRESS _Env __env_;
 
         template <same_as<set_value_t> _Tag, class... _As>
-        friend void tag_invoke(_Tag, __t&&, _As&&...) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&&, _Tag, _As&&...) noexcept {
         }
 
         template <same_as<set_error_t> _Tag, class _Error>
-        [[noreturn]] friend void tag_invoke(_Tag, __t&&, _Error&&) noexcept {
+        [[noreturn]] //
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&&, _Tag, _Error&&) noexcept {
           std::terminate();
         }
 
         template <same_as<set_stopped_t> _Tag>
-        friend void tag_invoke(_Tag, __t&&) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&&, _Tag) noexcept {
         }
 
         STDEXEC_DEFINE_CUSTOM(const _Env& get_env)(this const __t& __self, get_env_t) noexcept {
@@ -2315,21 +2317,22 @@ namespace stdexec {
       _Fun __fun_;
 
       template <same_as<set_value_t> _Tag>
-      friend void tag_invoke(_Tag, __as_receiver&& __rcvr) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_value)(this __as_receiver&& __rcvr, _Tag) noexcept {
         try {
           __rcvr.__fun_();
         } catch (...) {
-          set_error((__as_receiver&&) __rcvr, std::exception_ptr());
+          stdexec::set_error((__as_receiver&&) __rcvr, std::exception_ptr());
         }
       }
 
       template <same_as<set_error_t> _Tag>
-      [[noreturn]] friend void tag_invoke(_Tag, __as_receiver&&, std::exception_ptr) noexcept {
-        std::terminate();
+      [[noreturn]] //
+      STDEXEC_DEFINE_CUSTOM(void set_error)(this __as_receiver&&, _Tag, std::exception_ptr) noexcept {
+        STDEXEC_TERMINATE();
       }
 
       template <same_as<set_stopped_t> _Tag>
-      friend void tag_invoke(_Tag, __as_receiver&&) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __as_receiver&&, _Tag) noexcept {
       }
 
       STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const __as_receiver&, get_env_t) {
@@ -2540,7 +2543,7 @@ namespace stdexec {
 
     template <__class _Derived, class _Base>
     struct receiver_adaptor {
-      class __t : __adaptor_base<_Base> {
+      class __t : __adaptor_base<_Base>, __uses_tag_invoke_base {
         friend _Derived;
         _DEFINE_MEMBER(set_value);
         _DEFINE_MEMBER(set_error);
@@ -2664,27 +2667,19 @@ namespace stdexec {
   concept __receiver_of_invoke_result =
     __receiver_of_maybe_void<_Receiver, std::invoke_result_t<_Fun, _As...>>;
 
-  template <class _Receiver, class _Fun, class... _As>
-  void __set_value_invoke_(_Receiver&& __rcvr, _Fun&& __fun, _As&&... __as) //
-    noexcept(__nothrow_invocable<_Fun, _As...>) {
-    if constexpr (same_as<void, std::invoke_result_t<_Fun, _As...>>) {
-      std::invoke((_Fun&&) __fun, (_As&&) __as...);
-      set_value((_Receiver&&) __rcvr);
-    } else {
-      set_value((_Receiver&&) __rcvr, std::invoke((_Fun&&) __fun, (_As&&) __as...));
-    }
-  }
-
-  template <class _Receiver, class _Fun, class... _As>
-  void __set_value_invoke(_Receiver&& __rcvr, _Fun&& __fun, _As&&... __as) noexcept {
-    if constexpr (__nothrow_invocable<_Fun, _As...>) {
-      stdexec::__set_value_invoke_((_Receiver&&) __rcvr, (_Fun&&) __fun, (_As&&) __as...);
-    } else {
-      try {
-        stdexec::__set_value_invoke_((_Receiver&&) __rcvr, (_Fun&&) __fun, (_As&&) __as...);
-      } catch (...) {
-        set_error((_Receiver&&) __rcvr, std::current_exception());
+  template <bool _CanThrow = false, class _Receiver, class _Fun, class... _As>
+  void __set_value_invoke(_Receiver&& __rcvr, _Fun&& __fun, _As&&... __as) noexcept(!_CanThrow) {
+    if constexpr (_CanThrow || __nothrow_invocable<_Fun, _As...>) {
+      if constexpr (same_as<void, std::invoke_result_t<_Fun, _As...>>) {
+        std::invoke((_Fun&&) __fun, (_As&&) __as...);
+        stdexec::set_value((_Receiver&&) __rcvr);
+      } else {
+        stdexec::set_value((_Receiver&&) __rcvr, std::invoke((_Fun&&) __fun, (_As&&) __as...));
       }
+    } else try {
+      stdexec::__set_value_invoke<true>((_Receiver&&) __rcvr, (_Fun&&) __fun, (_As&&) __as...);
+    } catch (...) {
+      stdexec::set_error((_Receiver&&) __rcvr, std::current_exception());
     }
   }
 
@@ -2752,15 +2747,21 @@ namespace stdexec {
         // to the downstream receiver
         template <__same_as<set_value_t> _Tag, class... _As>
           requires invocable<_Fun, _As...> && __receiver_of_invoke_result<_Receiver, _Fun, _As...>
-        friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag, _As&&... __as) noexcept {
           stdexec::__set_value_invoke(
             (_Receiver&&) __self.__op_->__rcvr_, (_Fun&&) __self.__op_->__fun_, (_As&&) __as...);
         }
 
-        template <__one_of<set_error_t, set_stopped_t> _Tag, class... _As>
-          requires __callable<_Tag, _Receiver, _As...>
-        friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept {
-          __tag((_Receiver&&) __self.__op_->__rcvr_, (_As&&) __as...);
+        template <same_as<set_error_t> _Tag, class _Error>
+          requires __callable<_Tag, _Receiver, _Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __self, _Tag __tag, _Error&& __err) noexcept {
+          __tag((_Receiver&&) __self.__op_->__rcvr_, (_Error&&) __err);
+        }
+
+        template <same_as<set_stopped_t> _Tag>
+          requires __callable<_Tag, _Receiver>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag __tag) noexcept {
+          __tag((_Receiver&&) __self.__op_->__rcvr_);
         }
 
         STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t)
@@ -2908,19 +2909,25 @@ namespace stdexec {
         _Receiver __rcvr_;
         STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
 
-        template <__one_of<set_value_t, set_stopped_t> _Tag, same_as<__t> _Self, class... _Args>
+        template <same_as<set_value_t> _Tag, class... _Args>
           requires __callable<_Tag, _Receiver, _Args...>
-        friend void tag_invoke(_Tag, _Self&& __self, _Args&&... __args) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag, _Args&&... __args) noexcept {
           _Tag{}((_Receiver&&) __self.__rcvr_, (_Args&&) __args...);
         }
 
         // Customize set_error by invoking the invocable and passing the result
         // to the base class
-        template <same_as<set_error_t> _Tag, __decays_to<__t> _Self, class _Error>
+        template <same_as<set_error_t> _Tag, class _Error>
           requires invocable<_Fun, _Error> && __receiver_of_invoke_result<_Receiver, _Fun, _Error>
-        friend void tag_invoke(_Tag, _Self&& __self, _Error&& __error) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __self, _Tag, _Error&& __error) noexcept {
           stdexec::__set_value_invoke(
             (_Receiver&&) __self.__rcvr_, (_Fun&&) __self.__fun_, (_Error&&) __error);
+        }
+
+        template <same_as<set_stopped_t> _Tag>
+          requires __callable<_Tag, _Receiver>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag) noexcept {
+          _Tag{}((_Receiver&&) __self.__rcvr_);
         }
 
         STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(
@@ -3042,14 +3049,20 @@ namespace stdexec {
         _Receiver __rcvr_;
         STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
 
-        template <__one_of<set_value_t, set_error_t> _Tag, same_as<__t> _Self, class... _Args>
+        template <same_as<set_value_t> _Tag, class... _Args>
           requires __callable<_Tag, _Receiver, _Args...>
-        friend void tag_invoke(_Tag, _Self&& __self, _Args&&... __args) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag, _Args&&... __args) noexcept {
           _Tag{}((_Receiver&&) __self.__rcvr_, (_Args&&) __args...);
         }
 
+        template <same_as<set_error_t> _Tag, class _Error>
+          requires __callable<_Tag, _Receiver, _Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __self, _Tag, _Error&& __err) noexcept {
+          _Tag{}((_Receiver&&) __self.__rcvr_, (_Error&&) __err);
+        }
+
         template <same_as<set_stopped_t> _Tag>
-        friend void tag_invoke(_Tag, __t&& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag) noexcept {
           stdexec::__set_value_invoke((_Receiver&&) __self.__rcvr_, (_Fun&&) __self.__fun_);
         }
 
@@ -3375,8 +3388,8 @@ namespace stdexec {
        public:
         using __id = __receiver;
 
-        template <__completion_tag _Tag, class... _As>
-        friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept {
+        template <class _Tag, class... _As>
+        static void __complete(_Tag __tag, __t&& __self, _As&&... __as) noexcept {
           stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>& __state = __self.__sh_state_;
 
           try {
@@ -3384,9 +3397,25 @@ namespace stdexec {
             __state.__data_.template emplace<__tuple_t>(__tag, (_As&&) __as...);
           } catch (...) {
             using __tuple_t = __decayed_tuple<set_error_t, std::exception_ptr>;
-            __state.__data_.template emplace<__tuple_t>(set_error, std::current_exception());
+            __state.__data_.template emplace<__tuple_t>(stdexec::set_error, std::current_exception());
           }
           __state.__notify();
+        }
+
+        // BUGBUG TODO constrain these
+        template <__same_as<set_value_t> _Tag, class... _As>
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag, _As&&... __as) noexcept {
+          __complete(_Tag(), (__t&&) __self, (_As&&) __as...);
+        }
+
+        template <same_as<set_error_t> _Tag, class _Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __self, _Tag, _Error&& __err) noexcept {
+          __complete(_Tag(), (__t&&) __self, (_Error&&) __err);
+        }
+
+        template <same_as<set_stopped_t> _Tag>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag) noexcept {
+          __complete(_Tag(), (__t&&) __self);
         }
 
         STDEXEC_DEFINE_CUSTOM(const __env_t<_Env>& get_env)(
@@ -3690,8 +3719,8 @@ namespace stdexec {
           : __shared_state_(__shared_state.__intrusive_from_this()) {
         }
 
-        template <__completion_tag _Tag, class... _As>
-        friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept {
+        template <class _Tag, class... _As>
+        static void __complete(_Tag __tag, __t&& __self, _As&&... __as) noexcept {
           stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>& __state = *__self.__shared_state_;
 
           try {
@@ -3699,11 +3728,27 @@ namespace stdexec {
             __state.__data_.template emplace<__tuple_t>(__tag, (_As&&) __as...);
           } catch (...) {
             using __tuple_t = __decayed_tuple<set_error_t, std::exception_ptr>;
-            __state.__data_.template emplace<__tuple_t>(set_error, std::current_exception());
+            __state.__data_.template emplace<__tuple_t>(stdexec::set_error, std::current_exception());
           }
 
           __state.__notify();
           __self.__shared_state_.reset();
+        }
+
+        // BUGBUG TODO constrain these
+        template <__same_as<set_value_t> _Tag, class... _As>
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag, _As&&... __as) noexcept {
+          __complete(_Tag(), (__t&&) __self, (_As&&) __as...);
+        }
+
+        template <same_as<set_error_t> _Tag, class _Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __self, _Tag, _Error&& __err) noexcept {
+          __complete(_Tag(), (__t&&) __self, (_Error&&) __err);
+        }
+
+        template <same_as<set_stopped_t> _Tag>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag) noexcept {
+          __complete(_Tag(), (__t&&) __self);
         }
 
         STDEXEC_DEFINE_CUSTOM(const __env_t<_Env>& get_env)(this const __t& __self, get_env_t) {
@@ -4075,31 +4120,55 @@ namespace stdexec {
       struct __t {
         using __id = __receiver_;
 
-        template <__one_of<_Set> _Tag, class... _As>
-          requires(1 == __v<__minvoke<__mcount<__decayed_tuple<_As...>>, _Tuples...>>)
-               && __minvocable<__result_sender<_Fun, _Set>, _As...>
-               && sender_to<__minvoke<__result_sender<_Fun, _Set>, _As...>, _Receiver>
-        friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
-          try {
-            using __tuple_t = __decayed_tuple<_As...>;
-            using __op_state_t = __minvoke<__op_state_for<_Receiver, _Fun, _Set>, _As...>;
-            auto& __args = __self.__op_state_->__args_.template emplace<__tuple_t>((_As&&) __as...);
-            auto& __op = __self.__op_state_->__op_state3_.template emplace<__op_state_t>(
-              __conv{[&] {
-                return connect(
-                  std::apply(std::move(__self.__op_state_->__fun_), __args),
-                  std::move(__self.__op_state_->__rcvr_));
-              }});
-            start(__op);
-          } catch (...) {
-            set_error(std::move(__self.__op_state_->__rcvr_), std::current_exception());
+        template <class _Tag>
+        struct __complete_fn {
+          template <class... _As>
+            requires __callable<_Tag, _Receiver, _As...>
+          void operator()(__t&& __self, _As&&... __as) const noexcept {
+            _Tag()(std::move(__self.__op_state_->__rcvr_), (_As&&) __as...);
           }
+        };
+
+        template <same_as<_Set> _Tag>
+        struct __complete_fn<_Tag> {
+          template <class... _As>
+            requires(1 == __v<__minvoke<__mcount<__decayed_tuple<_As...>>, _Tuples...>>)
+                && __minvocable<__result_sender<_Fun, _Set>, _As...>
+                && sender_to<__minvoke<__result_sender<_Fun, _Set>, _As...>, _Receiver>
+          void operator()(__t&& __self, _As&&... __as) const noexcept {
+            try {
+              using __tuple_t = __decayed_tuple<_As...>;
+              using __op_state_t = __minvoke<__op_state_for<_Receiver, _Fun, _Set>, _As...>;
+              auto& __args = __self.__op_state_->__args_.template emplace<__tuple_t>((_As&&) __as...);
+              auto& __op = __self.__op_state_->__op_state3_.template emplace<__op_state_t>(
+                __conv{[&] {
+                  return connect(
+                    std::apply(std::move(__self.__op_state_->__fun_), __args),
+                    std::move(__self.__op_state_->__rcvr_));
+                }});
+              start(__op);
+            } catch (...) {
+              stdexec::set_error(std::move(__self.__op_state_->__rcvr_), std::current_exception());
+            }
+          }
+        };
+
+        template <__same_as<set_value_t> _Tag, class... _As>
+          requires __callable<__complete_fn<_Tag>, __t, _As...>
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag, _As&&... __as) noexcept {
+          __complete_fn<_Tag>()((__t&&) __self, (_As&&) __as...);
         }
 
-        template <__completion_tag _Tag, class... _As>
-          requires __none_of<_Tag, _Set> && __callable<_Tag, _Receiver, _As...>
-        friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept {
-          __tag(std::move(__self.__op_state_->__rcvr_), (_As&&) __as...);
+        template <same_as<set_error_t> _Tag, class _Error>
+          requires __callable<__complete_fn<_Tag>, __t, _Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __self, _Tag, _Error&& __err) noexcept {
+          __complete_fn<_Tag>()((__t&&) __self, (_Error&&) __err);
+        }
+
+        template <same_as<set_stopped_t> _Tag>
+          requires __callable<__complete_fn<_Tag>, __t>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag) noexcept {
+          __complete_fn<_Tag>()((__t&&) __self);
         }
 
         STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t)
@@ -4439,12 +4508,12 @@ namespace stdexec {
           auto& __rcvr = ((__t*) __p)->__rcvr_;
           try {
             if (get_stop_token(get_env(__rcvr)).stop_requested()) {
-              set_stopped((_Receiver&&) __rcvr);
+              stdexec::set_stopped((_Receiver&&) __rcvr);
             } else {
-              set_value((_Receiver&&) __rcvr);
+              stdexec::set_value((_Receiver&&) __rcvr);
             }
           } catch (...) {
-            set_error((_Receiver&&) __rcvr, std::current_exception());
+            stdexec::set_error((_Receiver&&) __rcvr, std::current_exception());
           }
         }
 
@@ -4509,9 +4578,9 @@ namespace stdexec {
           struct __env {
             run_loop* __loop_;
 
-            template <class _CPO>
+            template <class _Tag>
             friend __scheduler
-              tag_invoke(get_completion_scheduler_t<_CPO>, const __env& __self) noexcept {
+              tag_invoke(get_completion_scheduler_t<_Tag>, const __env& __self) noexcept {
               return __self.__loop_->get_scheduler();
             }
           };
@@ -4581,7 +4650,7 @@ namespace stdexec {
       try {
         __loop_->__push_back_(this);
       } catch (...) {
-        set_error((_Receiver&&) __rcvr_, std::current_exception());
+        stdexec::set_error((_Receiver&&) __rcvr_, std::current_exception());
       }
     }
 
@@ -4674,14 +4743,20 @@ namespace stdexec {
         // context and is ready to run, forward the completion signal in
         // the operation state
         template <same_as<set_value_t> _Tag>
-        friend void tag_invoke(_Tag, __t&& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag) noexcept {
           __self.__op_state_->__complete();
         }
 
-        template <__one_of<set_error_t, set_stopped_t> _Tag, class... _As>
-          requires __callable<_Tag, _Receiver, _As...>
-        friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
-          _Tag{}((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
+        template <same_as<set_error_t> _Tag, class _Error>
+          requires __callable<_Tag, _Receiver, _Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __self, _Tag, _Error&& __err) noexcept {
+          _Tag{}((_Receiver&&) __self.__op_state_->__rcvr_, (_Error&&) __err);
+        }
+
+        template <same_as<set_stopped_t> _Tag>
+          requires __callable<_Tag, _Receiver>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag) noexcept {
+          _Tag{}((_Receiver&&) __self.__op_state_->__rcvr_);
         }
 
         STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t)
@@ -4710,32 +4785,42 @@ namespace stdexec {
         template <class... _Args>
         static constexpr bool __nothrow_complete_ = (__nothrow_decay_copyable<_Args> && ...);
 
-        template <class _Tag, class... _Args>
-        static void __complete_(_Tag, __t&& __self, _Args&&... __args) //
-          noexcept(__nothrow_complete_<_Args...>) {
-          // Write the tag and the args into the operation state so that
-          // we can forward the completion from within the scheduler's
-          // execution context.
-          __self.__op_state_->__data_.template emplace<__decayed_tuple<_Tag, _Args...>>(
-            _Tag{}, (_Args&&) __args...);
-          // Enqueue the schedule operation so the completion happens
-          // on the scheduler's execution context.
-          stdexec::start(__self.__op_state_->__state2_);
+        template <bool _CanThrow = false, class _Tag, class... _As>
+        static void __complete(_Tag, __t&& __self, _As&&... __as) noexcept(!_CanThrow) {
+          using _Tuple = __decayed_tuple<_Tag, _As...>;
+          if constexpr(_CanThrow || __nothrow_complete_<_As...>) {
+            // Write the tag and the args into the operation state so that we can
+            // forward the completion from within the scheduler's execution
+            // context.
+            __self.__op_state_->__data_.template emplace<_Tuple>(_Tag(), (_As&&) __as...);
+
+            // enqueue the schedule operation so the completion happens on the
+            // scheduler's execution context.
+            stdexec::start(__self.__op_state_->__state2_);
+          } else try {
+            __complete<true>(_Tag(), (__t&&) __self, (_As&&) __as...);
+          } catch(...) {
+            stdexec::set_error((__t&&) __self, std::current_exception());
+          }
         }
 
-        template <__completion_tag _Tag, class... _Args>
-          requires __callable<_Tag, _Receiver, __decay_t<_Args>...>
-        friend void tag_invoke(_Tag __tag, __t&& __self, _Args&&... __args) noexcept {
-          __try_call(
-            (_Receiver&&) __self.__op_state_->__rcvr_,
-            __fun_c<__complete_<_Tag, _Args...>>,
-            (_Tag&&) __tag,
-            (__t&&) __self,
-            (_Args&&) __args...);
+        // BUGBUG TODO constrain these
+        template <__same_as<set_value_t> _Tag, class... _As>
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag, _As&&... __as) noexcept {
+          __complete(_Tag(), (__t&&) __self, (_As&&) __as...);
         }
 
-        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t)
-          -> env_of_t<_Receiver> {
+        template <same_as<set_error_t> _Tag, class _Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __self, _Tag, _Error&& __err) noexcept {
+          __complete(_Tag(), (__t&&) __self, (_Error&&) __err);
+        }
+
+        template <same_as<set_stopped_t> _Tag>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag) noexcept {
+          __complete(_Tag(), (__t&&) __self);
+        }
+
+        STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(this const __t& __self, get_env_t) {
           return stdexec::get_env(__self.__op_state_->__rcvr_);
         }
       };
@@ -5027,7 +5112,7 @@ namespace stdexec {
               return connect((_Sender&&) __op_state->__sndr_, __receiver_ref_t{{}, __op_state});
             }}));
           } catch (...) {
-            set_error((_Receiver&&) __op_state->__rcvr_, std::current_exception());
+            stdexec::set_error((_Receiver&&) __op_state->__rcvr_, std::current_exception());
           }
         }
       };
@@ -5194,23 +5279,23 @@ namespace stdexec {
         // to the base class
         template <same_as<set_value_t> _Tag, class... _As>
           requires constructible_from<_Variant, std::tuple<_As&&...>>
-        friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag, _As&&... __as) noexcept {
           try {
-            set_value(
+            stdexec::set_value(
               (_Receiver&&) __self.__rcvr_, _Variant{std::tuple<_As&&...>{(_As&&) __as...}});
           } catch (...) {
-            set_error((_Receiver&&) __self.__rcvr_, std::current_exception());
+            stdexec::set_error((_Receiver&&) __self.__rcvr_, std::current_exception());
           }
         }
 
         template <same_as<set_error_t> _Tag, class _Error>
-        friend void tag_invoke(_Tag, __t&& __self, _Error&& __err) noexcept {
-          set_error((_Receiver&&) __self.__rcvr_, (_Error&&) __err);
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __self, _Tag, _Error&& __err) noexcept {
+          stdexec::set_error((_Receiver&&) __self.__rcvr_, (_Error&&) __err);
         }
 
         template <same_as<set_stopped_t> _Tag>
-        friend void tag_invoke(_Tag, __t&& __self) noexcept {
-          set_stopped((_Receiver&&) __self.__rcvr_);
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag) noexcept {
+          stdexec::set_stopped((_Receiver&&) __self.__rcvr_);
         }
 
         STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(this const __t& __self, get_env_t) {
@@ -5508,7 +5593,7 @@ namespace stdexec {
 
         template <same_as<set_value_t> _Tag, class... _Values>
           requires same_as<_ValuesTuple, __ignore> || constructible_from<_TupleType, _Values...>
-        friend void tag_invoke(_Tag, __t&& __self, _Values&&... __vals) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag, _Values&&... __vals) noexcept {
           if constexpr (!same_as<_ValuesTuple, __ignore>) {
             static_assert(
               same_as<_TupleType, std::tuple<__decay_t<_Values>...>>,
@@ -5534,14 +5619,14 @@ namespace stdexec {
           requires requires(_ErrorsVariant& __errors, _Error&& __err) {
             __errors.template emplace<__decay_t<_Error>>((_Error&&) __err);
           }
-        friend void tag_invoke(_Tag, __t&& __self, _Error&& __err) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __self, _Tag, _Error&& __err) noexcept {
           __self.__set_error((_Error&&) __err);
           __self.__op_state_->__arrive();
         }
 
         template <same_as<set_stopped_t> _Tag>
           requires receiver_of<_Receiver, completion_signatures<_Tag()>>
-        friend void tag_invoke(_Tag, __t&& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag) noexcept {
           __state_t __expected = __started;
           // Transition to the "stopped" state if and only if we're in the
           // "started" state. (If this fails, it's because we're in an
@@ -5840,9 +5925,9 @@ namespace stdexec {
         STDEXEC_DEFINE_CUSTOM(void start)(this __t& __self, start_t) noexcept {
           try {
             auto __env = get_env(__self.__rcvr_);
-            set_value(std::move(__self.__rcvr_), _Tag{}(__env));
+            stdexec::set_value(std::move(__self.__rcvr_), _Tag{}(__env));
           } catch (...) {
-            set_error(std::move(__self.__rcvr_), std::current_exception());
+            stdexec::set_error(std::move(__self.__rcvr_), std::current_exception());
           }
         }
       };
@@ -5925,15 +6010,15 @@ namespace stdexec {
       return read(get_stop_token);
     }
 
-    template <__completion_tag _CPO>
-    template <__has_completion_scheduler_for<_CPO> _Queryable>
-    auto get_completion_scheduler_t<_CPO>::operator()(const _Queryable& __queryable) const noexcept
-      -> tag_invoke_result_t<get_completion_scheduler_t<_CPO>, const _Queryable&> {
+    template <__completion_tag _Tag>
+    template <__has_completion_scheduler_for<_Tag> _Queryable>
+    auto get_completion_scheduler_t<_Tag>::operator()(const _Queryable& __queryable) const noexcept
+      -> tag_invoke_result_t<get_completion_scheduler_t<_Tag>, const _Queryable&> {
       static_assert(
-        nothrow_tag_invocable<get_completion_scheduler_t<_CPO>, const _Queryable&>,
-        "get_completion_scheduler<_CPO> should be noexcept");
+        nothrow_tag_invocable<get_completion_scheduler_t<_Tag>, const _Queryable&>,
+        "get_completion_scheduler<_Tag> should be noexcept");
       static_assert(
-        scheduler<tag_invoke_result_t<get_completion_scheduler_t<_CPO>, const _Queryable&>>);
+        scheduler<tag_invoke_result_t<get_completion_scheduler_t<_Tag>, const _Queryable&>>);
       return tag_invoke(*this, __queryable);
     }
   } // namespace __queries
@@ -6000,7 +6085,7 @@ namespace stdexec {
 
         template <same_as<set_value_t> _Tag, class... _As>
           requires constructible_from<std::tuple<_Values...>, _As...>
-        friend void tag_invoke(_Tag, __t&& __rcvr, _As&&... __as) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __rcvr, _Tag, _As&&... __as) noexcept {
           try {
             __rcvr.__state_->__data_.template emplace<1>((_As&&) __as...);
             __rcvr.__loop_->finish();
@@ -6010,11 +6095,11 @@ namespace stdexec {
         }
 
         template <same_as<set_error_t> _Tag, class _Error>
-        friend void tag_invoke(_Tag, __t&& __rcvr, _Error __err) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __rcvr, _Tag, _Error __err) noexcept {
           __rcvr.__set_error((_Error&&) __err);
         }
 
-        friend void tag_invoke(set_stopped_t __d, __t&& __rcvr) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __rcvr, set_stopped_t __d) noexcept {
           __rcvr.__state_->__data_.template emplace<3>(__d);
           __rcvr.__loop_->finish();
         }

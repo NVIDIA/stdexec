@@ -46,7 +46,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         constexpr static std::size_t memory_allocation_size = MemoryAllocationSize;
 
         template <same_as<set_value_t> _Tag, class... As>
-        friend void tag_invoke(_Tag, __t&& self, As&&... as) noexcept
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& self, _Tag, As&&... as) noexcept
           requires std::invocable<Fun, __decay_t<As>...>
         {
           using result_t = std::invoke_result_t<Fun, __decay_t<As>...>;
@@ -59,9 +59,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
-              op_state.propagate_completion_signal(set_value);
+              op_state.propagate_completion_signal(stdexec::set_value);
             } else {
-              op_state.propagate_completion_signal(set_error, std::move(status));
+              op_state.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
           } else {
             using decayed_result_t = __decay_t<result_t>;
@@ -71,16 +71,21 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
-              op_state.propagate_completion_signal(set_value, std::move(*d_result));
+              op_state.propagate_completion_signal(stdexec::set_value, std::move(*d_result));
             } else {
-              op_state.propagate_completion_signal(set_error, std::move(status));
+              op_state.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
           }
         }
 
-        template <__one_of<set_error_t, set_stopped_t> Tag, class... As>
-        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
+        template <same_as<set_error_t> Tag, class Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& self, Tag, Error&& err) noexcept {
+          self.op_state_.propagate_completion_signal(Tag(), (Error&&) err);
+        }
+
+        template <same_as<set_stopped_t> Tag>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& self, Tag) noexcept {
+          self.op_state_.propagate_completion_signal(Tag());
         }
 
         STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) noexcept ->

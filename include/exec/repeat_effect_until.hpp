@@ -117,7 +117,7 @@ namespace exec {
 
       template <same_as<set_stopped_t> _Tag, same_as<__t> _Self>
         requires __callable<_Tag, _Receiver>
-      friend void tag_invoke(_Tag, _Self &&__self) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_stopped)(this _Self &&__self, _Tag) noexcept {
         auto *__op = __self.__op_;
         __op->__source_op_.__destruct();
         stdexec::set_stopped((_Receiver &&) __op->__rcvr_);
@@ -125,7 +125,7 @@ namespace exec {
 
       template <same_as<set_error_t> _Tag, same_as<__t> _Self, class _Error>
         requires __callable<_Tag, _Receiver, _Error>
-      friend void tag_invoke(_Tag, _Self &&__self, _Error __error) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_error)(this _Self &&__self, _Tag, _Error __error) noexcept {
         auto *__op = __self.__op_;
         __op->__source_op_.__destruct();
         stdexec::set_error((_Receiver &&) __op->__rcvr_, (_Error &&) __error);

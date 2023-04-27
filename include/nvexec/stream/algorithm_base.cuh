@@ -69,17 +69,22 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       constexpr static ::std::size_t memory_allocation_size = max_result_size::value;
 
       template <same_as<set_value_t> _Tag, class Range>
-      friend void tag_invoke(_Tag, __t&& self, Range&& range) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& self, _Tag, Range&& range) noexcept {
         DerivedReceiver::set_value_impl((__t&&) self, (Range&&) range);
       }
 
-      template <__one_of<set_error_t, set_stopped_t> Tag, class... As>
-      friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-        self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
+      template <same_as<set_error_t> Tag, class Error>
+      STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& self, Tag, Error&& err) noexcept {
+        self.op_state_.propagate_completion_signal(Tag(), (Error&&) err);
       }
 
-      friend env_of_t<Receiver> tag_invoke(get_env_t, const __t& self) {
-        return get_env(self.op_state_.receiver_);
+      template <same_as<set_stopped_t> Tag>
+      STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& self, Tag) noexcept {
+        self.op_state_.propagate_completion_signal(Tag());
+      }
+
+      STDEXEC_DEFINE_CUSTOM(env_of_t<Receiver> get_env)(this const __t& self, get_env_t) {
+        return stdexec::get_env(self.op_state_.receiver_);
       }
 
       __t(InitT init, Fun fun, operation_state_base_t<ReceiverId>& op_state)
@@ -138,8 +143,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
 
       friend auto tag_invoke(get_env_t, const __t& self) //
         noexcept(__nothrow_callable<get_env_t, const Sender&>)
-          -> __call_result_t<get_env_t, const Sender&> {
-        return get_env(self.sndr_);
+          -> env_of_t<const Sender&> {
+        return stdexec::get_env(self.sndr_);
       }
     };
   };

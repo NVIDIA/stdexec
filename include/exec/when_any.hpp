@@ -80,13 +80,13 @@ namespace exec {
 
     template <class _Variant, class... _Ts>
     concept __result_constructible_from =
-      std::is_constructible_v<__decayed_tuple<_Ts...>, _Ts...>
-      && std::is_constructible_v<_Variant, __decayed_tuple<_Ts...>&&>;
+      constructible_from<__decayed_tuple<_Ts...>, _Ts...>
+      && constructible_from<_Variant, __decayed_tuple<_Ts...>>;
 
     template <class _Variant, class... _Ts>
     concept __nothrow_result_constructible_from =
       __nothrow_constructible_from<__decayed_tuple<_Ts...>, _Ts...>
-      && __nothrow_constructible_from<_Variant, __decayed_tuple<_Ts...>&&>;
+      && __nothrow_constructible_from<_Variant, __decayed_tuple<_Ts...>>;
 
     template <class _Receiver, class _ResultVariant>
     struct __op_base : __immovable {
@@ -110,17 +110,17 @@ namespace exec {
       _Receiver __receiver_;
       std::optional<_ResultVariant> __result_{};
 
-      template <class _CPO, class... _Args>
-      void notify(_CPO, _Args&&... __args) noexcept {
+      template <class _Tag, class... _Args>
+      void notify(_Tag, _Args&&... __args) noexcept {
         bool __expect = false;
         if (__emplaced_.compare_exchange_strong(
               __expect, true, std::memory_order_relaxed, std::memory_order_relaxed)) {
           // This emplacement can happen only once
-          if constexpr (__nothrow_result_constructible_from<_ResultVariant, _CPO, _Args...>) {
-            __result_.emplace(std::tuple{_CPO{}, (_Args&&) __args...});
+          if constexpr (__nothrow_result_constructible_from<_ResultVariant, _Tag, _Args...>) {
+            __result_.emplace(std::tuple{_Tag{}, (_Args&&) __args...});
           } else {
             try {
-              __result_.emplace(std::tuple{_CPO{}, (_Args&&) __args...});
+              __result_.emplace(std::tuple{_Tag{}, (_Args&&) __args...});
             } catch (...) {
               __result_.emplace(set_error_t{}, std::current_exception());
             }
@@ -134,7 +134,7 @@ namespace exec {
           __on_stop_.reset();
           auto stop_token = get_stop_token(get_env(__receiver_));
           if (stop_token.stop_requested()) {
-            set_stopped((_Receiver&&) __receiver_);
+            stdexec::set_stopped((_Receiver&&) __receiver_);
             return;
           }
           STDEXEC_ASSERT(__result_.has_value());
@@ -161,16 +161,31 @@ namespace exec {
           : __op_{__op} {
         }
 
+#if !STDEXEC_NVHPC()
        private:
-        __op_base<_Receiver, _ResultVariant>* __op_;
+#endif
+        STDEXEC_CPO_ACCESS(set_value_t);
+        STDEXEC_CPO_ACCESS(set_error_t);
+        STDEXEC_CPO_ACCESS(set_stopped_t);
+        STDEXEC_CPO_ACCESS(get_env_t);
 
-        template <__completion_tag _CPO, class... _Args>
-          requires __result_constructible_from<_ResultVariant, _CPO, _Args...>
-        friend void tag_invoke(_CPO, __t&& __self, _Args&&... __args) noexcept {
-          __self.__op_->notify(_CPO{}, (_Args&&) __args...);
+        template <same_as<set_value_t> _Tag, class... _Args>
+          requires __result_constructible_from<_ResultVariant, _Tag, _Args...>
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag, _Args&&... __args) noexcept {
+          __self.__op_->notify(_Tag{}, (_Args&&) __args...);
         }
 
-        STDEXEC_CPO_ACCESS(get_env_t);
+        template <same_as<set_error_t> _Tag, class _Error>
+          requires __result_constructible_from<_ResultVariant, _Tag, _Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __self, _Tag, _Error&& __err) noexcept {
+          __self.__op_->notify(_Tag{}, (_Error&&) __err);
+        }
+
+        template <same_as<set_stopped_t> _Tag>
+          requires __result_constructible_from<_ResultVariant, _Tag>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag) noexcept {
+          __self.__op_->notify(_Tag{});
+        }
 
         STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) noexcept
           -> __env_t<env_of_t<_Receiver>> {
@@ -178,6 +193,9 @@ namespace exec {
           auto __token = __with_token{__self.__op_->__stop_source_.get_token()};
           return __make_env(stdexec::get_env(__self.__op_->__receiver_), (__with_token&&) __token);
         }
+
+       private:
+        __op_base<_Receiver, _ResultVariant>* __op_;
       };
     };
 
@@ -227,7 +245,7 @@ namespace exec {
             get_stop_token(get_env(__self.__receiver_)),
             __on_stop_requested{__self.__stop_source_});
           if (__self.__stop_source_.stop_requested()) {
-            set_stopped((_Receiver&&) __self.__receiver_);
+            stdexec::set_stopped((_Receiver&&) __self.__receiver_);
           } else {
             std::apply([](auto&... __ops) { (stdexec::start(__ops), ...); }, __self.__ops_);
           }

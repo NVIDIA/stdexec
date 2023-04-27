@@ -47,9 +47,9 @@ struct boolean_sender {
 
     STDEXEC_DEFINE_CUSTOM(void start)(this operation &self, start_t) noexcept {
       if (self.counter_ == 0) {
-        set_value((Receiver &&) self.rcvr_, true);
+        stdexec::set_value((Receiver &&) self.rcvr_, true);
       } else {
-        set_value((Receiver &&) self.rcvr_, false);
+        stdexec::set_value((Receiver &&) self.rcvr_, false);
       }
     }
   };

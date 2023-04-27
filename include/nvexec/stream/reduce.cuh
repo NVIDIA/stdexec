@@ -71,14 +71,14 @@ namespace nvexec {
                 self.init_,
                 stream));
               status != cudaSuccess) {
-            self.op_state_.propagate_completion_signal(set_error, std::move(status));
+            self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             return;
           }
 
           if (status = STDEXEC_DBG_ERR( //
                 cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
               status != cudaSuccess) {
-            self.op_state_.propagate_completion_signal(set_error, std::move(status));
+            self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             return;
           }
 
@@ -92,15 +92,15 @@ namespace nvexec {
                 self.init_,
                 stream));
               status != cudaSuccess) {
-            self.op_state_.propagate_completion_signal(set_error, std::move(status));
+            self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             return;
           }
 
           status = STDEXEC_DBG_ERR(cudaFreeAsync(d_temp_storage, stream));
           if (status == cudaSuccess) {
-            self.op_state_.propagate_completion_signal(set_value, *d_out);
+            self.op_state_.propagate_completion_signal(stdexec::set_value, *d_out);
           } else {
-            self.op_state_.propagate_completion_signal(set_error, std::move(status));
+            self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
           }
         }
       };
