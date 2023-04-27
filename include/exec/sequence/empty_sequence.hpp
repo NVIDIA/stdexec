@@ -39,7 +39,7 @@ template <class _ReceiverId> struct __operation {
 struct __sender {
   struct __t {
     using __id = __sender;
-    using is_sequence_sender = void;
+    using is_sender = sequence_tag;
     using completion_signatures = stdexec::completion_signatures<>;
 
     template <__decays_to<__t> _Self,
