@@ -841,7 +841,7 @@ namespace exec {
             },
             [](const void* __self, const void* __other) noexcept -> bool {
               static_assert(
-                noexcept(std::declval<const _Scheduler&>() == std::declval<const _Scheduler&>()));
+                noexcept(__declval<const _Scheduler&>() == __declval<const _Scheduler&>()));
               STDEXEC_ASSERT(__self && __other);
               const _Scheduler& __self_scheduler = *static_cast<const _Scheduler*>(__self);
               const _Scheduler& __other_scheduler = *static_cast<const _Scheduler*>(__other);
@@ -964,20 +964,20 @@ namespace exec {
           static const __vtable __vtable_{
             [](const void* __self, const void* __other) noexcept -> bool {
               static_assert(
-                noexcept(std::declval<const _Token&>() == std::declval<const _Token&>()));
+                noexcept(__declval<const _Token&>() == __declval<const _Token&>()));
               STDEXEC_ASSERT(__self && __other);
               const _Token& __self_token = *static_cast<const _Token*>(__self);
               const _Token& __other_token = *static_cast<const _Token*>(__other);
               return __self_token == __other_token;
             },
             [](const void* __self) noexcept -> bool {
-              static_assert(noexcept(std::declval<const _Token&>().stop_requested()));
+              static_assert(noexcept(__declval<const _Token&>().stop_requested()));
               STDEXEC_ASSERT(__self);
               const _Token& __token = *static_cast<const _Token*>(__self);
               return __token.stop_requested();
             },
             [](const void* __self) noexcept -> bool {
-              static_assert(noexcept(std::declval<const _Token&>().stop_possible()));
+              static_assert(noexcept(__declval<const _Token&>().stop_possible()));
               STDEXEC_ASSERT(__self);
               const _Token& __token = *static_cast<const _Token*>(__self);
               return __token.stop_possible();
