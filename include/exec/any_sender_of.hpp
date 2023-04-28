@@ -488,7 +488,7 @@ namespace exec {
       template <class... _Sigs, class... _Queries>
       struct __ref<completion_signatures<_Sigs...>, _Queries...> {
        private:
-        using __vtable_t = __t<__vtable<completion_signatures<_Sigs...>, _Queries...>>;
+        using __vtable_t = stdexec::__t<__vtable<completion_signatures<_Sigs...>, _Queries...>>;
 
         struct __env_t {
           const __vtable_t* __vtable_;
@@ -504,6 +504,8 @@ namespace exec {
         } __env_;
        public:
         using is_receiver = void;
+        using __id = __ref;
+        using __t = __ref;
 
         template <__none_of<__ref, const __ref, __env_t, const __env_t> _Rcvr>
           requires receiver_of<_Rcvr, completion_signatures<_Sigs...>>
@@ -549,44 +551,21 @@ namespace exec {
     template <class _Sigs, class _Queries>
     using __receiver_ref = __mapply<__mbind_front<__q<__rec::__ref>, _Sigs>, _Queries>;
 
-    template <class _Receiver, class _Sigs, class _Queries>
-    struct __operation_base {
-      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __receiver_;
-    };
-
-    template <class _Sender, class _Receiver, class _Queries>
+    template <class _Sender, class _Receiver>
     struct __operation {
       using _Sigs = completion_signatures_of_t<_Sender>;
-      using __receiver_ref_t = __receiver_ref<_Sigs, _Queries>;
 
-      struct __rec {
-        using is_receiver = void;
-        __operation_base<_Receiver, _Sigs, _Queries>* __op_;
-
-        template < __completion_tag _CPO, __decays_to<__rec> _Self, class... _Args>
-          requires __callable<_CPO, _Receiver&&, _Args...>
-        friend void tag_invoke(_CPO, _Self&& __self, _Args&&... __args) noexcept {
-          _CPO{}((_Receiver&&) __self.__op_->__receiver_, (_Args&&) __args...);
-        }
-
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, const __rec& __self) noexcept {
-          return get_env(__self.__op_->__receiver_);
-        }
-      };
-
-      class __t
-        : __immovable
-        , __operation_base<_Receiver, _Sigs, _Queries> {
+      class __t : __immovable {
        public:
         using __id = __operation;
 
         __t(_Sender&& __sender, _Receiver&& __receiver)
-          : __operation_base<_Receiver, _Sigs, _Queries>{(_Receiver&&) __receiver}
-          , __storage_{__sender.__connect(__receiver_ref_t{__rec_})} {
+          : __rec_{(_Receiver&&) __receiver}
+          , __storage_{__sender.__connect(__rec_)} {
         }
 
        private:
-        __rec __rec_{static_cast<__operation_base<_Receiver, _Sigs, _Queries>*>(this)};
+        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rec_;
         __unique_operation_storage __storage_{};
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
@@ -695,7 +674,7 @@ namespace exec {
         __unique_storage_t<__vtable> __storage_;
 
         template <receiver_of<_Sigs> _Rcvr>
-        friend stdexec::__t<__operation<__t, __decay_t<_Rcvr>, _ReceiverQueries>>
+        friend stdexec::__t<__operation<__t, __decay_t<_Rcvr>>>
           tag_invoke(connect_t, __t&& __self, _Rcvr&& __rcvr) {
           return {(__t&&) __self, (_Rcvr&&) __rcvr};
         }
@@ -829,7 +808,8 @@ namespace exec {
       using completion_signatures = typename __sender_base::completion_signatures;
 
       template <class _Sender>
-        requires(!stdexec::__decays_to<_Sender, any_sender>) && stdexec::sender<_Sender>
+        requires(!stdexec::__decays_to<_Sender, any_sender>)
+             && stdexec::sender_to<_Sender, __receiver_base>
       any_sender(_Sender&& __sender) noexcept(
         stdexec::__nothrow_constructible_from<__sender_base, _Sender>)
         : __sender_((_Sender&&) __sender) {
