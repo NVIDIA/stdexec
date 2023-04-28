@@ -244,6 +244,118 @@ namespace exec {
     template <
       class _Vtable,
       class _Allocator,
+      std::size_t _Alignment = alignof(std::max_align_t),
+      std::size_t _InlineSize = 3 * sizeof(void*)>
+    struct __immovable_storage {
+      class __t : __immovable {
+        static constexpr std::size_t __buffer_size = std::max(_InlineSize, sizeof(void*));
+        static constexpr std::size_t __alignment = std::max(_Alignment, alignof(void*));
+        using __with_delete = __delete_t(void() noexcept);
+        using __vtable_t = __storage_vtable<_Vtable, __with_delete>;
+
+        template <class _Tp>
+        static constexpr bool __is_small =
+          sizeof(_Tp) <= __buffer_size && alignof(_Tp) <= __alignment;
+
+        template <class _Tp>
+        static constexpr const __vtable_t* __get_vtable_of_type() noexcept {
+          return &__storage_vtbl<__t, __decay_t<_Tp>, _Vtable, __with_delete>;
+        }
+       public:
+        using __id = __immovable_storage;
+
+        __t() = default;
+
+        template <__not_decays_to<__t> _Tp>
+          requires __callable<__create_vtable_t, __mtype<_Vtable>, __mtype<__decay_t<_Tp>>>
+        __t(_Tp&& __object)
+          : __vtable_{__get_vtable_of_type<_Tp>()} {
+          using _Dp = __decay_t<_Tp>;
+          if constexpr (__is_small<_Dp>) {
+            __construct_small<_Dp>((_Tp&&) __object);
+          } else {
+            __construct_large<_Dp>((_Tp&&) __object);
+          }
+        }
+
+        template <class _Tp, class... _Args>
+          requires __callable<__create_vtable_t, __mtype<_Vtable>, __mtype<_Tp>>
+        __t(std::in_place_type_t<_Tp>, _Args&&... __args)
+          : __vtable_{__get_vtable_of_type<_Tp>()} {
+          if constexpr (__is_small<_Tp>) {
+            __construct_small<_Tp>((_Args&&) __args...);
+          } else {
+            __construct_large<_Tp>((_Args&&) __args...);
+          }
+        }
+
+        ~__t() {
+          __reset();
+        }
+
+        void __reset() noexcept {
+          (*__vtable_)(__delete, this);
+          __object_pointer_ = nullptr;
+          __vtable_ = __default_storage_vtable((__vtable_t*) nullptr);
+        }
+
+        const _Vtable* __get_vtable() const noexcept {
+          return __vtable_;
+        }
+
+        void* __get_object_pointer() const noexcept {
+          return __object_pointer_;
+        }
+
+       private:
+        template <class _Tp, class... _As>
+        void __construct_small(_As&&... __args) {
+          static_assert(sizeof(_Tp) <= __buffer_size && alignof(_Tp) <= __alignment);
+          _Tp* __pointer = static_cast<_Tp*>(static_cast<void*>(&__buffer_[0]));
+          using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
+          _Alloc __alloc{__allocator_};
+          std::allocator_traits<_Alloc>::construct(__alloc, __pointer, (_As&&) __args...);
+          __object_pointer_ = __pointer;
+        }
+
+        template <class _Tp, class... _As>
+        void __construct_large(_As&&... __args) {
+          using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
+          _Alloc __alloc{__allocator_};
+          _Tp* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
+          try {
+            std::allocator_traits<_Alloc>::construct(__alloc, __pointer, (_As&&) __args...);
+          } catch (...) {
+            std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
+            throw;
+          }
+          __object_pointer_ = __pointer;
+        }
+
+        template <class _Tp>
+        friend void tag_invoke(__delete_t, __mtype<_Tp>, __t& __self) noexcept {
+          if (!__self.__object_pointer_) {
+            return;
+          }
+          using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
+          _Alloc __alloc{__self.__allocator_};
+          _Tp* __pointer = static_cast<_Tp*>(std::exchange(__self.__object_pointer_, nullptr));
+          std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
+          if constexpr (!__is_small<_Tp>) {
+            std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
+          }
+        }
+       private:
+        const __vtable_t* __vtable_{__default_storage_vtable((__vtable_t*) nullptr)};
+        void* __object_pointer_{nullptr};
+        alignas(__alignment) std::byte __buffer_[__buffer_size]{};
+        STDEXEC_NO_UNIQUE_ADDRESS _Allocator __allocator_{};
+      };
+    };
+
+    template <
+      class _Vtable,
+      class _Allocator,
       bool _Copyable,
       std::size_t _Alignment,
       std::size_t _InlineSize>
@@ -432,6 +544,9 @@ namespace exec {
     };
 
     template <class _VTable, class _Allocator = std::allocator<std::byte>>
+    using __immovable_storage_t = __t<__immovable_storage<_VTable, _Allocator>>;
+
+    template <class _VTable, class _Allocator = std::allocator<std::byte>>
     using __unique_storage_t = __t<__storage<_VTable, _Allocator>>;
 
     template <class _VTable, class _Allocator = std::allocator<std::byte>>
@@ -546,7 +661,7 @@ namespace exec {
       }
     };
 
-    using __unique_operation_storage = __unique_storage_t<__operation_vtable>;
+    using __immovable_operation_storage = __immovable_storage_t<__operation_vtable>;
 
     template <class _Sigs, class _Queries>
     using __receiver_ref = __mapply<__mbind_front<__q<__rec::__ref>, _Sigs>, _Queries>;
@@ -566,7 +681,7 @@ namespace exec {
 
        private:
         STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rec_;
-        __unique_operation_storage __storage_{};
+        __immovable_operation_storage __storage_{};
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
           STDEXEC_ASSERT(__self.__storage_.__get_vtable()->__start_);
@@ -605,17 +720,17 @@ namespace exec {
           return *this;
         }
 
-        __unique_operation_storage (*__connect_)(void*, __receiver_ref_t);
+        __immovable_operation_storage (*__connect_)(void*, __receiver_ref_t);
        private:
         template <sender_to<__receiver_ref_t> _Sender>
         friend const __vtable*
           tag_invoke(__create_vtable_t, __mtype<__vtable>, __mtype<_Sender>) noexcept {
           static const __vtable __vtable_{
             {*__create_vtable(__mtype<__query_vtable<_SenderQueries>>{}, __mtype<_Sender>{})},
-            [](void* __object_pointer, __receiver_ref_t __receiver) -> __unique_operation_storage {
+            [](void* __object_pointer, __receiver_ref_t __receiver) -> __immovable_operation_storage {
               _Sender& __sender = *static_cast<_Sender*>(__object_pointer);
               using __op_state_t = connect_result_t<_Sender, __receiver_ref_t>;
-              return __unique_operation_storage{
+              return __immovable_operation_storage{
                 std::in_place_type<__op_state_t>, __conv{[&] {
                   return connect((_Sender&&) __sender, (__receiver_ref_t&&) __receiver);
                 }}};
@@ -661,7 +776,7 @@ namespace exec {
           : __storage_{(_Sender&&) __sndr} {
         }
 
-        __unique_operation_storage __connect(__receiver_ref_t __receiver) {
+        __immovable_operation_storage __connect(__receiver_ref_t __receiver) {
           return __storage_.__get_vtable()->__connect_(
             __storage_.__get_object_pointer(), (__receiver_ref_t&&) __receiver);
         }
