@@ -543,7 +543,16 @@ namespace exec {
       STDEXEC_NO_UNIQUE_ADDRESS _Allocator __allocator_{};
     };
 
-    template <class _VTable, class _Allocator = std::allocator<std::byte>>
+    struct __empty_vtable {
+        template <class _Sender>
+        friend const __empty_vtable*
+          tag_invoke(__create_vtable_t, __mtype<__empty_vtable>, __mtype<_Sender>) noexcept {
+          static const __empty_vtable __vtable_{};
+          return &__vtable_;
+        }
+     };
+
+    template <class _VTable = __empty_vtable, class _Allocator = std::allocator<std::byte>>
     using __immovable_storage_t = __t<__immovable_storage<_VTable, _Allocator>>;
 
     template <class _VTable, class _Allocator = std::allocator<std::byte>>
@@ -727,7 +736,8 @@ namespace exec {
           tag_invoke(__create_vtable_t, __mtype<__vtable>, __mtype<_Sender>) noexcept {
           static const __vtable __vtable_{
             {*__create_vtable(__mtype<__query_vtable<_SenderQueries>>{}, __mtype<_Sender>{})},
-            [](void* __object_pointer, __receiver_ref_t __receiver) -> __immovable_operation_storage {
+            [](void* __object_pointer, __receiver_ref_t __receiver)
+              -> __immovable_operation_storage {
               _Sender& __sender = *static_cast<_Sender*>(__object_pointer);
               using __op_state_t = connect_result_t<_Sender, __receiver_ref_t>;
               return __immovable_operation_storage{
@@ -875,10 +885,121 @@ namespace exec {
 
       __copyable_storage_t<__vtable> __storage_{};
     };
+
+    struct __function_ref {
+      void* __ptr_;
+      void (*__invoke_)(void*);
+
+      void operator()() const noexcept {
+        __invoke_(__ptr_);
+      }
+    };
+
+    class __stop_token {
+     public:
+      template <class _Callback>
+      class callback_type {
+        STDEXEC_NO_UNIQUE_ADDRESS _Callback __callback_{};
+        __immovable_storage_t<> __storage_;
+       public:
+        callback_type(const __stop_token& __token, _Callback __callback)
+          : __callback_{static_cast<_Callback&&>(__callback)}
+          , __storage_{__token.__storage_.__get_vtable()->__create_stop_callback_(
+              __token.__storage_.__get_object_pointer(),
+              __function_ref{&__callback_, [](void* __ptr) noexcept {
+                               _Callback& __callback = *static_cast<_Callback*>(__ptr);
+                               static_cast<_Callback&&>(__callback)();
+                             }})} {
+        }
+      };
+
+      template <class _Token>
+        requires __not_decays_to<_Token, __stop_token> && stoppable_token<_Token>
+      __stop_token(_Token&& __token)
+        : __storage_{(_Token&&) __token} {
+      }
+
+      __stop_token(const __stop_token& __other) noexcept
+        : __storage_{__other.__storage_} {}
+
+      __stop_token& operator=(const __stop_token& __other) noexcept {
+        __storage_ = __other.__storage_;
+        return *this;
+      }
+
+      bool stop_requested() const noexcept {
+        return __storage_.__get_vtable()->__stop_requested_(__storage_.__get_object_pointer());
+      }
+
+      bool stop_possible() const noexcept {
+        return __storage_.__get_vtable()->__stop_possible_(__storage_.__get_object_pointer());
+      }
+
+      friend bool operator==(const __stop_token& __self, const __stop_token& __other) noexcept {
+        if (__self.__storage_.__get_vtable() != __other.__storage_.__get_vtable()) {
+          return false;
+        }
+        void* __p = __self.__storage_.__get_object_pointer();
+        void* __o = __other.__storage_.__get_object_pointer();
+        // if both object pointers are not null, use the virtual equal_to function
+        return (__p && __o && __self.__storage_.__get_vtable()->__equal_to_(__p, __o))
+            // if both object pointers are nullptrs, they are equal
+            || (!__p && !__o);
+      }
+
+      friend bool operator!=(const __stop_token& __self, const __stop_token& __other) noexcept {
+        return !(__self == __other);
+      }
+
+     private:
+      struct __vtable {
+        bool (*__equal_to_)(const void*, const void* other) noexcept;
+        bool (*__stop_requested_)(const void*) noexcept;
+        bool (*__stop_possible_)(const void*) noexcept;
+        __immovable_storage_t<> (*__create_stop_callback_)(const void*, __function_ref);
+
+        template <stoppable_token _Token>
+        friend const __vtable*
+          tag_invoke(__create_vtable_t, __mtype<__vtable>, __mtype<_Token>) noexcept {
+          static const __vtable __vtable_{
+            [](const void* __self, const void* __other) noexcept -> bool {
+              static_assert(
+                noexcept(std::declval<const _Token&>() == std::declval<const _Token&>()));
+              STDEXEC_ASSERT(__self && __other);
+              const _Token& __self_token = *static_cast<const _Token*>(__self);
+              const _Token& __other_token = *static_cast<const _Token*>(__other);
+              return __self_token == __other_token;
+            },
+            [](const void* __self) noexcept -> bool {
+              static_assert(noexcept(std::declval<const _Token&>().stop_requested()));
+              STDEXEC_ASSERT(__self);
+              const _Token& __token = *static_cast<const _Token*>(__self);
+              return __token.stop_requested();
+            },
+            [](const void* __self) noexcept -> bool {
+              static_assert(noexcept(std::declval<const _Token&>().stop_possible()));
+              STDEXEC_ASSERT(__self);
+              const _Token& __token = *static_cast<const _Token*>(__self);
+              return __token.stop_possible();
+            },
+            [](const void* __self, __function_ref __fn) -> __immovable_storage_t<> {
+              STDEXEC_ASSERT(__self);
+              const _Token& __token = *static_cast<const _Token*>(__self);
+              using __callback_type = typename _Token::template callback_type<__function_ref>;
+              return __immovable_storage_t<>{std::in_place_type<__callback_type>, __token, __fn};
+            }};
+          return &__vtable_;
+        }
+      };
+
+      __copyable_storage_t<__vtable> __storage_{};
+    };
   } // namepsace __any
 
   template <auto... _Sigs>
   using queries = stdexec::__types<decltype(_Sigs)...>;
+
+  using any_stop_token = __any::__stop_token;
 
   template <class _Completions, auto... _ReceiverQueries>
   class any_receiver_ref {

@@ -634,3 +634,52 @@ TEST_CASE(
   }
   CHECK(counting_scheduler::count == 0);
 }
+
+TEST_CASE("any_sender - any_stop_token is a stoppable_token", "[types][any_stop_token][any_sender]") {
+  STATIC_REQUIRE(stoppable_token<any_stop_token>);
+}
+
+TEST_CASE("any_sender - Create any_stop_token from never_stop_token", "[types][any_stop_token][any_sender]") {
+  STATIC_REQUIRE(copy_constructible<any_stop_token>);
+  any_stop_token token1 = stdexec::never_stop_token();
+  any_stop_token token2 = token1;
+  CHECK((token1 == token2));
+  CHECK(!(token1 != token2));
+}
+
+TEST_CASE("any_sender - Create any_stop_token from in_place_stop_token", "[types][any_stop_token][any_sender]") {
+  in_place_stop_source source1{};
+  in_place_stop_source source2{};
+  SECTION("Copy constructible") {
+    STATIC_REQUIRE(copy_constructible<any_stop_token>);
+    any_stop_token token1 = source1.get_token();
+    any_stop_token token2 = token1;
+    CHECK((token1 == token2));
+    CHECK(!(token1 != token2));
+  }
+  SECTION("Identity preserving") {
+    any_stop_token token1 = source1.get_token();
+    any_stop_token token2 = source2.get_token();
+    CHECK((token1 != token2));
+    CHECK(!(token1 == token2));
+    token2 = token1;
+  }
+}
+
+struct on_stop {
+  bool& called_;
+
+  void operator()() noexcept {
+    called_ = true;
+  }
+};
+
+TEST_CASE("any_sender - register callback", "[types][any_stop_token][any_sender]") {
+  in_place_stop_source source{};
+  any_stop_token token = source.get_token();
+  bool called = false;
+  typename any_stop_token::callback_type<on_stop> callback(token, on_stop{called});
+  CHECK(called == false);
+  source.request_stop();
+  CHECK(called == true);
+}
