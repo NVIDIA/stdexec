@@ -635,11 +635,15 @@ TEST_CASE(
   CHECK(counting_scheduler::count == 0);
 }
 
-TEST_CASE("any_sender - any_stop_token is a stoppable_token", "[types][any_stop_token][any_sender]") {
+TEST_CASE(
+  "any_sender - any_stop_token is a stoppable_token",
+  "[types][any_stop_token][any_sender]") {
   STATIC_REQUIRE(stoppable_token<any_stop_token>);
 }
 
-TEST_CASE("any_sender - Create any_stop_token from never_stop_token", "[types][any_stop_token][any_sender]") {
+TEST_CASE(
+  "any_sender - Create any_stop_token from never_stop_token",
+  "[types][any_stop_token][any_sender]") {
   STATIC_REQUIRE(copy_constructible<any_stop_token>);
   any_stop_token token1 = stdexec::never_stop_token();
   any_stop_token token2 = token1;
@@ -647,7 +651,9 @@ TEST_CASE("any_sender - Create any_stop_token from never_stop_token", "[types][a
   CHECK(!(token1 != token2));
 }
 
-TEST_CASE("any_sender - Create any_stop_token from in_place_stop_token", "[types][any_stop_token][any_sender]") {
+TEST_CASE(
+  "any_sender - Create any_stop_token from in_place_stop_token",
+  "[types][any_stop_token][any_sender]") {
   in_place_stop_source source1{};
   in_place_stop_source source2{};
   SECTION("Copy constructible") {
@@ -682,4 +688,35 @@ TEST_CASE("any_sender - register callback", "[types][any_stop_token][any_sender]
   CHECK(called == false);
   source.request_stop();
   CHECK(called == true);
+}
+
+TEST_CASE("any_sender - stoppable any_sender", "[types][any_stop_token][any_sender]") {
+  using receiver_ref = any_receiver_ref<
+    completion_signatures<set_value_t(int), set_stopped_t()>,
+    get_stop_token.signature<any_stop_token() noexcept>>;
+  using stoppable_sender = receiver_ref::any_sender<>;
+
+  SECTION("stopped") {
+    stoppable_sender sender = when_any(just(21));
+    in_place_stop_source stop_source{};
+    stopped_receiver receiver{stop_source.get_token(), true};
+    stop_source.request_stop();
+    auto do_check = connect(std::move(sender), std::move(receiver));
+    // This CHECKS whether a set_stopped is called
+    start(do_check);
+  }
+  SECTION("not stopped") {
+    stoppable_sender sender = when_any(just(21));
+    in_place_stop_source stop_source{};
+    stopped_receiver receiver{stop_source.get_token(), false};
+    auto do_check = connect(std::move(sender), std::move(receiver));
+    // This CHECKS whether a set_value is called
+    start(do_check);
+  }
+  SECTION("binds to never stop receiver, too") {
+    stoppable_sender sender = when_any(just(21));
+    auto maybe_value = sync_wait(std::move(sender));
+    CHECK(maybe_value.has_value());
+    CHECK(std::get<0>(maybe_value.value()) == 21);
+  }
 }
