@@ -234,7 +234,10 @@ namespace tbbexec {
           }
 
           template <stdexec::same_as<stdexec::set_value_t> Tag, class... As>
-          STDEXEC_DEFINE_CUSTOM(void set_value)(this bulk_receiver&& self, stdexec::Tag, As&&... as) noexcept {
+          STDEXEC_DEFINE_CUSTOM(void set_value)(
+            this bulk_receiver&& self,
+            Tag,
+            As&&... as) noexcept {
             using tuple_t = stdexec::__decayed_tuple<As...>;
 
             shared_state& state = self.shared_state_;
@@ -259,7 +262,10 @@ namespace tbbexec {
           }
 
           template <stdexec::same_as<stdexec::set_error_t> Tag, class Error>
-          STDEXEC_DEFINE_CUSTOM(void set_error)(this bulk_receiver&& self, Tag tag, Error&& err) noexcept {
+          STDEXEC_DEFINE_CUSTOM(void set_error)(
+            this bulk_receiver&& self,
+            Tag tag,
+            Error&& err) noexcept {
             shared_state& state = self.shared_state_;
             tag((Receiver&&) state.receiver_, (Error&&) err);
           }
