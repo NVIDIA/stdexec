@@ -19,6 +19,8 @@
 #include "__type_traits.hpp"
 #include "../functional.hpp"
 
+// clang-format off
+
 #if !STDEXEC_NON_LEXICAL_FRIENDSHIP()
 
 #  define STDEXEC_DEFINE_CPO_TAG_INVOKE_COMPATIBILITY(_STRUCT, _NAME, _NAMESPACE)                   \
@@ -96,34 +98,21 @@
     template <class _Ty, class... _Args>                                                           \
     concept __has_customized_member = /*                                                        */ \
       (!::stdexec::__uses_tag_invoke<_Ty>) /*                                                   */ \
-      &&requires(                                                                                  \
-        _Ty &&__t,                                                                                 \
-        _Args &&...__args) { /*                                            */                      \
-                             ((_Ty &&) __t)                                                        \
-                               ._NAME(                                                             \
-                                 _NAME,                                                            \
-                                 (_Args &&) __args...); /*                                   */    \
+      && requires(_Ty &&__t, _Args &&...__args) { /*                                            */ \
+        ((_Ty &&) __t)._NAME(_NAME, (_Args &&) __args...); /*                                   */ \
       }; /*                                                                                     */ \
                                                                                                    \
     template <class _Ty, class... _Args>                                                           \
     concept __has_customized_static_member = /*                                                 */ \
       (!::stdexec::__uses_tag_invoke<_Ty>) /*                                                   */ \
-      &&requires(                                                                                  \
-        _Ty &&__t,                                                                                 \
-        _Args &&...__args) { /*                                            */                      \
-                             __t._NAME(                                                            \
-                               (_Ty &&) __t,                                                       \
-                               _NAME,                                                              \
-                               (_Args &&) __args...); /*                                */         \
+      && requires(_Ty &&__t, _Args &&...__args) { /*                                            */ \
+        __t._NAME((_Ty &&) __t, _NAME, (_Args &&) __args...); /*                                */ \
       }; /*                                                                                     */ \
                                                                                                    \
     template <class _Ty, class... _Args>                                                           \
     concept __has_customized_tag_invoke = /*                                                    */ \
       requires(_Ty &&__t, _Args &&...__args) { /*                                               */ \
-                                               ::stdexec::tag_invoke(                              \
-                                                 _NAME,                                            \
-                                                 (_Ty &&) __t,                                     \
-                                                 (_Args &&) __args...); /*                    */   \
+        ::stdexec::tag_invoke(_NAME, (_Ty &&) __t, (_Args &&) __args...); /*                    */ \
       }; /*                                                                                     */ \
                                                                                                    \
     namespace __inner {                                                                            \
@@ -220,9 +209,10 @@
     struct STDEXEC_CPO_TAG(_STRUCT);                                                               \
   } /* namespace _NAMESPACE */                                                                     \
   using STDEXEC_CPO_NAMESPACE(_NAME, __VA_ARGS__)::STDEXEC_CPO_TAG(_STRUCT);                       \
-  extern const STDEXEC_CPO_TAG(_STRUCT) _NAME;
+  extern const STDEXEC_CPO_TAG(_STRUCT) _NAME;                                                     \
+  /**/
 
-/**/
+// clang-format on
 
 namespace stdexec {
   template <class _Tag1, class _Tag2>
