@@ -78,7 +78,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
       }
 
       template <ex::same_as<ex::set_error_t> _Tag, class _Error>
-      STDEXEC_DEFINE_CUSTOM(void set_error)(this receiver_2_t&& __self, _Tag, _Error&& __err) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_error)(
+        this receiver_2_t&& __self,
+        _Tag,
+        _Error&& __err) noexcept {
         OpT& op_state = __self.op_state_;
         op_state.propagate_completion_signal(_Tag{}, (_Error&&) __err);
       }
@@ -134,7 +137,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
       }
 
       template <ex::same_as<ex::set_error_t> _Tag, class _Error>
-      STDEXEC_DEFINE_CUSTOM(void set_error)(this receiver_1_t&& __self, _Tag, _Error&& __err) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_error)(
+        this receiver_1_t&& __self,
+        _Tag,
+        _Error&& __err) noexcept {
         OpT& op_state = __self.op_state_;
         op_state.propagate_completion_signal(_Tag{}, (_Error&&) __err);
       }
@@ -162,8 +168,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
       using PredSender = ex::__t<PredecessorSenderId>;
       using Closure = ex::__t<ClosureId>;
       using Receiver = ex::__t<ReceiverId>;
-      using Scheduler =
-        ex::tag_invoke_result_t<ex::get_scheduler_t, ex::env_of_t<Receiver>>;
+      using Scheduler = ex::tag_invoke_result_t<ex::get_scheduler_t, ex::env_of_t<Receiver>>;
       using InnerSender =
         std::invoke_result_t<Closure, ex::tag_invoke_result_t<ex::schedule_t, Scheduler>>;
 
@@ -198,8 +203,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
         std::size_t n)
         : operation_state_base_t<ReceiverId>(
           (Receiver&&) receiver,
-          ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(pred_sender))
-            .context_state_,
+          ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(pred_sender)).context_state_,
           false)
         , pred_sender_{(PredSender&&) pred_sender}
         , closure_(closure)
@@ -222,13 +226,16 @@ namespace repeat_n_detail {
    public:
     template <ex::same_as<ex::set_error_t> _Tag, class _Error>
     STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-    STDEXEC_DEFINE_CUSTOM(void set_error)(this receiver_t&& __self, _Tag __tag, _Error&& __err) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_error)(
+        this receiver_t&& __self,
+        _Tag __tag,
+        _Error&& __err) noexcept {
       __tag(std::move(__self.op_state_.receiver_), (_Error&&) __err);
     }
 
     template <ex::same_as<ex::set_stopped_t> _Tag>
     STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-    STDEXEC_DEFINE_CUSTOM(void set_stopped)(this receiver_t&& __self, _Tag __tag) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_stopped)(this receiver_t&& __self, _Tag __tag) noexcept {
       __tag(std::move(__self.op_state_.receiver_));
     }
 

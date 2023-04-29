@@ -42,7 +42,10 @@ namespace exec {
 
         template <same_as<set_value_t> _Tag, same_as<__t> _Self, class... _Args>
           requires __callable<set_value_t, _Receiver, _Tag, _Args...>
-        STDEXEC_DEFINE_CUSTOM(void set_value)(this _Self&& __self, _Tag, _Args&&... __args) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_value)(
+          this _Self&& __self,
+          _Tag,
+          _Args&&... __args) noexcept {
           stdexec::set_value((_Receiver&&) __self.__upstream_, _Tag{}, (_Args&&) __args...);
         }
 
@@ -157,7 +160,11 @@ namespace exec {
 
         template <same_as<set_value_t> _Tag, __completion_tag _Tag2, class... _Args>
           requires tag_invocable<_Tag2, _Receiver, _Args...>
-        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag, _Tag2, _Args&&... __args) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_value)(
+          this __t&& __self,
+          _Tag,
+          _Tag2,
+          _Args&&... __args) noexcept {
           _Tag2()((_Receiver&&) __self.__upstream_, (_Args&&) __args...);
         }
 

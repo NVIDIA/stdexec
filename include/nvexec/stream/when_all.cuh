@@ -282,7 +282,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               break;
             case _when_all::error:
               std::visit(
-                [this](auto& err) noexcept { stdexec::set_error((Receiver&&) recvr_, std::move(err)); },
+                [this](auto& err) noexcept {
+                  stdexec::set_error((Receiver&&) recvr_, std::move(err));
+                },
                 errors_);
               break;
             case _when_all::stopped:

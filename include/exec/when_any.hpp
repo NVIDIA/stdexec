@@ -79,9 +79,8 @@ namespace exec {
       __completion_signatures_t<_Env, _SenderIds...>>;
 
     template <class _Variant, class... _Ts>
-    concept __result_constructible_from =
-      constructible_from<__decayed_tuple<_Ts...>, _Ts...>
-      && constructible_from<_Variant, __decayed_tuple<_Ts...>>;
+    concept __result_constructible_from = constructible_from<__decayed_tuple<_Ts...>, _Ts...>
+                                       && constructible_from<_Variant, __decayed_tuple<_Ts...>>;
 
     template <class _Variant, class... _Ts>
     concept __nothrow_result_constructible_from =

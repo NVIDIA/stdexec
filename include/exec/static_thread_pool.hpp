@@ -289,7 +289,10 @@ namespace exec {
         }
 
         template <stdexec::same_as<stdexec::set_error_t> Tag, class Error>
-        STDEXEC_DEFINE_CUSTOM(void set_error)(this bulk_receiver&& self, Tag tag, Error&& err) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_error)(
+          this bulk_receiver&& self,
+          Tag tag,
+          Error&& err) noexcept {
           shared_state& state = self.shared_state_;
           tag((Receiver&&) state.receiver_, (Error&&) err);
         }

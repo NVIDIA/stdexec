@@ -52,7 +52,10 @@ namespace empty_recv {
     STDEXEC_DEFINE_CUSTOM(void set_stopped)(this recv_int&&, set_stopped_t) noexcept {
     }
 
-    STDEXEC_DEFINE_CUSTOM(void set_error)(this recv_int&&, set_error_t, std::exception_ptr) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void set_error)(
+      this recv_int&&,
+      set_error_t,
+      std::exception_ptr) noexcept {
     }
 
     STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_int&, get_env_t) noexcept {
@@ -70,7 +73,10 @@ namespace empty_recv {
     STDEXEC_DEFINE_CUSTOM(void set_error)(this recv0_ec&&, set_error_t, std::error_code) noexcept {
     }
 
-    STDEXEC_DEFINE_CUSTOM(void set_error)(this recv0_ec&&, set_error_t, std::exception_ptr) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void set_error)(
+      this recv0_ec&&,
+      set_error_t,
+      std::exception_ptr) noexcept {
     }
 
     STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv0_ec&, get_env_t) noexcept {
@@ -85,10 +91,16 @@ namespace empty_recv {
     STDEXEC_DEFINE_CUSTOM(void set_stopped)(this recv_int_ec&&, set_stopped_t) noexcept {
     }
 
-    STDEXEC_DEFINE_CUSTOM(void set_error)(this recv_int_ec&&, set_error_t, std::error_code) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void set_error)(
+      this recv_int_ec&&,
+      set_error_t,
+      std::error_code) noexcept {
     }
 
-    STDEXEC_DEFINE_CUSTOM(void set_error)(this recv_int_ec&&, set_error_t, std::exception_ptr) noexcept {
+    STDEXEC_DEFINE_CUSTOM(void set_error)(
+      this recv_int_ec&&,
+      set_error_t,
+      std::exception_ptr) noexcept {
     }
 
     STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const recv_int_ec&, get_env_t) noexcept {
@@ -143,12 +155,17 @@ struct expect_void_receiver : base_expect_receiver<_Env> {
     : base_expect_receiver<_Env>(std::move(env)) {
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_void_receiver&& self, ex::set_value_t) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this expect_void_receiver&& self,
+    ex::set_value_t) noexcept {
     self.set_called();
   }
 
   template <typename... Ts>
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_void_receiver&&, ex::set_value_t, Ts...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this expect_void_receiver&&,
+    ex::set_value_t,
+    Ts...) noexcept {
     FAIL_CHECK("set_value called on expect_void_receiver with some non-void value");
   }
 
@@ -156,7 +173,10 @@ struct expect_void_receiver : base_expect_receiver<_Env> {
     FAIL_CHECK("set_stopped called on expect_void_receiver");
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_void_receiver&&, ex::set_error_t, std::exception_ptr) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(
+    this expect_void_receiver&&,
+    ex::set_error_t,
+    std::exception_ptr) noexcept {
     FAIL_CHECK("set_error called on expect_void_receiver");
   }
 };
@@ -175,15 +195,23 @@ struct expect_void_receiver_ex {
   STDEXEC_CPO_ACCESS(ex::get_env_t);
 
   template <class... Ty>
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_void_receiver_ex&& self, ex::set_value_t, const Ty&...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this expect_void_receiver_ex&& self,
+    ex::set_value_t,
+    const Ty&...) noexcept {
     *self.executed_ = true;
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this expect_void_receiver_ex&&, ex::set_stopped_t) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(
+    this expect_void_receiver_ex&&,
+    ex::set_stopped_t) noexcept {
     FAIL_CHECK("set_stopped called on expect_void_receiver_ex");
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_void_receiver_ex&&, ex::set_error_t, std::exception_ptr) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(
+    this expect_void_receiver_ex&&,
+    ex::set_error_t,
+    std::exception_ptr) noexcept {
     FAIL_CHECK("set_error called on expect_void_receiver_ex");
   }
 
@@ -210,18 +238,26 @@ struct expect_value_receiver : base_expect_receiver<Env> {
     , values_(std::move(vals)...) {
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_value_receiver&& self, ex::set_value_t, const Ts&... vals) //
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this expect_value_receiver&& self,
+    ex::set_value_t,
+    const Ts&... vals) //
     noexcept {
     CHECK(self.values_ == std::tie(vals...));
     self.set_called();
   }
 
   template <typename... Us>
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_value_receiver&&, ex::set_value_t, const Us&...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this expect_value_receiver&&,
+    ex::set_value_t,
+    const Us&...) noexcept {
     FAIL_CHECK("set_value called with wrong value types on expect_value_receiver");
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this expect_value_receiver&& self, ex::set_stopped_t) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(
+    this expect_value_receiver&& self,
+    ex::set_stopped_t) noexcept {
     FAIL_CHECK("set_stopped called on expect_value_receiver");
   }
 
@@ -249,20 +285,31 @@ class expect_value_receiver_ex {
     , env_(std::move(env)) {
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_value_receiver_ex self, ex::set_value_t, T val) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this expect_value_receiver_ex self,
+    ex::set_value_t,
+    T val) noexcept {
     *self.dest_ = val;
   }
 
   template <typename... Ts>
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_value_receiver_ex, ex::set_value_t, Ts...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this expect_value_receiver_ex,
+    ex::set_value_t,
+    Ts...) noexcept {
     FAIL_CHECK("set_value called with wrong value types on expect_value_receiver_ex");
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this expect_value_receiver_ex, ex::set_stopped_t) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(
+    this expect_value_receiver_ex,
+    ex::set_stopped_t) noexcept {
     FAIL_CHECK("set_stopped called on expect_value_receiver_ex");
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_value_receiver_ex, ex::set_error_t, std::exception_ptr) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(
+    this expect_value_receiver_ex,
+    ex::set_error_t,
+    std::exception_ptr) noexcept {
     FAIL_CHECK("set_error called on expect_value_receiver_ex");
   }
 
@@ -282,15 +329,23 @@ struct expect_stopped_receiver : base_expect_receiver<Env> {
   }
 
   template <typename... Ts>
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_stopped_receiver&&, ex::set_value_t, Ts...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this expect_stopped_receiver&&,
+    ex::set_value_t,
+    Ts...) noexcept {
     FAIL_CHECK("set_value called on expect_stopped_receiver");
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_stopped_receiver&&, ex::set_error_t, std::exception_ptr) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(
+    this expect_stopped_receiver&&,
+    ex::set_error_t,
+    std::exception_ptr) noexcept {
     FAIL_CHECK("set_error called on expect_stopped_receiver");
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this expect_stopped_receiver&& self, ex::set_stopped_t) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(
+    this expect_stopped_receiver&& self,
+    ex::set_stopped_t) noexcept {
     self.set_called();
   }
 };
@@ -315,15 +370,23 @@ struct expect_stopped_receiver_ex {
   STDEXEC_CPO_ACCESS(ex::get_env_t);
 
   template <typename... Ts>
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_stopped_receiver_ex&&, ex::set_value_t, Ts...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this expect_stopped_receiver_ex&&,
+    ex::set_value_t,
+    Ts...) noexcept {
     FAIL_CHECK("set_value called on expect_stopped_receiver_ex");
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this expect_stopped_receiver_ex&& self, ex::set_stopped_t) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(
+    this expect_stopped_receiver_ex&& self,
+    ex::set_stopped_t) noexcept {
     *self.executed_ = true;
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_stopped_receiver_ex&&, ex::set_error_t, std::exception_ptr) //
+  STDEXEC_DEFINE_CUSTOM(void set_error)(
+    this expect_stopped_receiver_ex&&,
+    ex::set_error_t,
+    std::exception_ptr) //
     noexcept {
     FAIL_CHECK("set_error called on expect_stopped_receiver_ex");
   }
@@ -388,15 +451,23 @@ struct expect_error_receiver : base_expect_receiver<Env> {
   STDEXEC_CPO_ACCESS(ex::set_stopped_t);
 
   template <typename... Ts>
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_error_receiver&&, ex::set_value_t, Ts...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this expect_error_receiver&&,
+    ex::set_value_t,
+    Ts...) noexcept {
     FAIL_CHECK("set_value called on expect_error_receiver");
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this expect_error_receiver&& self, ex::set_stopped_t) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(
+    this expect_error_receiver&& self,
+    ex::set_stopped_t) noexcept {
     FAIL_CHECK("set_stopped called on expect_error_receiver");
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_error_receiver&& self, ex::set_error_t, T err) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(
+    this expect_error_receiver&& self,
+    ex::set_error_t,
+    T err) noexcept {
     self.set_called();
     if (self.error_) {
       CHECK(to_comparable(err) == to_comparable(*self.error_));
@@ -404,7 +475,10 @@ struct expect_error_receiver : base_expect_receiver<Env> {
   }
 
   template <typename E>
-  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_error_receiver&& self, ex::set_error_t, E) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(
+    this expect_error_receiver&& self,
+    ex::set_error_t,
+    E) noexcept {
     FAIL_CHECK("set_error called on expect_error_receiver with wrong error type");
   }
 
@@ -432,20 +506,31 @@ struct expect_error_receiver_ex {
   STDEXEC_CPO_ACCESS(ex::get_env_t);
 
   template <typename... Ts>
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this expect_error_receiver_ex&&, ex::set_value_t, Ts...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this expect_error_receiver_ex&&,
+    ex::set_value_t,
+    Ts...) noexcept {
     FAIL_CHECK("set_value called on expect_error_receiver_ex");
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this expect_error_receiver_ex&&, ex::set_stopped_t) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(
+    this expect_error_receiver_ex&&,
+    ex::set_stopped_t) noexcept {
     FAIL_CHECK("set_stopped called on expect_error_receiver_ex");
   }
 
   template <class Err>
-  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_error_receiver_ex&&, ex::set_error_t, Err) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(
+    this expect_error_receiver_ex&&,
+    ex::set_error_t,
+    Err) noexcept {
     FAIL_CHECK("set_error called on expect_error_receiver_ex with the wrong error type");
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_error)(this expect_error_receiver_ex&& self, ex::set_error_t, T value) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(
+    this expect_error_receiver_ex&& self,
+    ex::set_error_t,
+    T value) noexcept {
     *self.value_ = std::move(value);
   }
 
@@ -474,11 +559,16 @@ struct logging_receiver {
   STDEXEC_CPO_ACCESS(ex::get_env_t);
 
   template <typename... Args>
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this logging_receiver&& self, ex::set_value_t, Args...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this logging_receiver&& self,
+    ex::set_value_t,
+    Args...) noexcept {
     *self.state_ = 0;
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this logging_receiver&& self, ex::set_stopped_t) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(
+    this logging_receiver&& self,
+    ex::set_stopped_t) noexcept {
     *self.state_ = 1;
   }
 
@@ -512,17 +602,26 @@ struct typecat_receiver {
   //     *self.value_ = v;
   //     *self.cat_ = typecat::value;
   // }
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this typecat_receiver self, ex::set_value_t, T& v) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this typecat_receiver self,
+    ex::set_value_t,
+    T& v) noexcept {
     *self.value_ = v;
     *self.cat_ = typecat::ref;
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this typecat_receiver self, ex::set_value_t, const T& v) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this typecat_receiver self,
+    ex::set_value_t,
+    const T& v) noexcept {
     *self.value_ = v;
     *self.cat_ = typecat::cref;
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this typecat_receiver self, ex::set_value_t, T&& v) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this typecat_receiver self,
+    ex::set_value_t,
+    T&& v) noexcept {
     *self.value_ = v;
     *self.cat_ = typecat::rvalref;
   }
@@ -531,7 +630,10 @@ struct typecat_receiver {
     FAIL_CHECK("set_stopped called");
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_error)(this typecat_receiver self, ex::set_error_t, std::exception_ptr) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(
+    this typecat_receiver self,
+    ex::set_error_t,
+    std::exception_ptr) noexcept {
     FAIL_CHECK("set_error called");
   }
 
@@ -545,7 +647,10 @@ struct fun_receiver {
   F f_;
 
   template <typename... Ts>
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this fun_receiver&& self, ex::set_value_t, Ts... vals) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this fun_receiver&& self,
+    ex::set_value_t,
+    Ts... vals) noexcept {
     try {
       std::move(self.f_)((Ts&&) vals...);
     } catch (...) {
@@ -557,7 +662,10 @@ struct fun_receiver {
     FAIL("Done called");
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_error)(this fun_receiver, ex::set_error_t, std::exception_ptr eptr) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(
+    this fun_receiver,
+    ex::set_error_t,
+    std::exception_ptr eptr) noexcept {
     try {
       if (eptr)
         std::rethrow_exception(eptr);

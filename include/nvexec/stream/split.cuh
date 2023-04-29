@@ -36,8 +36,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     template <class SharedState, class... Ts>
     concept __result_constructible_from =
-      constructible_from<decayed_tuple<Ts...>, Ts...> &&
-      __valid<SharedState::variant_t::template index_of, decayed_tuple<Ts...>>;
+      constructible_from<decayed_tuple<Ts...>, Ts...>
+      && __valid<SharedState::variant_t::template index_of, decayed_tuple<Ts...>>;
 
     template <class SenderId, class SharedState>
     struct receiver_t {
@@ -340,7 +340,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) //
-        noexcept(__nothrow_callable<get_env_t, Sender&>) //
+        noexcept(__nothrow_callable<get_env_t, Sender&>)                   //
         -> env_of_t<Sender> {
         return stdexec::get_env(self.sndr_);
       }

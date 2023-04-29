@@ -299,14 +299,14 @@ namespace nvexec {
 
         template <same_as<set_value_t> Tag, class... As>
         STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& self, Tag, As&&... as) noexcept {
+          STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& self, Tag, As&&... as) noexcept {
           self.variant_->template emplace<decayed_tuple<Tag, As...>>(Tag(), std::move(as)...);
           self.producer_(self.task_);
         }
 
         template <same_as<set_error_t> Tag, class Error>
         STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& self, Tag, Error&& e) noexcept {
+          STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& self, Tag, Error&& e) noexcept {
           if constexpr (__decays_to<Error, std::exception_ptr>) {
             // What is `exception_ptr` but death pending
             self.variant_->template emplace<decayed_tuple<set_error_t, cudaError_t>>(
@@ -320,7 +320,7 @@ namespace nvexec {
 
         template <same_as<set_stopped_t> Tag>
         STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& self, Tag) noexcept {
+          STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& self, Tag) noexcept {
           self.variant_->template emplace<decayed_tuple<Tag>>(Tag());
           self.producer_(self.task_);
         }

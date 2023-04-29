@@ -119,11 +119,12 @@ namespace exec {
             _ResultType __result = (_ResultType&&) __self.__op_->__result_;
             __self.__op_->__result_.__destruct();
             std::visit(__visitor<_Receiver>{(_Receiver&&) __rcvr}, (_ResultType&&) __result);
-          } else try {
-            __set_value_<true>((__t&&) __self);
-          } catch(...) {
-            stdexec::set_error((_Receiver&&) __rcvr, std::current_exception());
-          }
+          } else
+            try {
+              __set_value_<true>((__t&&) __self);
+            } catch (...) {
+              stdexec::set_error((_Receiver&&) __rcvr, std::current_exception());
+            }
         }
 
         template <same_as<set_value_t> _Tag>
@@ -182,9 +183,9 @@ namespace exec {
           : __op_(__op) {
         }
 
-      #if !STDEXEC_NVHPC()
+#if !STDEXEC_NVHPC()
        private:
-      #endif
+#endif
         STDEXEC_CPO_ACCESS(set_value_t);
         STDEXEC_CPO_ACCESS(set_error_t);
         STDEXEC_CPO_ACCESS(set_stopped_t);

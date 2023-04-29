@@ -90,7 +90,10 @@ struct strange_receiver {
     REQUIRE(val == 19);
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_error)(this strange_receiver, ex::set_error_t, std::exception_ptr) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(
+    this strange_receiver,
+    ex::set_error_t,
+    std::exception_ptr) noexcept {
   }
 
   STDEXEC_DEFINE_CUSTOM(void set_stopped)(this strange_receiver, ex::set_stopped_t) noexcept {

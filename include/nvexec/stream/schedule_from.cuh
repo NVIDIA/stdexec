@@ -25,9 +25,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   namespace _sched_from {
     template <class Variant, class... Ts>
-    concept __result_constructible_from =
-      constructible_from<decayed_tuple<Ts...>, Ts...> &&
-      __valid<Variant::template index_of, decayed_tuple<Ts...>>;
+    concept __result_constructible_from = constructible_from<decayed_tuple<Ts...>, Ts...>
+                                       && __valid<Variant::template index_of, decayed_tuple<Ts...>>;
 
     template <class CvrefSenderId, class ReceiverId>
     struct receiver_t {
@@ -92,8 +91,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const source_sender_t& self, get_env_t) //
-        noexcept(__nothrow_callable<get_env_t, const Sender&>)
-          -> env_of_t<const Sender&> {
+        noexcept(__nothrow_callable<get_env_t, const Sender&>) -> env_of_t<const Sender&> {
         // TODO - this code is not exercised by any test
         return stdexec::get_env(self.sndr_);
       }

@@ -125,10 +125,10 @@
 #endif
 
 #if STDEXEC_MSVC() || STDEXEC_HAS_BUILTIN(__is_base_of)
-#define STDEXEC_IS_BASE_OF(...) __is_base_of(__VA_ARGS__)
+#  define STDEXEC_IS_BASE_OF(...) __is_base_of(__VA_ARGS__)
 #else
-#include <type_traits>
-#define STDEXEC_IS_BASE_OF(...) ::std::is_base_of_v<__VA_ARGS__>
+#  include <type_traits>
+#  define STDEXEC_IS_BASE_OF(...) ::std::is_base_of_v<__VA_ARGS__>
 #endif
 
 // NVBUG #4067067

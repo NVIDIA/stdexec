@@ -142,8 +142,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
         requires true;
 
       friend auto tag_invoke(get_env_t, const __t& self) //
-        noexcept(__nothrow_callable<get_env_t, const Sender&>)
-          -> env_of_t<const Sender&> {
+        noexcept(__nothrow_callable<get_env_t, const Sender&>) -> env_of_t<const Sender&> {
         return stdexec::get_env(self.sndr_);
       }
     };

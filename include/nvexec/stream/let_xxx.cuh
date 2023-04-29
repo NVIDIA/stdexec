@@ -127,7 +127,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                 }});
               stdexec::start(__op);
             } else {
-              __self.__op_state_->propagate_completion_signal(stdexec::set_error, std::move(status));
+              __self.__op_state_->propagate_completion_signal(
+                stdexec::set_error, std::move(status));
             }
           }
 
@@ -256,8 +257,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) //
-        noexcept(__nothrow_callable<get_env_t, const _Sender&>)
-          -> env_of_t<const _Sender&> {
+        noexcept(__nothrow_callable<get_env_t, const _Sender&>) -> env_of_t<const _Sender&> {
         return stdexec::get_env(__self.__sndr_);
       }
 

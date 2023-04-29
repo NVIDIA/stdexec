@@ -162,7 +162,10 @@ namespace exec {
 
       template <__same_as<set_value_t> _Tag, class... _As>
         requires __callable<_Tag, _Receiver, _As...>
-      STDEXEC_DEFINE_CUSTOM(void set_value)(this __nest_rcvr&& __self, _Tag, _As&&... __as) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_value)(
+        this __nest_rcvr&& __self,
+        _Tag,
+        _As&&... __as) noexcept {
         auto __scope = __self.__op_->__scope_;
         _Tag()(std::move(__self.__op_->__rcvr_), (_As&&) __as...);
         // do not access __self
@@ -171,7 +174,10 @@ namespace exec {
 
       template <same_as<set_error_t> _Tag, class _Error>
         requires __callable<_Tag, _Receiver, _Error>
-      STDEXEC_DEFINE_CUSTOM(void set_error)(this __nest_rcvr&& __self, _Tag, _Error&& __err) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_error)(
+        this __nest_rcvr&& __self,
+        _Tag,
+        _Error&& __err) noexcept {
         auto __scope = __self.__op_->__scope_;
         _Tag()(std::move(__self.__op_->__rcvr_), (_Error&&) __err);
         // do not access __self
@@ -544,12 +550,18 @@ namespace exec {
 
       // BUGBUG TODO constrain these
       template <__same_as<set_value_t> _Tag, __movable_value... _As>
-      STDEXEC_DEFINE_CUSTOM(void set_value)(this __future_rcvr&& __self, _Tag, _As&&... __as) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_value)(
+        this __future_rcvr&& __self,
+        _Tag,
+        _As&&... __as) noexcept {
         __complete(_Tag(), (__future_rcvr&&) __self, (_As&&) __as...);
       }
 
       template <same_as<set_error_t> _Tag, __movable_value _Error>
-      STDEXEC_DEFINE_CUSTOM(void set_error)(this __future_rcvr&& __self, _Tag, _Error&& __err) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_error)(
+        this __future_rcvr&& __self,
+        _Tag,
+        _Error&& __err) noexcept {
         __complete(_Tag(), (__future_rcvr&&) __self, (_Error&&) __err);
       }
 
@@ -663,7 +675,10 @@ namespace exec {
       // BUGBUG NOT TO SPEC spawn shouldn't accept senders that can fail.
       template <same_as<set_error_t> _Tag>
       [[noreturn]] //
-      STDEXEC_DEFINE_CUSTOM(void set_error)(this __spawn_rcvr&& __self, _Tag, const std::exception_ptr&) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_error)(
+        this __spawn_rcvr&& __self,
+        _Tag,
+        const std::exception_ptr&) noexcept {
         std::terminate();
       }
 

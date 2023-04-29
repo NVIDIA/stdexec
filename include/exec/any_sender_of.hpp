@@ -391,7 +391,8 @@ namespace exec {
       }
 
       template <class _Tp>
-    friend void tag_invoke(__move_construct_t, __mtype<_Tp>, __t& __self, __t&& __other) noexcept {
+      friend void
+        tag_invoke(__move_construct_t, __mtype<_Tp>, __t& __self, __t&& __other) noexcept {
         if (!__other.__object_pointer_) {
           return;
         }
@@ -831,26 +832,34 @@ namespace exec {
     STDEXEC_CPO_ACCESS(stdexec::set_stopped_t);
     STDEXEC_CPO_ACCESS(stdexec::get_env_t);
 
-    template <stdexec::same_as<stdexec::set_value_t> _Tag, stdexec::same_as<any_receiver_ref> _Self, class... _As>
+    template <
+      stdexec::same_as<stdexec::set_value_t> _Tag,
+      stdexec::same_as<any_receiver_ref> _Self,
+      class... _As>
       requires stdexec::__callable<_Tag, __receiver_base, _As...>
     STDEXEC_DEFINE_CUSTOM(void set_value)(this _Self&& __self, _Tag, _As&&... __as) noexcept {
       _Tag()((__receiver_base&&) __self.__receiver_, (_As&&) __as...);
     }
 
-    template <stdexec::same_as<stdexec::set_error_t> _Tag, stdexec::same_as<any_receiver_ref> _Self, class _Error>
+    template <
+      stdexec::same_as<stdexec::set_error_t> _Tag,
+      stdexec::same_as<any_receiver_ref> _Self,
+      class _Error>
       requires stdexec::__callable<_Tag, __receiver_base, _Error>
     STDEXEC_DEFINE_CUSTOM(void set_error)(this _Self&& __self, _Tag, _Error&& __err) noexcept {
       _Tag()((__receiver_base&&) __self.__receiver_, (_Error&&) __err);
     }
 
-    template <stdexec::same_as<stdexec::set_stopped_t> _Tag, stdexec::same_as<any_receiver_ref> _Self>
+    template <
+      stdexec::same_as<stdexec::set_stopped_t> _Tag,
+      stdexec::same_as<any_receiver_ref> _Self>
       requires stdexec::__callable<_Tag, __receiver_base>
     STDEXEC_DEFINE_CUSTOM(void set_stopped)(this _Self&& __self, _Tag) noexcept {
       _Tag()((__receiver_base&&) __self.__receiver_);
     }
 
     template <stdexec::same_as<stdexec::get_env_t> _Tag, stdexec::same_as<any_receiver_ref> _Self>
-    STDEXEC_DEFINE_CUSTOM(auto get_env)(this const _Self& __self, _Tag) //
+    STDEXEC_DEFINE_CUSTOM(auto get_env)(this const _Self& __self, _Tag)   //
       noexcept(stdexec::__nothrow_callable<_Tag, const __receiver_base&>) //
       -> stdexec::env_of_t<const __receiver_base&> {
       return _Tag()(__self.__receiver_);
@@ -944,13 +953,13 @@ namespace exec {
 
        private:
         template <class _Tag, stdexec::__decays_to<any_scheduler> Self, class... _As>
-          requires stdexec::
-            tag_invocable< _Tag, stdexec::__copy_cvref_t<Self, __scheduler_base>, _As...>
-          friend auto tag_invoke(_Tag, Self&& __self, _As&&... __as) noexcept(
-            stdexec::nothrow_tag_invocable<
-              _Tag,
-              stdexec::__copy_cvref_t<Self, __scheduler_base>,
-              _As...>) {
+          requires stdexec::tag_invocable<
+            _Tag,
+            stdexec::__copy_cvref_t<Self, __scheduler_base>,
+            _As...>
+        friend auto tag_invoke(_Tag, Self&& __self, _As&&... __as) noexcept(
+          stdexec::
+            nothrow_tag_invocable< _Tag, stdexec::__copy_cvref_t<Self, __scheduler_base>, _As...>) {
           return tag_invoke(_Tag{}, ((Self&&) __self).__scheduler_, (_As&&) __as...);
         }
 

@@ -43,7 +43,10 @@ namespace exec {
 
           template <same_as<set_value_t> _Tag, class... _Args>
             requires __callable<_Tag, _Receiver, _Args...>
-          STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag, _Args&&... __args) noexcept {
+          STDEXEC_DEFINE_CUSTOM(void set_value)(
+            this __t&& __self,
+            _Tag,
+            _Args&&... __args) noexcept {
             _Tag{}((_Receiver&&) __self.__receiver_, (_Args&&) __args...);
           }
 

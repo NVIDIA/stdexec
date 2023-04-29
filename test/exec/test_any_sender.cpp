@@ -58,7 +58,10 @@ struct sink_receiver {
     r.value_ = value;
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_error)(this sink_receiver&& r, set_error_t, std::exception_ptr e) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(
+    this sink_receiver&& r,
+    set_error_t,
+    std::exception_ptr e) noexcept {
     r.value_ = e;
   }
 
@@ -345,7 +348,10 @@ struct stopped_receiver : stopped_receiver_base {
   bool expect_stop_{false};
 
   template <class... Args>
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this const stopped_receiver& r, set_value_t, Args&&...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this const stopped_receiver& r,
+    set_value_t,
+    Args&&...) noexcept {
     CHECK(!r.expect_stop_);
   }
 

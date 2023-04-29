@@ -178,8 +178,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         requires true;
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) //
-        noexcept(__nothrow_callable<get_env_t, const Sender&>)
-          -> env_of_t<const Sender&> {
+        noexcept(__nothrow_callable<get_env_t, const Sender&>) -> env_of_t<const Sender&> {
         return stdexec::get_env(self.sndr_);
       }
     };

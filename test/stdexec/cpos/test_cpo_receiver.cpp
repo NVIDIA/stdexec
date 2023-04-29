@@ -46,11 +46,17 @@ struct recv_value {
 struct recv_rvalref {
   int* target_;
 
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this recv_rvalref&& self, ex::set_value_t, int val) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this recv_rvalref&& self,
+    ex::set_value_t,
+    int val) noexcept {
     *self.target_ = val;
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_error)(this recv_rvalref&& self, ex::set_error_t, int ec) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(
+    this recv_rvalref&& self,
+    ex::set_error_t,
+    int ec) noexcept {
     *self.target_ = -ec;
   }
 
@@ -86,11 +92,17 @@ struct recv_ref {
 struct recv_cref {
   int* target_;
 
-  STDEXEC_DEFINE_CUSTOM(void set_value)(this const recv_cref& self, ex::set_value_t, int val) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(
+    this const recv_cref& self,
+    ex::set_value_t,
+    int val) noexcept {
     *self.target_ = val;
   }
 
-  STDEXEC_DEFINE_CUSTOM(void set_error)(this const recv_cref& self, ex::set_error_t, int ec) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(
+    this const recv_cref& self,
+    ex::set_error_t,
+    int ec) noexcept {
     *self.target_ = -ec;
   }
 

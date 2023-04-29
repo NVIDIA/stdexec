@@ -31,8 +31,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     template <class SharedState, class... Ts>
     concept __result_constructible_from =
-      constructible_from<decayed_tuple<Ts...>, Ts...> &&
-      __valid<SharedState::variant_t::template index_of, decayed_tuple<Ts...>>;
+      constructible_from<decayed_tuple<Ts...>, Ts...>
+      && __valid<SharedState::variant_t::template index_of, decayed_tuple<Ts...>>;
 
     using env_t = //
       make_stream_env_t< __make_env_t< __with<get_stop_token_t, in_place_stop_token>>>;
@@ -332,8 +332,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using sh_state_ = __ensure_started::sh_state_t<Sender>;
       template <class Receiver>
       using operation_t = //
-        stdexec::__t<
-          __ensure_started::operation_t<SenderId, stdexec::__id<__decay_t<Receiver>>>>;
+        stdexec::__t< __ensure_started::operation_t<SenderId, stdexec::__id<__decay_t<Receiver>>>>;
 
       Sender sndr_;
       __intrusive_ptr<sh_state_> shared_state_;
@@ -347,8 +346,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) //
-        noexcept(__nothrow_callable<get_env_t, const Sender&>)
-          -> env_of_t<const Sender&> {
+        noexcept(__nothrow_callable<get_env_t, const Sender&>) -> env_of_t<const Sender&> {
         return stdexec::get_env(self.sndr_);
       }
 
