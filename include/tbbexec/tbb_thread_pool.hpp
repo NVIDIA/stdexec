@@ -76,10 +76,11 @@ namespace tbbexec {
 
           template <class CPO>
           friend typename DerivedPoolType::scheduler
-            tag_invoke(stdexec::get_completion_scheduler_t<CPO>, sender s) noexcept {
+            tag_invoke(stdexec::get_completion_scheduler_t<CPO>, const sender& s) noexcept {
             return typename DerivedPoolType::scheduler{s.pool_};
           }
 
+          STDEXEC_CPO_ACCESS(stdexec::get_env_t);
           STDEXEC_DEFINE_CUSTOM(auto get_env)(this const sender& s, stdexec::get_env_t) noexcept
             -> const sender& {
             return s;
