@@ -21,65 +21,6 @@
 
 // clang-format off
 
-#if !STDEXEC_NON_LEXICAL_FRIENDSHIP()
-
-#  define STDEXEC_DEFINE_CPO_TAG_INVOKE_COMPATIBILITY(_STRUCT, _NAME, _NAMESPACE)                   \
-                                                                                                    \
-    template <class _Ty, class... _Args>                                                            \
-      requires _NAMESPACE::__has_customized_member<_Ty, _Args...>                                   \
-            || _NAMESPACE::__has_customized_static_member<_Ty, _Args...>                            \
-               friend auto                                                                          \
-               tag_invoke(const STDEXEC_CPO_TAG(_STRUCT) &, _Ty &&__t, _Args &&...__args) noexcept( \
-                 noexcept(__meta<false>(__declval<_Ty>(), __declval<_Args>()...)()))                \
-                 ->decltype(__meta<false>(__declval<_Ty>(), __declval<_Args>()...)()) {             \
-      if constexpr (_NAMESPACE::__has_customized_member<_Ty, _Args...>) {                           \
-        return ((_Ty &&) __t)._NAME(_NAME, (_Args &&) __args...);                                   \
-      } else {                                                                                      \
-        return __t._NAME((_Ty &&) __t, _NAME, (_Args &&) __args...);                                \
-      }                                                                                             \
-    }                                                                                               \
-    /**/
-
-#else
-
-// GCC doesn't grant friend status to the hidden friend functions of a
-// friend class, even though they are defined lexically within the scope
-// of the friend class. As a result, we need some extra indirections to
-// evaluate all expressions within the context of the class granted
-// friendship.
-#  define STDEXEC_DEFINE_CPO_TAG_INVOKE_COMPATIBILITY(_STRUCT, _NAME, _NAMESPACE)                   \
-    template <class _Ty, class... _Args>                                                            \
-    static constexpr bool __has_customized_member =                                                 \
-      _NAMESPACE::__has_customized_member<_Ty, _Args...>;                                           \
-                                                                                                    \
-    template <class _Ty, class... _Args>                                                            \
-    static constexpr bool __has_customized_static_member =                                          \
-      _NAMESPACE::__has_customized_static_member<_Ty, _Args...>;                                    \
-                                                                                                    \
-    template <class _Ty, class... _Args>                                                            \
-    static auto __tag_invoke(_Ty &&__t, _Args &&...__args) noexcept(                                \
-      noexcept(__meta<false>(__declval<_Ty>(), __declval<_Args>()...)()))                           \
-      ->decltype(__meta<false>(__declval<_Ty>(), __declval<_Args>()...)()) {                        \
-      if constexpr (__has_customized_member<_Ty, _Args...>) {                                       \
-        return ((_Ty &&) __t)._NAME(_NAME, (_Args &&) __args...);                                   \
-      } else {                                                                                      \
-        return __t._NAME((_Ty &&) __t, _NAME, (_Args &&) __args...);                                \
-      }                                                                                             \
-    }                                                                                               \
-                                                                                                    \
-    template <class _Ty, class... _Args>                                                            \
-      requires __has_customized_member<_Ty, _Args...>                                               \
-            || __has_customized_static_member<_Ty, _Args...>                                        \
-               friend auto                                                                          \
-               tag_invoke(const STDEXEC_CPO_TAG(_STRUCT) &, _Ty &&__t, _Args &&...__args) noexcept( \
-                 noexcept(__meta<false>(__declval<_Ty>(), __declval<_Args>()...)()))                \
-                 ->decltype(__meta<false>(__declval<_Ty>(), __declval<_Args>()...)()) {             \
-      return __tag_invoke((_Ty &&) __t, (_Args &&) __args...);                                      \
-    }                                                                                               \
-    /**/
-#endif
-
-
 #define STDEXEC_EAT_STRUCT_struct
 #define STDEXEC_CPO_TAG(_STRUCT)                                                                   \
   STDEXEC_CAT(STDEXEC_EAT_STRUCT_, _STRUCT)                                                        \
@@ -98,26 +39,47 @@
     template <class _Ty, class... _Args>                                                           \
     concept __has_customized_member = /*                                                        */ \
       (!::stdexec::__uses_tag_invoke<_Ty>) /*                                                   */ \
-      && requires(_Ty &&__t, _Args &&...__args) { /*                                            */ \
-        ((_Ty &&) __t)._NAME(_NAME, (_Args &&) __args...); /*                                   */ \
+      && requires { /*                                                                          */ \
+        typename ::stdexec::__mfront<STDEXEC_CPO_TAG(_STRUCT), _Ty> /*                          */ \
+          ::template __has_customized_member_t<_Ty, _Args...>; /*                               */ \
       }; /*                                                                                     */ \
                                                                                                    \
     template <class _Ty, class... _Args>                                                           \
     concept __has_customized_static_member = /*                                                 */ \
       (!::stdexec::__uses_tag_invoke<_Ty>) /*                                                   */ \
-      && requires(_Ty &&__t, _Args &&...__args) { /*                                            */ \
-        __t._NAME((_Ty &&) __t, _NAME, (_Args &&) __args...); /*                                */ \
+      && requires { /*                                                                          */ \
+        typename ::stdexec::__mfront<STDEXEC_CPO_TAG(_STRUCT), _Ty> /*                          */ \
+          ::template __has_customized_static_member_t<_Ty, _Args...>; /*                        */ \
       }; /*                                                                                     */ \
                                                                                                    \
     template <class _Ty, class... _Args>                                                           \
     concept __has_customized_tag_invoke = /*                                                    */ \
-      requires(_Ty &&__t, _Args &&...__args) { /*                                               */ \
-        ::stdexec::tag_invoke(_NAME, (_Ty &&) __t, (_Args &&) __args...); /*                    */ \
+      requires { /*                                                                             */ \
+        typename ::stdexec::__mfront<STDEXEC_CPO_TAG(_STRUCT), _Ty> /*                          */ \
+          ::template __has_customized_tag_invoke_t<_Ty, _Args...>; /*                           */ \
       }; /*                                                                                     */ \
                                                                                                    \
     namespace __inner {                                                                            \
       struct __base {                                                                              \
         using __accessor = __base;                                                                 \
+                                                                                                   \
+        template <class _Ty, class... _Args>                                                       \
+          requires requires(_Ty &&__t, _Args &&...__args) { /*                                  */ \
+            ((_Ty &&) __t)._NAME(_NAME, (_Args &&) __args...); /*                               */ \
+          } /*                                                                                  */ \
+        using __has_customized_member_t = void; /*                                              */ \
+                                                                                                   \
+        template <class _Ty, class... _Args>                                                       \
+          requires requires(_Ty &&__t, _Args &&...__args) { /*                                  */ \
+            __t._NAME((_Ty &&) __t, _NAME, (_Args &&) __args...); /*                            */ \
+          } /*                                                                                  */ \
+        using __has_customized_static_member_t = void; /*                                       */ \
+                                                                                                   \
+        template <class _Ty, class... _Args>                                                       \
+          requires requires(_Ty &&__t, _Args &&...__args) { /*                                  */ \
+            ::stdexec::tag_invoke(_NAME, (_Ty &&) __t, (_Args &&) __args...); /*                */ \
+          } /*                                                                                  */ \
+        using __has_customized_tag_invoke_t = void; /*                                          */ \
                                                                                                    \
         template <bool _TryTagInvoke = true, class _Ty, class... _Args>                            \
         static constexpr auto __meta(_Ty &&__t, _Args &&...__args) noexcept {                      \
@@ -168,10 +130,19 @@
           }                                                                                        \
         };                                                                                         \
                                                                                                    \
-        STDEXEC_DEFINE_CPO_TAG_INVOKE_COMPATIBILITY(                                               \
-          _STRUCT,                                                                                 \
-          _NAME,                                                                                   \
-          STDEXEC_CPO_NAMESPACE(_NAME, __VA_ARGS__))                                               \
+        template <class _Ty, class... _Args>                                                       \
+          requires __has_customized_member<_Ty, _Args...>                                          \
+                || __has_customized_static_member<_Ty, _Args...>                                   \
+        friend auto                                                                                \
+        tag_invoke(const STDEXEC_CPO_TAG(_STRUCT) &, _Ty &&__t, _Args &&...__args) noexcept(       \
+          noexcept(__meta<false>(__declval<_Ty>(), __declval<_Args>()...)()))                      \
+          -> decltype(__meta<false>(__declval<_Ty>(), __declval<_Args>()...)()) {                  \
+          if constexpr (__has_customized_member<_Ty, _Args...>) {                                  \
+            return ((_Ty &&) __t)._NAME(_NAME, (_Args &&) __args...);                              \
+          } else {                                                                                 \
+            return __t._NAME((_Ty &&) __t, _NAME, (_Args &&) __args...);                           \
+          }                                                                                        \
+        }                                                                                          \
       };                                                                                           \
     } /* namespace __inner */                                                                      \
                                                                                                    \

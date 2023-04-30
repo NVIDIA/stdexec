@@ -186,9 +186,7 @@ struct expect_void_receiver_ex {
     : executed_(&executed) {
   }
 
-#if !STDEXEC_NVHPC()
  private:
-#endif
   STDEXEC_CPO_ACCESS(ex::set_value_t);
   STDEXEC_CPO_ACCESS(ex::set_error_t);
   STDEXEC_CPO_ACCESS(ex::set_stopped_t);
@@ -221,7 +219,6 @@ struct expect_void_receiver_ex {
     return {};
   }
 
- private:
   bool* executed_;
 };
 
@@ -361,9 +358,7 @@ struct expect_stopped_receiver_ex {
     , env_(std::move(env)) {
   }
 
-#if !STDEXEC_NVHPC()
  private:
-#endif
   STDEXEC_CPO_ACCESS(ex::set_value_t);
   STDEXEC_CPO_ACCESS(ex::set_error_t);
   STDEXEC_CPO_ACCESS(ex::set_stopped_t);
@@ -397,7 +392,6 @@ struct expect_stopped_receiver_ex {
     return self.env_;
   }
 
- private:
   bool* executed_;
   Env env_;
 };
@@ -442,10 +436,7 @@ struct expect_error_receiver : base_expect_receiver<Env> {
     return *this;
   }
 
-#if !STDEXEC_NVHPC()
  private:
-#endif
-
   STDEXEC_CPO_ACCESS(ex::set_value_t);
   STDEXEC_CPO_ACCESS(ex::set_error_t);
   STDEXEC_CPO_ACCESS(ex::set_stopped_t);
@@ -482,7 +473,6 @@ struct expect_error_receiver : base_expect_receiver<Env> {
     FAIL_CHECK("set_error called on expect_error_receiver with wrong error type");
   }
 
- private:
   std::optional<T> error_;
 };
 
@@ -497,9 +487,7 @@ struct expect_error_receiver_ex {
     , env_(std::move(env)) {
   }
 
-#if !STDEXEC_NVHPC()
  private:
-#endif
   STDEXEC_CPO_ACCESS(ex::set_value_t);
   STDEXEC_CPO_ACCESS(ex::set_error_t);
   STDEXEC_CPO_ACCESS(ex::set_stopped_t);
@@ -540,7 +528,6 @@ struct expect_error_receiver_ex {
     return self.env_;
   }
 
- private:
   T* value_;
   Env env_{};
 };
@@ -550,9 +537,7 @@ struct logging_receiver {
     : state_(&state) {
   }
 
-#if !STDEXEC_NVHPC()
  private:
-#endif
   STDEXEC_CPO_ACCESS(ex::set_value_t);
   STDEXEC_CPO_ACCESS(ex::set_error_t);
   STDEXEC_CPO_ACCESS(ex::set_stopped_t);
@@ -581,7 +566,6 @@ struct logging_receiver {
     return {};
   }
 
- private:
   int* state_;
 };
 

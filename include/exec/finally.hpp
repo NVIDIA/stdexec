@@ -104,9 +104,7 @@ namespace exec {
           : __op_{__op} {
         }
 
-#if !STDEXEC_NVHPC()
        private:
-#endif
         STDEXEC_CPO_ACCESS(set_value_t);
         STDEXEC_CPO_ACCESS(set_error_t);
         STDEXEC_CPO_ACCESS(set_stopped_t);
@@ -151,7 +149,6 @@ namespace exec {
           return stdexec::get_env(__self.__op_->__receiver_);
         }
 
-       private:
         __final_operation_base<_ResultType, _ReceiverId>* __op_;
       };
     };
@@ -183,9 +180,7 @@ namespace exec {
           : __op_(__op) {
         }
 
-#if !STDEXEC_NVHPC()
        private:
-#endif
         STDEXEC_CPO_ACCESS(set_value_t);
         STDEXEC_CPO_ACCESS(set_error_t);
         STDEXEC_CPO_ACCESS(set_stopped_t);
@@ -227,7 +222,6 @@ namespace exec {
           return stdexec::get_env(__self.__op_->__receiver_);
         }
 
-       private:
         __base_op_t* __op_;
       };
     };

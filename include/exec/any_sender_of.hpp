@@ -824,9 +824,6 @@ namespace exec {
     using __env_t = stdexec::env_of_t<__receiver_base>;
     __receiver_base __receiver_;
 
-#if STDEXEC_NVHPC()
-   public:
-#endif
     STDEXEC_CPO_ACCESS(stdexec::set_value_t);
     STDEXEC_CPO_ACCESS(stdexec::set_error_t);
     STDEXEC_CPO_ACCESS(stdexec::set_stopped_t);

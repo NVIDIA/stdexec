@@ -32,9 +32,7 @@ namespace exec {
           : __upstream_{(_Receiver&&) __upstream} {
         }
 
-#if !STDEXEC_NVHPC()
        private:
-#endif
         STDEXEC_CPO_ACCESS(set_value_t);
         STDEXEC_CPO_ACCESS(set_error_t);
         STDEXEC_CPO_ACCESS(set_stopped_t);
@@ -68,7 +66,6 @@ namespace exec {
           return stdexec::get_env(__self.__upstream_);
         }
 
-       private:
         _Receiver __upstream_;
       };
     };
@@ -150,9 +147,7 @@ namespace exec {
           : __upstream_{(_Receiver&&) __upstream} {
         }
 
-#if !STDEXEC_NVHPC()
        private:
-#endif
         STDEXEC_CPO_ACCESS(set_value_t);
         STDEXEC_CPO_ACCESS(set_error_t);
         STDEXEC_CPO_ACCESS(set_stopped_t);
@@ -187,7 +182,6 @@ namespace exec {
           return stdexec::get_env(__self.__upstream_);
         }
 
-       private:
         _Receiver __upstream_;
       };
     };
