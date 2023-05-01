@@ -2344,7 +2344,7 @@ namespace stdexec {
         this __as_receiver&&,
         _Tag,
         std::exception_ptr) noexcept {
-        STDEXEC_TERMINATE();
+        std::terminate();
       }
 
       template <same_as<set_stopped_t> _Tag>

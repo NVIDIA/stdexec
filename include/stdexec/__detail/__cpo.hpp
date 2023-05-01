@@ -121,11 +121,11 @@
           constexpr auto operator()(const _Tag &__tag, _Ty &&__t, _Args &&...__args) const         \
             noexcept(__noexcept_v<_Ty, _Args...>) -> __result_t<_Ty, _Args...> {                   \
             if constexpr (__has_customized_member<_Ty, _Args...>) {                                \
-              return ((_Ty &&) __t)._NAME(_NAME, (_Args &&) __args...);                            \
+              return ((_Ty &&) __t)._NAME(__tag, (_Args &&) __args...);                            \
             } else if constexpr (__has_customized_static_member<_Ty, _Args...>) {                  \
-              return __t._NAME((_Ty &&) __t, _NAME, (_Args &&) __args...);                         \
+              return __t._NAME((_Ty &&) __t, __tag, (_Args &&) __args...);                         \
             } else {                                                                               \
-              return ::stdexec::tag_invoke(_NAME, (_Ty &&) __t, (_Args &&) __args...);             \
+              return ::stdexec::tag_invoke(__tag, (_Ty &&) __t, (_Args &&) __args...);             \
             }                                                                                      \
           }                                                                                        \
         };                                                                                         \
@@ -134,13 +134,13 @@
           requires __has_customized_member<_Ty, _Args...>                                          \
                 || __has_customized_static_member<_Ty, _Args...>                                   \
         friend auto                                                                                \
-        tag_invoke(const STDEXEC_CPO_TAG(_STRUCT) &, _Ty &&__t, _Args &&...__args) noexcept(       \
+        tag_invoke(const STDEXEC_CPO_TAG(_STRUCT) &__tag, _Ty &&__t, _Args &&...__args) noexcept(  \
           noexcept(__meta<false>(__declval<_Ty>(), __declval<_Args>()...)()))                      \
           -> decltype(__meta<false>(__declval<_Ty>(), __declval<_Args>()...)()) {                  \
           if constexpr (__has_customized_member<_Ty, _Args...>) {                                  \
-            return ((_Ty &&) __t)._NAME(_NAME, (_Args &&) __args...);                              \
+            return ((_Ty &&) __t)._NAME(__tag, (_Args &&) __args...);                              \
           } else {                                                                                 \
-            return __t._NAME((_Ty &&) __t, _NAME, (_Args &&) __args...);                           \
+            return __t._NAME((_Ty &&) __t, __tag, (_Args &&) __args...);                           \
           }                                                                                        \
         }                                                                                          \
       };                                                                                           \
