@@ -53,10 +53,10 @@ TEST_CASE(
   "[sequence_senders][empty_sequence]") {
   using empty_t = decltype(empty_sequence());
   STATIC_REQUIRE(receiver_of<count_set_next_receiver_t, completion_signatures<set_value_t()>>);
-  STATIC_REQUIRE(sequence_sender_to<empty_t, count_set_next_receiver_t>);
+  STATIC_REQUIRE(sender_to<empty_t, count_set_next_receiver_t>);
 
   int count{0};
-  auto op = sequence_connect(empty_sequence(), count_set_next_receiver_t{count});
+  auto op = connect(empty_sequence(), count_set_next_receiver_t{count});
   start(op);
   CHECK(count == 0);
 }
