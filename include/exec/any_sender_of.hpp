@@ -544,13 +544,13 @@ namespace exec {
     };
 
     struct __empty_vtable {
-        template <class _Sender>
-        friend const __empty_vtable*
-          tag_invoke(__create_vtable_t, __mtype<__empty_vtable>, __mtype<_Sender>) noexcept {
-          static const __empty_vtable __vtable_{};
-          return &__vtable_;
-        }
-     };
+      template <class _Sender>
+      friend const __empty_vtable*
+        tag_invoke(__create_vtable_t, __mtype<__empty_vtable>, __mtype<_Sender>) noexcept {
+        static const __empty_vtable __vtable_{};
+        return &__vtable_;
+      }
+    };
 
     template <class _VTable = __empty_vtable, class _Allocator = std::allocator<std::byte>>
     using __immovable_storage_t = __t<__immovable_storage<_VTable, _Allocator>>;
@@ -560,6 +560,24 @@ namespace exec {
 
     template <class _VTable, class _Allocator = std::allocator<std::byte>>
     using __copyable_storage_t = __t<__storage<_VTable, _Allocator, true>>;
+
+    template <class _Tag, class... _As>
+    _Tag __tag_type(_Tag (*)(_As...));
+
+    template <class _Tag, class... _As>
+    _Tag __tag_type(_Tag (*)(_As...) noexcept);
+
+    template <class _Query>
+    concept __is_stop_token_query = requires {
+      { __tag_type(static_cast<_Query>(nullptr)) } -> same_as<get_stop_token_t>;
+    };
+
+    template <class _Query>
+    concept __is_not_stop_token_query = !__is_stop_token_query<_Query>;
+
+
+    template <class _Query>
+    using __is_not_stop_token_query_v = __mbool<__is_not_stop_token_query<_Query>>;
 
     namespace __rec {
       template <class _Sig>
@@ -610,9 +628,76 @@ namespace exec {
       };
 
       template <class... _Sigs, class... _Queries>
+        requires(__is_not_stop_token_query<_Queries> && ...)
       struct __ref<completion_signatures<_Sigs...>, _Queries...> {
        private:
         using __vtable_t = stdexec::__t<__vtable<completion_signatures<_Sigs...>, _Queries...>>;
+
+        struct __env_t {
+          const __vtable_t* __vtable_;
+          void* __rcvr_;
+          in_place_stop_token __token_;
+
+          template <class _Tag, class... _As>
+            requires __callable<const __vtable_t&, _Tag, void*, _As...>
+          friend auto tag_invoke(_Tag, const __env_t& __self, _As&&... __as) noexcept(
+            __nothrow_callable<const __vtable_t&, _Tag, void*, _As...>)
+            -> __call_result_t<const __vtable_t&, _Tag, void*, _As...> {
+            return (*__self.__vtable_)(_Tag{}, __self.__rcvr_, (_As&&) __as...);
+          }
+
+          friend in_place_stop_token tag_invoke(get_stop_token_t, const __env_t& __self) noexcept {
+            return __self.__token_;
+          }
+        } __env_;
+       public:
+        using is_receiver = void;
+        using __id = __ref;
+        using __t = __ref;
+
+        template <__none_of<__ref, const __ref, __env_t, const __env_t> _Rcvr>
+          requires receiver_of<_Rcvr, completion_signatures<_Sigs...>>
+                && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
+        __ref(_Rcvr& __rcvr) noexcept
+          : __env_{
+            __create_vtable(__mtype<__vtable_t>{}, __mtype<_Rcvr>{}),
+            &__rcvr,
+            stdexec::get_stop_token(stdexec::get_env(__rcvr))} {
+        }
+
+        template < __completion_tag _Tag, __decays_to<__ref> _Self, class... _As>
+          requires __one_of<_Tag(_As...), _Sigs...>
+        friend void tag_invoke(_Tag, _Self&& __self, _As&&... __as) noexcept {
+          (*static_cast<const __rcvr_vfun<_Tag(_As...)>*>(__self.__env_.__vtable_)->__fn_)(
+            ((_Self&&) __self).__env_.__rcvr_, (_As&&) __as...);
+        }
+
+        template <std::same_as<__ref> Self>
+        friend const __env_t& tag_invoke(get_env_t, const Self& __self) noexcept {
+          return __self.__env_;
+        }
+      };
+
+      __mbool<true> __test_never_stop_token(get_stop_token_t (*)(never_stop_token (*)() noexcept));
+
+      template <class _Tag, class _Ret, class... _As>
+      __mbool<false> __test_never_stop_token(_Tag (*)(_Ret (*)(_As...) noexcept));
+
+      template <class _Tag, class _Ret, class... _As>
+      __mbool<false> __test_never_stop_token(_Tag (*)(_Ret (*)(_As...)));
+
+      template <class _Query>
+      using __is_never_stop_token_query =
+        decltype(__test_never_stop_token(static_cast<_Query>(nullptr)));
+
+      template <class... _Sigs, class... _Queries>
+        requires(__is_stop_token_query<_Queries> || ...)
+      struct __ref<completion_signatures<_Sigs...>, _Queries...> {
+       private:
+        using _FilteredQueries =
+          __minvoke<__remove_if<__q<__is_never_stop_token_query>>, _Queries...>;
+        using __vtable_t = stdexec::__t<
+          __mapply<__mbind_front_q<__vtable, completion_signatures<_Sigs...>>, _FilteredQueries>>;
 
         struct __env_t {
           const __vtable_t* __vtable_;
@@ -675,16 +760,108 @@ namespace exec {
     template <class _Sigs, class _Queries>
     using __receiver_ref = __mapply<__mbind_front<__q<__rec::__ref>, _Sigs>, _Queries>;
 
-    template <class _Sender, class _Receiver>
-    struct __operation {
-      using _Sigs = completion_signatures_of_t<_Sender>;
+    struct __on_stop_t {
+      stdexec::in_place_stop_source& __source_;
 
-      class __t : __immovable {
+      void operator()() const noexcept {
+        __source_.request_stop();
+      }
+    };
+
+    template <class _Receiver>
+    struct __operation_base {
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+      stdexec::in_place_stop_source __stop_source_{};
+      using __stop_callback = typename stdexec::stop_token_of_t<
+        stdexec::env_of_t<_Receiver>>::template callback_type<__on_stop_t>;
+      std::optional<__stop_callback> __on_stop_{};
+    };
+
+    template <class _Env>
+    using __env_t = __make_env_t<_Env, __with<get_stop_token_t, in_place_stop_token>>;
+
+    template <class _ReceiverId>
+    struct __stoppable_receiver {
+      using _Receiver = stdexec::__t<_ReceiverId>;
+
+      struct __t {
+        __operation_base<_Receiver>* __op_;
+
+        template <same_as<set_value_t> _SetValue, same_as<__t> _Self, class... _Args>
+          requires __callable<_SetValue, _Receiver&&, _Args...>
+        friend void tag_invoke(_SetValue, _Self&& __self, _Args&&... __args) noexcept {
+          __self.__op_->__on_stop_.reset();
+          _SetValue{}(
+            static_cast<_Receiver&&>(__self.__op_->__rcvr_), static_cast<_Args&&>(__args)...);
+        }
+
+        template <same_as<set_error_t> _SetError, same_as<__t> _Self, class _Error>
+          requires __callable<_SetError, _Receiver&&, _Error>
+        friend void tag_invoke(_SetError, _Self&& __self, _Error&& __err) noexcept {
+          __self.__op_->__on_stop_.reset();
+          _SetError{}(
+            static_cast<_Receiver&&>(__self.__op_->__rcvr_), static_cast<_Error&&>(__err));
+        }
+
+        template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
+          requires __callable<_SetStopped, _Receiver&&>
+        friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
+          __self.__op_->__on_stop_.reset();
+          _SetStopped{}(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
+        }
+
+        template <same_as<get_env_t> _GetEnv, same_as<__t> _Self>
+        friend __env_t<env_of_t<_Receiver>> tag_invoke(_GetEnv, const _Self& __self) noexcept {
+          return __make_env(
+            get_env(__self.__op_->__rcvr_),
+            __with_(get_stop_token, __self.__op_->__stop_source_.get_token()));
+        }
+      };
+    };
+
+    template <class _ReceiverId>
+    using __stoppable_receiver_t = stdexec::__t<__stoppable_receiver<_ReceiverId>>;
+
+    template <class _ReceiverId, bool>
+    struct __operation {
+      using _Receiver = stdexec::__t<_ReceiverId>;
+
+      class __t : public __operation_base<_Receiver> {
        public:
         using __id = __operation;
 
+        template <class _Sender>
         __t(_Sender&& __sender, _Receiver&& __receiver)
-          : __rec_{(_Receiver&&) __receiver}
+          : __operation_base<_Receiver>{static_cast<_Receiver&&>(__receiver)}
+          , __rec_{this}
+          , __storage_{__sender.__connect(__rec_)} {
+        }
+
+       private:
+        __stoppable_receiver_t<_ReceiverId> __rec_;
+        __immovable_operation_storage __storage_{};
+
+        friend void tag_invoke(start_t, __t& __self) noexcept {
+          __self.__on_stop_.emplace(
+            stdexec::get_stop_token(stdexec::get_env(__self.__rcvr_)),
+            __on_stop_t{__self.__stop_source_});
+          STDEXEC_ASSERT(__self.__storage_.__get_vtable()->__start_);
+          __self.__storage_.__get_vtable()->__start_(__self.__storage_.__get_object_pointer());
+        }
+      };
+    };
+
+    template <class _ReceiverId>
+    struct __operation<_ReceiverId, false> {
+      using _Receiver = stdexec::__t<_ReceiverId>;
+
+      class __t {
+       public:
+        using __id = __operation;
+
+        template <class _Sender>
+        __t(_Sender&& __sender, _Receiver&& __receiver)
+          : __rec_{static_cast<_Receiver&&>(__receiver)}
           , __storage_{__sender.__connect(__rec_)} {
         }
 
@@ -720,6 +897,8 @@ namespace exec {
     template <class _Sigs, class _SenderQueries = __types<>, class _ReceiverQueries = __types<>>
     struct __sender {
       using __receiver_ref_t = __receiver_ref<_Sigs, _ReceiverQueries>;
+      static constexpr bool __with_in_place_stop_token =
+        __v<__mapply<__mall_of<__q<__is_not_stop_token_query_v>>, _ReceiverQueries>>;
 
       class __vtable : public __query_vtable<_SenderQueries> {
        public:
@@ -799,7 +978,7 @@ namespace exec {
         __unique_storage_t<__vtable> __storage_;
 
         template <receiver_of<_Sigs> _Rcvr>
-        friend stdexec::__t<__operation<__t, __decay_t<_Rcvr>>>
+        friend stdexec::__t<__operation<stdexec::__id<__decay_t<_Rcvr>>, __with_in_place_stop_token>>
           tag_invoke(connect_t, __t&& __self, _Rcvr&& __rcvr) {
           return {(__t&&) __self, (_Rcvr&&) __rcvr};
         }
@@ -885,121 +1064,10 @@ namespace exec {
 
       __copyable_storage_t<__vtable> __storage_{};
     };
-
-    struct __function_ref {
-      void* __ptr_;
-      void (*__invoke_)(void*);
-
-      void operator()() const noexcept {
-        __invoke_(__ptr_);
-      }
-    };
-
-    class __stop_token {
-     public:
-      template <class _Callback>
-      class callback_type {
-        STDEXEC_NO_UNIQUE_ADDRESS _Callback __callback_{};
-        __immovable_storage_t<> __storage_;
-       public:
-        callback_type(const __stop_token& __token, _Callback __callback)
-          : __callback_{static_cast<_Callback&&>(__callback)}
-          , __storage_{__token.__storage_.__get_vtable()->__create_stop_callback_(
-              __token.__storage_.__get_object_pointer(),
-              __function_ref{&__callback_, [](void* __ptr) noexcept {
-                               _Callback& __callback = *static_cast<_Callback*>(__ptr);
-                               static_cast<_Callback&&>(__callback)();
-                             }})} {
-        }
-      };
-
-      template <class _Token>
-        requires __not_decays_to<_Token, __stop_token> && stoppable_token<_Token>
-      __stop_token(_Token&& __token)
-        : __storage_{(_Token&&) __token} {
-      }
-
-      __stop_token(const __stop_token& __other) noexcept
-        : __storage_{__other.__storage_} {}
-
-      __stop_token& operator=(const __stop_token& __other) noexcept {
-        __storage_ = __other.__storage_;
-        return *this;
-      }
-
-      bool stop_requested() const noexcept {
-        return __storage_.__get_vtable()->__stop_requested_(__storage_.__get_object_pointer());
-      }
-
-      bool stop_possible() const noexcept {
-        return __storage_.__get_vtable()->__stop_possible_(__storage_.__get_object_pointer());
-      }
-
-      friend bool operator==(const __stop_token& __self, const __stop_token& __other) noexcept {
-        if (__self.__storage_.__get_vtable() != __other.__storage_.__get_vtable()) {
-          return false;
-        }
-        void* __p = __self.__storage_.__get_object_pointer();
-        void* __o = __other.__storage_.__get_object_pointer();
-        // if both object pointers are not null, use the virtual equal_to function
-        return (__p && __o && __self.__storage_.__get_vtable()->__equal_to_(__p, __o))
-            // if both object pointers are nullptrs, they are equal
-            || (!__p && !__o);
-      }
-
-      friend bool operator!=(const __stop_token& __self, const __stop_token& __other) noexcept {
-        return !(__self == __other);
-      }
-
-     private:
-      struct __vtable {
-        bool (*__equal_to_)(const void*, const void* other) noexcept;
-        bool (*__stop_requested_)(const void*) noexcept;
-        bool (*__stop_possible_)(const void*) noexcept;
-        __immovable_storage_t<> (*__create_stop_callback_)(const void*, __function_ref);
-
-        template <stoppable_token _Token>
-        friend const __vtable*
-          tag_invoke(__create_vtable_t, __mtype<__vtable>, __mtype<_Token>) noexcept {
-          static const __vtable __vtable_{
-            [](const void* __self, const void* __other) noexcept -> bool {
-              static_assert(
-                noexcept(__declval<const _Token&>() == __declval<const _Token&>()));
-              STDEXEC_ASSERT(__self && __other);
-              const _Token& __self_token = *static_cast<const _Token*>(__self);
-              const _Token& __other_token = *static_cast<const _Token*>(__other);
-              return __self_token == __other_token;
-            },
-            [](const void* __self) noexcept -> bool {
-              static_assert(noexcept(__declval<const _Token&>().stop_requested()));
-              STDEXEC_ASSERT(__self);
-              const _Token& __token = *static_cast<const _Token*>(__self);
-              return __token.stop_requested();
-            },
-            [](const void* __self) noexcept -> bool {
-              static_assert(noexcept(__declval<const _Token&>().stop_possible()));
-              STDEXEC_ASSERT(__self);
-              const _Token& __token = *static_cast<const _Token*>(__self);
-              return __token.stop_possible();
-            },
-            [](const void* __self, __function_ref __fn) -> __immovable_storage_t<> {
-              STDEXEC_ASSERT(__self);
-              const _Token& __token = *static_cast<const _Token*>(__self);
-              using __callback_type = typename _Token::template callback_type<__function_ref>;
-              return __immovable_storage_t<>{std::in_place_type<__callback_type>, __token, __fn};
-            }};
-          return &__vtable_;
-        }
-      };
-
-      __copyable_storage_t<__vtable> __storage_{};
-    };
   } // namepsace __any
 
   template <auto... _Sigs>
   using queries = stdexec::__types<decltype(_Sigs)...>;
-
-  using any_stop_token = __any::__stop_token;
 
   template <class _Completions, auto... _ReceiverQueries>
   class any_receiver_ref {
