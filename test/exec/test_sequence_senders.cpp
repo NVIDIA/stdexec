@@ -26,8 +26,7 @@ struct nop_operation {
   }
 };
 
-TEST_CASE("sequence_senders - nop_operation is an operation state", "[sequence_senders]")
-{
+TEST_CASE("sequence_senders - nop_operation is an operation state", "[sequence_senders]") {
   STATIC_REQUIRE(operation_state<nop_operation>);
 }
 
@@ -43,8 +42,12 @@ struct some_sender_of {
 TEST_CASE("sequence_senders - some_sender_of is a sender", "[sequence_senders]") {
   STATIC_REQUIRE(sender<some_sender_of<set_value_t()>>);
   STATIC_REQUIRE(sender_in<some_sender_of<set_value_t()>, empty_env>);
-  STATIC_REQUIRE(same_as<completion_signatures_of_t<some_sender_of<set_value_t()>>, completion_signatures<set_value_t()>>);
-  STATIC_REQUIRE(same_as<completion_signatures_of_t<some_sender_of<set_value_t(int)>>, completion_signatures<set_value_t(int)>>);
+  STATIC_REQUIRE(same_as<
+                 completion_signatures_of_t<some_sender_of<set_value_t()>>,
+                 completion_signatures<set_value_t()>>);
+  STATIC_REQUIRE(same_as<
+                 completion_signatures_of_t<some_sender_of<set_value_t(int)>>,
+                 completion_signatures<set_value_t(int)>>);
 }
 
 template <__completion_signature... _Sigs>
@@ -53,19 +56,27 @@ struct test_receiver {
 
   template <class _Tag, class... _Args>
     requires __one_of<_Tag(_Args...), _Sigs...>
-  friend void tag_invoke(_Tag, test_receiver&&, _Args&&...) noexcept {}
+  friend void tag_invoke(_Tag, test_receiver&&, _Args&&...) noexcept {
+  }
 
-  friend empty_env tag_invoke(get_env_t, test_receiver) noexcept { return {}; }
+  friend empty_env tag_invoke(get_env_t, test_receiver) noexcept {
+    return {};
+  }
 };
 
 TEST_CASE("sequence_senders - test_receiver is a receiver of its Sigs", "[sequence_senders]") {
   STATIC_REQUIRE(receiver<test_receiver<>>);
   STATIC_REQUIRE(receiver_of<test_receiver<set_value_t()>, completion_signatures<set_value_t()>>);
-  STATIC_REQUIRE_FALSE(receiver_of<test_receiver<set_value_t()>, completion_signatures<set_value_t(int)>>);
-  STATIC_REQUIRE_FALSE(receiver_of<test_receiver<set_value_t()>, completion_signatures<set_error_t(int)>>);
-  STATIC_REQUIRE_FALSE(receiver_of<test_receiver<set_value_t()>, completion_signatures<set_stopped_t()>>);
+  STATIC_REQUIRE_FALSE(
+    receiver_of<test_receiver<set_value_t()>, completion_signatures<set_value_t(int)>>);
+  STATIC_REQUIRE_FALSE(
+    receiver_of<test_receiver<set_value_t()>, completion_signatures<set_error_t(int)>>);
+  STATIC_REQUIRE_FALSE(
+    receiver_of<test_receiver<set_value_t()>, completion_signatures<set_stopped_t()>>);
   STATIC_REQUIRE(sender_to<some_sender_of<set_value_t()>, test_receiver<set_value_t()>>);
-  STATIC_REQUIRE_FALSE(sender_to<some_sender_of<set_value_t(int), set_stopped_t()>, test_receiver<set_value_t(), set_stopped_t()>>);
+  STATIC_REQUIRE_FALSE(sender_to<
+                       some_sender_of<set_value_t(int), set_stopped_t()>,
+                       test_receiver<set_value_t(), set_stopped_t()>>);
 }
 
 template <__completion_signature... _Sigs>
@@ -94,19 +105,20 @@ TEST_CASE("sequence_senders - Test missing next signature", "[sequence_senders]"
   using just_t = decltype(just());
   using next_receiver_t = next_receiver<set_value_t(int)>;
   STATIC_REQUIRE(receiver<next_receiver_t>);
-  STATIC_REQUIRE(
-    sequence_receiver_of<next_receiver_t, completion_signatures<set_value_t(int)>>);
+  STATIC_REQUIRE(sequence_receiver_of< next_receiver_t, completion_signatures<set_value_t(int)>>);
+  STATIC_REQUIRE_FALSE(sequence_receiver_of<
+                       next_receiver_t,
+                       completion_signatures<set_value_t(int), set_stopped_t()>>);
   STATIC_REQUIRE_FALSE(
-    sequence_receiver_of<next_receiver_t, completion_signatures<set_value_t(int), set_stopped_t()>>);
-  STATIC_REQUIRE_FALSE(
-    sequence_receiver_of<next_receiver_t, completion_signatures<set_value_t()>>);
+    sequence_receiver_of< next_receiver_t, completion_signatures<set_value_t()>>);
   STATIC_REQUIRE(sender_to<just_t, next_receiver_t>);
 }
 
 template <__completion_signature... _Sigs>
 struct some_sequence_sender_of {
   using is_sender = sequence_tag;
-  using completion_signatures = stdexec::completion_signatures<_Sigs...>;
+  using completion_signatures = stdexec::completion_signatures<set_value_t()>;
+  using sequence_signatures = stdexec::completion_signatures<_Sigs...>;
 
   template <receiver R>
   friend nop_operation tag_invoke(connect_t, some_sequence_sender_of self, R&& rcvr);
@@ -119,5 +131,4 @@ TEST_CASE("sequence_senders - Test for sequence_connect_t", "[sequence_senders]"
   STATIC_REQUIRE(sequence_sender<seq_sender_t>);
   STATIC_REQUIRE(sender_to<seq_sender_t, next_receiver_t>);
   STATIC_REQUIRE(sender_to<some_sequence_sender_of<set_value_t(int)>, next_receiver_t>);
-  STATIC_REQUIRE_FALSE(sender_to<seq_sender_t, next_receiver<set_value_t(int)>>);
 }

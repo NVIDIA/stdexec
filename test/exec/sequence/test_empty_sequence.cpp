@@ -27,8 +27,8 @@ TEST_CASE(
   "[sequence_senders][empty_sequence]") {
   using empty_t = decltype(empty_sequence());
   STATIC_REQUIRE(sequence_sender<empty_t>);
-  STATIC_REQUIRE(same_as<completion_signatures_of_t<empty_t>, completion_signatures<>>);
-  STATIC_REQUIRE(same_as<__sequence_to_sender_sigs_t<completion_signatures_of_t<empty_t>>, completion_signatures<set_value_t()>>);
+  STATIC_REQUIRE(same_as<completion_signatures_of_t<empty_t>, completion_signatures<set_value_t()>>);
+  STATIC_REQUIRE(same_as<__sequence_signatures_of_t<empty_t, empty_env>, completion_signatures<>>);
 }
 
 struct count_set_next_receiver_t {
