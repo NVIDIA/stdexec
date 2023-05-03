@@ -115,6 +115,16 @@ namespace stdexec {
   template <class _Sender, class _Env>
   using __completion_signatures_of_t = __call_result_t< get_completion_signatures_t, _Sender, _Env>;
 
+  namespace __get_sequence_signatures {
+    struct get_sequence_signatures_t;
+  }
+
+  using __get_sequence_signatures::get_sequence_signatures_t;
+  extern const get_sequence_signatures_t get_sequence_signatures;
+
+  template <class _Sender, class _Env>
+  using __sequence_signatures_of_t = __call_result_t< get_sequence_signatures_t, _Sender, _Env>;
+
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __connect {
     struct connect_t;
@@ -131,6 +141,9 @@ namespace stdexec {
 
   template <class _Sender>
   extern const bool enable_sender;
+
+  template <class _Sender>
+  extern const bool enable_sequence_sender;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __start {
