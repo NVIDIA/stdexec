@@ -15,12 +15,11 @@
  * limitations under the License.
  */
 
-#include "exec/sequence_senders.hpp"
+#include "stdexec/execution.hpp"
 
 #include <catch2/catch.hpp>
 
 using namespace stdexec;
-using namespace exec;
 
 struct nop_operation {
   friend void tag_invoke(start_t, nop_operation&) noexcept {
@@ -102,7 +101,6 @@ TEST_CASE("sequence_senders - Test missing next signature", "[sequence_senders]"
   STATIC_REQUIRE_FALSE(
     sequence_receiver_of<next_receiver_t, completion_signatures<set_value_t()>>);
   STATIC_REQUIRE(sender_to<just_t, next_receiver_t>);
-  STATIC_REQUIRE_FALSE(sequence_sender_to<just_t, next_receiver_t>);
 }
 
 template <__completion_signature... _Sigs>
@@ -111,7 +109,7 @@ struct some_sequence_sender_of {
   using completion_signatures = stdexec::completion_signatures<_Sigs...>;
 
   template <receiver R>
-  friend nop_operation tag_invoke(sequence_connect_t, some_sequence_sender_of self, R&& rcvr);
+  friend nop_operation tag_invoke(connect_t, some_sequence_sender_of self, R&& rcvr);
 };
 
 TEST_CASE("sequence_senders - Test for sequence_connect_t", "[sequence_senders]") {
@@ -119,8 +117,7 @@ TEST_CASE("sequence_senders - Test for sequence_connect_t", "[sequence_senders]"
   using seq_sender_t = some_sequence_sender_of<set_value_t(int), set_stopped_t()>;
   STATIC_REQUIRE(sender<seq_sender_t>);
   STATIC_REQUIRE(sequence_sender<seq_sender_t>);
-  STATIC_REQUIRE_FALSE(sender_to<seq_sender_t, next_receiver_t>);
-  STATIC_REQUIRE(sequence_sender_to<seq_sender_t, next_receiver_t>);
-  STATIC_REQUIRE(sequence_sender_to<some_sequence_sender_of<set_value_t(int)>, next_receiver_t>);
-  STATIC_REQUIRE_FALSE(sequence_sender_to<seq_sender_t, next_receiver<set_value_t(int)>>);
+  STATIC_REQUIRE(sender_to<seq_sender_t, next_receiver_t>);
+  STATIC_REQUIRE(sender_to<some_sequence_sender_of<set_value_t(int)>, next_receiver_t>);
+  STATIC_REQUIRE_FALSE(sender_to<seq_sender_t, next_receiver<set_value_t(int)>>);
 }

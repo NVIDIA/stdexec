@@ -16,50 +16,53 @@
  */
 #pragma once
 
-#include "../sequence_senders.hpp"
+#include "../../stdexec/execution.hpp"
 
 namespace exec {
-namespace __empty_sequence {
+  namespace __empty_sequence {
 
-using namespace stdexec;
-using namespace exec;
+    using namespace stdexec;
 
-template <class _ReceiverId> struct __operation {
-  using _Receiver = stdexec::__t<_ReceiverId>;
-  struct __t {
-    using __id = __operation;
-    STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+    template <class _ReceiverId>
+    struct __operation {
+      using _Receiver = stdexec::__t<_ReceiverId>;
 
-    friend void tag_invoke(start_t, __t& __self) noexcept {
-      stdexec::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
-    }
-  };
-};
+      struct __t {
+        using __id = __operation;
+        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
 
-struct __sender {
-  struct __t {
-    using __id = __sender;
-    using is_sender = sequence_tag;
-    using completion_signatures = stdexec::completion_signatures<>;
+        friend void tag_invoke(start_t, __t& __self) noexcept {
+          stdexec::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
+        }
+      };
+    };
 
-    template <__decays_to<__t> _Self,
-              receiver_of<stdexec::completion_signatures<set_value_t()>> _Rcvr>
-    friend auto
-    tag_invoke(sequence_connect_t, _Self&&,
-               _Rcvr&& __rcvr) noexcept(__nothrow_decay_copyable<_Rcvr>) {
-      return stdexec::__t<__operation<stdexec::__id<__decay_t<_Rcvr>>>>{
-          static_cast<_Rcvr&&>(__rcvr)};
-    }
-  };
-};
+    struct __sender {
+      struct __t {
+        using __id = __sender;
+        using is_sender = sequence_tag;
+        using completion_signatures = stdexec::completion_signatures<>;
 
-struct empty_sequence_t {
-  __t<__sender> operator()() const noexcept { return {}; }
-};
+        template <
+          __decays_to<__t> _Self,
+          receiver_of<stdexec::completion_signatures<set_value_t()>> _Rcvr>
+        friend auto
+          tag_invoke(connect_t, _Self&&, _Rcvr&& __rcvr) noexcept(__nothrow_decay_copyable<_Rcvr>) {
+          return stdexec::__t<__operation<stdexec::__id<__decay_t<_Rcvr>>>>{
+            static_cast<_Rcvr&&>(__rcvr)};
+        }
+      };
+    };
 
-} // namespace __empty_sequence
+    struct empty_sequence_t {
+      __t<__sender> operator()() const noexcept {
+        return {};
+      }
+    };
 
-using __empty_sequence::empty_sequence_t;
-inline constexpr empty_sequence_t empty_sequence{};
+  } // namespace __empty_sequence
+
+  using __empty_sequence::empty_sequence_t;
+  inline constexpr empty_sequence_t empty_sequence{};
 
 } // namespace exec
