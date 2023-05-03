@@ -399,8 +399,8 @@ TEST_CASE(
   using Sigs = completion_signatures<set_value_t(int), set_stopped_t()>;
   using receiver_ref =
     any_receiver_ref<Sigs, get_stop_token.signature<never_stop_token() noexcept>>;
-  using stoppable_sender = receiver_ref::any_sender<>;
-  stoppable_sender sender = when_any(just(21));
+  using unstoppable_sender = receiver_ref::any_sender<>;
+  unstoppable_sender sender = when_any(just(21));
   in_place_stop_source stop_source{};
   stopped_receiver receiver{stop_source.get_token(), false};
   stop_source.request_stop();
