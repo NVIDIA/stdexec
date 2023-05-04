@@ -42,9 +42,9 @@ namespace exec {
       _Rcvr __rcvr;
 
       template <class _Error>
-      void operator()(_Error&& __error) const noexcept {
+      void operator()(_Error&& __error) noexcept {
         if constexpr (__not_decays_to<_Error, not_an_error>) {
-          stdexec::set_error(static_cast<_Rcvr&&>(*__rcvr), static_cast<_Error&&>(__error));
+          stdexec::set_error(static_cast<_Rcvr&&>(__rcvr), static_cast<_Error&&>(__error));
         } else {
           STDEXEC_ASSERT(false);
         }
@@ -245,7 +245,7 @@ namespace exec {
         }
 
         friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t& __self) noexcept {
-          return stdexec::get_env(__self.__rcvr_);
+          return stdexec::get_env(__self.__op_->__rcvr_);
         }
       };
     };

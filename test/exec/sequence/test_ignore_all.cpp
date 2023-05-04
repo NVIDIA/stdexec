@@ -41,7 +41,7 @@ TEST_CASE("ignore_all - Forwards stop", "[ignore_all]") {
   CHECK_FALSE(sync_wait(sndr));
 }
 
-// TEST_CASE("ignore_all - Forwards errors", "[ignore_all]") {
-//   auto sndr = ignore_all(just_error(42));
-//   CHECK_THROWS(sync_wait(sndr));
-// }
+TEST_CASE("ignore_all - Forwards errors", "[ignore_all]") {
+  auto sndr = ignore_all(just_error(42));
+  CHECK_THROWS(sync_wait(sndr));
+}

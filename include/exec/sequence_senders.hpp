@@ -344,7 +344,7 @@ namespace exec {
 
         template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
           requires __callable<set_value_t, _Receiver&&> && __callable<set_stopped_t, _Receiver&&>
-        friend void tag_invoke(_SetStopped, _Self& __self) noexcept {
+        friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
           auto token = stdexec::get_stop_token(stdexec::get_env(__self.__rcvr_));
           if (token.stop_requested()) {
             stdexec::set_stopped(static_cast<_Receiver&&>(__self.__rcvr_));
