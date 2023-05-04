@@ -69,7 +69,7 @@ namespace exec {
 
   template <class _Receiver, class _Sender>
   using __next_sender_of_t = decltype(exec::set_next(
-    stdexec::__declval<std::__decay_t<_Receiver>&>(),
+    stdexec::__declval<stdexec::__decay_t<_Receiver>&>(),
     stdexec::__declval<_Sender>()));
 
   namespace __sequence_sndr {
@@ -334,7 +334,8 @@ namespace exec {
         STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
 
         template <same_as<get_env_t> _GetEnv, same_as<__t> _Self>
-        friend env_of_t<_Receiver> tag_invoke(_GetEnv, const _Self& __self) noexcept {
+        friend env_of_t<_Receiver> tag_invoke(_GetEnv, const _Self& __self) noexcept(
+          __nothrow_callable<get_env_t, const _Receiver&>) {
           return stdexec::get_env(__self.__rcvr_);
         }
 
