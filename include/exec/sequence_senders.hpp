@@ -68,8 +68,9 @@ namespace exec {
   inline constexpr set_next_t set_next;
 
   template <class _Receiver, class _Sender>
-  using __next_sender_of_t =
-    decltype(exec::set_next(stdexec::__declval<std::__decay_t<_Receiver>&>(), stdexec::__declval<_Sender>()));
+  using __next_sender_of_t = decltype(exec::set_next(
+    stdexec::__declval<std::__decay_t<_Receiver>&>(),
+    stdexec::__declval<_Sender>()));
 
   namespace __sequence_sndr {
     struct __nop_operation {
@@ -261,8 +262,8 @@ namespace exec {
       class _Sender,                                              //
       class _Env = __default_env,                                 //
       class _Sigs = completion_signatures<>,                      //
-      class _SetValue = __q<__compl_sigs::__default_set_value>,                 //
-      class _SetError = __q<__compl_sigs::__default_set_error>,                 //
+      class _SetValue = __q<__compl_sigs::__default_set_value>,   //
+      class _SetError = __q<__compl_sigs::__default_set_error>,   //
       class _SetStopped = completion_signatures<set_stopped_t()>> //
     using __try_make_sequence_signatures =                        //
       __minvoke<
@@ -324,10 +325,10 @@ namespace exec {
     struct sequence_connect_t;
 
     template <class _ReceiverId>
-    struct __stopped_as_break {
+    struct __stopped_means_break {
       struct __t {
         using is_receiver = void;
-        using __id = __stopped_as_break;
+        using __id = __stopped_means_break;
         using _Receiver = stdexec::__t<_ReceiverId>;
         STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
 
@@ -345,30 +346,43 @@ namespace exec {
         template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
           requires __callable<set_value_t, _Receiver&&> && __callable<set_stopped_t, _Receiver&&>
         friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
-          auto token = stdexec::get_stop_token(stdexec::get_env(__self.__rcvr_));
-          if (token.stop_requested()) {
-            stdexec::set_stopped(static_cast<_Receiver&&>(__self.__rcvr_));
-          } else {
+          using _Token =
+            __decay_t<decltype(stdexec::get_stop_token(stdexec::get_env(__self.__rcvr_)))>;
+          if constexpr (unstoppable_token<_Token>) {
             stdexec::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
+          } else {
+            auto __token = stdexec::get_stop_token(stdexec::get_env(__self.__rcvr_));
+            if (__token.stop_requested()) {
+              stdexec::set_stopped(static_cast<_Receiver&&>(__self.__rcvr_));
+            } else {
+              stdexec::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
+            }
           }
         }
       };
     };
 
     template <class _Rcvr>
-    using __stopped_as_break_t = __t<__stopped_as_break<__id<__decay_t<_Rcvr>>>>;
+    using __stopped_means_break_t = __t<__stopped_means_break<__id<__decay_t<_Rcvr>>>>;
+
+    template <class _Env>
+    using __single_sender_completion_sigs = __if_c<
+      unstoppable_token<stop_token_of_t<_Env>>,
+      completion_signatures<set_value_t()>,
+      completion_signatures<set_value_t(), set_stopped_t()>>;
 
     template <class _Sender, class _Receiver>
     concept __next_connectable_with_tag_invoke =
-      receiver<_Receiver> &&                                                                      //
-      sender_in<_Sender, env_of_t<_Receiver>> &&                                                  //
-      !sequence_sender_in<_Sender, env_of_t<_Receiver>> &&                                        //
+      receiver<_Receiver> &&                               //
+      sender_in<_Sender, env_of_t<_Receiver>> &&           //
+      !sequence_sender_in<_Sender, env_of_t<_Receiver>> && //
       sequence_receiver_of<_Receiver, completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>
-      &&                                                                                          //
-      __receiver_from<__stopped_as_break_t<_Receiver>, __next_sender_of_t<_Receiver, _Sender>> && //
+      &&                                                   //
+      __receiver_from<__stopped_means_break_t<_Receiver>, __next_sender_of_t<_Receiver, _Sender>>
+      &&                                                   //
       __connect::__connectable_with_tag_invoke<
         __next_sender_of_t<_Receiver, _Sender>&&,
-        __stopped_as_break_t<_Receiver>>;
+        __stopped_means_break_t<_Receiver>>;
 
 
     template <class _Sender, class _Receiver>
@@ -394,11 +408,11 @@ namespace exec {
           using _Result = tag_invoke_result_t<
             connect_t,
             __next_sender_of_t<_Receiver, _Sender>,
-            __stopped_as_break_t<_Receiver>>;
+            __stopped_means_break_t<_Receiver>>;
           constexpr bool _Nothrow = nothrow_tag_invocable<
             connect_t,
             __next_sender_of_t<_Receiver, _Sender>,
-            __stopped_as_break_t<_Receiver>>;
+            __stopped_means_break_t<_Receiver>>;
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
         } else if constexpr (__sequence_connectable_with_tag_invoke<_Sender, _Receiver>) {
           using _Result = tag_invoke_result_t<sequence_connect_t, _Sender, _Receiver>;
@@ -429,7 +443,7 @@ namespace exec {
           return tag_invoke(
             connect_t{},
             (__next_sender_of_t<_Receiver, _Sender>&&) __next,
-            __stopped_as_break_t<_Receiver>{(_Receiver&&) __rcvr});
+            __stopped_means_break_t<_Receiver>{(_Receiver&&) __rcvr});
         } else if constexpr (__sequence_connectable_with_tag_invoke<_Sender, _Receiver>) {
           static_assert(
             operation_state<tag_invoke_result_t<sequence_connect_t, _Sender, _Receiver>>,
@@ -452,6 +466,8 @@ namespace exec {
     template <class _Sender, class _Receiver>
     using sequence_connect_result_t = __call_result_t<sequence_connect_t, _Sender, _Receiver>;
   } // namespace __sequence_sndr
+
+  using __sequence_sndr::__single_sender_completion_sigs;
 
   using __sequence_sndr::sequence_connect_t;
   inline constexpr sequence_connect_t sequence_connect;

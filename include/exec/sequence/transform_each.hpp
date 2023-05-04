@@ -99,7 +99,7 @@ namespace exec {
       __if_c<
         sequence_sender_in<_Sender, _Env>,
         completion_signatures_of_t<_Sender, _Env>,
-        completion_signatures<set_value_t(), set_stopped_t()>>;
+        __single_sender_completion_sigs<_Env>>;
 
     template <class _Sender, class _Env, class _Fun>
     using __sequence_sigs =

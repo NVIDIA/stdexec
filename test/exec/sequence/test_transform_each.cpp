@@ -35,10 +35,6 @@ struct next_receiver {
     CHECK(true);
   }
 
-  friend void tag_invoke(set_stopped_t, next_receiver&&) noexcept {
-    CHECK(false);
-  }
-
   friend empty_env tag_invoke(get_env_t, next_receiver) noexcept { return {}; }
 };
 
@@ -47,8 +43,10 @@ TEST_CASE("transform_each - using then with sender works", "[sequence_senders][t
   auto sequence = transform_each(sender, then([](int value) noexcept { CHECK(value == 42); }));
   using Sequence = decltype(sequence);
   STATIC_REQUIRE(sequence_sender<Sequence>);
+  using completion_sigs = completion_signatures_of_t<Sequence, empty_env>;
   using sequence_sigs = __sequence_signatures_of_t<Sequence, empty_env>;
   STATIC_REQUIRE(same_as<sequence_sigs, completion_signatures<set_value_t()>>);
+  STATIC_REQUIRE(same_as<completion_sigs, completion_signatures<set_value_t()>>);
   STATIC_REQUIRE(sequence_sender_to<Sequence, next_receiver>);
   auto op = sequence_connect(sequence, next_receiver{});
   start(op);
