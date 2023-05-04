@@ -257,8 +257,9 @@ namespace exec {
     struct __operation {
       using _Receiver = stdexec::__t<_ReceiverId>;
       using _Env = env_of_t<_Receiver>;
-      using _ErrorsVariant =
-        __error_types_of_t<_Sender, _Env, __mbind_front_q<std::variant, not_an_error>>;
+      using _ErrorsVariant = __error_sigs_of_t<
+        __sequence_signatures_of_t<_Sender, _Env>,
+        __mbind_front_q<std::variant, not_an_error>>;
 
       struct __t : __sequence_operation_base<_Receiver, _ErrorsVariant> {
         connect_result_t<_Sender, __sequence_receiver_t<_Receiver, _ErrorsVariant>> __op_;
@@ -297,8 +298,9 @@ namespace exec {
       using _Sender = stdexec::__t<__decay_t<_SenderId>>;
 
       template <class _Rcvr>
-      using _ErrorsVariant =
-        __error_types_of_t<_Sender, env_of_t<_Rcvr>, __mbind_front_q<std::variant, not_an_error>>;
+      using _ErrorsVariant = __error_sigs_of_t<
+        __sequence_signatures_of_t<_Sender, env_of_t<_Rcvr>>,
+        __mbind_front_q<std::variant, not_an_error>>;
 
       struct __t {
         using __id = __sender;

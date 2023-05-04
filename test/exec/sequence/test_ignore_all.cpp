@@ -32,6 +32,7 @@ TEST_CASE("ignore_all - Works with a sender", "[ignore_all]") {
   using Sender = decltype(sndr);
   using Sigs = completion_signatures_of_t<Sender>;
   STATIC_REQUIRE(same_as<Sigs, completion_signatures<set_value_t()>>);
+  STATIC_REQUIRE_FALSE(sequence_sender<Sender>);
   CHECK(sync_wait(sndr));
 }
 
