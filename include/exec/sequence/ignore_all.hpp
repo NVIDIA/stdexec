@@ -261,7 +261,8 @@ namespace exec {
           _SetStopped{}(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
         }
 
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t& __self) noexcept {
+        friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t& __self) noexcept(
+          __nothrow_callable<get_env_t, const _Receiver&>) {
           return stdexec::get_env(__self.__op_->__rcvr_);
         }
       };
