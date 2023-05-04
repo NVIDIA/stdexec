@@ -16,6 +16,7 @@
 
 set(stdexec_test_sources
     test_main.cpp
+    exec/sequence/test_ignore_all.cpp
     stdexec/cpos/test_cpo_bulk.cpp
     stdexec/cpos/test_cpo_ensure_started.cpp
     stdexec/cpos/test_cpo_receiver.cpp
