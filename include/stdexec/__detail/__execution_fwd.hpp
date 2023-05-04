@@ -132,9 +132,6 @@ namespace stdexec {
   template <class _Sender>
   extern const bool enable_sender;
 
-  template <class _Sender>
-  extern const bool enable_sequence_sender;
-
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __start {
     struct start_t;
