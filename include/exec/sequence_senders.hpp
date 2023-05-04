@@ -346,7 +346,7 @@ namespace exec {
 
         template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
           requires __callable<set_value_t, _Receiver&&>
-                && (unstoppable_token<_Token> || __callable<set_stopped_t, _Receiver&&>)
+                && (unstoppable_token<_Token> || __callable<set_stopped_t, _Receiver &&>)
         friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
           if constexpr (unstoppable_token<_Token>) {
             stdexec::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
@@ -435,8 +435,10 @@ namespace exec {
           -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
         if constexpr (__next_connectable_with_tag_invoke<_Sender, _Receiver>) {
           static_assert(
-            operation_state<
-              tag_invoke_result_t<connect_t, __next_sender_of_t<_Receiver, _Sender>, _Receiver>>,
+            operation_state<tag_invoke_result_t<
+              connect_t,
+              __next_sender_of_t<_Receiver, _Sender>,
+              __stopped_means_break_t<_Receiver>>>,
             "stdexec::connect(sender, receiver) must return a type that "
             "satisfies the operation_state concept");
           __next_sender_of_t<_Receiver, _Sender> __next = set_next(__rcvr, (_Sender&&) __sndr);
@@ -447,7 +449,7 @@ namespace exec {
         } else if constexpr (__sequence_connectable_with_tag_invoke<_Sender, _Receiver>) {
           static_assert(
             operation_state<tag_invoke_result_t<sequence_connect_t, _Sender, _Receiver>>,
-            "stdexec::sequence_connect(sender, receiver) must return a type that "
+            "exec::sequence_connect(sender, receiver) must return a type that "
             "satisfies the operation_state concept");
           return tag_invoke(sequence_connect_t{}, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
         } else {
