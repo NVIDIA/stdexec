@@ -1896,10 +1896,10 @@ namespace stdexec {
 
   namespace __connect {
     template <class _ReceiverId>
-    struct __stopped_as_value {
+    struct __stopped_as_break {
       struct __t {
         using is_receiver = void;
-        using __id = __stopped_as_value;
+        using __id = __stopped_as_break;
         using _Receiver = stdexec::__t<_ReceiverId>;
         STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
 
@@ -1928,7 +1928,7 @@ namespace stdexec {
     };
 
     template <class _Rcvr>
-    using __stopped_as_value_t = __t<__stopped_as_value<__id<__decay_t<_Rcvr>>>>;
+    using __stopped_as_break_t = __t<__stopped_as_break<__id<__decay_t<_Rcvr>>>>;
 
     template <class _Tp>
     STDEXEC_R5_SENDER_DEPR_WARNING //
@@ -1956,10 +1956,10 @@ namespace stdexec {
       !enable_sequence_sender<__decay_t<_Sender>> &&                                              //
       sequence_receiver_of<_Receiver, completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>
       &&                                                                                          //
-      __receiver_from<__stopped_as_value_t<_Receiver>, __next_sender_of_t<_Receiver, _Sender>> && //
+      __receiver_from<__stopped_as_break_t<_Receiver>, __next_sender_of_t<_Receiver, _Sender>> && //
       __sender_connectable_with_tag_invoke<
         __next_sender_of_t<_Receiver, _Sender>&&,
-        __stopped_as_value_t<_Receiver>>;
+        __stopped_as_break_t<_Receiver>>;
 
     template <class _Sender, class _Receiver>
     concept __sequence_connectable_with_tag_invoke =
@@ -1989,7 +1989,7 @@ namespace stdexec {
           using _Result = tag_invoke_result_t<
             connect_t,
             __next_sender_of_t<_Receiver, _Sender>,
-            __stopped_as_value_t<_Receiver>>;
+            __stopped_as_break_t<_Receiver>>;
           constexpr bool _Nothrow = nothrow_tag_invocable<connect_t, _Sender, _Receiver>;
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
         } else if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
@@ -2024,7 +2024,7 @@ namespace stdexec {
           return tag_invoke(
             connect_t{},
             (__next_sender_of_t<_Receiver, _Sender>&&) __next,
-            __stopped_as_value_t<_Receiver>{(_Receiver&&) __rcvr});
+            __stopped_as_break_t<_Receiver>{(_Receiver&&) __rcvr});
         } else if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
           static_assert(
             operation_state<tag_invoke_result_t<connect_t, _Sender, _Receiver>>,
