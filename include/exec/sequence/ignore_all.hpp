@@ -22,7 +22,7 @@ namespace exec {
   namespace __ignore_all {
     using namespace stdexec;
 
-    enum class __error_state {
+    enum class __result_state {
       __none,
       __emplace,
       __emplace_done,
@@ -30,89 +30,102 @@ namespace exec {
 
     struct not_an_error { };
 
-    template <class _Error, class _ErrorsVariant>
-    concept __is_valid_error =
-      __not_decays_to<_Error, not_an_error>
-      && requires(_ErrorsVariant& __variant_, _Error&& __error) {
-           __variant_.template emplace<__decay_t<_Error>>(static_cast<_Error&&>(__error));
-         };
+    struct have_been_stopped { };
+
+    template <class _Error, class _ResultVariant>
+    concept __is_valid_error =                      //
+      __not_decays_to<_Error, not_an_error> &&      //
+      __not_decays_to<_Error, have_been_stopped> && //
+      requires(_ResultVariant& __variant_, _Error&& __error) {
+        __variant_.template emplace<__decay_t<_Error>>(static_cast<_Error&&>(__error));
+      };
+
+    enum class __result_type {
+      __value,
+      __error,
+      __stopped
+    };
 
     template <class _Rcvr>
-    struct __error_visitor {
+    struct __result_visitor {
       _Rcvr __rcvr;
 
       template <class _Error>
-      void operator()(_Error&& __error) noexcept {
-        if constexpr (__not_decays_to<_Error, not_an_error>) {
+      __result_type operator()(_Error&& __error) noexcept {
+        if constexpr (__decays_to<_Error, have_been_stopped>) {
+          return __result_type::__stopped;
+        } else if constexpr (__not_decays_to<_Error, not_an_error>) {
           stdexec::set_error(static_cast<_Rcvr&&>(__rcvr), static_cast<_Error&&>(__error));
+          return __result_type::__error;
         } else {
           STDEXEC_ASSERT(false);
+          return __result_type::__value;
         }
       }
     };
 
-    template <class _ErrorsVariant>
-    struct __error_storage {
-      STDEXEC_NO_UNIQUE_ADDRESS _ErrorsVariant __variant_{};
-      std::atomic<__error_state> __state_{__error_state::__none};
+    template <class _ResultVariant>
+    struct __result_storage {
+      STDEXEC_NO_UNIQUE_ADDRESS _ResultVariant __variant_{};
+      std::atomic<__result_state> __state_{__result_state::__none};
 
-      template <__is_valid_error<_ErrorsVariant> _Error>
-      void __emplace(_Error&& __error) {
-        __error_state __expected = __error_state::__none;
+      void __set_stopped() {
+        __result_state __expected = __result_state::__none;
         if (__state_.compare_exchange_strong(
-              __expected, __error_state::__emplace, std::memory_order_relaxed)) {
+              __expected, __result_state::__emplace, std::memory_order_relaxed)) {
+          __variant_.template emplace<1>();
+          __state_.store(__result_state::__emplace_done, std::memory_order_release);
+        }
+      }
+
+      template <__is_valid_error<_ResultVariant> _Error>
+      void __emplace(_Error&& __error) {
+        __result_state __expected = __result_state::__none;
+        if (__state_.compare_exchange_strong(
+              __expected, __result_state::__emplace, std::memory_order_relaxed)) {
           __variant_.template emplace<__decay_t<_Error>>(static_cast<_Error&&>(__error));
-          __state_.store(__error_state::__emplace_done, std::memory_order_release);
+          __state_.store(__result_state::__emplace_done, std::memory_order_release);
         }
       }
 
       template <class _Rcvr>
-      bool __visit_if_error(_Rcvr&& __rcvr) noexcept {
-        __error_state __state = __state_.load(std::memory_order_acquire);
+      __result_type __visit(_Rcvr&& __rcvr) noexcept {
+        __result_state __state = __state_.load(std::memory_order_acquire);
         switch (__state) {
-        case __error_state::__none:
-          return false;
-        case __error_state::__emplace_done:
-          std::visit(
-            __error_visitor<_Rcvr>{static_cast<_Rcvr&&>(__rcvr)},
-            static_cast<_ErrorsVariant&&>(__variant_));
-          return true;
-        case __error_state::__emplace:
+        case __result_state::__none:
+          return __result_type::__value;
+        case __result_state::__emplace_done:
+          return std::visit(
+            __result_visitor<_Rcvr>{static_cast<_Rcvr&&>(__rcvr)},
+            static_cast<_ResultVariant&&>(__variant_));
+        case __result_state::__emplace:
           [[fallthrough]];
         default:
           STDEXEC_ASSERT(false);
         }
-        return false;
+        return __result_type::__value;
       }
     };
 
-    template <>
-    struct __error_storage<std::variant<not_an_error>> {
-      template <class _Rcvr>
-      std::false_type __visit_if_error(_Rcvr&&) const noexcept {
-        return {};
-      }
-    };
-
-    template <class _ErrorsVariant>
+    template <class _ResultVariant>
     struct __operation_base {
-      STDEXEC_NO_UNIQUE_ADDRESS __error_storage<_ErrorsVariant> __error_{};
+      STDEXEC_NO_UNIQUE_ADDRESS __result_storage<_ResultVariant> __error_{};
     };
 
-    template <class _ItemReceiver, class _ErrorsVariant>
+    template <class _ItemReceiver, class _ResultVariant>
     struct __item_operation_base {
-      __operation_base<_ErrorsVariant>* __seq_op_;
+      __operation_base<_ResultVariant>* __seq_op_;
       STDEXEC_NO_UNIQUE_ADDRESS _ItemReceiver __rcvr_;
     };
 
-    template <class _ItemReceiverId, class _ErrorsVariant>
+    template <class _ItemReceiverId, class _ResultVariant>
     struct __item_receiver {
       using _ItemReceiver = stdexec::__t<_ItemReceiverId>;
 
       struct __t {
         using is_receiver = void;
         using __id = __item_receiver;
-        __item_operation_base<_ItemReceiver, _ErrorsVariant>* __op_;
+        __item_operation_base<_ItemReceiver, _ResultVariant>* __op_;
 
         // We eat all arguments
         template <same_as<set_value_t> _SetValue, same_as<__t> _Self, class... _Args>
@@ -122,7 +135,7 @@ namespace exec {
         }
 
         template <same_as<set_error_t> _SetError, same_as<__t> _Self, class _Error>
-          requires __is_valid_error<_Error, _ErrorsVariant>
+          requires __is_valid_error<_Error, _ResultVariant>
                 && __callable<set_stopped_t, _ItemReceiver&&>
         friend void tag_invoke(_SetError, _Self&& __self, _Error&& __error) noexcept {
           __self.__op_->__seq_op_->__error_.__emplace(static_cast<_Error&&>(__error));
@@ -132,6 +145,7 @@ namespace exec {
         template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
           requires __callable<_SetStopped, _ItemReceiver&&>
         friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
+          __self.__op_->__seq_op_->__error_.__set_stopped();
           _SetStopped{}(static_cast<_ItemReceiver&&>(__self.__op_->__rcvr_));
         }
 
@@ -142,18 +156,18 @@ namespace exec {
       };
     };
 
-    template <class _Item, class _ItemReceiverId, class _ErrorsVariant>
+    template <class _Item, class _ItemReceiverId, class _ResultVariant>
     struct __item_operation {
       using _ItemReceiver = stdexec::__t<_ItemReceiverId>;
-      using __item_receiver_t = stdexec::__t<__item_receiver<_ItemReceiverId, _ErrorsVariant>>;
+      using __item_receiver_t = stdexec::__t<__item_receiver<_ItemReceiverId, _ResultVariant>>;
 
-      struct __t : __item_operation_base<_ItemReceiver, _ErrorsVariant> {
+      struct __t : __item_operation_base<_ItemReceiver, _ResultVariant> {
         connect_result_t<_Item, __item_receiver_t> __op_;
 
-        __t(__operation_base<_ErrorsVariant>* __base_op, _Item&& __item, _ItemReceiver __rcvr)
+        __t(__operation_base<_ResultVariant>* __base_op, _Item&& __item, _ItemReceiver __rcvr)
           : __item_operation_base<
             _ItemReceiver,
-            _ErrorsVariant>{__base_op, static_cast<_ItemReceiver&&>(__rcvr)}
+            _ResultVariant>{__base_op, static_cast<_ItemReceiver&&>(__rcvr)}
           , __op_(stdexec::connect(static_cast<_Item&&>(__item), __item_receiver_t{this})) {
         }
 
@@ -163,24 +177,24 @@ namespace exec {
       };
     };
 
-    template <class _ItemId, class _ErrorsVariant>
+    template <class _ItemId, class _ResultVariant>
     struct __item_sender {
       using _Item = stdexec::__t<_ItemId>;
 
       template <class _Rcvr>
       using __item_receiver_t =
-        stdexec::__t<__item_receiver<stdexec::__id<__decay_t<_Rcvr>>, _ErrorsVariant>>;
+        stdexec::__t<__item_receiver<stdexec::__id<__decay_t<_Rcvr>>, _ResultVariant>>;
 
       template <class _Self, class _Rcvr>
       using __item_operation_t = stdexec::__t<__item_operation<
         __copy_cvref_t<_Self, _Item>,
         stdexec::__id<__decay_t<_Rcvr>>,
-        _ErrorsVariant>>;
+        _ResultVariant>>;
 
       struct __t {
         using __id = __item_sender;
         STDEXEC_NO_UNIQUE_ADDRESS _Item __item_;
-        __operation_base<_ErrorsVariant>* __base_op_;
+        __operation_base<_ResultVariant>* __base_op_;
 
         template <__decays_to<__t> _Self, receiver _ItemReceiver>
           requires sender_to<_Item, __item_receiver_t<_ItemReceiver>>
@@ -203,26 +217,26 @@ namespace exec {
       };
     };
 
-    template <class _Sndr, class _ErrorsVariant>
-    using __item_sender_t = __t<__item_sender<__id<__decay_t<_Sndr>>, _ErrorsVariant>>;
+    template <class _Sndr, class _ResultVariant>
+    using __item_sender_t = __t<__item_sender<__id<__decay_t<_Sndr>>, _ResultVariant>>;
 
-    template <class _Receiver, class _ErrorsVariant>
-    struct __sequence_operation_base : __operation_base<_ErrorsVariant> {
+    template <class _Receiver, class _ResultVariant>
+    struct __sequence_operation_base : __operation_base<_ResultVariant> {
       STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
     };
 
-    template <class _ReceiverId, class _ErrorsVariant>
+    template <class _ReceiverId, class _ResultVariant>
     struct __receiver {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
         using __id = __receiver;
-        STDEXEC_NO_UNIQUE_ADDRESS __sequence_operation_base<_Receiver, _ErrorsVariant>* __op_;
+        STDEXEC_NO_UNIQUE_ADDRESS __sequence_operation_base<_Receiver, _ResultVariant>* __op_;
 
         template <sender _Item>
-        friend __item_sender_t<_Item, _ErrorsVariant>
+        friend __item_sender_t<_Item, _ResultVariant>
           tag_invoke(set_next_t, __t& __self, _Item&& __item) noexcept {
-          return __item_sender_t<_Item, _ErrorsVariant>{static_cast<_Item&&>(__item), __self.__op_};
+          return __item_sender_t<_Item, _ResultVariant>{static_cast<_Item&&>(__item), __self.__op_};
         }
 
         template <__same_as<set_error_t> _SetError, class _Error>
@@ -233,9 +247,12 @@ namespace exec {
 
         template <same_as<set_value_t> _SetValue, same_as<__t> _Self>
         friend void tag_invoke(_SetValue, _Self&& __self) noexcept {
-          if (!__self.__op_->__error_.__visit_if_error(
-                static_cast<_Receiver&&>(__self.__op_->__rcvr_))) {
+          auto __type = __self.__op_->__error_.__visit(
+            static_cast<_Receiver&&>(__self.__op_->__rcvr_));
+          if (__type == __result_type::__value) {
             _SetValue{}(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
+          } else if (__type == __result_type::__stopped) {
+            stdexec::set_stopped(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
           }
         }
 
@@ -250,27 +267,27 @@ namespace exec {
       };
     };
 
-    template <class _Rcvr, class _ErrorsVariant>
-    using __receiver_t = __t<__receiver<__id<__decay_t<_Rcvr>>, _ErrorsVariant>>;
+    template <class _Rcvr, class _ResultVariant>
+    using __receiver_t = __t<__receiver<__id<__decay_t<_Rcvr>>, _ResultVariant>>;
 
     template <class _Sender, class _ReceiverId>
     struct __operation {
       using _Receiver = stdexec::__t<_ReceiverId>;
       using _Env = env_of_t<_Receiver>;
-      using _ErrorsVariant = __error_sigs_of_t<
+      using _ResultVariant = __error_sigs_of_t<
         __sequence_signatures_of_t<_Sender, _Env>,
-        __mbind_front_q<std::variant, not_an_error>>;
+        __mbind_front_q<std::variant, not_an_error, have_been_stopped>>;
 
-      struct __t : __sequence_operation_base<_Receiver, _ErrorsVariant> {
-        sequence_connect_result_t<_Sender, __receiver_t<_Receiver, _ErrorsVariant>> __op_;
+      struct __t : __sequence_operation_base<_Receiver, _ResultVariant> {
+        sequence_connect_result_t<_Sender, __receiver_t<_Receiver, _ResultVariant>> __op_;
 
         explicit __t(_Sender&& __sndr, _Receiver __rcvr)
           : __sequence_operation_base<
             _Receiver,
-            _ErrorsVariant>{{}, static_cast<_Receiver&&>(__rcvr)}
+            _ResultVariant>{{}, static_cast<_Receiver&&>(__rcvr)}
           , __op_(exec::sequence_connect(
               static_cast<_Sender&&>(__sndr),
-              __receiver_t<_Receiver, _ErrorsVariant>{this})) {
+              __receiver_t<_Receiver, _ResultVariant>{this})) {
         }
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
@@ -298,9 +315,9 @@ namespace exec {
       using _Sender = stdexec::__t<__decay_t<_SenderId>>;
 
       template <class _Rcvr>
-      using _ErrorsVariant = __error_sigs_of_t<
+      using _ResultVariant = __error_sigs_of_t<
         __sequence_signatures_of_t<_Sender, env_of_t<_Rcvr>>,
-        __mbind_front_q<std::variant, not_an_error>>;
+        __mbind_front_q<std::variant, not_an_error, have_been_stopped>>;
 
       struct __t {
         using __id = __sender;
@@ -317,7 +334,7 @@ namespace exec {
                      __completion_sigs<__copy_cvref_t<_Self, _Sender>, env_of_t<_Receiver>>>
                 && sequence_sender_to<
                      __copy_cvref_t<_Self, _Sender>,
-                     __receiver_t<_Receiver, _ErrorsVariant<_Receiver>>>
+                     __receiver_t<_Receiver, _ResultVariant<_Receiver>>>
         friend __operation_t<_Self, _Receiver>
           tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) {
           return __operation_t<_Self, _Receiver>{

@@ -17,6 +17,8 @@
 
 #include "exec/sequence/ignore_all.hpp"
 
+#include "exec/sequence/empty_sequence.hpp"
+
 #include <catch2/catch.hpp>
 
 using namespace stdexec;
@@ -27,7 +29,7 @@ struct rcvr {
   friend empty_env tag_invoke(get_env_t, rcvr) noexcept;
 };
 
-TEST_CASE("ignore_all - Works with a sender", "[ignore_all]") {
+TEST_CASE("ignore_all - Works with a sender", "[sequence_senders][ignore_all]") {
   auto sndr = ignore_all(just(42));
   using Sender = decltype(sndr);
   using Sigs = completion_signatures_of_t<Sender>;
@@ -36,12 +38,19 @@ TEST_CASE("ignore_all - Works with a sender", "[ignore_all]") {
   CHECK(sync_wait(sndr));
 }
 
-TEST_CASE("ignore_all - Forwards stop", "[ignore_all]") {
+TEST_CASE("ignore_all - Forwards stop", "[sequence_senders][ignore_all]") {
   auto sndr = ignore_all(just_stopped());
   CHECK_FALSE(sync_wait(sndr));
 }
 
-TEST_CASE("ignore_all - Forwards errors", "[ignore_all]") {
+TEST_CASE("ignore_all - Forwards errors", "[sequence_senders][ignore_all]") {
   auto sndr = ignore_all(just_error(42));
   CHECK_THROWS(sync_wait(sndr));
+}
+
+TEST_CASE("ignore_all - empty_sequence can be ignored, too", "[sequence_senders][ignore_all][empty_sequence]") {
+  auto sndr = ignore_all(empty_sequence());
+  using Sender = decltype(sndr);
+  STATIC_REQUIRE(same_as<completion_signatures_of_t<Sender>, completion_signatures<set_value_t()>>);
+  CHECK(sync_wait(sndr));
 }
