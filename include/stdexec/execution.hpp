@@ -978,81 +978,6 @@ namespace stdexec {
   inline constexpr get_completion_signatures_t get_completion_signatures{};
 
   /////////////////////////////////////////////////////////////////////////////
-  // NOT TO SPEC
-  // get_sequence_signatures
-  namespace __get_sequence_signatures {
-    template <class _Sender, class _Env>
-    concept __r7_style_sender = same_as<_Env, no_env> && enable_sequence_sender<__decay_t<_Sender>>;
-
-    template <class _Sender, class _Env>
-    concept __with_tag_invoke =
-      __valid<tag_invoke_result_t, get_sequence_signatures_t, _Sender, _Env>;
-
-    template <class _Sender, class...>
-    using __member_alias_t = typename __decay_t<_Sender>::sequence_signatures;
-
-    template <class _Sender>
-    concept __with_member_alias = __valid<__member_alias_t, _Sender>;
-
-    struct get_sequence_signatures_t {
-      template <class _Sender, class _Env>
-      static auto __impl() {
-        static_assert(STDEXEC_LEGACY_R5_CONCEPTS() || !same_as<_Env, no_env>);
-        static_assert(sizeof(_Sender), "Incomplete type used with get_sequence_signatures");
-        static_assert(sizeof(_Env), "Incomplete type used with get_sequence_signatures");
-        if constexpr (__with_tag_invoke<_Sender, _Env>) {
-          using _Result = tag_invoke_result_t<get_sequence_signatures_t, _Sender, _Env>;
-          if constexpr (same_as<_Env, no_env> && __merror<_Result>) {
-            return (dependent_completion_signatures<no_env>(*)()) nullptr;
-          } else {
-            return (_Result(*)()) nullptr;
-          }
-        } else if constexpr (__with_member_alias<_Sender>) {
-          return (__member_alias_t<_Sender, _Env>(*)()) nullptr;
-        } else if constexpr (__callable<get_completion_signatures_t, _Sender, _Env>) {
-          using _Result = __call_result_t<get_completion_signatures_t, _Sender, _Env>;
-          if constexpr (same_as<_Result, dependent_completion_signatures<no_env>>) {
-            return (dependent_completion_signatures<no_env>(*)()) nullptr;
-          } else {
-            return (_Result(*)()) nullptr;
-          }
-        } else
-#if STDEXEC_LEGACY_R5_CONCEPTS()
-          if constexpr (__r7_style_sender<_Sender, _Env>) {
-          return (dependent_completion_signatures<no_env>(*)()) nullptr;
-        } else
-#endif
-          if constexpr (__is_debug_env<_Env>) {
-          using __tag_invoke::tag_invoke;
-          // This ought to cause a hard error that indicates where the problem is.
-          using _Completions
-            [[maybe_unused]] = tag_invoke_result_t<get_sequence_signatures_t, _Sender, _Env>;
-          return (__debug::__completion_signatures(*)()) nullptr;
-        } else {
-          return (void (*)()) nullptr;
-        }
-      }
-
-      template <class _Sender, class _Env = __default_env>
-        requires(
-          __with_tag_invoke<_Sender, _Env> ||                       //
-          __with_member_alias<_Sender> ||                           //
-          __callable<get_completion_signatures_t, _Sender, _Env> || //
-#if STDEXEC_LEGACY_R5_CONCEPTS()                                    //
-          __r7_style_sender<_Sender, _Env> ||                       //
-#endif                                                              //
-          __is_debug_env<_Env>)                                     //
-      constexpr auto operator()(_Sender&& __sndr, const _Env& __env) const noexcept
-        -> decltype(__impl<_Sender, _Env>()()) {
-        return {};
-      }
-    };
-  } // namespace __get_sequence_signatures
-
-  using __get_sequence_signatures::get_sequence_signatures_t;
-  inline constexpr get_sequence_signatures_t get_sequence_signatures{};
-
-  /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
   template <class _Sender>
   concept __enable_sender =                      //
@@ -1130,20 +1055,6 @@ namespace stdexec {
     decltype(stdexec::__checked_completion_signatures(__declval<_Sender>(), __declval<_Env>()));
 #endif
 
-  template <class _Sender>
-  concept sequence_sender = //
-    sender<_Sender> &&      //
-    enable_sequence_sender<_Sender>;
-
-  template <class _Sender, class _Env>
-  concept sequence_sender_in =  //
-    sender_in<_Sender, _Env> && //
-    sequence_sender<_Sender> && //
-    requires(_Sender&& __sndr, _Env&& __env) {
-      get_sequence_signatures((_Sender&&) __sndr, (_Env&&) __env);
-    } && //
-    __valid_completion_signatures<__sequence_signatures_of_t<_Sender, _Env>, _Env>;
-
   struct __not_a_variant {
     __not_a_variant() = delete;
   };
@@ -1200,15 +1111,6 @@ namespace stdexec {
       _Tuple,
       _Variant>;
 
-  template <class _Tag, class _Sigs, class _Tuple, class _Variant>
-  using __gather_sigs_for = //
-    __meval<                //
-      __gather_signal,
-      _Tag,
-      _Sigs,
-      _Tuple,
-      _Variant>;
-
   template <                             //
     class _Sender,                       //
     class _Env = __default_env,          //
@@ -1216,13 +1118,6 @@ namespace stdexec {
     class _Variant = __q<__variant>>
   using __try_value_types_of_t =         //
     __gather_completions_for<set_value_t, _Sender, _Env, _Tuple, _Variant>;
-
-  template <                             //
-    class _Sigs,                         //
-    class _Tuple = __q<__decayed_tuple>, //
-    class _Variant = __q<__variant>>
-  using __try_value_sigs_of_t =          //
-    __gather_sigs_for<set_value_t, _Sigs, _Tuple, _Variant>;
 
   template <                             //
     class _Sender,                       //
@@ -1233,27 +1128,13 @@ namespace stdexec {
   using __value_types_of_t = //
     __msuccess_or_t<__try_value_types_of_t<_Sender, _Env, _Tuple, _Variant>>;
 
-  template <                             //
-    class _Sigs,                         //
-    class _Tuple = __q<__decayed_tuple>, //
-    class _Variant = __q<__variant>>
-    requires __is_completion_signatures<_Sigs>
-  using __value_sigs_of_t = //
-    __msuccess_or_t<__try_value_types_of_t<_Sigs, _Tuple, _Variant>>;
-
   template <class _Sender, class _Env = __default_env, class _Variant = __q<__variant>>
   using __try_error_types_of_t =
     __gather_completions_for<set_error_t, _Sender, _Env, __q<__midentity>, _Variant>;
 
-  template <class _Sigs, class _Variant = __q<__variant>>
-  using __try_error_sigs_of_t = __gather_sigs_for<set_error_t, _Sigs, __q<__midentity>, _Variant>;
-
   template <class _Sender, class _Env = __default_env, class _Variant = __q<__variant>>
     requires sender_in<_Sender, _Env>
   using __error_types_of_t = __msuccess_or_t<__try_error_types_of_t<_Sender, _Env, _Variant>>;
-
-  template <class _Sigs, class _Variant = __q<__variant>>
-  using __error_sigs_of_t = __msuccess_or_t<__try_error_sigs_of_t<_Sigs, _Variant>>;
 
   template <                                            //
     class _Sender,                                      //
@@ -1274,17 +1155,9 @@ namespace stdexec {
       __q<__mfront>,
       __mcount<_Tag>>;
 
-  template <class _Tag, class _Sigs>
-  using __try_count_sigs_of = //
-    __compl_sigs::__maybe_for_all_sigs< _Sigs, __q<__mfront>, __mcount<_Tag>>;
-
   template <class _Tag, class _Sender, class _Env = __default_env>
     requires sender_in<_Sender, _Env>
   using __count_of = __msuccess_or_t<__try_count_of<_Tag, _Sender, _Env>>;
-
-  template <class _Tag, class _Sigs>
-    requires __is_completion_signatures<_Sigs>
-  using __count_sigs_of = __msuccess_or_t<__try_count_sigs_of<_Tag, _Sigs>>;
 
   template <class _Tag, class _Sender, class _Env = __default_env>
     requires __valid<__count_of, _Tag, _Sender, _Env>
@@ -1339,52 +1212,12 @@ namespace stdexec {
         __if<__try_count_of<set_stopped_t, _Sender, _Env>, _SetStp, completion_signatures<>>>;
 
     template <class _Sender, class _Env, class _Sigs, class _SetVal, class _SetErr, class _SetStp>
-    using __seq_sigs_impl = //
-      __concat_completion_signatures_t<
-        _Sigs,
-        __mtry_eval<
-          __try_value_sigs_of_t,
-          __sequence_signatures_of_t<_Sender, _Env>,
-          _SetVal,
-          __q<__ensure_concat>>,
-        __mtry_eval<
-          __try_error_sigs_of_t,
-          __sequence_signatures_of_t<_Sender, _Env>,
-          __transform<_SetErr, __q<__ensure_concat>>>,
-        __if<
-          __try_count_sigs_of<set_stopped_t, __sequence_signatures_of_t<_Sender, _Env>>,
-          _SetStp,
-          completion_signatures<>>>;
-
-    template <class _Sender, class _Env, class _Sigs, class _SetVal, class _SetErr, class _SetStp>
       requires __valid<__compl_sigs_impl, _Sender, _Env, _Sigs, _SetVal, _SetErr, _SetStp>
     extern __compl_sigs_impl<_Sender, _Env, _Sigs, _SetVal, _SetErr, _SetStp> __compl_sigs_v;
 
     template <class _Sender, class _Env, class _Sigs, class _SetVal, class _SetErr, class _SetStp>
-      requires __valid<__compl_sigs_impl, _Sender, _Env, _Sigs, _SetVal, _SetErr, _SetStp>
-    extern __seq_sigs_impl<_Sender, _Env, _Sigs, _SetVal, _SetErr, _SetStp> __seq_sigs_v;
-
-    template <class _Sender, class _Env, class _Sigs, class _SetVal, class _SetErr, class _SetStp>
     using __compl_sigs_t =
       decltype(__compl_sigs_v<_Sender, _Env, _Sigs, _SetVal, _SetErr, _SetStp>);
-
-    template <class _Sender, class _Env, class _Sigs, class _SetVal, class _SetErr, class _SetStp>
-    using __seq_sigs_t = decltype(__seq_sigs_v<_Sender, _Env, _Sigs, _SetVal, _SetErr, _SetStp>);
-
-    template <bool>
-    struct __make_seq_sigs {
-      template <class _Sender, class _Env, class _Sigs, class _SetVal, class _SetErr, class _SetStp>
-      using __f = __seq_sigs_t<_Sender, _Env, _Sigs, _SetVal, _SetErr, _SetStp>;
-    };
-
-    template <>
-    struct __make_seq_sigs<true> {
-      template <class _Sender, class _Env, class _Sigs, class _SetVal, class _SetErr, class _SetStp>
-      using __f = //
-        __msuccess_or_t<
-          __seq_sigs_t<_Sender, _Env, _Sigs, _SetVal, _SetErr, _SetStp>,
-          dependent_completion_signatures<_Env>>;
-    };
 
     template <bool>
     struct __make_compl_sigs {
@@ -1417,27 +1250,9 @@ namespace stdexec {
         _SetValue,
         _SetError,
         _SetStopped>;
-
-    template <                                                    //
-      class _Sender,                                              //
-      class _Env = __default_env,                                 //
-      class _Sigs = completion_signatures<>,                      //
-      class _SetValue = __q<__default_set_value>,                 //
-      class _SetError = __q<__default_set_error>,                 //
-      class _SetStopped = completion_signatures<set_stopped_t()>> //
-    using __try_make_sequence_signatures =                        //
-      __minvoke<
-        __make_seq_sigs<same_as<_Env, no_env>>,
-        _Sender,
-        _Env,
-        _Sigs,
-        _SetValue,
-        _SetError,
-        _SetStopped>;
   } // namespace __compl_sigs
 
   using __compl_sigs::__try_make_completion_signatures;
-  using __compl_sigs::__try_make_sequence_signatures;
 
   /////////////////////////////////////////////////////////////////////////////
   // NOT TO SPEC
@@ -1524,61 +1339,6 @@ namespace stdexec {
 
   // Needed fairly often
   using __with_exception_ptr = completion_signatures<set_error_t(std::exception_ptr)>;
-
-  /////////////////////////////////////////////////////////////////////////////
-  // NOT TO SPEC
-  //
-  // __sequence_receiver
-
-  struct sequence_tag { };
-
-  namespace __sequence_receiver {
-    template <class _Haystack>
-    struct __mall_contained_in_impl {
-      template <class... _Needles>
-      using __f = __mand<__mapply<__contains<_Needles>, _Haystack>...>;
-    };
-
-    template <class _Needles, class _Haystack>
-    using __mall_contained_in = __mapply<__mall_contained_in_impl<_Haystack>, _Needles>;
-
-    template <class _Needles, class _Haystack>
-    concept __all_contained_in = __mall_contained_in<_Needles, _Haystack>::value;
-
-    // This concept checks if a given sender satisfies the requirements to be returned from `set_next`.
-    template <class _Sender, class _Env = empty_env>
-    concept next_sender =      //
-      sender_in<_Sender, _Env> //
-      && __all_contained_in<
-        completion_signatures_of_t<_Sender, _Env>,
-        completion_signatures<set_value_t(), set_stopped_t()>>;
-
-    // This is a sequence-receiver CPO that is used to apply algorithms on an input sender and it
-    // returns a next-sender. `set_next` is usually called in a context where a sender will be
-    // connected to a receiver. Since calling `set_next` usually involves constructing senders it
-    // is allowed to throw an excpetion, which needs to be handled by a calling sequence-operation.
-    // The returned object is a sender that can complete with `set_value_t()` or `set_stopped_t()`.
-    struct set_next_t {
-      template <receiver _Receiver, sender _Item>
-        requires tag_invocable<set_next_t, _Receiver&, _Item>
-      auto operator()(_Receiver& __rcvr, _Item&& __item) const
-        noexcept(nothrow_tag_invocable<set_next_t, _Receiver&, _Item>)
-          -> tag_invoke_result_t<set_next_t, _Receiver&, _Item> {
-        static_assert(
-          next_sender<tag_invoke_result_t<set_next_t, _Receiver&, _Item>>,
-          "The sender returned from set_next is required to complete with set_value_t() or "
-          "set_stopped_t()");
-        return tag_invoke(*this, __rcvr, (_Item&&) __item);
-      }
-    };
-  } // namespace __sequence_receiver
-
-  using __sequence_receiver::set_next_t;
-  inline constexpr set_next_t set_next;
-
-  template <class _Receiver, class _Sender>
-  using __next_sender_of_t =
-    decltype(set_next(__declval<__decay_t<_Receiver>&>(), __declval<_Sender>()));
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.schedule]
@@ -1848,87 +1608,6 @@ namespace stdexec {
   // [execution.senders.connect]
   namespace __connect {
     struct connect_t;
-  }
-
-  namespace __sequence_sndr {
-    struct __nop_operation {
-      friend void tag_invoke(start_t, __nop_operation&) noexcept {
-      }
-    };
-
-    template <__is_completion_signatures _Sigs>
-    struct __unspecified_sender_of {
-      using is_sender = void;
-      using completion_signatures = _Sigs;
-      using __id = __unspecified_sender_of;
-      using __t = __unspecified_sender_of;
-
-      template <same_as<connect_t> _Connect, class R>
-      friend __nop_operation tag_invoke(_Connect, __unspecified_sender_of, R&&) {
-        return {};
-      }
-    };
-  } // namespace __sequence_sndr
-
-  template <class _Sender>
-  concept __enable_sequence_sender =             //
-    requires { typename _Sender::is_sender; } && //
-    same_as<typename _Sender::is_sender, sequence_tag>;
-
-  template <class _Sender>
-  inline constexpr bool enable_sequence_sender = __enable_sequence_sender<_Sender>;
-
-  template <class _Receiver, class _SequenceSigs>
-  concept sequence_receiver_of = //
-    __callable<
-      set_next_t,
-      __decay_t<_Receiver>&,
-      __sequence_sndr::__unspecified_sender_of<_SequenceSigs>>;
-
-  template <class _Receiver, class _Sender>
-  concept __sequence_receiver_from =                                                              //
-    receiver<_Receiver> &&                                                                        //
-    sender_in<_Sender, env_of_t<_Receiver>> &&                                                    //
-    sequence_receiver_of<_Receiver, __sequence_signatures_of_t<_Sender, env_of_t<_Receiver>>> &&  //
-    ((sequence_sender_in<_Sender, env_of_t<_Receiver>> && __receiver_from<_Receiver, _Sender>) || //
-     (!sequence_sender_in<_Sender, env_of_t<_Receiver>>
-      && __receiver_from<_Receiver, __next_sender_of_t<_Receiver, _Sender>>) );
-
-  namespace __connect {
-    template <class _ReceiverId>
-    struct __stopped_as_break {
-      struct __t {
-        using is_receiver = void;
-        using __id = __stopped_as_break;
-        using _Receiver = stdexec::__t<_ReceiverId>;
-        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
-
-        template <same_as<get_env_t> _GetEnv, same_as<__t> _Self>
-        friend env_of_t<_Receiver> tag_invoke(_GetEnv, const _Self& __self) noexcept {
-          return get_env(__self.__rcvr_);
-        }
-
-        template <same_as<set_value_t> _SetValue, same_as<__t> _Self>
-          requires __callable<set_value_t, _Receiver&&>
-        friend void tag_invoke(_SetValue, _Self&& __self) noexcept {
-          return set_value(static_cast<_Receiver&&>(__self.__rcvr_));
-        }
-
-        template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
-          requires __callable<set_value_t, _Receiver&&> && __callable<set_stopped_t, _Receiver&&>
-        friend void tag_invoke(_SetStopped, _Self& __self) noexcept {
-          auto token = get_stop_token(get_env(__self.__rcvr_));
-          if (token.stop_requested()) {
-            set_stopped(static_cast<_Receiver&&>(__self.__rcvr_));
-          } else {
-            set_value(static_cast<_Receiver&&>(__self.__rcvr_));
-          }
-        }
-      };
-    };
-
-    template <class _Rcvr>
-    using __stopped_as_break_t = __t<__stopped_as_break<__id<__decay_t<_Rcvr>>>>;
 
     template <class _Tp>
     STDEXEC_R5_SENDER_DEPR_WARNING //
@@ -1943,37 +1622,11 @@ namespace stdexec {
     }
 
     template <class _Sender, class _Receiver>
-    concept __sender_connectable_with_tag_invoke =
+    concept __connectable_with_tag_invoke =
       receiver<_Receiver> &&                     //
       sender_in<_Sender, env_of_t<_Receiver>> && //
       __receiver_from<_Receiver, _Sender> &&     //
       tag_invocable<connect_t, _Sender, _Receiver>;
-
-    template <class _Sender, class _Receiver>
-    concept __next_connectable_with_tag_invoke =
-      receiver<_Receiver> &&                                                                      //
-      sender_in<_Sender, env_of_t<_Receiver>> &&                                                  //
-      !enable_sequence_sender<__decay_t<_Sender>> &&                                              //
-      sequence_receiver_of<_Receiver, completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>
-      &&                                                                                          //
-      __receiver_from<__stopped_as_break_t<_Receiver>, __next_sender_of_t<_Receiver, _Sender>> && //
-      __sender_connectable_with_tag_invoke<
-        __next_sender_of_t<_Receiver, _Sender>&&,
-        __stopped_as_break_t<_Receiver>>;
-
-    template <class _Sender, class _Receiver>
-    concept __sequence_connectable_with_tag_invoke =
-      receiver<_Receiver> &&                          //
-      sender_in<_Sender, env_of_t<_Receiver>> &&      //
-      enable_sequence_sender<__decay_t<_Sender>> &&   //
-      __sequence_receiver_from<_Receiver, _Sender> && //
-      tag_invocable<connect_t, _Sender, _Receiver>;
-
-    template <class _Sender, class _Receiver>
-    concept __connectable_with_tag_invoke =
-      __next_connectable_with_tag_invoke<_Sender, _Receiver> ||     //
-      __sequence_connectable_with_tag_invoke<_Sender, _Receiver> || //
-      __sender_connectable_with_tag_invoke<_Sender, _Receiver>;
 
     struct connect_t {
       template <class _Sender, class _Receiver>
@@ -1985,14 +1638,7 @@ namespace stdexec {
         if constexpr (!enable_receiver<__decay_t<_Receiver>>)
           __update_receiver_type_to_p2300r7_by_adding_enable_receiver_trait< __decay_t<_Receiver>>();
 
-        if constexpr (__next_connectable_with_tag_invoke<_Sender, _Receiver>) {
-          using _Result = tag_invoke_result_t<
-            connect_t,
-            __next_sender_of_t<_Receiver, _Sender>,
-            __stopped_as_break_t<_Receiver>>;
-          constexpr bool _Nothrow = nothrow_tag_invocable<connect_t, _Sender, _Receiver>;
-          return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
-        } else if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
+        if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
           using _Result = tag_invoke_result_t<connect_t, _Sender, _Receiver>;
           constexpr bool _Nothrow = nothrow_tag_invocable<connect_t, _Sender, _Receiver>;
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
@@ -2014,18 +1660,7 @@ namespace stdexec {
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
         noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
           -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
-        if constexpr (__next_connectable_with_tag_invoke<_Sender, _Receiver>) {
-          static_assert(
-            operation_state<
-              tag_invoke_result_t<connect_t, __next_sender_of_t<_Receiver, _Sender>, _Receiver>>,
-            "stdexec::connect(sender, receiver) must return a type that "
-            "satisfies the operation_state concept");
-          __next_sender_of_t<_Receiver, _Sender> __next = set_next(__rcvr, (_Sender&&) __sndr);
-          return tag_invoke(
-            connect_t{},
-            (__next_sender_of_t<_Receiver, _Sender>&&) __next,
-            __stopped_as_break_t<_Receiver>{(_Receiver&&) __rcvr});
-        } else if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
+        if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
           static_assert(
             operation_state<tag_invoke_result_t<connect_t, _Sender, _Receiver>>,
             "stdexec::connect(sender, receiver) must return a type that "
@@ -2057,7 +1692,7 @@ namespace stdexec {
     receiver<_Receiver> &&                     //
     __sender<_Sender, env_of_t<_Receiver>> &&  // NOT TO SPEC: for simpler diagnostics
     sender_in<_Sender, env_of_t<_Receiver>> && //
-    (__sequence_receiver_from<_Receiver, _Sender> || __receiver_from<_Receiver, _Sender>) && //
+    __receiver_from<_Receiver, _Sender> &&     //
     requires(_Sender&& __sndr, _Receiver&& __rcvr) {
       connect((_Sender&&) __sndr, (_Receiver&&) __rcvr);
     };

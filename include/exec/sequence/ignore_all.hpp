@@ -16,7 +16,7 @@
  */
 #pragma once
 
-#include "../../stdexec/execution.hpp"
+#include "../sequence_senders.hpp"
 
 namespace exec {
   namespace __ignore_all {
@@ -251,7 +251,7 @@ namespace exec {
     };
 
     template <class _Rcvr, class _ErrorsVariant>
-    using __sequence_receiver_t = __t<__receiver<__id<__decay_t<_Rcvr>>, _ErrorsVariant>>;
+    using __receiver_t = __t<__receiver<__id<__decay_t<_Rcvr>>, _ErrorsVariant>>;
 
     template <class _Sender, class _ReceiverId>
     struct __operation {
@@ -262,15 +262,15 @@ namespace exec {
         __mbind_front_q<std::variant, not_an_error>>;
 
       struct __t : __sequence_operation_base<_Receiver, _ErrorsVariant> {
-        connect_result_t<_Sender, __sequence_receiver_t<_Receiver, _ErrorsVariant>> __op_;
+        sequence_connect_result_t<_Sender, __receiver_t<_Receiver, _ErrorsVariant>> __op_;
 
         explicit __t(_Sender&& __sndr, _Receiver __rcvr)
           : __sequence_operation_base<
             _Receiver,
             _ErrorsVariant>{{}, static_cast<_Receiver&&>(__rcvr)}
-          , __op_(stdexec::connect(
+          , __op_(exec::sequence_connect(
               static_cast<_Sender&&>(__sndr),
-              __sequence_receiver_t<_Receiver, _ErrorsVariant>{this})) {
+              __receiver_t<_Receiver, _ErrorsVariant>{this})) {
         }
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
@@ -315,9 +315,9 @@ namespace exec {
           requires receiver_of<
                      _Receiver,
                      __completion_sigs<__copy_cvref_t<_Self, _Sender>, env_of_t<_Receiver>>>
-                && sender_to<
+                && sequence_sender_to<
                      __copy_cvref_t<_Self, _Sender>,
-                     __sequence_receiver_t<_Receiver, _ErrorsVariant<_Receiver>>>
+                     __receiver_t<_Receiver, _ErrorsVariant<_Receiver>>>
         friend __operation_t<_Self, _Receiver>
           tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) {
           return __operation_t<_Self, _Receiver>{

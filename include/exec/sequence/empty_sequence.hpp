@@ -16,7 +16,7 @@
  */
 #pragma once
 
-#include "../../stdexec/execution.hpp"
+#include "../sequence_senders.hpp"
 
 namespace exec {
   namespace __empty_sequence {

@@ -15,11 +15,12 @@
  * limitations under the License.
  */
 
-#include "stdexec/execution.hpp"
+#include "exec/sequence_senders.hpp"
 
 #include <catch2/catch.hpp>
 
 using namespace stdexec;
+using namespace exec;
 
 struct nop_operation {
   friend void tag_invoke(start_t, nop_operation&) noexcept {
