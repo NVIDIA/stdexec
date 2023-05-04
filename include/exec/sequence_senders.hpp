@@ -330,6 +330,7 @@ namespace exec {
         using is_receiver = void;
         using __id = __stopped_means_break;
         using _Receiver = stdexec::__t<_ReceiverId>;
+        using _Token = stop_token_of_t<env_of_t<_Receiver>>;
         STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
 
         template <same_as<get_env_t> _GetEnv, same_as<__t> _Self>
@@ -344,10 +345,9 @@ namespace exec {
         }
 
         template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
-          requires __callable<set_value_t, _Receiver&&> && __callable<set_stopped_t, _Receiver&&>
+          requires __callable<set_value_t, _Receiver&&>
+                && (unstoppable_token<_Token> || __callable<set_stopped_t, _Receiver&&>)
         friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
-          using _Token =
-            __decay_t<decltype(stdexec::get_stop_token(stdexec::get_env(__self.__rcvr_)))>;
           if constexpr (unstoppable_token<_Token>) {
             stdexec::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
           } else {
