@@ -46,7 +46,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver_of<completion_signatures> _Rcvr>
         friend auto
-          tag_invoke(connect_t, _Self&&, _Rcvr&& __rcvr) noexcept(__nothrow_decay_copyable<_Rcvr>) {
+          tag_invoke(sequence_connect_t, _Self&&, _Rcvr&& __rcvr) noexcept(__nothrow_decay_copyable<_Rcvr>) {
           return stdexec::__t<__operation<stdexec::__id<__decay_t<_Rcvr>>>>{
             static_cast<_Rcvr&&>(__rcvr)};
         }

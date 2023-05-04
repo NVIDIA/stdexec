@@ -286,7 +286,7 @@ namespace exec {
   template <class _Sender>
   concept sequence_sender =     //
     stdexec::sender<_Sender> && //
-    enable_sequence_sender<_Sender>;
+    enable_sequence_sender<stdexec::__decay_t<_Sender>>;
 
   template <class _Sender, class _Env>
   concept sequence_sender_in =           //
