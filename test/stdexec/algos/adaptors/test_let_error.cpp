@@ -307,8 +307,8 @@ TEST_CASE(
   error_scheduler<int> sched3{43};
 
   // Returning ex::just_error
-  check_err_types<type_array<>>(                                //
-    ex::transfer_just(sched1)                                   //
+  check_err_types<type_array<>>( //
+    ex::transfer_just(sched1)    //
     | ex::let_error([](std::exception_ptr) { return ex::just_error(std::string{"err"}); }));
   check_err_types<type_array<std::exception_ptr, std::string>>( //
     ex::transfer_just(sched2)                                   //
@@ -320,8 +320,8 @@ TEST_CASE(
       }));
 
   // Returning ex::just
-  check_err_types<type_array<>>(                   //
-    ex::transfer_just(sched1)                      //
+  check_err_types<type_array<>>( //
+    ex::transfer_just(sched1)    //
     | ex::let_error([](std::exception_ptr) { return ex::just(); }));
   check_err_types<type_array<std::exception_ptr>>( //
     ex::transfer_just(sched2)                      //
@@ -338,9 +338,9 @@ TEST_CASE("let_error keeps sends_stopped from input sender", "[adaptors][let_err
 
   check_sends_stopped<false>( //
     ex::transfer_just(sched1) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
-  check_sends_stopped<true>(  //
+  check_sends_stopped<true>( //
     ex::transfer_just(sched2) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
-  check_sends_stopped<true>(  //
+  check_sends_stopped<true>( //
     ex::transfer_just(sched3) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
 }
 

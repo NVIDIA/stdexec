@@ -82,6 +82,8 @@ IndentWrappedFunctionNames: true
 InsertTrailingCommas: None
 KeepEmptyLinesAtTheStartOfBlocks: true
 LambdaBodyIndentation: Signature
+MacroBlockBegin: 'STDEXEC_BEGIN_NAMESPACE_STD'
+MacroBlockEnd: 'STDEXEC_END_NAMESPACE_STD'
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: All
 PackConstructorInitializers: Never

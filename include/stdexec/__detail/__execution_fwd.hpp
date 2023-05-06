@@ -156,4 +156,9 @@ namespace stdexec {
   using __as_awaitable::as_awaitable_t;
   extern const as_awaitable_t as_awaitable;
 
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  namespace __read {
+    template <class _Tag>
+    struct __sender;
+  }
 }

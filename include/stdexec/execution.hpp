@@ -32,6 +32,7 @@
 #include "__detail/__intrusive_ptr.hpp"
 #include "__detail/__meta.hpp"
 #include "__detail/__scope.hpp"
+#include "__detail/__tuple.hpp" // BUGBUG
 #include "functional.hpp"
 #include "concepts.hpp"
 #include "coroutine.hpp"
@@ -152,7 +153,7 @@ namespace stdexec {
       auto operator()(const _Env& __env) const noexcept
         -> tag_invoke_result_t<get_scheduler_t, const _Env&>;
 
-      auto operator()() const noexcept;
+      __read::__sender<get_scheduler_t> operator()() const noexcept;
     };
 
     struct get_delegatee_scheduler_t : __query<get_delegatee_scheduler_t> {
@@ -166,7 +167,7 @@ namespace stdexec {
       auto operator()(const _Env& __t) const noexcept
         -> tag_invoke_result_t<get_delegatee_scheduler_t, const _Env&>;
 
-      auto operator()() const noexcept;
+      __read::__sender<get_delegatee_scheduler_t> operator()() const noexcept;
     };
 
     struct get_allocator_t : __query<get_allocator_t> {
@@ -183,7 +184,7 @@ namespace stdexec {
         return tag_invoke(get_allocator_t{}, __env);
       }
 
-      auto operator()() const noexcept;
+      __read::__sender<get_allocator_t> operator()() const noexcept;
     };
 
     struct get_stop_token_t : __query<get_stop_token_t> {
@@ -205,7 +206,7 @@ namespace stdexec {
         return tag_invoke(get_stop_token_t{}, __env);
       }
 
-      auto operator()() const noexcept;
+      __read::__sender<get_stop_token_t> operator()() const noexcept;
     };
 
     template <class _Queryable, class _CPO>
@@ -445,8 +446,8 @@ namespace stdexec {
   // [execution.receivers]
   namespace __receivers {
     struct set_value_t {
-      template <class _Fn, class... _Args>
-      using __f = __minvoke<_Fn, _Args...>;
+      template <class _Fun, class... _Args>
+      using __f = __minvoke<_Fun, _Args...>;
 
       template <class _Receiver, class... _As>
         requires tag_invocable<set_value_t, _Receiver, _As...>
@@ -459,9 +460,9 @@ namespace stdexec {
     };
 
     struct set_error_t {
-      template <class _Fn, class... _Args>
+      template <class _Fun, class... _Args>
         requires(sizeof...(_Args) == 1)
-      using __f = __minvoke<_Fn, _Args...>;
+      using __f = __minvoke<_Fun, _Args...>;
 
       template <class _Receiver, class _Error>
         requires tag_invocable<set_error_t, _Receiver, _Error>
@@ -474,9 +475,9 @@ namespace stdexec {
     };
 
     struct set_stopped_t {
-      template <class _Fn, class... _Args>
+      template <class _Fun, class... _Args>
         requires(sizeof...(_Args) == 0)
-      using __f = __minvoke<_Fn, _Args...>;
+      using __f = __minvoke<_Fun, _Args...>;
 
       template <class _Receiver>
         requires tag_invocable<set_stopped_t, _Receiver>
@@ -1070,7 +1071,10 @@ namespace stdexec {
   using __nullable_variant_t = __munique<__mbind_front_q<std::variant, std::monostate>>;
 
   template <class... _Ts>
-  using __decayed_tuple = __meval<std::tuple, __decay_t<_Ts>...>;
+  using __decayed_tuple = __meval<stdexec::tuple, __decay_t<_Ts>...>;
+
+  template <class... _Ts>
+  using __decayed_std_tuple = __meval<std::tuple, __decay_t<_Ts>...>;
 
   template <class _Tag, class _Tuple>
   struct __select_completions_for {
@@ -1111,18 +1115,18 @@ namespace stdexec {
       _Tuple,
       _Variant>;
 
-  template <                             //
-    class _Sender,                       //
-    class _Env = __default_env,          //
-    class _Tuple = __q<__decayed_tuple>, //
+  template <                                 //
+    class _Sender,                           //
+    class _Env = __default_env,              //
+    class _Tuple = __q<__decayed_std_tuple>, //
     class _Variant = __q<__variant>>
-  using __try_value_types_of_t =         //
+  using __try_value_types_of_t = //
     __gather_completions_for<set_value_t, _Sender, _Env, _Tuple, _Variant>;
 
-  template <                             //
-    class _Sender,                       //
-    class _Env = __default_env,          //
-    class _Tuple = __q<__decayed_tuple>, //
+  template <                                 //
+    class _Sender,                           //
+    class _Env = __default_env,              //
+    class _Tuple = __q<__decayed_std_tuple>, //
     class _Variant = __q<__variant>>
     requires sender_in<_Sender, _Env>
   using __value_types_of_t = //
@@ -1136,10 +1140,10 @@ namespace stdexec {
     requires sender_in<_Sender, _Env>
   using __error_types_of_t = __msuccess_or_t<__try_error_types_of_t<_Sender, _Env, _Variant>>;
 
-  template <                                            //
-    class _Sender,                                      //
-    class _Env = __default_env,                         //
-    template <class...> class _Tuple = __decayed_tuple, //
+  template <                                                //
+    class _Sender,                                          //
+    class _Env = __default_env,                             //
+    template <class...> class _Tuple = __decayed_std_tuple, //
     template <class...> class _Variant = __variant>
     requires sender_in<_Sender, _Env>
   using value_types_of_t = __value_types_of_t<_Sender, _Env, __q<_Tuple>, __q<_Variant>>;
@@ -1583,7 +1587,7 @@ namespace stdexec {
       template <receiver _Receiver, class _Awaitable>
       using __completions_t = //
         completion_signatures<
-          __minvoke<          // set_value_t() or set_value_t(T)
+          __minvoke< // set_value_t() or set_value_t(T)
             __remove<void, __qf<set_value_t>>,
             __await_result_t<_Awaitable, __promise_t<_Receiver>>>,
           set_error_t(std::exception_ptr),
@@ -2206,11 +2210,11 @@ namespace stdexec {
 
       struct __t : __immovable {
         using __id = __operation;
-        std::tuple<_Ts...> __vals_;
+        stdexec::tuple<_Ts...> __vals_;
         _Receiver __rcvr_;
 
         friend void tag_invoke(start_t, __t& __op_state) noexcept {
-          std::apply(
+          stdexec::apply(
             [&__op_state](_Ts&... __ts) {
               _Tag{}((_Receiver&&) __op_state.__rcvr_, (_Ts&&) __ts...);
             },
@@ -2229,7 +2233,7 @@ namespace stdexec {
         using is_sender = void;
         using completion_signatures = __completion_signatures_<_Tag, _Ts...>;
 
-        std::tuple<_Ts...> __vals_;
+        stdexec::tuple<_Ts...> __vals_;
 
         template <receiver_of<completion_signatures> _Receiver>
           requires(copy_constructible<_Ts> && ...)
@@ -2279,7 +2283,7 @@ namespace stdexec {
         __t<__sender<__decay_t<_Ts>...>>
         operator()(_Ts&&... __ts) const
         noexcept((__nothrow_constructible_from<__decay_t<_Ts>, _Ts> && ...)) {
-        return {{{(_Ts&&) __ts...}}};
+        return {{stdexec::tuple<__decay_t<_Ts>...>{(_Ts&&) __ts...}}};
       }
     } just{};
 
@@ -2289,7 +2293,7 @@ namespace stdexec {
         __t<__error_sender<__decay_t<_Error>>>
         operator()(_Error&& __err) const
         noexcept(__nothrow_constructible_from<__decay_t<_Error>, _Error>) {
-        return {{{(_Error&&) __err}}};
+        return {{stdexec::tuple<__decay_t<_Error>>{(_Error&&) __err}}};
       }
     } just_error{};
 
@@ -2412,14 +2416,14 @@ namespace stdexec {
     template <class _Fun, class... _As>
     struct __binder_back : sender_adaptor_closure<__binder_back<_Fun, _As...>> {
       STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
-      std::tuple<_As...> __as_;
+      stdexec::tuple<_As...> __as_;
 
       template <sender _Sender>
         requires __callable<_Fun, _Sender, _As...>
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
         __call_result_t<_Fun, _Sender, _As...>
         operator()(_Sender&& __sndr) && noexcept(__nothrow_callable<_Fun, _Sender, _As...>) {
-        return std::apply(
+        return stdexec::apply(
           [&__sndr, this](_As&... __as) {
             return ((_Fun&&) __fun_)((_Sender&&) __sndr, (_As&&) __as...);
           },
@@ -2428,11 +2432,11 @@ namespace stdexec {
 
       template <sender _Sender>
         requires __callable<const _Fun&, _Sender, const _As&...>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE      //
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
         __call_result_t<const _Fun&, _Sender, const _As&...>
         operator()(_Sender&& __sndr) const & //
         noexcept(__nothrow_callable<const _Fun&, _Sender, const _As&...>) {
-        return std::apply(
+        return stdexec::apply(
           [&__sndr, this](const _As&... __as) { return __fun_((_Sender&&) __sndr, __as...); },
           __as_);
       }
@@ -2569,7 +2573,7 @@ namespace stdexec {
         }
 
         template <same_as<set_value_t> _SetValue, class... _As>
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE                                  //
+        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend auto
           tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept //
           -> __msecond<                                                    //
@@ -2588,7 +2592,7 @@ namespace stdexec {
         }
 
         template <same_as<set_error_t> _SetError, class _Error>
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE                                   //
+        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend auto
           tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept //
           -> __msecond<                                                     //
@@ -2607,7 +2611,7 @@ namespace stdexec {
         }
 
         template <same_as<set_stopped_t> _SetStopped, class _Dp = _Derived>
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE                     //
+        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
           friend auto
           tag_invoke(_SetStopped, _Derived&& __self) noexcept //
           -> __msecond<                                       //
@@ -2886,7 +2890,7 @@ namespace stdexec {
 
       template <class _Fun>
       __binder_back<then_t, _Fun> operator()(_Fun __fun) const {
-        return {{}, {}, {(_Fun&&) __fun}};
+        return {{}, {}, make_tuple((_Fun&&) __fun)};
       }
     };
   }
@@ -3019,7 +3023,7 @@ namespace stdexec {
 
       template <class _Fun>
       __binder_back<upon_error_t, _Fun> operator()(_Fun __fun) const {
-        return {{}, {}, {(_Fun&&) __fun}};
+        return {{}, {}, make_tuple((_Fun&&) __fun)};
       }
     };
   }
@@ -3163,7 +3167,7 @@ namespace stdexec {
 
       template <__callable _Fun>
       __binder_back<upon_stopped_t, _Fun> operator()(_Fun __fun) const {
-        return {{}, {}, {(_Fun&&) __fun}};
+        return {{}, {}, make_tuple((_Fun&&) __fun)};
       }
     };
   }
@@ -3335,11 +3339,7 @@ namespace stdexec {
 
       template <integral _Shape, class _Fun>
       __binder_back<bulk_t, _Shape, _Fun> operator()(_Shape __shape, _Fun __fun) const {
-        return {
-          {},
-          {},
-          {(_Shape&&) __shape, (_Fun&&) __fun}
-        };
+        return {{}, {}, make_tuple((_Shape&&) __shape, (_Fun&&) __fun)};
       }
     };
   }
@@ -3353,7 +3353,7 @@ namespace stdexec {
     template <class _BaseEnv>
     using __env_t = //
       __make_env_t<
-        _BaseEnv,   // BUGBUG NOT TO SPEC
+        _BaseEnv, // BUGBUG NOT TO SPEC
         __with<get_stop_token_t, in_place_stop_token>>;
 
     template <class _CvrefSenderId, class _EnvId>
@@ -3413,8 +3413,8 @@ namespace stdexec {
         using __bind_tuples = //
           __mbind_front_q<
             __variant,
-            std::tuple<set_stopped_t>, // Initial state of the variant is set_stopped
-            std::tuple<set_error_t, std::exception_ptr>,
+            stdexec::tuple<set_stopped_t>, // Initial state of the variant is set_stopped
+            stdexec::tuple<set_error_t, std::exception_ptr>,
             _Ts...>;
 
         using __bound_values_t = //
@@ -3432,7 +3432,6 @@ namespace stdexec {
 
         using __receiver_ = stdexec::__t<__receiver<_CvrefSenderId, _EnvId>>;
 
-        void* const __token_{(void*) 0xDEADBEEF};
         in_place_stop_source __stop_source_{};
         __variant_t __data_;
         std::atomic<void*> __head_{nullptr};
@@ -3484,7 +3483,7 @@ namespace stdexec {
        public:
         using __id = __operation;
 
-        __t(                                                                                //
+        __t( //
           _Receiver&& __rcvr,
           std::shared_ptr<stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>> __shared_state) //
           noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
@@ -3501,7 +3500,7 @@ namespace stdexec {
 
           std::visit(
             [&](const auto& __tupl) noexcept -> void {
-              std::apply(
+              stdexec::apply(
                 [&](auto __tag, const auto&... __args) noexcept -> void {
                   __tag((_Receiver&&) __op->__recvr_, __args...);
                 },
@@ -3513,7 +3512,6 @@ namespace stdexec {
         friend void tag_invoke(start_t, __t& __self) noexcept {
           stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>* __shared_state =
             __self.__shared_state_.get();
-          STDEXEC_ASSERT(__shared_state->__token_ == (void*) 0xDEADBEEF);
           std::atomic<void*>& __head = __shared_state->__head_;
           void* const __completion_state = static_cast<void*>(__shared_state);
           void* __old = __head.load(std::memory_order_acquire);
@@ -3662,7 +3660,7 @@ namespace stdexec {
     template <class _BaseEnv>
     using __env_t = //
       __make_env_t<
-        _BaseEnv,   // NOT TO SPEC
+        _BaseEnv, // NOT TO SPEC
         __with<get_stop_token_t, in_place_stop_token>>;
 
     template <class _CvrefSenderId, class _EnvId>
@@ -3722,8 +3720,8 @@ namespace stdexec {
         using __bind_tuples = //
           __mbind_front_q<
             __variant,
-            std::tuple<set_stopped_t>, // Initial state of the variant is set_stopped
-            std::tuple<set_error_t, std::exception_ptr>,
+            stdexec::tuple<set_stopped_t>, // Initial state of the variant is set_stopped
+            stdexec::tuple<set_error_t, std::exception_ptr>,
             _Ts...>;
 
         using __bound_values_t = //
@@ -3820,7 +3818,7 @@ namespace stdexec {
 
           std::visit(
             [&](auto& __tupl) noexcept -> void {
-              std::apply(
+              stdexec::apply(
                 [&](auto __tag, auto&... __args) noexcept -> void {
                   __tag((_Receiver&&) __op->__rcvr_, std::move(__args)...);
                 },
@@ -4080,7 +4078,7 @@ namespace stdexec {
             auto& __op = __self.__op_state_->__op_state3_.template emplace<__op_state_t>(
               __conv{[&] {
                 return connect(
-                  std::apply(std::move(__self.__op_state_->__fun_), __args),
+                  stdexec::apply(std::move(__self.__op_state_->__fun_), __args),
                   std::move(__self.__op_state_->__rcvr_));
               }});
             start(__op);
@@ -4230,7 +4228,7 @@ namespace stdexec {
 
       template <class _Fun>
       __binder_back<_LetTag, _Fun> operator()(_Fun __fun) const {
-        return {{}, {}, {(_Fun&&) __fun}};
+        return {{}, {}, make_tuple((_Fun&&) __fun)};
       }
     };
 
@@ -4389,7 +4387,7 @@ namespace stdexec {
 
       template <__movable_value _Error>
       auto operator()(_Error __err) const -> __binder_back<stopped_as_error_t, _Error> {
-        return {{}, {}, {(_Error&&) __err}};
+        return {{}, {}, make_tuple((_Error&&) __err)};
       }
     };
   } // namespace __stopped_as_xxx
@@ -4764,7 +4762,7 @@ namespace stdexec {
               if constexpr (same_as<_Tup, std::monostate>) {
                 std::terminate(); // reaching this indicates a bug in schedule_from
               } else {
-                std::apply(
+                stdexec::apply(
                   [&]<class... _Args>(auto __tag, _Args&... __args) -> void {
                     __tag((_Receiver&&) __rcvr_, (_Args&&) __args...);
                   },
@@ -4945,7 +4943,7 @@ namespace stdexec {
 
       template <scheduler _Scheduler>
       __binder_back<transfer_t, __decay_t<_Scheduler>> operator()(_Scheduler&& __sched) const {
-        return {{}, {}, {(_Scheduler&&) __sched}};
+        return {{}, {}, make_tuple((_Scheduler&&) __sched)};
       }
     };
   } // namespace __transfer
@@ -5405,11 +5403,11 @@ namespace stdexec {
 
     template <class _Receiver, class _ValuesTuple>
     void __set_values(_Receiver& __rcvr, _ValuesTuple& __values) noexcept {
-      std::apply(
+      stdexec::apply(
         [&](auto&... __opt_vals) noexcept -> void {
           std::apply(
             __complete_fn{set_value, __rcvr},
-            std::tuple_cat(std::apply(__tie_fn{}, *__opt_vals)...));
+            std::tuple_cat(stdexec::apply(__tie_fn{}, *__opt_vals)...));
         },
         __values);
     }
@@ -5495,16 +5493,17 @@ namespace stdexec {
         friend void tag_invoke(_Tag, __t&& __self, _Values&&... __vals) noexcept {
           if constexpr (!same_as<_ValuesTuple, __ignore>) {
             static_assert(
-              same_as<_TupleType, std::tuple<__decay_t<_Values>...>>,
+              same_as<_TupleType, stdexec::tuple<__decay_t<_Values>...>>,
               "One of the senders in this when_all() is fibbing about what types it sends");
             // We only need to bother recording the completion values
             // if we're not already in the "error" or "stopped" state.
             if (__self.__op_state_->__state_ == __started) {
               if constexpr ((__nothrow_decay_copyable<_Values> && ...)) {
-                std::get<_Index>(__self.__op_state_->__values_).emplace((_Values&&) __vals...);
+                stdexec::get<_Index>(__self.__op_state_->__values_).emplace((_Values&&) __vals...);
               } else {
                 try {
-                  std::get<_Index>(__self.__op_state_->__values_).emplace((_Values&&) __vals...);
+                  stdexec::get<_Index>(__self.__op_state_->__values_)
+                    .emplace((_Values&&) __vals...);
                 } catch (...) {
                   __self.__set_error(std::current_exception());
                 }
@@ -5562,7 +5561,7 @@ namespace stdexec {
       using __values_tuple = //
         __minvoke<
           __with_default<
-            __transform< __mbind_front_q<__values_opt_tuple_t, _Env>, __q<std::tuple>>,
+            __transform< __mbind_front_q<__values_opt_tuple_t, _Env>, __q<stdexec::tuple>>,
             __ignore>,
           _Senders...>;
 
@@ -5597,10 +5596,10 @@ namespace stdexec {
       template <class _Sender, class _Index>
       using __op_state = connect_result_t<_Sender, __receiver<__v<_Index>>>;
 
-      template <class _Tuple = __q<std::tuple>>
+      template <class _Tuple = __q<stdexec::tuple>>
       using __op_states_tuple = //
         __minvoke<
-          __mzip_with2<__q<__op_state>, _Tuple>,
+          __mzip_with<__q<__op_state>, _Tuple>,
           __types<_Senders...>,
           __mindex_sequence_for<_Senders...>>;
     };
@@ -5617,7 +5616,7 @@ namespace stdexec {
     struct __operation {
       using _Receiver = stdexec::__t<_ReceiverId>;
       using _Traits = __traits_ex<_Cvref, _ReceiverId, _SenderIds...>;
-      using _Indices = std::index_sequence_for<_SenderIds...>;
+      using _Indices = __make_indices<sizeof...(_SenderIds)>;
 
       using __operation_base_t = typename _Traits::__operation_base;
       using __op_states_tuple_t = __op_states_tuple_ex<_Cvref, _ReceiverId, _SenderIds...>;
@@ -5629,11 +5628,11 @@ namespace stdexec {
         using __id = __operation;
 
         template <class _SendersTuple, std::size_t... _Is>
-        __t(_SendersTuple&& __sndrs, _Receiver __rcvr, std::index_sequence<_Is...>)
+        __t(_SendersTuple&& __sndrs, _Receiver __rcvr, __indices<_Is...>)
           : __operation_base_t{{}, (_Receiver&&) __rcvr, {sizeof...(_Is)}}
           , __op_states_{__conv{[&__sndrs, this]() {
             return stdexec::connect(
-              std::get<_Is>((_SendersTuple&&) __sndrs), __receiver_t<_Is>{this});
+              stdexec::get<_Is>((_SendersTuple&&) __sndrs), __receiver_t<_Is>{this});
           }}...} {
         }
 
@@ -5651,8 +5650,10 @@ namespace stdexec {
             // the child operations.
             stdexec::set_stopped((_Receiver&&) __self.__recvr_);
           } else {
-            std::apply(
-              [](auto&... __child_ops) noexcept -> void { (stdexec::start(__child_ops), ...); },
+            stdexec::apply(
+              [](auto&... __child_ops) noexcept -> void { //
+                (stdexec::start(__child_ops), ...);       //
+              },
               __self.__op_states_);
             if constexpr (sizeof...(_SenderIds) == 0) {
               __self.__complete();
@@ -5695,12 +5696,12 @@ namespace stdexec {
 
        private:
         template <__decays_to<__t> _Self, receiver _Receiver>
-          requires(
-            sender_to< __cvref_id<_Self, _SenderIds>, __receiver_t<_Self, _Receiver, _Indices>>
-            && ...)
+        // requires(
+        //   sender_to< __cvref_id<_Self, _SenderIds>, __receiver_t<_Self, _Receiver, _Indices>>
+        //   && ...)
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
-          -> __operation_t<_Self, _Receiver> {
-          return {((_Self&&) __self).__sndrs_, (_Receiver&&) __rcvr};
+        /*-> __operation_t<_Self, _Receiver>*/ {
+          return __operation_t<_Self, _Receiver>{((_Self&&) __self).__sndrs_, (_Receiver&&) __rcvr};
         }
 
         template <__decays_to<__t> _Self, class _Env>
@@ -5715,7 +5716,7 @@ namespace stdexec {
           return {};
         }
 
-        std::tuple<stdexec::__t<_SenderIds>...> __sndrs_;
+        stdexec::tuple<stdexec::__t<_SenderIds>...> __sndrs_;
       };
     };
 
@@ -5871,7 +5872,7 @@ namespace stdexec {
   inline constexpr __read::__read_t read{};
 
   namespace __queries {
-    inline auto get_scheduler_t::operator()() const noexcept {
+    inline auto get_scheduler_t::operator()() const noexcept -> __read::__sender<get_scheduler_t> {
       return read(get_scheduler);
     }
 
@@ -5884,7 +5885,8 @@ namespace stdexec {
       return tag_invoke(get_scheduler_t{}, __env);
     }
 
-    inline auto get_delegatee_scheduler_t::operator()() const noexcept {
+    inline auto get_delegatee_scheduler_t::operator()() const noexcept
+      -> __read::__sender<get_delegatee_scheduler_t> {
       return read(get_delegatee_scheduler);
     }
 
@@ -5897,11 +5899,12 @@ namespace stdexec {
       return tag_invoke(get_delegatee_scheduler_t{}, std::as_const(__t));
     }
 
-    inline auto get_allocator_t::operator()() const noexcept {
+    inline auto get_allocator_t::operator()() const noexcept -> __read::__sender<get_allocator_t> {
       return read(get_allocator);
     }
 
-    inline auto get_stop_token_t::operator()() const noexcept {
+    inline auto get_stop_token_t::operator()() const noexcept
+      -> __read::__sender<get_stop_token_t> {
       return read(get_stop_token);
     }
 

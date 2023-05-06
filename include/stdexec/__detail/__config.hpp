@@ -137,5 +137,16 @@
 #define STDEXEC_ASSERT_FN assert
 #endif
 
+#if __has_include(<__config>)
+#include <__config>
+#endif
+#ifdef _LIBCPP_BEGIN_NAMESPACE_STD
+#define STDEXEC_BEGIN_NAMESPACE_STD _LIBCPP_BEGIN_NAMESPACE_STD
+#define STDEXEC_END_NAMESPACE_STD _LIBCPP_END_NAMESPACE_STD
+#else
+#define STDEXEC_BEGIN_NAMESPACE_STD namespace std {
+#define STDEXEC_END_NAMESPACE_STD }
+#endif
+
 namespace stdexec {
 }

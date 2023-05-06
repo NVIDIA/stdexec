@@ -387,7 +387,7 @@ namespace exec {
     }
 
     template <class _Tag, class _Receiver, class... _As>
-    static auto set_result(                      //
+    static auto set_result( //
       _Tag __tag,
       [[maybe_unused]] stdexec::__ignore __data, //
       _Receiver& __rcvr,                         //

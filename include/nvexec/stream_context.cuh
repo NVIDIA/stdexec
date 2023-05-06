@@ -123,7 +123,7 @@ namespace nvexec {
         struct __t : stream_sender_base {
           using __id = sender_;
           using completion_signatures =
-            completion_signatures< set_value_t(), set_error_t(cudaError_t)>;
+            stdexec::completion_signatures< set_value_t(), set_error_t(cudaError_t)>;
 
           template <class R>
           friend auto tag_invoke(connect_t, const __t& self, R&& rec) //

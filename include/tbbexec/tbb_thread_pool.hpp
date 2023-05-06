@@ -156,7 +156,7 @@ namespace tbbexec {
           void apply(F f) {
             std::visit(
               [&](auto& tupl) -> void {
-                std::apply([&](auto&... args) -> void { f(args...); }, tupl);
+                stdexec::apply([&](auto&... args) -> void { f(args...); }, tupl);
               },
               data_);
           }

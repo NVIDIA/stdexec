@@ -295,7 +295,7 @@ namespace exec {
                 if constexpr (same_as<_Tup, std::monostate>) {
                   std::terminate();
                 } else {
-                  std::apply(
+                  stdexec::apply(
                     [this, &__guard]<class... _As>(auto tag, _As&... __as) {
                       __guard.unlock();
                       tag((_Receiver&&) __rcvr_, (_As&&) __as...);
@@ -367,7 +367,7 @@ namespace exec {
 
     template <class _Tag, class... _Ts>
     struct __completion_as_tuple2_<_Tag(_Ts&&...)> {
-      using __t = std::tuple<_Tag, _Ts...>;
+      using __t = stdexec::tuple<_Tag, _Ts...>;
     };
     template <class _Fn>
     using __completion_as_tuple_t = __t<__completion_as_tuple2_<_Fn>>;
@@ -375,7 +375,7 @@ namespace exec {
 #else
 
     template <class _Tag, class... _Ts>
-    std::tuple<_Tag, _Ts...> __completion_as_tuple_(_Tag (*)(_Ts&&...));
+    stdexec::tuple<_Tag, _Ts...> __completion_as_tuple_(_Tag (*)(_Ts&&...));
     template <class _Fn>
     using __completion_as_tuple_t = decltype(__scope::__completion_as_tuple_((_Fn*) nullptr));
 #endif
@@ -502,7 +502,7 @@ namespace exec {
           __guard.unlock();
           __self.__dispatch_result_();
         } catch (...) {
-          using _Tuple = std::tuple<set_error_t, std::exception_ptr>;
+          using _Tuple = stdexec::tuple<set_error_t, std::exception_ptr>;
           __state.__data_.template emplace<_Tuple>(set_error_t{}, std::current_exception());
         }
       }

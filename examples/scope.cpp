@@ -50,9 +50,9 @@ int main() {
   exec::static_thread_pool ctx{1};
   exec::async_scope scope;
 
-  scheduler auto sch = ctx.get_scheduler();                                 // 1
+  scheduler auto sch = ctx.get_scheduler(); // 1
 
-  sender auto begin = schedule(sch);                                        // 2
+  sender auto begin = schedule(sch); // 2
 
   sender auto printVoid = then(begin, []() noexcept { printf("void\n"); }); // 3
 
@@ -76,9 +76,9 @@ int main() {
 
   sender auto fortyTwo = then(begin, []() noexcept { return 42; }); // 6
 
-  scope.spawn(printVoid);                                           // 7
+  scope.spawn(printVoid); // 7
 
-  sender auto fortyTwoFuture = scope.spawn_future(fortyTwo);        // 8
+  sender auto fortyTwoFuture = scope.spawn_future(fortyTwo); // 8
 
   sender auto printFortyTwo = then(std::move(fortyTwoFuture), [](int fortyTwo) noexcept {
     printf("%d\n", fortyTwo);
@@ -88,7 +88,8 @@ int main() {
     when_all(printEmpty, std::move(printFortyTwo)),
     [](auto&&...) noexcept { printf("\nall done\n"); }); // 10
 
-  sync_wait(std::move(allDone));
+  //sync_wait(std::move(allDone));
+  __debug_sender(std::move(allDone));
 
   {
     sender auto nest = scope.nest(begin);

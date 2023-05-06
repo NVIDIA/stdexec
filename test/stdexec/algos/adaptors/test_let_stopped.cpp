@@ -145,11 +145,11 @@ TEST_CASE(
 TEST_CASE(
   "let_stopped has the error_type from the input sender if returning value",
   "[adaptors][let_stopped]") {
-  check_err_types<type_array<int>>(         //
-    ex::just_error(7)                       //
+  check_err_types<type_array<int>>( //
+    ex::just_error(7)               //
     | ex::let_stopped([] { return ex::just(0); }));
-  check_err_types<type_array<double>>(      //
-    ex::just_error(3.14)                    //
+  check_err_types<type_array<double>>( //
+    ex::just_error(3.14)               //
     | ex::let_stopped([] { return ex::just(0); }));
   check_err_types<type_array<std::string>>( //
     ex::just_error(std::string{"hello"})    //
@@ -159,11 +159,11 @@ TEST_CASE(
 TEST_CASE("let_stopped adds to error_type of the input sender", "[adaptors][let_stopped]") {
   impulse_scheduler sched;
   ex::sender auto in_snd = ex::transfer_just(sched, 11);
-  check_err_types<type_array<std::exception_ptr, int>>(         //
-    in_snd                                                      //
+  check_err_types<type_array<std::exception_ptr, int>>( //
+    in_snd                                              //
     | ex::let_stopped([] { return ex::just_error(0); }));
-  check_err_types<type_array<std::exception_ptr, double>>(      //
-    in_snd                                                      //
+  check_err_types<type_array<std::exception_ptr, double>>( //
+    in_snd                                                 //
     | ex::let_stopped([] { return ex::just_error(3.14); }));
   check_err_types<type_array<std::exception_ptr, std::string>>( //
     in_snd                                                      //

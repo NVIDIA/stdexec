@@ -293,8 +293,8 @@ namespace std {
     using completion_signatures STDEXEC_STD_DEPRECATED = stdexec::completion_signatures<_Sigs...>;
 
     // [exec.utils.mkcmplsigs]
-    template <                                                                          //
-      class _Sender,                                                                    //
+    template <       //
+      class _Sender, //
       class _Env = stdexec::no_env,
       class _Sigs = stdexec::completion_signatures<>,                                   //
       template <class...> class _SetValue = stdexec::__compl_sigs::__default_set_value, //

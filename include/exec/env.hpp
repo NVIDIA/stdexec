@@ -123,7 +123,7 @@ namespace exec {
     struct __operation_base {
       using _Receiver = __t<_ReceiverId>;
       _Receiver __rcvr_;
-      std::tuple<_Withs...> __withs_;
+      stdexec::tuple<_Withs...> __withs_;
     };
 
     template <class _ReceiverId, class... _Withs>
@@ -139,7 +139,7 @@ namespace exec {
       }
 
       auto get_env() const -> make_env_t<env_of_t<_Receiver>, _Withs...> {
-        return std::apply(
+        return stdexec::apply(
           [this](auto&... __withs) { return make_env(stdexec::get_env(base()), __withs...); },
           __op_->__withs_);
       }
@@ -176,7 +176,7 @@ namespace exec {
         __operation<__x<__copy_cvref_t<_Self, _Sender>>, _ReceiverId, _Withs...>;
 
       _Sender __sndr_;
-      std::tuple<_Withs...> __withs_;
+      stdexec::tuple<_Withs...> __withs_;
 
       template <__decays_to<__sender> _Self, receiver _Receiver>
         requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<__x<_Receiver>>>
@@ -201,13 +201,13 @@ namespace exec {
         requires sender<_Sender>
       auto operator()(_Sender&& __sndr, __env::__with<_Tags, _Values>... __withs) const
         -> __sender<__x<__decay_t<_Sender>>, __env::__with<_Tags, _Values>...> {
-        return {(_Sender&&) __sndr, {std::move(__withs)...}};
+        return {(_Sender&&) __sndr, stdexec::make_tuple(std::move(__withs)...)};
       }
 
       template <class... _Tags, class... _Values>
       auto operator()(__env::__with<_Tags, _Values>... __withs) const
         -> __binder_back<__write_t, __env::__with<_Tags, _Values>...> {
-        return {{}, {}, {std::move(__withs)...}};
+        return {{}, {}, stdexec::make_tuple(std::move(__withs)...)};
       }
     };
   } // namespace __write

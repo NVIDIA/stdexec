@@ -117,10 +117,10 @@ namespace exec {
               __expect, true, std::memory_order_relaxed, std::memory_order_relaxed)) {
           // This emplacement can happen only once
           if constexpr (__nothrow_result_constructible_from<_ResultVariant, _CPO, _Args...>) {
-            __result_.emplace(std::tuple{_CPO{}, (_Args&&) __args...});
+            __result_.emplace(stdexec::make_tuple(_CPO{}, (_Args&&) __args...));
           } else {
             try {
-              __result_.emplace(std::tuple{_CPO{}, (_Args&&) __args...});
+              __result_.emplace(stdexec::make_tuple(_CPO{}, (_Args&&) __args...));
             } catch (...) {
               __result_.emplace(set_error_t{}, std::current_exception());
             }
@@ -140,7 +140,7 @@ namespace exec {
           STDEXEC_ASSERT(__result_.has_value());
           std::visit(
             [this]<class _Tuple>(_Tuple&& __result) {
-              std::apply(
+              stdexec::apply(
                 [this]<class _Cpo, class... _As>(_Cpo, _As&&... __args) noexcept {
                   _Cpo{}((_Receiver&&) __receiver_, (_As&&) __args...);
                 },
@@ -213,7 +213,7 @@ namespace exec {
           }}...} {
         }
 
-        std::tuple<connect_result_t<stdexec::__t<_SenderIds>, __receiver_t>...> __ops_;
+        stdexec::tuple<connect_result_t<stdexec::__t<_SenderIds>, __receiver_t>...> __ops_;
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
           __self.__on_stop_.emplace(
@@ -222,7 +222,7 @@ namespace exec {
           if (__self.__stop_source_.stop_requested()) {
             set_stopped((_Receiver&&) __self.__receiver_);
           } else {
-            std::apply([](auto&... __ops) { (start(__ops), ...); }, __self.__ops_);
+            stdexec::apply([](auto&... __ops) { (start(__ops), ...); }, __self.__ops_);
           }
         }
       };

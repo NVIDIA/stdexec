@@ -71,7 +71,9 @@ TEST_CASE(
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("nvexec ensure_started can succeed a sender", "[cuda][stream][adaptors][ensure_started]") {
+TEST_CASE(
+  "nvexec ensure_started can succeed a sender",
+  "[cuda][stream][adaptors][ensure_started]") {
   SECTION("without values") {
     nvexec::stream_context stream_ctx{};
     flags_storage_t<2> flags_storage{};

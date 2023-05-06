@@ -259,6 +259,9 @@ namespace stdexec {
   template <template <class...> class _Tp, class... _Args>
   concept __valid = requires { typename __meval<_Tp, _Args...>; };
 
+  template <template <class...> class _Tp, class... _Args>
+  concept __invalid = !__valid<_Tp, _Args...>;
+
   template <class _Fn, class... _Args>
   concept __minvocable = __valid<_Fn::template __f, _Args...>;
 
@@ -395,101 +398,37 @@ namespace stdexec {
     using __f = __minvoke<__mfold_right_<sizeof...(_Args) == 0>, _Fn, _Init, _Args...>;
   };
 
-  template <class _Continuation, class... _As>
-  struct __mconcat_ { };
+  // customization point
+  template <class _Tp>
+  struct __mexpand;
 
-  template <class _Continuation, class... _As>
-    requires(sizeof...(_As) == 0) && __minvocable<_Continuation, _As...>
-  struct __mconcat_<_Continuation, _As...> {
-    using __t = __minvoke<_Continuation, _As...>;
+  template <template <class...> class _Ap, class... _As>
+  struct __mexpand<_Ap<_As...>> {
+    template <class _Fn, class... _Bs>
+    using __f = __minvoke<_Fn, _Bs..., _As...>;
   };
 
-  template <class _Continuation, template <class...> class _Ap, class... _As>
-    requires __minvocable<_Continuation, _As...>
-  struct __mconcat_<_Continuation, _Ap<_As...>> {
-    using __t = __minvoke<_Continuation, _As...>;
-  };
-
-  template <             //
-    class _Continuation, //
-    template <class...>
-    class _Ap,
-    class... _As, //
-    template <class...>
-    class _Bp,
-    class... _Bs>
-    requires __minvocable<_Continuation, _As..., _Bs...>
-  struct __mconcat_<_Continuation, _Ap<_As...>, _Bp<_Bs...>> {
-    using __t = __minvoke<_Continuation, _As..., _Bs...>;
-  };
-
-  template <             //
-    class _Continuation, //
-    template <class...>
-    class _Ap,
-    class... _As, //
-    template <class...>
-    class _Bp,
-    class... _Bs, //
-    template <class...>
-    class _Cp,
-    class... _Cs>
-    requires __minvocable<_Continuation, _As..., _Bs..., _Cs...>
-  struct __mconcat_<_Continuation, _Ap<_As...>, _Bp<_Bs...>, _Cp<_Cs...>> {
-    using __t = __minvoke<_Continuation, _As..., _Bs..., _Cs...>;
-  };
-
-  template <             //
-    class _Continuation, //
-    template <class...>
-    class _Ap,
-    class... _As, //
-    template <class...>
-    class _Bp,
-    class... _Bs, //
-    template <class...>
-    class _Cp,
-    class... _Cs, //
-    template <class...>
-    class _Dp,
-    class... _Ds, //
-    class... _Tail>
-  struct __mconcat_<_Continuation, _Ap<_As...>, _Bp<_Bs...>, _Cp<_Cs...>, _Dp<_Ds...>, _Tail...>
-    : __mconcat_<_Continuation, __types<_As..., _Bs..., _Cs..., _Ds...>, _Tail...> { };
-
-  template <class _Continuation = __q<__types>>
+  template <class _Continuation>
   struct __mconcat {
-    template <class... _Args>
-    using __f = __t<__mconcat_<_Continuation, _Args...>>;
-  };
-
-  template <class _Fn>
-  struct __curry {
-    template <class... _Ts>
-    using __f = __minvoke<_Fn, _Ts...>;
-  };
-
-  template <class _Fn, class _Tp>
-  struct __uncurry_;
-
-  template <__merror _Fn, class _Tp>
-  struct __uncurry_<_Fn, _Tp> {
-    using __t = _Fn;
-  };
-
-  template <class _Fn, template <class...> class _Ap, class... _As>
-    requires __minvocable<_Fn, _As...>
-  struct __uncurry_<_Fn, _Ap<_As...>> {
-    using __t = __minvoke<_Fn, _As...>;
+    template <class... _As>
+    using __f = __minvoke<
+      __minvoke<
+        __transform< __q<__mexpand>, __mfold_right<__q<__minvoke>, __q<__mbind_front>>>,
+        _As...>,
+      _Continuation>;
   };
 
   template <class _Fn>
   struct __uncurry {
     template <class _Tp>
-    using __f = __t<__uncurry_<_Fn, _Tp>>;
+    using __f = __minvoke<__mexpand<_Tp>, _Fn>;
   };
+
   template <class _Fn, class _List>
-  using __mapply = __minvoke<__uncurry<_Fn>, _List>;
+  using __mapply = __minvoke<__mexpand<_List>, _Fn>;
+
+  template <class _Fn, class _List>
+  concept __mapplicable = __minvocable<__mexpand<_List>, _Fn>;
 
   struct __msize {
     template <class... _Ts>
@@ -645,7 +584,7 @@ namespace stdexec {
   template <class _From, class _To = __decay_t<_From>>
   using __cvref_id = __copy_cvref_t<_From, __id<_To>>;
 
-#if STDEXEC_NVHPC()
+#if 0 //STDEXEC_NVHPC()
   // nvc++ doesn't cache the results of alias template specializations.
   // To avoid repeated computation of the same function return type,
   // cache the result ourselves in a class template specialization.
@@ -692,30 +631,33 @@ namespace stdexec {
     const _Ty& operator()(const _Ty&);
   };
   template <class _Ty>
-  using __cref_t = decltype(__cref_fn{}(__declval<_Ty>()));
+  using __cref_t = decltype(__cref_fn()(__declval<_Ty>()));
 
-  template <class, class, class, class>
-  struct __mzip_with2_;
+  // clang-format off
+  template <class... _Lists>
+    requires (__mapplicable<__q<__types>, _Lists> &&...)
+  struct __mzip_with_
+    : __mzip_with_<__mapply<__q<__types>, _Lists>...> { };
 
-  template <             //
-    class _Fn,           //
-    class _Continuation, //
-    template <class...>
-    class _Cp,
-    class... _Cs, //
-    template <class...>
-    class _Dp,
-    class... _Ds>
-    requires requires { typename __minvoke<_Continuation, __minvoke<_Fn, _Cs, _Ds>...>; }
-  struct __mzip_with2_<_Fn, _Continuation, _Cp<_Cs...>, _Dp<_Ds...>> {
-    using __t = __minvoke<_Continuation, __minvoke<_Fn, _Cs, _Ds>...>;
+  template <class... _Cs>
+  struct __mzip_with_<__types<_Cs...>> {
+    template <class _Fn, class _Continuation>
+    using __f = __minvoke<_Continuation, __minvoke<_Fn, _Cs>...>;
+  };
+
+  template <class... _Cs, class... _Ds>
+  struct __mzip_with_<__types<_Cs...>, __types<_Ds...>> {
+    template <class _Fn, class _Continuation>
+    using __f = __minvoke<_Continuation, __minvoke<_Fn, _Cs, _Ds>...>;
   };
 
   template <class _Fn, class _Continuation = __q<__types>>
-  struct __mzip_with2 {
-    template <class _Cp, class _Dp>
-    using __f = __t<__mzip_with2_<_Fn, _Continuation, _Cp, _Dp>>;
+  struct __mzip_with {
+    template <class... _Lists>
+    using __f = __minvoke<__mzip_with_<_Lists...>, _Fn, _Continuation>;
   };
+
+  // clang-format on
 
 #if STDEXEC_GCC() && (__GNUC__ < 12)
   template <class>
@@ -813,7 +755,7 @@ namespace stdexec {
   struct __m_at_;
 
   template <std::size_t... _Is>
-  struct __m_at_<std::index_sequence<_Is...>> {
+  struct __m_at_<__indices<_Is...>> {
     template <class _Up, class... _Us>
     static _Up __f_(__void_ptr<_Is>..., _Up*, _Us*...);
     template <class... _Ts>
@@ -821,7 +763,7 @@ namespace stdexec {
   };
 
   template <std::size_t _Np, class... _Ts>
-  using __m_at = __minvoke<__m_at_<std::make_index_sequence<_Np>>, _Ts...>;
+  using __m_at = __minvoke<__m_at_<__make_indices<_Np>>, _Ts...>;
 #endif
 
   template <std::size_t _Np>
@@ -849,17 +791,63 @@ namespace stdexec {
   template <std::size_t>
   using __ignore_t = __ignore;
 
-  template <std::size_t... _Is, class _Ty, class... _Us>
-  _Ty&& __nth_pack_element_(__ignore_t<_Is>..., _Ty&& __t, _Us&&...) noexcept {
-    return (_Ty&&) __t;
-  }
+  template <class _Indices>
+  struct __nth_pack_element_;
 
-  template <std::size_t _Np, class... _Ts>
-  constexpr decltype(auto) __nth_pack_element(_Ts&&... __ts) noexcept {
-    return [&]<std::size_t... _Is>(std::index_sequence<_Is...>*) noexcept -> decltype(auto) {
-      return stdexec::__nth_pack_element_<_Is...>((_Ts&&) __ts...);
-    }((std::make_index_sequence<_Np>*) nullptr);
-  }
+  template <std::size_t... _Is>
+  struct __nth_pack_element_<__indices<_Is...>> {
+    template <class _Ty, class... _Us>
+    constexpr _Ty&& operator()(__ignore_t<_Is>..., _Ty&& __ty, _Us&&...) const noexcept {
+      return (_Ty&&) __ty;
+    }
+  };
+
+  template <std::size_t _Nn>
+  using __nth_pack_element = __nth_pack_element_<__make_indices<_Nn>>;
+
+//////////////////////////////////////////////////////////
+// Begin __mfill_n implementation (needed by get<_Nn>(tuple))
+#if __has_builtin(__make_integer_seq)
+
+  // Implement __mfill_n in terms of the __make_integer_seq compiler intrinsic
+  template <class _Ty, class _Tail>
+  struct __mfill_n_ {
+    template <class, std::size_t... _Indices>
+    using __idx_tuple = __minvoke<_Tail, __mfirst<_Ty, __msize_t<_Indices>>...>;
+    template <class _Nn>
+    using __f = __make_integer_seq<__idx_tuple, std::size_t, __v<_Nn>>;
+  };
+  template <std::size_t _Nn, class _Ty, class _Tail = __q<__types>>
+  using __mfill_n = __minvoke<__mfill_n_<_Ty, _Tail>, __msize_t<_Nn>>;
+
+#elif __has_builtin(__integer_pack)
+
+  // Implement __mfill_n in terms of the __integer_pack compiler intrinsic
+  template <class _Tail, class _Ty, std::size_t... Ns>
+  using __mfill_n_ = __minvoke<_Tail, __mfirst<_Ty, char[Ns + 1]>...>;
+
+  template <std::size_t _Nn, class _Ty, class _Tail = __q<__types>>
+  using __mfill_n = __mfill_n_<_Tail, _Ty, __integer_pack(_Nn)...>;
+
+#else
+
+  // Implement __mfill_n in terms of the __make_integer_seq compiler intrinsic
+  template <class _Ty, class _Tail>
+  struct __mfill_n_ {
+    template <class _Nn>
+    using __f = __t<
+      decltype([]<std::size_t... _Is>(__indices<_Is...>) //
+        -> __mtype<__minvoke<_Tail, __mfirst<_Ty, __msize_t<_Is>>...>> {
+        return {};
+      }(__make_indices<__v<_Nn>>()))>;
+  };
+  template <std::size_t _Nn, class _Ty, class _Tail = __q<__types>>
+  using __mfill_n = __minvoke<__mfill_n_<_Ty, _Tail>, __msize_t<_Nn>>;
+
+#endif
+  // End __mfill_n implementation
+  ////////////////////////////////
+
 
   template <class _Ty>
   struct __mdispatch_ {
@@ -873,7 +861,7 @@ namespace stdexec {
   struct __mdispatch_<__placeholder<_Np>> {
     template <class... _Ts>
     decltype(auto) operator()(_Ts&&... __ts) const noexcept {
-      return stdexec::__nth_pack_element<_Np>((_Ts&&) __ts...);
+      return stdexec::__nth_pack_element<_Np>()((_Ts&&) __ts...);
     }
   };
 
@@ -881,7 +869,7 @@ namespace stdexec {
   struct __mdispatch_<__placeholder<_Np>&> {
     template <class... _Ts>
     decltype(auto) operator()(_Ts&&... __ts) const noexcept {
-      return stdexec::__nth_pack_element<_Np>(__ts...);
+      return stdexec::__nth_pack_element<_Np>()(__ts...);
     }
   };
 
@@ -889,7 +877,7 @@ namespace stdexec {
   struct __mdispatch_<__placeholder<_Np>&&> {
     template <class... _Ts>
     decltype(auto) operator()(_Ts&&... __ts) const noexcept {
-      return std::move(stdexec::__nth_pack_element<_Np>(__ts...));
+      return std::move(stdexec::__nth_pack_element<_Np>()(__ts...));
     }
   };
 
@@ -897,7 +885,7 @@ namespace stdexec {
   struct __mdispatch_<const __placeholder<_Np>&> {
     template <class... _Ts>
     decltype(auto) operator()(_Ts&&... __ts) const noexcept {
-      return std::as_const(stdexec::__nth_pack_element<_Np>(__ts...));
+      return std::as_const(stdexec::__nth_pack_element<_Np>()(__ts...));
     }
   };
 

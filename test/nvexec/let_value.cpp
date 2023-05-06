@@ -54,7 +54,9 @@ TEST_CASE("nvexec let_value accepts values on GPU", "[cuda][stream][adaptors][le
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("nvexec let_value accepts multiple values on GPU", "[cuda][stream][adaptors][let_value]") {
+TEST_CASE(
+  "nvexec let_value accepts multiple values on GPU",
+  "[cuda][stream][adaptors][let_value]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t flags_storage{};
@@ -84,7 +86,9 @@ TEST_CASE("nvexec let_value returns values on GPU", "[cuda][stream][adaptors][le
   REQUIRE(result == 1);
 }
 
-TEST_CASE("nvexec let_value can preceed a sender without values", "[cuda][stream][adaptors][let_value]") {
+TEST_CASE(
+  "nvexec let_value can preceed a sender without values",
+  "[cuda][stream][adaptors][let_value]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t<2> flags_storage{};

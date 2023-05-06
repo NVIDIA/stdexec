@@ -60,16 +60,16 @@ int main() {
     exec::finally(
       exec::schedule_after(scheduler, 4s),
       stdexec::just() | stdexec::then([&] { context2.request_stop(); })),
-    exec::schedule_after(scheduler, 10s)    //
-      | stdexec::then([] {                  //
-          std::cout << "Hello, world!\n";   //
+    exec::schedule_after(scheduler, 10s)  //
+      | stdexec::then([] {                //
+          std::cout << "Hello, world!\n"; //
         })
       | stdexec::upon_stopped([] {          //
           std::cout << "Hello, stopped.\n"; //
         }),
-    exec::schedule_after(scheduler2, 10s)   //
-      | stdexec::then([] {                  //
-          std::cout << "Hello, world!\n";   //
+    exec::schedule_after(scheduler2, 10s) //
+      | stdexec::then([] {                //
+          std::cout << "Hello, world!\n"; //
         })
       | stdexec::upon_stopped([] {          //
           std::cout << "Hello, stopped.\n"; //

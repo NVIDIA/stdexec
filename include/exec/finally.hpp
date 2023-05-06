@@ -90,7 +90,7 @@ namespace exec {
 
       template <class _Tuple>
       void operator()(_Tuple&& __tuple) const noexcept {
-        std::apply(__applier<_Receiver>{(_Receiver&&) __receiver_}, (_Tuple&&) __tuple);
+        stdexec::apply(__applier<_Receiver>{(_Receiver&&) __receiver_}, (_Tuple&&) __tuple);
       }
     };
 

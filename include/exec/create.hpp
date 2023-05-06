@@ -83,9 +83,10 @@ namespace exec {
     template <__completion_signature... _Sigs>
     struct __create_t {
       template <class _Fun, class... _Args>
-        requires move_constructible<_Fun> && constructible_from<__decayed_tuple<_Args...>, _Args...>
+        requires move_constructible<_Fun>
+              && constructible_from<__decayed_std_tuple<_Args...>, _Args...>
       auto operator()(_Fun __fun, _Args&&... __args) const
-        -> __sender<_Fun, __x<__decayed_tuple<_Args...>>, _Sigs...> {
+        -> __sender<_Fun, __x<__decayed_std_tuple<_Args...>>, _Sigs...> {
         return {(_Fun&&) __fun, {(_Args&&) __args...}};
       }
     };
