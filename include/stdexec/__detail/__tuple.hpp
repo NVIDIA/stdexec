@@ -102,7 +102,7 @@ namespace stdexec {
     struct __any_convertible_to {
       virtual constexpr operator _Ty() = 0;
 
-      friend constexpr _Ty __move(__any_convertible_to& __self) {
+      friend constexpr _Ty __move_capture(__any_convertible_to& __self) {
         return static_cast<_Ty>(__self);
       }
     };
@@ -226,12 +226,12 @@ namespace stdexec {
     using __types_of = __impl_types<__impl_of<_Tuple>>;
 
     template <class _Ty>
-    constexpr _Ty&& __move(_Ty& __ty) noexcept {
+    constexpr _Ty&& __move_capture(_Ty& __ty) noexcept {
       return (_Ty&&) __ty;
     }
 
     template <class _Ty>
-    using __rvalue_t = decltype(__move(__declval<_Ty&>()));
+    using __rvalue_t = decltype(__move_capture(__declval<_Ty&>()));
 
     template <class _Self, class _Ty>
     using __element_t = __unwrap_t<__copy_cvref_t<_Self, __rvalue_t<_Ty>>>;
@@ -243,13 +243,13 @@ namespace stdexec {
     concept __decay_convertible_to = //
       requires(_From&& __from, __param_t<_To>& __w) {
         static_cast<__param_t<_To>>(static_cast<__value_t<_To, _From>>((_From&&) __from));
-        __decay_copy(__move(__w));
+        __tup::__decay_copy(__move_capture(__w));
       };
 
     template <class... _Ts>
     constexpr auto
       __make_impl(_Ts&&... __ts) noexcept((__nothrow_decay_copyable<__rvalue_t<_Ts>> && ...)) {
-      return [... __ts = __move(__ts)]                                                   //
+      return [... __ts = __move_capture(__ts)]                                           //
             <class _Self, class _Fun>(_Self&&, _Fun && __fn) constexpr mutable           //
              noexcept(__nothrow_callable<__unconst_t<_Fun>, __element_t<_Self, _Ts>...>) //
              -> __call_result_t<__unconst_t<_Fun>, __element_t<_Self, _Ts>...> {
@@ -372,7 +372,7 @@ namespace stdexec {
     }
 
     template <__tup::__is_tuple _Other>
-      requires (!__decays_to<_Other, __tuple>) && __tup::__applicable<__construct_impl, _Other>
+      requires(!__decays_to<_Other, __tuple>) && __tup::__applicable<__construct_impl, _Other>
     explicit constexpr __tuple(_Other&& __other) noexcept(
       __tup::__nothrow_applicable<__construct_impl, _Other>)
       : __fn_(__tup::apply(__construct_impl(), (_Other&&) __other)) {
