@@ -280,7 +280,7 @@ struct a_sender_helper_t<a_sender_kind::then> {
   template <class _Fun>
   stdexec::__binder_back<a_sender_helper_t<a_sender_kind::then>, _Fun>
     operator()(_Fun __fun) const {
-    return {{}, {}, {(_Fun&&) __fun}};
+    return {{}, {}, stdexec::make_tuple((_Fun&&) __fun)};
   };
 };
 

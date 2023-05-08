@@ -21,8 +21,8 @@
 
 #include <bit>
 
-// nvc++ cannot yet handle lambda-based tuples
-#if STDEXEC_NVHPC()
+// nvc++ cannot yet handle lambda-based tuples, nor can gcc-11
+#if STDEXEC_NVHPC() || (STDEXEC_GCC() && (__GNUC__ < 12))
 
 #include <tuple>
 
@@ -188,7 +188,7 @@ namespace stdexec {
     struct __apply_impl {
       template <class _Fun, class _Impl>
       constexpr auto operator()(_Fun&& __fn, _Impl&& __impl) const
-        noexcept(__nothrow_callable<__unconst_t<_Impl>, _Impl, __unconst_t<_Fun>>)
+        noexcept(__nothrow_callable<__unconst_t<_Impl>, _Impl, _Fun>)
           -> __call_result_t<__unconst_t<_Impl>, _Impl, _Fun> {
         return const_cast<__unconst_t<_Impl>&&>(__impl)((_Impl&&) __impl, (_Fun&&) __fn);
       }

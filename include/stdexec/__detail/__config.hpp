@@ -85,7 +85,7 @@
 
 // Before gcc-12, gcc really didn't like tuples or variants of immovable types
 #if STDEXEC_GCC() && (__GNUC__ < 12)
-#define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&)
+#define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&);
 #else
 #define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&) = delete
 #endif

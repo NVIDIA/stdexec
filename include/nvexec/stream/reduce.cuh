@@ -135,7 +135,7 @@ namespace nvexec {
         return {
           {},
           {},
-          {(InitT&&) init, (Fun&&) fun}
+          stdexec::make_tuple((InitT&&) init, (Fun&&) fun)
         };
       }
     };
