@@ -246,23 +246,35 @@ namespace stdexec {
         __tup::__decay_copy(__move_capture(__w));
       };
 
-    template <class... _Ts>
-    constexpr auto
-      __make_impl(_Ts&&... __ts) noexcept((__nothrow_decay_copyable<__rvalue_t<_Ts>> && ...)) {
-      return [... __ts = __move_capture(__ts)]                                           //
-            <class _Self, class _Fun>(_Self&&, _Fun && __fn) constexpr mutable           //
-             noexcept(__nothrow_callable<__unconst_t<_Fun>, __element_t<_Self, _Ts>...>) //
-             -> __call_result_t<__unconst_t<_Fun>, __element_t<_Self, _Ts>...> {
-               return const_cast<__unconst_t<_Fun>&&>(__fn)(
-                 static_cast<__element_t<_Self, _Ts>&&>(__ts)...);
-             };
-    }
+    inline constexpr auto __make_impl =
+      []<class... _Ts>(_Ts&&... __ts) noexcept((__nothrow_decay_copyable<__rvalue_t<_Ts>> && ...)) {
+        return [... __ts = __move_capture(__ts)]                                           //
+              <class _Self, class _Fun>(_Self&&, _Fun && __fn) constexpr mutable           //
+               noexcept(__nothrow_callable<__unconst_t<_Fun>, __element_t<_Self, _Ts>...>) //
+               -> __call_result_t<__unconst_t<_Fun>, __element_t<_Self, _Ts>...> {
+                 return const_cast<__unconst_t<_Fun>&&>(__fn)(
+                   static_cast<__element_t<_Self, _Ts>&&>(__ts)...);
+               };
+      };
 
-    template <class _Ret, class... _Args>
-    _Ret __impl_for_(_Ret (*)(_Args...));
+    template <class _Ret, class _Impl, class... _Args>
+    _Ret __impl_for_(_Ret (_Impl::*__p)(_Args...) const);
 
     template <class... _Ts>
-    using __impl_for = decltype(__tup::__impl_for_(&__make_impl<__param_t<_Ts>...>));
+    using __impl_for =
+      decltype(__tup::__impl_for_(&decltype(__make_impl)::operator()<__param_t<_Ts>...>));
+
+    template <class... _Ts>
+    struct __construct_impl {
+      template <class... _Us>
+        requires(__decay_convertible_to<_Us, _Ts> && ...)
+      constexpr auto operator()(_Us&&... us) const
+        noexcept(noexcept(__tup::__make_impl.operator()<__param_t<_Ts>...>(
+          static_cast<__value_t<_Ts, _Us>>((_Us&&) us)...))) -> __impl_for<_Ts...> {
+        return __tup::__make_impl.operator()<__param_t<_Ts>...>(
+          static_cast<__value_t<_Ts, _Us>>((_Us&&) us)...);
+      };
+    };
 
     template <class... _Ts>
     using __tuple_for = __tuple<sizeof...(_Ts), __impl_for<_Ts...>>;
@@ -284,18 +296,6 @@ namespace stdexec {
 
     template <class _Ty>
     using __default_init_for = __if_c<move_constructible<_Ty>, _Ty, __make_default<_Ty>>;
-
-    template <class... _Ts>
-    struct __construct_impl {
-      template <class... _Us>
-        requires(__decay_convertible_to<_Us, _Ts> && ...)
-      constexpr auto operator()(_Us&&... us) const noexcept(noexcept(
-        __tup::__make_impl<__param_t<_Ts>...>(static_cast<__value_t<_Ts, _Us>>((_Us&&) us)...)))
-        -> __impl_for<_Ts...> {
-        return __tup::__make_impl<__param_t<_Ts>...>(
-          static_cast<__value_t<_Ts, _Us>>((_Us&&) us)...);
-      };
-    };
 
     template <class... _Ts>
     struct __default_init_impl {
