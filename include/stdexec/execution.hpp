@@ -3927,7 +3927,7 @@ namespace stdexec {
 
     struct ensure_started_t;
 
-    // When looking for user-defined customizations of split, these
+    // When looking for user-defined customizations of ensure_started, these
     // are the signatures to test against, in order:
     using _CvrefSender = __0;
     using _Env = __1;
