@@ -32,8 +32,8 @@ jobs:
         with:
           persist-credentials: false
       - name: Build and test CPU schedulers
-        shell: python3 {0}
-        run: /usr/local/bin/entrypoint.py
+        run: exec /usr/local/bin/entrypoint.py
+        shell: bash --noprofile --norc -eo pipefail {0}
         env:
           INPUT_CHECKS: "build test"
           INPUT_CXXFLAGS: "${{ matrix.cxxflags }}"
