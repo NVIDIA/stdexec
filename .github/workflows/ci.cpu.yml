@@ -12,78 +12,40 @@ concurrency:
 
 jobs:
 
-  build-cpu-gcc11:
+  build-cpu:
     runs-on: ubuntu-latest
-    name: CPU (gcc 11, ubuntu 20.04)
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { compiler: gcc,   version: "11", os: ubuntu20.04, name: "CPU (gcc 11, ubuntu 20.04)",       cxxflags: "" }
+          - { compiler: clang, version: "12", os: ubuntu20.04, name: "CPU (clang 12, ubuntu 20.04)",     cxxflags: "-stdlib=libc++" }
+          - { compiler: gcc,   version: "11", os: ubuntu22.04, name: "CPU (gcc 11, ubuntu 22.04, TSAN)", cxxflags: "-fsanitize=thread" }
+          - { compiler: gcc,   version: "11", os: ubuntu22.04, name: "CPU (gcc 11, ubuntu 22.04, ASAN)", cxxflags: "-fsanitize=address" }
+    container:
+      options: --entrypoint /bin/bash
+      image: ghcr.io/trxcllnt/action-cxx-toolkit:${{ matrix.compiler }}${{ matrix.version }}-${{ matrix.os }}
     steps:
       - name: Checkout stdexec
         uses: actions/checkout@v3
         with:
           persist-credentials: false
       - name: Build and test CPU schedulers
-        uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:gcc11-ubuntu20.04
-        with:
-          cc: gcc-11
-          checks: build test
-          cmakeflags: "-DSTDEXEC_ENABLE_TBB:BOOL=TRUE"
-          prebuild_command: |
+        shell: python3 {0}
+        run: /usr/local/bin/entrypoint.py
+        env:
+          INPUT_CHECKS: "build test"
+          INPUT_CXXFLAGS: "${{ matrix.cxxflags }}"
+          INPUT_CMAKEFLAGS: "-DSTDEXEC_ENABLE_TBB:BOOL=TRUE"
+          INPUT_CC: "${{ matrix.compiler }}-${{ matrix.version }}"
+          INPUT_PREBUILD_COMMAND: |
             apt update && apt install -y --no-install-recommends git libtbb-dev;
-  build-cpu-clang12:
-    runs-on: ubuntu-latest
-    name: CPU (clang 12, ubuntu 20.04)
-    steps:
-      - name: Checkout stdexec
-        uses: actions/checkout@v3
-        with:
-          persist-credentials: false
-      - name: Build and test CPU schedulers
-        uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:clang12-ubuntu20.04
-        with:
-          cc: clang-12
-          checks: build test
-          cxxflags: "-stdlib=libc++"
-          cmakeflags: "-DSTDEXEC_ENABLE_TBB:BOOL=TRUE"
-          prebuild_command: |
-            apt update && apt install -y --no-install-recommends git libtbb-dev;
-  build-cpu-gcc11-ubuntu2204:
-    runs-on: ubuntu-22.04
-    name: CPU (gcc 11, ubuntu 22.04, TSAN)
-    steps:
-      - name: Checkout stdexec
-        uses: actions/checkout@v3
-        with:
-          persist-credentials: false
-      - name: Build and test CPU schedulers
-        uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:gcc11-ubuntu22.04
-        with:
-          cc: gcc-11
-          checks: build test
-          cxxflags: "-fsanitize=thread"
-          prebuild_command: |
-            apt update && apt install -y --no-install-recommends git;
-  build-cpu-gcc11-ubuntu2204-asan:
-    runs-on: ubuntu-22.04
-    name: CPU (gcc 11, ubuntu 22.04, ASAN)
-    steps:
-      - name: Checkout stdexec
-        uses: actions/checkout@v3
-        with:
-          persist-credentials: false
-      - name: Build and test CPU schedulers
-        uses: docker://ghcr.io/trxcllnt/action-cxx-toolkit:gcc11-ubuntu22.04
-        with:
-          cc: gcc-11
-          checks: build test
-          cxxflags: "-fsanitize=address"
-          prebuild_command: |
-            apt update && apt install -y --no-install-recommends git;
 
   ci-cpu:
     runs-on: ubuntu-latest
     name: CI (CPU)
     needs:
-      - build-cpu-gcc11
-      - build-cpu-clang12
-      - build-cpu-gcc11-ubuntu2204
+      - build-cpu
     steps:
       - run: echo "CI (CPU) success"
