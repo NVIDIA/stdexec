@@ -27,6 +27,8 @@
 
 #include <tbbexec/tbb_thread_pool.hpp>
 
+#include <tbb/global_control.h> // needed by TbbTestFixture below
+
 namespace ex = stdexec;
 
 template <ex::scheduler Sched = inline_scheduler>
@@ -35,6 +37,17 @@ inline auto _with_scheduler(Sched sched = {}) {
 }
 
 namespace {
+
+  // For use suppressing TSAN false positives
+  // See https://stackoverflow.com/questions/72563202/tbbs-private-server-and-false-positive-threadsanitizer-data-races
+  struct TbbTestFixture {
+    ~TbbTestFixture() {
+      // Expected to kill tbb::detail::r1::rml::private_server after each test,
+      // which can otherwise trigger false positive tsan data race warnings.
+      auto handle = tbb::task_scheduler_handle::get();
+      tbb::finalize(handle, std::nothrow_t{});
+    }
+  };
 
   // Example adapted from
   // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2300r5.html#example-async-inclusive-scan
@@ -77,7 +90,8 @@ namespace {
 
 } // namespace
 
-TEST_CASE(
+TEST_CASE_METHOD(
+  TbbTestFixture,
   "exec::on works when changing threads with tbbexec::tbb_thread_pool",
   "[adaptors][exec::on]") {
   tbbexec::tbb_thread_pool pool;
@@ -94,7 +108,7 @@ TEST_CASE(
   REQUIRE(called);
 }
 
-TEST_CASE("more tbb_thread_pool") {
+TEST_CASE_METHOD(TbbTestFixture, "more tbb_thread_pool") {
 
   auto compute = [](int x) -> int {
     return x + 1;
@@ -129,7 +143,7 @@ TEST_CASE("more tbb_thread_pool") {
   CHECK(k == 5);
 }
 
-TEST_CASE("tbb_thread_pool exceptions") {
+TEST_CASE_METHOD(TbbTestFixture, "tbb_thread_pool exceptions") {
   // I know tbb::task_groups do cancellation with exceptions, which leaves them in a not-restartable
   // state. We'd better have it act normally here.
   using namespace stdexec;
@@ -153,7 +167,7 @@ TEST_CASE("tbb_thread_pool exceptions") {
   }
 }
 
-TEST_CASE("tbb_thread_pool async_inclusive_scan") {
+TEST_CASE_METHOD(TbbTestFixture, "tbb_thread_pool async_inclusive_scan") {
   const auto input = std::array{1.0, 2.0, -1.0, -2.0};
   std::remove_const_t<decltype(input)> output;
   tbbexec::tbb_thread_pool pool{2};

@@ -83,6 +83,14 @@ set(stdexec_test_sources
     $<$<BOOL:${STDEXEC_ENABLE_TBB}>:tbbexec/test_tbb_thread_pool.cpp>
     )
 
+if(STDEXEC_ENABLE_TBB)
+    # For use suppressing TSAN false positives
+    # See https://stackoverflow.com/questions/72563202/tbbs-private-server-and-false-positive-threadsanitizer-data-races
+    set_source_files_properties(tbbexec/test_tbb_thread_pool.cpp
+        PROPERTIES COMPILE_DEFINITIONS
+        -DTBB_PREVIEW_WAITING_FOR_WORKERS=1)
+endif()
+
 add_executable(test.stdexec ${stdexec_test_sources})
 
 target_include_directories(test.stdexec PRIVATE ${CMAKE_CURRENT_LIST_DIR})
