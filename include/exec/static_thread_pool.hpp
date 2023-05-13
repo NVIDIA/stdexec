@@ -66,13 +66,13 @@ namespace exec {
           stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t()>;
        private:
         template <typename Receiver>
-        operation<stdexec::__x<stdexec::__decay_t<Receiver>>> make_operation_(Receiver&& r) const {
-          return operation<stdexec::__x<stdexec::__decay_t<Receiver>>>{pool_, (Receiver&&) r};
+        auto make_operation_(Receiver r) const -> operation<stdexec::__id<Receiver>> {
+          return operation<stdexec::__id<Receiver>>{pool_, (Receiver&&) r};
         }
 
         template <stdexec::receiver Receiver>
-        friend operation<stdexec::__x<stdexec::__decay_t<Receiver>>>
-          tag_invoke(stdexec::connect_t, sender s, Receiver&& r) {
+        friend auto tag_invoke(stdexec::connect_t, sender s, Receiver r)
+          -> operation<stdexec::__id<Receiver>> {
           return s.make_operation_((Receiver&&) r);
         }
 
