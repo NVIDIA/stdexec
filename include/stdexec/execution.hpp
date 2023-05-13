@@ -2653,35 +2653,26 @@ namespace stdexec {
   template <__class _Derived, receiver _Base = __adaptors::__not_a_receiver>
   using receiver_adaptor = typename __adaptors::receiver_adaptor<_Derived, _Base>::__t;
 
-  template <class _Receiver, class... _As>
-  concept __receiver_of_maybe_void =
-    (same_as<__types<void>, __types<_As...>>
-     && receiver_of<_Receiver, completion_signatures<set_value_t()>>)
-    || receiver_of<_Receiver, completion_signatures<set_value_t(_As...)>>;
-
   template <class _Receiver, class _Fun, class... _As>
   concept __receiver_of_invoke_result =
-    __receiver_of_maybe_void<_Receiver, std::invoke_result_t<_Fun, _As...>>;
+    receiver_of<
+      _Receiver,
+      completion_signatures<
+        __minvoke<__remove<void, __qf<set_value_t>>, std::invoke_result_t<_Fun, _As...>>>>;
 
-  template <class _Receiver, class _Fun, class... _As>
-  void __set_value_invoke_(_Receiver&& __rcvr, _Fun&& __fun, _As&&... __as) //
-    noexcept(__nothrow_invocable<_Fun, _As...>) {
-    if constexpr (same_as<void, std::invoke_result_t<_Fun, _As...>>) {
-      std::invoke((_Fun&&) __fun, (_As&&) __as...);
-      set_value((_Receiver&&) __rcvr);
-    } else {
-      set_value((_Receiver&&) __rcvr, std::invoke((_Fun&&) __fun, (_As&&) __as...));
-    }
-  }
-
-  template <class _Receiver, class _Fun, class... _As>
-  void __set_value_invoke(_Receiver&& __rcvr, _Fun&& __fun, _As&&... __as) noexcept {
-    if constexpr (__nothrow_invocable<_Fun, _As...>) {
-      stdexec::__set_value_invoke_((_Receiver&&) __rcvr, (_Fun&&) __fun, (_As&&) __as...);
+  template <bool _CanThrow = false, class _Receiver, class _Fun, class... _As>
+  void __set_value_invoke(_Receiver&& __rcvr, _Fun&& __fun, _As&&... __as) noexcept(!_CanThrow) {
+    if constexpr (_CanThrow || __nothrow_invocable<_Fun, _As...>) {
+      if constexpr (same_as<void, std::invoke_result_t<_Fun, _As...>>) {
+        std::invoke((_Fun&&) __fun, (_As&&) __as...);
+        set_value((_Receiver&&) __rcvr);
+      } else {
+        set_value((_Receiver&&) __rcvr, std::invoke((_Fun&&) __fun, (_As&&) __as...));
+      }
     } else {
       try {
-        stdexec::__set_value_invoke_((_Receiver&&) __rcvr, (_Fun&&) __fun, (_As&&) __as...);
-      } catch (...) {
+        stdexec::__set_value_invoke<true>((_Receiver&&) __rcvr, (_Fun&&) __fun, (_As&&) __as...);
+      } catch(...) {
         set_error((_Receiver&&) __rcvr, std::current_exception());
       }
     }
