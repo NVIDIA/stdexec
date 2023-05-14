@@ -32,6 +32,7 @@
 #include "__detail/__intrusive_ptr.hpp"
 #include "__detail/__meta.hpp"
 #include "__detail/__scope.hpp"
+#include "__detail/__hide.hpp"
 #include "functional.hpp"
 #include "concepts.hpp"
 #include "coroutine.hpp"
@@ -2768,16 +2769,17 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
   namespace __then {
-    template <class _ReceiverId, class _Fun>
+    template <class _ReceiverH, class _FunH>
     struct __receiver {
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Receiver = h::unhide<_ReceiverH>;
+      using _Fun = h::unhide<_FunH>;
 
       struct __data {
         _Receiver __rcvr_;
         STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
       };
 
-      struct __t {
+      struct __t : h::hide_this<__t, t::then, _ReceiverH, _FunH> {
         using __id = __receiver;
         __data* __op_;
 
@@ -2806,7 +2808,7 @@ namespace stdexec {
     template <class _Sender, class _ReceiverId, class _Fun>
     struct __operation {
       using _Receiver = stdexec::__t<_ReceiverId>;
-      using __receiver_id = __receiver<_ReceiverId, _Fun>;
+      using __receiver_id = __receiver<h::hide<_Receiver>, h::hide<_Fun>>;
       using __receiver_t = stdexec::__t<__receiver_id>;
 
       struct __t : __immovable {
@@ -2819,7 +2821,7 @@ namespace stdexec {
                      && __nothrow_decay_copyable<_Fun>      //
                        && __nothrow_connectable<_Sender, __receiver_t>)
           : __data_{(_Receiver&&) __rcvr, (_Fun&&) __fun}
-          , __op_(connect((_Sender&&) __sndr, __receiver_t{&__data_})) {
+          , __op_(connect((_Sender&&) __sndr, __receiver_t{{}, &__data_})) {
         }
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
@@ -2831,16 +2833,17 @@ namespace stdexec {
     inline constexpr __mstring __then_context = "In stdexec::then(Sender, Function)..."__csz;
     using __on_not_callable = __callable_error<__then_context>;
 
-    template <class _SenderId, class _Fun>
+    template <class _SenderH, class _FunH>
     struct __sender {
-      using _Sender = stdexec::__t<_SenderId>;
+      using _Sender = h::unhide<_SenderH>;
+      using _Fun = h::unhide<_FunH>;
       template <class _Receiver>
-      using __receiver = stdexec::__t<__receiver<stdexec::__id<_Receiver>, _Fun>>;
+      using __receiver = stdexec::__t<__receiver<h::hide<_Receiver>, h::hide<_Fun>>>;
       template <class _Self, class _Receiver>
       using __operation =
         stdexec::__t<__operation<__copy_cvref_t<_Self, _Sender>, stdexec::__id<_Receiver>, _Fun>>;
 
-      struct __t {
+      struct __t : h::hide_this<__t, t::then, _SenderH, _FunH> {
         using __id = __sender;
         using is_sender = void;
         STDEXEC_NO_UNIQUE_ADDRESS _Sender __sndr_;
@@ -2887,13 +2890,13 @@ namespace stdexec {
 
     struct then_t {
       template <class _Sender, class _Fun>
-      using __sender = __t<__sender<stdexec::__id<__decay_t<_Sender>>, _Fun>>;
+      using __sender = __t<__sender<h::hide<__decay_t<_Sender>>, h::hide<_Fun>>>;
 
       template <sender _Sender, __movable_value _Fun>
         requires(!__tag_invocable_with_completion_scheduler<then_t, set_value_t, _Sender, _Fun>)
              && (!tag_invocable<then_t, _Sender, _Fun>) && sender<__sender<_Sender, _Fun>>
       __sender<_Sender, _Fun> operator()(_Sender&& __sndr, _Fun __fun) const {
-        return __sender<_Sender, _Fun>{(_Sender&&) __sndr, (_Fun&&) __fun};
+        return __sender<_Sender, _Fun>{{}, (_Sender&&) __sndr, (_Fun&&) __fun};
       }
 
       template <sender _Sender, __movable_value _Fun>
@@ -4086,12 +4089,14 @@ namespace stdexec {
       };
     };
 
-    template <class _ReceiverId, class _Fun, class _Set, class... _Tuples>
+    template <class _ReceiverH, class _FunH, class _Set, class... _Tuples>
     struct __receiver_ {
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Receiver = h::unhide<_ReceiverH>;
+      using _ReceiverId = stdexec::__id<_Receiver>;
+      using _Fun = h::unhide<_FunH>;
       using _Env = env_of_t<_Receiver>;
 
-      struct __t {
+      struct __t : h::hide_this<__t, t::let, _ReceiverH, _FunH> {
         using __id = __receiver_;
 
         template <__one_of<_Set> _Tag, class... _As>
@@ -4138,7 +4143,7 @@ namespace stdexec {
         __cvref_t<_CvrefSenderId>,
         env_of_t<__t<_ReceiverId>>,
         __q<__decayed_tuple>,
-        __munique<__mbind_front_q<__receiver_, _ReceiverId, _Fun, _Set>>>>;
+        __munique<__mbind_front_q<__receiver_, h::hide<__t<_ReceiverId>>, h::hide<_Fun>, _Set>>>>;
 
     template <class _CvrefSenderId, class _ReceiverId, class _Fun, class _Set>
     using __operation_base =
@@ -4160,19 +4165,20 @@ namespace stdexec {
         template <class _Receiver2>
         __t(_Sender&& __sndr, _Receiver2&& __rcvr, _Fun __fun)
           : __op_base_t{{}, (_Receiver2&&) __rcvr, (_Fun&&) __fun}
-          , __op_state2_(connect((_Sender&&) __sndr, __receiver_t{this})) {
+          , __op_state2_(connect((_Sender&&) __sndr, __receiver_t{{}, this})) {
         }
 
         connect_result_t<_Sender, __receiver_t> __op_state2_;
       };
     };
 
-    template <class _SenderId, class _Fun, class _SetId>
+    template <class _SenderH, class _FunH, class _SetId>
     struct __sender {
-      using _Sender = stdexec::__t<_SenderId>;
+      using _Sender = h::unhide<_SenderH>;
+      using _Fun = h::unhide<_FunH>;
       using _Set = stdexec::__t<_SetId>;
 
-      struct __t {
+      struct __t : h::hide_this<__t, t::let, _SenderH, _FunH> {
         using __id = __sender;
         using is_sender = void;
 
@@ -4223,7 +4229,7 @@ namespace stdexec {
       using __t = _SetTag;
       template <class _Sender, class _Fun>
       using __sender =
-        stdexec::__t<__let::__sender<stdexec::__id<__decay_t<_Sender>>, _Fun, _LetTag>>;
+        stdexec::__t<__let::__sender<h::hide<__decay_t<_Sender>>, h::hide<_Fun>, _LetTag>>;
 
       template <sender _Sender, __movable_value _Fun>
         requires __tag_invocable_with_completion_scheduler<_LetTag, set_value_t, _Sender, _Fun>
@@ -4249,7 +4255,7 @@ namespace stdexec {
         requires(!__tag_invocable_with_completion_scheduler<_LetTag, set_value_t, _Sender, _Fun>)
              && (!tag_invocable<_LetTag, _Sender, _Fun>) && sender<__sender<_Sender, _Fun>>
       __sender<_Sender, _Fun> operator()(_Sender&& __sndr, _Fun __fun) const {
-        return __sender<_Sender, _Fun>{(_Sender&&) __sndr, (_Fun&&) __fun};
+        return __sender<_Sender, _Fun>{{}, (_Sender&&) __sndr, (_Fun&&) __fun};
       }
 
       template <class _Fun>
@@ -5462,14 +5468,15 @@ namespace stdexec {
         __on_stop_{};
     };
 
-    template <std::size_t _Index, class _ReceiverId, class _ValuesTuple, class _ErrorsVariant>
+    template <std::size_t _Index, class _ReceiverH, class _ValuesTuple, class _ErrorsVariant>
     struct __receiver {
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Receiver = h::unhide<_ReceiverH>;
+      using _ReceiverId = stdexec::__id<_Receiver>;
       template <class _Tuple>
       using __tuple_type = typename std::tuple_element_t<_Index, _Tuple>::value_type;
       using _TupleType = __minvoke< __with_default<__q<__tuple_type>, __ignore>, _ValuesTuple>;
 
-      struct __t {
+      struct __t : h::hide_this<__t, t::when_all, std::integral_constant<std::size_t, _Index>, _ReceiverH, _ValuesTuple, _ErrorsVariant> {
         using __id = __receiver;
 
         template <class _Error>
@@ -5590,7 +5597,7 @@ namespace stdexec {
 
       template <std::size_t _Index>
       using __receiver =
-        __t< __when_all::__receiver< _Index, __id<_Receiver>, __values_tuple, __errors_variant>>;
+        __t< __when_all::__receiver< _Index, h::hide<_Receiver>, __values_tuple, __errors_variant>>;
 
       using __operation_base =
         __when_all::__operation_base<__id<_Receiver>, __values_tuple, __errors_variant>;
@@ -5634,7 +5641,7 @@ namespace stdexec {
           : __operation_base_t{{}, (_Receiver&&) __rcvr, {sizeof...(_Is)}}
           , __op_states_{__conv{[&__sndrs, this]() {
             return stdexec::connect(
-              std::get<_Is>((_SendersTuple&&) __sndrs), __receiver_t<_Is>{this});
+              std::get<_Is>((_SendersTuple&&) __sndrs), __receiver_t<_Is>{{}, this});
           }}...} {
         }
 
@@ -5668,24 +5675,24 @@ namespace stdexec {
     template <class _From, class _ToId>
     using __cvref_id = __copy_cvref_t<_From, __t<_ToId>>;
 
-    template <class _Indices, class... _SenderIds>
+    template <class _Indices, class... _SendersH>
     struct __sender;
 
-    template <std::size_t... _Indices, class... _SenderIds>
-    struct __sender<std::index_sequence<_Indices...>, _SenderIds...> {
+    template <std::size_t... _Indices, class... _SendersH>
+    struct __sender<std::index_sequence<_Indices...>, _SendersH...> {
       template <class _Self, class _Env>
       using __completions_t =
-        typename __traits_<_Env, __cvref_id<_Self, _SenderIds>...>::__completions;
+        typename __traits_<_Env, __cvref_id<_Self, stdexec::__id<h::unhide<_SendersH>>>...>::__completions;
 
       template <class _Self, class _Receiver, std::size_t _Index>
       using __receiver_t =
-        typename __traits<_Receiver, __cvref_id<_Self, _SenderIds>...>::template __receiver<_Index>;
+        typename __traits<_Receiver, __cvref_id<_Self, stdexec::__id<h::unhide<_SendersH>>>...>::template __receiver<_Index>;
 
       template <class _Self, class _Receiver>
       using __operation_t =
-        stdexec::__t<__operation< __copy_cvref_fn<_Self>, stdexec::__id<_Receiver>, _SenderIds...>>;
+        stdexec::__t<__operation< __copy_cvref_fn<_Self>, stdexec::__id<_Receiver>, stdexec::__id<h::unhide<_SendersH>>...>>;
 
-      struct __t {
+      struct __t : h::hide_this<__t, t::when_all, _SendersH...> {
         using __id = __sender;
         using is_sender = void;
 
@@ -5697,7 +5704,7 @@ namespace stdexec {
        private:
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires(
-            sender_to< __cvref_id<_Self, _SenderIds>, __receiver_t<_Self, _Receiver, _Indices>>
+            sender_to< __cvref_id<_Self, stdexec::__id<h::unhide<_SendersH>>>, __receiver_t<_Self, _Receiver, _Indices>>
             && ...)
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
           -> __operation_t<_Self, _Receiver> {
@@ -5716,7 +5723,7 @@ namespace stdexec {
           return {};
         }
 
-        std::tuple<stdexec::__t<_SenderIds>...> __sndrs_;
+        std::tuple<h::unhide<_SendersH>...> __sndrs_;
       };
     };
 
@@ -5726,7 +5733,7 @@ namespace stdexec {
     struct when_all_t {
       template <class... _Senders>
       using __sender_t =
-        __t<__sender< std::index_sequence_for<_Senders...>, __id<__decay_t<_Senders>>...>>;
+        __t<__sender< std::index_sequence_for<_Senders...>, h::hide<__decay_t<_Senders>>...>>;
 
       template <sender... _Senders>
         requires tag_invocable<when_all_t, _Senders...>

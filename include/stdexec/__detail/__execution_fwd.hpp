@@ -19,6 +19,12 @@
 #include "__meta.hpp"
 #include "__concepts.hpp"
 
+namespace t {
+  struct let {};
+  struct then {};
+  struct when_all {};
+}
+
 namespace stdexec {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
