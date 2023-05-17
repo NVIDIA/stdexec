@@ -4155,7 +4155,7 @@ namespace stdexec {
             __transform<
               __mbind_front_q<__tfx_signal_t, _Env, _Fun, _Set>,
               __q<__concat_completion_signatures_t>>,
-            completion_signatures_of_t<_Sender, _Env>>;
+            __completion_signatures_of_t<_Sender, _Env>>;
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
