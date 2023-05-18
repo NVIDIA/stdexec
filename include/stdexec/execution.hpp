@@ -41,6 +41,7 @@
 #pragma diagnostic push
 #pragma diag_suppress 1302
 #pragma diag_suppress 497
+#pragma diag_suppress type_qualifiers_ignored_on_reference
 #endif
 
 #ifdef STDEXEC_ENABLE_R5_DEPRECATIONS
@@ -265,6 +266,107 @@ namespace stdexec {
       using __id = empty_env;
     };
 
+    template <class _Tag>
+    struct __deleted {};
+
+    template <__nothrow_move_constructible _Fun>
+    struct __env_fn {
+      using __t = __env_fn;
+      using __id = __env_fn;
+      STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
+
+      template <class _Tag>
+        requires __callable<const _Fun&, _Tag>
+      friend decltype(auto) tag_invoke(_Tag, const __env_fn& __self) //
+        noexcept(__nothrow_callable<const _Fun&, _Tag>) {
+        return __self.__fun_(_Tag());
+      }
+    };
+
+    template <class _Fun>
+    __env_fn(_Fun) -> __env_fn<_Fun>;
+
+    template <__nothrow_move_constructible _Env>
+    struct __env_fwd {
+      using __t = __env_fwd;
+      using __id = __env_fwd;
+      STDEXEC_NO_UNIQUE_ADDRESS _Env __env_;
+
+      template <__forwarding_query _Tag>
+        requires __callable<_Tag, const _Env&>
+      friend decltype(auto) tag_invoke(_Tag, const __env_fwd& __self) //
+        noexcept(__nothrow_callable<_Tag, const _Env&>) {
+        return _Tag()(__self.__env_);
+      }
+    };
+
+    template <__nothrow_move_constructible _Env, __nothrow_move_constructible _Base = empty_env>
+    struct __env_join : __env_fwd<_Base> {
+      using __t = __env_join;
+      using __id = __env_join;
+      STDEXEC_NO_UNIQUE_ADDRESS _Env __env_;
+
+      template <class _Tag>
+        requires __callable<_Tag, const _Env&>
+      friend decltype(auto) tag_invoke(_Tag, const __env_join& __self) //
+        noexcept(__nothrow_callable<_Tag, const _Env&>) {
+        return _Tag()(__self.__env_);
+      }
+    };
+
+    template <class _Tag, class _Base>
+    struct __env_join<__env_fn<__deleted<_Tag>>, _Base> : __env_fwd<_Base> {
+      using __t = __env_join;
+      using __id = __env_join;
+      STDEXEC_NO_UNIQUE_ADDRESS __env_fn<__deleted<_Tag>> __env_;
+
+      friend void tag_invoke(_Tag, const __env_join&) noexcept = delete;
+    };
+
+    template <class _Env>
+    _Env __join_env(_Env&& __env) noexcept {
+      return (_Env&&) __env;
+    }
+
+    template <class _Env, class _Base>
+    __env_join<_Env, _Base> __join_env(_Env&& __env, _Base&& __base) noexcept {
+      static_assert(!same_as<__decay_t<_Env>, no_env>);
+      return {{{(_Base&&) __base}}, (_Env&&) __env};
+    }
+
+    template <class _Base>
+    _Base __join_env(empty_env, _Base&& __base) noexcept {
+      return (_Base&&) __base;
+    }
+
+    template <class _Env>
+    _Env __join_env(_Env&& __env, empty_env) noexcept {
+      static_assert(!same_as<__decay_t<_Env>, no_env>);
+      return (_Env&&) __env;
+    }
+
+    inline empty_env __join_env(empty_env, empty_env) noexcept {
+      return {};
+    }
+
+    template <class _Env>
+    no_env __join_env(_Env&&, no_env) noexcept requires true {
+      static_assert(!same_as<__decay_t<_Env>, no_env>);
+      return {};
+    }
+
+    template <class _Env0, class _Env1, class _Env2, class... _Envs>
+    auto __join_env(_Env0&& __env0, _Env1&& __env1, _Env2&& __env2, _Envs&&... __envs) noexcept {
+      return __env::__join_env(
+        (_Env0&&) __env0,
+        __env::__join_env(
+          (_Env1&&) __env1,
+          __env::__join_env((_Env2&&) __env2, (_Envs&&) __envs...)));
+    }
+
+    template <class... _Envs>
+    using __env_join_t = decltype(__env::__join_env(__declval<_Envs>()...));
+
     // To be kept in sync with the promise type used in __connect_awaitable
     template <class _Env>
     struct __env_promise {
@@ -284,103 +386,34 @@ namespace stdexec {
       friend auto tag_invoke(get_env_t, const __env_promise&) noexcept -> const _Env&;
     };
 
-    template <__class _Tag, class _Value = __none_such>
-      requires copy_constructible<std::unwrap_reference_t<_Value>>
-    struct __with {
-      using __tag_t = _Tag;
-      using __value_t = _Value;
-      _Value __value_;
-
-      struct __t {
-        using __id = __with;
-        using __val_or_ref_t = std::unwrap_reference_t<_Value>;
-
-        STDEXEC_NO_UNIQUE_ADDRESS __val_or_ref_t __value_;
-
-        __t(__with&& __w)
-          : __value_(((__with&&) __w).__value_) {
-        }
-
-        template <same_as<_Tag> _Tp, class... _Ts>
-        friend __val_or_ref_t tag_invoke(_Tp, const __t& __self, _Ts&&...) //
-          noexcept(std::is_nothrow_copy_constructible_v<__val_or_ref_t>) {
-          return __self.__value_;
+    template <class _Tag, __nothrow_move_constructible _Value>
+    constexpr auto __with_(_Tag, _Value __val) {
+      return __env_fn{
+        [__val = std::move(__val)](_Tag) noexcept(__nothrow_copy_constructible<_Value>) {
+          return __val;
         }
       };
-    };
-
-    template <class _Tag>
-    struct __with<_Tag, __none_such> {
-      using __tag_t = _Tag;
-      using __value_t = __none_such;
-
-      struct __t {
-        using __id = __with;
-
-        __t(__with) {
-        }
-
-        template <same_as<_Tag> _Tp, class... _Ts>
-        friend void tag_invoke(_Tp, const __t&, _Ts&&...) = delete;
-      };
-    };
-
-    template <__class _Tag, class _Value>
-    __with<_Tag, __decay_t<_Value>> __with_(_Tag, _Value&& __val) {
-      return {(_Value&&) __val};
     }
 
-    template <__class _Tag>
-    __with<_Tag> __with_(_Tag) {
+    template <class _Tag>
+    __env_fn<__deleted<_Tag>> __with_(_Tag) {
       return {};
     }
 
-    template <class _BaseEnvId, class... _WithIds>
-    struct __env {
-      using _BaseEnv = stdexec::__t<_BaseEnvId>;
-      template <class _WithId>
-      using __tag_of = typename _WithId::__tag_t;
-      template <class _Self>
-      using __base_env_of = __mfront<_BaseEnv, _Self>;
-
-      struct __t : stdexec::__t<_WithIds>... {
-        using __id = __env;
-        STDEXEC_NO_UNIQUE_ADDRESS _BaseEnv __base_env_{};
-
-        // Forward the receiver queries:
-        template <__forwarding_query _Tag, same_as<__t> _Self, class... _As>
-          requires __none_of<_Tag, __tag_of<_WithIds>...>
-                && __callable<_Tag, const __base_env_of<_Self>&, _As...>
-        friend auto tag_invoke(_Tag __tag, const _Self& __self, _As&&... __as) noexcept
-          -> __call_result_if_t<same_as<_Self, __t>, _Tag, const __base_env_of<_Self>&, _As...> {
-          return ((_Tag&&) __tag)(__self.__base_env_, (_As&&) __as...);
-        }
-      };
-    };
-    template <class _BaseEnv, class... _WithIds>
-    using __env_t = __t<__env<stdexec::__id<_BaseEnv>, _WithIds...>>;
+    template <class... _Ts>
+    using __with = decltype(__env::__with_(__declval<_Ts>()...));
 
     // For making an evaluation environment from key/value pairs and optionally
     // another environment.
     struct __make_env_t {
-      template <class _Tag, class _Value, class... _Tags, class... _Values>
-      auto operator()(__with<_Tag, _Value> __w, __with<_Tags, _Values>... __ws) const noexcept(
-        std::is_nothrow_move_constructible_v<_Value>
-        && (std::is_nothrow_move_constructible_v<_Values> && ...))
-        -> __env_t<empty_env, __with<_Tag, _Value>, __with<_Tags, _Values>...> {
-        return {{std::move(__w)}, {std::move(__ws)}..., {}};
+      template <__nothrow_move_constructible _Base, __nothrow_move_constructible _Env>
+      auto operator()(_Base __base, _Env __env) const noexcept {
+        return stdexec::__env::__join_env((_Env&&) __env, (_Base&&) __base);
       }
 
-      template <__none_of<no_env> _BaseEnv, class... _Tags, class... _Values>
-        requires __is_not_instance_of<_BaseEnv, __with>
-      auto operator()(_BaseEnv&& __base_env, __with<_Tags, _Values>... __ws) const
-        -> __env_t<__decay_t<_BaseEnv>, __with<_Tags, _Values>...> {
-        return {{std::move(__ws)}..., (_BaseEnv&&) __base_env};
-      }
-
-      template <class... _Tags, class... _Values>
-      no_env operator()(no_env, __with<_Tags, _Values>...) const noexcept {
-        return {};
+      template <__nothrow_move_constructible _Env>
+      auto operator()(_Env __env) const noexcept {
+        return (_Env&&) __env;
       }
     };
 
