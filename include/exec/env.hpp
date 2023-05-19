@@ -100,7 +100,7 @@ namespace exec {
       friend auto tag_invoke(get_completion_signatures_t, __sender, no_env)
         -> dependent_completion_signatures<no_env>;
       template <__none_of<no_env> _Env>
-      friend auto tag_invoke(get_completion_signatures_t, __sender, _Env) -> __completions_t<_Env>;
+      friend auto tag_invoke(get_completion_signatures_t, __sender, _Env&&) -> __completions_t<_Env>;
     };
 
     struct __read_with_default_t {
@@ -139,7 +139,7 @@ namespace exec {
           return __op_->__rcvr_;
         }
 
-        auto get_env() const -> __env::__env_join_t<const _Env&, env_of_t<_Receiver>> {
+        auto get_env() const noexcept -> __env::__env_join_t<const _Env&, env_of_t<_Receiver>> {
           return __env::__join_env(__op_->__env_, stdexec::get_env(base()));
         }
 
@@ -189,7 +189,7 @@ namespace exec {
 
         friend auto tag_invoke(stdexec::get_env_t, const __t& __self) //
           noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const _Sender&>)
-            -> stdexec::__call_result_t<stdexec::get_env_t, const _Sender&> {
+            -> stdexec::env_of_t<const _Sender&> {
           return stdexec::get_env(__self.__sndr_);
         }
 

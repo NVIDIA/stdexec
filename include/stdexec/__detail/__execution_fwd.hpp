@@ -98,11 +98,11 @@ namespace stdexec {
 
   template <class _Sender, class _CPO>
   concept __has_completion_scheduler =
-    __callable<get_completion_scheduler_t<_CPO>, __call_result_t<get_env_t, const _Sender&>>;
+    __callable<get_completion_scheduler_t<_CPO>, env_of_t<const _Sender&>>;
 
   template <class _Sender, class _CPO>
   using __completion_scheduler_for =
-    __call_result_t<get_completion_scheduler_t<_CPO>, __call_result_t<get_env_t, const _Sender&>>;
+    __call_result_t<get_completion_scheduler_t<_CPO>, env_of_t<const _Sender&>>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __get_completion_signatures {

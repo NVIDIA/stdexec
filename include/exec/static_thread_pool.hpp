@@ -292,7 +292,7 @@ namespace exec {
           tag((Receiver&&) state.receiver_, (As&&) as...);
         }
 
-        friend auto tag_invoke(stdexec::get_env_t, const bulk_receiver& self)
+        friend auto tag_invoke(stdexec::get_env_t, const bulk_receiver& self) noexcept
           -> stdexec::env_of_t<Receiver> {
           return stdexec::get_env(self.shared_state_.receiver_);
         }
@@ -392,17 +392,16 @@ namespace exec {
         }
 
         template <stdexec::__decays_to<bulk_sender> Self, class Env>
-        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env&&)
           -> stdexec::dependent_completion_signatures<Env>;
 
         template <stdexec::__decays_to<bulk_sender> Self, class Env>
-        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env&&)
           -> completion_signatures<Self, Env>
           requires true;
 
-        friend auto tag_invoke(stdexec::get_env_t, const bulk_sender& self) //
-          noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
-            -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
+        friend auto tag_invoke(stdexec::get_env_t, const bulk_sender& self) noexcept
+            -> stdexec::env_of_t<const Sender&> {
           return stdexec::get_env(self.sndr_);
         }
       };

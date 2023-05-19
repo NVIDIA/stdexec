@@ -25,8 +25,14 @@
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace _split {
-    using env_t = //
-      make_stream_env_t< __make_env_t< __with<get_stop_token_t, in_place_stop_token>>>;
+    inline auto __make_env(const in_place_stop_source& stop_source, cudaStream_t stream) noexcept {
+      return make_stream_env(
+        __env::__env_fn{[&](get_stop_token_t) noexcept { return stop_source.get_token(); }},
+        stream);
+    }
+
+    using env_t =
+      decltype(_split::__make_env(__declval<const in_place_stop_source&>(), cudaStream_t()));
 
     template <class Tag, class... As, class Variant>
     __launch_bounds__(1) __global__ void copy_kernel(Variant* var, As... as) {
@@ -62,7 +68,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           state.notify();
         }
 
-        friend env_t tag_invoke(get_env_t, const __t& self) {
+        friend env_t tag_invoke(get_env_t, const __t& self) noexcept {
           return self.sh_state_.make_env();
         }
 
@@ -174,9 +180,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
       }
 
-      env_t make_env() const {
-        return make_stream_env(
-          __make_env(__with_(get_stop_token, stop_source_.get_token())), stream_);
+      env_t make_env() const noexcept {
+        return _split::__make_env(stop_source_, stream_);
       }
 
       void notify() noexcept {
@@ -316,9 +321,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return operation_t<Receiver>{(Receiver&&) recvr, self.shared_state_};
       }
 
-      friend auto tag_invoke(get_env_t, const __t& self) //
-        noexcept(__nothrow_callable<get_env_t, const Sender&>)
-          -> __call_result_t<get_env_t, const Sender&> {
+      friend auto tag_invoke(get_env_t, const __t& self) noexcept
+          -> env_of_t<const Sender&> {
         return get_env(self.sndr_);
       }
 
@@ -329,7 +333,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using _set_error_t = completion_signatures<set_error_t(const __decay_t<Ty>&)>;
 
       template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env)
+      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
         -> make_completion_signatures<
           Sender,
           exec::make_env_t<exec::with_t<get_stop_token_t, in_place_stop_token>>,
