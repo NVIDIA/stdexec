@@ -128,7 +128,7 @@ namespace stdexec {
 
       template <class _Tp>
         requires tag_invocable<__has_algorithm_customizations_t, __cref_t<_Tp>>
-      constexpr __result_t<_Tp> operator()(_Tp&& __t) const noexcept(noexcept(__result_t<_Tp>{})) {
+      constexpr __result_t<_Tp> operator()(_Tp&&) const noexcept(noexcept(__result_t<_Tp>{})) {
         using _Boolean = tag_invoke_result_t<__has_algorithm_customizations_t, __cref_t<_Tp>>;
         static_assert(_Boolean{} ? true : true); // must be contextually convertible to bool
         return _Boolean{};
@@ -1004,7 +1004,7 @@ namespace stdexec {
           __r7_style_sender<_Sender, _Env> ||          //
 #endif                                                 //
           __is_debug_env<_Env>)                        //
-      constexpr auto operator()(_Sender&& __sndr, const _Env& __env) const noexcept
+      constexpr auto operator()(_Sender&&, const _Env&) const noexcept
         -> decltype(__impl<_Sender, _Env>()()) {
         return {};
       }
@@ -5712,7 +5712,7 @@ namespace stdexec {
           -> __completions_t<_Self, _Env>
           requires true;
 
-        friend empty_env tag_invoke(get_env_t, const __t& __self) noexcept {
+        friend empty_env tag_invoke(get_env_t, const __t&) noexcept {
           return {};
         }
 
@@ -5857,7 +5857,7 @@ namespace stdexec {
       friend auto tag_invoke(get_completion_signatures_t, __sender, _Env&&)
         -> __completions_t<_Env>;
 
-      friend empty_env tag_invoke(get_env_t, const __t& __self) noexcept {
+      friend empty_env tag_invoke(get_env_t, const __t&) noexcept {
         return {};
       }
     };
