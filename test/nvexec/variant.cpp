@@ -20,7 +20,7 @@
 #include <cuda/std/tuple>
 #include <thrust/universal_vector.h>
 
-#include "nvexec/detail/throw_on_cuda_error.cuh"
+#include "nvexec/detail/cuda_error_handling.cuh"
 #include "nvexec/detail/variant.cuh"
 #include "common.cuh"
 
