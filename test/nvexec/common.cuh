@@ -190,7 +190,7 @@ namespace detail::a_sender {
 
     friend auto tag_invoke(stdexec::get_env_t, const sender_t& self) //
       noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
-        -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
+        -> stdexec::env_of_t<const Sender&> {
       return stdexec::get_env(self.sndr_);
     }
   };
@@ -251,7 +251,7 @@ namespace detail::a_receiverless_sender {
 
     friend auto tag_invoke(stdexec::get_env_t, const sender_t& self) //
       noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
-        -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
+        -> stdexec::env_of_t<const Sender&> {
       return stdexec::get_env(self.sndr_);
     }
   };

@@ -126,17 +126,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env)
+      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
         -> dependent_completion_signatures<Env>;
 
       template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env)
+      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
         -> _completion_signatures_t<Self, Env>
         requires true;
 
-      friend auto tag_invoke(get_env_t, const __t& self) //
-        noexcept(__nothrow_callable<get_env_t, const Sender&>)
-          -> __call_result_t<get_env_t, const Sender&> {
+      friend auto tag_invoke(get_env_t, const __t& self) noexcept
+          -> env_of_t<const Sender&> {
         return get_env(self.sndr_);
       }
     };
@@ -245,7 +244,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
         }
 
-        friend env_of_t<Receiver> tag_invoke(get_env_t, const __t& self) {
+        friend env_of_t<Receiver> tag_invoke(get_env_t, const __t& self) noexcept {
           return get_env(self.op_state_.receiver_);
         }
 
@@ -363,17 +362,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env)
+      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
         -> dependent_completion_signatures<Env>;
 
       template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env)
+      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
         -> _completion_signatures_t<Self, Env>
         requires true;
 
-      friend auto tag_invoke(get_env_t, const __t& self) //
-        noexcept(__nothrow_callable<get_env_t, const Sender&>)
-          -> __call_result_t<get_env_t, const Sender&> {
+      friend auto tag_invoke(get_env_t, const __t& self) noexcept
+          -> env_of_t<const Sender&> {
         return get_env(self.sndr_);
       }
     };

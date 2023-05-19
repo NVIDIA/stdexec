@@ -211,66 +211,37 @@ namespace nvexec {
 
     inline constexpr get_stream_t get_stream{};
 
-    template <class BaseEnvId>
-    struct stream_env : stream_env_base {
-      using __t = stream_env;
-      using __id = stream_env;
-      using BaseEnv = stdexec::__t<BaseEnvId>;
-      BaseEnv base_env_;
-
-      template <class Tag, same_as<stream_env> Self, class... As>
-        requires __callable<Tag, const BaseEnv&, As...>
-      friend auto tag_invoke(Tag, const Self& self, As&&... as) noexcept
-        -> __call_result_if_t<same_as<Self, stream_env>, Tag, const BaseEnv&, As...> {
-        return Tag()(self.base_env_, (As&&) as...);
-      }
-
-      template <same_as<stream_env> Self>
-        requires(!__callable<get_stream_t, const BaseEnv&>)
-      friend cudaStream_t tag_invoke(get_stream_t, const Self& self) noexcept {
-        return self.stream_;
-      }
-    };
-
-    template <class BaseEnvId>
-    struct terminal_stream_env : stream_env_base {
-      using __t = terminal_stream_env;
-      using __id = terminal_stream_env;
-      using BaseEnv = stdexec::__t<BaseEnvId>;
-      BaseEnv base_env_;
-
-      template < //
-        __none_of<get_stream_t> Tag,
-        same_as<terminal_stream_env> Self,
-        class... As>
-        requires __callable<Tag, const BaseEnv&, As...>
-      friend auto tag_invoke(Tag, const Self& self, As&&... as) noexcept
-        -> __call_result_if_t<same_as<terminal_stream_env, Self>, Tag, const BaseEnv&, As...> {
-        return Tag()(self.base_env_, (As&&) as...);
-      }
-
-      template <same_as<terminal_stream_env> Self>
-      friend cudaStream_t tag_invoke(get_stream_t, const Self& self) noexcept {
-        return self.stream_;
-      }
-    };
-
     template <class BaseEnv>
-    using make_stream_env_t = stream_env<stdexec::__id<BaseEnv>>;
-
-    template <class BaseEnv>
-    using make_terminal_stream_env_t = terminal_stream_env<stdexec::__id<BaseEnv>>;
-
-    template <class BaseEnv>
-    make_stream_env_t<BaseEnv> make_stream_env(BaseEnv base, cudaStream_t stream) noexcept {
-      return make_stream_env_t<BaseEnv>{{stream}, base};
+    auto make_stream_env(BaseEnv&& base_env, cudaStream_t stream) noexcept {
+      return __env::__join_env(
+        __env::__env_fn{[stream](get_stream_t) noexcept { return stream; }},
+        (BaseEnv&&) base_env);
     }
+    template <class BaseEnv>
+      requires __callable<get_stream_t, const BaseEnv&>
+    BaseEnv make_stream_env(BaseEnv&& base_env, cudaStream_t) noexcept {
+      return (BaseEnv&&) base_env;
+    }
+    template <class BaseEnv>
+    using stream_env =
+      decltype(STDEXEC_STREAM_DETAIL_NS::make_stream_env(__declval<BaseEnv>(), cudaStream_t()));
 
     template <class BaseEnv>
-    make_terminal_stream_env_t<BaseEnv>
-      make_terminal_stream_env(BaseEnv base, cudaStream_t stream) noexcept {
-      return make_terminal_stream_env_t<BaseEnv>{{stream}, base};
+    auto make_terminal_stream_env(BaseEnv&& base_env, cudaStream_t stream) noexcept {
+      return __env::__join_env(
+        __env::__env_fn{[stream](get_stream_t) noexcept {return stream;}},
+        (BaseEnv&&) base_env
+      );
     }
+    template <class BaseEnv>
+    using terminal_stream_env =
+      decltype(STDEXEC_STREAM_DETAIL_NS::make_terminal_stream_env(__declval<BaseEnv>(), cudaStream_t()));
+
+    template <class BaseEnv>
+    using make_stream_env_t = stream_env<BaseEnv>;
+
+    template <class BaseEnv>
+    using make_terminal_stream_env_t = terminal_stream_env<BaseEnv>;
 
     template <class S>
     concept stream_sender = //
@@ -320,7 +291,7 @@ namespace nvexec {
           self.producer_(self.task_);
         }
 
-        friend Env tag_invoke(get_env_t, const __t& self) {
+        friend const Env& tag_invoke(get_env_t, const __t& self) noexcept {
           return self.env_;
         }
 
@@ -439,7 +410,7 @@ namespace nvexec {
           return stream;
         }
 
-        env_t make_env() const {
+        env_t make_env() const noexcept {
           return make_stream_env(get_env(receiver_), get_stream());
         }
 
@@ -485,7 +456,7 @@ namespace nvexec {
         }
 
         friend make_stream_env_t<env_of_t<outer_receiver_t>>
-          tag_invoke(get_env_t, const __t& self) {
+          tag_invoke(get_env_t, const __t& self) noexcept {
           return self.operation_state_.make_env();
         }
       };

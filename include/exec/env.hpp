@@ -23,19 +23,19 @@
 #endif
 
 namespace exec {
-  template <class _Tag, class _Value = stdexec::__none_such>
-  using with_t = stdexec::__with<_Tag, _Value>;
+  template <class... _TagValue>
+  using with_t = stdexec::__with<_TagValue...>;
 
   namespace __detail {
     struct __with_t {
       template <class _Tag, class _Value>
       with_t<_Tag, _Value> operator()(_Tag, _Value&& __val) const {
-        return {(_Value&&) __val};
+        return stdexec::__with_(_Tag(), (_Value&&) __val);
       }
 
       template <class _Tag>
       with_t<_Tag> operator()(_Tag) const {
-        return {};
+        return stdexec::__with_(_Tag());
       }
     };
   } // namespace __detail
@@ -100,7 +100,7 @@ namespace exec {
       friend auto tag_invoke(get_completion_signatures_t, __sender, no_env)
         -> dependent_completion_signatures<no_env>;
       template <__none_of<no_env> _Env>
-      friend auto tag_invoke(get_completion_signatures_t, __sender, _Env) -> __completions_t<_Env>;
+      friend auto tag_invoke(get_completion_signatures_t, __sender, _Env&&) -> __completions_t<_Env>;
     };
 
     struct __read_with_default_t {
@@ -119,43 +119,43 @@ namespace exec {
 
     struct __write_t;
 
-    template <class _ReceiverId, class... _Withs>
+    template <class _ReceiverId, class _Env>
     struct __operation_base {
       using _Receiver = __t<_ReceiverId>;
       _Receiver __rcvr_;
-      std::tuple<_Withs...> __withs_;
+      const _Env __env_;
     };
 
-    template <class _ReceiverId, class... _Withs>
-    struct __receiver : receiver_adaptor<__receiver<_ReceiverId, _Withs...>> {
+    template <class _ReceiverId, class _Env>
+    struct __receiver {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
-      _Receiver&& base() && noexcept {
-        return (_Receiver&&) __op_->__rcvr_;
-      }
+      struct __t : receiver_adaptor<__t> {
+        _Receiver&& base() && noexcept {
+          return (_Receiver&&) __op_->__rcvr_;
+        }
 
-      const _Receiver& base() const & noexcept {
-        return __op_->__rcvr_;
-      }
+        const _Receiver& base() const & noexcept {
+          return __op_->__rcvr_;
+        }
 
-      auto get_env() const -> make_env_t<env_of_t<_Receiver>, _Withs...> {
-        return std::apply(
-          [this](auto&... __withs) { return make_env(stdexec::get_env(base()), __withs...); },
-          __op_->__withs_);
-      }
+        auto get_env() const noexcept -> __env::__env_join_t<const _Env&, env_of_t<_Receiver>> {
+          return __env::__join_env(__op_->__env_, stdexec::get_env(base()));
+        }
 
-      __operation_base<_ReceiverId, _Withs...>* __op_;
+        __operation_base<_ReceiverId, _Env>* __op_;
+      };
     };
 
-    template <class _SenderId, class _ReceiverId, class... _Withs>
-    struct __operation : __operation_base<_ReceiverId, _Withs...> {
+    template <class _SenderId, class _ReceiverId, class _Env>
+    struct __operation : __operation_base<_ReceiverId, _Env> {
       using _Sender = __t<_SenderId>;
-      using __base_t = __operation_base<_ReceiverId, _Withs...>;
-      using __receiver_t = __receiver<_ReceiverId, _Withs...>;
+      using __base_t = __operation_base<_ReceiverId, _Env>;
+      using __receiver_t = __t<__receiver<_ReceiverId, _Env>>;
       connect_result_t<_Sender, __receiver_t> __state_;
 
-      __operation(_Sender&& __sndr, auto&& __rcvr, auto&& __withs)
-        : __base_t{(decltype(__rcvr)) __rcvr, (decltype(__withs)) __withs}
+      __operation(_Sender&& __sndr, auto&& __rcvr, auto&& __env)
+        : __base_t{(decltype(__rcvr)) __rcvr, (decltype(__env)) __env}
         , __state_{connect((_Sender&&) __sndr, __receiver_t{{}, this})} {
       }
 
@@ -164,49 +164,58 @@ namespace exec {
       }
     };
 
-    template <class _SenderId, class... _Withs>
+    template <class _SenderId, class _Env>
     struct __sender {
-      using _Sender = __t<_SenderId>;
+      using _Sender = stdexec::__t<_SenderId>;
       using is_sender = void;
 
-      template <class _ReceiverId>
-      using __receiver_t = __receiver<_ReceiverId, _Withs...>;
-      template <class _Self, class _ReceiverId>
+      template <class _Receiver>
+      using __receiver_t = stdexec::__t<__receiver<__id<_Receiver>, _Env>>;
+      template <class _Self, class _Receiver>
       using __operation_t =
-        __operation<__x<__copy_cvref_t<_Self, _Sender>>, _ReceiverId, _Withs...>;
+        __operation<__id<__copy_cvref_t<_Self, _Sender>>, __id<_Receiver>, _Env>;
 
-      _Sender __sndr_;
-      std::tuple<_Withs...> __withs_;
+      struct __t {
+        using __id = __sender;
+        _Sender __sndr_;
+        _Env __env_;
 
-      template <__decays_to<__sender> _Self, receiver _Receiver>
-        requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<__x<_Receiver>>>
-      friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
-        -> __operation_t<_Self, __x<_Receiver>> {
-        return {((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr, ((_Self&&) __self).__withs_};
-      }
+        template <__decays_to<__t> _Self, receiver _Receiver>
+          requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
+        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+          -> __operation_t<_Self, _Receiver> {
+          return {((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr, ((_Self&&) __self).__env_};
+        }
 
-      friend auto tag_invoke(stdexec::get_env_t, const __sender& __self) //
-        noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const _Sender&>)
-          -> stdexec::__call_result_t<stdexec::get_env_t, const _Sender&> {
-        return stdexec::get_env(__self.__sndr_);
-      }
+        friend auto tag_invoke(stdexec::get_env_t, const __t& __self) //
+          noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const _Sender&>)
+            -> stdexec::env_of_t<const _Sender&> {
+          return stdexec::get_env(__self.__sndr_);
+        }
 
-      template <__decays_to<__sender> _Self, class _Env>
-      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
-        -> completion_signatures_of_t< __copy_cvref_t<_Self, _Sender>, make_env_t<_Env, _Withs...>>;
+        template <__decays_to<__t> _Self, class _BaseEnv>
+        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _BaseEnv&&)
+          -> stdexec::__completion_signatures_of_t<
+            __copy_cvref_t<_Self, _Sender>,
+            __env::__env_join_t<_Env, _BaseEnv>>;
+      };
     };
 
     struct __write_t {
-      template <__is_not_instance_of<__env::__with> _Sender, class... _Tags, class... _Values>
+      template <class _Sender, class... _Funs>
+      using __sender_t =
+        __t<__sender<__id<__decay_t<_Sender>>, __env::__env_join_t<__env::__env_fn<_Funs>...>>>;
+
+      template <__is_not_instance_of<__env::__env_fn> _Sender, class... _Funs>
         requires sender<_Sender>
-      auto operator()(_Sender&& __sndr, __env::__with<_Tags, _Values>... __withs) const
-        -> __sender<__x<__decay_t<_Sender>>, __env::__with<_Tags, _Values>...> {
-        return {(_Sender&&) __sndr, {std::move(__withs)...}};
+      auto operator()(_Sender&& __sndr, __env::__env_fn<_Funs>... __withs) const
+        -> __sender_t<_Sender, _Funs...> {
+        return {(_Sender&&) __sndr, __env::__join_env(std::move(__withs)...)};
       }
 
-      template <class... _Tags, class... _Values>
-      auto operator()(__env::__with<_Tags, _Values>... __withs) const
-        -> __binder_back<__write_t, __env::__with<_Tags, _Values>...> {
+      template <class... _Funs>
+      auto operator()(__env::__env_fn<_Funs>... __withs) const
+        -> __binder_back<__write_t, __env::__env_fn<_Funs>...> {
         return {{}, {}, {std::move(__withs)...}};
       }
     };

@@ -54,7 +54,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             *storage);
         }
 
-        friend Env tag_invoke(get_env_t, const __t& self) {
+        friend Env tag_invoke(get_env_t, const __t& self) noexcept {
           return self.operation_state_.make_env();
         }
       };
@@ -68,15 +68,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return connect(((Self&&) self).sender_, (Receiver&&) rcvr);
       }
 
-      friend auto tag_invoke(get_env_t, const source_sender_t& self) //
-        noexcept(__nothrow_callable<get_env_t, const Sender&>)
-          -> __call_result_t<get_env_t, const Sender&> {
+      friend auto tag_invoke(get_env_t, const source_sender_t& self) noexcept
+          -> env_of_t<const Sender&> {
         // TODO - this code is not exercised by any test
         return get_env(self.sndr_);
       }
 
       template <__decays_to<source_sender_t> _Self, class _Env>
-      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
         -> make_completion_signatures< __copy_cvref_t<_Self, Sender>, _Env>;
 
       Sender sender_;
@@ -135,7 +134,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> _Self, class _Env>
-      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
         -> make_completion_signatures<
           __copy_cvref_t<_Self, Sender>,
           _Env,

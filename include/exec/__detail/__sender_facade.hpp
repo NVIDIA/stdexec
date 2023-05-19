@@ -59,7 +59,7 @@ namespace exec {
       }
 
       template <same_as<__receiver_placeholder> _Self>
-      [[noreturn]] friend _Env tag_invoke(get_env_t, _Self) {
+      [[noreturn]] friend _Env tag_invoke(get_env_t, _Self) noexcept {
         static_assert(
           __never_true<_Self>, "we should never be instantiating the body of this function");
         std::terminate();
@@ -208,8 +208,9 @@ namespace exec {
         }
 
         template <same_as<get_env_t> _Tag, same_as<__t> _Self>
-        friend auto tag_invoke(_Tag, _Self __self) -> __env_t<_Kernel, env_of_t<_Receiver>> {
+        friend auto tag_invoke(_Tag, _Self __self) noexcept -> __env_t<_Kernel, env_of_t<_Receiver>> {
           __state& __st = *__self.__state_;
+          static_assert(noexcept(__st.__kernel_.get_env(stdexec::get_env(__st.__rcvr_))));
           return __st.__kernel_.get_env(stdexec::get_env(__st.__rcvr_));
         }
       };
@@ -343,9 +344,8 @@ namespace exec {
         friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
           -> __new_completions_t<_Self, _Env>;
 
-        friend auto tag_invoke(stdexec::get_env_t, const __t& __self) //
-          noexcept(__nothrow_callable<stdexec::get_env_t, const _Sender&>)
-            -> __call_result_t<stdexec::get_env_t, const _Sender&> {
+        friend auto tag_invoke(stdexec::get_env_t, const __t& __self) noexcept
+            -> env_of_t<const _Sender&> {
           return stdexec::get_env(__self.__sndr_);
         }
       };
@@ -367,7 +367,8 @@ namespace exec {
     }
 
     template <class _Env>
-    static _Env get_env(_Env&& __env) {
+    static _Env get_env(_Env&& __env) noexcept {
+      static_assert(stdexec::__nothrow_move_constructible<_Env>);
       return (_Env&&) __env;
     }
 

@@ -40,8 +40,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_submit {
       }
 
       // Forward all receiever queries.
-      friend auto tag_invoke(get_env_t, const receiver_t& self) -> env_of_t<Receiver> {
-        return get_env((const Receiver&) self.op_state_->rcvr_);
+      friend auto tag_invoke(get_env_t, const receiver_t& self) noexcept
+        -> env_of_t<Receiver> {
+        return get_env(self.op_state_->rcvr_);
       }
     };
 

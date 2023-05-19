@@ -297,7 +297,7 @@ struct repeat_n_sender_t {
 
   friend auto tag_invoke(stdexec::get_env_t, const repeat_n_sender_t& s) //
     noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
-      -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
+      -> stdexec::env_of_t<const Sender&> {
     return stdexec::get_env(s.sender_);
   }
 };
