@@ -29,6 +29,7 @@
 #include "stream/split.cuh"
 #include "stream/then.cuh"
 #include "stream/transfer.cuh"
+#include "stream/launch.cuh"
 #include "stream/upon_error.cuh"
 #include "stream/upon_stopped.cuh"
 #include "stream/when_all.cuh"
