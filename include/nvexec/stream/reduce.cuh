@@ -375,7 +375,7 @@ struct reduce_t {
   // Predecessor sends range, function is bound.
   // FIXME: How do we constrain `Fun` without making this overload ambiguous
   // with the above range is bound, function is not overload?
-  template <class Fun>
+  template <stdexec::__movable_value Fun>
     stdexec::__binder_back<reduce_t, Fun> operator()(Fun&& fun) const {
       return {{}, {}, (Fun&&) fun};
     }
