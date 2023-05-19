@@ -52,7 +52,7 @@ namespace STDEXEC_STREAM_DETAIL_NS {
     std::string_view file_name,
     int line,
     std::string_view info = "") {
-    std::string message(format_cuda_error_message(error, file_name, line, info));
+    std::string message(format_cuda_error_message(error, info));
     message += " [";
     message += file_name;
     message += ":";
