@@ -9,7 +9,8 @@ int main() {
   nvexec::stream_context stream{};
 
   auto snd = stdexec::transfer_just(stream.get_scheduler(), input)
-           | nvexec::reduce();
+           | nvexec::reduce(std::plus<>{})
+           | stdexec::then([] (int i) { return i * 2; });
 
   auto [result] = stdexec::sync_wait(std::move(snd)).value();
 
