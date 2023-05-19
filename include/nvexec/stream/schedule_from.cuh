@@ -69,7 +69,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       friend auto tag_invoke(get_env_t, const source_sender_t& self) noexcept
-          -> env_of_t<const Sender&> {
+        -> env_of_t<const Sender&> {
         // TODO - this code is not exercised by any test
         return get_env(self.sndr_);
       }

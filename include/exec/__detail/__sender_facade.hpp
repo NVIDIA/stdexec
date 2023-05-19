@@ -208,7 +208,8 @@ namespace exec {
         }
 
         template <same_as<get_env_t> _Tag, same_as<__t> _Self>
-        friend auto tag_invoke(_Tag, _Self __self) noexcept -> __env_t<_Kernel, env_of_t<_Receiver>> {
+        friend auto tag_invoke(_Tag, _Self __self) noexcept
+          -> __env_t<_Kernel, env_of_t<_Receiver>> {
           __state& __st = *__self.__state_;
           static_assert(noexcept(__st.__kernel_.get_env(stdexec::get_env(__st.__rcvr_))));
           return __st.__kernel_.get_env(stdexec::get_env(__st.__rcvr_));
@@ -345,7 +346,7 @@ namespace exec {
           -> __new_completions_t<_Self, _Env>;
 
         friend auto tag_invoke(stdexec::get_env_t, const __t& __self) noexcept
-            -> env_of_t<const _Sender&> {
+          -> env_of_t<const _Sender&> {
           return stdexec::get_env(__self.__sndr_);
         }
       };
@@ -379,21 +380,20 @@ namespace exec {
     }
 
     template <class _Op>
-    static void start(                           //
-      _Op& __op,                                 //
-      [[maybe_unused]] stdexec::__ignore __data, //
-      [[maybe_unused]] stdexec::__ignore __rcvr) //
-      noexcept {
+    static void start(                                      //
+      _Op& __op,                                            //
+      [[maybe_unused]] stdexec::__ignore __data,            //
+      [[maybe_unused]] stdexec::__ignore __rcvr) noexcept { //
       stdexec::start(__op);
     }
 
     template <class _Tag, class _Receiver, class... _As>
     static auto set_result(                      //
-      _Tag __tag,
+      _Tag __tag,                                //
       [[maybe_unused]] stdexec::__ignore __data, //
       _Receiver& __rcvr,                         //
-      _As&&... __as)                             //
-      noexcept -> stdexec::completion_signatures<_Tag(_As...)>* {
+      _As&&... __as) noexcept                    //
+      -> stdexec::completion_signatures<_Tag(_As...)>* {
       __tag((_Receiver&&) __rcvr, (_As&&) __as...);
       return {};
     }

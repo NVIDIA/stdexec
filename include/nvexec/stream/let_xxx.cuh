@@ -234,8 +234,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr, ((_Self&&) __self).__fun_};
       }
 
-      friend auto tag_invoke(get_env_t, const __t& __self) noexcept
-          -> env_of_t<const _Sender&> {
+      friend auto tag_invoke(get_env_t, const __t& __self) noexcept -> env_of_t<const _Sender&> {
         return get_env(__self.__sndr_);
       }
 

@@ -36,7 +36,9 @@ TEST_CASE("nvexec let_error executes on GPU", "[cuda][stream][adaptors][let_erro
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("nvexec let_error can preceed a sender without values", "[cuda][stream][adaptors][let_error]") {
+TEST_CASE(
+  "nvexec let_error can preceed a sender without values",
+  "[cuda][stream][adaptors][let_error]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t<2> flags_storage{};

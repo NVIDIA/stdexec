@@ -401,7 +401,7 @@ namespace exec {
           requires true;
 
         friend auto tag_invoke(stdexec::get_env_t, const bulk_sender& self) noexcept
-            -> stdexec::env_of_t<const Sender&> {
+          -> stdexec::env_of_t<const Sender&> {
           return stdexec::get_env(self.sndr_);
         }
       };

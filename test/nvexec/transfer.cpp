@@ -9,7 +9,9 @@ namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
-TEST_CASE("nvexec transfer to stream context returns a sender", "[cuda][stream][adaptors][transfer]") {
+TEST_CASE(
+  "nvexec transfer to stream context returns a sender",
+  "[cuda][stream][adaptors][transfer]") {
   nvexec::stream_context stream_ctx{};
   exec::inline_scheduler cpu{};
   nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
@@ -19,7 +21,9 @@ TEST_CASE("nvexec transfer to stream context returns a sender", "[cuda][stream][
   (void) snd;
 }
 
-TEST_CASE("nvexec transfer from stream context returns a sender", "[cuda][stream][adaptors][transfer]") {
+TEST_CASE(
+  "nvexec transfer from stream context returns a sender",
+  "[cuda][stream][adaptors][transfer]") {
   nvexec::stream_context stream_ctx{};
 
   exec::inline_scheduler cpu{};

@@ -31,12 +31,15 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     inline auto __make_env(const in_place_stop_source& stop_source, cudaStream_t stream) noexcept {
       return make_stream_env(
-        __env::__env_fn{[&](get_stop_token_t) noexcept { return stop_source.get_token(); }},
+        __env::__env_fn{[&](get_stop_token_t) noexcept {
+          return stop_source.get_token();
+        }},
         stream);
     }
 
-    using env_t =
-      decltype(_ensure_started::__make_env(__declval<const in_place_stop_source&>(), cudaStream_t()));
+    using env_t = decltype(_ensure_started::__make_env(
+      __declval<const in_place_stop_source&>(),
+      cudaStream_t()));
 
     template <class SenderId, class SharedState>
     struct receiver_t {
@@ -327,8 +330,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return operation_t<Receiver>{(Receiver&&) rcvr, std::move(self).shared_state_};
       }
 
-      friend auto tag_invoke(get_env_t, const __t& self) noexcept
-          -> env_of_t<const Sender&> {
+      friend auto tag_invoke(get_env_t, const __t& self) noexcept -> env_of_t<const Sender&> {
         return get_env(self.sndr_);
       }
 

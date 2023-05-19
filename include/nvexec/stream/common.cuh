@@ -214,9 +214,12 @@ namespace nvexec {
     template <class BaseEnv>
     auto make_stream_env(BaseEnv&& base_env, cudaStream_t stream) noexcept {
       return __env::__join_env(
-        __env::__env_fn{[stream](get_stream_t) noexcept { return stream; }},
+        __env::__env_fn{[stream](get_stream_t) noexcept {
+          return stream;
+        }},
         (BaseEnv&&) base_env);
     }
+
     template <class BaseEnv>
       requires __callable<get_stream_t, const BaseEnv&>
     BaseEnv make_stream_env(BaseEnv&& base_env, cudaStream_t) noexcept {
@@ -229,13 +232,15 @@ namespace nvexec {
     template <class BaseEnv>
     auto make_terminal_stream_env(BaseEnv&& base_env, cudaStream_t stream) noexcept {
       return __env::__join_env(
-        __env::__env_fn{[stream](get_stream_t) noexcept {return stream;}},
-        (BaseEnv&&) base_env
-      );
+        __env::__env_fn{[stream](get_stream_t) noexcept {
+          return stream;
+        }},
+        (BaseEnv&&) base_env);
     }
     template <class BaseEnv>
-    using terminal_stream_env =
-      decltype(STDEXEC_STREAM_DETAIL_NS::make_terminal_stream_env(__declval<BaseEnv>(), cudaStream_t()));
+    using terminal_stream_env = decltype(STDEXEC_STREAM_DETAIL_NS::make_terminal_stream_env(
+      __declval<BaseEnv>(),
+      cudaStream_t()));
 
     template <class BaseEnv>
     using make_stream_env_t = stream_env<BaseEnv>;

@@ -189,8 +189,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         -> _completion_signatures_t<Self, Env>
         requires true;
 
-      friend auto tag_invoke(get_env_t, const __t& self) noexcept
-          -> env_of_t<const Sender&> {
+      friend auto tag_invoke(get_env_t, const __t& self) noexcept -> env_of_t<const Sender&> {
         return get_env(self.sndr_);
       }
     };
