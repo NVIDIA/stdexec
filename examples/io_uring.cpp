@@ -63,17 +63,17 @@ int main() {
     exec::schedule_after(scheduler, 10s)    //
       | stdexec::then([] {                  //
           std::cout << "Hello, world!\n";   //
-        })
+        })                                  //
       | stdexec::upon_stopped([] {          //
           std::cout << "Hello, stopped.\n"; //
-        }),
+        }),                                 //
     exec::schedule_after(scheduler2, 10s)   //
       | stdexec::then([] {                  //
           std::cout << "Hello, world!\n";   //
-        })
+        })                                  //
       | stdexec::upon_stopped([] {          //
           std::cout << "Hello, stopped.\n"; //
-        })));
+        })));                               //
   io_thread.join();
   io_thread2.join();
 

@@ -102,11 +102,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
      private:
       env env_;
 
-      template <class CvrefEnv>
+      template <class Env, class Cvref>
       using completion_sigs = //
         stdexec::__t<_when_all::completions<
-          _when_all::env_t<__decay_t<CvrefEnv>>,
-          __copy_cvref_t<CvrefEnv, stdexec::__t<SenderIds>>...>>;
+          _when_all::env_t<Env>,
+          __copy_cvref_t<Cvref, stdexec::__t<SenderIds>>...>>;
 
       template <class Completions>
       using sends_values = //
@@ -129,7 +129,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           , stream_receiver_base {
           using __id = receiver_t;
           using SenderId = nvexec::detail::nth_type<Index, SenderIds...>;
-          using Completions = completion_sigs< __copy_cvref_t<CvrefReceiverId, env_of_t<Receiver>>>;
+          using Completions = completion_sigs<env_of_t<Receiver>, CvrefReceiverId>;
 
           Receiver&& base() && noexcept {
             return (Receiver&&) op_state_->recvr_;
@@ -191,7 +191,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             op_state_->arrive();
           }
 
-          Env get_env() const {
+          Env get_env() const noexcept {
             auto env = make_terminal_stream_env(
               exec::make_env(
                 stdexec::get_env(base()),
@@ -210,8 +210,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using WhenAll = __copy_cvref_t<CvrefReceiverId, stdexec::__t<when_all_sender_t>>;
         using Receiver = stdexec::__t<__decay_t<CvrefReceiverId>>;
         using Env = env_of_t<Receiver>;
-        using CvrefEnv = __copy_cvref_t<CvrefReceiverId, Env>;
-        using Completions = completion_sigs<CvrefEnv>;
+        using Completions = completion_sigs<Env, CvrefReceiverId>;
 
         cudaError_t status_{cudaSuccess};
 
@@ -393,8 +392,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env)
-        -> completion_sigs<__copy_cvref_t<Self, Env>>;
+      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
+        -> completion_sigs<Env, Self>;
 
       friend const env& tag_invoke(get_env_t, const __t& __self) noexcept {
         return __self.env_;

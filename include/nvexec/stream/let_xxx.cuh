@@ -136,7 +136,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __self.__op_state_->propagate_completion_signal(_Tag(), (_As&&) __as...);
         }
 
-        friend _Env tag_invoke(get_env_t, const __t& __self) {
+        friend _Env tag_invoke(get_env_t, const __t& __self) noexcept {
           return __self.__op_state_->make_env();
         }
 
@@ -234,17 +234,15 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr, ((_Self&&) __self).__fun_};
       }
 
-      friend auto tag_invoke(get_env_t, const __t& __self) //
-        noexcept(__nothrow_callable<get_env_t, const _Sender&>)
-          -> __call_result_t<get_env_t, const _Sender&> {
+      friend auto tag_invoke(get_env_t, const __t& __self) noexcept -> env_of_t<const _Sender&> {
         return get_env(__self.__sndr_);
       }
 
       template <__decays_to<__t> _Self, class _Env>
-      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
         -> dependent_completion_signatures<_Env>;
       template <__decays_to<__t> _Self, class _Env>
-      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
         -> __completions<__copy_cvref_t<_Self, _Sender>, _Env>
         requires true;
 

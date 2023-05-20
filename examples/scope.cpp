@@ -41,7 +41,7 @@ class noop_receiver : receiver_adaptor<noop_receiver> {
   void set_stopped() noexcept {
   }
 
-  auto get_env() const & {
+  auto get_env() const & noexcept {
     return exec::make_env(exec::with(get_stop_token, stdexec::never_stop_token{}));
   }
 };
@@ -51,41 +51,45 @@ int main() {
   exec::async_scope scope;
 
   scheduler auto sch = ctx.get_scheduler();                                 // 1
-
+                                                                            //
   sender auto begin = schedule(sch);                                        // 2
-
+                                                                            //
   sender auto printVoid = then(begin, []() noexcept { printf("void\n"); }); // 3
-
-  sender auto printEmpty = then(on(sch, scope.on_empty()), []() noexcept {
-    printf("scope is empty\n");
-  }); // 4
-
-  printf(
-    "\n"
-    "spawn void\n"
-    "==========\n");
-
-  scope.spawn(printVoid); // 5
-
-  sync_wait(printEmpty);
-
-  printf(
-    "\n"
-    "spawn void and 42\n"
-    "=================\n");
-
+                                                                            //
+  sender auto printEmpty = then(
+    on(sch, scope.on_empty()),
+    []() noexcept {                                                 // 4
+      printf("scope is empty\n");                                   //
+    });                                                             //
+                                                                    //
+  printf(                                                           //
+    "\n"                                                            //
+    "spawn void\n"                                                  //
+    "==========\n");                                                //
+                                                                    //
+  scope.spawn(printVoid);                                           // 5
+                                                                    //
+  sync_wait(printEmpty);                                            //
+                                                                    //
+  printf(                                                           //
+    "\n"                                                            //
+    "spawn void and 42\n"                                           //
+    "=================\n");                                         //
+                                                                    //
   sender auto fortyTwo = then(begin, []() noexcept { return 42; }); // 6
-
+                                                                    //
   scope.spawn(printVoid);                                           // 7
-
+                                                                    //
   sender auto fortyTwoFuture = scope.spawn_future(fortyTwo);        // 8
-
-  sender auto printFortyTwo = then(std::move(fortyTwoFuture), [](int fortyTwo) noexcept {
-    printf("%d\n", fortyTwo);
-  }); // 9
-
-  sender auto allDone = then(
-    when_all(printEmpty, std::move(printFortyTwo)),
+                                                                    //
+  sender auto printFortyTwo = then(
+    std::move(fortyTwoFuture),
+    [](int fortyTwo) noexcept {                          // 9
+      printf("%d\n", fortyTwo);                          //
+    });                                                  //
+                                                         //
+  sender auto allDone = then(                            //
+    when_all(printEmpty, std::move(printFortyTwo)),      //
     [](auto&&...) noexcept { printf("\nall done\n"); }); // 10
 
   sync_wait(std::move(allDone));

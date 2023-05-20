@@ -259,11 +259,11 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) noexcept
+        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&) noexcept
           -> dependent_completion_signatures<_Env>;
 
         template <__decays_to<__t> _Self, __none_of<no_env> _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) noexcept
+        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&) noexcept
           -> __completion_signatures_t<
             __copy_cvref_t<_Self, _InitialSender>,
             __copy_cvref_t<_Self, _FinalSender>,
