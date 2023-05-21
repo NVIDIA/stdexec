@@ -34,6 +34,7 @@ template<class T>
 concept no_unhide = (!hidden<T>) && (!with_hide<T>);
 template<class T>
 concept yes_unhide = hidden<T>;
+
 // generate FNV-1a hash at compile-time
 std::size_t constexpr string_length(const char* str) noexcept {
   std::size_t l = 0;
@@ -168,11 +169,6 @@ constexpr std::uint64_t get_id() {
   return fnv_1a(__PRETTY_FUNCTION__);
 }
 
-template <std::uint64_t Id>
-struct id {
-  static constexpr std::uint64_t value = Id;
-};
-
 template <class OSig, class ASig, class = void>
 struct unique;
 template <class... On, class Void>
@@ -190,6 +186,11 @@ struct unique<void(On...), void(A0, An...)> {
   using type = typename unique<void(On...), void(An...)>::type;
 };
 
+template <std::uint64_t Id>
+struct id {
+  static constexpr std::uint64_t value = Id;
+};
+
 template <std::uint64_t Id, class T, class Tag, class... An>
 struct htb : id<Id> {
   using unhide = T;
@@ -205,7 +206,7 @@ struct ht : H {
 };
 
 template <std::uint64_t Id, class T, class Tag, class... An>
-struct idd : Tag, id<Id> {
+struct idd : id<Id> {
   using self_t = idd;
   using type = T;
   using tag = Tag;
@@ -214,11 +215,14 @@ struct idd : Tag, id<Id> {
   using append = typename unique<void(On...), void(An...)>::type;
   static constexpr std::uint64_t value = Id;
 
-  friend auto hf(id<Id>*, An*...) {
+private:
+  template<class I>
+  friend auto hf(void*) noexcept(noexcept(I::value == self_t::value)) requires(self_t::value == I::value) {
     class h : public htb<Id, T, Tag, An...> {};
     return ht<Tag, h>{};
   }
-  using hide = decltype(hf(std::declval<self_t*>(), std::declval<An*>()...));
+public:
+  using hide = decltype(hf<id<Id>>(std::declval<self_t*>()));
 };
 
 template <std::uint64_t Id, class Derived, class DerivedTag, class Out,
