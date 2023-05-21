@@ -71,13 +71,13 @@ TEST_CASE("bulk keeps error_types from input sender", "[adaptors][bulk]") {
   error_scheduler sched2{};
   error_scheduler<int> sched3{43};
 
-  check_err_types<type_array<>>(                        //
+  check_err_types<type_array<>>( //
     ex::transfer_just(sched1) | ex::bulk(n, [](int) noexcept {}));
-  check_err_types<type_array<std::exception_ptr>>(      //
+  check_err_types<type_array<std::exception_ptr>>( //
     ex::transfer_just(sched2) | ex::bulk(n, [](int) noexcept {}));
-  check_err_types<type_array<int>>(                     //
+  check_err_types<type_array<int>>( //
     ex::just_error(n) | ex::bulk(n, [](int) noexcept {}));
-  check_err_types<type_array<int>>(                     //
+  check_err_types<type_array<int>>( //
     ex::transfer_just(sched3) | ex::bulk(n, [](int) noexcept {}));
   check_err_types<type_array<std::exception_ptr, int>>( //
     ex::transfer_just(sched3) | ex::bulk(n, [](int) { throw std::logic_error{"err"}; }));

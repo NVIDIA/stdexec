@@ -26,15 +26,17 @@ using stdexec::sync_wait;
 int main() {
   exec::static_thread_pool ctx{8};
   scheduler auto sch = ctx.get_scheduler();                              // 1
-
+                                                                         //
   sender auto begin = schedule(sch);                                     // 2
-  sender auto hi_again = then(begin, [] {                                // 3
-    std::cout << "Hello world! Have an int.\n";                          // 3
-    return 13;                                                           // 3
-  });                                                                    // 3
-
+  sender auto hi_again = then(                                           // 3
+    begin,                                                               // 3
+    [] {                                                                 // 3
+      std::cout << "Hello world! Have an int.\n";                        // 3
+      return 13;                                                         // 3
+    });                                                                  // 3
+                                                                         //
   sender auto add_42 = then(hi_again, [](int arg) { return arg + 42; }); // 4
-
+                                                                         //
   auto [i] = sync_wait(std::move(add_42)).value();                       // 5
   std::cout << "Result: " << i << std::endl;
 

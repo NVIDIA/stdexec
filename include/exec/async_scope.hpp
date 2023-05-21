@@ -110,10 +110,10 @@ namespace exec {
       }
 
       template <__decays_to<__when_empty_sender> _Self, class _Env>
-      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
         -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>>;
 
-      friend empty_env tag_invoke(get_env_t, const __when_empty_sender& __self) noexcept {
+      friend empty_env tag_invoke(get_env_t, const __when_empty_sender&) noexcept {
         return {};
       }
 
@@ -220,10 +220,10 @@ namespace exec {
           __self.__scope_, ((_Self&&) __self).__c_, (_Receiver&&) __rcvr};
       }
       template <__decays_to<__nest_sender> _Self, class _Env>
-      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
         -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>>;
 
-      friend empty_env tag_invoke(get_env_t, const __nest_sender& __self) noexcept {
+      friend empty_env tag_invoke(get_env_t, const __nest_sender&) noexcept {
         return {};
       }
     };
@@ -572,10 +572,10 @@ namespace exec {
       }
 
       template <__decays_to<__future> _Self, class _OtherEnv>
-      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _OtherEnv)
+      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _OtherEnv&&)
         -> __completions_t<_Self>;
 
-      friend empty_env tag_invoke(get_env_t, const __future& __self) noexcept {
+      friend empty_env tag_invoke(get_env_t, const __future&) noexcept {
         return {};
       }
 

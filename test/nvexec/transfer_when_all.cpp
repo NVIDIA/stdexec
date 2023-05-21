@@ -24,7 +24,9 @@
 
 namespace ex = stdexec;
 
-TEST_CASE("nvexec transfer_when_all returns a sender", "[cuda][stream][adaptors][transfer_when_all]") {
+TEST_CASE(
+  "nvexec transfer_when_all returns a sender",
+  "[cuda][stream][adaptors][transfer_when_all]") {
   nvexec::stream_context stream_ctx{};
   auto gpu = stream_ctx.get_scheduler();
   auto snd = ex::transfer_when_all(gpu, ex::just(3), ex::just(0.1415));
@@ -42,7 +44,9 @@ TEST_CASE(
   (void) snd;
 }
 
-TEST_CASE("nvexec transfer_when_all with no senders", "[cuda][stream][adaptors][transfer_when_all]") {
+TEST_CASE(
+  "nvexec transfer_when_all with no senders",
+  "[cuda][stream][adaptors][transfer_when_all]") {
   nvexec::stream_context stream_ctx{};
   auto gpu = stream_ctx.get_scheduler();
   auto snd = ex::transfer_when_all(gpu);
