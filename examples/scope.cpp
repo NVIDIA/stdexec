@@ -46,6 +46,35 @@ class noop_receiver : receiver_adaptor<noop_receiver> {
   }
 };
 
+struct print_void_t {
+  struct result {
+    template<class... Vn>
+    auto operator()(set_value_t, Vn&&...) const noexcept {
+      printf("void\n");
+      return just();
+    }
+    template<class Error>
+    auto operator()(set_error_t, Error&& err) const noexcept {
+      return just_error(err);
+    }
+    auto operator()(set_stopped_t) const noexcept {
+      return just_stopped();
+    }
+  };
+  template<class Tag>
+  struct dispatch {
+    template<class... Vn>
+    auto operator()(Vn&&... vn) const noexcept {
+      return result{}(Tag{}, vn...);
+    }
+  };
+  template<class Input>
+  auto operator()(Input&& in) const noexcept {
+    return let_value(let_error(let_stopped(in, dispatch<set_stopped_t>{}), dispatch<set_error_t>{}), dispatch<set_value_t>{});
+  }
+};
+inline constexpr print_void_t print_void{};
+
 int main() {
   exec::static_thread_pool ctx{1};
   exec::async_scope scope;
@@ -54,10 +83,12 @@ int main() {
                                                                             //
   sender auto begin = schedule(sch);                                        // 2
                                                                             //
-  sender auto printVoid = then(begin, []() noexcept { printf("void\n"); }); // 3
-                                                                            //
-  sender auto printEmpty = then(
-    on(sch, scope.on_empty()),
+  sender auto printVoid = print_void(when_all(                              //
+    print_void(print_void(print_void(print_void(print_void(begin))))),      //
+    print_void(print_void(print_void(print_void(print_void(begin)))))));    // 3
+
+  sender auto printEmpty = then(                                    //
+    on(sch, scope.on_empty()),                                      //
     []() noexcept {                                                 // 4
       printf("scope is empty\n");                                   //
     });                                                             //
