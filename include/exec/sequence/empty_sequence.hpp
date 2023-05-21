@@ -41,8 +41,7 @@ namespace exec {
       struct __t {
         using __id = __sender;
         using is_sender = sequence_tag;
-        using completion_signatures = stdexec::completion_signatures<set_value_t()>;
-        using sequence_signatures = stdexec::completion_signatures<>;
+        using completion_signatures = stdexec::completion_signatures<>;
 
         template <__decays_to<__t> _Self, receiver_of<completion_signatures> _Rcvr>
         friend auto

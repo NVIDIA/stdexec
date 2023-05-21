@@ -92,17 +92,10 @@ namespace exec {
     template <class _Sender, class _Env>
     using __some_sender = __copy_cvref_t<
       _Sender,
-      __sequence_sndr::__unspecified_sender_of<__sequence_signatures_of_t<_Sender, _Env>>>;
-
-    template <class _Sender, class _Env>
-    using __completion_sigs =
-      __if_c<
-        sequence_sender_in<_Sender, _Env>,
-        completion_signatures_of_t<_Sender, _Env>,
-        __single_sender_completion_sigs<_Env>>;
+      __sequence_sndr::__unspecified_sender_of<completion_signatures_of_t<_Sender, _Env>>>;
 
     template <class _Sender, class _Env, class _Fun>
-    using __sequence_sigs =
+    using __completion_sigs =
       completion_signatures_of_t<__call_result_t< _Fun, __some_sender<_Sender, _Env>>, _Env>;
 
     template <class _Sender, class _Fun>
@@ -122,7 +115,7 @@ namespace exec {
         template <__decays_to<__t> Self, class Rcvr>
           requires sequence_receiver_of<
                      Rcvr,
-                     __sequence_sigs<__copy_cvref_t<Self, _Sender>, env_of_t<Rcvr>, _Fun>>
+                     __completion_sigs<__copy_cvref_t<Self, _Sender>, env_of_t<Rcvr>, _Fun>>
                 && sequence_sender_to<
                      __copy_cvref_t<Self, _Sender>,
                      __receiver_t<__decay_t<Rcvr>, _Fun>>
@@ -136,11 +129,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&&, const _Env&)
-          -> __completion_sigs<__copy_cvref_t<_Self, _Sender>, _Env>;
-
-        template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_sequence_signatures_t, _Self&&, const _Env&)
-          -> __sequence_sigs<__copy_cvref_t<_Self, _Sender>, _Env, _Fun>;
+          -> __completion_sigs<__copy_cvref_t<_Self, _Sender>, _Env, _Fun>;
       };
     };
 

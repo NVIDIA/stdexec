@@ -43,8 +43,8 @@ TEST_CASE("transform_each - using then with sender works", "[sequence_senders][t
   auto sequence = transform_each(sender, then([](int value) noexcept { CHECK(value == 42); }));
   using Sequence = decltype(sequence);
   STATIC_REQUIRE(sequence_sender<Sequence>);
-  using completion_sigs = completion_signatures_of_t<Sequence, empty_env>;
-  using sequence_sigs = __sequence_signatures_of_t<Sequence, empty_env>;
+  using completion_sigs = __sequence_completion_signatures_of_t<Sequence, empty_env>;
+  using sequence_sigs = completion_signatures_of_t<Sequence, empty_env>;
   STATIC_REQUIRE(same_as<sequence_sigs, completion_signatures<set_value_t()>>);
   STATIC_REQUIRE(same_as<completion_sigs, completion_signatures<set_value_t()>>);
   STATIC_REQUIRE(sequence_sender_to<Sequence, next_receiver>);
@@ -57,7 +57,7 @@ TEST_CASE("transform_each - using then with empty_sequence works", "[sequence_se
   auto sequence = transform_each(empty_sequence(), then([]() noexcept { CHECK(false); }));
   using Sequence = decltype(sequence);
   STATIC_REQUIRE(sequence_sender<Sequence>);
-  using sequence_sigs = __sequence_signatures_of_t<Sequence, empty_env>;
+  using sequence_sigs = completion_signatures_of_t<Sequence, empty_env>;
   STATIC_REQUIRE(same_as<sequence_sigs, completion_signatures<>>);
   STATIC_REQUIRE(sequence_sender_to<Sequence, next_receiver>);
   auto op = sequence_connect(sequence, next_receiver{});

@@ -275,8 +275,9 @@ namespace exec {
     struct __operation {
       using _Receiver = stdexec::__t<_ReceiverId>;
       using _Env = env_of_t<_Receiver>;
-      using _ResultVariant = __error_sigs_of_t<
-        __sequence_signatures_of_t<_Sender, _Env>,
+      using _ResultVariant = __error_types_of_t<
+        _Sender,
+        _Env,
         __mbind_front_q<std::variant, not_an_error, have_been_stopped>>;
 
       struct __t : __sequence_operation_base<_Receiver, _ResultVariant> {
@@ -297,18 +298,15 @@ namespace exec {
       };
     };
 
-    template <class... _Args>
-    using __drop_value_args = completion_signatures<set_value_t()>;
-
     template <class... _Errors>
     using __add_stopped = completion_signatures<set_stopped_t(), set_error_t(_Errors)...>;
 
     template <class _Sender, class _Env>
-    using __completion_sigs = __msuccess_or_t<__try_make_sequence_signatures<
+    using __completion_sigs = __msuccess_or_t<__try_make_completion_signatures<
       _Sender,
       _Env,
       completion_signatures<set_value_t()>,
-      __q<__drop_value_args>,
+      __mconst<completion_signatures<set_value_t()>>,
       __q<__add_stopped>>>;
 
     template <class _SenderId>
@@ -316,8 +314,9 @@ namespace exec {
       using _Sender = stdexec::__t<__decay_t<_SenderId>>;
 
       template <class _Rcvr>
-      using _ResultVariant = __error_sigs_of_t<
-        __sequence_signatures_of_t<_Sender, env_of_t<_Rcvr>>,
+      using _ResultVariant = __error_types_of_t<
+        _Sender,
+        env_of_t<_Rcvr>,
         __mbind_front_q<std::variant, not_an_error, have_been_stopped>>;
 
       struct __t {
