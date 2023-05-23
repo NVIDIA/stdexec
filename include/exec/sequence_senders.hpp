@@ -282,7 +282,7 @@ namespace exec {
         }
       }
 
-      friend constexpr bool tag_invoke(forwarding_query_t, connect_t) noexcept {
+      friend constexpr bool tag_invoke(forwarding_query_t, sequence_connect_t) noexcept {
         return false;
       }
     };
