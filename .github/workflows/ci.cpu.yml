@@ -19,12 +19,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { compiler: clang, version: "12", build: "Debug",   os: ubuntu20.04, name: "CPU (clang 12, ubuntu 20.04)",     cxxflags: "-stdlib=libc++" }
-          - { compiler: clang, version: "12", build: "Release", os: ubuntu20.04, name: "CPU (clang 12, ubuntu 20.04)",     cxxflags: "-stdlib=libc++" }
-          - { compiler: gcc,   version: "11", build: "Debug",   os: ubuntu20.04, name: "CPU (gcc 11, ubuntu 20.04)",       cxxflags: "", }
-          - { compiler: gcc,   version: "11", build: "Release", os: ubuntu20.04, name: "CPU (gcc 11, ubuntu 20.04)",       cxxflags: "", }
-          - { compiler: gcc,   version: "11", build: "Release", os: ubuntu22.04, name: "CPU (gcc 11, ubuntu 22.04, TSAN)", cxxflags: "-fsanitize=thread" }
-          - { compiler: gcc,   version: "11", build: "Release", os: ubuntu22.04, name: "CPU (gcc 11, ubuntu 22.04, ASAN)", cxxflags: "-fsanitize=address" }
+          - { compiler: clang, version: "12", build: "Debug",   os: ubuntu20.04, name: "CPU (clang 12, Debug, ubuntu 20.04)",       cxxflags: "-stdlib=libc++" }
+          - { compiler: clang, version: "12", build: "Release", os: ubuntu20.04, name: "CPU (clang 12, Release, ubuntu 20.04)",     cxxflags: "-stdlib=libc++" }
+          - { compiler: gcc,   version: "11", build: "Debug",   os: ubuntu20.04, name: "CPU (gcc 11, Debug, ubuntu 20.04)",         cxxflags: "", }
+          - { compiler: gcc,   version: "11", build: "Release", os: ubuntu20.04, name: "CPU (gcc 11, Release, ubuntu 20.04)",       cxxflags: "", }
+          - { compiler: gcc,   version: "11", build: "Release", os: ubuntu22.04, name: "CPU (gcc 11, Release, ubuntu 22.04, TSAN)", cxxflags: "-fsanitize=thread" }
+          - { compiler: gcc,   version: "11", build: "Release", os: ubuntu22.04, name: "CPU (gcc 11, Release, ubuntu 22.04, ASAN)", cxxflags: "-fsanitize=address" }
     container:
       options: --entrypoint /bin/bash
       image: ghcr.io/trxcllnt/action-cxx-toolkit:${{ matrix.compiler }}${{ matrix.version }}-${{ matrix.os }}
