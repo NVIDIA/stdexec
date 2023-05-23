@@ -83,13 +83,13 @@ namespace stdexec {
   template <class _Tp>
   using stop_token_of_t = __decay_t<__call_result_t<get_stop_token_t, _Tp>>;
 
-  template <class _Sender, class _Tag>
+  template <class _Sender, class _CPO>
   concept __has_completion_scheduler =
-    __callable<get_completion_scheduler_t<_Tag>, __call_result_t<get_env_t, const _Sender&>>;
+    __callable<get_completion_scheduler_t<_CPO>, env_of_t<const _Sender&>>;
 
-  template <class _Sender, class _Tag>
+  template <class _Sender, class _CPO>
   using __completion_scheduler_for =
-    __call_result_t<get_completion_scheduler_t<_Tag>, __call_result_t<get_env_t, const _Sender&>>;
+    __call_result_t<get_completion_scheduler_t<_CPO>, env_of_t<const _Sender&>>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __get_completion_signatures {

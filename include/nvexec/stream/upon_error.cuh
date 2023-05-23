@@ -87,7 +87,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           self.op_state_.propagate_completion_signal(Tag());
         }
 
-        STDEXEC_DEFINE_CUSTOM(env_t get_env)(this const __t& self, get_env_t) {
+        STDEXEC_DEFINE_CUSTOM(env_t get_env)(this const __t& self, get_env_t) noexcept {
           return self.op_state_.make_env();
         }
 
@@ -169,16 +169,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env)
+      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
         -> dependent_completion_signatures<Env>;
 
       template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env)
+      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
         -> completion_signatures<Self, Env>
         requires true;
 
-      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) //
-        noexcept(__nothrow_callable<get_env_t, const Sender&>) -> env_of_t<const Sender&> {
+      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) noexcept
+        -> env_of_t<const Sender&> {
         return stdexec::get_env(self.sndr_);
       }
     };

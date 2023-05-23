@@ -52,7 +52,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_submit {
       }
 
       // Forward all receiever queries.
-      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const receiver_t& self, get_env_t)
+      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const receiver_t& self, get_env_t) noexcept
         -> env_of_t<Receiver> {
         return stdexec::get_env((const Receiver&) self.op_state_->rcvr_);
       }

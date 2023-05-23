@@ -63,7 +63,7 @@ TEST_CASE("when_any completes with only one sender", "[adaptors][when_any]") {
 TEST_CASE("when_any with move-only types", "[adaptors][when_any]") {
   ex::sender auto snd = exec::when_any( //
     completes_if{false} | ex::then([] { return movable(1); }),
-    ex::just(movable(42))               //
+    ex::just(movable(42)) //
   );
   wait_for_value(std::move(snd), movable(42));
 }

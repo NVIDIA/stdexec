@@ -187,7 +187,7 @@ namespace exec {
         STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) noexcept
           -> __env_t<env_of_t<_Receiver>> {
           using __with_token = __with<get_stop_token_t, in_place_stop_token>;
-          auto __token = __with_token{__self.__op_->__stop_source_.get_token()};
+          auto __token = __with_(get_stop_token, __self.__op_->__stop_source_.get_token());
           return __make_env(stdexec::get_env(__self.__op_->__receiver_), (__with_token&&) __token);
         }
 

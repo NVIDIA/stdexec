@@ -124,7 +124,7 @@ struct grid_t {
 
 constexpr float C0 = 299792458.0f; // Speed of light [metres per second]
 
-STDEXEC_DETAIL_CUDACC_HOST_DEVICE  //
+STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
   inline bool
   is_circle_part(float x, float y, float object_x, float object_y, float object_size) {
   const float os2 = object_size * object_size;

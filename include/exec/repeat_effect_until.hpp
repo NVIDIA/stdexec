@@ -169,7 +169,7 @@ namespace exec {
             __value_t>;
 
         template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self &&, _Env)
+        friend auto tag_invoke(get_completion_signatures_t, _Self &&, _Env &&)
           -> __completion_signatures<_Env> {
           return {};
         }
@@ -190,8 +190,7 @@ namespace exec {
         }
 
         STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t &__self, get_env_t) //
-          noexcept(__nothrow_callable<get_env_t, const _Source &>)
-            -> __call_result_t<get_env_t, const _Source &> {
+          noexcept -> __call_result_t<get_env_t, const _Source &> {
           return stdexec::get_env(__self.__source_);
         }
       };

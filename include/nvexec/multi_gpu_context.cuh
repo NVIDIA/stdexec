@@ -159,7 +159,7 @@ namespace nvexec {
       }
 
       template <stream_completing_sender... Senders>
-      friend auto tag_invoke(                  //
+      friend auto tag_invoke( //
         transfer_when_all_t,
         const multi_gpu_stream_scheduler& sch, //
         Senders&&... sndrs) noexcept {

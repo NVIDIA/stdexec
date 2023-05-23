@@ -45,9 +45,14 @@ inline constexpr ::tag_t get_address;
 
 struct env {
   const void* object_{nullptr};
+  in_place_stop_token token_;
 
   friend const void* tag_invoke(::tag_t, env e) noexcept {
     return e.object_;
+  }
+
+  friend in_place_stop_token tag_invoke(get_stop_token_t, const env& e) noexcept {
+    return e.token_;
   }
 };
 
@@ -326,22 +331,55 @@ TEST_CASE("any_sender is connectable with any_receiver_ref", "[types][any_sender
   }
 }
 
-struct stopped_receiver_base {
-  in_place_stop_token stop_token_{};
+class stopped_token {
+ private:
+  bool stopped_{true};
+
+  struct __callback_type {
+    template <class Fn>
+    explicit __callback_type(stopped_token t, Fn&& f) noexcept {
+      if (t.stopped_) {
+        static_cast<Fn&&>(f)();
+      }
+    }
+  };
+ public:
+  constexpr stopped_token() noexcept = default;
+  explicit constexpr stopped_token(bool stopped) noexcept
+    : stopped_{stopped} {}
+
+  template <class>
+  using callback_type = __callback_type;
+
+  static std::true_type stop_requested() noexcept {
+    return {};
+  }
+
+  static std::true_type stop_possible() noexcept {
+    return {};
+  }
+
+  bool operator==(const stopped_token&) const noexcept = default;
 };
 
-struct stopped_receiver_env {
-  const stopped_receiver_base* receiver_;
+template <class Token>
+struct stopped_receiver_base {
+  Token stop_token_{};
+};
 
-  friend in_place_stop_token
-    tag_invoke(get_stop_token_t, const stopped_receiver_env& env) noexcept {
+template <class Token>
+struct stopped_receiver_env {
+  const stopped_receiver_base<Token>* receiver_;
+
+  friend Token tag_invoke(get_stop_token_t, const stopped_receiver_env& env) noexcept {
     return env.receiver_->stop_token_;
   }
 };
 
-struct stopped_receiver : stopped_receiver_base {
-  stopped_receiver(in_place_stop_token token, bool expect_stop)
-    : stopped_receiver_base{token}
+template <class Token>
+struct stopped_receiver : stopped_receiver_base<Token> {
+  stopped_receiver(Token token, bool expect_stop)
+    : stopped_receiver_base<Token>{token}
     , expect_stop_{expect_stop} {
   }
 
@@ -366,22 +404,46 @@ struct stopped_receiver : stopped_receiver_base {
   }
 };
 
-static_assert(
-  receiver_of<stopped_receiver, completion_signatures<set_value_t(int), set_stopped_t()>>);
+template <class Token>
+stopped_receiver(Token, bool) -> stopped_receiver<Token>;
 
-TEST_CASE("any_sender does not connect with stop token", "[types][any_sender]") {
-  using unstoppable_sender = any_sender_of<set_value_t(int), set_stopped_t()>;
-  unstoppable_sender sender = when_any(just(21));
+static_assert(receiver_of<
+              stopped_receiver<in_place_stop_token>,
+              completion_signatures<set_value_t(int), set_stopped_t()>>);
+
+TEST_CASE("any_sender - does connect with stop token", "[types][any_sender]") {
+  using stoppable_sender = any_sender_of<set_value_t(int), set_stopped_t()>;
+  stoppable_sender sender = when_any(just(21));
   in_place_stop_source stop_source{};
-  stopped_receiver receiver{stop_source.get_token(), false};
+  stopped_receiver receiver{stop_source.get_token(), true};
   stop_source.request_stop();
   auto do_check = connect(std::move(sender), std::move(receiver));
   // This CHECKS whether set_value is called
   start(do_check);
 }
 
+TEST_CASE("any_sender - does connect with an user-defined stop token", "[types][any_sender]") {
+  using stoppable_sender = any_sender_of<set_value_t(int), set_stopped_t()>;
+  stoppable_sender sender = when_any(just(21));
+  SECTION("stopped true") {
+    stopped_token token{true};
+    stopped_receiver receiver{token, true};
+    auto do_check = connect(std::move(sender), std::move(receiver));
+    // This CHECKS whether set_value is called
+    start(do_check);
+  }
+  SECTION("stopped false") {
+    stopped_token token{false};
+    stopped_receiver receiver{token, false};
+    auto do_check = connect(std::move(sender), std::move(receiver));
+    // This CHECKS whether set_value is called
+    start(do_check);
+  }
+}
+
 TEST_CASE(
-  "any_sender does connect with stop token if the get_stop_token query is registered",
+  "any_sender - does connect with stop token if the get_stop_token query is registered with "
+  "in_place_stop_token",
   "[types][any_sender]") {
   using Sigs = completion_signatures<set_value_t(int), set_stopped_t()>;
   using receiver_ref =
@@ -390,6 +452,23 @@ TEST_CASE(
   stoppable_sender sender = when_any(just(21));
   in_place_stop_source stop_source{};
   stopped_receiver receiver{stop_source.get_token(), true};
+  stop_source.request_stop();
+  auto do_check = connect(std::move(sender), std::move(receiver));
+  // This CHECKS whether a set_stopped is called
+  start(do_check);
+}
+
+TEST_CASE(
+  "any_sender - does connect with stop token if the get_stop_token query is registered with "
+  "never_stop_token",
+  "[types][any_sender]") {
+  using Sigs = completion_signatures<set_value_t(int), set_stopped_t()>;
+  using receiver_ref =
+    any_receiver_ref<Sigs, get_stop_token.signature<never_stop_token() noexcept>>;
+  using unstoppable_sender = receiver_ref::any_sender<>;
+  unstoppable_sender sender = when_any(just(21));
+  in_place_stop_source stop_source{};
+  stopped_receiver receiver{stop_source.get_token(), false};
   stop_source.request_stop();
   auto do_check = connect(std::move(sender), std::move(receiver));
   // This CHECKS whether a set_stopped is called

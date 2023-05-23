@@ -41,7 +41,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             Tag()(std::move(self.op_state_.receiver_), (As&&) as...);
           }
 
-          STDEXEC_DEFINE_CUSTOM(Env get_env)(this const receiver_t& self, get_env_t) {
+          STDEXEC_DEFINE_CUSTOM(Env get_env)(this const receiver_t& self, get_env_t) noexcept {
             return self.op_state_.make_env();
           }
         };
@@ -49,7 +49,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using task_t = continuation_task_t<receiver_t, variant_t>;
 
         cudaError_t status_{cudaSuccess};
-        context_state_t context_state_;
+        s context_state_t context_state_;
 
         queue::host_ptr<variant_t> storage_;
         task_t* task_;
@@ -143,16 +143,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env)
+      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
         -> dependent_completion_signatures<Env>;
 
       template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env)
+      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
         -> _completion_signatures_t<Self, Env>
         requires true;
 
-      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) //
-        noexcept(__nothrow_callable<get_env_t, const Sender&>) -> env_of_t<const Sender&> {
+      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) noexcept
+        -> env_of_t<const Sender&> {
         return stdexec::get_env(self.sndr_);
       }
 

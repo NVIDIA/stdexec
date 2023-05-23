@@ -37,16 +37,13 @@ namespace exec {
     struct _ENVIRONMENT_HAS_NO_SCHEDULER_FOR_THE_ON_ADAPTOR_TO_TRANSITION_BACK_TO { };
 
     template <class _Env, class _SchedulerId>
-    struct __with_sched_env : _Env {
-      using __t = __with_sched_env;
-      using __id = __with_sched_env;
-      using _Scheduler = stdexec::__t<_SchedulerId>;
-      _Scheduler __sched_;
+    struct __with_sched_env
+      : __env::__env_join_t<__env::__with<get_scheduler_t, __t<_SchedulerId>>, _Env> { };
 
-      friend _Scheduler tag_invoke(get_scheduler_t, const __with_sched_env& __self) noexcept {
-        return __self.__sched_;
-      }
-    };
+    template <class _Env, class _Scheduler>
+    __with_sched_env<_Env, __id<_Scheduler>> __make_env(_Env&& __env, _Scheduler __sched) noexcept {
+      return {__env::__join_env(__env::__with_(get_scheduler, __sched), (_Env&&) __env)};
+    }
 
     template <class _Scheduler>
     struct __with_sched_kernel : __default_kernel {
@@ -57,13 +54,13 @@ namespace exec {
       }
 
       template <class _Env>
-      __with_sched_env<_Env, __id<_Scheduler>> get_env(_Env __env) {
-        return {(_Env&&) __env, __sched_};
+      __with_sched_env<_Env, __id<_Scheduler>> get_env(_Env&& __env) noexcept {
+        return __on::__make_env((_Env&&) __env, __sched_);
       }
 
       template <class _Env, class _OtherSchedulerId>
-      _Env get_env(__with_sched_env<_Env, _OtherSchedulerId> __env) {
-        return (_Env&&) __env;
+      _Env get_env(__with_sched_env<_Env, _OtherSchedulerId> __env) noexcept {
+        return __env.base();
       }
     };
 
@@ -242,8 +239,8 @@ namespace exec {
       }
 
       template <class _Env>
-      __with_sched_env<_Env, __id<_Scheduler>> get_env(_Env __env) {
-        return {(_Env&&) __env, __sched_};
+      __with_sched_env<_Env, __id<_Scheduler>> get_env(_Env&& __env) noexcept {
+        return __on::__make_env((_Env&&) __env, __sched_);
       }
     };
 
