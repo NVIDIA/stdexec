@@ -482,8 +482,10 @@ namespace exec {
       using __task_traits_t = //
         completion_signatures< __set_value_sig_t, set_error_t(std::exception_ptr), set_stopped_t()>;
 
-      friend auto tag_invoke(get_completion_signatures_t, const basic_task&, auto)
-        -> __task_traits_t;
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+        this const basic_task&,
+        get_completion_signatures_t,
+        auto) -> __task_traits_t;
 
       explicit basic_task(__coro::coroutine_handle<promise_type> __coro) noexcept
         : __coro_(__coro) {

@@ -97,11 +97,16 @@ namespace exec {
         return {{}, ((_Self&&) __self).__default_, (_Receiver&&) __rcvr};
       }
 
-      friend auto tag_invoke(get_completion_signatures_t, __sender, no_env)
-        -> dependent_completion_signatures<no_env>;
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+        this __sender,
+        get_completion_signatures_t,
+        no_env) -> dependent_completion_signatures<no_env>;
+
       template <__none_of<no_env> _Env>
-      friend auto tag_invoke(get_completion_signatures_t, __sender, _Env&&)
-        -> __completions_t<_Env>;
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+        this __sender,
+        get_completion_signatures_t,
+        _Env&&) -> __completions_t<_Env>;
     };
 
     struct __read_with_default_t {
@@ -194,7 +199,10 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class _BaseEnv>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _BaseEnv&&)
+        STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+          this _Self&&,
+          get_completion_signatures_t,
+          _BaseEnv&&)
           -> stdexec::__completion_signatures_of_t<
             __copy_cvref_t<_Self, _Sender>,
             __env::__env_join_t<_Env, _BaseEnv>>;

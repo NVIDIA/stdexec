@@ -169,11 +169,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, get_completion_signatures_t, Env&&)
         -> dependent_completion_signatures<Env>;
 
       template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, get_completion_signatures_t, Env&&)
         -> completion_signatures<Self, Env>
         requires true;
 

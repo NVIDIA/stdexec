@@ -393,7 +393,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, get_completion_signatures_t, Env&&)
         -> completion_sigs<Env, Self>;
 
       STDEXEC_DEFINE_CUSTOM(const env& get_env)(this const __t& __self, get_env_t) noexcept {

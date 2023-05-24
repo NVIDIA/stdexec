@@ -116,8 +116,10 @@ namespace exec {
     struct __dependent_sender {
       using is_sender = void;
       using __t = __dependent_sender;
-      friend auto tag_invoke(get_completion_signatures_t, __dependent_sender, no_env)
-        -> dependent_completion_signatures<no_env>;
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+        this __dependent_sender,
+        get_completion_signatures_t,
+        no_env) -> dependent_completion_signatures<no_env>;
     };
 
     struct __sender_transform_failed {
@@ -362,8 +364,10 @@ namespace exec {
         using __new_completions_t = decltype(__new_completion_sigs_type<_Self, _Env>()());
 
         template <__is_derived_sender<_DerivedId> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-          -> __new_completions_t<_Self, _Env>;
+        STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+          this _Self&&,
+          get_completion_signatures_t,
+          _Env&&) -> __new_completions_t<_Self, _Env>;
 
         STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, stdexec::get_env_t) noexcept
           -> __call_result_t<stdexec::get_env_t, const _Sender&> {

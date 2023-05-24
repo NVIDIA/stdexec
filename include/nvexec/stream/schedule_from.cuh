@@ -97,7 +97,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<source_sender_t> _Self, class _Env>
-      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this _Self&&, get_completion_signatures_t, _Env&&)
         -> make_completion_signatures< __copy_cvref_t<_Self, Sender>, _Env>;
 
       Sender sender_;
@@ -156,7 +156,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> _Self, class _Env>
-      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this _Self&&, get_completion_signatures_t, _Env&&)
         -> make_completion_signatures<
           __copy_cvref_t<_Self, Sender>,
           _Env,

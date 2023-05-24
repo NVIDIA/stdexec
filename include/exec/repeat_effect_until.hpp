@@ -169,8 +169,10 @@ namespace exec {
             __value_t>;
 
         template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self &&, _Env &&)
-          -> __completion_signatures<_Env> {
+        STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+          this _Self &&,
+          get_completion_signatures_t,
+          _Env &&) -> __completion_signatures<_Env> {
           return {};
         }
 

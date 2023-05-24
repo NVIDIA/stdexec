@@ -358,7 +358,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using _set_error_t = completion_signatures<set_error_t(const __decay_t<Ty>&)>;
 
       template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, get_completion_signatures_t, Env&&)
         -> make_completion_signatures<
           Sender,
           exec::make_env_t<exec::with_t<get_stop_token_t, in_place_stop_token>>,
