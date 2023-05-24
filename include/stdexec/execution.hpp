@@ -1647,73 +1647,67 @@ namespace stdexec {
       __update_receiver_type_to_p2300r7_by_adding_enable_receiver_trait() {
     }
 
+    struct __dummy_operation : __immovable {
+      void start(start_t) noexcept;
+    };
+  } // namespace __connect
+
+  STDEXEC_DEFINE_CPO(struct connect_t, connect) {
     template <class _Sender, class _Receiver>
-    concept __connectable_with_tag_invoke =
+    static constexpr bool __connectable_with_tag_invoke_v =
       receiver<_Receiver> &&                     //
       sender_in<_Sender, env_of_t<_Receiver>> && //
       __receiver_from<_Receiver, _Sender> &&     //
       tag_invocable<connect_t, _Sender, _Receiver>;
 
-    struct __dummy_operation : __immovable {
-      STDEXEC_DEFINE_CUSTOM(void start)(this __dummy_operation&, start_t) noexcept;
-    };
+    template <class _Sender, class _Receiver>
+    static constexpr auto __select_impl() noexcept {
+      // Report that 2300R5-style senders and receivers are deprecated:
+      if constexpr (!enable_sender<__decay_t<_Sender>>)
+        __update_sender_type_to_p2300r7_by_adding_enable_sender_trait<__decay_t<_Sender>>();
 
-    struct connect_t {
-      template <class _Sender, class _Receiver>
-      static constexpr auto __select_impl() noexcept {
-        // Report that 2300R5-style senders and receivers are deprecated:
-        if constexpr (!enable_sender<__decay_t<_Sender>>)
-          __update_sender_type_to_p2300r7_by_adding_enable_sender_trait<__decay_t<_Sender>>();
+      if constexpr (!enable_receiver<__decay_t<_Receiver>>)
+        __update_receiver_type_to_p2300r7_by_adding_enable_receiver_trait< __decay_t<_Receiver>>();
 
-        if constexpr (!enable_receiver<__decay_t<_Receiver>>)
-          __update_receiver_type_to_p2300r7_by_adding_enable_receiver_trait< __decay_t<_Receiver>>();
-
-        if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
-          using _Result = tag_invoke_result_t<connect_t, _Sender, _Receiver>;
-          constexpr bool _Nothrow = nothrow_tag_invocable<connect_t, _Sender, _Receiver>;
-          return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
-        } else if constexpr (__callable<__connect_awaitable_t, _Sender, _Receiver>) {
-          using _Result = __call_result_t<__connect_awaitable_t, _Sender, _Receiver>;
-          return static_cast<_Result (*)()>(nullptr);
-        } else {
-          return static_cast<__debug::__debug_operation (*)() noexcept>(nullptr);
-        }
+      if constexpr (__connectable_with_tag_invoke_v<_Sender, _Receiver>) {
+        using _Result = tag_invoke_result_t<connect_t, _Sender, _Receiver>;
+        constexpr bool _Nothrow = nothrow_tag_invocable<connect_t, _Sender, _Receiver>;
+        return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
+      } else if constexpr (__callable<__connect_awaitable_t, _Sender, _Receiver>) {
+        using _Result = __call_result_t<__connect_awaitable_t, _Sender, _Receiver>;
+        return static_cast<_Result (*)()>(nullptr);
+      } else {
+        return static_cast<__debug::__debug_operation (*)() noexcept>(nullptr);
       }
+    }
 
-      template <class _Sender, class _Receiver>
-      using __select_impl_t = decltype(__select_impl<_Sender, _Receiver>());
+    template <class _Sender, class _Receiver>
+    using __select_impl_t = decltype(__select_impl<_Sender, _Receiver>());
 
-      template <sender _Sender, receiver _Receiver>
-        requires __connectable_with_tag_invoke<_Sender, _Receiver>
-              || __callable<__connect_awaitable_t, _Sender, _Receiver>
-              || __is_debug_env<env_of_t<_Receiver>>
-      auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
-        noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
-          -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
-        if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
-          static_assert(
-            operation_state<tag_invoke_result_t<connect_t, _Sender, _Receiver>>,
-            "stdexec::connect(sender, receiver) must return a type that "
-            "satisfies the operation_state concept");
-          return tag_invoke(connect_t{}, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
-        } else if constexpr (__callable<__connect_awaitable_t, _Sender, _Receiver>) {
-          return __connect_awaitable((_Sender&&) __sndr, (_Receiver&&) __rcvr);
-        } else {
-          // This should generate an instantiate backtrace that contains useful
-          // debugging information.
-          using __tag_invoke::tag_invoke;
-          tag_invoke(*this, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
-          return __dummy_operation{};
-        }
+    template <sender _Sender, receiver _Receiver>
+      requires __connectable_with_tag_invoke_v<_Sender, _Receiver>
+            || __callable<__connect_awaitable_t, _Sender, _Receiver>
+            || __is_debug_env<env_of_t<_Receiver>>
+    auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
+      noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
+        -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
+      if constexpr (__connectable_with_tag_invoke_v<_Sender, _Receiver>) {
+        static_assert(
+          operation_state<tag_invoke_result_t<connect_t, _Sender, _Receiver>>,
+          "stdexec::connect(sender, receiver) must return a type that "
+          "satisfies the operation_state concept");
+        return tag_invoke(connect_t{}, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
+      } else if constexpr (__callable<__connect_awaitable_t, _Sender, _Receiver>) {
+        return __connect_awaitable((_Sender&&) __sndr, (_Receiver&&) __rcvr);
+      } else {
+        // This should generate an instantiate backtrace that contains useful
+        // debugging information.
+        tag_invoke(*this, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
+        return __dummy_operation{};
       }
+    }
+  };
 
-      friend constexpr bool tag_invoke(forwarding_query_t, connect_t) noexcept {
-        return false;
-      }
-    };
-  } // namespace __connect
-
-  using __connect::connect_t;
   inline constexpr __connect::connect_t connect{};
 
   /////////////////////////////////////////////////////////////////////////////

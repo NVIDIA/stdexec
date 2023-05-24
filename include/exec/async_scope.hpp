@@ -107,8 +107,9 @@ namespace exec {
 
       template <__decays_to<__when_empty_sender> _Self, receiver _Receiver>
         requires sender_to<__copy_cvref_t<_Self, _Constrained>, _Receiver>
-      [[nodiscard]] friend __when_empty_op_t<_Self, _Receiver>
-        tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) {
+      [[nodiscard]] //
+      STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __rcvr)
+        -> __when_empty_op_t<_Self, _Receiver> {
         return __when_empty_op_t<_Self, _Receiver>{
           __self.__scope_, ((_Self&&) __self).__c_, (_Receiver&&) __rcvr};
       }
@@ -251,8 +252,9 @@ namespace exec {
 
       template <__decays_to<__nest_sender> _Self, receiver _Receiver>
         requires sender_to<__copy_cvref_t<_Self, _Constrained>, __nest_receiver_t<_Receiver>>
-      [[nodiscard]] friend __nest_operation_t<_Receiver>
-        tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) {
+      [[nodiscard]] //
+      STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __rcvr)
+        -> __nest_operation_t<_Receiver> {
         return __nest_operation_t<_Receiver>{
           __self.__scope_, ((_Self&&) __self).__c_, (_Receiver&&) __rcvr};
       }
@@ -634,8 +636,8 @@ namespace exec {
 
       template <__decays_to<__future> _Self, receiver _Receiver>
         requires receiver_of<_Receiver, __completions_t<_Self>>
-      friend __future_op<_SenderId, _EnvId, __x<_Receiver>>
-        tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) {
+      STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __rcvr)
+        -> __future_op<_SenderId, _EnvId, __x<_Receiver>> {
         return __future_op<_SenderId, _EnvId, __x<_Receiver>>{
           (_Receiver&&) __rcvr, std::move(__self.__state_)};
       }

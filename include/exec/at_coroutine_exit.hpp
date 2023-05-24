@@ -87,9 +87,12 @@ namespace exec {
 
           template <receiver _Receiver>
             requires sender_to<_Sender, __receiver<_Receiver>>
-          friend connect_result_t<_Sender, __receiver<_Receiver>>
-            tag_invoke(connect_t, __t&& __self, _Receiver&& __rcvr) noexcept {
-            return connect(
+          STDEXEC_DEFINE_CUSTOM(auto connect)(
+            this __t&& __self,
+            connect_t,
+            _Receiver&& __rcvr) noexcept //
+            -> connect_result_t<_Sender, __receiver<_Receiver>> {
+            return stdexec::connect(
               (_Sender&&) __self.__sender_, __receiver<_Receiver>{(_Receiver&&) __rcvr});
           }
 
@@ -109,7 +112,7 @@ namespace exec {
           STDEXEC_DEFINE_CUSTOM(env_of_t<_Sender> get_env)(
             this const __t& __self,
             get_env_t) noexcept {
-            return get_env(__self.__sender_);
+            return stdexec::get_env(__self.__sender_);
           }
         };
       };

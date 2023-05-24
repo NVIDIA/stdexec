@@ -1002,13 +1002,14 @@ namespace exec {
        private:
         __unique_storage_t<__vtable> __storage_;
 
+        STDEXEC_CPO_ACCESS(connect_t);
+        STDEXEC_CPO_ACCESS(get_env_t);
+
         template <receiver_of<_Sigs> _Rcvr>
-        friend stdexec::__t<__operation<stdexec::__id<__decay_t<_Rcvr>>, __with_in_place_stop_token>>
-          tag_invoke(connect_t, __t&& __self, _Rcvr&& __rcvr) {
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this __t&& __self, connect_t, _Rcvr&& __rcvr)
+          -> stdexec::__t<__operation<stdexec::__id<__decay_t<_Rcvr>>, __with_in_place_stop_token>> {
           return {(__t&&) __self, (_Rcvr&&) __rcvr};
         }
-
-        STDEXEC_CPO_ACCESS(get_env_t);
 
         STDEXEC_DEFINE_CUSTOM(__env_t get_env)(this const __t& __self, get_env_t) noexcept {
           return {__self.__storage_.__get_vtable(), __self.__storage_.__get_object_pointer()};

@@ -66,7 +66,7 @@ namespace exec {
         requires __callable<_Fun, __context<_Receiver, _Args>&>
               && constructible_from<_Fun, __copy_cvref_t<_Self, _Fun>>
               && constructible_from<_Args, __copy_cvref_t<_Self, _Args>>
-      friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+      STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __rcvr)
         -> __operation<__x<_Receiver>, _Fun, _ArgsId> {
         static_assert(__nothrow_callable<_Fun, __context<_Receiver, _Args>&>);
         return {

@@ -184,7 +184,8 @@ namespace exec {
         __sequence_sndr::__stopped_means_break_t<_Receiver>,
         __next_sender_of_t<_Receiver, _Sender>>) );
 
-  namespace __sequence_sndr {
+  namespace __sequence_connect {
+    using namespace stdexec;
     struct sequence_connect_t;
 
     template <class _Env>
@@ -200,11 +201,13 @@ namespace exec {
       !sequence_sender_in<_Sender, env_of_t<_Receiver>> && //
       sequence_receiver_of<_Receiver, completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>
       &&                                                   //
-      __receiver_from<__stopped_means_break_t<_Receiver>, __next_sender_of_t<_Receiver, _Sender>>
-      &&                                                   //
-      __connect::__connectable_with_tag_invoke<
+      __receiver_from<
+        __sequence_sndr::__stopped_means_break_t<_Receiver>,
+        __next_sender_of_t<_Receiver, _Sender>>
+      && //
+      connect_t::__connectable_with_tag_invoke_v<
         __next_sender_of_t<_Receiver, _Sender>&&,
-        __stopped_means_break_t<_Receiver>>;
+        __sequence_sndr::__stopped_means_break_t<_Receiver>>;
 
 
     template <class _Sender, class _Receiver>
@@ -213,90 +216,80 @@ namespace exec {
       sequence_sender_in<_Sender, env_of_t<_Receiver>> && //
       sequence_receiver_from<_Receiver, _Sender> &&       //
       tag_invocable<sequence_connect_t, _Sender, _Receiver>;
+  }                                                       // namespace __sequence_sndr
 
-    struct sequence_connect_t {
-      template <class _Sender, class _Receiver>
-      static constexpr auto __select_impl() noexcept {
-        // Report that 2300R5-style senders and receivers are deprecated:
-        if constexpr (!enable_sender<__decay_t<_Sender>>)
-          __connect::__update_sender_type_to_p2300r7_by_adding_enable_sender_trait<
-            __decay_t<_Sender>>();
+  STDEXEC_DEFINE_CPO(struct sequence_connect_t, sequence_connect) {
+    template <class _Sender, class _Receiver>
+    static constexpr auto __select_impl() noexcept {
+      // Report that 2300R5-style senders and receivers are deprecated:
+      if constexpr (!enable_sender<__decay_t<_Sender>>)
+        __connect::__update_sender_type_to_p2300r7_by_adding_enable_sender_trait<
+          __decay_t<_Sender>>();
 
-        if constexpr (!enable_receiver<__decay_t<_Receiver>>)
-          __connect::__update_receiver_type_to_p2300r7_by_adding_enable_receiver_trait<
-            __decay_t<_Receiver>>();
+      if constexpr (!enable_receiver<__decay_t<_Receiver>>)
+        __connect::__update_receiver_type_to_p2300r7_by_adding_enable_receiver_trait<
+          __decay_t<_Receiver>>();
 
-        if constexpr (__next_connectable_with_tag_invoke<_Sender, _Receiver>) {
-          using _Result = tag_invoke_result_t<
-            connect_t,
-            __next_sender_of_t<_Receiver, _Sender>,
-            __stopped_means_break_t<_Receiver>>;
-          constexpr bool _Nothrow = nothrow_tag_invocable<
-            connect_t,
-            __next_sender_of_t<_Receiver, _Sender>,
-            __stopped_means_break_t<_Receiver>>;
-          return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
-        } else if constexpr (__sequence_connectable_with_tag_invoke<_Sender, _Receiver>) {
-          using _Result = tag_invoke_result_t<sequence_connect_t, _Sender, _Receiver>;
-          constexpr bool _Nothrow = nothrow_tag_invocable<sequence_connect_t, _Sender, _Receiver>;
-          return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
-        } else {
-          return static_cast<__debug::__debug_operation (*)() noexcept>(nullptr);
-        }
+      if constexpr (__next_connectable_with_tag_invoke<_Sender, _Receiver>) {
+        using _Result = connect_result_t<
+          __next_sender_of_t<_Receiver, _Sender>,
+          __sequence_sndr::__stopped_means_break_t<_Receiver>>;
+        constexpr bool _Nothrow = __nothrow_connectable<
+          __next_sender_of_t<_Receiver, _Sender>,
+          __sequence_sndr::__stopped_means_break_t<_Receiver>>;
+        return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
+      } else if constexpr (__sequence_connectable_with_tag_invoke<_Sender, _Receiver>) {
+        using _Result = tag_invoke_result_t<sequence_connect_t, _Sender, _Receiver>;
+        constexpr bool _Nothrow = nothrow_tag_invocable<sequence_connect_t, _Sender, _Receiver>;
+        return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
+      } else {
+        return static_cast<__debug::__debug_operation (*)() noexcept>(nullptr);
       }
-
-      template <class _Sender, class _Receiver>
-      using __select_impl_t = decltype(__select_impl<_Sender, _Receiver>());
-
-      template <sender _Sender, receiver _Receiver>
-        requires __next_connectable_with_tag_invoke<_Sender, _Receiver>
-              || __sequence_connectable_with_tag_invoke<_Sender, _Receiver>
-              || __is_debug_env<env_of_t<_Receiver>>
-      auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
-        noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
-          -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
-        if constexpr (__next_connectable_with_tag_invoke<_Sender, _Receiver>) {
-          static_assert(
-            operation_state<tag_invoke_result_t<
-              connect_t,
-              __next_sender_of_t<_Receiver, _Sender>,
-              __stopped_means_break_t<_Receiver>>>,
-            "stdexec::connect(sender, receiver) must return a type that "
-            "satisfies the operation_state concept");
-          __next_sender_of_t<_Receiver, _Sender> __next = set_next(__rcvr, (_Sender&&) __sndr);
-          return tag_invoke(
-            connect_t{},
-            (__next_sender_of_t<_Receiver, _Sender>&&) __next,
-            __stopped_means_break_t<_Receiver>{(_Receiver&&) __rcvr});
-        } else if constexpr (__sequence_connectable_with_tag_invoke<_Sender, _Receiver>) {
-          static_assert(
-            operation_state<tag_invoke_result_t<sequence_connect_t, _Sender, _Receiver>>,
-            "exec::sequence_connect(sender, receiver) must return a type that "
-            "satisfies the operation_state concept");
-          return tag_invoke(sequence_connect_t{}, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
-        } else {
-          // This should generate an instantiate backtrace that contains useful
-          // debugging information.
-          using __tag_invoke::tag_invoke;
-          tag_invoke(*this, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
-        }
-      }
-
-      friend constexpr bool tag_invoke(forwarding_query_t, sequence_connect_t) noexcept {
-        return false;
-      }
-    };
+    }
 
     template <class _Sender, class _Receiver>
-    using sequence_connect_result_t = __call_result_t<sequence_connect_t, _Sender, _Receiver>;
-  } // namespace __sequence_sndr
+    using __select_impl_t = decltype(__select_impl<_Sender, _Receiver>());
 
-  using __sequence_sndr::__single_sender_completion_sigs;
+    template <sender _Sender, receiver _Receiver>
+      requires __next_connectable_with_tag_invoke<_Sender, _Receiver>
+            || __sequence_connectable_with_tag_invoke<_Sender, _Receiver>
+            || __is_debug_env<env_of_t<_Receiver>>
+    auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
+      noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
+        -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
+      if constexpr (__next_connectable_with_tag_invoke<_Sender, _Receiver>) {
+        static_assert(
+          operation_state<tag_invoke_result_t<
+            connect_t,
+            __next_sender_of_t<_Receiver, _Sender>,
+            __sequence_sndr::__stopped_means_break_t<_Receiver>>>,
+          "stdexec::connect(sender, receiver) must return a type that "
+          "satisfies the operation_state concept");
+        __next_sender_of_t<_Receiver, _Sender> __next = set_next(__rcvr, (_Sender&&) __sndr);
+        return ::stdexec::connect(
+          (__next_sender_of_t<_Receiver, _Sender>&&) __next,
+          __sequence_sndr::__stopped_means_break_t<_Receiver>{(_Receiver&&) __rcvr});
+      } else if constexpr (__sequence_connectable_with_tag_invoke<_Sender, _Receiver>) {
+        static_assert(
+          operation_state<tag_invoke_result_t<sequence_connect_t, _Sender, _Receiver>>,
+          "exec::sequence_connect(sender, receiver) must return a type that "
+          "satisfies the operation_state concept");
+        return tag_invoke(*this, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
+      } else {
+        // This should generate an instantiate backtrace that contains useful
+        // debugging information.
+        tag_invoke(*this, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
+        return stdexec::__connect::__dummy_operation{};
+      }
+    }
+  };
 
-  using __sequence_sndr::sequence_connect_t;
   inline constexpr sequence_connect_t sequence_connect;
 
-  using __sequence_sndr::sequence_connect_result_t;
+  template <class _Sender, class _Receiver>
+  using sequence_connect_result_t = stdexec::__call_result_t<sequence_connect_t, _Sender, _Receiver>;
+
+  using __sequence_connect::__single_sender_completion_sigs;
 
   template <class _Sender, class _Receiver>
   concept sequence_sender_to =
