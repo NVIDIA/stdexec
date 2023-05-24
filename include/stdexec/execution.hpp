@@ -247,19 +247,16 @@ namespace stdexec {
   inline constexpr get_delegatee_scheduler_t get_delegatee_scheduler{};
   inline constexpr get_allocator_t get_allocator{};
   inline constexpr get_stop_token_t get_stop_token{};
-
-#if STDEXEC_GCC()
-  // Work-around for a strange GCC linker issue:
+#if !STDEXEC_GCC() || defined(__OPTIMIZE__)
+  template <__completion_tag _CPO>
+  inline constexpr get_completion_scheduler_t<_CPO> get_completion_scheduler{};
+#else
   template <>
   inline constexpr get_completion_scheduler_t<set_value_t> get_completion_scheduler<set_value_t>{};
   template <>
   inline constexpr get_completion_scheduler_t<set_error_t> get_completion_scheduler<set_error_t>{};
   template <>
-  inline constexpr get_completion_scheduler_t<set_stopped_t>
-    get_completion_scheduler<set_stopped_t>{};
-#else
-  template <__completion_tag _Tag>
-  inline constexpr get_completion_scheduler_t<_Tag> get_completion_scheduler{};
+  inline constexpr get_completion_scheduler_t<set_stopped_t> get_completion_scheduler<set_stopped_t>{};
 #endif
 
   template <class _Tag>

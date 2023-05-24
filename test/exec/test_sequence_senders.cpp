@@ -118,11 +118,10 @@ TEST_CASE("sequence_senders - Test missing next signature", "[sequence_senders]"
 template <__completion_signature... _Sigs>
 struct some_sequence_sender_of {
   using is_sender = sequence_tag;
-  using completion_signatures = stdexec::completion_signatures<set_value_t()>;
-  using sequence_signatures = stdexec::completion_signatures<_Sigs...>;
+  using completion_signatures = stdexec::completion_signatures<_Sigs...>;
 
   template <receiver R>
-  friend nop_operation tag_invoke(connect_t, some_sequence_sender_of self, R&& rcvr);
+  friend nop_operation tag_invoke(sequence_connect_t, some_sequence_sender_of self, R&& rcvr);
 };
 
 TEST_CASE("sequence_senders - Test for sequence_connect_t", "[sequence_senders]") {
@@ -130,6 +129,6 @@ TEST_CASE("sequence_senders - Test for sequence_connect_t", "[sequence_senders]"
   using seq_sender_t = some_sequence_sender_of<set_value_t(int), set_stopped_t()>;
   STATIC_REQUIRE(sender<seq_sender_t>);
   STATIC_REQUIRE(sequence_sender<seq_sender_t>);
-  STATIC_REQUIRE(sender_to<seq_sender_t, next_receiver_t>);
-  STATIC_REQUIRE(sender_to<some_sequence_sender_of<set_value_t(int)>, next_receiver_t>);
+  STATIC_REQUIRE(sequence_sender_to<seq_sender_t, next_receiver_t>);
+  STATIC_REQUIRE(sequence_sender_to<some_sequence_sender_of<set_value_t(int)>, next_receiver_t>);
 }
