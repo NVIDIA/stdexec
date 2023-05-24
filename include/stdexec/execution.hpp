@@ -1550,7 +1550,7 @@ namespace stdexec {
 
         // Pass through the get_env receiver query
         STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) noexcept -> env_of_t<_Receiver> {
-          return get_env(__self.__rcvr_);
+          return stdexec::get_env(__self.__rcvr_);
         }
 
         _Receiver& __rcvr_;
@@ -2735,15 +2735,15 @@ namespace stdexec {
     if constexpr (_CanThrow || __nothrow_invocable<_Fun, _As...>) {
       if constexpr (same_as<void, std::invoke_result_t<_Fun, _As...>>) {
         std::invoke((_Fun&&) __fun, (_As&&) __as...);
-        set_value((_Receiver&&) __rcvr);
+        stdexec::set_value((_Receiver&&) __rcvr);
       } else {
-        set_value((_Receiver&&) __rcvr, std::invoke((_Fun&&) __fun, (_As&&) __as...));
+        stdexec::set_value((_Receiver&&) __rcvr, std::invoke((_Fun&&) __fun, (_As&&) __as...));
       }
     } else {
       try {
         stdexec::__set_value_invoke<true>((_Receiver&&) __rcvr, (_Fun&&) __fun, (_As&&) __as...);
       } catch (...) {
-        set_error((_Receiver&&) __rcvr, std::current_exception());
+        stdexec::set_error((_Receiver&&) __rcvr, std::current_exception());
       }
     }
   }
