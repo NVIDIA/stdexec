@@ -397,7 +397,7 @@ struct stopped_receiver : stopped_receiver_base<Token> {
     CHECK(r.expect_stop_);
   }
 
-  STDEXEC_DEFINE_CUSTOM(stopped_receiver_env get_env)(
+  STDEXEC_DEFINE_CUSTOM(stopped_receiver_env<Token> get_env)(
     this const stopped_receiver& r,
     get_env_t) noexcept {
     return {&r};

@@ -395,18 +395,14 @@ namespace stdexec {
       }
 
       template <class _Ty>
-        requires tag_invocable<as_awaitable_t, _Ty, _Promise&>
+        requires tag_invocable<as_awaitable_t, _Ty, __env_promise&>
       auto await_transform(_Ty&& __value) //
-        noexcept(nothrow_tag_invocable<as_awaitable_t, _Ty, _Promise&>)
-          -> tag_invoke_result_t<as_awaitable_t, _Ty, _Promise&> {
-        return tag_invoke(as_awaitable, (_Ty&&) __value, static_cast<_Promise&>(*this));
+        noexcept(nothrow_tag_invocable<as_awaitable_t, _Ty, __env_promise&>)
+          -> tag_invoke_result_t<as_awaitable_t, _Ty, __env_promise&> {
+        return tag_invoke(as_awaitable, (_Ty&&) __value, *this);
       }
-    };
 
-    // To be kept in sync with the promise type used in __connect_awaitable
-    template <class _Env>
-    struct __env_promise : __with_await_transform<__env_promise<_Env>> {
-      STDEXEC_DEFINE_CUSTOM(const _Env& get_env)(this const __env_promise&, get_env_t) noexcept;
+      friend auto tag_invoke(get_env_t, const __env_promise&) noexcept -> const _Env&;
     };
 
     template <class _Tag, __nothrow_move_constructible _Value>
@@ -1522,9 +1518,7 @@ namespace stdexec {
     struct __promise {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
-      struct __t
-        : __promise_base
-        , __env::__with_await_transform<__t> {
+      struct __t : __promise_base {
         using __id = __promise;
 
         explicit __t(auto&, _Receiver& __rcvr) noexcept
@@ -1532,7 +1526,7 @@ namespace stdexec {
         }
 
         __coro::coroutine_handle<> unhandled_stopped() noexcept {
-          stdexec::set_stopped((_Receiver&&) __rcvr_);
+          set_stopped((_Receiver&&) __rcvr_);
           // Returning noop_coroutine here causes the __connect_awaitable
           // coroutine to never resume past the point where it co_await's
           // the awaitable.
@@ -1822,7 +1816,7 @@ namespace stdexec {
         }
 
         // Forward get_env query to the coroutine promise
-        STDEXEC_DEFINE_CUSTOM(__env_t<_Promise&> get_env)(this const __t& __self, get_env_t) noexcept {
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) noexcept -> env_of_t<_Promise&> {
           auto __continuation = __coro::coroutine_handle<_Promise>::from_address(
             __self.__continuation_.address());
           return stdexec::get_env(__continuation.promise());
@@ -2754,6 +2748,7 @@ namespace stdexec {
       } catch (...) {
         set_error((_Receiver&&) __rcvr, std::current_exception());
       }
+    }
   }
 
   template <class _Fun>
@@ -5045,7 +5040,7 @@ namespace stdexec {
           -> __completions_t<_Self, _Env>
           requires true;
 
-        STDEXEC_DEFINE_CUSTOM(const _Attrs& get_env)(this const __t& __self, get_env_t) noexcept {
+        STDEXEC_DEFINE_CUSTOM(const _Env& get_env)(this const __t& __self, get_env_t) noexcept {
           return __self.__env_;
         }
       };
@@ -5707,9 +5702,8 @@ namespace stdexec {
         STDEXEC_DEFINE_CUSTOM(__env_t<env_of_t<_Receiver>> get_env)(
           this const __t& __self,
           get_env_t) noexcept {
-          return {
-            stdexec::get_env(__self.__op_state_->__recvr_),
-            __self.__op_state_->__stop_source_.get_token()};
+          return __when_all::__make_env(
+            get_env(__self.__op_state_->__rcvr_), __self.__op_state_->__stop_source_);
         }
 
         __operation_base<_ReceiverId, _ValuesTuple, _ErrorsVariant>* __op_state_;
@@ -6166,7 +6160,7 @@ namespace stdexec {
         }
 
         STDEXEC_DEFINE_CUSTOM(__env get_env)(this const __t& __rcvr, stdexec::get_env_t) noexcept {
-          return {__rcvr.__loop_->get_scheduler()};
+          return __sync_wait::__make_env(*__rcvr.__loop_);
         }
       };
     };
