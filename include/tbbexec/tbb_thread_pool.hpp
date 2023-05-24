@@ -81,6 +81,7 @@ namespace tbbexec {
           }
 
           STDEXEC_CPO_ACCESS(stdexec::get_env_t);
+
           STDEXEC_DEFINE_CUSTOM(auto get_env)(this const sender& s, stdexec::get_env_t) noexcept
             -> const sender& {
             return s;
@@ -277,8 +278,9 @@ namespace tbbexec {
             tag((Receiver&&) state.receiver_);
           }
 
-          STDEXEC_DEFINE_CUSTOM(auto get_env)(this const bulk_receiver& self, stdexec::get_env_t)
-            -> stdexec::env_of_t<Receiver> {
+          STDEXEC_DEFINE_CUSTOM(auto get_env)(
+            this const bulk_receiver& self,
+            stdexec::get_env_t) noexcept -> stdexec::env_of_t<Receiver> {
             return stdexec::get_env(self.shared_state_.receiver_);
           }
         };
