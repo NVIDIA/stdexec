@@ -21,7 +21,7 @@
 namespace exec {
   struct sequence_tag { };
 
-  namespace __sequence_sndr {
+  namespace __set_next {
     using namespace stdexec;
 
     template <class _Haystack>
@@ -43,28 +43,27 @@ namespace exec {
       && __all_contained_in<
         completion_signatures_of_t<_Sender, _Env>,
         completion_signatures<set_value_t(), set_stopped_t()>>;
+  } // namespace __set_next
 
-    // This is a sequence-receiver CPO that is used to apply algorithms on an input sender and it
-    // returns a next-sender. `set_next` is usually called in a context where a sender will be
-    // connected to a receiver. Since calling `set_next` usually involves constructing senders it
-    // is allowed to throw an excpetion, which needs to be handled by a calling sequence-operation.
-    // The returned object is a sender that can complete with `set_value_t()` or `set_stopped_t()`.
-    struct set_next_t {
-      template <receiver _Receiver, sender _Item>
-        requires tag_invocable<set_next_t, _Receiver&, _Item>
-      auto operator()(_Receiver& __rcvr, _Item&& __item) const
-        noexcept(nothrow_tag_invocable<set_next_t, _Receiver&, _Item>)
-          -> tag_invoke_result_t<set_next_t, _Receiver&, _Item> {
-        static_assert(
-          next_sender<tag_invoke_result_t<set_next_t, _Receiver&, _Item>>,
-          "The sender returned from set_next is required to complete with set_value_t() or "
-          "set_stopped_t()");
-        return tag_invoke(*this, __rcvr, (_Item&&) __item);
-      }
-    };
-  } // namespace __sequence_sndr
+  // This is a sequence-receiver CPO that is used to apply algorithms on an input sender and it
+  // returns a next-sender. `set_next` is usually called in a context where a sender will be
+  // connected to a receiver. Since calling `set_next` usually involves constructing senders it
+  // is allowed to throw an excpetion, which needs to be handled by a calling sequence-operation.
+  // The returned object is a sender that can complete with `set_value_t()` or `set_stopped_t()`.
+  STDEXEC_DEFINE_CPO(struct set_next_t, set_next) {
+    template <receiver _Receiver, sender _Item>
+      requires tag_invocable<set_next_t, _Receiver&, _Item>
+    auto operator()(_Receiver& __rcvr, _Item&& __item) const
+      noexcept(nothrow_tag_invocable<set_next_t, _Receiver&, _Item>)
+        -> tag_invoke_result_t<set_next_t, _Receiver&, _Item> {
+      static_assert(
+        next_sender<tag_invoke_result_t<set_next_t, _Receiver&, _Item>>,
+        "The sender returned from set_next is required to complete with set_value_t() or "
+        "set_stopped_t()");
+      return tag_invoke(*this, __rcvr, (_Item&&) __item);
+    }
+  };
 
-  using __sequence_sndr::set_next_t;
   inline constexpr set_next_t set_next;
 
   template <class _Receiver, class _Sender>
@@ -73,6 +72,7 @@ namespace exec {
     stdexec::__declval<_Sender>()));
 
   namespace __sequence_sndr {
+    using namespace stdexec;
     struct __nop_operation {
       friend void tag_invoke(start_t, __nop_operation&) noexcept {
       }
