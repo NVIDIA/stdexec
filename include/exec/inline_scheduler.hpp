@@ -38,7 +38,7 @@ namespace exec {
       using completion_signatures = stdexec::completion_signatures<stdexec::set_value_t()>;
 
       template <class R>
-      friend auto tag_invoke(stdexec::connect_t, __sender, R&& rec) //
+      STDEXEC_DEFINE_CUSTOM(auto connect)(this __sender, stdexec::connect_t, R&& rec) //
         noexcept(stdexec::__nothrow_constructible_from<stdexec::__decay_t<R>, R>)
           -> __op<stdexec::__x<stdexec::__decay_t<R>>> {
         return {(R&&) rec};

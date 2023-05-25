@@ -71,14 +71,14 @@ struct _then_sender {
       _set_value_t>;
 
   template <class Env>
-  friend auto tag_invoke(stdexec::get_completion_signatures_t, _then_sender&&, Env)
+  STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this _then_sender&&, stdexec::get_completion_signatures_t, Env)
     -> _completions_t<Env>;
 
   // Connect:
   template <class R>
   //requires stdexec::receiver_of<R, _completions_t<stdexec::env_of_t<R>>>
   //requires stdexec::receiver_of<R, stdexec::completion_signatures_of_t<S, stdexec::env_of_t<R>>>
-  friend auto tag_invoke(stdexec::connect_t, _then_sender&& self, R r)
+  STDEXEC_DEFINE_CUSTOM(auto connect)(this _then_sender&& self, stdexec::connect_t, R r)
     -> stdexec::connect_result_t<S, _then_receiver<R, F>> {
     return stdexec::connect((S&&) self.s_, _then_receiver<R, F>{(R&&) r, (F&&) self.f_});
   }

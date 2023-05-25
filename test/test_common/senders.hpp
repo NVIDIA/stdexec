@@ -46,7 +46,7 @@ struct fallible_just {
   };
 
   template <class Receiver>
-  friend auto tag_invoke(ex::connect_t, fallible_just&& self, Receiver&& rcvr)
+  STDEXEC_DEFINE_CUSTOM(auto connect)(this fallible_just&& self, ex::connect_t, Receiver&& rcvr)
     -> operation<std::decay_t<Receiver>> {
     return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
   }
@@ -83,7 +83,7 @@ struct just_with_env {
   };
 
   template <class Receiver>
-  friend auto tag_invoke(ex::connect_t, just_with_env&& self, Receiver&& rcvr)
+  STDEXEC_DEFINE_CUSTOM(auto connect)(this just_with_env&& self, ex::connect_t, Receiver&& rcvr)
     -> operation<std::decay_t<Receiver>> {
     return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
   }
@@ -149,7 +149,7 @@ struct completes_if {
   };
 
   template <ex::__decays_to<completes_if> Self, class Receiver>
-  friend auto tag_invoke(ex::connect_t, Self&& self, Receiver&& rcvr) noexcept
+  STDEXEC_DEFINE_CUSTOM(auto connect)(this Self&& self, ex::connect_t, Receiver&& rcvr) noexcept
     -> operation<std::decay_t<Receiver>> {
     return {self.condition_, std::forward<Receiver>(rcvr)};
   }

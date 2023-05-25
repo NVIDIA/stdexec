@@ -684,7 +684,7 @@ struct counting_scheduler {
     using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
     template <ex::receiver R>
-    friend operation<R> tag_invoke(ex::connect_t, sender self, R r) {
+    STDEXEC_DEFINE_CUSTOM(operation<R> connect)(this sender self, ex::connect_t, R r) {
       return {{}, (R&&) r};
     }
 

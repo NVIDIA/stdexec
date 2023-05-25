@@ -121,7 +121,7 @@ struct _retry_sender {
   using _value = stdexec::completion_signatures<stdexec::set_value_t(Ts...)>;
 
   template <class Env>
-  friend auto tag_invoke(stdexec::get_completion_signatures_t, const _retry_sender&, Env)
+  STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this const _retry_sender&, stdexec::get_completion_signatures_t, Env)
     -> stdexec::make_completion_signatures<
       S&,
       Env,

@@ -55,7 +55,7 @@ struct boolean_sender {
   };
 
   template <receiver_of<completion_signatures> Receiver>
-  friend operation<Receiver> tag_invoke(connect_t, boolean_sender self, Receiver rcvr) {
+  STDEXEC_DEFINE_CUSTOM(operation<Receiver> connect)(this boolean_sender self, connect_t, Receiver rcvr) {
     return {(Receiver &&) rcvr, --*self.counter_};
   }
 

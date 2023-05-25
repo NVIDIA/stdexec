@@ -217,12 +217,12 @@ struct my_other_string_sender_t {
   using completion_signatures = ex::completion_signatures_of_t<decltype(ex::just(std::string{}))>;
 
   template <class Recv>
-  friend auto tag_invoke(ex::connect_t, my_other_string_sender_t&& self, Recv&& recv) {
+  STDEXEC_DEFINE_CUSTOM(auto connect)(this my_other_string_sender_t&& self, ex::connect_t, Recv&& recv) {
     return ex::connect(ex::just(std::move(self.str_)), std::forward<Recv>(recv));
   }
 
   template <class Recv>
-  friend auto tag_invoke(ex::connect_t, const my_other_string_sender_t& self, Recv&& recv) {
+  STDEXEC_DEFINE_CUSTOM(auto connect)(this const my_other_string_sender_t& self, ex::connect_t, Recv&& recv) {
     return ex::connect(ex::just(self.str_), std::forward<Recv>(recv));
   }
 
@@ -263,12 +263,12 @@ struct my_multi_value_sender_t {
   using completion_signatures = ex::completion_signatures_of_t<multi_value_impl_t>;
 
   template <class Recv>
-  friend auto tag_invoke(ex::connect_t, my_multi_value_sender_t&& self, Recv&& recv) {
+  STDEXEC_DEFINE_CUSTOM(auto connect)(this my_multi_value_sender_t&& self, ex::connect_t, Recv&& recv) {
     return ex::connect(ex::just(std::move(self.str_)), std::forward<Recv>(recv));
   }
 
   template <class Recv>
-  friend auto tag_invoke(ex::connect_t, const my_multi_value_sender_t& self, Recv&& recv) {
+  STDEXEC_DEFINE_CUSTOM(auto connect)(this const my_multi_value_sender_t& self, ex::connect_t, Recv&& recv) {
     return ex::connect(ex::just(self.str_), std::forward<Recv>(recv));
   }
 

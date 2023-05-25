@@ -71,7 +71,7 @@ namespace exec {
         }
 
         template <stdexec::receiver Receiver>
-        friend auto tag_invoke(stdexec::connect_t, sender s, Receiver r)
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this sender s, stdexec::connect_t, Receiver r)
           -> operation<stdexec::__id<Receiver>> {
           return s.make_operation_((Receiver&&) r);
         }
@@ -403,11 +403,11 @@ namespace exec {
         }
 
         template <stdexec::__decays_to<bulk_sender> Self, class Env>
-        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env&&)
+        STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, stdexec::get_completion_signatures_t, Env&&)
           -> stdexec::dependent_completion_signatures<Env>;
 
         template <stdexec::__decays_to<bulk_sender> Self, class Env>
-        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env&&)
+        STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, stdexec::get_completion_signatures_t, Env&&)
           -> completion_signatures<Self, Env>
           requires true;
 

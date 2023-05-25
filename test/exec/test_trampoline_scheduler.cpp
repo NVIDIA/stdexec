@@ -51,7 +51,10 @@ struct fails_alot {
   };
 
   template <receiver_of<completion_signatures> Receiver>
-  friend operation<Receiver> tag_invoke(connect_t, fails_alot self, Receiver rcvr) {
+  STDEXEC_DEFINE_CUSTOM(operation<Receiver> connect)(
+    this fails_alot self,
+    connect_t,
+    Receiver rcvr) {
     return {(Receiver&&) rcvr, --*self.counter_};
   }
 

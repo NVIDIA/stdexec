@@ -23,7 +23,7 @@ struct throwing_sender {
   };
 
   template <class Receiver>
-  friend auto tag_invoke(ex::connect_t, throwing_sender&& self, Receiver&& rcvr)
+  STDEXEC_DEFINE_CUSTOM(auto connect)(this throwing_sender&& self, ex::connect_t, Receiver&& rcvr)
     -> operation<std::decay_t<Receiver>> {
     throw std::logic_error("cannot connect");
     return {std::forward<Receiver>(rcvr)};

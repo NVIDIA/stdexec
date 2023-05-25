@@ -316,12 +316,12 @@ struct my_string_sender_t {
   using completion_signatures = typename decltype(ex::just(std::string{}))::completion_signatures;
 
   template <class Recv>
-  friend auto tag_invoke(ex::connect_t, my_string_sender_t&& self, Recv&& recv) {
+  STDEXEC_DEFINE_CUSTOM(auto connect)(this my_string_sender_t&& self, ex::connect_t, Recv&& recv) {
     return ex::connect(ex::just(std::move(self.str_)), std::forward<Recv>(recv));
   }
 
   template <class Recv>
-  friend auto tag_invoke(ex::connect_t, const my_string_sender_t& self, Recv&& recv) {
+  STDEXEC_DEFINE_CUSTOM(auto connect)(this const my_string_sender_t& self, ex::connect_t, Recv&& recv) {
     return ex::connect(ex::just(self.str_), std::forward<Recv>(recv));
   }
 

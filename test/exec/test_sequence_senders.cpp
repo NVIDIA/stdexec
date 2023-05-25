@@ -37,7 +37,7 @@ struct some_sender_of {
   using completion_signatures = stdexec::completion_signatures<_Sigs...>;
 
   template <class R>
-  friend nop_operation tag_invoke(connect_t, some_sender_of self, R&& rcvr);
+  STDEXEC_DEFINE_CUSTOM(nop_operation connect)(this some_sender_of self, connect_t, R&& rcvr);
 };
 
 TEST_CASE("sequence_senders - some_sender_of is a sender", "[sequence_senders]") {

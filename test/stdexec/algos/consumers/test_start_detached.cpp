@@ -87,7 +87,7 @@ struct custom_sender {
   bool* called;
 
   template <class Receiver>
-  friend auto tag_invoke(ex::connect_t, custom_sender, Receiver&& rcvr) {
+  STDEXEC_DEFINE_CUSTOM(auto connect)(this custom_sender, ex::connect_t, Receiver&& rcvr) {
     return ex::connect(ex::schedule(inline_scheduler{}), (Receiver&&) rcvr);
   }
   template <class Env>
