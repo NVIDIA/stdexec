@@ -183,11 +183,14 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<_Source &, __receiver_t<_Receiver>>
-        friend __op_t<_Receiver> tag_invoke(connect_t, _Self &&__self, _Receiver __rcvr) noexcept(
-          __nothrow_constructible_from<
-            __op_t<_Receiver>,
-            __copy_cvref_t<_Self, _Source>,
-            _Receiver>) {
+        STDEXEC_DEFINE_CUSTOM(__op_t<_Receiver> connect)(
+          this _Self &&__self,
+          connect_t,
+          _Receiver __rcvr) //
+          noexcept(__nothrow_constructible_from<
+                   __op_t<_Receiver>,
+                   __copy_cvref_t<_Self, _Source>,
+                   _Receiver>) {
           return {((_Self &&) __self).__source_, (_Receiver &&) __rcvr};
         }
 

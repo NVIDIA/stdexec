@@ -335,15 +335,15 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using sh_state_ = __ensure_started::sh_state_t<Sender>;
       template <class Receiver>
       using operation_t = //
-        stdexec::__t< __ensure_started::operation_t<SenderId, stdexec::__id<__decay_t<Receiver>>>>;
+        stdexec::__t< __ensure_started::operation_t<SenderId, stdexec::__id<Receiver>>>;
 
       Sender sndr_;
       __intrusive_ptr<sh_state_> shared_state_;
 
       template <std::same_as<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, completion_signatures_of_t<Self, empty_env>>
-      friend auto tag_invoke(connect_t, Self&& self, Receiver&& rcvr) //
-        noexcept(__nothrow_constructible_from<__decay_t<Receiver>, Receiver>)
+      STDEXEC_DEFINE_CUSTOM(auto connect)(this Self&& self, connect_t, Receiver rcvr) //
+        noexcept(__nothrow_decay_copyable<Receiver>)
           -> operation_t<Receiver> {
         return operation_t<Receiver>{(Receiver&&) rcvr, std::move(self).shared_state_};
       }

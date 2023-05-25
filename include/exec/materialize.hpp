@@ -91,10 +91,10 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-        friend connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-          tag_invoke(connect_t, _Self&& __self, _Receiver&& __receiver) noexcept(
-            __nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>) {
-          return connect(
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver&& __receiver) noexcept(
+          __nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
+          -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
+          return stdexec::connect(
             ((_Self&&) __self).__sender_, __receiver_t<_Receiver>{(_Receiver&&) __receiver});
         }
 
@@ -209,10 +209,11 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-        friend connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-          tag_invoke(connect_t, _Self&& __self, _Receiver&& __receiver) noexcept(
-            __nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>) {
-          return connect(
+
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver&& __receiver) noexcept(
+          __nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
+          -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
+          return stdexec::connect(
             ((_Self&&) __self).__sender_, __receiver_t<_Receiver>{(_Receiver&&) __receiver});
         }
 

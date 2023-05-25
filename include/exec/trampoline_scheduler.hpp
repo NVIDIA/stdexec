@@ -143,8 +143,11 @@ namespace exec {
         }
 
         template <receiver_of<completion_signatures> _Receiver>
-        friend auto tag_invoke(connect_t, __schedule_sender __self, _Receiver __rcvr) noexcept(
-          __nothrow_decay_copyable<_Receiver>) -> __operation_t<_Receiver> {
+        STDEXEC_DEFINE_CUSTOM(auto connect)(
+          this __schedule_sender __self,
+          connect_t,
+          _Receiver __rcvr) noexcept(__nothrow_decay_copyable<_Receiver>)
+          -> __operation_t<_Receiver> {
           return __self.__make_operation((_Receiver&&) __rcvr);
         }
 

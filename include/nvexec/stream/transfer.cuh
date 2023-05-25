@@ -136,7 +136,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-      friend auto tag_invoke(connect_t, Self&& self, Receiver&& rcvr)
+      STDEXEC_DEFINE_CUSTOM(auto connect)(this Self&& self, connect_t, Receiver rcvr)
         -> op_state_th<Self, Receiver> {
         return op_state_th<Self, Receiver>{
           (Sender&&) self.sndr_, (Receiver&&) rcvr, self.context_state_};

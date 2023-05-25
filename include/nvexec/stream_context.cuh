@@ -126,11 +126,9 @@ namespace nvexec {
             completion_signatures< set_value_t(), set_error_t(cudaError_t)>;
 
           template <class R>
-          friend auto tag_invoke(connect_t, const __t& self, R&& rec) //
-            noexcept(__nothrow_constructible_from<__decay_t<R>, R>)
-              -> operation_state_t<stdexec::__id<__decay_t<R>>> {
-            return operation_state_t<stdexec::__id<__decay_t<R>>>(
-              (R&&) rec, self.env_.context_state_);
+          STDEXEC_DEFINE_CUSTOM(auto connect)(this const __t& self, connect_t, R rec) //
+            noexcept(__nothrow_move_constructible<R>) -> operation_state_t<stdexec::__id<R>> {
+            return operation_state_t<stdexec::__id<R>>((R&&) rec, self.env_.context_state_);
           }
 
           STDEXEC_DEFINE_CUSTOM(const env& get_env)(this const __t& self, get_env_t) noexcept {

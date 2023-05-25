@@ -91,7 +91,7 @@ namespace exec {
 
       template <__decays_to<__sender> _Self, class _Receiver>
         requires receiver_of<_Receiver, __completions_t<env_of_t<_Receiver>>>
-      friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) //
+      STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __rcvr) //
         noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
           -> __operation<_Tag, __x<__default_t<env_of_t<_Receiver>>>, __x<_Receiver>> {
         return {{}, ((_Self&&) __self).__default_, (_Receiver&&) __rcvr};
@@ -188,7 +188,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __rcvr) //
           -> __operation_t<_Self, _Receiver> {
           return {((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr, ((_Self&&) __self).__env_};
         }

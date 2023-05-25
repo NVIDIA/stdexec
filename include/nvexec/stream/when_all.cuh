@@ -387,8 +387,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       };
 
       template <__decays_to<__t> Self, receiver Receiver>
-      friend auto tag_invoke(connect_t, Self&& self, Receiver&& rcvr)
-        -> operation_t<__copy_cvref_t<Self, stdexec::__id<__decay_t<Receiver>>>> {
+      STDEXEC_DEFINE_CUSTOM(auto connect)(this Self&& self, connect_t, Receiver rcvr)
+        -> operation_t<__copy_cvref_t<Self, stdexec::__id<Receiver>>> {
         return {(Self&&) self, (Receiver&&) rcvr};
       }
 

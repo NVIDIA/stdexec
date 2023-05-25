@@ -288,8 +288,10 @@ namespace exec {
           requires receiver_of<
             _Rec,
             __completion_signatures_t<_InitialSender, _FinalSender, env_of_t<_Rec>>>
-        friend __op_t< _Self, _Rec>
-          tag_invoke(connect_t, _Self&& __self, _Rec&& __receiver) noexcept {
+        STDEXEC_DEFINE_CUSTOM(__op_t< _Self, _Rec> connect)(
+          this _Self&& __self,
+          connect_t,
+          _Rec&& __receiver) {
           return {
             ((_Self&&) __self).__initial_sender_,
             ((_Self&&) __self).__final_sender_,

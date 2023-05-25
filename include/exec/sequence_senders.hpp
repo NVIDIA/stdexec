@@ -86,7 +86,7 @@ namespace exec {
       using __t = __unspecified_sender_of;
 
       template <class R>
-      friend __nop_operation tag_invoke(connect_t, __unspecified_sender_of, R&&) {
+      STDEXEC_DEFINE_CUSTOM(__nop_operation connect)(this __unspecified_sender_of, connect_t, R&&) {
         return {};
       }
     };
@@ -287,7 +287,8 @@ namespace exec {
   inline constexpr sequence_connect_t sequence_connect;
 
   template <class _Sender, class _Receiver>
-  using sequence_connect_result_t = stdexec::__call_result_t<sequence_connect_t, _Sender, _Receiver>;
+  using sequence_connect_result_t =
+    stdexec::__call_result_t<sequence_connect_t, _Sender, _Receiver>;
 
   using __sequence_connect::__single_sender_completion_sigs;
 

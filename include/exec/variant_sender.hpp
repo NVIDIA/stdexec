@@ -70,11 +70,11 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires(sender_to<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver> && ...)
-        friend stdexec::__t<
-          __operation_state<stdexec::__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>>
-          tag_invoke(connect_t, _Self&& __self, _Receiver&& __r) noexcept(
-            (__nothrow_connectable<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver>
-             && ...)) {
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver&& __r) noexcept(
+          (__nothrow_connectable<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver>
+           && ...))
+          -> stdexec::__t<
+            __operation_state<stdexec::__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>> {
           return std::visit(
             __visitor<_Self, _Receiver>{(_Receiver&&) __r}, ((_Self&&) __self).__variant_);
         }

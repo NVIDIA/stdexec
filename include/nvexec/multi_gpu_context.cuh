@@ -91,10 +91,10 @@ namespace nvexec {
         };
 
         using completion_signatures =
-          completion_signatures< set_value_t(), set_error_t(cudaError_t)>;
+          completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
 
         template <class R>
-        friend auto tag_invoke(connect_t, sender_t, R&& rec) //
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this sender_t, connect_t, R&& rec) //
           noexcept(__nothrow_constructible_from<__decay_t<R>, R>)
             -> operation_state_t<stdexec::__id<__decay_t<R>>> {
           return operation_state_t<stdexec::__id<__decay_t<R>>>((R&&) rec);

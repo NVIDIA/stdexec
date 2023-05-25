@@ -225,14 +225,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using __operation_t = //
         let_xxx::__operation<
           stdexec::__id<__copy_cvref_t<_Self, _Sender>>,
-          stdexec::__id<__decay_t<_Receiver>>,
+          stdexec::__id<_Receiver>,
           _Fun,
           _Set>;
       template <class _Self, class _Receiver>
       using __receiver_t = //
         stdexec::__t< let_xxx::__receiver<
           stdexec::__id<__copy_cvref_t<_Self, _Sender>>,
-          stdexec::__id<__decay_t<_Receiver>>,
+          stdexec::__id<_Receiver>,
           _Fun,
           _Set>>;
 
@@ -250,7 +250,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __completions<                    //
             __copy_cvref_t<_Self, _Sender>, //
             env_of_t<_Receiver>>>           //
-      friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
+      STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __rcvr)
         -> __operation_t<_Self, _Receiver> {
         return __operation_t<_Self, _Receiver>{
           ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr, ((_Self&&) __self).__fun_};

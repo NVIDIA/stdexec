@@ -275,18 +275,23 @@ namespace exec {
           requires(
             sender_to< __copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, __receiver_t<_Receiver>>
             && ...)
-        friend __op_t<_Receiver> tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) //
-          noexcept(__nothrow_constructible_from<__op_t<_Receiver>, _Self&&, _Receiver&&>) {
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver&& __rcvr) //
+          noexcept(__nothrow_constructible_from<__op_t<_Receiver>, _Self&&, _Receiver&&>)
+            -> __op_t<_Receiver> {
           return __op_t<_Receiver>{((_Self&&) __self).__senders_, (_Receiver&&) __rcvr};
         }
 
         template <__decays_to<__t> _Self, class _Env>
-        STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this _Self&&, get_completion_signatures_t, _Env&&)
-          -> dependent_completion_signatures<_Env>;
+        STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+          this _Self&&,
+          get_completion_signatures_t,
+          _Env&&) -> dependent_completion_signatures<_Env>;
 
         template <__decays_to<__t> _Self, class _Env>
-        STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this _Self&&, get_completion_signatures_t, _Env&&)
-          -> __completion_signatures_t<_Env, _SenderIds...>
+        STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+          this _Self&&,
+          get_completion_signatures_t,
+          _Env&&) -> __completion_signatures_t<_Env, _SenderIds...>
           requires true;
 
         std::tuple<stdexec::__t<_SenderIds>...> __senders_;

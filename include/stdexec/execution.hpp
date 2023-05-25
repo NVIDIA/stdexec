@@ -2152,7 +2152,10 @@ namespace stdexec {
         using completion_signatures = stdexec::completion_signatures<set_value_t()>;
 
         template <receiver_of<completion_signatures> _Receiver>
-        friend __op<_Receiver> tag_invoke(connect_t, __sender, _Receiver __rcvr) {
+        STDEXEC_DEFINE_CUSTOM(__op<_Receiver> connect)(
+          this __sender,
+          connect_t,
+          _Receiver __rcvr) noexcept(__nothrow_move_constructible<_Receiver>) {
           return {{}, (_Receiver&&) __rcvr};
         }
 
@@ -2289,13 +2292,13 @@ namespace stdexec {
 
         template <receiver_of<completion_signatures> _Receiver>
           requires(copy_constructible<_Ts> && ...)
-        friend auto tag_invoke(connect_t, const __t& __sndr, _Receiver __rcvr) //
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this const __t& __sndr, connect_t, _Receiver __rcvr) //
           noexcept((std::is_nothrow_copy_constructible_v<_Ts> && ...)) -> __operation_t<_Receiver> {
           return {{}, __sndr.__vals_, (_Receiver&&) __rcvr};
         }
 
         template <receiver_of<completion_signatures> _Receiver>
-        friend auto tag_invoke(connect_t, __t&& __sndr, _Receiver __rcvr) //
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this __t&& __sndr, connect_t, _Receiver __rcvr) //
           noexcept((std::is_nothrow_move_constructible_v<_Ts> && ...)) -> __operation_t<_Receiver> {
           return {{}, ((__t&&) __sndr).__vals_, (_Receiver&&) __rcvr};
         }
@@ -2891,7 +2894,7 @@ namespace stdexec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) //
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __rcvr) //
           noexcept(__nothrow_constructible_from<
                    __operation<_Self, _Receiver>,
                    __copy_cvref_t<_Self, _Sender>,
@@ -3037,7 +3040,7 @@ namespace stdexec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) //
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __rcvr) //
           noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>>)
             -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>> {
           return stdexec::connect(
@@ -3178,7 +3181,7 @@ namespace stdexec {
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires __receiver_of_invoke_result<_Receiver, _Fun>
                 && sender_to<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) //
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __rcvr) //
           noexcept(__nothrow_connectable<_Sender, __receiver<_Receiver>>)
             -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>> {
           return stdexec::connect(
@@ -3351,7 +3354,7 @@ namespace stdexec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) //
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __rcvr) //
           noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>>)
             -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>> {
           return stdexec::connect(
@@ -3705,7 +3708,7 @@ namespace stdexec {
         std::shared_ptr<__sh_state_> __shared_state_;
 
         template <__decays_to<__t> _Self, receiver_of<__completions_t<_Self>> _Receiver>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __recvr) //
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __recvr) //
           noexcept(std::is_nothrow_move_constructible_v<_Receiver>) -> __operation<_Receiver> {
           return __operation<_Receiver>{(_Receiver&&) __recvr, __self.__shared_state_};
         }
@@ -4046,7 +4049,7 @@ namespace stdexec {
         __intrusive_ptr<__sh_state_> __shared_state_;
 
         template <same_as<__t> _Self, receiver_of<__completions_t<_Self>> _Receiver>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) //
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __rcvr) //
           noexcept(std::is_nothrow_move_constructible_v<_Receiver>) -> __operation<_Receiver> {
           return __operation<_Receiver>{(_Receiver&&) __rcvr, std::move(__self).__shared_state_};
         }
@@ -4328,7 +4331,7 @@ namespace stdexec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __rcvr)
           -> __operation_t<_Self, _Receiver> {
           return __operation_t<_Self, _Receiver>{
             ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr, ((_Self&&) __self).__fun_};
@@ -4497,7 +4500,7 @@ namespace stdexec {
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires __single_typed_sender<__copy_cvref_t<_Self, _Sender>, env_of_t<_Receiver>>
                 && sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __rcvr)
           -> __operation_t<_Self, _Receiver> {
           return {((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
         }
@@ -4653,8 +4656,10 @@ namespace stdexec {
           using __operation = stdexec::__t<__operation<stdexec::__id<_Receiver>>>;
 
           template <class _Receiver>
-          friend __operation<_Receiver>
-            tag_invoke(connect_t, const __schedule_task& __self, _Receiver __rcvr) {
+          STDEXEC_DEFINE_CUSTOM(__operation<_Receiver> connect)(
+            this const __schedule_task& __self,
+            connect_t,
+            _Receiver __rcvr) {
             return __self.__connect_((_Receiver&&) __rcvr);
           }
 
@@ -5008,7 +5013,7 @@ namespace stdexec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) //
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __rcvr) //
           -> stdexec::__t< __operation1<
             _SchedulerId,
             stdexec::__cvref_id<_Self, _Sender>,
@@ -5273,7 +5278,7 @@ namespace stdexec {
           requires constructible_from<_Sender, __copy_cvref_t<_Self, _Sender>>
                 && sender_to<schedule_result_t<_Scheduler>, __receiver_t<stdexec::__id<_Receiver>>>
                 && sender_to<_Sender, __receiver_ref_t<stdexec::__id<_Receiver>>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __rcvr)
           -> __operation_t<stdexec::__id<_Receiver>> {
           return {
             ((_Self&&) __self).__scheduler_, ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
@@ -5439,7 +5444,7 @@ namespace stdexec {
 
         template <receiver _Receiver>
           requires sender_to<_Sender, __receiver_t<_Receiver>>
-        friend auto tag_invoke(connect_t, __t&& __self, _Receiver __rcvr) //
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this __t&& __self, connect_t, _Receiver __rcvr) //
           noexcept(__nothrow_connectable<_Sender, __receiver_t<_Receiver>>)
             -> connect_result_t<_Sender, __receiver_t<_Receiver>> {
           return stdexec::connect(
@@ -5887,7 +5892,7 @@ namespace stdexec {
           requires(
             sender_to< __cvref_id<_Self, _SenderIds>, __receiver_t<_Self, _Receiver, _Indices>>
             && ...)
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __rcvr)
           -> __operation_t<_Self, _Receiver> {
           return {((_Self&&) __self).__sndrs_, (_Receiver&&) __rcvr};
         }
@@ -6038,7 +6043,7 @@ namespace stdexec {
 
       template <class _Receiver>
         requires receiver_of<_Receiver, __completions_t<env_of_t<_Receiver>>>
-      friend auto tag_invoke(connect_t, __sender, _Receiver __rcvr) //
+      STDEXEC_DEFINE_CUSTOM(auto connect)(this __sender, connect_t, _Receiver __rcvr) //
         noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
           -> stdexec::__t<__operation<_Tag, stdexec::__id<_Receiver>>> {
         return {{}, (_Receiver&&) __rcvr};

@@ -340,8 +340,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, completion_signatures_of_t<Self, empty_env>>
-      friend auto tag_invoke(connect_t, Self&& self, Receiver&& recvr) //
-        noexcept(__nothrow_constructible_from<__decay_t<Receiver>, Receiver>)
+      STDEXEC_DEFINE_CUSTOM(auto connect)(this Self&& self, connect_t, Receiver recvr) //
+        noexcept(__nothrow_move_constructible<Receiver>)
           -> operation_t<Receiver> {
         return operation_t<Receiver>{(Receiver&&) recvr, self.shared_state_};
       }

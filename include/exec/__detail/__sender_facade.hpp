@@ -305,7 +305,7 @@ namespace exec {
         }
 
         template <__is_derived_sender<_DerivedId> _Self, receiver _Receiver>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _Receiver __rcvr)
           -> __operation_t<_Self, _Receiver> {
           return {((_Self&&) __self).__sndr_, ((_Self&&) __self).__kernel_, (_Receiver&&) __rcvr};
         }
