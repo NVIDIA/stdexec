@@ -23,11 +23,19 @@ namespace exec {
   namespace __any {
     using namespace stdexec;
 
+    struct __create_vtable_t;
+    extern const __create_vtable_t __create_vtable;
+
+    template <class _VTable, class _Tp>
+    concept __has_static_create_vtable = requires {
+      _VTable::template __create_vtable<_Tp>(__create_vtable);
+    };
+
     struct __create_vtable_t {
       template <class _VTable, class _Tp>
-        requires __tag_invocable_r<const _VTable*, __create_vtable_t, __mtype<_VTable>, __mtype<_Tp>>
+        requires __has_static_create_vtable<_VTable, _Tp>
       constexpr const _VTable* operator()(__mtype<_VTable>, __mtype<_Tp>) const noexcept {
-        return tag_invoke(__create_vtable_t{}, __mtype<_VTable>{}, __mtype<_Tp>{});
+        return _VTable::template __create_vtable<_Tp>(*this);
       }
     };
 
@@ -228,7 +236,7 @@ namespace exec {
 
     template <class _Storage, class _Tp, class _ParentVTable, class... _StorageCPOs>
     static const __storage_vtable<_ParentVTable, _StorageCPOs...> __storage_vtbl{
-      {*__create_vtable(__mtype<_ParentVTable>{}, __mtype<_Tp>{})},
+      {*__any::__create_vtable(__mtype<_ParentVTable>{}, __mtype<_Tp>{})},
       {__storage_vfun_fn<_Storage, _Tp>{}((_StorageCPOs*) nullptr)}...};
 
     template <
@@ -545,8 +553,7 @@ namespace exec {
 
     struct __empty_vtable {
       template <class _Sender>
-      friend const __empty_vtable*
-        tag_invoke(__create_vtable_t, __mtype<__empty_vtable>, __mtype<_Sender>) noexcept {
+      static const __empty_vtable* __create_vtable(__create_vtable_t) noexcept {
         static const __empty_vtable __vtable_{};
         return &__vtable_;
       }
@@ -614,11 +621,10 @@ namespace exec {
          public:
           using __query_vfun<_Queries>::operator()...;
 
-         private:
           template <class _Rcvr>
             requires receiver_of<_Rcvr, completion_signatures<_Sigs...>>
                   && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
-          friend const __t* tag_invoke(__create_vtable_t, __mtype<__t>, __mtype<_Rcvr>) noexcept {
+          static const __t* __create_vtable(__create_vtable_t) noexcept {
             static const __t __vtable_{
               {__rcvr_vfun_fn<_Rcvr>{}((_Sigs*) nullptr)}...,
               {__query_vfun_fn<_Rcvr>{}((_Queries) nullptr)}...};
@@ -660,7 +666,7 @@ namespace exec {
                 && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
         __ref(_Rcvr& __rcvr) noexcept
           : __env_{
-            __create_vtable(__mtype<__vtable_t>{}, __mtype<_Rcvr>{}),
+            __any::__create_vtable(__mtype<__vtable_t>{}, __mtype<_Rcvr>{}),
             &__rcvr,
             stdexec::get_stop_token(stdexec::get_env(__rcvr))} {
         }
@@ -720,7 +726,7 @@ namespace exec {
           requires receiver_of<_Rcvr, completion_signatures<_Sigs...>>
                 && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
         __ref(_Rcvr& __rcvr) noexcept
-          : __env_{__create_vtable(__mtype<__vtable_t>{}, __mtype<_Rcvr>{}), &__rcvr} {
+          : __env_{__any::__create_vtable(__mtype<__vtable_t>{}, __mtype<_Rcvr>{}), &__rcvr} {
         }
 
         template <__same_as<set_value_t> _Tag, same_as<__ref> _Self, class... _As>
@@ -755,10 +761,8 @@ namespace exec {
      public:
       void (*__start_)(void*) noexcept;
 
-     private:
       template <class _Op>
-      friend const __operation_vtable*
-        tag_invoke(__create_vtable_t, __mtype<__operation_vtable>, __mtype<_Op>) noexcept {
+      static const __operation_vtable* __create_vtable(__create_vtable_t) noexcept {
         static __operation_vtable __vtable{[](void* __object_pointer) noexcept -> void {
           STDEXEC_ASSERT(__object_pointer);
           _Op& __op = *static_cast<_Op*>(__object_pointer);
@@ -908,11 +912,10 @@ namespace exec {
     class __query_vtable<_List<_Queries...>> : public __query_vfun<_Queries>... {
      public:
       using __query_vfun<_Queries>::operator()...;
-     private:
+
       template <class _EnvProvider>
         requires(__callable<__query_vfun_fn<_EnvProvider>, _Queries> && ...)
-      friend const __query_vtable*
-        tag_invoke(__create_vtable_t, __mtype<__query_vtable>, __mtype<_EnvProvider>) noexcept {
+      static const __query_vtable* __create_vtable(__create_vtable_t) noexcept {
         static const __query_vtable __vtable{
           {__query_vfun_fn<_EnvProvider>{}((_Queries) nullptr)}...};
         return &__vtable;
@@ -934,12 +937,11 @@ namespace exec {
         }
 
         __immovable_operation_storage (*__connect_)(void*, __receiver_ref_t);
-       private:
+
         template <sender_to<__receiver_ref_t> _Sender>
-        friend const __vtable*
-          tag_invoke(__create_vtable_t, __mtype<__vtable>, __mtype<_Sender>) noexcept {
+        static const __vtable* __create_vtable(__create_vtable_t) noexcept {
           static const __vtable __vtable_{
-            {*__create_vtable(__mtype<__query_vtable<_SenderQueries>>{}, __mtype<_Sender>{})},
+            {*__any::__create_vtable(__mtype<__query_vtable<_SenderQueries>>{}, __mtype<_Sender>{})},
             [](void* __object_pointer, __receiver_ref_t __receiver)
               -> __immovable_operation_storage {
               _Sender& __sender = *static_cast<_Sender*>(__object_pointer);
@@ -1036,12 +1038,11 @@ namespace exec {
         const __query_vtable<_SchedulerQueries>& __queries() const noexcept {
           return *this;
         }
-       private:
+
         template <scheduler _Scheduler>
-        friend const __vtable*
-          tag_invoke(__create_vtable_t, __mtype<__vtable>, __mtype<_Scheduler>) noexcept {
+        static const __vtable* __create_vtable(__create_vtable_t) noexcept {
           static const __vtable __vtable_{
-            {*__create_vtable(__mtype<__query_vtable<_SchedulerQueries>>{}, __mtype<_Scheduler>{})},
+            {*__any::__create_vtable(__mtype<__query_vtable<_SchedulerQueries>>{}, __mtype<_Scheduler>{})},
             [](void* __object_pointer) noexcept -> __sender_t {
               const _Scheduler& __scheduler = *static_cast<const _Scheduler*>(__object_pointer);
               return __sender_t{schedule(__scheduler)};
