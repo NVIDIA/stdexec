@@ -46,8 +46,13 @@ namespace stdexec {
     weakly_parallel
   };
 
-  namespace __queries {
+  namespace __forwarding_query_ {
     struct forwarding_query_t;
+  }
+  using __forwarding_query_::forwarding_query_t;
+
+  namespace __queries {
+    // struct forwarding_query_t;
     struct execute_may_block_caller_t;
     struct get_forward_progress_guarantee_t;
     struct __has_algorithm_customizations_t;
@@ -59,7 +64,6 @@ namespace stdexec {
     struct get_completion_scheduler_t;
   } // namespace __queries
 
-  using __queries::forwarding_query_t;
   using __queries::execute_may_block_caller_t;
   using __queries::__has_algorithm_customizations_t;
   using __queries::get_forward_progress_guarantee_t;
@@ -69,7 +73,7 @@ namespace stdexec {
   using __queries::get_stop_token_t;
   using __queries::get_completion_scheduler_t;
 
-  extern const forwarding_query_t forwarding_query;
+  // extern const forwarding_query_t forwarding_query;
   extern const execute_may_block_caller_t execute_may_block_caller;
   extern const __has_algorithm_customizations_t __has_algorithm_customizations;
   extern const get_forward_progress_guarantee_t get_forward_progress_guarantee;

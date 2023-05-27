@@ -380,12 +380,16 @@ namespace tbbexec {
           }
 
           template <stdexec::__decays_to<bulk_sender> Self, class Env>
-          STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, stdexec::get_completion_signatures_t, Env&&)
-            -> stdexec::dependent_completion_signatures<Env>;
+          STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+            this Self&&,
+            stdexec::get_completion_signatures_t,
+            Env&&) -> stdexec::dependent_completion_signatures<Env>;
 
           template <stdexec::__decays_to<bulk_sender> Self, class Env>
-          STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, stdexec::get_completion_signatures_t, Env&&)
-            -> completion_signatures<Self, Env>
+          STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+            this Self&&,
+            stdexec::get_completion_signatures_t,
+            Env&&) -> completion_signatures<Self, Env>
             requires true;
 
           template <stdexec::tag_category<stdexec::forwarding_query> Tag, class... As>
@@ -410,7 +414,9 @@ namespace tbbexec {
           return sender{*pool_};
         }
 
-        friend sender tag_invoke(stdexec::schedule_t, const scheduler& s) noexcept {
+        STDEXEC_DEFINE_CUSTOM(sender schedule)(
+          this const scheduler& s,
+          stdexec::schedule_t) noexcept {
           return s.make_sender();
         }
 

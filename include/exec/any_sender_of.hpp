@@ -1059,7 +1059,7 @@ namespace exec {
       };
 
       template <same_as<__scheduler> _Self>
-      friend __sender_t tag_invoke(schedule_t, const _Self& __self) noexcept {
+      STDEXEC_DEFINE_CUSTOM(__sender_t schedule)(this const _Self& __self, schedule_t) noexcept {
         STDEXEC_ASSERT(__self.__storage_.__get_vtable()->__schedule_);
         return __self.__storage_.__get_vtable()->__schedule_(
           __self.__storage_.__get_object_pointer());

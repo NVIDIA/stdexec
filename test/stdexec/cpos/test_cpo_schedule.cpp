@@ -35,7 +35,7 @@ struct my_sender {
 };
 
 struct my_scheduler {
-  friend my_sender tag_invoke(ex::schedule_t, my_scheduler) {
+  STDEXEC_DEFINE_CUSTOM(my_sender schedule)(this my_scheduler, ex::schedule_t) {
     return my_sender{true};
   }
 };

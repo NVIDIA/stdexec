@@ -165,7 +165,9 @@ namespace exec {
         std::size_t __max_recursion_depth_;
       };
 
-      friend __schedule_sender tag_invoke(schedule_t, __scheduler __self) noexcept {
+      STDEXEC_DEFINE_CUSTOM(__schedule_sender schedule)(
+        this __scheduler __self,
+        schedule_t) noexcept {
         return __schedule_sender{__self.__max_recursion_depth_};
       }
 

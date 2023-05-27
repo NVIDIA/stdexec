@@ -235,8 +235,9 @@ namespace nvexec {
       }
 
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        friend inline sender_t
-        tag_invoke(schedule_t, const stream_scheduler& self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(sender_t schedule)(
+          this const stream_scheduler& self,
+          schedule_t) noexcept {
         return {self.context_state_};
       }
 

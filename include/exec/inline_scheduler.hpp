@@ -58,8 +58,9 @@ namespace exec {
     };
 
     STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      friend __sender
-      tag_invoke(stdexec::schedule_t, const inline_scheduler&) noexcept {
+      STDEXEC_DEFINE_CUSTOM(__sender schedule)(
+        this const inline_scheduler&,
+        stdexec::schedule_t) noexcept {
       return {};
     }
 

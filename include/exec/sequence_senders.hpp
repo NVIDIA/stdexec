@@ -74,7 +74,7 @@ namespace exec {
   namespace __sequence_sndr {
     using namespace stdexec;
     struct __nop_operation {
-      friend void tag_invoke(start_t, __nop_operation&) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void start)(this __nop_operation&, start_t) noexcept {
       }
     };
 
@@ -100,21 +100,21 @@ namespace exec {
         using _Token = stop_token_of_t<env_of_t<_Receiver>>;
         STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
 
-        template <same_as<get_env_t> _GetEnv, same_as<__t> _Self>
-        friend env_of_t<_Receiver> tag_invoke(_GetEnv, const _Self& __self) noexcept {
+        template <same_as<__t> _Self>
+        STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(this const _Self& __self, get_env_t) noexcept {
           return stdexec::get_env(__self.__rcvr_);
         }
 
-        template <same_as<set_value_t> _SetValue, same_as<__t> _Self>
+        template <same_as<__t> _Self>
           requires __callable<set_value_t, _Receiver&&>
-        friend void tag_invoke(_SetValue, _Self&& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this _Self&& __self, set_value_t) noexcept {
           return stdexec::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
         }
 
         template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
           requires __callable<set_value_t, _Receiver&&>
                 && (unstoppable_token<_Token> || __callable<set_stopped_t, _Receiver &&>)
-        friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this _Self&& __self, _SetStopped) noexcept {
           if constexpr (unstoppable_token<_Token>) {
             stdexec::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
           } else {

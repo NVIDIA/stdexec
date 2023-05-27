@@ -42,7 +42,7 @@ struct my_scheduler {
     }
   };
 
-  friend my_sender tag_invoke(ex::schedule_t, my_scheduler) {
+  STDEXEC_DEFINE_CUSTOM(my_sender schedule)(this my_scheduler, ex::schedule_t) {
     return {};
   }
 
@@ -84,7 +84,7 @@ struct my_scheduler_except {
     }
   };
 
-  friend my_sender tag_invoke(ex::schedule_t, my_scheduler_except) {
+  STDEXEC_DEFINE_CUSTOM(my_sender schedule)(this my_scheduler_except, ex::schedule_t) {
     throw std::logic_error("err");
     return {};
   }
@@ -116,7 +116,7 @@ struct noeq_sched {
     }
   };
 
-  friend my_sender tag_invoke(ex::schedule_t, noeq_sched) {
+  STDEXEC_DEFINE_CUSTOM(my_sender schedule)(this noeq_sched, ex::schedule_t) {
     return {};
   }
 };
@@ -145,7 +145,7 @@ struct sched_no_completion {
     }
   };
 
-  friend my_sender tag_invoke(ex::schedule_t, sched_no_completion) {
+  STDEXEC_DEFINE_CUSTOM(my_sender schedule)(this sched_no_completion, ex::schedule_t) {
     return {};
   }
 
@@ -179,7 +179,7 @@ struct sched_no_env {
     }
   };
 
-  friend my_sender tag_invoke(ex::schedule_t, sched_no_env) {
+  STDEXEC_DEFINE_CUSTOM(my_sender schedule)(this sched_no_env, ex::schedule_t) {
     return {};
   }
 

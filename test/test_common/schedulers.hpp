@@ -131,7 +131,7 @@ struct impulse_scheduler {
     cmd();
   }
 
-  friend my_sender tag_invoke(ex::schedule_t, const impulse_scheduler& self) {
+  STDEXEC_DEFINE_CUSTOM(my_sender schedule)(this const impulse_scheduler& self, ex::schedule_t) {
     return my_sender{self.shared_data_.get()};
   }
 
@@ -177,7 +177,7 @@ struct inline_scheduler {
     }
   };
 
-  friend my_sender tag_invoke(ex::schedule_t, inline_scheduler) {
+  STDEXEC_DEFINE_CUSTOM(my_sender schedule)(this inline_scheduler, ex::schedule_t) {
     return {};
   }
 
@@ -232,7 +232,7 @@ struct error_scheduler {
 
   E err_{};
 
-  friend my_sender tag_invoke(ex::schedule_t, error_scheduler self) {
+  STDEXEC_DEFINE_CUSTOM(my_sender schedule)(this error_scheduler self, ex::schedule_t) {
     return {(E&&) self.err_};
   }
 
@@ -280,7 +280,7 @@ struct stopped_scheduler {
     }
   };
 
-  friend my_sender tag_invoke(ex::schedule_t, stopped_scheduler) {
+  STDEXEC_DEFINE_CUSTOM(my_sender schedule)(this stopped_scheduler, ex::schedule_t) {
     return {};
   }
 

@@ -117,7 +117,7 @@ struct custom_scheduler {
     }
   };
 
-  friend sender tag_invoke(ex::schedule_t, custom_scheduler) noexcept {
+  STDEXEC_DEFINE_CUSTOM(sender schedule)(this custom_scheduler, ex::schedule_t) noexcept {
     return {};
   }
 

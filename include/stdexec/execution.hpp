@@ -81,20 +81,20 @@ namespace stdexec {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // [exec.queries]
-  namespace __queries {
-    struct forwarding_query_t {
-      template <class _Query>
-      constexpr bool operator()(_Query __query) const noexcept {
-        if constexpr (tag_invocable<forwarding_query_t, _Query>) {
-          return tag_invoke(*this, (_Query&&) __query);
-        } else if constexpr (std::derived_from<_Query, forwarding_query_t>) {
-          return true;
-        } else {
-          return false;
-        }
+  STDEXEC_DEFINE_CPO(struct forwarding_query_t, forwarding_query_) {
+    template <class _Query>
+    constexpr bool operator()(_Query __query) const noexcept {
+      if constexpr (tag_invocable<forwarding_query_t, _Query>) {
+        return tag_invoke(*this, (_Query&&) __query);
+      } else if constexpr (std::derived_from<_Query, forwarding_query_t>) {
+        return true;
+      } else {
+        return false;
       }
-    };
+    }
+  };
 
+  namespace __queries {
     struct execute_may_block_caller_t : __query<execute_may_block_caller_t> {
       template <class _Tp>
         requires tag_invocable<execute_may_block_caller_t, __cref_t<_Tp>>
@@ -229,7 +229,7 @@ namespace stdexec {
     };
   } // namespace __queries
 
-  using __queries::forwarding_query_t;
+  // using __queries::forwarding_query_t;
   using __queries::execute_may_block_caller_t;
   using __queries::__has_algorithm_customizations_t;
   using __queries::get_forward_progress_guarantee_t;
@@ -1366,25 +1366,22 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.schedule]
-  namespace __schedule {
-    struct schedule_t {
-      template <class _Scheduler>
-        requires tag_invocable<schedule_t, _Scheduler>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        auto
-        operator()(_Scheduler&& __sched) const
-        noexcept(nothrow_tag_invocable<schedule_t, _Scheduler>) {
-        static_assert(sender<tag_invoke_result_t<schedule_t, _Scheduler>>);
-        return tag_invoke(schedule_t{}, (_Scheduler&&) __sched);
-      }
+  STDEXEC_DEFINE_CPO(struct schedule_t, schedule) {
+    template <class _Scheduler>
+      requires tag_invocable<schedule_t, _Scheduler>
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+      auto
+      operator()(_Scheduler&& __sched) const
+      noexcept(nothrow_tag_invocable<schedule_t, _Scheduler>) {
+      static_assert(sender<tag_invoke_result_t<schedule_t, _Scheduler>>);
+      return tag_invoke(schedule_t{}, (_Scheduler&&) __sched);
+    }
 
-      friend constexpr bool tag_invoke(forwarding_query_t, schedule_t) {
-        return false;
-      }
-    };
-  }
+    constexpr bool forwarding_query(forwarding_query_t) const noexcept {
+      return false;
+    }
+  };
 
-  using __schedule::schedule_t;
   inline constexpr schedule_t schedule{};
 
   // NOT TO SPEC
@@ -1705,6 +1702,10 @@ namespace stdexec {
         tag_invoke(*this, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
         return __dummy_operation{};
       }
+    }
+        
+    constexpr bool forwarding_query(forwarding_query_t) const noexcept {
+      return false;
     }
   };
 
@@ -2159,14 +2160,14 @@ namespace stdexec {
           return {{}, (_Receiver&&) __rcvr};
         }
 
-        friend auto tag_invoke(get_env_t, __sender) noexcept {
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this __sender, get_env_t) noexcept {
           return __env::__env_fn{[](get_completion_scheduler_t<set_value_t>) noexcept {
             return __scheduler{};
           }};
         }
       };
 
-      friend __sender tag_invoke(schedule_t, __scheduler) {
+      STDEXEC_DEFINE_CUSTOM(__sender schedule)(this __scheduler, schedule_t) noexcept {
         return {};
       }
 

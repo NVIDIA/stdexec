@@ -130,7 +130,7 @@ struct _retry_sender {
       _error>;
 
   template <stdexec::receiver R>
-  friend _op<S, R> tag_invoke(stdexec::connect_t, _retry_sender&& self, R r) {
+  STDEXEC_DEFINE_CUSTOM(_op<S, R> connect)(this _retry_sender&& self, stdexec::connect_t, R r) {
     return {(S&&) self.s_, (R&&) r};
   }
 

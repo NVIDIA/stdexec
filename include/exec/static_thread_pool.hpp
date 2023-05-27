@@ -261,9 +261,9 @@ namespace exec {
         }
 
         template <class... As>
-        friend void tag_invoke(
+        STDEXEC_DEFINE_CUSTOM(void set_value)(
+          this bulk_receiver&& self,
           stdexec::same_as<stdexec::set_value_t> auto,
-          bulk_receiver&& self,
           As&&... as) noexcept {
           using tuple_t = stdexec::__decayed_tuple<As...>;
 
@@ -389,8 +389,8 @@ namespace exec {
         template <stdexec::__decays_to<bulk_sender> Self, stdexec::receiver Receiver>
           requires stdexec::
             receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-          friend bulk_op_state_t<Self, Receiver>                       //
-          tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) //
+          STDEXEC_DEFINE_CUSTOM(bulk_op_state_t<Self, Receiver> connect) //
+          (this Self&& self, stdexec::connect_t, Receiver&& rcvr)        //
           noexcept(stdexec::__nothrow_constructible_from<
                    bulk_op_state_t<Self, Receiver>,
                    static_thread_pool&,
@@ -403,12 +403,16 @@ namespace exec {
         }
 
         template <stdexec::__decays_to<bulk_sender> Self, class Env>
-        STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, stdexec::get_completion_signatures_t, Env&&)
-          -> stdexec::dependent_completion_signatures<Env>;
+        STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+          this Self&&,
+          stdexec::get_completion_signatures_t,
+          Env&&) -> stdexec::dependent_completion_signatures<Env>;
 
         template <stdexec::__decays_to<bulk_sender> Self, class Env>
-        STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, stdexec::get_completion_signatures_t, Env&&)
-          -> completion_signatures<Self, Env>
+        STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+          this Self&&,
+          stdexec::get_completion_signatures_t,
+          Env&&) -> completion_signatures<Self, Env>
           requires true;
 
         STDEXEC_DEFINE_CUSTOM(auto get_env)(this const bulk_sender& self, stdexec::get_env_t) //
@@ -417,7 +421,9 @@ namespace exec {
         }
       };
 
-      friend sender tag_invoke(stdexec::schedule_t, const scheduler& s) noexcept {
+      STDEXEC_DEFINE_CUSTOM(sender schedule)(
+        this const scheduler& s,
+        stdexec::schedule_t) noexcept {
         return s.make_sender_();
       }
 

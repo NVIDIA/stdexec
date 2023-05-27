@@ -251,7 +251,9 @@ struct move_checking_inline_scheduler {
     }
   };
 
-  friend my_sender tag_invoke(ex::schedule_t, move_checking_inline_scheduler) {
+  STDEXEC_DEFINE_CUSTOM(my_sender schedule)(
+    this move_checking_inline_scheduler,
+    ex::schedule_t) noexcept {
     return {};
   }
 

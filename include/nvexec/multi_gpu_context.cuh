@@ -159,7 +159,7 @@ namespace nvexec {
       }
 
       template <stream_completing_sender... Senders>
-      friend auto tag_invoke( //
+      friend auto tag_invoke(                  //
         transfer_when_all_t,
         const multi_gpu_stream_scheduler& sch, //
         Senders&&... sndrs) noexcept {
@@ -201,7 +201,9 @@ namespace nvexec {
         return ensure_started_th<S>((S&&) sndr, sch.context_state_);
       }
 
-      friend sender_t tag_invoke(schedule_t, const multi_gpu_stream_scheduler& self) noexcept {
+      STDEXEC_DEFINE_CUSTOM(sender_t schedule)(
+        this const multi_gpu_stream_scheduler& self,
+        schedule_t) noexcept {
         return {self.num_devices_, self.context_state_};
       }
 

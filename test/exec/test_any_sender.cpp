@@ -345,8 +345,10 @@ class stopped_token {
   };
  public:
   constexpr stopped_token() noexcept = default;
+
   explicit constexpr stopped_token(bool stopped) noexcept
-    : stopped_{stopped} {}
+    : stopped_{stopped} {
+  }
 
   template <class>
   using callback_type = __callback_type;
@@ -698,7 +700,7 @@ struct counting_scheduler {
     }
   };
 
-  friend sender tag_invoke(ex::schedule_t, counting_scheduler) noexcept {
+  STDEXEC_DEFINE_CUSTOM(sender schedule)(this counting_scheduler, ex::schedule_t) noexcept {
     return {};
   }
 };

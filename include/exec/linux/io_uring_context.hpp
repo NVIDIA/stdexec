@@ -1033,7 +1033,11 @@ namespace exec {
       };
 
      private:
-      friend __schedule_sender tag_invoke(stdexec::schedule_t, const __scheduler& __sched) {
+      STDEXEC_CPO_ACCESS(stdexec::schedule_t);
+
+      STDEXEC_DEFINE_CUSTOM(__schedule_sender schedule)(
+        this const __scheduler& __sched,
+        stdexec::schedule_t) noexcept {
         return __schedule_sender{__schedule_env{__sched.__context_}};
       }
 

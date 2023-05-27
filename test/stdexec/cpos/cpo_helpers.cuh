@@ -92,7 +92,7 @@ struct scheduler_t {
     return cpo_t<scope_t::scheduler>{};
   }
 
-  friend sender_t tag_invoke(ex::schedule_t, scheduler_t) {
+  STDEXEC_DEFINE_CUSTOM(sender_t schedule)(this scheduler_t, ex::schedule_t) {
     return sender_t{};
   }
 

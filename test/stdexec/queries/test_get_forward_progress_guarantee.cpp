@@ -36,7 +36,7 @@ namespace {
         ex::completion_signatures<ex::set_value_t(), ex::set_error_t(std::exception_ptr)>;
 
       template <typename R>
-      friend operation_state tag_invoke(ex::connect_t, sender, R&&) {
+      STDEXEC_DEFINE_CUSTOM(operation_state connect)(this sender, ex::connect_t, R&&) {
         return {};
       }
 
@@ -53,7 +53,7 @@ namespace {
       }
     };
 
-    friend sender tag_invoke(ex::schedule_t, uncustomized_scheduler) {
+    STDEXEC_DEFINE_CUSTOM(sender schedule)(this uncustomized_scheduler, ex::schedule_t) {
       return {};
     }
 
@@ -79,7 +79,7 @@ namespace {
         ex::completion_signatures<ex::set_value_t(), ex::set_error_t(std::exception_ptr)>;
 
       template <typename R>
-      friend operation_state tag_invoke(ex::connect_t, sender, R&&) {
+      STDEXEC_DEFINE_CUSTOM(operation_state connect)(this sender, ex::connect_t, R&&) {
         return {};
       }
 
@@ -96,7 +96,7 @@ namespace {
       }
     };
 
-    friend sender tag_invoke(ex::schedule_t, customized_scheduler) {
+    STDEXEC_DEFINE_CUSTOM(sender schedule)(this customized_scheduler, ex::schedule_t) {
       return {};
     }
 

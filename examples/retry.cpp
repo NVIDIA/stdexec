@@ -44,7 +44,7 @@ struct fail_some {
   };
 
   template <class R>
-  friend op<R> tag_invoke(stdexec::connect_t, fail_some, R r) {
+  STDEXEC_DEFINE_CUSTOM(op<R> connect)(this fail_some, stdexec::connect_t, R r) {
     return {std::move(r)};
   }
 
