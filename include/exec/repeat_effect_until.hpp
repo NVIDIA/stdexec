@@ -133,7 +133,7 @@ namespace exec {
 
       STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(
         this const __t &__self,
-        get_env_t) noexcept(__nothrow_callable<get_env_t, const _Receiver &>) {
+        get_env_t) noexcept {
         return stdexec::get_env(__self.__op_->__rcvr_);
       }
     };

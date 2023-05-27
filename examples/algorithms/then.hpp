@@ -71,8 +71,10 @@ struct _then_sender {
       _set_value_t>;
 
   template <class Env>
-  STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this _then_sender&&, stdexec::get_completion_signatures_t, Env)
-    -> _completions_t<Env>;
+  STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+    this _then_sender&&,
+    stdexec::get_completion_signatures_t,
+    Env) -> _completions_t<Env>;
 
   // Connect:
   template <class R>
@@ -84,7 +86,7 @@ struct _then_sender {
   }
 
   STDEXEC_DEFINE_CUSTOM(auto get_env)(this const _then_sender& self, stdexec::get_env_t) //
-    noexcept(noexcept(stdexec::get_env(self.s_))) -> std::invoke_result_t<stdexec::get_env_t, S> {
+    noexcept -> std::invoke_result_t<stdexec::get_env_t, S> {
     return stdexec::get_env(self.s_);
   }
 };

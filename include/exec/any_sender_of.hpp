@@ -673,7 +673,7 @@ namespace exec {
         }
 
         template <std::same_as<__ref> Self>
-        friend const __env_t& tag_invoke(get_env_t, const Self& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(const __env_t& get_env)(this const Self& __self, get_env_t) noexcept {
           return __self.__env_;
         }
       };
@@ -834,7 +834,7 @@ namespace exec {
         STDEXEC_DEFINE_CUSTOM(auto get_env)(this const _Self& __self, _GetEnv) noexcept
           -> __env_t<env_of_t<_Receiver>> {
           return __make_env(
-            get_env(__self.__op_->__rcvr_),
+            stdexec::get_env(__self.__op_->__rcvr_),
             __with_(get_stop_token, __self.__op_->__stop_source_.get_token()));
         }
       };

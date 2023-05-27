@@ -121,7 +121,10 @@ struct _retry_sender {
   using _value = stdexec::completion_signatures<stdexec::set_value_t(Ts...)>;
 
   template <class Env>
-  STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this const _retry_sender&, stdexec::get_completion_signatures_t, Env)
+  STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+    this const _retry_sender&,
+    stdexec::get_completion_signatures_t,
+    Env)
     -> stdexec::make_completion_signatures<
       S&,
       Env,
@@ -135,7 +138,7 @@ struct _retry_sender {
   }
 
   STDEXEC_DEFINE_CUSTOM(auto get_env)(this const _retry_sender& self, stdexec::get_env_t) //
-    noexcept(noexcept(stdexec::get_env(self.s_)))                                         //
+    noexcept                                                                              //
     -> std::invoke_result_t<stdexec::get_env_t, S> {
     return stdexec::get_env(self.s_);
   }
