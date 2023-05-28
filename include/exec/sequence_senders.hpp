@@ -184,7 +184,7 @@ namespace exec {
         __sequence_sndr::__stopped_means_break_t<_Receiver>,
         __next_sender_of_t<_Receiver, _Sender>>) );
 
-  namespace __sequence_connect {
+  namespace __subscribe {
     using namespace stdexec;
     struct subscribe_t;
 
@@ -218,7 +218,7 @@ namespace exec {
       tag_invocable<subscribe_t, _Sender, _Receiver>;
   }                                                       // namespace __sequence_sndr
 
-  STDEXEC_DEFINE_CPO(struct subscribe_t, sequence_connect) {
+  STDEXEC_DEFINE_CPO(struct subscribe_t, subscribe) {
     template <class _Sender, class _Receiver>
     static constexpr auto __select_impl() noexcept {
       // Report that 2300R5-style senders and receivers are deprecated:
@@ -252,7 +252,7 @@ namespace exec {
 
     template <sender _Sender, receiver _Receiver>
       requires __next_connectable_with_tag_invoke<_Sender, _Receiver>
-            || __sequence_connectable_with_tag_invoke<_Sender, _Receiver>
+            || __subscribeable_with_tag_invoke<_Sender, _Receiver>
             || __is_debug_env<env_of_t<_Receiver>>
     auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
       noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
@@ -269,10 +269,10 @@ namespace exec {
         return ::stdexec::connect(
           (__next_sender_of_t<_Receiver, _Sender>&&) __next,
           __sequence_sndr::__stopped_means_break_t<_Receiver>{(_Receiver&&) __rcvr});
-      } else if constexpr (__sequence_connectable_with_tag_invoke<_Sender, _Receiver>) {
+      } else if constexpr (__subscribeable_with_tag_invoke<_Sender, _Receiver>) {
         static_assert(
-          operation_state<tag_invoke_result_t<sequence_connect_t, _Sender, _Receiver>>,
-          "exec::sequence_connect(sender, receiver) must return a type that "
+          operation_state<tag_invoke_result_t<subscribe_t, _Sender, _Receiver>>,
+          "exec::subscribe(sender, receiver) must return a type that "
           "satisfies the operation_state concept");
         return tag_invoke(*this, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
       } else {
@@ -284,13 +284,13 @@ namespace exec {
     }
   };
 
-  inline constexpr subscribe_t sequence_connect;
+  inline constexpr subscribe_t subscribe;
 
   template <class _Sender, class _Receiver>
   using subscribe_result_t =
     stdexec::__call_result_t<subscribe_t, _Sender, _Receiver>;
 
-  using __sequence_connect::__single_sender_completion_sigs;
+  using __subscribe::__single_sender_completion_sigs;
 
   template <class _Sender, class _Receiver>
   concept sequence_sender_to =
