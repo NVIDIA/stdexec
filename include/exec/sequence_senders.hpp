@@ -185,7 +185,7 @@ namespace exec {
         __next_sender_of_t<_Receiver, _Sender>>) );
 
   namespace __sequence_sndr {
-    struct sequence_connect_t;
+    struct subscribe_t;
 
     template <class _Env>
     using __single_sender_completion_sigs = __if_c<
@@ -208,13 +208,13 @@ namespace exec {
 
 
     template <class _Sender, class _Receiver>
-    concept __sequence_connectable_with_tag_invoke =
+    concept __subscribeable_with_tag_invoke =
       receiver<_Receiver> &&                              //
       sequence_sender_in<_Sender, env_of_t<_Receiver>> && //
       sequence_receiver_from<_Receiver, _Sender> &&       //
-      tag_invocable<sequence_connect_t, _Sender, _Receiver>;
+      tag_invocable<subscribe_t, _Sender, _Receiver>;
 
-    struct sequence_connect_t {
+    struct subscribe_t {
       template <class _Sender, class _Receiver>
       static constexpr auto __select_impl() noexcept {
         // Report that 2300R5-style senders and receivers are deprecated:
@@ -236,9 +236,9 @@ namespace exec {
             __next_sender_of_t<_Receiver, _Sender>,
             __stopped_means_break_t<_Receiver>>;
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
-        } else if constexpr (__sequence_connectable_with_tag_invoke<_Sender, _Receiver>) {
-          using _Result = tag_invoke_result_t<sequence_connect_t, _Sender, _Receiver>;
-          constexpr bool _Nothrow = nothrow_tag_invocable<sequence_connect_t, _Sender, _Receiver>;
+        } else if constexpr (__subscribeable_with_tag_invoke<_Sender, _Receiver>) {
+          using _Result = tag_invoke_result_t<subscribe_t, _Sender, _Receiver>;
+          constexpr bool _Nothrow = nothrow_tag_invocable<subscribe_t, _Sender, _Receiver>;
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
         } else {
           return static_cast<__debug::__debug_operation (*)() noexcept>(nullptr);
@@ -250,7 +250,7 @@ namespace exec {
 
       template <sender _Sender, receiver _Receiver>
         requires __next_connectable_with_tag_invoke<_Sender, _Receiver>
-              || __sequence_connectable_with_tag_invoke<_Sender, _Receiver>
+              || __subscribeable_with_tag_invoke<_Sender, _Receiver>
               || __is_debug_env<env_of_t<_Receiver>>
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
         noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
@@ -268,12 +268,12 @@ namespace exec {
             connect_t{},
             (__next_sender_of_t<_Receiver, _Sender>&&) __next,
             __stopped_means_break_t<_Receiver>{(_Receiver&&) __rcvr});
-        } else if constexpr (__sequence_connectable_with_tag_invoke<_Sender, _Receiver>) {
+        } else if constexpr (__subscribeable_with_tag_invoke<_Sender, _Receiver>) {
           static_assert(
-            operation_state<tag_invoke_result_t<sequence_connect_t, _Sender, _Receiver>>,
-            "exec::sequence_connect(sender, receiver) must return a type that "
+            operation_state<tag_invoke_result_t<subscribe_t, _Sender, _Receiver>>,
+            "exec::subscribe(sender, receiver) must return a type that "
             "satisfies the operation_state concept");
-          return tag_invoke(sequence_connect_t{}, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
+          return tag_invoke(subscribe_t{}, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
         } else {
           // This should generate an instantiate backtrace that contains useful
           // debugging information.
@@ -282,26 +282,26 @@ namespace exec {
         }
       }
 
-      friend constexpr bool tag_invoke(forwarding_query_t, sequence_connect_t) noexcept {
+      friend constexpr bool tag_invoke(forwarding_query_t, subscribe_t) noexcept {
         return false;
       }
     };
 
     template <class _Sender, class _Receiver>
-    using sequence_connect_result_t = __call_result_t<sequence_connect_t, _Sender, _Receiver>;
+    using subscribe_result_t = __call_result_t<subscribe_t, _Sender, _Receiver>;
   } // namespace __sequence_sndr
 
   using __sequence_sndr::__single_sender_completion_sigs;
 
-  using __sequence_sndr::sequence_connect_t;
-  inline constexpr sequence_connect_t sequence_connect;
+  using __sequence_sndr::subscribe_t;
+  inline constexpr subscribe_t subscribe;
 
-  using __sequence_sndr::sequence_connect_result_t;
+  using __sequence_sndr::subscribe_result_t;
 
   template <class _Sender, class _Receiver>
   concept sequence_sender_to =
     sequence_receiver_from<_Receiver, _Sender> && //
     requires(_Sender&& __sndr, _Receiver&& __rcvr) {
-      { sequence_connect((_Sender&&) __sndr, (_Receiver&&) __rcvr) };
+      { subscribe((_Sender&&) __sndr, (_Receiver&&) __rcvr) };
     };
 }

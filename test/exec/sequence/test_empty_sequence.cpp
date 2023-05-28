@@ -56,7 +56,7 @@ TEST_CASE(
   STATIC_REQUIRE(sequence_sender_to<empty_t, count_set_next_receiver_t>);
 
   int count{0};
-  auto op = sequence_connect(empty_sequence(), count_set_next_receiver_t{count});
+  auto op = subscribe(empty_sequence(), count_set_next_receiver_t{count});
   start(op);
   CHECK(count == 0);
 }
