@@ -121,10 +121,10 @@ struct some_sequence_sender_of {
   using completion_signatures = stdexec::completion_signatures<_Sigs...>;
 
   template <receiver R>
-  friend nop_operation tag_invoke(sequence_connect_t, some_sequence_sender_of self, R&& rcvr);
+  friend nop_operation tag_invoke(subscribe_t, some_sequence_sender_of self, R&& rcvr);
 };
 
-TEST_CASE("sequence_senders - Test for sequence_connect_t", "[sequence_senders]") {
+TEST_CASE("sequence_senders - Test for subscribe", "[sequence_senders]") {
   using next_receiver_t = next_receiver<set_value_t(int), set_stopped_t()>;
   using seq_sender_t = some_sequence_sender_of<set_value_t(int), set_stopped_t()>;
   STATIC_REQUIRE(sender<seq_sender_t>);

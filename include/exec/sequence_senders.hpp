@@ -186,7 +186,7 @@ namespace exec {
 
   namespace __sequence_connect {
     using namespace stdexec;
-    struct sequence_connect_t;
+    struct subscribe_t;
 
     template <class _Env>
     using __single_sender_completion_sigs = __if_c<
@@ -211,14 +211,14 @@ namespace exec {
 
 
     template <class _Sender, class _Receiver>
-    concept __sequence_connectable_with_tag_invoke =
+    concept __subscribeable_with_tag_invoke =
       receiver<_Receiver> &&                              //
       sequence_sender_in<_Sender, env_of_t<_Receiver>> && //
       sequence_receiver_from<_Receiver, _Sender> &&       //
-      tag_invocable<sequence_connect_t, _Sender, _Receiver>;
+      tag_invocable<subscribe_t, _Sender, _Receiver>;
   }                                                       // namespace __sequence_sndr
 
-  STDEXEC_DEFINE_CPO(struct sequence_connect_t, sequence_connect) {
+  STDEXEC_DEFINE_CPO(struct subscribe_t, sequence_connect) {
     template <class _Sender, class _Receiver>
     static constexpr auto __select_impl() noexcept {
       // Report that 2300R5-style senders and receivers are deprecated:
@@ -238,9 +238,9 @@ namespace exec {
           __next_sender_of_t<_Receiver, _Sender>,
           __sequence_sndr::__stopped_means_break_t<_Receiver>>;
         return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
-      } else if constexpr (__sequence_connectable_with_tag_invoke<_Sender, _Receiver>) {
-        using _Result = tag_invoke_result_t<sequence_connect_t, _Sender, _Receiver>;
-        constexpr bool _Nothrow = nothrow_tag_invocable<sequence_connect_t, _Sender, _Receiver>;
+      } else if constexpr (__subscribeable_with_tag_invoke<_Sender, _Receiver>) {
+        using _Result = tag_invoke_result_t<subscribe_t, _Sender, _Receiver>;
+        constexpr bool _Nothrow = nothrow_tag_invocable<subscribe_t, _Sender, _Receiver>;
         return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
       } else {
         return static_cast<__debug::__debug_operation (*)() noexcept>(nullptr);
@@ -284,11 +284,11 @@ namespace exec {
     }
   };
 
-  inline constexpr sequence_connect_t sequence_connect;
+  inline constexpr subscribe_t sequence_connect;
 
   template <class _Sender, class _Receiver>
-  using sequence_connect_result_t =
-    stdexec::__call_result_t<sequence_connect_t, _Sender, _Receiver>;
+  using subscribe_result_t =
+    stdexec::__call_result_t<subscribe_t, _Sender, _Receiver>;
 
   using __sequence_connect::__single_sender_completion_sigs;
 
@@ -296,6 +296,6 @@ namespace exec {
   concept sequence_sender_to =
     sequence_receiver_from<_Receiver, _Sender> && //
     requires(_Sender&& __sndr, _Receiver&& __rcvr) {
-      { sequence_connect((_Sender&&) __sndr, (_Receiver&&) __rcvr) };
+      { subscribe((_Sender&&) __sndr, (_Receiver&&) __rcvr) };
     };
 }
