@@ -313,9 +313,12 @@ struct a_sender_t
 constexpr a_sender_t a_sender;
 
 struct move_only_t {
-  static constexpr int invalid = -42;
+  static constexpr int invalid() { return -42; }
 
   move_only_t() = delete;
+  move_only_t(const move_only_t&) = delete;
+  move_only_t& operator=(move_only_t&&) = delete;
+  move_only_t& operator=(const move_only_t&) = delete;
 
   __host__ __device__ move_only_t(int data)
     : data_(data)
@@ -323,7 +326,7 @@ struct move_only_t {
   }
 
   __host__ __device__ move_only_t(move_only_t&& other)
-    : data_(other.data_)
+    : data_(std::exchange(other.data_, invalid()))
     , self_(this) {
   }
 
@@ -332,16 +335,19 @@ struct move_only_t {
       // TODO Trap
       std::printf("Error: move_only_t::~move_only_t failed\n");
     }
+    data_ = invalid();
   }
 
   __host__ __device__ bool contains(int val) {
     if (this != self_) {
+      std::printf("Error: move_only_t::contains failed: %p\n", (void*)self_);
       return false;
     }
 
     return data_ == val;
   }
 
-  int data_{invalid};
+  int data_{invalid()};
   move_only_t* self_;
 };
+static_assert(!std::is_trivially_copyable_v<move_only_t>);
