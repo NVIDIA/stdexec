@@ -31,6 +31,22 @@
             "cwd": "${workspaceFolder}/${input:BUILD_DIR}",
             "args": "-v normal ${input:CUDA_TEST_TAGS}",
         },
+        {
+            "name": "example.nvexec.reduxe (lldb)",
+            "type": "lldb",
+            "request": "launch",
+            "stdio": null,
+            "stopOnEntry": false,
+            "terminal": "console",
+            "console": "internalConsole",
+            "sourceLanguages": ["cpp", "cuda"],
+            "internalConsoleOptions": "neverOpen",
+            "cwd": "${command:cmake.launchTargetDirectory}",
+            "relativePathBase": "${command:cmake.launchTargetDirectory}",
+            "program": "${command:cmake.launchTargetDirectory}/reduce",
+            "initCommands": ["settings set target.disable-aslr false"],
+            "args": [],
+        },
     ],
     "inputs": [
         {
