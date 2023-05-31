@@ -159,6 +159,7 @@ namespace nvexec {
 
     using index_t = unsigned int;
     using union_t = detail::static_storage_t<max_alignment, max_size>;
+    using front_t = detail::front<Ts...>;
 
     template <detail::one_of<Ts...> T>
     using index_of = std::integral_constant< index_t, detail::find_index<index_t, T, Ts...>()>;
@@ -174,8 +175,8 @@ namespace nvexec {
       return get<detail::nth_type<I, Ts...>>();
     }
 
-    STDEXEC_DETAIL_CUDACC_HOST_DEVICE variant_t() {
-      emplace<detail::front<Ts...>>();
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE variant_t() requires std::default_initializable<front_t> {
+      emplace<front_t>();
     }
 
     STDEXEC_DETAIL_CUDACC_HOST_DEVICE ~variant_t() {
@@ -219,4 +220,25 @@ namespace nvexec {
     index_t index_;
   };
 
+  template <class T>
+  struct local {
+    template <class... As>
+    local(void* buffer, As&&... as)
+      : ptr_(static_cast<T*>(buffer)) {
+      ::new (buffer) T((As&&) as...);
+    }
+
+    ~local() {
+      ptr_->~T();
+    }
+
+    T* operator->() noexcept { return ptr_; }
+    T const * operator->() const noexcept { return ptr_; }
+
+    T& operator*() noexcept { return *ptr_; }
+    T const& operator*() const noexcept { return *ptr_; }
+
+  private:
+    T* ptr_;
+  };
 }

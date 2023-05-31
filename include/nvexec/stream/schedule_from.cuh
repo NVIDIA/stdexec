@@ -40,7 +40,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template < __completion_tag Tag, class... As>
         friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          storage_t* storage = static_cast<storage_t*>(self.operation_state_.temp_storage_);
+          local<storage_t> storage(self.operation_state_.temp_storage_);
           storage->template emplace<decayed_tuple<Tag, As...>>(Tag(), (As&&) as...);
 
           visit(
