@@ -552,8 +552,8 @@ namespace nvexec {
           ReceiverProvider receiver_provider,
           context_state_t context_state)
           : base_t((outer_receiver_t&&) out_receiver, context_state, true)
-          , storage_(queue::make_host<variant_t>(this->status_, context_state.pinned_resource_))
-          , task_(queue::make_host<task_t>(
+          , storage_(host_allocate<variant_t>(this->status_, context_state.pinned_resource_))
+          , task_(host_allocate<task_t>(
                     this->status_,
                     context_state.pinned_resource_,
                     receiver_provider(*this),
@@ -586,7 +586,7 @@ namespace nvexec {
 
         STDEXEC_IMMOVABLE(__t);
 
-        queue::host_ptr<variant_t> storage_;
+        host_ptr<variant_t> storage_;
         task_t* task_{};
         ::cuda::std::atomic_flag started_{};
 

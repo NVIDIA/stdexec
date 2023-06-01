@@ -23,6 +23,7 @@
 #include "config.cuh"
 #include "cuda_atomic.cuh"
 #include "throw_on_cuda_error.cuh"
+#include "memory.cuh"
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace queue {
   struct task_base_t {
@@ -34,68 +35,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace queue {
     fn_t* free_{};
   };
 
-  struct device_deleter_t {
-    template <class T>
-    void operator()(T* ptr) {
-      STDEXEC_DBG_ERR(cudaFree(ptr));
-    }
-  };
-
-  template <class T>
-  using device_ptr = std::unique_ptr<T, device_deleter_t>;
-
-  template <class T, class... As>
-  device_ptr<T> make_device(cudaError_t& status, As&&... as) {
-    static_assert(std::is_trivially_copyable_v<T>);
-
-    if (status == cudaSuccess) {
-      T* ptr{};
-      if (status = STDEXEC_DBG_ERR(cudaMalloc(&ptr, sizeof(T))); status == cudaSuccess) {
-        T h((As&&) as...);
-        status = STDEXEC_DBG_ERR(cudaMemcpy(ptr, &h, sizeof(T), cudaMemcpyHostToDevice));
-        return device_ptr<T>(ptr);
-      }
-    }
-
-    return device_ptr<T>();
-  }
-
-  template <class T>
-  struct host_deleter_t {
-    std::pmr::memory_resource* resource_{nullptr};
-
-    void operator()(T* ptr) const {
-      if (ptr) {
-        ptr->~T();
-        resource_->deallocate(ptr, sizeof(T), alignof(T));
-      }
-    }
-  };
-
-  template <class T>
-  using host_ptr = std::unique_ptr<T, host_deleter_t<T>>;
   using task_ref = ::cuda::atomic_ref<task_base_t*, ::cuda::thread_scope_system>;
   using atom_task_ref = ::cuda::atomic_ref<task_base_t*, ::cuda::thread_scope_device>;
-
-  template <class T, class... As>
-  host_ptr<T>
-    make_host(cudaError_t& status, std::pmr::memory_resource* resource, As&&... as) {
-    T* ptr = nullptr;
-
-    if (status == cudaSuccess) {
-      try {
-        ptr = static_cast<T*>(resource->allocate(sizeof(T), alignof(T)));
-        ::new (static_cast<void*>(ptr)) T((As&&) as...);
-      } catch (...) {
-        if (ptr) {
-          resource->deallocate(ptr, sizeof(T), alignof(T));
-        }
-        status = cudaError_t::cudaErrorMemoryAllocation;
-      }
-    }
-
-    return host_ptr<T>(ptr, {resource});
-  }
 
   struct producer_t {
     task_base_t** tail_;
@@ -181,8 +122,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace queue {
     poller_t poller_;
 
     task_hub_t(int dev_id, std::pmr::memory_resource* pinned_resource)
-      : head_(make_host<root_task_t>(status_, pinned_resource))
-      , tail_ptr_(make_device<task_base_t*>(status_, head_.get()))
+      : head_(host_allocate<root_task_t>(status_, pinned_resource))
+      , tail_ptr_(device_allocate<task_base_t*>(status_, head_.get()))
       , poller_(dev_id, head_.get()) {
     }
 

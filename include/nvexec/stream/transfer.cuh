@@ -51,7 +51,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         cudaError_t status_{cudaSuccess};
         context_state_t context_state_;
 
-        queue::host_ptr<variant_t> storage_;
+        host_ptr<variant_t> storage_;
         task_t* task_;
 
         ::cuda::std::atomic_flag started_{};
@@ -76,8 +76,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         __t(Sender&& sender, Receiver&& receiver, context_state_t context_state)
           : operation_state_base_t<ReceiverId>((Receiver&&) receiver, context_state, true)
           , context_state_(context_state)
-          , storage_(queue::make_host<variant_t>(this->status_, context_state.pinned_resource_))
-          , task_(queue::make_host<task_t>(
+          , storage_(host_allocate<variant_t>(this->status_, context_state.pinned_resource_))
+          , task_(host_allocate<task_t>(
                     this->status_,
                     context_state.pinned_resource_,
                     receiver_t{*this},
