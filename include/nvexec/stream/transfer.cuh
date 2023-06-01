@@ -49,7 +49,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using task_t = continuation_task_t<receiver_t, variant_t>;
 
         cudaError_t status_{cudaSuccess};
-        s context_state_t context_state_;
+        context_state_t context_state_;
 
         queue::host_ptr<variant_t> storage_;
         task_t* task_;
