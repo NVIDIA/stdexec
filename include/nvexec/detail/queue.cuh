@@ -60,42 +60,41 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace queue {
     return device_ptr<T>();
   }
 
+  template <class T>
   struct host_deleter_t {
-    std::size_t bytes_{};
-    std::size_t alignment_{};
-    std::pmr::memory_resource* pinned_resource_{nullptr};
+    std::pmr::memory_resource* resource_{nullptr};
 
-    template <class T>
-    void operator()(T* ptr) {
+    void operator()(T* ptr) const {
       if (ptr) {
-        pinned_resource_->deallocate(ptr, bytes_, alignment_);
+        ptr->~T();
+        resource_->deallocate(ptr, sizeof(T), alignof(T));
       }
     }
   };
 
   template <class T>
-  using host_ptr = std::unique_ptr<T, host_deleter_t>;
+  using host_ptr = std::unique_ptr<T, host_deleter_t<T>>;
   using task_ref = ::cuda::atomic_ref<task_base_t*, ::cuda::thread_scope_system>;
   using atom_task_ref = ::cuda::atomic_ref<task_base_t*, ::cuda::thread_scope_device>;
 
   template <class T, class... As>
   host_ptr<T>
-    make_host(cudaError_t& status, std::pmr::memory_resource* pinned_resource, As&&... as) {
-    T* ptr{};
-
-    const std::size_t bytes = sizeof(T);
-    const std::size_t alignment = std::alignment_of_v<T>;
+    make_host(cudaError_t& status, std::pmr::memory_resource* resource, As&&... as) {
+    T* ptr = nullptr;
 
     if (status == cudaSuccess) {
       try {
-        ptr = static_cast<T*>(pinned_resource->allocate(bytes, alignment));
-        new (ptr) T((As&&) as...);
+        ptr = static_cast<T*>(resource->allocate(sizeof(T), alignof(T)));
+        ::new (static_cast<void*>(ptr)) T((As&&) as...);
       } catch (...) {
+        if (ptr) {
+          resource->deallocate(ptr, sizeof(T), alignof(T));
+        }
         status = cudaError_t::cudaErrorMemoryAllocation;
       }
     }
 
-    return host_ptr<T>(ptr, host_deleter_t{bytes, alignment, pinned_resource});
+    return host_ptr<T>(ptr, {resource});
   }
 
   struct producer_t {
