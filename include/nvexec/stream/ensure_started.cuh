@@ -29,6 +29,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       var->template emplace<tuple_t>(Tag(), static_cast<As&&>(as)...);
     }
 
+    template <class SharedState, class... Ts>
+    concept __result_constructible_from =
+      constructible_from<decayed_tuple<Ts...>, Ts...> &&
+      __valid<SharedState::variant_t::template index_of, decayed_tuple<Ts...>>;
+
     inline auto __make_env(const in_place_stop_source& stop_source, cudaStream_t stream) noexcept {
       return make_stream_env(
         __env::__env_fn{[&](get_stop_token_t) noexcept {
@@ -37,7 +42,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         stream);
     }
 
-    using env_t = decltype(_ensure_started::__make_env(
+    using env_t = decltype(__ensure_started::__make_env(
       __declval<const in_place_stop_source&>(),
       cudaStream_t()));
 
@@ -155,7 +160,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       inner_op_state_t op_state2_;
 
       env_t make_env() const noexcept {
-        return _ensure_started::__make_env(stop_source_, stream_);
+        return __ensure_started::__make_env(stop_source_, stream_);
       }
 
       explicit sh_state_t(Sender& sndr, context_state_t context_state)
