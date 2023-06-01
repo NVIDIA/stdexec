@@ -534,8 +534,8 @@ namespace nvexec {
           ReceiverProvider receiver_provider,
           context_state_t context_state)
           : base_t((outer_receiver_t&&) out_receiver, context_state, true)
-          , storage_(queue::make_host<variant_t>(this->status_, context_state.pinned_resource_))
-          , task_(queue::make_host<task_t>(
+          , storage_(make_host<variant_t>(this->status_, context_state.pinned_resource_))
+          , task_(make_host<task_t>(
                     this->status_,
                     context_state.pinned_resource_,
                     receiver_provider(*this),
@@ -543,7 +543,7 @@ namespace nvexec {
                     this->get_stream(),
                     context_state.pinned_resource_)
                     .release())
-          , env_(queue::make_host<env_t>(this->status_, context_state.pinned_resource_, this->make_env()))
+          , env_(make_host<env_t>(this->status_, context_state.pinned_resource_, this->make_env()))
           , inner_op_{connect(
               (sender_t&&) sender,
               stream_enqueue_receiver_t{
@@ -571,10 +571,10 @@ namespace nvexec {
 
         STDEXEC_IMMOVABLE(__t);
 
-        queue::host_ptr<variant_t> storage_;
+        host_ptr<variant_t> storage_;
         task_t* task_{};
         ::cuda::std::atomic_flag started_{};
-        queue::host_ptr<__decay_t<env_t>> env_{};
+        host_ptr<__decay_t<env_t>> env_{};
 
         inner_op_state_t inner_op_;
       };
