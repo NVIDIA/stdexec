@@ -773,14 +773,14 @@ namespace stdexec {
       }
 
       template <derived_from<__valid_completions> _Self, same_as<set_error_t> _Tag, class _Error>
-        requires __one_of<_Tag (*)(_Args&&...), _Sigs...>
+        requires __one_of<_Tag (*)(_Error&&), _Sigs...>
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
         STDEXEC_DEFINE_CUSTOM(void set_error)(this _Self&&, _Tag, _Error&&) noexcept {
         STDEXEC_TERMINATE();
       }
 
       template <derived_from<__valid_completions> _Self, same_as<set_stopped_t> _Tag>
-        requires __one_of<_Tag (*)(_Args&&...), _Sigs...>
+        requires __one_of<_Tag (*)(), _Sigs...>
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
         STDEXEC_DEFINE_CUSTOM(void set_stopped)(this _Self&&, _Tag) noexcept {
         STDEXEC_TERMINATE();
