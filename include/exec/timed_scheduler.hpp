@@ -34,18 +34,17 @@ namespace exec {
         { __tp += __dur } -> same_as<_Tp&>;
         { __tp -= __dur } -> same_as<_Tp&>;
       };
-
-    struct now_t {
-      template <class _Scheduler>
-        requires tag_invocable<now_t, const _Scheduler&>
-      auto operator()(const _Scheduler& __sched) const
-        noexcept(nothrow_tag_invocable<now_t, const _Scheduler&>)
-          -> tag_invoke_result_t<now_t, const _Scheduler&> {
-        static_assert(time_point<tag_invoke_result_t<now_t, const _Scheduler&>>);
-        return tag_invoke(now_t{}, __sched);
-      }
-    };
   }
+  STDEXEC_DEFINE_CPO(struct now_t, now) {
+    template <class _Scheduler>
+      requires tag_invocable<now_t, const _Scheduler&>
+    auto operator()(const _Scheduler& __sched) const
+      noexcept(nothrow_tag_invocable<now_t, const _Scheduler&>)
+        -> tag_invoke_result_t<now_t, const _Scheduler&> {
+      static_assert(time_point<tag_invoke_result_t<now_t, const _Scheduler&>>);
+      return tag_invoke(*this, __sched);
+    }
+  };
 
   using __now::now_t;
   inline constexpr now_t now{};
@@ -101,59 +100,56 @@ namespace exec {
 
   namespace __schedule_after {
     using namespace stdexec;
-
-    struct schedule_after_t {
-      template <class _Scheduler>
-        requires __has_custom_schedule_after<_Scheduler>
-      auto operator()(_Scheduler&& __sched, const duration_of_t<_Scheduler>& __duration) const
-        noexcept(noexcept(tag_invoke(schedule_after, (_Scheduler&&) __sched, __duration)))
-          -> __custom_schedule_after_sender_t<_Scheduler> {
-        static_assert(sender<__custom_schedule_after_sender_t<_Scheduler>>);
-        return tag_invoke(schedule_after, (_Scheduler&&) __sched, __duration);
-      }
-
-      template <class _Scheduler>
-        requires(!__has_custom_schedule_after<_Scheduler>) && //
-                __has_custom_schedule_at<_Scheduler>
-      auto operator()(_Scheduler&& __sched, const duration_of_t<_Scheduler>& __duration) const
-        noexcept(
-          noexcept(tag_invoke(schedule_at, (_Scheduler&&) __sched, now(__sched) + __duration)))
-          -> __custom_schedule_at_sender_t<_Scheduler> {
-        static_assert(sender<__custom_schedule_at_sender_t<_Scheduler>>);
-        auto __time_point = now(__sched) + __duration;
-        return tag_invoke(schedule_at, (_Scheduler&&) __sched, __time_point);
-      }
-    };
   }
 
+  STDEXEC_DEFINE_CPO(struct schedule_after_t, schedule_after) {
+    template <class _Scheduler>
+      requires __has_custom_schedule_after<_Scheduler>
+    auto operator()(_Scheduler&& __sched, const duration_of_t<_Scheduler>& __duration) const
+      noexcept(nothrow_tag_invocable<schedule_after_t, _Scheduler, const duration_of_t<_Scheduler>&>)
+        -> __custom_schedule_after_sender_t<_Scheduler> {
+      static_assert(sender<__custom_schedule_after_sender_t<_Scheduler>>);
+      return tag_invoke(*this, (_Scheduler&&) __sched, __duration);
+    }
+
+    // BUGBUG this is not correct, see GH issue #847
+    template <class _Scheduler>
+      requires(!__has_custom_schedule_after<_Scheduler>) && //
+              __has_custom_schedule_at<_Scheduler>
+    auto operator()(_Scheduler&& __sched, const duration_of_t<_Scheduler>& __duration) const
+      noexcept(
+        noexcept(tag_invoke(schedule_at, (_Scheduler&&) __sched, now(__sched) + __duration)))
+        -> __custom_schedule_at_sender_t<_Scheduler> {
+      static_assert(sender<__custom_schedule_at_sender_t<_Scheduler>>);
+      auto __time_point = now(__sched) + __duration;
+      return tag_invoke(schedule_at, (_Scheduler&&) __sched, __time_point);
+    }
+  };
   inline constexpr schedule_after_t schedule_after{};
 
-  namespace __schedule_at {
-    using namespace stdexec;
+  STDEXEC_DEFINE_CPO(struct schedule_at_t, schedule_at) {
+    template <class _Scheduler>
+      requires __has_custom_schedule_at<_Scheduler>
+    auto operator()(_Scheduler&& __sched, const time_point_of_t<_Scheduler>& __time_point) const
+      noexcept(nothrow_tag_invocable<schedule_at_t, _Scheduler, const time_point_of_t<_Scheduler>&>)
+        -> __custom_schedule_at_sender_t<_Scheduler> {
+      static_assert(sender<__custom_schedule_at_sender_t<_Scheduler>>);
+      return tag_invoke(*this, (_Scheduler&&) __sched, __time_point);
+    }
 
-    struct schedule_at_t {
-      template <class _Scheduler>
-        requires __has_custom_schedule_at<_Scheduler>
-      auto operator()(_Scheduler&& __sched, const time_point_of_t<_Scheduler>& __time_point) const
-        noexcept(noexcept(tag_invoke(schedule_at, (_Scheduler&&) __sched, __time_point)))
-          -> __custom_schedule_at_sender_t<_Scheduler> {
-        static_assert(sender<__custom_schedule_at_sender_t<_Scheduler>>);
-        return tag_invoke(schedule_at, (_Scheduler&&) __sched, __time_point);
-      }
-
-      template <class _Scheduler>
-        requires(!__has_custom_schedule_at<_Scheduler>) && //
-                __has_custom_schedule_after<_Scheduler>
-      auto operator()(_Scheduler&& __sched, const duration_of_t<_Scheduler>& __time_point) const
-        noexcept(
-          noexcept(tag_invoke(schedule_after, (_Scheduler&&) __sched, __time_point - now(__sched))))
-          -> __custom_schedule_after_sender_t<_Scheduler> {
-        static_assert(sender<__custom_schedule_after_sender_t<_Scheduler>>);
-        auto __duration = __time_point - now(__sched);
-        return tag_invoke(schedule_after, (_Scheduler&&) __sched, __duration);
-      }
-    };
-  }
+    // BUGBUG this is not correct, see GH issue #847
+    template <class _Scheduler>
+      requires(!__has_custom_schedule_at<_Scheduler>) && //
+              __has_custom_schedule_after<_Scheduler>
+    auto operator()(_Scheduler&& __sched, const duration_of_t<_Scheduler>& __time_point) const
+      noexcept(
+        noexcept(tag_invoke(schedule_after, (_Scheduler&&) __sched, __time_point - now(__sched))))
+        -> __custom_schedule_after_sender_t<_Scheduler> {
+      static_assert(sender<__custom_schedule_after_sender_t<_Scheduler>>);
+      auto __duration = __time_point - now(__sched);
+      return tag_invoke(schedule_after, (_Scheduler&&) __sched, __duration);
+    }
+  };
 
   inline constexpr schedule_at_t schedule_at{};
 
