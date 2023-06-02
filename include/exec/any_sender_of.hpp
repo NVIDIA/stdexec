@@ -95,12 +95,13 @@ namespace exec {
       }
 
       template <class _Tag, class _Ret, class... _As>
-        requires __callable<_Tag, env_of_t<const _EnvProvider&>, _As...>
+        requires __callable<_Tag, env_of_t<const _EnvProvider&>, _As...> // && //
+                //  convertible_to<__call_result_t<_Tag, env_of_t<const _EnvProvider&>, _As...>, _Ret>
       constexpr _Ret (
         *operator()(_Tag (*)(_Ret (*)(_As...) noexcept)) const noexcept)(void*, _As...) noexcept {
         return +[](void* __env_provider, _As... __as) noexcept -> _Ret {
           static_assert(__nothrow_callable<_Tag, const env_of_t<_EnvProvider>&, _As...>);
-          return _Tag{}(get_env(*(const _EnvProvider*) __env_provider), (_As&&) __as...);
+          return _Tag{}(stdexec::get_env(*(const _EnvProvider*) __env_provider), (_As&&) __as...);
         };
       }
     };
@@ -171,35 +172,78 @@ namespace exec {
       }
     };
 
+    struct __delete_t;
+    extern const __delete_t __delete;
+
+    template <class _Storage, class _Tp>
+    concept __has_delete_member_cpo = requires(_Storage&& __storage) {
+      __storage.__delete(__delete, __mtype<_Tp>{});
+    };
+
+    template <class _Storage, class _Tp>
+    concept __nothrow_delete_member_cpo = requires(_Storage&& __storage) {
+      { __storage.__delete(__delete, __mtype<_Tp>{}) } noexcept;
+    };
+
     struct __delete_t {
       template <class _Storage, class _Tp>
-        requires tag_invocable<__delete_t, __mtype<_Tp>, _Storage&>
+        requires __has_delete_member_cpo<_Storage&, __mtype<_Tp>>
       void operator()(__mtype<_Tp>, _Storage& __storage) noexcept {
-        static_assert(nothrow_tag_invocable<__delete_t, __mtype<_Tp>, _Storage&>);
-        tag_invoke(__delete_t{}, __mtype<_Tp>{}, __storage);
+        static_assert(__nothrow_delete_member_cpo<_Storage&, __mtype<_Tp>>);
+        __storage.__delete(__delete, __mtype<_Tp>{});
       }
     };
 
     inline constexpr __delete_t __delete{};
 
+    struct __copy_construct_t;
+    extern const __copy_construct_t __copy_construct;
+
+    template <class _Storage, class _Tp>
+    concept __has_copy_construct_member_cpo =
+      requires(_Storage& __storage, const _Storage& __from) {
+        __storage.__copy_construct(__copy_construct, __mtype<_Tp>{}, __from);
+      };
+
+    template <class _Storage, class _Tp>
+    concept __nothrow_copy_construct_member_cpo =
+      requires(_Storage&& __storage, const _Storage& __from) {
+        { __storage.__copy_construct(__copy_construct, __mtype<_Tp>{}, __from) } noexcept;
+      };
+
     struct __copy_construct_t {
       template <class _Storage, class _Tp>
-        requires tag_invocable<__copy_construct_t, __mtype<_Tp>, _Storage&, const _Storage&>
+        requires __has_copy_construct_member_cpo<_Storage, _Tp>
       void operator()(__mtype<_Tp>, _Storage& __self, const _Storage& __from) noexcept(
-        nothrow_tag_invocable<__copy_construct_t, __mtype<_Tp>, _Storage&, const _Storage&>) {
-        tag_invoke(__copy_construct_t{}, __mtype<_Tp>{}, __self, __from);
+        __nothrow_copy_construct_member_cpo<_Storage, _Tp>) {
+        __self.__copy_construct(__copy_construct, __mtype<_Tp>{}, __from);
       }
     };
 
     inline constexpr __copy_construct_t __copy_construct{};
 
+    struct __move_construct_t;
+    extern const __move_construct_t __move_construct;
+
+    template <class _Storage, class _Tp>
+    concept __has_move_construct_member_cpo = requires(_Storage& __storage, _Storage&& __from) {
+      __storage.__move_construct(__move_construct, __mtype<_Tp>{}, static_cast<_Storage&&>(__from));
+    };
+
+    template <class _Storage, class _Tp>
+    concept __nothrow_move_construct_member_cpo = requires(_Storage& __storage, _Storage&& __from) {
+      {
+        __storage.__move_construct(
+          __move_construct, __mtype<_Tp>{}, static_cast<_Storage&&>(__from))
+      } noexcept;
+    };
+
     struct __move_construct_t {
       template <class _Storage, class _Tp>
-        requires tag_invocable<__move_construct_t, __mtype<_Tp>, _Storage&, _Storage&&>
+        requires __has_move_construct_member_cpo<_Storage, _Tp>
       void operator()(__mtype<_Tp>, _Storage& __self, __midentity<_Storage&&> __from) noexcept {
-        static_assert(
-          nothrow_tag_invocable<__move_construct_t, __mtype<_Tp>, _Storage&, _Storage&&>);
-        tag_invoke(__move_construct_t{}, __mtype<_Tp>{}, __self, (_Storage&&) __from);
+        static_assert(__nothrow_move_construct_member_cpo<_Storage, _Tp>);
+        __self.__move_construct(__move_construct, __mtype<_Tp>{}, static_cast<_Storage&&>(__from));
       }
     };
 
@@ -302,7 +346,7 @@ namespace exec {
         }
 
         void __reset() noexcept {
-          (*__vtable_)(__delete, this);
+          (*__vtable_)(__any::__delete, this);
           __object_pointer_ = nullptr;
           __vtable_ = __default_storage_vtable((__vtable_t*) nullptr);
         }
@@ -340,14 +384,16 @@ namespace exec {
           __object_pointer_ = __pointer;
         }
 
+        friend struct __any::__delete_t;
+
         template <class _Tp>
-        friend void tag_invoke(__delete_t, __mtype<_Tp>, __t& __self) noexcept {
-          if (!__self.__object_pointer_) {
+        void __delete(__delete_t, __mtype<_Tp>) noexcept {
+          if (!__object_pointer_) {
             return;
           }
           using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
-          _Alloc __alloc{__self.__allocator_};
-          _Tp* __pointer = static_cast<_Tp*>(std::exchange(__self.__object_pointer_, nullptr));
+          _Alloc __alloc{__allocator_};
+          _Tp* __pointer = static_cast<_Tp*>(std::exchange(__object_pointer_, nullptr));
           std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
           if constexpr (!__is_small<_Tp>) {
             std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
@@ -433,7 +479,7 @@ namespace exec {
       __t(const __t& __other)
         requires(_Copyable)
       {
-        (*__other.__vtable_)(__copy_construct, this, __other);
+        (*__other.__vtable_)(__any::__copy_construct, this, __other);
       }
 
       __t& operator=(const __t& __other)
@@ -444,12 +490,12 @@ namespace exec {
       }
 
       __t(__t&& __other) noexcept {
-        (*__other.__vtable_)(__move_construct, this, (__t&&) __other);
+        (*__other.__vtable_)(__any::__move_construct, this, (__t&&) __other);
       }
 
       __t& operator=(__t&& __other) noexcept {
         __reset();
-        (*__other.__vtable_)(__move_construct, this, (__t&&) __other);
+        (*__other.__vtable_)(__any::__move_construct, this, (__t&&) __other);
         return *this;
       }
 
@@ -458,7 +504,7 @@ namespace exec {
       }
 
       void __reset() noexcept {
-        (*__vtable_)(__delete, this);
+        (*__vtable_)(__any::__delete, this);
         __object_pointer_ = nullptr;
         __vtable_ = __default_storage_vtable((__vtable_t*) nullptr);
       }
@@ -496,53 +542,58 @@ namespace exec {
         __object_pointer_ = __pointer;
       }
 
+      friend struct __any::__delete_t;
+
       template <class _Tp>
-      friend void tag_invoke(__delete_t, __mtype<_Tp>, __t& __self) noexcept {
-        if (!__self.__object_pointer_) {
+      void __delete(__delete_t, __mtype<_Tp>) noexcept {
+        if (!__object_pointer_) {
           return;
         }
         using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
-        _Alloc __alloc{__self.__allocator_};
-        _Tp* __pointer = static_cast<_Tp*>(std::exchange(__self.__object_pointer_, nullptr));
+        _Alloc __alloc{__allocator_};
+        _Tp* __pointer = static_cast<_Tp*>(std::exchange(__object_pointer_, nullptr));
         std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
         if constexpr (!__is_small<_Tp>) {
           std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
         }
       }
 
+      friend struct __any::__move_construct_t;
+
       template <class _Tp>
-      friend void
-        tag_invoke(__move_construct_t, __mtype<_Tp>, __t& __self, __t&& __other) noexcept {
+      void __move_construct(__move_construct_t, __mtype<_Tp>, __t&& __other) noexcept {
         if (!__other.__object_pointer_) {
           return;
         }
         _Tp* __pointer = static_cast<_Tp*>(std::exchange(__other.__object_pointer_, nullptr));
         if constexpr (__is_small<_Tp>) {
           _Tp& __other_object = *__pointer;
-          __self.template __construct_small<_Tp>((_Tp&&) __other_object);
+          this->template __construct_small<_Tp>((_Tp&&) __other_object);
           using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
-          _Alloc __alloc{__self.__allocator_};
+          _Alloc __alloc{__allocator_};
           std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
         } else {
-          __self.__object_pointer_ = __pointer;
+          __object_pointer_ = __pointer;
         }
-        __self.__vtable_ = std::exchange(
+        __vtable_ = std::exchange(
           __other.__vtable_, __default_storage_vtable((__vtable_t*) nullptr));
       }
 
+      friend struct __any::__copy_construct_t;
+
       template <class _Tp>
         requires _Copyable
-      friend void tag_invoke(__copy_construct_t, __mtype<_Tp>, __t& __self, const __t& __other) {
+      void __copy_construct(__copy_construct_t, __mtype<_Tp>, const __t& __other) {
         if (!__other.__object_pointer_) {
           return;
         }
         const _Tp& __other_object = *static_cast<const _Tp*>(__other.__object_pointer_);
         if constexpr (__is_small<_Tp>) {
-          __self.template __construct_small<_Tp>(__other_object);
+          this->template __construct_small<_Tp>(__other_object);
         } else {
-          __self.template __construct_large<_Tp>(__other_object);
+          this->template __construct_large<_Tp>(__other_object);
         }
-        __self.__vtable_ = __other.__vtable_;
+        __vtable_ = __other.__vtable_;
       }
 
       const __vtable_t* __vtable_{__default_storage_vtable((__vtable_t*) nullptr)};
@@ -671,11 +722,25 @@ namespace exec {
             stdexec::get_stop_token(stdexec::get_env(__rcvr))} {
         }
 
-        template < __completion_tag _Tag, __decays_to<__ref> _Self, class... _As>
+        template <__same_as<set_value_t> _Tag, same_as<__ref> _Self, class... _As>
           requires __one_of<_Tag(_As...), _Sigs...>
-        friend void tag_invoke(_Tag, _Self&& __self, _As&&... __as) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this _Self&& __self, _Tag, _As&&... __as) noexcept {
           (*static_cast<const __rcvr_vfun<_Tag(_As...)>*>(__self.__env_.__vtable_)->__fn_)(
             ((_Self&&) __self).__env_.__rcvr_, (_As&&) __as...);
+        }
+
+        template <same_as<set_error_t> _Tag, same_as<__ref> _Self, class _Error>
+          requires __one_of<_Tag(_Error), _Sigs...>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this _Self&& __self, _Tag, _Error&& __err) noexcept {
+          (*static_cast<const __rcvr_vfun<_Tag(_Error)>*>(__self.__env_.__vtable_)->__fn_)(
+            ((_Self&&) __self).__env_.__rcvr_, (_Error&&) __err);
+        }
+
+        template <same_as<set_stopped_t> _Tag, same_as<__ref> _Self>
+          requires __one_of<_Tag(), _Sigs...>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this _Self&& __self, _Tag) noexcept {
+          (*static_cast<const __rcvr_vfun<_Tag()>*>(__self.__env_.__vtable_)->__fn_)(
+            ((_Self&&) __self).__env_.__rcvr_);
         }
 
         template <std::same_as<__ref> Self>
@@ -941,7 +1006,8 @@ namespace exec {
         template <sender_to<__receiver_ref_t> _Sender>
         static const __vtable* __create_vtable(__create_vtable_t) noexcept {
           static const __vtable __vtable_{
-            {*__any::__create_vtable(__mtype<__query_vtable<_SenderQueries>>{}, __mtype<_Sender>{})},
+            {*__any::__create_vtable(
+              __mtype<__query_vtable<_SenderQueries>>{}, __mtype<_Sender>{})},
             [](void* __object_pointer, __receiver_ref_t __receiver)
               -> __immovable_operation_storage {
               _Sender& __sender = *static_cast<_Sender*>(__object_pointer);
@@ -1042,7 +1108,8 @@ namespace exec {
         template <scheduler _Scheduler>
         static const __vtable* __create_vtable(__create_vtable_t) noexcept {
           static const __vtable __vtable_{
-            {*__any::__create_vtable(__mtype<__query_vtable<_SchedulerQueries>>{}, __mtype<_Scheduler>{})},
+            {*__any::__create_vtable(
+              __mtype<__query_vtable<_SchedulerQueries>>{}, __mtype<_Scheduler>{})},
             [](void* __object_pointer) noexcept -> __sender_t {
               const _Scheduler& __scheduler = *static_cast<const _Scheduler*>(__object_pointer);
               return __sender_t{schedule(__scheduler)};
@@ -1161,20 +1228,30 @@ namespace exec {
         __any::__sender<_Completions, queries<_SenderQueries...>, queries<_ReceiverQueries...>>>;
       __sender_base __sender_;
 
-      template <class _Tag, stdexec::__decays_to<any_sender> Self, class... _As>
-        requires stdexec::tag_invocable< _Tag, stdexec::__copy_cvref_t<Self, __sender_base>, _As...>
-      friend auto tag_invoke(_Tag, Self&& __self, _As&&... __as) noexcept(
-        std::is_nothrow_invocable_v< _Tag, stdexec::__copy_cvref_t<Self, __sender_base>, _As...>) {
-        return stdexec::tag_invoke(_Tag{}, ((Self&&) __self).__sender_, (_As&&) __as...);
-      }
-
       STDEXEC_CPO_ACCESS(stdexec::get_env_t);
+      STDEXEC_CPO_ACCESS(stdexec::connect_t);
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(
         this const any_sender& __self,
         stdexec::get_env_t) noexcept -> typename __sender_base::__id::__env_t {
         return stdexec::get_env(__self.__sender_);
       }
+
+      template <stdexec::__decays_to<any_sender> _Self, stdexec::receiver_of<_Completions> _Receiver>
+        // BUGBUG There is some problem with tag forwarding in __env_join for the following constraint
+        // requires stdexec::sender_to<stdexec::__copy_cvref_t<_Self, __sender_base>, _Receiver>
+      STDEXEC_DEFINE_CUSTOM(auto connect)(
+        this _Self&& __self,
+        stdexec::connect_t,
+        _Receiver __rcvr) noexcept(stdexec::
+                                     __nothrow_connectable<
+                                       stdexec::__copy_cvref_t<_Self, __sender_base>,
+                                       _Receiver>)
+        -> stdexec::connect_result_t<stdexec::__copy_cvref_t<_Self, __sender_base>, _Receiver> {
+        return stdexec::connect(
+          static_cast<_Self&&>(__self).__sender_, static_cast<_Receiver&&>(__rcvr));
+      }
+
      public:
       using is_sender = void;
       using completion_signatures = typename __sender_base::completion_signatures;
