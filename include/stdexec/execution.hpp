@@ -400,7 +400,7 @@ namespace stdexec {
         return tag_invoke(as_awaitable, (_Ty&&) __value, *this);
       }
 
-      friend auto tag_invoke(get_env_t, const __env_promise&) noexcept -> const _Env&;
+      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __env_promise&, get_env_t) noexcept -> const _Env&;
     };
 
     template <class _Tag, __nothrow_move_constructible _Value>
