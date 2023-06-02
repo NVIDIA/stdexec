@@ -1027,7 +1027,8 @@ namespace exec {
         STDEXEC_DEFINE_CUSTOM(auto connect)(
           this const __schedule_after_sender& __sender,
           stdexec::connect_t,
-          _Receiver&& __receiver) -> stdexec::__t<__schedule_after_operation<stdexec::__id<_Receiver>>> {
+          _Receiver&& __receiver)
+          -> stdexec::__t<__schedule_after_operation<stdexec::__id<_Receiver>>> {
           return stdexec::__t<__schedule_after_operation<stdexec::__id<_Receiver>>>(
             std::in_place,
             *__sender.__env_.__context_,
@@ -1038,6 +1039,9 @@ namespace exec {
 
      private:
       STDEXEC_CPO_ACCESS(stdexec::schedule_t);
+      STDEXEC_CPO_ACCESS(exec::schedule_after_t);
+      STDEXEC_CPO_ACCESS(exec::schedule_at_t);
+      STDEXEC_CPO_ACCESS(exec::now_t);
 
       STDEXEC_DEFINE_CUSTOM(__schedule_sender schedule)(
         this const __scheduler& __sched,
@@ -1045,23 +1049,24 @@ namespace exec {
         return __schedule_sender{__schedule_env{__sched.__context_}};
       }
 
-      friend std::chrono::time_point<std::chrono::steady_clock>
-        tag_invoke(exec::now_t, const __scheduler& __sched) noexcept {
+      STDEXEC_DEFINE_CUSTOM(auto now)(this const __scheduler& __sched, exec::now_t) noexcept
+        -> std::chrono::time_point<std::chrono::steady_clock> {
         return std::chrono::steady_clock::now();
       }
 
-      friend __schedule_after_sender tag_invoke(
+      STDEXEC_DEFINE_CUSTOM(auto schedule_after)(
+        this const __scheduler& __sched,
         exec::schedule_after_t,
-        const __scheduler& __sched,
-        std::chrono::nanoseconds __duration) {
+        std::chrono::nanoseconds __duration) -> __schedule_after_sender {
         return __schedule_after_sender{.__env_ = {__sched.__context_}, .__duration_ = __duration};
       }
 
+      // BUGBUG wrong impl
       template <class _Clock, class _Duration>
-      friend __schedule_after_sender tag_invoke(
+      STDEXEC_DEFINE_CUSTOM(auto schedule_at)(
+        this const __scheduler& __sched,
         exec::schedule_at_t,
-        const __scheduler& __sched,
-        const std::chrono::time_point<_Clock, _Duration>& __time_point) {
+        const std::chrono::time_point<_Clock, _Duration>& __time_point) -> __schedule_after_sender {
         auto __duration = __time_point - _Clock::now();
         return __schedule_after_sender{.__env_ = {__sched.__context_}, .__duration_ = __duration};
       }
