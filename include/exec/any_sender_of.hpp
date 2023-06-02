@@ -96,7 +96,7 @@ namespace exec {
 
       template <class _Tag, class _Ret, class... _As>
         requires __callable<_Tag, env_of_t<const _EnvProvider&>, _As...> // && //
-                //  convertible_to<__call_result_t<_Tag, env_of_t<const _EnvProvider&>, _As...>, _Ret>
+      //  convertible_to<__call_result_t<_Tag, env_of_t<const _EnvProvider&>, _As...>, _Ret>
       constexpr _Ret (
         *operator()(_Tag (*)(_Ret (*)(_As...) noexcept)) const noexcept)(void*, _As...) noexcept {
         return +[](void* __env_provider, _As... __as) noexcept -> _Ret {
@@ -1098,7 +1098,7 @@ namespace exec {
      private:
       class __vtable : public __query_vtable<_SchedulerQueries> {
        public:
-        __sender_t (*__schedule_)(void*) noexcept;
+        __sender_t (*__schedule_)(void*);
         bool (*__equal_to_)(const void*, const void* other) noexcept;
 
         const __query_vtable<_SchedulerQueries>& __queries() const noexcept {
@@ -1110,7 +1110,7 @@ namespace exec {
           static const __vtable __vtable_{
             {*__any::__create_vtable(
               __mtype<__query_vtable<_SchedulerQueries>>{}, __mtype<_Scheduler>{})},
-            [](void* __object_pointer) noexcept -> __sender_t {
+            [](void* __object_pointer) -> __sender_t {
               const _Scheduler& __scheduler = *static_cast<const _Scheduler*>(__object_pointer);
               return __sender_t{schedule(__scheduler)};
             },
@@ -1127,7 +1127,7 @@ namespace exec {
       };
 
       template <same_as<__scheduler> _Self>
-      STDEXEC_DEFINE_CUSTOM(__sender_t schedule)(this const _Self& __self, schedule_t) noexcept {
+      STDEXEC_DEFINE_CUSTOM(__sender_t schedule)(this const _Self& __self, schedule_t) {
         STDEXEC_ASSERT(__self.__storage_.__get_vtable()->__schedule_);
         return __self.__storage_.__get_vtable()->__schedule_(
           __self.__storage_.__get_object_pointer());
@@ -1238,8 +1238,8 @@ namespace exec {
       }
 
       template <stdexec::__decays_to<any_sender> _Self, stdexec::receiver_of<_Completions> _Receiver>
-        // BUGBUG There is some problem with tag forwarding in __env_join for the following constraint
-        // requires stdexec::sender_to<stdexec::__copy_cvref_t<_Self, __sender_base>, _Receiver>
+      // BUGBUG There is some problem with tag forwarding in __env_join for the following constraint
+      // requires stdexec::sender_to<stdexec::__copy_cvref_t<_Self, __sender_base>, _Receiver>
       STDEXEC_DEFINE_CUSTOM(auto connect)(
         this _Self&& __self,
         stdexec::connect_t,
@@ -1305,8 +1305,17 @@ namespace exec {
           : __scheduler_{(_Scheduler&&) __scheduler} {
         }
 
-       private:
-        template <class _Tag, stdexec::__decays_to<any_scheduler> Self, class... _As>
+        template <stdexec::__decays_to<any_scheduler> _Self>
+        STDEXEC_DEFINE_CUSTOM(auto schedule)(
+          this _Self&& __self,
+          stdexec::schedule_t) {
+          return stdexec::schedule(__self.__scheduler_);
+        }
+
+        template <
+          stdexec::__not_decays_to<stdexec::schedule_t> _Tag,
+          stdexec::__decays_to<any_scheduler> Self,
+          class... _As>
           requires stdexec::tag_invocable<
             _Tag,
             stdexec::__copy_cvref_t<Self, __scheduler_base>,
