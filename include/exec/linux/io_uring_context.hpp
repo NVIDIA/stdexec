@@ -960,6 +960,8 @@ namespace exec {
 
        private:
         STDEXEC_CPO_ACCESS(stdexec::get_env_t);
+        STDEXEC_CPO_ACCESS(stdexec::get_completion_signatures_t);
+        STDEXEC_CPO_ACCESS(stdexec::connect_t);
 
         STDEXEC_DEFINE_CUSTOM(auto get_env)(
           this const __schedule_sender& __self,
@@ -971,18 +973,18 @@ namespace exec {
           stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t()>;
 
         template <class _Env>
-        friend __completion_sigs tag_invoke(
+        STDEXEC_DEFINE_CUSTOM(__completion_sigs get_completion_signatures)(
+          this const __schedule_sender&,
           stdexec::get_completion_signatures_t,
-          const __schedule_sender&,
           _Env) noexcept {
           return {};
         }
 
         template <stdexec::receiver_of<__completion_sigs> _Receiver>
-        friend stdexec::__t<__schedule_operation<stdexec::__id<_Receiver>>> tag_invoke(
+        STDEXEC_DEFINE_CUSTOM(auto connect)(
+          this const __schedule_sender& __sender,
           stdexec::connect_t,
-          const __schedule_sender& __sender,
-          _Receiver&& __receiver) {
+          _Receiver&& __receiver) -> stdexec::__t<__schedule_operation<stdexec::__id<_Receiver>>> {
           return stdexec::__t<__schedule_operation<stdexec::__id<_Receiver>>>(
             std::in_place, *__sender.__env_.__context_, (_Receiver&&) __receiver);
         }
@@ -999,6 +1001,8 @@ namespace exec {
 
        private:
         STDEXEC_CPO_ACCESS(stdexec::get_env_t);
+        STDEXEC_CPO_ACCESS(stdexec::get_completion_signatures_t);
+        STDEXEC_CPO_ACCESS(stdexec::connect_t);
 
         STDEXEC_DEFINE_CUSTOM(auto get_env)(
           this const __schedule_after_sender& __self,
@@ -1012,18 +1016,18 @@ namespace exec {
           stdexec::set_stopped_t()>;
 
         template <class _Env>
-        friend __completion_sigs tag_invoke(
+        STDEXEC_DEFINE_CUSTOM(__completion_sigs get_completion_signatures)(
+          this const __schedule_after_sender&,
           stdexec::get_completion_signatures_t,
-          const __schedule_after_sender&,
           _Env) noexcept {
           return {};
         }
 
         template <stdexec::receiver_of<__completion_sigs> _Receiver>
-        friend stdexec::__t<__schedule_after_operation<stdexec::__id<_Receiver>>> tag_invoke(
+        STDEXEC_DEFINE_CUSTOM(auto connect)(
+          this const __schedule_after_sender& __sender,
           stdexec::connect_t,
-          const __schedule_after_sender& __sender,
-          _Receiver&& __receiver) {
+          _Receiver&& __receiver) -> stdexec::__t<__schedule_after_operation<stdexec::__id<_Receiver>>> {
           return stdexec::__t<__schedule_after_operation<stdexec::__id<_Receiver>>>(
             std::in_place,
             *__sender.__env_.__context_,
