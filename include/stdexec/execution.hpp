@@ -4700,7 +4700,7 @@ namespace stdexec {
           : __loop_(__loop) {
         }
 
-        friend __schedule_task tag_invoke(schedule_t, const __scheduler& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(__schedule_task schedule)(this const __scheduler& __self, schedule_t) noexcept {
           return __self.__schedule();
         }
 
