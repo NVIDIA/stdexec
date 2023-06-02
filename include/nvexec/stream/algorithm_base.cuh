@@ -141,8 +141,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
         -> completion_signatures<Self, Env>
         requires true;
 
-      friend auto tag_invoke(get_env_t, const __t& self) noexcept -> env_of_t<const Sender&> {
-        return get_env(self.sndr_);
+      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) noexcept -> env_of_t<const Sender&> {
+        return stdexec::get_env(self.sndr_);
       }
     };
   };

@@ -35,10 +35,23 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         struct receiver_t {
           __t& op_state_;
+          
+          template <same_as<receiver_t> _Self, same_as<set_value_t> Tag, class... As>
+            requires __callable<Tag, Receiver&&, As...>
+          STDEXEC_DEFINE_CUSTOM(void set_value)(this _Self&& self, Tag, As&&... as) noexcept {
+            Tag()((Receiver&&) self.op_state_.receiver_, (As&&) as...);
+          }
 
-          template < __completion_tag Tag, class... As >
-          friend void tag_invoke(Tag, receiver_t&& self, As&&... as) noexcept {
-            Tag()(std::move(self.op_state_.receiver_), (As&&) as...);
+          template <same_as<receiver_t> _Self, same_as<set_error_t> Tag, class Error>
+            requires __callable<Tag, Receiver&&, Error>
+          STDEXEC_DEFINE_CUSTOM(void set_error)(this _Self&& self, Tag, Error&& error) noexcept {
+            Tag()((Receiver&&) self.op_state_.receiver_, (Error&&) error);
+          }
+
+          template <same_as<receiver_t> _Self, same_as<set_stopped_t> Tag>
+            requires __callable<Tag, Receiver&&>
+          STDEXEC_DEFINE_CUSTOM(void set_stopped)(this _Self&& self, Tag) noexcept {
+            Tag()((Receiver&&) self.op_state_.receiver_);
           }
 
           STDEXEC_DEFINE_CUSTOM(Env get_env)(this const receiver_t& self, get_env_t) noexcept {
