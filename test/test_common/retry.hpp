@@ -121,16 +121,17 @@ struct _retry_sender {
   using _value = stdexec::completion_signatures<stdexec::set_value_t(Ts...)>;
 
   template <class Env>
-  friend auto tag_invoke(stdexec::get_completion_signatures_t, const _retry_sender&, Env)
-    -> stdexec::make_completion_signatures<
-      S&,
-      Env,
-      stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
-      _value,
-      _error>;
+  STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures) //
+    (this const _retry_sender&, stdexec::get_completion_signatures_t, Env)
+      -> stdexec::make_completion_signatures<
+        S&,
+        Env,
+        stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
+        _value,
+        _error>;
 
   template <stdexec::receiver R>
-  friend _op<S, R> tag_invoke(stdexec::connect_t, _retry_sender&& self, R r) {
+  STDEXEC_DEFINE_CUSTOM(_op<S, R> connect)(this _retry_sender&& self, stdexec::connect_t, R r) {
     return {(S&&) self.s_, (R&&) r};
   }
 
