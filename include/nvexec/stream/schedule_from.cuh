@@ -28,19 +28,21 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     struct receiver_t {
       using Sender = __cvref_t<CvrefSenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
-      using Env = typename operation_state_base_t<ReceiverId>::env_t;
+      using Env = make_stream_env_t<env_of_t<Receiver>>;
+      using storage_t = variant_storage_t<Sender, Env>;
 
       struct __t : stream_receiver_base {
         using __id = receiver_t;
-        using storage_t = variant_storage_t<Sender, Env>;
 
         constexpr static std::size_t memory_allocation_size = sizeof(storage_t);
+        using op_state_t = operation_state_base_t<ReceiverId, memory_allocation_size>;
 
-        operation_state_base_t<ReceiverId>& operation_state_;
+        op_state_t& operation_state_;
 
         template < __completion_tag Tag, class... As>
         friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          local<storage_t> storage(self.operation_state_.temp_storage_);
+          // static_assert(storage_t::trivially_destructible);
+          storage_t* storage = ::new (self.operation_state_.temp_storage_) storage_t();
           storage->template emplace<decayed_tuple<Tag, As...>>(Tag(), (As&&) as...);
 
           visit(
@@ -119,12 +121,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         __copy_cvref_t<Self, source_sender_th>,
         receiver_t<Self, Receiver>,
         Receiver> {
+        using inner_receiver_t = receiver_t<Self, Receiver>;
         return stream_op_state<__copy_cvref_t<Self, source_sender_th>>(
           ((Self&&) self).sndr_,
           (Receiver&&) rcvr,
-          [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
-            -> receiver_t<Self, Receiver> {
-            return receiver_t<Self, Receiver>{{}, stream_provider};
+          [&]<class StreamProvider>(StreamProvider& stream_provider) -> inner_receiver_t { //
+            return inner_receiver_t{{}, stream_provider};
           },
           self.env_.context_state_);
       }

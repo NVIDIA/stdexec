@@ -32,10 +32,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
 
   template <class SenderId, class ReceiverId, class InitT, class Fun, class DerivedReceiver>
   struct receiver_t {
-    struct __t : public stream_receiver_base {
-      using Sender = stdexec::__t<SenderId>;
-      using Receiver = stdexec::__t<ReceiverId>;
+    using Sender = stdexec::__t<SenderId>;
+    using Receiver = stdexec::__t<ReceiverId>;
 
+    struct __t : public stream_receiver_base {
       template <class... Range>
       struct result_size_for {
         using __t = __msize_t< sizeof(typename DerivedReceiver::template result_t<Range...>)>;
@@ -59,7 +59,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
             __q<max_in_pack>>>;
       };
 
-      operation_state_base_t<ReceiverId>& op_state_;
+      using op_state_t = operation_state_base_t<ReceiverId, max_result_size::value>;
+
+      op_state_t& op_state_;
       STDEXEC_NO_UNIQUE_ADDRESS InitT init_;
       STDEXEC_NO_UNIQUE_ADDRESS Fun fun_;
 
@@ -82,7 +84,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
         return get_env(self.op_state_.receiver_);
       }
 
-      __t(InitT init, Fun fun, operation_state_base_t<ReceiverId>& op_state)
+      __t(InitT init, Fun fun, op_state_t& op_state)
         : op_state_(op_state)
         , init_((InitT&&) init)
         , fun_((Fun&&) fun) {
@@ -118,12 +120,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
         requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
       friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
         -> stream_op_state_t< __copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
+        using inner_receiver_t = receiver_t<Receiver>;
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
           ((Self&&) self).sndr_,
           (Receiver&&) rcvr,
-          [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
-            -> receiver_t<Receiver> {
-            return receiver_t<Receiver>(self.init_, self.fun_, stream_provider);
+          [&]<class StreamProvider>(StreamProvider& stream_provider) -> inner_receiver_t {
+            return inner_receiver_t(self.init_, self.fun_, stream_provider);
           });
       }
 

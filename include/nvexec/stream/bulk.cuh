@@ -58,8 +58,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             constexpr int block_threads = 256;
             const int grid_blocks = (static_cast<int>(self.shape_) + block_threads - 1)
                                   / block_threads;
-            kernel<block_threads, As&...><<<grid_blocks, block_threads, 0, stream>>>(
-              self.shape_, std::move(self.f_), as...);
+            kernel<block_threads, As&...>
+              <<<grid_blocks, block_threads, 0, stream>>>(self.shape_, std::move(self.f_), as...);
           }
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
@@ -117,12 +117,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         requires receiver_of< Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
       friend auto tag_invoke(connect_t, Self&& self, Receiver&& rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
+        using inner_receiver_t = receiver_t<Receiver>;
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
           ((Self&&) self).sndr_,
           (Receiver&&) rcvr,
-          [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
-            -> receiver_t<Receiver> {
-            return receiver_t<Receiver>(self.shape_, (Fun&&) self.fun_, stream_provider);
+          [&]<class StreamProvider>(StreamProvider& stream_provider) -> inner_receiver_t { //
+            return inner_receiver_t(self.shape_, std::move(self.fun_), stream_provider);
           });
       }
 

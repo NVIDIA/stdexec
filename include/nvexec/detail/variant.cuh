@@ -156,6 +156,7 @@ namespace nvexec {
     static constexpr std::size_t size = sizeof...(Ts);
     static constexpr std::size_t max_size = std::max({sizeof(Ts)...});
     static constexpr std::size_t max_alignment = std::max({std::alignment_of_v<Ts>...});
+    static constexpr bool trivially_destructible = (std::is_trivially_destructible_v<Ts> && ...);
 
     using index_t = unsigned int;
     using union_t = detail::static_storage_t<max_alignment, max_size>;
@@ -175,7 +176,9 @@ namespace nvexec {
       return get<detail::nth_type<I, Ts...>>();
     }
 
-    STDEXEC_DETAIL_CUDACC_HOST_DEVICE variant_t() requires std::default_initializable<front_t> {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE variant_t()
+      requires std::default_initializable<front_t>
+    {
       emplace<front_t>();
     }
 
@@ -218,27 +221,5 @@ namespace nvexec {
 
     union_t storage_;
     index_t index_;
-  };
-
-  template <class T>
-  struct local {
-    template <class... As>
-    local(void* buffer, As&&... as)
-      : ptr_(static_cast<T*>(buffer)) {
-      ::new (buffer) T((As&&) as...);
-    }
-
-    ~local() {
-      ptr_->~T();
-    }
-
-    T* operator->() noexcept { return ptr_; }
-    T const * operator->() const noexcept { return ptr_; }
-
-    T& operator*() noexcept { return *ptr_; }
-    T const& operator*() const noexcept { return *ptr_; }
-
-  private:
-    T* ptr_;
   };
 }

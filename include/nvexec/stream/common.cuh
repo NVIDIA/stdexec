@@ -68,12 +68,13 @@ namespace nvexec {
 
   namespace STDEXEC_STREAM_DETAIL_NS {
 
-#if __has_builtin(__is_trivially_copyable) &&  __has_builtin(__is_reference)
+#if __has_builtin(__is_trivially_copyable) && __has_builtin(__is_reference)
     template <class... Ts>
-    concept trivially_copyable = ((__is_trivially_copyable(Ts) || __is_reference(Ts)) &&...);
+    concept trivially_copyable = ((__is_trivially_copyable(Ts) || __is_reference(Ts)) && ...);
 #else
     template <class... Ts>
-    concept trivially_copyable = ((std::is_trivially_copyable_v<Ts> || std::is_reference_v<Ts>) &&...);
+    concept trivially_copyable =
+      ((std::is_trivially_copyable_v<Ts> || std::is_reference_v<Ts>) &&...);
 #endif
 
     struct context_state_t {
@@ -186,7 +187,8 @@ namespace nvexec {
     struct set_noop {
       template <class... Ts>
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      void operator()(Ts&&...) const noexcept {
+        void
+        operator()(Ts&&...) const noexcept {
         // TODO TRAP
         std::printf("ERROR: use of empty variant.");
       }
@@ -369,18 +371,43 @@ namespace nvexec {
       return false;
     }
 
-    template <class OuterReceiverId>
+    template <bool>
+    struct operation_state_temp_storage_ : stream_op_state_base {
+      void* temp_storage_{nullptr};
+
+      void allocate(std::pmr::memory_resource* resource, std::size_t size) {
+        if (size != 0) {
+          temp_storage_ = resource->allocate(size);
+        }
+      }
+
+      void deallocate(std::pmr::memory_resource* resource, std::size_t size) {
+        if (temp_storage_) {
+          resource->deallocate(temp_storage_, size);
+        }
+      }
+    };
+
+    template <>
+    struct operation_state_temp_storage_<false> : stream_op_state_base {
+      void allocate(std::pmr::memory_resource*, std::size_t) {
+      }
+
+      void deallocate(std::pmr::memory_resource*, std::size_t) {
+      }
+    };
+
+    template <class OuterReceiverId, std::size_t TempStorageSize>
     struct operation_state_base_ {
       using outer_receiver_t = stdexec::__t<OuterReceiverId>;
       using outer_env_t = env_of_t<outer_receiver_t>;
       static constexpr bool borrows_stream = borrows_stream_h<outer_env_t>();
 
-      struct __t : stream_op_state_base {
+      struct __t : operation_state_temp_storage_<(TempStorageSize != 0)> {
         using __id = operation_state_base_;
         using env_t = make_stream_env_t<outer_env_t>;
 
         context_state_t context_state_;
-        void* temp_storage_{nullptr};
         outer_receiver_t receiver_;
         cudaError_t status_{cudaSuccess};
         std::optional<cudaStream_t> own_stream_{};
@@ -436,17 +463,18 @@ namespace nvexec {
       };
     };
 
-    template <class OuterReceiverId>
-    using operation_state_base_t = stdexec::__t<operation_state_base_<OuterReceiverId>>;
+    template <class OuterReceiverId, std::size_t TempStorageSize = 0>
+    using operation_state_base_t =
+      stdexec::__t<operation_state_base_<OuterReceiverId, TempStorageSize>>;
 
-    template <class OuterReceiverId>
+    template <class OuterReceiverId, std::size_t TempStorageSize = 0>
     struct propagate_receiver_t {
       using outer_receiver_t = stdexec::__t<OuterReceiverId>;
 
       struct __t : stream_receiver_base {
         using __id = propagate_receiver_t;
 
-        operation_state_base_t<OuterReceiverId>& operation_state_;
+        operation_state_base_t<OuterReceiverId, TempStorageSize>& operation_state_;
 
         template < __completion_tag Tag, class... As >
         friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
@@ -462,20 +490,24 @@ namespace nvexec {
 
     template <class CvrefSenderId, class InnerReceiverId, class OuterReceiverId>
     struct operation_state_ {
-      struct __t : operation_state_base_t<OuterReceiverId> {
-        using __id = operation_state_;
-        using sender_t = __cvref_t<CvrefSenderId>;
-        using inner_receiver_t = stdexec::__t<InnerReceiverId>;
-        using outer_receiver_t = stdexec::__t<OuterReceiverId>;
-        using typename operation_state_base_t<OuterReceiverId>::env_t;
-        using variant_t = variant_storage_t<sender_t, env_t>;
+      using sender_t = __cvref_t<CvrefSenderId>;
+      using inner_receiver_t = stdexec::__t<InnerReceiverId>;
+      using outer_receiver_t = stdexec::__t<OuterReceiverId>;
+      using env_t = make_stream_env_t<env_of_t<outer_receiver_t>>;
+      using variant_t = variant_storage_t<sender_t, env_t>;
 
-        using task_t = continuation_task_t<inner_receiver_t, variant_t>;
-        using stream_enqueue_receiver_t =
-          stdexec::__t<stream_enqueue_receiver<stdexec::__id<env_t>, variant_t>>;
-        using intermediate_receiver =
-          __if_c<stream_sender<sender_t>, inner_receiver_t, stream_enqueue_receiver_t>;
-        using inner_op_state_t = connect_result_t<sender_t, intermediate_receiver>;
+      using base_t = //
+        operation_state_base_t< OuterReceiverId, inner_receiver_t::memory_allocation_size>;
+
+      using task_t = continuation_task_t<inner_receiver_t, variant_t>;
+      using stream_enqueue_receiver_t =
+        stdexec::__t<stream_enqueue_receiver<stdexec::__id<env_t>, variant_t>>;
+      using intermediate_receiver =
+        __if_c<stream_sender<sender_t>, inner_receiver_t, stream_enqueue_receiver_t>;
+      using inner_op_state_t = connect_result_t<sender_t, intermediate_receiver>;
+
+      struct __t : base_t {
+        using __id = operation_state_;
 
         friend void tag_invoke(start_t, __t& op) noexcept {
           op.started_.test_and_set(::cuda::std::memory_order::relaxed);
@@ -489,8 +521,8 @@ namespace nvexec {
           if constexpr (stream_receiver<inner_receiver_t>) {
             if (inner_receiver_t::memory_allocation_size) {
               try {
-                op.temp_storage_ = op.context_state_.managed_resource_->allocate(
-                  inner_receiver_t::memory_allocation_size);
+                op.allocate(
+                  op.context_state_.managed_resource_, inner_receiver_t::memory_allocation_size);
               } catch (...) {
                 op.propagate_completion_signal(stdexec::set_error, cudaErrorMemoryAllocation);
                 return;
@@ -508,11 +540,9 @@ namespace nvexec {
           OutR&& out_receiver,
           ReceiverProvider receiver_provider,
           context_state_t context_state)
-          : operation_state_base_t<OuterReceiverId>(
-            (outer_receiver_t&&) out_receiver,
-            context_state,
-            false)
-          , inner_op_{connect((sender_t&&) sender, receiver_provider(*this))} {
+          : base_t((outer_receiver_t&&) out_receiver, context_state, false)
+          , inner_op_{
+              connect((sender_t&&) sender, receiver_provider(static_cast<base_t&>(*this)))} {
         }
 
         template <__decays_to<outer_receiver_t> OutR, class ReceiverProvider>
@@ -521,10 +551,7 @@ namespace nvexec {
           OutR&& out_receiver,
           ReceiverProvider receiver_provider,
           context_state_t context_state)
-          : operation_state_base_t<OuterReceiverId>(
-            (outer_receiver_t&&) out_receiver,
-            context_state,
-            true)
+          : base_t((outer_receiver_t&&) out_receiver, context_state, true)
           , storage_(queue::make_host<variant_t>(this->status_, context_state.pinned_resource_))
           , task_(queue::make_host<task_t>(
                     this->status_,
@@ -553,10 +580,8 @@ namespace nvexec {
             }
           }
 
-          if (this->temp_storage_) {
-            this->context_state_.managed_resource_->deallocate(
-              this->temp_storage_, inner_receiver_t::memory_allocation_size);
-          }
+          this->deallocate(
+            this->context_state_.managed_resource_, inner_receiver_t::memory_allocation_size);
         }
 
         STDEXEC_IMMOVABLE(__t);

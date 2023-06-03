@@ -59,12 +59,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __q<max_in_pack>>>;
     };
 
-    template <class _Receiver, class _Fun>
+    template <class _Receiver, class _Fun, std::size_t Size>
     using __op_state_for = //
       __mcompose<
         __mbind_back_q<
           connect_result_t,
-          stdexec::__t<propagate_receiver_t<stdexec::__id<_Receiver>>>>,
+          stdexec::__t<propagate_receiver_t<stdexec::__id<_Receiver>, Size>>>,
         __result_sender<_Fun>>;
 
     template <class _Set, class _Sig>
@@ -93,7 +93,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     struct __receiver_ {
       using _Sender = stdexec::__t<_SenderId>;
       using _Receiver = stdexec::__t<_ReceiverId>;
-      using _Env = typename operation_state_base_t<_ReceiverId>::env_t;
+      using _Env = make_stream_env_t<env_of_t<_Receiver>>;
 
       struct __t : public stream_receiver_base {
         using __id = __receiver_;
@@ -106,10 +106,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                 && sender_to<__minvoke<__result_sender<_Fun>, _As...>, _Receiver>
         friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
           using result_sender_t = __minvoke<__result_sender<_Fun>, _As...>;
-          using op_state_t = __minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
+          using op_state_t =
+            __minvoke<__op_state_for<_Receiver, _Fun, memory_allocation_size>, _As...>;
 
           cudaStream_t stream = __self.__op_state_->get_stream();
 
+          //static_assert(std::is_trivially_destructible_v<result_sender_t>);
           result_sender_t* result_sender = static_cast<result_sender_t*>(
             __self.__op_state_->temp_storage_);
           kernel_with_result<_As&&...><<<1, 1, 0, stream>>>(
@@ -120,8 +122,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             auto& __op = __self.__op_state_->__op_state3_.template emplace<op_state_t>(__conv{[&] {
               return connect(
                 *result_sender,
-                stdexec::__t<propagate_receiver_t<_ReceiverId>>{
-                  {}, static_cast<operation_state_base_t<_ReceiverId>&>(*__self.__op_state_)});
+                stdexec::__t<propagate_receiver_t<_ReceiverId, memory_allocation_size>>{
+                  {},
+                  static_cast<operation_state_base_t<_ReceiverId, memory_allocation_size>&>(
+                    *__self.__op_state_)});
             }});
             start(__op);
           } else {
@@ -142,7 +146,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         using __op_state_variant_t = //
           __minvoke<
-            __transform< __uncurry<__op_state_for<_Receiver, _Fun>>, __nullable_variant_t>,
+            __transform<
+              __uncurry<__op_state_for<_Receiver, _Fun, memory_allocation_size>>,
+              __nullable_variant_t>,
             _Tuples...>;
 
         __operation<_SenderId, _ReceiverId, _Fun, _Let>* __op_state_;
@@ -177,7 +183,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         : __operation_base<_SenderId, _ReceiverId, _Fun, _Let>(
           (_Sender&&) __sndr,
           (_Receiver2&&) __rcvr,
-          [this](operation_state_base_t<stdexec::__id<_Receiver2>>&) -> __receiver_t {
+          [this]<class StreamProvider>(StreamProvider&) -> __receiver_t {
             return __receiver_t{{}, this};
           },
           get_completion_scheduler<set_value_t>(get_env(__sndr)).context_state_)

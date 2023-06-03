@@ -35,11 +35,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun>
     struct receiver_t {
-      class __t : public stream_receiver_base {
-        using env_t = typename operation_state_base_t<ReceiverId>::env_t;
+      using Receiver = stdexec::__t<ReceiverId>;
+      using Env = make_stream_env_t<env_of_t<Receiver>>;
 
+      class __t : stream_receiver_base {
         Fun f_;
-        operation_state_base_t<ReceiverId>& op_state_;
+        using op_state_t = operation_state_base_t<ReceiverId, MemoryAllocationSize>;
+        op_state_t& op_state_;
 
        public:
         using __id = receiver_t;
@@ -64,6 +66,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             }
           } else {
             using decayed_result_t = __decay_t<result_t>;
+            // static_assert(std::is_trivially_destructible_v<decayed_result_t>);
             decayed_result_t* d_result = static_cast<decayed_result_t*>(
               self.op_state_.temp_storage_);
             kernel_with_result<Error>
@@ -82,11 +85,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
         }
 
-        friend env_t tag_invoke(get_env_t, const __t& self) noexcept {
+        friend Env tag_invoke(get_env_t, const __t& self) noexcept {
           return self.op_state_.make_env();
         }
 
-        explicit __t(Fun fun, operation_state_base_t<ReceiverId>& op_state)
+        explicit __t(Fun fun, op_state_t& op_state)
           : f_((Fun&&) fun)
           , op_state_(op_state) {
         }
@@ -156,11 +159,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         requires receiver_of< Receiver, completion_signatures<Self, env_of_t<Receiver>>>
       friend auto tag_invoke(connect_t, Self&& self, Receiver&& rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
+        using inner_receiver_t = receiver_t<Receiver>;
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
           ((Self&&) self).sndr_,
           (Receiver&&) rcvr,
-          [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
-            -> receiver_t<Receiver> { return receiver_t<Receiver>(self.fun_, stream_provider); });
+          [&]<class StreamProvider>(StreamProvider& stream_provider) -> inner_receiver_t { //
+            return inner_receiver_t(self.fun_, stream_provider);
+          });
       }
 
       template <__decays_to<__t> Self, class Env>
