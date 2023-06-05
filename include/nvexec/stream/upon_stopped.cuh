@@ -46,7 +46,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       class __t : public stream_receiver_base {
         Fun f_;
-        using result_t = stdexec::__call_result_t<Fun>;
+        // BUGBUG: __decay_t here is wrong; see https://github.com/NVIDIA/stdexec/issues/958
+        using result_t = __decay_t<__call_result_t<Fun>>;
         using op_state_t = operation_state_base_t<ReceiverId, size_of_<result_t>>;
         op_state_t& op_state_;
 
@@ -54,6 +55,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using __id = receiver_t;
 
         constexpr static std::size_t memory_allocation_size = size_of_<result_t>;
+        using temporary_storage_type = result_t;
 
         template <same_as<set_stopped_t> _Tag>
         friend void tag_invoke(_Tag, __t&& self) noexcept {
@@ -69,10 +71,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
           } else {
-            using decayed_result_t = __decay_t<result_t>;
-            // static_assert(std::is_trivially_destructible_v<decayed_result_t>);
-            decayed_result_t* d_result = static_cast<decayed_result_t*>(
-              self.op_state_.temp_storage_);
+            // static_assert(std::is_trivially_destructible_v<result_t>);
+            result_t* d_result = static_cast<result_t*>(self.op_state_.temp_storage_);
             kernel_with_result<<<1, 1, 0, stream>>>(std::move(self.f_), d_result);
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {

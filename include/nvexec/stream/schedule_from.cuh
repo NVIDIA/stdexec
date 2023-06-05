@@ -29,29 +29,28 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using Sender = __cvref_t<CvrefSenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
       using Env = make_stream_env_t<env_of_t<Receiver>>;
-      using storage_t = variant_storage_t<Sender, Env>;
 
       struct __t : stream_receiver_base {
         using __id = receiver_t;
 
-        constexpr static std::size_t memory_allocation_size = sizeof(storage_t);
-        using op_state_t = operation_state_base_t<ReceiverId, memory_allocation_size>;
+        using temporary_storage_type = variant_storage_t<Sender, Env>;
+        constexpr static std::size_t memory_allocation_size = sizeof(temporary_storage_type);
 
-        op_state_t& operation_state_;
+        operation_state_base_t<ReceiverId, memory_allocation_size>& operation_state_;
 
         template < __completion_tag Tag, class... As>
         friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          // static_assert(storage_t::trivially_destructible);
-          storage_t* storage = ::new (self.operation_state_.temp_storage_) storage_t();
+          // static_assert(temporary_storage_type::trivially_destructible);
+          auto* storage = ::new (self.operation_state_.temp_storage_) temporary_storage_type();
           storage->template emplace<decayed_tuple<Tag, As...>>(Tag(), (As&&) as...);
 
           visit(
-            [&](auto& tpl) noexcept {
+            [&](auto& tuple) noexcept {
               ::cuda::std::apply(
-                [&]<class Tag2, class... Bs>(Tag2, Bs&... tas) noexcept {
-                  self.operation_state_.propagate_completion_signal(Tag2(), std::move(tas)...);
+                [&]<class Tag2, class... Bs>(Tag2, Bs&... bs) noexcept {
+                  self.operation_state_.propagate_completion_signal(Tag2(), (Bs&&) bs...);
                 },
-                tpl);
+                tuple);
             },
             *storage);
         }

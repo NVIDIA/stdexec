@@ -51,8 +51,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
         using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
 
         static constexpr ::std::size_t value = //
-          __v< __gather_completions_for<
-            set_value_t,
+          __v< __value_types_of_t<
             Sender,
             env_of_t<Receiver>,
             __q<result_size_for_t>,
@@ -69,6 +68,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       using __id = receiver_t;
 
       constexpr static ::std::size_t memory_allocation_size = max_result_size::value;
+      using temporary_storage_type = //
+        __minvoke<
+          __replace<variant_t<std::monostate>, void, __q<__midentity>>,
+          __value_types_of_t< //
+            Sender,
+            env_of_t<Receiver>,
+            __q<DerivedReceiver::template result_t>,
+            __transform<__q<__decay_t>, __remove<void, __q<unique_nullable_variant_t>>>>>;
 
       template <same_as<set_value_t> _Tag, class Range>
       friend void tag_invoke(_Tag, __t&& self, Range&& range) noexcept {

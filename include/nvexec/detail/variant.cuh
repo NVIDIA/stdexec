@@ -222,4 +222,10 @@ namespace nvexec {
     union_t storage_;
     index_t index_;
   };
+
+  template <class... Ts>
+  using unique_variant_t = stdexec::__minvoke<stdexec::__munique<stdexec::__q<variant_t>>, Ts...>;
+
+  template <class... Ts>
+  using unique_nullable_variant_t = unique_variant_t<std::monostate, Ts...>;
 }

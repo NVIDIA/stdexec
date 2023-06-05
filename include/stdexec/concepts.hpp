@@ -130,6 +130,13 @@ namespace stdexec {
       { __lhs = ((_RHS&&) __rhs) } -> same_as<_LHS>;
     };
 
+  template <class _LHS, class _RHS >
+  concept __nothrow_assignable_from = //
+    assignable_from<_LHS, _RHS> &&
+    requires(_LHS __lhs, _RHS&& __rhs) {
+      { __lhs = ((_RHS&&) __rhs) } noexcept;
+    };
+
   namespace __swap {
     using std::swap;
 

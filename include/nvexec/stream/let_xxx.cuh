@@ -101,6 +101,17 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         constexpr static std::size_t memory_allocation_size =
           __v<__max_sender_size<_Sender, _Receiver, _Fun, _Let>>;
 
+        // A variant of all the possible sender types, or void if there are none:
+        using temporary_storage_type = //
+          __minvoke<
+            __replace<variant_t<std::monostate>, void, __q<__midentity>>,
+            __gather_completions_for<
+              _Let,
+              _Sender,
+              env_of_t<_Receiver>,
+              __mbind_front_q<__minvoke, __result_sender<_Fun>>,
+              __transform<__q<__decay_t>, __q<unique_nullable_variant_t>>>>;
+
         template <__one_of<_Let> _Tag, class... _As>
           requires __minvocable<__result_sender<_Fun>, _As...>
                 && sender_to<__minvoke<__result_sender<_Fun>, _As...>, _Receiver>
@@ -121,11 +132,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               status == cudaSuccess) {
             auto& __op = __self.__op_state_->__op_state3_.template emplace<op_state_t>(__conv{[&] {
               return connect(
-                *result_sender,
+                (result_sender_t&&) *result_sender,
                 stdexec::__t<propagate_receiver_t<_ReceiverId, memory_allocation_size>>{
                   {},
-                  static_cast<operation_state_base_t<_ReceiverId, memory_allocation_size>&>(
-                    *__self.__op_state_)});
+                  *__self.__op_state_});
             }});
             start(__op);
           } else {
