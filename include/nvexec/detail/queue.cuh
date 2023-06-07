@@ -46,7 +46,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace queue {
 
   template <class T, class... As>
   device_ptr<T> make_device(cudaError_t& status, As&&... as) {
-    static_assert(std::is_trivially_copyable_v<T>);
+    static_assert(STDEXEC_IS_TRIVIALLY_COPYABLE(T));
 
     if (status == cudaSuccess) {
       T* ptr{};

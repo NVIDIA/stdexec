@@ -54,6 +54,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     template <class... As, class TupleT>
     __launch_bounds__(1) __global__ void copy_kernel(TupleT* tpl, As... as) {
+      static_assert(trivially_copyable<As...>);
       *tpl = decayed_tuple<As...>(static_cast<As&&>(as)...);
     }
 

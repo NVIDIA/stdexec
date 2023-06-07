@@ -38,7 +38,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           template < __completion_tag Tag, class... As >
           friend void tag_invoke(Tag, receiver_t&& self, As&&... as) noexcept {
-            Tag()(std::move(self.op_state_.receiver_), (As&&) as...);
+            Tag()(std::move(self.op_state_.rcvr_), (As&&) as...);
           }
 
           friend Env tag_invoke(get_env_t, const receiver_t& self) noexcept {
@@ -66,15 +66,15 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           if (op.status_ != cudaSuccess) {
             // Couldn't allocate memory for operation state, complete with error
-            stdexec::set_error(std::move(op.receiver_), std::move(op.status_));
+            stdexec::set_error(std::move(op.rcvr_), std::move(op.status_));
             return;
           }
 
           start(op.inner_op_);
         }
 
-        __t(Sender&& sender, Receiver&& receiver, context_state_t context_state)
-          : operation_state_base_t<ReceiverId>((Receiver&&) receiver, context_state, true)
+        __t(Sender&& sender, Receiver&& rcvr, context_state_t context_state)
+          : operation_state_base_t<ReceiverId>((Receiver&&) rcvr, context_state, true)
           , context_state_(context_state)
           , storage_(queue::make_host<variant_t>(this->status_, context_state.pinned_resource_))
           , task_(queue::make_host<task_t>(
