@@ -67,7 +67,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       }
 
       friend env_of_t<Receiver> tag_invoke(get_env_t, const __t& self) noexcept {
-        return get_env(self.op_state_.receiver_);
+        return get_env(self.op_state_.rcvr_);
       }
 
       __t(InitT init, Fun fun, op_state_t& op_state)

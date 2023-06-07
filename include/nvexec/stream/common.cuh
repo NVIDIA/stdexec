@@ -305,25 +305,27 @@ namespace nvexec {
       };
     };
 
-    template <class... As, class Receiver, class Tag>
-    __launch_bounds__(1) __global__ void continuation_kernel(Receiver receiver, Tag, As... as) {
-      Tag()(::cuda::std::move(receiver), static_cast<As&&>(as)...);
+    template <class Receiver, class... As, class Tag>
+    __launch_bounds__(1) __global__ void continuation_kernel(Receiver rcvr, Tag, As... as) {
+      // BUGBUG fix me:
+      // static_assert(trivially_copyable<Receiver, Tag, As...>);
+      Tag()(::cuda::std::move(rcvr), static_cast<As&&>(as)...);
     }
 
     template <class Receiver, class Variant>
     struct continuation_task_t : queue::task_base_t {
-      Receiver receiver_;
+      Receiver rcvr_;
       Variant* variant_;
       cudaStream_t stream_{};
       std::pmr::memory_resource* pinned_resource_{};
       cudaError_t status_{cudaSuccess};
 
       continuation_task_t(   //
-        Receiver receiver,   //
+        Receiver rcvr,       //
         Variant* variant,    //
         cudaStream_t stream, //
         std::pmr::memory_resource* pinned_resource) noexcept
-        : receiver_{receiver}
+        : rcvr_{rcvr}
         , variant_{variant}
         , stream_{stream}
         , pinned_resource_(pinned_resource) {
@@ -334,7 +336,7 @@ namespace nvexec {
             [&self](auto& tpl) noexcept {
               ::cuda::std::apply(
                 [&self]<class Tag, class... As>(Tag, As&... as) noexcept {
-                  Tag()(std::move(self.receiver_), std::move(as)...);
+                  Tag()(std::move(self.rcvr_), std::move(as)...);
                 },
                 tpl);
             },
@@ -402,14 +404,14 @@ namespace nvexec {
       using temp_storage_t = void;
 
       context_state_t context_state_;
-      outer_receiver_t receiver_;
+      outer_receiver_t rcvr_;
       cudaError_t status_{cudaSuccess};
       std::optional<cudaStream_t> own_stream_{};
       bool defer_stream_destruction_{false};
 
-      __t(outer_receiver_t receiver, context_state_t context_state, bool defer_stream_destruction)
+      __t(outer_receiver_t rcvr, context_state_t context_state, bool defer_stream_destruction)
         : context_state_(context_state)
-        , receiver_(receiver)
+        , rcvr_(rcvr)
         , defer_stream_destruction_(defer_stream_destruction) {
         if constexpr (!borrows_stream) {
           std::tie(own_stream_, status_) = create_stream_with_priority(context_state_.priority_);
@@ -420,7 +422,7 @@ namespace nvexec {
         cudaStream_t stream{};
 
         if constexpr (borrows_stream) {
-          const outer_env_t& env = get_env(receiver_);
+          const outer_env_t& env = get_env(rcvr_);
           stream = ::nvexec::STDEXEC_STREAM_DETAIL_NS::get_stream(env);
         } else {
           stream = *own_stream_;
@@ -430,19 +432,27 @@ namespace nvexec {
       }
 
       env_t make_env() const noexcept {
-        return make_stream_env(get_env(receiver_), get_stream());
+        return make_stream_env(get_env(rcvr_), get_stream());
+      }
+
+      template <__decays_to<cudaError_t> Error>
+      void propagate_completion_signal(set_error_t, Error&& status) noexcept {
+        if constexpr (stream_receiver<outer_receiver_t>) {
+          set_error((outer_receiver_t&&) rcvr_, (cudaError_t&&) status);
+        } else {
+          // pass a cudaError_t by value:
+          continuation_kernel<outer_receiver_t, Error>
+            <<<1, 1, 0, get_stream()>>>((outer_receiver_t&&) rcvr_, set_error_t(), status);
+        }
       }
 
       template <class Tag, class... As>
       void propagate_completion_signal(Tag, As&&... as) noexcept {
         if constexpr (stream_receiver<outer_receiver_t>) {
-          Tag()((outer_receiver_t&&) receiver_, (As&&) as...);
-        } else if constexpr (same_as<Tag, set_error_t>) {
-          continuation_kernel<As...> // by value
-            <<<1, 1, 0, get_stream()>>>(std::move(receiver_), Tag(), (As&&) as...);
+          Tag()((outer_receiver_t&&) rcvr_, (As&&) as...);
         } else {
-          continuation_kernel<As&&...> // by reference
-            <<<1, 1, 0, get_stream()>>>(std::move(receiver_), Tag(), (As&&) as...);
+          continuation_kernel<outer_receiver_t, As&&...> // by reference
+            <<<1, 1, 0, get_stream()>>>((outer_receiver_t&&) rcvr_, Tag(), (As&&) as...);
         }
       }
 

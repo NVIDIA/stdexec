@@ -145,6 +145,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <int BlockThreads, class... As, std::integral Shape, class Fun>
     __launch_bounds__(BlockThreads) __global__
       void kernel(Shape begin, Shape end, Fun fn, As... as) {
+      static_assert(trivially_copyable<Shape, Fun, As...>);
       const Shape i = begin + static_cast<Shape>(threadIdx.x + blockIdx.x * blockDim.x);
 
       if (i < end) {
@@ -245,7 +246,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
 
         friend env_of_t<Receiver> tag_invoke(get_env_t, const __t& self) noexcept {
-          return get_env(self.op_state_.receiver_);
+          return get_env(self.op_state_.rcvr_);
         }
 
         explicit __t(

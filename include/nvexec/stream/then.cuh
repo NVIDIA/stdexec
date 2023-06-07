@@ -25,12 +25,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace _then {
     template <class... As, class Fun>
     __launch_bounds__(1) __global__ void kernel(Fun fn, As... as) {
+      static_assert(trivially_copyable<Fun, As...>);
       ::cuda::std::move(fn)(static_cast<As&&>(as)...);
     }
 
     template <class... As, class Fun, class ResultVariant>
     __launch_bounds__(1) __global__
       void kernel_with_result(Fun fn, ResultVariant* result, As... as) {
+      static_assert(trivially_copyable<Fun, As...>);
       using result_t = __decay_t<__call_result_t<Fun, __decay_t<As>...>>;
       result->template emplace<result_t>(::cuda::std::move(fn)(static_cast<As&&>(as)...));
     }

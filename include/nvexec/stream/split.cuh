@@ -38,6 +38,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     template <class Tag, class... As, class Variant>
     __launch_bounds__(1) __global__ void copy_kernel(Variant* var, As... as) {
+      static_assert(trivially_copyable<As...>);
       using tuple_t = decayed_tuple<Tag, As...>;
       var->template emplace<tuple_t>(Tag(), static_cast<As&&>(as)...);
     }
@@ -270,8 +271,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           if (old != completion_state) {
             self.on_stop_.emplace(
-              get_stop_token(get_env(self.receiver_)),
-              on_stop_requested{shared_state->stop_source_});
+              get_stop_token(get_env(self.rcvr_)), on_stop_requested{shared_state->stop_source_});
           }
 
           do {
