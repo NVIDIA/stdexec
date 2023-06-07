@@ -41,11 +41,12 @@ namespace nvexec {
   // optional<T>
   template <class T>
   struct optional {
-    optional(nullopt_t = {}) noexcept
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE optional(nullopt_t = {}) noexcept
       : has_value_(false) {
     }
 
-    optional(optional&& other) noexcept(stdexec::__nothrow_constructible_from<T, T>)
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE
+      optional(optional&& other) noexcept(stdexec::__nothrow_constructible_from<T, T>)
       requires stdexec::constructible_from<T, T>
       : has_value_(other.has_value_) {
       if (has_value_) {
@@ -53,7 +54,7 @@ namespace nvexec {
       }
     }
 
-    optional(const optional& other)
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE optional(const optional& other)
       requires stdexec::constructible_from<T, const T&>
       : has_value_(other.has_value_) {
       if (has_value_) {
@@ -63,7 +64,7 @@ namespace nvexec {
 
     template <class... As>
       requires stdexec::constructible_from<T, As...>
-    explicit optional(std::in_place_t, As&&... as)
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE explicit optional(std::in_place_t, As&&... as)
       : has_value_(true) {
       ::new (&value_) T((As&&) as...);
     }
@@ -73,12 +74,12 @@ namespace nvexec {
             && (stdexec::__none_of<stdexec::__decay_t<U>, std::in_place_t, optional<T>>)
             && (!stdexec::same_as<const T, const bool>
                 || !stdexec::__is_instance_of<stdexec::__decay_t<U>, nvexec::optional>)
-    explicit(!stdexec::convertible_to<U&&, T>) optional(U&& value)
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE explicit(!stdexec::convertible_to<U&&, T>) optional(U&& value)
       : has_value_(true) {
       ::new (&value_) T((U&&) value);
     }
 
-    optional& operator=(optional&& other) noexcept(
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE optional& operator=(optional&& other) noexcept(
       stdexec::__nothrow_constructible_from<T, T>&& stdexec::__nothrow_assignable_from<T, T>) {
       if (other.has_value()) {
         if (has_value_) {
@@ -93,7 +94,7 @@ namespace nvexec {
       return *this;
     }
 
-    optional& operator=(const optional& other)
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE optional& operator=(const optional& other)
       requires stdexec::constructible_from<T, const T&> && stdexec::assignable_from<T, const T&>
     {
       if (other.has_value()) {
@@ -109,68 +110,69 @@ namespace nvexec {
       return *this;
     }
 
-    ~optional() {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE ~optional() {
       reset();
     }
 
     template <class... As>
       requires stdexec::constructible_from<T, As...>
-    T& emplace(As&&... as) {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE T& emplace(As&&... as) {
       reset();
       ::new (&value_) T((As&&) as...);
       has_value_ = true;
+      return value_;
     }
 
-    void reset() {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE void reset() {
       if (has_value_) {
         has_value_ = false;
         value_.~T();
       }
     }
 
-    explicit operator bool() const noexcept {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE explicit operator bool() const noexcept {
       return has_value_;
     }
 
-    bool has_value() const noexcept {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE bool has_value() const noexcept {
       return has_value_;
     }
 
-    T& value() & {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE T& value() & {
       if (!has_value_)
-        throw std::bad_optional_access();
+        throw bad_optional_access();
       return value_;
     }
 
-    T&& value() && {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE T&& value() && {
       if (!has_value_)
-        throw std::bad_optional_access();
+        throw bad_optional_access();
       return (T&&) value_;
     }
 
-    const T& value() const & {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE const T& value() const & {
       if (!has_value_)
-        throw std::bad_optional_access();
+        throw bad_optional_access();
       return value_;
     }
 
-    T& operator*() & noexcept {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE T& operator*() & noexcept {
       return value_;
     }
 
-    T&& operator*() && noexcept {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE T&& operator*() && noexcept {
       return (T&&) value_;
     }
 
-    const T& operator*() const & noexcept {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE const T& operator*() const & noexcept {
       return value_;
     }
 
-    T* operator->() noexcept {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE T* operator->() noexcept {
       return &value_;
     }
 
-    const T* operator->() const noexcept {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE const T* operator->() const noexcept {
       return &value_;
     }
 
@@ -185,9 +187,9 @@ namespace nvexec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // optional<T> specialization for trivially copyable types
   template <class T>
-    requires(std::is_trivially_copyable_v<T>)
+    requires(STDEXEC_IS_TRIVIALLY_COPYABLE(T))
   struct optional<T> {
-    optional(nullopt_t = {}) noexcept
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE optional(nullopt_t = {}) noexcept
       : has_value_(false) {
     }
 
@@ -198,76 +200,77 @@ namespace nvexec {
 
     template <class... As>
       requires stdexec::constructible_from<T, As...>
-    explicit optional(std::in_place_t, As&&... as)
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE explicit optional(std::in_place_t, As&&... as)
       : has_value_(true) {
       ::new (&value_) T((As&&) as...);
     }
 
     template <class U = T>
-      requires stdexec::constructible_from<T, U>
-            && (stdexec::__none_of<stdexec::__decay_t<U>, std::in_place_t, optional<T>>)
-            && (!stdexec::same_as<const T, const bool>
-                || !stdexec::__is_instance_of<stdexec::__decay_t<U>, nvexec::optional>)
-    explicit(!stdexec::convertible_to<U&&, T>) optional(U&& value)
+      requires(stdexec::__none_of<stdexec::__decay_t<U>, std::in_place_t, optional<T>>)
+           && (!stdexec::same_as<const T, const bool>
+               || !stdexec::__is_instance_of<stdexec::__decay_t<U>, nvexec::optional>)
+           && stdexec::constructible_from<T, U>
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE explicit(!stdexec::convertible_to<U&&, T>) optional(U&& value)
       : has_value_(true) {
       ::new (&value_) T((U&&) value);
     }
 
     template <class... As>
       requires stdexec::constructible_from<T, As...>
-    T& emplace(As&&... as) {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE T& emplace(As&&... as) {
       reset();
       ::new (&value_) T((As&&) as...);
       has_value_ = true;
+      return value_;
     }
 
-    void reset() {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE void reset() {
       has_value_ = false;
     }
 
-    explicit operator bool() const noexcept {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE explicit operator bool() const noexcept {
       return has_value_;
     }
 
-    bool has_value() const noexcept {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE bool has_value() const noexcept {
       return has_value_;
     }
 
-    T& value() & {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE T& value() & {
       if (!has_value_)
-        throw std::bad_optional_access();
+        throw bad_optional_access();
       return value_;
     }
 
-    T&& value() && {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE T&& value() && {
       if (!has_value_)
-        throw std::bad_optional_access();
+        throw bad_optional_access();
       return (T&&) value_;
     }
 
-    const T& value() const & {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE const T& value() const & {
       if (!has_value_)
-        throw std::bad_optional_access();
+        throw bad_optional_access();
       return value_;
     }
 
-    T& operator*() & noexcept {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE T& operator*() & noexcept {
       return value_;
     }
 
-    T&& operator*() && noexcept {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE T&& operator*() && noexcept {
       return (T&&) value_;
     }
 
-    const T& operator*() const & noexcept {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE const T& operator*() const & noexcept {
       return value_;
     }
 
-    T* operator->() noexcept {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE T* operator->() noexcept {
       return &value_;
     }
 
-    const T* operator->() const noexcept {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE const T* operator->() const noexcept {
       return &value_;
     }
 
@@ -279,6 +282,6 @@ namespace nvexec {
     };
   };
 
-  static_assert(std::is_trivially_copyable_v<optional<int>>);
+  static_assert(STDEXEC_IS_TRIVIALLY_COPYABLE(optional<int>));
 
 }

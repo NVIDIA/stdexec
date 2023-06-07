@@ -29,8 +29,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     }
 
     template <class Fun, class ResultT>
-    __launch_bounds__(1) __global__ void kernel_with_result(Fun fn, ResultT* result) {
-      new (result) ResultT(::cuda::std::move(fn)());
+    __launch_bounds__(1) __global__ void kernel_with_result(Fun fn, optional<ResultT>* result) {
+      result->emplace(::cuda::std::move(fn)());
     }
 
     template <class T>
@@ -48,13 +48,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         Fun f_;
         // BUGBUG: __decay_t here is wrong; see https://github.com/NVIDIA/stdexec/issues/958
         using result_t = __decay_t<__call_result_t<Fun>>;
-        using op_state_t = operation_state_base_t<ReceiverId, size_of_<result_t>>;
+        using op_state_t = operation_state_base_t<ReceiverId, result_t>;
         op_state_t& op_state_;
 
        public:
         using __id = receiver_t;
 
-        constexpr static std::size_t memory_allocation_size = size_of_<result_t>;
         using temporary_storage_type = result_t;
 
         template <same_as<set_stopped_t> _Tag>
@@ -71,12 +70,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
           } else {
-            // static_assert(std::is_trivially_destructible_v<result_t>);
-            result_t* d_result = static_cast<result_t*>(self.op_state_.temp_storage_);
-            kernel_with_result<<<1, 1, 0, stream>>>(std::move(self.f_), d_result);
+            optional<result_t>& d_result = *self.op_state_.temp_storage_;
+            kernel_with_result<<<1, 1, 0, stream>>>(std::move(self.f_), &d_result);
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
-              self.op_state_.propagate_completion_signal(stdexec::set_value, *d_result);
+              self.op_state_.propagate_completion_signal(stdexec::set_value, std::move(*d_result));
             } else {
               self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             }

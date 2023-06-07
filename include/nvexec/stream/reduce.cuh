@@ -49,8 +49,8 @@ namespace nvexec {
           cudaStream_t stream = self.op_state_.get_stream();
 
           using value_t = result_t<Range>;
-          static_assert(std::is_trivially_destructible_v<value_t>);
-          value_t* d_out = static_cast<value_t*>(self.op_state_.temp_storage_);
+          static_assert(STDEXEC_IS_TRIVIALLY_COPYABLE(value_t));
+          value_t* d_out = &self.op_state_.temp_storage_->emplace().template emplace<value_t>();
 
           void* d_temp_storage{};
           std::size_t temp_storage_size{};

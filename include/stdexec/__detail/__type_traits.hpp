@@ -22,11 +22,12 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // A very simple std::declval replacement that doesn't handle void
   template <class _Tp>
+  STDEXEC_DETAIL_CUDACC_HOST_DEVICE
   _Tp&& __declval() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __decay_t: An efficient implementation for std::decay
-#if __has_builtin(__decay)
+#if STDEXEC_HAS_BUILTIN(__decay)
 
   template <class _Ty>
   using __decay_t = __decay(_Ty);

@@ -28,32 +28,33 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       ::cuda::std::move(fn)(static_cast<As&&>(as)...);
     }
 
-    template <class... As, class Fun, class ResultT>
-    __launch_bounds__(1) __global__ void kernel_with_result(Fun fn, ResultT* result, As... as) {
-      new (result) ResultT(::cuda::std::move(fn)(static_cast<As&&>(as)...));
+    template <class... As, class Fun, class ResultVariant>
+    __launch_bounds__(1) __global__
+      void kernel_with_result(Fun fn, ResultVariant* result, As... as) {
+      using result_t = __decay_t<__call_result_t<Fun, As...>>;
+      result->template emplace<result_t>(::cuda::std::move(fn)(static_cast<As&&>(as)...));
     }
 
-    template <std::size_t MemoryAllocationSize, class ReceiverId, class Fun, class TempStorage>
+    template <class ReceiverId, class Fun, class TempStorage>
     struct receiver_t {
       using Receiver = stdexec::__t<ReceiverId>;
       using Env = make_stream_env_t<env_of_t<Receiver>>;
 
       class __t : stream_receiver_base {
         Fun f_;
-        using op_state_t = operation_state_base_t<ReceiverId, MemoryAllocationSize>;
+        using op_state_t = operation_state_base_t<ReceiverId, TempStorage>;
         op_state_t& op_state_;
 
        public:
         using __id = receiver_t;
 
-        constexpr static std::size_t memory_allocation_size = MemoryAllocationSize;
         using temporary_storage_type = TempStorage;
 
         template <same_as<set_error_t> _Tag, class Error>
         friend void tag_invoke(_Tag, __t&& self, Error&& error) noexcept
           requires std::invocable<Fun, Error>
         {
-          using result_t = std::invoke_result_t<Fun, Error>;
+          using result_t = __decay_t<__call_result_t<Fun, Error>>;
           constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
           cudaStream_t stream = self.op_state_.get_stream();
 
@@ -66,15 +67,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
           } else {
-            using decayed_result_t = __decay_t<result_t>;
-            // static_assert(std::is_trivially_destructible_v<decayed_result_t>);
-            decayed_result_t* d_result = static_cast<decayed_result_t*>(
-              self.op_state_.temp_storage_);
+            temporary_storage_type& d_result = self.op_state_.temp_storage_->emplace();
             kernel_with_result<Error>
-              <<<1, 1, 0, stream>>>(std::move(self.f_), d_result, (Error&&) error);
+              <<<1, 1, 0, stream>>>(std::move(self.f_), &d_result, (Error&&) error);
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
-              self.op_state_.propagate_completion_signal(stdexec::set_value, std::move(*d_result));
+              self.op_state_.propagate_completion_signal(
+                stdexec::set_value, std::move(d_result.template get<result_t>()));
             } else {
               self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
@@ -107,41 +106,6 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       Sender sndr_;
       Fun fun_;
 
-      template <class T, int = 0>
-      struct size_of_ {
-        using __t = __msize_t<sizeof(T)>;
-      };
-
-      template <int W>
-      struct size_of_<void, W> {
-        using __t = __msize_t<0>;
-      };
-
-      template <class... As>
-      struct result_size_for {
-        using __t = typename size_of_<__call_result_t<Fun, As...>>::__t;
-      };
-
-      template <class... Sizes>
-      struct max_in_pack {
-        static constexpr std::size_t value = std::max({std::size_t{}, __v<Sizes>...});
-      };
-
-      template <class Receiver>
-        requires sender_in<Sender, env_of_t<Receiver>>
-      struct max_result_size {
-        template <class... _As>
-        using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
-
-        static constexpr std::size_t value = //
-          __v< __gather_completions_for<
-            set_error_t,
-            Sender,
-            env_of_t<Receiver>,
-            __q<result_size_for_t>,
-            __q<max_in_pack>>>;
-      };
-
       // A nullable variant of all the possible callable result types:
       template <class Receiver>
         requires sender_in<Sender, env_of_t<Receiver>>
@@ -156,7 +120,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class Receiver>
       using receiver_t = //
         stdexec::__t<
-          _upon_error::receiver_t< max_result_size<Receiver>::value, stdexec::__id<Receiver>, Fun, temp_storage_t<Receiver>>>;
+          _upon_error::receiver_t<stdexec::__id<Receiver>, Fun, temp_storage_t<Receiver>>>;
 
       template <class Self, class Env>
       using completion_signatures = //

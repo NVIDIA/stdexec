@@ -36,29 +36,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
     using Receiver = stdexec::__t<ReceiverId>;
 
     struct __t : public stream_receiver_base {
-      template <class... Range>
-      struct result_size_for {
-        using __t = __msize_t< sizeof(typename DerivedReceiver::template result_t<Range...>)>;
-      };
-
-      template <class... Sizes>
-      struct max_in_pack {
-        static constexpr ::std::size_t value = ::std::max({::std::size_t{}, __v<Sizes>...});
-      };
-
-      struct max_result_size {
-        template <class... _As>
-        using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
-
-        static constexpr ::std::size_t value = //
-          __v< __value_types_of_t<
+      using _temporary_storage_type = //
+        __minvoke<
+          __replace<variant_t<std::monostate>, void, __q<__midentity>>,
+          __value_types_of_t< //
             Sender,
             env_of_t<Receiver>,
-            __q<result_size_for_t>,
-            __q<max_in_pack>>>;
-      };
+            __q<DerivedReceiver::template result_t>,
+            __transform<__q<__decay_t>, __remove<void, __q<unique_nullable_variant_t>>>>>;
 
-      using op_state_t = operation_state_base_t<ReceiverId, max_result_size::value>;
+      using op_state_t = operation_state_base_t<ReceiverId, _temporary_storage_type>;
 
       op_state_t& op_state_;
       STDEXEC_NO_UNIQUE_ADDRESS InitT init_;
@@ -67,15 +54,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
      public:
       using __id = receiver_t;
 
-      constexpr static ::std::size_t memory_allocation_size = max_result_size::value;
-      using temporary_storage_type = //
-        __minvoke<
-          __replace<variant_t<std::monostate>, void, __q<__midentity>>,
-          __value_types_of_t< //
-            Sender,
-            env_of_t<Receiver>,
-            __q<DerivedReceiver::template result_t>,
-            __transform<__q<__decay_t>, __remove<void, __q<unique_nullable_variant_t>>>>>;
+      using temporary_storage_type = _temporary_storage_type;
 
       template <same_as<set_value_t> _Tag, class Range>
       friend void tag_invoke(_Tag, __t&& self, Range&& range) noexcept {

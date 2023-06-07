@@ -34,14 +34,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using __id = receiver_t;
 
         using temporary_storage_type = variant_storage_t<Sender, Env>;
-        constexpr static std::size_t memory_allocation_size = sizeof(temporary_storage_type);
 
-        operation_state_base_t<ReceiverId, memory_allocation_size>& operation_state_;
+        operation_state_base_t<ReceiverId, temporary_storage_type>& operation_state_;
 
         template < __completion_tag Tag, class... As>
         friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          // static_assert(temporary_storage_type::trivially_destructible);
-          auto* storage = ::new (self.operation_state_.temp_storage_) temporary_storage_type();
+          auto* storage = &self.operation_state_.temp_storage_->emplace();
           storage->template emplace<decayed_tuple<Tag, As...>>(Tag(), (As&&) as...);
 
           visit(

@@ -83,6 +83,12 @@
 #define STDEXEC_HAS_BUILTIN(...) 0
 #endif
 
+#if STDEXEC_HAS_BUILTIN(__is_trivially_copyable) || STDEXEC_MSVC()
+#define STDEXEC_IS_TRIVIALLY_COPYABLE(...) __is_trivially_copyable(__VA_ARGS__)
+#else
+#define STDEXEC_IS_TRIVIALLY_COPYABLE(...) std::is_trivially_copyable_v<__VA_ARGS__>
+#endif
+
 // Before gcc-12, gcc really didn't like tuples or variants of immovable types
 #if STDEXEC_GCC() && (__GNUC__ < 12)
 #define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&)

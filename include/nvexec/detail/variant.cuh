@@ -191,15 +191,16 @@ namespace nvexec {
     }
 
     template <detail::one_of<Ts...> T, class... As>
-    STDEXEC_DETAIL_CUDACC_HOST_DEVICE void emplace(As&&... as) {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE T& emplace(As&&... as) {
       destroy();
-      construct<T>((As&&) as...);
+      return construct<T>((As&&) as...);
     }
 
     template <detail::one_of<Ts...> T, class... As>
-    STDEXEC_DETAIL_CUDACC_HOST_DEVICE void construct(As&&... as) {
+    STDEXEC_DETAIL_CUDACC_HOST_DEVICE T& construct(As&&... as) {
       ::new (storage_.data_) T((As&&) as...);
       index_ = index_of<T>();
+      return *static_cast<T*>(static_cast<void*>(storage_.data_));
     }
 
     STDEXEC_DETAIL_CUDACC_HOST_DEVICE void destroy() {

@@ -22,12 +22,6 @@
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace let_xxx {
-    template <class... As, class Fun, class ResultSenderT>
-    __launch_bounds__(1) __global__
-      void kernel_with_result(Fun fn, ResultSenderT* result, As... as) {
-      new (result) ResultSenderT(::cuda::std::move(fn)(static_cast<As&&>(as)...));
-    }
-
     template <class _Tp>
     using __decay_ref = __decay_t<_Tp>&;
 
@@ -35,36 +29,19 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     using __result_sender = //
       __transform< __q<__decay_ref>, __mbind_front_q<__call_result_t, _Fun>>;
 
-    template <class... Sizes>
-    struct max_in_pack {
-      static constexpr std::size_t value = std::max({std::size_t{}, __v<Sizes>...});
-    };
+    template <class... As, class Fun, class ResultSenderVariant>
+    __launch_bounds__(1) __global__
+      void kernel_with_result(Fun fn, ResultSenderVariant* result, As... as) {
+      using result_sender_t = __minvoke<__result_sender<Fun>, As...>;
+      result->template emplace<result_sender_t>(::cuda::std::move(fn)(static_cast<As&&>(as)...));
+    }
 
-    template <class _Sender, class _Receiver, class _Fun, class _SetTag>
-      requires sender_in<_Sender, env_of_t<_Receiver>>
-    struct __max_sender_size {
-      template <class... _As>
-      struct __sender_size_for_ {
-        using __t = __msize_t<sizeof(__minvoke<__result_sender<_Fun>, _As...>)>;
-      };
-      template <class... _As>
-      using __sender_size_for_t = stdexec::__t<__sender_size_for_<_As...>>;
-
-      static constexpr std::size_t value = //
-        __v<__gather_completions_for<
-          _SetTag,
-          _Sender,
-          env_of_t<_Receiver>,
-          __q<__sender_size_for_t>,
-          __q<max_in_pack>>>;
-    };
-
-    template <class _Receiver, class _Fun, std::size_t Size>
+    template <class _Receiver, class _Fun>
     using __op_state_for = //
       __mcompose<
         __mbind_back_q<
           connect_result_t,
-          stdexec::__t<propagate_receiver_t<stdexec::__id<_Receiver>, Size>>>,
+          stdexec::__t<propagate_receiver_t<stdexec::__id<_Receiver>>>>,
         __result_sender<_Fun>>;
 
     template <class _Set, class _Sig>
@@ -98,9 +75,6 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       struct __t : public stream_receiver_base {
         using __id = __receiver_;
 
-        constexpr static std::size_t memory_allocation_size =
-          __v<__max_sender_size<_Sender, _Receiver, _Fun, _Let>>;
-
         // A variant of all the possible sender types, or void if there are none:
         using temporary_storage_type = //
           __minvoke<
@@ -117,25 +91,20 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                 && sender_to<__minvoke<__result_sender<_Fun>, _As...>, _Receiver>
         friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
           using result_sender_t = __minvoke<__result_sender<_Fun>, _As...>;
-          using op_state_t =
-            __minvoke<__op_state_for<_Receiver, _Fun, memory_allocation_size>, _As...>;
+          using op_state_t = __minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
 
           cudaStream_t stream = __self.__op_state_->get_stream();
 
-          //static_assert(std::is_trivially_destructible_v<result_sender_t>);
-          result_sender_t* result_sender = static_cast<result_sender_t*>(
-            __self.__op_state_->temp_storage_);
+          temporary_storage_type& result_sender = __self.__op_state_->temp_storage_->emplace();
           kernel_with_result<_As&&...><<<1, 1, 0, stream>>>(
-            std::move(__self.__op_state_->__fun_), result_sender, (_As&&) __as...);
+            std::move(__self.__op_state_->__fun_), &result_sender, (_As&&) __as...);
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
               status == cudaSuccess) {
             auto& __op = __self.__op_state_->__op_state3_.template emplace<op_state_t>(__conv{[&] {
               return connect(
-                (result_sender_t&&) *result_sender,
-                stdexec::__t<propagate_receiver_t<_ReceiverId, memory_allocation_size>>{
-                  {},
-                  *__self.__op_state_});
+                (result_sender_t&&) result_sender.template get<result_sender_t>(),
+                stdexec::__t<propagate_receiver_t<_ReceiverId>>{{}, *__self.__op_state_});
             }});
             start(__op);
           } else {
@@ -156,9 +125,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         using __op_state_variant_t = //
           __minvoke<
-            __transform<
-              __uncurry<__op_state_for<_Receiver, _Fun, memory_allocation_size>>,
-              __nullable_variant_t>,
+            __transform< __uncurry<__op_state_for<_Receiver, _Fun>>, __nullable_variant_t>,
             _Tuples...>;
 
         __operation<_SenderId, _ReceiverId, _Fun, _Let>* __op_state_;
