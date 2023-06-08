@@ -535,6 +535,7 @@ namespace exec {
 
       class __run_sender {
        public:
+        using is_sender = void;
         using completion_signatures = stdexec::completion_signatures<
           stdexec::set_value_t(),
           stdexec::set_error_t(std::exception_ptr),
