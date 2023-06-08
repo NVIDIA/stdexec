@@ -328,6 +328,11 @@ namespace exec {
     };
 
     class __scheduler;
+    
+    enum class until {
+      stopped,
+      empty
+    };
 
     class __context : __context_base {
      public:
@@ -421,7 +426,7 @@ namespace exec {
         }
       }
 
-      void run() {
+      void run_until_stopped() {
         bool expected_running = false;
         // Only one thread of execution is allowed to drive the io context.
         if (!__is_running_.compare_exchange_strong(
@@ -485,9 +490,81 @@ namespace exec {
         }
       }
 
+      struct __on_stop {
+        __context& __context_;
+
+        void operator()() const noexcept {
+          __context_.request_stop();
+        }
+      };
+
+      template <class _Rcvr>
+      struct __run_op {
+        using __id = __run_op;
+        using __t = __run_op;
+        [[maybe_unused]] _Rcvr __rcvr_;
+        __context& __context_;
+        until __mode_;
+
+        using __on_stopped_callback = typename stdexec::stop_token_of_t<
+          stdexec::env_of_t<_Rcvr&>>::template callback_type<__on_stop>;
+
+        friend void tag_invoke(stdexec::start_t, __run_op& __self) noexcept {
+          std::optional<__on_stopped_callback> __callback(
+            std::in_place,
+            stdexec::get_stop_token(stdexec::get_env(__self.__rcvr_)),
+            __on_stop{__self.__context_});
+          try {
+            if (__self.__mode_ == until::stopped) {
+              __self.__context_.run_until_stopped();
+            } else {
+              __self.__context_.run_until_empty();
+            }
+          } catch (...) {
+            __callback.reset();
+            stdexec::set_error(static_cast<_Rcvr&&>(__self.__rcvr_), std::current_exception());
+          }
+          __callback.reset();
+          if (__self.__context_.stop_requested()) {
+            stdexec::set_stopped(static_cast<_Rcvr&&>(__self.__rcvr_));
+          } else {
+            stdexec::set_value(static_cast<_Rcvr&&>(__self.__rcvr_));
+          }
+        }
+      };
+
+      class __run_sender {
+       public:
+        using completion_signatures = stdexec::completion_signatures<
+          stdexec::set_value_t(),
+          stdexec::set_error_t(std::exception_ptr),
+          stdexec::set_stopped_t()>;
+
+       private:
+        friend class __context;
+        __context* __context_;
+        until __mode_;
+
+        explicit __run_sender(__context* __context) noexcept
+          : __context_{__context} {
+        }
+
+        template <
+          stdexec::__decays_to<__run_sender> _Self,
+          stdexec::receiver_of<completion_signatures> _Rcvr>
+        friend auto tag_invoke(stdexec::connect_t, _Self&& __self, _Rcvr&& __rcvr) noexcept
+          -> __run_op<stdexec::__decay_t<_Rcvr>> {
+          return {static_cast<_Rcvr&&>(__rcvr), *__self.__context_, __self.__mode_};
+        }
+      };
+
+      __run_sender run(until __mode = until::stopped) {
+        return __run_sender{this};
+      }
+
       void run_until_empty() {
         __break_loop_.store(true, std::memory_order_relaxed);
-        run();
+        run_until_stopped();
       }
 
       __scheduler get_scheduler() noexcept;
@@ -809,7 +886,7 @@ namespace exec {
       }
 
       _Receiver&& receiver() && noexcept {
-        return __receiver_;
+        return static_cast<_Receiver&&>(__receiver_);
       }
 
       __context& context() noexcept {
@@ -1056,6 +1133,7 @@ namespace exec {
     }
   }
 
+  using __io_uring::until;
   using io_uring_context = __io_uring::__context;
   using io_uring_scheduler = __io_uring::__scheduler;
 }
