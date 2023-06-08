@@ -78,7 +78,7 @@ namespace exec {
             requires sender_to<_Sender, __receiver<_Receiver>>
           friend connect_result_t<_Sender, __receiver<_Receiver>>
             tag_invoke(connect_t, __t&& __self, _Receiver&& __rcvr) noexcept {
-            return connect(
+            return stdexec::connect(
               (_Sender&&) __self.__sender_, __receiver<_Receiver>{(_Receiver&&) __rcvr});
           }
 

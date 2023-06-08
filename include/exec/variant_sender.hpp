@@ -40,7 +40,7 @@ namespace exec {
         __t(_Sender&& __sender, _Receiver&& __receiver) noexcept(
           __nothrow_connectable<_Sender, _Receiver>)
           : __variant_{std::in_place_type<connect_result_t<_Sender, _Receiver>>, __conv{[&] {
-                         return connect((_Sender&&) __sender, (_Receiver&&) __receiver);
+                         return stdexec::connect((_Sender&&) __sender, (_Receiver&&) __receiver);
                        }}} {
         }
       };

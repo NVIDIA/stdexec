@@ -921,7 +921,7 @@ namespace exec {
               using __op_state_t = connect_result_t<_Sender, __receiver_ref_t>;
               return __immovable_operation_storage{
                 std::in_place_type<__op_state_t>, __conv{[&] {
-                  return connect((_Sender&&) __sender, (__receiver_ref_t&&) __receiver);
+                  return stdexec::connect((_Sender&&) __sender, (__receiver_ref_t&&) __receiver);
                 }}};
             }};
           return &__vtable_;
