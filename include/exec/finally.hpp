@@ -216,7 +216,7 @@ namespace exec {
         STDEXEC_ASSERT(__op_.index() == 0);
         _FinalSender __final_sender = (_FinalSender&&) std::get_if<0>(&__op_)->__sender_;
         __final_op_t& __final_op = __op_.template emplace<1>(__conv{[&] {
-          return connect((_FinalSender&&) __final_sender, __final_receiver_t{this});
+          return stdexec::connect((_FinalSender&&) __final_sender, __final_receiver_t{this});
         }});
         start(__final_op);
       }
@@ -226,7 +226,7 @@ namespace exec {
         , __op_(std::in_place_index<0>, __conv{[&] {
                   return __initial_op_t{
                     (_FinalSender&&) __final_sender,
-                    connect((_InitialSender&&) __initial_sender, __initial_receiver_t{this})};
+                    stdexec::connect((_InitialSender&&) __initial_sender, __initial_receiver_t{this})};
                 }}) {
       }
     };
