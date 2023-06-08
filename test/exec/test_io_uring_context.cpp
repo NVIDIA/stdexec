@@ -67,7 +67,7 @@ TEST_CASE("io_uring_context Schedule runs in io thread", "[types][io_uring][sche
   io_uring_context context;
   io_uring_scheduler scheduler = context.get_scheduler();
   jthread io_thread{[&] {
-    context.run();
+    context.run_until_stopped();
   }};
   {
     scope_guard guard{[&]() noexcept {
@@ -123,6 +123,42 @@ TEST_CASE(
   CHECK(!context.stop_requested());
 }
 
+
+TEST_CASE(
+  "io_uring_context Call io_uring::run with sync_wait and when_any",
+  "[types][io_uring][schedulers]") {
+  io_uring_context context;
+  io_uring_scheduler scheduler = context.get_scheduler();
+  bool is_called = false;
+  sync_wait(when_any(
+    schedule_after(scheduler, 500us) | then([&] {
+      CHECK(context.is_running());
+      is_called = true;
+    }),
+    context.run()));
+  CHECK(is_called);
+  CHECK(!context.is_running());
+  CHECK(context.stop_requested());
+}
+
+TEST_CASE(
+  "io_uring_context Call io_uring::run with sync_wait and when_all",
+  "[types][io_uring][schedulers]") {
+  io_uring_context context;
+  io_uring_scheduler scheduler = context.get_scheduler();
+  bool is_called = false;
+  sync_wait(when_all(
+    schedule_after(scheduler, 500us) | then([&] {
+      CHECK(context.is_running());
+      is_called = true;
+    }),
+    context.run(until::empty)));
+  CHECK(is_called);
+  CHECK(!context.is_running());
+  CHECK(!context.stop_requested());
+}
+
+
 TEST_CASE(
   "io_uring_context Explicitly stop the io_uring_context",
   "[types][io_uring][schedulers]") {
@@ -141,7 +177,7 @@ TEST_CASE(
   }
   context.request_stop();
   CHECK(context.stop_requested());
-  context.run();
+  context.run_until_stopped();
   CHECK(context.stop_requested());
   bool is_stopped = false;
   sync_wait(schedule(scheduler) | then([&] { CHECK(false); }) | stdexec::upon_stopped([&] {
@@ -156,7 +192,7 @@ TEST_CASE(
   io_uring_context context;
   io_uring_scheduler scheduler = context.get_scheduler();
   jthread io_thread{[&] {
-    context.run();
+    context.run_until_stopped();
   }};
   auto fn = [&] {
     CHECK(io_thread.get_id() == std::this_thread::get_id());
@@ -218,7 +254,7 @@ TEST_CASE("io_uring_context Stop io_uring_context", "[types][io_uring][scheduler
   io_uring_context context;
   io_uring_scheduler scheduler = context.get_scheduler();
   jthread io_thread{[&] {
-    context.run();
+    context.run_until_stopped();
   }};
   {
     single_thread_context ctx1{};
@@ -238,7 +274,7 @@ TEST_CASE("io_uring_context schedule_after 0s", "[types][io_uring][schedulers]")
   io_uring_context context;
   io_uring_scheduler scheduler = context.get_scheduler();
   jthread io_thread{[&] {
-    context.run();
+    context.run_until_stopped();
   }};
   {
     scope_guard guard{[&]() noexcept {
@@ -259,7 +295,7 @@ TEST_CASE("io_uring_context schedule_after -1s", "[types][io_uring][schedulers]"
   io_uring_context context;
   io_uring_scheduler scheduler = context.get_scheduler();
   jthread io_thread{[&] {
-    context.run();
+    context.run_until_stopped();
   }};
   {
     scope_guard guard{[&]() noexcept {
