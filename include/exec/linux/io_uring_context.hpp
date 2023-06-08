@@ -502,7 +502,7 @@ namespace exec {
       struct __run_op {
         using __id = __run_op;
         using __t = __run_op;
-        [[maybe_unused]] _Rcvr __rcvr_;
+        _Rcvr __rcvr_;
         __context& __context_;
         until __mode_;
 
@@ -546,8 +546,9 @@ namespace exec {
         __context* __context_;
         until __mode_;
 
-        explicit __run_sender(__context* __context) noexcept
-          : __context_{__context} {
+        explicit __run_sender(__context* __context, until __mode) noexcept
+          : __context_{__context}
+          , __mode_{__mode} {
         }
 
         template <
@@ -560,7 +561,7 @@ namespace exec {
       };
 
       __run_sender run(until __mode = until::stopped) {
-        return __run_sender{this};
+        return __run_sender{this, __mode};
       }
 
       void run_until_empty() {
