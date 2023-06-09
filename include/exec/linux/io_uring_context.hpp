@@ -344,6 +344,12 @@ namespace exec {
         __wakeup_operation_.start();
       }
 
+      ~__context() noexcept {
+        if (!__pending_.empty()) {
+          run_until_empty();
+        }
+      }
+
       void wakeup() {
         std::uint64_t __wakeup = 1;
         __throw_error_code_if(::write(__eventfd_, &__wakeup, sizeof(__wakeup)) == -1, errno);
@@ -509,7 +515,7 @@ namespace exec {
         using __on_stopped_callback = typename stdexec::stop_token_of_t<
           stdexec::env_of_t<_Rcvr&>>::template callback_type<__on_stop>;
 
-        friend void tag_invoke(stdexec::start_t, __run_op& __self) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void start)(this __run_op& __self, stdexec::start_t) noexcept {
           std::optional<__on_stopped_callback> __callback(
             std::in_place,
             stdexec::get_stop_token(stdexec::get_env(__self.__rcvr_)),
@@ -551,10 +557,11 @@ namespace exec {
           , __mode_{__mode} {
         }
 
+        STDEXEC_CPO_ACCESS(stdexec::connect_t);
         template <
           stdexec::__decays_to<__run_sender> _Self,
           stdexec::receiver_of<completion_signatures> _Rcvr>
-        friend auto tag_invoke(stdexec::connect_t, _Self&& __self, _Rcvr&& __rcvr) noexcept
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, stdexec::connect_t, _Rcvr&& __rcvr) noexcept
           -> __run_op<stdexec::__decay_t<_Rcvr>> {
           return {static_cast<_Rcvr&&>(__rcvr), *__self.__context_, __self.__mode_};
         }
