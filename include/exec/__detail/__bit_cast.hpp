@@ -31,7 +31,7 @@
 namespace exec {
 
   template <class _Ty>
-  concept __trivially_copyable = std::is_trivially_copyable_v<_Ty>;
+  concept __trivially_copyable = STDEXEC_IS_TRIVIALLY_COPYABLE(_Ty);
 
 #if defined(STDEXEC_HAS_BIT_CAST)
   using std::bit_cast;

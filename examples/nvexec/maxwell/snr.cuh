@@ -73,7 +73,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
         return;
       }
 
-      auto sch = stdexec::get_scheduler(stdexec::get_env(op_state.receiver_));
+      auto sch = stdexec::get_scheduler(stdexec::get_env(op_state.rcvr_));
       inner_op_state_t& inner_op_state = op_state.inner_op_state_.emplace(
         stdexec::__conv{[&]() noexcept {
           return ex::connect(ex::schedule(sch) | op_state.closure_, receiver_2_t<OpT>{op_state});
@@ -110,7 +110,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
       OpT& op_state = __self.op_state_;
 
       if (op_state.n_) {
-        auto sch = stdexec::get_scheduler(stdexec::get_env(op_state.receiver_));
+        auto sch = stdexec::get_scheduler(stdexec::get_env(op_state.rcvr_));
         inner_op_state_t& inner_op_state = op_state.inner_op_state_.emplace(
           stdexec::__conv{[&]() noexcept {
             return ex::connect(ex::schedule(sch) | op_state.closure_, receiver_2_t<OpT>{op_state});
@@ -165,9 +165,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
       }
     }
 
-    operation_state_t(PredSender&& pred_sender, Closure closure, Receiver&& receiver, std::size_t n)
+    operation_state_t(PredSender&& pred_sender, Closure closure, Receiver&& rcvr, std::size_t n)
       : operation_state_base_t<ReceiverId>(
-        (Receiver&&) receiver,
+        (Receiver&&) rcvr,
         stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(pred_sender))
           .context_state_,
         false)
@@ -194,7 +194,7 @@ class receiver_t {
   STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
     friend void
     tag_invoke(_Tag __tag, receiver_t&& __self, _Args&&... __args) noexcept {
-    __tag(std::move(__self.op_state_.receiver_), (_Args&&) __args...);
+    __tag(std::move(__self.op_state_.rcvr_), (_Args&&) __args...);
   }
 
   friend void tag_invoke(ex::set_value_t, receiver_t&& __self) noexcept {
@@ -204,12 +204,12 @@ class receiver_t {
       stdexec::sync_wait(ex::schedule(exec::inline_scheduler{}) | op_state.closure_);
     }
 
-    stdexec::set_value(std::move(op_state.receiver_));
+    stdexec::set_value(std::move(op_state.rcvr_));
   }
 
   friend auto tag_invoke(ex::get_env_t, const receiver_t& self) noexcept
     -> stdexec::env_of_t<Receiver> {
-    return stdexec::get_env(self.op_state_.receiver_);
+    return stdexec::get_env(self.op_state_.rcvr_);
   }
 
   explicit receiver_t(OpT& op_state)
@@ -227,17 +227,17 @@ struct operation_state_t {
 
   inner_op_state_t op_state_;
   Closure closure_;
-  Receiver receiver_;
+  Receiver rcvr_;
   std::size_t n_{};
 
   friend void tag_invoke(stdexec::start_t, operation_state_t& self) noexcept {
     stdexec::start(self.op_state_);
   }
 
-  operation_state_t(Sender&& sender, Closure closure, Receiver&& receiver, std::size_t n)
+  operation_state_t(Sender&& sender, Closure closure, Receiver&& rcvr, std::size_t n)
     : op_state_{stdexec::connect((Sender&&) sender, receiver_t<operation_state_t>{*this})}
     , closure_{closure}
-    , receiver_{(Receiver&&) receiver}
+    , rcvr_{(Receiver&&) rcvr}
     , n_(n) {
   }
 };
