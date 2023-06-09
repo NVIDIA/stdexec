@@ -45,20 +45,20 @@ namespace nvexec {
   };
 
 #if defined(__clang__) && defined(__CUDA__)
-  __host__ inline device_type get_device_type() {
+  __host__ inline device_type get_device_type() noexcept {
     return device_type::host;
   }
 
-  __device__ inline device_type get_device_type() {
+  __device__ inline device_type get_device_type() noexcept {
     return device_type::device;
   }
 #else
-  __host__ __device__ inline device_type get_device_type() {
+  __host__ __device__ inline device_type get_device_type() noexcept {
     NV_IF_TARGET(NV_IS_HOST, (return device_type::host;), (return device_type::device;));
   }
 #endif
 
-  inline STDEXEC_DETAIL_CUDACC_HOST_DEVICE bool is_on_gpu() {
+  inline STDEXEC_DETAIL_CUDACC_HOST_DEVICE bool is_on_gpu() noexcept {
     return get_device_type() == device_type::device;
   }
 }
