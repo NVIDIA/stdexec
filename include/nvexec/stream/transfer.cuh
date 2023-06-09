@@ -59,7 +59,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using enqueue_receiver =
           stdexec::__t<stream_enqueue_receiver<stdexec::__id<Env>, variant_t>>;
         using inner_op_state_t = connect_result_t<Sender, enqueue_receiver>;
-        Env env_;
+        queue::host_ptr<__decay_t<Env>> env_{};
         inner_op_state_t inner_op_;
 
         friend void tag_invoke(start_t, __t& op) noexcept {
@@ -86,11 +86,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                     this->get_stream(),
                     context_state.pinned_resource_)
                     .release())
-          , env_(this->make_env())
+          , env_(queue::make_host(this->status_, context_state_.pinned_resource_, this->make_env()))
           , inner_op_{connect(
               (Sender&&) sender,
               enqueue_receiver{
-                &env_,
+                env_.get(),
                 storage_.get(),
                 task_,
                 context_state_.hub_->producer()})} {

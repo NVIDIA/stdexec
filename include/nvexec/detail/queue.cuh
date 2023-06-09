@@ -60,6 +60,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace queue {
     return device_ptr<T>();
   }
 
+  template <class T = void, class A>
+    requires same_as<T, void>
+  device_ptr<__decay_t<A>> make_device(cudaError_t& status, A&& t) {
+    return make_device<__decay_t<A>>(status, (A&&) t);
+  }
+
   template <class T>
   struct host_deleter_t {
     std::pmr::memory_resource* resource_{nullptr};
@@ -96,6 +102,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace queue {
 
     return host_ptr<T>(ptr, {resource});
   }
+
+  template <class T = void, class A>
+    requires same_as<T, void>
+  host_ptr<__decay_t<A>>
+    make_host(cudaError_t& status, std::pmr::memory_resource* resource, A&& t) {
+      return make_host<__decay_t<A>>(status, resource, (A&&) t);
+    }
 
   struct producer_t {
     task_base_t** tail_;

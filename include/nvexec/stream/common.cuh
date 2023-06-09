@@ -235,6 +235,7 @@ namespace nvexec {
     BaseEnv make_stream_env(BaseEnv&& base_env, cudaStream_t) noexcept {
       return (BaseEnv&&) base_env;
     }
+
     template <class BaseEnv>
     using stream_env =
       decltype(STDEXEC_STREAM_DETAIL_NS::make_stream_env(__declval<BaseEnv>(), cudaStream_t()));
@@ -537,7 +538,6 @@ namespace nvexec {
           ReceiverProvider receiver_provider,
           context_state_t context_state)
           : base_t((outer_receiver_t&&) out_receiver, context_state, false)
-          , env_(this->make_env())
           , inner_op_{
               connect((sender_t&&) sender, receiver_provider(static_cast<base_t&>(*this)))} {
         }
@@ -558,11 +558,11 @@ namespace nvexec {
                     this->get_stream(),
                     context_state.pinned_resource_)
                     .release())
-          , env_(this->make_env())
+          , env_(queue::make_host<env_t>(this->status_, context_state.pinned_resource_, this->make_env()))
           , inner_op_{connect(
               (sender_t&&) sender,
               stream_enqueue_receiver_t{
-                &env_,
+                env_.get(),
                 storage_.get(),
                 task_,
                 context_state.hub_->producer()})} {
@@ -589,7 +589,7 @@ namespace nvexec {
         queue::host_ptr<variant_t> storage_;
         task_t* task_{};
         ::cuda::std::atomic_flag started_{};
-        env_t env_;
+        queue::host_ptr<__decay_t<env_t>> env_{};
 
         inner_op_state_t inner_op_;
       };
