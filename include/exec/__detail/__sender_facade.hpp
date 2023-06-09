@@ -259,7 +259,7 @@ namespace exec {
 
         __t(_Sender&& __sndr, _Kernel __kernel, _Receiver __rcvr)
           : __state_{(_Kernel&&) __kernel, (_Receiver&&) __rcvr, (__completions_t*) nullptr}
-          , __op_(connect(
+          , __op_(stdexec::connect(
               __stl::__transform_sender(
                 __state_.__kernel_,
                 (_Sender&&) __sndr,

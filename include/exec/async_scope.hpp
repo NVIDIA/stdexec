@@ -65,7 +65,7 @@ namespace exec {
 
       explicit __when_empty_op(const __impl* __scope, _Constrained&& __sndr, _Receiver __rcvr)
         : __task{{}, __scope, __notify_waiter}
-        , __op_(connect((_Constrained&&) __sndr, (_Receiver&&) __rcvr)) {
+        , __op_(stdexec::connect((_Constrained&&) __sndr, (_Receiver&&) __rcvr)) {
       }
 
      private:
@@ -216,7 +216,7 @@ namespace exec {
       template <__decays_to<_Constrained> _Sender, __decays_to<_Receiver> _Rcvr>
       explicit __nest_op(const __impl* __scope, _Sender&& __c, _Rcvr&& __rcvr)
         : __nest_op_base<_ReceiverId>{{}, __scope, (_Rcvr&&) __rcvr}
-        , __op_(connect((_Sender&&) __c, __nest_rcvr<_ReceiverId>{this})) {
+        , __op_(stdexec::connect((_Sender&&) __c, __nest_rcvr<_ReceiverId>{this})) {
       }
      private:
       friend ::stdexec::start_t;
@@ -593,7 +593,7 @@ namespace exec {
 
       __future_state(_Sender __sndr, _Env __env, const __impl* __scope)
         : __future_state_base<_Completions, _Env>((_Env&&) __env, __scope)
-        , __op_(connect((_Sender&&) __sndr, __future_receiver_t<_Sender, _Env>{this, __scope})) {
+        , __op_(stdexec::connect((_Sender&&) __sndr, __future_receiver_t<_Sender, _Env>{this, __scope})) {
       }
 
       connect_result_t<_Sender, __future_receiver_t<_Sender, _Env>> __op_;
@@ -717,7 +717,7 @@ namespace exec {
           [](__spawn_op_base<_EnvId>* __op) {
             delete static_cast<__spawn_op*>(__op);
           }}
-        , __op_(connect((_Sndr&&) __sndr, __spawn_receiver_t<_Env>{this, __scope})) {
+        , __op_(stdexec::connect((_Sndr&&) __sndr, __spawn_receiver_t<_Env>{this, __scope})) {
       }
 
       void __start_() noexcept {

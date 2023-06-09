@@ -226,7 +226,7 @@ namespace exec {
             && (__nothrow_connectable<stdexec::__t<_SenderIds>, __receiver_t> && ...))
           : __op_base_t{(_Receiver&&) __rcvr, static_cast<int>(sizeof...(_SenderIds))}
           , __ops_{__conv{[&__senders, this] {
-            return connect(
+            return stdexec::connect(
               std::get<_Is>((_SenderTuple&&) __senders),
               __receiver_t{static_cast<__op_base_t*>(this)});
           }}...} {

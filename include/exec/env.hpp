@@ -162,7 +162,7 @@ namespace exec {
 
       __operation(_Sender&& __sndr, auto&& __rcvr, auto&& __env)
         : __base_t{(decltype(__rcvr)) __rcvr, (decltype(__env)) __env}
-        , __state_{connect((_Sender&&) __sndr, __receiver_t{{}, this})} {
+        , __state_{stdexec::connect((_Sender&&) __sndr, __receiver_t{{}, this})} {
       }
 
       STDEXEC_DEFINE_CUSTOM(void start)(this __operation& __self, start_t) noexcept {
