@@ -182,38 +182,23 @@ namespace nvexec {
       template <class _Sender, class _Env, class _State, class _Tag>
       using __bind_completions_t =
         __gather_completions_for<_Tag, _Sender, _Env, __tuple_t<_Tag>, __make_bind<_State>>;
-
-      // template <class... _Ts>
-      // using bind_tuples = //
-      //   __mbind_front_q<
-      //     variant,
-      //     ::cuda::std::tuple<set_stopped_t>,
-      //     ::cuda::std::tuple<set_error_t, cudaError_t>,
-      //     _Ts...>;
-
-      // template <class Sender, class Env>
-      // using bound_values_t = //
-      //   __value_types_of_t<
-      //     Sender,
-      //     Env,
-      //     __mbind_front_q<decayed_tuple, set_value_t>,
-      //     __q<bind_tuples>>;
     }
 
-    // template <class Sender, class Env>
-    // using variant_storage_t = //
-    //   __error_types_of_t<
-    //     Sender,
-    //     Env,
-    //     __transform<
-    //       __mbind_front_q<decayed_tuple, set_error_t>,
-    //       stream_storage_impl::bound_values_t<Sender, Env>>>;
+    struct set_noop {
+      template <class... Ts>
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+        void
+        operator()(Ts&&...) const noexcept {
+        // TODO TRAP
+        std::printf("ERROR: use of empty variant.");
+      }
+    };
 
     template <class _Sender, class _Env>
     using variant_storage_t = //
       __minvoke< __minvoke<
         __mfold_right<
-          __q<stream_storage_impl::variant>,
+          __mbind_front_q<stream_storage_impl::variant, ::cuda::std::tuple<set_noop>>,
           __mbind_front_q<stream_storage_impl::__bind_completions_t, _Sender, _Env>>,
         set_value_t,
         set_error_t,
