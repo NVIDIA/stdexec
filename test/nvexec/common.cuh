@@ -123,6 +123,8 @@ namespace detail::a_sender {
     using Receiver = stdexec::__t<ReceiverId>;
     friend stdexec::receiver_adaptor<receiver_t, Receiver>;
 
+    static_assert(std::is_trivially_copyable_v<Receiver>);
+    static_assert(std::is_trivially_copyable_v<Fun>);
     Fun f_;
 
     template <class... As>
