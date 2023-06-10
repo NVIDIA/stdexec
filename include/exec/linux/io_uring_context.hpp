@@ -344,12 +344,6 @@ namespace exec {
         __wakeup_operation_.start();
       }
 
-      ~__context() noexcept {
-        if (!__pending_.empty()) {
-          run_until_empty();
-        }
-      }
-
       void wakeup() {
         std::uint64_t __wakeup = 1;
         __throw_error_code_if(::write(__eventfd_, &__wakeup, sizeof(__wakeup)) == -1, errno);
