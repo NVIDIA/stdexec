@@ -25,6 +25,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <class... As, class Fun, class ResultSenderT>
     __launch_bounds__(1) __global__
       void kernel_with_result(Fun fn, ResultSenderT* result, As... as) {
+      static_assert(trivially_copyable<Fun, As...>);
       new (result) ResultSenderT(::cuda::std::move(fn)(static_cast<As&&>(as)...));
     }
 

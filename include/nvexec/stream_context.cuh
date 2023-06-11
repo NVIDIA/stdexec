@@ -92,8 +92,8 @@ namespace nvexec {
           cudaStream_t stream_{0};
           cudaError_t status_{cudaSuccess};
 
-          __t(Receiver&& receiver, context_state_t context_state)
-            : operation_state_base_t<ReceiverId>((Receiver&&) receiver, context_state, false) {
+          __t(Receiver&& rcvr, context_state_t context_state)
+            : operation_state_base_t<ReceiverId>((Receiver&&) rcvr, context_state, false) {
           }
 
           STDEXEC_DEFINE_CUSTOM(void start)(this __t& op, start_t) noexcept {

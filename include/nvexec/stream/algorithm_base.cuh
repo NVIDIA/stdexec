@@ -84,7 +84,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       }
 
       STDEXEC_DEFINE_CUSTOM(env_of_t<Receiver> get_env)(this const __t& self, get_env_t) noexcept {
-        return stdexec::get_env(self.op_state_.receiver_);
+        return stdexec::get_env(self.op_state_.rcvr_);
       }
 
       __t(InitT init, Fun fun, operation_state_base_t<ReceiverId>& op_state)

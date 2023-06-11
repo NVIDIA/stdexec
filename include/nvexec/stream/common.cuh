@@ -45,20 +45,20 @@ namespace nvexec {
   };
 
 #if defined(__clang__) && defined(__CUDA__)
-  __host__ inline device_type get_device_type() {
+  __host__ inline device_type get_device_type() noexcept {
     return device_type::host;
   }
 
-  __device__ inline device_type get_device_type() {
+  __device__ inline device_type get_device_type() noexcept {
     return device_type::device;
   }
 #else
-  __host__ __device__ inline device_type get_device_type() {
+  __host__ __device__ inline device_type get_device_type() noexcept {
     NV_IF_TARGET(NV_IS_HOST, (return device_type::host;), (return device_type::device;));
   }
 #endif
 
-  inline STDEXEC_DETAIL_CUDACC_HOST_DEVICE bool is_on_gpu() {
+  inline STDEXEC_DETAIL_CUDACC_HOST_DEVICE bool is_on_gpu() noexcept {
     return get_device_type() == device_type::device;
   }
 }
@@ -67,6 +67,16 @@ namespace nvexec {
   struct stream_context;
 
   namespace STDEXEC_STREAM_DETAIL_NS {
+
+#if STDEXEC_HAS_BUILTIN(__is_reference)
+    template <class... Ts>
+    concept trivially_copyable = ((STDEXEC_IS_TRIVIALLY_COPYABLE(Ts) || __is_reference(Ts)) && ...);
+#else
+    template <class... Ts>
+    concept trivially_copyable =
+      ((STDEXEC_IS_TRIVIALLY_COPYABLE(Ts) || std::is_reference_v<Ts>) &&...);
+#endif
+
     struct context_state_t {
       std::pmr::memory_resource* pinned_resource_{nullptr};
       std::pmr::memory_resource* managed_resource_{nullptr};
@@ -172,38 +182,23 @@ namespace nvexec {
       template <class _Sender, class _Env, class _State, class _Tag>
       using __bind_completions_t =
         __gather_completions_for<_Tag, _Sender, _Env, __tuple_t<_Tag>, __make_bind<_State>>;
-
-      // template <class... _Ts>
-      // using bind_tuples = //
-      //   __mbind_front_q<
-      //     variant,
-      //     ::cuda::std::tuple<set_stopped_t>,
-      //     ::cuda::std::tuple<set_error_t, cudaError_t>,
-      //     _Ts...>;
-
-      // template <class Sender, class Env>
-      // using bound_values_t = //
-      //   __value_types_of_t<
-      //     Sender,
-      //     Env,
-      //     __mbind_front_q<decayed_tuple, set_value_t>,
-      //     __q<bind_tuples>>;
     }
 
-    // template <class Sender, class Env>
-    // using variant_storage_t = //
-    //   __error_types_of_t<
-    //     Sender,
-    //     Env,
-    //     __transform<
-    //       __mbind_front_q<decayed_tuple, set_error_t>,
-    //       stream_storage_impl::bound_values_t<Sender, Env>>>;
+    struct set_noop {
+      template <class... Ts>
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+        void
+        operator()(Ts&&...) const noexcept {
+        // TODO TRAP
+        std::printf("ERROR: use of empty variant.");
+      }
+    };
 
     template <class _Sender, class _Env>
     using variant_storage_t = //
       __minvoke< __minvoke<
         __mfold_right<
-          __q<stream_storage_impl::variant>,
+          __mbind_front_q<stream_storage_impl::variant, ::cuda::std::tuple<set_noop>>,
           __mbind_front_q<stream_storage_impl::__bind_completions_t, _Sender, _Env>>,
         set_value_t,
         set_error_t,
@@ -225,6 +220,7 @@ namespace nvexec {
     BaseEnv make_stream_env(BaseEnv&& base_env, cudaStream_t) noexcept {
       return (BaseEnv&&) base_env;
     }
+
     template <class BaseEnv>
     using stream_env =
       decltype(STDEXEC_STREAM_DETAIL_NS::make_stream_env(__declval<BaseEnv>(), cudaStream_t()));
@@ -265,7 +261,7 @@ namespace nvexec {
       using Env = stdexec::__t<EnvId>;
 
       class __t {
-        Env env_;
+        Env* env_;
         Variant* variant_;
         queue::task_base_t* task_;
         queue::producer_t producer_;
@@ -301,12 +297,11 @@ namespace nvexec {
           self.producer_(self.task_);
         }
 
-        STDEXEC_DEFINE_CUSTOM(const Env& get_env)(this const __t& self, get_env_t) //
-        noexcept {
-          return self.env_;
+        STDEXEC_DEFINE_CUSTOM(const Env& get_env)(this const __t& self, get_env_t) noexcept {
+          return *self.env_;
         }
 
-        __t(Env env, Variant* variant, queue::task_base_t* task, queue::producer_t producer)
+        __t(Env* env, Variant* variant, queue::task_base_t* task, queue::producer_t producer)
           : env_(env)
           , variant_(variant)
           , task_(task)
@@ -315,25 +310,26 @@ namespace nvexec {
       };
     };
 
-    template <class... As, class Receiver, class Tag>
-    __launch_bounds__(1) __global__ void continuation_kernel(Receiver receiver, Tag, As... as) {
-      Tag()(::cuda::std::move(receiver), static_cast<As&&>(as)...);
+    template <class Receiver, class... As, class Tag>
+    __launch_bounds__(1) __global__ void continuation_kernel(Receiver rcvr, Tag, As... as) {
+      static_assert(trivially_copyable<Receiver, Tag, As...>);
+      Tag()(::cuda::std::move(rcvr), static_cast<As&&>(as)...);
     }
 
     template <class Receiver, class Variant>
     struct continuation_task_t : queue::task_base_t {
-      Receiver receiver_;
+      Receiver rcvr_;
       Variant* variant_;
       cudaStream_t stream_{};
       std::pmr::memory_resource* pinned_resource_{};
       cudaError_t status_{cudaSuccess};
 
       continuation_task_t(   //
-        Receiver receiver,   //
+        Receiver rcvr,       //
         Variant* variant,    //
         cudaStream_t stream, //
         std::pmr::memory_resource* pinned_resource) noexcept
-        : receiver_{receiver}
+        : rcvr_{rcvr}
         , variant_{variant}
         , stream_{stream}
         , pinned_resource_(pinned_resource) {
@@ -344,7 +340,7 @@ namespace nvexec {
             [&self](auto& tpl) noexcept {
               ::cuda::std::apply(
                 [&self]<class Tag, class... As>(Tag, As&... as) noexcept {
-                  Tag()(std::move(self.receiver_), std::move(as)...);
+                  Tag()(std::move(self.rcvr_), std::move(as)...);
                 },
                 tpl);
             },
@@ -394,14 +390,14 @@ namespace nvexec {
 
         context_state_t context_state_;
         void* temp_storage_{nullptr};
-        outer_receiver_t receiver_;
+        outer_receiver_t rcvr_;
         cudaError_t status_{cudaSuccess};
         std::optional<cudaStream_t> own_stream_{};
         bool defer_stream_destruction_{false};
 
-        __t(outer_receiver_t receiver, context_state_t context_state, bool defer_stream_destruction)
+        __t(outer_receiver_t rcvr, context_state_t context_state, bool defer_stream_destruction)
           : context_state_(context_state)
-          , receiver_(receiver)
+          , rcvr_(rcvr)
           , defer_stream_destruction_(defer_stream_destruction) {
           if constexpr (!borrows_stream) {
             std::tie(own_stream_, status_) = create_stream_with_priority(context_state_.priority_);
@@ -412,7 +408,7 @@ namespace nvexec {
           cudaStream_t stream{};
 
           if constexpr (borrows_stream) {
-            const outer_env_t& env = get_env(receiver_);
+            const outer_env_t& env = get_env(rcvr_);
             stream = ::nvexec::STDEXEC_STREAM_DETAIL_NS::get_stream(env);
           } else {
             stream = *own_stream_;
@@ -422,19 +418,27 @@ namespace nvexec {
         }
 
         env_t make_env() const noexcept {
-          return make_stream_env(get_env(receiver_), get_stream());
+          return make_stream_env(get_env(rcvr_), get_stream());
+        }
+
+        template <__decays_to<cudaError_t> Error>
+        void propagate_completion_signal(set_error_t, Error&& status) noexcept {
+          if constexpr (stream_receiver<outer_receiver_t>) {
+            set_error((outer_receiver_t&&) rcvr_, (cudaError_t&&) status);
+          } else {
+            // pass a cudaError_t by value:
+            continuation_kernel<outer_receiver_t, Error>
+              <<<1, 1, 0, get_stream()>>>((outer_receiver_t&&) rcvr_, set_error_t(), status);
+          }
         }
 
         template <class Tag, class... As>
         void propagate_completion_signal(Tag, As&&... as) noexcept {
           if constexpr (stream_receiver<outer_receiver_t>) {
-            Tag()((outer_receiver_t&&) receiver_, (As&&) as...);
-          } else if constexpr (same_as<Tag, set_error_t>) {
-            continuation_kernel<As...> // by value
-              <<<1, 1, 0, get_stream()>>>(std::move(receiver_), Tag(), (As&&) as...);
+            Tag()((outer_receiver_t&&) rcvr_, (As&&) as...);
           } else {
-            continuation_kernel<As&&...> // by reference
-              <<<1, 1, 0, get_stream()>>>(std::move(receiver_), Tag(), (As&&) as...);
+            continuation_kernel<outer_receiver_t, As&&...> // by reference
+              <<<1, 1, 0, get_stream()>>>((outer_receiver_t&&) rcvr_, Tag(), (As&&) as...);
           }
         }
 
@@ -493,6 +497,8 @@ namespace nvexec {
         using typename operation_state_base_t<OuterReceiverId>::env_t;
         using variant_t = variant_storage_t<sender_t, env_t>;
 
+        using base_t = operation_state_base_t<OuterReceiverId>;
+
         using task_t = continuation_task_t<inner_receiver_t, variant_t>;
         using stream_enqueue_receiver_t =
           stdexec::__t<stream_enqueue_receiver<stdexec::__id<env_t>, variant_t>>;
@@ -531,11 +537,9 @@ namespace nvexec {
           OutR&& out_receiver,
           ReceiverProvider receiver_provider,
           context_state_t context_state)
-          : operation_state_base_t<OuterReceiverId>(
-            (outer_receiver_t&&) out_receiver,
-            context_state,
-            false)
-          , inner_op_{connect((sender_t&&) sender, receiver_provider(*this))} {
+          : base_t((outer_receiver_t&&) out_receiver, context_state, false)
+          , inner_op_{
+              connect((sender_t&&) sender, receiver_provider(static_cast<base_t&>(*this)))} {
         }
 
         template <__decays_to<outer_receiver_t> OutR, class ReceiverProvider>
@@ -544,10 +548,7 @@ namespace nvexec {
           OutR&& out_receiver,
           ReceiverProvider receiver_provider,
           context_state_t context_state)
-          : operation_state_base_t<OuterReceiverId>(
-            (outer_receiver_t&&) out_receiver,
-            context_state,
-            true)
+          : base_t((outer_receiver_t&&) out_receiver, context_state, true)
           , storage_(queue::make_host<variant_t>(this->status_, context_state.pinned_resource_))
           , task_(queue::make_host<task_t>(
                     this->status_,
@@ -557,10 +558,11 @@ namespace nvexec {
                     this->get_stream(),
                     context_state.pinned_resource_)
                     .release())
+          , env_(queue::make_host<env_t>(this->status_, context_state.pinned_resource_, this->make_env()))
           , inner_op_{connect(
               (sender_t&&) sender,
               stream_enqueue_receiver_t{
-                this->make_env(),
+                env_.get(),
                 storage_.get(),
                 task_,
                 context_state.hub_->producer()})} {
@@ -587,6 +589,7 @@ namespace nvexec {
         queue::host_ptr<variant_t> storage_;
         task_t* task_{};
         ::cuda::std::atomic_flag started_{};
+        queue::host_ptr<__decay_t<env_t>> env_{};
 
         inner_op_state_t inner_op_;
       };

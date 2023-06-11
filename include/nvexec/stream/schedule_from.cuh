@@ -44,18 +44,26 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <class Tag, class... As>
         static void complete_(Tag, __t&& self, As&&... as) noexcept {
-          storage_t* storage = static_cast<storage_t*>(self.operation_state_.temp_storage_);
-          storage->template emplace<decayed_tuple<Tag, As...>>(Tag(), (As&&) as...);
+          // As an optimization, if there are no values to persist to temporary
+          // storage, skip it and simply propagate the completion signal.
+          if constexpr (sizeof...(As) == 0) {
+            self.operation_state_.propagate_completion_signal(Tag());
+          } else {
+            storage_t* storage = static_cast<storage_t*>(self.operation_state_.temp_storage_);
+            // BUGBUG TODO: construct/emplace from the device, not the host!
+            ::new (storage) storage_t();
+            storage->template emplace<decayed_tuple<Tag, As...>>(Tag(), (As&&) as...);
 
-          nvexec::visit(
-            [&](auto& tpl) noexcept {
-              ::cuda::std::apply(
-                [&]<class Tag2, class... Bs>(Tag2, Bs&... tas) noexcept {
-                  self.operation_state_.propagate_completion_signal(Tag2(), std::move(tas)...);
-                },
-                tpl);
-            },
-            *storage);
+            nvexec::visit(
+              [&](auto& tpl) noexcept {
+                ::cuda::std::apply(
+                  [&]<class Tag2, class... Bs>(Tag2, Bs&... tas) noexcept {
+                    self.operation_state_.propagate_completion_signal(Tag2(), std::move(tas)...);
+                  },
+                  tpl);
+              },
+              *storage);
+          }
         }
 
         template <same_as<set_value_t> Tag, class... Args>

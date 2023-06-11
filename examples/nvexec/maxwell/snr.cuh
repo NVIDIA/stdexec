@@ -68,7 +68,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
           return;
         }
 
-        auto sch = ex::get_scheduler(ex::get_env(op_state.receiver_));
+        auto sch = ex::get_scheduler(ex::get_env(op_state.rcvr_));
         inner_op_state_t& inner_op_state = op_state.inner_op_state_.emplace(
           ex::__conv{[&]() noexcept {
             return ex::connect(ex::schedule(sch) | op_state.closure_, receiver_2_t<OpT>{op_state});
@@ -123,7 +123,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
         OpT& op_state = __self.op_state_;
 
         if (op_state.n_) {
-          auto sch = ex::get_scheduler(ex::get_env(op_state.receiver_));
+          auto sch = ex::get_scheduler(ex::get_env(op_state.rcvr_));
           inner_op_state_t& inner_op_state = op_state.inner_op_state_.emplace(
             ex::__conv{[&]() noexcept {
               return ex::connect(
@@ -199,10 +199,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
       operation_state_t(
         PredSender&& pred_sender,
         Closure closure,
-        Receiver&& receiver,
+        Receiver&& rcvr,
         std::size_t n)
         : operation_state_base_t<ReceiverId>(
-          (Receiver&&) receiver,
+          (Receiver&&) rcvr,
           ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(pred_sender)).context_state_,
           false)
         , pred_sender_{(PredSender&&) pred_sender}
@@ -230,13 +230,13 @@ namespace repeat_n_detail {
         this receiver_t&& __self,
         _Tag __tag,
         _Error&& __err) noexcept {
-      __tag(std::move(__self.op_state_.receiver_), (_Error&&) __err);
+      __tag(std::move(__self.op_state_.rcvr_), (_Error&&) __err);
     }
 
     template <ex::same_as<ex::set_stopped_t> _Tag>
     STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
       STDEXEC_DEFINE_CUSTOM(void set_stopped)(this receiver_t&& __self, _Tag __tag) noexcept {
-      __tag(std::move(__self.op_state_.receiver_));
+      __tag(std::move(__self.op_state_.rcvr_));
     }
 
     STDEXEC_DEFINE_CUSTOM(void set_value)(this receiver_t&& __self, ex::set_value_t) noexcept {
@@ -246,12 +246,12 @@ namespace repeat_n_detail {
         ex::sync_wait(ex::schedule(exec::inline_scheduler{}) | op_state.closure_);
       }
 
-      ex::set_value(std::move(op_state.receiver_));
+      ex::set_value(std::move(op_state.rcvr_));
     }
 
     STDEXEC_DEFINE_CUSTOM(auto get_env)(this const receiver_t& self, ex::get_env_t) noexcept
       -> ex::env_of_t<Receiver> {
-      return ex::get_env(self.op_state_.receiver_);
+      return ex::get_env(self.op_state_.rcvr_);
     }
 
     explicit receiver_t(OpT& op_state)
@@ -269,17 +269,17 @@ namespace repeat_n_detail {
 
     inner_op_state_t op_state_;
     Closure closure_;
-    Receiver receiver_;
+    Receiver rcvr_;
     std::size_t n_{};
 
     STDEXEC_DEFINE_CUSTOM(void start)(this operation_state_t& self, ex::start_t) noexcept {
       ex::start(self.op_state_);
     }
 
-    operation_state_t(Sender&& sender, Closure closure, Receiver&& receiver, std::size_t n)
+    operation_state_t(Sender&& sender, Closure closure, Receiver&& rcvr, std::size_t n)
       : op_state_{ex::connect((Sender&&) sender, receiver_t<operation_state_t>{*this})}
       , closure_{closure}
-      , receiver_{(Receiver&&) receiver}
+      , rcvr_{(Receiver&&) rcvr}
       , n_(n) {
     }
   };

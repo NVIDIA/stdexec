@@ -39,19 +39,19 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           template <same_as<receiver_t> _Self, same_as<set_value_t> Tag, class... As>
             requires __callable<Tag, Receiver&&, As...>
           STDEXEC_DEFINE_CUSTOM(void set_value)(this _Self&& self, Tag, As&&... as) noexcept {
-            Tag()((Receiver&&) self.op_state_.receiver_, (As&&) as...);
+            Tag()((Receiver&&) self.op_state_.rcvr_, (As&&) as...);
           }
 
           template <same_as<receiver_t> _Self, same_as<set_error_t> Tag, class Error>
             requires __callable<Tag, Receiver&&, Error>
           STDEXEC_DEFINE_CUSTOM(void set_error)(this _Self&& self, Tag, Error&& error) noexcept {
-            Tag()((Receiver&&) self.op_state_.receiver_, (Error&&) error);
+            Tag()((Receiver&&) self.op_state_.rcvr_, (Error&&) error);
           }
 
           template <same_as<receiver_t> _Self, same_as<set_stopped_t> Tag>
             requires __callable<Tag, Receiver&&>
           STDEXEC_DEFINE_CUSTOM(void set_stopped)(this _Self&& self, Tag) noexcept {
-            Tag()((Receiver&&) self.op_state_.receiver_);
+            Tag()((Receiver&&) self.op_state_.rcvr_);
           }
 
           STDEXEC_DEFINE_CUSTOM(Env get_env)(this const receiver_t& self, get_env_t) noexcept {
@@ -72,6 +72,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using enqueue_receiver =
           stdexec::__t<stream_enqueue_receiver<stdexec::__id<Env>, variant_t>>;
         using inner_op_state_t = connect_result_t<Sender, enqueue_receiver>;
+        queue::host_ptr<__decay_t<Env>> env_{};
         inner_op_state_t inner_op_;
 
         STDEXEC_DEFINE_CUSTOM(void start)(this __t& op, start_t) noexcept {
@@ -79,15 +80,15 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           if (op.status_ != cudaSuccess) {
             // Couldn't allocate memory for operation state, complete with error
-            stdexec::set_error(std::move(op.receiver_), std::move(op.status_));
+            stdexec::set_error(std::move(op.rcvr_), std::move(op.status_));
             return;
           }
 
           stdexec::start(op.inner_op_);
         }
 
-        __t(Sender&& sender, Receiver&& receiver, context_state_t context_state)
-          : operation_state_base_t<ReceiverId>((Receiver&&) receiver, context_state, true)
+        __t(Sender&& sender, Receiver&& rcvr, context_state_t context_state)
+          : operation_state_base_t<ReceiverId>((Receiver&&) rcvr, context_state, true)
           , context_state_(context_state)
           , storage_(queue::make_host<variant_t>(this->status_, context_state.pinned_resource_))
           , task_(queue::make_host<task_t>(
@@ -98,10 +99,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                     this->get_stream(),
                     context_state.pinned_resource_)
                     .release())
+          , env_(queue::make_host(this->status_, context_state_.pinned_resource_, this->make_env()))
           , inner_op_{connect(
               (Sender&&) sender,
               enqueue_receiver{
-                this->make_env(),
+                env_.get(),
                 storage_.get(),
                 task_,
                 context_state_.hub_->producer()})} {

@@ -150,6 +150,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <int BlockThreads, class... As, std::integral Shape, class Fun>
     __launch_bounds__(BlockThreads) __global__
       void kernel(Shape begin, Shape end, Fun fn, As... as) {
+      static_assert(trivially_copyable<Shape, Fun, As...>);
       const Shape i = begin + static_cast<Shape>(threadIdx.x + blockIdx.x * blockDim.x);
 
       if (i < end) {
@@ -256,7 +257,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         STDEXEC_DEFINE_CUSTOM(env_of_t<Receiver> get_env)(this const __t& self, get_env_t) //
           noexcept {
-          return stdexec::get_env(self.op_state_.receiver_);
+          return stdexec::get_env(self.op_state_.rcvr_);
         }
 
         explicit __t(

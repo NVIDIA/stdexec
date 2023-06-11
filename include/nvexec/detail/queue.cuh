@@ -46,7 +46,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace queue {
 
   template <class T, class... As>
   device_ptr<T> make_device(cudaError_t& status, As&&... as) {
-    static_assert(std::is_trivially_copyable_v<T>);
+    static_assert(STDEXEC_IS_TRIVIALLY_COPYABLE(T));
 
     if (status == cudaSuccess) {
       T* ptr{};
@@ -58,6 +58,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace queue {
     }
 
     return device_ptr<T>();
+  }
+
+  template <class T = void, class A>
+    requires same_as<T, void>
+  device_ptr<__decay_t<A>> make_device(cudaError_t& status, A&& t) {
+    return make_device<__decay_t<A>>(status, (A&&) t);
   }
 
   template <class T>
@@ -96,6 +102,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace queue {
 
     return host_ptr<T>(ptr, {resource});
   }
+
+  template <class T = void, class A>
+    requires same_as<T, void>
+  host_ptr<__decay_t<A>>
+    make_host(cudaError_t& status, std::pmr::memory_resource* resource, A&& t) {
+      return make_host<__decay_t<A>>(status, resource, (A&&) t);
+    }
 
   struct producer_t {
     task_base_t** tail_;

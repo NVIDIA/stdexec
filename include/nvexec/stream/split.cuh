@@ -38,6 +38,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     template <class Tag, class... As, class Variant>
     __launch_bounds__(1) __global__ void copy_kernel(Variant* var, As... as) {
+      static_assert(trivially_copyable<As...>);
       using tuple_t = decayed_tuple<Tag, As...>;
       var->template emplace<tuple_t>(Tag(), static_cast<As&&>(as)...);
     }
@@ -158,6 +159,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       variant_t* data_{nullptr};
       task_t* task_{nullptr};
       cudaEvent_t event_;
+      queue::host_ptr<__decay_t<env_t>> env_{};
       inner_op_state_t op_state2_;
       ::cuda::std::atomic_flag started_{};
 
@@ -184,9 +186,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                   stream_,
                   context_state.pinned_resource_)
                   .release())
+        , env_(queue::make_host(this->status_, context_state_.pinned_resource_, make_env()))
         , op_state2_(connect(
             (Sender&&) sndr,
-            enqueue_receiver_t{make_env(), data_, task_, context_state.hub_->producer()})) {
+            enqueue_receiver_t{env_.get(), data_, task_, context_state.hub_->producer()})) {
       }
 
       ~sh_state_t() {
@@ -293,7 +296,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           if (old != completion_state) {
             self.on_stop_.emplace(
-              get_stop_token(stdexec::get_env(self.receiver_)),
+              get_stop_token(stdexec::get_env(self.rcvr_)),
               on_stop_requested{shared_state->stop_source_});
           }
 
