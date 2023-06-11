@@ -127,11 +127,24 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
       state_t state{};
       run_loop loop;
 
-      exit_operation_state_t<Sender, receiver_t<Sender>> __op_state = exit_op_state(
-        (Sender&&) __sndr, receiver_t<Sender>{{}, &state, &loop}, context_state);
-      state.stream_ = __op_state.get_stream();
+      cudaError_t status = cudaSuccess;
+      auto __op_state =
+        make_host<exit_operation_state_t<Sender, receiver_t<Sender>>>(
+          status,
+          context_state.pinned_resource_,
+          __conv{[&] {
+            return exit_op_state(
+              (Sender&&) __sndr,
+              receiver_t<Sender>{{}, &state, &loop},
+              context_state);
+          }});
+      if (status != cudaSuccess) {
+        throw std::bad_alloc{};
+      }
 
-      start(__op_state);
+      state.stream_ = __op_state->get_stream();
+
+      start(*__op_state);
 
       // Wait for the variant to be filled in.
       loop.run();
