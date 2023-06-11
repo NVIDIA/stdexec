@@ -29,7 +29,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   struct device_deleter {
     template <class T>
     void operator()(T* ptr) {
-      ptr->~T();
+      // ptr->~T();
       STDEXEC_DBG_ERR(::cudaFree(ptr));
     }
   };
