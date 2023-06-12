@@ -20,6 +20,7 @@
 #include <memory_resource>
 
 #include "detail/config.cuh"
+#include "detail/memory.cuh"
 #include "stream/sync_wait.cuh"
 #include "stream/bulk.cuh"
 #include "stream/let_xxx.cuh"
@@ -303,79 +304,6 @@ namespace nvexec {
       return upon_stopped_sender_th<S, Fn>{{}, (S&&) sndr, (Fn&&) fun};
     }
 
-    struct pinned_resource : public std::pmr::memory_resource {
-      void* do_allocate(size_t bytes, size_t /* alignment */) override {
-        void* ret;
-
-        if (cudaError_t status = STDEXEC_DBG_ERR(cudaMallocHost(&ret, bytes));
-            status != cudaSuccess) {
-          throw std::bad_alloc();
-        }
-
-        return ret;
-      }
-
-      void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
-        STDEXEC_DBG_ERR(cudaFreeHost(ptr));
-      }
-
-      bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
-        return this == &other;
-      }
-    };
-
-    struct gpu_resource : public std::pmr::memory_resource {
-      void* do_allocate(size_t bytes, size_t /* alignment */) override {
-        void* ret;
-
-        if (cudaError_t status = STDEXEC_DBG_ERR(cudaMalloc(&ret, bytes)); status != cudaSuccess) {
-          throw std::bad_alloc();
-        }
-
-        return ret;
-      }
-
-      void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
-        STDEXEC_DBG_ERR(cudaFree(ptr));
-      }
-
-      bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
-        return this == &other;
-      }
-    };
-
-    struct managed_resource : public std::pmr::memory_resource {
-      void* do_allocate(size_t bytes, size_t /* alignment */) override {
-        void* ret;
-
-        if (cudaError_t status = STDEXEC_DBG_ERR(cudaMallocManaged(&ret, bytes));
-            status != cudaSuccess) {
-          throw std::bad_alloc();
-        }
-
-        return ret;
-      }
-
-      void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
-        STDEXEC_DBG_ERR(cudaFree(ptr));
-      }
-
-      bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
-        return this == &other;
-      }
-    };
-
-    template <class UnderlyingResource>
-    class resource_storage {
-      UnderlyingResource underlying_resource_{};
-      std::pmr::monotonic_buffer_resource monotonic_resource_{512 * 1024, &underlying_resource_};
-      std::pmr::synchronized_pool_resource resource_{&monotonic_resource_};
-
-     public:
-      std::pmr::memory_resource* get() {
-        return &resource_;
-      }
-    };
   } // namespace STDEXEC_STREAM_DETAIL_NS
 
   using STDEXEC_STREAM_DETAIL_NS::stream_scheduler;
@@ -385,8 +313,6 @@ namespace nvexec {
       pinned_resource_{};
     STDEXEC_STREAM_DETAIL_NS::resource_storage<STDEXEC_STREAM_DETAIL_NS::managed_resource>
       managed_resource_{};
-
-    // STDEXEC_STREAM_DETAIL_NS::resource_storage<STDEXEC_STREAM_DETAIL_NS::gpu_resource> gpu_resource_{};
 
     static int get_device() {
       int dev_id{};

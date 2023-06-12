@@ -17,9 +17,15 @@
 
 #include "../../stdexec/execution.hpp"
 
+#include <cuda/std/bit>
+
 #include <memory_resource>
 #include <new>
 #include <type_traits>
+#include <map>
+#include <mutex>
+#include <optional>
+#include <set>
 
 #include "config.cuh"
 #include "throw_on_cuda_error.cuh"
@@ -110,4 +116,243 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       return make_host<__decay_t<A>>(status, resource, (A&&) t);
     }
 
+  struct pinned_resource : public std::pmr::memory_resource {
+    pinned_resource() noexcept {
+    }
+
+    void* do_allocate(size_t bytes, size_t /* alignment */) override {
+      void* ret;
+
+      if (cudaError_t status = STDEXEC_DBG_ERR(cudaMallocHost(&ret, bytes));
+          status != cudaSuccess) {
+        throw std::bad_alloc();
+      }
+
+      return ret;
+    }
+
+    void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
+      STDEXEC_DBG_ERR(cudaFreeHost(ptr));
+    }
+
+    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
+      return this == &other;
+    }
+  };
+
+  struct gpu_resource : public std::pmr::memory_resource {
+    gpu_resource() noexcept {
+    }
+
+    void* do_allocate(size_t bytes, size_t /* alignment */) override {
+      void* ret;
+
+      if (cudaError_t status = STDEXEC_DBG_ERR(cudaMalloc(&ret, bytes)); status != cudaSuccess) {
+        throw std::bad_alloc();
+      }
+
+      return ret;
+    }
+
+    void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
+      STDEXEC_DBG_ERR(cudaFree(ptr));
+    }
+
+    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
+      return this == &other;
+    }
+  };
+
+  struct managed_resource : public std::pmr::memory_resource {
+    void* do_allocate(size_t bytes, size_t /* alignment */) override {
+      void* ret;
+
+      if (cudaError_t status = STDEXEC_DBG_ERR(cudaMallocManaged(&ret, bytes));
+          status != cudaSuccess) {
+        throw std::bad_alloc();
+      }
+
+      return ret;
+    }
+
+    void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
+      STDEXEC_DBG_ERR(cudaFree(ptr));
+    }
+
+    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
+      return this == &other;
+    }
+  };
+
+  struct monotonic_buffer_resource : std::pmr::memory_resource {
+    static constexpr size_t block_alignment = 256;
+
+    struct block_descriptor_t {
+      void* ptr{};
+      size_t total{};
+    };
+
+    std::pmr::memory_resource* upstream;
+    std::vector<block_descriptor_t> allocated_blocks;
+
+    size_t space{};
+    void* current_ptr{};
+
+    monotonic_buffer_resource(std::size_t bytes, std::pmr::memory_resource* upstream)
+      : upstream(upstream)
+      , space(bytes) {
+      block_descriptor_t first_block{upstream->allocate(space, block_alignment), space};
+      current_ptr = first_block.ptr;
+      allocated_blocks.push_back(first_block);
+    }
+
+    ~monotonic_buffer_resource() {
+      for (block_descriptor_t& block: allocated_blocks) {
+        upstream->deallocate(block.ptr, block.total, block_alignment);
+      }
+    }
+
+    block_descriptor_t get_current_block() {
+      return allocated_blocks.back();
+    }
+
+    size_t get_next_space() {
+      return get_current_block().total * 2;
+    }
+
+    void* do_allocate(size_t bytes, size_t alignment) override {
+      void* ptr = std::align(alignment, bytes, current_ptr, space);
+
+      if (ptr == nullptr) {
+        space = std::max(bytes, get_next_space());
+        ptr = current_ptr = upstream->allocate(space, block_alignment);
+        allocated_blocks.push_back(block_descriptor_t{current_ptr, space});
+      }
+
+      current_ptr = static_cast<char*>(current_ptr) + bytes;
+      space -= bytes;
+
+      return ptr;
+    }
+
+    void do_deallocate(void* /* ptr */, size_t /* bytes */, size_t /* alignment */) override {
+    }
+
+    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
+      return this == &other;
+    }
+  };
+
+  struct synchronized_pool_resource : std::pmr::memory_resource {
+    constexpr static size_t alignment = 256;
+
+    struct block_descriptor_t {
+      static constexpr unsigned int min_bin = 3;
+
+      void* ptr{};
+      unsigned int bin{};
+      size_t bytes{};
+
+      block_descriptor_t(size_t bytes)
+        : bin(cuda::std::bit_width(bytes))
+        , bytes(1ull << bin) {
+        if (bin < min_bin) {
+          bin = min_bin;
+          bytes = 1ull << bin;
+        }
+      }
+
+      block_descriptor_t(void* ptr)
+        : ptr(ptr) {
+      }
+    };
+
+    struct ptr_comparator_t {
+      bool operator()(const block_descriptor_t& a, const block_descriptor_t& b) const {
+        return a.ptr < b.ptr;
+      }
+    };
+
+    struct size_comparator_t {
+      bool operator()(const block_descriptor_t& a, const block_descriptor_t& b) const {
+        return a.bytes < b.bytes;
+      }
+    };
+
+    using cached_blocks_t = std::multiset<block_descriptor_t, size_comparator_t>;
+    using busy_blocks_t = std::multiset<block_descriptor_t, ptr_comparator_t>;
+
+    std::mutex mutex;
+
+    std::pmr::memory_resource* upstream;
+    cached_blocks_t cached_blocks;
+    busy_blocks_t live_blocks;
+
+    synchronized_pool_resource(std::pmr::memory_resource* upstream)
+      : upstream(upstream)
+      , cached_blocks(size_comparator_t{})
+      , live_blocks(ptr_comparator_t{}) {
+    }
+
+    void* do_allocate(size_t bytes, size_t /* alignment */) override {
+      std::lock_guard<std::mutex> lock(mutex);
+
+      block_descriptor_t search_key{bytes};
+      cached_blocks_t::iterator block_itr = cached_blocks.lower_bound(search_key);
+
+      while ((block_itr != cached_blocks.end()) && (block_itr->bin == search_key.bin)) {
+        search_key = *block_itr;
+        live_blocks.insert(search_key);
+        cached_blocks.erase(block_itr);
+        return search_key.ptr;
+      }
+
+      search_key.ptr = upstream->allocate(search_key.bytes, alignment);
+      live_blocks.insert(search_key);
+      return search_key.ptr;
+    }
+
+    void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
+      std::lock_guard<std::mutex> lock(mutex);
+
+      block_descriptor_t search_key{ptr};
+      busy_blocks_t::iterator block_itr = live_blocks.find(search_key);
+
+      if (block_itr != live_blocks.end()) {
+        search_key = *block_itr;
+        live_blocks.erase(block_itr);
+        cached_blocks.insert(search_key);
+      }
+    }
+
+    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
+      return this == &other;
+    }
+
+    ~synchronized_pool_resource() {
+      while (!cached_blocks.empty()) {
+        cached_blocks_t::iterator begin = cached_blocks.begin();
+        upstream->deallocate(begin->ptr, begin->bytes, alignment);
+        cached_blocks.erase(begin);
+      }
+    }
+  };
+
+  template <class UnderlyingResource>
+  class resource_storage {
+    UnderlyingResource underlying_resource_;
+    monotonic_buffer_resource monotonic_resource_;
+    synchronized_pool_resource resource_;
+
+    public:
+    resource_storage()
+      : underlying_resource_{}
+      , monotonic_resource_{512 * 1024, &underlying_resource_}
+      , resource_{&monotonic_resource_} {
+    }
+
+    std::pmr::memory_resource* get() {
+      return &resource_;
+    }
+  };
 }
