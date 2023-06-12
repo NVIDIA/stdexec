@@ -136,7 +136,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       variant_t* data_{nullptr};
       task_t* task_{nullptr};
       cudaEvent_t event_;
-      queue::host_ptr<__decay_t<env_t>> env_{};
+      host_ptr<__decay_t<env_t>> env_{};
       inner_op_state_t op_state2_;
       ::cuda::std::atomic_flag started_{};
 
@@ -155,7 +155,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         : context_state_(context_state)
         , stream_(create_stream(status_, context_state_))
         , data_(malloc_managed<variant_t>(status_))
-        , task_(queue::make_host<task_t>(
+        , task_(make_host<task_t>(
                   status_,
                   context_state.pinned_resource_,
                   inner_receiver_t{*this},
@@ -163,7 +163,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                   stream_,
                   context_state.pinned_resource_)
                   .release())
-        , env_(queue::make_host(this->status_, context_state_.pinned_resource_, make_env()))
+        , env_(make_host(this->status_, context_state_.pinned_resource_, make_env()))
         , op_state2_(connect(
             (Sender&&) sndr,
             enqueue_receiver_t{env_.get(), data_, task_, context_state.hub_->producer()})) {

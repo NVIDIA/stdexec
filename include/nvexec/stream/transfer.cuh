@@ -51,7 +51,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         cudaError_t status_{cudaSuccess};
         context_state_t context_state_;
 
-        queue::host_ptr<variant_t> storage_;
+        host_ptr<variant_t> storage_;
         task_t* task_;
 
         ::cuda::std::atomic_flag started_{};
@@ -59,7 +59,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using enqueue_receiver =
           stdexec::__t<stream_enqueue_receiver<stdexec::__id<Env>, variant_t>>;
         using inner_op_state_t = connect_result_t<Sender, enqueue_receiver>;
-        queue::host_ptr<__decay_t<Env>> env_{};
+        host_ptr<__decay_t<Env>> env_{};
         inner_op_state_t inner_op_;
 
         friend void tag_invoke(start_t, __t& op) noexcept {
@@ -77,8 +77,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         __t(Sender&& sender, Receiver&& rcvr, context_state_t context_state)
           : operation_state_base_t<ReceiverId>((Receiver&&) rcvr, context_state, true)
           , context_state_(context_state)
-          , storage_(queue::make_host<variant_t>(this->status_, context_state.pinned_resource_))
-          , task_(queue::make_host<task_t>(
+          , storage_(make_host<variant_t>(this->status_, context_state.pinned_resource_))
+          , task_(make_host<task_t>(
                     this->status_,
                     context_state.pinned_resource_,
                     receiver_t{*this},
@@ -86,7 +86,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                     this->get_stream(),
                     context_state.pinned_resource_)
                     .release())
-          , env_(queue::make_host(this->status_, context_state_.pinned_resource_, this->make_env()))
+          , env_(make_host(this->status_, context_state_.pinned_resource_, this->make_env()))
           , inner_op_{connect(
               (Sender&&) sender,
               enqueue_receiver{

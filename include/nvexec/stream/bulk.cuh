@@ -25,6 +25,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace _bulk {
     template <int BlockThreads, class... As, std::integral Shape, class Fun>
     __launch_bounds__(BlockThreads) __global__ void kernel(Shape shape, Fun fn, As... as) {
+      static_assert(trivially_copyable<Shape, Fun, As...>);
       const int tid = static_cast<int>(threadIdx.x + blockIdx.x * blockDim.x);
 
       if (tid < static_cast<int>(shape)) {
@@ -48,7 +49,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <same_as<set_value_t> _Tag, class... As>
         friend void tag_invoke(_Tag, __t&& self, As&&... as) noexcept
-          requires __callable<Fun, Shape, As&...>
+          requires __callable<Fun, Shape&, As&...>
         {
           operation_state_base_t<ReceiverId>& op_state = self.op_state_;
 
@@ -57,8 +58,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             constexpr int block_threads = 256;
             const int grid_blocks = (static_cast<int>(self.shape_) + block_threads - 1)
                                   / block_threads;
-            kernel<block_threads, As&&...><<<grid_blocks, block_threads, 0, stream>>>(
-              self.shape_, std::move(self.f_), (As&&) as...);
+            kernel<block_threads, As&...><<<grid_blocks, block_threads, 0, stream>>>(
+              self.shape_, std::move(self.f_), as...);
           }
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
@@ -121,7 +122,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           (Receiver&&) rcvr,
           [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
             -> receiver_t<Receiver> {
-            return receiver_t<Receiver>(self.shape_, self.fun_, stream_provider);
+            return receiver_t<Receiver>(self.shape_, (Fun&&) self.fun_, stream_provider);
           });
       }
 
