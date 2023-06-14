@@ -1,6 +1,7 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
+#include "nvexec/stream/common.cuh"
 #include "nvexec/stream_context.cuh"
 #include "common.cuh"
 
@@ -201,12 +202,95 @@ TEST_CASE("nvexec then can return values of non-trivial types", "[cuda][stream][
   REQUIRE(flags_storage.all_set_once());
 }
 
-TEST_CASE("nvexec then can preceed a sender with values", "[cuda][stream][adaptors][then]") {
+class tracer_storage_t {
+  int h_counter_storage{};
+  int *h_counter_{};
+  int *d_counter_{};
+
+public:
+  tracer_storage_t() : h_counter_{&h_counter_storage} {
+    cudaMalloc(&d_counter_, sizeof(int));
+    cudaMemset(d_counter_, 0, sizeof(int));
+  }
+
+  ~tracer_storage_t() {
+    cudaFree(d_counter_);
+  }
+
+  class handle_t {
+    int *h_counter_{};
+    int *d_counter_{};
+
+    handle_t(int *h_counter, int *d_counter)
+      : h_counter_{h_counter}
+      , d_counter_{d_counter} {
+    }
+
+    void diff(int val) {
+      cuda::std::atomic_ref<int> ref{*(is_on_gpu() ? d_counter_ : h_counter_)};
+      ref.fetch_add(val, cuda::std::memory_order_relaxed);
+    }
+
+  public:
+    void more() {
+      diff(+1);
+    }
+
+    void less() {
+      diff(-1);
+    }
+
+    __host__ int alive() {
+      int d_counter{};
+      cudaMemcpy(&d_counter, d_counter_, sizeof(int), cudaMemcpyDeviceToHost);
+      return *h_counter_ + d_counter;
+    }
+
+    friend tracer_storage_t;
+  };
+
+  handle_t get() {
+    return handle_t{h_counter_, d_counter_};
+  }
+};
+
+class tracer_t {
+  tracer_storage_t::handle_t handle_;
+
+  void print(const char* msg) {
+    if (is_on_gpu()) {
+      printf("gpu: %s\n", msg);
+    } else {
+      printf("cpu: %s\n", msg);
+    }
+  }
+
+public:
+  tracer_t() = delete;
+  tracer_t(const tracer_t& other) = delete;
+  tracer_t(tracer_storage_t::handle_t handle) : handle_(handle) {
+    handle_.more();
+  }
+  tracer_t(tracer_t&& other) : handle_(other.handle_) {
+    handle_.more();
+  }
+  ~tracer_t() {
+    handle_.less();
+  }
+};
+
+TEST_CASE("nvexec then destructs temporary storage", "[cuda][stream][adaptors][then]") {
   nvexec::stream_context stream_ctx{};
 
-  auto snd = ex::schedule(stream_ctx.get_scheduler())
-           | ex::then([]() -> bool { return is_on_gpu(); })
-           | a_sender([](bool then_was_on_gpu) -> bool { return then_was_on_gpu && is_on_gpu(); });
-  auto [ok] = stdexec::sync_wait(std::move(snd)).value();
-  REQUIRE(ok);
+  tracer_storage_t storage;
+  tracer_storage_t::handle_t handle = storage.get();
+
+  {
+    auto snd = ex::schedule(stream_ctx.get_scheduler())
+             | ex::then([handle]() -> tracer_t { return tracer_t{handle}; })
+             | ex::then([](tracer_t &&tracer) { });
+    stdexec::sync_wait(std::move(snd));
+  }
+
+  REQUIRE(handle.alive() == 0);
 }

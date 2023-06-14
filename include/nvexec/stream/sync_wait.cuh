@@ -63,11 +63,38 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
         loop_->finish();
       }
 
+      template <class T>
+      static void prefetch(T&& ref, cudaStream_t stream) {
+        using decay_type = __decay_t<T>;
+        decay_type* ptr = &ref;
+        cudaPointerAttributes attributes{};
+        if (cudaError_t err = cudaPointerGetAttributes(&attributes, ptr); err == cudaSuccess) {
+          if (attributes.type == cudaMemoryTypeManaged) {
+            STDEXEC_DBG_ERR(cudaMemPrefetchAsync(ptr, sizeof(decay_type), cudaCpuDeviceId, stream));
+          }
+        }
+      }
+
       template <same_as<set_value_t> _Tag, class Sender2 = Sender, class... As>
         requires std::constructible_from<sync_wait_result_t<Sender2>, As...>
       friend void tag_invoke(_Tag, __t&& rcvr, As&&... as) noexcept {
         try {
-          if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
+          int dev_id{};
+          cudaStream_t stream = rcvr.state_->stream_;
+
+          if constexpr(sizeof...(As)) {
+            if (STDEXEC_DBG_ERR(cudaGetDevice(&dev_id)) == cudaSuccess) {
+              int concurrent_managed_access{};
+              if (STDEXEC_DBG_ERR(cudaDeviceGetAttribute(&concurrent_managed_access, 
+                                                          cudaDevAttrConcurrentManagedAccess, 
+                                                          dev_id)) == cudaSuccess) {
+                // Avoid launching the destruction kernel if the memory targeting host
+                (prefetch((As&&) as, stream), ...);
+              }
+            }
+          }
+
+          if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
               status == cudaSuccess) {
             rcvr.state_->data_.template emplace<1>((As&&) as...);
           } else {

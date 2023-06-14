@@ -70,6 +70,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             decayed_result_t* d_result = static_cast<decayed_result_t*>(op_state.temp_storage_);
             kernel_with_result<As&&...>
               <<<1, 1, 0, stream>>>(std::move(self.f_), d_result, (As&&) as...);
+            op_state.defer_temp_storage_destruction(d_result);
 
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
