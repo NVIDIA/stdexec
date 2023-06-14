@@ -92,7 +92,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
             if constexpr (construct_on_device) {
               cudaStream_t stream = self.operation_state_.get_stream();
-              kernel<Tag, storage_t, __decay_t<As>...><<<1, 1>>>(storage, as...);
+              kernel<Tag, storage_t, __decay_t<As>...><<<1, 1, 0, stream>>>(storage, as...);
 
               if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                   status != cudaSuccess) {
