@@ -302,9 +302,9 @@ namespace stdexec {
       STDEXEC_NO_UNIQUE_ADDRESS _Env __env_;
 
       template <__forwarding_query _Tag>
-        requires __callable<_Tag, const _Env&>
+        requires tag_invocable<_Tag, const _Env&>
       friend auto tag_invoke(_Tag, const __env_fwd& __self) //
-        noexcept(__nothrow_callable<_Tag, const _Env&>) -> __call_result_t<_Tag, const _Env&> {
+        noexcept(nothrow_tag_invocable<_Tag, const _Env&>) -> tag_invoke_result_t<_Tag, const _Env&> {
         return _Tag()(__self.__env_);
       }
     };
@@ -322,7 +322,7 @@ namespace stdexec {
       template <class _Tag>
         requires tag_invocable<_Tag, const _Env&>
       friend auto tag_invoke(_Tag, const __env_join& __self) //
-        noexcept(__nothrow_callable<_Tag, const _Env&>) -> __call_result_t<_Tag, const _Env&> {
+        noexcept(nothrow_tag_invocable<_Tag, const _Env&>) -> tag_invoke_result_t<_Tag, const _Env&> {
         return _Tag()(__self.__env_);
       }
     };
