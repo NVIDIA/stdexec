@@ -226,17 +226,17 @@ public:
       , d_counter_{d_counter} {
     }
 
-    void diff(int val) {
+    __host__ __device__ void diff(int val) {
       cuda::std::atomic_ref<int> ref{*(is_on_gpu() ? d_counter_ : h_counter_)};
       ref.fetch_add(val, cuda::std::memory_order_relaxed);
     }
 
   public:
-    void more() {
+    __host__ __device__ void more() {
       diff(+1);
     }
 
-    void less() {
+    __host__ __device__ void less() {
       diff(-1);
     }
 
@@ -268,13 +268,13 @@ class tracer_t {
 public:
   tracer_t() = delete;
   tracer_t(const tracer_t& other) = delete;
-  tracer_t(tracer_storage_t::handle_t handle) : handle_(handle) {
+  __host__ __device__ tracer_t(tracer_storage_t::handle_t handle) : handle_(handle) {
     handle_.more();
   }
-  tracer_t(tracer_t&& other) : handle_(other.handle_) {
+  __host__ __device__ tracer_t(tracer_t&& other) : handle_(other.handle_) {
     handle_.more();
   }
-  ~tracer_t() {
+  __host__ __device__ ~tracer_t() {
     handle_.less();
   }
 };
