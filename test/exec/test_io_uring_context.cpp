@@ -301,14 +301,22 @@ TEST_CASE("io_uring_context schedule_after -1s", "[types][io_uring][schedulers]"
     scope_guard guard{[&]() noexcept {
       context.request_stop();
     }};
-    bool is_called = false;
+    bool is_called_1 = false;
+    bool is_called_2 = false;
+    auto start = std::chrono::steady_clock::now();
     sync_wait(when_any(
       schedule_after(scheduler, -1s) | then([&] {
         CHECK(io_thread.get_id() == std::this_thread::get_id());
-        is_called = true;
+        is_called_1 = true;
       }),
-      schedule_after(scheduler, 5ms)));
-    CHECK(is_called);
+      schedule_after(scheduler, 5ms) | then([&] {
+        is_called_2 = true;
+      })));
+    auto end = std::chrono::steady_clock::now();
+    auto diff = end - start;
+    CHECK(diff < 5ms);
+    CHECK(is_called_1 == true);
+    CHECK(is_called_2 == false);
   }
 }
 
