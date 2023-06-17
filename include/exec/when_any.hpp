@@ -75,7 +75,7 @@ namespace exec {
     // transform Tag(Args...) to a tuple __decayed_tuple<Tag, Args...>
     template <class _Env, class... _SenderIds>
     using __result_type_t = __mapply<
-      __transform<__q<__signature_to_tuple_t>, __q<std::variant>>,
+      __transform<__q<__signature_to_tuple_t>, __munique<__q<std::variant>>>,
       __completion_signatures_t<_Env, _SenderIds...>>;
 
     template <class _Variant, class... _Ts>
