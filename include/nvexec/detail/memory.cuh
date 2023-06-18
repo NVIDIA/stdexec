@@ -223,6 +223,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     }
 
     void* do_allocate(size_t bytes, size_t alignment) override {
+      assert(alignment <= block_alignment);
       void* ptr = std::align(alignment, bytes, current_ptr, space);
 
       if (ptr == nullptr) {
@@ -246,7 +247,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   };
 
   struct synchronized_pool_resource : std::pmr::memory_resource {
-    constexpr static size_t alignment = 256;
+    constexpr static size_t block_alignment = 256;
 
     struct block_descriptor_t {
       static constexpr unsigned int min_bin = 3;
@@ -296,7 +297,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       , live_blocks(ptr_comparator_t{}) {
     }
 
-    void* do_allocate(size_t bytes, size_t /* alignment */) override {
+    void* do_allocate(size_t bytes, size_t alignment) override {
+      assert(alignment <= block_alignment);
+
       std::lock_guard<std::mutex> lock(mutex);
 
       block_descriptor_t search_key{bytes};
@@ -309,7 +312,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return search_key.ptr;
       }
 
-      search_key.ptr = upstream->allocate(search_key.bytes, alignment);
+      search_key.ptr = upstream->allocate(search_key.bytes, block_alignment);
       live_blocks.insert(search_key);
       return search_key.ptr;
     }
@@ -334,7 +337,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     ~synchronized_pool_resource() {
       while (!cached_blocks.empty()) {
         cached_blocks_t::iterator begin = cached_blocks.begin();
-        upstream->deallocate(begin->ptr, begin->bytes, alignment);
+        upstream->deallocate(begin->ptr, begin->bytes, block_alignment);
         cached_blocks.erase(begin);
       }
     }
