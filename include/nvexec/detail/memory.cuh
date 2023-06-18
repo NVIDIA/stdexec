@@ -19,6 +19,7 @@
 
 #include <cuda/std/bit>
 
+#include <algorithm>
 #include <memory_resource>
 #include <new>
 #include <type_traits>
@@ -200,7 +201,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     monotonic_buffer_resource(std::size_t bytes, std::pmr::memory_resource* upstream)
       : upstream(upstream)
-      , space(bytes) {
+      , space(std::max(bytes, std::size_t{2})) {
       block_descriptor_t first_block{upstream->allocate(space, block_alignment), space};
       current_ptr = first_block.ptr;
       allocated_blocks.push_back(first_block);
@@ -217,7 +218,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     }
 
     size_t get_next_space() {
-      return get_current_block().total * 2;
+      const std::size_t last_block_size = get_current_block().total;
+      return last_block_size + last_block_size / 2;
     }
 
     void* do_allocate(size_t bytes, size_t alignment) override {
