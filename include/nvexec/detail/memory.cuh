@@ -230,7 +230,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         allocated_blocks.push_back(block_descriptor_t{current_ptr, space});
       }
 
-      current_ptr = static_cast<char*>(current_ptr) + bytes;
+      current_ptr = static_cast<char*>(ptr) + bytes;
       space -= bytes;
 
       return ptr;
