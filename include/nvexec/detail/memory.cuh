@@ -281,7 +281,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     };
 
     using cached_blocks_t = std::multiset<block_descriptor_t, size_comparator_t>;
-    using busy_blocks_t = std::multiset<block_descriptor_t, ptr_comparator_t>;
+    using busy_blocks_t = std::set<block_descriptor_t, ptr_comparator_t>;
 
     std::mutex mutex;
 
@@ -303,7 +303,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       block_descriptor_t search_key{bytes};
       cached_blocks_t::iterator block_itr = cached_blocks.lower_bound(search_key);
 
-      while ((block_itr != cached_blocks.end()) && (block_itr->bin == search_key.bin)) {
+      if ((block_itr != cached_blocks.end()) && (block_itr->bin == search_key.bin)) {
         search_key = *block_itr;
         live_blocks.insert(search_key);
         cached_blocks.erase(block_itr);
