@@ -23,9 +23,7 @@
 #include <memory_resource>
 #include <new>
 #include <type_traits>
-#include <map>
 #include <mutex>
-#include <optional>
 #include <set>
 
 #include "config.cuh"
@@ -132,7 +130,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       return ret;
     }
 
-    void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
+    void do_deallocate(void* ptr, const std::size_t /* bytes */, const std::size_t /* alignment */) override {
       STDEXEC_DBG_ERR(cudaFreeHost(ptr));
     }
 
@@ -155,7 +153,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       return ret;
     }
 
-    void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
+    void do_deallocate(void* ptr, const std::size_t /* bytes */, const std::size_t /* alignment */) override {
       STDEXEC_DBG_ERR(cudaFree(ptr));
     }
 
@@ -176,7 +174,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       return ret;
     }
 
-    void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
+    void do_deallocate(void* ptr, const std::size_t /* bytes */, const std::size_t /* alignment */) override {
       STDEXEC_DBG_ERR(cudaFree(ptr));
     }
 
@@ -186,17 +184,17 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   };
 
   struct monotonic_buffer_resource : std::pmr::memory_resource {
-    static constexpr size_t block_alignment = 256;
+    static constexpr std::size_t block_alignment = 256;
 
     struct block_descriptor_t {
       void* ptr{};
-      size_t total{};
+      std::size_t total{};
     };
 
     std::pmr::memory_resource* upstream;
     std::vector<block_descriptor_t> allocated_blocks;
 
-    size_t space{};
+    std::size_t space{};
     void* current_ptr{};
 
     monotonic_buffer_resource(std::size_t bytes, std::pmr::memory_resource* upstream)
@@ -217,7 +215,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       return allocated_blocks.back();
     }
 
-    size_t get_next_space() {
+    std::size_t get_next_space() {
       const std::size_t last_block_size = get_current_block().total;
       return last_block_size + last_block_size / 2;
     }
@@ -238,7 +236,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       return ptr;
     }
 
-    void do_deallocate(void* /* ptr */, size_t /* bytes */, size_t /* alignment */) override {
+    void do_deallocate(void* /* ptr */, const std::size_t /* bytes */, const std::size_t /* alignment */) override {
     }
 
     bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
@@ -247,16 +245,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   };
 
   struct synchronized_pool_resource : std::pmr::memory_resource {
-    constexpr static size_t block_alignment = 256;
+    constexpr static std::size_t block_alignment = 256;
 
     struct block_descriptor_t {
       static constexpr unsigned int min_bin = 3;
 
       void* ptr{};
       unsigned int bin{};
-      size_t bytes{};
+      std::size_t bytes{};
 
-      block_descriptor_t(size_t bytes)
+      explicit block_descriptor_t(std::size_t bytes)
         : bin(cuda::std::bit_width(bytes))
         , bytes(1ull << bin) {
         if (bin < min_bin) {
@@ -317,7 +315,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       return search_key.ptr;
     }
 
-    void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
+    void do_deallocate(void* ptr, std::size_t /* bytes */, std::size_t /* alignment */) override {
       std::lock_guard<std::mutex> lock(mutex);
 
       block_descriptor_t search_key{ptr};
