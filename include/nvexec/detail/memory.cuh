@@ -263,7 +263,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
       }
 
-      block_descriptor_t(void* ptr)
+      explicit block_descriptor_t(void* ptr)
         : ptr(ptr) {
       }
     };
