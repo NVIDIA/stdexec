@@ -121,7 +121,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     pinned_resource() noexcept {
     }
 
-    void* do_allocate(size_t bytes, size_t /* alignment */) override {
+    void* do_allocate(const std::size_t bytes, const std::size_t /* alignment */) override {
       void* ret;
 
       if (cudaError_t status = STDEXEC_DBG_ERR(cudaMallocHost(&ret, bytes));
@@ -145,7 +145,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     gpu_resource() noexcept {
     }
 
-    void* do_allocate(size_t bytes, size_t /* alignment */) override {
+    void* do_allocate(const std::size_t bytes, const std::size_t /* alignment */) override {
       void* ret;
 
       if (cudaError_t status = STDEXEC_DBG_ERR(cudaMalloc(&ret, bytes)); status != cudaSuccess) {
@@ -165,7 +165,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   };
 
   struct managed_resource : public std::pmr::memory_resource {
-    void* do_allocate(size_t bytes, size_t /* alignment */) override {
+    void* do_allocate(const std::size_t bytes, const std::size_t /* alignment */) override {
       void* ret;
 
       if (cudaError_t status = STDEXEC_DBG_ERR(cudaMallocManaged(&ret, bytes));
@@ -222,7 +222,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       return last_block_size + last_block_size / 2;
     }
 
-    void* do_allocate(size_t bytes, size_t alignment) override {
+    void* do_allocate(const std::size_t bytes, const std::size_t alignment) override {
       assert(alignment <= block_alignment);
       void* ptr = std::align(alignment, bytes, current_ptr, space);
 
@@ -297,7 +297,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       , live_blocks(ptr_comparator_t{}) {
     }
 
-    void* do_allocate(size_t bytes, size_t alignment) override {
+    void* do_allocate(const std::size_t bytes, const std::size_t alignment) override {
       assert(alignment <= block_alignment);
 
       std::lock_guard<std::mutex> lock(mutex);
