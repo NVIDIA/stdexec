@@ -54,6 +54,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           if constexpr (sizeof...(As) == 0) {
             self.operation_state_.propagate_completion_signal(Tag());
           } else {
+            // If there are values in the completion channel, we have to construct 
+            // the temporary storage. If the values are trivially copyable, we launch
+            // a kernel and construct the temporary storage on the device to avoid managed
+            // memory movements. Otherwise, we construct the temporary storage on the host
+            // and prefetch it to the device.
             storage_t* storage = static_cast<storage_t*>(self.operation_state_.temp_storage_);
             constexpr bool construct_on_device = trivially_copyable<__decay_t<As>...>;
 
