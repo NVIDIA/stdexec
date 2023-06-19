@@ -24,6 +24,13 @@
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   namespace _sched_from {
+
+    template <class Tag, class Storage, class... As>
+    __launch_bounds__(1) __global__ void kernel(Storage* storage, As... as) {
+      ::new (storage) Storage();
+      storage->template emplace<decayed_tuple<Tag, As...>>(Tag(), (As&&) as...);
+    }
+
     template <class CvrefSenderId, class ReceiverId>
     struct receiver_t {
       using Sender = __cvref_t<CvrefSenderId>;
@@ -40,15 +47,61 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template < __completion_tag Tag, class... As>
         friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
+          using tuple_t = decayed_tuple<Tag, As...>;
+
           // As an optimization, if there are no values to persist to temporary
           // storage, skip it and simply propagate the completion signal.
           if constexpr (sizeof...(As) == 0) {
             self.operation_state_.propagate_completion_signal(Tag());
           } else {
             storage_t* storage = static_cast<storage_t*>(self.operation_state_.temp_storage_);
-            // BUGBUG TODO: construct/emplace from the device, not the host!
-            ::new (storage) storage_t();
-            storage->template emplace<decayed_tuple<Tag, As...>>(Tag(), (As&&) as...);
+            constexpr bool construct_on_device = trivially_copyable<__decay_t<As>...>;
+
+            if constexpr (!construct_on_device) {
+              ::new (storage) storage_t();
+              storage->template emplace<tuple_t>(Tag(), (As&&) as...);
+            }
+
+            int dev_id{};
+            if (cudaError_t status = STDEXEC_DBG_ERR(cudaGetDevice(&dev_id)); 
+                status != cudaSuccess) {
+              self.operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+              return;
+            }
+
+            int concurrent_managed_access;
+            if (cudaError_t status = STDEXEC_DBG_ERR(cudaDeviceGetAttribute(&concurrent_managed_access, 
+                                                                            cudaDevAttrConcurrentManagedAccess, 
+                                                                            dev_id)); 
+                status != cudaSuccess) {
+              self.operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+              return;
+            }
+
+            if (concurrent_managed_access) {
+              cudaStream_t stream = self.operation_state_.get_stream();
+              if (cudaError_t status = STDEXEC_DBG_ERR(cudaMemPrefetchAsync(storage, 
+                                                                            sizeof(storage_t), 
+                                                                            dev_id, 
+                                                                            stream)); 
+                  status != cudaSuccess) {
+                self.operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+                return;
+              }
+            }
+
+            if constexpr (construct_on_device) {
+              cudaStream_t stream = self.operation_state_.get_stream();
+              kernel<Tag, storage_t, __decay_t<As>...><<<1, 1, 0, stream>>>(storage, as...);
+
+              if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
+                  status != cudaSuccess) {
+                self.operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+                return;
+              }
+            } 
+
+            unsigned int index = storage_t::template index_of<tuple_t>::value;
 
             visit(
               [&](auto& tpl) noexcept {
@@ -57,8 +110,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                     self.operation_state_.propagate_completion_signal(Tag2(), std::move(tas)...);
                   },
                   tpl);
-              },
-              *storage);
+              }, *storage, index);
           }
         }
 

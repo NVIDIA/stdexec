@@ -57,7 +57,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           cudaStream_t stream = self.op_state_.get_stream();
 
           if constexpr (does_not_return_a_value) {
-            kernel<Error><<<1, 1, 0, stream>>>(std::move(self.f_), (Error&&) error);
+            kernel<Error&&><<<1, 1, 0, stream>>>(std::move(self.f_), (Error&&) error);
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
               self.op_state_.propagate_completion_signal(stdexec::set_value);
@@ -68,7 +68,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             using decayed_result_t = __decay_t<result_t>;
             decayed_result_t* d_result = static_cast<decayed_result_t*>(
               self.op_state_.temp_storage_);
-            kernel_with_result<Error>
+            kernel_with_result<Error&&>
               <<<1, 1, 0, stream>>>(std::move(self.f_), d_result, (Error&&) error);
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
