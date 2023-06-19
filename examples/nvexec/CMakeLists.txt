@@ -102,6 +102,7 @@ set(nvexec_gpu_examples
     "         example.nvexec.bulk : bulk.cpp"
     "       example.nvexec.reduce : reduce.cpp"
     "        example.nvexec.split : split.cpp"
+    "         example.nvexec.nvtx : nvtx.cpp"
     "example.nvexec.maxwell_gpu_s : maxwell_gpu_s.cpp"
     "example.nvexec.maxwell_gpu_m : maxwell_gpu_m.cpp"
 )
