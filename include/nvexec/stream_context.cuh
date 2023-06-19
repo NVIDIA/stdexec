@@ -20,6 +20,7 @@
 #include <memory_resource>
 
 #include "detail/config.cuh"
+#include "detail/memory.cuh"
 #include "stream/sync_wait.cuh"
 #include "stream/bulk.cuh"
 #include "stream/let_xxx.cuh"
@@ -93,7 +94,7 @@ namespace nvexec {
           cudaError_t status_{cudaSuccess};
 
           __t(Receiver&& rcvr, context_state_t context_state)
-            : operation_state_base_t<ReceiverId>((Receiver&&) rcvr, context_state, false) {
+            : operation_state_base_t<ReceiverId>((Receiver&&) rcvr, context_state) {
           }
 
           STDEXEC_DEFINE_CUSTOM(void start)(this __t& op, start_t) noexcept {
@@ -278,7 +279,7 @@ namespace nvexec {
     when_all_sender_th<stream_scheduler, Senders...>
       tag_invoke(when_all_t, Senders&&... sndrs) noexcept {
       return when_all_sender_th<stream_scheduler, Senders...>{
-        context_state_t{nullptr, nullptr, nullptr},
+        context_state_t{nullptr, nullptr, nullptr, nullptr},
         (Senders&&) sndrs...
       };
     }
@@ -287,7 +288,7 @@ namespace nvexec {
     when_all_sender_th< stream_scheduler, tag_invoke_result_t<into_variant_t, Senders>...>
       tag_invoke(when_all_with_variant_t, Senders&&... sndrs) noexcept {
       return when_all_sender_th< stream_scheduler, tag_invoke_result_t<into_variant_t, Senders>...>{
-        context_state_t{nullptr, nullptr, nullptr},
+        context_state_t{nullptr, nullptr, nullptr, nullptr},
         into_variant((Senders&&) sndrs)...
       };
     }
@@ -302,79 +303,6 @@ namespace nvexec {
       return upon_stopped_sender_th<S, Fn>{{}, (S&&) sndr, (Fn&&) fun};
     }
 
-    struct pinned_resource : public std::pmr::memory_resource {
-      void* do_allocate(size_t bytes, size_t /* alignment */) override {
-        void* ret;
-
-        if (cudaError_t status = STDEXEC_DBG_ERR(cudaMallocHost(&ret, bytes));
-            status != cudaSuccess) {
-          throw std::bad_alloc();
-        }
-
-        return ret;
-      }
-
-      void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
-        STDEXEC_DBG_ERR(cudaFreeHost(ptr));
-      }
-
-      bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
-        return this == &other;
-      }
-    };
-
-    struct gpu_resource : public std::pmr::memory_resource {
-      void* do_allocate(size_t bytes, size_t /* alignment */) override {
-        void* ret;
-
-        if (cudaError_t status = STDEXEC_DBG_ERR(cudaMalloc(&ret, bytes)); status != cudaSuccess) {
-          throw std::bad_alloc();
-        }
-
-        return ret;
-      }
-
-      void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
-        STDEXEC_DBG_ERR(cudaFree(ptr));
-      }
-
-      bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
-        return this == &other;
-      }
-    };
-
-    struct managed_resource : public std::pmr::memory_resource {
-      void* do_allocate(size_t bytes, size_t /* alignment */) override {
-        void* ret;
-
-        if (cudaError_t status = STDEXEC_DBG_ERR(cudaMallocManaged(&ret, bytes));
-            status != cudaSuccess) {
-          throw std::bad_alloc();
-        }
-
-        return ret;
-      }
-
-      void do_deallocate(void* ptr, size_t /* bytes */, size_t /* alignment */) override {
-        STDEXEC_DBG_ERR(cudaFree(ptr));
-      }
-
-      bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
-        return this == &other;
-      }
-    };
-
-    template <class UnderlyingResource>
-    class resource_storage {
-      UnderlyingResource underlying_resource_{};
-      std::pmr::monotonic_buffer_resource monotonic_resource_{512 * 1024, &underlying_resource_};
-      std::pmr::synchronized_pool_resource resource_{&monotonic_resource_};
-
-     public:
-      std::pmr::memory_resource* get() {
-        return &resource_;
-      }
-    };
   } // namespace STDEXEC_STREAM_DETAIL_NS
 
   using STDEXEC_STREAM_DETAIL_NS::stream_scheduler;
@@ -384,8 +312,7 @@ namespace nvexec {
       pinned_resource_{};
     STDEXEC_STREAM_DETAIL_NS::resource_storage<STDEXEC_STREAM_DETAIL_NS::managed_resource>
       managed_resource_{};
-
-    // STDEXEC_STREAM_DETAIL_NS::resource_storage<STDEXEC_STREAM_DETAIL_NS::gpu_resource> gpu_resource_{};
+    STDEXEC_STREAM_DETAIL_NS::stream_pools_t stream_pools_{};
 
     static int get_device() {
       int dev_id{};
@@ -403,11 +330,7 @@ namespace nvexec {
 
     stream_scheduler get_scheduler(stream_priority priority = stream_priority::normal) {
       return {STDEXEC_STREAM_DETAIL_NS::context_state_t(
-        pinned_resource_.get(),
-        managed_resource_.get(),
-        // gpu_resource_.get(),
-        &hub_,
-        priority)};
+        pinned_resource_.get(), managed_resource_.get(), &stream_pools_, &hub_, priority)};
     }
   };
 } // namespace nvexec

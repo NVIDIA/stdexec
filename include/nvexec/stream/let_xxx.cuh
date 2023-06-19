@@ -111,7 +111,6 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             using op_state_t = __minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
 
             cudaStream_t stream = __self.__op_state_->get_stream();
-
             result_sender_t* result_sender = static_cast<result_sender_t*>(
               __self.__op_state_->temp_storage_);
             kernel_with_result<_As&&...><<<1, 1, 0, stream>>>(
@@ -119,10 +118,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
                 status == cudaSuccess) {
+              __self.__op_state_->defer_temp_storage_destruction(result_sender);
               auto& __op = __self.__op_state_->__op_state3_.template emplace<op_state_t>(
                 __conv{[&] {
                   return connect(
-                    *result_sender,
+                    std::move(*result_sender),
                     stdexec::__t<propagate_receiver_t<_ReceiverId>>{
                       {}, static_cast<operation_state_base_t<_ReceiverId>&>(*__self.__op_state_)});
                 }});
@@ -263,11 +263,15 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> _Self, class _Env>
-      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this _Self&&, get_completion_signatures_t, _Env&&)
-        -> dependent_completion_signatures<_Env>;
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+        this _Self&&,
+        get_completion_signatures_t,
+        _Env&&) -> dependent_completion_signatures<_Env>;
       template <__decays_to<__t> _Self, class _Env>
-      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this _Self&&, get_completion_signatures_t, _Env&&)
-        -> __completions<__copy_cvref_t<_Self, _Sender>, _Env>
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+        this _Self&&,
+        get_completion_signatures_t,
+        _Env&&) -> __completions<__copy_cvref_t<_Self, _Sender>, _Env>
         requires true;
 
       _Sender __sndr_;

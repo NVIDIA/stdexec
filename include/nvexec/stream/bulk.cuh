@@ -25,6 +25,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace _bulk {
     template <int BlockThreads, class... As, std::integral Shape, class Fun>
     __launch_bounds__(BlockThreads) __global__ void kernel(Shape shape, Fun fn, As... as) {
+      static_assert(trivially_copyable<Shape, Fun, As...>);
       const int tid = static_cast<int>(threadIdx.x + blockIdx.x * blockDim.x);
 
       if (tid < static_cast<int>(shape)) {
@@ -48,7 +49,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <same_as<set_value_t> _Tag, class... As>
         STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& self, _Tag, As&&... as) noexcept
-          requires __callable<Fun, Shape, As&...>
+          requires __callable<Fun, Shape&, As&...>
         {
           operation_state_base_t<ReceiverId>& op_state = self.op_state_;
 
@@ -57,8 +58,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             constexpr int block_threads = 256;
             const int grid_blocks = (static_cast<int>(self.shape_) + block_threads - 1)
                                   / block_threads;
-            kernel<block_threads, As&&...><<<grid_blocks, block_threads, 0, stream>>>(
-              self.shape_, std::move(self.f_), (As&&) as...);
+            kernel<block_threads, As&...>
+              <<<grid_blocks, block_threads, 0, stream>>>(self.shape_, std::move(self.f_), as...);
           }
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
@@ -126,17 +127,21 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           (Receiver&&) rcvr,
           [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
             -> receiver_t<Receiver> {
-            return receiver_t<Receiver>(self.shape_, self.fun_, stream_provider);
+            return receiver_t<Receiver>(self.shape_, (Fun&&) self.fun_, stream_provider);
           });
       }
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, get_completion_signatures_t, Env&&)
-        -> dependent_completion_signatures<Env>;
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+        this Self&&,
+        get_completion_signatures_t,
+        Env&&) -> dependent_completion_signatures<Env>;
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, get_completion_signatures_t, Env&&)
-        -> _completion_signatures_t<Self, Env>
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+        this Self&&,
+        get_completion_signatures_t,
+        Env&&) -> _completion_signatures_t<Self, Env>
         requires true;
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) //
@@ -359,8 +364,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-      STDEXEC_DEFINE_CUSTOM(auto connect)(this Self&& self, connect_t, Receiver rcvr) -> multi_gpu_bulk::
-        operation_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun> {
+      STDEXEC_DEFINE_CUSTOM(auto connect)(this Self&& self, connect_t, Receiver rcvr)
+        -> multi_gpu_bulk::
+          operation_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun> {
         auto sch = get_completion_scheduler<set_value_t>(stdexec::get_env(self.sndr_));
         context_state_t context_state = sch.context_state_;
         return multi_gpu_bulk::
@@ -374,12 +380,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, get_completion_signatures_t, Env&&)
-        -> dependent_completion_signatures<Env>;
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+        this Self&&,
+        get_completion_signatures_t,
+        Env&&) -> dependent_completion_signatures<Env>;
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, get_completion_signatures_t, Env&&)
-        -> _completion_signatures_t<Self, Env>
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+        this Self&&,
+        get_completion_signatures_t,
+        Env&&) -> _completion_signatures_t<Self, Env>
         requires true;
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) //

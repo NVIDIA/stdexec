@@ -63,11 +63,39 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
         loop_->finish();
       }
 
+      template <class T>
+      static void prefetch(T&& ref, cudaStream_t stream) {
+        using decay_type = __decay_t<T>;
+        decay_type* ptr = &ref;
+        cudaPointerAttributes attributes{};
+        if (cudaError_t err = cudaPointerGetAttributes(&attributes, ptr); err == cudaSuccess) {
+          if (attributes.type == cudaMemoryTypeManaged) {
+            STDEXEC_DBG_ERR(cudaMemPrefetchAsync(ptr, sizeof(decay_type), cudaCpuDeviceId, stream));
+          }
+        }
+      }
+
       template <same_as<set_value_t> _Tag, class Sender2 = Sender, class... As>
         requires std::constructible_from<sync_wait_result_t<Sender2>, As...>
       STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& rcvr, _Tag, As&&... as) noexcept {
         try {
-          if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
+          int dev_id{};
+          cudaStream_t stream = rcvr.state_->stream_;
+
+          if constexpr (sizeof...(As)) {
+            if (STDEXEC_DBG_ERR(cudaGetDevice(&dev_id)) == cudaSuccess) {
+              int concurrent_managed_access{};
+              if (
+                STDEXEC_DBG_ERR(cudaDeviceGetAttribute(
+                  &concurrent_managed_access, cudaDevAttrConcurrentManagedAccess, dev_id))
+                == cudaSuccess) {
+                // Avoid launching the destruction kernel if the memory targeting host
+                (prefetch((As&&) as, stream), ...);
+              }
+            }
+          }
+
+          if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
               status == cudaSuccess) {
             rcvr.state_->data_.template emplace<1>((As&&) as...);
           } else {
@@ -127,11 +155,19 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
       state_t state{};
       run_loop loop;
 
-      exit_operation_state_t<Sender, receiver_t<Sender>> __op_state = exit_op_state(
-        (Sender&&) __sndr, receiver_t<Sender>{{}, &state, &loop}, context_state);
-      state.stream_ = __op_state.get_stream();
+      cudaError_t status = cudaSuccess;
+      auto __op_state = make_host<exit_operation_state_t<Sender, receiver_t<Sender>>>(
+        status, context_state.pinned_resource_, __conv{[&] {
+          return exit_op_state(
+            (Sender&&) __sndr, receiver_t<Sender>{{}, &state, &loop}, context_state);
+        }});
+      if (status != cudaSuccess) {
+        throw std::bad_alloc{};
+      }
 
-      stdexec::start(__op_state);
+      state.stream_ = __op_state->get_stream();
+
+      stdexec::start(*__op_state);
 
       // Wait for the variant to be filled in.
       loop.run();

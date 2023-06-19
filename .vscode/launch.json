@@ -14,9 +14,9 @@
             "console": "internalConsole",
             "sourceLanguages": ["cpp", "cuda"],
             "internalConsoleOptions": "neverOpen",
-            "cwd": "${workspaceFolder}/${input:BUILD_DIR}",
-            "relativePathBase": "${workspaceFolder}/${input:BUILD_DIR}",
-            "program": "${workspaceFolder}/${input:BUILD_DIR}/${input:CXX_TEST_SUITE}",
+            "cwd": "${command:cmake.buildDirectory}",
+            "relativePathBase": "${command:cmake.buildDirectory}",
+            "program": "${command:cmake.buildDirectory}/${input:CXX_TEST_SUITE}",
             "initCommands": ["settings set target.disable-aslr false"],
             "args": ["-v", "normal", "${input:CXX_TEST_TAGS}"],
         },
@@ -27,21 +27,33 @@
             "stopAtEntry": false,
             "breakOnLaunch": false,
             "internalConsoleOptions": "neverOpen",
-            "program": "${workspaceFolder}/${input:BUILD_DIR}/${input:CUDA_TEST_SUITE}",
-            "cwd": "${workspaceFolder}/${input:BUILD_DIR}",
+            "program": "${command:cmake.buildDirectory}/${input:CUDA_TEST_SUITE}",
+            "cwd": "${command:cmake.buildDirectory}",
             "args": "-v normal ${input:CUDA_TEST_TAGS}",
+        },
+        {
+            "name": "C++ Current Target (lldb)",
+            "type": "lldb",
+            "request": "launch",
+            "stdio": null,
+            "stopOnEntry": false,
+            "terminal": "console",
+            "console": "internalConsole",
+            "sourceLanguages": ["cpp", "cuda"],
+            "internalConsoleOptions": "neverOpen",
+            "cwd": "${command:cmake.launchTargetDirectory}",
+            "relativePathBase": "${command:cmake.launchTargetDirectory}",
+            "program": "${command:cmake.launchTargetPath}",
+            "initCommands": ["settings set target.disable-aslr false"],
+            "args": "${input:CXX_PROGRAM_ARGS}",
         },
     ],
     "inputs": [
         {
-            "type": "command",
-            "id": "BUILD_DIR",
-            "command": "shellCommand.execute",
-            "args": {
-                "cwd": "${workspaceFolder}",
-                "description": "The build directory to use",
-                "command": "find . -type f -name CMakeCache.txt ! -wholename '*/test_package/*' ! -wholename '*/_deps/*' -exec dirname {} \\;"
-            }
+            "id": "CXX_PROGRAM_ARGS",
+            "type": "promptString",
+            "default": "",
+            "description": "Arguments to pass to the program"
         },
         {
             "id": "CXX_TEST_SUITE",
@@ -50,7 +62,7 @@
             "args": {
                 "useFirstResult": true,
                 "description": "Path to Test Suite",
-                "cwd": "${workspaceFolder}/${input:BUILD_DIR}",
+                "cwd": "${command:cmake.buildDirectory}",
                 "command": "find . -type f -name test.stdexec"
             }
         },
@@ -61,7 +73,7 @@
             "args": {
                 "useFirstResult": true,
                 "description": "Path to Test Suite",
-                "cwd": "${workspaceFolder}/${input:BUILD_DIR}",
+                "cwd": "${command:cmake.buildDirectory}",
                 "command": "find . -type f -name test.nvexec"
             }
         },
@@ -71,7 +83,7 @@
             "command": "shellCommand.execute",
             "args": {
                 "description": "Select test tags to filter",
-                "cwd": "${workspaceFolder}/${input:BUILD_DIR}",
+                "cwd": "${command:cmake.buildDirectory}",
                 "command": "./${input:CXX_TEST_SUITE} --list-tags | tail -n +2 | head -n -2 | tr -s ' '' ' | cut -d' ' -f3",
             }
         },
@@ -81,7 +93,7 @@
             "command": "shellCommand.execute",
             "args": {
                 "description": "Select test tags to filter",
-                "cwd": "${workspaceFolder}/${input:BUILD_DIR}",
+                "cwd": "${command:cmake.buildDirectory}",
                 "command": "./${input:CUDA_TEST_SUITE} --list-tags | tail -n +2 | head -n -2 | tr -s ' '' ' | cut -d' ' -f3",
             }
         },

@@ -197,7 +197,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               exec::make_env(
                 stdexec::get_env(base()),
                 __with_(get_stop_token, op_state_->stop_source_.get_token())),
-              op_state_->streams_[Index]);
+              &const_cast<stream_provider_t&>(op_state_->stream_providers_[Index]));
 
             return env;
           }
@@ -236,8 +236,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         template <class OpT>
         static void sync(OpT& op) noexcept {
           if constexpr (std::is_base_of_v<stream_op_state_base, OpT>) {
-            if (op.status_ == cudaSuccess) {
-              op.status_ = STDEXEC_DBG_ERR(cudaStreamSynchronize(op.get_stream()));
+            if (op.stream_provider_.status_ == cudaSuccess) {
+              op.stream_provider_.status_ = STDEXEC_DBG_ERR(cudaStreamSynchronize(op.get_stream()));
             }
           }
         }
@@ -250,7 +250,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           if (status_ == cudaSuccess) {
             if constexpr (stream_receiver<Receiver>) {
               auto env = get_env(recvr_);
-              cudaStream_t stream = get_stream(env);
+              stream_provider_t* stream_provider = get_stream_provider(env);
+              cudaStream_t stream = stream_provider->own_stream_.value();
 
               for (int i = 0; i < sizeof...(SenderIds); i++) {
                 if (status_ == cudaSuccess) {
@@ -297,15 +298,20 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
         }
 
+        template <size_t Index>
+        context_state_t get_context_state(WhenAll& when_all) {
+          auto sch = get_completion_scheduler<set_value_t>(
+            stdexec::get_env(std::get<Index>(when_all.sndrs_)));
+          return sch.context_state_;
+        }
+
         template <size_t... Is>
         operation_t(WhenAll&& when_all, Receiver rcvr, std::index_sequence<Is...>)
           : recvr_((Receiver&&) rcvr)
+          , stream_providers_{get_context_state<Is>(when_all)...}
           , child_states_{__conv{[&when_all, this]() {
             operation_t* parent_op = this;
-            auto sch = get_completion_scheduler<set_value_t>(
-              stdexec::get_env(std::get<Is>(when_all.sndrs_)));
-            context_state_t context_state = sch.context_state_;
-            STDEXEC_DBG_ERR(cudaStreamCreate(&this->streams_[Is]));
+            context_state_t context_state = get_context_state<Is>(when_all);
 
             return exit_op_state<
               decltype(std::get<Is>(((WhenAll&&) when_all).sndrs_)),
@@ -330,7 +336,6 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           STDEXEC_DBG_ERR(cudaFree(values_));
 
           for (int i = 0; i < sizeof...(SenderIds); i++) {
-            STDEXEC_DBG_ERR(cudaStreamDestroy(streams_[i]));
             STDEXEC_DBG_ERR(cudaEventDestroy(events_[i]));
           }
         }
@@ -371,10 +376,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             __>;
 
         Receiver recvr_;
-        child_op_states_tuple_t child_states_;
         std::atomic<std::size_t> count_{sizeof...(SenderIds)};
-        std::array<cudaStream_t, sizeof...(SenderIds)> streams_;
+        std::array<stream_provider_t, sizeof...(SenderIds)> stream_providers_;
         std::array<cudaEvent_t, sizeof...(SenderIds)> events_;
+        child_op_states_tuple_t child_states_;
         // Could be non-atomic here and atomic_ref everywhere except __completion_fn
         std::atomic<_when_all::state_t> state_{_when_all::started};
 
@@ -394,8 +399,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, get_completion_signatures_t, Env&&)
-        -> completion_sigs<Env, Self>;
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+        this Self&&,
+        get_completion_signatures_t,
+        Env&&) -> completion_sigs<Env, Self>;
 
       STDEXEC_DEFINE_CUSTOM(const env& get_env)(this const __t& __self, get_env_t) noexcept {
         return __self.env_;

@@ -70,6 +70,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             decayed_result_t* d_result = static_cast<decayed_result_t*>(op_state.temp_storage_);
             kernel_with_result<As&&...>
               <<<1, 1, 0, stream>>>(std::move(self.f_), d_result, (As&&) as...);
+            op_state.defer_temp_storage_destruction(d_result);
 
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
@@ -188,12 +189,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, get_completion_signatures_t, Env&&)
-        -> dependent_completion_signatures<Env>;
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+        this Self&&,
+        get_completion_signatures_t,
+        Env&&) -> dependent_completion_signatures<Env>;
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, get_completion_signatures_t, Env&&)
-        -> _completion_signatures_t<Self, Env>
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+        this Self&&,
+        get_completion_signatures_t,
+        Env&&) -> _completion_signatures_t<Self, Env>
         requires true;
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) //

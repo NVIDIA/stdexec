@@ -46,7 +46,14 @@ namespace nvexec {
 
         template <class Range>
         static void set_value_impl(base::__t&& self, Range&& range) noexcept {
+          cudaError_t status{cudaSuccess};
           cudaStream_t stream = self.op_state_.get_stream();
+
+          // `range` is produced asynchronously, so we need to wait for it to be ready
+          if (status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream)); status != cudaSuccess) {
+            self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+            return;
+          }
 
           using value_t = result_t<Range>;
           value_t* d_out = static_cast<value_t*>(self.op_state_.temp_storage_);
@@ -58,8 +65,6 @@ namespace nvexec {
           auto last = end(range);
 
           std::size_t num_items = std::distance(first, last);
-
-          cudaError_t status;
 
           if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
                 d_temp_storage,
@@ -97,6 +102,8 @@ namespace nvexec {
           }
 
           status = STDEXEC_DBG_ERR(cudaFreeAsync(d_temp_storage, stream));
+          self.op_state_.defer_temp_storage_destruction(d_out);
+
           if (status == cudaSuccess) {
             self.op_state_.propagate_completion_signal(stdexec::set_value, *d_out);
           } else {

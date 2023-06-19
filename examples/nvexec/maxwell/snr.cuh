@@ -184,9 +184,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
       std::size_t i_{};
 
       STDEXEC_DEFINE_CUSTOM(void start)(this operation_state_t& op, ex::start_t) noexcept {
-        if (op.status_ != cudaSuccess) {
+        if (op.stream_provider_.status_ != cudaSuccess) {
           // Couldn't allocate memory for operation state, complete with error
-          op.propagate_completion_signal(ex::set_error, std::move(op.status_));
+          op.propagate_completion_signal(ex::set_error, std::move(op.stream_provider_.status_));
         } else {
           if (op.n_) {
             ex::start(*op.pred_op_state_);
@@ -203,8 +203,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
         std::size_t n)
         : operation_state_base_t<ReceiverId>(
           (Receiver&&) rcvr,
-          ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(pred_sender)).context_state_,
-          false)
+          ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(pred_sender)).context_state_)
         , pred_sender_{(PredSender&&) pred_sender}
         , closure_(closure)
         , n_(n) {

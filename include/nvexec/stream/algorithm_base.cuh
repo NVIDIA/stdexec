@@ -133,15 +133,20 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       }
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, get_completion_signatures_t, Env&&)
-        -> dependent_completion_signatures<Env>;
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+        this Self&&,
+        get_completion_signatures_t,
+        Env&&) -> dependent_completion_signatures<Env>;
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, get_completion_signatures_t, Env&&)
-        -> completion_signatures<Self, Env>
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+        this Self&&,
+        get_completion_signatures_t,
+        Env&&) -> completion_signatures<Self, Env>
         requires true;
 
-      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) noexcept -> env_of_t<const Sender&> {
+      STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) noexcept
+        -> env_of_t<const Sender&> {
         return stdexec::get_env(self.sndr_);
       }
     };

@@ -35,7 +35,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         struct receiver_t {
           __t& op_state_;
-          
+
           template <same_as<receiver_t> _Self, same_as<set_value_t> Tag, class... As>
             requires __callable<Tag, Receiver&&, As...>
           STDEXEC_DEFINE_CUSTOM(void set_value)(this _Self&& self, Tag, As&&... as) noexcept {
@@ -64,7 +64,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         cudaError_t status_{cudaSuccess};
         context_state_t context_state_;
 
-        queue::host_ptr<variant_t> storage_;
+        host_ptr<variant_t> storage_;
         task_t* task_;
 
         ::cuda::std::atomic_flag started_{};
@@ -72,7 +72,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using enqueue_receiver =
           stdexec::__t<stream_enqueue_receiver<stdexec::__id<Env>, variant_t>>;
         using inner_op_state_t = connect_result_t<Sender, enqueue_receiver>;
-        queue::host_ptr<__decay_t<Env>> env_{};
+        host_ptr<__decay_t<Env>> env_{};
         inner_op_state_t inner_op_;
 
         STDEXEC_DEFINE_CUSTOM(void start)(this __t& op, start_t) noexcept {
@@ -88,10 +88,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
 
         __t(Sender&& sender, Receiver&& rcvr, context_state_t context_state)
-          : operation_state_base_t<ReceiverId>((Receiver&&) rcvr, context_state, true)
+          : operation_state_base_t<ReceiverId>((Receiver&&) rcvr, context_state)
           , context_state_(context_state)
-          , storage_(queue::make_host<variant_t>(this->status_, context_state.pinned_resource_))
-          , task_(queue::make_host<task_t>(
+          , storage_(make_host<variant_t>(this->status_, context_state.pinned_resource_))
+          , task_(make_host<task_t>(
                     this->status_,
                     context_state.pinned_resource_,
                     receiver_t{*this},
@@ -99,7 +99,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                     this->get_stream(),
                     context_state.pinned_resource_)
                     .release())
-          , env_(queue::make_host(this->status_, context_state_.pinned_resource_, this->make_env()))
+          , env_(make_host(this->status_, context_state_.pinned_resource_, this->make_env()))
           , inner_op_{connect(
               (Sender&&) sender,
               enqueue_receiver{
@@ -158,12 +158,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, get_completion_signatures_t, Env&&)
-        -> dependent_completion_signatures<Env>;
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+        this Self&&,
+        get_completion_signatures_t,
+        Env&&) -> dependent_completion_signatures<Env>;
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, get_completion_signatures_t, Env&&)
-        -> _completion_signatures_t<Self, Env>
+      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+        this Self&&,
+        get_completion_signatures_t,
+        Env&&) -> _completion_signatures_t<Self, Env>
         requires true;
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) noexcept

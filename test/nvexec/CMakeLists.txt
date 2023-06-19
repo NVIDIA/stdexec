@@ -18,6 +18,8 @@ set(nvexec_test_sources
     ensure_started.cpp
     start_detached.cpp
     variant.cpp
+    monotonic_buffer.cpp
+    synchronized_pool.cpp
     split.cpp
     upon_stopped.cpp
     transfer.cpp

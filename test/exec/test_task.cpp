@@ -18,8 +18,9 @@
 #include <stdexec/coroutine.hpp>
 
 #if !STDEXEC_STD_NO_COROUTINES_
-#  include <exec/task.hpp>
-#  include <exec/single_thread_context.hpp>
+#include <exec/task.hpp>
+#include <exec/single_thread_context.hpp>
+#include <exec/async_scope.hpp>
 
 #  include <catch2/catch.hpp>
 
@@ -220,5 +221,16 @@ TEST_CASE("Stick on main thread if completes_inline is not used", "[types][stick
   sync_wait(std::move(t));
 }
 
+exec::task<void> check_stop_possible() {
+  auto stop_token = co_await stdexec::get_stop_token();
+  CHECK(stop_token.stop_possible());
+}
+
+TEST_CASE("task - stop token is forwarded", "[types][task]") {
+  single_thread_context context{};
+  exec::async_scope scope;
+  scope.spawn(stdexec::on(context.get_scheduler(), check_stop_possible()));
+  CHECK(stdexec::sync_wait(scope.on_empty()));
+}
 
 #endif

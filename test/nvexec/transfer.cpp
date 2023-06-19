@@ -105,7 +105,7 @@ TEST_CASE("nvexec transfer_just supports move-only types", "[cuda][stream][adapt
   nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
 
   auto snd = ex::transfer_just(gpu, move_only_t{42}) //
-           | ex::then([=](move_only_t val) noexcept {
+           | ex::then([=](move_only_t&& val) noexcept {
                if (is_on_gpu() && val.contains(42)) {
                  return true;
                }
