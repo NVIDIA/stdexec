@@ -236,7 +236,7 @@ public:
       diff(+1);
     }
 
-    __host__ __device__ void less() {
+    __host__ __device__ void fewer() {
       diff(-1);
     }
 
@@ -275,7 +275,7 @@ public:
     handle_.more();
   }
   __host__ __device__ ~tracer_t() {
-    handle_.less();
+    handle_.fewer();
   }
 };
 
