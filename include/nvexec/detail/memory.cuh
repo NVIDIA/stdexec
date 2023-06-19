@@ -333,7 +333,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     }
 
     ~synchronized_pool_resource() {
-      assert(live_blocks.empty());
+      STDEXEC_ASSERT(live_blocks.empty());
 
       while (!cached_blocks.empty()) {
         cached_blocks_t::iterator begin = cached_blocks.begin();

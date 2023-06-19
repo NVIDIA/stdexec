@@ -253,7 +253,7 @@ namespace nvexec {
           own_stream_.reset();
         }
 
-        assert(cemetery_.empty());
+        STDEXEC_ASSERT(cemetery_.empty());
       }
     };
 
@@ -522,7 +522,7 @@ namespace nvexec {
 
         template <class T>
         void defer_temp_storage_destruction(T *ptr) {
-          assert(ptr == this->temp_storage_);
+          STDEXEC_ASSERT(ptr == this->temp_storage_);
 
           if constexpr (!std::is_trivially_destructible_v<T>) {
             temp_storage_ = nullptr; // defer deallocation to the stream provider
