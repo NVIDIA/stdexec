@@ -72,6 +72,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               <<<1, 1, 0, stream>>>(std::move(self.f_), d_result, (Error&&) error);
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
+              self.op_state_.defer_temp_storage_destruction(d_result);
               self.op_state_.propagate_completion_signal(stdexec::set_value, std::move(*d_result));
             } else {
               self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));

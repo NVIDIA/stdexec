@@ -54,6 +54,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           if constexpr (sizeof...(As) == 0) {
             self.operation_state_.propagate_completion_signal(Tag());
           } else {
+            // If there are values in the completion channel, we have to construct 
+            // the temporary storage. If the values are trivially copyable, we launch
+            // a kernel and construct the temporary storage on the device to avoid managed
+            // memory movements. Otherwise, we construct the temporary storage on the host
+            // and prefetch it to the device.
             storage_t* storage = static_cast<storage_t*>(self.operation_state_.temp_storage_);
             constexpr bool construct_on_device = trivially_copyable<__decay_t<As>...>;
 
@@ -69,7 +74,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               return;
             }
 
-            int concurrent_managed_access;
+            int concurrent_managed_access{};
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaDeviceGetAttribute(&concurrent_managed_access, 
                                                                             cudaDevAttrConcurrentManagedAccess, 
                                                                             dev_id)); 
@@ -78,8 +83,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               return;
             }
 
+            cudaStream_t stream = self.operation_state_.get_stream();
+
             if (concurrent_managed_access) {
-              cudaStream_t stream = self.operation_state_.get_stream();
               if (cudaError_t status = STDEXEC_DBG_ERR(cudaMemPrefetchAsync(storage, 
                                                                             sizeof(storage_t), 
                                                                             dev_id, 
@@ -91,7 +97,6 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             }
 
             if constexpr (construct_on_device) {
-              cudaStream_t stream = self.operation_state_.get_stream();
               kernel<Tag, storage_t, __decay_t<As>...><<<1, 1, 0, stream>>>(storage, as...);
 
               if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
@@ -100,6 +105,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                 return;
               }
             } 
+
+            self.operation_state_.defer_temp_storage_destruction(storage);
 
             unsigned int index = storage_t::template index_of<tuple_t>::value;
 

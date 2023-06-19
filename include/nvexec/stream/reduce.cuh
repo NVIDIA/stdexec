@@ -103,6 +103,8 @@ namespace nvexec {
           }
 
           status = STDEXEC_DBG_ERR(cudaFreeAsync(d_temp_storage, stream));
+          self.op_state_.defer_temp_storage_destruction(d_out);
+
           if (status == cudaSuccess) {
             self.op_state_.propagate_completion_signal(stdexec::set_value, *d_out);
           } else {

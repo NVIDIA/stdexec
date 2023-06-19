@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <stack>
 #include <atomic>
 #include <memory_resource>
 #include "../../stdexec/execution.hpp"
@@ -77,24 +78,6 @@ namespace nvexec {
       ((STDEXEC_IS_TRIVIALLY_COPYABLE(Ts) || std::is_reference_v<Ts>) &&...);
 #endif
 
-    struct context_state_t {
-      std::pmr::memory_resource* pinned_resource_{nullptr};
-      std::pmr::memory_resource* managed_resource_{nullptr};
-      queue::task_hub_t* hub_{nullptr};
-      stream_priority priority_;
-
-      context_state_t(
-        std::pmr::memory_resource* pinned_resource,
-        std::pmr::memory_resource* managed_resource,
-        queue::task_hub_t* hub,
-        stream_priority priority = stream_priority::normal)
-        : pinned_resource_(pinned_resource)
-        , managed_resource_(managed_resource)
-        , hub_(hub)
-        , priority_(priority) {
-      }
-    };
-
     inline std::pair<int, cudaError_t> get_stream_priority(stream_priority priority) {
       int least{};
       int greatest{};
@@ -113,27 +96,103 @@ namespace nvexec {
       return std::make_pair(0, cudaSuccess);
     }
 
-    inline std::pair<cudaStream_t, cudaError_t>
-      create_stream_with_priority(stream_priority priority) {
-      cudaStream_t stream{};
-      cudaError_t status{cudaSuccess};
+    class stream_pool_t {
+      std::stack<cudaStream_t> streams_;
+      std::mutex mtx_;
 
-      if (priority == stream_priority::normal) {
-        status = STDEXEC_DBG_ERR(cudaStreamCreate(&stream));
-      } else {
-        int cuda_priority{};
-        std::tie(cuda_priority, status) = get_stream_priority(priority);
+    public:
+      stream_pool_t() = default;
+      stream_pool_t(const stream_pool_t&) = delete;
+      stream_pool_t& operator=(const stream_pool_t&) = delete;
 
-        if (status != cudaSuccess) {
-          return std::make_pair(cudaStream_t{}, status);
-        }
+      std::pair<cudaStream_t, cudaError_t> borrow_stream(stream_priority priority) {
+        std::lock_guard<std::mutex> lock(mtx_);
 
-        status = STDEXEC_DBG_ERR(
-          cudaStreamCreateWithPriority(&stream, cudaStreamDefault, cuda_priority));
+        if (streams_.empty()) {
+          cudaStream_t stream{};
+          cudaError_t status{cudaSuccess};
+
+          if (priority == stream_priority::normal) {
+            status = STDEXEC_DBG_ERR(cudaStreamCreate(&stream));
+          } else {
+            int cuda_priority{};
+            std::tie(cuda_priority, status) = get_stream_priority(priority);
+
+            if (status != cudaSuccess) {
+              return std::make_pair(cudaStream_t{}, status);
+            }
+
+            status = STDEXEC_DBG_ERR(
+              cudaStreamCreateWithPriority(&stream, cudaStreamDefault, cuda_priority));
+          }
+
+          return std::make_pair(stream, status);
+        } 
+
+        cudaStream_t stream = streams_.top();
+        streams_.pop();
+        return std::make_pair(stream, cudaSuccess);
       }
 
-      return std::make_pair(stream, status);
-    }
+      void return_stream(cudaStream_t stream) {
+        std::lock_guard<std::mutex> lock(mtx_);
+        streams_.push(stream);
+      }
+
+      ~stream_pool_t() {
+        while (!streams_.empty()) {
+          cudaStream_t stream = streams_.top();
+          streams_.pop();
+          cudaStreamDestroy(stream);
+        }
+      }
+    };
+
+    class stream_pools_t {
+      std::array<stream_pool_t, 3> pools_;
+
+      stream_pool_t& get(stream_priority priority) {
+        return pools_[static_cast<int>(priority)];
+      }
+
+    public:
+      std::pair<cudaStream_t, cudaError_t> borrow_stream(stream_priority priority) {
+        return get(priority).borrow_stream(priority);
+      }
+
+      void return_stream(cudaStream_t stream, stream_priority priority) {
+        get(priority).return_stream(stream);
+      }
+    };
+
+    struct context_state_t {
+      std::pmr::memory_resource* pinned_resource_{nullptr};
+      std::pmr::memory_resource* managed_resource_{nullptr};
+      stream_pools_t* stream_pools_;
+      queue::task_hub_t* hub_{nullptr};
+      stream_priority priority_;
+
+      context_state_t(
+        std::pmr::memory_resource* pinned_resource,
+        std::pmr::memory_resource* managed_resource,
+        stream_pools_t* stream_pools,
+        queue::task_hub_t* hub,
+        stream_priority priority = stream_priority::normal)
+        : pinned_resource_(pinned_resource)
+        , managed_resource_(managed_resource)
+        , stream_pools_(stream_pools)
+        , hub_(hub)
+        , priority_(priority) {
+      }
+
+      std::pair<cudaStream_t, cudaError_t> borrow_stream() {
+        return stream_pools_->borrow_stream(priority_);
+      }
+
+      void return_stream(cudaStream_t stream) {
+        stream_pools_->return_stream(stream, priority_);
+      }
+    };
 
     struct stream_scheduler;
 
@@ -149,11 +208,60 @@ namespace nvexec {
       cudaStream_t stream_;
     };
 
-    struct get_stream_t {
+    template <class T>
+    __launch_bounds__(1) __global__ void destructor_kernel(T* obj) {
+      obj->~T();
+    }
+
+
+    struct stream_provider_t {
+      cudaError_t status_{cudaSuccess};
+      std::optional<cudaStream_t> own_stream_{};
+      context_state_t context_;
+
+      std::mutex custodian_;
+      std::vector<std::function<void()>> cemetery_;
+
+      stream_provider_t(bool borrows_stream, context_state_t context)
+        : context_(context) {
+        if (!borrows_stream) {
+          std::tie(own_stream_, status_) = context_.borrow_stream();
+        }
+      }
+
+      stream_provider_t(context_state_t context)
+        : stream_provider_t(false, context) {
+      }
+
+      void bury(std::function<void()> rite) {
+        std::lock_guard lock(custodian_);
+        cemetery_.emplace_back(rite);
+      }
+
+      ~stream_provider_t() {
+        if (own_stream_) {
+          cudaStream_t stream = own_stream_.value();
+
+          if (!cemetery_.empty()) {
+            for (auto& f: cemetery_) {
+              f();
+            }
+            cemetery_.clear();
+          }
+
+          context_.return_stream(stream);
+          own_stream_.reset();
+        }
+
+        STDEXEC_ASSERT(cemetery_.empty());
+      }
+    };
+
+    struct get_stream_provider_t {
       template <class Env>
-        requires tag_invocable<get_stream_t, Env>
-      cudaStream_t operator()(const Env& env) const noexcept {
-        return tag_invoke(get_stream_t{}, env);
+        requires tag_invocable<get_stream_provider_t, Env>
+      stream_provider_t* operator()(const Env& env) const noexcept {
+        return tag_invoke(get_stream_provider_t{}, env);
       }
     };
 
@@ -204,39 +312,41 @@ namespace nvexec {
         set_error_t,
         set_stopped_t>>;
 
-    inline constexpr get_stream_t get_stream{};
+    inline constexpr get_stream_provider_t get_stream_provider{};
 
     template <class BaseEnv>
-    auto make_stream_env(BaseEnv&& base_env, cudaStream_t stream) noexcept {
+    auto make_stream_env(BaseEnv&& base_env, stream_provider_t* stream_provider) noexcept {
       return __env::__join_env(
-        __env::__env_fn{[stream](get_stream_t) noexcept {
-          return stream;
+        __env::__env_fn{[stream_provider](get_stream_provider_t) noexcept {
+          return stream_provider;
         }},
         (BaseEnv&&) base_env);
     }
 
     template <class BaseEnv>
-      requires __callable<get_stream_t, const BaseEnv&>
-    BaseEnv make_stream_env(BaseEnv&& base_env, cudaStream_t) noexcept {
+      requires __callable<get_stream_provider_t, const BaseEnv&>
+    BaseEnv make_stream_env(BaseEnv&& base_env, stream_provider_t* ) noexcept {
       return (BaseEnv&&) base_env;
     }
 
     template <class BaseEnv>
     using stream_env =
-      decltype(STDEXEC_STREAM_DETAIL_NS::make_stream_env(__declval<BaseEnv>(), cudaStream_t()));
+      decltype(STDEXEC_STREAM_DETAIL_NS::make_stream_env(
+        __declval<BaseEnv>(), 
+        static_cast<stream_provider_t*>(nullptr)));
 
     template <class BaseEnv>
-    auto make_terminal_stream_env(BaseEnv&& base_env, cudaStream_t stream) noexcept {
+    auto make_terminal_stream_env(BaseEnv&& base_env, stream_provider_t* stream_provider) noexcept {
       return __env::__join_env(
-        __env::__env_fn{[stream](get_stream_t) noexcept {
-          return stream;
+        __env::__env_fn{[stream_provider](get_stream_provider_t) noexcept {
+          return stream_provider;
         }},
         (BaseEnv&&) base_env);
     }
     template <class BaseEnv>
     using terminal_stream_env = decltype(STDEXEC_STREAM_DETAIL_NS::make_terminal_stream_env(
       __declval<BaseEnv>(),
-      cudaStream_t()));
+      static_cast<stream_provider_t*>(nullptr)));
 
     template <class BaseEnv>
     using make_stream_env_t = stream_env<BaseEnv>;
@@ -345,7 +455,6 @@ namespace nvexec {
         this->free_ = [](task_base_t* t) noexcept {
           continuation_task_t& self = *static_cast<continuation_task_t*>(t);
           STDEXEC_DBG_ERR(cudaFreeAsync(self.atom_next_, self.stream_));
-          STDEXEC_DBG_ERR(cudaStreamDestroy(self.stream_));
           self.pinned_resource_->deallocate(
             t, sizeof(continuation_task_t), std::alignment_of_v<continuation_task_t>);
         };
@@ -362,13 +471,13 @@ namespace nvexec {
     };
 
     template <class Env>
-      requires tag_invocable<get_stream_t, const __decay_t<Env>&>
+      requires tag_invocable<get_stream_provider_t, const __decay_t<Env>&>
     constexpr bool borrows_stream_h() {
       return true;
     }
 
     template <class Env>
-      requires(!tag_invocable<get_stream_t, const __decay_t<Env>>)
+      requires(!tag_invocable<get_stream_provider_t, const __decay_t<Env>>)
     constexpr bool borrows_stream_h() {
       return false;
     }
@@ -386,34 +495,65 @@ namespace nvexec {
         context_state_t context_state_;
         void* temp_storage_{nullptr};
         outer_receiver_t rcvr_;
-        cudaError_t status_{cudaSuccess};
-        std::optional<cudaStream_t> own_stream_{};
-        bool defer_stream_destruction_{false};
+        stream_provider_t stream_provider_;
 
-        __t(outer_receiver_t rcvr, context_state_t context_state, bool defer_stream_destruction)
+        __t(outer_receiver_t rcvr, context_state_t context_state)
           : context_state_(context_state)
           , rcvr_(rcvr)
-          , defer_stream_destruction_(defer_stream_destruction) {
-          if constexpr (!borrows_stream) {
-            std::tie(own_stream_, status_) = create_stream_with_priority(context_state_.priority_);
-          }
+          , stream_provider_(borrows_stream, context_state) {
         }
 
-        cudaStream_t get_stream() const {
-          cudaStream_t stream{};
+        stream_provider_t* get_stream_provider() const {
+          stream_provider_t *stream_provider{};
 
           if constexpr (borrows_stream) {
             const outer_env_t& env = get_env(rcvr_);
-            stream = ::nvexec::STDEXEC_STREAM_DETAIL_NS::get_stream(env);
+            stream_provider = ::nvexec::STDEXEC_STREAM_DETAIL_NS::get_stream_provider(env);
           } else {
-            stream = *own_stream_;
+            stream_provider = &const_cast<stream_provider_t&>(stream_provider_);
           }
 
-          return stream;
+          return stream_provider;
+        }
+
+        cudaStream_t get_stream() const {
+          return get_stream_provider()->own_stream_.value();
+        }
+
+        template <class T>
+        void defer_temp_storage_destruction(T *ptr) {
+          STDEXEC_ASSERT(ptr == this->temp_storage_);
+
+          if constexpr (!std::is_trivially_destructible_v<T>) {
+            temp_storage_ = nullptr; // defer deallocation to the stream provider
+            stream_provider_t *stream_provider = get_stream_provider();
+            std::pmr::memory_resource* managed_resource = context_state_.managed_resource_;
+
+            // Stream is destroyed when the last object is buried, so it's safe to use it here
+            cudaStream_t stream = stream_provider->own_stream_.value();
+            stream_provider->bury([ptr, stream, managed_resource] {
+              std::int32_t device_id = cudaInvalidDeviceId;
+
+              cudaMemRangeGetAttribute(
+                &device_id, 4, cudaMemRangeAttributeLastPrefetchLocation, ptr, sizeof(T));
+
+              if (cudaCpuDeviceId == device_id) {
+                ptr->~T();
+              } else {
+                destructor_kernel<<<1, 1, 0, stream>>>(ptr);
+
+                // TODO Bury all the memory associated with the stream provider and then 
+                //      deallocate the memory
+                cudaStreamSynchronize(stream); 
+              }
+
+              managed_resource->deallocate(ptr, sizeof(T));
+            });
+          }
         }
 
         env_t make_env() const noexcept {
-          return make_stream_env(get_env(rcvr_), get_stream());
+          return make_stream_env(get_env(rcvr_), get_stream_provider());
         }
 
         template <__decays_to<cudaError_t> Error>
@@ -434,15 +574,6 @@ namespace nvexec {
           } else {
             continuation_kernel<outer_receiver_t, As&&...> // by reference
               <<<1, 1, 0, get_stream()>>>((outer_receiver_t&&) rcvr_, Tag(), (As&&) as...);
-          }
-        }
-
-        ~__t() {
-          if (own_stream_) {
-            if (!defer_stream_destruction_) {
-              STDEXEC_DBG_ERR(cudaStreamDestroy(*own_stream_));
-            }
-            own_stream_.reset();
           }
         }
       };
@@ -494,9 +625,9 @@ namespace nvexec {
         friend void tag_invoke(start_t, __t& op) noexcept {
           op.started_.test_and_set(::cuda::std::memory_order::relaxed);
 
-          if (op.status_ != cudaSuccess) {
+          if (op.stream_provider_.status_ != cudaSuccess) {
             // Couldn't allocate memory for operation state, complete with error
-            op.propagate_completion_signal(stdexec::set_error, std::move(op.status_));
+            op.propagate_completion_signal(stdexec::set_error, std::move(op.stream_provider_.status_));
             return;
           }
 
@@ -522,7 +653,7 @@ namespace nvexec {
           OutR&& out_receiver,
           ReceiverProvider receiver_provider,
           context_state_t context_state)
-          : base_t((outer_receiver_t&&) out_receiver, context_state, false)
+          : base_t((outer_receiver_t&&) out_receiver, context_state)
           , inner_op_{
               connect((sender_t&&) sender, receiver_provider(static_cast<base_t&>(*this)))} {
         }
@@ -533,17 +664,17 @@ namespace nvexec {
           OutR&& out_receiver,
           ReceiverProvider receiver_provider,
           context_state_t context_state)
-          : base_t((outer_receiver_t&&) out_receiver, context_state, true)
-          , storage_(make_host<variant_t>(this->status_, context_state.pinned_resource_))
+          : base_t((outer_receiver_t&&) out_receiver, context_state)
+          , storage_(make_host<variant_t>(this->stream_provider_.status_, context_state.pinned_resource_))
           , task_(make_host<task_t>(
-                    this->status_,
+                    this->stream_provider_.status_,
                     context_state.pinned_resource_,
                     receiver_provider(*this),
                     storage_.get(),
                     this->get_stream(),
                     context_state.pinned_resource_)
                     .release())
-          , env_(make_host<env_t>(this->status_, context_state.pinned_resource_, this->make_env()))
+          , env_(make_host<env_t>(this->stream_provider_.status_, context_state.pinned_resource_, this->make_env()))
           , inner_op_{connect(
               (sender_t&&) sender,
               stream_enqueue_receiver_t{
@@ -551,8 +682,8 @@ namespace nvexec {
                 storage_.get(),
                 task_,
                 context_state.hub_->producer()})} {
-          if (this->status_ == cudaSuccess) {
-            this->status_ = task_->status_;
+          if (this->stream_provider_.status_ == cudaSuccess) {
+            this->stream_provider_.status_ = task_->status_;
           }
         }
 
@@ -566,6 +697,7 @@ namespace nvexec {
           if (this->temp_storage_) {
             this->context_state_.managed_resource_->deallocate(
               this->temp_storage_, inner_receiver_t::memory_allocation_size);
+            this->temp_storage_ = nullptr;
           }
         }
 
