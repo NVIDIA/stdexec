@@ -75,7 +75,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
 
         __t(Sender&& sender, Receiver&& rcvr, context_state_t context_state)
-          : operation_state_base_t<ReceiverId>((Receiver&&) rcvr, context_state, true)
+          : operation_state_base_t<ReceiverId>((Receiver&&) rcvr, context_state)
           , context_state_(context_state)
           , storage_(make_host<variant_t>(this->status_, context_state.pinned_resource_))
           , task_(make_host<task_t>(

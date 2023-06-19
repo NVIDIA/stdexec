@@ -134,7 +134,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       explicit sh_state_t(Sender& sndr, context_state_t context_state)
         requires(stream_sender<Sender>)
         : context_state_(context_state)
-        , stream_provider_(false, false, context_state.priority_)
+        , stream_provider_(false, context_state)
         , data_(malloc_managed<variant_t>(stream_provider_.status_))
         , op_state2_(connect((Sender&&) sndr, inner_receiver_t{*this})) {
         if (stream_provider_.status_ == cudaSuccess) {
@@ -144,7 +144,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       explicit sh_state_t(Sender& sndr, context_state_t context_state)
         : context_state_(context_state)
-        , stream_provider_(false, false, context_state.priority_)
+        , stream_provider_(false, context_state)
         , data_(malloc_managed<variant_t>(stream_provider_.status_))
         , task_(make_host<task_t>(
                   stream_provider_.status_,
@@ -222,8 +222,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           : operation_base_t{nullptr, notify}
           , operation_state_base_t<ReceiverId>(
               (Receiver&&) rcvr,
-              shared_state->context_state_,
-              false)
+              shared_state->context_state_)
           , shared_state_(std::move(shared_state)) {
         }
 

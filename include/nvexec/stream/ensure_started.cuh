@@ -100,16 +100,6 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       return nullptr;
     }
 
-    inline cudaStream_t create_stream(cudaError_t& status, context_state_t context_state) {
-      cudaStream_t stream{};
-
-      if (status == cudaSuccess) {
-        std::tie(stream, status) = create_stream_with_priority(context_state.priority_);
-      }
-
-      return stream;
-    }
-
     template <class Sender>
     struct sh_state_t : __enable_intrusive_from_this<sh_state_t<Sender>> {
       using SenderId = stdexec::__id<Sender>;
@@ -145,7 +135,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       explicit sh_state_t(Sender& sndr, context_state_t context_state)
         requires(stream_sender<Sender>)
         : context_state_(context_state)
-        , stream_provider_(false, false, context_state.priority_)
+        , stream_provider_(false, context_state)
         , data_(malloc_managed<variant_t>(stream_provider_.status_))
         , op_state1_{nullptr}
         , op_state2_(connect((Sender&&) sndr, inner_receiver_t{*this})) {
@@ -158,7 +148,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       explicit sh_state_t(Sender& sndr, context_state_t context_state)
         : context_state_(context_state)
-        , stream_provider_(false, false, context_state.priority_)
+        , stream_provider_(false, context_state)
         , data_(malloc_managed<variant_t>(stream_provider_.status_))
         , task_(make_host<task_t>(
                   stream_provider_.status_,
@@ -232,8 +222,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           : operation_base_t{notify}
           , operation_state_base_t<ReceiverId>(
               (Receiver&&) rcvr,
-              shared_state->context_state_,
-              false)
+              shared_state->context_state_)
           , shared_state_(std::move(shared_state)) {
         }
 

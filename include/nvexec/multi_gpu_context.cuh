@@ -240,6 +240,7 @@ namespace nvexec {
       pinned_resource_{};
     STDEXEC_STREAM_DETAIL_NS::resource_storage<STDEXEC_STREAM_DETAIL_NS::managed_resource>
       managed_resource_{};
+    STDEXEC_STREAM_DETAIL_NS::stream_pools_t stream_pools_{};
 
     int dev_id_{};
     STDEXEC_STREAM_DETAIL_NS::queue::task_hub_t hub_;
@@ -276,7 +277,7 @@ namespace nvexec {
       return {
         num_devices_,
         STDEXEC_STREAM_DETAIL_NS::context_state_t(
-          pinned_resource_.get(), managed_resource_.get(), &hub_, priority)};
+          pinned_resource_.get(), managed_resource_.get(), &stream_pools_, &hub_, priority)};
     }
   };
 }

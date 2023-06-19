@@ -94,7 +94,7 @@ namespace nvexec {
           cudaError_t status_{cudaSuccess};
 
           __t(Receiver&& rcvr, context_state_t context_state)
-            : operation_state_base_t<ReceiverId>((Receiver&&) rcvr, context_state, false) {
+            : operation_state_base_t<ReceiverId>((Receiver&&) rcvr, context_state) {
           }
 
           friend void tag_invoke(start_t, __t& op) noexcept {
@@ -280,7 +280,7 @@ namespace nvexec {
     when_all_sender_th<stream_scheduler, Senders...>
       tag_invoke(when_all_t, Senders&&... sndrs) noexcept {
       return when_all_sender_th<stream_scheduler, Senders...>{
-        context_state_t{nullptr, nullptr, nullptr},
+        context_state_t{nullptr, nullptr, nullptr, nullptr},
         (Senders&&) sndrs...
       };
     }
@@ -289,7 +289,7 @@ namespace nvexec {
     when_all_sender_th< stream_scheduler, tag_invoke_result_t<into_variant_t, Senders>...>
       tag_invoke(when_all_with_variant_t, Senders&&... sndrs) noexcept {
       return when_all_sender_th< stream_scheduler, tag_invoke_result_t<into_variant_t, Senders>...>{
-        context_state_t{nullptr, nullptr, nullptr},
+        context_state_t{nullptr, nullptr, nullptr, nullptr},
         into_variant((Senders&&) sndrs)...
       };
     }
@@ -313,6 +313,7 @@ namespace nvexec {
       pinned_resource_{};
     STDEXEC_STREAM_DETAIL_NS::resource_storage<STDEXEC_STREAM_DETAIL_NS::managed_resource>
       managed_resource_{};
+    STDEXEC_STREAM_DETAIL_NS::stream_pools_t stream_pools_{};
 
     static int get_device() {
       int dev_id{};
@@ -332,7 +333,7 @@ namespace nvexec {
       return {STDEXEC_STREAM_DETAIL_NS::context_state_t(
         pinned_resource_.get(),
         managed_resource_.get(),
-        // gpu_resource_.get(),
+        &stream_pools_,
         &hub_,
         priority)};
     }

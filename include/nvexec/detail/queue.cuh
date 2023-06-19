@@ -97,6 +97,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace queue {
 
           while (next_ref.load(::cuda::memory_order_relaxed) == nullptr) {
             if (stopped_.test()) {
+              current->free_(current);
               return;
             }
             std::this_thread::yield();

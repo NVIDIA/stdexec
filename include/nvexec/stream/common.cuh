@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <stack>
 #include <atomic>
 #include <memory_resource>
 #include "../../stdexec/execution.hpp"
@@ -77,24 +78,6 @@ namespace nvexec {
       ((STDEXEC_IS_TRIVIALLY_COPYABLE(Ts) || std::is_reference_v<Ts>) &&...);
 #endif
 
-    struct context_state_t {
-      std::pmr::memory_resource* pinned_resource_{nullptr};
-      std::pmr::memory_resource* managed_resource_{nullptr};
-      queue::task_hub_t* hub_{nullptr};
-      stream_priority priority_;
-
-      context_state_t(
-        std::pmr::memory_resource* pinned_resource,
-        std::pmr::memory_resource* managed_resource,
-        queue::task_hub_t* hub,
-        stream_priority priority = stream_priority::normal)
-        : pinned_resource_(pinned_resource)
-        , managed_resource_(managed_resource)
-        , hub_(hub)
-        , priority_(priority) {
-      }
-    };
-
     inline std::pair<int, cudaError_t> get_stream_priority(stream_priority priority) {
       int least{};
       int greatest{};
@@ -113,27 +96,103 @@ namespace nvexec {
       return std::make_pair(0, cudaSuccess);
     }
 
-    inline std::pair<cudaStream_t, cudaError_t>
-      create_stream_with_priority(stream_priority priority) {
-      cudaStream_t stream{};
-      cudaError_t status{cudaSuccess};
+    class stream_pool_t {
+      std::stack<cudaStream_t> streams_;
+      std::mutex mtx_;
 
-      if (priority == stream_priority::normal) {
-        status = STDEXEC_DBG_ERR(cudaStreamCreate(&stream));
-      } else {
-        int cuda_priority{};
-        std::tie(cuda_priority, status) = get_stream_priority(priority);
+    public:
+      stream_pool_t() = default;
+      stream_pool_t(const stream_pool_t&) = delete;
+      stream_pool_t& operator=(const stream_pool_t&) = delete;
 
-        if (status != cudaSuccess) {
-          return std::make_pair(cudaStream_t{}, status);
-        }
+      std::pair<cudaStream_t, cudaError_t> borrow_stream(stream_priority priority) {
+        std::lock_guard<std::mutex> lock(mtx_);
 
-        status = STDEXEC_DBG_ERR(
-          cudaStreamCreateWithPriority(&stream, cudaStreamDefault, cuda_priority));
+        if (streams_.empty()) {
+          cudaStream_t stream{};
+          cudaError_t status{cudaSuccess};
+
+          if (priority == stream_priority::normal) {
+            status = STDEXEC_DBG_ERR(cudaStreamCreate(&stream));
+          } else {
+            int cuda_priority{};
+            std::tie(cuda_priority, status) = get_stream_priority(priority);
+
+            if (status != cudaSuccess) {
+              return std::make_pair(cudaStream_t{}, status);
+            }
+
+            status = STDEXEC_DBG_ERR(
+              cudaStreamCreateWithPriority(&stream, cudaStreamDefault, cuda_priority));
+          }
+
+          return std::make_pair(stream, status);
+        } 
+
+        cudaStream_t stream = streams_.top();
+        streams_.pop();
+        return std::make_pair(stream, cudaSuccess);
       }
 
-      return std::make_pair(stream, status);
-    }
+      void return_stream(cudaStream_t stream) {
+        std::lock_guard<std::mutex> lock(mtx_);
+        streams_.push(stream);
+      }
+
+      ~stream_pool_t() {
+        while (!streams_.empty()) {
+          cudaStream_t stream = streams_.top();
+          streams_.pop();
+          cudaStreamDestroy(stream);
+        }
+      }
+    };
+
+    class stream_pools_t {
+      std::array<stream_pool_t, 3> pools_;
+
+      stream_pool_t& get(stream_priority priority) {
+        return pools_[static_cast<int>(priority)];
+      }
+
+    public:
+      std::pair<cudaStream_t, cudaError_t> borrow_stream(stream_priority priority) {
+        return get(priority).borrow_stream(priority);
+      }
+
+      void return_stream(cudaStream_t stream, stream_priority priority) {
+        get(priority).return_stream(stream);
+      }
+    };
+
+    struct context_state_t {
+      std::pmr::memory_resource* pinned_resource_{nullptr};
+      std::pmr::memory_resource* managed_resource_{nullptr};
+      stream_pools_t* stream_pools_;
+      queue::task_hub_t* hub_{nullptr};
+      stream_priority priority_;
+
+      context_state_t(
+        std::pmr::memory_resource* pinned_resource,
+        std::pmr::memory_resource* managed_resource,
+        stream_pools_t* stream_pools,
+        queue::task_hub_t* hub,
+        stream_priority priority = stream_priority::normal)
+        : pinned_resource_(pinned_resource)
+        , managed_resource_(managed_resource)
+        , stream_pools_(stream_pools)
+        , hub_(hub)
+        , priority_(priority) {
+      }
+
+      std::pair<cudaStream_t, cudaError_t> borrow_stream() {
+        return stream_pools_->borrow_stream(priority_);
+      }
+
+      void return_stream(cudaStream_t stream) {
+        stream_pools_->return_stream(stream, priority_);
+      }
+    };
 
     struct stream_scheduler;
 
@@ -158,23 +217,20 @@ namespace nvexec {
     struct stream_provider_t {
       cudaError_t status_{cudaSuccess};
       std::optional<cudaStream_t> own_stream_{};
-      bool defer_stream_destruction_{false};
+      context_state_t context_;
 
       std::mutex custodian_;
       std::vector<std::function<void()>> cemetery_;
 
-      stream_provider_t (
-        bool defer_stream_destruction,
-        bool borrows_stream,
-        stream_priority priority)
-        : defer_stream_destruction_(defer_stream_destruction) {
+      stream_provider_t(bool borrows_stream, context_state_t context)
+        : context_(context) {
         if (!borrows_stream) {
-          std::tie(own_stream_, status_) = create_stream_with_priority(priority);
+          std::tie(own_stream_, status_) = context_.borrow_stream();
         }
       }
 
-      stream_provider_t()
-        : stream_provider_t(false, false, stream_priority::normal) {
+      stream_provider_t(context_state_t context)
+        : stream_provider_t(false, context) {
       }
 
       void bury(std::function<void()> rite) {
@@ -193,9 +249,7 @@ namespace nvexec {
             cemetery_.clear();
           }
 
-          if (!defer_stream_destruction_) {
-            STDEXEC_DBG_ERR(cudaStreamDestroy(stream));
-          }
+          context_.return_stream(stream);
           own_stream_.reset();
         }
 
@@ -401,7 +455,6 @@ namespace nvexec {
         this->free_ = [](task_base_t* t) noexcept {
           continuation_task_t& self = *static_cast<continuation_task_t*>(t);
           STDEXEC_DBG_ERR(cudaFreeAsync(self.atom_next_, self.stream_));
-          STDEXEC_DBG_ERR(cudaStreamDestroy(self.stream_));
           self.pinned_resource_->deallocate(
             t, sizeof(continuation_task_t), std::alignment_of_v<continuation_task_t>);
         };
@@ -444,10 +497,10 @@ namespace nvexec {
         outer_receiver_t rcvr_;
         stream_provider_t stream_provider_;
 
-        __t(outer_receiver_t rcvr, context_state_t context_state, bool defer_stream_destruction)
+        __t(outer_receiver_t rcvr, context_state_t context_state)
           : context_state_(context_state)
           , rcvr_(rcvr)
-          , stream_provider_(defer_stream_destruction, borrows_stream, context_state.priority_) {
+          , stream_provider_(borrows_stream, context_state) {
         }
 
         stream_provider_t* get_stream_provider() const {
@@ -600,7 +653,7 @@ namespace nvexec {
           OutR&& out_receiver,
           ReceiverProvider receiver_provider,
           context_state_t context_state)
-          : base_t((outer_receiver_t&&) out_receiver, context_state, false)
+          : base_t((outer_receiver_t&&) out_receiver, context_state)
           , inner_op_{
               connect((sender_t&&) sender, receiver_provider(static_cast<base_t&>(*this)))} {
         }
@@ -611,7 +664,7 @@ namespace nvexec {
           OutR&& out_receiver,
           ReceiverProvider receiver_provider,
           context_state_t context_state)
-          : base_t((outer_receiver_t&&) out_receiver, context_state, true)
+          : base_t((outer_receiver_t&&) out_receiver, context_state)
           , storage_(make_host<variant_t>(this->stream_provider_.status_, context_state.pinned_resource_))
           , task_(make_host<task_t>(
                     this->stream_provider_.status_,

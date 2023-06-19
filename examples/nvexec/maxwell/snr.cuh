@@ -169,8 +169,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
       : operation_state_base_t<ReceiverId>(
         (Receiver&&) rcvr,
         stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(pred_sender))
-          .context_state_,
-        false)
+          .context_state_)
       , pred_sender_{(PredSender&&) pred_sender}
       , closure_(closure)
       , n_(n) {

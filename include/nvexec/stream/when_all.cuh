@@ -298,14 +298,20 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
         }
 
+        template <size_t Index>
+        context_state_t get_context_state(WhenAll& when_all) {
+          auto sch = get_completion_scheduler<set_value_t>(
+            get_env(std::get<Index>(when_all.sndrs_)));
+          return sch.context_state_;
+        }
+
         template <size_t... Is>
         operation_t(WhenAll&& when_all, Receiver rcvr, std::index_sequence<Is...>)
           : recvr_((Receiver&&) rcvr)
+          , stream_providers_{get_context_state<Is>(when_all)...}
           , child_states_{__conv{[&when_all, this]() {
             operation_t* parent_op = this;
-            auto sch = get_completion_scheduler<set_value_t>(
-              get_env(std::get<Is>(when_all.sndrs_)));
-            context_state_t context_state = sch.context_state_;
+            context_state_t context_state = get_context_state<Is>(when_all);
 
             return exit_op_state<
               decltype(std::get<Is>(((WhenAll&&) when_all).sndrs_)),
