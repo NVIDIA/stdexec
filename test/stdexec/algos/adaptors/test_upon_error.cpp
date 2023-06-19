@@ -101,6 +101,7 @@ TEST_CASE("upon_error many input error types", "[adaptors][upon_error]") {
                } else {
                  return e;
                }
+               STDEXEC_UNREACHABLE();
              });
 
     using S = decltype(s);

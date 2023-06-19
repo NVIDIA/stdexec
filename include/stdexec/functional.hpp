@@ -57,7 +57,7 @@ namespace stdexec {
     template <class... _Args>
       requires __callable<_FunT, _Args...>
     auto operator()(_Args&&... __args) const noexcept(noexcept(_Fun((_Args&&) __args...)))
-      -> __call_result_t<_FunT, _Args...> {
+      -> decltype(_Fun((_Args&&) __args...)) {
       return _Fun((_Args&&) __args...);
     }
   };
@@ -136,10 +136,16 @@ namespace stdexec {
         return tag_invoke((_Tag&&) __tag, (_Args&&) __args...);
       }
     };
+
   } // namespace __tag_invoke
 
   using __tag_invoke::tag_invoke_t;
-  inline constexpr tag_invoke_t tag_invoke{};
+
+  namespace __ti {
+    inline constexpr tag_invoke_t tag_invoke{};
+  }
+
+  using namespace __ti;
 
   template <auto& _Tag>
   using tag_t = __decay_t<decltype(_Tag)>;
