@@ -130,7 +130,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <class Sender>
     struct source_sender_t : stream_sender_base {
       template <__decays_to<source_sender_t> Self, receiver Receiver>
-      friend auto tag_invoke(connect_t, Self&& self, Receiver&& rcvr)
+      friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
         -> connect_result_t<__copy_cvref_t<Self, Sender>, Receiver> {
         return connect(((Self&&) self).sender_, (Receiver&&) rcvr);
       }
@@ -182,7 +182,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires sender_to<__copy_cvref_t<Self, source_sender_th>, Receiver>
-      friend auto tag_invoke(connect_t, Self&& self, Receiver&& rcvr) -> stream_op_state_t<
+      friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr) -> stream_op_state_t<
         __copy_cvref_t<Self, source_sender_th>,
         receiver_t<Self, Receiver>,
         Receiver> {

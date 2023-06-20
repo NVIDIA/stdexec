@@ -229,7 +229,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __completions<                    //
             __copy_cvref_t<_Self, _Sender>, //
             env_of_t<_Receiver>>>           //
-      friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr)
+      friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
         -> __operation_t<_Self, _Receiver> {
         return __operation_t<_Self, _Receiver>{
           ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr, ((_Self&&) __self).__fun_};

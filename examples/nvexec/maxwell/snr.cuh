@@ -270,7 +270,7 @@ struct repeat_n_sender_t {
   template <stdexec::__decays_to<repeat_n_sender_t> Self, stdexec::receiver Receiver>
     requires(stdexec::tag_invocable<stdexec::connect_t, Sender, Receiver>)
          && (!nvexec::STDEXEC_STREAM_DETAIL_NS::receiver_with_stream_env<Receiver>)
-  friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& r)
+  friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver r)
     -> repeat_n_detail::operation_state_t<SenderId, ClosureId, stdexec::__id<Receiver>> {
     return repeat_n_detail::operation_state_t<SenderId, ClosureId, stdexec::__id<Receiver>>(
       (Sender&&) self.sender_, self.closure_, (Receiver&&) r, self.n_);
@@ -279,7 +279,7 @@ struct repeat_n_sender_t {
   template <stdexec::__decays_to<repeat_n_sender_t> Self, stdexec::receiver Receiver>
     requires(stdexec::tag_invocable<stdexec::connect_t, Sender, Receiver>)
          && (nvexec::STDEXEC_STREAM_DETAIL_NS::receiver_with_stream_env<Receiver>)
-  friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& r)
+  friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver r)
     -> nvexec::STDEXEC_STREAM_DETAIL_NS::repeat_n::
       operation_state_t<SenderId, ClosureId, stdexec::__id<Receiver>> {
     return nvexec::STDEXEC_STREAM_DETAIL_NS::repeat_n::
@@ -289,7 +289,7 @@ struct repeat_n_sender_t {
 #else
     template <stdexec::__decays_to<repeat_n_sender_t> Self, stdexec::receiver Receiver>
       requires stdexec::tag_invocable<stdexec::connect_t, Sender, Receiver>
-    friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& r)
+    friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver r)
       -> repeat_n_detail::operation_state_t<SenderId, ClosureId, stdexec::__id<Receiver>> {
       return repeat_n_detail::operation_state_t<SenderId, ClosureId, stdexec::__id<Receiver>>(
         (Sender&&) self.sender_, self.closure_, (Receiver&&) r, self.n_);
