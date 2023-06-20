@@ -28,6 +28,7 @@ namespace exec {
 
       class __t {
        public:
+       using is_receiver = void;
         __t(_Receiver&& __upstream)
           : __upstream_{(_Receiver&&) __upstream} {
         }
@@ -121,6 +122,7 @@ namespace exec {
 
       class __t {
        public:
+        using is_receiver = void;
         __t(_Receiver&& __upstream)
           : __upstream_{(_Receiver&&) __upstream} {
         }

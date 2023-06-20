@@ -100,6 +100,7 @@ namespace exec {
 
       class __t {
        public:
+        using is_receiver = void;
         explicit __t(__final_operation_base<_ResultType, _ReceiverId>* __op) noexcept
           : __op_{__op} {
         }
@@ -165,6 +166,7 @@ namespace exec {
 
       class __t {
        public:
+        using is_receiver = void;
         explicit __t(__base_op_t* __op) noexcept
           : __op_(__op) {
         }

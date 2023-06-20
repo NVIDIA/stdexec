@@ -200,7 +200,7 @@ namespace nvexec {
       using is_sender = void;
     };
 
-    struct stream_receiver_base {
+    struct stream_receiver_base : __receiver_base {
       constexpr static std::size_t memory_allocation_size = 0;
     };
 
@@ -377,6 +377,7 @@ namespace nvexec {
         queue::producer_t producer_;
 
        public:
+        using is_receiver = void;
         using __id = stream_enqueue_receiver;
 
         template <__one_of<set_value_t, set_stopped_t> Tag, class... As>

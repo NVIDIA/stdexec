@@ -168,7 +168,6 @@ namespace exec {
     template <class _SenderId, class _Env>
     struct __sender {
       using _Sender = stdexec::__t<_SenderId>;
-      using is_sender = void;
 
       template <class _Receiver>
       using __receiver_t = stdexec::__t<__receiver<__id<_Receiver>, _Env>>;
@@ -177,6 +176,7 @@ namespace exec {
         __operation<__id<__copy_cvref_t<_Self, _Sender>>, __id<_Receiver>, _Env>;
 
       struct __t {
+        using is_sender = void;
         using __id = __sender;
         _Sender __sndr_;
         _Env __env_;

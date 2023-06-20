@@ -246,6 +246,7 @@ namespace exec {
 
       template <class SenderId, class ReceiverId, class Shape, class Fn, bool MayThrow>
       struct bulk_receiver {
+        using is_receiver = void;
         using Sender = stdexec::__t<SenderId>;
         using Receiver = stdexec::__t<ReceiverId>;
 
