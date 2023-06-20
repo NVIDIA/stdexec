@@ -2533,7 +2533,7 @@ namespace stdexec {
       requires __decays_to<_Tp, _Tp>
     {
       static_assert(std::is_reference_v<__copy_cvref_t<_Up&&, _Tp>>);
-      static_assert(std::is_base_of_v<_Tp, __decay_t<_Up>>);
+      static_assert(STDEXEC_IS_BASE_OF(_Tp, __decay_t<_Up>));
       return (__copy_cvref_t<_Up&&, _Tp>) (_Up&&) u;
     }
 

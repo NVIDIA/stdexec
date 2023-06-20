@@ -95,6 +95,14 @@
 #define STDEXEC_IS_BASE_OF(...) std::is_base_of_v<__VA_ARGS__>
 #endif
 
+#if STDEXEC_HAS_BUILTIN(__is_convertible_to) || STDEXEC_MSVC()
+#define STDEXEC_IS_CONVERTIBLE_TO(...) __is_convertible_to(__VA_ARGS__)
+#elif STDEXEC_HAS_BUILTIN(__is_convertible)
+#define STDEXEC_IS_CONVERTIBLE_TO(...) __is_convertible(__VA_ARGS__)
+#else
+#define STDEXEC_IS_CONVERTIBLE_TO(...) std::is_convertible_v<__VA_ARGS__>
+#endif
+
 // Before gcc-12, gcc really didn't like tuples or variants of immovable types
 #if STDEXEC_GCC() && (__GNUC__ < 12)
 #define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&)
