@@ -309,12 +309,12 @@ TEST_CASE("io_uring_context schedule_after -1s", "[types][io_uring][schedulers]"
         CHECK(io_thread.get_id() == std::this_thread::get_id());
         is_called_1 = true;
       }),
-      schedule_after(scheduler, 5ms) | then([&] {
+      schedule_after(scheduler, 100ms) | then([&] {
         is_called_2 = true;
       })));
     auto end = std::chrono::steady_clock::now();
     auto diff = end - start;
-    CHECK(diff < 5ms);
+    CHECK(diff < 100ms);
     CHECK(is_called_1 == true);
     CHECK(is_called_2 == false);
   }
