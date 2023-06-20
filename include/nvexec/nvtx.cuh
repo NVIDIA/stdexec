@@ -43,7 +43,7 @@ namespace nvexec {
        public:
         using __id = receiver_t;
 
-        template <__one_of<set_value_t, set_error_t, set_stopped_t> Tag, class... As>
+        template <__completion_tag Tag, class... As>
         friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
           if constexpr (Kind == kind::push) {
             nvtxRangePushA(self.name_.c_str());
@@ -74,25 +74,16 @@ namespace nvexec {
         Sender sndr_;
         std::string name_;
 
-        using _set_error_t = completion_signatures<set_error_t(cudaError_t)>;
-
         template <class Receiver>
         using receiver_t = stdexec::__t<receiver_t<Kind, stdexec::__id<Receiver>>>;
 
-        template <class... Tys>
-        using _set_value_t = completion_signatures<set_value_t(Tys...)>;
-
         template <class Self, class Env>
         using _completion_signatures_t = //
-          __try_make_completion_signatures<
-            __copy_cvref_t<Self, Sender>,
-            Env,
-            _set_error_t,
-            __q<_set_value_t>>;
+          __try_make_completion_signatures<__copy_cvref_t<Self, Sender>, Env>;
 
         template <__decays_to<__t> Self, receiver Receiver>
           requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-        friend auto tag_invoke(connect_t, Self&& self, Receiver&& rcvr)
+        friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
           -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
           return stream_op_state< __copy_cvref_t<Self, Sender>>(
             ((Self&&) self).sndr_,
@@ -144,8 +135,8 @@ namespace nvexec {
       }
     };
 
-    constexpr inline push_t push{};
-    constexpr inline pop_t pop{};
+    inline constexpr push_t push{};
+    inline constexpr pop_t pop{};
 
     struct scoped_t {
       template <stdexec::sender Sender, stdexec::__sender_adaptor_closure Closure>
@@ -164,7 +155,7 @@ namespace nvexec {
       }
     };
 
-    constexpr inline scoped_t scoped{};
+    inline constexpr scoped_t scoped{};
 
   }} // STDEXEC_STREAM_DETAIL_NS
 
