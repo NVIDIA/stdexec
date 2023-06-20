@@ -189,6 +189,8 @@ class receiver_t {
   OpT& op_state_;
 
  public:
+  using is_receiver = void;
+
   template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
   STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
     friend void

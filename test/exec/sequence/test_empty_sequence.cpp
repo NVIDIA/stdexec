@@ -33,6 +33,7 @@ TEST_CASE(
 }
 
 struct count_set_next_receiver_t {
+  using is_receiver = void;
   int& count_invocations_;
 
   friend auto tag_invoke(set_next_t, count_set_next_receiver_t& __self, auto /* item */) noexcept {

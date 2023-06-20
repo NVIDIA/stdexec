@@ -361,6 +361,7 @@ class stopped_token {
 
 template <class Token>
 struct stopped_receiver_base {
+  using is_receiver = void;
   Token stop_token_{};
 };
 

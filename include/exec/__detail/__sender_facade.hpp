@@ -194,6 +194,7 @@ namespace exec {
       };
 
       struct __t {
+        using is_receiver = void;
         using __id = __receiver;
         __state* __state_;
 
