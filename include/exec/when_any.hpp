@@ -154,6 +154,7 @@ namespace exec {
     struct __receiver {
       class __t {
        public:
+        using is_receiver = void;
         using __id = __receiver;
 
         explicit __t(__op_base<_Receiver, _ResultVariant>* __op) noexcept

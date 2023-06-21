@@ -144,6 +144,7 @@ namespace exec {
 
     template <class _ReceiverId>
     struct __nest_rcvr {
+      using is_receiver = void;
       using _Receiver = __t<_ReceiverId>;
       __nest_op_base<_ReceiverId>* __op_;
 
@@ -514,6 +515,7 @@ namespace exec {
 
     template <class _CompletionsId, class _EnvId>
     struct __future_rcvr {
+      using is_receiver = void;
       using _Completions = __t<_CompletionsId>;
       using _Env = __t<_EnvId>;
       __future_state_base<_Completions, _Env>* __state_;
@@ -671,6 +673,7 @@ namespace exec {
 
     template <class _EnvId>
     struct __spawn_rcvr {
+      using is_receiver = void;
       using _Env = __t<_EnvId>;
       __spawn_op_base<_EnvId>* __op_;
       const __impl* __scope_;

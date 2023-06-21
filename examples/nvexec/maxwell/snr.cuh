@@ -223,6 +223,8 @@ namespace repeat_n_detail {
     OpT& op_state_;
 
    public:
+    using is_receiver = void;
+
     template <ex::same_as<ex::set_error_t> _Tag, class _Error>
     STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
       STDEXEC_DEFINE_CUSTOM(void set_error)(

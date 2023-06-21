@@ -31,6 +31,7 @@ namespace empty_recv {
   using ex::set_value_t;
 
   struct recv0 {
+    using is_receiver = void;
     STDEXEC_DEFINE_CUSTOM(void set_value)(this recv0&&, set_value_t) noexcept {
     }
 
@@ -46,6 +47,7 @@ namespace empty_recv {
   };
 
   struct recv_int {
+    using is_receiver = void;
     STDEXEC_DEFINE_CUSTOM(void set_value)(this recv_int&&, set_value_t, int) noexcept {
     }
 
@@ -64,6 +66,7 @@ namespace empty_recv {
   };
 
   struct recv0_ec {
+    using is_receiver = void;
     STDEXEC_DEFINE_CUSTOM(void set_value)(this recv0_ec&&, set_value_t) noexcept {
     }
 
@@ -85,6 +88,7 @@ namespace empty_recv {
   };
 
   struct recv_int_ec {
+    using is_receiver = void;
     STDEXEC_DEFINE_CUSTOM(void set_value)(this recv_int_ec&&, set_value_t, int) noexcept {
     }
 
@@ -121,6 +125,8 @@ class base_expect_receiver {
     return self.env_;
   }
 
+ public:
+  using is_receiver = void;
   base_expect_receiver() = default;
 
   ~base_expect_receiver() {
@@ -182,6 +188,7 @@ struct expect_void_receiver : base_expect_receiver<_Env> {
 };
 
 struct expect_void_receiver_ex {
+  using is_receiver = void;
   expect_void_receiver_ex(bool& executed)
     : executed_(&executed) {
   }
@@ -273,6 +280,7 @@ class expect_value_receiver_ex {
   Env env_{};
 
  public:
+  using is_receiver = void;
   explicit expect_value_receiver_ex(T& dest)
     : dest_(&dest) {
   }
@@ -349,6 +357,7 @@ struct expect_stopped_receiver : base_expect_receiver<Env> {
 
 template <class Env = empty_env>
 struct expect_stopped_receiver_ex {
+  using is_receiver = void;
   explicit expect_stopped_receiver_ex(bool& executed)
     : executed_(&executed) {
   }
@@ -478,6 +487,7 @@ struct expect_error_receiver : base_expect_receiver<Env> {
 
 template <class T, class Env = empty_env>
 struct expect_error_receiver_ex {
+  using is_receiver = void;
   explicit expect_error_receiver_ex(T& value)
     : value_(&value) {
   }
@@ -533,6 +543,7 @@ struct expect_error_receiver_ex {
 };
 
 struct logging_receiver {
+  using is_receiver = void;
   logging_receiver(int& state)
     : state_(&state) {
   }
@@ -579,6 +590,7 @@ enum class typecat {
 
 template <typename T>
 struct typecat_receiver {
+  using is_receiver = void;
   T* value_;
   typecat* cat_;
 
@@ -628,6 +640,7 @@ struct typecat_receiver {
 
 template <typename F>
 struct fun_receiver {
+  using is_receiver = void;
   F f_;
 
   template <typename... Ts>

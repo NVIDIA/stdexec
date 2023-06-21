@@ -38,6 +38,7 @@ namespace exec {
       template <class _Receiver>
       struct __receiver_id {
         struct __t {
+          using is_receiver = void;
           using __id = __receiver_id;
           _Receiver __receiver_;
 

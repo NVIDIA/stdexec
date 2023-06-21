@@ -235,7 +235,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <class OpT>
         static void sync(OpT& op) noexcept {
-          if constexpr (std::is_base_of_v<stream_op_state_base, OpT>) {
+          if constexpr (STDEXEC_IS_BASE_OF(stream_op_state_base, OpT)) {
             if (op.stream_provider_.status_ == cudaSuccess) {
               op.stream_provider_.status_ = STDEXEC_DBG_ERR(cudaStreamSynchronize(op.get_stream()));
             }

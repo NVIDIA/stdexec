@@ -200,7 +200,7 @@ namespace nvexec {
       using is_sender = void;
     };
 
-    struct stream_receiver_base {
+    struct stream_receiver_base : __receiver_base {
       constexpr static std::size_t memory_allocation_size = 0;
     };
 
@@ -355,12 +355,12 @@ namespace nvexec {
     template <class S>
     concept stream_sender = //
       sender<S> &&          //
-      std::is_base_of_v<stream_sender_base, __decay_t<S>>;
+      STDEXEC_IS_BASE_OF(stream_sender_base, __decay_t<S>);
 
     template <class R>
     concept stream_receiver = //
       receiver<R> &&          //
-      std::is_base_of_v<stream_receiver_base, __decay_t<R>>;
+      STDEXEC_IS_BASE_OF(stream_receiver_base, __decay_t<R>);
 
     struct stream_op_state_base { };
 
@@ -375,6 +375,7 @@ namespace nvexec {
         queue::producer_t producer_;
 
        public:
+        using is_receiver = void;
         using __id = stream_enqueue_receiver;
 
         template <same_as<set_value_t> Tag, class... As>

@@ -56,12 +56,12 @@ namespace stdexec::__std_concepts {
 
   template <class _Ap, class _Bp>
   concept derived_from =           //
-    std::is_base_of_v<_Bp, _Ap> && //
-    std::is_convertible_v<const volatile _Ap*, const volatile _Bp*>;
+    STDEXEC_IS_BASE_OF(_Bp, _Ap) && //
+    STDEXEC_IS_CONVERTIBLE_TO(const volatile _Ap*, const volatile _Bp*);
 
   template <class _From, class _To>
   concept convertible_to =               //
-    std::is_convertible_v<_From, _To> && //
+    STDEXEC_IS_CONVERTIBLE_TO(_From, _To) && //
     requires(_From (&__fun)()) { static_cast<_To>(__fun()); };
 
   template <class _Ty>

@@ -223,12 +223,10 @@ namespace exec {
     static constexpr auto __select_impl() noexcept {
       // Report that 2300R5-style senders and receivers are deprecated:
       if constexpr (!enable_sender<__decay_t<_Sender>>)
-        __connect::__update_sender_type_to_p2300r7_by_adding_enable_sender_trait<
-          __decay_t<_Sender>>();
+          __connect::_PLEASE_UPDATE_YOUR_SENDER_TYPE<__decay_t<_Sender>>();
 
       if constexpr (!enable_receiver<__decay_t<_Receiver>>)
-        __connect::__update_receiver_type_to_p2300r7_by_adding_enable_receiver_trait<
-          __decay_t<_Receiver>>();
+          __connect::_PLEASE_UPDATE_YOUR_RECEIVER_TYPE<__decay_t<_Receiver>>();
 
       if constexpr (__next_connectable_with_tag_invoke<_Sender, _Receiver>) {
         using _Result = connect_result_t<
