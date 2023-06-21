@@ -357,12 +357,12 @@ namespace nvexec {
     template <class S>
     concept stream_sender = //
       sender<S> &&          //
-      std::is_base_of_v<stream_sender_base, __decay_t<S>>;
+      STDEXEC_IS_BASE_OF(stream_sender_base, __decay_t<S>);
 
     template <class R>
     concept stream_receiver = //
       receiver<R> &&          //
-      std::is_base_of_v<stream_receiver_base, __decay_t<R>>;
+      STDEXEC_IS_BASE_OF(stream_receiver_base, __decay_t<R>);
 
     struct stream_op_state_base { };
 

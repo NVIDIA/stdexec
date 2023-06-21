@@ -362,7 +362,7 @@ namespace exec {
     class __storage<_Vtable, _Allocator, _Copyable, _Alignment, _InlineSize>::__t
       : __if_c<_Copyable, __, __move_only> {
       static_assert(
-        std::is_convertible_v<typename std::allocator_traits<_Allocator>::void_pointer, void*>);
+        STDEXEC_IS_CONVERTIBLE_TO(typename std::allocator_traits<_Allocator>::void_pointer, void*));
 
       static constexpr std::size_t __buffer_size = std::max(_InlineSize, sizeof(void*));
       static constexpr std::size_t __alignment = std::max(_Alignment, alignof(void*));
