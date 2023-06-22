@@ -402,26 +402,28 @@ namespace exec {
       ///
       /// This function is not thread-safe and must only be called from the thread that drives the io context.
       void run_some() noexcept {
-        __n_submitted_ -= __completion_queue_.complete();
+        __n_total_submitted_ -= __completion_queue_.complete();
         STDEXEC_ASSERT(
-          0 <= __n_submitted_
-          && __n_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
-        __u32 __max_submissions = __params_.cq_entries - static_cast<__u32>(__n_submitted_);
+          0 <= __n_total_submitted_
+          && __n_total_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
+        __u32 __max_submissions = __params_.cq_entries - static_cast<__u32>(__n_total_submitted_);
         __pending_.append(__requests_.pop_all());
         __submission_result __result = __submission_queue_.submit(
           (__task_queue&&) __pending_, __max_submissions, __stop_source_->stop_requested());
-        __n_submitted_ += __result.__n_submitted;
-        STDEXEC_ASSERT(__n_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
+        __n_total_submitted_ += __result.__n_submitted;
+        __n_newly_submitted_ += __result.__n_submitted;
+        STDEXEC_ASSERT(__n_total_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
         __pending_ = (__task_queue&&) __result.__pending;
         while (!__result.__ready.empty()) {
-          __n_submitted_ -= __completion_queue_.complete((__task_queue&&) __result.__ready);
-          STDEXEC_ASSERT(0 <= __n_submitted_);
+          __n_total_submitted_ -= __completion_queue_.complete((__task_queue&&) __result.__ready);
+          STDEXEC_ASSERT(0 <= __n_total_submitted_);
           __pending_.append(__requests_.pop_all());
-          __max_submissions = __params_.cq_entries - static_cast<__u32>(__n_submitted_);
+          __max_submissions = __params_.cq_entries - static_cast<__u32>(__n_total_submitted_);
           __result = __submission_queue_.submit(
             (__task_queue&&) __pending_, __max_submissions, __stop_source_->stop_requested());
-          __n_submitted_ += __result.__n_submitted;
-          STDEXEC_ASSERT(__n_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
+          __n_total_submitted_ += __result.__n_submitted;
+          __n_newly_submitted_ += __result.__n_submitted;
+          STDEXEC_ASSERT(__n_total_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
           __pending_ = (__task_queue&&) __result.__pending;
         }
       }
@@ -446,28 +448,30 @@ namespace exec {
           __is_running_.store(false, std::memory_order_relaxed);
         }};
         __pending_.append(__requests_.pop_all());
-        while (__n_submitted_ > 0 || !__pending_.empty()) {
+        while (__n_total_submitted_ > 0 || !__pending_.empty()) {
           run_some();
           if (
-            __n_submitted_ == 0
-            || (__n_submitted_ == 1 && __break_loop_.load(std::memory_order_acquire))) {
+            __n_total_submitted_ == 0
+            || (__n_total_submitted_ == 1 && __break_loop_.load(std::memory_order_acquire))) {
             __break_loop_.store(false, std::memory_order_relaxed);
             break;
           }
           constexpr int __min_complete = 1;
           STDEXEC_ASSERT(
-            0 <= __n_submitted_
-            && __n_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
+            0 <= __n_total_submitted_
+            && __n_total_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
           int rc = __io_uring_enter(
-            __ring_fd_, __n_submitted_, __min_complete, IORING_ENTER_GETEVENTS);
+            __ring_fd_, __n_newly_submitted_, __min_complete, IORING_ENTER_GETEVENTS);
           __throw_error_code_if(rc < 0, -rc);
-          __n_submitted_ -= __completion_queue_.complete();
-          STDEXEC_ASSERT(0 <= __n_submitted_);
+          STDEXEC_ASSERT(rc <= __n_newly_submitted_);
+          __n_newly_submitted_ -= rc;
+          __n_total_submitted_ -= __completion_queue_.complete();
+          STDEXEC_ASSERT(0 <= __n_total_submitted_);
           __pending_.append(__requests_.pop_all());
         }
-        STDEXEC_ASSERT(__n_submitted_ <= 1);
+        STDEXEC_ASSERT(__n_total_submitted_ <= 1);
         if (__stop_source_->stop_requested() && __pending_.empty()) {
-          STDEXEC_ASSERT(__n_submitted_ == 0);
+          STDEXEC_ASSERT(__n_total_submitted_ == 0);
           // try to shutdown the request queue
           int __n_in_flight_expected = 0;
           while (!__n_submissions_in_flight_.compare_exchange_weak(
@@ -581,7 +585,8 @@ namespace exec {
       std::atomic<bool> __is_running_{false};
       std::atomic<int> __n_submissions_in_flight_{0};
       std::atomic<bool> __break_loop_{false};
-      std::ptrdiff_t __n_submitted_{0};
+      std::ptrdiff_t __n_total_submitted_{0};
+      std::ptrdiff_t __n_newly_submitted_{0};
       std::optional<stdexec::in_place_stop_source> __stop_source_{std::in_place};
       __completion_queue __completion_queue_;
       __submission_queue __submission_queue_;
