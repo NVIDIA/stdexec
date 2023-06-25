@@ -202,7 +202,7 @@ namespace exec {
 
     template <class _Sigs, class _SenderQueries, class _ReceiverQueries>
     struct __sender_env {
-      using __query_vtable = __query_vtable<_SenderQueries>;
+      using __query_vtable_t = __query_vtable<_SenderQueries>;
       using __vtable_t = stdexec::__t<__sender_vtable<_Sigs, _SenderQueries, _ReceiverQueries>>;
 
       struct __t {
@@ -216,10 +216,10 @@ namespace exec {
         void* __sender_;
 
         template <class _Tag, same_as<__t> _Self, class... _As>
-          requires __callable<const __query_vtable&, _Tag, void*, _As...>
+          requires __callable<const __query_vtable_t&, _Tag, void*, _As...>
         friend auto tag_invoke(_Tag, const _Self& __self, _As&&... __as) noexcept(
-          __nothrow_callable<const __query_vtable&, _Tag, void*, _As...>)
-          -> __call_result_t<const __query_vtable&, _Tag, void*, _As...> {
+          __nothrow_callable<const __query_vtable_t&, _Tag, void*, _As...>)
+          -> __call_result_t<const __query_vtable_t&, _Tag, void*, _As...> {
           return __self.__vtable_->queries()(_Tag{}, __self.__sender_, (_As&&) __as...);
         }
       };
