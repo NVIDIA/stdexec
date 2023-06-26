@@ -152,9 +152,7 @@ namespace exec {
         _Sender __sender_;
         __result_type<_ResultVariant>* __parent_;
 
-        template <
-          __decays_to<__t> _Self,
-          stdexec::receiver_of<completion_signatures> _Receiver>
+        template < __decays_to<__t> _Self, stdexec::receiver_of<completion_signatures> _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __item_receiver_t<_Receiver>>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
           -> __operation_t<_Self, _Receiver> {
@@ -178,8 +176,9 @@ namespace exec {
         using is_receiver = void;
         __operation_base<_Receiver, _ResultVariant>* __op_;
 
-        template <class _Item>
-        friend auto tag_invoke(set_next_t, __t& __self, _Item&& __item) 
+        template <same_as<set_next_t> _SetNext, same_as<__t> _Self, sender _Item>
+        friend auto tag_invoke(_SetNext, _Self& __self, _Item&& __item) //
+          noexcept(__nothrow_decay_copyable<Item>)
             -> stdexec::__t<__item_sender<__decay_t<_Item>, _ResultVariant>> {
           return {static_cast<_Item&&>(__item), __self.__op_};
         }
@@ -229,7 +228,7 @@ namespace exec {
 
         subscribe_result_t<_Sender, __receiver_t> __op_;
 
-        __t(_Sender&& __sndr, _Receiver __rcvr)        //
+        __t(_Sender&& __sndr, _Receiver __rcvr) //
           noexcept(__nothrow_decay_copyable<_Receiver>)
           : __base_type{{}, static_cast<_Receiver&&>(__rcvr)}
           , __op_{exec::subscribe(static_cast<_Sender&&>(__sndr), __receiver_t{this})} {
