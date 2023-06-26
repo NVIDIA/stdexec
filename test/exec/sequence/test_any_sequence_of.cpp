@@ -90,30 +90,42 @@ TEST_CASE(
   "any_sequence_of - works with empty_sequence",
   "[sequence_senders][any_sequence_of][empty_sequence]") {
   using Completions = stdexec::completion_signatures<stdexec::set_value_t(int)>;
-  STATIC_REQUIRE(stdexec::constructible_from<exec::any_sequence_receiver_ref<Completions>::any_sender<>, decltype(exec::empty_sequence())>);
+  STATIC_REQUIRE(stdexec::constructible_from<
+                 exec::any_sequence_receiver_ref<Completions>::any_sender<>,
+                 decltype(exec::empty_sequence())>);
   exec::any_sequence_receiver_ref<Completions>::any_sender<> any_sequence = exec::empty_sequence();
   auto op = exec::subscribe(std::move(any_sequence), ignore_all_receiver{});
   stdexec::start(op);
 }
 
-TEST_CASE(
-  "any_sequence_of - works with just(42)",
-  "[sequence_senders][any_sequence_of][empty_sequence]") {
+TEST_CASE("any_sequence_of - works with just(42)", "[sequence_senders][any_sequence_of]") {
   using Completions = stdexec::completion_signatures<stdexec::set_value_t(int)>;
-  STATIC_REQUIRE(stdexec::constructible_from<exec::any_sequence_receiver_ref<Completions>::any_sender<>, decltype(stdexec::just(42))>);
+  STATIC_REQUIRE(stdexec::constructible_from<
+                 exec::any_sequence_receiver_ref<Completions>::any_sender<>,
+                 decltype(stdexec::just(42))>);
   exec::any_sequence_receiver_ref<Completions>::any_sender<> any_sequence = stdexec::just(42);
   auto op = exec::subscribe(std::move(any_sequence), ignore_all_receiver{});
   stdexec::start(op);
 }
 
-TEST_CASE(
-  "any_sequence_of - works with just()",
-  "[sequence_senders][any_sequence_of][empty_sequence]") {
+TEST_CASE("any_sequence_of - works with just()", "[sequence_senders][any_sequence_of]") {
   using CompletionsFalse = stdexec::completion_signatures<stdexec::set_value_t(int)>;
   using Completions = stdexec::completion_signatures<stdexec::set_value_t()>;
-  STATIC_REQUIRE_FALSE(stdexec::constructible_from<exec::any_sequence_receiver_ref<CompletionsFalse>::any_sender<>, decltype(stdexec::just())>);
-  STATIC_REQUIRE(stdexec::constructible_from<exec::any_sequence_receiver_ref<Completions>::any_sender<>, decltype(stdexec::just())>);
+  STATIC_REQUIRE_FALSE(stdexec::constructible_from<
+                       exec::any_sequence_receiver_ref<CompletionsFalse>::any_sender<>,
+                       decltype(stdexec::just())>);
+  STATIC_REQUIRE(stdexec::constructible_from<
+                 exec::any_sequence_receiver_ref<Completions>::any_sender<>,
+                 decltype(stdexec::just())>);
   exec::any_sequence_receiver_ref<Completions>::any_sender<> any_sequence = stdexec::just();
   auto op = exec::subscribe(std::move(any_sequence), ignore_all_receiver{});
   stdexec::start(op);
+}
+
+TEST_CASE("any_sequence_of - has an environment", "[sequence_senders][any_sequence_of]") {
+  using Completions = stdexec::completion_signatures<stdexec::set_value_t()>;
+  exec::any_sequence_receiver_ref<Completions>::any_sender<> any_sequence = stdexec::just();
+  auto env = stdexec::get_env(any_sequence);
+  using env_t = decltype(env);
+  STATIC_REQUIRE(stdexec::same_as<env_t, stdexec::__t<exec::__any::__sender_env<Completions, stdexec::__types<>, stdexec::__types<>>>>);
 }

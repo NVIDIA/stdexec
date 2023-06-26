@@ -126,7 +126,7 @@ namespace exec {
           }
 
           template <same_as<set_next_t> _SetNext, same_as<__t> _Self, class _Sender>
-          requires constructible_from<__item_sender, _Sender>
+            requires constructible_from<__item_sender, _Sender>
           friend __void_sender tag_invoke(_SetNext, _Self& __self, _Sender&& __sndr) {
             return (
               *static_cast<const __rcvr_next_vfun<__next_sigs>*>(__self.__env_.__vtable_)->__fn_)(
@@ -156,8 +156,8 @@ namespace exec {
               __self.__env_.__rcvr_);
           }
 
-          template <same_as<get_env_t> _GetEnv, same_as<__t> _Self>
-          friend const __env_t& tag_invoke(_GetEnv, const _Self& __self) noexcept {
+          template <same_as<get_env_t> _GetEnv, __decays_to<__t> _Self>
+          friend const __env_t& tag_invoke(_GetEnv, _Self&& __self) noexcept {
             return __self.__env_;
           }
         };
@@ -245,14 +245,15 @@ namespace exec {
         template <__not_decays_to<__t> _Sender>
           requires sequence_sender_to<_Sender, __receiver_ref_t>
         __t(_Sender&& __sndr)
-          : storage_{(_Sender&&) __sndr} {
+          : __storage_{(_Sender&&) __sndr} {
         }
 
         __immovable_operation_storage __connect(__receiver_ref_t __receiver) {
-          return storage_.__get_vtable()->subscribe_(storage_.__get_object_pointer(), __receiver);
+          return __storage_.__get_vtable()->subscribe_(
+            __storage_.__get_object_pointer(), __receiver);
         }
 
-        __unique_storage_t<__vtable_t> storage_;
+        __unique_storage_t<__vtable_t> __storage_;
 
         template <same_as<__t> _Self, sequence_receiver_of<_Sigs> _Rcvr>
         friend stdexec::__t<__operation<stdexec::__id<_Rcvr>, true>>
@@ -262,8 +263,9 @@ namespace exec {
 
         using __env_t = stdexec::__t<__sender_env<_Sigs, _SenderQueries, _ReceiverQueries>>;
 
-        __env_t get_env(get_env_t) const noexcept {
-          return {storage_.__get_vtable(), storage_.__get_object_pointer()};
+        template <same_as<get_env_t> _GetEnv, __decays_to<__t> _Self>
+        friend __env_t tag_invoke(_GetEnv, _Self&& __self) noexcept {
+          return {__self.__storage_.__get_vtable(), __self.__storage_.__get_object_pointer()};
         }
       };
     };
@@ -349,8 +351,8 @@ namespace exec {
           static_cast<__sender_base&&>(__self.__sender_), static_cast<_Rcvr&&>(__rcvr));
       }
 
-      template <stdexec::same_as<stdexec::get_env_t> _GetEnv, stdexec::same_as<__t> _Self>
-      stdexec::env_of_t<__sender_base> tag_invoke(_GetEnv, const _Self& __self) const noexcept {
+      template <stdexec::same_as<stdexec::get_env_t> _GetEnv, stdexec::__decays_to<__t> _Self>
+      friend stdexec::env_of_t<__sender_base> tag_invoke(_GetEnv, _Self&& __self) noexcept {
         return stdexec::get_env(__self.__sender_);
       }
     };
