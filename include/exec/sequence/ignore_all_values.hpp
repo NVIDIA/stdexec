@@ -178,7 +178,7 @@ namespace exec {
 
         template <same_as<set_next_t> _SetNext, same_as<__t> _Self, sender _Item>
         friend auto tag_invoke(_SetNext, _Self& __self, _Item&& __item) //
-          noexcept(__nothrow_decay_copyable<Item>)
+          noexcept(__nothrow_decay_copyable<_Item>)
             -> stdexec::__t<__item_sender<__decay_t<_Item>, _ResultVariant>> {
           return {static_cast<_Item&&>(__item), __self.__op_};
         }
