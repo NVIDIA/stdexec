@@ -75,9 +75,11 @@ struct Error2{};
 struct Error3{};
 struct Error4{};
 
+template <class... AdditionalCompletions>
 struct many_error_sender {
   using is_sender = void;
   using completion_signatures = ex::completion_signatures<
+    AdditionalCompletions...,
     ex::set_error_t(Error1),
     ex::set_error_t(Error2),
     ex::set_error_t(Error3)
@@ -95,23 +97,58 @@ struct many_error_sender {
 };
 
 TEST_CASE("upon_error many input error types", "[adaptors][upon_error]") {
-  auto s = many_error_sender{} | ex::upon_error([](auto e) {
-    if constexpr(std::same_as<decltype(e), Error3>) {
-      return Error4{};
-    } else {
-      return e;
-    }
-  });
+  {
+    auto s = many_error_sender<>{} | ex::upon_error([](auto e) {
+      if constexpr(std::same_as<decltype(e), Error3>) {
+        return Error4{};
+      } else {
+        return e;
+      }
+    });
 
-  using S = decltype(s);
-  static_assert(ex::sender<S>);
-  using completion_sigs = decltype(ex::get_completion_signatures(s, ex::__default_env{}));
-  static_assert(std::same_as<
-    completion_sigs,
-    ex::completion_signatures<
-      ex::set_error_t(std::exception_ptr),
-      ex::set_value_t(Error1),
-      ex::set_value_t(Error2),
-      ex::set_value_t(Error4)
-    >>);
+    using S = decltype(s);
+    static_assert(ex::sender<S>);
+    using completion_sigs = decltype(ex::get_completion_signatures(s, ex::__default_env{}));
+    static_assert(std::same_as<
+      completion_sigs,
+      ex::completion_signatures<
+        ex::set_error_t(std::exception_ptr),
+        ex::set_value_t(Error1),
+        ex::set_value_t(Error2),
+        ex::set_value_t(Error4)
+      >>);
+  }
+
+  {
+    auto s = many_error_sender<ex::set_value_t(int)>{} | ex::upon_error([](auto e) {
+      return 0;
+    });
+
+    using S = decltype(s);
+    static_assert(ex::sender<S>);
+    using completion_sigs = decltype(ex::get_completion_signatures(s, ex::__default_env{}));
+    static_assert(std::same_as<
+      completion_sigs,
+      ex::completion_signatures<
+        ex::set_error_t(std::exception_ptr),
+        ex::set_value_t(int)
+      >>);
+  }
+
+  {
+    auto s = many_error_sender<ex::set_value_t(double)>{} | ex::upon_error([](auto e) {
+      return 0;
+    });
+
+    using S = decltype(s);
+    static_assert(ex::sender<S>);
+    using completion_sigs = decltype(ex::get_completion_signatures(s, ex::__default_env{}));
+    static_assert(std::same_as<
+      completion_sigs,
+      ex::completion_signatures<
+        ex::set_error_t(std::exception_ptr),
+        ex::set_value_t(double),
+        ex::set_value_t(int)
+      >>);
+  }
 }
