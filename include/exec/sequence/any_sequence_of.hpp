@@ -142,9 +142,9 @@ namespace exec {
 
           template <same_as<set_error_t> _SetError, same_as<__t> _Self, class Error>
             requires __v< __mapply<__contains<set_error_t(Error)>, __compl_sigs>>
-          friend void tag_invoke(_SetError, _Self&& __self, Error&& error) noexcept {
+          friend void tag_invoke(_SetError, _Self&& __self, Error&& __error) noexcept {
             (*static_cast<const __vfun<set_error_t(Error)>*>(__self.__env_.__vtable_)->__fn_)(
-              __self.__env_.__rcvr_, static_cast<Error&&>(error));
+              __self.__env_.__rcvr_, static_cast<Error&&>(__error));
           }
 
           template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
@@ -187,12 +187,12 @@ namespace exec {
             {*__create_vtable(__mtype<__query_vtable_t>{}, __mtype<_Sender>{})},
             [](void* __object_pointer, __receiver_ref_t __receiver)
               -> __immovable_operation_storage {
-              _Sender& sender = *static_cast<_Sender*>(__object_pointer);
+              _Sender& __sender = *static_cast<_Sender*>(__object_pointer);
               using __op_state_t = subscribe_result_t<_Sender, __receiver_ref_t>;
               return __immovable_operation_storage{
                 std::in_place_type<__op_state_t>, __conv{[&] {
                   return ::exec::subscribe(
-                    static_cast<_Sender&&>(sender), static_cast<__receiver_ref_t&&>(__receiver));
+                    static_cast<_Sender&&>(__sender), static_cast<__receiver_ref_t&&>(__receiver));
                 }}};
             }};
           return &__vtable_;
@@ -291,10 +291,10 @@ namespace exec {
     template <
       std::same_as<exec::set_next_t> _SetNext,
       std::same_as<__t> _Self,
-      stdexec::sender _Sender>
+      stdexec::__sender _Sender>
       requires stdexec::__callable<set_next_t, _Self&, _Sender>
-    friend auto tag_invoke(_SetNext, _Self& __self, _Sender&& sender) {
-      return exec::set_next(__self.__receiver_, static_cast<_Sender&&>(sender));
+    friend auto tag_invoke(_SetNext, _Self& __self, _Sender&& __sender) {
+      return exec::set_next(__self.__receiver_, static_cast<_Sender&&>(__sender));
     }
 
     template <std::same_as<stdexec::set_value_t> _SetValue, std::same_as<__t> _Self>
@@ -339,9 +339,9 @@ namespace exec {
       template <stdexec::__not_decays_to<any_sender> _Sender>
         requires stdexec::sender_in<_Sender, __env_t>
               && sequence_sender_to<_Sender, __receiver_base>
-      any_sender(_Sender&& sender) noexcept(
+      any_sender(_Sender&& __sender) noexcept(
         stdexec::__nothrow_constructible_from<__sender_base, _Sender>)
-        : __sender_(static_cast<_Sender&&>(sender)) {
+        : __sender_(static_cast<_Sender&&>(__sender)) {
       }
 
       template < stdexec::same_as<__t> _Self, sequence_receiver_of<_Completions> _Rcvr>
