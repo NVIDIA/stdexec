@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2023 Maikel Nadolski
+ * Copyright (c) 2023 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -69,7 +70,7 @@ namespace exec {
 
     template <class _ItemReceiver, class _ResultVariant>
     struct __item_operation_base {
-      [[no_unique_address]] _ItemReceiver __receiver_;
+      STDEXEC_NO_UNIQUE_ADDRESS _ItemReceiver __receiver_;
       __result_type<_ResultVariant>* __result_;
     };
 
@@ -166,7 +167,7 @@ namespace exec {
 
     template <class _Receiver, class _ResultVariant>
     struct __operation_base : __result_type<_ResultVariant> {
-      [[no_unique_address]] _Receiver __receiver_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __receiver_;
     };
 
     template <class _Receiver, class _ResultVariant>
@@ -260,7 +261,7 @@ namespace exec {
         using __completion_sigs =
           __sequence_completion_signatures_of_t<__copy_cvref_t<_Self, _Sequence>, _Env>;
 
-        [[no_unique_address]] _Sequence __sequence_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Sequence __sequence_;
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires receiver_of<_Receiver, __completion_sigs<_Self, env_of_t<_Receiver>>>
