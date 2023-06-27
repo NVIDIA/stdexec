@@ -40,10 +40,10 @@
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
 #warning "Your kernel is too old to support io_uring with cancellation support."
-#include <sys/timerfd.h>
 #else
 #define STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
 #endif
+#include <sys/timerfd.h>
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
 #define STDEXEC_HAS_IORING_OP_READ
@@ -327,8 +327,36 @@ namespace exec {
       void start() noexcept;
     };
 
+#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+    struct __probe_cancelation : __task {
+      __context* __context_ = nullptr;
+
+      static bool __ready_(__task*) noexcept {
+        return false;
+      }
+
+      static void __submit_(__task* __pointer, ::io_uring_sqe& __entry) noexcept {
+        // __probe_cancelation& __self = *static_cast<__probe_cancelation*>(__pointer);
+        __entry = ::io_uring_sqe{};
+        __entry.addr = bit_cast<__u64>(__pointer);
+        __entry.opcode = IORING_OP_ASYNC_CANCEL;
+      }
+
+      static void __complete_(__task* __pointer, const ::io_uring_cqe& __cqe) noexcept;
+
+      void start() noexcept;
+
+      static constexpr __task_vtable __vtable{&__ready_, &__submit_, &__complete_};
+
+      __probe_cancelation(__context* __ctx)
+        : __task{__vtable}
+        , __context_{__ctx} {
+      }
+    };
+#endif
+
     class __scheduler;
-    
+
     enum class until {
       stopped,
       empty
@@ -340,8 +368,16 @@ namespace exec {
         : __context_base(std::max(__entries, 2u), __flags)
         , __completion_queue_{__completion_queue_region_ ? __completion_queue_region_ : __submission_queue_region_, __params_}
         , __submission_queue_{__submission_queue_region_, __submission_queue_entries_, __params_}
-        , __wakeup_operation_{this, __eventfd_} {
+        , __wakeup_operation_{this, __eventfd_}
+#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+        , __probe_cancelation_operation_{this}
+#endif
+      {
         __wakeup_operation_.start();
+#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+        __probe_cancelation_operation_.start();
+        run_until_empty();
+#endif
       }
 
       void wakeup() {
@@ -364,6 +400,14 @@ namespace exec {
 
       bool is_running() const noexcept {
         return __is_running_.load(std::memory_order_relaxed);
+      }
+
+      bool has_async_cancelation() const noexcept {
+#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+        return __has_async_cancelation_;
+#else
+        return false;
+#endif
       }
 
       /// @brief  Breaks out of the run loop of the io context without stopping the context.
@@ -593,7 +637,26 @@ namespace exec {
       __task_queue __pending_{};
       __atomic_task_queue __requests_{};
       __wakeup_operation __wakeup_operation_;
+#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+      friend struct __probe_cancelation;
+      __probe_cancelation __probe_cancelation_operation_;
+      bool __has_async_cancelation_ = false;
+#endif
     };
+
+#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+    inline void
+      __probe_cancelation::__complete_(__task* __pointer, const ::io_uring_cqe& __cqe) noexcept {
+      __probe_cancelation& __self = *static_cast<__probe_cancelation*>(__pointer);
+      if (__cqe.res != -EINVAL) {
+        __self.__context_->__has_async_cancelation_ = true;
+      }
+    }
+
+    inline void __probe_cancelation::start() noexcept {
+      __context_->submit(this);
+    }
+#endif
 
     inline void __wakeup_operation::start() noexcept {
       if (!__context_->__stop_source_->stop_requested()) {
@@ -733,11 +796,19 @@ namespace exec {
 #ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
           if constexpr (
             requires(_Base* __op, ::io_uring_sqe& __sqe) { __op->submit_stop(__sqe); }) {
-            __op_->submit_stop(__sqe);
+            if (__op_->context().has_async_cancelation()) {
+              __sqe = ::io_uring_sqe{
+                .opcode = IORING_OP_ASYNC_CANCEL,         //
+                .addr = bit_cast<__u64>(__op_->__parent_) //
+              };
+            } else {
+              __op_->submit_stop(__sqe);
+            }
           } else {
+            STDEXEC_ASSERT(__op_->context().has_async_cancelation());
             __sqe = ::io_uring_sqe{
-              .opcode = IORING_OP_ASYNC_CANCEL, //
-              .addr = bit_cast<__u64>(__op_->__parent_)    //
+              .opcode = IORING_OP_ASYNC_CANCEL,         //
+              .addr = bit_cast<__u64>(__op_->__parent_) //
             };
           }
 #else
@@ -909,24 +980,7 @@ namespace exec {
     struct __schedule_after_operation {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
-      class __impl : public __stoppable_op_base<_Receiver> {
-#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
-        struct __kernel_timespec {
-          __s64 __tv_sec;
-          __s64 __tv_nsec;
-        };
-
-        __kernel_timespec __duration_;
-
-        static constexpr __kernel_timespec
-          __duration_to_timespec(std::chrono::nanoseconds dur) noexcept {
-          auto secs = std::chrono::duration_cast<std::chrono::seconds>(dur);
-          dur -= secs;
-          secs = std::max(secs, std::chrono::seconds{0});
-          dur = std::clamp(dur, std::chrono::nanoseconds{0}, std::chrono::nanoseconds{999'999'999});
-          return __kernel_timespec{secs.count(), dur.count()};
-        }
-#else
+      struct __timerfd_impl {
         safe_file_descriptor __timerfd_;
         ::itimerspec __duration_;
         std::uint64_t __n_expirations_{0};
@@ -947,43 +1001,89 @@ namespace exec {
             0 <= __timerspec.it_value.tv_nsec && __timerspec.it_value.tv_nsec < 1'000'000'000);
           return __timerspec;
         }
-#endif
+
+        __timerfd_impl(std::chrono::nanoseconds __duration)
+          : __timerfd_{::timerfd_create(CLOCK_REALTIME, 0)}
+          , __duration_{__duration_to_timespec(__duration)} {
+          int __rc = ::timerfd_settime(
+            __timerfd_, TFD_TIMER_ABSTIME | TFD_TIMER_CANCEL_ON_SET, &__duration_, nullptr);
+          __throw_error_code_if(__rc < 0, errno);
+        }
+      };
+
+      struct __async_cancel_impl {
+        struct __kernel_timespec {
+          __s64 __tv_sec;
+          __s64 __tv_nsec;
+        };
+
+        __kernel_timespec __duration_;
+
+        static constexpr __kernel_timespec
+          __duration_to_timespec(std::chrono::nanoseconds dur) noexcept {
+          auto secs = std::chrono::duration_cast<std::chrono::seconds>(dur);
+          dur -= secs;
+          secs = std::max(secs, std::chrono::seconds{0});
+          dur = std::clamp(dur, std::chrono::nanoseconds{0}, std::chrono::nanoseconds{999'999'999});
+          return __kernel_timespec{secs.count(), dur.count()};
+        }
+
+        __async_cancel_impl(std::chrono::nanoseconds __duration)
+          : __duration_{__duration_to_timespec(__duration)} {
+        }
+      };
+
+      class __impl : public __stoppable_op_base<_Receiver> {
+        std::variant<__timerfd_impl, __async_cancel_impl> __impl_;
 
        public:
         static constexpr std::false_type ready() noexcept {
           return {};
         }
 
-#ifndef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
         void submit_stop(::io_uring_sqe& __sqe) noexcept {
-          __duration_.it_value.tv_sec = 1;
-          __duration_.it_value.tv_nsec = 0;
+          __timerfd_impl* __impl = std::get_if<0>(&__impl_);
+          STDEXEC_ASSERT(__impl != nullptr);
+          __impl->__duration_.it_value.tv_sec = 1;
+          __impl->__duration_.it_value.tv_nsec = 0;
           ::timerfd_settime(
-            __timerfd_, TFD_TIMER_ABSTIME | TFD_TIMER_CANCEL_ON_SET, &__duration_, nullptr);
+            __impl->__timerfd_,
+            TFD_TIMER_ABSTIME | TFD_TIMER_CANCEL_ON_SET,
+            &__impl->__duration_,
+            nullptr);
           __sqe = ::io_uring_sqe{.opcode = IORING_OP_NOP};
         }
-#endif
 
         void submit(::io_uring_sqe& __sqe) noexcept {
 #ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
-          ::io_uring_sqe __sqe_{};
-          __sqe_.opcode = IORING_OP_TIMEOUT;
-          __sqe_.addr = bit_cast<__u64>(&__duration_);
-          __sqe_.len = 1;
-          __sqe = __sqe_;
-#else
-          ::io_uring_sqe __sqe_{};
-          __sqe_.opcode = IORING_OP_READV;
-          __sqe_.fd = __timerfd_;
-          __sqe_.addr = bit_cast<__u64>(&__iov_);
-          __sqe_.len = 1;
-          __sqe = __sqe_;
+          if (this->context().has_async_cancelation()) {
+            __async_cancel_impl* __impl = std::get_if<1>(&__impl_);
+            STDEXEC_ASSERT(__impl != nullptr);
+            ::io_uring_sqe __sqe_{};
+            __sqe_.opcode = IORING_OP_TIMEOUT;
+            __sqe_.addr = bit_cast<__u64>(&__impl->__duration_);
+            __sqe_.len = 1;
+            __sqe = __sqe_;
+          } else {
+#endif
+            __timerfd_impl* __impl = std::get_if<0>(&__impl_);
+            STDEXEC_ASSERT(__impl != nullptr);
+            ::io_uring_sqe __sqe_{};
+            __sqe_.opcode = IORING_OP_READV;
+            __sqe_.fd = __impl->__timerfd_;
+            __sqe_.addr = bit_cast<__u64>(&__impl->__iov_);
+            __sqe_.len = 1;
+            __sqe = __sqe_;
+#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+          }
 #endif
         }
 
         void complete(const ::io_uring_cqe& __cqe) noexcept {
 #ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
-          if (__cqe.res == -ETIME || __cqe.res == 0) {
+          if (
+            (this->context().has_async_cancelation() && (__cqe.res == -ETIME || __cqe.res == 0))
+            || __cqe.res == sizeof(std::uint64_t)) {
 #else
           if (__cqe.res == sizeof(std::uint64_t)) {
 #endif
@@ -998,18 +1098,10 @@ namespace exec {
 
         __impl(__context& __context, std::chrono::nanoseconds __duration, _Receiver&& __receiver)
           : __stoppable_op_base<_Receiver>{__context, (_Receiver&&) __receiver}
-#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
-          , __duration_{__duration_to_timespec(__duration)}
-#else
-          , __timerfd_{::timerfd_create(CLOCK_REALTIME, 0)}
-          , __duration_{__duration_to_timespec(__duration)}
-#endif
-        {
-#ifndef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
-          int __rc = ::timerfd_settime(
-            __timerfd_, TFD_TIMER_ABSTIME | TFD_TIMER_CANCEL_ON_SET, &__duration_, nullptr);
-          __throw_error_code_if(__rc < 0, errno);
-#endif
+          , __impl_(__async_cancel_impl{__duration}) {
+          if (!__context.has_async_cancelation()) {
+            __impl_ = __timerfd_impl{__duration};
+          }
         }
       };
 
