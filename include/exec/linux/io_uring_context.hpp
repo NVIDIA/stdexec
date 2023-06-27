@@ -45,10 +45,6 @@
 #endif
 #include <sys/timerfd.h>
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
-#define STDEXEC_HAS_IORING_OP_READ
-#endif
-
 #include <sys/uio.h>
 #include <sys/eventfd.h>
 #include <sys/syscall.h>
@@ -286,12 +282,8 @@ namespace exec {
     struct __wakeup_operation : __task {
       __context* __context_ = nullptr;
       int __eventfd_ = -1;
-#ifdef STDEXEC_HAS_IORING_OP_READ
-      std::uint64_t __buffer_ = 0;
-#else
       std::uint64_t __value_ = 0;
       ::iovec __buffer_ = {.iov_base = &__value_, .iov_len = sizeof(__value_)};
-#endif
 
       static bool __ready_(__task*) noexcept {
         return false;
@@ -302,13 +294,8 @@ namespace exec {
         __entry = ::io_uring_sqe{};
         __entry.fd = __self.__eventfd_;
         __entry.addr = bit_cast<__u64>(&__self.__buffer_);
-#ifdef STDEXEC_HAS_IORING_OP_READ
-        __entry.opcode = IORING_OP_READ;
-        __entry.len = sizeof(__self.__buffer_);
-#else
         __entry.opcode = IORING_OP_READV;
         __entry.len = 1;
-#endif
       }
 
       static void __complete_(__task* __pointer, const ::io_uring_cqe& __entry) noexcept {
@@ -1036,6 +1023,15 @@ namespace exec {
       class __impl : public __stoppable_op_base<_Receiver> {
         std::variant<__timerfd_impl, __async_cancel_impl> __impl_;
 
+        static std::variant<__timerfd_impl, __async_cancel_impl>
+          __make_impl(__context& __ctx, std::chrono::nanoseconds __duration) noexcept {
+          if (__ctx.has_async_cancelation()) {
+            return __async_cancel_impl{__duration};
+          } else {
+            return __timerfd_impl{__duration};
+          }
+        }
+
        public:
         static constexpr std::false_type ready() noexcept {
           return {};
@@ -1098,10 +1094,7 @@ namespace exec {
 
         __impl(__context& __context, std::chrono::nanoseconds __duration, _Receiver&& __receiver)
           : __stoppable_op_base<_Receiver>{__context, (_Receiver&&) __receiver}
-          , __impl_(__async_cancel_impl{__duration}) {
-          if (!__context.has_async_cancelation()) {
-            __impl_ = __timerfd_impl{__duration};
-          }
+          , __impl_(__make_impl(__context, __duration)) {
         }
       };
 
