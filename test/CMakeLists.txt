@@ -78,7 +78,7 @@ set(stdexec_test_sources
     exec/test_when_any.cpp
     exec/test_at_coroutine_exit.cpp
     exec/test_materialize.cpp
-    exec/test_io_uring_context.cpp
+    $<$<BOOL:${STDEXEC_ENABLE_IO_URING_TESTS}>:exec/test_io_uring_context.cpp>
     exec/test_trampoline_scheduler.cpp
     exec/test_sequence_senders.cpp
     exec/sequence/test_empty_sequence.cpp

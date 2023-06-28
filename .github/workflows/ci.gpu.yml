@@ -45,6 +45,7 @@ jobs:
           cd /workspaces/stdexec;
           # Configure
           cmake -S . -B build -GNinja \
+            -DSTDEXEC_ENABLE_IO_URING_TESTS=OFF \
             -DSTDEXEC_ENABLE_CUDA=ON \
             -DCMAKE_CXX_COMPILER="$cxx" \
             -DCMAKE_CUDA_COMPILER="$cxx" \
