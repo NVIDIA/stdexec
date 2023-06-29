@@ -54,7 +54,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           if constexpr (sizeof...(As) == 0) {
             self.operation_state_.propagate_completion_signal(Tag());
           } else {
-            // If there are values in the completion channel, we have to construct 
+            // If there are values in the completion channel, we have to construct
             // the temporary storage. If the values are trivially copyable, we launch
             // a kernel and construct the temporary storage on the device to avoid managed
             // memory movements. Otherwise, we construct the temporary storage on the host
@@ -68,30 +68,30 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             }
 
             int dev_id{};
-            if (cudaError_t status = STDEXEC_DBG_ERR(cudaGetDevice(&dev_id)); 
+            if (cudaError_t status = STDEXEC_DBG_ERR(cudaGetDevice(&dev_id));
                 status != cudaSuccess) {
-              self.operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+              self.operation_state_.propagate_completion_signal(
+                stdexec::set_error, std::move(status));
               return;
             }
 
             int concurrent_managed_access{};
-            if (cudaError_t status = STDEXEC_DBG_ERR(cudaDeviceGetAttribute(&concurrent_managed_access, 
-                                                                            cudaDevAttrConcurrentManagedAccess, 
-                                                                            dev_id)); 
+            if (cudaError_t status = STDEXEC_DBG_ERR(cudaDeviceGetAttribute(
+                  &concurrent_managed_access, cudaDevAttrConcurrentManagedAccess, dev_id));
                 status != cudaSuccess) {
-              self.operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+              self.operation_state_.propagate_completion_signal(
+                stdexec::set_error, std::move(status));
               return;
             }
 
             cudaStream_t stream = self.operation_state_.get_stream();
 
             if (concurrent_managed_access) {
-              if (cudaError_t status = STDEXEC_DBG_ERR(cudaMemPrefetchAsync(storage, 
-                                                                            sizeof(storage_t), 
-                                                                            dev_id, 
-                                                                            stream)); 
+              if (cudaError_t status = STDEXEC_DBG_ERR(
+                    cudaMemPrefetchAsync(storage, sizeof(storage_t), dev_id, stream));
                   status != cudaSuccess) {
-                self.operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+                self.operation_state_.propagate_completion_signal(
+                  stdexec::set_error, std::move(status));
                 return;
               }
             }
@@ -101,10 +101,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
               if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                   status != cudaSuccess) {
-                self.operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+                self.operation_state_.propagate_completion_signal(
+                  stdexec::set_error, std::move(status));
                 return;
               }
-            } 
+            }
 
             self.operation_state_.defer_temp_storage_destruction(storage);
 
@@ -117,7 +118,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                     self.operation_state_.propagate_completion_signal(Tag2(), std::move(tas)...);
                   },
                   tpl);
-              }, *storage, index);
+              },
+              *storage,
+              index);
           }
         }
 

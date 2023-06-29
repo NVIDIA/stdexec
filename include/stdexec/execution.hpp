@@ -740,8 +740,7 @@ namespace stdexec {
 
   template <class _Receiver>
   concept __enable_receiver = //
-    requires { typename _Receiver::is_receiver; }
-    || STDEXEC_IS_BASE_OF(__receiver_base, _Receiver);
+    requires { typename _Receiver::is_receiver; } || STDEXEC_IS_BASE_OF(__receiver_base, _Receiver);
 
   template <class _Receiver>
   inline constexpr bool enable_receiver = __enable_receiver<_Receiver>; // NOT TO SPEC
@@ -2622,7 +2621,9 @@ namespace stdexec {
 
     template <__class _Derived, class _Base>
     struct receiver_adaptor {
-      class __t : __adaptor_base<_Base>, __receiver_base {
+      class __t
+        : __adaptor_base<_Base>
+        , __receiver_base {
         friend _Derived;
         _DEFINE_MEMBER(set_value);
         _DEFINE_MEMBER(set_error);

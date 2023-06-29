@@ -101,6 +101,7 @@ namespace exec {
       class __t {
        public:
         using is_receiver = void;
+
         explicit __t(__final_operation_base<_ResultType, _ReceiverId>* __op) noexcept
           : __op_{__op} {
         }
@@ -167,6 +168,7 @@ namespace exec {
       class __t {
        public:
         using is_receiver = void;
+
         explicit __t(__base_op_t* __op) noexcept
           : __op_(__op) {
         }
@@ -228,7 +230,8 @@ namespace exec {
         , __op_(std::in_place_index<0>, __conv{[&] {
                   return __initial_op_t{
                     (_FinalSender&&) __final_sender,
-                    stdexec::connect((_InitialSender&&) __initial_sender, __initial_receiver_t{this})};
+                    stdexec::connect(
+                      (_InitialSender&&) __initial_sender, __initial_receiver_t{this})};
                 }}) {
       }
     };

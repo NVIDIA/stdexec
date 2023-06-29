@@ -25,7 +25,9 @@
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace _split {
-    inline auto __make_env(const in_place_stop_source& stop_source, stream_provider_t *stream_provider) noexcept {
+    inline auto __make_env(
+      const in_place_stop_source& stop_source,
+      stream_provider_t* stream_provider) noexcept {
       return make_stream_env(
         __env::__env_fn{[&](get_stop_token_t) noexcept {
           return stop_source.get_token();
@@ -33,10 +35,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         stream_provider);
     }
 
-    using env_t =
-      decltype(_split::__make_env(
-        __declval<const in_place_stop_source&>(), 
-        static_cast<stream_provider_t*>(nullptr)));
+    using env_t = decltype(_split::__make_env(
+      __declval<const in_place_stop_source&>(),
+      static_cast<stream_provider_t*>(nullptr)));
 
     template <class Tag, class... As, class Variant>
     __launch_bounds__(1) __global__ void copy_kernel(Variant* var, As... as) {
@@ -154,7 +155,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                   stream_provider_.own_stream_.value(),
                   context_state.pinned_resource_)
                   .release())
-        , env_(make_host(this->stream_provider_.status_, context_state_.pinned_resource_, make_env()))
+        , env_(
+            make_host(this->stream_provider_.status_, context_state_.pinned_resource_, make_env()))
         , op_state2_(connect(
             (Sender&&) sndr,
             enqueue_receiver_t{env_.get(), data_, task_, context_state.hub_->producer()})) {
@@ -220,9 +222,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         __t(Receiver&& rcvr, std::shared_ptr<sh_state_t<Sender>> shared_state) //
           noexcept(std::is_nothrow_move_constructible_v<Receiver>)
           : operation_base_t{nullptr, notify}
-          , operation_state_base_t<ReceiverId>(
-              (Receiver&&) rcvr,
-              shared_state->context_state_)
+          , operation_state_base_t<ReceiverId>((Receiver&&) rcvr, shared_state->context_state_)
           , shared_state_(std::move(shared_state)) {
         }
 

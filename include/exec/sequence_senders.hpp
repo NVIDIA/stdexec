@@ -199,9 +199,9 @@ namespace exec {
       sender_in<_Sender, env_of_t<_Receiver>> &&           //
       !sequence_sender_in<_Sender, env_of_t<_Receiver>> && //
       sequence_receiver_of<_Receiver, completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>
-      &&                                                   //
+      && //
       __receiver_from<__stopped_means_break_t<_Receiver>, __next_sender_of_t<_Receiver, _Sender>>
-      &&                                                   //
+      && //
       __connect::__connectable_with_tag_invoke<
         __next_sender_of_t<_Receiver, _Sender>&&,
         __stopped_means_break_t<_Receiver>>;

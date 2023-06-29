@@ -50,8 +50,7 @@ namespace nvexec {
           cudaStream_t stream = self.op_state_.get_stream();
 
           // `range` is produced asynchronously, so we need to wait for it to be ready
-          if (status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
-              status != cudaSuccess) {
+          if (status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream)); status != cudaSuccess) {
             self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             return;
           }
