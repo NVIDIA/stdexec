@@ -447,13 +447,15 @@ namespace exec {
               };
 
               auto finalize = [&](auto&) {
-                stdexec::set_value(
-                  (Receiver&&) sh_state.receiver_,
-                  std::reduce(
-                    std::ranges::begin(sh_state.partials_),
-                    std::ranges::end(sh_state.partials_),
-                    sh_state.init_,
-                    sh_state.redop_));
+                auto result = std::reduce(
+                  std::ranges::begin(sh_state.partials_),
+                  std::ranges::end(sh_state.partials_),
+                  sh_state.init_,
+                  sh_state.redop_);
+                // deallocate
+                std::vector<reduction_result_t> tmp;
+                sh_state.partials_.swap(tmp);
+                stdexec::set_value((Receiver&&) sh_state.receiver_, std::move(result));
               };
 
               sh_state.apply(reducer);
