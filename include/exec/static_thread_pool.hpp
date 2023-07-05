@@ -16,6 +16,8 @@
  */
 #pragma once
 
+#include "reduce.hpp"
+
 #include "../stdexec/execution.hpp"
 #include "../stdexec/__detail/__config.hpp"
 #include "../stdexec/__detail/__intrusive_queue.hpp"
@@ -407,10 +409,6 @@ namespace exec {
         }
       };
 
-      friend sender tag_invoke(stdexec::schedule_t, const scheduler& s) noexcept {
-        return s.make_sender_();
-      }
-
       template <stdexec::sender Sender, std::integral Shape, class Fun>
       using bulk_sender_t = //
         bulk_sender<
@@ -422,6 +420,261 @@ namespace exec {
       friend bulk_sender_t<S, Shape, Fn>
         tag_invoke(stdexec::bulk_t, const scheduler& sch, S&& sndr, Shape shape, Fn fun) noexcept {
         return bulk_sender_t<S, Shape, Fn>{*sch.pool_, (S&&) sndr, shape, (Fn&&) fun};
+      }
+
+      template <class SenderId, class ReceiverId, class InitT, class RedOp>
+      struct reduce_shared_state {
+        using Sender = stdexec::__t<SenderId>;
+        using Receiver = stdexec::__t<ReceiverId>;
+
+        struct reduction_task : task_base {
+          reduce_shared_state* sh_state_;
+
+          reduction_task(reduce_shared_state* sh_state)
+            : sh_state_(sh_state) {
+            task_base::__execute = [](task_base* t, const std::uint32_t tid) noexcept {
+              auto& sh_state = *static_cast<reduction_task*>(t)->sh_state_;
+              auto total_threads = sh_state.num_threads_available();
+              auto& partial = sh_state.partials_[tid];
+
+              auto reducer = [&](auto& input) {
+                const auto [first, last] = even_share(std::ranges::size(input), tid, total_threads);
+                if (first != last) {
+                  auto begin = std::ranges::begin(input) + first;
+                  partial = std::reduce(
+                    std::next(begin), std::ranges::begin(input) + last, *begin, sh_state.redop_);
+                }
+              };
+
+              auto finalize = [&](auto&) {
+                stdexec::set_value(
+                  (Receiver&&) sh_state.receiver_,
+                  std::reduce(
+                    std::ranges::begin(sh_state.partials_),
+                    std::ranges::end(sh_state.partials_),
+                    sh_state.init_,
+                    sh_state.redop_));
+              };
+
+              sh_state.apply(reducer);
+
+              const bool is_last_thread = sh_state.finished_threads_.fetch_add(1)
+                                       == (total_threads - 1);
+              if (is_last_thread) {
+                sh_state.apply(finalize);
+              }
+            };
+          }
+        };
+
+        template <class T>
+        struct dummy_ {
+          using __t = T;
+        };
+
+        using inrange_t = //
+          stdexec::__decay_t<stdexec::__t<stdexec::__t< stdexec::__value_types_of_t<
+            Sender,
+            stdexec::env_of_t<Receiver>,
+            stdexec::__q<dummy_>,
+            stdexec::__q<dummy_>>>>>;
+
+        using reduction_result_t = std::invoke_result_t<RedOp, InitT, InitT>;
+
+        inrange_t range_;
+        static_thread_pool& pool_;
+        Receiver receiver_;
+        InitT init_;
+        RedOp redop_;
+        std::vector<reduction_result_t> partials_;
+        std::atomic<std::uint32_t> finished_threads_{0};
+        std::vector<reduction_task> tasks_;
+
+        static std::pair<std::size_t, std::size_t>
+          even_share(std::size_t n, std::size_t rank, std::size_t size) noexcept {
+          const auto avg_per_thread = n / size;
+          const auto n_big_share = avg_per_thread + 1;
+          const auto big_shares = n % size;
+          const auto is_big_share = rank < big_shares;
+          const auto begin = is_big_share
+                             ? n_big_share * rank
+                             : n_big_share * big_shares + (rank - big_shares) * avg_per_thread;
+          const auto end = begin + (is_big_share ? n_big_share : avg_per_thread);
+
+          return std::make_pair(begin, end);
+        }
+
+        std::uint32_t num_threads_available() const {
+          return pool_.available_parallelism();
+        }
+
+        template <class F>
+        void apply(F f) {
+          f(range_);
+        }
+
+        reduce_shared_state(static_thread_pool& pool, Receiver receiver, InitT init, RedOp redop)
+          : range_{}
+          , pool_{pool}
+          , receiver_{(Receiver&&) receiver}
+          , init_{init}
+          , redop_{redop}
+          , partials_(num_threads_available())
+          , tasks_{num_threads_available(), {this}} {
+        }
+      };
+
+      template <class SenderId, class ReceiverId, class InitT, class RedOp>
+      struct reduce_reciever {
+        using Sender = stdexec::__t<SenderId>;
+        using Receiver = stdexec::__t<ReceiverId>;
+
+        using shared_state = reduce_shared_state<SenderId, ReceiverId, InitT, RedOp>;
+
+        shared_state& shared_state_;
+
+        void enqueue() noexcept {
+          shared_state_.pool_.bulk_enqueue(
+            shared_state_.tasks_.data(), shared_state_.num_threads_available());
+        }
+
+        template <class Range>
+        friend void tag_invoke(
+          stdexec::same_as<stdexec::set_value_t> auto,
+          reduce_reciever&& self,
+          Range&& input) noexcept {
+          shared_state& state = self.shared_state_;
+
+          const auto n = std::ranges::size(input);
+          const auto min_parallel_size = 2 * state.num_threads_available();
+          if (n >= min_parallel_size) {
+            state.range_ = (Range&&) input;
+            self.enqueue();
+          } else {
+            auto result = std::reduce(
+              std::ranges::begin(input), std::ranges::end(input), state.init_, state.redop_);
+            state.apply([&](auto&) {
+              stdexec::set_value(std::move(state.receiver_), std::move(result));
+            });
+          }
+        }
+
+        template <stdexec::__one_of<stdexec::set_error_t, stdexec::set_stopped_t> Tag, class... As>
+        friend void tag_invoke(Tag tag, reduce_reciever&& self, As&&... as) noexcept {
+          shared_state& state = self.shared_state_;
+          tag((Receiver&&) state.receiver_, (As&&) as...);
+        }
+
+        friend auto tag_invoke(stdexec::get_env_t, const reduce_reciever& self) noexcept
+          -> stdexec::env_of_t<Receiver> {
+          return stdexec::get_env(self.shared_state_.receiver_);
+        }
+      };
+
+      template <class SenderId, class ReceiverId, class InitT, class RedOp>
+      struct reduce_op_state {
+        using Sender = stdexec::__t<SenderId>;
+        using Receiver = stdexec::__t<ReceiverId>;
+
+        using reduce_rcvr = reduce_reciever<SenderId, ReceiverId, InitT, RedOp>;
+        using shared_state = reduce_shared_state<SenderId, ReceiverId, InitT, RedOp>;
+        using inner_op_state = stdexec::connect_result_t<Sender, reduce_rcvr>;
+
+        shared_state shared_state_;
+
+        inner_op_state inner_op_;
+
+        friend void tag_invoke(stdexec::start_t, reduce_op_state& op) noexcept {
+          stdexec::start(op.inner_op_);
+        }
+
+        reduce_op_state(
+          static_thread_pool& pool,
+          InitT init,
+          RedOp redop,
+          Sender&& sender,
+          Receiver receiver)
+          : shared_state_(pool, (Receiver&&) receiver, init, redop)
+          , inner_op_{stdexec::connect((Sender&&) sender, reduce_rcvr{shared_state_})} {
+        }
+      };
+
+      template <class SenderId, class InitT, class OpId>
+      struct reduce_sender {
+        using Sender = stdexec::__t<SenderId>;
+        using RedOp = stdexec::__t<OpId>;
+        using is_sender = void;
+        using reduction_result_t = std::invoke_result_t<RedOp, InitT, InitT>;
+
+        static_thread_pool& pool_;
+        Sender sndr_;
+        InitT init_;
+        RedOp redop_;
+
+        template <class Self, class Env>
+        using completion_signatures =
+          stdexec::completion_signatures<stdexec::set_value_t(reduction_result_t)>;
+
+        template <class Self, class Receiver>
+        using reduce_op_state_t = //
+          reduce_op_state<
+            stdexec::__x<stdexec::__copy_cvref_t<Self, Sender>>,
+            stdexec::__x<stdexec::__decay_t<Receiver>>,
+            InitT,
+            RedOp>;
+
+        template <stdexec::__decays_to<reduce_sender> Self, stdexec::receiver Receiver>
+          requires stdexec::
+            receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
+          friend reduce_op_state_t<Self, Receiver>                     //
+          tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) //
+          noexcept(stdexec::__nothrow_constructible_from<
+                   reduce_op_state_t<Self, Receiver>,
+                   static_thread_pool&,
+                   InitT,
+                   RedOp,
+                   Sender,
+                   Receiver>) {
+          return reduce_op_state_t<Self, Receiver>{
+            self.pool_, self.init_, self.redop_, ((Self&&) self).sndr_, (Receiver&&) rcvr};
+        }
+
+        template <stdexec::__decays_to<reduce_sender> Self, class Env>
+        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env&&)
+          -> stdexec::dependent_completion_signatures<Env>;
+
+        template <stdexec::__decays_to<reduce_sender> Self, class Env>
+        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env&&)
+          -> completion_signatures<Self, Env>
+          requires true;
+
+        friend auto tag_invoke(stdexec::get_env_t, const reduce_sender& self) noexcept
+          -> stdexec::env_of_t<const Sender&> {
+          return stdexec::get_env(self.sndr_);
+        }
+      };
+
+
+      template <stdexec::sender Sender, class InitT, class RedOp>
+      using reduce_sender_t = //
+        reduce_sender<
+          stdexec::__x<stdexec::__decay_t<Sender>>,
+          stdexec::__decay_t<InitT>,
+          stdexec::__x<stdexec::__decay_t<RedOp>>>;
+
+      template <stdexec::sender S, class InitT, class RedOp>
+      friend reduce_sender_t<S, InitT, RedOp> tag_invoke(
+        exec::reduce_t,
+        const scheduler& sch,
+        S&& sndr,
+        InitT init,
+        RedOp redop) noexcept {
+        return reduce_sender_t<S, InitT, RedOp>{
+          *sch.pool_, (S&&) sndr, (InitT&&) init, (RedOp&&) redop};
+      }
+
+      friend sender tag_invoke(stdexec::schedule_t, const scheduler& s) noexcept {
+        return s.make_sender_();
       }
 
       friend stdexec::forward_progress_guarantee
