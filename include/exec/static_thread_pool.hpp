@@ -526,6 +526,7 @@ namespace exec {
 
       template <class SenderId, class ReceiverId, class InitT, class RedOp>
       struct reduce_reciever {
+        using is_receiver = void;
         using Sender = stdexec::__t<SenderId>;
         using Receiver = stdexec::__t<ReceiverId>;
 
