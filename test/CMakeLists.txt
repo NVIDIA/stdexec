@@ -83,6 +83,7 @@ set(stdexec_test_sources
     exec/test_sequence_senders.cpp
     exec/sequence/test_any_sequence_of.cpp
     exec/sequence/test_empty_sequence.cpp
+    exec/sequence/test_ignore_all_values.cpp
     $<$<BOOL:${STDEXEC_ENABLE_TBB}>:tbbexec/test_tbb_thread_pool.cpp>
     )
 
