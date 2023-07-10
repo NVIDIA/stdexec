@@ -192,7 +192,7 @@ TEST_CASE("nvexec then can return values of non-trivial types", "[cuda][stream][
 
   auto snd = ex::schedule(stream_ctx.get_scheduler()) //
            | ex::then([]() -> move_only_t { return move_only_t{42}; })
-           | ex::then([flags](move_only_t&& val) {
+           | ex::then([flags](move_only_t &&val) {
                if (val.contains(42)) {
                  flags.set();
                }
@@ -207,8 +207,9 @@ class tracer_storage_t {
   int *h_counter_{};
   int *d_counter_{};
 
-public:
-  tracer_storage_t() : h_counter_{&h_counter_storage} {
+ public:
+  tracer_storage_t()
+    : h_counter_{&h_counter_storage} {
     cudaMalloc(&d_counter_, sizeof(int));
     cudaMemset(d_counter_, 0, sizeof(int));
   }
@@ -231,7 +232,7 @@ public:
       ref.fetch_add(val, cuda::std::memory_order_relaxed);
     }
 
-  public:
+   public:
     __host__ __device__ void more() {
       diff(+1);
     }
@@ -257,7 +258,7 @@ public:
 class tracer_t {
   tracer_storage_t::handle_t handle_;
 
-  void print(const char* msg) {
+  void print(const char *msg) {
     if (is_on_gpu()) {
       printf("gpu: %s\n", msg);
     } else {
@@ -265,15 +266,20 @@ class tracer_t {
     }
   }
 
-public:
+ public:
   tracer_t() = delete;
-  tracer_t(const tracer_t& other) = delete;
-  __host__ __device__ tracer_t(tracer_storage_t::handle_t handle) : handle_(handle) {
+  tracer_t(const tracer_t &other) = delete;
+
+  __host__ __device__ tracer_t(tracer_storage_t::handle_t handle)
+    : handle_(handle) {
     handle_.more();
   }
-  __host__ __device__ tracer_t(tracer_t&& other) : handle_(other.handle_) {
+
+  __host__ __device__ tracer_t(tracer_t &&other)
+    : handle_(other.handle_) {
     handle_.more();
   }
+
   __host__ __device__ ~tracer_t() {
     handle_.fewer();
   }
@@ -288,7 +294,7 @@ TEST_CASE("nvexec then destructs temporary storage", "[cuda][stream][adaptors][t
   {
     auto snd = ex::schedule(stream_ctx.get_scheduler())
              | ex::then([handle]() -> tracer_t { return tracer_t{handle}; })
-             | ex::then([](tracer_t &&tracer) { });
+             | ex::then([](tracer_t &&tracer) {});
     stdexec::sync_wait(std::move(snd));
   }
 

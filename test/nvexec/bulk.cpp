@@ -158,26 +158,25 @@ TEST_CASE("nvexec bulk can succeed a sender", "[cuda][stream][adaptors][bulk]") 
   }
 }
 
-TEST_CASE("nvexec bulk can succeed a sender that sends ref into opstate", "[cuda][stream][adaptors][bulk]") {
+TEST_CASE(
+  "nvexec bulk can succeed a sender that sends ref into opstate",
+  "[cuda][stream][adaptors][bulk]") {
   nvexec::stream_context ctx;
 
   double* inout = nullptr;
   const int nelems = 10;
-  cudaMallocManaged(&inout, nelems*sizeof(double));
+  cudaMallocManaged(&inout, nelems * sizeof(double));
 
   auto task =
-      stdexec::transfer_just(ctx.get_scheduler(),std::span<double>{inout,nelems})
-  |   stdexec::bulk(nelems,
-          [](std::size_t i, std::span<double> out){ out[i] = i; })
-  |   stdexec::let_value(
-          [](std::span<double> out){ return stdexec::just(out); })
-  |   stdexec::bulk(nelems,
-          [](std::size_t i, std::span<double> out){ out[i] = 2.0 * out[i]; });
+    stdexec::transfer_just(ctx.get_scheduler(), std::span<double>{inout, nelems})
+    | stdexec::bulk(nelems, [](std::size_t i, std::span<double> out) { out[i] = i; })
+    | stdexec::let_value([](std::span<double> out) { return stdexec::just(out); })
+    | stdexec::bulk(nelems, [](std::size_t i, std::span<double> out) { out[i] = 2.0 * out[i]; });
 
   stdexec::sync_wait(std::move(task)).value();
 
   for (int i = 0; i < nelems; ++i) {
-    REQUIRE(i*2 == (int) inout[i]);
+    REQUIRE(i * 2 == (int) inout[i]);
   }
 
   cudaFree(inout);

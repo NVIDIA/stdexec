@@ -342,8 +342,10 @@ class stopped_token {
   };
  public:
   constexpr stopped_token() noexcept = default;
+
   explicit constexpr stopped_token(bool stopped) noexcept
-    : stopped_{stopped} {}
+    : stopped_{stopped} {
+  }
 
   template <class>
   using callback_type = __callback_type;
