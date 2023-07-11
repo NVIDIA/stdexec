@@ -15,7 +15,8 @@
  */
 #pragma once
 
-#include <stdexec/execution.hpp>
+#include "../stdexec/execution.hpp"
+#include "./sequence_senders.hpp"
 
 #include <cstddef>
 
@@ -815,8 +816,8 @@ namespace exec {
             ((_Self&&) __self).__env_.__rcvr_);
         }
 
-        template <same_as<__ref> Self>
-        STDEXEC_DEFINE_CUSTOM(const __env_t& get_env)(this const Self& __self, get_env_t) noexcept {
+        template <__decays_to<__ref> _Self>
+        STDEXEC_DEFINE_CUSTOM(const __env_t& get_env)(this _Self&& __self, get_env_t) noexcept {
           return __self.__env_;
         }
       };
@@ -869,6 +870,12 @@ namespace exec {
 
       struct __t {
         __operation_base<_Receiver>* __op_;
+
+        template <same_as<set_next_t> _SetNext, same_as<__t> _Self, class _Item>
+          requires __callable<_SetNext, _Receiver&, _Item>
+        friend auto tag_invoke(_SetNext, _Self& __self, _Item&& __item) {
+          return _SetNext{}(__self.__op_->__rcvr_, static_cast<_Item&&>(__item));
+        }
 
         template <same_as<set_value_t> _SetValue, same_as<__t> _Self, class... _Args>
           requires __callable<_SetValue, _Receiver&&, _Args...>
@@ -1202,9 +1209,8 @@ namespace exec {
       _Tag()((__receiver_base&&) __self.__receiver_);
     }
 
-    template <stdexec::same_as<stdexec::get_env_t> _Tag, stdexec::same_as<any_receiver_ref> _Self>
-    STDEXEC_DEFINE_CUSTOM(auto get_env)(this const _Self& __self, _Tag)   //
-      noexcept(stdexec::__nothrow_callable<_Tag, const __receiver_base&>) //
+    template <stdexec::same_as<stdexec::get_env_t> _Tag, stdexec::__decays_to<any_receiver_ref> _Self>
+    STDEXEC_DEFINE_CUSTOM(auto get_env)(this _Self&& __self, _Tag) noexcept //
       -> stdexec::env_of_t<const __receiver_base&> {
       return _Tag()(__self.__receiver_);
     }
@@ -1238,8 +1244,7 @@ namespace exec {
       }
 
       template <stdexec::__decays_to<any_sender> _Self, stdexec::receiver_of<_Completions> _Receiver>
-      // BUGBUG There is some problem with tag forwarding in __env_join for the following constraint
-      // requires stdexec::sender_to<stdexec::__copy_cvref_t<_Self, __sender_base>, _Receiver>
+        requires stdexec::sender_to<stdexec::__copy_cvref_t<_Self, __sender_base>, _Receiver>
       STDEXEC_DEFINE_CUSTOM(auto connect)(
         this _Self&& __self,
         stdexec::connect_t,

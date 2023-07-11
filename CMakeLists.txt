@@ -276,6 +276,8 @@ if (STDEXEC_ENABLE_TBB)
         )
 endif ()
 
+option (STDEXEC_ENABLE_IO_URING_TESTS "Enable io_uring tests" ON)
+
 option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
 option(STDEXEC_BUILD_TESTS "Build stdexec tests" ON)
 option(BUILD_TESTING "" ${STDEXEC_BUILD_TESTS})

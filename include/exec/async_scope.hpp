@@ -595,7 +595,9 @@ namespace exec {
 
       __future_state(_Sender __sndr, _Env __env, const __impl* __scope)
         : __future_state_base<_Completions, _Env>((_Env&&) __env, __scope)
-        , __op_(stdexec::connect((_Sender&&) __sndr, __future_receiver_t<_Sender, _Env>{this, __scope})) {
+        , __op_(stdexec::connect(
+            (_Sender&&) __sndr,
+            __future_receiver_t<_Sender, _Env>{this, __scope})) {
       }
 
       connect_result_t<_Sender, __future_receiver_t<_Sender, _Env>> __op_;

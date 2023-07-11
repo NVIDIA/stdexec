@@ -73,6 +73,7 @@ namespace exec {
 
   namespace __sequence_sndr {
     using namespace stdexec;
+
     struct __nop_operation {
       STDEXEC_DEFINE_CUSTOM(void start)(this __nop_operation&, start_t) noexcept {
       }
@@ -101,7 +102,9 @@ namespace exec {
         STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
 
         template <same_as<__t> _Self>
-        STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(this const _Self& __self, get_env_t) noexcept {
+        STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(
+          this const _Self& __self,
+          get_env_t) noexcept {
           return stdexec::get_env(__self.__rcvr_);
         }
 
@@ -205,7 +208,7 @@ namespace exec {
         __sequence_sndr::__stopped_means_break_t<_Receiver>,
         __next_sender_of_t<_Receiver, _Sender>>
       && //
-      connect_t::__connectable_with_tag_invoke_v<
+      __connect::__connectable_with_tag_invoke<
         __next_sender_of_t<_Receiver, _Sender>&&,
         __sequence_sndr::__stopped_means_break_t<_Receiver>>;
 
@@ -223,10 +226,10 @@ namespace exec {
     static constexpr auto __select_impl() noexcept {
       // Report that 2300R5-style senders and receivers are deprecated:
       if constexpr (!enable_sender<__decay_t<_Sender>>)
-          __connect::_PLEASE_UPDATE_YOUR_SENDER_TYPE<__decay_t<_Sender>>();
+        __connect::_PLEASE_UPDATE_YOUR_SENDER_TYPE<__decay_t<_Sender>>();
 
       if constexpr (!enable_receiver<__decay_t<_Receiver>>)
-          __connect::_PLEASE_UPDATE_YOUR_RECEIVER_TYPE<__decay_t<_Receiver>>();
+        __connect::_PLEASE_UPDATE_YOUR_RECEIVER_TYPE<__decay_t<_Receiver>>();
 
       if constexpr (__next_connectable_with_tag_invoke<_Sender, _Receiver>) {
         using _Result = connect_result_t<
@@ -285,8 +288,7 @@ namespace exec {
   inline constexpr subscribe_t subscribe;
 
   template <class _Sender, class _Receiver>
-  using subscribe_result_t =
-    stdexec::__call_result_t<subscribe_t, _Sender, _Receiver>;
+  using subscribe_result_t = stdexec::__call_result_t<subscribe_t, _Sender, _Receiver>;
 
   using __subscribe::__single_sender_completion_sigs;
 

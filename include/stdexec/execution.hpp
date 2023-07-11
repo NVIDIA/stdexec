@@ -720,8 +720,7 @@ namespace stdexec {
 
   template <class _Receiver>
   concept __enable_receiver = //
-    requires { typename _Receiver::is_receiver; }
-    || STDEXEC_IS_BASE_OF(__receiver_base, _Receiver);
+    requires { typename _Receiver::is_receiver; } || STDEXEC_IS_BASE_OF(__receiver_base, _Receiver);
 
   template <class _Receiver>
   inline constexpr bool enable_receiver = __enable_receiver<_Receiver>; // NOT TO SPEC
@@ -1626,6 +1625,9 @@ namespace stdexec {
       }
 
       template <class _Awaitable, class _Receiver>
+#if STDEXEC_GCC() && (__GNUC__ > 11)
+      __attribute__((__used__))
+#endif
       static __operation_t<_Receiver> __co_impl(_Awaitable __await, _Receiver __rcvr) {
         using __result_t = __await_result_t<_Awaitable, __promise_t<_Receiver>>;
         std::exception_ptr __eptr;
@@ -1686,16 +1688,16 @@ namespace stdexec {
     struct __dummy_operation : __immovable {
       void start(start_t) noexcept;
     };
-  } // namespace __connect
 
-  STDEXEC_DEFINE_CPO(struct connect_t, connect) {
     template <class _Sender, class _Receiver>
-    static constexpr bool __connectable_with_tag_invoke_v =
+    concept __connectable_with_tag_invoke =
       receiver<_Receiver> &&                     //
       sender_in<_Sender, env_of_t<_Receiver>> && //
       __receiver_from<_Receiver, _Sender> &&     //
       tag_invocable<connect_t, _Sender, _Receiver>;
+  } // namespace __connect
 
+  STDEXEC_DEFINE_CPO(struct connect_t, connect) {
     template <class _Sender, class _Receiver>
     static constexpr auto __select_impl() noexcept {
       // Report that 2300R5-style senders and receivers are deprecated:
@@ -1705,7 +1707,7 @@ namespace stdexec {
       if constexpr (!enable_receiver<__decay_t<_Receiver>>)
           _PLEASE_UPDATE_YOUR_RECEIVER_TYPE< __decay_t<_Receiver>>();
 
-      if constexpr (__connectable_with_tag_invoke_v<_Sender, _Receiver>) {
+      if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
         using _Result = tag_invoke_result_t<connect_t, _Sender, _Receiver>;
         constexpr bool _Nothrow = nothrow_tag_invocable<connect_t, _Sender, _Receiver>;
         return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
@@ -1721,13 +1723,13 @@ namespace stdexec {
     using __select_impl_t = decltype(__select_impl<_Sender, _Receiver>());
 
     template <sender _Sender, receiver _Receiver>
-      requires __connectable_with_tag_invoke_v<_Sender, _Receiver>
+      requires __connectable_with_tag_invoke<_Sender, _Receiver>
             || __callable<__connect_awaitable_t, _Sender, _Receiver>
             || __is_debug_env<env_of_t<_Receiver>>
     auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
       noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
         -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
-      if constexpr (__connectable_with_tag_invoke_v<_Sender, _Receiver>) {
+      if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
         static_assert(
           operation_state<tag_invoke_result_t<connect_t, _Sender, _Receiver>>,
           "stdexec::connect(sender, receiver) must return a type that "
