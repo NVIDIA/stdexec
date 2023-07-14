@@ -118,10 +118,10 @@ If your project uses CMake, then after cloning `stdexec` simply add the followin
 add_subdirectory(<stdexec root>)
 ```
 
-This will make the `stdexec::stdexec` target available to link with your project:
+This will make the `STDEXEC::stdexec` target available to link with your project:
 
 ```
-target_link_libraries(my_project PRIVATE stdexec::stdexec)
+target_link_libraries(my_project PRIVATE STDEXEC::stdexec)
 ```
 
 This target encapsulates all of the necessary configuration and compiler flags for using `stdexec`.
@@ -149,7 +149,7 @@ CPMAddPackage(
 
 add_executable(main example.cpp)
 
-target_link_libraries(main stdexec::stdexec)
+target_link_libraries(main STDEXEC::stdexec)
 ```
 
 ### GPU Support
