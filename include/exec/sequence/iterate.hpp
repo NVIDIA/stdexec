@@ -44,6 +44,7 @@ namespace exec {
     template <class _Iterator, class _Sentinel, class _ItemRcvr>
     struct __item_operation {
       struct __t {
+        using __id = __item_operation;
         STDEXEC_NO_UNIQUE_ADDRESS _ItemRcvr __rcvr_;
         __operation_base<_Iterator, _Sentinel>* __parent_;
 
@@ -176,7 +177,8 @@ namespace exec {
     };
 
     struct iterate_t {
-      template <std::ranges::range _Range>
+      template <std::ranges::forward_range _Range>
+        requires stdexec::__decay_copyable<_Range>
       stdexec::__t<__sequence<__decay_t<_Range>>> operator()(_Range&& __range) const noexcept {
         return {static_cast<_Range&&>(__range)};
       }

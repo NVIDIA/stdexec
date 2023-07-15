@@ -21,7 +21,6 @@
 
 #include <catch2/catch.hpp>
 
-
 template <class Receiver>
 struct sum_item_rcvr {
   using is_receiver = void;
