@@ -331,11 +331,7 @@ namespace nvexec {
 
     stream_scheduler get_scheduler(stream_priority priority = stream_priority::normal) {
       return {STDEXEC_STREAM_DETAIL_NS::context_state_t(
-        pinned_resource_.get(),
-        managed_resource_.get(),
-        &stream_pools_,
-        &hub_,
-        priority)};
+        pinned_resource_.get(), managed_resource_.get(), &stream_pools_, &hub_, priority)};
     }
   };
 } // namespace nvexec

@@ -82,12 +82,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
           int dev_id{};
           cudaStream_t stream = rcvr.state_->stream_;
 
-          if constexpr(sizeof...(As)) {
+          if constexpr (sizeof...(As)) {
             if (STDEXEC_DBG_ERR(cudaGetDevice(&dev_id)) == cudaSuccess) {
               int concurrent_managed_access{};
-              if (STDEXEC_DBG_ERR(cudaDeviceGetAttribute(&concurrent_managed_access, 
-                                                          cudaDevAttrConcurrentManagedAccess, 
-                                                          dev_id)) == cudaSuccess) {
+              if (
+                STDEXEC_DBG_ERR(cudaDeviceGetAttribute(
+                  &concurrent_managed_access, cudaDevAttrConcurrentManagedAccess, dev_id))
+                == cudaSuccess) {
                 // Avoid launching the destruction kernel if the memory targeting host
                 (prefetch((As&&) as, stream), ...);
               }
@@ -155,16 +156,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
       run_loop loop;
 
       cudaError_t status = cudaSuccess;
-      auto __op_state =
-        make_host<exit_operation_state_t<Sender, receiver_t<Sender>>>(
-          status,
-          context_state.pinned_resource_,
-          __conv{[&] {
-            return exit_op_state(
-              (Sender&&) __sndr,
-              receiver_t<Sender>{{}, &state, &loop},
-              context_state);
-          }});
+      auto __op_state = make_host<exit_operation_state_t<Sender, receiver_t<Sender>>>(
+        status, context_state.pinned_resource_, __conv{[&] {
+          return exit_op_state(
+            (Sender&&) __sndr, receiver_t<Sender>{{}, &state, &loop}, context_state);
+        }});
       if (status != cudaSuccess) {
         throw std::bad_alloc{};
       }

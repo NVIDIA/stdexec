@@ -100,7 +100,7 @@ namespace nvexec {
       std::stack<cudaStream_t> streams_;
       std::mutex mtx_;
 
-    public:
+     public:
       stream_pool_t() = default;
       stream_pool_t(const stream_pool_t&) = delete;
       stream_pool_t& operator=(const stream_pool_t&) = delete;
@@ -127,7 +127,7 @@ namespace nvexec {
           }
 
           return std::make_pair(stream, status);
-        } 
+        }
 
         cudaStream_t stream = streams_.top();
         streams_.pop();
@@ -155,7 +155,7 @@ namespace nvexec {
         return pools_[static_cast<int>(priority)];
       }
 
-    public:
+     public:
       std::pair<cudaStream_t, cudaError_t> borrow_stream(stream_priority priority) {
         return get(priority).borrow_stream(priority);
       }
@@ -212,7 +212,6 @@ namespace nvexec {
     __launch_bounds__(1) __global__ void destructor_kernel(T* obj) {
       obj->~T();
     }
-
 
     struct stream_provider_t {
       cudaError_t status_{cudaSuccess};
@@ -325,15 +324,14 @@ namespace nvexec {
 
     template <class BaseEnv>
       requires __callable<get_stream_provider_t, const BaseEnv&>
-    BaseEnv make_stream_env(BaseEnv&& base_env, stream_provider_t* ) noexcept {
+    BaseEnv make_stream_env(BaseEnv&& base_env, stream_provider_t*) noexcept {
       return (BaseEnv&&) base_env;
     }
 
     template <class BaseEnv>
-    using stream_env =
-      decltype(STDEXEC_STREAM_DETAIL_NS::make_stream_env(
-        __declval<BaseEnv>(), 
-        static_cast<stream_provider_t*>(nullptr)));
+    using stream_env = decltype(STDEXEC_STREAM_DETAIL_NS::make_stream_env(
+      __declval<BaseEnv>(),
+      static_cast<stream_provider_t*>(nullptr)));
 
     template <class BaseEnv>
     auto make_terminal_stream_env(BaseEnv&& base_env, stream_provider_t* stream_provider) noexcept {
@@ -505,7 +503,7 @@ namespace nvexec {
         }
 
         stream_provider_t* get_stream_provider() const {
-          stream_provider_t *stream_provider{};
+          stream_provider_t* stream_provider{};
 
           if constexpr (borrows_stream) {
             const outer_env_t& env = get_env(rcvr_);
@@ -522,12 +520,12 @@ namespace nvexec {
         }
 
         template <class T>
-        void defer_temp_storage_destruction(T *ptr) {
+        void defer_temp_storage_destruction(T* ptr) {
           STDEXEC_ASSERT(ptr == this->temp_storage_);
 
           if constexpr (!std::is_trivially_destructible_v<T>) {
             temp_storage_ = nullptr; // defer deallocation to the stream provider
-            stream_provider_t *stream_provider = get_stream_provider();
+            stream_provider_t* stream_provider = get_stream_provider();
             std::pmr::memory_resource* managed_resource = context_state_.managed_resource_;
 
             // Stream is destroyed when the last object is buried, so it's safe to use it here
@@ -543,9 +541,9 @@ namespace nvexec {
               } else {
                 destructor_kernel<<<1, 1, 0, stream>>>(ptr);
 
-                // TODO Bury all the memory associated with the stream provider and then 
+                // TODO Bury all the memory associated with the stream provider and then
                 //      deallocate the memory
-                cudaStreamSynchronize(stream); 
+                cudaStreamSynchronize(stream);
               }
 
               managed_resource->deallocate(ptr, sizeof(T));
@@ -628,7 +626,8 @@ namespace nvexec {
 
           if (op.stream_provider_.status_ != cudaSuccess) {
             // Couldn't allocate memory for operation state, complete with error
-            op.propagate_completion_signal(stdexec::set_error, std::move(op.stream_provider_.status_));
+            op.propagate_completion_signal(
+              stdexec::set_error, std::move(op.stream_provider_.status_));
             return;
           }
 
@@ -666,7 +665,8 @@ namespace nvexec {
           ReceiverProvider receiver_provider,
           context_state_t context_state)
           : base_t((outer_receiver_t&&) out_receiver, context_state)
-          , storage_(make_host<variant_t>(this->stream_provider_.status_, context_state.pinned_resource_))
+          , storage_(
+              make_host<variant_t>(this->stream_provider_.status_, context_state.pinned_resource_))
           , task_(make_host<task_t>(
                     this->stream_provider_.status_,
                     context_state.pinned_resource_,
@@ -675,7 +675,10 @@ namespace nvexec {
                     this->get_stream(),
                     context_state.pinned_resource_)
                     .release())
-          , env_(make_host<env_t>(this->stream_provider_.status_, context_state.pinned_resource_, this->make_env()))
+          , env_(make_host<env_t>(
+              this->stream_provider_.status_,
+              context_state.pinned_resource_,
+              this->make_env()))
           , inner_op_{connect(
               (sender_t&&) sender,
               stream_enqueue_receiver_t{

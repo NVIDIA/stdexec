@@ -78,8 +78,7 @@ TEST_CASE(
   tracer_resource resource{};
   nvdetail::monotonic_buffer_resource buffer{2048, &resource};
 
-  for (int alignment = 1; alignment < 512; alignment *= 2) 
-  {
+  for (int alignment = 1; alignment < 512; alignment *= 2) {
     void* ptr = buffer.allocate(32, alignment);
     REQUIRE(reinterpret_cast<uintptr_t>(ptr) % alignment == 0);
     buffer.deallocate(ptr, 32, alignment);

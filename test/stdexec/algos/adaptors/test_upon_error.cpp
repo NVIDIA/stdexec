@@ -46,3 +46,101 @@ TEST_CASE("upon_error simple example", "[adaptors][upon_error]") {
   // we also check that the function was invoked
   CHECK(called);
 }
+
+TEST_CASE("upon_error with no-error input sender", "[adaptors][upon_error]") {
+  auto snd = ex::upon_error(ex::just(), []() -> double { return 0.0; });
+  static_assert(ex::sender<decltype(snd)>);
+
+  using S = decltype(snd);
+  static_assert(ex::sender<S>);
+  using completion_sigs = decltype(ex::get_completion_signatures(snd, ex::__default_env{}));
+  static_assert(std::same_as< completion_sigs, ex::completion_signatures< ex::set_value_t() >>);
+}
+
+template <typename R>
+struct oper : immovable {
+  R recv_;
+
+  friend void tag_invoke(ex::start_t, oper& self) noexcept {
+    ex::set_value((R&&) self.recv_, 0);
+  }
+};
+
+struct Error1 { };
+
+struct Error2 { };
+
+struct Error3 { };
+
+struct Error4 { };
+
+template <class... AdditionalCompletions>
+struct many_error_sender {
+  using is_sender = void;
+  using completion_signatures = ex::completion_signatures<
+    AdditionalCompletions...,
+    ex::set_error_t(Error1),
+    ex::set_error_t(Error2),
+    ex::set_error_t(Error3) >;
+
+  template <typename R>
+  friend oper<R> tag_invoke(ex::connect_t, many_error_sender self, R&& r) {
+    return {{}, (R&&) r};
+  }
+
+  friend auto tag_invoke(ex::get_env_t, const many_error_sender&) noexcept -> ex::empty_env {
+    return {};
+  }
+};
+
+TEST_CASE("upon_error many input error types", "[adaptors][upon_error]") {
+  {
+    auto s = many_error_sender<>{} | ex::upon_error([](auto e) {
+               if constexpr (std::same_as<decltype(e), Error3>) {
+                 return Error4{};
+               } else {
+                 return e;
+               }
+             });
+
+    using S = decltype(s);
+    static_assert(ex::sender<S>);
+    using completion_sigs = decltype(ex::get_completion_signatures(s, ex::__default_env{}));
+    static_assert(
+      std::same_as<
+        completion_sigs,
+        ex::completion_signatures<
+          ex::set_error_t(std::exception_ptr),
+          ex::set_value_t(Error1),
+          ex::set_value_t(Error2),
+          ex::set_value_t(Error4) >>);
+  }
+
+  {
+    auto s = many_error_sender<ex::set_value_t(int)>{} | ex::upon_error([](auto e) { return 0; });
+
+    using S = decltype(s);
+    static_assert(ex::sender<S>);
+    using completion_sigs = decltype(ex::get_completion_signatures(s, ex::__default_env{}));
+    static_assert(
+      std::same_as<
+        completion_sigs,
+        ex::completion_signatures< ex::set_error_t(std::exception_ptr), ex::set_value_t(int) >>);
+  }
+
+  {
+    auto s = many_error_sender<ex::set_value_t(double)>{}
+           | ex::upon_error([](auto e) { return 0; });
+
+    using S = decltype(s);
+    static_assert(ex::sender<S>);
+    using completion_sigs = decltype(ex::get_completion_signatures(s, ex::__default_env{}));
+    static_assert(
+      std::same_as<
+        completion_sigs,
+        ex::completion_signatures<
+          ex::set_error_t(std::exception_ptr),
+          ex::set_value_t(double),
+          ex::set_value_t(int) >>);
+  }
+}

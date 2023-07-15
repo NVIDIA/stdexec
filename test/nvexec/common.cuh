@@ -313,7 +313,9 @@ struct a_sender_t
 constexpr a_sender_t a_sender;
 
 struct move_only_t {
-  static constexpr int invalid() { return -42; }
+  static constexpr int invalid() {
+    return -42;
+  }
 
   move_only_t() = delete;
   move_only_t(const move_only_t&) = delete;
@@ -340,7 +342,7 @@ struct move_only_t {
 
   __host__ __device__ bool contains(int val) {
     if (this != self_) {
-      std::printf("Error: move_only_t::contains failed: %p\n", (void*)self_);
+      std::printf("Error: move_only_t::contains failed: %p\n", (void*) self_);
       return false;
     }
 
@@ -350,4 +352,5 @@ struct move_only_t {
   int data_{invalid()};
   move_only_t* self_;
 };
+
 static_assert(!std::is_trivially_copyable_v<move_only_t>);

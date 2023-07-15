@@ -58,8 +58,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             constexpr int block_threads = 256;
             const int grid_blocks = (static_cast<int>(self.shape_) + block_threads - 1)
                                   / block_threads;
-            kernel<block_threads, As&...><<<grid_blocks, block_threads, 0, stream>>>(
-              self.shape_, std::move(self.f_), as...);
+            kernel<block_threads, As&...>
+              <<<grid_blocks, block_threads, 0, stream>>>(self.shape_, std::move(self.f_), as...);
           }
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {

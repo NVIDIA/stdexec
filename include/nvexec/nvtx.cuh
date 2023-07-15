@@ -115,7 +115,7 @@ namespace nvexec {
 
     struct push_t {
       template <stdexec::sender Sender>
-      nvtx_sender_th<kind::push, Sender> operator()(Sender&& sndr, std::string &&name) const {
+      nvtx_sender_th<kind::push, Sender> operator()(Sender&& sndr, std::string&& name) const {
         return nvtx_sender_th<kind::push, Sender>{{}, (Sender&&) sndr, std::move(name)};
       }
 
@@ -140,7 +140,7 @@ namespace nvexec {
 
     struct scoped_t {
       template <stdexec::sender Sender, stdexec::__sender_adaptor_closure Closure>
-      auto operator()(Sender&& __sndr, std::string &&name, Closure closure) const noexcept {
+      auto operator()(Sender&& __sndr, std::string&& name, Closure closure) const noexcept {
         return (Sender&&) __sndr | push(std::move(name)) | closure | pop();
       }
 
@@ -160,9 +160,9 @@ namespace nvexec {
   }} // STDEXEC_STREAM_DETAIL_NS
 
   namespace nvtx {
-    using STDEXEC_STREAM_DETAIL_NS::nvtx::push;
-    using STDEXEC_STREAM_DETAIL_NS::nvtx::pop;
-    using STDEXEC_STREAM_DETAIL_NS::nvtx::scoped;
+  using STDEXEC_STREAM_DETAIL_NS::nvtx::push;
+  using STDEXEC_STREAM_DETAIL_NS::nvtx::pop;
+  using STDEXEC_STREAM_DETAIL_NS::nvtx::scoped;
   }
 
 } // namespace nvexec

@@ -50,12 +50,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       T* ptr = nullptr;
       if (status = STDEXEC_DBG_ERR(::cudaMalloc(&ptr, sizeof(T))); status == cudaSuccess) {
         try {
-          T h((As&&) as...);        
+          T h((As&&) as...);
           status = STDEXEC_DBG_ERR(::cudaMemcpy(ptr, &h, sizeof(T), cudaMemcpyHostToDevice));
           if (status == cudaSuccess) {
             return device_ptr<T>(ptr);
           }
-        } catch(...) {
+        } catch (...) {
           status = cudaErrorUnknown;
           STDEXEC_DBG_ERR(::cudaFree(ptr));
         }
@@ -112,8 +112,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     requires same_as<T, void>
   host_ptr<__decay_t<A>>
     make_host(cudaError_t& status, std::pmr::memory_resource* resource, A&& t) {
-      return make_host<__decay_t<A>>(status, resource, (A&&) t);
-    }
+    return make_host<__decay_t<A>>(status, resource, (A&&) t);
+  }
 
   struct pinned_resource : public std::pmr::memory_resource {
     pinned_resource() noexcept {
@@ -130,7 +130,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       return ret;
     }
 
-    void do_deallocate(void* ptr, const std::size_t /* bytes */, const std::size_t /* alignment */) override {
+    void do_deallocate(void* ptr, const std::size_t /* bytes */, const std::size_t /* alignment */)
+      override {
       STDEXEC_DBG_ERR(cudaFreeHost(ptr));
     }
 
@@ -153,7 +154,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       return ret;
     }
 
-    void do_deallocate(void* ptr, const std::size_t /* bytes */, const std::size_t /* alignment */) override {
+    void do_deallocate(void* ptr, const std::size_t /* bytes */, const std::size_t /* alignment */)
+      override {
       STDEXEC_DBG_ERR(cudaFree(ptr));
     }
 
@@ -174,7 +176,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       return ret;
     }
 
-    void do_deallocate(void* ptr, const std::size_t /* bytes */, const std::size_t /* alignment */) override {
+    void do_deallocate(void* ptr, const std::size_t /* bytes */, const std::size_t /* alignment */)
+      override {
       STDEXEC_DBG_ERR(cudaFree(ptr));
     }
 
@@ -236,7 +239,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       return ptr;
     }
 
-    void do_deallocate(void* /* ptr */, const std::size_t /* bytes */, const std::size_t /* alignment */) override {
+    void do_deallocate(
+      void* /* ptr */,
+      const std::size_t /* bytes */,
+      const std::size_t /* alignment */) override {
     }
 
     bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
@@ -349,7 +355,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     monotonic_buffer_resource monotonic_resource_;
     synchronized_pool_resource resource_;
 
-    public:
+   public:
     resource_storage()
       : underlying_resource_{}
       , monotonic_resource_{512 * 1024, &underlying_resource_}

@@ -32,6 +32,7 @@ namespace empty_recv {
 
   struct recv0 {
     using is_receiver = void;
+
     friend void tag_invoke(set_value_t, recv0&&) noexcept {
     }
 
@@ -48,6 +49,7 @@ namespace empty_recv {
 
   struct recv_int {
     using is_receiver = void;
+
     friend void tag_invoke(set_value_t, recv_int&&, int) noexcept {
     }
 
@@ -64,6 +66,7 @@ namespace empty_recv {
 
   struct recv0_ec {
     using is_receiver = void;
+
     friend void tag_invoke(set_value_t, recv0_ec&&) noexcept {
     }
 
@@ -83,6 +86,7 @@ namespace empty_recv {
 
   struct recv_int_ec {
     using is_receiver = void;
+
     friend void tag_invoke(set_value_t, recv_int_ec&&, int) noexcept {
     }
 
@@ -167,6 +171,7 @@ struct expect_void_receiver : base_expect_receiver<_Env> {
 
 struct expect_void_receiver_ex {
   using is_receiver = void;
+
   expect_void_receiver_ex(bool& executed)
     : executed_(&executed) {
   }
@@ -236,6 +241,7 @@ class expect_value_receiver_ex {
 
  public:
   using is_receiver = void;
+
   explicit expect_value_receiver_ex(T& dest)
     : dest_(&dest) {
   }
@@ -292,6 +298,7 @@ struct expect_stopped_receiver : base_expect_receiver<Env> {
 template <class Env = empty_env>
 struct expect_stopped_receiver_ex {
   using is_receiver = void;
+
   explicit expect_stopped_receiver_ex(bool& executed)
     : executed_(&executed) {
   }
@@ -392,6 +399,7 @@ struct expect_error_receiver : base_expect_receiver<Env> {
 template <class T, class Env = empty_env>
 struct expect_error_receiver_ex {
   using is_receiver = void;
+
   explicit expect_error_receiver_ex(T& value)
     : value_(&value) {
   }
@@ -430,6 +438,7 @@ struct expect_error_receiver_ex {
 
 struct logging_receiver {
   using is_receiver = void;
+
   logging_receiver(int& state)
     : state_(&state) {
   }

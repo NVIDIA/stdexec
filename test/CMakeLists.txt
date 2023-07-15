@@ -78,10 +78,12 @@ set(stdexec_test_sources
     exec/test_when_any.cpp
     exec/test_at_coroutine_exit.cpp
     exec/test_materialize.cpp
-    exec/test_io_uring_context.cpp
+    $<$<BOOL:${STDEXEC_ENABLE_IO_URING_TESTS}>:exec/test_io_uring_context.cpp>
     exec/test_trampoline_scheduler.cpp
     exec/test_sequence_senders.cpp
+    exec/sequence/test_any_sequence_of.cpp
     exec/sequence/test_empty_sequence.cpp
+    exec/sequence/test_ignore_all_values.cpp
     exec/sequence/test_iterate.cpp
     $<$<BOOL:${STDEXEC_ENABLE_TBB}>:tbbexec/test_tbb_thread_pool.cpp>
     )
