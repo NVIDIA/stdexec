@@ -235,15 +235,15 @@ TEST_CASE("task - stop token is forwarded", "[types][task]") {
 
 TEST_CASE("task - can stop early", "[types][task]") {
   int count = 0;
-  auto work = [&count]() -> exec::task<void> {
+  auto work = [](int& count) -> exec::task<void> {
     count += 1;
-    co_await [&]() -> exec::task<void> {
+    co_await [](int& count) -> exec::task<void> {
       count += 2;
       co_await stdexec::just_stopped();
       count += 4;
-    }();
+    }(count);
     count += 8;
-  }();
+  }(count);
 
   auto res = stdexec::sync_wait(std::move(work));
   CHECK(!res.has_value());
@@ -252,15 +252,15 @@ TEST_CASE("task - can stop early", "[types][task]") {
 
 TEST_CASE("task - can error early", "[types][task]") {
   int count = 0;
-  auto work = [&count]() -> exec::task<void> {
+  auto work = [](int& count) -> exec::task<void> {
     count += 1;
-    co_await [&]() -> exec::task<void> {
+    co_await [](int& count) -> exec::task<void> {
       count += 2;
       co_await stdexec::just_error(std::runtime_error("on noes"));
       count += 4;
-    }();
+    }(count);
     count += 8;
-  }();
+  }(count);
 
   try {
     stdexec::sync_wait(std::move(work));
