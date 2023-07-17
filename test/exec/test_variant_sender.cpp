@@ -29,9 +29,15 @@ struct overloaded : Ts... {
 template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
-TEST_CASE("variant sender", "[types][variant_sender]") {
-  using just_int_t = decltype(just(0));
-  using just_t = decltype(just());
+using just_int_t = decltype(just(0));
+using just_t = decltype(just());
+
+TEST_CASE("variant_sender - default constructible", "[types][variant_sender]") {
+  variant_sender<just_t, just_int_t> variant{};
+  CHECK(variant.index() == 0);
+}
+
+TEST_CASE("variant_sender - using an overloaded then adaptor", "[types][variant_sender]") {
   variant_sender<just_t, just_int_t> variant = just();
   int index = -1;
   STATIC_REQUIRE(sender<variant_sender<just_t, just_int_t>>);
