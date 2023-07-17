@@ -1863,7 +1863,8 @@ namespace stdexec {
     };
 
     template <class _Sender, class _Promise>
-    using __value_t = __decay_t<__single_sender_value_t<_Sender, env_of_t<_Promise&>>>;
+    using __value_t = __decay_t<
+      __value_types_of_t< _Sender, env_of_t<_Promise&>, __msingle_or<void>, __msingle_or<void>>>;
 
     template <class _Sender, class _Promise>
     using __receiver_t = __t<__receiver<__id<_Promise>, __value_t<_Sender, _Promise>>>;
@@ -1924,7 +1925,8 @@ namespace stdexec {
 
     template <class _Sender, class _Promise>
     concept __awaitable_sender =
-      __single_typed_sender<_Sender, env_of_t<_Promise&>> && //
+      sender_in<_Sender, env_of_t<_Promise&>> &&             //
+      __valid<__value_t, _Sender, _Promise> &&               //
       sender_to<_Sender, __receiver_t<_Sender, _Promise>> && //
       requires(_Promise& __promise) {
         { __promise.unhandled_stopped() } -> convertible_to<__coro::coroutine_handle<>>;

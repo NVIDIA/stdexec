@@ -163,8 +163,7 @@ namespace exec {
         template < __decays_to<__t> _Self, sequence_receiver_of<completion_signatures> _Receiver>
           requires sender_to<
             __next_sender_of_t<_Receiver, __sender_t<_Range>>,
-            __next_receiver_t<_Receiver>
-            >
+            __next_receiver_t<_Receiver> >
         friend auto tag_invoke(subscribe_t, _Self&& __self, _Receiver __rcvr) //
           noexcept(__nothrow_decay_copyable<_Receiver>)
             -> stdexec::__t<__operation<_Range, stdexec::__id<_Receiver>>> {
