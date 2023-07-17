@@ -341,7 +341,6 @@ namespace exec {
         , __completion_queue_{__completion_queue_region_ ? __completion_queue_region_ : __submission_queue_region_, __params_}
         , __submission_queue_{__submission_queue_region_, __submission_queue_entries_, __params_}
         , __wakeup_operation_{this, __eventfd_} {
-        __wakeup_operation_.start();
       }
 
       void wakeup() {
@@ -442,6 +441,9 @@ namespace exec {
             __stop_source_.emplace();
             // Make emplacement of stop source visible to other threads and open the door for new submissions.
             __n_submissions_in_flight_.store(0, std::memory_order_release);
+          } else {
+            // This can only happen for the very first pass of run_until_stopped()
+            __wakeup_operation_.start();
           }
         }
         scope_guard __not_running{[&]() noexcept {

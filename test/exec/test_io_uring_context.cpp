@@ -58,6 +58,11 @@ class jthread {
   }
 };
 
+TEST_CASE("io_uring_context - unused context", "[types][io_uring][schedulers]") {
+  io_uring_context context;
+  CHECK(context.is_running() == false);
+}
+
 TEST_CASE("io_uring_context Satisfy concepts", "[types][io_uring][schedulers]") {
   STATIC_REQUIRE(timed_scheduler<io_uring_scheduler>);
   STATIC_REQUIRE_FALSE(std::is_move_assignable_v<io_uring_context>);
