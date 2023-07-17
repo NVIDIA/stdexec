@@ -64,7 +64,7 @@ namespace exec {
       };
 
       class __t {
-        std::variant<stdexec::__t<_SenderIds>...> __variant_;
+        std::variant<stdexec::__t<_SenderIds>...> __variant_{};
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires(sender_to<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver> && ...)
@@ -85,11 +85,17 @@ namespace exec {
         using is_sender = void;
         using __id = __sender;
 
+        __t() = default;
+
         template <class _Sender>
           requires __one_of<__decay_t<_Sender>, stdexec::__t<_SenderIds>...>
         __t(_Sender&& __sender) noexcept(
           __nothrow_constructible_from<std::variant<stdexec::__t<_SenderIds>...>, _Sender>)
           : __variant_{(_Sender&&) __sender} {
+        }
+
+        std::size_t index() const noexcept {
+          return __variant_.index();
         }
       };
     };
