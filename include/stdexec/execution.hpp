@@ -3470,47 +3470,96 @@ namespace stdexec {
     inline constexpr __mstring __bulk_context = "In stdexec::bulk(Sender, Shape, Function)..."__csz;
     using __on_not_callable = __callable_error<__bulk_context>;
 
-    template <class _ReceiverId, integral _Shape, class _Fun>
+    template <class _Shape, class _Fun>
+    struct __data {
+      _Shape __shape_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
+      static constexpr auto __mbrs_ = __mliterals<&__data::__shape_, &__data::__fun_>();
+    };
+    template <class _Shape, class _Fun>
+    __data(_Shape, _Fun) -> __data<_Shape, _Fun>;
+
+    template <class _ReceiverId, class _Shape, class _Fun>
     struct __receiver {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
-      class __t : receiver_adaptor<__t, _Receiver> {
-        friend receiver_adaptor<__t, _Receiver>;
+      struct __op_state : __data<_Shape, _Fun> {
+        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+      };
 
-        STDEXEC_NO_UNIQUE_ADDRESS _Shape __shape_;
-        STDEXEC_NO_UNIQUE_ADDRESS _Fun __f_;
+      struct __t {
+        using is_receiver = void;
+        using __id = __receiver;
+        __op_state* __op_;
 
-        template <class... _As>
-        void set_value(_As&&... __as) && noexcept
+        template <same_as<set_value_t> _Tag, class... _As>
+          requires __callable<_Tag, _Receiver, _As...>
+        friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept
           requires __nothrow_callable<_Fun, _Shape, _As&...>
         {
-          for (_Shape __i{}; __i != __shape_; ++__i) {
-            __f_(__i, __as...);
+          for (_Shape __i{}; __i != __self.__op_->__shape_; ++__i) {
+            __self.__op_->__fun_(__i, __as...);
           }
-          stdexec::set_value(std::move(this->base()), (_As&&) __as...);
+          stdexec::set_value((_Receiver&&) __self.__op_->__rcvr_, (_As&&) __as...);
         }
 
-        template <class... _As>
-        void set_value(_As&&... __as) && noexcept
+        template <same_as<set_value_t> _Tag, class... _As>
+          requires __callable<_Tag, _Receiver, _As...>
+        friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept
           requires __callable<_Fun, _Shape, _As&...>
         {
           try {
-            for (_Shape __i{}; __i != __shape_; ++__i) {
-              __f_(__i, __as...);
+            for (_Shape __i{}; __i != __self.__op_->__shape_; ++__i) {
+              __self.__op_->__fun_(__i, __as...);
             }
-            stdexec::set_value(std::move(this->base()), (_As&&) __as...);
+            stdexec::set_value((_Receiver&&) __self.__op_->__rcvr_, (_As&&) __as...);
           } catch (...) {
-            stdexec::set_error(std::move(this->base()), std::current_exception());
+            stdexec::set_error((_Receiver&&) __self.__op_->__rcvr_, std::current_exception());
           }
         }
 
-       public:
-        using __id = __receiver;
+        template <same_as<set_error_t> _Tag, class _Error>
+          requires __callable<_Tag, _Receiver, _Error>
+        friend void tag_invoke(_Tag, __t&& __self, _Error&& __error) noexcept {
+          stdexec::set_error((_Receiver&&) __self.__op_->__rcvr_, (_Error&&) __error);
+        }
 
-        explicit __t(_Receiver __rcvr, _Shape __shape, _Fun __fun)
-          : receiver_adaptor<__t, _Receiver>((_Receiver&&) __rcvr)
-          , __shape_(__shape)
-          , __f_((_Fun&&) __fun) {
+        template <same_as<set_stopped_t> _Tag>
+          requires __callable<_Tag, _Receiver>
+        friend void tag_invoke(_Tag, __t&& __self) noexcept {
+          stdexec::set_stopped((_Receiver&&) __self.__op_->__rcvr_);
+        }
+
+        friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t& __self) noexcept {
+          return stdexec::get_env(__self.__op_->__rcvr_);
+        }
+      };
+    };
+
+    template <class _CvrefSenderId, class _ReceiverId, class _Shape, class _Fun>
+    struct __operation {
+      using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
+      using _Receiver = stdexec::__t<_ReceiverId>;
+      using __receiver_id = __receiver<_ReceiverId, _Shape, _Fun>;
+      using __receiver_t = stdexec::__t<__receiver_id>;
+
+      struct __t : __immovable {
+        using __id = __operation;
+        using __data_t = __data<_Shape, _Fun>;
+
+        typename __receiver_id::__op_state __state_;
+        connect_result_t<_CvrefSender, __receiver_t> __op_;
+
+        __t(_CvrefSender&& __sndr, _Receiver __rcvr, __data_t __data) //
+          noexcept(__nothrow_decay_copyable<_Receiver>                //
+                     && __nothrow_decay_copyable<__data_t>            //
+                       && __nothrow_connectable<_CvrefSender, __receiver_t>)
+          : __state_{(__data_t&&) __data, (_Receiver&&) __rcvr}
+          , __op_(connect((_CvrefSender&&) __sndr, __receiver_t{&__state_})) {
+        }
+
+        friend void tag_invoke(start_t, __t& __self) noexcept {
+          start(__self.__op_);
         }
       };
     };
@@ -3518,95 +3567,56 @@ namespace stdexec {
     template <class _Ty>
     using __decay_ref = __decay_t<_Ty>&;
 
-    template <class _SenderId, integral _Shape, class _Fun>
-    struct __sender {
-      using _Sender = stdexec::__t<_SenderId>;
+    template <class _CvrefSender, class _Env, class _Shape, class _Fun, class _Catch>
+    using __with_error_invoke_t = //
+      __if<
+        __try_value_types_of_t<
+          _CvrefSender,
+          _Env,
+          __transform<
+            __q<__decay_ref>,
+            __mbind_front<__mtry_catch_q<__non_throwing_, _Catch>, _Fun, _Shape>>,
+          __q<__mand>>,
+        completion_signatures<>,
+        __with_exception_ptr>;
 
-      template <receiver _Receiver>
-      using __receiver = stdexec::__t<__receiver<stdexec::__id<_Receiver>, _Shape, _Fun>>;
+    template <class _CvrefSender, class _Env, class _Shape, class _Fun>
+    using __completion_signatures = //
+      __try_make_completion_signatures<
+        _CvrefSender,
+        _Env,
+        __with_error_invoke_t<_CvrefSender, _Env, _Shape, _Fun, __on_not_callable>>;
 
-      struct __t {
-        using __id = __sender;
-        using is_sender = void;
+    template <class _Receiver>
+    struct __connect_fn {
+      _Receiver& __rcvr_;
 
-        STDEXEC_NO_UNIQUE_ADDRESS _Sender __sndr_;
-        STDEXEC_NO_UNIQUE_ADDRESS _Shape __shape_;
-        STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
+      template <class _Child, class _Data>
+      using __operation_t = //
+        __t<__operation<
+          __cvref_id<_Child>,
+          __id<_Receiver>,
+          decltype(_Data::__shape_),
+          decltype(_Data::__fun_)>>;
 
-        template <class _Sender, class _Env, class _Catch>
-        using __with_error_invoke_t = //
-          __if<
-            __try_value_types_of_t<
-              _Sender,
-              _Env,
-              __transform<
-                __q<__decay_ref>,
-                __mbind_front<__mtry_catch_q<__non_throwing_, _Catch>, _Fun, _Shape>>,
-              __q<__mand>>,
-            completion_signatures<>,
-            __with_exception_ptr>;
-
-        template <class _Self, class _Env>
-        using __completion_signatures = //
-          __try_make_completion_signatures<
-            __copy_cvref_t<_Self, _Sender>,
-            _Env,
-            __with_error_invoke_t<__copy_cvref_t<_Self, _Sender>, _Env, __on_not_callable>>;
-
-        template <__decays_to<__t> _Self, receiver _Receiver>
-          requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) //
-          noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>>)
-            -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver<_Receiver>> {
-          return stdexec::connect(
-            ((_Self&&) __self).__sndr_,
-            __receiver<_Receiver>{
-              (_Receiver&&) __rcvr, __self.__shape_, ((_Self&&) __self).__fun_});
-        }
-
-        template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-          -> dependent_completion_signatures<_Env>;
-
-        template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-          -> __completion_signatures<_Self, _Env>
-          requires true;
-
-        friend auto tag_invoke(get_env_t, const __t& __self) noexcept -> env_of_t<const _Sender&> {
-          return get_env(__self.__sndr_);
-        }
-      };
+      template <class _Data, class _Child>
+      auto operator()(__ignore, _Data __data, _Child&& __child) const noexcept(
+        __nothrow_constructible_from<__operation_t<_Child, _Data>, _Child, _Receiver, _Data>)
+        -> __operation_t<_Child, _Data> {
+        return __operation_t<_Child, _Data>{
+          (_Child&&) __child, (_Receiver&&) __rcvr_, (_Data&&) __data};
+      }
     };
 
-    struct bulk_t {
-      template <sender _Sender, integral _Shape, class _Fun>
-      using __sender = __t<__sender<stdexec::__id<__decay_t<_Sender>>, _Shape, _Fun>>;
-
+    struct bulk_t : __default_get_env<bulk_t> {
       template <sender _Sender, integral _Shape, __movable_value _Fun>
-        requires __tag_invocable_with_domain<bulk_t, set_value_t, _Sender, _Shape, _Fun>
-      sender auto operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const noexcept(
-        nothrow_tag_invocable< bulk_t, __sender_domain_of_t<_Sender>, _Sender, _Shape, _Fun>) {
-        auto __domain = __get_sender_domain(__sndr);
-        return tag_invoke(
-          bulk_t{}, __domain, (_Sender&&) __sndr, (_Shape&&) __shape, (_Fun&&) __fun);
-      }
-
-      template <sender _Sender, integral _Shape, __movable_value _Fun>
-        requires(!__tag_invocable_with_domain<bulk_t, set_value_t, _Sender, _Shape, _Fun>)
-             && tag_invocable<bulk_t, _Sender, _Shape, _Fun>
-      sender auto operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const
-        noexcept(nothrow_tag_invocable<bulk_t, _Sender, _Shape, _Fun>) {
-        return tag_invoke(bulk_t{}, (_Sender&&) __sndr, (_Shape&&) __shape, (_Fun&&) __fun);
-      }
-
-      template <sender _Sender, integral _Shape, __movable_value _Fun>
-        requires(!__tag_invocable_with_domain<bulk_t, set_value_t, _Sender, _Shape, _Fun>)
-             && (!tag_invocable<bulk_t, _Sender, _Shape, _Fun>)
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        __sender<_Sender, _Shape, _Fun>
+        auto
         operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const {
-        return __sender<_Sender, _Shape, _Fun>{(_Sender&&) __sndr, __shape, (_Fun&&) __fun};
+        auto __domain = __get_sender_domain((_Sender&&) __sndr);
+        return __domain.transform_sender(
+          __make_basic_sender<bulk_t>(__data{__shape, (_Fun&&) __fun}, (_Sender&&) __sndr),
+          empty_env());
       }
 
       template <integral _Shape, class _Fun>
@@ -3616,6 +3626,50 @@ namespace stdexec {
           {},
           {(_Shape&&) __shape, (_Fun&&) __fun}
         };
+      }
+
+      // This describes how to use the pieces of a bulk sender to find
+      // legacy customizations of the bulk algorithm.
+      using _Sender = __2;
+      using _Shape = __nth_member<0>(__1);
+      using _Fun = __nth_member<1>(__1);
+      using __legacy_customizations_t = __types<
+        tag_invoke_t(
+          bulk_t,
+          get_completion_scheduler_t<set_value_t>(get_env_t(_Sender&)),
+          _Sender,
+          _Shape,
+          _Fun),
+        tag_invoke_t(bulk_t, _Sender, _Shape, _Fun)>;
+
+#if STDEXEC_FRIENDSHIP_IS_LEXICAL()
+     private:
+      template <class>
+      friend struct stdexec::__basic_sender;
+#endif
+
+      template <__basic_sender_for<bulk_t> _Sender, class _Env>
+      static auto get_completion_signatures(_Sender&& __sndr, _Env&&) {
+        return __apply(
+          ((_Sender&&) __sndr).__impl_, []<class _Data, class _Child>(bulk_t, _Data, _Child&&) {
+            using _Shape = decltype(_Data::__shape_);
+            using _Fun = decltype(_Data::__fun_);
+            if constexpr (__valid< __completion_signatures, _Child, _Env, _Shape, _Fun>) {
+              return __completion_signatures< _Child, _Env, _Shape, _Fun>();
+            } else if constexpr (__decays_to<_Env, no_env>) {
+              return dependent_completion_signatures<no_env>();
+            } else {
+              return; // BUGBUG TODO
+            }
+            STDEXEC_UNREACHABLE();
+          });
+      }
+
+      template <__basic_sender_for<bulk_t> _Sender, receiver _Receiver>
+      static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
+        __nothrow_callable< __apply_fn, __impl_of<_Sender>, __connect_fn<_Receiver>>)
+        -> __call_result_t< __apply_fn, __impl_of<_Sender>, __connect_fn<_Receiver>> {
+        return __apply(((_Sender&&) __sndr).__impl_, __connect_fn<_Receiver>{__rcvr});
       }
     };
   }
@@ -4987,7 +5041,7 @@ namespace stdexec {
         friend void tag_invoke(_Tag __tag, __t&& __self, _Args&&... __args) noexcept {
           __try_call(
             (_Receiver&&) __self.__op_state_->__rcvr_,
-            __fun_c<__complete_<_Tag, _Args...>>,
+            __function_constant_v<__complete_<_Tag, _Args...>>,
             (_Tag&&) __tag,
             (__t&&) __self,
             (_Args&&) __args...);

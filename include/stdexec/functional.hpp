@@ -51,7 +51,7 @@ namespace stdexec {
   };
 
   template <auto _Fun>
-  struct __fun_c_t {
+  struct __function_constant {
     using _FunT = decltype(_Fun);
 
     template <class... _Args>
@@ -62,8 +62,21 @@ namespace stdexec {
     }
   };
 
+  template <class _Ty, class _Cl, _Ty _Cl::*_MemPtr>
+  struct __function_constant<_MemPtr> {
+    using _FunT = _Ty _Cl::*;
+
+    template <class _Arg>
+      requires requires (_Arg&& __arg) { ((_Arg&&) __arg).*_MemPtr; }
+    constexpr auto operator()(_Arg&& __arg) const noexcept
+      -> decltype((((_Arg&&) __arg).*_MemPtr)) {
+      return ((_Arg&&) __arg).*_MemPtr;
+    }
+  };
+
   template <auto _Fun>
-  inline constexpr __fun_c_t<_Fun> __fun_c{};
+  inline constexpr __function_constant<_Fun> __function_constant_v{};
+
 
   template <class _Fun0, class _Fun1>
   struct __composed {

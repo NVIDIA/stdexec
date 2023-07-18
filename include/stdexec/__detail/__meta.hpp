@@ -134,6 +134,15 @@ namespace stdexec {
       return _Len;
     }
 
+    template <std::size_t... _Is>
+    constexpr bool __equal(__mstring __other, __indices<_Is...>) const noexcept {
+      return ((__what_[_Is] == __other.__what_[_Is]) &&...);
+    }
+
+    constexpr bool operator==(__mstring __other) const noexcept {
+      return __equal(__other, __make_indices<_Len>());
+    }
+
     char const __what_[_Len];
   };
 
@@ -873,10 +882,26 @@ namespace stdexec {
 
   template <std::size_t _Np, class... _Ts>
   constexpr decltype(auto) __nth_pack_element(_Ts&&... __ts) noexcept {
-    return [&]<std::size_t... _Is>(std::index_sequence<_Is...>*) noexcept -> decltype(auto) {
+    return [&]<std::size_t... _Is>(__indices<_Is...>) noexcept -> decltype(auto) {
       return stdexec::__nth_pack_element_<_Is...>((_Ts&&) __ts...);
-    }((std::make_index_sequence<_Np>*) nullptr);
+    }(__make_indices<_Np>());
   }
+
+  template <auto... _Vs>
+  struct __mliterals {
+    template <std::size_t _Np>
+    static constexpr auto __nth() noexcept {
+      return stdexec::__nth_pack_element<_Np>(_Vs...);
+    }
+  };
+
+  template <std::size_t _Np>
+  struct __nth_member {
+    template <class _Ty>
+    constexpr decltype(auto) operator()(_Ty&& __ty) const noexcept {
+      return ((_Ty&&) __ty) .* (__ty.__mbrs_.template __nth<_Np>());
+    }
+  };
 
   template <class _Ty>
   struct __mdispatch_ {
