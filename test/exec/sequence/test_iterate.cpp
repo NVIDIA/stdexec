@@ -16,6 +16,7 @@
  */
 
 #include "exec/sequence/iterate.hpp"
+#include "stdexec/execution.hpp"
 
 // Before clang-16, clang did not like libstdc++'s ranges implementation
 #if defined(__cpp_lib_ranges) && \
