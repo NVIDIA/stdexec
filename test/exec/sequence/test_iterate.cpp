@@ -16,9 +16,13 @@
  */
 
 #include "exec/sequence/iterate.hpp"
+#include "stdexec/execution.hpp"
 
-#ifdef __cpp_lib_ranges
+// Before clang-16, clang did not like libstdc++'s ranges implementation
+#if defined(__cpp_lib_ranges) && \
+  (!STDEXEC_CLANG() || __clang_major__ >= 16 || defined(_LIBCPP_VERSION))
 
+#include <array>
 #include <catch2/catch.hpp>
 
 template <class Receiver>
@@ -94,7 +98,7 @@ struct sum_receiver {
 TEST_CASE("iterate - sum up an array ", "[sequence_senders][iterate]") {
   std::array<int, 3> array{42, 43, 44};
   int sum = 0;
-  auto iterate = exec::iterate(std::ranges::views::all(array));
+  auto iterate = exec::iterate(std::views::all(array));
   STATIC_REQUIRE(exec::sequence_sender_in<decltype(iterate), stdexec::empty_env>);
   auto op = exec::subscribe(iterate, sum_receiver{sum});
   stdexec::start(op);
