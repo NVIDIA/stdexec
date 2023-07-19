@@ -4338,31 +4338,35 @@ namespace stdexec {
       using _Sender = stdexec::__t<_CvrefSenderId>;
       using _Receiver = stdexec::__t<_ReceiverId>;
 
-      struct __t : receiver_adaptor<__t> {
+      struct __t {
+        using is_receiver = void;
         using __id = __receiver;
 
-        _Receiver&& base() && noexcept {
-          return (_Receiver&&) __op_->__rcvr_;
-        }
-
-        const _Receiver& base() const & noexcept {
-          return __op_->__rcvr_;
-        }
-
-        template <class _Ty>
-        void set_value(_Ty&& __a) && noexcept {
+        template <same_as<set_value_t> _Tag, class _Ty>
+        friend void tag_invoke(_Tag, __t&& __self, _Ty&& __a) noexcept {
           try {
             using _Value = __decay_t<__single_sender_value_t<_Sender, env_of_t<_Receiver>>>;
             static_assert(constructible_from<_Value, _Ty>);
-            stdexec::set_value(((__t&&) *this).base(), std::optional<_Value>{(_Ty&&) __a});
+            stdexec::set_value((_Receiver&&) __self.__op_->__rcvr_, std::optional<_Value>{(_Ty&&) __a});
           } catch (...) {
-            stdexec::set_error(((__t&&) *this).base(), std::current_exception());
+            stdexec::set_error((_Receiver&&) __self.__op_->__rcvr_, std::current_exception());
           }
         }
 
-        void set_stopped() && noexcept {
+        template <same_as<set_error_t> _Tag, class _Error>
+        friend void tag_invoke(_Tag, __t&& __self, _Error&& __error) noexcept {
+          stdexec::set_error((_Receiver&&) __self.__op_->__rcvr_, (_Error&&) __error);
+        }
+
+        template <same_as<set_stopped_t> _Tag>
+        friend void tag_invoke(_Tag, __t&& __self) noexcept {
           using _Value = __decay_t<__single_sender_value_t<_Sender, env_of_t<_Receiver>>>;
-          stdexec::set_value(((__t&&) *this).base(), std::optional<_Value>{std::nullopt});
+          stdexec::set_value((_Receiver&&) __self.__op_->__rcvr_, std::optional<_Value>{std::nullopt});
+        }
+
+        template <same_as<get_env_t> _Tag>
+        friend env_of_t<_Receiver> tag_invoke(_Tag, const __t& __self) noexcept {
+          return stdexec::get_env(__self.__op_->__rcvr_);
         }
 
         stdexec::__t<__operation<_CvrefSenderId, _ReceiverId>>* __op_;
@@ -4380,7 +4384,7 @@ namespace stdexec {
 
         __t(_Sender&& __sndr, _Receiver&& __rcvr)
           : __rcvr_((_Receiver&&) __rcvr)
-          , __op_state_(connect((_Sender&&) __sndr, __receiver_t{{}, this})) {
+          , __op_state_(connect((_Sender&&) __sndr, __receiver_t{this})) {
         }
 
         STDEXEC_IMMOVABLE(__t);
