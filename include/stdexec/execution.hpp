@@ -89,8 +89,6 @@ STDEXEC_PRAGMA_IGNORE("-Wundefined-inline")
 STDEXEC_PRAGMA_IGNORE("-Wundefined-internal")
 
 namespace stdexec {
-  struct __apply_fn;
-
   // [exec.queries.queryable]
   template <class T>
   concept queryable = destructible<T>;
@@ -129,9 +127,9 @@ namespace stdexec {
     struct __default_domain {
       // Look for a legacy customization for the given tag, and if found, apply it.
       template <class _Sender, class _Env = empty_env>
-        requires __callable<__apply_fn, __impl_of<_Sender>, __legacy_customization<_Env>>
+        requires __callable<__sender_apply_fn, _Sender, __legacy_customization<_Env>>
       static decltype(auto) transform_sender(_Sender&& __sndr, const _Env& __env = {}) {
-        return __apply(((_Sender&&) __sndr).__impl_, __legacy_customization<_Env>{__env});
+        return __sender_apply((_Sender&&) __sndr, __legacy_customization<_Env>{__env});
       }
 
       // Otherwise, just return the sender as-is.
@@ -2338,43 +2336,44 @@ namespace stdexec {
   inline constexpr __submit_t __submit{};
 
   namespace __inln {
+    template <class _Receiver>
+    struct __op : __immovable {
+      _Receiver __recv_;
+
+      friend void tag_invoke(start_t, __op& __self) noexcept {
+        set_value((_Receiver&&) __self.__recv_);
+      }
+    };
+
+    struct __schedule_t {
+      static auto get_env(__ignore) noexcept;
+
+      using __compl_sigs = stdexec::completion_signatures<set_value_t()>;
+      static __compl_sigs get_completion_signatures(__ignore, __ignore);
+
+      template <receiver_of<__compl_sigs> _Receiver>
+      static auto
+        connect(__ignore, _Receiver __rcvr) noexcept(__nothrow_decay_copyable<_Receiver>) {
+        return __op<_Receiver>{{}, (_Receiver&&) __rcvr};
+      }
+    };
+
     struct __scheduler {
       using __t = __scheduler;
       using __id = __scheduler;
 
-      template <class _Receiver>
-      struct __op : __immovable {
-        _Receiver __recv_;
-
-        friend void tag_invoke(start_t, __op& __self) noexcept {
-          set_value((_Receiver&&) __self.__recv_);
-        }
-      };
-
-      struct __sender {
-        using __t = __sender;
-        using __id = __sender;
-        using is_sender = void;
-        using completion_signatures = stdexec::completion_signatures<set_value_t()>;
-
-        template <receiver_of<completion_signatures> _Receiver>
-        friend __op<_Receiver> tag_invoke(connect_t, __sender, _Receiver __rcvr) {
-          return {{}, (_Receiver&&) __rcvr};
-        }
-
-        friend auto tag_invoke(get_env_t, __sender) noexcept {
-          return __env::__env_fn{[](get_completion_scheduler_t<set_value_t>) noexcept {
-            return __scheduler{};
-          }};
-        }
-      };
-
-      friend __sender tag_invoke(schedule_t, __scheduler) {
-        return {};
+      friend auto tag_invoke(schedule_t, __scheduler) {
+        return __make_basic_sender<__schedule_t>();
       }
 
       bool operator==(const __scheduler&) const noexcept = default;
     };
+
+    inline auto __schedule_t::get_env(__ignore) noexcept {
+      return __env::__env_fn{[](get_completion_scheduler_t<set_value_t>) noexcept {
+        return __scheduler{};
+      }};
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -2459,108 +2458,80 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.factories]
   namespace __just {
-    template <class _Tag, class... _Ts>
-    using __completion_signatures_ = completion_signatures<_Tag(_Ts...)>;
-
-    template <class _ReceiverId, class _Tag, class... _Ts>
+    template <class _ReceiverId, class _Tag, class _Tuple>
     struct __operation {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t : __immovable {
         using __id = __operation;
-        std::tuple<_Ts...> __vals_;
+        _Tuple __vals_;
         _Receiver __rcvr_;
 
         friend void tag_invoke(start_t, __t& __op_state) noexcept {
+          using __tag_t = _Tag;
+          using __receiver_t = _Receiver;
           std::apply(
-            [&__op_state](_Ts&... __ts) {
-              _Tag{}((_Receiver&&) __op_state.__rcvr_, (_Ts&&) __ts...);
+            [&__op_state]<class... _Ts>(_Ts&... __ts) {
+              __tag_t()((__receiver_t&&) __op_state.__rcvr_, (_Ts&&) __ts...);
             },
             __op_state.__vals_);
         }
       };
     };
 
-    template <class _Tag, class... _Ts>
-    struct __basic_sender {
-      template <class _Receiver>
-      using __operation_t = stdexec::__t<__operation<stdexec::__id<_Receiver>, _Tag, _Ts...>>;
+    template <class _SetTag, class _Receiver>
+    struct __connect_fn {
+      _Receiver& __rcvr_;
 
-      struct __t {
-        using __id = __basic_sender;
-        using is_sender = void;
-        using completion_signatures = __completion_signatures_<_Tag, _Ts...>;
-        std::tuple<_Ts...> __vals_;
-
-        template <receiver_of<completion_signatures> _Receiver>
-          requires(copy_constructible<_Ts> && ...)
-        friend auto tag_invoke(connect_t, const __t& __sndr, _Receiver __rcvr) //
-          noexcept((std::is_nothrow_copy_constructible_v<_Ts> && ...))         //
-          -> __operation_t<_Receiver> {
-          return {{}, __sndr.__vals_, (_Receiver&&) __rcvr};
-        }
-
-        template <receiver_of<completion_signatures> _Receiver>
-        friend auto tag_invoke(connect_t, __t&& __sndr, _Receiver __rcvr) //
-          noexcept((std::is_nothrow_move_constructible_v<_Ts> && ...))    //
-          -> __operation_t<_Receiver> {
-          return {{}, ((__t&&) __sndr).__vals_, (_Receiver&&) __rcvr};
-        }
-
-        friend empty_env tag_invoke(get_env_t, const __t&) noexcept {
-          return {};
-        }
-      };
+      template <class _Tuple>
+      auto operator()(__ignore, _Tuple&& __tup) const noexcept(__nothrow_decay_copyable<_Tuple>)
+        -> __t<__operation<__id<_Receiver>, _SetTag, __decay_t<_Tuple>>> {
+        return {{}, (_Tuple&&) __tup, (_Receiver&&) __rcvr_};
+      }
     };
 
-    template <class... _Values>
-    struct __sender {
-      using __base = stdexec::__t<__basic_sender<set_value_t, _Values...>>;
+    template <class _JustTag, class _SetTag>
+    struct __just_impl {
+      template <class _Sender>
+      using __compl_sigs = completion_signatures<__mapply<__qf<_SetTag>, __data_of<_Sender>>>;
+      template <__basic_sender_for<_JustTag> _Sender>
+      static __compl_sigs<_Sender> get_completion_signatures(_Sender&&, __ignore);
 
-      struct __t : __base {
-        using __id = __sender;
-      };
+      template <__basic_sender_for<_JustTag> _Sender, receiver_of<__compl_sigs<_Sender>> _Receiver>
+      static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
+        __nothrow_callable< __sender_apply_fn, _Sender, __connect_fn<_SetTag, _Receiver>>)
+        -> __call_result_t< __sender_apply_fn, _Sender, __connect_fn<_SetTag, _Receiver>> {
+        return __sender_apply((_Sender&&) __sndr, __connect_fn<_SetTag, _Receiver>{__rcvr});
+      }
+
+      static empty_env get_env(__ignore) noexcept {
+        return {};
+      }
     };
 
-    template <class _Error>
-    struct __error_sender {
-      using __base = stdexec::__t<__basic_sender<set_error_t, _Error>>;
-
-      struct __t : __base {
-        using __id = __error_sender;
-      };
-    };
-
-    struct __stopped_sender : __t<__basic_sender<set_stopped_t>> {
-      using __id = __stopped_sender;
-      using __t = __stopped_sender;
-    };
-
-    inline constexpr struct __just_t {
+    inline constexpr struct __just_t : __just_impl<__just_t, set_value_t> {
       template <__movable_value... _Ts>
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        __t<__sender<__decay_t<_Ts>...>>
-        operator()(_Ts&&... __ts) const
-        noexcept((__nothrow_constructible_from<__decay_t<_Ts>, _Ts> && ...)) {
-        return {{{(_Ts&&) __ts...}}};
+        auto
+        operator()(_Ts&&... __ts) const noexcept((__nothrow_decay_copyable<_Ts> && ...)) {
+        return __make_basic_sender<__just_t>(__decayed_tuple<_Ts...>{(_Ts&&) __ts...});
       }
     } just{};
 
-    inline constexpr struct __just_error_t {
+    inline constexpr struct __just_error_t : __just_impl<__just_error_t, set_error_t> {
       template <__movable_value _Error>
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        __t<__error_sender<__decay_t<_Error>>>
-        operator()(_Error&& __err) const
-        noexcept(__nothrow_constructible_from<__decay_t<_Error>, _Error>) {
-        return {{{(_Error&&) __err}}};
+        auto
+        operator()(_Error&& __err) const noexcept(__nothrow_decay_copyable<_Error>) {
+        return __make_basic_sender<__just_error_t>(__decayed_tuple<_Error>{(_Error&&) __err});
       }
     } just_error{};
 
-    inline constexpr struct __just_stopped_t {
+    inline constexpr struct __just_stopped_t : __just_impl<__just_stopped_t, set_stopped_t> {
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        __stopped_sender
+        auto
         operator()() const noexcept {
-        return {{}};
+        return __make_basic_sender<__just_stopped_t>(__decayed_tuple<>());
       }
     } just_stopped{};
   }
@@ -3007,8 +2978,8 @@ namespace stdexec {
   struct __default_get_env {
     template <__basic_sender_for<_Tag> _Sender>
     static auto get_env(const _Sender& __sndr) noexcept
-      -> __call_result_t<__apply_fn, decltype((__sndr.__impl_)), __get_env_fn> {
-      return __apply(__sndr.__impl_, __get_env_fn());
+      -> __call_result_t<__sender_apply_fn, const _Sender&, __get_env_fn> {
+      return __sender_apply(__sndr, __get_env_fn());
     }
   };
 
@@ -3135,8 +3106,9 @@ namespace stdexec {
 
       template <__basic_sender_for<then_t> _Sender, class _Env>
       static auto get_completion_signatures(_Sender&& __sndr, _Env&&) {
-        return __apply(
-          ((_Sender&&) __sndr).__impl_, []<class _Fun, class _Child>(then_t, _Fun, _Child&&) {
+        return __sender_apply(
+          (_Sender&&) __sndr, //
+          []<class _Fun, class _Child>(then_t, _Fun, _Child&&) {
             if constexpr (__valid<__completion_signatures_t, _Fun, _Child, _Env>) {
               return __completion_signatures_t<_Fun, _Child, _Env>();
             } else if constexpr (__decays_to<_Env, no_env>) {
@@ -3150,9 +3122,9 @@ namespace stdexec {
 
       template <__basic_sender_for<then_t> _Sender, receiver _Receiver>
       static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-        __nothrow_callable< __apply_fn, __impl_of<_Sender>, __connect_fn<_Receiver>>)
-        -> __call_result_t< __apply_fn, __impl_of<_Sender>, __connect_fn<_Receiver>> {
-        return __apply(((_Sender&&) __sndr).__impl_, __connect_fn<_Receiver>{__rcvr});
+        __nothrow_callable< __sender_apply_fn, _Sender, __connect_fn<_Receiver>>)
+        -> __call_result_t< __sender_apply_fn, _Sender, __connect_fn<_Receiver>> {
+        return __sender_apply((_Sender&&) __sndr, __connect_fn<_Receiver>{__rcvr});
       }
     };
   } // namespace __then
@@ -3285,8 +3257,9 @@ namespace stdexec {
 
       template <__basic_sender_for<upon_error_t> _Sender, class _Env>
       static auto get_completion_signatures(_Sender&& __sndr, _Env&&) {
-        return __apply(
-          ((_Sender&&) __sndr).__impl_, []<class _Fun, class _Child>(upon_error_t, _Fun, _Child&&) {
+        return __sender_apply(
+          (_Sender&&) __sndr, //
+          []<class _Fun, class _Child>(upon_error_t, _Fun, _Child&&) {
             if constexpr (__valid<__completion_signatures_t, _Fun, _Child, _Env>) {
               return __completion_signatures_t<_Fun, _Child, _Env>();
             } else if constexpr (__decays_to<_Env, no_env>) {
@@ -3300,9 +3273,9 @@ namespace stdexec {
 
       template <__basic_sender_for<upon_error_t> _Sender, receiver _Receiver>
       static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-        __nothrow_callable< __apply_fn, __impl_of<_Sender>, __connect_fn<_Receiver>>)
-        -> __call_result_t< __apply_fn, __impl_of<_Sender>, __connect_fn<_Receiver>> {
-        return __apply(((_Sender&&) __sndr).__impl_, __connect_fn<_Receiver>{__rcvr});
+        __nothrow_callable< __sender_apply_fn, _Sender, __connect_fn<_Receiver>>)
+        -> __call_result_t< __sender_apply_fn, _Sender, __connect_fn<_Receiver>> {
+        return __sender_apply((_Sender&&) __sndr, __connect_fn<_Receiver>{__rcvr});
       }
     };
   }
@@ -3438,8 +3411,8 @@ namespace stdexec {
 
       template <__basic_sender_for<upon_stopped_t> _Sender, class _Env>
       static auto get_completion_signatures(_Sender&& __sndr, _Env&&) {
-        return __apply(
-          ((_Sender&&) __sndr).__impl_,
+        return __sender_apply(
+          (_Sender&&) __sndr, //
           []<class _Fun, class _Child>(upon_stopped_t, _Fun, _Child&&) {
             if constexpr (__valid<__completion_signatures_t, _Fun, _Child, _Env>) {
               return __completion_signatures_t<_Fun, _Child, _Env>();
@@ -3454,9 +3427,9 @@ namespace stdexec {
 
       template <__basic_sender_for<upon_stopped_t> _Sender, receiver _Receiver>
       static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-        __nothrow_callable< __apply_fn, __impl_of<_Sender>, __connect_fn<_Receiver>>)
-        -> __call_result_t< __apply_fn, __impl_of<_Sender>, __connect_fn<_Receiver>> {
-        return __apply(((_Sender&&) __sndr).__impl_, __connect_fn<_Receiver>{__rcvr});
+        __nothrow_callable< __sender_apply_fn, _Sender, __connect_fn<_Receiver>>)
+        -> __call_result_t< __sender_apply_fn, _Sender, __connect_fn<_Receiver>> {
+        return __sender_apply((_Sender&&) __sndr, __connect_fn<_Receiver>{__rcvr});
       }
     };
   }
@@ -3650,8 +3623,9 @@ namespace stdexec {
 
       template <__basic_sender_for<bulk_t> _Sender, class _Env>
       static auto get_completion_signatures(_Sender&& __sndr, _Env&&) {
-        return __apply(
-          ((_Sender&&) __sndr).__impl_, []<class _Data, class _Child>(bulk_t, _Data, _Child&&) {
+        return __sender_apply(
+          (_Sender&&) __sndr, //
+          []<class _Data, class _Child>(bulk_t, _Data, _Child&&) {
             using _Shape = decltype(_Data::__shape_);
             using _Fun = decltype(_Data::__fun_);
             if constexpr (__valid< __completion_signatures, _Child, _Env, _Shape, _Fun>) {
@@ -3667,9 +3641,9 @@ namespace stdexec {
 
       template <__basic_sender_for<bulk_t> _Sender, receiver _Receiver>
       static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-        __nothrow_callable< __apply_fn, __impl_of<_Sender>, __connect_fn<_Receiver>>)
-        -> __call_result_t< __apply_fn, __impl_of<_Sender>, __connect_fn<_Receiver>> {
-        return __apply(((_Sender&&) __sndr).__impl_, __connect_fn<_Receiver>{__rcvr});
+        __nothrow_callable< __sender_apply_fn, _Sender, __connect_fn<_Receiver>>)
+        -> __call_result_t< __sender_apply_fn, _Sender, __connect_fn<_Receiver>> {
+        return __sender_apply((_Sender&&) __sndr, __connect_fn<_Receiver>{__rcvr});
       }
     };
   }

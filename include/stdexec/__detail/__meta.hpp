@@ -136,7 +136,7 @@ namespace stdexec {
 
     template <std::size_t... _Is>
     constexpr bool __equal(__mstring __other, __indices<_Is...>) const noexcept {
-      return ((__what_[_Is] == __other.__what_[_Is]) &&...);
+      return ((__what_[_Is] == __other.__what_[_Is]) && ...);
     }
 
     constexpr bool operator==(__mstring __other) const noexcept {
@@ -672,7 +672,9 @@ namespace stdexec {
 
 #if STDEXEC_CLANG() && (__clang_major__ < 13)
   template <class _Ty>
-  constexpr auto __hide_ = [] { return (__mtype<_Ty>(*)()) 0; };
+  constexpr auto __hide_ = [] {
+    return (__mtype<_Ty>(*)()) 0;
+  };
 #else
   template <class _Ty>
   extern decltype([] { return (__mtype<_Ty>(*)()) 0; }) __hide_;
@@ -899,7 +901,7 @@ namespace stdexec {
   struct __nth_member {
     template <class _Ty>
     constexpr decltype(auto) operator()(_Ty&& __ty) const noexcept {
-      return ((_Ty&&) __ty) .* (__ty.__mbrs_.template __nth<_Np>());
+      return ((_Ty&&) __ty).*(__ty.__mbrs_.template __nth<_Np>());
     }
   };
 

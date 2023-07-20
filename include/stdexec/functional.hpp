@@ -67,7 +67,7 @@ namespace stdexec {
     using _FunT = _Ty _Cl::*;
 
     template <class _Arg>
-      requires requires (_Arg&& __arg) { ((_Arg&&) __arg).*_MemPtr; }
+      requires requires(_Arg&& __arg) { ((_Arg&&) __arg).*_MemPtr; }
     constexpr auto operator()(_Arg&& __arg) const noexcept
       -> decltype((((_Arg&&) __arg).*_MemPtr)) {
       return ((_Arg&&) __arg).*_MemPtr;
@@ -76,7 +76,6 @@ namespace stdexec {
 
   template <auto _Fun>
   inline constexpr __function_constant<_Fun> __function_constant_v{};
-
 
   template <class _Fun0, class _Fun1>
   struct __composed {

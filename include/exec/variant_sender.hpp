@@ -63,8 +63,17 @@ namespace exec {
         }
       };
 
-      class __t {
-        std::variant<stdexec::__t<_SenderIds>...> __variant_{};
+      class __t : private std::variant<stdexec::__t<_SenderIds>...> {
+        using __variant_t = std::variant<stdexec::__t<_SenderIds>...>;
+        __variant_t&& base() && noexcept {
+          return std::move(*this);
+        }
+        __variant_t& base() & noexcept {
+          return *this;
+        }
+        const __variant_t& base() const & noexcept {
+          return *this;
+        }
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires(sender_to<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver> && ...)
@@ -74,7 +83,7 @@ namespace exec {
             (__nothrow_connectable<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver>
              && ...)) {
           return std::visit(
-            __visitor<_Self, _Receiver>{(_Receiver&&) __r}, ((_Self&&) __self).__variant_);
+            __visitor<_Self, _Receiver>{(_Receiver&&) __r}, ((_Self&&) __self).base());
         }
 
         template <__decays_to<__t> _Self, class _Env>
@@ -91,13 +100,13 @@ namespace exec {
           requires __one_of<__decay_t<_Sender>, stdexec::__t<_SenderIds>...>
         __t(_Sender&& __sender) noexcept(
           __nothrow_constructible_from<std::variant<stdexec::__t<_SenderIds>...>, _Sender>)
-          : __variant_{(_Sender&&) __sender} {
+          : __variant_t{(_Sender&&) __sender} {
         }
 
-        std::size_t index() const noexcept {
-          return __variant_.index();
-        }
-      };
+        using __variant_t::operator=;
+        using __variant_t::index;
+        using __variant_t::emplace;
+        using __variant_t::swap;      };
     };
   }
 
