@@ -19,6 +19,12 @@
 #error This library requires the use of C++20.
 #endif
 
+#if __has_include(<version>)
+#include <version>
+#else
+#include <ciso646> // For stdlib feature-test macros when <version> is not available
+#endif
+
 #include <cassert>
 
 #define STDEXEC_CAT_(_XP, ...) _XP##__VA_ARGS__
@@ -43,7 +49,9 @@
 #define STDEXEC_CHECK_N(_XP, _NP, ...) _NP
 #define STDEXEC_PROBE(_XP) _XP, 1,
 
-#if defined(__NVCOMPILER)
+#if defined(__NVCC__)
+#define STDEXEC_NVCC() 1
+#elif defined(__NVCOMPILER)
 #define STDEXEC_NVHPC() 1
 #elif defined(__clang__)
 #define STDEXEC_CLANG() 1
@@ -53,6 +61,9 @@
 #define STDEXEC_MSVC() 1
 #endif
 
+#ifndef STDEXEC_NVCC
+#define STDEXEC_NVCC() 0
+#endif
 #ifndef STDEXEC_NVHPC
 #define STDEXEC_NVHPC() 0
 #endif
@@ -66,7 +77,7 @@
 #define STDEXEC_MSVC() 0
 #endif
 
-#if STDEXEC_CLANG()
+#if STDEXEC_CLANG() || STDEXEC_GCC()
 #define STDEXEC_STRINGIZE(_ARG) #_ARG
 #define STDEXEC_PRAGMA_PUSH() _Pragma("GCC diagnostic push")
 #define STDEXEC_PRAGMA_POP() _Pragma("GCC diagnostic pop")
@@ -141,6 +152,15 @@
   __builtin_unreachable()
 #else
 #define STDEXEC_TERMINATE() std::terminate()
+#endif
+
+// Before clang-16, clang did not like libstdc++'s ranges implementation
+#if __has_include(<ranges>) && \
+  (defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L) && \
+  (!STDEXEC_CLANG() || __clang_major__ >= 16 || defined(_LIBCPP_VERSION))
+#define STDEXEC_HAS_RANGES() 1
+#else
+#define STDEXEC_HAS_RANGES() 0
 #endif
 
 #ifdef STDEXEC_ASSERT

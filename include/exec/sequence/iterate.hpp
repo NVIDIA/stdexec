@@ -16,9 +16,9 @@
  */
 #pragma once
 
-#if __has_include(<version>)
-#include <version>
-#ifdef __cpp_lib_ranges
+#include "../../stdexec/__detail/__config.hpp"
+
+#if STDEXEC_HAS_RANGES()
 
 #include "../sequence_senders.hpp"
 
@@ -188,5 +188,4 @@ namespace exec {
   inline constexpr iterate_t iterate;
 }
 
-#endif
-#endif
+#endif // STDEXEC_HAS_RANGES()

@@ -4347,7 +4347,8 @@ namespace stdexec {
           try {
             using _Value = __decay_t<__single_sender_value_t<_Sender, env_of_t<_Receiver>>>;
             static_assert(constructible_from<_Value, _Ty>);
-            stdexec::set_value((_Receiver&&) __self.__op_->__rcvr_, std::optional<_Value>{(_Ty&&) __a});
+            stdexec::set_value(
+              (_Receiver&&) __self.__op_->__rcvr_, std::optional<_Value>{(_Ty&&) __a});
           } catch (...) {
             stdexec::set_error((_Receiver&&) __self.__op_->__rcvr_, std::current_exception());
           }
@@ -4361,7 +4362,8 @@ namespace stdexec {
         template <same_as<set_stopped_t> _Tag>
         friend void tag_invoke(_Tag, __t&& __self) noexcept {
           using _Value = __decay_t<__single_sender_value_t<_Sender, env_of_t<_Receiver>>>;
-          stdexec::set_value((_Receiver&&) __self.__op_->__rcvr_, std::optional<_Value>{std::nullopt});
+          stdexec::set_value(
+            (_Receiver&&) __self.__op_->__rcvr_, std::optional<_Value>{std::nullopt});
         }
 
         template <same_as<get_env_t> _Tag>
