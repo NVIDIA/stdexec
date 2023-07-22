@@ -164,11 +164,11 @@ namespace stdexec {
 
   template <class _What, class... _With>
   struct _ERROR_ {
-    const _ERROR_& operator,(__msuccess) const noexcept;
+    _ERROR_ operator,(__msuccess) const noexcept;
   };
 
   template <class _What, class... _With>
-  using __mexception = const _ERROR_<_What, _With...>&;
+  using __mexception = _ERROR_<_What, _With...>;
 
   template <class>
   extern __msuccess __ok_v;
@@ -180,7 +180,7 @@ namespace stdexec {
   using __ok_t = decltype(__ok_v<_Ty>);
 
   template <class... _Ts>
-  using __disp = const decltype((__msuccess(), ..., __ok_t<_Ts>()))&;
+  using __disp = decltype((__msuccess(), ..., __ok_t<_Ts>()));
 
   template <bool _AllOK>
   struct __i {
