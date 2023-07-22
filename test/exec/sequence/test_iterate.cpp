@@ -18,9 +18,7 @@
 #include "exec/sequence/iterate.hpp"
 #include "stdexec/execution.hpp"
 
-// Before clang-16, clang did not like libstdc++'s ranges implementation
-#if defined(__cpp_lib_ranges) && \
-  (!STDEXEC_CLANG() || __clang_major__ >= 16 || defined(_LIBCPP_VERSION))
+#if STDEXEC_HAS_RANGES()
 
 #include <array>
 #include <catch2/catch.hpp>
@@ -105,4 +103,4 @@ TEST_CASE("iterate - sum up an array ", "[sequence_senders][iterate]") {
   CHECK(sum == (42 + 43 + 44));
 }
 
-#endif  // __cpp_lib_ranges
+#endif // STDEXEC_HAS_RANGES()
