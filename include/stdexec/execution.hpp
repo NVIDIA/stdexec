@@ -5786,7 +5786,7 @@ namespace stdexec {
     };
 
     template <class _Sender>
-    using __into_variant_result_t = decltype(into_variant(__declval<_Sender>()));
+    using __into_variant_result_t = __result_of<into_variant, _Sender>;
 
     struct when_all_t {
       template <class... _Senders>
@@ -5990,7 +5990,7 @@ namespace stdexec {
   // [execution.senders.consumers.sync_wait_with_variant]
   namespace __sync_wait {
     template <class _Sender>
-    using __into_variant_result_t = decltype(into_variant(__declval<_Sender>()));
+    using __into_variant_result_t = __result_of<into_variant, _Sender>;
 
     inline auto __make_env(run_loop& __loop) noexcept {
       return __env::__env_fn{
@@ -6067,7 +6067,7 @@ namespace stdexec {
     };
 
     template <class _Sender>
-    using __into_variant_result_t = decltype(into_variant(__declval<_Sender>()));
+    using __into_variant_result_t = __result_of<into_variant, _Sender>;
 
     struct sync_wait_t;
 

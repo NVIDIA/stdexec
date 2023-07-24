@@ -658,6 +658,9 @@ namespace stdexec {
   using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
 #endif
 
+  template <const auto& _Fun, class... _As>
+  using __result_of = __call_result_t<decltype(_Fun), _As...>;
+
   // For working around clang's lack of support for CWG#2369:
   // http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#2369
   struct __qcall_result {

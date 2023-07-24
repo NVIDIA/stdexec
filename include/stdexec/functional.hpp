@@ -21,9 +21,6 @@
 
 #include <functional>
 
-// A std::declval that doesn't instantiate templates:
-#define _DECLVAL(...) ((static_cast<__VA_ARGS__ (*)() noexcept>(0))())
-
 namespace stdexec::__std_concepts {
 #if STDEXEC_HAS_STD_CONCEPTS_HEADER()
   using std::invocable;
