@@ -51,19 +51,57 @@ namespace stdexec {
   };
 
   template <auto _Fun>
-  struct __fun_c_t {
+  struct __function_constant {
     using _FunT = decltype(_Fun);
 
     template <class... _Args>
       requires __callable<_FunT, _Args...>
     auto operator()(_Args&&... __args) const noexcept(noexcept(_Fun((_Args&&) __args...)))
-      -> __call_result_t<_FunT, _Args...> {
+      -> decltype(_Fun((_Args&&) __args...)) {
       return _Fun((_Args&&) __args...);
     }
   };
 
+  template <class _Ty, class _Cl, _Ty _Cl::*_MemPtr>
+  struct __function_constant<_MemPtr> {
+    using _FunT = _Ty _Cl::*;
+
+    template <class _Arg>
+      requires requires(_Arg&& __arg) { ((_Arg&&) __arg).*_MemPtr; }
+    constexpr auto operator()(_Arg&& __arg) const noexcept
+      -> decltype((((_Arg&&) __arg).*_MemPtr)) {
+      return ((_Arg&&) __arg).*_MemPtr;
+    }
+  };
+
   template <auto _Fun>
-  inline constexpr __fun_c_t<_Fun> __fun_c{};
+  inline constexpr __function_constant<_Fun> __function_constant_v{};
+
+  template <class _Fun0, class _Fun1>
+  struct __composed {
+    STDEXEC_NO_UNIQUE_ADDRESS _Fun0 __t0_;
+    STDEXEC_NO_UNIQUE_ADDRESS _Fun1 __t1_;
+
+    template <class... _Ts>
+      requires __callable<_Fun1, _Ts...> && __callable<_Fun0, __call_result_t<_Fun1, _Ts...>>
+    __call_result_t<_Fun0, __call_result_t<_Fun1, _Ts...>> operator()(_Ts&&... __ts) && {
+      return ((_Fun0&&) __t0_)(((_Fun1&&) __t1_)((_Ts&&) __ts...));
+    }
+
+    template <class... _Ts>
+      requires __callable<const _Fun1&, _Ts...>
+            && __callable<const _Fun0&, __call_result_t<const _Fun1&, _Ts...>>
+    __call_result_t<_Fun0, __call_result_t<_Fun1, _Ts...>> operator()(_Ts&&... __ts) const & {
+      return __t0_(__t1_((_Ts&&) __ts...));
+    }
+  };
+
+  inline constexpr struct __compose_t {
+    template <class _Fun0, class _Fun1>
+    __composed<_Fun0, _Fun1> operator()(_Fun0 __fun0, _Fun1 __fun1) const {
+      return {(_Fun0&&) __fun0, (_Fun1&&) __fun1};
+    }
+  } __compose{};
 
   // [func.tag_invoke], tag_invoke
   namespace __tag_invoke {
@@ -110,10 +148,16 @@ namespace stdexec {
         return tag_invoke((_Tag&&) __tag, (_Args&&) __args...);
       }
     };
+
   } // namespace __tag_invoke
 
   using __tag_invoke::tag_invoke_t;
-  inline constexpr tag_invoke_t tag_invoke{};
+
+  namespace __ti {
+    inline constexpr tag_invoke_t tag_invoke{};
+  }
+
+  using namespace __ti;
 
   template <auto& _Tag>
   using tag_t = __decay_t<decltype(_Tag)>;

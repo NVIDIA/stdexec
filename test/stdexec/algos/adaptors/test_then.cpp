@@ -16,6 +16,7 @@
 
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
+#include <exec/on.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/senders.hpp>
@@ -134,13 +135,13 @@ TEST_CASE("then advertises completion schedulers", "[adaptors][then]") {
 
 TEST_CASE("then forwards env", "[adaptors][then]") {
   SECTION("returns env by value") {
-    auto snd = just_with_env<value_env, int>{value_env{100}, {0}} | ex::then([] {});
+    auto snd = just_with_env<value_env, int>{value_env{100}, {0}} | ex::then([](int) {});
     static_assert(std::same_as<decltype(ex::get_env(snd)), value_env>);
     CHECK(ex::get_env(snd).value == 100);
   }
 
   SECTION("returns env by reference") {
-    auto snd = just_with_env<const value_env&, int>{value_env{100}, {0}} | ex::then([] {});
+    auto snd = just_with_env<const value_env&, int>{value_env{100}, {0}} | ex::then([](int) {});
     static_assert(std::same_as<decltype(ex::get_env(snd)), const value_env&>);
     CHECK(ex::get_env(snd).value == 100);
   }
@@ -182,14 +183,35 @@ TEST_CASE("then keeps sends_stopped from input sender", "[adaptors][then]") {
 // Return a different sender when we invoke this custom defined on implementation
 using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
 
-template <typename Fun>
+template <class Fun>
 auto tag_invoke(ex::then_t, inline_scheduler sched, my_string_sender_t, Fun) {
   return ex::just(std::string{"hallo"});
 }
 
-TEST_CASE("then can be customized", "[adaptors][then]") {
+TEST_CASE("then can be customized early", "[adaptors][then]") {
   // The customization will return a different value
   auto snd = ex::transfer_just(inline_scheduler{}, std::string{"hello"}) //
            | ex::then([](std::string x) { return x + ", world"; });
+  wait_for_value(std::move(snd), std::string{"hallo"});
+}
+
+struct my_domain {
+  template <class Sender, class Env>
+  static auto transform_sender(Sender snd, const Env&) {
+    if constexpr (ex::__basic_sender_for<Sender, ex::then_t>)
+      return ex::just(std::string{"hallo"});
+    else
+      return (Sender&&) snd;
+  }
+};
+
+TEST_CASE("then can be customized late", "[adaptors][then]") {
+  // The customization will return a different value
+  basic_inline_scheduler<my_domain> sched;
+  auto snd = ex::just(std::string{"hello"})
+           | exec::on(
+               sched, //
+               ex::then([](std::string x) { return x + ", world"; }))
+           | exec::write(exec::with(ex::get_scheduler, inline_scheduler()));
   wait_for_value(std::move(snd), std::string{"hallo"});
 }

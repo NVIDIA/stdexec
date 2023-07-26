@@ -44,8 +44,10 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __env {
     struct get_env_t;
+    struct empty_env;
   }
 
+  using __env::empty_env;
   using __env::get_env_t;
   extern const get_env_t get_env;
 

@@ -124,7 +124,8 @@ void test_awaitable_sender1(Signatures*, Awaiter&&) {
   static_assert(sender_with_env<awaitable_sender_1<Awaiter>>);
   static_assert(ex::__awaitable<awaitable_sender_1<Awaiter>>);
 
-  static_assert(!ex::__get_completion_signatures::__with_member_alias<awaitable_sender_1<Awaiter>>);
+  static_assert(!ex::__get_completion_signatures::
+                  __with_member_alias<awaitable_sender_1<Awaiter>, ex::empty_env>);
   static_assert(
     std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_1<Awaiter>>, Signatures>);
 }
@@ -137,7 +138,8 @@ void test_awaitable_sender2() {
   static_assert(ex::__awaitable<awaitable_sender_2>);
   static_assert(ex::__awaitable<awaitable_sender_2, promise<__coro::suspend_always>>);
 
-  static_assert(!ex::__get_completion_signatures::__with_member_alias<awaitable_sender_2>);
+  static_assert(
+    !ex::__get_completion_signatures::__with_member_alias<awaitable_sender_2, ex::empty_env>);
 
 #if STDEXEC_LEGACY_R5_CONCEPTS()
   static_assert(std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_2>, dependent>);
@@ -153,7 +155,8 @@ void test_awaitable_sender3() {
   static_assert(ex::__awaitable<awaitable_sender_3>);
   static_assert(ex::__awaitable<awaitable_sender_3, promise<awaiter>>);
 
-  static_assert(!ex::__get_completion_signatures::__with_member_alias<awaitable_sender_3>);
+  static_assert(
+    !ex::__get_completion_signatures::__with_member_alias<awaitable_sender_3, ex::empty_env>);
 
 #if STDEXEC_LEGACY_R5_CONCEPTS()
   static_assert(std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_3>, dependent>);
@@ -172,13 +175,17 @@ void test_awaitable_sender4(Signatures*) {
   static_assert(ex::__awaitable<awaitable_sender_4, ex::no_env_promise>);
   static_assert(ex::__awaitable<awaitable_sender_4, ex::__env_promise<ex::empty_env>>);
 
-  static_assert(!ex::__get_completion_signatures::__with_member_alias<awaitable_sender_4>);
+  static_assert(
+    !ex::__get_completion_signatures::__with_member_alias<awaitable_sender_4, ex::empty_env>);
 
 #if STDEXEC_LEGACY_R5_CONCEPTS()
   static_assert(std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_4>, dependent>);
 #endif
   static_assert(
-    std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_4, ex::empty_env>, Signatures>);
+    !ex::__get_completion_signatures::__with_member_alias<awaitable_sender_4, ex::empty_env>);
+
+  static_assert(
+    std::is_same_v< ex::completion_signatures_of_t<awaitable_sender_4, ex::empty_env>, Signatures>);
 }
 
 struct connect_awaitable_promise : ex::with_awaitable_senders<connect_awaitable_promise> { };
@@ -195,7 +202,8 @@ void test_awaitable_sender5(Signatures*) {
   static_assert(ex::__awaitable<awaitable_sender_5, ex::no_env_promise>);
   static_assert(ex::__awaitable<awaitable_sender_5, ex::__env_promise<ex::empty_env>>);
 
-  static_assert(!ex::__get_completion_signatures::__with_member_alias<awaitable_sender_5>);
+  static_assert(
+    !ex::__get_completion_signatures::__with_member_alias<awaitable_sender_5, ex::empty_env>);
 
   static_assert(std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_5>, Signatures>);
   static_assert(

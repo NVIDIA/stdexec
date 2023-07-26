@@ -135,7 +135,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <__decays_to<source_sender_t> Self, receiver Receiver>
       friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
         -> connect_result_t<__copy_cvref_t<Self, Sender>, Receiver> {
-        return connect(((Self&&) self).sender_, (Receiver&&) rcvr);
+        return connect(((Self&&) self).sndr_, (Receiver&&) rcvr);
       }
 
       friend auto tag_invoke(get_env_t, const source_sender_t& self) noexcept
@@ -148,7 +148,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
         -> make_completion_signatures< __copy_cvref_t<_Self, Sender>, _Env>;
 
-      Sender sender_;
+      Sender sndr_;
     };
 
     template <class... _Ty>

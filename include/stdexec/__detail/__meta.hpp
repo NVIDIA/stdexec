@@ -81,8 +81,8 @@ namespace stdexec {
   template <class _Tp, class _Up>
   using __mfirst = _Tp;
 
-  template <class _Tp, class _UXp>
-  using __msecond = _UXp;
+  template <class _Tp, class _Up>
+  using __msecond = _Up;
 
   template <class _Tp>
   extern const __undefined<_Tp> __v;
@@ -132,6 +132,15 @@ namespace stdexec {
 
     static constexpr std::size_t __length() noexcept {
       return _Len;
+    }
+
+    template <std::size_t... _Is>
+    constexpr bool __equal(__mstring __other, __indices<_Is...>) const noexcept {
+      return ((__what_[_Is] == __other.__what_[_Is]) && ...);
+    }
+
+    constexpr bool operator==(__mstring __other) const noexcept {
+      return __equal(__other, __make_indices<_Len>());
     }
 
     char const __what_[_Len];
@@ -661,6 +670,22 @@ namespace stdexec {
   template <const auto& _Fun, class... _As>
   using __result_of = __call_result_t<decltype(_Fun), _As...>;
 
+#if STDEXEC_CLANG() && (__clang_major__ < 13)
+  template <class _Ty>
+  constexpr auto __hide_ = [] {
+    return (__mtype<_Ty>(*)()) 0;
+  };
+#else
+  template <class _Ty>
+  extern decltype([] { return (__mtype<_Ty>(*)()) 0; }) __hide_;
+#endif
+
+  template <class _Ty>
+  using __hide = decltype(__hide_<_Ty>);
+
+  template <class _Id>
+  using __unhide = __t<__call_result_t<__call_result_t<_Id>>>;
+
   // For working around clang's lack of support for CWG#2369:
   // http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#2369
   struct __qcall_result {
@@ -859,10 +884,26 @@ namespace stdexec {
 
   template <std::size_t _Np, class... _Ts>
   constexpr decltype(auto) __nth_pack_element(_Ts&&... __ts) noexcept {
-    return [&]<std::size_t... _Is>(std::index_sequence<_Is...>*) noexcept -> decltype(auto) {
+    return [&]<std::size_t... _Is>(__indices<_Is...>) noexcept -> decltype(auto) {
       return stdexec::__nth_pack_element_<_Is...>((_Ts&&) __ts...);
-    }((std::make_index_sequence<_Np>*) nullptr);
+    }(__make_indices<_Np>());
   }
+
+  template <auto... _Vs>
+  struct __mliterals {
+    template <std::size_t _Np>
+    static constexpr auto __nth() noexcept {
+      return stdexec::__nth_pack_element<_Np>(_Vs...);
+    }
+  };
+
+  template <std::size_t _Np>
+  struct __nth_member {
+    template <class _Ty>
+    constexpr decltype(auto) operator()(_Ty&& __ty) const noexcept {
+      return ((_Ty&&) __ty).*(__ty.__mbrs_.template __nth<_Np>());
+    }
+  };
 
   template <class _Ty>
   struct __mdispatch_ {
@@ -957,9 +998,6 @@ namespace stdexec {
   template <class _Signatures, class _DefaultFn, class... _Args>
   using __make_dispatcher = //
     __minvoke<
-      __if_c<
-        __minvocable<__which<_Signatures>, _Args...>,
-        __mcompose<__q<__mdispatch>, __which<_Signatures>>,
-        _DefaultFn>,
+      __mtry_catch<__mcompose<__q<__mdispatch>, __which<_Signatures>>, _DefaultFn>,
       _Args...>;
 } // namespace stdexec
