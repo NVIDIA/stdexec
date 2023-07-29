@@ -29,15 +29,6 @@ namespace stdexec {
     template <class _Sender>
     using __impl_of = decltype((__declval<_Sender>().__impl_));
 
-    struct __sender_apply_fn {
-      template <class _Sender, class _ApplyFn>
-      auto operator()(_Sender&& __sndr, _ApplyFn&& __fun) const                              //
-        noexcept(__nothrow_callable<__impl_of<_Sender>, __copy_cvref_fn<_Sender>, _ApplyFn>) //
-        -> __call_result_t<__impl_of<_Sender>, __copy_cvref_fn<_Sender>, _ApplyFn> {         //
-        return ((_Sender&&) __sndr).__impl_(__copy_cvref_fn<_Sender>(), (_ApplyFn&&) __fun); //
-      }
-    };
-
     struct __get_tag {
       template <class _Tag>
       _Tag operator()(_Tag, __ignore...) const noexcept;
@@ -72,7 +63,7 @@ namespace stdexec {
     mutable _ImplFn __impl_;
 
     STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-    explicit __basic_sender(_ImplFn __impl_)
+      explicit __basic_sender(_ImplFn __impl_)
       : __impl_((_ImplFn&&) __impl_) {
     }
 
@@ -104,17 +95,26 @@ namespace stdexec {
         decltype(__self.__tag().connect((_Self&&) __self, (_Receiver&&) __rcvr))> {
       return __tag_t::connect((_Self&&) __self, (_Receiver&&) __rcvr);
     }
+
+    template <class _Sender, class _ApplyFn>
+    STDEXEC_DEFINE_EXPLICIT_THIS_MEMFN(auto apply)(this _Sender&& __sndr, _ApplyFn&& __fun) //
+      noexcept(
+        __nothrow_callable<__detail::__impl_of<_Sender>, __copy_cvref_fn<_Sender>, _ApplyFn>) //
+      -> __call_result_t<__detail::__impl_of<_Sender>, __copy_cvref_fn<_Sender>, _ApplyFn> {  //
+      return ((_Sender&&) __sndr).__impl_(__copy_cvref_fn<_Sender>(), (_ApplyFn&&) __fun);    //
+    }
   };
 
   template <class _ImplFn>
   STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-  __basic_sender(_ImplFn) -> __basic_sender<_ImplFn>;
+    __basic_sender(_ImplFn) -> __basic_sender<_ImplFn>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __make_basic_sender
   template <class _Tag, class _Data = __, class... _Children>
   STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-  auto __make_basic_sender(_Data __data = {}, _Children... __children) {
+    auto
+    __make_basic_sender(_Data __data = {}, _Children... __children) {
     using __tag_t = _Tag;
     return __basic_sender{
       [__data = (_Data&&) __data, ... __children = (_Children&&) __children] //
@@ -127,6 +127,19 @@ namespace stdexec {
           const_cast<__minvoke<_Cvref, _Children>&&>(__children)...);
       }};
   }
+
+  namespace __detail {
+    struct __sender_apply_fn {
+      template <class _Sender, class _ApplyFn>
+      auto operator()(_Sender&& __sndr, _ApplyFn&& __fun) const //
+        noexcept(noexcept(
+          STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), apply)((_ApplyFn&&) __fun))) //
+        -> decltype(STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), apply)(
+          (_ApplyFn&&) __fun)) {                                                                  //
+        return STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), apply)((_ApplyFn&&) __fun); //
+      }
+    };
+  } // namespace __detail
 
   using __detail::__sender_apply_fn;
   inline constexpr __sender_apply_fn __sender_apply{};
@@ -141,14 +154,8 @@ namespace stdexec {
   using __children_of = __t<__call_result_t<
     __call_result_t<__sender_apply_fn, _Sender, __detail::__get_children<_Continuation>>>>;
 
-  namespace __detail {
-    template <class _Tag, class _ImplFn>
-      requires same_as<_Tag, __tag_of<__basic_sender<_ImplFn>>>
-    void __test_basic_sender_for(const __basic_sender<_ImplFn>&);
-  } // namespace __detail
-
   template <class _Sender, class _Tag>
-  concept __basic_sender_for = //
-    requires(_Sender& __sndr) { __detail::__test_basic_sender_for<_Tag>(__sndr); };
+  concept __lazy_sender_for = //
+    same_as<__tag_of<_Sender>, _Tag>;
 
 } // namespace stdexec
