@@ -83,6 +83,7 @@ TEST_CASE("sequence_senders - test_receiver is a receiver of its Sigs", "[sequen
 template <__completion_signature... _Sigs>
 struct next_receiver {
   using is_receiver = void;
+
   template <sender_to<test_receiver<_Sigs...>> _Item>
   friend _Item tag_invoke(set_next_t, next_receiver&, _Item&& __item) noexcept {
     return __item;

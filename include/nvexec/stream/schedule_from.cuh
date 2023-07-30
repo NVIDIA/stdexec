@@ -171,7 +171,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         get_completion_signatures_t,
         _Env&&) -> make_completion_signatures< __copy_cvref_t<_Self, Sender>, _Env>;
 
-      Sender sender_;
+      Sender sndr_;
     };
 
     template <class... _Ty>

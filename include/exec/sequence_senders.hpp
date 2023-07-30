@@ -298,4 +298,26 @@ namespace exec {
     requires(_Sender&& __sndr, _Receiver&& __rcvr) {
       { subscribe((_Sender&&) __sndr, (_Receiver&&) __rcvr) };
     };
+
+  template <class _Receiver>
+  concept __stoppable_receiver =                            //
+    stdexec::__callable<stdexec::set_value_t, _Receiver> && //
+    (stdexec::unstoppable_token< stdexec::stop_token_of_t<stdexec::env_of_t<_Receiver>>>
+     || stdexec::__callable<stdexec::set_stopped_t, _Receiver>);
+
+  template <class _Receiver>
+    requires __stoppable_receiver<_Receiver>
+  void __set_value_unless_stopped(_Receiver&& __rcvr) {
+    using token_type = stdexec::stop_token_of_t<stdexec::env_of_t<_Receiver>>;
+    if constexpr (stdexec::unstoppable_token<token_type>) {
+      stdexec::set_value(static_cast<_Receiver&&>(__rcvr));
+    } else {
+      auto token = stdexec::get_stop_token(stdexec::get_env(__rcvr));
+      if (!token.stop_requested()) {
+        stdexec::set_value(static_cast<_Receiver&&>(__rcvr));
+      } else {
+        stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr));
+      }
+    }
+  }
 }

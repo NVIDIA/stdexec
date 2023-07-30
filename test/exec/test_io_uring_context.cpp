@@ -58,6 +58,11 @@ class jthread {
   }
 };
 
+TEST_CASE("io_uring_context - unused context", "[types][io_uring][schedulers]") {
+  io_uring_context context;
+  CHECK(context.is_running() == false);
+}
+
 TEST_CASE("io_uring_context Satisfy concepts", "[types][io_uring][schedulers]") {
   STATIC_REQUIRE(timed_scheduler<io_uring_scheduler>);
   STATIC_REQUIRE_FALSE(std::is_move_assignable_v<io_uring_context>);
@@ -123,7 +128,6 @@ TEST_CASE(
   CHECK(!context.stop_requested());
 }
 
-
 TEST_CASE(
   "io_uring_context Call io_uring::run with sync_wait and when_any",
   "[types][io_uring][schedulers]") {
@@ -157,7 +161,6 @@ TEST_CASE(
   CHECK(!context.is_running());
   CHECK(!context.stop_requested());
 }
-
 
 TEST_CASE(
   "io_uring_context Explicitly stop the io_uring_context",
@@ -310,9 +313,7 @@ TEST_CASE("io_uring_context schedule_after -1s", "[types][io_uring][schedulers]"
         CHECK(io_thread.get_id() == std::this_thread::get_id());
         is_called_1 = true;
       }),
-      schedule_after(scheduler, timeout) | then([&] {
-        is_called_2 = true;
-      })));
+      schedule_after(scheduler, timeout) | then([&] { is_called_2 = true; })));
     auto end = std::chrono::steady_clock::now();
     std::chrono::nanoseconds diff = end - start;
     CHECK(diff.count() < std::chrono::duration_cast<std::chrono::nanoseconds>(timeout).count());

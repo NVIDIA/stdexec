@@ -128,5 +128,8 @@ TEST_CASE("any_sequence_of - has an environment", "[sequence_senders][any_sequen
   exec::any_sequence_receiver_ref<Completions>::any_sender<> any_sequence = stdexec::just();
   auto env = stdexec::get_env(any_sequence);
   using env_t = decltype(env);
-  STATIC_REQUIRE(stdexec::same_as<env_t, stdexec::__t<exec::__any::__sender_env<Completions, stdexec::__types<>, stdexec::__types<>>>>);
+  STATIC_REQUIRE(
+    stdexec::same_as<
+      env_t,
+      stdexec::__t<exec::__any::__sender_env<Completions, stdexec::__types<>, stdexec::__types<>>>>);
 }

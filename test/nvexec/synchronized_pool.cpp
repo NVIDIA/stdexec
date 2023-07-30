@@ -31,8 +31,7 @@ TEST_CASE("synchronized pool caches allocations", "[cuda][stream][memory][synchr
   {
     nvdetail::synchronized_pool_resource pool{&resource};
 
-    for (int i = 0; i < 10; i++)
-    {
+    for (int i = 0; i < 10; i++) {
       void* ptr_1 = pool.allocate(128, 8);
       void* ptr_2 = pool.allocate(256, 16);
       REQUIRE(ptr_1 != nullptr);
@@ -57,8 +56,7 @@ TEST_CASE(
   tracer_resource resource{};
   nvdetail::synchronized_pool_resource pool{&resource};
 
-  for (int n = 32; n < 512; n *= 2)
-  {
+  for (int n = 32; n < 512; n *= 2) {
     int bytes = n * sizeof(int);
     int alignment = alignof(int);
 
@@ -80,8 +78,7 @@ TEST_CASE(
   tracer_resource resource{};
   nvdetail::synchronized_pool_resource pool{&resource};
 
-  for (int alignment = 1; alignment < 512; alignment *= 2) 
-  {
+  for (int alignment = 1; alignment < 512; alignment *= 2) {
     void* ptr = pool.allocate(32, alignment);
     INFO("Alignment: " << alignment);
     REQUIRE(reinterpret_cast<uintptr_t>(ptr) % alignment == 0);

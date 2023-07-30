@@ -216,14 +216,19 @@ TEST_CASE("when_any completion signatures", "[adaptors][when_any]") {
 template <class Receiver>
 struct dup_op {
   Receiver rec;
+
   friend void tag_invoke(start_t, dup_op& self) noexcept {
-    stdexec::set_error(static_cast<Receiver&&>(self.rec), std::make_exception_ptr(std::runtime_error("dup")));
+    stdexec::set_error(
+      static_cast<Receiver&&>(self.rec), std::make_exception_ptr(std::runtime_error("dup")));
   }
 };
 
 struct dup_sender {
   using is_sender = void;
-  using completion_signatures = stdexec::completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_error_t(std::exception_ptr&&)>;
+  using completion_signatures = stdexec::completion_signatures<
+    set_value_t(),
+    set_error_t(std::exception_ptr),
+    set_error_t(std::exception_ptr&&)>;
 
   template <class Receiver>
   friend dup_op<Receiver> tag_invoke(connect_t, dup_sender, Receiver rec) noexcept {

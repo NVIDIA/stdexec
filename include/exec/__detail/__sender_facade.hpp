@@ -139,9 +139,7 @@ namespace exec {
           return __sender_transform_failed{};
         }
       }
-#if __has_builtin(__builtin_unreachable)
-      __builtin_unreachable();
-#endif
+      STDEXEC_UNREACHABLE();
     }
 
     template <class _Kernel, class _Sender, class _Data, class _Receiver>
@@ -152,9 +150,7 @@ namespace exec {
       } else {
         return __kernel.transform_sender((_Sender&&) __sndr, __data, __rcvr);
       }
-#if __has_builtin(__builtin_unreachable)
-      __builtin_unreachable();
-#endif
+      STDEXEC_UNREACHABLE();
     }
 
     template <class _Kernel, class _Sender, class _Env>

@@ -692,7 +692,7 @@ inline void wait_for_value(S&& snd, Ts&&... val) {
   // Ensure that the given sender type has only one variant for set_value calls
   // If not, sync_wait will not work
   static_assert(
-    stdexec::__single_value_variant_sender<S>,
+    stdexec::__single_value_variant_sender<S, ex::__sync_wait::__env>,
     "Sender passed to sync_wait needs to have one variant for sending set_value");
 
   std::optional<std::tuple<Ts...>> res = stdexec::sync_wait((S&&) snd);

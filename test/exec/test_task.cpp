@@ -233,4 +233,42 @@ TEST_CASE("task - stop token is forwarded", "[types][task]") {
   CHECK(stdexec::sync_wait(scope.on_empty()));
 }
 
+TEST_CASE("task - can stop early", "[types][task]") {
+  int count = 0;
+  auto work = [](int& count) -> exec::task<void> {
+    count += 1;
+    co_await [](int& count) -> exec::task<void> {
+      count += 2;
+      co_await stdexec::just_stopped();
+      count += 4;
+    }(count);
+    count += 8;
+  }(count);
+
+  auto res = stdexec::sync_wait(std::move(work));
+  CHECK(!res.has_value());
+  CHECK(count == 3);
+}
+
+TEST_CASE("task - can error early", "[types][task]") {
+  int count = 0;
+  auto work = [](int& count) -> exec::task<void> {
+    count += 1;
+    co_await [](int& count) -> exec::task<void> {
+      count += 2;
+      co_await stdexec::just_error(std::runtime_error("on noes"));
+      count += 4;
+    }(count);
+    count += 8;
+  }(count);
+
+  try {
+    stdexec::sync_wait(std::move(work));
+    CHECK(false);
+  } catch (const std::runtime_error& e) {
+    CHECK(std::string_view(e.what()) == "on noes");
+  }
+  CHECK(count == 3);
+}
+
 #endif

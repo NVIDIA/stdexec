@@ -35,6 +35,11 @@ namespace stdexec {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   STDEXEC_CPO_FWD(struct get_env_t, get_env);
+  namespace __env {
+    struct empty_env;
+  }
+
+  using __env::empty_env;
 
   template <class _EnvProvider>
   using env_of_t = __call_result_t<get_env_t, _EnvProvider>;

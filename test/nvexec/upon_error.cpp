@@ -3,32 +3,11 @@
 
 #include "nvexec/stream_context.cuh"
 #include "common.cuh"
+#include "test_common/type_helpers.hpp"
 
 namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
-
-template <typename... Ts>
-struct type_array { };
-
-struct empty_env { };
-
-template <typename ExpectedValType, typename ActualType>
-inline void check_types_impl() {
-  static_assert(std::is_same<ExpectedValType, ActualType>::value);
-}
-
-template <typename ExpectedValType, typename Env = empty_env, typename S>
-inline void check_val_types(S snd) {
-  using t = typename ex::value_types_of_t<S, Env, type_array, type_array>;
-  check_types_impl<ExpectedValType, t>();
-}
-
-template <typename ExpectedValType, typename Env = empty_env, typename S>
-inline void check_err_types(S snd) {
-  using t = typename ex::error_types_of_t<S, Env, type_array>;
-  check_types_impl<ExpectedValType, t>();
-}
 
 TEST_CASE("nvexec upon_error returns a sender", "[cuda][stream][adaptors][upon_error]") {
   nvexec::stream_context stream_ctx{};

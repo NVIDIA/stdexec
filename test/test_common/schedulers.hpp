@@ -145,9 +145,10 @@ struct impulse_scheduler {
 };
 
 //! Scheduler that executes everything inline, i.e., on the same thread
-struct inline_scheduler {
-  using __id = inline_scheduler;
-  using __t = inline_scheduler;
+template <class Domain = void>
+struct basic_inline_scheduler {
+  using __t = basic_inline_scheduler;
+  using __id = basic_inline_scheduler;
 
   template <typename R>
   struct oper : immovable {
@@ -159,14 +160,13 @@ struct inline_scheduler {
   };
 
   struct my_sender {
-    using __id = my_sender;
     using __t = my_sender;
-
+    using __id = my_sender;
     using is_sender = void;
     using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
     template <typename R>
-    friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
+    friend oper<R> tag_invoke(ex::connect_t, my_sender self, R r) {
       return {{}, (R&&) r};
     }
 
@@ -177,18 +177,26 @@ struct inline_scheduler {
     }
   };
 
-  STDEXEC_DEFINE_CUSTOM(my_sender schedule)(this inline_scheduler, ex::schedule_t) {
+  STDEXEC_DEFINE_CUSTOM(my_sender schedule)(this const inline_scheduler&, ex::schedule_t) {
     return {};
   }
 
-  friend bool operator==(inline_scheduler, inline_scheduler) noexcept {
+  friend bool operator==(const basic_inline_scheduler&, const basic_inline_scheduler&) noexcept {
     return true;
   }
 
-  friend bool operator!=(inline_scheduler, inline_scheduler) noexcept {
+  friend bool operator!=(const basic_inline_scheduler&, const basic_inline_scheduler&) noexcept {
     return false;
   }
+
+  friend Domain tag_invoke(ex::get_domain_t, const basic_inline_scheduler&) noexcept
+    requires(!ex::same_as<Domain, void>)
+  {
+    return Domain();
+  }
 };
+
+using inline_scheduler = basic_inline_scheduler<>;
 
 //! Scheduler that returns a sender that always completes with error.
 template <typename E = std::exception_ptr>
@@ -196,6 +204,17 @@ struct error_scheduler {
   using __id = error_scheduler;
   using __t = error_scheduler;
 
+  error_scheduler() = default;
+
+  error_scheduler(E err)
+    : err_((E&&) err) {
+  }
+
+  error_scheduler(error_scheduler&&) noexcept = default;
+
+  error_scheduler(const error_scheduler&) noexcept = default;
+
+ private:
   template <typename R>
   struct oper : immovable {
     R recv_;

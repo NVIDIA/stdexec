@@ -205,6 +205,13 @@ namespace stdexec {
     move_constructible<__decay_t<_Ty>> && //
     constructible_from<__decay_t<_Ty>, _Ty>;
 
+  template <class _Ty>
+  concept __nothrow_movable_value = //
+    __movable_value<_Ty> &&         //
+    requires(_Ty&& __t) {
+      { __decay_t<_Ty>{__decay_t<_Ty>{(_Ty&&) __t}} } noexcept;
+    };
+
 #if __has_builtin(__is_nothrow_constructible)
   template <class _Ty, class... _As>
   concept __nothrow_constructible_from =

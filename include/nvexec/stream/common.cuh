@@ -315,7 +315,7 @@ namespace nvexec {
 
     template <class BaseEnv>
     auto make_stream_env(BaseEnv&& base_env, stream_provider_t* stream_provider) noexcept {
-      return __env::__join_env(
+      return __join_env(
         __env::__env_fn{[stream_provider](get_stream_provider_t) noexcept {
           return stream_provider;
         }},
@@ -335,7 +335,7 @@ namespace nvexec {
 
     template <class BaseEnv>
     auto make_terminal_stream_env(BaseEnv&& base_env, stream_provider_t* stream_provider) noexcept {
-      return __env::__join_env(
+      return __join_env(
         __env::__env_fn{[stream_provider](get_stream_provider_t) noexcept {
           return stream_provider;
         }},
