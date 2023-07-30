@@ -694,6 +694,22 @@ namespace stdexec {
   inline constexpr set_error_t set_error{};
   inline constexpr set_stopped_t set_stopped{};
 
+  inline constexpr struct __try_call_t {
+    template <class _Receiver, class _Fun, class... _Args>
+      requires __callable<_Fun, _Args...>
+    void operator()(_Receiver&& __rcvr, _Fun __fun, _Args&&... __args) const noexcept {
+      if constexpr (__nothrow_callable<_Fun, _Args...>) {
+        ((_Fun&&) __fun)((_Args&&) __args...);
+      } else {
+        try {
+          ((_Fun&&) __fun)((_Args&&) __args...);
+        } catch (...) {
+          set_error((_Receiver&&) __rcvr, std::current_exception());
+        }
+      }
+    }
+  } __try_call{};
+
   /////////////////////////////////////////////////////////////////////////////
   // completion_signatures
   namespace __compl_sigs {
@@ -5167,24 +5183,17 @@ namespace stdexec {
         template <class... _Args>
         static constexpr bool __nothrow_complete_ = (__nothrow_decay_copyable<_Args> && ...);
 
-        template <bool _CanThrow = false, class _Tag, class... _As>
-        static void __complete(_Tag, __t&& __self, _As&&... __as) noexcept(!_CanThrow) {
-          using _Tuple = __decayed_tuple<_Tag, _As...>;
-          if constexpr (_CanThrow || __nothrow_complete_<_As...>) {
-            // Write the tag and the args into the operation state so that we can
-            // forward the completion from within the scheduler's execution
-            // context.
-            __self.__op_state_->__data_.template emplace<_Tuple>(_Tag(), (_As&&) __as...);
-
-            // enqueue the schedule operation so the completion happens on the
-            // scheduler's execution context.
-            stdexec::start(__self.__op_state_->__state2_);
-          } else
-            try {
-              __complete<true>(_Tag(), (__t&&) __self, (_As&&) __as...);
-            } catch (...) {
-              stdexec::set_error((__t&&) __self, std::current_exception());
-            }
+        template <class _Tag, class... _Args>
+        static void __complete_(_Tag, __t&& __self, _Args&&... __args) //
+          noexcept(__nothrow_complete_<_Args...>) {
+          // Write the tag and the args into the operation state so that
+          // we can forward the completion from within the scheduler's
+          // execution context.
+          __self.__op_state_->__data_.template emplace<__decayed_tuple<_Tag, _Args...>>(
+            _Tag{}, (_Args&&) __args...);
+          // Enqueue the schedule operation so the completion happens
+          // on the scheduler's execution context.
+          start(__self.__op_state_->__state2_);
         }
 
         // BUGBUG TODO constrain these
@@ -5200,13 +5209,22 @@ namespace stdexec {
         }
 
         template <same_as<set_error_t> _Tag, class _Error>
-        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __self, _Tag, _Error&& __err) noexcept {
-          __complete(_Tag(), (__t&&) __self, (_Error&&) __err);
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __self, _Tag __tag, _Error&& __err) noexcept {
+          __try_call(
+            (_Receiver&&) __self.__op_state_->__rcvr_,
+            __function_constant_v<__complete_<_Tag, _Error>>,
+            (_Tag&&) __tag,
+            (__t&&) __self,
+            (_Error&&) __err);
         }
 
         template <same_as<set_stopped_t> _Tag>
-        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag) noexcept {
-          __complete(_Tag(), (__t&&) __self);
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag __tag) noexcept {
+          __try_call(
+            (_Receiver&&) __self.__op_state_->__rcvr_,
+            __function_constant_v<__complete_<_Tag>>,
+            (_Tag&&) __tag,
+            (__t&&) __self);
         }
 
         STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(
