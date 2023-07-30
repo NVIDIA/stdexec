@@ -170,14 +170,14 @@ struct basic_inline_scheduler {
       return {{}, (R&&) r};
     }
 
-    STDEXEC_DEFINE_CUSTOM(scheduler_env<inline_scheduler> get_env)(
+    STDEXEC_DEFINE_CUSTOM(scheduler_env<basic_inline_scheduler> get_env)(
       this const my_sender&,
       ex::get_env_t) noexcept {
       return {};
     }
   };
 
-  STDEXEC_DEFINE_CUSTOM(my_sender schedule)(this const inline_scheduler&, ex::schedule_t) {
+  STDEXEC_DEFINE_CUSTOM(my_sender schedule)(this const basic_inline_scheduler&, ex::schedule_t) {
     return {};
   }
 

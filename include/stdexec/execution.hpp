@@ -573,11 +573,10 @@ namespace stdexec {
     }
   };
 
-  inline constexpr get_env_t get_env{};
-
   using __env::no_env;
   using __env::empty_env;
   using __empty_env [[deprecated("Please use stdexec::empty_env now.")]] = empty_env;
+
   using __env::__with;
   using __env::__with_;
   using __env::__env_promise;
@@ -585,7 +584,7 @@ namespace stdexec {
 
   inline constexpr __env::__make_env_t __make_env{};
   inline constexpr __env::__join_env_t __join_env{};
-  inline constexpr __env::get_env_t get_env{};
+  inline constexpr get_env_t get_env{};
 
   template <class... _Ts>
   using __make_env_t = __call_result_t<__env::__make_env_t, _Ts...>;
@@ -595,11 +594,6 @@ namespace stdexec {
 #else
   using __default_env = empty_env;
 #endif
-
-  inline constexpr __env::__make_env_t __make_env{};
-
-  template <class... _Ts>
-  using __make_env_t = __call_result_t<__env::__make_env_t, _Ts...>;
 
   template <class _EnvProvider>
   concept environment_provider = //
@@ -1151,9 +1145,10 @@ namespace stdexec {
 
     template <class _Sender, class _Env = no_env>
     concept __with_member_alias = __valid<__member_alias_t, _Sender, _Env>;
+  } // namespace __get_completion_signatures
 
-    struct get_completion_signatures_t {
-      template <class _Sender, class _Env>
+  STDEXEC_DEFINE_CPO(struct get_completion_signatures_t, get_completion_signatures) {
+    template <class _Sender, class _Env>
       static auto __impl() {
         static_assert(STDEXEC_LEGACY_R5_CONCEPTS() || !same_as<_Env, no_env>);
         static_assert(sizeof(_Sender), "Incomplete type used with get_completion_signatures");
@@ -1208,65 +1203,6 @@ namespace stdexec {
         -> decltype(__impl<_Sender, _Env>()()) {
         return {};
       }
-    };
-  } // namespace __get_completion_signatures
-
-  STDEXEC_DEFINE_CPO(struct get_completion_signatures_t, get_completion_signatures) {
-    template <class _Sender, class _Env>
-    static auto __impl() {
-      static_assert(STDEXEC_LEGACY_R5_CONCEPTS() || !same_as<_Env, no_env>);
-      static_assert(sizeof(_Sender), "Incomplete type used with get_completion_signatures");
-      static_assert(sizeof(_Env), "Incomplete type used with get_completion_signatures");
-      if constexpr (__with_tag_invoke<_Sender, _Env>) {
-        using _Result = tag_invoke_result_t<get_completion_signatures_t, _Sender, _Env>;
-        if constexpr (same_as<_Env, no_env> && __merror<_Result>) {
-          return (dependent_completion_signatures<no_env>(*)()) nullptr;
-        } else {
-          return (_Result(*)()) nullptr;
-        }
-      } else if constexpr (__with_member_alias<_Sender>) {
-        return (__member_alias_t<_Sender, _Env>(*)()) nullptr;
-      } else if constexpr (__awaitable<_Sender, __env_promise<_Env>>) {
-        using _Result = __await_result_t<_Sender, __env_promise<_Env>>;
-        if constexpr (same_as<_Result, dependent_completion_signatures<no_env>>) {
-          return (dependent_completion_signatures<no_env>(*)()) nullptr;
-        } else {
-          return (completion_signatures<
-                  // set_value_t() or set_value_t(T)
-                  __minvoke<__remove<void, __qf<set_value_t>>, _Result>,
-                  set_error_t(std::exception_ptr),
-                  set_stopped_t()>(*)()) nullptr;
-        }
-      } else
-#if STDEXEC_LEGACY_R5_CONCEPTS()
-        if constexpr (__r7_style_sender<_Sender, _Env>) {
-        return (dependent_completion_signatures<no_env>(*)()) nullptr;
-      } else
-#endif
-        if constexpr (__is_debug_env<_Env>) {
-        using __tag_invoke::tag_invoke;
-        // This ought to cause a hard error that indicates where the problem is.
-        using _Completions
-          [[maybe_unused]] = tag_invoke_result_t<get_completion_signatures_t, _Sender, _Env>;
-        return (__debug::__completion_signatures(*)()) nullptr;
-      } else {
-        return (void (*)()) nullptr;
-      }
-    }
-
-    template <class _Sender, class _Env = __default_env>
-      requires(
-        __with_tag_invoke<_Sender, _Env> ||          //
-        __with_member_alias<_Sender> ||              //
-        __awaitable<_Sender, __env_promise<_Env>> || //
-#if STDEXEC_LEGACY_R5_CONCEPTS()                     //
-        __r7_style_sender<_Sender, _Env> ||          //
-#endif                                               //
-        __is_debug_env<_Env>)                        //
-    constexpr auto operator()(_Sender&&, const _Env&) const noexcept
-      -> decltype(__impl<_Sender, _Env>()()) {
-      return {};
-    }
   };
 
   /////////////////////////////////////////////////////////////////////////////
@@ -3261,31 +3197,56 @@ namespace stdexec {
         using __id = __receiver;
         __data* __op_;
 
-        template <same_as<set_value_t> _Tag, class... _Args>
-          requires __callable<_Tag, _Receiver, _Args...>
-        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag __tag, _Args&&... __args) noexcept {
-          __tag((_Receiver&&) __self.__op_->__rcvr_, (_Args&&) __args...);
-        }
-
         // Customize set_error by invoking the invocable and passing the result
-        // to the base class
-        template <same_as<set_error_t> _Tag, class _Error>
+        // to the downstream receiver
+        template <__same_as<set_error_t> _Tag, class _Error>
           requires invocable<_Fun, _Error> && __receiver_of_invoke_result<_Receiver, _Fun, _Error>
         STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& __self, _Tag, _Error&& __error) noexcept {
           stdexec::__set_value_invoke(
             (_Receiver&&) __self.__op_->__rcvr_, (_Fun&&) __self.__op_->__fun_, (_Error&&) __error);
         }
 
-        template <same_as<set_stopped_t> _Tag>
+        template <__same_as<set_value_t> _Tag, class... _As>
+          requires __callable<_Tag, _Receiver, _As...>
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& __self, _Tag __tag, _As&&... __as) noexcept {
+          __tag((_Receiver&&) __self.__op_->__rcvr_, (_As&&) __as...);
+        }
+
+        template <__same_as<set_stopped_t> _Tag>
           requires __callable<_Tag, _Receiver>
         STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag __tag) noexcept {
           __tag((_Receiver&&) __self.__op_->__rcvr_);
         }
 
-        STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(
           this const __t& __self,
-          get_env_t) noexcept {
-          return stdexec::get_env(__self.__rcvr_);
+          get_env_t) noexcept -> env_of_t<const _Receiver&> {
+          return stdexec::get_env(__self.__op_->__rcvr_);
+        }
+      };
+    };
+
+    template <class _CvrefSender, class _ReceiverId, class _Fun>
+    struct __operation {
+      using _Receiver = stdexec::__t<_ReceiverId>;
+      using __receiver_id = __receiver<_ReceiverId, _Fun>;
+      using __receiver_t = stdexec::__t<__receiver_id>;
+
+      struct __t : __immovable {
+        using __id = __operation;
+        typename __receiver_id::__data __data_;
+        connect_result_t<_CvrefSender, __receiver_t> __op_;
+
+        __t(_CvrefSender&& __sndr, _Receiver __rcvr, _Fun __fun) //
+          noexcept(__nothrow_decay_copyable<_Receiver>           //
+                     && __nothrow_decay_copyable<_Fun>           //
+                       && __nothrow_connectable<_CvrefSender, __receiver_t>)
+          : __data_{(_Receiver&&) __rcvr, (_Fun&&) __fun}
+          , __op_(connect((_CvrefSender&&) __sndr, __receiver_t{&__data_})) {
+        }
+
+        STDEXEC_DEFINE_CUSTOM(void tag_invoke)(this __t& __self, start_t) noexcept {
+          start(__self.__op_);
         }
       };
     };
@@ -3408,13 +3369,14 @@ namespace stdexec {
 
         template <same_as<set_stopped_t> _Tag>
         STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& __self, _Tag) noexcept {
-          stdexec::__set_value_invoke((_Receiver&&) __self.__op_->__rcvr_, (_Fun&&) __self.__fun_);
+          stdexec::__set_value_invoke((_Receiver&&) __self.__op_->__rcvr_, (_Fun&&) __self.__op_->__fun_);
         }
 
         STDEXEC_DEFINE_CUSTOM(env_of_t<_Receiver> get_env)(
           this const __t& __self,
           get_env_t) noexcept {
           return stdexec::get_env(__self.__op_->__rcvr_);
+        }
       };
     };
 
