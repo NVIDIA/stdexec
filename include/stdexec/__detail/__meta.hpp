@@ -973,7 +973,6 @@ namespace stdexec {
     static_assert(_Offset == 0, "nested pack expressions are not supported");
     using _Pattern = __mback<_Args...>;
     static constexpr std::size_t __offset = __get_placeholder_offset((__mtype<_Pattern>*) nullptr);
-    static_assert(__offset == 1);
 
     struct __impl {
       template <std::size_t... _Idx, class... _Ts>

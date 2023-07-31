@@ -31,10 +31,10 @@
 #include "__detail/__execution_fwd.hpp"
 #include "__detail/__cpo.hpp"
 
-#include "__detail/__basic_sender.hpp"
 #include "__detail/__intrusive_ptr.hpp"
 #include "__detail/__meta.hpp"
 #include "__detail/__scope.hpp"
+#include "__detail/__sender_utils.hpp"
 #include "functional.hpp"
 #include "concepts.hpp"
 #include "coroutine.hpp"
@@ -2528,10 +2528,10 @@ namespace stdexec {
     struct __just_impl {
       template <class _Sender>
       using __compl_sigs = completion_signatures<__mapply<__qf<_SetTag>, __data_of<_Sender>>>;
-      template <__basic_sender_for<_JustTag> _Sender>
+      template <__lazy_sender_for<_JustTag> _Sender>
       static __compl_sigs<_Sender> get_completion_signatures(_Sender&&, __ignore);
 
-      template <__basic_sender_for<_JustTag> _Sender, receiver_of<__compl_sigs<_Sender>> _Receiver>
+      template <__lazy_sender_for<_JustTag> _Sender, receiver_of<__compl_sigs<_Sender>> _Receiver>
       static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
         __nothrow_callable< __sender_apply_fn, _Sender, __connect_fn<_SetTag, _Receiver>>)
         -> __call_result_t< __sender_apply_fn, _Sender, __connect_fn<_SetTag, _Receiver>> {
@@ -3015,7 +3015,7 @@ namespace stdexec {
 
   template <class _Tag>
   struct __default_get_env {
-    template <__basic_sender_for<_Tag> _Sender>
+    template <__lazy_sender_for<_Tag> _Sender>
     static auto get_env(const _Sender& __sndr) noexcept
       -> __call_result_t<__sender_apply_fn, const _Sender&, __get_env_fn> {
       return __sender_apply(__sndr, __get_env_fn());
@@ -3152,7 +3152,7 @@ namespace stdexec {
       friend struct stdexec::__basic_sender;
 #endif
 
-      template <__basic_sender_for<then_t> _Sender, class _Env>
+      template <__lazy_sender_for<then_t> _Sender, class _Env>
       static auto get_completion_signatures(_Sender&& __sndr, _Env&&) {
         return __sender_apply(
           (_Sender&&) __sndr, //
@@ -3168,7 +3168,7 @@ namespace stdexec {
           });
       }
 
-      template <__basic_sender_for<then_t> _Sender, receiver _Receiver>
+      template <__lazy_sender_for<then_t> _Sender, receiver _Receiver>
       static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
         __nothrow_callable< __sender_apply_fn, _Sender, __connect_fn<_Receiver>>)
         -> __call_result_t< __sender_apply_fn, _Sender, __connect_fn<_Receiver>> {
@@ -3310,7 +3310,7 @@ namespace stdexec {
       friend struct stdexec::__basic_sender;
 #endif
 
-      template <__basic_sender_for<upon_error_t> _Sender, class _Env>
+      template <__lazy_sender_for<upon_error_t> _Sender, class _Env>
       static auto get_completion_signatures(_Sender&& __sndr, _Env&&) {
         return __sender_apply(
           (_Sender&&) __sndr, //
@@ -3326,7 +3326,7 @@ namespace stdexec {
           });
       }
 
-      template <__basic_sender_for<upon_error_t> _Sender, receiver _Receiver>
+      template <__lazy_sender_for<upon_error_t> _Sender, receiver _Receiver>
       static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
         __nothrow_callable< __sender_apply_fn, _Sender, __connect_fn<_Receiver>>)
         -> __call_result_t< __sender_apply_fn, _Sender, __connect_fn<_Receiver>> {
@@ -3467,7 +3467,7 @@ namespace stdexec {
       friend struct stdexec::__basic_sender;
 #endif
 
-      template <__basic_sender_for<upon_stopped_t> _Sender, class _Env>
+      template <__lazy_sender_for<upon_stopped_t> _Sender, class _Env>
       static auto get_completion_signatures(_Sender&& __sndr, _Env&&) {
         return __sender_apply(
           (_Sender&&) __sndr, //
@@ -3483,7 +3483,7 @@ namespace stdexec {
           });
       }
 
-      template <__basic_sender_for<upon_stopped_t> _Sender, receiver _Receiver>
+      template <__lazy_sender_for<upon_stopped_t> _Sender, receiver _Receiver>
       static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
         __nothrow_callable< __sender_apply_fn, _Sender, __connect_fn<_Receiver>>)
         -> __call_result_t< __sender_apply_fn, _Sender, __connect_fn<_Receiver>> {
@@ -3679,7 +3679,7 @@ namespace stdexec {
       friend struct stdexec::__basic_sender;
 #endif
 
-      template <__basic_sender_for<bulk_t> _Sender, class _Env>
+      template <__lazy_sender_for<bulk_t> _Sender, class _Env>
       static auto get_completion_signatures(_Sender&& __sndr, _Env&&) {
         return __sender_apply(
           (_Sender&&) __sndr, //
@@ -3697,7 +3697,7 @@ namespace stdexec {
           });
       }
 
-      template <__basic_sender_for<bulk_t> _Sender, receiver _Receiver>
+      template <__lazy_sender_for<bulk_t> _Sender, receiver _Receiver>
       static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
         __nothrow_callable< __sender_apply_fn, _Sender, __connect_fn<_Receiver>>)
         -> __call_result_t< __sender_apply_fn, _Sender, __connect_fn<_Receiver>> {

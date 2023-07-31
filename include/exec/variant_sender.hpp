@@ -67,12 +67,15 @@ namespace exec {
 
       class __t : private std::variant<stdexec::__t<_SenderIds>...> {
         using __variant_t = std::variant<stdexec::__t<_SenderIds>...>;
+
         __variant_t&& base() && noexcept {
           return std::move(*this);
         }
+
         __variant_t& base() & noexcept {
           return *this;
         }
+
         const __variant_t& base() const & noexcept {
           return *this;
         }
@@ -110,7 +113,8 @@ namespace exec {
         using __variant_t::operator=;
         using __variant_t::index;
         using __variant_t::emplace;
-        using __variant_t::swap;      };
+        using __variant_t::swap;
+      };
     };
   }
 

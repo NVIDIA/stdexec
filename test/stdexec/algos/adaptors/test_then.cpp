@@ -198,7 +198,7 @@ TEST_CASE("then can be customized early", "[adaptors][then]") {
 struct my_domain {
   template <class Sender, class Env>
   static auto transform_sender(Sender snd, const Env&) {
-    if constexpr (ex::__basic_sender_for<Sender, ex::then_t>)
+    if constexpr (ex::__lazy_sender_for<Sender, ex::then_t>)
       return ex::just(std::string{"hallo"});
     else
       return (Sender&&) snd;
