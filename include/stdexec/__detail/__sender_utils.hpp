@@ -30,19 +30,19 @@ namespace stdexec {
     using __impl_of = decltype((__declval<_Sender>().__impl_));
 
     struct __get_tag {
-      template <class _Tag>
-      _Tag operator()(_Tag, __ignore...) const noexcept;
+      template <class _Tag, class... _Rest>
+      _Tag operator()(_Tag, _Rest&&...) const noexcept;
     };
 
     struct __get_data {
-      template <class _Data>
-      _Data operator()(__ignore, _Data, ...) const noexcept;
+      template <class _Data, class... _Rest>
+      _Data operator()(__ignore, _Data&&, _Rest&&...) const noexcept;
     };
 
     template <class _Continuation>
     struct __get_children {
       template <class... _Children>
-      auto operator()(__ignore, __ignore, _Children...) const noexcept
+      auto operator()(__ignore, __ignore, _Children&&...) const noexcept
         -> __mtype<__minvoke<_Continuation, _Children...>> (*)();
     };
   } // namespace __detail
@@ -68,8 +68,10 @@ namespace stdexec {
     }
 
     template <same_as<get_env_t> _Tag, same_as<__basic_sender> _Self>
-    friend auto tag_invoke(_Tag, const _Self& __self) noexcept
-      -> __msecond< __if_c<same_as<_Tag, get_env_t>>, decltype(__self.__tag().get_env(__self))> {
+    friend auto tag_invoke(_Tag, const _Self& __self) noexcept //
+      -> __msecond<
+        __if_c<same_as<_Tag, get_env_t>>, //
+        decltype(__self.__tag().get_env(__self))> {
       static_assert(noexcept(__self.__tag().get_env(__self)));
       return __tag_t::get_env(__self);
     }
@@ -111,22 +113,22 @@ namespace stdexec {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __make_basic_sender
-  template <class _Tag, class _Data = __, class... _Children>
-  STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-    auto
-    __make_basic_sender(_Data __data = {}, _Children... __children) {
-    using __tag_t = _Tag;
+  inline constexpr auto __make_basic_sender = //
+    []<class _Tag, class _Data = __, class... _Children>(
+      _Tag,
+      _Data __data = {},
+      _Children... __children) {
     return __basic_sender{
       [__data = (_Data&&) __data, ... __children = (_Children&&) __children] //
       <class _Cvref, class _Fun>(_Cvref, _Fun && __fun) mutable noexcept(
         __nothrow_callable<_Fun, _Tag, __minvoke<_Cvref, _Data>, __minvoke<_Cvref, _Children>...>)
         -> __call_result_t<_Fun, _Tag, __minvoke<_Cvref, _Data>, __minvoke<_Cvref, _Children>...> {
         return static_cast<_Fun&&>(__fun)(
-          __tag_t(),
+          _Tag(),
           const_cast<__minvoke<_Cvref, _Data>&&>(__data),
           const_cast<__minvoke<_Cvref, _Children>&&>(__children)...);
       }};
-  }
+  };
 
   namespace __detail {
     struct __sender_apply_fn {
@@ -153,6 +155,9 @@ namespace stdexec {
   template <class _Sender, class _Continuation = __q<__types>>
   using __children_of = __t<__call_result_t<
     __call_result_t<__sender_apply_fn, _Sender, __detail::__get_children<_Continuation>>>>;
+
+  template <class _Sender>
+  inline constexpr std::size_t __nbr_children_of = __v<__children_of<_Sender, __msize>>;
 
   template <class _Sender, class _Tag>
   concept __lazy_sender_for = //
