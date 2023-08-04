@@ -26,6 +26,7 @@ using stdexec::sync_wait;
 int main() {
   exec::static_thread_pool ctx{8};
   scheduler auto sch = ctx.get_scheduler();                              // 1
+                                                                         //
   sender auto begin = schedule(sch);                                     // 2
   sender auto hi_again = then(                                           // 3
     begin,                                                               // 3
