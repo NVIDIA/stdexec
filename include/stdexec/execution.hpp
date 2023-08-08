@@ -4938,8 +4938,8 @@ namespace stdexec {
         set_error_t,
         set_stopped_t>>;
 
-    template <class _SchedulerId, class _CvrefSenderId, class _ReceiverId>
-    struct __operation1;
+    template <class _SchedulerId, class _Variant, class _ReceiverId>
+    struct __operation1_base;
 
     // This receiver is to be completed on the execution context
     // associated with the scheduler. When the source sender
@@ -4948,14 +4948,14 @@ namespace stdexec {
     // read the completion out of the operation state and forward it
     // to the output receiver after transitioning to the scheduler's
     // context.
-    template <class _SchedulerId, class _CvrefSenderId, class _ReceiverId>
+    template <class _SchedulerId, class _Variant, class _ReceiverId>
     struct __receiver2 {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
         using is_receiver = void;
         using __id = __receiver2;
-        stdexec::__t<__operation1<_SchedulerId, _CvrefSenderId, _ReceiverId>>* __op_state_;
+        __operation1_base<_SchedulerId, _Variant, _ReceiverId>* __op_state_;
 
         // If the work is successfully scheduled on the new execution
         // context and is ready to run, forward the completion signal in
@@ -4984,15 +4984,15 @@ namespace stdexec {
     // context of the scheduler. That second receiver will read the
     // completion information out of the operation state and propagate
     // it to the output receiver from within the desired context.
-    template <class _SchedulerId, class _CvrefSenderId, class _ReceiverId>
+    template <class _SchedulerId, class _Variant, class _ReceiverId>
     struct __receiver1 {
       using _Scheduler = stdexec::__t<_SchedulerId>;
       using _Receiver = stdexec::__t<_ReceiverId>;
-      using __receiver2_t = stdexec::__t<__receiver2<_SchedulerId, _CvrefSenderId, _ReceiverId>>;
+      using __receiver2_t = stdexec::__t<__receiver2<_SchedulerId, _Variant, _ReceiverId>>;
 
       struct __t {
         using is_receiver = void;
-        stdexec::__t<__operation1<_SchedulerId, _CvrefSenderId, _ReceiverId>>* __op_state_;
+        __operation1_base<_SchedulerId, _Variant, _ReceiverId>* __op_state_;
 
         template <class... _Args>
         static constexpr bool __nothrow_complete_ = (__nothrow_decay_copyable<_Args> && ...);
@@ -5027,51 +5027,61 @@ namespace stdexec {
       };
     };
 
+    template <class _SchedulerId, class _Variant, class _ReceiverId>
+    struct __operation1_base : __immovable {
+      using _Scheduler = stdexec::__t<_SchedulerId>;
+      using _Receiver = stdexec::__t<_ReceiverId>;
+      using __receiver2_t = stdexec::__t<__receiver2<_SchedulerId, _Variant, _ReceiverId>>;
+
+      _Scheduler __sched_;
+      _Receiver __rcvr_;
+      _Variant __data_;
+      connect_result_t<schedule_result_t<_Scheduler>, __receiver2_t> __state2_;
+
+      __operation1_base(_Scheduler __sched, _Receiver&& __rcvr)
+        : __sched_((_Scheduler&&) __sched)
+        , __rcvr_((_Receiver&&) __rcvr)
+        , __state2_(connect(schedule(__sched_), __receiver2_t{this})) {
+      }
+
+      void __complete() noexcept {
+        STDEXEC_ASSERT(!__data_.valueless_by_exception());
+        std::visit(
+          [this]<class _Tup>(_Tup& __tupl) -> void {
+            if constexpr (same_as<_Tup, std::monostate>) {
+              std::terminate(); // reaching this indicates a bug in schedule_from
+            } else {
+              std::apply(
+                [&]<class... _Args>(auto __tag, _Args&... __args) -> void {
+                  __tag((_Receiver&&) __rcvr_, (_Args&&) __args...);
+                },
+                __tupl);
+            }
+          },
+          __data_);
+      }
+    };
+
     template <class _SchedulerId, class _CvrefSenderId, class _ReceiverId>
     struct __operation1 {
       using _Scheduler = stdexec::__t<_SchedulerId>;
       using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
       using _Receiver = stdexec::__t<_ReceiverId>;
-      using __receiver1_t = stdexec::__t<__receiver1<_SchedulerId, _CvrefSenderId, _ReceiverId>>;
-      using __receiver2_t = stdexec::__t<__receiver2<_SchedulerId, _CvrefSenderId, _ReceiverId>>;
       using __variant_t = __variant_for_t<_CvrefSender, env_of_t<_Receiver>>;
+      using __receiver1_t = stdexec::__t<__receiver1<_SchedulerId, __variant_t, _ReceiverId>>;
+      using __base_t = __operation1_base<_SchedulerId, __variant_t, _ReceiverId>;
 
-      struct __t {
+      struct __t : __base_t {
         using __id = __operation1;
-        _Scheduler __sched_;
-        _Receiver __rcvr_;
-        __variant_t __data_;
         connect_result_t<_CvrefSender, __receiver1_t> __state1_;
-        connect_result_t<schedule_result_t<_Scheduler>, __receiver2_t> __state2_;
 
         __t(_Scheduler __sched, _CvrefSender&& __sndr, _Receiver&& __rcvr)
-          : __sched_((_Scheduler&&) __sched)
-          , __rcvr_((_Receiver&&) __rcvr)
-          , __state1_(connect((_CvrefSender&&) __sndr, __receiver1_t{this}))
-          , __state2_(connect(schedule(__sched_), __receiver2_t{this})) {
+          : __base_t{(_Scheduler&&) __sched, (_Receiver&&) __rcvr}
+          , __state1_(connect((_CvrefSender&&) __sndr, __receiver1_t{this})) {
         }
-
-        STDEXEC_IMMOVABLE(__t);
 
         friend void tag_invoke(start_t, __t& __op_state) noexcept {
           start(__op_state.__state1_);
-        }
-
-        void __complete() noexcept {
-          STDEXEC_ASSERT(!__data_.valueless_by_exception());
-          std::visit(
-            [&]<class _Tup>(_Tup& __tupl) -> void {
-              if constexpr (same_as<_Tup, std::monostate>) {
-                std::terminate(); // reaching this indicates a bug in schedule_from
-              } else {
-                std::apply(
-                  [&]<class... _Args>(auto __tag, _Args&... __args) -> void {
-                    __tag((_Receiver&&) __rcvr_, (_Args&&) __args...);
-                  },
-                  __tupl);
-              }
-            },
-            __data_);
         }
       };
     };
