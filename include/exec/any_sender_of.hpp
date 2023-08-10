@@ -28,7 +28,7 @@ namespace exec {
       template <class _VTable, class _Tp>
         requires __tag_invocable_r<const _VTable*, __create_vtable_t, __mtype<_VTable>, __mtype<_Tp>>
       constexpr const _VTable* operator()(__mtype<_VTable>, __mtype<_Tp>) const noexcept {
-        return tag_invoke(__create_vtable_t{}, __mtype<_VTable>{}, __mtype<_Tp>{});
+        return stdexec::tag_invoke(__create_vtable_t{}, __mtype<_VTable>{}, __mtype<_Tp>{});
       }
     };
 
@@ -169,7 +169,7 @@ namespace exec {
         requires tag_invocable<__delete_t, __mtype<_Tp>, _Storage&>
       void operator()(__mtype<_Tp>, _Storage& __storage) noexcept {
         static_assert(nothrow_tag_invocable<__delete_t, __mtype<_Tp>, _Storage&>);
-        tag_invoke(__delete_t{}, __mtype<_Tp>{}, __storage);
+        stdexec::tag_invoke(__delete_t{}, __mtype<_Tp>{}, __storage);
       }
     };
 
@@ -180,7 +180,7 @@ namespace exec {
         requires tag_invocable<__copy_construct_t, __mtype<_Tp>, _Storage&, const _Storage&>
       void operator()(__mtype<_Tp>, _Storage& __self, const _Storage& __from) noexcept(
         nothrow_tag_invocable<__copy_construct_t, __mtype<_Tp>, _Storage&, const _Storage&>) {
-        tag_invoke(__copy_construct_t{}, __mtype<_Tp>{}, __self, __from);
+        stdexec::tag_invoke(__copy_construct_t{}, __mtype<_Tp>{}, __self, __from);
       }
     };
 
@@ -192,7 +192,7 @@ namespace exec {
       void operator()(__mtype<_Tp>, _Storage& __self, __midentity<_Storage&&> __from) noexcept {
         static_assert(
           nothrow_tag_invocable<__move_construct_t, __mtype<_Tp>, _Storage&, _Storage&&>);
-        tag_invoke(__move_construct_t{}, __mtype<_Tp>{}, __self, (_Storage&&) __from);
+        stdexec::tag_invoke(__move_construct_t{}, __mtype<_Tp>{}, __self, (_Storage&&) __from);
       }
     };
 
@@ -1086,7 +1086,7 @@ namespace exec {
       requires stdexec::tag_invocable< _Tag, stdexec::__copy_cvref_t<Self, __receiver_base>, _As...>
     friend auto tag_invoke(_Tag, Self&& __self, _As&&... __as) noexcept(
       std::is_nothrow_invocable_v< _Tag, stdexec::__copy_cvref_t<Self, __receiver_base>, _As...>) {
-      return tag_invoke(_Tag{}, ((Self&&) __self).__receiver_, (_As&&) __as...);
+      return stdexec::tag_invoke(_Tag{}, ((Self&&) __self).__receiver_, (_As&&) __as...);
     }
 
    public:
@@ -1112,7 +1112,7 @@ namespace exec {
         requires stdexec::tag_invocable< _Tag, stdexec::__copy_cvref_t<Self, __sender_base>, _As...>
       friend auto tag_invoke(_Tag, Self&& __self, _As&&... __as) noexcept(
         std::is_nothrow_invocable_v< _Tag, stdexec::__copy_cvref_t<Self, __sender_base>, _As...>) {
-        return tag_invoke(_Tag{}, ((Self&&) __self).__sender_, (_As&&) __as...);
+        return stdexec::tag_invoke(_Tag{}, ((Self&&) __self).__sender_, (_As&&) __as...);
       }
      public:
       using is_sender = void;
@@ -1176,7 +1176,7 @@ namespace exec {
               _Tag,
               stdexec::__copy_cvref_t<Self, __scheduler_base>,
               _As...>) {
-          return tag_invoke(_Tag{}, ((Self&&) __self).__scheduler_, (_As&&) __as...);
+          return stdexec::tag_invoke(_Tag{}, ((Self&&) __self).__scheduler_, (_As&&) __as...);
         }
 
         friend bool
