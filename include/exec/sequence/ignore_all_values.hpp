@@ -177,7 +177,7 @@ namespace exec {
         using is_receiver = void;
         __operation_base<_Receiver, _ResultVariant>* __op_;
 
-        template <same_as<set_next_t> _SetNext, same_as<__t> _Self, class _Item>
+        template <same_as<set_next_t> _SetNext, same_as<__t> _Self, sender _Item>
         friend auto tag_invoke(_SetNext, _Self& __self, _Item&& __item) //
           noexcept(__nothrow_decay_copyable<_Item>)
             -> stdexec::__t<__item_sender<__decay_t<_Item>, _ResultVariant>> {
