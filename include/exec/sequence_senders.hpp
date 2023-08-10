@@ -342,11 +342,17 @@ namespace exec {
             "exec::subscribe(sender, receiver) must return a type that "
             "satisfies the operation_state concept");
           return tag_invoke(subscribe_t{}, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
-        } else {
+        } else if constexpr (enable_sequence_sender<stdexec::__decay_t<_Sender>>) {
           // This should generate an instantiate backtrace that contains useful
           // debugging information.
           using __tag_invoke::tag_invoke;
           tag_invoke(*this, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
+        } else {
+          __next_sender_of_t<_Receiver, _Sender> __next = set_next(__rcvr, (_Sender&&) __sndr);
+          return tag_invoke(
+            connect_t{},
+            (__next_sender_of_t<_Receiver, _Sender>&&) __next,
+            __stopped_means_break_t<_Receiver>{(_Receiver&&) __rcvr});
         }
       }
 
