@@ -218,7 +218,8 @@ namespace exec {
       __gather_types<set_stopped_t, _Sigs>>;
 
     template <class _Sender, class _Env>
-    using __result_variant_t = __result_variant_<completion_signatures_of_t<_Sender, _Env>>;
+    using __result_variant_t =
+      __result_variant_<__sequence_completion_signatures_of_t<_Sender, _Env>>;
 
     template <class _Sender, class _Receiver>
     struct __operation {
