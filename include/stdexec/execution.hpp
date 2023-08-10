@@ -5124,7 +5124,7 @@ namespace stdexec {
         template <class _Self, class _Receiver>
         using __receiver_t = //
           stdexec::__t<
-            __receiver1<_SchedulerId, stdexec::__cvref_id<_Self, _Sender>, stdexec::__id<_Receiver>>>;
+            __receiver1<_SchedulerId, __variant_for_t<_Self, env_of_t<_Receiver>>, stdexec::__id<_Receiver>>>;
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
