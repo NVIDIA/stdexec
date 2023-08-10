@@ -148,45 +148,44 @@ namespace exec {
   concept __has_item_typedef = requires { typename _Tp::item_types; };
 
   struct get_item_types_t {
-    template <class _Tp, class _Env>
-      requires stdexec::tag_invocable<get_item_types_t, _Tp, _Env>
-    auto operator()(_Tp&& __obj, _Env&& __env) const
-      noexcept(stdexec::nothrow_tag_invocable<get_item_types_t, _Tp, _Env>)
-        -> stdexec::tag_invoke_result_t<get_item_types_t, _Tp, _Env> {
-      return tag_invoke(*this, (_Tp&&) __obj, (_Env&&) __env);
+    template <class _Tp>
+      requires stdexec::tag_invocable<get_item_types_t, _Tp>
+    auto operator()(_Tp&& __obj) const
+      noexcept(stdexec::nothrow_tag_invocable<get_item_types_t, _Tp>)
+        -> stdexec::tag_invoke_result_t<get_item_types_t, _Tp> {
+      return tag_invoke(*this, (_Tp&&) __obj);
     }
 
-    template <class _Tp, class _Env>
-      requires(!stdexec::tag_invocable<get_item_types_t, _Tp, _Env>) && __has_item_typedef<_Tp>
-    auto operator()(_Tp&& __obj, _Env&& __env) const noexcept -> typename _Tp::item_types;
+    template <class _Tp>
+      requires(!stdexec::tag_invocable<get_item_types_t, _Tp>) && __has_item_typedef<_Tp>
+    auto operator()(_Tp&& __obj) const noexcept -> typename _Tp::item_types;
 
-    template <class _Tp, class _Env>
-      requires(!stdexec::tag_invocable<get_item_types_t, _Tp, _Env>)
+    template <class _Tp>
+      requires(!stdexec::tag_invocable<get_item_types_t, _Tp>)
            && (!__has_item_typedef<_Tp>) && stdexec::sender<_Tp>
-    auto operator()(_Tp&& __obj, _Env&& __env) const noexcept -> item_types<_Tp>;
+    auto operator()(_Tp&& __obj) const noexcept -> item_types<_Tp>;
   };
 
   inline constexpr get_item_types_t get_item_types{};
 
-  template <class _Sender, class _Env>
-  using item_types_of_t = decltype(get_item_types(
-    stdexec::__declval<stdexec::__decay_t<_Sender>>(),
-    stdexec::__declval<_Env>()));
+  template <class _Sender>
+  using item_types_of_t =
+    decltype(get_item_types(stdexec::__declval<stdexec::__decay_t<_Sender>>()));
 
   template <class _Sender>
   concept sequence_sender =     //
     stdexec::sender<_Sender> && //
     enable_sequence_sender<stdexec::__decay_t<_Sender>>;
 
-  template <class _Sender, class _Env>
-  concept has_sequence_item_types = requires(_Sender&& __sndr, _Env&& __env) {
-    get_item_types((_Sender&&) __sndr, (_Env&&) __env);
+  template <class _Sender>
+  concept has_sequence_item_types = requires(_Sender&& __sndr) {
+    get_item_types((_Sender&&) __sndr);
   };
 
   template <class _Sender, class _Env>
-  concept sequence_sender_in =                //
-    stdexec::sender_in<_Sender, _Env> &&      //
-    has_sequence_item_types<_Sender, _Env> && //
+  concept sequence_sender_in =           //
+    stdexec::sender_in<_Sender, _Env> && //
+    has_sequence_item_types<_Sender> &&  //
     sequence_sender<_Sender>;
 
   template <class _Receiver>
@@ -239,13 +238,13 @@ namespace exec {
       stdexec::__q<stdexec::__concat_completion_signatures_t>,
       stdexec::__mapply<
         stdexec::__transform<stdexec::__mbind_back_q<__to_sequence_completion_signatures, _Env>>,
-        item_types_of_t<_Sequence, _Env>>>>;
+        item_types_of_t<_Sequence>>>>;
 
   template <class _Receiver, class _Sender>
-  concept sequence_receiver_from =                                                             //
-    stdexec::receiver<_Receiver> &&                                                            //
-    stdexec::sender_in<_Sender, stdexec::env_of_t<_Receiver>> &&                               //
-    sequence_receiver_of<_Receiver, item_types_of_t<_Sender, stdexec::env_of_t<_Receiver>>> && //
+  concept sequence_receiver_from =                               //
+    stdexec::receiver<_Receiver> &&                              //
+    stdexec::sender_in<_Sender, stdexec::env_of_t<_Receiver>> && //
+    sequence_receiver_of<_Receiver, item_types_of_t<_Sender>> && //
     ((sequence_sender_in<_Sender, stdexec::env_of_t<_Receiver>>
       && stdexec::receiver_of<
         _Receiver,
