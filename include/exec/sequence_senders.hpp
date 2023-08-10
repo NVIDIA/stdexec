@@ -141,43 +141,115 @@ namespace exec {
   template <class _Sender>
   inline constexpr bool enable_sequence_sender = __enable_sequence_sender<_Sender>;
 
+  template <class... _Senders>
+  struct item_types { };
+
+  template <class _Tp>
+  concept __has_item_typedef = requires { typename _Tp::item_types; };
+
+  struct get_item_types_t {
+    template <class _Tp, class _Env>
+      requires stdexec::tag_invocable<get_item_types_t, _Tp, _Env>
+    auto operator()(_Tp&& __obj, _Env&& __env) const
+      noexcept(stdexec::nothrow_tag_invocable<get_item_types_t, _Tp, _Env>)
+        -> stdexec::tag_invoke_result_t<get_item_types_t, _Tp, _Env> {
+      return tag_invoke(*this, (_Tp&&) __obj, (_Env&&) __env);
+    }
+
+    template <class _Tp, class _Env>
+      requires(!stdexec::tag_invocable<get_item_types_t, _Tp, _Env>) && __has_item_typedef<_Tp>
+    auto operator()(_Tp&& __obj, _Env&& __env) const noexcept -> typename _Tp::item_types;
+
+    template <class _Tp, class _Env>
+      requires(!stdexec::tag_invocable<get_item_types_t, _Tp, _Env>)
+           && (!__has_item_typedef<_Tp>) && stdexec::sender<_Tp>
+    auto operator()(_Tp&& __obj, _Env&& __env) const noexcept -> item_types<_Tp>;
+  };
+
+  inline constexpr get_item_types_t get_item_types{};
+
+  template <class _Sender, class _Env>
+  using item_types_of_t = decltype(get_item_types(
+    stdexec::__declval<stdexec::__decay_t<_Sender>>(),
+    stdexec::__declval<_Env>()));
+
   template <class _Sender>
   concept sequence_sender =     //
     stdexec::sender<_Sender> && //
     enable_sequence_sender<stdexec::__decay_t<_Sender>>;
 
   template <class _Sender, class _Env>
-  concept sequence_sender_in =           //
-    stdexec::sender_in<_Sender, _Env> && //
-    sequence_sender<_Sender>;
-
-  template <class _Receiver, class _SequenceSigs>
-  concept sequence_receiver_of =    //
-    stdexec::receiver<_Receiver> && //
-    stdexec::__callable<
-      set_next_t,
-      stdexec::__decay_t<_Receiver>&,
-      __sequence_sndr::__unspecified_sender_of<_SequenceSigs>>;
+  concept has_sequence_item_types = requires(_Sender&& __sndr, _Env&& __env) {
+    get_item_types((_Sender&&) __sndr, (_Env&&) __env);
+  };
 
   template <class _Sender, class _Env>
-  using __sequence_completion_signatures_of_t = stdexec::make_completion_signatures<
+  concept sequence_sender_in =                //
+    stdexec::sender_in<_Sender, _Env> &&      //
+    has_sequence_item_types<_Sender, _Env> && //
+    sequence_sender<_Sender>;
+
+  template <class _Receiver>
+  struct _WITH_RECEIVER_ { };
+
+  template <class _Item>
+  struct _MISSING_SET_NEXT_OVERLOAD_FOR_ITEM_ { };
+
+  template <class _Receiver, class _Item>
+  auto __try_item(_Item*) -> stdexec::
+    __mexception<_MISSING_SET_NEXT_OVERLOAD_FOR_ITEM_<_Item>, _WITH_RECEIVER_<_Receiver>>;
+
+  template <class _Receiver, class _Item>
+    requires stdexec::__callable<set_next_t, _Receiver&, _Item>
+  stdexec::__msuccess __try_item(_Item*);
+
+  template <class _Receiver, class... _Items>
+  auto __try_items(exec::item_types<_Items...>*)
+    -> decltype((stdexec::__msuccess(), ..., exec::__try_item<_Receiver>((_Items*) nullptr)));
+
+  template <class _Receiver, class _Items>
+  concept __sequence_receiver_of = requires(_Items* __items) {
+    { exec::__try_items<stdexec::__decay_t<_Receiver>>(__items) } -> stdexec::__ok;
+  };
+
+  template <class _Receiver, class _SequenceItems>
+  concept sequence_receiver_of =    //
+    stdexec::receiver<_Receiver> && //
+    __sequence_receiver_of<_Receiver, _SequenceItems>;
+
+  template <class _Items, class _Env>
+  using __concat_item_signatures_t = stdexec::__mapply<
+    stdexec::__q<stdexec::__concat_completion_signatures_t>,
+    stdexec::__mapply<
+      stdexec::__transform<stdexec::__mbind_back_q<stdexec::completion_signatures_of_t, _Env>>,
+      _Items>>;
+
+  template <class _Sender, class _Env>
+  using __to_sequence_completion_signatures = stdexec::make_completion_signatures<
     _Sender,
     _Env,
     stdexec::completion_signatures<stdexec::set_value_t()>,
     stdexec::__mconst<stdexec::completion_signatures<>>::__f>;
 
+
+  template <class _Sequence, class _Env>
+  using __sequence_completion_signatures_of_t = stdexec::__concat_completion_signatures_t<
+    stdexec::completion_signatures<stdexec::set_value_t()>,
+    stdexec::__mapply<
+      stdexec::__q<stdexec::__concat_completion_signatures_t>,
+      stdexec::__mapply<
+        stdexec::__transform<stdexec::__mbind_back_q<__to_sequence_completion_signatures, _Env>>,
+        item_types_of_t<_Sequence, _Env>>>>;
+
   template <class _Receiver, class _Sender>
-  concept sequence_receiver_from =                               //
-    stdexec::receiver<_Receiver> &&                              //
-    stdexec::sender_in<_Sender, stdexec::env_of_t<_Receiver>> && //
-    sequence_receiver_of<
-      _Receiver,
-      stdexec::completion_signatures_of_t<_Sender, stdexec::env_of_t<_Receiver>>>
-    && //
+  concept sequence_receiver_from =                                                             //
+    stdexec::receiver<_Receiver> &&                                                            //
+    stdexec::sender_in<_Sender, stdexec::env_of_t<_Receiver>> &&                               //
+    sequence_receiver_of<_Receiver, item_types_of_t<_Sender, stdexec::env_of_t<_Receiver>>> && //
     ((sequence_sender_in<_Sender, stdexec::env_of_t<_Receiver>>
       && stdexec::receiver_of<
         _Receiver,
-        __sequence_completion_signatures_of_t<_Sender, stdexec::env_of_t<_Receiver>>>)
+        stdexec::completion_signatures_of_t<_Sender, stdexec::env_of_t<_Receiver>>>)
      || //
      (!sequence_sender_in<_Sender, stdexec::env_of_t<_Receiver>>
       && stdexec::__receiver_from<
@@ -195,13 +267,12 @@ namespace exec {
 
     template <class _Sender, class _Receiver>
     concept __next_connectable_with_tag_invoke =
-      receiver<_Receiver> &&                               //
-      sender_in<_Sender, env_of_t<_Receiver>> &&           //
-      !sequence_sender_in<_Sender, env_of_t<_Receiver>> && //
-      sequence_receiver_of<_Receiver, completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>
-      && //
+      receiver<_Receiver> &&                                                      //
+      sender_in<_Sender, env_of_t<_Receiver>> &&                                  //
+      !sequence_sender_in<_Sender, env_of_t<_Receiver>> &&                        //
+      sequence_receiver_of<_Receiver, item_types<stdexec::__decay_t<_Sender>>> && //
       __receiver_from<__stopped_means_break_t<_Receiver>, __next_sender_of_t<_Receiver, _Sender>>
-      && //
+      &&                                                                          //
       __connect::__connectable_with_tag_invoke<
         __next_sender_of_t<_Receiver, _Sender>&&,
         __stopped_means_break_t<_Receiver>>;

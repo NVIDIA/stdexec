@@ -30,7 +30,9 @@ TEST_CASE(
   STATIC_REQUIRE(same_as<
                  __sequence_completion_signatures_of_t<empty_t, empty_env>,
                  completion_signatures<set_value_t()>>);
-  STATIC_REQUIRE(same_as<completion_signatures_of_t<empty_t>, completion_signatures<>>);
+  STATIC_REQUIRE(
+    same_as<completion_signatures_of_t<empty_t>, completion_signatures<set_value_t()>>);
+  STATIC_REQUIRE(same_as<item_types_of_t<empty_t, empty_env>, item_types<>>);
 }
 
 struct count_set_next_receiver_t {

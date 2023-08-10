@@ -106,21 +106,19 @@ struct next_receiver {
 
 TEST_CASE("sequence_senders - Test missing next signature", "[sequence_senders]") {
   using just_t = decltype(just());
+  using just_int_t = decltype(just(0));
   using next_receiver_t = next_receiver<set_value_t(int)>;
   STATIC_REQUIRE(receiver<next_receiver_t>);
-  STATIC_REQUIRE(sequence_receiver_of< next_receiver_t, completion_signatures<set_value_t(int)>>);
-  STATIC_REQUIRE_FALSE(sequence_receiver_of<
-                       next_receiver_t,
-                       completion_signatures<set_value_t(int), set_stopped_t()>>);
-  STATIC_REQUIRE_FALSE(
-    sequence_receiver_of< next_receiver_t, completion_signatures<set_value_t()>>);
+  STATIC_REQUIRE(sequence_receiver_of<next_receiver_t, item_types<just_int_t>>);
+  STATIC_REQUIRE_FALSE(sequence_receiver_of<next_receiver_t, item_types<just_t>>);
   STATIC_REQUIRE(sender_to<just_t, next_receiver_t>);
 }
 
 template <__completion_signature... _Sigs>
 struct some_sequence_sender_of {
   using is_sender = sequence_tag;
-  using completion_signatures = stdexec::completion_signatures<_Sigs...>;
+  using completion_signatures = stdexec::completion_signatures<set_value_t()>;
+  using item_types = exec::item_types<some_sender_of<_Sigs...>>;
 
   template <receiver R>
   friend nop_operation tag_invoke(subscribe_t, some_sequence_sender_of self, R&& rcvr);

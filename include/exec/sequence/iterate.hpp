@@ -150,17 +150,17 @@ namespace exec {
         using __id = __sequence;
         using is_sender = sequence_tag;
 
-        using completion_signatures = stdexec::completion_signatures<
-          set_value_t(std::ranges::range_reference_t<_Range>),
-          set_error_t(std::exception_ptr),
-          set_stopped_t()>;
+        using completion_signatures = stdexec::
+          completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
+
+        using item_types = exec::item_types<__sender_t<_Range>>;
 
         STDEXEC_NO_UNIQUE_ADDRESS _Range __range_;
 
         template <class _Receiver>
         using __next_receiver_t = stdexec::__t<__next_receiver<_Range, stdexec::__id<_Receiver>>>;
 
-        template < __decays_to<__t> _Self, sequence_receiver_of<completion_signatures> _Receiver>
+        template < __decays_to<__t> _Self, sequence_receiver_of<item_types> _Receiver>
           requires sender_to<
             __next_sender_of_t<_Receiver, __sender_t<_Range>>,
             __next_receiver_t<_Receiver> >
