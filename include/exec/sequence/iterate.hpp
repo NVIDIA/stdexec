@@ -153,7 +153,11 @@ namespace exec {
         using completion_signatures = stdexec::
           completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
 
-        using item_types = exec::item_types<__sender_t<_Range>>;
+        using _ItemSender = decltype(stdexec::on(
+          std::declval<trampoline_scheduler&>(),
+          std::declval<__sender_t<_Range>>()));
+
+        using item_types = exec::item_types<_ItemSender>;
 
         STDEXEC_NO_UNIQUE_ADDRESS _Range __range_;
 
@@ -162,7 +166,7 @@ namespace exec {
 
         template < __decays_to<__t> _Self, sequence_receiver_of<item_types> _Receiver>
           requires sender_to<
-            __next_sender_of_t<_Receiver, __sender_t<_Range>>,
+            __next_sender_of_t<_Receiver, _ItemSender>,
             __next_receiver_t<_Receiver> >
         friend auto tag_invoke(subscribe_t, _Self&& __self, _Receiver __rcvr) //
           noexcept(__nothrow_decay_copyable<_Receiver>)
