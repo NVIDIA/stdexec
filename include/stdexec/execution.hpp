@@ -2655,7 +2655,8 @@ namespace stdexec {
         __call_result_t<_Fun, _Sender, _As...>
         operator()(_Sender&& __sndr) && noexcept(__nothrow_callable<_Fun, _Sender, _As...>) {
         return std::apply(
-          [&__sndr, this](_As&... __as) {
+          [&__sndr, this](_As&... __as) -> __call_result_t<_Fun, _Sender, _As...>
+          {
             return ((_Fun&&) __fun_)((_Sender&&) __sndr, (_As&&) __as...);
           },
           __as_);
@@ -2668,7 +2669,9 @@ namespace stdexec {
         operator()(_Sender&& __sndr) const & //
         noexcept(__nothrow_callable<const _Fun&, _Sender, const _As&...>) {
         return std::apply(
-          [&__sndr, this](const _As&... __as) { return __fun_((_Sender&&) __sndr, __as...); },
+          [&__sndr, this](const _As&... __as) -> __call_result_t<const _Fun&, _Sender, const _As&...> {
+            return __fun_((_Sender&&) __sndr, __as...);
+          },
           __as_);
       }
     };

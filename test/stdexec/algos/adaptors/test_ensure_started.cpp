@@ -298,3 +298,11 @@ TEST_CASE("ensure_started with move only input sender", "[adaptors][ensure_start
   auto op = ex::connect(std::move(snd), expect_void_receiver{});
   ex::start(op);
 }
+
+TEST_CASE(
+  "Repeated ensure_started with operator| does not return reference to temporary",
+  "[adaptors][ensure_started]") {
+  auto snd = ex::ensure_started(ex::just()) | ex::ensure_started();
+  auto op = ex::connect(std::move(snd), expect_void_receiver{});
+  ex::start(op);
+}
