@@ -136,15 +136,15 @@ namespace stdexec {
         : __value((_Ty&&) __v) {
       }
 
-      __mbc(volatile __mbc& __that) noexcept
-        : __value(const_cast<_Ty&&>(__that.__value)) {
+      __mbc(__mbc& __that) noexcept
+        : __value(static_cast<_Ty&&>(__that.__value)) {
       }
 
-      __mbc(volatile __mbc&& __that) noexcept
-        : __value(const_cast<_Ty&&>(__that.__value)) {
+      __mbc(__mbc&& __that) noexcept
+        : __value(static_cast<_Ty&&>(__that.__value)) {
       }
 
-      __mbc(volatile const __mbc& __that) = delete;
+      __mbc(const __mbc& __that) = delete;
     };
 
     template <class _Ty>
@@ -158,21 +158,21 @@ namespace stdexec {
         : __value((_Ty&&) __v) {
       }
 
-      __mbc(volatile __mbc& __that) noexcept
-        : __value(const_cast<_Ty&&>(__that.__value)) {
+      __mbc(__mbc& __that) noexcept
+        : __value(static_cast<_Ty&&>(__that.__value)) {
       }
 
-      __mbc(volatile __mbc&& __that) noexcept
-        : __value(const_cast<_Ty&&>(__that.__value)) {
+      __mbc(__mbc&& __that) noexcept
+        : __value(static_cast<_Ty&&>(__that.__value)) {
       }
 
-      __mbc(volatile const __mbc& __that)
-        : __value(const_cast<const _Ty&>(__that.__value)) {
+      __mbc(const __mbc& __that)
+        : __value(__that.__value) {
       }
     };
 
     inline constexpr auto __make_tuple = //
-      []<class _Tag, class... _CBM>(_Tag, _CBM volatile &&... __captures) {
+      []<class _Tag, class... _CBM>(_Tag, _CBM &&... __captures) {
         return [=]<class _Cvref, class _Fun>(_Cvref __cvref, _Fun && __fun) mutable //
                noexcept(__nothrow_callable<_Fun, _Tag, __minvoke<_CBM, _Cvref>...>) //
                -> decltype(auto)                                                    //
