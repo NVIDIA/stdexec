@@ -109,6 +109,9 @@ namespace stdexec {
   template <std::size_t _Np>
   using __make_indices = std::make_index_sequence<_Np>*;
 
+  template <class... _Ts>
+  using __indices_for = __make_indices<sizeof...(_Ts)>;
+
   template <class _Char>
   concept __mchar = __same_as<_Char, char>;
 
@@ -905,6 +908,7 @@ namespace stdexec {
 
   template <std::size_t _Np, class... _Ts>
   constexpr decltype(auto) __nth_pack_element(_Ts&&... __ts) noexcept {
+    static_assert(_Np < sizeof...(_Ts));
     return [&]<std::size_t... _Is>(__indices<_Is...>) noexcept -> decltype(auto) {
       return stdexec::__nth_pack_element_<_Is...>((_Ts&&) __ts...);
     }(__make_indices<_Np>());
@@ -987,33 +991,32 @@ namespace stdexec {
     struct __impl {
       template <std::size_t... _Idx, class... _Ts>
         requires(__callable<__mdispatch_<_Args>, _Ts...> && ...)
-             && (__callable<__mdispatch_<_Pattern, _Idx + __offset>, _Ts...> && ...)
+             && (__callable<__mdispatch_<_Pattern, _Idx + 1>, _Ts...> && ...)
              && __callable< //
                   _Ret,
                   __call_result_t<__mdispatch_<_Args>, _Ts...>...,
-                  __call_result_t<__mdispatch_<_Pattern, _Idx + __offset>, _Ts...>...>
-      auto operator()(__indices<_Idx...>, _Ts&&... __ts) const
-        noexcept(__nothrow_callable<                              //
-                 _Ret,                                            //
-                 __call_result_t<__mdispatch_<_Args>, _Ts...>..., //
-                 __call_result_t<__mdispatch_<_Pattern, _Idx + __offset>, _Ts...>...>)
-          -> __call_result_t< //
-            _Ret,
-            __call_result_t<__mdispatch_<_Args>, _Ts...>...,
-            __call_result_t<__mdispatch_<_Pattern, _Idx + __offset>, _Ts...>...> {
+                  __call_result_t<__mdispatch_<_Pattern, _Idx + 1>, _Ts...>...>
+      auto operator()(__indices<_Idx...>, _Ts&&... __ts) const noexcept(
+        __nothrow_callable<                                                                  //
+          _Ret,                                                                              //
+          __call_result_t<__mdispatch_<_Args>, _Ts...>...,                                   //
+          __call_result_t<__mdispatch_<_Pattern, _Idx + 1>, _Ts...>...>) -> __call_result_t< //
+        _Ret,
+        __call_result_t<__mdispatch_<_Args>, _Ts...>...,
+        __call_result_t<__mdispatch_<_Pattern, _Idx + 1>, _Ts...>...> {
         return _Ret()(                               //
           __mdispatch_<_Args>()((_Ts&&) __ts...)..., //
-          __mdispatch_<_Pattern, _Idx + __offset >()((_Ts&&) __ts...)...);
+          __mdispatch_<_Pattern, _Idx + 1 >()((_Ts&&) __ts...)...);
       }
     };
 
     template <class... _Ts>
-      requires(sizeof...(_Ts) > __offset)
+      requires(__offset < sizeof...(_Ts))
            && __callable<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>
     auto operator()(_Ts&&... __ts) const
       noexcept(__nothrow_callable<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>)
         -> __msecond<
-          __if_c<(sizeof...(_Ts) > __offset)>,
+          __if_c<(__offset < sizeof...(_Ts))>,
           __call_result_t<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>> {
       return __impl()(__make_indices<sizeof...(_Ts) - __offset - 1>(), (_Ts&&) __ts...);
     }

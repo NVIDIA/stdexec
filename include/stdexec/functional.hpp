@@ -103,6 +103,27 @@ namespace stdexec {
     }
   } __compose{};
 
+  template <class _Tag, class _Ty>
+  struct __field {
+    _Ty operator()(_Tag) const noexcept(__nothrow_decay_copyable<const _Ty&>) {
+      return __t_;
+    }
+
+    _Ty __t_;
+  };
+
+  template <class _Tag>
+  struct __mkfield_ {
+    template <class _Ty>
+    __field<_Tag, __decay_t<_Ty>> operator()(_Ty&& __ty) const
+      noexcept(__nothrow_decay_copyable<_Ty>) {
+      return {(_Ty&&) __ty};
+    }
+  };
+
+  template <class _Tag>
+  inline constexpr __mkfield_<_Tag> __mkfield{};
+
   // [func.tag_invoke], tag_invoke
   namespace __tag_invoke {
     void tag_invoke();
