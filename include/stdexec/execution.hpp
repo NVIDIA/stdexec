@@ -4943,7 +4943,7 @@ namespace stdexec {
         set_error_t,
         set_stopped_t>>;
 
-    template <class _SchedulerId, class _Variant, class _ReceiverId>
+    template <class _SchedulerId, class _VariantId, class _ReceiverId>
     struct __operation1_base;
 
     // This receiver is to be completed on the execution context
@@ -4953,14 +4953,14 @@ namespace stdexec {
     // read the completion out of the operation state and forward it
     // to the output receiver after transitioning to the scheduler's
     // context.
-    template <class _SchedulerId, class _Variant, class _ReceiverId>
+    template <class _SchedulerId, class _VariantId, class _ReceiverId>
     struct __receiver2 {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
         using is_receiver = void;
         using __id = __receiver2;
-        __operation1_base<_SchedulerId, _Variant, _ReceiverId>* __op_state_;
+        __operation1_base<_SchedulerId, _VariantId, _ReceiverId>* __op_state_;
 
         // If the work is successfully scheduled on the new execution
         // context and is ready to run, forward the completion signal in
@@ -4989,15 +4989,15 @@ namespace stdexec {
     // context of the scheduler. That second receiver will read the
     // completion information out of the operation state and propagate
     // it to the output receiver from within the desired context.
-    template <class _SchedulerId, class _Variant, class _ReceiverId>
+    template <class _SchedulerId, class _VariantId, class _ReceiverId>
     struct __receiver1 {
       using _Scheduler = stdexec::__t<_SchedulerId>;
       using _Receiver = stdexec::__t<_ReceiverId>;
-      using __receiver2_t = stdexec::__t<__receiver2<_SchedulerId, _Variant, _ReceiverId>>;
+      using __receiver2_t = stdexec::__t<__receiver2<_SchedulerId, _VariantId, _ReceiverId>>;
 
       struct __t {
         using is_receiver = void;
-        __operation1_base<_SchedulerId, _Variant, _ReceiverId>* __op_state_;
+        __operation1_base<_SchedulerId, _VariantId, _ReceiverId>* __op_state_;
 
         template <class... _Args>
         static constexpr bool __nothrow_complete_ = (__nothrow_decay_copyable<_Args> && ...);
@@ -5032,11 +5032,12 @@ namespace stdexec {
       };
     };
 
-    template <class _SchedulerId, class _Variant, class _ReceiverId>
+    template <class _SchedulerId, class _VariantId, class _ReceiverId>
     struct __operation1_base : __immovable {
       using _Scheduler = stdexec::__t<_SchedulerId>;
       using _Receiver = stdexec::__t<_ReceiverId>;
-      using __receiver2_t = stdexec::__t<__receiver2<_SchedulerId, _Variant, _ReceiverId>>;
+      using _Variant = stdexec::__t<_VariantId>;
+      using __receiver2_t = stdexec::__t<__receiver2<_SchedulerId, _VariantId, _ReceiverId>>;
 
       _Scheduler __sched_;
       _Receiver __rcvr_;
@@ -5073,8 +5074,8 @@ namespace stdexec {
       using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
       using _Receiver = stdexec::__t<_ReceiverId>;
       using __variant_t = __variant_for_t<_CvrefSender, env_of_t<_Receiver>>;
-      using __receiver1_t = stdexec::__t<__receiver1<_SchedulerId, __variant_t, _ReceiverId>>;
-      using __base_t = __operation1_base<_SchedulerId, __variant_t, _ReceiverId>;
+      using __receiver1_t = stdexec::__t<__receiver1<_SchedulerId, stdexec::__id<__variant_t>, _ReceiverId>>;
+      using __base_t = __operation1_base<_SchedulerId, stdexec::__id<__variant_t>, _ReceiverId>;
 
       struct __t : __base_t {
         using __id = __operation1;
@@ -5128,8 +5129,10 @@ namespace stdexec {
 
         template <class _Self, class _Receiver>
         using __receiver_t = //
-          stdexec::__t<
-            __receiver1<_SchedulerId, stdexec::__cvref_id<_Self, _Sender>, stdexec::__id<_Receiver>>>;
+          stdexec::__t< __receiver1<
+            _SchedulerId,
+            stdexec::__id<__variant_for_t<_Self, env_of_t<_Receiver>>>,
+            stdexec::__id<_Receiver>>>;
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>

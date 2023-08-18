@@ -31,19 +31,25 @@ namespace stdexec {
 
     struct __get_tag {
       template <class _Tag, class... _Rest>
-      _Tag operator()(_Tag, _Rest&&...) const noexcept;
+      _Tag operator()(_Tag, _Rest&&...) const noexcept {
+        return {};
+      }
     };
 
     struct __get_data {
       template <class _Data, class... _Rest>
-      _Data operator()(__ignore, _Data&&, _Rest&&...) const noexcept;
+      _Data operator()(__ignore, _Data __data, _Rest&&...) const noexcept {
+        return (_Data&&) __data;
+      }
     };
 
     template <class _Continuation>
     struct __get_children {
       template <class... _Children>
-      auto operator()(__ignore, __ignore, _Children&&...) const noexcept
-        -> __mtype<__minvoke<_Continuation, _Children...>> (*)();
+      auto operator()(__ignore, __ignore, _Children...) const noexcept
+        -> __mtype<__minvoke<_Continuation, _Children...>> (*)() {
+          return nullptr;
+        }
     };
   } // namespace __detail
 
@@ -63,8 +69,8 @@ namespace stdexec {
     mutable _ImplFn __impl_;
 
     STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      explicit __basic_sender(_ImplFn __impl_)
-      : __impl_((_ImplFn&&) __impl_) {
+      explicit __basic_sender(_ImplFn __impl)
+      : __impl_((_ImplFn&&) __impl) {
     }
 
     template <same_as<get_env_t> _Tag, same_as<__basic_sender> _Self>
@@ -122,7 +128,8 @@ namespace stdexec {
       [__data = (_Data&&) __data, ... __children = (_Children&&) __children] //
       <class _Cvref, class _Fun>(_Cvref, _Fun && __fun) mutable noexcept(
         __nothrow_callable<_Fun, _Tag, __minvoke<_Cvref, _Data>, __minvoke<_Cvref, _Children>...>)
-        -> __call_result_t<_Fun, _Tag, __minvoke<_Cvref, _Data>, __minvoke<_Cvref, _Children>...> {
+        -> decltype(auto)
+        requires __callable<_Fun, _Tag, __minvoke<_Cvref, _Data>, __minvoke<_Cvref, _Children>...> {
         return static_cast<_Fun&&>(__fun)(
           _Tag(),
           const_cast<__minvoke<_Cvref, _Data>&&>(__data),

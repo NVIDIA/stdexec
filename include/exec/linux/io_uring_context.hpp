@@ -53,6 +53,8 @@
 #include <sys/eventfd.h>
 #include <sys/syscall.h>
 
+#include <algorithm>
+
 namespace exec {
   namespace __io_uring {
     inline void __throw_error_code_if(bool __cond, int __ec) {
