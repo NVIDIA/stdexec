@@ -48,8 +48,8 @@ namespace stdexec {
       template <class... _Children>
       auto operator()(__ignore, __ignore, _Children...) const noexcept
         -> __mtype<__minvoke<_Continuation, _Children...>> (*)() {
-          return nullptr;
-        }
+        return nullptr;
+      }
     };
   } // namespace __detail
 
@@ -117,8 +117,82 @@ namespace stdexec {
   STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
     __basic_sender(_ImplFn) -> __basic_sender<_ImplFn>;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  // __make_basic_sender
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// __make_basic_sender
+//   The NVIDIA HPC compiler struggles with capture initializers for a parameter pack.
+//   As a workaround, we use a wrapper that performs moves when it is copied in very
+//   particular circumstances.
+#if STDEXEC_NVHPC()
+  namespace __detail {
+    // Move-by-copy
+    template <class _Ty, bool = std::is_copy_constructible_v<_Ty>>
+    struct __mbc {
+      template <class _Cvref>
+      using __f = __minvoke<_Cvref, _Ty>;
+
+      _Ty __value;
+
+      explicit __mbc(_Ty& __v) noexcept
+        : __value((_Ty&&) __v) {
+      }
+
+      __mbc(volatile __mbc& __that) noexcept
+        : __value(const_cast<_Ty&&>(__that.__value)) {
+      }
+
+      __mbc(volatile __mbc&& __that) noexcept
+        : __value(const_cast<_Ty&&>(__that.__value)) {
+      }
+
+      __mbc(volatile const __mbc& __that) = delete;
+    };
+
+    template <class _Ty>
+    struct __mbc<_Ty, true> {
+      template <class _Cvref>
+      using __f = __minvoke<_Cvref, _Ty>;
+
+      _Ty __value;
+
+      explicit __mbc(_Ty& __v) noexcept
+        : __value((_Ty&&) __v) {
+      }
+
+      __mbc(volatile __mbc& __that) noexcept
+        : __value(const_cast<_Ty&&>(__that.__value)) {
+      }
+
+      __mbc(volatile __mbc&& __that) noexcept
+        : __value(const_cast<_Ty&&>(__that.__value)) {
+      }
+
+      __mbc(volatile const __mbc& __that)
+        : __value(const_cast<const _Ty&>(__that.__value)) {
+      }
+    };
+
+    inline constexpr auto __make_tuple = //
+      []<class _Tag, class... _CBM>(_Tag, _CBM volatile &&... __captures) {
+        return [=]<class _Cvref, class _Fun>(_Cvref __cvref, _Fun && __fun) mutable //
+               noexcept(__nothrow_callable<_Fun, _Tag, __minvoke<_CBM, _Cvref>...>) //
+               -> decltype(auto)                                                    //
+                 requires __callable<_Fun, _Tag, __minvoke<_CBM, _Cvref>...>
+        {
+          return ((_Fun&&) __fun)(
+            _Tag(), const_cast<__minvoke<_CBM, _Cvref>&&>(__captures.__value)...);
+        };
+      };
+  }
+
+  inline constexpr auto __make_basic_sender = //
+    []<class _Tag, class _Data = __, class... _Children>(
+      _Tag,
+      _Data __data = {},
+      _Children... __children) {
+    return __basic_sender{
+      __detail::__make_tuple(_Tag(), __detail::__mbc(__data), __detail::__mbc(__children)...)};
+  };
+#else
   inline constexpr auto __make_basic_sender = //
     []<class _Tag, class _Data = __, class... _Children>(
       _Tag,
@@ -128,14 +202,17 @@ namespace stdexec {
       [__data = (_Data&&) __data, ... __children = (_Children&&) __children] //
       <class _Cvref, class _Fun>(_Cvref, _Fun && __fun) mutable noexcept(
         __nothrow_callable<_Fun, _Tag, __minvoke<_Cvref, _Data>, __minvoke<_Cvref, _Children>...>)
-        -> decltype(auto)
-        requires __callable<_Fun, _Tag, __minvoke<_Cvref, _Data>, __minvoke<_Cvref, _Children>...> {
+        -> decltype(auto) //
+      requires __callable< _Fun, _Tag, __minvoke<_Cvref, _Data>, __minvoke<_Cvref, _Children>...>{
         return static_cast<_Fun&&>(__fun)(
           _Tag(),
           const_cast<__minvoke<_Cvref, _Data>&&>(__data),
           const_cast<__minvoke<_Cvref, _Children>&&>(__children)...);
-      }};
-  };
+  }
+};
+}
+;
+#endif
 
   namespace __detail {
     struct __sender_apply_fn {

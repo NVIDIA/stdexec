@@ -5074,7 +5074,8 @@ namespace stdexec {
       using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
       using _Receiver = stdexec::__t<_ReceiverId>;
       using __variant_t = __variant_for_t<_CvrefSender, env_of_t<_Receiver>>;
-      using __receiver1_t = stdexec::__t<__receiver1<_SchedulerId, stdexec::__id<__variant_t>, _ReceiverId>>;
+      using __receiver1_t =
+        stdexec::__t<__receiver1<_SchedulerId, stdexec::__id<__variant_t>, _ReceiverId>>;
       using __base_t = __operation1_base<_SchedulerId, stdexec::__id<__variant_t>, _ReceiverId>;
 
       struct __t : __base_t {
@@ -6003,6 +6004,7 @@ namespace stdexec {
 
       template <class _Receiver, class _Indices>
       struct __connect_fn;
+
       template <class _Receiver, std::size_t... _Indices>
       struct __connect_fn<_Receiver, __indices<_Indices...>> {
         _Receiver* __rcvr_;
