@@ -5132,7 +5132,7 @@ namespace stdexec {
         using __receiver_t = //
           stdexec::__t< __receiver1<
             _SchedulerId,
-            stdexec::__id<__variant_for_t<_Self, env_of_t<_Receiver>>>,
+            stdexec::__id<__variant_for_t<__copy_cvref_t<_Self, _Sender>, env_of_t<_Receiver>>>,
             stdexec::__id<_Receiver>>>;
 
         template <__decays_to<__t> _Self, receiver _Receiver>
