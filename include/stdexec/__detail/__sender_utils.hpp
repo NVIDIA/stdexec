@@ -38,7 +38,7 @@ namespace stdexec {
 
     struct __get_data {
       template <class _Data, class... _Rest>
-      _Data operator()(__ignore, _Data __data, _Rest&&...) const noexcept {
+      _Data operator()(__ignore, _Data&& __data, _Rest&&...) const noexcept {
         return (_Data&&) __data;
       }
     };
@@ -46,7 +46,7 @@ namespace stdexec {
     template <class _Continuation>
     struct __get_children {
       template <class... _Children>
-      auto operator()(__ignore, __ignore, _Children...) const noexcept
+      auto operator()(__ignore, __ignore, _Children&&...) const noexcept
         -> __mtype<__minvoke<_Continuation, _Children...>> (*)() {
         return nullptr;
       }
