@@ -153,7 +153,7 @@ namespace stdexec {
       }
     };
 
-    // Anonymous namespace here is to avoid symbol name collistions with the
+    // Anonymous namespace here is to avoid symbol name collisions with the
     // lambda functions returned by __make_tuple.
     namespace {
       constexpr auto __make_tuple = //
@@ -176,7 +176,7 @@ namespace stdexec {
         __detail::__make_tuple(_Tag(), __detail::__mbc(__data), __detail::__mbc(__children)...)};
     }
 #else
-    // Anonymous namespace here is to avoid symbol name collistions with the
+    // Anonymous namespace here is to avoid symbol name collisions with the
     // lambda functions returned by __make_tuple.
     namespace {
       constexpr auto __make_tuple = //
