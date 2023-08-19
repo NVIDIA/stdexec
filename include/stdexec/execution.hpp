@@ -1121,11 +1121,43 @@ namespace stdexec {
   template <class _Value, class _Env = no_env>
   using sender_transform_result_t = __call_result_t<sender_transform_t, _Value, _Env>;
 
+  namespace __error__ {
+    inline constexpr __mstring __unrecognized_sender_type_diagnostic =
+      "The given type cannot be used as a sender with the given environment "
+      "because the attempt to compute the completion signatures failed."__csz;
+
+    template <__mstring _Diagnostic = __unrecognized_sender_type_diagnostic>
+    struct _UNRECOGNIZED_SENDER_TYPE_;
+
+    template <class _Sender>
+    struct _WITH_SENDER_;
+
+    template <class... _Senders>
+    struct _WITH_SENDERS_;
+
+    template <class _Env>
+    struct _WITH_ENVIRONMENT_;
+  }
+
+  using __error__::_UNRECOGNIZED_SENDER_TYPE_;
+  using __error__::_WITH_ENVIRONMENT_;
+
+  template <class _Sender>
+  using _WITH_SENDER_ = __error__::_WITH_SENDER_<__name_of<_Sender>>;
+
+  template <class... _Senders>
+  using _WITH_SENDERS_ = __error__::_WITH_SENDERS_<__name_of<_Senders>...>;
+
   /////////////////////////////////////////////////////////////////////////////
   // [execution.sndtraits]
   namespace __get_completion_signatures {
+#if STDEXEC_LEGACY_R5_CONCEPTS()
     template <class _Sender, class _Env>
     concept __r7_style_sender = same_as<_Env, no_env> && enable_sender<__decay_t<_Sender>>;
+#else
+    template <class, class>
+    concept __r7_style_sender = false;
+#endif
 
     template <class _Sender, class _Env>
     concept __with_tag_invoke = //
@@ -1144,6 +1176,7 @@ namespace stdexec {
         static_assert(STDEXEC_LEGACY_R5_CONCEPTS() || !same_as<_Env, no_env>);
         static_assert(sizeof(_Sender), "Incomplete type used with get_completion_signatures");
         static_assert(sizeof(_Env), "Incomplete type used with get_completion_signatures");
+
         if constexpr (__with_tag_invoke<_Sender, _Env>) {
           using _Result = tag_invoke_result_t<get_completion_signatures_t, _Sender, _Env>;
           if constexpr (same_as<_Env, no_env> && __merror<_Result>) {
@@ -1164,32 +1197,26 @@ namespace stdexec {
                     set_error_t(std::exception_ptr),
                     set_stopped_t()>(*)()) nullptr;
           }
-        } else
-#if STDEXEC_LEGACY_R5_CONCEPTS()
-          if constexpr (__r7_style_sender<_Sender, _Env>) {
+        } else if constexpr (__r7_style_sender<_Sender, _Env>) {
           return (dependent_completion_signatures<no_env>(*)()) nullptr;
-        } else
-#endif
-          if constexpr (__is_debug_env<_Env>) {
+        } else if constexpr (__is_debug_env<_Env>) {
           using __tag_invoke::tag_invoke;
           // This ought to cause a hard error that indicates where the problem is.
           using _Completions
             [[maybe_unused]] = tag_invoke_result_t<get_completion_signatures_t, _Sender, _Env>;
           return (__debug::__completion_signatures(*)()) nullptr;
         } else {
-          return (void (*)()) nullptr;
+          using _Result = __mexception<
+            _UNRECOGNIZED_SENDER_TYPE_<>,
+            _WITH_SENDER_<_Sender>,
+            _WITH_ENVIRONMENT_<_Env>>;
+          return (_Result(*)()) nullptr;
         }
       }
 
+      // NOT TO SPEC: if we're unable to compute the completion signatures,
+      // return an error type instead of SFINAE.
       template <class _Sender, class _Env = __default_env>
-        requires(
-          __with_tag_invoke<_Sender, _Env> ||          //
-          __with_member_alias<_Sender, _Env> ||        //
-          __awaitable<_Sender, __env_promise<_Env>> || //
-#if STDEXEC_LEGACY_R5_CONCEPTS()                       //
-          __r7_style_sender<_Sender, _Env> ||          //
-#endif                                                 //
-          __is_debug_env<_Env>)                        //
       constexpr auto operator()(_Sender&&, const _Env&) const noexcept
         -> decltype(__impl<_Sender, _Env>()()) {
         return {};
@@ -3108,24 +3135,14 @@ namespace stdexec {
 
 #if STDEXEC_FRIENDSHIP_IS_LEXICAL()
      private:
-      template <class>
+      template <class...>
       friend struct stdexec::__basic_sender;
 #endif
 
       template <__lazy_sender_for<then_t> _Sender, class _Env>
-      static auto get_completion_signatures(_Sender&& __sndr, _Env&&) {
-        return __sender_apply(
-          (_Sender&&) __sndr, //
-          []<class _Fun, class _Child>(then_t, _Fun, _Child&&) {
-            if constexpr (__valid<__completion_signatures_t, _Fun, _Child, _Env>) {
-              return __completion_signatures_t<_Fun, _Child, _Env>();
-            } else if constexpr (__decays_to<_Env, no_env>) {
-              return dependent_completion_signatures<no_env>();
-            } else {
-              return; // BUGBUG TODO
-            }
-            STDEXEC_UNREACHABLE();
-          });
+      static auto get_completion_signatures(_Sender&& __sndr, _Env&&)
+        -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env> {
+        return {};
       }
 
       template <__lazy_sender_for<then_t> _Sender, receiver _Receiver>
@@ -3259,24 +3276,14 @@ namespace stdexec {
 
 #if STDEXEC_FRIENDSHIP_IS_LEXICAL()
      private:
-      template <class>
+      template <class...>
       friend struct stdexec::__basic_sender;
 #endif
 
       template <__lazy_sender_for<upon_error_t> _Sender, class _Env>
-      static auto get_completion_signatures(_Sender&& __sndr, _Env&&) {
-        return __sender_apply(
-          (_Sender&&) __sndr, //
-          []<class _Fun, class _Child>(upon_error_t, _Fun, _Child&&) {
-            if constexpr (__valid<__completion_signatures_t, _Fun, _Child, _Env>) {
-              return __completion_signatures_t<_Fun, _Child, _Env>();
-            } else if constexpr (__decays_to<_Env, no_env>) {
-              return dependent_completion_signatures<no_env>();
-            } else {
-              return; // BUGBUG TODO
-            }
-            STDEXEC_UNREACHABLE();
-          });
+      static auto get_completion_signatures(_Sender&& __sndr, _Env&&)
+        -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env> {
+        return {};
       }
 
       template <__lazy_sender_for<upon_error_t> _Sender, receiver _Receiver>
@@ -3413,24 +3420,14 @@ namespace stdexec {
 
 #if STDEXEC_FRIENDSHIP_IS_LEXICAL()
      private:
-      template <class>
+      template <class...>
       friend struct stdexec::__basic_sender;
 #endif
 
       template <__lazy_sender_for<upon_stopped_t> _Sender, class _Env>
-      static auto get_completion_signatures(_Sender&& __sndr, _Env&&) {
-        return __sender_apply(
-          (_Sender&&) __sndr, //
-          []<class _Fun, class _Child>(upon_stopped_t, _Fun, _Child&&) {
-            if constexpr (__valid<__completion_signatures_t, _Fun, _Child, _Env>) {
-              return __completion_signatures_t<_Fun, _Child, _Env>();
-            } else if constexpr (__decays_to<_Env, no_env>) {
-              return dependent_completion_signatures<no_env>();
-            } else {
-              return; // BUGBUG TODO
-            }
-            STDEXEC_UNREACHABLE();
-          });
+      static auto get_completion_signatures(_Sender&& __sndr, _Env&&)
+        -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env> {
+        return {};
       }
 
       template <__lazy_sender_for<upon_stopped_t> _Sender, receiver _Receiver>
@@ -3625,26 +3622,20 @@ namespace stdexec {
 
 #if STDEXEC_FRIENDSHIP_IS_LEXICAL()
      private:
-      template <class>
+      template <class...>
       friend struct stdexec::__basic_sender;
 #endif
 
+      template <class _Sender>
+      using __fun_t = decltype(__decay_t<__data_of<_Sender>>::__fun_);
+
+      template <class _Sender>
+      using __shape_t = decltype(__decay_t<__data_of<_Sender>>::__shape_);
+
       template <__lazy_sender_for<bulk_t> _Sender, class _Env>
-      static auto get_completion_signatures(_Sender&& __sndr, _Env&&) {
-        return __sender_apply(
-          (_Sender&&) __sndr, //
-          []<class _Data, class _Child>(bulk_t, _Data, _Child&&) {
-            using _Shape = decltype(_Data::__shape_);
-            using _Fun = decltype(_Data::__fun_);
-            if constexpr (__valid< __completion_signatures, _Child, _Env, _Shape, _Fun>) {
-              return __completion_signatures< _Child, _Env, _Shape, _Fun>();
-            } else if constexpr (__decays_to<_Env, no_env>) {
-              return dependent_completion_signatures<no_env>();
-            } else {
-              return; // BUGBUG TODO
-            }
-            STDEXEC_UNREACHABLE();
-          });
+      static auto get_completion_signatures(_Sender&& __sndr, _Env&&)
+        -> __completion_signatures<__child_of<_Sender>, _Env, __shape_t<_Sender>, __fun_t<_Sender>> {
+        return {};
       }
 
       template <__lazy_sender_for<bulk_t> _Sender, receiver _Receiver>
@@ -5119,94 +5110,99 @@ namespace stdexec {
       };
     };
 
-    template <class _SchedulerId, class _SenderId>
-    struct __sender {
-      using _Scheduler = stdexec::__t<_SchedulerId>;
-      using _Sender = stdexec::__t<_SenderId>;
-      using _Env = stdexec::__t<__env<_SchedulerId>>;
+    template <class... _Ts>
+    using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Ts> && ...)>;
 
-      struct __t {
-        using __id = __sender;
-        using is_sender = void;
-        _Env __env_;
-        _Sender __sndr_;
+    template <class _CvrefSender, class _Env>
+    using __all_values_and_errors_nothrow_decay_copyable = __mand<
+      error_types_of_t<_CvrefSender, _Env, __all_nothrow_decay_copyable>,
+      value_types_of_t< _CvrefSender, _Env, __all_nothrow_decay_copyable, __mand>>;
 
-        template <class _Self, class _Receiver>
-        using __receiver_t = //
-          stdexec::__t< __receiver1<
-            _SchedulerId,
-            stdexec::__id<__variant_for_t<__copy_cvref_t<_Self, _Sender>, env_of_t<_Receiver>>>,
-            stdexec::__id<_Receiver>>>;
+    template <class _CvrefSender, class _Env>
+    using __with_error_t = __if<
+      __all_values_and_errors_nothrow_decay_copyable<_CvrefSender, _Env>,
+      completion_signatures<>,
+      __with_exception_ptr>;
 
-        template <__decays_to<__t> _Self, receiver _Receiver>
-          requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) //
-          -> stdexec::__t< __operation1<
-            _SchedulerId,
-            stdexec::__cvref_id<_Self, _Sender>,
-            stdexec::__id<_Receiver>>> {
-          return {__self.__env_.__sched_, ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
-        }
-
-        template <class... _Ts>
-        using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Ts> && ...)>;
-
-        template <class _Self, class _Env>
-        using __all_values_and_errors_nothrow_decay_copyable = __mand<
-          error_types_of_t<__copy_cvref_t<_Self, _Sender>, _Env, __all_nothrow_decay_copyable>,
-          value_types_of_t<
-            __copy_cvref_t<_Self, _Sender>,
-            _Env,
-            __all_nothrow_decay_copyable,
-            __mand>>;
-
-        template <class _Self, class _Env>
-        using __with_error_t = __if<
-          __all_values_and_errors_nothrow_decay_copyable<_Self, _Env>,
-          completion_signatures<>,
-          __with_exception_ptr>;
-
-        template <class _Self, class _Env>
-        using __completions_t = //
-          __try_make_completion_signatures<
-            __copy_cvref_t<_Self, _Sender>,
-            _Env,
-            __try_make_completion_signatures<
-              schedule_result_t<_Scheduler>,
-              _Env,
-              __with_error_t<_Self, _Env>,
-              __mconst<completion_signatures<>>>,
-            __decay_signature<set_value_t>,
-            __decay_signature<set_error_t>>;
-
-        template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-          -> dependent_completion_signatures<_Env>;
-
-        template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-          -> __completions_t<_Self, _Env>
-          requires true;
-
-        friend const _Env& tag_invoke(get_env_t, const __t& __self) noexcept {
-          return __self.__env_;
-        }
-      };
-    };
+    template <class _Scheduler, class _CvrefSender, class _Env>
+    using __completions_t = //
+      __try_make_completion_signatures<
+        _CvrefSender,
+        _Env,
+        __try_make_completion_signatures<
+          schedule_result_t<_Scheduler>,
+          _Env,
+          __with_error_t<_CvrefSender, _Env>,
+          __mconst<completion_signatures<>>>,
+        __decay_signature<set_value_t>,
+        __decay_signature<set_error_t>>;
 
     struct schedule_from_t {
       template <scheduler _Scheduler, sender _Sender>
-        requires tag_invocable<schedule_from_t, _Scheduler, _Sender>
-      auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const
-        noexcept(nothrow_tag_invocable<schedule_from_t, _Scheduler, _Sender>)
-          -> tag_invoke_result_t<schedule_from_t, _Scheduler, _Sender> {
-        return tag_invoke(*this, (_Scheduler&&) __sched, (_Sender&&) __sndr);
+      auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const {
+        using __env_t = __t<__env<__id<__decay_t<_Scheduler>>>>;
+        auto __domain = query_or(get_domain, __sched, __default_domain());
+        return __domain.transform_sender(
+          __make_basic_sender(
+            schedule_from_t(), __env_t{(_Scheduler&&) __sched}, (_Sender&&) __sndr),
+          empty_env());
       }
 
-      template <scheduler _Scheduler, sender _Sender>
-      auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> stdexec::__t<
-        __sender<stdexec::__id<__decay_t<_Scheduler>>, stdexec::__id<__decay_t<_Sender>>>> {
-        return {{(_Scheduler&&) __sched}, (_Sender&&) __sndr};
+      using _Sender = __2;
+      using _Env = __1;
+      using __legacy_customizations_t = __types<
+        tag_invoke_t(schedule_from_t, get_completion_scheduler_t<set_value_t>(_Env&), _Sender)>;
+
+#if STDEXEC_FRIENDSHIP_IS_LEXICAL()
+     private:
+      template <class...>
+      friend struct stdexec::__basic_sender;
+#endif
+
+      template <class _Sender>
+      using __env_t = __data_of<const _Sender&>;
+
+      template <class _Sender>
+      using __scheduler_t =
+        __decay_t<__call_result_t<get_completion_scheduler_t<set_value_t>, __env_t<_Sender>>>;
+
+      template <class _Sender, class _Receiver>
+      using __receiver_t = //
+        stdexec::__t< __receiver1<
+          stdexec::__id<__scheduler_t<_Sender>>,
+          stdexec::__id<__variant_for_t<__child_of<_Sender>, env_of_t<_Receiver>>>,
+          stdexec::__id<_Receiver>>>;
+
+      template <class _Sender, class _Receiver>
+      using __operation_t =         //
+        stdexec::__t< __operation1< //
+          stdexec::__id<__scheduler_t<_Sender>>,
+          stdexec::__cvref_id<__child_of<_Sender>>,
+          stdexec::__id<_Receiver>>>;
+
+      template <__lazy_sender_for<schedule_from_t> _Sender>
+      static __env_t<_Sender> get_env(const _Sender& __sndr) noexcept {
+        return __sender_apply(__sndr, __detail::__get_data());
+      }
+
+      template <__lazy_sender_for<schedule_from_t> _Sender, class _Env>
+      static auto get_completion_signatures(_Sender&& __sndr, const _Env&) noexcept
+        -> __completions_t<__scheduler_t<_Sender>, __child_of<_Sender>, _Env> {
+        return {};
+      }
+
+      template <__lazy_sender_for<schedule_from_t> _Sender, receiver _Receiver>
+        requires sender_to<__child_of<_Sender>, __receiver_t<_Sender, _Receiver>>
+      static auto connect(_Sender&& __sndr, _Receiver __rcvr) //
+        -> __operation_t<_Sender, _Receiver> {
+        using _Child = __child_of<_Sender>;
+        return __sender_apply(
+          (_Sender&&) __sndr,
+          [&](schedule_from_t, __env_t<_Sender>&& __env, _Child&& __child)
+            -> __operation_t<_Sender, _Receiver> {
+            auto __sched = get_completion_scheduler<set_value_t>(__env);
+            return {__sched, (_Child&&) __child, (_Receiver&&) __rcvr};
+          });
       }
     };
   } // namespace __schedule_from
@@ -5937,12 +5933,6 @@ namespace stdexec {
 
     struct _INVALID_ARGUMENTS_TO_WHEN_ALL_ { };
 
-    template <class... _SenderIds>
-    struct _WITH_SENDERS_ { };
-
-    template <class _Env>
-    struct _WITH_ENVIRONMENT_ { };
-
     struct when_all_t {
       template <sender... _Senders>
       auto operator()(_Senders&&... __sndrs) const {
@@ -5957,7 +5947,7 @@ namespace stdexec {
 
 #if STDEXEC_FRIENDSHIP_IS_LEXICAL()
      private:
-      template <class>
+      template <class...>
       friend struct stdexec::__basic_sender;
 #endif
 
@@ -6430,9 +6420,6 @@ namespace stdexec {
 
   template <auto _Reason = "You cannot pipe one sender into another."__csz>
   struct _CANNOT_PIPE_INTO_A_SENDER_ { };
-
-  template <class _Sender>
-  struct _WITH_SENDER_ { };
 
   template <class _Sender>
   using __bad_pipe_sink_t = __mexception<_CANNOT_PIPE_INTO_A_SENDER_<>, _WITH_SENDER_<_Sender>>;
