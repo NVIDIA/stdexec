@@ -100,6 +100,7 @@ TEST_CASE("type with schedule that throws is a scheduler", "[concepts][scheduler
 
 struct noeq_sched {
   struct my_sender {
+    using is_sender = void;
     using completion_signatures = ex::completion_signatures< //
       ex::set_value_t(),                                     //
       ex::set_error_t(std::exception_ptr),                   //
@@ -121,6 +122,7 @@ TEST_CASE("type w/o equality operations do not model scheduler", "[concepts][sch
 
 struct sched_no_completion {
   struct my_sender {
+    using is_sender = void;
     using completion_signatures = ex::completion_signatures< //
       ex::set_value_t(),                                     //
       ex::set_error_t(std::exception_ptr),                   //
@@ -162,6 +164,7 @@ TEST_CASE(
 struct sched_no_env {
   // P2300R5 senders defined sender queries on the sender itself.
   struct my_sender {
+    using is_sender = void;
     using completion_signatures = ex::completion_signatures< //
       ex::set_value_t(),                                     //
       ex::set_error_t(std::exception_ptr),                   //

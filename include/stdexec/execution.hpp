@@ -1240,9 +1240,13 @@ namespace stdexec {
   // NOT TO SPEC (YET)
 #if !STDEXEC_LEGACY_R5_CONCEPTS()
   // Here is the R7 sender concepts, not yet enabled.
+  template <class _Sender, class = empty_env>
+  concept __sender =                           //
+    enable_sender<__decay_t<_Sender>>;
+
   template <class _Sender>
   concept sender =                             //
-    enable_sender<__decay_t<_Sender>> &&       //
+    __sender<_Sender> &&                       //
     environment_provider<__cref_t<_Sender>> && //
     move_constructible<__decay_t<_Sender>> &&  //
     constructible_from<__decay_t<_Sender>, _Sender>;
