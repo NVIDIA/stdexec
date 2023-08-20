@@ -701,6 +701,7 @@ struct counting_scheduler {
     }
   };
 
+  STDEXEC_CPO_ACCESS(ex::schedule_t);
   STDEXEC_DEFINE_CUSTOM(sender schedule)(this counting_scheduler, ex::schedule_t) noexcept {
     return {};
   }

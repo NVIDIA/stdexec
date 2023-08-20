@@ -611,7 +611,7 @@ namespace nvexec {
         }
 
         STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, get_env_t) noexcept
-          -> make_stream_env_t<env_of_t<outer_receiver_t>> {
+          -> decltype(auto) {
           return __self.operation_state_.make_env();
         }
       };

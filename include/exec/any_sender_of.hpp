@@ -1119,7 +1119,7 @@ namespace exec {
               __mtype<__query_vtable<_SchedulerQueries>>{}, __mtype<_Scheduler>{})},
             [](void* __object_pointer) -> __sender_t {
               const _Scheduler& __scheduler = *static_cast<const _Scheduler*>(__object_pointer);
-              return __sender_t{schedule(__scheduler)};
+              return __sender_t{stdexec::schedule(__scheduler)};
             },
             [](const void* __self, const void* __other) noexcept -> bool {
               static_assert(
@@ -1132,6 +1132,8 @@ namespace exec {
           return &__vtable_;
         }
       };
+
+      STDEXEC_CPO_ACCESS(stdexec::schedule_t);
 
       template <same_as<__scheduler> _Self>
       STDEXEC_DEFINE_CUSTOM(__sender_t schedule)(this const _Self& __self, schedule_t) {
@@ -1328,7 +1330,7 @@ namespace exec {
         friend auto tag_invoke(_Tag, Self&& __self, _As&&... __as) noexcept(
           stdexec::
             nothrow_tag_invocable< _Tag, stdexec::__copy_cvref_t<Self, __scheduler_base>, _As...>) {
-          return tag_invoke(_Tag{}, ((Self&&) __self).__scheduler_, (_As&&) __as...);
+          return stdexec::tag_invoke(_Tag{}, ((Self&&) __self).__scheduler_, (_As&&) __as...);
         }
 
         friend bool

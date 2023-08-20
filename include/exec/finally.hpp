@@ -286,6 +286,9 @@ namespace exec {
         __x<_Receiver>>>;
 
       class __t {
+        STDEXEC_CPO_ACCESS(connect_t);
+        STDEXEC_CPO_ACCESS(get_completion_signatures_t);
+
         _InitialSender __initial_sender_;
         _FinalSender __final_sender_;
 

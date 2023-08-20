@@ -61,6 +61,9 @@ namespace tbbexec {
             stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
 
          private:
+          STDEXEC_CPO_ACCESS(stdexec::get_env_t);
+          STDEXEC_CPO_ACCESS(stdexec::connect_t);
+
           template <typename Receiver>
           operation<DerivedPoolType, stdexec::__x<stdexec::__decay_t<Receiver>>>
             make_operation_(Receiver&& r) const {
@@ -69,8 +72,8 @@ namespace tbbexec {
           }
 
           template <class Receiver>
-          friend operation<DerivedPoolType, stdexec::__x<stdexec::__decay_t<Receiver>>>
-            tag_invoke(stdexec::connect_t, sender s, Receiver&& r) {
+          STDEXEC_DEFINE_CUSTOM(auto connect)(this sender s, stdexec::connect_t, Receiver&& r)
+            -> operation<DerivedPoolType, stdexec::__x<stdexec::__decay_t<Receiver>>> {
             return s.make_operation_(std::forward<Receiver>(r));
           }
 
@@ -79,8 +82,6 @@ namespace tbbexec {
             tag_invoke(stdexec::get_completion_scheduler_t<CPO>, const sender& s) noexcept {
             return typename DerivedPoolType::scheduler{s.pool_};
           }
-
-          STDEXEC_CPO_ACCESS(stdexec::get_env_t);
 
           STDEXEC_DEFINE_CUSTOM(auto get_env)(this const sender& s, stdexec::get_env_t) noexcept
             -> const sender& {
@@ -366,15 +367,15 @@ namespace tbbexec {
           template <stdexec::__decays_to<bulk_sender> Self, stdexec::receiver Receiver>
             requires stdexec::
               receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-            friend bulk_op_state_t<Self, Receiver>
-            tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) noexcept(
-              stdexec::__nothrow_constructible_from<
-                bulk_op_state_t<Self, Receiver>,
-                DerivedPoolType&,
-                Shape,
-                Fun,
-                Sender,
-                Receiver>) {
+            STDEXEC_DEFINE_CUSTOM(auto connect)(this Self&& self, stdexec::connect_t, Receiver&& rcvr)
+              noexcept(
+                stdexec::__nothrow_constructible_from<
+                  bulk_op_state_t<Self, Receiver>,
+                  DerivedPoolType&,
+                  Shape,
+                  Fun,
+                  Sender,
+                  Receiver>) -> bulk_op_state_t<Self, Receiver> {
             return bulk_op_state_t<Self, Receiver>{
               self.pool_, self.shape_, self.fun_, ((Self&&) self).sndr_, (Receiver&&) rcvr};
           }
@@ -405,7 +406,7 @@ namespace tbbexec {
           }
 
           template <stdexec::same_as<stdexec::get_env_t> Tag>
-          friend const bulk_sender& tag_invoke(Tag tag, const bulk_sender& self) noexcept {
+          STDEXEC_DEFINE_CUSTOM(const bulk_sender& get_env)(this const bulk_sender& self, Tag) noexcept {
             return self;
           }
         };
@@ -414,6 +415,7 @@ namespace tbbexec {
           return sender{*pool_};
         }
 
+        STDEXEC_CPO_ACCESS(stdexec::schedule_t);
         STDEXEC_DEFINE_CUSTOM(sender schedule)(
           this const scheduler& s,
           stdexec::schedule_t) noexcept {

@@ -66,6 +66,9 @@ namespace exec {
       };
 
       class __t : private std::variant<stdexec::__t<_SenderIds>...> {
+        STDEXEC_CPO_ACCESS(stdexec::connect_t);
+        STDEXEC_CPO_ACCESS(stdexec::get_completion_signatures_t);
+
         using __variant_t = std::variant<stdexec::__t<_SenderIds>...>;
 
         __variant_t&& base() && noexcept {

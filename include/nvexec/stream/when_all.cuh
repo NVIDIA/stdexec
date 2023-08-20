@@ -249,7 +249,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           // Synchronize streams
           if (status_ == cudaSuccess) {
             if constexpr (stream_receiver<Receiver>) {
-              auto env = get_env(recvr_);
+              auto env = stdexec::get_env(recvr_);
               stream_provider_t* stream_provider = get_stream_provider(env);
               cudaStream_t stream = stream_provider->own_stream_.value();
 
@@ -391,6 +391,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           _when_all::on_stop_requested>>
           on_stop_{};
       };
+
+      STDEXEC_CPO_ACCESS(get_env_t);
+      STDEXEC_CPO_ACCESS(connect_t);
+      STDEXEC_CPO_ACCESS(get_completion_signatures_t);
 
       template <__decays_to<__t> Self, receiver Receiver>
       STDEXEC_DEFINE_CUSTOM(auto connect)(this Self&& self, connect_t, Receiver rcvr)

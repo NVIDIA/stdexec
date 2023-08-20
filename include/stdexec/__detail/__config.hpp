@@ -284,7 +284,8 @@
     return __VA_ARGS__; \
   }
 
-#if STDEXEC_CLANG() || (STDEXEC_GCC() && __GNUC__ >= 13)
+// GCC 13 implements lexical friendship, but it is incomplete. See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111018
+#if STDEXEC_CLANG() // || (STDEXEC_GCC() && __GNUC__ >= 13)
 #define STDEXEC_FRIENDSHIP_IS_LEXICAL() 1
 #else
 #define STDEXEC_FRIENDSHIP_IS_LEXICAL() 0

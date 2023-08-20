@@ -209,6 +209,9 @@ namespace exec {
         }
 
        private:
+        STDEXEC_CPO_ACCESS(connect_t);
+        STDEXEC_CPO_ACCESS(get_completion_signatures_t);
+
         _Sender __sender_;
 
         template <__decays_to<__t> _Self, class _Receiver>

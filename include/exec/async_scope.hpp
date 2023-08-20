@@ -629,6 +629,10 @@ namespace exec {
         }
       }
      private:
+      STDEXEC_CPO_ACCESS(connect_t);
+      STDEXEC_CPO_ACCESS(get_completion_signatures_t);
+      STDEXEC_CPO_ACCESS(get_env_t);
+
       template <class _Self>
       using __completions_t = __future_completions_t<__mfront<_Sender, _Self>, _Env>;
 
@@ -651,8 +655,6 @@ namespace exec {
         this _Self&&,
         get_completion_signatures_t,
         _OtherEnv&&) -> __completions_t<_Self>;
-
-      STDEXEC_CPO_ACCESS(get_env_t);
 
       STDEXEC_DEFINE_CUSTOM(empty_env get_env)(this const __future& __self, get_env_t) noexcept {
         return {};

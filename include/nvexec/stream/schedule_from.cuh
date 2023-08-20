@@ -156,7 +156,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <__decays_to<source_sender_t> Self, receiver Receiver>
       STDEXEC_DEFINE_CUSTOM(auto connect)(this Self&& self, connect_t, Receiver rcvr)
         -> connect_result_t<__copy_cvref_t<Self, Sender>, Receiver> {
-        return stdexec::connect(((Self&&) self).sender_, (Receiver&&) rcvr);
+        return stdexec::connect(((Self&&) self).sndr_, (Receiver&&) rcvr);
       }
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const source_sender_t& self, get_env_t) noexcept

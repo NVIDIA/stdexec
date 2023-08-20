@@ -165,6 +165,8 @@ namespace exec {
         std::size_t __max_recursion_depth_;
       };
 
+      STDEXEC_CPO_ACCESS(schedule_t);
+
       STDEXEC_DEFINE_CUSTOM(__schedule_sender schedule)(
         this __scheduler __self,
         schedule_t) noexcept {

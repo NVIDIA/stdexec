@@ -272,6 +272,9 @@ namespace exec {
         }
 
        private:
+        STDEXEC_CPO_ACCESS(connect_t);
+        STDEXEC_CPO_ACCESS(get_completion_signatures_t);
+
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires(
             sender_to< __copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, __receiver_t<_Receiver>>
