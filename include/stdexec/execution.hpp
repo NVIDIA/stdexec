@@ -2687,8 +2687,7 @@ namespace stdexec {
         __call_result_t<_Fun, _Sender, _As...>
         operator()(_Sender&& __sndr) && noexcept(__nothrow_callable<_Fun, _Sender, _As...>) {
         return std::apply(
-          [&__sndr, this](_As&... __as) -> __call_result_t<_Fun, _Sender, _As...>
-          {
+          [&__sndr, this](_As&... __as) -> __call_result_t<_Fun, _Sender, _As...> {
             return ((_Fun&&) __fun_)((_Sender&&) __sndr, (_As&&) __as...);
           },
           __as_);
@@ -2701,7 +2700,8 @@ namespace stdexec {
         operator()(_Sender&& __sndr) const & //
         noexcept(__nothrow_callable<const _Fun&, _Sender, const _As&...>) {
         return std::apply(
-          [&__sndr, this](const _As&... __as) -> __call_result_t<const _Fun&, _Sender, const _As&...> {
+          [&__sndr,
+           this](const _As&... __as) -> __call_result_t<const _Fun&, _Sender, const _As&...> {
             return __fun_((_Sender&&) __sndr, __as...);
           },
           __as_);
@@ -5607,13 +5607,30 @@ namespace stdexec {
       sender_in<_Sender, _Env>
       && __valid<__value_types_of_t, _Sender, _Env, __mconst<int>, __msingle_or<void>>;
 
+    template <
+      __mstring _Context = "In stdexec::when_all()..."__csz,
+      __mstring _Diagnostic =
+        "The given sender can complete successfully in more that one way. "
+        "Use stdexec::when_all_with_variant() instead."__csz>
+    struct _INVALID_WHEN_ALL_ARGUMENT_;
+
+    template <class _Sender, class _Env>
+    using __too_many_value_completions_error =
+      __mexception<_INVALID_WHEN_ALL_ARGUMENT_<>, _WITH_SENDER_<_Sender>, _WITH_ENVIRONMENT_<_Env>>;
+
+    template <class _Sender, class _Env, class _ValueTuple, class... _Rest>
+    using __value_tuple_t = __minvoke<
+      __if_c< (0 == sizeof...(_Rest)), __mconst<_ValueTuple>, __q<__too_many_value_completions_error>>,
+      _Sender,
+      _Env>;
+
     template <class _Env, class _Sender>
     using __single_values_of_t = //
       __try_value_types_of_t<
         _Sender,
         _Env,
         __transform<__q<__decay_rvalue_ref>, __q<__types>>,
-        __q<__msingle>>;
+        __mbind_front_q<__value_tuple_t, _Sender, _Env>>;
 
     template <class _Env, class... _Senders>
     using __set_values_sig_t = //
@@ -5626,10 +5643,10 @@ namespace stdexec {
 
     template <class _Env, class... _Senders>
     using __all_value_and_error_args_nothrow_decay_copyable = //
-      __mand<                                                 //
-        __mand<
-          __try_value_types_of_t< _Senders, _Env, __q<__all_nothrow_decay_copyable>, __q<__mand>>...>,
-        __mand<__try_error_types_of_t<_Senders, _Env, __q<__all_nothrow_decay_copyable>>...>>;
+      __mand< __compl_sigs::__maybe_for_all_sigs<
+        __completion_signatures_of_t<_Senders, _Env>,
+        __q<__all_nothrow_decay_copyable>,
+        __q<__mand>>...>;
 
     template <class _Env, class... _Senders>
     using __completions_t = //
@@ -5830,8 +5847,6 @@ namespace stdexec {
 
     template <class _Env, __max1_sender<__env_t<_Env>>... _Senders>
     struct __traits_ {
-      using __completions = __completions_t<__env_t<_Env>, _Senders...>;
-
       // tuple<optional<tuple<Vs1...>>, optional<tuple<Vs2...>>, ...>
       using __values_tuple = //
         __minvoke<
@@ -5857,7 +5872,6 @@ namespace stdexec {
     template <receiver _Receiver, __max1_sender<__env_t<env_of_t<_Receiver>>>... _Senders>
     struct __traits : __traits_<env_of_t<_Receiver>, _Senders...> {
       using _Traits = __traits_<env_of_t<_Receiver>, _Senders...>;
-      using typename _Traits::__completions;
       using typename _Traits::__values_tuple;
       using typename _Traits::__errors_variant;
 
@@ -5988,7 +6002,7 @@ namespace stdexec {
 
       template <class _Self, class _Env>
       using __completions = //
-        typename __children_of<_Self, __mbind_front_q<__traits_, _Env>>::__completions;
+        __children_of<_Self, __mbind_front_q<__completions_t, __env_t<_Env>>>;
 
       template <__lazy_sender_for<when_all_t> _Self, class _Env>
       static auto get_completion_signatures(_Self&& __self, _Env&&) {
@@ -6116,6 +6130,26 @@ namespace stdexec {
       };
     };
 
+    inline constexpr __mstring __query_failed_diag =
+      "The current execution environment doesn't have a value for the given query."__csz;
+
+    template <class _Tag>
+    struct _WITH_QUERY_;
+
+    template <class _Tag, class _Env>
+    using __query_failed_error = //
+      __mexception<              //
+        _NOT_CALLABLE_<"In stdexec::read()..."__csz, __query_failed_diag>,
+        _WITH_QUERY_<_Tag>,
+        _WITH_ENVIRONMENT_<_Env>>;
+
+    template <class _Tag, class _Env>
+      requires __callable<_Tag, _Env>
+    using __completions_t = //
+      completion_signatures<
+        set_value_t(__call_result_t<_Tag, _Env>),
+        set_error_t(std::exception_ptr)>;
+
     template <class _Tag>
     struct __sender {
       using __t = __sender;
@@ -6123,11 +6157,8 @@ namespace stdexec {
       using is_sender = void;
 
       template <class _Env>
-        requires __callable<_Tag, _Env>
-      using __completions_t = //
-        completion_signatures<
-          set_value_t(__call_result_t<_Tag, _Env>),
-          set_error_t(std::exception_ptr)>;
+      using __completions_t =
+        __minvoke<__mtry_catch_q<__read::__completions_t, __q<__query_failed_error>>, _Tag, _Env>;
 
       template <class _Receiver>
         requires receiver_of<_Receiver, __completions_t<env_of_t<_Receiver>>>
@@ -6137,9 +6168,6 @@ namespace stdexec {
         return {{}, (_Receiver&&) __rcvr};
       }
 
-      template <class _Env>
-      friend auto tag_invoke(get_completion_signatures_t, __sender, _Env&&)
-        -> dependent_completion_signatures<_Env>;
       template <__none_of<no_env> _Env>
       friend auto tag_invoke(get_completion_signatures_t, __sender, _Env&&)
         -> __completions_t<_Env>;
