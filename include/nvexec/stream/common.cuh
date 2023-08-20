@@ -595,8 +595,7 @@ namespace nvexec {
           self.operation_state_.propagate_completion_signal(Tag(), (As&&) as...);
         }
 
-        friend make_stream_env_t<env_of_t<outer_receiver_t>>
-          tag_invoke(get_env_t, const __t& self) noexcept {
+        friend decltype(auto) tag_invoke(get_env_t, const __t& self) noexcept {
           return self.operation_state_.make_env();
         }
       };
