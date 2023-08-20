@@ -164,7 +164,8 @@ TEST_CASE(
 struct sched_no_env {
   // P2300R5 senders defined sender queries on the sender itself.
   struct my_sender {
-    using is_sender = void;
+    // Intentionally left out:
+    //using is_sender = void;
     using completion_signatures = ex::completion_signatures< //
       ex::set_value_t(),                                     //
       ex::set_error_t(std::exception_ptr),                   //
