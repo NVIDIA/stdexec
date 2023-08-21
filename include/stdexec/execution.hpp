@@ -1241,7 +1241,7 @@ namespace stdexec {
 #if !STDEXEC_LEGACY_R5_CONCEPTS()
   // Here is the R7 sender concepts, not yet enabled.
   template <class _Sender, class = empty_env>
-  concept __sender =                           //
+  concept __sender = //
     enable_sender<__decay_t<_Sender>>;
 
   template <class _Sender>
@@ -6253,7 +6253,11 @@ namespace stdexec {
         }};
     }
 
-    using __env = decltype(__sync_wait::__make_env(__declval<run_loop&>()));
+    struct __env : __result_of<__make_env, run_loop&> {
+      __env(run_loop& __loop) noexcept
+        : __result_of<__make_env, run_loop&>{__sync_wait::__make_env(__loop)} {
+      }
+    };
 
     // What should sync_wait(just_stopped()) return?
     template <sender_in<__env> _Sender, class _Continuation>
@@ -6315,7 +6319,7 @@ namespace stdexec {
         }
 
         friend __env tag_invoke(get_env_t, const __t& __rcvr) noexcept {
-          return __sync_wait::__make_env(*__rcvr.__loop_);
+          return __env(*__rcvr.__loop_);
         }
       };
     };
@@ -6326,17 +6330,76 @@ namespace stdexec {
     struct sync_wait_t;
 
     using _Sender = __0;
+    template <class _Tag>
     using __cust_sigs = __types<
-      tag_invoke_t(sync_wait_t, __get_sender_domain_t(_Sender), _Sender),
-      tag_invoke_t(sync_wait_t, _Sender)>;
+      tag_invoke_t(_Tag, __get_sender_domain_t(_Sender), _Sender),
+      tag_invoke_t(_Tag, _Sender)>;
 
-    template <class _Sender>
-    inline constexpr bool __is_sync_wait_customized = __minvocable<__which<__cust_sigs>, _Sender>;
+    template <class _Tag, class _Sender>
+    inline constexpr bool __is_sync_wait_customized =
+      __minvocable<__which<__cust_sigs<_Tag>>, _Sender>;
 
     template <class _Sender>
     using __receiver_t = __t<__sync_wait_result_impl<_Sender, __q<__receiver>>>;
 
-    struct __default_impl {
+    // These are for hiding the metaprogramming in diagnostics
+    template <class _Sender>
+    struct __sync_receiver_for {
+      using __t = __receiver_t<_Sender>;
+    };
+    template <class _Sender>
+    using __sync_receiver_for_t = __t<__sync_receiver_for<_Sender>>;
+
+    template <class _Sender>
+    struct __value_tuple_for {
+      using __t = __sync_wait_result_t<_Sender>;
+    };
+    template <class _Sender>
+    using __value_tuple_for_t = __t<__value_tuple_for<_Sender>>;
+
+    template <class _Sender>
+    struct __variant_for {
+      using __t = __sync_wait_with_variant_result_t<_Sender>;
+    };
+    template <class _Sender>
+    using __variant_for_t = __t<__variant_for<_Sender>>;
+
+    inline constexpr __mstring __sync_wait_error_diag =
+      "The argument to stdexec::sync_wait() is a sender that can complete successfully in more "
+      "than one way. Use stdexec::sync_wait_with_variant() instead."__csz;
+
+    template <
+      __mstring _Context = "In stdexec::sync_wait()..."__csz,
+      __mstring _Diagnostic = __sync_wait_error_diag>
+    struct _INVALID_ARGUMENT_TO_SYNC_WAIT_;
+
+    template <class _Sender, class>
+    using __sync_wait_error =
+      __mexception<_INVALID_ARGUMENT_TO_SYNC_WAIT_<>, _WITH_SENDER_<_Sender>>;
+
+    template <class _Sender>
+    concept __valid_sync_wait_argument = __ok< __minvoke<
+      __mtry_catch_q<__single_value_variant_sender_t, __q<__sync_wait_error>>,
+      _Sender,
+      __env>>;
+
+    ////////////////////////////////////////////////////////////////////////////
+    // [execution.senders.consumers.sync_wait]
+    struct sync_wait_t {
+      struct __impl;
+
+      template <sender_in<__env> _Sender>
+        requires __valid_sync_wait_argument<_Sender>
+              && (sender_to<_Sender, __sync_receiver_for_t<_Sender>>
+                  || __is_sync_wait_customized<sync_wait_t, _Sender>)
+      auto operator()(_Sender&& __sndr) const -> std::optional<__value_tuple_for_t<_Sender>> {
+        using __dispatcher_t =
+          __make_dispatcher<__cust_sigs<sync_wait_t>, __mconst<__impl>, _Sender>;
+        return __dispatcher_t()((_Sender&&) __sndr);
+      }
+    };
+
+    struct sync_wait_t::__impl {
       template <class _Sender>
       auto operator()(_Sender&& __sndr) const -> std::optional<__sync_wait_result_t<_Sender>> {
         using state_t = __sync_wait_result_impl<_Sender, __q<__state>>;
@@ -6361,87 +6424,38 @@ namespace stdexec {
       }
     };
 
-    template <class _Sender>
-    using __dispatcher_for = __make_dispatcher<__cust_sigs, __mconst<__default_impl>, _Sender>;
-
-    // These are for hiding the metaprogramming in diagnostics
-    template <class _Sender>
-    struct __sync_receiver_for {
-      using __t = __receiver_t<_Sender>;
-    };
-    template <class _Sender>
-    using __sync_receiver_for_t = __t<__sync_receiver_for<_Sender>>;
-
-    template <class _Sender>
-    struct __value_tuple_for {
-      using __t = __sync_wait_result_t<_Sender>;
-    };
-    template <class _Sender>
-    using __value_tuple_for_t = __t<__value_tuple_for<_Sender>>;
-
-    ////////////////////////////////////////////////////////////////////////////
-    // [execution.senders.consumers.sync_wait]
-    struct sync_wait_t {
-      template <sender_in<__env> _Sender>
-        requires __satisfies<__single_value_variant_sender<_Sender, __env>>
-              && (sender_to<_Sender, __sync_receiver_for_t<_Sender>>
-                  || __is_sync_wait_customized<_Sender>)
-      auto operator()(_Sender&& __sndr) const -> std::optional<__value_tuple_for_t<_Sender>> {
-        // The selected implementation should return void
-        return __dispatcher_for<_Sender>{}((_Sender&&) __sndr);
-      }
-    };
-
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait_with_variant]
     struct sync_wait_with_variant_t {
+      struct __impl;
+
       template <sender_in<__env> _Sender>
-        requires __tag_invocable_with_domain< sync_wait_with_variant_t, set_value_t, _Sender>
-      tag_invoke_result_t< sync_wait_with_variant_t, __sender_domain_of_t<_Sender>, _Sender>
-        operator()(_Sender&& __sndr) const noexcept(
-          nothrow_tag_invocable< sync_wait_with_variant_t, __sender_domain_of_t<_Sender>, _Sender>) {
-
-        static_assert(
-          std::is_same_v<
-            tag_invoke_result_t< sync_wait_with_variant_t, __sender_domain_of_t<_Sender>, _Sender>,
-            std::optional<__sync_wait_with_variant_result_t<_Sender>>>,
-          "The type of tag_invoke(sync_wait_with_variant, get_completion_scheduler, S) "
-          "must be sync-wait-with-variant-type<S, sync-wait-env>");
-
-        auto __domain = __get_sender_domain(__sndr);
-        return tag_invoke(sync_wait_with_variant_t{}, __domain, (_Sender&&) __sndr);
+        requires(
+          invocable<sync_wait_t, __into_variant_result_t<_Sender>>
+          || __is_sync_wait_customized<sync_wait_with_variant_t, _Sender>)
+      auto operator()(_Sender&& __sndr) const -> std::optional<__variant_for_t<_Sender>> {
+        using __dispatcher_t =
+          __make_dispatcher<__cust_sigs<sync_wait_with_variant_t>, __mconst<__impl>, _Sender>;
+        return __dispatcher_t()((_Sender&&) __sndr);
       }
+    };
 
-      template <sender_in<__env> _Sender>
-        requires(!__tag_invocable_with_domain< sync_wait_with_variant_t, set_value_t, _Sender>)
-             && tag_invocable<sync_wait_with_variant_t, _Sender>
-      tag_invoke_result_t<sync_wait_with_variant_t, _Sender> operator()(_Sender&& __sndr) const
-        noexcept(nothrow_tag_invocable<sync_wait_with_variant_t, _Sender>) {
-        static_assert(
-          std::is_same_v<
-            tag_invoke_result_t<sync_wait_with_variant_t, _Sender>,
-            std::optional<__sync_wait_with_variant_result_t<_Sender>>>,
-          "The type of tag_invoke(sync_wait_with_variant, S) "
-          "must be sync-wait-with-variant-type<S, sync-wait-env>");
-
-        return tag_invoke(sync_wait_with_variant_t{}, (_Sender&&) __sndr);
-      }
-
-      template <sender_in<__env> _Sender>
-        requires(!__tag_invocable_with_domain< sync_wait_with_variant_t, set_value_t, _Sender>)
-             && (!tag_invocable<sync_wait_with_variant_t, _Sender>)
-             && invocable<sync_wait_t, __into_variant_result_t<_Sender>>
-      std::optional<__sync_wait_with_variant_result_t<_Sender>> operator()(_Sender&& __sndr) const {
-        return sync_wait_t{}(into_variant((_Sender&&) __sndr));
+    struct sync_wait_with_variant_t::__impl {
+      template <class _Sender>
+      auto operator()(_Sender&& __sndr) const
+        -> std::optional<__sync_wait_with_variant_result_t<_Sender>> {
+        return sync_wait_t()(into_variant((_Sender&&) __sndr));
       }
     };
   } // namespace __sync_wait
 
   using __sync_wait::sync_wait_t;
   inline constexpr sync_wait_t sync_wait{};
+
   using __sync_wait::sync_wait_with_variant_t;
   inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
 
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   struct __ignore_sender {
     using is_sender = void;
 
