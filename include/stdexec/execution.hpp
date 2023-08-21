@@ -1245,9 +1245,13 @@ namespace stdexec {
   // NOT TO SPEC (YET)
 #if !STDEXEC_LEGACY_R5_CONCEPTS()
   // Here is the R7 sender concepts, not yet enabled.
+  template <class _Sender, class = empty_env>
+  concept __sender = //
+    enable_sender<__decay_t<_Sender>>;
+
   template <class _Sender>
   concept sender =                             //
-    enable_sender<__decay_t<_Sender>> &&       //
+    __sender<_Sender> &&                       //
     environment_provider<__cref_t<_Sender>> && //
     move_constructible<__decay_t<_Sender>> &&  //
     constructible_from<__decay_t<_Sender>, _Sender>;
@@ -2727,8 +2731,7 @@ namespace stdexec {
         __call_result_t<_Fun, _Sender, _As...>
         operator()(_Sender&& __sndr) && noexcept(__nothrow_callable<_Fun, _Sender, _As...>) {
         return std::apply(
-          [&__sndr, this](_As&... __as) -> __call_result_t<_Fun, _Sender, _As...>
-          {
+          [&__sndr, this](_As&... __as) -> __call_result_t<_Fun, _Sender, _As...> {
             return ((_Fun&&) __fun_)((_Sender&&) __sndr, (_As&&) __as...);
           },
           __as_);
@@ -2741,7 +2744,8 @@ namespace stdexec {
         operator()(_Sender&& __sndr) const & //
         noexcept(__nothrow_callable<const _Fun&, _Sender, const _As&...>) {
         return std::apply(
-          [&__sndr, this](const _As&... __as) -> __call_result_t<const _Fun&, _Sender, const _As&...> {
+          [&__sndr,
+           this](const _As&... __as) -> __call_result_t<const _Fun&, _Sender, const _As&...> {
             return __fun_((_Sender&&) __sndr, __as...);
           },
           __as_);
@@ -5802,13 +5806,30 @@ namespace stdexec {
       sender_in<_Sender, _Env>
       && __valid<__value_types_of_t, _Sender, _Env, __mconst<int>, __msingle_or<void>>;
 
+    template <
+      __mstring _Context = "In stdexec::when_all()..."__csz,
+      __mstring _Diagnostic =
+        "The given sender can complete successfully in more that one way. "
+        "Use stdexec::when_all_with_variant() instead."__csz>
+    struct _INVALID_WHEN_ALL_ARGUMENT_;
+
+    template <class _Sender, class _Env>
+    using __too_many_value_completions_error =
+      __mexception<_INVALID_WHEN_ALL_ARGUMENT_<>, _WITH_SENDER_<_Sender>, _WITH_ENVIRONMENT_<_Env>>;
+
+    template <class _Sender, class _Env, class _ValueTuple, class... _Rest>
+    using __value_tuple_t = __minvoke<
+      __if_c< (0 == sizeof...(_Rest)), __mconst<_ValueTuple>, __q<__too_many_value_completions_error>>,
+      _Sender,
+      _Env>;
+
     template <class _Env, class _Sender>
     using __single_values_of_t = //
       __try_value_types_of_t<
         _Sender,
         _Env,
         __transform<__q<__decay_rvalue_ref>, __q<__types>>,
-        __q<__msingle>>;
+        __mbind_front_q<__value_tuple_t, _Sender, _Env>>;
 
     template <class _Env, class... _Senders>
     using __set_values_sig_t = //
@@ -5821,10 +5842,10 @@ namespace stdexec {
 
     template <class _Env, class... _Senders>
     using __all_value_and_error_args_nothrow_decay_copyable = //
-      __mand<                                                 //
-        __mand<
-          __try_value_types_of_t< _Senders, _Env, __q<__all_nothrow_decay_copyable>, __q<__mand>>...>,
-        __mand<__try_error_types_of_t<_Senders, _Env, __q<__all_nothrow_decay_copyable>>...>>;
+      __mand< __compl_sigs::__maybe_for_all_sigs<
+        __completion_signatures_of_t<_Senders, _Env>,
+        __q<__all_nothrow_decay_copyable>,
+        __q<__mand>>...>;
 
     template <class _Env, class... _Senders>
     using __completions_t = //
@@ -6030,8 +6051,6 @@ namespace stdexec {
 
     template <class _Env, __max1_sender<__env_t<_Env>>... _Senders>
     struct __traits_ {
-      using __completions = __completions_t<__env_t<_Env>, _Senders...>;
-
       // tuple<optional<tuple<Vs1...>>, optional<tuple<Vs2...>>, ...>
       using __values_tuple = //
         __minvoke<
@@ -6057,7 +6076,6 @@ namespace stdexec {
     template <receiver _Receiver, __max1_sender<__env_t<env_of_t<_Receiver>>>... _Senders>
     struct __traits : __traits_<env_of_t<_Receiver>, _Senders...> {
       using _Traits = __traits_<env_of_t<_Receiver>, _Senders...>;
-      using typename _Traits::__completions;
       using typename _Traits::__values_tuple;
       using typename _Traits::__errors_variant;
 
@@ -6188,7 +6206,7 @@ namespace stdexec {
 
       template <class _Self, class _Env>
       using __completions = //
-        typename __children_of<_Self, __mbind_front_q<__traits_, _Env>>::__completions;
+        __children_of<_Self, __mbind_front_q<__completions_t, __env_t<_Env>>>;
 
       template <__lazy_sender_for<when_all_t> _Self, class _Env>
       static auto get_completion_signatures(_Self&& __self, _Env&&) {
@@ -6316,6 +6334,26 @@ namespace stdexec {
       };
     };
 
+    inline constexpr __mstring __query_failed_diag =
+      "The current execution environment doesn't have a value for the given query."__csz;
+
+    template <class _Tag>
+    struct _WITH_QUERY_;
+
+    template <class _Tag, class _Env>
+    using __query_failed_error = //
+      __mexception<              //
+        _NOT_CALLABLE_<"In stdexec::read()..."__csz, __query_failed_diag>,
+        _WITH_QUERY_<_Tag>,
+        _WITH_ENVIRONMENT_<_Env>>;
+
+    template <class _Tag, class _Env>
+      requires __callable<_Tag, _Env>
+    using __completions_t = //
+      completion_signatures<
+        set_value_t(__call_result_t<_Tag, _Env>),
+        set_error_t(std::exception_ptr)>;
+
     template <class _Tag>
     struct __sender {
       using __t = __sender;
@@ -6323,11 +6361,8 @@ namespace stdexec {
       using is_sender = void;
 
       template <class _Env>
-        requires __callable<_Tag, _Env>
-      using __completions_t = //
-        completion_signatures<
-          set_value_t(__call_result_t<_Tag, _Env>),
-          set_error_t(std::exception_ptr)>;
+      using __completions_t =
+        __minvoke<__mtry_catch_q<__read::__completions_t, __q<__query_failed_error>>, _Tag, _Env>;
 
       template <class _Receiver>
         requires receiver_of<_Receiver, __completions_t<env_of_t<_Receiver>>>
@@ -6337,11 +6372,6 @@ namespace stdexec {
         return {{}, (_Receiver&&) __rcvr};
       }
 
-      template <class _Env>
-      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
-        this __sender,
-        get_completion_signatures_t,
-        _Env&&) -> dependent_completion_signatures<_Env>;
       template <__none_of<no_env> _Env>
       STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
         this __sender,
@@ -6425,7 +6455,11 @@ namespace stdexec {
         }};
     }
 
-    using __env = decltype(__sync_wait::__make_env(__declval<run_loop&>()));
+    struct __env : __result_of<__make_env, run_loop&> {
+      __env(run_loop& __loop) noexcept
+        : __result_of<__make_env, run_loop&>{__sync_wait::__make_env(__loop)} {
+      }
+    };
 
     // What should sync_wait(just_stopped()) return?
     template <sender_in<__env> _Sender, class _Continuation>
@@ -6487,7 +6521,7 @@ namespace stdexec {
         }
 
         STDEXEC_DEFINE_CUSTOM(__env get_env)(this const __t& __rcvr, stdexec::get_env_t) noexcept {
-          return __sync_wait::__make_env(*__rcvr.__loop_);
+          return __env(*__rcvr.__loop_);
         }
       };
     };
@@ -6498,43 +6532,17 @@ namespace stdexec {
     struct sync_wait_t;
 
     using _Sender = __0;
+    template <class _Tag>
     using __cust_sigs = __types<
-      tag_invoke_t(sync_wait_t, __get_sender_domain_t(_Sender), _Sender),
-      tag_invoke_t(sync_wait_t, _Sender)>;
+      tag_invoke_t(_Tag, __get_sender_domain_t(_Sender), _Sender),
+      tag_invoke_t(_Tag, _Sender)>;
 
-    template <class _Sender>
-    inline constexpr bool __is_sync_wait_customized = __minvocable<__which<__cust_sigs>, _Sender>;
+    template <class _Tag, class _Sender>
+    inline constexpr bool __is_sync_wait_customized =
+      __minvocable<__which<__cust_sigs<_Tag>>, _Sender>;
 
     template <class _Sender>
     using __receiver_t = __t<__sync_wait_result_impl<_Sender, __q<__receiver>>>;
-
-    struct __default_impl {
-      template <class _Sender>
-      auto operator()(_Sender&& __sndr) const -> std::optional<__sync_wait_result_t<_Sender>> {
-        using state_t = __sync_wait_result_impl<_Sender, __q<__state>>;
-        state_t __state{};
-        run_loop __loop;
-
-        // Launch the sender with a continuation that will fill in a variant
-        // and notify a condition variable.
-        auto __op_state = connect((_Sender&&) __sndr, __receiver_t<_Sender>{&__state, &__loop});
-        stdexec::start(__op_state);
-
-        // Wait for the variant to be filled in.
-        __loop.run();
-
-        if (__state.__data_.index() == 2)
-          std::rethrow_exception(std::get<2>(__state.__data_));
-
-        if (__state.__data_.index() == 3)
-          return std::nullopt;
-
-        return std::move(std::get<1>(__state.__data_));
-      }
-    };
-
-    template <class _Sender>
-    using __dispatcher_for = __make_dispatcher<__cust_sigs, __mconst<__default_impl>, _Sender>;
 
     // These are for hiding the metaprogramming in diagnostics
     template <class _Sender>
@@ -6551,69 +6559,105 @@ namespace stdexec {
     template <class _Sender>
     using __value_tuple_for_t = __t<__value_tuple_for<_Sender>>;
 
+    template <class _Sender>
+    struct __variant_for {
+      using __t = __sync_wait_with_variant_result_t<_Sender>;
+    };
+    template <class _Sender>
+    using __variant_for_t = __t<__variant_for<_Sender>>;
+
+    inline constexpr __mstring __sync_wait_error_diag =
+      "The argument to stdexec::sync_wait() is a sender that can complete successfully in more "
+      "than one way. Use stdexec::sync_wait_with_variant() instead."__csz;
+
+    template <
+      __mstring _Context = "In stdexec::sync_wait()..."__csz,
+      __mstring _Diagnostic = __sync_wait_error_diag>
+    struct _INVALID_ARGUMENT_TO_SYNC_WAIT_;
+
+    template <class _Sender, class>
+    using __sync_wait_error =
+      __mexception<_INVALID_ARGUMENT_TO_SYNC_WAIT_<>, _WITH_SENDER_<_Sender>>;
+
+    template <class _Sender>
+    concept __valid_sync_wait_argument = __ok< __minvoke<
+      __mtry_catch_q<__single_value_variant_sender_t, __q<__sync_wait_error>>,
+      _Sender,
+      __env>>;
+
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait]
     struct sync_wait_t {
+      struct __impl;
+
       template <sender_in<__env> _Sender>
-        requires __satisfies<__single_value_variant_sender<_Sender, __env>>
+        requires __valid_sync_wait_argument<_Sender>
               && (sender_to<_Sender, __sync_receiver_for_t<_Sender>>
-                  || __is_sync_wait_customized<_Sender>)
+                  || __is_sync_wait_customized<sync_wait_t, _Sender>)
       auto operator()(_Sender&& __sndr) const -> std::optional<__value_tuple_for_t<_Sender>> {
-        // The selected implementation should return void
-        return __dispatcher_for<_Sender>{}((_Sender&&) __sndr);
+        using __dispatcher_t =
+          __make_dispatcher<__cust_sigs<sync_wait_t>, __mconst<__impl>, _Sender>;
+        return __dispatcher_t()((_Sender&&) __sndr);
+      }
+    };
+
+    struct sync_wait_t::__impl {
+      template <class _Sender>
+      auto operator()(_Sender&& __sndr) const -> std::optional<__sync_wait_result_t<_Sender>> {
+        using state_t = __sync_wait_result_impl<_Sender, __q<__state>>;
+        state_t __state{};
+        run_loop __loop;
+
+        // Launch the sender with a continuation that will fill in a variant
+        // and notify a condition variable.
+        auto __op_state = connect((_Sender&&) __sndr, __receiver_t<_Sender>{&__state, &__loop});
+        start(__op_state);
+
+        // Wait for the variant to be filled in.
+        __loop.run();
+
+        if (__state.__data_.index() == 2)
+          std::rethrow_exception(std::get<2>(__state.__data_));
+
+        if (__state.__data_.index() == 3)
+          return std::nullopt;
+
+        return std::move(std::get<1>(__state.__data_));
       }
     };
 
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait_with_variant]
     struct sync_wait_with_variant_t {
+      struct __impl;
+
       template <sender_in<__env> _Sender>
-        requires __tag_invocable_with_domain< sync_wait_with_variant_t, set_value_t, _Sender>
-      tag_invoke_result_t< sync_wait_with_variant_t, __sender_domain_of_t<_Sender>, _Sender>
-        operator()(_Sender&& __sndr) const noexcept(
-          nothrow_tag_invocable< sync_wait_with_variant_t, __sender_domain_of_t<_Sender>, _Sender>) {
-
-        static_assert(
-          std::is_same_v<
-            tag_invoke_result_t< sync_wait_with_variant_t, __sender_domain_of_t<_Sender>, _Sender>,
-            std::optional<__sync_wait_with_variant_result_t<_Sender>>>,
-          "The type of tag_invoke(sync_wait_with_variant, get_completion_scheduler, S) "
-          "must be sync-wait-with-variant-type<S, sync-wait-env>");
-
-        auto __domain = __get_sender_domain(__sndr);
-        return tag_invoke(sync_wait_with_variant_t{}, __domain, (_Sender&&) __sndr);
+        requires(
+          invocable<sync_wait_t, __into_variant_result_t<_Sender>>
+          || __is_sync_wait_customized<sync_wait_with_variant_t, _Sender>)
+      auto operator()(_Sender&& __sndr) const -> std::optional<__variant_for_t<_Sender>> {
+        using __dispatcher_t =
+          __make_dispatcher<__cust_sigs<sync_wait_with_variant_t>, __mconst<__impl>, _Sender>;
+        return __dispatcher_t()((_Sender&&) __sndr);
       }
+    };
 
-      template <sender_in<__env> _Sender>
-        requires(!__tag_invocable_with_domain< sync_wait_with_variant_t, set_value_t, _Sender>)
-             && tag_invocable<sync_wait_with_variant_t, _Sender>
-      tag_invoke_result_t<sync_wait_with_variant_t, _Sender> operator()(_Sender&& __sndr) const
-        noexcept(nothrow_tag_invocable<sync_wait_with_variant_t, _Sender>) {
-        static_assert(
-          std::is_same_v<
-            tag_invoke_result_t<sync_wait_with_variant_t, _Sender>,
-            std::optional<__sync_wait_with_variant_result_t<_Sender>>>,
-          "The type of tag_invoke(sync_wait_with_variant, S) "
-          "must be sync-wait-with-variant-type<S, sync-wait-env>");
-
-        return tag_invoke(sync_wait_with_variant_t{}, (_Sender&&) __sndr);
-      }
-
-      template <sender_in<__env> _Sender>
-        requires(!__tag_invocable_with_domain< sync_wait_with_variant_t, set_value_t, _Sender>)
-             && (!tag_invocable<sync_wait_with_variant_t, _Sender>)
-             && invocable<sync_wait_t, __into_variant_result_t<_Sender>>
-      std::optional<__sync_wait_with_variant_result_t<_Sender>> operator()(_Sender&& __sndr) const {
-        return sync_wait_t{}(into_variant((_Sender&&) __sndr));
+    struct sync_wait_with_variant_t::__impl {
+      template <class _Sender>
+      auto operator()(_Sender&& __sndr) const
+        -> std::optional<__sync_wait_with_variant_result_t<_Sender>> {
+        return sync_wait_t()(into_variant((_Sender&&) __sndr));
       }
     };
   } // namespace __sync_wait
 
   using __sync_wait::sync_wait_t;
   inline constexpr sync_wait_t sync_wait{};
+
   using __sync_wait::sync_wait_with_variant_t;
   inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
 
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   struct __ignore_sender {
     using is_sender = void;
 
