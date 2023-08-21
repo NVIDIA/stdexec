@@ -257,7 +257,10 @@ namespace stdexec {
     extern __q<__midentity> __name_of_v;
 
     template <class _Sender>
-    using __name_of = __minvoke<decltype(__name_of_v<_Sender>), _Sender>;
+    using __name_of_fn = decltype(__name_of_v<_Sender>);
+
+    template <class _Sender>
+    using __name_of = __minvoke<__name_of_fn<_Sender>, _Sender>;
 
     struct __lazy_sender_name {
       template <class _Sender>
@@ -271,22 +274,23 @@ namespace stdexec {
 
     struct __id_name {
       template <class _Sender>
-      using __f = __copy_cvref_t<_Sender, __name_of<__id<__decay_t<_Sender>>>>;
+      using __f = __name_of<__id<_Sender>>;
     };
 
     template <class _Sender>
-    extern decltype(__name_of_v<_Sender>) __name_of_v<_Sender&>;
+    extern __mcompose<__cplr, __name_of_fn<_Sender>> __name_of_v<_Sender&>;
 
     template <class _Sender>
-    extern decltype(__name_of_v<_Sender>) __name_of_v<_Sender&&>;
+    extern __mcompose<__cprr, __name_of_fn<_Sender>> __name_of_v<_Sender&&>;
 
     template <class _Sender>
-    extern decltype(__name_of_v<_Sender>) __name_of_v<const _Sender>;
+    extern __mcompose<__cpclr, __name_of_fn<_Sender>> __name_of_v<const _Sender>;
 
     template <class _ImplOf>
     extern __lazy_sender_name __name_of_v<__basic_sender<_ImplOf>>;
 
     template <__has_id _Sender>
+      requires (!same_as<__id<_Sender>, _Sender>)
     extern __id_name __name_of_v<_Sender>;
   } // namespace __detail
 
