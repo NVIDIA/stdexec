@@ -1432,6 +1432,10 @@ namespace stdexec {
   concept __single_typed_sender =
     sender_in<_Sender, _Env> && __valid<__single_sender_value_t, _Sender, _Env>;
 
+  template <class _Sender, class _Env = __default_env>
+  concept __single_value_variant_sender =
+    sender_in<_Sender, _Env> && __valid<__single_value_variant_sender_t, _Sender, _Env>;
+
   template <class... Errs>
   using __nofail = __mbool<sizeof...(Errs) == 0>;
 
