@@ -6428,7 +6428,7 @@ namespace stdexec {
         return __sync_wait_error<__diag, _Sender>();
       } else {
         constexpr __mstring __diag = "Unknown concept check failure."__csz;
-        return __mexception<int>();
+        return __sync_wait_error<__diag, _Sender>();
       }
       STDEXEC_UNREACHABLE();
     }
