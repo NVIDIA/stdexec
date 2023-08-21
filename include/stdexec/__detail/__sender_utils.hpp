@@ -284,7 +284,7 @@ namespace stdexec {
     extern __mcompose<__cprr, __name_of_fn<_Sender>> __name_of_v<_Sender&&>;
 
     template <class _Sender>
-    extern __mcompose<__cpclr, __name_of_fn<_Sender>> __name_of_v<const _Sender>;
+    extern __mcompose<__cpclr, __name_of_fn<_Sender>> __name_of_v<const _Sender&>;
 
     template <class _ImplOf>
     extern __lazy_sender_name __name_of_v<__basic_sender<_ImplOf>>;
