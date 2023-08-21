@@ -5504,7 +5504,7 @@ namespace stdexec {
       using _Sender = stdexec::__t<_SenderId>;
 
       template <class _Env>
-      using __variant_t = __into_variant_result_t<_Sender, _Env>;
+      using __variant_t = __try_value_types_of_t<_Sender, _Env>;
 
       template <class _Receiver>
       using __receiver_t = //
@@ -5521,15 +5521,19 @@ namespace stdexec {
 
        private:
         template <class...>
-        using __value_t = completion_signatures<>;
+        using __set_value_t = completion_signatures<>;
+
+        template <class _Variant>
+        using __variant_completions =
+          completion_signatures< set_value_t(_Variant), set_error_t(std::exception_ptr)>;
 
         template <class _Env>
         using __compl_sigs = //
-          make_completion_signatures<
+          __try_make_completion_signatures<
             _Sender,
             _Env,
-            completion_signatures< set_value_t(__variant_t<_Env>), set_error_t(std::exception_ptr)>,
-            __value_t>;
+            __meval<__variant_completions, __variant_t<_Env>>,
+            __q<__set_value_t>>;
 
         _Sender __sndr_;
 
@@ -5566,6 +5570,19 @@ namespace stdexec {
 
   using __into_variant::into_variant_t;
   inline constexpr into_variant_t into_variant{};
+
+  // Temporary until we migrate into_variant() to use __basic_sender:
+  namespace __detail {
+    struct __into_variant_sender_name {
+      template <class _Sender>
+      using __f = __mapply<
+        __transform< __mcompose<__q<__name_of>, __q<__t>>, __q<__into_variant::__sender>>,
+        _Sender>;
+    };
+
+    template <class _SenderId>
+    extern __into_variant_sender_name __name_of_v<__into_variant::__sender<_SenderId>>;
+  }
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.when_all]
@@ -6359,24 +6376,66 @@ namespace stdexec {
     template <class _Sender>
     using __variant_for_t = __t<__variant_for<_Sender>>;
 
-    inline constexpr __mstring __sync_wait_error_diag =
+    inline constexpr __mstring __sync_wait_context_diag = //
+      "In stdexec::sync_wait()..."__csz;
+    inline constexpr __mstring __too_many_successful_completions_diag =
       "The argument to stdexec::sync_wait() is a sender that can complete successfully in more "
       "than one way. Use stdexec::sync_wait_with_variant() instead."__csz;
 
-    template <
-      __mstring _Context = "In stdexec::sync_wait()..."__csz,
-      __mstring _Diagnostic = __sync_wait_error_diag>
+    template <__mstring _Context, __mstring _Diagnostic>
     struct _INVALID_ARGUMENT_TO_SYNC_WAIT_;
 
+    template <__mstring _Diagnostic>
+    using __invalid_argument_to_sync_wait =
+      _INVALID_ARGUMENT_TO_SYNC_WAIT_<__sync_wait_context_diag, _Diagnostic>;
+
+    template <__mstring _Diagnostic, class _Sender, class _Env = __env>
+    using __sync_wait_error = __mexception<
+      __invalid_argument_to_sync_wait<_Diagnostic>,
+      _WITH_SENDER_<_Sender>,
+      _WITH_ENVIRONMENT_<_Env>>;
+
     template <class _Sender, class>
-    using __sync_wait_error =
-      __mexception<_INVALID_ARGUMENT_TO_SYNC_WAIT_<>, _WITH_SENDER_<_Sender>>;
+    using __too_many_successful_completions_error =
+      __sync_wait_error<__too_many_successful_completions_diag, _Sender>;
 
     template <class _Sender>
     concept __valid_sync_wait_argument = __ok< __minvoke<
-      __mtry_catch_q<__single_value_variant_sender_t, __q<__sync_wait_error>>,
+      __mtry_catch_q<__single_value_variant_sender_t, __q<__too_many_successful_completions_error>>,
       _Sender,
       __env>>;
+
+#if STDEXEC_NVHPC()
+    // It requires some hoop-jumping to get the NVHPC compiler to report a meaningful
+    // diagnostic for SFINAE failures.
+    template <class _Sender>
+    auto __diagnose_error() {
+      if constexpr (!sender_in<_Sender, __env>) {
+        using _Completions = __completion_signatures_of_t<_Sender, __env>;
+        if constexpr (!__ok<_Completions>) {
+          return _Completions();
+        } else {
+          constexpr __mstring __diag =
+            "The stdexec::sender_in<Sender, Environment> concept check has failed."__csz;
+          return __sync_wait_error<__diag, _Sender>();
+        }
+      } else if constexpr (!__valid_sync_wait_argument<_Sender>) {
+        return __sync_wait_error<__too_many_successful_completions_diag, _Sender>();
+      } else if constexpr (!sender_to<_Sender, __sync_receiver_for_t<_Sender>>) {
+        constexpr __mstring __diag =
+          "Failed to connect the given sender to sync_wait's internal receiver. "
+          "The stdexec::connect(Sender, Receiver) expression is ill-formed."__csz;
+        return __sync_wait_error<__diag, _Sender>();
+      } else {
+        constexpr __mstring __diag = "Unknown concept check failure."__csz;
+        return __mexception<int>();
+      }
+      STDEXEC_UNREACHABLE();
+    }
+
+    template <class _Sender>
+    using __error_description_t = decltype(__sync_wait::__diagnose_error<_Sender>());
+#endif
 
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait]
@@ -6392,6 +6451,19 @@ namespace stdexec {
           __make_dispatcher<__cust_sigs<sync_wait_t>, __mconst<__impl>, _Sender>;
         return __dispatcher_t()((_Sender&&) __sndr);
       }
+
+#if STDEXEC_NVHPC()
+      template <class _What, class... _With>
+      [[deprecated("Invalid argument to stdexec::sync_wait(_Sender)...")]] static int
+        __report_error(_ERROR_<_What, _With...>) {
+        return 0;
+      }
+
+      template <class _Sender>
+      void operator()(
+        _Sender&&,
+        int = sync_wait_t::__report_error(__sync_wait::__diagnose_error<_Sender>())) const = delete;
+#endif
     };
 
     struct sync_wait_t::__impl {
@@ -6433,6 +6505,20 @@ namespace stdexec {
           __make_dispatcher<__cust_sigs<sync_wait_with_variant_t>, __mconst<__impl>, _Sender>;
         return __dispatcher_t()((_Sender&&) __sndr);
       }
+
+#if STDEXEC_NVHPC()
+      template <class _What, class... _With>
+      [[deprecated("Invalid argument to stdexec::sync_wait_with_variant(_Sender)...")]] static int
+        __report_error(_ERROR_<_What, _With...>) {
+        return 0;
+      }
+
+      template <class _Sender>
+      void operator()(
+        _Sender&&,
+        int = sync_wait_with_variant_t::__report_error(
+          __sync_wait::__diagnose_error<__into_variant_result_t<_Sender>>())) const = delete;
+#endif
     };
 
     struct sync_wait_with_variant_t::__impl {
