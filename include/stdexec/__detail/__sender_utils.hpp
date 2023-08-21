@@ -56,7 +56,10 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __basic_sender
   template <class...>
-  struct __basic_sender;
+  struct __basic_sender {
+    using __id = __basic_sender;
+    using __t = __basic_sender;
+  };
 
   template <class _ImplFn>
   struct __basic_sender<_ImplFn> {
@@ -268,7 +271,7 @@ namespace stdexec {
 
     struct __id_name {
       template <class _Sender>
-      using __f = __cvref_id<_Sender>;
+      using __f = __copy_cvref_t<_Sender, __name_of<__id<__decay_t<_Sender>>>>;
     };
 
     template <class _Sender>
