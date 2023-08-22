@@ -6460,7 +6460,7 @@ namespace stdexec {
       }
 
       template <class _Sender>
-      void operator()(
+      std::optional<std::tuple<int>> operator()(
         _Sender&&,
         int = sync_wait_t::__report_error(__sync_wait::__diagnose_error<_Sender>())) const = delete;
 #endif
@@ -6514,7 +6514,7 @@ namespace stdexec {
       }
 
       template <class _Sender>
-      void operator()(
+      std::optional<std::tuple<std::variant<std::tuple<>>>> operator()(
         _Sender&&,
         int = sync_wait_with_variant_t::__report_error(
           __sync_wait::__diagnose_error<__into_variant_result_t<_Sender>>())) const = delete;
