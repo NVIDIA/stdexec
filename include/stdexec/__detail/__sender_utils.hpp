@@ -131,11 +131,12 @@ namespace stdexec {
       constexpr auto operator()(_Tag, _Data __data = {}, _Children... __children) const;
     };
 
-#if STDEXEC_NVHPC()
-    // The NVIDIA HPC compiler struggles with capture initializers for a parameter pack.
-    // As a workaround, we use a wrapper that performs moves when non-const lvalues are
-    // copied. That constructor is only used when capturing the variables, never when
-    // the resulting lambda is copied or moved.
+#if STDEXEC_NVHPC() || (STDEXEC_GCC() && __GNUC__ < 13)
+    // The NVIDIA HPC compiler and gcc prior to v13 struggle with capture
+    // initializers for a parameter pack. As a workaround, we use a wrapper that
+    // performs moves when non-const lvalues are copied. That constructor is
+    // only used when capturing the variables, never when the resulting lambda
+    // is copied or moved.
 
     // Move-by-copy
     template <class _Ty>
