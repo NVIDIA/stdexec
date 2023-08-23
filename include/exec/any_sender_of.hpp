@@ -631,7 +631,11 @@ namespace exec {
       template <class... _Sigs, class... _Queries>
         requires(__is_not_stop_token_query<_Queries> && ...)
       struct __ref<completion_signatures<_Sigs...>, _Queries...> {
+#if !STDEXEC_MSVC()
+       // MSVCBUG https://developercommunity.visualstudio.com/t/Private-member-inaccessible-when-used-in/10448363
+
        private:
+#endif
         using __vtable_t = stdexec::__t<__vtable<completion_signatures<_Sigs...>, _Queries...>>;
 
         struct __env_t {
@@ -694,7 +698,11 @@ namespace exec {
       template <class... _Sigs, class... _Queries>
         requires(__is_stop_token_query<_Queries> || ...)
       struct __ref<completion_signatures<_Sigs...>, _Queries...> {
+#if !STDEXEC_MSVC()
+       // MSVCBUG https://developercommunity.visualstudio.com/t/Private-member-inaccessible-when-used-in/10448363
+
        private:
+#endif
         using _FilteredQueries =
           __minvoke<__remove_if<__q<__is_never_stop_token_query>>, _Queries...>;
         using __vtable_t = stdexec::__t<
