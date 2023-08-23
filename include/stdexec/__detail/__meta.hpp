@@ -830,7 +830,7 @@ namespace stdexec {
     using __f = __mor<__minvoke<_Fn, _Args>...>;
   };
 
-#if __has_builtin(__type_pack_element)
+#if STDEXEC_HAS_BUILTIN(__type_pack_element)
   template <std::size_t _Np, class... _Ts>
   using __m_at_c = __type_pack_element<_Np, _Ts...>;
 #else

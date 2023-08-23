@@ -89,7 +89,7 @@
 #define STDEXEC_PRAGMA_IGNORE(_ARG)
 #endif
 
-#ifdef __has_builtin
+#if !STDEXEC_MSVC() && defined(__has_builtin)
 #define STDEXEC_HAS_BUILTIN __has_builtin
 #else
 #define STDEXEC_HAS_BUILTIN(...) 0

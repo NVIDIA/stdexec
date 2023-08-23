@@ -93,7 +93,7 @@ namespace stdexec {
   template <class T>
   concept destructible = __destructible_<T>;
 
-#if __has_builtin(__is_constructible)
+#if STDEXEC_HAS_BUILTIN(__is_constructible)
   template <class _Ty, class... _As>
   concept constructible_from = //
     destructible<_Ty> &&       //
@@ -102,7 +102,7 @@ namespace stdexec {
   template <class _Ty, class... _As>
   concept constructible_from = //
     destructible<_Ty> &&       //
-    is_constructible_v<_Ty, _As...>;
+      std::is_constructible_v<_Ty, _As...>;
 #endif
 
   template <class _Ty>
@@ -212,7 +212,7 @@ namespace stdexec {
       { __decay_t<_Ty>{__decay_t<_Ty>{(_Ty&&) __t}} } noexcept;
     };
 
-#if __has_builtin(__is_nothrow_constructible)
+#if STDEXEC_HAS_BUILTIN(__is_nothrow_constructible)
   template <class _Ty, class... _As>
   concept __nothrow_constructible_from =
     constructible_from<_Ty, _As...> && __is_nothrow_constructible(_Ty, _As...);
