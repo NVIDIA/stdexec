@@ -1001,7 +1001,7 @@ namespace stdexec {
               _COMPLETION_SIGNATURES_MISMATCH_,
               _COMPLETION_SIGNATURE_<_Sig>,
               _IS_NOT_ONE_OF_<_Sigs...>,
-              _SIGNAL_SENT_BY_SENDER_<_Sender>>;
+              _SIGNAL_SENT_BY_SENDER_<__name_of<_Sender>>>;
           __debug::_ATTENTION_<_What>();
         }
       };
