@@ -930,6 +930,21 @@ namespace stdexec {
 
     struct __completion_signatures { };
 
+#if STDEXEC_MSVC()
+    // MSVCBUG https://developercommunity.visualstudio.com/t/Explicit-variable-template-specialisatio/10360032
+    // MSVCBUG https://developercommunity.visualstudio.com/t/Non-function-type-interpreted-as-functio/10447831
+
+    template <class _Sig>
+    struct __normalize_sig;
+
+    template <class _Tag, class... _Args>
+    struct __normalize_sig<_Tag(_Args...)> {
+      using __type = _Tag (*)(_Args&&...);
+    };
+
+    template <class _Sig>
+    using __normalize_sig_t = typename __normalize_sig<_Sig>::__type;
+#else
     template <class _Sig>
     extern int __normalize_sig;
 
@@ -938,6 +953,7 @@ namespace stdexec {
 
     template <class _Sig>
     using __normalize_sig_t = decltype(__normalize_sig<_Sig>);
+#endif
 
     template <class... _Sigs>
     struct __valid_completions {
