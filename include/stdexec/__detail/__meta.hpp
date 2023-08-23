@@ -269,13 +269,13 @@ namespace stdexec {
   using __mbind_back = __mbind_back_q<_Fn::template __f, _Back...>;
 
   template <template <class...> class _Tp, class... _Args>
-  concept __valid = requires { typename __meval<_Tp, _Args...>; };
+  concept __mvalid = requires { typename __meval<_Tp, _Args...>; };
 
   template <class _Fn, class... _Args>
-  concept __minvocable = __valid<_Fn::template __f, _Args...>;
+  concept __minvocable = __mvalid<_Fn::template __f, _Args...>;
 
   template <template <class...> class _Tp, class... _Args>
-  concept __msucceeds = __valid<_Tp, _Args...> && __ok<__meval<_Tp, _Args...>>;
+  concept __msucceeds = __mvalid<_Tp, _Args...> && __ok<__meval<_Tp, _Args...>>;
 
   template <class _Fn, class... _Args>
   concept __minvocable_succeeds = __minvocable<_Fn, _Args...> && __ok<__minvoke<_Fn, _Args...>>;
@@ -333,7 +333,7 @@ namespace stdexec {
   template <template <class...> class _Try, class _Catch>
   struct __mtry_catch_q {
     template <class... _Args>
-    using __f = __minvoke< __if_c<__valid<_Try, _Args...>, __q<_Try>, _Catch>, _Args...>;
+    using __f = __minvoke< __if_c<__mvalid<_Try, _Args...>, __q<_Try>, _Catch>, _Args...>;
   };
 
   template <class _Try, class _Catch>
@@ -830,7 +830,7 @@ namespace stdexec {
     using __f = __mor<__minvoke<_Fn, _Args>...>;
   };
 
-#if __has_builtin(__type_pack_element)
+#if STDEXEC_HAS_BUILTIN(__type_pack_element)
   template <std::size_t _Np, class... _Ts>
   using __m_at_c = __type_pack_element<_Np, _Ts...>;
 #else

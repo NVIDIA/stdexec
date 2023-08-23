@@ -1106,7 +1106,6 @@ namespace stdexec {
   } // namespace __queries
 
   using __queries::get_scheduler_t;
-  extern const get_scheduler_t get_scheduler;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.sender_transform]
@@ -1168,7 +1167,7 @@ namespace stdexec {
       typename __decay_t<sender_transform_result_t<_Sender, _Env>>::completion_signatures;
 
     template <class _Sender, class _Env = no_env>
-    concept __with_member_alias = __valid<__member_alias_t, _Sender, _Env>;
+    concept __with_member_alias = __mvalid<__member_alias_t, _Sender, _Env>;
 
     struct get_completion_signatures_t {
       template <class _Sender, class _Env>
@@ -1414,11 +1413,11 @@ namespace stdexec {
   using __count_of = __msuccess_or_t<__try_count_of<_Tag, _Sender, _Env>>;
 
   template <class _Tag, class _Sender, class _Env = __default_env>
-    requires __valid<__count_of, _Tag, _Sender, _Env>
+    requires __mvalid<__count_of, _Tag, _Sender, _Env>
   inline constexpr bool __sends = (__v<__count_of<_Tag, _Sender, _Env>> != 0);
 
   template <class _Sender, class _Env = __default_env>
-    requires __valid<__count_of, set_stopped_t, _Sender, _Env>
+    requires __mvalid<__count_of, set_stopped_t, _Sender, _Env>
   inline constexpr bool sends_stopped = __sends<set_stopped_t, _Sender, _Env>;
 
   template <class _Sender, class _Env = __default_env>
@@ -1430,11 +1429,11 @@ namespace stdexec {
 
   template <class _Sender, class _Env = __default_env>
   concept __single_typed_sender =
-    sender_in<_Sender, _Env> && __valid<__single_sender_value_t, _Sender, _Env>;
+    sender_in<_Sender, _Env> && __mvalid<__single_sender_value_t, _Sender, _Env>;
 
   template <class _Sender, class _Env = __default_env>
   concept __single_value_variant_sender =
-    sender_in<_Sender, _Env> && __valid<__single_value_variant_sender_t, _Sender, _Env>;
+    sender_in<_Sender, _Env> && __mvalid<__single_value_variant_sender_t, _Sender, _Env>;
 
   template <class... Errs>
   using __nofail = __mbool<sizeof...(Errs) == 0>;
@@ -1466,7 +1465,7 @@ namespace stdexec {
         __if<__try_count_of<set_stopped_t, _Sender, _Env>, _SetStp, completion_signatures<>>>;
 
     template <class _Sender, class _Env, class _Sigs, class _SetVal, class _SetErr, class _SetStp>
-      requires __valid<__compl_sigs_impl, _Sender, _Env, _Sigs, _SetVal, _SetErr, _SetStp>
+      requires __mvalid<__compl_sigs_impl, _Sender, _Env, _Sigs, _SetVal, _SetErr, _SetStp>
     extern __compl_sigs_impl<_Sender, _Env, _Sigs, _SetVal, _SetErr, _SetStp> __compl_sigs_v;
 
     template <class _Sender, class _Env, class _Sigs, class _SetVal, class _SetErr, class _SetStp>
@@ -1765,16 +1764,16 @@ namespace stdexec {
         }
 
         template <class _Awaitable>
-        _Awaitable&& await_transform(_Awaitable&& __await) noexcept {
-          return (_Awaitable&&) __await;
+        _Awaitable&& await_transform(_Awaitable&& __awaitable) noexcept {
+          return (_Awaitable&&) __awaitable;
         }
 
         template <class _Awaitable>
           requires tag_invocable<as_awaitable_t, _Awaitable, __t&>
-        auto await_transform(_Awaitable&& __await) //
+        auto await_transform(_Awaitable&& __awaitable) //
           noexcept(nothrow_tag_invocable<as_awaitable_t, _Awaitable, __t&>)
             -> tag_invoke_result_t<as_awaitable_t, _Awaitable, __t&> {
-          return tag_invoke(as_awaitable, (_Awaitable&&) __await, *this);
+          return tag_invoke(as_awaitable, (_Awaitable&&) __awaitable, *this);
         }
 
         // Pass through the get_env receiver query
@@ -1824,14 +1823,14 @@ namespace stdexec {
       __attribute__((__used__))
 #endif
       static __operation_t<_Receiver>
-        __co_impl(_Awaitable __await, _Receiver __rcvr) {
+        __co_impl(_Awaitable __awaitable, _Receiver __rcvr) {
         using __result_t = __await_result_t<_Awaitable, __promise_t<_Receiver>>;
         std::exception_ptr __eptr;
         try {
           if constexpr (same_as<__result_t, void>)
-            co_await (co_await (_Awaitable&&) __await, __co_call(set_value, (_Receiver&&) __rcvr));
+            co_await (co_await (_Awaitable&&) __awaitable, __co_call(set_value, (_Receiver&&) __rcvr));
           else
-            co_await __co_call(set_value, (_Receiver&&) __rcvr, co_await (_Awaitable&&) __await);
+            co_await __co_call(set_value, (_Receiver&&) __rcvr, co_await (_Awaitable&&) __awaitable);
         } catch (...) {
           __eptr = std::current_exception();
         }
@@ -1850,8 +1849,8 @@ namespace stdexec {
      public:
       template <class _Receiver, __awaitable<__promise_t<_Receiver>> _Awaitable>
         requires receiver_of<_Receiver, __completions_t<_Receiver, _Awaitable>>
-      __operation_t<_Receiver> operator()(_Awaitable&& __await, _Receiver __rcvr) const {
-        return __co_impl((_Awaitable&&) __await, (_Receiver&&) __rcvr);
+      __operation_t<_Receiver> operator()(_Awaitable&& __awaitable, _Receiver __rcvr) const {
+        return __co_impl((_Awaitable&&) __awaitable, (_Receiver&&) __rcvr);
       }
     };
   } // namespace __connect_awaitable_
@@ -2131,7 +2130,7 @@ namespace stdexec {
     template <class _Sender, class _Promise>
     concept __awaitable_sender =
       sender_in<_Sender, env_of_t<_Promise&>> &&             //
-      __valid<__value_t, _Sender, _Promise> &&               //
+      __mvalid<__value_t, _Sender, _Promise> &&               //
       sender_to<_Sender, __receiver_t<_Sender, _Promise>> && //
       requires(_Promise& __promise) {
         { __promise.unhandled_stopped() } -> convertible_to<__coro::coroutine_handle<>>;
@@ -5621,7 +5620,7 @@ namespace stdexec {
     template <class _Sender, class _Env>
     concept __max1_sender =
       sender_in<_Sender, _Env>
-      && __valid<__value_types_of_t, _Sender, _Env, __mconst<int>, __msingle_or<void>>;
+      && __mvalid<__value_types_of_t, _Sender, _Env, __mconst<int>, __msingle_or<void>>;
 
     template <
       __mstring _Context = "In stdexec::when_all()..."__csz,
@@ -5917,7 +5916,7 @@ namespace stdexec {
       typename __traits_ex<_Cvref, _ReceiverId, _SenderIds...>::template __op_states_tuple<>;
 
     template <class _Cvref, class _ReceiverId, class... _SenderIds>
-      requires __valid<__op_states_tuple_ex, _Cvref, _ReceiverId, _SenderIds...>
+      requires __mvalid<__op_states_tuple_ex, _Cvref, _ReceiverId, _SenderIds...>
     struct __operation {
       using _Receiver = stdexec::__t<_ReceiverId>;
       using _Traits = __traits_ex<_Cvref, _ReceiverId, _SenderIds...>;
