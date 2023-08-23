@@ -928,10 +928,26 @@ namespace stdexec {
   template <std::size_t>
   using __ignore_t = __ignore;
 
+#if STDEXEC_MSVC()
+  // MSVCBUG https://developercommunity.visualstudio.com/t/Incorrect-function-template-argument-sub/10437827
+
+  template <std::size_t>
+  struct __msvc_ignore_t {
+      __msvc_ignore_t() = default;
+      constexpr __msvc_ignore_t(auto&&...) noexcept {
+      }
+  };
+
+  template <std::size_t... _Is, class _Ty, class... _Us>
+  _Ty&& __nth_pack_element_(__msvc_ignore_t<_Is>..., _Ty&& __t, _Us&&...) noexcept {
+      return (_Ty&&)__t;
+  }
+#else
   template <std::size_t... _Is, class _Ty, class... _Us>
   _Ty&& __nth_pack_element_(__ignore_t<_Is>..., _Ty&& __t, _Us&&...) noexcept {
     return (_Ty&&) __t;
   }
+#endif
 
   template <std::size_t _Np, class... _Ts>
   constexpr decltype(auto) __nth_pack_element(_Ts&&... __ts) noexcept {
