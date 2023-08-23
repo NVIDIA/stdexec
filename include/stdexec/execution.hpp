@@ -6453,16 +6453,9 @@ namespace stdexec {
       }
 
 #if STDEXEC_NVHPC()
-      template <class _What, class... _With>
-      [[deprecated("Invalid argument to stdexec::sync_wait(_Sender)...")]] static int
-        __report_error(_ERROR_<_What, _With...>) {
-        return 0;
-      }
-
-      template <class _Sender>
-      std::optional<std::tuple<int>> operator()(
-        _Sender&&,
-        int = sync_wait_t::__report_error(__sync_wait::__diagnose_error<_Sender>())) const = delete;
+      template <class _Sender, class _Error = __error_description_t<_Sender>>
+      auto operator()(_Sender&&, [[maybe_unused]] _Error __diagnostic = {}) const
+        -> std::optional<std::tuple<int>> = delete;
 #endif
     };
 
@@ -6507,17 +6500,11 @@ namespace stdexec {
       }
 
 #if STDEXEC_NVHPC()
-      template <class _What, class... _With>
-      [[deprecated("Invalid argument to stdexec::sync_wait_with_variant(_Sender)...")]] static int
-        __report_error(_ERROR_<_What, _With...>) {
-        return 0;
-      }
-
-      template <class _Sender>
-      std::optional<std::tuple<std::variant<std::tuple<>>>> operator()(
-        _Sender&&,
-        int = sync_wait_with_variant_t::__report_error(
-          __sync_wait::__diagnose_error<__into_variant_result_t<_Sender>>())) const = delete;
+      template <
+        class _Sender,
+        class _Error = __error_description_t<__result_of<into_variant, _Sender>>>
+      auto operator()(_Sender&&, [[maybe_unused]] _Error __diagnostic = {}) const
+        -> std::optional<std::tuple<std::variant<std::tuple<>>>> = delete;
 #endif
     };
 
