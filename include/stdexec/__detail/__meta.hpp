@@ -269,13 +269,13 @@ namespace stdexec {
   using __mbind_back = __mbind_back_q<_Fn::template __f, _Back...>;
 
   template <template <class...> class _Tp, class... _Args>
-  concept __valid = requires { typename __meval<_Tp, _Args...>; };
+  concept __mvalid = requires { typename __meval<_Tp, _Args...>; };
 
   template <class _Fn, class... _Args>
-  concept __minvocable = __valid<_Fn::template __f, _Args...>;
+  concept __minvocable = __mvalid<_Fn::template __f, _Args...>;
 
   template <template <class...> class _Tp, class... _Args>
-  concept __msucceeds = __valid<_Tp, _Args...> && __ok<__meval<_Tp, _Args...>>;
+  concept __msucceeds = __mvalid<_Tp, _Args...> && __ok<__meval<_Tp, _Args...>>;
 
   template <class _Fn, class... _Args>
   concept __minvocable_succeeds = __minvocable<_Fn, _Args...> && __ok<__minvoke<_Fn, _Args...>>;
@@ -333,7 +333,7 @@ namespace stdexec {
   template <template <class...> class _Try, class _Catch>
   struct __mtry_catch_q {
     template <class... _Args>
-    using __f = __minvoke< __if_c<__valid<_Try, _Args...>, __q<_Try>, _Catch>, _Args...>;
+    using __f = __minvoke< __if_c<__mvalid<_Try, _Args...>, __q<_Try>, _Catch>, _Args...>;
   };
 
   template <class _Try, class _Catch>

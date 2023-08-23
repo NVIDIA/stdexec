@@ -1168,7 +1168,7 @@ namespace stdexec {
       typename __decay_t<sender_transform_result_t<_Sender, _Env>>::completion_signatures;
 
     template <class _Sender, class _Env = no_env>
-    concept __with_member_alias = __valid<__member_alias_t, _Sender, _Env>;
+    concept __with_member_alias = __mvalid<__member_alias_t, _Sender, _Env>;
 
     struct get_completion_signatures_t {
       template <class _Sender, class _Env>
@@ -1414,11 +1414,11 @@ namespace stdexec {
   using __count_of = __msuccess_or_t<__try_count_of<_Tag, _Sender, _Env>>;
 
   template <class _Tag, class _Sender, class _Env = __default_env>
-    requires __valid<__count_of, _Tag, _Sender, _Env>
+    requires __mvalid<__count_of, _Tag, _Sender, _Env>
   inline constexpr bool __sends = (__v<__count_of<_Tag, _Sender, _Env>> != 0);
 
   template <class _Sender, class _Env = __default_env>
-    requires __valid<__count_of, set_stopped_t, _Sender, _Env>
+    requires __mvalid<__count_of, set_stopped_t, _Sender, _Env>
   inline constexpr bool sends_stopped = __sends<set_stopped_t, _Sender, _Env>;
 
   template <class _Sender, class _Env = __default_env>
@@ -1430,11 +1430,11 @@ namespace stdexec {
 
   template <class _Sender, class _Env = __default_env>
   concept __single_typed_sender =
-    sender_in<_Sender, _Env> && __valid<__single_sender_value_t, _Sender, _Env>;
+    sender_in<_Sender, _Env> && __mvalid<__single_sender_value_t, _Sender, _Env>;
 
   template <class _Sender, class _Env = __default_env>
   concept __single_value_variant_sender =
-    sender_in<_Sender, _Env> && __valid<__single_value_variant_sender_t, _Sender, _Env>;
+    sender_in<_Sender, _Env> && __mvalid<__single_value_variant_sender_t, _Sender, _Env>;
 
   template <class... Errs>
   using __nofail = __mbool<sizeof...(Errs) == 0>;
@@ -1466,7 +1466,7 @@ namespace stdexec {
         __if<__try_count_of<set_stopped_t, _Sender, _Env>, _SetStp, completion_signatures<>>>;
 
     template <class _Sender, class _Env, class _Sigs, class _SetVal, class _SetErr, class _SetStp>
-      requires __valid<__compl_sigs_impl, _Sender, _Env, _Sigs, _SetVal, _SetErr, _SetStp>
+      requires __mvalid<__compl_sigs_impl, _Sender, _Env, _Sigs, _SetVal, _SetErr, _SetStp>
     extern __compl_sigs_impl<_Sender, _Env, _Sigs, _SetVal, _SetErr, _SetStp> __compl_sigs_v;
 
     template <class _Sender, class _Env, class _Sigs, class _SetVal, class _SetErr, class _SetStp>
@@ -2131,7 +2131,7 @@ namespace stdexec {
     template <class _Sender, class _Promise>
     concept __awaitable_sender =
       sender_in<_Sender, env_of_t<_Promise&>> &&             //
-      __valid<__value_t, _Sender, _Promise> &&               //
+      __mvalid<__value_t, _Sender, _Promise> &&               //
       sender_to<_Sender, __receiver_t<_Sender, _Promise>> && //
       requires(_Promise& __promise) {
         { __promise.unhandled_stopped() } -> convertible_to<__coro::coroutine_handle<>>;
@@ -5621,7 +5621,7 @@ namespace stdexec {
     template <class _Sender, class _Env>
     concept __max1_sender =
       sender_in<_Sender, _Env>
-      && __valid<__value_types_of_t, _Sender, _Env, __mconst<int>, __msingle_or<void>>;
+      && __mvalid<__value_types_of_t, _Sender, _Env, __mconst<int>, __msingle_or<void>>;
 
     template <
       __mstring _Context = "In stdexec::when_all()..."__csz,
@@ -5917,7 +5917,7 @@ namespace stdexec {
       typename __traits_ex<_Cvref, _ReceiverId, _SenderIds...>::template __op_states_tuple<>;
 
     template <class _Cvref, class _ReceiverId, class... _SenderIds>
-      requires __valid<__op_states_tuple_ex, _Cvref, _ReceiverId, _SenderIds...>
+      requires __mvalid<__op_states_tuple_ex, _Cvref, _ReceiverId, _SenderIds...>
     struct __operation {
       using _Receiver = stdexec::__t<_ReceiverId>;
       using _Traits = __traits_ex<_Cvref, _ReceiverId, _SenderIds...>;

@@ -119,7 +119,7 @@ namespace exec {
 
       template <class _Sender, class _Receiver>
       static auto __transform_sender_result() {
-        if constexpr (__valid<__new_sender_t, _Sender, _Receiver>) {
+        if constexpr (__mvalid<__new_sender_t, _Sender, _Receiver>) {
           return (__new_sender_t<_Sender, _Receiver>(*)()) nullptr;
         } else if constexpr (same_as<env_of_t<_Receiver>, no_env>) {
           return (__dependent_sender(*)()) nullptr;
@@ -134,7 +134,7 @@ namespace exec {
       template <class _Sender, class _Receiver>
       auto transform_sender(_Sender&& __sndr, __ignore, _Receiver& __rcvr)
         -> __result_t<_Sender, _Receiver> {
-        if constexpr (__valid<__new_sender_t, _Sender, _Receiver>) {
+        if constexpr (__mvalid<__new_sender_t, _Sender, _Receiver>) {
           auto __sched = get_scheduler(stdexec::get_env(__rcvr));
           return transform_sender_((_Sender&&) __sndr, __sched);
         } else {
@@ -217,7 +217,7 @@ namespace exec {
 
       template <class _Sender, class _Receiver>
       static auto __transform_sender_result() {
-        if constexpr (__valid<__new_sender_t, _Sender, _Receiver>) {
+        if constexpr (__mvalid<__new_sender_t, _Sender, _Receiver>) {
           return (__new_sender_t<_Sender, _Receiver>(*)()) nullptr;
         } else if constexpr (same_as<env_of_t<_Receiver>, no_env>) {
           return (__dependent_sender(*)()) nullptr;
@@ -232,7 +232,7 @@ namespace exec {
       template <class _Sender, class _Receiver>
       auto transform_sender(_Sender&& __sndr, __ignore, _Receiver& __rcvr)
         -> __result_t<_Sender, _Receiver> {
-        if constexpr (__valid<__new_sender_t, _Sender, _Receiver>) {
+        if constexpr (__mvalid<__new_sender_t, _Sender, _Receiver>) {
           auto __sched = get_scheduler(stdexec::get_env(__rcvr));
           return transform_sender_((_Sender&&) __sndr, __sched);
         } else {
