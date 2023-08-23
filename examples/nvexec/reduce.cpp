@@ -23,7 +23,15 @@
 #include <span>
 
 namespace ex = stdexec;
-
+using stdexec::__tag_invoke::tag_invoke;
+struct sink_receiver {
+  using is_receiver = void;
+  friend void tag_invoke(stdexec::set_value_t, sink_receiver, auto&&...) noexcept {}
+  friend void tag_invoke(stdexec::set_error_t, sink_receiver, auto&&) noexcept {}
+  friend void tag_invoke(stdexec::set_stopped_t, sink_receiver) noexcept {}
+  friend stdexec::empty_env tag_invoke(stdexec::get_env_t, sink_receiver) noexcept { return {}; }
+};
+// unqualified call to tag_invoke:
 int main() {
   const int n = 2 * 1024;
   thrust::device_vector<float> input(n, 1.0f);
@@ -32,10 +40,15 @@ int main() {
 
   nvexec::stream_context stream_ctx{};
 
-  auto snd = ex::transfer_just(stream_ctx.get_scheduler(), std::span{first, last})
+  auto snd = ex::just(std::span{first, last})
            | nvexec::reduce(42.0f);
-
-  auto [result] = stdexec::sync_wait(std::move(snd)).value();
+  using stdexec::__tag_invoke::tag_invoke;
+  tag_invoke(stdexec::get_completion_signatures, snd, stream_ctx);
+  
+  auto [result] =
+    stdexec::sync_wait(ex::on(stream_ctx.get_scheduler(), std::move(snd))).value();
 
   std::cout << "result: " << result << std::endl;
+
+
 }

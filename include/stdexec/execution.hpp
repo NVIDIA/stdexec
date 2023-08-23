@@ -731,7 +731,9 @@ namespace stdexec {
 
 #else
 
-    template <same_as<set_value_t> _Tag, class _Ty = __q<__types>, class... _Args>
+    template <same_as<set_value_t> _Tag, 
+    class _Ty = __q<__types>,
+     class... _Args>
     __types<__minvoke<_Ty, _Args...>> __test(_Tag (*)(_Args...));
     template <same_as<set_error_t> _Tag, class _Ty = __q<__types>, class _Error>
     __types<__minvoke<_Ty, _Error>> __test(_Tag (*)(_Error));
@@ -1475,12 +1477,14 @@ namespace stdexec {
 
     template <bool>
     struct __make_compl_sigs {
+
       template <class _Sender, class _Env, class _Sigs, class _SetVal, class _SetErr, class _SetStp>
       using __f = __compl_sigs_t<_Sender, _Env, _Sigs, _SetVal, _SetErr, _SetStp>;
     };
 
     template <>
     struct __make_compl_sigs<true> {
+
       template <class _Sender, class _Env, class _Sigs, class _SetVal, class _SetErr, class _SetStp>
       using __f = //
         __msuccess_or_t<
@@ -5414,10 +5418,10 @@ namespace stdexec {
         -> __t<__sender<stdexec::__id<__decay_t<_Scheduler>>, stdexec::__id<__decay_t<_Sender>>>> {
         // connect-based customization will remove the need for this check
         using __has_customizations = __call_result_t<__has_algorithm_customizations_t, _Scheduler>;
-        static_assert(
-          !__has_customizations{},
-          "For now the default stdexec::on implementation doesn't support scheduling "
-          "onto schedulers that customize algorithms.");
+        // static_assert(
+        //   !__has_customizations{},
+        //   "For now the default stdexec::on implementation doesn't support scheduling "
+        //   "onto schedulers that customize algorithms.");
         return {(_Scheduler&&) __sched, (_Sender&&) __sndr};
       }
     };
@@ -6383,15 +6387,23 @@ namespace stdexec {
     struct sync_wait_t {
       struct __impl;
 
-      template <sender_in<__env> _Sender>
-        requires __valid_sync_wait_argument<_Sender>
-              && (sender_to<_Sender, __sync_receiver_for_t<_Sender>>
-                  || __is_sync_wait_customized<sync_wait_t, _Sender>)
+  
+      template <class _Sender>
       auto operator()(_Sender&& __sndr) const -> std::optional<__value_tuple_for_t<_Sender>> {
+        static_assert(sender<_Sender>, "oh no! Why we fail!");
         using __dispatcher_t =
           __make_dispatcher<__cust_sigs<sync_wait_t>, __mconst<__impl>, _Sender>;
         return __dispatcher_t()((_Sender&&) __sndr);
       }
+      // template <sender_in<__env> _Sender>
+      //   requires __valid_sync_wait_argument<_Sender>
+      //         && (sender_to<_Sender, __sync_receiver_for_t<_Sender>>
+      //             || __is_sync_wait_customized<sync_wait_t, _Sender>)
+      // auto operator()(_Sender&& __sndr) const -> std::optional<__value_tuple_for_t<_Sender>> {
+      //   using __dispatcher_t =
+      //     __make_dispatcher<__cust_sigs<sync_wait_t>, __mconst<__impl>, _Sender>;
+      //   return __dispatcher_t()((_Sender&&) __sndr);
+      // }
     };
 
     struct sync_wait_t::__impl {
@@ -6423,6 +6435,7 @@ namespace stdexec {
     // [execution.senders.consumers.sync_wait_with_variant]
     struct sync_wait_with_variant_t {
       struct __impl;
+
 
       template <sender_in<__env> _Sender>
         requires(
