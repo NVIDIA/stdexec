@@ -139,6 +139,10 @@ target_compile_options(stdexec INTERFACE
                        $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fcoroutines>
                        )
 
+target_compile_options(stdexec INTERFACE
+                       $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus /Zc:preprocessor>
+                       )
+
 add_library(STDEXEC::stdexec ALIAS stdexec)
 
 # Don't require building everything when installing
