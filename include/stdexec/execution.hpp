@@ -1765,16 +1765,16 @@ namespace stdexec {
         }
 
         template <class _Awaitable>
-        _Awaitable&& await_transform(_Awaitable&& __await) noexcept {
-          return (_Awaitable&&) __await;
+        _Awaitable&& await_transform(_Awaitable&& __awaitable) noexcept {
+          return (_Awaitable&&) __awaitable;
         }
 
         template <class _Awaitable>
           requires tag_invocable<as_awaitable_t, _Awaitable, __t&>
-        auto await_transform(_Awaitable&& __await) //
+        auto await_transform(_Awaitable&& __awaitable) //
           noexcept(nothrow_tag_invocable<as_awaitable_t, _Awaitable, __t&>)
             -> tag_invoke_result_t<as_awaitable_t, _Awaitable, __t&> {
-          return tag_invoke(as_awaitable, (_Awaitable&&) __await, *this);
+          return tag_invoke(as_awaitable, (_Awaitable&&) __awaitable, *this);
         }
 
         // Pass through the get_env receiver query
@@ -1824,14 +1824,14 @@ namespace stdexec {
       __attribute__((__used__))
 #endif
       static __operation_t<_Receiver>
-        __co_impl(_Awaitable __await, _Receiver __rcvr) {
+        __co_impl(_Awaitable __awaitable, _Receiver __rcvr) {
         using __result_t = __await_result_t<_Awaitable, __promise_t<_Receiver>>;
         std::exception_ptr __eptr;
         try {
           if constexpr (same_as<__result_t, void>)
-            co_await (co_await (_Awaitable&&) __await, __co_call(set_value, (_Receiver&&) __rcvr));
+            co_await (co_await (_Awaitable&&) __awaitable, __co_call(set_value, (_Receiver&&) __rcvr));
           else
-            co_await __co_call(set_value, (_Receiver&&) __rcvr, co_await (_Awaitable&&) __await);
+            co_await __co_call(set_value, (_Receiver&&) __rcvr, co_await (_Awaitable&&) __awaitable);
         } catch (...) {
           __eptr = std::current_exception();
         }
@@ -1850,8 +1850,8 @@ namespace stdexec {
      public:
       template <class _Receiver, __awaitable<__promise_t<_Receiver>> _Awaitable>
         requires receiver_of<_Receiver, __completions_t<_Receiver, _Awaitable>>
-      __operation_t<_Receiver> operator()(_Awaitable&& __await, _Receiver __rcvr) const {
-        return __co_impl((_Awaitable&&) __await, (_Receiver&&) __rcvr);
+      __operation_t<_Receiver> operator()(_Awaitable&& __awaitable, _Receiver __rcvr) const {
+        return __co_impl((_Awaitable&&) __awaitable, (_Receiver&&) __rcvr);
       }
     };
   } // namespace __connect_awaitable_
