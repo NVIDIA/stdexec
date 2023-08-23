@@ -155,10 +155,10 @@ namespace stdexec {
   constexpr __mstring<sizeof...(_Str)> operator""__csz() noexcept {
     return {_Str...};
   }
-#elif STDEXEC_NVHPC()
-  // BUGBUG TODO This is to work around an unknown EDG bug
+#elif STDEXEC_NVHPC() && (__EDG_VERSION__ < 605)
+  // This is to work around an unfiled (by me) EDG bug that fixed in build 605
   template <__mstring _Str>
-  constexpr auto operator""__csz() noexcept {
+  constexpr __mtypeof<_Str> const operator""__csz() noexcept {
     return _Str;
   }
 #else
