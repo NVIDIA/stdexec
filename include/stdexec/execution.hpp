@@ -1106,7 +1106,6 @@ namespace stdexec {
   } // namespace __queries
 
   using __queries::get_scheduler_t;
-  extern const get_scheduler_t get_scheduler;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.sender_transform]
