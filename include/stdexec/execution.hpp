@@ -993,6 +993,8 @@ namespace stdexec {
     struct __invalid_completion {
       struct __t {
         template <class _CvrefSenderId, class _Env, class... _Sigs>
+          // BUGBUG this works around a recently (aug 2023) introduced regression in nvc++
+          requires (!__one_of<_Sig, _Sigs...>)
         __t(__debug_receiver<_CvrefSenderId, _Env, completion_signatures<_Sigs...>>&&) noexcept {
           using _SenderId = __decay_t<_CvrefSenderId>;
           using _Sender = stdexec::__t<_SenderId>;
