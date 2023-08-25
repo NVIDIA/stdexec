@@ -95,7 +95,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
     struct __t : stream_sender_base {
       using Sender = stdexec::__t<SenderId>;
       using __id = sender_t;
-
+      using is_sender = void;
       template <class Receiver>
       using receiver_t = typename DerivedSender::template receiver_t<Receiver>;
 

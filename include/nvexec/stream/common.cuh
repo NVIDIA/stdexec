@@ -33,7 +33,8 @@
 
 namespace nvexec {
   using stdexec::operator""__csz;
-
+  [[gnu::deprecated]]
+  void print(auto&&...) {}
   enum class stream_priority {
     high,
     normal,
@@ -312,7 +313,8 @@ namespace nvexec {
         set_stopped_t>>;
 
     inline constexpr get_stream_provider_t get_stream_provider{};
-
+[[gnu::deprecated]]
+  void prints(auto&&...) {}
     template <class BaseEnv>
     auto make_stream_env(BaseEnv&& base_env, stream_provider_t* stream_provider) noexcept {
       return __join_env(

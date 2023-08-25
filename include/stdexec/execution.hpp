@@ -89,6 +89,10 @@ STDEXEC_PRAGMA_IGNORE("-Wundefined-inline")
 STDEXEC_PRAGMA_IGNORE("-Wundefined-internal")
 
 namespace stdexec {
+  [[gnu::deprecated]]
+  void print(auto&&...) {}
+  template <class T>
+  struct type_printer;
   // [exec.queries.queryable]
   template <class T>
   concept queryable = destructible<T>;
@@ -465,13 +469,19 @@ namespace stdexec {
     struct __join_env_t {
       template <class _Env>
       _Env operator()(_Env&& __env) const noexcept {
+        static_assert(std::is_copy_constructible_v<_Env>, "_Env is not copy-constructible!");
         return (_Env&&) __env;
       }
 
       template <class _Env, class _Base>
       decltype(auto) operator()(_Env&& __env, _Base&& __base) const noexcept {
+        static_assert(std::is_copy_constructible_v<_Env>, "_Env is not copy-constructible!");
+        static_assert(std::is_copy_constructible_v<_Base>, "_Base is not copy-constructible!");
+        
+
         using __env_t = __decay_t<_Env>;
         using __base_t = __decay_t<_Base>;
+      
         if constexpr (__one_of<no_env, __env_t, __base_t>) {
           return no_env();
         } else if constexpr (__same_as<__env_t, empty_env>) {
@@ -486,7 +496,11 @@ namespace stdexec {
       template <class _Env0, class _Env1, class _Env2, class... _Envs>
       decltype(auto) operator()(_Env0&& __env0, _Env1&& __env1, _Env2&& __env2, _Envs&&... __envs)
         const noexcept {
+          print(__env0);
         const auto& __join_env = *this;
+          static_assert(std::is_copy_constructible_v<_Env0>, "_Env0 is not copy-constructible!");
+        static_assert(std::is_copy_constructible_v<_Env1>, "_Base1 is not copy-constructible!");
+        static_assert(std::is_copy_constructible_v<_Env2>, "_Env2 is not copy-constructible!");
         return __join_env(
           (_Env0&&) __env0,
           __join_env((_Env1&&) __env1, __join_env((_Env2&&) __env2, (_Envs&&) __envs...)));
@@ -553,6 +567,7 @@ namespace stdexec {
         -> tag_invoke_result_t<get_env_t, const _EnvProvider&> {
         static_assert(queryable<tag_invoke_result_t<get_env_t, const _EnvProvider&> >);
         static_assert(nothrow_tag_invocable<get_env_t, const _EnvProvider&>);
+        stdexec::print(__with_env);
         return tag_invoke(*this, __with_env);
       }
 
@@ -626,9 +641,11 @@ namespace stdexec {
     auto operator()(const _Env& __env, const _Sender& /*__sndr*/) const noexcept {
       // Find the current scheduler, or empty_env if there isn't one.
       auto __sched = query_or(get_scheduler, __env, empty_env());
-
+      //static_assert(std::is_copy_constructible_v<_Env>, "_Env is not copy-constructible!");
+        
       // Find the domain by first asking the env, then the current scheduler,
       // and finally using the default domain if all else fails.
+     
       auto __env2 = __join_env(__env, __sched);
       return query_or(get_domain, __env2, __default_domain{__sched});
     }
@@ -1115,6 +1132,7 @@ namespace stdexec {
   inline constexpr struct sender_transform_t {
     template <class _Value, class _Env = no_env>
     /*constexpr*/ decltype(auto) operator()(_Value&& __val, const _Env& __env = {}) const {
+        //static_assert(std::is_copy_constructible_v<_Env>, "_Env is not copy-constructible!");
       auto __domain = __get_env_domain(__env, __val);
       return __domain.transform_sender((_Value&&) __val, __env);
     }
@@ -1219,8 +1237,11 @@ namespace stdexec {
       // NOT TO SPEC: if we're unable to compute the completion signatures,
       // return an error type instead of SFINAE.
       template <class _Sender, class _Env = __default_env>
-      constexpr auto operator()(_Sender&&, const _Env&) const noexcept
+      constexpr auto operator()(_Sender&& s , const _Env& e) const noexcept
         -> decltype(__impl<_Sender, _Env>()()) {
+        stdexec::print(s);
+        stdexec::print(e);
+        stdexec::print(__declval<_Env>());
         return {};
       }
     };
@@ -3650,6 +3671,7 @@ namespace stdexec {
       static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
         __nothrow_callable< __sender_apply_fn, _Sender, __connect_fn<_Receiver>>)
         -> __call_result_t< __sender_apply_fn, _Sender, __connect_fn<_Receiver>> {
+
         return __sender_apply((_Sender&&) __sndr, __connect_fn<_Receiver>{__rcvr});
       }
     };
@@ -3657,6 +3679,7 @@ namespace stdexec {
 
   using __bulk::bulk_t;
   inline constexpr bulk_t bulk{};
+
 
   ////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.split]

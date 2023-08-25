@@ -31,24 +31,29 @@ struct sink_receiver {
   friend void tag_invoke(stdexec::set_stopped_t, sink_receiver) noexcept {}
   friend stdexec::empty_env tag_invoke(stdexec::get_env_t, sink_receiver) noexcept { return {}; }
 };
+
+struct empty_environment {
+
+};
 // unqualified call to tag_invoke:
 int main() {
   const int n = 2 * 1024;
   thrust::device_vector<float> input(n, 1.0f);
   float* first = thrust::raw_pointer_cast(input.data());
   float* last = thrust::raw_pointer_cast(input.data()) + input.size();
-
+  auto idk = nvexec::reduce(42.0f);
   nvexec::stream_context stream_ctx{};
-
   auto snd = ex::just(std::span{first, last})
-           | nvexec::reduce(42.0f);
+           | idk;
+  stdexec::print(snd);
+   nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();         
   using stdexec::__tag_invoke::tag_invoke;
-  tag_invoke(stdexec::get_completion_signatures, snd, stream_ctx);
   
-  auto [result] =
-    stdexec::sync_wait(ex::on(stream_ctx.get_scheduler(), std::move(snd))).value();
+  tag_invoke(stdexec::get_completion_signatures, snd, empty_environment{});
+  // auto [result] =
+  //   stdexec::sync_wait(ex::on(stream_ctx.get_scheduler(), std::move(snd))).value();
 
-  std::cout << "result: " << result << std::endl;
+ 
 
 
 }
