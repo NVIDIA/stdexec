@@ -163,7 +163,7 @@ namespace exec {
     template <class _Kernel, class _Env, class... _Sigs>
     auto __compute_completions_(completion_signatures<_Sigs...>*)
       -> decltype(__stl::__all_completions(
-        (__completions_from_sig_t<_Kernel, _Env, _Sigs>) nullptr...));
+        static_cast<__completions_from_sig_t<_Kernel, _Env, _Sigs>>(nullptr)...));
 
     template <class _Kernel, class _Env, class _NoCompletions>
     auto __compute_completions_(_NoCompletions*) -> _NoCompletions;
