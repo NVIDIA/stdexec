@@ -188,7 +188,7 @@ namespace stdexec {
           return [... __captures = (_Captures&&) __captures]<class _Cvref, class _Fun>(
                    _Cvref, _Fun && __fun) mutable                                          //
                  noexcept(__nothrow_callable<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>) //
-                 -> decltype(auto)                                                         //
+                 -> __call_result_t<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>
                    requires __callable<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>
           {
             return ((_Fun&&) __fun)(
@@ -291,7 +291,7 @@ namespace stdexec {
     extern __lazy_sender_name __name_of_v<__basic_sender<_ImplOf>>;
 
     template <__has_id _Sender>
-      requires (!same_as<__id<_Sender>, _Sender>)
+      requires(!same_as<__id<_Sender>, _Sender>)
     extern __id_name __name_of_v<_Sender>;
   } // namespace __detail
 
