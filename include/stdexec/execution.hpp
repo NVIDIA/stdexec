@@ -52,13 +52,13 @@
     "Deprecated sender type detected. " \
     "Please give the type a nested `is_sender` type alias, or " \
     "specialize stdexec::enable_sender<your-sender-type> to be `true`. " \
-    "To suppress this deprecation warning, define `STDEXEC_DISABLE_R5_DEPRECATIONS`.")]]
+    "To suppress this deprecation warning, define `STDEXEC_DISABLE_R5_DEPRECATION_WARNINGS`.")]]
 #define STDEXEC_R5_RECEIVER_DEPRECATION_WARNING \
   [[deprecated( \
     "Deprecated receiver type detected. " \
     "Please give the type a nested `is_receiver` type alias, or " \
     "specialize stdexec::enable_receiver<your-receiver-type> to be `true`." \
-    "To suppress this deprecation warning, define `STDEXEC_DISABLE_R5_DEPRECATIONS`.")]]
+    "To suppress this deprecation warning, define `STDEXEC_DISABLE_R5_DEPRECATION_WARNINGS`.")]]
 #define STDEXEC_R5_DEPENDENT_COMPLETION_SIGNATURES_DEPRECATION_WARNING \
   [[deprecated( \
     "The `dependent_completion_signatures<>` type is deprecated. There is " \
@@ -66,14 +66,14 @@
     "sender types whose completions are dependent on the receiver's environment. " \
     "Give your sender type a nested `is_sender` type alias instead, " \
     "specialize stdexec::enable_sender<your-sender-type> to be `true`. " \
-    "To suppress this deprecation warning, define `STDEXEC_DISABLE_R5_DEPRECATIONS`.")]]
+    "To suppress this deprecation warning, define `STDEXEC_DISABLE_R5_DEPRECATION_WARNINGS`.")]]
 #define STDEXEC_R5_NO_ENV_DEPRECATION_WARNING \
   [[deprecated( \
     "The `no_env` type is deprecated. The stdexec library no longer needs to use " \
     "it to probe a type for satisfaction of the `sender` concept. " \
     "Give your sender type a nested `is_sender` type alias instead, or " \
     "specialize stdexec::enable_sender<your-sender-type> to be `true`. " \
-    "To suppress this deprecation warning, define `STDEXEC_DISABLE_R5_DEPRECATIONS`.")]]
+    "To suppress this deprecation warning, define `STDEXEC_DISABLE_R5_DEPRECATION_WARNINGS`.")]]
 #else
 #define STDEXEC_R5_SENDER_DEPRECATION_WARNING
 #define STDEXEC_R5_RECEIVER_DEPRECATION_WARNING
