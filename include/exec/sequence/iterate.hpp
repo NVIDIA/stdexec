@@ -20,12 +20,12 @@
 
 #if STDEXEC_HAS_RANGES()
 
-#include "../sequence_senders.hpp"
+#  include "../sequence_senders.hpp"
 
-#include "../env.hpp"
-#include "../trampoline_scheduler.hpp"
+#  include "../env.hpp"
+#  include "../trampoline_scheduler.hpp"
 
-#include <ranges>
+#  include <ranges>
 
 namespace exec {
   namespace __iterate {

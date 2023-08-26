@@ -165,8 +165,9 @@ TEST_CASE("any_receiver_ref is connectable with when_any", "[types][any_sender]"
 //                                                                any.storage
 
 struct empty_vtable_t {
-private:
+ private:
   friend struct __any::__create_vtable_t;
+
   template <class T>
   static const empty_vtable_t* __create_vtable(__any::__create_vtable_t) noexcept {
     static empty_vtable_t vtable{};
@@ -702,6 +703,7 @@ struct counting_scheduler {
   };
 
   STDEXEC_CPO_ACCESS(ex::schedule_t);
+
   STDEXEC_DEFINE_CUSTOM(sender schedule)(this counting_scheduler, ex::schedule_t) noexcept {
     return {};
   }

@@ -53,7 +53,7 @@
 #    include <sys/eventfd.h>
 #    include <sys/syscall.h>
 
-#include <algorithm>
+#    include <algorithm>
 
 namespace exec {
   namespace __io_uring {
@@ -560,11 +560,14 @@ namespace exec {
         }
 
         STDEXEC_CPO_ACCESS(stdexec::connect_t);
+
         template <
           stdexec::__decays_to<__run_sender> _Self,
           stdexec::receiver_of<completion_signatures> _Rcvr>
-        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, stdexec::connect_t, _Rcvr&& __rcvr) noexcept
-          -> __run_op<stdexec::__decay_t<_Rcvr>> {
+        STDEXEC_DEFINE_CUSTOM(auto connect)(
+          this _Self&& __self,
+          stdexec::connect_t,
+          _Rcvr&& __rcvr) noexcept -> __run_op<stdexec::__decay_t<_Rcvr>> {
           return {static_cast<_Rcvr&&>(__rcvr), *__self.__context_, __self.__mode_};
         }
       };

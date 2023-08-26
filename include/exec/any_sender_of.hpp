@@ -1211,7 +1211,9 @@ namespace exec {
       _Tag()((__receiver_base&&) __self.__receiver_);
     }
 
-    template <stdexec::same_as<stdexec::get_env_t> _Tag, stdexec::__decays_to<any_receiver_ref> _Self>
+    template <
+      stdexec::same_as<stdexec::get_env_t> _Tag,
+      stdexec::__decays_to<any_receiver_ref> _Self>
     STDEXEC_DEFINE_CUSTOM(auto get_env)(this _Self&& __self, _Tag) noexcept //
       -> stdexec::env_of_t<const __receiver_base&> {
       return _Tag()(__self.__receiver_);
@@ -1313,9 +1315,7 @@ namespace exec {
         }
 
         template <stdexec::__decays_to<any_scheduler> _Self>
-        STDEXEC_DEFINE_CUSTOM(auto schedule)(
-          this _Self&& __self,
-          stdexec::schedule_t) {
+        STDEXEC_DEFINE_CUSTOM(auto schedule)(this _Self&& __self, stdexec::schedule_t) {
           return stdexec::schedule(__self.__scheduler_);
         }
 

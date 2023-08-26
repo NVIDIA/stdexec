@@ -55,7 +55,10 @@ struct boolean_sender {
   };
 
   template <receiver_of<completion_signatures> Receiver>
-  STDEXEC_DEFINE_CUSTOM(operation<Receiver> connect)(this boolean_sender self, connect_t, Receiver rcvr) {
+  STDEXEC_DEFINE_CUSTOM(operation<Receiver> connect)(
+    this boolean_sender self,
+    connect_t,
+    Receiver rcvr) {
     return {(Receiver &&) rcvr, --*self.counter_};
   }
 

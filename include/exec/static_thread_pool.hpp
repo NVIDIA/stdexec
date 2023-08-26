@@ -459,12 +459,12 @@ namespace exec {
       STDEXEC_DEFINE_CUSTOM(bulk_op_state_t<Self, Receiver> connect) //
       (this Self&& self, stdexec::connect_t, Receiver&& rcvr)        //
       noexcept(stdexec::__nothrow_constructible_from<
-                bulk_op_state_t<Self, Receiver>,
-                static_thread_pool&,
-                Shape,
-                Fun,
-                Sender,
-                Receiver>) {
+               bulk_op_state_t<Self, Receiver>,
+               static_thread_pool&,
+               Shape,
+               Fun,
+               Sender,
+               Receiver>) {
       return bulk_op_state_t<Self, Receiver>{
         self.pool_, self.shape_, self.fun_, ((Self&&) self).sndr_, (Receiver&&) rcvr};
     }

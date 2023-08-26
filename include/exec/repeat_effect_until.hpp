@@ -93,7 +93,10 @@ namespace exec {
       template <same_as<set_value_t> _Tag, same_as<__t> _Self, convertible_to<bool> _Done>
         requires __callable<set_value_t, _Receiver>
               && __callable<set_error_t, _Receiver, std::exception_ptr>
-      STDEXEC_DEFINE_CUSTOM(void set_value)(this _Self &&__self, _Tag, _Done &&__done_ish) noexcept {
+      STDEXEC_DEFINE_CUSTOM(void set_value)(
+        this _Self &&__self,
+        _Tag,
+        _Done &&__done_ish) noexcept {
         bool __done = static_cast<bool>(__done_ish); // BUGBUG potentially throwing.
         auto *__op = __self.__op_;
 

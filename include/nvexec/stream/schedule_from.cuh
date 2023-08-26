@@ -25,8 +25,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   namespace _sched_from {
     template <class Variant, class... Ts>
-    concept __result_constructible_from = constructible_from<decayed_tuple<Ts...>, Ts...>
-                                       && __valid<Variant::template index_of, decayed_tuple<Ts...>>;
+    concept __result_constructible_from =
+      constructible_from<decayed_tuple<Ts...>, Ts...>
+      && __mvalid<Variant::template index_of, decayed_tuple<Ts...>>;
 
     template <class Tag, class Storage, class... As>
     __launch_bounds__(1) __global__ void kernel(Storage* storage, As... as) {

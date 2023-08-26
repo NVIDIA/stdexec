@@ -20,8 +20,8 @@
 
 #if STDEXEC_HAS_RANGES()
 
-#include <array>
-#include <catch2/catch.hpp>
+#  include <array>
+#  include <catch2/catch.hpp>
 
 template <class Receiver>
 struct sum_item_rcvr {

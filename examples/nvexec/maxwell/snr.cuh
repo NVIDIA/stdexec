@@ -196,11 +196,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
         }
       }
 
-      operation_state_t(
-        PredSender&& pred_sender,
-        Closure closure,
-        Receiver&& rcvr,
-        std::size_t n)
+      operation_state_t(PredSender&& pred_sender, Closure closure, Receiver&& rcvr, std::size_t n)
         : operation_state_base_t<ReceiverId>(
           (Receiver&&) rcvr,
           ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(pred_sender)).context_state_)

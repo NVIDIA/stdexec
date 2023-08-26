@@ -203,7 +203,7 @@ namespace exec {
       sender_in<_Sender, env_of_t<_Receiver>> &&           //
       !sequence_sender_in<_Sender, env_of_t<_Receiver>> && //
       sequence_receiver_of<_Receiver, completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>
-      &&                                                   //
+      && //
       __receiver_from<
         __sequence_sndr::__stopped_means_break_t<_Receiver>,
         __next_sender_of_t<_Receiver, _Sender>>
@@ -219,7 +219,7 @@ namespace exec {
       sequence_sender_in<_Sender, env_of_t<_Receiver>> && //
       sequence_receiver_from<_Receiver, _Sender> &&       //
       tag_invocable<subscribe_t, _Sender, _Receiver>;
-  }                                                       // namespace __sequence_sndr
+  } // namespace __sequence_sndr
 
   STDEXEC_DEFINE_CPO(struct subscribe_t, subscribe) {
     template <class _Sender, class _Receiver>

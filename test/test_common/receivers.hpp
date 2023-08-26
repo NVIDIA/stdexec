@@ -32,6 +32,7 @@ namespace empty_recv {
 
   struct recv0 {
     using is_receiver = void;
+
     STDEXEC_DEFINE_CUSTOM(void set_value)(this recv0&&, set_value_t) noexcept {
     }
 
@@ -48,6 +49,7 @@ namespace empty_recv {
 
   struct recv_int {
     using is_receiver = void;
+
     STDEXEC_DEFINE_CUSTOM(void set_value)(this recv_int&&, set_value_t, int) noexcept {
     }
 
@@ -67,6 +69,7 @@ namespace empty_recv {
 
   struct recv0_ec {
     using is_receiver = void;
+
     STDEXEC_DEFINE_CUSTOM(void set_value)(this recv0_ec&&, set_value_t) noexcept {
     }
 
@@ -89,6 +92,7 @@ namespace empty_recv {
 
   struct recv_int_ec {
     using is_receiver = void;
+
     STDEXEC_DEFINE_CUSTOM(void set_value)(this recv_int_ec&&, set_value_t, int) noexcept {
     }
 

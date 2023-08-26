@@ -262,6 +262,7 @@ namespace exec {
         }
 
         using __env_t = stdexec::__t<__sender_env<_Sigs, _SenderQueries, _ReceiverQueries>>;
+
         template <__decays_to<__t> _Self>
         friend __env_t tag_invoke(stdexec::get_env_t, _Self&& __self) noexcept {
           return {__self.__storage_.__get_vtable(), __self.__storage_.__get_object_pointer()};
@@ -328,10 +329,8 @@ namespace exec {
         queries<_ReceiverQueries...>>>;
       __sender_base __sender_;
 
-    using __env_base = stdexec::__t< __any::__sender_env<
-        _Completions,
-        queries<_SenderQueries...>,
-        queries<_ReceiverQueries...>>>;
+      using __env_base = stdexec::__t<
+        __any::__sender_env< _Completions, queries<_SenderQueries...>, queries<_ReceiverQueries...>>>;
 
      public:
       using __id = any_sender;

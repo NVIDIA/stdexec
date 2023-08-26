@@ -56,7 +56,10 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __basic_sender
   template <class...>
-  struct __basic_sender;
+  struct __basic_sender {
+    using __id = __basic_sender;
+    using __t = __basic_sender;
+  };
 
   template <class _ImplFn>
   struct __basic_sender<_ImplFn> {
@@ -89,7 +92,10 @@ namespace stdexec {
       same_as<get_completion_signatures_t> _Tag,
       __decays_to<__basic_sender> _Self,
       class _Env>
-    STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this _Self&& __self, _Tag, _Env&& __env) //
+    STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+      this _Self&& __self,
+      _Tag,
+      _Env&& __env) //
       -> __msecond<
         __if_c<same_as<_Tag, get_completion_signatures_t>>,
         decltype(__self.__tag().get_completion_signatures((_Self&&) __self, (_Env&&) __env))>;
@@ -128,11 +134,12 @@ namespace stdexec {
       constexpr auto operator()(_Tag, _Data __data = {}, _Children... __children) const;
     };
 
-#if STDEXEC_NVHPC()
-    // The NVIDIA HPC compiler struggles with capture initializers for a parameter pack.
-    // As a workaround, we use a wrapper that performs moves when non-const lvalues are
-    // copied. That constructor is only used when capturing the variables, never when
-    // the resulting lambda is copied or moved.
+#if STDEXEC_NVHPC() || (STDEXEC_GCC() && __GNUC__ < 13)
+    // The NVIDIA HPC compiler and gcc prior to v13 struggle with capture
+    // initializers for a parameter pack. As a workaround, we use a wrapper that
+    // performs moves when non-const lvalues are copied. That constructor is
+    // only used when capturing the variables, never when the resulting lambda
+    // is copied or moved.
 
     // Move-by-copy
     template <class _Ty>
@@ -184,7 +191,7 @@ namespace stdexec {
           return [... __captures = (_Captures&&) __captures]<class _Cvref, class _Fun>(
                    _Cvref, _Fun && __fun) mutable                                          //
                  noexcept(__nothrow_callable<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>) //
-                 -> decltype(auto)                                                         //
+                 -> __call_result_t<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>
                    requires __callable<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>
           {
             return ((_Fun&&) __fun)(
@@ -254,7 +261,10 @@ namespace stdexec {
     extern __q<__midentity> __name_of_v;
 
     template <class _Sender>
-    using __name_of = __minvoke<decltype(__name_of_v<_Sender>), _Sender>;
+    using __name_of_fn = decltype(__name_of_v<_Sender>);
+
+    template <class _Sender>
+    using __name_of = __minvoke<__name_of_fn<_Sender>, _Sender>;
 
     struct __lazy_sender_name {
       template <class _Sender>
@@ -268,22 +278,23 @@ namespace stdexec {
 
     struct __id_name {
       template <class _Sender>
-      using __f = __cvref_id<_Sender>;
+      using __f = __name_of<__id<_Sender>>;
     };
 
     template <class _Sender>
-    extern decltype(__name_of_v<_Sender>) __name_of_v<_Sender&>;
+    extern __mcompose<__cplr, __name_of_fn<_Sender>> __name_of_v<_Sender&>;
 
     template <class _Sender>
-    extern decltype(__name_of_v<_Sender>) __name_of_v<_Sender&&>;
+    extern __mcompose<__cprr, __name_of_fn<_Sender>> __name_of_v<_Sender&&>;
 
     template <class _Sender>
-    extern decltype(__name_of_v<_Sender>) __name_of_v<const _Sender>;
+    extern __mcompose<__cpclr, __name_of_fn<_Sender>> __name_of_v<const _Sender&>;
 
     template <class _ImplOf>
     extern __lazy_sender_name __name_of_v<__basic_sender<_ImplOf>>;
 
     template <__has_id _Sender>
+      requires(!same_as<__id<_Sender>, _Sender>)
     extern __id_name __name_of_v<_Sender>;
   } // namespace __detail
 

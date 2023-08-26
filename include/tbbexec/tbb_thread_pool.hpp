@@ -367,15 +367,17 @@ namespace tbbexec {
           template <stdexec::__decays_to<bulk_sender> Self, stdexec::receiver Receiver>
             requires stdexec::
               receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-            STDEXEC_DEFINE_CUSTOM(auto connect)(this Self&& self, stdexec::connect_t, Receiver&& rcvr)
-              noexcept(
-                stdexec::__nothrow_constructible_from<
-                  bulk_op_state_t<Self, Receiver>,
-                  DerivedPoolType&,
-                  Shape,
-                  Fun,
-                  Sender,
-                  Receiver>) -> bulk_op_state_t<Self, Receiver> {
+            STDEXEC_DEFINE_CUSTOM(auto connect)(
+              this Self&& self,
+              stdexec::connect_t,
+              Receiver&& rcvr) noexcept(stdexec::
+                                          __nothrow_constructible_from<
+                                            bulk_op_state_t<Self, Receiver>,
+                                            DerivedPoolType&,
+                                            Shape,
+                                            Fun,
+                                            Sender,
+                                            Receiver>) -> bulk_op_state_t<Self, Receiver> {
             return bulk_op_state_t<Self, Receiver>{
               self.pool_, self.shape_, self.fun_, ((Self&&) self).sndr_, (Receiver&&) rcvr};
           }
@@ -406,7 +408,9 @@ namespace tbbexec {
           }
 
           template <stdexec::same_as<stdexec::get_env_t> Tag>
-          STDEXEC_DEFINE_CUSTOM(const bulk_sender& get_env)(this const bulk_sender& self, Tag) noexcept {
+          STDEXEC_DEFINE_CUSTOM(const bulk_sender& get_env)(
+            this const bulk_sender& self,
+            Tag) noexcept {
             return self;
           }
         };
@@ -416,6 +420,7 @@ namespace tbbexec {
         }
 
         STDEXEC_CPO_ACCESS(stdexec::schedule_t);
+
         STDEXEC_DEFINE_CUSTOM(sender schedule)(
           this const scheduler& s,
           stdexec::schedule_t) noexcept {

@@ -252,6 +252,7 @@ struct error_scheduler {
   E err_{};
 
   STDEXEC_CPO_ACCESS(ex::schedule_t);
+
   STDEXEC_DEFINE_CUSTOM(my_sender schedule)(this error_scheduler self, ex::schedule_t) {
     return {(E&&) self.err_};
   }

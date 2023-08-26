@@ -25,10 +25,19 @@ using stdexec::sync_wait;
 
 struct rec {
   using is_receiver = void;
-  static void set_value(rec, set_value_t) noexcept {}
-  static void set_error(rec, set_error_t, std::exception_ptr) noexcept {}
-  static void set_stopped(rec, set_stopped_t) noexcept {}
-  static empty_env get_env(rec, get_env_t) noexcept { return {}; }
+
+  static void set_value(rec, set_value_t) noexcept {
+  }
+
+  static void set_error(rec, set_error_t, std::exception_ptr) noexcept {
+  }
+
+  static void set_stopped(rec, set_stopped_t) noexcept {
+  }
+
+  static empty_env get_env(rec, get_env_t) noexcept {
+    return {};
+  }
 };
 
 int main() {

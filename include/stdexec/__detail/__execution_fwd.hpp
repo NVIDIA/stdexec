@@ -35,6 +35,7 @@ namespace stdexec {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   STDEXEC_CPO_FWD(struct get_env_t, get_env);
+
   namespace __env {
     struct empty_env;
   }
@@ -54,6 +55,7 @@ namespace stdexec {
   namespace __forwarding_query_ {
     struct forwarding_query_t;
   }
+
   using __forwarding_query_::forwarding_query_t;
 
   namespace __queries {

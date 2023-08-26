@@ -55,12 +55,12 @@ namespace stdexec::__std_concepts {
   concept integral = std::is_integral_v<T>;
 
   template <class _Ap, class _Bp>
-  concept derived_from =           //
+  concept derived_from =            //
     STDEXEC_IS_BASE_OF(_Bp, _Ap) && //
     STDEXEC_IS_CONVERTIBLE_TO(const volatile _Ap*, const volatile _Bp*);
 
   template <class _From, class _To>
-  concept convertible_to =               //
+  concept convertible_to =                   //
     STDEXEC_IS_CONVERTIBLE_TO(_From, _To) && //
     requires(_From (&__fun)()) { static_cast<_To>(__fun()); };
 
@@ -93,7 +93,7 @@ namespace stdexec {
   template <class T>
   concept destructible = __destructible_<T>;
 
-#if __has_builtin(__is_constructible)
+#if STDEXEC_HAS_BUILTIN(__is_constructible)
   template <class _Ty, class... _As>
   concept constructible_from = //
     destructible<_Ty> &&       //
@@ -102,7 +102,7 @@ namespace stdexec {
   template <class _Ty, class... _As>
   concept constructible_from = //
     destructible<_Ty> &&       //
-    is_constructible_v<_Ty, _As...>;
+    std::is_constructible_v<_Ty, _As...>;
 #endif
 
   template <class _Ty>
@@ -212,7 +212,7 @@ namespace stdexec {
       { __decay_t<_Ty>{__decay_t<_Ty>{(_Ty&&) __t}} } noexcept;
     };
 
-#if __has_builtin(__is_nothrow_constructible)
+#if STDEXEC_HAS_BUILTIN(__is_nothrow_constructible)
   template <class _Ty, class... _As>
   concept __nothrow_constructible_from =
     constructible_from<_Ty, _As...> && __is_nothrow_constructible(_Ty, _As...);

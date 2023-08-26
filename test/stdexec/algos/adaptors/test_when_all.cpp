@@ -322,7 +322,10 @@ struct my_string_sender_t {
   }
 
   template <class Recv>
-  STDEXEC_DEFINE_CUSTOM(auto connect)(this const my_string_sender_t& self, ex::connect_t, Recv&& recv) {
+  STDEXEC_DEFINE_CUSTOM(auto connect)(
+    this const my_string_sender_t& self,
+    ex::connect_t,
+    Recv&& recv) {
     return ex::connect(ex::just(self.str_), std::forward<Recv>(recv));
   }
 

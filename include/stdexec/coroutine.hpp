@@ -38,48 +38,48 @@ namespace stdexec {
   template <class _Awaiter, class _Promise>
   concept __with_await_suspend =
     same_as<_Promise, void> || //
-    requires(_Awaiter& __await, __coro::coroutine_handle<_Promise> __h) {
-      { __await.await_suspend(__h) } -> __await_suspend_result;
+    requires(_Awaiter& __awaiter, __coro::coroutine_handle<_Promise> __h) {
+      { __awaiter.await_suspend(__h) } -> __await_suspend_result;
     };
 
   template <class _Awaiter, class _Promise = void>
   concept __awaiter = //
-    requires(_Awaiter& __await) {
-      __await.await_ready() ? 1 : 0;
-      __await.await_resume();
+    requires(_Awaiter& __awaiter) {
+      __awaiter.await_ready() ? 1 : 0;
+      __awaiter.await_resume();
     } && //
     __with_await_suspend<_Awaiter, _Promise>;
 
   template <class _Awaitable>
-  decltype(auto) __get_awaiter(_Awaitable&& __await, void*) {
-    if constexpr (requires { ((_Awaitable&&) __await).operator co_await(); }) {
-      return ((_Awaitable&&) __await).operator co_await();
-    } else if constexpr (requires { operator co_await((_Awaitable&&) __await); }) {
-      return operator co_await((_Awaitable&&) __await);
+  decltype(auto) __get_awaiter(_Awaitable&& __awaitable, void*) {
+    if constexpr (requires { ((_Awaitable&&) __awaitable).operator co_await(); }) {
+      return ((_Awaitable&&) __awaitable).operator co_await();
+    } else if constexpr (requires { operator co_await((_Awaitable&&) __awaitable); }) {
+      return operator co_await((_Awaitable&&) __awaitable);
     } else {
-      return (_Awaitable&&) __await;
+      return (_Awaitable&&) __awaitable;
     }
   }
 
   template <class _Awaitable, class _Promise>
-  decltype(auto) __get_awaiter(_Awaitable&& __await, _Promise* __promise)
-    requires requires { __promise->await_transform((_Awaitable&&) __await); }
+  decltype(auto) __get_awaiter(_Awaitable&& __awaitable, _Promise* __promise)
+    requires requires { __promise->await_transform((_Awaitable&&) __awaitable); }
   {
     if constexpr (
-      requires { __promise->await_transform((_Awaitable&&) __await).operator co_await(); }) {
-      return __promise->await_transform((_Awaitable&&) __await).operator co_await();
+      requires { __promise->await_transform((_Awaitable&&) __awaitable).operator co_await(); }) {
+      return __promise->await_transform((_Awaitable&&) __awaitable).operator co_await();
     } else if constexpr (
-      requires { operator co_await(__promise->await_transform((_Awaitable&&) __await)); }) {
-      return operator co_await(__promise->await_transform((_Awaitable&&) __await));
+      requires { operator co_await(__promise->await_transform((_Awaitable&&) __awaitable)); }) {
+      return operator co_await(__promise->await_transform((_Awaitable&&) __awaitable));
     } else {
-      return __promise->await_transform((_Awaitable&&) __await);
+      return __promise->await_transform((_Awaitable&&) __awaitable);
     }
   }
 
   template <class _Awaitable, class _Promise = void>
   concept __awaitable = //
-    requires(_Awaitable&& __await, _Promise* __promise) {
-      { stdexec::__get_awaiter((_Awaitable&&) __await, __promise) } -> __awaiter<_Promise>;
+    requires(_Awaitable&& __awaitable, _Promise* __promise) {
+      { stdexec::__get_awaiter((_Awaitable&&) __awaitable, __promise) } -> __awaiter<_Promise>;
     };
 
   template <class _Tp>

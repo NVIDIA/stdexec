@@ -33,7 +33,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <class SharedState, class... Ts>
     concept __result_constructible_from =
       constructible_from<decayed_tuple<Ts...>, Ts...>
-      && __valid<SharedState::variant_t::template index_of, decayed_tuple<Ts...>>;
+      && __mvalid<SharedState::variant_t::template index_of, decayed_tuple<Ts...>>;
 
     inline auto __make_env(
       const in_place_stop_source& stop_source,

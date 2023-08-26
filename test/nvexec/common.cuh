@@ -182,12 +182,16 @@ namespace detail::a_sender {
     }
 
     template <stdexec::__decays_to<sender_t> Self, class Env>
-    STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, stdexec::get_completion_signatures_t, Env&&)
-      -> stdexec::dependent_completion_signatures<Env>;
+    STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+      this Self&&,
+      stdexec::get_completion_signatures_t,
+      Env&&) -> stdexec::dependent_completion_signatures<Env>;
 
     template <stdexec::__decays_to<sender_t> Self, class Env>
-    STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, stdexec::get_completion_signatures_t, Env&&)
-      -> completion_signatures<Self, Env>
+    STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+      this Self&&,
+      stdexec::get_completion_signatures_t,
+      Env&&) -> completion_signatures<Self, Env>
       requires true;
 
     STDEXEC_DEFINE_CUSTOM(auto get_env)(this const sender_t& self, stdexec::get_env_t) //
@@ -243,12 +247,16 @@ namespace detail::a_receiverless_sender {
     }
 
     template <stdexec::__decays_to<sender_t> Self, class Env>
-    STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, stdexec::get_completion_signatures_t, Env&&)
-      -> stdexec::dependent_completion_signatures<Env>;
+    STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+      this Self&&,
+      stdexec::get_completion_signatures_t,
+      Env&&) -> stdexec::dependent_completion_signatures<Env>;
 
     template <stdexec::__decays_to<sender_t> Self, class Env>
-    STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, stdexec::get_completion_signatures_t, Env&&)
-      -> completion_signatures<Self, Env>
+    STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
+      this Self&&,
+      stdexec::get_completion_signatures_t,
+      Env&&) -> completion_signatures<Self, Env>
       requires true;
 
     STDEXEC_DEFINE_CUSTOM(auto get_env)(this const sender_t& self, stdexec::get_env_t) //
