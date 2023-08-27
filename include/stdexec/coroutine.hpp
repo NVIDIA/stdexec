@@ -50,11 +50,25 @@ namespace stdexec {
     } && //
     __with_await_suspend<_Awaiter, _Promise>;
 
+#if STDEXEC_MSVC()
+  // MSVCBUG https://developercommunity.visualstudio.com/t/operator-co_await-not-found-in-requires/10452721
+
+  template <class _Awaitable>
+  void __co_await_constraint(_Awaitable&& __awaitable)
+    requires requires { operator co_await((_Awaitable&&) __awaitable); };
+#endif
+
   template <class _Awaitable>
   decltype(auto) __get_awaiter(_Awaitable&& __awaitable, void*) {
     if constexpr (requires { ((_Awaitable&&) __awaitable).operator co_await(); }) {
       return ((_Awaitable&&) __awaitable).operator co_await();
-    } else if constexpr (requires { operator co_await((_Awaitable&&) __awaitable); }) {
+    } else if constexpr (requires {
+#if STDEXEC_MSVC()
+        __co_await_constraint((_Awaitable&&) __awaitable);
+#else
+        operator co_await((_Awaitable&&) __awaitable);
+#endif
+    }) {
       return operator co_await((_Awaitable&&) __awaitable);
     } else {
       return (_Awaitable&&) __awaitable;
@@ -69,7 +83,13 @@ namespace stdexec {
       requires { __promise->await_transform((_Awaitable&&) __awaitable).operator co_await(); }) {
       return __promise->await_transform((_Awaitable&&) __awaitable).operator co_await();
     } else if constexpr (
-      requires { operator co_await(__promise->await_transform((_Awaitable&&) __awaitable)); }) {
+      requires {
+#if STDEXEC_MSVC()
+        __co_await_constraint(__promise->await_transform((_Awaitable&&) __awaitable));
+#else
+        operator co_await(__promise->await_transform((_Awaitable&&) __awaitable));
+#endif
+    }) {
       return operator co_await(__promise->await_transform((_Awaitable&&) __awaitable));
     } else {
       return __promise->await_transform((_Awaitable&&) __awaitable);
