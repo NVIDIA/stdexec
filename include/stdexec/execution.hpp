@@ -4191,121 +4191,146 @@ namespace stdexec {
       };
     };
 
-    template <class _CvrefSenderId, class _EnvId>
-    struct __sender {
-      using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
-      using _Env = stdexec::__t<_EnvId>;
+    struct __ensure_started_t {
+#if STDEXEC_FRIENDSHIP_IS_LEXICAL()
+     private:
+      template <class...>
+      friend struct stdexec::__basic_sender;
+      friend struct ensure_started_t;
+#endif
 
-      struct __t {
-        using __id = __sender;
-        using is_sender = void;
-
-        explicit __t(_CvrefSender __sndr, _Env __env)
-          : __shared_state_{
-            __make_intrusive<__sh_state_>((_CvrefSender&&) __sndr, (_Env&&) __env)} {
+      template <class _ShState>
+      struct __data {
+        __data(__intrusive_ptr<_ShState> __sh_state) noexcept
+          : __sh_state_(std::move(__sh_state)) {
         }
 
-        ~__t() {
-          if (nullptr != __shared_state_) {
-            // We're detaching a potentially running operation. Request cancellation.
-            __shared_state_->__detach(); // BUGBUG NOT TO SPEC
+        __data(__data&&) = default;
+        __data& operator=(__data&&) = default;
+
+        ~__data() {
+          if (__sh_state_ != nullptr) {
+            // detach from the still-running operation.
+            // NOT TO SPEC: This also requests cancellation.
+            __sh_state_->__detach();
           }
         }
 
-        // Move-only:
-        __t(__t&&) = default;
-
-       private:
-        using __sh_state_ = stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>;
-        template <class _Receiver>
-        using __operation =
-          stdexec::__t<__operation<_CvrefSenderId, _EnvId, stdexec::__id<_Receiver>>>;
-
-        template <class... _Tys>
-        using __set_value_t = completion_signatures<set_value_t(__decay_t<_Tys>&&...)>;
-
-        template <class _Ty>
-        using __set_error_t = completion_signatures<set_error_t(__decay_t<_Ty>&&)>;
-
-        template <class _Self>
-        using __completions_t = //
-          __try_make_completion_signatures<
-            _CvrefSender,
-            __env_t<__mfront<_Env, _Self>>,
-            completion_signatures<
-              set_error_t(std::exception_ptr&&),
-              set_stopped_t()>, // BUGBUG NOT TO SPEC
-            __q<__set_value_t>,
-            __q<__set_error_t>>;
-
-        __intrusive_ptr<__sh_state_> __shared_state_;
-
-        template <same_as<__t> _Self, receiver_of<__completions_t<_Self>> _Receiver>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) //
-          noexcept(std::is_nothrow_move_constructible_v<_Receiver>) -> __operation<_Receiver> {
-          return __operation<_Receiver>{(_Receiver&&) __rcvr, std::move(__self).__shared_state_};
-        }
-
-        template <same_as<__t> _Self, class _OtherEnv>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _OtherEnv&&)
-          -> __completions_t<_Self>;
+        __intrusive_ptr<_ShState> __sh_state_;
       };
+
+      template <class... _Tys>
+      using __set_value_t = completion_signatures<set_value_t(__decay_t<_Tys>&&...)>;
+
+      template <class _Ty>
+      using __set_error_t = completion_signatures<set_error_t(__decay_t<_Ty>&&)>;
+
+      template <class _CvrefSenderId, class _EnvId>
+      using __completions_t = //
+        __try_make_completion_signatures<
+          // NOT TO SPEC:
+          // See https://github.com/brycelelbach/wg21_p2300_execution/issues/26
+          __cvref_t<_CvrefSenderId>,
+          __env_t<__t<_EnvId>>,
+          completion_signatures<
+            set_error_t(const std::exception_ptr&),
+            set_stopped_t()>, // NOT TO SPEC
+          __q<__set_value_t>,
+          __q<__set_error_t>>;
+
+      static inline constexpr auto __connect_fn = []<class _Receiver>(_Receiver& __rcvr) noexcept {
+        return [&]<class _ShState>(auto, __data<_ShState> __dat) //
+               noexcept(__nothrow_decay_copyable<_Receiver>)
+                 -> __t<__mapply<__mbind_back_q<__operation, __id<_Receiver>>, __id<_ShState>>> {
+                 return {(_Receiver&&) __rcvr, std::move(__dat.__sh_state_)};
+               };
+      };
+
+      static inline constexpr auto __get_completion_signatures_fn =
+        []<class _ShState>(auto, const __data<_ShState>&) //
+        -> __mapply<__q<__completions_t>, __id<_ShState>> {
+        return {};
+      };
+
+      template <__lazy_sender_for<__ensure_started_t> _Self, class _Receiver>
+      static auto connect(_Self&& __self, _Receiver __rcvr) noexcept(
+        __nothrow_callable<
+          __sender_apply_fn,
+          _Self,
+          __call_result_t<__mtypeof<__connect_fn>, _Receiver&>>)
+        -> __call_result_t<
+          __sender_apply_fn,
+          _Self,
+          __call_result_t<__mtypeof<__connect_fn>, _Receiver&>> {
+        return __sender_apply((_Self&&) __self, __connect_fn(__rcvr));
+      }
+
+      template <__lazy_sender_for<__ensure_started_t> _Self, class _OtherEnv>
+      static auto get_completion_signatures(_Self&& __self, _OtherEnv&&)
+        -> __call_result_t<__sender_apply_fn, _Self, __mtypeof<__get_completion_signatures_fn>> {
+        return {};
+      }
     };
 
-    struct ensure_started_t;
-
-    // When looking for user-defined customizations of ensure_started, these
-    // are the signatures to test against, in order:
-    using _CvrefSender = __0;
-    using _Env = __1;
-    using __cust_sigs = //
-      __types<
-        tag_invoke_t(
-          ensure_started_t,
-          get_completion_scheduler_t<set_value_t>(get_env_t(const _CvrefSender&)),
-          _CvrefSender),
-        tag_invoke_t(
-          ensure_started_t,
-          get_completion_scheduler_t<set_value_t>(get_env_t(const _CvrefSender&)),
-          _CvrefSender,
-          _Env),
-        tag_invoke_t(ensure_started_t, __get_env_domain_t(_Env&, _CvrefSender&), _CvrefSender),
-        tag_invoke_t(ensure_started_t, __get_env_domain_t(_Env&, _CvrefSender&), _CvrefSender, _Env),
-        tag_invoke_t(ensure_started_t, _CvrefSender),
-        tag_invoke_t(ensure_started_t, _CvrefSender, _Env)>;
-
-    template <class _CvrefSender, class _Env>
-    inline constexpr bool __is_ensure_started_customized =
-      __minvocable<__which<__cust_sigs>, _CvrefSender, _Env>;
-
-    template <class _Sender, class _Env>
-    using __sender_t =
-      __t<__sender<stdexec::__cvref_id<_Sender, _Sender>, stdexec::__id<__decay_t<_Env>>>>;
-
-    template <class _Sender>
-    concept __ensure_started_sender = //
-      __is_instance_of<__id<__decay_t<_Sender>>, __sender>;
-
-    template <class _Sender>
-    using __fallback =
-      __if_c<__ensure_started_sender<_Sender>, __mconst<__first>, __mconstructor_for<__sender_t>>;
-
-    template <class _Sender, class _Env>
-    using __dispatcher_for = __make_dispatcher<__cust_sigs, __fallback<_Sender>, _Sender, _Env>;
-
-    struct ensure_started_t {
+    struct ensure_started_t : __ensure_started_t {
+      // For the sake of finding customizations, first build a dummy ensure_started
+      // sender and pass it to the domain's transform_sender. If transform_sender
+      // changes its type, then use the transformed sender. Otherwise, build
+      // the real ensure_started sender, which might consume the sender.
       template <sender _Sender, class _Env = empty_env>
-        requires(sender_in<_Sender, _Env> && __decay_copyable<env_of_t<_Sender>>)
-             || __is_ensure_started_customized<_Sender, _Env>
-      auto operator()(_Sender&& __sndr, _Env&& __env = _Env{}) const
-        noexcept(__nothrow_callable<__dispatcher_for<_Sender, _Env>, _Sender, _Env>)
-          -> __call_result_t<__dispatcher_for<_Sender, _Env>, _Sender, _Env> {
-        return __dispatcher_for<_Sender, _Env>{}((_Sender&&) __sndr, (_Env&&) __env);
+        requires sender_in<_Sender, _Env> && __decay_copyable<env_of_t<_Sender>>
+      auto operator()(_Sender&& __sndr, _Env&& __env = _Env{}) const {
+        if constexpr (__lazy_sender_for<_Sender, __ensure_started_t>) {
+          return (_Sender&&) __sndr;
+        } else {
+          // The current domain is the first of:
+          //  1. The domain in the user-provided environment.
+          //  2. The domain of the scheduler in the user-provided environment.
+          //  3. The domain in the sender's environment.
+          //  4. The domain of the value completion scheduler in the sender's environment.
+          //  5. The default domain, wrapping the sender's value completion scheduler (if any).
+          // clang-format off
+          auto __domain =
+            query_or(get_domain, __env,
+              query_or(__compose(get_domain, get_scheduler), __env,
+                query_or(get_domain, get_env(__sndr),
+                  query_or(__compose(get_domain, get_completion_scheduler<set_value_t>), get_env(__sndr),
+                    __default_domain{query_or(get_completion_scheduler<set_value_t>, get_env(__sndr), __none_such())}))));
+          // clang-format on
+
+          using __ensure_started_sender_t = __result_of<__make_basic_sender, ensure_started_t, __, _Sender>;
+          using __tfx_sender_t = //
+            decltype(__domain.transform_sender(
+              __declval<__copy_cvref_t<_Sender, __ensure_started_sender_t>>(), __env));
+
+          // If transforming the sender changes the type, then use the transformed
+          // sender.
+          if constexpr (!same_as<__decay_t<__ensure_started_sender_t>, __decay_t<__tfx_sender_t>>) {
+            auto __ensure_started_sender = __make_basic_sender(*this, __(), (_Sender&&) __sndr);
+            return __domain.transform_sender(
+              const_cast<__copy_cvref_t<_Sender, __ensure_started_sender_t>&&>(__ensure_started_sender), __env);
+          } else {
+            using __sh_state_t = __t<__sh_state<__cvref_id<_Sender>, __id<__decay_t<_Env>>>>;
+            auto __sh_state = __make_intrusive<__sh_state_t>((_Sender&&) __sndr, (_Env&&) __env);
+            return __make_basic_sender(__ensure_started_t(), __data{std::move(__sh_state)});
+          }
+        }
       }
 
       __binder_back<ensure_started_t> operator()() const {
         return {{}, {}, {}};
       }
+
+      using _Sender = __2;
+      using _Env = __0;
+      using __legacy_customizations_t = //
+        __types<
+          tag_invoke_t(ensure_started_t, __get_env_domain_t(_Env&, _Sender&), _Sender),
+          tag_invoke_t(ensure_started_t, __get_env_domain_t(_Env&, _Sender&), _Sender, _Env),
+          tag_invoke_t(ensure_started_t, __get_sender_domain_t(const _Sender&), _Sender),
+          tag_invoke_t(ensure_started_t, __get_sender_domain_t(const _Sender&), _Sender, _Env),
+          tag_invoke_t(ensure_started_t, _Sender),
+          tag_invoke_t(ensure_started_t, _Sender, _Env)>;
     };
   }
 
