@@ -22,6 +22,7 @@
 #include <test_common/type_helpers.hpp>
 #include <exec/static_thread_pool.hpp>
 
+#include <numeric>
 #include <vector>
 
 namespace ex = stdexec;
