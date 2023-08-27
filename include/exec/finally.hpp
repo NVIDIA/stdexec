@@ -22,7 +22,7 @@
 #include "materialize.hpp"
 
 namespace exec {
-  namespace __finally {
+  namespace __finally_ {
     using namespace stdexec;
 
     template <class _Arg, class... _Args>
@@ -296,5 +296,5 @@ namespace exec {
     };
   }
 
-  inline constexpr __finally ::__finally_t finally{};
+  inline constexpr __finally_ ::__finally_t finally{};
 }
