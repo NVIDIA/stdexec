@@ -331,7 +331,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           exec::make_env_t<exec::with_t<get_stop_token_t, in_place_stop_token>>,
           completion_signatures<set_error_t(const cudaError_t&)>,
           _set_value_t,
-          _set_error_t>;
+          _set_error_t> {
+        return {};
+      }
 
       explicit __t(context_state_t context_state, Sender sndr)
         : sndr_((Sender&&) sndr)

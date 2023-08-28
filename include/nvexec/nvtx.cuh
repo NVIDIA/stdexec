@@ -101,7 +101,10 @@ namespace nvexec {
         template <__decays_to<__t> Self, class Env>
         friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
           -> _completion_signatures_t<Self, Env>
-          requires true;
+          requires true
+        {
+          return {};
+        }
 
         friend auto tag_invoke(get_env_t, const __t& self) noexcept -> env_of_t<const Sender&> {
           return get_env(self.sndr_);

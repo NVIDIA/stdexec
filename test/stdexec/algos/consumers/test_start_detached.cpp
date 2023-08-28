@@ -90,9 +90,12 @@ struct custom_sender {
   friend auto tag_invoke(ex::connect_t, custom_sender, Receiver&& rcvr) {
     return ex::connect(ex::schedule(inline_scheduler{}), (Receiver&&) rcvr);
   }
+
   template <class Env>
   friend auto tag_invoke(ex::get_completion_signatures_t, custom_sender, Env) noexcept
-    -> ex::completion_signatures<ex::set_value_t()>;
+    -> ex::completion_signatures<ex::set_value_t()> {
+    return {};
+  }
 
   friend void tag_invoke(ex::start_detached_t, custom_sender sndr) {
     *sndr.called = true;

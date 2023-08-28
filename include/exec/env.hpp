@@ -99,9 +99,12 @@ namespace exec {
 
       friend auto tag_invoke(get_completion_signatures_t, __sender, no_env)
         -> dependent_completion_signatures<no_env>;
+
       template <__none_of<no_env> _Env>
       friend auto tag_invoke(get_completion_signatures_t, __sender, _Env&&)
-        -> __completions_t<_Env>;
+        -> __completions_t<_Env> {
+        return {};
+      }
     };
 
     struct __read_with_default_t {
@@ -198,7 +201,9 @@ namespace exec {
         friend auto tag_invoke(get_completion_signatures_t, _Self&&, _BaseEnv&&)
           -> stdexec::__completion_signatures_of_t<
             __copy_cvref_t<_Self, _Sender>,
-            __env::__env_join_t<_Env, _BaseEnv>>;
+            __env::__env_join_t<_Env, _BaseEnv>> {
+          return {};
+        }
       };
     };
 
