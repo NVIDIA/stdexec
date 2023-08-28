@@ -7,3 +7,4 @@ compile_commands.json
 /*.cpp
 /*.patch
 /*.diff
+.history/
