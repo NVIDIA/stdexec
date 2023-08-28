@@ -97,9 +97,6 @@ namespace exec {
         return {{}, ((_Self&&) __self).__default_, (_Receiver&&) __rcvr};
       }
 
-      friend auto tag_invoke(get_completion_signatures_t, __sender, no_env)
-        -> dependent_completion_signatures<no_env>;
-
       template <__none_of<no_env> _Env>
       friend auto tag_invoke(get_completion_signatures_t, __sender, _Env&&)
         -> __completions_t<_Env> {

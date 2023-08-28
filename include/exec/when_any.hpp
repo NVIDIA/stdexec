@@ -262,13 +262,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&& __self, _Env __env) noexcept
-          -> dependent_completion_signatures<_Env>;
-
-        template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&& __self, _Env __env) noexcept
-          -> __completion_signatures_t<_Env, _SenderIds...>
-          requires true
-        {
+          -> __completion_signatures_t<_Env, _SenderIds...> {
           return {};
         }
 
