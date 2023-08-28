@@ -18,7 +18,7 @@
 
 #include "../../stdexec/__detail/__config.hpp"
 
-#if STDEXEC_HAS_RANGES()
+#if STDEXEC_HAS_STD_RANGES()
 
 #include "../sequence_senders.hpp"
 
@@ -188,4 +188,4 @@ namespace exec {
   inline constexpr iterate_t iterate;
 }
 
-#endif // STDEXEC_HAS_RANGES()
+#endif // STDEXEC_HAS_STD_RANGES()
