@@ -102,7 +102,7 @@ namespace stdexec {
   template <class _Ty, class... _As>
   concept constructible_from = //
     destructible<_Ty> &&       //
-      std::is_constructible_v<_Ty, _As...>;
+    std::is_constructible_v<_Ty, _As...>;
 #endif
 
   template <class _Ty>

@@ -4298,7 +4298,8 @@ namespace stdexec {
                     __default_domain{query_or(get_completion_scheduler<set_value_t>, get_env(__sndr), __none_such())}))));
           // clang-format on
 
-          using __ensure_started_sender_t = __result_of<__make_basic_sender, ensure_started_t, __, _Sender>;
+          using __ensure_started_sender_t =
+            __result_of<__make_basic_sender, ensure_started_t, __, _Sender>;
           using __tfx_sender_t = //
             decltype(__domain.transform_sender(
               __declval<__copy_cvref_t<_Sender, __ensure_started_sender_t>>(), __env));
@@ -4308,7 +4309,9 @@ namespace stdexec {
           if constexpr (!same_as<__decay_t<__ensure_started_sender_t>, __decay_t<__tfx_sender_t>>) {
             auto __ensure_started_sender = __make_basic_sender(*this, __(), (_Sender&&) __sndr);
             return __domain.transform_sender(
-              const_cast<__copy_cvref_t<_Sender, __ensure_started_sender_t>&&>(__ensure_started_sender), __env);
+              const_cast<__copy_cvref_t<_Sender, __ensure_started_sender_t>&&>(
+                __ensure_started_sender),
+              __env);
           } else {
             using __sh_state_t = __t<__sh_state<__cvref_id<_Sender>, __id<__decay_t<_Env>>>>;
             auto __sh_state = __make_intrusive<__sh_state_t>((_Sender&&) __sndr, (_Env&&) __env);
@@ -4533,7 +4536,9 @@ namespace stdexec {
 
         template <__decays_to<__t> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-          -> __completions<__copy_cvref_t<_Self, _Sender>, _Env>;
+          -> __completions<__copy_cvref_t<_Self, _Sender>, _Env> {
+          return {};
+        }
 
         _Sender __sndr_;
         _Fun __fun_;
@@ -4706,7 +4711,9 @@ namespace stdexec {
             completion_signatures<set_error_t(std::exception_ptr)>,
             __set_value_t,
             __set_error_t,
-            completion_signatures<>>;
+            completion_signatures<>> {
+          return {};
+        }
 
         _Sender __sndr_;
       };
@@ -5446,7 +5453,9 @@ namespace stdexec {
               __copy_cvref_t<_Self, _Sender>,
               __make_env_t<_Env, __with<get_scheduler_t, _Scheduler>>,
               completion_signatures<set_error_t(std::exception_ptr)>>,
-            __q<__value_t>>;
+            __q<__value_t>> {
+          return {};
+        }
       };
     };
 
@@ -5602,7 +5611,9 @@ namespace stdexec {
 
         template <class _Env>
         friend auto tag_invoke(get_completion_signatures_t, __t&&, _Env&&) //
-          -> __compl_sigs<_Env>;
+          -> __compl_sigs<_Env> {
+          return {};
+        }
       };
     };
 
@@ -6236,7 +6247,9 @@ namespace stdexec {
 
       template <__none_of<no_env> _Env>
       friend auto tag_invoke(get_completion_signatures_t, __sender, _Env&&)
-        -> __completions_t<_Env>;
+        -> __completions_t<_Env> {
+        return {};
+      }
 
       friend empty_env tag_invoke(get_env_t, const __t&) noexcept {
         return {};

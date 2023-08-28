@@ -127,7 +127,9 @@ struct _retry_sender {
       Env,
       stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
       _value,
-      _error>;
+      _error> {
+    return {};
+  }
 
   template <stdexec::receiver R>
   friend _op<S, R> tag_invoke(stdexec::connect_t, _retry_sender&& self, R r) {

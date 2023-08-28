@@ -340,7 +340,9 @@ namespace exec {
 
         template <__is_derived_sender<_DerivedId> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-          -> __new_completions_t<_Self, _Env>;
+          -> __new_completions_t<_Self, _Env> {
+          return {};
+        }
 
         friend auto tag_invoke(stdexec::get_env_t, const __t& __self) noexcept
           -> env_of_t<const _Sender&> {
