@@ -23,19 +23,59 @@
 #include <span>
 
 namespace ex = stdexec;
+using stdexec::__tag_invoke::tag_invoke;
+
+struct sink_receiver {
+  using is_receiver = void;
+
+  friend void tag_invoke(stdexec::set_value_t, sink_receiver, auto&&...) noexcept {
+  }
+
+  friend void tag_invoke(stdexec::set_error_t, sink_receiver, auto&&) noexcept {
+  }
+
+  friend void tag_invoke(stdexec::set_stopped_t, sink_receiver) noexcept {
+  }
+
+  friend stdexec::empty_env tag_invoke(stdexec::get_env_t, sink_receiver) noexcept {
+    return {};
+  }
+};
+
+struct test_env { };
+
+struct test_tag { };
+
+struct test_sender { };
+
+template <class _InitT, class _Fun>
+struct Data {
+  _InitT __initT_;
+  STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
+  static constexpr auto __mbrs_ = stdexec::__mliterals<&Data::__initT_, &Data::__fun_>();
+};
+
+struct Children { };
+
+template <class _Tag, class... _Captures>
+struct fn_struct { };
+
+template <class T>
+struct type_print;
 
 int main() {
+  using namespace stdexec;
+
   const int n = 2 * 1024;
+
+
   thrust::device_vector<float> input(n, 1.0f);
   float* first = thrust::raw_pointer_cast(input.data());
   float* last = thrust::raw_pointer_cast(input.data()) + input.size();
-
-  nvexec::stream_context stream_ctx{};
-
-  auto snd = ex::transfer_just(stream_ctx.get_scheduler(), std::span{first, last})
-           | nvexec::reduce(42.0f);
-
-  auto [result] = stdexec::sync_wait(std::move(snd)).value();
-
-  std::cout << "result: " << result << std::endl;
+  auto stream_ctx = nvexec::stream_context{};
+  auto span = std::span{first, last};
+  auto snd = ex::just(std::span{first, last}) | nvexec::reduce(52.0f);
+  
+  auto [result] = stdexec::sync_wait(ex::on(stream_ctx.get_scheduler(), std::move(snd))).value();
 }
+

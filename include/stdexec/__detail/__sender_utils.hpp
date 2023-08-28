@@ -92,10 +92,11 @@ namespace stdexec {
       same_as<get_completion_signatures_t> _Tag,
       __decays_to<__basic_sender> _Self,
       class _Env>
-    friend auto tag_invoke(_Tag, _Self&& __self, _Env&& __env) //
-      -> __msecond<
+    friend auto tag_invoke(_Tag, _Self&& __self, _Env&& __env) {
+      return __msecond<
         __if_c<same_as<_Tag, get_completion_signatures_t>>,
-        decltype(__self.__tag().get_completion_signatures((_Self&&) __self, (_Env&&) __env))>;
+        decltype(__self.__tag().get_completion_signatures((_Self&&) __self, (_Env&&) __env))>{};
+    }
 
     // BUGBUG fix receiver constraint here:
     template <

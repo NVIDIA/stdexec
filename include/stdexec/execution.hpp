@@ -89,6 +89,8 @@ STDEXEC_PRAGMA_IGNORE("-Wundefined-inline")
 STDEXEC_PRAGMA_IGNORE("-Wundefined-internal")
 
 namespace stdexec {
+  [[gnu::deprecated]] void print(auto&&...) {
+  }
   // [exec.queries.queryable]
   template <class T>
   concept queryable = destructible<T>;
@@ -790,8 +792,7 @@ namespace stdexec {
       decltype(__compl_sigs::__as_tagged_tuple_((_Sig*) nullptr, (_TaggedTuple*) nullptr));
 
     template <class _TaggedTuple, class _Variant, class... _Sigs>
-    auto __for_all_sigs_(completion_signatures<_Sigs...>*, _TaggedTuple*, _Variant*)
-      -> __mconst< __minvoke< _Variant, __minvoke<__as_tagged_tuple<_Sigs, _TaggedTuple>>...>>;
+    auto __for_all_sigs_(completion_signatures<_Sigs...>*, _TaggedTuple*, _Variant*) -> __mconst< __minvoke< _Variant, __minvoke<__as_tagged_tuple<_Sigs, _TaggedTuple>>...>>;
 
     template <class _Completions, class _TaggedTuple, class _Variant>
     using __for_all_sigs =                      //
@@ -1463,6 +1464,7 @@ namespace stdexec {
       __concat_completion_signatures_t<
         _Sigs,
         __mtry_eval<__try_value_types_of_t, _Sender, _Env, _SetVal, __q<__ensure_concat>>,
+
         __mtry_eval<__try_error_types_of_t, _Sender, _Env, __transform<_SetErr, __q<__ensure_concat>>>,
         __if<__try_count_of<set_stopped_t, _Sender, _Env>, _SetStp, completion_signatures<>>>;
 
@@ -5473,10 +5475,10 @@ namespace stdexec {
         -> __t<__sender<stdexec::__id<__decay_t<_Scheduler>>, stdexec::__id<__decay_t<_Sender>>>> {
         // connect-based customization will remove the need for this check
         using __has_customizations = __call_result_t<__has_algorithm_customizations_t, _Scheduler>;
-        static_assert(
-          !__has_customizations{},
-          "For now the default stdexec::on implementation doesn't support scheduling "
-          "onto schedulers that customize algorithms.");
+        // static_assert(
+        //   !__has_customizations{},
+        //   "For now the default stdexec::on implementation doesn't support scheduling "
+        //   "onto schedulers that customize algorithms.");
         return {(_Scheduler&&) __sched, (_Sender&&) __sndr};
       }
     };

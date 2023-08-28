@@ -35,15 +35,25 @@
 #include "stream/when_all.cuh"
 #include "stream/reduce.cuh"
 #include "stream/ensure_started.cuh"
-
 #include "stream/common.cuh"
 #include "detail/queue.cuh"
 #include "detail/throw_on_cuda_error.cuh"
+
+template <typename T>
+struct type_printer;
 
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
     template <sender Sender, std::integral Shape, class Fun>
     using bulk_sender_th = __t<bulk_sender_t<__id<__decay_t<Sender>>, Shape, Fun>>;
+
+
+    template <stdexec::sender Sender, std::integral Shape, class Fun>
+    using reduce_sender_t = //
+      reduce_::sender_t<
+        stdexec::__x<stdexec::__decay_t<Sender>>,
+        Shape,
+        stdexec::__x<stdexec::__decay_t<Fun>>>;
 
     template <sender Sender>
     using split_sender_th = __t<split_sender_t<__id<__decay_t<Sender>>>>;
@@ -73,6 +83,32 @@ namespace nvexec {
 
     template <sender Sender>
     using ensure_started_th = __t<ensure_started_sender_t<__id<Sender>>>;
+
+    struct stream_domain {
+      template <class _Sender, class _Env = empty_env>
+      static _Sender transform_sender(_Sender&& __sndr, const _Env& = {})
+        // BUGBUG fix me:
+        noexcept(std::is_reference_v<_Sender>)
+      // noexcept(__nothrow_constructible_from<_Sender, _Sender&&>)
+      {
+        return static_cast<_Sender&&>(__sndr);
+      }
+
+      template <stdexec::__lazy_sender_for<reduce_::reduce_t> Sender, class Env>
+        requires stdexec::__callable<stdexec::get_scheduler_t, Env>
+      auto transform_sender(Sender&& sndr, Env&& env) const noexcept {
+        return stdexec::__sender_apply(
+          (Sender&&) sndr,
+          [&]<class Tag, class Data, class InnerSender>(Tag, Data&& data, InnerSender&&) {
+            auto initT = stdexec::__nth_member<0>()((Data&&) data);
+            auto fun = stdexec::__nth_member<1>()((Data&&) data);
+            auto sched = stdexec::get_scheduler((Env&&) env);
+
+            return reduce_sender_t<InnerSender, decltype(initT), decltype(fun)>{
+              (InnerSender&&) inner, initT, std::move(fun)};
+          });
+      }
+    };
 
     struct stream_scheduler {
       using __t = stream_scheduler;
@@ -121,7 +157,7 @@ namespace nvexec {
       };
 
       struct sender_ {
-        struct __t : stream_sender_base {
+        using is_sender = struct __t : stream_sender_base {
           using __id = sender_;
           using completion_signatures =
             completion_signatures< set_value_t(), set_error_t(cudaError_t)>;
@@ -135,6 +171,7 @@ namespace nvexec {
           }
 
           friend const env& tag_invoke(get_env_t, const __t& self) noexcept {
+
             return self.env_;
           };
 
@@ -146,6 +183,11 @@ namespace nvexec {
           env env_;
         };
       };
+
+      template <sender S>
+      friend stream_domain tag_invoke(get_domain_t, const stream_scheduler& sch) noexcept {
+        return {};
+      }
 
       using sender_t = stdexec::__t<sender_>;
 
@@ -160,6 +202,13 @@ namespace nvexec {
         tag_invoke(bulk_t, const stream_scheduler& sch, S&& sndr, Shape shape, Fn fun) //
         noexcept {
         return bulk_sender_th<S, Shape, Fn>{{}, (S&&) sndr, shape, (Fn&&) fun};
+      }
+
+      template <sender S, std::integral InitT, class Fn>
+      friend reduce_sender_t<S, InitT, Fn>
+        tag_invoke(reduce_t, const stream_scheduler& sch, S&& sndr, InitT initT, Fn fun) //
+        noexcept {
+        return reduce_sender_t<S, InitT, Fn>{{}, (S&&) sndr, initT, (Fn&&) fun};
       }
 
       template <sender S, class Fn>
@@ -243,13 +292,24 @@ namespace nvexec {
         return {self.context_state_};
       }
 
-      friend std::true_type tag_invoke(   //
+      template <__decays_to<__t> _Self, class _Receivr>
+      friend auto tag_invoke(connect_t, _Self&& __self, _Receivr __rcvr)
+        -> operation_state_t<stdexec::__id<__decay_t<_Receivr>>> {
+        return {((_Self&&) __self).sender, (_Receivr&&) __rcvr};
+      }
+
+      friend std::true_type tag_invoke(
         __has_algorithm_customizations_t, //
         const stream_scheduler& self) noexcept {
         return {};
       }
 
       template <sender S>
+      friend auto tag_invoke(sync_wait_t, const stream_scheduler& self, S&& sndr) {
+        return _sync_wait::sync_wait_t{}(self.context_state_, (S&&) sndr);
+      }
+
+      template <class S>
       friend auto tag_invoke(sync_wait_t, const stream_scheduler& self, S&& sndr) {
         return _sync_wait::sync_wait_t{}(self.context_state_, (S&&) sndr);
       }
@@ -266,6 +326,7 @@ namespace nvexec {
       stream_scheduler(context_state_t context_state)
         : context_state_(context_state) {
       }
+
 
       // private: TODO
       context_state_t context_state_;
@@ -333,5 +394,6 @@ namespace nvexec {
       return {STDEXEC_STREAM_DETAIL_NS::context_state_t(
         pinned_resource_.get(), managed_resource_.get(), &stream_pools_, &hub_, priority)};
     }
+
   };
 } // namespace nvexec
