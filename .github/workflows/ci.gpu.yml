@@ -19,8 +19,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "nvc++ 23.3", cuda: "12.0", cxx: "mpic++",  tag: "nvhpc23.3",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
-          - { name: "clang 16",   cuda: "12.0", cxx: "clang++", tag: "llvm16-cuda12.0", gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "clang 16",   cuda: "12.0", cxx: "clang++", build: "Release", tag: "llvm16-cuda12.0", gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "nvc++ 23.3", cuda: "12.0", cxx: "mpic++",  build: "Release", tag: "nvhpc23.3",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "nvc++ 23.3", cuda: "12.0", cxx: "mpic++",  build: "Debug",   tag: "nvhpc23.3",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
     runs-on: linux-${{ matrix.arch }}-gpu-${{ matrix.gpu }}-${{ matrix.driver }}-1
     container:
       options: -u root
@@ -45,11 +46,12 @@ jobs:
           cd /workspaces/stdexec;
           # Configure
           cmake -S . -B build -GNinja \
-            -DSTDEXEC_ENABLE_IO_URING_TESTS=OFF \
-            -DSTDEXEC_ENABLE_CUDA=ON \
-            -DCMAKE_CXX_COMPILER="$cxx" \
-            -DCMAKE_CUDA_COMPILER="$cxx" \
-            -DCMAKE_CUDA_ARCHITECTURES=${{ matrix.sm }};
+            -DCMAKE_BUILD_TYPE:STRING=${{ matrix.build }} \
+            -DSTDEXEC_ENABLE_IO_URING_TESTS:BOOL=OFF \
+            -DSTDEXEC_ENABLE_CUDA:BOOL=ON \
+            -DCMAKE_CXX_COMPILER:FILEPATH="$cxx" \
+            -DCMAKE_CUDA_COMPILER:FILEPATH="$cxx" \
+            -DCMAKE_CUDA_ARCHITECTURES:STRING=${{ matrix.sm }};
           # Compile
           cmake --build build;
           # Tests
