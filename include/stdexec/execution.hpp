@@ -6456,7 +6456,7 @@ namespace stdexec {
     using _Sender = __0;
     template <class _Tag>
     using __cust_sigs = __types<
-      tag_invoke_t(_Tag, __get_sender_domain_t(_Sender), _Sender),
+      tag_invoke_t(_Tag, __get_sender_domain_t(*)(_Sender), _Sender),
       tag_invoke_t(_Tag, _Sender)>;
 
     template <class _Tag, class _Sender>
