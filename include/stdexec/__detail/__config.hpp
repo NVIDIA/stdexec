@@ -89,7 +89,7 @@
 #define STDEXEC_PRAGMA_IGNORE(_ARG)
 #endif
 
-#ifdef __has_builtin
+#if !STDEXEC_MSVC() && defined(__has_builtin)
 #define STDEXEC_HAS_BUILTIN __has_builtin
 #else
 #define STDEXEC_HAS_BUILTIN(...) 0
@@ -169,9 +169,9 @@
 #if __has_include(<ranges>) && \
   (defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L) && \
   (!STDEXEC_CLANG() || __clang_major__ >= 16 || defined(_LIBCPP_VERSION))
-#define STDEXEC_HAS_RANGES() 1
+#define STDEXEC_HAS_STD_RANGES() 1
 #else
-#define STDEXEC_HAS_RANGES() 0
+#define STDEXEC_HAS_STD_RANGES() 0
 #endif
 
 #ifdef STDEXEC_ASSERT

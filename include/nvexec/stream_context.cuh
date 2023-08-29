@@ -48,13 +48,12 @@ namespace nvexec {
     template <sender Sender, std::integral Shape, class Fun>
     using bulk_sender_th = __t<bulk_sender_t<__id<__decay_t<Sender>>, Shape, Fun>>;
 
-
-    template <stdexec::sender Sender, std::integral Shape, class Fun>
+    template <stdexec::sender Sender, class InitT, class Fun>
     using reduce_sender_t = //
-      reduce_::sender_t<
-        stdexec::__x<stdexec::__decay_t<Sender>>,
-        Shape,
-        stdexec::__x<stdexec::__decay_t<Fun>>>;
+      stdexec::__t<reduce_::sender_t<
+        stdexec::__id<stdexec::__decay_t<Sender>>,
+        InitT,
+        stdexec::__decay_t<Fun>>>;
 
     template <class Fun, class InitT, class... Args>
       requires stdexec::__callable<Fun, InitT, Args&...>
@@ -96,7 +95,7 @@ namespace nvexec {
 
     struct stream_domain {
       template <class _Sender, class _Env = empty_env>
-      static _Sender transform_sender(_Sender&& __sndr, const _Env& = {})
+      _Sender transform_sender(_Sender&& __sndr, const _Env& = {}) const
         // BUGBUG fix me:
         noexcept(std::is_reference_v<_Sender>)
       // noexcept(__nothrow_constructible_from<_Sender, _Sender&&>)
@@ -104,18 +103,17 @@ namespace nvexec {
         return static_cast<_Sender&&>(__sndr);
       }
 
-      template <stdexec::__lazy_sender_for<reduce_::reduce_t> Sender, class Env>
-        requires stdexec::__callable<stdexec::get_scheduler_t, Env>
-      auto transform_sender(Sender&& sndr, Env&& env) const noexcept {
+      template <stdexec::__lazy_sender_for<reduce_t> Sender, class Env = empty_env>
+        //requires stdexec::__callable<stdexec::get_scheduler_t, Env>
+      auto transform_sender(Sender&& sndr, const Env& env = {}) const noexcept {
         return stdexec::__sender_apply(
           (Sender&&) sndr,
           [&]<class Tag, class Data, class InnerSender>(Tag, Data&& data, InnerSender&& inner) {
             auto initT = stdexec::__nth_member<0>()((Data&&) data);
             auto fun = stdexec::__nth_member<1>()((Data&&) data);
             auto sched = stdexec::get_scheduler((Env&&) env);
-
             return reduce_sender_t<InnerSender, decltype(initT), decltype(fun)>{
-              (InnerSender&&) inner, initT, std::move(fun)};
+              {}, (InnerSender&&) inner, std::move(initT), std::move(fun)};
           });
       }
     };
@@ -194,7 +192,6 @@ namespace nvexec {
         };
       };
 
-      template <sender S>
       friend stream_domain tag_invoke(get_domain_t, const stream_scheduler& sch) noexcept {
         return {};
       }

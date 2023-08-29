@@ -72,7 +72,9 @@ struct _then_sender {
 
   template <class Env>
   friend auto tag_invoke(stdexec::get_completion_signatures_t, _then_sender&&, Env)
-    -> _completions_t<Env>;
+    -> _completions_t<Env> {
+    return {};
+  }
 
   // Connect:
   template <class R>

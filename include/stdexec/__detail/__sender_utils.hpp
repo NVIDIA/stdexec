@@ -95,7 +95,9 @@ namespace stdexec {
     friend auto tag_invoke(_Tag, _Self&& __self, _Env&& __env) //
       -> __msecond<
         __if_c<same_as<_Tag, get_completion_signatures_t>>,
-        decltype(__self.__tag().get_completion_signatures((_Self&&) __self, (_Env&&) __env))>;
+        decltype(__self.__tag().get_completion_signatures((_Self&&) __self, (_Env&&) __env))> {
+        return {};
+      }
 
     // BUGBUG fix receiver constraint here:
     template <
@@ -131,11 +133,12 @@ namespace stdexec {
       constexpr auto operator()(_Tag, _Data __data = {}, _Children... __children) const;
     };
 
-#if STDEXEC_NVHPC()
-    // The NVIDIA HPC compiler struggles with capture initializers for a parameter pack.
-    // As a workaround, we use a wrapper that performs moves when non-const lvalues are
-    // copied. That constructor is only used when capturing the variables, never when
-    // the resulting lambda is copied or moved.
+#if STDEXEC_NVHPC() || (STDEXEC_GCC() && __GNUC__ < 13)
+    // The NVIDIA HPC compiler and gcc prior to v13 struggle with capture
+    // initializers for a parameter pack. As a workaround, we use a wrapper that
+    // performs moves when non-const lvalues are copied. That constructor is
+    // only used when capturing the variables, never when the resulting lambda
+    // is copied or moved.
 
     // Move-by-copy
     template <class _Ty>
@@ -187,7 +190,7 @@ namespace stdexec {
           return [... __captures = (_Captures&&) __captures]<class _Cvref, class _Fun>(
                    _Cvref, _Fun && __fun) mutable                                          //
                  noexcept(__nothrow_callable<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>) //
-                 -> decltype(auto)                                                         //
+                 -> __call_result_t<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>
                    requires __callable<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>
           {
             return ((_Fun&&) __fun)(
@@ -284,13 +287,13 @@ namespace stdexec {
     extern __mcompose<__cprr, __name_of_fn<_Sender>> __name_of_v<_Sender&&>;
 
     template <class _Sender>
-    extern __mcompose<__cpclr, __name_of_fn<_Sender>> __name_of_v<const _Sender>;
+    extern __mcompose<__cpclr, __name_of_fn<_Sender>> __name_of_v<const _Sender&>;
 
     template <class _ImplOf>
     extern __lazy_sender_name __name_of_v<__basic_sender<_ImplOf>>;
 
     template <__has_id _Sender>
-      requires (!same_as<__id<_Sender>, _Sender>)
+      requires(!same_as<__id<_Sender>, _Sender>)
     extern __id_name __name_of_v<_Sender>;
   } // namespace __detail
 

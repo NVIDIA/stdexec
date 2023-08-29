@@ -18,7 +18,7 @@
 #include "exec/sequence/iterate.hpp"
 #include "stdexec/execution.hpp"
 
-#if STDEXEC_HAS_RANGES()
+#if STDEXEC_HAS_STD_RANGES()
 
 #include <array>
 #include <catch2/catch.hpp>
@@ -103,4 +103,4 @@ TEST_CASE("iterate - sum up an array ", "[sequence_senders][iterate]") {
   CHECK(sum == (42 + 43 + 44));
 }
 
-#endif // STDEXEC_HAS_RANGES()
+#endif // STDEXEC_HAS_STD_RANGES()

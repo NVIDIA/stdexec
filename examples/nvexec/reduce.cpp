@@ -33,27 +33,32 @@ struct sink_receiver {
 };
 
 struct empty_environment {
-
 };
+
+template <class...>
+[[deprecated]] void print() {}
+
 // unqualified call to tag_invoke:
 int main() {
   const int n = 2 * 1024;
   thrust::device_vector<float> input(n, 1.0f);
   float* first = thrust::raw_pointer_cast(input.data());
   float* last = thrust::raw_pointer_cast(input.data()) + input.size();
-  auto idk = nvexec::reduce(42.0f);
   nvexec::stream_context stream_ctx{};
+  auto sched = stream_ctx.get_scheduler();
+
+  auto domain = ex::get_domain(sched);
+  print<decltype(domain)>();
+
   auto snd = ex::just(std::span{first, last})
-           | idk;
-  stdexec::print(snd);
-   nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();         
-  using stdexec::__tag_invoke::tag_invoke;
-  
-  tag_invoke(stdexec::get_completion_signatures, snd, empty_environment{});
-  // auto [result] =
-  //   stdexec::sync_wait(ex::on(stream_ctx.get_scheduler(), std::move(snd))).value();
+           | nvexec::reduce(42.0f);
 
- 
+  ::print<stdexec::__detail::__name_of<decltype(snd)>>();
+  // nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();         
+  // using stdexec::__tag_invoke::tag_invoke;  
+  // tag_invoke(stdexec::get_completion_signatures, snd, empty_environment{});
 
+  auto [result] =
+    stdexec::sync_wait(ex::on(sched, std::move(snd))).value();
 
-}
+ }

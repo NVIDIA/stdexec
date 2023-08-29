@@ -368,12 +368,9 @@ namespace tbbexec {
 
           template <stdexec::__decays_to<bulk_sender> Self, class Env>
           friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env&&)
-            -> stdexec::dependent_completion_signatures<Env>;
-
-          template <stdexec::__decays_to<bulk_sender> Self, class Env>
-          friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env&&)
-            -> completion_signatures<Self, Env>
-            requires true;
+            -> completion_signatures<Self, Env> {
+            return {};
+          }
 
           template <stdexec::tag_category<stdexec::forwarding_query> Tag, class... As>
             requires stdexec::__callable<Tag, const Sender&, As...>
