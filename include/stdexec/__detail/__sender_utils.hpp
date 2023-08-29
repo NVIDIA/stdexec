@@ -95,7 +95,9 @@ namespace stdexec {
     friend auto tag_invoke(_Tag, _Self&& __self, _Env&& __env) //
       -> __msecond<
         __if_c<same_as<_Tag, get_completion_signatures_t>>,
-        decltype(__self.__tag().get_completion_signatures((_Self&&) __self, (_Env&&) __env))>;
+        decltype(__self.__tag().get_completion_signatures((_Self&&) __self, (_Env&&) __env))> {
+        return {};
+      }
 
     // BUGBUG fix receiver constraint here:
     template <
