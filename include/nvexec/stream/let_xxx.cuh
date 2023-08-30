@@ -78,7 +78,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     struct __tfx_signal_<_Set, _Set(_Args...)> {
       template <class _Env, class _Fun>
       using __f = //
-        make_completion_signatures<
+        __try_make_completion_signatures<
           __minvoke<__result_sender<_Fun>, _Args...>,
           _Env,
           completion_signatures<set_error_t(cudaError_t)>>;
@@ -221,7 +221,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __transform<
             __mbind_front_q<let_xxx::__tfx_signal_t, _Env, _Fun, _Set>,
             __q<__concat_completion_signatures_t>>,
-          completion_signatures_of_t<_Sender, _Env>>;
+          __completion_signatures_of_t<_Sender, _Env>>;
 
       template <__decays_to<__t> _Self, receiver _Receiver>
         requires receiver_of<               //

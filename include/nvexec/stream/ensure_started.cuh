@@ -333,12 +333,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <std::same_as<__t> Self, class Env>
       friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
-        -> make_completion_signatures<
+        -> __try_make_completion_signatures<
           Sender,
           _ensure_started::env_t,
           completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
-          _set_value_t,
-          _set_error_t> {
+          __q<_set_value_t>,
+          __q<_set_error_t>> {
         return {};
       }
 

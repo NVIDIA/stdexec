@@ -109,11 +109,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
 
       template <class Self, class Env>
       using completion_signatures = //
-        make_completion_signatures<
+        __try_make_completion_signatures<
           __copy_cvref_t<Self, Sender>,
           Env,
           completion_signatures<set_error_t(cudaError_t)>,
-          _set_value_t >;
+          __q<_set_value_t >>;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
