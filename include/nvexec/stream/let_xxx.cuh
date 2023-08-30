@@ -41,8 +41,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       static constexpr std::size_t value = std::max({std::size_t{}, __v<Sizes>...});
     };
 
-    template <class _Sender, class _Receiver, class _Fun, class _SetTag>
-      requires sender_in<_Sender, env_of_t<_Receiver>>
+    template <class _Sender, class _PropagateReceiver, class _Fun, class _SetTag>
+      requires sender_in<_Sender, env_of_t<_PropagateReceiver>>
     struct __max_sender_size {
       template <class... _As>
       struct __sender_size_for_ {
@@ -55,7 +55,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         __v<__gather_completions_for<
           _SetTag,
           _Sender,
-          env_of_t<_Receiver>,
+          env_of_t<_PropagateReceiver>,
           __q<__sender_size_for_t>,
           __q<max_in_pack>>>;
     };
@@ -76,16 +76,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     template <class _Set, class... _Args>
     struct __tfx_signal_<_Set, _Set(_Args...)> {
-      template <class _Env, class _Fun>
+      template <class _StreamEnv, class _Fun>
       using __f = //
         __try_make_completion_signatures<
           __minvoke<__result_sender<_Fun>, _Args...>,
-          _Env,
+          _StreamEnv,
           completion_signatures<set_error_t(cudaError_t)>>;
     };
 
-    template <class _Env, class _Fun, class _Set, class _Sig>
-    using __tfx_signal_t = __minvoke<__tfx_signal_<_Set, _Sig>, _Env, _Fun>;
+    template <class _StreamEnv, class _Fun, class _Set, class _Sig>
+    using __tfx_signal_t = __minvoke<__tfx_signal_<_Set, _Sig>, _StreamEnv, _Fun>;
 
     template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
     struct __operation;
@@ -94,17 +94,18 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     struct __receiver_ {
       using _Sender = stdexec::__t<_SenderId>;
       using _Receiver = stdexec::__t<_ReceiverId>;
+      using _PropagateReceiver = stdexec::__t<propagate_receiver_t<_ReceiverId>>;
       using _Env = typename operation_state_base_t<_ReceiverId>::env_t;
 
       struct __t : public stream_receiver_base {
         using __id = __receiver_;
 
         constexpr static std::size_t memory_allocation_size =
-          __v<__max_sender_size<_Sender, _Receiver, _Fun, _Let>>;
+          __v<__max_sender_size<_Sender, _PropagateReceiver, _Fun, _Let>>;
 
         template <__one_of<_Let> _Tag, class... _As>
           requires __minvocable<__result_sender<_Fun>, _As...>
-                && sender_to<__minvoke<__result_sender<_Fun>, _As...>, _Receiver>
+                && sender_to<__minvoke<__result_sender<_Fun>, _As...>, _PropagateReceiver>
         friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
           using result_sender_t = __minvoke<__result_sender<_Fun>, _As...>;
           using op_state_t = __minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
@@ -155,7 +156,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       stdexec::__t< __gather_completions_for<
         _Let,
         stdexec::__t<_SenderId>,
-        env_of_t<stdexec::__t<_ReceiverId>>,
+        stream_env<env_of_t<stdexec::__t<_ReceiverId>>>,
         __q<__decayed_tuple>,
         __munique< __mbind_front_q< __receiver_, _SenderId, _ReceiverId, _Fun, _Let>>>>;
 
@@ -228,7 +229,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           _Receiver,                        //
           __completions<                    //
             __copy_cvref_t<_Self, _Sender>, //
-            env_of_t<_Receiver>>>           //
+            stream_env<env_of_t<_Receiver>>>>           //
       friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
         -> __operation_t<_Self, _Receiver> {
         return __operation_t<_Self, _Receiver>{
@@ -241,7 +242,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> _Self, class _Env>
       friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-        -> __completions<__copy_cvref_t<_Self, _Sender>, _Env> {
+        -> __completions<__copy_cvref_t<_Self, _Sender>, stream_env<_Env>> {
         return {};
       }
 
