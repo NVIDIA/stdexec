@@ -258,7 +258,7 @@ namespace nvexec {
 
     struct get_stream_provider_t {
       template <class Env>
-        requires tag_invocable<get_stream_provider_t, Env>
+        requires tag_invocable<get_stream_provider_t, const Env&>
       stream_provider_t* operator()(const Env& env) const noexcept {
         return tag_invoke(get_stream_provider_t{}, env);
       }
@@ -312,6 +312,18 @@ namespace nvexec {
         set_stopped_t>>;
 
     inline constexpr get_stream_provider_t get_stream_provider{};
+
+    struct get_stream_t {
+      template <class Env>
+        requires __callable<get_stream_provider_t, const Env&>
+      cudaStream_t operator()(const Env& env) const noexcept {
+        return get_stream_provider(env)->own_stream_.value();
+      }
+
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE auto operator()() const noexcept {
+        return stdexec::read(*this);
+      }
+    };
 
     template <class BaseEnv>
     auto make_stream_env(BaseEnv&& base_env, stream_provider_t* stream_provider) noexcept {
@@ -798,4 +810,6 @@ namespace nvexec {
         (Sender&&) sndr, (OuterReceiver&&) out_receiver, receiver_provider, context_state);
     }
   }
+
+  inline constexpr STDEXEC_STREAM_DETAIL_NS::get_stream_t get_stream{};
 }
