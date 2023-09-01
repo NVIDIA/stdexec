@@ -47,13 +47,13 @@ int main() {
   nvexec::stream_context stream_ctx{};
   auto sched = stream_ctx.get_scheduler();
 
-  auto domain = ex::get_domain(sched);
-  print<decltype(domain)>();
-
+ // auto domain = ex::get_domain(sched);
+ // print<decltype(domain)>();
+  
   auto snd = ex::just(std::span{first, last})
            | nvexec::reduce(42.0f);
 
-  ::print<stdexec::__detail::__name_of<decltype(snd)>>();
+ // ::print<stdexec::__detail::__name_of<decltype(snd)>>();
   // nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();         
   // using stdexec::__tag_invoke::tag_invoke;  
   // tag_invoke(stdexec::get_completion_signatures, snd, empty_environment{});

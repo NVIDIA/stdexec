@@ -176,7 +176,7 @@ target_compile_options(stdexec_executable_flags INTERFACE
 # Template backtrace limit
 target_compile_options(stdexec_executable_flags INTERFACE
                        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:
-                       -ferror-limit=0
+                       -ferror-limit=1
                        -fmacro-backtrace-limit=0
                        -ftemplate-backtrace-limit=0>
                        )
