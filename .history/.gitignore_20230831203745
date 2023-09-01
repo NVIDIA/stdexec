@@ -1,9 +1,0 @@
-build*/
-.cache
-.vscode/*
-!.vscode/launch.json
-.gitattributes
-compile_commands.json
-/*.cpp
-/*.patch
-/*.diff
