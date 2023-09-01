@@ -1,0 +1,10 @@
+build*/
+.cache
+.vscode/*
+!.vscode/launch.json
+.gitattributes
+compile_commands.json
+/*.cpp
+/*.patch
+/*.diff
+echo "./history/" >> ~/.gitignore_global
