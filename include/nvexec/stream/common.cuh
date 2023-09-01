@@ -33,9 +33,8 @@
 
 namespace nvexec {
   using stdexec::operator""__csz;
-
-  [[gnu::deprecated]] void print(auto&&...) {
-  }
+  [[gnu::deprecated]]
+  void print(auto&&...) {}
   enum class stream_priority {
     high,
     normal,
@@ -314,10 +313,8 @@ namespace nvexec {
         set_stopped_t>>;
 
     inline constexpr get_stream_provider_t get_stream_provider{};
-
-    [[gnu::deprecated]] void prints(auto&&...) {
-    }
-
+[[gnu::deprecated]]
+  void prints(auto&&...) {}
     template <class BaseEnv>
     auto make_stream_env(BaseEnv&& base_env, stream_provider_t* stream_provider) noexcept {
       return __join_env(
@@ -779,9 +776,9 @@ namespace nvexec {
         Sender&& sndr,
         OuterReceiver&& out_receiver,
         ReceiverProvider receiver_provider) {
-      stdexec::print(receiver_provider);
       auto sch = get_completion_scheduler<set_value_t>(get_env(sndr));
       context_state_t context_state = sch.context_state_;
+
       return stream_op_state_t<
         Sender,
         inner_receiver_t<ReceiverProvider, OuterReceiver>,

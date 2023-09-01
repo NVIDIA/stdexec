@@ -382,7 +382,7 @@ namespace stdexec {
   template <class _Ty, class... _Default>
   using __msuccess_or_t = __if_c<__ok<_Ty>, _Ty, _Default...>;
 
-  template <class _Fn, class _Continuation = __q<__types>> // 
+  template <class _Fn, class _Continuation = __q<__types>>
   struct __transform {
     template <class... _Args>
     using __f = __minvoke<_Continuation, __minvoke<_Fn, _Args>...>;

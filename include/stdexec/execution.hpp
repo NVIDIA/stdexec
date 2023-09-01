@@ -5337,7 +5337,7 @@ namespace stdexec {
   namespace __on {
     template <class _SchedulerId, class _SenderId, class _ReceiverId>
     struct __operation;
-    
+
     template <class _SchedulerId, class _SenderId, class _ReceiverId>
     struct __receiver_ref {
       using _Scheduler = stdexec::__t<_SchedulerId>;

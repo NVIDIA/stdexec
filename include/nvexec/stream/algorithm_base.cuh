@@ -119,7 +119,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
         requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
       friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
         -> stream_op_state_t< __copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
-        return stream_op_state<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver>(
+        return stream_op_state<__copy_cvref_t<Self, Sender>>(
           ((Self&&) self).sndr_,
           (Receiver&&) rcvr,
           [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)

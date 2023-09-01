@@ -41,7 +41,6 @@ using as_optional = std::optional<T>;
 
 TEST_CASE("transform can wrap input types", "[detail][transform]") {
   using tr = __transform<__q<as_optional>>;
-  stdexec::print(std::declval<tr>());
   using res = __minvoke<tr, int, char>;
   static_assert(is_same_v<res, __types<optional<int>, optional<char>>>);
 }

@@ -50,15 +50,19 @@ namespace nvexec {
 
     template <stdexec::sender Sender, class InitT, class Fun>
     using reduce_sender_t = //
-      stdexec::__t<
-        reduce_::
-          sender_t< stdexec::__id<stdexec::__decay_t<Sender>>, InitT, stdexec::__decay_t<Fun>>>;
+      stdexec::__t<reduce_::sender_t<
+        stdexec::__id<stdexec::__decay_t<Sender>>,
+        InitT,
+        stdexec::__decay_t<Fun>>>;
 
     template <class Fun, class InitT, class... Args>
       requires stdexec::__callable<Fun, InitT, Args&...>
     using reduce_non_throwing = stdexec::__mbool<
       stdexec::__nothrow_callable<Fun, InitT, Args&...>
       && noexcept(stdexec::__decayed_tuple<Args...>(std::declval<Args>()...)) >;
+
+    template <class SenderId, class ReceiverId, class Shape, class Fn, bool MayThrow>
+    struct reduce_receiver;
 
     template <sender Sender>
     using split_sender_th = __t<split_sender_t<__id<__decay_t<Sender>>>>;
@@ -90,30 +94,6 @@ namespace nvexec {
     using ensure_started_th = __t<ensure_started_sender_t<__id<Sender>>>;
 
     struct stream_domain {
-
-
-      template <class Tag>
-      auto reconstitute() const;
-
-      template <>
-      auto reconstitute<reduce_t>() const {
-        return [](auto data, auto sender) {
-          auto initT = stdexec::__nth_member<0>()(data);
-          auto fun = stdexec::__nth_member<1>()(data);
-          return reduce_sender_t<decltype(sender), decltype(initT), decltype(fun)>(
-            {}, sender, initT, fun);
-        };
-      }
-
-      template <stdexec::__lazy_sender_for<reduce_t> Sender, class Env = empty_env>
-      auto transform_sender(Sender&& sndr, const Env& env = {}) const noexcept {
-        return stdexec::__sender_apply(
-          (Sender&&) sndr,
-          [&]<class Tag, class Data, class... Children>(Tag, Data&& data, Children... children) {
-            return reconstitute<reduce_t>()(data, transform_sender(children, env)...);
-          });
-      }
-
       template <class _Sender, class _Env = empty_env>
       _Sender transform_sender(_Sender&& __sndr, const _Env& = {}) const
         // BUGBUG fix me:
@@ -121,6 +101,20 @@ namespace nvexec {
       // noexcept(__nothrow_constructible_from<_Sender, _Sender&&>)
       {
         return static_cast<_Sender&&>(__sndr);
+      }
+
+      template <stdexec::__lazy_sender_for<reduce_t> Sender, class Env = empty_env>
+        //requires stdexec::__callable<stdexec::get_scheduler_t, Env>
+      auto transform_sender(Sender&& sndr, const Env& env = {}) const noexcept {
+        return stdexec::__sender_apply(
+          (Sender&&) sndr,
+          [&]<class Tag, class Data, class InnerSender>(Tag, Data&& data, InnerSender&& inner) {
+            auto initT = stdexec::__nth_member<0>()((Data&&) data);
+            auto fun = stdexec::__nth_member<1>()((Data&&) data);
+            auto sched = stdexec::get_scheduler((Env&&) env);
+            return reduce_sender_t<InnerSender, decltype(initT), decltype(fun)>{
+              {}, (InnerSender&&) inner, std::move(initT), std::move(fun)};
+          });
       }
     };
 
@@ -340,6 +334,7 @@ namespace nvexec {
         : context_state_(context_state) {
       }
 
+
       // private: TODO
       context_state_t context_state_;
     };
@@ -406,5 +401,6 @@ namespace nvexec {
       return {STDEXEC_STREAM_DETAIL_NS::context_state_t(
         pinned_resource_.get(), managed_resource_.get(), &stream_pools_, &hub_, priority)};
     }
+
   };
 } // namespace nvexec
