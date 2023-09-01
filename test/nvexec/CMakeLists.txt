@@ -15,6 +15,7 @@
 #=============================================================================
 
 set(nvexec_test_sources
+    bulk.cpp
     ensure_started.cpp
     start_detached.cpp
     variant.cpp
@@ -23,16 +24,21 @@ set(nvexec_test_sources
     split.cpp
     upon_stopped.cpp
     transfer.cpp
+    launch.cpp
+    let_error.cpp
     let_stopped.cpp
+    let_value.cpp
     test_main.cpp
     then.cpp
-    bulk.cpp
-    when_all.cpp
-    transfer_when_all.cpp
-    let_value.cpp
-    let_error.cpp
-    upon_error.cpp
     reduce.cpp
+    split.cpp
+    start_detached.cpp
+    transfer.cpp
+    transfer_when_all.cpp
+    upon_error.cpp
+    upon_stopped.cpp
+    variant.cpp
+    when_all.cpp
 )
 
 if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC"))
@@ -43,5 +49,9 @@ add_executable(test.nvexec ${nvexec_test_sources})
 
 target_include_directories(test.nvexec PRIVATE ${CMAKE_CURRENT_LIST_DIR}/..)
 target_link_libraries(test.nvexec STDEXEC::nvexec stdexec_executable_flags Catch2::Catch2)
+
+# if(CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
+#     target_compile_options(test.nvexec PRIVATE "-ftemplate-backtrace-limit=9999")
+# endif()
 
 catch_discover_tests(test.nvexec)

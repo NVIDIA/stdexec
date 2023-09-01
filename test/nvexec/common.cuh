@@ -54,7 +54,7 @@ class flags_storage_t {
     }
 
    public:
-    __device__ void set(int idx = 0) const {
+    __device__ __host__ void set(int idx = 0) const {
       if (idx < N) {
         flags_[idx] += 1;
       }
@@ -74,7 +74,7 @@ class flags_storage_t {
   }
 
   flags_storage_t() {
-    THROW_ON_CUDA_ERROR(cudaMalloc(&flags_, sizeof(int) * N));
+    THROW_ON_CUDA_ERROR(cudaMallocManaged(&flags_, sizeof(int) * N));
     THROW_ON_CUDA_ERROR(cudaMemset(flags_, 0, sizeof(int) * N));
   }
 
@@ -325,6 +325,7 @@ struct move_only_t {
     : data_(std::exchange(other.data_, invalid()))
     , self_(this) {
   }
+
 
   __host__ __device__ ~move_only_t() {
     if (this != self_) {

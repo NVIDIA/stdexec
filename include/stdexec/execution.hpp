@@ -437,6 +437,9 @@ namespace stdexec {
       }
     };
 
+    template <class _Env>
+    __env_fwd(_Env&&) -> __env_fwd<_Env>;
+
     template <class _Env, class _Base = empty_env>
     struct __joined_env : __env_fwd<_Base> {
       static_assert(__nothrow_move_constructible<_Env>);
@@ -6216,7 +6219,39 @@ namespace stdexec {
 
   namespace __read {
     template <class _Tag, class _ReceiverId>
+    using __result_t = __call_result_t<_Tag, env_of_t<stdexec::__t<_ReceiverId>>>;
+
+    template <class _Tag, class _ReceiverId>
+    concept __nothrow_t = __nothrow_callable<_Tag, env_of_t<stdexec::__t<_ReceiverId>>>;
+
+    // NOT TO SPEC: if the query returns a value, store the value in the operation
+    // state and pass an rvalue reference to it.
+    template <class _Tag, class _ReceiverId>
     struct __operation {
+      using _Receiver = stdexec::__t<_ReceiverId>;
+
+      struct __t : __immovable {
+        using __id = __operation;
+        _Receiver __rcvr_;
+        std::optional<__result_t<_Tag, _ReceiverId>> __result_;
+
+        friend void tag_invoke(start_t, __t& __self) noexcept {
+          constexpr bool _Nothrow = __nothrow_callable<_Tag, env_of_t<_Receiver>>;
+          auto __query = [&]() noexcept(_Nothrow) -> __result_t<_Tag, _ReceiverId>&& {
+            __self.__result_.emplace(__conv{[&]() noexcept(_Nothrow) {
+              return _Tag()(get_env(__self.__rcvr_));
+            }});
+            return std::move(*__self.__result_);
+          };
+          stdexec::__set_value_invoke(std::move(__self.__rcvr_), __query);
+        }
+      };
+    };
+
+    // if the query returns a reference type, pass it straight through to the receiver.
+    template <class _Tag, class _ReceiverId>
+      requires std::same_as<__result_t<_Tag, _ReceiverId>&&, __result_t<_Tag, _ReceiverId>>
+    struct __operation<_Tag, _ReceiverId> {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t : __immovable {
@@ -6224,12 +6259,7 @@ namespace stdexec {
         _Receiver __rcvr_;
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
-          try {
-            auto __env = get_env(__self.__rcvr_);
-            set_value(std::move(__self.__rcvr_), _Tag{}(__env));
-          } catch (...) {
-            set_error(std::move(__self.__rcvr_), std::current_exception());
-          }
+          stdexec::__set_value_invoke(std::move(__self.__rcvr_), _Tag(), get_env(__self.__rcvr_));
         }
       };
     };
@@ -6250,9 +6280,12 @@ namespace stdexec {
     template <class _Tag, class _Env>
       requires __callable<_Tag, _Env>
     using __completions_t = //
-      completion_signatures<
-        set_value_t(__call_result_t<_Tag, _Env>),
-        set_error_t(std::exception_ptr)>;
+      __if_c<
+        __nothrow_callable<_Tag, _Env>,
+        completion_signatures<set_value_t(__call_result_t<_Tag, _Env>)>,
+        completion_signatures<
+          set_value_t(__call_result_t<_Tag, _Env>),
+          set_error_t(std::exception_ptr)>>;
 
     template <class _Tag>
     struct __sender {
