@@ -141,6 +141,10 @@
 // NVBUG #4067067
 #if STDEXEC_NVHPC()
 #define STDEXEC_NO_UNIQUE_ADDRESS
+#elif STDEXEC_MSVC()
+#define STDEXEC_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
+#elif STDEXEC_CLANG_CL()
+#define STDEXEC_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
 #else
 #define STDEXEC_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #endif
@@ -151,7 +155,7 @@
 #if STDEXEC_GCC()
 #define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
 #else
-#define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS [[no_unique_address]]
+#define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS STDEXEC_NO_UNIQUE_ADDRESS
 #endif
 
 #if STDEXEC_CLANG() && defined(__CUDACC__)
