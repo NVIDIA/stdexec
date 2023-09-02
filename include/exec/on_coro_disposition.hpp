@@ -111,8 +111,7 @@ namespace exec {
           auto __coro = __p.__is_unhandled_stopped_
                         ? __p.continuation().unhandled_stopped()
                         : __p.continuation().handle();
-          __h.destroy();
-          return __coro;
+          return STDEXEC_DESTROY_AND_CONTINUE(__h, __coro);
         }
 
         void await_resume() const noexcept {
