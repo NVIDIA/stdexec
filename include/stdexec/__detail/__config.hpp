@@ -56,6 +56,9 @@
 #define STDEXEC_NVHPC() 1
 #elif defined(__clang__)
 #define STDEXEC_CLANG() 1
+#if defined(_MSC_VER)
+#define STDEXEC_CLANG_CL() 1
+#endif
 #elif defined(__GNUC__)
 #define STDEXEC_GCC() 1
 #elif defined(_MSC_VER)
@@ -70,6 +73,9 @@
 #endif
 #ifndef STDEXEC_CLANG
 #define STDEXEC_CLANG() 0
+#endif
+#ifndef STDEXEC_CLANG_CL
+#define STDEXEC_CLANG_CL() 0
 #endif
 #ifndef STDEXEC_GCC
 #define STDEXEC_GCC() 0
