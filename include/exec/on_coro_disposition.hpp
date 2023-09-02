@@ -101,8 +101,8 @@ namespace exec {
 
      private:
       struct __final_awaitable {
-        static std::false_type await_ready() noexcept {
-          return {};
+        static constexpr bool await_ready() noexcept {
+          return false;
         }
 
         static __coro::coroutine_handle<>
