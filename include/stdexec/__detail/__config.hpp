@@ -142,7 +142,8 @@
 #if STDEXEC_NVHPC()
 #define STDEXEC_NO_UNIQUE_ADDRESS
 #elif STDEXEC_MSVC()
-#define STDEXEC_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
+// MSVCBUG https://developercommunity.visualstudio.com/t/Incorrect-codegen-when-using-msvc::no_/10452874
+#define STDEXEC_NO_UNIQUE_ADDRESS // [[msvc::no_unique_address]]
 #elif STDEXEC_CLANG_CL()
 #define STDEXEC_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
 #else
