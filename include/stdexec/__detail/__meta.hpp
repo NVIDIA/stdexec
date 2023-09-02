@@ -903,7 +903,7 @@ namespace stdexec {
 
   template <std::size_t _Np>
   struct __placeholder {
-    friend constexpr std::size_t __get_placeholder_offset(void*) noexcept {
+    friend constexpr std::size_t __get_placeholder_offset(void*, __placeholder* = nullptr) noexcept {
       return _Np;
     }
   };
