@@ -1740,8 +1740,19 @@ namespace stdexec {
       }
 
       ~__operation_base() {
-        if (__coro_)
+        if (__coro_) {
+#if STDEXEC_MSVC()
+          // MSVCBUG https://developercommunity.visualstudio.com/t/Double-destroy-of-a-local-in-coroutine-d/10456428
+
+          // Reassign __coro_ before calling destroy to make the mutation
+          // observable and to hopefully ensure that the compiler does not eliminate it.
+          auto __coro = __coro_;
+          __coro_ = {};
+          __coro.destroy();
+#else
           __coro_.destroy();
+#endif
+        }
       }
 
       friend void tag_invoke(start_t, __operation_base& __self) noexcept {
