@@ -89,10 +89,8 @@ STDEXEC_PRAGMA_IGNORE("-Wundefined-inline")
 STDEXEC_PRAGMA_IGNORE("-Wundefined-internal")
 
 namespace stdexec {
-  [[gnu::deprecated]]
-  void print(auto&&...) {}
-  template <class T>
-  struct type_printer;
+  
+
   // [exec.queries.queryable]
   template <class T>
   concept queryable = destructible<T>;
@@ -122,6 +120,7 @@ namespace stdexec {
           _Data,
           _Children...>
       decltype(auto) operator()(_Tag, _Data&& __data, _Children&&... __children) const {
+       
         return __legacy_c11n_dispatcher<_Tag, const _Env&, _Data, _Children...>()(
           __env_, static_cast<_Data&&>(__data), static_cast<_Children&&>(__children)...);
       }

@@ -51,8 +51,8 @@ namespace nvexec {
     template <stdexec::sender Sender, class InitT, class Fun>
     using reduce_sender_t = //
       stdexec::__t<
-        reduce_::
-          sender_t< stdexec::__id<stdexec::__decay_t<Sender>>, InitT, stdexec::__decay_t<Fun>>>;
+
+        sender_t< stdexec::__id<stdexec::__decay_t<Sender>>, InitT, stdexec::__decay_t<Fun>>>;
 
     template <class Fun, class InitT, class... Args>
       requires stdexec::__callable<Fun, InitT, Args&...>
@@ -90,16 +90,33 @@ namespace nvexec {
     using ensure_started_th = __t<ensure_started_sender_t<__id<Sender>>>;
 
     struct stream_domain {
+      
+      // start of debugging utility
+      template <typename T>
+      void print_type_name() const {
+        stdexec::print(std::declval<stdexec::__detail::__name_of<T>>());
+      }
 
+      template <typename... Types>
+      struct type_list { };
 
+      template <std::size_t Index, typename... Types>
+      using nth_type_of = std::tuple_element_t<Index, std::tuple<Types...>>;
+
+      void for_each_in_pack() const {
+      }
+
+      template <typename First, typename... Rest>
+      void for_each_in_pack() const {
+        print_type_name<First>();
+        for_each_in_pack<Rest...>();
+      }
+      // end of debugging utility 
+
+      // not sure if reconstitute should exist here in the domain
       template <class Tag>
       auto reconstitute() const;
 
-      // using inner_type = typename decltype(transformed)::Sender;
-      // ::type_printer<stdexec::__detail::__name_of<inner_type>> printer;
-
-      // stdexec::print(sender);
-      // stdexec::print(transformed);
       template <>
       auto reconstitute<reduce_t>() const {
         return [&](auto data, auto sender) {
@@ -107,36 +124,57 @@ namespace nvexec {
           auto fun = stdexec::__nth_member<1>()(data);
           auto transformed = reduce_sender_t<decltype(sender), decltype(initT), decltype(fun)>(
             {}, sender, initT, fun);
-          return transform_sender(transformed);
+          return transformed;
         };
       }
 
-      template <stdexec::__lazy_sender_for<reduce_t> Sender, class Env = empty_env>
+      // I got around the error around __on::receiver_ref not having a call operator by removing `__lazy_sender_for<reduce_t> Sender
+      // instantiated when trying to make a stream_op_state from common.cuh
+      template <class Sender, class Env = empty_env>
       auto transform_sender(Sender&& sndr, const Env& env = {}) const noexcept {
-
         return stdexec::__sender_apply(
           (Sender&&) sndr,
           [&]<class Tag, class Data, class... Children>(Tag, Data&& data, Children... children) {
             if constexpr (sizeof...(Children) == 0) {
-              auto last = reconstitute<Tag>()(data, sndr);
-              stdexec::print(last);
-              return last;
+              return sndr;
             } else {
+              // perhaps i shouldn't be using <Tag> over <reduce_t>,
+              
               auto test = reconstitute<Tag>()(data, transform_sender(children, env)...);
-              stdexec::print(test);
               return test;
             }
           });
       }
 
-      template <class _Sender, class _Env = empty_env>
-      _Sender transform_sender(_Sender&& __sndr, const _Env& = {}) const
-        // BUGBUG fix me:
-        noexcept(std::is_reference_v<_Sender>)
-      // noexcept(__nothrow_constructible_from<_Sender, _Sender&&>)
-      {
-        return static_cast<_Sender&&>(__sndr);
-      }
+
+      // i removed this because it was causing problems. The previous 
+      // transform_sender required the lazy_sender_for<reduce_t> on the Sender type. When it fails that, it will come to this function instead which won't transform the sender
+      // template <class _Sender, class _Env = empty_env>
+      // _Sender transform_sender(_Sender&& __sndr, const _Env& = {}) const
+      //   // BUGBUG fix me:
+      //   noexcept(std::is_reference_v<_Sender>)
+      // // noexcept(__nothrow_constructible_from<_Sender, _Sender&&>)
+      // {
+      //   return static_cast<_Sender&&>(__sndr);
+      // }
+
+        // ignore
+      /*
+            using lambdaName = stdexec::__detail::__name_of<Sender>;
+            stdexec::print(std::declval<lambdaName>());
+          //  stdexec::type_printer<Tag> hilasdf;
+            stdexec::print(std::declval<Tag>());
+            using legacy = __domain::__legacy_c11n_for<Tag>; 
+       //     using ya = stdexec::__make_dispatcher<
+        //        legacy, stdexec::__none_such, Children ...
+       //     >;
+       //  using tye = __domain::__legacy_c11n_dispatcher<Tag, const Env&, Data, Children...>;
+            // static_assert(!stdexec::__callable<
+            //   __domain::__legacy_c11n_dispatcher<Tag, const Env&, Data, Children...>,
+            //   const Env&,
+            //   Data,
+            //   Children...>, "yoyoyooyo");
+*/
     };
 
     struct stream_scheduler {
