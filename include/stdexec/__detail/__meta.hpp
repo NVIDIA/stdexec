@@ -179,6 +179,9 @@ namespace stdexec {
     _ERROR_ operator,(__msuccess) const noexcept;
   };
 
+  template <__mstring _What>
+  struct _WHAT_ { };
+
   template <class _What, class... _With>
   using __mexception = _ERROR_<_What, _With...>;
 
@@ -928,29 +931,15 @@ namespace stdexec {
   template <std::size_t>
   using __ignore_t = __ignore;
 
-  [[gnu::deprecated]] void print(auto&&...) {
-  }
-  template <class... T>
-  struct type_printer;
-
   template <std::size_t... _Is, class _Ty, class... _Us>
   _Ty&& __nth_pack_element_(__ignore_t<_Is>..., _Ty&& __t, _Us&&...) noexcept {
-    // this never gets instantiated
-    stdexec::print(__t);
     return (_Ty&&) __t;
   }
 
   template <std::size_t _Np, class... _Ts>
   constexpr decltype(auto) __nth_pack_element(_Ts&&... __ts) noexcept {
     static_assert(_Np < sizeof...(_Ts));
-
-    static_assert(sizeof...(_Ts) > 0, "Greater");
-    static_assert(sizeof...(_Ts) != 0, "hey wat");
     return [&]<std::size_t... _Is>(__indices<_Is...>) noexcept -> decltype(auto) {
-      stdexec::print(__ts...);
-      static_assert(sizeof...(_Ts) > 0, "Greater");
-      static_assert(sizeof...(_Ts) != 0, "Yo wat");
-      // doesn't get hit 
       return stdexec::__nth_pack_element_<_Is...>((_Ts&&) __ts...);
     }(__make_indices<_Np>());
   }
@@ -959,9 +948,6 @@ namespace stdexec {
   struct __mliterals {
     template <std::size_t _Np>
     static constexpr auto __nth() noexcept {
-      static_assert(_Np >= 0UL, "greater");
-      // this gets hit obviously
-      //    static_assert(_Np !=0UL, "not greater");
       return stdexec::__nth_pack_element<_Np>(_Vs...);
     }
   };
@@ -969,7 +955,7 @@ namespace stdexec {
   template <std::size_t _Np>
   struct __nth_member {
     template <class _Ty>
-    constexpr decltype(auto) operator()(_Ty && __ty) const noexcept {
+    constexpr decltype(auto) operator()(_Ty&& __ty) const noexcept {
       return ((_Ty&&) __ty).*(__ty.__mbrs_.template __nth<_Np>());
     }
   };
@@ -986,9 +972,6 @@ namespace stdexec {
   struct __mdispatch_<__placeholder<_Np>, _Offset> {
     template <class... _Ts>
     decltype(auto) operator()(_Ts&&... __ts) const noexcept {
-      // doesn't get hit 
-      static_assert(sizeof...(_Ts) > 0, "greater");
-      static_assert(sizeof...(_Ts) != 0, "lower");
       return stdexec::__nth_pack_element<_Np + _Offset>((_Ts&&) __ts...);
     }
   };
@@ -997,9 +980,6 @@ namespace stdexec {
   struct __mdispatch_<__placeholder<_Np>&, _Offset> {
     template <class... _Ts>
     decltype(auto) operator()(_Ts&&... __ts) const noexcept {
-      // doesn't get hit 
-      stdexec::print(__ts...);
-
       return stdexec::__nth_pack_element<_Np + _Offset>(__ts...);
     }
   };
@@ -1008,10 +988,6 @@ namespace stdexec {
   struct __mdispatch_<__placeholder<_Np>&&, _Offset> {
     template <class... _Ts>
     decltype(auto) operator()(_Ts&&... __ts) const noexcept {
-      // doesn't get hit
-      static_assert(sizeof...(_Ts) > 0, "Greater");
-      static_assert(sizeof...(_Ts) <= 0, "Less");
-
       return std::move(stdexec::__nth_pack_element<_Np + _Offset>(__ts...));
     }
   };
@@ -1020,10 +996,6 @@ namespace stdexec {
   struct __mdispatch_<const __placeholder<_Np>&, _Offset> {
     template <class... _Ts>
     decltype(auto) operator()(_Ts&&... __ts) const noexcept {
-      // not hit
-      static_assert(sizeof...(_Ts) > 0, "Greater");
-      static_assert(sizeof...(_Ts) <= 0, "Less");
-
       return std::as_const(stdexec::__nth_pack_element<_Np + _Offset>(__ts...));
     }
   };
@@ -1036,10 +1008,6 @@ namespace stdexec {
     auto operator()(_Ts&&... __ts) const
       noexcept(__nothrow_callable<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...>)
         -> __call_result_t<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...> {
-          // not hit
-      static_assert(sizeof...(_Args) > 0, "Greater");
-      static_assert(sizeof...(_Args) <= 0, "Less");
-
       return _Ret{}(__mdispatch_<_Args, _Offset>{}((_Ts&&) __ts...)...);
     }
   };
@@ -1047,8 +1015,6 @@ namespace stdexec {
   template <class _Ret, class... _Args, std::size_t _Offset>
   struct __mdispatch_<_Ret (*)(_Args..., ...), _Offset> {
     static_assert(_Offset == 0, "nested pack expressions are not supported");
-    // not hit 
-    static_assert(_Offset != 0, "testing");
     using _Pattern = __mback<_Args...>;
     static constexpr std::size_t __offset = __get_placeholder_offset((__mtype<_Pattern>*) nullptr);
 
@@ -1068,10 +1034,6 @@ namespace stdexec {
         _Ret,
         __call_result_t<__mdispatch_<_Args>, _Ts...>...,
         __call_result_t<__mdispatch_<_Pattern, _Idx + 1>, _Ts...>...> {
-          // not hit 
-        static_assert(sizeof...(_Idx) == 0, "why");
-        static_assert(sizeof...(_Idx) > 0, "why");
-
         return _Ret()(                               //
           __mdispatch_<_Args>()((_Ts&&) __ts...)..., //
           __mdispatch_<_Pattern, _Idx + 1 >()((_Ts&&) __ts...)...);
@@ -1086,9 +1048,6 @@ namespace stdexec {
         -> __msecond<
           __if_c<(__offset < sizeof...(_Ts))>,
           __call_result_t<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>> {
-      static_assert(sizeof...(_Ts) == 0, "why");
-      static_assert(sizeof...(_Ts) >= 0, "why");
-
       return __impl()(__make_indices<sizeof...(_Ts) - __offset - 1>(), (_Ts&&) __ts...);
     }
 
@@ -1100,9 +1059,6 @@ namespace stdexec {
       -> __msecond<
         __if_c<(sizeof...(_Ts) == __offset)>,
         __call_result_t<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...>*>, _Ts...>> {
-      static_assert(sizeof...(_Ts) == 0, "why");
-      static_assert(sizeof...(_Ts) > 0, "why");
-
       return __mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...>*>()((_Ts&&) __ts...);
     }
   };

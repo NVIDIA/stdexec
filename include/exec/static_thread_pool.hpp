@@ -75,25 +75,43 @@ namespace exec {
     template <class SenderId, class ReceiverId, std::integral Shape, class Fun>
     struct bulk_op_state;
 
+    struct transform_bulk {
+      template <class Data, class Sender>
+      auto operator()(stdexec::bulk_t, Data&& data, Sender&& sndr) {
+        auto shape = stdexec::__nth_member<0>()((Data&&) data);
+        auto fun = stdexec::__nth_member<1>()((Data&&) data);
+        return bulk_sender_t<Sender, decltype(shape), decltype(fun)>{
+          pool_, (Sender&&) sndr, shape, std::move(fun)};
+      }
+
+      static_thread_pool& pool_;
+    };
+
     struct domain {
+      template <class Sender>
+      Sender transform_sender(Sender&& sndr) const noexcept {
+        return static_cast<Sender&&>(sndr);
+      }
+
+      // For eager customization
+      template <stdexec::__lazy_sender_for<stdexec::bulk_t> Sender>
+      auto transform_sender(Sender&& sndr) const noexcept {
+        auto sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
+          stdexec::get_env(sndr));
+        return stdexec::__sender_apply((Sender&&) sndr, transform_bulk{*sched.pool_});
+      }
+
       template <class Sender, class Env>
-      Sender&& transform_sender(Sender&& sndr, Env&&) const noexcept {
+      Sender transform_sender(Sender&& sndr, const Env&) const noexcept {
         return static_cast<Sender&&>(sndr);
       }
 
       // transform the generic bulk sender into a parallel thread-pool bulk sender
       template <stdexec::__lazy_sender_for<stdexec::bulk_t> Sender, class Env>
         requires stdexec::__callable<stdexec::get_scheduler_t, Env>
-      auto transform_sender(Sender&& sndr, Env&& env) const noexcept {
-        return stdexec::__sender_apply(
-          (Sender&&) sndr,
-          [&]<class Tag, class Data, class InnerSender>(Tag, Data&& data, InnerSender&& inner) {
-            auto shape = stdexec::__nth_member<0>()((Data&&) data);
-            auto fun = stdexec::__nth_member<1>()((Data&&) data);
-            auto sched = stdexec::get_scheduler((Env&&) env);
-            return bulk_sender_t<InnerSender, decltype(shape), decltype(fun)>{
-              *sched.pool_, (InnerSender&&) inner, shape, std::move(fun)};
-          });
+      auto transform_sender(Sender&& sndr, const Env& env) const noexcept {
+        auto sched = stdexec::get_scheduler(env);
+        return stdexec::__sender_apply((Sender&&) sndr, transform_bulk{*sched.pool_});
       }
     };
 
@@ -165,16 +183,16 @@ namespace exec {
         return s.make_sender_();
       }
 
-      template <class S, class Shape, class Fn>
-      bulk_sender_t<S, Shape, Fn> make_bulk_sender_(S&& sndr, Shape shape, Fn fun) const {
-        return bulk_sender_t<S, Shape, Fn>{*pool_, (S&&) sndr, shape, (Fn&&) fun};
-      }
+      // template <class S, class Shape, class Fn>
+      // bulk_sender_t<S, Shape, Fn> make_bulk_sender_(S&& sndr, Shape shape, Fn fun) const {
+      //   return bulk_sender_t<S, Shape, Fn>{*pool_, (S&&) sndr, shape, (Fn&&) fun};
+      // }
 
-      template <stdexec::sender S, std::integral Shape, class Fn>
-      friend bulk_sender_t<S, Shape, Fn>
-        tag_invoke(stdexec::bulk_t, scheduler sch, S&& sndr, Shape shape, Fn fun) noexcept {
-        return sch.make_bulk_sender_((S&&) sndr, shape, (Fn&&) fun);
-      }
+      // template <stdexec::sender S, std::integral Shape, class Fn>
+      // friend bulk_sender_t<S, Shape, Fn>
+      //   tag_invoke(stdexec::bulk_t, scheduler sch, S&& sndr, Shape shape, Fn fun) noexcept {
+      //   return sch.make_bulk_sender_((S&&) sndr, shape, (Fn&&) fun);
+      // }
 
       friend stdexec::forward_progress_guarantee
         tag_invoke(stdexec::get_forward_progress_guarantee_t, const static_thread_pool&) noexcept {

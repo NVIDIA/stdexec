@@ -17,18 +17,35 @@ TEST_CASE("nvexec upon_stopped returns a sender", "[cuda][stream][adaptors][upon
   (void) snd;
 }
 
+template <class...>
+[[deprecated]] void print(auto&&...) {
+}
+
+namespace N {
+  using stdexec::__tag_invoke::tag_invoke;
+
+  struct tag_invoke_t {
+    template <class... As>
+    auto operator()(As&&... as) const {
+      tag_invoke((As&&) as...);
+    }
+  };
+}
+
 TEST_CASE("nvexec upon_stopped executes on GPU", "[cuda][stream][adaptors][upon_stopped]") {
   nvexec::stream_context stream_ctx{};
 
   flags_storage_t flags_storage{};
   auto flags = flags_storage.get();
 
-  auto snd = ex::just_stopped() //
-           | ex::transfer(stream_ctx.get_scheduler()) | ex::upon_stopped([=] {
+  auto snd = ex::just_stopped()                       //
+           | ex::transfer(stream_ctx.get_scheduler()) //
+           | ex::upon_stopped([=] {
                if (is_on_gpu()) {
                  flags.set();
                }
              });
+
   stdexec::sync_wait(std::move(snd));
 
   REQUIRE(flags_storage.all_set_once());

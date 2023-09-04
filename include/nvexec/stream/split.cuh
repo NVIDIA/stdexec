@@ -25,7 +25,6 @@
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace _split {
-   
     inline auto __make_env(
       const in_place_stop_source& stop_source,
       stream_provider_t* stream_provider) noexcept {

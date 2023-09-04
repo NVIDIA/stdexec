@@ -120,16 +120,32 @@ struct custom_scheduler {
     }
   };
 
+  struct domain {
+    template <class Sender>
+    Sender transform_sender(Sender&& sndr, auto&&...) const {
+      return (Sender&&) sndr;
+    }
+
+    template <class Sender, class Env>
+    friend void tag_invoke(ex::start_detached_t, domain, Sender, Env) {
+      // drop the sender on the floor
+    }
+
+    // BUGBUG legacy
+    operator custom_scheduler() const {
+      return {};
+    }
+  };
+
+  friend domain tag_invoke(ex::get_domain_t, custom_scheduler) noexcept {
+    return {};
+  }
+
   friend sender tag_invoke(ex::schedule_t, custom_scheduler) noexcept {
     return {};
   }
 
   bool operator==(const custom_scheduler&) const = default;
-
-  template <class Sender>
-  friend void tag_invoke(ex::start_detached_t, custom_scheduler, Sender&&) {
-    // Drop the sender on the floor
-  }
 };
 
 TEST_CASE("start_detached can be customized on sender", "[consumers][start_detached]") {

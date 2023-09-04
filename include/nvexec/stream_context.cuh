@@ -30,6 +30,7 @@
 #include "stream/split.cuh"
 #include "stream/then.cuh"
 #include "stream/transfer.cuh"
+#include "stream/launch.cuh"
 #include "stream/upon_error.cuh"
 #include "stream/upon_stopped.cuh"
 #include "stream/when_all.cuh"
@@ -40,9 +41,6 @@
 #include "detail/queue.cuh"
 #include "detail/throw_on_cuda_error.cuh"
 
-template <typename T>
-struct type_printer;
-
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
     template <sender Sender, std::integral Shape, class Fun>
@@ -51,8 +49,8 @@ namespace nvexec {
     template <stdexec::sender Sender, class InitT, class Fun>
     using reduce_sender_t = //
       stdexec::__t<
-
-        sender_t< stdexec::__id<stdexec::__decay_t<Sender>>, InitT, stdexec::__decay_t<Fun>>>;
+        reduce_::
+          sender_t< stdexec::__id<stdexec::__decay_t<Sender>>, InitT, stdexec::__decay_t<Fun>>>;
 
     template <class Fun, class InitT, class... Args>
       requires stdexec::__callable<Fun, InitT, Args&...>
@@ -89,92 +87,45 @@ namespace nvexec {
     template <sender Sender>
     using ensure_started_th = __t<ensure_started_sender_t<__id<Sender>>>;
 
-    struct stream_domain {
-      
-      // start of debugging utility
-      template <typename T>
-      void print_type_name() const {
-        stdexec::print(std::declval<stdexec::__detail::__name_of<T>>());
-      }
+    // needed for subsumption purposes
+    template <class Sender>
+    concept _non_stream_sender = !stream_sender<Sender>;
 
-      template <typename... Types>
-      struct type_list { };
+    struct stream_scheduler;
 
-      template <std::size_t Index, typename... Types>
-      using nth_type_of = std::tuple_element_t<Index, std::tuple<Types...>>;
+    template <class = stream_scheduler>
+    struct stream_domain : private __default_domain<context_state_t> {
+      using __default_domain::__default_domain;
+      using __default_domain::transform_sender;
 
-      void for_each_in_pack() const {
-      }
-
-      template <typename First, typename... Rest>
-      void for_each_in_pack() const {
-        print_type_name<First>();
-        for_each_in_pack<Rest...>();
-      }
-      // end of debugging utility 
-
-      // not sure if reconstitute should exist here in the domain
-      template <class Tag>
-      auto reconstitute() const;
-
-      template <>
-      auto reconstitute<reduce_t>() const {
-        return [&](auto data, auto sender) {
-          auto initT = stdexec::__nth_member<0>()(data);
-          auto fun = stdexec::__nth_member<1>()(data);
-          auto transformed = reduce_sender_t<decltype(sender), decltype(initT), decltype(fun)>(
-            {}, sender, initT, fun);
-          return transformed;
-        };
-      }
-
-      // I got around the error around __on::receiver_ref not having a call operator by removing `__lazy_sender_for<reduce_t> Sender
-      // instantiated when trying to make a stream_op_state from common.cuh
-      template <class Sender, class Env = empty_env>
-      auto transform_sender(Sender&& sndr, const Env& env = {}) const noexcept {
+      // Lazy algorithm customizations require a recursive tree transformation
+      template <__lazy_sender Sender, class Env>
+        requires _non_stream_sender<Sender> // no need to transform it a second time
+      auto transform_sender(Sender&& sndr, const Env& env) const noexcept {
         return stdexec::__sender_apply(
           (Sender&&) sndr,
-          [&]<class Tag, class Data, class... Children>(Tag, Data&& data, Children... children) {
-            if constexpr (sizeof...(Children) == 0) {
-              return sndr;
-            } else {
-              // perhaps i shouldn't be using <Tag> over <reduce_t>,
-              
-              auto test = reconstitute<Tag>()(data, transform_sender(children, env)...);
-              return test;
-            }
+          [&]<class Tag, class Data, class... Children>(Tag, Data&& data, Children&&... children) {
+            return __reconstitute<stream_domain, Tag>(
+              (Data&&) data, transform_sender((Children&&) children, env)...);
           });
       }
 
+      // reduce senders get a special transformation
+      template <__lazy_sender_for<reduce_t> Sender, class Env>
+        requires _non_stream_sender<Sender> // no need to transform it a second time
+      auto transform_sender(Sender&& sndr, const Env& env) const noexcept {
+        return stdexec::__sender_apply(
+          (Sender&&) sndr,
+          [&]<class Tag, class Data, class Child>(Tag, Data&& data, Child&& child) {
+            auto initT = stdexec::__nth_member<0>()((Data&&) data);
+            auto fun = stdexec::__nth_member<1>()((Data&&) data);
+            auto next = transform_sender((Child&&) child, env);
+            return reduce_sender_t<decltype(next), decltype(initT), decltype(fun)>(
+              std::move(next), initT, fun);
+          });
+      }
 
-      // i removed this because it was causing problems. The previous 
-      // transform_sender required the lazy_sender_for<reduce_t> on the Sender type. When it fails that, it will come to this function instead which won't transform the sender
-      // template <class _Sender, class _Env = empty_env>
-      // _Sender transform_sender(_Sender&& __sndr, const _Env& = {}) const
-      //   // BUGBUG fix me:
-      //   noexcept(std::is_reference_v<_Sender>)
-      // // noexcept(__nothrow_constructible_from<_Sender, _Sender&&>)
-      // {
-      //   return static_cast<_Sender&&>(__sndr);
-      // }
-
-        // ignore
-      /*
-            using lambdaName = stdexec::__detail::__name_of<Sender>;
-            stdexec::print(std::declval<lambdaName>());
-          //  stdexec::type_printer<Tag> hilasdf;
-            stdexec::print(std::declval<Tag>());
-            using legacy = __domain::__legacy_c11n_for<Tag>; 
-       //     using ya = stdexec::__make_dispatcher<
-        //        legacy, stdexec::__none_such, Children ...
-       //     >;
-       //  using tye = __domain::__legacy_c11n_dispatcher<Tag, const Env&, Data, Children...>;
-            // static_assert(!stdexec::__callable<
-            //   __domain::__legacy_c11n_dispatcher<Tag, const Env&, Data, Children...>,
-            //   const Env&,
-            //   Data,
-            //   Children...>, "yoyoyooyo");
-*/
+      operator stream_scheduler() const noexcept;
     };
 
     struct stream_scheduler {
@@ -224,7 +175,7 @@ namespace nvexec {
       };
 
       struct sender_ {
-        using is_sender = struct __t : stream_sender_base {
+        struct __t : stream_sender_base {
           using __id = sender_;
           using completion_signatures =
             completion_signatures< set_value_t(), set_error_t(cudaError_t)>;
@@ -251,11 +202,18 @@ namespace nvexec {
         };
       };
 
-      friend stream_domain tag_invoke(get_domain_t, const stream_scheduler& sch) noexcept {
-        return {};
+      using sender_t = stdexec::__t<sender_>;
+
+      friend stream_domain<stream_scheduler>
+        tag_invoke(get_domain_t, const stream_scheduler& sch) noexcept {
+        return stream_domain<stream_scheduler>{sch.context_state_};
       }
 
-      using sender_t = stdexec::__t<sender_>;
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+        friend inline sender_t
+        tag_invoke(schedule_t, const stream_scheduler& self) noexcept {
+        return {self.context_state_};
+      }
 
       template <sender S>
       friend schedule_from_sender_th<S>
@@ -263,6 +221,18 @@ namespace nvexec {
         return schedule_from_sender_th<S>(sch.context_state_, (S&&) sndr);
       }
 
+      friend forward_progress_guarantee
+        tag_invoke(get_forward_progress_guarantee_t, const stream_scheduler&) noexcept {
+        return forward_progress_guarantee::weakly_parallel;
+      }
+
+      friend std::true_type tag_invoke(
+        __has_algorithm_customizations_t, //
+        const stream_scheduler& self) noexcept {
+        return {};
+      }
+
+      // TODO: convert these to transform_sender member functions
       template <sender S, std::integral Shape, class Fn>
       friend bulk_sender_th<S, Shape, Fn>
         tag_invoke(bulk_t, const stream_scheduler& sch, S&& sndr, Shape shape, Fn fun) //
@@ -274,7 +244,7 @@ namespace nvexec {
       friend reduce_sender_t<S, InitT, Fn>
         tag_invoke(reduce_t, const stream_scheduler& sch, S&& sndr, InitT initT, Fn fun) //
         noexcept {
-        return reduce_sender_t<S, InitT, Fn>{{}, (S&&) sndr, initT, (Fn&&) fun};
+        return reduce_sender_t<S, InitT, Fn>((S&&) sndr, initT, (Fn&&) fun);
       }
 
       template <sender S, class Fn>
@@ -352,37 +322,9 @@ namespace nvexec {
         return split_sender_th<S>(sch.context_state_, (S&&) sndr);
       }
 
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        friend inline sender_t
-        tag_invoke(schedule_t, const stream_scheduler& self) noexcept {
-        return {self.context_state_};
-      }
-
-      template <__decays_to<__t> _Self, class _Receivr>
-      friend auto tag_invoke(connect_t, _Self&& __self, _Receivr __rcvr)
-        -> operation_state_t<stdexec::__id<__decay_t<_Receivr>>> {
-        return {((_Self&&) __self).sender, (_Receivr&&) __rcvr};
-      }
-
-      friend std::true_type tag_invoke(
-        __has_algorithm_customizations_t, //
-        const stream_scheduler& self) noexcept {
-        return {};
-      }
-
       template <sender S>
-      friend auto tag_invoke(sync_wait_t, const stream_scheduler& self, S&& sndr) {
-        return _sync_wait::sync_wait_t{}(self.context_state_, (S&&) sndr);
-      }
-
-      template <class S>
-      friend auto tag_invoke(sync_wait_t, const stream_scheduler& self, S&& sndr) {
-        return _sync_wait::sync_wait_t{}(self.context_state_, (S&&) sndr);
-      }
-
-      friend forward_progress_guarantee
-        tag_invoke(get_forward_progress_guarantee_t, const stream_scheduler&) noexcept {
-        return forward_progress_guarantee::weakly_parallel;
+      friend auto tag_invoke(sync_wait_t, const stream_scheduler& sch, S&& sndr) {
+        return _sync_wait::sync_wait_t{}(sch.context_state_, (S&&) sndr);
       }
 
       bool operator==(const stream_scheduler& other) const noexcept {
@@ -396,6 +338,11 @@ namespace nvexec {
       // private: TODO
       context_state_t context_state_;
     };
+
+    template <class StreamScheduler>
+    stream_domain<StreamScheduler>::operator stream_scheduler() const noexcept {
+      return {base()};
+    }
 
     template <stream_completing_sender Sender>
     void tag_invoke(start_detached_t, Sender&& sndr) noexcept(false) {
@@ -419,17 +366,6 @@ namespace nvexec {
         into_variant((Senders&&) sndrs)...
       };
     }
-
-    template <sender S, class Fn>
-    upon_error_sender_th<S, Fn> tag_invoke(upon_error_t, S&& sndr, Fn fun) noexcept {
-      return upon_error_sender_th<S, Fn>{{}, (S&&) sndr, (Fn&&) fun};
-    }
-
-    template <sender S, class Fn>
-    upon_stopped_sender_th<S, Fn> tag_invoke(upon_stopped_t, S&& sndr, Fn fun) noexcept {
-      return upon_stopped_sender_th<S, Fn>{{}, (S&&) sndr, (Fn&&) fun};
-    }
-
   } // namespace STDEXEC_STREAM_DETAIL_NS
 
   using STDEXEC_STREAM_DETAIL_NS::stream_scheduler;

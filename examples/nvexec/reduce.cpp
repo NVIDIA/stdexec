@@ -24,19 +24,29 @@
 
 namespace ex = stdexec;
 using stdexec::__tag_invoke::tag_invoke;
+
 struct sink_receiver {
   using is_receiver = void;
-  friend void tag_invoke(stdexec::set_value_t, sink_receiver, auto&&...) noexcept {}
-  friend void tag_invoke(stdexec::set_error_t, sink_receiver, auto&&) noexcept {}
-  friend void tag_invoke(stdexec::set_stopped_t, sink_receiver) noexcept {}
-  friend stdexec::empty_env tag_invoke(stdexec::get_env_t, sink_receiver) noexcept { return {}; }
+
+  friend void tag_invoke(stdexec::set_value_t, sink_receiver, auto&&...) noexcept {
+  }
+
+  friend void tag_invoke(stdexec::set_error_t, sink_receiver, auto&&) noexcept {
+  }
+
+  friend void tag_invoke(stdexec::set_stopped_t, sink_receiver) noexcept {
+  }
+
+  friend stdexec::empty_env tag_invoke(stdexec::get_env_t, sink_receiver) noexcept {
+    return {};
+  }
 };
 
-struct empty_environment {
-};
+struct empty_environment { };
 
 template <class...>
-[[deprecated]] void print() {}
+[[deprecated]] void print() {
+}
 
 // unqualified call to tag_invoke:
 int main() {
@@ -47,18 +57,19 @@ int main() {
   nvexec::stream_context stream_ctx{};
   auto sched = stream_ctx.get_scheduler();
 
- // auto domain = ex::get_domain(sched);
- // print<decltype(domain)>();
-  
-  auto snd = ex::just(std::span{first, last})
-           | nvexec::reduce(42.0f);
+  auto snd = ex::just(std::span{first, last}) | nvexec::reduce(42.0f);
 
- // ::print<stdexec::__detail::__name_of<decltype(snd)>>();
-  // nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();         
-  // using stdexec::__tag_invoke::tag_invoke;  
-  // tag_invoke(stdexec::get_completion_signatures, snd, empty_environment{});
+  auto on_snd = ex::on(sched, std::move(snd));
+  ::print<stdexec::__detail::__name_of<decltype(on_snd)>>();
 
-  auto [result] =
-    stdexec::sync_wait(ex::on(sched, std::move(snd))).value();
+  // recursively transforms the sender using the stream domain
+  auto stream_on_snd = nvexec::_strm::stream_domain().transform_sender(
+    std::move(on_snd), ex::empty_env());
 
- }
+  // the name of the transformed sender shows that the reduce node
+  // in the tree was transformed from a basic_sender<> to a nvexec::reduce_::sender_t<>
+  ::print<stdexec::__detail::__name_of<decltype(stream_on_snd)>>();
+
+  // auto [result] =
+  //   stdexec::sync_wait(ex::on(sched, std::move(snd))).value();
+}

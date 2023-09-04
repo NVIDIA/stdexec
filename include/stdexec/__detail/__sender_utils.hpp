@@ -165,7 +165,7 @@ namespace stdexec {
     namespace {
       constexpr auto __make_tuple = //
         []<class _Tag, class... _Captures>(_Tag, _Captures&&... __captures) {
-          return [=]<class _Cvref, class _Fun>(_Cvref __cvref, _Fun&& __fun) mutable       //
+          return [=]<class _Cvref, class _Fun>(_Cvref __cvref, _Fun && __fun) mutable      //
                  noexcept(__nothrow_callable<_Fun, _Tag, __minvoke<_Captures, _Cvref>...>) //
                  -> decltype(auto)                                                         //
                    requires __callable<_Fun, _Tag, __minvoke<_Captures, _Cvref>...>
@@ -189,7 +189,7 @@ namespace stdexec {
       constexpr auto __make_tuple = //
         []<class _Tag, class... _Captures>(_Tag, _Captures&&... __captures) {
           return [... __captures = (_Captures&&) __captures]<class _Cvref, class _Fun>(
-                   _Cvref, _Fun&& __fun) mutable                                           //
+                   _Cvref, _Fun && __fun) mutable                                          //
                  noexcept(__nothrow_callable<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>) //
                  -> __call_result_t<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>
                    requires __callable<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>
@@ -211,9 +211,10 @@ namespace stdexec {
 
   inline constexpr __detail::__make_basic_sender_ __make_basic_sender{};
 
+  template <class _Tag, class _Data, class... _Children>
+  using __basic_sender_t = __result_of<__make_basic_sender, _Tag, _Data, _Children...>;
+
   namespace __detail {
-
-
     struct __sender_apply_fn {
       template <class _Sender, class _ApplyFn>
       auto operator()(_Sender&& __sndr, _ApplyFn&& __fun) const //
@@ -223,18 +224,6 @@ namespace stdexec {
           (_ApplyFn&&) __fun)) {
         return STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), apply)((_ApplyFn&&) __fun); //
       }
-
-      template <class _Sender, class _ApplyFn>
-      auto operator()(_Sender&& __sndr, _ApplyFn&& __fun) const //
-        noexcept(noexcept(STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), plscompile)(
-          (_ApplyFn&&) __fun))) //
-        -> decltype(STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), plscompile)(
-          (_ApplyFn&&) __fun)) {
-        return STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), plscompile)(
-          (_ApplyFn&&) __fun); //
-      }
-
-
     };
   } // namespace __detail
 
@@ -266,10 +255,16 @@ namespace stdexec {
   template <class _Sender>
   inline constexpr std::size_t __nbr_children_of = __v<__children_of<_Sender, __msize>>;
 
+  template <class _Sender>
+  concept __lazy_sender = //
+    __mvalid<__tag_of, _Sender>;
+
   template <class _Sender, class _Tag>
   concept __lazy_sender_for = //
-    same_as<__tag_of<_Sender>, _Tag>;
+    __lazy_sender<_Sender> && same_as<__tag_of<_Sender>, _Tag>;
 
+  // The __name_of utility defined below is used to pretty-print the type names of
+  // senders in compiler diagnostics.
   namespace __detail {
     template <class _Sender>
     extern __q<__midentity> __name_of_v;
@@ -304,13 +299,19 @@ namespace stdexec {
     template <class _Sender>
     extern __mcompose<__cpclr, __name_of_fn<_Sender>> __name_of_v<const _Sender&>;
 
-    template <class _ImplOf>
-    extern __lazy_sender_name __name_of_v<__basic_sender<_ImplOf>>;
+    template <class _Impl>
+    extern __lazy_sender_name __name_of_v<__basic_sender<_Impl>>;
 
     template <__has_id _Sender>
       requires(!same_as<__id<_Sender>, _Sender>)
     extern __id_name __name_of_v<_Sender>;
   } // namespace __detail
+
+  template <class _Domain, class _Tag>
+  inline constexpr auto __reconstitute = //
+    []<class _Data, class... _Children>(_Data&& __data, _Children&&... __children) {
+      return __make_basic_sender(_Tag(), (_Data&&) __data, (_Children&&) __children...);
+    };
 
   template <class _Sender>
   using __name_of = __detail::__name_of<_Sender>;

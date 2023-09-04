@@ -33,8 +33,7 @@
 
 namespace nvexec {
   using stdexec::operator""__csz;
-  [[gnu::deprecated]]
-  void print(auto&&...) {}
+
   enum class stream_priority {
     high,
     normal,
@@ -169,9 +168,12 @@ namespace nvexec {
     struct context_state_t {
       std::pmr::memory_resource* pinned_resource_{nullptr};
       std::pmr::memory_resource* managed_resource_{nullptr};
-      stream_pools_t* stream_pools_;
+      stream_pools_t* stream_pools_{nullptr};
       queue::task_hub_t* hub_{nullptr};
-      stream_priority priority_;
+      stream_priority priority_{stream_priority::normal};
+
+      // BUGBUG remove me
+      context_state_t() = default;
 
       context_state_t(
         std::pmr::memory_resource* pinned_resource,
@@ -313,8 +315,6 @@ namespace nvexec {
         set_stopped_t>>;
 
     inline constexpr get_stream_provider_t get_stream_provider{};
-[[gnu::deprecated]]
-  void prints(auto&&...) {}
 
     struct get_stream_t {
       template <class Env>

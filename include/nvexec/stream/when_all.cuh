@@ -65,7 +65,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         __concat_completion_signatures_t<
 
           completion_signatures< set_error_t(cudaError_t), set_stopped_t()>,
-          __try_make_completion_signatures< Senders, Env, completion_signatures<>, __q<swallow_values>>...>;
+          __try_make_completion_signatures<
+            Senders,
+            Env,
+            completion_signatures<>,
+            __q<swallow_values>>...>;
       using values = //
         __minvoke<
           __mconcat<__qf<set_value_t>>,

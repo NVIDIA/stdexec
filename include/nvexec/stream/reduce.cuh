@@ -26,13 +26,8 @@
 #include "algorithm_base.cuh"
 #include "common.cuh"
 #include "../detail/throw_on_cuda_error.cuh"
-#include "../stream_context.cuh"
 
 namespace nvexec {
-
-  template <typename T>
-  struct type_printer;
-
   namespace STDEXEC_STREAM_DETAIL_NS {
     namespace reduce_ {
 
@@ -134,18 +129,6 @@ namespace nvexec {
         }
 
         __data<InitT, Fun>& _data_;
-
-        // template <class Sender, class Receiver>
-        // auto connect(Sender&& sndr, Receiver rcvr) {
-        //   return __sender_apply((Sender&&) sndr, __connect_fn<Receiver>{rcvr});
-        // }
-
-        // template <__lazy_sender_for<reduce_t> _Sender, class _Receiver>
-        // static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-        //   __nothrow_callable< __sender_apply_fn, _Sender, __connect_fn<_Receiver>>)
-        //   -> __call_result_t< __sender_apply_fn, _Sender, __connect_fn<_Receiver>> {
-        //   return __sender_apply((_Sender&&) __sndr, __connect_fn<_Receiver>{__rcvr});
-        // }
       };
 
       template <class _CvrefSenderId, class _ReceiverId, class _InitT, class _Fun>
@@ -154,9 +137,6 @@ namespace nvexec {
         using _Receiver = stdexec::__t<_ReceiverId>;
         using __receiver_id = receiver_t<_CvrefSender, _ReceiverId, _InitT, _Fun>;
         using __receiver_t = stdexec::__t<__receiver_id>;
-
-        // _CvrefSender sender;
-        // _Receiver rcvr;
 
         struct __t : __immovable {
           using __id = __operation;
@@ -167,10 +147,9 @@ namespace nvexec {
           connect_result_t<_CvrefSender, __receiver_t> __op_;
 
           __t(_CvrefSender&& __sndr, _Receiver __rcvr, __data_t __data) //
-            noexcept(
-              __nothrow_decay_copyable<_Receiver>   //
-              && __nothrow_decay_copyable<__data_t> //
-              && __nothrow_connectable<_CvrefSender, __receiver_t>)
+            noexcept(__nothrow_decay_copyable<_Receiver>                //
+                       && __nothrow_decay_copyable<__data_t>            //
+                         && __nothrow_connectable<_CvrefSender, __receiver_t>)
             : __state_{(__data_t&&) __data}
             , __rcvr_{(_Receiver&&) __rcvr}
             , __op_(connect((_CvrefSender&&) __sndr, __receiver_t{&__state_})) {
@@ -179,17 +158,6 @@ namespace nvexec {
           friend void tag_invoke(start_t, __t& __self) noexcept {
             start(__self.__op_);
           }
-
-          // template <__decays_to<__t> _Self, receiver _Receivr>
-          //   requires sender_to<_CvrefSender&, __receiver_t >
-          // friend __operation tag_invoke(connect_t, __t& __self, _Receivr __rcvr) noexcept {
-          //   return {((_Self&&) __self).sender, (_Receivr&&) __rcvr};
-          // }
-
-          // template <__decays_to<__t> _Self, class _Receivr>
-          // friend __operation tag_invoke(connect_t, _Self&& __self, _Receivr __rcvr) noexcept {
-          //   return {((_Self&&) __self).sender, (_Receivr&&) __rcvr};
-          // }
         };
       };
 
@@ -213,12 +181,9 @@ namespace nvexec {
             (_Child&&) __child, (_Receiver&&) __rcvr_, (_Data&&) __data};
         }
       };
-
-
     }
 
     struct reduce_t {
-
       // idk if needed
       // #if STDEXEC_FRIENDSHIP_IS_LEXICAL()
       //      private:
@@ -228,7 +193,6 @@ namespace nvexec {
 
       template < sender Sender, __movable_value InitT, __movable_value Fun = cub::Sum>
       auto operator()(Sender&& sndr, InitT init, Fun fun) const {
-
         auto __domain = __get_sender_domain(sndr);
         return __domain.transform_sender(__make_basic_sender(
           reduce_t(), reduce_::__data{(InitT&&) init, (Fun&&) fun}, (Sender&&) sndr));
@@ -267,8 +231,6 @@ namespace nvexec {
           completion_signatures<set_stopped_t()>,
           __mbind_back_q<_set_value_t, _InitT, _Fun>>;
 
-
-      
       template <__lazy_sender_for<reduce_t> _Sender, class _Env>
       static auto get_completion_signatures(_Sender&& __sndr, _Env&& env) {
         // what's the relationship(if it exists) between the lambdas types and the lambda types in `stream_domain::transform_sender`
@@ -283,12 +245,8 @@ namespace nvexec {
               // not sure i need this
               return dependent_completion_signatures<no_env>();
             } else {
-              // testing to see if this branch ever gets hit, it doesn't
-              __completion_signaturesss<__child_of<_Sender>, _Env, _InitT, _Fun> hi{};
-              stdexec::print(hi);
-              type_printer<__completion_signaturesss<__child_of<_Sender>, _Env, _InitT, _Fun>>
-                heyyyy;
-              return hi;
+              // BUGBUG improve this error message
+              return __mexception<_WHAT_<"unknown error in nvexec::reduce"__csz>>();
             }
             STDEXEC_UNREACHABLE();
           });
@@ -300,9 +258,9 @@ namespace nvexec {
       template <class _Sender>
       using __initT = decltype(__decay_t<__data_of<_Sender>>::__initT_);
 
-      using _Sendersssss = __2;
-      using _InitT = __nth_member<0>(__1);
-      using _Fun = __nth_member<1>(__1);
+      using _Sendersssss = __1;
+      using _InitT = __nth_member<0>(__0);
+      using _Fun = __nth_member<1>(__0);
       using __legacy_customizations_t = __types<
         tag_invoke_t(
           reduce_t,
@@ -312,17 +270,10 @@ namespace nvexec {
           _Fun),
         tag_invoke_t(reduce_t, _Sendersssss, _InitT, _Fun)>;
 
-      // template <__lazy_sender_for<reduce_t> _Sender, class _Env>
-      // static auto get_completion_signatures2(_Sender&& __sndr, _Env&&)
-      //   -> __completion_signaturesss<__child_of<_Sender>, _Env, __initT<_Sender>, __fun_t<_Sender>> {
-      //   return {};
-      // }
-
       template <__lazy_sender_for<reduce_t> _Sender, receiver _Receiver>
       static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
         __nothrow_callable< __sender_apply_fn, _Sender, reduce_::__connect_fn<_Receiver>>)
         -> __call_result_t< __sender_apply_fn, _Sender, reduce_::__connect_fn<_Receiver>> {
-
         return __sender_apply((_Sender&&) __sndr, reduce_::__connect_fn<_Receiver>{__rcvr});
       }
 
@@ -336,32 +287,30 @@ namespace nvexec {
       }
     };
 
-    // moved this below so i can use reduce_t as a Tag type to algorithm_base sender
-    template <class SenderId, class InitT, class Fun>
-    struct sender_t
-      : public __algo_range_init_fun::
-          sender_t<reduce_t, SenderId, InitT, Fun, sender_t<SenderId, InitT, Fun>> {
+    namespace reduce_ {
+      // moved this below so i can use reduce_t as a Tag type to algorithm_base sender
+      template <class SenderId, class InitT, class Fun>
+      struct sender_t
+        : public __algo_range_init_fun::
+            sender_t<reduce_t, SenderId, InitT, Fun, sender_t<SenderId, InitT, Fun>> {
 
-      // using Sender = stdexec::__t<SenderId>;
+        template <class Range>
+        using _set_value_t = completion_signatures<set_value_t(
+          __algo_range_init_fun::binary_invoke_result_t<Range, InitT, Fun>&)>;
 
-
-      template <class Range>
-      using _set_value_t = completion_signatures<set_value_t(
-        __algo_range_init_fun::binary_invoke_result_t<Range, InitT, Fun>&)>;
-
-      template <class Receiver>
-      using receiver_t =
-        stdexec::__t<reduce_::receiver_t< SenderId, stdexec::__id<Receiver>, InitT, Fun>>;
-
-      // using is_sender = void;
-
-      // template <class _Self, class _Receivr>
-      // friend stdexec::__t<__operation<__cvref_id<_Self, Sender>, _Receivr, InitT, Fun>>
-      //   tag_invoke(connect_t, _Self&& __self, _Receivr __rcvr) noexcept {
-      //   return {((_Self&&) __self).sndr_, (_Receivr&&) __rcvr};
-      // }
-    };
+        template <class Receiver>
+        using receiver_t =
+          stdexec::__t<reduce_::receiver_t< SenderId, stdexec::__id<Receiver>, InitT, Fun>>;
+      };
+    }
   }
 
   inline constexpr STDEXEC_STREAM_DETAIL_NS::reduce_t reduce{};
+}
+
+namespace stdexec::__detail {
+  template <class SenderId, class InitT, class Fun>
+  extern __mconst<
+    nvexec::STDEXEC_STREAM_DETAIL_NS::reduce_::sender_t<__name_of<__t<SenderId>>, InitT, Fun>>
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::reduce_::sender_t<SenderId, InitT, Fun>>;
 }

@@ -91,15 +91,23 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
     };
   };
 
+  // This shouldn't be here. Imo I think algorithm_base should
+  // have a __data struct that each inheritor is responsible for providing. I put this here to get things to compile.
+  template <class _InitT, class _Fun>
+  struct __data {
+    _InitT __init_;
+    STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
+    static constexpr auto __mbrs_ = __mliterals<&__data::__init_, &__data::__fun_>();
+  };
+  template <class _InitT, class _Fun>
+  __data(_InitT, _Fun) -> __data<_InitT, _Fun>;
+
   template <class Tag, class SenderId, class InitT, class Fun, class DerivedSender>
   struct sender_t {
-
     struct __t : stream_sender_base {
-
-
       using Sender = stdexec::__t<SenderId>;
       using __id = sender_t;
-      using is_sender = void;
+
       template <class Receiver>
       using receiver_t = typename DerivedSender::template receiver_t<Receiver>;
 
@@ -108,40 +116,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
 
       Sender sndr_;
       // why is this called initT, anyway? If other algorithms will use this in the future im not sure initT is a good name
-      STDEXEC_NO_UNIQUE_ADDRESS InitT init_;
-      STDEXEC_NO_UNIQUE_ADDRESS Fun fun_;
+      __data<InitT, Fun> data_;
 
-      template <std::size_t Index, typename... Types>
-      using nth_type_of = std::tuple_element_t<Index, std::tuple<Types...>>;
-
-      template <typename T>
-      void print_type_name() const {
-        stdexec::print(std::declval<stdexec::__detail::__name_of<T>>());
+      __t(Sender sndr, InitT init, Fun fun)
+        : sndr_((Sender&&) sndr)
+        , data_{(InitT&&) init, (Fun&&) fun} {
       }
-      template <typename T>
-      struct print_the_type;
-
-      // This shouldn't be here. Imo I think algorithm_base should 
-      // have a __data struct that each inheritor is responsible for providing. I put this here to get things to compile. 
-      template <class _InitT, class _Fun>
-      struct __data {
-        _InitT __initT_;
-        STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
-        static constexpr auto __mbrs_ = __mliterals<&__data::__initT_, &__data::__fun_>();
-      };
-      template <class _InitT, class _Fun>
-      __data(_InitT, _Fun) -> __data<_InitT, _Fun>;
-
-      // this is basically the apply function that sender_apply is looking for. 
-      template <class S, class Fn>
-      auto plscompile(S s, Fn f) {
-        auto inside = s.sndr_; 
-        auto data = __data(s.init_, s.fun_);
-        // stdexec::__detail::__name_of<decltype(inside)> hi;
-        auto invoked = f(std::declval<Tag>(), data, inside);
-        return invoked;
-      }
-      
 
       template <class Self, class Env>
       using completion_signatures = //
@@ -160,7 +140,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
           (Receiver&&) rcvr,
           [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
             -> receiver_t<Receiver> {
-            return receiver_t<Receiver>(self.init_, self.fun_, stream_provider);
+            return receiver_t<Receiver>(self.data_.__init_, self.data_.__fun_, stream_provider);
           });
       }
 
@@ -175,4 +155,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       }
     };
   };
+}
+
+namespace stdexec::__detail {
+  // for pretty-printing a stream range algorithm sender
+  template <class Tag, class SenderId, class InitT, class Fun, class DerivedSender>
+  extern __mconst<__name_of<DerivedSender>>
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun::
+                  sender_t<Tag, SenderId, InitT, Fun, DerivedSender>>;
 }
