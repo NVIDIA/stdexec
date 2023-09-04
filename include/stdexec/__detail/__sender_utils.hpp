@@ -117,8 +117,8 @@ namespace stdexec {
       noexcept(
         __nothrow_callable<__detail::__impl_of<_Sender>, __copy_cvref_fn<_Sender>, _ApplyFn>) //
       -> __call_result_t<__detail::__impl_of<_Sender>, __copy_cvref_fn<_Sender>, _ApplyFn> {  //
-      
-      return ((_Sender&&) __sndr).__impl_(__copy_cvref_fn<_Sender>(), (_ApplyFn&&) __fun);    //
+
+      return ((_Sender&&) __sndr).__impl_(__copy_cvref_fn<_Sender>(), (_ApplyFn&&) __fun); //
     }
   };
 
@@ -212,8 +212,7 @@ namespace stdexec {
   inline constexpr __detail::__make_basic_sender_ __make_basic_sender{};
 
   namespace __detail {
-    [[gnu::deprecated]] void prints(auto&&...) {
-    }
+
 
     struct __sender_apply_fn {
       template <class _Sender, class _ApplyFn>
@@ -222,102 +221,97 @@ namespace stdexec {
           STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), apply)((_ApplyFn&&) __fun))) //
         -> decltype(STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), apply)(
           (_ApplyFn&&) __fun)) {
-        return STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), applys)((_ApplyFn&&) __fun); //
+        return STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), apply)((_ApplyFn&&) __fun); //
       }
+
       template <class _Sender, class _ApplyFn>
       auto operator()(_Sender&& __sndr, _ApplyFn&& __fun) const //
-        noexcept(noexcept(
-          STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), plscompile)((_ApplyFn&&) __fun))) //
+        noexcept(noexcept(STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), plscompile)(
+          (_ApplyFn&&) __fun))) //
         -> decltype(STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), plscompile)(
           (_ApplyFn&&) __fun)) {
-
-        __detail::prints(__fun);                                                                            //
-        return STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), plscompile)((_ApplyFn&&) __fun); //
+        return STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), plscompile)(
+          (_ApplyFn&&) __fun); //
       }
-    //   template <class _Sender, class _ApplyFn>
-    //   auto operator()(_Sender&& __sndr, _ApplyFn&& __fun) const  {
 
-    //     __detail::prints(__fun);                                                                        
-    //     __detail::prints(__sndr);
-    //   return STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), apply)((_ApplyFn&&) __fun); //
-    // }
-  };
-} // namespace __detail
 
-using __detail::__sender_apply_fn;
-inline constexpr __sender_apply_fn __sender_apply{};
+    };
+  } // namespace __detail
 
-template <class _Sender, class _ApplyFn>
-using __sender_apply_result_t = __call_result_t<__sender_apply_fn, _Sender, _ApplyFn>;
+  using __detail::__sender_apply_fn;
+  inline constexpr __sender_apply_fn __sender_apply{};
 
-template <class _Sender>
-using __tag_of = __call_result_t<__sender_apply_fn, _Sender, __detail::__get_tag>;
-
-template <class _Sender>
-using __data_of = __call_result_t<__sender_apply_fn, _Sender, __detail::__get_data>;
-
-template <class _Sender, class _Continuation = __q<__types>>
-using __children_of = __t<__call_result_t<
-  __call_result_t<__sender_apply_fn, _Sender, __detail::__get_children<_Continuation>>>>;
-
-template <class _Ny, class _Sender>
-using __nth_child_of = __children_of<_Sender, __mbind_front_q<__m_at, _Ny>>;
-
-template <std::size_t _Ny, class _Sender>
-using __nth_child_of_c = __children_of<_Sender, __mbind_front_q<__m_at, __msize_t<_Ny>>>;
-
-template <class _Sender>
-using __child_of = __children_of<_Sender, __q<__mfront>>;
-
-template <class _Sender>
-inline constexpr std::size_t __nbr_children_of = __v<__children_of<_Sender, __msize>>;
-
-template <class _Sender, class _Tag>
-concept __lazy_sender_for = //
-  same_as<__tag_of<_Sender>, _Tag>;
-
-namespace __detail {
-  template <class _Sender>
-  extern __q<__midentity> __name_of_v;
+  template <class _Sender, class _ApplyFn>
+  using __sender_apply_result_t = __call_result_t<__sender_apply_fn, _Sender, _ApplyFn>;
 
   template <class _Sender>
-  using __name_of_fn = decltype(__name_of_v<_Sender>);
+  using __tag_of = __call_result_t<__sender_apply_fn, _Sender, __detail::__get_tag>;
 
   template <class _Sender>
-  using __name_of = __minvoke<__name_of_fn<_Sender>, _Sender>;
+  using __data_of = __call_result_t<__sender_apply_fn, _Sender, __detail::__get_data>;
 
-  struct __lazy_sender_name {
+  template <class _Sender, class _Continuation = __q<__types>>
+  using __children_of = __t<__call_result_t<
+    __call_result_t<__sender_apply_fn, _Sender, __detail::__get_children<_Continuation>>>>;
+
+  template <class _Ny, class _Sender>
+  using __nth_child_of = __children_of<_Sender, __mbind_front_q<__m_at, _Ny>>;
+
+  template <std::size_t _Ny, class _Sender>
+  using __nth_child_of_c = __children_of<_Sender, __mbind_front_q<__m_at, __msize_t<_Ny>>>;
+
+  template <class _Sender>
+  using __child_of = __children_of<_Sender, __q<__mfront>>;
+
+  template <class _Sender>
+  inline constexpr std::size_t __nbr_children_of = __v<__children_of<_Sender, __msize>>;
+
+  template <class _Sender, class _Tag>
+  concept __lazy_sender_for = //
+    same_as<__tag_of<_Sender>, _Tag>;
+
+  namespace __detail {
     template <class _Sender>
-    using __f = //
-      __call_result_t<__sender_apply_result_t<_Sender, __lazy_sender_name>>;
+    extern __q<__midentity> __name_of_v;
 
-    template <class _Tag, class _Data, class... _Children>
-    auto operator()(_Tag, _Data&&, _Children&&...) const //
-      -> __basic_sender<_Tag, _Data, __name_of<_Children>...> (*)();
-  };
-
-  struct __id_name {
     template <class _Sender>
-    using __f = __name_of<__id<_Sender>>;
-  };
+    using __name_of_fn = decltype(__name_of_v<_Sender>);
+
+    template <class _Sender>
+    using __name_of = __minvoke<__name_of_fn<_Sender>, _Sender>;
+
+    struct __lazy_sender_name {
+      template <class _Sender>
+      using __f = //
+        __call_result_t<__sender_apply_result_t<_Sender, __lazy_sender_name>>;
+
+      template <class _Tag, class _Data, class... _Children>
+      auto operator()(_Tag, _Data&&, _Children&&...) const //
+        -> __basic_sender<_Tag, _Data, __name_of<_Children>...> (*)();
+    };
+
+    struct __id_name {
+      template <class _Sender>
+      using __f = __name_of<__id<_Sender>>;
+    };
+
+    template <class _Sender>
+    extern __mcompose<__cplr, __name_of_fn<_Sender>> __name_of_v<_Sender&>;
+
+    template <class _Sender>
+    extern __mcompose<__cprr, __name_of_fn<_Sender>> __name_of_v<_Sender&&>;
+
+    template <class _Sender>
+    extern __mcompose<__cpclr, __name_of_fn<_Sender>> __name_of_v<const _Sender&>;
+
+    template <class _ImplOf>
+    extern __lazy_sender_name __name_of_v<__basic_sender<_ImplOf>>;
+
+    template <__has_id _Sender>
+      requires(!same_as<__id<_Sender>, _Sender>)
+    extern __id_name __name_of_v<_Sender>;
+  } // namespace __detail
 
   template <class _Sender>
-  extern __mcompose<__cplr, __name_of_fn<_Sender>> __name_of_v<_Sender&>;
-
-  template <class _Sender>
-  extern __mcompose<__cprr, __name_of_fn<_Sender>> __name_of_v<_Sender&&>;
-
-  template <class _Sender>
-  extern __mcompose<__cpclr, __name_of_fn<_Sender>> __name_of_v<const _Sender&>;
-
-  template <class _ImplOf>
-  extern __lazy_sender_name __name_of_v<__basic_sender<_ImplOf>>;
-
-  template <__has_id _Sender>
-    requires(!same_as<__id<_Sender>, _Sender>)
-  extern __id_name __name_of_v<_Sender>;
-} // namespace __detail
-
-template <class _Sender>
-using __name_of = __detail::__name_of<_Sender>;
+  using __name_of = __detail::__name_of<_Sender>;
 } // namespace stdexec
