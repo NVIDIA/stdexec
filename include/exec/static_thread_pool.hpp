@@ -97,7 +97,7 @@ namespace exec {
       auto transform_sender(Sender&& sndr) const noexcept {
         auto sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
           stdexec::get_env(sndr));
-        return stdexec::__sender_apply((Sender&&) sndr, transform_bulk{*sched.pool_});
+        return stdexec::apply_sender((Sender&&) sndr, transform_bulk{*sched.pool_});
       }
 
       template <class Sender, class Env>
@@ -110,7 +110,7 @@ namespace exec {
         requires stdexec::__callable<stdexec::get_scheduler_t, Env>
       auto transform_sender(Sender&& sndr, const Env& env) const noexcept {
         auto sched = stdexec::get_scheduler(env);
-        return stdexec::__sender_apply((Sender&&) sndr, transform_bulk{*sched.pool_});
+        return stdexec::apply_sender((Sender&&) sndr, transform_bulk{*sched.pool_});
       }
     };
 

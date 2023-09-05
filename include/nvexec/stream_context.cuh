@@ -102,10 +102,10 @@ namespace nvexec {
       template <__lazy_sender Sender, class Env>
         requires _non_stream_sender<Sender> // no need to transform it a second time
       auto transform_sender(Sender&& sndr, const Env& env) const noexcept {
-        return stdexec::__sender_apply(
+        return stdexec::apply_sender(
           (Sender&&) sndr,
           [&]<class Tag, class Data, class... Children>(Tag, Data&& data, Children&&... children) {
-            return __reconstitute<stream_domain, Tag>(
+            return make_sender<Tag, stream_domain>(
               (Data&&) data, transform_sender((Children&&) children, env)...);
           });
       }
@@ -114,7 +114,7 @@ namespace nvexec {
       template <__lazy_sender_for<reduce_t> Sender, class Env>
         requires _non_stream_sender<Sender> // no need to transform it a second time
       auto transform_sender(Sender&& sndr, const Env& env) const noexcept {
-        return stdexec::__sender_apply(
+        return stdexec::apply_sender(
           (Sender&&) sndr,
           [&]<class Tag, class Data, class Child>(Tag, Data&& data, Child&& child) {
             auto [init, fun] = (Data&&) data;
@@ -173,35 +173,31 @@ namespace nvexec {
         }
       };
 
-      struct sender_ {
-        struct __t : stream_sender_base {
-          using __id = sender_;
-          using completion_signatures =
-            completion_signatures< set_value_t(), set_error_t(cudaError_t)>;
+      struct sender_t : stream_sender_base {
+        using __t = sender_t;
+        using __id = sender_t;
+        using completion_signatures =
+          completion_signatures< set_value_t(), set_error_t(cudaError_t)>;
 
-          template <class R>
-          friend auto tag_invoke(connect_t, const __t& self, R&& rec) //
-            noexcept(__nothrow_constructible_from<__decay_t<R>, R>)
-              -> operation_state_t<stdexec::__id<__decay_t<R>>> {
-            return operation_state_t<stdexec::__id<__decay_t<R>>>(
-              (R&&) rec, self.env_.context_state_);
-          }
+        template <class R>
+        friend auto tag_invoke(connect_t, const sender_t& self, R&& rec) //
+          noexcept(__nothrow_constructible_from<__decay_t<R>, R>)
+            -> operation_state_t<stdexec::__id<__decay_t<R>>> {
+          return operation_state_t<stdexec::__id<__decay_t<R>>>(
+            (R&&) rec, self.env_.context_state_);
+        }
 
-          friend const env& tag_invoke(get_env_t, const __t& self) noexcept {
-
-            return self.env_;
-          };
-
-          STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-            inline __t(context_state_t context_state) noexcept
-            : env_{context_state} {
-          }
-
-          env env_;
+        friend const env& tag_invoke(get_env_t, const sender_t& self) noexcept {
+          return self.env_;
         };
-      };
 
-      using sender_t = stdexec::__t<sender_>;
+        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+          inline sender_t(context_state_t context_state) noexcept
+          : env_{context_state} {
+        }
+
+        env env_;
+      };
 
       friend stream_domain<stream_scheduler>
         tag_invoke(get_domain_t, const stream_scheduler& sch) noexcept {

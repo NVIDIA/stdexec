@@ -194,8 +194,8 @@ namespace nvexec {
       template < sender Sender, __movable_value Init, __movable_value Fun = cub::Sum>
       auto operator()(Sender&& sndr, Init init, Fun fun) const {
         auto __domain = __get_sender_domain(sndr);
-        return __domain.transform_sender(__make_basic_sender(
-          reduce_t(), reduce_::__data{(Init&&) init, (Fun&&) fun}, (Sender&&) sndr));
+        return __domain.transform_sender(make_sender<reduce_t>(
+          reduce_::__data{(Init&&) init, (Fun&&) fun}, (Sender&&) sndr));
       }
 
       template <__lazy_sender_for<reduce_t> _Sender>
@@ -234,8 +234,8 @@ namespace nvexec {
       template <__lazy_sender_for<reduce_t> _Sender, class _Env>
       static auto get_completion_signatures(_Sender&& __sndr, _Env&& env) {
         // what's the relationship(if it exists) between the lambdas types and the lambda types in `stream_domain::transform_sender`
-        // sender_apply?
-        return stdexec::__sender_apply(
+        // apply_sender?
+        return stdexec::apply_sender(
           (_Sender&&) __sndr, [&]<class _Data, class _Child>(reduce_t, _Data, _Child&&) {
             using _Init = decltype(_Data::__init_);
             using _Fun = decltype(_Data::__fun_);
@@ -266,9 +266,9 @@ namespace nvexec {
 
       template <__lazy_sender_for<reduce_t> _Sender, receiver _Receiver>
       static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-        __nothrow_callable< __sender_apply_fn, _Sender, reduce_::__connect_fn<_Receiver>>)
-        -> __call_result_t< __sender_apply_fn, _Sender, reduce_::__connect_fn<_Receiver>> {
-        return __sender_apply((_Sender&&) __sndr, reduce_::__connect_fn<_Receiver>{__rcvr});
+        __nothrow_callable< apply_sender_t, _Sender, reduce_::__connect_fn<_Receiver>>)
+        -> __call_result_t< apply_sender_t, _Sender, reduce_::__connect_fn<_Receiver>> {
+        return apply_sender((_Sender&&) __sndr, reduce_::__connect_fn<_Receiver>{__rcvr});
       }
 
       template <class Init, class Fun = cub::Sum>

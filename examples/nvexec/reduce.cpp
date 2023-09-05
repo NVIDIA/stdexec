@@ -60,16 +60,15 @@ int main() {
   auto snd = ex::just(std::span{first, last}) | nvexec::reduce(42.0f);
 
   auto on_snd = ex::on(sched, std::move(snd));
-  ::print<stdexec::__detail::__name_of<decltype(on_snd)>>();
+  //::print<stdexec::__detail::__name_of<decltype(on_snd)>>();
 
   // recursively transforms the sender using the stream domain
-  auto stream_on_snd = nvexec::_strm::stream_domain().transform_sender(
-    std::move(on_snd), ex::empty_env());
+  // auto stream_on_snd = nvexec::_strm::stream_domain().transform_sender(
+  //   std::move(on_snd), ex::empty_env());
 
   // the name of the transformed sender shows that the reduce node
   // in the tree was transformed from a basic_sender<> to a nvexec::reduce_::sender_t<>
-  ::print<stdexec::__detail::__name_of<decltype(stream_on_snd)>>();
+  //::print<stdexec::__detail::__name_of<decltype(stream_on_snd)>>();
 
-  // auto [result] =
-  //   stdexec::sync_wait(ex::on(sched, std::move(snd))).value();
+  //auto [result] = stdexec::sync_wait(std::move(on_snd)).value();
 }

@@ -127,11 +127,12 @@ namespace stdexec {
     __basic_sender(_ImplFn) -> __basic_sender<_ImplFn>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  // __make_basic_sender
+  // make_sender
   namespace __detail {
-    struct __make_basic_sender_ {
-      template <class _Tag, class _Data = __, class... _Children>
-      constexpr auto operator()(_Tag, _Data __data = {}, _Children... __children) const;
+    template <class _Tag, class _Domain = __default_domain<>>
+    struct make_sender_t {
+      template <class _Data = __, class... _Children>
+      constexpr auto operator()(_Data __data = {}, _Children... __children) const;
     };
 
 #if STDEXEC_NVHPC() || (STDEXEC_GCC() && __GNUC__ < 13)
@@ -176,9 +177,10 @@ namespace stdexec {
         };
     } // anonymous namespace
 
-    template <class _Tag, class _Data, class... _Children>
+    template <class _Tag, class _Domain>
+    template <class _Data, class... _Children>
     constexpr auto
-      __make_basic_sender_::operator()(_Tag, _Data __data, _Children... __children) const {
+      make_sender_t<_Tag, _Domain>::operator()(_Data __data, _Children... __children) const {
       return __basic_sender{
         __detail::__make_tuple(_Tag(), __detail::__mbc(__data), __detail::__mbc(__children)...)};
     }
@@ -200,22 +202,24 @@ namespace stdexec {
         };
     } // anonymous namespace
 
-    template <class _Tag, class _Data, class... _Children>
+    template <class _Tag, class _Domain>
+    template <class _Data, class... _Children>
     constexpr auto
-      __make_basic_sender_::operator()(_Tag, _Data __data, _Children... __children) const {
+      make_sender_t<_Tag, _Domain>::operator()(_Data __data, _Children... __children) const {
       return __basic_sender{
         __detail::__make_tuple(_Tag(), (_Data&&) __data, (_Children&&) __children...)};
     };
 #endif
   } // namespace __detail
 
-  inline constexpr __detail::__make_basic_sender_ __make_basic_sender{};
+  template <class _Tag, class _Domain = __default_domain<>>
+  inline constexpr __detail::make_sender_t<_Tag, _Domain> make_sender{};
 
   template <class _Tag, class _Data, class... _Children>
-  using __basic_sender_t = __result_of<__make_basic_sender, _Tag, _Data, _Children...>;
+  using __basic_sender_t = __result_of<make_sender<_Tag>, _Data, _Children...>;
 
   namespace __detail {
-    struct __sender_apply_fn {
+    struct apply_sender_t {
       template <class _Sender, class _ApplyFn>
       auto operator()(_Sender&& __sndr, _ApplyFn&& __fun) const //
         noexcept(noexcept(
@@ -227,21 +231,21 @@ namespace stdexec {
     };
   } // namespace __detail
 
-  using __detail::__sender_apply_fn;
-  inline constexpr __sender_apply_fn __sender_apply{};
+  using __detail::apply_sender_t;
+  inline constexpr apply_sender_t apply_sender{};
 
   template <class _Sender, class _ApplyFn>
-  using __sender_apply_result_t = __call_result_t<__sender_apply_fn, _Sender, _ApplyFn>;
+  using __apply_sender_result_t = __call_result_t<apply_sender_t, _Sender, _ApplyFn>;
 
   template <class _Sender>
-  using __tag_of = __call_result_t<__sender_apply_fn, _Sender, __detail::__get_tag>;
+  using __tag_of = __call_result_t<apply_sender_t, _Sender, __detail::__get_tag>;
 
   template <class _Sender>
-  using __data_of = __call_result_t<__sender_apply_fn, _Sender, __detail::__get_data>;
+  using __data_of = __call_result_t<apply_sender_t, _Sender, __detail::__get_data>;
 
   template <class _Sender, class _Continuation = __q<__types>>
   using __children_of = __t<__call_result_t<
-    __call_result_t<__sender_apply_fn, _Sender, __detail::__get_children<_Continuation>>>>;
+    __call_result_t<apply_sender_t, _Sender, __detail::__get_children<_Continuation>>>>;
 
   template <class _Ny, class _Sender>
   using __nth_child_of = __children_of<_Sender, __mbind_front_q<__m_at, _Ny>>;
@@ -278,7 +282,7 @@ namespace stdexec {
     struct __lazy_sender_name {
       template <class _Sender>
       using __f = //
-        __call_result_t<__sender_apply_result_t<_Sender, __lazy_sender_name>>;
+        __call_result_t<__apply_sender_result_t<_Sender, __lazy_sender_name>>;
 
       template <class _Tag, class _Data, class... _Children>
       auto operator()(_Tag, _Data&&, _Children&&...) const //
@@ -306,12 +310,6 @@ namespace stdexec {
       requires(!same_as<__id<_Sender>, _Sender>)
     extern __id_name __name_of_v<_Sender>;
   } // namespace __detail
-
-  template <class _Domain, class _Tag>
-  inline constexpr auto __reconstitute = //
-    []<class _Data, class... _Children>(_Data&& __data, _Children&&... __children) {
-      return __make_basic_sender(_Tag(), (_Data&&) __data, (_Children&&) __children...);
-    };
 
   template <class _Sender>
   using __name_of = __detail::__name_of<_Sender>;
