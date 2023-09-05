@@ -322,4 +322,14 @@ TEST_CASE("io_uring_context schedule_after -1s", "[types][io_uring][schedulers]"
   }
 }
 
+TEST_CASE("io_uring_context - reuse context after being used", "[types][io_uring][schedulers]") {
+  io_uring_context context;
+  io_uring_scheduler scheduler = context.get_scheduler();
+  CHECK(sync_wait(exec::when_any(schedule(scheduler), context.run())));
+  CHECK(!sync_wait(exec::when_any(schedule(scheduler), context.run())));
+  context.reset();
+  CHECK(sync_wait(exec::when_any(schedule(scheduler), context.run())));
+  CHECK(!sync_wait(exec::when_any(schedule(scheduler), context.run())));
+}
+
 #endif
