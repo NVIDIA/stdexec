@@ -78,8 +78,7 @@ namespace exec {
     struct transform_bulk {
       template <class Data, class Sender>
       auto operator()(stdexec::bulk_t, Data&& data, Sender&& sndr) {
-        auto shape = stdexec::__nth_member<0>()((Data&&) data);
-        auto fun = stdexec::__nth_member<1>()((Data&&) data);
+        auto [shape, fun] = (Data&&) data;
         return bulk_sender_t<Sender, decltype(shape), decltype(fun)>{
           pool_, (Sender&&) sndr, shape, std::move(fun)};
       }

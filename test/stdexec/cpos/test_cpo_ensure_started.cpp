@@ -24,9 +24,9 @@ TEST_CASE("ensure started is customizable", "[cpo][cpo_ensure_started]") {
     STATIC_REQUIRE(scope == scope_t::free_standing);
   }
 
-  // SECTION("by completion scheduler") {
-  //   scheduler_t<ex::ensure_started_t>::sender_t snd{};
-  //   constexpr scope_t scope = decltype(ex::ensure_started(snd))::scope;
-  //   STATIC_REQUIRE(scope == scope_t::scheduler);
-  // }
+  SECTION("by completion scheduler") {
+    scheduler_t<ex::ensure_started_t>::sender_t snd{};
+    constexpr scope_t scope = decltype(ex::ensure_started(snd))::scope;
+    STATIC_REQUIRE(scope == scope_t::scheduler);
+  }
 }

@@ -117,11 +117,10 @@ namespace nvexec {
         return stdexec::__sender_apply(
           (Sender&&) sndr,
           [&]<class Tag, class Data, class Child>(Tag, Data&& data, Child&& child) {
-            auto initT = stdexec::__nth_member<0>()((Data&&) data);
-            auto fun = stdexec::__nth_member<1>()((Data&&) data);
+            auto [init, fun] = (Data&&) data;
             auto next = transform_sender((Child&&) child, env);
-            return reduce_sender_t<decltype(next), decltype(initT), decltype(fun)>(
-              std::move(next), initT, fun);
+            return reduce_sender_t<decltype(next), decltype(init), decltype(fun)>(
+              std::move(next), init, fun);
           });
       }
 

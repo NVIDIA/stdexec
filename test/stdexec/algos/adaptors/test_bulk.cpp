@@ -202,7 +202,8 @@ TEST_CASE("bulk works with static thread pool", "[adaptors][bulk]") {
     for (int n = 0; n < 9; n++) {
       std::vector<int> counter(n, 42);
 
-      auto snd = ex::transfer_just(sch) | ex::bulk(n, [&counter](int idx) { counter[idx] = 0; })
+      auto snd = ex::transfer_just(sch) //
+               | ex::bulk(n, [&counter](int idx) { counter[idx] = 0; })
                | ex::bulk(n, [&counter](int idx) { counter[idx]++; });
       stdexec::sync_wait(std::move(snd));
 
@@ -277,5 +278,29 @@ TEST_CASE("bulk works with static thread pool", "[adaptors][bulk]") {
 
     CHECK(std::count(counters_1.begin(), counters_1.end(), 1) == n);
     CHECK(std::count(counters_2.begin(), counters_2.end(), 1) == n);
+  }
+}
+
+TEST_CASE("lazy customization of bulk works with static thread pool", "[adaptors][bulk]") {
+  exec::static_thread_pool pool{4};
+  ex::scheduler auto sch = pool.get_scheduler();
+
+  SECTION("Without values in the set_value channel") {
+    std::vector<std::thread::id> tids(42);
+
+    auto fun = [&tids](int idx) {
+      tids[idx] = std::this_thread::get_id();
+      std::this_thread::sleep_for(std::chrono::milliseconds{10});
+    };
+
+    auto snd = ex::just() //
+             | ex::bulk((int) tids.size(), fun);
+    stdexec::sync_wait(stdexec::on(sch, std::move(snd)));
+
+    // All the work should not have run on the same thread
+    const std::size_t actual = std::count(tids.begin(), tids.end(), tids[0]);
+    const std::size_t wrong = tids.size();
+
+    CHECK(actual != wrong);
   }
 }
