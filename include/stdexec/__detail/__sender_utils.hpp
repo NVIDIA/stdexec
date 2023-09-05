@@ -159,6 +159,12 @@ namespace stdexec {
       }
     };
 
+    // Rather strange definition of the lambda return type below is to reap the
+    // benefits of SFINAE without nvc++ encoding the whole return type into the
+    // symbol name.
+    template <class _Ty>
+    extern _Ty(*__f)();
+
     // Anonymous namespace here is to avoid symbol name collisions with the
     // lambda functions returned by __make_tuple.
     namespace {
@@ -166,7 +172,7 @@ namespace stdexec {
         []<class _Tag, class... _Captures>(_Tag, _Captures&&... __captures) {
           return [=]<class _Cvref, class _Fun>(_Cvref __cvref, _Fun && __fun) mutable      //
                  noexcept(__nothrow_callable<_Fun, _Tag, __minvoke<_Captures, _Cvref>...>) //
-                 -> decltype(auto)                                                         //
+                 -> decltype(__f<__call_result_t<_Fun, _Tag, __minvoke<_Captures, _Cvref>...>>())
                    requires __callable<_Fun, _Tag, __minvoke<_Captures, _Cvref>...>
           {
             return ((_Fun&&) __fun)(
