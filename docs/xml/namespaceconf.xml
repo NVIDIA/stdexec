@@ -1,0 +1,153 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.1" xml:lang="en-US">
+  <compounddef id="namespaceconf" kind="namespace" language="Python">
+    <compoundname>conf</compoundname>
+      <sectiondef kind="var">
+      <memberdef kind="variable" id="conf_8py_1a45653c983098153b78e33600e39230eb" prot="public" static="no" mutable="no">
+        <type>string</type>
+        <definition>string conf.project</definition>
+        <argsstring></argsstring>
+        <name>project</name>
+        <initializer>=  &apos;stdexec&apos;</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="conf.py" line="9" column="1" bodyfile="conf.py" bodystart="9" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="conf_8py_1a33fa97cf51dcb25970fbf53f10159589" prot="public" static="no" mutable="no">
+        <type>string</type>
+        <definition>string conf.copyright</definition>
+        <argsstring></argsstring>
+        <name>copyright</name>
+        <initializer>=  &apos;2023, Eric Niebler&apos;</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="conf.py" line="10" column="1" bodyfile="conf.py" bodystart="10" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="conf_8py_1a637c239d256432248aa8d9f3ab0b8c52" prot="public" static="no" mutable="no">
+        <type>string</type>
+        <definition>string conf.author</definition>
+        <argsstring></argsstring>
+        <name>author</name>
+        <initializer>=  &apos;Eric Niebler&apos;</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="conf.py" line="11" column="1" bodyfile="conf.py" bodystart="11" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="conf_8py_1a540efa67c53e84c1c353c1df2e37e39c" prot="public" static="no" mutable="no">
+        <type>list</type>
+        <definition>list conf::extensions</definition>
+        <argsstring></argsstring>
+        <name>extensions</name>
+        <initializer>=  []</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="conf.py" line="16" column="1" bodyfile="conf.py" bodystart="16" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="conf_8py_1ae850ae634911b713e036b43894fdd525" prot="public" static="no" mutable="no">
+        <type>list</type>
+        <definition>list conf.templates_path</definition>
+        <argsstring></argsstring>
+        <name>templates_path</name>
+        <initializer>=  [&apos;_templates&apos;]</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="conf.py" line="18" column="1" bodyfile="conf.py" bodystart="18" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="conf_8py_1a7ad48fb6f3e9b129c02346ea0d3527c1" prot="public" static="no" mutable="no">
+        <type>list</type>
+        <definition>list conf.exclude_patterns</definition>
+        <argsstring></argsstring>
+        <name>exclude_patterns</name>
+        <initializer>=  [&apos;_build&apos;, &apos;Thumbs.db&apos;, &apos;.DS_Store&apos;]</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="conf.py" line="19" column="1" bodyfile="conf.py" bodystart="19" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="conf_8py_1a6c3bfcc1a44546c1c75ce20f55bd0fd6" prot="public" static="no" mutable="no">
+        <type>string</type>
+        <definition>string conf.html_theme</definition>
+        <argsstring></argsstring>
+        <name>html_theme</name>
+        <initializer>=  &apos;alabaster&apos;</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="conf.py" line="26" column="1" bodyfile="conf.py" bodystart="26" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="conf_8py_1af4fb5d8851ccaade135c2668dd3ced41" prot="public" static="no" mutable="no">
+        <type>list</type>
+        <definition>list conf.html_static_path</definition>
+        <argsstring></argsstring>
+        <name>html_static_path</name>
+        <initializer>=  [&apos;_static&apos;]</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="conf.py" line="27" column="1" bodyfile="conf.py" bodystart="27" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="conf_8py_1acb47d2c0c2904fa7d36b63142533f383" prot="public" static="no" mutable="no">
+        <type>dictionary</type>
+        <definition>dictionary conf.breathe_projects</definition>
+        <argsstring></argsstring>
+        <name>breathe_projects</name>
+        <initializer>=  { &quot;MyProject&quot;: &quot;./doxyxml/&quot; }</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="conf.py" line="32" column="1" bodyfile="conf.py" bodystart="32" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="conf_8py_1a6eba2d2c7ae923054b1c49e686ec89b9" prot="public" static="no" mutable="no">
+        <type>string</type>
+        <definition>string conf.breathe_default_project</definition>
+        <argsstring></argsstring>
+        <name>breathe_default_project</name>
+        <initializer>=  &quot;MyProject&quot;</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="conf.py" line="33" column="1" bodyfile="conf.py" bodystart="33" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="conf.py" line="1" column="1"/>
+  </compounddef>
+</doxygen>

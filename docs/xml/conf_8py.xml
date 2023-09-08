@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.1" xml:lang="en-US">
+  <compounddef id="conf_8py" kind="file" language="Python">
+    <compoundname>conf.py</compoundname>
+    <innernamespace refid="namespaceconf">conf</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="comment">#<sp/>Configuration<sp/>file<sp/>for<sp/>the<sp/>Sphinx<sp/>documentation<sp/>builder.</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="2"><highlight class="normal"></highlight><highlight class="comment">#</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="3"><highlight class="normal"></highlight><highlight class="comment">#<sp/>For<sp/>the<sp/>full<sp/>list<sp/>of<sp/>built-in<sp/>configuration<sp/>values,<sp/>see<sp/>the<sp/>documentation:</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="4"><highlight class="normal"></highlight><highlight class="comment">#<sp/>https://www.sphinx-doc.org/en/master/usage/configuration.html</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="comment">#<sp/>--<sp/>Project<sp/>information<sp/>-----------------------------------------------------</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight><highlight class="comment">#<sp/>https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal">project<sp/>=<sp/></highlight><highlight class="stringliteral">&apos;stdexec&apos;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="10"><highlight class="normal">copyright<sp/>=<sp/></highlight><highlight class="stringliteral">&apos;2023,<sp/>Eric<sp/>Niebler&apos;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="11"><highlight class="normal">author<sp/>=<sp/></highlight><highlight class="stringliteral">&apos;Eric<sp/>Niebler&apos;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="12"><highlight class="normal"></highlight></codeline>
+<codeline lineno="13"><highlight class="normal"></highlight><highlight class="comment">#<sp/>--<sp/>General<sp/>configuration<sp/>---------------------------------------------------</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="14"><highlight class="normal"></highlight><highlight class="comment">#<sp/>https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="15"><highlight class="normal"></highlight></codeline>
+<codeline lineno="16"><highlight class="normal">extensions<sp/>=<sp/>[]</highlight></codeline>
+<codeline lineno="17"><highlight class="normal"></highlight></codeline>
+<codeline lineno="18"><highlight class="normal">templates_path<sp/>=<sp/>[</highlight><highlight class="stringliteral">&apos;_templates&apos;</highlight><highlight class="normal">]</highlight></codeline>
+<codeline lineno="19"><highlight class="normal">exclude_patterns<sp/>=<sp/>[</highlight><highlight class="stringliteral">&apos;_build&apos;</highlight><highlight class="normal">,<sp/></highlight><highlight class="stringliteral">&apos;Thumbs.db&apos;</highlight><highlight class="normal">,<sp/></highlight><highlight class="stringliteral">&apos;.DS_Store&apos;</highlight><highlight class="normal">]</highlight></codeline>
+<codeline lineno="20"><highlight class="normal"></highlight></codeline>
+<codeline lineno="21"><highlight class="normal"></highlight></codeline>
+<codeline lineno="22"><highlight class="normal"></highlight></codeline>
+<codeline lineno="23"><highlight class="normal"></highlight><highlight class="comment">#<sp/>--<sp/>Options<sp/>for<sp/>HTML<sp/>output<sp/>-------------------------------------------------</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="24"><highlight class="normal"></highlight><highlight class="comment">#<sp/>https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="25"><highlight class="normal"></highlight></codeline>
+<codeline lineno="26"><highlight class="normal">html_theme<sp/>=<sp/></highlight><highlight class="stringliteral">&apos;alabaster&apos;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="27"><highlight class="normal">html_static_path<sp/>=<sp/>[</highlight><highlight class="stringliteral">&apos;_static&apos;</highlight><highlight class="normal">]</highlight></codeline>
+<codeline lineno="28"><highlight class="normal"></highlight></codeline>
+<codeline lineno="29"><highlight class="normal"></highlight></codeline>
+<codeline lineno="30"><highlight class="normal"></highlight><highlight class="keyword">import</highlight><highlight class="normal"><sp/>breathe</highlight></codeline>
+<codeline lineno="31"><highlight class="normal"></highlight></codeline>
+<codeline lineno="32"><highlight class="normal">breathe_projects<sp/>=<sp/>{<sp/></highlight><highlight class="stringliteral">&quot;MyProject&quot;</highlight><highlight class="normal">:<sp/></highlight><highlight class="stringliteral">&quot;./doxyxml/&quot;</highlight><highlight class="normal"><sp/>}</highlight></codeline>
+<codeline lineno="33"><highlight class="normal">breathe_default_project<sp/>=<sp/></highlight><highlight class="stringliteral">&quot;MyProject&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="34"><highlight class="normal"></highlight></codeline>
+<codeline lineno="35"><highlight class="normal">extensions<sp/>=<sp/>[</highlight><highlight class="stringliteral">&apos;breathe&apos;</highlight><highlight class="normal">]</highlight></codeline>
+    </programlisting>
+    <location file="conf.py"/>
+  </compounddef>
+</doxygen>
