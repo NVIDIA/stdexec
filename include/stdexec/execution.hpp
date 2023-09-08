@@ -1930,7 +1930,7 @@ namespace stdexec {
         if constexpr (!enable_receiver<__decay_t<_Receiver>>)
           _PLEASE_UPDATE_YOUR_RECEIVER_TYPE< __decay_t<_Receiver>>();
 
-        static_assert(__check_signatures<__decay_t<_Sender>, env_of_t<__decay_t<_Receiver>>>());
+        static_assert(__check_signatures<_Sender, env_of_t<_Receiver>>());
 
         constexpr bool _NothrowTfxSender =
           __nothrow_callable<get_env_t, _Receiver&>
