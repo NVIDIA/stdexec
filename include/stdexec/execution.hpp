@@ -1905,6 +1905,22 @@ namespace stdexec {
       __callable<__connect_awaitable_t, __tfx_sender<_Sender, _Receiver>, _Receiver>;
 
     struct connect_t {
+
+      template <class _Sender, class _Env>
+      static constexpr bool __check_signatures() {
+        if constexpr (sender_in<_Sender, _Env>) {
+          // Instantiate __debug_sender via completion_signatures_of_t
+          // to check that the actual completions match the expected
+          // completions.
+          //
+          // Instantiate completion_signatures_of_t only if sender_in
+          // is true to workaround Clang not implementing CWG#2369 yet (connect()
+          // does have a constraint for _Sender satisfying sender_in).
+          using __checked_signatures [[maybe_unused]] = completion_signatures_of_t<_Sender, _Env>;
+        }
+        return true;
+      }
+
       template <class _Sender, class _Receiver>
       static constexpr auto __select_impl() noexcept {
         // Report that 2300R5-style senders and receivers are deprecated:
@@ -1913,6 +1929,8 @@ namespace stdexec {
 
         if constexpr (!enable_receiver<__decay_t<_Receiver>>)
           _PLEASE_UPDATE_YOUR_RECEIVER_TYPE< __decay_t<_Receiver>>();
+
+        static_assert(__check_signatures<__decay_t<_Sender>, env_of_t<__decay_t<_Receiver>>>());
 
         constexpr bool _NothrowTfxSender =
           __nothrow_callable<get_env_t, _Receiver&>
@@ -4236,7 +4254,7 @@ namespace stdexec {
           __cvref_t<_CvrefSenderId>,
           __env_t<__t<_EnvId>>,
           completion_signatures<
-            set_error_t(const std::exception_ptr&),
+            set_error_t(std::exception_ptr&&),
             set_stopped_t()>, // NOT TO SPEC
           __q<__set_value_t>,
           __q<__set_error_t>>;
