@@ -5331,6 +5331,33 @@ namespace stdexec {
   inline constexpr transfer_t transfer{};
 
   /////////////////////////////////////////////////////////////////////////////
+  // [execution.senders.transfer_just]
+  namespace __transfer_just {
+    struct transfer_just_t {
+      template <scheduler _Scheduler, __movable_value... _Values>
+        requires tag_invocable<transfer_just_t, _Scheduler, _Values...>
+              && sender<tag_invoke_result_t<transfer_just_t, _Scheduler, _Values...>>
+      auto operator()(_Scheduler&& __sched, _Values&&... __vals) const
+        noexcept(nothrow_tag_invocable<transfer_just_t, _Scheduler, _Values...>)
+          -> tag_invoke_result_t<transfer_just_t, _Scheduler, _Values...> {
+        return tag_invoke(*this, (_Scheduler&&) __sched, (_Values&&) __vals...);
+      }
+
+      template <scheduler _Scheduler, __movable_value... _Values>
+        requires(
+          !tag_invocable<transfer_just_t, _Scheduler, _Values...>
+          || !sender<tag_invoke_result_t<transfer_just_t, _Scheduler, _Values...>>)
+      auto operator()(_Scheduler&& __sched, _Values&&... __vals) const
+        -> decltype(transfer(just((_Values&&) __vals...), (_Scheduler&&) __sched)) {
+        return transfer(just((_Values&&) __vals...), (_Scheduler&&) __sched);
+      }
+    };
+  } // namespace __transfer_just
+
+  using __transfer_just::transfer_just_t;
+  inline constexpr transfer_just_t transfer_just{};
+
+  /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.on]
   namespace __on {
     template <class _SchedulerId, class _SenderId, class _ReceiverId>
@@ -5530,33 +5557,6 @@ namespace stdexec {
     extern __mconst<__on::__sender<__t<_SchedulerId>, __name_of<__t<_SenderId>>>>
       __name_of_v<__on::__sender<_SchedulerId, _SenderId>>;
   }
-
-  /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.transfer_just]
-  namespace __transfer_just {
-    struct transfer_just_t {
-      template <scheduler _Scheduler, __movable_value... _Values>
-        requires tag_invocable<transfer_just_t, _Scheduler, _Values...>
-              && sender<tag_invoke_result_t<transfer_just_t, _Scheduler, _Values...>>
-      auto operator()(_Scheduler&& __sched, _Values&&... __vals) const
-        noexcept(nothrow_tag_invocable<transfer_just_t, _Scheduler, _Values...>)
-          -> tag_invoke_result_t<transfer_just_t, _Scheduler, _Values...> {
-        return tag_invoke(*this, (_Scheduler&&) __sched, (_Values&&) __vals...);
-      }
-
-      template <scheduler _Scheduler, __movable_value... _Values>
-        requires(
-          !tag_invocable<transfer_just_t, _Scheduler, _Values...>
-          || !sender<tag_invoke_result_t<transfer_just_t, _Scheduler, _Values...>>)
-      auto operator()(_Scheduler&& __sched, _Values&&... __vals) const
-        -> decltype(transfer(just((_Values&&) __vals...), (_Scheduler&&) __sched)) {
-        return transfer(just((_Values&&) __vals...), (_Scheduler&&) __sched);
-      }
-    };
-  } // namespace __transfer_just
-
-  using __transfer_just::transfer_just_t;
-  inline constexpr transfer_just_t transfer_just{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.into_variant]
