@@ -417,6 +417,25 @@ namespace stdexec {
     template <class _Tag>
     struct __deleted { };
 
+    template <class _Tag, class _Value>
+    struct __prop {
+      _Value __value_;
+
+      template <same_as<_Tag> _Key>
+      friend auto tag_invoke(_Key, const __prop& __self) //
+        noexcept(__nothrow_decay_copyable<_Value>) -> _Value {
+        return __self.__value_;
+      }
+    };
+
+    struct __mkprop_t {
+      template <class _Tag, class _Value>
+      auto operator()(_Tag, _Value&& __value) const noexcept(__nothrow_decay_copyable<_Value>)
+        -> __prop<_Tag, __decay_t<_Value>> {
+        return {(_Value&&) __value};
+      }
+    };
+
     template <__nothrow_move_constructible _Fun>
     struct __env_fn {
       using __t = __env_fn;
@@ -604,6 +623,9 @@ namespace stdexec {
   inline constexpr __env::__make_env_t __make_env{};
   inline constexpr __env::__join_env_t __join_env{};
   inline constexpr __env::get_env_t get_env{};
+
+  // for making an environment from a single key/value pair
+  inline constexpr __env::__mkprop_t __mkprop{};
 
   template <class... _Ts>
   using __make_env_t = __call_result_t<__env::__make_env_t, _Ts...>;
