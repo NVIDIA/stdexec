@@ -222,6 +222,7 @@ namespace exec {
         return __nest_operation_t<_Receiver>{
           __self.__scope_, ((_Self&&) __self).__c_, (_Receiver&&) __rcvr};
       }
+
       template <__decays_to<__nest_sender> _Self, class _Env>
       friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
         -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>> {
@@ -597,10 +598,17 @@ namespace exec {
 
     ////////////////////////////////////////////////////////////////////////////
     // async_scope::spawn implementation
+    template <class _Env>
+    using __spawn_env_t = __result_of<
+      __join_env,
+      _Env,
+      __env::__prop<get_stop_token_t, in_place_stop_token>,
+      __env::__prop<get_scheduler_t, __inln::__scheduler>>;
+
     template <class _EnvId>
     struct __spawn_op_base {
       using _Env = __t<_EnvId>;
-      __env_t<_Env> __env_;
+      __spawn_env_t<_Env> __env_;
       void (*__delete_)(__spawn_op_base*);
     };
 
@@ -623,7 +631,7 @@ namespace exec {
         std::terminate();
       }
 
-      friend const __env_t<_Env>& tag_invoke(get_env_t, const __spawn_rcvr& __self) noexcept {
+      friend const __spawn_env_t<_Env>& tag_invoke(get_env_t, const __spawn_rcvr& __self) noexcept {
         return __self.__op_->__env_;
       }
     };
@@ -638,8 +646,9 @@ namespace exec {
 
       template <__decays_to<_Sender> _Sndr>
       __spawn_op(_Sndr&& __sndr, _Env __env, const __impl* __scope)
-        : __spawn_op_base<_EnvId>{make_env((_Env&&) __env,
-                                    with(get_stop_token, __scope->__stop_source_.get_token())),
+        : __spawn_op_base<_EnvId>{__join_env((_Env&&) __env,
+          __mkprop(get_stop_token, __scope->__stop_source_.get_token()),
+          __mkprop(get_scheduler, __inln::__scheduler{})),
           [](__spawn_op_base<_EnvId>* __op) {
             delete static_cast<__spawn_op*>(__op);
           }}
@@ -682,7 +691,7 @@ namespace exec {
         return nest_result_t<_Constrained>{&__impl_, (_Constrained&&) __c};
       }
 
-      template <__movable_value _Env = empty_env, sender_in<__env_t<_Env>> _Sender>
+      template <__movable_value _Env = empty_env, sender_in<__spawn_env_t<_Env>> _Sender>
         requires sender_to<nest_result_t<_Sender>, __spawn_receiver_t<_Env>>
       void spawn(_Sender&& __sndr, _Env __env = {}) {
         using __op_t = __spawn_operation_t<nest_result_t<_Sender>, _Env>;
