@@ -179,6 +179,9 @@ namespace stdexec {
     _ERROR_ operator,(__msuccess) const noexcept;
   };
 
+  template <__mstring _What>
+  struct _WHAT_ { };
+
   template <class _What, class... _With>
   using __mexception = _ERROR_<_What, _With...>;
 
