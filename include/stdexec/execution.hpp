@@ -2423,7 +2423,7 @@ namespace stdexec {
       using __id = __scheduler;
 
       friend auto tag_invoke(schedule_t, __scheduler) {
-        return make_sender<__schedule_t>();
+        return make_sender_expr<__schedule_t>();
       }
 
       bool operator==(const __scheduler&) const noexcept = default;
@@ -2593,7 +2593,7 @@ namespace stdexec {
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
         auto
         operator()(_Ts&&... __ts) const noexcept((__nothrow_decay_copyable<_Ts> && ...)) {
-        return make_sender<__just_t>(__decayed_tuple<_Ts...>{(_Ts&&) __ts...});
+        return make_sender_expr<__just_t>(__decayed_tuple<_Ts...>{(_Ts&&) __ts...});
       }
     } just{};
 
@@ -2602,7 +2602,7 @@ namespace stdexec {
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
         auto
         operator()(_Error&& __err) const noexcept(__nothrow_decay_copyable<_Error>) {
-        return make_sender<__just_error_t>(__decayed_tuple<_Error>{(_Error&&) __err});
+        return make_sender_expr<__just_error_t>(__decayed_tuple<_Error>{(_Error&&) __err});
       }
     } just_error{};
 
@@ -2610,7 +2610,7 @@ namespace stdexec {
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
         auto
         operator()() const noexcept {
-        return make_sender<__just_stopped_t>(__decayed_tuple<>());
+        return make_sender_expr<__just_stopped_t>(__decayed_tuple<>());
       }
     } just_stopped{};
   }
@@ -3162,7 +3162,7 @@ namespace stdexec {
       auto operator()(_Sender&& __sndr, _Fun __fun) const {
         auto __domain = __get_sender_domain((_Sender&&) __sndr);
         return __domain.transform_sender(
-          make_sender<then_t>((_Fun&&) __fun, (_Sender&&) __sndr));
+          make_sender_expr<then_t>((_Fun&&) __fun, (_Sender&&) __sndr));
       }
 
       template <__movable_value _Fun>
@@ -3183,7 +3183,7 @@ namespace stdexec {
 #if STDEXEC_FRIENDSHIP_IS_LEXICAL()
      private:
       template <class...>
-      friend struct stdexec::basic_sender;
+      friend struct stdexec::__sexpr;
 #endif
 
       template <sender_expr_for<then_t> _Sender, class _Env>
@@ -3303,7 +3303,7 @@ namespace stdexec {
       auto operator()(_Sender&& __sndr, _Fun __fun) const {
         auto __domain = __get_sender_domain((_Sender&&) __sndr, set_error);
         return __domain.transform_sender(
-          make_sender<upon_error_t>((_Fun&&) __fun, (_Sender&&) __sndr));
+          make_sender_expr<upon_error_t>((_Fun&&) __fun, (_Sender&&) __sndr));
       }
 
       template <__movable_value _Fun>
@@ -3324,7 +3324,7 @@ namespace stdexec {
 #if STDEXEC_FRIENDSHIP_IS_LEXICAL()
      private:
       template <class...>
-      friend struct stdexec::basic_sender;
+      friend struct stdexec::__sexpr;
 #endif
 
       template <sender_expr_for<upon_error_t> _Sender, class _Env>
@@ -3446,7 +3446,7 @@ namespace stdexec {
       auto operator()(_Sender&& __sndr, _Fun __fun) const {
         auto __domain = __get_sender_domain((_Sender&&) __sndr, set_stopped);
         return __domain.transform_sender(
-          make_sender<upon_stopped_t>((_Fun&&) __fun, (_Sender&&) __sndr));
+          make_sender_expr<upon_stopped_t>((_Fun&&) __fun, (_Sender&&) __sndr));
       }
 
       template <__movable_value _Fun>
@@ -3468,7 +3468,7 @@ namespace stdexec {
 #if STDEXEC_FRIENDSHIP_IS_LEXICAL()
      private:
       template <class...>
-      friend struct stdexec::basic_sender;
+      friend struct stdexec::__sexpr;
 #endif
 
       template <sender_expr_for<upon_stopped_t> _Sender, class _Env>
@@ -3640,7 +3640,7 @@ namespace stdexec {
         operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const {
         auto __domain = __get_sender_domain((_Sender&&) __sndr);
         return __domain.transform_sender(
-          make_sender<bulk_t>(__data{__shape, (_Fun&&) __fun}, (_Sender&&) __sndr));
+          make_sender_expr<bulk_t>(__data{__shape, (_Fun&&) __fun}, (_Sender&&) __sndr));
       }
 
       template <integral _Shape, class _Fun>
@@ -3669,7 +3669,7 @@ namespace stdexec {
 #if STDEXEC_FRIENDSHIP_IS_LEXICAL()
      private:
       template <class...>
-      friend struct stdexec::basic_sender;
+      friend struct stdexec::__sexpr;
 #endif
 
       template <class _Sender>
@@ -3904,7 +3904,7 @@ namespace stdexec {
 #if STDEXEC_FRIENDSHIP_IS_LEXICAL()
      private:
       template <class...>
-      friend struct stdexec::basic_sender;
+      friend struct stdexec::__sexpr;
 #endif
 
       template <class... _Tys>
@@ -3981,7 +3981,7 @@ namespace stdexec {
       // the real split sender, which might consume the sender.
       template <class _Domain, class _Sender, class... _Env>
       static auto __make_split_sender(_Domain __domain, _Sender&& __sndr, _Env&&... __env) {
-        using __split_sender_t = __result_of<make_sender<split_t>, __, _Sender>;
+        using __split_sender_t = __result_of<make_sender_expr<split_t>, __, _Sender>;
         using __tfx_sender_t = //
           decltype(__domain.transform_sender(
             __declval<__copy_cvref_t<_Sender, __split_sender_t>>(), __env...));
@@ -3989,13 +3989,13 @@ namespace stdexec {
         // If transforming the sender changes the type, then use the transformed
         // sender.
         if constexpr (!same_as<__decay_t<__split_sender_t>, __decay_t<__tfx_sender_t>>) {
-          auto __split_sender = make_sender<split_t>(__(), (_Sender&&) __sndr);
+          auto __split_sender = make_sender_expr<split_t>(__(), (_Sender&&) __sndr);
           return __domain.transform_sender(
             const_cast<__copy_cvref_t<_Sender, __split_sender_t>&&>(__split_sender), __env...);
         } else {
           using __sh_state_t = __t<__sh_state<__cvref_id<_Sender>, __id<__decay_t<_Env>>...>>;
           auto __sh_state = std::make_shared<__sh_state_t>((_Sender&&) __sndr, (_Env&&) __env...);
-          return make_sender<__split_t>(std::move(__sh_state));
+          return make_sender_expr<__split_t>(std::move(__sh_state));
         }
       }
 
@@ -4227,7 +4227,7 @@ namespace stdexec {
 #if STDEXEC_FRIENDSHIP_IS_LEXICAL()
      private:
       template <class...>
-      friend struct stdexec::basic_sender;
+      friend struct stdexec::__sexpr;
       friend struct ensure_started_t;
 #endif
 
@@ -4330,7 +4330,7 @@ namespace stdexec {
           return (_Sender&&) __sndr;
         } else {
           using __ensure_started_sender_t =
-            __result_of<make_sender<ensure_started_t>, __, _Sender>;
+            __result_of<make_sender_expr<ensure_started_t>, __, _Sender>;
           using __tfx_sender_t = //
             decltype(__domain.transform_sender(
               __declval<__copy_cvref_t<_Sender, __ensure_started_sender_t>>(), __env...));
@@ -4338,7 +4338,7 @@ namespace stdexec {
           // If transforming the sender changes the type, then use the transformed
           // sender.
           if constexpr (!same_as<__decay_t<__ensure_started_sender_t>, __decay_t<__tfx_sender_t>>) {
-            auto __ensure_started_sender = make_sender<ensure_started_t>(
+            auto __ensure_started_sender = make_sender_expr<ensure_started_t>(
               __(), (_Sender&&) __sndr);
             return __domain.transform_sender(
               const_cast<__copy_cvref_t<_Sender, __ensure_started_sender_t>&&>(
@@ -4347,7 +4347,7 @@ namespace stdexec {
           } else {
             using __sh_state_t = __t<__sh_state<__cvref_id<_Sender>, __id<__decay_t<_Env>>...>>;
             auto __sh_state = __make_intrusive<__sh_state_t>((_Sender&&) __sndr, (_Env&&) __env...);
-            return make_sender<__ensure_started_t>(__data{std::move(__sh_state)});
+            return make_sender_expr<__ensure_started_t>(__data{std::move(__sh_state)});
           }
         }
       }
@@ -5225,7 +5225,7 @@ namespace stdexec {
       auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const {
         using __env_t = __t<__env<__id<__decay_t<_Scheduler>>>>;
         auto __domain = query_or(get_domain, __sched, __default_domain());
-        return __domain.transform_sender(make_sender<schedule_from_t>(
+        return __domain.transform_sender(make_sender_expr<schedule_from_t>(
           __env_t{(_Scheduler&&) __sched}, (_Sender&&) __sndr));
       }
 
@@ -5237,7 +5237,7 @@ namespace stdexec {
 #if STDEXEC_FRIENDSHIP_IS_LEXICAL()
      private:
       template <class...>
-      friend struct stdexec::basic_sender;
+      friend struct stdexec::__sexpr;
 #endif
 
       template <class _Sender>
@@ -5484,7 +5484,7 @@ namespace stdexec {
           return {};
         }
 
-        // BUGBUG better would be to port the `on` algorithm to basic_sender
+        // BUGBUG better would be to port the `on` algorithm to __sexpr
         template <class _Self, class _Fun, class _OnTag = on_t>
         static auto apply(_Self&& __self, _Fun __fun) -> __call_result_t<
           _Fun,
@@ -5517,14 +5517,14 @@ namespace stdexec {
   using __on::on_t;
   inline constexpr on_t on{};
 
-  // BUGBUG this wouldn't be necessary if `on` returned a basic_sender
+  // BUGBUG this wouldn't be necessary if `on` returned a __sexpr
   template <class _Domain>
-  inline constexpr auto make_sender<on_t, _Domain> =
+  inline constexpr auto make_sender_expr<on_t, _Domain> =
     []<class _Scheduler, class _Sender>(_Scheduler&& __sched, _Sender&& __sndr) {
       return on((_Scheduler&&) __sched, (_Sender&&) __sndr);
     };
 
-  // BUGBUG this will also be unnecessary when `on` returns a basic_sender
+  // BUGBUG this will also be unnecessary when `on` returns a __sexpr
   namespace __detail {
     template <class _SchedulerId, class _SenderId>
     extern __mconst<__on::__sender<__t<_SchedulerId>, __name_of<__t<_SenderId>>>>
@@ -5678,7 +5678,7 @@ namespace stdexec {
   using __into_variant::into_variant_t;
   inline constexpr into_variant_t into_variant{};
 
-  // Temporary until we migrate into_variant() to use basic_sender:
+  // Temporary until we migrate into_variant() to use __sexpr:
   namespace __detail {
     struct __into_variant_sender_name {
       template <class _Sender>
@@ -6075,7 +6075,7 @@ namespace stdexec {
       auto operator()(_Senders&&... __sndrs) const {
         auto __domain = when_all_t::__common_domain(__get_sender_domain((_Senders&&) __sndrs)...);
         return __domain.transform_sender(
-          make_sender<when_all_t>(__(), (_Senders&&) __sndrs...));
+          make_sender_expr<when_all_t>(__(), (_Senders&&) __sndrs...));
       }
 
       using _Sender = __1;
@@ -6085,7 +6085,7 @@ namespace stdexec {
 #if STDEXEC_FRIENDSHIP_IS_LEXICAL()
      private:
       template <class...>
-      friend struct stdexec::basic_sender;
+      friend struct stdexec::__sexpr;
 #endif
 
       template <class _Domain, class... _OtherDomains>
