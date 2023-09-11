@@ -156,7 +156,6 @@ TEST_CASE(
     ex::on(sch, ex::just()) //
     | ex::upon_stopped([&] {
         work_executed = true;
-        printf(".\n");
       }));
   // note that we don't tell impulse sender to start the work
 

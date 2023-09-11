@@ -54,18 +54,18 @@ namespace stdexec {
   } // namespace __detail
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  // __basic_sender
+  // __sexpr
   template <class...>
-  struct __basic_sender {
-    using __id = __basic_sender;
-    using __t = __basic_sender;
+  struct __sexpr {
+    using __id = __sexpr;
+    using __t = __sexpr;
   };
 
   template <class _ImplFn>
-  struct __basic_sender<_ImplFn> {
+  struct __sexpr<_ImplFn> {
     using is_sender = void;
-    using __t = __basic_sender;
-    using __id = __basic_sender;
+    using __t = __sexpr;
+    using __id = __sexpr;
     using __tag_t = __call_result_t<_ImplFn, __cp, __detail::__get_tag>;
 
     static __tag_t __tag() noexcept {
@@ -75,11 +75,11 @@ namespace stdexec {
     mutable _ImplFn __impl_;
 
     STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      explicit __basic_sender(_ImplFn __impl)
+      explicit __sexpr(_ImplFn __impl)
       : __impl_((_ImplFn&&) __impl) {
     }
 
-    template <same_as<get_env_t> _Tag, same_as<__basic_sender> _Self>
+    template <same_as<get_env_t> _Tag, same_as<__sexpr> _Self>
     friend auto tag_invoke(_Tag, const _Self& __self) noexcept //
       -> __msecond<
         __if_c<same_as<_Tag, get_env_t>>, //
@@ -90,7 +90,7 @@ namespace stdexec {
 
     template <
       same_as<get_completion_signatures_t> _Tag,
-      __decays_to<__basic_sender> _Self,
+      __decays_to<__sexpr> _Self,
       class _Env>
     friend auto tag_invoke(_Tag, _Self&& __self, _Env&& __env) //
       -> __msecond<
@@ -102,7 +102,7 @@ namespace stdexec {
     // BUGBUG fix receiver constraint here:
     template <
       same_as<connect_t> _Tag,
-      __decays_to<__basic_sender> _Self,
+      __decays_to<__sexpr> _Self,
       /*receiver*/ class _Receiver>
     friend auto tag_invoke(_Tag, _Self&& __self, _Receiver&& __rcvr)                     //
       noexcept(noexcept(__self.__tag().connect((_Self&&) __self, (_Receiver&&) __rcvr))) //
@@ -124,13 +124,13 @@ namespace stdexec {
 
   template <class _ImplFn>
   STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-    __basic_sender(_ImplFn) -> __basic_sender<_ImplFn>;
+    __sexpr(_ImplFn) -> __sexpr<_ImplFn>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  // make_sender
+  // make_sender_expr
   namespace __detail {
     template <class _Tag, class _Domain = __default_domain<>>
-    struct make_sender_t {
+    struct make_sender_expr_t {
       template <class _Data = __, class... _Children>
       constexpr auto operator()(_Data __data = {}, _Children... __children) const;
     };
@@ -186,8 +186,8 @@ namespace stdexec {
     template <class _Tag, class _Domain>
     template <class _Data, class... _Children>
     constexpr auto
-      make_sender_t<_Tag, _Domain>::operator()(_Data __data, _Children... __children) const {
-      return __basic_sender{
+      make_sender_expr_t<_Tag, _Domain>::operator()(_Data __data, _Children... __children) const {
+      return __sexpr{
         __detail::__make_tuple(_Tag(), __detail::__mbc(__data), __detail::__mbc(__children)...)};
     }
 #else
@@ -211,18 +211,18 @@ namespace stdexec {
     template <class _Tag, class _Domain>
     template <class _Data, class... _Children>
     constexpr auto
-      make_sender_t<_Tag, _Domain>::operator()(_Data __data, _Children... __children) const {
-      return __basic_sender{
+      make_sender_expr_t<_Tag, _Domain>::operator()(_Data __data, _Children... __children) const {
+      return __sexpr{
         __detail::__make_tuple(_Tag(), (_Data&&) __data, (_Children&&) __children...)};
     };
 #endif
   } // namespace __detail
 
   template <class _Tag, class _Domain = __default_domain<>>
-  inline constexpr __detail::make_sender_t<_Tag, _Domain> make_sender{};
+  inline constexpr __detail::make_sender_expr_t<_Tag, _Domain> make_sender_expr{};
 
   template <class _Tag, class _Data, class... _Children>
-  using __basic_sender_t = __result_of<make_sender<_Tag>, _Data, _Children...>;
+  using __sexpr_t = __result_of<make_sender_expr<_Tag>, _Data, _Children...>;
 
   namespace __detail {
     struct apply_sender_t {
@@ -241,7 +241,7 @@ namespace stdexec {
   inline constexpr apply_sender_t apply_sender{};
 
   template <class _Sender, class _ApplyFn>
-  using __apply_sender_result_t = __call_result_t<apply_sender_t, _Sender, _ApplyFn>;
+  using apply_sender_result_t = __call_result_t<apply_sender_t, _Sender, _ApplyFn>;
 
   template <class _Sender>
   using __tag_of = __call_result_t<apply_sender_t, _Sender, __detail::__get_tag>;
@@ -266,12 +266,12 @@ namespace stdexec {
   inline constexpr std::size_t __nbr_children_of = __v<__children_of<_Sender, __msize>>;
 
   template <class _Sender>
-  concept __lazy_sender = //
+  concept sender_expr = //
     __mvalid<__tag_of, _Sender>;
 
   template <class _Sender, class _Tag>
-  concept __lazy_sender_for = //
-    __lazy_sender<_Sender> && same_as<__tag_of<_Sender>, _Tag>;
+  concept sender_expr_for = //
+    sender_expr<_Sender> && same_as<__tag_of<_Sender>, _Tag>;
 
   // The __name_of utility defined below is used to pretty-print the type names of
   // senders in compiler diagnostics.
@@ -285,14 +285,14 @@ namespace stdexec {
     template <class _Sender>
     using __name_of = __minvoke<__name_of_fn<_Sender>, _Sender>;
 
-    struct __lazy_sender_name {
+    struct __sexpr_name {
       template <class _Sender>
       using __f = //
-        __call_result_t<__apply_sender_result_t<_Sender, __lazy_sender_name>>;
+        __call_result_t<apply_sender_result_t<_Sender, __sexpr_name>>;
 
       template <class _Tag, class _Data, class... _Children>
       auto operator()(_Tag, _Data&&, _Children&&...) const //
-        -> __basic_sender<_Tag, _Data, __name_of<_Children>...> (*)();
+        -> __sexpr<_Tag, _Data, __name_of<_Children>...> (*)();
     };
 
     struct __id_name {
@@ -310,7 +310,7 @@ namespace stdexec {
     extern __mcompose<__cpclr, __name_of_fn<_Sender>> __name_of_v<const _Sender&>;
 
     template <class _Impl>
-    extern __lazy_sender_name __name_of_v<__basic_sender<_Impl>>;
+    extern __sexpr_name __name_of_v<__sexpr<_Impl>>;
 
     template <__has_id _Sender>
       requires(!same_as<__id<_Sender>, _Sender>)
