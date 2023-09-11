@@ -289,14 +289,9 @@ namespace exec {
         STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
           this _Self&&,
           get_completion_signatures_t,
-          _Env&&) -> dependent_completion_signatures<_Env>;
-
-        template <__decays_to<__t> _Self, class _Env>
-        STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
-          this _Self&&,
-          get_completion_signatures_t,
-          _Env&&) -> __completion_signatures_t<_Env, _SenderIds...>
-          requires true;
+          _Env&&) -> __completion_signatures_t<_Env, _SenderIds...> {
+          return {};
+        }
 
         std::tuple<stdexec::__t<_SenderIds>...> __senders_;
       };

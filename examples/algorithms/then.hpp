@@ -74,7 +74,9 @@ struct _then_sender {
   STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
     this _then_sender&&,
     stdexec::get_completion_signatures_t,
-    Env) -> _completions_t<Env>;
+    Env) -> _completions_t<Env> {
+    return {};
+  }
 
   // Connect:
   template <class R>

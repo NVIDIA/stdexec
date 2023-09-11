@@ -179,6 +179,9 @@ namespace stdexec {
     _ERROR_ operator,(__msuccess) const noexcept;
   };
 
+  template <__mstring _What>
+  struct _WHAT_ { };
+
   template <class _What, class... _With>
   using __mexception = _ERROR_<_What, _With...>;
 
@@ -194,18 +197,6 @@ namespace stdexec {
   template <class... _Ts>
   using __disp = decltype((__msuccess(), ..., __ok_t<_Ts>()));
 
-  template <bool _AllOK>
-  struct __i {
-    template <template <class...> class _Fn, class... _Args>
-    using __g = _Fn<_Args...>;
-  };
-
-  template <>
-  struct __i<false> {
-    template <template <class...> class, class... _Args>
-    using __g = __disp<_Args...>;
-  };
-
   template <class _Arg>
   concept __ok = __same_as<__ok_t<_Arg>, __msuccess>;
 
@@ -214,6 +205,9 @@ namespace stdexec {
 
   template <class... _Args>
   concept _Ok = (__ok<_Args> && ...);
+
+  template <bool _AllOK>
+  struct __i;
 
 #if STDEXEC_NVHPC()
   // Most compilers memoize alias template specializations, but
@@ -234,15 +228,48 @@ namespace stdexec {
   template <template <class...> class _Fn, class... _Args>
   using __meval = __t<__meval_<_Fn, _Args...>>;
 
+  template <class _Fn, class... _Args>
+  using __minvoke__ = typename __i<_Ok<_Fn>>::template __h<_Fn, _Args...>;
+
+  template <class _Fn, class... _Args>
+  struct __minvoke_ { };
+
+  template <class _Fn, class... _Args>
+    requires __typename<__minvoke__<_Fn, _Args...>>
+  struct __minvoke_<_Fn, _Args...> {
+    using __t = __minvoke__<_Fn, _Args...>;
+  };
+
+  template <class _Fn, class... _Args>
+  using __minvoke = __t<__minvoke_<_Fn, _Args...>>;
+
 #else
 
   template <template <class...> class _Fn, class... _Args>
   using __meval = typename __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
 
+  template <class _Fn, class... _Args>
+  using __minvoke = typename __i<_Ok<_Fn>>::template __h<_Fn, _Args...>;
+
 #endif
 
-  template <class _Fn, class... _Args>
-  using __minvoke = __meval<_Fn::template __f, _Args...>;
+  template <bool _AllOK>
+  struct __i {
+    template <template <class...> class _Fn, class... _Args>
+    using __g = _Fn<_Args...>;
+
+    template <class _Fn, class... _Args>
+    using __h = __meval<_Fn::template __f, _Args...>;
+  };
+
+  template <>
+  struct __i<false> {
+    template <template <class...> class, class... _Args>
+    using __g = __disp<_Args...>;
+
+    template <class _Fn, class...>
+    using __h = _Fn;
+  };
 
   template <template <class...> class _Fn>
   struct __q {

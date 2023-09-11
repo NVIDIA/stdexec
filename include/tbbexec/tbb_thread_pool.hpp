@@ -386,14 +386,9 @@ namespace tbbexec {
           STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
             this Self&&,
             stdexec::get_completion_signatures_t,
-            Env&&) -> stdexec::dependent_completion_signatures<Env>;
-
-          template <stdexec::__decays_to<bulk_sender> Self, class Env>
-          STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
-            this Self&&,
-            stdexec::get_completion_signatures_t,
-            Env&&) -> completion_signatures<Self, Env>
-            requires true;
+            Env&&) -> completion_signatures<Self, Env> {
+            return {};
+          }
 
           template <stdexec::tag_category<stdexec::forwarding_query> Tag, class... As>
             requires stdexec::__callable<Tag, const Sender&, As...>

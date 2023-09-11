@@ -16,6 +16,7 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
+#include "../../stdexec/__detail/__ranges.hpp"
 #include <type_traits>
 
 #include <cuda/std/type_traits>
@@ -27,8 +28,8 @@
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
   template <class Range, class InitT, class Fun>
-  using binary_invoke_result_t =
-    ::cuda::std::decay_t<::cuda::std::invoke_result_t<Fun, range_value_t<Range>, InitT>>;
+  using binary_invoke_result_t = ::cuda::std::decay_t<
+    ::cuda::std::invoke_result_t<Fun, stdexec::ranges::range_reference_t<Range>, InitT>>;
 
   template <class SenderId, class ReceiverId, class InitT, class Fun, class DerivedReceiver>
   struct receiver_t {
@@ -113,11 +114,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
 
       template <class Self, class Env>
       using completion_signatures = //
-        make_completion_signatures<
+        __try_make_completion_signatures<
           __copy_cvref_t<Self, Sender>,
           Env,
           completion_signatures<set_error_t(cudaError_t)>,
-          _set_value_t >;
+          __q<_set_value_t >>;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
@@ -136,14 +137,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
         this Self&&,
         get_completion_signatures_t,
-        Env&&) -> dependent_completion_signatures<Env>;
-
-      template <__decays_to<__t> Self, class Env>
-      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
-        this Self&&,
-        get_completion_signatures_t,
-        Env&&) -> completion_signatures<Self, Env>
-        requires true;
+        Env&&) -> completion_signatures<Self, Env> {
+        return {};
+      }
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) noexcept
         -> env_of_t<const Sender&> {

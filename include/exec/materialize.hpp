@@ -119,7 +119,9 @@ namespace exec {
         STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
           this _Self&&,
           get_completion_signatures_t,
-          _Env&&) -> __completion_signatures_for_t<_Env>;
+          _Env&&) -> __completion_signatures_for_t<_Env> {
+          return {};
+        }
       };
     };
 
@@ -236,7 +238,9 @@ namespace exec {
         STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
           this _Self&&,
           get_completion_signatures_t,
-          _Env&&) -> __completion_signatures_for_t<_Env>;
+          _Env&&) -> __completion_signatures_for_t<_Env> {
+          return {};
+        }
       };
     };
 

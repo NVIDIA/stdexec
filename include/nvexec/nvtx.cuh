@@ -98,14 +98,9 @@ namespace nvexec {
         STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
           this Self&&,
           get_completion_signatures_t,
-          Env&&) -> dependent_completion_signatures<Env>;
-
-        template <__decays_to<__t> Self, class Env>
-        STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
-          this Self&&,
-          get_completion_signatures_t,
-          Env&&) -> _completion_signatures_t<Self, Env>
-          requires true;
+          Env&&) -> _completion_signatures_t<Self, Env> {
+          return {};
+        }
 
         STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) noexcept //
           -> env_of_t<const Sender&> {
@@ -165,9 +160,9 @@ namespace nvexec {
   }} // STDEXEC_STREAM_DETAIL_NS
 
   namespace nvtx {
-  using STDEXEC_STREAM_DETAIL_NS::nvtx::push;
-  using STDEXEC_STREAM_DETAIL_NS::nvtx::pop;
-  using STDEXEC_STREAM_DETAIL_NS::nvtx::scoped;
+    using STDEXEC_STREAM_DETAIL_NS::nvtx::push;
+    using STDEXEC_STREAM_DETAIL_NS::nvtx::pop;
+    using STDEXEC_STREAM_DETAIL_NS::nvtx::scoped;
   }
 
 } // namespace nvexec

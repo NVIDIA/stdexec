@@ -135,14 +135,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
         this Self&&,
         get_completion_signatures_t,
-        Env&&) -> dependent_completion_signatures<Env>;
-
-      template <__decays_to<__t> Self, class Env>
-      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
-        this Self&&,
-        get_completion_signatures_t,
-        Env&&) -> _completion_signatures_t<Self, Env>
-        requires true;
+        Env&&) -> _completion_signatures_t<Self, Env> {
+        return {};
+      }
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) //
         noexcept -> __call_result_t<get_env_t, const Sender&> {
@@ -383,14 +378,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
         this Self&&,
         get_completion_signatures_t,
-        Env&&) -> dependent_completion_signatures<Env>;
-
-      template <__decays_to<__t> Self, class Env>
-      STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
-        this Self&&,
-        get_completion_signatures_t,
-        Env&&) -> _completion_signatures_t<Self, Env>
-        requires true;
+        Env&&) -> _completion_signatures_t<Self, Env> {
+        return {};
+      }
 
       STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) //
         noexcept -> __call_result_t<get_env_t, const Sender&> {

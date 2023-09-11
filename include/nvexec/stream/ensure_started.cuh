@@ -359,12 +359,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         this Self&&,
         get_completion_signatures_t,
         Env&&)
-        -> make_completion_signatures<
+        -> __try_make_completion_signatures<
           Sender,
           __ensure_started::env_t,
           completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
-          _set_value_t,
-          _set_error_t>;
+          __q<_set_value_t>,
+          __q<_set_error_t>> {
+        return {};
+      }
 
       explicit __t(context_state_t context_state, Sender sndr)
         : sndr_((Sender&&) sndr)

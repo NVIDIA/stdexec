@@ -128,7 +128,9 @@ struct _retry_sender {
         Env,
         stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
         _value,
-        _error>;
+        _error> {
+    return {};
+  }
 
   template <stdexec::receiver R>
   STDEXEC_DEFINE_CUSTOM(_op<S, R> connect)(this _retry_sender&& self, stdexec::connect_t, R r) {

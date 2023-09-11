@@ -259,8 +259,7 @@ namespace exec {
       // This function first completes all tasks that are ready in the completion queue of the io_uring.
       // Then it completes all tasks that are ready in the given queue of ready tasks.
       // The function returns the number of previously submitted completed tasks.
-      int
-        complete(stdexec::__intrusive_queue<& __task::__next_> __ready = __task_queue{}) noexcept {
+      int complete(stdexec::__intrusive_queue<&__task::__next_> __ready = __task_queue{}) noexcept {
         __u32 __head = __head_.load(std::memory_order_relaxed);
         __u32 __tail = __tail_.load(std::memory_order_acquire);
         int __count = 0;
@@ -348,6 +347,16 @@ namespace exec {
       void wakeup() {
         std::uint64_t __wakeup = 1;
         __throw_error_code_if(::write(__eventfd_, &__wakeup, sizeof(__wakeup)) == -1, errno);
+      }
+
+      /// @brief Resets the io context to its initial state.
+      void reset() {
+        if (__is_running_.load(std::memory_order_relaxed) || __n_total_submitted_ > 0) {
+          throw std::runtime_error("exec::io_uring_context::reset() called on a running context");
+        }
+        __n_submissions_in_flight_.store(0, std::memory_order_relaxed);
+        __stop_source_.reset();
+        __stop_source_.emplace();
       }
 
       void request_stop() {

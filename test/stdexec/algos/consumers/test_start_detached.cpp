@@ -90,9 +90,12 @@ struct custom_sender {
   STDEXEC_DEFINE_CUSTOM(auto connect)(this custom_sender, ex::connect_t, Receiver&& rcvr) {
     return ex::connect(ex::schedule(inline_scheduler{}), (Receiver&&) rcvr);
   }
+
   template <class Env>
   friend auto tag_invoke(ex::get_completion_signatures_t, custom_sender, Env) noexcept
-    -> ex::completion_signatures<ex::set_value_t()>;
+    -> ex::completion_signatures<ex::set_value_t()> {
+    return {};
+  }
 
   friend void tag_invoke(ex::start_detached_t, custom_sender sndr) {
     *sndr.called = true;
@@ -117,16 +120,32 @@ struct custom_scheduler {
     }
   };
 
+  struct domain {
+    template <class Sender>
+    Sender transform_sender(Sender&& sndr, auto&&...) const {
+      return (Sender&&) sndr;
+    }
+
+    template <class Sender, class Env>
+    friend void tag_invoke(ex::start_detached_t, domain, Sender, Env) {
+      // drop the sender on the floor
+    }
+
+    // BUGBUG legacy
+    operator custom_scheduler() const {
+      return {};
+    }
+  };
+
+  friend domain tag_invoke(ex::get_domain_t, custom_scheduler) noexcept {
+    return {};
+  }
+
   STDEXEC_DEFINE_CUSTOM(sender schedule)(this custom_scheduler, ex::schedule_t) noexcept {
     return {};
   }
 
   bool operator==(const custom_scheduler&) const = default;
-
-  template <class Sender>
-  friend void tag_invoke(ex::start_detached_t, custom_scheduler, Sender&&) {
-    // Drop the sender on the floor
-  }
 };
 
 TEST_CASE("start_detached can be customized on sender", "[consumers][start_detached]") {

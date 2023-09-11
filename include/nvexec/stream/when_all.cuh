@@ -65,7 +65,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         __concat_completion_signatures_t<
 
           completion_signatures< set_error_t(cudaError_t), set_stopped_t()>,
-          make_completion_signatures< Senders, Env, completion_signatures<>, swallow_values>...>;
+          __try_make_completion_signatures<
+            Senders,
+            Env,
+            completion_signatures<>,
+            __q<swallow_values>>...>;
       using values = //
         __minvoke<
           __mconcat<__qf<set_value_t>>,
@@ -406,7 +410,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
         this Self&&,
         get_completion_signatures_t,
-        Env&&) -> completion_sigs<Env, Self>;
+        Env&&) -> completion_sigs<Env, Self> {
+        return {};
+      }
 
       STDEXEC_DEFINE_CUSTOM(const env& get_env)(this const __t& __self, get_env_t) noexcept {
         return __self.env_;

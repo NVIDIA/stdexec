@@ -54,7 +54,7 @@ class flags_storage_t {
     }
 
    public:
-    __device__ void set(int idx = 0) const {
+    __device__ __host__ void set(int idx = 0) const {
       if (idx < N) {
         flags_[idx] += 1;
       }
@@ -74,7 +74,7 @@ class flags_storage_t {
   }
 
   flags_storage_t() {
-    THROW_ON_CUDA_ERROR(cudaMalloc(&flags_, sizeof(int) * N));
+    THROW_ON_CUDA_ERROR(cudaMallocManaged(&flags_, sizeof(int) * N));
     THROW_ON_CUDA_ERROR(cudaMemset(flags_, 0, sizeof(int) * N));
   }
 
@@ -185,14 +185,9 @@ namespace detail::a_sender {
     STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
       this Self&&,
       stdexec::get_completion_signatures_t,
-      Env&&) -> stdexec::dependent_completion_signatures<Env>;
-
-    template <stdexec::__decays_to<sender_t> Self, class Env>
-    STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
-      this Self&&,
-      stdexec::get_completion_signatures_t,
-      Env&&) -> completion_signatures<Self, Env>
-      requires true;
+      Env&&) -> completion_signatures<Self, Env> {
+      return {};
+    }
 
     STDEXEC_DEFINE_CUSTOM(auto get_env)(this const sender_t& self, stdexec::get_env_t) //
       noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
@@ -250,14 +245,9 @@ namespace detail::a_receiverless_sender {
     STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
       this Self&&,
       stdexec::get_completion_signatures_t,
-      Env&&) -> stdexec::dependent_completion_signatures<Env>;
-
-    template <stdexec::__decays_to<sender_t> Self, class Env>
-    STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
-      this Self&&,
-      stdexec::get_completion_signatures_t,
-      Env&&) -> completion_signatures<Self, Env>
-      requires true;
+      Env&&) -> completion_signatures<Self, Env> {
+      return {};
+    }
 
     STDEXEC_DEFINE_CUSTOM(auto get_env)(this const sender_t& self, stdexec::get_env_t) //
       noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)

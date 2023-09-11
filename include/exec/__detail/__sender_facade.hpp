@@ -364,7 +364,9 @@ namespace exec {
         STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
           this _Self&&,
           get_completion_signatures_t,
-          _Env&&) -> __new_completions_t<_Self, _Env>;
+          _Env&&) -> __new_completions_t<_Self, _Env> {
+          return {};
+        }
 
         STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& __self, stdexec::get_env_t) noexcept
           -> __call_result_t<stdexec::get_env_t, const _Sender&> {

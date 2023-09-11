@@ -22,7 +22,7 @@
 #include "materialize.hpp"
 
 namespace exec {
-  namespace __finally {
+  namespace __finally_ {
     using namespace stdexec;
 
     template <class _Arg, class... _Args>
@@ -65,7 +65,7 @@ namespace exec {
     };
 
     template <class... _Args>
-    using __as_rvalues = completion_signatures<set_value_t(__decay_t<_Args> && ...)>;
+    using __as_rvalues = completion_signatures<set_value_t(__decay_t<_Args>&&...)>;
 
     template <class _InitialSender, class _FinalSender, class _Env>
     using __completion_signatures_t = make_completion_signatures<
@@ -306,12 +306,6 @@ namespace exec {
             (_Rec&&) __receiver};
         }
 
-        template <__decays_to<__t> _Self, class _Env>
-        STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
-          this _Self&&,
-          get_completion_signatures_t,
-          _Env&&) -> dependent_completion_signatures<_Env>;
-
         template <__decays_to<__t> _Self, __none_of<no_env> _Env>
         STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
           this _Self&&,
@@ -320,14 +314,16 @@ namespace exec {
           -> __completion_signatures_t<
             __copy_cvref_t<_Self, _InitialSender>,
             __copy_cvref_t<_Self, _FinalSender>,
-            _Env>;
+            _Env> {
+          return {};
+        }
 
        public:
         using is_sender = void;
 
         template <__decays_to<_InitialSender> _Is, __decays_to<_FinalSender> _Fs>
         __t(_Is&& __initial_sender, _Fs&& __final_sender) noexcept(
-          __nothrow_decay_copyable<_Is>&& __nothrow_decay_copyable<_Fs>)
+          __nothrow_decay_copyable<_Is> && __nothrow_decay_copyable<_Fs>)
           : __initial_sender_{(_Is&&) __initial_sender}
           , __final_sender_{(_Fs&&) __final_sender} {
         }
@@ -338,11 +334,11 @@ namespace exec {
       template <sender _Is, sender _Fs>
       __t<__sender<__id<__decay_t<_Is>>, __id<__decay_t<_Fs>>>>
         operator()(_Is&& __initial_sender, _Fs&& __final_sender) const
-        noexcept(__nothrow_decay_copyable<_Is>&& __nothrow_decay_copyable<_Fs>) {
+        noexcept(__nothrow_decay_copyable<_Is> && __nothrow_decay_copyable<_Fs>) {
         return {(_Is&&) __initial_sender, (_Fs&&) __final_sender};
       }
     };
   }
 
-  inline constexpr __finally ::__finally_t finally{};
+  inline constexpr __finally_ ::__finally_t finally{};
 }

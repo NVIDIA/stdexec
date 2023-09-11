@@ -465,7 +465,7 @@ namespace exec {
       }
 
       // Make this task generally awaitable:
-      friend __task_awaitable<> operator co_await(basic_task&& __self) noexcept
+      friend __task_awaitable<> operator co_await(basic_task && __self) noexcept
         requires __mvalid<awaiter_context_t, __promise>
       {
         return __task_awaitable<>{std::exchange(__self.__coro_, {})};
@@ -486,7 +486,9 @@ namespace exec {
       STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(
         this const basic_task&,
         get_completion_signatures_t,
-        auto) -> __task_traits_t;
+        auto) -> __task_traits_t {
+        return {};
+      }
 
       explicit basic_task(__coro::coroutine_handle<promise_type> __coro) noexcept
         : __coro_(__coro) {
