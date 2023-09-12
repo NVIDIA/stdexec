@@ -327,9 +327,7 @@ namespace nvexec {
 
     template <class BaseEnv>
     auto make_stream_env(BaseEnv&& base_env, stream_provider_t* stream_provider) noexcept {
-      return __join_env(
-        __mkprop(get_stream_provider, stream_provider),
-        (BaseEnv&&) base_env);
+      return __join_env(__mkprop(get_stream_provider, stream_provider), (BaseEnv&&) base_env);
     }
 
     template <class BaseEnv>
@@ -362,10 +360,12 @@ namespace nvexec {
     template <class BaseEnv>
     using make_terminal_stream_env_t = terminal_stream_env<BaseEnv>;
 
-    template <class S>
+    template <class S, class E>
     concept stream_sender = //
-      sender<S> &&          //
-      STDEXEC_IS_BASE_OF(stream_sender_base, __decay_t<S>);
+      sender_in<S, E> &&    //
+      STDEXEC_IS_BASE_OF(
+        stream_sender_base,
+        __decay_t<transform_sender_result_t<__env_domain_of_t<E>, S, E>>);
 
     template <class R>
     concept stream_receiver = //
@@ -627,7 +627,7 @@ namespace nvexec {
         using stream_enqueue_receiver_t =
           stdexec::__t<stream_enqueue_receiver<stdexec::__cvref_id<env_t>, variant_t>>;
         using intermediate_receiver =
-          __if_c<stream_sender<sender_t>, inner_receiver_t, stream_enqueue_receiver_t>;
+          __if_c<stream_sender<sender_t, env_t>, inner_receiver_t, stream_enqueue_receiver_t>;
         using inner_op_state_t = connect_result_t<sender_t, intermediate_receiver>;
 
         friend void tag_invoke(start_t, __t& op) noexcept {
@@ -656,7 +656,7 @@ namespace nvexec {
         }
 
         template <__decays_to<outer_receiver_t> OutR, class ReceiverProvider>
-          requires stream_sender<sender_t>
+          requires stream_sender<sender_t, env_t>
         __t(
           sender_t&& sender,
           OutR&& out_receiver,

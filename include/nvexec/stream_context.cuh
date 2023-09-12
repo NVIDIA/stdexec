@@ -219,9 +219,7 @@ namespace nvexec {
         transfer_when_all_with_variant_t, //
         const stream_scheduler& sch,      //
         Senders&&... sndrs) noexcept {
-        return transfer_when_all_sender_th<
-          stream_scheduler,
-          tag_invoke_result_t<into_variant_t, Senders>...>(
+        return transfer_when_all_sender_th< stream_scheduler, __result_of<into_variant, Senders>...>(
           sch.context_state_, into_variant((Senders&&) sndrs)...);
       }
 
@@ -287,9 +285,9 @@ namespace nvexec {
     }
 
     template <stream_completing_sender... Senders>
-    when_all_sender_th< stream_scheduler, tag_invoke_result_t<into_variant_t, Senders>...>
+    when_all_sender_th< stream_scheduler, __result_of<into_variant, Senders>...>
       tag_invoke(when_all_with_variant_t, Senders&&... sndrs) noexcept {
-      return when_all_sender_th< stream_scheduler, tag_invoke_result_t<into_variant_t, Senders>...>{
+      return when_all_sender_th< stream_scheduler, __result_of<into_variant, Senders>...>{
         context_state_t{nullptr, nullptr, nullptr, nullptr},
         into_variant((Senders&&) sndrs)...
       };

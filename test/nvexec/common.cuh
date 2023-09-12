@@ -326,7 +326,6 @@ struct move_only_t {
     , self_(this) {
   }
 
-
   __host__ __device__ ~move_only_t() {
     if (this != self_) {
       // TODO Trap

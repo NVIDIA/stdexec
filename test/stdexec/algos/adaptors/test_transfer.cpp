@@ -277,13 +277,9 @@ TEST_CASE("transfer can be customized with two schedulers", "[adaptors][transfer
 }
 
 struct test_domain {
-  template <class Sender, class... Env>
+  template <ex::sender_expr_for<ex::transfer_t> Sender, class... Env>
   auto transform_sender(Sender&& sndr, Env&&... env) const {
-    if constexpr (ex::sender_expr_for<Sender, ex::transfer_t>) {
-      return ex::just(std::string("hello"));
-    } else {
-      return (Sender&&) sndr;
-    }
+    return ex::just(std::string("hello"));
   }
 };
 
