@@ -275,3 +275,24 @@ TEST_CASE("transfer can be customized with two schedulers", "[adaptors][transfer
   // we are not using impulse_scheduler anymore, so the value should be available
   REQUIRE(res.val_ == 61);
 }
+
+struct test_domain {
+  template <class Sender, class... Env>
+  auto transform_sender(Sender&& sndr, Env&&... env) const {
+    if constexpr (ex::sender_expr_for<Sender, ex::transfer_t>) {
+      return ex::just(std::string("hello"));
+    } else {
+      return (Sender&&) sndr;
+    }
+  }
+};
+
+TEST_CASE("transfer can be customized late", "[adaptors][transfer]") {
+  // The customization will return a different value
+  ex::scheduler auto sched = basic_inline_scheduler<test_domain>{};
+  auto snd = ex::on(sched, ex::just() | ex::transfer(inline_scheduler{}));
+  std::string res;
+  auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
+  ex::start(op);
+  REQUIRE(res == "hello");
+}
