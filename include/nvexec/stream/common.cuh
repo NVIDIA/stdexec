@@ -328,15 +328,13 @@ namespace nvexec {
     template <class BaseEnv>
     auto make_stream_env(BaseEnv&& base_env, stream_provider_t* stream_provider) noexcept {
       return __join_env(
-        __env::__env_fn{[stream_provider](get_stream_provider_t) noexcept {
-          return stream_provider;
-        }},
+        __mkprop(get_stream_provider, stream_provider),
         (BaseEnv&&) base_env);
     }
 
     template <class BaseEnv>
       requires __callable<get_stream_provider_t, const BaseEnv&>
-    BaseEnv make_stream_env(BaseEnv&& base_env, stream_provider_t*) noexcept {
+    __decay_t<BaseEnv> make_stream_env(BaseEnv&& base_env, stream_provider_t*) noexcept {
       return (BaseEnv&&) base_env;
     }
 
@@ -378,7 +376,7 @@ namespace nvexec {
 
     template <class EnvId, class Variant>
     struct stream_enqueue_receiver {
-      using Env = stdexec::__t<EnvId>;
+      using Env = stdexec::__cvref_t<EnvId>;
 
       class __t {
         Env* env_;
@@ -627,7 +625,7 @@ namespace nvexec {
 
         using task_t = continuation_task_t<inner_receiver_t, variant_t>;
         using stream_enqueue_receiver_t =
-          stdexec::__t<stream_enqueue_receiver<stdexec::__id<env_t>, variant_t>>;
+          stdexec::__t<stream_enqueue_receiver<stdexec::__cvref_id<env_t>, variant_t>>;
         using intermediate_receiver =
           __if_c<stream_sender<sender_t>, inner_receiver_t, stream_enqueue_receiver_t>;
         using inner_op_state_t = connect_result_t<sender_t, intermediate_receiver>;

@@ -111,7 +111,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using inner_receiver_t = stdexec::__t<receiver_t<stdexec::__id<Sender>, sh_state_t>>;
       using task_t = continuation_task_t<inner_receiver_t, variant_t>;
       using enqueue_receiver_t =
-        stdexec::__t<stream_enqueue_receiver<stdexec::__id<env_t>, variant_t>>;
+        stdexec::__t<stream_enqueue_receiver<stdexec::__cvref_id<env_t>, variant_t>>;
       using intermediate_receiver = //
         stdexec::__t< std::conditional_t<
           stream_sender<Sender>,
