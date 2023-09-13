@@ -225,11 +225,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __completion_signatures_of_t<_Sender, _Env>>;
 
       template <__decays_to<__t> _Self, receiver _Receiver>
-        requires receiver_of<               //
-          _Receiver,                        //
-          __completions<                    //
-            __copy_cvref_t<_Self, _Sender>, //
-            stream_env<env_of_t<_Receiver>>>>           //
+        requires receiver_of<                 //
+          _Receiver,                          //
+          __completions<                      //
+            __copy_cvref_t<_Self, _Sender>,   //
+            stream_env<env_of_t<_Receiver>>>> //
       friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
         -> __operation_t<_Self, _Receiver> {
         return __operation_t<_Self, _Receiver>{

@@ -57,7 +57,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         ::cuda::std::atomic_flag started_{};
 
         using enqueue_receiver =
-          stdexec::__t<stream_enqueue_receiver<stdexec::__id<Env>, variant_t>>;
+          stdexec::__t<stream_enqueue_receiver<stdexec::__cvref_id<Env>, variant_t>>;
         using inner_op_state_t = connect_result_t<Sender, enqueue_receiver>;
         host_ptr<__decay_t<Env>> env_{};
         inner_op_state_t inner_op_;

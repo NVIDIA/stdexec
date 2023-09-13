@@ -99,6 +99,16 @@ TEST_CASE(
 }
 
 TEST_CASE(
+  "nvexec transfer_when_all_with_variant two senders",
+  "[cuda][stream][adaptors][transfer_when_all_with_variant]") {
+  nvexec::stream_context stream_ctx{};
+  auto gpu = stream_ctx.get_scheduler();
+  auto snd1 = ex::transfer_when_all_with_variant(gpu, ex::just(3), ex::just(0.1415));
+  auto snd2 = std::move(snd1) | ex::then([](auto&&, auto&&) { return 42; });
+  wait_for_value(std::move(snd2), 42);
+}
+
+TEST_CASE(
   "nvexec transfer_when_all_with_variant basic example",
   "[cuda][stream][adaptors][transfer_when_all_with_variant]") {
   nvexec::stream_context stream_ctx{};
