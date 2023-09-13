@@ -126,7 +126,7 @@ namespace stdexec {
 
     template <class _Domain, class _Sender, class... _Env>
     concept __has_transform_member =
-      requires (_Domain __domain, _Sender&& __sender, _Env&&... __env) {
+      requires(_Domain __domain, _Sender&& __sender, _Env&&... __env) {
         __domain.transform_sender((_Sender&&) __sender, (_Env&&) __env...);
       };
 
@@ -5236,15 +5236,17 @@ namespace stdexec {
     using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Ts> && ...)>;
 
     template <class _CvrefSender, class _Env>
-    using __all_values_and_errors_nothrow_decay_copyable = __mand<
-      error_types_of_t<_CvrefSender, _Env, __all_nothrow_decay_copyable>,
-      value_types_of_t< _CvrefSender, _Env, __all_nothrow_decay_copyable, __mand>>;
+    using __all_values_and_errors_nothrow_decay_copyable = //
+      __mand<
+        __try_error_types_of_t<_CvrefSender, _Env, __q<__all_nothrow_decay_copyable>>,
+        __try_value_types_of_t<_CvrefSender, _Env, __q<__all_nothrow_decay_copyable>, __q<__mand>>>;
 
     template <class _CvrefSender, class _Env>
-    using __with_error_t = __if<
-      __all_values_and_errors_nothrow_decay_copyable<_CvrefSender, _Env>,
-      completion_signatures<>,
-      __with_exception_ptr>;
+    using __with_error_t = //
+      __if<
+        __all_values_and_errors_nothrow_decay_copyable<_CvrefSender, _Env>,
+        completion_signatures<>,
+        __with_exception_ptr>;
 
     template <class _Scheduler, class _CvrefSender, class _Env>
     using __completions_t = //
@@ -6574,63 +6576,17 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.on]
   namespace __on_v2 {
-    // on(sched, sndr) lowers to more primitive (and possibly customized) operations
-    // struct __lower_start_on {
-    //   template <class _Sender, class _NewScheduler>
-    //   auto operator()(_Sender&& __sndr, _NewScheduler __new) const {
-    //     return let_value(transfer(get_scheduler(), __new), [__new, &__sndr](auto __old) mutable {
-    //       auto __domain = get_domain(__new);
-    //       return __write(
-    //         transfer((_Sender&&) __sndr, std::move(__old)),
-    //         __with_(get_domain, __domain),
-    //         __with_(get_scheduler, std::move(__new)));
-    //     });
-    //   }
-    // };
+    inline constexpr __mstring __on_context = "In stdexec::on(Scheduler, Sender)..."__csz;
+    inline constexpr __mstring __no_scheduler_diag =
+      "stdexec::on() requires a scheduler to transition back to."__csz;
+    inline constexpr __mstring __no_scheduler_details =
+      "The provided environment lacks a value for the get_scheduler() query."__csz;
 
-    // inline constexpr __mstring __on_context = "In stdexec::on(Scheduler, Sender)..."__csz;
-    // inline constexpr __mstring __no_scheduler_diag =
-    //   "stdexec::on() requires a scheduler to transition back to."__csz;
-    // inline constexpr __mstring __no_scheduler_details =
-    //   "The provided environment lacks a value for the get_scheduler() query."__csz;
-
-    // template <
-    //   __mstring _Context = __on_context,
-    //   __mstring _Diagnostic = __no_scheduler_diag,
-    //   __mstring _Details = __no_scheduler_details>
-    // struct _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_ { };
-
-    // template <class _Sender>
-    // struct __no_scheduler_error {
-    //   template <class _Env, class _Sender2 = _Sender>
-    //   using __f = __mexception<
-    //     _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_<>,
-    //     _WITH_SENDER_<_Sender2>,
-    //     _WITH_ENVIRONMENT_<_Env>>;
-    // };
-
-    // template <class _Sender, class _Env>
-    // using __scheduler_of = //
-    //   __minvoke<
-    //     __mtry_catch<
-    //       __mbind_front_q<__call_result_t, get_scheduler_t>,
-    //       __no_scheduler_error<_Sender>>,
-    //     _Env>;
-
-    // template <class _Sender, class _Scheduler, class _Env>
-    // using __lowered_sender_t =
-    //   __meval<__call_result_t, __lower_start_on, _Sender, _Scheduler, __scheduler_of<_Sender, _Env>>;
-
-    // template <class _Sender, class _Scheduler, class _Env>
-    // using __completions_t = //
-    //   __try_make_completion_signatures<
-    //     schedule_result_t<_Scheduler>,
-    //     _Env,
-    //     __try_make_completion_signatures<
-    //       __lowered_sender_t<_Sender, _Scheduler, _Env>,
-    //       _Env,
-    //       completion_signatures<set_error_t(std::exception_ptr)>>,
-    //     __mconst<completion_signatures<>>>;
+    template <
+      __mstring _Context = __on_context,
+      __mstring _Diagnostic = __no_scheduler_diag,
+      __mstring _Details = __no_scheduler_details>
+    struct _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_ { };
 
     struct on_t : __default_get_env<on_t> {
       template <scheduler _Scheduler, sender _Sender>
@@ -6638,41 +6594,13 @@ namespace stdexec {
         // BUGBUG __get_sender_domain, or get_domain(__sched), or ...?
         auto __domain = __get_sender_domain(__sndr);
         return transform_sender(
-          __domain, make_sender<on_t>((_Scheduler&&) __sched, (_Sender&&) __sndr));
+          __domain, make_sender_expr<on_t>((_Scheduler&&) __sched, (_Sender&&) __sndr));
       }
-
-      // template <sender_expr_for<on_t> _Sender, class _Env>
-      // static auto get_completion_signatures(_Sender&&, _Env&&) noexcept
-      //   -> __completions_t<__child_of<_Sender>, __data_of<_Sender>, _Env> {
-      //   return {};
-      // }
-
-      // template <class _Receiver>
-      // struct __connect_fn {
-      //   _Receiver& __rcvr_;
-      //   using _Env = env_of_t<_Receiver>;
-
-      //   template <class _Scheduler, class _Sender>
-      //     requires sender_to<__lowered_sender_t<_Sender, _Scheduler, _Env>, _Receiver>
-      //   auto operator()(on_t, _Scheduler __sch, _Sender&& __sndr) const
-      //     -> connect_result_t<__lowered_sender_t<_Sender, _Scheduler, _Env>, _Receiver> {
-      //     auto __old = get_scheduler(stdexec::get_env(__rcvr_));
-      //     auto __lowered = __lower_start_on()(
-      //       (_Sender&&) __sndr, std::move(__sch), std::move(__old));
-      //     return stdexec::connect(std::move(__lowered), std::move(__rcvr_));
-      //   }
-      // };
-
-      // template <sender_expr_for<on_t> _Sender, receiver _Receiver>
-      //   requires __callable<apply_sender_t, _Sender, __connect_fn<_Receiver>>
-      // static auto connect(_Sender&& __sndr, _Receiver __rcvr)
-      //   -> __call_result_t<apply_sender_t, _Sender, __connect_fn<_Receiver>> {
-      //   return apply_sender((_Sender&&) __sndr, __connect_fn<_Receiver>{__rcvr});
-      // }
     };
 
     struct __lower_on {
       template <class _Sender, class _Env>
+        requires __callable<get_scheduler_t, const _Env&>
       auto operator()(_Sender&& __sndr, const _Env& __env) const {
         auto __domain = __get_env_domain(__env);
         return transform_sender(
@@ -6690,6 +6618,25 @@ namespace stdexec {
                 });
             }),
           __env);
+      }
+
+      // Issue a custom diagnostic if the environment doesn't provide a scheduler.
+      template <class _Sender, class _Env>
+      auto operator()(_Sender&&, const _Env&) const {
+        STDEXEC_PRAGMA_PUSH()
+        STDEXEC_PRAGMA_IGNORE("-Wunused-local-typedefs")
+
+        struct __no_scheduler_in_environment {
+          using is_sender = void;
+          using completion_signatures = //
+            __mexception<
+              _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_<>,
+              _WITH_SENDER_<_Sender>,
+              _WITH_ENVIRONMENT_<_Env>>;
+        };
+
+        STDEXEC_PRAGMA_POP()
+        return __no_scheduler_in_environment{};
       }
     };
   } // __on_v2
