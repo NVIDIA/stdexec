@@ -432,11 +432,10 @@ namespace stdexec {
       using __id = empty_env;
     };
 
-    template <class _Tag>
-    struct __deleted { };
-
-    template <class _Tag, class _Value>
+    template <class _Tag, class _Value = __none_such>
     struct __prop {
+      using __t = __prop;
+      using __id = __prop;
       _Value __value_;
 
       template <same_as<_Tag> _Key>
@@ -446,11 +445,26 @@ namespace stdexec {
       }
     };
 
+    template <class _Tag>
+    struct __prop<_Tag, __none_such> {
+      using __t = __prop;
+      using __id = __prop;
+
+      template <same_as<_Tag> _Key, class _Self>
+        requires (std::is_base_of_v<__prop, __decay_t<_Self>>)
+      friend auto tag_invoke(_Key, _Self&&) noexcept = delete;
+    };
+
     struct __mkprop_t {
       template <class _Tag, class _Value>
       auto operator()(_Tag, _Value&& __value) const noexcept(__nothrow_decay_copyable<_Value>)
         -> __prop<_Tag, __decay_t<_Value>> {
         return {(_Value&&) __value};
+      }
+
+      template <class _Tag>
+      auto operator()(_Tag) const -> __prop<_Tag> {
+        return {};
       }
     };
 
@@ -511,10 +525,10 @@ namespace stdexec {
     };
 
     template <class _Tag, class _Base>
-    struct __joined_env<__env_fn<__deleted<_Tag>>, _Base> : __env_fwd<_Base> {
+    struct __joined_env<__prop<_Tag>, _Base> : __env_fwd<_Base> {
       using __t = __joined_env;
       using __id = __joined_env;
-      STDEXEC_NO_UNIQUE_ADDRESS __env_fn<__deleted<_Tag>> __env_;
+      STDEXEC_NO_UNIQUE_ADDRESS __prop<_Tag> __env_;
 
       friend void tag_invoke(_Tag, const __joined_env&) noexcept = delete;
     };
@@ -581,7 +595,7 @@ namespace stdexec {
     }
 
     template <class _Tag>
-    __env_fn<__deleted<_Tag>> __with_(_Tag) noexcept {
+    __prop<_Tag> __with_(_Tag) noexcept {
       return {};
     }
 
@@ -633,8 +647,6 @@ namespace stdexec {
   using __env::empty_env;
   using __empty_env [[deprecated("Please use stdexec::empty_env now.")]] = empty_env;
 
-  using __env::__with;
-  using __env::__with_;
   using __env::__env_promise;
   using no_env_promise = __env_promise<no_env>;
 
@@ -644,6 +656,10 @@ namespace stdexec {
 
   // for making an environment from a single key/value pair
   inline constexpr __env::__mkprop_t __mkprop{};
+  inline constexpr __env::__mkprop_t __with_{};
+
+  template <class _Tag, class _Value = __none_such>
+  using __with = __call_result_t<__env::__mkprop_t, _Tag, _Value>;
 
   template <class... _Ts>
   using __make_env_t = __call_result_t<__env::__make_env_t, _Ts...>;
@@ -5523,20 +5539,20 @@ namespace stdexec {
     };
 
     struct __write_t {
-      template <class _Sender, class... _Funs>
+      template <class _Sender, class... _Envs>
       using __sender_t =
-        __t<__sender<__id<__decay_t<_Sender>>, __env::__env_join_t<__env::__env_fn<_Funs>...>>>;
+        __t<__sender<__id<__decay_t<_Sender>>, __env::__env_join_t<_Envs...>>>;
 
-      template <__is_not_instance_of<__env::__env_fn> _Sender, class... _Funs>
+      template <__is_not_instance_of<__env::__prop> _Sender, class... _Tags, class... _Values>
         requires sender<_Sender>
-      auto operator()(_Sender&& __sndr, __env::__env_fn<_Funs>... __withs) const
-        -> __sender_t<_Sender, _Funs...> {
+      auto operator()(_Sender&& __sndr, __env::__prop<_Tags, _Values>... __withs) const
+        -> __sender_t<_Sender, __env::__prop<_Tags, _Values>...> {
         return {(_Sender&&) __sndr, __join_env(std::move(__withs)...)};
       }
 
-      template <class... _Funs>
-      auto operator()(__env::__env_fn<_Funs>... __withs) const
-        -> __binder_back<__write_t, __env::__env_fn<_Funs>...> {
+      template <class... _Tags, class... _Values>
+      auto operator()(__env::__prop<_Tags, _Values>... __withs) const
+        -> __binder_back<__write_t, __env::__prop<_Tags, _Values>...> {
         return {{}, {}, {std::move(__withs)...}};
       }
     };
