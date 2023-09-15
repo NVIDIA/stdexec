@@ -74,8 +74,13 @@ namespace exec {
       unsigned int __to_submit,
       unsigned int __min_complete,
       unsigned int __flags) {
-      return (int) ::syscall(
+      int rc = (int) ::syscall(
         __NR_io_uring_enter, __ring_fd, __to_submit, __min_complete, __flags, nullptr, 0);
+      if (rc == -1) {
+        return -errno;
+      } else {
+        return rc;
+      }
     }
 
     inline memory_mapped_region __map_region(int __fd, ::off_t __offset, std::size_t __size) {
