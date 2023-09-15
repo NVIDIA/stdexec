@@ -54,7 +54,7 @@ class flags_storage_t {
     }
 
    public:
-    __device__ void set(int idx = 0) const {
+    __device__ __host__ void set(int idx = 0) const {
       if (idx < N) {
         flags_[idx] += 1;
       }
@@ -74,7 +74,7 @@ class flags_storage_t {
   }
 
   flags_storage_t() {
-    THROW_ON_CUDA_ERROR(cudaMalloc(&flags_, sizeof(int) * N));
+    THROW_ON_CUDA_ERROR(cudaMallocManaged(&flags_, sizeof(int) * N));
     THROW_ON_CUDA_ERROR(cudaMemset(flags_, 0, sizeof(int) * N));
   }
 
@@ -183,12 +183,9 @@ namespace detail::a_sender {
 
     template <stdexec::__decays_to<sender_t> Self, class Env>
     friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> stdexec::dependent_completion_signatures<Env>;
-
-    template <stdexec::__decays_to<sender_t> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> completion_signatures<Self, Env>
-      requires true;
+      -> completion_signatures<Self, Env> {
+      return {};
+    }
 
     friend auto tag_invoke(stdexec::get_env_t, const sender_t& self) //
       noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
@@ -244,12 +241,9 @@ namespace detail::a_receiverless_sender {
 
     template <stdexec::__decays_to<sender_t> Self, class Env>
     friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> stdexec::dependent_completion_signatures<Env>;
-
-    template <stdexec::__decays_to<sender_t> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> completion_signatures<Self, Env>
-      requires true;
+      -> completion_signatures<Self, Env> {
+      return {};
+    }
 
     friend auto tag_invoke(stdexec::get_env_t, const sender_t& self) //
       noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)

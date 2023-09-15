@@ -258,7 +258,7 @@ namespace nvexec {
 
     struct get_stream_provider_t {
       template <class Env>
-        requires tag_invocable<get_stream_provider_t, Env>
+        requires tag_invocable<get_stream_provider_t, const Env&>
       stream_provider_t* operator()(const Env& env) const noexcept {
         return tag_invoke(get_stream_provider_t{}, env);
       }
@@ -313,18 +313,26 @@ namespace nvexec {
 
     inline constexpr get_stream_provider_t get_stream_provider{};
 
+    struct get_stream_t {
+      template <class Env>
+        requires __callable<get_stream_provider_t, const Env&>
+      cudaStream_t operator()(const Env& env) const noexcept {
+        return get_stream_provider(env)->own_stream_.value();
+      }
+
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE auto operator()() const noexcept {
+        return stdexec::read(*this);
+      }
+    };
+
     template <class BaseEnv>
     auto make_stream_env(BaseEnv&& base_env, stream_provider_t* stream_provider) noexcept {
-      return __join_env(
-        __env::__env_fn{[stream_provider](get_stream_provider_t) noexcept {
-          return stream_provider;
-        }},
-        (BaseEnv&&) base_env);
+      return __join_env(__mkprop(get_stream_provider, stream_provider), (BaseEnv&&) base_env);
     }
 
     template <class BaseEnv>
       requires __callable<get_stream_provider_t, const BaseEnv&>
-    BaseEnv make_stream_env(BaseEnv&& base_env, stream_provider_t*) noexcept {
+    __decay_t<BaseEnv> make_stream_env(BaseEnv&& base_env, stream_provider_t*) noexcept {
       return (BaseEnv&&) base_env;
     }
 
@@ -352,10 +360,12 @@ namespace nvexec {
     template <class BaseEnv>
     using make_terminal_stream_env_t = terminal_stream_env<BaseEnv>;
 
-    template <class S>
+    template <class S, class E>
     concept stream_sender = //
-      sender<S> &&          //
-      STDEXEC_IS_BASE_OF(stream_sender_base, __decay_t<S>);
+      sender_in<S, E> &&    //
+      STDEXEC_IS_BASE_OF(
+        stream_sender_base,
+        __decay_t<transform_sender_result_t<__env_domain_of_t<E>, S, E>>);
 
     template <class R>
     concept stream_receiver = //
@@ -366,7 +376,7 @@ namespace nvexec {
 
     template <class EnvId, class Variant>
     struct stream_enqueue_receiver {
-      using Env = stdexec::__t<EnvId>;
+      using Env = stdexec::__cvref_t<EnvId>;
 
       class __t {
         Env* env_;
@@ -595,8 +605,7 @@ namespace nvexec {
           self.operation_state_.propagate_completion_signal(Tag(), (As&&) as...);
         }
 
-        friend make_stream_env_t<env_of_t<outer_receiver_t>>
-          tag_invoke(get_env_t, const __t& self) noexcept {
+        friend decltype(auto) tag_invoke(get_env_t, const __t& self) noexcept {
           return self.operation_state_.make_env();
         }
       };
@@ -616,9 +625,9 @@ namespace nvexec {
 
         using task_t = continuation_task_t<inner_receiver_t, variant_t>;
         using stream_enqueue_receiver_t =
-          stdexec::__t<stream_enqueue_receiver<stdexec::__id<env_t>, variant_t>>;
+          stdexec::__t<stream_enqueue_receiver<stdexec::__cvref_id<env_t>, variant_t>>;
         using intermediate_receiver =
-          __if_c<stream_sender<sender_t>, inner_receiver_t, stream_enqueue_receiver_t>;
+          __if_c<stream_sender<sender_t, env_t>, inner_receiver_t, stream_enqueue_receiver_t>;
         using inner_op_state_t = connect_result_t<sender_t, intermediate_receiver>;
 
         friend void tag_invoke(start_t, __t& op) noexcept {
@@ -647,7 +656,7 @@ namespace nvexec {
         }
 
         template <__decays_to<outer_receiver_t> OutR, class ReceiverProvider>
-          requires stream_sender<sender_t>
+          requires stream_sender<sender_t, env_t>
         __t(
           sender_t&& sender,
           OutR&& out_receiver,
@@ -799,4 +808,6 @@ namespace nvexec {
         (Sender&&) sndr, (OuterReceiver&&) out_receiver, receiver_provider, context_state);
     }
   }
+
+  inline constexpr STDEXEC_STREAM_DETAIL_NS::get_stream_t get_stream{};
 }

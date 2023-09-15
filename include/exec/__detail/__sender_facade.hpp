@@ -109,7 +109,7 @@ namespace exec {
       if constexpr (__lacks_transform_sender<_Kernel>) {
         return __mtype<_Sender>{};
       } else {
-        if constexpr (__valid<__tfx_sender_, _Kernel, _Sender, _Env>) {
+        if constexpr (__mvalid<__tfx_sender_, _Kernel, _Sender, _Env>) {
           return __mtype<__tfx_sender_<_Kernel, _Sender, _Env>>{};
         } else if constexpr (same_as<_Env, no_env>) {
           return __dependent_sender{};
@@ -198,7 +198,7 @@ namespace exec {
           __completion_tag _Tag,
           same_as<__t> _Self,
           class... _As>
-          requires __valid<__set_result_t, _Kernel, _Receiver, _Tag, _As...>
+          requires __mvalid<__set_result_t, _Kernel, _Receiver, _Tag, _As...>
         friend void tag_invoke(_Tag __tag, _Self __self, _As&&... __as) noexcept {
           __state& __st = *__self.__state_;
           (void) __st.__kernel_.set_result(__tag, __st.__data_, __st.__rcvr_, (_As&&) __as...);
@@ -309,7 +309,7 @@ namespace exec {
           using _NewSender = __new_sender_t<_Self, _Env>;
           if constexpr (sender<_NewSender>) {
             using _NewEnv = __new_env_t<_Env>;
-            if constexpr (__valid<__pre_completions_t, _NewSender, _NewEnv>) {
+            if constexpr (__mvalid<__pre_completions_t, _NewSender, _NewEnv>) {
               using _Completions =
                 __completions_t<_NewEnv, __pre_completions_t<_NewSender, _NewEnv>>;
               if constexpr (__valid_completion_signatures<_Completions, _Env>) {
@@ -340,7 +340,9 @@ namespace exec {
 
         template <__is_derived_sender<_DerivedId> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-          -> __new_completions_t<_Self, _Env>;
+          -> __new_completions_t<_Self, _Env> {
+          return {};
+        }
 
         friend auto tag_invoke(stdexec::get_env_t, const __t& __self) noexcept
           -> env_of_t<const _Sender&> {

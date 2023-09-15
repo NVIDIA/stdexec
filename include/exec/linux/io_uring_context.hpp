@@ -53,6 +53,8 @@
 #include <sys/eventfd.h>
 #include <sys/syscall.h>
 
+#include <algorithm>
+
 namespace exec {
   namespace __io_uring {
     inline void __throw_error_code_if(bool __cond, int __ec) {
@@ -72,8 +74,13 @@ namespace exec {
       unsigned int __to_submit,
       unsigned int __min_complete,
       unsigned int __flags) {
-      return (int) ::syscall(
+      int rc = (int) ::syscall(
         __NR_io_uring_enter, __ring_fd, __to_submit, __min_complete, __flags, nullptr, 0);
+      if (rc == -1) {
+        return -errno;
+      } else {
+        return rc;
+      }
     }
 
     inline memory_mapped_region __map_region(int __fd, ::off_t __offset, std::size_t __size) {
@@ -346,6 +353,16 @@ namespace exec {
       void wakeup() {
         std::uint64_t __wakeup = 1;
         __throw_error_code_if(::write(__eventfd_, &__wakeup, sizeof(__wakeup)) == -1, errno);
+      }
+
+      /// @brief Resets the io context to its initial state.
+      void reset() {
+        if (__is_running_.load(std::memory_order_relaxed) || __n_total_submitted_ > 0) {
+          throw std::runtime_error("exec::io_uring_context::reset() called on a running context");
+        }
+        __n_submissions_in_flight_.store(0, std::memory_order_relaxed);
+        __stop_source_.reset();
+        __stop_source_.emplace();
       }
 
       void request_stop() {

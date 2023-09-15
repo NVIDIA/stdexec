@@ -19,6 +19,7 @@
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
+#include <exec/any_sender_of.hpp>
 #include <exec/static_thread_pool.hpp>
 
 #include <chrono>
@@ -231,5 +232,17 @@ TEST_CASE("schedule_from can be customized", "[adaptors][schedule_from]") {
   // The customization will return a different value
   auto snd = ex::schedule_from(inline_scheduler{}, ex::just(std::string{"transfer"}));
   auto op = ex::connect(std::move(snd), expect_value_receiver(std::string{"hijacked"}));
+  ex::start(op);
+}
+
+
+template <class... Ts>
+using any_sender_of =
+  typename exec::any_receiver_ref<stdexec::completion_signatures<Ts...>>::template any_sender<>;
+
+TEST_CASE("schedule_from can handle any_sender", "[adaptors][schedule_from]") {
+  auto snd = stdexec::schedule_from(
+    inline_scheduler{}, any_sender_of<ex::set_value_t(int)>(ex::just(3)));
+  auto op = ex::connect(std::move(snd), expect_value_receiver(3));
   ex::start(op);
 }

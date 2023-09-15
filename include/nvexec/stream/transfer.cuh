@@ -57,7 +57,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         ::cuda::std::atomic_flag started_{};
 
         using enqueue_receiver =
-          stdexec::__t<stream_enqueue_receiver<stdexec::__id<Env>, variant_t>>;
+          stdexec::__t<stream_enqueue_receiver<stdexec::__cvref_id<Env>, variant_t>>;
         using inner_op_state_t = connect_result_t<Sender, enqueue_receiver>;
         host_ptr<__decay_t<Env>> env_{};
         inner_op_state_t inner_op_;
@@ -145,12 +145,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> Self, class Env>
       friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
-        -> dependent_completion_signatures<Env>;
-
-      template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
-        -> _completion_signatures_t<Self, Env>
-        requires true;
+        -> _completion_signatures_t<Self, Env> {
+        return {};
+      }
 
       friend auto tag_invoke(get_env_t, const __t& self) noexcept -> env_of_t<const Sender&> {
         return get_env(self.sndr_);

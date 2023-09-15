@@ -109,6 +109,9 @@ namespace stdexec {
   template <std::size_t _Np>
   using __make_indices = std::make_index_sequence<_Np>*;
 
+  template <class... _Ts>
+  using __indices_for = __make_indices<sizeof...(_Ts)>;
+
   template <class _Char>
   concept __mchar = __same_as<_Char, char>;
 
@@ -152,10 +155,10 @@ namespace stdexec {
   constexpr __mstring<sizeof...(_Str)> operator""__csz() noexcept {
     return {_Str...};
   }
-#elif STDEXEC_NVHPC()
-  // BUGBUG TODO This is to work around an unknown EDG bug
+#elif STDEXEC_NVHPC() && (__EDG_VERSION__ < 605)
+  // This is to work around an unfiled (by me) EDG bug that fixed in build 605
   template <__mstring _Str>
-  constexpr auto operator""__csz() noexcept {
+  constexpr __mtypeof<_Str> const operator""__csz() noexcept {
     return _Str;
   }
 #else
@@ -176,6 +179,9 @@ namespace stdexec {
     _ERROR_ operator,(__msuccess) const noexcept;
   };
 
+  template <__mstring _What>
+  struct _WHAT_ { };
+
   template <class _What, class... _With>
   using __mexception = _ERROR_<_What, _With...>;
 
@@ -191,18 +197,6 @@ namespace stdexec {
   template <class... _Ts>
   using __disp = decltype((__msuccess(), ..., __ok_t<_Ts>()));
 
-  template <bool _AllOK>
-  struct __i {
-    template <template <class...> class _Fn, class... _Args>
-    using __g = _Fn<_Args...>;
-  };
-
-  template <>
-  struct __i<false> {
-    template <template <class...> class, class... _Args>
-    using __g = __disp<_Args...>;
-  };
-
   template <class _Arg>
   concept __ok = __same_as<__ok_t<_Arg>, __msuccess>;
 
@@ -211,6 +205,9 @@ namespace stdexec {
 
   template <class... _Args>
   concept _Ok = (__ok<_Args> && ...);
+
+  template <bool _AllOK>
+  struct __i;
 
 #if STDEXEC_NVHPC()
   // Most compilers memoize alias template specializations, but
@@ -231,15 +228,48 @@ namespace stdexec {
   template <template <class...> class _Fn, class... _Args>
   using __meval = __t<__meval_<_Fn, _Args...>>;
 
+  template <class _Fn, class... _Args>
+  using __minvoke__ = typename __i<_Ok<_Fn>>::template __h<_Fn, _Args...>;
+
+  template <class _Fn, class... _Args>
+  struct __minvoke_ { };
+
+  template <class _Fn, class... _Args>
+    requires __typename<__minvoke__<_Fn, _Args...>>
+  struct __minvoke_<_Fn, _Args...> {
+    using __t = __minvoke__<_Fn, _Args...>;
+  };
+
+  template <class _Fn, class... _Args>
+  using __minvoke = __t<__minvoke_<_Fn, _Args...>>;
+
 #else
 
   template <template <class...> class _Fn, class... _Args>
   using __meval = typename __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
 
+  template <class _Fn, class... _Args>
+  using __minvoke = typename __i<_Ok<_Fn>>::template __h<_Fn, _Args...>;
+
 #endif
 
-  template <class _Fn, class... _Args>
-  using __minvoke = __meval<_Fn::template __f, _Args...>;
+  template <bool _AllOK>
+  struct __i {
+    template <template <class...> class _Fn, class... _Args>
+    using __g = _Fn<_Args...>;
+
+    template <class _Fn, class... _Args>
+    using __h = __meval<_Fn::template __f, _Args...>;
+  };
+
+  template <>
+  struct __i<false> {
+    template <template <class...> class, class... _Args>
+    using __g = __disp<_Args...>;
+
+    template <class _Fn, class...>
+    using __h = _Fn;
+  };
 
   template <template <class...> class _Fn>
   struct __q {
@@ -266,13 +296,13 @@ namespace stdexec {
   using __mbind_back = __mbind_back_q<_Fn::template __f, _Back...>;
 
   template <template <class...> class _Tp, class... _Args>
-  concept __valid = requires { typename __meval<_Tp, _Args...>; };
+  concept __mvalid = requires { typename __meval<_Tp, _Args...>; };
 
   template <class _Fn, class... _Args>
-  concept __minvocable = __valid<_Fn::template __f, _Args...>;
+  concept __minvocable = __mvalid<_Fn::template __f, _Args...>;
 
   template <template <class...> class _Tp, class... _Args>
-  concept __msucceeds = __valid<_Tp, _Args...> && __ok<__meval<_Tp, _Args...>>;
+  concept __msucceeds = __mvalid<_Tp, _Args...> && __ok<__meval<_Tp, _Args...>>;
 
   template <class _Fn, class... _Args>
   concept __minvocable_succeeds = __minvocable<_Fn, _Args...> && __ok<__minvoke<_Fn, _Args...>>;
@@ -330,7 +360,7 @@ namespace stdexec {
   template <template <class...> class _Try, class _Catch>
   struct __mtry_catch_q {
     template <class... _Args>
-    using __f = __minvoke< __if_c<__valid<_Try, _Args...>, __q<_Try>, _Catch>, _Args...>;
+    using __f = __minvoke< __if_c<__mvalid<_Try, _Args...>, __q<_Try>, _Catch>, _Args...>;
   };
 
   template <class _Try, class _Catch>
@@ -648,8 +678,8 @@ namespace stdexec {
   template <class _Ty>
   using __id = __minvoke<__id_<__has_id<_Ty>>, _Ty>;
 
-  template <class _Ty>
-  using __cvref_t = __copy_cvref_t<_Ty, __t<std::remove_cvref_t<_Ty>>>;
+  template <class _From, class _To = __decay_t<_From>>
+  using __cvref_t = __copy_cvref_t<_From, __t<_To>>;
 
   template <class _From, class _To = __decay_t<_From>>
   using __cvref_id = __copy_cvref_t<_From, __id<_To>>;
@@ -827,9 +857,9 @@ namespace stdexec {
     using __f = __mor<__minvoke<_Fn, _Args>...>;
   };
 
-#if __has_builtin(__type_pack_element)
+#if STDEXEC_HAS_BUILTIN(__type_pack_element)
   template <std::size_t _Np, class... _Ts>
-  using __m_at = __type_pack_element<_Np, _Ts...>;
+  using __m_at_c = __type_pack_element<_Np, _Ts...>;
 #else
   template <std::size_t>
   using __void_ptr = void*;
@@ -849,11 +879,14 @@ namespace stdexec {
   };
 
   template <std::size_t _Np, class... _Ts>
-  using __m_at = __minvoke<__m_at_<std::make_index_sequence<_Np>>, _Ts...>;
+  using __m_at_c = __minvoke<__m_at_<std::make_index_sequence<_Np>>, _Ts...>;
 #endif
 
+  template <class _Np, class... _Ts>
+  using __m_at = __m_at_c<__v<_Np>, _Ts...>;
+
   template <class... _Ts>
-  using __mback = __m_at<sizeof...(_Ts) - 1, _Ts...>;
+  using __mback = __m_at_c<sizeof...(_Ts) - 1, _Ts...>;
 
   template <class _Continuation = __q<__types>>
   struct __mpop_back {
@@ -863,7 +896,7 @@ namespace stdexec {
     template <std::size_t... _Idx>
     struct __impl<__indices<_Idx...>> {
       template <class... _Ts>
-      using __f = __minvoke<_Continuation, __m_at<_Idx, _Ts...>...>;
+      using __f = __minvoke<_Continuation, __m_at_c<_Idx, _Ts...>...>;
     };
 
     template <class... _Ts>
@@ -905,6 +938,7 @@ namespace stdexec {
 
   template <std::size_t _Np, class... _Ts>
   constexpr decltype(auto) __nth_pack_element(_Ts&&... __ts) noexcept {
+    static_assert(_Np < sizeof...(_Ts));
     return [&]<std::size_t... _Is>(__indices<_Is...>) noexcept -> decltype(auto) {
       return stdexec::__nth_pack_element_<_Is...>((_Ts&&) __ts...);
     }(__make_indices<_Np>());
@@ -987,33 +1021,32 @@ namespace stdexec {
     struct __impl {
       template <std::size_t... _Idx, class... _Ts>
         requires(__callable<__mdispatch_<_Args>, _Ts...> && ...)
-             && (__callable<__mdispatch_<_Pattern, _Idx + __offset>, _Ts...> && ...)
+             && (__callable<__mdispatch_<_Pattern, _Idx + 1>, _Ts...> && ...)
              && __callable< //
                   _Ret,
                   __call_result_t<__mdispatch_<_Args>, _Ts...>...,
-                  __call_result_t<__mdispatch_<_Pattern, _Idx + __offset>, _Ts...>...>
-      auto operator()(__indices<_Idx...>, _Ts&&... __ts) const
-        noexcept(__nothrow_callable<                              //
-                 _Ret,                                            //
-                 __call_result_t<__mdispatch_<_Args>, _Ts...>..., //
-                 __call_result_t<__mdispatch_<_Pattern, _Idx + __offset>, _Ts...>...>)
-          -> __call_result_t< //
-            _Ret,
-            __call_result_t<__mdispatch_<_Args>, _Ts...>...,
-            __call_result_t<__mdispatch_<_Pattern, _Idx + __offset>, _Ts...>...> {
+                  __call_result_t<__mdispatch_<_Pattern, _Idx + 1>, _Ts...>...>
+      auto operator()(__indices<_Idx...>, _Ts&&... __ts) const noexcept(
+        __nothrow_callable<                                                                  //
+          _Ret,                                                                              //
+          __call_result_t<__mdispatch_<_Args>, _Ts...>...,                                   //
+          __call_result_t<__mdispatch_<_Pattern, _Idx + 1>, _Ts...>...>) -> __call_result_t< //
+        _Ret,
+        __call_result_t<__mdispatch_<_Args>, _Ts...>...,
+        __call_result_t<__mdispatch_<_Pattern, _Idx + 1>, _Ts...>...> {
         return _Ret()(                               //
           __mdispatch_<_Args>()((_Ts&&) __ts...)..., //
-          __mdispatch_<_Pattern, _Idx + __offset >()((_Ts&&) __ts...)...);
+          __mdispatch_<_Pattern, _Idx + 1 >()((_Ts&&) __ts...)...);
       }
     };
 
     template <class... _Ts>
-      requires(sizeof...(_Ts) > __offset)
+      requires(__offset < sizeof...(_Ts))
            && __callable<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>
     auto operator()(_Ts&&... __ts) const
       noexcept(__nothrow_callable<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>)
         -> __msecond<
-          __if_c<(sizeof...(_Ts) > __offset)>,
+          __if_c<(__offset < sizeof...(_Ts))>,
           __call_result_t<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>> {
       return __impl()(__make_indices<sizeof...(_Ts) - __offset - 1>(), (_Ts&&) __ts...);
     }

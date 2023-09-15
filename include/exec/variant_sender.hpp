@@ -91,7 +91,9 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-          -> __completion_signatures_t<_Self, _Env>;
+          -> __completion_signatures_t<_Self, _Env> {
+          return {};
+        }
 
        public:
         using is_sender = void;
@@ -117,4 +119,16 @@ namespace exec {
   template <class... _Senders>
   using variant_sender =
     stdexec::__t<__variant::__sender<stdexec::__id<stdexec::__decay_t<_Senders>>...>>;
+}
+
+namespace stdexec::__detail {
+  struct __variant_sender_name {
+    template <class _Sender>
+    using __f = __mapply<
+      __transform< __mcompose<__q<__name_of>, __q<__t>>, __q<exec::__variant::__sender>>,
+      _Sender>;
+  };
+
+  template <class... _SenderIds>
+  extern __variant_sender_name __name_of_v<exec::__variant::__sender<_SenderIds...>>;
 }
