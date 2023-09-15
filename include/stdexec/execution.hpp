@@ -6671,9 +6671,13 @@ namespace stdexec {
     };
 
     // What should sync_wait(just_stopped()) return?
-    template <sender_in<__env> _Sender, class _Continuation>
-    using __sync_wait_result_impl =
-      __value_types_of_t< _Sender, __env, __transform<__q<__decay_t>, _Continuation>, __q<__msingle>>;
+    template <class _Sender, class _Continuation>
+    using __sync_wait_result_impl = //
+      __try_value_types_of_t<
+        _Sender,
+        __env,
+        __transform<__q<__decay_t>, _Continuation>,
+        __q<__msingle>>;
 
     template <class _Sender>
     using __sync_wait_result_t = __mtry_eval<__sync_wait_result_impl, _Sender, __q<std::tuple>>;
