@@ -51,7 +51,7 @@ namespace exec {
 
     template <class _Sigs>
     using __result_variant = __minvoke<
-      __mconcat<__q<__variant>>,
+      __mconcat<__q<stdexec::__variant>>,
       __value_types_<_Sigs>,
       __error_types_<_Sigs>,
       __stopped_types_<_Sigs>>;
