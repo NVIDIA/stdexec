@@ -1254,7 +1254,12 @@ namespace stdexec {
             return (_Result(*)()) nullptr;
           }
         } else if constexpr (__with_member_alias<_Sender, _Env>) {
-          return (__member_alias_t<_Sender, _Env>(*)()) nullptr;
+          using _Result = __member_alias_t<_Sender, _Env>;
+          if constexpr (same_as<_Env, no_env> && __merror<_Result>) {
+            return (dependent_completion_signatures<no_env>(*)()) nullptr;
+          } else {
+            return (_Result(*)()) nullptr;
+          }
         } else if constexpr (__awaitable<_Sender, __env_promise<_Env>>) {
           using _Result = __await_result_t<_Sender, __env_promise<_Env>>;
           if constexpr (same_as<_Result, dependent_completion_signatures<no_env>>) {
