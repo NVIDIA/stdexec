@@ -88,10 +88,7 @@ namespace stdexec {
       return __tag_t::get_env(__self);
     }
 
-    template <
-      same_as<get_completion_signatures_t> _Tag,
-      __decays_to<__sexpr> _Self,
-      class _Env>
+    template < same_as<get_completion_signatures_t> _Tag, __decays_to<__sexpr> _Self, class _Env>
     friend auto tag_invoke(_Tag, _Self&& __self, _Env&& __env) //
       -> __msecond<
         __if_c<same_as<_Tag, get_completion_signatures_t>>,
@@ -165,7 +162,7 @@ namespace stdexec {
     // benefits of SFINAE without nvc++ encoding the whole return type into the
     // symbol name.
     template <class _Ty>
-    extern _Ty(*__f)();
+    extern _Ty (*__f)();
 
     // Anonymous namespace here is to avoid symbol name collisions with the
     // lambda functions returned by __make_tuple.
@@ -212,8 +209,7 @@ namespace stdexec {
     template <class _Data, class... _Children>
     constexpr auto
       make_sender_expr_t<_Tag, _Domain>::operator()(_Data __data, _Children... __children) const {
-      return __sexpr{
-        __detail::__make_tuple(_Tag(), (_Data&&) __data, (_Children&&) __children...)};
+      return __sexpr{__detail::__make_tuple(_Tag(), (_Data&&) __data, (_Children&&) __children...)};
     };
 #endif
   } // namespace __detail

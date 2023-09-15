@@ -87,22 +87,12 @@ namespace exec {
     };
 
     struct domain {
-      template <class Sender>
-      Sender transform_sender(Sender&& sndr) const noexcept {
-        return static_cast<Sender&&>(sndr);
-      }
-
       // For eager customization
       template <stdexec::sender_expr_for<stdexec::bulk_t> Sender>
       auto transform_sender(Sender&& sndr) const noexcept {
         auto sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
           stdexec::get_env(sndr));
         return stdexec::apply_sender((Sender&&) sndr, transform_bulk{*sched.pool_});
-      }
-
-      template <class Sender, class Env>
-      Sender transform_sender(Sender&& sndr, const Env&) const noexcept {
-        return static_cast<Sender&&>(sndr);
       }
 
       // transform the generic bulk sender into a parallel thread-pool bulk sender

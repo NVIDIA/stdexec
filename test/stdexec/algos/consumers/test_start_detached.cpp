@@ -121,11 +121,6 @@ struct custom_scheduler {
   };
 
   struct domain {
-    template <class Sender>
-    Sender transform_sender(Sender&& sndr, auto&&...) const {
-      return (Sender&&) sndr;
-    }
-
     template <class Sender, class Env>
     friend void tag_invoke(ex::start_detached_t, domain, Sender, Env) {
       // drop the sender on the floor

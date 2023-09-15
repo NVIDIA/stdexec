@@ -294,8 +294,7 @@ TEST_CASE("eager customization of bulk works with static thread pool", "[adaptor
     };
 
     auto snd = ex::just() //
-             | ex::transfer(sch)
-             | ex::bulk((int) tids.size(), fun);
+             | ex::transfer(sch) | ex::bulk((int) tids.size(), fun);
     CHECK(&snd.pool_ == &pool);
     stdexec::sync_wait(std::move(snd));
 
