@@ -88,8 +88,9 @@ namespace nvexec {
     using ensure_started_th = __t<ensure_started_sender_t<__id<Sender>>>;
 
     // needed for subsumption purposes
-    template <class Sender>
-    concept _non_stream_sender = !stream_sender<Sender>;
+    template <class Sender, class Env>
+    concept _non_stream_sender = //
+      !derived_from<__decay_t<Sender>, stream_sender_base>;
 
     struct stream_scheduler;
 
