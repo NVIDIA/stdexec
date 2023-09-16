@@ -351,6 +351,12 @@ namespace stdexec {
     requires(sizeof...(_False) <= 1)
   using __if_c = __minvoke<__if_::__<_Pred>, _True, _False...>;
 
+  template <class _Pred, class _True, class... _False>
+  using __minvoke_if = __minvoke<__if<_Pred, _True, _False...>>;
+
+  template <bool _Pred, class _True, class... _False>
+  using __minvoke_if_c = __minvoke<__if_c<_Pred, _True, _False...>>;
+
   template <class _Tp>
   struct __mconst {
     template <class...>
@@ -371,6 +377,9 @@ namespace stdexec {
 
   template <class _Fn, class _Default>
   using __with_default = __mtry_catch<_Fn, __mconst<_Default>>;
+
+  template <template <class...> class _Fn, class _Default>
+  using __with_default_q = __mtry_catch_q<_Fn, __mconst<_Default>>;
 
   inline constexpr __mstring __mbad_substitution =
     "The specified meta-function could not be evaluated with the types provided."__csz;
