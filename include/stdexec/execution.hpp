@@ -84,9 +84,9 @@
 #define STDEXEC_LEGACY_R5_CONCEPTS() 1
 
 STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE("-Wpragmas")
-STDEXEC_PRAGMA_IGNORE("-Wundefined-inline")
-STDEXEC_PRAGMA_IGNORE("-Wundefined-internal")
+STDEXEC_PRAGMA_IGNORE_GNU("-Wpragmas")
+STDEXEC_PRAGMA_IGNORE_GNU("-Wundefined-inline")
+STDEXEC_PRAGMA_IGNORE_GNU("-Wundefined-internal")
 
 namespace stdexec {
   // [exec.queries.queryable]
@@ -6645,7 +6645,7 @@ namespace stdexec {
       template <class _Sender, class _Env>
       auto operator()(_Sender&&, const _Env&) const {
         STDEXEC_PRAGMA_PUSH()
-        STDEXEC_PRAGMA_IGNORE("-Wunused-local-typedefs")
+        STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-local-typedefs")
 
         struct __no_scheduler_in_environment {
           using is_sender = void;
