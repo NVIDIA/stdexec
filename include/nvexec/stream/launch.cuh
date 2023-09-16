@@ -44,7 +44,7 @@ namespace nvexec {
           Fun fun_;
           launch_params params_;
 
-        public:
+         public:
           using __id = receiver_t;
 
           template <class... As>
@@ -86,13 +86,12 @@ namespace nvexec {
         __minvoke<__callable_error<"In nvexec::launch()..."__csz>, Fun, cudaStream_t, As&...>;
 
       template <class Fun, class... As>
-      using _set_value_t =
-        __minvoke<
-          __if_c<
-            __callable<Fun, cudaStream_t, As&...>,
-            __mcompose<__q<completion_signatures>, __qf<set_value_t>>,
-            __mbind_front_q<launch_error_t, Fun>>,
-          As...>;
+      using _set_value_t = __minvoke<
+        __if_c<
+          __callable<Fun, cudaStream_t, As&...>,
+          __mcompose<__q<completion_signatures>, __qf<set_value_t>>,
+          __mbind_front_q<launch_error_t, Fun>>,
+        As...>;
 
       template <class CvrefSender, class Env, class Fun>
       using completions_t = //
@@ -165,8 +164,13 @@ namespace nvexec {
       }
 
       template <__movable_value Fun>
-      __binder_back<launch_t, launch_params, Fun> operator()(launch_params params, Fun&& fun) const {
-        return {{}, {}, {params, (Fun&&) fun}};
+      __binder_back<launch_t, launch_params, Fun>
+        operator()(launch_params params, Fun&& fun) const {
+        return {
+          {},
+          {},
+          {params, (Fun&&) fun}
+        };
       }
     };
 

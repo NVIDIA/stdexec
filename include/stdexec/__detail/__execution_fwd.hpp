@@ -123,9 +123,6 @@ namespace stdexec {
   using __get_completion_signatures::get_completion_signatures_t;
   extern const get_completion_signatures_t get_completion_signatures;
 
-  template <class _Sender, class _Env>
-  using __completion_signatures_of_t = __call_result_t< get_completion_signatures_t, _Sender, _Env>;
-
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __connect {
     struct connect_t;
@@ -167,4 +164,24 @@ namespace stdexec {
   using __as_awaitable::as_awaitable_t;
   extern const as_awaitable_t as_awaitable;
 
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  namespace __transfer {
+    struct transfer_t;
+  }
+
+  using __transfer::transfer_t;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  namespace __on_v2 {
+    struct on_t;
+  }
+
+  namespace v2 {
+    using __on_v2::on_t;
+  }
+
+}
+
+template <class...>
+[[deprecated]] void print() {
 }

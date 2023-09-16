@@ -174,7 +174,7 @@ namespace nvexec {
         Senders&&... sndrs) noexcept {
         return transfer_when_all_sender_th<
           multi_gpu_stream_scheduler,
-          tag_invoke_result_t<into_variant_t, Senders>...>(
+          __result_of<into_variant, Senders>...>(
           sch.context_state_, into_variant((Senders&&) sndrs)...);
       }
 

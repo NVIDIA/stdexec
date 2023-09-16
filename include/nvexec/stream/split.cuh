@@ -60,7 +60,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
           SharedState& state = self.sh_state_;
 
-          if constexpr (stream_sender<Sender>) {
+          if constexpr (stream_sender<Sender, env_t>) {
             cudaStream_t stream = state.op_state2_.get_stream();
             using tuple_t = decayed_tuple<Tag, As...>;
             state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
@@ -111,10 +111,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using inner_receiver_t = stdexec::__t<receiver_t<stdexec::__id<Sender>, sh_state_t>>;
       using task_t = continuation_task_t<inner_receiver_t, variant_t>;
       using enqueue_receiver_t =
-        stdexec::__t<stream_enqueue_receiver<stdexec::__id<env_t>, variant_t>>;
+        stdexec::__t<stream_enqueue_receiver<stdexec::__cvref_id<env_t>, variant_t>>;
       using intermediate_receiver = //
         stdexec::__t< std::conditional_t<
-          stream_sender<Sender>,
+          stream_sender<Sender, env_t>,
           stdexec::__id<inner_receiver_t>,
           stdexec::__id<enqueue_receiver_t>>>;
       using inner_op_state_t = connect_result_t<Sender, intermediate_receiver>;
@@ -133,7 +133,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       ::cuda::std::atomic_flag started_{};
 
       explicit sh_state_t(Sender& sndr, context_state_t context_state)
-        requires(stream_sender<Sender>)
+        requires(stream_sender<Sender, env_t>)
         : context_state_(context_state)
         , stream_provider_(false, context_state)
         , data_(malloc_managed<variant_t>(stream_provider_.status_))
@@ -171,7 +171,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         if (data_) {
           STDEXEC_DBG_ERR(cudaFree(data_));
-          if constexpr (stream_sender<Sender>) {
+          if constexpr (stream_sender<Sender, env_t>) {
             STDEXEC_DBG_ERR(cudaEventDestroy(event_));
           }
         }
@@ -234,7 +234,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           cudaError_t& status = op->shared_state_->stream_provider_.status_;
           if (status == cudaSuccess) {
-            if constexpr (stream_sender<Sender>) {
+            if constexpr (stream_sender<Sender, env_t>) {
               status = STDEXEC_DBG_ERR(
                 cudaStreamWaitEvent(op->get_stream(), op->shared_state_->event_));
             }

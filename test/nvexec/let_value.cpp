@@ -138,9 +138,7 @@ TEST_CASE("nvexec let_value can read a property", "[cuda][stream][adaptors][let_
   auto flags = flags_storage.get();
 
   auto snd = ex::schedule(sch) //
-           | ex::let_value([] {
-               return nvexec::get_stream();
-             })
+           | ex::let_value([] { return nvexec::get_stream(); })
            | ex::then([flags](cudaStream_t stream) {
                if (is_on_gpu()) {
                  flags.set();
