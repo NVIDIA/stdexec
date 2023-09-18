@@ -76,9 +76,7 @@ namespace exec {
 
       template <class _Sigs, class... _Queries>
       struct __env {
-        using __compl_sigs = __sequence_completion_signatures_of_t<
-          __sequence_sndr::__unspecified_sender_of<_Sigs>,
-          empty_env>;
+        using __compl_sigs = __to_sequence_completions_t<_Sigs>;
 
         using __vtable_t = stdexec::__t<__next_vtable<_Sigs, __compl_sigs, _Queries...>>;
 
@@ -106,9 +104,7 @@ namespace exec {
           using __return_sigs = completion_signatures<set_value_t(), set_stopped_t()>;
           using __void_sender = typename any_receiver_ref<__return_sigs>::template any_sender<>;
           using __next_sigs = completion_signatures<_Sigs...>;
-          using __compl_sigs = __sequence_completion_signatures_of_t<
-            __sequence_sndr::__unspecified_sender_of<__next_sigs>,
-            empty_env>;
+          using __compl_sigs = __to_sequence_completions_t<__next_sigs>;
           using __item_sender = typename any_receiver_ref<__next_sigs>::template any_sender<>;
           using __item_types = item_types<__item_sender>;
 
@@ -234,9 +230,7 @@ namespace exec {
       using __receiver_ref_t = stdexec::__t<__next_receiver_ref<_Sigs, _ReceiverQueries>>;
       using __vtable_t = stdexec::__t<__sender_vtable<_Sigs, _SenderQueries, _ReceiverQueries>>;
 
-      using __compl_sigs = __sequence_completion_signatures_of_t<
-        __sequence_sndr::__unspecified_sender_of<_Sigs>,
-        empty_env>;
+      using __compl_sigs = __to_sequence_completions_t<_Sigs>;
       using __item_sender = typename any_receiver_ref<_Sigs>::template any_sender<>;
 
       class __t {

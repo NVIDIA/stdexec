@@ -118,7 +118,7 @@ namespace exec {
 
       using __next_receiver_t = stdexec::__t<__next_receiver<_Range, _ReceiverId>>;
 
-      std::optional<connect_result_t<__next_sender_of_t<_Receiver, _ItemSender>, __next_receiver_t>>
+      std::optional<connect_result_t<next_sender_of_t<_Receiver, _ItemSender>, __next_receiver_t>>
         __op_{};
       trampoline_scheduler __scheduler_{};
 
@@ -165,9 +165,7 @@ namespace exec {
         using __next_receiver_t = stdexec::__t<__next_receiver<_Range, stdexec::__id<_Receiver>>>;
 
         template < __decays_to<__t> _Self, sequence_receiver_of<item_types> _Receiver>
-          requires sender_to<
-            __next_sender_of_t<_Receiver, _ItemSender>,
-            __next_receiver_t<_Receiver> >
+          requires sender_to<next_sender_of_t<_Receiver, _ItemSender>, __next_receiver_t<_Receiver> >
         friend auto tag_invoke(subscribe_t, _Self&& __self, _Receiver __rcvr) //
           noexcept(__nothrow_decay_copyable<_Receiver>)
             -> stdexec::__t<__operation<_Range, stdexec::__id<_Receiver>>> {

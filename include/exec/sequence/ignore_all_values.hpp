@@ -123,9 +123,10 @@ namespace exec {
         __t(
           __result_type<_ResultVariant>* __parent,
           _Sender&& __sndr,
-          _ItemReceiver __rcvr)                            //
-          noexcept(__nothrow_decay_copyable<_ItemReceiver> //
-                     && __nothrow_connectable<_Sender, __item_receiver_t>)
+          _ItemReceiver __rcvr) //
+          noexcept(
+            __nothrow_decay_copyable<_ItemReceiver> //
+            && __nothrow_connectable<_Sender, __item_receiver_t>)
           : __base_type{static_cast<_ItemReceiver&&>(__rcvr), __parent}
           , __op_{stdexec::connect(static_cast<_Sender&&>(__sndr), __item_receiver_t{this})} {
         }
@@ -266,14 +267,17 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires receiver_of<_Receiver, __completion_sigs<_Self, env_of_t<_Receiver>>>
-                && sequence_sender_to<
-                     __copy_cvref_t<_Self, _Sequence>,
-                     __receiver_t<__copy_cvref_t<_Self, _Sequence>, _Receiver>>
+        // && sequence_sender_to<
+        //      __copy_cvref_t<_Self, _Sequence>,
+        //      __receiver_t<__copy_cvref_t<_Self, _Sequence>, _Receiver>>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) noexcept(
           __nothrow_constructible_from<
             __operation_t<_Self, _Receiver>,
             __copy_cvref_t<_Self, _Sequence>,
             _Receiver>) -> __operation_t<_Self, _Receiver> {
+          static_assert(sequence_sender_to<
+                        __copy_cvref_t<_Self, _Sequence>,
+                        __receiver_t<__copy_cvref_t<_Self, _Sequence>, _Receiver>>);
           return {static_cast<_Self&&>(__self).__sequence_, static_cast<_Receiver&&>(__rcvr)};
         }
 

@@ -128,7 +128,7 @@ TEST_CASE("sequence_senders - Test for subscribe", "[sequence_senders]") {
   using next_receiver_t = next_receiver<set_value_t(int), set_stopped_t()>;
   using seq_sender_t = some_sequence_sender_of<set_value_t(int), set_stopped_t()>;
   STATIC_REQUIRE(sender<seq_sender_t>);
-  STATIC_REQUIRE(sequence_sender<seq_sender_t>);
+  STATIC_REQUIRE(sequence_sender<seq_sender_t, empty_env>);
   STATIC_REQUIRE(sequence_sender_to<seq_sender_t, next_receiver_t>);
   STATIC_REQUIRE(sequence_sender_to<some_sequence_sender_of<set_value_t(int)>, next_receiver_t>);
 }
