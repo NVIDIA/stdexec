@@ -325,6 +325,11 @@ namespace exec {
     struct subscribe_t {
       template <class _Sender, class _Receiver>
       static constexpr auto __select_impl() noexcept {
+        using _Domain = __env_domain_of_t<env_of_t<_Receiver&>>;
+        constexpr bool _NothrowTfxSender =
+          __nothrow_callable<get_env_t, _Receiver&>
+          && __nothrow_callable<transform_sender_t, _Domain, _Sender, env_of_t<_Receiver&>>;
+        using _TfxSender = __tfx_sender<_Sender, _Receiver&>;
         // Report that 2300R5-style senders and receivers are deprecated:
         if constexpr (!enable_sender<__decay_t<_Sender>>)
           __connect::_PLEASE_UPDATE_YOUR_SENDER_TYPE<__decay_t<_Sender>>();
@@ -343,8 +348,9 @@ namespace exec {
             __stopped_means_break_t<_Receiver>>;
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
         } else if constexpr (__subscribeable_with_tag_invoke<_Sender, _Receiver>) {
-          using _Result = tag_invoke_result_t<subscribe_t, _Sender, _Receiver>;
-          constexpr bool _Nothrow = nothrow_tag_invocable<subscribe_t, _Sender, _Receiver>;
+          using _Result = tag_invoke_result_t<subscribe_t, _TfxSender, _Receiver>;
+          constexpr bool _Nothrow = //
+            _NothrowTfxSender && nothrow_tag_invocable<subscribe_t, _TfxSender, _Receiver>;
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
         } else {
           return static_cast<__debug::__debug_operation (*)() noexcept>(nullptr);
@@ -361,6 +367,7 @@ namespace exec {
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
         noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
           -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
+        using _TfxSender = __tfx_sender<_Sender, _Receiver&>;
         if constexpr (__next_connectable_with_tag_invoke<_Sender, _Receiver>) {
           static_assert(
             operation_state<tag_invoke_result_t<
@@ -374,17 +381,25 @@ namespace exec {
             connect_t{},
             (next_sender_of_t<_Receiver, _Sender>&&) __next,
             __stopped_means_break_t<_Receiver>{(_Receiver&&) __rcvr});
-        } else if constexpr (__subscribeable_with_tag_invoke<_Sender, _Receiver>) {
+        } else if constexpr (__subscribeable_with_tag_invoke<_TfxSender, _Receiver>) {
+          auto&& __env = get_env(__rcvr);
+          auto __domain = __get_env_domain(__env);
           static_assert(
-            operation_state<tag_invoke_result_t<subscribe_t, _Sender, _Receiver>>,
+            operation_state<tag_invoke_result_t<subscribe_t, _TfxSender, _Receiver>>,
             "exec::subscribe(sender, receiver) must return a type that "
             "satisfies the operation_state concept");
-          return tag_invoke(subscribe_t{}, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
+          return tag_invoke(
+            subscribe_t{},
+            transform_sender(__domain, (_Sender&&) __sndr, __env),
+            (_Receiver&&) __rcvr);
         } else if constexpr (enable_sequence_sender<stdexec::__decay_t<_Sender>>) {
+          auto&& __env = get_env(__rcvr);
+          auto __domain = __get_env_domain(__env);
           // This should generate an instantiate backtrace that contains useful
           // debugging information.
           using __tag_invoke::tag_invoke;
-          tag_invoke(*this, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
+          tag_invoke(
+            *this, transform_sender(__domain, (_Sender&&) __sndr, __env), (_Receiver&&) __rcvr);
         } else {
           next_sender_of_t<_Receiver, _Sender> __next = set_next(__rcvr, (_Sender&&) __sndr);
           return tag_invoke(
