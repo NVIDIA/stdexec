@@ -243,7 +243,7 @@ namespace exec {
       };
     };
 
-    template <class _Sequence>
+    template <class _Tag, class _Sequence>
     struct __sender {
       struct __t {
         using is_sender = void;
@@ -283,17 +283,25 @@ namespace exec {
           -> __completion_sigs<_Self, _Env> {
           return {};
         }
+
+        template <__decays_to<__t> _Self, class _ApplyFn>
+        static auto apply(_Self&& __self, _ApplyFn&& __apply_fn) noexcept(
+          noexcept(__apply_fn(_Tag(), __(), static_cast<_Self&&>(__self).__sequence_)))
+          -> decltype(__apply_fn(_Tag(), __(), static_cast<_Self&&>(__self).__sequence_)) {
+          return __apply_fn(_Tag(), __(), static_cast<_Self&&>(__self).__sequence_);
+        }
       };
     };
 
     struct ignore_all_values_t {
-      template <stdexec::__sender _Sender>
-      auto operator()(_Sender&& __seq) const noexcept(__nothrow_decay_copyable<_Sender>)
-        -> stdexec::__t<__sender<__decay_t<_Sender>>> {
-        return {static_cast<_Sender&&>(__seq)};
+      template <sender _Sender>
+      auto operator()(_Sender&& __sndr) const {
+        auto __domain = __get_sender_domain((_Sender&&) __sndr);
+        using __default_sender = __t<__sender<ignore_all_values_t, __decay_t<_Sender>>>;
+        return transform_sender(__domain, __default_sender{static_cast<_Sender&&>(__sndr)});
       }
 
-      constexpr auto operator()() const noexcept -> __binder_back<ignore_all_values_t> {
+      constexpr __binder_back<ignore_all_values_t> operator()() const noexcept {
         return {{}, {}, {}};
       }
     };

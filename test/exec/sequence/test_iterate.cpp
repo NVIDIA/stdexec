@@ -68,10 +68,12 @@ struct sum_sender {
   }
 };
 
+template <class Env = stdexec::empty_env>
 struct sum_receiver {
   using is_receiver = void;
 
   int& sum_;
+  Env env_{};
 
   template <class Item>
   friend sum_sender<stdexec::__decay_t<Item>>
@@ -88,8 +90,8 @@ struct sum_receiver {
   friend void tag_invoke(stdexec::set_error_t, sum_receiver&&, std::exception_ptr) noexcept {
   }
 
-  friend stdexec::empty_env tag_invoke(stdexec::get_env_t, const sum_receiver&) noexcept {
-    return {};
+  friend Env tag_invoke(stdexec::get_env_t, const sum_receiver& self) noexcept {
+    return self.env_;
   }
 };
 
@@ -98,9 +100,31 @@ TEST_CASE("iterate - sum up an array ", "[sequence_senders][iterate]") {
   int sum = 0;
   auto iterate = exec::iterate(std::views::all(array));
   STATIC_REQUIRE(exec::sequence_sender_in<decltype(iterate), stdexec::empty_env>);
-  auto op = exec::subscribe(iterate, sum_receiver{sum});
+  STATIC_REQUIRE(stdexec::sender_expr_for<decltype(iterate), exec::iterate_t>);
+  auto op = exec::subscribe(iterate, sum_receiver<>{sum});
   stdexec::start(op);
   CHECK(sum == (42 + 43 + 44));
+}
+
+struct my_domain {
+  template <stdexec::sender_expr_for<exec::iterate_t> Sender, class _Env>
+  auto transform_sender(Sender&& sender, _Env&&) const noexcept {
+    auto range = stdexec::apply_sender(
+      std::forward<Sender>(sender), stdexec::__detail::__get_data{});
+    auto sum = std::accumulate(std::ranges::begin(range), std::ranges::end(range), 0);
+    return stdexec::just(sum + 1);
+  }
+};
+
+TEST_CASE("iterate - sum up an array with custom domain", "[sequence_senders][iterate]") {
+  std::array<int, 3> array{42, 43, 44};
+  auto iterate = exec::iterate(std::views::all(array));
+  STATIC_REQUIRE(exec::sequence_sender_in<decltype(iterate), stdexec::empty_env>);
+  STATIC_REQUIRE(stdexec::sender_expr_for<decltype(iterate), exec::iterate_t>);
+  auto env = exec::make_env(exec::with(stdexec::get_domain, my_domain{}));
+  int sum = 0;
+  auto op = exec::subscribe(iterate, sum_receiver{sum, env});
+  CHECK(sum == (42 + 43 + 44 + 1));
 }
 
 #endif // STDEXEC_HAS_STD_RANGES()

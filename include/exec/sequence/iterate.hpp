@@ -144,7 +144,7 @@ namespace exec {
       }
     };
 
-    template <class _Range>
+    template <class _Tag, class _Range>
     struct __sequence {
       struct __t {
         using __id = __sequence;
@@ -174,13 +174,20 @@ namespace exec {
             static_cast<_Receiver&&>(__rcvr)
           };
         }
+
+        template <__decays_to<__t> _Self, class _ApplyFn>
+        static auto apply(_Self&& __self, _ApplyFn&& __apply_fn) noexcept(
+          noexcept(__apply_fn(_Tag(), static_cast<_Self&&>(__self).__range_)))
+          -> decltype(__apply_fn(_Tag(), static_cast<_Self&&>(__self).__range_)) {
+          return __apply_fn(_Tag(), static_cast<_Self&&>(__self).__range_);
+        }
       };
     };
 
     struct iterate_t {
       template <std::ranges::forward_range _Range>
-        requires stdexec::__decay_copyable<_Range>
-      stdexec::__t<__sequence<__decay_t<_Range>>> operator()(_Range&& __range) const noexcept {
+        requires __decay_copyable<_Range>
+      __t<__sequence<iterate_t, __decay_t<_Range>>> operator()(_Range&& __range) const noexcept {
         return {static_cast<_Range&&>(__range)};
       }
     };
