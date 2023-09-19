@@ -21,6 +21,7 @@
 #if STDEXEC_HAS_STD_RANGES()
 
 #include "../sequence_senders.hpp"
+#include "../__detail/__basic_sequence.hpp"
 
 #include "../env.hpp"
 #include "../trampoline_scheduler.hpp"
@@ -144,51 +145,62 @@ namespace exec {
       }
     };
 
-    template <class _Tag, class _Range>
-    struct __sequence {
-      struct __t {
-        using __id = __sequence;
-        using is_sender = sequence_tag;
+    template <class _Receiver>
+    struct __subscribe_fn {
+      using _ReceiverId = __id<_Receiver>;
+      _Receiver __rcvr_;
+      template <class _Range>
+      using __operation_t = __t<__operation<__decay_t<_Range>, _ReceiverId>>;
 
-        using completion_signatures = stdexec::
-          completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
-
-        using _ItemSender = decltype(stdexec::on(
-          std::declval<trampoline_scheduler&>(),
-          std::declval<__sender_t<_Range>>()));
-
-        using item_types = exec::item_types<_ItemSender>;
-
-        STDEXEC_NO_UNIQUE_ADDRESS _Range __range_;
-
-        template <class _Receiver>
-        using __next_receiver_t = stdexec::__t<__next_receiver<_Range, stdexec::__id<_Receiver>>>;
-
-        template < __decays_to<__t> _Self, sequence_receiver_of<item_types> _Receiver>
-          requires sender_to<next_sender_of_t<_Receiver, _ItemSender>, __next_receiver_t<_Receiver> >
-        friend auto tag_invoke(subscribe_t, _Self&& __self, _Receiver __rcvr) //
-          noexcept(__nothrow_decay_copyable<_Receiver>)
-            -> stdexec::__t<__operation<_Range, stdexec::__id<_Receiver>>> {
-          return {
-            {std::ranges::begin(__self.__range_), std::ranges::end(__self.__range_)},
-            static_cast<_Receiver&&>(__rcvr)
-          };
-        }
-
-        template <__decays_to<__t> _Self, class _ApplyFn>
-        static auto apply(_Self&& __self, _ApplyFn&& __apply_fn) noexcept(
-          noexcept(__apply_fn(_Tag(), static_cast<_Self&&>(__self).__range_)))
-          -> decltype(__apply_fn(_Tag(), static_cast<_Self&&>(__self).__range_)) {
-          return __apply_fn(_Tag(), static_cast<_Self&&>(__self).__range_);
-        }
-      };
+      template <class _Range>
+      auto operator()(__ignore, _Range&& __range) //
+        noexcept(__nothrow_decay_copyable<_Receiver>) -> __operation_t<_Range> {
+        return {
+          {std::ranges::begin(__range), std::ranges::end(__range)},
+          static_cast<_Receiver&&>(__rcvr_)
+        };
+      }
     };
 
     struct iterate_t {
       template <std::ranges::forward_range _Range>
         requires __decay_copyable<_Range>
-      __t<__sequence<iterate_t, __decay_t<_Range>>> operator()(_Range&& __range) const noexcept {
-        return {static_cast<_Range&&>(__range)};
+      auto operator()(_Range&& __range) const {
+        return make_sequence_expr<iterate_t>(__decay_t<_Range>{static_cast<_Range&&>(__range)});
+      }
+
+      using __completion_sigs =
+        completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
+
+      // template <class _Sequence, class _Receiver>
+      // using __next_receiver_t = stdexec::__t<__next_receiver<__data_of<_Sequence>, __id<_Receiver>>>;
+
+      template <sender_expr_for<iterate_t> _SeqExpr, receiver _Receiver>
+      static auto subscribe(_SeqExpr&& __seq, _Receiver __rcvr) noexcept(
+        __nothrow_callable<apply_sender_t, _SeqExpr, __subscribe_fn<_Receiver>>)
+        -> __call_result_t<apply_sender_t, _SeqExpr, __subscribe_fn<_Receiver>> {
+        return apply_sender(static_cast<_SeqExpr&&>(__seq), __subscribe_fn<_Receiver>{__rcvr});
+      }
+
+      static auto get_completion_signatures(__ignore, __ignore) noexcept
+        -> completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()> {
+        return {};
+      }
+
+
+      template <class _Sequence>
+      using _ItemSender = decltype(stdexec::on(
+        __declval<trampoline_scheduler&>(),
+        __declval<__sender_t<__data_of<_Sequence>>>()));
+
+      template <sender_expr_for<iterate_t> _Sequence>
+      static auto get_item_types(_Sequence&&, __ignore) noexcept
+        -> item_types<_ItemSender<_Sequence>> {
+        return {};
+      }
+
+      static empty_env get_env(__ignore) noexcept {
+        return {};
       }
     };
   }

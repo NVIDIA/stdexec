@@ -156,15 +156,13 @@ namespace exec {
         if constexpr (__with_tag_invoke<_Sender, _Env>) {
           using _Result = tag_invoke_result_t<get_item_types_t, _TfxSender, _Env>;
           return (_Result(*)()) nullptr;
-        } else if constexpr (__with_member_alias<_Sender, _Env>) {
-          using _Result = __member_alias_t<_Sender, _Env>;
+        } else if constexpr (__with_member_alias<_TfxSender, _Env>) {
+          using _Result = __member_alias_t<_TfxSender, _Env>;
           return (_Result(*)()) nullptr;
         } else if constexpr (
           sender<_TfxSender, _Env> && !enable_sequence_sender<stdexec::__decay_t<_TfxSender>>) {
           using _Result = item_types<stdexec::__decay_t<_TfxSender>>;
           return (_Result(*)()) nullptr;
-        } else if constexpr (std::same_as<_Env, no_env> && enable_sequence_sender<_Sender>) {
-          return (dependent_completion_signatures<no_env>(*)()) nullptr;
         } else if constexpr (__is_debug_env<_Env>) {
           using __tag_invoke::tag_invoke;
           // This ought to cause a hard error that indicates where the problem is.
@@ -334,6 +332,9 @@ namespace exec {
         if constexpr (!enable_sender<__decay_t<_Sender>>)
           __connect::_PLEASE_UPDATE_YOUR_SENDER_TYPE<__decay_t<_Sender>>();
 
+        if constexpr (!enable_sender<__decay_t<_TfxSender>>)
+          __connect::_PLEASE_UPDATE_YOUR_SENDER_TYPE<__decay_t<_TfxSender>>();
+
         if constexpr (!enable_receiver<__decay_t<_Receiver>>)
           __connect::_PLEASE_UPDATE_YOUR_RECEIVER_TYPE<__decay_t<_Receiver>>();
 
@@ -347,7 +348,7 @@ namespace exec {
             next_sender_of_t<_Receiver, _TfxSender>,
             __stopped_means_break_t<_Receiver>>;
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
-        } else if constexpr (__subscribeable_with_tag_invoke<_Sender, _Receiver>) {
+        } else if constexpr (__subscribeable_with_tag_invoke<_TfxSender, _Receiver>) {
           using _Result = tag_invoke_result_t<subscribe_t, _TfxSender, _Receiver>;
           constexpr bool _Nothrow = //
             _NothrowTfxSender && nothrow_tag_invocable<subscribe_t, _TfxSender, _Receiver>;
@@ -393,7 +394,7 @@ namespace exec {
             subscribe_t{},
             transform_sender(__domain, (_Sender&&) __sndr, __env),
             (_Receiver&&) __rcvr);
-        } else if constexpr (enable_sequence_sender<stdexec::__decay_t<_Sender>>) {
+        } else if constexpr (enable_sequence_sender<stdexec::__decay_t<_TfxSender>>) {
           // This should generate an instantiate backtrace that contains useful
           // debugging information.
           using __tag_invoke::tag_invoke;
