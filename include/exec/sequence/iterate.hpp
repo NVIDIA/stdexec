@@ -172,10 +172,22 @@ namespace exec {
       using __completion_sigs =
         completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
 
-      // template <class _Sequence, class _Receiver>
-      // using __next_receiver_t = stdexec::__t<__next_receiver<__data_of<_Sequence>, __id<_Receiver>>>;
 
-      template <sender_expr_for<iterate_t> _SeqExpr, receiver _Receiver>
+      template <class _Sequence>
+      using _ItemSender = decltype(stdexec::on(
+        __declval<trampoline_scheduler&>(),
+        __declval<__sender_t<__data_of<_Sequence>>>()));
+
+      template <class _Sequence, class _Receiver>
+      using _NextReceiver = stdexec::__t<__next_receiver<__data_of<_Sequence>, __id<_Receiver>>>;
+
+      template <class _Sequence, class _Receiver>
+      using _NextSender = next_sender_of_t<_Receiver, _ItemSender<_Sequence>>;
+
+      template <
+        sender_expr_for<iterate_t> _SeqExpr,
+        sequence_receiver_of<item_types<_ItemSender<_SeqExpr>>> _Receiver>
+        requires sender_to<_NextSender<_SeqExpr, _Receiver>, _NextReceiver<_SeqExpr, _Receiver>>
       static auto subscribe(_SeqExpr&& __seq, _Receiver __rcvr) noexcept(
         __nothrow_callable<apply_sender_t, _SeqExpr, __subscribe_fn<_Receiver>>)
         -> __call_result_t<apply_sender_t, _SeqExpr, __subscribe_fn<_Receiver>> {
@@ -186,12 +198,6 @@ namespace exec {
         -> completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()> {
         return {};
       }
-
-
-      template <class _Sequence>
-      using _ItemSender = decltype(stdexec::on(
-        __declval<trampoline_scheduler&>(),
-        __declval<__sender_t<__data_of<_Sequence>>>()));
 
       template <sender_expr_for<iterate_t> _Sequence>
       static auto get_item_types(_Sequence&&, __ignore) noexcept
