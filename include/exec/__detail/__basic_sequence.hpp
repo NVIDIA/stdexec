@@ -109,6 +109,18 @@ namespace exec {
   STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
     __seqexpr(_ImplFn) -> __seqexpr<_ImplFn>;
 
+#if STDEXEC_NVHPC() || (STDEXEC_GCC() && __GNUC__ < 13)
+  namespace __detail {
+    template <class _Tag, class _Domain = stdexec::__default_domain<>>
+    struct make_sequence_expr_t {
+      template <class _Data = stdexec::__, class... _Children>
+      constexpr auto operator()(_Data __data = {}, _Children... __children) const {
+        return __seqexpr{stdexec::__detail::__make_tuple(
+          _Tag(), stdexec::__detail::__mbc(__data), stdexec::__detail::__mbc(__children)...)};
+      }
+    };
+  }
+#else
   namespace __detail {
     template <class _Tag, class _Domain = stdexec::__default_domain<>>
     struct make_sequence_expr_t {
@@ -119,6 +131,7 @@ namespace exec {
       }
     };
   }
+#endif
 
   template <class _Tag, class _Domain = stdexec::__default_domain<>>
   inline constexpr __detail::make_sequence_expr_t<_Tag, _Domain> make_sequence_expr{};
