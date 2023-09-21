@@ -236,7 +236,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           if (status == cudaSuccess) {
             if constexpr (stream_sender<Sender, env_t>) {
               status = STDEXEC_DBG_ERR(
-                cudaStreamWaitEvent(op->get_stream(), op->shared_state_->event_));
+                cudaStreamWaitEvent(op->get_stream(), op->shared_state_->event_, 0));
             }
 
             visit(

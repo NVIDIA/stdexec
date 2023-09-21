@@ -259,7 +259,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
               for (int i = 0; i < sizeof...(SenderIds); i++) {
                 if (status_ == cudaSuccess) {
-                  status_ = STDEXEC_DBG_ERR(cudaStreamWaitEvent(stream, events_[i]));
+                  status_ = STDEXEC_DBG_ERR(cudaStreamWaitEvent(stream, events_[i], 0));
                 }
               }
             } else {
