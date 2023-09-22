@@ -122,8 +122,9 @@ TEST_CASE("iterate - sum up an array with custom domain", "[sequence_senders][it
   STATIC_REQUIRE(exec::sequence_sender_in<decltype(iterate), stdexec::empty_env>);
   STATIC_REQUIRE(stdexec::sender_expr_for<decltype(iterate), exec::iterate_t>);
   auto env = exec::make_env(exec::with(stdexec::get_domain, my_domain{}));
+  using Env = decltype(env);
   int sum = 0;
-  auto op = exec::subscribe(iterate, sum_receiver{sum, env});
+  auto op = exec::subscribe(iterate, sum_receiver<Env>{sum, env});
   stdexec::start(op);
   CHECK(sum == (42 + 43 + 44 + 1));
 }
