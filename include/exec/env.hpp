@@ -23,8 +23,8 @@
 #endif
 
 namespace exec {
-  template <class... _TagValue>
-  using with_t = stdexec::__with<_TagValue...>;
+  template <class _Tag, class _Value = stdexec::__none_such>
+  using with_t = stdexec::__with<_Tag, _Value>;
 
   namespace __detail {
     struct __with_t {

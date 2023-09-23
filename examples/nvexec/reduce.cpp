@@ -23,52 +23,19 @@
 #include <span>
 
 namespace ex = stdexec;
-using stdexec::__tag_invoke::tag_invoke;
 
-struct sink_receiver {
-  using is_receiver = void;
-
-  friend void tag_invoke(stdexec::set_value_t, sink_receiver, auto&&...) noexcept {
-  }
-
-  friend void tag_invoke(stdexec::set_error_t, sink_receiver, auto&&) noexcept {
-  }
-
-  friend void tag_invoke(stdexec::set_stopped_t, sink_receiver) noexcept {
-  }
-
-  friend stdexec::empty_env tag_invoke(stdexec::get_env_t, sink_receiver) noexcept {
-    return {};
-  }
-};
-
-struct empty_environment { };
-
-template <class...>
-[[deprecated]] void print() {
-}
-
-// unqualified call to tag_invoke:
 int main() {
-  const int n = 2 * 1024;
-  thrust::device_vector<float> input(n, 1.0f);
-  float* first = thrust::raw_pointer_cast(input.data());
-  float* last = thrust::raw_pointer_cast(input.data()) + input.size();
-  nvexec::stream_context stream_ctx{};
-  auto sched = stream_ctx.get_scheduler();
+  // const int n = 2 * 1024;
+  // thrust::device_vector<float> input(n, 1.0f);
+  // float* first = thrust::raw_pointer_cast(input.data());
+  // float* last = thrust::raw_pointer_cast(input.data()) + input.size();
 
-  auto snd = ex::just(std::span{first, last}) | nvexec::reduce(42.0f);
+  // nvexec::stream_context stream_ctx{};
 
-  auto on_snd = ex::on(sched, std::move(snd));
-  //::print<stdexec::__detail::__name_of<decltype(on_snd)>>();
+  // auto snd = ex::transfer_just(stream_ctx.get_scheduler(), std::span{first, last})
+  //          | nvexec::reduce(42.0f);
 
-  // recursively transforms the sender using the stream domain
-  // auto stream_on_snd = nvexec::_strm::stream_domain().transform_sender(
-  //   std::move(on_snd), ex::empty_env());
+  // auto [result] = stdexec::sync_wait(std::move(snd)).value();
 
-  // the name of the transformed sender shows that the reduce node
-  // in the tree was transformed from a basic_sender<> to a nvexec::reduce_::sender_t<>
-  //::print<stdexec::__detail::__name_of<decltype(stream_on_snd)>>();
-
-  //auto [result] = stdexec::sync_wait(std::move(on_snd)).value();
+  // std::cout << "result: " << result << std::endl;
 }

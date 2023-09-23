@@ -101,7 +101,7 @@ namespace nvexec {
 
       // Lazy algorithm customizations require a recursive tree transformation
       template <sender_expr Sender, class Env>
-        requires _non_stream_sender<Sender> // no need to transform it a second time
+        requires _non_stream_sender<Sender, Env> // no need to transform it a second time
       auto transform_sender(Sender&& sndr, const Env& env) const noexcept {
         return stdexec::apply_sender(
           (Sender&&) sndr,
@@ -113,7 +113,7 @@ namespace nvexec {
 
       // reduce senders get a special transformation
       template <sender_expr_for<reduce_t> Sender, class Env>
-        requires _non_stream_sender<Sender> // no need to transform it a second time
+        requires _non_stream_sender<Sender, Env> // no need to transform it a second time
       auto transform_sender(Sender&& sndr, const Env& env) const noexcept {
         return stdexec::apply_sender(
           (Sender&&) sndr,
