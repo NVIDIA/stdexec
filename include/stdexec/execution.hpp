@@ -4751,7 +4751,7 @@ namespace stdexec {
               __completion_signatures_of_t<_Sender, _Env>>>;
 
         template <__decays_to<__t> _Self, receiver _Receiver>
-        //requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
+          requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
           -> __operation_t<_Self, _Receiver> {
           return __operation_t<_Self, _Receiver>{
