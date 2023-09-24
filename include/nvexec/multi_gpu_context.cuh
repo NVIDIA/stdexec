@@ -66,7 +66,7 @@ namespace nvexec {
             if (op.status_ == cudaSuccess) {
               continuation_kernel<<<1, 1, 0, op.stream_>>>(std::move(op.rec_), stdexec::set_value);
             } else {
-              continuation_kernel<cudaError_t><<<1, 1, 0, op.stream_>>>(
+              continuation_kernel<<<1, 1, 0, op.stream_>>>(
                 std::move(op.rec_), stdexec::set_error, std::move(op.status_));
             }
           }
@@ -174,7 +174,7 @@ namespace nvexec {
         Senders&&... sndrs) noexcept {
         return transfer_when_all_sender_th<
           multi_gpu_stream_scheduler,
-          tag_invoke_result_t<into_variant_t, Senders>...>(
+          __result_of<into_variant, Senders>...>(
           sch.context_state_, into_variant((Senders&&) sndrs)...);
       }
 

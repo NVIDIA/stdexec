@@ -27,6 +27,7 @@ TEST_CASE("ignore_all_values - ignore empty sequence", "[sequence_senders][ignor
   STATIC_REQUIRE(stdexec::same_as<
                  stdexec::completion_signatures<stdexec::set_value_t()>,
                  stdexec::completion_signatures_of_t<Sender, stdexec::empty_env>>);
+  STATIC_REQUIRE(stdexec::sender_expr_for<Sender, exec::ignore_all_values_t>);
   CHECK(stdexec::sync_wait(sndr));
 }
 

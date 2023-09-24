@@ -31,8 +31,8 @@
 #include "scope.hpp"
 
 STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE("-Wpragmas")
-STDEXEC_PRAGMA_IGNORE("-Wundefined-inline")
+STDEXEC_PRAGMA_IGNORE_GNU("-Wpragmas")
+STDEXEC_PRAGMA_IGNORE_GNU("-Wundefined-inline")
 
 namespace exec {
   namespace __task {
