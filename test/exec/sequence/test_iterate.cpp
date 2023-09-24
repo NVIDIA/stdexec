@@ -129,4 +129,15 @@ TEST_CASE("iterate - sum up an array with custom domain", "[sequence_senders][it
   CHECK(sum == (42 + 43 + 44 + 1));
 }
 
+TEST_CASE("iterate - is lock step") {
+  std::array<int, 3> array{42, 43, 44};
+  auto iterate = exec::iterate(std::views::all(array));
+  STATIC_REQUIRE(exec::sequence_sender_in<decltype(iterate), stdexec::empty_env>);
+  STATIC_REQUIRE(stdexec::sender_expr_for<decltype(iterate), exec::iterate_t>);
+  using parallelism_t = decltype(exec::parallelism(stdexec::get_env(iterate)));
+  STATIC_REQUIRE(std::same_as<parallelism_t, exec::lock_step_t>);
+  auto size = exec::cardinality(stdexec::get_env(iterate));
+  CHECK(size == 3);
+}
+
 #endif // STDEXEC_HAS_STD_RANGES()

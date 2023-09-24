@@ -50,6 +50,13 @@ namespace exec {
           return stdexec::__t<__operation<stdexec::__id<__decay_t<_Rcvr>>>>{
             static_cast<_Rcvr&&>(__rcvr)};
         }
+
+        template <__decays_to<__t> _Self>
+        friend auto tag_invoke(get_env_t, _Self&&) noexcept {
+          return make_env(
+            with(parallelism, lock_step),
+            with(cardinality, std::integral_constant<std::size_t, 0>{}));
+        }
       };
     };
 

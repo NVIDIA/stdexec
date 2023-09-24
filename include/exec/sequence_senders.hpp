@@ -18,6 +18,8 @@
 
 #include "../stdexec/execution.hpp"
 
+#include "./env.hpp"
+
 namespace exec {
   struct sequence_tag { };
 
@@ -193,7 +195,7 @@ namespace exec {
   using item_types_of_t =
     decltype(get_item_types(stdexec::__declval<_Sender>(), stdexec::__declval<_Env>()));
 
-  template <class _Sender, class _Env>
+  template <class _Sender, class _Env = stdexec::no_env>
   concept sequence_sender =           //
     stdexec::sender<_Sender, _Env> && //
     enable_sequence_sender<stdexec::__decay_t<_Sender>>;
@@ -454,4 +456,84 @@ namespace exec {
       }
     }
   }
+
+  namespace __sequence_queries {
+    using namespace stdexec;
+
+    inline struct unbounded_t {
+    } unbounded;
+
+    struct cardinality_t {
+      template <class Env>
+        requires tag_invocable<cardinality_t, const Env&>
+      constexpr tag_invoke_result_t<cardinality_t, const Env&> operator()(const Env& env) const
+        noexcept(nothrow_tag_invocable<cardinality_t, const Env&>) {
+        return tag_invoke(*this, env);
+      }
+
+      friend constexpr bool tag_invoke(forwarding_query_t, cardinality_t) noexcept {
+        return true;
+      }
+    };
+
+    inline struct many_sender_t {
+    } many_sender;
+
+    inline struct lock_step_t {
+    } lock_step;
+
+    struct parallelism_t {
+      template <class Env>
+        requires tag_invocable<parallelism_t, const Env&>
+      constexpr tag_invoke_result_t<parallelism_t, const Env&> operator()(const Env& env) const
+        noexcept(nothrow_tag_invocable<parallelism_t, const Env&>) {
+        return tag_invoke(*this, env);
+      }
+
+      friend constexpr bool tag_invoke(forwarding_query_t, parallelism_t) noexcept {
+        return true;
+      }
+    };
+  }
+
+  using __sequence_queries::cardinality_t;
+  inline constexpr cardinality_t cardinality;
+
+  using __sequence_queries::parallelism_t;
+  inline constexpr parallelism_t parallelism;
+
+  using __sequence_queries::unbounded_t;
+  using __sequence_queries::unbounded;
+
+  using __sequence_queries::lock_step_t;
+  using __sequence_queries::lock_step;
+
+  using __sequence_queries::many_sender_t;
+  using __sequence_queries::many_sender;
+
+  namespace __get_sequence_env {
+    using namespace stdexec;
+
+    struct get_sequence_env_t {
+      template <sequence_sender Sequence>
+      constexpr env_of_t<Sequence> operator()(const Sequence& seq) const noexcept {
+        return stdexec::get_env(seq);
+      }
+
+      template <sender Sequence>
+        requires(!sequence_sender<Sequence>)
+      constexpr auto operator()(const Sequence& seq) const noexcept {
+        return make_env(
+          stdexec::get_env(seq),
+          with(cardinality, std::integral_constant<size_t, 1>{}),
+          with(parallelism, lock_step));
+      }
+    };
+  }
+
+  using __get_sequence_env::get_sequence_env_t;
+  inline constexpr get_sequence_env_t get_sequence_env;
+
+  template <class EnvProvider>
+  using sequence_env_of_t = stdexec::__call_result_t<get_sequence_env_t, EnvProvider>;
 }
