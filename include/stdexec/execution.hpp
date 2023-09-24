@@ -5923,92 +5923,66 @@ namespace stdexec {
       };
     };
 
-    template <class _SenderId>
-    struct __sender {
-      using _Sender = stdexec::__t<_SenderId>;
+    template <class _Sender, class _Env>
+    using __variant_t = __try_value_types_of_t<_Sender, _Env>;
 
-      template <class _Env>
-      using __variant_t = __try_value_types_of_t<_Sender, _Env>;
+    template <class _Sender, class _Receiver>
+    using __receiver_t = //
+      stdexec::__t< __receiver<__id<_Receiver>, __variant_t<_Sender, env_of_t<_Receiver>>>>;
 
-      template <class _Receiver>
-      using __receiver_t = //
-        stdexec::__t< __receiver<__id<_Receiver>, __variant_t<env_of_t<_Receiver>>>>;
+    template <class _Variant>
+    using __variant_completions =
+      completion_signatures< set_value_t(_Variant), set_error_t(std::exception_ptr)>;
 
-      struct __t {
-        using __id = __sender;
-        using is_sender = void;
+    template <class _Sender, class _Env>
+    using __compl_sigs = //
+      __try_make_completion_signatures<
+        _Sender,
+        _Env,
+        __meval<__variant_completions, __variant_t<_Sender, _Env>>,
+        __mconst<completion_signatures<>>>;
 
-        template <__decays_to<_Sender> _CvrefSender>
-        explicit __t(_CvrefSender&& __sndr)
-          : __sndr_((_CvrefSender&&) __sndr) {
-        }
-
-       private:
-        template <class...>
-        using __set_value_t = completion_signatures<>;
-
-        template <class _Variant>
-        using __variant_completions =
-          completion_signatures< set_value_t(_Variant), set_error_t(std::exception_ptr)>;
-
-        template <class _Env>
-        using __compl_sigs = //
-          __try_make_completion_signatures<
-            _Sender,
-            _Env,
-            __meval<__variant_completions, __variant_t<_Env>>,
-            __q<__set_value_t>>;
-
-        _Sender __sndr_;
-
-        template <receiver _Receiver>
-          requires sender_to<_Sender, __receiver_t<_Receiver>>
-        friend auto tag_invoke(connect_t, __t&& __self, _Receiver __rcvr) //
-          noexcept(__nothrow_connectable<_Sender, __receiver_t<_Receiver>>)
-            -> connect_result_t<_Sender, __receiver_t<_Receiver>> {
-          return stdexec::connect(
-            (_Sender&&) __self.__sndr_, __receiver_t<_Receiver>{(_Receiver&&) __rcvr});
-        }
-
-        friend auto tag_invoke(get_env_t, const __t& __self) noexcept -> env_of_t<const _Sender&> {
-          return get_env(__self.__sndr_);
-        }
-
-        template <class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, __t&&, _Env&&) //
-          -> __compl_sigs<_Env> {
-          return {};
-        }
-      };
-    };
-
-    struct into_variant_t {
+    struct into_variant_t : __default_get_env<into_variant_t> {
       template <sender _Sender>
-      auto operator()(_Sender&& __sndr) const -> __t<__sender<stdexec::__id<__decay_t<_Sender>>>> {
-        return __t<__sender<stdexec::__id<__decay_t<_Sender>>>>{(_Sender&&) __sndr};
+      auto operator()(_Sender&& __sndr) const {
+        auto __domain = __get_sender_domain(__sndr);
+        return transform_sender(
+          __domain, make_sender_expr<into_variant_t>(__(), std::move(__sndr)));
       }
 
       auto operator()() const noexcept {
         return __binder_back<into_variant_t>{};
+      }
+
+#if STDEXEC_FRIENDSHIP_IS_LEXICAL()
+     private:
+      template <class...>
+      friend struct stdexec::__sexpr;
+#endif
+
+      template <sender_expr_for<into_variant_t> _Self, receiver _Receiver>
+        requires sender_to<__child_of<_Self>, __receiver_t<__child_of<_Self>, _Receiver>>
+      static auto connect(_Self&& __self, _Receiver __rcvr) //
+        noexcept(
+          __nothrow_connectable<__child_of<_Self>, __receiver_t<__child_of<_Self>, _Receiver>>)
+          -> connect_result_t<__child_of<_Self>, __receiver_t<__child_of<_Self>, _Receiver>> {
+        return apply_sender(
+          (_Self&&) __self, [&]<class _Child>(__ignore, __ignore, _Child&& __child) {
+            return stdexec::connect(
+              (_Child&&) __child, __receiver_t<_Child, _Receiver>{(_Receiver&&) __rcvr});
+          });
+      }
+
+      template <sender_expr_for<into_variant_t> _Self, class _Env>
+      static auto get_completion_signatures(_Self&&, _Env&&) //
+        -> __compl_sigs<__child_of<_Self>, _Env> {
+        return {};
       }
     };
   } // namespace __into_variant
 
   using __into_variant::into_variant_t;
   inline constexpr into_variant_t into_variant{};
-
-  // Temporary until we migrate into_variant() to use __sexpr:
-  namespace __detail {
-    struct __into_variant_sender_name {
-      template <class _Sender>
-      using __f = __mapply<
-        __transform< __mcompose<__q<__name_of>, __q<__t>>, __q<__into_variant::__sender>>,
-        _Sender>;
-    };
-
-    template <class _SenderId>
-    extern __into_variant_sender_name __name_of_v<__into_variant::__sender<_SenderId>>;
-  }
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.when_all]
