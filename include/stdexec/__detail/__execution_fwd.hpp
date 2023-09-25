@@ -179,9 +179,4 @@ namespace stdexec {
   namespace v2 {
     using __on_v2::on_t;
   }
-
-}
-
-template <class...>
-[[deprecated]] void print() {
 }

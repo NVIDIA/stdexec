@@ -41,7 +41,8 @@ namespace exec {
       struct __t {
         using __id = __sender;
         using is_sender = sequence_tag;
-        using completion_signatures = stdexec::completion_signatures<>;
+        using completion_signatures = stdexec::completion_signatures<stdexec::set_value_t()>;
+        using item_types = exec::item_types<>;
 
         template <__decays_to<__t> _Self, receiver_of<completion_signatures> _Rcvr>
         friend auto tag_invoke(subscribe_t, _Self&&, _Rcvr&& __rcvr) noexcept(
