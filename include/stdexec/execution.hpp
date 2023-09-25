@@ -5677,22 +5677,26 @@ namespace stdexec {
       template <class _Sender, class... _Envs>
       using __sender_t = __t<__sender<__id<__decay_t<_Sender>>, __env::__env_join_t<_Envs...>>>;
 
-      template <__is_not_instance_of<__env::__prop> _Sender, class... _Tags, class... _Values>
-        requires sender<_Sender>
-      auto operator()(_Sender&& __sndr, __env::__prop<_Tags, _Values>... __withs) const
-        -> __sender_t<_Sender, __env::__prop<_Tags, _Values>...> {
-        return {(_Sender&&) __sndr, __join_env(std::move(__withs)...)};
+      template <sender _Sender, class... _Envs>
+      auto operator()(_Sender&& __sndr, _Envs... __envs) const
+        -> __sender_t<_Sender, __env::__env_join_t<_Envs...>> {
+        return {(_Sender&&) __sndr, __join_env(std::move(__envs)...)};
       }
 
-      template <class... _Tags, class... _Values>
-      auto operator()(__env::__prop<_Tags, _Values>... __withs) const
-        -> __binder_back<__write_t, __env::__prop<_Tags, _Values>...> {
-        return {{}, {}, {std::move(__withs)...}};
+      template <class... _Envs>
+      auto operator()(_Envs... __envs) const -> __binder_back<__write_t, _Envs...> {
+        return {{}, {}, {std::move(__envs)...}};
       }
     };
   } // namespace __write_
 
   inline constexpr __write_::__write_t __write{};
+
+  namespace __detail {
+    template <class _SenderId, class _Env>
+    inline constexpr __mconst< __write_::__sender<__name_of<__t<_SenderId>>, _Env > >
+      __name_of_v< __write_::__sender<_SenderId, _Env > >{};
+  }
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.on]
