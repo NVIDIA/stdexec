@@ -1392,6 +1392,7 @@ namespace stdexec {
     __sender<_Sender, _Env> && //
     sender<_Sender, _Env>;
 
+#if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
   // __checked_completion_signatures is for catching logic bugs in a typed
   // sender's metadata. If sender<S> and sender_in<S, Ctx> are both true, then they
   // had better report the same metadata. This completion signatures wrapper
@@ -1409,6 +1410,11 @@ namespace stdexec {
     requires sender_in<_Sender, _Env>
   using completion_signatures_of_t =
     decltype(stdexec::__checked_completion_signatures(__declval<_Sender>(), __declval<_Env>()));
+#else
+  template <class _Sender, class _Env = no_env>
+    requires sender_in<_Sender, _Env>
+  using completion_signatures_of_t = __completion_signatures_of_t<_Sender, _Env>;
+#endif
 #endif
 
   struct __not_a_variant {
