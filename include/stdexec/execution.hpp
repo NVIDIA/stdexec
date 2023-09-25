@@ -1392,6 +1392,7 @@ namespace stdexec {
     __sender<_Sender, _Env> && //
     sender<_Sender, _Env>;
 
+#if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
   // __checked_completion_signatures is for catching logic bugs in a typed
   // sender's metadata. If sender<S> and sender_in<S, Ctx> are both true, then they
   // had better report the same metadata. This completion signatures wrapper
@@ -1409,6 +1410,11 @@ namespace stdexec {
     requires sender_in<_Sender, _Env>
   using completion_signatures_of_t =
     decltype(stdexec::__checked_completion_signatures(__declval<_Sender>(), __declval<_Env>()));
+#else
+  template <class _Sender, class _Env = no_env>
+    requires sender_in<_Sender, _Env>
+  using completion_signatures_of_t = __completion_signatures_of_t<_Sender, _Env>;
+#endif
 #endif
 
   struct __not_a_variant {
@@ -5274,6 +5280,7 @@ namespace stdexec {
       using __receiver2_t = stdexec::__t<__receiver2<_SchedulerId, _VariantId, _ReceiverId>>;
 
       struct __t {
+        using __id = __receiver1;
         using is_receiver = void;
         __operation1_base<_SchedulerId, _VariantId, _ReceiverId>* __op_state_;
 
@@ -5670,22 +5677,26 @@ namespace stdexec {
       template <class _Sender, class... _Envs>
       using __sender_t = __t<__sender<__id<__decay_t<_Sender>>, __env::__env_join_t<_Envs...>>>;
 
-      template <__is_not_instance_of<__env::__prop> _Sender, class... _Tags, class... _Values>
-        requires sender<_Sender>
-      auto operator()(_Sender&& __sndr, __env::__prop<_Tags, _Values>... __withs) const
-        -> __sender_t<_Sender, __env::__prop<_Tags, _Values>...> {
-        return {(_Sender&&) __sndr, __join_env(std::move(__withs)...)};
+      template <sender _Sender, class... _Envs>
+      auto operator()(_Sender&& __sndr, _Envs... __envs) const
+        -> __sender_t<_Sender, __env::__env_join_t<_Envs...>> {
+        return {(_Sender&&) __sndr, __join_env(std::move(__envs)...)};
       }
 
-      template <class... _Tags, class... _Values>
-      auto operator()(__env::__prop<_Tags, _Values>... __withs) const
-        -> __binder_back<__write_t, __env::__prop<_Tags, _Values>...> {
-        return {{}, {}, {std::move(__withs)...}};
+      template <class... _Envs>
+      auto operator()(_Envs... __envs) const -> __binder_back<__write_t, _Envs...> {
+        return {{}, {}, {std::move(__envs)...}};
       }
     };
   } // namespace __write_
 
   inline constexpr __write_::__write_t __write{};
+
+  namespace __detail {
+    template <class _SenderId, class _Env>
+    inline constexpr __mconst< __write_::__sender<__name_of<__t<_SenderId>>, _Env > >
+      __name_of_v< __write_::__sender<_SenderId, _Env > >{};
+  }
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.on]
@@ -6712,33 +6723,42 @@ namespace stdexec {
       }
     };
 
-    struct __lower_on {
-      template <class _Sender, class _Env>
-        requires __callable<get_scheduler_t, const _Env&>
-      auto operator()(_Sender&& __sndr, const _Env& __env) const {
-        auto __domain = __get_env_domain(__env);
+    template <class _Scheduler, class _Closure>
+    struct __continue_on_data {
+      _Scheduler __sched_;
+      _Closure __clsur_;
+    };
+    template <class _Scheduler, class _Closure>
+    __continue_on_data(_Scheduler, _Closure) -> __continue_on_data<_Scheduler, _Closure>;
+
+    struct continue_on_t : __default_get_env<continue_on_t> {
+      template <sender _Sender, scheduler _Scheduler, __sender_adaptor_closure_for<_Sender> _Closure>
+      auto operator()(_Sender&& __sndr, _Scheduler&& __sched, _Closure&& __clsur) const {
+        auto __domain = __get_sender_domain(__sndr);
         return transform_sender(
           __domain,
-          apply_sender(
-            (_Sender&&) __sndr,
-            [&]<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
-              return let_value(
-                transfer(get_scheduler(), __data), [__data, &__child](auto __old) mutable {
-                  auto __domain = get_domain(__data);
-                  return __write(
-                    transfer((_Child&&) __child, std::move(__old)),
-                    __with_(get_domain, __domain),
-                    __with_(get_scheduler, std::move(__data)));
-                });
-            }),
-          __env);
+          make_sender_expr<continue_on_t>(
+            __continue_on_data{(_Scheduler&&) __sched, (_Closure&&) __clsur}, (_Sender&&) __sndr));
       }
 
+      template <scheduler _Scheduler, __sender_adaptor_closure _Closure>
+      auto operator()(_Scheduler&& __sched, _Closure&& __clsur) const
+        -> __binder_back<continue_on_t, __decay_t<_Scheduler>, __decay_t<_Closure>> {
+        return {
+          {},
+          {},
+          {(_Scheduler&&) __sched, (_Closure&&) __clsur}
+        };
+      }
+    };
+
+    STDEXEC_PRAGMA_PUSH()
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-local-typedefs")
+
+    struct __no_scheduler_in_environment {
       // Issue a custom diagnostic if the environment doesn't provide a scheduler.
       template <class _Sender, class _Env>
       auto operator()(_Sender&&, const _Env&) const {
-        STDEXEC_PRAGMA_PUSH()
-        STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-local-typedefs")
 
         struct __no_scheduler_in_environment {
           using is_sender = void;
@@ -6749,8 +6769,76 @@ namespace stdexec {
               _WITH_ENVIRONMENT_<_Env>>;
         };
 
-        STDEXEC_PRAGMA_POP()
         return __no_scheduler_in_environment{};
+      }
+    };
+
+    STDEXEC_PRAGMA_POP()
+
+    template <class _Ty, class = __name_of<__decay_t<_Ty>>>
+    struct __always {
+      _Ty __val_;
+
+      _Ty operator()() noexcept {
+        return static_cast<_Ty&&>(__val_);
+      }
+    };
+
+    struct __lower_on : __no_scheduler_in_environment {
+      using __no_scheduler_in_environment::operator();
+
+      template <class _Sender, class _Env>
+        requires __callable<get_scheduler_t, const _Env&>
+      auto operator()(_Sender&& __sndr, const _Env& __env) const {
+        auto __domain = __get_env_domain(__env);
+        auto __old = get_scheduler(__env);
+        return transform_sender(
+          __domain,
+          apply_sender(
+            (_Sender&&) __sndr,
+            [&]<class _Scheduler, class _Child>(__ignore, _Scheduler __sched, _Child&& __child) {
+              return transfer(
+                let_value(transfer_just(std::move(__sched)), __always<_Child>{(_Child&&) __child}),
+                std::move(__old));
+            }),
+          __env);
+      }
+    };
+
+    template <class _Scheduler>
+    auto __mkenv(_Scheduler __sched) {
+      auto __env = __join_env(__mkprop(get_scheduler, __sched), __mkprop(get_domain));
+      using _Env = decltype(__env);
+
+      struct __env_t : _Env { };
+
+      return __env_t{__env};
+    }
+
+    struct __lower_continue_on : __no_scheduler_in_environment {
+      using __no_scheduler_in_environment::operator();
+
+      template <class _Sender, class _Env>
+        requires __callable<get_scheduler_t, const _Env&>
+      auto operator()(_Sender&& __sndr, const _Env& __env) const {
+        auto __domain = __get_env_domain(__env);
+        auto __old = get_scheduler(__env);
+        return transform_sender(
+          __domain,
+          apply_sender(
+            (_Sender&&) __sndr,
+            [&]<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
+              auto&& [__sched, __clsur] = (_Data&&) __data;
+              using _Scheduler = decltype(__sched);
+              using _Closure = decltype(__clsur);
+              return __write(
+                transfer(
+                  ((_Closure&&) __clsur)(
+                    transfer(__write((_Child&&) __child, __mkenv(__old)), (_Scheduler&&) __sched)),
+                  __old),
+                __mkenv(__sched));
+            }),
+          __env);
       }
     };
   } // __on_v2
@@ -6758,11 +6846,17 @@ namespace stdexec {
   namespace v2 {
     using __on_v2::on_t;
     inline constexpr on_t on{};
+
+    using __on_v2::continue_on_t;
+    inline constexpr continue_on_t continue_on{};
   }
 
   // v2::on() has a sender transform that lowers it to more primitive operations
   template <>
   inline constexpr __on_v2::__lower_on __default_sender_transform<v2::on_t>{};
+
+  template <>
+  inline constexpr __on_v2::__lower_continue_on __default_sender_transform<v2::continue_on_t>{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.consumers.sync_wait]

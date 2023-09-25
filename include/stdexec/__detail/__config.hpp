@@ -239,5 +239,14 @@
 #define STDEXEC_FUN_ARGS(...) STDEXEC_CAT(STDEXEC_EAT_THIS_DETAIL_, __VA_ARGS__))
 #endif
 
+#ifndef STDEXEC_ENABLE_EXTRA_TYPE_CHECKING
+// Compile times are bad enough on nvhpc. Disable extra type checking by default.
+#if STDEXEC_NVHPC()
+#define STDEXEC_ENABLE_EXTRA_TYPE_CHECKING() 0
+#else
+#define STDEXEC_ENABLE_EXTRA_TYPE_CHECKING() 1
+#endif
+#endif
+
 namespace stdexec {
 }
