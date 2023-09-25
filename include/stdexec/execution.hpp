@@ -5280,6 +5280,7 @@ namespace stdexec {
       using __receiver2_t = stdexec::__t<__receiver2<_SchedulerId, _VariantId, _ReceiverId>>;
 
       struct __t {
+        using __id = __receiver1;
         using is_receiver = void;
         __operation1_base<_SchedulerId, _VariantId, _ReceiverId>* __op_state_;
 
