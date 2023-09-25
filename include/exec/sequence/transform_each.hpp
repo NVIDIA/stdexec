@@ -122,7 +122,7 @@ namespace exec {
 
     template <class _Adaptor, class _Item>
     auto __try_call(_Item*)
-      -> stdexec::__mexception<_NOT_CALLABLE_ADAPTOR_<_Adaptor&>, _WITH_ITEM_SENDER_<_Item>>;
+      -> stdexec::__mexception<_NOT_CALLABLE_ADAPTOR_<_Adaptor&>, _WITH_ITEM_SENDER_<stdexec::__name_of<_Item>>>;
 
     template <class _Adaptor, class _Item>
       requires stdexec::__callable<_Adaptor&, _Item>
