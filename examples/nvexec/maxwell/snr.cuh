@@ -331,7 +331,7 @@ inline constexpr repeat_n_t repeat_n{};
 template <class SchedulerT>
 [[nodiscard]] bool is_gpu_scheduler(SchedulerT&& scheduler) {
   auto snd = ex::just()
-           | stdexec::v2::continue_on(scheduler, ex::then([] { return nvexec::is_on_gpu(); }));
+           | exec::on(scheduler, ex::then([] { return nvexec::is_on_gpu(); }));
   auto [on_gpu] = stdexec::sync_wait(std::move(snd)).value();
   return on_gpu;
 }
@@ -344,7 +344,7 @@ auto maxwell_eqs_snr(
   fields_accessor accessor,
   stdexec::scheduler auto&& computer) {
   return ex::just()
-       | stdexec::v2::continue_on(
+       | exec::on(
            computer,
            repeat_n(
              n_iterations,
@@ -365,7 +365,7 @@ void run_snr(
 
   auto init =
     ex::just()
-    | stdexec::v2::continue_on(computer, ex::bulk(grid.cells, grid_initializer(dt, accessor)));
+    | exec::on(computer, ex::bulk(grid.cells, grid_initializer(dt, accessor)));
   stdexec::sync_wait(init);
 
   auto snd = maxwell_eqs_snr(dt, time.get(), write_vtk, n_iterations, accessor, computer);
