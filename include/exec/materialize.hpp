@@ -95,7 +95,9 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&& __self, _Env __env)
-          -> __completion_signatures_for_t<_Env>;
+          -> __completion_signatures_for_t<_Env> {
+          return {};
+        }
       };
     };
 
@@ -193,7 +195,9 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&& __self, _Env __env)
-          -> __completion_signatures_for_t<_Env>;
+          -> __completion_signatures_for_t<_Env> {
+          return {};
+        }
       };
     };
 

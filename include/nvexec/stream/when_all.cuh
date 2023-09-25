@@ -65,7 +65,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         __concat_completion_signatures_t<
 
           completion_signatures< set_error_t(cudaError_t), set_stopped_t()>,
-          make_completion_signatures< Senders, Env, completion_signatures<>, swallow_values>...>;
+          __try_make_completion_signatures<
+            Senders,
+            Env,
+            completion_signatures<>,
+            __q<swallow_values>>...>;
       using values = //
         __minvoke<
           __mconcat<__qf<set_value_t>>,
@@ -255,7 +259,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
               for (int i = 0; i < sizeof...(SenderIds); i++) {
                 if (status_ == cudaSuccess) {
-                  status_ = STDEXEC_DBG_ERR(cudaStreamWaitEvent(stream, events_[i]));
+                  status_ = STDEXEC_DBG_ERR(cudaStreamWaitEvent(stream, events_[i], 0));
                 }
               }
             } else {
@@ -399,7 +403,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> Self, class Env>
       friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
-        -> completion_sigs<Env, Self>;
+        -> completion_sigs<Env, Self> {
+        return {};
+      }
 
       friend const env& tag_invoke(get_env_t, const __t& __self) noexcept {
         return __self.env_;

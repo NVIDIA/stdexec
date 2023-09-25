@@ -65,7 +65,7 @@ namespace exec {
     };
 
     template <class... _Args>
-    using __as_rvalues = completion_signatures<set_value_t(__decay_t<_Args> && ...)>;
+    using __as_rvalues = completion_signatures<set_value_t(__decay_t<_Args>&&...)>;
 
     template <class _InitialSender, class _FinalSender, class _Env>
     using __completion_signatures_t = make_completion_signatures<
@@ -263,16 +263,14 @@ namespace exec {
             (_Rec&&) __receiver};
         }
 
-        template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&) noexcept
-          -> dependent_completion_signatures<_Env>;
-
         template <__decays_to<__t> _Self, __none_of<no_env> _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&) noexcept
           -> __completion_signatures_t<
             __copy_cvref_t<_Self, _InitialSender>,
             __copy_cvref_t<_Self, _FinalSender>,
-            _Env>;
+            _Env> {
+          return {};
+        }
 
        public:
         using is_sender = void;

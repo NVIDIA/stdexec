@@ -102,7 +102,7 @@ namespace stdexec {
   template <class _Ty, class... _As>
   concept constructible_from = //
     destructible<_Ty> &&       //
-      std::is_constructible_v<_Ty, _As...>;
+    std::is_constructible_v<_Ty, _As...>;
 #endif
 
   template <class _Ty>
@@ -233,9 +233,6 @@ namespace stdexec {
 
   template <class _Ty>
   concept __nothrow_decay_copyable = __nothrow_constructible_from<__decay_t<_Ty>, _Ty>;
-
-  template <class _Range>
-  using range_value_t = decltype(*begin(::std::declval<_Range>()));
 
 } // namespace stdexec
 

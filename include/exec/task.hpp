@@ -31,8 +31,8 @@
 #include "scope.hpp"
 
 STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE("-Wpragmas")
-STDEXEC_PRAGMA_IGNORE("-Wundefined-inline")
+STDEXEC_PRAGMA_IGNORE_GNU("-Wpragmas")
+STDEXEC_PRAGMA_IGNORE_GNU("-Wundefined-inline")
 
 namespace exec {
   namespace __task {
@@ -482,7 +482,9 @@ namespace exec {
         completion_signatures< __set_value_sig_t, set_error_t(std::exception_ptr), set_stopped_t()>;
 
       friend auto tag_invoke(get_completion_signatures_t, const basic_task&, auto)
-        -> __task_traits_t;
+        -> __task_traits_t {
+        return {};
+      }
 
       explicit basic_task(__coro::coroutine_handle<promise_type> __coro) noexcept
         : __coro_(__coro) {

@@ -179,6 +179,9 @@ namespace stdexec {
     _ERROR_ operator,(__msuccess) const noexcept;
   };
 
+  template <__mstring _What>
+  struct _WHAT_ { };
+
   template <class _What, class... _With>
   using __mexception = _ERROR_<_What, _With...>;
 
@@ -194,18 +197,6 @@ namespace stdexec {
   template <class... _Ts>
   using __disp = decltype((__msuccess(), ..., __ok_t<_Ts>()));
 
-  template <bool _AllOK>
-  struct __i {
-    template <template <class...> class _Fn, class... _Args>
-    using __g = _Fn<_Args...>;
-  };
-
-  template <>
-  struct __i<false> {
-    template <template <class...> class, class... _Args>
-    using __g = __disp<_Args...>;
-  };
-
   template <class _Arg>
   concept __ok = __same_as<__ok_t<_Arg>, __msuccess>;
 
@@ -214,6 +205,9 @@ namespace stdexec {
 
   template <class... _Args>
   concept _Ok = (__ok<_Args> && ...);
+
+  template <bool _AllOK>
+  struct __i;
 
 #if STDEXEC_NVHPC()
   // Most compilers memoize alias template specializations, but
@@ -234,15 +228,48 @@ namespace stdexec {
   template <template <class...> class _Fn, class... _Args>
   using __meval = __t<__meval_<_Fn, _Args...>>;
 
+  template <class _Fn, class... _Args>
+  using __minvoke__ = typename __i<_Ok<_Fn>>::template __h<_Fn, _Args...>;
+
+  template <class _Fn, class... _Args>
+  struct __minvoke_ { };
+
+  template <class _Fn, class... _Args>
+    requires __typename<__minvoke__<_Fn, _Args...>>
+  struct __minvoke_<_Fn, _Args...> {
+    using __t = __minvoke__<_Fn, _Args...>;
+  };
+
+  template <class _Fn, class... _Args>
+  using __minvoke = __t<__minvoke_<_Fn, _Args...>>;
+
 #else
 
   template <template <class...> class _Fn, class... _Args>
   using __meval = typename __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
 
+  template <class _Fn, class... _Args>
+  using __minvoke = typename __i<_Ok<_Fn>>::template __h<_Fn, _Args...>;
+
 #endif
 
-  template <class _Fn, class... _Args>
-  using __minvoke = __meval<_Fn::template __f, _Args...>;
+  template <bool _AllOK>
+  struct __i {
+    template <template <class...> class _Fn, class... _Args>
+    using __g = _Fn<_Args...>;
+
+    template <class _Fn, class... _Args>
+    using __h = __meval<_Fn::template __f, _Args...>;
+  };
+
+  template <>
+  struct __i<false> {
+    template <template <class...> class, class... _Args>
+    using __g = __disp<_Args...>;
+
+    template <class _Fn, class...>
+    using __h = _Fn;
+  };
 
   template <template <class...> class _Fn>
   struct __q {
@@ -324,6 +351,12 @@ namespace stdexec {
     requires(sizeof...(_False) <= 1)
   using __if_c = __minvoke<__if_::__<_Pred>, _True, _False...>;
 
+  template <class _Pred, class _True, class... _False>
+  using __minvoke_if = __minvoke<__if<_Pred, _True, _False...>>;
+
+  template <bool _Pred, class _True, class... _False>
+  using __minvoke_if_c = __minvoke<__if_c<_Pred, _True, _False...>>;
+
   template <class _Tp>
   struct __mconst {
     template <class...>
@@ -344,6 +377,9 @@ namespace stdexec {
 
   template <class _Fn, class _Default>
   using __with_default = __mtry_catch<_Fn, __mconst<_Default>>;
+
+  template <template <class...> class _Fn, class _Default>
+  using __with_default_q = __mtry_catch_q<_Fn, __mconst<_Default>>;
 
   inline constexpr __mstring __mbad_substitution =
     "The specified meta-function could not be evaluated with the types provided."__csz;

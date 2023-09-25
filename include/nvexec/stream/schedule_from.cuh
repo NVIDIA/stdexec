@@ -146,7 +146,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<source_sender_t> _Self, class _Env>
       friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-        -> make_completion_signatures< __copy_cvref_t<_Self, Sender>, _Env>;
+        -> __try_make_completion_signatures< __copy_cvref_t<_Self, Sender>, _Env> {
+        return {};
+      }
 
       Sender sndr_;
     };
@@ -205,12 +207,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> _Self, class _Env>
       friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-        -> make_completion_signatures<
+        -> __try_make_completion_signatures<
           __copy_cvref_t<_Self, Sender>,
           _Env,
           completion_signatures<set_error_t(cudaError_t)>,
-          _sched_from::value_completions_t,
-          _sched_from::error_completions_t>;
+          __q<_sched_from::value_completions_t>,
+          __q<_sched_from::error_completions_t>> {
+        return {};
+      }
 
       __t(context_state_t context_state, Sender sndr)
         : env_{context_state}
@@ -218,4 +222,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
     };
   };
+}
+
+namespace stdexec::__detail {
+  template <class _Scheduler, class _SenderId>
+  extern __mconst<nvexec::STDEXEC_STREAM_DETAIL_NS::
+                    schedule_from_sender_t<_Scheduler, __name_of<__t<_SenderId>> > >
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::schedule_from_sender_t<_Scheduler, _SenderId>>;
 }

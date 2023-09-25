@@ -17,6 +17,7 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include <exec/on.hpp>
+#include <exec/env.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/senders.hpp>
@@ -196,12 +197,9 @@ TEST_CASE("then can be customized early", "[adaptors][then]") {
 }
 
 struct my_domain {
-  template <class Sender, class Env>
-  static auto transform_sender(Sender snd, const Env&) {
-    if constexpr (ex::__lazy_sender_for<Sender, ex::then_t>)
-      return ex::just(std::string{"hallo"});
-    else
-      return (Sender&&) snd;
+  template <ex::sender_expr_for<ex::then_t> Sender, class... Env>
+  static auto transform_sender(Sender snd, const Env&...) {
+    return ex::just(std::string{"hallo"});
   }
 };
 

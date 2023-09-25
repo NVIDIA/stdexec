@@ -54,6 +54,8 @@
 #define STDEXEC_NVCC() 1
 #elif defined(__NVCOMPILER)
 #define STDEXEC_NVHPC() 1
+#elif defined(__EDG__)
+#define LEGATE_EDG() 1
 #elif defined(__clang__)
 #define STDEXEC_CLANG() 1
 #elif defined(__GNUC__)
@@ -68,6 +70,9 @@
 #ifndef STDEXEC_NVHPC
 #define STDEXEC_NVHPC() 0
 #endif
+#ifndef STDEXEC_EDG
+#define STDEXEC_EDG() 0
+#endif
 #ifndef STDEXEC_CLANG
 #define STDEXEC_CLANG() 0
 #endif
@@ -78,15 +83,31 @@
 #define STDEXEC_MSVC() 0
 #endif
 
-#if STDEXEC_CLANG() || STDEXEC_GCC()
 #define STDEXEC_STRINGIZE(_ARG) #_ARG
+
+#if STDEXEC_NVCC()
+#define STDEXEC_PRAGMA_PUSH() _Pragma("nv_diagnostic push")
+#define STDEXEC_PRAGMA_POP() _Pragma("nv_diagnostic pop")
+#define STDEXEC_PRAGMA_IGNORE_EDG(...) _Pragma(STDEXEC_STRINGIZE(nv_diag_suppress __VA_ARGS__))
+#elif STDEXEC_NVHPC() || STDEXEC_EDG()
+#define STDEXEC_PRAGMA_PUSH() \
+  _Pragma("diagnostic push") STDEXEC_PRAGMA_IGNORE_EDG(invalid_error_number)
+#define STDEXEC_PRAGMA_POP() _Pragma("diagnostic pop")
+#define STDEXEC_PRAGMA_IGNORE_EDG(...) _Pragma(STDEXEC_STRINGIZE(diag_suppress __VA_ARGS__))
+#elif STDEXEC_CLANG() || STDEXEC_GCC()
 #define STDEXEC_PRAGMA_PUSH() _Pragma("GCC diagnostic push")
 #define STDEXEC_PRAGMA_POP() _Pragma("GCC diagnostic pop")
-#define STDEXEC_PRAGMA_IGNORE(_ARG) _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored _ARG))
+#define STDEXEC_PRAGMA_IGNORE_GNU(_ARG) _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored _ARG))
 #else
 #define STDEXEC_PRAGMA_PUSH()
 #define STDEXEC_PRAGMA_POP()
-#define STDEXEC_PRAGMA_IGNORE(_ARG)
+#endif
+
+#ifndef STDEXEC_PRAGMA_IGNORE_GNU
+#define STDEXEC_PRAGMA_IGNORE_GNU(_ARG)
+#endif
+#ifndef STDEXEC_PRAGMA_IGNORE_EDG
+#define STDEXEC_PRAGMA_IGNORE_EDG(_ARG)
 #endif
 
 #if !STDEXEC_MSVC() && defined(__has_builtin)
@@ -169,9 +190,9 @@
 #if __has_include(<ranges>) && \
   (defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L) && \
   (!STDEXEC_CLANG() || __clang_major__ >= 16 || defined(_LIBCPP_VERSION))
-#define STDEXEC_HAS_RANGES() 1
+#define STDEXEC_HAS_STD_RANGES() 1
 #else
-#define STDEXEC_HAS_RANGES() 0
+#define STDEXEC_HAS_STD_RANGES() 0
 #endif
 
 #ifdef STDEXEC_ASSERT
@@ -216,6 +237,15 @@
 #define STDEXEC_CALL_EXPLICIT_THIS_MEMFN_DETAIL(...) __VA_OPT__(, ) __VA_ARGS__)
 #define STDEXEC_EAT_THIS_DETAIL_this
 #define STDEXEC_FUN_ARGS(...) STDEXEC_CAT(STDEXEC_EAT_THIS_DETAIL_, __VA_ARGS__))
+#endif
+
+#ifndef STDEXEC_ENABLE_EXTRA_TYPE_CHECKING
+// Compile times are bad enough on nvhpc. Disable extra type checking by default.
+#if STDEXEC_NVHPC()
+#define STDEXEC_ENABLE_EXTRA_TYPE_CHECKING() 0
+#else
+#define STDEXEC_ENABLE_EXTRA_TYPE_CHECKING() 1
+#endif
 #endif
 
 namespace stdexec {

@@ -54,18 +54,18 @@ namespace stdexec {
   } // namespace __detail
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  // __basic_sender
+  // __sexpr
   template <class...>
-  struct __basic_sender {
-    using __id = __basic_sender;
-    using __t = __basic_sender;
+  struct __sexpr {
+    using __id = __sexpr;
+    using __t = __sexpr;
   };
 
   template <class _ImplFn>
-  struct __basic_sender<_ImplFn> {
+  struct __sexpr<_ImplFn> {
     using is_sender = void;
-    using __t = __basic_sender;
-    using __id = __basic_sender;
+    using __t = __sexpr;
+    using __id = __sexpr;
     using __tag_t = __call_result_t<_ImplFn, __cp, __detail::__get_tag>;
 
     static __tag_t __tag() noexcept {
@@ -75,11 +75,11 @@ namespace stdexec {
     mutable _ImplFn __impl_;
 
     STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      explicit __basic_sender(_ImplFn __impl)
+      explicit __sexpr(_ImplFn __impl)
       : __impl_((_ImplFn&&) __impl) {
     }
 
-    template <same_as<get_env_t> _Tag, same_as<__basic_sender> _Self>
+    template <same_as<get_env_t> _Tag, same_as<__sexpr> _Self>
     friend auto tag_invoke(_Tag, const _Self& __self) noexcept //
       -> __msecond<
         __if_c<same_as<_Tag, get_env_t>>, //
@@ -88,19 +88,18 @@ namespace stdexec {
       return __tag_t::get_env(__self);
     }
 
-    template <
-      same_as<get_completion_signatures_t> _Tag,
-      __decays_to<__basic_sender> _Self,
-      class _Env>
+    template < same_as<get_completion_signatures_t> _Tag, __decays_to<__sexpr> _Self, class _Env>
     friend auto tag_invoke(_Tag, _Self&& __self, _Env&& __env) //
       -> __msecond<
         __if_c<same_as<_Tag, get_completion_signatures_t>>,
-        decltype(__self.__tag().get_completion_signatures((_Self&&) __self, (_Env&&) __env))>;
+        decltype(__self.__tag().get_completion_signatures((_Self&&) __self, (_Env&&) __env))> {
+      return {};
+    }
 
     // BUGBUG fix receiver constraint here:
     template <
       same_as<connect_t> _Tag,
-      __decays_to<__basic_sender> _Self,
+      __decays_to<__sexpr> _Self,
       /*receiver*/ class _Receiver>
     friend auto tag_invoke(_Tag, _Self&& __self, _Receiver&& __rcvr)                     //
       noexcept(noexcept(__self.__tag().connect((_Self&&) __self, (_Receiver&&) __rcvr))) //
@@ -121,14 +120,15 @@ namespace stdexec {
 
   template <class _ImplFn>
   STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-    __basic_sender(_ImplFn) -> __basic_sender<_ImplFn>;
+    __sexpr(_ImplFn) -> __sexpr<_ImplFn>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  // __make_basic_sender
+  // make_sender_expr
   namespace __detail {
-    struct __make_basic_sender_ {
-      template <class _Tag, class _Data = __, class... _Children>
-      constexpr auto operator()(_Tag, _Data __data = {}, _Children... __children) const;
+    template <class _Tag, class _Domain = __default_domain<>>
+    struct make_sender_expr_t {
+      template <class _Data = __, class... _Children>
+      constexpr auto operator()(_Data __data = {}, _Children... __children) const;
     };
 
 #if STDEXEC_NVHPC() || (STDEXEC_GCC() && __GNUC__ < 13)
@@ -157,6 +157,12 @@ namespace stdexec {
       }
     };
 
+    // Rather strange definition of the lambda return type below is to reap the
+    // benefits of SFINAE without nvc++ encoding the whole return type into the
+    // symbol name.
+    template <class _Ty>
+    extern _Ty (*__f)();
+
     // Anonymous namespace here is to avoid symbol name collisions with the
     // lambda functions returned by __make_tuple.
     namespace {
@@ -164,7 +170,7 @@ namespace stdexec {
         []<class _Tag, class... _Captures>(_Tag, _Captures&&... __captures) {
           return [=]<class _Cvref, class _Fun>(_Cvref __cvref, _Fun && __fun) mutable      //
                  noexcept(__nothrow_callable<_Fun, _Tag, __minvoke<_Captures, _Cvref>...>) //
-                 -> decltype(auto)                                                         //
+                 -> decltype(__f<__call_result_t<_Fun, _Tag, __minvoke<_Captures, _Cvref>...>>())
                    requires __callable<_Fun, _Tag, __minvoke<_Captures, _Cvref>...>
           {
             return ((_Fun&&) __fun)(
@@ -173,10 +179,11 @@ namespace stdexec {
         };
     } // anonymous namespace
 
-    template <class _Tag, class _Data, class... _Children>
+    template <class _Tag, class _Domain>
+    template <class _Data, class... _Children>
     constexpr auto
-      __make_basic_sender_::operator()(_Tag, _Data __data, _Children... __children) const {
-      return __basic_sender{
+      make_sender_expr_t<_Tag, _Domain>::operator()(_Data __data, _Children... __children) const {
+      return __sexpr{
         __detail::__make_tuple(_Tag(), __detail::__mbc(__data), __detail::__mbc(__children)...)};
     }
 #else
@@ -197,45 +204,49 @@ namespace stdexec {
         };
     } // anonymous namespace
 
-    template <class _Tag, class _Data, class... _Children>
+    template <class _Tag, class _Domain>
+    template <class _Data, class... _Children>
     constexpr auto
-      __make_basic_sender_::operator()(_Tag, _Data __data, _Children... __children) const {
-      return __basic_sender{
-        __detail::__make_tuple(_Tag(), (_Data&&) __data, (_Children&&) __children...)};
+      make_sender_expr_t<_Tag, _Domain>::operator()(_Data __data, _Children... __children) const {
+      return __sexpr{__detail::__make_tuple(_Tag(), (_Data&&) __data, (_Children&&) __children...)};
     };
 #endif
   } // namespace __detail
 
-  inline constexpr __detail::__make_basic_sender_ __make_basic_sender{};
+  template <class _Tag, class _Domain = __default_domain<>>
+  inline constexpr __detail::make_sender_expr_t<_Tag, _Domain> make_sender_expr{};
+
+  template <class _Tag, class _Data, class... _Children>
+  using __sexpr_t = __result_of<make_sender_expr<_Tag>, _Data, _Children...>;
 
   namespace __detail {
-    struct __sender_apply_fn {
+    struct apply_sender_t {
       template <class _Sender, class _ApplyFn>
       auto operator()(_Sender&& __sndr, _ApplyFn&& __fun) const //
         noexcept(noexcept(
           STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), apply)((_ApplyFn&&) __fun))) //
         -> decltype(STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), apply)(
-          (_ApplyFn&&) __fun)) {                                                                  //
+          (_ApplyFn&&) __fun)) {
         return STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), apply)((_ApplyFn&&) __fun); //
       }
     };
   } // namespace __detail
 
-  using __detail::__sender_apply_fn;
-  inline constexpr __sender_apply_fn __sender_apply{};
+  using __detail::apply_sender_t;
+  inline constexpr apply_sender_t apply_sender{};
 
   template <class _Sender, class _ApplyFn>
-  using __sender_apply_result_t = __call_result_t<__sender_apply_fn, _Sender, _ApplyFn>;
+  using apply_sender_result_t = __call_result_t<apply_sender_t, _Sender, _ApplyFn>;
 
   template <class _Sender>
-  using __tag_of = __call_result_t<__sender_apply_fn, _Sender, __detail::__get_tag>;
+  using __tag_of = __call_result_t<apply_sender_t, _Sender, __detail::__get_tag>;
 
   template <class _Sender>
-  using __data_of = __call_result_t<__sender_apply_fn, _Sender, __detail::__get_data>;
+  using __data_of = __call_result_t<apply_sender_t, _Sender, __detail::__get_data>;
 
   template <class _Sender, class _Continuation = __q<__types>>
   using __children_of = __t<__call_result_t<
-    __call_result_t<__sender_apply_fn, _Sender, __detail::__get_children<_Continuation>>>>;
+    __call_result_t<apply_sender_t, _Sender, __detail::__get_children<_Continuation>>>>;
 
   template <class _Ny, class _Sender>
   using __nth_child_of = __children_of<_Sender, __mbind_front_q<__m_at, _Ny>>;
@@ -249,10 +260,16 @@ namespace stdexec {
   template <class _Sender>
   inline constexpr std::size_t __nbr_children_of = __v<__children_of<_Sender, __msize>>;
 
-  template <class _Sender, class _Tag>
-  concept __lazy_sender_for = //
-    same_as<__tag_of<_Sender>, _Tag>;
+  template <class _Sender>
+  concept sender_expr = //
+    __mvalid<__tag_of, _Sender>;
 
+  template <class _Sender, class _Tag>
+  concept sender_expr_for = //
+    sender_expr<_Sender> && same_as<__tag_of<_Sender>, _Tag>;
+
+  // The __name_of utility defined below is used to pretty-print the type names of
+  // senders in compiler diagnostics.
   namespace __detail {
     template <class _Sender>
     extern __q<__midentity> __name_of_v;
@@ -263,14 +280,14 @@ namespace stdexec {
     template <class _Sender>
     using __name_of = __minvoke<__name_of_fn<_Sender>, _Sender>;
 
-    struct __lazy_sender_name {
+    struct __basic_sender_name {
       template <class _Sender>
       using __f = //
-        __call_result_t<__sender_apply_result_t<_Sender, __lazy_sender_name>>;
+        __call_result_t<apply_sender_result_t<_Sender, __basic_sender_name>>;
 
       template <class _Tag, class _Data, class... _Children>
       auto operator()(_Tag, _Data&&, _Children&&...) const //
-        -> __basic_sender<_Tag, _Data, __name_of<_Children>...> (*)();
+        -> __sexpr<_Tag, _Data, __name_of<_Children>...> (*)();
     };
 
     struct __id_name {
@@ -287,8 +304,8 @@ namespace stdexec {
     template <class _Sender>
     extern __mcompose<__cpclr, __name_of_fn<_Sender>> __name_of_v<const _Sender&>;
 
-    template <class _ImplOf>
-    extern __lazy_sender_name __name_of_v<__basic_sender<_ImplOf>>;
+    template <class _Impl>
+    extern __basic_sender_name __name_of_v<__sexpr<_Impl>>;
 
     template <__has_id _Sender>
       requires(!same_as<__id<_Sender>, _Sender>)

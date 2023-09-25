@@ -127,8 +127,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
         rcvr.loop_->finish();
       }
 
-      friend empty_env tag_invoke(get_env_t, const __t& rcvr) noexcept {
-        return {};
+      friend __env tag_invoke(get_env_t, const __t& rcvr) noexcept {
+        return {rcvr.loop_->get_scheduler()};
       }
     };
   };
@@ -146,9 +146,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
     using receiver_t = stdexec::__t<receiver_t<stdexec::__id<Sender>>>;
 
     template <__single_value_variant_sender<__env> Sender>
-      requires(!__tag_invocable_with_domain< sync_wait_t, set_value_t, Sender>)
-           && (!tag_invocable<sync_wait_t, Sender>) && sender<Sender, __env>
-           && __receiver_from<receiver_t<Sender>, Sender>
+      requires sender<Sender, __env> && __receiver_from<receiver_t<Sender>, Sender>
     auto operator()(context_state_t context_state, Sender&& __sndr) const
       -> std::optional<sync_wait_result_t<Sender>> {
       using state_t = state_t<stdexec::__id<Sender>>;
@@ -180,6 +178,15 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
 
       return std::move(std::get<1>(state.data_));
     }
+
+#if STDEXEC_NVHPC()
+    // For reporting better diagnostics with nvc++
+    template <class _Sender, class _Error = stdexec::__sync_wait::__error_description_t<_Sender>>
+    auto operator()(
+      context_state_t context_state,
+      _Sender&&,
+      [[maybe_unused]] _Error __diagnostic = {}) const -> std::optional<std::tuple<int>> = delete;
+#endif
   };
 } // namespace _sync_wait
 } // namespace nvexec::STDEXEC_STREAM_DETAIL_NS

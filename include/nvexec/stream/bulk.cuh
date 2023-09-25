@@ -128,12 +128,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> Self, class Env>
       friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
-        -> dependent_completion_signatures<Env>;
-
-      template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
-        -> _completion_signatures_t<Self, Env>
-        requires true;
+        -> _completion_signatures_t<Self, Env> {
+        return {};
+      }
 
       friend auto tag_invoke(get_env_t, const __t& self) noexcept -> env_of_t<const Sender&> {
         return get_env(self.sndr_);
@@ -205,7 +202,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
                 if (begin < end) {
                   cudaSetDevice(dev);
-                  cudaStreamWaitEvent(stream, op_state.ready_to_launch_);
+                  cudaStreamWaitEvent(stream, op_state.ready_to_launch_, 0);
                   kernel<block_threads, As&...>
                     <<<grid_blocks, block_threads, 0, stream>>>(begin, end, self.f_, as...);
                   cudaEventRecord(op_state.ready_to_complete_[dev], op_state.streams_[dev]);
@@ -228,7 +225,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
             for (int dev = 0; dev < op_state.num_devices_; dev++) {
               if (dev != op_state.current_device_) {
-                cudaStreamWaitEvent(baseline_stream, op_state.ready_to_complete_[dev]);
+                cudaStreamWaitEvent(baseline_stream, op_state.ready_to_complete_[dev], 0);
               }
             }
           }
@@ -364,12 +361,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> Self, class Env>
       friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
-        -> dependent_completion_signatures<Env>;
-
-      template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
-        -> _completion_signatures_t<Self, Env>
-        requires true;
+        -> _completion_signatures_t<Self, Env> {
+        return {};
+      }
 
       friend auto tag_invoke(get_env_t, const __t& self) noexcept -> env_of_t<const Sender&> {
         return get_env(self.sndr_);
