@@ -23,6 +23,7 @@
 #include "exec/sequence/ignore_all_values.hpp"
 #include <catch2/catch.hpp>
 
+#include <exec/env.hpp>
 #include <exec/on.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
