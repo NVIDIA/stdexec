@@ -179,6 +179,8 @@ target_compile_options(stdexec_executable_flags INTERFACE
                        -ferror-limit=0
                        -fmacro-backtrace-limit=0
                        -ftemplate-backtrace-limit=0>
+                       $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<VERSION_GREATER:$<CXX_COMPILER_VERSION>,23.3.0>>:
+                       -ftemplate-backtrace-limit 0>
                        )
 
 # # Always enable colored output
