@@ -68,7 +68,7 @@ namespace nvexec {
             self.op_state_.propagate_completion_signal(tag, (As&&) as...);
           }
 
-          friend auto tag_invoke(get_env_t, const __t& self) noexcept //
+          STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) noexcept //
             -> typename operation_state_base_t<ReceiverId>::env_t {
             return self.op_state_.make_env();
           }
@@ -121,7 +121,7 @@ namespace nvexec {
 
         template <__decays_to<__t> Self, receiver Receiver>
           requires receiver_of<Receiver, completions_t<Self, env_of_t<Receiver>>>
-        friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this Self&& self, connect_t, Receiver rcvr)
           -> stream_op_state_t< __copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
           return stream_op_state<__copy_cvref_t<Self, Sender>>(
             ((Self&&) self).sndr_,
@@ -133,12 +133,12 @@ namespace nvexec {
         }
 
         template <__decays_to<__t> Self, class Env>
-        friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
+        STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this Self&&, get_completion_signatures_t, Env&&)
           -> completions_t<Self, Env> {
           return {};
         }
 
-        friend auto tag_invoke(get_env_t, const __t& self) noexcept -> env_of_t<const Sender&> {
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this const __t& self, get_env_t) noexcept -> env_of_t<const Sender&> {
           return get_env(self.sndr_);
         }
       };

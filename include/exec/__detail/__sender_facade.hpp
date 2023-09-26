@@ -216,18 +216,29 @@ namespace exec {
         using __id = __receiver;
         __state* __state_;
 
-        template < //
-          __completion_tag _Tag,
-          same_as<__t> _Self,
-          class... _As>
+        template <same_as<set_value_t> _Tag, same_as<__t> _Self, class... _As>
           requires __mvalid<__set_result_t, _Kernel, _Receiver, _Tag, _As...>
-        friend void tag_invoke(_Tag __tag, _Self __self, _As&&... __as) noexcept {
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this _Self __self, _Tag, _As&&... __as) noexcept {
           __state& __st = *__self.__state_;
-          (void) __st.__kernel_.set_result(__tag, __st.__data_, __st.__rcvr_, (_As&&) __as...);
+          (void) __st.__kernel_.set_result(_Tag(), __st.__data_, __st.__rcvr_, (_As&&) __as...);
+        }
+
+        template <same_as<set_error_t> _Tag, same_as<__t> _Self, class _Error>
+          requires __mvalid<__set_result_t, _Kernel, _Receiver, _Tag, _Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this _Self __self, _Tag, _Error&& __error) noexcept {
+          __state& __st = *__self.__state_;
+          (void) __st.__kernel_.set_result(_Tag(), __st.__data_, __st.__rcvr_, (_Error&&) __error);
+        }
+
+        template <same_as<set_stopped_t> _Tag, same_as<__t> _Self>
+          requires __mvalid<__set_result_t, _Kernel, _Receiver, _Tag>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this _Self __self, _Tag) noexcept {
+          __state& __st = *__self.__state_;
+          (void) __st.__kernel_.set_result(_Tag(), __st.__data_, __st.__rcvr_);
         }
 
         template <same_as<get_env_t> _Tag, same_as<__t> _Self>
-        friend auto tag_invoke(_Tag, _Self __self) noexcept
+        STDEXEC_DEFINE_CUSTOM(auto get_env)(this _Self __self, _Tag) noexcept
           -> __env_t<_Kernel, env_of_t<_Receiver>> {
           __state& __st = *__self.__state_;
           static_assert(noexcept(__st.__kernel_.get_env(stdexec::get_env(__st.__rcvr_))));

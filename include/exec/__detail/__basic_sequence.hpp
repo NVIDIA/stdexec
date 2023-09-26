@@ -48,7 +48,7 @@ namespace exec {
     }
 
     template <stdexec::same_as<stdexec::get_env_t> _Tag, stdexec::same_as<__seqexpr> _Self>
-    friend auto tag_invoke(_Tag, const _Self& __self) noexcept //
+    STDEXEC_DEFINE_CUSTOM(auto get_env)(this const _Self& __self, _Tag) noexcept //
       -> stdexec::__msecond<
         stdexec::__if_c<stdexec::same_as<_Tag, stdexec::get_env_t>>, //
         decltype(__self.__tag().get_env(__self))> {
@@ -60,7 +60,7 @@ namespace exec {
       stdexec::same_as<stdexec::get_completion_signatures_t> _Tag,
       stdexec::__decays_to<__seqexpr> _Self,
       class _Env>
-    friend auto tag_invoke(_Tag, _Self&& __self, _Env&& __env) //
+    STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this _Self&& __self, _Tag, _Env&& __env) //
       -> stdexec::__msecond<
         stdexec::__if_c<stdexec::same_as<_Tag, stdexec::get_completion_signatures_t>>,
         decltype(__self.__tag().get_completion_signatures((_Self&&) __self, (_Env&&) __env))> {

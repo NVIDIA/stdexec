@@ -66,7 +66,7 @@ namespace exec {
         __operation_base<_Iterator, _Sentinel>* __parent_;
 
         template <__decays_to<__t> _Self, receiver_of<completion_signatures> _ItemRcvr>
-        friend auto tag_invoke(connect_t, _Self&& __self, _ItemRcvr __rcvr) //
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, connect_t, _ItemRcvr __rcvr) //
           noexcept(__nothrow_decay_copyable<_ItemRcvr>)
             -> stdexec::__t<__item_operation<_Iterator, _Sentinel, _ItemRcvr>> {
           return {static_cast<_ItemRcvr&&>(__rcvr), __self.__parent_};

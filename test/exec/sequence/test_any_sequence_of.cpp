@@ -32,16 +32,16 @@ struct ignore_all_item_rcvr {
   }
 
   template <class... As>
-  friend void tag_invoke(stdexec::set_value_t, ignore_all_item_rcvr&& self, As&&...) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this ignore_all_item_rcvr&& self, stdexec::set_value_t, As&&...) noexcept {
     stdexec::set_value(static_cast<Receiver&&>(self.rcvr));
   }
 
-  friend void tag_invoke(stdexec::set_stopped_t, ignore_all_item_rcvr&& self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this ignore_all_item_rcvr&& self, stdexec::set_stopped_t) noexcept {
     stdexec::set_value(static_cast<Receiver&&>(self.rcvr));
   }
 
   template <class E>
-  friend void tag_invoke(stdexec::set_error_t, ignore_all_item_rcvr&& self, E&&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this ignore_all_item_rcvr&& self, stdexec::set_error_t, E&&) noexcept {
     stdexec::set_value(static_cast<Receiver&&>(self.rcvr));
   }
 };
@@ -56,7 +56,7 @@ struct ignore_all_sender {
     Item item_;
 
     template < stdexec::__decays_to<__t> Self, stdexec::receiver_of<completion_signatures> Receiver>
-    friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver rcvr) noexcept {
+    STDEXEC_DEFINE_CUSTOM(auto connect)(this Self&& self, stdexec::connect_t, Receiver rcvr) noexcept {
       return stdexec::connect(
         static_cast<Self&&>(self).item_,
         ignore_all_item_rcvr<Receiver>{static_cast<Receiver&&>(rcvr)});
@@ -73,13 +73,13 @@ struct ignore_all_receiver {
     return {static_cast<Item&&>(item)};
   }
 
-  friend void tag_invoke(stdexec::set_value_t, ignore_all_receiver&&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this ignore_all_receiver&&, stdexec::set_value_t) noexcept {
   }
 
-  friend void tag_invoke(stdexec::set_stopped_t, ignore_all_receiver&&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this ignore_all_receiver&&, stdexec::set_stopped_t) noexcept {
   }
 
-  friend void tag_invoke(stdexec::set_error_t, ignore_all_receiver&&, std::exception_ptr) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this ignore_all_receiver&&, stdexec::set_error_t, std::exception_ptr) noexcept {
   }
 
   friend stdexec::empty_env tag_invoke(stdexec::get_env_t, const ignore_all_receiver&) noexcept {

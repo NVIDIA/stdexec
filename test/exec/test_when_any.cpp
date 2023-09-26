@@ -231,7 +231,7 @@ struct dup_sender {
     set_error_t(std::exception_ptr&&)>;
 
   template <class Receiver>
-  friend dup_op<Receiver> tag_invoke(connect_t, dup_sender, Receiver rec) noexcept {
+  STDEXEC_DEFINE_CUSTOM(dup_op<Receiver> connect)(this dup_sender, connect_t, Receiver rec) noexcept {
     return {static_cast<Receiver&&>(rec)};
   }
 };

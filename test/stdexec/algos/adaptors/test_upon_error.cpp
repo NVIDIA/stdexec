@@ -88,7 +88,7 @@ struct many_error_sender {
     return {{}, (R&&) r};
   }
 
-  friend auto tag_invoke(ex::get_env_t, const many_error_sender&) noexcept -> ex::empty_env {
+  STDEXEC_DEFINE_CUSTOM(auto get_env)(this const many_error_sender&, ex::get_env_t) noexcept -> ex::empty_env {
     return {};
   }
 };

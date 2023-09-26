@@ -40,11 +40,8 @@ namespace nvexec {
         operation_state_base_t<ReceiverId>& op_state_;
         std::string name_;
 
-       public:
-        using __id = receiver_t;
-
-        template <__completion_tag Tag, class... As>
-        friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
+        template <class Tag, class... As>
+        static void _complete(Tag tag, __t&& self, As&&... as) noexcept {
           if constexpr (Kind == kind::push) {
             nvtxRangePushA(self.name_.c_str());
           } else {
@@ -54,7 +51,25 @@ namespace nvexec {
           self.op_state_.propagate_completion_signal(tag, (As&&) as...);
         }
 
-        friend Env tag_invoke(get_env_t, const __t& self) noexcept {
+       public:
+        using __id = receiver_t;
+
+        template <same_as<set_value_t> Tag, class... As>
+        STDEXEC_DEFINE_CUSTOM(void set_value)(this __t&& self, Tag tag, As&&... as) noexcept {
+          _complete(tag, std::move(self), (As&&) as...);
+        }
+
+        template <same_as<set_error_t> Tag, class Error>
+        STDEXEC_DEFINE_CUSTOM(void set_error)(this __t&& self, Tag tag, Error&& error) noexcept {
+          _complete(tag, std::move(self), (Error&&) error);
+        }
+
+        template <same_as<set_stopped_t> Tag>
+        STDEXEC_DEFINE_CUSTOM(void set_stopped)(this __t&& self, Tag tag) noexcept {
+          _complete(tag, std::move(self));
+        }
+
+        STDEXEC_DEFINE_CUSTOM(Env get_env)(this const __t& self, get_env_t) noexcept {
           return self.op_state_.make_env();
         }
 

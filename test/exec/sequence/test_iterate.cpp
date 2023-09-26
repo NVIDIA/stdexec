@@ -35,17 +35,17 @@ struct sum_item_rcvr {
   }
 
   template <class... As>
-  friend void tag_invoke(stdexec::set_value_t, sum_item_rcvr&& self, int x) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this sum_item_rcvr&& self, stdexec::set_value_t, int x) noexcept {
     *self.sum_ += x;
     stdexec::set_value(static_cast<Receiver&&>(self.rcvr));
   }
 
-  friend void tag_invoke(stdexec::set_stopped_t, sum_item_rcvr&& self) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this sum_item_rcvr&& self, stdexec::set_stopped_t) noexcept {
     stdexec::set_value(static_cast<Receiver&&>(self.rcvr));
   }
 
   template <class E>
-  friend void tag_invoke(stdexec::set_error_t, sum_item_rcvr&& self, E&&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this sum_item_rcvr&& self, stdexec::set_error_t, E&&) noexcept {
     stdexec::set_value(static_cast<Receiver&&>(self.rcvr));
   }
 };
@@ -61,7 +61,7 @@ struct sum_sender {
   template <
     stdexec::__decays_to<sum_sender> Self,
     stdexec::receiver_of<completion_signatures> Receiver>
-  friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver rcvr) noexcept {
+  STDEXEC_DEFINE_CUSTOM(auto connect)(this Self&& self, stdexec::connect_t, Receiver rcvr) noexcept {
     return stdexec::connect(
       static_cast<Self&&>(self).item_,
       sum_item_rcvr<Receiver>{static_cast<Receiver&&>(rcvr), self.sum_});
@@ -81,13 +81,13 @@ struct sum_receiver {
     return {static_cast<Item&&>(item), &self.sum_};
   }
 
-  friend void tag_invoke(stdexec::set_value_t, sum_receiver&&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_value)(this sum_receiver&&, stdexec::set_value_t) noexcept {
   }
 
-  friend void tag_invoke(stdexec::set_stopped_t, sum_receiver&&) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_stopped)(this sum_receiver&&, stdexec::set_stopped_t) noexcept {
   }
 
-  friend void tag_invoke(stdexec::set_error_t, sum_receiver&&, std::exception_ptr) noexcept {
+  STDEXEC_DEFINE_CUSTOM(void set_error)(this sum_receiver&&, stdexec::set_error_t, std::exception_ptr) noexcept {
   }
 
   friend Env tag_invoke(stdexec::get_env_t, const sum_receiver& self) noexcept {

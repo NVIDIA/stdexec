@@ -22,7 +22,6 @@ namespace stdexec {
 using namespace stdexec;
 using namespace exec;
 
-
 template <class _Tag, class... _Args>
   requires __completion_tag<std::decay_t<_Tag>>
 using __dematerialize_value = completion_signatures<std::decay_t<_Tag>(_Args...)>;

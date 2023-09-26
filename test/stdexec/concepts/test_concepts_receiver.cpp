@@ -59,7 +59,7 @@
 // struct recv_set_stopped_except {
 //   STDEXEC_DEFINE_CUSTOM(void set_value)(this recv_set_stopped_except, ex::set_value_t) noexcept {}
 //   STDEXEC_DEFINE_CUSTOM(void set_stopped)(this recv_set_stopped_except, ex::set_stopped_t) { throw
-//   std::logic_error{"err"}; } friend void tag_invoke(ex::set_error_t, recv_set_stopped_except,
+//   std::logic_error{"err"}; } STDEXEC_DEFINE_CUSTOM(void set_error)(this recv_set_stopped_except, ex::set_error_t,
 //   std::exception_ptr) noexcept {} friend empty_env tag_invoke(ex::get_env_t, const
 //   recv_set_stopped_except&) noexcept {
 //     return {};

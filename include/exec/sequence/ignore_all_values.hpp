@@ -156,7 +156,7 @@ namespace exec {
 
         template < __decays_to<__t> _Self, stdexec::receiver_of<completion_signatures> _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __item_receiver_t<_Receiver>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+        STDEXEC_DEFINE_CUSTOM(auto connect)(this _Self&& __self, stdexec::connect_t, _Receiver __rcvr)
           -> __operation_t<_Self, _Receiver> {
           return {
             __self.__parent_,

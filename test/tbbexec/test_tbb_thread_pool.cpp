@@ -23,6 +23,7 @@
 
 #include <test_common/schedulers.hpp>
 #include <exec/on.hpp>
+#include <exec/env.hpp>
 #include <exec/inline_scheduler.hpp>
 
 #include <tbbexec/tbb_thread_pool.hpp>

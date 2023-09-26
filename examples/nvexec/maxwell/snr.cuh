@@ -47,7 +47,9 @@ namespace nvexec {
 namespace ex = stdexec;
 
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
+namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
+
+  namespace repeat_n {
   template <class OpT>
   class receiver_2_t : public stream_receiver_base {
     using Sender = typename OpT::PredSender;
@@ -125,8 +127,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
       if (op_state.n_) {
         auto sch = ex::get_scheduler(ex::get_env(op_state.rcvr_));
         inner_op_state_t& inner_op_state = op_state.inner_op_state_.emplace(
-          ex::__conv{[&]() noexcept {
-            return ex::connect(ex::schedule(sch) | op_state.closure_, receiver_2_t<OpT>{op_state});
+            stdexec::__conv{[&]() noexcept {
+              return ex::connect(
+                ex::schedule(sch) | op_state.closure_, receiver_2_t<OpT>{op_state});
           }});
 
         ex::start(inner_op_state);
@@ -162,12 +165,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
     }
   };
 
-  template <class PredecessorSenderId, class ClosureId, class ReceiverId>
+    template <class PredecessorSenderId, class Closure, class ReceiverId>
   struct operation_state_t : operation_state_base_t<ReceiverId> {
-    using PredSender = ex::__t<PredecessorSenderId>;
-    using Closure = ex::__t<ClosureId>;
-    using Receiver = ex::__t<ReceiverId>;
-    using Scheduler = ex::tag_invoke_result_t<ex::get_scheduler_t, ex::env_of_t<Receiver>>;
+      using PredSender = stdexec::__t<PredecessorSenderId>;
+      using Receiver = stdexec::__t<ReceiverId>;
+      using Scheduler =
+        stdexec::tag_invoke_result_t<stdexec::get_scheduler_t, stdexec::env_of_t<Receiver>>;
     using InnerSender =
       std::invoke_result_t<Closure, ex::tag_invoke_result_t<ex::schedule_t, Scheduler>>;
 
@@ -185,7 +188,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace repeat_n {
     STDEXEC_DEFINE_CUSTOM(void start)(this operation_state_t& op, ex::start_t) noexcept {
       if (op.stream_provider_.status_ != cudaSuccess) {
         // Couldn't allocate memory for operation state, complete with error
-        op.propagate_completion_signal(ex::set_error, std::move(op.stream_provider_.status_));
+          op.propagate_completion_signal(
+            stdexec::set_error, std::move(op.stream_provider_.status_));
       } else {
         if (op.n_) {
           ex::start(*op.pred_op_state_);
@@ -218,6 +222,8 @@ namespace repeat_n_detail {
     OpT& op_state_;
 
    public:
+    using __t = receiver_t;
+    using __id = receiver_t;
     using is_receiver = void;
 
     template <ex::same_as<ex::set_error_t> _Tag, class _Error>
@@ -255,11 +261,10 @@ namespace repeat_n_detail {
     }
   };
 
-  template <class SenderId, class ClosureId, class ReceiverId>
+  template <class SenderId, class Closure, class ReceiverId>
   struct operation_state_t {
-    using Sender = ex::__t<SenderId>;
-    using Closure = ex::__t<ClosureId>;
-    using Receiver = ex::__t<ReceiverId>;
+    using Sender = stdexec::__t<SenderId>;
+    using Receiver = stdexec::__t<ReceiverId>;
 
     using inner_op_state_t = ex::connect_result_t<Sender, receiver_t<operation_state_t>>;
 
@@ -279,13 +284,12 @@ namespace repeat_n_detail {
       , n_(n) {
     }
   };
-}
 
-struct repeat_n_t {
-  template <class SenderId, class ClosureId>
+  template <class SenderId, class Closure>
   struct repeat_n_sender_t {
+    using __t = repeat_n_sender_t;
+    using __id = repeat_n_sender_t;
     using Sender = stdexec::__t<SenderId>;
-    using Closure = stdexec::__t<ClosureId>;
     using is_sender = void;
 
     using completion_signatures = //
@@ -308,8 +312,8 @@ struct repeat_n_t {
       requires(stdexec::sender_to<Sender, Receiver>)
            && (!nvexec::STDEXEC_STREAM_DETAIL_NS::receiver_with_stream_env<Receiver>)
     STDEXEC_DEFINE_CUSTOM(auto connect)(this Self&& self, stdexec::connect_t, Receiver r)
-      -> repeat_n_detail::operation_state_t<SenderId, ClosureId, stdexec::__id<Receiver>> {
-      return repeat_n_detail::operation_state_t<SenderId, ClosureId, stdexec::__id<Receiver>>(
+      -> repeat_n_detail::operation_state_t<SenderId, Closure, stdexec::__id<Receiver>> {
+      return repeat_n_detail::operation_state_t<SenderId, Closure, stdexec::__id<Receiver>>(
         (Sender&&) self.sender_, self.closure_, (Receiver&&) r, self.n_);
     }
 
@@ -318,29 +322,17 @@ struct repeat_n_t {
            && (nvexec::STDEXEC_STREAM_DETAIL_NS::receiver_with_stream_env<Receiver>)
     STDEXEC_DEFINE_CUSTOM(auto connect)(this Self&& self, stdexec::connect_t, Receiver r)
       -> nvexec::STDEXEC_STREAM_DETAIL_NS::repeat_n::
-        operation_state_t<SenderId, ClosureId, stdexec::__id<Receiver>> {
+        operation_state_t<SenderId, Closure, stdexec::__id<Receiver>> {
       return nvexec::STDEXEC_STREAM_DETAIL_NS::repeat_n::
-        operation_state_t<SenderId, ClosureId, stdexec::__id<Receiver>>(
-          (Sender&&) self.sender_, self.closure_, (Receiver&&) r, self.n_);
-    }
-
-    template <stdexec::__decays_to<repeat_n_sender_t> Self, stdexec::receiver Receiver>
-      requires(stdexec::tag_invocable<stdexec::connect_t, Sender, Receiver>)
-           && (nvexec::STDEXEC_STREAM_DETAIL_NS::receiver_with_stream_env<Receiver>)
-    STDEXEC_DEFINE_CUSTOM(auto connect)(this Self&& self, stdexec::connect_t, Receiver r)
-      -> nvexec::STDEXEC_STREAM_DETAIL_NS::repeat_n::
-        operation_state_t<SenderId, ClosureId, stdexec::__id<Receiver>> {
-
-      return nvexec::STDEXEC_STREAM_DETAIL_NS::repeat_n::
-        operation_state_t<SenderId, ClosureId, stdexec::__id<Receiver>>(
+        operation_state_t<SenderId, Closure, stdexec::__id<Receiver>>(
           (Sender&&) self.sender_, self.closure_, (Receiver&&) r, self.n_);
     }
 #else
     template <stdexec::__decays_to<repeat_n_sender_t> Self, stdexec::receiver Receiver>
       requires stdexec::sender_to<Sender, Receiver>
     STDEXEC_DEFINE_CUSTOM(auto connect)(this Self&& self, stdexec::connect_t, Receiver r)
-      -> repeat_n_detail::operation_state_t<SenderId, ClosureId, stdexec::__id<Receiver>> {
-      return repeat_n_detail::operation_state_t<SenderId, ClosureId, stdexec::__id<Receiver>>(
+      -> repeat_n_detail::operation_state_t<SenderId, Closure, stdexec::__id<Receiver>> {
+      return repeat_n_detail::operation_state_t<SenderId, Closure, stdexec::__id<Receiver>>(
         (Sender&&) self.sender_, self.closure_, (Receiver&&) r, self.n_);
     }
 #endif
@@ -351,11 +343,13 @@ struct repeat_n_t {
       return stdexec::get_env(s.sender_);
     }
   };
+}
 
+struct repeat_n_t {
   template <stdexec::sender Sender, stdexec::__sender_adaptor_closure Closure>
   auto operator()(Sender&& __sndr, std::size_t n, Closure closure) const noexcept
-    -> repeat_n_sender_t<stdexec::__x<Sender>, stdexec::__x<Closure>> {
-    return repeat_n_sender_t<stdexec::__x<Sender>, stdexec::__x<Closure>>{
+    -> repeat_n_detail::repeat_n_sender_t<stdexec::__id<Sender>, Closure> {
+    return repeat_n_detail::repeat_n_sender_t<stdexec::__id<Sender>, Closure>{
       std::forward<Sender>(__sndr), closure, n};
   }
 
@@ -374,7 +368,8 @@ inline constexpr repeat_n_t repeat_n{};
 
 template <class SchedulerT>
 [[nodiscard]] bool is_gpu_scheduler(SchedulerT&& scheduler) {
-  auto snd = ex::just() | exec::on(scheduler, ex::then([] { return nvexec::is_on_gpu(); }));
+  auto snd = ex::just()
+           | exec::on(scheduler, ex::then([] { return nvexec::is_on_gpu(); }));
   auto [on_gpu] = stdexec::sync_wait(std::move(snd)).value();
   return on_gpu;
 }
@@ -406,7 +401,9 @@ void run_snr(
   time_storage_t time{is_gpu_scheduler(computer)};
   fields_accessor accessor = grid.accessor();
 
-  auto init = ex::just() | exec::on(computer, ex::bulk(grid.cells, grid_initializer(dt, accessor)));
+  auto init =
+    ex::just()
+    | exec::on(computer, ex::bulk(grid.cells, grid_initializer(dt, accessor)));
   stdexec::sync_wait(init);
 
   auto snd = maxwell_eqs_snr(dt, time.get(), write_vtk, n_iterations, accessor, computer);

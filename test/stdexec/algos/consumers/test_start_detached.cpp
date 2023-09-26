@@ -92,7 +92,7 @@ struct custom_sender {
   }
 
   template <class Env>
-  friend auto tag_invoke(ex::get_completion_signatures_t, custom_sender, Env) noexcept
+  STDEXEC_DEFINE_CUSTOM(auto get_completion_signatures)(this custom_sender, ex::get_completion_signatures_t, Env) noexcept
     -> ex::completion_signatures<ex::set_value_t()> {
     return {};
   }
