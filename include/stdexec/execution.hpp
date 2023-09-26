@@ -2503,6 +2503,8 @@ namespace stdexec {
   inline constexpr __submit_t __submit{};
 
   namespace __inln {
+    struct __scheduler;
+
     template <class _Receiver>
     struct __op : __immovable {
       _Receiver __recv_;
@@ -2513,7 +2515,8 @@ namespace stdexec {
     };
 
     struct __schedule_t {
-      static auto get_env(__ignore) noexcept;
+      static auto get_env(__ignore) noexcept
+        -> __env::__prop<get_completion_scheduler_t<set_value_t>, __scheduler>;
 
       using __compl_sigs = stdexec::completion_signatures<set_value_t()>;
       static __compl_sigs get_completion_signatures(__ignore, __ignore);
@@ -2529,17 +2532,23 @@ namespace stdexec {
       using __t = __scheduler;
       using __id = __scheduler;
 
-      friend auto tag_invoke(schedule_t, __scheduler) {
+      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
+        friend auto
+        tag_invoke(schedule_t, __scheduler) {
         return make_sender_expr<__schedule_t>();
+      }
+
+      friend forward_progress_guarantee
+        tag_invoke(get_forward_progress_guarantee_t, __scheduler) noexcept {
+        return forward_progress_guarantee::weakly_parallel;
       }
 
       bool operator==(const __scheduler&) const noexcept = default;
     };
 
-    inline auto __schedule_t::get_env(__ignore) noexcept {
-      return __env::__env_fn{[](get_completion_scheduler_t<set_value_t>) noexcept {
-        return __scheduler{};
-      }};
+    inline auto __schedule_t::get_env(__ignore) noexcept
+      -> __env::__prop<get_completion_scheduler_t<set_value_t>, __scheduler> {
+      return __mkprop(get_completion_scheduler<set_value_t>, __scheduler{});
     }
   }
 
