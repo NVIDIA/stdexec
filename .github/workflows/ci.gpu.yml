@@ -51,7 +51,7 @@ jobs:
             -DCMAKE_CUDA_COMPILER="$cxx" \
             -DCMAKE_CUDA_ARCHITECTURES=${{ matrix.sm }};
           # Compile
-          cmake --build build;
+          cmake --build build -v;
           # Tests
           ctest --test-dir build --verbose --output-on-failure --timeout 60;
           # Examples
