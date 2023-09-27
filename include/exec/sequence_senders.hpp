@@ -134,7 +134,8 @@ namespace exec {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.sndtraits]
-  namespace __sequence_sndr {
+  namespace __get_item_types {
+    using namespace stdexec;
     struct get_item_types_t;
     template <class _Sender, class _Env>
     using __tfx_sender = transform_sender_result_t<__env_domain_of_t<_Env>, _Sender, _Env>;
@@ -148,47 +149,46 @@ namespace exec {
 
     template <class _Sender, class _Env>
     concept __with_member_alias = __mvalid<__member_alias_t, _Sender, _Env>;
+  }
 
-    struct get_item_types_t {
-      template <class _Sender, class _Env>
-      static auto __impl() {
-        static_assert(sizeof(_Sender), "Incomplete type used with get_item_types");
-        static_assert(sizeof(_Env), "Incomplete type used with get_item_types");
-        using _TfxSender = __tfx_sender<_Sender, _Env>;
-        if constexpr (__with_tag_invoke<_Sender, _Env>) {
-          using _Result = tag_invoke_result_t<get_item_types_t, _TfxSender, _Env>;
-          return (_Result(*)()) nullptr;
-        } else if constexpr (__with_member_alias<_TfxSender, _Env>) {
-          using _Result = __member_alias_t<_TfxSender, _Env>;
-          return (_Result(*)()) nullptr;
-        } else if constexpr (
-          sender<_TfxSender, _Env> && !enable_sequence_sender<stdexec::__decay_t<_TfxSender>>) {
-          using _Result = item_types<stdexec::__decay_t<_TfxSender>>;
-          return (_Result(*)()) nullptr;
-        } else if constexpr (__is_debug_env<_Env>) {
-          using __tag_invoke::tag_invoke;
-          // This ought to cause a hard error that indicates where the problem is.
-          using _Completions [[maybe_unused]] =
-            tag_invoke_result_t<get_item_types_t, __tfx_sender<_Sender, _Env>, _Env>;
-          return (__debug::__completion_signatures(*)()) nullptr;
-        } else {
-          using _Result = __mexception<
-            _UNRECOGNIZED_SENDER_TYPE_<>,
-            _WITH_SENDER_<_Sender>,
-            _WITH_ENVIRONMENT_<_Env>>;
-          return (_Result(*)()) nullptr;
-        }
+  STDEXEC_DEFINE_CPO(struct get_item_types_t, get_item_types) {
+    template <class _Sender, class _Env>
+    static auto __impl() {
+      static_assert(sizeof(_Sender), "Incomplete type used with get_item_types");
+      static_assert(sizeof(_Env), "Incomplete type used with get_item_types");
+      using _TfxSender = __tfx_sender<_Sender, _Env>;
+      if constexpr (__with_tag_invoke<_Sender, _Env>) {
+        using _Result = tag_invoke_result_t<get_item_types_t, _TfxSender, _Env>;
+        return (_Result(*)()) nullptr;
+      } else if constexpr (__with_member_alias<_TfxSender, _Env>) {
+        using _Result = __member_alias_t<_TfxSender, _Env>;
+        return (_Result(*)()) nullptr;
+      } else if constexpr (
+        sender<_TfxSender, _Env> && !enable_sequence_sender<stdexec::__decay_t<_TfxSender>>) {
+        using _Result = item_types<stdexec::__decay_t<_TfxSender>>;
+        return (_Result(*)()) nullptr;
+      } else if constexpr (__is_debug_env<_Env>) {
+        using __tag_invoke::tag_invoke;
+        // This ought to cause a hard error that indicates where the problem is.
+        using _Completions [[maybe_unused]] =
+          tag_invoke_result_t<get_item_types_t, __tfx_sender<_Sender, _Env>, _Env>;
+        return (__debug::__completion_signatures(*)()) nullptr;
+      } else {
+        using _Result = __mexception<
+          _UNRECOGNIZED_SENDER_TYPE_<>,
+          _WITH_SENDER_<_Sender>,
+          _WITH_ENVIRONMENT_<_Env>>;
+        return (_Result(*)()) nullptr;
       }
+    }
 
-      template <class _Sender, class _Env = __default_env>
-      constexpr auto operator()(_Sender&&, const _Env&) const noexcept
-        -> decltype(__impl<_Sender, _Env>()()) {
-        return {};
-      }
-    };
-  } // namespace __sequence_sndr
+    template <class _Sender, class _Env = __default_env>
+    constexpr auto operator()(_Sender&&, const _Env&) const noexcept
+      -> decltype(__impl<_Sender, _Env>()()) {
+      return {};
+    }
+  };
 
-  using __sequence_sndr::get_item_types_t;
   inline constexpr get_item_types_t get_item_types{};
 
   template <class _Sender, class _Env>
@@ -295,7 +295,7 @@ namespace exec {
     using namespace stdexec;
     struct subscribe_t;
 
-    using __sequence_sndr::__tfx_sender;
+    using __get_item_types::__tfx_sender;
 
     template <class _Env>
     using __single_sender_completion_sigs = __if_c<
