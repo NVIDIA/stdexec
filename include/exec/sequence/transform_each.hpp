@@ -21,7 +21,7 @@
 #include "../__detail/__basic_sequence.hpp"
 
 namespace exec {
-  namespace __transform {
+  namespace __transform_each {
     using namespace stdexec;
 
     template <class _Receiver, class _Adaptor>
@@ -199,6 +199,6 @@ namespace exec {
     };
   }
 
-  using __transform::transform_each_t;
+  using __transform_each::transform_each_t;
   inline constexpr transform_each_t transform_each{};
 }
