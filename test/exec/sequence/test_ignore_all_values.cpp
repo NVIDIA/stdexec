@@ -73,3 +73,34 @@ TEST_CASE("ignore_all_values - ignore just_error()", "[sequence_senders][ignore_
       stdexec::completion_signatures_of_t<Sender, stdexec::empty_env>>);
   CHECK_THROWS(stdexec::sync_wait(sndr));
 }
+
+struct sequence_op {
+  friend void tag_invoke(stdexec::start_t, sequence_op&) noexcept {
+  }
+};
+
+template <class Item>
+struct sequence {
+  using is_sender = exec::sequence_tag;
+
+  using completion_signatures =
+    stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(int)>;
+
+  using item_types = exec::item_types<Item>;
+
+  friend sequence_op tag_invoke(exec::subscribe_t, sequence, stdexec::__ignore) noexcept {
+    return sequence_op{};
+  }
+};
+
+TEST_CASE("ignore_all_values - Merge error and stop signatures from sequence and items") {
+  using just_t = decltype(stdexec::just_error(std::make_exception_ptr(std::runtime_error("test"))));
+  sequence<just_t> seq;
+  auto ignore = exec::ignore_all_values(seq);
+  using Sigs = stdexec::completion_signatures_of_t<decltype(ignore), stdexec::empty_env>;
+  using ExpectedSigs = stdexec::completion_signatures<
+    stdexec::set_value_t(),
+    stdexec::set_error_t(int),
+    stdexec::set_error_t(std::exception_ptr)>;
+  STATIC_REQUIRE(std::same_as<Sigs, ExpectedSigs>);
+}
