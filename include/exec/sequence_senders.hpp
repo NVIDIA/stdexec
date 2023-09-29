@@ -269,7 +269,11 @@ namespace exec {
 
   template <class _Sequence, class _Env>
   using __sequence_completion_signatures_of_t = stdexec::__concat_completion_signatures_t<
-    stdexec::completion_signatures<stdexec::set_value_t()>,
+    stdexec::__try_make_completion_signatures<
+      _Sequence,
+      _Env,
+      stdexec::completion_signatures<stdexec::set_value_t()>,
+      stdexec::__mconst<stdexec::completion_signatures<>>>,
     stdexec::__mapply<
       stdexec::__q<stdexec::__concat_completion_signatures_t>,
       stdexec::__mapply<
