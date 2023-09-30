@@ -143,6 +143,12 @@ target_compile_options(stdexec INTERFACE
                        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus /Zc:preprocessor>
                        )
 
+option(STDEXEC_ENABLE_EXTRA_TYPE_CHECKING "Enable extra type checking that is costly at compile-time" OFF)
+
+if (STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
+    target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
+endif()
+
 add_library(STDEXEC::stdexec ALIAS stdexec)
 
 # Don't require building everything when installing
@@ -198,6 +204,9 @@ target_compile_options(stdexec_executable_flags INTERFACE
                        -D_GLIBCXX_USE_TBB_PAR_BACKEND=0
                        -include stdexec/__detail/__force_include.hpp>
                        )
+
+target_compile_definitions(stdexec_executable_flags INTERFACE
+                           STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
 
 # Support target for examples and tests
 add_library(nvexec_executable_flags INTERFACE)
