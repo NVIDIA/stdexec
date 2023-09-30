@@ -40,6 +40,9 @@ add_library(nvexec_example INTERFACE)
 target_include_directories(nvexec_example
     INTERFACE ${CMAKE_CURRENT_LIST_DIR}
 )
+target_link_libraries(nvexec_example
+    INTERFACE nvexec_executable_flags
+)
 
 add_library(stdpar_multicore INTERFACE)
 target_include_directories(stdpar_multicore

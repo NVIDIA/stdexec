@@ -48,7 +48,11 @@ endif()
 add_executable(test.nvexec ${nvexec_test_sources})
 
 target_include_directories(test.nvexec PRIVATE ${CMAKE_CURRENT_LIST_DIR}/..)
-target_link_libraries(test.nvexec STDEXEC::nvexec stdexec_executable_flags Catch2::Catch2)
+target_link_libraries(test.nvexec
+                      STDEXEC::nvexec
+                      stdexec_executable_flags
+                      Catch2::Catch2
+                      nvexec_executable_flags)
 
 # if(CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
 #     target_compile_options(test.nvexec PRIVATE "-ftemplate-backtrace-limit=9999")
