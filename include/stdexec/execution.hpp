@@ -6830,7 +6830,7 @@ namespace stdexec {
               return __write(
                 transfer(
                   ((_Closure&&) __clsur)(
-                    transfer(__write((_Child&&) __child, __mkenv(__old)), (_Scheduler&&) __sched)),
+                    transfer(__write((_Child&&) __child, __mkenv(__old)), __sched)),
                   __old),
                 __mkenv(__sched));
             }),
