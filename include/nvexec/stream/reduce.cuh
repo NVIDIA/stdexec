@@ -150,3 +150,10 @@ namespace nvexec {
 
   inline constexpr STDEXEC_STREAM_DETAIL_NS::reduce_t reduce{};
 }
+
+namespace stdexec::__detail {
+  template <class SenderId, class Init, class Fun>
+  extern __mconst<
+    nvexec::STDEXEC_STREAM_DETAIL_NS::reduce_::sender_t<__name_of<__t<SenderId>>, Init, Fun>>
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::reduce_::sender_t<SenderId, Init, Fun>>;
+}

@@ -371,3 +371,15 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     };
   };
 }
+
+namespace stdexec::__detail {
+  template <class SenderId, class Shape, class Fun>
+  inline constexpr __mconst<
+    nvexec::STDEXEC_STREAM_DETAIL_NS::bulk_sender_t<__name_of<__t<SenderId>>, Shape, Fun>>
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::bulk_sender_t<SenderId, Shape, Fun>>{};
+
+  template <class SenderId, class Shape, class Fun>
+  inline constexpr __mconst<
+    nvexec::STDEXEC_STREAM_DETAIL_NS::multi_gpu_bulk_sender_t<__name_of<__t<SenderId>>, Shape, Fun>>
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::multi_gpu_bulk_sender_t<SenderId, Shape, Fun>>{};
+}
