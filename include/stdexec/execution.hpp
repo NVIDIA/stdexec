@@ -2704,36 +2704,40 @@ namespace stdexec {
       }
     };
 
-    inline constexpr struct __just_t : __just_impl<__just_t, set_value_t> {
+    struct just_t : __just_impl<just_t, set_value_t> {
       template <__movable_value... _Ts>
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
         auto
         operator()(_Ts&&... __ts) const noexcept((__nothrow_decay_copyable<_Ts> && ...)) {
-        return make_sender_expr<__just_t>(__decayed_tuple<_Ts...>{(_Ts&&) __ts...});
+        return make_sender_expr<just_t>(__decayed_tuple<_Ts...>{(_Ts&&) __ts...});
       }
-    } just{};
+    };
 
-    inline constexpr struct __just_error_t : __just_impl<__just_error_t, set_error_t> {
+    struct just_error_t : __just_impl<just_error_t, set_error_t> {
       template <__movable_value _Error>
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
         auto
         operator()(_Error&& __err) const noexcept(__nothrow_decay_copyable<_Error>) {
-        return make_sender_expr<__just_error_t>(__decayed_tuple<_Error>{(_Error&&) __err});
+        return make_sender_expr<just_error_t>(__decayed_tuple<_Error>{(_Error&&) __err});
       }
-    } just_error{};
+    };
 
-    inline constexpr struct __just_stopped_t : __just_impl<__just_stopped_t, set_stopped_t> {
+    struct just_stopped_t : __just_impl<just_stopped_t, set_stopped_t> {
       STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
         auto
         operator()() const noexcept {
-        return make_sender_expr<__just_stopped_t>(__decayed_tuple<>());
+        return make_sender_expr<just_stopped_t>(__decayed_tuple<>());
       }
-    } just_stopped{};
+    };
   }
 
-  using __just::just;
-  using __just::just_error;
-  using __just::just_stopped;
+  using __just::just_t;
+  using __just::just_error_t;
+  using __just::just_stopped_t;
+
+  inline constexpr just_t just {};
+  inline constexpr just_error_t just_error {};
+  inline constexpr just_stopped_t just_stopped {};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.execute]
