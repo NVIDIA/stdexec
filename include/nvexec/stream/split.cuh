@@ -342,3 +342,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     };
   };
 }
+
+namespace stdexec::__detail {
+  template <class SenderId>
+  extern __mconst<
+    nvexec::STDEXEC_STREAM_DETAIL_NS::split_sender_t<__name_of<__t<SenderId>>>>
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::split_sender_t<SenderId>>;
+}
