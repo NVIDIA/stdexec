@@ -3307,7 +3307,7 @@ namespace stdexec {
 #endif
 
       template <sender_expr_for<then_t> _Sender, class _Env>
-      static auto get_completion_signatures(_Sender&& __sndr, _Env&&)
+      static auto get_completion_signatures(_Sender&&, _Env&&)
         -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env> {
         return {};
       }
@@ -3448,7 +3448,7 @@ namespace stdexec {
 #endif
 
       template <sender_expr_for<upon_error_t> _Sender, class _Env>
-      static auto get_completion_signatures(_Sender&& __sndr, _Env&&)
+      static auto get_completion_signatures(_Sender&&, _Env&&)
         -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env> {
         return {};
       }
@@ -3592,7 +3592,7 @@ namespace stdexec {
 #endif
 
       template <sender_expr_for<upon_stopped_t> _Sender, class _Env>
-      static auto get_completion_signatures(_Sender&& __sndr, _Env&&)
+      static auto get_completion_signatures(_Sender&&, _Env&&)
         -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env> {
         return {};
       }
@@ -3799,7 +3799,7 @@ namespace stdexec {
       using __shape_t = decltype(__decay_t<__data_of<_Sender>>::__shape_);
 
       template <sender_expr_for<bulk_t> _Sender, class _Env>
-      static auto get_completion_signatures(_Sender&& __sndr, _Env&&)
+      static auto get_completion_signatures(_Sender&&, _Env&&)
         -> __completion_signatures<__child_of<_Sender>, _Env, __shape_t<_Sender>, __fun_t<_Sender>> {
         return {};
       }
@@ -4074,7 +4074,7 @@ namespace stdexec {
       }
 
       template <sender_expr_for<__split_t> _Self, class _OtherEnv>
-      static auto get_completion_signatures(_Self&& __self, _OtherEnv&&)
+      static auto get_completion_signatures(_Self&&, _OtherEnv&&)
         -> __call_result_t<apply_sender_t, _Self, __mtypeof<__get_completion_signatures_fn>> {
         return {};
       }
@@ -4411,7 +4411,7 @@ namespace stdexec {
       }
 
       template <sender_expr_for<__ensure_started_t> _Self, class _OtherEnv>
-      static auto get_completion_signatures(_Self&& __self, _OtherEnv&&)
+      static auto get_completion_signatures(_Self&&, _OtherEnv&&)
         -> __call_result_t<apply_sender_t, _Self, __mtypeof<__get_completion_signatures_fn>> {
         return {};
       }
@@ -4726,7 +4726,7 @@ namespace stdexec {
 
         template <class _Receiver2>
         __t(_Sender&& __sndr, _Receiver2&& __rcvr, _Fun __fun)
-          : __op_base_t{{{}, (_Receiver2&&) __rcvr, query_or(get_completion_scheduler<_Set>, get_env(__sndr), __none_such())}, (_Fun&&) __fun}
+          : __op_base_t{{{}, (_Receiver2&&) __rcvr, query_or(get_completion_scheduler<_Set>, get_env(__sndr), __none_such())}, (_Fun&&) __fun, {}, {}}
           , __op_state2_(connect((_Sender&&) __sndr, __receiver_t{this})) {
         }
 
@@ -5491,7 +5491,7 @@ namespace stdexec {
       }
 
       template <sender_expr_for<schedule_from_t> _Sender, class _Env>
-      static auto get_completion_signatures(_Sender&& __sndr, const _Env&) noexcept
+      static auto get_completion_signatures(_Sender&&, const _Env&) noexcept
         -> __completions_t<__scheduler_t<_Sender>, __child_of<_Sender>, _Env> {
         return {};
       }
@@ -6434,7 +6434,7 @@ namespace stdexec {
         __children_of<_Self, __mbind_front_q<__completions_t, __env_t<_Env>>>;
 
       template <sender_expr_for<when_all_t> _Self, class _Env>
-      static auto get_completion_signatures(_Self&& __self, _Env&&) {
+      static auto get_completion_signatures(_Self&&, _Env&&) {
         return __minvoke<__mtry_catch<__q<__completions>, __q<__error>>, _Self, _Env>();
       }
 
@@ -6829,7 +6829,6 @@ namespace stdexec {
             (_Sender&&) __sndr,
             [&]<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
               auto&& [__sched, __clsur] = (_Data&&) __data;
-              using _Scheduler = decltype(__sched);
               using _Closure = decltype(__clsur);
               return __write(
                 transfer(
