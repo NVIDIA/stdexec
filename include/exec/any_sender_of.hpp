@@ -632,7 +632,7 @@ namespace exec {
         requires(__is_not_stop_token_query<_Queries> && ...)
       struct __ref<completion_signatures<_Sigs...>, _Queries...> {
 #if !STDEXEC_MSVC()
-       // MSVCBUG https://developercommunity.visualstudio.com/t/Private-member-inaccessible-when-used-in/10448363
+        // MSVCBUG https://developercommunity.visualstudio.com/t/Private-member-inaccessible-when-used-in/10448363
 
        private:
 #endif
@@ -699,7 +699,7 @@ namespace exec {
         requires(__is_stop_token_query<_Queries> || ...)
       struct __ref<completion_signatures<_Sigs...>, _Queries...> {
 #if !STDEXEC_MSVC()
-       // MSVCBUG https://developercommunity.visualstudio.com/t/Private-member-inaccessible-when-used-in/10448363
+        // MSVCBUG https://developercommunity.visualstudio.com/t/Private-member-inaccessible-when-used-in/10448363
 
        private:
 #endif
@@ -1158,10 +1158,10 @@ namespace exec {
         // MSVCBUG https://developercommunity.visualstudio.com/t/ICE-and-non-ICE-bug-in-NTTP-argument-w/10361081
 
         static constexpr auto __any_scheduler_noexcept_signature =
-            stdexec::get_completion_scheduler<stdexec::set_value_t>.signature<any_scheduler() noexcept>;
+          stdexec::get_completion_scheduler<stdexec::set_value_t>.signature<any_scheduler() noexcept>;
         template <class... _Queries>
-        using __schedule_sender_fn = typename __schedule_receiver::template any_sender<
-            __any_scheduler_noexcept_signature>;
+        using __schedule_sender_fn =
+          typename __schedule_receiver::template any_sender< __any_scheduler_noexcept_signature>;
 #else
         template <class... _Queries>
         using __schedule_sender_fn = typename __schedule_receiver::template any_sender<

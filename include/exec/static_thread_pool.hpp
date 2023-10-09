@@ -59,10 +59,9 @@ namespace exec {
     // MSVCBUG https://developercommunity.visualstudio.com/t/Alias-template-with-pack-expansion-in-no/10437850
 
     template <class... Args>
-    struct __bulk_non_throwing
-    {
-        using __t = stdexec::__decayed_tuple<Args...>;
-        static constexpr bool __v = noexcept(__t(std::declval<Args>()...));
+    struct __bulk_non_throwing {
+      using __t = stdexec::__decayed_tuple<Args...>;
+      static constexpr bool __v = noexcept(__t(std::declval<Args>()...));
     };
 #endif
 
@@ -72,7 +71,7 @@ namespace exec {
       stdexec::__mbool<
         // If function invocation doesn't throw
         stdexec::__nothrow_callable<Fun, Shape, Args&...> &&
-        // and emplacing a tuple doesn't throw
+    // and emplacing a tuple doesn't throw
 #if STDEXEC_MSVC()
         __bulk_non_throwing<Args...>::__v
 #else

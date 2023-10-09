@@ -2380,7 +2380,7 @@ namespace stdexec {
         : __operation_base<_ReceiverId>{
             (_CvrefReceiver&&) __rcvr,
             [](__operation_base<_ReceiverId>* __self) noexcept {
-              delete static_cast<__operation*>(__self);
+            delete static_cast<__operation*>(__self);
             }}
         , __op_state_(connect((_Sender&&) __sndr, __receiver_t<_ReceiverId>{this})) {
       }
@@ -6467,7 +6467,7 @@ namespace stdexec {
     using _Sender = __0;
     template <class _Tag>
     using __cust_sigs = __types<
-      tag_invoke_t(_Tag, __get_sender_domain_t(*)(_Sender), _Sender),
+      tag_invoke_t(_Tag, __get_sender_domain_t (*)(_Sender), _Sender),
       tag_invoke_t(_Tag, _Sender)>;
 
     template <class _Tag, class _Sender>
@@ -6680,7 +6680,7 @@ namespace stdexec {
     struct __task {
       struct promise_type {
         __task get_return_object() noexcept {
-          return { __coro::coroutine_handle<promise_type>::from_promise(*this) };
+          return {__coro::coroutine_handle<promise_type>::from_promise(*this)};
         }
 
         static std::suspend_never initial_suspend() noexcept {
@@ -6726,7 +6726,7 @@ namespace stdexec {
 
     inline __task __co_impl(__context& __c) {
       while (true) {
-        co_await __continue_t{ __c.__continue_ };
+        co_await __continue_t{__c.__continue_};
         __c.__destroy_.destroy();
       }
     }
@@ -6745,9 +6745,8 @@ namespace stdexec {
       __coro::coroutine_handle<> __coro_;
     };
 
-    inline __coro::coroutine_handle<> __impl(
-      __coro::coroutine_handle<> __destroy,
-      __coro::coroutine_handle<> __continue) {
+    inline __coro::coroutine_handle<>
+      __impl(__coro::coroutine_handle<> __destroy, __coro::coroutine_handle<> __continue) {
       static thread_local __context_and_coro __c;
       __c.__context_.__destroy_ = __destroy;
       __c.__context_.__continue_ = __continue;
@@ -6759,8 +6758,7 @@ namespace stdexec {
 #define STDEXEC_DESTROY_AND_CONTINUE(__destroy, __continue) \
   (::stdexec::__destroy_and_continue_msvc::__impl(__destroy, __continue))
 #else
-#define STDEXEC_DESTROY_AND_CONTINUE(__destroy, __continue) \
-  (__destroy.destroy(), __continue)
+#define STDEXEC_DESTROY_AND_CONTINUE(__destroy, __continue) (__destroy.destroy(), __continue)
 #endif
 
 // For issuing a meaningful diagnostic for the erroneous `snd1 | snd2`.

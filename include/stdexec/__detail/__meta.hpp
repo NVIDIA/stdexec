@@ -938,14 +938,15 @@ namespace stdexec {
 
   template <std::size_t>
   struct __msvc_ignore_t {
-      __msvc_ignore_t() = default;
-      constexpr __msvc_ignore_t(auto&&...) noexcept {
-      }
+    __msvc_ignore_t() = default;
+
+    constexpr __msvc_ignore_t(auto&&...) noexcept {
+    }
   };
 
   template <std::size_t... _Is, class _Ty, class... _Us>
   _Ty&& __nth_pack_element_(__msvc_ignore_t<_Is>..., _Ty&& __t, _Us&&...) noexcept {
-      return (_Ty&&)__t;
+    return (_Ty&&) __t;
   }
 #else
   template <std::size_t... _Is, class _Ty, class... _Us>
