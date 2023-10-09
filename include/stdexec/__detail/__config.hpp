@@ -33,6 +33,7 @@
 
 #define STDEXEC_EXPAND(...) __VA_ARGS__
 #define STDEXEC_EVAL(_MACRO, ...) _MACRO(__VA_ARGS__)
+#define STDEXEC_EAT(...)
 
 #define STDEXEC_NOT(_XP) STDEXEC_CAT(STDEXEC_NOT_, _XP)
 #define STDEXEC_NOT_0 1
@@ -50,37 +51,53 @@
 #define STDEXEC_CHECK_N(_XP, _NP, ...) _NP
 #define STDEXEC_PROBE(_XP) _XP, 1,
 
+// If tail is non-empty, expand to the tail. Otherwise, expand to the head
+#define STDEXEC_HEAD_OR_TAIL(_XP, ...) STDEXEC_EXPAND __VA_OPT__((__VA_ARGS__)STDEXEC_EAT)(_XP)
+
+// If tail is non-empty, expand to nothing. Otherwise, expand to the head
+#define STDEXEC_HEAD_OR_NULL(_XP, ...) STDEXEC_EXPAND __VA_OPT__(()STDEXEC_EAT)(_XP)
+
+// When used with no arguments, these macros expand to 1 if the current
+// compiler corresponds to the macro name; 0, otherwise. When used with arguments,
+// they expand to the arguments if if the current compiler corresponds to the
+// macro name; nothing, otherwise.
 #if defined(__NVCC__)
-#define STDEXEC_NVCC() 1
+#define STDEXEC_NVCC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #elif defined(__NVCOMPILER)
-#define STDEXEC_NVHPC() 1
+#define STDEXEC_NVHPC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #elif defined(__EDG__)
-#define LEGATE_EDG() 1
+#define STDEXEC_EDG(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #elif defined(__clang__)
-#define STDEXEC_CLANG() 1
+#define STDEXEC_CLANG(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#if defined(_MSC_VER)
+#define STDEXEC_CLANG_CL(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#endif
 #elif defined(__GNUC__)
-#define STDEXEC_GCC() 1
+#define STDEXEC_GCC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #elif defined(_MSC_VER)
-#define STDEXEC_MSVC() 1
+#define STDEXEC_MSVC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #endif
 
 #ifndef STDEXEC_NVCC
-#define STDEXEC_NVCC() 0
+#define STDEXEC_NVCC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 #ifndef STDEXEC_NVHPC
-#define STDEXEC_NVHPC() 0
+#define STDEXEC_NVHPC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 #ifndef STDEXEC_EDG
-#define STDEXEC_EDG() 0
+#define STDEXEC_EDG(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 #ifndef STDEXEC_CLANG
-#define STDEXEC_CLANG() 0
+#define STDEXEC_CLANG(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#endif
+#ifndef STDEXEC_CLANG_CL
+#define STDEXEC_CLANG_CL(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 #ifndef STDEXEC_GCC
-#define STDEXEC_GCC() 0
+#define STDEXEC_GCC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 #ifndef STDEXEC_MSVC
-#define STDEXEC_MSVC() 0
+#define STDEXEC_MSVC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 
 #define STDEXEC_STRINGIZE(_ARG) #_ARG
