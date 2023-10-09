@@ -415,3 +415,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     };
   };
 }
+
+namespace stdexec::__detail {
+  template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
+  inline constexpr __mconst<
+    nvexec::STDEXEC_STREAM_DETAIL_NS::when_all_sender_t<WithCompletionScheduler, Scheduler, __name_of<__t<SenderIds>>...>>
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::when_all_sender_t<WithCompletionScheduler, Scheduler, SenderIds...>>{};
+}
