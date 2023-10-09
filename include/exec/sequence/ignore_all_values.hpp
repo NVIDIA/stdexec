@@ -123,9 +123,10 @@ namespace exec {
         __t(
           __result_type<_ResultVariant>* __parent,
           _Sender&& __sndr,
-          _ItemReceiver __rcvr)                            //
-          noexcept(__nothrow_decay_copyable<_ItemReceiver> //
-                     && __nothrow_connectable<_Sender, __item_receiver_t>)
+          _ItemReceiver __rcvr) //
+          noexcept(
+            __nothrow_decay_copyable<_ItemReceiver> //
+            && __nothrow_connectable<_Sender, __item_receiver_t>)
           : __base_type{static_cast<_ItemReceiver&&>(__rcvr), __parent}
           , __op_{stdexec::connect(static_cast<_Sender&&>(__sndr), __item_receiver_t{this})} {
         }
@@ -170,8 +171,10 @@ namespace exec {
       STDEXEC_NO_UNIQUE_ADDRESS _Receiver __receiver_;
     };
 
-    template <class _Receiver, class _ResultVariant>
+    template <class _ReceiverId, class _ResultVariant>
     struct __receiver {
+      using _Receiver = stdexec::__t<_ReceiverId>;
+
       struct __t {
         using __id = __receiver;
         using is_receiver = void;
@@ -218,14 +221,17 @@ namespace exec {
       __gather_types<set_stopped_t, _Sigs>>;
 
     template <class _Sender, class _Env>
-    using __result_variant_t = __result_variant_<completion_signatures_of_t<_Sender, _Env>>;
+    using __result_variant_t =
+      __result_variant_<__sequence_completion_signatures_of_t<_Sender, _Env>>;
 
-    template <class _Sender, class _Receiver>
+    template <class _Sender, class _ReceiverId>
     struct __operation {
+      using _Receiver = stdexec::__t<_ReceiverId>;
+
       struct __t : __operation_base<_Receiver, __result_variant_t<_Sender, env_of_t<_Receiver>>> {
         using _ResultVariant = __result_variant_t<_Sender, env_of_t<_Receiver>>;
         using __base_type = __operation_base<_Receiver, _ResultVariant>;
-        using __receiver_t = stdexec::__t<__receiver<_Receiver, _ResultVariant>>;
+        using __receiver_t = stdexec::__t<__receiver<_ReceiverId, _ResultVariant>>;
 
         subscribe_result_t<_Sender, __receiver_t> __op_;
 
@@ -241,58 +247,70 @@ namespace exec {
       };
     };
 
-    template <class _Sequence>
-    struct __sender {
-      struct __t {
-        using is_sender = void;
+    template <class _Receiver>
+    struct __connect_fn {
+      _Receiver& __rcvr_;
 
-        template <class _Self, class _Receiver>
-        using __operation_t =
-          stdexec::__t<__operation<__copy_cvref_t<_Self, _Sequence>, _Receiver>>;
+      using _ReceiverId = __id<_Receiver>;
+      using _Env = env_of_t<_Receiver>;
 
-        template <class _Self, class _Receiver>
-        using _ResultVariant =
-          __result_variant_t<__copy_cvref_t<_Self, _Sequence>, env_of_t<_Receiver>>;
+      template <class _Child>
+      using __operation_t = stdexec::__t<__operation<_Child, _ReceiverId>>;
 
-        template <class _Self, class _Receiver>
-        using __receiver_t = stdexec::__t<__receiver<_Receiver, _ResultVariant<_Self, _Receiver>>>;
+      template <class _Child>
+      using _ResultVariant = __result_variant_t<_Child, _Env>;
 
-        template <class _Self, class _Env>
-        using __completion_sigs =
-          __sequence_completion_signatures_of_t<__copy_cvref_t<_Self, _Sequence>, _Env>;
+      template <class _Child>
+      using __receiver_t = stdexec::__t<__receiver<_ReceiverId, _ResultVariant<_Child>>>;
 
-        STDEXEC_NO_UNIQUE_ADDRESS _Sequence __sequence_;
+      template <class _Child>
+      using __completion_sigs = __sequence_completion_signatures_of_t<_Child, _Env>;
 
-        template <__decays_to<__t> _Self, receiver _Receiver>
-          requires receiver_of<_Receiver, __completion_sigs<_Self, env_of_t<_Receiver>>>
-                && sequence_sender_to<
-                     __copy_cvref_t<_Self, _Sequence>,
-                     __receiver_t<__copy_cvref_t<_Self, _Sequence>, _Receiver>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) noexcept(
-          __nothrow_constructible_from<
-            __operation_t<_Self, _Receiver>,
-            __copy_cvref_t<_Self, _Sequence>,
-            _Receiver>) -> __operation_t<_Self, _Receiver> {
-          return {static_cast<_Self&&>(__self).__sequence_, static_cast<_Receiver&&>(__rcvr)};
-        }
-
-        template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-          -> __completion_sigs<_Self, _Env> {
-          return {};
-        }
-      };
+      template <class _Child>
+        requires receiver_of<_Receiver, __completion_sigs<_Child>>
+              && sequence_sender_to<_Child, __receiver_t<_Child>>
+      __operation_t<_Child> operator()(__ignore, __ignore, _Child&& __child) noexcept(
+        __nothrow_constructible_from< __operation_t<_Child>, _Child, _Receiver>) {
+        return {static_cast<_Child&&>(__child), static_cast<_Receiver&&>(__rcvr_)};
+      }
     };
 
     struct ignore_all_values_t {
-      template <stdexec::__sender _Sender>
-      auto operator()(_Sender&& __seq) const noexcept(__nothrow_decay_copyable<_Sender>)
-        -> stdexec::__t<__sender<__decay_t<_Sender>>> {
-        return {static_cast<_Sender&&>(__seq)};
+      template <sender _Sender>
+      auto operator()(_Sender&& __sndr) const {
+        auto __domain = __get_sender_domain((_Sender&&) __sndr);
+        return transform_sender(
+          __domain, make_sender_expr<ignore_all_values_t>(__(), (_Sender&&) __sndr));
       }
 
-      constexpr auto operator()() const noexcept -> __binder_back<ignore_all_values_t> {
+      constexpr __binder_back<ignore_all_values_t> operator()() const noexcept {
         return {{}, {}, {}};
+      }
+
+      template <class _Sequence, class _Env>
+      using __completion_sigs = __sequence_completion_signatures_of_t<_Sequence, _Env>;
+
+      template <sender_expr_for<ignore_all_values_t> _Sender, class _Env>
+      static auto get_completion_signatures(_Sender&& __sndr, _Env&&)
+        -> __completion_sigs<__child_of<_Sender>, _Env> {
+        return {};
+      }
+
+      template <class _Child, class _Receiver>
+      using _ResultVariant = __result_variant_t<_Child, env_of_t<_Receiver>>;
+
+      template <class _Child, class _Receiver>
+      using __receiver_t = __t<__receiver<__id<_Receiver>, _ResultVariant<_Child, _Receiver>>>;
+
+      template <sender_expr_for<ignore_all_values_t> _Sender, receiver _Receiver>
+        requires receiver_of<_Receiver, __completion_sigs<__child_of<_Sender>, env_of_t<_Receiver>>>
+              && sequence_sender_to<
+                   __child_of<_Sender>,
+                   __receiver_t<__child_of<_Sender>, _Receiver>>
+      static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
+        __nothrow_callable<apply_sender_t, _Sender, __connect_fn<_Receiver>>)
+        -> __call_result_t<apply_sender_t, _Sender, __connect_fn<_Receiver>> {
+        return apply_sender((_Sender&&) __sndr, __connect_fn<_Receiver>{__rcvr});
       }
     };
   }

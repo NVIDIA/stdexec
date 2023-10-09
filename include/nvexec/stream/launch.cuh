@@ -179,3 +179,10 @@ namespace nvexec {
   inline constexpr STDEXEC_STREAM_DETAIL_NS::launch_t launch{};
 
 } // namespace nvexec
+
+namespace stdexec::__detail {
+  template <class SenderId, class Fun>
+  inline constexpr __mconst<
+    nvexec::STDEXEC_STREAM_DETAIL_NS::launch_sender_t<__name_of<__t<SenderId>>, Fun>>
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::launch_sender_t<SenderId, Fun>>{};
+}

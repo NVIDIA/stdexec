@@ -150,6 +150,12 @@ target_compile_options(stdexec INTERFACE
                        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus /Zc:preprocessor>
                        )
 
+option(STDEXEC_ENABLE_EXTRA_TYPE_CHECKING "Enable extra type checking that is costly at compile-time" OFF)
+
+if (STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
+    target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
+endif()
+
 add_library(STDEXEC::stdexec ALIAS stdexec)
 
 # Don't require building everything when installing
@@ -159,39 +165,28 @@ set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY ON)
 add_library(stdexec_executable_flags INTERFACE)
 
 # Enable warnings
-if("${stdexec_compiler_frontend}" STREQUAL "GNU" OR "${stdexec_compiler_frontend}" STREQUAL "AppleClang")
-  target_compile_options(stdexec_executable_flags INTERFACE -Wall)
-endif()
-if("${stdexec_compiler_frontend}" STREQUAL "MSVC")
-  target_compile_options(stdexec_executable_flags INTERFACE /W4)
-endif()
+target_compile_options(stdexec_executable_flags INTERFACE
+                       $<$<STREQUAL:${stdexec_compiler_frontend},GNU>:-Wall>
+                       $<$<STREQUAL:${stdexec_compiler_frontend},AppleClang>:-Wall>
+                       $<$<STREQUAL:${stdexec_compiler_frontend},MSVC>:/W4>)
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "NVHPC")
-  # Increase the error limit with NVC++
-  target_compile_options(stdexec_executable_flags INTERFACE -e1000)
+# Increase the error limit with NVC++
+target_compile_options(stdexec_executable_flags INTERFACE
+                       $<$<CXX_COMPILER_ID:NVHPC>:-e1000>)
 
-  # Silence warnings with NVHPC
-  target_compile_options(stdexec_executable_flags INTERFACE --diag_suppress177,550,111,497,554)
-endif()
+# Silence warnings
+target_compile_options(stdexec_executable_flags INTERFACE
+                       $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>
+                       $<$<CXX_COMPILER_ID:NVHPC>:--diag_suppress177,550,111,497,554>)
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-  # Silence warnings with GCC
-  target_compile_options(stdexec_executable_flags INTERFACE -Wno-non-template-friend)
-endif()
-
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
-  set(clang_option_prefix "")
-
-  if("${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" STREQUAL "MSVC")
-    set(clang_option_prefix "/clang:")
-  endif()
-
-  # Template backtrace limit
-  target_compile_options(stdexec_executable_flags INTERFACE
-                         "${clang_option_prefix}-ferror-limit=0"
-                         "${clang_option_prefix}-fmacro-backtrace-limit=0"
-                         "${clang_option_prefix}-ftemplate-backtrace-limit=0")
-endif()
+# Template backtrace limit
+target_compile_options(stdexec_executable_flags INTERFACE
+                       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:
+                          $<$<STREQUAL:${CMAKE_CXX_COMPILER_FRONTEND_VARIANT},MSVC>:/clang:>-ferror-limit=0
+                          $<$<STREQUAL:${CMAKE_CXX_COMPILER_FRONTEND_VARIANT},MSVC>:/clang:>-fmacro-backtrace-limit=0
+                          $<$<STREQUAL:${CMAKE_CXX_COMPILER_FRONTEND_VARIANT},MSVC>:/clang:>-ftemplate-backtrace-limit=0>
+                       $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<VERSION_GREATER:$<CXX_COMPILER_VERSION>,23.3.0>>:
+                       -ftemplate-backtrace-limit 0>)
 
 # # Always enable colored output
 # target_compile_options(stdexec_executable_flags INTERFACE
@@ -208,6 +203,17 @@ target_compile_options(stdexec_executable_flags INTERFACE
                        -D_GLIBCXX_USE_TBB_PAR_BACKEND=0
                        -include stdexec/__detail/__force_include.hpp>
                        )
+
+target_compile_definitions(stdexec_executable_flags INTERFACE
+                           STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
+
+# Support target for examples and tests
+add_library(nvexec_executable_flags INTERFACE)
+
+target_compile_options(nvexec_executable_flags INTERFACE
+                       $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-gpu=nomanaged>)
+target_link_options(nvexec_executable_flags INTERFACE
+                    $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-gpu=nomanaged>)
 
 # Set up nvexec library
 option(STDEXEC_ENABLE_CUDA "Enable CUDA targets for non-nvc++ compilers" OFF)
@@ -230,9 +236,9 @@ if(STDEXEC_ENABLE_CUDA)
     target_link_libraries(nvexec INTERFACE STDEXEC::stdexec)
 
     target_compile_options(nvexec INTERFACE
-      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=nomanaged -gpu=cc${CMAKE_CUDA_ARCHITECTURES}>)
+      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=cc${CMAKE_CUDA_ARCHITECTURES}>)
     target_link_options(nvexec INTERFACE
-      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=nomanaged -gpu=cc${CMAKE_CUDA_ARCHITECTURES}>)
+      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=cc${CMAKE_CUDA_ARCHITECTURES}>)
 
     if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC"))
         include(rapids-cuda)

@@ -51,6 +51,9 @@ namespace exec {
 
       template <class _NextSigs, class... _Sigs, class... _Queries>
       struct __next_vtable<_NextSigs, completion_signatures<_Sigs...>, _Queries...> {
+        using __item_sender = typename any_receiver_ref<_NextSigs>::template any_sender<>;
+        using __item_types = item_types<__item_sender>;
+
         struct __t
           : public __rcvr_next_vfun<_NextSigs>
           , public __rec::__rcvr_vfun<_Sigs>...
@@ -59,7 +62,7 @@ namespace exec {
           using __query_vfun<_Queries>::operator()...;
 
           template <class _Rcvr>
-            requires sequence_receiver_of<_Rcvr, _NextSigs>
+            requires sequence_receiver_of<_Rcvr, __item_types>
                   && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
           friend const __t* tag_invoke(__create_vtable_t, __mtype<__t>, __mtype<_Rcvr>) noexcept {
             static const __t __vtable_{
@@ -73,9 +76,7 @@ namespace exec {
 
       template <class _Sigs, class... _Queries>
       struct __env {
-        using __compl_sigs = __sequence_completion_signatures_of_t<
-          __sequence_sndr::__unspecified_sender_of<_Sigs>,
-          empty_env>;
+        using __compl_sigs = __to_sequence_completions_t<_Sigs>;
 
         using __vtable_t = stdexec::__t<__next_vtable<_Sigs, __compl_sigs, _Queries...>>;
 
@@ -103,10 +104,9 @@ namespace exec {
           using __return_sigs = completion_signatures<set_value_t(), set_stopped_t()>;
           using __void_sender = typename any_receiver_ref<__return_sigs>::template any_sender<>;
           using __next_sigs = completion_signatures<_Sigs...>;
-          using __compl_sigs = __sequence_completion_signatures_of_t<
-            __sequence_sndr::__unspecified_sender_of<__next_sigs>,
-            empty_env>;
+          using __compl_sigs = __to_sequence_completions_t<__next_sigs>;
           using __item_sender = typename any_receiver_ref<__next_sigs>::template any_sender<>;
+          using __item_types = item_types<__item_sender>;
 
           using __vtable_t = stdexec::__t<__next_vtable<__next_sigs, __compl_sigs, _Queries...>>;
 
@@ -119,7 +119,7 @@ namespace exec {
           using is_receiver = void;
 
           template <__none_of<__t, const __t, __env_t, const __env_t> _Rcvr>
-            requires sequence_receiver_of<_Rcvr, completion_signatures<_Sigs...>>
+            requires sequence_receiver_of<_Rcvr, __item_types>
                   && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
           __t(_Rcvr& __rcvr) noexcept
             : __env_{__create_vtable(__mtype<__vtable_t>{}, __mtype<_Rcvr>{}), &__rcvr} {
@@ -225,15 +225,19 @@ namespace exec {
       };
     };
 
-    template < class _Sigs, class _SenderQueries = __types<>, class _ReceiverQueries = __types<>>
+    template <class _Sigs, class _SenderQueries = __types<>, class _ReceiverQueries = __types<>>
     struct __sequence_sender {
       using __receiver_ref_t = stdexec::__t<__next_receiver_ref<_Sigs, _ReceiverQueries>>;
       using __vtable_t = stdexec::__t<__sender_vtable<_Sigs, _SenderQueries, _ReceiverQueries>>;
 
+      using __compl_sigs = __to_sequence_completions_t<_Sigs>;
+      using __item_sender = typename any_receiver_ref<_Sigs>::template any_sender<>;
+
       class __t {
        public:
         using __id = __sequence_sender;
-        using completion_signatures = _Sigs;
+        using completion_signatures = __compl_sigs;
+        using item_types = exec::item_types<__item_sender>;
         using is_sender = sequence_tag;
 
         __t(const __t&) = delete;
@@ -255,7 +259,7 @@ namespace exec {
 
         __unique_storage_t<__vtable_t> __storage_;
 
-        template <same_as<__t> _Self, sequence_receiver_of<_Sigs> _Rcvr>
+        template <same_as<__t> _Self, class _Rcvr>
         friend stdexec::__t<__operation<stdexec::__id<_Rcvr>, true>>
           tag_invoke(subscribe_t, _Self&& __self, _Rcvr __rcvr) {
           return {static_cast<_Self&&>(__self), static_cast<_Rcvr&&>(__rcvr)};
@@ -335,6 +339,7 @@ namespace exec {
       using __t = any_sender;
       using is_sender = sequence_tag;
       using completion_signatures = typename __sender_base::completion_signatures;
+      using item_types = typename __sender_base::item_types;
 
       template <stdexec::__not_decays_to<any_sender> _Sender>
         requires stdexec::sender_in<_Sender, __env_t>
@@ -344,7 +349,7 @@ namespace exec {
         : __sender_(static_cast<_Sender&&>(__sender)) {
       }
 
-      template < stdexec::same_as<__t> _Self, sequence_receiver_of<_Completions> _Rcvr>
+      template <stdexec::same_as<__t> _Self, sequence_receiver_of<item_types> _Rcvr>
       friend subscribe_result_t<__sender_base, _Rcvr>
         tag_invoke(exec::subscribe_t, _Self&& __self, _Rcvr __rcvr) {
         return exec::subscribe(

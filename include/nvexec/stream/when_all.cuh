@@ -259,7 +259,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
               for (int i = 0; i < sizeof...(SenderIds); i++) {
                 if (status_ == cudaSuccess) {
-                  status_ = STDEXEC_DBG_ERR(cudaStreamWaitEvent(stream, events_[i]));
+                  status_ = STDEXEC_DBG_ERR(cudaStreamWaitEvent(stream, events_[i], 0));
                 }
               }
             } else {
@@ -414,4 +414,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       std::tuple<stdexec::__t<SenderIds>...> sndrs_;
     };
   };
+}
+
+namespace stdexec::__detail {
+  template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
+  inline constexpr __mconst<
+    nvexec::STDEXEC_STREAM_DETAIL_NS::when_all_sender_t<WithCompletionScheduler, Scheduler, __name_of<__t<SenderIds>>...>>
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::when_all_sender_t<WithCompletionScheduler, Scheduler, SenderIds...>>{};
 }

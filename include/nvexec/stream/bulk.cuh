@@ -202,7 +202,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
                 if (begin < end) {
                   cudaSetDevice(dev);
-                  cudaStreamWaitEvent(stream, op_state.ready_to_launch_);
+                  cudaStreamWaitEvent(stream, op_state.ready_to_launch_, 0);
                   kernel<block_threads, As&...>
                     <<<grid_blocks, block_threads, 0, stream>>>(begin, end, self.f_, as...);
                   cudaEventRecord(op_state.ready_to_complete_[dev], op_state.streams_[dev]);
@@ -225,7 +225,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
             for (int dev = 0; dev < op_state.num_devices_; dev++) {
               if (dev != op_state.current_device_) {
-                cudaStreamWaitEvent(baseline_stream, op_state.ready_to_complete_[dev]);
+                cudaStreamWaitEvent(baseline_stream, op_state.ready_to_complete_[dev], 0);
               }
             }
           }
@@ -370,4 +370,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
     };
   };
+}
+
+namespace stdexec::__detail {
+  template <class SenderId, class Shape, class Fun>
+  inline constexpr __mconst<
+    nvexec::STDEXEC_STREAM_DETAIL_NS::bulk_sender_t<__name_of<__t<SenderId>>, Shape, Fun>>
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::bulk_sender_t<SenderId, Shape, Fun>>{};
+
+  template <class SenderId, class Shape, class Fun>
+  inline constexpr __mconst<
+    nvexec::STDEXEC_STREAM_DETAIL_NS::multi_gpu_bulk_sender_t<__name_of<__t<SenderId>>, Shape, Fun>>
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::multi_gpu_bulk_sender_t<SenderId, Shape, Fun>>{};
 }

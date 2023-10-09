@@ -33,6 +33,7 @@
 
 #define STDEXEC_EXPAND(...) __VA_ARGS__
 #define STDEXEC_EVAL(_MACRO, ...) _MACRO(__VA_ARGS__)
+#define STDEXEC_EAT(...)
 
 #define STDEXEC_NOT(_XP) STDEXEC_CAT(STDEXEC_NOT_, _XP)
 #define STDEXEC_NOT_0 1
@@ -50,49 +51,80 @@
 #define STDEXEC_CHECK_N(_XP, _NP, ...) _NP
 #define STDEXEC_PROBE(_XP) _XP, 1,
 
+// If tail is non-empty, expand to the tail. Otherwise, expand to the head
+#define STDEXEC_HEAD_OR_TAIL(_XP, ...) STDEXEC_EXPAND __VA_OPT__((__VA_ARGS__)STDEXEC_EAT)(_XP)
+
+// If tail is non-empty, expand to nothing. Otherwise, expand to the head
+#define STDEXEC_HEAD_OR_NULL(_XP, ...) STDEXEC_EXPAND __VA_OPT__(()STDEXEC_EAT)(_XP)
+
+// When used with no arguments, these macros expand to 1 if the current
+// compiler corresponds to the macro name; 0, otherwise. When used with arguments,
+// they expand to the arguments if if the current compiler corresponds to the
+// macro name; nothing, otherwise.
 #if defined(__NVCC__)
-#define STDEXEC_NVCC() 1
+#define STDEXEC_NVCC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #elif defined(__NVCOMPILER)
-#define STDEXEC_NVHPC() 1
+#define STDEXEC_NVHPC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#elif defined(__EDG__)
+#define STDEXEC_EDG(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #elif defined(__clang__)
-#define STDEXEC_CLANG() 1
+#define STDEXEC_CLANG(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #if defined(_MSC_VER)
-#define STDEXEC_CLANG_CL() 1
+#define STDEXEC_CLANG_CL(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #endif
 #elif defined(__GNUC__)
-#define STDEXEC_GCC() 1
+#define STDEXEC_GCC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #elif defined(_MSC_VER)
-#define STDEXEC_MSVC() 1
+#define STDEXEC_MSVC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #endif
 
 #ifndef STDEXEC_NVCC
-#define STDEXEC_NVCC() 0
+#define STDEXEC_NVCC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 #ifndef STDEXEC_NVHPC
-#define STDEXEC_NVHPC() 0
+#define STDEXEC_NVHPC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#endif
+#ifndef STDEXEC_EDG
+#define STDEXEC_EDG(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 #ifndef STDEXEC_CLANG
-#define STDEXEC_CLANG() 0
+#define STDEXEC_CLANG(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 #ifndef STDEXEC_CLANG_CL
-#define STDEXEC_CLANG_CL() 0
+#define STDEXEC_CLANG_CL(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 #ifndef STDEXEC_GCC
-#define STDEXEC_GCC() 0
+#define STDEXEC_GCC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 #ifndef STDEXEC_MSVC
-#define STDEXEC_MSVC() 0
+#define STDEXEC_MSVC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 
-#if STDEXEC_CLANG() || STDEXEC_GCC()
 #define STDEXEC_STRINGIZE(_ARG) #_ARG
+
+#if STDEXEC_NVCC()
+#define STDEXEC_PRAGMA_PUSH() _Pragma("nv_diagnostic push")
+#define STDEXEC_PRAGMA_POP() _Pragma("nv_diagnostic pop")
+#define STDEXEC_PRAGMA_IGNORE_EDG(...) _Pragma(STDEXEC_STRINGIZE(nv_diag_suppress __VA_ARGS__))
+#elif STDEXEC_NVHPC() || STDEXEC_EDG()
+#define STDEXEC_PRAGMA_PUSH() \
+  _Pragma("diagnostic push") STDEXEC_PRAGMA_IGNORE_EDG(invalid_error_number)
+#define STDEXEC_PRAGMA_POP() _Pragma("diagnostic pop")
+#define STDEXEC_PRAGMA_IGNORE_EDG(...) _Pragma(STDEXEC_STRINGIZE(diag_suppress __VA_ARGS__))
+#elif STDEXEC_CLANG() || STDEXEC_GCC()
 #define STDEXEC_PRAGMA_PUSH() _Pragma("GCC diagnostic push")
 #define STDEXEC_PRAGMA_POP() _Pragma("GCC diagnostic pop")
-#define STDEXEC_PRAGMA_IGNORE(_ARG) _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored _ARG))
+#define STDEXEC_PRAGMA_IGNORE_GNU(_ARG) _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored _ARG))
 #else
 #define STDEXEC_PRAGMA_PUSH()
 #define STDEXEC_PRAGMA_POP()
-#define STDEXEC_PRAGMA_IGNORE(_ARG)
+#endif
+
+#ifndef STDEXEC_PRAGMA_IGNORE_GNU
+#define STDEXEC_PRAGMA_IGNORE_GNU(_ARG)
+#endif
+#ifndef STDEXEC_PRAGMA_IGNORE_EDG
+#define STDEXEC_PRAGMA_IGNORE_EDG(_ARG)
 #endif
 
 #if !STDEXEC_MSVC() && defined(__has_builtin)
@@ -227,6 +259,32 @@
 #define STDEXEC_CALL_EXPLICIT_THIS_MEMFN_DETAIL(...) __VA_OPT__(, ) __VA_ARGS__)
 #define STDEXEC_EAT_THIS_DETAIL_this
 #define STDEXEC_FUN_ARGS(...) STDEXEC_CAT(STDEXEC_EAT_THIS_DETAIL_, __VA_ARGS__))
+#endif
+
+// Configure extra type checking
+#define STDEXEC_TYPE_CHECKING_ZERO() 0
+#define STDEXEC_TYPE_CHECKING_ONE() 1
+#define STDEXEC_TYPE_CHECKING_TWO() 2
+
+#define STDEXEC_PROBE_TYPE_CHECKING_ STDEXEC_TYPE_CHECKING_ONE
+#define STDEXEC_PROBE_TYPE_CHECKING_0 STDEXEC_TYPE_CHECKING_ZERO
+#define STDEXEC_PROBE_TYPE_CHECKING_1 STDEXEC_TYPE_CHECKING_ONE
+#define STDEXEC_PROBE_TYPE_CHECKING_STDEXEC_ENABLE_EXTRA_TYPE_CHECKING STDEXEC_TYPE_CHECKING_TWO
+
+#define STDEXEC_TYPE_CHECKING_WHICH3(...) STDEXEC_PROBE_TYPE_CHECKING_ ## __VA_ARGS__
+#define STDEXEC_TYPE_CHECKING_WHICH2(...) STDEXEC_TYPE_CHECKING_WHICH3(__VA_ARGS__)
+#define STDEXEC_TYPE_CHECKING_WHICH STDEXEC_TYPE_CHECKING_WHICH2(STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
+
+#ifndef STDEXEC_ENABLE_EXTRA_TYPE_CHECKING
+#define STDEXEC_ENABLE_EXTRA_TYPE_CHECKING() 0
+#elif STDEXEC_TYPE_CHECKING_WHICH() == 2
+// do nothing
+#elif STDEXEC_TYPE_CHECKING_WHICH() == 0
+#undef STDEXEC_ENABLE_EXTRA_TYPE_CHECKING
+#define STDEXEC_ENABLE_EXTRA_TYPE_CHECKING() 0
+#else
+#undef STDEXEC_ENABLE_EXTRA_TYPE_CHECKING
+#define STDEXEC_ENABLE_EXTRA_TYPE_CHECKING() 1
 #endif
 
 namespace stdexec {

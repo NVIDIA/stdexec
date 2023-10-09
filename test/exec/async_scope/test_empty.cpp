@@ -154,10 +154,7 @@ TEST_CASE(
   bool work_executed{false};
   scope.spawn(
     ex::on(sch, ex::just()) //
-    | ex::upon_stopped([&] {
-        work_executed = true;
-        printf(".\n");
-      }));
+    | ex::upon_stopped([&] { work_executed = true; }));
   // note that we don't tell impulse sender to start the work
 
   bool is_empty2{false};
