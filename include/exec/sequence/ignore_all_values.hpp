@@ -70,7 +70,7 @@ namespace exec {
 
     template <class _ItemReceiver, class _ResultVariant>
     struct __item_operation_base {
-      STDEXEC_NO_UNIQUE_ADDRESS _ItemReceiver __receiver_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _ItemReceiver __receiver_;
       __result_type<_ResultVariant>* __result_;
     };
 
@@ -123,10 +123,9 @@ namespace exec {
         __t(
           __result_type<_ResultVariant>* __parent,
           _Sender&& __sndr,
-          _ItemReceiver __rcvr) //
-          noexcept(
-            __nothrow_decay_copyable<_ItemReceiver> //
-            && __nothrow_connectable<_Sender, __item_receiver_t>)
+          _ItemReceiver __rcvr)                            //
+          noexcept(__nothrow_decay_copyable<_ItemReceiver> //
+                     && __nothrow_connectable<_Sender, __item_receiver_t>)
           : __base_type{static_cast<_ItemReceiver&&>(__rcvr), __parent}
           , __op_{stdexec::connect(static_cast<_Sender&&>(__sndr), __item_receiver_t{this})} {
         }
@@ -168,7 +167,7 @@ namespace exec {
 
     template <class _Receiver, class _ResultVariant>
     struct __operation_base : __result_type<_ResultVariant> {
-      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __receiver_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __receiver_;
     };
 
     template <class _ReceiverId, class _ResultVariant>

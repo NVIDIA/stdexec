@@ -42,8 +42,8 @@ namespace exec {
 
     mutable _ImplFn __impl_;
 
-    STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      explicit __seqexpr(_ImplFn __impl)
+    STDEXEC_ATTRIBUTE((host, device))
+    explicit __seqexpr(_ImplFn __impl)
       : __impl_((_ImplFn&&) __impl) {
     }
 
@@ -106,8 +106,8 @@ namespace exec {
   };
 
   template <class _ImplFn>
-  STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-    __seqexpr(_ImplFn) -> __seqexpr<_ImplFn>;
+  STDEXEC_ATTRIBUTE((host, device))
+  __seqexpr(_ImplFn) -> __seqexpr<_ImplFn>;
 
 #if STDEXEC_NVHPC() || (STDEXEC_GCC() && __GNUC__ < 13)
   namespace __detail {

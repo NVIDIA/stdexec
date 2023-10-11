@@ -197,9 +197,8 @@ namespace repeat_n_detail {
     using is_receiver = void;
 
     template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
-    STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      friend void
-      tag_invoke(_Tag __tag, receiver_t&& __self, _Args&&... __args) noexcept {
+    STDEXEC_ATTRIBUTE((host, device))
+    friend void tag_invoke(_Tag __tag, receiver_t&& __self, _Args&&... __args) noexcept {
       __tag(std::move(__self.op_state_.rcvr_), (_Args&&) __args...);
     }
 
@@ -330,8 +329,7 @@ inline constexpr repeat_n_t repeat_n{};
 
 template <class SchedulerT>
 [[nodiscard]] bool is_gpu_scheduler(SchedulerT&& scheduler) {
-  auto snd = ex::just()
-           | exec::on(scheduler, ex::then([] { return nvexec::is_on_gpu(); }));
+  auto snd = ex::just() | exec::on(scheduler, ex::then([] { return nvexec::is_on_gpu(); }));
   auto [on_gpu] = stdexec::sync_wait(std::move(snd)).value();
   return on_gpu;
 }
@@ -363,9 +361,7 @@ void run_snr(
   time_storage_t time{is_gpu_scheduler(computer)};
   fields_accessor accessor = grid.accessor();
 
-  auto init =
-    ex::just()
-    | exec::on(computer, ex::bulk(grid.cells, grid_initializer(dt, accessor)));
+  auto init = ex::just() | exec::on(computer, ex::bulk(grid.cells, grid_initializer(dt, accessor)));
   stdexec::sync_wait(init);
 
   auto snd = maxwell_eqs_snr(dt, time.get(), write_vtk, n_iterations, accessor, computer);

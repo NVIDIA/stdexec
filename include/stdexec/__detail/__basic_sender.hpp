@@ -74,8 +74,8 @@ namespace stdexec {
 
     mutable _ImplFn __impl_;
 
-    STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      explicit __sexpr(_ImplFn __impl)
+    STDEXEC_ATTRIBUTE((host, device))
+    explicit __sexpr(_ImplFn __impl)
       : __impl_((_ImplFn&&) __impl) {
     }
 
@@ -119,8 +119,8 @@ namespace stdexec {
   };
 
   template <class _ImplFn>
-  STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-    __sexpr(_ImplFn) -> __sexpr<_ImplFn>;
+  STDEXEC_ATTRIBUTE((host, device))
+  __sexpr(_ImplFn) -> __sexpr<_ImplFn>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // make_sender_expr

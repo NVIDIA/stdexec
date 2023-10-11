@@ -34,8 +34,8 @@ namespace exec {
 
     template <class _Iterator, class _Sentinel>
     struct __operation_base {
-      STDEXEC_NO_UNIQUE_ADDRESS _Iterator __iterator_;
-      STDEXEC_NO_UNIQUE_ADDRESS _Sentinel __sentinel_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Iterator __iterator_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Sentinel __sentinel_;
     };
 
     template <class _Range>
@@ -46,7 +46,7 @@ namespace exec {
     struct __item_operation {
       struct __t {
         using __id = __item_operation;
-        STDEXEC_NO_UNIQUE_ADDRESS _ItemRcvr __rcvr_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _ItemRcvr __rcvr_;
         __operation_base<_Iterator, _Sentinel>* __parent_;
 
         friend void tag_invoke(start_t, __t& __self) noexcept {

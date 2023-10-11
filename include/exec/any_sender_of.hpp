@@ -350,7 +350,7 @@ namespace exec {
         const __vtable_t* __vtable_{__default_storage_vtable((__vtable_t*) nullptr)};
         void* __object_pointer_{nullptr};
         alignas(__alignment) std::byte __buffer_[__buffer_size]{};
-        STDEXEC_NO_UNIQUE_ADDRESS _Allocator __allocator_{};
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Allocator __allocator_{};
       };
     };
 
@@ -541,7 +541,7 @@ namespace exec {
       const __vtable_t* __vtable_{__default_storage_vtable((__vtable_t*) nullptr)};
       void* __object_pointer_{nullptr};
       alignas(__alignment) std::byte __buffer_[__buffer_size]{};
-      STDEXEC_NO_UNIQUE_ADDRESS _Allocator __allocator_{};
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Allocator __allocator_{};
     };
 
     struct __empty_vtable {
@@ -779,7 +779,7 @@ namespace exec {
 
     template <class _Receiver>
     struct __operation_base {
-      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
       stdexec::in_place_stop_source __stop_source_{};
       using __stop_callback = typename stdexec::stop_token_of_t<
         stdexec::env_of_t<_Receiver>>::template callback_type<__on_stop_t>;
@@ -881,7 +881,7 @@ namespace exec {
         }
 
        private:
-        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rec_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rec_;
         __immovable_operation_storage __storage_{};
 
         friend void tag_invoke(start_t, __t& __self) noexcept {

@@ -185,7 +185,7 @@ namespace stdexec {
         return __base_;
       }
 
-      STDEXEC_NO_UNIQUE_ADDRESS _Base __base_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Base __base_;
     };
   }
 
@@ -472,7 +472,7 @@ namespace stdexec {
     struct __env_fn {
       using __t = __env_fn;
       using __id = __env_fn;
-      STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
 
       template <class _Tag>
         requires __callable<const _Fun&, _Tag>
@@ -490,7 +490,7 @@ namespace stdexec {
       static_assert(__nothrow_move_constructible<_Env>);
       using __t = __env_fwd;
       using __id = __env_fwd;
-      STDEXEC_NO_UNIQUE_ADDRESS _Env __env_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Env __env_;
 
       template <__forwarding_query _Tag>
         requires tag_invocable<_Tag, const _Env&>
@@ -509,7 +509,7 @@ namespace stdexec {
       static_assert(__nothrow_move_constructible<_Env>);
       using __t = __joined_env;
       using __id = __joined_env;
-      STDEXEC_NO_UNIQUE_ADDRESS _Env __env_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Env __env_;
 
       const _Base& base() const noexcept {
         return this->__env_fwd<_Base>::__env_;
@@ -528,7 +528,7 @@ namespace stdexec {
     struct __joined_env<__prop<_Tag>, _Base> : __env_fwd<_Base> {
       using __t = __joined_env;
       using __id = __joined_env;
-      STDEXEC_NO_UNIQUE_ADDRESS __prop<_Tag> __env_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) __prop<_Tag> __env_;
 
       friend void tag_invoke(_Tag, const __joined_env&) noexcept = delete;
     };
@@ -722,8 +722,7 @@ namespace stdexec {
 
       template <class _Receiver, class... _As>
         requires tag_invocable<set_value_t, _Receiver, _As...>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        void
+      STDEXEC_ATTRIBUTE((host, device)) void
         operator()(_Receiver&& __rcvr, _As&&... __as) const noexcept {
         static_assert(nothrow_tag_invocable<set_value_t, _Receiver, _As...>);
         (void) tag_invoke(set_value_t{}, (_Receiver&&) __rcvr, (_As&&) __as...);
@@ -737,8 +736,7 @@ namespace stdexec {
 
       template <class _Receiver, class _Error>
         requires tag_invocable<set_error_t, _Receiver, _Error>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        void
+      STDEXEC_ATTRIBUTE((host, device)) void
         operator()(_Receiver&& __rcvr, _Error&& __err) const noexcept {
         static_assert(nothrow_tag_invocable<set_error_t, _Receiver, _Error>);
         (void) tag_invoke(set_error_t{}, (_Receiver&&) __rcvr, (_Error&&) __err);
@@ -752,9 +750,7 @@ namespace stdexec {
 
       template <class _Receiver>
         requires tag_invocable<set_stopped_t, _Receiver>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        void
-        operator()(_Receiver&& __rcvr) const noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) void operator()(_Receiver&& __rcvr) const noexcept {
         static_assert(nothrow_tag_invocable<set_stopped_t, _Receiver>);
         (void) tag_invoke(set_stopped_t{}, (_Receiver&&) __rcvr);
       }
@@ -1071,9 +1067,7 @@ namespace stdexec {
     struct __valid_completions {
       template <derived_from<__valid_completions> _Self, class _Tag, class... _Args>
         requires __one_of<_Tag (*)(_Args&&...), _Sigs...>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        friend void
-        tag_invoke(_Tag, _Self&&, _Args&&...) noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) friend void tag_invoke(_Tag, _Self&&, _Args&&...) noexcept {
         STDEXEC_TERMINATE();
       }
     };
@@ -1093,9 +1087,8 @@ namespace stdexec {
       using is_receiver = void;
 
       template <same_as<get_env_t> _Tag>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        friend __debug_env_t<_Env>
-        tag_invoke(_Tag, __debug_receiver) noexcept {
+      STDEXEC_ATTRIBUTE((host, device))
+      friend __debug_env_t<_Env> tag_invoke(_Tag, __debug_receiver) noexcept {
         STDEXEC_TERMINATE();
       }
     };
@@ -1115,9 +1108,7 @@ namespace stdexec {
     [[deprecated(
       "The sender claims to send a particular set of completions,"
       " but in actual fact it completes with a result that is not"
-      " one of the declared completion signatures.")]] STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      void
-      _ATTENTION_() noexcept {
+      " one of the declared completion signatures.")]] STDEXEC_ATTRIBUTE((host, device)) void _ATTENTION_() noexcept {
     }
 
     template <class _Sig>
@@ -1141,9 +1132,8 @@ namespace stdexec {
     };
 
     template <__completion_tag _Tag, class... _Args>
-    STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      void
-      tag_invoke(_Tag, __t<__invalid_completion<_Tag(_Args...)>>, _Args&&...) noexcept {
+    STDEXEC_ATTRIBUTE((host, device))
+    void tag_invoke(_Tag, __t<__invalid_completion<_Tag(_Args...)>>, _Args&&...) noexcept {
     }
 
     struct __debug_operation {
@@ -1724,9 +1714,7 @@ namespace stdexec {
     struct schedule_t {
       template <class _Scheduler>
         requires tag_invocable<schedule_t, _Scheduler>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        auto
-        operator()(_Scheduler&& __sched) const
+      STDEXEC_ATTRIBUTE((host, device)) auto operator()(_Scheduler&& __sched) const
         noexcept(nothrow_tag_invocable<schedule_t, _Scheduler>) {
         static_assert(sender<tag_invoke_result_t<schedule_t, _Scheduler>>);
         return tag_invoke(schedule_t{}, (_Scheduler&&) __sched);
@@ -2559,9 +2547,7 @@ namespace stdexec {
       using __t = __scheduler;
       using __id = __scheduler;
 
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        friend auto
-        tag_invoke(schedule_t, __scheduler) {
+      STDEXEC_ATTRIBUTE((host, device)) friend auto tag_invoke(schedule_t, __scheduler) {
         return make_sender_expr<__schedule_t>();
       }
 
@@ -2589,7 +2575,7 @@ namespace stdexec {
       struct __t {
         using is_receiver = void;
         using __id = __detached_receiver;
-        STDEXEC_NO_UNIQUE_ADDRESS _Env __env_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Env __env_;
 
         template <same_as<set_value_t> _Tag, class... _As>
         friend void tag_invoke(_Tag, __t&&, _As&&...) noexcept {
@@ -2733,26 +2719,22 @@ namespace stdexec {
 
     struct just_t : __just_impl<just_t, set_value_t> {
       template <__movable_value... _Ts>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        auto
-        operator()(_Ts&&... __ts) const noexcept((__nothrow_decay_copyable<_Ts> && ...)) {
+      STDEXEC_ATTRIBUTE((host, device))
+      auto operator()(_Ts&&... __ts) const noexcept((__nothrow_decay_copyable<_Ts> && ...)) {
         return make_sender_expr<just_t>(__decayed_tuple<_Ts...>{(_Ts&&) __ts...});
       }
     };
 
     struct just_error_t : __just_impl<just_error_t, set_error_t> {
       template <__movable_value _Error>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        auto
-        operator()(_Error&& __err) const noexcept(__nothrow_decay_copyable<_Error>) {
+      STDEXEC_ATTRIBUTE((host, device))
+      auto operator()(_Error&& __err) const noexcept(__nothrow_decay_copyable<_Error>) {
         return make_sender_expr<just_error_t>(__decayed_tuple<_Error>{(_Error&&) __err});
       }
     };
 
     struct just_stopped_t : __just_impl<just_stopped_t, set_stopped_t> {
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        auto
-        operator()() const noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) auto operator()() const noexcept {
         return make_sender_expr<just_stopped_t>(__decayed_tuple<>());
       }
     };
@@ -2762,9 +2744,9 @@ namespace stdexec {
   using __just::just_error_t;
   using __just::just_stopped_t;
 
-  inline constexpr just_t just {};
-  inline constexpr just_error_t just_error {};
-  inline constexpr just_stopped_t just_stopped {};
+  inline constexpr just_t just{};
+  inline constexpr just_error_t just_error{};
+  inline constexpr just_stopped_t just_stopped{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.execute]
@@ -2840,8 +2822,8 @@ namespace stdexec {
   namespace __closure {
     template <class _T0, class _T1>
     struct __compose : sender_adaptor_closure<__compose<_T0, _T1>> {
-      STDEXEC_NO_UNIQUE_ADDRESS _T0 __t0_;
-      STDEXEC_NO_UNIQUE_ADDRESS _T1 __t1_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _T0 __t0_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _T1 __t1_;
 
       template <sender _Sender>
         requires __callable<_T0, _Sender> && __callable<_T1, __call_result_t<_T0, _Sender>>
@@ -2872,13 +2854,12 @@ namespace stdexec {
 
     template <class _Fun, class... _As>
     struct __binder_back : sender_adaptor_closure<__binder_back<_Fun, _As...>> {
-      STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
       std::tuple<_As...> __as_;
 
       template <sender _Sender>
         requires __callable<_Fun, _Sender, _As...>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        __call_result_t<_Fun, _Sender, _As...>
+      STDEXEC_ATTRIBUTE((host, device)) __call_result_t<_Fun, _Sender, _As...>
         operator()(_Sender&& __sndr) && noexcept(__nothrow_callable<_Fun, _Sender, _As...>) {
         return std::apply(
           [&__sndr, this](_As&... __as) -> __call_result_t<_Fun, _Sender, _As...> {
@@ -2889,8 +2870,7 @@ namespace stdexec {
 
       template <sender _Sender>
         requires __callable<const _Fun&, _Sender, const _As&...>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        __call_result_t<const _Fun&, _Sender, const _As&...>
+      STDEXEC_ATTRIBUTE((host, device)) __call_result_t<const _Fun&, _Sender, const _As&...>
         operator()(_Sender&& __sndr) const & //
         noexcept(__nothrow_callable<const _Fun&, _Sender, const _As&...>) {
         return std::apply(
@@ -2909,9 +2889,8 @@ namespace stdexec {
     // A derived-to-base cast that works even when the base is not
     // accessible from derived.
     template <class _Tp, class _Up>
-    STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      __copy_cvref_t<_Up&&, _Tp>
-      __c_cast(_Up&& u) noexcept
+    STDEXEC_ATTRIBUTE((host, device))
+    __copy_cvref_t<_Up&&, _Tp> __c_cast(_Up&& u) noexcept
       requires __decays_to<_Tp, _Tp>
     {
       static_assert(std::is_reference_v<__copy_cvref_t<_Up&&, _Tp>>);
@@ -2943,24 +2922,18 @@ namespace stdexec {
         }
 
        private:
-        STDEXEC_NO_UNIQUE_ADDRESS _Base __base_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Base __base_;
 
        protected:
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-          _Base&
-          base() & noexcept {
+        STDEXEC_ATTRIBUTE((host, device)) _Base& base() & noexcept {
           return __base_;
         }
 
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-          const _Base&
-          base() const & noexcept {
+        STDEXEC_ATTRIBUTE((host, device)) const _Base& base() const & noexcept {
           return __base_;
         }
 
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-          _Base&&
-          base() && noexcept {
+        STDEXEC_ATTRIBUTE((host, device)) _Base&& base() && noexcept {
           return (_Base&&) __base_;
         }
       };
@@ -2979,8 +2952,8 @@ namespace stdexec {
 // but 'int(type::existing_member_function)' is an error (as desired).
 #define _DISPATCH_MEMBER(_TAG) \
   template <class _Self, class... _Ts> \
-  STDEXEC_DETAIL_CUDACC_HOST_DEVICE static auto __call_##_TAG( \
-    _Self&& __self, _Ts&&... __ts) noexcept \
+  STDEXEC_ATTRIBUTE((host, device)) \
+  static auto __call_##_TAG(_Self&& __self, _Ts&&... __ts) noexcept \
     -> decltype(((_Self&&) __self)._TAG((_Ts&&) __ts...)) { \
     static_assert(noexcept(((_Self&&) __self)._TAG((_Ts&&) __ts...))); \
     return ((_Self&&) __self)._TAG((_Ts&&) __ts...); \
@@ -3025,9 +2998,8 @@ namespace stdexec {
         using __base_t = __minvoke<__get_base_t, _Dp&&>;
 
         template <class _Dp>
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-          static __base_t<_Dp>
-          __get_base(_Dp&& __self) noexcept {
+        STDEXEC_ATTRIBUTE((host, device))
+        static __base_t<_Dp> __get_base(_Dp&& __self) noexcept {
           if constexpr (__has_base) {
             return __c_cast<__t>((_Dp&&) __self).base();
           } else {
@@ -3036,10 +3008,9 @@ namespace stdexec {
         }
 
         template <same_as<set_value_t> _SetValue, class... _As>
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-          friend auto
-          tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept //
-          -> __msecond<                                                    //
+        STDEXEC_ATTRIBUTE((host, device))
+        friend auto tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept //
+          -> __msecond<                                                              //
             __if_c<same_as<set_value_t, _SetValue>>,
             decltype(_CALL_MEMBER(set_value, (_Derived&&) __self, (_As&&) __as...))> {
           static_assert(noexcept(_CALL_MEMBER(set_value, (_Derived&&) __self, (_As&&) __as...)));
@@ -3049,16 +3020,16 @@ namespace stdexec {
         template <same_as<set_value_t> _SetValue, class _Dp = _Derived, class... _As>
           requires _MISSING_MEMBER(_Dp, set_value)
                 && tag_invocable<_SetValue, __base_t<_Dp>, _As...>
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-          friend void tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept {
+        STDEXEC_ATTRIBUTE(
+          (host,
+           device)) friend void tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept {
           stdexec::set_value(__get_base((_Dp&&) __self), (_As&&) __as...);
         }
 
         template <same_as<set_error_t> _SetError, class _Error>
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-          friend auto
-          tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept //
-          -> __msecond<                                                     //
+        STDEXEC_ATTRIBUTE((host, device))
+        friend auto tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept //
+          -> __msecond<                                                               //
             __if_c<same_as<set_error_t, _SetError>>,
             decltype(_CALL_MEMBER(set_error, (_Derived&&) __self, (_Error&&) __err))> {
           static_assert(noexcept(_CALL_MEMBER(set_error, (_Derived&&) __self, (_Error&&) __err)));
@@ -3068,16 +3039,16 @@ namespace stdexec {
         template <same_as<set_error_t> _SetError, class _Error, class _Dp = _Derived>
           requires _MISSING_MEMBER(_Dp, set_error)
                 && tag_invocable<_SetError, __base_t<_Dp>, _Error>
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-          friend void tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept {
+        STDEXEC_ATTRIBUTE(
+          (host,
+           device)) friend void tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept {
           stdexec::set_error(__get_base((_Derived&&) __self), (_Error&&) __err);
         }
 
         template <same_as<set_stopped_t> _SetStopped, class _Dp = _Derived>
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-          friend auto
-          tag_invoke(_SetStopped, _Derived&& __self) noexcept //
-          -> __msecond<                                       //
+        STDEXEC_ATTRIBUTE((host, device))
+        friend auto tag_invoke(_SetStopped, _Derived&& __self) noexcept //
+          -> __msecond<                                                 //
             __if_c<same_as<set_stopped_t, _SetStopped>>,
             decltype(_CALL_MEMBER(set_stopped, (_Dp&&) __self))> {
           static_assert(noexcept(_CALL_MEMBER(set_stopped, (_Derived&&) __self)));
@@ -3086,16 +3057,15 @@ namespace stdexec {
 
         template <same_as<set_stopped_t> _SetStopped, class _Dp = _Derived>
           requires _MISSING_MEMBER(_Dp, set_stopped) && tag_invocable<_SetStopped, __base_t<_Dp>>
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-          friend void tag_invoke(_SetStopped, _Derived&& __self) noexcept {
+        STDEXEC_ATTRIBUTE(
+          (host, device)) friend void tag_invoke(_SetStopped, _Derived&& __self) noexcept {
           stdexec::set_stopped(__get_base((_Derived&&) __self));
         }
 
         // Pass through the get_env receiver query
         template <same_as<get_env_t> _GetEnv, class _Dp = _Derived>
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-          friend auto
-          tag_invoke(_GetEnv, const _Derived& __self) noexcept
+        STDEXEC_ATTRIBUTE((host, device))
+        friend auto tag_invoke(_GetEnv, const _Derived& __self) noexcept
           -> decltype(_CALL_MEMBER(get_env, (const _Dp&) __self)) {
           static_assert(noexcept(_CALL_MEMBER(get_env, __self)));
           return _CALL_MEMBER(get_env, __self);
@@ -3103,8 +3073,8 @@ namespace stdexec {
 
         template <same_as<get_env_t> _GetEnv, class _Dp = _Derived>
           requires _MISSING_MEMBER(_Dp, get_env)
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-          friend auto tag_invoke(_GetEnv, const _Derived& __self) noexcept
+        STDEXEC_ATTRIBUTE(
+          (host, device)) friend auto tag_invoke(_GetEnv, const _Derived& __self) noexcept
           -> env_of_t<__base_t<const _Dp&>> {
           return stdexec::get_env(__get_base(__self));
         }
@@ -3221,7 +3191,7 @@ namespace stdexec {
 
       struct __data {
         _Receiver __rcvr_;
-        STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
       };
 
       struct __t {
@@ -3360,7 +3330,7 @@ namespace stdexec {
 
       struct __data {
         _Receiver __rcvr_;
-        STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
       };
 
       struct __t {
@@ -3501,7 +3471,7 @@ namespace stdexec {
 
       struct __data {
         _Receiver __rcvr_;
-        STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
       };
 
       struct __t {
@@ -3645,7 +3615,7 @@ namespace stdexec {
     template <class _Shape, class _Fun>
     struct __data {
       _Shape __shape_;
-      STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
       static constexpr auto __mbrs_ = __mliterals<&__data::__shape_, &__data::__fun_>();
     };
     template <class _Shape, class _Fun>
@@ -3656,7 +3626,7 @@ namespace stdexec {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __op_state : __data<_Shape, _Fun> {
-        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
       };
 
       struct __t {
@@ -3782,9 +3752,8 @@ namespace stdexec {
 
     struct bulk_t : __default_get_env<bulk_t> {
       template <sender _Sender, integral _Shape, __movable_value _Fun>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        auto
-        operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const {
+      STDEXEC_ATTRIBUTE((host, device))
+      auto operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const {
         auto __domain = __get_sender_domain((_Sender&&) __sndr);
         return transform_sender(
           __domain, make_sender_expr<bulk_t>(__data{__shape, (_Fun&&) __fun}, (_Sender&&) __sndr));
@@ -4565,8 +4534,9 @@ namespace stdexec {
       using _Receiver = stdexec::__t<_ReceiverId>;
       using _Scheduler = stdexec::__t<_SchedulerId>;
 
-      _Receiver __rcvr_;                             // the input (outer) receiver
-      STDEXEC_NO_UNIQUE_ADDRESS _Scheduler __sched_; // the input sender's completion scheduler
+      _Receiver __rcvr_; // the input (outer) receiver
+      STDEXEC_ATTRIBUTE((no_unique_address))
+      _Scheduler __sched_; // the input sender's completion scheduler
     };
 
     inline constexpr auto __get_scheduler_prop = [](auto* __op) noexcept {
@@ -5052,7 +5022,7 @@ namespace stdexec {
         using __id = __operation;
 
         run_loop* __loop_;
-        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
 
         static void __execute_impl(__task* __p) noexcept {
           auto& __rcvr = ((__t*) __p)->__rcvr_;
@@ -6199,7 +6169,7 @@ namespace stdexec {
       // Could be non-atomic here and atomic_ref everywhere except __completion_fn
       std::atomic<__state_t> __state_{__started};
       _ErrorsVariant __errors_{};
-      STDEXEC_NO_UNIQUE_ADDRESS _ValuesTuple __values_{};
+      STDEXEC_ATTRIBUTE((no_unique_address)) _ValuesTuple __values_{};
       std::optional<
         typename stop_token_of_t<env_of_t<_Receiver>&>::template callback_type<__on_stop_requested>>
         __on_stop_{};
