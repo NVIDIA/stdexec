@@ -79,8 +79,8 @@ namespace stdexec {
 
   template <class _Fun0, class _Fun1>
   struct __composed {
-    STDEXEC_NO_UNIQUE_ADDRESS _Fun0 __t0_;
-    STDEXEC_NO_UNIQUE_ADDRESS _Fun1 __t1_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) _Fun0 __t0_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) _Fun1 __t1_;
 
     template <class... _Ts>
       requires __callable<_Fun1, _Ts...> && __callable<_Fun0, __call_result_t<_Fun1, _Ts...>>
