@@ -143,6 +143,8 @@
 //   STDEXEC_ATTRIBUTE((attr1, attr2, ...))
 //   void foo() { ... }
 #define STDEXEC_ATTRIBUTE(_XP) STDEXEC_FOR_EACH(STDEXEC_ATTR, STDEXEC_EXPAND _XP)
+#define STDEXEC_ATTR(_ATTR) \
+  STDEXEC_CAT(STDEXEC_ATTR_WHICH_, STDEXEC_CHECK(STDEXEC_CAT(STDEXEC_ATTR_, _ATTR)))(_ATTR)
 
 // unknown attributes are treated like C++-style attributes
 #define STDEXEC_ATTR_WHICH_0(_ATTR) [[_ATTR]]
@@ -156,11 +158,18 @@
 #define STDEXEC_ATTR_device STDEXEC_PROBE(~, 2)
 #define STDEXEC_ATTR___device__ STDEXEC_PROBE(~, 2)
 
-// NVBUG #4067067: NVHPC does not fully support [[no_unique_address]]
 #if STDEXEC_NVHPC()
+// NVBUG #4067067: NVHPC does not fully support [[no_unique_address]]
 #define STDEXEC_ATTR_WHICH_3(_ATTR) /*nothing*/
-#define STDEXEC_ATTR_no_unique_address STDEXEC_PROBE(~, 3)
+#elif STDEXEC_MSVC()
+// MSVCBUG https://developercommunity.visualstudio.com/t/Incorrect-codegen-when-using-msvc::no_/10452874
+#define STDEXEC_ATTR_WHICH_3(_ATTR) // [[msvc::no_unique_address]]
+#elif STDEXEC_CLANG_CL()
+#define STDEXEC_ATTR_WHICH_3(_ATTR) [[msvc::no_unique_address]]
+#else
+#define STDEXEC_ATTR_WHICH_3(_ATTR) [[no_unique_address]]
 #endif
+#define STDEXEC_ATTR_no_unique_address STDEXEC_PROBE(~, 3)
 
 #if STDEXEC_MSVC()
 #define STDEXEC_ATTR_WHICH_4(_ATTR) __forceinline
@@ -171,9 +180,8 @@
 #endif
 #define STDEXEC_ATTR_always_inline STDEXEC_PROBE(~, 4)
 
-#define STDEXEC_ATTR(_ATTR) \
-  STDEXEC_CAT(STDEXEC_ATTR_WHICH_, STDEXEC_CHECK(STDEXEC_CAT(STDEXEC_ATTR_, _ATTR)))(_ATTR)
-
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// warning push/pop portability macros
 #if STDEXEC_NVCC()
 #define STDEXEC_PRAGMA_PUSH() _Pragma("nv_diagnostic push")
 #define STDEXEC_PRAGMA_POP() _Pragma("nv_diagnostic pop")

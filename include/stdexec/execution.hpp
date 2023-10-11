@@ -1038,6 +1038,21 @@ namespace stdexec {
 
     struct __completion_signatures { };
 
+#if STDEXEC_MSVC()
+    // MSVCBUG https://developercommunity.visualstudio.com/t/Explicit-variable-template-specialisatio/10360032
+    // MSVCBUG https://developercommunity.visualstudio.com/t/Non-function-type-interpreted-as-functio/10447831
+
+    template <class _Sig>
+    struct __normalize_sig;
+
+    template <class _Tag, class... _Args>
+    struct __normalize_sig<_Tag(_Args...)> {
+      using __type = _Tag (*)(_Args&&...);
+    };
+
+    template <class _Sig>
+    using __normalize_sig_t = typename __normalize_sig<_Sig>::__type;
+#else
     template <class _Sig>
     extern int __normalize_sig;
 
@@ -1046,6 +1061,7 @@ namespace stdexec {
 
     template <class _Sig>
     using __normalize_sig_t = decltype(__normalize_sig<_Sig>);
+#endif
 
     template <class... _Sigs>
     struct __valid_completions {
@@ -1816,8 +1832,19 @@ namespace stdexec {
       }
 
       ~__operation_base() {
-        if (__coro_)
+        if (__coro_) {
+#if STDEXEC_MSVC()
+          // MSVCBUG https://developercommunity.visualstudio.com/t/Double-destroy-of-a-local-in-coroutine-d/10456428
+
+          // Reassign __coro_ before calling destroy to make the mutation
+          // observable and to hopefully ensure that the compiler does not eliminate it.
+          auto __coro = __coro_;
+          __coro_ = {};
+          __coro.destroy();
+#else
           __coro_.destroy();
+#endif
+        }
       }
 
       friend void tag_invoke(start_t, __operation_base& __self) noexcept {
@@ -2471,7 +2498,7 @@ namespace stdexec {
         : __operation_base<_ReceiverId>{
             (_CvrefReceiver&&) __rcvr,
             [](__operation_base<_ReceiverId>* __self) noexcept {
-              delete static_cast<__operation*>(__self);
+            delete static_cast<__operation*>(__self);
             }}
         , __op_state_(connect((_Sender&&) __sndr, __receiver_t<_ReceiverId>{this})) {
       }
@@ -6924,7 +6951,7 @@ namespace stdexec {
     using _Sender = __0;
     template <class _Tag>
     using __cust_sigs = __types<
-      tag_invoke_t(_Tag, __get_sender_domain_t(const _Sender&), _Sender),
+      tag_invoke_t(_Tag, __get_sender_domain_t STDEXEC_MSVC((*))(const _Sender&), _Sender),
       tag_invoke_t(_Tag, _Sender)>;
 
     template <class _Tag, class _Sender>
@@ -7118,6 +7145,105 @@ namespace stdexec {
   template <class _Sender>
   using __bad_pipe_sink_t = __mexception<_CANNOT_PIPE_INTO_A_SENDER_<>, _WITH_SENDER_<_Sender>>;
 } // namespace stdexec
+
+#if STDEXEC_MSVC()
+namespace stdexec {
+  // MSVCBUG https://developercommunity.visualstudio.com/t/Incorrect-codegen-in-await_suspend-aroun/10454102
+
+  // MSVC incorrectly allocates the return buffer for await_suspend calls within the suspended coroutine
+  // frame. When the suspended coroutine is destroyed within await_suspend, the continuation coroutine handle
+  // is not only used after free, but also overwritten by the debug malloc implementation when NRVO is in play.
+
+  // This workaround delays the destruction of the suspended coroutine by wrapping the continuation in another
+  // coroutine which destroys the former and transfers execution to the original continuation.
+
+  // The wrapping coroutine is thread-local and is reused within the thread for each destroy-and-continue sequence.
+  // The wrapping coroutine itself is destroyed at thread exit.
+
+  namespace __destroy_and_continue_msvc {
+    struct __task {
+      struct promise_type {
+        __task get_return_object() noexcept {
+          return {__coro::coroutine_handle<promise_type>::from_promise(*this)};
+        }
+
+        static std::suspend_never initial_suspend() noexcept {
+          return {};
+        }
+
+        static std::suspend_never final_suspend() noexcept {
+          STDEXEC_ASSERT(!"Should never get here");
+          return {};
+        }
+
+        static void return_void() noexcept {
+          STDEXEC_ASSERT(!"Should never get here");
+        }
+
+        static void unhandled_exception() noexcept {
+          STDEXEC_ASSERT(!"Should never get here");
+        }
+      };
+
+      __coro::coroutine_handle<> __coro_;
+    };
+
+    struct __continue_t {
+      static constexpr bool await_ready() noexcept {
+        return false;
+      }
+
+      __coro::coroutine_handle<> await_suspend(__coro::coroutine_handle<>) noexcept {
+        return __continue_;
+      }
+
+      static void await_resume() noexcept {
+      }
+
+      __coro::coroutine_handle<> __continue_;
+    };
+
+    struct __context {
+      __coro::coroutine_handle<> __destroy_;
+      __coro::coroutine_handle<> __continue_;
+    };
+
+    inline __task __co_impl(__context& __c) {
+      while (true) {
+        co_await __continue_t{__c.__continue_};
+        __c.__destroy_.destroy();
+      }
+    }
+
+    struct __context_and_coro {
+      __context_and_coro() {
+        __context_.__continue_ = __coro::noop_coroutine();
+        __coro_ = __co_impl(__context_).__coro_;
+      }
+
+      ~__context_and_coro() {
+        __coro_.destroy();
+      }
+
+      __context __context_;
+      __coro::coroutine_handle<> __coro_;
+    };
+
+    inline __coro::coroutine_handle<>
+      __impl(__coro::coroutine_handle<> __destroy, __coro::coroutine_handle<> __continue) {
+      static thread_local __context_and_coro __c;
+      __c.__context_.__destroy_ = __destroy;
+      __c.__context_.__continue_ = __continue;
+      return __c.__coro_;
+    }
+  } // namespace __destroy_and_continue_msvc
+} // namespace stdexec
+
+#define STDEXEC_DESTROY_AND_CONTINUE(__destroy, __continue) \
+  (::stdexec::__destroy_and_continue_msvc::__impl(__destroy, __continue))
+#else
+#define STDEXEC_DESTROY_AND_CONTINUE(__destroy, __continue) (__destroy.destroy(), __continue)
+#endif
 
 // For issuing a meaningful diagnostic for the erroneous `snd1 | snd2`.
 template <stdexec::sender _Sender>

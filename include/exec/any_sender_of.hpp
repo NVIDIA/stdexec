@@ -631,7 +631,11 @@ namespace exec {
       template <class... _Sigs, class... _Queries>
         requires(__is_not_stop_token_query<_Queries> && ...)
       struct __ref<completion_signatures<_Sigs...>, _Queries...> {
+#if !STDEXEC_MSVC()
+        // MSVCBUG https://developercommunity.visualstudio.com/t/Private-member-inaccessible-when-used-in/10448363
+
        private:
+#endif
         using __vtable_t = stdexec::__t<__vtable<completion_signatures<_Sigs...>, _Queries...>>;
 
         struct __env_t {
@@ -694,7 +698,11 @@ namespace exec {
       template <class... _Sigs, class... _Queries>
         requires(__is_stop_token_query<_Queries> || ...)
       struct __ref<completion_signatures<_Sigs...>, _Queries...> {
+#if !STDEXEC_MSVC()
+        // MSVCBUG https://developercommunity.visualstudio.com/t/Private-member-inaccessible-when-used-in/10448363
+
        private:
+#endif
         using _FilteredQueries =
           __minvoke<__remove_if<__q<__is_never_stop_token_query>>, _Queries...>;
         using __vtable_t = stdexec::__t<
@@ -1146,9 +1154,19 @@ namespace exec {
             __ret_equals_to<stdexec::get_completion_scheduler_t<stdexec::set_value_t>>>,
           decltype(_SenderQueries)...>;
 
+#if STDEXEC_MSVC()
+        // MSVCBUG https://developercommunity.visualstudio.com/t/ICE-and-non-ICE-bug-in-NTTP-argument-w/10361081
+
+        static constexpr auto __any_scheduler_noexcept_signature =
+          stdexec::get_completion_scheduler<stdexec::set_value_t>.signature<any_scheduler() noexcept>;
+        template <class... _Queries>
+        using __schedule_sender_fn =
+          typename __schedule_receiver::template any_sender< __any_scheduler_noexcept_signature>;
+#else
         template <class... _Queries>
         using __schedule_sender_fn = typename __schedule_receiver::template any_sender<
           stdexec::get_completion_scheduler<stdexec::set_value_t>.template signature<any_scheduler() noexcept>>;
+#endif
         using __schedule_sender =
           stdexec::__mapply<stdexec::__q<__schedule_sender_fn>, schedule_sender_queries>;
 

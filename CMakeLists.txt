@@ -102,6 +102,13 @@ rapids_find_package(Threads REQUIRED
 ##############################################################################
 # - Main library targets -----------------------------------------------------
 
+# Detect the compiler frontend (GNU, Clang, MSVC, etc.)
+if(DEFINED CMAKE_CXX_COMPILER_FRONTEND_VARIANT)
+  set(stdexec_compiler_frontend ${CMAKE_CXX_COMPILER_FRONTEND_VARIANT})
+else()
+  set(stdexec_compiler_frontend ${CMAKE_CXX_COMPILER_ID})
+endif()
+
 set(stdexec_export_targets)
 
 # Define the main library
@@ -159,35 +166,27 @@ add_library(stdexec_executable_flags INTERFACE)
 
 # Enable warnings
 target_compile_options(stdexec_executable_flags INTERFACE
-                       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
-                       -Wall>
-                       $<$<CXX_COMPILER_ID:MSVC>:
-                       /W4>)
+                       $<$<STREQUAL:${stdexec_compiler_frontend},GNU>:-Wall>
+                       $<$<STREQUAL:${stdexec_compiler_frontend},AppleClang>:-Wall>
+                       $<$<STREQUAL:${stdexec_compiler_frontend},MSVC>:/W4>)
 
 # Increase the error limit with NVC++
 target_compile_options(stdexec_executable_flags INTERFACE
-                       $<$<CXX_COMPILER_ID:NVHPC>:-e1000>
-                       )
+                       $<$<CXX_COMPILER_ID:NVHPC>:-e1000>)
 
-# Silence warnings with GCC
+# Silence warnings
 target_compile_options(stdexec_executable_flags INTERFACE
                        $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>
-                       )
-
-# Silence warnings with NVHPC
-target_compile_options(stdexec_executable_flags INTERFACE
-                       $<$<CXX_COMPILER_ID:NVHPC>:--diag_suppress177,550,111,497,554>
-                       )
+                       $<$<CXX_COMPILER_ID:NVHPC>:--diag_suppress177,550,111,497,554>)
 
 # Template backtrace limit
 target_compile_options(stdexec_executable_flags INTERFACE
                        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:
-                       -ferror-limit=0
-                       -fmacro-backtrace-limit=0
-                       -ftemplate-backtrace-limit=0>
+                          $<$<STREQUAL:${CMAKE_CXX_COMPILER_FRONTEND_VARIANT},MSVC>:/clang:>-ferror-limit=0
+                          $<$<STREQUAL:${CMAKE_CXX_COMPILER_FRONTEND_VARIANT},MSVC>:/clang:>-fmacro-backtrace-limit=0
+                          $<$<STREQUAL:${CMAKE_CXX_COMPILER_FRONTEND_VARIANT},MSVC>:/clang:>-ftemplate-backtrace-limit=0>
                        $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<VERSION_GREATER:$<CXX_COMPILER_VERSION>,23.3.0>>:
-                       -ftemplate-backtrace-limit 0>
-                       )
+                       -ftemplate-backtrace-limit 0>)
 
 # # Always enable colored output
 # target_compile_options(stdexec_executable_flags INTERFACE
