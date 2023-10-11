@@ -125,7 +125,7 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // make_sender_expr
   namespace __detail {
-    template <class _Tag, class _Domain = __default_domain<>>
+    template <class _Tag>
     struct make_sender_expr_t {
       template <class _Data = __, class... _Children>
       constexpr auto operator()(_Data __data = {}, _Children... __children) const;
@@ -179,12 +179,11 @@ namespace stdexec {
         };
     } // anonymous namespace
 
-    template <class _Tag, class _Domain>
+    template <class _Tag>
     template <class _Data, class... _Children>
     constexpr auto
-      make_sender_expr_t<_Tag, _Domain>::operator()(_Data __data, _Children... __children) const {
-      return __sexpr{
-        __detail::__make_tuple(_Tag(), __detail::__mbc(__data), __detail::__mbc(__children)...)};
+      make_sender_expr_t<_Tag>::operator()(_Data __data, _Children... __children) const {
+      return __sexpr{__make_tuple(_Tag(), __detail::__mbc(__data), __detail::__mbc(__children)...)};
     }
 #else
     // Anonymous namespace here is to avoid symbol name collisions with the
@@ -204,17 +203,19 @@ namespace stdexec {
         };
     } // anonymous namespace
 
-    template <class _Tag, class _Domain>
+    template <class _Tag>
     template <class _Data, class... _Children>
     constexpr auto
-      make_sender_expr_t<_Tag, _Domain>::operator()(_Data __data, _Children... __children) const {
-      return __sexpr{__detail::__make_tuple(_Tag(), (_Data&&) __data, (_Children&&) __children...)};
+      make_sender_expr_t<_Tag>::operator()(_Data __data, _Children... __children) const {
+      return __sexpr{__make_tuple(_Tag(), (_Data&&) __data, (_Children&&) __children...)};
     };
 #endif
+
+    template <class _Tag>
+    inline constexpr make_sender_expr_t<_Tag> make_sender_expr{};
   } // namespace __detail
 
-  template <class _Tag, class _Domain = __default_domain<>>
-  inline constexpr __detail::make_sender_expr_t<_Tag, _Domain> make_sender_expr{};
+  using __detail::make_sender_expr;
 
   template <class _Tag, class _Data, class... _Children>
   using __sexpr_t = __result_of<make_sender_expr<_Tag>, _Data, _Children...>;

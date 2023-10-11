@@ -5851,19 +5851,32 @@ namespace stdexec {
       };
     };
 
-    struct on_t {
-      template <scheduler _Scheduler, sender _Sender>
-        requires tag_invocable<on_t, _Scheduler, _Sender>
-      auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const
-        noexcept(nothrow_tag_invocable<on_t, _Scheduler, _Sender>)
-          -> tag_invoke_result_t<on_t, _Scheduler, _Sender> {
-        return tag_invoke(*this, (_Scheduler&&) __sched, (_Sender&&) __sndr);
-      }
+    struct on_t : __default_get_env<on_t> {
+      using _Sender = __1;
+      using _Scheduler = __0;
+      using __legacy_customizations_t = __types<
+        tag_invoke_t(on_t, _Scheduler, _Sender)>;
 
       template <scheduler _Scheduler, sender _Sender>
-      auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const
-        -> __t<__sender<stdexec::__id<__decay_t<_Scheduler>>, stdexec::__id<__decay_t<_Sender>>>> {
-        return {(_Scheduler&&) __sched, (_Sender&&) __sndr};
+      auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const {
+        auto __domain = __get_sender_domain((_Sender&&) __sndr);
+        return transform_sender(
+          __domain, make_sender_expr<on_t>((_Scheduler&&) __sched, (_Sender&&) __sndr));
+      }
+    };
+
+    struct __lower_on {
+      template <class _Scheduler, class _Sender>
+      using __sender =
+        __t<__sender<stdexec::__id<__decay_t<_Scheduler>>, stdexec::__id<__decay_t<_Sender>>>>;
+
+      template <class _Sender, class... _Env>
+      auto operator()(_Sender&& __sndr, const _Env&...) const {
+        return apply_sender(
+          (_Sender&&) __sndr,
+          []<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
+            return __sender<_Data, _Child>{(_Data&&) __data, (_Child&&) __child};
+          });
       }
     };
   } // namespace __on
@@ -5871,12 +5884,8 @@ namespace stdexec {
   using __on::on_t;
   inline constexpr on_t on{};
 
-  // BUGBUG this wouldn't be necessary if `on` returned a __sexpr
-  template <class _Domain>
-  inline constexpr auto make_sender_expr<on_t, _Domain> =
-    []<class _Scheduler, class _Sender>(_Scheduler&& __sched, _Sender&& __sndr) {
-      return on((_Scheduler&&) __sched, (_Sender&&) __sndr);
-    };
+  template <>
+  inline constexpr __on::__lower_on __default_sender_transform<on_t>{};
 
   // BUGBUG this will also be unnecessary when `on` returns a __sexpr
   namespace __detail {
