@@ -81,7 +81,7 @@ namespace exec {
         using __id = __stopped_means_break;
         using _Receiver = stdexec::__t<_ReceiverId>;
         using _Token = stop_token_of_t<env_of_t<_Receiver>>;
-        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
 
         template <same_as<get_env_t> _GetEnv, same_as<__t> _Self>
         friend env_of_t<_Receiver> tag_invoke(_GetEnv, const _Self& __self) noexcept {

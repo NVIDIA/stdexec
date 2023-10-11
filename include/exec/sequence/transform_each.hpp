@@ -44,7 +44,7 @@ namespace exec {
                 && __callable<exec::set_next_t, _Receiver&, __call_result_t<_Adaptor&, _Item>>
         friend auto tag_invoke(_SetNext, _Self& __self, _Item&& __item) noexcept(
           __nothrow_callable<_SetNext, _Receiver&, __call_result_t<_Adaptor&, _Item>> //
-          && __nothrow_callable<_Adaptor&, _Item>)
+            && __nothrow_callable<_Adaptor&, _Item>)
           -> next_sender_of_t<_Receiver, __call_result_t<_Adaptor&, _Item>> {
           return exec::set_next(
             __self.__op_->__receiver_, __self.__op_->__adaptor_(static_cast<_Item&&>(__item)));
@@ -104,8 +104,8 @@ namespace exec {
 
       template <class _Adaptor, class _Sequence>
       auto operator()(__ignore, _Adaptor __adaptor, _Sequence&& __sequence) noexcept(
-        __nothrow_decay_copyable<_Adaptor> && __nothrow_decay_copyable<_Sequence>
-        && __nothrow_decay_copyable<_Receiver>)
+        __nothrow_decay_copyable<_Adaptor>&& __nothrow_decay_copyable<_Sequence>&&
+          __nothrow_decay_copyable<_Receiver>)
         -> __t< __operation<_Sequence, __id<_Receiver>, _Adaptor>> {
         return {
           static_cast<_Sequence&&>(__sequence),
@@ -121,8 +121,9 @@ namespace exec {
     struct _WITH_ITEM_SENDER_ { };
 
     template <class _Adaptor, class _Item>
-    auto __try_call(_Item*)
-      -> stdexec::__mexception<_NOT_CALLABLE_ADAPTOR_<_Adaptor&>, _WITH_ITEM_SENDER_<stdexec::__name_of<_Item>>>;
+    auto __try_call(_Item*) -> stdexec::__mexception<
+      _NOT_CALLABLE_ADAPTOR_<_Adaptor&>,
+      _WITH_ITEM_SENDER_<stdexec::__name_of<_Item>>>;
 
     template <class _Adaptor, class _Item>
       requires stdexec::__callable<_Adaptor&, _Item>
@@ -139,9 +140,9 @@ namespace exec {
 
     struct transform_each_t {
       template <sender _Sequence, __sender_adaptor_closure _Adaptor>
-      auto operator()(_Sequence&& __sndr, _Adaptor&& __adaptor) const noexcept(
-        __nothrow_decay_copyable<_Sequence> //
-        && __nothrow_decay_copyable<_Adaptor>) {
+      auto operator()(_Sequence&& __sndr, _Adaptor&& __adaptor) const
+        noexcept(__nothrow_decay_copyable<_Sequence> //
+                   && __nothrow_decay_copyable<_Adaptor>) {
         return make_sequence_expr<transform_each_t>(
           static_cast<_Adaptor&&>(__adaptor), static_cast<_Sequence&&>(__sndr));
       }

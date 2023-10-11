@@ -96,7 +96,8 @@ namespace exec {
 
       static constexpr bool __with_scheduler = _SchedulerAffinity == __scheduler_affinity::__sticky;
 
-      STDEXEC_NO_UNIQUE_ADDRESS __if_c<__with_scheduler, __any_scheduler, __ignore> //
+      STDEXEC_ATTRIBUTE((no_unique_address))
+      __if_c<__with_scheduler, __any_scheduler, __ignore> //
         __scheduler_{exec::inline_scheduler{}};
       in_place_stop_token __stop_token_;
 

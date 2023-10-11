@@ -185,8 +185,8 @@ namespace exec {
         }
 
         _Receiver __rcvr_;
-        STDEXEC_NO_UNIQUE_ADDRESS _Kernel __kernel_;
-        STDEXEC_NO_UNIQUE_ADDRESS _Data __data_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Kernel __kernel_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Data __data_;
       };
 
       struct __t {

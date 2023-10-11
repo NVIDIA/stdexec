@@ -139,8 +139,8 @@ namespace nvexec {
             return self.env_;
           };
 
-          STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-            inline __t(context_state_t context_state) noexcept
+          STDEXEC_ATTRIBUTE((host, device))
+          inline __t(context_state_t context_state) noexcept
             : env_{context_state} {
           }
 
@@ -236,15 +236,13 @@ namespace nvexec {
         return split_sender_th<S>(sch.context_state_, (S&&) sndr);
       }
 
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        friend inline sender_t
-        tag_invoke(schedule_t, const stream_scheduler& self) noexcept {
+      STDEXEC_ATTRIBUTE((host, device))
+      friend inline sender_t tag_invoke(schedule_t, const stream_scheduler& self) noexcept {
         return {self.context_state_};
       }
 
-      friend std::true_type tag_invoke(   //
-        __has_algorithm_customizations_t, //
-        const stream_scheduler& self) noexcept {
+      friend std::true_type
+        tag_invoke(__has_algorithm_customizations_t, const stream_scheduler& self) noexcept {
         return {};
       }
 
