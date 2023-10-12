@@ -5770,6 +5770,7 @@ namespace stdexec {
         using __id = __operation;
         using __receiver_t = stdexec::__t<__receiver<_SchedulerId, _SenderId, _ReceiverId>>;
         using __receiver_ref_t = __on::__receiver_ref_t<_SchedulerId, _SenderId, _ReceiverId>;
+        using __schedule_sender_t = __result_of<transfer_just, _Scheduler>;
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
           start(std::get<0>(__self.__data_));
@@ -5779,12 +5780,12 @@ namespace stdexec {
         __t(_Scheduler __sched, _Sender2&& __sndr, _Receiver2&& __rcvr)
           : _Base{{}, (_Scheduler&&) __sched, (_Sender2&&) __sndr, (_Receiver2&&) __rcvr}
           , __data_{std::in_place_index<0>, __conv{[this] {
-                      return connect(schedule(this->__scheduler_), __receiver_t{{}, this});
+                      return connect(transfer_just(this->__scheduler_), __receiver_t{{}, this});
                     }}} {
         }
 
         std::variant<
-          connect_result_t<schedule_result_t<_Scheduler>, __receiver_t>,
+          connect_result_t<__schedule_sender_t, __receiver_t>,
           connect_result_t<_Sender, __receiver_ref_t>>
           __data_;
       };
@@ -5801,6 +5802,7 @@ namespace stdexec {
         using __id = __sender;
         using is_sender = void;
 
+        using __schedule_sender_t = __result_of<transfer_just, _Scheduler>;
         template <class _ReceiverId>
         using __receiver_ref_t = __on::__receiver_ref_t<_SchedulerId, _SenderId, _ReceiverId>;
         template <class _ReceiverId>
@@ -5813,7 +5815,7 @@ namespace stdexec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires constructible_from<_Sender, __copy_cvref_t<_Self, _Sender>>
-                && sender_to<schedule_result_t<_Scheduler>, __receiver_t<stdexec::__id<_Receiver>>>
+                && sender_to<__schedule_sender_t, __receiver_t<stdexec::__id<_Receiver>>>
                 && sender_to<_Sender, __receiver_ref_t<stdexec::__id<_Receiver>>>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
           -> __operation_t<stdexec::__id<_Receiver>> {
@@ -5828,7 +5830,7 @@ namespace stdexec {
         template <__decays_to<__t> _Self, class _Env>
         friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
           -> __try_make_completion_signatures<
-            schedule_result_t<_Scheduler>,
+            __schedule_sender_t,
             _Env,
             __try_make_completion_signatures<
               __copy_cvref_t<_Self, _Sender>,
