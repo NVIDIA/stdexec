@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+#ifdef _WIN32
+// __allocator is #defined in Windows SDK's shared/specstrings.h.
+#include <Windows.h>
+#endif
+
 #include <atomic>
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>

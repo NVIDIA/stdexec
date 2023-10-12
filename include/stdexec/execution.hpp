@@ -270,7 +270,7 @@ namespace stdexec {
 
     // TODO: implement allocator concept
     template <class _T0>
-    concept __allocator = true;
+    concept __allocator_c = true;
 
     struct get_scheduler_t : __query<get_scheduler_t> {
       friend constexpr bool tag_invoke(forwarding_query_t, const get_scheduler_t&) noexcept {
@@ -309,7 +309,7 @@ namespace stdexec {
       auto operator()(const _Env& __env) const noexcept
         -> tag_invoke_result_t<get_allocator_t, const _Env&> {
         static_assert(nothrow_tag_invocable<get_allocator_t, const _Env&>);
-        static_assert(__allocator<tag_invoke_result_t<get_allocator_t, const _Env&>>);
+        static_assert(__allocator_c<tag_invoke_result_t<get_allocator_t, const _Env&>>);
         return tag_invoke(get_allocator_t{}, __env);
       }
 
