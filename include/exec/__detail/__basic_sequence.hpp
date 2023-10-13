@@ -111,7 +111,7 @@ namespace exec {
 
 #if STDEXEC_NVHPC() || (STDEXEC_GCC() && __GNUC__ < 13)
   namespace __detail {
-    template <class _Tag, class _Domain = stdexec::__default_domain<>>
+    template <class _Tag, class _Domain = stdexec::default_domain>
     struct make_sequence_expr_t {
       template <class _Data = stdexec::__, class... _Children>
       constexpr auto operator()(_Data __data = {}, _Children... __children) const {
@@ -122,7 +122,7 @@ namespace exec {
   }
 #else
   namespace __detail {
-    template <class _Tag, class _Domain = stdexec::__default_domain<>>
+    template <class _Tag, class _Domain = stdexec::default_domain>
     struct make_sequence_expr_t {
       template <class _Data = stdexec::__, class... _Children>
       constexpr auto operator()(_Data __data = {}, _Children... __children) const {
@@ -133,7 +133,7 @@ namespace exec {
   }
 #endif
 
-  template <class _Tag, class _Domain = stdexec::__default_domain<>>
+  template <class _Tag, class _Domain = stdexec::default_domain>
   inline constexpr __detail::make_sequence_expr_t<_Tag, _Domain> make_sequence_expr{};
 
   template <class _Tag, class _Data, class... _Children>
