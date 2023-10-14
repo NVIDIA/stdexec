@@ -361,22 +361,25 @@ TEST_CASE("when_all_with_variant can be customized", "[adaptors][when_all]") {
 
 using my_string_variant_sender_t = decltype(ex::into_variant(my_string_sender_t{std::string{}}));
 
-auto tag_invoke(ex::when_all_t, my_string_variant_sender_t, my_string_variant_sender_t) {
-  // Return a different sender when we invoke this custom defined on implementation
-  return ex::just(std::string{"first program"});
-}
+// There is no way for ADL to find this overload. This test is broken and needs to be rewritten
+// using a custom domain.
+//
+// auto tag_invoke(ex::when_all_t, my_string_variant_sender_t, my_string_variant_sender_t) {
+//   // Return a different sender when we invoke this custom defined on implementation
+//   return ex::just(std::string{"first program"});
+// }
 
-TEST_CASE(
-  "when_all_with_variant take into account when_all cusomizations",
-  "[adaptors][when_all]") {
-  // when_all_with_variant must be using the `when_all` implementation that allows cusomizations
-  // The customization will return a different value
-  auto snd = ex::when_all_with_variant(        //
-    my_string_sender_t{std::string{"hello,"}}, //
-    my_string_sender_t{std::string{" world!"}} //
-  );
-  wait_for_value(std::move(snd), std::string{"first program"});
-}
+// TEST_CASE(
+//   "when_all_with_variant take into account when_all customizations",
+//   "[adaptors][when_all]") {
+//   // when_all_with_variant must be using the `when_all` implementation that allows customizations
+//   // The customization will return a different value
+//   auto snd = ex::when_all_with_variant(        //
+//     my_string_sender_t{std::string{"hello,"}}, //
+//     my_string_sender_t{std::string{" world!"}} //
+//   );
+//   wait_for_value(std::move(snd), std::string{"first program"});
+// }
 
 TEST_CASE("when_all returns empty env", "[adaptors][when_all]") {
   check_env_type<ex::empty_env>(ex::when_all(ex::just(), ex::just()));
