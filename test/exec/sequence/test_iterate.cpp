@@ -22,6 +22,7 @@
 
 #include <array>
 #include <catch2/catch.hpp>
+#include <numeric>
 
 template <class Receiver>
 struct sum_item_rcvr {

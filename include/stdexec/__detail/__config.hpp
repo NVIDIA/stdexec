@@ -165,7 +165,8 @@
 // MSVCBUG https://developercommunity.visualstudio.com/t/Incorrect-codegen-when-using-msvc::no_/10452874
 #define STDEXEC_ATTR_WHICH_3(_ATTR) // [[msvc::no_unique_address]]
 #elif STDEXEC_CLANG_CL()
-#define STDEXEC_ATTR_WHICH_3(_ATTR) [[msvc::no_unique_address]]
+// clang-cl does not support: https://reviews.llvm.org/D110485
+#define STDEXEC_ATTR_WHICH_3(_ATTR) // [[msvc::no_unique_address]]
 #else
 #define STDEXEC_ATTR_WHICH_3(_ATTR) [[no_unique_address]]
 #endif
