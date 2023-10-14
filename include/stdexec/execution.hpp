@@ -5760,6 +5760,9 @@ namespace stdexec {
       };
     };
 
+    template <class _SchedulerId, class _SenderId>
+    struct __sender;
+
     struct on_t;
 
     template <class _SchedulerId, class _SenderId>
@@ -5822,7 +5825,7 @@ namespace stdexec {
       };
     };
 
-    struct on_t : __default_get_env<on_t> {
+    struct on_t {
       using _Sender = __1;
       using _Scheduler = __0;
       using __legacy_customizations_t = __types< tag_invoke_t(on_t, _Scheduler, _Sender)>;
@@ -5838,13 +5841,24 @@ namespace stdexec {
       using __sender_t =
         __t<__sender<stdexec::__id<__decay_t<_Scheduler>>, stdexec::__id<__decay_t<_Sender>>>>;
 
-      template <class _Sender, class... _Env>
-      static auto transform_sender(_Sender&& __sndr, const _Env&...) {
-        return apply_sender(
-          (_Sender&&) __sndr,
-          []<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
-            return __sender_t<_Data, _Child>{(_Data&&) __data, (_Child&&) __child};
-          });
+      template <sender_expr_for<on_t> _Sender>
+      static auto get_env(const _Sender& __sndr) noexcept
+        -> __call_result_t<apply_sender_t, const _Sender&, __get_env_fn> {
+        return apply_sender(__sndr, __get_env_fn());
+      }
+
+      template <class _Sender, class _Env>
+        requires __is_not_instance_of<__id<__decay_t<_Sender>>, __sender>
+      static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
+        auto __domain = __get_env_domain(__env);
+        return stdexec::transform_sender(
+          __domain,
+          apply_sender(
+            (_Sender&&) __sndr,
+            []<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
+              return __sender_t<_Data, _Child>{(_Data&&) __data, (_Child&&) __child};
+            }),
+          __env);
       }
     };
   } // namespace __on
@@ -6345,26 +6359,7 @@ namespace stdexec {
 
     struct _INVALID_ARGUMENTS_TO_WHEN_ALL_ { };
 
-    struct when_all_t {
-      // BUGBUG: look for a customization?
-
-      template <sender... _Senders>
-      auto operator()(_Senders&&... __sndrs) const {
-        auto __domain = when_all_t::__common_domain(__get_sender_domain((_Senders&&) __sndrs)...);
-        return stdexec::transform_sender(
-          __domain, make_sender_expr<when_all_t>(__(), (_Senders&&) __sndrs...));
-      }
-
-      using _Sender = __1;
-      using __legacy_customizations_t = //
-        __types<tag_invoke_t(when_all_t, _Sender...)>;
-
-#if STDEXEC_FRIENDSHIP_IS_LEXICAL()
-     private:
-      template <class...>
-      friend struct stdexec::__sexpr;
-#endif
-
+    struct __common_domain_fn {
       template <class _Domain, class... _OtherDomains>
         requires __all_of<_Domain, _OtherDomains...>
       static _Domain __common_domain(_Domain __domain, _OtherDomains...) noexcept {
@@ -6372,15 +6367,47 @@ namespace stdexec {
       }
 
       template <class... _Domains>
-      static default_domain __common_domain(_Domains...) noexcept {
+      static __none_such __common_domain(_Domains...) noexcept {
         return {};
       }
 
-      struct __common_domain_fn {
-        auto operator()(auto, auto&&, const auto&... __sndrs) const noexcept {
-          return when_all_t::__common_domain(__get_sender_domain(__sndrs)...);
-        }
-      };
+      static default_domain __common_domain() noexcept {
+        return {};
+      }
+
+      auto operator()(__ignore, __ignore, const auto&... __sndrs) const noexcept {
+        return __common_domain(__get_sender_domain(__sndrs)...);
+      }
+    };
+
+    template <class... _Senders>
+    using __common_domain_t = //
+      __call_result_t<__common_domain_fn, int, int, _Senders...>;
+
+    template <class... _Senders>
+    concept __has_common_domain = //
+      __none_of<__none_such, __common_domain_t<_Senders...>>;
+
+    struct when_all_t {
+      // Used by the default_domain to find legacy customizations:
+      using _Sender = __1;
+      using __legacy_customizations_t = //
+        __types<tag_invoke_t(when_all_t, _Sender...)>;
+
+      // TODO: improve diagnostic when senders have different domains
+      template <sender... _Senders>
+        requires __has_common_domain<_Senders...>
+      auto operator()(_Senders&&... __sndrs) const {
+        auto __domain = __common_domain_t<_Senders...>();
+        return stdexec::transform_sender(
+          __domain, make_sender_expr<when_all_t>(__(), (_Senders&&) __sndrs...));
+      }
+
+#if STDEXEC_FRIENDSHIP_IS_LEXICAL()
+     private:
+      template <class...>
+      friend struct stdexec::__sexpr;
+#endif
 
       template <sender_expr_for<when_all_t> _Self>
       static auto get_env(const _Self& __self) noexcept {
@@ -6446,59 +6473,101 @@ namespace stdexec {
     using __into_variant_result_t = __result_of<into_variant, _Sender>;
 
     struct when_all_with_variant_t {
-      template <sender... _Senders>
-        requires tag_invocable<when_all_with_variant_t, _Senders...>
-      auto operator()(_Senders&&... __sndrs) const
-        noexcept(nothrow_tag_invocable<when_all_with_variant_t, _Senders...>)
-          -> tag_invoke_result_t<when_all_with_variant_t, _Senders...> {
-        static_assert(
-          sender<tag_invoke_result_t<when_all_with_variant_t, _Senders...>>,
-          "A customization of when_all_with_variant must return a sender");
-        return tag_invoke(*this, (_Senders&&) __sndrs...);
-      }
+      using _Sender = __1;
+      using __legacy_customizations_t = //
+        __types<tag_invoke_t(when_all_with_variant_t, _Sender...)>;
 
       template <sender... _Senders>
-        requires(!tag_invocable<when_all_with_variant_t, _Senders...>)
+        requires __has_common_domain<_Senders...>
       auto operator()(_Senders&&... __sndrs) const {
-        return when_all_t{}(into_variant((_Senders&&) __sndrs)...);
+        auto __domain = __common_domain_t<_Senders...>();
+        return stdexec::transform_sender(
+          __domain, make_sender_expr<when_all_with_variant_t>(__(), (_Senders&&) __sndrs...));
+      }
+
+      template <class _Sender, class _Env>
+      static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
+        // transform the when_all_with_variant into a regular when_all (looking for
+        // early when_all customizations), then transform it again to look for
+        // late customizations.
+        return apply_sender(
+          (_Sender&&) __sndr, [&]<class... _Child>(__ignore, __ignore, _Child&&... __child) {
+            auto __domain = __get_env_domain(__env);
+            return stdexec::transform_sender(
+              __domain,
+              when_all_t()(
+                stdexec::transform_sender(__domain, into_variant((_Child&&) __child), __env)...),
+              __env);
+          });
       }
     };
 
     struct transfer_when_all_t {
-      template <scheduler _Sched, sender... _Senders>
-        requires tag_invocable<transfer_when_all_t, _Sched, _Senders...>
-      auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const
-        noexcept(nothrow_tag_invocable<transfer_when_all_t, _Sched, _Senders...>)
-          -> tag_invoke_result_t<transfer_when_all_t, _Sched, _Senders...> {
-        static_assert(
-          sender<tag_invoke_result_t<transfer_when_all_t, _Sched, _Senders...>>,
-          "A customization of transfer_when_all must return a sender");
-        return tag_invoke(*this, (_Sched&&) __sched, (_Senders&&) __sndrs...);
+      using _Scheduler = __0;
+      using _Sender = __1;
+      using __legacy_customizations_t = //
+        __types<tag_invoke_t(transfer_when_all_t, _Scheduler, _Sender...)>;
+
+      template <scheduler _Scheduler, sender... _Senders>
+        requires __has_common_domain<_Senders...>
+      auto operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const {
+        auto __domain = query_or(get_domain, __sched, default_domain());
+        return stdexec::transform_sender(
+          __domain,
+          make_sender_expr<transfer_when_all_t>((_Scheduler&&) __sched, (_Senders&&) __sndrs...));
       }
 
-      template <scheduler _Sched, sender... _Senders>
-        requires(!tag_invocable<transfer_when_all_t, _Sched, _Senders...>)
-      auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const {
-        return transfer(when_all_t{}((_Senders&&) __sndrs...), (_Sched&&) __sched);
+      template <class _Sender, class _Env>
+      static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
+        // transform the transfer_when_all into a regular transform | when_all
+        // (looking for early customizations), then transform it again to look for
+        // late customizations.
+        return apply_sender(
+          (_Sender&&) __sndr,
+          [&]<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child) {
+            auto __domain = __get_env_domain(__env);
+            return stdexec::transform_sender(
+              __domain,
+              transfer(
+                stdexec::transform_sender(__domain, when_all_t()((_Child&&) __child...), __env),
+                (_Data&&) __data),
+              __env);
+          });
       }
     };
 
     struct transfer_when_all_with_variant_t {
-      template <scheduler _Sched, sender... _Senders>
-        requires tag_invocable<transfer_when_all_with_variant_t, _Sched, _Senders...>
-      auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const
-        noexcept(nothrow_tag_invocable<transfer_when_all_with_variant_t, _Sched, _Senders...>)
-          -> tag_invoke_result_t<transfer_when_all_with_variant_t, _Sched, _Senders...> {
-        static_assert(
-          sender<tag_invoke_result_t<transfer_when_all_with_variant_t, _Sched, _Senders...>>,
-          "A customization of transfer_when_all_with_variant must return a sender");
-        return tag_invoke(*this, (_Sched&&) __sched, (_Senders&&) __sndrs...);
+      using _Scheduler = __0;
+      using _Sender = __1;
+      using __legacy_customizations_t = //
+        __types<tag_invoke_t(transfer_when_all_with_variant_t, _Scheduler, _Sender...)>;
+
+      template <scheduler _Scheduler, sender... _Senders>
+        requires __has_common_domain<_Senders...>
+      auto operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const {
+        auto __domain = query_or(get_domain, __sched, default_domain());
+        return stdexec::transform_sender(
+          __domain,
+          make_sender_expr<transfer_when_all_with_variant_t>(
+            (_Scheduler&&) __sched, (_Senders&&) __sndrs...));
       }
 
-      template <scheduler _Sched, sender... _Senders>
-        requires(!tag_invocable<transfer_when_all_with_variant_t, _Sched, _Senders...>)
-      auto operator()(_Sched&& __sched, _Senders&&... __sndrs) const {
-        return transfer_when_all_t{}((_Sched&&) __sched, into_variant((_Senders&&) __sndrs)...);
+      template <class _Sender, class _Env>
+      static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
+        // transform the transfer_when_all into a regular transform | when_all
+        // (looking for early customizations), then transform it again to look for
+        // late customizations.
+        return apply_sender(
+          (_Sender&&) __sndr,
+          [&]<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child) {
+            auto __domain = __get_env_domain(__env);
+            return stdexec::transform_sender(
+              __domain,
+              transfer_when_all_t()(
+                (_Data&&) __data,
+                stdexec::transform_sender(__domain, into_variant((_Child&&) __child), __env)...),
+              __env);
+          });
       }
     };
   } // namespace __when_all
