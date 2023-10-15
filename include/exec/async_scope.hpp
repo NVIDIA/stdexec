@@ -602,8 +602,8 @@ namespace exec {
     using __spawn_env_t = __result_of<
       __join_env,
       _Env,
-      __env::__prop<get_stop_token_t, in_place_stop_token>,
-      __env::__prop<get_scheduler_t, __inln::__scheduler>>;
+      __env::__prop<in_place_stop_token(get_stop_token_t)>,
+      __env::__prop<__inln::__scheduler(get_scheduler_t)>>;
 
     template <class _EnvId>
     struct __spawn_op_base {
@@ -647,8 +647,8 @@ namespace exec {
       template <__decays_to<_Sender> _Sndr>
       __spawn_op(_Sndr&& __sndr, _Env __env, const __impl* __scope)
         : __spawn_op_base<_EnvId>{__join_env((_Env&&) __env,
-          __mkprop(get_stop_token, __scope->__stop_source_.get_token()),
-          __mkprop(get_scheduler, __inln::__scheduler{})),
+          __mkprop(__scope->__stop_source_.get_token(), get_stop_token),
+          __mkprop(__inln::__scheduler{}, get_scheduler)),
           [](__spawn_op_base<_EnvId>* __op) {
             delete static_cast<__spawn_op*>(__op);
           }}

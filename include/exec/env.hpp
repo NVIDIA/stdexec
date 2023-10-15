@@ -23,19 +23,19 @@
 #endif
 
 namespace exec {
-  template <class _Tag, class _Value = stdexec::__none_such>
+  template <class _Tag, class _Value = void>
   using with_t = stdexec::__with<_Tag, _Value>;
 
   namespace __detail {
     struct __with_t {
       template <class _Tag, class _Value>
-      with_t<_Tag, _Value> operator()(_Tag, _Value&& __val) const {
-        return stdexec::__with_(_Tag(), (_Value&&) __val);
+      with_t<_Tag, stdexec::__decay_t<_Value>> operator()(_Tag, _Value&& __val) const {
+        return stdexec::__mkprop((_Value&&) __val, _Tag());
       }
 
       template <class _Tag>
       with_t<_Tag> operator()(_Tag) const {
-        return stdexec::__with_(_Tag());
+        return stdexec::__mkprop(_Tag());
       }
     };
   } // namespace __detail
