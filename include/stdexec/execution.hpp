@@ -2090,10 +2090,6 @@ namespace stdexec {
         __qf<__tag_of_sig_t<_SetSig>>,
         __q<__types>>>;
 
-  template <class _Fun, class _CPO, class _Sender, class... _As>
-  concept __tag_invocable_with_domain = //
-    tag_invocable<_Fun, __sender_domain_of_t<_Sender, _CPO>, _Sender, _As...>;
-
 #if !STDEXEC_STD_NO_COROUTINES_
   /////////////////////////////////////////////////////////////////////////////
   // stdexec::as_awaitable [execution.coro_utils.as_awaitable]
