@@ -140,3 +140,162 @@ TEST_CASE("transfer_when_all_with_variant can be customized", "[adaptors][transf
   );
   wait_for_value(std::move(snd), std::string{"first program"});
 }
+
+namespace {
+  enum customize : std::size_t {
+    early,
+    late,
+    none
+  };
+
+  template <class Tag, customize C, auto Fun>
+  struct basic_domain {
+    template <ex::sender_expr_for<Tag> Sender, class... Env>
+      requires(sizeof...(Env) == C)
+    auto transform_sender(Sender&& sender, const Env&...) const {
+      return Fun();
+    }
+  };
+} // anonymous namespace
+
+TEST_CASE("transfer_when_all works with custom domain", "[adaptors][transfer_when_all]") {
+  constexpr auto hello = [] {
+    return ex::just(std::string{"hello world"});
+  };
+
+  SECTION("sender has correct domain") {
+    using domain = basic_domain<ex::transfer_when_all_t, customize::none, hello>;
+    using scheduler = basic_inline_scheduler<domain>;
+
+    auto snd = ex::transfer_when_all( //
+      scheduler(),
+      ex::just(3),     //
+      ex::just(0.1415) //
+    );
+    static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_t>);
+    [[maybe_unused]] domain dom = ex::get_domain(ex::get_env(snd));
+  }
+
+  SECTION("early customization") {
+    using domain = basic_domain<ex::transfer_when_all_t, customize::early, hello>;
+    using scheduler = basic_inline_scheduler<domain>;
+
+    auto snd = ex::transfer_when_all( //
+      scheduler(),                    //
+      ex::just(3),                    //
+      ex::just(0.1415)                //
+    );
+    static_assert(ex::sender_expr_for<decltype(snd), ex::just_t>);
+    wait_for_value(std::move(snd), std::string{"hello world"});
+  }
+
+  SECTION("late customization") {
+    using domain = basic_domain<ex::transfer_when_all_t, customize::late, hello>;
+    using scheduler = basic_inline_scheduler<domain>;
+
+    auto snd = ex::on(
+      scheduler(),
+      ex::transfer_when_all( //
+        inline_scheduler(),  //
+        ex::just(3),         //
+        ex::just(0.1415)     //
+        ));
+    wait_for_value(std::move(snd), std::string{"hello world"});
+  }
+}
+
+TEST_CASE(
+  "transfer_when_all_with_variant works with custom domain",
+  "[adaptors][transfer_when_all]") {
+  constexpr auto hello = [] {
+    return ex::just(std::string{"hello world"});
+  };
+
+  SECTION("sender has correct domain") {
+    using domain = basic_domain<ex::transfer_when_all_with_variant_t, customize::none, hello>;
+    using scheduler = basic_inline_scheduler<domain>;
+
+    auto snd = ex::transfer_when_all_with_variant( //
+      scheduler(),                                 //
+      ex::just(3),                                 //
+      ex::just(0.1415)                             //
+    );
+    static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_with_variant_t>);
+    [[maybe_unused]] domain dom = ex::get_domain(ex::get_env(snd));
+  }
+
+  SECTION("early customization") {
+    using domain = basic_domain<ex::transfer_when_all_with_variant_t, customize::early, hello>;
+    using scheduler = basic_inline_scheduler<domain>;
+
+    auto snd = ex::transfer_when_all_with_variant( //
+      scheduler(),
+      ex::just(3),     //
+      ex::just(0.1415) //
+    );
+    static_assert(ex::sender_expr_for<decltype(snd), ex::just_t>);
+    wait_for_value(std::move(snd), std::string{"hello world"});
+  }
+
+  SECTION("late customization") {
+    using domain = basic_domain<ex::transfer_when_all_with_variant_t, customize::late, hello>;
+    using scheduler = basic_inline_scheduler<domain>;
+
+    auto snd = ex::on(
+      scheduler(),
+      ex::transfer_when_all_with_variant( //
+        inline_scheduler(),               //
+        ex::just(3),                      //
+        ex::just(0.1415)                  //
+        ));
+    wait_for_value(std::move(snd), std::string{"hello world"});
+  }
+}
+
+TEST_CASE(
+  "transfer_when_all_with_variant finds transfer_when_all customizations",
+  "[adaptors][transfer_when_all]") {
+  constexpr auto hello = [] {
+    return ex::just(std::string{"hello world"});
+  };
+
+  SECTION("sender has correct domain") {
+    using domain = basic_domain<ex::transfer_when_all_t, customize::none, hello>;
+    using scheduler = basic_inline_scheduler<domain>;
+
+    auto snd = ex::transfer_when_all_with_variant( //
+      scheduler(),                                 //
+      ex::just(3),                                 //
+      ex::just(0.1415)                             //
+    );
+    static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_with_variant_t>);
+    [[maybe_unused]] domain dom = ex::get_domain(ex::get_env(snd));
+  }
+
+  SECTION("early customization") {
+    using domain = basic_domain<ex::transfer_when_all_t, customize::early, hello>;
+    using scheduler = basic_inline_scheduler<domain>;
+
+    auto snd = ex::transfer_when_all_with_variant( //
+      scheduler(),                                 //
+      ex::just(3),                                 //
+      ex::just(0.1415)                             //
+    );
+    static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_with_variant_t>);
+    wait_for_value(std::move(snd), std::string{"hello world"});
+  }
+
+  SECTION("late customization") {
+    using domain = basic_domain<ex::transfer_when_all_t, customize::late, hello>;
+    using scheduler = basic_inline_scheduler<domain>;
+
+    auto snd = ex::on(
+      scheduler(),
+      ex::transfer_when_all_with_variant( //
+        inline_scheduler(),               //
+        ex::just(3),                      //
+        ex::just(0.1415)                  //
+        ));
+    wait_for_value(std::move(snd), std::string{"hello world"});
+  }
+}

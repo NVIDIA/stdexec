@@ -829,7 +829,7 @@ namespace exec {
         friend __env_t<env_of_t<_Receiver>> tag_invoke(_GetEnv, const _Self& __self) noexcept {
           return __make_env(
             get_env(__self.__op_->__rcvr_),
-            __with_(get_stop_token, __self.__op_->__stop_source_.get_token()));
+            __mkprop(__self.__op_->__stop_source_.get_token(), get_stop_token));
         }
       };
     };

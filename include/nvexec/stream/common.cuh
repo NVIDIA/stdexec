@@ -326,7 +326,7 @@ namespace nvexec {
 
     template <class BaseEnv>
     auto make_stream_env(BaseEnv&& base_env, stream_provider_t* stream_provider) noexcept {
-      return __join_env(__mkprop(get_stream_provider, stream_provider), (BaseEnv&&) base_env);
+      return __join_env(__mkprop(stream_provider, get_stream_provider), (BaseEnv&&) base_env);
     }
 
     template <class BaseEnv>
