@@ -629,28 +629,11 @@ namespace stdexec {
     };
 
   /////////////////////////////////////////////////////////////////////////////
-  inline constexpr struct __get_sender_domain_t {
-    template <class _Sender, class _Tag = set_value_t>
-    auto operator()(const _Sender& __sndr, _Tag = {}) const noexcept {
-      // Find the sender's completion scheduler, or empty_env if it doesn't have one.
-      auto __sched = query_or(get_completion_scheduler<_Tag>, get_env(__sndr), empty_env());
-
-      // Find the domain by first asking the sender's env, then the completion scheduler,
-      // and finally using the default domain (which wraps the completion scheduler)
-      auto __env = __join_env(get_env(__sndr), __sched);
-      return query_or(get_domain, __env, default_domain());
-    }
-  } __get_sender_domain{};
-
-  template <class _Sender, class _Tag = set_value_t>
-  using __sender_domain_of_t = __call_result_t<__get_sender_domain_t, _Sender, _Tag>;
-
-  /////////////////////////////////////////////////////////////////////////////
   inline constexpr struct __get_env_domain_t {
-    template <class _Env>
-    auto operator()(const _Env& __env) const noexcept {
+    template <class _Env, class _Tag = get_scheduler_t>
+    auto operator()(const _Env& __env, _Tag __tag = {}) const noexcept {
       // Find the current scheduler, or empty_env if there isn't one.
-      auto __sched = query_or(get_scheduler, __env, empty_env());
+      auto __sched = query_or(__tag, __env, empty_env());
 
       // Find the domain by first asking the env, then the current scheduler,
       // and finally using the default domain if all else fails.
@@ -661,6 +644,17 @@ namespace stdexec {
 
   template <class _Env>
   using __env_domain_of_t = __call_result_t<__get_env_domain_t, _Env>;
+
+  /////////////////////////////////////////////////////////////////////////////
+  inline constexpr struct __get_sender_domain_t {
+    template <class _Sender, class _Tag = set_value_t>
+    auto operator()(const _Sender& __sndr, _Tag = {}) const noexcept {
+      return __get_env_domain(get_env(__sndr), get_completion_scheduler<_Tag>);
+    }
+  } __get_sender_domain{};
+
+  template <class _Sender, class _Tag = set_value_t>
+  using __sender_domain_of_t = __call_result_t<__get_sender_domain_t, _Sender, _Tag>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
