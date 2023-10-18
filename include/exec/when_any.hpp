@@ -172,9 +172,8 @@ namespace exec {
         }
 
         friend __env_t<env_of_t<_Receiver>> tag_invoke(get_env_t, const __t& __self) noexcept {
-          using __with_token = __with<get_stop_token_t, in_place_stop_token>;
-          auto __token = __with_(get_stop_token, __self.__op_->__stop_source_.get_token());
-          return __make_env(get_env(__self.__op_->__receiver_), (__with_token&&) __token);
+          auto __token = __mkprop(__self.__op_->__stop_source_.get_token(), get_stop_token);
+          return __make_env(get_env(__self.__op_->__receiver_), std::move(__token));
         }
       };
     };

@@ -200,7 +200,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             auto env = make_terminal_stream_env(
               exec::make_env(
                 stdexec::get_env(base()),
-                __with_(get_stop_token, op_state_->stop_source_.get_token())),
+                __mkprop(op_state_->stop_source_.get_token(), get_stop_token)),
               &const_cast<stream_provider_t&>(op_state_->stream_providers_[Index]));
 
             return env;
@@ -419,6 +419,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 namespace stdexec::__detail {
   template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
   inline constexpr __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::when_all_sender_t<WithCompletionScheduler, Scheduler, __name_of<__t<SenderIds>>...>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::when_all_sender_t<WithCompletionScheduler, Scheduler, SenderIds...>>{};
+    nvexec::STDEXEC_STREAM_DETAIL_NS::
+      when_all_sender_t<WithCompletionScheduler, Scheduler, __name_of<__t<SenderIds>>...>>
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::
+                  when_all_sender_t<WithCompletionScheduler, Scheduler, SenderIds...>>{};
 }

@@ -163,7 +163,7 @@ namespace exec {
     template <class _Kernel, class _Env, class... _Sigs>
     auto __compute_completions_(completion_signatures<_Sigs...>*)
       -> decltype(__stl::__all_completions(
-        (__completions_from_sig_t<_Kernel, _Env, _Sigs>) nullptr...));
+        static_cast<__completions_from_sig_t<_Kernel, _Env, _Sigs>>(nullptr)...));
 
     template <class _Kernel, class _Env, class _NoCompletions>
     auto __compute_completions_(_NoCompletions*) -> _NoCompletions;
@@ -185,8 +185,8 @@ namespace exec {
         }
 
         _Receiver __rcvr_;
-        STDEXEC_NO_UNIQUE_ADDRESS _Kernel __kernel_;
-        STDEXEC_NO_UNIQUE_ADDRESS _Data __data_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Kernel __kernel_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Data __data_;
       };
 
       struct __t {

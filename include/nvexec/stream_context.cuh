@@ -95,9 +95,10 @@ namespace nvexec {
     struct stream_scheduler;
 
     template <class = stream_scheduler>
-    struct stream_domain : private __default_domain<context_state_t> {
-      using __default_domain::__default_domain;
-      using __default_domain::transform_sender;
+    struct stream_domain {
+      stream_domain(context_state_t context_state)
+        : context_state_(context_state) {
+      }
 
       // Lazy algorithm customizations require a recursive tree transformation
       template <sender_expr Sender, class Env>
@@ -106,8 +107,12 @@ namespace nvexec {
         return stdexec::apply_sender(
           (Sender&&) sndr,
           [&]<class Tag, class Data, class... Children>(Tag, Data&& data, Children&&... children) {
-            return make_sender_expr<Tag, stream_domain>(
-              (Data&&) data, transform_sender((Children&&) children, env)...);
+            return stdexec::transform_sender(
+              *this,
+              make_sender_expr<Tag>(
+                (Data&&) data,
+                stdexec::transform_sender(*this, (Children&&) children, env)...)
+                /*, env*/); // no env here!!
           });
       }
 
@@ -119,13 +124,14 @@ namespace nvexec {
           (Sender&&) sndr,
           [&]<class Tag, class Data, class Child>(Tag, Data&& data, Child&& child) {
             auto [init, fun] = (Data&&) data;
-            auto next = transform_sender((Child&&) child, env);
+            auto next = stdexec::transform_sender(*this, (Child&&) child, env);
             return reduce_sender_t<decltype(next), decltype(init), decltype(fun)>(
               std::move(next), init, fun);
           });
       }
 
-      operator stream_scheduler() const noexcept;
+     private:
+      context_state_t context_state_;
     };
 
     struct stream_scheduler {
@@ -190,24 +196,24 @@ namespace nvexec {
 
         friend const env& tag_invoke(get_env_t, const sender_t& self) noexcept {
           return self.env_;
-        };
+        }
 
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-          inline sender_t(context_state_t context_state) noexcept
+        STDEXEC_ATTRIBUTE((host, device))
+        inline sender_t(context_state_t context_state) noexcept
           : env_{context_state} {
         }
 
         env env_;
       };
 
-      friend stream_domain<stream_scheduler>
-        tag_invoke(get_domain_t, const stream_scheduler& sch) noexcept {
-        return stream_domain<stream_scheduler>{sch.context_state_};
-      }
+      // BUGBUG for now
+      // friend stream_domain<stream_scheduler>
+      //   tag_invoke(get_domain_t, const stream_scheduler& sch) noexcept {
+      //   return stream_domain<stream_scheduler>{sch.context_state_};
+      // }
 
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        friend inline sender_t
-        tag_invoke(schedule_t, const stream_scheduler& self) noexcept {
+      STDEXEC_ATTRIBUTE((host, device))
+      friend inline sender_t tag_invoke(schedule_t, const stream_scheduler& self) noexcept {
         return {self.context_state_};
       }
 
@@ -332,11 +338,6 @@ namespace nvexec {
       // private: TODO
       context_state_t context_state_;
     };
-
-    template <class StreamScheduler>
-    stream_domain<StreamScheduler>::operator stream_scheduler() const noexcept {
-      return {base()};
-    }
 
     template <stream_completing_sender Sender>
     void tag_invoke(start_detached_t, Sender&& sndr) noexcept(false) {

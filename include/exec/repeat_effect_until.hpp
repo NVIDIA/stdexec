@@ -47,8 +47,8 @@ namespace exec {
           __call_result_t<stdexec::on_t, trampoline_scheduler, _Source &>;
         using __source_op_t = stdexec::connect_result_t<__source_on_scheduler_sender, __receiver_t>;
 
-        STDEXEC_NO_UNIQUE_ADDRESS _Source __source_;
-        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Source __source_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
         __manual_lifetime<__source_op_t> __source_op_;
         trampoline_scheduler __sched_;
 
@@ -150,7 +150,7 @@ namespace exec {
       struct __t {
         using is_sender = void;
         using __id = __sender;
-        STDEXEC_NO_UNIQUE_ADDRESS _Source __source_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Source __source_;
 
         template <class... Ts>
         using __value_t = stdexec::completion_signatures<>;

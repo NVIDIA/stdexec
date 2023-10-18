@@ -37,7 +37,7 @@ namespace nvexec {
       template <class _Init, class _Fun>
       struct __data {
         _Init __init_;
-        STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
         static constexpr auto __mbrs_ = __mliterals<&__data::__init_, &__data::__fun_>();
       };
       template <class _Init, class _Fun>

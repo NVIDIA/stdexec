@@ -698,7 +698,7 @@ namespace exec {
 
       struct __impl {
         __context& __context_;
-        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __receiver_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __receiver_;
 
         __impl(__context& __context, _Receiver&& __receiver)
           : __context_{__context}

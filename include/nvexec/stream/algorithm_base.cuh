@@ -61,8 +61,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       };
 
       operation_state_base_t<ReceiverId>& op_state_;
-      STDEXEC_NO_UNIQUE_ADDRESS InitT init_;
-      STDEXEC_NO_UNIQUE_ADDRESS Fun fun_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) InitT init_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) Fun fun_;
 
      public:
       using __id = receiver_t;
@@ -95,8 +95,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
   // have a __data struct that each inheritor is responsible for providing. I put this here to get things to compile.
   template <class _InitT, class _Fun>
   struct __data {
-    _InitT __init_;
-    STDEXEC_NO_UNIQUE_ADDRESS _Fun __fun_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) _InitT __init_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
     static constexpr auto __mbrs_ = __mliterals<&__data::__init_, &__data::__fun_>();
   };
   template <class _InitT, class _Fun>

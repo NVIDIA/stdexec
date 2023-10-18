@@ -128,7 +128,8 @@ namespace detail::a_sender {
     Fun f_;
 
     template <class... As>
-    STDEXEC_DETAIL_CUDACC_HOST_DEVICE void set_value(As&&... as) && noexcept
+    STDEXEC_ATTRIBUTE((host, device))
+    void set_value(As&&... as) && noexcept
       requires stdexec::__callable<Fun, As&&...>
     {
       using result_t = std::invoke_result_t<Fun, As&&...>;

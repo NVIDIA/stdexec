@@ -23,19 +23,19 @@
 #endif
 
 namespace exec {
-  template <class _Tag, class _Value = stdexec::__none_such>
+  template <class _Tag, class _Value = void>
   using with_t = stdexec::__with<_Tag, _Value>;
 
   namespace __detail {
     struct __with_t {
       template <class _Tag, class _Value>
-      with_t<_Tag, _Value> operator()(_Tag, _Value&& __val) const {
-        return stdexec::__with_(_Tag(), (_Value&&) __val);
+      with_t<_Tag, stdexec::__decay_t<_Value>> operator()(_Tag, _Value&& __val) const {
+        return stdexec::__mkprop((_Value&&) __val, _Tag());
       }
 
       template <class _Tag>
       with_t<_Tag> operator()(_Tag) const {
-        return stdexec::__with_(_Tag());
+        return stdexec::__mkprop(_Tag());
       }
     };
   } // namespace __detail
@@ -57,7 +57,7 @@ namespace exec {
       using _Default = __t<_DefaultId>;
       using _Receiver = __t<_ReceiverId>;
 
-      STDEXEC_NO_UNIQUE_ADDRESS _Default __default_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Default __default_;
       _Receiver __rcvr_;
 
       friend void tag_invoke(start_t, __operation& __self) noexcept {
@@ -78,7 +78,7 @@ namespace exec {
     struct __sender {
       using _Default = __t<_DefaultId>;
       using is_sender = void;
-      STDEXEC_NO_UNIQUE_ADDRESS _Default __default_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Default __default_;
 
       template <class _Env>
       using __value_t =

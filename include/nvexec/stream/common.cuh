@@ -59,7 +59,7 @@ namespace nvexec {
   }
 #endif
 
-  inline STDEXEC_DETAIL_CUDACC_HOST_DEVICE bool is_on_gpu() noexcept {
+  inline STDEXEC_ATTRIBUTE((host, device)) bool is_on_gpu() noexcept {
     return get_device_type() == device_type::device;
   }
 }
@@ -296,9 +296,8 @@ namespace nvexec {
 
     struct set_noop {
       template <class... Ts>
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-        void
-        operator()(Ts&&...) const noexcept {
+      STDEXEC_ATTRIBUTE((host, device))
+      void operator()(Ts&&...) const noexcept {
         // TODO TRAP
         std::printf("ERROR: use of empty variant.");
       }
@@ -323,14 +322,14 @@ namespace nvexec {
         return get_stream_provider(env)->own_stream_.value();
       }
 
-      STDEXEC_DETAIL_CUDACC_HOST_DEVICE auto operator()() const noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) auto operator()() const noexcept {
         return stdexec::read(*this);
       }
     };
 
     template <class BaseEnv>
     auto make_stream_env(BaseEnv&& base_env, stream_provider_t* stream_provider) noexcept {
-      return __join_env(__mkprop(get_stream_provider, stream_provider), (BaseEnv&&) base_env);
+      return __join_env(__mkprop(stream_provider, get_stream_provider), (BaseEnv&&) base_env);
     }
 
     template <class BaseEnv>
@@ -392,17 +391,15 @@ namespace nvexec {
         using __id = stream_enqueue_receiver;
 
         template <__one_of<set_value_t, set_stopped_t> Tag, class... As>
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-          friend void
-          tag_invoke(Tag, __t&& self, As&&... as) noexcept {
+        STDEXEC_ATTRIBUTE((host, device))
+        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
           self.variant_->template emplace<decayed_tuple<Tag, As...>>(Tag(), std::move(as)...);
           self.producer_(self.task_);
         }
 
         template <same_as<set_error_t> _Tag, class Error>
-        STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-          friend void
-          tag_invoke(_Tag, __t&& self, Error&& e) noexcept {
+        STDEXEC_ATTRIBUTE((host, device))
+        friend void tag_invoke(_Tag, __t&& self, Error&& e) noexcept {
           if constexpr (__decays_to<Error, std::exception_ptr>) {
             // What is `exception_ptr` but death pending
             self.variant_->template emplace<decayed_tuple<set_error_t, cudaError_t>>(

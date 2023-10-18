@@ -28,11 +28,14 @@
 #include <cassert>
 #include <version>
 
+#define STDEXEC_STRINGIZE(_ARG) #_ARG
+
 #define STDEXEC_CAT_(_XP, ...) _XP##__VA_ARGS__
 #define STDEXEC_CAT(_XP, ...) STDEXEC_CAT_(_XP, __VA_ARGS__)
 
 #define STDEXEC_EXPAND(...) __VA_ARGS__
 #define STDEXEC_EVAL(_MACRO, ...) _MACRO(__VA_ARGS__)
+#define STDEXEC_EAT(...)
 
 #define STDEXEC_NOT(_XP) STDEXEC_CAT(STDEXEC_NOT_, _XP)
 #define STDEXEC_NOT_0 1
@@ -46,45 +49,140 @@
   STDEXEC_EXPAND(STDEXEC_COUNT_(__VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1))
 #define STDEXEC_COUNT_(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _NP, ...) _NP
 
-#define STDEXEC_CHECK(...) STDEXEC_EXPAND(STDEXEC_CHECK_N(__VA_ARGS__, 0, ))
-#define STDEXEC_CHECK_N(_XP, _NP, ...) _NP
-#define STDEXEC_PROBE(_XP) _XP, 1,
+#define STDEXEC_CHECK(...) STDEXEC_EXPAND(STDEXEC_CHECK_(__VA_ARGS__, 0, ))
+#define STDEXEC_CHECK_(_XP, _NP, ...) _NP
+#define STDEXEC_PROBE(...) STDEXEC_PROBE_(__VA_ARGS__, 1)
+#define STDEXEC_PROBE_(_XP, _NP, ...) _XP, _NP,
 
+////////////////////////////////////////////////////////////////////////////////
+// STDEXEC_FOR_EACH
+//   Inspired by "Recursive macros with C++20 __VA_OPT__", by David Mazières
+//   https://www.scs.stanford.edu/~dm/blog/va-opt.html
+#define STDEXEC_EXPAND_R(...) \
+  STDEXEC_EXPAND_R1(STDEXEC_EXPAND_R1(STDEXEC_EXPAND_R1(STDEXEC_EXPAND_R1(__VA_ARGS__)))) \
+  /**/
+#define STDEXEC_EXPAND_R1(...) \
+  STDEXEC_EXPAND_R2(STDEXEC_EXPAND_R2(STDEXEC_EXPAND_R2(STDEXEC_EXPAND_R2(__VA_ARGS__)))) \
+  /**/
+#define STDEXEC_EXPAND_R2(...) \
+  STDEXEC_EXPAND_R3(STDEXEC_EXPAND_R3(STDEXEC_EXPAND_R3(STDEXEC_EXPAND_R3(__VA_ARGS__)))) \
+  /**/
+#define STDEXEC_EXPAND_R3(...) \
+  STDEXEC_EXPAND(STDEXEC_EXPAND(STDEXEC_EXPAND(STDEXEC_EXPAND(__VA_ARGS__)))) \
+  /**/
+
+#define STDEXEC_PARENS ()
+#define STDEXEC_FOR_EACH(_MACRO, ...) \
+  __VA_OPT__(STDEXEC_EXPAND_R(STDEXEC_FOR_EACH_HELPER(_MACRO, __VA_ARGS__))) \
+  /**/
+#define STDEXEC_FOR_EACH_HELPER(_MACRO, _A1, ...) \
+  _MACRO(_A1) __VA_OPT__(STDEXEC_FOR_EACH_AGAIN STDEXEC_PARENS(_MACRO, __VA_ARGS__)) /**/
+#define STDEXEC_FOR_EACH_AGAIN() STDEXEC_FOR_EACH_HELPER
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// If tail is non-empty, expand to the tail. Otherwise, expand to the head
+#define STDEXEC_HEAD_OR_TAIL(_XP, ...) STDEXEC_EXPAND __VA_OPT__((__VA_ARGS__) STDEXEC_EAT)(_XP)
+
+// If tail is non-empty, expand to nothing. Otherwise, expand to the head
+#define STDEXEC_HEAD_OR_NULL(_XP, ...) STDEXEC_EXPAND __VA_OPT__(() STDEXEC_EAT)(_XP)
+
+// When used with no arguments, these macros expand to 1 if the current
+// compiler corresponds to the macro name; 0, otherwise. When used with arguments,
+// they expand to the arguments if if the current compiler corresponds to the
+// macro name; nothing, otherwise.
 #if defined(__NVCC__)
-#define STDEXEC_NVCC() 1
+#define STDEXEC_NVCC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #elif defined(__NVCOMPILER)
-#define STDEXEC_NVHPC() 1
+#define STDEXEC_NVHPC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #elif defined(__EDG__)
-#define LEGATE_EDG() 1
+#define STDEXEC_EDG(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #elif defined(__clang__)
-#define STDEXEC_CLANG() 1
+#define STDEXEC_CLANG(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#if defined(_MSC_VER)
+#define STDEXEC_CLANG_CL(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#endif
 #elif defined(__GNUC__)
-#define STDEXEC_GCC() 1
+#define STDEXEC_GCC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #elif defined(_MSC_VER)
-#define STDEXEC_MSVC() 1
+#define STDEXEC_MSVC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #endif
 
 #ifndef STDEXEC_NVCC
-#define STDEXEC_NVCC() 0
+#define STDEXEC_NVCC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 #ifndef STDEXEC_NVHPC
-#define STDEXEC_NVHPC() 0
+#define STDEXEC_NVHPC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 #ifndef STDEXEC_EDG
-#define STDEXEC_EDG() 0
+#define STDEXEC_EDG(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 #ifndef STDEXEC_CLANG
-#define STDEXEC_CLANG() 0
+#define STDEXEC_CLANG(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#endif
+#ifndef STDEXEC_CLANG_CL
+#define STDEXEC_CLANG_CL(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 #ifndef STDEXEC_GCC
-#define STDEXEC_GCC() 0
+#define STDEXEC_GCC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 #ifndef STDEXEC_MSVC
-#define STDEXEC_MSVC() 0
+#define STDEXEC_MSVC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 
-#define STDEXEC_STRINGIZE(_ARG) #_ARG
+////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifdef __CUDACC__
+#define STDEXEC_CUDA(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#else
+#define STDEXEC_CUDA(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#endif
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// For portably declaring attributes on functions and types
+//   Usage:
+//
+//   STDEXEC_ATTRIBUTE((attr1, attr2, ...))
+//   void foo() { ... }
+#define STDEXEC_ATTRIBUTE(_XP) STDEXEC_FOR_EACH(STDEXEC_ATTR, STDEXEC_EXPAND _XP)
+#define STDEXEC_ATTR(_ATTR) \
+  STDEXEC_CAT(STDEXEC_ATTR_WHICH_, STDEXEC_CHECK(STDEXEC_CAT(STDEXEC_ATTR_, _ATTR)))(_ATTR)
+
+// unknown attributes are treated like C++-style attributes
+#define STDEXEC_ATTR_WHICH_0(_ATTR) [[_ATTR]]
+
+// custom handling for specific attribute types
+#define STDEXEC_ATTR_WHICH_1(_ATTR) STDEXEC_CUDA(__host__)
+#define STDEXEC_ATTR_host STDEXEC_PROBE(~, 1)
+#define STDEXEC_ATTR___host__ STDEXEC_PROBE(~, 1)
+
+#define STDEXEC_ATTR_WHICH_2(_ATTR) STDEXEC_CUDA(__device__)
+#define STDEXEC_ATTR_device STDEXEC_PROBE(~, 2)
+#define STDEXEC_ATTR___device__ STDEXEC_PROBE(~, 2)
+
+#if STDEXEC_NVHPC()
+// NVBUG #4067067: NVHPC does not fully support [[no_unique_address]]
+#define STDEXEC_ATTR_WHICH_3(_ATTR) /*nothing*/
+#elif STDEXEC_MSVC()
+// MSVCBUG https://developercommunity.visualstudio.com/t/Incorrect-codegen-when-using-msvc::no_/10452874
+#define STDEXEC_ATTR_WHICH_3(_ATTR) // [[msvc::no_unique_address]]
+#elif STDEXEC_CLANG_CL()
+// clang-cl does not support: https://reviews.llvm.org/D110485
+#define STDEXEC_ATTR_WHICH_3(_ATTR) // [[msvc::no_unique_address]]
+#else
+#define STDEXEC_ATTR_WHICH_3(_ATTR) [[no_unique_address]]
+#endif
+#define STDEXEC_ATTR_no_unique_address STDEXEC_PROBE(~, 3)
+
+#if STDEXEC_MSVC()
+#define STDEXEC_ATTR_WHICH_4(_ATTR) __forceinline
+#elif defined(__GNUC__)
+#define STDEXEC_ATTR_WHICH_4(_ATTR) __attribute__((always_inline))
+#else
+#define STDEXEC_ATTR_WHICH_4(_ATTR) /*nothing*/
+#endif
+#define STDEXEC_ATTR_always_inline STDEXEC_PROBE(~, 4)
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// warning push/pop portability macros
 #if STDEXEC_NVCC()
 #define STDEXEC_PRAGMA_PUSH() _Pragma("nv_diagnostic push")
 #define STDEXEC_PRAGMA_POP() _Pragma("nv_diagnostic pop")
@@ -97,17 +195,18 @@
 #elif STDEXEC_CLANG() || STDEXEC_GCC()
 #define STDEXEC_PRAGMA_PUSH() _Pragma("GCC diagnostic push")
 #define STDEXEC_PRAGMA_POP() _Pragma("GCC diagnostic pop")
-#define STDEXEC_PRAGMA_IGNORE_GNU(_ARG) _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored _ARG))
+#define STDEXEC_PRAGMA_IGNORE_GNU(...) \
+  _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored __VA_ARGS__))
 #else
 #define STDEXEC_PRAGMA_PUSH()
 #define STDEXEC_PRAGMA_POP()
 #endif
 
 #ifndef STDEXEC_PRAGMA_IGNORE_GNU
-#define STDEXEC_PRAGMA_IGNORE_GNU(_ARG)
+#define STDEXEC_PRAGMA_IGNORE_GNU(...)
 #endif
 #ifndef STDEXEC_PRAGMA_IGNORE_EDG
-#define STDEXEC_PRAGMA_IGNORE_EDG(_ARG)
+#define STDEXEC_PRAGMA_IGNORE_EDG(...)
 #endif
 
 #if !STDEXEC_MSVC() && defined(__has_builtin)
@@ -153,32 +252,19 @@
 #define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&) = delete
 #endif
 
-// NVBUG #4067067
-#if STDEXEC_NVHPC()
-#define STDEXEC_NO_UNIQUE_ADDRESS
-#else
-#define STDEXEC_NO_UNIQUE_ADDRESS [[no_unique_address]]
-#endif
-
 // BUG (gcc PR93711): copy elision fails when initializing a
 // [[no_unique_address]] field from a function returning an object
 // of class type by value
 #if STDEXEC_GCC()
 #define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
 #else
-#define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS [[no_unique_address]]
-#endif
-
-#if STDEXEC_CLANG() && defined(__CUDACC__)
-#define STDEXEC_DETAIL_CUDACC_HOST_DEVICE __host__ __device__
-#else
-#define STDEXEC_DETAIL_CUDACC_HOST_DEVICE
+#define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS STDEXEC_ATTRIBUTE((no_unique_address))
 #endif
 
 #if STDEXEC_NVHPC()
 #include <nv/target>
 #define STDEXEC_TERMINATE() NV_IF_TARGET(NV_IS_HOST, (std::terminate();), (__trap();)) void()
-#elif STDEXEC_CLANG() && defined(__CUDACC__) && defined(__CUDA_ARCH__)
+#elif STDEXEC_CLANG() && STDEXEC_CUDA() && defined(__CUDA_ARCH__)
 #define STDEXEC_TERMINATE() \
   __trap(); \
   __builtin_unreachable()
@@ -222,12 +308,12 @@
 #endif
 
 #if defined(__cpp_explicit_this_parameter) && (__cpp_explicit_this_parameter >= 202110)
-#define STDEXEC_HAS_EXPLICIT_THIS() 1
+#define STDEXEC_EXPLICIT_THIS(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #else
-#define STDEXEC_HAS_EXPLICIT_THIS() 0
+#define STDEXEC_EXPLICIT_THIS(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 
-#if STDEXEC_HAS_EXPLICIT_THIS()
+#if STDEXEC_EXPLICIT_THIS()
 #define STDEXEC_DEFINE_EXPLICIT_THIS_MEMFN(...) __VA_ARGS__
 #define STDEXEC_CALL_EXPLICIT_THIS_MEMFN(_OBJ, _NAME) (_OBJ)._NAME( STDEXEC_CALL_EXPLICIT_THIS_MEMFN_DETAIL
 #define STDEXEC_CALL_EXPLICIT_THIS_MEMFN_DETAIL(...) __VA_ARGS__ )
@@ -249,7 +335,7 @@
 #define STDEXEC_PROBE_TYPE_CHECKING_1 STDEXEC_TYPE_CHECKING_ONE
 #define STDEXEC_PROBE_TYPE_CHECKING_STDEXEC_ENABLE_EXTRA_TYPE_CHECKING STDEXEC_TYPE_CHECKING_TWO
 
-#define STDEXEC_TYPE_CHECKING_WHICH3(...) STDEXEC_PROBE_TYPE_CHECKING_ ## __VA_ARGS__
+#define STDEXEC_TYPE_CHECKING_WHICH3(...) STDEXEC_PROBE_TYPE_CHECKING_##__VA_ARGS__
 #define STDEXEC_TYPE_CHECKING_WHICH2(...) STDEXEC_TYPE_CHECKING_WHICH3(__VA_ARGS__)
 #define STDEXEC_TYPE_CHECKING_WHICH STDEXEC_TYPE_CHECKING_WHICH2(STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
 

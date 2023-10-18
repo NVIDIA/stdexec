@@ -42,8 +42,8 @@ namespace exec {
 
     mutable _ImplFn __impl_;
 
-    STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      explicit __seqexpr(_ImplFn __impl)
+    STDEXEC_ATTRIBUTE((host, device))
+    explicit __seqexpr(_ImplFn __impl)
       : __impl_((_ImplFn&&) __impl) {
     }
 
@@ -106,12 +106,12 @@ namespace exec {
   };
 
   template <class _ImplFn>
-  STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-    __seqexpr(_ImplFn) -> __seqexpr<_ImplFn>;
+  STDEXEC_ATTRIBUTE((host, device))
+  __seqexpr(_ImplFn) -> __seqexpr<_ImplFn>;
 
 #if STDEXEC_NVHPC() || (STDEXEC_GCC() && __GNUC__ < 13)
   namespace __detail {
-    template <class _Tag, class _Domain = stdexec::__default_domain<>>
+    template <class _Tag, class _Domain = stdexec::default_domain>
     struct make_sequence_expr_t {
       template <class _Data = stdexec::__, class... _Children>
       constexpr auto operator()(_Data __data = {}, _Children... __children) const {
@@ -122,7 +122,7 @@ namespace exec {
   }
 #else
   namespace __detail {
-    template <class _Tag, class _Domain = stdexec::__default_domain<>>
+    template <class _Tag, class _Domain = stdexec::default_domain>
     struct make_sequence_expr_t {
       template <class _Data = stdexec::__, class... _Children>
       constexpr auto operator()(_Data __data = {}, _Children... __children) const {
@@ -133,7 +133,7 @@ namespace exec {
   }
 #endif
 
-  template <class _Tag, class _Domain = stdexec::__default_domain<>>
+  template <class _Tag, class _Domain = stdexec::default_domain>
   inline constexpr __detail::make_sequence_expr_t<_Tag, _Domain> make_sequence_expr{};
 
   template <class _Tag, class _Data, class... _Children>
