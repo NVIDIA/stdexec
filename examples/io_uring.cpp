@@ -56,10 +56,14 @@ int main() {
     exec::schedule_after(scheduler, 1s) | stdexec::then([] { std::cout << "Hello, 1!\n"; }),
     exec::schedule_after(scheduler2, 2s) | stdexec::then([] { std::cout << "Hello, 2!\n"; }),
     exec::schedule_after(scheduler, 3s) | stdexec::then([] { std::cout << "Stop it!\n"; }),
-    exec::schedule_after(scheduler2, 4s) | stdexec::then([&] { context.request_stop(); }),
+    exec::finally(exec::schedule_after(scheduler2, 4s), 
+      stdexec::just() | stdexec::then([&] {
+      context.request_stop(); })),
     exec::finally(
       exec::schedule_after(scheduler, 4s),
-      stdexec::just() | stdexec::then([&] { context2.request_stop(); })),
+      stdexec::just() | stdexec::then([&] {
+        context2.request_stop();
+      })),
     exec::schedule_after(scheduler, 10s)    //
       | stdexec::then([] {                  //
           std::cout << "Hello, world!\n";   //
