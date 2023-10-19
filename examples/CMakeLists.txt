@@ -47,7 +47,7 @@ set(stdexec_examples
 )
 
 if (LINUX)
-  set(stdexect_examples ${stdexec_examples}
+  set(stdexec_examples ${stdexec_examples}
                     "example.io_uring : io_uring.cpp"
   )
 endif (LINUX)
