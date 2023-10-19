@@ -264,8 +264,7 @@ namespace exec {
       // This function first completes all tasks that are ready in the completion queue of the io_uring.
       // Then it completes all tasks that are ready in the given queue of ready tasks.
       // The function returns the number of previously submitted completed tasks.
-      int
-        complete(stdexec::__intrusive_queue<& __task::__next_> __ready = __task_queue{}) noexcept {
+      int complete(stdexec::__intrusive_queue<&__task::__next_> __ready = __task_queue{}) noexcept {
         __u32 __head = __head_.load(std::memory_order_relaxed);
         __u32 __tail = __tail_.load(std::memory_order_acquire);
         int __count = 0;
@@ -481,9 +480,11 @@ namespace exec {
             && __n_total_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
           int rc = __io_uring_enter(
             __ring_fd_, __n_newly_submitted_, __min_complete, IORING_ENTER_GETEVENTS);
-          __throw_error_code_if(rc < 0, -rc);
-          STDEXEC_ASSERT(rc <= __n_newly_submitted_);
-          __n_newly_submitted_ -= rc;
+          __throw_error_code_if(rc < 0 && rc != -EINTR, -rc);
+          if (rc != -EINTR) {
+            STDEXEC_ASSERT(rc <= __n_newly_submitted_);
+            __n_newly_submitted_ -= rc;
+          }
           __n_total_submitted_ -= __completion_queue_.complete();
           STDEXEC_ASSERT(0 <= __n_total_submitted_);
           __pending_.append(__requests_.pop_all());

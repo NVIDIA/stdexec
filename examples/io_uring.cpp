@@ -31,10 +31,10 @@ int main() {
   exec::io_uring_context context;
   exec::io_uring_context context2;
   std::thread io_thread{[&] {
-    context.run();
+    context.run_until_stopped();
   }};
   std::thread io_thread2{[&] {
-    context2.run();
+    context2.run_until_stopped();
   }};
   auto scheduler = context.get_scheduler();
   auto scheduler2 = context2.get_scheduler();
@@ -56,10 +56,14 @@ int main() {
     exec::schedule_after(scheduler, 1s) | stdexec::then([] { std::cout << "Hello, 1!\n"; }),
     exec::schedule_after(scheduler2, 2s) | stdexec::then([] { std::cout << "Hello, 2!\n"; }),
     exec::schedule_after(scheduler, 3s) | stdexec::then([] { std::cout << "Stop it!\n"; }),
-    exec::schedule_after(scheduler2, 4s) | stdexec::then([&] { context.request_stop(); }),
+    exec::finally(exec::schedule_after(scheduler2, 4s), 
+      stdexec::just() | stdexec::then([&] {
+      context.request_stop(); })),
     exec::finally(
       exec::schedule_after(scheduler, 4s),
-      stdexec::just() | stdexec::then([&] { context2.request_stop(); })),
+      stdexec::just() | stdexec::then([&] {
+        context2.request_stop();
+      })),
     exec::schedule_after(scheduler, 10s)    //
       | stdexec::then([] {                  //
           std::cout << "Hello, world!\n";   //
@@ -87,8 +91,9 @@ int main() {
     | stdexec::then([] { std::cout << "This should not print, because the context is stopped.\n"; })
     | stdexec::upon_stopped([] { std::cout << "The context is stopped!\n"; }));
 
+  context.reset();
   io_thread = std::thread{[&] {
-    context.run();
+    context.run_until_stopped();
   }};
 
   while (!context.is_running())
