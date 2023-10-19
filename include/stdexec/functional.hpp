@@ -20,6 +20,7 @@
 #include "concepts.hpp"
 
 #include <functional>
+#include <tuple>
 
 namespace stdexec::__std_concepts {
 #if STDEXEC_HAS_STD_CONCEPTS_HEADER()
@@ -102,6 +103,45 @@ namespace stdexec {
       return {(_Fun0&&) __fun0, (_Fun1&&) __fun1};
     }
   } __compose{};
+
+  namespace __detail {
+    template <class _Fn, class _Tup>
+    using __apply_result_t =
+      decltype(std::apply(__declval<_Fn>(), __declval<_Tup>()));
+
+    template <class _Fn>
+    struct __applicable_helper {
+      template <class... Ts>
+      auto operator()(Ts&&...) const noexcept {
+        return std::is_invocable<_Fn, Ts...>();
+      }
+    };
+  } // namespace __detail
+
+  template <class _Fn, class _Tup>
+  concept __applicable =
+    __detail::__apply_result_t<__detail::__applicable_helper<_Fn>, _Tup>::value;
+
+  template <class _Fn, class _Tup>
+  concept __nothrow_applicable =
+    __applicable<_Fn, _Tup>
+    && noexcept(std::apply(__declval<_Fn>(), __declval<_Tup>()));
+
+  template <class _Fn, class _Tup>
+    requires __applicable<_Fn, _Tup>
+  using __apply_result_t = __detail::__apply_result_t<_Fn, _Tup>;
+
+  struct __apply_t {
+    template <class _Fn, class _Tup>
+      requires __applicable<_Fn, _Tup>
+    constexpr auto operator()(_Fn&& __fn, _Tup&& __tup) const
+      noexcept(__nothrow_applicable<_Fn, _Tup>)
+      -> __apply_result_t<_Fn, _Tup> {
+      return std::apply((_Fn&&) __fn, (_Tup&&) __tup);
+    }
+  };
+
+  inline constexpr __apply_t __apply{};
 
   template <class _Tag, class _Ty>
   struct __field {
