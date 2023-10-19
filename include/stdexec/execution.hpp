@@ -5395,7 +5395,7 @@ namespace stdexec {
       template <scheduler _Scheduler, sender _Sender>
       auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const {
         using _Env = __t<__environ<__id<__decay_t<_Scheduler>>>>;
-        auto __env = __join_env(_Env{(_Scheduler&&) __sched}, stdexec::get_env(__sndr));
+        auto __env = __join_env(_Env{{(_Scheduler&&) __sched}}, stdexec::get_env(__sndr));
         auto __domain = query_or(get_domain, __sched, default_domain());
         return stdexec::transform_sender(
           __domain, make_sender_expr<schedule_from_t>(std::move(__env), (_Sender&&) __sndr));
@@ -5483,7 +5483,7 @@ namespace stdexec {
         return stdexec::transform_sender(
           __domain,
           make_sender_expr<transfer_t>(
-            __join_env(_Env{(_Scheduler&&) __sched}, stdexec::get_env(__sndr)),
+            __join_env(_Env{{(_Scheduler&&) __sched}}, stdexec::get_env(__sndr)),
             (_Sender&&) __sndr));
       }
 
@@ -5555,7 +5555,7 @@ namespace stdexec {
       static auto get_env(const _Sender& __sndr) noexcept {
         return __apply(
           [&]<class _Scheduler>(const _Scheduler& __sched, auto&&...) noexcept {
-            return __t<__schedule_from::__environ<__id<_Scheduler>>>{__sched};
+            return __t<__schedule_from::__environ<__id<_Scheduler>>>{{__sched}};
           },
           apply_sender((_Sender&&) __sndr, __detail::__get_data()));
       }
@@ -6523,7 +6523,7 @@ namespace stdexec {
         return stdexec::transform_sender(
           __domain,
           make_sender_expr<transfer_when_all_t>(
-            _Env{(_Scheduler&&) __sched}, (_Senders&&) __sndrs...));
+            _Env{{(_Scheduler&&) __sched}}, (_Senders&&) __sndrs...));
       }
 
       template <sender_expr_for<transfer_when_all_t> _Sender>
@@ -6567,7 +6567,7 @@ namespace stdexec {
         return stdexec::transform_sender(
           __domain,
           make_sender_expr<transfer_when_all_with_variant_t>(
-            _Env{(_Scheduler&&) __sched}, (_Senders&&) __sndrs...));
+            _Env{{(_Scheduler&&) __sched}}, (_Senders&&) __sndrs...));
       }
 
       template <sender_expr_for<transfer_when_all_with_variant_t> _Sender>
