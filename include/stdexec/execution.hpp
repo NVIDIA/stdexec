@@ -5531,23 +5531,48 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.transfer_just]
   namespace __transfer_just {
+    inline auto __transfer_just_tag_invoke() {
+      return []<class... _Ts>(_Ts&&... __ts) -> tag_invoke_result_t<transfer_just_t, _Ts...> {
+        return tag_invoke(transfer_just, (_Ts&&) __ts...);
+      };
+    }
+
     struct transfer_just_t {
-      template <scheduler _Scheduler, __movable_value... _Values>
-        requires tag_invocable<transfer_just_t, _Scheduler, _Values...>
-              && sender<tag_invoke_result_t<transfer_just_t, _Scheduler, _Values...>>
-      auto operator()(_Scheduler&& __sched, _Values&&... __vals) const
-        noexcept(nothrow_tag_invocable<transfer_just_t, _Scheduler, _Values...>)
-          -> tag_invoke_result_t<transfer_just_t, _Scheduler, _Values...> {
-        return tag_invoke(*this, (_Scheduler&&) __sched, (_Values&&) __vals...);
-      }
+      using _Data = __0;
+      using __legacy_customizations_t = //
+        __types<__apply_t(decltype(__transfer_just_tag_invoke()), _Data)>;
 
       template <scheduler _Scheduler, __movable_value... _Values>
-        requires(
-          !tag_invocable<transfer_just_t, _Scheduler, _Values...>
-          || !sender<tag_invoke_result_t<transfer_just_t, _Scheduler, _Values...>>)
-      auto operator()(_Scheduler&& __sched, _Values&&... __vals) const
-        -> decltype(transfer(just((_Values&&) __vals...), (_Scheduler&&) __sched)) {
-        return transfer(just((_Values&&) __vals...), (_Scheduler&&) __sched);
+      auto operator()(_Scheduler&& __sched, _Values&&... __vals) const {
+        auto __domain = query_or(get_domain, __sched, default_domain());
+        return stdexec::transform_sender(
+          __domain,
+          make_sender_expr<transfer_just_t>(
+            std::tuple{(_Scheduler&&) __sched, (_Values&&) __vals...}));
+      }
+
+      template <sender_expr_for<transfer_just_t> _Sender>
+      static auto get_env(const _Sender& __sndr) noexcept {
+        return __apply(
+          [&]<class _Scheduler>(const _Scheduler& __sched, auto&&...) noexcept {
+            return __t<__schedule_from::__environ<__id<_Scheduler>>>{__sched};
+          },
+          apply_sender((_Sender&&) __sndr, __detail::__get_data()));
+      }
+
+      template <class _Sender, class _Env>
+      static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
+        return __apply(
+          [&]<class _Scheduler, class... _Values>(_Scheduler&& __sched, _Values&&... __vals) {
+            auto __domain = __get_env_domain(__env);
+            return stdexec::transform_sender(
+              __domain,
+              transfer(
+                stdexec::transform_sender(__domain, just((_Values&&) __vals...), __env),
+                (_Scheduler&&) __sched),
+              __env);
+          },
+          apply_sender((_Sender&&) __sndr, __detail::__get_data()));
       }
     };
   } // namespace __transfer_just

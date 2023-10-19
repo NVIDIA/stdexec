@@ -165,6 +165,15 @@ namespace stdexec {
   }
 
   using __transfer::transfer_t;
+  extern const transfer_t transfer;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  namespace __transfer_just {
+    struct transfer_just_t;
+  }
+
+  using __transfer_just::transfer_just_t;
+  extern const transfer_just_t transfer_just;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __on_v2 {
