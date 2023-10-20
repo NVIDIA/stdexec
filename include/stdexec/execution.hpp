@@ -5854,7 +5854,7 @@ namespace stdexec {
 
       template <scheduler _Scheduler, sender _Sender>
       auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const {
-        auto __domain = __get_sender_domain((_Sender&&) __sndr);
+        auto __domain = query_or(get_domain, __sched, default_domain());
         return stdexec::transform_sender(
           __domain, make_sender_expr<on_t>((_Scheduler&&) __sched, (_Sender&&) __sndr));
       }
