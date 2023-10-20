@@ -106,8 +106,7 @@ namespace stdexec {
 
   namespace __detail {
     template <class _Fn, class _Tup>
-    using __apply_result_t =
-      decltype(std::apply(__declval<_Fn>(), __declval<_Tup>()));
+    using __apply_result_t = decltype(std::apply(__declval<_Fn>(), __declval<_Tup>()));
 
     template <class _Fn>
     struct __applicable_helper {
@@ -124,8 +123,7 @@ namespace stdexec {
 
   template <class _Fn, class _Tup>
   concept __nothrow_applicable =
-    __applicable<_Fn, _Tup>
-    && noexcept(std::apply(__declval<_Fn>(), __declval<_Tup>()));
+    __applicable<_Fn, _Tup>&& noexcept(std::apply(__declval<_Fn>(), __declval<_Tup>()));
 
   template <class _Fn, class _Tup>
     requires __applicable<_Fn, _Tup>
@@ -135,8 +133,7 @@ namespace stdexec {
     template <class _Fn, class _Tup>
       requires __applicable<_Fn, _Tup>
     constexpr auto operator()(_Fn&& __fn, _Tup&& __tup) const
-      noexcept(__nothrow_applicable<_Fn, _Tup>)
-      -> __apply_result_t<_Fn, _Tup> {
+      noexcept(__nothrow_applicable<_Fn, _Tup>) -> __apply_result_t<_Fn, _Tup> {
       return std::apply((_Fn&&) __fn, (_Tup&&) __tup);
     }
   };
