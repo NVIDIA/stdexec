@@ -34,131 +34,135 @@
 
 using namespace stdexec;
 
-struct boolean_sender {
-  using is_sender = void;
-  using __t = boolean_sender;
-  using __id = boolean_sender;
-  using completion_signatures = stdexec::completion_signatures<set_value_t(bool)>;
+namespace {
 
-  template <class Receiver>
-  struct operation {
-    Receiver rcvr_;
-    int counter_;
+  struct boolean_sender {
+    using is_sender = void;
+    using __t = boolean_sender;
+    using __id = boolean_sender;
+    using completion_signatures = stdexec::completion_signatures<set_value_t(bool)>;
 
-    friend void tag_invoke(start_t, operation &self) noexcept {
-      if (self.counter_ == 0) {
-        set_value((Receiver &&) self.rcvr_, true);
-      } else {
-        set_value((Receiver &&) self.rcvr_, false);
+    template <class Receiver>
+    struct operation {
+      Receiver rcvr_;
+      int counter_;
+
+      friend void tag_invoke(start_t, operation &self) noexcept {
+        if (self.counter_ == 0) {
+          set_value((Receiver &&) self.rcvr_, true);
+        } else {
+          set_value((Receiver &&) self.rcvr_, false);
+        }
       }
+    };
+
+    template <receiver_of<completion_signatures> Receiver>
+    friend operation<Receiver> tag_invoke(connect_t, boolean_sender self, Receiver rcvr) {
+      return {(Receiver &&) rcvr, --*self.counter_};
     }
+
+    std::shared_ptr<int> counter_ = std::make_shared<int>(1000);
   };
 
-  template <receiver_of<completion_signatures> Receiver>
-  friend operation<Receiver> tag_invoke(connect_t, boolean_sender self, Receiver rcvr) {
-    return {(Receiver &&) rcvr, --*self.counter_};
+  TEST_CASE("repeat_effect_until returns a sender", "[adaptors][repeat_effect_until]") {
+    auto snd = exec::repeat_effect_until(ex::just() | then([] { return false; }));
+    static_assert(ex::sender<decltype(snd)>);
+    (void) snd;
   }
 
-  std::shared_ptr<int> counter_ = std::make_shared<int>(1000);
-};
+  TEST_CASE(
+    "repeat_effect_until with environment returns a sender",
+    "[adaptors][repeat_effect_until]") {
+    auto snd = exec::repeat_effect_until(just() | then([] { return true; }));
+    static_assert(ex::sender_in<decltype(snd), empty_env>);
+    (void) snd;
+  }
 
-TEST_CASE("repeat_effect_until returns a sender", "[adaptors][repeat_effect_until]") {
-  auto snd = exec::repeat_effect_until(ex::just() | then([] { return false; }));
-  static_assert(ex::sender<decltype(snd)>);
-  (void) snd;
-}
+  TEST_CASE(
+    "repeat_effect_until produces void value to downstream receiver",
+    "[adaptors][repeat_effect_until]") {
+    sender auto source = just(1) | then([](int n) { return true; });
+    sender auto snd = exec::repeat_effect_until(std::move(source));
+    // The receiver checks if we receive the void value
+    auto op = stdexec::connect(std::move(snd), expect_void_receiver{});
+    start(op);
+  }
 
-TEST_CASE(
-  "repeat_effect_until with environment returns a sender",
-  "[adaptors][repeat_effect_until]") {
-  auto snd = exec::repeat_effect_until(just() | then([] { return true; }));
-  static_assert(ex::sender_in<decltype(snd), empty_env>);
-  (void) snd;
-}
+  TEST_CASE("simple example for repeat_effect_until", "[adaptors][repeat_effect_until]") {
+    sender auto snd = exec::repeat_effect_until(boolean_sender{});
+    stdexec::sync_wait(std::move(snd));
+  }
 
-TEST_CASE(
-  "repeat_effect_until produces void value to downstream receiver",
-  "[adaptors][repeat_effect_until]") {
-  sender auto source = just(1) | then([](int n) { return true; });
-  sender auto snd = exec::repeat_effect_until(std::move(source));
-  // The receiver checks if we receive the void value
-  auto op = stdexec::connect(std::move(snd), expect_void_receiver{});
-  start(op);
-}
+  TEST_CASE("repeat_effect_until works with pipeline operator", "[adaptors][repeat_effect_until]") {
+    bool should_stopped = true;
+    ex::sender auto snd = just(should_stopped) | exec::repeat_effect_until()
+                        | then([] { return 1; });
+    wait_for_value(std::move(snd), 1);
+  }
 
-TEST_CASE("simple example for repeat_effect_until", "[adaptors][repeat_effect_until]") {
-  sender auto snd = exec::repeat_effect_until(boolean_sender{});
-  stdexec::sync_wait(std::move(snd));
-}
+  TEST_CASE(
+    "repeat_effect_until works when input sender produces an int value",
+    "[adaptors][repeat_effect_until]") {
+    sender auto snd = exec::repeat_effect_until(just(1));
+    auto op = stdexec::connect(std::move(snd), expect_void_receiver{});
+    start(op);
+  }
 
-TEST_CASE("repeat_effect_until works with pipeline operator", "[adaptors][repeat_effect_until]") {
-  bool should_stopped = true;
-  ex::sender auto snd = just(should_stopped) | exec::repeat_effect_until() | then([] { return 1; });
-  wait_for_value(std::move(snd), 1);
-}
+  TEST_CASE(
+    "repeat_effect_until works when input sender produces an object that can be converted to bool"
+    "[adaptors][repeat_effect_until]") {
+    struct pred {
+      operator bool() {
+        return --n <= 100;
+      }
 
-TEST_CASE(
-  "repeat_effect_until works when input sender produces an int value",
-  "[adaptors][repeat_effect_until]") {
-  sender auto snd = exec::repeat_effect_until(just(1));
-  auto op = stdexec::connect(std::move(snd), expect_void_receiver{});
-  start(op);
-}
+      int n = 100;
+    };
 
-TEST_CASE(
-  "repeat_effect_until works when input sender produces an object that can be converted to bool"
-  "[adaptors][repeat_effect_until]") {
-  struct pred {
-    operator bool() {
-      return --n <= 100;
-    }
+    pred p;
+    auto input_snd = just() | then([&p] { return p; });
+    stdexec::sync_wait(exec::repeat_effect_until(std::move(input_snd)));
+  }
 
-    int n = 100;
-  };
+  TEST_CASE(
+    "repeat_effect_until forwards set_error calls of other types",
+    "[adaptors][repeat_effect_until]") {
+    auto snd = just_error(std::string("error")) | exec::repeat_effect_until();
+    auto op = ex::connect(std::move(snd), expect_error_receiver{std::string("error")});
+    start(op);
+  }
 
-  pred p;
-  auto input_snd = just() | then([&p] { return p; });
-  stdexec::sync_wait(exec::repeat_effect_until(std::move(input_snd)));
-}
+  TEST_CASE("repeat_effect_until forwards set_stopped calls", "[adaptors][repeat_effect_until]") {
+    auto snd = just_stopped() | exec::repeat_effect_until();
+    auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
+    start(op);
+  }
 
-TEST_CASE(
-  "repeat_effect_until forwards set_error calls of other types",
-  "[adaptors][repeat_effect_until]") {
-  auto snd = just_error(std::string("error")) | exec::repeat_effect_until();
-  auto op = ex::connect(std::move(snd), expect_error_receiver{std::string("error")});
-  start(op);
-}
+  TEST_CASE(
+    "running deeply recursing algo on repeat_effect_until doesn't blow the stack",
+    "[adaptors][repeat_effect_until]") {
+    int n = 1;
+    sender auto snd = exec::repeat_effect_until(just() | then([&n] {
+                                                  ++n;
+                                                  return n == 1'000'000;
+                                                }));
+    stdexec::sync_wait(std::move(snd));
+    CHECK(n == 1'000'000);
+  }
 
-TEST_CASE("repeat_effect_until forwards set_stopped calls", "[adaptors][repeat_effect_until]") {
-  auto snd = just_stopped() | exec::repeat_effect_until();
-  auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
-  start(op);
-}
+  TEST_CASE("repeat_effect_until works when changing threads", "[adaptors][repeat_effect_until]") {
+    exec::static_thread_pool pool{2};
+    bool called{false};
+    sender auto snd = exec::on(
+      pool.get_scheduler(), //
+      ex::just()            //
+        | ex::then([&] {
+            called = true;
+            return called;
+          })
+        | exec::repeat_effect_until());
+    stdexec::sync_wait(std::move(snd));
 
-TEST_CASE(
-  "running deeply recursing algo on repeat_effect_until doesn't blow the stack",
-  "[adaptors][repeat_effect_until]") {
-  int n = 1;
-  sender auto snd = exec::repeat_effect_until(just() | then([&n] {
-                                                ++n;
-                                                return n == 1'000'000;
-                                              }));
-  stdexec::sync_wait(std::move(snd));
-  CHECK(n == 1'000'000);
-}
-
-TEST_CASE("repeat_effect_until works when changing threads", "[adaptors][repeat_effect_until]") {
-  exec::static_thread_pool pool{2};
-  bool called{false};
-  sender auto snd = exec::on(
-    pool.get_scheduler(), //
-    ex::just()            //
-      | ex::then([&] {
-          called = true;
-          return called;
-        })
-      | exec::repeat_effect_until());
-  stdexec::sync_wait(std::move(snd));
-
-  REQUIRE(called);
+    REQUIRE(called);
+  }
 }

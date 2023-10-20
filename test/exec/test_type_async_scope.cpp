@@ -39,72 +39,72 @@ namespace {
     ex::start(op);
     loop.run();
   }
-} // namespace
 
-TEST_CASE("async_scope will complete", "[types][type_async_scope]") {
-  exec::static_thread_pool ctx{1};
+  TEST_CASE("async_scope will complete", "[types][type_async_scope]") {
+    exec::static_thread_pool ctx{1};
 
-  ex::scheduler auto sch = ctx.get_scheduler();
+    ex::scheduler auto sch = ctx.get_scheduler();
 
-  SECTION("after construction") {
-    exec::async_scope scope;
-    expect_empty(scope);
-  }
+    SECTION("after construction") {
+      exec::async_scope scope;
+      expect_empty(scope);
+    }
 
-  SECTION("after spawn") {
-    exec::async_scope scope;
-    ex::sender auto begin = ex::schedule(sch);
-    scope.spawn(begin);
-    stdexec::sync_wait(scope.on_empty());
-    expect_empty(scope);
-  }
+    SECTION("after spawn") {
+      exec::async_scope scope;
+      ex::sender auto begin = ex::schedule(sch);
+      scope.spawn(begin);
+      stdexec::sync_wait(scope.on_empty());
+      expect_empty(scope);
+    }
 
-  SECTION("after nest result discarded") {
-    exec::async_scope scope;
-    ex::sender auto begin = ex::schedule(sch);
-    {
+    SECTION("after nest result discarded") {
+      exec::async_scope scope;
+      ex::sender auto begin = ex::schedule(sch);
+      {
+        ex::sender auto nst = scope.nest(begin);
+        (void) nst;
+      }
+      stdexec::sync_wait(scope.on_empty());
+      expect_empty(scope);
+    }
+
+    SECTION("after nest result started") {
+      exec::async_scope scope;
+      ex::sender auto begin = ex::schedule(sch);
       ex::sender auto nst = scope.nest(begin);
-      (void) nst;
+      auto op = ex::connect(std::move(nst), expect_void_receiver{});
+      ex::start(op);
+      stdexec::sync_wait(scope.on_empty());
+      expect_empty(scope);
     }
-    stdexec::sync_wait(scope.on_empty());
-    expect_empty(scope);
-  }
 
-  SECTION("after nest result started") {
-    exec::async_scope scope;
-    ex::sender auto begin = ex::schedule(sch);
-    ex::sender auto nst = scope.nest(begin);
-    auto op = ex::connect(std::move(nst), expect_void_receiver{});
-    ex::start(op);
-    stdexec::sync_wait(scope.on_empty());
-    expect_empty(scope);
-  }
+    SECTION("after spawn_future result discarded") {
+      exec::static_thread_pool ctx{1};
+      exec::async_scope scope;
+      std::atomic_bool produced{false};
+      ex::sender auto begin = ex::schedule(sch);
+      {
+        ex::sender auto ftr = scope.spawn_future(begin | stdexec::then([&]() { produced = true; }));
+        (void) ftr;
+      }
+      stdexec::sync_wait(
+        scope.on_empty() | stdexec::then([&]() { STDEXEC_ASSERT(produced.load()); }));
+      expect_empty(scope);
+    }
 
-  SECTION("after spawn_future result discarded") {
-    exec::static_thread_pool ctx{1};
-    exec::async_scope scope;
-    std::atomic_bool produced{false};
-    ex::sender auto begin = ex::schedule(sch);
-    {
+    SECTION("after spawn_future result started") {
+      exec::static_thread_pool ctx{1};
+      exec::async_scope scope;
+      std::atomic_bool produced{false};
+      ex::sender auto begin = ex::schedule(sch);
       ex::sender auto ftr = scope.spawn_future(begin | stdexec::then([&]() { produced = true; }));
-      (void) ftr;
+      stdexec::sync_wait(
+        scope.on_empty() | stdexec::then([&]() { STDEXEC_ASSERT(produced.load()); }));
+      auto op = ex::connect(std::move(ftr), expect_void_receiver{});
+      ex::start(op);
+      stdexec::sync_wait(scope.on_empty());
+      expect_empty(scope);
     }
-    stdexec::sync_wait(
-      scope.on_empty() | stdexec::then([&]() { STDEXEC_ASSERT(produced.load()); }));
-    expect_empty(scope);
-  }
-
-  SECTION("after spawn_future result started") {
-    exec::static_thread_pool ctx{1};
-    exec::async_scope scope;
-    std::atomic_bool produced{false};
-    ex::sender auto begin = ex::schedule(sch);
-    ex::sender auto ftr = scope.spawn_future(begin | stdexec::then([&]() { produced = true; }));
-    stdexec::sync_wait(
-      scope.on_empty() | stdexec::then([&]() { STDEXEC_ASSERT(produced.load()); }));
-    auto op = ex::connect(std::move(ftr), expect_void_receiver{});
-    ex::start(op);
-    stdexec::sync_wait(scope.on_empty());
-    expect_empty(scope);
   }
 }
