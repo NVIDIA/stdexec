@@ -17,11 +17,9 @@
 
 #include "../../stdexec/execution.hpp"
 
-#ifdef __EDG__
-#pragma diagnostic push
-#pragma diag_suppress 1302
-#pragma diag_suppress 497
-#endif
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(1302)
+STDEXEC_PRAGMA_IGNORE_EDG(497)
 
 namespace exec {
   struct _FAILURE_TO_CONNECT_ {
@@ -399,6 +397,4 @@ namespace exec {
   };
 } // namespace exec
 
-#ifdef __EDG__
-#pragma diagnostic pop
-#endif
+STDEXEC_PRAGMA_POP()

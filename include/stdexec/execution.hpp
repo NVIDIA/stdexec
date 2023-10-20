@@ -39,13 +39,6 @@
 #include "coroutine.hpp"
 #include "stop_token.hpp"
 
-#ifdef __EDG__
-#pragma diagnostic push
-#pragma diag_suppress 1302
-#pragma diag_suppress 497
-#pragma diag_suppress type_qualifiers_ignored_on_reference
-#endif
-
 #ifndef STDEXEC_DISABLE_R5_DEPRECATION_WARNINGS
 #define STDEXEC_R5_SENDER_DEPRECATION_WARNING \
   [[deprecated( \
@@ -88,6 +81,10 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wpragmas")
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunknown-warning-option")
 STDEXEC_PRAGMA_IGNORE_GNU("-Wundefined-inline")
 STDEXEC_PRAGMA_IGNORE_GNU("-Wsubobject-linkage")
+
+STDEXEC_PRAGMA_IGNORE_EDG(1302)
+STDEXEC_PRAGMA_IGNORE_EDG(497)
+STDEXEC_PRAGMA_IGNORE_EDG(type_qualifiers_ignored_on_reference)
 
 namespace stdexec {
   // [exec.queries.queryable]
@@ -7346,9 +7343,5 @@ template <stdexec::sender _Sender>
 auto operator|(stdexec::__ignore_sender, _Sender&&) noexcept -> stdexec::__ignore_sender;
 
 #include "__detail/__p2300.hpp"
-
-#ifdef __EDG__
-#pragma diagnostic pop
-#endif
 
 STDEXEC_PRAGMA_POP()
