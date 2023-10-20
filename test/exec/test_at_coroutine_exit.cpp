@@ -273,174 +273,179 @@ namespace {
 
 #endif // REQUIRE_TERMINATE
 
-} // unnamed namespace
+  TEST_CASE("OneCleanupAction", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(test_one_cleanup_action(result));
+    REQUIRE(result == 4);
+  }
 
-TEST_CASE("OneCleanupAction", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(test_one_cleanup_action(result));
-  REQUIRE(result == 4);
-}
+  TEST_CASE("TwoCleanupActions", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(test_two_cleanup_actions(result));
+    REQUIRE(result == 8);
+  }
 
-TEST_CASE("TwoCleanupActions", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(test_two_cleanup_actions(result));
-  REQUIRE(result == 8);
-}
+  TEST_CASE("OnStoppedTwoCleanupActions", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(test_on_stopped_two_cleanup_actions_with_stop(result));
+    REQUIRE(result == 8);
+  }
 
-TEST_CASE("OnStoppedTwoCleanupActions", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(test_on_stopped_two_cleanup_actions_with_stop(result));
-  REQUIRE(result == 8);
-}
+  TEST_CASE("OneCleanupActionWithContinuation", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(with_continuation(result, test_one_cleanup_action(result)));
+    REQUIRE(result == 12);
+  }
 
-TEST_CASE("OneCleanupActionWithContinuation", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(with_continuation(result, test_one_cleanup_action(result)));
-  REQUIRE(result == 12);
-}
+  TEST_CASE("TwoCleanupActionsWithContinuation", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(with_continuation(result, test_two_cleanup_actions(result)));
+    REQUIRE(result == 24);
+  }
 
-TEST_CASE("TwoCleanupActionsWithContinuation", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(with_continuation(result, test_two_cleanup_actions(result)));
-  REQUIRE(result == 24);
-}
+  TEST_CASE("CleanupActionWithSender", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(test_sender_cleanup_action(result));
+    REQUIRE(result == 1);
+  }
 
-TEST_CASE("CleanupActionWithSender", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(test_sender_cleanup_action(result));
-  REQUIRE(result == 1);
-}
+  TEST_CASE("OneCleanupActionWithStop", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(test_one_cleanup_action_with_stop(result));
+    REQUIRE(result == 2);
+  }
 
-TEST_CASE("OneCleanupActionWithStop", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(test_one_cleanup_action_with_stop(result));
-  REQUIRE(result == 2);
-}
+  TEST_CASE("OnSucceededOneCleanupAction", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(test_on_succeeded_one_cleanup_action(result));
+    REQUIRE(result == 6);
+  }
 
-TEST_CASE("OnSucceededOneCleanupAction", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(test_on_succeeded_one_cleanup_action(result));
-  REQUIRE(result == 6);
-}
+  TEST_CASE("OnSucceededOneCleanupActionWithStop", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(test_on_succeeded_one_cleanup_action_with_stop(result));
+    REQUIRE(result == 1);
+  }
 
-TEST_CASE("OnSucceededOneCleanupActionWithStop", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(test_on_succeeded_one_cleanup_action_with_stop(result));
-  REQUIRE(result == 1);
-}
+  TEST_CASE("OnSucceededOneCleanupActionWithError", "[task][at_coroutine_exit]") {
+    int result = 0;
+    CHECK_THROWS_AS(
+      stdexec::sync_wait(test_on_succeeded_one_cleanup_action_with_error(result)), int);
+    REQUIRE(result == 1);
+  }
 
-TEST_CASE("OnSucceededOneCleanupActionWithError", "[task][at_coroutine_exit]") {
-  int result = 0;
-  CHECK_THROWS_AS(stdexec::sync_wait(test_on_succeeded_one_cleanup_action_with_error(result)), int);
-  REQUIRE(result == 1);
-}
+  TEST_CASE("OnStoppedOneCleanupActionSuccess", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(test_on_stopped_one_cleanup_action(result));
+    REQUIRE(result == 2);
+  }
 
-TEST_CASE("OnStoppedOneCleanupActionSuccess", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(test_on_stopped_one_cleanup_action(result));
-  REQUIRE(result == 2);
-}
+  TEST_CASE("OnStoppedOneCleanupActionWithStop", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(test_on_stopped_one_cleanup_action_with_stop(result));
+    REQUIRE(result == 3);
+  }
 
-TEST_CASE("OnStoppedOneCleanupActionWithStop", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(test_on_stopped_one_cleanup_action_with_stop(result));
-  REQUIRE(result == 3);
-}
+  TEST_CASE("OnStoppedOneCleanupActionWithError", "[task][at_coroutine_exit]") {
+    int result = 0;
+    CHECK_THROWS_AS(stdexec::sync_wait(test_on_stopped_one_cleanup_action_with_error(result)), int);
+    REQUIRE(result == 1);
+  }
 
-TEST_CASE("OnStoppedOneCleanupActionWithError", "[task][at_coroutine_exit]") {
-  int result = 0;
-  CHECK_THROWS_AS(stdexec::sync_wait(test_on_stopped_one_cleanup_action_with_error(result)), int);
-  REQUIRE(result == 1);
-}
+  TEST_CASE("OnFailedOneCleanupActionSuccess", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(test_on_failed_one_cleanup_action(result));
+    REQUIRE(result == 2);
+  }
 
-TEST_CASE("OnFailedOneCleanupActionSuccess", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(test_on_failed_one_cleanup_action(result));
-  REQUIRE(result == 2);
-}
+  TEST_CASE("OnFailedOneCleanupActionWithStop", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(test_on_failed_one_cleanup_action_with_stop(result));
+    REQUIRE(result == 1);
+  }
 
-TEST_CASE("OnFailedOneCleanupActionWithStop", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(test_on_failed_one_cleanup_action_with_stop(result));
-  REQUIRE(result == 1);
-}
+  TEST_CASE("OnFailedOneCleanupActionWithError", "[task][at_coroutine_exit]") {
+    int result = 0;
+    CHECK_THROWS_AS(stdexec::sync_wait(test_on_failed_one_cleanup_action_with_error(result)), int);
+    REQUIRE(result == 3);
+  }
 
-TEST_CASE("OnFailedOneCleanupActionWithError", "[task][at_coroutine_exit]") {
-  int result = 0;
-  CHECK_THROWS_AS(stdexec::sync_wait(test_on_failed_one_cleanup_action_with_error(result)), int);
-  REQUIRE(result == 3);
-}
+  TEST_CASE("TwoCleanupActionsWithStop", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(test_two_cleanup_actions_with_stop(result));
+    REQUIRE(result == 2);
+  }
 
-TEST_CASE("TwoCleanupActionsWithStop", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(test_two_cleanup_actions_with_stop(result));
-  REQUIRE(result == 2);
-}
+  TEST_CASE("OneCleanupActionWithContinuationAndStop", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(with_continuation(result, test_one_cleanup_action_with_stop(result)));
+    REQUIRE(result == 2);
+  }
 
-TEST_CASE("OneCleanupActionWithContinuationAndStop", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(with_continuation(result, test_one_cleanup_action_with_stop(result)));
-  REQUIRE(result == 2);
-}
+  TEST_CASE("TwoCleanupActionsWithContinuationAndStop", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(with_continuation(result, test_two_cleanup_actions_with_stop(result)));
+    REQUIRE(result == 2);
+  }
 
-TEST_CASE("TwoCleanupActionsWithContinuationAndStop", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(with_continuation(result, test_two_cleanup_actions_with_stop(result)));
-  REQUIRE(result == 2);
-}
+  TEST_CASE("CleanupActionWithStatefulSender", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(test_stateful_cleanup_action(result, 42));
+    REQUIRE(result == 42);
+  }
 
-TEST_CASE("CleanupActionWithStatefulSender", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(test_stateful_cleanup_action(result, 42));
-  REQUIRE(result == 42);
-}
+  TEST_CASE("CleanupActionWithMutableStateful", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(test_mutable_stateful_cleanup_action(result));
+    REQUIRE(result == 10);
+  }
 
-TEST_CASE("CleanupActionWithMutableStateful", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(test_mutable_stateful_cleanup_action(result));
-  REQUIRE(result == 10);
-}
-
-TEST_CASE("OnSuccessCleanupActionWithMutableStateful", "[task][at_coroutine_exit]") {
-  int result = 0;
-  stdexec::sync_wait(test_on_succeeded_mutable_stateful_cleanup_action(result));
-  REQUIRE(result == 10);
-}
+  TEST_CASE("OnSuccessCleanupActionWithMutableStateful", "[task][at_coroutine_exit]") {
+    int result = 0;
+    stdexec::sync_wait(test_on_succeeded_mutable_stateful_cleanup_action(result));
+    REQUIRE(result == 10);
+  }
 
 #ifdef REQUIRE_TERMINATE
 
-TEST_CASE("CancelInCleanupActionCallsTerminate", "[task][at_coroutine_exit]") {
-  int result = 0;
-  test_cancel_in_cleanup_action_causes_death(result);
-}
+  TEST_CASE("CancelInCleanupActionCallsTerminate", "[task][at_coroutine_exit]") {
+    int result = 0;
+    test_cancel_in_cleanup_action_causes_death(result);
+  }
 
-TEST_CASE("CancelDuringCancellationUnwindCallsTerminate", "[task][at_coroutine_exit]") {
-  int result = 0;
-  test_cancel_during_cancellation_unwind_causes_death(result);
-}
+  TEST_CASE("CancelDuringCancellationUnwindCallsTerminate", "[task][at_coroutine_exit]") {
+    int result = 0;
+    test_cancel_during_cancellation_unwind_causes_death(result);
+  }
 
-TEST_CASE("ThrowInCleanupActionCallsTerminate", "[task][at_coroutine_exit]") {
-  int result = 0;
-  test_throw_in_cleanup_action_causes_death(result);
-}
+  TEST_CASE("ThrowInCleanupActionCallsTerminate", "[task][at_coroutine_exit]") {
+    int result = 0;
+    test_throw_in_cleanup_action_causes_death(result);
+  }
 
-TEST_CASE("ThrowInCleanupActionDuringExceptionUnwindCallsTerminate", "[task][at_coroutine_exit]") {
-  int result = 0;
-  test_throw_in_cleanup_action_during_exception_unwind_causes_death(result);
-}
+  TEST_CASE(
+    "ThrowInCleanupActionDuringExceptionUnwindCallsTerminate",
+    "[task][at_coroutine_exit]") {
+    int result = 0;
+    test_throw_in_cleanup_action_during_exception_unwind_causes_death(result);
+  }
 
-TEST_CASE("CancelInCleanupActionDuringExceptionUnwindCallsTerminate", "[task][at_coroutine_exit]") {
-  int result = 0;
-  test_cancel_in_cleanup_action_during_exception_unwind_causes_death(result);
-}
+  TEST_CASE(
+    "CancelInCleanupActionDuringExceptionUnwindCallsTerminate",
+    "[task][at_coroutine_exit]") {
+    int result = 0;
+    test_cancel_in_cleanup_action_during_exception_unwind_causes_death(result);
+  }
 
-TEST_CASE(
-  "ThrowInCleanupActionDuringCancellationUnwindCallsTerminate",
-  "[task][at_coroutine_exit]") {
-  int result = 0;
-  test_throw_in_cleanup_action_during_cancellation_unwind_causes_death(result);
-}
+  TEST_CASE(
+    "ThrowInCleanupActionDuringCancellationUnwindCallsTerminate",
+    "[task][at_coroutine_exit]") {
+    int result = 0;
+    test_throw_in_cleanup_action_during_cancellation_unwind_causes_death(result);
+  }
 
 #endif // REQUIRE_TERMINATE
+
+} // unnamed namespace
 
 #endif // !STDEXEC_STD_NO_COROUTINES_

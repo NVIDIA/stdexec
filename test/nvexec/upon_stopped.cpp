@@ -8,28 +8,31 @@ namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
-TEST_CASE("nvexec upon_stopped returns a sender", "[cuda][stream][adaptors][upon_stopped]") {
-  nvexec::stream_context stream_ctx{};
+namespace {
 
-  auto snd = ex::just_stopped() | ex::transfer(stream_ctx.get_scheduler())
-           | ex::upon_stopped([] { return ex::just(); });
-  STATIC_REQUIRE(ex::sender<decltype(snd)>);
-  (void) snd;
-}
+  TEST_CASE("nvexec upon_stopped returns a sender", "[cuda][stream][adaptors][upon_stopped]") {
+    nvexec::stream_context stream_ctx{};
 
-TEST_CASE("nvexec upon_stopped executes on GPU", "[cuda][stream][adaptors][upon_stopped]") {
-  nvexec::stream_context stream_ctx{};
+    auto snd = ex::just_stopped() | ex::transfer(stream_ctx.get_scheduler())
+             | ex::upon_stopped([] { return ex::just(); });
+    STATIC_REQUIRE(ex::sender<decltype(snd)>);
+    (void) snd;
+  }
 
-  flags_storage_t flags_storage{};
-  auto flags = flags_storage.get();
+  TEST_CASE("nvexec upon_stopped executes on GPU", "[cuda][stream][adaptors][upon_stopped]") {
+    nvexec::stream_context stream_ctx{};
 
-  auto snd = ex::just_stopped() //
-           | ex::transfer(stream_ctx.get_scheduler()) | ex::upon_stopped([=] {
-               if (is_on_gpu()) {
-                 flags.set();
-               }
-             });
-  stdexec::sync_wait(std::move(snd));
+    flags_storage_t flags_storage{};
+    auto flags = flags_storage.get();
 
-  REQUIRE(flags_storage.all_set_once());
+    auto snd = ex::just_stopped() //
+             | ex::transfer(stream_ctx.get_scheduler()) | ex::upon_stopped([=] {
+                 if (is_on_gpu()) {
+                   flags.set();
+                 }
+               });
+    stdexec::sync_wait(std::move(snd));
+
+    REQUIRE(flags_storage.all_set_once());
+  }
 }

@@ -6,3 +6,6 @@
 
 # Fixed access modifier offset
 9150f682444f8f45c02bf858b767c1a0db81e548
+
+# Put all tests in anonymous namespaces and reformat
+5d6b265c3b7ebcf49a725ce17c399b1e9666118d

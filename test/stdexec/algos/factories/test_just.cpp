@@ -21,100 +21,105 @@
 
 namespace ex = stdexec;
 
-TEST_CASE("Simple test for just", "[factories][just]") {
-  auto o1 = ex::connect(ex::just(1), expect_value_receiver(1));
-  ex::start(o1);
-  auto o2 = ex::connect(ex::just(2), expect_value_receiver(2));
-  ex::start(o2);
-  auto o3 = ex::connect(ex::just(3), expect_value_receiver(3));
-  ex::start(o3);
+namespace {
 
-  auto o4 = ex::connect(ex::just(std::string("this")), expect_value_receiver(std::string("this")));
-  ex::start(o4);
-  auto o5 = ex::connect(ex::just(std::string("that")), expect_value_receiver(std::string("that")));
-  ex::start(o5);
-}
+  TEST_CASE("Simple test for just", "[factories][just]") {
+    auto o1 = ex::connect(ex::just(1), expect_value_receiver(1));
+    ex::start(o1);
+    auto o2 = ex::connect(ex::just(2), expect_value_receiver(2));
+    ex::start(o2);
+    auto o3 = ex::connect(ex::just(3), expect_value_receiver(3));
+    ex::start(o3);
 
-TEST_CASE("just returns a sender", "[factories][just]") {
-  using t = decltype(ex::just(1));
-  static_assert(ex::sender<t>, "ex::just must return a sender");
-  REQUIRE(ex::sender<t>);
-  REQUIRE(ex::enable_sender<t>);
-}
+    auto o4 = ex::connect(
+      ex::just(std::string("this")), expect_value_receiver(std::string("this")));
+    ex::start(o4);
+    auto o5 = ex::connect(
+      ex::just(std::string("that")), expect_value_receiver(std::string("that")));
+    ex::start(o5);
+  }
 
-TEST_CASE("just can handle multiple values", "[factories][just]") {
-  bool executed{false};
-  auto f = [&](int x, double d) {
-    CHECK(x == 3);
-    CHECK(d == 0.14);
-    executed = true;
-  };
-  auto op = ex::connect(ex::just(3, 0.14), make_fun_receiver(std::move(f)));
-  ex::start(op);
-  CHECK(executed);
-}
+  TEST_CASE("just returns a sender", "[factories][just]") {
+    using t = decltype(ex::just(1));
+    static_assert(ex::sender<t>, "ex::just must return a sender");
+    REQUIRE(ex::sender<t>);
+    REQUIRE(ex::enable_sender<t>);
+  }
 
-TEST_CASE("value types are properly set for just", "[factories][just]") {
-  check_val_types<type_array<type_array<int>>>(ex::just(1));
-  check_val_types<type_array<type_array<double>>>(ex::just(3.14));
-  check_val_types<type_array<type_array<std::string>>>(ex::just(std::string{}));
+  TEST_CASE("just can handle multiple values", "[factories][just]") {
+    bool executed{false};
+    auto f = [&](int x, double d) {
+      CHECK(x == 3);
+      CHECK(d == 0.14);
+      executed = true;
+    };
+    auto op = ex::connect(ex::just(3, 0.14), make_fun_receiver(std::move(f)));
+    ex::start(op);
+    CHECK(executed);
+  }
 
-  check_val_types<type_array<type_array<int, double>>>(ex::just(1, 3.14));
-  check_val_types<type_array<type_array<int, double, std::string>>>(
-    ex::just(1, 3.14, std::string{}));
-}
+  TEST_CASE("value types are properly set for just", "[factories][just]") {
+    check_val_types<type_array<type_array<int>>>(ex::just(1));
+    check_val_types<type_array<type_array<double>>>(ex::just(3.14));
+    check_val_types<type_array<type_array<std::string>>>(ex::just(std::string{}));
 
-TEST_CASE("error types are properly set for just", "[factories][just]") {
-  check_err_types<type_array<>>(ex::just(1));
-}
+    check_val_types<type_array<type_array<int, double>>>(ex::just(1, 3.14));
+    check_val_types<type_array<type_array<int, double, std::string>>>(
+      ex::just(1, 3.14, std::string{}));
+  }
 
-TEST_CASE("just cannot call set_stopped", "[factories][just]") {
-  check_sends_stopped<false>(ex::just(1));
-}
+  TEST_CASE("error types are properly set for just", "[factories][just]") {
+    check_err_types<type_array<>>(ex::just(1));
+  }
 
-TEST_CASE("just works with value type", "[factories][just]") {
-  auto snd = ex::just(std::string{"hello"});
+  TEST_CASE("just cannot call set_stopped", "[factories][just]") {
+    check_sends_stopped<false>(ex::just(1));
+  }
 
-  // Check reported type
-  check_val_types<type_array<type_array<std::string>>>(snd);
+  TEST_CASE("just works with value type", "[factories][just]") {
+    auto snd = ex::just(std::string{"hello"});
 
-  // Check received value
-  std::string res;
-  typecat cat{typecat::undefined};
-  auto op = ex::connect(std::move(snd), typecat_receiver<std::string>{&res, &cat});
-  ex::start(op);
-  CHECK(res == "hello");
-  CHECK(cat == typecat::rvalref);
-}
+    // Check reported type
+    check_val_types<type_array<type_array<std::string>>>(snd);
 
-TEST_CASE("just works with ref type", "[factories][just]") {
-  std::string original{"hello"};
-  auto snd = ex::just(original);
+    // Check received value
+    std::string res;
+    typecat cat{typecat::undefined};
+    auto op = ex::connect(std::move(snd), typecat_receiver<std::string>{&res, &cat});
+    ex::start(op);
+    CHECK(res == "hello");
+    CHECK(cat == typecat::rvalref);
+  }
 
-  // Check reported type
-  check_val_types<type_array<type_array<std::string>>>(snd);
+  TEST_CASE("just works with ref type", "[factories][just]") {
+    std::string original{"hello"};
+    auto snd = ex::just(original);
 
-  // Check received value
-  std::string res;
-  typecat cat{typecat::undefined};
-  auto op = ex::connect(std::move(snd), typecat_receiver<std::string>{&res, &cat});
-  ex::start(op);
-  CHECK(res == original);
-  CHECK(cat == typecat::rvalref);
-}
+    // Check reported type
+    check_val_types<type_array<type_array<std::string>>>(snd);
 
-TEST_CASE("just works with const-ref type", "[factories][just]") {
-  const std::string original{"hello"};
-  auto snd = ex::just(original);
+    // Check received value
+    std::string res;
+    typecat cat{typecat::undefined};
+    auto op = ex::connect(std::move(snd), typecat_receiver<std::string>{&res, &cat});
+    ex::start(op);
+    CHECK(res == original);
+    CHECK(cat == typecat::rvalref);
+  }
 
-  // Check reported type
-  check_val_types<type_array<type_array<std::string>>>(snd);
+  TEST_CASE("just works with const-ref type", "[factories][just]") {
+    const std::string original{"hello"};
+    auto snd = ex::just(original);
 
-  // Check received value
-  std::string res;
-  typecat cat{typecat::undefined};
-  auto op = ex::connect(std::move(snd), typecat_receiver<std::string>{&res, &cat});
-  ex::start(op);
-  CHECK(res == original);
-  CHECK(cat == typecat::rvalref);
+    // Check reported type
+    check_val_types<type_array<type_array<std::string>>>(snd);
+
+    // Check received value
+    std::string res;
+    typecat cat{typecat::undefined};
+    auto op = ex::connect(std::move(snd), typecat_receiver<std::string>{&res, &cat});
+    ex::start(op);
+    CHECK(res == original);
+    CHECK(cat == typecat::rvalref);
+  }
 }

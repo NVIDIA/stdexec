@@ -40,312 +40,315 @@ namespace nvexec {
   /**/
 } // namespace nvexec
 
-template <int N = 1>
-  requires(N > 0)
-class flags_storage_t {
-  int* flags_{};
+namespace {
 
- public:
-  class flags_t {
+  template <int N = 1>
+    requires(N > 0)
+  class flags_storage_t {
     int* flags_{};
 
-    flags_t(int* flags)
-      : flags_(flags) {
-    }
-
    public:
-    __device__ __host__ void set(int idx = 0) const {
-      if (idx < N) {
-        flags_[idx] += 1;
+    class flags_t {
+      int* flags_{};
+
+      flags_t(int* flags)
+        : flags_(flags) {
       }
-    }
 
-    friend flags_storage_t;
-  };
-
-  flags_storage_t(const flags_storage_t&) = delete;
-  flags_storage_t(flags_storage_t&&) = delete;
-
-  void operator()(const flags_storage_t&) = delete;
-  void operator()(flags_storage_t&&) = delete;
-
-  flags_t get() {
-    return {flags_};
-  }
-
-  flags_storage_t() {
-    THROW_ON_CUDA_ERROR(cudaMallocManaged(&flags_, sizeof(int) * N));
-    THROW_ON_CUDA_ERROR(cudaMemset(flags_, 0, sizeof(int) * N));
-  }
-
-  ~flags_storage_t() {
-    THROW_ON_CUDA_ERROR(cudaFree(flags_));
-    flags_ = nullptr;
-  }
-
-  bool is_set_n_times(int n) {
-    int host_flags[N];
-    THROW_ON_CUDA_ERROR(cudaMemcpy(host_flags, flags_, sizeof(int) * N, cudaMemcpyDeviceToHost));
-
-    return std::count(host_flags, host_flags + N, n) == N;
-  }
-
-  bool all_set_once() {
-    return is_set_n_times(1);
-  }
-
-  bool all_unset() {
-    return !all_set_once();
-  }
-};
-
-namespace detail::a_sender {
-  template <class SenderId, class ReceiverId>
-  struct operation_state_t {
-    using Sender = stdexec::__t<SenderId>;
-    using Receiver = stdexec::__t<ReceiverId>;
-    using inner_op_state_t = stdexec::connect_result_t<Sender, Receiver>;
-
-    inner_op_state_t inner_op_;
-
-    friend void tag_invoke(stdexec::start_t, operation_state_t& op) noexcept {
-      stdexec::start(op.inner_op_);
-    }
-
-    operation_state_t(Sender&& sender, Receiver&& receiver)
-      : inner_op_{stdexec::connect((Sender&&) sender, (Receiver&&) receiver)} {
-    }
-  };
-
-  template <class ReceiverId, class Fun>
-  class receiver_t
-    : stdexec::receiver_adaptor<receiver_t<ReceiverId, Fun>, stdexec::__t<ReceiverId>> {
-    using Receiver = stdexec::__t<ReceiverId>;
-    friend stdexec::receiver_adaptor<receiver_t, Receiver>;
-
-    static_assert(std::is_trivially_copyable_v<Receiver>);
-    static_assert(std::is_trivially_copyable_v<Fun>);
-    Fun f_;
-
-    template <class... As>
-    STDEXEC_ATTRIBUTE((host, device))
-    void set_value(As&&... as) && noexcept
-      requires stdexec::__callable<Fun, As&&...>
-    {
-      using result_t = std::invoke_result_t<Fun, As&&...>;
-
-      if constexpr (std::is_same_v<void, result_t>) {
-        f_((As&&) as...);
-        stdexec::set_value(std::move(this->base()));
-      } else {
-        stdexec::set_value(std::move(this->base()), f_((As&&) as...));
+     public:
+      __device__ __host__ void set(int idx = 0) const {
+        if (idx < N) {
+          flags_[idx] += 1;
+        }
       }
+
+      friend flags_storage_t;
+    };
+
+    flags_storage_t(const flags_storage_t&) = delete;
+    flags_storage_t(flags_storage_t&&) = delete;
+
+    void operator()(const flags_storage_t&) = delete;
+    void operator()(flags_storage_t&&) = delete;
+
+    flags_t get() {
+      return {flags_};
     }
 
-   public:
-    explicit receiver_t(Receiver rcvr, Fun fun)
-      : stdexec::receiver_adaptor<receiver_t, Receiver>((Receiver&&) rcvr)
-      , f_((Fun&&) fun) {
-    }
-  };
-
-  template <class SenderId, class FunId>
-  struct sender_t {
-    using is_sender = void;
-    using Sender = stdexec::__t<SenderId>;
-    using Fun = stdexec::__t<FunId>;
-
-    Sender sndr_;
-    Fun fun_;
-
-    template <class Receiver>
-    using receiver_th = receiver_t<stdexec::__id<Receiver>, Fun>;
-
-    template <class Self, class Receiver>
-    using op_t = operation_state_t<
-      stdexec::__x<stdexec::__copy_cvref_t<Self, Sender>>,
-      stdexec::__id<receiver_th<Receiver>>>;
-
-    template <class Self, class Env>
-    using completion_signatures = stdexec::__try_make_completion_signatures<
-      stdexec::__copy_cvref_t<Self, Sender>,
-      Env,
-      stdexec::completion_signatures<>,
-      stdexec::__mbind_front_q<stdexec::__set_value_invoke_t, Fun>>;
-
-    template <stdexec::__decays_to<sender_t> Self, stdexec::receiver Receiver>
-      requires stdexec::
-        receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-      friend auto
-      tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) -> op_t<Self, Receiver> {
-      return op_t<Self, Receiver>(
-        ((Self&&) self).sndr_, receiver_th<Receiver>((Receiver&&) rcvr, self.fun_));
+    flags_storage_t() {
+      THROW_ON_CUDA_ERROR(cudaMallocManaged(&flags_, sizeof(int) * N));
+      THROW_ON_CUDA_ERROR(cudaMemset(flags_, 0, sizeof(int) * N));
     }
 
-    template <stdexec::__decays_to<sender_t> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> completion_signatures<Self, Env> {
-      return {};
+    ~flags_storage_t() {
+      THROW_ON_CUDA_ERROR(cudaFree(flags_));
+      flags_ = nullptr;
     }
 
-    friend auto tag_invoke(stdexec::get_env_t, const sender_t& self) //
-      noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
-        -> stdexec::env_of_t<const Sender&> {
-      return stdexec::get_env(self.sndr_);
-    }
-  };
-} // namespace detail::a_sender
+    bool is_set_n_times(int n) {
+      int host_flags[N];
+      THROW_ON_CUDA_ERROR(cudaMemcpy(host_flags, flags_, sizeof(int) * N, cudaMemcpyDeviceToHost));
 
-namespace detail::a_receiverless_sender {
-  template <class SenderId, class ReceiverId>
-  struct operation_state_t {
-    using Sender = stdexec::__t<SenderId>;
-    using Receiver = stdexec::__t<ReceiverId>;
-    using inner_op_state_t = stdexec::connect_result_t<Sender, Receiver>;
-
-    inner_op_state_t inner_op_;
-
-    friend void tag_invoke(stdexec::start_t, operation_state_t& op) noexcept {
-      stdexec::start(op.inner_op_);
+      return std::count(host_flags, host_flags + N, n) == N;
     }
 
-    operation_state_t(Sender&& sender, Receiver&& receiver)
-      : inner_op_{stdexec::connect((Sender&&) sender, (Receiver&&) receiver)} {
+    bool all_set_once() {
+      return is_set_n_times(1);
+    }
+
+    bool all_unset() {
+      return !all_set_once();
     }
   };
 
-  template <class SenderId>
-  struct sender_t {
-    using is_sender = void;
-    using Sender = stdexec::__t<SenderId>;
+  namespace detail::a_sender {
+    template <class SenderId, class ReceiverId>
+    struct operation_state_t {
+      using Sender = stdexec::__t<SenderId>;
+      using Receiver = stdexec::__t<ReceiverId>;
+      using inner_op_state_t = stdexec::connect_result_t<Sender, Receiver>;
 
-    Sender sndr_;
+      inner_op_state_t inner_op_;
 
-    template <class Self, class Receiver>
-    using op_t = operation_state_t<
-      stdexec::__x<stdexec::__copy_cvref_t<Self, Sender>>,
-      stdexec::__id<Receiver>>;
+      friend void tag_invoke(stdexec::start_t, operation_state_t& op) noexcept {
+        stdexec::start(op.inner_op_);
+      }
 
-    template <class Self, class Env>
-    using completion_signatures = stdexec::__try_make_completion_signatures<
-      stdexec::__copy_cvref_t<Self, Sender>,
-      Env,
-      stdexec::completion_signatures<>>;
+      operation_state_t(Sender&& sender, Receiver&& receiver)
+        : inner_op_{stdexec::connect((Sender&&) sender, (Receiver&&) receiver)} {
+      }
+    };
 
-    template <stdexec::__decays_to<sender_t> Self, stdexec::receiver Receiver>
-      requires stdexec::
-        receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-      friend auto
-      tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) -> op_t<Self, Receiver> {
-      return op_t<Self, Receiver>(((Self&&) self).sndr_, (Receiver&&) rcvr);
+    template <class ReceiverId, class Fun>
+    class receiver_t
+      : stdexec::receiver_adaptor<receiver_t<ReceiverId, Fun>, stdexec::__t<ReceiverId>> {
+      using Receiver = stdexec::__t<ReceiverId>;
+      friend stdexec::receiver_adaptor<receiver_t, Receiver>;
+
+      static_assert(std::is_trivially_copyable_v<Receiver>);
+      static_assert(std::is_trivially_copyable_v<Fun>);
+      Fun f_;
+
+      template <class... As>
+      STDEXEC_ATTRIBUTE((host, device))
+      void set_value(As&&... as) && noexcept
+        requires stdexec::__callable<Fun, As&&...>
+      {
+        using result_t = std::invoke_result_t<Fun, As&&...>;
+
+        if constexpr (std::is_same_v<void, result_t>) {
+          f_((As&&) as...);
+          stdexec::set_value(std::move(this->base()));
+        } else {
+          stdexec::set_value(std::move(this->base()), f_((As&&) as...));
+        }
+      }
+
+     public:
+      explicit receiver_t(Receiver rcvr, Fun fun)
+        : stdexec::receiver_adaptor<receiver_t, Receiver>((Receiver&&) rcvr)
+        , f_((Fun&&) fun) {
+      }
+    };
+
+    template <class SenderId, class FunId>
+    struct sender_t {
+      using is_sender = void;
+      using Sender = stdexec::__t<SenderId>;
+      using Fun = stdexec::__t<FunId>;
+
+      Sender sndr_;
+      Fun fun_;
+
+      template <class Receiver>
+      using receiver_th = receiver_t<stdexec::__id<Receiver>, Fun>;
+
+      template <class Self, class Receiver>
+      using op_t = operation_state_t<
+        stdexec::__x<stdexec::__copy_cvref_t<Self, Sender>>,
+        stdexec::__id<receiver_th<Receiver>>>;
+
+      template <class Self, class Env>
+      using completion_signatures = stdexec::__try_make_completion_signatures<
+        stdexec::__copy_cvref_t<Self, Sender>,
+        Env,
+        stdexec::completion_signatures<>,
+        stdexec::__mbind_front_q<stdexec::__set_value_invoke_t, Fun>>;
+
+      template <stdexec::__decays_to<sender_t> Self, stdexec::receiver Receiver>
+        requires stdexec::
+          receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
+        friend auto
+        tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) -> op_t<Self, Receiver> {
+        return op_t<Self, Receiver>(
+          ((Self&&) self).sndr_, receiver_th<Receiver>((Receiver&&) rcvr, self.fun_));
+      }
+
+      template <stdexec::__decays_to<sender_t> Self, class Env>
+      friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+        -> completion_signatures<Self, Env> {
+        return {};
+      }
+
+      friend auto tag_invoke(stdexec::get_env_t, const sender_t& self) //
+        noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
+          -> stdexec::env_of_t<const Sender&> {
+        return stdexec::get_env(self.sndr_);
+      }
+    };
+  } // namespace detail::a_sender
+
+  namespace detail::a_receiverless_sender {
+    template <class SenderId, class ReceiverId>
+    struct operation_state_t {
+      using Sender = stdexec::__t<SenderId>;
+      using Receiver = stdexec::__t<ReceiverId>;
+      using inner_op_state_t = stdexec::connect_result_t<Sender, Receiver>;
+
+      inner_op_state_t inner_op_;
+
+      friend void tag_invoke(stdexec::start_t, operation_state_t& op) noexcept {
+        stdexec::start(op.inner_op_);
+      }
+
+      operation_state_t(Sender&& sender, Receiver&& receiver)
+        : inner_op_{stdexec::connect((Sender&&) sender, (Receiver&&) receiver)} {
+      }
+    };
+
+    template <class SenderId>
+    struct sender_t {
+      using is_sender = void;
+      using Sender = stdexec::__t<SenderId>;
+
+      Sender sndr_;
+
+      template <class Self, class Receiver>
+      using op_t = operation_state_t<
+        stdexec::__x<stdexec::__copy_cvref_t<Self, Sender>>,
+        stdexec::__id<Receiver>>;
+
+      template <class Self, class Env>
+      using completion_signatures = stdexec::__try_make_completion_signatures<
+        stdexec::__copy_cvref_t<Self, Sender>,
+        Env,
+        stdexec::completion_signatures<>>;
+
+      template <stdexec::__decays_to<sender_t> Self, stdexec::receiver Receiver>
+        requires stdexec::
+          receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
+        friend auto
+        tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) -> op_t<Self, Receiver> {
+        return op_t<Self, Receiver>(((Self&&) self).sndr_, (Receiver&&) rcvr);
+      }
+
+      template <stdexec::__decays_to<sender_t> Self, class Env>
+      friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+        -> completion_signatures<Self, Env> {
+        return {};
+      }
+
+      friend auto tag_invoke(stdexec::get_env_t, const sender_t& self) //
+        noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
+          -> stdexec::env_of_t<const Sender&> {
+        return stdexec::get_env(self.sndr_);
+      }
+    };
+  } // namespace detail::a_receiverless_sender
+
+  enum class a_sender_kind {
+    then,
+    receiverless
+  };
+
+  template <a_sender_kind kind>
+  struct a_sender_helper_t;
+
+  template <>
+  struct a_sender_helper_t<a_sender_kind::then> {
+    template <class _Sender, class _Fun>
+    using sender_th = detail::a_sender::
+      sender_t<stdexec::__x<std::remove_cvref_t<_Sender>>, stdexec::__x<std::remove_cvref_t<_Fun>>>;
+
+    template <stdexec::sender _Sender, class _Fun>
+      requires stdexec::sender<sender_th<_Sender, _Fun>>
+    sender_th<_Sender, _Fun> operator()(_Sender&& __sndr, _Fun __fun) const {
+      return sender_th<_Sender, _Fun>{(_Sender&&) __sndr, (_Fun&&) __fun};
     }
 
-    template <stdexec::__decays_to<sender_t> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-      -> completion_signatures<Self, Env> {
-      return {};
+    template <class _Fun>
+    stdexec::__binder_back<a_sender_helper_t<a_sender_kind::then>, _Fun>
+      operator()(_Fun __fun) const {
+      return {{}, {}, {(_Fun&&) __fun}};
+    };
+  };
+
+  template <>
+  struct a_sender_helper_t<a_sender_kind::receiverless> {
+    template <class _Sender>
+    using receiverless_sender_th =
+      detail::a_receiverless_sender::sender_t<stdexec::__x<std::remove_cvref_t<_Sender>>>;
+
+    template <stdexec::sender _Sender>
+      requires stdexec::sender<receiverless_sender_th<_Sender>>
+    receiverless_sender_th<_Sender> operator()(_Sender&& __sndr) const {
+      return receiverless_sender_th<_Sender>{(_Sender&&) __sndr};
     }
 
-    friend auto tag_invoke(stdexec::get_env_t, const sender_t& self) //
-      noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
-        -> stdexec::env_of_t<const Sender&> {
-      return stdexec::get_env(self.sndr_);
+    stdexec::__binder_back<a_sender_helper_t<a_sender_kind::receiverless>> operator()() const {
+      return {{}, {}, {}};
     }
   };
-} // namespace detail::a_receiverless_sender
 
-enum class a_sender_kind {
-  then,
-  receiverless
-};
-
-template <a_sender_kind kind>
-struct a_sender_helper_t;
-
-template <>
-struct a_sender_helper_t<a_sender_kind::then> {
-  template <class _Sender, class _Fun>
-  using sender_th = detail::a_sender::
-    sender_t<stdexec::__x<std::remove_cvref_t<_Sender>>, stdexec::__x<std::remove_cvref_t<_Fun>>>;
-
-  template <stdexec::sender _Sender, class _Fun>
-    requires stdexec::sender<sender_th<_Sender, _Fun>>
-  sender_th<_Sender, _Fun> operator()(_Sender&& __sndr, _Fun __fun) const {
-    return sender_th<_Sender, _Fun>{(_Sender&&) __sndr, (_Fun&&) __fun};
-  }
-
-  template <class _Fun>
-  stdexec::__binder_back<a_sender_helper_t<a_sender_kind::then>, _Fun>
-    operator()(_Fun __fun) const {
-    return {{}, {}, {(_Fun&&) __fun}};
+  struct a_sender_t
+    : a_sender_helper_t<a_sender_kind::then>
+    , a_sender_helper_t<a_sender_kind::receiverless> {
+    using a_sender_helper_t<a_sender_kind::then>::operator();
+    using a_sender_helper_t<a_sender_kind::receiverless>::operator();
   };
-};
 
-template <>
-struct a_sender_helper_t<a_sender_kind::receiverless> {
-  template <class _Sender>
-  using receiverless_sender_th =
-    detail::a_receiverless_sender::sender_t<stdexec::__x<std::remove_cvref_t<_Sender>>>;
+  constexpr a_sender_t a_sender;
 
-  template <stdexec::sender _Sender>
-    requires stdexec::sender<receiverless_sender_th<_Sender>>
-  receiverless_sender_th<_Sender> operator()(_Sender&& __sndr) const {
-    return receiverless_sender_th<_Sender>{(_Sender&&) __sndr};
-  }
-
-  stdexec::__binder_back<a_sender_helper_t<a_sender_kind::receiverless>> operator()() const {
-    return {{}, {}, {}};
-  }
-};
-
-struct a_sender_t
-  : a_sender_helper_t<a_sender_kind::then>
-  , a_sender_helper_t<a_sender_kind::receiverless> {
-  using a_sender_helper_t<a_sender_kind::then>::operator();
-  using a_sender_helper_t<a_sender_kind::receiverless>::operator();
-};
-
-constexpr a_sender_t a_sender;
-
-struct move_only_t {
-  static constexpr int invalid() {
-    return -42;
-  }
-
-  move_only_t() = delete;
-  move_only_t(const move_only_t&) = delete;
-  move_only_t& operator=(move_only_t&&) = delete;
-  move_only_t& operator=(const move_only_t&) = delete;
-
-  __host__ __device__ move_only_t(int data)
-    : data_(data)
-    , self_(this) {
-  }
-
-  __host__ __device__ move_only_t(move_only_t&& other)
-    : data_(std::exchange(other.data_, invalid()))
-    , self_(this) {
-  }
-
-  __host__ __device__ ~move_only_t() {
-    if (this != self_) {
-      // TODO Trap
-      std::printf("Error: move_only_t::~move_only_t failed\n");
-    }
-    data_ = invalid();
-  }
-
-  __host__ __device__ bool contains(int val) {
-    if (this != self_) {
-      std::printf("Error: move_only_t::contains failed: %p\n", (void*) self_);
-      return false;
+  struct move_only_t {
+    static constexpr int invalid() {
+      return -42;
     }
 
-    return data_ == val;
-  }
+    move_only_t() = delete;
+    move_only_t(const move_only_t&) = delete;
+    move_only_t& operator=(move_only_t&&) = delete;
+    move_only_t& operator=(const move_only_t&) = delete;
 
-  int data_{invalid()};
-  move_only_t* self_;
-};
+    __host__ __device__ move_only_t(int data)
+      : data_(data)
+      , self_(this) {
+    }
 
-static_assert(!std::is_trivially_copyable_v<move_only_t>);
+    __host__ __device__ move_only_t(move_only_t&& other)
+      : data_(std::exchange(other.data_, invalid()))
+      , self_(this) {
+    }
+
+    __host__ __device__ ~move_only_t() {
+      if (this != self_) {
+        // TODO Trap
+        std::printf("Error: move_only_t::~move_only_t failed\n");
+      }
+      data_ = invalid();
+    }
+
+    __host__ __device__ bool contains(int val) {
+      if (this != self_) {
+        std::printf("Error: move_only_t::contains failed: %p\n", (void*) self_);
+        return false;
+      }
+
+      return data_ == val;
+    }
+
+    int data_{invalid()};
+    move_only_t* self_;
+  };
+
+  static_assert(!std::is_trivially_copyable_v<move_only_t>);
+}

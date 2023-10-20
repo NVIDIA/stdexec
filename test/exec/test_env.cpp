@@ -41,21 +41,21 @@ namespace {
       return stdexec::tag_invoke(*this, e);
     }
   } bar{};
-}
 
-TEST_CASE("Test make_env works", "[env]") {
-  auto e = exec::make_env(exec::with(foo, 42));
-  CHECK(foo(e) == 42);
+  TEST_CASE("Test make_env works", "[env]") {
+    auto e = exec::make_env(exec::with(foo, 42));
+    CHECK(foo(e) == 42);
 
-  auto e2 = exec::make_env(e, exec::with(bar, 43));
-  CHECK(foo(e2) == 42);
-  CHECK(bar(e2) == 43);
+    auto e2 = exec::make_env(e, exec::with(bar, 43));
+    CHECK(foo(e2) == 42);
+    CHECK(bar(e2) == 43);
 
-  auto e3 = exec::make_env(e2, exec::with(foo, 44));
-  CHECK(foo(e3) == 44);
-  CHECK(bar(e3) == 43);
+    auto e3 = exec::make_env(e2, exec::with(foo, 44));
+    CHECK(foo(e3) == 44);
+    CHECK(bar(e3) == 43);
 
-  auto e4 = exec::make_env(e3, exec::with(foo));
-  STATIC_REQUIRE(!std::invocable<Foo, decltype(e4)>);
-  CHECK(bar(e4) == 43);
+    auto e4 = exec::make_env(e3, exec::with(foo));
+    STATIC_REQUIRE(!std::invocable<Foo, decltype(e4)>);
+    CHECK(bar(e4) == 43);
+  }
 }
