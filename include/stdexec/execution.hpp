@@ -5562,6 +5562,26 @@ namespace stdexec {
       };
     }
 
+    template <class _Env>
+    auto __make_transform_fn(const _Env& __env) {
+      return [&]<class _Scheduler, class... _Values>(_Scheduler&& __sched, _Values&&... __vals) {
+        auto __domain = __get_env_domain(__env);
+        return stdexec::transform_sender(
+          __domain,
+          transfer(
+            stdexec::transform_sender(__domain, just((_Values&&) __vals...), __env),
+            (_Scheduler&&) __sched),
+          __env);
+      };
+    }
+
+    template <class _Env>
+    auto __transform_sender_fn(const _Env& __env) {
+      return [&]<class _Data>(__ignore, _Data&& __data) {
+        return __apply(__make_transform_fn(__env), (_Data&&) __data);
+      };
+    }
+
     struct transfer_just_t {
       using _Data = __0;
       using __legacy_customizations_t = //
@@ -5583,17 +5603,7 @@ namespace stdexec {
 
       template <class _Sender, class _Env>
       static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
-        return __apply(
-          [&]<class _Scheduler, class... _Values>(_Scheduler&& __sched, _Values&&... __vals) {
-            auto __domain = __get_env_domain(__env);
-            return stdexec::transform_sender(
-              __domain,
-              transfer(
-                stdexec::transform_sender(__domain, just((_Values&&) __vals...), __env),
-                (_Scheduler&&) __sched),
-              __env);
-          },
-          apply_sender((_Sender&&) __sndr, __detail::__get_data()));
+        return apply_sender((_Sender&&) __sndr, __transform_sender_fn(__env));
       }
     };
   } // namespace __transfer_just
