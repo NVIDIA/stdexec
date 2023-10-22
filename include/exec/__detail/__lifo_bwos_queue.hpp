@@ -62,7 +62,6 @@ namespace exec::bwos {
       std::size_t num_blocks,
       std::size_t block_size,
       Allocator allocator = Allocator());
-    ~lifo_queue();
 
     Tp *get() noexcept;
 
@@ -108,9 +107,8 @@ namespace exec::bwos {
       alignas(hardware_destructive_interference_size) std::atomic<std::uint64_t> tail_{};
       alignas(hardware_destructive_interference_size) std::atomic<std::uint64_t> steal_head_{};
       alignas(hardware_destructive_interference_size) std::atomic<std::uint64_t> steal_tail_{};
-      Tp **ring_buffer_{};
+      std::unique_ptr<T*[], alloc_deleter<Allocator>> ring_buffer_{};
       std::size_t block_size_;
-      Allocator allocator_;
     };
 
     bool advance_get_index() noexcept;
@@ -119,9 +117,8 @@ namespace exec::bwos {
 
     alignas(hardware_destructive_interference_size) std::atomic<std::size_t> owner_block_{1};
     alignas(hardware_destructive_interference_size) std::atomic<std::size_t> thief_block_{0};
-    block_type *blocks_{nullptr};
+    std::vector<block_type, allocator_type_of<block_type>> blocks_{};
     std::size_t mask_{};
-    allocator_of_t<block_type> allocator_;
   };
 
   // Implementation
@@ -131,32 +128,10 @@ namespace exec::bwos {
     std::size_t num_blocks,
     std::size_t block_size,
     Allocator allocator)
-    : mask_(std::bit_ceil(num_blocks) - 1)
-    , allocator_(allocator) {
-    std::size_t size = mask_ + 1;
-    blocks_ = std::allocator_traits<allocator_of_t<block_type>>::allocate(allocator_, size);
-    for (std::size_t i = 0; i < size; ++i) {
-      try {
-        std::allocator_traits<allocator_of_t<block_type>>::construct(
-          allocator_, blocks_ + i, block_size, allocator);
-      } catch (...) {
-        for (std::size_t j = 0; j < i; ++j) {
-          std::allocator_traits<allocator_of_t<block_type>>::destroy(allocator_, blocks_ + j);
-        }
-        std::allocator_traits<allocator_of_t<block_type>>::deallocate(allocator_, blocks_, size);
-        throw;
-      }
+    : blocks_(std::bit_ceil(num_blocks), block_type(block_size, allocator)) 
+    , mask_(blocks_.size() - 1)
+    {
     }
-  }
-
-  template <class Tp, class Allocator>
-  lifo_queue<Tp, Allocator>::~lifo_queue() {
-    std::size_t size = mask_ + 1;
-    for (std::size_t i = 0; i < size; ++i) {
-      std::allocator_traits<allocator_of_t<block_type>>::destroy(allocator_, blocks_ + i);
-    }
-    std::allocator_traits<allocator_of_t<block_type>>::deallocate(allocator_, blocks_, size);
-  }
 
   template <class Tp, class Allocator>
   Tp *lifo_queue<Tp, Allocator>::get() noexcept {
@@ -206,5 +181,77 @@ namespace exec::bwos {
       }
     } while (advance_put_index());
     return false;
+  }
+
+  template <class Tp, class Allocator>
+  std::size_t lifo_queue<Tp, Allocator>::get_available_capacity() const noexcept {
+    std::size_t block_size = blocks_[0].block_size_;
+    std::size_t owner_counter = owner_block_.load(std::memory_order_relaxed);
+    std::size_t owner_index = owner_counter & mMask;
+    std::size_t local_capacity = blocks_[owner_index].GetAvailableCapacity();
+    std::size_t thief_counter = thief_block_.load(std::memory_order_relaxed);
+    std::size_t diff = owner_counter - thief_counter;
+    std::size_t rest = blocks_.size() - diff - 1;
+    return local_capacity + rest * nElems;
+  }
+
+  template <class Tp, class Allocator>
+  std::size_t lifo_queue<Tp, Allocator>::get_block_size() const noexcept {
+    return blocks_[0].block_size_;
+  }
+
+  template <class Tp, class Allocator>
+  bool lifo_queue<Tp, Allocator>::AdvanceGetIndex() noexcept {
+    std::size_t ownerCounter = mOwnerBlock.load(std::memory_order_relaxed);
+    std::size_t predCounter = ownerCounter - 1ul;
+    std::size_t ownerPred = predCounter & mMask;
+    LifoQueueBlock &prevBlock = blocks_[ownerPred];
+    TakeoverResult result = prevBlock.Takeover();
+    if (result.front != result.back) {
+      std::size_t thiefCounter = thief_block_.load(std::memory_order_relaxed);
+      if (thiefCounter == predCounter) {
+        predCounter += blocks_.size();
+        thiefCounter = predCounter - 1ul;
+        thief_block_.store(thiefCounter, std::memory_order_relaxed);
+      }
+      mOwnerBlock.store(predCounter, std::memory_order_relaxed);
+      return true;
+    }
+    return false;
+  }
+
+  template <class Tp, class Allocator>
+  bool lifo_queue<Tp, Allocator>::AdvancePutIndex() noexcept {
+    std::size_t ownerCounter = mOwnerBlock.load(std::memory_order_relaxed);
+    std::size_t thiefCounter = thief_block_.load(std::memory_order_relaxed);
+    std::size_t nextCounter = ownerCounter + 1;
+    if (nextCounter == thiefCounter + blocks_.size()) [[unlikely]] {
+      return false;
+    }
+    std::size_t ownerIndex = ownerCounter & mMask;
+    std::size_t nextIndex = nextCounter & mMask;
+    LifoQueueBlock &currentBlock = blocks_[ownerIndex];
+    LifoQueueBlock &nextBlock = blocks_[nextIndex];
+    TakeoverResult result = nextBlock.Takeover();
+    currentBlock.Grant();
+    mOwnerBlock.store(nextCounter, std::memory_order_relaxed);
+    while (!nextBlock.Reclaim(result.front)) {
+      _mm_pause();
+    }
+    return true;
+  }
+
+  template <class Tp, class Allocator>
+  bool lifo_queue<Tp, Allocator>::AdvanceStealIndex(std::size_t expectedThiefCounter) noexcept {
+    std::size_t thiefCounter = expectedThiefCounter;
+    std::size_t ownerCounter = mOwnerBlock.load(std::memory_order_relaxed);
+    std::size_t nextCounter = thiefCounter + 1;
+    std::size_t nextIndex = nextCounter & mMask;
+    LifoQueueBlock &nextBlock = blocks_[nextIndex];
+    if (nextBlock.IsStealable()) {
+      thief_block_.compare_exchange_strong(thiefCounter, nextCounter, std::memory_order_relaxed);
+      return true;
+    }
+    return thief_block_.load(std::memory_order_relaxed) != thiefCounter;
   }
 }
