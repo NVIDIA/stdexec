@@ -22,45 +22,49 @@
 using namespace stdexec;
 using namespace exec;
 
-TEST_CASE(
-  "sequence_senders - empty_sequence is a sequence sender",
-  "[sequence_senders][empty_sequence]") {
-  using empty_t = decltype(empty_sequence());
-  STATIC_REQUIRE(sequence_sender<empty_t, empty_env>);
-  STATIC_REQUIRE(same_as<
-                 __sequence_completion_signatures_of_t<empty_t, empty_env>,
-                 completion_signatures<set_value_t()>>);
-  STATIC_REQUIRE(
-    same_as<completion_signatures_of_t<empty_t>, completion_signatures<set_value_t()>>);
-  STATIC_REQUIRE(same_as<item_types_of_t<empty_t, empty_env>, item_types<>>);
-}
+namespace {
 
-struct count_set_next_receiver_t {
-  using is_receiver = void;
-  int& count_invocations_;
-
-  friend auto tag_invoke(set_next_t, count_set_next_receiver_t& __self, auto /* item */) noexcept {
-    ++__self.count_invocations_;
-    return just();
+  TEST_CASE(
+    "sequence_senders - empty_sequence is a sequence sender",
+    "[sequence_senders][empty_sequence]") {
+    using empty_t = decltype(empty_sequence());
+    STATIC_REQUIRE(sequence_sender<empty_t, empty_env>);
+    STATIC_REQUIRE(same_as<
+                   __sequence_completion_signatures_of_t<empty_t, empty_env>,
+                   completion_signatures<set_value_t()>>);
+    STATIC_REQUIRE(
+      same_as<completion_signatures_of_t<empty_t>, completion_signatures<set_value_t()>>);
+    STATIC_REQUIRE(same_as<item_types_of_t<empty_t, empty_env>, item_types<>>);
   }
 
-  friend void tag_invoke(set_value_t, count_set_next_receiver_t&&) noexcept {
+  struct count_set_next_receiver_t {
+    using is_receiver = void;
+    int& count_invocations_;
+
+    friend auto
+      tag_invoke(set_next_t, count_set_next_receiver_t& __self, auto /* item */) noexcept {
+      ++__self.count_invocations_;
+      return just();
+    }
+
+    friend void tag_invoke(set_value_t, count_set_next_receiver_t&&) noexcept {
+    }
+
+    friend empty_env tag_invoke(get_env_t, const count_set_next_receiver_t&) noexcept {
+      return {};
+    }
+  };
+
+  TEST_CASE(
+    "sequence_senders - empty_sequence is a sequence sender to a minimal receiver of set_value_t()",
+    "[sequence_senders][empty_sequence]") {
+    using empty_t = decltype(empty_sequence());
+    STATIC_REQUIRE(receiver_of<count_set_next_receiver_t, completion_signatures<set_value_t()>>);
+    STATIC_REQUIRE(sequence_sender_to<empty_t, count_set_next_receiver_t>);
+
+    int count{0};
+    auto op = subscribe(empty_sequence(), count_set_next_receiver_t{count});
+    start(op);
+    CHECK(count == 0);
   }
-
-  friend empty_env tag_invoke(get_env_t, const count_set_next_receiver_t&) noexcept {
-    return {};
-  }
-};
-
-TEST_CASE(
-  "sequence_senders - empty_sequence is a sequence sender to a minimal receiver of set_value_t()",
-  "[sequence_senders][empty_sequence]") {
-  using empty_t = decltype(empty_sequence());
-  STATIC_REQUIRE(receiver_of<count_set_next_receiver_t, completion_signatures<set_value_t()>>);
-  STATIC_REQUIRE(sequence_sender_to<empty_t, count_set_next_receiver_t>);
-
-  int count{0};
-  auto op = subscribe(empty_sequence(), count_set_next_receiver_t{count});
-  start(op);
-  CHECK(count == 0);
 }

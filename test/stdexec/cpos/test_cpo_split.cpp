@@ -17,32 +17,35 @@
 #include "cpo_helpers.cuh"
 #include <catch2/catch.hpp>
 
-TEST_CASE("split is customizable", "[cpo][cpo_split]") {
-  SECTION("by free standing sender") {
-    free_standing_sender_t<ex::split_t> snd{};
+namespace {
 
-    {
-      constexpr scope_t scope = decltype(ex::split(snd))::scope;
-      STATIC_REQUIRE(scope == scope_t::free_standing);
+  TEST_CASE("split is customizable", "[cpo][cpo_split]") {
+    SECTION("by free standing sender") {
+      free_standing_sender_t<ex::split_t> snd{};
+
+      {
+        constexpr scope_t scope = decltype(ex::split(snd))::scope;
+        STATIC_REQUIRE(scope == scope_t::free_standing);
+      }
+
+      {
+        constexpr scope_t scope = decltype(snd | ex::split())::scope;
+        STATIC_REQUIRE(scope == scope_t::free_standing);
+      }
     }
 
-    {
-      constexpr scope_t scope = decltype(snd | ex::split())::scope;
-      STATIC_REQUIRE(scope == scope_t::free_standing);
-    }
-  }
+    SECTION("by completion scheduler") {
+      scheduler_t<ex::split_t>::sender_t snd{};
 
-  SECTION("by completion scheduler") {
-    scheduler_t<ex::split_t>::sender_t snd{};
+      {
+        constexpr scope_t scope = decltype(ex::split(snd))::scope;
+        STATIC_REQUIRE(scope == scope_t::scheduler);
+      }
 
-    {
-      constexpr scope_t scope = decltype(ex::split(snd))::scope;
-      STATIC_REQUIRE(scope == scope_t::scheduler);
-    }
-
-    {
-      constexpr scope_t scope = decltype(snd | ex::split())::scope;
-      STATIC_REQUIRE(scope == scope_t::scheduler);
+      {
+        constexpr scope_t scope = decltype(snd | ex::split())::scope;
+        STATIC_REQUIRE(scope == scope_t::scheduler);
+      }
     }
   }
 }

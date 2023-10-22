@@ -17,16 +17,19 @@
 #include "cpo_helpers.cuh"
 #include <catch2/catch.hpp>
 
-TEST_CASE("ensure started is customizable", "[cpo][cpo_ensure_started]") {
-  SECTION("by free standing sender") {
-    free_standing_sender_t<ex::ensure_started_t> snd{};
-    constexpr scope_t scope = decltype(ex::ensure_started(snd))::scope;
-    STATIC_REQUIRE(scope == scope_t::free_standing);
-  }
+namespace {
 
-  SECTION("by completion scheduler") {
-    scheduler_t<ex::ensure_started_t>::sender_t snd{};
-    constexpr scope_t scope = decltype(ex::ensure_started(snd))::scope;
-    STATIC_REQUIRE(scope == scope_t::scheduler);
+  TEST_CASE("ensure started is customizable", "[cpo][cpo_ensure_started]") {
+    SECTION("by free standing sender") {
+      free_standing_sender_t<ex::ensure_started_t> snd{};
+      constexpr scope_t scope = decltype(ex::ensure_started(snd))::scope;
+      STATIC_REQUIRE(scope == scope_t::free_standing);
+    }
+
+    SECTION("by completion scheduler") {
+      scheduler_t<ex::ensure_started_t>::sender_t snd{};
+      constexpr scope_t scope = decltype(ex::ensure_started(snd))::scope;
+      STATIC_REQUIRE(scope == scope_t::scheduler);
+    }
   }
 }

@@ -17,10 +17,8 @@
 
 #include "../stdexec/execution.hpp"
 
-#ifdef __EDG__
-#pragma diagnostic push
-#pragma diag_suppress 1302
-#endif
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(1302)
 
 namespace exec {
   template <class _Tag, class _Value = void>
@@ -118,6 +116,4 @@ namespace exec {
   inline constexpr stdexec::__write_::__write_t write{};
 } // namespace exec
 
-#ifdef __EDG__
-#pragma diagnostic pop
-#endif
+STDEXEC_PRAGMA_POP()

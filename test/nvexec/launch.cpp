@@ -31,7 +31,7 @@ namespace ex = stdexec;
 
 using nvexec::is_on_gpu;
 
-namespace {
+namespace { namespace {
   constexpr std::size_t N = 2 * 1024;
   constexpr std::size_t THREAD_BLOCK_SIZE = 128u;
   constexpr std::size_t NUM_BLOCKS = (N + THREAD_BLOCK_SIZE - 1) / THREAD_BLOCK_SIZE;
@@ -87,4 +87,4 @@ namespace {
     REQUIRE(flags_storage.all_set_once());
   }
 
-}
+}}
