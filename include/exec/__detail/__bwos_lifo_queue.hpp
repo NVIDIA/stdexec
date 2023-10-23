@@ -93,21 +93,6 @@ namespace exec::bwos {
     std::size_t back;
   };
 
-  template <class Allocator>
-  struct alloc_deleter {
-    using pointer = typename std::allocator_traits<Allocator>::pointer;
-
-    [[no_unique_address]] Allocator allocator_;
-    std::size_t block_size_;
-
-    void operator()(pointer ptr) noexcept {
-      for (std::size_t i = 0; i < block_size_; ++i) {
-        std::allocator_traits<Allocator>::destroy(allocator_, ptr + i);
-      }
-      std::allocator_traits<Allocator>::deallocate(allocator_, ptr, block_size_);
-    }
-  };
-
   template <class Tp, class Allocator = std::allocator<Tp>>
   class lifo_queue {
    public:
@@ -146,12 +131,13 @@ namespace exec::bwos {
       fetch_result<Tp> steal() noexcept;
 
       takeover_result takeover() noexcept;
+      bool is_writable() const noexcept;
 
       std::size_t free_capacity() const noexcept;
 
       void grant() noexcept;
 
-      bool reclaim(std::size_t expectedPos) noexcept;
+      bool reclaim() noexcept;
 
       bool is_stealable() const noexcept;
 
@@ -187,6 +173,7 @@ namespace exec::bwos {
       block_type(block_size, allocator),
       allocator_of_t<block_type>(allocator))
     , mask_(blocks_.size() - 1) {
+    blocks_[owner_block_].reclaim();
   }
 
   template <class Tp, class Allocator>
@@ -199,10 +186,10 @@ namespace exec::bwos {
         return value;
       }
       if (ec == lifo_queue_error_code::done) {
-        return nullptr;
+        return Tp{};
       }
     } while (advance_get_index());
-    return nullptr;
+    return Tp{};
   }
 
   template <class Tp, class Allocator>
@@ -218,12 +205,12 @@ namespace exec::bwos {
           return result.value;
         }
         if (result.status == lifo_queue_error_code::empty) {
-          return nullptr;
+          return Tp{};
         }
         result = block.steal();
       }
     } while (advance_steal_index(thief));
-    return nullptr;
+    return Tp{};
   }
 
   template <class Tp, class Allocator>
@@ -279,21 +266,17 @@ namespace exec::bwos {
   template <class Tp, class Allocator>
   bool lifo_queue<Tp, Allocator>::advance_put_index() noexcept {
     std::size_t owner_counter = owner_block_.load(std::memory_order_relaxed);
-    std::size_t thief_counter = thief_block_.load(std::memory_order_relaxed);
     std::size_t next_counter = owner_counter + 1ul;
-    if (next_counter == thief_counter + blocks_.size()) [[unlikely]] {
+    std::size_t next_index = next_counter & mask_;
+    block_type &next_block = blocks_[next_index];
+    if (!next_block.is_writable()) [[unlikely]] {
       return false;
     }
     std::size_t owner_index = owner_counter & mask_;
-    std::size_t next_index = next_counter & mask_;
-    block_type &currentBlock = blocks_[owner_index];
-    block_type &nextBlock = blocks_[next_index];
-    takeover_result result = nextBlock.takeover();
-    currentBlock.grant();
+    block_type &current_block = blocks_[owner_index];
+    current_block.grant();
     owner_block_.store(next_counter, std::memory_order_relaxed);
-    while (!nextBlock.reclaim(result.front)) {
-      spin_loop_pause();
-    }
+    next_block.reclaim();
     return true;
   }
 
@@ -302,8 +285,8 @@ namespace exec::bwos {
     std::size_t thief_counter = expected_thief_counter;
     std::size_t next_counter = thief_counter + 1;
     std::size_t next_index = next_counter & mask_;
-    block_type &nextBlock = blocks_[next_index];
-    if (nextBlock.is_stealable()) {
+    block_type &next_block = blocks_[next_index];
+    if (next_block.is_stealable()) {
       thief_block_.compare_exchange_strong(thief_counter, next_counter, std::memory_order_relaxed);
       return true;
     }
@@ -315,7 +298,10 @@ namespace exec::bwos {
 
   template <class Tp, class Allocator>
   lifo_queue<Tp, Allocator>::block_type::block_type(std::size_t block_size, Allocator allocator)
-    : steal_tail_{block_size}
+    : head_{block_size}
+    , tail_{block_size}
+    , steal_head_{block_size}
+    , steal_tail_{block_size}
     , ring_buffer_(block_size, allocator) {
   }
 
@@ -418,21 +404,27 @@ namespace exec::bwos {
   }
 
   template <class Tp, class Allocator>
+  bool lifo_queue<Tp, Allocator>::block_type::is_writable() const noexcept {
+    std::uint64_t expected_steal = block_size();
+    std::uint64_t spos = steal_tail_.load(std::memory_order_relaxed);
+    return spos == expected_steal;
+  }
+
+  template <class Tp, class Allocator>
   std::size_t lifo_queue<Tp, Allocator>::block_type::free_capacity() const noexcept {
     std::uint64_t back = tail_.load(std::memory_order_relaxed);
     return block_size() - back;
   }
 
   template <class Tp, class Allocator>
-  bool lifo_queue<Tp, Allocator>::block_type::reclaim(std::size_t expected_steals) noexcept {
-    std::uint64_t steal_counter = steal_head_.load(std::memory_order_acquire);
-    if (expected_steals == steal_counter) {
-      head_.store(0, std::memory_order_relaxed);
-      tail_.store(0, std::memory_order_relaxed);
-      steal_tail_.store(block_size(), std::memory_order_relaxed);
-      steal_head_.store(0, std::memory_order_relaxed);
-      return true;
+  bool lifo_queue<Tp, Allocator>::block_type::reclaim() noexcept {
+    while (steal_head_.load(std::memory_order_acquire) != block_size()) {
+      spin_loop_pause();
     }
+    head_.store(0, std::memory_order_relaxed);
+    tail_.store(0, std::memory_order_relaxed);
+    steal_tail_.store(block_size(), std::memory_order_relaxed);
+    steal_head_.store(0, std::memory_order_relaxed);
     return false;
   }
 
@@ -443,8 +435,8 @@ namespace exec::bwos {
 
   template <class Tp, class Allocator>
   void lifo_queue<Tp, Allocator>::block_type::grant() noexcept {
-    std::uint64_t fPos = head_.exchange(block_size(), std::memory_order_relaxed);
-    steal_tail_.store(fPos, std::memory_order_release);
+    std::uint64_t old_head = head_.exchange(block_size(), std::memory_order_relaxed);
+    steal_tail_.store(old_head, std::memory_order_release);
   }
 
   template <class Tp, class Allocator>
