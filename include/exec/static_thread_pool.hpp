@@ -20,6 +20,8 @@
 #include "../stdexec/__detail/__config.hpp"
 #include "../stdexec/__detail/__intrusive_queue.hpp"
 #include "../stdexec/__detail/__meta.hpp"
+#include "./__detail/__bwos_lifo_queue.hpp"
+#include "./__detail/__atomic_intrusive_queue.hpp"
 
 #include <atomic>
 #include <condition_variable>
@@ -215,6 +217,24 @@ namespace exec {
     }
 
    private:
+    class workstealing_victim {
+     public:
+      explicit workstealing_victim(
+        bwos::lifo_queue<task_base*>* queue,
+        std::uint32_t index) noexcept
+        : queue_(queue)
+        , index_(index) {
+      }
+
+      task_base* try_steal() noexcept {
+        return queue_->steal_front();
+      }
+
+     private:
+      bwos::lifo_queue<task_base*>* queue_;
+      std::uint32_t index_;
+    };
+
     class thread_state {
      public:
       task_base* try_pop();
@@ -224,10 +244,12 @@ namespace exec {
       void request_stop();
 
      private:
-      std::mutex mut_;
-      std::condition_variable cv_;
-      __intrusive_queue<&task_base::next> queue_;
-      bool stopRequested_ = false;
+      bwos::lifo_queue<task_base*> local_queue_{8, 1024};
+      __atomic_intrusive_queue<&task_base::next> remote_queue_{};
+      __intrusive_queue<&task_base::next> pending_queue_{};
+      std::atomic<bool> wakeup_{false};
+      std::atomic<bool> stopRequested_{false};
+      std::vector<workstealing_victim> victims_{};
     };
 
     void run(std::uint32_t index) noexcept;
@@ -331,51 +353,75 @@ namespace exec {
     }
   }
 
+  inline void move_pending_to_local(
+    __intrusive_queue<&task_base::next>& pending_queue,
+    bwos::lifo_queue<task_base*>& local_queue) {
+    auto last = local_queue.push_back(std::views::all(pending_queue));
+    __intrusive_queue<&task_base::next> tmp{};
+    tmp.splice(tmp.begin(), pending_queue, pending_queue.begin(), last);
+    tmp.clear();
+  }
+
   inline task_base* static_thread_pool::thread_state::try_pop() {
-    std::unique_lock lk{mut_, std::try_to_lock};
-    if (!lk || queue_.empty()) {
-      return nullptr;
+
+    std::size_t free_capacity = local_queue_.get_free_capacity();
+    std::size_t capacity = local_queue_.get_available_capacity();
+    std::size_t threshold = capacity / 2;
+    if (free_capacity > threshold) {
+      __intrusive_queue<&task_base::next> remotes = remote_queue_.pop_all_reversed();
+      pending_queue_.append(std::move(remotes));
+      if (!pending_queue_.empty()) {
+        move_pending_to_local(pending_queue_, local_queue_);
+      }
     }
-    return queue_.pop_front();
+    task_base* task = local_queue_.pop_back();
+    if (task) [[likely]] {
+      return task;
+    }
+    pending_queue_ = remote_queue_.pop_all_reversed();
+    if (!pending_queue_.empty()) {
+      move_pending_to_local(pending_queue_, local_queue_);
+      return local_queue_.pop_back();
+    }
+    for (auto& victim: victims_) {
+      task = victim.try_steal();
+      if (task) {
+        return task;
+      }
+    }
+    return nullptr;
   }
 
   inline task_base* static_thread_pool::thread_state::pop() {
-    std::unique_lock lk{mut_};
-    while (queue_.empty()) {
+    task_base* task = try_pop();
+    while (!task) {
       if (stopRequested_) {
         return nullptr;
       }
-      cv_.wait(lk);
+      wakeup_.wait(false, std::memory_order_relaxed);
+      wakeup_.store(false, std::memory_order_relaxed);
+      task = try_pop();
     }
-    return queue_.pop_front();
+    return task;
   }
 
   inline bool static_thread_pool::thread_state::try_push(task_base* task) {
-    std::unique_lock lk{mut_, std::try_to_lock};
-    if (!lk) {
-      return false;
+    auto [result, was_empty] = remote_queue_.try_push_front(task);
+    if (was_empty) {
+      wakeup_.store(true, std::memory_order_relaxed);
     }
-    const bool wasEmpty = queue_.empty();
-    queue_.push_back(task);
-    if (wasEmpty) {
-      cv_.notify_one();
-    }
-    return true;
+    return result;
   }
 
   inline void static_thread_pool::thread_state::push(task_base* task) {
-    std::lock_guard lk{mut_};
-    const bool wasEmpty = queue_.empty();
-    queue_.push_back(task);
-    if (wasEmpty) {
-      cv_.notify_one();
+    if (remote_queue_.push_front(task)) {
+      wakeup_.store(true, std::memory_order_relaxed);
     }
   }
 
   inline void static_thread_pool::thread_state::request_stop() {
-    std::lock_guard lk{mut_};
-    stopRequested_ = true;
-    cv_.notify_one();
+    stopRequested_.store(true, std::memory_order_relaxed);
+    wakeup_.store(true, std::memory_order_relaxed);
   }
 
   template <typename ReceiverId>

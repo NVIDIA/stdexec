@@ -20,6 +20,7 @@
 #include <bit>
 #include <memory>
 #include <new>
+#include <ranges>
 #include <utility>
 #include <vector>
 
@@ -107,9 +108,15 @@ namespace exec::bwos {
 
     bool push_back(Tp value) noexcept;
 
-    std::size_t get_available_capacity() const noexcept;
+    template <std::ranges::forward_range Range>
+      requires std::convertible_to<std::ranges::range_value_t<Range>, Tp>
+    std::ranges::iterator_t<Range> push_back(Range &&range) noexcept;
 
-    std::size_t get_block_size() const noexcept;
+    std::size_t get_available_capacity() const noexcept;
+    std::size_t get_free_capacity() const noexcept;
+
+    std::size_t block_size() const noexcept;
+    std::size_t num_blocks() const noexcept;
 
    private:
     template <class Sp>
@@ -125,6 +132,9 @@ namespace exec::bwos {
       block_type &operator=(block_type &&) noexcept;
 
       lifo_queue_error_code put(Tp value) noexcept;
+
+      template <class Range>
+      std::ranges::iterator_t<Range> bulk_put(Range &&range) noexcept;
 
       fetch_result<Tp> get() noexcept;
 
@@ -227,20 +237,43 @@ namespace exec::bwos {
   }
 
   template <class Tp, class Allocator>
-  std::size_t lifo_queue<Tp, Allocator>::get_available_capacity() const noexcept {
-    std::size_t block_size = blocks_[0].block_size_;
-    std::size_t owner_counter = owner_block_.load(std::memory_order_relaxed);
-    std::size_t owner_index = owner_counter & mask_;
-    std::size_t local_capacity = blocks_[owner_index].GetAvailableCapacity();
-    std::size_t thief_counter = thief_block_.load(std::memory_order_relaxed);
-    std::size_t diff = owner_counter - thief_counter;
-    std::size_t rest = blocks_.size() - diff - 1;
-    return local_capacity + rest * block_size;
+  template <std::ranges::forward_range Range>
+    requires std::convertible_to<std::ranges::range_value_t<Range>, Tp>
+  std::ranges::iterator_t<Range> lifo_queue<Tp, Allocator>::push_back(Range &&range) noexcept {
+    auto subrange = std::ranges::subrange(range);
+    do {
+      std::size_t owner_index = owner_block_.load(std::memory_order_relaxed) & mask_;
+      block_type &current_block = blocks_[owner_index];
+      auto it = current_block.bulk_put(subrange);
+      subrange = std::ranges::subrange(it, subrange.end());
+    } while (!std::ranges::empty(subrange) && advance_put_index());
+    return subrange.begin();
   }
 
   template <class Tp, class Allocator>
-  std::size_t lifo_queue<Tp, Allocator>::get_block_size() const noexcept {
+  std::size_t lifo_queue<Tp, Allocator>::get_free_capacity() const noexcept {
+    std::size_t owner_counter = owner_block_.load(std::memory_order_relaxed);
+    std::size_t owner_index = owner_counter & mask_;
+    std::size_t local_capacity = blocks_[owner_index].free_capacity();
+    std::size_t thief_counter = thief_block_.load(std::memory_order_relaxed);
+    std::size_t diff = owner_counter - thief_counter;
+    std::size_t rest = blocks_.size() - diff - 1;
+    return local_capacity + rest * block_size();
+  }
+
+  template <class Tp, class Allocator>
+  std::size_t lifo_queue<Tp, Allocator>::get_available_capacity() const noexcept {
+    return num_blocks() * block_size();
+  }
+
+  template <class Tp, class Allocator>
+  std::size_t lifo_queue<Tp, Allocator>::block_size() const noexcept {
     return blocks_[0].block_size();
+  }
+
+  template <class Tp, class Allocator>
+  std::size_t lifo_queue<Tp, Allocator>::num_blocks() const noexcept {
+    return blocks_.size();
   }
 
   template <class Tp, class Allocator>
@@ -350,10 +383,26 @@ namespace exec::bwos {
     std::uint64_t back = tail_.load(std::memory_order_relaxed);
     if (back < block_size()) [[likely]] {
       ring_buffer_[back] = static_cast<Tp &&>(value);
-      tail_.store(back + 1, std::memory_order_release);
+      tail_.store(back + 1, std::memory_order_relaxed);
       return lifo_queue_error_code::success;
     }
     return lifo_queue_error_code::full;
+  }
+
+  template <class Tp, class Allocator>
+  template <class Range>
+  std::ranges::iterator_t<Range>
+    lifo_queue<Tp, Allocator>::block_type::bulk_put(Range &&range) noexcept {
+    std::uint64_t back = tail_.load(std::memory_order_relaxed);
+    auto it = std::ranges::begin(range);
+    auto last = std::ranges::end(range);
+    while (it != last && back < block_size()) {
+      ring_buffer_[back] = static_cast<Tp &&>(*it);
+      ++back;
+      ++it;
+    }
+    tail_.store(back, std::memory_order_relaxed);
+    return it;
   }
 
   template <class Tp, class Allocator>
