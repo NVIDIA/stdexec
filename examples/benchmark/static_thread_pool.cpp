@@ -11,53 +11,6 @@ std::size_t even_share(std::size_t n, std::size_t m, std::size_t id) {
   return q;
 }
 
-thread_local char* alloc_watermark = nullptr;
-thread_local std::size_t alloc_watermark_size = 0;
-
-void* operator new(std::size_t count) {
-  if (alloc_watermark == nullptr) {
-    alloc_watermark_size = 1000 << 20;
-    alloc_watermark = static_cast<char*>(std::malloc(alloc_watermark_size));
-    if (alloc_watermark == nullptr) {
-      throw std::bad_alloc();
-    }
-  }
-  if (alloc_watermark_size < count) {
-    throw std::bad_alloc();
-  }
-  char* ptr = std::exchange(alloc_watermark, alloc_watermark + count);
-  alloc_watermark_size -= count;
-  return ptr;
-}
-
-void* operator new[](std::size_t count) {
-  if (alloc_watermark == nullptr) {
-    alloc_watermark_size = 1000 << 20;
-    alloc_watermark = static_cast<char*>(std::malloc(alloc_watermark_size));
-    if (alloc_watermark == nullptr) {
-      throw std::bad_alloc();
-    }
-  }
-  if (alloc_watermark_size < count) {
-    throw std::bad_alloc();
-  }
-  char* ptr = std::exchange(alloc_watermark, alloc_watermark + count);
-  alloc_watermark_size -= count;
-  return ptr;
-}
-
-void operator delete(void* ptr) noexcept {
-}
-
-void operator delete(void* ptr, std::size_t size) noexcept {
-}
-
-void operator delete[](void* ptr) noexcept {
-}
-
-void operator delete[](void* ptr, std::size_t size) noexcept {
-}
-
 struct RunThread {
   void operator()(exec::static_thread_pool& pool, std::size_t total_scheds, std::size_t tid) {
     std::size_t scheds = even_share(total_scheds, pool.available_parallelism(), tid);

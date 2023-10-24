@@ -270,6 +270,12 @@
 #define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS STDEXEC_ATTRIBUTE((no_unique_address))
 #endif
 
+#if defined(__GLIBCXX__)
+#define STDEXEC_NO_ATOMIC_WAIT() 1
+#else
+#define STDEXEC_NO_ATOMIC_WAIT() 0
+#endif
+
 #if STDEXEC_NVHPC()
 #include <nv/target>
 #define STDEXEC_TERMINATE() NV_IF_TARGET(NV_IS_HOST, (std::terminate();), (__trap();)) void()
