@@ -16,11 +16,12 @@
  */
 #pragma once
 
+#include "../../stdexec/__detail/__config.hpp"
+
 #include <atomic>
 #include <bit>
 #include <memory>
 #include <new>
-#include <ranges>
 #include <utility>
 #include <vector>
 
@@ -108,9 +109,8 @@ namespace exec::bwos {
 
     bool push_back(Tp value) noexcept;
 
-    template <std::ranges::forward_range Range>
-      requires std::convertible_to<std::ranges::range_value_t<Range>, Tp>
-    std::ranges::iterator_t<Range> push_back(Range &&range) noexcept;
+    template <class Iterator, class Sentinel>
+    Iterator push_back(Iterator first, Sentinel last) noexcept;
 
     std::size_t get_available_capacity() const noexcept;
     std::size_t get_free_capacity() const noexcept;
@@ -133,8 +133,8 @@ namespace exec::bwos {
 
       lifo_queue_error_code put(Tp value) noexcept;
 
-      template <class Range>
-      std::ranges::iterator_t<Range> bulk_put(Range &&range) noexcept;
+      template <class Iterator, class Sentinel>
+      Iterator bulk_put(Iterator first, Sentinel last) noexcept;
 
       fetch_result<Tp> get() noexcept;
 
@@ -237,17 +237,14 @@ namespace exec::bwos {
   }
 
   template <class Tp, class Allocator>
-  template <std::ranges::forward_range Range>
-    requires std::convertible_to<std::ranges::range_value_t<Range>, Tp>
-  std::ranges::iterator_t<Range> lifo_queue<Tp, Allocator>::push_back(Range &&range) noexcept {
-    auto subrange = std::ranges::subrange(range);
+  template <class Iterator, class Sentinel>
+  Iterator lifo_queue<Tp, Allocator>::push_back(Iterator first, Sentinel last) noexcept {
     do {
       std::size_t owner_index = owner_block_.load(std::memory_order_relaxed) & mask_;
       block_type &current_block = blocks_[owner_index];
-      auto it = current_block.bulk_put(subrange);
-      subrange = std::ranges::subrange(it, subrange.end());
-    } while (!std::ranges::empty(subrange) && advance_put_index());
-    return subrange.begin();
+      first = current_block.bulk_put(first, last);
+    } while (first != last && advance_put_index());
+    return first;
   }
 
   template <class Tp, class Allocator>
@@ -300,6 +297,11 @@ namespace exec::bwos {
   bool lifo_queue<Tp, Allocator>::advance_put_index() noexcept {
     std::size_t owner_counter = owner_block_.load(std::memory_order_relaxed);
     std::size_t next_counter = owner_counter + 1ul;
+    std::size_t thief_counter = thief_block_.load(std::memory_order_relaxed);
+    STDEXEC_ASSERT(thief_counter < next_counter);
+    if (next_counter - thief_counter >= blocks_.size()) {
+      return false;
+    }
     std::size_t next_index = next_counter & mask_;
     block_type &next_block = blocks_[next_index];
     if (!next_block.is_writable()) [[unlikely]] {
@@ -331,9 +333,9 @@ namespace exec::bwos {
 
   template <class Tp, class Allocator>
   lifo_queue<Tp, Allocator>::block_type::block_type(std::size_t block_size, Allocator allocator)
-    : head_{block_size}
-    , tail_{block_size}
-    , steal_head_{block_size}
+    : head_{0}
+    , tail_{0}
+    , steal_head_{0}
     , steal_tail_{block_size}
     , ring_buffer_(block_size, allocator) {
   }
@@ -390,19 +392,17 @@ namespace exec::bwos {
   }
 
   template <class Tp, class Allocator>
-  template <class Range>
-  std::ranges::iterator_t<Range>
-    lifo_queue<Tp, Allocator>::block_type::bulk_put(Range &&range) noexcept {
+  template <class Iterator, class Sentinel>
+  Iterator
+    lifo_queue<Tp, Allocator>::block_type::bulk_put(Iterator first, Sentinel last) noexcept {
     std::uint64_t back = tail_.load(std::memory_order_relaxed);
-    auto it = std::ranges::begin(range);
-    auto last = std::ranges::end(range);
-    while (it != last && back < block_size()) {
-      ring_buffer_[back] = static_cast<Tp &&>(*it);
+    while (first != last && back < block_size()) {
+      ring_buffer_[back] = static_cast<Tp &&>(*first);
       ++back;
-      ++it;
+      ++first;
     }
     tail_.store(back, std::memory_order_relaxed);
-    return it;
+    return first;
   }
 
   template <class Tp, class Allocator>

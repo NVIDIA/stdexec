@@ -267,6 +267,7 @@ namespace exec {
       void index(std::uint32_t value) {
         index_ = value;
       }
+
       std::uint32_t index() const noexcept {
         return index_;
       }
@@ -282,7 +283,7 @@ namespace exec {
       std::atomic<bool> wakeup_{false};
       std::atomic<bool> stopRequested_{false};
       std::vector<workstealing_victim> victims_{};
-      std::uint32_t index_;
+      std::uint32_t index_{};
     };
 
     void run(std::uint32_t index) noexcept;
@@ -313,10 +314,10 @@ namespace exec {
       threadStates_[index].index(index);
     }
     std::vector<workstealing_victim> victims{};
-    for (thread_state& state : threadStates_) {
+    for (thread_state& state: threadStates_) {
       victims.emplace_back(state.as_victim());
     }
-    for (thread_state& state : threadStates_) {
+    for (thread_state& state: threadStates_) {
       state.victims(victims);
     }
     threads_.reserve(threadCount);
@@ -366,17 +367,6 @@ namespace exec {
     const std::uint32_t threadCount = static_cast<std::uint32_t>(threads_.size());
     const std::uint32_t startIndex =
       nextThread_.fetch_add(1, std::memory_order_relaxed) % threadCount;
-
-    // First try to enqueue to one of the threads without blocking.
-    for (std::uint32_t i = 0; i < threadCount; ++i) {
-      const auto index =
-        (startIndex + i) < threadCount ? (startIndex + i) : (startIndex + i - threadCount);
-      if (threadStates_[index].try_push(task)) {
-        return;
-      }
-    }
-
-    // Otherwise, do a blocking enqueue on the selected thread.
     threadStates_[startIndex].push(task);
   }
 
@@ -390,7 +380,7 @@ namespace exec {
   inline void move_pending_to_local(
     __intrusive_queue<&task_base::next>& pending_queue,
     bwos::lifo_queue<task_base*>& local_queue) {
-    auto last = local_queue.push_back(std::views::all(pending_queue));
+    auto last = local_queue.push_back(pending_queue.begin(), pending_queue.end());
     __intrusive_queue<&task_base::next> tmp{};
     tmp.splice(tmp.begin(), pending_queue, pending_queue.begin(), last);
     tmp.clear();
