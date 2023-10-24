@@ -230,6 +230,10 @@ namespace exec {
         return queue_->steal_front();
       }
 
+      std::uint32_t index() const noexcept {
+        return index_;
+      }
+
      private:
       bwos::lifo_queue<task_base*>* queue_;
       std::uint32_t index_;
@@ -237,11 +241,39 @@ namespace exec {
 
     class thread_state {
      public:
-      task_base* try_pop();
-      task_base* pop();
+      struct pop_result {
+        task_base* task;
+        std::uint32_t queueIndex;
+      };
+
+      pop_result try_pop();
+      pop_result pop();
       bool try_push(task_base* task);
       void push(task_base* task);
       void request_stop();
+
+      void victims(std::vector<workstealing_victim>& victims) {
+        victims_ = victims;
+        // TODO sort by numa distance
+        std::sort(victims_.begin(), victims_.end(), [i0 = index_](const auto& a, const auto& b) {
+          auto distA = std::abs(static_cast<int>(a.index()) - static_cast<int>(i0));
+          auto distB = std::abs(static_cast<int>(b.index()) - static_cast<int>(i0));
+          return distA < distB;
+        });
+        // remove self from victims
+        victims_.erase(victims_.begin());
+      }
+
+      void index(std::uint32_t value) {
+        index_ = value;
+      }
+      std::uint32_t index() const noexcept {
+        return index_;
+      }
+
+      workstealing_victim as_victim() noexcept {
+        return workstealing_victim{&local_queue_, index_};
+      }
 
      private:
       bwos::lifo_queue<task_base*> local_queue_{8, 1024};
@@ -250,6 +282,7 @@ namespace exec {
       std::atomic<bool> wakeup_{false};
       std::atomic<bool> stopRequested_{false};
       std::vector<workstealing_victim> victims_{};
+      std::uint32_t index_;
     };
 
     void run(std::uint32_t index) noexcept;
@@ -276,6 +309,16 @@ namespace exec {
     , nextThread_(0) {
     STDEXEC_ASSERT(threadCount > 0);
 
+    for (std::uint32_t index = 0; index < threadCount; ++index) {
+      threadStates_[index].index(index);
+    }
+    std::vector<workstealing_victim> victims{};
+    for (thread_state& state : threadStates_) {
+      victims.emplace_back(state.as_victim());
+    }
+    for (thread_state& state : threadStates_) {
+      state.victims(victims);
+    }
     threads_.reserve(threadCount);
 
     try {
@@ -303,20 +346,11 @@ namespace exec {
   inline void static_thread_pool::run(const std::uint32_t threadIndex) noexcept {
     STDEXEC_ASSERT(threadIndex < threadCount_);
     while (true) {
-      task_base* task = nullptr;
-      std::uint32_t queueIndex = threadIndex;
-
-      // Starting with this thread's queue, try to de-queue a task
-      // from each thread's queue. try_pop() is non-blocking.
-      do {
-        task = threadStates_[queueIndex].try_pop();
-      } while (!task && (++queueIndex %= threadCount_) != threadIndex);
-
-      STDEXEC_ASSERT(task || queueIndex == threadIndex);
       // Make a blocking call to de-queue a task if we don't already have one.
-      if (!task && !(task = threadStates_[queueIndex].pop()))
+      auto [task, queueIndex] = threadStates_[threadIndex].pop();
+      if (!task) {
         return; // pop() only returns null when request_stop() was called.
-
+      }
       task->__execute(task, queueIndex);
     }
   }
@@ -362,8 +396,7 @@ namespace exec {
     tmp.clear();
   }
 
-  inline task_base* static_thread_pool::thread_state::try_pop() {
-
+  inline static_thread_pool::thread_state::pop_result static_thread_pool::thread_state::try_pop() {
     std::size_t free_capacity = local_queue_.get_free_capacity();
     std::size_t capacity = local_queue_.get_available_capacity();
     std::size_t threshold = capacity / 2;
@@ -374,54 +407,60 @@ namespace exec {
         move_pending_to_local(pending_queue_, local_queue_);
       }
     }
-    task_base* task = local_queue_.pop_back();
-    if (task) [[likely]] {
-      return task;
+    pop_result result{nullptr, index_};
+    result.task = local_queue_.pop_back();
+    if (result.task) [[likely]] {
+      return result;
     }
     pending_queue_ = remote_queue_.pop_all_reversed();
     if (!pending_queue_.empty()) {
       move_pending_to_local(pending_queue_, local_queue_);
-      return local_queue_.pop_back();
+      result.task = local_queue_.pop_back();
+      return result;
     }
     for (auto& victim: victims_) {
-      task = victim.try_steal();
-      if (task) {
-        return task;
+      result.task = victim.try_steal();
+      if (result.task) {
+        result.queueIndex = victim.index();
+        return result;
       }
     }
-    return nullptr;
+    return result;
   }
 
-  inline task_base* static_thread_pool::thread_state::pop() {
-    task_base* task = try_pop();
-    while (!task) {
+  inline static_thread_pool::thread_state::pop_result static_thread_pool::thread_state::pop() {
+    pop_result result = try_pop();
+    while (!result.task) {
       if (stopRequested_) {
-        return nullptr;
+        return result;
       }
-      wakeup_.wait(false, std::memory_order_relaxed);
+      wakeup_.wait(false, std::memory_order_acquire);
       wakeup_.store(false, std::memory_order_relaxed);
-      task = try_pop();
+      result = try_pop();
     }
-    return task;
+    return result;
   }
 
   inline bool static_thread_pool::thread_state::try_push(task_base* task) {
     auto [result, was_empty] = remote_queue_.try_push_front(task);
     if (was_empty) {
-      wakeup_.store(true, std::memory_order_relaxed);
+      wakeup_.store(true, std::memory_order_release);
+      wakeup_.notify_one();
     }
     return result;
   }
 
   inline void static_thread_pool::thread_state::push(task_base* task) {
     if (remote_queue_.push_front(task)) {
-      wakeup_.store(true, std::memory_order_relaxed);
+      wakeup_.store(true, std::memory_order_release);
+      wakeup_.notify_one();
     }
   }
 
   inline void static_thread_pool::thread_state::request_stop() {
     stopRequested_.store(true, std::memory_order_relaxed);
-    wakeup_.store(true, std::memory_order_relaxed);
+    wakeup_.store(true, std::memory_order_release);
+    wakeup_.notify_one();
   }
 
   template <typename ReceiverId>

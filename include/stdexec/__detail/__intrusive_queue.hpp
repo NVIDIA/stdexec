@@ -147,12 +147,14 @@ namespace stdexec {
         using difference_type = std::ptrdiff_t;
         using value_type = _Item*;
 
+        _Item* __predecessor_ = nullptr;
         _Item* __item_ = nullptr;
 
         iterator() noexcept = default;
 
-        explicit iterator(_Item* __item) noexcept
-          : __item_(__item) {
+        explicit iterator(_Item* __pred, _Item* __item) noexcept
+          : __predecessor_(__pred)
+          , __item_(__item) {
         }
 
         [[nodiscard]] _Item* operator*() const noexcept {
@@ -166,6 +168,7 @@ namespace stdexec {
         }
 
         iterator& operator++() noexcept {
+          __predecessor_ = __item_;
           if (__item_) {
             __item_ = __item_->*_Next;
           }
@@ -182,43 +185,37 @@ namespace stdexec {
       };
 
       [[nodiscard]] iterator begin() const noexcept {
-        return iterator(__head_);
+        return iterator(nullptr, __head_);
       }
 
       [[nodiscard]] iterator end() const noexcept {
-        return iterator();
+        return iterator(__tail_, nullptr);
       }
 
       void splice(iterator pos, __intrusive_queue& other, iterator first, iterator last) noexcept {
         if (first == last) {
           return;
         }
+        STDEXEC_ASSERT(first.__item_ != nullptr);
+        STDEXEC_ASSERT(last.__predecessor_ != nullptr);
         if (other.__head_ == first.__item_) {
           other.__head_ = last.__item_;
           if (other.__head_ == nullptr) {
             other.__tail_ = nullptr;
           }
         } else {
-          _Item* predescessor = other.__head_;
-          while (predescessor->*_Next != first.__item_) {
-            predescessor = predescessor->*_Next;
-          }
-          predescessor->*_Next = last.__item_;
-        }
-        iterator last_predescessor = first;
-        while (last_predescessor.__item_->*_Next != last.__item_) {
-          ++last_predescessor;
+          STDEXEC_ASSERT(first.__predecessor_ != nullptr);
+          first.__predecessor_->*_Next = last.__item_;
+          last.__predecessor_->*_Next = pos.__item_;
         }
         if (empty()) {
           __head_ = first.__item_;
-          __tail_ = last_predescessor.__item_;
+          __tail_ = last.__predecessor_;
         } else {
-          iterator pos_predescessor = iterator{__head_};
-          while (pos_predescessor.__item_->*_Next != pos.__item_) {
-            ++pos_predescessor;
+          pos.__predecessor_->*_Next = first.__item_;
+          if (pos.__item_ == nullptr) {
+            __tail_ = last.__predecessor_;
           }
-          pos_predescessor.__item_->*_Next = first.__item_;
-          last_predescessor.__item_->*_Next = pos.__item_;
         }
       }
 

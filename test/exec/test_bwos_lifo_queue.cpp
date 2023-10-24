@@ -7,7 +7,8 @@ TEST_CASE("exec::bwos::lifo_queue - ", "[bwos]") {
   int x = 1;
   int y = 2;
   SECTION("Observers") {
-    CHECK(queue.get_block_size() == 2);
+    CHECK(queue.block_size() == 2);
+    CHECK(queue.num_blocks() == 8);
   }
   SECTION("Empty Get") {
     CHECK(queue.pop_back() == nullptr);

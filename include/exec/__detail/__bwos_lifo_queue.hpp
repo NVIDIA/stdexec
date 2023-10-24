@@ -467,7 +467,8 @@ namespace exec::bwos {
 
   template <class Tp, class Allocator>
   bool lifo_queue<Tp, Allocator>::block_type::reclaim() noexcept {
-    while (steal_head_.load(std::memory_order_acquire) != block_size()) {
+    std::uint64_t expected_steal_head_ = tail_.load(std::memory_order_relaxed);
+    while (steal_head_.load(std::memory_order_acquire) != expected_steal_head_) {
       spin_loop_pause();
     }
     head_.store(0, std::memory_order_relaxed);
