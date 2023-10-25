@@ -60,3 +60,8 @@ endforeach()
 if(STDEXEC_ENABLE_CUDA)
     add_subdirectory(nvexec)
 endif()
+
+if (STDEXEC_ENABLE_TBB)
+ add_executable(example.benchmark.tbb_thread_pool benchmark/tbb_thread_pool.cpp)
+ target_link_libraries(example.benchmark.tbb_thread_pool PRIVATE STDEXEC::tbbexec)
+endif()

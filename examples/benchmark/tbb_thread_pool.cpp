@@ -1,4 +1,4 @@
-#include <exec/static_thread_pool.hpp>
+#include <tbbexec/tbb_thread_pool.hpp>
 #include <iostream>
 #include <iomanip>
 #include <barrier>
@@ -13,7 +13,7 @@ std::size_t even_share(std::size_t n, std::size_t m, std::size_t id) {
 }
 
 struct RunThread {
-  void operator()(exec::static_thread_pool& pool, std::size_t total_scheds, std::size_t tid, std::barrier<>& barrier) {
+  void operator()(tbbexec::tbb_thread_pool& pool, std::size_t total_scheds, std::size_t tid, std::barrier<>& barrier) {
     barrier.arrive_and_wait();
     std::size_t scheds = even_share(total_scheds, pool.available_parallelism(), tid);
     auto scheduler = pool.get_scheduler();
@@ -23,7 +23,6 @@ struct RunThread {
     }
   }
 };
-
 
 thread_local char* alloc_watermark = nullptr;
 thread_local std::size_t alloc_watermark_size = 0;
@@ -80,7 +79,7 @@ int main(int argc, char** argv) {
   std::chrono::steady_clock::time_point start{};
   std::size_t total_scheds = 100'000'000;
   {
-    exec::static_thread_pool pool(nthreads);
+    tbbexec::tbb_thread_pool pool(nthreads);
     std::barrier<> barrier(nthreads + 1);
     std::vector<std::thread> threads;
     for (std::size_t i = 0; i < pool.available_parallelism(); ++i) {
@@ -91,7 +90,6 @@ int main(int argc, char** argv) {
     for (auto& thread: threads) {
       thread.join();
     }
-    pool.request_stop();
   }
   auto end = std::chrono::steady_clock::now();
   auto dur = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);

@@ -280,14 +280,13 @@ namespace exec {
       bwos::lifo_queue<task_base*> local_queue_{8, 1024};
       __atomic_intrusive_queue<&task_base::next> remote_queue_{};
       __intrusive_queue<&task_base::next> pending_queue_{};
-#if STDEXEC_NO_ATOMIC_WAIT()
       std::mutex mut_{};
       std::condition_variable cv_{};
       bool stopRequested_{false};
-#else
-      std::atomic<bool> wakeup_{false};
-      std::atomic<bool> stopRequested_{false};
-#endif
+      enum state {
+        running, sleeping, notified
+      };
+      std::atomic<state> state_;
       std::vector<workstealing_victim> victims_{};
       std::uint32_t index_{};
     };
@@ -427,62 +426,38 @@ namespace exec {
   inline static_thread_pool::thread_state::pop_result static_thread_pool::thread_state::pop() {
     pop_result result = try_pop();
     while (!result.task) {
-#if STDEXEC_NO_ATOMIC_WAIT()
       std::unique_lock<std::mutex> lock{mut_};
-      if (!stopRequested_) {
-        cv_.wait(lock);
+      if (stopRequested_) {
+        return result;
+      }
+      using namespace std::chrono_literals;
+      // spurious wakeups are fine to look for stealing opportunities
+      state expected = state::running;
+      if (!state_.compare_exchange_weak(expected, state::sleeping, std::memory_order_relaxed)) {
+        cv_.wait_for(lock, 100ms);
       } else {
-        return result;
+        lock.unlock();
       }
-#else
-      if (stopRequested_.load(std::memory_order_relaxed)) {
-        return result;
-      }
-      wakeup_.wait(false, std::memory_order_acquire);
-      wakeup_.store(false, std::memory_order_relaxed);
-#endif
+      state_.store(state::running, std::memory_order_relaxed);
       result = try_pop();
     }
     return result;
   }
 
-  inline bool static_thread_pool::thread_state::try_push(task_base* task) {
-    auto [result, was_empty] = remote_queue_.try_push_front(task);
-#if STDEXEC_NO_ATOMIC_WAIT()
-    cv_.notify_one();
-#else
-    if (was_empty) {
-      wakeup_.store(true, std::memory_order_release);
-      wakeup_.notify_one();
-    }
-#endif
-    return result;
-  }
-
   inline void static_thread_pool::thread_state::push(task_base* task) {
-#if STDEXEC_NO_ATOMIC_WAIT()
     remote_queue_.push_front(task);
-    cv_.notify_one();
-#else
-    if (remote_queue_.push_front(task)) {
-      wakeup_.store(true, std::memory_order_release);
-      wakeup_.notify_one();
+    if (state_.exchange(state::notified, std::memory_order_relaxed) == state::sleeping) {
+      { std::lock_guard lock{mut_}; }
+      cv_.notify_one();
     }
-#endif
   }
 
   inline void static_thread_pool::thread_state::request_stop() {
-#if STDEXEC_NO_ATOMIC_WAIT()
     {
       std::lock_guard lock{mut_};
       stopRequested_ = true;
     }
     cv_.notify_one();
-#else
-    stopRequested_.store(true, std::memory_order_relaxed);
-    wakeup_.store(true, std::memory_order_release);
-    wakeup_.notify_one();
-#endif
   }
 
   template <typename ReceiverId>
