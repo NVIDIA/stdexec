@@ -23,7 +23,7 @@ namespace exec {
   class __atomic_intrusive_queue;
 
   template <class _Tp, _Tp* _Tp::*_NextPtr>
-  class __atomic_intrusive_queue<_NextPtr> {
+  class alignas(64) __atomic_intrusive_queue<_NextPtr> {
    public:
     using __node_pointer = _Tp*;
     using __atomic_node_pointer = std::atomic<_Tp*>;

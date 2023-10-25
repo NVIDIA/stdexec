@@ -399,7 +399,7 @@ namespace exec::bwos {
       ++back;
       ++first;
     }
-    tail_.store(back, std::memory_order_relaxed);
+    tail_.store(back, std::memory_order_release);
     return first;
   }
 
@@ -413,8 +413,9 @@ namespace exec::bwos {
     if (front == back) [[unlikely]] {
       return {lifo_queue_error_code::empty, nullptr};
     }
-    tail_.store(back - 1, std::memory_order_relaxed);
-    return {lifo_queue_error_code::success, static_cast<Tp &&>(ring_buffer_[back - 1])};
+    Tp value = static_cast<Tp &&>(ring_buffer_[back - 1]);
+    tail_.store(back - 1, std::memory_order_release);
+    return {lifo_queue_error_code::success, value};
   }
 
   template <class Tp, class Allocator>
@@ -425,7 +426,7 @@ namespace exec::bwos {
       result.status = lifo_queue_error_code::done;
       return result;
     }
-    std::uint64_t back = tail_.load(std::memory_order_relaxed);
+    std::uint64_t back = tail_.load(std::memory_order_acquire);
     if (spos == back) [[unlikely]] {
       result.status = lifo_queue_error_code::empty;
       return result;
