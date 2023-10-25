@@ -60,6 +60,9 @@ namespace stdexec {
     static inline constexpr Tag (*signature)(Sig) = nullptr;
   };
 
+  struct default_domain;
+  struct dependent_domain;
+
   namespace __domain {
     template <class _Tag>
     using __legacy_c11n_for = typename _Tag::__legacy_customizations_t;
@@ -82,21 +85,36 @@ namespace stdexec {
     };
 
     template <class _DomainOrTag, class _Sender, class... _Env>
-    concept __has_transform_member =
+    concept __has_transform_sender =
       requires(_DomainOrTag __tag, _Sender&& __sender, const _Env&... __env) {
         __tag.transform_sender((_Sender&&) __sender, __env...);
       };
 
     template <class _Sender, class... _Env>
-    concept __has_default_transform = //
+    concept __has_default_transform_sender = //
       sender_expr<_Sender>            //
-      && __has_transform_member<__tag_of<_Sender>, _Sender, _Env...>;
+      && __has_transform_sender<__tag_of<_Sender>, _Sender, _Env...>;
+
+    template <class _Type, class _Sender, class _Env>
+    concept __has_transform_env =
+      requires(_Type __obj, _Sender&& __sender, _Env&& __env) {
+        __obj.transform_env((_Sender&&) __sender, (_Env&&) __env);
+      };
+
+    template <class _Sender, class _Env>
+    concept __has_default_transform_env = //
+      sender_expr<_Sender> //
+      && __has_transform_env<__tag_of<_Sender>, _Sender, _Env>;
 
     template <class _DomainOrTag, class... _Args>
-    concept __has_apply_member = requires(_DomainOrTag __tag, _Args&&... __args) {
+    concept __has_apply_sender = requires(_DomainOrTag __tag, _Args&&... __args) {
       __tag.apply_sender((_Args&&) __args...);
     };
   } // namespace __domain
+
+  namespace __write_ {
+    struct __write_t;
+  }
 
   struct default_domain {
     default_domain() = default;
@@ -108,7 +126,7 @@ namespace stdexec {
       // Look for a legacy customization for the given tag, and if found, apply it.
       if constexpr (__callable<__sexpr_apply_t, _Sender, __domain::__legacy_customization>) {
         return stdexec::__sexpr_apply((_Sender&&) __sndr, __domain::__legacy_customization());
-      } else if constexpr (__domain::__has_default_transform<_Sender>) {
+      } else if constexpr (__domain::__has_default_transform_sender<_Sender>) {
         return __tag_of<_Sender>().transform_sender((_Sender&&) __sndr);
       } else {
         return static_cast<_Sender>((_Sender&&) __sndr);
@@ -120,7 +138,7 @@ namespace stdexec {
     template <class _Sender, class _Env>
     STDEXEC_ATTRIBUTE((always_inline))
     decltype(auto) transform_sender(_Sender&& __sndr, const _Env& __env) const {
-      if constexpr (__domain::__has_default_transform<_Sender, _Env>) {
+      if constexpr (__domain::__has_default_transform_sender<_Sender, _Env>) {
         return __tag_of<_Sender>().transform_sender((_Sender&&) __sndr, __env);
       } else {
         return static_cast<_Sender>((_Sender&&) __sndr);
@@ -130,7 +148,7 @@ namespace stdexec {
 
     template <class _Tag, class _Sender, class... _Args>
       requires __domain::__has_legacy_c11n<_Tag, _Sender, _Args...>
-            || __domain::__has_apply_member<_Tag, _Sender, _Args...>
+            || __domain::__has_apply_sender<_Tag, _Sender, _Args...>
     STDEXEC_ATTRIBUTE((always_inline)) decltype(auto)
       apply_sender(_Tag, _Sender&& __sndr, _Args&&... __args) const {
       // Look for a legacy customization for the given tag, and if found, apply it.
@@ -141,6 +159,15 @@ namespace stdexec {
         return _Tag().apply_sender((_Sender&&) __sndr, (_Args&&) __args...);
       }
       STDEXEC_UNREACHABLE();
+    }
+
+    template <class _Sender, class _Env>
+    decltype(auto) transform_env(_Sender&& __sndr, _Env&& __env) const noexcept {
+      if constexpr (__domain::__has_default_transform_env<_Sender, _Env>) {
+        return __tag_of<_Sender>().transform_env((_Sender&&) __sndr, (_Env&&) __env);
+      } else {
+        return static_cast<_Env>((_Env&&) __env);
+      }
     }
   };
 
@@ -594,6 +621,20 @@ namespace stdexec {
     };
 
   /////////////////////////////////////////////////////////////////////////////
+  template <class _Sender, class _Scheduler, class _Tag = set_value_t>
+  concept __completes_on =
+    __decays_to<
+      __call_result_t<get_completion_scheduler_t<_Tag>, env_of_t<_Sender>>,
+      _Scheduler>;
+
+  /////////////////////////////////////////////////////////////////////////////
+  template <class _Sender, class _Scheduler, class _Env>
+  concept __starts_on =
+    __decays_to<
+      __call_result_t<get_scheduler_t, _Env>,
+      _Scheduler>;
+
+  /////////////////////////////////////////////////////////////////////////////
   inline constexpr struct __get_env_domain_t {
     template <class _Env, class _Tag = get_scheduler_t, class _Default = default_domain>
     auto operator()(const _Env& __env, _Tag __tag = {}, _Default __def = {}) const noexcept {
@@ -620,6 +661,52 @@ namespace stdexec {
 
   template <class _Sender, class _Tag = set_value_t, class _Default = default_domain>
   using __sender_domain_of_t = __call_result_t<__get_sender_domain_t, _Sender, _Tag, _Default>;
+
+  namespace __domain {
+    struct __common_domain_fn {
+      static default_domain __common_domain() noexcept {
+        return {};
+      }
+
+      template <class _Domain, class... _OtherDomains>
+        requires __all_of<_Domain, _OtherDomains...>
+      static _Domain __common_domain(_Domain __domain, _OtherDomains...) noexcept {
+        return (_Domain&&) __domain;
+      }
+
+      template <class... _Domains>
+      static auto __common_domain(_Domains...) noexcept //
+        -> __if_c<__one_of<dependent_domain, _Domains...>, dependent_domain, __none_such> {
+        return {};
+      }
+
+      auto operator()(__ignore, __ignore, const auto&... __sndrs) const noexcept {
+        return __common_domain(__get_sender_domain(__sndrs)...);
+      }
+    };
+
+    template <class... _Senders>
+    using __common_domain_t = //
+      __call_result_t<__common_domain_fn, int, int, _Senders...>;
+
+    template <class... _Senders>
+    concept __has_common_domain = //
+      __none_of<__none_such, __common_domain_t<_Senders...>>;
+
+    template <class _Tag>
+    struct __get_env_common_domain {
+      template <sender_expr_for<_Tag> _Self>
+      static auto get_env(const _Self& __self) noexcept {
+        using _Domain = __call_result_t<__sexpr_apply_t, const _Self&, __common_domain_fn>;
+        if constexpr (same_as<_Domain, default_domain>) {
+          return empty_env();
+        } else {
+          return __mkprop(__sexpr_apply(__self, __common_domain_fn()), get_domain);
+        }
+        STDEXEC_UNREACHABLE();
+      }
+    };
+  } // namespace __domain
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
@@ -1109,33 +1196,140 @@ namespace stdexec {
   using __debug::__debug_sender;
 
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.transform_sender]
-  inline constexpr struct transform_sender_t {
-    template <class _Domain, class _Sender, class... _Env>
+  // dependent_domain
+  struct dependent_domain {
+    template <sender_expr _Sender, class _Env>
+      requires same_as<__sender_domain_of_t<_Sender>, dependent_domain>
     STDEXEC_ATTRIBUTE((always_inline))
-    /*constexpr*/ decltype(auto)
-      operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const {
-      if constexpr (__domain::__has_transform_member<_Domain, _Sender, const _Env&...>) {
-        return __dom.transform_sender((_Sender&&) __sndr, __env...);
-      } else {
-        return default_domain().transform_sender((_Sender&&) __sndr, __env...);
+    decltype(auto) transform_sender(_Sender&& __sndr, const _Env& __env) const;
+  };
+
+  /////////////////////////////////////////////////////////////////////////////
+  // [execution.transform_sender]
+  namespace __domain {
+    struct __transform_env {
+      template <class _Domain, class _Sender, class _Env>
+      STDEXEC_ATTRIBUTE((always_inline))
+      /*constexpr*/ decltype(auto)
+        operator()(_Domain __dom, _Sender&& __sndr, _Env&& __env) const noexcept {
+        if constexpr (__domain::__has_transform_env<_Domain, _Sender, _Env>) {
+          return __dom.transform_env((_Sender&&) __sndr, (_Env&&) __env);
+        } else {
+          return default_domain().transform_env((_Sender&&) __sndr, (_Env&&) __env);
+        }
       }
-    }
+    };
+
+    struct __transform_sender {
+      template <class _Domain, class _Sender>
+      STDEXEC_ATTRIBUTE((always_inline))
+      /*constexpr*/ decltype(auto)
+        operator()(_Domain __dom, _Sender&& __sndr) const {
+        if constexpr (__domain::__has_transform_sender<_Domain, _Sender>) {
+          return __dom.transform_sender((_Sender&&) __sndr);
+        } else {
+          return default_domain().transform_sender((_Sender&&) __sndr);
+        }
+      }
+
+      template <class _Domain, class _Sender, class _Env>
+      STDEXEC_ATTRIBUTE((always_inline))
+      /*constexpr*/ decltype(auto)
+        operator()(_Domain __dom, _Sender&& __sndr, const _Env& __env) const {
+        if constexpr (__domain::__has_transform_sender<_Domain, _Sender, _Env>) {
+          return __dom.transform_sender((_Sender&&) __sndr, __env);
+        } else {
+          return default_domain().transform_sender((_Sender&&) __sndr, __env);
+        }
+      }
+    };
+
+    struct __transform_dependent_sender {
+      // If we are doing a lazy customization of a type whose domain is value-dependent (e.g.,
+      // let_value), first transform the sender to determine the domain. Then continue transforming
+      // the sender with the requested domain.
+      template <class _Domain, sender_expr _Sender, class _Env>
+        requires same_as<__sender_domain_of_t<_Sender>, dependent_domain>
+      /*constexpr*/ decltype(auto)
+        operator()(_Domain __dom, _Sender&& __sndr, const _Env& __env) const {
+        static_assert(__none_of<_Domain, dependent_domain>);
+        return __transform_sender()(
+          __dom,
+          dependent_domain().transform_sender((_Sender&&) __sndr, __env),
+          __env);
+      }
+    };
+  } // namespace __domain
+
+  /////////////////////////////////////////////////////////////////////////////
+  // [execution.transform_sender]
+  inline constexpr struct transform_sender_t
+    : __domain::__transform_sender
+    , __domain::__transform_dependent_sender {
+    using __domain::__transform_sender::operator();
+    using __domain::__transform_dependent_sender::operator();
   } transform_sender{};
 
   template <class _Domain, class _Sender, class... _Env>
   using transform_sender_result_t = __call_result_t<transform_sender_t, _Domain, _Sender, _Env...>;
 
+  inline constexpr __domain::__transform_env transform_env{};
+
+  struct _CHILD_SENDERS_WITH_DIFFERENT_DOMAINS_ {};
+
+  template <sender_expr _Sender, class _Env>
+    requires same_as<__sender_domain_of_t<_Sender>, dependent_domain>
+  decltype(auto) dependent_domain::transform_sender(_Sender&& __sndr, const _Env& __env) const {
+    // apply any algorithm-specific transformation to the environment
+    const auto& __env2 = transform_env(*this, (_Sender&&) __sndr, __env);
+
+    // recursively transform the sender to determine the domain
+    return __sexpr_apply(
+      (_Sender&&) __sndr,
+      [&]<class _Tag, class _Data, class... _Childs>(_Tag, _Data&& __data, _Childs&&... __childs) {
+        // TODO: propagate meta-exceptions here:
+        auto __sndr2 = __make_sexpr<_Tag>(
+          (_Data&&) __data,
+          __domain::__transform_sender()(*this, (_Childs&&) __childs, __env2)...);
+        using _Sender2 = decltype(__sndr2);
+
+        auto __domain2 = __sexpr_apply(__sndr2, __domain::__common_domain_fn());
+        using _Domain2 = decltype(__domain2);
+
+        if constexpr (same_as<_Domain2, __none_such>) {
+          return __mexception<_CHILD_SENDERS_WITH_DIFFERENT_DOMAINS_, _WITH_SENDER_<_Sender2>>();
+        } else {
+          return __domain::__transform_sender()(__domain2, std::move(__sndr2), __env);
+        }
+        STDEXEC_UNREACHABLE();
+      });
+  }
+
+  // A helper for use when building sender trees where each node must be transformed.
+  template <class _Domain, class _Env>
+  auto __make_transformer(_Domain, const _Env& __env) {
+    return [&]<class _Tag>(_Tag) {
+      return [&]<class... _Args>(_Args&&... __args) -> decltype(auto) {
+        return stdexec::transform_sender(_Domain(), _Tag()((_Args&&) __args...), __env);
+      };
+    };
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  template <class _Tag, class _Domain, class _Sender, class... _Args>
+  concept __has_implementation_for =
+    __domain::__has_apply_sender<_Domain, _Tag, _Sender, _Args...>
+    || __domain::__has_apply_sender<default_domain, _Tag, _Sender, _Args...>;
+
   /////////////////////////////////////////////////////////////////////////////
   // [execution.apply_sender]
   inline constexpr struct apply_sender_t {
     template <class _Domain, class _Tag, class _Sender, class... _Args>
-      requires __domain::__has_apply_member<_Domain, _Tag, _Sender, _Args...>
-            || __domain::__has_apply_member<default_domain, _Tag, _Sender, _Args...>
+      requires __has_implementation_for<_Tag, _Domain, _Sender, _Args...>
     STDEXEC_ATTRIBUTE((always_inline))
       /*constexpr*/ decltype(auto)
         operator()(_Domain __dom, _Tag, _Sender&& __sndr, _Args&&... __args) const {
-      if constexpr (__domain::__has_apply_member<_Domain, _Tag, _Sender, _Args...>) {
+      if constexpr (__domain::__has_apply_sender<_Domain, _Tag, _Sender, _Args...>) {
         return __dom.apply_sender(_Tag(), (_Sender&&) __sndr, (_Args&&) __args...);
       } else {
         return default_domain().apply_sender(_Tag(), (_Sender&&) __sndr, (_Args&&) __args...);
@@ -3098,7 +3292,7 @@ namespace stdexec {
     struct then_t : __with_default_get_env<then_t> {
       template <sender _Sender, __movable_value _Fun>
       auto operator()(_Sender&& __sndr, _Fun __fun) const {
-        auto __domain = __get_sender_domain((_Sender&&) __sndr);
+        auto __domain = __get_sender_domain(__sndr);
         return stdexec::transform_sender(
           __domain, __make_sexpr<then_t>((_Fun&&) __fun, (_Sender&&) __sndr));
       }
@@ -4382,14 +4576,18 @@ namespace stdexec {
         __q<__decay_ref>,
         __mbind_front<__mtry_catch_q<__call_result_t, __on_not_callable<_Set>>, _Fun>>;
 
+    // FUTURE: when we have a scheduler query for "always completes inline",
+    // then we can use that instead of hard-coding `__inln::__scheduler` here.
+    template <class _Scheduler>
+    concept __unknown_context =
+      __one_of<_Scheduler, __none_such, __inln::__scheduler>;
+
     // The receiver that gets connected to the result sender is the input receiver,
     // possibly augmented with the input sender's completion scheduler (which is
     // where the result sender will be started).
     template <class _Receiver, class _Scheduler>
     using __result_receiver_t = __if_c<
-      // FUTURE: when we have a scheduler query for "always completes inline",
-      // then we can use that instead of hard-coding `__inln::__scheduler` here.
-      __one_of<_Scheduler, __none_such, __inln::__scheduler>,
+      __unknown_context<_Scheduler>,
       _Receiver,
       __t<__detail::__receiver_with<
         &__operation_base_base_<__id<_Receiver>, __id<_Scheduler>>::__rcvr_,
@@ -4400,9 +4598,7 @@ namespace stdexec {
     // in the environment seen by the result sender.
     template <class _Env, class _Scheduler>
     using __result_env_t = __if_c<
-      // FUTURE: when we have a scheduler query for "always completes inline",
-      // then we can use that instead of hard-coding `__inln::__scheduler` here.
-      __one_of<_Scheduler, __none_such, __inln::__scheduler>,
+      __unknown_context<_Scheduler>,
       _Env,
       __env::__env_join_t<
         __env::__prop<_Scheduler(get_scheduler_t)>,
@@ -4561,66 +4757,68 @@ namespace stdexec {
       };
     };
 
-    template <class _SenderId, class _Fun, class _SetId>
-    struct __sender {
-      using _Sender = stdexec::__t<_SenderId>;
+    template <class _Sender, class _Fun, class _SetId>
+    struct __sender_base {
       using _Set = stdexec::__t<_SetId>;
+      using is_sender = void;
 
-      struct __t {
-        using __id = __sender;
-        using is_sender = void;
+      template <class _Self, class _Receiver>
+      using __operation_t = //
+        stdexec::__t<
+          __operation< stdexec::__cvref_id<_Self, _Sender>, stdexec::__id<_Receiver>, _Fun, _Set>>;
+      template <class _Self, class _Receiver>
+      using __receiver_t =
+        __receiver< stdexec::__cvref_id<_Self, _Sender>, stdexec::__id<_Receiver>, _Fun, _Set>;
 
-        template <class _Self, class _Receiver>
-        using __operation_t = //
-          stdexec::__t<
-            __operation< stdexec::__cvref_id<_Self, _Sender>, stdexec::__id<_Receiver>, _Fun, _Set>>;
-        template <class _Self, class _Receiver>
-        using __receiver_t =
-          __receiver< stdexec::__cvref_id<_Self, _Sender>, stdexec::__id<_Receiver>, _Fun, _Set>;
+      template <class _CvrefSender>
+      using __completion_sched =
+        __query_result_or_t<get_completion_scheduler_t<_Set>, env_of_t<_CvrefSender>, __none_such>;
 
-        template <class _Sender>
-        using __completion_sched =
-          __query_result_or_t<get_completion_scheduler_t<_Set>, env_of_t<_Sender>, __none_such>;
-
-        template <class _Sender, class _Env>
-        using __completions = //
+      template <class _CvrefSender, class _Env>
+      using __completions = //
           __mapply<
             __transform<
               __mbind_front_q<__tfx_signal_t, _Env, _Fun, _Set, __completion_sched<_Sender>>,
               __q<__concat_completion_signatures_t> >,
             __completion_signatures_of_t<_Sender, _Env>>;
 
-        template <__decays_to<__t> _Self, receiver _Receiver>
-          requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
-          -> __operation_t<_Self, _Receiver> {
-          return __operation_t<_Self, _Receiver>{
-            ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr, ((_Self&&) __self).__fun_};
-        }
+      template <__decays_to_derived_from<__sender_base> _Self, receiver _Receiver>
+        requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
+      friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+        -> __operation_t<_Self, _Receiver> {
+        return __operation_t<_Self, _Receiver>{
+          ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr, ((_Self&&) __self).__fun_};
+      }
 
-        friend auto tag_invoke(get_env_t, const __t& __self) noexcept -> env_of_t<const _Sender&> {
-          return get_env(__self.__sndr_);
-        }
+      template <__decays_to_derived_from<__sender_base> _Self, class _Env>
+      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+        -> __completions<__copy_cvref_t<_Self, _Sender>, _Env> {
+        return {};
+      }
 
-        template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-          -> __completions<__copy_cvref_t<_Self, _Sender>, _Env> {
-          return {};
-        }
+      // BUGBUG better would be to port the `let_[value|error|stopped]` algorithms to __sexpr
+      template <class _Self, class _ApplyFun>
+      static auto apply(_Self&& __self, _ApplyFun __fun) -> __call_result_t<
+        _ApplyFun,
+        _SetId, // Actually one of let_value_t, let_error_t, let_stopped_t
+        __copy_cvref_t<_Self, _Fun>,
+        __copy_cvref_t<_Self, _Sender>> {
+        return ((_ApplyFun&&) __fun)(
+          _SetId(), ((_Self&&) __self).__fun_, ((_Self&&) __self).__sndr_);
+      }
 
-        // BUGBUG better would be to port the `let_[value|error|stopped]` algorithms to __sexpr
-        template <class _Self, class _ApplyFun>
-        static auto apply(_Self&& __self, _ApplyFun __fun) -> __call_result_t<
-          _ApplyFun,
-          _SetId, // Actually one of let_value_t, let_error_t, let_stopped_t
-          __copy_cvref_t<_Self, _Fun>,
-          __copy_cvref_t<_Self, _Sender>> {
-          return ((_ApplyFun&&) __fun)(
-            _SetId(), ((_Self&&) __self).__fun_, ((_Self&&) __self).__sndr_);
-        }
+      _Sender __sndr_;
+      _Fun __fun_;
+    };
 
-        _Sender __sndr_;
-        _Fun __fun_;
+    template <class _SenderId, class _Fun, class _SetId, class _Domain = dependent_domain>
+    struct __sender {
+      struct __t : __sender_base<stdexec::__t<_SenderId>, _Fun, _SetId> {
+        using __id = __sender;
+
+        friend auto tag_invoke(get_env_t, const __t& __self) noexcept /*-> env_of_t<const _Sender&>*/ {
+          return __join_env(__mkprop(_Domain(), get_domain), get_env(__self.__sndr_));
+        }
       };
     };
 
@@ -4637,21 +4835,69 @@ namespace stdexec {
         tag_invoke_t(_LetTag, _Sender, _Function)>;
 
       using __t = _SetTag;
-      template <class _Sender, class _Fun>
+      template <class _Sender, class _Fun, class _Domain = dependent_domain>
       using __sender =
-        stdexec::__t<__let::__sender<stdexec::__id<__decay_t<_Sender>>, _Fun, _LetTag>>;
+        stdexec::__t<__let::__sender<stdexec::__id<__decay_t<_Sender>>, _Fun, _LetTag, _Domain>>;
 
       template <sender _Sender, __movable_value _Fun>
       auto operator()(_Sender&& __sndr, _Fun __fun) const {
         auto __domain = __get_sender_domain((_Sender&&) __sndr);
         return stdexec::transform_sender(
-          __domain, __sender<_Sender, _Fun>{(_Sender&&) __sndr, (_Fun&&) __fun});
+          __domain, __sender<_Sender, _Fun>{{(_Sender&&) __sndr, (_Fun&&) __fun}});
       }
 
       template <class _Fun>
       STDEXEC_ATTRIBUTE((always_inline)) //
       __binder_back<_LetTag, _Fun> operator()(_Fun __fun) const {
         return {{}, {}, {(_Fun&&) __fun}};
+      }
+
+      // Compute all the domains of all the result senders and make sure they're all the same
+      template <class _Child, class _Fun, class _Env>
+      using __result_domain_t =
+        __gather_completions_for<
+          _SetTag,
+          _Child,
+          _Env,
+          __mtry_catch<
+            __mbind_front_q<__call_result_t, _Fun>,
+            __on_not_callable<_SetTag>>,
+          __q<__domain::__common_domain_t>>;
+
+      static auto get_env(__ignore) noexcept {
+        return __mkprop(dependent_domain(), get_domain);
+      }
+
+      template <sender_expr_for<_LetTag> _Sender, class _Env>
+      static decltype(auto) transform_env(_Sender&& __sndr, const _Env& __env) {
+        return __sexpr_apply(
+          (_Sender&&) __sndr,
+          [&]<class _Fun, sender_in<_Env> _Child>(__ignore, _Fun&&, _Child&& __child) -> decltype(auto) {
+            using _Scheduler = __completion_sched<_Child, _SetTag>;
+            if constexpr (__unknown_context<_Scheduler>) {
+              return (__env);
+            } else {
+              return __join_env(
+                __mkprop(get_completion_scheduler<_SetTag>(stdexec::get_env(__child)), get_scheduler),
+                __mkprop(get_domain),
+                __env);
+            }
+            STDEXEC_UNREACHABLE();
+          }
+        );
+      }
+
+      template <sender_expr_for<_LetTag> _Sender, class _Env>
+        requires same_as<__sender_domain_of_t<_Sender>, dependent_domain>
+      static decltype(auto) transform_sender(_Sender&& __sndr, const _Env& __env) {
+        return __sexpr_apply(
+          (_Sender&&) __sndr,
+          [&]<class _Fun, sender_in<_Env> _Child>(__ignore, _Fun&& __fun, _Child&& __child) {
+            // TODO: propagate errors here
+            using _Domain = __result_domain_t<_Child, _Fun, _Env>;
+            static_assert(__none_of<_Domain, __none_such, dependent_domain>);
+            return __sender<_Child, _Fun, _Domain>{{(_Child&&) __child, (_Fun&&) __fun}};
+          });
       }
     };
 
@@ -4750,64 +4996,63 @@ namespace stdexec {
       };
     };
 
-    template <class _SenderId>
-    struct __sender {
-      using _Sender = stdexec::__t<_SenderId>;
-
-      struct __t {
-        using __id = __sender;
-        using is_sender = void;
-
-        template <class _Self, class _Receiver>
-        using __operation_t =
-          stdexec::__t<__operation<stdexec::__cvref_id<_Self, _Sender>, stdexec::__id<_Receiver>>>;
-        template <class _Self, class _Receiver>
-        using __receiver_t =
-          stdexec::__t<__receiver<stdexec::__cvref_id<_Self, _Sender>, stdexec::__id<_Receiver>>>;
-
-        template <__decays_to<__t> _Self, receiver _Receiver>
-          requires __single_typed_sender<__copy_cvref_t<_Self, _Sender>, env_of_t<_Receiver>>
-                && sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Self, _Receiver>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
-          -> __operation_t<_Self, _Receiver> {
-          return {((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
-        }
-
-        friend auto tag_invoke(get_env_t, const __t& __self) noexcept -> env_of_t<const _Sender&> {
-          return get_env(__self.__sndr_);
-        }
-
-        template <class... _Tys>
-          requires(sizeof...(_Tys) == 1)
-        using __set_value_t = completion_signatures<set_value_t(std::optional<__decay_t<_Tys>>...)>;
-
-        template <class _Ty>
-        using __set_error_t = completion_signatures<set_error_t(_Ty)>;
-
-        template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-          -> make_completion_signatures<
-            __copy_cvref_t<_Self, _Sender>,
-            _Env,
-            completion_signatures<set_error_t(std::exception_ptr)>,
-            __set_value_t,
-            __set_error_t,
-            completion_signatures<>> {
-          return {};
-        }
-
-        _Sender __sndr_;
-      };
-    };
-
-    struct stopped_as_optional_t {
+    struct stopped_as_optional_t : __with_default_get_env<stopped_as_optional_t> {
       template <sender _Sender>
-      auto operator()(_Sender&& __sndr) const -> __t<__sender<stdexec::__id<__decay_t<_Sender>>>> {
-        return {(_Sender&&) __sndr};
+      auto operator()(_Sender&& __sndr) const {
+        return __make_sexpr<stopped_as_optional_t>(__(), (_Sender&&) __sndr);
       }
 
       STDEXEC_ATTRIBUTE((always_inline)) //
       __binder_back<stopped_as_optional_t> operator()() const noexcept {
+        return {};
+      }
+
+#if STDEXEC_FRIENDSHIP_IS_LEXICAL()
+     private:
+      template <class...>
+      friend struct stdexec::__sexpr;
+#endif
+
+      template <class _CvrefSender, class _Receiver>
+      using __operation_t =
+        stdexec::__t<__operation<stdexec::__cvref_id<_CvrefSender>, stdexec::__id<_Receiver>>>;
+      template <class _CvrefSender, class _Receiver>
+      using __receiver_t =
+        stdexec::__t<__receiver<stdexec::__cvref_id<_CvrefSender>, stdexec::__id<_Receiver>>>;
+
+      template <class _Receiver>
+      struct __connect_fn {
+        _Receiver __rcvr_;
+
+        template <class _Child>
+        __operation_t<_Child, _Receiver> operator()(stopped_as_optional_t, __, _Child&& __child) {
+          return {(_Child&&) __child, std::move(__rcvr_)};
+        }
+      };
+
+      template <sender_expr_for<stopped_as_optional_t> _Self, receiver _Receiver>
+        requires __single_typed_sender<__child_of<_Self>, env_of_t<_Receiver>>
+              && sender_to<__child_of<_Self>, __receiver_t<__child_of<_Self>, _Receiver>>
+      static __operation_t<__child_of<_Self>, _Receiver> connect(_Self&& __self, _Receiver __rcvr) {
+        return __sexpr_apply((_Self&&) __self, __connect_fn<_Receiver>{(_Receiver&&) __rcvr});
+      }
+
+      template <class... _Tys>
+        requires(sizeof...(_Tys) == 1)
+      using __set_value_t = completion_signatures<set_value_t(std::optional<__decay_t<_Tys>>...)>;
+
+      template <class _Ty>
+      using __set_error_t = completion_signatures<set_error_t(_Ty)>;
+
+      template <sender_expr_for<stopped_as_optional_t> _Self, class _Env>
+      static auto get_completion_signatures(_Self&&, _Env&&)
+        -> make_completion_signatures<
+          __child_of<_Self>,
+          _Env,
+          completion_signatures<set_error_t(std::exception_ptr)>,
+          __set_value_t,
+          __set_error_t,
+          completion_signatures<>> {
         return {};
       }
     };
@@ -5451,12 +5696,8 @@ namespace stdexec {
     auto __make_transform_fn(const _Env& __env) {
       return [&]<class _Scheduler, class... _Values>(_Scheduler&& __sched, _Values&&... __vals) {
         auto __domain = __get_env_domain(__env);
-        return stdexec::transform_sender(
-          __domain,
-          transfer(
-            stdexec::transform_sender(__domain, just((_Values&&) __vals...), __env),
-            (_Scheduler&&) __sched),
-          __env);
+        auto __tfx = __make_transformer(__domain, __env);
+        return __tfx(transfer)(__tfx(just)((_Values&&) __vals...), (_Scheduler&&) __sched);
       };
     }
 
@@ -5534,15 +5775,26 @@ namespace stdexec {
     struct __write_t : __with_default_get_env<__write_t> {
       template <sender _Sender, class... _Envs>
       auto operator()(_Sender&& __sndr, _Envs... __envs) const {
-        auto __domain = __get_sender_domain(__sndr);
-        return stdexec::transform_sender(
-          __domain, __make_sexpr<__write_t>(__join_env(std::move(__envs)...), (_Sender&&) __sndr));
+        return __make_sexpr<__write_t>(__join_env(std::move(__envs)...), (_Sender&&) __sndr);
       }
 
       template <class... _Envs>
       STDEXEC_ATTRIBUTE((always_inline)) //
       auto operator()(_Envs... __envs) const -> __binder_back<__write_t, _Envs...> {
         return {{}, {}, {std::move(__envs)...}};
+      }
+
+      template <class _Env>
+      STDEXEC_ATTRIBUTE((always_inline))
+      static auto __transform_env_fn(_Env&& __env) noexcept {
+        return [&](__ignore, const auto& __data, __ignore) noexcept {
+          return __join_env(__data, (_Env&&) __env);
+        };
+      }
+
+      template <sender_expr_for<__write_t> _Self, class _Env>
+      static auto transform_env(const _Self& __self, _Env&& __env) noexcept {
+        return __sexpr_apply(__self, __transform_env_fn((_Env&&) __env));
       }
 
 #if STDEXEC_FRIENDSHIP_IS_LEXICAL()
@@ -5574,12 +5826,23 @@ namespace stdexec {
         -> stdexec::__completion_signatures_of_t<
           __child_of<_Self>,
           __env::__env_join_t<const __decay_t<__data_of<_Self>>&, _Env>> {
+        return {};
       }
     };
   } // namespace __write_
 
   using __write_::__write_t;
   inline constexpr __write_t __write{};
+
+  namespace __detail {
+    template <class _Scheduler>
+    STDEXEC_ATTRIBUTE((always_inline))
+    auto __mkenv_sched(_Scheduler __sched) {
+      auto __env = __join_env(__mkprop(__sched, get_scheduler), __mkprop(get_domain));
+      struct __env_t : decltype(__env) { };
+      return __env_t{__env};
+    }
+  }
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.on]
@@ -5742,7 +6005,7 @@ namespace stdexec {
       };
     };
 
-    struct on_t {
+    struct on_t : __with_default_get_env<on_t> {
       using _Sender = __1;
       using _Scheduler = __0;
       using __legacy_customizations_t = __types< tag_invoke_t(on_t, _Scheduler, _Sender)>;
@@ -5758,10 +6021,17 @@ namespace stdexec {
       using __sender_t =
         __t<__sender<stdexec::__id<__decay_t<_Scheduler>>, stdexec::__id<__decay_t<_Sender>>>>;
 
-      template <sender_expr_for<on_t> _Sender>
-      static auto get_env(const _Sender& __sndr) noexcept
-        -> __call_result_t<__sexpr_apply_t, const _Sender&, __default_get_env_fn> {
-        return __sexpr_apply(__sndr, __default_get_env_fn());
+      template <class _Env>
+      STDEXEC_ATTRIBUTE((always_inline))
+      static auto __transform_env_fn(_Env&& __env) noexcept {
+        return [&](__ignore, auto __sched, __ignore) noexcept {
+          return __join_env(__detail::__mkenv_sched(__sched), (_Env&&) __env);
+        };
+      }
+
+      template <class _Sender, class _Env>
+      static auto transform_env(const _Sender& __sndr, _Env&& __env) noexcept {
+        return __sexpr_apply(__sndr, __transform_env_fn((_Env&&) __env));
       }
 
       template <class _Sender, class _Env>
@@ -6276,50 +6546,7 @@ namespace stdexec {
 
     struct _INVALID_ARGUMENTS_TO_WHEN_ALL_ { };
 
-    struct __common_domain_fn {
-      template <class _Domain, class... _OtherDomains>
-        requires __all_of<_Domain, _OtherDomains...>
-      static _Domain __common_domain(_Domain __domain, _OtherDomains...) noexcept {
-        return (_Domain&&) __domain;
-      }
-
-      template <class... _Domains>
-      static __none_such __common_domain(_Domains...) noexcept {
-        return {};
-      }
-
-      static default_domain __common_domain() noexcept {
-        return {};
-      }
-
-      auto operator()(__ignore, __ignore, const auto&... __sndrs) const noexcept {
-        return __common_domain(__get_sender_domain(__sndrs)...);
-      }
-    };
-
-    template <class... _Senders>
-    using __common_domain_t = //
-      __call_result_t<__common_domain_fn, int, int, _Senders...>;
-
-    template <class... _Senders>
-    concept __has_common_domain = //
-      __none_of<__none_such, __common_domain_t<_Senders...>>;
-
-    template <class _Tag>
-    struct __get_env_common_domain {
-      template <sender_expr_for<_Tag> _Self>
-      static auto get_env(const _Self& __self) noexcept {
-        using _Domain = __call_result_t<__sexpr_apply_t, const _Self&, __common_domain_fn>;
-        if constexpr (same_as<_Domain, default_domain>) {
-          return empty_env();
-        } else {
-          return __mkprop(__sexpr_apply(__self, __common_domain_fn()), get_domain);
-        }
-        STDEXEC_UNREACHABLE();
-      }
-    };
-
-    struct when_all_t : __get_env_common_domain<when_all_t> {
+    struct when_all_t : __domain::__get_env_common_domain<when_all_t> {
       // Used by the default_domain to find legacy customizations:
       using _Sender = __1;
       using __legacy_customizations_t = //
@@ -6327,9 +6554,9 @@ namespace stdexec {
 
       // TODO: improve diagnostic when senders have different domains
       template <sender... _Senders>
-        requires __has_common_domain<_Senders...>
+        requires __domain::__has_common_domain<_Senders...>
       auto operator()(_Senders&&... __sndrs) const {
-        auto __domain = __common_domain_t<_Senders...>();
+        auto __domain = __domain::__common_domain_t<_Senders...>();
         return stdexec::transform_sender(
           __domain, __make_sexpr<when_all_t>(__(), (_Senders&&) __sndrs...));
       }
@@ -6388,15 +6615,15 @@ namespace stdexec {
       }
     };
 
-    struct when_all_with_variant_t : __get_env_common_domain<when_all_with_variant_t> {
+    struct when_all_with_variant_t : __domain::__get_env_common_domain<when_all_with_variant_t> {
       using _Sender = __1;
       using __legacy_customizations_t = //
         __types<tag_invoke_t(when_all_with_variant_t, _Sender...)>;
 
       template <sender... _Senders>
-        requires __has_common_domain<_Senders...>
+        requires __domain::__has_common_domain<_Senders...>
       auto operator()(_Senders&&... __sndrs) const {
-        auto __domain = __common_domain_t<_Senders...>();
+        auto __domain = __domain::__common_domain_t<_Senders...>();
         return stdexec::transform_sender(
           __domain, __make_sexpr<when_all_with_variant_t>(__(), (_Senders&&) __sndrs...));
       }
@@ -6409,11 +6636,8 @@ namespace stdexec {
         return __sexpr_apply(
           (_Sender&&) __sndr, [&]<class... _Child>(__ignore, __ignore, _Child&&... __child) {
             auto __domain = __get_env_domain(__env);
-            return stdexec::transform_sender(
-              __domain,
-              when_all_t()(
-                stdexec::transform_sender(__domain, into_variant((_Child&&) __child), __env)...),
-              __env);
+            auto __tfx = __make_transformer(__domain, __env);
+            return __tfx(when_all_t())(__tfx(into_variant)((_Child&&) __child)...);
           });
       }
     };
@@ -6428,7 +6652,7 @@ namespace stdexec {
           _Sender...)>;
 
       template <scheduler _Scheduler, sender... _Senders>
-        requires __has_common_domain<_Senders...>
+        requires __domain::__has_common_domain<_Senders...>
       auto operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const {
         using _Env = __t<__schedule_from::__environ<__id<__decay_t<_Scheduler>>>>;
         auto __domain = query_or(get_domain, __sched, default_domain());
@@ -6452,12 +6676,10 @@ namespace stdexec {
           (_Sender&&) __sndr,
           [&]<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child) {
             auto __domain = __get_env_domain(__env);
-            return stdexec::transform_sender(
-              __domain,
-              transfer(
-                stdexec::transform_sender(__domain, when_all_t()((_Child&&) __child...), __env),
-                get_completion_scheduler<set_value_t>(__data)),
-              __env);
+            auto __tfx = __make_transformer(__domain, __env);
+            return __tfx(transfer)(
+              __tfx(when_all_t())((_Child&&) __child...),
+              get_completion_scheduler<set_value_t>(__data));
           });
       }
     };
@@ -6472,7 +6694,7 @@ namespace stdexec {
           _Sender...)>;
 
       template <scheduler _Scheduler, sender... _Senders>
-        requires __has_common_domain<_Senders...>
+        requires __domain::__has_common_domain<_Senders...>
       auto operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const {
         using _Env = __t<__schedule_from::__environ<__id<__decay_t<_Scheduler>>>>;
         auto __domain = query_or(get_domain, __sched, default_domain());
@@ -6496,12 +6718,10 @@ namespace stdexec {
           (_Sender&&) __sndr,
           [&]<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child) {
             auto __domain = __get_env_domain(__env);
-            return stdexec::transform_sender(
-              __domain,
-              transfer_when_all_t()(
+            auto __tfx = __make_transformer(__domain, __env);
+            return __tfx(transfer_when_all_t())(
                 get_completion_scheduler<set_value_t>((_Data&&) __data),
-                stdexec::transform_sender(__domain, into_variant((_Child&&) __child), __env)...),
-              __env);
+                __tfx(into_variant)((_Child&&) __child)...);
           });
       }
     };
@@ -6691,6 +6911,8 @@ namespace stdexec {
       __mstring _Details = __no_scheduler_details>
     struct _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_ { };
 
+    struct on_t;
+
     STDEXEC_PRAGMA_PUSH()
     STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-local-typedefs")
 
@@ -6698,7 +6920,6 @@ namespace stdexec {
       // Issue a custom diagnostic if the environment doesn't provide a scheduler.
       template <class _Sender, class _Env>
       static auto transform_sender(_Sender&&, const _Env&) {
-
         struct __no_scheduler_in_environment {
           using is_sender = void;
           using completion_signatures = //
@@ -6723,6 +6944,9 @@ namespace stdexec {
       }
     };
 
+    template <class _Ty>
+    __always(_Ty) -> __always<_Ty>;
+
     struct on_t
       : __with_default_get_env<on_t>
       , __no_scheduler_in_environment {
@@ -6734,23 +6958,36 @@ namespace stdexec {
           __domain, __make_sexpr<on_t>((_Scheduler&&) __sched, (_Sender&&) __sndr));
       }
 
+      template <class _Env>
+      STDEXEC_ATTRIBUTE((always_inline))
+      static auto __transform_env_fn(_Env&& __env) noexcept {
+        return [&](__ignore, auto __sched, __ignore) noexcept {
+          return __join_env(__detail::__mkenv_sched(__sched), (_Env&&) __env);
+        };
+      }
+
+      template <class _Sender, class _Env>
+      static auto transform_env(const _Sender& __sndr, _Env&& __env) noexcept {
+        return __sexpr_apply(__sndr, __transform_env_fn((_Env&&) __env));
+      }
+
       using __no_scheduler_in_environment::transform_sender;
 
       template <class _Sender, class _Env>
         requires __callable<get_scheduler_t, const _Env&>
       static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
-        auto __domain = __get_env_domain(__env);
-        auto __old = get_scheduler(__env);
-        return stdexec::transform_sender(
-          __domain,
-          __sexpr_apply(
-            (_Sender&&) __sndr,
-            [&]<class _Scheduler, class _Child>(__ignore, _Scheduler __sched, _Child&& __child) {
-              return transfer(
-                let_value(transfer_just(std::move(__sched)), __always<_Child>{(_Child&&) __child}),
+        return __sexpr_apply(
+          (_Sender&&) __sndr,
+          [&]<class _Scheduler, class _Child>(__ignore, _Scheduler __sched, _Child&& __child) {
+            auto __domain = __get_env_domain(__env);
+            auto __old = get_scheduler(__env);
+            auto __tfx = __make_transformer(__domain, __env);
+            return __tfx(transfer)(
+                __tfx(let_value)(
+                  __tfx(transfer_just)(std::move(__sched)),
+                  __always{(_Child&&) __child}),
                 std::move(__old));
-            }),
-          __env);
+          });
       }
     };
 
@@ -6785,16 +7022,6 @@ namespace stdexec {
         };
       }
 
-      template <class _Scheduler>
-      static auto __mkenv(_Scheduler __sched) {
-        auto __env = __join_env(__mkprop(__sched, get_scheduler), __mkprop(get_domain));
-        using _Env = decltype(__env);
-
-        struct __env_t : _Env { };
-
-        return __env_t{__env};
-      }
-
       using __no_scheduler_in_environment::transform_sender;
 
       template <class _Sender, class _Env>
@@ -6809,12 +7036,13 @@ namespace stdexec {
             [&]<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
               auto&& [__sched, __clsur] = (_Data&&) __data;
               using _Closure = decltype(__clsur);
+              auto __tfx = __make_transformer(__domain, __env);
               return __write(
-                transfer(
+                __tfx(transfer)(
                   ((_Closure&&) __clsur)(
-                    transfer(__write((_Child&&) __child, __mkenv(__old)), __sched)),
+                    __tfx(transfer)(__write((_Child&&) __child, __detail::__mkenv_sched(__old)), __sched)),
                   __old),
-                __mkenv(__sched));
+                __detail::__mkenv_sched(__sched));
             }),
           __env);
       }
@@ -6841,6 +7069,7 @@ namespace stdexec {
     }
 
     struct __env : __result_of<__make_env, run_loop&> {
+      __env();
       __env(run_loop& __loop) noexcept
         : __result_of<__make_env, run_loop&>{__sync_wait::__make_env(__loop)} {
       }
@@ -7002,10 +7231,12 @@ namespace stdexec {
     struct sync_wait_t {
       template <sender_in<__env> _Sender>
         requires __valid_sync_wait_argument<_Sender>
-              && __callable<apply_sender_t, __sender_domain_of_t<_Sender>, sync_wait_t, _Sender>
+              && __has_implementation_for<sync_wait_t, __sender_domain_of_t<_Sender>, _Sender>
       auto operator()(_Sender&& __sndr) const -> std::optional<__value_tuple_for_t<_Sender>> {
-        auto __domain = __get_sender_domain(__sndr);
-        return stdexec::apply_sender(__domain, *this, (_Sender&&) __sndr);
+        using _SD = __sender_domain_of_t<_Sender>;
+        constexpr bool __has_custom_impl = __callable<apply_sender_t, _SD, sync_wait_t, _Sender>;
+        using _Domain = __if_c<__has_custom_impl, _SD, default_domain>;
+        return stdexec::apply_sender(_Domain(), *this, (_Sender&&) __sndr);
       }
 
 #if STDEXEC_NVHPC()
