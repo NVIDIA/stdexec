@@ -907,12 +907,7 @@ namespace stdexec {
     __mexception< _UNRECOGNIZED_SENDER_TYPE_<>, _WITH_SENDER_<_Sender>, _WITH_ENVIRONMENT_<_Env>>;
 
   template <class _Sender, class _Env>
-  using __completion_signatures_of_t = __minvoke<
-    __mtry_catch<
-      __mbind_front_q<__call_result_t, get_completion_signatures_t>,
-      __q<__unrecognized_sender_error>>,
-    _Sender,
-    _Env>;
+  using __completion_signatures_of_t = __call_result_t<get_completion_signatures_t, _Sender, _Env>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
