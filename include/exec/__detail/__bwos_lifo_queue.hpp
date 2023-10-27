@@ -63,16 +63,8 @@ namespace exec::bwos {
  */
 
 namespace exec::bwos {
-
-#if __cpp_lib_hardware_interference_size >= 201603
-  inline constexpr std::size_t hardware_destructive_interference_size =
-    std::hardware_destructive_interference_size;
-  inline constexpr std::size_t hardware_constructive_interference_size =
-    std::hardware_constructive_interference_size;
-#else
   inline constexpr std::size_t hardware_destructive_interference_size = 64;
   inline constexpr std::size_t hardware_constructive_interference_size = 64;
-#endif
 
   enum class lifo_queue_error_code {
     success,
