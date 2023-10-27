@@ -36,6 +36,30 @@
 namespace exec {
   using stdexec::__intrusive_queue;
 
+  // Splits `n` into `size` chunks distributing `n % size` evenly between ranks.
+  // Returns `[begin, end)` range in `n` for a given `rank`.
+  // Example:
+  // ```cpp
+  // //         n_items  thread  n_threads
+  // even_share(     11,      0,         3); // -> [0,  4) -> 4 items
+  // even_share(     11,      1,         3); // -> [4,  8) -> 4 items
+  // even_share(     11,      2,         3); // -> [8, 11) -> 3 items
+  // ```
+  template <class Shape>
+  std::pair<Shape, Shape>
+    even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept {
+    const auto avg_per_thread = n / size;
+    const auto n_big_share = avg_per_thread + 1;
+    const auto big_shares = n % size;
+    const auto is_big_share = rank < big_shares;
+    const auto begin = is_big_share
+                        ? n_big_share * rank
+                        : n_big_share * big_shares + (rank - big_shares) * avg_per_thread;
+    const auto end = begin + (is_big_share ? n_big_share : avg_per_thread);
+
+    return std::make_pair(begin, end);
+  }
+
   struct task_base {
     task_base* next;
     void (*__execute)(task_base*, std::uint32_t tid) noexcept;
@@ -290,6 +314,15 @@ namespace exec {
       return threadCount_;
     }
 
+    void enqueue(task_base* task) noexcept;
+    void enqueue(remote_queue& queue, task_base* task) noexcept;
+
+    template <std::derived_from<task_base> TaskT>
+    void bulk_enqueue(TaskT* task, std::uint32_t n_threads) noexcept;
+
+    template <class Iterator>
+    void bulk_enqueue(remote_queue& queue, Iterator it, Iterator end) noexcept;
+
    private:
     class workstealing_victim {
      public:
@@ -333,7 +366,7 @@ namespace exec {
       }
 
       pop_result pop();
-      void push(task_base* task);
+      void push_local(task_base* task);
       bool notify();
       void request_stop();
 
@@ -387,12 +420,6 @@ namespace exec {
 
     void run(std::uint32_t index) noexcept;
     void join() noexcept;
-
-    void enqueue(task_base* task) noexcept;
-    void enqueue(remote_queue& queue, task_base* task) noexcept;
-
-    template <std::derived_from<task_base> TaskT>
-    void bulk_enqueue(TaskT* task, std::uint32_t n_threads) noexcept;
 
     alignas(64) std::atomic<std::uint32_t> nextThread_;
     alignas(64) std::atomic<std::uint32_t> numThiefs_{};
@@ -472,20 +499,50 @@ namespace exec {
   }
 
   inline void static_thread_pool::enqueue(remote_queue& queue, task_base* task) noexcept {
-    const std::uint32_t threadCount = static_cast<std::uint32_t>(threads_.size());
-    const std::uint32_t startIndex =
-      nextThread_.fetch_add(1, std::memory_order_relaxed) % threadCount;
-    queue.queues_[startIndex].push_front(task);
-    threadStates_[startIndex]->notify();
+    static thread_local std::thread::id this_id = std::this_thread::get_id();
+    std::size_t idx = 0;
+    for (std::thread& t: threads_) {
+      if (t.get_id() == this_id) {
+        threadStates_[idx]->push_local(task);
+        return;
+      }
+      ++idx;
+    }
+    if (this_id == queue.id_) {
+      const std::uint32_t threadCount = static_cast<std::uint32_t>(threads_.size());
+      const std::uint32_t startIndex =
+        nextThread_.fetch_add(1, std::memory_order_relaxed) % threadCount;
+      queue.queues_[startIndex].push_front(task);
+      threadStates_[startIndex]->notify();
+      return;
+    } else {
+      enqueue(task);
+    }
   }
 
   template <std::derived_from<task_base> TaskT>
-  inline void static_thread_pool::bulk_enqueue(TaskT* task, std::uint32_t n_threads) noexcept {
+  void static_thread_pool::bulk_enqueue(TaskT* task, std::uint32_t n_threads) noexcept {
     auto& queue = *get_remote_queue();
     for (std::size_t i = 0; i < n_threads; ++i) {
       std::uint32_t index = i % available_parallelism();
       queue.queues_[index].push_front(task + i);
       threadStates_[index]->notify();
+    }
+  }
+
+  template <class Iterator>
+  void static_thread_pool::bulk_enqueue(remote_queue& queue, Iterator it, Iterator end) noexcept {
+    std::size_t nTasks = end - it;
+    std::size_t nThreads = available_parallelism();
+    for (std::size_t i = 0; i < nThreads; ++i) {
+      auto [i0, iEnd] = even_share(nTasks, i, available_parallelism());
+      for (std::size_t j = i0; j + 1 < iEnd; ++j) {
+        task_base& task = it[j];
+        task_base& next = it[j + 1];
+        task.next = &next;
+      }
+      queue.queues_[i].prepend(&it[i0], &it[iEnd - 1]);
+      threadStates_[i]->notify();
     }
   }
 
@@ -530,6 +587,12 @@ namespace exec {
     return {v.try_steal(), v.index()};
   }
 
+  inline void static_thread_pool::thread_state::push_local(task_base* task) {
+    if (!local_queue_.push_back(task)) {
+      pending_queue_.push_back(task);
+    }
+  }
+
   inline void static_thread_pool::thread_state::set_stealing() {
     pool_->numThiefs_.fetch_add(1, std::memory_order_relaxed);
   }
@@ -565,14 +628,13 @@ namespace exec {
           return result;
         }
       }
+      std::this_thread::yield();
       clear_stealing();
 
       std::unique_lock lock{mut_};
       if (stopRequested_) {
         return result;
       }
-      using namespace std::chrono_literals;
-      // spurious wakeups are fine to look for stealing opportunities
       state expected = state::running;
       if (state_.compare_exchange_weak(expected, state::sleeping, std::memory_order_relaxed)) {
         result = try_remote();
@@ -608,7 +670,7 @@ namespace exec {
   }
 
   template <typename ReceiverId>
-  class static_thread_pool::operation : task_base {
+  class static_thread_pool::operation : public task_base {
     using Receiver = stdexec::__t<ReceiverId>;
     friend static_thread_pool::scheduler::sender;
 
@@ -792,29 +854,6 @@ namespace exec {
     std::atomic<std::uint32_t> thread_with_exception_{0};
     std::exception_ptr exception_;
     std::vector<bulk_task> tasks_;
-
-    // Splits `n` into `size` chunks distributing `n % size` evenly between ranks.
-    // Returns `[begin, end)` range in `n` for a given `rank`.
-    // Example:
-    // ```cpp
-    // //         n_items  thread  n_threads
-    // even_share(     11,      0,         3); // -> [0,  4) -> 4 items
-    // even_share(     11,      1,         3); // -> [4,  8) -> 4 items
-    // even_share(     11,      2,         3); // -> [8, 11) -> 3 items
-    // ```
-    static std::pair<Shape, Shape>
-      even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept {
-      const auto avg_per_thread = n / size;
-      const auto n_big_share = avg_per_thread + 1;
-      const auto big_shares = n % size;
-      const auto is_big_share = rank < big_shares;
-      const auto begin = is_big_share
-                         ? n_big_share * rank
-                         : n_big_share * big_shares + (rank - big_shares) * avg_per_thread;
-      const auto end = begin + (is_big_share ? n_big_share : avg_per_thread);
-
-      return std::make_pair(begin, end);
-    }
 
     std::uint32_t num_agents_required() const {
       return std::min(shape_, static_cast<Shape>(pool_.available_parallelism()));

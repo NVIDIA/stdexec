@@ -51,6 +51,14 @@ namespace exec {
       return __old_head == nullptr;
     }
 
+    void prepend(__node_pointer __new_head, __node_pointer __tail) noexcept {
+      __node_pointer __old_head = __head_.load(std::memory_order_relaxed);
+      __tail->*_NextPtr = __old_head;
+      while (!__head_.compare_exchange_weak(__old_head, __new_head, std::memory_order_acq_rel)) {
+        __tail->*_NextPtr = __old_head;
+      }
+    }
+
     stdexec::__intrusive_queue<_NextPtr> pop_all() noexcept {
       return stdexec::__intrusive_queue<_NextPtr>::make(
         __head_.exchange(nullptr, std::memory_order_acq_rel));
