@@ -90,9 +90,17 @@ set(stdexec_test_sources
     )
 
 add_executable(test.stdexec ${stdexec_test_sources})
-
 target_include_directories(test.stdexec PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 target_link_libraries(test.stdexec
+    PUBLIC
+    STDEXEC::stdexec
+    $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
+    stdexec_executable_flags
+    Catch2::Catch2)
+
+add_executable(test.scratch test_main.cpp test_scratch.cpp)
+target_include_directories(test.scratch PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+target_link_libraries(test.scratch
     PUBLIC
     STDEXEC::stdexec
     $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
@@ -103,6 +111,7 @@ target_link_libraries(test.stdexec
 include(${Catch2_SOURCE_DIR}/contrib/Catch.cmake)
 
 catch_discover_tests(test.stdexec)
+catch_discover_tests(test.scratch)
 
 if(STDEXEC_ENABLE_CUDA)
     add_subdirectory(nvexec)
