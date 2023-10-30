@@ -4,8 +4,8 @@
 #include <iostream>
 #include <iomanip>
 #include <barrier>
-#include <ranges>
 #include <span>
+#include <cmath>
 
 #if __has_include(<memory_resource>)
 #include <memory_resource>

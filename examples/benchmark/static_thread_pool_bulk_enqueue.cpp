@@ -1,4 +1,5 @@
 #include <exec/static_thread_pool.hpp>
+#if STDEXEC_HAS_STD_RANGES()
 #include <exec/env.hpp>
 
 #include <exec/sequence/iterate.hpp>
@@ -10,6 +11,7 @@
 #include <barrier>
 #include <ranges>
 #include <span>
+#include <cmath>
 
 #if __has_include(<memory_resource>)
 #include <memory_resource>
@@ -152,3 +154,6 @@ int main(int argc, char** argv) {
   auto [dur_ms, ops_per_sec, avg, max, min, stddev] = compute_perf(starts, ends, warmup, nRuns - 1, total_scheds);
   std::cout << avg << " | " << max << " | " << min << " | " << stddev << "\n";
 }
+#else
+int main() {}
+#endif
