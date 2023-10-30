@@ -46,7 +46,7 @@ namespace exec {
       return *::new (static_cast<void*>(std::addressof(__value_))) _Ty(((_Func&&) func)());
     }
 
-    void __destruct() noexcept {
+    void __destroy() noexcept {
       __value_.~_Ty();
     }
 

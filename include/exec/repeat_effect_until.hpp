@@ -98,7 +98,7 @@ namespace exec {
         auto *__op = __self.__op_;
 
         // The following line causes the invalidation of __self.
-        __op->__source_op_.__destruct();
+        __op->__source_op_.__destroy();
 
         // If the sender completed with true, we're done
         if (__done) {
@@ -119,7 +119,7 @@ namespace exec {
         requires __callable<_Tag, _Receiver>
       friend void tag_invoke(_Tag, _Self &&__self) noexcept {
         auto *__op = __self.__op_;
-        __op->__source_op_.__destruct();
+        __op->__source_op_.__destroy();
         stdexec::set_stopped((_Receiver &&) __op->__rcvr_);
       }
 
@@ -127,7 +127,7 @@ namespace exec {
         requires __callable<_Tag, _Receiver, _Error>
       friend void tag_invoke(_Tag, _Self &&__self, _Error __error) noexcept {
         auto *__op = __self.__op_;
-        __op->__source_op_.__destruct();
+        __op->__source_op_.__destroy();
         stdexec::set_error((_Receiver &&) __op->__rcvr_, (_Error &&) __error);
       }
 

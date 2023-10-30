@@ -37,6 +37,11 @@ namespace stdexec {
         , __tail_(std::exchange(__other.__tail_, nullptr)) {
       }
 
+      __intrusive_queue(_Item* __head, _Item* __tail) noexcept
+        : __head_(__head)
+        , __tail_(__tail) {
+      }
+
       __intrusive_queue& operator=(__intrusive_queue __other) noexcept {
         std::swap(__head_, __other.__head_);
         std::swap(__tail_, __other.__tail_);
@@ -217,6 +222,14 @@ namespace stdexec {
             __tail_ = last.__predecessor_;
           }
         }
+      }
+
+      _Item* front() const noexcept {
+        return __head_;
+      }
+
+      _Item* back() const noexcept {
+        return __tail_;
       }
 
      private:

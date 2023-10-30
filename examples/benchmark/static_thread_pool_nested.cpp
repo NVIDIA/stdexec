@@ -38,19 +38,24 @@ struct RunThread {
       std::size_t scheds = end - start;
       std::atomic<std::size_t> counter{scheds};
       auto env = exec::make_env(exec::with(stdexec::get_allocator, alloc));
-      while (scheds) {
-        stdexec::start_detached(       //
-          stdexec::schedule(scheduler) //
-            | stdexec::then([&] {
-                auto prev = counter.fetch_sub(1);
-                if (prev == 1) {
-                  std::lock_guard lock{mut};
-                  cv.notify_one();
-                }
-              }),
-          env);
-        --scheds;
-      }
+      stdexec::sync_wait(
+        stdexec::schedule(scheduler) //
+        | stdexec::then([&] {
+            auto nested_scheduler = pool.get_scheduler();
+            while (scheds) {
+              stdexec::start_detached( //
+                stdexec::schedule(nested_scheduler) //
+                | stdexec::then([&] {
+                    auto prev = counter.fetch_sub(1);
+                    if (prev == 1) {
+                      std::lock_guard lock{mut};
+                      cv.notify_one();
+                    }
+                  }),
+                env);
+              --scheds;
+            }
+          }));
       std::unique_lock lock{mut};
       cv.wait(lock, [&] { return counter.load() == 0; });
       lock.unlock();
@@ -87,24 +92,25 @@ struct statistics_all {
 statistics_all compute_perf(
   std::span<const std::chrono::steady_clock::time_point> start,
   std::span<const std::chrono::steady_clock::time_point> end,
+  std::size_t i0,
   std::size_t i,
   std::size_t total_scheds) {
   double average = 0.0;
   double max = 0.0;
   double min = std::numeric_limits<double>::max();
-  for (std::size_t j = 0; j <= i; ++j) {
+  for (std::size_t j = i0; j <= i; ++j) {
     auto stats = compute_perf(start[j], end[j], total_scheds);
-    average += stats.ops_per_sec / (i + 1);
+    average += stats.ops_per_sec / (i + 1 - i0);
     max = std::max(max, stats.ops_per_sec);
     min = std::min(min, stats.ops_per_sec);
   }
   // compute variant
   double variance = 0.0;
-  for (std::size_t j = 0; j <= i; ++j) {
+  for (std::size_t j = i0; j <= i; ++j) {
     auto stats = compute_perf(start[j], end[j], total_scheds);
     variance += (stats.ops_per_sec - average) * (stats.ops_per_sec - average);
   }
-  variance /= (i + 1);
+  variance /= (i + 1 - i0);
   double stddev = std::sqrt(variance);
   auto stats = compute_perf(start[i], end[i], total_scheds);
   statistics_all all{stats.total_time_ms, stats.ops_per_sec, average, max, min, stddev};
@@ -138,6 +144,7 @@ int main(int argc, char** argv) {
       std::ref(stop));
   }
   std::size_t nRuns = 100;
+  std::size_t warmup = 1;
   std::vector<std::chrono::steady_clock::time_point> starts(nRuns);
   std::vector<std::chrono::steady_clock::time_point> ends(nRuns);
   for (std::size_t i = 0; i < nRuns; ++i) {
@@ -145,15 +152,22 @@ int main(int argc, char** argv) {
     starts[i] = std::chrono::steady_clock::now();
     barrier.arrive_and_wait();
     ends[i] = std::chrono::steady_clock::now();
-    auto [dur_ms, ops_per_sec, avg, max, min, stddev] = compute_perf(starts, ends, i, total_scheds);
-    auto percent = stddev / ops_per_sec * 100;
-    std::cout << i + 1 << " " << dur_ms.count() << "ms, throughput: " << std::setprecision(3) << ops_per_sec
-              << ", average: " << avg << ", max: " << max << ", min: " << min
-              << ", stddev: " << stddev << " (" << percent << "%)\n";
+    if (i < warmup) {
+      std::cout << "warmup: skip results\n";
+    } else {
+      auto [dur_ms, ops_per_sec, avg, max, min, stddev] = compute_perf(
+        starts, ends, warmup, i, total_scheds);
+      auto percent = stddev / ops_per_sec * 100;
+      std::cout << i + 1 << " " << dur_ms.count() << "ms, throughput: " << std::setprecision(3)
+                << ops_per_sec << ", average: " << avg << ", max: " << max << ", min: " << min
+                << ", stddev: " << stddev << " (" << percent << "%)\n";
+    }
   }
   stop = true;
   barrier.arrive_and_wait();
   for (auto& thread: threads) {
     thread.join();
   }
+  auto [dur_ms, ops_per_sec, avg, max, min, stddev] = compute_perf(starts, ends, warmup, nRuns - 1, total_scheds);
+  std::cout << avg << " | " << max << " | " << min << " | " << stddev << "\n";
 }

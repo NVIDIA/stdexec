@@ -113,14 +113,14 @@ namespace exec {
         friend void tag_invoke(_Tag, _Self&& __self) noexcept {
           if constexpr (std::is_nothrow_move_constructible_v<_ResultType>) {
             _ResultType __result = (_ResultType&&) __self.__op_->__result_;
-            __self.__op_->__result_.__destruct();
+            __self.__op_->__result_.__destroy();
             std::visit(
               __visitor<_Receiver>{(_Receiver&&) __self.__op_->__receiver_},
               (_ResultType&&) __result);
           } else {
             try {
               _ResultType __result = (_ResultType&&) __self.__op_->__result_;
-              __self.__op_->__result_.__destruct();
+              __self.__op_->__result_.__destroy();
               std::visit(
                 __visitor<_Receiver>{(_Receiver&&) __self.__op_->__receiver_},
                 (_ResultType&&) __result);
@@ -133,7 +133,7 @@ namespace exec {
         template <__one_of<set_error_t, set_stopped_t> _Tag, __decays_to<__t> _Self, class... _Error>
           requires __callable<_Tag, _Receiver&&, _Error...>
         friend void tag_invoke(_Tag __tag, _Self&& __self, _Error&&... __error) noexcept {
-          __self.__op_->__result_.__destruct();
+          __self.__op_->__result_.__destroy();
           __tag((_Receiver&&) __self.__op_->__receiver_, (_Error&&) __error...);
         }
 

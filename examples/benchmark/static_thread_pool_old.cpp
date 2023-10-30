@@ -1,4 +1,5 @@
-#include <exec/static_thread_pool.hpp>
+#include "./static_thread_pool_old.hpp"
+
 #include <exec/env.hpp>
 
 #include <iostream>
@@ -17,7 +18,7 @@ namespace pmr = std::experimental::pmr;
 
 struct RunThread {
   void operator()(
-    exec::static_thread_pool& pool,
+    exec_old::static_thread_pool& pool,
     std::size_t total_scheds,
     std::size_t tid,
     std::barrier<>& barrier,
@@ -34,7 +35,7 @@ struct RunThread {
       pmr::monotonic_buffer_resource resource{
         buffer.data(), buffer.size(), pmr::null_memory_resource()};
       pmr::polymorphic_allocator<char> alloc(&resource);
-      auto [start, end] = exec::even_share(total_scheds, tid, pool.available_parallelism());
+      auto [start, end] = exec_old::even_share(total_scheds, tid, pool.available_parallelism());
       std::size_t scheds = end - start;
       std::atomic<std::size_t> counter{scheds};
       auto env = exec::make_env(exec::with(stdexec::get_allocator, alloc));
@@ -119,7 +120,7 @@ int main(int argc, char** argv) {
   std::size_t total_scheds = 10'000'000;
   std::vector<std::unique_ptr<char[]>> buffers(nthreads);
   std::vector<std::optional<pmr::monotonic_buffer_resource>> resource(nthreads);
-  exec::static_thread_pool pool(nthreads);
+  exec_old::static_thread_pool pool(nthreads);
   std::barrier<> barrier(nthreads + 1);
   std::vector<std::thread> threads;
   std::atomic<bool> stop{false};
@@ -137,7 +138,7 @@ int main(int argc, char** argv) {
       std::span<char>{buffers[i].get(), buffer_size},
       std::ref(stop));
   }
-  std::size_t nRuns = 100;
+  std::size_t nRuns = 25;
   std::vector<std::chrono::steady_clock::time_point> starts(nRuns);
   std::vector<std::chrono::steady_clock::time_point> ends(nRuns);
   for (std::size_t i = 0; i < nRuns; ++i) {
@@ -156,4 +157,6 @@ int main(int argc, char** argv) {
   for (auto& thread: threads) {
     thread.join();
   }
+  auto [dur_ms, ops_per_sec, avg, max, min, stddev] = compute_perf(starts, ends, nRuns - 1, total_scheds);
+  std::cout << avg << " | " << max << " | " << min << " | " << stddev << "\n";
 }

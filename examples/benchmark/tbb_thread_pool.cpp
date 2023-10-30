@@ -3,10 +3,17 @@
 
 #include <iostream>
 #include <iomanip>
-#include <memory_resource>
 #include <barrier>
 #include <ranges>
 #include <span>
+
+#if __has_include(<memory_resource>)
+#include <memory_resource>
+namespace pmr = std::pmr;
+#elif __has_include(<experimental/memory_resource>)
+#include <experimental/memory_resource>
+namespace pmr = std::experimental::pmr;
+#endif
 
 struct RunThread {
   void operator()(
@@ -24,10 +31,10 @@ struct RunThread {
       if (stop.load()) {
         break;
       }
-      std::pmr::monotonic_buffer_resource resource{
-        buffer.data(), buffer.size(), std::pmr::null_memory_resource()};
-      std::pmr::polymorphic_allocator<char> alloc(&resource);
-      auto [start, end] = exec::even_share(total_scheds, tid, pool.available_parallelism());
+      pmr::monotonic_buffer_resource resource{
+        buffer.data(), buffer.size(), pmr::null_memory_resource()};
+      pmr::polymorphic_allocator<char> alloc(&resource);
+      auto [start, end] = exec::even_share(total_scheds, tid, pool.available_parallelism() - 1);
       std::size_t scheds = end - start;
       std::atomic<std::size_t> counter{scheds};
       auto env = exec::make_env(exec::with(stdexec::get_allocator, alloc));
@@ -111,8 +118,8 @@ int main(int argc, char** argv) {
   }
   std::size_t total_scheds = 10'000'000;
   std::vector<std::unique_ptr<char[]>> buffers(nthreads);
-  std::vector<std::optional<std::pmr::monotonic_buffer_resource>> resource(nthreads);
-  tbbexec::tbb_thread_pool pool(nthreads);
+  std::vector<std::optional<pmr::monotonic_buffer_resource>> resource(nthreads);
+  tbbexec::tbb_thread_pool pool(nthreads + 1);
   std::barrier<> barrier(nthreads + 1);
   std::vector<std::thread> threads;
   std::atomic<bool> stop{false};
@@ -120,7 +127,7 @@ int main(int argc, char** argv) {
   for (auto& buf: buffers) {
     buf = std::make_unique_for_overwrite<char[]>(buffer_size);
   }
-  for (std::size_t i = 0; i < pool.available_parallelism(); ++i) {
+  for (std::size_t i = 0; i < nthreads; ++i) {
     threads.emplace_back(
       RunThread{},
       std::ref(pool),
@@ -130,7 +137,7 @@ int main(int argc, char** argv) {
       std::span<char>{buffers[i].get(), buffer_size},
       std::ref(stop));
   }
-  std::size_t nRuns = 100;
+  std::size_t nRuns = 25;
   std::vector<std::chrono::steady_clock::time_point> starts(nRuns);
   std::vector<std::chrono::steady_clock::time_point> ends(nRuns);
   for (std::size_t i = 0; i < nRuns; ++i) {
@@ -149,4 +156,6 @@ int main(int argc, char** argv) {
   for (auto& thread: threads) {
     thread.join();
   }
+  auto [dur_ms, ops_per_sec, avg, max, min, stddev] = compute_perf(starts, ends, nRuns - 1, total_scheds);
+  std::cout << avg << " | " << max << " | " << min << " | " << stddev << "\n";
 }
