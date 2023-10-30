@@ -16,9 +16,8 @@
 #if __has_include(<memory_resource>)
 #include <memory_resource>
 namespace pmr = std::pmr;
-#elif __has_include(<experimental/memory_resource>)
-#include <experimental/memory_resource>
-namespace pmr = std::experimental::pmr;
+#else
+#define STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE 1
 #endif
 
 struct RunThread {
@@ -34,6 +33,7 @@ struct RunThread {
       if (stop.load()) {
         break;
       }
+#ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
       pmr::monotonic_buffer_resource rsrc{buffer.data(), buffer.size()};  
       pmr::polymorphic_allocator<char> alloc{&rsrc};
       auto env = exec::make_env(exec::with(stdexec::get_allocator, alloc));
@@ -41,6 +41,11 @@ struct RunThread {
       auto iterate = exec::schedule_all(pool, std::views::iota(start, end)) 
                    | exec::ignore_all_values()
                    | exec::write(env);
+#else
+      auto [start, end] = exec::even_share(total_scheds, tid, pool.available_parallelism());
+      auto iterate = exec::schedule_all(pool, std::views::iota(start, end)) 
+                   | exec::ignore_all_values();
+#endif
       stdexec::sync_wait(iterate);
       barrier.arrive_and_wait();
     }
@@ -107,7 +112,6 @@ int main(int argc, char** argv) {
   }
   std::size_t total_scheds = 10'000'000;
   std::vector<std::unique_ptr<char[]>> buffers(nthreads);
-  std::vector<std::optional<pmr::monotonic_buffer_resource>> resource(nthreads);
   exec::static_thread_pool pool(nthreads);
   std::barrier<> barrier(nthreads + 1);
   std::vector<std::thread> threads;

@@ -10,9 +10,8 @@
 #if __has_include(<memory_resource>)
 #include <memory_resource>
 namespace pmr = std::pmr;
-#elif __has_include(<experimental/memory_resource>)
-#include <experimental/memory_resource>
-namespace pmr = std::experimental::pmr;
+#else
+#define STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE 1
 #endif
 
 struct RunThread {

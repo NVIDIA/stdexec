@@ -10,9 +10,8 @@
 #if __has_include(<memory_resource>)
 #include <memory_resource>
 namespace pmr = std::pmr;
-#elif __has_include(<experimental/memory_resource>)
-#include <experimental/memory_resource>
-namespace pmr = std::experimental::pmr;
+#else
+#define STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE 1
 #endif
 
 struct RunThread {
@@ -31,6 +30,7 @@ struct RunThread {
       if (stop.load()) {
         break;
       }
+#ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
       pmr::monotonic_buffer_resource resource{
         buffer.data(), buffer.size(), pmr::null_memory_resource()};
       pmr::polymorphic_allocator<char> alloc(&resource);
@@ -56,6 +56,28 @@ struct RunThread {
               --scheds;
             }
           }));
+#else
+      auto [start, end] = exec::even_share(total_scheds, tid, pool.available_parallelism());
+      std::size_t scheds = end - start;
+      std::atomic<std::size_t> counter{scheds};
+      stdexec::sync_wait(
+        stdexec::schedule(scheduler) //
+        | stdexec::then([&] {
+            auto nested_scheduler = pool.get_scheduler();
+            while (scheds) {
+              stdexec::start_detached( //
+                stdexec::schedule(nested_scheduler) //
+                | stdexec::then([&] {
+                    auto prev = counter.fetch_sub(1);
+                    if (prev == 1) {
+                      std::lock_guard lock{mut};
+                      cv.notify_one();
+                    }
+                  }));
+              --scheds;
+            }
+          }));
+#endif
       std::unique_lock lock{mut};
       cv.wait(lock, [&] { return counter.load() == 0; });
       lock.unlock();
@@ -124,7 +146,6 @@ int main(int argc, char** argv) {
   }
   std::size_t total_scheds = 10'000'000;
   std::vector<std::unique_ptr<char[]>> buffers(nthreads);
-  std::vector<std::optional<pmr::monotonic_buffer_resource>> resource(nthreads);
   exec::static_thread_pool pool(nthreads);
   std::barrier<> barrier(nthreads + 1);
   std::vector<std::thread> threads;

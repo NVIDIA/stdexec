@@ -8,14 +8,6 @@
 #include <span>
 #include <cmath>
 
-#if __has_include(<memory_resource>)
-#include <memory_resource>
-namespace pmr = std::pmr;
-#elif __has_include(<experimental/memory_resource>)
-#include <experimental/memory_resource>
-namespace pmr = std::experimental::pmr;
-#endif
-
 struct RunThread {
   void operator()(
     tbbexec::tbb_thread_pool& pool,
