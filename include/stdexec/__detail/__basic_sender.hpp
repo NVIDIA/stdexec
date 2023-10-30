@@ -68,18 +68,20 @@ namespace stdexec {
     using __id = __sexpr;
     using __tag_t = __call_result_t<_ImplFn, __cp, __detail::__get_tag>;
 
+    STDEXEC_ATTRIBUTE((always_inline)) //
     static __tag_t __tag() noexcept {
       return {};
     }
 
     mutable _ImplFn __impl_;
 
-    STDEXEC_ATTRIBUTE((host, device))
+    STDEXEC_ATTRIBUTE((host, device, always_inline))
     explicit __sexpr(_ImplFn __impl)
       : __impl_((_ImplFn&&) __impl) {
     }
 
     template <same_as<get_env_t> _Tag, same_as<__sexpr> _Self>
+    STDEXEC_ATTRIBUTE((always_inline))                         //
     friend auto tag_invoke(_Tag, const _Self& __self) noexcept //
       -> __msecond<
         __if_c<same_as<_Tag, get_env_t>>, //
@@ -89,6 +91,7 @@ namespace stdexec {
     }
 
     template < same_as<get_completion_signatures_t> _Tag, __decays_to<__sexpr> _Self, class _Env>
+    STDEXEC_ATTRIBUTE((always_inline))                         //
     friend auto tag_invoke(_Tag, _Self&& __self, _Env&& __env) //
       -> __msecond<
         __if_c<same_as<_Tag, get_completion_signatures_t>>,
@@ -101,6 +104,7 @@ namespace stdexec {
       same_as<connect_t> _Tag,
       __decays_to<__sexpr> _Self,
       /*receiver*/ class _Receiver>
+    STDEXEC_ATTRIBUTE((always_inline))                                                   //
     friend auto tag_invoke(_Tag, _Self&& __self, _Receiver&& __rcvr)                     //
       noexcept(noexcept(__self.__tag().connect((_Self&&) __self, (_Receiver&&) __rcvr))) //
       -> __msecond<
@@ -110,6 +114,7 @@ namespace stdexec {
     }
 
     template <class _Sender, class _ApplyFn>
+    STDEXEC_ATTRIBUTE((always_inline))                                                      //
     STDEXEC_DEFINE_EXPLICIT_THIS_MEMFN(auto apply)(this _Sender&& __sndr, _ApplyFn&& __fun) //
       noexcept(
         __nothrow_callable<__detail::__impl_of<_Sender>, __copy_cvref_fn<_Sender>, _ApplyFn>) //
@@ -146,12 +151,14 @@ namespace stdexec {
 
       _Ty __value;
 
+      STDEXEC_ATTRIBUTE((always_inline))
       explicit __mbc(_Ty& __v) noexcept(std::is_nothrow_move_constructible_v<_Ty>)
         : __value((_Ty&&) __v) {
       }
 
       // This is a template so as to not be considered a copy/move constructor. Therefore,
       // it doesn't suppress the generation of the default copy/move constructors.
+      STDEXEC_ATTRIBUTE((always_inline))
       __mbc(same_as<__mbc> auto& __that) noexcept(std::is_nothrow_move_constructible_v<_Ty>)
         : __value(static_cast<_Ty&&>(__that.__value)) {
       }
@@ -223,6 +230,7 @@ namespace stdexec {
   namespace __detail {
     struct apply_sender_t {
       template <class _Sender, class _ApplyFn>
+      STDEXEC_ATTRIBUTE((always_inline))                        //
       auto operator()(_Sender&& __sndr, _ApplyFn&& __fun) const //
         noexcept(noexcept(
           STDEXEC_CALL_EXPLICIT_THIS_MEMFN(((_Sender&&) __sndr), apply)((_ApplyFn&&) __fun))) //

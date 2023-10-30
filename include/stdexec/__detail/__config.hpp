@@ -174,8 +174,11 @@
 
 #if STDEXEC_MSVC()
 #define STDEXEC_ATTR_WHICH_4(_ATTR) __forceinline
+#elif STDEXEC_CLANG()
+#define STDEXEC_ATTR_WHICH_4(_ATTR) \
+  __attribute__((__always_inline__, __artificial__, __nodebug__)) inline
 #elif defined(__GNUC__)
-#define STDEXEC_ATTR_WHICH_4(_ATTR) __attribute__((always_inline))
+#define STDEXEC_ATTR_WHICH_4(_ATTR) __attribute__((__always_inline__, __artificial__)) inline
 #else
 #define STDEXEC_ATTR_WHICH_4(_ATTR) /*nothing*/
 #endif
@@ -233,6 +236,12 @@
 #define STDEXEC_IS_CONVERTIBLE_TO(...) __is_convertible(__VA_ARGS__)
 #else
 #define STDEXEC_IS_CONVERTIBLE_TO(...) std::is_convertible_v<__VA_ARGS__>
+#endif
+
+#if STDEXEC_HAS_BUILTIN(__is_const)
+#define STDEXEC_IS_CONST(...) __is_const(__VA_ARGS__)
+#else
+#define STDEXEC_IS_CONST(...) stdexec::__is_const<__VA_ARGS__>
 #endif
 
 #if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L

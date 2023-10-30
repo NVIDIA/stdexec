@@ -80,8 +80,9 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires(sender_to<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver> && ...)
-        friend stdexec::__t<
-          __operation_state<stdexec::__id<_Receiver>, __cvref_id<_Self, stdexec::__t<_SenderIds>>...>>
+        friend stdexec::__t< __operation_state<
+          stdexec::__id<_Receiver>,
+          __cvref_id<_Self, stdexec::__t<_SenderIds>>...>>
           tag_invoke(connect_t, _Self&& __self, _Receiver __r) noexcept(
             (__nothrow_connectable<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver>
              && ...)) {
