@@ -264,7 +264,8 @@ namespace exec {
       // This function first completes all tasks that are ready in the completion queue of the io_uring.
       // Then it completes all tasks that are ready in the given queue of ready tasks.
       // The function returns the number of previously submitted completed tasks.
-      int complete(stdexec::__intrusive_queue<&__task::__next_> __ready = __task_queue{}) noexcept {
+      int
+        complete(stdexec::__intrusive_queue<& __task::__next_> __ready = __task_queue{}) noexcept {
         __u32 __head = __head_.load(std::memory_order_relaxed);
         __u32 __tail = __tail_.load(std::memory_order_acquire);
         int __count = 0;

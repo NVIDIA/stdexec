@@ -33,6 +33,7 @@ namespace stdexec {
   struct __ignore {
     __ignore() = default;
 
+    STDEXEC_ATTRIBUTE((always_inline)) //
     constexpr __ignore(auto&&...) noexcept {
     }
   };

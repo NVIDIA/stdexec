@@ -130,6 +130,7 @@ namespace stdexec {
 
     // Called without the environment during eager customization
     template <class _Sender>
+    STDEXEC_ATTRIBUTE((always_inline))
     decltype(auto) transform_sender(_Sender&& __sndr) const {
       // Look for a legacy customization for the given tag, and if found, apply it.
       if constexpr (__callable<apply_sender_t, _Sender, __domain::__legacy_customization>) {
@@ -143,6 +144,7 @@ namespace stdexec {
 
     // Called with an environment during lazy customization
     template <class _Sender, class _Env>
+    STDEXEC_ATTRIBUTE((always_inline))
     decltype(auto) transform_sender(_Sender&& __sndr, const _Env& __env) const {
       if constexpr (__domain::__has_default_transform<_Sender, _Env>) {
         return __tag_of<_Sender>().transform_sender((_Sender&&) __sndr, __env);
@@ -568,7 +570,9 @@ namespace stdexec {
     struct get_env_t {
       template <class _EnvProvider>
         requires tag_invocable<get_env_t, const _EnvProvider&>
-      constexpr auto operator()(const _EnvProvider& __with_env) const noexcept
+      STDEXEC_ATTRIBUTE((always_inline)) //
+        constexpr auto
+        operator()(const _EnvProvider& __with_env) const noexcept
         -> tag_invoke_result_t<get_env_t, const _EnvProvider&> {
         static_assert(queryable<tag_invoke_result_t<get_env_t, const _EnvProvider&> >);
         static_assert(nothrow_tag_invocable<get_env_t, const _EnvProvider&>);
@@ -663,7 +667,8 @@ namespace stdexec {
 
       template <class _Receiver, class... _As>
         requires tag_invocable<set_value_t, _Receiver, _As...>
-      STDEXEC_ATTRIBUTE((host, device)) void
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+        void
         operator()(_Receiver&& __rcvr, _As&&... __as) const noexcept {
         static_assert(nothrow_tag_invocable<set_value_t, _Receiver, _As...>);
         (void) tag_invoke(set_value_t{}, (_Receiver&&) __rcvr, (_As&&) __as...);
@@ -677,7 +682,8 @@ namespace stdexec {
 
       template <class _Receiver, class _Error>
         requires tag_invocable<set_error_t, _Receiver, _Error>
-      STDEXEC_ATTRIBUTE((host, device)) void
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+        void
         operator()(_Receiver&& __rcvr, _Error&& __err) const noexcept {
         static_assert(nothrow_tag_invocable<set_error_t, _Receiver, _Error>);
         (void) tag_invoke(set_error_t{}, (_Receiver&&) __rcvr, (_Error&&) __err);
@@ -691,7 +697,9 @@ namespace stdexec {
 
       template <class _Receiver>
         requires tag_invocable<set_stopped_t, _Receiver>
-      STDEXEC_ATTRIBUTE((host, device)) void operator()(_Receiver&& __rcvr) const noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+        void
+        operator()(_Receiver&& __rcvr) const noexcept {
         static_assert(nothrow_tag_invocable<set_stopped_t, _Receiver>);
         (void) tag_invoke(set_stopped_t{}, (_Receiver&&) __rcvr);
       }
@@ -1163,6 +1171,7 @@ namespace stdexec {
   // [execution.transform_sender]
   inline constexpr struct transform_sender_t {
     template <class _Domain, class _Sender, class... _Env>
+    STDEXEC_ATTRIBUTE((always_inline))
     /*constexpr*/ decltype(auto)
       operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const {
       if constexpr (__domain::__has_transform_member<_Domain, _Sender, const _Env&...>) {
@@ -1707,7 +1716,9 @@ namespace stdexec {
     struct start_t {
       template <class _Op>
         requires tag_invocable<start_t, _Op&>
-      void operator()(_Op& __op) const noexcept {
+      STDEXEC_ATTRIBUTE((always_inline)) //
+        void
+        operator()(_Op& __op) const noexcept {
         static_assert(nothrow_tag_invocable<start_t, _Op&>);
         (void) tag_invoke(start_t{}, __op);
       }
@@ -2603,7 +2614,7 @@ namespace stdexec {
         friend void tag_invoke(start_t, __t& __op_state) noexcept {
           using __tag_t = _Tag;
           using __receiver_t = _Receiver;
-          std::apply(
+          __apply(
             [&__op_state]<class... _Ts>(_Ts&... __ts) {
               __tag_t()((__receiver_t&&) __op_state.__rcvr_, (_Ts&&) __ts...);
             },
@@ -2633,7 +2644,9 @@ namespace stdexec {
             __decay_t<__data_of<_Sender>>>>;
 
       template <sender_expr_for<_JustTag> _Sender>
-      static __compl_sigs<_Sender> get_completion_signatures(_Sender&&, __ignore);
+      static __compl_sigs<_Sender> get_completion_signatures(_Sender&&, __ignore) {
+        return {};
+      }
 
       template <sender_expr_for<_JustTag> _Sender, receiver_of<__compl_sigs<_Sender>> _Receiver>
       static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
@@ -2757,14 +2770,18 @@ namespace stdexec {
 
       template <sender _Sender>
         requires __callable<_T0, _Sender> && __callable<_T1, __call_result_t<_T0, _Sender>>
-      __call_result_t<_T1, __call_result_t<_T0, _Sender>> operator()(_Sender&& __sndr) && {
+      STDEXEC_ATTRIBUTE((always_inline)) //
+        __call_result_t<_T1, __call_result_t<_T0, _Sender>>
+        operator()(_Sender&& __sndr) && {
         return ((_T1&&) __t1_)(((_T0&&) __t0_)((_Sender&&) __sndr));
       }
 
       template <sender _Sender>
         requires __callable<const _T0&, _Sender>
               && __callable<const _T1&, __call_result_t<const _T0&, _Sender>>
-      __call_result_t<_T1, __call_result_t<_T0, _Sender>> operator()(_Sender&& __sndr) const & {
+      STDEXEC_ATTRIBUTE((always_inline)) //
+        __call_result_t<_T1, __call_result_t<_T0, _Sender>>
+        operator()(_Sender&& __sndr) const & {
         return __t1_(__t0_((_Sender&&) __sndr));
       }
     };
@@ -2773,11 +2790,13 @@ namespace stdexec {
     struct sender_adaptor_closure { };
 
     template <sender _Sender, __sender_adaptor_closure_for<_Sender> _Closure>
+    STDEXEC_ATTRIBUTE((always_inline)) //
     __call_result_t<_Closure, _Sender> operator|(_Sender&& __sndr, _Closure&& __clsur) {
       return ((_Closure&&) __clsur)((_Sender&&) __sndr);
     }
 
     template <__sender_adaptor_closure _T0, __sender_adaptor_closure _T1>
+    STDEXEC_ATTRIBUTE((always_inline)) //
     __compose<__decay_t<_T0>, __decay_t<_T1>> operator|(_T0&& __t0, _T1&& __t1) {
       return {{}, (_T0&&) __t0, (_T1&&) __t1};
     }
@@ -2789,9 +2808,10 @@ namespace stdexec {
 
       template <sender _Sender>
         requires __callable<_Fun, _Sender, _As...>
-      STDEXEC_ATTRIBUTE((host, device)) __call_result_t<_Fun, _Sender, _As...>
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+        __call_result_t<_Fun, _Sender, _As...>
         operator()(_Sender&& __sndr) && noexcept(__nothrow_callable<_Fun, _Sender, _As...>) {
-        return std::apply(
+        return __apply(
           [&__sndr, this](_As&... __as) -> __call_result_t<_Fun, _Sender, _As...> {
             return ((_Fun&&) __fun_)((_Sender&&) __sndr, (_As&&) __as...);
           },
@@ -2803,7 +2823,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((host, device)) __call_result_t<const _Fun&, _Sender, const _As&...>
         operator()(_Sender&& __sndr) const & //
         noexcept(__nothrow_callable<const _Fun&, _Sender, const _As&...>) {
-        return std::apply(
+        return __apply(
           [&__sndr,
            this](const _As&... __as) -> __call_result_t<const _Fun&, _Sender, const _As&...> {
             return __fun_((_Sender&&) __sndr, __as...);
@@ -2855,15 +2875,18 @@ namespace stdexec {
         STDEXEC_ATTRIBUTE((no_unique_address)) _Base __base_;
 
        protected:
-        STDEXEC_ATTRIBUTE((host, device)) _Base& base() & noexcept {
+        STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+        _Base& base() & noexcept {
           return __base_;
         }
 
-        STDEXEC_ATTRIBUTE((host, device)) const _Base& base() const & noexcept {
+        STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+        const _Base& base() const & noexcept {
           return __base_;
         }
 
-        STDEXEC_ATTRIBUTE((host, device)) _Base&& base() && noexcept {
+        STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+        _Base&& base() && noexcept {
           return (_Base&&) __base_;
         }
       };
@@ -2882,7 +2905,7 @@ namespace stdexec {
 // but 'int(type::existing_member_function)' is an error (as desired).
 #define _DISPATCH_MEMBER(_TAG) \
   template <class _Self, class... _Ts> \
-  STDEXEC_ATTRIBUTE((host, device)) \
+  STDEXEC_ATTRIBUTE((host, device, always_inline)) \
   static auto __call_##_TAG(_Self&& __self, _Ts&&... __ts) noexcept \
     -> decltype(((_Self&&) __self)._TAG((_Ts&&) __ts...)) { \
     static_assert(noexcept(((_Self&&) __self)._TAG((_Ts&&) __ts...))); \
@@ -2938,7 +2961,7 @@ namespace stdexec {
         }
 
         template <same_as<set_value_t> _SetValue, class... _As>
-        STDEXEC_ATTRIBUTE((host, device))
+        STDEXEC_ATTRIBUTE((host, device, always_inline))
         friend auto tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept //
           -> __msecond<                                                              //
             __if_c<same_as<set_value_t, _SetValue>>,
@@ -2950,14 +2973,13 @@ namespace stdexec {
         template <same_as<set_value_t> _SetValue, class _Dp = _Derived, class... _As>
           requires _MISSING_MEMBER(_Dp, set_value)
                 && tag_invocable<_SetValue, __base_t<_Dp>, _As...>
-        STDEXEC_ATTRIBUTE(
-          (host,
-           device)) friend void tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept {
+        STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+          friend void tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept {
           stdexec::set_value(__get_base((_Dp&&) __self), (_As&&) __as...);
         }
 
         template <same_as<set_error_t> _SetError, class _Error>
-        STDEXEC_ATTRIBUTE((host, device))
+        STDEXEC_ATTRIBUTE((host, device, always_inline))                              //
         friend auto tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept //
           -> __msecond<                                                               //
             __if_c<same_as<set_error_t, _SetError>>,
@@ -2969,14 +2991,13 @@ namespace stdexec {
         template <same_as<set_error_t> _SetError, class _Error, class _Dp = _Derived>
           requires _MISSING_MEMBER(_Dp, set_error)
                 && tag_invocable<_SetError, __base_t<_Dp>, _Error>
-        STDEXEC_ATTRIBUTE(
-          (host,
-           device)) friend void tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept {
+        STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+          friend void tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept {
           stdexec::set_error(__get_base((_Derived&&) __self), (_Error&&) __err);
         }
 
         template <same_as<set_stopped_t> _SetStopped, class _Dp = _Derived>
-        STDEXEC_ATTRIBUTE((host, device))
+        STDEXEC_ATTRIBUTE((host, device, always_inline))                //
         friend auto tag_invoke(_SetStopped, _Derived&& __self) noexcept //
           -> __msecond<                                                 //
             __if_c<same_as<set_stopped_t, _SetStopped>>,
@@ -2987,14 +3008,14 @@ namespace stdexec {
 
         template <same_as<set_stopped_t> _SetStopped, class _Dp = _Derived>
           requires _MISSING_MEMBER(_Dp, set_stopped) && tag_invocable<_SetStopped, __base_t<_Dp>>
-        STDEXEC_ATTRIBUTE(
-          (host, device)) friend void tag_invoke(_SetStopped, _Derived&& __self) noexcept {
+        STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+          friend void tag_invoke(_SetStopped, _Derived&& __self) noexcept {
           stdexec::set_stopped(__get_base((_Derived&&) __self));
         }
 
         // Pass through the get_env receiver query
         template <same_as<get_env_t> _GetEnv, class _Dp = _Derived>
-        STDEXEC_ATTRIBUTE((host, device))
+        STDEXEC_ATTRIBUTE((host, device, always_inline)) //
         friend auto tag_invoke(_GetEnv, const _Derived& __self) noexcept
           -> decltype(_CALL_MEMBER(get_env, (const _Dp&) __self)) {
           static_assert(noexcept(_CALL_MEMBER(get_env, __self)));
@@ -3003,8 +3024,8 @@ namespace stdexec {
 
         template <same_as<get_env_t> _GetEnv, class _Dp = _Derived>
           requires _MISSING_MEMBER(_Dp, get_env)
-        STDEXEC_ATTRIBUTE(
-          (host, device)) friend auto tag_invoke(_GetEnv, const _Derived& __self) noexcept
+        STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+          friend auto tag_invoke(_GetEnv, const _Derived& __self) noexcept
           -> env_of_t<__base_t<const _Dp&>> {
           return stdexec::get_env(__get_base(__self));
         }
@@ -3026,16 +3047,16 @@ namespace stdexec {
     receiver_of<
       _Receiver,
       completion_signatures<
-        __minvoke<__remove<void, __qf<set_value_t>>, std::invoke_result_t<_Fun, _As...>>>>;
+        __minvoke<__remove<void, __qf<set_value_t>>, __invoke_result_t<_Fun, _As...>>>>;
 
   template <bool _CanThrow = false, class _Receiver, class _Fun, class... _As>
   void __set_value_invoke(_Receiver&& __rcvr, _Fun&& __fun, _As&&... __as) noexcept(!_CanThrow) {
     if constexpr (_CanThrow || __nothrow_invocable<_Fun, _As...>) {
-      if constexpr (same_as<void, std::invoke_result_t<_Fun, _As...>>) {
-        std::invoke((_Fun&&) __fun, (_As&&) __as...);
+      if constexpr (same_as<void, __invoke_result_t<_Fun, _As...>>) {
+        __invoke((_Fun&&) __fun, (_As&&) __as...);
         set_value((_Receiver&&) __rcvr);
       } else {
-        set_value((_Receiver&&) __rcvr, std::invoke((_Fun&&) __fun, (_As&&) __as...));
+        set_value((_Receiver&&) __rcvr, __invoke((_Fun&&) __fun, (_As&&) __as...));
       }
     } else {
       try {
@@ -3069,7 +3090,7 @@ namespace stdexec {
   };
 
   template <class _Fun, class... _Args>
-    requires invocable<_Fun, _Args...>
+    requires __invocable<_Fun, _Args...>
   using __non_throwing_ = __mbool<__nothrow_invocable<_Fun, _Args...>>;
 
   template <class _Tag, class _Fun, class _Sender, class _Env, class _Catch>
@@ -3085,10 +3106,10 @@ namespace stdexec {
       __with_exception_ptr>;
 
   template <class _Fun, class... _Args>
-    requires invocable<_Fun, _Args...>
+    requires __invocable<_Fun, _Args...>
   using __set_value_invoke_t = //
     completion_signatures<
-      __minvoke< __remove<void, __qf<set_value_t>>, std::invoke_result_t<_Fun, _Args...>>>;
+      __minvoke< __remove<void, __qf<set_value_t>>, __invoke_result_t<_Fun, _Args...>>>;
 
   struct __default_get_env_fn {
     // BUGBUG This should hide all but the forwarding queries
@@ -3133,7 +3154,7 @@ namespace stdexec {
         // Customize set_value by invoking the invocable and passing the result
         // to the downstream receiver
         template <__same_as<set_value_t> _Tag, class... _As>
-          requires invocable<_Fun, _As...> && __receiver_of_invoke_result<_Receiver, _Fun, _As...>
+          requires __invocable<_Fun, _As...> && __receiver_of_invoke_result<_Receiver, _Fun, _As...>
         friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
           stdexec::__set_value_invoke(
             (_Receiver&&) __self.__op_->__rcvr_, (_Fun&&) __self.__op_->__fun_, (_As&&) __as...);
@@ -3214,6 +3235,7 @@ namespace stdexec {
       }
 
       template <__movable_value _Fun>
+      STDEXEC_ATTRIBUTE((always_inline)) //
       __binder_back<then_t, _Fun> operator()(_Fun __fun) const {
         return {{}, {}, {(_Fun&&) __fun}};
       }
@@ -3272,7 +3294,7 @@ namespace stdexec {
         // Customize set_value by invoking the invocable and passing the result
         // to the downstream receiver
         template <__same_as<set_error_t> _Tag, class _Error>
-          requires invocable<_Fun, _Error> && __receiver_of_invoke_result<_Receiver, _Fun, _Error>
+          requires __invocable<_Fun, _Error> && __receiver_of_invoke_result<_Receiver, _Fun, _Error>
         friend void tag_invoke(_Tag, __t&& __self, _Error&& __error) noexcept {
           stdexec::__set_value_invoke(
             (_Receiver&&) __self.__op_->__rcvr_, (_Fun&&) __self.__op_->__fun_, (_Error&&) __error);
@@ -3355,6 +3377,7 @@ namespace stdexec {
       }
 
       template <__movable_value _Fun>
+      STDEXEC_ATTRIBUTE((always_inline)) //
       __binder_back<upon_error_t, _Fun> operator()(_Fun __fun) const {
         return {{}, {}, {(_Fun&&) __fun}};
       }
@@ -3413,7 +3436,7 @@ namespace stdexec {
         // Customize set_value by invoking the invocable and passing the result
         // to the downstream receiver
         template <__same_as<set_stopped_t> _Tag>
-          requires invocable<_Fun> && __receiver_of_invoke_result<_Receiver, _Fun>
+          requires __invocable<_Fun> && __receiver_of_invoke_result<_Receiver, _Fun>
         friend void tag_invoke(_Tag, __t&& __self) noexcept {
           stdexec::__set_value_invoke(
             (_Receiver&&) __self.__op_->__rcvr_, (_Fun&&) __self.__op_->__fun_);
@@ -3499,7 +3522,9 @@ namespace stdexec {
 
       template <__movable_value _Fun>
         requires __callable<_Fun>
-      __binder_back<upon_stopped_t, _Fun> operator()(_Fun __fun) const {
+      STDEXEC_ATTRIBUTE((always_inline)) //
+        __binder_back<upon_stopped_t, _Fun>
+        operator()(_Fun __fun) const {
         return {{}, {}, {(_Fun&&) __fun}};
       }
 
@@ -3691,6 +3716,7 @@ namespace stdexec {
       }
 
       template <integral _Shape, class _Fun>
+      STDEXEC_ATTRIBUTE((always_inline)) //
       __binder_back<bulk_t, _Shape, _Fun> operator()(_Shape __shape, _Fun __fun) const {
         return {
           {},
@@ -3898,7 +3924,7 @@ namespace stdexec {
 
           std::visit(
             [&](const auto& __tupl) noexcept -> void {
-              std::apply(
+              __apply(
                 [&](auto __tag, const auto&... __args) noexcept -> void {
                   __tag((_Receiver&&) __op->__rcvr_, __args...);
                 },
@@ -4024,6 +4050,7 @@ namespace stdexec {
           __domain, make_sender_expr<split_t>(__(), (_Sender&&) __sndr), (_Env&&) __env);
       }
 
+      STDEXEC_ATTRIBUTE((always_inline)) //
       __binder_back<split_t> operator()() const {
         return {{}, {}, {}};
       }
@@ -4218,7 +4245,7 @@ namespace stdexec {
 
           std::visit(
             [&](auto& __tupl) noexcept -> void {
-              std::apply(
+              __apply(
                 [&](auto __tag, auto&... __args) noexcept -> void {
                   __tag((_Receiver&&) __op->__rcvr_, std::move(__args)...);
                 },
@@ -4370,6 +4397,7 @@ namespace stdexec {
         STDEXEC_UNREACHABLE();
       }
 
+      STDEXEC_ATTRIBUTE((always_inline)) //
       __binder_back<ensure_started_t> operator()() const {
         return {{}, {}, {}};
       }
@@ -4595,7 +4623,7 @@ namespace stdexec {
             auto& __op = __self.__op_state_->__op_state3_.template emplace<__op_state_t>(
               __conv{[&] {
                 return connect(
-                  std::apply(std::move(__self.__op_state_->__fun_), __args),
+                  __apply(std::move(__self.__op_state_->__fun_), __args),
                   __self.__get_result_receiver());
               }});
             start(__op);
@@ -4759,6 +4787,7 @@ namespace stdexec {
       }
 
       template <class _Fun>
+      STDEXEC_ATTRIBUTE((always_inline)) //
       __binder_back<_LetTag, _Fun> operator()(_Fun __fun) const {
         return {{}, {}, {(_Fun&&) __fun}};
       }
@@ -4915,6 +4944,7 @@ namespace stdexec {
         return {(_Sender&&) __sndr};
       }
 
+      STDEXEC_ATTRIBUTE((always_inline)) //
       __binder_back<stopped_as_optional_t> operator()() const noexcept {
         return {};
       }
@@ -4931,6 +4961,7 @@ namespace stdexec {
       }
 
       template <__movable_value _Error>
+      STDEXEC_ATTRIBUTE((always_inline)) //
       auto operator()(_Error __err) const -> __binder_back<stopped_as_error_t, _Error> {
         return {{}, {}, {(_Error&&) __err}};
       }
@@ -5298,7 +5329,7 @@ namespace stdexec {
             if constexpr (same_as<_Tup, std::monostate>) {
               std::terminate(); // reaching this indicates a bug in schedule_from
             } else {
-              std::apply(
+              __apply(
                 [&]<class... _Args>(auto __tag, _Args&... __args) -> void {
                   __tag((_Receiver&&) __rcvr_, (_Args&&) __args...);
                 },
@@ -5491,6 +5522,7 @@ namespace stdexec {
       }
 
       template <scheduler _Scheduler>
+      STDEXEC_ATTRIBUTE((always_inline)) //
       __binder_back<transfer_t, __decay_t<_Scheduler>> operator()(_Scheduler&& __sched) const {
         return {{}, {}, {(_Scheduler&&) __sched}};
       }
@@ -5649,6 +5681,7 @@ namespace stdexec {
       }
 
       template <class... _Envs>
+      STDEXEC_ATTRIBUTE((always_inline)) //
       auto operator()(_Envs... __envs) const -> __binder_back<__write_t, _Envs...> {
         return {{}, {}, {std::move(__envs)...}};
       }
@@ -5971,6 +6004,7 @@ namespace stdexec {
           __domain, make_sender_expr<into_variant_t>(__(), std::move(__sndr)));
       }
 
+      STDEXEC_ATTRIBUTE((always_inline)) //
       auto operator()() const noexcept {
         return __binder_back<into_variant_t>{};
       }
@@ -6133,11 +6167,10 @@ namespace stdexec {
 
     template <class _Receiver, class _ValuesTuple>
     void __set_values(_Receiver& __rcvr, _ValuesTuple& __values) noexcept {
-      std::apply(
+      __apply(
         [&](auto&... __opt_vals) noexcept -> void {
-          std::apply(
-            __complete_fn{set_value, __rcvr},
-            std::tuple_cat(std::apply(__tie_fn{}, *__opt_vals)...));
+          __apply(
+            __complete_fn{set_value, __rcvr}, std::tuple_cat(__apply(__tie_fn{}, *__opt_vals)...));
         },
         __values);
     }
@@ -6369,7 +6402,7 @@ namespace stdexec {
             // the child operations.
             stdexec::set_stopped((_Receiver&&) __self.__rcvr_);
           } else {
-            std::apply(
+            __apply(
               [](auto&... __child_ops) noexcept -> void { (stdexec::start(__child_ops), ...); },
               __self.__op_states_);
             if constexpr (sizeof...(_SenderIds) == 0) {
@@ -6886,6 +6919,7 @@ namespace stdexec {
       }
 
       template <scheduler _Scheduler, __sender_adaptor_closure _Closure>
+      STDEXEC_ATTRIBUTE((always_inline)) //
       auto operator()(_Scheduler&& __sched, _Closure&& __clsur) const
         -> __binder_back<continue_on_t, __decay_t<_Scheduler>, __decay_t<_Closure>> {
         return {
@@ -7185,7 +7219,7 @@ namespace stdexec {
 
       template <sender_in<__env> _Sender>
         requires(
-          invocable<sync_wait_t, __into_variant_result_t<_Sender>>
+          __invocable<sync_wait_t, __into_variant_result_t<_Sender>>
           || __is_sync_wait_customized<sync_wait_with_variant_t, _Sender>)
       auto operator()(_Sender&& __sndr) const -> std::optional<__variant_for_t<_Sender>> {
         using __dispatcher_t =
