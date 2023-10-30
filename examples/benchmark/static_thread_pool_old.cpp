@@ -137,7 +137,6 @@ int main(int argc, char** argv) {
   }
   std::size_t total_scheds = 10'000'000;
   std::vector<std::unique_ptr<char[]>> buffers(nthreads);
-  std::vector<std::optional<pmr::monotonic_buffer_resource>> resource(nthreads);
   exec_old::static_thread_pool pool(nthreads);
   std::barrier<> barrier(nthreads + 1);
   std::vector<std::thread> threads;
