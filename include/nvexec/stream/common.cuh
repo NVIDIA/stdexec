@@ -32,7 +32,7 @@
 #include "../detail/variant.cuh"
 
 namespace nvexec {
-  using stdexec::operator""_csz;
+  using stdexec::operator""__csz;
 
   enum class stream_priority {
     high,
