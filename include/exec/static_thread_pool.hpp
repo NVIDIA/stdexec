@@ -237,14 +237,14 @@ namespace exec {
       auto transform_sender(Sender&& sndr) const noexcept {
         auto sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
           stdexec::get_env(sndr));
-        return stdexec::apply_sender((Sender&&) sndr, transform_iterate{*sched.pool_});
+        return stdexec::__sexpr_apply((Sender&&) sndr, transform_iterate{*sched.pool_});
       }
 
       template <stdexec::sender_expr_for<exec::iterate_t> Sender, class Env>
         requires stdexec::__callable<stdexec::get_scheduler_t, Env>
       auto transform_sender(Sender&& sndr, const Env& env) const noexcept {
         auto sched = stdexec::get_scheduler(env);
-        return stdexec::apply_sender((Sender&&) sndr, transform_iterate{*sched.pool_});
+        return stdexec::__sexpr_apply((Sender&&) sndr, transform_iterate{*sched.pool_});
       }
 #endif
     };
