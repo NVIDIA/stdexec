@@ -423,7 +423,7 @@ namespace exec {
           0 <= __n_total_submitted_
           && __n_total_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
         __u32 __max_submissions = __params_.cq_entries - static_cast<__u32>(__n_total_submitted_);
-        __pending_.append(__requests_.pop_all());
+        __pending_.append(__requests_.pop_all_reversed());
         __submission_result __result = __submission_queue_.submit(
           (__task_queue&&) __pending_, __max_submissions, __stop_source_->stop_requested());
         __n_total_submitted_ += __result.__n_submitted;
@@ -433,7 +433,7 @@ namespace exec {
         while (!__result.__ready.empty()) {
           __n_total_submitted_ -= __completion_queue_.complete((__task_queue&&) __result.__ready);
           STDEXEC_ASSERT(0 <= __n_total_submitted_);
-          __pending_.append(__requests_.pop_all());
+          __pending_.append(__requests_.pop_all_reversed());
           __max_submissions = __params_.cq_entries - static_cast<__u32>(__n_total_submitted_);
           __result = __submission_queue_.submit(
             (__task_queue&&) __pending_, __max_submissions, __stop_source_->stop_requested());
@@ -466,7 +466,7 @@ namespace exec {
         scope_guard __not_running{[&]() noexcept {
           __is_running_.store(false, std::memory_order_relaxed);
         }};
-        __pending_.append(__requests_.pop_all());
+        __pending_.append(__requests_.pop_all_reversed());
         while (__n_total_submitted_ > 0 || !__pending_.empty()) {
           run_some();
           if (
@@ -488,7 +488,7 @@ namespace exec {
           }
           __n_total_submitted_ -= __completion_queue_.complete();
           STDEXEC_ASSERT(0 <= __n_total_submitted_);
-          __pending_.append(__requests_.pop_all());
+          __pending_.append(__requests_.pop_all_reversed());
         }
         STDEXEC_ASSERT(__n_total_submitted_ <= 1);
         if (__stop_source_->stop_requested() && __pending_.empty()) {
@@ -506,7 +506,7 @@ namespace exec {
             __n_submissions_in_flight_.load(std::memory_order_relaxed) == __no_new_submissions);
           // There could have been requests in flight. Complete all of them
           // and then stop it, finally.
-          __pending_.append(__requests_.pop_all());
+          __pending_.append(__requests_.pop_all_reversed());
           __submission_result __result = __submission_queue_.submit(
             (__task_queue&&) __pending_, __params_.cq_entries, true);
           STDEXEC_ASSERT(__result.__n_submitted == 0);

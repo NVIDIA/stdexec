@@ -59,6 +59,7 @@ set(stdexec_test_sources
     stdexec/detail/test_utility.cpp
     stdexec/queries/test_get_forward_progress_guarantee.cpp
     stdexec/queries/test_forwarding_queries.cpp
+    exec/test_bwos_lifo_queue.cpp
     exec/test_any_sender.cpp
     exec/test_task.cpp
     exec/test_variant_sender.cpp

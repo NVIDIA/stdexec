@@ -2481,7 +2481,19 @@ namespace stdexec {
         : __operation_base<_ReceiverId>{
             (_CvrefReceiver&&) __rcvr,
             [](__operation_base<_ReceiverId>* __self) noexcept {
-            delete static_cast<__operation*>(__self);
+              __operation* __op = static_cast<__operation*>(__self);
+              if constexpr (__callable<get_allocator_t, env_of_t<_Receiver>>) {
+                auto&& __env = get_env(__self->__rcvr_);
+                auto __alloc = get_allocator(__env);
+                using _Alloc = decltype(__alloc);
+                using _Op = __operation;
+                using _OpAlloc = typename std::allocator_traits<_Alloc>::template rebind_alloc<_Op>;
+                _OpAlloc __op_alloc{__alloc};
+                std::allocator_traits<_OpAlloc>::destroy(__op_alloc, __op);
+                std::allocator_traits<_OpAlloc>::deallocate(__op_alloc, __op, 1);
+              } else {
+                delete __op;
+              }
             }}
         , __op_state_(connect((_Sender&&) __sndr, __receiver_t<_ReceiverId>{this})) {
       }
@@ -2490,9 +2502,27 @@ namespace stdexec {
     struct __submit_t {
       template <receiver _Receiver, sender_to<_Receiver> _Sender>
       void operator()(_Sender&& __sndr, _Receiver __rcvr) const noexcept(false) {
-        start((new __operation<__id<_Sender>, __id<_Receiver>>{
-                 (_Sender&&) __sndr, (_Receiver&&) __rcvr})
-                ->__op_state_);
+        if constexpr (__callable<get_allocator_t, env_of_t<_Receiver>>) {
+          auto&& __env = get_env(__rcvr);
+          auto __alloc = get_allocator(__env);
+          using _Alloc = decltype(__alloc);
+          using _Op = __operation<__id<_Sender>, __id<_Receiver>>;
+          using _OpAlloc = typename std::allocator_traits<_Alloc>::template rebind_alloc<_Op>;
+          _OpAlloc __op_alloc{__alloc};
+          auto __op = std::allocator_traits<_OpAlloc>::allocate(__op_alloc, 1);
+          try {
+            std::allocator_traits<_OpAlloc>::construct(
+              __op_alloc, __op, (_Sender&&) __sndr, (_Receiver&&) __rcvr);
+            start(__op->__op_state_);
+          } catch (...) {
+            std::allocator_traits<_OpAlloc>::deallocate(__op_alloc, __op, 1);
+            throw;
+          }
+        } else {
+          start((new __operation<__id<_Sender>, __id<_Receiver>>{
+                  (_Sender&&) __sndr, (_Receiver&&) __rcvr})
+                  ->__op_state_);
+        }
       }
     };
   } // namespace __submit_
