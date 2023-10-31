@@ -186,14 +186,14 @@ namespace exec {
               && sequence_receiver_of<_Receiver, __item_types_t<_Self, env_of_t<_Receiver>>>
               && sequence_sender_to<__child_of<_Self>, __receiver_t<_Self, _Receiver>>
       static auto subscribe(_Self&& __self, _Receiver __rcvr) noexcept(
-        __nothrow_callable<apply_sender_t, _Self, __subscribe_fn<_Receiver>>)
-        -> __call_result_t<apply_sender_t, _Self, __subscribe_fn<_Receiver>> {
-        return apply_sender(static_cast<_Self&&>(__self), __subscribe_fn<_Receiver>{__rcvr});
+        __nothrow_callable<__sexpr_apply_t, _Self, __subscribe_fn<_Receiver>>)
+        -> __call_result_t<__sexpr_apply_t, _Self, __subscribe_fn<_Receiver>> {
+        return __sexpr_apply(static_cast<_Self&&>(__self), __subscribe_fn<_Receiver>{__rcvr});
       }
 
       template <sender_expr_for<transform_each_t> _Sexpr>
       static env_of_t<__child_of<_Sexpr>> get_env(const _Sexpr& __sexpr) noexcept {
-        return apply_sender(__sexpr, []<class _Child>(__ignore, __ignore, const _Child& __child) {
+        return __sexpr_apply(__sexpr, []<class _Child>(__ignore, __ignore, const _Child& __child) {
           return stdexec::get_env(__child);
         });
       }

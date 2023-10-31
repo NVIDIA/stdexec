@@ -130,13 +130,8 @@ namespace {
 
     struct domain {
       template <class Sender, class Env>
-      friend void tag_invoke(ex::start_detached_t, domain, Sender, Env) {
+      void apply_sender(ex::start_detached_t, Sender, Env) const {
         // drop the sender on the floor
-      }
-
-      // BUGBUG legacy
-      operator custom_scheduler() const {
-        return {};
       }
     };
 

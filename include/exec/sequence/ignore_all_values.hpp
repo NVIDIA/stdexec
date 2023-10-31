@@ -279,7 +279,7 @@ namespace exec {
       auto operator()(_Sender&& __sndr) const {
         auto __domain = __get_sender_domain((_Sender&&) __sndr);
         return transform_sender(
-          __domain, make_sender_expr<ignore_all_values_t>(__(), (_Sender&&) __sndr));
+          __domain, __make_sexpr<ignore_all_values_t>(__(), (_Sender&&) __sndr));
       }
 
       constexpr __binder_back<ignore_all_values_t> operator()() const noexcept {
@@ -307,9 +307,9 @@ namespace exec {
                    __child_of<_Sender>,
                    __receiver_t<__child_of<_Sender>, _Receiver>>
       static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-        __nothrow_callable<apply_sender_t, _Sender, __connect_fn<_Receiver>>)
-        -> __call_result_t<apply_sender_t, _Sender, __connect_fn<_Receiver>> {
-        return apply_sender((_Sender&&) __sndr, __connect_fn<_Receiver>{__rcvr});
+        __nothrow_callable<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>)
+        -> __call_result_t<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>> {
+        return __sexpr_apply((_Sender&&) __sndr, __connect_fn<_Receiver>{__rcvr});
       }
     };
   }
