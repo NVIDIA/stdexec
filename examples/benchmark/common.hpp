@@ -89,9 +89,9 @@ statistics_all compute_perf(
 
 template <class Pool, class RunThread>
 void my_main(int argc, char** argv) {
-  std::size_t nthreads = std::thread::hardware_concurrency();
+  int nthreads = std::thread::hardware_concurrency();
   if (argc > 1) {
-    nthreads = static_cast<std::size_t>(std::atoi(argv[1]));
+    nthreads = std::atoi(argv[1]);
   }
   std::size_t total_scheds = 10'000'000;
 #ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
@@ -107,7 +107,7 @@ void my_main(int argc, char** argv) {
     buf = std::make_unique_for_overwrite<char[]>(buffer_size);
   }
 #endif
-  for (std::size_t i = 0; i < nthreads; ++i) {
+  for (std::size_t i = 0; i < static_cast<std::size_t>(nthreads); ++i) {
     threads.emplace_back(
       RunThread{},
       std::ref(pool),
