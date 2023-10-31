@@ -128,10 +128,10 @@ namespace stdexec {
   __sexpr(_ImplFn) -> __sexpr<_ImplFn>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  // make_sender_expr
+  // __make_sexpr
   namespace __detail {
     template <class _Tag>
-    struct make_sender_expr_t {
+    struct __make_sexpr_t {
       template <class _Data = __, class... _Children>
       constexpr auto operator()(_Data __data = {}, _Children... __children) const;
     };
@@ -189,7 +189,7 @@ namespace stdexec {
     template <class _Tag>
     template <class _Data, class... _Children>
     constexpr auto
-      make_sender_expr_t<_Tag>::operator()(_Data __data, _Children... __children) const {
+      __make_sexpr_t<_Tag>::operator()(_Data __data, _Children... __children) const {
       return __sexpr{__make_tuple(_Tag(), __detail::__mbc(__data), __detail::__mbc(__children)...)};
     }
 #else
@@ -213,22 +213,22 @@ namespace stdexec {
     template <class _Tag>
     template <class _Data, class... _Children>
     constexpr auto
-      make_sender_expr_t<_Tag>::operator()(_Data __data, _Children... __children) const {
+      __make_sexpr_t<_Tag>::operator()(_Data __data, _Children... __children) const {
       return __sexpr{__make_tuple(_Tag(), (_Data&&) __data, (_Children&&) __children...)};
     };
 #endif
 
     template <class _Tag>
-    inline constexpr make_sender_expr_t<_Tag> make_sender_expr{};
+    inline constexpr __make_sexpr_t<_Tag> __make_sexpr{};
   } // namespace __detail
 
-  using __detail::make_sender_expr;
+  using __detail::__make_sexpr;
 
   template <class _Tag, class _Data, class... _Children>
-  using __sexpr_t = __result_of<make_sender_expr<_Tag>, _Data, _Children...>;
+  using __sexpr_t = __result_of<__make_sexpr<_Tag>, _Data, _Children...>;
 
   namespace __detail {
-    struct apply_sender_t {
+    struct __sexpr_apply_t {
       template <class _Sender, class _ApplyFn>
       STDEXEC_ATTRIBUTE((always_inline))                        //
       auto operator()(_Sender&& __sndr, _ApplyFn&& __fun) const //
@@ -241,21 +241,21 @@ namespace stdexec {
     };
   } // namespace __detail
 
-  using __detail::apply_sender_t;
-  inline constexpr apply_sender_t apply_sender{};
+  using __detail::__sexpr_apply_t;
+  inline constexpr __sexpr_apply_t __sexpr_apply{};
 
   template <class _Sender, class _ApplyFn>
-  using apply_sender_result_t = __call_result_t<apply_sender_t, _Sender, _ApplyFn>;
+  using __sexpr_apply_result_t = __call_result_t<__sexpr_apply_t, _Sender, _ApplyFn>;
 
   template <class _Sender>
-  using __tag_of = __call_result_t<apply_sender_t, _Sender, __detail::__get_tag>;
+  using __tag_of = __call_result_t<__sexpr_apply_t, _Sender, __detail::__get_tag>;
 
   template <class _Sender>
-  using __data_of = __call_result_t<apply_sender_t, _Sender, __detail::__get_data>;
+  using __data_of = __call_result_t<__sexpr_apply_t, _Sender, __detail::__get_data>;
 
   template <class _Sender, class _Continuation = __q<__types>>
   using __children_of = __t<__call_result_t<
-    __call_result_t<apply_sender_t, _Sender, __detail::__get_children<_Continuation>>>>;
+    __call_result_t<__sexpr_apply_t, _Sender, __detail::__get_children<_Continuation>>>>;
 
   template <class _Ny, class _Sender>
   using __nth_child_of = __children_of<_Sender, __mbind_front_q<__m_at, _Ny>>;
@@ -292,7 +292,7 @@ namespace stdexec {
     struct __basic_sender_name {
       template <class _Sender>
       using __f = //
-        __call_result_t<apply_sender_result_t<_Sender, __basic_sender_name>>;
+        __call_result_t<__sexpr_apply_result_t<_Sender, __basic_sender_name>>;
 
       template <class _Tag, class _Data, class... _Children>
       auto operator()(_Tag, _Data&&, _Children&&...) const //

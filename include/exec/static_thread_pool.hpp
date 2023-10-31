@@ -106,7 +106,7 @@ namespace exec {
       auto transform_sender(Sender&& sndr) const noexcept {
         auto sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
           stdexec::get_env(sndr));
-        return stdexec::apply_sender((Sender&&) sndr, transform_bulk{*sched.pool_});
+        return stdexec::__sexpr_apply((Sender&&) sndr, transform_bulk{*sched.pool_});
       }
 
       // transform the generic bulk sender into a parallel thread-pool bulk sender
@@ -114,7 +114,7 @@ namespace exec {
         requires stdexec::__callable<stdexec::get_scheduler_t, Env>
       auto transform_sender(Sender&& sndr, const Env& env) const noexcept {
         auto sched = stdexec::get_scheduler(env);
-        return stdexec::apply_sender((Sender&&) sndr, transform_bulk{*sched.pool_});
+        return stdexec::__sexpr_apply((Sender&&) sndr, transform_bulk{*sched.pool_});
       }
     };
 
