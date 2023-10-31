@@ -89,9 +89,9 @@ statistics_all compute_perf(
 
 template <class Pool, class RunThread>
 void my_main(int argc, char** argv) {
-  int nthreads = std::thread::hardware_concurrency();
+  std::size_t nthreads = std::thread::hardware_concurrency();
   if (argc > 1) {
-    nthreads = std::atoi(argv[1]);
+    nthreads = static_cast<std::size_t>(std::atoi(argv[1]));
   }
   std::size_t total_scheds = 10'000'000;
 #ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
