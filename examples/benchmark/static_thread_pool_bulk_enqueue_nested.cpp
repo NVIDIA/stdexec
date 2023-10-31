@@ -3,6 +3,7 @@
 
 #if STDEXEC_HAS_STD_RANGES()
 #include <ranges>
+#include <exec/sequence/ignore_all_values.hpp>
 
 struct RunThread {
   void operator()(
@@ -25,12 +26,12 @@ struct RunThread {
       pmr::polymorphic_allocator<char> alloc{&rsrc};
       auto env = exec::make_env(exec::with(stdexec::get_allocator, alloc));
       auto [start, end] = exec::even_share(total_scheds, tid, pool.available_parallelism());
-      auto iterate = exec::schedule_all(pool, std::views::iota(start, end)) 
+      auto iterate = exec::iterate(std::views::iota(start, end)) 
                    | exec::ignore_all_values()
                    | exec::write(env);
 #else
       auto [start, end] = exec::even_share(total_scheds, tid, pool.available_parallelism());
-      auto iterate = exec::schedule_all(pool, std::views::iota(start, end)) 
+      auto iterate = exec::iterate(std::views::iota(start, end)) 
                    | exec::ignore_all_values();
 #endif
       stdexec::sync_wait(stdexec::on(scheduler, iterate));
