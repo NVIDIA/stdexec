@@ -5,6 +5,8 @@
 #include <barrier>
 #include <span>
 #include <cmath>
+#include <thread>
+#include <vector>
 
 #if __has_include(<memory_resource>)
 #include <memory_resource>
@@ -123,6 +125,7 @@ void my_main(int argc, char** argv) {
   for (auto& thread: threads) {
     thread.join();
   }
-  auto [dur_ms, ops_per_sec, avg, max, min, stddev] = compute_perf(starts, ends, warmup, nRuns - 1, total_scheds);
+  auto [dur_ms, ops_per_sec, avg, max, min, stddev] = compute_perf(
+    starts, ends, warmup, nRuns - 1, total_scheds);
   std::cout << avg << " | " << max << " | " << min << " | " << stddev << "\n";
 }
