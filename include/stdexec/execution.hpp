@@ -2773,18 +2773,20 @@ namespace stdexec {
     struct execute_t {
       template <scheduler _Scheduler, class _Fun>
         requires __callable<_Fun&> && move_constructible<_Fun>
-      void operator()(_Scheduler&& __sched, _Fun __fun) const //
-        noexcept(noexcept(
-          __submit(schedule((_Scheduler&&) __sched), __as_receiver<_Fun>{(_Fun&&) __fun}))) {
-        (void) __submit(schedule((_Scheduler&&) __sched), __as_receiver<_Fun>{(_Fun&&) __fun});
+      void operator()(_Scheduler&& __sched, _Fun __fun) const noexcept(false) {
+        // Look for a legacy customization
+        if constexpr (tag_invocable<execute_t, _Scheduler, _Fun>) {
+          tag_invoke(execute_t{}, (_Scheduler&&) __sched, (_Fun&&) __fun);
+        } else {
+          auto __domain = query_or(get_domain, __sched, default_domain());
+          stdexec::apply_sender(__domain, *this, schedule((_Scheduler&&) __sched), (_Fun&&) __fun);
+        }
       }
 
-      template <scheduler _Scheduler, class _Fun>
+      template <sender_of<set_value_t()> _Sender, class _Fun>
         requires __callable<_Fun&> && move_constructible<_Fun>
-              && tag_invocable<execute_t, _Scheduler, _Fun>
-      void operator()(_Scheduler&& __sched, _Fun __fun) const
-        noexcept(nothrow_tag_invocable<execute_t, _Scheduler, _Fun>) {
-        (void) tag_invoke(execute_t{}, (_Scheduler&&) __sched, (_Fun&&) __fun);
+      void apply_sender(_Sender&& __sndr, _Fun __fun) const noexcept(false) {
+        __submit((_Sender&&) __sndr, __as_receiver<_Fun>{(_Fun&&) __fun});
       }
     };
   }
