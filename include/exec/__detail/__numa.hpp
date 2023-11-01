@@ -1,3 +1,21 @@
+/*
+ * Copyright (c) 2021-2022 NVIDIA Corporation
+ * Copyright (c) 2023 Maikel Nadolski
+ *
+ * Licensed under the Apache License Version 2.0 with LLVM Exceptions
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ *   https://llvm.org/LICENSE.txt
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#pragma once
+
 #include "../../stdexec/__detail/__config.hpp"
 #include "../scope.hpp"
 
@@ -13,14 +31,14 @@ namespace exec {
 
   class no_numa_policy : public numa_policy {
    public:
-    no_numa_policy() noexcept;
+    no_numa_policy() noexcept = default;
     std::size_t num_nodes() override { return 1; }
     std::size_t num_cpus(int node) override { return std::thread::hardware_concurrency(); }
     int bind_to_node(int node) override { return 0; }
   };
 }
 
-#if __has_include(<numa.h>)
+#if STDEXEC_ENABLE_NUMA
 #include <numa.h>
 namespace exec {
   struct numa_policy_impl : numa_policy {
@@ -101,5 +119,29 @@ namespace exec {
     thread_local no_numa_policy g_default_numa_policy{};
     return &g_default_numa_policy;
   }
+
+  template <class T>
+  struct numa_allocator {
+    using pointer = T*;
+    using const_pointer = const T*;
+    using value_type = T;
+
+    explicit numa_allocator(int) noexcept {}
+
+    template <class U>
+    explicit numa_allocator(const numa_allocator<U>&) noexcept {}
+
+    T* allocate(std::size_t n) {
+      std::allocator<T> alloc{};
+      return alloc.allocate(n);
+    }
+
+    void deallocate(T* p, std::size_t n) {
+      std::allocator<T> alloc{};
+      alloc.deallocate(p, n);
+    }
+
+    friend bool operator==(const numa_allocator&, const numa_allocator&) noexcept = default;
+  };
 }
 #endif

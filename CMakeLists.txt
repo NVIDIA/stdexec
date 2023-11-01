@@ -299,6 +299,13 @@ if (STDEXEC_ENABLE_TBB)
 endif ()
 
 option (STDEXEC_ENABLE_IO_URING_TESTS "Enable io_uring tests" ON)
+option (STDEXEC_ENABLE_NUMA "Enable NUMA affinity for static_thread_pool" OFF)
+if (STDEXEC_ENABLE_NUMA)
+  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
+  find_package(numa REQUIRED)
+  target_link_libraries(stdexec INTERFACE numa::numa)
+  target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_NUMA)
+endif()
 
 option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
 option(STDEXEC_BUILD_TESTS "Build stdexec tests" ON)
