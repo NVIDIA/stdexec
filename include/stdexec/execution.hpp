@@ -7101,20 +7101,6 @@ namespace stdexec {
       };
     };
 
-    struct sync_wait_t;
-
-    using _Sender = __0;
-    template <class _Tag>
-    using __cust_sigs = __types<
-      // For legacy reasons:
-      tag_invoke_t(_Tag, get_completion_scheduler_t<set_value_t>(get_env_t(const _Sender&)), _Sender),
-      tag_invoke_t(_Tag, __get_sender_domain_t STDEXEC_MSVC((*) )(const _Sender&), _Sender),
-      tag_invoke_t(_Tag, _Sender)>;
-
-    template <class _Tag, class _Sender>
-    inline constexpr bool __is_sync_wait_customized =
-      __minvocable<__which<__cust_sigs<_Tag>>, _Sender>;
-
     template <class _Sender>
     using __receiver_t = __t<__sync_wait_result_impl<_Sender, __q<__receiver>>>;
 
