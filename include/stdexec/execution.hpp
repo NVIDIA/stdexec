@@ -2426,76 +2426,72 @@ namespace stdexec {
   using __with_awaitable_senders::__continuation_handle;
 #endif
 
+  namespace {
+    inline constexpr auto __ref = []<class _Ty>(_Ty& __ty) noexcept {
+      return [__ty = &__ty]() noexcept -> decltype(auto) {
+        return (*__ty);
+      };
+    };
+  }
+
+  template <class _Ty>
+  using __ref_t = decltype(__ref(__declval<_Ty&>()));
+
   /////////////////////////////////////////////////////////////////////////////
   // NOT TO SPEC: __submit
   namespace __submit_ {
-    template <class _ReceiverId>
-    struct __operation_base;
-
-    template <class _ReceiverId>
-    struct __operation_base {
-      using _Receiver = __t<_ReceiverId>;
-      _Receiver __rcvr_;
-
-      using __delete_fn_t = void(__operation_base<_ReceiverId>*) noexcept;
-      __delete_fn_t* __delete_;
-    };
-
-    template <class _ReceiverId>
+    template <class _OpRef>
     struct __receiver {
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using is_receiver = void;
+      using __t = __receiver;
+      using __id = __receiver;
 
-      struct __t {
-        using is_receiver = void;
-        using __id = __receiver;
-        __operation_base<_ReceiverId>* __op_state_;
+      using _Operation = __decay_t<__call_result_t<_OpRef>>;
+      using _Receiver = stdexec::__t<__mapply<__q<__msecond>, _Operation>>;
 
-        // Forward all the receiver ops, and delete the operation state.
-        template <__completion_tag _Tag, class... _As>
-          requires __callable<_Tag, _Receiver, _As...>
-        friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept(
-          __nothrow_callable<_Tag, _Receiver, _As...>) {
-          // Delete the state as cleanup:
-          auto __g = __scope_guard{__self.__op_state_->__delete_, __self.__op_state_};
-          return __tag((_Receiver&&) __self.__op_state_->__rcvr_, (_As&&) __as...);
+      _OpRef __opref_;
+
+      // Forward all the receiver ops, and delete the operation state.
+      template <__completion_tag _Tag, class... _As>
+        requires __callable<_Tag, _Receiver, _As...>
+      friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept {
+        __tag((_Receiver&&) __self.__opref_().__rcvr_, (_As&&) __as...);
+        __self.__delete_op();
+      }
+
+      void __delete_op() noexcept {
+        _Operation* __op = &__opref_();
+        if constexpr (__callable<get_allocator_t, env_of_t<_Receiver>>) {
+          auto&& __env = get_env(__op->__rcvr_);
+          auto __alloc = get_allocator(__env);
+          using _Alloc = decltype(__alloc);
+          using _OpAlloc = typename std::allocator_traits<_Alloc>::template rebind_alloc<_Operation>;
+          _OpAlloc __op_alloc{__alloc};
+          std::allocator_traits<_OpAlloc>::destroy(__op_alloc, __op);
+          std::allocator_traits<_OpAlloc>::deallocate(__op_alloc, __op, 1);
+        } else {
+          delete __op;
         }
+      }
 
-        // Forward all receiever queries.
-        friend auto tag_invoke(get_env_t, const __t& __self) noexcept -> env_of_t<_Receiver> {
-          return get_env(__self.__op_state_->__rcvr_);
-        }
-      };
+      // Forward all receiever queries.
+      friend auto tag_invoke(get_env_t, const __receiver& __self) noexcept -> env_of_t<_Receiver&> {
+        return get_env(__self.__opref_().__rcvr_);
+      }
     };
-    template <class _ReceiverId>
-    using __receiver_t = __t<__receiver<_ReceiverId>>;
 
     template <class _SenderId, class _ReceiverId>
-    struct __operation : __operation_base<_ReceiverId> {
+    struct __operation {
       using _Sender = stdexec::__t<_SenderId>;
       using _Receiver = stdexec::__t<_ReceiverId>;
+      using __receiver_t = __receiver<__ref_t<__operation>>;
 
-      connect_result_t<_Sender, __receiver_t<_ReceiverId>> __op_state_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
+      connect_result_t<_Sender, __receiver_t> __op_state_;
 
-      template <__decays_to<_Receiver> _CvrefReceiver>
-      __operation(_Sender&& __sndr, _CvrefReceiver&& __rcvr)
-        : __operation_base<_ReceiverId>{
-            (_CvrefReceiver&&) __rcvr,
-            [](__operation_base<_ReceiverId>* __self) noexcept {
-              __operation* __op = static_cast<__operation*>(__self);
-              if constexpr (__callable<get_allocator_t, env_of_t<_Receiver>>) {
-                auto&& __env = get_env(__self->__rcvr_);
-                auto __alloc = get_allocator(__env);
-                using _Alloc = decltype(__alloc);
-                using _Op = __operation;
-                using _OpAlloc = typename std::allocator_traits<_Alloc>::template rebind_alloc<_Op>;
-                _OpAlloc __op_alloc{__alloc};
-                std::allocator_traits<_OpAlloc>::destroy(__op_alloc, __op);
-                std::allocator_traits<_OpAlloc>::deallocate(__op_alloc, __op, 1);
-              } else {
-                delete __op;
-              }
-            }}
-        , __op_state_(connect((_Sender&&) __sndr, __receiver_t<_ReceiverId>{this})) {
+      __operation(_Sender&& __sndr, _Receiver __rcvr)
+        : __rcvr_((_Receiver&&) __rcvr)
+        , __op_state_(connect((_Sender&&) __sndr, __receiver_t{__ref(*this)})) {
       }
     };
 
@@ -2640,7 +2636,6 @@ namespace stdexec {
           _Sender),
         tag_invoke_t(start_detached_t, _Sender)>;
 
-      // Default implementation goes here:
       template <class _Sender, class _Env = empty_env>
         requires sender_to<_Sender, __detached_receiver_t<_Env>>
       void apply_sender(_Sender&& __sndr, _Env&& __env = {}) const {
