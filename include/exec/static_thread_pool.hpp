@@ -25,6 +25,7 @@
 #include "./__detail/__bwos_lifo_queue.hpp"
 #include "./__detail/__manual_lifetime.hpp"
 #include "./__detail/__xorshift.hpp"
+#include "./__detail/__numa.hpp"
 
 #include "./sequence_senders.hpp"
 #include "./sequence/iterate.hpp"
@@ -83,8 +84,17 @@ namespace exec {
   };
 
   struct remote_queue {
+    explicit remote_queue(std::size_t nthreads) noexcept
+      : queues_(nthreads) {
+    }
+
+    explicit remote_queue(remote_queue* next, std::size_t nthreads) noexcept
+      : next_(next)
+      , queues_(nthreads) {
+    }
+
     remote_queue* next_{};
-    std::unique_ptr<__atomic_intrusive_queue<&task_base::next>[]> queues_{};
+    std::vector<__atomic_intrusive_queue<&task_base::next>> queues_{};
     std::thread::id id_{std::this_thread::get_id()};
   };
 
@@ -99,9 +109,8 @@ namespace exec {
     explicit remote_queue_list(std::size_t nthreads) noexcept
       : head_{&this_remotes_}
       , tail_{&this_remotes_}
-      , nthreads_(nthreads) {
-      this_remotes_.queues_ = std::make_unique<__atomic_intrusive_queue<&task_base::next>[]>(
-        nthreads_);
+      , nthreads_(nthreads)
+      , this_remotes_(nthreads) {
     }
 
     ~remote_queue_list() noexcept {
@@ -132,8 +141,7 @@ namespace exec {
         }
         queue = queue->next_;
       }
-      remote_queue* new_head = new remote_queue{head};
-      new_head->queues_ = std::make_unique<__atomic_intrusive_queue<&task_base::next>[]>(nthreads_);
+      remote_queue* new_head = new remote_queue{head, nthreads_};
       while (!head_.compare_exchange_weak(head, new_head, std::memory_order_acq_rel)) {
         new_head->next_ = head;
       }
@@ -251,7 +259,7 @@ namespace exec {
 
    public:
     static_thread_pool();
-    static_thread_pool(std::uint32_t threadCount, bwos_params params = {});
+    static_thread_pool(std::uint32_t threadCount, bwos_params params = {}, numa_policy* numa = get_numa_policy());
     ~static_thread_pool();
 
     struct scheduler {
@@ -374,10 +382,12 @@ namespace exec {
     class workstealing_victim {
      public:
       explicit workstealing_victim(
-        bwos::lifo_queue<task_base*>* queue,
-        std::uint32_t index) noexcept
+        bwos::lifo_queue<task_base*, numa_allocator<task_base*>>* queue,
+        std::uint32_t index,
+        int numa_node) noexcept
         : queue_(queue)
-        , index_(index) {
+        , index_(index)
+        , numa_node_(numa_node) {
       }
 
       task_base* try_steal() noexcept {
@@ -388,12 +398,29 @@ namespace exec {
         return index_;
       }
 
+      int numa_node() const noexcept {
+        return numa_node_;
+      }
+
      private:
-      bwos::lifo_queue<task_base*>* queue_;
+      bwos::lifo_queue<task_base*, numa_allocator<task_base*>>* queue_;
       std::uint32_t index_;
+      int numa_node_;
     };
 
-    class thread_state {
+    struct thread_state_base {
+      explicit thread_state_base(
+        std::uint32_t index,
+        numa_policy* numa) noexcept
+        : index_(index)
+        , numa_node_(index % numa->num_nodes()) {
+      }
+
+      std::uint32_t index_;
+      int numa_node_;
+    };
+
+    class thread_state : private thread_state_base {
      public:
       struct pop_result {
         task_base* task;
@@ -403,10 +430,11 @@ namespace exec {
       explicit thread_state(
         static_thread_pool* pool,
         std::uint32_t index,
-        bwos_params params) noexcept
-        : local_queue_(params.numBlocks, params.blockSize)
+        bwos_params params,
+        numa_policy* numa) noexcept
+        : thread_state_base(index, numa)
+        , local_queue_(params.numBlocks, params.blockSize, numa_allocator<task_base*>(this->numa_node_))
         , state_(state::running)
-        , index_(index)
         , pool_(pool) {
         std::random_device rd;
         rng_.seed(rd);
@@ -419,24 +447,29 @@ namespace exec {
       bool notify();
       void request_stop();
 
-      void victims(std::vector<workstealing_victim>& victims) {
-        victims_ = victims;
-        // TODO sort by numa distance
-        std::sort(victims_.begin(), victims_.end(), [i0 = index_](const auto& a, const auto& b) {
-          auto distA = std::abs(static_cast<int>(a.index()) - static_cast<int>(i0));
-          auto distB = std::abs(static_cast<int>(b.index()) - static_cast<int>(i0));
-          return distA < distB;
-        });
-        // remove self from victims
-        victims_.erase(victims_.begin());
+      void victims(const std::vector<workstealing_victim>& victims) {
+        for (workstealing_victim v : victims) {
+          if (v.index() == index_) {
+            // skip self
+            continue;
+          }
+          if (v.numa_node() == numa_node_) {
+            local_victims_.push_back(v);
+          }
+          remote_victims_.push_back(v);
+        }
       }
 
       std::uint32_t index() const noexcept {
         return index_;
       }
 
+      int numa_node() const noexcept {
+        return numa_node_;
+      }
+
       workstealing_victim as_victim() noexcept {
-        return workstealing_victim{&local_queue_, index_};
+        return workstealing_victim{&local_queue_, index_, numa_node_};
       }
 
      private:
@@ -449,32 +482,34 @@ namespace exec {
 
       pop_result try_pop();
       pop_result try_remote();
-      pop_result try_steal();
+      pop_result try_steal(std::span<workstealing_victim> victims);
+      pop_result try_steal_local();
+      pop_result try_steal_remote();
 
       void notify_one_sleeping();
       void set_stealing();
       void clear_stealing();
 
-      bwos::lifo_queue<task_base*> local_queue_;
+      bwos::lifo_queue<task_base*, numa_allocator<task_base*>> local_queue_;
       __intrusive_queue<&task_base::next> pending_queue_{};
       std::mutex mut_{};
       std::condition_variable cv_{};
       bool stopRequested_{false};
-      std::vector<workstealing_victim> victims_{};
+      std::vector<workstealing_victim> local_victims_{};
+      std::vector<workstealing_victim> remote_victims_{};
       std::atomic<state> state_;
-      std::uint32_t index_{};
       static_thread_pool* pool_;
       xorshift rng_{};
     };
 
-    void run(std::uint32_t index) noexcept;
+    void run(std::uint32_t index, numa_policy* numa) noexcept;
     void join() noexcept;
 
     alignas(64) std::atomic<std::uint32_t> nextThread_;
     alignas(64) std::atomic<std::uint32_t> numThiefs_{};
     alignas(64) remote_queue_list remotes_;
     std::uint32_t threadCount_;
-    std::uint32_t maxSteals_{(threadCount_ + 1) << 1};
+    std::uint32_t maxSteals_{threadCount_ + 1};
     bwos_params params_;
     std::vector<std::thread> threads_;
     std::vector<std::optional<thread_state>> threadStates_;
@@ -484,7 +519,7 @@ namespace exec {
     : static_thread_pool(std::thread::hardware_concurrency()) {
   }
 
-  inline static_thread_pool::static_thread_pool(std::uint32_t threadCount, bwos_params params)
+  inline static_thread_pool::static_thread_pool(std::uint32_t threadCount, bwos_params params, numa_policy* numa)
     : nextThread_(0)
     , remotes_(threadCount)
     , threadCount_(threadCount)
@@ -493,7 +528,7 @@ namespace exec {
     STDEXEC_ASSERT(threadCount > 0);
 
     for (std::uint32_t index = 0; index < threadCount; ++index) {
-      threadStates_[index].emplace(this, index, params);
+      threadStates_[index].emplace(this, index, params, numa);
     }
     std::vector<workstealing_victim> victims{};
     for (auto& state: threadStates_) {
@@ -506,7 +541,7 @@ namespace exec {
 
     try {
       for (std::uint32_t i = 0; i < threadCount; ++i) {
-        threads_.emplace_back([this, i] { run(i); });
+        threads_.emplace_back([this, i, numa] { run(i, numa); });
       }
     } catch (...) {
       request_stop();
@@ -526,7 +561,8 @@ namespace exec {
     }
   }
 
-  inline void static_thread_pool::run(const std::uint32_t threadIndex) noexcept {
+  inline void static_thread_pool::run(const std::uint32_t threadIndex, numa_policy* numa) noexcept {
+    numa->bind_to_node(threadStates_[threadIndex]->numa_node());
     STDEXEC_ASSERT(threadIndex < threadCount_);
     while (true) {
       // Make a blocking call to de-queue a task if we don't already have one.
@@ -615,7 +651,7 @@ namespace exec {
 
   inline void move_pending_to_local(
     __intrusive_queue<&task_base::next>& pending_queue,
-    bwos::lifo_queue<task_base*>& local_queue) {
+    bwos::lifo_queue<task_base*, numa_allocator<task_base*>>& local_queue) {
     auto last = local_queue.push_back(pending_queue.begin(), pending_queue.end());
     __intrusive_queue<&task_base::next> tmp{};
     tmp.splice(tmp.begin(), pending_queue, pending_queue.begin(), last);
@@ -644,14 +680,24 @@ namespace exec {
   }
 
   inline static_thread_pool::thread_state::pop_result
-    static_thread_pool::thread_state::try_steal() {
-    if (victims_.empty()) {
+    static_thread_pool::thread_state::try_steal(std::span<workstealing_victim> victims) {
+    if (victims.empty()) {
       return {nullptr, index_};
     }
-    std::uniform_int_distribution<std::uint32_t> dist(0, victims_.size() - 1);
+    std::uniform_int_distribution<std::uint32_t> dist(0, victims.size() - 1);
     std::uint32_t victimIndex = dist(rng_);
-    auto& v = victims_[victimIndex];
+    auto& v = victims[victimIndex];
     return {v.try_steal(), v.index()};
+  }
+
+  inline static_thread_pool::thread_state::pop_result
+    static_thread_pool::thread_state::try_steal_local() {
+    return try_steal(local_victims_);
+  }
+
+  inline static_thread_pool::thread_state::pop_result
+    static_thread_pool::thread_state::try_steal_remote() {
+    return try_steal(remote_victims_);
   }
 
   inline void static_thread_pool::thread_state::push_local(task_base* task) {
@@ -694,7 +740,14 @@ namespace exec {
     while (!result.task) {
       set_stealing();
       for (std::size_t i = 0; i < pool_->maxSteals_; ++i) {
-        result = try_steal();
+        result = try_steal_local();
+        if (result.task) {
+          clear_stealing();
+          return result;
+        }
+      }
+      for (std::size_t i = 0; i < pool_->maxSteals_; ++i) {
+        result = try_steal_remote();
         if (result.task) {
           clear_stealing();
           return result;
@@ -1191,7 +1244,6 @@ namespace exec {
           bwos_params params = op.pool_.params();
           std::size_t localSize = params.blockSize * params.numBlocks;
           std::size_t chunkSize = std::min<std::size_t>(size / nthreads, localSize * nthreads);
-
           auto& remote_queue = *op.pool_.get_remote_queue();
           std::ranges::iterator_t<Range> it = std::ranges::begin(op.range_);
           std::size_t i0 = 0;
