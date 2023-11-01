@@ -34,6 +34,7 @@
 #include <condition_variable>
 #include <exception>
 #include <mutex>
+#include <span>
 #include <thread>
 #include <type_traits>
 #include <vector>
