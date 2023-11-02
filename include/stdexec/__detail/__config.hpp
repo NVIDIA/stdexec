@@ -290,6 +290,13 @@
 #define STDEXEC_HAS_STD_RANGES() 0
 #endif
 
+#if __has_include(<memory_resource>) && \
+  (defined(__cpp_lib_memory_resource) && __cpp_lib_memory_resource >= 201603L)
+#define STDEXEC_HAS_STD_MEMORY_RESOURCE() 1
+#else
+#define STDEXEC_HAS_STD_MEMORY_RESOURCE() 0
+#endif
+
 #ifdef STDEXEC_ASSERT
 #error "Redefinition of STDEXEC_ASSERT is not permitted. Define STDEXEC_ASSERT_FN instead."
 #endif
