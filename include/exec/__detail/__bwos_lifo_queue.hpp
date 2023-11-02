@@ -376,7 +376,7 @@ namespace exec::bwos {
     std::uint64_t back = tail_.load(std::memory_order_relaxed);
     if (back < block_size()) [[likely]] {
       ring_buffer_[back] = static_cast<Tp &&>(value);
-      tail_.store(back + 1, std::memory_order_relaxed);
+      tail_.store(back + 1, std::memory_order_release);
       return lifo_queue_error_code::success;
     }
     return lifo_queue_error_code::full;
