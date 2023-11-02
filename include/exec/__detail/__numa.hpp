@@ -134,8 +134,10 @@ namespace exec {
 }
 #else
 namespace exec {
+  using default_numa_policy = no_numa_policy;
+
   inline numa_policy* get_numa_policy() noexcept {
-    thread_local no_numa_policy g_default_numa_policy{};
+    thread_local default_numa_policy g_default_numa_policy{};
     return &g_default_numa_policy;
   }
 

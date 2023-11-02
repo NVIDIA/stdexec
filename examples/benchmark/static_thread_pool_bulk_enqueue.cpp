@@ -58,8 +58,15 @@ struct RunThread {
   }
 };
 
+struct my_numa_distribution : public exec::default_numa_policy {
+  std::size_t thread_index_to_node(std::size_t index) override {
+    return exec::default_numa_policy::thread_index_to_node(2 * index);
+  }
+};
+
 int main(int argc, char** argv) {
-  my_main<exec::static_thread_pool, RunThread>(argc, argv);
+  my_numa_distribution numa{};
+  my_main<exec::static_thread_pool, RunThread>(argc, argv, &numa);
 }
 #else
 int main() {}

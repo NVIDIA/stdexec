@@ -16,6 +16,7 @@
  */
 #include <exec/env.hpp>
 #include <exec/__detail/__numa.hpp>
+#include <exec/static_thread_pool.hpp>
 
 #include <algorithm>
 #include <barrier>
@@ -106,7 +107,12 @@ void my_main(int argc, char** argv, exec::numa_policy* policy = exec::get_numa_p
 #ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
   std::vector<std::unique_ptr<char, numa_deleter>> buffers;
 #endif
-  Pool pool(nthreads);
+  std::optional<Pool> pool{};
+  if constexpr (std::same_as<Pool, exec::static_thread_pool>) {
+    pool.emplace(nthreads, exec::bwos_params{}, policy);
+  } else {
+    pool.emplace(nthreads);
+  }
   std::barrier<> barrier(nthreads + 1);
   std::vector<std::thread> threads;
   std::atomic<bool> stop{false};
@@ -120,7 +126,7 @@ void my_main(int argc, char** argv, exec::numa_policy* policy = exec::get_numa_p
   for (std::size_t i = 0; i < static_cast<std::size_t>(nthreads); ++i) {
     threads.emplace_back(
       RunThread{},
-      std::ref(pool),
+      std::ref(*pool),
       total_scheds,
       i,
       std::ref(barrier),

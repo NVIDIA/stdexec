@@ -85,7 +85,7 @@ struct RunThread {
 
 struct my_numa_distribution : public exec::default_numa_policy {
   std::size_t thread_index_to_node(std::size_t index) override {
-    return default_numa_policy::thread_index_to_node(2 * index);
+    return exec::default_numa_policy::thread_index_to_node(2 * index);
   }
 };
 
