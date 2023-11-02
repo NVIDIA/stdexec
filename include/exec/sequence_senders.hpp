@@ -160,7 +160,7 @@ namespace exec {
           using _Result = __member_alias_t<_TfxSender, _Env>;
           return (_Result(*)()) nullptr;
         } else if constexpr (
-          sender<_TfxSender, _Env> && !enable_sequence_sender<stdexec::__decay_t<_TfxSender>>) {
+          sender_in<_TfxSender, _Env> && !enable_sequence_sender<stdexec::__decay_t<_TfxSender>>) {
           using _Result = item_types<stdexec::__decay_t<_TfxSender>>;
           return (_Result(*)()) nullptr;
         } else if constexpr (__is_debug_env<_Env>) {
@@ -194,8 +194,8 @@ namespace exec {
     decltype(get_item_types(stdexec::__declval<_Sender>(), stdexec::__declval<_Env>()));
 
   template <class _Sender, class _Env>
-  concept sequence_sender =           //
-    stdexec::sender<_Sender, _Env> && //
+  concept sequence_sender =              //
+    stdexec::sender_in<_Sender, _Env> && //
     enable_sequence_sender<stdexec::__decay_t<_Sender>>;
 
   template <class _Sender, class _Env>
