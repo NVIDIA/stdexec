@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 #include <exec/env.hpp>
+#include <exec/__detail/__numa.hpp>
 
 #include <algorithm>
 #include <barrier>
@@ -87,6 +88,14 @@ statistics_all compute_perf(
   return all;
 }
 
+struct numa_deleter {
+  std::size_t size_;
+  exec::numa_allocator<char> allocator_;
+  void operator()(char* ptr) noexcept {
+    allocator_.deallocate(ptr, size_);
+  }
+};
+
 template <class Pool, class RunThread>
 void my_main(int argc, char** argv) {
   int nthreads = std::thread::hardware_concurrency();
@@ -95,7 +104,7 @@ void my_main(int argc, char** argv) {
   }
   std::size_t total_scheds = 10'000'000;
 #ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
-  std::vector<std::unique_ptr<char[]>> buffers(nthreads);
+  std::vector<std::unique_ptr<char, numa_deleter>> buffers;
 #endif
   Pool pool(nthreads);
   std::barrier<> barrier(nthreads + 1);
@@ -103,8 +112,10 @@ void my_main(int argc, char** argv) {
   std::atomic<bool> stop{false};
 #ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
   std::size_t buffer_size = 1000 << 20;
-  for (auto& buf: buffers) {
-    buf = std::make_unique_for_overwrite<char[]>(buffer_size);
+  exec::numa_policy* policy = exec::get_numa_policy();
+  for (std::size_t i = 0; i < static_cast<std::size_t>(nthreads); ++i) {
+    exec::numa_allocator<char> alloc(policy->thread_index_to_node(i));
+    buffers.push_back(std::unique_ptr<char, numa_deleter>{alloc.allocate(buffer_size), numa_deleter{buffer_size, alloc}});
   }
 #endif
   for (std::size_t i = 0; i < static_cast<std::size_t>(nthreads); ++i) {
