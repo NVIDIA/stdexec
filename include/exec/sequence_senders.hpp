@@ -333,15 +333,6 @@ namespace exec {
           __nothrow_callable<get_env_t, _Receiver&>
           && __nothrow_callable<transform_sender_t, _Domain, _Sender, env_of_t<_Receiver&>>;
         using _TfxSender = __tfx_sndr<_Sender, _Receiver>;
-        if constexpr (!enable_sender<__decay_t<_Sender>>)
-          __connect::_PLEASE_UPDATE_YOUR_SENDER_TYPE<__decay_t<_Sender>>();
-
-        if constexpr (!enable_sender<__decay_t<_TfxSender>>)
-          __connect::_PLEASE_UPDATE_YOUR_SENDER_TYPE<__decay_t<_TfxSender>>();
-
-        if constexpr (!enable_receiver<__decay_t<_Receiver>>)
-          __connect::_PLEASE_UPDATE_YOUR_RECEIVER_TYPE<__decay_t<_Receiver>>();
-
         if constexpr (__next_connectable_with_tag_invoke<_TfxSender, _Receiver>) {
           using _Result = tag_invoke_result_t<
             connect_t,

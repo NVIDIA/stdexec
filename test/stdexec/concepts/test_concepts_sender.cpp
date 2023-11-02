@@ -254,7 +254,7 @@ namespace {
   // nvc++ doesn't yet implement subsumption correctly
   struct not_a_sender_tag { };
 
-  struct sender_no_env_tag { };
+  struct sender_tag { };
 
   struct sender_env_tag { };
 
@@ -266,7 +266,7 @@ namespace {
   }
 
   template <ex::sender T>
-  sender_no_env_tag test_subsumption(T&&) {
+  sender_tag test_subsumption(T&&) {
     return {};
   }
 
@@ -289,7 +289,7 @@ namespace {
     "check for subsumption relationships between the sender concepts",
     "[concepts][sender]") {
     ::has_type<not_a_sender_tag>(::test_subsumption(42));
-    ::has_type<sender_no_env_tag>(::test_subsumption(ex::get_scheduler()));
+    ::has_type<sender_tag>(::test_subsumption(ex::get_scheduler()));
     ::has_type<sender_env_tag>(::test_subsumption(ex::just(42)));
     ::has_type<sender_of_tag>(::test_subsumption(ex::just()));
   }

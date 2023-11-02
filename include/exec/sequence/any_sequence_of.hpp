@@ -21,7 +21,7 @@
 namespace exec {
   namespace __any {
     namespace __next {
-      template <__is_completion_signatures _Sigs>
+      template <__valid_completion_signatures _Sigs>
       struct __rcvr_next_vfun {
         using __return_sigs = completion_signatures<set_value_t(), set_stopped_t()>;
         using __void_sender = typename any_receiver_ref<__return_sigs>::template any_sender<>;
@@ -37,7 +37,7 @@ namespace exec {
         template <class _Sigs>
         using __item_sender = typename any_receiver_ref<_Sigs>::template any_sender<>;
 
-        template <__is_completion_signatures _Sigs>
+        template <__valid_completion_signatures _Sigs>
         constexpr __void_sender (*operator()(_Sigs*) const)(void*, __item_sender<_Sigs>&&) {
           return +[](void* __r, __item_sender<_Sigs>&& __sndr) noexcept -> __void_sender {
             return __void_sender{
@@ -295,7 +295,7 @@ namespace exec {
     template <
       std::same_as<exec::set_next_t> _SetNext,
       std::same_as<__t> _Self,
-      stdexec::__sender _Sender>
+      stdexec::sender _Sender>
       requires stdexec::__callable<set_next_t, _Self&, _Sender>
     friend auto tag_invoke(_SetNext, _Self& __self, _Sender&& __sender) {
       return exec::set_next(__self.__receiver_, static_cast<_Sender&&>(__sender));

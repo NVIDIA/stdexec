@@ -77,7 +77,11 @@ namespace {
     }
   };
 
-  using dependent = ex::dependent_completion_signatures<ex::no_env>;
+  struct invalid_awaiter {
+    bool await_ready();
+    bool await_suspend(__coro::coroutine_handle<>);
+    //void await_resume();
+  };
 
   STDEXEC_PRAGMA_PUSH()
   STDEXEC_PRAGMA_IGNORE_GNU("-Wpragmas")
@@ -94,7 +98,7 @@ namespace {
     using promise_type = promise<__coro::suspend_always>;
 
    private:
-    friend dependent operator co_await(awaitable_sender_2) {
+    friend invalid_awaiter operator co_await(awaitable_sender_2) {
       return {};
     }
   };
@@ -103,7 +107,7 @@ namespace {
     using promise_type = promise<awaiter>;
 
    private:
-    friend dependent operator co_await(awaitable_sender_3) {
+    friend invalid_awaiter operator co_await(awaitable_sender_3) {
       return {};
     }
   };
@@ -116,10 +120,6 @@ namespace {
    private:
     template <class Promise>
     friend awaiter tag_invoke(ex::as_awaitable_t, awaitable_sender_4, Promise&) {
-      return {};
-    }
-
-    friend dependent tag_invoke(ex::as_awaitable_t, awaitable_sender_4, ex::no_env_promise&) {
       return {};
     }
   };
@@ -145,36 +145,28 @@ namespace {
   }
 
   void test_awaitable_sender2() {
-    static_assert(ex::sender<awaitable_sender_2>);
-    static_assert(sender_with_env<awaitable_sender_2>);
+    static_assert(!ex::sender<awaitable_sender_2>);
+    static_assert(!sender_with_env<awaitable_sender_2>);
     static_assert(!ex::sender_in<awaitable_sender_2, ex::empty_env>);
 
-    static_assert(ex::__awaitable<awaitable_sender_2>);
+    static_assert(!ex::__awaitable<awaitable_sender_2>);
     static_assert(ex::__awaitable<awaitable_sender_2, promise<__coro::suspend_always>>);
 
     static_assert(
       !ex::__get_completion_signatures::__with_member_alias<awaitable_sender_2, ex::empty_env>);
-
-#if STDEXEC_LEGACY_R5_CONCEPTS()
-    static_assert(std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_2>, dependent>);
-#endif
   }
 
   void test_awaitable_sender3() {
-    static_assert(ex::sender<awaitable_sender_3>);
-    static_assert(sender_with_env<awaitable_sender_3>);
+    static_assert(!ex::sender<awaitable_sender_3>);
+    static_assert(!sender_with_env<awaitable_sender_3>);
     static_assert(!ex::sender_in<awaitable_sender_3, ex::empty_env>);
 
     static_assert(ex::__awaiter<awaiter>);
-    static_assert(ex::__awaitable<awaitable_sender_3>);
+    static_assert(!ex::__awaitable<awaitable_sender_3>);
     static_assert(ex::__awaitable<awaitable_sender_3, promise<awaiter>>);
 
     static_assert(
       !ex::__get_completion_signatures::__with_member_alias<awaitable_sender_3, ex::empty_env>);
-
-#if STDEXEC_LEGACY_R5_CONCEPTS()
-    static_assert(std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_3>, dependent>);
-#endif
   }
 
   template <class Signatures>
@@ -186,15 +178,11 @@ namespace {
     static_assert(ex::__awaiter<awaiter>);
     static_assert(!ex::__awaitable<awaitable_sender_4>);
     static_assert(ex::__awaitable<awaitable_sender_4, promise<awaiter>>);
-    static_assert(ex::__awaitable<awaitable_sender_4, ex::no_env_promise>);
     static_assert(ex::__awaitable<awaitable_sender_4, ex::__env_promise<ex::empty_env>>);
 
     static_assert(
       !ex::__get_completion_signatures::__with_member_alias<awaitable_sender_4, ex::empty_env>);
 
-#if STDEXEC_LEGACY_R5_CONCEPTS()
-    static_assert(std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_4>, dependent>);
-#endif
     static_assert(
       !ex::__get_completion_signatures::__with_member_alias<awaitable_sender_4, ex::empty_env>);
 
@@ -214,7 +202,6 @@ namespace {
     static_assert(ex::__awaiter<awaiter>);
     static_assert(!ex::__awaitable<awaitable_sender_5>);
     static_assert(ex::__awaitable<awaitable_sender_5, promise<awaiter>>);
-    static_assert(ex::__awaitable<awaitable_sender_5, ex::no_env_promise>);
     static_assert(ex::__awaitable<awaitable_sender_5, ex::__env_promise<ex::empty_env>>);
 
     static_assert(
