@@ -97,7 +97,7 @@ void my_main(int argc, char** argv) {
 #ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
   std::vector<std::unique_ptr<char[]>> buffers(nthreads);
 #endif
-  Pool pool(nthreads + 1);
+  Pool pool(nthreads);
   std::barrier<> barrier(nthreads + 1);
   std::vector<std::thread> threads;
   std::atomic<bool> stop{false};

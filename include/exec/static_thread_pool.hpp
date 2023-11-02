@@ -414,7 +414,7 @@ namespace exec {
         std::uint32_t index,
         numa_policy* numa) noexcept
         : index_(index)
-        , numa_node_(index % numa->num_nodes()) {
+        , numa_node_(numa->thread_index_to_node(index)) {
       }
 
       std::uint32_t index_;
@@ -455,9 +455,9 @@ namespace exec {
             continue;
           }
           if (v.numa_node() == numa_node_) {
-            local_victims_.push_back(v);
+            near_victims.push_back(v);
           }
-          remote_victims_.push_back(v);
+          all_victims.push_back(v);
         }
       }
 
@@ -484,8 +484,8 @@ namespace exec {
       pop_result try_pop();
       pop_result try_remote();
       pop_result try_steal(std::span<workstealing_victim> victims);
-      pop_result try_steal_local();
-      pop_result try_steal_remote();
+      pop_result try_steal_near();
+      pop_result try_steal_any();
 
       void notify_one_sleeping();
       void set_stealing();
@@ -496,8 +496,8 @@ namespace exec {
       std::mutex mut_{};
       std::condition_variable cv_{};
       bool stopRequested_{false};
-      std::vector<workstealing_victim> local_victims_{};
-      std::vector<workstealing_victim> remote_victims_{};
+      std::vector<workstealing_victim> near_victims{};
+      std::vector<workstealing_victim> all_victims{};
       std::atomic<state> state_;
       static_thread_pool* pool_;
       xorshift rng_{};
@@ -692,13 +692,13 @@ namespace exec {
   }
 
   inline static_thread_pool::thread_state::pop_result
-    static_thread_pool::thread_state::try_steal_local() {
-    return try_steal(local_victims_);
+    static_thread_pool::thread_state::try_steal_near() {
+    return try_steal(near_victims);
   }
 
   inline static_thread_pool::thread_state::pop_result
-    static_thread_pool::thread_state::try_steal_remote() {
-    return try_steal(remote_victims_);
+    static_thread_pool::thread_state::try_steal_any() {
+    return try_steal(all_victims);
   }
 
   inline void static_thread_pool::thread_state::push_local(task_base* task) {
@@ -741,14 +741,14 @@ namespace exec {
     while (!result.task) {
       set_stealing();
       for (std::size_t i = 0; i < pool_->maxSteals_; ++i) {
-        result = try_steal_local();
+        result = try_steal_near();
         if (result.task) {
           clear_stealing();
           return result;
         }
       }
       for (std::size_t i = 0; i < pool_->maxSteals_; ++i) {
-        result = try_steal_remote();
+        result = try_steal_any();
         if (result.task) {
           clear_stealing();
           return result;

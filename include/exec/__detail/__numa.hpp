@@ -19,6 +19,7 @@
 #include "../../stdexec/__detail/__config.hpp"
 #include "../scope.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <thread>
 
@@ -27,6 +28,7 @@ namespace exec {
     virtual std::size_t num_nodes() = 0;
     virtual std::size_t num_cpus(int node) = 0;
     virtual int bind_to_node(int node) = 0;
+    virtual std::size_t thread_index_to_node(std::size_t index) = 0;
   };
 
   class no_numa_policy : public numa_policy {
@@ -35,14 +37,22 @@ namespace exec {
     std::size_t num_nodes() override { return 1; }
     std::size_t num_cpus(int node) override { return std::thread::hardware_concurrency(); }
     int bind_to_node(int node) override { return 0; }
+    std::size_t thread_index_to_node(std::size_t index) override { return 0; }
   };
 }
 
 #if STDEXEC_ENABLE_NUMA
 #include <numa.h>
 namespace exec {
-  struct numa_policy_impl : numa_policy {
-    numa_policy_impl() noexcept = default;
+  struct default_numa_policy : numa_policy {
+    default_numa_policy() : node_to_thread_index_(::numa_num_task_nodes()) {
+      std::size_t total_cpus = 0;
+      std::size_t n_nodes = num_nodes();
+      for (std::size_t node = 0; node < n_nodes; ++node) {
+        total_cpus += this->num_cpus(node);
+        node_to_thread_index_[node] = total_cpus;
+      }
+    }
 
     std::size_t num_nodes() override { return ::numa_num_task_nodes(); }
     
@@ -70,10 +80,19 @@ namespace exec {
       ::numa_bind(nodes);
       return 0;
     }
+
+    std::size_t thread_index_to_node(std::size_t index) override {
+      index %= node_to_thread_index_.back();
+      auto it = std::upper_bound(node_to_thread_index_.begin(), node_to_thread_index_.end(), index);
+      STDEXEC_ASSERT(it != node_to_thread_index_.end());
+      return std::distance(node_to_thread_index_.begin(), it);
+    }
+
+    std::vector<int> node_to_thread_index_{};
   };
 
   inline numa_policy* get_numa_policy() noexcept {
-    thread_local numa_policy_impl g_default_numa_policy{};
+    thread_local default_numa_policy g_default_numa_policy{};
     thread_local no_numa_policy g_no_numa_policy{};
     if (::numa_available() < 0) {
       return &g_no_numa_policy;
