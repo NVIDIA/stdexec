@@ -28,7 +28,10 @@ struct RunThread {
 #ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
     [[maybe_unused]] std::span<char> buffer,
 #endif
-    std::atomic<bool>& stop) {
+    std::atomic<bool>& stop,
+    exec::numa_policy* numa) {
+    std::size_t numa_node = numa->thread_index_to_node(tid);
+    numa->bind_to_node(numa_node);
     auto scheduler = pool.get_scheduler();
     std::mutex mut;
     std::condition_variable cv;
