@@ -794,6 +794,7 @@ namespace exec {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
+        using is_receiver = void;
         __operation_base<_Receiver>* __op_;
 
         template <same_as<set_next_t> _SetNext, same_as<__t> _Self, class _Item>

@@ -389,7 +389,7 @@ namespace stdexec {
   struct _BAD_SUBSTITUTION_ { };
 
   template <class... _Args>
-  struct _WITH_TYPES_ { };
+  struct _WITH_TYPES_;
 
   template <template <class...> class _Fun>
   struct _WITH_META_FUNCTION_T_ {

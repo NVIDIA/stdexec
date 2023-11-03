@@ -59,6 +59,8 @@ namespace {
   };
 
   struct sink_receiver {
+    using is_receiver = void;
+
     std::variant<std::monostate, int, std::exception_ptr, set_stopped_t> value_{};
 
     friend void tag_invoke(set_value_t, sink_receiver&& r, int value) noexcept {

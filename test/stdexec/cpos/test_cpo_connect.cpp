@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#define STDEXEC_DISABLE_R5_DEPRECATION_WARNINGS
-
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include "test_common/receivers.hpp"
@@ -84,6 +82,7 @@ namespace {
   }
 
   struct strange_receiver {
+    using is_receiver = void;
     bool* called_;
 
     friend inline op_state<strange_receiver>

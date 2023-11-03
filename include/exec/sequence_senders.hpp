@@ -160,7 +160,7 @@ namespace exec {
           using _Result = __member_alias_t<_TfxSender, _Env>;
           return (_Result(*)()) nullptr;
         } else if constexpr (
-          sender<_TfxSender, _Env> && !enable_sequence_sender<stdexec::__decay_t<_TfxSender>>) {
+          sender_in<_TfxSender, _Env> && !enable_sequence_sender<stdexec::__decay_t<_TfxSender>>) {
           using _Result = item_types<stdexec::__decay_t<_TfxSender>>;
           return (_Result(*)()) nullptr;
         } else if constexpr (__is_debug_env<_Env>) {
@@ -194,8 +194,8 @@ namespace exec {
     decltype(get_item_types(stdexec::__declval<_Sender>(), stdexec::__declval<_Env>()));
 
   template <class _Sender, class _Env>
-  concept sequence_sender =           //
-    stdexec::sender<_Sender, _Env> && //
+  concept sequence_sender =              //
+    stdexec::sender_in<_Sender, _Env> && //
     enable_sequence_sender<stdexec::__decay_t<_Sender>>;
 
   template <class _Sender, class _Env>
@@ -333,15 +333,6 @@ namespace exec {
           __nothrow_callable<get_env_t, _Receiver&>
           && __nothrow_callable<transform_sender_t, _Domain, _Sender, env_of_t<_Receiver&>>;
         using _TfxSender = __tfx_sndr<_Sender, _Receiver>;
-        if constexpr (!enable_sender<__decay_t<_Sender>>)
-          __connect::_PLEASE_UPDATE_YOUR_SENDER_TYPE<__decay_t<_Sender>>();
-
-        if constexpr (!enable_sender<__decay_t<_TfxSender>>)
-          __connect::_PLEASE_UPDATE_YOUR_SENDER_TYPE<__decay_t<_TfxSender>>();
-
-        if constexpr (!enable_receiver<__decay_t<_Receiver>>)
-          __connect::_PLEASE_UPDATE_YOUR_RECEIVER_TYPE<__decay_t<_Receiver>>();
-
         if constexpr (__next_connectable_with_tag_invoke<_TfxSender, _Receiver>) {
           using _Result = tag_invoke_result_t<
             connect_t,

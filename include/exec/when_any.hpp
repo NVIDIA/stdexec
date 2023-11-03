@@ -122,7 +122,7 @@ namespace exec {
             try {
               __result_.emplace(std::tuple{_CPO{}, (_Args&&) __args...});
             } catch (...) {
-              __result_.emplace(set_error_t{}, std::current_exception());
+              __result_.emplace(std::tuple{set_error_t{}, std::current_exception()});
             }
           }
           // stop pending operations
