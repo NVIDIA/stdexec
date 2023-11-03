@@ -47,11 +47,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <class...>
     using swallow_values = completion_signatures<>;
 
+    template <class Sender, class Env>
+    using too_many_completions = __mbool<(1 < __v<__count_of<set_value_t, Sender, Env>>)>;
+
     template <class Env, class... Senders>
     struct completions {
-      template <class Sender, class Env>
-      using too_many_completions = __mbool<(__v<__count_of<set_value_t, Sender, Env>> > 1)>;
-
       using InvalidArg = //
         __minvoke<
           __mfind_if<__mbind_back_q<too_many_completions, Env>, __q<__mfront>>,
@@ -67,7 +67,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     }
 
     template <class Env, class... Senders>
-      requires((__v<__count_of<set_value_t, Senders, Env>> <= 1) && ...)
+      requires (!__v<too_many_completions<Senders, Env>> &&...)
     struct completions<Env, Senders...> {
       using non_values = //
         __concat_completion_signatures_t<
