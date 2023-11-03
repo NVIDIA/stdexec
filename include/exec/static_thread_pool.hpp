@@ -670,21 +670,22 @@ namespace exec {
 
   inline std::size_t
     static_thread_pool::random_thread_index_with_constraints(const nodemask& constraints) noexcept {
-    std::size_t startIndex = nextThread_.fetch_add(1, std::memory_order_relaxed);
+    thread_local std::uint64_t startIndex{std::uint64_t(std::random_device{}())};
+    startIndex += 1;
     std::size_t targetIndex = startIndex % threadCount_;
-    // std::size_t nThreads = num_threads(constraints);
-    // if (nThreads != 0) {
-    //   for (std::size_t nodeIndex = 0; nodeIndex < numa_->num_nodes(); ++nodeIndex) {
-    //     if (!constraints[nodeIndex]) {
-    //       continue;
-    //     }
-    //     std::size_t nThreads = num_threads(nodeIndex);
-    //     if (targetIndex < nThreads) {
-    //       return get_thread_index(nodeIndex, targetIndex);
-    //     }
-    //     targetIndex -= nThreads;
-    //   }
-    // }
+    std::size_t nThreads = num_threads(constraints);
+    if (nThreads != 0) {
+      for (std::size_t nodeIndex = 0; nodeIndex < numa_->num_nodes(); ++nodeIndex) {
+        if (!constraints[nodeIndex]) {
+          continue;
+        }
+        std::size_t nThreads = num_threads(nodeIndex);
+        if (targetIndex < nThreads) {
+          return get_thread_index(nodeIndex, targetIndex);
+        }
+        targetIndex -= nThreads;
+      }
+    }
     return targetIndex;
   }
 
@@ -694,16 +695,16 @@ namespace exec {
     const nodemask& constraints) noexcept {
     static thread_local std::thread::id this_id = std::this_thread::get_id();
     remote_queue* correct_queue = this_id == queue.id_ ? &queue : get_remote_queue();
-    // std::size_t idx = correct_queue->index_;
-    // if (idx < threadStates_.size()) {
-    //   std::size_t this_node = threadStates_[idx]->numa_node();
-    //   if (constraints[this_node]) {
-    //     threadStates_[idx]->push_local(task);
-    //     return;
-    //   }
-    // }
+    std::size_t idx = correct_queue->index_;
+    if (idx < threadStates_.size()) {
+      std::size_t this_node = threadStates_[idx]->numa_node();
+      if (constraints[this_node]) {
+        threadStates_[idx]->push_local(task);
+        return;
+      }
+    }
     const std::size_t threadIndex = random_thread_index_with_constraints(constraints);
-    correct_queue->queues_[threadIndex].push_front(task);
+    queue.queues_[threadIndex].push_front(task);
     threadStates_[threadIndex]->notify();
   }
 
