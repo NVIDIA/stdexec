@@ -4238,7 +4238,7 @@ namespace stdexec {
       }
     };
 
-    struct ensure_started_t {
+    struct ensure_started_t : __with_default_get_env<ensure_started_t> {
       template <sender _Sender>
         requires sender_in<_Sender, empty_env> && __decay_copyable<env_of_t<_Sender>>
       auto operator()(_Sender&& __sndr) const {
