@@ -287,7 +287,7 @@ namespace exec {
        private:
         template <typename Receiver>
         auto make_operation_(Receiver r) const -> operation<stdexec::__id<Receiver>> {
-          return operation<stdexec::__id<Receiver>>{pool_, queue_, (Receiver&&) r};
+          return operation<stdexec::__id<Receiver>>{pool_, queue_, (Receiver&&) r, threadIndex_, constraints_};
         }
 
         template <stdexec::receiver Receiver>
@@ -317,17 +317,21 @@ namespace exec {
 
         friend struct static_thread_pool::scheduler;
 
-        explicit sender(static_thread_pool& pool, remote_queue* queue) noexcept
+        explicit sender(static_thread_pool& pool, remote_queue* queue, std::size_t threadIndex, const nodemask& constraints) noexcept
           : pool_(pool)
-          , queue_(queue) {
+          , queue_(queue)
+          , threadIndex_(threadIndex)
+          , constraints_(constraints) {
         }
 
         static_thread_pool& pool_;
         remote_queue* queue_;
+        std::size_t threadIndex_{std::numeric_limits<std::size_t>::max()};
+        nodemask constraints_{};
       };
 
       sender make_sender_() const {
-        return sender{*pool_, queue_};
+        return sender{*pool_, queue_, thread_idx_, nodemask_};
       }
 
       friend sender tag_invoke(stdexec::schedule_t, const scheduler& s) noexcept {
@@ -360,13 +364,32 @@ namespace exec {
         , nodemask_{mask} {
       }
 
+
+      explicit scheduler(
+        static_thread_pool& pool,
+        remote_queue& queue,
+        std::size_t threadIndex) noexcept
+        : pool_(&pool)
+        , queue_{&queue}
+        , thread_idx_{threadIndex} {
+      }
+
       static_thread_pool* pool_;
       remote_queue* queue_;
       nodemask nodemask_;
+      std::size_t thread_idx_{std::numeric_limits<std::size_t>::max()};
     };
 
     scheduler get_scheduler() noexcept {
       return scheduler{*this};
+    }
+
+    scheduler get_scheduler_on_thread(std::size_t threadIndex) noexcept {
+      return scheduler{*this, *get_remote_queue(), threadIndex};
+    }
+
+    scheduler get_constrained_scheduler(const nodemask& constraints) noexcept {
+      return scheduler{*this, *get_remote_queue(), constraints};
     }
 
     remote_queue* get_remote_queue() noexcept {
@@ -397,12 +420,17 @@ namespace exec {
       remote_queue& queue,
       task_base* task,
       const nodemask& contraints = nodemask::any()) noexcept;
+    void enqueue(
+      remote_queue& queue,
+      task_base* task,
+      std::size_t threadIndex) noexcept;
 
     template <std::derived_from<task_base> TaskT>
     void bulk_enqueue(TaskT* task, std::uint32_t n_threads) noexcept;
     void bulk_enqueue(
       remote_queue& queue,
       __intrusive_queue<&task_base::next> tasks,
+      std::size_t tasks_size,
       const nodemask& constraints = nodemask::any()) noexcept;
 
    private:
@@ -482,9 +510,9 @@ namespace exec {
             continue;
           }
           if (v.numa_node() == numa_node_) {
-            near_victims.push_back(v);
+            near_victims_.push_back(v);
           }
-          all_victims.push_back(v);
+          all_victims_.push_back(v);
         }
       }
 
@@ -523,8 +551,8 @@ namespace exec {
       std::mutex mut_{};
       std::condition_variable cv_{};
       bool stopRequested_{false};
-      std::vector<workstealing_victim> near_victims{};
-      std::vector<workstealing_victim> all_victims{};
+      std::vector<workstealing_victim> near_victims_{};
+      std::vector<workstealing_victim> all_victims_{};
       std::atomic<state> state_;
       static_thread_pool* pool_;
       xorshift rng_{};
@@ -708,6 +736,14 @@ namespace exec {
     threadStates_[threadIndex]->notify();
   }
 
+  inline void static_thread_pool::enqueue(
+    remote_queue& queue,
+    task_base* task, std::size_t threadIndex) noexcept {
+    threadIndex %= threadCount_;
+    queue.queues_[threadIndex].push_front(task);
+    threadStates_[threadIndex]->notify();
+  }
+
   template <std::derived_from<task_base> TaskT>
   void static_thread_pool::bulk_enqueue(TaskT* task, std::uint32_t n_threads) noexcept {
     auto& queue = *get_remote_queue();
@@ -721,12 +757,9 @@ namespace exec {
   inline void static_thread_pool::bulk_enqueue(
     remote_queue& queue,
     __intrusive_queue<&task_base::next> tasks,
+    std::size_t tasks_size,
     const nodemask& constraints) noexcept {
     static thread_local std::thread::id this_id = std::this_thread::get_id();
-    std::size_t nTasks = 0;
-    for ([[maybe_unused]] auto t: tasks) {
-      ++nTasks;
-    }
     remote_queue* correct_queue = this_id == queue.id_ ? &queue : get_remote_queue();
     std::size_t idx = correct_queue->index_;
     if (idx < threadStates_.size()) {
@@ -738,7 +771,7 @@ namespace exec {
     }
     std::size_t nThreads = available_parallelism();
     for (std::size_t i = 0; i < nThreads; ++i) {
-      auto [i0, iEnd] = even_share(nTasks, i, available_parallelism());
+      auto [i0, iEnd] = even_share(tasks_size, i, available_parallelism());
       if (i0 == iEnd) {
         continue;
       }
@@ -794,12 +827,12 @@ namespace exec {
 
   inline static_thread_pool::thread_state::pop_result
     static_thread_pool::thread_state::try_steal_near() {
-    return try_steal(near_victims);
+    return try_steal(near_victims_);
   }
 
   inline static_thread_pool::thread_state::pop_result
     static_thread_pool::thread_state::try_steal_any() {
-    return try_steal(all_victims);
+    return try_steal(all_victims_);
   }
 
   inline void static_thread_pool::thread_state::push_local(task_base* task) {
@@ -904,11 +937,15 @@ namespace exec {
     static_thread_pool& pool_;
     remote_queue* queue_;
     Receiver receiver_;
+    std::size_t threadIndex_{};
+    nodemask constraints_{};
 
-    explicit operation(static_thread_pool& pool, remote_queue* queue, Receiver&& r)
+    explicit operation(static_thread_pool& pool, remote_queue* queue, Receiver&& r, std::size_t tid, const nodemask& constraints)
       : pool_(pool)
       , queue_(queue)
-      , receiver_((Receiver&&) r) {
+      , receiver_((Receiver&&) r)
+      , threadIndex_{tid}
+      , constraints_{constraints} {
       this->__execute = [](task_base* t, const std::uint32_t /* tid */) noexcept {
         auto& op = *static_cast<operation*>(t);
         auto stoken = stdexec::get_stop_token(stdexec::get_env(op.receiver_));
@@ -923,7 +960,11 @@ namespace exec {
     }
 
     void enqueue_(task_base* op) const {
-      pool_.enqueue(*queue_, op);
+      if (threadIndex_ < pool_.available_parallelism()) {
+        pool_.enqueue(*queue_, op, threadIndex_);
+      } else {
+        pool_.enqueue(*queue_, op, constraints_);
+      }
     }
 
     friend void tag_invoke(stdexec::start_t, operation& op) noexcept {
@@ -1209,6 +1250,7 @@ namespace exec {
       std::mutex start_mutex_{};
       bool has_started_{false};
       __intrusive_queue<&task_base::next> tasks_{};
+      std::size_t tasks_size_{};
       std::atomic<std::size_t> countdown_{std::ranges::size(range_)};
     };
 
@@ -1230,6 +1272,7 @@ namespace exec {
           std::unique_lock lock{op.parent_->start_mutex_};
           if (!op.parent_->has_started_) {
             op.parent_->tasks_.push_back(static_cast<task_base*>(&op));
+            op.parent_->tasks_size_ += 1;
           } else {
             lock.unlock();
             op.parent_->pool_.enqueue(static_cast<task_base*>(&op));
@@ -1358,7 +1401,7 @@ namespace exec {
               stdexec::start(op.items_[i].__get());
             }
             std::unique_lock lock{op.start_mutex_};
-            op.pool_.bulk_enqueue(remote_queue, std::move(op.tasks_));
+            op.pool_.bulk_enqueue(remote_queue, std::move(op.tasks_), op.tasks_size_);
             lock.unlock();
             i0 += chunkSize;
           }
@@ -1371,8 +1414,7 @@ namespace exec {
           }
           std::unique_lock lock{op.start_mutex_};
           op.has_started_ = true;
-          lock.unlock();
-          op.pool_.bulk_enqueue(remote_queue, std::move(op.tasks_));
+          op.pool_.bulk_enqueue(remote_queue, std::move(op.tasks_), op.tasks_size_);
         }
 
        public:
