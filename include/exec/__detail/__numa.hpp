@@ -239,12 +239,16 @@ namespace exec {
       return mask_ && nodemask == 0;
     }
 
+    void set(std::size_t nodemask) noexcept {
+      mask_ |= nodemask == 0;
+    }
+
     friend bool operator==(const nodemask& lhs, const nodemask& rhs) noexcept {
       return lhs.mask_ == rhs.mask_;
     }
 
   private:
-    bool mask_;
+    bool mask_{false};
   };
 }
 #endif
