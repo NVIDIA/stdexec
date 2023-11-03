@@ -138,9 +138,14 @@ namespace exec {
       ::copy_bitmask_to_nodemask(::numa_all_nodes_ptr, &mask.mask_);
       return mask;
     }
+    
 
   public:
-    nodemask() noexcept = default;
+    nodemask() noexcept 
+    : mask_{}
+    {
+      ::copy_bitmask_to_nodemask(::numa_no_nodes_ptr, &mask_);
+    }
 
     static const nodemask& any() noexcept {
       static nodemask mask = make_any();
@@ -148,6 +153,20 @@ namespace exec {
     }
 
     bool operator[](std::size_t nodemask) const noexcept {
+      ::bitmask mask;
+      mask.maskp = const_cast<unsigned long*>(mask_.n);
+      mask.size = sizeof(nodemask_t);
+      return ::numa_bitmask_isbitset(&mask, nodemask);
+    }
+
+    void set(std::size_t nodemask) noexcept {
+      ::bitmask mask;
+      mask.maskp = const_cast<unsigned long*>(mask_.n);
+      mask.size = sizeof(nodemask_t);
+      ::numa_bitmask_setbit(&mask, nodemask);
+    }
+
+    bool get(std::size_t nodemask) const noexcept {
       ::bitmask mask;
       mask.maskp = const_cast<unsigned long*>(mask_.n);
       mask.size = sizeof(nodemask_t);

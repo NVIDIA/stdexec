@@ -29,7 +29,9 @@ struct RunThread {
     exec::numa_policy* numa) {
     std::size_t numa_node = numa->thread_index_to_node(tid);
     numa->bind_to_node(numa_node);
-    auto scheduler = pool.get_scheduler();
+    exec::nodemask mask{};
+    mask.set(numa_node);
+    auto scheduler = pool.get_constrained_scheduler(mask);
     std::mutex mut;
     std::condition_variable cv;
     while (true) {
