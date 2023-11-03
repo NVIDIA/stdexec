@@ -200,5 +200,32 @@ namespace exec {
 
     friend bool operator==(const numa_allocator&, const numa_allocator&) noexcept = default;
   };
+
+  class nodemask {
+    static nodemask make_any() noexcept {
+      nodemask mask;
+      mask.mask_ = true;
+      return mask;
+    }
+
+  public:
+    nodemask() noexcept = default;
+
+    static const nodemask& any() noexcept {
+      static nodemask mask = make_any();
+      return mask;
+    }
+
+    bool operator[](std::size_t nodemask) const noexcept {
+      return mask_ && nodemask == 0;
+    }
+
+    friend bool operator==(const nodemask& lhs, const nodemask& rhs) noexcept {
+      return lhs.mask_ == rhs.mask_;
+    }
+
+  private:
+    bool mask_;
+  };
 }
 #endif
