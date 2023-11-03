@@ -54,7 +54,7 @@ namespace exec {
       }
     }
 
-    std::size_t num_nodes() override { return ::numa_num_task_nodes(); }
+    std::size_t num_nodes() override { return node_to_thread_index_.size(); }
     
     std::size_t num_cpus(int node) override { 
       struct ::bitmask* cpus = ::numa_allocate_cpumask();
@@ -130,6 +130,42 @@ namespace exec {
     }
 
     friend bool operator==(const numa_allocator&, const numa_allocator&) noexcept = default;
+  };
+
+  class nodemask {
+    static nodemask make_any() noexcept {
+      nodemask mask;
+      ::copy_bitmask_to_nodemask(::numa_all_nodes_ptr, &mask.mask_);
+      return mask;
+    }
+
+  public:
+    nodemask() noexcept = default;
+
+    static const nodemask& any() noexcept {
+      static nodemask mask = make_any();
+      return mask;
+    }
+
+    bool operator[](std::size_t nodemask) const noexcept {
+      ::bitmask mask;
+      mask.maskp = const_cast<unsigned long*>(mask_.n);
+      mask.size = sizeof(nodemask_t);
+      return ::numa_bitmask_isbitset(&mask, nodemask);
+    }
+
+    friend bool operator==(const nodemask& lhs, const nodemask& rhs) noexcept {
+      ::bitmask lhs_mask;
+      ::bitmask rhs_mask;
+      lhs_mask.maskp = const_cast<unsigned long*>(lhs.mask_.n);
+      lhs_mask.size = sizeof(nodemask_t);
+      rhs_mask.maskp = const_cast<unsigned long*>(rhs.mask_.n);
+      rhs_mask.size = sizeof(nodemask_t);
+      return ::numa_bitmask_equal(&lhs_mask, &rhs_mask);
+    }
+
+  private:
+    ::nodemask_t mask_;
   };
 }
 #else

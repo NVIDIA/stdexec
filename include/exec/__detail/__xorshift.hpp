@@ -46,6 +46,10 @@ namespace exec {
       seed(rd);
     }
 
+    explicit xorshift(std::uint64_t seed)
+      : m_seed(seed) {
+    }
+
     void seed(std::random_device &rd) {
       m_seed = std::uint64_t(rd()) << 31 | std::uint64_t(rd());
     }
