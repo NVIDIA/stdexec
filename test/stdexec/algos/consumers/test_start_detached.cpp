@@ -165,8 +165,8 @@ namespace {
     CHECK_FALSE(called);
   }
 
-#if STDEXEC_HAS_STD_MEMORY_RESOURCE() && \
-  (defined(__cpp_lib_polymorphic_allocator) && __cpp_lib_polymorphic_allocator >= 201902L)
+#if STDEXEC_HAS_STD_MEMORY_RESOURCE() \
+  && (defined(__cpp_lib_polymorphic_allocator) && __cpp_lib_polymorphic_allocator >= 201902L)
 
   struct counting_resource : std::pmr::memory_resource {
     counting_resource() = default;
@@ -178,16 +178,18 @@ namespace {
     std::size_t get_alive() const noexcept {
       return alive;
     }
-  private:
+   private:
     void* do_allocate(std::size_t bytes, std::size_t alignment) override {
       ++count;
       ++alive;
       return std::pmr::new_delete_resource()->allocate(bytes, alignment);
     }
+
     void do_deallocate(void* p, std::size_t bytes, std::size_t alignment) override {
       --alive;
       return std::pmr::new_delete_resource()->deallocate(p, bytes, alignment);
     }
+
     bool do_is_equal(const memory_resource& other) const noexcept override {
       return this == &other;
     }

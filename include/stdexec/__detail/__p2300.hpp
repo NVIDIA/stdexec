@@ -89,7 +89,8 @@ namespace std {
     using stop_token_of_t STDEXEC_STD_DEPRECATED = stdexec::stop_token_of_t<_StopTokenProvider>;
 
     // [exec.env], execution environments
-    struct __no_env {};
+    struct __no_env { };
+
     using no_env STDEXEC_STD_DEPRECATED = __no_env;
     using get_env_t STDEXEC_STD_DEPRECATED = stdexec::get_env_t;
     //using forwarding_env_query_t STDEXEC_STD_DEPRECATED = stdexec::forwarding_env_query_t; // BUGBUG
@@ -166,14 +167,14 @@ namespace std {
 
     template <                                                     //
       class _Sender,                                               //
-      class _Env = __no_env,                                //
+      class _Env = __no_env,                                       //
       template <class...> class _Tuple = stdexec::__decayed_tuple, //
       template <class...> class _Variant = stdexec::__variant>
     using value_types_of_t STDEXEC_STD_DEPRECATED =
       stdexec::value_types_of_t<_Sender, _Env, _Tuple, _Variant>;
 
-    template <                      //
-      class _Sender,                //
+    template <               //
+      class _Sender,         //
       class _Env = __no_env, //
       template <class...> class _Variant = stdexec::__variant>
     using error_types_of_t STDEXEC_STD_DEPRECATED =

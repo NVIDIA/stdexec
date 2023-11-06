@@ -40,7 +40,9 @@ namespace exec {
     try_push_result try_push_front(__node_pointer t) noexcept {
       __node_pointer __old_head = __head_.load(std::memory_order_relaxed);
       t->*_NextPtr = __old_head;
-      return {__head_.compare_exchange_strong(__old_head, t, std::memory_order_acq_rel), __old_head == nullptr};
+      return {
+        __head_.compare_exchange_strong(__old_head, t, std::memory_order_acq_rel),
+        __old_head == nullptr};
     }
 
     bool push_front(__node_pointer t) noexcept {

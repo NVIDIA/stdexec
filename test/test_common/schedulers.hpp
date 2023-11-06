@@ -50,6 +50,7 @@ namespace {
       explicit data(int id)
         : id_(id) {
       }
+
       int id_;
       cmd_vec_t all_commands_;
       std::mutex mutex_;

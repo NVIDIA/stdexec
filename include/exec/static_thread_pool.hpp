@@ -252,7 +252,7 @@ namespace exec {
         } else {
           static_assert( //
             stdexec::__starts_on<Sender, static_thread_pool::scheduler, Env>
-            || stdexec::__completes_on<Sender, static_thread_pool::scheduler>,
+              || stdexec::__completes_on<Sender, static_thread_pool::scheduler>,
             "No static_thread_pool instance can be found in the sender's or receiver's "
             "environment on which to schedule bulk work.");
           return not_a_sender<stdexec::__name_of<Sender>>();
@@ -615,7 +615,7 @@ namespace exec {
     static thread_local std::thread::id this_id = std::this_thread::get_id();
     std::size_t nTasks = 0;
     std::size_t idx = 0;
-    for ([[maybe_unused]] auto t : tasks) {
+    for ([[maybe_unused]] auto t: tasks) {
       ++nTasks;
     }
     for (std::thread& t: threads_) {
@@ -653,7 +653,7 @@ namespace exec {
   inline static_thread_pool::thread_state::pop_result
     static_thread_pool::thread_state::try_remote() {
     pop_result result{nullptr, index_};
-    __intrusive_queue<&task_base::next> remotes = pool_->remotes_.pop_all_reversed(index_);
+    __intrusive_queue<& task_base::next> remotes = pool_->remotes_.pop_all_reversed(index_);
     pending_queue_.append(std::move(remotes));
     if (!pending_queue_.empty()) {
       move_pending_to_local(pending_queue_, local_queue_);

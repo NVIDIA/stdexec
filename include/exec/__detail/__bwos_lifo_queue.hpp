@@ -384,8 +384,7 @@ namespace exec::bwos {
 
   template <class Tp, class Allocator>
   template <class Iterator, class Sentinel>
-  Iterator
-    lifo_queue<Tp, Allocator>::block_type::bulk_put(Iterator first, Sentinel last) noexcept {
+  Iterator lifo_queue<Tp, Allocator>::block_type::bulk_put(Iterator first, Sentinel last) noexcept {
     std::uint64_t back = tail_.load(std::memory_order_relaxed);
     while (first != last && back < block_size()) {
       ring_buffer_[back] = static_cast<Tp &&>(*first);

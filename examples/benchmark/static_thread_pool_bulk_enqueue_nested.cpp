@@ -38,17 +38,15 @@ struct RunThread {
         break;
       }
 #ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
-      pmr::monotonic_buffer_resource rsrc{buffer.data(), buffer.size()};  
+      pmr::monotonic_buffer_resource rsrc{buffer.data(), buffer.size()};
       pmr::polymorphic_allocator<char> alloc{&rsrc};
       auto env = exec::make_env(exec::with(stdexec::get_allocator, alloc));
       auto [start, end] = exec::even_share(total_scheds, tid, pool.available_parallelism());
-      auto iterate = exec::iterate(std::views::iota(start, end)) 
-                   | exec::ignore_all_values()
+      auto iterate = exec::iterate(std::views::iota(start, end)) | exec::ignore_all_values()
                    | exec::write(env);
 #else
       auto [start, end] = exec::even_share(total_scheds, tid, pool.available_parallelism());
-      auto iterate = exec::iterate(std::views::iota(start, end)) 
-                   | exec::ignore_all_values();
+      auto iterate = exec::iterate(std::views::iota(start, end)) | exec::ignore_all_values();
 #endif
       stdexec::sync_wait(stdexec::on(scheduler, iterate));
       barrier.arrive_and_wait();
@@ -60,5 +58,6 @@ int main(int argc, char** argv) {
   my_main<exec::static_thread_pool, RunThread>(argc, argv);
 }
 #else
-int main() {}
+int main() {
+}
 #endif

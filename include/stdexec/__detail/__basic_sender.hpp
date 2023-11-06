@@ -188,8 +188,7 @@ namespace stdexec {
 
     template <class _Tag>
     template <class _Data, class... _Children>
-    constexpr auto
-      __make_sexpr_t<_Tag>::operator()(_Data __data, _Children... __children) const {
+    constexpr auto __make_sexpr_t<_Tag>::operator()(_Data __data, _Children... __children) const {
       return __sexpr{__make_tuple(_Tag(), __detail::__mbc(__data), __detail::__mbc(__children)...)};
     }
 #else
@@ -212,8 +211,7 @@ namespace stdexec {
 
     template <class _Tag>
     template <class _Data, class... _Children>
-    constexpr auto
-      __make_sexpr_t<_Tag>::operator()(_Data __data, _Children... __children) const {
+    constexpr auto __make_sexpr_t<_Tag>::operator()(_Data __data, _Children... __children) const {
       return __sexpr{__make_tuple(_Tag(), (_Data&&) __data, (_Children&&) __children...)};
     };
 #endif

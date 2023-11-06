@@ -53,9 +53,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <class Env, class... Senders>
     struct completions {
       using InvalidArg = //
-        __minvoke<
-          __mfind_if<__mbind_back_q<too_many_completions, Env>, __q<__mfront>>,
-          Senders...>;
+        __minvoke< __mfind_if<__mbind_back_q<too_many_completions, Env>, __q<__mfront>>, Senders...>;
 
       using __t = stdexec::__when_all::__too_many_value_completions_error<InvalidArg, Env>;
     };
@@ -67,7 +65,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     }
 
     template <class Env, class... Senders>
-      requires (!__v<too_many_completions<Senders, Env>> &&...)
+      requires(!__v<too_many_completions<Senders, Env>> && ...)
     struct completions<Env, Senders...> {
       using non_values = //
         __concat_completion_signatures_t<
