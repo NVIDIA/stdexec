@@ -63,13 +63,13 @@ struct RunThread {
       while (scheds) {
         stdexec::start_detached(       //
           stdexec::schedule(scheduler) //
-            | stdexec::then([&] {
-                auto prev = counter.fetch_sub(1);
-                if (prev == 1) {
-                  std::lock_guard lock{mut};
-                  cv.notify_one();
-                }
-              }));
+          | stdexec::then([&] {
+              auto prev = counter.fetch_sub(1);
+              if (prev == 1) {
+                std::lock_guard lock{mut};
+                cv.notify_one();
+              }
+            }));
         --scheds;
       }
 #endif
@@ -81,7 +81,6 @@ struct RunThread {
   }
 };
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
   my_main<tbbexec::tbb_thread_pool, RunThread>(argc, argv);
 }
