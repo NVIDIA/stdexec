@@ -958,14 +958,21 @@ namespace stdexec {
   using __ignore_t = __ignore;
 #endif
 
+  template <class... _Ignore>
+  struct __nth_pack_element_impl {
+    template <class _Ty, class... _Us>
+    STDEXEC_ATTRIBUTE((always_inline)) //
+    constexpr _Ty&& operator()(_Ignore..., _Ty&& __t, _Us&&...) const noexcept {
+      return (decltype(__t)&&) __t;
+    }
+  };
+
   template <std::size_t _Np>
   struct __nth_pack_element_t {
     template <std::size_t... _Is>
     STDEXEC_ATTRIBUTE((always_inline)) //
     static constexpr auto __impl(__indices<_Is...>) noexcept {
-      return []<class _Ty>(__ignore_t<_Is>..., _Ty&& __t, auto&&...) noexcept -> _Ty&& {
-        return (_Ty&&) __t;
-      };
+      return __nth_pack_element_impl<__ignore_t<_Is>...>();
     }
 
     template <class... _Ts>
