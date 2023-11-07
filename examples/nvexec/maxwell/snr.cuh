@@ -187,13 +187,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
 namespace repeat_n_detail {
 
   template <class OpT>
-  class receiver_2_t : public stdexec::__receiver_base  {
+  class receiver_2_t : public stdexec::__receiver_base {
     using Sender = typename OpT::PredSender;
     using Receiver = typename OpT::Receiver;
 
     OpT& op_state_;
 
-    public:
+   public:
     template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
     friend void tag_invoke(_Tag __tag, receiver_2_t&& __self, _Args&&... __args) noexcept {
       OpT& op_state = __self.op_state_;
@@ -236,7 +236,7 @@ namespace repeat_n_detail {
 
     OpT& op_state_;
 
-    public:
+   public:
     template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
     friend void tag_invoke(_Tag __tag, receiver_1_t&& __self, _Args&&... __args) noexcept {
       OpT& op_state = __self.op_state_;
@@ -252,8 +252,7 @@ namespace repeat_n_detail {
         auto sch = stdexec::get_scheduler(stdexec::get_env(op_state.rcvr_));
         inner_op_state_t& inner_op_state = op_state.inner_op_state_.emplace(
           stdexec::__conv{[&]() noexcept {
-            return ex::connect(
-              ex::schedule(sch) | op_state.closure_, receiver_2_t<OpT>{op_state});
+            return ex::connect(ex::schedule(sch) | op_state.closure_, receiver_2_t<OpT>{op_state});
           }});
 
         ex::start(inner_op_state);
