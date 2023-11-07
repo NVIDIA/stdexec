@@ -22,6 +22,8 @@
 
 #include "../concepts.hpp"
 
+#include <utility> // for tuple_size/tuple_element
+
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // Generic __sender type
@@ -379,15 +381,9 @@ namespace stdexec {
 } // namespace stdexec
 
 namespace std {
-  template <class>
-  struct tuple_size;
-
   template <class _Impl>
   struct tuple_size<stdexec::__sexpr<_Impl>>
     : integral_constant< size_t, stdexec::__v<typename stdexec::__sexpr<_Impl>::__arity_t> + 2> { };
-
-  template <size_t, class>
-  struct tuple_element;
 
   template <size_t _Idx, class _Impl>
   struct tuple_element<_Idx, stdexec::__sexpr<_Impl>> {
