@@ -63,6 +63,9 @@ namespace stdexec {
   struct default_domain;
   struct dependent_domain;
 
+  template <class _Sender>
+  using tag_of_t = __tag_of<_Sender>;
+
   namespace __domain {
     template <class _Tag>
     using __legacy_c11n_for = typename _Tag::__legacy_customizations_t;
@@ -93,7 +96,7 @@ namespace stdexec {
     template <class _Sender, class... _Env>
     concept __has_default_transform_sender = //
       sender_expr<_Sender>                   //
-      && __has_transform_sender<__tag_of<_Sender>, _Sender, _Env...>;
+      && __has_transform_sender<tag_of_t<_Sender>, _Sender, _Env...>;
 
     template <class _Type, class _Sender, class _Env>
     concept __has_transform_env = requires(_Type __obj, _Sender&& __sender, _Env&& __env) {
@@ -103,7 +106,7 @@ namespace stdexec {
     template <class _Sender, class _Env>
     concept __has_default_transform_env = //
       sender_expr<_Sender>                //
-      && __has_transform_env<__tag_of<_Sender>, _Sender, _Env>;
+      && __has_transform_env<tag_of_t<_Sender>, _Sender, _Env>;
 
     template <class _DomainOrTag, class... _Args>
     concept __has_apply_sender = requires(_DomainOrTag __tag, _Args&&... __args) {
@@ -126,7 +129,7 @@ namespace stdexec {
       if constexpr (__callable<__sexpr_apply_t, _Sender, __domain::__legacy_customization>) {
         return stdexec::__sexpr_apply((_Sender&&) __sndr, __domain::__legacy_customization());
       } else if constexpr (__domain::__has_default_transform_sender<_Sender>) {
-        return __tag_of<_Sender>().transform_sender((_Sender&&) __sndr);
+        return tag_of_t<_Sender>().transform_sender((_Sender&&) __sndr);
       } else {
         return static_cast<_Sender>((_Sender&&) __sndr);
       }
@@ -138,7 +141,7 @@ namespace stdexec {
     STDEXEC_ATTRIBUTE((always_inline))
     decltype(auto) transform_sender(_Sender&& __sndr, const _Env& __env) const {
       if constexpr (__domain::__has_default_transform_sender<_Sender, _Env>) {
-        return __tag_of<_Sender>().transform_sender((_Sender&&) __sndr, __env);
+        return tag_of_t<_Sender>().transform_sender((_Sender&&) __sndr, __env);
       } else {
         return static_cast<_Sender>((_Sender&&) __sndr);
       }
@@ -163,7 +166,7 @@ namespace stdexec {
     template <class _Sender, class _Env>
     decltype(auto) transform_env(_Sender&& __sndr, _Env&& __env) const noexcept {
       if constexpr (__domain::__has_default_transform_env<_Sender, _Env>) {
-        return __tag_of<_Sender>().transform_env((_Sender&&) __sndr, (_Env&&) __env);
+        return tag_of_t<_Sender>().transform_env((_Sender&&) __sndr, (_Env&&) __env);
       } else {
         return static_cast<_Env>((_Env&&) __env);
       }

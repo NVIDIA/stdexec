@@ -22,6 +22,8 @@
 
 #include "../concepts.hpp"
 
+#include <utility> // for tuple_size/tuple_element
+
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // Generic __sender type
@@ -51,6 +53,32 @@ namespace stdexec {
         return nullptr;
       }
     };
+
+    STDEXEC_PRAGMA_PUSH()
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-local-typedef")
+
+    struct __get_meta {
+      template <class _Tag, class _Data, class... _Children>
+      constexpr auto operator()(_Tag, _Data&&, _Children&&...) const noexcept {
+        struct __meta {
+          using __tag = _Tag;
+          using __data = _Data;
+          using __children = __types<_Children...>;
+        };
+
+        return __meta{};
+      }
+    };
+
+    STDEXEC_PRAGMA_POP()
+
+    struct __tie {
+      template <class _Tag, class _Data, class... _Children>
+      constexpr auto operator()(_Tag, _Data&& __data, _Children&&... __children) const noexcept {
+        return std::tuple<_Tag, _Data&&, _Children&&...>{
+          {}, (_Data&&) __data, (_Children&&) __children...};
+      }
+    };
   } // namespace __detail
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -66,7 +94,11 @@ namespace stdexec {
     using is_sender = void;
     using __t = __sexpr;
     using __id = __sexpr;
-    using __tag_t = __call_result_t<_ImplFn, __cp, __detail::__get_tag>;
+    using __meta_t = __call_result_t<_ImplFn, __cp, __detail::__get_meta>;
+    using __tag_t = typename __meta_t::__tag;
+    using __data_t = typename __meta_t::__data;
+    using __children_t = typename __meta_t::__children;
+    using __arity_t = __mapply<__msize, __children_t>;
 
     STDEXEC_ATTRIBUTE((always_inline)) //
     static __tag_t __tag() noexcept {
@@ -120,6 +152,19 @@ namespace stdexec {
         __nothrow_callable<__detail::__impl_of<_Sender>, __copy_cvref_fn<_Sender>, _ApplyFn>) //
       -> __call_result_t<__detail::__impl_of<_Sender>, __copy_cvref_fn<_Sender>, _ApplyFn> {  //
       return ((_Sender&&) __sndr).__impl_(__copy_cvref_fn<_Sender>(), (_ApplyFn&&) __fun);    //
+    }
+
+    template <std::size_t _Idx, __decays_to_derived_from<__sexpr> _Self>
+    STDEXEC_ATTRIBUTE((always_inline))
+    friend decltype(auto) get(_Self&& __self) noexcept
+      requires(_Idx < (__v<__arity_t> + 2))
+    {
+      if constexpr (_Idx == 0) {
+        return __tag_t();
+      } else {
+        return __self.__impl_(__copy_cvref_fn<_Self>(), __nth_pack_element<_Idx>);
+      }
+      STDEXEC_UNREACHABLE();
     }
   };
 
@@ -245,15 +290,20 @@ namespace stdexec {
   template <class _Sender, class _ApplyFn>
   using __sexpr_apply_result_t = __call_result_t<__sexpr_apply_t, _Sender, _ApplyFn>;
 
-  template <class _Sender>
-  using __tag_of = __call_result_t<__sexpr_apply_t, _Sender, __detail::__get_tag>;
+  namespace __detail {
+    template <class _Sender>
+    using __meta_of = __call_result_t<__sexpr_apply_t, _Sender, __detail::__get_meta>;
+  }
 
   template <class _Sender>
-  using __data_of = __call_result_t<__sexpr_apply_t, _Sender, __detail::__get_data>;
+  using __tag_of = typename __detail::__meta_of<_Sender>::__tag;
+
+  template <class _Sender>
+  using __data_of = typename __detail::__meta_of<_Sender>::__data;
 
   template <class _Sender, class _Continuation = __q<__types>>
-  using __children_of = __t<__call_result_t<
-    __call_result_t<__sexpr_apply_t, _Sender, __detail::__get_children<_Continuation>>>>;
+  using __children_of = //
+    __mapply< _Continuation, typename __detail::__meta_of<_Sender>::__children>;
 
   template <class _Ny, class _Sender>
   using __nth_child_of = __children_of<_Sender, __mbind_front_q<__m_at, _Ny>>;
@@ -317,8 +367,27 @@ namespace stdexec {
     template <__has_id _Sender>
       requires(!same_as<__id<_Sender>, _Sender>)
     extern __id_name __name_of_v<_Sender>;
+
+    template <class _Ty>
+    _Ty __remove_rvalue_reference_fn(_Ty&&);
+
+    template <class _Ty>
+    using __remove_rvalue_reference_t =
+      decltype(__detail::__remove_rvalue_reference_fn(__declval<_Ty>()));
   } // namespace __detail
 
   template <class _Sender>
   using __name_of = __detail::__name_of<_Sender>;
 } // namespace stdexec
+
+namespace std {
+  template <class _Impl>
+  struct tuple_size<stdexec::__sexpr<_Impl>>
+    : integral_constant< size_t, stdexec::__v<typename stdexec::__sexpr<_Impl>::__arity_t> + 2> { };
+
+  template <size_t _Idx, class _Impl>
+  struct tuple_element<_Idx, stdexec::__sexpr<_Impl>> {
+    using type = stdexec::__detail::__remove_rvalue_reference_t<
+      stdexec::__call_result_t<_Impl, stdexec::__cp, stdexec::__nth_pack_element_t<_Idx>>>;
+  };
+}
