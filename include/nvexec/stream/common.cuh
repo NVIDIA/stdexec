@@ -364,7 +364,7 @@ namespace nvexec {
       sender_in<S, E> &&    //
       STDEXEC_IS_BASE_OF(
         stream_sender_base,
-        __decay_t<transform_sender_result_t<__env_domain_of_t<E>, S, E>>);
+        __decay_t<transform_sender_result_t<__late_domain_of_t<S, E>, S, E>>);
 
     template <class R>
     concept stream_receiver = //

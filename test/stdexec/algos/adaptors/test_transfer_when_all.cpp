@@ -201,9 +201,9 @@ namespace {
       using scheduler = basic_inline_scheduler<domain>;
 
       auto snd = ex::on(
-        scheduler(),
+        inline_scheduler(),
         ex::transfer_when_all( //
-          inline_scheduler(),  //
+          scheduler(),         //
           ex::just(3),         //
           ex::just(0.1415)     //
           ));
@@ -249,9 +249,9 @@ namespace {
       using scheduler = basic_inline_scheduler<domain>;
 
       auto snd = ex::on(
-        scheduler(),
+        inline_scheduler(),
         ex::transfer_when_all_with_variant( //
-          inline_scheduler(),               //
+          scheduler(),                      //
           ex::just(3),                      //
           ex::just(0.1415)                  //
           ));
@@ -297,9 +297,9 @@ namespace {
       using scheduler = basic_inline_scheduler<domain>;
 
       auto snd = ex::on(
-        scheduler(),
+        inline_scheduler(),
         ex::transfer_when_all_with_variant( //
-          inline_scheduler(),               //
+          scheduler(),                      //
           ex::just(3),                      //
           ex::just(0.1415)                  //
           ));

@@ -277,7 +277,7 @@ namespace exec {
     struct ignore_all_values_t {
       template <sender _Sender>
       auto operator()(_Sender&& __sndr) const {
-        auto __domain = __get_sender_domain((_Sender&&) __sndr);
+        auto __domain = __get_early_domain((_Sender&&) __sndr);
         return transform_sender(
           __domain, __make_sexpr<ignore_all_values_t>(__(), (_Sender&&) __sndr));
       }
