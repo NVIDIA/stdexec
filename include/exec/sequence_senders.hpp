@@ -135,7 +135,8 @@ namespace exec {
   namespace __sequence_sndr {
     struct get_item_types_t;
     template <class _Sender, class _Env>
-    using __tfx_sender = transform_sender_result_t<__env_domain_of_t<_Env>, _Sender, _Env>;
+    using __tfx_sender =
+      transform_sender_result_t<__late_domain_of_t<_Sender, _Env>, _Sender, _Env>;
 
     template <class _Sender, class _Env>
     concept __with_tag_invoke = //
@@ -328,7 +329,7 @@ namespace exec {
 
       template <class _Sender, class _Receiver>
       static constexpr auto __select_impl() noexcept {
-        using _Domain = __env_domain_of_t<env_of_t<_Receiver&>>;
+        using _Domain = __late_domain_of_t<_Sender, env_of_t<_Receiver&>>;
         constexpr bool _NothrowTfxSender =
           __nothrow_callable<get_env_t, _Receiver&>
           && __nothrow_callable<transform_sender_t, _Domain, _Sender, env_of_t<_Receiver&>>;
@@ -365,7 +366,7 @@ namespace exec {
           -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
         using _TfxSender = __tfx_sndr<_Sender, _Receiver>;
         auto&& __env = get_env(__rcvr);
-        auto __domain = __get_env_domain(__env);
+        auto __domain = __get_late_domain(__sndr, __env);
         if constexpr (__next_connectable_with_tag_invoke<_TfxSender, _Receiver>) {
           static_assert(
             operation_state<tag_invoke_result_t<

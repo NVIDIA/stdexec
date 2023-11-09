@@ -327,6 +327,12 @@ namespace stdexec {
   template <class _Fn, class... _Args>
   struct __mdefer : __mdefer_<_Fn, _Args...> { };
 
+  template <class _Fn, class... _Args>
+  using __mmemoize = __t<__mdefer<_Fn, _Args...>>;
+
+  template <template <class...> class _Fn, class... _Args>
+  using __mmemoize_q = __mmemoize<__q<_Fn>, _Args...>;
+
   struct __if_ {
     template <bool>
     struct __ {
@@ -364,24 +370,6 @@ namespace stdexec {
     using __f = _Tp;
   };
 
-  template <template <class...> class _Try, class _Catch>
-  struct __mtry_catch_q {
-    template <class... _Args>
-    using __f = __minvoke< __if_c<__mvalid<_Try, _Args...>, __q<_Try>, _Catch>, _Args...>;
-  };
-
-  template <class _Try, class _Catch>
-  struct __mtry_catch {
-    template <class... _Args>
-    using __f = __minvoke< __if_c<__minvocable<_Try, _Args...>, _Try, _Catch>, _Args...>;
-  };
-
-  template <class _Fn, class _Default>
-  using __with_default = __mtry_catch<_Fn, __mconst<_Default>>;
-
-  template <template <class...> class _Fn, class _Default>
-  using __with_default_q = __mtry_catch_q<_Fn, __mconst<_Default>>;
-
   inline constexpr __mstring __mbad_substitution =
     "The specified meta-function could not be evaluated with the types provided."__csz;
 
@@ -402,6 +390,30 @@ namespace stdexec {
     template <class... _Args>
     using __f = __mexception<_BAD_SUBSTITUTION_<>, _WITH_META_FUNCTION_, _WITH_TYPES_<_Args...>>;
   };
+
+  template <template <class...> class _Try, class _Catch>
+  struct __mtry_catch_q {
+    template <class... _Args>
+    using __f = __minvoke< __if_c<__mvalid<_Try, _Args...>, __q<_Try>, _Catch>, _Args...>;
+  };
+
+  template <class _Try, class _Catch>
+  struct __mtry_catch {
+    template <class... _Args>
+    using __f = __minvoke< __if_c<__minvocable<_Try, _Args...>, _Try, _Catch>, _Args...>;
+  };
+
+  template <class _Fn, class _Default>
+  using __with_default = __mtry_catch<_Fn, __mconst<_Default>>;
+
+  template <template <class...> class _Fn, class _Default>
+  using __with_default_q = __mtry_catch_q<_Fn, __mconst<_Default>>;
+
+  template <class _Fn, class _Default, class... _Args>
+  using __minvoke_or = __minvoke<__with_default<_Fn, _Default>, _Args...>;
+
+  template <template <class...> class _Fn, class _Default, class... _Args>
+  using __meval_or = __minvoke<__with_default_q<_Fn, _Default>, _Args...>;
 
   template <template <class...> class _Fn>
   struct __mtry_eval_ {
@@ -640,8 +652,11 @@ namespace stdexec {
   template <class... _As>
     requires(sizeof...(_As) == 1)
   using __msingle = __mfront<_As...>;
-  template <class _Ty>
-  using __msingle_or = __mbind_back_q<__mfront_, _Ty>;
+  template <class _Default, class... _As>
+    requires(sizeof...(_As) <= 1)
+  using __msingle_or_ = __mfront<_As..., _Default>;
+  template <class _Default>
+  using __msingle_or = __mbind_front_q<__msingle_or_, _Default>;
 
   template <class _Continuation = __q<__types>>
   struct __pop_front {
