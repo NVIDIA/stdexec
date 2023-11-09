@@ -177,7 +177,7 @@ namespace exec::bwos {
     std::size_t block_size,
     Allocator allocator)
     : blocks_(
-      std::max(2ul, std::bit_ceil(num_blocks)),
+      std::max(static_cast<size_t>(2), std::bit_ceil(num_blocks)),
       block_type(block_size, allocator),
       allocator_of_t<block_type>(allocator))
     , mask_(blocks_.size() - 1) {
