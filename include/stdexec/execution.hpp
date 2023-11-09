@@ -692,8 +692,8 @@ namespace stdexec {
     // domain. If the sender knows the domain in which it completes, then that is
     // where the subsequent task will execute. Otherwise, look to the receiver for
     // late-bound information about the current execution context.
-    template <class _Sender, class _Env, class _Default = default_domain>
-    auto operator()(const _Sender& __sndr, const _Env& __env, _Default __def = {}) const noexcept {
+    template <class _Sender, class _Env>
+    auto operator()(const _Sender& __sndr, const _Env& __env) const noexcept {
       if constexpr (!same_as<dependent_domain, __early_domain_of_t<_Sender, dependent_domain>>) {
         return __early_domain_of_t<_Sender>();
       } else if constexpr (__callable<get_domain_t, const _Env&>) {
@@ -702,10 +702,10 @@ namespace stdexec {
         if constexpr (__callable<get_domain_t, __call_result_t<get_scheduler_t, const _Env&>>) {
           return __call_result_t<get_domain_t, __call_result_t<get_scheduler_t, const _Env&>>();
         } else {
-          return __def;
+          return default_domain();
         }
       } else {
-        return __def;
+        return default_domain();
       }
       STDEXEC_UNREACHABLE();
     }
@@ -713,17 +713,17 @@ namespace stdexec {
     // The transfer algorithm is the exception to the rule. It ignores the domain
     // of the predecessor, and dispatches based on the domain of the scheduler
     // to which execution is being transferred.
-    template <sender_expr_for<transfer_t> _Sender, class _Env, class _Default = default_domain>
-    auto operator()(const _Sender& __sndr, const _Env& __env, _Default = {}) const noexcept {
+    template <sender_expr_for<transfer_t> _Sender, class _Env>
+    auto operator()(const _Sender& __sndr, const _Env& __env) const noexcept {
       using _Data = __data_of<_Sender>;
       using _Scheduler = __call_result_t<get_completion_scheduler_t<set_value_t>, _Data>;
-      using _Domain = __result_of<query_or, get_domain_t, _Scheduler, _Default>;
+      using _Domain = __result_of<query_or, get_domain_t, _Scheduler, default_domain>;
       return _Domain();
     }
   } __get_late_domain{};
 
-  template <class _Sender, class _Env, class _Default = default_domain>
-  using __late_domain_of_t = __call_result_t<__get_late_domain_t, _Sender, _Env, _Default>;
+  template <class _Sender, class _Env>
+  using __late_domain_of_t = __call_result_t<__get_late_domain_t, _Sender, _Env>;
 
   namespace __domain {
     struct __common_domain_fn {
@@ -2699,7 +2699,7 @@ namespace stdexec {
       template <class _Env, sender_in<_Env> _Sender>
         requires __callable<
           apply_sender_t,
-          __late_domain_of_t<_Sender, _Env, __early_domain_of_t<_Sender>>,
+          __late_domain_of_t<_Sender, _Env>,
           start_detached_t,
           _Sender,
           _Env>
@@ -3503,7 +3503,7 @@ namespace stdexec {
     struct upon_error_t : __with_default_get_env<upon_error_t> {
       template <sender _Sender, __movable_value _Fun>
       auto operator()(_Sender&& __sndr, _Fun __fun) const {
-        auto __domain = __get_early_domain((_Sender&&) __sndr, set_error);
+        auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
           __domain, __make_sexpr<upon_error_t>((_Fun&&) __fun, (_Sender&&) __sndr));
       }
@@ -3647,7 +3647,7 @@ namespace stdexec {
       template <sender _Sender, __movable_value _Fun>
         requires __callable<_Fun>
       auto operator()(_Sender&& __sndr, _Fun __fun) const {
-        auto __domain = __get_early_domain((_Sender&&) __sndr, set_stopped);
+        auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
           __domain, __make_sexpr<upon_stopped_t>((_Fun&&) __fun, (_Sender&&) __sndr));
       }
@@ -3842,7 +3842,7 @@ namespace stdexec {
       template <sender _Sender, integral _Shape, __movable_value _Fun>
       STDEXEC_ATTRIBUTE((host, device))
       auto operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const {
-        auto __domain = __get_early_domain((_Sender&&) __sndr);
+        auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
           __domain, __make_sexpr<bulk_t>(__data{__shape, (_Fun&&) __fun}, (_Sender&&) __sndr));
       }
@@ -4910,7 +4910,7 @@ namespace stdexec {
 
       template <sender _Sender, __movable_value _Fun>
       auto operator()(_Sender&& __sndr, _Fun __fun) const {
-        auto __domain = __get_early_domain((_Sender&&) __sndr);
+        auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
           __domain,
           __sender<_Sender, _Fun>{
