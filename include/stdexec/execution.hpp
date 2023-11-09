@@ -695,15 +695,11 @@ namespace stdexec {
     template <class _Sender, class _Env>
     auto operator()(const _Sender& __sndr, const _Env& __env) const noexcept {
       if constexpr (!same_as<dependent_domain, __early_domain_of_t<_Sender, dependent_domain>>) {
-        return __early_domain_of_t<_Sender>();
+        return __get_early_domain(__sndr);
       } else if constexpr (__callable<get_domain_t, const _Env&>) {
-        return __call_result_t<get_domain_t, const _Env&>();
-      } else if constexpr (__callable<get_scheduler_t, const _Env&>) {
-        if constexpr (__callable<get_domain_t, __call_result_t<get_scheduler_t, const _Env&>>) {
-          return __call_result_t<get_domain_t, __call_result_t<get_scheduler_t, const _Env&>>();
-        } else {
-          return default_domain();
-        }
+        return get_domain(__env);
+      } else if constexpr (__callable<__composed<get_domain_t, get_scheduler_t>, const _Env&>) {
+        return get_domain(get_scheduler(__env));
       } else {
         return default_domain();
       }
@@ -714,11 +710,11 @@ namespace stdexec {
     // of the predecessor, and dispatches based on the domain of the scheduler
     // to which execution is being transferred.
     template <sender_expr_for<transfer_t> _Sender, class _Env>
-    auto operator()(const _Sender& __sndr, const _Env& __env) const noexcept {
-      using _Data = __data_of<_Sender>;
-      using _Scheduler = __call_result_t<get_completion_scheduler_t<set_value_t>, _Data>;
-      using _Domain = __result_of<query_or, get_domain_t, _Scheduler, default_domain>;
-      return _Domain();
+    auto operator()(const _Sender& __sndr, const _Env&) const noexcept {
+      return __sexpr_apply(__sndr, [](__ignore, auto& __data, __ignore) noexcept {
+        auto __sched = get_completion_scheduler<set_value_t>(__data);
+        return query_or(get_domain, __sched, default_domain());
+      });
     }
   } __get_late_domain{};
 
