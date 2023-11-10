@@ -79,16 +79,30 @@ namespace STDEXEC::__stok
       , __execute_(__execute)
     {}
 
+    constexpr ~__inplace_stop_callback_base()
+    {
+      if (__execute_ == nullptr)
+        __destroy_execute_members_();
+    }
+
+    void __initialize_callback_(__execute_fn_t* __execute) noexcept
+    {
+      STDEXEC_ASSERT(__source_ == nullptr);
+      if (__execute_ == nullptr)
+      {
+        __destroy_execute_members_();
+        __execute_ = __execute;
+        std::construct_at(&__list_members_);
+      }
+    }
+
     // std::atomic is trivially destructible, so this does nothing. Relacy's
     // replacement for std::atomic is not, so end the lifetime of the
     // execution members if request_stop() started it.
-    constexpr ~__inplace_stop_callback_base()
+    constexpr void __destroy_execute_members_() noexcept
     {
       if constexpr (!std::is_trivially_destructible_v<__execute_members_t>)
-      {
-        if (__execute_ == nullptr)
-          std::destroy_at(&__execute_members_);
-      }
+        std::destroy_at(&__execute_members_);
     }
 
     constexpr void __register_callback_() noexcept;
@@ -148,6 +162,8 @@ namespace STDEXEC::__stok
 }  // namespace STDEXEC::__stok
 
 STDEXEC_P2300_NAMESPACE_BEGIN()
+  template <class _Stoppable, class _Tag = void>
+  class __inplace_stoppable_base;
   template <class _Callback>
   class inplace_stop_callback;
 
@@ -176,6 +192,8 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
    private:
     friend inplace_stop_token;
     friend struct STDEXEC::__stok::__inplace_stop_callback_base;
+    template <class, class>
+    friend class __inplace_stoppable_base;
     template <class>
     friend class inplace_stop_callback;
 
@@ -246,6 +264,8 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
 
    private:
     friend inplace_stop_source;
+    template <class, class>
+    friend class __inplace_stoppable_base;
     template <class>
     friend class inplace_stop_callback;
 
@@ -260,6 +280,57 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
   {
     return inplace_stop_token{this};
   }
+
+  template <class _Stoppable, class _Tag>
+  class __inplace_stoppable_base : STDEXEC::__stok::__inplace_stop_callback_base
+  {
+   protected:
+    __inplace_stoppable_base() noexcept
+      : STDEXEC::__stok::__inplace_stop_callback_base(nullptr,
+                                                      &__inplace_stoppable_base::__execute_impl_)
+    {}
+
+    __inplace_stoppable_base(__inplace_stoppable_base&&) = delete;
+
+    ~__inplace_stoppable_base()
+    {
+      if (__source_ != nullptr)
+        __source_->__remove_callback_(this);
+    }
+
+    void register_stoppable(inplace_stop_token __token) noexcept
+    {
+      __initialize_callback_(&__inplace_stoppable_base::__execute_impl_);
+      __source_ = __token.__source_;
+      __register_callback_();
+    }
+
+    void deregister_stoppable() noexcept
+    {
+      if (__source_ != nullptr)
+      {
+        __source_->__remove_callback_(this);
+        __source_ = nullptr;
+      }
+    }
+
+   private:
+    static void __execute_impl_(STDEXEC::__stok::__inplace_stop_callback_base* __cb) noexcept
+    {
+      auto* __self = static_cast<__inplace_stoppable_base*>(__cb);
+      if constexpr (STDEXEC::__same_as<_Tag, void>)
+        static_cast<_Stoppable*>(__self)->on_stop_requested();
+      else
+        static_cast<_Stoppable*>(__self)->on_stop_requested(_Tag{});
+    }
+  };
+
+  template <>
+  struct __stoppable_base_for<inplace_stop_token>
+  {
+    template <class _Stoppable, class _Tag>
+    using __f = __inplace_stoppable_base<_Stoppable, _Tag>;
+  };
 
   // [stopcallback.inplace], class template inplace_stop_callback
   template <class _Fun>
