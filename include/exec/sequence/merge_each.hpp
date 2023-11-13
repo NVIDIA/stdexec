@@ -578,7 +578,7 @@ namespace exec {
         requires __sequence_factory<env_of_t<_Receiver>, __copy_cvref_t<_Self, _Senders>...>
       friend auto tag_invoke(subscribe_t, _Self&& self, _Receiver receiver) //
         -> __dynamic_operation_t<_Self, _Receiver> {
-        return __dynamic_operation_t{
+        return __dynamic_operation_t<_Self, _Receiver>{
           std::get<0>(static_cast<_Self&&>(self).__senders_), static_cast<_Receiver&&>(receiver)};
       }
 
@@ -599,10 +599,10 @@ namespace exec {
         __mconcat<__q<item_types>>,
         item_types_of_t<__copy_cvref_t<_Self, _Senders>, _Env>...>;
 
-      // template <__decays_to<__t> _Self, class _Env>
-      //   requires __sequence_factory<_Env, __copy_cvref_t<_Self, _Senders>...>
-      // friend auto tag_invoke(get_item_types_t, _Self&&, _Env&&)
-      //   -> item_types_of_t<__value_type_t<_Self, _Env>, _Env>;
+      template <__decays_to<__t> _Self, class _Env>
+        requires __sequence_factory<_Env, __copy_cvref_t<_Self, _Senders>...>
+      friend auto tag_invoke(get_item_types_t, _Self&&, _Env&&)
+        -> item_types_of_t<__value_type_t<_Self, _Env>, _Env>;
 
      public:
       using __id = __sequence;
