@@ -2,6 +2,7 @@
 
 #include "exec/sequence/transform_each.hpp"
 #include "exec/sequence/ignore_all_values.hpp"
+#include "exec/sequence/iterate.hpp"
 
 #include <catch2/catch.hpp>
 
@@ -21,13 +22,44 @@ inline constexpr then_each_t then_each;
 
 TEST_CASE("merge_each - with plain senders", "[sequence_senders][merge_each]") {
   int checked = 0;
-  auto s1 =                             //
-    exec::merge_each(stdexec::just(42)) //
-    | then_each([&](int x) noexcept {
-        CHECK(x == 42);
+  SECTION("one just") {
+    auto s1 =                             //
+      exec::merge_each(stdexec::just(42)) //
+      | then_each([&](int x) noexcept {
+          CHECK(x == 42);
+          ++checked;
+        })
+      | exec::ignore_all_values();
+    stdexec::sync_wait(s1);
+    CHECK(checked == 1);
+  }
+  SECTION("two senders") {
+    auto s1 = //
+      exec::merge_each(
+        stdexec::just(42), //
+        stdexec::just(43)) //
+      | then_each([&](int x) noexcept {
+          CHECK(x == 42 + checked);
+          ++checked;
+        })
+      | exec::ignore_all_values();
+    stdexec::sync_wait(s1);
+    CHECK(checked == 2);
+  }
+}
+
+TEST_CASE("merge_each - with iterate", "[sequence_senders][merge_each]") {
+  std::array<int, 3> arr = {1, 2, 3};
+  auto view = std::views::all(arr);
+  int checked = 0;
+  auto s1 =                                                                            //
+    exec::iterate(view)                                                                //
+    | then_each([=](int x) noexcept { return exec::iterate(std::views::iota(0, x)); }) //
+    | exec::merge_each()                                                               //
+    | then_each([&](int) noexcept {
         ++checked;
-      })
-    | exec::ignore_all_values();
+      }) //
+    | exec::ignore_all_values();                                                       //
   stdexec::sync_wait(s1);
-  CHECK(checked == 1);
+  CHECK(checked == 6);
 }
