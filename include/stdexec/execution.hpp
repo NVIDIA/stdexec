@@ -3435,91 +3435,6 @@ namespace stdexec {
     template <class _Shape, class _Fun>
     __data(_Shape, _Fun) -> __data<_Shape, _Fun>;
 
-    template <class _ReceiverId, class _Shape, class _Fun>
-    struct __receiver {
-      using _Receiver = stdexec::__t<_ReceiverId>;
-
-      struct __op_state : __data<_Shape, _Fun> {
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
-      };
-
-      struct __t {
-        using is_receiver = void;
-        using __id = __receiver;
-        __op_state* __op_;
-
-        template <same_as<set_value_t> _Tag, class... _As>
-          requires __callable<_Tag, _Receiver, _As...>
-        friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept
-          requires __nothrow_callable<_Fun, _Shape, _As&...>
-        {
-          for (_Shape __i{}; __i != __self.__op_->__shape_; ++__i) {
-            __self.__op_->__fun_(__i, __as...);
-          }
-          stdexec::set_value((_Receiver&&) __self.__op_->__rcvr_, (_As&&) __as...);
-        }
-
-        template <same_as<set_value_t> _Tag, class... _As>
-          requires __callable<_Tag, _Receiver, _As...>
-        friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept
-          requires __callable<_Fun, _Shape, _As&...>
-        {
-          try {
-            for (_Shape __i{}; __i != __self.__op_->__shape_; ++__i) {
-              __self.__op_->__fun_(__i, __as...);
-            }
-            stdexec::set_value((_Receiver&&) __self.__op_->__rcvr_, (_As&&) __as...);
-          } catch (...) {
-            stdexec::set_error((_Receiver&&) __self.__op_->__rcvr_, std::current_exception());
-          }
-        }
-
-        template <same_as<set_error_t> _Tag, class _Error>
-          requires __callable<_Tag, _Receiver, _Error>
-        friend void tag_invoke(_Tag, __t&& __self, _Error&& __error) noexcept {
-          stdexec::set_error((_Receiver&&) __self.__op_->__rcvr_, (_Error&&) __error);
-        }
-
-        template <same_as<set_stopped_t> _Tag>
-          requires __callable<_Tag, _Receiver>
-        friend void tag_invoke(_Tag, __t&& __self) noexcept {
-          stdexec::set_stopped((_Receiver&&) __self.__op_->__rcvr_);
-        }
-
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t& __self) noexcept {
-          return stdexec::get_env(__self.__op_->__rcvr_);
-        }
-      };
-    };
-
-    template <class _CvrefSenderId, class _ReceiverId, class _Shape, class _Fun>
-    struct __operation {
-      using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
-      using _Receiver = stdexec::__t<_ReceiverId>;
-      using __receiver_id = __receiver<_ReceiverId, _Shape, _Fun>;
-      using __receiver_t = stdexec::__t<__receiver_id>;
-
-      struct __t : __immovable {
-        using __id = __operation;
-        using __data_t = __data<_Shape, _Fun>;
-
-        typename __receiver_id::__op_state __state_;
-        connect_result_t<_CvrefSender, __receiver_t> __op_;
-
-        __t(_CvrefSender&& __sndr, _Receiver __rcvr, __data_t __data) //
-          noexcept(__nothrow_decay_copyable<_Receiver>                //
-                     && __nothrow_decay_copyable<__data_t>            //
-                       && __nothrow_connectable<_CvrefSender, __receiver_t>)
-          : __state_{(__data_t&&) __data, (_Receiver&&) __rcvr}
-          , __op_(connect((_CvrefSender&&) __sndr, __receiver_t{&__state_})) {
-        }
-
-        friend void tag_invoke(start_t, __t& __self) noexcept {
-          start(__self.__op_);
-        }
-      };
-    };
-
     template <class _Ty>
     using __decay_ref = __decay_t<_Ty>&;
 
@@ -3542,27 +3457,6 @@ namespace stdexec {
         _CvrefSender,
         _Env,
         __with_error_invoke_t<_CvrefSender, _Env, _Shape, _Fun, __on_not_callable>>;
-
-    template <class _Receiver>
-    struct __connect_fn {
-      _Receiver& __rcvr_;
-
-      template <class _Child, class _Data>
-      using __operation_t = //
-        __t<__operation<
-          __cvref_id<_Child>,
-          __id<_Receiver>,
-          decltype(_Data::__shape_),
-          decltype(_Data::__fun_)>>;
-
-      template <class _Data, class _Child>
-      auto operator()(__ignore, _Data __data, _Child&& __child) const noexcept(
-        __nothrow_constructible_from<__operation_t<_Child, _Data>, _Child, _Receiver, _Data>)
-        -> __operation_t<_Child, _Data> {
-        return __operation_t<_Child, _Data>{
-          (_Child&&) __child, (_Receiver&&) __rcvr_, (_Data&&) __data};
-      }
-    };
 
     struct bulk_t : __with_default_get_env<bulk_t> {
       template <sender _Sender, integral _Shape, __movable_value _Fun>
@@ -3597,12 +3491,6 @@ namespace stdexec {
           _Fun),
         tag_invoke_t(bulk_t, _Sender, _Shape, _Fun)>;
 
-#if STDEXEC_FRIENDSHIP_IS_LEXICAL()
-     private:
-      template <class...>
-      friend struct stdexec::__sexpr;
-#endif
-
       template <class _Sender>
       using __fun_t = decltype(__decay_t<__data_of<_Sender>>::__fun_);
 
@@ -3615,11 +3503,28 @@ namespace stdexec {
         return {};
       }
 
-      template <sender_expr_for<bulk_t> _Sender, receiver _Receiver>
-      static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-        __nothrow_callable< __sexpr_apply_t, _Sender, __connect_fn<_Receiver>>)
-        -> __call_result_t< __sexpr_apply_t, _Sender, __connect_fn<_Receiver>> {
-        return __sexpr_apply((_Sender&&) __sndr, __connect_fn<_Receiver>{__rcvr});
+      template <class _Data, class _Receiver, class _Tag, class... _Args>
+      static void complete(_Data&& __data, _Receiver&& __rcvr, _Tag, _Args&&... __args) noexcept {
+        if constexpr (std::same_as<_Tag, set_value_t>) {
+          using __shape_t = decltype(__data.__shape_);
+          if constexpr (noexcept(__data.__fun_(__shape_t{}, __args...))) {
+            for (__shape_t __i {}; __i != __data.__shape_; ++__i) {
+              __data.__fun_(__i, __args...);
+            }
+            _Tag()(std::move(__rcvr), (_Args&&) __args...);
+          } else {
+            try {
+              for (__shape_t __i {}; __i != __data.__shape_; ++__i) {
+                __data.__fun_(__i, __args...);
+              }
+              _Tag()(std::move(__rcvr), (_Args&&) __args...);
+            } catch(...) {
+              set_error(std::move(__rcvr), std::current_exception());
+            }
+          }
+        } else {
+          _Tag()(std::move(__rcvr), (_Args&&) __args...);
+        }
       }
     };
   }
