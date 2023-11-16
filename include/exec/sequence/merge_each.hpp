@@ -243,6 +243,7 @@ namespace exec {
       template <same_as<set_value_t> _SetValue, same_as<__t> _Self>
         requires __callable<_SetValue, _ItemReceiver&&>
       friend void tag_invoke(_SetValue, _Self&& __self) noexcept {
+        __self.__op_->__on_item_receiver_stopped_.reset();
         __operation_base<_Receiver, _ErrorsVariant>* __parent = __self.__op_->__parent_;
         stdexec::set_value(static_cast<_ItemReceiver&&>(__self.__op_->__item_receiver_));
         __parent->__notify_completion();
@@ -251,6 +252,7 @@ namespace exec {
       template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
         requires __callable<_SetStopped, _ItemReceiver&&>
       friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
+        __self.__op_->__on_item_receiver_stopped_.reset();
         __operation_base<_Receiver, _ErrorsVariant>* __parent = __self.__op_->__parent_;
         stdexec::set_stopped(static_cast<_ItemReceiver&&>(__self.__op_->__item_receiver_));
         __parent->__notify_completion();
@@ -259,6 +261,7 @@ namespace exec {
       template <same_as<set_error_t> _SetError, same_as<__t> _Self, class _Error>
         requires __callable<set_stopped_t, _ItemReceiver&&>
       friend void tag_invoke(_SetError, _Self&& __self, _Error&& __error) noexcept {
+        __self.__op_->__on_item_receiver_stopped_.reset();
         __operation_base<_Receiver, _ErrorsVariant>* __parent = __self.__op_->__parent_;
         __parent->__emplace_error(static_cast<_Error&&>(__error));
         __parent->__stop_source_.request_stop();
@@ -339,6 +342,7 @@ namespace exec {
           stdexec::start(__next_op);
         } catch (...) {
           __operation_base<_Receiver, _ErrorsVariant>* __parent = __self.__op_->__parent_;
+          __self.__op_->__on_item_receiver_stopped_.reset();
           __parent->__emplace_error(std::current_exception());
           __parent->__stop_source_.request_stop();
           stdexec::set_stopped(static_cast<_ItemReceiver&&>(__self.__op_->__item_receiver_));
@@ -348,6 +352,7 @@ namespace exec {
 
       template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
       friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
+        __self.__op_->__on_item_receiver_stopped_.reset();
         __operation_base<_Receiver, _ErrorsVariant>* __parent = __self.__op_->__parent_;
         stdexec::set_stopped(static_cast<_ItemReceiver&&>(__self.__op_->__item_receiver_));
         __parent->__notify_completion();
@@ -355,6 +360,7 @@ namespace exec {
 
       template <same_as<set_error_t> _SetError, same_as<__t> _Self, class _Error>
       friend void tag_invoke(_SetError, _Self&& __self, _Error&& __error) noexcept {
+        __self.__op_->__on_item_receiver_stopped_.reset();
         __operation_base<_Receiver, _ErrorsVariant>* __parent = __self.__op_->__parent_;
         __parent->__emplace_error(static_cast<_Error&&>(__error));
         __parent->__stop_source_.request_stop();
@@ -401,6 +407,9 @@ namespace exec {
 
       template <same_as<__t> _Self>
       friend void tag_invoke(stdexec::start_t, _Self& __self) noexcept {
+        __self.__on_item_receiver_stopped_.emplace(
+          stdexec::get_stop_token(stdexec::get_env(__self.__item_receiver_)),
+          __dynamic_item_stop<_Receiver, _ErrorsVariant>{__self.__parent_});
         stdexec::start(__self.__receive_op_);
       }
     };
@@ -480,6 +489,7 @@ namespace exec {
 
       template <same_as<set_value_t> _SetValue, same_as<__t> _Self>
       friend void tag_invoke(_SetValue, _Self&& __self) noexcept {
+        __self.__parent_->__on_receiver_stopped_.reset();
         int __error_emplaced = __self.__parent_->__error_emplaced_.load(std::memory_order_acquire);
         if (__error_emplaced == 2) {
           std::visit(
@@ -492,6 +502,7 @@ namespace exec {
 
       template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
       friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
+        __self.__parent_->__on_receiver_stopped_.reset();
         int __error_emplaced = __self.__parent_->__error_emplaced_.load(std::memory_order_acquire);
         if (__error_emplaced == 2) {
           std::visit(
@@ -504,6 +515,7 @@ namespace exec {
 
       template <same_as<set_error_t> _SetError, same_as<__t> _Self, class _Error>
       friend void tag_invoke(_SetError, _Self&& __self, _Error&& __error) noexcept {
+        __self.__parent_->__on_receiver_stopped_.reset();
         stdexec::set_error(
           static_cast<_Receiver&&>(__self.__parent_->__receiver_), static_cast<_Error&&>(__error));
       }
@@ -529,6 +541,9 @@ namespace exec {
 
       template <same_as<__t> _Self>
       friend void tag_invoke(stdexec::start_t, _Self& __self) noexcept {
+        __self.__on_receiver_stopped_.emplace(
+          stdexec::get_stop_token(stdexec::get_env(__self.__receiver_)),
+          __default_stop_callback{__self.__stop_source_});
         stdexec::start(__self.__op_);
       }
 
