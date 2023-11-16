@@ -3295,67 +3295,6 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.upon_error]
   namespace __upon_error {
-    template <class _ReceiverId, class _Fun>
-    struct __receiver {
-      using _Receiver = stdexec::__t<_ReceiverId>;
-
-      struct __data {
-        _Receiver __rcvr_;
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
-      };
-
-      struct __t {
-        using is_receiver = void;
-        using __id = __receiver;
-        __data* __op_;
-
-        // Customize set_value by invoking the invocable and passing the result
-        // to the downstream receiver
-        template <__same_as<set_error_t> _Tag, class _Error>
-          requires __invocable<_Fun, _Error> && __receiver_of_invoke_result<_Receiver, _Fun, _Error>
-        friend void tag_invoke(_Tag, __t&& __self, _Error&& __error) noexcept {
-          stdexec::__set_value_invoke(
-            (_Receiver&&) __self.__op_->__rcvr_, (_Fun&&) __self.__op_->__fun_, (_Error&&) __error);
-        }
-
-        template <__one_of<set_value_t, set_stopped_t> _Tag, class... _As>
-          requires __callable<_Tag, _Receiver, _As...>
-        friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept {
-          __tag((_Receiver&&) __self.__op_->__rcvr_, (_As&&) __as...);
-        }
-
-        friend auto tag_invoke(get_env_t, const __t& __self) noexcept
-          -> env_of_t<const _Receiver&> {
-          return get_env(__self.__op_->__rcvr_);
-        }
-      };
-    };
-
-    template <class _CvrefSender, class _ReceiverId, class _Fun>
-    struct __operation {
-      using _Receiver = stdexec::__t<_ReceiverId>;
-      using __receiver_id = __receiver<_ReceiverId, _Fun>;
-      using __receiver_t = stdexec::__t<__receiver_id>;
-
-      struct __t : __immovable {
-        using __id = __operation;
-        typename __receiver_id::__data __data_;
-        connect_result_t<_CvrefSender, __receiver_t> __op_;
-
-        __t(_CvrefSender&& __sndr, _Receiver __rcvr, _Fun __fun) //
-          noexcept(__nothrow_decay_copyable<_Receiver>           //
-                     && __nothrow_decay_copyable<_Fun>           //
-                       && __nothrow_connectable<_CvrefSender, __receiver_t>)
-          : __data_{(_Receiver&&) __rcvr, (_Fun&&) __fun}
-          , __op_(connect((_CvrefSender&&) __sndr, __receiver_t{&__data_})) {
-        }
-
-        friend void tag_invoke(start_t, __t& __self) noexcept {
-          start(__self.__op_);
-        }
-      };
-    };
-
     inline constexpr __mstring __upon_error_context =
       "In stdexec::upon_error(Sender, Function)..."__csz;
     using __on_not_callable = __callable_error<__upon_error_context>;
@@ -3368,22 +3307,6 @@ namespace stdexec {
         __with_error_invoke_t< set_error_t, _Fun, _CvrefSender, _Env, __on_not_callable>,
         __q<__compl_sigs::__default_set_value>,
         __mbind_front<__mtry_catch_q<__set_value_invoke_t, __on_not_callable>, _Fun>>;
-
-    template <class _Receiver>
-    struct __connect_fn {
-      _Receiver& __rcvr_;
-
-      template <class _Fun, class _Child>
-      using __operation_t = __t<__operation<_Child, __id<_Receiver>, __decay_t<_Fun>>>;
-
-      template <class _Fun, class _Child>
-      auto operator()(__ignore, _Fun&& __fun, _Child&& __child) const
-        noexcept(__nothrow_constructible_from<__operation_t<_Fun, _Child>, _Child, _Receiver, _Fun>)
-          -> __operation_t<_Fun, _Child> {
-        return __operation_t<_Fun, _Child>{
-          (_Child&&) __child, (_Receiver&&) __rcvr_, (_Fun&&) __fun};
-      }
-    };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     struct upon_error_t : __with_default_get_env<upon_error_t> {
@@ -3410,23 +3333,20 @@ namespace stdexec {
           _Fun),
         tag_invoke_t(upon_error_t, _Sender, _Fun)>;
 
-#if STDEXEC_FRIENDSHIP_IS_LEXICAL()
-     private:
-      template <class...>
-      friend struct stdexec::__sexpr;
-#endif
-
       template <sender_expr_for<upon_error_t> _Sender, class _Env>
       static auto get_completion_signatures(_Sender&&, _Env&&)
         -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env> {
         return {};
       }
 
-      template <sender_expr_for<upon_error_t> _Sender, receiver _Receiver>
-      static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-        __nothrow_callable< __sexpr_apply_t, _Sender, __connect_fn<_Receiver>>)
-        -> __call_result_t< __sexpr_apply_t, _Sender, __connect_fn<_Receiver>> {
-        return __sexpr_apply((_Sender&&) __sndr, __connect_fn<_Receiver>{__rcvr});
+      template <class _Data, class _Receiver, class _Tag, class... _Args>
+      static void complete(_Data&& __data, _Receiver&& __rcvr, _Tag, _Args&&... __args) noexcept {
+        if constexpr (std::same_as<_Tag, set_error_t>) {
+          stdexec::__set_value_invoke(
+            std::move(__rcvr), (_Data&&) __data, (_Args&&) __args...);
+        } else {
+          _Tag()(std::move(__rcvr), (_Args&&) __args...);
+        }
       }
     };
   }
@@ -3437,67 +3357,6 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.upon_stopped]
   namespace __upon_stopped {
-    template <class _ReceiverId, class _Fun>
-    struct __receiver {
-      using _Receiver = stdexec::__t<_ReceiverId>;
-
-      struct __data {
-        _Receiver __rcvr_;
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
-      };
-
-      struct __t {
-        using is_receiver = void;
-        using __id = __receiver;
-        __data* __op_;
-
-        // Customize set_value by invoking the invocable and passing the result
-        // to the downstream receiver
-        template <__same_as<set_stopped_t> _Tag>
-          requires __invocable<_Fun> && __receiver_of_invoke_result<_Receiver, _Fun>
-        friend void tag_invoke(_Tag, __t&& __self) noexcept {
-          stdexec::__set_value_invoke(
-            (_Receiver&&) __self.__op_->__rcvr_, (_Fun&&) __self.__op_->__fun_);
-        }
-
-        template <__one_of<set_value_t, set_error_t> _Tag, class... _As>
-          requires __callable<_Tag, _Receiver, _As...>
-        friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept {
-          __tag((_Receiver&&) __self.__op_->__rcvr_, (_As&&) __as...);
-        }
-
-        friend auto tag_invoke(get_env_t, const __t& __self) noexcept
-          -> env_of_t<const _Receiver&> {
-          return get_env(__self.__op_->__rcvr_);
-        }
-      };
-    };
-
-    template <class _CvrefSender, class _ReceiverId, class _Fun>
-    struct __operation {
-      using _Receiver = stdexec::__t<_ReceiverId>;
-      using __receiver_id = __receiver<_ReceiverId, _Fun>;
-      using __receiver_t = stdexec::__t<__receiver_id>;
-
-      struct __t : __immovable {
-        using __id = __operation;
-        typename __receiver_id::__data __data_;
-        connect_result_t<_CvrefSender, __receiver_t> __op_;
-
-        __t(_CvrefSender&& __sndr, _Receiver __rcvr, _Fun __fun) //
-          noexcept(__nothrow_decay_copyable<_Receiver>           //
-                     && __nothrow_decay_copyable<_Fun>           //
-                       && __nothrow_connectable<_CvrefSender, __receiver_t>)
-          : __data_{(_Receiver&&) __rcvr, (_Fun&&) __fun}
-          , __op_(connect((_CvrefSender&&) __sndr, __receiver_t{&__data_})) {
-        }
-
-        friend void tag_invoke(start_t, __t& __self) noexcept {
-          start(__self.__op_);
-        }
-      };
-    };
-
     inline constexpr __mstring __upon_stopped_context =
       "In stdexec::upon_stopped(Sender, Function)..."__csz;
     using __on_not_callable = __callable_error<__upon_stopped_context>;
@@ -3511,22 +3370,6 @@ namespace stdexec {
         __q<__compl_sigs::__default_set_value>,
         __q<__compl_sigs::__default_set_error>,
         __set_value_invoke_t<_Fun>>;
-
-    template <class _Receiver>
-    struct __connect_fn {
-      _Receiver& __rcvr_;
-
-      template <class _Fun, class _Child>
-      using __operation_t = __t<__operation<_Child, __id<_Receiver>, __decay_t<_Fun>>>;
-
-      template <class _Fun, class _Child>
-      auto operator()(__ignore, _Fun&& __fun, _Child&& __child) const
-        noexcept(__nothrow_constructible_from<__operation_t<_Fun, _Child>, _Child, _Receiver, _Fun>)
-          -> __operation_t<_Fun, _Child> {
-        return __operation_t<_Fun, _Child>{
-          (_Child&&) __child, (_Receiver&&) __rcvr_, (_Fun&&) __fun};
-      }
-    };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     struct upon_stopped_t : __with_default_get_env<upon_stopped_t> {
@@ -3556,23 +3399,20 @@ namespace stdexec {
           _Fun),
         tag_invoke_t(upon_stopped_t, _Sender, _Fun)>;
 
-#if STDEXEC_FRIENDSHIP_IS_LEXICAL()
-     private:
-      template <class...>
-      friend struct stdexec::__sexpr;
-#endif
-
       template <sender_expr_for<upon_stopped_t> _Sender, class _Env>
       static auto get_completion_signatures(_Sender&&, _Env&&)
         -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env> {
         return {};
       }
 
-      template <sender_expr_for<upon_stopped_t> _Sender, receiver _Receiver>
-      static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-        __nothrow_callable< __sexpr_apply_t, _Sender, __connect_fn<_Receiver>>)
-        -> __call_result_t< __sexpr_apply_t, _Sender, __connect_fn<_Receiver>> {
-        return __sexpr_apply((_Sender&&) __sndr, __connect_fn<_Receiver>{__rcvr});
+      template <class _Data, class _Receiver, class _Tag, class... _Args>
+      static void complete(_Data&& __data, _Receiver&& __rcvr, _Tag, _Args&&... __args) noexcept {
+        if constexpr (std::same_as<_Tag, set_stopped_t>) {
+          stdexec::__set_value_invoke(
+            std::move(__rcvr), (_Data&&) __data, (_Args&&) __args...);
+        } else {
+          _Tag()(std::move(__rcvr), (_Args&&) __args...);
+        }
       }
     };
   }
