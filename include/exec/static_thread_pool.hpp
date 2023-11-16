@@ -626,8 +626,8 @@ namespace exec {
       ++idx;
     }
     remote_queue* correct_queue = this_id == queue.id_ ? &queue : get_remote_queue();
-    std::size_t nThreads = available_parallelism();
-    for (std::size_t i = 0; i < nThreads; ++i) {
+    std::uint32_t nThreads = available_parallelism();
+    for (std::uint32_t i = 0; i < nThreads; ++i) {
       auto [i0, iEnd] = even_share(nTasks, i, available_parallelism());
       if (i0 == iEnd) {
         continue;
@@ -676,8 +676,8 @@ namespace exec {
     if (victims_.empty()) {
       return {nullptr, index_};
     }
-    std::uniform_int_distribution<std::uint32_t> dist(0, victims_.size() - 1);
-    std::uint32_t victimIndex = dist(rng_);
+    std::uniform_int_distribution<std::size_t> dist(0, victims_.size() - 1);
+    std::size_t victimIndex = dist(rng_);
     auto& v = victims_[victimIndex];
     return {v.try_steal(), v.index()};
   }
