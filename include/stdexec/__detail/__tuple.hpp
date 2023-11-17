@@ -34,6 +34,7 @@ namespace stdexec {
     {};
 
     template <class... _Ts>
+    STDEXEC_ATTRIBUTE((host, device))
     __tuple(_Ts...) -> __tuple<__indices_for<_Ts...>, _Ts...>;
 
     template <std::size_t _Idx, class _Ty>

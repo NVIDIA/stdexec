@@ -132,8 +132,14 @@ namespace stdexec {
       using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
       using __data_t = typename __decay_t<_Sexpr>::__data_t;
 
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
-      STDEXEC_ATTRIBUTE((no_unique_address)) __data_t __data_;
+      STDEXEC_IMMOVABLE(__op_base);
+
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS __data_t __data_;
+
+      __op_base(_Receiver __rcvr, __data_t __data)
+        : __rcvr_(std::move(__rcvr))
+        , __data_(std::move(__data)) { }
 
       _Receiver& __rcvr() noexcept {
         return __rcvr_;
@@ -157,14 +163,13 @@ namespace stdexec {
       using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
       using __data_t = typename __decay_t<_Sexpr>::__data_t;
 
-      STDEXEC_ATTRIBUTE((no_unique_address)) __data_t __data_;
+      STDEXEC_IMMOVABLE(__op_base);
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS __data_t __data_;
 
       __op_base(_Receiver __rcvr, __data_t __data)
         : __data_(std::move(__data)) {
         STDEXEC_ASSERT(this->__rcvr().__op_ == __rcvr.__op_);
       }
-
-      __op_base(__op_base&&) = delete;
 
       _Receiver __rcvr() const noexcept {
         return _Receiver::__from_op_state(             //
@@ -293,6 +298,7 @@ namespace stdexec {
       template <same_as<start_t> _Tag2>
       STDEXEC_ATTRIBUTE((always_inline))
       friend void tag_invoke(_Tag2, __op_state& __self) noexcept {
+        using __tag_t = typename __op_state::__tag_t; // workaround nvc++ bug
         __tup::__apply(
           [&](auto&... __ops) noexcept {
             __start_impl<__tag_t>().start(__self.__data_, __self.__rcvr(), __ops...);
@@ -303,6 +309,7 @@ namespace stdexec {
       template <class _Tag2, class... _Args>
       STDEXEC_ATTRIBUTE((always_inline))
       void __complete(_Tag2, _Args&&... __args) noexcept {
+        using __tag_t = typename __op_state::__tag_t; // workaround nvc++ bug
         __complete_impl<__tag_t>().complete(
           (__data_t&&) this->__data_, this->__rcvr(), _Tag2(), (_Args&&) __args...);
       }
