@@ -139,7 +139,8 @@ namespace stdexec {
 
       __op_base(_Receiver __rcvr, __data_t __data)
         : __rcvr_(std::move(__rcvr))
-        , __data_(std::move(__data)) { }
+        , __data_(std::move(__data)) {
+      }
 
       _Receiver& __rcvr() noexcept {
         return __rcvr_;
@@ -151,14 +152,13 @@ namespace stdexec {
     };
 
     template <class _Receiver>
-    using __sexpr_connected_with =
-      __mapply<
-        __mbind_front_q<__m_at, typename _Receiver::__index>,
-        typename __call_result_t<__impl_of<typename _Receiver::__sexpr>, __cp, __get_meta>::__child>;
+    using __sexpr_connected_with = __mapply<
+      __mbind_front_q<__m_at, typename _Receiver::__index>,
+      typename __call_result_t<__impl_of<typename _Receiver::__sexpr>, __cp, __get_meta>::__child>;
 
     template <class _Sexpr, class _Receiver>
       requires __is_instance_of<_Receiver, __receiver>
-        && __decays_to<_Sexpr, __sexpr_connected_with<_Receiver>>
+            && __decays_to<_Sexpr, __sexpr_connected_with<_Receiver>>
     struct __op_base<_Sexpr, _Receiver> {
       using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
       using __data_t = typename __decay_t<_Sexpr>::__data_t;
@@ -379,11 +379,11 @@ namespace stdexec {
     STDEXEC_ATTRIBUTE((always_inline))                               //
     friend auto tag_invoke(_Tag, _Self&& __self, _Receiver&& __rcvr) //
       noexcept(noexcept(
-        __detail::__connect_impl<__tag_t>().connect((_Self&&) __self, (_Receiver&&) __rcvr))) //
-      -> decltype(__if_c<same_as<_Tag, connect_t>, __detail::__connect_impl<__tag_t>>().connect(
-        (_Self&&) __self,
-        (_Receiver&&) __rcvr)) {
-      return __detail::__connect_impl<__tag_t>().connect((_Self&&) __self, (_Receiver&&) __rcvr);
+        __detail::__connect_impl<__tag_t>::connect((_Self&&) __self, (_Receiver&&) __rcvr))) //
+      -> __msecond<
+        __if_c<same_as<_Tag, connect_t>>,
+        decltype(__detail::__connect_impl<__tag_t>::connect((_Self&&) __self, (_Receiver&&) __rcvr))> {
+      return __detail::__connect_impl<__tag_t>::connect((_Self&&) __self, (_Receiver&&) __rcvr);
     }
 
     template <class _Sender, class _ApplyFn>

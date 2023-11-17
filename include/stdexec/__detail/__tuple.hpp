@@ -22,7 +22,7 @@ namespace stdexec {
   namespace __tup {
     template <class _Ty, std::size_t _Idx>
     struct __box {
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Ty __value;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS _Ty __value;
     };
 
     template <class _Idx, class... _Ts>
