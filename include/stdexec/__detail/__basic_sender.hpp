@@ -55,7 +55,7 @@ namespace stdexec {
     };
 
     STDEXEC_PRAGMA_PUSH()
-    STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-local-typedef")
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-local-typedefs")
 
     struct __get_meta {
       template <class _Tag, class _Data, class... _Children>

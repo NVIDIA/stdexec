@@ -671,7 +671,7 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   inline constexpr struct __get_early_domain_t {
     template <class _Sender, class _Default = default_domain>
-    auto operator()(const _Sender& __sndr, _Default __def = {}) const noexcept {
+    auto operator()(const _Sender&, _Default __def = {}) const noexcept {
       if constexpr (__callable<get_domain_t, env_of_t<_Sender>>) {
         return __call_result_t<get_domain_t, env_of_t<_Sender>>();
       } else if constexpr (__detail::__has_completion_domain<_Sender>) {
@@ -5718,7 +5718,7 @@ namespace stdexec {
       }
 
       template <class _Env>
-      static auto __transform_sender_fn(const _Env& __env) {
+      static auto __transform_sender_fn(const _Env&) {
         return [&]<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
           auto __sched = get_completion_scheduler<set_value_t>(__data);
           return schedule_from(std::move(__sched), (_Child&&) __child);
@@ -6102,7 +6102,7 @@ namespace stdexec {
 
       template <class _Sender, class _Env>
         requires __is_not_instance_of<__id<__decay_t<_Sender>>, __sender>
-      static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
+      static auto transform_sender(_Sender&& __sndr, const _Env&) {
         return __sexpr_apply(
           (_Sender&&) __sndr,
           []<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
