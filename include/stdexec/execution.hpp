@@ -378,7 +378,7 @@ namespace stdexec {
   inline constexpr get_delegatee_scheduler_t get_delegatee_scheduler{};
   inline constexpr get_allocator_t get_allocator{};
   inline constexpr get_stop_token_t get_stop_token{};
-#if !STDEXEC_GCC() || defined(__OPTIMIZE__)
+#if !STDEXEC_GCC() || defined(__OPTIMIZE_SIZE__)
   template <__completion_tag _CPO>
   inline constexpr get_completion_scheduler_t<_CPO> get_completion_scheduler{};
 #else
