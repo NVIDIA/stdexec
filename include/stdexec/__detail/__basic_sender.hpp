@@ -96,6 +96,95 @@ namespace stdexec {
     template <class _Sexpr, class _Receiver>
     struct __op_state;
 
+    ////////////////////////////////////////////////////////////////////////////
+    // for testing whether a type has certain named members
+    struct __with_named_mbrs {
+      __none_such start;
+      __none_such connect;
+      __none_such get_completion_signatures;
+      __none_such get_env;
+      __none_such get_state;
+      __none_such complete;
+    };
+
+    template <class _Tag>
+    struct __probe_named_mbrs
+      : _Tag
+      , __with_named_mbrs { };
+
+    template <class _Tag>
+    concept __has_start_member = !requires {
+      { &__probe_named_mbrs<_Tag>::start } -> same_as<__none_such __with_named_mbrs::*>;
+    };
+
+    template <class _Tag>
+    concept __has_connect_member = !requires {
+      { &__probe_named_mbrs<_Tag>::connect } -> same_as<__none_such __with_named_mbrs::*>;
+    };
+
+    template <class _Tag>
+    concept __has_get_state_member = !requires {
+      { &__probe_named_mbrs<_Tag>::get_state } -> same_as<__none_such __with_named_mbrs::*>;
+    };
+
+    template <class _Tag>
+    concept __has_complete_member = !requires {
+      { &__probe_named_mbrs<_Tag>::complete } -> same_as<__none_such __with_named_mbrs::*>;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////
+    // default behaviors for the sender/receiver/op state basis operations,
+    // used by __sexpr
+    struct __default_basis_ops {
+      // By default, start child operations in start
+      template <class _Data, class _Receiver, class... _ChildOps>
+      STDEXEC_ATTRIBUTE((always_inline))
+      static void start(_Data&&, _Receiver&&, _ChildOps&... __ops) noexcept {
+        static_assert(sizeof...(__ops) == 1, "I don't know how to start this operation.");
+        (stdexec::start(__ops), ...);
+      }
+
+      // By default, forward completions to the outer receiver
+      template <class _Data, class _Receiver, class _SetTag, class... _Args>
+        requires __callable<_SetTag, _Receiver, _Args...>
+      STDEXEC_ATTRIBUTE((always_inline)) //
+        static void complete(
+          _Data&& __data,
+          _Receiver&& __rcvr,
+          _SetTag,
+          _Args&&... __args) noexcept {
+        _SetTag()((_Receiver&&) __rcvr, (_Args&&) __args...);
+      }
+
+      // By default, return a generic operation state
+      template <class _Sender, class _Receiver>
+      static decltype(auto) get_state(_Sender&& __sndr, _Receiver&) {
+        return __sndr.apply((_Sender&&) __sndr, __get_data());
+      }
+
+      // By default, return a generic operation state
+      template <class _Sender, class _Receiver>
+      static auto connect(_Sender&& __sndr, _Receiver __rcvr) -> __op_state<_Sender, _Receiver> {
+        return __op_state<_Sender, _Receiver>{(_Sender&&) __sndr, (_Receiver&&) __rcvr};
+      }
+    };
+
+    template <class _Tag>
+    using __start_impl = __if_c<__has_start_member<_Tag>, _Tag, __default_basis_ops>;
+
+    template <class _Tag>
+    using __complete_impl = __if_c<__has_complete_member<_Tag>, _Tag, __default_basis_ops>;
+
+    template <class _Tag>
+    using __get_state_impl = __if_c<__has_get_state_member<_Tag>, _Tag, __default_basis_ops>;
+
+    template <class _Tag>
+    using __connect_impl = __if_c<__has_connect_member<_Tag>, _Tag, __default_basis_ops>;
+
+    template <class _Tag, class _Sexpr, class _Receiver>
+    using __state_type_t =
+      __decay_t<decltype(__get_state_impl<_Tag>::get_state(__declval<_Sexpr>(), __declval<_Receiver&>()))>;
+
     template <class _Receiver, class _Sexpr, class _Idx>
     struct __receiver {
       using is_receiver = void;
@@ -130,16 +219,16 @@ namespace stdexec {
     template <class _Sexpr, class _Receiver>
     struct __op_base {
       using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
-      using __data_t = typename __decay_t<_Sexpr>::__data_t;
+      using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
       STDEXEC_IMMOVABLE(__op_base);
 
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS __state_t __state_;
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS __data_t __data_;
 
-      __op_base(_Receiver __rcvr, __data_t __data)
-        : __rcvr_(std::move(__rcvr))
-        , __data_(std::move(__data)) {
+      __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr)
+        : __state_(__get_state_impl<__tag_t>::get_state((_Sexpr&&) __sndr, __rcvr))
+        , __rcvr_((_Receiver&&) __rcvr) {
       }
 
       _Receiver& __rcvr() noexcept {
@@ -161,13 +250,13 @@ namespace stdexec {
             && __decays_to<_Sexpr, __sexpr_connected_with<_Receiver>>
     struct __op_base<_Sexpr, _Receiver> {
       using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
-      using __data_t = typename __decay_t<_Sexpr>::__data_t;
+      using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
       STDEXEC_IMMOVABLE(__op_base);
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS __data_t __data_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS __state_t __state_;
 
-      __op_base(_Receiver __rcvr, __data_t __data)
-        : __data_(std::move(__data)) {
+      __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr)
+        : __state_(__get_state_impl<__tag_t>::get_state((_Sexpr&&) __sndr, __rcvr)) {
         STDEXEC_ASSERT(this->__rcvr().__op_ == __rcvr.__op_);
       }
 
@@ -199,76 +288,6 @@ namespace stdexec {
     template <class _Sexpr, class _Receiver>
     __connect_fn(__op_state<_Sexpr, _Receiver>*) -> __connect_fn<_Sexpr, _Receiver>;
 
-    ////////////////////////////////////////////////////////////////////////////
-    // for testing whether a type has certain named members
-    struct __with_named_mbrs {
-      __none_such start;
-      __none_such connect;
-      __none_such get_completion_signatures;
-      __none_such get_env;
-      __none_such complete;
-    };
-
-    template <class _Tag>
-    struct __probe_named_mbrs
-      : _Tag
-      , __with_named_mbrs { };
-
-    template <class _Tag>
-    concept __has_start_member = !requires {
-      { &__probe_named_mbrs<_Tag>::start } -> same_as<__none_such __with_named_mbrs::*>;
-    };
-
-    template <class _Tag>
-    concept __has_connect_member = !requires {
-      { &__probe_named_mbrs<_Tag>::connect } -> same_as<__none_such __with_named_mbrs::*>;
-    };
-
-    template <class _Tag>
-    concept __has_complete_member = !requires {
-      { &__probe_named_mbrs<_Tag>::complete } -> same_as<__none_such __with_named_mbrs::*>;
-    };
-
-    ////////////////////////////////////////////////////////////////////////////
-    // default behaviors for the sender/receiver/op state basis operations,
-    // used by __sexpr
-    struct __default_basis_ops {
-      // By default, start child operations in start
-      template <class _Data, class _Receiver, class... _ChildOps>
-      STDEXEC_ATTRIBUTE((always_inline))
-      static void start(_Data&&, _Receiver&&, _ChildOps&... __ops) noexcept {
-        static_assert(sizeof...(__ops) == 1, "I don't know how to start this operation.");
-        (stdexec::start(__ops), ...);
-      }
-
-      // By default, forward completions to the outer receiver
-      template <class _Data, class _Receiver, class _SetTag, class... _Args>
-        requires __callable<_SetTag, _Receiver, _Args...>
-      STDEXEC_ATTRIBUTE((always_inline)) //
-        static void complete(
-          _Data&& __data,
-          _Receiver&& __rcvr,
-          _SetTag,
-          _Args&&... __args) noexcept {
-        _SetTag()((_Receiver&&) __rcvr, (_Args&&) __args...);
-      }
-
-      // By default, return a generic operation state
-      template <class _Sender, class _Receiver>
-      static auto connect(_Sender&& __sndr, _Receiver __rcvr) -> __op_state<_Sender, _Receiver> {
-        return __op_state<_Sender, _Receiver>{(_Sender&&) __sndr, (_Receiver&&) __rcvr};
-      }
-    };
-
-    template <class _Tag>
-    using __start_impl = __if_c<__has_start_member<_Tag>, _Tag, __default_basis_ops>;
-
-    template <class _Tag>
-    using __complete_impl = __if_c<__has_complete_member<_Tag>, _Tag, __default_basis_ops>;
-
-    template <class _Tag>
-    using __connect_impl = __if_c<__has_connect_member<_Tag>, _Tag, __default_basis_ops>;
-
     template <class _Sexpr, class _Receiver>
     struct __op_state : __op_base<_Sexpr, _Receiver> {
       using __meta_t = typename __decay_t<_Sexpr>::__meta_t;
@@ -280,7 +299,7 @@ namespace stdexec {
         return __sexpr.apply((_Sexpr&&) __sexpr, __connect_fn{__self});
       }
 
-      using __inner_ops_t = decltype(__connect(nullptr, __declval<_Sexpr>()));
+      using __inner_ops_t = decltype(__op_state::__connect(nullptr, __declval<_Sexpr>()));
       __inner_ops_t __inner_ops_;
 
       template <std::size_t _Idx>
@@ -290,9 +309,8 @@ namespace stdexec {
       }
 
       __op_state(_Sexpr&& __sexpr, _Receiver __rcvr)
-        : __op_state::
-          __op_base{(_Receiver&&) __rcvr, __sexpr.apply((_Sexpr&&) __sexpr, __get_data())}
-        , __inner_ops_(__connect(this, (_Sexpr&&) __sexpr)) {
+        : __op_state::__op_base{(_Sexpr&&) __sexpr, (_Receiver&&) __rcvr}
+        , __inner_ops_(__op_state::__connect(this, (_Sexpr&&) __sexpr)) {
       }
 
       template <same_as<start_t> _Tag2>
@@ -301,7 +319,7 @@ namespace stdexec {
         using __tag_t = typename __op_state::__tag_t; // workaround nvc++ bug
         __tup::__apply(
           [&](auto&... __ops) noexcept {
-            __start_impl<__tag_t>().start(__self.__data_, __self.__rcvr(), __ops...);
+            __start_impl<__tag_t>::start(__self.__state_, __self.__rcvr(), __ops...);
           },
           __self.__inner_ops_);
       }
@@ -310,8 +328,8 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline))
       void __complete(_Tag2, _Args&&... __args) noexcept {
         using __tag_t = typename __op_state::__tag_t; // workaround nvc++ bug
-        __complete_impl<__tag_t>().complete(
-          (__data_t&&) this->__data_, this->__rcvr(), _Tag2(), (_Args&&) __args...);
+        __complete_impl<__tag_t>::complete(
+          std::move(this->__state_), std::move(this->__rcvr()), _Tag2(), (_Args&&) __args...);
       }
 
       STDEXEC_ATTRIBUTE((always_inline)) //
