@@ -37,6 +37,9 @@ namespace stdexec {
     STDEXEC_ATTRIBUTE((host, device))
     __tuple(_Ts...) -> __tuple<__indices_for<_Ts...>, _Ts...>;
 
+    template <class... _Ts>
+    using __tuple_for = __tuple<__indices_for<_Ts...>, _Ts...>;
+
     template <std::size_t _Idx, class _Ty>
     STDEXEC_ATTRIBUTE((always_inline))
     constexpr _Ty&& __get(__box<_Ty, _Idx>&& __self) noexcept {
