@@ -4926,7 +4926,9 @@ namespace stdexec {
         _SetTag,
         _Child,
         _Env,
-        __mtry_catch< __mbind_front_q<__call_result_t, _Fun>, __on_not_callable<_SetTag>>,
+        __mtry_catch<
+          __transform<__q<__decay_ref>, __mbind_front_q<__call_result_t, _Fun>>,
+          __on_not_callable<_SetTag>>,
         __q<__domain::__common_domain_t>>;
 
       static auto get_env(__ignore) noexcept {
