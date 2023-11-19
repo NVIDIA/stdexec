@@ -283,7 +283,7 @@ namespace stdexec {
 
         template <std::size_t... _Is, class _Tag, class _Data, class... _Child>
         auto operator()(__indices<_Is...>, _Tag, _Data&& __data, _Child&&... __child) const
-          -> __tup::__tuple_for<connect_result_t<_Child, __receiver_t<_Is>>...> {
+          -> __tup::__tuple<__indices<_Is...>, connect_result_t<_Child, __receiver_t<_Is>>...> {
           return __tuple{connect((_Child&&) __child, __receiver_t<_Is>{__op_})...};
         }
       };
@@ -296,18 +296,16 @@ namespace stdexec {
     };
 
     template <class _Sexpr, class _Receiver>
-    __connect_fn(__op_state<_Sexpr, _Receiver>*) -> __connect_fn<_Sexpr, _Receiver>;
-
-    template <class _Sexpr, class _Receiver>
     struct __op_state : __op_base<_Sexpr, _Receiver> {
       using __meta_t = typename __decay_t<_Sexpr>::__meta_t;
       using __tag_t = typename __meta_t::__tag;
       using __data_t = typename __meta_t::__data;
       using __children_t = typename __meta_t::__child;
+      using __connect_t = __connect_fn<_Sexpr, _Receiver>;
 
       static auto __connect(__op_state* __self, _Sexpr&& __sexpr)
-        -> decltype(__sexpr.apply((_Sexpr&&) __sexpr, __connect_fn{__self})) {
-        return __sexpr.apply((_Sexpr&&) __sexpr, __connect_fn{__self});
+        -> __call_result_t<__impl_of<_Sexpr>, __copy_cvref_fn<_Sexpr>, __connect_t> {
+        return __sexpr.apply((_Sexpr&&) __sexpr, __connect_t{__self});
       }
 
       using __inner_ops_t = decltype(__op_state::__connect(nullptr, __declval<_Sexpr>()));

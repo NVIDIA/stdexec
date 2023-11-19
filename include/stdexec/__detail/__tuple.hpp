@@ -37,8 +37,17 @@ namespace stdexec {
     STDEXEC_ATTRIBUTE((host, device))
     __tuple(_Ts...) -> __tuple<__indices_for<_Ts...>, _Ts...>;
 
+#if STDEXEC_GCC()
+    template <class... _Ts>
+    struct __mk_tuple {
+      using __t = __tuple<__indices_for<_Ts...>, _Ts...>;
+    };
+    template <class... _Ts>
+    using __tuple_for = __t<__mk_tuple<_Ts...>>;
+#else
     template <class... _Ts>
     using __tuple_for = __tuple<__indices_for<_Ts...>, _Ts...>;
+#endif
 
     template <std::size_t _Idx, class _Ty>
     STDEXEC_ATTRIBUTE((always_inline))
