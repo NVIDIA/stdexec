@@ -282,7 +282,7 @@ namespace stdexec {
         __op_state<_Sexpr, _Receiver>* __op_;
 
         template <std::size_t... _Is, class _Tag, class _Data, class... _Child>
-        auto operator()(__indices<_Is...>, _Tag, _Data&& __data, _Child&&... __child) const
+        auto operator()(__indices<_Is...>, _Tag, _Data&&, _Child&&... __child) const
           -> __tup::__tuple<__indices<_Is...>, connect_result_t<_Child, __receiver_t<_Is>>...> {
           return __tuple{connect((_Child&&) __child, __receiver_t<_Is>{__op_})...};
         }
