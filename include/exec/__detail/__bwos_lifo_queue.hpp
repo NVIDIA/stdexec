@@ -30,9 +30,16 @@
 // Copyright (c) 2019 Maxim Egorushkin. MIT License.
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+#if STDEXEC_MSVC()
+#include <intrin.h>
+#endif
 namespace exec::bwos {
   static inline void spin_loop_pause() noexcept {
+#if STDEXEC_MSVC()
+    _mm_pause();
+#else
     __builtin_ia32_pause();
+#endif
   }
 }
 #elif defined(__arm__) || defined(__aarch64__) || defined(_M_ARM64)
@@ -170,7 +177,7 @@ namespace exec::bwos {
     std::size_t block_size,
     Allocator allocator)
     : blocks_(
-      std::max(2ul, std::bit_ceil(num_blocks)),
+      std::max(static_cast<size_t>(2), std::bit_ceil(num_blocks)),
       block_type(block_size, allocator),
       allocator_of_t<block_type>(allocator))
     , mask_(blocks_.size() - 1) {
