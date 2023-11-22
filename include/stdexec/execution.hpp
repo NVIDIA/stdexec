@@ -115,10 +115,6 @@ namespace stdexec {
     };
   } // namespace __domain
 
-  namespace __write_ {
-    struct __write_t;
-  }
-
   struct default_domain {
     default_domain() = default;
 
@@ -4527,76 +4523,6 @@ namespace stdexec {
   // [execution.senders.adaptors.stopped_as_optional]
   // [execution.senders.adaptors.stopped_as_error]
   namespace __stopped_as_xxx {
-    template <class _CvrefSenderId, class _ReceiverId>
-    struct __operation;
-
-    template <class _CvrefSenderId, class _ReceiverId>
-    struct __receiver {
-      using _Sender = stdexec::__t<_CvrefSenderId>;
-      using _Receiver = stdexec::__t<_ReceiverId>;
-
-      struct __t {
-        using is_receiver = void;
-        using __id = __receiver;
-
-        template <same_as<set_value_t> _Tag, class _Ty>
-        friend void tag_invoke(_Tag, __t&& __self, _Ty&& __a) noexcept {
-          try {
-            using _Value = __decay_t<__single_sender_value_t<_Sender, env_of_t<_Receiver>>>;
-            static_assert(constructible_from<_Value, _Ty>);
-            stdexec::set_value(
-              (_Receiver&&) __self.__op_->__rcvr_, std::optional<_Value>{(_Ty&&) __a});
-          } catch (...) {
-            stdexec::set_error((_Receiver&&) __self.__op_->__rcvr_, std::current_exception());
-          }
-        }
-
-        template <same_as<set_error_t> _Tag, class _Error>
-        friend void tag_invoke(_Tag, __t&& __self, _Error&& __error) noexcept {
-          stdexec::set_error((_Receiver&&) __self.__op_->__rcvr_, (_Error&&) __error);
-        }
-
-        template <same_as<set_stopped_t> _Tag>
-        friend void tag_invoke(_Tag, __t&& __self) noexcept {
-          using _Value = __decay_t<__single_sender_value_t<_Sender, env_of_t<_Receiver>>>;
-          stdexec::set_value(
-            (_Receiver&&) __self.__op_->__rcvr_, std::optional<_Value>{std::nullopt});
-        }
-
-        template <same_as<get_env_t> _Tag>
-        friend env_of_t<_Receiver> tag_invoke(_Tag, const __t& __self) noexcept {
-          return stdexec::get_env(__self.__op_->__rcvr_);
-        }
-
-        stdexec::__t<__operation<_CvrefSenderId, _ReceiverId>>* __op_;
-      };
-    };
-
-    template <class _CvrefSenderId, class _ReceiverId>
-    struct __operation {
-      using _Sender = stdexec::__t<_CvrefSenderId>;
-      using _Receiver = stdexec::__t<_ReceiverId>;
-      using __receiver_t = stdexec::__t<__receiver<_CvrefSenderId, _ReceiverId>>;
-
-      struct __t {
-        using __id = __operation;
-
-        __t(_Sender&& __sndr, _Receiver&& __rcvr)
-          : __rcvr_((_Receiver&&) __rcvr)
-          , __op_state_(connect((_Sender&&) __sndr, __receiver_t{this})) {
-        }
-
-        STDEXEC_IMMOVABLE(__t);
-
-        friend void tag_invoke(start_t, __t& __self) noexcept {
-          start(__self.__op_state_);
-        }
-
-        _Receiver __rcvr_;
-        connect_result_t<_Sender, __receiver_t> __op_state_;
-      };
-    };
-
     struct stopped_as_optional_t : __with_default_get_env<stopped_as_optional_t> {
       template <sender _Sender>
       auto operator()(_Sender&& __sndr) const {
@@ -4606,36 +4532,6 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline)) //
       __binder_back<stopped_as_optional_t> operator()() const noexcept {
         return {};
-      }
-
-#if STDEXEC_FRIENDSHIP_IS_LEXICAL()
-     private:
-      template <class...>
-      friend struct stdexec::__sexpr;
-#endif
-
-      template <class _CvrefSender, class _Receiver>
-      using __operation_t =
-        stdexec::__t<__operation<stdexec::__cvref_id<_CvrefSender>, stdexec::__id<_Receiver>>>;
-      template <class _CvrefSender, class _Receiver>
-      using __receiver_t =
-        stdexec::__t<__receiver<stdexec::__cvref_id<_CvrefSender>, stdexec::__id<_Receiver>>>;
-
-      template <class _Receiver>
-      struct __connect_fn {
-        _Receiver __rcvr_;
-
-        template <class _Child>
-        __operation_t<_Child, _Receiver> operator()(stopped_as_optional_t, __, _Child&& __child) {
-          return {(_Child&&) __child, std::move(__rcvr_)};
-        }
-      };
-
-      template <sender_expr_for<stopped_as_optional_t> _Self, receiver _Receiver>
-        requires __single_typed_sender<__child_of<_Self>, env_of_t<_Receiver>>
-              && sender_to<__child_of<_Self>, __receiver_t<__child_of<_Self>, _Receiver>>
-      static __operation_t<__child_of<_Self>, _Receiver> connect(_Self&& __self, _Receiver __rcvr) {
-        return __sexpr_apply((_Self&&) __self, __connect_fn<_Receiver>{(_Receiver&&) __rcvr});
       }
 
       template <class... _Tys>
@@ -4654,6 +4550,31 @@ namespace stdexec {
         __set_error_t,
         completion_signatures<>> {
         return {};
+      }
+
+      template <sender_expr_for<stopped_as_optional_t> _Self, class _Receiver>
+        requires __single_typed_sender<__child_of<_Self>, env_of_t<_Receiver>>
+      static auto get_state(_Self&&, _Receiver&) noexcept {
+        using _Value = __decay_t<__single_sender_value_t<__child_of<_Self>, env_of_t<_Receiver>>>;
+        return __mtype<_Value>();
+      }
+
+      template <class _State, class _Receiver, __completion_tag _Tag, class... _Args>
+      static void complete(_State, _Receiver&& __rcvr, _Tag, _Args&&... __args) noexcept {
+        if constexpr (same_as<_Tag, set_value_t>) {
+          try {
+            static_assert(constructible_from<__t<_State>, _Args...>);
+            stdexec::set_value(
+              (_Receiver&&) __rcvr, std::optional<__t<_State>>{(_Args&&) __args...});
+          } catch (...) {
+            stdexec::set_error((_Receiver&&) __rcvr, std::current_exception());
+          }
+        } else if constexpr (same_as<_Tag, set_error_t>) {
+          stdexec::set_error((_Receiver&&) __rcvr, (_Args&&) __args...);
+        } else {
+          stdexec::set_value(
+            (_Receiver&&) __rcvr, std::optional<__t<_State>>{std::nullopt});
+        }
       }
     };
 

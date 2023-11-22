@@ -76,14 +76,33 @@ namespace stdexec {
 
     STDEXEC_PRAGMA_POP()
 
-    struct __tie {
-      template <class _Tag, class _Data, class... _Child>
-      STDEXEC_ATTRIBUTE((always_inline))
-      constexpr auto operator()(_Tag, _Data&& __data, _Child&&... __child) const noexcept {
-        return std::tuple<_Tag, _Data&&, _Child&&...>{{}, (_Data&&) __data, (_Child&&) __child...};
-      }
-    };
+    template <class _Sender>
+    using __meta_of = __call_result_t<__impl_of<_Sender>, __copy_cvref_fn<_Sender>, __get_meta>;
+  } // namespace __detail
 
+  template <class _Sender>
+  using __tag_of = typename __detail::__meta_of<_Sender>::__tag;
+
+  template <class _Sender>
+  using __data_of = typename __detail::__meta_of<_Sender>::__data;
+
+  template <class _Sender, class _Continuation = __q<__types>>
+  using __children_of = //
+    __mapply< _Continuation, typename __detail::__meta_of<_Sender>::__child>;
+
+  template <class _Ny, class _Sender>
+  using __nth_child_of = __children_of<_Sender, __mbind_front_q<__m_at, _Ny>>;
+
+  template <std::size_t _Ny, class _Sender>
+  using __nth_child_of_c = __children_of<_Sender, __mbind_front_q<__m_at, __msize_t<_Ny>>>;
+
+  template <class _Sender>
+  using __child_of = __children_of<_Sender, __q<__mfront>>;
+
+  template <class _Sender>
+  inline constexpr std::size_t __nbr_children_of = __v<__children_of<_Sender, __msize>>;
+
+  namespace __detail {
     // Note: This is UB. UBSAN allows it for now.
     template <class _Parent, class _Child>
     _Parent* __parent_from_child(_Child* __child, _Child _Parent::*__mbr_ptr) noexcept {
@@ -132,6 +151,32 @@ namespace stdexec {
       { &__probe_named_mbrs<_Tag>::complete } -> same_as<__none_such __with_named_mbrs::*>;
     };
 
+    template <class _Sexpr, class _Receiver>
+    struct __connect_fn;
+
+    struct __default_basis_ops;
+
+    template <class _Tag>
+    using __start_impl = __if_c<__has_start_member<_Tag>, _Tag, __default_basis_ops>;
+
+    template <class _Tag>
+    using __complete_impl = __if_c<__has_complete_member<_Tag>, _Tag, __default_basis_ops>;
+
+    template <class _Tag>
+    using __get_state_impl = __if_c<__has_get_state_member<_Tag>, _Tag, __default_basis_ops>;
+
+    template <class _Tag>
+    using __connect_impl = __if_c<__has_connect_member<_Tag>, _Tag, __default_basis_ops>;
+
+    template <class _Tag, class _Sexpr, class _Receiver>
+    using __state_type_t =
+      __decay_t<decltype(__get_state_impl<_Tag>::get_state(__declval<_Sexpr>(), __declval<_Receiver&>()))>;
+
+    template <class _Sexpr, class _Receiver>
+    concept __connectable =
+      __callable<__impl_of<_Sexpr>, __copy_cvref_fn<_Sexpr>, __connect_fn<_Sexpr, _Receiver>>
+        && __mvalid<__state_type_t, __tag_of<_Sexpr>, _Sexpr, _Receiver>;
+
     ////////////////////////////////////////////////////////////////////////////
     // default behaviors for the sender/receiver/op state basis operations,
     // used by __sexpr
@@ -164,26 +209,11 @@ namespace stdexec {
 
       // By default, return a generic operation state
       template <class _Sender, class _Receiver>
+        requires __detail::__connectable<_Sender, _Receiver>
       static auto connect(_Sender&& __sndr, _Receiver __rcvr) -> __op_state<_Sender, _Receiver> {
         return __op_state<_Sender, _Receiver>{(_Sender&&) __sndr, (_Receiver&&) __rcvr};
       }
     };
-
-    template <class _Tag>
-    using __start_impl = __if_c<__has_start_member<_Tag>, _Tag, __default_basis_ops>;
-
-    template <class _Tag>
-    using __complete_impl = __if_c<__has_complete_member<_Tag>, _Tag, __default_basis_ops>;
-
-    template <class _Tag>
-    using __get_state_impl = __if_c<__has_get_state_member<_Tag>, _Tag, __default_basis_ops>;
-
-    template <class _Tag>
-    using __connect_impl = __if_c<__has_connect_member<_Tag>, _Tag, __default_basis_ops>;
-
-    template <class _Tag, class _Sexpr, class _Receiver>
-    using __state_type_t =
-      __decay_t<decltype(__get_state_impl<_Tag>::get_state(__declval<_Sexpr>(), __declval<_Receiver&>()))>;
 
     template <class _ReceiverId, class _Sexpr, class _Idx>
     struct __receiver {
@@ -557,33 +587,6 @@ namespace stdexec {
 
   template <class _Sender, class _ApplyFn>
   using __sexpr_apply_result_t = __call_result_t<__sexpr_apply_t, _Sender, _ApplyFn>;
-
-  namespace __detail {
-    template <class _Sender>
-    using __meta_of = __call_result_t<__sexpr_apply_t, _Sender, __detail::__get_meta>;
-  }
-
-  template <class _Sender>
-  using __tag_of = typename __detail::__meta_of<_Sender>::__tag;
-
-  template <class _Sender>
-  using __data_of = typename __detail::__meta_of<_Sender>::__data;
-
-  template <class _Sender, class _Continuation = __q<__types>>
-  using __children_of = //
-    __mapply< _Continuation, typename __detail::__meta_of<_Sender>::__child>;
-
-  template <class _Ny, class _Sender>
-  using __nth_child_of = __children_of<_Sender, __mbind_front_q<__m_at, _Ny>>;
-
-  template <std::size_t _Ny, class _Sender>
-  using __nth_child_of_c = __children_of<_Sender, __mbind_front_q<__m_at, __msize_t<_Ny>>>;
-
-  template <class _Sender>
-  using __child_of = __children_of<_Sender, __q<__mfront>>;
-
-  template <class _Sender>
-  inline constexpr std::size_t __nbr_children_of = __v<__children_of<_Sender, __msize>>;
 
   template <class _Sender>
   concept sender_expr = //
