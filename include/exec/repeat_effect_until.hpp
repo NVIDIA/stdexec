@@ -72,7 +72,7 @@ namespace exec {
 
     template <class _SourceId, class _ReceiverId>
     struct __receiver<_SourceId, _ReceiverId>::__t {
-      using is_receiver = void;
+      using receiver_concept = stdexec::receiver_t;
       using __id = __receiver;
       using _Source = stdexec::__t<_SourceId>;
       using _Receiver = stdexec::__t<_ReceiverId>;
@@ -148,7 +148,7 @@ namespace exec {
       using __receiver_t = stdexec::__t< __receiver<_SourceId, stdexec::__id<_Receiver>>>;
 
       struct __t {
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
         using __id = __sender;
         STDEXEC_ATTRIBUTE((no_unique_address)) _Source __source_;
 

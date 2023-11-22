@@ -77,7 +77,7 @@ namespace exec {
     template <class _ReceiverId>
     struct __stopped_means_break {
       struct __t {
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
         using __id = __stopped_means_break;
         using _Receiver = stdexec::__t<_ReceiverId>;
         using _Token = stop_token_of_t<env_of_t<_Receiver>>;

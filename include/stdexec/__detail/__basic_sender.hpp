@@ -218,7 +218,7 @@ namespace stdexec {
     template <class _ReceiverId, class _Sexpr, class _Idx>
     struct __receiver {
       struct __t {
-        using is_receiver = void;
+        using receiver_concept = receiver_t;
         using _Receiver = stdexec::__t<_ReceiverId>;
         using __sexpr = _Sexpr;
         using __index = _Idx;
@@ -410,7 +410,7 @@ namespace stdexec {
 
   template <class _ImplFn>
   struct __sexpr<_ImplFn> {
-    using is_sender = void;
+    using sender_concept = sender_t;
     using __t = __sexpr;
     using __id = __sexpr;
     using __meta_t = __call_result_t<_ImplFn, __cp, __detail::__get_meta>;

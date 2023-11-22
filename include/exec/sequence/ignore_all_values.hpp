@@ -78,7 +78,7 @@ namespace exec {
     struct __item_receiver {
       struct __t {
         using __id = __item_receiver;
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
         __item_operation_base<_ItemReceiver, _ResultVariant>* __op_;
 
         template <same_as<set_value_t> _Tag, same_as<__t> _Self, class... _Args>
@@ -139,7 +139,7 @@ namespace exec {
     template <class _Sender, class _ResultVariant>
     struct __item_sender {
       struct __t {
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
         using completion_signatures =
           stdexec::completion_signatures<set_value_t(), set_stopped_t()>;
 
@@ -176,7 +176,7 @@ namespace exec {
 
       struct __t {
         using __id = __receiver;
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
         __operation_base<_Receiver, _ResultVariant>* __op_;
 
         template <same_as<set_next_t> _SetNext, same_as<__t> _Self, sender _Item>

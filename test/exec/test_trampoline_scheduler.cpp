@@ -32,7 +32,7 @@ namespace {
   struct try_again { };
 
   struct fails_alot {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using __t = fails_alot;
     using __id = fails_alot;
     using completion_signatures =

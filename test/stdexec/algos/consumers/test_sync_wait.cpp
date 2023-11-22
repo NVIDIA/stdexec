@@ -214,7 +214,7 @@ namespace {
   }
 
   struct my_other_string_sender_t {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     std::string str_;
 
     using completion_signatures = ex::completion_signatures_of_t<decltype(ex::just(std::string{}))>;
@@ -259,7 +259,7 @@ namespace {
     decltype(fallible_just{std::string{}} | ex::let_error(always(ex::just(0))));
 
   struct my_multi_value_sender_t {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     std::string str_;
     using completion_signatures = ex::completion_signatures_of_t<multi_value_impl_t>;
 

@@ -160,7 +160,7 @@ namespace exec_old {
        public:
         using __t = sender;
         using __id = sender;
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
         using completion_signatures =
           stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t()>;
        private:
@@ -441,7 +441,7 @@ namespace exec_old {
   struct static_thread_pool::bulk_sender {
     using Sender = stdexec::__t<SenderId>;
     using Fun = stdexec::__t<FunId>;
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
 
     static_thread_pool& pool_;
     Sender sndr_;
@@ -609,7 +609,7 @@ namespace exec_old {
 
   template <class SenderId, class ReceiverId, class Shape, class Fn, bool MayThrow>
   struct static_thread_pool::bulk_receiver {
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
     using Sender = stdexec::__t<SenderId>;
     using Receiver = stdexec::__t<ReceiverId>;
 

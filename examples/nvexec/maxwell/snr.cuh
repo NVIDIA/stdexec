@@ -316,7 +316,7 @@ namespace repeat_n_detail {
     using __t = repeat_n_sender_t;
     using __id = repeat_n_sender_t;
     using Sender = stdexec::__t<SenderId>;
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
 
     using completion_signatures = //
       stdexec::completion_signatures<

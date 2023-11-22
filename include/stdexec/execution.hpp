@@ -1019,14 +1019,20 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
-  struct __receiver_base { };
+  struct receiver_t {
+    using receiver_concept = receiver_t; // NOT TO SPEC
+  };
+
+  namespace __detail {
+    template <class _Receiver>
+    concept __enable_receiver = //
+      derived_from<typename _Receiver::receiver_concept, receiver_t>
+      || requires { typename _Receiver::is_receiver; } // back-compat, NOT TO SPEC
+      || STDEXEC_IS_BASE_OF(receiver_t, _Receiver);    // NOT TO SPEC, for receiver_adaptor
+  }                                                    // namespace __detail
 
   template <class _Receiver>
-  concept __enable_receiver = //
-    requires { typename _Receiver::is_receiver; } || STDEXEC_IS_BASE_OF(__receiver_base, _Receiver);
-
-  template <class _Receiver>
-  inline constexpr bool enable_receiver = __enable_receiver<_Receiver>; // NOT TO SPEC
+  inline constexpr bool enable_receiver = __detail::__enable_receiver<_Receiver>; // NOT TO SPEC
 
   template <class _Receiver>
   concept receiver =
@@ -1104,7 +1110,7 @@ namespace stdexec {
     struct __debug_receiver {
       using __t = __debug_receiver;
       using __id = __debug_receiver;
-      using is_receiver = void;
+      using receiver_concept = receiver_t;
     };
 
     template <class _CvrefSenderId, class _Env, class... _Sigs>
@@ -1112,7 +1118,7 @@ namespace stdexec {
       : __valid_completions<__normalize_sig_t<_Sigs>...> {
       using __t = __debug_receiver;
       using __id = __debug_receiver;
-      using is_receiver = void;
+      using receiver_concept = receiver_t;
 
       template <same_as<get_env_t> _Tag>
       STDEXEC_ATTRIBUTE((host, device))
@@ -1471,11 +1477,16 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
+  struct sender_t {
+    using sender_concept = sender_t;
+  };
+
   namespace __detail {
     template <class _Sender>
-    concept __enable_sender =                      //
-      requires { typename _Sender::is_sender; } || //
-      __awaitable<_Sender, __env_promise<empty_env>>;
+    concept __enable_sender = //
+      derived_from<typename _Sender::sender_concept, sender_t>
+      || requires { typename _Sender::is_sender; } // NOT TO SPEC back compat
+      || __awaitable<_Sender, __env_promise<empty_env>>;
   } // namespace __detail
 
   template <class _Sender>
@@ -2220,7 +2231,7 @@ namespace stdexec {
 
     template <class _Value>
     struct __receiver_base {
-      using is_receiver = void;
+      using receiver_concept = receiver_t;
 
       template <same_as<set_value_t> _Tag, class... _Us>
         requires constructible_from<__value_or_void_t<_Value>, _Us...>
@@ -2514,7 +2525,7 @@ namespace stdexec {
   namespace __submit_ {
     template <class _OpRef>
     struct __receiver {
-      using is_receiver = void;
+      using receiver_concept = receiver_t;
       using __t = __receiver;
       using __id = __receiver;
 
@@ -2655,7 +2666,7 @@ namespace stdexec {
       using _Env = stdexec::__t<_EnvId>;
 
       struct __t {
-        using is_receiver = void;
+        using receiver_concept = receiver_t;
         using __id = __detached_receiver;
         STDEXEC_ATTRIBUTE((no_unique_address)) _Env __env_;
 
@@ -2787,7 +2798,7 @@ namespace stdexec {
   namespace __execute_ {
     template <class _Fun>
     struct __as_receiver {
-      using is_receiver = void;
+      using receiver_concept = receiver_t;
       _Fun __fun_;
 
       template <same_as<set_value_t> _Tag>
@@ -2945,7 +2956,7 @@ namespace stdexec {
       struct __nope { };
 
       struct __receiver : __nope {
-        using is_receiver = void;
+        using receiver_concept = receiver_t;
       };
 
       template <same_as<set_error_t> _Tag>
@@ -2958,41 +2969,35 @@ namespace stdexec {
     using __not_a_receiver = __no::__receiver;
 
     template <class _Base>
-    struct __adaptor {
-      struct __t {
-        template <class _T1>
-          requires constructible_from<_Base, _T1>
-        explicit __t(_T1&& __base)
-          : __base_((_T1&&) __base) {
-        }
+    struct __adaptor_base {
+      template <class _T1>
+        requires constructible_from<_Base, _T1>
+      explicit __adaptor_base(_T1&& __base)
+        : __base_((_T1&&) __base) {
+      }
 
-       private:
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Base __base_;
+     private:
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Base __base_;
 
-       protected:
-        STDEXEC_ATTRIBUTE((host, device, always_inline)) //
-        _Base& base() & noexcept {
-          return __base_;
-        }
+     protected:
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+      _Base& base() & noexcept {
+        return __base_;
+      }
 
-        STDEXEC_ATTRIBUTE((host, device, always_inline)) //
-        const _Base& base() const & noexcept {
-          return __base_;
-        }
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+      const _Base& base() const & noexcept {
+        return __base_;
+      }
 
-        STDEXEC_ATTRIBUTE((host, device, always_inline)) //
-        _Base&& base() && noexcept {
-          return (_Base&&) __base_;
-        }
-      };
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+      _Base&& base() && noexcept {
+        return (_Base&&) __base_;
+      }
     };
 
     template <derived_from<__no::__nope> _Base>
-    struct __adaptor<_Base> {
-      struct __t : __no::__nope { };
-    };
-    template <class _Base>
-    using __adaptor_base = typename __adaptor<_Base>::__t;
+    struct __adaptor_base<_Base> : __no::__nope { };
 
 // BUGBUG Not to spec: on gcc and nvc++, member functions in derived classes
 // don't shadow type aliases of the same name in base classes. :-O
@@ -3023,119 +3028,115 @@ namespace stdexec {
   static constexpr int _TAG = 1 /**/
 #endif
 
-    template <__class _Derived, class _Base>
-    struct receiver_adaptor {
-      class __t
-        : __adaptor_base<_Base>
-        , __receiver_base {
-        friend _Derived;
-        _DEFINE_MEMBER(set_value);
-        _DEFINE_MEMBER(set_error);
-        _DEFINE_MEMBER(set_stopped);
-        _DEFINE_MEMBER(get_env);
+    template <__class _Derived, class _Base = __not_a_receiver>
+    struct receiver_adaptor
+      : __adaptor_base<_Base>
+      , receiver_t {
+      friend _Derived;
+      _DEFINE_MEMBER(set_value);
+      _DEFINE_MEMBER(set_error);
+      _DEFINE_MEMBER(set_stopped);
+      _DEFINE_MEMBER(get_env);
 
-        static constexpr bool __has_base = !derived_from<_Base, __no::__nope>;
+      static constexpr bool __has_base = !derived_from<_Base, __no::__nope>;
 
-        template <class _Dp>
-        using __base_from_derived_t = decltype(__declval<_Dp>().base());
+      template <class _Dp>
+      using __base_from_derived_t = decltype(__declval<_Dp>().base());
 
-        using __get_base_t =
-          __if_c< __has_base, __mbind_back_q<__copy_cvref_t, _Base>, __q<__base_from_derived_t>>;
+      using __get_base_t =
+        __if_c< __has_base, __mbind_back_q<__copy_cvref_t, _Base>, __q<__base_from_derived_t>>;
 
-        template <class _Dp>
-        using __base_t = __minvoke<__get_base_t, _Dp&&>;
+      template <class _Dp>
+      using __base_t = __minvoke<__get_base_t, _Dp&&>;
 
-        template <class _Dp>
-        STDEXEC_ATTRIBUTE((host, device))
-        static __base_t<_Dp> __get_base(_Dp&& __self) noexcept {
-          if constexpr (__has_base) {
-            return __c_cast<__t>((_Dp&&) __self).base();
-          } else {
-            return ((_Dp&&) __self).base();
-          }
+      template <class _Dp>
+      STDEXEC_ATTRIBUTE((host, device))
+      static __base_t<_Dp> __get_base(_Dp&& __self) noexcept {
+        if constexpr (__has_base) {
+          return __c_cast<receiver_adaptor>((_Dp&&) __self).base();
+        } else {
+          return ((_Dp&&) __self).base();
         }
+      }
 
-        template <same_as<set_value_t> _SetValue, class... _As>
-        STDEXEC_ATTRIBUTE((host, device, always_inline))
-        friend auto tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept //
-          -> __msecond<                                                              //
-            __if_c<same_as<set_value_t, _SetValue>>,
-            decltype(_CALL_MEMBER(set_value, (_Derived&&) __self, (_As&&) __as...))> {
-          static_assert(noexcept(_CALL_MEMBER(set_value, (_Derived&&) __self, (_As&&) __as...)));
-          _CALL_MEMBER(set_value, (_Derived&&) __self, (_As&&) __as...);
-        }
+      template <same_as<set_value_t> _SetValue, class... _As>
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
+      friend auto tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept //
+        -> __msecond<                                                              //
+          __if_c<same_as<set_value_t, _SetValue>>,
+          decltype(_CALL_MEMBER(set_value, (_Derived&&) __self, (_As&&) __as...))> {
+        static_assert(noexcept(_CALL_MEMBER(set_value, (_Derived&&) __self, (_As&&) __as...)));
+        _CALL_MEMBER(set_value, (_Derived&&) __self, (_As&&) __as...);
+      }
 
-        template <same_as<set_value_t> _SetValue, class _Dp = _Derived, class... _As>
-          requires _MISSING_MEMBER(_Dp, set_value)
-                && tag_invocable<_SetValue, __base_t<_Dp>, _As...>
-        STDEXEC_ATTRIBUTE((host, device, always_inline)) //
-          friend void tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept {
-          stdexec::set_value(__get_base((_Dp&&) __self), (_As&&) __as...);
-        }
+      template <same_as<set_value_t> _SetValue, class _Dp = _Derived, class... _As>
+        requires _MISSING_MEMBER(_Dp, set_value) && tag_invocable<_SetValue, __base_t<_Dp>, _As...>
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+        friend void tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept {
+        stdexec::set_value(__get_base((_Dp&&) __self), (_As&&) __as...);
+      }
 
-        template <same_as<set_error_t> _SetError, class _Error>
-        STDEXEC_ATTRIBUTE((host, device, always_inline))                              //
-        friend auto tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept //
-          -> __msecond<                                                               //
-            __if_c<same_as<set_error_t, _SetError>>,
-            decltype(_CALL_MEMBER(set_error, (_Derived&&) __self, (_Error&&) __err))> {
-          static_assert(noexcept(_CALL_MEMBER(set_error, (_Derived&&) __self, (_Error&&) __err)));
-          _CALL_MEMBER(set_error, (_Derived&&) __self, (_Error&&) __err);
-        }
+      template <same_as<set_error_t> _SetError, class _Error>
+      STDEXEC_ATTRIBUTE((host, device, always_inline))                              //
+      friend auto tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept //
+        -> __msecond<                                                               //
+          __if_c<same_as<set_error_t, _SetError>>,
+          decltype(_CALL_MEMBER(set_error, (_Derived&&) __self, (_Error&&) __err))> {
+        static_assert(noexcept(_CALL_MEMBER(set_error, (_Derived&&) __self, (_Error&&) __err)));
+        _CALL_MEMBER(set_error, (_Derived&&) __self, (_Error&&) __err);
+      }
 
-        template <same_as<set_error_t> _SetError, class _Error, class _Dp = _Derived>
-          requires _MISSING_MEMBER(_Dp, set_error)
-                && tag_invocable<_SetError, __base_t<_Dp>, _Error>
-        STDEXEC_ATTRIBUTE((host, device, always_inline)) //
-          friend void tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept {
-          stdexec::set_error(__get_base((_Derived&&) __self), (_Error&&) __err);
-        }
+      template <same_as<set_error_t> _SetError, class _Error, class _Dp = _Derived>
+        requires _MISSING_MEMBER(_Dp, set_error) && tag_invocable<_SetError, __base_t<_Dp>, _Error>
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+        friend void tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept {
+        stdexec::set_error(__get_base((_Derived&&) __self), (_Error&&) __err);
+      }
 
-        template <same_as<set_stopped_t> _SetStopped, class _Dp = _Derived>
-        STDEXEC_ATTRIBUTE((host, device, always_inline))                //
-        friend auto tag_invoke(_SetStopped, _Derived&& __self) noexcept //
-          -> __msecond<                                                 //
-            __if_c<same_as<set_stopped_t, _SetStopped>>,
-            decltype(_CALL_MEMBER(set_stopped, (_Dp&&) __self))> {
-          static_assert(noexcept(_CALL_MEMBER(set_stopped, (_Derived&&) __self)));
-          _CALL_MEMBER(set_stopped, (_Derived&&) __self);
-        }
+      template <same_as<set_stopped_t> _SetStopped, class _Dp = _Derived>
+      STDEXEC_ATTRIBUTE((host, device, always_inline))                //
+      friend auto tag_invoke(_SetStopped, _Derived&& __self) noexcept //
+        -> __msecond<                                                 //
+          __if_c<same_as<set_stopped_t, _SetStopped>>,
+          decltype(_CALL_MEMBER(set_stopped, (_Dp&&) __self))> {
+        static_assert(noexcept(_CALL_MEMBER(set_stopped, (_Derived&&) __self)));
+        _CALL_MEMBER(set_stopped, (_Derived&&) __self);
+      }
 
-        template <same_as<set_stopped_t> _SetStopped, class _Dp = _Derived>
-          requires _MISSING_MEMBER(_Dp, set_stopped) && tag_invocable<_SetStopped, __base_t<_Dp>>
-        STDEXEC_ATTRIBUTE((host, device, always_inline)) //
-          friend void tag_invoke(_SetStopped, _Derived&& __self) noexcept {
-          stdexec::set_stopped(__get_base((_Derived&&) __self));
-        }
+      template <same_as<set_stopped_t> _SetStopped, class _Dp = _Derived>
+        requires _MISSING_MEMBER(_Dp, set_stopped) && tag_invocable<_SetStopped, __base_t<_Dp>>
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+        friend void tag_invoke(_SetStopped, _Derived&& __self) noexcept {
+        stdexec::set_stopped(__get_base((_Derived&&) __self));
+      }
 
-        // Pass through the get_env receiver query
-        template <same_as<get_env_t> _GetEnv, class _Dp = _Derived>
-        STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+      // Pass through the get_env receiver query
+      template <same_as<get_env_t> _GetEnv, class _Dp = _Derived>
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) //
+      friend auto tag_invoke(_GetEnv, const _Derived& __self) noexcept
+        -> decltype(_CALL_MEMBER(get_env, (const _Dp&) __self)) {
+        static_assert(noexcept(_CALL_MEMBER(get_env, __self)));
+        return _CALL_MEMBER(get_env, __self);
+      }
+
+      template <same_as<get_env_t> _GetEnv, class _Dp = _Derived>
+        requires _MISSING_MEMBER(_Dp, get_env)
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) //
         friend auto tag_invoke(_GetEnv, const _Derived& __self) noexcept
-          -> decltype(_CALL_MEMBER(get_env, (const _Dp&) __self)) {
-          static_assert(noexcept(_CALL_MEMBER(get_env, __self)));
-          return _CALL_MEMBER(get_env, __self);
-        }
+        -> env_of_t<__base_t<const _Dp&>> {
+        return stdexec::get_env(__get_base(__self));
+      }
 
-        template <same_as<get_env_t> _GetEnv, class _Dp = _Derived>
-          requires _MISSING_MEMBER(_Dp, get_env)
-        STDEXEC_ATTRIBUTE((host, device, always_inline)) //
-          friend auto tag_invoke(_GetEnv, const _Derived& __self) noexcept
-          -> env_of_t<__base_t<const _Dp&>> {
-          return stdexec::get_env(__get_base(__self));
-        }
+     public:
+      receiver_adaptor() = default;
+      using __adaptor_base<_Base>::__adaptor_base;
 
-       public:
-        __t() = default;
-        using __adaptor_base<_Base>::__adaptor_base;
-
-        using is_receiver = void;
-      };
+      using receiver_concept = receiver_t;
     };
   } // namespace __adaptors
 
   template <__class _Derived, receiver _Base = __adaptors::__not_a_receiver>
-  using receiver_adaptor = typename __adaptors::receiver_adaptor<_Derived, _Base>::__t;
+  using receiver_adaptor = __adaptors::receiver_adaptor<_Derived, _Base>;
 
   template <class _Receiver, class _Fun, class... _As>
   concept __receiver_of_invoke_result = //
@@ -3596,7 +3597,7 @@ namespace stdexec {
       struct __t {
         __sh_state<_CvrefSender, _Env>& __sh_state_;
 
-        using is_receiver = void;
+        using receiver_concept = receiver_t;
         using __id = __receiver;
 
         template <__completion_tag _Tag, class... _As>
@@ -3814,7 +3815,7 @@ namespace stdexec {
         __intrusive_ptr<stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>> __shared_state_;
 
        public:
-        using is_receiver = void;
+        using receiver_concept = receiver_t;
         using __id = __receiver;
 
         explicit __t(stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>& __shared_state) noexcept
@@ -4217,7 +4218,7 @@ namespace stdexec {
 
     template <class _Receiver, class _Scheduler>
     struct __receiver_with_sched {
-      using is_receiver = void;
+      using receiver_concept = receiver_t;
       _Receiver __rcvr_;
       _Scheduler __sched_;
 
@@ -4632,7 +4633,7 @@ namespace stdexec {
         struct __schedule_task {
           using __t = __schedule_task;
           using __id = __schedule_task;
-          using is_sender = void;
+          using sender_concept = sender_t;
           using completion_signatures = //
             __completion_signatures_<
               set_value_t(),
@@ -4813,7 +4814,7 @@ namespace stdexec {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
-        using is_receiver = void;
+        using receiver_concept = receiver_t;
         using __id = __receiver2;
         __operation1_base<_SchedulerId, _VariantId, _ReceiverId>* __op_state_;
 
@@ -4852,7 +4853,7 @@ namespace stdexec {
 
       struct __t {
         using __id = __receiver1;
-        using is_receiver = void;
+        using receiver_concept = receiver_t;
         __operation1_base<_SchedulerId, _VariantId, _ReceiverId>* __op_state_;
 
         template <class... _Args>
@@ -5428,7 +5429,7 @@ namespace stdexec {
 
       struct __t {
         using __id = __sender;
-        using is_sender = void;
+        using sender_concept = sender_t;
 
         using __schedule_sender_t = __result_of<schedule, _Scheduler>;
         template <class _ReceiverId>
@@ -5544,7 +5545,7 @@ namespace stdexec {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
-        using is_receiver = void;
+        using receiver_concept = receiver_t;
         using __id = __receiver;
         using _Receiver = stdexec::__t<_ReceiverId>;
         _Receiver __rcvr_;
@@ -5830,7 +5831,7 @@ namespace stdexec {
       using _TupleType = __minvoke< __with_default<__q<__tuple_type>, __ignore>, _ValuesTuple>;
 
       struct __t {
-        using is_receiver = void;
+        using receiver_concept = receiver_t;
         using __id = __receiver;
 
         template <class _Error>
@@ -6278,7 +6279,7 @@ namespace stdexec {
     struct __sender {
       using __t = __sender;
       using __id = __sender;
-      using is_sender = void;
+      using sender_concept = sender_t;
 
       template <class _Env>
       using __completions_t =
@@ -6386,7 +6387,7 @@ namespace stdexec {
       template <class _Sender, class _Env>
       static auto transform_sender(_Sender&&, const _Env&) {
         struct __no_scheduler_in_environment {
-          using is_sender = void;
+          using sender_concept = sender_t;
           using completion_signatures = //
             __mexception<
               _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_<>,
@@ -6553,7 +6554,7 @@ namespace stdexec {
     template <class... _Values>
     struct __receiver {
       struct __t {
-        using is_receiver = void;
+        using receiver_concept = receiver_t;
         using __id = __receiver;
         __state<_Values...>* __state_;
         run_loop* __loop_;
@@ -6787,7 +6788,7 @@ namespace stdexec {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct __ignore_sender {
-    using is_sender = void;
+    using sender_concept = sender_t;
 
     template <sender _Sender>
     constexpr __ignore_sender(_Sender&&) noexcept {

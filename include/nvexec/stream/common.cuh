@@ -197,10 +197,11 @@ namespace nvexec {
     struct stream_scheduler;
 
     struct stream_sender_base {
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
     };
 
-    struct stream_receiver_base : __receiver_base {
+    struct stream_receiver_base {
+      using receiver_concept = stdexec::receiver_t;
       constexpr static std::size_t memory_allocation_size = 0;
     };
 
@@ -384,7 +385,7 @@ namespace nvexec {
         queue::producer_t producer_;
 
        public:
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
         using __id = stream_enqueue_receiver;
 
         template <__one_of<set_value_t, set_stopped_t> Tag, class... As>

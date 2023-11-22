@@ -92,7 +92,7 @@ namespace {
       using __id = my_sender;
       using __t = my_sender;
 
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                     //
         ex::set_stopped_t()>;
@@ -193,7 +193,7 @@ namespace {
     struct my_sender {
       using __t = my_sender;
       using __id = my_sender;
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <typename R>
@@ -259,7 +259,7 @@ namespace {
       using __id = my_sender;
       using __t = my_sender;
 
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                     //
         ex::set_error_t(E),
@@ -310,7 +310,7 @@ namespace {
       using __id = my_sender;
       using __t = my_sender;
 
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                     //
         ex::set_stopped_t()>;
