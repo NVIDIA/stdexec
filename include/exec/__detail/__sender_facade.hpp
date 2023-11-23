@@ -17,11 +17,9 @@
 
 #include "../../stdexec/execution.hpp"
 
-#ifdef __EDG__
-#pragma diagnostic push
-#pragma diag_suppress 1302
-#pragma diag_suppress 497
-#endif
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(1302)
+STDEXEC_PRAGMA_IGNORE_EDG(497)
 
 namespace exec {
   struct _FAILURE_TO_CONNECT_ {
@@ -93,13 +91,6 @@ namespace exec {
       __declval<__data_placeholder&>(),
       __declval<__receiver_placeholder<_Env>&>()));
 
-    struct __dependent_sender {
-      using is_sender = void;
-      using __t = __dependent_sender;
-      friend auto tag_invoke(get_completion_signatures_t, __dependent_sender, no_env)
-        -> dependent_completion_signatures<no_env>;
-    };
-
     struct __sender_transform_failed {
       using __t = __sender_transform_failed;
     };
@@ -111,8 +102,6 @@ namespace exec {
       } else {
         if constexpr (__mvalid<__tfx_sender_, _Kernel, _Sender, _Env>) {
           return __mtype<__tfx_sender_<_Kernel, _Sender, _Env>>{};
-        } else if constexpr (same_as<_Env, no_env>) {
-          return __dependent_sender{};
         } else {
           return __sender_transform_failed{};
         }
@@ -122,7 +111,6 @@ namespace exec {
 
     template <class _Kernel, class _Sender, class _Data, class _Receiver>
     auto __transform_sender(_Kernel& __kernel, _Sender&& __sndr, _Data& __data, _Receiver& __rcvr) {
-      static_assert(!same_as<env_of_t<_Receiver>, no_env>);
       if constexpr (__lacks_transform_sender<_Kernel>) {
         return (_Sender&&) __sndr;
       } else {
@@ -143,11 +131,7 @@ namespace exec {
       __declval<_As>()...));
 
     template <class _Kernel, class _Env>
-    using __get_env_ = decltype(__declval<_Kernel&>().get_env(__declval<_Env>()));
-
-    template <class _Kernel, class _Env>
-    using __env_t =
-      __minvoke< __if_c<same_as<_Env, no_env>, __mconst<no_env>, __q<__get_env_>>, _Kernel, _Env>;
+    using __env_t = decltype(__declval<_Kernel&>().get_env(__declval<_Env>()));
 
     template <class _Kernel, class _Env, class _Tag, class... _As>
     auto __completions_from_sig(_Tag (*)(_As...))
@@ -163,7 +147,7 @@ namespace exec {
     template <class _Kernel, class _Env, class... _Sigs>
     auto __compute_completions_(completion_signatures<_Sigs...>*)
       -> decltype(__stl::__all_completions(
-        (__completions_from_sig_t<_Kernel, _Env, _Sigs>) nullptr...));
+        static_cast<__completions_from_sig_t<_Kernel, _Env, _Sigs>>(nullptr)...));
 
     template <class _Kernel, class _Env, class _NoCompletions>
     auto __compute_completions_(_NoCompletions*) -> _NoCompletions;
@@ -185,8 +169,8 @@ namespace exec {
         }
 
         _Receiver __rcvr_;
-        STDEXEC_NO_UNIQUE_ADDRESS _Kernel __kernel_;
-        STDEXEC_NO_UNIQUE_ADDRESS _Data __data_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Kernel __kernel_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Data __data_;
       };
 
       struct __t {
@@ -314,19 +298,13 @@ namespace exec {
                 __completions_t<_NewEnv, __pre_completions_t<_NewSender, _NewEnv>>;
               if constexpr (__valid_completion_signatures<_Completions, _Env>) {
                 return (_Completions(*)()) nullptr;
-              } else if constexpr (same_as<no_env, _Env>) {
-                return (dependent_completion_signatures<no_env>(*)()) nullptr;
               } else {
                 // assume this is an error message and return it directly
                 return (_Completions(*)()) nullptr;
               }
-            } else if constexpr (same_as<no_env, _Env>) {
-              return (dependent_completion_signatures<no_env>(*)()) nullptr;
             } else {
               return (__diagnostic_t<_Env>(*)()) nullptr;
             }
-          } else if constexpr (same_as<no_env, _Env>) {
-            return (dependent_completion_signatures<no_env>(*)()) nullptr;
           } else if constexpr (same_as<_NewSender, __sender_transform_failed>) {
             return (__diagnostic_t<_Env>(*)()) nullptr;
           } else {
@@ -399,6 +377,4 @@ namespace exec {
   };
 } // namespace exec
 
-#ifdef __EDG__
-#pragma diagnostic pop
-#endif
+STDEXEC_PRAGMA_POP()

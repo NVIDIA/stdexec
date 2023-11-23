@@ -195,3 +195,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     };
   };
 }
+
+namespace stdexec::__detail {
+  template <class SenderId, class Fun>
+  inline constexpr __mconst<
+    nvexec::STDEXEC_STREAM_DETAIL_NS::then_sender_t<__name_of<__t<SenderId>>, Fun>>
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::then_sender_t<SenderId, Fun>>{};
+}

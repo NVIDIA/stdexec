@@ -17,25 +17,23 @@
 
 #include "../stdexec/execution.hpp"
 
-#ifdef __EDG__
-#pragma diagnostic push
-#pragma diag_suppress 1302
-#endif
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(1302)
 
 namespace exec {
-  template <class _Tag, class _Value = stdexec::__none_such>
+  template <class _Tag, class _Value = void>
   using with_t = stdexec::__with<_Tag, _Value>;
 
   namespace __detail {
     struct __with_t {
       template <class _Tag, class _Value>
-      with_t<_Tag, _Value> operator()(_Tag, _Value&& __val) const {
-        return stdexec::__with_(_Tag(), (_Value&&) __val);
+      with_t<_Tag, stdexec::__decay_t<_Value>> operator()(_Tag, _Value&& __val) const {
+        return stdexec::__mkprop((_Value&&) __val, _Tag());
       }
 
       template <class _Tag>
       with_t<_Tag> operator()(_Tag) const {
-        return stdexec::__with_(_Tag());
+        return stdexec::__mkprop(_Tag());
       }
     };
   } // namespace __detail
@@ -57,7 +55,7 @@ namespace exec {
       using _Default = __t<_DefaultId>;
       using _Receiver = __t<_ReceiverId>;
 
-      STDEXEC_NO_UNIQUE_ADDRESS _Default __default_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Default __default_;
       _Receiver __rcvr_;
 
       friend void tag_invoke(start_t, __operation& __self) noexcept {
@@ -78,7 +76,7 @@ namespace exec {
     struct __sender {
       using _Default = __t<_DefaultId>;
       using is_sender = void;
-      STDEXEC_NO_UNIQUE_ADDRESS _Default __default_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Default __default_;
 
       template <class _Env>
       using __value_t =
@@ -97,7 +95,7 @@ namespace exec {
         return {{}, ((_Self&&) __self).__default_, (_Receiver&&) __rcvr};
       }
 
-      template <__none_of<no_env> _Env>
+      template <class _Env>
       friend auto tag_invoke(get_completion_signatures_t, __sender, _Env&&)
         -> __completions_t<_Env> {
         return {};
@@ -118,6 +116,4 @@ namespace exec {
   inline constexpr stdexec::__write_::__write_t write{};
 } // namespace exec
 
-#ifdef __EDG__
-#pragma diagnostic pop
-#endif
+STDEXEC_PRAGMA_POP()

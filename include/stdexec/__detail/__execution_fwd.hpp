@@ -23,12 +23,7 @@ namespace stdexec {
   struct __none_such;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __domain {
-    template <class _Base = __none_such>
-    struct __default_domain;
-  }
-
-  using __domain::__default_domain;
+  struct default_domain;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __receivers {
@@ -170,6 +165,23 @@ namespace stdexec {
   }
 
   using __transfer::transfer_t;
+  extern const transfer_t transfer;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  namespace __transfer_just {
+    struct transfer_just_t;
+  }
+
+  using __transfer_just::transfer_just_t;
+  extern const transfer_just_t transfer_just;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  namespace __bulk {
+    struct bulk_t;
+  }
+
+  using __bulk::bulk_t;
+  extern const bulk_t bulk;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __on_v2 {
@@ -179,9 +191,4 @@ namespace stdexec {
   namespace v2 {
     using __on_v2::on_t;
   }
-
-}
-
-template <class...>
-[[deprecated]] void print() {
 }

@@ -55,7 +55,7 @@ namespace exec {
     template <class _ReceiverId>
     struct __when_empty_op_base : __task {
       using _Receiver = __t<_ReceiverId>;
-      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
     };
 
     template <class _ConstrainedId, class _ReceiverId>
@@ -120,7 +120,7 @@ namespace exec {
       }
 
       const __impl* __scope_;
-      STDEXEC_NO_UNIQUE_ADDRESS _Constrained __c_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Constrained __c_;
     };
 
     template <class _Constrained>
@@ -132,7 +132,7 @@ namespace exec {
     struct __nest_op_base : __immovable {
       using _Receiver = __t<_ReceiverId>;
       const __impl* __scope_;
-      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
     };
 
     template <class _ReceiverId>
@@ -208,7 +208,7 @@ namespace exec {
       using is_sender = void;
 
       const __impl* __scope_;
-      STDEXEC_NO_UNIQUE_ADDRESS _Constrained __c_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Constrained __c_;
 
       template <class _Receiver>
       using __nest_operation_t = __nest_op<_ConstrainedId, __x<_Receiver>>;
@@ -333,9 +333,9 @@ namespace exec {
         }
       }
 
-      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
       std::unique_ptr<__future_state<_Sender, _Env>> __state_;
-      STDEXEC_NO_UNIQUE_ADDRESS __forward_consumer __forward_consumer_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) __forward_consumer __forward_consumer_;
 
      public:
       ~__future_op() noexcept {
@@ -602,8 +602,8 @@ namespace exec {
     using __spawn_env_t = __result_of<
       __join_env,
       _Env,
-      __env::__prop<get_stop_token_t, in_place_stop_token>,
-      __env::__prop<get_scheduler_t, __inln::__scheduler>>;
+      __env::__prop<in_place_stop_token(get_stop_token_t)>,
+      __env::__prop<__inln::__scheduler(get_scheduler_t)>>;
 
     template <class _EnvId>
     struct __spawn_op_base {
@@ -647,8 +647,8 @@ namespace exec {
       template <__decays_to<_Sender> _Sndr>
       __spawn_op(_Sndr&& __sndr, _Env __env, const __impl* __scope)
         : __spawn_op_base<_EnvId>{__join_env((_Env&&) __env,
-          __mkprop(get_stop_token, __scope->__stop_source_.get_token()),
-          __mkprop(get_scheduler, __inln::__scheduler{})),
+          __mkprop(__scope->__stop_source_.get_token(), get_stop_token),
+          __mkprop(__inln::__scheduler{}, get_scheduler)),
           [](__spawn_op_base<_EnvId>* __op) {
             delete static_cast<__spawn_op*>(__op);
           }}

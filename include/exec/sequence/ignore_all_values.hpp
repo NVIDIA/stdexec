@@ -70,7 +70,7 @@ namespace exec {
 
     template <class _ItemReceiver, class _ResultVariant>
     struct __item_operation_base {
-      STDEXEC_NO_UNIQUE_ADDRESS _ItemReceiver __receiver_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _ItemReceiver __receiver_;
       __result_type<_ResultVariant>* __result_;
     };
 
@@ -123,10 +123,9 @@ namespace exec {
         __t(
           __result_type<_ResultVariant>* __parent,
           _Sender&& __sndr,
-          _ItemReceiver __rcvr) //
-          noexcept(
-            __nothrow_decay_copyable<_ItemReceiver> //
-            && __nothrow_connectable<_Sender, __item_receiver_t>)
+          _ItemReceiver __rcvr)                            //
+          noexcept(__nothrow_decay_copyable<_ItemReceiver> //
+                     && __nothrow_connectable<_Sender, __item_receiver_t>)
           : __base_type{static_cast<_ItemReceiver&&>(__rcvr), __parent}
           , __op_{stdexec::connect(static_cast<_Sender&&>(__sndr), __item_receiver_t{this})} {
         }
@@ -168,7 +167,7 @@ namespace exec {
 
     template <class _Receiver, class _ResultVariant>
     struct __operation_base : __result_type<_ResultVariant> {
-      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __receiver_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __receiver_;
     };
 
     template <class _ReceiverId, class _ResultVariant>
@@ -278,9 +277,9 @@ namespace exec {
     struct ignore_all_values_t {
       template <sender _Sender>
       auto operator()(_Sender&& __sndr) const {
-        auto __domain = __get_sender_domain((_Sender&&) __sndr);
+        auto __domain = __get_early_domain((_Sender&&) __sndr);
         return transform_sender(
-          __domain, make_sender_expr<ignore_all_values_t>(__(), (_Sender&&) __sndr));
+          __domain, __make_sexpr<ignore_all_values_t>(__(), (_Sender&&) __sndr));
       }
 
       constexpr __binder_back<ignore_all_values_t> operator()() const noexcept {
@@ -308,9 +307,9 @@ namespace exec {
                    __child_of<_Sender>,
                    __receiver_t<__child_of<_Sender>, _Receiver>>
       static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-        __nothrow_callable<apply_sender_t, _Sender, __connect_fn<_Receiver>>)
-        -> __call_result_t<apply_sender_t, _Sender, __connect_fn<_Receiver>> {
-        return apply_sender((_Sender&&) __sndr, __connect_fn<_Receiver>{__rcvr});
+        __nothrow_callable<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>)
+        -> __call_result_t<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>> {
+        return __sexpr_apply((_Sender&&) __sndr, __connect_fn<_Receiver>{__rcvr});
       }
     };
   }

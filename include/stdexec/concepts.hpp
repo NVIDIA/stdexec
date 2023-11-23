@@ -234,6 +234,9 @@ namespace stdexec {
   template <class _Ty>
   concept __nothrow_decay_copyable = __nothrow_constructible_from<__decay_t<_Ty>, _Ty>;
 
+  template <class _Ty, class _Up>
+  concept __decays_to_derived_from = derived_from<__decay_t<_Ty>, _Up>;
+
 } // namespace stdexec
 
 // #if !STDEXEC_HAS_STD_CONCEPTS_HEADER()

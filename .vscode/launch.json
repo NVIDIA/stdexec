@@ -47,6 +47,17 @@
             "initCommands": ["settings set target.disable-aslr false"],
             "args": "${input:CXX_PROGRAM_ARGS}",
         },
+        {
+            "name": "CUDA Current Target (cuda-gdb)",
+            "type": "cuda-gdb",
+            "request": "launch",
+            "stopAtEntry": false,
+            "breakOnLaunch": false,
+            "internalConsoleOptions": "neverOpen",
+            "program": "${command:cmake.launchTargetPath}",
+            "cwd": "${command:cmake.launchTargetDirectory}",
+            "args": "${input:CXX_PROGRAM_ARGS}",
+        },
     ],
     "inputs": [
         {

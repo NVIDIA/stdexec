@@ -27,6 +27,8 @@ namespace nvexec {
       stdexec::__t<multi_gpu_bulk_sender_t<stdexec::__id<__decay_t<Sender>>, Shape, Fun>>;
 
     struct multi_gpu_stream_scheduler {
+      using __t = multi_gpu_stream_scheduler;
+      using __id = multi_gpu_stream_scheduler;
       friend stream_context;
 
       template <sender Sender>

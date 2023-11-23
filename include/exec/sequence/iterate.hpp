@@ -34,8 +34,8 @@ namespace exec {
 
     template <class _Iterator, class _Sentinel>
     struct __operation_base {
-      STDEXEC_NO_UNIQUE_ADDRESS _Iterator __iterator_;
-      STDEXEC_NO_UNIQUE_ADDRESS _Sentinel __sentinel_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Iterator __iterator_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Sentinel __sentinel_;
     };
 
     template <class _Range>
@@ -46,7 +46,7 @@ namespace exec {
     struct __item_operation {
       struct __t {
         using __id = __item_operation;
-        STDEXEC_NO_UNIQUE_ADDRESS _ItemRcvr __rcvr_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _ItemRcvr __rcvr_;
         __operation_base<_Iterator, _Sentinel>* __parent_;
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
@@ -189,9 +189,9 @@ namespace exec {
         sequence_receiver_of<item_types<_ItemSender<_SeqExpr>>> _Receiver>
         requires sender_to<_NextSender<_SeqExpr, _Receiver>, _NextReceiver<_SeqExpr, _Receiver>>
       static auto subscribe(_SeqExpr&& __seq, _Receiver __rcvr) noexcept(
-        __nothrow_callable<apply_sender_t, _SeqExpr, __subscribe_fn<_Receiver>>)
-        -> __call_result_t<apply_sender_t, _SeqExpr, __subscribe_fn<_Receiver>> {
-        return apply_sender(static_cast<_SeqExpr&&>(__seq), __subscribe_fn<_Receiver>{__rcvr});
+        __nothrow_callable<__sexpr_apply_t, _SeqExpr, __subscribe_fn<_Receiver>>)
+        -> __call_result_t<__sexpr_apply_t, _SeqExpr, __subscribe_fn<_Receiver>> {
+        return __sexpr_apply(static_cast<_SeqExpr&&>(__seq), __subscribe_fn<_Receiver>{__rcvr});
       }
 
       static auto get_completion_signatures(__ignore, __ignore) noexcept

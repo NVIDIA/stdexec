@@ -102,6 +102,13 @@ rapids_find_package(Threads REQUIRED
 ##############################################################################
 # - Main library targets -----------------------------------------------------
 
+# Detect the compiler frontend (GNU, Clang, MSVC, etc.)
+if(DEFINED CMAKE_CXX_COMPILER_FRONTEND_VARIANT)
+  set(stdexec_compiler_frontend ${CMAKE_CXX_COMPILER_FRONTEND_VARIANT})
+else()
+  set(stdexec_compiler_frontend ${CMAKE_CXX_COMPILER_ID})
+endif()
+
 set(stdexec_export_targets)
 
 # Define the main library
@@ -143,6 +150,12 @@ target_compile_options(stdexec INTERFACE
                        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus /Zc:preprocessor>
                        )
 
+option(STDEXEC_ENABLE_EXTRA_TYPE_CHECKING "Enable extra type checking that is costly at compile-time" OFF)
+
+if (STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
+    target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
+endif()
+
 add_library(STDEXEC::stdexec ALIAS stdexec)
 
 # Don't require building everything when installing
@@ -153,33 +166,28 @@ add_library(stdexec_executable_flags INTERFACE)
 
 # Enable warnings
 target_compile_options(stdexec_executable_flags INTERFACE
-                       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
-                       -Wall>
-                       $<$<CXX_COMPILER_ID:MSVC>:
-                       /W4>)
+                       $<$<STREQUAL:${stdexec_compiler_frontend},GNU>:-Wall>
+                       $<$<STREQUAL:${stdexec_compiler_frontend},AppleClang>:-Wall>
+                       $<$<STREQUAL:${stdexec_compiler_frontend},MSVC>:/W4>)
 
 # Increase the error limit with NVC++
 target_compile_options(stdexec_executable_flags INTERFACE
-                       $<$<CXX_COMPILER_ID:NVHPC>:-e1000>
-                       )
+                       $<$<CXX_COMPILER_ID:NVHPC>:-e1000>)
 
-# Silence warnings with GCC
+# Silence warnings
 target_compile_options(stdexec_executable_flags INTERFACE
                        $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>
-                       )
-
-# Silence warnings with NVHPC
-target_compile_options(stdexec_executable_flags INTERFACE
                        $<$<CXX_COMPILER_ID:NVHPC>:--diag_suppress177,550,111,497,554>
-                       )
+                       $<$<CXX_COMPILER_ID:MSVC>:/wd4100 /wd4101 /wd4127 /wd4324 /wd4456 /wd4459>)
 
 # Template backtrace limit
 target_compile_options(stdexec_executable_flags INTERFACE
                        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:
-                       -ferror-limit=0
-                       -fmacro-backtrace-limit=0
-                       -ftemplate-backtrace-limit=0>
-                       )
+                          $<$<STREQUAL:${CMAKE_CXX_COMPILER_FRONTEND_VARIANT},MSVC>:/clang:>-ferror-limit=0
+                          $<$<STREQUAL:${CMAKE_CXX_COMPILER_FRONTEND_VARIANT},MSVC>:/clang:>-fmacro-backtrace-limit=0
+                          $<$<STREQUAL:${CMAKE_CXX_COMPILER_FRONTEND_VARIANT},MSVC>:/clang:>-ftemplate-backtrace-limit=0>
+                       $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<VERSION_GREATER:$<CXX_COMPILER_VERSION>,23.3.0>>:
+                       -ftemplate-backtrace-limit 0>)
 
 # # Always enable colored output
 # target_compile_options(stdexec_executable_flags INTERFACE
@@ -196,6 +204,17 @@ target_compile_options(stdexec_executable_flags INTERFACE
                        -D_GLIBCXX_USE_TBB_PAR_BACKEND=0
                        -include stdexec/__detail/__force_include.hpp>
                        )
+
+target_compile_definitions(stdexec_executable_flags INTERFACE
+                           STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
+
+# Support target for examples and tests
+add_library(nvexec_executable_flags INTERFACE)
+
+target_compile_options(nvexec_executable_flags INTERFACE
+                       $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-gpu=nomanaged>)
+target_link_options(nvexec_executable_flags INTERFACE
+                    $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-gpu=nomanaged>)
 
 # Set up nvexec library
 option(STDEXEC_ENABLE_CUDA "Enable CUDA targets for non-nvc++ compilers" OFF)
@@ -218,9 +237,9 @@ if(STDEXEC_ENABLE_CUDA)
     target_link_libraries(nvexec INTERFACE STDEXEC::stdexec)
 
     target_compile_options(nvexec INTERFACE
-      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=nomanaged -gpu=cc${CMAKE_CUDA_ARCHITECTURES}>)
+      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=cc${CMAKE_CUDA_ARCHITECTURES}>)
     target_link_options(nvexec INTERFACE
-      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=nomanaged -gpu=cc${CMAKE_CUDA_ARCHITECTURES}>)
+      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=cc${CMAKE_CUDA_ARCHITECTURES}>)
 
     if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC"))
         include(rapids-cuda)
@@ -280,7 +299,9 @@ if (STDEXEC_ENABLE_TBB)
         )
 endif ()
 
-option (STDEXEC_ENABLE_IO_URING_TESTS "Enable io_uring tests" ON)
+include(CheckIncludeFileCXX)
+CHECK_INCLUDE_FILE_CXX("linux/io_uring.h" STDEXEC_FOUND_IO_URING)
+option (STDEXEC_ENABLE_IO_URING_TESTS "Enable io_uring tests" ${STDEXEC_FOUND_IO_URING})
 
 option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
 option(STDEXEC_BUILD_TESTS "Build stdexec tests" ON)

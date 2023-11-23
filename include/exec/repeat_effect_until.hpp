@@ -47,8 +47,8 @@ namespace exec {
           __call_result_t<stdexec::on_t, trampoline_scheduler, _Source &>;
         using __source_op_t = stdexec::connect_result_t<__source_on_scheduler_sender, __receiver_t>;
 
-        STDEXEC_NO_UNIQUE_ADDRESS _Source __source_;
-        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Source __source_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
         __manual_lifetime<__source_op_t> __source_op_;
         trampoline_scheduler __sched_;
 
@@ -98,7 +98,7 @@ namespace exec {
         auto *__op = __self.__op_;
 
         // The following line causes the invalidation of __self.
-        __op->__source_op_.__destruct();
+        __op->__source_op_.__destroy();
 
         // If the sender completed with true, we're done
         if (__done) {
@@ -119,7 +119,7 @@ namespace exec {
         requires __callable<_Tag, _Receiver>
       friend void tag_invoke(_Tag, _Self &&__self) noexcept {
         auto *__op = __self.__op_;
-        __op->__source_op_.__destruct();
+        __op->__source_op_.__destroy();
         stdexec::set_stopped((_Receiver &&) __op->__rcvr_);
       }
 
@@ -127,7 +127,7 @@ namespace exec {
         requires __callable<_Tag, _Receiver, _Error>
       friend void tag_invoke(_Tag, _Self &&__self, _Error __error) noexcept {
         auto *__op = __self.__op_;
-        __op->__source_op_.__destruct();
+        __op->__source_op_.__destroy();
         stdexec::set_error((_Receiver &&) __op->__rcvr_, (_Error &&) __error);
       }
 
@@ -150,7 +150,7 @@ namespace exec {
       struct __t {
         using is_sender = void;
         using __id = __sender;
-        STDEXEC_NO_UNIQUE_ADDRESS _Source __source_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Source __source_;
 
         template <class... Ts>
         using __value_t = stdexec::completion_signatures<>;

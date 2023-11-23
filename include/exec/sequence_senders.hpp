@@ -83,7 +83,7 @@ namespace exec {
         using __id = __stopped_means_break;
         using _Receiver = stdexec::__t<_ReceiverId>;
         using _Token = stop_token_of_t<env_of_t<_Receiver>>;
-        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
 
         template <same_as<get_env_t> _GetEnv, same_as<__t> _Self>
         friend env_of_t<_Receiver> tag_invoke(_GetEnv, const _Self& __self) noexcept {
@@ -137,7 +137,8 @@ namespace exec {
   namespace __sequence_sndr {
     struct get_item_types_t;
     template <class _Sender, class _Env>
-    using __tfx_sender = transform_sender_result_t<__env_domain_of_t<_Env>, _Sender, _Env>;
+    using __tfx_sender =
+      transform_sender_result_t<__late_domain_of_t<_Sender, _Env>, _Sender, _Env>;
 
     template <class _Sender, class _Env>
     concept __with_tag_invoke = //
@@ -162,7 +163,7 @@ namespace exec {
           using _Result = __member_alias_t<_TfxSender, _Env>;
           return (_Result(*)()) nullptr;
         } else if constexpr (
-          sender<_TfxSender, _Env> && !enable_sequence_sender<stdexec::__decay_t<_TfxSender>>) {
+          sender_in<_TfxSender, _Env> && !enable_sequence_sender<stdexec::__decay_t<_TfxSender>>) {
           using _Result = item_types<stdexec::__decay_t<_TfxSender>>;
           return (_Result(*)()) nullptr;
         } else if constexpr (__is_debug_env<_Env>) {
@@ -195,9 +196,9 @@ namespace exec {
   using item_types_of_t =
     decltype(get_item_types(stdexec::__declval<_Sender>(), stdexec::__declval<_Env>()));
 
-  template <class _Sender, class _Env = stdexec::no_env>
-  concept sequence_sender =           //
-    stdexec::sender<_Sender, _Env> && //
+  template <class _Sender, class _Env = stdexec::empty_env>
+  concept sequence_sender =              //
+    stdexec::sender_in<_Sender, _Env> && //
     enable_sequence_sender<stdexec::__decay_t<_Sender>>;
 
   template <class _Sender, class _Env>
@@ -269,7 +270,11 @@ namespace exec {
 
   template <class _Sequence, class _Env>
   using __sequence_completion_signatures_of_t = stdexec::__concat_completion_signatures_t<
-    stdexec::completion_signatures<stdexec::set_value_t()>,
+    stdexec::__try_make_completion_signatures<
+      _Sequence,
+      _Env,
+      stdexec::completion_signatures<stdexec::set_value_t()>,
+      stdexec::__mconst<stdexec::completion_signatures<>>>,
     stdexec::__mapply<
       stdexec::__q<stdexec::__concat_completion_signatures_t>,
       stdexec::__mapply<
@@ -326,20 +331,11 @@ namespace exec {
 
       template <class _Sender, class _Receiver>
       static constexpr auto __select_impl() noexcept {
-        using _Domain = __env_domain_of_t<env_of_t<_Receiver&>>;
+        using _Domain = __late_domain_of_t<_Sender, env_of_t<_Receiver&>>;
         constexpr bool _NothrowTfxSender =
           __nothrow_callable<get_env_t, _Receiver&>
           && __nothrow_callable<transform_sender_t, _Domain, _Sender, env_of_t<_Receiver&>>;
         using _TfxSender = __tfx_sndr<_Sender, _Receiver>;
-        if constexpr (!enable_sender<__decay_t<_Sender>>)
-          __connect::_PLEASE_UPDATE_YOUR_SENDER_TYPE<__decay_t<_Sender>>();
-
-        if constexpr (!enable_sender<__decay_t<_TfxSender>>)
-          __connect::_PLEASE_UPDATE_YOUR_SENDER_TYPE<__decay_t<_TfxSender>>();
-
-        if constexpr (!enable_receiver<__decay_t<_Receiver>>)
-          __connect::_PLEASE_UPDATE_YOUR_RECEIVER_TYPE<__decay_t<_Receiver>>();
-
         if constexpr (__next_connectable_with_tag_invoke<_TfxSender, _Receiver>) {
           using _Result = tag_invoke_result_t<
             connect_t,
@@ -372,7 +368,7 @@ namespace exec {
           -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
         using _TfxSender = __tfx_sndr<_Sender, _Receiver>;
         auto&& __env = get_env(__rcvr);
-        auto __domain = __get_env_domain(__env);
+        auto __domain = __get_late_domain(__sndr, __env);
         if constexpr (__next_connectable_with_tag_invoke<_TfxSender, _Receiver>) {
           static_assert(
             operation_state<tag_invoke_result_t<

@@ -17,36 +17,39 @@
 #include "cpo_helpers.cuh"
 #include <catch2/catch.hpp>
 
-TEST_CASE("bulk is customizable", "[cpo][cpo_bulk]") {
-  const auto n = 42;
-  const auto f = [](int) {
-  };
+namespace {
 
-  SECTION("by free standing sender") {
-    free_standing_sender_t<ex::bulk_t> snd{};
+  TEST_CASE("bulk is customizable", "[cpo][cpo_bulk]") {
+    const auto n = 42;
+    const auto f = [](int) {
+    };
 
-    {
-      constexpr scope_t scope = decltype(snd | ex::bulk(n, f))::scope;
-      STATIC_REQUIRE(scope == scope_t::free_standing);
+    SECTION("by free standing sender") {
+      free_standing_sender_t<ex::bulk_t> snd{};
+
+      {
+        constexpr scope_t scope = decltype(snd | ex::bulk(n, f))::scope;
+        STATIC_REQUIRE(scope == scope_t::free_standing);
+      }
+
+      {
+        constexpr scope_t scope = decltype(ex::bulk(snd, n, f))::scope;
+        STATIC_REQUIRE(scope == scope_t::free_standing);
+      }
     }
 
-    {
-      constexpr scope_t scope = decltype(ex::bulk(snd, n, f))::scope;
-      STATIC_REQUIRE(scope == scope_t::free_standing);
-    }
-  }
+    SECTION("by completion scheduler") {
+      scheduler_t<ex::bulk_t>::sender_t snd{};
 
-  SECTION("by completion scheduler") {
-    scheduler_t<ex::bulk_t>::sender_t snd{};
+      {
+        constexpr scope_t scope = decltype(snd | ex::bulk(n, f))::scope;
+        STATIC_REQUIRE(scope == scope_t::scheduler);
+      }
 
-    {
-      constexpr scope_t scope = decltype(snd | ex::bulk(n, f))::scope;
-      STATIC_REQUIRE(scope == scope_t::scheduler);
-    }
-
-    {
-      constexpr scope_t scope = decltype(ex::bulk(snd, n, f))::scope;
-      STATIC_REQUIRE(scope == scope_t::scheduler);
+      {
+        constexpr scope_t scope = decltype(ex::bulk(snd, n, f))::scope;
+        STATIC_REQUIRE(scope == scope_t::scheduler);
+      }
     }
   }
 }

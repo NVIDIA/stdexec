@@ -44,10 +44,16 @@ set(stdexec_examples
     "example.server_theme.on_transfer : server_theme/on_transfer.cpp"
       "example.server_theme.then_upon : server_theme/then_upon.cpp"
      "example.server_theme.split_bulk : server_theme/split_bulk.cpp"
+"example.benchmark.static_thread_pool : benchmark/static_thread_pool.cpp"
+"example.benchmark.static_thread_pool_old : benchmark/static_thread_pool_old.cpp"
+"example.benchmark.static_thread_pool_nested : benchmark/static_thread_pool_nested.cpp"
+"example.benchmark.static_thread_pool_nested_old : benchmark/static_thread_pool_nested_old.cpp"
+"example.benchmark.static_thread_pool_bulk_enqueue : benchmark/static_thread_pool_bulk_enqueue.cpp"
+"example.benchmark.static_thread_pool_bulk_enqueue_nested : benchmark/static_thread_pool_bulk_enqueue_nested.cpp"
 )
 
 if (LINUX)
-  set(stdexect_examples ${stdexec_examples}
+  set(stdexec_examples ${stdexec_examples}
                     "example.io_uring : io_uring.cpp"
   )
 endif (LINUX)
@@ -58,4 +64,12 @@ endforeach()
 
 if(STDEXEC_ENABLE_CUDA)
     add_subdirectory(nvexec)
+endif()
+
+if (STDEXEC_ENABLE_TBB)
+ add_executable(example.benchmark.tbb_thread_pool benchmark/tbb_thread_pool.cpp)
+ target_link_libraries(example.benchmark.tbb_thread_pool PRIVATE STDEXEC::tbbexec)
+
+ add_executable(example.benchmark.tbb_thread_pool_nested benchmark/tbb_thread_pool_nested.cpp)
+ target_link_libraries(example.benchmark.tbb_thread_pool_nested PRIVATE STDEXEC::tbbexec)
 endif()

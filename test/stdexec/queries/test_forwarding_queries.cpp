@@ -17,23 +17,26 @@
 
 namespace ex = stdexec;
 
-struct my_derived_forwarding_query_t : ex::forwarding_query_t { };
+namespace {
 
-inline constexpr my_derived_forwarding_query_t my_derived_forwarding_query{};
+  struct my_derived_forwarding_query_t : ex::forwarding_query_t { };
 
-struct my_non_forwarding_query_t { };
+  inline constexpr my_derived_forwarding_query_t my_derived_forwarding_query{};
 
-inline constexpr my_non_forwarding_query_t my_non_forwarding_query{};
+  struct my_non_forwarding_query_t { };
 
-TEST_CASE("exec.queries are forwarding queries", "[exec.queries][forwarding_queries]") {
-  static_assert(ex::forwarding_query(ex::get_allocator));
-  static_assert(ex::forwarding_query(ex::get_stop_token));
-  static_assert(ex::forwarding_query(ex::get_scheduler));
-  static_assert(ex::forwarding_query(ex::get_delegatee_scheduler));
-  static_assert(ex::forwarding_query(ex::get_completion_scheduler<ex::set_value_t>));
-  static_assert(ex::forwarding_query(ex::get_completion_scheduler<ex::set_error_t>));
-  static_assert(ex::forwarding_query(ex::get_completion_scheduler<ex::set_stopped_t>));
+  inline constexpr my_non_forwarding_query_t my_non_forwarding_query{};
 
-  static_assert(ex::forwarding_query(my_derived_forwarding_query));
-  static_assert(!ex::forwarding_query(my_non_forwarding_query));
+  TEST_CASE("exec.queries are forwarding queries", "[exec.queries][forwarding_queries]") {
+    static_assert(ex::forwarding_query(ex::get_allocator));
+    static_assert(ex::forwarding_query(ex::get_stop_token));
+    static_assert(ex::forwarding_query(ex::get_scheduler));
+    static_assert(ex::forwarding_query(ex::get_delegatee_scheduler));
+    static_assert(ex::forwarding_query(ex::get_completion_scheduler<ex::set_value_t>));
+    static_assert(ex::forwarding_query(ex::get_completion_scheduler<ex::set_error_t>));
+    static_assert(ex::forwarding_query(ex::get_completion_scheduler<ex::set_stopped_t>));
+
+    static_assert(ex::forwarding_query(my_derived_forwarding_query));
+    static_assert(!ex::forwarding_query(my_non_forwarding_query));
+  }
 }

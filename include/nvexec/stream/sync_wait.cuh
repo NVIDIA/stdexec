@@ -146,7 +146,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
     using receiver_t = stdexec::__t<receiver_t<stdexec::__id<Sender>>>;
 
     template <__single_value_variant_sender<__env> Sender>
-      requires sender<Sender, __env> && __receiver_from<receiver_t<Sender>, Sender>
+      requires sender_in<Sender, __env> && __receiver_from<receiver_t<Sender>, Sender>
     auto operator()(context_state_t context_state, Sender&& __sndr) const
       -> std::optional<sync_wait_result_t<Sender>> {
       using state_t = state_t<stdexec::__id<Sender>>;

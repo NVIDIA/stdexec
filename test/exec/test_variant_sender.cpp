@@ -22,42 +22,45 @@
 using namespace stdexec;
 using namespace exec;
 
-template <class... Ts>
-struct overloaded : Ts... {
-  using Ts::operator()...;
-};
-template <class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
+namespace {
 
-using just_int_t = decltype(just(0));
-using just_t = decltype(just());
+  template <class... Ts>
+  struct overloaded : Ts... {
+    using Ts::operator()...;
+  };
+  template <class... Ts>
+  overloaded(Ts...) -> overloaded<Ts...>;
 
-TEST_CASE("variant_sender - default constructible", "[types][variant_sender]") {
-  variant_sender<just_t, just_int_t> variant{just()};
-  CHECK(variant.index() == 0);
-}
+  using just_int_t = decltype(just(0));
+  using just_void_t = decltype(just());
 
-TEST_CASE("variant_sender - using an overloaded then adaptor", "[types][variant_sender]") {
-  variant_sender<just_t, just_int_t> variant = just();
-  int index = -1;
-  STATIC_REQUIRE(sender<variant_sender<just_t, just_int_t>>);
-  sync_wait(variant | then([&index](auto... xs) { index = sizeof...(xs); }));
-  CHECK(index == 0);
+  TEST_CASE("variant_sender - default constructible", "[types][variant_sender]") {
+    variant_sender<just_void_t, just_int_t> variant{just()};
+    CHECK(variant.index() == 0);
+  }
 
-  variant.emplace<1>(just(42));
-  auto [value] =
-    sync_wait(
-      variant
-      | then(overloaded{
-        [&index] {
-          index = 0;
-          return 0;
-        },
-        [&index](int xs) {
-          index = 1;
-          return xs;
-        }}))
-      .value();
-  CHECK(index == 1);
-  CHECK(value == 42);
+  TEST_CASE("variant_sender - using an overloaded then adaptor", "[types][variant_sender]") {
+    variant_sender<just_void_t, just_int_t> variant = just();
+    int index = -1;
+    STATIC_REQUIRE(sender<variant_sender<just_void_t, just_int_t>>);
+    sync_wait(variant | then([&index](auto... xs) { index = sizeof...(xs); }));
+    CHECK(index == 0);
+
+    variant.emplace<1>(just(42));
+    auto [value] =
+      sync_wait(
+        variant
+        | then(overloaded{
+          [&index] {
+            index = 0;
+            return 0;
+          },
+          [&index](int xs) {
+            index = 1;
+            return xs;
+          }}))
+        .value();
+    CHECK(index == 1);
+    CHECK(value == 42);
+  }
 }

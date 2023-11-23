@@ -29,7 +29,7 @@ namespace exec {
 
       struct __t {
         using __id = __operation;
-        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
           stdexec::set_value(static_cast<_Receiver&&>(__self.__rcvr_));

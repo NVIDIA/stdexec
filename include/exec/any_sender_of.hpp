@@ -350,7 +350,7 @@ namespace exec {
         const __vtable_t* __vtable_{__default_storage_vtable((__vtable_t*) nullptr)};
         void* __object_pointer_{nullptr};
         alignas(__alignment) std::byte __buffer_[__buffer_size]{};
-        STDEXEC_NO_UNIQUE_ADDRESS _Allocator __allocator_{};
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Allocator __allocator_{};
       };
     };
 
@@ -541,7 +541,7 @@ namespace exec {
       const __vtable_t* __vtable_{__default_storage_vtable((__vtable_t*) nullptr)};
       void* __object_pointer_{nullptr};
       alignas(__alignment) std::byte __buffer_[__buffer_size]{};
-      STDEXEC_NO_UNIQUE_ADDRESS _Allocator __allocator_{};
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Allocator __allocator_{};
     };
 
     struct __empty_vtable {
@@ -631,7 +631,11 @@ namespace exec {
       template <class... _Sigs, class... _Queries>
         requires(__is_not_stop_token_query<_Queries> && ...)
       struct __ref<completion_signatures<_Sigs...>, _Queries...> {
+#if !STDEXEC_MSVC()
+        // MSVCBUG https://developercommunity.visualstudio.com/t/Private-member-inaccessible-when-used-in/10448363
+
        private:
+#endif
         using __vtable_t = stdexec::__t<__vtable<completion_signatures<_Sigs...>, _Queries...>>;
 
         struct __env_t {
@@ -694,7 +698,11 @@ namespace exec {
       template <class... _Sigs, class... _Queries>
         requires(__is_stop_token_query<_Queries> || ...)
       struct __ref<completion_signatures<_Sigs...>, _Queries...> {
+#if !STDEXEC_MSVC()
+        // MSVCBUG https://developercommunity.visualstudio.com/t/Private-member-inaccessible-when-used-in/10448363
+
        private:
+#endif
         using _FilteredQueries =
           __minvoke<__remove_if<__q<__is_never_stop_token_query>>, _Queries...>;
         using __vtable_t = stdexec::__t<
@@ -771,7 +779,7 @@ namespace exec {
 
     template <class _Receiver>
     struct __operation_base {
-      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
       stdexec::in_place_stop_source __stop_source_{};
       using __stop_callback = typename stdexec::stop_token_of_t<
         stdexec::env_of_t<_Receiver>>::template callback_type<__on_stop_t>;
@@ -786,6 +794,7 @@ namespace exec {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
+        using is_receiver = void;
         __operation_base<_Receiver>* __op_;
 
         template <same_as<set_next_t> _SetNext, same_as<__t> _Self, class _Item>
@@ -821,7 +830,7 @@ namespace exec {
         friend __env_t<env_of_t<_Receiver>> tag_invoke(_GetEnv, const _Self& __self) noexcept {
           return __make_env(
             get_env(__self.__op_->__rcvr_),
-            __with_(get_stop_token, __self.__op_->__stop_source_.get_token()));
+            __mkprop(__self.__op_->__stop_source_.get_token(), get_stop_token));
         }
       };
     };
@@ -873,7 +882,7 @@ namespace exec {
         }
 
        private:
-        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rec_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rec_;
         __immovable_operation_storage __storage_{};
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
@@ -1146,9 +1155,19 @@ namespace exec {
             __ret_equals_to<stdexec::get_completion_scheduler_t<stdexec::set_value_t>>>,
           decltype(_SenderQueries)...>;
 
+#if STDEXEC_MSVC()
+        // MSVCBUG https://developercommunity.visualstudio.com/t/ICE-and-non-ICE-bug-in-NTTP-argument-w/10361081
+
+        static constexpr auto __any_scheduler_noexcept_signature =
+          stdexec::get_completion_scheduler<stdexec::set_value_t>.signature<any_scheduler() noexcept>;
+        template <class... _Queries>
+        using __schedule_sender_fn =
+          typename __schedule_receiver::template any_sender< __any_scheduler_noexcept_signature>;
+#else
         template <class... _Queries>
         using __schedule_sender_fn = typename __schedule_receiver::template any_sender<
           stdexec::get_completion_scheduler<stdexec::set_value_t>.template signature<any_scheduler() noexcept>>;
+#endif
         using __schedule_sender =
           stdexec::__mapply<stdexec::__q<__schedule_sender_fn>, schedule_sender_queries>;
 
