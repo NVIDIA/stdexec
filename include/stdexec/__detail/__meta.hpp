@@ -884,7 +884,12 @@ namespace stdexec {
 
 #if STDEXEC_HAS_BUILTIN(__type_pack_element)
   template <std::size_t _Np, class... _Ts>
-  using __m_at_c = __type_pack_element<_Np, _Ts...>;
+  struct __m_at_ {
+    using __t = __type_pack_element<_Np, _Ts...>;
+  };
+
+  template <std::size_t _Np, class... _Ts>
+  using __m_at_c = __t<__m_at_<_Np, _Ts...>>;
 #else
   template <std::size_t>
   using __void_ptr = void*;
