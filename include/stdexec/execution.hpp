@@ -2110,15 +2110,15 @@ namespace stdexec {
 
       template <class _Sender, class _Receiver>
       static constexpr auto __select_impl() noexcept {
-#if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
-        static_assert(__check_signatures<_Sender, env_of_t<_Receiver>>());
-#endif
-
         using _Domain = __late_domain_of_t<_Sender, env_of_t<_Receiver&>>;
         constexpr bool _NothrowTfxSender =
           __nothrow_callable<get_env_t, _Receiver&>
           && __nothrow_callable<transform_sender_t, _Domain, _Sender, env_of_t<_Receiver&>>;
         using _TfxSender = __tfx_sender<_Sender, _Receiver&>;
+
+#if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
+        static_assert(__check_signatures<_TfxSender, env_of_t<_Receiver>>());
+#endif
 
         if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
           using _Result = tag_invoke_result_t<connect_t, _TfxSender, _Receiver>;
