@@ -192,3 +192,9 @@ namespace stdexec {
     using __on_v2::on_t;
   }
 }
+
+// template <class...>
+// [[deprecated]] void print() {}
+
+// template <class>
+// struct undef;
