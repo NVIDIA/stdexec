@@ -3529,6 +3529,59 @@ namespace stdexec {
   ////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.split]
   namespace __split {
+    struct __on_stop_request {
+      in_place_stop_source& __stop_source_;
+
+      void operator()() noexcept {
+        __stop_source_.request_stop();
+      }
+    };
+
+    template <class _Receiver>
+    auto __notify_visitor(_Receiver&& __rcvr) noexcept {
+      return [&](const auto& __tupl) noexcept -> void {
+        __apply(
+          [&](auto __tag, const auto&... __args) noexcept -> void {
+            __tag(std::move(__rcvr), __args...);
+          },
+          __tupl);
+      };
+    }
+
+    struct __split_state_base : __immovable {
+      using __notify_fn = void(__split_state_base*) noexcept;
+
+      __split_state_base* __next_{};
+      __notify_fn* __notify_{};
+    };
+
+    template <class _Sender, class _Receiver>
+    struct __split_state
+      : __split_state_base
+      , __enable_receiver_from_this<_Sender, _Receiver> {
+      using __shared_state_ptr = __decay_t<__data_of<_Sender>>;
+      using __on_stop_cb = //
+        typename stop_token_of_t<env_of_t<_Receiver>&>::template callback_type<__on_stop_request>;
+
+      explicit __split_state(_Sender&& __sndr) noexcept
+        : __split_state_base{{}, nullptr, __notify}
+        , __on_stop_()
+        , __shared_state_(__sndr.apply((_Sender&&) __sndr, __detail::__get_data())) {
+      }
+
+      static void __notify(__split_state_base* __self) noexcept {
+        __split_state* __op = static_cast<__split_state*>(__self);
+        __op->__on_stop_.reset();
+        std::visit(__split::__notify_visitor(__op->__receiver()), __op->__shared_state_->__data_);
+      }
+
+      std::optional<__on_stop_cb> __on_stop_;
+      __shared_state_ptr __shared_state_;
+    };
+
+    template <class _CvrefSender, class _Env>
+    struct __sh_state;
+
     template <class _BaseEnv>
     using __env_t = //
       __make_env_t<
@@ -3536,23 +3589,19 @@ namespace stdexec {
         __with<get_stop_token_t, in_place_stop_token>>;
 
     template <class _CvrefSenderId, class _EnvId>
-    struct __sh_state;
-
-    template <class _CvrefSenderId, class _EnvId>
     struct __receiver {
       using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
       using _Env = stdexec::__t<_EnvId>;
 
-      class __t {
-        stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>& __sh_state_;
+      struct __t {
+        __sh_state<_CvrefSender, _Env>& __sh_state_;
 
-       public:
         using is_receiver = void;
         using __id = __receiver;
 
         template <__completion_tag _Tag, class... _As>
         friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept {
-          stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>& __state = __self.__sh_state_;
+          __sh_state<_CvrefSender, _Env>& __state = __self.__sh_state_;
 
           try {
             using __tuple_t = __decayed_tuple<_Tag, _As...>;
@@ -3567,175 +3616,104 @@ namespace stdexec {
         friend const __env_t<_Env>& tag_invoke(get_env_t, const __t& __self) noexcept {
           return __self.__sh_state_.__env_;
         }
-
-        explicit __t(stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>& __sh_state) noexcept
-          : __sh_state_(__sh_state) {
-        }
       };
     };
 
-    struct __operation_base {
-      using __notify_fn = void(__operation_base*) noexcept;
-
-      __operation_base* __next_{};
-      __notify_fn* __notify_{};
-    };
-
-    template <class _CvrefSenderId, class _EnvId = __id<empty_env>>
+    template <class _CvrefSender, class _Env = empty_env>
     struct __sh_state {
-      using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
-      using _Env = stdexec::__t<_EnvId>;
+      using __t = __sh_state;
+      using __id = __sh_state;
 
-      struct __t {
-        using __id = __sh_state;
+      template <class... _Ts>
+      using __bind_tuples = //
+        __mbind_front_q<
+          __variant,
+          std::tuple<set_stopped_t>, // Initial state of the variant is set_stopped
+          std::tuple<set_error_t, std::exception_ptr>,
+          _Ts...>;
 
-        template <class... _Ts>
-        using __bind_tuples = //
-          __mbind_front_q<
-            __variant,
-            std::tuple<set_stopped_t>, // Initial state of the variant is set_stopped
-            std::tuple<set_error_t, std::exception_ptr>,
-            _Ts...>;
+      using __bound_values_t = //
+        __value_types_of_t<
+          _CvrefSender,
+          __env_t<_Env>,
+          __mbind_front_q<__decayed_tuple, set_value_t>,
+          __q<__bind_tuples>>;
 
-        using __bound_values_t = //
-          __value_types_of_t<
-            _CvrefSender,
-            __env_t<_Env>,
-            __mbind_front_q<__decayed_tuple, set_value_t>,
-            __q<__bind_tuples>>;
+      using __variant_t = //
+        __error_types_of_t<
+          _CvrefSender,
+          __env_t<_Env>,
+          __transform< __mbind_front_q<__decayed_tuple, set_error_t>, __bound_values_t>>;
 
-        using __variant_t = //
-          __error_types_of_t<
-            _CvrefSender,
-            __env_t<_Env>,
-            __transform< __mbind_front_q<__decayed_tuple, set_error_t>, __bound_values_t>>;
+      using __receiver_t = stdexec::__t<__receiver<__cvref_id<_CvrefSender>, stdexec::__id<_Env>>>;
 
-        using __receiver_ = stdexec::__t<__receiver<_CvrefSenderId, _EnvId>>;
+      in_place_stop_source __stop_source_{};
+      __variant_t __data_;
+      std::atomic<void*> __head_{nullptr};
+      __env_t<_Env> __env_;
+      connect_result_t<_CvrefSender, __receiver_t> __op_state2_;
 
-        in_place_stop_source __stop_source_{};
-        __variant_t __data_;
-        std::atomic<void*> __head_{nullptr};
-        __env_t<_Env> __env_;
-        connect_result_t<_CvrefSender, __receiver_> __op_state2_;
+      explicit __sh_state(_CvrefSender&& __sndr, _Env __env = {})
+        : __env_(__make_env((_Env&&) __env, __mkprop(__stop_source_.get_token(), get_stop_token)))
+        , __op_state2_(connect((_CvrefSender&&) __sndr, __receiver_t{*this})) {
+      }
 
-        explicit __t(_CvrefSender&& __sndr, _Env __env = {})
-          : __env_(__make_env((_Env&&) __env, __mkprop(__stop_source_.get_token(), get_stop_token)))
-          , __op_state2_(connect((_CvrefSender&&) __sndr, __receiver_{*this})) {
+      void __notify() noexcept {
+        void* const __completion_state = static_cast<void*>(this);
+        void* __old = __head_.exchange(__completion_state, std::memory_order_acq_rel);
+        __split_state_base* __state = static_cast<__split_state_base*>(__old);
+
+        while (__state != nullptr) {
+          __split_state_base* __next = __state->__next_;
+          __state->__notify_(__state);
+          __state = __next;
         }
-
-        void __notify() noexcept {
-          void* const __completion_state = static_cast<void*>(this);
-          void* __old = __head_.exchange(__completion_state, std::memory_order_acq_rel);
-          __operation_base* __op_state = static_cast<__operation_base*>(__old);
-
-          while (__op_state != nullptr) {
-            __operation_base* __next = __op_state->__next_;
-            __op_state->__notify_(__op_state);
-            __op_state = __next;
-          }
-        }
-      };
-    };
-
-    template <class _CvrefSenderId, class _EnvId, class _ReceiverId>
-      requires sender_to<__cvref_t<_CvrefSenderId>, __t<__receiver<_CvrefSenderId, _EnvId>>>
-    struct __operation {
-      using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
-      using _Env = stdexec::__t<_EnvId>;
-      using _Receiver = stdexec::__t<_ReceiverId>;
-
-      class __t : public __operation_base {
-        struct __on_stop_requested {
-          in_place_stop_source& __stop_source_;
-
-          void operator()() noexcept {
-            __stop_source_.request_stop();
-          }
-        };
-
-        using __on_stop = //
-          std::optional<typename stop_token_of_t< env_of_t<_Receiver>&>::template callback_type<
-            __on_stop_requested>>;
-
-        _Receiver __rcvr_;
-        __on_stop __on_stop_{};
-        std::shared_ptr<stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>> __shared_state_;
-
-       public:
-        using __id = __operation;
-
-        __t( //
-          _Receiver&& __rcvr,
-          std::shared_ptr<stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>> __shared_state) //
-          noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
-          : __operation_base{nullptr, __notify}
-          , __rcvr_((_Receiver&&) __rcvr)
-          , __shared_state_(std::move(__shared_state)) {
-        }
-
-        STDEXEC_IMMOVABLE(__t);
-
-        static void __notify(__operation_base* __self) noexcept {
-          __t* __op = static_cast<__t*>(__self);
-          __op->__on_stop_.reset();
-
-          std::visit(
-            [&](const auto& __tupl) noexcept -> void {
-              __apply(
-                [&](auto __tag, const auto&... __args) noexcept -> void {
-                  __tag((_Receiver&&) __op->__rcvr_, __args...);
-                },
-                __tupl);
-            },
-            __op->__shared_state_->__data_);
-        }
-
-        friend void tag_invoke(start_t, __t& __self) noexcept {
-          stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>* __shared_state =
-            __self.__shared_state_.get();
-          std::atomic<void*>& __head = __shared_state->__head_;
-          void* const __completion_state = static_cast<void*>(__shared_state);
-          void* __old = __head.load(std::memory_order_acquire);
-
-          if (__old != __completion_state) {
-            __self.__on_stop_.emplace(
-              get_stop_token(get_env(__self.__rcvr_)),
-              __on_stop_requested{__shared_state->__stop_source_});
-          }
-
-          do {
-            if (__old == __completion_state) {
-              __self.__notify(&__self);
-              return;
-            }
-            __self.__next_ = static_cast<__operation_base*>(__old);
-          } while (!__head.compare_exchange_weak(
-            __old,
-            static_cast<void*>(&__self),
-            std::memory_order_release,
-            std::memory_order_acquire));
-
-          if (__old == nullptr) {
-            // the inner sender isn't running
-            if (__shared_state->__stop_source_.stop_requested()) {
-              // 1. resets __head to completion state
-              // 2. notifies waiting threads
-              // 3. propagates "stopped" signal to `out_r'`
-              __shared_state->__notify();
-            } else {
-              start(__shared_state->__op_state2_);
-            }
-          }
-        }
-      };
+      }
     };
 
     struct __split_t {
-#if STDEXEC_FRIENDSHIP_IS_LEXICAL()
-     private:
-      template <class...>
-      friend struct stdexec::__sexpr;
-#endif
+      template <class _Sender, class _Receiver>
+      static __split_state<_Sender, _Receiver> get_state(_Sender&& __sndr, _Receiver&) noexcept {
+        static_assert(sender_expr_for<_Sender, __split_t>);
+        return __split_state<_Sender, _Receiver>{(_Sender&&) __sndr};
+      }
+
+      template <class _Sender, class _Receiver>
+      static void start(__split_state<_Sender, _Receiver>& __state, _Receiver& __rcvr) noexcept {
+        auto* __shared_state = __state.__shared_state_.get();
+        std::atomic<void*>& __head = __shared_state->__head_;
+        void* const __completion_state = static_cast<void*>(__shared_state);
+        void* __old = __head.load(std::memory_order_acquire);
+
+        if (__old != __completion_state) {
+          __state.__on_stop_.emplace(
+            get_stop_token(get_env(__rcvr)), __on_stop_request{__shared_state->__stop_source_});
+        }
+
+        do {
+          if (__old == __completion_state) {
+            __state.__notify(&__state);
+            return;
+          }
+          __state.__next_ = static_cast<__split_state_base*>(__old);
+        } while (!__head.compare_exchange_weak(
+          __old,
+          static_cast<void*>(&__state),
+          std::memory_order_release,
+          std::memory_order_acquire));
+
+        if (__old == nullptr) {
+          // the inner sender isn't running
+          if (__shared_state->__stop_source_.stop_requested()) {
+            // 1. resets __head to completion state
+            // 2. notifies waiting threads
+            // 3. propagates "stopped" signal to `out_r'`
+            __shared_state->__notify();
+          } else {
+            stdexec::start(__shared_state->__op_state2_);
+          }
+        }
+      }
 
       template <class... _Tys>
       using __set_value_t = completion_signatures<set_value_t(const __decay_t<_Tys>&...)>;
@@ -3756,32 +3734,11 @@ namespace stdexec {
           __q<__set_value_t>,
           __q<__set_error_t>>;
 
-      static inline constexpr auto __connect_fn = []<class _Receiver>(_Receiver& __rcvr) noexcept {
-        return [&]<class _ShState>(auto, std::shared_ptr<_ShState> __sh_state) //
-               noexcept(__nothrow_decay_copyable<_Receiver>)
-                 -> __t<__mapply<__mbind_back_q<__operation, __id<_Receiver>>, __id<_ShState>>> {
-                 return {(_Receiver&&) __rcvr, std::move(__sh_state)};
-               };
-      };
-
       static inline constexpr auto __get_completion_signatures_fn =
         []<class _ShState>(auto, const std::shared_ptr<_ShState>&) //
         -> __mapply<__q<__completions_t>, __id<_ShState>> {
         return {};
       };
-
-      template <sender_expr_for<__split_t> _Self, class _Receiver>
-      static auto connect(_Self&& __self, _Receiver __rcvr) noexcept(
-        __nothrow_callable<
-          __sexpr_apply_t,
-          _Self,
-          __call_result_t<__mtypeof<__connect_fn>, _Receiver&>>)
-        -> __call_result_t<
-          __sexpr_apply_t,
-          _Self,
-          __call_result_t<__mtypeof<__connect_fn>, _Receiver&>> {
-        return __sexpr_apply((_Self&&) __self, __connect_fn(__rcvr));
-      }
 
       template <sender_expr_for<__split_t> _Self, class _OtherEnv>
       static auto get_completion_signatures(_Self&&, _OtherEnv&&)
@@ -3824,7 +3781,7 @@ namespace stdexec {
       static auto transform_sender(_Sender&& __sndr, _Env... __env) {
         return __sexpr_apply(
           (_Sender&&) __sndr, [&]<class _Child>(__ignore, __ignore, _Child&& __child) {
-            using __sh_state_t = __t<__sh_state<__cvref_id<_Child>, __id<_Env>...>>;
+            using __sh_state_t = __sh_state<_Child, _Env...>;
             auto __sh_state = std::make_shared<__sh_state_t>(
               (_Child&&) __child, std::move(__env)...);
             return __make_sexpr<__split_t>(std::move(__sh_state));
@@ -3957,7 +3914,7 @@ namespace stdexec {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       class __t : public __operation_base {
-        struct __on_stop_requested {
+        struct __on_stop_request {
           in_place_stop_source& __stop_source_;
 
           void operator()() noexcept {
@@ -3967,7 +3924,7 @@ namespace stdexec {
 
         using __on_stop = //
           std::optional< typename stop_token_of_t< env_of_t<_Receiver>&>::template callback_type<
-            __on_stop_requested>>;
+            __on_stop_request>>;
 
         _Receiver __rcvr_;
         __on_stop __on_stop_{};
@@ -4022,7 +3979,7 @@ namespace stdexec {
             // register stop callback:
             __self.__on_stop_.emplace(
               get_stop_token(get_env(__self.__rcvr_)),
-              __on_stop_requested{__shared_state->__stop_source_});
+              __on_stop_request{__shared_state->__stop_source_});
             // Check if the stop_source has requested cancellation
             if (__shared_state->__stop_source_.stop_requested()) {
               // Stop has already been requested. Don't bother starting
@@ -4572,8 +4529,7 @@ namespace stdexec {
         } else if constexpr (same_as<_Tag, set_error_t>) {
           stdexec::set_error((_Receiver&&) __rcvr, (_Args&&) __args...);
         } else {
-          stdexec::set_value(
-            (_Receiver&&) __rcvr, std::optional<__t<_State>>{std::nullopt});
+          stdexec::set_value((_Receiver&&) __rcvr, std::optional<__t<_State>>{std::nullopt});
         }
       }
     };
@@ -5694,7 +5650,7 @@ namespace stdexec {
       __stopped
     };
 
-    struct __on_stop_requested {
+    struct __on_stop_request {
       in_place_stop_source& __stop_source_;
 
       void operator()() noexcept {
@@ -5862,7 +5818,7 @@ namespace stdexec {
       _ErrorsVariant __errors_{};
       STDEXEC_ATTRIBUTE((no_unique_address)) _ValuesTuple __values_{};
       std::optional<
-        typename stop_token_of_t<env_of_t<_Receiver>&>::template callback_type<__on_stop_requested>>
+        typename stop_token_of_t<env_of_t<_Receiver>&>::template callback_type<__on_stop_request>>
         __on_stop_{};
     };
 
@@ -6041,7 +5997,7 @@ namespace stdexec {
         friend void tag_invoke(start_t, __t& __self) noexcept {
           // register stop callback:
           __self.__on_stop_.emplace(
-            get_stop_token(get_env(__self.__rcvr_)), __on_stop_requested{__self.__stop_source_});
+            get_stop_token(get_env(__self.__rcvr_)), __on_stop_request{__self.__stop_source_});
           if (__self.__stop_source_.stop_requested()) {
             // Stop has already been requested. Don't bother starting
             // the child operations.

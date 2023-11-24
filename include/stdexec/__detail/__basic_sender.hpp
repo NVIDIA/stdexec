@@ -67,7 +67,7 @@ namespace stdexec {
         struct __meta {
           using __tag = _Tag;
           using __data = _Data;
-          using __child = __types<_Child...>;
+          using __children = __types<_Child...>;
         };
 
         return __meta{};
@@ -88,7 +88,7 @@ namespace stdexec {
 
   template <class _Sender, class _Continuation = __q<__types>>
   using __children_of = //
-    __mapply< _Continuation, typename __detail::__meta_of<_Sender>::__child>;
+    __mapply< _Continuation, typename __detail::__meta_of<_Sender>::__children>;
 
   template <class _Ny, class _Sender>
   using __nth_child_of = __children_of<_Sender, __mbind_front_q<__m_at, _Ny>>;
@@ -169,13 +169,13 @@ namespace stdexec {
     using __connect_impl = __if_c<__has_connect_member<_Tag>, _Tag, __default_basis_ops>;
 
     template <class _Tag, class _Sexpr, class _Receiver>
-    using __state_type_t =
-      __decay_t<decltype(__get_state_impl<_Tag>::get_state(__declval<_Sexpr>(), __declval<_Receiver&>()))>;
+    using __state_type_t = __decay_t<
+      decltype(__get_state_impl<_Tag>::get_state(__declval<_Sexpr>(), __declval<_Receiver&>()))>;
 
     template <class _Sexpr, class _Receiver>
     concept __connectable =
       __callable<__impl_of<_Sexpr>, __copy_cvref_fn<_Sexpr>, __connect_fn<_Sexpr, _Receiver>>
-        && __mvalid<__state_type_t, __tag_of<_Sexpr>, _Sexpr, _Receiver>;
+      && __mvalid<__state_type_t, __tag_of<_Sexpr>, _Sexpr, _Receiver>;
 
     ////////////////////////////////////////////////////////////////////////////
     // default behaviors for the sender/receiver/op state basis operations,
@@ -250,19 +250,22 @@ namespace stdexec {
       };
     };
 
+    template <class _Receiver>
+    using __sexpr_connected_with = __mapply<
+      __mbind_front_q<__m_at, typename _Receiver::__index>,
+      typename __call_result_t<__impl_of<typename _Receiver::__sexpr>, __cp, __get_meta>::__children>;
+
     template <class _Sexpr, class _Receiver>
-    struct __op_base {
+    struct __op_base : __immovable {
       using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
       using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
-      STDEXEC_IMMOVABLE(__op_base);
-
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS __state_t __state_;
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS __state_t __state_;
 
       __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr)
-        : __state_(__get_state_impl<__tag_t>::get_state((_Sexpr&&) __sndr, __rcvr))
-        , __rcvr_((_Receiver&&) __rcvr) {
+        : __rcvr_((_Receiver&&) __rcvr)
+        , __state_(__get_state_impl<__tag_t>::get_state((_Sexpr&&) __sndr, __rcvr_)) {
       }
 
       _Receiver& __rcvr() noexcept {
@@ -274,19 +277,13 @@ namespace stdexec {
       }
     };
 
-    template <class _Receiver>
-    using __sexpr_connected_with = __mapply<
-      __mbind_front_q<__m_at, typename _Receiver::__index>,
-      typename __call_result_t<__impl_of<typename _Receiver::__sexpr>, __cp, __get_meta>::__child>;
-
     template <class _Sexpr, class _Receiver>
       requires __is_instance_of<__id<_Receiver>, __receiver>
             && __decays_to<_Sexpr, __sexpr_connected_with<_Receiver>>
-    struct __op_base<_Sexpr, _Receiver> {
+    struct __op_base<_Sexpr, _Receiver> : __immovable {
       using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
       using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
-      STDEXEC_IMMOVABLE(__op_base);
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS __state_t __state_;
 
       __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr)
@@ -298,6 +295,27 @@ namespace stdexec {
         return _Receiver::__from_op_state(             //
           static_cast<__op_state<_Sexpr, _Receiver>*>( //
             const_cast<__op_base*>(this)));
+      }
+    };
+
+    template <class _Sexpr, class _Receiver>
+    struct __enable_receiver_from_this {
+      using __op_base_t = __op_base<_Sexpr, _Receiver>;
+
+      decltype(auto) __receiver() noexcept {
+        using __derived_t = decltype(__op_base_t::__state_);
+        __derived_t* __derived = static_cast<__derived_t*>(this);
+        constexpr std::size_t __offset = offsetof(__op_base_t, __state_);
+        __op_base_t* __base = (__op_base_t*) ((char*) __derived - __offset);
+        return __base->__rcvr();
+      }
+
+      decltype(auto) __receiver() const noexcept {
+        using __derived_t = decltype(__op_base_t::__state_);
+        const __derived_t* __derived = static_cast<const __derived_t*>(this);
+        constexpr std::size_t __offset = offsetof(__op_base_t, __state_);
+        const __op_base_t* __base = (const __op_base_t*) ((const char*) __derived - __offset);
+        return __base->__rcvr();
       }
     };
 
@@ -321,7 +339,8 @@ namespace stdexec {
       template <class _Tag, class _Data, class... _Child>
       auto operator()(_Tag, _Data&& __data, _Child&&... __child) const
         -> __call_result_t<__impl, __indices_for<_Child...>, _Tag, _Data, _Child...> {
-        return __impl{__op_}(__indices_for<_Child...>(), _Tag(), (_Data&&) __data, (_Child&&) __child...);
+        return __impl{
+          __op_}(__indices_for<_Child...>(), _Tag(), (_Data&&) __data, (_Child&&) __child...);
       }
     };
 
@@ -330,7 +349,7 @@ namespace stdexec {
       using __meta_t = typename __decay_t<_Sexpr>::__meta_t;
       using __tag_t = typename __meta_t::__tag;
       using __data_t = typename __meta_t::__data;
-      using __children_t = typename __meta_t::__child;
+      using __children_t = typename __meta_t::__children;
       using __connect_t = __connect_fn<_Sexpr, _Receiver>;
 
       static auto __connect(__op_state* __self, _Sexpr&& __sexpr)
@@ -356,9 +375,10 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline))
       friend void tag_invoke(_Tag2, __op_state& __self) noexcept {
         using __tag_t = typename __op_state::__tag_t; // workaround nvc++ bug
+        auto&& __rcvr = __self.__rcvr();
         __tup::__apply(
           [&](auto&... __ops) noexcept {
-            __start_impl<__tag_t>::start(__self.__state_, __self.__rcvr(), __ops...);
+            __start_impl<__tag_t>::start(__self.__state_, __rcvr, __ops...);
           },
           __self.__inner_ops_);
       }
@@ -378,6 +398,8 @@ namespace stdexec {
     };
   } // namespace __detail
 
+  using __detail::__enable_receiver_from_this;
+
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __sexpr
   template <class...>
@@ -394,7 +416,7 @@ namespace stdexec {
     using __meta_t = __call_result_t<_ImplFn, __cp, __detail::__get_meta>;
     using __tag_t = typename __meta_t::__tag;
     using __data_t = typename __meta_t::__data;
-    using __children_t = typename __meta_t::__child;
+    using __children_t = typename __meta_t::__children;
     using __arity_t = __mapply<__msize, __children_t>;
 
     STDEXEC_ATTRIBUTE((always_inline)) //
@@ -439,7 +461,8 @@ namespace stdexec {
         __detail::__connect_impl<__tag_t>::connect((_Self&&) __self, (_Receiver&&) __rcvr))) //
       -> __msecond<
         __if_c<same_as<_Tag, connect_t>>,
-        decltype(__detail::__connect_impl<__tag_t>::connect((_Self&&) __self, (_Receiver&&) __rcvr))> {
+        decltype(__detail::__connect_impl<
+                 __tag_t>::connect((_Self&&) __self, (_Receiver&&) __rcvr))> {
       return __detail::__connect_impl<__tag_t>::connect((_Self&&) __self, (_Receiver&&) __rcvr);
     }
 
