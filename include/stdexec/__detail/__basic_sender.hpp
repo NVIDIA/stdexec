@@ -198,7 +198,7 @@ namespace stdexec {
           _Receiver&& __rcvr,
           _SetTag,
           _Args&&... __args) noexcept {
-        _SetTag()((_Receiver&&) __rcvr, (_Args&&) __args...);
+        _SetTag()(std::move(__rcvr), (_Args&&) __args...);
       }
 
       // By default, return a generic operation state
@@ -298,6 +298,9 @@ namespace stdexec {
       }
     };
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(offset_in_non_POD_nonstandard)
+
     template <class _Sexpr, class _Receiver>
     struct __enable_receiver_from_this {
       using __op_base_t = __op_base<_Sexpr, _Receiver>;
@@ -318,6 +321,8 @@ namespace stdexec {
         return __base->__rcvr();
       }
     };
+
+STDEXEC_PRAGMA_POP()
 
     template <class _Sexpr, class _Receiver>
     struct __connect_fn {
