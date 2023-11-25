@@ -560,7 +560,7 @@ namespace exec {
 
       class __run_sender {
        public:
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
         using completion_signatures = stdexec::completion_signatures<
           stdexec::set_value_t(),
           stdexec::set_error_t(std::exception_ptr),
@@ -1057,7 +1057,7 @@ namespace exec {
       class __schedule_sender {
         __schedule_env __env_;
        public:
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
         using __id = __schedule_sender;
         using __t = __schedule_sender;
 
@@ -1094,7 +1094,7 @@ namespace exec {
 
       class __schedule_after_sender {
        public:
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
         using __id = __schedule_after_sender;
         using __t = __schedule_after_sender;
 

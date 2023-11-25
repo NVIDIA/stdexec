@@ -35,7 +35,7 @@ namespace {
 
   template <__completion_signature... _Sigs>
   struct some_sender_of {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using completion_signatures = stdexec::completion_signatures<_Sigs...>;
 
     template <class R>
@@ -57,7 +57,7 @@ namespace {
 
   template <__completion_signature... _Sigs>
   struct test_receiver {
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
 
     template <class _Tag, class... _Args>
       requires __one_of<_Tag(_Args...), _Sigs...>
@@ -86,7 +86,7 @@ namespace {
 
   template <__completion_signature... _Sigs>
   struct next_receiver {
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
 
     template <sender_to<test_receiver<_Sigs...>> _Item>
     friend _Item tag_invoke(set_next_t, next_receiver&, _Item&& __item) noexcept {
@@ -120,7 +120,7 @@ namespace {
 
   template <__completion_signature... _Sigs>
   struct some_sequence_sender_of {
-    using is_sender = sequence_tag;
+    using sender_concept = sequence_sender_t;
     using completion_signatures = stdexec::completion_signatures<set_value_t()>;
     using item_types = exec::item_types<some_sender_of<_Sigs...>>;
 

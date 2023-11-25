@@ -33,7 +33,7 @@ namespace {
     using ex::set_value_t;
 
     struct recv0 {
-      using is_receiver = void;
+      using receiver_concept = stdexec::receiver_t;
 
       friend void tag_invoke(set_value_t, recv0&&) noexcept {
       }
@@ -50,7 +50,7 @@ namespace {
     };
 
     struct recv_int {
-      using is_receiver = void;
+      using receiver_concept = stdexec::receiver_t;
 
       friend void tag_invoke(set_value_t, recv_int&&, int) noexcept {
       }
@@ -67,7 +67,7 @@ namespace {
     };
 
     struct recv0_ec {
-      using is_receiver = void;
+      using receiver_concept = stdexec::receiver_t;
 
       friend void tag_invoke(set_value_t, recv0_ec&&) noexcept {
       }
@@ -87,7 +87,7 @@ namespace {
     };
 
     struct recv_int_ec {
-      using is_receiver = void;
+      using receiver_concept = stdexec::receiver_t;
 
       friend void tag_invoke(set_value_t, recv_int_ec&&, int) noexcept {
       }
@@ -118,7 +118,7 @@ namespace {
     }
 
    public:
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
     base_expect_receiver() = default;
 
     ~base_expect_receiver() {
@@ -172,7 +172,7 @@ namespace {
   };
 
   struct expect_void_receiver_ex {
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
 
     expect_void_receiver_ex(bool& executed)
       : executed_(&executed) {
@@ -243,7 +243,7 @@ namespace {
     Env env_{};
 
    public:
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
 
     explicit expect_value_receiver_ex(T& dest)
       : dest_(&dest) {
@@ -301,7 +301,7 @@ namespace {
 
   template <class Env = empty_env>
   struct expect_stopped_receiver_ex {
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
 
     explicit expect_stopped_receiver_ex(bool& executed)
       : executed_(&executed) {
@@ -402,7 +402,7 @@ namespace {
 
   template <class T, class Env = empty_env>
   struct expect_error_receiver_ex {
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
 
     explicit expect_error_receiver_ex(T& value)
       : value_(&value) {
@@ -441,7 +441,7 @@ namespace {
   };
 
   struct logging_receiver {
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
 
     logging_receiver(int& state)
       : state_(&state) {
@@ -479,7 +479,7 @@ namespace {
 
   template <typename T>
   struct typecat_receiver {
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
     T* value_;
     typecat* cat_;
 
@@ -517,7 +517,7 @@ namespace {
 
   template <typename F>
   struct fun_receiver {
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
     F f_;
 
     template <typename... Ts>

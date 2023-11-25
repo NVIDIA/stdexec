@@ -126,7 +126,7 @@ namespace exec {
       using __operation_t = stdexec::__t<__operation<__id<__decay_t<_Receiver>>>>;
 
       struct __schedule_sender {
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
         using completion_signatures =
           stdexec::completion_signatures<set_value_t(), set_stopped_t()>;
 

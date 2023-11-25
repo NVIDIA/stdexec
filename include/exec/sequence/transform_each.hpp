@@ -35,7 +35,7 @@ namespace exec {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
         using __id = __receiver;
         __operation_base<_Receiver, _Adaptor>* __op_;
 

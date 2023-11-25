@@ -19,7 +19,8 @@
 #include "../stdexec/execution.hpp"
 
 namespace exec {
-  struct sequence_tag { };
+  struct sequence_sender_t : stdexec::sender_t { };
+  using sequence_tag [[deprecated("Renamed to exec::sequence_sender_t")]] = exec::sequence_sender_t;
 
   namespace __sequence_sndr {
     using namespace stdexec;
@@ -77,7 +78,7 @@ namespace exec {
     template <class _ReceiverId>
     struct __stopped_means_break {
       struct __t {
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
         using __id = __stopped_means_break;
         using _Receiver = stdexec::__t<_ReceiverId>;
         using _Token = stop_token_of_t<env_of_t<_Receiver>>;
@@ -117,9 +118,9 @@ namespace exec {
   } // namespace __sequence_sndr
 
   template <class _Sender>
-  concept __enable_sequence_sender =             //
-    requires { typename _Sender::is_sender; } && //
-    stdexec::same_as<typename _Sender::is_sender, sequence_tag>;
+  concept __enable_sequence_sender =                  //
+    requires { typename _Sender::sender_concept; } && //
+    stdexec::same_as<typename _Sender::sender_concept, sequence_tag>;
 
   template <class _Sender>
   inline constexpr bool enable_sequence_sender = __enable_sequence_sender<_Sender>;

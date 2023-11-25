@@ -83,7 +83,7 @@ namespace {
 
   template <class Item>
   struct sequence {
-    using is_sender = exec::sequence_tag;
+    using sender_concept = exec::sequence_sender_t;
 
     using completion_signatures =
       stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(int)>;

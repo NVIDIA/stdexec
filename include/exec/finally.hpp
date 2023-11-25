@@ -100,7 +100,7 @@ namespace exec {
 
       class __t {
        public:
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
 
         explicit __t(__final_operation_base<_ResultType, _ReceiverId>* __op) noexcept
           : __op_{__op} {
@@ -167,7 +167,7 @@ namespace exec {
 
       class __t {
        public:
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
 
         explicit __t(__base_op_t* __op) noexcept
           : __op_(__op) {
@@ -273,7 +273,7 @@ namespace exec {
         }
 
        public:
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
 
         template <__decays_to<_InitialSender> _Is, __decays_to<_FinalSender> _Fs>
         __t(_Is&& __initial_sender, _Fs&& __final_sender) noexcept(

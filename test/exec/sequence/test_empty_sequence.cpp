@@ -38,7 +38,7 @@ namespace {
   }
 
   struct count_set_next_receiver_t {
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
     int& count_invocations_;
 
     friend auto

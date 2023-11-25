@@ -59,7 +59,7 @@ namespace {
   };
 
   struct sink_receiver {
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
 
     std::variant<std::monostate, int, std::exception_ptr, set_stopped_t> value_{};
 
@@ -367,7 +367,7 @@ namespace {
 
   template <class Token>
   struct stopped_receiver_base {
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
     Token stop_token_{};
   };
 
@@ -682,7 +682,7 @@ namespace {
       using __id = sender;
       using __t = sender;
 
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <ex::receiver R>

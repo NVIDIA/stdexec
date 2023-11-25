@@ -75,7 +75,7 @@ namespace exec {
     template <class _Tag, class _DefaultId>
     struct __sender {
       using _Default = __t<_DefaultId>;
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       STDEXEC_ATTRIBUTE((no_unique_address)) _Default __default_;
 
       template <class _Env>

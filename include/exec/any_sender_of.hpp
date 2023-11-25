@@ -656,7 +656,7 @@ namespace exec {
           }
         } __env_;
        public:
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
         using __id = __ref;
         using __t = __ref;
 
@@ -721,7 +721,7 @@ namespace exec {
           }
         } __env_;
        public:
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
         using __id = __ref;
         using __t = __ref;
 
@@ -794,7 +794,7 @@ namespace exec {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
         __operation_base<_Receiver>* __op_;
 
         template <same_as<set_next_t> _SetNext, same_as<__t> _Self, class _Item>
@@ -967,7 +967,7 @@ namespace exec {
        public:
         using __id = __sender;
         using completion_signatures = _Sigs;
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
 
         __t(const __t&) = delete;
         __t& operator=(const __t&) = delete;
@@ -1099,7 +1099,7 @@ namespace exec {
     }
 
    public:
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
     using __t = any_receiver_ref;
     using __id = any_receiver_ref;
 
@@ -1124,7 +1124,7 @@ namespace exec {
         return stdexec::tag_invoke(_Tag{}, ((Self&&) __self).__sender_, (_As&&) __as...);
       }
      public:
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = typename __sender_base::completion_signatures;
 
       template <stdexec::__not_decays_to<any_sender> _Sender>
