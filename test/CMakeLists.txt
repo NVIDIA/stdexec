@@ -131,7 +131,6 @@ icm_add_build_failure_test(
     FOLDER test
 )
 
-
 # # Adding multiple tests with a glob
 # icm_glob_build_failure_tests(
 #     PATTERN *_fail*.cpp

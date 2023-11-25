@@ -299,6 +299,7 @@ namespace stdexec {
     };
 
 STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Winvalid-offsetof")
 STDEXEC_PRAGMA_IGNORE_EDG(offset_in_non_POD_nonstandard)
 
     template <class _Sexpr, class _Receiver>
@@ -324,6 +325,8 @@ STDEXEC_PRAGMA_IGNORE_EDG(offset_in_non_POD_nonstandard)
 
 STDEXEC_PRAGMA_POP()
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
     template <class _Sexpr, class _Receiver>
     struct __connect_fn {
       template <std::size_t _Idx>
@@ -348,6 +351,7 @@ STDEXEC_PRAGMA_POP()
           __op_}(__indices_for<_Child...>(), _Tag(), (_Data&&) __data, (_Child&&) __child...);
       }
     };
+STDEXEC_PRAGMA_POP()
 
     template <class _Sexpr, class _Receiver>
     struct __op_state : __op_base<_Sexpr, _Receiver> {
