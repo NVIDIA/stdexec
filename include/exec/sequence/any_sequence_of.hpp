@@ -238,7 +238,7 @@ namespace exec {
         using __id = __sequence_sender;
         using completion_signatures = __compl_sigs;
         using item_types = exec::item_types<__item_sender>;
-        using is_sender = sequence_tag;
+        using sender_concept = sequence_sender_t;
 
         __t(const __t&) = delete;
         __t& operator=(const __t&) = delete;
@@ -337,7 +337,7 @@ namespace exec {
      public:
       using __id = any_sender;
       using __t = any_sender;
-      using is_sender = sequence_tag;
+      using sender_concept = sequence_sender_t;
       using completion_signatures = typename __sender_base::completion_signatures;
       using item_types = typename __sender_base::item_types;
 

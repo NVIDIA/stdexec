@@ -31,7 +31,7 @@ namespace exec {
 
   template <class _ImplFn>
   struct __seqexpr<_ImplFn> {
-    using is_sender = sequence_tag;
+    using sender_concept = sequence_sender_t;
     using __t = __seqexpr;
     using __id = __seqexpr;
     using __tag_t = stdexec::__call_result_t<_ImplFn, stdexec::__cp, stdexec::__detail::__get_tag>;

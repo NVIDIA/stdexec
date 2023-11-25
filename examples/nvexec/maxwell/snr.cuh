@@ -26,9 +26,13 @@
 #include <nvexec/multi_gpu_context.cuh>
 #else
 namespace nvexec {
-  struct stream_receiver_base { };
+  struct stream_receiver_base {
+    using receiver_concept = stdexec::receiver_t;
+  };
 
-  struct stream_sender_base { };
+  struct stream_sender_base {
+    using sender_concept = stdexec::sender_t;
+  };
 
   namespace detail {
     struct stream_op_state_base { };
@@ -187,13 +191,15 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
 namespace repeat_n_detail {
 
   template <class OpT>
-  class receiver_2_t : public stdexec::__receiver_base {
+  class receiver_2_t {
     using Sender = typename OpT::PredSender;
     using Receiver = typename OpT::Receiver;
 
     OpT& op_state_;
 
    public:
+    using receiver_concept = stdexec::receiver_t;
+
     template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
     friend void tag_invoke(_Tag __tag, receiver_2_t&& __self, _Args&&... __args) noexcept {
       OpT& op_state = __self.op_state_;
@@ -231,12 +237,14 @@ namespace repeat_n_detail {
   };
 
   template <class OpT>
-  class receiver_1_t : public stdexec::__receiver_base {
+  class receiver_1_t {
     using Receiver = typename OpT::Receiver;
 
     OpT& op_state_;
 
    public:
+    using receiver_concept = stdexec::receiver_t;
+
     template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
     friend void tag_invoke(_Tag __tag, receiver_1_t&& __self, _Args&&... __args) noexcept {
       OpT& op_state = __self.op_state_;

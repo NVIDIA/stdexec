@@ -120,7 +120,7 @@ namespace {
 
   template <__completion_signature... _Sigs>
   struct some_sequence_sender_of {
-    using is_sender = sequence_tag;
+    using sender_concept = sequence_sender_t;
     using completion_signatures = stdexec::completion_signatures<set_value_t()>;
     using item_types = exec::item_types<some_sender_of<_Sigs...>>;
 

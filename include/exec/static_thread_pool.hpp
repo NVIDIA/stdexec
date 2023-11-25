@@ -1279,7 +1279,7 @@ namespace exec {
      public:
       using __id = sequence;
 
-      using is_sender = sequence_tag;
+      using sender_concept = sequence_sender_t;
 
       using completion_signatures = stdexec::completion_signatures<
         stdexec::set_value_t(),
