@@ -1025,8 +1025,9 @@ namespace stdexec {
 
   namespace __detail {
     template <class _Receiver>
-    concept __enable_receiver = //
-      derived_from<typename _Receiver::receiver_concept, receiver_t>
+    concept __enable_receiver =                                            //
+      (STDEXEC_NVHPC(requires { typename _Receiver::receiver_concept; }&&) //
+       derived_from<typename _Receiver::receiver_concept, receiver_t>)
       || requires { typename _Receiver::is_receiver; } // back-compat, NOT TO SPEC
       || STDEXEC_IS_BASE_OF(receiver_t, _Receiver);    // NOT TO SPEC, for receiver_adaptor
   }                                                    // namespace __detail
@@ -2997,7 +2998,7 @@ namespace stdexec {
     };
 
     template <derived_from<__no::__nope> _Base>
-    struct __adaptor_base<_Base> : __no::__nope { };
+    struct __adaptor_base<_Base> { };
 
 // BUGBUG Not to spec: on gcc and nvc++, member functions in derived classes
 // don't shadow type aliases of the same name in base classes. :-O
