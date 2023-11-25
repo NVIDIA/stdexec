@@ -92,6 +92,16 @@ rapids_cpm_find(Catch2 ${Catch2_VERSION}
     URL https://github.com/catchorg/Catch2/archive/refs/tags/v${Catch2_VERSION}.zip
 )
 
+# Add ICM
+set(icm_VERSION 1.5.0)
+# Always download it, don't attempt to do `find_package(ICM)` first
+set(CPM_DOWNLOAD_icm TRUE)
+rapids_cpm_find(icm ${icm_VERSION}
+  CPM_ARGS
+    URL https://github.com/iboB/icm/archive/refs/tags/v${icm_VERSION}.zip
+    PATCH_COMMAND patch -p 1 -i ${CMAKE_CURRENT_SOURCE_DIR}/cmake/cpm/patches/icm/regex-build-error.diff
+)
+
 # Ensure that we link with the threading library
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 rapids_find_package(Threads REQUIRED
