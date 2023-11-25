@@ -98,8 +98,10 @@ set(icm_VERSION 1.5.0)
 set(CPM_DOWNLOAD_icm TRUE)
 rapids_cpm_find(icm ${icm_VERSION}
   CPM_ARGS
-    URL https://github.com/iboB/icm/archive/refs/tags/v${icm_VERSION}.zip
-    PATCH_COMMAND patch -p 1 -i ${CMAKE_CURRENT_SOURCE_DIR}/cmake/cpm/patches/icm/regex-build-error.diff
+    GITHUB_REPOSITORY iboB/icm
+    GIT_TAG v${icm_VERSION}
+    VERSION ${icm_VERSION}
+    PATCH_COMMAND git restore -- . && git apply ${CMAKE_CURRENT_LIST_DIR}/cmake/cpm/patches/icm/regex-build-error.diff
 )
 
 # Ensure that we link with the threading library
