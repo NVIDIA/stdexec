@@ -107,7 +107,7 @@ int main() {
       // do the processing on the worker threads pool
       | ex::transfer(work_sched)
       // process the incoming data (on worker threads)
-      | ex::then([buf](int read_len) { process_read_data(buf, read_len); })
+      | ex::then([buf](size_t read_len) { process_read_data(buf, read_len); })
       // done
       ;
 

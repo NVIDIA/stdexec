@@ -956,7 +956,8 @@ namespace exec {
     std::vector<bulk_task> tasks_;
 
     std::uint32_t num_agents_required() const {
-      return std::min(shape_, static_cast<Shape>(pool_.available_parallelism()));
+      return static_cast<std::uint32_t>(
+        std::min(shape_, static_cast<Shape>(pool_.available_parallelism())));
     }
 
     template <class F>
