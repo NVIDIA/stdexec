@@ -92,6 +92,18 @@ rapids_cpm_find(Catch2 ${Catch2_VERSION}
     URL https://github.com/catchorg/Catch2/archive/refs/tags/v${Catch2_VERSION}.zip
 )
 
+# Add ICM
+set(icm_VERSION 1.5.0)
+# Always download it, don't attempt to do `find_package(ICM)` first
+set(CPM_DOWNLOAD_icm TRUE)
+rapids_cpm_find(icm ${icm_VERSION}
+  CPM_ARGS
+    GITHUB_REPOSITORY iboB/icm
+    GIT_TAG v${icm_VERSION}
+    VERSION ${icm_VERSION}
+    PATCH_COMMAND git restore -- . && git apply ${CMAKE_CURRENT_LIST_DIR}/cmake/cpm/patches/icm/regex-build-error.diff
+)
+
 # Ensure that we link with the threading library
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 rapids_find_package(Threads REQUIRED
@@ -146,6 +158,12 @@ target_compile_options(stdexec INTERFACE
                        $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fcoroutines>
                        )
 
+# Increase the concepts diagnostics depth for GCC
+target_compile_options(stdexec INTERFACE
+                       $<$<CXX_COMPILER_ID:GNU>:-fconcepts-diagnostics-depth=10>
+                       )
+
+# Do you want a preprocessor that works? Picky, picky.
 target_compile_options(stdexec INTERFACE
                        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus /Zc:preprocessor>
                        )

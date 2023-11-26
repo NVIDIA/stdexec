@@ -960,7 +960,7 @@ namespace stdexec {
 
   template <class _Completions>
   concept __valid_completion_signatures = //
-    __is_instance_of<_Completions, completion_signatures>;
+    __ok<_Completions> && __is_instance_of<_Completions, completion_signatures>;
 
   template <class _Completions>
   using __invalid_completion_signatures_t = //
