@@ -267,4 +267,3 @@ namespace stdexec {
     };
   } // namespace __domain
 } // namespace stdexec
-

@@ -265,13 +265,6 @@ namespace stdexec {
   template <class _Tag, class _Queryable, class _Default>
   using __query_result_or_t = __call_result_t<query_or_t, _Tag, _Queryable, _Default>;
 
-
-
-
-
-
-
-
   /////////////////////////////////////////////////////////////////////////////
   // env_of
   namespace __env {
