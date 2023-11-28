@@ -1912,26 +1912,18 @@ namespace stdexec {
   namespace __inln {
     struct __scheduler;
 
-    template <class _Receiver>
-    struct __op : __immovable {
-      _Receiver __recv_;
-
-      friend void tag_invoke(start_t, __op& __self) noexcept {
-        set_value((_Receiver&&) __self.__recv_);
-      }
-    };
-
     struct __schedule_t {
       static auto get_attrs(__ignore) noexcept
         -> __env::__prop<__scheduler(get_completion_scheduler_t<set_value_t>)>;
 
-      using __compl_sigs = stdexec::completion_signatures<set_value_t()>;
-      static __compl_sigs get_completion_signatures(__ignore, __ignore);
+      static auto get_completion_signatures(__ignore, __ignore) noexcept
+        -> completion_signatures<set_value_t()> {
+        return {};
+      }
 
-      template <receiver_of<__compl_sigs> _Receiver>
-      static auto
-        connect(__ignore, _Receiver __rcvr) noexcept(__nothrow_decay_copyable<_Receiver>) {
-        return __op<_Receiver>{{}, (_Receiver&&) __rcvr};
+      template <class _Receiver>
+      static void start(__ignore, _Receiver& __rcvr) noexcept {
+        set_value((_Receiver&&) __rcvr);
       }
     };
 
