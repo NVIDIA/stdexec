@@ -17,6 +17,7 @@
 
 #include "__execution_fwd.hpp"
 
+#include "__env.hpp"
 #include "__meta.hpp"
 #include "__tuple.hpp"
 #include "__type_traits.hpp"
@@ -81,7 +82,7 @@ namespace stdexec {
   } // namespace __detail
 
   template <class _Sender>
-  using __tag_of = typename __detail::__meta_of<_Sender>::__tag;
+  using tag_of_t = typename __detail::__meta_of<_Sender>::__tag;
 
   template <class _Sender>
   using __data_of = typename __detail::__meta_of<_Sender>::__data;
@@ -115,12 +116,18 @@ namespace stdexec {
     template <class _Sexpr, class _Receiver>
     struct __op_state;
 
+    template <class _Sexpr, class _Receiver>
+    struct __connect_fn;
+
+    struct __default_basis_ops;
+
     ////////////////////////////////////////////////////////////////////////////
     // for testing whether a type has certain named members
     struct __with_named_mbrs {
       __none_such start;
       __none_such connect;
       __none_such get_completion_signatures;
+      __none_such get_attrs;
       __none_such get_env;
       __none_such get_state;
       __none_such complete;
@@ -130,6 +137,16 @@ namespace stdexec {
     struct __probe_named_mbrs
       : _Tag
       , __with_named_mbrs { };
+
+    template <class _Tag>
+    concept __has_get_attrs_member = !requires {
+      { &__probe_named_mbrs<_Tag>::get_attrs } -> same_as<__none_such __with_named_mbrs::*>;
+    };
+
+    template <class _Tag>
+    concept __has_get_env_member = !requires {
+      { &__probe_named_mbrs<_Tag>::get_env } -> same_as<__none_such __with_named_mbrs::*>;
+    };
 
     template <class _Tag>
     concept __has_start_member = !requires {
@@ -151,10 +168,11 @@ namespace stdexec {
       { &__probe_named_mbrs<_Tag>::complete } -> same_as<__none_such __with_named_mbrs::*>;
     };
 
-    template <class _Sexpr, class _Receiver>
-    struct __connect_fn;
+    template <class _Tag>
+    using __get_attrs_impl = __if_c<__has_get_attrs_member<_Tag>, _Tag, __default_basis_ops>;
 
-    struct __default_basis_ops;
+    template <class _Tag>
+    using __get_env_impl = __if_c<__has_get_env_member<_Tag>, _Tag, __default_basis_ops>;
 
     template <class _Tag>
     using __start_impl = __if_c<__has_start_member<_Tag>, _Tag, __default_basis_ops>;
@@ -172,46 +190,82 @@ namespace stdexec {
     using __state_type_t = __decay_t<
       decltype(__get_state_impl<_Tag>::get_state(__declval<_Sexpr>(), __declval<_Receiver&>()))>;
 
+    template <class _Tag, class _Index, class _Sexpr, class _Receiver>
+    using __env_type_t = decltype(__get_env_impl<_Tag>::get_env(
+      _Index(),
+      __declval<__state_type_t<_Tag, _Sexpr, _Receiver>&>(),
+      __declval<const _Receiver&>()));
+
     template <class _Sexpr, class _Receiver>
     concept __connectable =
       __callable<__impl_of<_Sexpr>, __copy_cvref_fn<_Sexpr>, __connect_fn<_Sexpr, _Receiver>>
-      && __mvalid<__state_type_t, __tag_of<_Sexpr>, _Sexpr, _Receiver>;
+      && __mvalid<__state_type_t, tag_of_t<_Sexpr>, _Sexpr, _Receiver>;
+
+    STDEXEC_ATTRIBUTE((always_inline)) //
+    auto __get_attrs_fn() noexcept {
+      return []<class... _Children>(
+               __ignore, __ignore, _Children&&... __child) noexcept -> decltype(auto) {
+        if constexpr (sizeof...(_Children) == 1) {
+          return stdexec::get_env(__child...); // BUGBUG: should be only the forwarding queries
+        } else {
+          return empty_env();
+        }
+        STDEXEC_UNREACHABLE();
+      };
+    }
 
     ////////////////////////////////////////////////////////////////////////////
     // default behaviors for the sender/receiver/op state basis operations,
     // used by __sexpr
     struct __default_basis_ops {
-      // By default, start child operations in start
-      template <class _Data, class _Receiver, class... _ChildOps>
-      STDEXEC_ATTRIBUTE((always_inline))
-      static void start(_Data&&, _Receiver&&, _ChildOps&... __ops) noexcept {
-        static_assert(sizeof...(__ops) == 1, "I don't know how to start this operation.");
-        (stdexec::start(__ops), ...);
-      }
-
-      // By default, forward completions to the outer receiver
-      template <class _Data, class _Receiver, class _SetTag, class... _Args>
-        requires __callable<_SetTag, _Receiver, _Args...>
+      template <class _Sender>
       STDEXEC_ATTRIBUTE((always_inline)) //
-        static void complete(
-          _Data&& __data,
-          _Receiver&& __rcvr,
-          _SetTag,
-          _Args&&... __args) noexcept {
-        _SetTag()(std::move(__rcvr), (_Args&&) __args...);
+      static auto get_attrs(const _Sender& __sndr) noexcept
+        -> decltype(_Sender::apply(__sndr, __get_attrs_fn())) {
+        return _Sender::apply(__sndr, __get_attrs_fn());
       }
 
-      // By default, return a generic operation state
-      template <class _Sender, class _Receiver>
-      static decltype(auto) get_state(_Sender&& __sndr, _Receiver&) {
+      template <class _Receiver>
+      STDEXEC_ATTRIBUTE((always_inline)) //
+      static auto get_env(__ignore /*index*/, __ignore /*state*/, const _Receiver& __rcvr) noexcept
+        -> env_of_t<const _Receiver&> {
+        return stdexec::get_env(__rcvr);
+      }
+
+      // By default, return the sender's data member
+      template <class _Sender>
+      STDEXEC_ATTRIBUTE((always_inline)) //
+      static decltype(auto) get_state(_Sender&& __sndr, __ignore /*receiver*/) noexcept {
         return __sndr.apply((_Sender&&) __sndr, __get_data());
       }
 
       // By default, return a generic operation state
+      // TODO: remove me
       template <class _Sender, class _Receiver>
         requires __detail::__connectable<_Sender, _Receiver>
       static auto connect(_Sender&& __sndr, _Receiver __rcvr) -> __op_state<_Sender, _Receiver> {
         return __op_state<_Sender, _Receiver>{(_Sender&&) __sndr, (_Receiver&&) __rcvr};
+      }
+
+      // By default, start child operations in start
+      template <class _Data, class _Receiver, class... _ChildOps>
+      STDEXEC_ATTRIBUTE((always_inline))
+      static void start(_Data&&, _Receiver&&, _ChildOps&... __ops) noexcept {
+        (stdexec::start(__ops), ...);
+      }
+
+      // By default, forward completions to the outer receiver
+      template <class _Index, class _Receiver, class _SetTag, class... _Args>
+        requires __callable<_SetTag, _Receiver, _Args...>
+      STDEXEC_ATTRIBUTE((always_inline)) //
+        static void complete(
+          _Index,
+          __ignore /*state*/,
+          _Receiver& __rcvr,
+          _SetTag,
+          _Args&&... __args) noexcept {
+        static_assert(__v<_Index> == 0, "I don't know how to complete this operation.");
+        _SetTag()(std::move(__rcvr), (_Args&&) __args...);
       }
     };
 
@@ -223,10 +277,12 @@ namespace stdexec {
         using __sexpr = _Sexpr;
         using __index = _Idx;
         using __id = __receiver;
+        using __parent_op_t = __op_state<_Sexpr, _Receiver>;
+        using __tag_t = tag_of_t<_Sexpr>;
 
         // A pointer to the parent operation state, which contains the one created with
         // this receiver.
-        __op_state<_Sexpr, _Receiver>* __op_;
+        __parent_op_t* __op_;
 
         template <class _ChildSexpr, class _ChildReceiver>
         static __t __from_op_state(__op_state<_ChildSexpr, _ChildReceiver>* __child) noexcept {
@@ -236,16 +292,17 @@ namespace stdexec {
           return __t{__parent};
         }
 
-        template <__completion_tag _Tag2, class... _Args>
+        template <__completion_tag _Tag, class... _Args>
         STDEXEC_ATTRIBUTE((always_inline))
-        friend void tag_invoke(_Tag2, __t&& __self, _Args&&... __args) noexcept {
-          __self.__op_->__complete(_Tag2(), (_Args&&) __args...);
+        friend void tag_invoke(_Tag, __t&& __self, _Args&&... __args) noexcept {
+          __self.__op_->__complete(_Idx(), _Tag(), (_Args&&) __args...);
         }
 
-        template <same_as<get_env_t> _Tag2>
+        template <same_as<get_env_t> _Tag, class _SexprTag = __tag_t>
         STDEXEC_ATTRIBUTE((always_inline))
-        friend auto tag_invoke(_Tag2, const __t& __self) noexcept -> env_of_t<_Receiver> {
-          return __self.__op_->__get_env();
+        friend auto tag_invoke(_Tag, const __t& __self) noexcept
+          -> __env_type_t<_SexprTag, _Idx, _Sexpr, _Receiver> {
+          return __self.__op_->__get_env(_Idx());
         }
       };
     };
@@ -298,9 +355,9 @@ namespace stdexec {
       }
     };
 
-STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE_GNU("-Winvalid-offsetof")
-STDEXEC_PRAGMA_IGNORE_EDG(offset_in_non_POD_nonstandard)
+    STDEXEC_PRAGMA_PUSH()
+    STDEXEC_PRAGMA_IGNORE_GNU("-Winvalid-offsetof")
+    STDEXEC_PRAGMA_IGNORE_EDG(offset_in_non_POD_nonstandard)
 
     template <class _Sexpr, class _Receiver>
     struct __enable_receiver_from_this {
@@ -323,14 +380,15 @@ STDEXEC_PRAGMA_IGNORE_EDG(offset_in_non_POD_nonstandard)
       }
     };
 
-STDEXEC_PRAGMA_POP()
+    STDEXEC_PRAGMA_POP()
 
-STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+    STDEXEC_PRAGMA_PUSH()
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+
     template <class _Sexpr, class _Receiver>
     struct __connect_fn {
       template <std::size_t _Idx>
-      using __receiver_t = __t<__receiver<__id<_Receiver>, _Sexpr, __msize_t<_Idx>>>;
+      using __receiver_t = __t<__receiver<__id<_Receiver>, _Sexpr, __mconstant<_Idx>>>;
 
       __op_state<_Sexpr, _Receiver>* __op_;
 
@@ -351,7 +409,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
           __op_}(__indices_for<_Child...>(), _Tag(), (_Data&&) __data, (_Child&&) __child...);
       }
     };
-STDEXEC_PRAGMA_POP()
+    STDEXEC_PRAGMA_POP()
 
     template <class _Sexpr, class _Receiver>
     struct __op_state : __op_base<_Sexpr, _Receiver> {
@@ -359,6 +417,7 @@ STDEXEC_PRAGMA_POP()
       using __tag_t = typename __meta_t::__tag;
       using __data_t = typename __meta_t::__data;
       using __children_t = typename __meta_t::__children;
+      using __state_t = typename __op_state::__state_t;
       using __connect_t = __connect_fn<_Sexpr, _Receiver>;
 
       static auto __connect(__op_state* __self, _Sexpr&& __sexpr)
@@ -383,7 +442,7 @@ STDEXEC_PRAGMA_POP()
       template <same_as<start_t> _Tag2>
       STDEXEC_ATTRIBUTE((always_inline))
       friend void tag_invoke(_Tag2, __op_state& __self) noexcept {
-        using __tag_t = typename __op_state::__tag_t; // workaround nvc++ bug
+        using __tag_t = typename __op_state::__tag_t;
         auto&& __rcvr = __self.__rcvr();
         __tup::__apply(
           [&](auto&... __ops) noexcept {
@@ -392,17 +451,23 @@ STDEXEC_PRAGMA_POP()
           __self.__inner_ops_);
       }
 
-      template <class _Tag2, class... _Args>
+      template <class _Index, class _Tag2, class... _Args>
       STDEXEC_ATTRIBUTE((always_inline))
-      void __complete(_Tag2, _Args&&... __args) noexcept {
-        using __tag_t = typename __op_state::__tag_t; // workaround nvc++ bug
+      void __complete(_Index, _Tag2, _Args&&... __args) noexcept {
+        using __tag_t = typename __op_state::__tag_t;
+        auto&& __rcvr = this->__rcvr();
         __complete_impl<__tag_t>::complete(
-          std::move(this->__state_), std::move(this->__rcvr()), _Tag2(), (_Args&&) __args...);
+          _Index(), this->__state_, __rcvr, _Tag2(), (_Args&&) __args...);
       }
 
+      template <class _Index>
       STDEXEC_ATTRIBUTE((always_inline)) //
-      env_of_t<_Receiver> __get_env() const noexcept {
-        return get_env(this->__rcvr());
+      auto __get_env(_Index) noexcept -> decltype(__get_env_impl<__tag_t>::get_env(
+        _Index(),
+        __declval<__state_t&>(),
+        __declval<const _Receiver&>())) {
+        const auto& __rcvr = this->__rcvr();
+        return __get_env_impl<__tag_t>::get_env(_Index(), this->__state_, __rcvr);
       }
     };
   } // namespace __detail
@@ -445,9 +510,9 @@ STDEXEC_PRAGMA_POP()
     friend auto tag_invoke(_Tag, const _Self& __self) noexcept //
       -> __msecond<
         __if_c<same_as<_Tag, get_env_t>>, //
-        decltype(__self.__tag().get_env(__self))> {
-      static_assert(noexcept(__self.__tag().get_env(__self)));
-      return __tag_t::get_env(__self);
+        decltype(__detail::__get_attrs_impl<__tag_t>::get_attrs(__self))> {
+      static_assert(noexcept(__detail::__get_attrs_impl<__tag_t>::get_attrs(__self)));
+      return __detail::__get_attrs_impl<__tag_t>::get_attrs(__self);
     }
 
     template < same_as<get_completion_signatures_t> _Tag, __decays_to<__sexpr> _Self, class _Env>
@@ -622,11 +687,11 @@ STDEXEC_PRAGMA_POP()
 
   template <class _Sender>
   concept sender_expr = //
-    __mvalid<__tag_of, _Sender>;
+    __mvalid<tag_of_t, _Sender>;
 
   template <class _Sender, class _Tag>
   concept sender_expr_for = //
-    sender_expr<_Sender> && same_as<__tag_of<_Sender>, _Tag>;
+    sender_expr<_Sender> && same_as<tag_of_t<_Sender>, _Tag>;
 
   // The __name_of utility defined below is used to pretty-print the type names of
   // senders in compiler diagnostics.

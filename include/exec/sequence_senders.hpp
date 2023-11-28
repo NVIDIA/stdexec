@@ -20,6 +20,7 @@
 
 namespace exec {
   struct sequence_sender_t : stdexec::sender_t { };
+
   using sequence_tag [[deprecated("Renamed to exec::sequence_sender_t")]] = exec::sequence_sender_t;
 
   namespace __sequence_sndr {

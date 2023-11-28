@@ -29,9 +29,7 @@ namespace stdexec {
     struct __tuple;
 
     template <std::size_t... _Idx, class... _Ts>
-    struct __tuple<__indices<_Idx...>, _Ts...>
-      : __box<_Ts, _Idx>...
-    {};
+    struct __tuple<__indices<_Idx...>, _Ts...> : __box<_Ts, _Idx>... { };
 
     template <class... _Ts>
     STDEXEC_ATTRIBUTE((host, device))
@@ -71,17 +69,15 @@ namespace stdexec {
     void __tuple_like_(const __tuple<__indices<_Idx...>, _Ts...>&);
 
     template <class _Tup>
-    concept __tuple_like =
-      requires (_Tup& __tup) {
-        __tup::__tuple_like_(__tup);
-      };
+    concept __tuple_like = requires(_Tup& __tup) { __tup::__tuple_like_(__tup); };
 
     struct __apply_ {
       template <class _Fun, class _Tuple, std::size_t... _Idx, class... _Ts>
         requires __callable<_Fun, __copy_cvref_t<_Tuple, _Ts>...>
-      constexpr auto operator()(_Fun&& __fun, _Tuple&& __tup, const __tuple<__indices<_Idx...>, _Ts...>*)
-        noexcept(__nothrow_callable<_Fun, __copy_cvref_t<_Tuple, _Ts>...>)
-        -> __call_result_t<_Fun, __copy_cvref_t<_Tuple, _Ts>...> {
+      constexpr auto
+        operator()(_Fun&& __fun, _Tuple&& __tup, const __tuple<__indices<_Idx...>, _Ts...>*) noexcept(
+          __nothrow_callable<_Fun, __copy_cvref_t<_Tuple, _Ts>...>)
+          -> __call_result_t<_Fun, __copy_cvref_t<_Tuple, _Ts>...> {
         return ((_Fun&&) __fun)(
           static_cast<__copy_cvref_t<_Tuple, __box<_Ts, _Idx>>&&>(__tup).__value...);
       }
@@ -89,8 +85,8 @@ namespace stdexec {
 
     template <class _Fun, __tuple_like _Tuple>
     STDEXEC_ATTRIBUTE((always_inline))
-    constexpr auto __apply(_Fun&& __fun, _Tuple&& __tup)
-      noexcept(noexcept(__apply_()((_Fun&&) __fun, (_Tuple&&) __tup, &__tup)))
+    constexpr auto __apply(_Fun&& __fun, _Tuple&& __tup) noexcept(
+      noexcept(__apply_()((_Fun&&) __fun, (_Tuple&&) __tup, &__tup)))
       -> decltype(__apply_()((_Fun&&) __fun, (_Tuple&&) __tup, &__tup)) {
       return __apply_()((_Fun&&) __fun, (_Tuple&&) __tup, &__tup);
     }

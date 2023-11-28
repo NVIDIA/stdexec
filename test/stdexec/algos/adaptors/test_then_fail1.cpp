@@ -19,7 +19,7 @@
 namespace ex = stdexec;
 
 int main() {
-  ex::sender auto snd = ex::just(42) | ex::then([](int*){});
+  ex::sender auto snd = ex::just(42) | ex::then([](int*) {});
   // build error: _NOT_CALLABLE_.*_WITH_FUNCTION_.*_WITH_ARGUMENTS_<int>
   stdexec::sync_wait(std::move(snd));
 }
