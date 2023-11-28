@@ -2043,13 +2043,13 @@ namespace stdexec {
         return {};
       }
 
-      template <class _Data, class _Receiver>
-      static void start(_Data&& __data, _Receiver&& __rcvr) noexcept {
+      template <class _State, class _Receiver>
+      static void start(_State& __state, _Receiver& __rcvr) noexcept {
         __tup::__apply(
           [&]<class... _Ts>(_Ts&... __ts) noexcept {
             _SetTag()(std::move(__rcvr), std::move(__ts)...);
           },
-          __data);
+          __state);
       }
     };
 
