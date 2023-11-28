@@ -50,7 +50,10 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __env {
     struct get_env_t;
-    struct empty_env;
+    struct empty_env {
+      using __t = empty_env;
+      using __id = empty_env;
+    };
   }
 
   using __env::empty_env;

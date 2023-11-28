@@ -79,6 +79,12 @@ namespace stdexec {
   template <std::size_t _Np>
   using __msize_t = char[_Np + 1];
 
+  template <auto _Np>
+  struct __mconstant_;
+
+  template <auto _Np>
+  using __mconstant = __mconstant_<_Np>*;
+
   template <class _Tp, class _Up>
   using __mfirst = _Tp;
 
@@ -100,6 +106,9 @@ namespace stdexec {
 
   template <class _Tp, _Tp _Ip>
   inline constexpr _Tp __v<std::integral_constant<_Tp, _Ip>> = _Ip;
+
+  template <auto _Np>
+  inline constexpr __mtypeof<_Np> __v<__mconstant<_Np>> = _Np;
 
   template <std::size_t _Ip>
   inline constexpr std::size_t __v<char[_Ip]> = _Ip - 1;
