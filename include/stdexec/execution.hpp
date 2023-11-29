@@ -3295,63 +3295,65 @@ namespace stdexec {
       __intrusive_ptr<_ShState> __sh_state_;
     };
 
-    struct __ensure_started_t {
-#if STDEXEC_FRIENDSHIP_IS_LEXICAL()
-     private:
-      template <class...>
-      friend struct stdexec::__sexpr;
-      friend struct ensure_started_t;
-#endif
+    template <class... _Tys>
+    using __set_value_t = completion_signatures<set_value_t(__decay_t<_Tys>&&...)>;
 
-      template <class... _Tys>
-      using __set_value_t = completion_signatures<set_value_t(__decay_t<_Tys>&&...)>;
+    template <class _Ty>
+    using __set_error_t = completion_signatures<set_error_t(__decay_t<_Ty>&&)>;
 
-      template <class _Ty>
-      using __set_error_t = completion_signatures<set_error_t(__decay_t<_Ty>&&)>;
+    template <class _CvrefSenderId, class _EnvId>
+    using __completions_t = //
+      __try_make_completion_signatures<
+        // NOT TO SPEC:
+        // See https://github.com/brycelelbach/wg21_p2300_execution/issues/26
+        __cvref_t<_CvrefSenderId>,
+        __env_t<__t<_EnvId>>,
+        completion_signatures<
+          set_error_t(std::exception_ptr&&),
+          set_stopped_t()>, // NOT TO SPEC
+        __q<__set_value_t>,
+        __q<__set_error_t>>;
 
-      template <class _CvrefSenderId, class _EnvId>
-      using __completions_t = //
-        __try_make_completion_signatures<
-          // NOT TO SPEC:
-          // See https://github.com/brycelelbach/wg21_p2300_execution/issues/26
-          __cvref_t<_CvrefSenderId>,
-          __env_t<__t<_EnvId>>,
-          completion_signatures<
-            set_error_t(std::exception_ptr&&),
-            set_stopped_t()>, // NOT TO SPEC
-          __q<__set_value_t>,
-          __q<__set_error_t>>;
+    template <class _Receiver>
+    auto __connect_fn_(_Receiver& __rcvr) noexcept {
+      return [&]<class _ShState>(auto, __data<_ShState> __dat) //
+              noexcept(__nothrow_decay_copyable<_Receiver>)
+                -> __t<__mapply<__mbind_back_q<__operation, __id<_Receiver>>, __id<_ShState>>> {
+                return {(_Receiver&&) __rcvr, std::move(__dat.__sh_state_)};
+              };
+    }
 
-      static inline constexpr auto __connect_fn = []<class _Receiver>(_Receiver& __rcvr) noexcept {
-        return [&]<class _ShState>(auto, __data<_ShState> __dat) //
-               noexcept(__nothrow_decay_copyable<_Receiver>)
-                 -> __t<__mapply<__mbind_back_q<__operation, __id<_Receiver>>, __id<_ShState>>> {
-                 return {(_Receiver&&) __rcvr, std::move(__dat.__sh_state_)};
-               };
-      };
+    template <class _Receiver>
+    auto __connect_fn(_Receiver& __rcvr) noexcept -> decltype(__connect_fn_(__rcvr)) {
+      return __connect_fn_(__rcvr);
+    }
 
-      static inline constexpr auto __get_completion_signatures_fn =
-        []<class _ShState>(auto, const __data<_ShState>&) //
+    inline auto __get_completion_signatures_fn() noexcept {
+      return []<class _ShState>(auto, const __data<_ShState>&) //
         -> __mapply<__q<__completions_t>, __id<_ShState>> {
         return {};
       };
+    }
 
-      template <sender_expr_for<__ensure_started_t> _Self, class _Receiver>
+    struct __ensure_started_t {
+      template <class _Self, class _Receiver>
       static auto connect(_Self&& __self, _Receiver __rcvr) noexcept(
         __nothrow_callable<
           __sexpr_apply_t,
           _Self,
-          __call_result_t<__mtypeof<__connect_fn>, _Receiver&>>)
+          decltype(__connect_fn(__declval<_Receiver&>()))>)
         -> __call_result_t<
           __sexpr_apply_t,
           _Self,
-          __call_result_t<__mtypeof<__connect_fn>, _Receiver&>> {
+          decltype(__connect_fn(__declval<_Receiver&>()))> {
+        static_assert(sender_expr_for<_Self, __ensure_started_t>);
         return __sexpr_apply((_Self&&) __self, __connect_fn(__rcvr));
       }
 
-      template <sender_expr_for<__ensure_started_t> _Self, class _OtherEnv>
+      template <class _Self, class _OtherEnv>
       static auto get_completion_signatures(_Self&&, _OtherEnv&&)
-        -> __call_result_t<__sexpr_apply_t, _Self, __mtypeof<__get_completion_signatures_fn>> {
+        -> __call_result_t<__sexpr_apply_t, _Self, __result_of<__get_completion_signatures_fn>> {
+        static_assert(sender_expr_for<_Self, __ensure_started_t>);
         return {};
       }
     };

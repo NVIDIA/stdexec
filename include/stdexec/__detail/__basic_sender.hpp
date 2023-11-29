@@ -462,10 +462,7 @@ namespace stdexec {
 
       template <class _Index>
       STDEXEC_ATTRIBUTE((always_inline)) //
-      auto __get_env(_Index) noexcept -> decltype(__get_env_impl<__tag_t>::get_env(
-        _Index(),
-        __declval<__state_t&>(),
-        __declval<const _Receiver&>())) {
+      auto __get_env(_Index) noexcept -> __env_type_t<__tag_t, _Index, _Sexpr, _Receiver> {
         const auto& __rcvr = this->__rcvr();
         return __get_env_impl<__tag_t>::get_env(_Index(), this->__state_, __rcvr);
       }
