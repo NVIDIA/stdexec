@@ -251,19 +251,5 @@ namespace stdexec {
     template <class... _Senders>
     concept __has_common_domain = //
       __none_of<__none_such, __common_domain_t<_Senders...>>;
-
-    template <class _Tag>
-    struct __get_env_common_domain {
-      template <sender_expr_for<_Tag> _Self>
-      static auto get_attrs(const _Self& __self) noexcept {
-        using _Domain = __call_result_t<__sexpr_apply_t, const _Self&, __common_domain_fn>;
-        if constexpr (same_as<_Domain, default_domain>) {
-          return empty_env();
-        } else {
-          return __mkprop(__sexpr_apply(__self, __common_domain_fn()), get_domain);
-        }
-        STDEXEC_UNREACHABLE();
-      }
-    };
   } // namespace __domain
 } // namespace stdexec

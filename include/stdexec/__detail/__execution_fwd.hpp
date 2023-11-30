@@ -199,10 +199,17 @@ namespace stdexec {
   namespace v2 {
     using __on_v2::on_t;
   }
+
+  namespace __detail {
+    struct __sexpr_apply_t;
+  }
+
+  using __detail::__sexpr_apply_t;
+  extern const __sexpr_apply_t __sexpr_apply;
 }
 
-// template <class...>
-// [[deprecated]] void print() {}
+template <class...>
+[[deprecated]] void print() {}
 
-// template <class>
-// struct undef;
+template <class>
+struct undef;

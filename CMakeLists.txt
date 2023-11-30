@@ -223,8 +223,9 @@ target_compile_options(stdexec_executable_flags INTERFACE
                        -include stdexec/__detail/__force_include.hpp>
                        )
 
-target_compile_definitions(stdexec_executable_flags INTERFACE
-                           STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
+target_compile_definitions(
+  stdexec_executable_flags INTERFACE
+  $<$<NOT:$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>>:STDEXEC_ENABLE_EXTRA_TYPE_CHECKING>)
 
 # Support target for examples and tests
 add_library(nvexec_executable_flags INTERFACE)
