@@ -285,15 +285,18 @@ namespace exec {
       constexpr __binder_back<ignore_all_values_t> operator()() const noexcept {
         return {{}, {}, {}};
       }
+    };
 
+    struct __ignore_all_values_impl : __sexpr_defaults {
       template <class _Sequence, class _Env>
       using __completion_sigs = __sequence_completion_signatures_of_t<_Sequence, _Env>;
 
-      template <sender_expr_for<ignore_all_values_t> _Sender, class _Env>
-      static auto get_completion_signatures(_Sender&& __sndr, _Env&&)
-        -> __completion_sigs<__child_of<_Sender>, _Env> {
-        return {};
-      }
+      static constexpr auto get_completion_signatures = //
+        []<class _Sender, class _Env>(_Sender&& __sndr, _Env&&)
+          -> __completion_sigs<__child_of<_Sender>, _Env> {
+          static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
+          return {};
+        };
 
       template <class _Child, class _Receiver>
       using _ResultVariant = __result_variant_t<_Child, env_of_t<_Receiver>>;
@@ -301,19 +304,25 @@ namespace exec {
       template <class _Child, class _Receiver>
       using __receiver_t = __t<__receiver<__id<_Receiver>, _ResultVariant<_Child, _Receiver>>>;
 
-      template <sender_expr_for<ignore_all_values_t> _Sender, receiver _Receiver>
+      static constexpr auto connect = //
+        []<class _Sender, receiver _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(
+        __nothrow_callable<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>)
+        -> __call_result_t<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>
         requires receiver_of<_Receiver, __completion_sigs<__child_of<_Sender>, env_of_t<_Receiver>>>
               && sequence_sender_to<
                    __child_of<_Sender>,
-                   __receiver_t<__child_of<_Sender>, _Receiver>>
-      static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-        __nothrow_callable<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>)
-        -> __call_result_t<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>> {
+                   __receiver_t<__child_of<_Sender>, _Receiver>> {
+          static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
         return __sexpr_apply((_Sender&&) __sndr, __connect_fn<_Receiver>{__rcvr});
-      }
+      };
     };
   }
 
   using __ignore_all_values::ignore_all_values_t;
   inline constexpr ignore_all_values_t ignore_all_values{};
+}
+
+namespace stdexec {
+  template <>
+  struct __sexpr_impl<exec::ignore_all_values_t> : exec::__ignore_all_values::__ignore_all_values_impl {};
 }
