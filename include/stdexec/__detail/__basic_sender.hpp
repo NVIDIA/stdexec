@@ -266,26 +266,26 @@ namespace stdexec {
       }
     };
 
-    template <class _Sexpr, class _Receiver>
-      requires __is_instance_of<__id<_Receiver>, __receiver>
-            && __decays_to<_Sexpr, __sexpr_connected_with<_Receiver>>
-    struct __op_base<_Sexpr, _Receiver> : __immovable {
-      using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
-      using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
+    // template <class _Sexpr, class _Receiver>
+    //   requires __is_instance_of<__id<_Receiver>, __receiver>
+    //         && __decays_to<_Sexpr, __sexpr_connected_with<_Receiver>>
+    // struct __op_base<_Sexpr, _Receiver> : __immovable {
+    //   using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
+    //   using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS __state_t __state_;
+    //   STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS __state_t __state_;
 
-      __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr)
-        : __state_(__sexpr_impl<__tag_t>::get_state((_Sexpr&&) __sndr, __rcvr)) {
-        STDEXEC_ASSERT(this->__rcvr().__op_ == __rcvr.__op_);
-      }
+    //   __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr)
+    //     : __state_(__sexpr_impl<__tag_t>::get_state((_Sexpr&&) __sndr, __rcvr)) {
+    //     STDEXEC_ASSERT(this->__rcvr().__op_ == __rcvr.__op_);
+    //   }
 
-      _Receiver __rcvr() const noexcept {
-        return _Receiver::__from_op_state(             //
-          static_cast<__op_state<_Sexpr, _Receiver>*>( //
-            const_cast<__op_base*>(this)));
-      }
-    };
+    //   _Receiver __rcvr() const noexcept {
+    //     return _Receiver::__from_op_state(             //
+    //       static_cast<__op_state<_Sexpr, _Receiver>*>( //
+    //         const_cast<__op_base*>(this)));
+    //   }
+    // };
 
     STDEXEC_PRAGMA_PUSH()
     STDEXEC_PRAGMA_IGNORE_GNU("-Winvalid-offsetof")
