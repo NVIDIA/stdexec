@@ -28,6 +28,10 @@ endfunction()
 function(def_example example)
     split(${example} target source)
     add_executable(${target} ${source})
+    set_target_properties(${target} PROPERTIES
+            CXX_STANDARD 20
+            CXX_STANDARD_REQUIRED ON
+            CXX_EXTENSIONS OFF)
     target_link_libraries(${target}
         PRIVATE STDEXEC::stdexec
                 stdexec_executable_flags)

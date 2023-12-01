@@ -91,6 +91,10 @@ set(stdexec_test_sources
     )
 
 add_executable(test.stdexec ${stdexec_test_sources})
+set_target_properties(test.stdexec PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF)
 target_include_directories(test.stdexec PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 target_link_libraries(test.stdexec
     PUBLIC
@@ -100,6 +104,10 @@ target_link_libraries(test.stdexec
     Catch2::Catch2)
 
 add_executable(test.scratch test_main.cpp test_scratch.cpp)
+set_target_properties(test.scratch PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF)
 target_include_directories(test.scratch PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 target_link_libraries(test.scratch
     PUBLIC
