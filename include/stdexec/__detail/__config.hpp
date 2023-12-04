@@ -150,11 +150,19 @@
 #define STDEXEC_ATTR_WHICH_0(_ATTR) [[_ATTR]]
 
 // custom handling for specific attribute types
-#define STDEXEC_ATTR_WHICH_1(_ATTR) STDEXEC_CUDA(__host__)
+#ifdef __CUDACC__
+#define STDEXEC_ATTR_WHICH_1(_ATTR) __host__
+#else
+#define STDEXEC_ATTR_WHICH_1(_ATTR)
+#endif
 #define STDEXEC_ATTR_host STDEXEC_PROBE(~, 1)
 #define STDEXEC_ATTR___host__ STDEXEC_PROBE(~, 1)
 
-#define STDEXEC_ATTR_WHICH_2(_ATTR) STDEXEC_CUDA(__device__)
+#ifdef __CUDACC__
+#define STDEXEC_ATTR_WHICH_2(_ATTR) __device__
+#else
+#define STDEXEC_ATTR_WHICH_2(_ATTR)
+#endif
 #define STDEXEC_ATTR_device STDEXEC_PROBE(~, 2)
 #define STDEXEC_ATTR___device__ STDEXEC_PROBE(~, 2)
 
