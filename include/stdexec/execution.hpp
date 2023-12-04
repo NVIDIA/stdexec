@@ -2890,7 +2890,8 @@ namespace stdexec {
       explicit __split_state(_Sender&& __sndr) noexcept
         : __split_state_base{{}, nullptr, __notify}
         , __on_stop_()
-        , __shared_state_(__sndr.apply((_Sender&&) __sndr, __detail::__get_data())) {
+        , __shared_state_(STDEXEC_CALL_EXPLICIT_THIS_MEMFN((_Sender&&) __sndr, apply)(
+            __detail::__get_data())) {
       }
 
       static void __notify(__split_state_base* __self) noexcept {
@@ -3777,7 +3778,8 @@ namespace stdexec {
 
           _Sched __sched = query_or(
             get_completion_scheduler<_SetTag>, stdexec::get_env(__sndr), __none_such());
-          return __let_state_t{__sndr.apply((_Sender&&) __sndr, __detail::__get_data()), __sched};
+          return __let_state_t{STDEXEC_CALL_EXPLICIT_THIS_MEMFN((_Sender&&) __sndr, apply)(
+            __detail::__get_data()), __sched};
         };
 
       template <class _State, class _Receiver, class... _As>
