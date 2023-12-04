@@ -174,7 +174,7 @@ namespace stdexec {
 
     inline constexpr auto __get_state = //
       []<class _Sender>(_Sender&& __sndr, __ignore) noexcept -> decltype(auto) {
-        return __sndr.apply((_Sender&&) __sndr, __get_data());
+        return STDEXEC_CALL_EXPLICIT_THIS_MEMFN((_Sender&&) __sndr, apply)(__get_data());
       };
 
     inline constexpr auto __connect = //
