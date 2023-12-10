@@ -29,6 +29,7 @@
 #include "./sequence_senders.hpp"
 #include "./sequence/iterate.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <condition_variable>
 #include <exception>
