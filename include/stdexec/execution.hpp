@@ -2036,7 +2036,6 @@ namespace stdexec {
           return completion_signatures<__mapply<__qf<__tag_t>, __decay_t<__data_of<_Sender>>>>{};
         };
 
-
       static constexpr auto start =
         []<class _State, class _Receiver>(_State& __state, _Receiver& __rcvr) noexcept -> void {
         __tup::__apply(
@@ -4686,169 +4685,23 @@ namespace stdexec {
 
       return __env_t{__env};
     }
-  }
+
+    template <class _Ty, class = __name_of<__decay_t<_Ty>>>
+    struct __always {
+      _Ty __val_;
+
+      _Ty operator()() noexcept {
+        return static_cast<_Ty&&>(__val_);
+      }
+    };
+
+    template <class _Ty>
+    __always(_Ty) -> __always<_Ty>;
+  } // namespace __detail
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.on]
   namespace __on {
-    template <class _SchedulerId, class _SenderId, class _ReceiverId>
-    struct __operation;
-
-    template <class _SchedulerId, class _SenderId, class _ReceiverId>
-    struct __operation_base : __immovable {
-      using _Scheduler = stdexec::__t<_SchedulerId>;
-      using _Sender = stdexec::__t<_SenderId>;
-      using _Receiver = stdexec::__t<_ReceiverId>;
-
-      _Scheduler __scheduler_;
-      _Sender __sndr_;
-      _Receiver __rcvr_;
-    };
-
-    inline constexpr auto __sched_prop = [](auto* __op) noexcept {
-      return __mkprop(__op->__scheduler_, get_scheduler);
-    };
-    inline constexpr auto __domain_prop = [](auto*) noexcept {
-      return __mkprop(get_domain);
-    };
-
-    template <class _SchedulerId, class _SenderId, class _ReceiverId>
-    using __receiver_ref_t = __t<__detail::__receiver_with<
-      &__operation_base<_SchedulerId, _SenderId, _ReceiverId>::__rcvr_,
-      __sched_prop,
-      __domain_prop>>;
-
-    template <class _SchedulerId, class _SenderId, class _ReceiverId>
-    struct __receiver {
-      using _Scheduler = stdexec::__t<_SchedulerId>;
-      using _Sender = stdexec::__t<_SenderId>;
-      using _Receiver = stdexec::__t<_ReceiverId>;
-
-      struct __t : receiver_adaptor<__t> {
-        using __id = __receiver;
-        using __receiver_ref_t = __on::__receiver_ref_t<_SchedulerId, _SenderId, _ReceiverId>;
-        stdexec::__t<__operation<_SchedulerId, _SenderId, _ReceiverId>>* __op_state_;
-
-        _Receiver&& base() && noexcept {
-          return (_Receiver&&) __op_state_->__rcvr_;
-        }
-
-        const _Receiver& base() const & noexcept {
-          return __op_state_->__rcvr_;
-        }
-
-        void set_value() && noexcept {
-          // cache this locally since *this is going bye-bye.
-          auto* __op_state = __op_state_;
-          try {
-            // This line will invalidate *this:
-            start(__op_state->__data_.template emplace<1>(__conv{[__op_state] {
-              return connect((_Sender&&) __op_state->__sndr_, __receiver_ref_t{{}, __op_state});
-            }}));
-          } catch (...) {
-            set_error((_Receiver&&) __op_state->__rcvr_, std::current_exception());
-          }
-        }
-      };
-    };
-
-    template <class _SchedulerId, class _SenderId, class _ReceiverId>
-    struct __operation {
-      using _Scheduler = stdexec::__t<_SchedulerId>;
-      using _Sender = stdexec::__t<_SenderId>;
-      using _Receiver = stdexec::__t<_ReceiverId>;
-
-      struct __t : __operation_base<_SchedulerId, _SenderId, _ReceiverId> {
-        using _Base = __operation_base<_SchedulerId, _SenderId, _ReceiverId>;
-        using __id = __operation;
-        using __receiver_t = stdexec::__t<__receiver<_SchedulerId, _SenderId, _ReceiverId>>;
-        using __receiver_ref_t = __on::__receiver_ref_t<_SchedulerId, _SenderId, _ReceiverId>;
-        using __schedule_sender_t = __result_of<schedule, _Scheduler>;
-
-        friend void tag_invoke(start_t, __t& __self) noexcept {
-          start(std::get<0>(__self.__data_));
-        }
-
-        template <class _Sender2, class _Receiver2>
-        __t(_Scheduler __sched, _Sender2&& __sndr, _Receiver2&& __rcvr)
-          : _Base{{}, (_Scheduler&&) __sched, (_Sender2&&) __sndr, (_Receiver2&&) __rcvr}
-          , __data_{std::in_place_index<0>, __conv{[this] {
-                      return connect(schedule(this->__scheduler_), __receiver_t{{}, this});
-                    }}} {
-        }
-
-        std::variant<
-          connect_result_t<__schedule_sender_t, __receiver_t>,
-          connect_result_t<_Sender, __receiver_ref_t>>
-          __data_;
-      };
-    };
-
-    template <class _SchedulerId, class _SenderId>
-    struct __sender;
-
-    struct on_t;
-
-    template <class _SchedulerId, class _SenderId>
-    struct __sender {
-      using _Scheduler = stdexec::__t<_SchedulerId>;
-      using _Sender = stdexec::__t<_SenderId>;
-
-      struct __t {
-        using __id = __sender;
-        using sender_concept = sender_t;
-
-        using __schedule_sender_t = __result_of<schedule, _Scheduler>;
-        template <class _ReceiverId>
-        using __receiver_ref_t = __on::__receiver_ref_t<_SchedulerId, _SenderId, _ReceiverId>;
-        template <class _ReceiverId>
-        using __receiver_t = stdexec::__t<__receiver<_SchedulerId, _SenderId, _ReceiverId>>;
-        template <class _ReceiverId>
-        using __operation_t = stdexec::__t<__operation<_SchedulerId, _SenderId, _ReceiverId>>;
-
-        _Scheduler __scheduler_;
-        _Sender __sndr_;
-
-        template <__decays_to<__t> _Self, receiver _Receiver>
-          requires constructible_from<_Sender, __copy_cvref_t<_Self, _Sender>>
-                && sender_to<__schedule_sender_t, __receiver_t<stdexec::__id<_Receiver>>>
-                && sender_to<_Sender, __receiver_ref_t<stdexec::__id<_Receiver>>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
-          -> __operation_t<stdexec::__id<_Receiver>> {
-          return {
-            ((_Self&&) __self).__scheduler_, ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr};
-        }
-
-        friend auto tag_invoke(get_env_t, const __t& __self) noexcept -> env_of_t<const _Sender&> {
-          return get_env(__self.__sndr_);
-        }
-
-        template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-          -> __try_make_completion_signatures<
-            __schedule_sender_t,
-            _Env,
-            __try_make_completion_signatures<
-              __copy_cvref_t<_Self, _Sender>,
-              __make_env_t<_Env, __with<get_scheduler_t, _Scheduler>>,
-              completion_signatures<set_error_t(std::exception_ptr)>>,
-            __mconst<completion_signatures<>>> {
-          return {};
-        }
-
-        // BUGBUG better would be to port the `on` algorithm to __sexpr
-        template <class _Self, class _Fun, class _OnTag = on_t>
-        static auto apply(_Self&& __self, _Fun __fun) -> __call_result_t<
-          _Fun,
-          _OnTag,
-          __copy_cvref_t<_Self, _Scheduler>,
-          __copy_cvref_t<_Self, _Sender>> {
-          return ((_Fun&&) __fun)(
-            _OnTag(), ((_Self&&) __self).__scheduler_, ((_Self&&) __self).__sndr_);
-        }
-      };
-    };
-
     struct on_t {
       using _Sender = __1;
       using _Scheduler = __0;
@@ -4860,10 +4713,6 @@ namespace stdexec {
         return stdexec::transform_sender(
           __domain, __make_sexpr<on_t>((_Scheduler&&) __sched, (_Sender&&) __sndr));
       }
-
-      template <class _Scheduler, class _Sender>
-      using __sender_t =
-        __t<__sender<stdexec::__id<__decay_t<_Scheduler>>, stdexec::__id<__decay_t<_Sender>>>>;
 
       template <class _Env>
       STDEXEC_ATTRIBUTE((always_inline))
@@ -4879,12 +4728,11 @@ namespace stdexec {
       }
 
       template <class _Sender, class _Env>
-        requires __is_not_instance_of<__id<__decay_t<_Sender>>, __sender>
       static auto transform_sender(_Sender&& __sndr, const _Env&) {
         return __sexpr_apply(
           (_Sender&&) __sndr,
           []<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
-            return __sender_t<_Data, _Child>{(_Data&&) __data, (_Child&&) __child};
+            return let_value(schedule(__data), __detail::__always{(_Child&&) __child});
           });
       }
     };
@@ -4892,13 +4740,6 @@ namespace stdexec {
 
   using __on::on_t;
   inline constexpr on_t on{};
-
-  // BUGBUG this will also be unnecessary when `on` returns a __sexpr
-  namespace __detail {
-    template <class _SchedulerId, class _SenderId>
-    extern __mconst<__on::__sender<__t<_SchedulerId>, __name_of<__t<_SenderId>>>>
-      __name_of_v<__on::__sender<_SchedulerId, _SenderId>>;
-  }
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.into_variant]
@@ -5662,18 +5503,6 @@ namespace stdexec {
 
     STDEXEC_PRAGMA_POP()
 
-    template <class _Ty, class = __name_of<__decay_t<_Ty>>>
-    struct __always {
-      _Ty __val_;
-
-      _Ty operator()() noexcept {
-        return static_cast<_Ty&&>(__val_);
-      }
-    };
-
-    template <class _Ty>
-    __always(_Ty) -> __always<_Ty>;
-
     struct on_t : __no_scheduler_in_environment {
       template <scheduler _Scheduler, sender _Sender>
       auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const {
@@ -5706,7 +5535,7 @@ namespace stdexec {
           [&]<class _Scheduler, class _Child>(__ignore, _Scheduler __sched, _Child&& __child) {
             auto __old = get_scheduler(__env);
             return transfer(
-              let_value(transfer_just(std::move(__sched)), __always{(_Child&&) __child}),
+              let_value(transfer_just(std::move(__sched)), __detail::__always{(_Child&&) __child}),
               std::move(__old));
           });
       }
