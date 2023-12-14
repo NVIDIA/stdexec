@@ -36,7 +36,7 @@ namespace {
 
   struct my_scheduler {
     struct my_sender {
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                     //
         ex::set_error_t(std::exception_ptr),                   //
@@ -76,7 +76,7 @@ namespace {
 
   struct my_scheduler_except {
     struct my_sender {
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                     //
         ex::set_error_t(std::exception_ptr),                   //
@@ -107,7 +107,7 @@ namespace {
 
   struct noeq_sched {
     struct my_sender {
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                     //
         ex::set_error_t(std::exception_ptr),                   //
@@ -129,7 +129,7 @@ namespace {
 
   struct sched_no_completion {
     struct my_sender {
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                     //
         ex::set_error_t(std::exception_ptr),                   //

@@ -27,7 +27,7 @@ namespace exec {
     struct _WHAT_ {
       struct __t {
         using __id = _WHAT_;
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
         using completion_signatures = _WHAT_;
       };
     };
@@ -174,7 +174,7 @@ namespace exec {
       };
 
       struct __t {
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
         using __id = __receiver;
         __state* __state_;
 
@@ -252,7 +252,7 @@ namespace exec {
 
       struct __t {
         using __id = _DerivedId;
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
         _Sender __sndr_;
         _Kernel __kernel_;
 

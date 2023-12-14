@@ -28,7 +28,7 @@ namespace {
 
   template <scope_t Scope>
   struct cpo_t {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     constexpr static scope_t scope = Scope;
 
     using completion_signatures = ex::completion_signatures< //
@@ -43,7 +43,7 @@ namespace {
 
   template <class CPO>
   struct free_standing_sender_t {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using __id = free_standing_sender_t;
     using __t = free_standing_sender_t;
     using completion_signatures = ex::completion_signatures< //
@@ -74,7 +74,7 @@ namespace {
     };
 
     struct sender_t {
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using __id = sender_t;
       using __t = sender_t;
       using completion_signatures = ex::completion_signatures< //

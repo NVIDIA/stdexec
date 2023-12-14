@@ -116,7 +116,7 @@ namespace exec {
           using __env_t = stdexec::__t<__env<__next_sigs, _Queries...>>;
           __env_t __env_;
 
-          using is_receiver = void;
+          using receiver_concept = stdexec::receiver_t;
 
           template <__none_of<__t, const __t, __env_t, const __env_t> _Rcvr>
             requires sequence_receiver_of<_Rcvr, __item_types>
@@ -238,7 +238,7 @@ namespace exec {
         using __id = __sequence_sender;
         using completion_signatures = __compl_sigs;
         using item_types = exec::item_types<__item_sender>;
-        using is_sender = sequence_tag;
+        using sender_concept = sequence_sender_t;
 
         __t(const __t&) = delete;
         __t& operator=(const __t&) = delete;
@@ -284,7 +284,7 @@ namespace exec {
    public:
     using __id = any_sequence_receiver_ref;
     using __t = any_sequence_receiver_ref;
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
 
     template <std::same_as<stdexec::get_env_t> _GetEnv, std::same_as<__t> _Self>
       requires stdexec::__callable<stdexec::get_env_t, const __receiver_base&>
@@ -337,7 +337,7 @@ namespace exec {
      public:
       using __id = any_sender;
       using __t = any_sender;
-      using is_sender = sequence_tag;
+      using sender_concept = sequence_sender_t;
       using completion_signatures = typename __sender_base::completion_signatures;
       using item_types = typename __sender_base::item_types;
 
