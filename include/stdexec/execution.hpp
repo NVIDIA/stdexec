@@ -4272,9 +4272,6 @@ namespace stdexec {
         : __data_()
         , __state2_(connect(schedule(__sched), __receiver2_t{this})) {
       }
-
-      void __complete() noexcept {
-      }
     };
 
     struct schedule_from_t {
@@ -4324,7 +4321,16 @@ namespace stdexec {
           // we can forward the completion from within the scheduler's
           // execution context.
           using __async_result = __decayed_tuple<_Tag, _Args...>;
-          __state.__data_.template emplace<__async_result>(_Tag(), (_Args&&) __args...);
+          if constexpr (__nothrow_constructible_from<__async_result, _Tag, _Args...>) {
+            __state.__data_.template emplace<__async_result>(_Tag(), (_Args&&) __args...);
+          } else {
+            try {
+              __state.__data_.template emplace<__async_result>(_Tag(), (_Args&&) __args...);
+            } catch(...) {
+              set_error(std::move(__rcvr), std::current_exception());
+              return;
+            }
+          }
           // Enqueue the schedule operation so the completion happens
           // on the scheduler's execution context.
           stdexec::start(__state.__state2_);
