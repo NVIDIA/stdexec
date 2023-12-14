@@ -48,6 +48,7 @@ TEST_CASE("merge_each - with plain senders", "[sequence_senders][merge_each]") {
   }
 }
 
+#if STDEXEC_HAS_STD_RANGES()
 TEST_CASE("merge_each - with iterate", "[sequence_senders][merge_each]") {
   std::array<int, 3> arr = {1, 2, 3};
   auto view = std::views::all(arr);
@@ -63,3 +64,4 @@ TEST_CASE("merge_each - with iterate", "[sequence_senders][merge_each]") {
   stdexec::sync_wait(s1);
   CHECK(checked == 6);
 }
+#endif
