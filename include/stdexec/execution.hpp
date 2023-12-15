@@ -5532,6 +5532,10 @@ namespace stdexec {
     template <class _Sender>
     using __sync_wait_result_t = __mtry_eval<__sync_wait_result_impl, _Sender, __q<std::tuple>>;
 
+    template <class _Sender>
+    using __sync_wait_with_variant_result_t =
+      __mtry_eval<__sync_wait_result_impl, __result_of<into_variant, _Sender>, __q<__midentity>>;
+
     template <class... _Values>
     struct __state {
       using _Tuple = std::tuple<_Values...>;
@@ -5605,7 +5609,7 @@ namespace stdexec {
 
     template <class _Sender>
     struct __variant_for {
-      using __t = __sync_wait_result_t<__result_of<into_variant, _Sender>>;
+      using __t = __sync_wait_with_variant_result_t<_Sender>;
     };
     template <class _Sender>
     using __variant_for_t = __t<__variant_for<_Sender>>;
@@ -5762,7 +5766,10 @@ namespace stdexec {
       template <class _Sender>
         requires __callable<sync_wait_t, __result_of<into_variant, _Sender>>
       auto apply_sender(_Sender&& __sndr) const -> std::optional<__variant_for_t<_Sender>> {
-        return sync_wait_t()(into_variant((_Sender&&) __sndr));
+        if (auto __opt_values = sync_wait_t()(into_variant((_Sender&&) __sndr))) {
+          return std::move(std::get<0>(*__opt_values));
+        }
+        return std::nullopt;
       }
     };
   } // namespace __sync_wait

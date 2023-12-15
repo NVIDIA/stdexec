@@ -281,7 +281,7 @@ namespace {
   using my_transfered_multi_value_sender_t =
     decltype(ex::transfer(my_multi_value_sender_t{}, inline_scheduler{}));
 
-  optional<std::tuple<std::variant<std::tuple<std::string>, std::tuple<int>>>> tag_invoke(
+  optional<std::variant<std::tuple<std::string>, std::tuple<int>>> tag_invoke(
     decltype(sync_wait_with_variant),
     inline_scheduler sched,
     my_transfered_multi_value_sender_t&& s) {
@@ -294,7 +294,7 @@ namespace {
     return {res};
   }
 
-  optional<std::tuple<std::variant<std::tuple<std::string>, std::tuple<int>>>>
+  optional<std::variant<std::tuple<std::string>, std::tuple<int>>>
     tag_invoke(decltype(sync_wait_with_variant), my_multi_value_sender_t s) {
     CHECK(s.str_ == "hello_multi");
     return {std::string{"ciao_multi"}};
@@ -306,10 +306,10 @@ namespace {
     // The customization will return a different value
     auto snd = ex::transfer(my_multi_value_sender_t{"hello_multi"}, inline_scheduler{});
     auto snd2 = ex::transfer_just(inline_scheduler{}, std::string{"hello"});
-    optional<std::tuple<std::variant<std::tuple<std::string>, std::tuple<int>>>> res =
+    optional<std::variant<std::tuple<std::string>, std::tuple<int>>> res =
       sync_wait_with_variant(std::move(snd));
     CHECK(res.has_value());
-    CHECK(std::get<0>(std::get<0>(res.value())) == std::make_tuple(std::string{"hallo_multi"}));
+    CHECK(std::get<0>(std::get<0>(res.value())) == std::string{"hallo_multi"});
   }
 
   TEST_CASE(
@@ -317,10 +317,10 @@ namespace {
     "[consumers][sync_wait_with_variant]") {
     // The customization will return a different value
     my_multi_value_sender_t snd{std::string{"hello_multi"}};
-    optional<std::tuple<std::variant<std::tuple<std::string>, std::tuple<int>>>> res =
+    optional<std::variant<std::tuple<std::string>, std::tuple<int>>> res =
       sync_wait_with_variant(std::move(snd));
     CHECK(res.has_value());
-    CHECK(std::get<0>(std::get<0>(res.value())) == std::make_tuple(std::string{"ciao_multi"}));
+    CHECK(std::get<0>(std::get<0>(res.value())) == std::string{"ciao_multi"});
   }
 
   template <class... Ts>
