@@ -244,7 +244,7 @@ namespace {
     };
 
     struct my_sender {
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <typename R>

@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#define STDEXEC_DISABLE_R5_DEPRECATION_WARNINGS
-
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include "test_common/receivers.hpp"
@@ -41,7 +39,7 @@ namespace {
   };
 
   struct my_sender {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(int)>;
 
     int value_{0};
@@ -57,7 +55,7 @@ namespace {
   };
 
   struct my_sender_unconstrained {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(int)>;
 
     int value_{0};
@@ -84,6 +82,7 @@ namespace {
   }
 
   struct strange_receiver {
+    using receiver_concept = stdexec::receiver_t;
     bool* called_;
 
     friend inline op_state<strange_receiver>

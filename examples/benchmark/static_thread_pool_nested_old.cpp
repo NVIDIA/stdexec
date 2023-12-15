@@ -50,15 +50,15 @@ struct RunThread {
         stdexec::schedule(scheduler) //
         | stdexec::then([&] {
             while (scheds) {
-              stdexec::start_detached( //
+              stdexec::start_detached(       //
                 stdexec::schedule(scheduler) //
-                | stdexec::then([&] {
-                    auto prev = counter.fetch_sub(1);
-                    if (prev == 1) {
-                      std::lock_guard lock{mut};
-                      cv.notify_one();
-                    }
-                  }),
+                  | stdexec::then([&] {
+                      auto prev = counter.fetch_sub(1);
+                      if (prev == 1) {
+                        std::lock_guard lock{mut};
+                        cv.notify_one();
+                      }
+                    }),
                 env);
               --scheds;
             }
@@ -71,7 +71,7 @@ struct RunThread {
         stdexec::schedule(scheduler) //
         | stdexec::then([&] {
             while (scheds) {
-              stdexec::start_detached( //
+              stdexec::start_detached(       //
                 stdexec::schedule(scheduler) //
                 | stdexec::then([&] {
                     auto prev = counter.fetch_sub(1);

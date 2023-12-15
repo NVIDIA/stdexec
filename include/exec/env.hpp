@@ -75,7 +75,7 @@ namespace exec {
     template <class _Tag, class _DefaultId>
     struct __sender {
       using _Default = __t<_DefaultId>;
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       STDEXEC_ATTRIBUTE((no_unique_address)) _Default __default_;
 
       template <class _Env>
@@ -95,7 +95,7 @@ namespace exec {
         return {{}, ((_Self&&) __self).__default_, (_Receiver&&) __rcvr};
       }
 
-      template <__none_of<no_env> _Env>
+      template <class _Env>
       friend auto tag_invoke(get_completion_signatures_t, __sender, _Env&&)
         -> __completions_t<_Env> {
         return {};

@@ -16,6 +16,7 @@
  */
 #include "./common.hpp"
 #include <exec/static_thread_pool.hpp>
+
 struct RunThread {
   void operator()(
     exec::static_thread_pool& pool,
@@ -67,13 +68,13 @@ struct RunThread {
       while (scheds) {
         stdexec::start_detached(       //
           stdexec::schedule(scheduler) //
-            | stdexec::then([&] {
-                auto prev = counter.fetch_sub(1);
-                if (prev == 1) {
-                  std::lock_guard lock{mut};
-                  cv.notify_one();
-                }
-              }));
+          | stdexec::then([&] {
+              auto prev = counter.fetch_sub(1);
+              if (prev == 1) {
+                std::lock_guard lock{mut};
+                cv.notify_one();
+              }
+            }));
         --scheds;
       }
 #endif

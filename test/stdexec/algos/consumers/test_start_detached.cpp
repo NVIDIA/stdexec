@@ -23,6 +23,10 @@
 
 #include <chrono>
 
+#if STDEXEC_HAS_STD_MEMORY_RESOURCE()
+#include <memory_resource>
+#endif
+
 namespace ex = stdexec;
 
 using namespace std::chrono_literals;
@@ -90,7 +94,7 @@ namespace {
   }
 
   struct custom_sender {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     bool* called;
 
     template <class Receiver>
@@ -160,5 +164,53 @@ namespace {
       exec::make_env(exec::with(ex::get_scheduler, custom_scheduler{})));
     CHECK_FALSE(called);
   }
+
+#if STDEXEC_HAS_STD_MEMORY_RESOURCE() \
+  && (defined(__cpp_lib_polymorphic_allocator) && __cpp_lib_polymorphic_allocator >= 201902L)
+
+  struct counting_resource : std::pmr::memory_resource {
+    counting_resource() = default;
+
+    std::size_t get_count() const noexcept {
+      return count;
+    }
+
+    std::size_t get_alive() const noexcept {
+      return alive;
+    }
+   private:
+    void* do_allocate(std::size_t bytes, std::size_t alignment) override {
+      ++count;
+      ++alive;
+      return std::pmr::new_delete_resource()->allocate(bytes, alignment);
+    }
+
+    void do_deallocate(void* p, std::size_t bytes, std::size_t alignment) override {
+      --alive;
+      return std::pmr::new_delete_resource()->deallocate(p, bytes, alignment);
+    }
+
+    bool do_is_equal(const memory_resource& other) const noexcept override {
+      return this == &other;
+    }
+
+    std::size_t count = 0, alive = 0;
+  };
+
+  // NOT TO SPEC
+  TEST_CASE("start_detached works with a custom allocator", "[consumers][start_detached]") {
+    bool called = false;
+    counting_resource res;
+    std::pmr::polymorphic_allocator<std::byte> alloc(&res);
+    ex::start_detached(
+      ex::just() | ex::then([&] { called = true; }),
+      exec::make_env(exec::with(ex::get_allocator, alloc)));
+    CHECK(called);
+    CHECK(res.get_count() == 1);
+    CHECK(res.get_alive() == 0);
+  }
+#endif
+
 }
+
 STDEXEC_PRAGMA_POP()

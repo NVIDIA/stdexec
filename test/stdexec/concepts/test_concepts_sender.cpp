@@ -36,7 +36,7 @@ namespace {
   }
 
   struct P2300r7_sender_1 {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
   };
 
   struct P2300r7_sender_2 { };
@@ -88,7 +88,7 @@ namespace {
   };
 
   struct my_sender0 {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using completion_signatures = ex::completion_signatures< //
       ex::set_value_t(),                                     //
       ex::set_error_t(std::exception_ptr),                   //
@@ -122,7 +122,7 @@ namespace {
   }
 
   struct my_sender_int {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using completion_signatures = ex::completion_signatures< //
       ex::set_value_t(int),                                  //
       ex::set_error_t(std::exception_ptr),                   //
@@ -180,7 +180,7 @@ namespace {
   }
 
   struct multival_sender {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using completion_signatures = ex::completion_signatures< //
       ex::set_value_t(int, double),                          //
       ex::set_value_t(short, long),                          //
@@ -206,7 +206,7 @@ namespace {
   }
 
   struct ec_sender {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using completion_signatures = ex::completion_signatures< //
       ex::set_value_t(),                                     //
       ex::set_error_t(std::exception_ptr),                   //
@@ -231,7 +231,7 @@ namespace {
   }
 
   struct my_r5_sender0 {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using completion_signatures = ex::completion_signatures< //
       ex::set_value_t(),                                     //
       ex::set_error_t(std::exception_ptr),                   //
@@ -254,7 +254,7 @@ namespace {
   // nvc++ doesn't yet implement subsumption correctly
   struct not_a_sender_tag { };
 
-  struct sender_no_env_tag { };
+  struct sender_tag { };
 
   struct sender_env_tag { };
 
@@ -266,7 +266,7 @@ namespace {
   }
 
   template <ex::sender T>
-  sender_no_env_tag test_subsumption(T&&) {
+  sender_tag test_subsumption(T&&) {
     return {};
   }
 
@@ -289,7 +289,7 @@ namespace {
     "check for subsumption relationships between the sender concepts",
     "[concepts][sender]") {
     ::has_type<not_a_sender_tag>(::test_subsumption(42));
-    ::has_type<sender_no_env_tag>(::test_subsumption(ex::get_scheduler()));
+    ::has_type<sender_tag>(::test_subsumption(ex::get_scheduler()));
     ::has_type<sender_env_tag>(::test_subsumption(ex::just(42)));
     ::has_type<sender_of_tag>(::test_subsumption(ex::just()));
   }

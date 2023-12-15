@@ -43,7 +43,7 @@ struct RunThread {
       auto [start, end] = exec::even_share(total_scheds, tid, pool.available_parallelism());
       std::size_t scheds = end - start;
       tbb::task_group tg{};
-      stdexec::sync_wait(       //
+      stdexec::sync_wait(            //
         stdexec::schedule(scheduler) //
         | stdexec::then([&] {
             for (std::size_t i = 0; i < scheds; ++i) {
@@ -58,7 +58,6 @@ struct RunThread {
   }
 };
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
   my_main<tbbexec::tbb_thread_pool, RunThread>(argc, argv);
 }

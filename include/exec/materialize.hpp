@@ -28,7 +28,7 @@ namespace exec {
 
       class __t {
        public:
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
 
         __t(_Receiver&& __upstream)
           : __upstream_{(_Receiver&&) __upstream} {
@@ -59,7 +59,7 @@ namespace exec {
 
       class __t {
        public:
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
 
         template <__decays_to<_Sender> _Sndr>
         __t(_Sndr&& __sender)
@@ -125,7 +125,7 @@ namespace exec {
 
       class __t {
        public:
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
 
         __t(_Receiver&& __upstream)
           : __upstream_{(_Receiver&&) __upstream} {
@@ -166,7 +166,7 @@ namespace exec {
 
       class __t {
        public:
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
 
         template <__decays_to<_Sender> _Sndr>
         __t(_Sndr&& __sndr) noexcept(__nothrow_decay_copyable<_Sndr>)

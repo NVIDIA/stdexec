@@ -30,6 +30,7 @@
 #include "./sequence_senders.hpp"
 #include "./sequence/iterate.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <condition_variable>
 #include <exception>
@@ -73,6 +74,11 @@ namespace exec {
     };
   }
 #endif
+
+  template <class>
+  struct not_a_sender {
+    using sender_concept = stdexec::sender_t;
+  };
 
   struct task_base {
     task_base* next;
@@ -226,21 +232,44 @@ namespace exec {
     };
 #endif
 
+   public:
     struct domain {
       // For eager customization
       template <stdexec::sender_expr_for<stdexec::bulk_t> Sender>
       auto transform_sender(Sender&& sndr) const noexcept {
-        auto sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
-          stdexec::get_env(sndr));
-        return stdexec::__sexpr_apply((Sender&&) sndr, transform_bulk{*sched.pool_});
+        if constexpr (stdexec::__completes_on<Sender, static_thread_pool::scheduler>) {
+          auto sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
+            stdexec::get_env(sndr));
+          return stdexec::__sexpr_apply((Sender&&) sndr, transform_bulk{*sched.pool_});
+        } else {
+          static_assert(
+            stdexec::__completes_on<Sender, static_thread_pool::scheduler>,
+            "No static_thread_pool instance can be found in the sender's environment "
+            "on which to schedule bulk work.");
+          return not_a_sender<stdexec::__name_of<Sender>>();
+        }
+        STDEXEC_UNREACHABLE();
       }
 
       // transform the generic bulk sender into a parallel thread-pool bulk sender
       template <stdexec::sender_expr_for<stdexec::bulk_t> Sender, class Env>
-        requires stdexec::__callable<stdexec::get_scheduler_t, Env>
       auto transform_sender(Sender&& sndr, const Env& env) const noexcept {
-        auto sched = stdexec::get_scheduler(env);
-        return stdexec::__sexpr_apply((Sender&&) sndr, transform_bulk{*sched.pool_});
+        if constexpr (stdexec::__completes_on<Sender, static_thread_pool::scheduler>) {
+          auto sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
+            stdexec::get_env(sndr));
+          return stdexec::__sexpr_apply((Sender&&) sndr, transform_bulk{*sched.pool_});
+        } else if constexpr (stdexec::__starts_on<Sender, static_thread_pool::scheduler, Env>) {
+          auto sched = stdexec::get_scheduler(env);
+          return stdexec::__sexpr_apply((Sender&&) sndr, transform_bulk{*sched.pool_});
+        } else {
+          static_assert( //
+            stdexec::__starts_on<Sender, static_thread_pool::scheduler, Env>
+              || stdexec::__completes_on<Sender, static_thread_pool::scheduler>,
+            "No static_thread_pool instance can be found in the sender's or receiver's "
+            "environment on which to schedule bulk work.");
+          return not_a_sender<stdexec::__name_of<Sender>>();
+        }
+        STDEXEC_UNREACHABLE();
       }
 
 #if STDEXEC_HAS_STD_RANGES()
@@ -281,7 +310,7 @@ namespace exec {
        public:
         using __t = sender;
         using __id = sender;
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
         using completion_signatures =
           stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t()>;
        private:
@@ -798,7 +827,7 @@ namespace exec {
   inline static_thread_pool::thread_state::pop_result
     static_thread_pool::thread_state::try_remote() {
     pop_result result{nullptr, index_};
-    __intrusive_queue<&task_base::next> remotes = pool_->remotes_.pop_all_reversed(index_);
+    __intrusive_queue<& task_base::next> remotes = pool_->remotes_.pop_all_reversed(index_);
     pending_queue_.append(std::move(remotes));
     if (!pending_queue_.empty()) {
       move_pending_to_local(pending_queue_, local_queue_);
@@ -985,7 +1014,7 @@ namespace exec {
   struct static_thread_pool::bulk_sender {
     using Sender = stdexec::__t<SenderId>;
     using Fun = stdexec::__t<FunId>;
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
 
     static_thread_pool& pool_;
     Sender sndr_;
@@ -1131,7 +1160,8 @@ namespace exec {
     std::vector<bulk_task> tasks_;
 
     std::uint32_t num_agents_required() const {
-      return std::min(shape_, static_cast<Shape>(pool_.available_parallelism()));
+      return static_cast<std::uint32_t>(
+        std::min(shape_, static_cast<Shape>(pool_.available_parallelism())));
     }
 
     template <class F>
@@ -1153,7 +1183,7 @@ namespace exec {
 
   template <class SenderId, class ReceiverId, class Shape, class Fn, bool MayThrow>
   struct static_thread_pool::bulk_receiver {
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
     using Sender = stdexec::__t<SenderId>;
     using Receiver = stdexec::__t<ReceiverId>;
 
@@ -1305,7 +1335,7 @@ namespace exec {
     struct item_sender {
       struct __t {
         using __id = item_sender;
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
         using completion_signatures = stdexec::completion_signatures<stdexec::set_value_t(
           std::ranges::range_reference_t<Range>)>;
 
@@ -1349,7 +1379,7 @@ namespace exec {
     template <class Range, class Receiver>
     struct next_receiver {
       struct __t {
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
         operation_base_with_receiver<Range, Receiver>* op_;
 
         template <stdexec::same_as<stdexec::set_value_t> SetValue, stdexec::same_as<__t> Self>
@@ -1454,7 +1484,7 @@ namespace exec {
      public:
       using __id = sequence;
 
-      using is_sender = sequence_tag;
+      using sender_concept = sequence_sender_t;
 
       using completion_signatures = stdexec::completion_signatures<
         stdexec::set_value_t(),

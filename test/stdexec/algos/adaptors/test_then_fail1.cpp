@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2022 Lucian Radu Teodorescu
- * Copyright (c) 2022 NVIDIA Corporation
+ * Copyright (c) 2023 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -15,15 +14,12 @@
  * limitations under the License.
  */
 
-#include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
-#include <test_common/schedulers.hpp>
-#include <test_common/receivers.hpp>
 
 namespace ex = stdexec;
 
-namespace {
-  TEST_CASE("a scratch test case for minimal repro of a bug", "[scratch]") {
-    CHECK(true);
-  }
+int main() {
+  ex::sender auto snd = ex::just(42) | ex::then([](int*) {});
+  // build error: _NOT_CALLABLE_.*_WITH_FUNCTION_.*_WITH_ARGUMENTS_<int>
+  stdexec::sync_wait(std::move(snd));
 }

@@ -42,13 +42,19 @@ namespace stdexec {
   template <class _Tag>
   concept __completion_tag = __one_of<_Tag, set_value_t, set_error_t, set_stopped_t>;
 
+  struct receiver_t;
+
   template <class _Sender>
   extern const bool enable_receiver;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __env {
     struct get_env_t;
-    struct empty_env;
+
+    struct empty_env {
+      using __t = empty_env;
+      using __id = empty_env;
+    };
   }
 
   using __env::empty_env;
@@ -132,6 +138,8 @@ namespace stdexec {
   template <class _Sender, class _Receiver>
   concept __nothrow_connectable = __nothrow_callable<connect_t, _Sender, _Receiver>;
 
+  struct sender_t;
+
   template <class _Sender>
   extern const bool enable_sender;
 
@@ -176,6 +184,14 @@ namespace stdexec {
   extern const transfer_just_t transfer_just;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  namespace __bulk {
+    struct bulk_t;
+  }
+
+  using __bulk::bulk_t;
+  extern const bulk_t bulk;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __on_v2 {
     struct on_t;
   }
@@ -183,4 +199,17 @@ namespace stdexec {
   namespace v2 {
     using __on_v2::on_t;
   }
+
+  namespace __detail {
+    struct __sexpr_apply_t;
+  }
+
+  using __detail::__sexpr_apply_t;
+  extern const __sexpr_apply_t __sexpr_apply;
 }
+
+template <class...>
+[[deprecated]] void print() {}
+
+template <class>
+struct undef;

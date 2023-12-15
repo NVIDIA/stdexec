@@ -122,7 +122,7 @@ namespace exec {
             try {
               __result_.emplace(std::tuple{_CPO{}, (_Args&&) __args...});
             } catch (...) {
-              __result_.emplace(set_error_t{}, std::current_exception());
+              __result_.emplace(std::tuple{set_error_t{}, std::current_exception()});
             }
           }
           // stop pending operations
@@ -155,7 +155,7 @@ namespace exec {
     struct __receiver {
       class __t {
        public:
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
         using __id = __receiver;
 
         explicit __t(__op_base<_Receiver, _ResultVariant>* __op) noexcept
@@ -241,7 +241,7 @@ namespace exec {
       class __t {
        public:
         using __id = __sender;
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
 
         template <class... _Senders>
         explicit(sizeof...(_Senders) == 1)

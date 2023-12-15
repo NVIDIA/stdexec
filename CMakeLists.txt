@@ -92,6 +92,18 @@ rapids_cpm_find(Catch2 ${Catch2_VERSION}
     URL https://github.com/catchorg/Catch2/archive/refs/tags/v${Catch2_VERSION}.zip
 )
 
+# Add ICM
+set(icm_VERSION 1.5.0)
+# Always download it, don't attempt to do `find_package(ICM)` first
+set(CPM_DOWNLOAD_icm TRUE)
+rapids_cpm_find(icm ${icm_VERSION}
+  CPM_ARGS
+    GITHUB_REPOSITORY iboB/icm
+    GIT_TAG v${icm_VERSION}
+    VERSION ${icm_VERSION}
+    PATCH_COMMAND git restore -- . && git apply ${CMAKE_CURRENT_LIST_DIR}/cmake/cpm/patches/icm/regex-build-error.diff
+)
+
 # Ensure that we link with the threading library
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 rapids_find_package(Threads REQUIRED
@@ -146,6 +158,12 @@ target_compile_options(stdexec INTERFACE
                        $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fcoroutines>
                        )
 
+# Increase the concepts diagnostics depth for GCC
+target_compile_options(stdexec INTERFACE
+                       $<$<CXX_COMPILER_ID:GNU>:-fconcepts-diagnostics-depth=10>
+                       )
+
+# Do you want a preprocessor that works? Picky, picky.
 target_compile_options(stdexec INTERFACE
                        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus /Zc:preprocessor>
                        )
@@ -177,7 +195,8 @@ target_compile_options(stdexec_executable_flags INTERFACE
 # Silence warnings
 target_compile_options(stdexec_executable_flags INTERFACE
                        $<$<CXX_COMPILER_ID:GNU>:-Wno-non-template-friend>
-                       $<$<CXX_COMPILER_ID:NVHPC>:--diag_suppress177,550,111,497,554>)
+                       $<$<CXX_COMPILER_ID:NVHPC>:--diag_suppress177,550,111,497,554>
+                       $<$<CXX_COMPILER_ID:MSVC>:/wd4100 /wd4101 /wd4127 /wd4324 /wd4456 /wd4459>)
 
 # Template backtrace limit
 target_compile_options(stdexec_executable_flags INTERFACE
@@ -204,8 +223,9 @@ target_compile_options(stdexec_executable_flags INTERFACE
                        -include stdexec/__detail/__force_include.hpp>
                        )
 
-target_compile_definitions(stdexec_executable_flags INTERFACE
-                           STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
+target_compile_definitions(
+  stdexec_executable_flags INTERFACE
+  $<$<NOT:$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>>:STDEXEC_ENABLE_EXTRA_TYPE_CHECKING>)
 
 # Support target for examples and tests
 add_library(nvexec_executable_flags INTERFACE)
@@ -298,7 +318,6 @@ if (STDEXEC_ENABLE_TBB)
         )
 endif ()
 
-option (STDEXEC_ENABLE_IO_URING_TESTS "Enable io_uring tests" ON)
 option (STDEXEC_ENABLE_NUMA "Enable NUMA affinity for static_thread_pool" OFF)
 if (STDEXEC_ENABLE_NUMA)
   list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
@@ -306,6 +325,9 @@ if (STDEXEC_ENABLE_NUMA)
   target_link_libraries(stdexec INTERFACE numa::numa)
   target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_NUMA)
 endif()
+include(CheckIncludeFileCXX)
+CHECK_INCLUDE_FILE_CXX("linux/io_uring.h" STDEXEC_FOUND_IO_URING)
+option (STDEXEC_ENABLE_IO_URING_TESTS "Enable io_uring tests" ${STDEXEC_FOUND_IO_URING})
 
 option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
 option(STDEXEC_BUILD_TESTS "Build stdexec tests" ON)
