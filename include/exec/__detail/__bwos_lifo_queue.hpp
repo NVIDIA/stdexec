@@ -155,7 +155,7 @@ namespace exec::bwos {
       alignas(hardware_destructive_interference_size) std::atomic<std::uint64_t> tail_{};
       alignas(hardware_destructive_interference_size) std::atomic<std::uint64_t> steal_head_{};
       alignas(hardware_destructive_interference_size) std::atomic<std::uint64_t> steal_tail_{};
-      std::vector<Tp, Allocator> ring_buffer_{};
+      std::vector<Tp, Allocator> ring_buffer_;
     };
 
     bool advance_get_index() noexcept;
@@ -339,12 +339,12 @@ namespace exec::bwos {
   }
 
   template <class Tp, class Allocator>
-  lifo_queue<Tp, Allocator>::block_type::block_type(const block_type &other) {
+  lifo_queue<Tp, Allocator>::block_type::block_type(const block_type &other)
+  : ring_buffer_(other.ring_buffer_) {
     head_.store(other.head_.load(std::memory_order_relaxed), std::memory_order_relaxed);
     tail_.store(other.tail_.load(std::memory_order_relaxed), std::memory_order_relaxed);
     steal_tail_.store(other.steal_tail_.load(std::memory_order_relaxed), std::memory_order_relaxed);
     steal_head_.store(other.steal_head_.load(std::memory_order_relaxed), std::memory_order_relaxed);
-    ring_buffer_ = other.ring_buffer_;
   }
 
   template <class Tp, class Allocator>
