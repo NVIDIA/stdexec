@@ -5682,10 +5682,8 @@ namespace stdexec {
         requires __valid_sync_wait_argument<_Sender>
               && __has_implementation_for<sync_wait_t, __early_domain_of_t<_Sender>, _Sender>
       auto operator()(_Sender&& __sndr) const -> std::optional<__value_tuple_for_t<_Sender>> {
-        using _SD = __early_domain_of_t<_Sender>;
-        constexpr bool __has_custom_impl = __callable<apply_sender_t, _SD, sync_wait_t, _Sender>;
-        using _Domain = __if_c<__has_custom_impl, _SD, default_domain>;
-        return stdexec::apply_sender(_Domain(), *this, (_Sender&&) __sndr);
+        auto __domain = __get_early_domain(__sndr);
+        return stdexec::apply_sender(__domain, *this, (_Sender&&) __sndr);
       }
 
 #if STDEXEC_NVHPC()
