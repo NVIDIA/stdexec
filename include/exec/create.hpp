@@ -67,7 +67,7 @@ namespace exec {
               && constructible_from<_Fun, __copy_cvref_t<_Self, _Fun>>
               && constructible_from<_Args, __copy_cvref_t<_Self, _Args>>
       friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
-        -> __operation<__x<_Receiver>, _Fun, _ArgsId> {
+        -> __operation<__id<_Receiver>, _Fun, _ArgsId> {
         static_assert(__nothrow_callable<_Fun, __context<_Receiver, _Args>&>);
         return {
           {(_Receiver&&) __rcvr, ((_Self&&) __self).__args_},
@@ -85,7 +85,7 @@ namespace exec {
       template <class _Fun, class... _Args>
         requires move_constructible<_Fun> && constructible_from<__decayed_tuple<_Args...>, _Args...>
       auto operator()(_Fun __fun, _Args&&... __args) const
-        -> __sender<_Fun, __x<__decayed_tuple<_Args...>>, _Sigs...> {
+        -> __sender<_Fun, __id<__decayed_tuple<_Args...>>, _Sigs...> {
         return {(_Fun&&) __fun, {(_Args&&) __args...}};
       }
     };

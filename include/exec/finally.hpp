@@ -243,9 +243,9 @@ namespace exec {
 
       template <class _Self, class _Receiver>
       using __op_t = stdexec::__t<__operation_state<
-        __x<__copy_cvref_t<_Self, _InitialSender>>,
-        __x<__copy_cvref_t<_Self, _FinalSender>>,
-        __x<_Receiver>>>;
+        __id<__copy_cvref_t<_Self, _InitialSender>>,
+        __id<__copy_cvref_t<_Self, _FinalSender>>,
+        __id<_Receiver>>>;
 
       class __t {
         _InitialSender __initial_sender_;

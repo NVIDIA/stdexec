@@ -681,7 +681,7 @@ namespace stdexec {
     };
   };
   template <class _Ty>
-  using __x = __t<_Xp<_Ty>>;
+  using __id = __t<_Xp<_Ty>>;
 
   template <class _Ty>
   concept __has_id = requires { typename _Ty::__id; };

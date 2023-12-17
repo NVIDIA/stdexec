@@ -99,7 +99,7 @@ namespace exec {
 
       template <class _Self, class _Receiver>
       using __when_empty_op_t =
-        __when_empty_op< __x<__copy_cvref_t<_Self, _Constrained>>, __x<_Receiver>>;
+        __when_empty_op< __id<__copy_cvref_t<_Self, _Constrained>>, __id<_Receiver>>;
 
       template <__decays_to<__when_empty_sender> _Self, receiver _Receiver>
         requires sender_to<__copy_cvref_t<_Self, _Constrained>, _Receiver>
@@ -124,7 +124,7 @@ namespace exec {
     };
 
     template <class _Constrained>
-    using __when_empty_sender_t = __when_empty_sender<__x<__decay_t<_Constrained>>>;
+    using __when_empty_sender_t = __when_empty_sender<__id<__decay_t<_Constrained>>>;
 
     ////////////////////////////////////////////////////////////////////////////
     // async_scope::nest implementation
@@ -211,9 +211,9 @@ namespace exec {
       STDEXEC_ATTRIBUTE((no_unique_address)) _Constrained __c_;
 
       template <class _Receiver>
-      using __nest_operation_t = __nest_op<_ConstrainedId, __x<_Receiver>>;
+      using __nest_operation_t = __nest_op<_ConstrainedId, __id<_Receiver>>;
       template <class _Receiver>
-      using __nest_receiver_t = __nest_rcvr<__x<_Receiver>>;
+      using __nest_receiver_t = __nest_rcvr<__id<_Receiver>>;
 
       template <__decays_to<__nest_sender> _Self, receiver _Receiver>
         requires sender_to<__copy_cvref_t<_Self, _Constrained>, __nest_receiver_t<_Receiver>>
@@ -235,7 +235,7 @@ namespace exec {
     };
 
     template <class _Constrained>
-    using __nest_sender_t = __nest_sender<__x<__decay_t<_Constrained>>>;
+    using __nest_sender_t = __nest_sender<__id<__decay_t<_Constrained>>>;
 
     ////////////////////////////////////////////////////////////////////////////
     // async_scope::spawn_future implementation
@@ -521,7 +521,7 @@ namespace exec {
 
     template <class _Sender, class _Env>
     using __future_receiver_t =
-      __future_rcvr<__x<__future_completions_t<_Sender, _Env>>, __x<_Env>>;
+      __future_rcvr<__id<__future_completions_t<_Sender, _Env>>, __id<_Env>>;
 
     template <class _Sender, class _Env>
     struct __future_state : __future_state_base<__future_completions_t<_Sender, _Env>, _Env> {
@@ -574,9 +574,9 @@ namespace exec {
 
       template <__decays_to<__future> _Self, receiver _Receiver>
         requires receiver_of<_Receiver, __completions_t<_Self>>
-      friend __future_op<_SenderId, _EnvId, __x<_Receiver>>
+      friend __future_op<_SenderId, _EnvId, __id<_Receiver>>
         tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) {
-        return __future_op<_SenderId, _EnvId, __x<_Receiver>>{
+        return __future_op<_SenderId, _EnvId, __id<_Receiver>>{
           (_Receiver&&) __rcvr, std::move(__self.__state_)};
       }
 
@@ -594,7 +594,7 @@ namespace exec {
     };
 
     template <class _Sender, class _Env>
-    using __future_t = __future<__x<__nest_sender_t<_Sender>>, __x<__decay_t<_Env>>>;
+    using __future_t = __future<__id<__nest_sender_t<_Sender>>, __id<__decay_t<_Env>>>;
 
     ////////////////////////////////////////////////////////////////////////////
     // async_scope::spawn implementation
@@ -637,7 +637,7 @@ namespace exec {
     };
 
     template <class _Env>
-    using __spawn_receiver_t = __spawn_rcvr<__x<_Env>>;
+    using __spawn_receiver_t = __spawn_rcvr<__id<_Env>>;
 
     template <class _SenderId, class _EnvId>
     struct __spawn_op : __spawn_op_base<_EnvId> {
@@ -667,7 +667,7 @@ namespace exec {
     };
 
     template <class _Sender, class _Env>
-    using __spawn_operation_t = __spawn_op<__x<_Sender>, __x<_Env>>;
+    using __spawn_operation_t = __spawn_op<__id<_Sender>, __id<_Env>>;
 
     ////////////////////////////////////////////////////////////////////////////
     // async_scope

@@ -62,14 +62,14 @@ namespace tbbexec {
 
          private:
           template <typename Receiver>
-          operation<DerivedPoolType, stdexec::__x<stdexec::__decay_t<Receiver>>>
+          operation<DerivedPoolType, stdexec::__id<stdexec::__decay_t<Receiver>>>
             make_operation_(Receiver&& r) const {
-            return operation<DerivedPoolType, stdexec::__x<stdexec::__decay_t<Receiver>>>{
+            return operation<DerivedPoolType, stdexec::__id<stdexec::__decay_t<Receiver>>>{
               this->pool_, (Receiver&&) r};
           }
 
           template <class Receiver>
-          friend operation<DerivedPoolType, stdexec::__x<stdexec::__decay_t<Receiver>>>
+          friend operation<DerivedPoolType, stdexec::__id<stdexec::__decay_t<Receiver>>>
             tag_invoke(stdexec::connect_t, sender s, Receiver&& r) {
             return s.make_operation_(std::forward<Receiver>(r));
           }
@@ -345,8 +345,8 @@ namespace tbbexec {
 
           template <class Self, class Receiver>
           using bulk_op_state_t = bulk_op_state<
-            stdexec::__x<stdexec::__copy_cvref_t<Self, Sender>>,
-            stdexec::__x<std::remove_cvref_t<Receiver>>,
+            stdexec::__id<stdexec::__copy_cvref_t<Self, Sender>>,
+            stdexec::__id<std::remove_cvref_t<Receiver>>,
             Shape,
             Fun>;
 
@@ -400,9 +400,9 @@ namespace tbbexec {
 
         template <stdexec::sender Sender, std::integral Shape, class Fun>
         using bulk_sender_t = bulk_sender<
-          stdexec::__x<std::remove_cvref_t<Sender>>,
+          stdexec::__id<std::remove_cvref_t<Sender>>,
           Shape,
-          stdexec::__x<std::remove_cvref_t<Fun>>>;
+          stdexec::__id<std::remove_cvref_t<Fun>>>;
 
         template <stdexec::sender S, std::integral Shape, class Fn>
         friend bulk_sender_t<S, Shape, Fn>

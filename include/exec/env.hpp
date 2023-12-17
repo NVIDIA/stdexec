@@ -91,7 +91,7 @@ namespace exec {
         requires receiver_of<_Receiver, __completions_t<env_of_t<_Receiver>>>
       friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) //
         noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
-          -> __operation<_Tag, __x<__default_t<env_of_t<_Receiver>>>, __x<_Receiver>> {
+          -> __operation<_Tag, __id<__default_t<env_of_t<_Receiver>>>, __id<_Receiver>> {
         return {{}, ((_Self&&) __self).__default_, (_Receiver&&) __rcvr};
       }
 
@@ -105,7 +105,7 @@ namespace exec {
     struct __read_with_default_t {
       template <class _Tag, class _Default>
       constexpr auto operator()(_Tag, _Default&& __default) const
-        -> __sender<_Tag, __x<__decay_t<_Default>>> {
+        -> __sender<_Tag, __id<__decay_t<_Default>>> {
         return {(_Default&&) __default};
       }
     };

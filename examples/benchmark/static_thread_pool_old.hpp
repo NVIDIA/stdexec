@@ -75,9 +75,9 @@ namespace exec_old {
     template <stdexec::sender Sender, std::integral Shape, class Fun>
     using bulk_sender_t = //
       bulk_sender<
-        stdexec::__x<stdexec::__decay_t<Sender>>,
+        stdexec::__id<stdexec::__decay_t<Sender>>,
         Shape,
-        stdexec::__x<stdexec::__decay_t<Fun>>>;
+        stdexec::__id<stdexec::__decay_t<Fun>>>;
 
 #if STDEXEC_MSVC()
     // MSVCBUG https://developercommunity.visualstudio.com/t/Alias-template-with-pack-expansion-in-no/10437850
@@ -474,8 +474,8 @@ namespace exec_old {
     template <class Self, class Receiver>
     using bulk_op_state_t = //
       bulk_op_state<
-        stdexec::__x<stdexec::__copy_cvref_t<Self, Sender>>,
-        stdexec::__x<stdexec::__decay_t<Receiver>>,
+        stdexec::__id<stdexec::__copy_cvref_t<Self, Sender>>,
+        stdexec::__id<stdexec::__decay_t<Receiver>>,
         Shape,
         Fun>;
 

@@ -165,7 +165,7 @@ namespace {
 
       template <class Self, class Receiver>
       using op_t = operation_state_t<
-        stdexec::__x<stdexec::__copy_cvref_t<Self, Sender>>,
+        stdexec::__id<stdexec::__copy_cvref_t<Self, Sender>>,
         stdexec::__id<receiver_th<Receiver>>>;
 
       template <class Self, class Env>
@@ -225,7 +225,7 @@ namespace {
 
       template <class Self, class Receiver>
       using op_t = operation_state_t<
-        stdexec::__x<stdexec::__copy_cvref_t<Self, Sender>>,
+        stdexec::__id<stdexec::__copy_cvref_t<Self, Sender>>,
         stdexec::__id<Receiver>>;
 
       template <class Self, class Env>
@@ -268,7 +268,7 @@ namespace {
   struct a_sender_helper_t<a_sender_kind::then> {
     template <class _Sender, class _Fun>
     using sender_th = detail::a_sender::
-      sender_t<stdexec::__x<std::remove_cvref_t<_Sender>>, stdexec::__x<std::remove_cvref_t<_Fun>>>;
+      sender_t<stdexec::__id<std::remove_cvref_t<_Sender>>, stdexec::__id<std::remove_cvref_t<_Fun>>>;
 
     template <stdexec::sender _Sender, class _Fun>
       requires stdexec::sender<sender_th<_Sender, _Fun>>
@@ -287,7 +287,7 @@ namespace {
   struct a_sender_helper_t<a_sender_kind::receiverless> {
     template <class _Sender>
     using receiverless_sender_th =
-      detail::a_receiverless_sender::sender_t<stdexec::__x<std::remove_cvref_t<_Sender>>>;
+      detail::a_receiverless_sender::sender_t<stdexec::__id<std::remove_cvref_t<_Sender>>>;
 
     template <stdexec::sender _Sender>
       requires stdexec::sender<receiverless_sender_th<_Sender>>
