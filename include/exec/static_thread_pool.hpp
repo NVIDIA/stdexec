@@ -24,7 +24,7 @@
 #include "./__detail/__atomic_intrusive_queue.hpp"
 #include "./__detail/__bwos_lifo_queue.hpp"
 #include "./__detail/__manual_lifetime.hpp"
-#include "./__detail/__idorshift.hpp"
+#include "./__detail/__xorshift.hpp"
 #include "./__detail/__numa.hpp"
 
 #include "./sequence_senders.hpp"
