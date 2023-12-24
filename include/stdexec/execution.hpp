@@ -3782,20 +3782,14 @@ namespace stdexec {
         };
 
       template <class _State, class _Receiver, class... _As>
-      static void __bind(_State&& __state, _Receiver&& __rcvr, _As&&... __as) noexcept {
+      static void __bind(_State& __state, _Receiver& __rcvr, _As&&... __as) noexcept {
         try {
-          using __fun_t = typename _State::__fun_t;
-          using __sched_t = typename _State::__sched_t;
-          using __tuple_t = __decayed_tuple<_As...>;
-          using __op_state_t =
-            __minvoke<__op_state_for<_Receiver, __fun_t, _SetTag, __sched_t>, _As...>;
-          auto& __args = __state.__args_.template emplace<__tuple_t>((_As&&) __as...);
-          auto& __op = __state.__op_state3_.template emplace<__op_state_t>(__conv{[&] {
-            return stdexec::connect(
-              __apply(std::move(__state.__fun_), __args),
-              __state.__get_result_receiver((_Receiver&&) __rcvr));
-          }});
-          stdexec::start(__op);
+          auto& __args = __state.__args_.template emplace<__decayed_tuple<_As...>>((_As&&) __as...);
+          auto __sndr2 = __apply(std::move(__state.__fun_), __args);
+          auto __rcvr2 = __state.__get_result_receiver((_Receiver&&) __rcvr);
+          auto __mkop = [&] { return stdexec::connect(std::move(__sndr2), std::move(__rcvr2)); };
+          auto& __op2 = __state.__op_state3_.template emplace<decltype(__mkop())>(__conv{__mkop});
+          stdexec::start(__op2);
         } catch (...) {
           set_error(std::move(__rcvr), std::current_exception());
         }
@@ -3809,7 +3803,7 @@ namespace stdexec {
           _Tag,
           _As&&... __as) noexcept -> void {
         if constexpr (std::same_as<_Tag, _SetTag>) {
-          __bind((_State&&) __state, (_Receiver&&) __rcvr, (_As&&) __as...);
+          __bind(__state, __rcvr, (_As&&) __as...);
         } else {
           _Tag()((_Receiver&&) __rcvr, (_As&&) __as...);
         }
