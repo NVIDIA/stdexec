@@ -2912,6 +2912,9 @@ namespace stdexec {
       }
     };
 
+    template <class _CvrefSender, class _Env>
+    struct __sh_state;
+
     // Each operation state of a split sender has one of these,
     // created when a split sender is connected. There are 0 or
     // more of them per input async operation. It is what
@@ -2922,7 +2925,7 @@ namespace stdexec {
       : __unique_state_base
       , __enable_receiver_from_this<_CvrefSender, _Receiver> {
       using __data_t = __decay_t<__data_of<_CvrefSender>>;
-      using __shared_state_ptr_t = decltype(__data_t::__sh_state);
+      using __sh_state_t = __mapply<__q<__mfront>, __data_t>;
       using __on_stop_cb_t = //
         typename stop_token_of_t<env_of_t<_Receiver>&>::template callback_type<__on_stop_request>;
 
@@ -2964,11 +2967,8 @@ namespace stdexec {
       }
 
       std::optional<__on_stop_cb_t> __on_stop_{};
-      __shared_state_ptr_t __sh_state_;
+      __intrusive_ptr<__sh_state_t> __sh_state_;
     };
-
-    template <class _CvrefSender, class _Env>
-    struct __sh_state;
 
     template <class _CvrefSenderId, class _EnvId>
     struct __receiver {

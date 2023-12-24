@@ -34,11 +34,11 @@ namespace stdexec {
     struct __enable_intrusive_from_this {
       __intrusive_ptr<_Ty> __intrusive_from_this() noexcept;
       __intrusive_ptr<const _Ty> __intrusive_from_this() const noexcept;
-    private:
+     private:
       friend _Ty;
       void __inc_ref() noexcept;
       void __dec_ref() noexcept;
-    };  
+    };
 
     template <class _Ty>
     struct __control_block {
@@ -66,12 +66,21 @@ namespace stdexec {
         __refcount_.fetch_add(1, std::memory_order_relaxed);
       }
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
+
       void __dec_ref_() noexcept {
         if (1u == __refcount_.fetch_sub(1, std::memory_order_release)) {
           std::atomic_thread_fence(std::memory_order_acquire);
+#if __has_feature(thread_sanitizer) || defined(__SANITIZE_THREAD__)
+          // TSan does not support std::atomic_thread_fence, so we
+          // need to use the TSan-specific __tsan_acquire instead:
+          __tsan_acquire(&__refcount_);
+#endif
           delete this;
         }
       }
+STDEXEC_PRAGMA_POP()
     };
 
     template <class _Ty>
@@ -177,7 +186,8 @@ namespace stdexec {
     }
 
     template <class _Ty>
-    __intrusive_ptr<const _Ty> __enable_intrusive_from_this<_Ty>::__intrusive_from_this() const noexcept {
+    __intrusive_ptr<const _Ty>
+      __enable_intrusive_from_this<_Ty>::__intrusive_from_this() const noexcept {
       auto* __data = (__control_block<_Ty>*) static_cast<const _Ty*>(this);
       __data->__inc_ref_();
       return __intrusive_ptr<const _Ty>{__data};
