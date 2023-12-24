@@ -204,7 +204,10 @@
 #define STDEXEC_PRAGMA_POP() _Pragma("diagnostic pop")
 #define STDEXEC_PRAGMA_IGNORE_EDG(...) _Pragma(STDEXEC_STRINGIZE(diag_suppress __VA_ARGS__))
 #elif STDEXEC_CLANG() || STDEXEC_GCC()
-#define STDEXEC_PRAGMA_PUSH() _Pragma("GCC diagnostic push")
+#define STDEXEC_PRAGMA_PUSH() \
+  _Pragma("GCC diagnostic push") STDEXEC_PRAGMA_IGNORE_GNU("-Wpragmas") STDEXEC_PRAGMA_IGNORE_GNU( \
+    "-Wunknown-pragmas") STDEXEC_PRAGMA_IGNORE_GNU("-Wunknown-warning-option") \
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wunknown-attributes") STDEXEC_PRAGMA_IGNORE_GNU("-Wattributes")
 #define STDEXEC_PRAGMA_POP() _Pragma("GCC diagnostic pop")
 #define STDEXEC_PRAGMA_IGNORE_GNU(...) \
   _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored __VA_ARGS__))
@@ -293,6 +296,12 @@
   __builtin_unreachable()
 #else
 #define STDEXEC_TERMINATE() std::terminate()
+#endif
+
+#if STDEXEC_HAS_FEATURE(thread_sanitizer) || defined(__SANITIZE_THREAD__)
+#define STDEXEC_TSAN(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#else
+#define STDEXEC_TSAN(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 
 // Before clang-16, clang did not like libstdc++'s ranges implementation
