@@ -72,7 +72,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
       void __dec_ref_() noexcept {
         if (1u == __refcount_.fetch_sub(1, std::memory_order_release)) {
           std::atomic_thread_fence(std::memory_order_acquire);
-#if __has_feature(thread_sanitizer) || defined(__SANITIZE_THREAD__)
+#if STDEXEC_HAS_FEATURE(thread_sanitizer) || defined(__SANITIZE_THREAD__)
           // TSan does not support std::atomic_thread_fence, so we
           // need to use the TSan-specific __tsan_acquire instead:
           __tsan_acquire(&__refcount_);

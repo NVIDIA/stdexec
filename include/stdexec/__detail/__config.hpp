@@ -226,6 +226,12 @@
 #define STDEXEC_HAS_BUILTIN(...) 0
 #endif
 
+#if !STDEXEC_MSVC() && defined(__has_feature)
+#define STDEXEC_HAS_FEATURE __has_feature
+#else
+#define STDEXEC_HAS_FEATURE(...) 0
+#endif
+
 #if STDEXEC_HAS_BUILTIN(__is_trivially_copyable) || STDEXEC_MSVC()
 #define STDEXEC_IS_TRIVIALLY_COPYABLE(...) __is_trivially_copyable(__VA_ARGS__)
 #else
