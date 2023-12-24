@@ -36,6 +36,7 @@
 #include "__detail/__meta.hpp"
 #include "__detail/__scope.hpp"
 #include "__detail/__basic_sender.hpp"
+#include "__detail/__utility.hpp"
 #include "functional.hpp"
 #include "concepts.hpp"
 #include "coroutine.hpp"
@@ -2624,9 +2625,9 @@ namespace stdexec {
       static constexpr auto get_completion_signatures = //
         []<class _Sender, class _Env>(_Sender&&, _Env&&) noexcept
         -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env> {
-            static_assert(sender_expr_for<_Sender, upon_error_t>);
-            return {};
-          };
+        static_assert(sender_expr_for<_Sender, upon_error_t>);
+        return {};
+      };
 
       static constexpr auto complete = //
         []<class _Tag, class... _Args>(
@@ -2700,9 +2701,9 @@ namespace stdexec {
       static constexpr auto get_completion_signatures = //
         []<class _Sender, class _Env>(_Sender&&, _Env&&) noexcept
         -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env> {
-            static_assert(sender_expr_for<_Sender, upon_stopped_t>);
-            return {};
-          };
+        static_assert(sender_expr_for<_Sender, upon_stopped_t>);
+        return {};
+      };
 
       static constexpr auto complete = //
         []<class _Tag, class... _Args>(
@@ -2808,9 +2809,9 @@ namespace stdexec {
       static constexpr auto get_completion_signatures = //
         []<class _Sender, class _Env>(_Sender&&, _Env&&) noexcept
         -> __completion_signatures<__child_of<_Sender>, _Env, __shape_t<_Sender>, __fun_t<_Sender>> {
-            static_assert(sender_expr_for<_Sender, bulk_t>);
-            return {};
-          };
+        static_assert(sender_expr_for<_Sender, bulk_t>);
+        return {};
+      };
 
       static constexpr auto complete = //
         []<class _Tag, class... _Args>(
@@ -2850,8 +2851,32 @@ namespace stdexec {
   struct __sexpr_impl<bulk_t> : __bulk::__bulk_impl { };
 
   ////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.adaptors.split]
-  namespace __split {
+  // shared components of split and ensure_started
+  //
+  // The split and ensure_started algorithms are very similar in implementation.
+  // The salient differences are:
+  //
+  // split: the input async operation is always connected. It is only
+  //   started when one of the split senders is connected and started.
+  //   split senders are copyable, so there are multiple operation states
+  //   to be notified on completion. These are stored in an instrusive
+  //   linked list.
+  //
+  // ensure_started: the input async operation is always started, so
+  //   the internal receiver will always be completed. The ensure_started
+  //   sender is move-only and single-shot, so there will only ever be one
+  //   operation state to be notified on completion.
+  //
+  // The shared state should add-ref itself when the input async
+  // operation is started and release itself when its completion
+  // is notified.
+  namespace __shared {
+    template <class _BaseEnv>
+    using __env_t = //
+      __make_env_t<
+        _BaseEnv, // BUGBUG NOT TO SPEC
+        __with<get_stop_token_t, in_place_stop_token>>;
+
     struct __on_stop_request {
       in_place_stop_source& __stop_source_;
 
@@ -2862,55 +2887,88 @@ namespace stdexec {
 
     template <class _Receiver>
     auto __notify_visitor(_Receiver&& __rcvr) noexcept {
-      return [&](const auto& __tupl) noexcept -> void {
+      return [&]<class _Tuple>(_Tuple&& __tupl) noexcept -> void {
         __apply(
-          [&](auto __tag, const auto&... __args) noexcept -> void {
-            __tag(std::move(__rcvr), __args...);
+          [&](auto __tag, auto&&... __args) noexcept -> void {
+            __tag(std::move(__rcvr), __forward_like<_Tuple>(__args)...);
           },
           __tupl);
       };
     }
 
-    struct __split_state_base : __immovable {
-      using __notify_fn = void(__split_state_base*) noexcept;
-
-      __split_state_base* __next_{};
-      __notify_fn* __notify_{};
+    enum class __action_kind : bool {
+      __notify,
+      __detach
     };
 
-    template <class _Sender, class _Receiver>
-    struct __split_state
-      : __split_state_base
-      , __enable_receiver_from_this<_Sender, _Receiver> {
-      using __shared_state_ptr = __decay_t<__data_of<_Sender>>;
-      using __on_stop_cb = //
-        typename stop_token_of_t<env_of_t<_Receiver>&>::template callback_type<__on_stop_request>;
+    struct __unique_state_base : __immovable {
+      using __action_fn = void(__unique_state_base*, __action_kind) noexcept;
 
-      explicit __split_state(_Sender&& __sndr) noexcept
-        : __split_state_base{{}, nullptr, __notify}
-        , __on_stop_()
-        , __shared_state_(STDEXEC_CALL_EXPLICIT_THIS_MEMFN((_Sender&&) __sndr, apply)(
-            __detail::__get_data())) {
+      __action_fn* __action_{};
+      __unique_state_base* __next_{};
+
+      __unique_state_base* __next() const noexcept {
+        return __next_;
       }
-
-      static void __notify(__split_state_base* __self) noexcept {
-        __split_state* __op = static_cast<__split_state*>(__self);
-        __op->__on_stop_.reset();
-        std::visit(__split::__notify_visitor(__op->__receiver()), __op->__shared_state_->__data_);
-      }
-
-      std::optional<__on_stop_cb> __on_stop_;
-      __shared_state_ptr __shared_state_;
     };
 
     template <class _CvrefSender, class _Env>
     struct __sh_state;
 
-    template <class _BaseEnv>
-    using __env_t = //
-      __make_env_t<
-        _BaseEnv, // BUGBUG NOT TO SPEC
-        __with<get_stop_token_t, in_place_stop_token>>;
+    // Each operation state of a split sender has one of these,
+    // created when a split sender is connected. There are 0 or
+    // more of them per input async operation. It is what
+    // the split sender's `get_state` fn returns. It holds a
+    // reference to the shared state of the input async operation.
+    template <class _CvrefSender, class _Receiver>
+    struct __unique_state
+      : __unique_state_base
+      , __enable_receiver_from_this<_CvrefSender, _Receiver> {
+      using __data_t = __decay_t<__data_of<_CvrefSender>>;
+      using __sh_state_t = __mapply<__q<__mfront>, __data_t>;
+      using __on_stop_cb_t = //
+        typename stop_token_of_t<env_of_t<_Receiver>&>::template callback_type<__on_stop_request>;
+
+      explicit __unique_state(_CvrefSender&& __sndr) noexcept
+        : __unique_state::__unique_state_base{{}, &__action<tag_of_t<_CvrefSender>>}
+        , __sh_state_(
+            STDEXEC_CALL_EXPLICIT_THIS_MEMFN((_CvrefSender&&) __sndr, apply)(__detail::__get_data())
+              .__sh_state) {
+      }
+
+      ~__unique_state() {
+        __action_(this, __action_kind::__detach);
+      }
+
+      // This is called when the input async operation completes; or,
+      // if it has already completed when start is called, it is called
+      // from start:
+      template <class _Tag>
+      static void __action(__unique_state_base* __self, __action_kind __kind) noexcept {
+        __unique_state* const __op = static_cast<__unique_state*>(__self);
+        if (__kind == __action_kind::__notify) {
+          __op->__on_stop_.reset();
+
+          // The split algorithm sends by T const&. ensure_started sends by T&&.
+          if constexpr (same_as<__split::__split_t, _Tag>) {
+            std::visit(
+              __notify_visitor(__op->__receiver()), std::as_const(__op->__sh_state_->__data_));
+          } else {
+            std::visit(__notify_visitor(__op->__receiver()), std::move(__op->__sh_state_->__data_));
+          }
+        } else {
+          // This is a detach operation
+          if constexpr (same_as<__split::__split_t, _Tag>) {
+            // no-op
+          } else {
+            __op->__sh_state_->__detach();
+          }
+        }
+      }
+
+      std::optional<__on_stop_cb_t> __on_stop_{};
+      __intrusive_ptr<__sh_state_t> __sh_state_;
+    };
 
     template <class _CvrefSenderId, class _EnvId>
     struct __receiver {
@@ -2918,14 +2976,16 @@ namespace stdexec {
       using _Env = stdexec::__t<_EnvId>;
 
       struct __t {
-        __sh_state<_CvrefSender, _Env>& __sh_state_;
-
         using receiver_concept = receiver_t;
         using __id = __receiver;
 
+        explicit __t(__sh_state<_CvrefSender, _Env>* __sh_state) noexcept
+          : __sh_state_(__sh_state) {
+        }
+
         template <__completion_tag _Tag, class... _As>
         friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept {
-          __sh_state<_CvrefSender, _Env>& __state = __self.__sh_state_;
+          __sh_state<_CvrefSender, _Env>& __state = *__self.__sh_state_;
 
           try {
             using __tuple_t = __decayed_tuple<_Tag, _As...>;
@@ -2934,42 +2994,29 @@ namespace stdexec {
             using __tuple_t = __decayed_tuple<set_error_t, std::exception_ptr>;
             __state.__data_.template emplace<__tuple_t>(set_error, std::current_exception());
           }
+
           __state.__notify();
         }
 
         friend const __env_t<_Env>& tag_invoke(get_env_t, const __t& __self) noexcept {
-          return __self.__sh_state_.__env_;
+          return __self.__sh_state_->__env_;
         }
+
+        __sh_state<_CvrefSender, _Env>* __sh_state_;
       };
     };
 
-    template <class _CvrefSender, class _Env = empty_env>
-    struct __sh_state {
-      using __t = __sh_state;
-      using __id = __sh_state;
-
-      template <class... _Ts>
-      using __bind_tuples = //
+    template <class _CvrefSender, class _Env>
+    struct __sh_state : __enable_intrusive_from_this<__sh_state<_CvrefSender, _Env>> {
+      using __variant_t = __compl_sigs::__for_all_sigs<
+        __completion_signatures_of_t<_CvrefSender, _Env>,
+        __q<__decayed_tuple>,
         __mbind_front_q<
           __variant,
           std::tuple<set_stopped_t>, // Initial state of the variant is set_stopped
-          std::tuple<set_error_t, std::exception_ptr>,
-          _Ts...>;
+          std::tuple<set_error_t, std::exception_ptr>>>;
 
-      using __bound_values_t = //
-        __value_types_of_t<
-          _CvrefSender,
-          __env_t<_Env>,
-          __mbind_front_q<__decayed_tuple, set_value_t>,
-          __q<__bind_tuples>>;
-
-      using __variant_t = //
-        __error_types_of_t<
-          _CvrefSender,
-          __env_t<_Env>,
-          __transform< __mbind_front_q<__decayed_tuple, set_error_t>, __bound_values_t>>;
-
-      using __receiver_t = stdexec::__t<__receiver<__cvref_id<_CvrefSender>, stdexec::__id<_Env>>>;
+      using __receiver_t = __t<__receiver<__cvref_id<_CvrefSender>, __id<_Env>>>;
 
       in_place_stop_source __stop_source_{};
       __variant_t __data_;
@@ -2977,46 +3024,178 @@ namespace stdexec {
       __env_t<_Env> __env_;
       connect_result_t<_CvrefSender, __receiver_t> __op_state2_;
 
-      explicit __sh_state(_CvrefSender&& __sndr, _Env __env = {})
+      explicit __sh_state(_CvrefSender&& __sndr, _Env __env)
         : __env_(__make_env((_Env&&) __env, __mkprop(__stop_source_.get_token(), get_stop_token)))
-        , __op_state2_(connect((_CvrefSender&&) __sndr, __receiver_t{*this})) {
+        , __op_state2_(connect((_CvrefSender&&) __sndr, __receiver_t{this})) {
       }
 
+      void __start_op() noexcept {
+        // the inner sender isn't running. if we reach here, then
+        // one way or the other, __sh_state::__notify() will be
+        // called, which decrements the ref count of *this.
+        // So we need to increment it here:
+        this->__inc_ref();
+
+        if (__stop_source_.stop_requested()) {
+          // 1. resets __head to completion state
+          // 2. notifies waiting threads
+          // 3. propagates "stopped" signal to `out_r'`
+          __notify();
+        } else {
+          stdexec::start(__op_state2_);
+        }
+      }
+
+      // This is called when the shared async operation completes:
       void __notify() noexcept {
         void* const __completion_state = static_cast<void*>(this);
-        void* __old = __head_.exchange(__completion_state, std::memory_order_acq_rel);
-        __split_state_base* __state = static_cast<__split_state_base*>(__old);
+        void* const __old = __head_.exchange(__completion_state, std::memory_order_acq_rel);
+        __unique_state_base* __state = static_cast<__unique_state_base*>(__old);
 
         while (__state != nullptr) {
-          __split_state_base* __next = __state->__next_;
-          __state->__notify_(__state);
+          __unique_state_base* __next = __state->__next();
+          __state->__action_(__state, __action_kind::__notify);
           __state = __next;
+        }
+
+        // The async operation has completed, so we can release our
+        // ref-count on it:
+        this->__dec_ref();
+      }
+
+      void __detach() noexcept {
+        // Check to see if this operation was ever started. If not,
+        // detach the (potentially still running) operation:
+        if (nullptr == __head_.load(std::memory_order_acquire)) {
+          __stop_source_.request_stop();
         }
       }
     };
 
-    template <class... _Tys>
-    using __set_value_t = completion_signatures<set_value_t(const __decay_t<_Tys>&...)>;
+    template <class _Cvref, class... _Tys>
+    using __set_value_t = completion_signatures<set_value_t(__minvoke<_Cvref, _Tys>...)>;
 
-    template <class _Ty>
-    using __set_error_t = completion_signatures<set_error_t(const __decay_t<_Ty>&)>;
+    template <class _Cvref, class _Ty>
+    using __set_error_t = completion_signatures<set_error_t(__minvoke<_Cvref, _Ty>)>;
 
-    template <class _CvrefSenderId, class _EnvId>
+    template <class _Cvref, class _CvrefSenderId, class _EnvId>
     using __completions_t = //
       __try_make_completion_signatures<
         // NOT TO SPEC:
-        // See https://github.com/brycelelbach/wg21_p2300_execution/issues/26
+        // See https://github.com/cplusplus/sender-receiver/issues/23
         __cvref_t<_CvrefSenderId>,
         __env_t<__t<_EnvId>>,
         completion_signatures<
-          set_error_t(const std::exception_ptr&),
+          set_error_t(__minvoke<_Cvref, std::exception_ptr>),
           set_stopped_t()>, // NOT TO SPEC
-        __q<__set_value_t>,
-        __q<__set_error_t>>;
+        __mbind_front_q<__set_value_t, _Cvref>,
+        __mbind_front_q<__set_error_t, _Cvref>>;
+
+    template <class _Ty>
+    using __clref_t = const __decay_t<_Ty>&;
+
+    template <class _Ty>
+    using __rref_t = __decay_t<_Ty>&&;
+
+    template <class _Tag>
+    using __cvref_results_t = //
+      __if_c<same_as<_Tag, __split::__split_t>, __q<__clref_t>, __q<__rref_t>>;
+
+    template <class _Tag>
+    inline auto __get_completion_signatures_fn() noexcept {                                 //
+      return []<template <class> class _Data, class _ShState>(auto, const _Data<_ShState>&) //
+             -> __mapply<__mbind_front_q<__completions_t, __cvref_results_t<_Tag>>, _ShState> {
+        return {};
+      };
+    }
+
+    template <class _Tag>
+    struct __shared_impl : __sexpr_defaults {
+      static constexpr auto get_state = //
+        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&) noexcept
+        -> __unique_state<_Sender, _Receiver> {
+        static_assert(sender_expr_for<_Sender, _Tag>);
+        return __unique_state<_Sender, _Receiver>{(_Sender&&) __sndr};
+      };
+
+      static constexpr auto get_completion_signatures = //
+        []<class _Self, class _OtherEnv>(_Self&&, _OtherEnv&&) noexcept
+        -> __call_result_t<
+          __sexpr_apply_t,
+          _Self,
+          __result_of<__get_completion_signatures_fn<_Tag>>> {
+        static_assert(sender_expr_for<_Self, _Tag>);
+        return {};
+      };
+
+      static constexpr auto start = //
+        []<class _Sender, class _Receiver>(
+          __unique_state<_Sender, _Receiver>& __state,
+          _Receiver& __rcvr) noexcept -> void {
+        auto* __sh_state = __state.__sh_state_.get();
+        std::atomic<void*>& __head = __sh_state->__head_;
+        void* const __completion_state = static_cast<void*>(__sh_state);
+        void* __old = __head.load(std::memory_order_acquire);
+
+        if (__old != __completion_state) {
+          __state.__on_stop_.emplace(
+            get_stop_token(stdexec::get_env(__rcvr)),
+            __on_stop_request{__sh_state->__stop_source_});
+
+          if constexpr (same_as<_Tag, __ensure_started::__ensure_started_t>) {
+            // Check if the stop_source has requested cancellation
+            if (__sh_state->__stop_source_.stop_requested()) {
+              // Stop has already been requested. Don't bother starting
+              // the child operations.
+              stdexec::set_stopped(std::move(__state.__receiver()));
+              return;
+            }
+          }
+        }
+
+        // With the split algorithm, multiple split senders can be started simultaneously,
+        // but only one should start the async operation. The following loop atomically
+        // (re)tries to set the pointer to the head of the list to __state. When it finally
+        // succeeds, the prior value is checked. If it is nullptr, then this split
+        // sender has won the race and has the honor of starting the async operation.
+        do {
+          if (__old == __completion_state) {
+            __state.template __action<_Tag>(&__state, __action_kind::__notify);
+            return;
+          }
+          __state.__next_ = static_cast<__unique_state_base*>(__old);
+        } while (!__head.compare_exchange_weak(
+          __old,
+          static_cast<void*>(&__state),
+          std::memory_order_release,
+          std::memory_order_acquire));
+
+        if constexpr (same_as<_Tag, __split::__split_t>) {
+          if (__old == nullptr) {
+            __sh_state->__start_op();
+          }
+        }
+      };
+    };
+  } // namespace __shared
+
+  ////////////////////////////////////////////////////////////////////////////
+  // [execution.senders.adaptors.split]
+  namespace __split {
+    using namespace __shared;
+
+    template <class _ShState>
+    struct __data {
+      explicit __data(__intrusive_ptr<_ShState> __sh_state) noexcept
+        : __sh_state(std::move(__sh_state)) {
+      }
+
+      __intrusive_ptr<_ShState> __sh_state;
+    };
 
     struct __split_t { };
 
-    struct split_t : __split_t {
+    struct split_t {
       template <sender _Sender>
         requires sender_in<_Sender, empty_env> && __decay_copyable<env_of_t<_Sender>>
       auto operator()(_Sender&& __sndr) const {
@@ -3046,78 +3225,19 @@ namespace stdexec {
             _Sender),
           tag_invoke_t(split_t, _Sender)>;
 
-      template <class _Sender, class... _Env>
-      static auto transform_sender(_Sender&& __sndr, _Env... __env) {
+      template <class _CvrefSender, class _Env>
+      using __receiver_t = __t<__meval<__receiver, __cvref_id<_CvrefSender>, __id<_Env>>>;
+
+      template <class _Sender, class _Env = empty_env>
+        requires sender_to<__child_of<_Sender>, __receiver_t<__child_of<_Sender>, _Env>>
+      static auto transform_sender(_Sender&& __sndr, _Env __env = {}) {
         return __sexpr_apply(
           (_Sender&&) __sndr, [&]<class _Child>(__ignore, __ignore, _Child&& __child) {
-            using __sh_state_t = __sh_state<_Child, _Env...>;
-            auto __sh_state = std::make_shared<__sh_state_t>(
-              (_Child&&) __child, std::move(__env)...);
-            return __make_sexpr<__split_t>(std::move(__sh_state));
+            auto __state = __make_intrusive<__sh_state<_Child, _Env>>(
+              (_Child&&) __child, std::move(__env));
+            return __make_sexpr<__split_t>(__data{std::move(__state)});
           });
       }
-    };
-
-    struct __split_impl : __sexpr_defaults {
-      static constexpr auto get_state = //
-        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&) noexcept
-        -> __split_state<_Sender, _Receiver> {
-        static_assert(sender_expr_for<_Sender, __split_t>);
-        return __split_state<_Sender, _Receiver>{(_Sender&&) __sndr};
-      };
-
-      static constexpr auto start = //
-        []<class _Sender, class _Receiver>(
-          __split_state<_Sender, _Receiver>& __state,
-          _Receiver& __rcvr) noexcept -> void {
-        auto* __shared_state = __state.__shared_state_.get();
-        std::atomic<void*>& __head = __shared_state->__head_;
-        void* const __completion_state = static_cast<void*>(__shared_state);
-        void* __old = __head.load(std::memory_order_acquire);
-
-        if (__old != __completion_state) {
-          __state.__on_stop_.emplace(
-            get_stop_token(stdexec::get_env(__rcvr)),
-            __on_stop_request{__shared_state->__stop_source_});
-        }
-
-        do {
-          if (__old == __completion_state) {
-            __state.__notify(&__state);
-            return;
-          }
-          __state.__next_ = static_cast<__split_state_base*>(__old);
-        } while (!__head.compare_exchange_weak(
-          __old,
-          static_cast<void*>(&__state),
-          std::memory_order_release,
-          std::memory_order_acquire));
-
-        if (__old == nullptr) {
-          // the inner sender isn't running
-          if (__shared_state->__stop_source_.stop_requested()) {
-            // 1. resets __head to completion state
-            // 2. notifies waiting threads
-            // 3. propagates "stopped" signal to `out_r'`
-            __shared_state->__notify();
-          } else {
-            stdexec::start(__shared_state->__op_state2_);
-          }
-        }
-      };
-
-      static constexpr auto __get_completion_signatures_fn =       //
-        []<class _ShState>(auto, const std::shared_ptr<_ShState>&) //
-        -> __mapply<__q<__completions_t>, __id<_ShState>> {
-        return {};
-      };
-
-      static constexpr auto get_completion_signatures = //
-        []<class _Self, class _OtherEnv>(_Self&&, _OtherEnv&&) noexcept
-        -> __call_result_t<__sexpr_apply_t, _Self, __mtypeof<__get_completion_signatures_fn>> {
-        static_assert(sender_expr_for<_Self, __split_t>);
-        return {};
-      };
     };
   } // namespace __split
 
@@ -3125,301 +3245,36 @@ namespace stdexec {
   inline constexpr split_t split{};
 
   template <>
-  struct __sexpr_impl<__split::__split_t> : __split::__split_impl { };
-
-  template <>
-  struct __sexpr_impl<split_t> : __split::__split_impl { };
+  struct __sexpr_impl<__split::__split_t> : __shared::__shared_impl<__split::__split_t> { };
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.ensure_started]
   namespace __ensure_started {
-    template <class _BaseEnv>
-    using __env_t = //
-      __make_env_t<
-        _BaseEnv, // NOT TO SPEC
-        __with<get_stop_token_t, in_place_stop_token>>;
+    using namespace __shared;
 
-    template <class _CvrefSenderId, class _EnvId>
-    struct __sh_state;
-
-    template <class _CvrefSenderId, class _EnvId = __id<empty_env>>
-    struct __receiver {
-      using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
-      using _Env = stdexec::__t<_EnvId>;
-
-      class __t {
-        __intrusive_ptr<stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>> __shared_state_;
-
-       public:
-        using receiver_concept = receiver_t;
-        using __id = __receiver;
-
-        explicit __t(stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>& __shared_state) noexcept
-          : __shared_state_(__shared_state.__intrusive_from_this()) {
-        }
-
-        template <__completion_tag _Tag, class... _As>
-        friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept {
-          stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>& __state = *__self.__shared_state_;
-
-          try {
-            using __tuple_t = __decayed_tuple<_Tag, _As...>;
-            __state.__data_.template emplace<__tuple_t>(__tag, (_As&&) __as...);
-          } catch (...) {
-            using __tuple_t = __decayed_tuple<set_error_t, std::exception_ptr>;
-            __state.__data_.template emplace<__tuple_t>(set_error, std::current_exception());
-          }
-
-          __state.__notify();
-          __self.__shared_state_.reset();
-        }
-
-        friend const __env_t<_Env>& tag_invoke(get_env_t, const __t& __self) noexcept {
-          return __self.__shared_state_->__env_;
-        }
-      };
-    };
-
-    struct __operation_base {
-      using __notify_fn = void(__operation_base*) noexcept;
-      __notify_fn* __notify_{};
-    };
-
-    template <class _CvrefSenderId, class _EnvId = __id<empty_env>>
-    struct __sh_state {
-      using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
-      using _Env = stdexec::__t<_EnvId>;
-
-      struct __t : __enable_intrusive_from_this<__t> {
-        using __id = __sh_state;
-
-        template <class... _Ts>
-        using __bind_tuples = //
-          __mbind_front_q<
-            __variant,
-            std::tuple<set_stopped_t>, // Initial state of the variant is set_stopped
-            std::tuple<set_error_t, std::exception_ptr>,
-            _Ts...>;
-
-        using __bound_values_t = //
-          __value_types_of_t<
-            _CvrefSender,
-            __env_t<_Env>,
-            __mbind_front_q<__decayed_tuple, set_value_t>,
-            __q<__bind_tuples>>;
-
-        using __variant_t = //
-          __error_types_of_t<
-            _CvrefSender,
-            __env_t<_Env>,
-            __transform< __mbind_front_q<__decayed_tuple, set_error_t>, __bound_values_t>>;
-
-        using __receiver_t = stdexec::__t<__receiver<_CvrefSenderId, _EnvId>>;
-
-        __variant_t __data_;
-        in_place_stop_source __stop_source_{};
-
-        std::atomic<void*> __op_state1_{nullptr};
-        __env_t<_Env> __env_;
-        connect_result_t<_CvrefSender, __receiver_t> __op_state2_;
-
-        explicit __t(_CvrefSender&& __sndr, _Env __env = {})
-          : __env_(__make_env((_Env&&) __env, __mkprop(__stop_source_.get_token(), get_stop_token)))
-          , __op_state2_(connect((_CvrefSender&&) __sndr, __receiver_t{*this})) {
-          start(__op_state2_);
-        }
-
-        void __notify() noexcept {
-          void* const __completion_state = static_cast<void*>(this);
-          void* const __old = __op_state1_.exchange(__completion_state, std::memory_order_acq_rel);
-          if (__old != nullptr) {
-            auto* __op = static_cast<__operation_base*>(__old);
-            __op->__notify_(__op);
-          }
-        }
-
-        void __detach() noexcept {
-          __stop_source_.request_stop();
-        }
-      };
-    };
-
-    template <class _CvrefSenderId, class _EnvId, class _ReceiverId>
-    struct __operation {
-      using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
-      using _Env = stdexec::__t<_EnvId>;
-      using _Receiver = stdexec::__t<_ReceiverId>;
-
-      class __t : public __operation_base {
-        struct __on_stop_request {
-          in_place_stop_source& __stop_source_;
-
-          void operator()() noexcept {
-            __stop_source_.request_stop();
-          }
-        };
-
-        using __on_stop = //
-          std::optional< typename stop_token_of_t< env_of_t<_Receiver>&>::template callback_type<
-            __on_stop_request>>;
-
-        _Receiver __rcvr_;
-        __on_stop __on_stop_{};
-        __intrusive_ptr<stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>> __shared_state_;
-
-       public:
-        using __id = __operation;
-
-        __t(                                                                                //
-          _Receiver __rcvr,                                                                 //
-          __intrusive_ptr<stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>> __shared_state) //
-          noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
-          : __operation_base{__notify}
-          , __rcvr_((_Receiver&&) __rcvr)
-          , __shared_state_(std::move(__shared_state)) {
-        }
-
-        ~__t() {
-          // Check to see if this operation was ever started. If not,
-          // detach the (potentially still running) operation:
-          if (nullptr == __shared_state_->__op_state1_.load(std::memory_order_acquire)) {
-            __shared_state_->__detach();
-          }
-        }
-
-        STDEXEC_IMMOVABLE(__t);
-
-        static void __notify(__operation_base* __self) noexcept {
-          __t* __op = static_cast<__t*>(__self);
-          __op->__on_stop_.reset();
-
-          std::visit(
-            [&](auto& __tupl) noexcept -> void {
-              __apply(
-                [&](auto __tag, auto&... __args) noexcept -> void {
-                  __tag((_Receiver&&) __op->__rcvr_, std::move(__args)...);
-                },
-                __tupl);
-            },
-            __op->__shared_state_->__data_);
-        }
-
-        friend void tag_invoke(start_t, __t& __self) noexcept {
-          stdexec::__t<__sh_state<_CvrefSenderId, _EnvId>>* __shared_state =
-            __self.__shared_state_.get();
-          std::atomic<void*>& __op_state1 = __shared_state->__op_state1_;
-          void* const __completion_state = static_cast<void*>(__shared_state);
-          void* const __old = __op_state1.load(std::memory_order_acquire);
-          if (__old == __completion_state) {
-            __self.__notify(&__self);
-          } else {
-            // register stop callback:
-            __self.__on_stop_.emplace(
-              get_stop_token(get_env(__self.__rcvr_)),
-              __on_stop_request{__shared_state->__stop_source_});
-            // Check if the stop_source has requested cancellation
-            if (__shared_state->__stop_source_.stop_requested()) {
-              // Stop has already been requested. Don't bother starting
-              // the child operations.
-              stdexec::set_stopped((_Receiver&&) __self.__rcvr_);
-            } else {
-              // Otherwise, the inner source hasn't notified completion.
-              // Set this operation as the __op_state1 so it's notified.
-              void* __old = nullptr;
-              if (!__op_state1.compare_exchange_weak(
-                    __old, &__self, std::memory_order_release, std::memory_order_acquire)) {
-                // We get here when the task completed during the execution
-                // of this function. Complete the operation synchronously.
-                STDEXEC_ASSERT(__old == __completion_state);
-                __self.__notify(&__self);
-              }
-            }
-          }
-        }
-      };
-    };
-
+    // Each ensure_started sender has one of these, created when
+    // ensure_started() is called.
     template <class _ShState>
     struct __data {
-      __data(__intrusive_ptr<_ShState> __sh_state) noexcept
-        : __sh_state_(std::move(__sh_state)) {
+      explicit __data(__intrusive_ptr<_ShState> __sh_state) noexcept
+        : __sh_state(std::move(__sh_state)) {
       }
 
       __data(__data&&) = default;
       __data& operator=(__data&&) = default;
 
       ~__data() {
-        if (__sh_state_ != nullptr) {
+        if (__sh_state != nullptr) {
           // detach from the still-running operation.
           // NOT TO SPEC: This also requests cancellation.
-          __sh_state_->__detach();
+          __sh_state->__detach();
         }
       }
 
-      __intrusive_ptr<_ShState> __sh_state_;
+      __intrusive_ptr<_ShState> __sh_state;
     };
-
-    template <class... _Tys>
-    using __set_value_t = completion_signatures<set_value_t(__decay_t<_Tys>&&...)>;
-
-    template <class _Ty>
-    using __set_error_t = completion_signatures<set_error_t(__decay_t<_Ty>&&)>;
-
-    template <class _CvrefSenderId, class _EnvId>
-    using __completions_t = //
-      __try_make_completion_signatures<
-        // NOT TO SPEC:
-        // See https://github.com/brycelelbach/wg21_p2300_execution/issues/26
-        __cvref_t<_CvrefSenderId>,
-        __env_t<__t<_EnvId>>,
-        completion_signatures<
-          set_error_t(std::exception_ptr&&),
-          set_stopped_t()>, // NOT TO SPEC
-        __q<__set_value_t>,
-        __q<__set_error_t>>;
-
-    template <class _Receiver>
-    auto __connect_fn_(_Receiver& __rcvr) noexcept {
-      return [&]<class _ShState>(auto, __data<_ShState> __dat) //
-             noexcept(__nothrow_decay_copyable<_Receiver>)
-               -> __t<__mapply<__mbind_back_q<__operation, __id<_Receiver>>, __id<_ShState>>> {
-               return {(_Receiver&&) __rcvr, std::move(__dat.__sh_state_)};
-             };
-    }
-
-    template <class _Receiver>
-    auto __connect_fn(_Receiver& __rcvr) noexcept -> decltype(__connect_fn_(__rcvr)) {
-      return __connect_fn_(__rcvr);
-    }
-
-    inline auto __get_completion_signatures_fn() noexcept {
-      return []<class _ShState>(auto, const __data<_ShState>&) //
-             -> __mapply<__q<__completions_t>, __id<_ShState>> {
-        return {};
-      };
-    }
 
     struct __ensure_started_t { };
-
-    struct __ensure_started_impl : __sexpr_defaults {
-      static constexpr auto connect = //
-        []<class _Self, class _Receiver>(_Self&& __self, _Receiver __rcvr) noexcept(
-          __nothrow_callable<
-            __sexpr_apply_t,
-            _Self,
-            decltype(__connect_fn(__declval<_Receiver&>()))>)
-        -> __call_result_t< __sexpr_apply_t, _Self, decltype(__connect_fn(__declval<_Receiver&>()))> {
-        static_assert(sender_expr_for<_Self, __ensure_started_t>);
-        return __sexpr_apply((_Self&&) __self, __connect_fn(__rcvr));
-      };
-
-      static constexpr auto get_completion_signatures = //
-        []<class _Self, class _OtherEnv>(_Self&&, _OtherEnv&&) noexcept
-        -> __call_result_t<__sexpr_apply_t, _Self, __result_of<__get_completion_signatures_fn>> {
-        static_assert(sender_expr_for<_Self, __ensure_started_t>);
-        return {};
-      };
-    };
 
     struct ensure_started_t {
       template <sender _Sender>
@@ -3462,19 +3317,19 @@ namespace stdexec {
             _Sender),
           tag_invoke_t(ensure_started_t, _Sender)>;
 
-      template <class _CvrefSender, class... _Env>
-      using __receiver_t =
-        stdexec::__t<__meval<__receiver, __cvref_id<_CvrefSender>, __id<_Env>...>>;
+      template <class _CvrefSender, class _Env>
+      using __receiver_t = __t<__meval<__receiver, __cvref_id<_CvrefSender>, __id<_Env>>>;
 
-      template <class _Sender, class... _Env>
-        requires sender_to<__child_of<_Sender>, __receiver_t<__child_of<_Sender>, _Env...>>
-      static auto transform_sender(_Sender&& __sndr, _Env... __env) {
+      template <class _Sender, class _Env = empty_env>
+        requires sender_to<__child_of<_Sender>, __receiver_t<__child_of<_Sender>, _Env>>
+      static auto transform_sender(_Sender&& __sndr, _Env __env = {}) {
         return __sexpr_apply(
           (_Sender&&) __sndr, [&]<class _Child>(__ignore, __ignore, _Child&& __child) {
-            using __sh_state_t = __t<__sh_state<__cvref_id<_Child>, __id<_Env>...>>;
-            auto __sh_state = __make_intrusive<__sh_state_t>(
-              (_Child&&) __child, std::move(__env)...);
-            return __make_sexpr<__ensure_started_t>(__data{std::move(__sh_state)});
+            auto __state = __make_intrusive<__sh_state<_Child, _Env>>(
+              (_Child&&) __child, std::move(__env));
+            // Eagerly launch the async operation.
+            __state->__start_op();
+            return __make_sexpr<__ensure_started_t>(__data{std::move(__state)});
           });
       }
     };
@@ -3485,7 +3340,7 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<__ensure_started::__ensure_started_t>
-    : __ensure_started::__ensure_started_impl { };
+    : __shared::__shared_impl<__ensure_started::__ensure_started_t> { };
 
   STDEXEC_PRAGMA_PUSH()
   STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_partial_spec_arg_list)
@@ -3777,8 +3632,9 @@ namespace stdexec {
 
           _Sched __sched = query_or(
             get_completion_scheduler<_SetTag>, stdexec::get_env(__sndr), __none_such());
-          return __let_state_t{STDEXEC_CALL_EXPLICIT_THIS_MEMFN((_Sender&&) __sndr, apply)(
-            __detail::__get_data()), __sched};
+          return __let_state_t{
+            STDEXEC_CALL_EXPLICIT_THIS_MEMFN((_Sender&&) __sndr, apply)(__detail::__get_data()),
+            __sched};
         };
 
       template <class _State, class _Receiver, class... _As>
@@ -4138,26 +3994,11 @@ namespace stdexec {
     //     tuple<set_error_t, __decay_t<_Error2>>,
     //        ...
     //   >
-    template <class _State, class... _Tuples>
-    using __make_bind_ = __mbind_back<_State, _Tuples...>;
-
-    template <class _State>
-    using __make_bind = __mbind_front_q<__make_bind_, _State>;
-
-    template <class _Tag>
-    using __async_results_t = __mbind_front_q<__decayed_tuple, _Tag>;
-
-    template <class _Sender, class _Env, class _State, class _Tag>
-    using __bind_completions_t =
-      __gather_completions_for<_Tag, _Sender, _Env, __async_results_t<_Tag>, __make_bind<_State>>;
-
-    template <class _Sender, class _Env>
-    using __variant_for_t = //
-      __minvoke< __minvoke<
-        __mfold_right< __nullable_variant_t, __mbind_front_q<__bind_completions_t, _Sender, _Env>>,
-        set_value_t,
-        set_error_t,
-        set_stopped_t>>;
+    template <class _CvrefSender, class _Env>
+    using __variant_for_t = __compl_sigs::__maybe_for_all_sigs<
+      __completion_signatures_of_t<_CvrefSender, _Env>,
+      __q<__decayed_tuple>,
+      __nullable_variant_t>;
 
     template <class _Tp>
     using __decay_rvalue_ref = __decay_t<_Tp>&&;
@@ -4167,13 +4008,14 @@ namespace stdexec {
       __transform<__q<__decay_rvalue_ref>, __mcompose<__q<completion_signatures>, __qf<_Tag>>>;
 
     template <class... _Ts>
-    using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Ts> && ...)>;
+    using __all_nothrow_decay_copyable_ = __mbool<(__nothrow_decay_copyable<_Ts> && ...)>;
 
     template <class _CvrefSender, class _Env>
     using __all_values_and_errors_nothrow_decay_copyable = //
-      __mand<
-        __try_error_types_of_t<_CvrefSender, _Env, __q<__all_nothrow_decay_copyable>>,
-        __try_value_types_of_t<_CvrefSender, _Env, __q<__all_nothrow_decay_copyable>, __q<__mand>>>;
+      __compl_sigs::__maybe_for_all_sigs<
+        __completion_signatures_of_t<_CvrefSender, _Env>,
+        __q<__all_nothrow_decay_copyable_>,
+        __q<__mand>>;
 
     template <class _CvrefSender, class _Env>
     using __with_error_t = //
@@ -4291,8 +4133,8 @@ namespace stdexec {
 
       static constexpr auto get_attrs = //
         []<class _Data, class _Child>(const _Data& __data, const _Child& __child) noexcept {
-        return __join_env(__data, stdexec::get_env(__child));
-      };
+          return __join_env(__data, stdexec::get_env(__child));
+        };
 
       static constexpr auto get_completion_signatures = //
         []<class _Sender, class _Env>(_Sender&&, const _Env&) noexcept
@@ -4310,25 +4152,30 @@ namespace stdexec {
         };
 
       static constexpr auto complete =
-        []<class _Tag, class... _Args>(__ignore, auto& __state, auto& __rcvr, _Tag, _Args&&... __args) noexcept -> void {
-          // Write the tag and the args into the operation state so that
-          // we can forward the completion from within the scheduler's
-          // execution context.
-          using __async_result = __decayed_tuple<_Tag, _Args...>;
-          if constexpr (__nothrow_constructible_from<__async_result, _Tag, _Args...>) {
+        []<class _Tag, class... _Args>(
+          __ignore,
+          auto& __state,
+          auto& __rcvr,
+          _Tag,
+          _Args&&... __args) noexcept -> void {
+        // Write the tag and the args into the operation state so that
+        // we can forward the completion from within the scheduler's
+        // execution context.
+        using __async_result = __decayed_tuple<_Tag, _Args...>;
+        if constexpr (__nothrow_constructible_from<__async_result, _Tag, _Args...>) {
+          __state.__data_.template emplace<__async_result>(_Tag(), (_Args&&) __args...);
+        } else {
+          try {
             __state.__data_.template emplace<__async_result>(_Tag(), (_Args&&) __args...);
-          } else {
-            try {
-              __state.__data_.template emplace<__async_result>(_Tag(), (_Args&&) __args...);
-            } catch(...) {
-              set_error(std::move(__rcvr), std::current_exception());
-              return;
-            }
+          } catch (...) {
+            set_error(std::move(__rcvr), std::current_exception());
+            return;
           }
-          // Enqueue the schedule operation so the completion happens
-          // on the scheduler's execution context.
-          stdexec::start(__state.__state2_);
-        };
+        }
+        // Enqueue the schedule operation so the completion happens
+        // on the scheduler's execution context.
+        stdexec::start(__state.__state2_);
+      };
     };
   } // namespace __schedule_from
 
@@ -4393,7 +4240,8 @@ namespace stdexec {
 
     struct __transfer_impl : __sexpr_defaults {
       static constexpr auto get_attrs = //
-        []<class _Data, class _Child>(const _Data& __data, const _Child& __child) noexcept -> decltype(auto) {
+        []<class _Data, class _Child>(const _Data& __data, const _Child& __child) noexcept
+        -> decltype(auto) {
         return __join_env(__data, stdexec::get_env(__child));
       };
     };
@@ -4680,11 +4528,17 @@ namespace stdexec {
         };
 
       static constexpr auto complete = //
-        []<class _State, class _Receiver, class _Tag, class... _Args>(__ignore, _State, _Receiver& __rcvr, _Tag, _Args&&... __args) noexcept -> void {
+        []<class _State, class _Receiver, class _Tag, class... _Args>(
+          __ignore,
+          _State,
+          _Receiver& __rcvr,
+          _Tag,
+          _Args&&... __args) noexcept -> void {
         if constexpr (same_as<_Tag, set_value_t>) {
           using __variant_t = __t<_State>;
           try {
-            set_value((_Receiver&&) __rcvr, __variant_t{std::tuple<_Args&&...>{(_Args&&) __args...}});
+            set_value(
+              (_Receiver&&) __rcvr, __variant_t{std::tuple<_Args&&...>{(_Args&&) __args...}});
           } catch (...) {
             set_error((_Receiver&&) __rcvr, std::current_exception());
           }
@@ -4775,20 +4629,20 @@ namespace stdexec {
         __minvoke< __mconcat<__qf<set_value_t>>, __single_values_of_t<_Env, _Senders>...>>;
 
     template <class... _Args>
-    using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Args> && ...)>;
+    using __all_nothrow_decay_copyable_ = __mbool<(__nothrow_decay_copyable<_Args> && ...)>;
 
     template <class _Env, class... _Senders>
-    using __all_value_and_error_args_nothrow_decay_copyable = //
+    using __all_nothrow_decay_copyable = //
       __mand< __compl_sigs::__maybe_for_all_sigs<
         __completion_signatures_of_t<_Senders, _Env>,
-        __q<__all_nothrow_decay_copyable>,
+        __q<__all_nothrow_decay_copyable_>,
         __q<__mand>>...>;
 
     template <class _Env, class... _Senders>
     using __completions_t = //
       __concat_completion_signatures_t<
         __if<
-          __all_value_and_error_args_nothrow_decay_copyable<_Env, _Senders...>,
+          __all_nothrow_decay_copyable<_Env, _Senders...>,
           completion_signatures<set_stopped_t()>,
           completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr&&)>>,
         __minvoke<
@@ -4857,7 +4711,7 @@ namespace stdexec {
 
       using __errors_variant = //
         __if<
-          __all_value_and_error_args_nothrow_decay_copyable<_Env, _Senders...>,
+          __all_nothrow_decay_copyable<_Env, _Senders...>,
           __error_types,
           __minvoke<__push_back_unique<__q<std::variant>>, __error_types, std::exception_ptr>>;
     };
@@ -4958,14 +4812,14 @@ namespace stdexec {
 
       static constexpr auto get_attrs = //
         []<class... _Child>(__ignore, const _Child&...) noexcept {
-        using _Domain = __domain::__common_domain_t<_Child...>;
-        if constexpr (same_as<_Domain, default_domain>) {
-          return empty_env();
-        } else {
-          return __mkprop(_Domain(), get_domain);
-        }
-        STDEXEC_UNREACHABLE();
-      };
+          using _Domain = __domain::__common_domain_t<_Child...>;
+          if constexpr (same_as<_Domain, default_domain>) {
+            return empty_env();
+          } else {
+            return __mkprop(_Domain(), get_domain);
+          }
+          STDEXEC_UNREACHABLE();
+        };
 
       static constexpr auto get_completion_signatures = //
         []<class _Self, class _Env>(_Self&&, _Env&&) noexcept {
@@ -5096,14 +4950,14 @@ namespace stdexec {
     struct __when_all_with_variant_impl : __sexpr_defaults {
       static constexpr auto get_attrs = //
         []<class... _Child>(__ignore, const _Child&...) noexcept {
-        using _Domain = __domain::__common_domain_t<_Child...>;
-        if constexpr (same_as<_Domain, default_domain>) {
-          return empty_env();
-        } else {
-          return __mkprop(_Domain(), get_domain);
-        }
-        STDEXEC_UNREACHABLE();
-      };
+          using _Domain = __domain::__common_domain_t<_Child...>;
+          if constexpr (same_as<_Domain, default_domain>) {
+            return empty_env();
+          } else {
+            return __mkprop(_Domain(), get_domain);
+          }
+          STDEXEC_UNREACHABLE();
+        };
     };
 
     struct transfer_when_all_t {

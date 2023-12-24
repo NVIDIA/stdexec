@@ -22,13 +22,27 @@
 #include <memory>
 #include <new>
 
+#if STDEXEC_TSAN()
+#include <sanitizer/tsan_interface.h>
+#endif
+
 namespace stdexec {
   namespace __ptr {
     template <class _Ty>
     struct __make_intrusive_t;
 
     template <class _Ty>
-    struct __enable_intrusive_from_this;
+    class __intrusive_ptr;
+
+    template <class _Ty>
+    struct __enable_intrusive_from_this {
+      __intrusive_ptr<_Ty> __intrusive_from_this() noexcept;
+      __intrusive_ptr<const _Ty> __intrusive_from_this() const noexcept;
+     private:
+      friend _Ty;
+      void __inc_ref() noexcept;
+      void __dec_ref() noexcept;
+    };
 
     template <class _Ty>
     struct __control_block {
@@ -51,6 +65,24 @@ namespace stdexec {
       _Ty& __value() const noexcept {
         return *(_Ty*) __value_;
       }
+
+      void __inc_ref_() noexcept {
+        __refcount_.fetch_add(1, std::memory_order_relaxed);
+      }
+
+      STDEXEC_PRAGMA_PUSH()
+      STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
+
+      void __dec_ref_() noexcept {
+        if (1u == __refcount_.fetch_sub(1, std::memory_order_release)) {
+          std::atomic_thread_fence(std::memory_order_acquire);
+          // TSan does not support std::atomic_thread_fence, so we
+          // need to use the TSan-specific __tsan_acquire instead:
+          STDEXEC_TSAN(__tsan_acquire(&__refcount_));
+          delete this;
+        }
+      }
+      STDEXEC_PRAGMA_POP()
     };
 
     template <class _Ty>
@@ -65,20 +97,21 @@ namespace stdexec {
         : __data_(__data) {
       }
 
-      void __addref_() noexcept {
+      void __inc_ref_() noexcept {
         if (__data_) {
-          __data_->__refcount_.fetch_add(1, std::memory_order_relaxed);
+          __data_->__inc_ref_();
         }
       }
 
-      void __release_() noexcept {
-        if (__data_ && 1u == __data_->__refcount_.fetch_sub(1, std::memory_order_release)) {
-          std::atomic_thread_fence(std::memory_order_acquire);
-          delete __data_;
+      void __dec_ref_() noexcept {
+        if (__data_) {
+          __data_->__dec_ref_();
         }
       }
 
      public:
+      using element_type = _Ty;
+
       __intrusive_ptr() = default;
 
       __intrusive_ptr(__intrusive_ptr&& __that) noexcept
@@ -87,7 +120,11 @@ namespace stdexec {
 
       __intrusive_ptr(const __intrusive_ptr& __that) noexcept
         : __data_(__that.__data_) {
-        __addref_();
+        __inc_ref_();
+      }
+
+      __intrusive_ptr(__enable_intrusive_from_this<_Ty>* __that) noexcept
+        : __intrusive_ptr(__that ? __that->__intrusive_from_this() : __intrusive_ptr()) {
       }
 
       __intrusive_ptr& operator=(__intrusive_ptr&& __that) noexcept {
@@ -100,8 +137,12 @@ namespace stdexec {
         return operator=(__intrusive_ptr(__that));
       }
 
+      __intrusive_ptr& operator=(__enable_intrusive_from_this<_Ty>* __that) noexcept {
+        return operator=(__that ? __that->__intrusive_from_this() : __intrusive_ptr());
+      }
+
       ~__intrusive_ptr() {
-        __release_();
+        __dec_ref_();
       }
 
       void reset() noexcept {
@@ -140,23 +181,31 @@ namespace stdexec {
     };
 
     template <class _Ty>
-    struct __enable_intrusive_from_this {
-      __intrusive_ptr<_Ty> __intrusive_from_this() noexcept {
-        static_assert(0 == offsetof(__control_block<_Ty>, __value_));
-        _Ty* __this = static_cast<_Ty*>(this);
-        __intrusive_ptr<_Ty> __p{(__control_block<_Ty>*) __this};
-        __p.__addref_();
-        return __p;
-      }
+    __intrusive_ptr<_Ty> __enable_intrusive_from_this<_Ty>::__intrusive_from_this() noexcept {
+      auto* __data = (__control_block<_Ty>*) static_cast<_Ty*>(this);
+      __data->__inc_ref_();
+      return __intrusive_ptr<_Ty>{__data};
+    }
 
-      __intrusive_ptr<const _Ty> __intrusive_from_this() const noexcept {
-        static_assert(0 == offsetof(__control_block<_Ty>, __value_));
-        const _Ty* __this = static_cast<const _Ty*>(this);
-        __intrusive_ptr<const _Ty> __p{(__control_block<_Ty>*) __this};
-        __p.__addref_();
-        return __p;
-      }
-    };
+    template <class _Ty>
+    __intrusive_ptr<const _Ty>
+      __enable_intrusive_from_this<_Ty>::__intrusive_from_this() const noexcept {
+      auto* __data = (__control_block<_Ty>*) static_cast<const _Ty*>(this);
+      __data->__inc_ref_();
+      return __intrusive_ptr<const _Ty>{__data};
+    }
+
+    template <class _Ty>
+    void __enable_intrusive_from_this<_Ty>::__inc_ref() noexcept {
+      auto* __data = (__control_block<_Ty>*) static_cast<_Ty*>(this);
+      __data->__inc_ref_();
+    }
+
+    template <class _Ty>
+    void __enable_intrusive_from_this<_Ty>::__dec_ref() noexcept {
+      auto* __data = (__control_block<_Ty>*) static_cast<_Ty*>(this);
+      __data->__dec_ref_();
+    }
 
     template <class _Ty>
     struct __make_intrusive_t {
