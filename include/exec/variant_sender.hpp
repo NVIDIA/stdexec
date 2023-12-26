@@ -25,10 +25,10 @@ namespace exec {
   namespace __variant {
     using namespace stdexec;
 
-    template <class _ReceiverId, class... _SenderIds>
+    template <class _ReceiverId, class... _CvrefSenderIds>
     struct __operation_state {
       class __t {
-        std::variant<connect_result_t<stdexec::__t<_SenderIds>, stdexec::__t<_ReceiverId>>...>
+        std::variant<connect_result_t<__cvref_t<_CvrefSenderIds>, stdexec::__t<_ReceiverId>>...>
           __variant_;
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
@@ -50,7 +50,7 @@ namespace exec {
     struct __sender {
       template <class _Self, class _Env>
       using __completion_signatures_t = __concat_completion_signatures_t<
-        completion_signatures_of_t<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Env>...>;
+        __completion_signatures_of_t<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Env>...>;
 
       template <class _Self, class _Receiver>
       struct __visitor {
@@ -78,11 +78,12 @@ namespace exec {
           return *this;
         }
 
-        template <__decays_to<__t> _Self, class _Receiver>
+        template <__decays_to<__t> _Self, receiver _Receiver>
           requires(sender_to<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver> && ...)
-        friend stdexec::__t<
-          __operation_state<stdexec::__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>>
-          tag_invoke(connect_t, _Self&& __self, _Receiver&& __r) noexcept(
+        friend stdexec::__t< __operation_state<
+          stdexec::__id<_Receiver>,
+          __cvref_id<_Self, stdexec::__t<_SenderIds>>...>>
+          tag_invoke(connect_t, _Self&& __self, _Receiver __r) noexcept(
             (__nothrow_connectable<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver>
              && ...)) {
           return std::visit(
@@ -96,7 +97,7 @@ namespace exec {
         }
 
        public:
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
         using __id = __sender;
 
         __t() = default;

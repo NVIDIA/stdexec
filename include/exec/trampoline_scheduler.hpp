@@ -96,7 +96,7 @@ namespace exec {
 
         struct __t : __operation_base {
           using __id = __operation;
-          STDEXEC_NO_UNIQUE_ADDRESS _Receiver __receiver_;
+          STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __receiver_;
 
           explicit __t(_Receiver __rcvr, std::size_t __max_depth) noexcept(
             __nothrow_decay_copyable<_Receiver>)
@@ -126,7 +126,7 @@ namespace exec {
       using __operation_t = stdexec::__t<__operation<__id<__decay_t<_Receiver>>>>;
 
       struct __schedule_sender {
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
         using completion_signatures =
           stdexec::completion_signatures<set_value_t(), set_stopped_t()>;
 

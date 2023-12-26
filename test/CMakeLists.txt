@@ -59,6 +59,7 @@ set(stdexec_test_sources
     stdexec/detail/test_utility.cpp
     stdexec/queries/test_get_forward_progress_guarantee.cpp
     stdexec/queries/test_forwarding_queries.cpp
+    exec/test_bwos_lifo_queue.cpp
     exec/test_any_sender.cpp
     exec/test_task.cpp
     exec/test_variant_sender.cpp
@@ -90,9 +91,25 @@ set(stdexec_test_sources
     )
 
 add_executable(test.stdexec ${stdexec_test_sources})
-
+set_target_properties(test.stdexec PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF)
 target_include_directories(test.stdexec PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 target_link_libraries(test.stdexec
+    PUBLIC
+    STDEXEC::stdexec
+    $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
+    stdexec_executable_flags
+    Catch2::Catch2)
+
+add_executable(test.scratch test_main.cpp test_scratch.cpp)
+set_target_properties(test.scratch PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF)
+target_include_directories(test.scratch PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+target_link_libraries(test.scratch
     PUBLIC
     STDEXEC::stdexec
     $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
@@ -103,7 +120,29 @@ target_link_libraries(test.stdexec
 include(${Catch2_SOURCE_DIR}/contrib/Catch.cmake)
 
 catch_discover_tests(test.stdexec)
+catch_discover_tests(test.scratch)
 
 if(STDEXEC_ENABLE_CUDA)
     add_subdirectory(nvexec)
 endif()
+
+# build failure tests:
+
+include(${icm_SOURCE_DIR}/icm_build_failure_testing.cmake)
+
+# Test which parses a source file for an expected error message
+icm_add_build_failure_test(
+    NAME test_then_fail1
+    TARGET test_then_fail1
+    SOURCES PARSE stdexec/algos/adaptors/test_then_fail1.cpp
+    LIBRARIES stdexec
+    FOLDER test
+)
+
+# # Adding multiple tests with a glob
+# icm_glob_build_failure_tests(
+#     PATTERN *_fail*.cpp
+#     LIBRARIES stdexec
+#     PREFIX stdexec
+#     FOLDER test/stdexec/algos/adaptors
+# )

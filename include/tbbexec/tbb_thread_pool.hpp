@@ -54,7 +54,7 @@ namespace tbbexec {
 
         class sender {
          public:
-          using is_sender = void;
+          using sender_concept = stdexec::sender_t;
           using __t = sender;
           using __id = sender;
           using completion_signatures =
@@ -77,7 +77,7 @@ namespace tbbexec {
           template <class CPO>
           friend typename DerivedPoolType::scheduler
             tag_invoke(stdexec::get_completion_scheduler_t<CPO>, sender s) noexcept {
-            return typename DerivedPoolType::scheduler{s.pool_};
+            return s.pool_.get_scheduler();
           }
 
           friend const sender& tag_invoke(stdexec::get_env_t, const sender& s) noexcept {
@@ -220,7 +220,7 @@ namespace tbbexec {
 
         template <class SenderId, class ReceiverId, class Shape, class Fn, bool MayThrow>
         struct bulk_receiver {
-          using is_receiver = void;
+          using receiver_concept = stdexec::receiver_t;
           using Sender = stdexec::__t<SenderId>;
           using Receiver = stdexec::__t<ReceiverId>;
 
@@ -311,7 +311,7 @@ namespace tbbexec {
 
         template <class SenderId, std::integral Shape, class FunId>
         struct bulk_sender {
-          using is_sender = void;
+          using sender_concept = stdexec::sender_t;
           using Sender = stdexec::__t<SenderId>;
           using Fun = stdexec::__t<FunId>;
 

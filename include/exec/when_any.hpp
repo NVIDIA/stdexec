@@ -122,7 +122,7 @@ namespace exec {
             try {
               __result_.emplace(std::tuple{_CPO{}, (_Args&&) __args...});
             } catch (...) {
-              __result_.emplace(set_error_t{}, std::current_exception());
+              __result_.emplace(std::tuple{set_error_t{}, std::current_exception()});
             }
           }
           // stop pending operations
@@ -155,7 +155,7 @@ namespace exec {
     struct __receiver {
       class __t {
        public:
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
         using __id = __receiver;
 
         explicit __t(__op_base<_Receiver, _ResultVariant>* __op) noexcept
@@ -172,9 +172,8 @@ namespace exec {
         }
 
         friend __env_t<env_of_t<_Receiver>> tag_invoke(get_env_t, const __t& __self) noexcept {
-          using __with_token = __with<get_stop_token_t, in_place_stop_token>;
-          auto __token = __with_(get_stop_token, __self.__op_->__stop_source_.get_token());
-          return __make_env(get_env(__self.__op_->__receiver_), (__with_token&&) __token);
+          auto __token = __mkprop(__self.__op_->__stop_source_.get_token(), get_stop_token);
+          return __make_env(get_env(__self.__op_->__receiver_), std::move(__token));
         }
       };
     };
@@ -242,7 +241,7 @@ namespace exec {
       class __t {
        public:
         using __id = __sender;
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
 
         template <class... _Senders>
         explicit(sizeof...(_Senders) == 1)

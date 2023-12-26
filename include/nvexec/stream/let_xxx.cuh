@@ -251,3 +251,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     };
   };
 }
+
+namespace stdexec::__detail {
+  template <class SenderId, class Fun, class Set>
+  inline constexpr __mconst<
+    nvexec::STDEXEC_STREAM_DETAIL_NS::let_sender_t<__name_of<__t<SenderId>>, Fun, Set>>
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::let_sender_t<SenderId, Fun, Set>>{};
+}

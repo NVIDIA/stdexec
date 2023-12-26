@@ -37,6 +37,11 @@ namespace stdexec {
         , __tail_(std::exchange(__other.__tail_, nullptr)) {
       }
 
+      __intrusive_queue(_Item* __head, _Item* __tail) noexcept
+        : __head_(__head)
+        , __tail_(__tail) {
+      }
+
       __intrusive_queue& operator=(__intrusive_queue __other) noexcept {
         std::swap(__head_, __other.__head_);
         std::swap(__tail_, __other.__tail_);
@@ -63,8 +68,26 @@ namespace stdexec {
         return __result;
       }
 
+      static __intrusive_queue make(_Item* __list) noexcept {
+        __intrusive_queue __result{};
+        __result.__head_ = __list;
+        __result.__tail_ = __list;
+        if (__list == nullptr) {
+          return __result;
+        }
+        while (__result.__tail_->*_Next != nullptr) {
+          __result.__tail_ = __result.__tail_->*_Next;
+        }
+        return __result;
+      }
+
       [[nodiscard]] bool empty() const noexcept {
         return __head_ == nullptr;
+      }
+
+      void clear() noexcept {
+        __head_ = nullptr;
+        __tail_ = nullptr;
       }
 
       [[nodiscard]] _Item* pop_front() noexcept {
@@ -123,6 +146,90 @@ namespace stdexec {
 
         __other.__tail_ = nullptr;
         __other.__head_ = nullptr;
+      }
+
+      struct iterator {
+        using difference_type = std::ptrdiff_t;
+        using value_type = _Item*;
+
+        _Item* __predecessor_ = nullptr;
+        _Item* __item_ = nullptr;
+
+        iterator() noexcept = default;
+
+        explicit iterator(_Item* __pred, _Item* __item) noexcept
+          : __predecessor_(__pred)
+          , __item_(__item) {
+        }
+
+        [[nodiscard]] _Item* operator*() const noexcept {
+          STDEXEC_ASSERT(__item_ != nullptr);
+          return __item_;
+        }
+
+        [[nodiscard]] _Item** operator->() const noexcept {
+          STDEXEC_ASSERT(__item_ != nullptr);
+          return &__item_;
+        }
+
+        iterator& operator++() noexcept {
+          __predecessor_ = __item_;
+          if (__item_) {
+            __item_ = __item_->*_Next;
+          }
+          return *this;
+        }
+
+        iterator operator++(int) noexcept {
+          iterator __result = *this;
+          ++*this;
+          return __result;
+        }
+
+        friend bool operator==(const iterator&, const iterator&) noexcept = default;
+      };
+
+      [[nodiscard]] iterator begin() const noexcept {
+        return iterator(nullptr, __head_);
+      }
+
+      [[nodiscard]] iterator end() const noexcept {
+        return iterator(__tail_, nullptr);
+      }
+
+      void splice(iterator pos, __intrusive_queue& other, iterator first, iterator last) noexcept {
+        if (first == last) {
+          return;
+        }
+        STDEXEC_ASSERT(first.__item_ != nullptr);
+        STDEXEC_ASSERT(last.__predecessor_ != nullptr);
+        if (other.__head_ == first.__item_) {
+          other.__head_ = last.__item_;
+          if (other.__head_ == nullptr) {
+            other.__tail_ = nullptr;
+          }
+        } else {
+          STDEXEC_ASSERT(first.__predecessor_ != nullptr);
+          first.__predecessor_->*_Next = last.__item_;
+          last.__predecessor_->*_Next = pos.__item_;
+        }
+        if (empty()) {
+          __head_ = first.__item_;
+          __tail_ = last.__predecessor_;
+        } else {
+          pos.__predecessor_->*_Next = first.__item_;
+          if (pos.__item_ == nullptr) {
+            __tail_ = last.__predecessor_;
+          }
+        }
+      }
+
+      _Item* front() const noexcept {
+        return __head_;
+      }
+
+      _Item* back() const noexcept {
+        return __tail_;
       }
 
      private:

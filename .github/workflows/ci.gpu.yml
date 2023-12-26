@@ -53,13 +53,18 @@ jobs:
             -DCMAKE_CUDA_COMPILER:FILEPATH="$cxx" \
             -DCMAKE_CUDA_ARCHITECTURES:STRING=${{ matrix.sm }};
           # Compile
-          cmake --build build;
+          cmake --build build -v;
+          
+          # Print sccache stats
+          sccache -s
+          
           # Tests
           ctest --test-dir build --verbose --output-on-failure --timeout 60;
           # Examples
           ./build/examples/nvexec/maxwell_cpu_st --iterations=1000 --N=512 --run-cpp --run-inline-scheduler
           ./build/examples/nvexec/maxwell_cpu_mt --iterations=1000 --N=512 --run-std --run-stdpar --run-thread-pool-scheduler
           ./build/examples/nvexec/maxwell_gpu_s --iterations=1000 --N=512 --run-cuda --run-stdpar --run-stream-scheduler
+
 
   ci-gpu:
     runs-on: ubuntu-latest

@@ -19,6 +19,7 @@
 #include <test_common/schedulers.hpp>
 
 STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wpragmas")
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-function")
 
 namespace ex = stdexec;
@@ -31,7 +32,7 @@ namespace {
     };
 
     struct sender {
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures =
         ex::completion_signatures<ex::set_value_t(), ex::set_error_t(std::exception_ptr)>;
 
@@ -74,7 +75,7 @@ namespace {
     };
 
     struct sender {
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures =
         ex::completion_signatures<ex::set_value_t(), ex::set_error_t(std::exception_ptr)>;
 
@@ -113,24 +114,25 @@ namespace {
       return fpg;
     }
   };
-} // namespace
 
-TEST_CASE("get_forward_progress_guarantee ", "[sched_queries][get_forward_progress_guarantee]") {
-  STATIC_REQUIRE(
-    ex::get_forward_progress_guarantee(uncustomized_scheduler{})
-    == ex::forward_progress_guarantee::weakly_parallel);
-  STATIC_REQUIRE(
-    ex::get_forward_progress_guarantee(
-      customized_scheduler<ex::forward_progress_guarantee::concurrent>{})
-    == ex::forward_progress_guarantee::concurrent);
-  STATIC_REQUIRE(
-    ex::get_forward_progress_guarantee(
-      customized_scheduler<ex::forward_progress_guarantee::parallel>{})
-    == ex::forward_progress_guarantee::parallel);
-  STATIC_REQUIRE(
-    ex::get_forward_progress_guarantee(
-      customized_scheduler<ex::forward_progress_guarantee::weakly_parallel>{})
-    == ex::forward_progress_guarantee::weakly_parallel);
-}
+  TEST_CASE("get_forward_progress_guarantee ", "[sched_queries][get_forward_progress_guarantee]") {
+    STATIC_REQUIRE(
+      ex::get_forward_progress_guarantee(uncustomized_scheduler{})
+      == ex::forward_progress_guarantee::weakly_parallel);
+    STATIC_REQUIRE(
+      ex::get_forward_progress_guarantee(
+        customized_scheduler<ex::forward_progress_guarantee::concurrent>{})
+      == ex::forward_progress_guarantee::concurrent);
+    STATIC_REQUIRE(
+      ex::get_forward_progress_guarantee(
+        customized_scheduler<ex::forward_progress_guarantee::parallel>{})
+      == ex::forward_progress_guarantee::parallel);
+    STATIC_REQUIRE(
+      ex::get_forward_progress_guarantee(
+        customized_scheduler<ex::forward_progress_guarantee::weakly_parallel>{})
+      == ex::forward_progress_guarantee::weakly_parallel);
+  }
+
+} // namespace
 
 STDEXEC_PRAGMA_POP()

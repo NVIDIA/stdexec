@@ -70,7 +70,7 @@ namespace exec {
 
     template <class _ItemReceiver, class _ResultVariant>
     struct __item_operation_base {
-      STDEXEC_NO_UNIQUE_ADDRESS _ItemReceiver __receiver_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _ItemReceiver __receiver_;
       __result_type<_ResultVariant>* __result_;
     };
 
@@ -78,7 +78,7 @@ namespace exec {
     struct __item_receiver {
       struct __t {
         using __id = __item_receiver;
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
         __item_operation_base<_ItemReceiver, _ResultVariant>* __op_;
 
         template <same_as<set_value_t> _Tag, same_as<__t> _Self, class... _Args>
@@ -123,10 +123,9 @@ namespace exec {
         __t(
           __result_type<_ResultVariant>* __parent,
           _Sender&& __sndr,
-          _ItemReceiver __rcvr) //
-          noexcept(
-            __nothrow_decay_copyable<_ItemReceiver> //
-            && __nothrow_connectable<_Sender, __item_receiver_t>)
+          _ItemReceiver __rcvr)                            //
+          noexcept(__nothrow_decay_copyable<_ItemReceiver> //
+                     && __nothrow_connectable<_Sender, __item_receiver_t>)
           : __base_type{static_cast<_ItemReceiver&&>(__rcvr), __parent}
           , __op_{stdexec::connect(static_cast<_Sender&&>(__sndr), __item_receiver_t{this})} {
         }
@@ -140,7 +139,7 @@ namespace exec {
     template <class _Sender, class _ResultVariant>
     struct __item_sender {
       struct __t {
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
         using completion_signatures =
           stdexec::completion_signatures<set_value_t(), set_stopped_t()>;
 
@@ -168,7 +167,7 @@ namespace exec {
 
     template <class _Receiver, class _ResultVariant>
     struct __operation_base : __result_type<_ResultVariant> {
-      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __receiver_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __receiver_;
     };
 
     template <class _ReceiverId, class _ResultVariant>
@@ -177,7 +176,7 @@ namespace exec {
 
       struct __t {
         using __id = __receiver;
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
         __operation_base<_Receiver, _ResultVariant>* __op_;
 
         template <same_as<set_next_t> _SetNext, same_as<__t> _Self, sender _Item>
@@ -278,23 +277,26 @@ namespace exec {
     struct ignore_all_values_t {
       template <sender _Sender>
       auto operator()(_Sender&& __sndr) const {
-        auto __domain = __get_sender_domain((_Sender&&) __sndr);
+        auto __domain = __get_early_domain((_Sender&&) __sndr);
         return transform_sender(
-          __domain, make_sender_expr<ignore_all_values_t>(__(), (_Sender&&) __sndr));
+          __domain, __make_sexpr<ignore_all_values_t>(__(), (_Sender&&) __sndr));
       }
 
       constexpr __binder_back<ignore_all_values_t> operator()() const noexcept {
         return {{}, {}, {}};
       }
+    };
 
+    struct __ignore_all_values_impl : __sexpr_defaults {
       template <class _Sequence, class _Env>
       using __completion_sigs = __sequence_completion_signatures_of_t<_Sequence, _Env>;
 
-      template <sender_expr_for<ignore_all_values_t> _Sender, class _Env>
-      static auto get_completion_signatures(_Sender&& __sndr, _Env&&)
-        -> __completion_sigs<__child_of<_Sender>, _Env> {
-        return {};
-      }
+      static constexpr auto get_completion_signatures = //
+        []<class _Sender, class _Env>(_Sender&& __sndr, _Env&&)
+          -> __completion_sigs<__child_of<_Sender>, _Env> {
+          static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
+          return {};
+        };
 
       template <class _Child, class _Receiver>
       using _ResultVariant = __result_variant_t<_Child, env_of_t<_Receiver>>;
@@ -302,19 +304,25 @@ namespace exec {
       template <class _Child, class _Receiver>
       using __receiver_t = __t<__receiver<__id<_Receiver>, _ResultVariant<_Child, _Receiver>>>;
 
-      template <sender_expr_for<ignore_all_values_t> _Sender, receiver _Receiver>
+      static constexpr auto connect = //
+        []<class _Sender, receiver _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(
+        __nothrow_callable<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>)
+        -> __call_result_t<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>
         requires receiver_of<_Receiver, __completion_sigs<__child_of<_Sender>, env_of_t<_Receiver>>>
               && sequence_sender_to<
                    __child_of<_Sender>,
-                   __receiver_t<__child_of<_Sender>, _Receiver>>
-      static auto connect(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-        __nothrow_callable<apply_sender_t, _Sender, __connect_fn<_Receiver>>)
-        -> __call_result_t<apply_sender_t, _Sender, __connect_fn<_Receiver>> {
-        return apply_sender((_Sender&&) __sndr, __connect_fn<_Receiver>{__rcvr});
-      }
+                   __receiver_t<__child_of<_Sender>, _Receiver>> {
+          static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
+        return __sexpr_apply((_Sender&&) __sndr, __connect_fn<_Receiver>{__rcvr});
+      };
     };
   }
 
   using __ignore_all_values::ignore_all_values_t;
   inline constexpr ignore_all_values_t ignore_all_values{};
+}
+
+namespace stdexec {
+  template <>
+  struct __sexpr_impl<exec::ignore_all_values_t> : exec::__ignore_all_values::__ignore_all_values_impl {};
 }

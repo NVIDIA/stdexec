@@ -28,115 +28,282 @@ namespace ex = stdexec;
 // For testing `transfer_when_all_with_variant`, we just check a couple of examples, check
 // customization, and we assume it's implemented in terms of `transfer_when_all`.
 
-TEST_CASE("transfer_when_all returns a sender", "[adaptors][transfer_when_all]") {
-  auto snd = ex::transfer_when_all(inline_scheduler{}, ex::just(3), ex::just(0.1415));
-  static_assert(ex::sender<decltype(snd)>);
-  (void) snd;
-}
+namespace {
 
-TEST_CASE("transfer_when_all with environment returns a sender", "[adaptors][transfer_when_all]") {
-  auto snd = ex::transfer_when_all(inline_scheduler{}, ex::just(3), ex::just(0.1415));
-  static_assert(ex::sender_in<decltype(snd), empty_env>);
-  (void) snd;
-}
+  TEST_CASE("transfer_when_all returns a sender", "[adaptors][transfer_when_all]") {
+    auto snd = ex::transfer_when_all(inline_scheduler{}, ex::just(3), ex::just(0.1415));
+    static_assert(ex::sender<decltype(snd)>);
+    (void) snd;
+  }
 
-TEST_CASE("transfer_when_all simple example", "[adaptors][transfer_when_all]") {
-  auto snd = ex::transfer_when_all(inline_scheduler{}, ex::just(3), ex::just(0.1415));
-  auto snd1 = std::move(snd) | ex::then([](int x, double y) { return x + y; });
-  auto op = ex::connect(std::move(snd1), expect_value_receiver{3.1415});
-  ex::start(op);
-}
+  TEST_CASE(
+    "transfer_when_all with environment returns a sender",
+    "[adaptors][transfer_when_all]") {
+    auto snd = ex::transfer_when_all(inline_scheduler{}, ex::just(3), ex::just(0.1415));
+    static_assert(ex::sender_in<decltype(snd), empty_env>);
+    (void) snd;
+  }
 
-TEST_CASE("transfer_when_all with no senders", "[adaptors][transfer_when_all]") {
-  auto snd = ex::transfer_when_all(inline_scheduler{});
-  auto op = ex::connect(std::move(snd), expect_void_receiver{});
-  ex::start(op);
-}
+  TEST_CASE("transfer_when_all simple example", "[adaptors][transfer_when_all]") {
+    auto snd = ex::transfer_when_all(inline_scheduler{}, ex::just(3), ex::just(0.1415));
+    auto snd1 = std::move(snd) | ex::then([](int x, double y) { return x + y; });
+    auto op = ex::connect(std::move(snd1), expect_value_receiver{3.1415});
+    ex::start(op);
+  }
 
-TEST_CASE(
-  "transfer_when_all transfers the result when the scheduler dictates",
-  "[adaptors][transfer_when_all]") {
-  impulse_scheduler sched;
-  auto snd = ex::transfer_when_all(sched, ex::just(3), ex::just(0.1415));
-  auto snd1 = std::move(snd) | ex::then([](int x, double y) { return x + y; });
-  double res{0.0};
-  auto op = ex::connect(std::move(snd1), expect_value_receiver_ex{res});
-  ex::start(op);
-  CHECK(res == 0.0);
-  sched.start_next();
-  CHECK(res == 3.1415);
-}
+  TEST_CASE("transfer_when_all with no senders", "[adaptors][transfer_when_all]") {
+    auto snd = ex::transfer_when_all(inline_scheduler{});
+    auto op = ex::connect(std::move(snd), expect_void_receiver{});
+    ex::start(op);
+  }
 
-TEST_CASE(
-  "transfer_when_all with no senders transfers the result",
-  "[adaptors][transfer_when_all]") {
-  impulse_scheduler sched;
-  auto snd = ex::transfer_when_all(sched);
-  auto snd1 = std::move(snd) | ex::then([]() { return true; });
-  bool res{false};
-  auto op = ex::connect(std::move(snd1), expect_value_receiver_ex{res});
-  ex::start(op);
-  CHECK(!res);
-  sched.start_next();
-  CHECK(res);
-}
+  TEST_CASE(
+    "transfer_when_all transfers the result when the scheduler dictates",
+    "[adaptors][transfer_when_all]") {
+    impulse_scheduler sched;
+    auto snd = ex::transfer_when_all(sched, ex::just(3), ex::just(0.1415));
+    auto snd1 = std::move(snd) | ex::then([](int x, double y) { return x + y; });
+    double res{0.0};
+    auto op = ex::connect(std::move(snd1), expect_value_receiver_ex{res});
+    ex::start(op);
+    CHECK(res == 0.0);
+    sched.start_next();
+    CHECK(res == 3.1415);
+  }
 
-TEST_CASE("transfer_when_all_with_variant returns a sender", "[adaptors][transfer_when_all]") {
-  auto snd = ex::transfer_when_all_with_variant(inline_scheduler{}, ex::just(3), ex::just(0.1415));
-  static_assert(ex::sender<decltype(snd)>);
-  (void) snd;
-}
+  TEST_CASE(
+    "transfer_when_all with no senders transfers the result",
+    "[adaptors][transfer_when_all]") {
+    impulse_scheduler sched;
+    auto snd = ex::transfer_when_all(sched);
+    auto snd1 = std::move(snd) | ex::then([]() { return true; });
+    bool res{false};
+    auto op = ex::connect(std::move(snd1), expect_value_receiver_ex{res});
+    ex::start(op);
+    CHECK(!res);
+    sched.start_next();
+    CHECK(res);
+  }
 
-TEST_CASE(
-  "transfer_when_all_with_variant with environment returns a sender",
-  "[adaptors][transfer_when_all]") {
-  auto snd = ex::transfer_when_all_with_variant(inline_scheduler{}, ex::just(3), ex::just(0.1415));
-  static_assert(ex::sender_in<decltype(snd), empty_env>);
-  (void) snd;
-}
+  TEST_CASE("transfer_when_all_with_variant returns a sender", "[adaptors][transfer_when_all]") {
+    auto snd = ex::transfer_when_all_with_variant(
+      inline_scheduler{}, ex::just(3), ex::just(0.1415));
+    static_assert(ex::sender<decltype(snd)>);
+    (void) snd;
+  }
 
-TEST_CASE("transfer_when_all_with_variant basic example", "[adaptors][transfer_when_all]") {
-  ex::sender auto snd = ex::transfer_when_all_with_variant( //
-    inline_scheduler{},                                     //
-    ex::just(2),                                            //
-    ex::just(3.14)                                          //
-  );
-  wait_for_value(
-    std::move(snd), std::variant<std::tuple<int>>{2}, std::variant<std::tuple<double>>{3.14});
-}
+  TEST_CASE(
+    "transfer_when_all_with_variant with environment returns a sender",
+    "[adaptors][transfer_when_all]") {
+    auto snd = ex::transfer_when_all_with_variant(
+      inline_scheduler{}, ex::just(3), ex::just(0.1415));
+    static_assert(ex::sender_in<decltype(snd), empty_env>);
+    (void) snd;
+  }
 
-using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
+  TEST_CASE("transfer_when_all_with_variant basic example", "[adaptors][transfer_when_all]") {
+    ex::sender auto snd = ex::transfer_when_all_with_variant( //
+      inline_scheduler{},                                     //
+      ex::just(2),                                            //
+      ex::just(3.14)                                          //
+    );
+    wait_for_value(
+      std::move(snd), std::variant<std::tuple<int>>{2}, std::variant<std::tuple<double>>{3.14});
+  }
 
-auto tag_invoke(ex::transfer_when_all_t, inline_scheduler, my_string_sender_t, my_string_sender_t) {
-  // Return a different sender when we invoke this custom defined on implementation
-  return ex::just(std::string{"first program"});
-}
+  using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
 
-TEST_CASE("transfer_when_all can be customized", "[adaptors][transfer_when_all]") {
-  // The customization will return a different value
-  auto snd = ex::transfer_when_all(                               //
-    inline_scheduler{},                                           //
-    ex::transfer_just(inline_scheduler{}, std::string{"hello,"}), //
-    ex::transfer_just(inline_scheduler{}, std::string{" world!"}) //
-  );
-  wait_for_value(std::move(snd), std::string{"first program"});
-}
+  auto
+    tag_invoke(ex::transfer_when_all_t, inline_scheduler, my_string_sender_t, my_string_sender_t) {
+    // Return a different sender when we invoke this custom defined on implementation
+    return ex::just(std::string{"first program"});
+  }
 
-auto tag_invoke(
-  ex::transfer_when_all_with_variant_t,
-  inline_scheduler,
-  my_string_sender_t,
-  my_string_sender_t) {
-  // Return a different sender when we invoke this custom defined on implementation
-  return ex::just(std::string{"first program"});
-}
+  TEST_CASE("transfer_when_all can be customized", "[adaptors][transfer_when_all]") {
+    // The customization will return a different value
+    auto snd = ex::transfer_when_all(                               //
+      inline_scheduler{},                                           //
+      ex::transfer_just(inline_scheduler{}, std::string{"hello,"}), //
+      ex::transfer_just(inline_scheduler{}, std::string{" world!"}) //
+    );
+    wait_for_value(std::move(snd), std::string{"first program"});
+  }
 
-TEST_CASE("transfer_when_all_with_variant can be customized", "[adaptors][transfer_when_all]") {
-  // The customization will return a different value
-  auto snd = ex::transfer_when_all_with_variant(                  //
-    inline_scheduler{},                                           //
-    ex::transfer_just(inline_scheduler{}, std::string{"hello,"}), //
-    ex::transfer_just(inline_scheduler{}, std::string{" world!"}) //
-  );
-  wait_for_value(std::move(snd), std::string{"first program"});
+  auto tag_invoke(
+    ex::transfer_when_all_with_variant_t,
+    inline_scheduler,
+    my_string_sender_t,
+    my_string_sender_t) {
+    // Return a different sender when we invoke this custom defined on implementation
+    return ex::just(std::string{"first program"});
+  }
+
+  TEST_CASE("transfer_when_all_with_variant can be customized", "[adaptors][transfer_when_all]") {
+    // The customization will return a different value
+    auto snd = ex::transfer_when_all_with_variant(                  //
+      inline_scheduler{},                                           //
+      ex::transfer_just(inline_scheduler{}, std::string{"hello,"}), //
+      ex::transfer_just(inline_scheduler{}, std::string{" world!"}) //
+    );
+    wait_for_value(std::move(snd), std::string{"first program"});
+  }
+
+  namespace {
+    enum customize : std::size_t {
+      early,
+      late,
+      none
+    };
+
+    template <class Tag, customize C, auto Fun>
+    struct basic_domain {
+      template <ex::sender_expr_for<Tag> Sender, class... Env>
+        requires(sizeof...(Env) == C)
+      auto transform_sender(Sender&& sender, const Env&...) const {
+        return Fun();
+      }
+    };
+  } // anonymous namespace
+
+  TEST_CASE("transfer_when_all works with custom domain", "[adaptors][transfer_when_all]") {
+    constexpr auto hello = [] {
+      return ex::just(std::string{"hello world"});
+    };
+
+    SECTION("sender has correct domain") {
+      using domain = basic_domain<ex::transfer_when_all_t, customize::none, hello>;
+      using scheduler = basic_inline_scheduler<domain>;
+
+      auto snd = ex::transfer_when_all( //
+        scheduler(),
+        ex::just(3),     //
+        ex::just(0.1415) //
+      );
+      static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_t>);
+      [[maybe_unused]] domain dom = ex::get_domain(ex::get_env(snd));
+    }
+
+    SECTION("early customization") {
+      using domain = basic_domain<ex::transfer_when_all_t, customize::early, hello>;
+      using scheduler = basic_inline_scheduler<domain>;
+
+      auto snd = ex::transfer_when_all( //
+        scheduler(),                    //
+        ex::just(3),                    //
+        ex::just(0.1415)                //
+      );
+      static_assert(ex::sender_expr_for<decltype(snd), ex::just_t>);
+      wait_for_value(std::move(snd), std::string{"hello world"});
+    }
+
+    SECTION("late customization") {
+      using domain = basic_domain<ex::transfer_when_all_t, customize::late, hello>;
+      using scheduler = basic_inline_scheduler<domain>;
+
+      auto snd = ex::on(
+        inline_scheduler(),
+        ex::transfer_when_all( //
+          scheduler(),         //
+          ex::just(3),         //
+          ex::just(0.1415)     //
+          ));
+      wait_for_value(std::move(snd), std::string{"hello world"});
+    }
+  }
+
+  TEST_CASE(
+    "transfer_when_all_with_variant works with custom domain",
+    "[adaptors][transfer_when_all]") {
+    constexpr auto hello = [] {
+      return ex::just(std::string{"hello world"});
+    };
+
+    SECTION("sender has correct domain") {
+      using domain = basic_domain<ex::transfer_when_all_with_variant_t, customize::none, hello>;
+      using scheduler = basic_inline_scheduler<domain>;
+
+      auto snd = ex::transfer_when_all_with_variant( //
+        scheduler(),                                 //
+        ex::just(3),                                 //
+        ex::just(0.1415)                             //
+      );
+      static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_with_variant_t>);
+      [[maybe_unused]] domain dom = ex::get_domain(ex::get_env(snd));
+    }
+
+    SECTION("early customization") {
+      using domain = basic_domain<ex::transfer_when_all_with_variant_t, customize::early, hello>;
+      using scheduler = basic_inline_scheduler<domain>;
+
+      auto snd = ex::transfer_when_all_with_variant( //
+        scheduler(),
+        ex::just(3),     //
+        ex::just(0.1415) //
+      );
+      static_assert(ex::sender_expr_for<decltype(snd), ex::just_t>);
+      wait_for_value(std::move(snd), std::string{"hello world"});
+    }
+
+    SECTION("late customization") {
+      using domain = basic_domain<ex::transfer_when_all_with_variant_t, customize::late, hello>;
+      using scheduler = basic_inline_scheduler<domain>;
+
+      auto snd = ex::on(
+        inline_scheduler(),
+        ex::transfer_when_all_with_variant( //
+          scheduler(),                      //
+          ex::just(3),                      //
+          ex::just(0.1415)                  //
+          ));
+      wait_for_value(std::move(snd), std::string{"hello world"});
+    }
+  }
+
+  TEST_CASE(
+    "transfer_when_all_with_variant finds transfer_when_all customizations",
+    "[adaptors][transfer_when_all]") {
+    constexpr auto hello = [] {
+      return ex::just(std::string{"hello world"});
+    };
+
+    SECTION("sender has correct domain") {
+      using domain = basic_domain<ex::transfer_when_all_t, customize::none, hello>;
+      using scheduler = basic_inline_scheduler<domain>;
+
+      auto snd = ex::transfer_when_all_with_variant( //
+        scheduler(),                                 //
+        ex::just(3),                                 //
+        ex::just(0.1415)                             //
+      );
+      static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_with_variant_t>);
+      [[maybe_unused]] domain dom = ex::get_domain(ex::get_env(snd));
+    }
+
+    SECTION("early customization") {
+      using domain = basic_domain<ex::transfer_when_all_t, customize::early, hello>;
+      using scheduler = basic_inline_scheduler<domain>;
+
+      auto snd = ex::transfer_when_all_with_variant( //
+        scheduler(),                                 //
+        ex::just(3),                                 //
+        ex::just(0.1415)                             //
+      );
+      static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_with_variant_t>);
+      wait_for_value(std::move(snd), std::string{"hello world"});
+    }
+
+    SECTION("late customization") {
+      using domain = basic_domain<ex::transfer_when_all_t, customize::late, hello>;
+      using scheduler = basic_inline_scheduler<domain>;
+
+      auto snd = ex::on(
+        inline_scheduler(),
+        ex::transfer_when_all_with_variant( //
+          scheduler(),                      //
+          ex::just(3),                      //
+          ex::just(0.1415)                  //
+          ));
+      wait_for_value(std::move(snd), std::string{"hello world"});
+    }
+  }
 }

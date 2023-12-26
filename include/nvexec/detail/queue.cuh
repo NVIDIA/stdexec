@@ -41,9 +41,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace queue {
   struct producer_t {
     task_base_t** tail_;
 
-    STDEXEC_DETAIL_CUDACC_HOST_DEVICE //
-      void
-      operator()(task_base_t* task) {
+    STDEXEC_ATTRIBUTE((host, device)) void operator()(task_base_t* task) {
       atom_task_ref tail_ref(*tail_);
       task_base_t* old_tail = tail_ref.load(::cuda::memory_order_acquire);
 

@@ -17,36 +17,39 @@
 #include "cpo_helpers.cuh"
 #include <catch2/catch.hpp>
 
-TEST_CASE("upon_stopped is customizable", "[cpo][cpo_upon_stopped]") {
-  const auto f = []() {
-  };
+namespace {
 
-  SECTION("by free standing sender") {
-    free_standing_sender_t<ex::upon_stopped_t> snd{};
+  TEST_CASE("upon_stopped is customizable", "[cpo][cpo_upon_stopped]") {
+    const auto f = []() {
+    };
 
-    {
-      constexpr scope_t scope = decltype(snd | ex::upon_stopped(f))::scope;
-      STATIC_REQUIRE(scope == scope_t::free_standing);
+    SECTION("by free standing sender") {
+      free_standing_sender_t<ex::upon_stopped_t> snd{};
+
+      {
+        constexpr scope_t scope = decltype(snd | ex::upon_stopped(f))::scope;
+        STATIC_REQUIRE(scope == scope_t::free_standing);
+      }
+
+      {
+        constexpr scope_t scope = decltype(ex::upon_stopped(snd, f))::scope;
+        STATIC_REQUIRE(scope == scope_t::free_standing);
+      }
     }
 
-    {
-      constexpr scope_t scope = decltype(ex::upon_stopped(snd, f))::scope;
-      STATIC_REQUIRE(scope == scope_t::free_standing);
-    }
-  }
+    SECTION("by completion scheduler") {
+      scheduler_t<ex::upon_stopped_t, ex::set_stopped_t>::sender_t snd{};
 
-  SECTION("by completion scheduler") {
-    scheduler_t<ex::upon_stopped_t, ex::set_stopped_t>::sender_t snd{};
+      {
+        constexpr scope_t scope = decltype(snd | ex::upon_stopped(f))::scope;
+        STATIC_REQUIRE(scope == scope_t::scheduler);
+      }
 
-    {
-      constexpr scope_t scope = decltype(snd | ex::upon_stopped(f))::scope;
-      STATIC_REQUIRE(scope == scope_t::scheduler);
-    }
-
-    {
-      ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(snd));
-      constexpr scope_t scope = decltype(ex::upon_stopped(snd, f))::scope;
-      STATIC_REQUIRE(scope == scope_t::scheduler);
+      {
+        ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(snd));
+        constexpr scope_t scope = decltype(ex::upon_stopped(snd, f))::scope;
+        STATIC_REQUIRE(scope == scope_t::scheduler);
+      }
     }
   }
 }

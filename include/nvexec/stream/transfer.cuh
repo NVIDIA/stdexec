@@ -120,10 +120,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       Sender sndr_;
 
       template <class... Ts>
-      using _set_value_t = completion_signatures<set_value_t(__decay_t<Ts>&&...)>;
+      using _set_value_t = completion_signatures<set_value_t(stdexec::__decay_t<Ts>&&...)>;
 
       template <class Ty>
-      using _set_error_t = completion_signatures<set_error_t(__decay_t<Ty>&&)>;
+      using _set_error_t = completion_signatures<set_error_t(stdexec::__decay_t<Ty>&&)>;
 
       template <class Self, class Env>
       using _completion_signatures_t = //

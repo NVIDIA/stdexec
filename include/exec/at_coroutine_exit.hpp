@@ -38,7 +38,7 @@ namespace exec {
       template <class _Receiver>
       struct __receiver_id {
         struct __t {
-          using is_receiver = void;
+          using receiver_concept = stdexec::receiver_t;
           using __id = __receiver_id;
           _Receiver __receiver_;
 
@@ -71,7 +71,7 @@ namespace exec {
 
         struct __t {
           using __id = __sender_id;
-          using is_sender = void;
+          using sender_concept = stdexec::sender_t;
 
           _Sender __sender_;
 
@@ -160,8 +160,7 @@ namespace exec {
           auto __coro = __p.__is_unhandled_stopped_
                         ? __p.continuation().unhandled_stopped()
                         : __p.continuation().handle();
-          __h.destroy();
-          return __coro;
+          return STDEXEC_DESTROY_AND_CONTINUE(__h, __coro);
         }
 
         void await_resume() const noexcept {

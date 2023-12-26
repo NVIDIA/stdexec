@@ -27,117 +27,120 @@
 using nvexec::variant_t;
 using nvexec::visit;
 
-TEST_CASE("nvexec variant max size is correct", "[cuda][stream][containers][variant]") {
-  STATIC_REQUIRE(variant_t<double>::max_size == sizeof(double));
-  STATIC_REQUIRE(variant_t<int, double>::max_size == sizeof(double));
-  STATIC_REQUIRE(variant_t<char, int, double>::max_size == sizeof(double));
-  STATIC_REQUIRE(variant_t<char, int>::max_size == sizeof(int));
-  STATIC_REQUIRE(variant_t<char>::max_size == sizeof(char));
-}
+namespace {
 
-TEST_CASE("nvexec variant max alignment is correct", "[cuda][stream][containers][variant]") {
-  STATIC_REQUIRE(variant_t<double>::max_size == std::alignment_of_v<double>);
-  STATIC_REQUIRE(variant_t<int, double>::max_size == std::alignment_of_v<double>);
-  STATIC_REQUIRE(variant_t<char, int, double>::max_size == std::alignment_of_v<double>);
-  STATIC_REQUIRE(variant_t<char, int>::max_size == std::alignment_of_v<int>);
-  STATIC_REQUIRE(variant_t<char>::max_size == std::alignment_of_v<char>);
-}
+  TEST_CASE("nvexec variant max size is correct", "[cuda][stream][containers][variant]") {
+    STATIC_REQUIRE(variant_t<double>::max_size == sizeof(double));
+    STATIC_REQUIRE(variant_t<int, double>::max_size == sizeof(double));
+    STATIC_REQUIRE(variant_t<char, int, double>::max_size == sizeof(double));
+    STATIC_REQUIRE(variant_t<char, int>::max_size == sizeof(int));
+    STATIC_REQUIRE(variant_t<char>::max_size == sizeof(char));
+  }
 
-TEST_CASE("nvexec variant size is correct", "[cuda][stream][containers][variant]") {
-  STATIC_REQUIRE(variant_t<double>::size == 1);
-  STATIC_REQUIRE(variant_t<int, double>::size == 2);
-  STATIC_REQUIRE(variant_t<char, int, double>::size == 3);
-}
+  TEST_CASE("nvexec variant max alignment is correct", "[cuda][stream][containers][variant]") {
+    STATIC_REQUIRE(variant_t<double>::max_size == std::alignment_of_v<double>);
+    STATIC_REQUIRE(variant_t<int, double>::max_size == std::alignment_of_v<double>);
+    STATIC_REQUIRE(variant_t<char, int, double>::max_size == std::alignment_of_v<double>);
+    STATIC_REQUIRE(variant_t<char, int>::max_size == std::alignment_of_v<int>);
+    STATIC_REQUIRE(variant_t<char>::max_size == std::alignment_of_v<char>);
+  }
 
-TEST_CASE("nvexec variant emplaces alternative from CPU", "[cuda][stream][containers][variant]") {
-  variant_t<int, double> v;
-  REQUIRE(v.index_ == 0);
+  TEST_CASE("nvexec variant size is correct", "[cuda][stream][containers][variant]") {
+    STATIC_REQUIRE(variant_t<double>::size == 1);
+    STATIC_REQUIRE(variant_t<int, double>::size == 2);
+    STATIC_REQUIRE(variant_t<char, int, double>::size == 3);
+  }
 
-  v.emplace<double>(4.2);
-  visit([](auto alt) { REQUIRE(alt == 4.2); }, v);
+  TEST_CASE("nvexec variant emplaces alternative from CPU", "[cuda][stream][containers][variant]") {
+    variant_t<int, double> v;
+    REQUIRE(v.index_ == 0);
 
-  v.emplace<double>(42);
-  visit([](auto alt) { REQUIRE(alt == 42); }, v);
-}
+    v.emplace<double>(4.2);
+    visit([](auto alt) { REQUIRE(alt == 4.2); }, v);
 
-template <class T, class V>
-__global__ void kernel(V* v, T alt) {
-  v->template emplace<T>(alt);
-}
+    v.emplace<double>(42);
+    visit([](auto alt) { REQUIRE(alt == 42); }, v);
+  }
 
-TEST_CASE("nvexec variant emplaces alternative from GPU", "[cuda][stream][containers][variant]") {
-  using variant_t = variant_t<int, double>;
-  thrust::universal_vector<variant_t> variant_storage(1);
-  variant_t* v = thrust::raw_pointer_cast(variant_storage.data());
+  template <class T, class V>
+  __global__ void kernel(V* v, T alt) {
+    v->template emplace<T>(alt);
+  }
 
-  REQUIRE(v->index_ == 0);
+  TEST_CASE("nvexec variant emplaces alternative from GPU", "[cuda][stream][containers][variant]") {
+    using variant_t = variant_t<int, double>;
+    thrust::universal_vector<variant_t> variant_storage(1);
+    variant_t* v = thrust::raw_pointer_cast(variant_storage.data());
 
-  kernel<<<1, 1>>>(v, 4.2);
-  THROW_ON_CUDA_ERROR(cudaDeviceSynchronize());
+    REQUIRE(v->index_ == 0);
 
-  visit([](auto alt) { REQUIRE(alt == 4.2); }, *v);
+    kernel<<<1, 1>>>(v, 4.2);
+    THROW_ON_CUDA_ERROR(cudaDeviceSynchronize());
 
-  kernel<<<1, 1>>>(v, 42);
-  THROW_ON_CUDA_ERROR(cudaDeviceSynchronize());
+    visit([](auto alt) { REQUIRE(alt == 4.2); }, *v);
 
-  visit([](auto alt) { REQUIRE(alt == 42); }, *v);
-}
+    kernel<<<1, 1>>>(v, 42);
+    THROW_ON_CUDA_ERROR(cudaDeviceSynchronize());
 
-TEST_CASE("nvexec variant works with cuda tuple", "[cuda][stream][containers][variant]") {
-  variant_t<cuda::std::tuple<int, double>, cuda::std::tuple<char, int>> v;
-  REQUIRE(v.index_ == 0);
+    visit([](auto alt) { REQUIRE(alt == 42); }, *v);
+  }
 
-  v.emplace<cuda::std::tuple<int, double>>(42, 4.2);
-  visit(
-    [](auto& tuple) {
-      cuda::std::apply(
-        [](auto i, auto d) {
-          REQUIRE(i == 42);
-          REQUIRE(d == 4.2);
-        },
-        tuple);
-    },
-    v);
+  TEST_CASE("nvexec variant works with cuda tuple", "[cuda][stream][containers][variant]") {
+    variant_t<cuda::std::tuple<int, double>, cuda::std::tuple<char, int>> v;
+    REQUIRE(v.index_ == 0);
 
-  v.emplace<cuda::std::tuple<char, int>>('f', 4);
-  visit(
-    [](auto& tuple) {
-      cuda::std::apply(
-        [](auto c, auto i) {
-          REQUIRE(c == 'f');
-          REQUIRE(i == 4);
-        },
-        tuple);
-    },
-    v);
-}
+    v.emplace<cuda::std::tuple<int, double>>(42, 4.2);
+    visit(
+      [](auto& tuple) {
+        cuda::std::apply(
+          [](auto i, auto d) {
+            REQUIRE(i == 42);
+            REQUIRE(d == 4.2);
+          },
+          tuple);
+      },
+      v);
 
-TEST_CASE("nvexec variant internal index bypass works", "[cuda][stream][containers][variant]") {
-  variant_t<cuda::std::tuple<int, double>, cuda::std::tuple<char, int>> v;
+    v.emplace<cuda::std::tuple<char, int>>('f', 4);
+    visit(
+      [](auto& tuple) {
+        cuda::std::apply(
+          [](auto c, auto i) {
+            REQUIRE(c == 'f');
+            REQUIRE(i == 4);
+          },
+          tuple);
+      },
+      v);
+  }
 
-  v.emplace<cuda::std::tuple<int, double>>(42, 4.2);
-  visit(
-    [](auto& tuple) {
-      cuda::std::apply(
-        [](auto i, auto d) {
-          REQUIRE(i == 42);
-          REQUIRE(d == 4.2);
-        },
-        tuple);
-    },
-    v,
-    0);
+  TEST_CASE("nvexec variant internal index bypass works", "[cuda][stream][containers][variant]") {
+    variant_t<cuda::std::tuple<int, double>, cuda::std::tuple<char, int>> v;
 
-  v.emplace<cuda::std::tuple<char, int>>('f', 4);
-  visit(
-    [](auto& tuple) {
-      cuda::std::apply(
-        [](auto c, auto i) {
-          REQUIRE(c == 'f');
-          REQUIRE(i == 4);
-        },
-        tuple);
-    },
-    v,
-    1);
+    v.emplace<cuda::std::tuple<int, double>>(42, 4.2);
+    visit(
+      [](auto& tuple) {
+        cuda::std::apply(
+          [](auto i, auto d) {
+            REQUIRE(i == 42);
+            REQUIRE(d == 4.2);
+          },
+          tuple);
+      },
+      v,
+      0);
+
+    v.emplace<cuda::std::tuple<char, int>>('f', 4);
+    visit(
+      [](auto& tuple) {
+        cuda::std::apply(
+          [](auto c, auto i) {
+            REQUIRE(c == 'f');
+            REQUIRE(i == 4);
+          },
+          tuple);
+      },
+      v,
+      1);
+  }
 }

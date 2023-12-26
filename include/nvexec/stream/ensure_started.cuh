@@ -46,7 +46,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     template <class SenderId, class SharedState>
     struct receiver_t {
-      class __t : stream_receiver_base {
+      class __t : public stream_receiver_base {
         using Sender = stdexec::__t<SenderId>;
 
         __intrusive_ptr<SharedState> shared_state_;
@@ -300,7 +300,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   template <class SenderId>
   struct ensure_started_sender_t {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using Sender = stdexec::__t<SenderId>;
 
     struct __t : stream_sender_base {
@@ -358,4 +358,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       __t(__t&&) = default;
     };
   };
+}
+
+namespace stdexec::__detail {
+  template <class SenderId>
+  inline constexpr __mconst<
+    nvexec::STDEXEC_STREAM_DETAIL_NS::ensure_started_sender_t<__name_of<__t<SenderId>>>>
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::ensure_started_sender_t<SenderId>>{};
 }
