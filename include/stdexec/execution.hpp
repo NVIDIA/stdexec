@@ -4300,39 +4300,6 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __write adaptor
   namespace __write_ {
-    template <class _ReceiverId, class _Env>
-    struct __operation_base {
-      using _Receiver = __t<_ReceiverId>;
-      _Receiver __rcvr_;
-      const _Env __env_;
-    };
-
-    inline constexpr auto __get_env = [](auto* __op) noexcept -> decltype(auto) {
-      return (__op->__env_);
-    };
-
-    template <class _ReceiverId, class _Env>
-    using __receiver_t = //
-      __t<__detail::__receiver_with< &__operation_base<_ReceiverId, _Env>::__rcvr_, __get_env>>;
-
-    template <class _CvrefSenderId, class _ReceiverId, class _Env>
-    struct __operation : __operation_base<_ReceiverId, _Env> {
-      using _CvrefSender = __cvref_t<_CvrefSenderId>;
-      using _Receiver = __t<_ReceiverId>;
-      using __base_t = __operation_base<_ReceiverId, _Env>;
-      using __receiver_t = __write_::__receiver_t<_ReceiverId, _Env>;
-      connect_result_t<_CvrefSender, __receiver_t> __state_;
-
-      __operation(_CvrefSender&& __sndr, _Receiver&& __rcvr, auto&& __env)
-        : __base_t{(_Receiver&&) __rcvr, (decltype(__env)) __env}
-        , __state_{stdexec::connect((_CvrefSender&&) __sndr, __receiver_t{{}, this})} {
-      }
-
-      friend void tag_invoke(start_t, __operation& __self) noexcept {
-        start(__self.__state_);
-      }
-    };
-
     struct __write_t {
       template <sender _Sender, class... _Envs>
       auto operator()(_Sender&& __sndr, _Envs... __envs) const {
@@ -4348,8 +4315,8 @@ namespace stdexec {
       template <class _Env>
       STDEXEC_ATTRIBUTE((always_inline))
       static auto __transform_env_fn(_Env&& __env) noexcept {
-        return [&](__ignore, const auto& __data, __ignore) noexcept {
-          return __join_env(__data, (_Env&&) __env);
+        return [&](__ignore, const auto& __state, __ignore) noexcept {
+          return __join_env(__state, (_Env&&) __env);
         };
       }
 
@@ -4360,26 +4327,10 @@ namespace stdexec {
     };
 
     struct __write_impl : __sexpr_defaults {
-      template <class _Self, class _Receiver>
-      using __receiver_t = __write_::__receiver_t<__id<_Receiver>, __decay_t<__data_of<_Self>>>;
-
-      template <class _Self, class _Receiver>
-      using __operation_t =
-        __operation<__cvref_id<__child_of<_Self>>, __id<_Receiver>, __decay_t<__data_of<_Self>>>;
-
-      static constexpr auto connect =                                          //
-        []<class _Self, receiver _Receiver>(_Self && __self, _Receiver __rcvr) //
-        -> __operation_t<_Self, _Receiver>                                     //
-        requires sender_to<__child_of<_Self>, __receiver_t<_Self, _Receiver>>
-      {
-        static_assert(sender_expr_for<_Self, __write_t>);
-        return __sexpr_apply(
-          (_Self&&) __self,
-          [&]<class _Env, class _Child>(__write_t, _Env&& __env, _Child&& __child) //
-          -> __operation_t<_Self, _Receiver> {
-            return {(_Child&&) __child, (_Receiver&&) __rcvr, (_Env&&) __env};
-          });
-      };
+      static constexpr auto get_env = //
+        [](__ignore, const auto& __state, const auto& __rcvr) noexcept {
+          return __join_env(__state, stdexec::get_env(__rcvr));
+        };
 
       static constexpr auto get_completion_signatures = //
         []<class _Self, class _Env>(_Self&&, _Env&&) noexcept
