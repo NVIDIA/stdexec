@@ -44,6 +44,9 @@ namespace stdexec {
       void __dec_ref() noexcept;
     };
 
+    STDEXEC_PRAGMA_PUSH()
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
+
     template <class _Ty>
     struct __control_block {
       alignas(_Ty) unsigned char __value_[sizeof(_Ty)];
@@ -70,9 +73,6 @@ namespace stdexec {
         __refcount_.fetch_add(1, std::memory_order_relaxed);
       }
 
-      STDEXEC_PRAGMA_PUSH()
-      STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
-
       void __dec_ref_() noexcept {
         if (1u == __refcount_.fetch_sub(1, std::memory_order_release)) {
           std::atomic_thread_fence(std::memory_order_acquire);
@@ -82,8 +82,9 @@ namespace stdexec {
           delete this;
         }
       }
-      STDEXEC_PRAGMA_POP()
     };
+
+    STDEXEC_PRAGMA_POP()
 
     template <class _Ty>
     class __intrusive_ptr {
