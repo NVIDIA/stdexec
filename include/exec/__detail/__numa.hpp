@@ -25,6 +25,7 @@
 
 namespace exec {
   struct numa_policy {
+    virtual ~numa_policy() = default;
     virtual std::size_t num_nodes() = 0;
     virtual std::size_t num_cpus(int node) = 0;
     virtual int bind_to_node(int node) = 0;
