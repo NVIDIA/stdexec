@@ -26,7 +26,10 @@ struct RunThread {
 #ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
     std::span<char> buffer,
 #endif
-    std::atomic<bool>& stop) {
+    std::atomic<bool>& stop,
+    exec::numa_policy* numa) {
+    std::size_t numa_node = numa->thread_index_to_node(tid);
+    numa->bind_to_node(numa_node);
     auto scheduler = pool.get_scheduler();
     std::mutex mut;
     std::condition_variable cv;
@@ -39,7 +42,7 @@ struct RunThread {
       pmr::monotonic_buffer_resource resource{
         buffer.data(), buffer.size(), pmr::null_memory_resource()};
       pmr::polymorphic_allocator<char> alloc(&resource);
-      auto [start, end] = exec::even_share(total_scheds, tid, pool.available_parallelism() - 1);
+      auto [start, end] = exec::even_share(total_scheds, tid, pool.available_parallelism());
       std::size_t scheds = end - start;
       std::atomic<std::size_t> counter{scheds};
       auto env = exec::make_env(exec::with(stdexec::get_allocator, alloc));
@@ -57,7 +60,7 @@ struct RunThread {
         --scheds;
       }
 #else
-      auto [start, end] = exec::even_share(total_scheds, tid, pool.available_parallelism() - 1);
+      auto [start, end] = exec::even_share(total_scheds, tid, pool.available_parallelism());
       std::size_t scheds = end - start;
       std::atomic<std::size_t> counter{scheds};
       while (scheds) {

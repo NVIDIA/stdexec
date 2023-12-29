@@ -97,7 +97,7 @@ namespace exec {
         }
 
        public:
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
         using __id = __sender;
 
         __t() = default;

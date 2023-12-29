@@ -108,7 +108,7 @@ struct _op {
 
 template <class S>
 struct _retry_sender {
-  using is_sender = void;
+  using sender_concept = stdexec::sender_t;
   S s_;
 
   explicit _retry_sender(S s)

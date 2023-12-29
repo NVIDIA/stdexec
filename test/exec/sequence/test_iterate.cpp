@@ -28,7 +28,7 @@ namespace {
 
   template <class Receiver>
   struct sum_item_rcvr {
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
     Receiver rcvr;
     int* sum_;
 
@@ -55,7 +55,7 @@ namespace {
 
   template <class Item>
   struct sum_sender {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using completion_signatures = stdexec::completion_signatures<stdexec::set_value_t()>;
 
     Item item_;
@@ -73,7 +73,7 @@ namespace {
 
   template <class Env = stdexec::empty_env>
   struct sum_receiver {
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
 
     int& sum_;
     Env env_{};

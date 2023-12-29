@@ -60,7 +60,7 @@ namespace exec {
     struct __sender {
       struct __t {
         using __id = __sender;
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
         using completion_signatures =
           stdexec::completion_signatures<set_value_t(std::iter_reference_t<_Iterator>)>;
         __operation_base<_Iterator, _Sentinel>* __parent_;
@@ -88,7 +88,7 @@ namespace exec {
       struct __t {
         using _Receiver = stdexec::__t<_ReceiverId>;
         using __id = __next_receiver;
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
         stdexec::__t<__operation<_Range, _ReceiverId>>* __op_;
 
         template <same_as<set_value_t> _SetValue, same_as<__t> _Self>

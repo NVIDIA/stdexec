@@ -94,7 +94,7 @@ namespace {
   }
 
   struct custom_sender {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     bool* called;
 
     template <class Receiver>

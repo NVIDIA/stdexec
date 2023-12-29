@@ -1,0 +1,28 @@
+diff --git a/icm_build_failure_parse_and_run.cmake b/icm_build_failure_parse_and_run.cmake
+index 0e62f6c..2ea5f0a 100644
+--- a/icm_build_failure_parse_and_run.cmake
++++ b/icm_build_failure_parse_and_run.cmake
+@@ -29,14 +29,15 @@ endif()
+ 
+ # collect possible errors from source
+ file(READ "@parsedSourcePath@" sourceText)
++
+ string(REGEX MATCHALL "//[ ]*build error:[^\n]+" matchErrors ${sourceText})
+ 
+ # look for collected errors in output
+ foreach(possibleError ${matchErrors})
+     string(REGEX MATCH "//[ ]*build error:[ \t]*(.+)$" _ "${possibleError}")
+     set(possibleError "${CMAKE_MATCH_1}")
+-    string(FIND "${out}" "${possibleError}" pos)
+-    if(NOT pos EQUAL -1)
++    string(REGEX MATCH "${possibleError}" actualError "${out}")
++    if(NOT "${actualError}" STREQUAL "")
+         message("Success: output when building '@ARG_TARGET@' contains '${possibleError}'")
+         return()
+     endif()
+@@ -48,4 +49,4 @@ endforeach()
+ # print execute_process output for debugging purposes
+ message("${out}")
+ # print error
+-message(FATAL_ERROR "Error: Building '@ARG_TARGET@' failed, but output doesn't contain any of the expected errors:${outErrors}")
++message(FATAL_ERROR "Error: Building '@ARG_TARGET@' failed, but output doesn't match the expected errors:${outErrors}")

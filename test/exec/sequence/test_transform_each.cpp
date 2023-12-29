@@ -35,7 +35,7 @@ namespace {
   struct next_rcvr {
     using __id = next_rcvr;
     using __t = next_rcvr;
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
 
     friend auto tag_invoke(exec::set_next_t, next_rcvr, auto item) {
       return item;

@@ -39,7 +39,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     struct receiver_t {
       using Receiver = stdexec::__t<ReceiverId>;
 
-      class __t : stream_receiver_base {
+      class __t : public stream_receiver_base {
         Fun f_;
         operation_state_base_t<ReceiverId>& op_state_;
 

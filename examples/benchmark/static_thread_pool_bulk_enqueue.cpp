@@ -30,7 +30,10 @@ struct RunThread {
 #ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
     std::span<char> buffer,
 #endif
-    std::atomic<bool>& stop) {
+    std::atomic<bool>& stop,
+    exec::numa_policy* numa) {
+    std::size_t numa_node = numa->thread_index_to_node(tid);
+    numa->bind_to_node(numa_node);
     while (true) {
       barrier.arrive_and_wait();
       if (stop.load()) {
@@ -54,8 +57,15 @@ struct RunThread {
   }
 };
 
+struct my_numa_distribution : public exec::default_numa_policy {
+  std::size_t thread_index_to_node(std::size_t index) override {
+    return exec::default_numa_policy::thread_index_to_node(2 * index);
+  }
+};
+
 int main(int argc, char** argv) {
-  my_main<exec::static_thread_pool, RunThread>(argc, argv);
+  my_numa_distribution numa{};
+  my_main<exec::static_thread_pool, RunThread>(argc, argv, &numa);
 }
 #else
 int main() {

@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 #include <exec/env.hpp>
+#include <exec/__detail/__numa.hpp>
+#include <exec/static_thread_pool.hpp>
 
 #include <algorithm>
 #include <barrier>
@@ -87,37 +89,52 @@ statistics_all compute_perf(
   return all;
 }
 
+struct numa_deleter {
+  std::size_t size_;
+  exec::numa_allocator<char> allocator_;
+  void operator()(char* ptr) noexcept {
+    allocator_.deallocate(ptr, size_);
+  }
+};
+
 template <class Pool, class RunThread>
-void my_main(int argc, char** argv) {
+void my_main(int argc, char** argv, exec::numa_policy* policy = exec::get_numa_policy()) {
   int nthreads = std::thread::hardware_concurrency();
   if (argc > 1) {
     nthreads = std::atoi(argv[1]);
   }
   std::size_t total_scheds = 10'000'000;
 #ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
-  std::vector<std::unique_ptr<char[]>> buffers(nthreads);
+  std::vector<std::unique_ptr<char, numa_deleter>> buffers;
 #endif
-  Pool pool(nthreads + 1);
+  std::optional<Pool> pool{};
+  if constexpr (std::same_as<Pool, exec::static_thread_pool>) {
+    pool.emplace(nthreads, exec::bwos_params{}, policy);
+  } else {
+    pool.emplace(nthreads);
+  }
   std::barrier<> barrier(nthreads + 1);
   std::vector<std::thread> threads;
   std::atomic<bool> stop{false};
 #ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
-  std::size_t buffer_size = 1000 << 20;
-  for (auto& buf: buffers) {
-    buf = std::make_unique_for_overwrite<char[]>(buffer_size);
+  std::size_t buffer_size = 2000 << 20;
+  for (std::size_t i = 0; i < static_cast<std::size_t>(nthreads); ++i) {
+    exec::numa_allocator<char> alloc(policy->thread_index_to_node(i));
+    buffers.push_back(std::unique_ptr<char, numa_deleter>{alloc.allocate(buffer_size), numa_deleter{buffer_size, alloc}});
   }
 #endif
   for (std::size_t i = 0; i < static_cast<std::size_t>(nthreads); ++i) {
     threads.emplace_back(
       RunThread{},
-      std::ref(pool),
+      std::ref(*pool),
       total_scheds,
       i,
       std::ref(barrier),
 #ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
       std::span<char>{buffers[i].get(), buffer_size},
 #endif
-      std::ref(stop));
+      std::ref(stop),
+      policy);
   }
   std::size_t nRuns = 100;
   std::size_t warmup = 1;

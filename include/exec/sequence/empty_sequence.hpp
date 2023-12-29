@@ -40,7 +40,7 @@ namespace exec {
     struct __sender {
       struct __t {
         using __id = __sender;
-        using is_sender = sequence_tag;
+        using sender_concept = sequence_sender_t;
         using completion_signatures = stdexec::completion_signatures<stdexec::set_value_t()>;
         using item_types = exec::item_types<>;
 

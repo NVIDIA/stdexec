@@ -150,11 +150,19 @@
 #define STDEXEC_ATTR_WHICH_0(_ATTR) [[_ATTR]]
 
 // custom handling for specific attribute types
-#define STDEXEC_ATTR_WHICH_1(_ATTR) STDEXEC_CUDA(__host__)
+#ifdef __CUDACC__
+#define STDEXEC_ATTR_WHICH_1(_ATTR) __host__
+#else
+#define STDEXEC_ATTR_WHICH_1(_ATTR)
+#endif
 #define STDEXEC_ATTR_host STDEXEC_PROBE(~, 1)
 #define STDEXEC_ATTR___host__ STDEXEC_PROBE(~, 1)
 
-#define STDEXEC_ATTR_WHICH_2(_ATTR) STDEXEC_CUDA(__device__)
+#ifdef __CUDACC__
+#define STDEXEC_ATTR_WHICH_2(_ATTR) __device__
+#else
+#define STDEXEC_ATTR_WHICH_2(_ATTR)
+#endif
 #define STDEXEC_ATTR_device STDEXEC_PROBE(~, 2)
 #define STDEXEC_ATTR___device__ STDEXEC_PROBE(~, 2)
 
@@ -196,7 +204,10 @@
 #define STDEXEC_PRAGMA_POP() _Pragma("diagnostic pop")
 #define STDEXEC_PRAGMA_IGNORE_EDG(...) _Pragma(STDEXEC_STRINGIZE(diag_suppress __VA_ARGS__))
 #elif STDEXEC_CLANG() || STDEXEC_GCC()
-#define STDEXEC_PRAGMA_PUSH() _Pragma("GCC diagnostic push")
+#define STDEXEC_PRAGMA_PUSH() \
+  _Pragma("GCC diagnostic push") STDEXEC_PRAGMA_IGNORE_GNU("-Wpragmas") STDEXEC_PRAGMA_IGNORE_GNU( \
+    "-Wunknown-pragmas") STDEXEC_PRAGMA_IGNORE_GNU("-Wunknown-warning-option") \
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wunknown-attributes") STDEXEC_PRAGMA_IGNORE_GNU("-Wattributes")
 #define STDEXEC_PRAGMA_POP() _Pragma("GCC diagnostic pop")
 #define STDEXEC_PRAGMA_IGNORE_GNU(...) \
   _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored __VA_ARGS__))
@@ -216,6 +227,12 @@
 #define STDEXEC_HAS_BUILTIN __has_builtin
 #else
 #define STDEXEC_HAS_BUILTIN(...) 0
+#endif
+
+#if !STDEXEC_MSVC() && defined(__has_feature)
+#define STDEXEC_HAS_FEATURE __has_feature
+#else
+#define STDEXEC_HAS_FEATURE(...) 0
 #endif
 
 #if STDEXEC_HAS_BUILTIN(__is_trivially_copyable) || STDEXEC_MSVC()
@@ -279,6 +296,12 @@
   __builtin_unreachable()
 #else
 #define STDEXEC_TERMINATE() std::terminate()
+#endif
+
+#if STDEXEC_HAS_FEATURE(thread_sanitizer) || defined(__SANITIZE_THREAD__)
+#define STDEXEC_TSAN(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#else
+#define STDEXEC_TSAN(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 
 // Before clang-16, clang did not like libstdc++'s ranges implementation

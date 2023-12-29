@@ -314,7 +314,7 @@ namespace {
   struct my_string_sender_t {
     std::string str_;
 
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using completion_signatures =
       ex::completion_signatures_of_t<decltype(ex::just(std::string{})), empty_env>;
 

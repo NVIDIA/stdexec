@@ -52,7 +52,7 @@ class _then_receiver : stdexec::receiver_adaptor<_then_receiver<R, F>, R> {
 
 template <stdexec::sender S, class F>
 struct _then_sender {
-  using is_sender = void;
+  using sender_concept = stdexec::sender_t;
 
   S s_;
   F f_;

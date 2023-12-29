@@ -153,7 +153,7 @@ namespace {
 
     template <class SenderId, class FunId>
     struct sender_t {
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using Sender = stdexec::__t<SenderId>;
       using Fun = stdexec::__t<FunId>;
 
@@ -218,7 +218,7 @@ namespace {
 
     template <class SenderId>
     struct sender_t {
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using Sender = stdexec::__t<SenderId>;
 
       Sender sndr_;
