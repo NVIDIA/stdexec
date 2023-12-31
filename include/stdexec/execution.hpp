@@ -4067,7 +4067,7 @@ namespace stdexec {
               std::terminate(); // reaching this indicates a bug in schedule_from
             } else {
               __apply(
-                [&]<class... _Args>(auto __tag, _Args&... __args) -> void {
+                [&]<class... _Args>(auto __tag, _Args&... __args) noexcept -> void {
                   __tag(std::move(__state->__receiver()), (_Args&&) __args...);
                 },
                 __tupl);
