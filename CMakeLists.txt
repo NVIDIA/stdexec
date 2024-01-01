@@ -75,6 +75,8 @@ rapids_cmake_write_version_file(include/stdexec_version_config.hpp)
 # Set CMAKE_BUILD_TYPE=Release the default if none provided
 rapids_cmake_build_type(Release)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
+
 ##############################################################################
 # - Dependencies -------------------------------------------------------------
 
@@ -320,7 +322,6 @@ endif ()
 
 option (STDEXEC_ENABLE_NUMA "Enable NUMA affinity for static_thread_pool" OFF)
 if (STDEXEC_ENABLE_NUMA)
-  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
   find_package(numa REQUIRED)
   target_link_libraries(stdexec INTERFACE numa::numa)
   target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_NUMA)
@@ -329,6 +330,7 @@ include(CheckIncludeFileCXX)
 CHECK_INCLUDE_FILE_CXX("linux/io_uring.h" STDEXEC_FOUND_IO_URING)
 option (STDEXEC_ENABLE_IO_URING_TESTS "Enable io_uring tests" ${STDEXEC_FOUND_IO_URING})
 
+option(STDEXEC_BUILD_DOCS "Build stdexec documentation" OFF)
 option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
 option(STDEXEC_BUILD_TESTS "Build stdexec tests" ON)
 option(BUILD_TESTING "" ${STDEXEC_BUILD_TESTS})
@@ -339,6 +341,11 @@ if ((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) OR STDEXEC_BUILD_TESTS)
     # CTest automatically calls enable_testing() if BUILD_TESTING is ON
     # https://cmake.org/cmake/help/latest/module/CTest.html#module:CTest
     include(CTest)
+endif()
+
+# Configure documentation
+if(STDEXEC_BUILD_DOCS)
+    add_subdirectory(docs)
 endif()
 
 # Configure test executables
