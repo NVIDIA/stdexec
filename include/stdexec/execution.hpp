@@ -2574,6 +2574,10 @@ namespace stdexec {
   } // namespace __then
 
   using __then::then_t;
+
+  /// @brief The then sender adaptor, which invokes a function with the result of
+  ///        a sender, making the result available to the next receiver.
+  /// @hideinitializer
   inline constexpr then_t then{};
 
   template <>
