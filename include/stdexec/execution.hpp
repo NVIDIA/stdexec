@@ -2906,10 +2906,6 @@ namespace stdexec {
 
       __action_fn* __action_{};
       __local_state_base* __next_{};
-
-      __local_state_base* __next() const noexcept {
-        return __next_;
-      }
     };
 
     template <class _CvrefSender, class _Env>
@@ -2928,6 +2924,8 @@ namespace stdexec {
       using __shared_state_t = __mapply<__q<__mfront>, __data_t>;
       using __on_stop_cb_t = //
         typename stop_token_of_t<env_of_t<_Receiver>&>::template callback_type<__on_stop_request>;
+      using __tag_t = tag_of_t<_CvrefSender>;
+      static_assert(__one_of<__tag_t, __split::__split_t, __ensure_started::__ensure_started_t>);
 
       explicit __local_state(_CvrefSender&& __sndr) noexcept
         : __local_state::__local_state_base{{}, &__action<tag_of_t<_CvrefSender>>}
@@ -3054,7 +3052,7 @@ namespace stdexec {
         __local_state_base* __state = static_cast<__local_state_base*>(__old);
 
         while (__state != nullptr) {
-          __local_state_base* __next = __state->__next();
+          __local_state_base* __next = __state->__next_;
           __state->__action_(__state, __action_kind::__notify);
           __state = __next;
         }
@@ -3142,7 +3140,7 @@ namespace stdexec {
             if (__shared_state->__stop_source_.stop_requested()) {
               // Stop has already been requested. Don't bother starting
               // the child operations.
-              stdexec::set_stopped(std::move(__state.__receiver()));
+              stdexec::set_stopped((_Receiver&&) __rcvr);
               return;
             }
           }
