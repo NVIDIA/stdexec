@@ -22,7 +22,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'stdexex'
+project = 'stdexec'
 copyright = '2023, NVIDIA Corporation'
 author = 'NVIDIA Corporation'
 release = 'dev'
