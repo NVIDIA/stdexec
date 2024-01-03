@@ -30,18 +30,12 @@ template <class... Ts>
 using any_sender_of =
   typename exec::any_receiver_ref<stdexec::completion_signatures<Ts...>>::template any_sender<>;
 
-using fib_sender = any_sender_of<
-  stdexec::set_value_t(long),
-  stdexec::set_error_t(std::exception_ptr),
-  stdexec::set_stopped_t()>;
+using fib_sender = any_sender_of<stdexec::set_value_t(long)>;
 
 template <typename Scheduler>
 struct fib_s {
   using sender_concept = stdexec::sender_t;
-  using completion_signatures = stdexec::completion_signatures<
-    stdexec::set_value_t(long),
-    stdexec::set_error_t(std::exception_ptr),
-    stdexec::set_stopped_t()>;
+  using completion_signatures = stdexec::completion_signatures<stdexec::set_value_t(long)>;
 
   long cutoff;
   long n;
@@ -58,15 +52,15 @@ struct fib_s {
       if (self.n < self.cutoff) {
         stdexec::set_value((Receiver &&) self.rcvr_, serial_fib(self.n));
       } else {
-        fib_s<Scheduler> child1{self.cutoff, self.n - 1, self.sched};
-        fib_s<Scheduler> child2{self.cutoff, self.n - 2, self.sched};
+        auto mkchild = [&](long n) {
+          return stdexec::on(self.sched, fib_sender(fib_s{self.cutoff, n, self.sched}));
+        };
 
-        stdexec::start_detached(stdexec::on(
-          self.sched,
-          stdexec::when_all(fib_sender(child1), fib_sender(child2))
-            | stdexec::then([rcvr = (Receiver &&) self.rcvr_](long a, long b) {
-                stdexec::set_value((Receiver &&) rcvr, a + b);
-              })));
+        stdexec::start_detached(
+          stdexec::when_all(mkchild(self.n - 1), mkchild(self.n - 2))
+          | stdexec::then([rcvr = (Receiver &&) self.rcvr_](long a, long b) {
+              stdexec::set_value((Receiver &&) rcvr, a + b);
+            }));
       }
     }
   };
@@ -76,6 +70,9 @@ struct fib_s {
     return {(Receiver &&) rcvr, self.cutoff, self.n, self.sched};
   }
 };
+
+template <class Scheduler>
+fib_s(long cutoff, long n, Scheduler sched) -> fib_s<Scheduler>;
 
 template <typename duration, typename F>
 auto measure(F&& f) {
@@ -105,7 +102,7 @@ int main(int argc, char** argv) {
   std::variant<tbbexec::tbb_thread_pool, exec::static_thread_pool> pool;
 
   if (argv[4] == std::string_view("tbb")) {
-    pool.emplace<tbbexec::tbb_thread_pool>(std::thread::hardware_concurrency());
+    pool.emplace<tbbexec::tbb_thread_pool>((int) std::thread::hardware_concurrency());
   } else {
     pool.emplace<exec::static_thread_pool>(
       std::thread::hardware_concurrency(), exec::bwos_params{}, exec::get_numa_policy());
