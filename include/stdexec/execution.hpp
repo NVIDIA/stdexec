@@ -3598,7 +3598,7 @@ namespace stdexec {
       };
 
       static constexpr auto get_state = //
-        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver& __rcvr) {
+        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&) {
           static_assert(sender_expr_for<_Sender, __let_t<_SetTag, _Domain>>);
           using _Fun = __data_of<_Sender>;
           using _Sched = __completion_sched<_Sender, _SetTag>;
@@ -4127,7 +4127,7 @@ namespace stdexec {
       };
 
       static constexpr auto get_state =
-        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver& __rcvr) {
+        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&) {
           static_assert(sender_expr_for<_Sender, schedule_from_t>);
           auto __sched = get_completion_scheduler<set_value_t>(stdexec::get_env(__sndr));
           using _Scheduler = decltype(__sched);
