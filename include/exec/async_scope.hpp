@@ -617,7 +617,6 @@ namespace exec {
       using receiver_concept = stdexec::receiver_t;
       using _Env = __t<_EnvId>;
       __spawn_op_base<_EnvId>* __op_;
-      const __impl* __scope_;
 
       template <__one_of<set_value_t, set_stopped_t> _Tag>
       friend void tag_invoke(_Tag, __spawn_rcvr&& __self) noexcept {
@@ -652,7 +651,7 @@ namespace exec {
           [](__spawn_op_base<_EnvId>* __op) {
             delete static_cast<__spawn_op*>(__op);
           }}
-        , __op_(stdexec::connect((_Sndr&&) __sndr, __spawn_receiver_t<_Env>{this, __scope})) {
+        , __op_(stdexec::connect((_Sndr&&) __sndr, __spawn_receiver_t<_Env>{this})) {
       }
 
       void __start_() noexcept {
