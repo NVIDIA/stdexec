@@ -8,6 +8,7 @@
   "containerEnv": {
     "SCCACHE_REGION": "us-east-2",
     "SCCACHE_BUCKET": "rapids-sccache-devs",
+    "SCCACHE_S3_KEY_PREFIX": "nvidia-stdexec-dev",
     "VAULT_HOST": "https://vault.ops.k8s.rapids.ai",
     "HISTFILE": "${containerWorkspaceFolder}/.cache/._bash_history"
   },
