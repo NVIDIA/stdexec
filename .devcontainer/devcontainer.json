@@ -1,9 +1,9 @@
 {
   "image": "rapidsai/devcontainers:24.02-cpp-llvm17-cuda12.3-nvhpc23.7-ubuntu22.04",
 
-  "hostRequirements": { "gpu": true },
+  "hostRequirements": { "gpu": "optional" },
 
-  "initializeCommand": ["/bin/bash", "-c", "mkdir -p .cache/.{aws,config}"],
+  "initializeCommand": ["/bin/bash", "-c", "mkdir -p .cache/.{aws,cache,config}"],
 
   "containerEnv": {
     "SCCACHE_REGION": "us-east-2",
@@ -12,8 +12,11 @@
     "HISTFILE": "${containerWorkspaceFolder}/.cache/._bash_history"
   },
 
+  "workspaceFolder": "/home/coder",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/coder/stdexec,type=bind,consistency=consistent",
   "mounts": [
     "source=${localWorkspaceFolder}/.cache/.aws,target=/home/coder/.aws,type=bind,consistency=consistent",
+    "source=${localWorkspaceFolder}/.cache/.cache,target=/home/coder/.cache,type=bind,consistency=consistent",
     "source=${localWorkspaceFolder}/.cache/.config,target=/home/coder/.config,type=bind,consistency=consistent"
   ],
 
