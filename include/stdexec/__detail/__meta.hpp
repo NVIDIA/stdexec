@@ -687,7 +687,7 @@ namespace stdexec {
   concept __has_id = requires { typename _Ty::__id; };
 
   template <class _Ty>
-  struct _Yp {
+  struct _Id {
     using __t = _Ty;
 
     // Uncomment the line below to find any code that likely misuses the
@@ -707,7 +707,7 @@ namespace stdexec {
   template <>
   struct __id_<false> {
     template <class _Ty>
-    using __f = _Yp<_Ty>;
+    using __f = _Id<_Ty>;
   };
   template <class _Ty>
   using __id = __minvoke<__id_<__has_id<_Ty>>, _Ty>;
