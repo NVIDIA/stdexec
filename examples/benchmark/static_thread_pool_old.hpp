@@ -69,15 +69,15 @@ namespace exec_old {
       // TODO: code to reconstitute a static_thread_pool schedule sender
     };
 
-    template <class SenderId, std::integral Shape, class FunId>
+    template <class SenderId, std::integral Shape, class Fun>
     struct bulk_sender;
 
     template <stdexec::sender Sender, std::integral Shape, class Fun>
     using bulk_sender_t = //
       bulk_sender<
-        stdexec::__x<stdexec::__decay_t<Sender>>,
+        stdexec::__id<stdexec::__decay_t<Sender>>,
         Shape,
-        stdexec::__x<stdexec::__decay_t<Fun>>>;
+        Fun>;
 
 #if STDEXEC_MSVC()
     // MSVCBUG https://developercommunity.visualstudio.com/t/Alias-template-with-pack-expansion-in-no/10437850
@@ -110,7 +110,7 @@ namespace exec_old {
     template <class SenderId, class ReceiverId, class Shape, class Fn, bool MayThrow>
     struct bulk_receiver;
 
-    template <class SenderId, class ReceiverId, std::integral Shape, class Fun>
+    template <class CvrefSenderId, class ReceiverId, std::integral Shape, class Fun>
     struct bulk_op_state;
 
     struct transform_bulk {
@@ -437,10 +437,9 @@ namespace exec_old {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // What follows is the implementation for parallel bulk execution on static_thread_pool.
-  template <class SenderId, std::integral Shape, class FunId>
+  template <class SenderId, std::integral Shape, class Fun>
   struct static_thread_pool::bulk_sender {
     using Sender = stdexec::__t<SenderId>;
-    using Fun = stdexec::__t<FunId>;
     using sender_concept = stdexec::sender_t;
 
     static_thread_pool& pool_;
@@ -448,7 +447,7 @@ namespace exec_old {
     Shape shape_;
     Fun fun_;
 
-    template <class Fun, class Sender, class Env>
+    template <class Sender, class Env>
     using with_error_invoke_t = //
       stdexec::__if_c<
         stdexec::__v<stdexec::__value_types_of_t<
@@ -468,14 +467,14 @@ namespace exec_old {
       stdexec::__try_make_completion_signatures<
         stdexec::__copy_cvref_t<Self, Sender>,
         Env,
-        with_error_invoke_t<Fun, stdexec::__copy_cvref_t<Self, Sender>, Env>,
+        with_error_invoke_t<stdexec::__copy_cvref_t<Self, Sender>, Env>,
         stdexec::__q<set_value_t>>;
 
     template <class Self, class Receiver>
     using bulk_op_state_t = //
       bulk_op_state<
-        stdexec::__x<stdexec::__copy_cvref_t<Self, Sender>>,
-        stdexec::__x<stdexec::__decay_t<Receiver>>,
+        stdexec::__cvref_id<Self, Sender>,
+        stdexec::__id<Receiver>,
         Shape,
         Fun>;
 
@@ -483,7 +482,7 @@ namespace exec_old {
       requires stdexec::
         receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
       friend bulk_op_state_t<Self, Receiver>                       //
-      tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) //
+      tag_invoke(stdexec::connect_t, Self&& self, Receiver rcvr) //
       noexcept(stdexec::__nothrow_constructible_from<
                bulk_op_state_t<Self, Receiver>,
                static_thread_pool&,
@@ -507,9 +506,9 @@ namespace exec_old {
     }
   };
 
-  template <class SenderId, class ReceiverId, class Shape, class Fun, bool MayThrow>
+  template <class CvrefSenderId, class ReceiverId, class Shape, class Fun, bool MayThrow>
   struct static_thread_pool::bulk_shared_state {
-    using Sender = stdexec::__t<SenderId>;
+    using CvrefSender = stdexec::__cvref_t<CvrefSenderId>;
     using Receiver = stdexec::__t<ReceiverId>;
 
     struct bulk_task : task_base {
@@ -570,7 +569,7 @@ namespace exec_old {
 
     using variant_t = //
       stdexec::__value_types_of_t<
-        Sender,
+        CvrefSender,
         stdexec::env_of_t<Receiver>,
         stdexec::__q<stdexec::__decayed_tuple>,
         stdexec::__q<stdexec::__variant>>;
@@ -607,13 +606,13 @@ namespace exec_old {
     }
   };
 
-  template <class SenderId, class ReceiverId, class Shape, class Fn, bool MayThrow>
+  template <class CvrefSenderId, class ReceiverId, class Shape, class Fn, bool MayThrow>
   struct static_thread_pool::bulk_receiver {
     using receiver_concept = stdexec::receiver_t;
-    using Sender = stdexec::__t<SenderId>;
+    using CvrefSender = stdexec::__cvref_t<CvrefSenderId>;
     using Receiver = stdexec::__t<ReceiverId>;
 
-    using shared_state = bulk_shared_state<SenderId, ReceiverId, Shape, Fn, MayThrow>;
+    using shared_state = bulk_shared_state<CvrefSenderId, ReceiverId, Shape, Fn, MayThrow>;
 
     shared_state& shared_state_;
 
@@ -662,21 +661,21 @@ namespace exec_old {
     }
   };
 
-  template <class SenderId, class ReceiverId, std::integral Shape, class Fun>
+  template <class CvrefSenderId, class ReceiverId, std::integral Shape, class Fun>
   struct static_thread_pool::bulk_op_state {
-    using Sender = stdexec::__t<SenderId>;
+    using CvrefSender = stdexec::__cvref_t<CvrefSenderId>;
     using Receiver = stdexec::__t<ReceiverId>;
 
     static constexpr bool may_throw = //
       !stdexec::__v<stdexec::__value_types_of_t<
-        Sender,
+        CvrefSender,
         stdexec::env_of_t<Receiver>,
         stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
         stdexec::__q<stdexec::__mand>>>;
 
-    using bulk_rcvr = bulk_receiver<SenderId, ReceiverId, Shape, Fun, may_throw>;
-    using shared_state = bulk_shared_state<SenderId, ReceiverId, Shape, Fun, may_throw>;
-    using inner_op_state = stdexec::connect_result_t<Sender, bulk_rcvr>;
+    using bulk_rcvr = bulk_receiver<CvrefSenderId, ReceiverId, Shape, Fun, may_throw>;
+    using shared_state = bulk_shared_state<CvrefSenderId, ReceiverId, Shape, Fun, may_throw>;
+    using inner_op_state = stdexec::connect_result_t<CvrefSender, bulk_rcvr>;
 
     shared_state shared_state_;
 
@@ -686,9 +685,9 @@ namespace exec_old {
       stdexec::start(op.inner_op_);
     }
 
-    bulk_op_state(static_thread_pool& pool, Shape shape, Fun fn, Sender&& sender, Receiver receiver)
+    bulk_op_state(static_thread_pool& pool, Shape shape, Fun fn, CvrefSender&& sender, Receiver receiver)
       : shared_state_(pool, (Receiver&&) receiver, shape, fn)
-      , inner_op_{stdexec::connect((Sender&&) sender, bulk_rcvr{shared_state_})} {
+      , inner_op_{stdexec::connect((CvrefSender&&) sender, bulk_rcvr{shared_state_})} {
     }
   };
 

@@ -26,7 +26,7 @@ namespace tbbexec {
   template <typename PoolType, typename ReceiverId>
   class operation;
 
-  using task_base = exec::task_base;
+  using task_base = exec::static_thread_pool::task_base;
 
   //! This is a P2300-style thread pool wrapping tbb::task_arena, which its docs describe as "A class that represents an
   //! explicit, user-managed task scheduler arena."
@@ -103,7 +103,7 @@ namespace tbbexec {
           >;
 
         template <class SenderId, class ReceiverId, class Shape, class Fun, bool MayThrow>
-        struct bulk_shared_state : exec::task_base {
+        struct bulk_shared_state : task_base {
           using Sender = stdexec::__t<SenderId>;
           using Receiver = stdexec::__t<ReceiverId>;
 
