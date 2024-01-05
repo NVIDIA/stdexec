@@ -19,16 +19,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "clang 16",   cuda: "12.0", cxx: "clang++", build: "Release", tag: "llvm16-cuda12.0", gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
-          - { name: "nvc++ 23.3", cuda: "12.0", cxx: "mpic++",  build: "Release", tag: "nvhpc23.3",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
-          - { name: "nvc++ 23.3", cuda: "12.0", cxx: "mpic++",  build: "Debug",   tag: "nvhpc23.3",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "clang 16",   cuda: "12.0", cxx: "clang++", build: "Release", tag: "llvm17-cuda12.3", gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "nvc++ 23.3", cuda: "12.0", cxx: "mpic++",  build: "Release", tag: "nvhpc23.7",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "nvc++ 23.3", cuda: "12.0", cxx: "mpic++",  build: "Debug",   tag: "nvhpc23.7",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
     runs-on: linux-${{ matrix.arch }}-gpu-${{ matrix.gpu }}-${{ matrix.driver }}-1
     container:
       options: -u root
-      image: rapidsai/devcontainers:23.06-cpp-${{ matrix.tag }}-ubuntu22.04
+      image: rapidsai/devcontainers:24.02-cpp-${{ matrix.tag }}-ubuntu22.04
       env:
         CUDA_VERSION: "${{ matrix.cuda }}"
         NVIDIA_VISIBLE_DEVICES: "${{ env.NVIDIA_VISIBLE_DEVICES }}"
+    defaults:
+      run:
+        shell: su coder {0}
+        working-directory: /home/coder
     steps:
       - name: Run nvidia-smi to make sure GPU is working
         run: nvidia-smi
@@ -37,27 +41,28 @@ jobs:
         with:
           persist-credentials: false
       - name: Build and test GPU schedulers
-        shell: bash -elxo pipefail {0}
-        env:
-          cxx: "${{ matrix.cxx }}"
         run: |
-          mkdir -p /workspaces;
-          cp -ar . /workspaces/stdexec;
-          cd /workspaces/stdexec;
+          # Copy source folder into ~/stdexec
+          cp -r $GITHUB_WORKSPACE/stdexec ~/;
+          chown -R coder:coder ~/stdexec;
+          cd ~/stdexec;
+
           # Configure
           cmake -S . -B build -GNinja \
-            -DCMAKE_BUILD_TYPE:STRING=${{ matrix.build }} \
-            -DSTDEXEC_ENABLE_IO_URING_TESTS:BOOL=OFF \
-            -DSTDEXEC_ENABLE_CUDA:BOOL=ON \
-            -DCMAKE_CXX_COMPILER:FILEPATH="$cxx" \
-            -DCMAKE_CUDA_COMPILER:FILEPATH="$cxx" \
-            -DCMAKE_CUDA_ARCHITECTURES:STRING=${{ matrix.sm }};
+            -DSTDEXEC_ENABLE_CUDA=ON \
+            -DSTDEXEC_ENABLE_IO_URING_TESTS=OFF \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build }} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+            -DCMAKE_CUDA_COMPILER=${{ matrix.cxx }} \
+            -DCMAKE_CUDA_ARCHITECTURES=${{ matrix.sm }} \
+            ;
+
           # Compile
           cmake --build build -v;
-          
+
           # Print sccache stats
           sccache -s
-          
+
           # Tests
           ctest --test-dir build --verbose --output-on-failure --timeout 60;
           # Examples
