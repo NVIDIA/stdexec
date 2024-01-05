@@ -43,10 +43,14 @@ jobs:
           persist-credentials: false
       - name: Build and test GPU schedulers
         run: |
+          set -x;
+
           # Copy source folder into ~/stdexec
           cp -r $GITHUB_WORKSPACE/stdexec ~/;
           chown -R coder:coder ~/stdexec;
           cd ~/stdexec;
+
+          echo $LD_LIBRARY_PATH;
 
           # Configure
           cmake -S . -B build -GNinja \
@@ -63,6 +67,10 @@ jobs:
 
           # Print sccache stats
           sccache -s
+
+          ldd ./build/examples/nvexec/maxwell_cpu_st;
+          ldd ./build/examples/nvexec/maxwell_cpu_mt;
+          ldd ./build/examples/nvexec/maxwell_gpu_s;
 
           # Tests
           ctest --test-dir build --verbose --output-on-failure --timeout 60;
