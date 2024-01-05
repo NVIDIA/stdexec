@@ -28,9 +28,9 @@ jobs:
       image: rapidsai/devcontainers:24.02-cpp-${{ matrix.tag }}-ubuntu22.04
       env:
         CUDA_VERSION: "${{ matrix.cuda }}"
-        SCCACHE_REGION: "us-east-2"
-        SCCACHE_BUCKET: "rapids-sccache-devs"
-        SCCACHE_S3_KEY_PREFIX: "nvidia-stdexec-dev"
+        # SCCACHE_REGION: "us-east-2"
+        # SCCACHE_BUCKET: "rapids-sccache-devs"
+        # SCCACHE_S3_KEY_PREFIX: "nvidia-stdexec-dev"
         NVIDIA_VISIBLE_DEVICES: "${{ env.NVIDIA_VISIBLE_DEVICES }}"
     defaults:
       run:
@@ -44,13 +44,13 @@ jobs:
         with:
           path: stdexec
           persist-credentials: false
-      - if: github.repository_owner == 'NVIDIA'
-        name: Get AWS credentials for sccache bucket
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-region: us-east-2
-          role-duration-seconds: 28800 # 8 hours
-          role-to-assume: arn:aws:iam::279114543810:role/gha-oidc-NVIDIA
+      # - if: github.repository_owner == 'NVIDIA'
+      #   name: Get AWS credentials for sccache bucket
+      #   uses: aws-actions/configure-aws-credentials@v2
+      #   with:
+      #     aws-region: us-east-2
+      #     role-duration-seconds: 28800 # 8 hours
+      #     role-to-assume: arn:aws:iam::279114543810:role/gha-oidc-NVIDIA
       - name: Build and test GPU schedulers
         run: |
           set -e;
