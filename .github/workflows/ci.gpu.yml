@@ -39,6 +39,7 @@ jobs:
       - name: Checkout stdexec
         uses: actions/checkout@v3
         with:
+          path: stdexec
           persist-credentials: false
       - name: Build and test GPU schedulers
         run: |
