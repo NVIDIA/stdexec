@@ -51,30 +51,40 @@ namespace exec {
     struct read_with_default_t;
 
     template <class _Tag, class _DefaultId, class _ReceiverId>
-    struct __operation : __immovable {
-      using _Default = __t<_DefaultId>;
-      using _Receiver = __t<_ReceiverId>;
+    struct __operation {
+      using _Default = stdexec::__t<_DefaultId>;
+      using _Receiver = stdexec::__t<_ReceiverId>;
 
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Default __default_;
-      _Receiver __rcvr_;
+      struct __t : __immovable {
+        using __id = __operation;
 
-      friend void tag_invoke(start_t, __operation& __self) noexcept {
-        try {
-          if constexpr (__callable<_Tag, env_of_t<_Receiver>>) {
-            const auto& __env = get_env(__self.__rcvr_);
-            set_value(std::move(__self.__rcvr_), _Tag{}(__env));
-          } else {
-            set_value(std::move(__self.__rcvr_), std::move(__self.__default_));
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Default __default_;
+        _Receiver __rcvr_;
+
+        friend void tag_invoke(start_t, __t& __self) noexcept {
+          try {
+            if constexpr (__callable<_Tag, env_of_t<_Receiver>>) {
+              const auto& __env = get_env(__self.__rcvr_);
+              set_value(std::move(__self.__rcvr_), _Tag{}(__env));
+            } else {
+              set_value(std::move(__self.__rcvr_), std::move(__self.__default_));
+            }
+          } catch (...) {
+            set_error(std::move(__self.__rcvr_), std::current_exception());
           }
-        } catch (...) {
-          set_error(std::move(__self.__rcvr_), std::current_exception());
         }
-      }
+      };
     };
 
-    template <class _Tag, class _DefaultId>
+    template <class _Tag, class _Default, class _Receiver>
+    using __operation_t =
+      __t<__operation<_Tag, __id<_Default>, __id<_Receiver>>>;
+
+
+    template <class _Tag, class _Default>
     struct __sender {
-      using _Default = __t<_DefaultId>;
+      using __id = __sender;
+      using __t = __sender;
       using sender_concept = stdexec::sender_t;
       STDEXEC_ATTRIBUTE((no_unique_address)) _Default __default_;
 
@@ -91,7 +101,7 @@ namespace exec {
         requires receiver_of<_Receiver, __completions_t<env_of_t<_Receiver>>>
       friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) //
         noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
-          -> __operation<_Tag, __x<__default_t<env_of_t<_Receiver>>>, __x<_Receiver>> {
+          -> __operation_t<_Tag, __default_t<env_of_t<_Receiver>>, _Receiver> {
         return {{}, ((_Self&&) __self).__default_, (_Receiver&&) __rcvr};
       }
 
@@ -105,7 +115,7 @@ namespace exec {
     struct __read_with_default_t {
       template <class _Tag, class _Default>
       constexpr auto operator()(_Tag, _Default&& __default) const
-        -> __sender<_Tag, __x<__decay_t<_Default>>> {
+        -> __sender<_Tag, __decay_t<_Default>> {
         return {(_Default&&) __default};
       }
     };
