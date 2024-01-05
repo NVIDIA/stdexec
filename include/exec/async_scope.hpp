@@ -54,7 +54,7 @@ namespace exec {
     // async_scope::when_empty implementation
     template <class _ConstrainedId, class _ReceiverId>
     struct __when_empty_op {
-      using _Constrained = stdexec::__t<_ConstrainedId>;
+      using _Constrained = __cvref_t<_ConstrainedId>;
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t : __task {
