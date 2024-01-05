@@ -41,13 +41,7 @@ string(REGEX REPLACE "Revision: ([0-9]+)" "\\1" STD_EXECUTION_BS_REVISION ${STD_
 # call so CMake's CXX compiler detection doesn't throw attempting to use it
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/CompilerHelpers.cmake)
 
-disable_compiler_launcher(LANG CXX VAR _cxx_launcher)
-disable_compiler_launcher(LANG CUDA VAR _cuda_launcher)
-
 project(STDEXEC VERSION "0.${STD_EXECUTION_BS_REVISION}.0" LANGUAGES CXX)
-
-enable_compiler_launcher(LANG CXX VAR _cxx_launcher)
-enable_compiler_launcher(LANG CUDA VAR _cuda_launcher)
 
 # Print CMake configuration
 message(STATUS "System           : ${CMAKE_SYSTEM}")
@@ -243,8 +237,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
     set(STDEXEC_ENABLE_CUDA ON)
     # Unset these if using nvc++
     disable_compiler(LANG CUDA)
-    disable_compiler_launcher(LANG CXX)
-    disable_compiler_launcher(LANG CUDA)
 endif()
 
 if(STDEXEC_ENABLE_CUDA)
