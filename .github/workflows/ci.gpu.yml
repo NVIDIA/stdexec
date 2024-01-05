@@ -20,8 +20,8 @@ jobs:
       matrix:
         include:
           - { name: "clang 16",   cuda: "12.0", cxx: "clang++", build: "Release", tag: "llvm17-cuda12.3", gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
-          - { name: "nvc++ 23.3", cuda: "12.0", cxx: "mpic++",  build: "Release", tag: "nvhpc23.7",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
-          - { name: "nvc++ 23.3", cuda: "12.0", cxx: "mpic++",  build: "Debug",   tag: "nvhpc23.7",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "nvc++ 23.7", cuda: "12.0", cxx: "mpic++",  build: "Release", tag: "nvhpc23.7",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "nvc++ 23.7", cuda: "12.0", cxx: "mpic++",  build: "Debug",   tag: "nvhpc23.7",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
     runs-on: linux-${{ matrix.arch }}-gpu-${{ matrix.gpu }}-${{ matrix.driver }}-1
     container:
       options: -u root
