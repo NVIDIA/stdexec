@@ -53,6 +53,8 @@ jobs:
           role-to-assume: arn:aws:iam::279114543810:role/gha-oidc-NVIDIA
       - name: Build and test GPU schedulers
         run: |
+          set -e;
+
           # Copy source folder into ~/stdexec
           cp -r $GITHUB_WORKSPACE/stdexec ~/;
           chown -R coder:coder ~/stdexec;
