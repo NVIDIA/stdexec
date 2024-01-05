@@ -673,16 +673,6 @@ namespace stdexec {
     using __f = __minvoke<_Continuation, _Ts...>;
   };
 
-  // For hiding a template type parameter from ADL
-  template <class _Ty>
-  struct _Xp {
-    using __t = struct _Up {
-      using __t = _Ty;
-    };
-  };
-  template <class _Ty>
-  using __x = __t<_Xp<_Ty>>;
-
   template <class _Ty>
   concept __has_id = requires { typename _Ty::__id; };
 
