@@ -34,7 +34,7 @@ jobs:
         NVIDIA_VISIBLE_DEVICES: "${{ env.NVIDIA_VISIBLE_DEVICES }}"
     defaults:
       run:
-        shell: su coder {0}
+        shell: su --shell /bin/bash --login coder {0}
         working-directory: /home/coder
     steps:
       - name: Run nvidia-smi to make sure GPU is working
@@ -53,14 +53,10 @@ jobs:
           role-to-assume: arn:aws:iam::279114543810:role/gha-oidc-NVIDIA
       - name: Build and test GPU schedulers
         run: |
-          set -x;
-
           # Copy source folder into ~/stdexec
           cp -r $GITHUB_WORKSPACE/stdexec ~/;
           chown -R coder:coder ~/stdexec;
           cd ~/stdexec;
-
-          echo $LD_LIBRARY_PATH;
 
           # Configure
           cmake -S . -B build -GNinja \
@@ -78,12 +74,14 @@ jobs:
           # Print sccache stats
           sccache -s
 
-          ldd ./build/examples/nvexec/maxwell_cpu_st;
-          ldd ./build/examples/nvexec/maxwell_cpu_mt;
-          ldd ./build/examples/nvexec/maxwell_gpu_s;
+          echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}";
+          echo "maxwell_cpu_st libs:" && ldd ./build/examples/nvexec/maxwell_cpu_st;
+          echo "maxwell_cpu_mt libs:" && ldd ./build/examples/nvexec/maxwell_cpu_mt;
+          echo "maxwell_gpu_s  libs:" && ldd ./build/examples/nvexec/maxwell_gpu_s;
 
           # Tests
           ctest --test-dir build --verbose --output-on-failure --timeout 60;
+
           # Examples
           ./build/examples/nvexec/maxwell_cpu_st --iterations=1000 --N=512 --run-cpp --run-inline-scheduler
           ./build/examples/nvexec/maxwell_cpu_mt --iterations=1000 --N=512 --run-std --run-stdpar --run-thread-pool-scheduler
