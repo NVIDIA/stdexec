@@ -1,0 +1,55 @@
+{
+  "image": "rapidsai/devcontainers:24.02-cpp-llvm17-cuda12.0-ubuntu22.04",
+
+  "hostRequirements": { "gpu": "optional" },
+
+  "initializeCommand": ["/bin/bash", "-c", "mkdir -p .cache/.{aws,config}"],
+
+  "containerEnv": {
+    "SCCACHE_REGION": "us-east-2",
+    "SCCACHE_BUCKET": "rapids-sccache-devs",
+    "VAULT_HOST": "https://vault.ops.k8s.rapids.ai",
+    "HISTFILE": "${containerWorkspaceFolder}/.cache/._bash_history"
+  },
+
+  "workspaceFolder": "/home/coder/stdexec",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/coder/stdexec,type=bind,consistency=consistent",
+  "mounts": [
+    "source=${localWorkspaceFolder}/.cache/.aws,target=/home/coder/.aws,type=bind,consistency=consistent",
+    "source=${localWorkspaceFolder}/.cache/.config,target=/home/coder/.config,type=bind,consistency=consistent"
+  ],
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "augustocdias.tasks-shell-input",
+        "ericniebler.erics-build-output-colorizer"
+      ],
+      "settings": {
+        "debug.toolBarLocation": "docked",
+        "editor.hover.delay": 500,
+        "editor.hover.sticky": true,
+        "editor.inlayHints.enabled": "off",
+        "files.autoSave": "off",
+        "files.trimFinalNewlines": true,
+        "files.insertFinalNewline": true,
+        "files.trimTrailingWhitespace": true,
+        "[c]": {
+          "editor.tabSize": 2,
+          "editor.formatOnSave": false,
+          "editor.formatOnSaveMode": "file"
+        },
+        "[cpp]": {
+          "editor.tabSize": 2,
+          "editor.formatOnSave": false,
+          "editor.formatOnSaveMode": "file"
+        },
+        "[cuda-cpp]": {
+          "editor.tabSize": 2,
+          "editor.formatOnSave": false,
+          "editor.formatOnSaveMode": "file"
+        }
+      }
+    }
+  }
+}
