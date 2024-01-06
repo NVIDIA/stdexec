@@ -14,56 +14,78 @@ jobs:
 
   build-gpu:
     if: github.repository == 'NVIDIA/stdexec'
-    name: GPU (${{ matrix.name }}, CUDA ${{ matrix.cuda }})
+    name: GPU (${{ matrix.name }}, CUDA ${{ matrix.cuda }}, ${{ matrix.build }})
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { name: "clang 16",   cuda: "12.0", cxx: "clang++", build: "Release", tag: "llvm16-cuda12.0", gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
-          - { name: "nvc++ 23.3", cuda: "12.0", cxx: "mpic++",  build: "Release", tag: "nvhpc23.3",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
-          - { name: "nvc++ 23.3", cuda: "12.0", cxx: "mpic++",  build: "Debug",   tag: "nvhpc23.3",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "clang 17",   cuda: "12.0", cxx: "clang++", build: "Release", tag: "llvm17-cuda12.0", gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "nvc++ 23.9", cuda: "12.2", cxx: "mpic++",  build: "Release", tag: "nvhpc23.9",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "nvc++ 23.9", cuda: "12.2", cxx: "mpic++",  build: "Debug",   tag: "nvhpc23.9",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
     runs-on: linux-${{ matrix.arch }}-gpu-${{ matrix.gpu }}-${{ matrix.driver }}-1
     container:
       options: -u root
-      image: rapidsai/devcontainers:23.06-cpp-${{ matrix.tag }}-ubuntu22.04
+      image: rapidsai/devcontainers:24.02-cpp-${{ matrix.tag }}-ubuntu22.04
       env:
         CUDA_VERSION: "${{ matrix.cuda }}"
+        SCCACHE_REGION: "us-east-2"
+        SCCACHE_BUCKET: "rapids-sccache-devs"
+        SCCACHE_S3_KEY_PREFIX: "nvidia-stdexec-dev"
         NVIDIA_VISIBLE_DEVICES: "${{ env.NVIDIA_VISIBLE_DEVICES }}"
+    permissions:
+      id-token: write # This is required for configure-aws-credentials
+      contents: read  # This is required for actions/checkout
+    defaults:
+      run:
+        shell: su coder {0}
+        working-directory: /home/coder
     steps:
       - name: Run nvidia-smi to make sure GPU is working
         run: nvidia-smi
       - name: Checkout stdexec
         uses: actions/checkout@v3
         with:
+          path: stdexec
           persist-credentials: false
+      - if: github.repository_owner == 'NVIDIA'
+        name: Get AWS credentials for sccache bucket
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-region: us-east-2
+          role-duration-seconds: 28800 # 8 hours
+          role-to-assume: arn:aws:iam::279114543810:role/gha-oidc-NVIDIA
       - name: Build and test GPU schedulers
-        shell: bash -elxo pipefail {0}
-        env:
-          cxx: "${{ matrix.cxx }}"
         run: |
-          mkdir -p /workspaces;
-          cp -ar . /workspaces/stdexec;
-          cd /workspaces/stdexec;
+          set -ex;
+
+          # Copy source folder into ~/stdexec
+          cp -r "${GITHUB_WORKSPACE}"/stdexec ~/;
+          chown -R coder:coder ~/stdexec;
+          cd ~/stdexec;
+
           # Configure
           cmake -S . -B build -GNinja \
-            -DCMAKE_BUILD_TYPE:STRING=${{ matrix.build }} \
-            -DSTDEXEC_ENABLE_IO_URING_TESTS:BOOL=OFF \
-            -DSTDEXEC_ENABLE_CUDA:BOOL=ON \
-            -DCMAKE_CXX_COMPILER:FILEPATH="$cxx" \
-            -DCMAKE_CUDA_COMPILER:FILEPATH="$cxx" \
-            -DCMAKE_CUDA_ARCHITECTURES:STRING=${{ matrix.sm }};
+            -DSTDEXEC_ENABLE_CUDA=ON \
+            -DSTDEXEC_ENABLE_IO_URING_TESTS=OFF \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build }} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+            -DCMAKE_CUDA_COMPILER=${{ matrix.cxx }} \
+            -DCMAKE_CUDA_ARCHITECTURES=${{ matrix.sm }} \
+            ;
+
           # Compile
           cmake --build build -v;
-          
+
           # Print sccache stats
-          sccache -s
-          
+          sccache -s;
+
           # Tests
           ctest --test-dir build --verbose --output-on-failure --timeout 60;
+
           # Examples
-          ./build/examples/nvexec/maxwell_cpu_st --iterations=1000 --N=512 --run-cpp --run-inline-scheduler
-          ./build/examples/nvexec/maxwell_cpu_mt --iterations=1000 --N=512 --run-std --run-stdpar --run-thread-pool-scheduler
-          ./build/examples/nvexec/maxwell_gpu_s --iterations=1000 --N=512 --run-cuda --run-stdpar --run-stream-scheduler
+          ./build/examples/nvexec/maxwell_cpu_st --iterations=1000 --N=512 --run-cpp --run-inline-scheduler;
+          ./build/examples/nvexec/maxwell_cpu_mt --iterations=1000 --N=512 --run-std --run-stdpar --run-thread-pool-scheduler;
+          ./build/examples/nvexec/maxwell_gpu_s --iterations=1000 --N=512 --run-cuda --run-stdpar --run-stream-scheduler;
 
 
   ci-gpu:

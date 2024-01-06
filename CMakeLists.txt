@@ -12,7 +12,7 @@ endif()
 
 # Fetch rapids-cmake
 if(NOT EXISTS ${CMAKE_BINARY_DIR}/RAPIDS.cmake)
-  file(DOWNLOAD https://raw.githubusercontent.com/rapidsai/rapids-cmake/branch-23.02/RAPIDS.cmake
+  file(DOWNLOAD https://raw.githubusercontent.com/rapidsai/rapids-cmake/branch-24.02/RAPIDS.cmake
        ${CMAKE_BINARY_DIR}/RAPIDS.cmake)
 endif()
 # Initialize rapids-cmake
@@ -41,13 +41,7 @@ string(REGEX REPLACE "Revision: ([0-9]+)" "\\1" STD_EXECUTION_BS_REVISION ${STD_
 # call so CMake's CXX compiler detection doesn't throw attempting to use it
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/CompilerHelpers.cmake)
 
-disable_compiler_launcher(LANG CXX VAR _cxx_launcher)
-disable_compiler_launcher(LANG CUDA VAR _cuda_launcher)
-
 project(STDEXEC VERSION "0.${STD_EXECUTION_BS_REVISION}.0" LANGUAGES CXX)
-
-enable_compiler_launcher(LANG CXX VAR _cxx_launcher)
-enable_compiler_launcher(LANG CUDA VAR _cuda_launcher)
 
 # Print CMake configuration
 message(STATUS "System           : ${CMAKE_SYSTEM}")
@@ -207,7 +201,7 @@ target_compile_options(stdexec_executable_flags INTERFACE
                           $<$<STREQUAL:${CMAKE_CXX_COMPILER_FRONTEND_VARIANT},MSVC>:/clang:>-fmacro-backtrace-limit=0
                           $<$<STREQUAL:${CMAKE_CXX_COMPILER_FRONTEND_VARIANT},MSVC>:/clang:>-ftemplate-backtrace-limit=0>
                        $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<VERSION_GREATER:$<CXX_COMPILER_VERSION>,23.3.0>>:
-                       -ftemplate-backtrace-limit 0>)
+                       -ftemplate-backtrace-limit=0>)
 
 # # Always enable colored output
 # target_compile_options(stdexec_executable_flags INTERFACE
@@ -243,8 +237,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
     set(STDEXEC_ENABLE_CUDA ON)
     # Unset these if using nvc++
     disable_compiler(LANG CUDA)
-    disable_compiler_launcher(LANG CXX)
-    disable_compiler_launcher(LANG CUDA)
 endif()
 
 if(STDEXEC_ENABLE_CUDA)
