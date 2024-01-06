@@ -37,7 +37,6 @@ jobs:
       contents: read  # This is required for actions/checkout
     defaults:
       run:
-        shell: su -l -p -s /bin/bash coder {0}
         working-directory: /home/coder
     steps:
       - name: Run nvidia-smi to make sure GPU is working
@@ -55,9 +54,8 @@ jobs:
           role-duration-seconds: 28800 # 8 hours
           role-to-assume: arn:aws:iam::279114543810:role/gha-oidc-NVIDIA
       - name: Build and test GPU schedulers
+        shell: bash -elxo pipefail {0}
         run: |
-          set -ex;
-
           # Copy source folder into ~/stdexec
           cp -r $GITHUB_WORKSPACE/stdexec ~/;
           chown -R coder:coder ~/stdexec;
