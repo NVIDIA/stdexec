@@ -34,7 +34,7 @@ jobs:
         NVIDIA_VISIBLE_DEVICES: "${{ env.NVIDIA_VISIBLE_DEVICES }}"
     defaults:
       run:
-        shell: su --shell /bin/bash --login coder {0}
+        shell: su -l -p -s /bin/bash coder {0}
         working-directory: /home/coder
     steps:
       - name: Run nvidia-smi to make sure GPU is working
@@ -53,7 +53,7 @@ jobs:
       #     role-to-assume: arn:aws:iam::279114543810:role/gha-oidc-NVIDIA
       - name: Build and test GPU schedulers
         run: |
-          set -e;
+          set -ex;
 
           # Copy source folder into ~/stdexec
           cp -r $GITHUB_WORKSPACE/stdexec ~/;
