@@ -59,7 +59,7 @@ jobs:
           set -ex;
 
           # Copy source folder into ~/stdexec
-          cp -r $GITHUB_WORKSPACE/stdexec ~/;
+          cp -r "${GITHUB_WORKSPACE}"/stdexec ~/;
           chown -R coder:coder ~/stdexec;
           cd ~/stdexec;
 
@@ -77,20 +77,15 @@ jobs:
           cmake --build build -v;
 
           # Print sccache stats
-          sccache -s
-
-          echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}";
-          echo "maxwell_cpu_st libs:" && ldd ./build/examples/nvexec/maxwell_cpu_st;
-          echo "maxwell_cpu_mt libs:" && ldd ./build/examples/nvexec/maxwell_cpu_mt;
-          echo "maxwell_gpu_s  libs:" && ldd ./build/examples/nvexec/maxwell_gpu_s;
+          sccache -s;
 
           # Tests
           ctest --test-dir build --verbose --output-on-failure --timeout 60;
 
           # Examples
-          ./build/examples/nvexec/maxwell_cpu_st --iterations=1000 --N=512 --run-cpp --run-inline-scheduler
-          ./build/examples/nvexec/maxwell_cpu_mt --iterations=1000 --N=512 --run-std --run-stdpar --run-thread-pool-scheduler
-          ./build/examples/nvexec/maxwell_gpu_s --iterations=1000 --N=512 --run-cuda --run-stdpar --run-stream-scheduler
+          ./build/examples/nvexec/maxwell_cpu_st --iterations=1000 --N=512 --run-cpp --run-inline-scheduler;
+          ./build/examples/nvexec/maxwell_cpu_mt --iterations=1000 --N=512 --run-std --run-stdpar --run-thread-pool-scheduler;
+          ./build/examples/nvexec/maxwell_gpu_s --iterations=1000 --N=512 --run-cuda --run-stdpar --run-stream-scheduler;
 
 
   ci-gpu:
