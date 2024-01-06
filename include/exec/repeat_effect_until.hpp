@@ -21,6 +21,7 @@
 #include "exec/on.hpp"
 #include "__detail/__manual_lifetime.hpp"
 #include "stdexec/__detail/__meta.hpp"
+#include "stdexec/__detail/__basic_sender.hpp"
 #include "stdexec/concepts.hpp"
 #include "stdexec/functional.hpp"
 #include "trampoline_scheduler.hpp"
@@ -30,196 +31,144 @@ namespace exec {
   namespace __repeat_effect_until {
     using namespace stdexec;
 
-    template <class _SourceId, class _ReceiverId>
+    template <class _Sender, class _Receiver>
+    struct __repeat_effect_state;
+
+    template <class _SenderId, class _ReceiverId>
     struct __receiver {
-      struct __t;
-    };
-
-    template <class _SourceId, class _ReceiverId>
-    struct __operation {
-      using _Source = stdexec::__t<_SourceId>;
+      using _Sender = stdexec::__t<_SenderId>;
       using _Receiver = stdexec::__t<_ReceiverId>;
-
-      struct __t : stdexec::__immovable {
-        using __id = __operation;
-        using __receiver_t = stdexec::__t<__receiver<_SourceId, _ReceiverId>>;
-        using __source_on_scheduler_sender =
-          __call_result_t<stdexec::on_t, trampoline_scheduler, _Source &>;
-        using __source_op_t = stdexec::connect_result_t<__source_on_scheduler_sender, __receiver_t>;
-
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Source __source_;
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
-        __manual_lifetime<__source_op_t> __source_op_;
-        trampoline_scheduler __sched_;
-
-        template <class _Source2>
-        __t(_Source2 &&__source, _Receiver __rcvr) noexcept(
-          __nothrow_decay_copyable<_Source2> &&__nothrow_decay_copyable<_Receiver>
-            &&nothrow_tag_invocable<stdexec::on_t, trampoline_scheduler, _Source>
-              &&__nothrow_connectable<__source_on_scheduler_sender, __receiver_t>)
-          : __source_((_Source2 &&) __source)
-          , __rcvr_((_Receiver &&) __rcvr) {
-          __source_op_.__construct_with([&] {
-            return stdexec::connect(stdexec::on(__sched_, __source_), __receiver_t{this});
-          });
-        }
-
-        friend void tag_invoke(stdexec::start_t, __t &__self) noexcept {
-          stdexec::start(__self.__source_op_.__get());
-        }
-      };
-    };
-
-    template <class _SourceId, class _ReceiverId>
-    struct __receiver<_SourceId, _ReceiverId>::__t {
-      using receiver_concept = stdexec::receiver_t;
-      using __id = __receiver;
-      using _Source = stdexec::__t<_SourceId>;
-      using _Receiver = stdexec::__t<_ReceiverId>;
-      using __op_t = stdexec::__t<__operation<_SourceId, _ReceiverId>>;
-
-      __op_t *__op_;
-
-      explicit __t(__op_t *op) noexcept
-        : __op_(op) {
-        STDEXEC_ASSERT(__op_ != nullptr);
-      }
-
-      __t(__t &&__other) noexcept
-        : __op_(std::exchange(__other.__op_, {})) {
-        STDEXEC_ASSERT(__op_ != nullptr);
-      }
-
-      template <same_as<set_value_t> _Tag, same_as<__t> _Self, convertible_to<bool> _Done>
-        requires __callable<set_value_t, _Receiver>
-              && __callable<set_error_t, _Receiver, std::exception_ptr>
-      friend void tag_invoke(_Tag, _Self &&__self, _Done &&__done_ish) noexcept {
-        bool __done = static_cast<bool>(__done_ish); // BUGBUG potentially throwing.
-        auto *__op = __self.__op_;
-
-        // The following line causes the invalidation of __self.
-        __op->__source_op_.__destroy();
-
-        // If the sender completed with true, we're done
-        if (__done) {
-          stdexec::set_value((_Receiver &&) __op->__rcvr_);
-        } else {
-          try {
-            auto &__source_op = __op->__source_op_.__construct_with([&]() {
-              return stdexec::connect(stdexec::on(__op->__sched_, __op->__source_), __t{__op});
-            });
-            stdexec::start(__source_op);
-          } catch (...) {
-            stdexec::set_error((_Receiver &&) __op->__rcvr_, std::current_exception());
-          }
-        }
-      }
-
-      template <same_as<set_stopped_t> _Tag, same_as<__t> _Self>
-        requires __callable<_Tag, _Receiver>
-      friend void tag_invoke(_Tag, _Self &&__self) noexcept {
-        auto *__op = __self.__op_;
-        __op->__source_op_.__destroy();
-        stdexec::set_stopped((_Receiver &&) __op->__rcvr_);
-      }
-
-      template <same_as<set_error_t> _Tag, same_as<__t> _Self, class _Error>
-        requires __callable<_Tag, _Receiver, _Error>
-      friend void tag_invoke(_Tag, _Self &&__self, _Error __error) noexcept {
-        auto *__op = __self.__op_;
-        __op->__source_op_.__destroy();
-        stdexec::set_error((_Receiver &&) __op->__rcvr_, (_Error &&) __error);
-      }
-
-      friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t &__self) noexcept(
-        __nothrow_callable<get_env_t, const _Receiver &>) {
-        return get_env(__self.__op_->__rcvr_);
-      }
-    };
-
-    template <class _SourceId>
-    struct __sender {
-      using _Source = stdexec::__t<_SourceId>;
-
-      template <class _Receiver>
-      using __op_t = stdexec::__t< __operation<_SourceId, stdexec::__id<_Receiver>>>;
-
-      template <class _Receiver>
-      using __receiver_t = stdexec::__t< __receiver<_SourceId, stdexec::__id<_Receiver>>>;
 
       struct __t {
-        using sender_concept = stdexec::sender_t;
-        using __id = __sender;
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Source __source_;
+        using __id = __receiver;
+        using receiver_concept = stdexec::receiver_t;
+        __repeat_effect_state<_Sender, _Receiver> *__state_;
 
-        template <class... Ts>
-        using __value_t = stdexec::completion_signatures<>;
-
-        template <class _Env>
-        using __completion_signatures = //
-          stdexec::make_completion_signatures<
-            _Source &,
-            _Env,
-            stdexec::make_completion_signatures<
-              stdexec::schedule_result_t<exec::trampoline_scheduler>,
-              _Env,
-              completion_signatures<set_error_t(std::exception_ptr), stdexec::set_value_t()>,
-              __value_t>,
-            __value_t>;
-
-        template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self &&, _Env &&)
-          -> __completion_signatures<_Env> {
-          return {};
+        template <__completion_tag _Tag, class... _Args>
+        friend void tag_invoke(_Tag, __t &&__self, _Args &&... __args) noexcept {
+          __self.__state_->__complete(_Tag(), (_Args &&) __args...);
         }
 
-        template <__decays_to<_Source> _Source2>
-        explicit __t(_Source2 &&__source) noexcept(__nothrow_decay_copyable<_Source2>)
-          : __source_((_Source2 &&) __source) {
-        }
-
-        template <__decays_to<__t> _Self, receiver _Receiver>
-          requires sender_to<_Source &, __receiver_t<_Receiver>>
-        friend __op_t<_Receiver> tag_invoke(connect_t, _Self &&__self, _Receiver __rcvr) noexcept(
-          __nothrow_constructible_from<
-            __op_t<_Receiver>,
-            __copy_cvref_t<_Self, _Source>,
-            _Receiver>) {
-          return {((_Self &&) __self).__source_, (_Receiver &&) __rcvr};
-        }
-
-        friend auto tag_invoke(get_env_t, const __t &__self) //
-          noexcept(__nothrow_callable<get_env_t, const _Source &>) -> env_of_t<const _Source &> {
-          return get_env(__self.__source_);
+        friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t &__self) noexcept {
+          return get_env(__self.__state_->__receiver());
         }
       };
     };
 
-    template <class _Source>
-    using __sender_t = __t< __sender<stdexec::__id<__decay_t<_Source>>>>;
+    template <class _Sender, class _Receiver>
+    struct __repeat_effect_state : stdexec::__enable_receiver_from_this<_Sender, _Receiver> {
+      using __child_t = __decay_t<__data_of<_Sender>>;
+      using __receiver_t = stdexec::__t<__receiver<__id<_Sender>, __id<_Receiver>>>;
+      using __child_on_sched_sender_t = __result_of<stdexec::on, trampoline_scheduler, __child_t &>;
+      using __child_op_t = stdexec::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
-    struct repeat_effect_until_t {
-      template <sender _Source>
-        requires tag_invocable<repeat_effect_until_t, _Source>
-      auto operator()(_Source &&__source) const
-        noexcept(nothrow_tag_invocable<repeat_effect_until_t, _Source>)
-          -> tag_invoke_result_t<repeat_effect_until_t, _Source> {
-        return tag_invoke(*this, (_Source &&) __source);
+      __child_t __child_;
+      __manual_lifetime<__child_op_t> __child_op_;
+      trampoline_scheduler __sched_;
+
+      __repeat_effect_state(_Sender&& __sndr, _Receiver&)
+        : __child_(__sexpr_apply((_Sender &&) __sndr, __detail::__get_data())) {
+        __connect();
       }
 
-      template <sender _Source>
-      auto operator()(_Source &&__source) const
-        noexcept(__nothrow_constructible_from< __sender_t<_Source>, _Source>)
-          -> __sender_t<_Source> {
-        return __sender_t<_Source>{(_Source &&) __source};
+      void __connect() {
+        __child_op_.__construct_with([this] {
+          return stdexec::connect(stdexec::on(__sched_, __child_), __receiver_t{this});
+        });
+      }
+
+      template <class _Tag, class... _Args>
+      void __complete(_Tag, _Args&&... __args) noexcept {
+        __child_op_.__destroy();
+        if constexpr (same_as<_Tag, set_value_t>) {
+          // If the sender completed with true, we're done
+          try {
+            const bool __done = (static_cast<bool>(__args) &&...);
+            if (__done) {
+              stdexec::set_value((_Receiver &&) this->__receiver());
+            } else {
+              __connect();
+              stdexec::start(__child_op_.__get());
+            }
+          } catch (...) {
+            stdexec::set_error((_Receiver &&) this->__receiver(), std::current_exception());
+          }
+        } else {
+          _Tag()((_Receiver &&) this->__receiver(), (_Args &&) __args...);
+        }
+      }
+    };
+
+    template <__mstring _Where = "In repeat_effect_until: "__csz,
+              __mstring _What = "The input sender must send a single value that is convertible to bool"__csz>
+    struct _INVALID_ARGUMENT_TO_REPEAT_EFFECT_UNTIL_ {};
+
+    template <class _Sender, class... _Args>
+    using __values_t = //
+      // There's something funny going on with __if_c here. Use std::conditional_t instead. :-(
+      std::conditional_t<
+        ((sizeof...(_Args) == 1) && (convertible_to<_Args, bool> &&...)),
+        completion_signatures<>,
+        __mexception<_INVALID_ARGUMENT_TO_REPEAT_EFFECT_UNTIL_<>, _WITH_SENDER_<_Sender>>>;
+
+    template <class _Sender, class _Env>
+    using __completions_t = //
+      stdexec::__try_make_completion_signatures<
+        __decay_t<_Sender> &,
+        _Env,
+        stdexec::__try_make_completion_signatures<
+          stdexec::schedule_result_t<exec::trampoline_scheduler>,
+          _Env,
+          __with_exception_ptr>,
+        __mbind_front_q<__values_t, _Sender>>;
+
+    struct __repeat_effect_until_tag {};
+
+    struct __repeat_effect_until_impl : __sexpr_defaults {
+      static constexpr auto get_completion_signatures = //
+        []<class _Sender, class _Env>(_Sender&&, _Env&&) noexcept {
+          return __completions_t<__data_of<_Sender>, _Env>{};
+        };
+
+      static constexpr auto get_state = //
+        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver& __rcvr) {
+          return __repeat_effect_state{std::move(__sndr), __rcvr};
+        };
+
+      static constexpr auto start = //
+        []<class _State>(_State& __state, __ignore) noexcept -> void {
+          stdexec::start(__state.__child_op_.__get());
+        };
+    };
+
+    struct repeat_effect_until_t {
+      template <sender _Sender>
+      auto operator()(_Sender &&__sndr) const {
+        auto __domain = __get_early_domain(__sndr);
+        return stdexec::transform_sender(
+          __domain, __make_sexpr<repeat_effect_until_t>({}, (_Sender&&) __sndr));
       }
 
       constexpr auto operator()() const -> __binder_back<repeat_effect_until_t> {
         return {{}, {}, {}};
       }
+
+      template <class _Sender>
+      auto transform_sender(_Sender&& __sndr, __ignore) {
+        return __sexpr_apply((_Sender&&) __sndr, []<class _Child>(__ignore, __ignore, _Child __child) {
+          return __make_sexpr<__repeat_effect_until_tag>(std::move(__child));
+        });
+      }
     };
 
   } // namespace __repeat_effect
 
-  inline constexpr __repeat_effect_until::repeat_effect_until_t repeat_effect_until{};
+  using __repeat_effect_until::repeat_effect_until_t;
+  inline constexpr repeat_effect_until_t repeat_effect_until{};
 } // namespace exec
+
+namespace stdexec {
+  template <>
+  struct __sexpr_impl<exec::__repeat_effect_until::__repeat_effect_until_tag>
+    : exec::__repeat_effect_until::__repeat_effect_until_impl {};
+}

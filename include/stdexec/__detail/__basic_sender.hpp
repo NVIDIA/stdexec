@@ -147,14 +147,14 @@ namespace stdexec {
       __callable<__impl_of<_Sexpr>, __copy_cvref_fn<_Sexpr>, __connect_fn<_Sexpr, _Receiver>>
       && __mvalid<__state_type_t, tag_of_t<_Sexpr>, _Sexpr, _Receiver>;
 
-    // Note: This is UB. UBSAN allows it for now.
-    template <class _Parent, class _Child>
-    _Parent* __parent_from_child(_Child* __child, _Child _Parent::*__mbr_ptr) noexcept {
-      alignas(_Parent) char __buf[sizeof(_Parent)];
-      _Parent* __parent = (_Parent*) &__buf;
-      const std::ptrdiff_t __offset = (char*) &(__parent->*__mbr_ptr) - __buf;
-      return (_Parent*) ((char*) __child - __offset);
-    }
+    // // Note: This is UB. UBSAN allows it for now.
+    // template <class _Parent, class _Child>
+    // _Parent* __parent_from_child(_Child* __child, _Child _Parent::*__mbr_ptr) noexcept {
+    //   alignas(_Parent) char __buf[sizeof(_Parent)];
+    //   _Parent* __parent = (_Parent*) &__buf;
+    //   const std::ptrdiff_t __offset = (char*) &(__parent->*__mbr_ptr) - __buf;
+    //   return (_Parent*) ((char*) __child - __offset);
+    // }
 
     inline constexpr auto __get_attrs = //
       [](__ignore, const auto&... __child) noexcept -> decltype(auto) {
@@ -216,13 +216,13 @@ namespace stdexec {
         // this receiver.
         __parent_op_t* __op_;
 
-        template <class _ChildSexpr, class _ChildReceiver>
-        static __t __from_op_state(__op_state<_ChildSexpr, _ChildReceiver>* __child) noexcept {
-          using __parent_op_t = __op_state<_Sexpr, _Receiver>;
-          std::ptrdiff_t __offset = __parent_op_t::template __get_child_op_offset<__v<_Idx>>();
-          __parent_op_t* __parent = (__parent_op_t*) ((char*) __child - __offset);
-          return __t{__parent};
-        }
+        // template <class _ChildSexpr, class _ChildReceiver>
+        // static __t __from_op_state(__op_state<_ChildSexpr, _ChildReceiver>* __child) noexcept {
+        //   using __parent_op_t = __op_state<_Sexpr, _Receiver>;
+        //   std::ptrdiff_t __offset = __parent_op_t::template __get_child_op_offset<__v<_Idx>>();
+        //   __parent_op_t* __parent = (__parent_op_t*) ((char*) __child - __offset);
+        //   return __t{__parent};
+        // }
 
         template <__completion_tag _Tag, class... _Args>
         STDEXEC_ATTRIBUTE((always_inline))
@@ -338,25 +338,19 @@ namespace stdexec {
       using __data_t = typename __desc_t::__data;
       using __children_t = typename __desc_t::__children;
       using __state_t = typename __op_state::__state_t;
-      using __connect_t = __connect_fn<_Sexpr, _Receiver>;
+      using __inner_ops_t = __result_of<__sexpr_apply, _Sexpr, __connect_fn<_Sexpr, _Receiver>>;
 
-      static auto __connect(__op_state* __self, _Sexpr&& __sexpr)
-        -> __result_of<__sexpr_apply, _Sexpr, __connect_t> {
-        return __sexpr_apply((_Sexpr&&) __sexpr, __connect_t{__self});
-      }
-
-      using __inner_ops_t = decltype(__op_state::__connect(nullptr, __declval<_Sexpr>()));
       __inner_ops_t __inner_ops_;
 
-      template <std::size_t _Idx>
-      static std::ptrdiff_t __get_child_op_offset() noexcept {
-        __op_state* __self = (__op_state*) &__self;
-        return (std::ptrdiff_t)((char*) &__tup::__get<_Idx>(__self->__inner_ops_) - (char*) __self);
-      }
+      // template <std::size_t _Idx>
+      // static std::ptrdiff_t __get_child_op_offset() noexcept {
+      //   __op_state* __self = (__op_state*) &__self;
+      //   return (std::ptrdiff_t)((char*) &__tup::__get<_Idx>(__self->__inner_ops_) - (char*) __self);
+      // }
 
       __op_state(_Sexpr&& __sexpr, _Receiver __rcvr)
         : __op_state::__op_base{(_Sexpr&&) __sexpr, (_Receiver&&) __rcvr}
-        , __inner_ops_(__op_state::__connect(this, (_Sexpr&&) __sexpr)) {
+        , __inner_ops_(__sexpr_apply((_Sexpr&&) __sexpr, __connect_fn<_Sexpr, _Receiver>{this})) {
       }
 
       template <same_as<start_t> _Tag2>
