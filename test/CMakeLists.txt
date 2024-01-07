@@ -139,6 +139,14 @@ icm_add_build_failure_test(
     FOLDER test
 )
 
+icm_add_build_failure_test(
+    NAME test_repeat_effect_until_fail
+    TARGET test_repeat_effect_until_fail
+    SOURCES PARSE exec/test_repeat_effect_until_fail.cpp
+    LIBRARIES stdexec
+    FOLDER test
+)
+
 # # Adding multiple tests with a glob
 # icm_glob_build_failure_tests(
 #     PATTERN *_fail*.cpp
