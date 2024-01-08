@@ -19,15 +19,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { compiler: llvm, version: "12", build: "Debug",   os: ubuntu20.04, name: "CPU (clang 12, Debug, ubuntu 20.04)",       cxxflags: "-stdlib=libc++" }
-          - { compiler: llvm, version: "12", build: "Release", os: ubuntu20.04, name: "CPU (clang 12, Release, ubuntu 20.04)",     cxxflags: "-stdlib=libc++" }
-          - { compiler: gcc,  version: "11", build: "Debug",   os: ubuntu20.04, name: "CPU (gcc 11, Debug, ubuntu 20.04)",         cxxflags: "", }
-          - { compiler: gcc,  version: "11", build: "Release", os: ubuntu20.04, name: "CPU (gcc 11, Release, ubuntu 20.04)",       cxxflags: "", }
-          - { compiler: gcc,  version: "11", build: "Release", os: ubuntu22.04, name: "CPU (gcc 11, Release, ubuntu 22.04, TSAN)", cxxflags: "-fsanitize=thread" }
-          - { compiler: gcc,  version: "11", build: "Release", os: ubuntu22.04, name: "CPU (gcc 11, Release, ubuntu 22.04, ASAN)", cxxflags: "-fsanitize=address" }
+          - { name: "CPU (clang 12, Debug, ubuntu 20.04)",       cxx: clang++, build: "Debug",   tag: llvm12-cuda12.3-ubuntu20.04, cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (clang 12, Release, ubuntu 20.04)",     cxx: clang++, build: "Release", tag: llvm12-cuda12.3-ubuntu20.04, cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (gcc 11, Debug, ubuntu 20.04)",         cxx: gcc,     build: "Debug",   tag: gcc11-cuda12.3-ubuntu20.04,  cxxflags: "", }
+          - { name: "CPU (gcc 11, Release, ubuntu 20.04)",       cxx: gcc,     build: "Release", tag: gcc11-cuda12.3-ubuntu20.04,  cxxflags: "", }
+          - { name: "CPU (gcc 11, Release, ubuntu 22.04, TSAN)", cxx: gcc,     build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "-fsanitize=thread" }
+          - { name: "CPU (gcc 11, Release, ubuntu 22.04, ASAN)", cxx: gcc,     build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "-fsanitize=address" }
     container:
       options: -u root
-      image: rapidsai/devcontainers:24.02-cpp-${{matrix.compiler}}${{matrix.version}}-cuda12.3-${{matrix.os}}
+      image: rapidsai/devcontainers:24.02-cpp-${{matrix.tag}}
       env:
         SCCACHE_REGION: "us-east-2"
         SCCACHE_BUCKET: "rapids-sccache-devs"
@@ -68,8 +68,8 @@ jobs:
           # Configure
           cmake -S . -B build -GNinja \
             -DCMAKE_BUILD_TYPE=${{ matrix.build }} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
             -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}" \
-            -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}-${{ matrix.version }} \
             -DSTDEXEC_ENABLE_TBB:BOOL=${{ !contains(matrix.cxxflags, '-fsanitize') }} \
             ;
 
