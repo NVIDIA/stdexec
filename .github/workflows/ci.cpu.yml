@@ -27,7 +27,7 @@ jobs:
           - { compiler: gcc,   version: "11", build: "Release", os: ubuntu22.04, name: "CPU (gcc 11, Release, ubuntu 22.04, ASAN)", cxxflags: "-fsanitize=address" }
     container:
       options: --entrypoint /bin/bash
-      image: rapidsai/devcontainers:24.02-cpp-${{matrix.compiler}}${{matrix.version}}-cuda12.3-${{matrix.os}}-amd64
+      image: rapidsai/devcontainers:24.02-cpp-${{matrix.compiler}}${{matrix.version}}-cuda12.3-${{matrix.os}}
 
     steps:
       - name: Checkout stdexec
