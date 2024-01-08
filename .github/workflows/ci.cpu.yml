@@ -56,10 +56,6 @@ jobs:
         run: |
           set -ex;
 
-          # Install prerequisites
-          sudo apt update;
-          sudo apt install -y --no-install-recommends libtbb-dev;
-
           # Copy source folder into ~/stdexec
           cp -r "${GITHUB_WORKSPACE}"/stdexec ~/;
           chown -R coder:coder ~/stdexec;
