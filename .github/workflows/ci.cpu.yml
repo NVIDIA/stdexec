@@ -21,10 +21,10 @@ jobs:
         include:
           - { name: "CPU (clang 12, Debug, ubuntu 20.04)",       cxx: clang++, build: "Debug",   tag: llvm12-cuda12.3-ubuntu20.04, cxxflags: "-stdlib=libc++" }
           - { name: "CPU (clang 12, Release, ubuntu 20.04)",     cxx: clang++, build: "Release", tag: llvm12-cuda12.3-ubuntu20.04, cxxflags: "-stdlib=libc++" }
-          - { name: "CPU (gcc 11, Debug, ubuntu 20.04)",         cxx: gcc,     build: "Debug",   tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "", }
-          - { name: "CPU (gcc 11, Release, ubuntu 20.04)",       cxx: gcc,     build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "", }
-          - { name: "CPU (gcc 11, Release, ubuntu 22.04, TSAN)", cxx: gcc,     build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "-fsanitize=thread" }
-          - { name: "CPU (gcc 11, Release, ubuntu 22.04, ASAN)", cxx: gcc,     build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "-fsanitize=address" }
+          - { name: "CPU (gcc 11, Debug, ubuntu 20.04)",         cxx: g++,     build: "Debug",   tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "", }
+          - { name: "CPU (gcc 11, Release, ubuntu 20.04)",       cxx: g++,     build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "", }
+          - { name: "CPU (gcc 11, Release, ubuntu 22.04, TSAN)", cxx: g++,     build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "-fsanitize=thread" }
+          - { name: "CPU (gcc 11, Release, ubuntu 22.04, ASAN)", cxx: g++,     build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "-fsanitize=address" }
     container:
       options: -u root
       image: rapidsai/devcontainers:24.02-cpp-${{matrix.tag}}
