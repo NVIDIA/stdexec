@@ -3364,22 +3364,19 @@ namespace stdexec {
     struct __let_t;
 
     template <class _Set>
-    struct __in_which_let_msg {
-      static constexpr __mstring value = "In stdexec::let_value(Sender, Function)..."__csz;
-    };
+    inline constexpr __mstring __in_which_let_msg {
+      "In stdexec::let_value(Sender, Function)..."};
 
     template <>
-    struct __in_which_let_msg<set_error_t> {
-      static constexpr __mstring value = "In stdexec::let_error(Sender, Function)..."__csz;
-    };
+    inline constexpr __mstring __in_which_let_msg<set_error_t> {
+      "In stdexec::let_error(Sender, Function)..."};
 
     template <>
-    struct __in_which_let_msg<set_stopped_t> {
-      static constexpr __mstring value = "In stdexec::let_stopped(Sender, Function)..."__csz;
-    };
+    inline constexpr __mstring __in_which_let_msg<set_stopped_t> {
+      "In stdexec::let_stopped(Sender, Function)..."};
 
     template <class _Set>
-    using __on_not_callable = __callable_error<__v<__in_which_let_msg<_Set>>>;
+    using __on_not_callable = __callable_error<__in_which_let_msg<_Set>>;
 
     // FUTURE: when we have a scheduler query for "always completes inline",
     // then we can use that instead of hard-coding `__inln::__scheduler` here.
@@ -3429,7 +3426,7 @@ namespace stdexec {
     struct __bad_result_sender_ {
       using __t = __mexception<
         _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_<
-          __v<__in_which_let_msg<_Set>>,
+          __in_which_let_msg<_Set>,
           "The function must return a valid sender for the current environment"__csz>,
         _WITH_SENDER_<_Sender>,
         _WITH_ENVIRONMENT_<_Env>>;
@@ -3441,7 +3438,7 @@ namespace stdexec {
     using __bad_result_sender =
       __mexception<
         _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_<
-          __v<__in_which_let_msg<_Set>>,
+          __in_which_let_msg<_Set>,
           "The function must return a valid sender for the current environment"__csz>,
         _WITH_SENDER_<_Sender>,
         _WITH_ENVIRONMENT_<_Env>>;
@@ -3521,7 +3518,7 @@ namespace stdexec {
     template <class _Set>
     using __no_common_domain_t = //
       _NO_COMMON_DOMAIN_<
-        __v<__in_which_let_msg<_Set>>,
+        __in_which_let_msg<_Set>,
         "The senders returned by Function do not all share a common domain"__csz>;
 
     template <class _Set>
