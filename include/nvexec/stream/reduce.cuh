@@ -26,6 +26,7 @@
 #include "algorithm_base.cuh"
 #include "common.cuh"
 #include "../detail/throw_on_cuda_error.cuh"
+#include "stdexec/__detail/__p2300.hpp"
 
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
@@ -193,8 +194,8 @@ namespace nvexec {
 
       template < sender Sender, __movable_value Init, __movable_value Fun = cub::Sum>
       auto operator()(Sender&& sndr, Init init, Fun fun) const {
-        auto __domain = __get_sender_domain(sndr);
-        return __domain.transform_sender(make_sender_expr<reduce_t>(
+        auto __domain = __get_early_domain(sndr);
+        return __domain.transform_sender(__make_sexpr<reduce_t>(
           reduce_::__data{(Init&&) init, (Fun&&) fun}, (Sender&&) sndr));
       }
 
@@ -241,9 +242,9 @@ namespace nvexec {
             using _Fun = decltype(_Data::__fun_);
             if constexpr (__mvalid<__completion_signaturesss, _Child, _Env, _Init, _Fun>) {
               return __completion_signaturesss< _Child, _Env, _Init, _Fun>();
-            } else if constexpr (__decays_to<_Env, no_env>) {
+            } else if constexpr (__decays_to<_Env, std::execution::__no_env>) {
               // not sure i need this
-              return dependent_completion_signatures<no_env>();
+              return std::execution::dependent_completion_signatures<std::execution::__no_env>();
             } else {
               // BUGBUG improve this error message
               return __mexception<_WHAT_<"unknown error in nvexec::reduce"__csz>>();

@@ -109,7 +109,7 @@ namespace nvexec {
           [&]<class Tag, class Data, class... Children>(Tag, Data&& data, Children&&... children) {
             return stdexec::transform_sender(
               *this,
-              make_sender_expr<Tag>(
+              __make_sexpr<Tag>(
                 (Data&&) data,
                 stdexec::transform_sender(*this, (Children&&) children, env)...)
                 /*, env*/); // no env here!!
