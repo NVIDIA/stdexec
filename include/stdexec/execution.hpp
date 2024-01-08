@@ -731,8 +731,13 @@ namespace stdexec {
         static_assert(sizeof(_Sender), "Incomplete type used with get_completion_signatures");
         static_assert(sizeof(_Env), "Incomplete type used with get_completion_signatures");
 
-        if constexpr (__with_tag_invoke<_Sender, _Env>) {
-          using _TfxSender = __tfx_sender<_Sender, _Env>;
+        // Compute the type of the transformed sender:
+        using _TfxSender = __tfx_sender<_Sender, _Env>;
+
+        if constexpr (__merror<_TfxSender>) {
+          // Computing the type of the transformed sender returned an error type. Propagate it.
+          return (_TfxSender(*)()) nullptr;
+        } else if constexpr (__with_tag_invoke<_Sender, _Env>) {
           using _Result = tag_invoke_result_t<get_completion_signatures_t, _TfxSender, _Env>;
           return (_Result(*)()) nullptr;
         } else if constexpr (__with_member_alias<_Sender, _Env>) {
@@ -3217,10 +3222,9 @@ namespace stdexec {
       using __receiver_t = __t<__meval<__receiver, __cvref_id<_CvrefSender>, __id<_Env>>>;
 
       template <class _Sender>
-        requires sender_to<
-          __child_of<_Sender>,
-          __receiver_t<__child_of<_Sender>, __decay_t<__data_of<_Sender>>>>
       static auto transform_sender(_Sender&& __sndr) {
+        using _Receiver = __receiver_t<__child_of<_Sender>, __decay_t<__data_of<_Sender>>>;
+        static_assert(sender_to<__child_of<_Sender>, _Receiver>);
         return __sexpr_apply(
           (_Sender&&) __sndr,
           [&]<class _Env, class _Child>(__ignore, _Env&& __env, _Child&& __child) {
@@ -3301,10 +3305,9 @@ namespace stdexec {
       using __receiver_t = __t<__meval<__receiver, __cvref_id<_CvrefSender>, __id<_Env>>>;
 
       template <class _Sender>
-        requires sender_to<
-          __child_of<_Sender>,
-          __receiver_t<__child_of<_Sender>, __decay_t<__data_of<_Sender>>>>
       static auto transform_sender(_Sender&& __sndr) {
+        using _Receiver = __receiver_t<__child_of<_Sender>, __decay_t<__data_of<_Sender>>>;
+        static_assert(sender_to<__child_of<_Sender>, _Receiver>);
         return __sexpr_apply(
           (_Sender&&) __sndr,
           [&]<class _Env, class _Child>(__ignore, _Env&& __env, _Child&& __child) {
@@ -3357,36 +3360,26 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////
   // [exec.let]
   namespace __let {
-    template <class _SetTag, class _Domain = dependent_domain>
+    template <class _Set, class _Domain = dependent_domain>
     struct __let_t;
 
     template <class _Set>
-    struct __on_not_callable_ {
-      using __t = __callable_error<"In stdexec::let_value(Sender, Function)..."__csz>;
+    struct __in_which_let_msg {
+      static constexpr __mstring value = "In stdexec::let_value(Sender, Function)..."__csz;
     };
 
     template <>
-    struct __on_not_callable_<set_error_t> {
-      using __t = __callable_error<"In stdexec::let_error(Sender, Function)..."__csz>;
+    struct __in_which_let_msg<set_error_t> {
+      static constexpr __mstring value = "In stdexec::let_error(Sender, Function)..."__csz;
     };
 
     template <>
-    struct __on_not_callable_<set_stopped_t> {
-      using __t = __callable_error<"In stdexec::let_stopped(Sender, Function)..."__csz>;
+    struct __in_which_let_msg<set_stopped_t> {
+      static constexpr __mstring value = "In stdexec::let_stopped(Sender, Function)..."__csz;
     };
 
     template <class _Set>
-    using __on_not_callable = __t<__on_not_callable_<_Set>>;
-
-    template <class _Tp>
-    using __decay_ref = __decay_t<_Tp>&;
-
-    // A metafunction that computes the result sender type for a given set of argument types
-    template <class _Fun, class _Set>
-    using __result_sender_t = //
-      __transform<
-        __q<__decay_ref>,
-        __mbind_front<__mtry_catch_q<__call_result_t, __on_not_callable<_Set>>, _Fun>>;
+    using __on_not_callable = __callable_error<__v<__in_which_let_msg<_Set>>>;
 
     // FUTURE: when we have a scheduler query for "always completes inline",
     // then we can use that instead of hard-coding `__inln::__scheduler` here.
@@ -3425,6 +3418,52 @@ namespace stdexec {
         __env::__prop<void(get_domain_t)>,
         _Env>>;
 
+    template <class _Tp>
+    using __decay_ref = __decay_t<_Tp>&;
+
+    template <__mstring _Where, __mstring _What>
+    struct _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_ {};
+
+#if STDEXEC_NVHPC()
+    template <class _Sender, class _Env, class _Set>
+    struct __bad_result_sender_ {
+      using __t = __mexception<
+        _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_<
+          __v<__in_which_let_msg<_Set>>,
+          "The function must return a valid sender for the current environment"__csz>,
+        _WITH_SENDER_<_Sender>,
+        _WITH_ENVIRONMENT_<_Env>>;
+    };
+    template <class _Sender, class _Env, class _Set>
+    using __bad_result_sender = __t<__bad_result_sender_<_Sender, _Env, _Set>>;
+#else
+    template <class _Sender, class _Env, class _Set>
+    using __bad_result_sender =
+      __mexception<
+        _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_<
+          __v<__in_which_let_msg<_Set>>,
+          "The function must return a valid sender for the current environment"__csz>,
+        _WITH_SENDER_<_Sender>,
+        _WITH_ENVIRONMENT_<_Env>>;
+#endif
+
+    template <class _Sender, class _Env, class _Set>
+    using __ensure_sender = //
+      __minvoke_if_c<
+        sender_in<_Sender, _Env>,
+        __q<__midentity>,
+        __mbind_back_q<__bad_result_sender, _Set, _Env>,
+        _Sender>;
+
+    // A metafunction that computes the result sender type for a given set of argument types
+    template <class _Fun, class _Set, class _Env, class _Sched>
+    using __result_sender_fn = //
+      __mcompose<
+        __mbind_back_q<__ensure_sender, __result_env_t<_Env, _Sched>, _Set>,
+        __transform<
+          __q<__decay_ref>,
+          __mbind_front<__mtry_catch_q<__call_result_t, __on_not_callable<_Set>>, _Fun>>>;
+
     // The receiver that gets connected to the result sender is the input receiver,
     // possibly augmented with the input sender's completion scheduler (which is
     // where the result sender will be started).
@@ -3436,7 +3475,7 @@ namespace stdexec {
     using __op_state_for = //
       __mcompose<
         __mbind_back_q<connect_result_t, __result_receiver_t<_Receiver, _Sched>>,
-        __result_sender_t<_Fun, _Set>>;
+        __result_sender_fn<_Fun, _Set, env_of_t<_Receiver>, _Sched>>;
 
     template <class _Set, class _Sig>
     struct __tfx_signal_fn {
@@ -3449,7 +3488,7 @@ namespace stdexec {
       template <class _Env, class _Fun, class _Sched>
       using __f = //
         __try_make_completion_signatures<
-          __minvoke<__result_sender_t<_Fun, _Set>, _Args...>,
+          __minvoke<__result_sender_fn<_Fun, _Set, _Env, _Sched>, _Args...>,
           __result_env_t<_Env, _Sched>,
           // because we don't know if connect-ing the result sender will throw:
           completion_signatures<set_error_t(std::exception_ptr)>>;
@@ -3476,30 +3515,49 @@ namespace stdexec {
           __q<__concat_completion_signatures_t> >,
         __completion_signatures_of_t<_CvrefSender, _Env>>;
 
+    template <__mstring _Where, __mstring _What>
+    struct _NO_COMMON_DOMAIN_ {};
+
+    template <class _Set>
+    using __no_common_domain_t = //
+      _NO_COMMON_DOMAIN_<
+        __v<__in_which_let_msg<_Set>>,
+        "The senders returned by Function do not all share a common domain"__csz>;
+
+    template <class _Set>
+    using __try_common_domain_fn = //
+      __mtry_catch_q<
+        __domain::__common_domain_t,
+        __mcompose<__mbind_front_q<__mexception, __no_common_domain_t<_Set>>, __q<_WITH_SENDERS_>>>;
+
     // Compute all the domains of all the result senders and make sure they're all the same
-    template <class _SetTag, class _Child, class _Fun, class _Env>
-    using __result_domain_t = __gather_completions_for<
-      _SetTag,
-      _Child,
-      _Env,
-      __mtry_catch<
-        __transform<__q<__decay_ref>, __mbind_front_q<__call_result_t, _Fun>>,
-        __on_not_callable<_SetTag>>,
-      __q<__domain::__common_domain_t>>;
+    template <class _Set, class _Child, class _Fun, class _Env, class _Sched>
+    using __result_domain_t = //
+      __gather_completions_for<
+        _Set,
+        _Child,
+        _Env,
+        __result_sender_fn<_Fun, _Set, _Env, _Sched>,
+        __try_common_domain_fn<_Set>>;
 
     template <class _LetTag, class _Env>
     auto __mk_transform_env_fn(const _Env& __env) noexcept {
-      using _SetTag = __t<_LetTag>;
-      return [&]<class _Fun, sender_in<_Env> _Child>(
+      using _Set = __t<_LetTag>;
+      return [&]<class _Fun, class _Child>(
                __ignore, _Fun&&, _Child&& __child) -> decltype(auto) {
-        using _Scheduler = __completion_sched<_Child, _SetTag>;
-        if constexpr (__unknown_context<_Scheduler>) {
-          return (__env);
+        using __completions_t = __completion_signatures_of_t<_Child, _Env>;
+        if constexpr (__merror<__completions_t>) {
+          return __completions_t();
         } else {
-          return __join_env(
-            __mkprop(get_completion_scheduler<_SetTag>(stdexec::get_env(__child)), get_scheduler),
-            __mkprop(get_domain),
-            __env);
+          using _Scheduler = __completion_sched<_Child, _Set>;
+          if constexpr (__unknown_context<_Scheduler>) {
+            return (__env);
+          } else {
+            return __join_env(
+              __mkprop(get_completion_scheduler<_Set>(stdexec::get_env(__child)), get_scheduler),
+              __mkprop(get_domain),
+              __env);
+          }
         }
         STDEXEC_UNREACHABLE();
       };
@@ -3507,11 +3565,22 @@ namespace stdexec {
 
     template <class _LetTag, class _Env>
     auto __mk_transform_sender_fn(const _Env&) noexcept {
-      using _SetTag = __t<_LetTag>;
-      return []<class _Fun, sender_in<_Env> _Child>(__ignore, _Fun&& __fun, _Child&& __child) {
-        using _Domain = __result_domain_t<_SetTag, _Child, _Fun, _Env>;
-        static_assert(__none_of<_Domain, __none_such, dependent_domain>);
-        return __make_sexpr<__let_t<_SetTag, _Domain>>((_Fun&&) __fun, (_Child&&) __child);
+      using _Set = __t<_LetTag>;
+      return []<class _Fun, class _Child>(__ignore, _Fun&& __fun, _Child&& __child) {
+        using __completions_t = __completion_signatures_of_t<_Child, _Env>;
+        if constexpr (__merror<__completions_t>) {
+          return __completions_t();
+        } else {
+          using _Sched = __completion_sched<_Child, _Set>;
+          using _Domain = __result_domain_t<_Set, _Child, _Fun, _Env, _Sched>;
+          if constexpr (__merror<_Domain>) {
+            return _Domain();
+          } else {
+            static_assert(__none_of<_Domain, __none_such, dependent_domain>);
+            return __make_sexpr<__let_t<_Set, _Domain>>((_Fun&&) __fun, (_Child&&) __child);
+          }
+        }
+        STDEXEC_UNREACHABLE();
       };
     }
 
@@ -3543,16 +3612,16 @@ namespace stdexec {
       __op_state_variant __op_state3_;
     };
 
-    template <class _SetTag, class _Domain>
+    template <class _Set, class _Domain>
     struct __let_t {
       using __domain_t = _Domain;
-      using __t = _SetTag;
+      using __t = _Set;
 
       template <sender _Sender, __movable_value _Fun>
       auto operator()(_Sender&& __sndr, _Fun __fun) const {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
-          __domain, __make_sexpr<__let_t<_SetTag>>((_Fun&&) __fun, (_Sender&&) __sndr));
+          __domain, __make_sexpr<__let_t<_Set>>((_Fun&&) __fun, (_Sender&&) __sndr));
       }
 
       template <class _Fun>
@@ -3571,19 +3640,19 @@ namespace stdexec {
           _Function),
         tag_invoke_t(__let_t, _Sender, _Function)>;
 
-      template <sender_expr_for<__let_t<_SetTag>> _Sender, class _Env>
+      template <sender_expr_for<__let_t<_Set>> _Sender, class _Env>
       static decltype(auto) transform_env(_Sender&& __sndr, const _Env& __env) {
-        return __sexpr_apply((_Sender&&) __sndr, __mk_transform_env_fn<__let_t<_SetTag>>(__env));
+        return __sexpr_apply((_Sender&&) __sndr, __mk_transform_env_fn<__let_t<_Set>>(__env));
       }
 
-      template <sender_expr_for<__let_t<_SetTag>> _Sender, class _Env>
+      template <sender_expr_for<__let_t<_Set>> _Sender, class _Env>
         requires same_as<__early_domain_of_t<_Sender>, dependent_domain>
       static decltype(auto) transform_sender(_Sender&& __sndr, const _Env& __env) {
-        return __sexpr_apply((_Sender&&) __sndr, __mk_transform_sender_fn<__let_t<_SetTag>>(__env));
+        return __sexpr_apply((_Sender&&) __sndr, __mk_transform_sender_fn<__let_t<_Set>>(__env));
       }
     };
 
-    template <class _SetTag, class _Domain>
+    template <class _Set, class _Domain>
     struct __let_impl : __sexpr_defaults {
       static constexpr auto get_attrs = //
         []<class _Child>(__ignore, const _Child& __child) noexcept {
@@ -3592,27 +3661,27 @@ namespace stdexec {
 
       static constexpr auto get_completion_signatures = //
         []<class _Self, class _Env>(_Self&&, _Env&&) noexcept
-        -> __completions<__child_of<_Self>, _Env, __let_t<_SetTag, _Domain>, __data_of<_Self>> {
-        static_assert(sender_expr_for<_Self, __let_t<_SetTag, _Domain>>);
+        -> __completions<__child_of<_Self>, _Env, __let_t<_Set, _Domain>, __data_of<_Self>> {
+        static_assert(sender_expr_for<_Self, __let_t<_Set, _Domain>>);
         return {};
       };
 
       static constexpr auto get_state = //
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&) {
-          static_assert(sender_expr_for<_Sender, __let_t<_SetTag, _Domain>>);
+          static_assert(sender_expr_for<_Sender, __let_t<_Set, _Domain>>);
           using _Fun = __data_of<_Sender>;
-          using _Sched = __completion_sched<_Sender, _SetTag>;
-          using __mk_let_state = __mbind_front_q<__let_state, _Receiver, _Fun, _SetTag, _Sched>;
+          using _Sched = __completion_sched<_Sender, _Set>;
+          using __mk_let_state = __mbind_front_q<__let_state, _Receiver, _Fun, _Set, _Sched>;
 
           using __let_state_t = __gather_completions_for<
-            _SetTag,
+            _Set,
             __child_of<_Sender>,
             env_of_t<_Receiver>,
             __q<__decayed_tuple>,
             __mk_let_state>;
 
           _Sched __sched = query_or(
-            get_completion_scheduler<_SetTag>, stdexec::get_env(__sndr), __none_such());
+            get_completion_scheduler<_Set>, stdexec::get_env(__sndr), __none_such());
           return __let_state_t{
             STDEXEC_CALL_EXPLICIT_THIS_MEMFN((_Sender&&) __sndr, apply)(__detail::__get_data()),
             __sched};
@@ -3641,7 +3710,7 @@ namespace stdexec {
           _Receiver& __rcvr,
           _Tag,
           _As&&... __as) noexcept -> void {
-        if constexpr (std::same_as<_Tag, _SetTag>) {
+        if constexpr (std::same_as<_Tag, _Set>) {
           __bind(__state, __rcvr, (_As&&) __as...);
         } else {
           _Tag()((_Receiver&&) __rcvr, (_As&&) __as...);
@@ -3659,8 +3728,8 @@ namespace stdexec {
   using let_stopped_t = __let::__let_t<set_stopped_t>;
   inline constexpr let_stopped_t let_stopped{};
 
-  template <class _SetTag, class _Domain>
-  struct __sexpr_impl<__let::__let_t<_SetTag, _Domain>> : __let::__let_impl<_SetTag, _Domain> { };
+  template <class _Set, class _Domain>
+  struct __sexpr_impl<__let::__let_t<_Set, _Domain>> : __let::__let_impl<_Set, _Domain> { };
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.stopped_as_optional]
@@ -4816,15 +4885,15 @@ namespace stdexec {
       }
 
       static constexpr auto complete = //
-        []<class _Index, class _State, class _Receiver, class _SetTag, class... _Args>(
+        []<class _Index, class _State, class _Receiver, class _Set, class... _Args>(
           _Index,
           _State& __state,
           _Receiver& __rcvr,
-          _SetTag,
+          _Set,
           _Args&&... __args) noexcept -> void {
-        if constexpr (same_as<_SetTag, set_error_t>) {
+        if constexpr (same_as<_Set, set_error_t>) {
           __set_error(__state, __rcvr, (_Args&&) __args...);
-        } else if constexpr (same_as<_SetTag, set_stopped_t>) {
+        } else if constexpr (same_as<_Set, set_stopped_t>) {
           __state_t __expected = __started;
           // Transition to the "stopped" state if and only if we're in the
           // "started" state. (If this fails, it's because we're in an
@@ -5432,7 +5501,7 @@ namespace stdexec {
     auto __diagnose_error() {
       if constexpr (!sender_in<_Sender, __env>) {
         using _Completions = __completion_signatures_of_t<_Sender, __env>;
-        if constexpr (!__ok<_Completions>) {
+        if constexpr (__merror<_Completions>) {
           return _Completions();
         } else {
           constexpr __mstring __diag =

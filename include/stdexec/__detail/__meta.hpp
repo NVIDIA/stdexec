@@ -367,11 +367,11 @@ namespace stdexec {
     requires(sizeof...(_False) <= 1)
   using __if_c = __minvoke<__if_::__<_Pred>, _True, _False...>;
 
-  template <class _Pred, class _True, class... _False>
-  using __minvoke_if = __minvoke<__if<_Pred, _True, _False...>>;
+  template <class _Pred, class _True, class _False, class... _Args>
+  using __minvoke_if = __minvoke<__if<_Pred, _True, _False>, _Args...>;
 
-  template <bool _Pred, class _True, class... _False>
-  using __minvoke_if_c = __minvoke<__if_c<_Pred, _True, _False...>>;
+  template <bool _Pred, class _True, class _False, class... _Args>
+  using __minvoke_if_c = __minvoke<__if_c<_Pred, _True, _False>, _Args...>;
 
   template <class _Tp>
   struct __mconst {
