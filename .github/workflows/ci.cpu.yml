@@ -19,12 +19,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "CPU (clang 12, Debug, ubuntu 20.04)",       cxx: clang++, build: "Debug",   tag: llvm12-cuda12.3-ubuntu20.04, cxxflags: "-stdlib=libc++" }
-          - { name: "CPU (clang 12, Release, ubuntu 20.04)",     cxx: clang++, build: "Release", tag: llvm12-cuda12.3-ubuntu20.04, cxxflags: "-stdlib=libc++" }
-          - { name: "CPU (gcc 11, Debug, ubuntu 20.04)",         cxx: g++,     build: "Debug",   tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "", }
-          - { name: "CPU (gcc 11, Release, ubuntu 20.04)",       cxx: g++,     build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "", }
-          - { name: "CPU (gcc 11, Release, ubuntu 22.04, TSAN)", cxx: g++,     build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "-fsanitize=thread" }
-          - { name: "CPU (gcc 11, Release, ubuntu 22.04, ASAN)", cxx: g++,     build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "-fsanitize=address" }
+          - { name: "CPU (clang 12, Debug, ubuntu 20.04)",       build: "Debug",   tag: llvm12-cuda12.3-ubuntu20.04, cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (clang 12, Release, ubuntu 20.04)",     build: "Release", tag: llvm12-cuda12.3-ubuntu20.04, cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (gcc 11, Debug, ubuntu 20.04)",         build: "Debug",   tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "", }
+          - { name: "CPU (gcc 11, Release, ubuntu 20.04)",       build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "", }
+          - { name: "CPU (gcc 11, Release, ubuntu 22.04, TSAN)", build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "-fsanitize=thread" }
+          - { name: "CPU (gcc 11, Release, ubuntu 22.04, ASAN)", build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "-fsanitize=address" }
     container:
       options: -u root
       image: rapidsai/devcontainers:24.02-cpp-${{matrix.tag}}
@@ -64,7 +64,6 @@ jobs:
           # Configure
           cmake -S . -B build -GNinja \
             -DCMAKE_BUILD_TYPE=${{ matrix.build }} \
-            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
             -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}" \
             -DSTDEXEC_ENABLE_TBB:BOOL=${{ !contains(matrix.cxxflags, '-fsanitize') }} \
             ;
