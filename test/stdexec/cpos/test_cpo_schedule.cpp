@@ -21,13 +21,12 @@
 namespace ex = stdexec;
 
 STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE_GNU("-Wpragmas")
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-function")
 
 namespace {
 
   struct my_sender {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using completion_signatures = ex::completion_signatures< //
       ex::set_value_t(),                                     //
       ex::set_error_t(std::exception_ptr),                   //

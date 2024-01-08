@@ -27,7 +27,7 @@ namespace exec {
     struct _WHAT_ {
       struct __t {
         using __id = _WHAT_;
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
         using completion_signatures = _WHAT_;
       };
     };
@@ -91,13 +91,6 @@ namespace exec {
       __declval<__data_placeholder&>(),
       __declval<__receiver_placeholder<_Env>&>()));
 
-    struct __dependent_sender {
-      using is_sender = void;
-      using __t = __dependent_sender;
-      friend auto tag_invoke(get_completion_signatures_t, __dependent_sender, no_env)
-        -> dependent_completion_signatures<no_env>;
-    };
-
     struct __sender_transform_failed {
       using __t = __sender_transform_failed;
     };
@@ -109,8 +102,6 @@ namespace exec {
       } else {
         if constexpr (__mvalid<__tfx_sender_, _Kernel, _Sender, _Env>) {
           return __mtype<__tfx_sender_<_Kernel, _Sender, _Env>>{};
-        } else if constexpr (same_as<_Env, no_env>) {
-          return __dependent_sender{};
         } else {
           return __sender_transform_failed{};
         }
@@ -120,7 +111,6 @@ namespace exec {
 
     template <class _Kernel, class _Sender, class _Data, class _Receiver>
     auto __transform_sender(_Kernel& __kernel, _Sender&& __sndr, _Data& __data, _Receiver& __rcvr) {
-      static_assert(!same_as<env_of_t<_Receiver>, no_env>);
       if constexpr (__lacks_transform_sender<_Kernel>) {
         return (_Sender&&) __sndr;
       } else {
@@ -141,11 +131,7 @@ namespace exec {
       __declval<_As>()...));
 
     template <class _Kernel, class _Env>
-    using __get_env_ = decltype(__declval<_Kernel&>().get_env(__declval<_Env>()));
-
-    template <class _Kernel, class _Env>
-    using __env_t =
-      __minvoke< __if_c<same_as<_Env, no_env>, __mconst<no_env>, __q<__get_env_>>, _Kernel, _Env>;
+    using __env_t = decltype(__declval<_Kernel&>().get_env(__declval<_Env>()));
 
     template <class _Kernel, class _Env, class _Tag, class... _As>
     auto __completions_from_sig(_Tag (*)(_As...))
@@ -188,7 +174,7 @@ namespace exec {
       };
 
       struct __t {
-        using is_receiver = void;
+        using receiver_concept = stdexec::receiver_t;
         using __id = __receiver;
         __state* __state_;
 
@@ -266,7 +252,7 @@ namespace exec {
 
       struct __t {
         using __id = _DerivedId;
-        using is_sender = void;
+        using sender_concept = stdexec::sender_t;
         _Sender __sndr_;
         _Kernel __kernel_;
 
@@ -312,19 +298,13 @@ namespace exec {
                 __completions_t<_NewEnv, __pre_completions_t<_NewSender, _NewEnv>>;
               if constexpr (__valid_completion_signatures<_Completions, _Env>) {
                 return (_Completions(*)()) nullptr;
-              } else if constexpr (same_as<no_env, _Env>) {
-                return (dependent_completion_signatures<no_env>(*)()) nullptr;
               } else {
                 // assume this is an error message and return it directly
                 return (_Completions(*)()) nullptr;
               }
-            } else if constexpr (same_as<no_env, _Env>) {
-              return (dependent_completion_signatures<no_env>(*)()) nullptr;
             } else {
               return (__diagnostic_t<_Env>(*)()) nullptr;
             }
-          } else if constexpr (same_as<no_env, _Env>) {
-            return (dependent_completion_signatures<no_env>(*)()) nullptr;
           } else if constexpr (same_as<_NewSender, __sender_transform_failed>) {
             return (__diagnostic_t<_Env>(*)()) nullptr;
           } else {

@@ -19,30 +19,63 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { compiler: clang, version: "12", build: "Debug",   os: ubuntu20.04, name: "CPU (clang 12, Debug, ubuntu 20.04)",       cxxflags: "-stdlib=libc++" }
-          - { compiler: clang, version: "12", build: "Release", os: ubuntu20.04, name: "CPU (clang 12, Release, ubuntu 20.04)",     cxxflags: "-stdlib=libc++" }
-          - { compiler: gcc,   version: "11", build: "Debug",   os: ubuntu20.04, name: "CPU (gcc 11, Debug, ubuntu 20.04)",         cxxflags: "", }
-          - { compiler: gcc,   version: "11", build: "Release", os: ubuntu20.04, name: "CPU (gcc 11, Release, ubuntu 20.04)",       cxxflags: "", }
-          - { compiler: gcc,   version: "11", build: "Release", os: ubuntu22.04, name: "CPU (gcc 11, Release, ubuntu 22.04, TSAN)", cxxflags: "-fsanitize=thread" }
-          - { compiler: gcc,   version: "11", build: "Release", os: ubuntu22.04, name: "CPU (gcc 11, Release, ubuntu 22.04, ASAN)", cxxflags: "-fsanitize=address" }
+          - { name: "CPU (clang 12, Debug, ubuntu 20.04)",       build: "Debug",   tag: llvm12-cuda12.3-ubuntu20.04, cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (clang 12, Release, ubuntu 20.04)",     build: "Release", tag: llvm12-cuda12.3-ubuntu20.04, cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (gcc 11, Debug, ubuntu 22.04)",         build: "Debug",   tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "", }
+          - { name: "CPU (gcc 11, Release, ubuntu 22.04)",       build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "", }
+          - { name: "CPU (gcc 11, Release, ubuntu 22.04, TSAN)", build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "-fsanitize=thread" }
+          - { name: "CPU (gcc 11, Release, ubuntu 22.04, ASAN)", build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "-fsanitize=address" }
     container:
-      options: --entrypoint /bin/bash
-      image: ghcr.io/trxcllnt/action-cxx-toolkit:${{ matrix.compiler }}${{ matrix.version }}-${{ matrix.os }}
+      options: -u root
+      image: rapidsai/devcontainers:24.02-cpp-${{matrix.tag}}
+      env:
+        SCCACHE_REGION: "us-east-2"
+        SCCACHE_BUCKET: "rapids-sccache-devs"
+        SCCACHE_S3_KEY_PREFIX: "nvidia-stdexec-dev"
+    permissions:
+      id-token: write # This is required for configure-aws-credentials
+      contents: read  # This is required for actions/checkout
+    defaults:
+      run:
+        shell: su coder {0}
+        working-directory: /home/coder
     steps:
       - name: Checkout stdexec
         uses: actions/checkout@v3
         with:
+          path: stdexec
           persist-credentials: false
+      - if: github.repository_owner == 'NVIDIA'
+        name: Get AWS credentials for sccache bucket
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-region: us-east-2
+          role-duration-seconds: 28800 # 8 hours
+          role-to-assume: arn:aws:iam::279114543810:role/gha-oidc-NVIDIA
       - name: Build and test CPU schedulers
-        run: exec /usr/local/bin/entrypoint.py
-        shell: bash --noprofile --norc -eo pipefail {0}
-        env:
-          INPUT_CHECKS: "build test"
-          INPUT_CXXFLAGS: "${{ matrix.cxxflags }}"
-          INPUT_CMAKEFLAGS: "-DSTDEXEC_ENABLE_TBB:BOOL=${{ !contains(matrix.cxxflags, '-fsanitize') }} -DCMAKE_BUILD_TYPE:STRING=${{ matrix.build }}"
-          INPUT_CC: "${{ matrix.compiler }}-${{ matrix.version }}"
-          INPUT_PREBUILD_COMMAND: |
-            apt update && apt install -y --no-install-recommends git libtbb-dev;
+        run: |
+          set -ex;
+
+          # Copy source folder into ~/stdexec
+          cp -r "${GITHUB_WORKSPACE}"/stdexec ~/;
+          chown -R coder:coder ~/stdexec;
+          cd ~/stdexec;
+
+          # Configure
+          cmake -S . -B build -GNinja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build }} \
+            -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}" \
+            -DSTDEXEC_ENABLE_TBB:BOOL=${{ !contains(matrix.cxxflags, '-fsanitize') }} \
+            ;
+
+          # Compile
+          cmake --build build -v;
+
+          # Print sccache stats
+          sccache -s;
+
+          # Tests
+          ctest --test-dir build --verbose --output-on-failure --timeout 60;
 
   ci-cpu:
     runs-on: ubuntu-latest
@@ -51,3 +84,33 @@ jobs:
       - build-cpu
     steps:
       - run: echo "CI (CPU) success"
+
+  build-cpu-windows:
+    runs-on: windows-latest
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { compiler: "cl",       build: "Debug",   name: "CPU (Windows) (msvc, Debug)" }
+          - { compiler: "cl",       build: "Release", name: "CPU (Windows) (msvc, Release)" }
+          #- { compiler: "clang++",  build: "Debug",   name: "CPU (Windows) (clang, Debug)" }
+          #- { compiler: "clang++",  build: "Release", name: "CPU (Windows) (clang, Release)" }
+          #- { compiler: "clang-cl", build: "Debug",   name: "CPU (Windows) (clang-cl, Debug)" }
+          #- { compiler: "clang-cl", build: "Release", name: "CPU (Windows) (clang-cl, Release)" }
+    steps:
+      - name: Checkout stdexec (Windows)
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+      - name: Build and test CPU schedulers (Windows)
+        shell: pwsh
+        run: .github/workflows/test-windows.ps1 -Compiler '${{ matrix.compiler }}' -Config '${{ matrix.build }}'
+
+  ci-cpu-windows:
+    runs-on: windows-latest
+    name: CI (CPU) (Windows)
+    needs:
+      - build-cpu-windows
+    steps:
+      - run: echo "CI (CPU) (Windows) success"

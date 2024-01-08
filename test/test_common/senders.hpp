@@ -27,7 +27,7 @@ namespace {
   template <class... Values>
   struct fallible_just {
     std::tuple<Values...> values_;
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using completion_signatures =
       ex::completion_signatures<ex::set_value_t(Values...), ex::set_error_t(std::exception_ptr)>;
 
@@ -69,7 +69,7 @@ namespace {
   struct just_with_env {
     std::remove_cvref_t<Env> env_;
     std::tuple<Values...> values_;
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(Values...)>;
 
     template <class Receiver>
@@ -98,7 +98,7 @@ namespace {
   struct completes_if {
     using __t = completes_if;
     using __id = completes_if;
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
 
     bool condition_;

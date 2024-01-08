@@ -54,6 +54,8 @@ CompileFlags:
     - "--generate-code*"
     # strip gcc's -fcoroutines
     - -fcoroutines
+    # strip nvc++ flags unknown to clang
+    - "-ftemplate-backtrace-limit"
     # strip CUDA flags unknown to clang
     - "-ccbin*"
     - "--compiler-options*"

@@ -15,7 +15,12 @@
  * limitations under the License.
  */
 
-#if __has_include(<linux/io_uring.h>)
+#include <linux/version.h>
+
+// Some kernel versions have <linux/io_uring.h> but don't support or don't
+// allow user access to some of the necessary system calls.
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0) && __has_include(<linux/io_uring.h>)
+
 #include "exec/linux/io_uring_context.hpp"
 #include "exec/scope.hpp"
 #include "exec/single_thread_context.hpp"

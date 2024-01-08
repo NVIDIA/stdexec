@@ -296,7 +296,7 @@ namespace {
 
       auto snd = ex::just() //
                | ex::transfer(sch) | ex::bulk((int) tids.size(), fun);
-      CHECK(&snd.pool_ == &pool);
+      CHECK(std::equal_to<void*>()(&snd.pool_, &pool));
       stdexec::sync_wait(std::move(snd));
 
       // All the work should not have run on the same thread

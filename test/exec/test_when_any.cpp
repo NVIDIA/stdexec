@@ -224,7 +224,7 @@ namespace {
   };
 
   struct dup_sender {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using completion_signatures = stdexec::completion_signatures<
       set_value_t(),
       set_error_t(std::exception_ptr),

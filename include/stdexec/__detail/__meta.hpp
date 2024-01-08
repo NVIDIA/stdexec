@@ -33,6 +33,7 @@ namespace stdexec {
   struct __ignore {
     __ignore() = default;
 
+    STDEXEC_ATTRIBUTE((always_inline)) //
     constexpr __ignore(auto&&...) noexcept {
     }
   };
@@ -78,6 +79,12 @@ namespace stdexec {
   template <std::size_t _Np>
   using __msize_t = char[_Np + 1];
 
+  template <auto _Np>
+  struct __mconstant_;
+
+  template <auto _Np>
+  using __mconstant = __mconstant_<_Np>*;
+
   template <class _Tp, class _Up>
   using __mfirst = _Tp;
 
@@ -99,6 +106,9 @@ namespace stdexec {
 
   template <class _Tp, _Tp _Ip>
   inline constexpr _Tp __v<std::integral_constant<_Tp, _Ip>> = _Ip;
+
+  template <auto _Np>
+  inline constexpr __mtypeof<_Np> __v<__mconstant<_Np>> = _Np;
 
   template <std::size_t _Ip>
   inline constexpr std::size_t __v<char[_Ip]> = _Ip - 1;
@@ -326,6 +336,12 @@ namespace stdexec {
   template <class _Fn, class... _Args>
   struct __mdefer : __mdefer_<_Fn, _Args...> { };
 
+  template <class _Fn, class... _Args>
+  using __mmemoize = __t<__mdefer<_Fn, _Args...>>;
+
+  template <template <class...> class _Fn, class... _Args>
+  using __mmemoize_q = __mmemoize<__q<_Fn>, _Args...>;
+
   struct __if_ {
     template <bool>
     struct __ {
@@ -363,6 +379,27 @@ namespace stdexec {
     using __f = _Tp;
   };
 
+  inline constexpr __mstring __mbad_substitution =
+    "The specified meta-function could not be evaluated with the types provided."__csz;
+
+  template <__mstring _Diagnostic = __mbad_substitution>
+  struct _BAD_SUBSTITUTION_ { };
+
+  template <class... _Args>
+  struct _WITH_TYPES_;
+
+  template <template <class...> class _Fun>
+  struct _WITH_META_FUNCTION_T_ {
+    template <class... _Args>
+    using __f = __mexception<_BAD_SUBSTITUTION_<>, _WITH_META_FUNCTION_T_, _WITH_TYPES_<_Args...>>;
+  };
+
+  template <class _Fun>
+  struct _WITH_META_FUNCTION_ {
+    template <class... _Args>
+    using __f = __mexception<_BAD_SUBSTITUTION_<>, _WITH_META_FUNCTION_, _WITH_TYPES_<_Args...>>;
+  };
+
   template <template <class...> class _Try, class _Catch>
   struct __mtry_catch_q {
     template <class... _Args>
@@ -381,26 +418,11 @@ namespace stdexec {
   template <template <class...> class _Fn, class _Default>
   using __with_default_q = __mtry_catch_q<_Fn, __mconst<_Default>>;
 
-  inline constexpr __mstring __mbad_substitution =
-    "The specified meta-function could not be evaluated with the types provided."__csz;
+  template <class _Fn, class _Default, class... _Args>
+  using __minvoke_or = __minvoke<__with_default<_Fn, _Default>, _Args...>;
 
-  template <__mstring _Diagnostic = __mbad_substitution>
-  struct _BAD_SUBSTITUTION_ { };
-
-  template <class... _Args>
-  struct _WITH_TYPES_ { };
-
-  template <template <class...> class _Fun>
-  struct _WITH_META_FUNCTION_T_ {
-    template <class... _Args>
-    using __f = __mexception<_BAD_SUBSTITUTION_<>, _WITH_META_FUNCTION_T_, _WITH_TYPES_<_Args...>>;
-  };
-
-  template <class _Fun>
-  struct _WITH_META_FUNCTION_ {
-    template <class... _Args>
-    using __f = __mexception<_BAD_SUBSTITUTION_<>, _WITH_META_FUNCTION_, _WITH_TYPES_<_Args...>>;
-  };
+  template <template <class...> class _Fn, class _Default, class... _Args>
+  using __meval_or = __minvoke<__with_default_q<_Fn, _Default>, _Args...>;
 
   template <template <class...> class _Fn>
   struct __mtry_eval_ {
@@ -639,8 +661,11 @@ namespace stdexec {
   template <class... _As>
     requires(sizeof...(_As) == 1)
   using __msingle = __mfront<_As...>;
-  template <class _Ty>
-  using __msingle_or = __mbind_back_q<__mfront_, _Ty>;
+  template <class _Default, class... _As>
+    requires(sizeof...(_As) <= 1)
+  using __msingle_or_ = __mfront<_As..., _Default>;
+  template <class _Default>
+  using __msingle_or = __mbind_front_q<__msingle_or_, _Default>;
 
   template <class _Continuation = __q<__types>>
   struct __pop_front {
@@ -648,21 +673,11 @@ namespace stdexec {
     using __f = __minvoke<_Continuation, _Ts...>;
   };
 
-  // For hiding a template type parameter from ADL
-  template <class _Ty>
-  struct _Xp {
-    using __t = struct _Up {
-      using __t = _Ty;
-    };
-  };
-  template <class _Ty>
-  using __x = __t<_Xp<_Ty>>;
-
   template <class _Ty>
   concept __has_id = requires { typename _Ty::__id; };
 
   template <class _Ty>
-  struct _Yp {
+  struct _Id {
     using __t = _Ty;
 
     // Uncomment the line below to find any code that likely misuses the
@@ -682,7 +697,7 @@ namespace stdexec {
   template <>
   struct __id_<false> {
     template <class _Ty>
-    using __f = _Yp<_Ty>;
+    using __f = _Id<_Ty>;
   };
   template <class _Ty>
   using __id = __minvoke<__id_<__has_id<_Ty>>, _Ty>;
@@ -868,7 +883,12 @@ namespace stdexec {
 
 #if STDEXEC_HAS_BUILTIN(__type_pack_element)
   template <std::size_t _Np, class... _Ts>
-  using __m_at_c = __type_pack_element<_Np, _Ts...>;
+  struct __m_at_ {
+    using __t = __type_pack_element<_Np, _Ts...>;
+  };
+
+  template <std::size_t _Np, class... _Ts>
+  using __m_at_c = __t<__m_at_<_Np, _Ts...>>;
 #else
   template <std::size_t>
   using __void_ptr = void*;
@@ -942,42 +962,53 @@ namespace stdexec {
   template <template <class...> class _Cp, class _Noexcept = __mbool<true>>
   using __mconstructor_for = __mcompose<__q<__mconstruct>, __q<_Cp>>;
 
-  template <std::size_t>
-  using __ignore_t = __ignore;
-
 #if STDEXEC_MSVC()
   // MSVCBUG https://developercommunity.visualstudio.com/t/Incorrect-function-template-argument-sub/10437827
 
   template <std::size_t>
-  struct __msvc_ignore_t {
-    __msvc_ignore_t() = default;
+  struct __ignore_t {
+    __ignore_t() = default;
 
-    constexpr __msvc_ignore_t(auto&&...) noexcept {
+    constexpr __ignore_t(auto&&...) noexcept {
+    }
+  };
+#else
+  template <std::size_t>
+  using __ignore_t = __ignore;
+#endif
+
+  template <class... _Ignore>
+  struct __nth_pack_element_impl {
+    template <class _Ty, class... _Us>
+    STDEXEC_ATTRIBUTE((always_inline)) //
+    constexpr _Ty&& operator()(_Ignore..., _Ty&& __t, _Us&&...) const noexcept {
+      return (decltype(__t)&&) __t;
     }
   };
 
-  template <std::size_t... _Is, class _Ty, class... _Us>
-  _Ty&& __nth_pack_element_(__msvc_ignore_t<_Is>..., _Ty&& __t, _Us&&...) noexcept {
-    return (_Ty&&) __t;
-  }
-#else
-  template <std::size_t... _Is, class _Ty, class... _Us>
-  _Ty&& __nth_pack_element_(__ignore_t<_Is>..., _Ty&& __t, _Us&&...) noexcept {
-    return (_Ty&&) __t;
-  }
-#endif
+  template <std::size_t _Np>
+  struct __nth_pack_element_t {
+    template <std::size_t... _Is>
+    STDEXEC_ATTRIBUTE((always_inline)) //
+    static constexpr auto __impl(__indices<_Is...>) noexcept {
+      return __nth_pack_element_impl<__ignore_t<_Is>...>();
+    }
 
-  template <std::size_t _Np, class... _Ts>
-  constexpr decltype(auto) __nth_pack_element(_Ts&&... __ts) noexcept {
-    static_assert(_Np < sizeof...(_Ts));
-    return [&]<std::size_t... _Is>(__indices<_Is...>) noexcept -> decltype(auto) {
-      return stdexec::__nth_pack_element_<_Is...>((_Ts&&) __ts...);
-    }(__make_indices<_Np>());
-  }
+    template <class... _Ts>
+    STDEXEC_ATTRIBUTE((always_inline)) //
+    constexpr decltype(auto) operator()(_Ts&&... __ts) const noexcept {
+      static_assert(_Np < sizeof...(_Ts));
+      return __impl(__make_indices<_Np>())((_Ts&&) __ts...);
+    }
+  };
+
+  template <std::size_t _Np>
+  inline constexpr __nth_pack_element_t<_Np> __nth_pack_element{};
 
   template <auto... _Vs>
   struct __mliterals {
     template <std::size_t _Np>
+    STDEXEC_ATTRIBUTE((always_inline)) //
     static constexpr auto __nth() noexcept {
       return stdexec::__nth_pack_element<_Np>(_Vs...);
     }
@@ -986,6 +1017,7 @@ namespace stdexec {
   template <std::size_t _Np>
   struct __nth_member {
     template <class _Ty>
+    STDEXEC_ATTRIBUTE((always_inline)) //
     constexpr decltype(auto) operator()(_Ty&& __ty) const noexcept {
       return ((_Ty&&) __ty).*(__ty.__mbrs_.template __nth<_Np>());
     }

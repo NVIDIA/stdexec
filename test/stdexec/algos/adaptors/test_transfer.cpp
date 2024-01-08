@@ -279,20 +279,30 @@ namespace {
     REQUIRE(res.val_ == 61);
   }
 
-  struct test_domain {
-    template <ex::sender_expr_for<ex::transfer_t> Sender, class... Env>
-    auto transform_sender(Sender&& sndr, Env&&... env) const {
+  struct test_domain_A {
+    template <ex::sender_expr_for<ex::transfer_t> Sender, class Env>
+    auto transform_sender(Sender&& sndr, Env&& env) const {
       return ex::just(std::string("hello"));
     }
   };
 
-  TEST_CASE("transfer can be customized late", "[adaptors][transfer]") {
+  struct test_domain_B {
+    template <ex::sender_expr_for<ex::transfer_t> Sender, class Env>
+    auto transform_sender(Sender&& sndr, Env&& env) const {
+      return ex::just(std::string("goodbye"));
+    }
+  };
+
+  TEST_CASE(
+    "transfer late customization is passed on the destination scheduler",
+    "[adaptors][transfer]") {
     // The customization will return a different value
-    ex::scheduler auto sched = basic_inline_scheduler<test_domain>{};
-    auto snd = ex::on(sched, ex::just() | ex::transfer(inline_scheduler{}));
+    ex::scheduler auto sched_A = basic_inline_scheduler<test_domain_A>{};
+    ex::scheduler auto sched_B = basic_inline_scheduler<test_domain_B>{};
+    auto snd = ex::on(sched_A, ex::just() | ex::transfer(sched_B));
     std::string res;
     auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
     ex::start(op);
-    REQUIRE(res == "hello");
+    REQUIRE(res == "goodbye");
   }
 }

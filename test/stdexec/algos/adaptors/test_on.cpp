@@ -28,7 +28,6 @@ namespace ex = stdexec;
 using namespace std::chrono_literals;
 
 STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE_GNU("-Wpragmas")
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-function")
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunneeded-internal-declaration")
 
@@ -244,7 +243,7 @@ namespace {
     };
 
     struct my_sender {
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <typename R>

@@ -22,14 +22,13 @@
 #include <catch2/catch.hpp>
 
 STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE_GNU("-Wpragmas")
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-function")
 
 namespace {
 
   template <class Receiver>
   struct ignore_all_item_rcvr {
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
     Receiver rcvr;
 
     friend stdexec::env_of_t<Receiver>
@@ -54,7 +53,7 @@ namespace {
 
   template <class Item>
   struct ignore_all_sender {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using completion_signatures = stdexec::completion_signatures<stdexec::set_value_t()>;
 
     Item item_;
@@ -70,7 +69,7 @@ namespace {
   };
 
   struct ignore_all_receiver {
-    using is_receiver = void;
+    using receiver_concept = stdexec::receiver_t;
 
     template <class Item>
     friend ignore_all_sender<stdexec::__decay_t<Item>>

@@ -46,7 +46,10 @@ if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC"))
 endif()
 
 add_executable(test.nvexec ${nvexec_test_sources})
-
+set_target_properties(test.nvexec PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF)
 target_include_directories(test.nvexec PRIVATE ${CMAKE_CURRENT_LIST_DIR}/..)
 target_link_libraries(test.nvexec
                       STDEXEC::nvexec

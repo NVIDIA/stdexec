@@ -47,6 +47,11 @@ namespace {
     using cmd_vec_t = std::vector<oper_command_t>;
 
     struct data {
+      explicit data(int id)
+        : id_(id) {
+      }
+
+      int id_;
       cmd_vec_t all_commands_;
       std::mutex mutex_;
       std::condition_variable cv_;
@@ -87,7 +92,7 @@ namespace {
       using __id = my_sender;
       using __t = my_sender;
 
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                     //
         ex::set_stopped_t()>;
@@ -108,10 +113,36 @@ namespace {
     using __t = impulse_scheduler;
 
     impulse_scheduler()
-      : shared_data_(std::make_shared<data>()) {
+      : shared_data_(std::make_shared<data>(0)) {
+    }
+
+    explicit impulse_scheduler(int id)
+      : shared_data_(std::make_shared<data>(id)) {
     }
 
     ~impulse_scheduler() = default;
+
+    //! Actually start the command from the last started operation_state
+    //! Returns immediately if no command registered (i.e., no operation state started)
+    bool try_start_next() {
+      // Wait for a command that we can execute
+      std::unique_lock lock{shared_data_->mutex_};
+
+      // If there are no commands in the queue, return false
+      if (shared_data_->all_commands_.empty()) {
+        return false;
+      }
+
+      // Pop one command from the queue
+      auto cmd = std::move(shared_data_->all_commands_.front());
+      shared_data_->all_commands_.erase(shared_data_->all_commands_.begin());
+      // Exit the lock before executing the command
+      lock.unlock();
+      // Execute the command, i.e., send an impulse to the connected sender
+      cmd();
+      // Return true to signal that we started a command
+      return true;
+    }
 
     //! Actually start the command from the last started operation_state
     //! Blocks if no command registered (i.e., no operation state started)
@@ -162,7 +193,7 @@ namespace {
     struct my_sender {
       using __t = my_sender;
       using __id = my_sender;
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <typename R>
@@ -228,7 +259,7 @@ namespace {
       using __id = my_sender;
       using __t = my_sender;
 
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                     //
         ex::set_error_t(E),
@@ -279,7 +310,7 @@ namespace {
       using __id = my_sender;
       using __t = my_sender;
 
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                     //
         ex::set_stopped_t()>;

@@ -52,14 +52,14 @@ namespace {
     CHECK_FALSE(called);
 
     // Tell sched1 to start executing one task
-    sched1.start_next();
+    REQUIRE(sched1.try_start_next());
 
     // Now the base sender is called, and execution is transfered to sched2
     CHECK(called);
     CHECK(recv_value == 0);
 
     // Tell sched2 to start executing one task
-    sched2.start_next();
+    REQUIRE(sched2.try_start_next());
 
     // Now the base sender is called, and a value is sent to the receiver
     CHECK(recv_value == 19);
@@ -86,14 +86,14 @@ namespace {
     CHECK_FALSE(called);
 
     // Tell sched1 to start executing one task
-    sched1.start_next();
+    REQUIRE(sched1.try_start_next());
 
     // Now the base sender is called, and execution is transfered to sched2
     CHECK(called);
     CHECK(recv_error == 0);
 
     // Tell sched2 to start executing one task
-    sched2.start_next();
+    REQUIRE(sched2.try_start_next());
 
     // Now the base sender is called, and an error is sent to the receiver
     CHECK(recv_error == 19);
@@ -122,14 +122,14 @@ namespace {
 
     // Tell sched1 to start executing one task. This will post
     // work to sched2
-    sched1.start_next();
+    REQUIRE(sched1.try_start_next());
 
     // The base sender shouldn't be started
     CHECK_FALSE(called);
 
     // Tell sched2 to start executing one task. This will execute
     // the base sender and post work back to sched1
-    sched2.start_next();
+    REQUIRE(sched2.try_start_next());
 
     // Now the base sender is called, and execution is transfered back
     // to sched1
@@ -138,14 +138,14 @@ namespace {
 
     // Tell sched1 to start executing one task. This will post work to
     // sched3
-    sched1.start_next();
+    REQUIRE(sched1.try_start_next());
 
     // The final receiver still hasn't been called
     CHECK(recv_value == 0);
 
     // Tell sched3 to start executing one task. It should call the
     // final receiver
-    sched3.start_next();
+    REQUIRE(sched3.try_start_next());
 
     // Now the value is sent to the receiver
     CHECK(recv_value == 19);
@@ -174,14 +174,14 @@ namespace {
 
     // Tell sched1 to start executing one task. This will post
     // work to sched2
-    sched1.start_next();
+    REQUIRE(sched1.try_start_next());
 
     // The base sender shouldn't be started
     CHECK_FALSE(called);
 
     // Tell sched2 to start executing one task. This will execute
     // the base sender and post work back to sched1
-    sched2.start_next();
+    REQUIRE(sched2.try_start_next());
 
     // Now the base sender is called, and execution is transfered back
     // to sched1
@@ -190,14 +190,14 @@ namespace {
 
     // Tell sched1 to start executing one task. This will post work to
     // sched3
-    sched1.start_next();
+    REQUIRE(sched1.try_start_next());
 
     // The final receiver still hasn't been called
     CHECK(recv_error == 0);
 
     // Tell sched3 to start executing one task. It should call the
     // final receiver
-    sched3.start_next();
+    REQUIRE(sched3.try_start_next());
 
     // Now the error is sent to the receiver
     CHECK(recv_error == 19);
@@ -223,14 +223,14 @@ namespace {
     CHECK_FALSE(called);
 
     // Tell sched1 to start executing one task
-    sched1.start_next();
+    REQUIRE(sched1.try_start_next());
 
     // Now the closure is called, and execution is transfered to sched2
     CHECK(called);
     CHECK(recv_value == 0);
 
     // Tell sched2 to start executing one task
-    sched2.start_next();
+    REQUIRE(sched2.try_start_next());
 
     // Now the closure is called, and a value is sent to the receiver
     CHECK(recv_value == 19);
@@ -257,14 +257,14 @@ namespace {
     CHECK_FALSE(called);
 
     // Tell sched1 to start executing one task
-    sched1.start_next();
+    REQUIRE(sched1.try_start_next());
 
     // Now the closure is called, and execution is transfered to sched2
     CHECK(called);
     CHECK(recv_error == 0);
 
     // Tell sched2 to start executing one task
-    sched2.start_next();
+    REQUIRE(sched2.try_start_next());
 
     // Now the closure is called, and a error is sent to the receiver
     CHECK(recv_error == 19);
@@ -293,21 +293,21 @@ namespace {
 
     // Tell sched1 to start executing one task. This will post
     // work to sched3
-    sched1.start_next();
+    REQUIRE(sched1.try_start_next());
 
     // The closure shouldn't be started
     CHECK_FALSE(called);
 
     // Tell sched3 to start executing one task. This post work to
     // sched2.
-    sched3.start_next();
+    REQUIRE(sched3.try_start_next());
 
     // The closure shouldn't be started
     CHECK_FALSE(called);
 
     // Tell sched2 to start executing one task. This will execute
     // the closure and post work back to sched3
-    sched2.start_next();
+    REQUIRE(sched2.try_start_next());
 
     // Now the closure is called, and execution is transfered back
     // to sched3
@@ -316,7 +316,7 @@ namespace {
 
     // Tell sched3 to start executing one task. This will call the
     // receiver
-    sched3.start_next();
+    REQUIRE(sched3.try_start_next());
 
     // Now the value is sent to the receiver
     CHECK(recv_value == 19);
@@ -345,21 +345,21 @@ namespace {
 
     // Tell sched1 to start executing one task. This will post
     // work to sched3
-    sched1.start_next();
+    REQUIRE(sched1.try_start_next());
 
     // The closure shouldn't be started
     CHECK_FALSE(called);
 
     // Tell sched3 to start executing one task. This post work to
     // sched2.
-    sched3.start_next();
+    REQUIRE(sched3.try_start_next());
 
     // The closure shouldn't be started
     CHECK_FALSE(called);
 
     // Tell sched2 to start executing one task. This will execute
     // the closure and post work back to sched3
-    sched2.start_next();
+    REQUIRE(sched2.try_start_next());
 
     // Now the closure is called, and execution is transfered back
     // to sched3
@@ -368,7 +368,7 @@ namespace {
 
     // Tell sched3 to start executing one task. This will call the
     // receiver
-    sched3.start_next();
+    REQUIRE(sched3.try_start_next());
 
     // Now the error is sent to the receiver
     CHECK(recv_error == 19);

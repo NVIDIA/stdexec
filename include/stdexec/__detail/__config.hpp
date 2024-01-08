@@ -150,11 +150,19 @@
 #define STDEXEC_ATTR_WHICH_0(_ATTR) [[_ATTR]]
 
 // custom handling for specific attribute types
-#define STDEXEC_ATTR_WHICH_1(_ATTR) STDEXEC_CUDA(__host__)
+#ifdef __CUDACC__
+#define STDEXEC_ATTR_WHICH_1(_ATTR) __host__
+#else
+#define STDEXEC_ATTR_WHICH_1(_ATTR)
+#endif
 #define STDEXEC_ATTR_host STDEXEC_PROBE(~, 1)
 #define STDEXEC_ATTR___host__ STDEXEC_PROBE(~, 1)
 
-#define STDEXEC_ATTR_WHICH_2(_ATTR) STDEXEC_CUDA(__device__)
+#ifdef __CUDACC__
+#define STDEXEC_ATTR_WHICH_2(_ATTR) __device__
+#else
+#define STDEXEC_ATTR_WHICH_2(_ATTR)
+#endif
 #define STDEXEC_ATTR_device STDEXEC_PROBE(~, 2)
 #define STDEXEC_ATTR___device__ STDEXEC_PROBE(~, 2)
 
@@ -174,8 +182,11 @@
 
 #if STDEXEC_MSVC()
 #define STDEXEC_ATTR_WHICH_4(_ATTR) __forceinline
+#elif STDEXEC_CLANG()
+#define STDEXEC_ATTR_WHICH_4(_ATTR) \
+  __attribute__((__always_inline__, __artificial__, __nodebug__)) inline
 #elif defined(__GNUC__)
-#define STDEXEC_ATTR_WHICH_4(_ATTR) __attribute__((always_inline))
+#define STDEXEC_ATTR_WHICH_4(_ATTR) __attribute__((__always_inline__, __artificial__)) inline
 #else
 #define STDEXEC_ATTR_WHICH_4(_ATTR) /*nothing*/
 #endif
@@ -193,7 +204,10 @@
 #define STDEXEC_PRAGMA_POP() _Pragma("diagnostic pop")
 #define STDEXEC_PRAGMA_IGNORE_EDG(...) _Pragma(STDEXEC_STRINGIZE(diag_suppress __VA_ARGS__))
 #elif STDEXEC_CLANG() || STDEXEC_GCC()
-#define STDEXEC_PRAGMA_PUSH() _Pragma("GCC diagnostic push")
+#define STDEXEC_PRAGMA_PUSH() \
+  _Pragma("GCC diagnostic push") STDEXEC_PRAGMA_IGNORE_GNU("-Wpragmas") STDEXEC_PRAGMA_IGNORE_GNU( \
+    "-Wunknown-pragmas") STDEXEC_PRAGMA_IGNORE_GNU("-Wunknown-warning-option") \
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wunknown-attributes") STDEXEC_PRAGMA_IGNORE_GNU("-Wattributes")
 #define STDEXEC_PRAGMA_POP() _Pragma("GCC diagnostic pop")
 #define STDEXEC_PRAGMA_IGNORE_GNU(...) \
   _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored __VA_ARGS__))
@@ -215,6 +229,12 @@
 #define STDEXEC_HAS_BUILTIN(...) 0
 #endif
 
+#if !STDEXEC_MSVC() && defined(__has_feature)
+#define STDEXEC_HAS_FEATURE __has_feature
+#else
+#define STDEXEC_HAS_FEATURE(...) 0
+#endif
+
 #if STDEXEC_HAS_BUILTIN(__is_trivially_copyable) || STDEXEC_MSVC()
 #define STDEXEC_IS_TRIVIALLY_COPYABLE(...) __is_trivially_copyable(__VA_ARGS__)
 #else
@@ -233,6 +253,12 @@
 #define STDEXEC_IS_CONVERTIBLE_TO(...) __is_convertible(__VA_ARGS__)
 #else
 #define STDEXEC_IS_CONVERTIBLE_TO(...) std::is_convertible_v<__VA_ARGS__>
+#endif
+
+#if STDEXEC_HAS_BUILTIN(__is_const)
+#define STDEXEC_IS_CONST(...) __is_const(__VA_ARGS__)
+#else
+#define STDEXEC_IS_CONST(...) stdexec::__is_const<__VA_ARGS__>
 #endif
 
 #if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L
@@ -272,6 +298,12 @@
 #define STDEXEC_TERMINATE() std::terminate()
 #endif
 
+#if STDEXEC_HAS_FEATURE(thread_sanitizer) || defined(__SANITIZE_THREAD__)
+#define STDEXEC_TSAN(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#else
+#define STDEXEC_TSAN(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#endif
+
 // Before clang-16, clang did not like libstdc++'s ranges implementation
 #if __has_include(<ranges>) && \
   (defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L) && \
@@ -279,6 +311,13 @@
 #define STDEXEC_HAS_STD_RANGES() 1
 #else
 #define STDEXEC_HAS_STD_RANGES() 0
+#endif
+
+#if __has_include(<memory_resource>) && \
+  (defined(__cpp_lib_memory_resource) && __cpp_lib_memory_resource >= 201603L)
+#define STDEXEC_HAS_STD_MEMORY_RESOURCE() 1
+#else
+#define STDEXEC_HAS_STD_MEMORY_RESOURCE() 0
 #endif
 
 #ifdef STDEXEC_ASSERT

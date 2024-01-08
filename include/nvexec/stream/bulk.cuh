@@ -320,7 +320,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   template <class SenderId, std::integral Shape, class Fun>
   struct multi_gpu_bulk_sender_t {
-    using is_sender = void;
+    using sender_concept = stdexec::sender_t;
     using Sender = stdexec::__t<SenderId>;
 
     struct __t : stream_sender_base {

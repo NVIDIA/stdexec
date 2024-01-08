@@ -20,7 +20,6 @@
 namespace ex = stdexec;
 
 STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE_GNU("-Wpragmas")
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-function")
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunneeded-internal-declaration")
 
@@ -36,7 +35,7 @@ namespace {
 
   struct my_scheduler {
     struct my_sender {
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                     //
         ex::set_error_t(std::exception_ptr),                   //
@@ -76,7 +75,7 @@ namespace {
 
   struct my_scheduler_except {
     struct my_sender {
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                     //
         ex::set_error_t(std::exception_ptr),                   //
@@ -107,7 +106,7 @@ namespace {
 
   struct noeq_sched {
     struct my_sender {
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                     //
         ex::set_error_t(std::exception_ptr),                   //
@@ -129,7 +128,7 @@ namespace {
 
   struct sched_no_completion {
     struct my_sender {
-      using is_sender = void;
+      using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                     //
         ex::set_error_t(std::exception_ptr),                   //
@@ -166,44 +165,6 @@ namespace {
     "[concepts][scheduler]") {
     REQUIRE(!ex::scheduler<sched_no_completion>);
   }
-
-#if STDEXEC_LEGACY_R5_CONCEPTS()
-  struct sched_no_env {
-    // P2300R5 senders defined sender queries on the sender itself.
-    struct my_sender {
-      // Intentionally left out:
-      //using is_sender = void;
-      using completion_signatures = ex::completion_signatures< //
-        ex::set_value_t(),                                     //
-        ex::set_error_t(std::exception_ptr),                   //
-        ex::set_stopped_t()>;
-
-      template <typename CPO>
-      friend sched_no_env tag_invoke(ex::get_completion_scheduler_t<CPO>, my_sender) {
-        return {};
-      }
-    };
-
-    friend my_sender tag_invoke(ex::schedule_t, sched_no_env) {
-      return {};
-    }
-
-    friend bool operator==(sched_no_env, sched_no_env) noexcept {
-      return true;
-    }
-
-    friend bool operator!=(sched_no_env, sched_no_env) noexcept {
-      return false;
-    }
-  };
-
-  TEST_CASE(
-    "type without sender get_env is still a scheduler",
-    "[concepts][scheduler][r5_backwards_compatibility]") {
-    static_assert(ex::scheduler<sched_no_env>);
-    REQUIRE(ex::scheduler<sched_no_env>);
-  }
-#endif
 }
 
 STDEXEC_PRAGMA_POP()
