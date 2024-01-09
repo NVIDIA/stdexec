@@ -1,10 +1,10 @@
 name: CI (CPU)
 
 on:
-  pull_request:
   push:
     branches:
       - main
+      - "pull-request/[0-9]+"
 
 concurrency:
   group: ${{ github.workflow }}-on-${{ github.event_name }}-from-${{ github.ref_name }}
