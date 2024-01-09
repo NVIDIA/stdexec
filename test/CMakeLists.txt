@@ -132,6 +132,14 @@ include(${icm_SOURCE_DIR}/icm_build_failure_testing.cmake)
 
 # Test which parses a source file for an expected error message
 icm_add_build_failure_test(
+    NAME test_let_fail1
+    TARGET test_let_fail1
+    SOURCES PARSE stdexec/algos/adaptors/test_let_fail1.cpp
+    LIBRARIES stdexec
+    FOLDER test
+)
+
+icm_add_build_failure_test(
     NAME test_then_fail1
     TARGET test_then_fail1
     SOURCES PARSE stdexec/algos/adaptors/test_then_fail1.cpp
