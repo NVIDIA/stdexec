@@ -1,10 +1,10 @@
 name: CI (CPU)
 
 on:
-  pull_request:
   push:
     branches:
       - main
+      - "pull-request/[0-9]+"
 
 concurrency:
   group: ${{ github.workflow }}-on-${{ github.event_name }}-from-${{ github.ref_name }}
@@ -47,7 +47,7 @@ jobs:
           persist-credentials: false
       - if: github.repository_owner == 'NVIDIA'
         name: Get AWS credentials for sccache bucket
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: us-east-2
           role-duration-seconds: 28800 # 8 hours
