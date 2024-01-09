@@ -124,6 +124,6 @@ int main(int argc, char** argv) {
   }
 
   std::cout << "Avg time: "
-            << (std::accumulate(times.begin() + warmup, times.end(), 0) / times.size())
+            << (std::accumulate(times.begin() + warmup, times.end(), 0) / (times.size() - warmup))
             << "ms. Result: " << result << std::endl;
 }
