@@ -26,7 +26,6 @@
 #include "algorithm_base.cuh"
 #include "common.cuh"
 #include "../detail/throw_on_cuda_error.cuh"
-#include "stdexec/__detail/__p2300.hpp"
 
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
