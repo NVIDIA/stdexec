@@ -22,7 +22,6 @@
 namespace ex = stdexec;
 
 STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE_GNU("-Wpragmas")
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-function")
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunneeded-internal-declaration")
 

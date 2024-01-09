@@ -14,24 +14,14 @@
 # limitations under the License.
 #=============================================================================
 
-include_guard(GLOBAL)
+# Look for an executable called sphinx-build
+find_program(SPHINX_EXECUTABLE
+             NAMES sphinx-build
+             DOC "Path to sphinx-build executable")
 
-function(disable_compiler)
-  cmake_parse_arguments("" "" "LANG;VAR" "" ${ARGN})
-  set(_val)
+include(FindPackageHandleStandardArgs)
 
-  if(DEFINED ENV{CMAKE_${_LANG}_COMPILER})
-    set(_val "$ENV{CMAKE_${_LANG}_COMPILER}")
-    unset(ENV{CMAKE_${_LANG}_COMPILER})
-  endif()
-
-  if(CMAKE_${_LANG}_COMPILER)
-    set(_val "${CMAKE_${_LANG}_COMPILER}")
-    unset(CMAKE_${_LANG}_COMPILER PARENT_SCOPE)
-    unset(CMAKE_${_LANG}_COMPILER CACHE)
-  endif()
-
-  if(_VAR)
-    set(${_VAR} "${_val}" PARENT_SCOPE)
-  endif()
-endfunction()
+# Handle standard arguments to find_package like REQUIRED and QUIET
+find_package_handle_standard_args(Sphinx
+                                  "Failed to find sphinx-build executable"
+                                  SPHINX_EXECUTABLE)

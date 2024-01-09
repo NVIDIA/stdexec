@@ -420,7 +420,10 @@ namespace stdexec {
         return tag_invoke(as_awaitable, (_Ty&&) __value, *this);
       }
 
-      friend auto tag_invoke(get_env_t, const __env_promise&) noexcept -> const _Env&;
+      template <same_as<get_env_t> _Tag>
+      friend auto tag_invoke(_Tag, const __env_promise&) noexcept -> const _Env& {
+        std::terminate();
+      }
     };
 
     // For making an environment from key/value pairs and optionally

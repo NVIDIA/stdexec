@@ -71,6 +71,7 @@ set(stdexec_test_sources
     exec/test_on2.cpp
     exec/test_on3.cpp
     exec/test_repeat_effect_until.cpp
+    exec/test_repeat_n.cpp
     exec/async_scope/test_dtor.cpp
     exec/async_scope/test_spawn.cpp
     exec/async_scope/test_spawn_future.cpp
@@ -132,9 +133,33 @@ include(${icm_SOURCE_DIR}/icm_build_failure_testing.cmake)
 
 # Test which parses a source file for an expected error message
 icm_add_build_failure_test(
+    NAME test_let_fail1
+    TARGET test_let_fail1
+    SOURCES PARSE stdexec/algos/adaptors/test_let_fail1.cpp
+    LIBRARIES stdexec
+    FOLDER test
+)
+
+icm_add_build_failure_test(
     NAME test_then_fail1
     TARGET test_then_fail1
     SOURCES PARSE stdexec/algos/adaptors/test_then_fail1.cpp
+    LIBRARIES stdexec
+    FOLDER test
+)
+
+icm_add_build_failure_test(
+    NAME test_repeat_effect_until_fail
+    TARGET test_repeat_effect_until_fail
+    SOURCES PARSE exec/test_repeat_effect_until_fail.cpp
+    LIBRARIES stdexec
+    FOLDER test
+)
+
+icm_add_build_failure_test(
+    NAME test_repeat_n_fail
+    TARGET test_repeat_n_fail
+    SOURCES PARSE exec/test_repeat_n_fail.cpp
     LIBRARIES stdexec
     FOLDER test
 )

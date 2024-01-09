@@ -100,6 +100,7 @@ namespace exec {
 
       class __t {
        public:
+        using __id = __final_receiver;
         using receiver_concept = stdexec::receiver_t;
 
         explicit __t(__final_operation_base<_ResultType, _ReceiverId>* __op) noexcept
@@ -146,8 +147,8 @@ namespace exec {
 
     template <class _InitialSenderId, class _FinalSenderId, class _ReceiverId>
     struct __operation_state {
-      using _InitialSender = stdexec::__t<_InitialSenderId>;
-      using _FinalSender = stdexec::__t<_FinalSenderId>;
+      using _InitialSender = __cvref_t<_InitialSenderId>;
+      using _FinalSender = __cvref_t<_FinalSenderId>;
       using _Receiver = stdexec::__t<_ReceiverId>;
       using __signatures = completion_signatures_of_t<_InitialSender, env_of_t<_Receiver>>;
       using __base_t = __final_operation_base<__result_variant<__signatures>, _ReceiverId>;
@@ -159,14 +160,15 @@ namespace exec {
 
     template <class _InitialSenderId, class _FinalSenderId, class _ReceiverId>
     struct __initial_receiver {
-      using _Receiver = stdexec::__t<_ReceiverId>;
-      using _FinalSender = stdexec::__t<_FinalSenderId>;
+      using _Receiver = __cvref_t<_ReceiverId>;
+      using _FinalSender = __cvref_t<_FinalSenderId>;
 
       using __base_op_t =
         stdexec::__t<__operation_state<_InitialSenderId, _FinalSenderId, _ReceiverId>>;
 
       class __t {
        public:
+        using __id = __initial_receiver;
         using receiver_concept = stdexec::receiver_t;
 
         explicit __t(__base_op_t* __op) noexcept
@@ -212,6 +214,8 @@ namespace exec {
       }
 
      public:
+      using __id = __operation_state;
+
       template <class... _Args>
         requires std::is_constructible_v<__result_variant<__signatures>, __decayed_tuple<_Args...>>
       void __store_result_and_start_next_op(_Args&&... __args) {
@@ -243,9 +247,9 @@ namespace exec {
 
       template <class _Self, class _Receiver>
       using __op_t = stdexec::__t<__operation_state<
-        __x<__copy_cvref_t<_Self, _InitialSender>>,
-        __x<__copy_cvref_t<_Self, _FinalSender>>,
-        __x<_Receiver>>>;
+        __cvref_id<_Self, _InitialSender>,
+        __cvref_id<_Self, _FinalSender>,
+        __id<_Receiver>>>;
 
       class __t {
         _InitialSender __initial_sender_;
@@ -273,6 +277,7 @@ namespace exec {
         }
 
        public:
+        using __id = __sender;
         using sender_concept = stdexec::sender_t;
 
         template <__decays_to<_InitialSender> _Is, __decays_to<_FinalSender> _Fs>

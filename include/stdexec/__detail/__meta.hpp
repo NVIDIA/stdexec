@@ -367,11 +367,11 @@ namespace stdexec {
     requires(sizeof...(_False) <= 1)
   using __if_c = __minvoke<__if_::__<_Pred>, _True, _False...>;
 
-  template <class _Pred, class _True, class... _False>
-  using __minvoke_if = __minvoke<__if<_Pred, _True, _False...>>;
+  template <class _Pred, class _True, class _False, class... _Args>
+  using __minvoke_if = __minvoke<__if<_Pred, _True, _False>, _Args...>;
 
-  template <bool _Pred, class _True, class... _False>
-  using __minvoke_if_c = __minvoke<__if_c<_Pred, _True, _False...>>;
+  template <bool _Pred, class _True, class _False, class... _Args>
+  using __minvoke_if_c = __minvoke<__if_c<_Pred, _True, _False>, _Args...>;
 
   template <class _Tp>
   struct __mconst {
@@ -673,21 +673,11 @@ namespace stdexec {
     using __f = __minvoke<_Continuation, _Ts...>;
   };
 
-  // For hiding a template type parameter from ADL
-  template <class _Ty>
-  struct _Xp {
-    using __t = struct _Up {
-      using __t = _Ty;
-    };
-  };
-  template <class _Ty>
-  using __x = __t<_Xp<_Ty>>;
-
   template <class _Ty>
   concept __has_id = requires { typename _Ty::__id; };
 
   template <class _Ty>
-  struct _Yp {
+  struct _Id {
     using __t = _Ty;
 
     // Uncomment the line below to find any code that likely misuses the
@@ -707,7 +697,7 @@ namespace stdexec {
   template <>
   struct __id_<false> {
     template <class _Ty>
-    using __f = _Yp<_Ty>;
+    using __f = _Id<_Ty>;
   };
   template <class _Ty>
   using __id = __minvoke<__id_<__has_id<_Ty>>, _Ty>;
