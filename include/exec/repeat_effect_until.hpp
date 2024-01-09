@@ -78,11 +78,11 @@ namespace exec {
       }
 
       ~__repeat_effect_state() {
-        if (!__started_.test(std::memory_order_release)) {
-          std::atomic_thread_fence(std::memory_order_acquire);
+        if (!__started_.test(std::memory_order_acquire)) {
+          std::atomic_thread_fence(std::memory_order_release);
           // TSan does not support std::atomic_thread_fence, so we
-          // need to use the TSan-specific __tsan_acquire instead:
-          STDEXEC_TSAN(__tsan_acquire(&__started_));
+          // need to use the TSan-specific __tsan_release instead:
+          STDEXEC_TSAN(__tsan_release(&__started_));
           __child_op_.__destroy();
         }
       }
@@ -94,9 +94,10 @@ namespace exec {
       }
 
       void __start() noexcept {
-        STDEXEC_ASSERT(!__started_.test(std::memory_order_release));
+        const bool __already_started [[maybe_unused]] =
+          __started_.test_and_set(std::memory_order_relaxed);
+        STDEXEC_ASSERT(!__already_started);
         stdexec::start(__child_op_.__get());
-        (void) __started_.test_and_set(std::memory_order_relaxed);
       }
 
       template <class _Tag, class... _Args>
