@@ -68,7 +68,7 @@ namespace exec {
       using __child_op_t = stdexec::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
       __child_t __child_;
-      std::atomic_flag __started_ = false;
+      std::atomic_flag __started_{};
       __manual_lifetime<__child_op_t> __child_op_;
       trampoline_scheduler __sched_;
 
