@@ -42,8 +42,8 @@
 
 namespace exec {
   struct bwos_params {
-    std::size_t numBlocks{8};
-    std::size_t blockSize{1024};
+    std::size_t numBlocks{32};
+    std::size_t blockSize{8};
   };
 
   namespace _pool_ {
@@ -1052,7 +1052,7 @@ namespace exec {
           __with_exception_ptr>;
 
       template <class... Tys>
-      using set_value_t = completion_signatures< set_value_t(__decay_t<Tys>...)>;
+      using set_value_t = completion_signatures< set_value_t(stdexec::__decay_t<Tys>...)>;
 
       template <class Self, class Env>
       using __completions_t = //
