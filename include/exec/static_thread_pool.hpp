@@ -43,7 +43,7 @@
 namespace exec {
   struct bwos_params {
     std::size_t numBlocks{32};
-    std::size_t blockSize{4};
+    std::size_t blockSize{8};
   };
 
   namespace _pool_ {
