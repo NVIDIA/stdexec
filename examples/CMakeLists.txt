@@ -76,4 +76,7 @@ if (STDEXEC_ENABLE_TBB)
 
  add_executable(example.benchmark.tbb_thread_pool_nested benchmark/tbb_thread_pool_nested.cpp)
  target_link_libraries(example.benchmark.tbb_thread_pool_nested PRIVATE STDEXEC::tbbexec)
+
+ add_executable(example.benchmark.fibonacci benchmark/fibonacci.cpp)
+ target_link_libraries(example.benchmark.fibonacci PRIVATE STDEXEC::tbbexec)
 endif()
