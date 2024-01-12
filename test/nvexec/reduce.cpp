@@ -6,6 +6,7 @@
 #include "common.cuh"
 
 #include <thrust/device_vector.h>
+#include <cub/thread/thread_operators.cuh>
 
 #include <algorithm>
 #include <span>
@@ -36,7 +37,7 @@ namespace {
 
     nvexec::stream_context stream{};
     auto snd = ex::transfer_just(stream.get_scheduler(), std::span{input})
-             | nvexec::reduce(0, cub::Difference{});
+             | nvexec::reduce(0, cub::Sum{});
 
     STATIC_REQUIRE(ex::sender_of<decltype(snd), ex::set_value_t(int&)>);
 
