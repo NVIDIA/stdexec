@@ -83,7 +83,7 @@ namespace nvexec {
 
       template <class Fun, class... As>
       using launch_error_t =
-        __minvoke<__callable_error<"In nvexec::launch()..."__csz>, Fun, cudaStream_t, As&...>;
+        __minvoke<__callable_error<"In nvexec::launch()..."_mstr>, Fun, cudaStream_t, As&...>;
 
       template <class Fun, class... As>
       using _set_value_t = __minvoke<

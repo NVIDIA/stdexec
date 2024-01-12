@@ -125,8 +125,8 @@ namespace exec {
     STDEXEC_PRAGMA_POP()
 
     template <
-      __mstring _Where = "In repeat_effect_until: "__csz,
-      __mstring _What = "The input sender must send a single value that is convertible to bool"__csz>
+      __mstring _Where = "In repeat_effect_until: "_mstr,
+      __mstring _What = "The input sender must send a single value that is convertible to bool"_mstr>
     struct _INVALID_ARGUMENT_TO_REPEAT_EFFECT_UNTIL_ { };
 
     template <class _Sender, class... _Args>
