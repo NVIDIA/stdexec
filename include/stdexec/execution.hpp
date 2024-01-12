@@ -135,7 +135,7 @@ namespace stdexec {
   namespace __error__ {
     inline constexpr __mstring __unrecognized_sender_type_diagnostic =
       "The given type cannot be used as a sender with the given environment "
-      "because the attempt to compute the completion signatures failed."__csz;
+      "because the attempt to compute the completion signatures failed."_mstr;
 
     template <__mstring _Diagnostic = __unrecognized_sender_type_diagnostic>
     struct _UNRECOGNIZED_SENDER_TYPE_;
@@ -263,7 +263,7 @@ namespace stdexec {
   using __invalid_completion_signatures_t = //
     __mbool<!__valid_completion_signatures<_Completions>>;
 
-  template <__mstring _Msg = "Expected an instance of template completion_signatures<>"__csz>
+  template <__mstring _Msg = "Expected an instance of template completion_signatures<>"_mstr>
   struct _INVALID_COMPLETION_SIGNATURES_TYPE_ {
     template <class... _Completions>
     using __f = //
@@ -2475,7 +2475,7 @@ namespace stdexec {
   struct _WITH_ARGUMENTS_ { };
 
   inline constexpr __mstring __not_callable_diag =
-    "The specified function is not callable with the arguments provided."__csz;
+    "The specified function is not callable with the arguments provided."_mstr;
 
   template <__mstring _Context, __mstring _Diagnostic = __not_callable_diag>
   struct _NOT_CALLABLE_ { };
@@ -2515,7 +2515,7 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
   namespace __then {
-    inline constexpr __mstring __then_context = "In stdexec::then(Sender, Function)..."__csz;
+    inline constexpr __mstring __then_context = "In stdexec::then(Sender, Function)..."_mstr;
     using __on_not_callable = __callable_error<__then_context>;
 
     template <class _Fun, class _CvrefSender, class _Env>
@@ -2590,7 +2590,7 @@ namespace stdexec {
   // [execution.senders.adaptors.upon_error]
   namespace __upon_error {
     inline constexpr __mstring __upon_error_context =
-      "In stdexec::upon_error(Sender, Function)..."__csz;
+      "In stdexec::upon_error(Sender, Function)..."_mstr;
     using __on_not_callable = __callable_error<__upon_error_context>;
 
     template <class _Fun, class _CvrefSender, class _Env>
@@ -2662,7 +2662,7 @@ namespace stdexec {
   // [execution.senders.adaptors.upon_stopped]
   namespace __upon_stopped {
     inline constexpr __mstring __upon_stopped_context =
-      "In stdexec::upon_stopped(Sender, Function)..."__csz;
+      "In stdexec::upon_stopped(Sender, Function)..."_mstr;
     using __on_not_callable = __callable_error<__upon_stopped_context>;
 
     template <class _Fun, class _CvrefSender, class _Env>
@@ -2737,7 +2737,7 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.bulk]
   namespace __bulk {
-    inline constexpr __mstring __bulk_context = "In stdexec::bulk(Sender, Shape, Function)..."__csz;
+    inline constexpr __mstring __bulk_context = "In stdexec::bulk(Sender, Shape, Function)..."_mstr;
     using __on_not_callable = __callable_error<__bulk_context>;
 
     template <class _Shape, class _Fun>
@@ -3427,7 +3427,7 @@ namespace stdexec {
       using __t = __mexception<
         _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_<
           __in_which_let_msg<_Set>,
-          "The function must return a valid sender for the current environment"__csz>,
+          "The function must return a valid sender for the current environment"_mstr>,
         _WITH_SENDER_<_Sender>,
         _WITH_ENVIRONMENT_<_Env>>;
     };
@@ -3439,7 +3439,7 @@ namespace stdexec {
       __mexception<
         _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_<
           __in_which_let_msg<_Set>,
-          "The function must return a valid sender for the current environment"__csz>,
+          "The function must return a valid sender for the current environment"_mstr>,
         _WITH_SENDER_<_Sender>,
         _WITH_ENVIRONMENT_<_Env>>;
 #endif
@@ -3519,7 +3519,7 @@ namespace stdexec {
     using __no_common_domain_t = //
       _NO_COMMON_DOMAIN_<
         __in_which_let_msg<_Set>,
-        "The senders returned by Function do not all share a common domain"__csz>;
+        "The senders returned by Function do not all share a common domain"_mstr>;
 
     template <class _Set>
     using __try_common_domain_fn = //
@@ -4598,10 +4598,10 @@ namespace stdexec {
       && __mvalid<__value_types_of_t, _Sender, _Env, __mconst<int>, __msingle_or<void>>;
 
     template <
-      __mstring _Context = "In stdexec::when_all()..."__csz,
+      __mstring _Context = "In stdexec::when_all()..."_mstr,
       __mstring _Diagnostic =
         "The given sender can complete successfully in more that one way. "
-        "Use stdexec::when_all_with_variant() instead."__csz>
+        "Use stdexec::when_all_with_variant() instead."_mstr>
     struct _INVALID_WHEN_ALL_ARGUMENT_;
 
     template <class _Sender, class _Env>
@@ -5077,7 +5077,7 @@ namespace stdexec {
     concept __nothrow_t = __nothrow_callable<_Tag, env_of_t<stdexec::__t<_ReceiverId>>>;
 
     inline constexpr __mstring __query_failed_diag =
-      "The current execution environment doesn't have a value for the given query."__csz;
+      "The current execution environment doesn't have a value for the given query."_mstr;
 
     template <class _Tag>
     struct _WITH_QUERY_;
@@ -5085,7 +5085,7 @@ namespace stdexec {
     template <class _Tag, class _Env>
     using __query_failed_error = //
       __mexception<              //
-        _NOT_CALLABLE_<"In stdexec::read()..."__csz, __query_failed_diag>,
+        _NOT_CALLABLE_<"In stdexec::read()..."_mstr, __query_failed_diag>,
         _WITH_QUERY_<_Tag>,
         _WITH_ENVIRONMENT_<_Env>>;
 
@@ -5216,11 +5216,11 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.on]
   namespace __on_v2 {
-    inline constexpr __mstring __on_context = "In stdexec::on(Scheduler, Sender)..."__csz;
+    inline constexpr __mstring __on_context = "In stdexec::on(Scheduler, Sender)..."_mstr;
     inline constexpr __mstring __no_scheduler_diag =
-      "stdexec::on() requires a scheduler to transition back to."__csz;
+      "stdexec::on() requires a scheduler to transition back to."_mstr;
     inline constexpr __mstring __no_scheduler_details =
-      "The provided environment lacks a value for the get_scheduler() query."__csz;
+      "The provided environment lacks a value for the get_scheduler() query."_mstr;
 
     template <
       __mstring _Context = __on_context,
@@ -5463,10 +5463,10 @@ namespace stdexec {
     using __variant_for_t = __t<__variant_for<_Sender>>;
 
     inline constexpr __mstring __sync_wait_context_diag = //
-      "In stdexec::sync_wait()..."__csz;
+      "In stdexec::sync_wait()..."_mstr;
     inline constexpr __mstring __too_many_successful_completions_diag =
       "The argument to stdexec::sync_wait() is a sender that can complete successfully in more "
-      "than one way. Use stdexec::sync_wait_with_variant() instead."__csz;
+      "than one way. Use stdexec::sync_wait_with_variant() instead."_mstr;
 
     template <__mstring _Context, __mstring _Diagnostic>
     struct _INVALID_ARGUMENT_TO_SYNC_WAIT_;
@@ -5502,7 +5502,7 @@ namespace stdexec {
           return _Completions();
         } else {
           constexpr __mstring __diag =
-            "The stdexec::sender_in<Sender, Environment> concept check has failed."__csz;
+            "The stdexec::sender_in<Sender, Environment> concept check has failed."_mstr;
           return __sync_wait_error<__diag, _Sender>();
         }
       } else if constexpr (!__valid_sync_wait_argument<_Sender>) {
@@ -5510,10 +5510,10 @@ namespace stdexec {
       } else if constexpr (!sender_to<_Sender, __sync_receiver_for_t<_Sender>>) {
         constexpr __mstring __diag =
           "Failed to connect the given sender to sync_wait's internal receiver. "
-          "The stdexec::connect(Sender, Receiver) expression is ill-formed."__csz;
+          "The stdexec::connect(Sender, Receiver) expression is ill-formed."_mstr;
         return __sync_wait_error<__diag, _Sender>();
       } else {
-        constexpr __mstring __diag = "Unknown concept check failure."__csz;
+        constexpr __mstring __diag = "Unknown concept check failure."_mstr;
         return __sync_wait_error<__diag, _Sender>();
       }
       STDEXEC_UNREACHABLE();
@@ -5635,7 +5635,7 @@ namespace stdexec {
     }
   };
 
-  template <auto _Reason = "You cannot pipe one sender into another."__csz>
+  template <auto _Reason = "You cannot pipe one sender into another."_mstr>
   struct _CANNOT_PIPE_INTO_A_SENDER_ { };
 
   template <class _Sender>

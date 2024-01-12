@@ -139,8 +139,8 @@ namespace exec {
     STDEXEC_PRAGMA_POP()
 
     template <
-      __mstring _Where = "In repeat_n: "__csz,
-      __mstring _What = "The input sender must be a sender of void"__csz>
+      __mstring _Where = "In repeat_n: "_mstr,
+      __mstring _What = "The input sender must be a sender of void"_mstr>
     struct _INVALID_ARGUMENT_TO_REPEAT_N_ { };
 
     template <class _Sender, class... _Args>

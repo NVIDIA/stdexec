@@ -125,7 +125,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             Fun,
             __copy_cvref_t<Self, Sender>,
             Env,
-            __callable_error<"In nvexec::upon_stopped(Sender, Function)..."__csz>>,
+            __callable_error<"In nvexec::upon_stopped(Sender, Function)..."_mstr>>,
           __q<__compl_sigs::__default_set_value>,
           __q<__compl_sigs::__default_set_error>,
           __set_value_invoke_t<Fun>>;

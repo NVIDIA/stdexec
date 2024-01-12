@@ -160,7 +160,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             Fun,
             __copy_cvref_t<Self, Sender>,
             Env,
-            __callable_error<"In nvexec::then(Sender, Function)..."__csz>>,
+            __callable_error<"In nvexec::then(Sender, Function)..."_mstr>>,
           completion_signatures<set_error_t(cudaError_t)>>;
 
       template <class Self, class Env>
