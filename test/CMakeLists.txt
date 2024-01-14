@@ -89,6 +89,7 @@ set(stdexec_test_sources
     exec/sequence/test_iterate.cpp
     exec/sequence/test_transform_each.cpp
     $<$<BOOL:${STDEXEC_ENABLE_TBB}>:tbbexec/test_tbb_thread_pool.cpp>
+    exec/test_system_scheduler.cpp
     )
 
 add_executable(test.stdexec ${stdexec_test_sources})
