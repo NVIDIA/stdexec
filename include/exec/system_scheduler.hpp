@@ -110,6 +110,8 @@ struct __exec_system_operation_state_impl;
 using __exec_pool_sender_t = decltype(stdexec::schedule(std::declval<__exec_system_scheduler_impl>().pool_scheduler_));
 
 struct __exec_system_pool_receiver {
+  using receiver_concept = stdexec::receiver_t;
+
   friend void tag_invoke(stdexec::set_value_t, __exec_system_pool_receiver&&) noexcept;
 
   friend void tag_invoke(stdexec::set_stopped_t, __exec_system_pool_receiver&&) noexcept;
@@ -187,6 +189,8 @@ struct __exec_system_sender_impl : public __exec_system_sender_interface {
 
 struct __exec_system_bulk_operation_state_impl;
 struct __exec_system_bulk_pool_receiver {
+  using receiver_concept = stdexec::receiver_t;
+
   friend void tag_invoke(stdexec::set_value_t, __exec_system_bulk_pool_receiver&&) noexcept;
 
   friend void tag_invoke(stdexec::set_stopped_t, __exec_system_bulk_pool_receiver&&) noexcept;
@@ -390,7 +394,7 @@ namespace exec {
   private:
     template <class S, class R_>
     struct __op {
-      using R = stdexec::__t<R_>;
+      using R = R_;
 
       template<class F>
       __op(system_sender&& snd, R&& recv, F&& initFunc) :
@@ -415,9 +419,9 @@ namespace exec {
     template <class R>
     friend auto tag_invoke(stdexec::connect_t, system_sender&& snd, R&& rec) //
       noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<R>, R>)
-        -> __op<system_sender, stdexec::__x<std::remove_cvref_t<R>>> {
+        -> __op<system_sender, std::remove_cvref_t<R>> {
 
-      return __op<system_sender, stdexec::__x<std::remove_cvref_t<R>>>{
+      return __op<system_sender, std::remove_cvref_t<R>>{
         std::move(snd),
         std::move(rec),
         [](auto& op){
@@ -428,11 +432,6 @@ namespace exec {
             },
             [](void* cpp_recv){
               stdexec::set_stopped(std::move(*static_cast<R*>(cpp_recv)));
-            },
-            [](void* cpp_recv, void* exception){
-              stdexec::set_error(
-                std::move(*static_cast<R*>(cpp_recv)),
-                std::move(*static_cast<std::exception_ptr*>(exception)));
             }};
 
           return op.snd_.sender_impl_->connect(std::move(receiver_impl));
@@ -472,6 +471,8 @@ namespace exec {
 
   template <stdexec::sender Pred, std::integral Shape, class Fn, class R>
   struct bulk_recv {
+    using receiver_concept = stdexec::receiver_t;
+
     bulk_state<Pred, Shape, Fn, R>& state_;
 
     template <class... As>
