@@ -345,7 +345,14 @@ namespace exec {
       // TODO error handling
     }
 
+    system_context(const system_context&) = delete;
+    system_context(system_context&&) = delete;
+    system_context& operator=(const system_context&) = delete;
+    system_context& operator=(system_context&&) = delete;
+
     system_scheduler get_scheduler();
+
+    size_t max_concurrency() const noexcept;
 
   private:
     __exec_system_context_interface* impl_ = nullptr;
@@ -621,6 +628,10 @@ namespace exec {
 
   inline system_scheduler system_context::get_scheduler() {
     return system_scheduler{impl_->get_scheduler()};
+  }
+
+  inline size_t system_context::max_concurrency() const noexcept {
+    return std::thread::hardware_concurrency();
   }
 
   system_sender tag_invoke(

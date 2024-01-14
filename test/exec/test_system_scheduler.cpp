@@ -28,6 +28,27 @@
 
 namespace ex = stdexec;
 
+TEST_CASE("system_context has default ctor and dtor", "[types][system_scheduler]") {
+  REQUIRE(std::is_default_constructible_v<exec::system_context>);
+  REQUIRE(std::is_destructible_v<exec::system_context>);
+}
+
+TEST_CASE("system_context is not copyable nor movable", "[types][system_scheduler]") {
+  REQUIRE_FALSE(std::is_copy_constructible_v<exec::system_context>);
+  REQUIRE_FALSE(std::is_move_constructible_v<exec::system_context>);
+}
+
+TEST_CASE("system_context can return a scheduler", "[types][system_scheduler]") {
+  auto sched = exec::system_context{}.get_scheduler();
+  REQUIRE(stdexec::scheduler<decltype(sched)>);
+}
+
+TEST_CASE("can query max concurrency from system_context", "[types][system_scheduler]") {
+  exec::system_context ctx;
+  size_t max_concurrency = ctx.max_concurrency();
+  REQUIRE(max_concurrency >= 1);
+}
+
 
 TEST_CASE("trivial schedule task on system context", "[types][system_scheduler]") {
   exec::system_context ctx;
