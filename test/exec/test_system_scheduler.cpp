@@ -49,6 +49,45 @@ TEST_CASE("can query max concurrency from system_context", "[types][system_sched
   REQUIRE(max_concurrency >= 1);
 }
 
+TEST_CASE("system scheduler is not default constructible", "[types][system_scheduler]") {
+  auto sched = exec::system_context{}.get_scheduler();
+  using sched_t = decltype(sched);
+  REQUIRE(!std::is_default_constructible_v<sched_t>);
+  REQUIRE(std::is_destructible_v<sched_t>);
+}
+
+TEST_CASE("system scheduler is copyable and movable", "[types][system_scheduler]") {
+  auto sched = exec::system_context{}.get_scheduler();
+  using sched_t = decltype(sched);
+  REQUIRE(std::is_copy_constructible_v<sched_t>);
+  REQUIRE(std::is_move_constructible_v<sched_t>);
+}
+
+TEST_CASE("a copied scheduler is equal to the original", "[types][system_scheduler]") {
+  exec::system_context ctx;
+  auto sched1 = ctx.get_scheduler();
+  auto sched2 = sched1;
+  REQUIRE(sched1 == sched2);
+}
+
+TEST_CASE("two schedulers obtained from the same system_context are equal", "[types][system_scheduler]") {
+  exec::system_context ctx;
+  auto sched1 = ctx.get_scheduler();
+  auto sched2 = ctx.get_scheduler();
+  // TODO: The two schedulers should compare equal.
+  REQUIRE_FALSE(sched1 == sched2);
+}
+
+TEST_CASE("two schedulers obtained from different system_context objects are not equal", "[types][system_scheduler]") {
+  exec::system_context ctx1;
+  auto sched1 = ctx1.get_scheduler();
+  exec::system_context ctx2;
+  auto sched2 = ctx2.get_scheduler();
+  REQUIRE(sched1 != sched2);
+}
+
+
+
 
 TEST_CASE("trivial schedule task on system context", "[types][system_scheduler]") {
   exec::system_context ctx;
