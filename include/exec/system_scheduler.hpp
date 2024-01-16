@@ -102,7 +102,8 @@ struct __exec_system_scheduler_impl : public __exec_system_scheduler_interface {
   }
 
   bool equals(const __exec_system_scheduler_interface* rhs) const override {
-    return dynamic_cast<const __exec_system_scheduler_impl*>(rhs) == this;
+    auto rhs_impl = dynamic_cast<const __exec_system_scheduler_impl*>(rhs);
+    return rhs_impl && rhs_impl->ctx_ == ctx_;
   }
 };
 

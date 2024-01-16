@@ -76,18 +76,18 @@ TEST_CASE(
   exec::system_context ctx;
   auto sched1 = ctx.get_scheduler();
   auto sched2 = ctx.get_scheduler();
-  // TODO: The two schedulers should compare equal.
-  REQUIRE_FALSE(sched1 == sched2);
+  REQUIRE(sched1 == sched2);
 }
 
 TEST_CASE(
-  "two schedulers obtained from different system_context objects are not equal",
+  "compare two schedulers obtained from different system_context objects",
   "[types][system_scheduler]") {
   exec::system_context ctx1;
   auto sched1 = ctx1.get_scheduler();
   exec::system_context ctx2;
   auto sched2 = ctx2.get_scheduler();
-  REQUIRE(sched1 != sched2);
+  // TODO: clarify the result of this in the paper
+  REQUIRE(sched1 == sched2);
 }
 
 TEST_CASE("system scheduler can produce a sender", "[types][system_scheduler]") {
