@@ -1384,8 +1384,16 @@ namespace stdexec {
     struct connect_t;
 
     template <class _Sender, class _Receiver>
-    using __tfx_sender = //
+    using __tfx_sender_t = //
       transform_sender_result_t<
+        __late_domain_of_t<_Sender, env_of_t<_Receiver&>>,
+        _Sender,
+        env_of_t<_Receiver&>>;
+
+    template <class _Sender, class _Receiver>
+    concept __nothrow_tfx_sender = //
+      __nothrow_callable<
+        transform_sender_t,
         __late_domain_of_t<_Sender, env_of_t<_Receiver&>>,
         _Sender,
         env_of_t<_Receiver&>>;
@@ -1399,89 +1407,76 @@ namespace stdexec {
 
     template <class _Sender, class _Receiver>
     concept __connectable_with_tag_invoke = //
-      __connectable_with_tag_invoke_<__tfx_sender<_Sender, _Receiver>, _Receiver>;
+      __connectable_with_tag_invoke_<__tfx_sender_t<_Sender, _Receiver>, _Receiver>;
 
     template <class _Sender, class _Receiver>
     concept __connectable_with_co_await = //
-      __callable<__connect_awaitable_t, __tfx_sender<_Sender, _Receiver>, _Receiver>;
+      __callable<__connect_awaitable_t, __tfx_sender_t<_Sender, _Receiver>, _Receiver>;
+
+    template <class _Return, bool _Nothrow = false>
+    using __with_return_t = _Return (*)() noexcept(_Nothrow);
+
+    template <class _Sender, class _Receiver>
+      requires __connectable_with_tag_invoke<_Sender, _Receiver>
+            || __connectable_with_co_await<_Sender, _Receiver>
+            || __is_debug_env<env_of_t<_Receiver>>
+    extern __with_return_t<__debug::__debug_operation> __select_impl_v;
+
+    template <class _Sender, class _Receiver>
+      requires __connectable_with_tag_invoke<_Sender, _Receiver>
+            || __connectable_with_co_await<_Sender, _Receiver>
+    extern __with_return_t<                                                                  //
+      __call_result_t<__connect_awaitable_t, __tfx_sender_t<_Sender, _Receiver>, _Receiver>> //
+      __select_impl_v<_Sender, _Receiver>;
+
+    template <class _Sender, class _Receiver>
+      requires __connectable_with_tag_invoke<_Sender, _Receiver>
+    extern __with_return_t< //
+      tag_invoke_result_t<connect_t, __tfx_sender_t<_Sender, _Receiver>, _Receiver>,
+      __nothrow_tfx_sender<_Sender, _Receiver&>
+        && nothrow_tag_invocable<connect_t, __tfx_sender_t<_Sender, _Receiver>, _Receiver>> //
+      __select_impl_v<_Sender, _Receiver>;
+
+    template <class _Sender, class _Receiver>
+    using __select_impl_t = decltype(__select_impl_v<_Sender, _Receiver>);
 
     struct connect_t {
-
-      template <class _Sender, class _Env>
-      static constexpr bool __check_signatures() {
-        if constexpr (sender_in<_Sender, _Env>) {
-          // Instantiate __debug_sender via completion_signatures_of_t
-          // to check that the actual completions match the expected
-          // completions.
-          //
-          // Instantiate completion_signatures_of_t only if sender_in
-          // is true to workaround Clang not implementing CWG#2369 yet (connect()
-          // does have a constraint for _Sender satisfying sender_in).
-          using __checked_signatures [[maybe_unused]] = completion_signatures_of_t<_Sender, _Env>;
-        }
-        return true;
-      }
-
-      template <class _Sender, class _Receiver>
-      static constexpr auto __select_impl() noexcept {
-        using _Domain = __late_domain_of_t<_Sender, env_of_t<_Receiver&>>;
-        constexpr bool _NothrowTfxSender =
-          __nothrow_callable<get_env_t, _Receiver&>
-          && __nothrow_callable<transform_sender_t, _Domain, _Sender, env_of_t<_Receiver&>>;
-        using _TfxSender = __tfx_sender<_Sender, _Receiver&>;
-
-#if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
-        static_assert(__check_signatures<_TfxSender, env_of_t<_Receiver>>());
-#endif
-
-        if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
-          using _Result = tag_invoke_result_t<connect_t, _TfxSender, _Receiver>;
-          constexpr bool _Nothrow = //
-            _NothrowTfxSender && nothrow_tag_invocable<connect_t, _TfxSender, _Receiver>;
-          return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
-        } else if constexpr (__connectable_with_co_await<_Sender, _Receiver>) {
-          using _Result = __call_result_t<__connect_awaitable_t, _TfxSender, _Receiver>;
-          return static_cast<_Result (*)()>(nullptr);
-        } else {
-          using _Result = __debug::__debug_operation;
-          return static_cast<_Result (*)() noexcept(_NothrowTfxSender)>(nullptr);
-        }
-      }
-
-      template <class _Sender, class _Receiver>
-      using __select_impl_t = decltype(__select_impl<_Sender, _Receiver>());
-
       template <sender _Sender, receiver _Receiver>
-        requires __connectable_with_tag_invoke<_Sender, _Receiver>
-              || __connectable_with_co_await<_Sender, _Receiver>
-              || __is_debug_env<env_of_t<_Receiver>>
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
         noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
           -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
-        using _TfxSender = __tfx_sender<_Sender, _Receiver&>;
+#if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
+        using __checked_signatures [[maybe_unused]] =
+          completion_signatures_of_t<__tfx_sender_t<_Sender, _Receiver>, env_of_t<_Receiver>>;
+#endif
+
+        using _Domain = __late_domain_of_t<_Sender, env_of_t<_Receiver&>>;
         auto&& __env = get_env(__rcvr);
-        auto __domain = __get_late_domain(__sndr, __env);
 
         if constexpr (__connectable_with_tag_invoke<_Sender, _Receiver>) {
           static_assert(
-            operation_state<tag_invoke_result_t<connect_t, _TfxSender, _Receiver>>,
+            operation_state<
+              tag_invoke_result_t<connect_t, __tfx_sender_t<_Sender, _Receiver>, _Receiver>>,
             "stdexec::connect(sender, receiver) must return a type that "
             "satisfies the operation_state concept");
+
           return tag_invoke(
-            connect_t{},
-            transform_sender(__domain, (_Sender&&) __sndr, __env),
-            (_Receiver&&) __rcvr);
+            *this, transform_sender(_Domain(), (_Sender&&) __sndr, __env), (_Receiver&&) __rcvr);
         } else if constexpr (__connectable_with_co_await<_Sender, _Receiver>) {
           return __connect_awaitable( //
-            transform_sender(__domain, (_Sender&&) __sndr, __env),
+            transform_sender(_Domain(), (_Sender&&) __sndr, __env),
             (_Receiver&&) __rcvr);
         } else {
           // This should generate an instantiation backtrace that contains useful
           // debugging information.
           using __tag_invoke::tag_invoke;
-          tag_invoke(
-            *this, transform_sender(__domain, (_Sender&&) __sndr, __env), (_Receiver&&) __rcvr);
+          tag_invoke( //
+            *this,
+            transform_sender(_Domain(), (_Sender&&) __sndr, __env),
+            (_Receiver&&) __rcvr);
+          return {};
         }
+        STDEXEC_UNREACHABLE();
       }
 
       friend constexpr bool tag_invoke(forwarding_query_t, connect_t) noexcept {
@@ -3364,15 +3359,14 @@ namespace stdexec {
     struct __let_t;
 
     template <class _Set>
-    inline constexpr __mstring __in_which_let_msg {
-      "In stdexec::let_value(Sender, Function)..."};
+    inline constexpr __mstring __in_which_let_msg{"In stdexec::let_value(Sender, Function)..."};
 
     template <>
-    inline constexpr __mstring __in_which_let_msg<set_error_t> {
+    inline constexpr __mstring __in_which_let_msg<set_error_t>{
       "In stdexec::let_error(Sender, Function)..."};
 
     template <>
-    inline constexpr __mstring __in_which_let_msg<set_stopped_t> {
+    inline constexpr __mstring __in_which_let_msg<set_stopped_t>{
       "In stdexec::let_stopped(Sender, Function)..."};
 
     template <class _Set>
@@ -3419,7 +3413,7 @@ namespace stdexec {
     using __decay_ref = __decay_t<_Tp>&;
 
     template <__mstring _Where, __mstring _What>
-    struct _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_ {};
+    struct _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_ { };
 
 #if STDEXEC_NVHPC()
     template <class _Sender, class _Env, class _Set>
@@ -3435,13 +3429,12 @@ namespace stdexec {
     using __bad_result_sender = __t<__bad_result_sender_<_Sender, _Env, _Set>>;
 #else
     template <class _Sender, class _Env, class _Set>
-    using __bad_result_sender =
-      __mexception<
-        _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_<
-          __in_which_let_msg<_Set>,
-          "The function must return a valid sender for the current environment"_mstr>,
-        _WITH_SENDER_<_Sender>,
-        _WITH_ENVIRONMENT_<_Env>>;
+    using __bad_result_sender = __mexception<
+      _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_<
+        __in_which_let_msg<_Set>,
+        "The function must return a valid sender for the current environment"_mstr>,
+      _WITH_SENDER_<_Sender>,
+      _WITH_ENVIRONMENT_<_Env>>;
 #endif
 
     template <class _Sender, class _Env, class _Set>
@@ -3513,7 +3506,7 @@ namespace stdexec {
         __completion_signatures_of_t<_CvrefSender, _Env>>;
 
     template <__mstring _Where, __mstring _What>
-    struct _NO_COMMON_DOMAIN_ {};
+    struct _NO_COMMON_DOMAIN_ { };
 
     template <class _Set>
     using __no_common_domain_t = //
@@ -3540,8 +3533,7 @@ namespace stdexec {
     template <class _LetTag, class _Env>
     auto __mk_transform_env_fn(const _Env& __env) noexcept {
       using _Set = __t<_LetTag>;
-      return [&]<class _Fun, class _Child>(
-               __ignore, _Fun&&, _Child&& __child) -> decltype(auto) {
+      return [&]<class _Fun, class _Child>(__ignore, _Fun&&, _Child&& __child) -> decltype(auto) {
         using __completions_t = __completion_signatures_of_t<_Child, _Env>;
         if constexpr (__merror<__completions_t>) {
           return __completions_t();

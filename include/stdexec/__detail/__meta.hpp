@@ -360,7 +360,7 @@ STDEXEC_PRAGMA_POP()
   struct __mdefer : __mdefer_<_Fn, _Args...> { };
 
   template <class _Fn, class... _Args>
-  using __mmemoize = __t<__mdefer<_Fn, _Args...>>;
+  using __mmemoize = __t<__mdefer_<_Fn, _Args...>>;
 
   template <template <class...> class _Fn, class... _Args>
   using __mmemoize_q = __mmemoize<__q<_Fn>, _Args...>;
@@ -738,7 +738,7 @@ STDEXEC_PRAGMA_POP()
   template <class _Fun, class... _As>
   using __call_result_ = decltype(__declval<_Fun>()(__declval<_As>()...));
   template <class _Fun, class... _As>
-  using __call_result_t = __t<__mdefer<__q<__call_result_>, _Fun, _As...>>;
+  using __call_result_t = __mmemoize_q<__call_result_, _Fun, _As...>;
 #else
   template <class _Fun, class... _As>
   using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
