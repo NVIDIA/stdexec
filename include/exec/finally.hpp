@@ -19,10 +19,9 @@
 #include "../stdexec/execution.hpp"
 
 #include "__detail/__manual_lifetime.hpp"
-#include "materialize.hpp"
 
 namespace exec {
-  namespace __finally_ {
+  namespace __final {
     using namespace stdexec;
 
     template <class _Arg, class... _Args>
@@ -65,7 +64,7 @@ namespace exec {
     };
 
     template <class... _Args>
-    using __as_rvalues = completion_signatures<set_value_t(__decay_t<_Args>&&...)>;
+    using __as_rvalues = completion_signatures<set_value_t(__decay_t<_Args> && ...)>;
 
     template <class _InitialSender, class _FinalSender, class _Env>
     using __completion_signatures_t = make_completion_signatures<
@@ -201,7 +200,7 @@ namespace exec {
         stdexec::__t<__initial_receiver<_InitialSenderId, _FinalSenderId, _ReceiverId>>;
 
       struct __initial_op_t {
-        _FinalSender __sender_;
+        _FinalSender __sndr_;
         connect_result_t<_InitialSender, __initial_receiver_t> __initial_operation_;
       };
 
@@ -222,20 +221,19 @@ namespace exec {
         this->__result_.__construct(
           std::in_place_type<__decayed_tuple<_Args...>>, (_Args&&) __args...);
         STDEXEC_ASSERT(__op_.index() == 0);
-        _FinalSender __final_sender = (_FinalSender&&) std::get_if<0>(&__op_)->__sender_;
+        _FinalSender __final = (_FinalSender&&) std::get_if<0>(&__op_)->__sndr_;
         __final_op_t& __final_op = __op_.template emplace<1>(__conv{[&] {
-          return stdexec::connect((_FinalSender&&) __final_sender, __final_receiver_t{this});
+          return stdexec::connect((_FinalSender&&) __final, __final_receiver_t{this});
         }});
         start(__final_op);
       }
 
-      __t(_InitialSender&& __initial_sender, _FinalSender&& __final_sender, _Receiver __receiver)
+      __t(_InitialSender&& __initial, _FinalSender&& __final, _Receiver __receiver)
         : __base_t{{(_Receiver&&) __receiver}}
         , __op_(std::in_place_index<0>, __conv{[&] {
                   return __initial_op_t{
-                    (_FinalSender&&) __final_sender,
-                    stdexec::connect(
-                      (_InitialSender&&) __initial_sender, __initial_receiver_t{this})};
+                    (_FinalSender&&) __final,
+                    stdexec::connect((_InitialSender&&) __initial, __initial_receiver_t{this})};
                 }}) {
       }
     };
@@ -252,18 +250,15 @@ namespace exec {
         __id<_Receiver>>>;
 
       class __t {
-        _InitialSender __initial_sender_;
-        _FinalSender __final_sender_;
+        _InitialSender __initial_sndr_;
+        _FinalSender __final_sndr_;
 
         template <__decays_to<__t> _Self, class _Rec>
-          requires receiver_of<
-            _Rec,
-            __completion_signatures_t<_InitialSender, _FinalSender, env_of_t<_Rec>>>
         friend __op_t< _Self, _Rec>
           tag_invoke(connect_t, _Self&& __self, _Rec&& __receiver) noexcept {
           return {
-            ((_Self&&) __self).__initial_sender_,
-            ((_Self&&) __self).__final_sender_,
+            ((_Self&&) __self).__initial_sndr_,
+            ((_Self&&) __self).__final_sndr_,
             (_Rec&&) __receiver};
         }
 
@@ -280,24 +275,44 @@ namespace exec {
         using __id = __sender;
         using sender_concept = stdexec::sender_t;
 
-        template <__decays_to<_InitialSender> _Is, __decays_to<_FinalSender> _Fs>
-        __t(_Is&& __initial_sender, _Fs&& __final_sender) noexcept(
-          __nothrow_decay_copyable<_Is>&& __nothrow_decay_copyable<_Fs>)
-          : __initial_sender_{(_Is&&) __initial_sender}
-          , __final_sender_{(_Fs&&) __final_sender} {
+        template <__decays_to<_InitialSender> _Initial, __decays_to<_FinalSender> _Final>
+        __t(_Initial&& __initial, _Final&& __final) noexcept(
+          __nothrow_decay_copyable<_Initial>&& __nothrow_decay_copyable<_Final>)
+          : __initial_sndr_{(_Initial&&) __initial}
+          , __final_sndr_{(_Final&&) __final} {
         }
       };
     };
 
-    struct __finally_t {
-      template <sender _Is, sender _Fs>
-      __t<__sender<__id<__decay_t<_Is>>, __id<__decay_t<_Fs>>>>
-        operator()(_Is&& __initial_sender, _Fs&& __final_sender) const
-        noexcept(__nothrow_decay_copyable<_Is>&& __nothrow_decay_copyable<_Fs>) {
-        return {(_Is&&) __initial_sender, (_Fs&&) __final_sender};
+    struct finally_t {
+      template <sender _Initial, sender _Final>
+        requires __domain::__has_common_domain<_Initial, _Final>
+      auto operator()(_Initial&& __initial, _Final&& __final) const {
+        using _Domain = __domain::__common_domain_t<_Initial, _Final>;
+        return stdexec::transform_sender(
+          _Domain(), __make_sexpr<finally_t>({}, (_Initial&&) __initial, (_Final&&) __final));
+      }
+
+      template <sender _Final>
+      STDEXEC_ATTRIBUTE((always_inline)) //
+      auto operator()(_Final&& __final) const -> __binder_back<finally_t, __decay_t<_Final>> {
+        return {{}, {}, {(_Final&&) __final}};
+      }
+
+      template <class _Sender>
+      static auto transform_sender(_Sender&& __sndr, __ignore) {
+        return __sexpr_apply(
+          (_Sender&&) __sndr,
+          []<class _Initial, class _Final>(
+            __ignore, __ignore, _Initial&& __initial, _Final&& __final) {
+            using __result_sndr_t =
+              __t<__sender<__id<__decay_t<_Initial>>, __id<__decay_t<_Final>>>>;
+            return __result_sndr_t{(_Initial&&) __initial, (_Final&&) __final};
+          });
       }
     };
-  }
+  } // namespace __final
 
-  inline constexpr __finally_ ::__finally_t finally{};
+  using __final ::finally_t;
+  inline constexpr __final ::finally_t finally{};
 }
