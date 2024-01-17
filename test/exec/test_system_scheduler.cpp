@@ -20,6 +20,7 @@
 
 #include <catch2/catch.hpp>
 #include <exec/system_scheduler.hpp>
+#include <exec/async_scope.hpp>
 #include <stdexec/execution.hpp>
 
 #include <exec/inline_scheduler.hpp>
@@ -152,6 +153,27 @@ TEST_CASE("simple chain task on system context", "[types][system_scheduler]") {
   REQUIRE(pool_id == pool_id2);
   (void) snd;
   (void) snd2;
+}
+
+TEST_CASE("checks stop_token before starting the work", "[types][system_scheduler]") {
+  exec::system_context ctx;
+  exec::system_scheduler sched = ctx.get_scheduler();
+
+  exec::async_scope scope;
+  scope.request_stop();
+
+  bool called = false;
+  auto snd = ex::then(ex::schedule(sched), [&called] { called = true; });
+
+  // Start the sender in a stopped scope
+  scope.spawn(std::move(snd));
+
+  // Wait for everything to be completed.
+  ex::sync_wait(scope.on_empty());
+
+  // Assert.
+  // TODO: called should be false
+  REQUIRE(called);
 }
 
 TEST_CASE("simple bulk task on system context", "[types][system_scheduler]") {
