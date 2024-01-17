@@ -60,16 +60,18 @@ namespace exec {
     // ```
     template <class Shape>
     std::pair<Shape, Shape> even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept {
-      const auto avg_per_thread = n / size;
+      STDEXEC_ASSERT(n >= 0);
+      using ushape_t = std::make_unsigned_t<Shape>;
+      const auto avg_per_thread = static_cast<ushape_t>(n) / size;
       const auto n_big_share = avg_per_thread + 1;
-      const auto big_shares = n % size;
+      const auto big_shares = static_cast<ushape_t>(n) % size;
       const auto is_big_share = rank < big_shares;
       const auto begin = is_big_share
                          ? n_big_share * rank
                          : n_big_share * big_shares + (rank - big_shares) * avg_per_thread;
       const auto end = begin + (is_big_share ? n_big_share : avg_per_thread);
 
-      return std::make_pair(begin, end);
+      return std::make_pair(static_cast<Shape>(begin), static_cast<Shape>(end));
     }
 
 #if STDEXEC_HAS_STD_RANGES()
@@ -620,7 +622,7 @@ namespace exec {
 
       struct thread_index_by_numa_node {
         int numa_node;
-        int thread_index;
+        std::size_t thread_index;
 
         friend bool operator<(
           const thread_index_by_numa_node& lhs,
@@ -655,7 +657,7 @@ namespace exec {
       for (std::uint32_t index = 0; index < threadCount; ++index) {
         threadStates_[index].emplace(this, index, params, numa);
         threadIndexByNumaNode_.push_back(
-          thread_index_by_numa_node{threadStates_[index]->numa_node(), static_cast<int>(index)});
+          thread_index_by_numa_node{threadStates_[index]->numa_node(), index});
       }
       std::sort(threadIndexByNumaNode_.begin(), threadIndexByNumaNode_.end());
       std::vector<workstealing_victim> victims{};
@@ -721,11 +723,11 @@ namespace exec {
         return 0;
       }
       auto itEnd = std::upper_bound(it, threadIndexByNumaNode_.end(), key);
-      return std::distance(it, itEnd);
+      return static_cast<std::size_t>(std::distance(it, itEnd));
     }
 
     inline std::size_t static_thread_pool_::num_threads(nodemask constraints) const noexcept {
-      const std::size_t nNodes = threadIndexByNumaNode_.back().numa_node + 1;
+      const std::size_t nNodes = static_cast<std::size_t>(threadIndexByNumaNode_.back().numa_node + 1);
       std::size_t nThreads = 0;
       for (std::size_t nodeIndex = 0; nodeIndex < nNodes; ++nodeIndex) {
         if (!constraints[nodeIndex]) {
@@ -774,7 +776,7 @@ namespace exec {
       remote_queue* correct_queue = this_id == queue.id_ ? &queue : get_remote_queue();
       std::size_t idx = correct_queue->index_;
       if (idx < threadStates_.size()) {
-        std::size_t this_node = threadStates_[idx]->numa_node();
+        std::size_t this_node = static_cast<std::size_t>(threadStates_[idx]->numa_node());
         if (constraints[this_node]) {
           threadStates_[idx]->push_local(task);
           return;
@@ -813,7 +815,7 @@ namespace exec {
       remote_queue* correct_queue = this_id == queue.id_ ? &queue : get_remote_queue();
       std::size_t idx = correct_queue->index_;
       if (idx < threadStates_.size()) {
-        std::size_t this_node = threadStates_[idx]->numa_node();
+        std::size_t this_node = static_cast<std::size_t>(threadStates_[idx]->numa_node());
         if (constraints[this_node]) {
           threadStates_[idx]->push_local(std::move(tasks));
           return;
