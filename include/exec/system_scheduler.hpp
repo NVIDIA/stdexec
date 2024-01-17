@@ -57,10 +57,10 @@ struct __exec_system_operation_state_interface {
 
 struct __exec_system_receiver {
   void* cpp_recv_ = nullptr;
-  void (*set_value)(void* cpp_recv);
-  void (*set_stopped)(void* cpp_recv);
+  void (*set_value)(void* cpp_recv) noexcept;
+  void (*set_stopped)(void* cpp_recv) noexcept;
   // Type-erase the exception pointer for extern-c-ness
-  void (*set_error)(void* cpp_recv, void* exception);
+  void (*set_error)(void* cpp_recv, void* exception) noexcept;
 
 };
 
@@ -146,14 +146,13 @@ struct __exec_system_operation_state_impl : public __exec_system_operation_state
   }
 
   __exec_system_receiver recv_;
-  decltype(stdexec::connect(
-      std::move(std::declval<__exec_pool_sender_t>()), std::move(std::declval<__exec_system_pool_receiver>())))
+  stdexec::connect_result_t<__exec_pool_sender_t, __exec_system_pool_receiver>
     pool_operation_state_;
 };
 
 inline void tag_invoke(stdexec::set_value_t, __exec_system_pool_receiver&& recv) noexcept {
   __exec_system_receiver &system_recv = recv.os_->recv_;
-  system_recv.set_value((system_recv.cpp_recv_));
+  system_recv.set_value(&(system_recv.cpp_recv_));
 }
 
 inline void tag_invoke(stdexec::set_stopped_t, __exec_system_pool_receiver&& recv) noexcept {
@@ -243,7 +242,7 @@ struct __exec_system_bulk_operation_state_impl : public __exec_system_operation_
 
   __exec_system_receiver recv_;
   __exec_system_bulk_function_object bulk_function_;
-  decltype(__exec_pool_operation_state(std::declval<__exec_system_bulk_operation_state_impl*>(), std::declval<__exec_pool_sender_t>(), __exec_system_bulk_shape{}, __exec_system_bulk_function_object{}))
+stdexec::__result_of<__exec_pool_operation_state, __exec_system_bulk_operation_state_impl*, __exec_pool_sender_t, __exec_system_bulk_shape, __exec_system_bulk_function_object>
     pool_operation_state_;
 };
 
