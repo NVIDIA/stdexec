@@ -434,10 +434,10 @@ namespace exec {
         [](auto& op){
           __exec_system_receiver receiver_impl{
             &op.recv_,
-            [](void* cpp_recv){
+            [](void* cpp_recv) noexcept{
               stdexec::set_value(std::move(*static_cast<R*>(cpp_recv)));
             },
-            [](void* cpp_recv){
+            [](void* cpp_recv) noexcept{
               stdexec::set_stopped(std::move(*static_cast<R*>(cpp_recv)));
             }};
 
@@ -510,13 +510,13 @@ namespace exec {
         self.state_.os_ = sender->connect(
           __exec_system_receiver{
             &self.state_.recv_,
-            [](void* cpp_recv){
+            [](void* cpp_recv) noexcept{
               stdexec::set_value(std::move(*static_cast<R*>(cpp_recv)));
             },
-            [](void* cpp_recv){
+            [](void* cpp_recv) noexcept{
               stdexec::set_stopped(std::move(*static_cast<R*>(cpp_recv)));
             },
-            [](void* cpp_recv, void* exception){
+            [](void* cpp_recv, void* exception) noexcept{
               stdexec::set_error(
                 std::move(*static_cast<R*>(cpp_recv)),
                 std::move(*static_cast<std::exception_ptr*>(exception)));
