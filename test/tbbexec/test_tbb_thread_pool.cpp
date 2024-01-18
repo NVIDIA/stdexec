@@ -61,7 +61,7 @@ namespace {
                auto start = i * tile_size;
                auto end = std::min(input.size(), (i + 1) * tile_size);
                partials[i + 1] = *--std::inclusive_scan(
-                   begin(input) + start, begin(input) + end, begin(output) + start);
+                   begin(input) + (long) start, begin(input) + (long) end, begin(output) + (long) start);
              })
        | then([](std::vector<double>&& partials) {
            std::inclusive_scan(begin(partials), end(partials), begin(partials));
@@ -71,7 +71,7 @@ namespace {
              [=](std::size_t i, std::span<const double> partials) {
                auto start = i * tile_size;
                auto end = std::min(input.size(), (i + 1) * tile_size);
-               std::for_each(begin(output) + start, begin(output) + end,
+               std::for_each(begin(output) + (long) start, begin(output) + (long) end,
                    [&](double& e) { e = partials[i] + e; });
              })
        | then([=](std::vector<double>&& partials) { return output; });

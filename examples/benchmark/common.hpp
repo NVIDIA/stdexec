@@ -99,7 +99,7 @@ struct numa_deleter {
 
 template <class Pool, class RunThread>
 void my_main(int argc, char** argv, exec::numa_policy* policy = exec::get_numa_policy()) {
-  int nthreads = std::thread::hardware_concurrency();
+  int nthreads = (int) std::thread::hardware_concurrency();
   if (argc > 1) {
     nthreads = std::atoi(argv[1]);
   }

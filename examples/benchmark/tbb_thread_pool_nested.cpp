@@ -30,7 +30,7 @@ struct RunThread {
 #endif
     std::atomic<bool>& stop,
     exec::numa_policy* numa) {
-    std::size_t numa_node = numa->thread_index_to_node(tid);
+    int numa_node = numa->thread_index_to_node(tid);
     numa->bind_to_node(numa_node);
     auto scheduler = pool.get_scheduler();
     std::mutex mut;

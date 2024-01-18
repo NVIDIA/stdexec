@@ -120,10 +120,10 @@ int main(int argc, char** argv) {
     auto time = measure<std::chrono::milliseconds>([&] {
       std::tie(result) = stdexec::sync_wait(std::move(snd)).value();
     });
-    times.push_back(time);
+    times.push_back(static_cast<unsigned int>(time));
   }
 
   std::cout << "Avg time: "
-            << (std::accumulate(times.begin() + warmup, times.end(), 0) / (times.size() - warmup))
+            << (std::accumulate(times.begin() + warmup, times.end(), 0u) / (times.size() - warmup))
             << "ms. Result: " << result << std::endl;
 }

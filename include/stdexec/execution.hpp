@@ -521,7 +521,7 @@ namespace stdexec {
     template <class _Sigs, class _Env = empty_env, class _Sender>
     void __debug_sender(_Sender&& __sndr, const _Env& = {}) {
       if constexpr (!__is_debug_env<_Env>) {
-        if (sizeof(_Sender) == ~0) { // never true
+        if (sizeof(_Sender) == ~0u) { // never true
           using _Receiver = __debug_receiver<__cvref_id<_Sender>, _Env, _Sigs>;
           using _Operation = connect_result_t<_Sender, _Receiver>;
           //static_assert(receiver_of<_Receiver, _Sigs>);

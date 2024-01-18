@@ -507,7 +507,7 @@ namespace tbbexec {
     }
 
     [[nodiscard]] std::uint32_t available_parallelism() const {
-      return arena_.max_concurrency();
+      return static_cast<std::uint32_t>(arena_.max_concurrency());
     }
    private:
     [[nodiscard]] static constexpr stdexec::forward_progress_guarantee

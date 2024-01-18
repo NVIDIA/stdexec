@@ -29,7 +29,7 @@ namespace exec {
     virtual std::size_t num_nodes() = 0;
     virtual std::size_t num_cpus(int node) = 0;
     virtual int bind_to_node(int node) = 0;
-    virtual std::size_t thread_index_to_node(std::size_t index) = 0;
+    virtual int thread_index_to_node(std::size_t index) = 0;
   };
 
   class no_numa_policy : public numa_policy {
@@ -38,7 +38,7 @@ namespace exec {
     std::size_t num_nodes() override { return 1; }
     std::size_t num_cpus(int node) override { return std::thread::hardware_concurrency(); }
     int bind_to_node(int node) override { return 0; }
-    std::size_t thread_index_to_node(std::size_t index) override { return 0; }
+    int thread_index_to_node(std::size_t index) override { return 0; }
   };
 }
 
@@ -82,11 +82,11 @@ namespace exec {
       return 0;
     }
 
-    std::size_t thread_index_to_node(std::size_t index) override {
-      index %= node_to_thread_index_.back();
+    int thread_index_to_node(std::size_t idx) override {
+      int index = (int) idx % node_to_thread_index_.back();
       auto it = std::upper_bound(node_to_thread_index_.begin(), node_to_thread_index_.end(), index);
       STDEXEC_ASSERT(it != node_to_thread_index_.end());
-      return std::distance(node_to_thread_index_.begin(), it);
+      return (int) std::distance(node_to_thread_index_.begin(), it);
     }
 
     std::vector<int> node_to_thread_index_{};

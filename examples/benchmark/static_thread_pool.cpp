@@ -28,10 +28,10 @@ struct RunThread {
 #endif
     std::atomic<bool>& stop,
     exec::numa_policy* numa) {
-    std::size_t numa_node = numa->thread_index_to_node(tid);
+    int numa_node = numa->thread_index_to_node(tid);
     numa->bind_to_node(numa_node);
     exec::nodemask mask{};
-    mask.set(numa_node);
+    mask.set((std::size_t) numa_node);
     auto scheduler = pool.get_constrained_scheduler(mask);
     std::mutex mut;
     std::condition_variable cv;
@@ -87,7 +87,7 @@ struct RunThread {
 };
 
 struct my_numa_distribution : public exec::default_numa_policy {
-  std::size_t thread_index_to_node(std::size_t index) override {
+  int thread_index_to_node(std::size_t index) override {
     return exec::default_numa_policy::thread_index_to_node(2 * index);
   }
 };
