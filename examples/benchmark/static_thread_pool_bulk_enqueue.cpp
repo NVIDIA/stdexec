@@ -32,7 +32,7 @@ struct RunThread {
 #endif
     std::atomic<bool>& stop,
     exec::numa_policy* numa) {
-    std::size_t numa_node = numa->thread_index_to_node(tid);
+    int numa_node = numa->thread_index_to_node(tid);
     numa->bind_to_node(numa_node);
     while (true) {
       barrier.arrive_and_wait();
@@ -58,7 +58,7 @@ struct RunThread {
 };
 
 struct my_numa_distribution : public exec::default_numa_policy {
-  std::size_t thread_index_to_node(std::size_t index) override {
+  int thread_index_to_node(std::size_t index) override {
     return exec::default_numa_policy::thread_index_to_node(2 * index);
   }
 };

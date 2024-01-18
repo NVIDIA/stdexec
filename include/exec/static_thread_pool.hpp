@@ -733,7 +733,7 @@ namespace exec {
         if (!constraints[nodeIndex]) {
           continue;
         }
-        nThreads += num_threads(nodeIndex);
+        nThreads += num_threads(static_cast<int>(nodeIndex));
       }
       return nThreads;
     }
@@ -758,9 +758,9 @@ namespace exec {
           if (!constraints[nodeIndex]) {
             continue;
           }
-          std::size_t nThreads = num_threads(nodeIndex);
+          std::size_t nThreads = num_threads(static_cast<int>(nodeIndex));
           if (targetIndex < nThreads) {
-            return get_thread_index(nodeIndex, targetIndex);
+            return get_thread_index(static_cast<int>(nodeIndex), targetIndex);
           }
           targetIndex -= nThreads;
         }
@@ -823,7 +823,7 @@ namespace exec {
       }
       std::size_t nThreads = available_parallelism();
       for (std::size_t i = 0; i < nThreads; ++i) {
-        auto [i0, iEnd] = even_share(tasks_size, i, available_parallelism());
+        auto [i0, iEnd] = even_share(tasks_size, (std::uint32_t) i, available_parallelism());
         if (i0 == iEnd) {
           continue;
         }
@@ -872,7 +872,7 @@ namespace exec {
       if (victims.empty()) {
         return {nullptr, index_};
       }
-      std::uniform_int_distribution<std::uint32_t> dist(0, victims.size() - 1);
+      std::uniform_int_distribution<std::uint32_t> dist(0, (std::uint32_t) victims.size() - 1);
       std::uint32_t victimIndex = dist(rng_);
       auto& v = victims[victimIndex];
       return {v.try_steal(), v.index()};
