@@ -151,7 +151,7 @@ struct __exec_system_operation_state_impl : public __exec_system_operation_state
 
 inline void tag_invoke(stdexec::set_value_t, __exec_system_pool_receiver&& recv) noexcept {
   __exec_system_receiver &system_recv = recv.os_->recv_;
-  system_recv.set_value(&(system_recv.cpp_recv_));
+  system_recv.set_value(system_recv.cpp_recv_);
 }
 
 inline void tag_invoke(stdexec::set_stopped_t, __exec_system_pool_receiver&& recv) noexcept {
