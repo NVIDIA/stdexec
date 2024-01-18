@@ -394,7 +394,7 @@ namespace exec {
   public:
     using is_sender = void;
     using completion_signatures =
-      stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t() >;
+      stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t(), stdexec::set_error_t(std::exception_ptr) >;
 
     system_sender(__exec_system_sender_interface* sender_impl) : sender_impl_{sender_impl} {}
 
@@ -439,6 +439,11 @@ namespace exec {
             },
             [](void* cpp_recv) noexcept{
               stdexec::set_stopped(std::move(*static_cast<R*>(cpp_recv)));
+            },
+            [](void* cpp_recv, void* exception) noexcept{
+              stdexec::set_error(
+                std::move(*static_cast<R*>(cpp_recv)),
+                std::move(*reinterpret_cast<std::exception_ptr*>(&exception)));
             }};
 
           return op.snd_.sender_impl_->connect(std::move(receiver_impl));
