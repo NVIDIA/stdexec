@@ -19,7 +19,6 @@
 // For the default implementation, test will override
 #include "exec/static_thread_pool.hpp"
 
-#include <iostream>
 
 struct __exec_system_scheduler_interface;
 struct __exec_system_sender_interface;
