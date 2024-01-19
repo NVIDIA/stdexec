@@ -478,8 +478,6 @@ namespace stdexec {
   template <class... _Ts>
   using __make_env_t = __call_result_t<__env::__make_env_t, _Ts...>;
 
-  using __default_env = empty_env;
-
   template <class _EnvProvider>
   concept environment_provider = //
     requires(_EnvProvider& __ep) {

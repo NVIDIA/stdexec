@@ -245,7 +245,7 @@ namespace {
     ex::get_env(my_r5_sender0{});
     static_assert(ex::sender<my_r5_sender0>);
     static_assert(std::same_as<
-                  decltype(ex::get_completion_signatures(my_r5_sender0{}, ex::__default_env{})),
+                  decltype(ex::get_completion_signatures(my_r5_sender0{}, ex::empty_env{})),
                   my_r5_sender0::completion_signatures>);
   }
 

@@ -330,7 +330,7 @@ namespace {
         std::tuple<>,
         ex::value_types_of_t<
           decltype(ex::just()),
-          ex::__default_env,
+          ex::empty_env,
           decayed_tuple,
           std::type_identity_t>>);
   }
