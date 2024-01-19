@@ -205,7 +205,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             auto env = make_terminal_stream_env(
               exec::make_env(
                 stdexec::get_env(base()),
-                __mkprop(op_state_->stop_source_.get_token(), get_stop_token)),
+                __env::__with(op_state_->stop_source_.get_token(), get_stop_token)),
               &const_cast<stream_provider_t&>(op_state_->stream_providers_[Index]));
 
             return env;

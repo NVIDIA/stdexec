@@ -177,7 +177,7 @@ namespace {
     static_assert(ex::__awaiter<awaiter>);
     static_assert(!ex::__awaitable<awaitable_sender_4>);
     static_assert(ex::__awaitable<awaitable_sender_4, promise<awaiter>>);
-    static_assert(ex::__awaitable<awaitable_sender_4, ex::__env_promise<ex::empty_env>>);
+    static_assert(ex::__awaitable<awaitable_sender_4, ex::__env::__promise<ex::empty_env>>);
 
     static_assert(
       !ex::__get_completion_signatures::__with_member_alias<awaitable_sender_4, ex::empty_env>);
@@ -201,7 +201,7 @@ namespace {
     static_assert(ex::__awaiter<awaiter>);
     static_assert(!ex::__awaitable<awaitable_sender_5>);
     static_assert(ex::__awaitable<awaitable_sender_5, promise<awaiter>>);
-    static_assert(ex::__awaitable<awaitable_sender_5, ex::__env_promise<ex::empty_env>>);
+    static_assert(ex::__awaitable<awaitable_sender_5, ex::__env::__promise<ex::empty_env>>);
 
     static_assert(
       !ex::__get_completion_signatures::__with_member_alias<awaitable_sender_5, ex::empty_env>);
@@ -260,7 +260,7 @@ namespace {
     ex::sender auto snd = ex::when_all(ex::then(ex::schedule(sch), []() {}));
 
     using _Awaitable = decltype(snd);
-    using _Promise = ex::__env_promise<ex::empty_env>;
+    using _Promise = ex::__env::__promise<ex::empty_env>;
     static_assert(!ex::__awaitable<_Awaitable, _Promise>);
   }
 }

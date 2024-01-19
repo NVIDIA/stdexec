@@ -266,191 +266,19 @@ namespace stdexec {
   using __query_result_or_t = __call_result_t<query_or_t, _Tag, _Queryable, _Default>;
 
   /////////////////////////////////////////////////////////////////////////////
-  // env_of
   namespace __env {
-    template <class _Descriptor>
-    struct __prop;
-
-    template <class _Value, class... _Tags>
-    struct __prop<_Value(_Tags...)> {
-      using __t = __prop;
-      using __id = __prop;
-      _Value __value_;
-
-      template <__one_of<_Tags...> _Key>
-      friend auto tag_invoke(_Key, const __prop& __self) //
-        noexcept(__nothrow_decay_copyable<_Value>) -> _Value {
-        return __self.__value_;
-      }
-    };
-
-    template <class... _Tags>
-    struct __prop<void(_Tags...)> {
-      using __t = __prop;
-      using __id = __prop;
-
-      template <__one_of<_Tags...> _Key, class _Self>
-        requires(std::is_base_of_v<__prop, __decay_t<_Self>>)
-      friend auto tag_invoke(_Key, _Self&&) noexcept = delete;
-    };
-
-    struct __mkprop_t {
-      template <class _Value, class _Tag, class... _Tags>
-      auto operator()(_Value&& __value, _Tag, _Tags...) const
-        noexcept(__nothrow_decay_copyable<_Value>) -> __prop<__decay_t<_Value>(_Tag, _Tags...)> {
-        return {(_Value&&) __value};
-      }
-
-      template <class _Tag>
-      auto operator()(_Tag) const -> __prop<void(_Tag)> {
-        return {};
-      }
-    };
-
-    template <__nothrow_move_constructible _Fun>
-    struct __env_fn {
-      using __t = __env_fn;
-      using __id = __env_fn;
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
-
-      template <class _Tag>
-        requires __callable<const _Fun&, _Tag>
-      friend auto tag_invoke(_Tag, const __env_fn& __self) //
-        noexcept(__nothrow_callable<const _Fun&, _Tag>) -> __call_result_t<const _Fun&, _Tag> {
-        return __self.__fun_(_Tag());
-      }
-    };
-
-    template <class _Fun>
-    __env_fn(_Fun) -> __env_fn<_Fun>;
-
-    template <class _Env>
-    struct __env_fwd {
-      static_assert(__nothrow_move_constructible<_Env>);
-      using __t = __env_fwd;
-      using __id = __env_fwd;
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Env __env_;
-
-      template <__forwarding_query _Tag>
-        requires tag_invocable<_Tag, const _Env&>
-      friend auto tag_invoke(_Tag, const __env_fwd& __self) //
-        noexcept(nothrow_tag_invocable<_Tag, const _Env&>)
-          -> tag_invoke_result_t<_Tag, const _Env&> {
-        return _Tag()(__self.__env_);
-      }
-    };
-
-    template <class _Env>
-    __env_fwd(_Env&&) -> __env_fwd<_Env>;
-
-    template <class _Env, class _Base = empty_env>
-    struct __joined_env : __env_fwd<_Base> {
-      static_assert(__nothrow_move_constructible<_Env>);
-      using __t = __joined_env;
-      using __id = __joined_env;
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Env __env_;
-
-      const _Base& base() const noexcept {
-        return this->__env_fwd<_Base>::__env_;
-      }
-
-      template <class _Tag>
-        requires tag_invocable<_Tag, const _Env&>
-      friend auto tag_invoke(_Tag, const __joined_env& __self) //
-        noexcept(nothrow_tag_invocable<_Tag, const _Env&>)
-          -> tag_invoke_result_t<_Tag, const _Env&> {
-        return _Tag()(__self.__env_);
-      }
-    };
-
-    template <class _Tag, class _Base>
-    struct __joined_env<__prop<void(_Tag)>, _Base> : __env_fwd<_Base> {
-      using __t = __joined_env;
-      using __id = __joined_env;
-      STDEXEC_ATTRIBUTE((no_unique_address)) __prop<void(_Tag)> __env_;
-
-      friend void tag_invoke(_Tag, const __joined_env&) noexcept = delete;
-    };
-
-    struct __join_env_t {
-      template <class _Env>
-      _Env operator()(_Env&& __env) const noexcept {
-        return (_Env&&) __env;
-      }
-
-      template <class _Env, class _Base>
-      decltype(auto) operator()(_Env&& __env, _Base&& __base) const noexcept {
-        using __env_t = __decay_t<_Env>;
-        using __base_t = __decay_t<_Base>;
-        if constexpr (__same_as<__env_t, empty_env>) {
-          return _Base((_Base&&) __base);
-        } else if constexpr (__same_as<__base_t, empty_env>) {
-          return _Env((_Env&&) __env);
-        } else {
-          return __joined_env<_Env, _Base>{{(_Base&&) __base}, (_Env&&) __env};
-        }
-      }
-
-      template <class _Env0, class _Env1, class _Env2, class... _Envs>
-      decltype(auto) operator()(_Env0&& __env0, _Env1&& __env1, _Env2&& __env2, _Envs&&... __envs)
-        const noexcept {
-        const auto& __join_env = *this;
-        return __join_env(
-          (_Env0&&) __env0,
-          __join_env((_Env1&&) __env1, __join_env((_Env2&&) __env2, (_Envs&&) __envs...)));
-      }
-    };
-
-    template <class... _Envs>
-    using __env_join_t = __call_result_t<__join_env_t, _Envs...>;
-
-    // To be kept in sync with the promise type used in __connect_awaitable
-    template <class _Env>
-    struct __env_promise {
-      template <class _Ty>
-      _Ty&& await_transform(_Ty&& __value) noexcept {
-        return (_Ty&&) __value;
-      }
-
-      template <class _Ty>
-        requires tag_invocable<as_awaitable_t, _Ty, __env_promise&>
-      auto await_transform(_Ty&& __value) //
-        noexcept(nothrow_tag_invocable<as_awaitable_t, _Ty, __env_promise&>)
-          -> tag_invoke_result_t<as_awaitable_t, _Ty, __env_promise&> {
-        return tag_invoke(as_awaitable, (_Ty&&) __value, *this);
-      }
-
-      template <same_as<get_env_t> _Tag>
-      friend auto tag_invoke(_Tag, const __env_promise&) noexcept -> const _Env& {
-        std::terminate();
-      }
-    };
-
-    // For making an environment from key/value pairs and optionally
-    // another environment.
-    struct __make_env_t {
-      template <__nothrow_move_constructible _Base, __nothrow_move_constructible _Env>
-      auto operator()(_Base&& __base, _Env&& __env) const noexcept -> __env_join_t<_Env, _Base> {
-        return __join_env_t()((_Env&&) __env, (_Base&&) __base);
-      }
-
-      template <__nothrow_move_constructible _Env>
-      _Env operator()(_Env&& __env) const noexcept {
-        return (_Env&&) __env;
-      }
-    };
-
-    // For getting an evaluation environment from a receiver
+    // For getting an execution environment from a receiver,
+    // or the attributes from a sender.
     struct get_env_t {
       template <class _EnvProvider>
         requires tag_invocable<get_env_t, const _EnvProvider&>
       STDEXEC_ATTRIBUTE((always_inline)) //
         constexpr auto
-        operator()(const _EnvProvider& __with_env) const noexcept
+        operator()(const _EnvProvider& __env_provider) const noexcept
         -> tag_invoke_result_t<get_env_t, const _EnvProvider&> {
         static_assert(queryable<tag_invoke_result_t<get_env_t, const _EnvProvider&> >);
         static_assert(nothrow_tag_invocable<get_env_t, const _EnvProvider&>);
-        return tag_invoke(*this, __with_env);
+        return tag_invoke(*this, __env_provider);
       }
 
       template <class _EnvProvider>
@@ -458,25 +286,223 @@ namespace stdexec {
         return {};
       }
     };
+
+    // To be kept in sync with the promise type used in __connect_awaitable
+    template <class _Env>
+    struct __promise {
+      template <class _Ty>
+      _Ty&& await_transform(_Ty&& __value) noexcept {
+        return (_Ty&&) __value;
+      }
+
+      template <class _Ty>
+        requires tag_invocable<as_awaitable_t, _Ty, __promise&>
+      auto await_transform(_Ty&& __value) //
+        noexcept(nothrow_tag_invocable<as_awaitable_t, _Ty, __promise&>)
+          -> tag_invoke_result_t<as_awaitable_t, _Ty, __promise&> {
+        return tag_invoke(as_awaitable, (_Ty&&) __value, *this);
+      }
+
+      template <same_as<get_env_t> _Tag>
+      friend auto tag_invoke(_Tag, const __promise&) noexcept -> const _Env& {
+        std::terminate();
+      }
+    };
+
+    template <class _Value, class _Tag, class... _Tags>
+    struct __with {
+      using __t = __with;
+      using __id = __with;
+      _Value __value_;
+
+      constexpr __with(_Value __value) noexcept(__nothrow_decay_copyable<_Value>)
+        : __value_((_Value&&) __value) {
+      }
+
+      constexpr explicit __with(_Value __value, _Tag, _Tags...) noexcept(
+        __nothrow_decay_copyable<_Value>)
+        : __value_((_Value&&) __value) {
+      }
+
+      template <__one_of<_Tag, _Tags...> _Key>
+      friend auto tag_invoke(_Key, const __with& __self) //
+        noexcept(__nothrow_decay_copyable<_Value>) -> _Value {
+        return __self.__value_;
+      }
+    };
+
+    template <class _Value, class _Tag, class... _Tags>
+    __with(_Value, _Tag, _Tags...) -> __with<_Value, _Tag, _Tags...>;
+
+    template <class _Tag, class... _Tags>
+    struct __without {
+      using __t = __without;
+      using __id = __without;
+
+      __without() = default;
+
+      constexpr explicit __without(_Tag, _Tags...) noexcept {
+      }
+    };
+
+    template <class _Env>
+    struct __fwd {
+      static_assert(__nothrow_move_constructible<_Env>);
+      using __t = __fwd;
+      using __id = __fwd;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Env __env_;
+
+      template <__forwarding_query _Tag>
+        requires tag_invocable<_Tag, const _Env&>
+      friend auto tag_invoke(_Tag, const __fwd& __self) //
+        noexcept(nothrow_tag_invocable<_Tag, const _Env&>)
+          -> tag_invoke_result_t<_Tag, const _Env&> {
+        return _Tag()(__self.__env_);
+      }
+    };
+
+    template <class _Env>
+    __fwd(_Env&&) -> __fwd<_Env>;
+
+    template <class _Second, class _First>
+    struct __joined : _Second {
+      static_assert(__nothrow_move_constructible<_First>);
+      static_assert(__nothrow_move_constructible<_Second>);
+      using __t = __joined;
+      using __id = __joined;
+
+      STDEXEC_ATTRIBUTE((no_unique_address)) _First __env_;
+
+      template <class _Tag>
+        requires tag_invocable<_Tag, const _First&>
+      friend auto tag_invoke(_Tag, const __joined& __self) //
+        noexcept(nothrow_tag_invocable<_Tag, const _First&>)
+          -> tag_invoke_result_t<_Tag, const _First&> {
+        return _Tag()(__self.__env_);
+      }
+    };
+
+    template <class _Second, class _Tag, class... _Tags>
+    struct __joined<_Second, __without<_Tag, _Tags...>>
+      : _Second
+      , __without<_Tag, _Tags...> {
+      using __t = __joined;
+      using __id = __joined;
+
+      template <__one_of<_Tag, _Tags...> _Key, class _Self>
+        requires(std::is_base_of_v<__joined, __decay_t<_Self>>)
+      friend auto tag_invoke(_Key, _Self&&) noexcept = delete;
+    };
+
+    template <class _Second, class _First>
+    __joined(_Second&&, _First&&) -> __joined<_Second, _First>;
+
+    template <__nothrow_move_constructible _Fun>
+    struct __from {
+      using __t = __from;
+      using __id = __from;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
+
+      template <class _Tag>
+        requires __callable<const _Fun&, _Tag>
+      friend auto tag_invoke(_Tag, const __from& __self) //
+        noexcept(__nothrow_callable<const _Fun&, _Tag>) -> __call_result_t<const _Fun&, _Tag> {
+        return __self.__fun_(_Tag());
+      }
+    };
+
+    template <class _Fun>
+    __from(_Fun) -> __from<_Fun>;
+
+    struct __fwd_fn {
+      template <class Env>
+      auto operator()(Env&& env) const {
+        return __fwd{(Env&&) env};
+      }
+
+      empty_env operator()(empty_env) const {
+        return {};
+      }
+
+      template <class _Tag, class... _Tags>
+      __without<_Tag, _Tags...> operator()(__without<_Tag, _Tags...>) const {
+        return {};
+      }
+    };
+
+    struct __join_fn {
+      empty_env operator()() const {
+        return {};
+      }
+
+      template <class _Env>
+      _Env operator()(_Env&& __env) const {
+        return (_Env&&) __env;
+      }
+
+      empty_env operator()(empty_env) const {
+        return {};
+      }
+
+      template <class _Tag, class... _Tags>
+      empty_env operator()(__without<_Tag, _Tags...>) const {
+        return {};
+      }
+
+      template <class _Env>
+      _Env operator()(_Env&& __env, empty_env) const {
+        return (_Env&&) __env;
+      }
+
+      template <class _Env, class _Tag, class... _Tags>
+      _Env operator()(_Env&& __env, __without<_Tag, _Tags...>) const {
+        return (_Env&&) __env;
+      }
+
+      empty_env operator()(empty_env, empty_env) const {
+        return {};
+      }
+
+      template <class _Tag, class... _Tags>
+      empty_env operator()(empty_env, __without<_Tag, _Tags...>) const {
+        return {};
+      }
+
+      template <class _Tag, class... _Tags>
+      empty_env operator()(__without<_Tag, _Tags...>, empty_env) const {
+        return {};
+      }
+
+      template <class _Tag, class... _Tags, class _Tag2, class... _Tags2>
+      empty_env operator()(__without<_Tag, _Tags...>, __without<_Tag2, _Tags2...>) const {
+        return {};
+      }
+
+      template <class... Rest>
+      decltype(auto) operator()(empty_env, Rest&&... rest) const {
+        return __fwd_fn()(__join_fn()((Rest&&) rest...));
+      }
+
+      template <class _Tag, class... _Tags, class... Rest>
+      decltype(auto) operator()(__without<_Tag, _Tags...>, Rest&&... rest) const {
+        return __joined{__fwd_fn()(__join_fn()((Rest&&) rest...)), __without<_Tag, _Tags...>()};
+      }
+
+      template <class First, class... Rest>
+      decltype(auto) operator()(First&& first, Rest&&... rest) const {
+        return __joined{__fwd_fn()(__join_fn()((Rest&&) rest...)), (First&&) first};
+      }
+    };
+
+    inline constexpr __join_fn __join{};
+
+    template <class... _Envs>
+    using __join_t = __result_of<__join, _Envs...>;
   } // namespace __env
 
+  using __env::get_env_t;
   using __env::empty_env;
-  using __empty_env [[deprecated("Please use stdexec::empty_env now.")]] = empty_env;
-
-  using __env::__env_promise;
-
-  inline constexpr __env::__make_env_t __make_env{};
-  inline constexpr __env::__join_env_t __join_env{};
-  inline constexpr __env::get_env_t get_env{};
-
-  // for making an environment from a single key/value pair
-  inline constexpr __env::__mkprop_t __mkprop{};
-
-  template <class _Tag, class _Value = void>
-  using __with = __env::__prop<_Value(_Tag)>;
-
-  template <class... _Ts>
-  using __make_env_t = __call_result_t<__env::__make_env_t, _Ts...>;
+  inline constexpr get_env_t get_env{};
 
   template <class _EnvProvider>
   concept environment_provider = //

@@ -135,12 +135,15 @@ namespace stdexec {
     struct __connect_fn;
 
     template <class _Tag, class _Sexpr, class _Receiver>
-    using __state_type_t = __decay_t<__result_of<
-      __sexpr_impl<_Tag>::get_state, _Sexpr, _Receiver&>>;
+    using __state_type_t =
+      __decay_t<__result_of< __sexpr_impl<_Tag>::get_state, _Sexpr, _Receiver&>>;
 
     template <class _Tag, class _Index, class _Sexpr, class _Receiver>
     using __env_type_t = __result_of<
-      __sexpr_impl<_Tag>::get_env, _Index, __state_type_t<_Tag, _Sexpr, _Receiver>&, _Receiver&>;
+      __sexpr_impl<_Tag>::get_env,
+      _Index,
+      __state_type_t<_Tag, _Sexpr, _Receiver>&,
+      _Receiver&>;
 
     template <class _Sexpr, class _Receiver>
     concept __connectable =
@@ -158,43 +161,51 @@ namespace stdexec {
 
     inline constexpr auto __get_attrs = //
       [](__ignore, const auto&... __child) noexcept -> decltype(auto) {
-        if constexpr (sizeof...(__child) == 1) {
-          return stdexec::get_env(__child...); // BUGBUG: should be only the forwarding queries
-        } else {
-          return empty_env();
-        }
-        STDEXEC_UNREACHABLE();
-      };
+      if constexpr (sizeof...(__child) == 1) {
+        return stdexec::get_env(__child...); // BUGBUG: should be only the forwarding queries
+      } else {
+        return empty_env();
+      }
+      STDEXEC_UNREACHABLE();
+    };
 
     inline constexpr auto __get_env = //
       []<class _Receiver>(__ignore, __ignore, const _Receiver& __rcvr) noexcept
-        -> env_of_t<const _Receiver&> {
-        return stdexec::get_env(__rcvr);
-      };
+      -> env_of_t<const _Receiver&> {
+      return stdexec::get_env(__rcvr);
+    };
 
     inline constexpr auto __get_state = //
       []<class _Sender>(_Sender&& __sndr, __ignore) noexcept -> decltype(auto) {
-        return STDEXEC_CALL_EXPLICIT_THIS_MEMFN((_Sender&&) __sndr, apply)(__get_data());
-      };
+      return STDEXEC_CALL_EXPLICIT_THIS_MEMFN((_Sender&&) __sndr, apply)(__get_data());
+    };
 
     inline constexpr auto __connect = //
-      []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr)
-        -> __op_state<_Sender, _Receiver>
-        requires __connectable<_Sender, _Receiver> {
-        return __op_state<_Sender, _Receiver>{(_Sender&&) __sndr, (_Receiver&&) __rcvr};
-      };
+      []<class _Sender, class _Receiver>(_Sender && __sndr, _Receiver __rcvr)
+      -> __op_state<_Sender, _Receiver>
+      requires __connectable<_Sender, _Receiver>
+    {
+      return __op_state<_Sender, _Receiver>{(_Sender&&) __sndr, (_Receiver&&) __rcvr};
+    };
 
     inline constexpr auto __start = //
-      []<class _StartTag = start_t, class... _ChildOps>(__ignore, __ignore, _ChildOps&... __ops) noexcept {
-        (_StartTag()(__ops), ...);
-      };
+      []<class _StartTag = start_t, class... _ChildOps>(
+        __ignore,
+        __ignore,
+        _ChildOps&... __ops) noexcept {
+      (_StartTag()(__ops), ...);
+    };
 
     inline constexpr auto __complete = //
       []<class _Index, class _Receiver, class _SetTag, class... _Args>(
-        _Index, __ignore, _Receiver& __rcvr, _SetTag, _Args&&... __args) noexcept {
-          static_assert(__v<_Index> == 0, "I don't know how to complete this operation.");
-          _SetTag()(std::move(__rcvr), (_Args&&) __args...);
-        };
+        _Index,
+        __ignore,
+        _Receiver& __rcvr,
+        _SetTag,
+        _Args&&... __args) noexcept {
+        static_assert(__v<_Index> == 0, "I don't know how to complete this operation.");
+        _SetTag()(std::move(__rcvr), (_Args&&) __args...);
+      };
 
     inline constexpr auto __get_completion_signagures = //
       [](__ignore, __ignore) noexcept {
@@ -384,11 +395,11 @@ namespace stdexec {
 
     inline constexpr auto __drop_front = //
       []<class _Fn>(_Fn __fn) noexcept {
-        return [__fn = std::move(__fn)]<class... _Rest>(auto&&, _Rest&&... __rest)
-          noexcept(__nothrow_callable<const _Fn&, _Rest...>)
-          -> __call_result_t<const _Fn&, _Rest...> {
-          return __fn((_Rest&&) __rest...);
-        };
+        return
+          [__fn = std::move(__fn)]<class... _Rest>(auto&&, _Rest&&... __rest) noexcept(
+            __nothrow_callable<const _Fn&, _Rest...>) -> __call_result_t<const _Fn&, _Rest...> {
+            return __fn((_Rest&&) __rest...);
+          };
       };
   } // namespace __detail
 
@@ -402,8 +413,8 @@ namespace stdexec {
     static constexpr auto get_completion_signagures = __detail::__get_completion_signagures;
   };
 
-  template<class Tag>
-  struct __sexpr_impl : __sexpr_defaults {};
+  template <class Tag>
+  struct __sexpr_impl : __sexpr_defaults { };
 
   using __detail::__enable_receiver_from_this;
 
@@ -468,10 +479,9 @@ namespace stdexec {
       same_as<connect_t> _Tag,
       __decays_to<__sexpr> _Self,
       /*receiver*/ class _Receiver>
-    STDEXEC_ATTRIBUTE((always_inline))                               //
-    friend auto tag_invoke(_Tag, _Self&& __self, _Receiver&& __rcvr) //
-      noexcept(noexcept(
-        __impl<_Tag>::connect((_Self&&) __self, (_Receiver&&) __rcvr))) //
+    STDEXEC_ATTRIBUTE((always_inline))                                                  //
+    friend auto tag_invoke(_Tag, _Self&& __self, _Receiver&& __rcvr)                    //
+      noexcept(noexcept(__impl<_Tag>::connect((_Self&&) __self, (_Receiver&&) __rcvr))) //
       -> __msecond<
         __if_c<same_as<_Tag, connect_t> && __decays_to<_Self, __sexpr>>,
         __result_of<__impl<_Tag>::connect, _Self, _Receiver>> {

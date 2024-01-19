@@ -204,7 +204,8 @@ namespace {
       for (std::size_t n = 0; n < 9u; n++) {
         std::vector<int> counter(n, 42);
 
-        auto snd = ex::transfer_just(sch) | ex::bulk(n, [&counter](std::size_t idx) { counter[idx] = 0; })
+        auto snd = ex::transfer_just(sch)
+                 | ex::bulk(n, [&counter](std::size_t idx) { counter[idx] = 0; })
                  | ex::bulk(n, [&counter](std::size_t idx) { counter[idx]++; });
         stdexec::sync_wait(std::move(snd));
 
@@ -249,9 +250,10 @@ namespace {
         std::vector<int> vals_expected(n);
         std::iota(vals_expected.begin(), vals_expected.end(), 1);
 
-        auto snd = ex::transfer_just(sch, std::move(vals))
-                 | ex::bulk(n, [](std::size_t idx, std::vector<int>& vals) { vals[idx] = (int) idx; })
-                 | ex::bulk(n, [](std::size_t idx, std::vector<int>& vals) { ++vals[idx]; });
+        auto snd =
+          ex::transfer_just(sch, std::move(vals))
+          | ex::bulk(n, [](std::size_t idx, std::vector<int>& vals) { vals[idx] = (int) idx; })
+          | ex::bulk(n, [](std::size_t idx, std::vector<int>& vals) { ++vals[idx]; });
         auto [vals_actual] = stdexec::sync_wait(std::move(snd)).value();
 
         CHECK(vals_actual == vals_expected);

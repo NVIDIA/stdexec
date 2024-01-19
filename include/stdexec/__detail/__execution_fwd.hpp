@@ -227,7 +227,8 @@ namespace stdexec {
 }
 
 template <class...>
-[[deprecated]] void print() {}
+[[deprecated]] void print() {
+}
 
 template <class>
 struct undef;

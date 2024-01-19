@@ -302,8 +302,8 @@ namespace {
     // The customization will return a different value
     auto snd = ex::transfer(my_multi_value_sender_t{"hello_multi"}, inline_scheduler{});
     auto snd2 = ex::transfer_just(inline_scheduler{}, std::string{"hello"});
-    optional<std::variant<std::tuple<std::string>, std::tuple<int>>> res =
-      sync_wait_with_variant(std::move(snd));
+    optional<std::variant<std::tuple<std::string>, std::tuple<int>>> res = sync_wait_with_variant(
+      std::move(snd));
     CHECK(res.has_value());
     CHECK(std::get<0>(std::get<0>(res.value())) == std::string{"hallo_multi"});
   }
@@ -313,8 +313,8 @@ namespace {
     "[consumers][sync_wait_with_variant]") {
     // The customization will return a different value
     my_multi_value_sender_t snd{std::string{"hello_multi"}};
-    optional<std::variant<std::tuple<std::string>, std::tuple<int>>> res =
-      sync_wait_with_variant(std::move(snd));
+    optional<std::variant<std::tuple<std::string>, std::tuple<int>>> res = sync_wait_with_variant(
+      std::move(snd));
     CHECK(res.has_value());
     CHECK(std::get<0>(std::get<0>(res.value())) == std::string{"ciao_multi"});
   }
