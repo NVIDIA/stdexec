@@ -35,6 +35,14 @@ namespace exec {
       }
 
       template <class _Tag>
+      [[deprecated("use exec::without(Tag) instead")]]
+      auto operator()(_Tag) const {
+        return stdexec::__env::__without(_Tag());
+      }
+    };
+
+    struct __without_t {
+      template <class _Tag>
       auto operator()(_Tag) const {
         return stdexec::__env::__without(_Tag());
       }
@@ -59,6 +67,7 @@ namespace exec {
   } // namespace __detail
 
   inline constexpr __detail::__with_t with{};
+  inline constexpr __detail::__without_t without{};
 
   inline constexpr __detail::__make_env_t make_env{};
 
