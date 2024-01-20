@@ -19,7 +19,7 @@
 #include <chrono>
 
 #include <catch2/catch.hpp>
-#include <exec/system_scheduler.hpp>
+#include <exec/system_context.hpp>
 #include <exec/async_scope.hpp>
 #include <stdexec/execution.hpp>
 
