@@ -217,8 +217,8 @@ namespace exec {
       };
 
       template <class CvrefSender, class Receiver, class Shape, class Fun, bool MayThrow>
-      using bulk_receiver_t = __t<
-        bulk_receiver< __cvref_id<CvrefSender>, __id<Receiver>, Shape, Fun, MayThrow>>;
+      using bulk_receiver_t =
+        __t< bulk_receiver< __cvref_id<CvrefSender>, __id<Receiver>, Shape, Fun, MayThrow>>;
 
       template <class CvrefSenderId, class ReceiverId, std::integral Shape, class Fun>
       struct bulk_op_state {
@@ -329,14 +329,16 @@ namespace exec {
           using __t = sender;
           using __id = sender;
           using sender_concept = sender_t;
-          using completion_signatures = stdexec::completion_signatures< set_value_t(), set_stopped_t()>;
+          using completion_signatures =
+            stdexec::completion_signatures< set_value_t(), set_stopped_t()>;
          private:
           template <class Receiver>
           using operation_t = stdexec::__t<operation<stdexec::__id<Receiver>>>;
 
           template <typename Receiver>
           auto make_operation_(Receiver rcvr) const -> operation_t<Receiver> {
-            return operation_t<Receiver>{pool_, queue_, (Receiver&&) rcvr, threadIndex_, constraints_};
+            return operation_t<Receiver>{
+              pool_, queue_, (Receiver&&) rcvr, threadIndex_, constraints_};
           }
 
           template <receiver Receiver>
@@ -727,7 +729,8 @@ namespace exec {
     }
 
     inline std::size_t static_thread_pool_::num_threads(nodemask constraints) const noexcept {
-      const std::size_t nNodes = static_cast<std::size_t>(threadIndexByNumaNode_.back().numa_node + 1);
+      const std::size_t nNodes = static_cast<std::size_t>(
+        threadIndexByNumaNode_.back().numa_node + 1);
       std::size_t nThreads = 0;
       for (std::size_t nodeIndex = 0; nodeIndex < nNodes; ++nodeIndex) {
         if (!constraints[nodeIndex]) {
@@ -1070,7 +1073,7 @@ namespace exec {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, __completions_t<Self, env_of_t<Receiver>>>
-      friend bulk_op_state_t<Self, Receiver>                //
+      friend bulk_op_state_t<Self, Receiver>              //
         tag_invoke(connect_t, Self&& self, Receiver rcvr) //
         noexcept(__nothrow_constructible_from<
                  bulk_op_state_t<Self, Receiver>,
@@ -1437,8 +1440,7 @@ namespace exec {
             while (i0 + chunkSize < size) {
               for (std::size_t i = i0; i < i0 + chunkSize; ++i) {
                 op.items_[i].__construct_with([&] {
-                  return connect(
-                    set_next(op.rcvr_, ItemSender{&op, it + i}), NextReceiver{&op});
+                  return connect(set_next(op.rcvr_, ItemSender{&op, it + i}), NextReceiver{&op});
                 });
                 start(op.items_[i].__get());
               }
@@ -1465,9 +1467,7 @@ namespace exec {
             : operation_base_with_receiver<
               Range,
               Receiver>{std::move(range), pool, static_cast<Receiver&&>(rcvr)}
-            , items_(
-                std::ranges::size(this->range_),
-                ItemAllocator(get_allocator(this->rcvr_))) {
+            , items_(std::ranges::size(this->range_), ItemAllocator(get_allocator(this->rcvr_))) {
           }
 
           ~__t() {
@@ -1492,8 +1492,8 @@ namespace exec {
 
         using sender_concept = sequence_sender_t;
 
-        using completion_signatures =
-          stdexec::completion_signatures< set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
+        using completion_signatures = stdexec::
+          completion_signatures< set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
 
         using item_types = exec::item_types<stdexec::__t<item_sender<Range>>>;
 

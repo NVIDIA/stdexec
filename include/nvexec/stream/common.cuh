@@ -327,7 +327,7 @@ namespace nvexec {
 
     template <class BaseEnv>
     auto make_stream_env(BaseEnv&& base_env, stream_provider_t* stream_provider) noexcept {
-      return __join_env(__mkprop(stream_provider, get_stream_provider), (BaseEnv&&) base_env);
+      return __env::__join(__env::__with(stream_provider, get_stream_provider), (BaseEnv&&) base_env);
     }
 
     template <class BaseEnv>
@@ -343,11 +343,7 @@ namespace nvexec {
 
     template <class BaseEnv>
     auto make_terminal_stream_env(BaseEnv&& base_env, stream_provider_t* stream_provider) noexcept {
-      return __join_env(
-        __env::__env_fn{[stream_provider](get_stream_provider_t) noexcept {
-          return stream_provider;
-        }},
-        (BaseEnv&&) base_env);
+      return __env::__join(__env::__with(stream_provider, get_stream_provider), (BaseEnv&&) base_env);
     }
     template <class BaseEnv>
     using terminal_stream_env = decltype(STDEXEC_STREAM_DETAIL_NS::make_terminal_stream_env(

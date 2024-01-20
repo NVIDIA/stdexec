@@ -22,28 +22,57 @@ STDEXEC_PRAGMA_IGNORE_EDG(1302)
 
 namespace exec {
   template <class _Tag, class _Value = void>
-  using with_t = stdexec::__with<_Tag, _Value>;
+  using with_t = stdexec::__if_c<
+    stdexec::same_as<_Value, void>,
+    stdexec::__env::__without<_Tag>,
+    stdexec::__env::__with<_Value, _Tag>>;
 
   namespace __detail {
     struct __with_t {
       template <class _Tag, class _Value>
-      with_t<_Tag, stdexec::__decay_t<_Value>> operator()(_Tag, _Value&& __val) const {
-        return stdexec::__mkprop((_Value&&) __val, _Tag());
+      auto operator()(_Tag, _Value&& __val) const {
+        return stdexec::__env::__with((_Value&&) __val, _Tag());
       }
 
       template <class _Tag>
-      with_t<_Tag> operator()(_Tag) const {
-        return stdexec::__mkprop(_Tag());
+      [[deprecated("use exec::without(Tag) instead")]]
+      auto operator()(_Tag) const {
+        return stdexec::__env::__without(_Tag());
+      }
+    };
+
+    struct __without_t {
+      template <class _Tag>
+      auto operator()(_Tag) const {
+        return stdexec::__env::__without(_Tag());
+      }
+    };
+
+    // For making an environment from key/value pairs and optionally
+    // another environment.
+    struct __make_env_t {
+      template <
+        stdexec::__nothrow_move_constructible _Base,
+        stdexec::__nothrow_move_constructible _Env>
+      auto operator()(_Base&& __base, _Env&& __env) const noexcept
+        -> stdexec::__env::__join_t<_Env, _Base> {
+        return stdexec::__env::__join((_Env&&) __env, (_Base&&) __base);
+      }
+
+      template <stdexec::__nothrow_move_constructible _Env>
+      _Env operator()(_Env&& __env) const noexcept {
+        return (_Env&&) __env;
       }
     };
   } // namespace __detail
 
   inline constexpr __detail::__with_t with{};
+  inline constexpr __detail::__without_t without{};
 
-  inline constexpr stdexec::__env::__make_env_t make_env{};
+  inline constexpr __detail::__make_env_t make_env{};
 
   template <class... _Ts>
-  using make_env_t = stdexec::__make_env_t<_Ts...>;
+  using make_env_t = stdexec::__result_of<make_env, _Ts...>;
 
   namespace __read_with_default {
     using namespace stdexec;
@@ -77,9 +106,7 @@ namespace exec {
     };
 
     template <class _Tag, class _Default, class _Receiver>
-    using __operation_t =
-      __t<__operation<_Tag, __id<_Default>, __id<_Receiver>>>;
-
+    using __operation_t = __t<__operation<_Tag, __id<_Default>, __id<_Receiver>>>;
 
     template <class _Tag, class _Default>
     struct __sender {

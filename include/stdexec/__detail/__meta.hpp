@@ -159,16 +159,17 @@ namespace stdexec {
     char const __what_[_Len];
   };
 
-STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE_GNU("-Wuser-defined-literals")
+  STDEXEC_PRAGMA_PUSH()
+  STDEXEC_PRAGMA_IGNORE_GNU("-Wuser-defined-literals")
 
 #if STDEXEC_NVHPC() && (__EDG_VERSION__ < 604)
   // Use a non-standard extension for older nvc++ releases
   template <__mchar _Char, _Char... _Str>
-  [[deprecated("Use _mstr instead")]]
-  constexpr __mstring<sizeof...(_Str)> operator""__csz() noexcept {
+  [[deprecated("Use _mstr instead")]] constexpr __mstring<sizeof...(_Str)>
+    operator""__csz() noexcept {
     return {_Str...};
   }
+
   // Use a non-standard extension for older nvc++ releases
   template <__mchar _Char, _Char... _Str>
   constexpr __mstring<sizeof...(_Str)> operator""_mstr() noexcept {
@@ -177,10 +178,10 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wuser-defined-literals")
 #elif STDEXEC_NVHPC() && (__EDG_VERSION__ < 605)
   // This is to work around an unfiled (by me) EDG bug that fixed in build 605
   template <__mstring _Str>
-  [[deprecated("Use _mstr instead")]]
-  constexpr __mtypeof<_Str> const operator""__csz() noexcept {
+  [[deprecated("Use _mstr instead")]] constexpr __mtypeof<_Str> const operator""__csz() noexcept {
     return _Str;
   }
+
   // This is to work around an unfiled (by me) EDG bug that fixed in build 605
   template <__mstring _Str>
   constexpr __mtypeof<_Str> const operator""_mstr() noexcept {
@@ -189,10 +190,10 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wuser-defined-literals")
 #else
   // Use a standard user-defined string literal template
   template <__mstring _Str>
-  [[deprecated("Use _mstr instead")]]
-  constexpr __mtypeof<_Str> operator""__csz() noexcept {
+  [[deprecated("Use _mstr instead")]] constexpr __mtypeof<_Str> operator""__csz() noexcept {
     return _Str;
   }
+
   // Use a standard user-defined string literal template
   template <__mstring _Str>
   constexpr __mtypeof<_Str> operator""_mstr() noexcept {
@@ -200,7 +201,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wuser-defined-literals")
   }
 #endif
 
-STDEXEC_PRAGMA_POP()
+  STDEXEC_PRAGMA_POP()
 
   using __msuccess = int;
 

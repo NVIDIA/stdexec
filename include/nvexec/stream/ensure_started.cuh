@@ -34,7 +34,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       const in_place_stop_source& stop_source,
       stream_provider_t* stream_provider) noexcept {
       return make_stream_env(
-        __env::__env_fn{[&](get_stop_token_t) noexcept {
+        __env::__from{[&](get_stop_token_t) noexcept {
           return stop_source.get_token();
         }},
         stream_provider);

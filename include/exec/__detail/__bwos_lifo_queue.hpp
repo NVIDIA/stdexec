@@ -340,7 +340,7 @@ namespace exec::bwos {
 
   template <class Tp, class Allocator>
   lifo_queue<Tp, Allocator>::block_type::block_type(const block_type &other)
-  : ring_buffer_(other.ring_buffer_) {
+    : ring_buffer_(other.ring_buffer_) {
     head_.store(other.head_.load(std::memory_order_relaxed), std::memory_order_relaxed);
     tail_.store(other.tail_.load(std::memory_order_relaxed), std::memory_order_relaxed);
     steal_tail_.store(other.steal_tail_.load(std::memory_order_relaxed), std::memory_order_relaxed);
