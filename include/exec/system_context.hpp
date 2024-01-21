@@ -99,23 +99,18 @@ namespace exec {
       stdexec::set_error_t(std::exception_ptr) >;
 
     /// Implementation detail. Constructs the sender to wrap `__impl`.
-    system_sender(__if::__exec_system_sender_interface* __impl)
-      : __sender_impl_{__impl} {
+    system_sender(__if::__exec_system_scheduler_interface* __impl)
+      : __scheduler_impl_{__impl} {
     }
 
    private:
     /// The operation state used to execute the work described by this sender.
     template <class __S, class __R>
     struct __op {
-      /// Constructs `this` from `__snd` and `__recv`, using the object returned by `__initFunc` to start the operation.
-      ///
-      /// Using a functor to initialize the operation state allows the use of `this` to get the
-      /// underlying implementation object.
-      template <class __F>
-      __op(system_sender&& __snd, __R&& __recv, __F&& __initFunc)
-        : __snd_{std::move(__snd)}
-        , __recv_{std::move(__recv)}
-        , __os_{__initFunc(*this)} {
+      /// Constructs `this` from `__recv` and `__scheduler_impl`.
+      __op(__R&& __recv, __if::__exec_system_scheduler_interface* __scheduler_impl)
+        : __recv_{std::move(__recv)}
+        , __scheduler_impl_{__scheduler_impl} {
       }
 
       __op(const __op&) = delete;
@@ -124,44 +119,36 @@ namespace exec {
       __op& operator=(__op&&) = delete;
 
       /// Starts the work stored in `this`.
-      friend void tag_invoke(stdexec::start_t, __op& __op_v) noexcept {
-        if (auto __os = __op_v.__os_) {
-          __os->start();
+      friend void tag_invoke(stdexec::start_t, __op& __self) noexcept {
+        __self.__scheduler_impl_->schedule(__cb, &__self);
+      }
+
+      static void __cb(void* __data, int __completion_type, void* __exception) {
+        __op* __self = static_cast<__op*>(__data);
+        if (__completion_type == 0) {
+          stdexec::set_value(std::move(__self->__recv_));
+        } else if (__completion_type == 1) {
+          stdexec::set_stopped(std::move(__self->__recv_));
+        } else if (__completion_type == 2) {
+          stdexec::set_error(
+            std::move(__self->__recv_),
+            std::move(*reinterpret_cast<std::exception_ptr*>(&__exception)));
         }
       }
 
-      /// Sender object that describes the work to be done.
-      __S __snd_;
       /// Object that receives completion from the work described by the sender.
       __R __recv_;
-      /// The underlying implementation of the operation state.
-      __if::__exec_system_operation_state_interface* __os_{nullptr};
+      /// The underlying implementation of the scheduler.
+      __if::__exec_system_scheduler_interface* __scheduler_impl_{nullptr};
     };
 
     /// Connects `__self` to `__r`, returning the operation state containing the work to be done.
     template <class __R>
-    friend auto tag_invoke(stdexec::connect_t, system_sender&& __self, __R&& __r) //
-      noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<__R>, __R>)
-        -> __op<system_sender, std::remove_cvref_t<__R>> {
+    friend auto tag_invoke(stdexec::connect_t, system_sender&& __self, __R&& __r) noexcept(
+      std::is_nothrow_constructible_v<std::remove_cvref_t<__R>, __R>)
+      -> __op<system_sender, std::remove_cvref_t<__R>> {
 
-      return __op<system_sender, std::remove_cvref_t<__R>>{
-        std::move(__self), std::move(__r), [](auto& __op) {
-          __if::__exec_system_receiver __receiver_impl{
-            &__op.__recv_,
-            [](void* __cpp_recv) noexcept {
-              stdexec::set_value(std::move(*static_cast<__R*>(__cpp_recv)));
-            },
-            [](void* __cpp_recv) noexcept {
-              stdexec::set_stopped(std::move(*static_cast<__R*>(__cpp_recv)));
-            },
-            [](void* __cpp_recv, void* __exception) noexcept {
-              stdexec::set_error(
-                std::move(*static_cast<__R*>(__cpp_recv)),
-                std::move(*reinterpret_cast<std::exception_ptr*>(&__exception)));
-            }};
-
-          return __op.__snd_.__sender_impl_->connect(std::move(__receiver_impl));
-        }};
+      return {std::move(__r), __self.__scheduler_impl_};
     }
 
     /// Describes the environment of this sender.
@@ -186,11 +173,11 @@ namespace exec {
 
     /// Gets the environment of this sender.
     friend __env tag_invoke(stdexec::get_env_t, const system_sender& __self) noexcept {
-      return {__self.__sender_impl_->get_completion_scheduler()};
+      return {__self.__scheduler_impl_};
     }
 
-    /// The underlying implementation of the sender.
-    __if::__exec_system_sender_interface* __sender_impl_{nullptr};
+    /// The underlying implementation of the system scheduler.
+    __if::__exec_system_scheduler_interface* __scheduler_impl_{nullptr};
   };
 
   /// The state needed to execute the bulk sender created from system context.
@@ -413,7 +400,7 @@ namespace exec {
   }
 
   system_sender tag_invoke(stdexec::schedule_t, const system_scheduler& sched) noexcept {
-    return system_sender(sched.__scheduler_interface_->schedule());
+    return {sched.__scheduler_interface_};
   }
 
   stdexec::forward_progress_guarantee

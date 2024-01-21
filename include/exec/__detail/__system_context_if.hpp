@@ -36,9 +36,20 @@ namespace exec { namespace __system_context_interface {
     __exec_system_bulk_fn* __fn = nullptr;
   };
 
+  /// Callback to be called by the scheduler when new work can start.
+  ///
+  /// \param data The data pointer passed to the scheduler.
+  /// \param completion_type 0 for normal completion, 1 for cancellation, 2 for exception
+  /// \param exception If completion_type is 2, this is the exception pointer.
+  using __exec_system_context_schedule_callback_t =
+    void (*)(void* /*data*/, int /*completion_type*/, void* /*exception*/);
+
   struct __exec_system_scheduler_interface {
     virtual stdexec::forward_progress_guarantee get_forward_progress_guarantee() const = 0;
-    virtual __exec_system_sender_interface* schedule() = 0;
+
+    /// Schedules new work on the system scheduler, calling `__cb` with `__data` when the work can start.
+    virtual void schedule(__exec_system_context_schedule_callback_t __cb, void* __data) = 0;
+
     // TODO: Move chaining in here to support chaining after a system_sender or other system_bulk_sender
     // or don't do anything that specific?
     virtual __exec_system_sender_interface*

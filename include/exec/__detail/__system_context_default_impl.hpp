@@ -43,7 +43,7 @@ namespace exec { namespace __system_context_default_impl {
     __exec_system_context_impl* __ctx_;
     decltype(__ctx_->__pool_.get_scheduler()) __pool_scheduler_;
 
-    __if::__exec_system_sender_interface* schedule() override;
+    void schedule(__if::__exec_system_context_schedule_callback_t __cb, void* __data) override;
 
     __if::__exec_system_sender_interface* bulk(
       __if::__exec_system_bulk_shape __shp,
@@ -273,8 +273,35 @@ namespace exec { namespace __system_context_default_impl {
     return new __exec_system_scheduler_impl(this, __pool_.get_scheduler());
   }
 
-  inline __if::__exec_system_sender_interface* __exec_system_scheduler_impl::schedule() {
-    return new __exec_system_sender_impl(this, stdexec::schedule(__pool_scheduler_));
+  // TODO: rename
+  struct __recv {
+    using receiver_concept = stdexec::receiver_t;
+    __if::__exec_system_context_schedule_callback_t __cb_;
+    void* __data_;
+
+    friend void tag_invoke(stdexec::set_value_t, __recv&& __self) noexcept {
+      __self.__cb_(__self.__data_, 0, nullptr);
+    }
+
+    friend void tag_invoke(stdexec::set_stopped_t, __recv&& __self) noexcept {
+      __self.__cb_(__self.__data_, 1, nullptr);
+    }
+
+    friend void
+      tag_invoke(stdexec::set_error_t, __recv&& __self, std::exception_ptr __ptr) noexcept {
+      __self.__cb_(__self.__data_, 2, *reinterpret_cast<void**>(&__ptr));
+    }
+  };
+
+  void __exec_system_scheduler_impl::schedule(
+    __if::__exec_system_context_schedule_callback_t __cb,
+    void* __data) {
+    auto __sender = stdexec::schedule(__pool_scheduler_);
+    using operation_state_t = stdexec::connect_result_t<decltype(__sender), __recv>;
+    auto __os = new operation_state_t(stdexec::connect(std::move(__sender), __recv{__cb, __data}));
+    // TODO: stop leaking
+    // TODO: we have: size=64, alignment=8
+    stdexec::start(*__os);
   }
 
   inline __if::__exec_system_sender_interface* __exec_system_scheduler_impl::bulk(
