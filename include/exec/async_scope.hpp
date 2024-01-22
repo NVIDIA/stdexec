@@ -655,8 +655,8 @@ namespace exec {
 
         // BUGBUG NOT TO SPEC spawn shouldn't accept senders that can fail.
         template <same_as<set_error_t> _Tag>
-        [[noreturn]] friend void tag_invoke(_Tag, __t&&, const std::exception_ptr&) noexcept {
-          std::terminate();
+        [[noreturn]] friend void tag_invoke(_Tag, __t&&, std::exception_ptr __eptr) noexcept {
+          std::rethrow_exception(std::move(__eptr));
         }
 
         friend const __spawn_env_t<_Env>& tag_invoke(get_env_t, const __t& __self) noexcept {
