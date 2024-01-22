@@ -3571,8 +3571,11 @@ namespace stdexec {
           using _Domain = __result_domain_t<_Set, _Child, _Fun, _Env, _Sched>;
           if constexpr (__merror<_Domain>) {
             return _Domain();
+          } else if constexpr (same_as<_Domain, dependent_domain>) {
+            using _Domain2 = __late_domain_of_t<_Child, _Env>;
+            return __make_sexpr<__let_t<_Set, _Domain2>>((_Fun&&) __fun, (_Child&&) __child);
           } else {
-            static_assert(__none_of<_Domain, __none_such, dependent_domain>);
+            static_assert(!same_as<_Domain, __none_such>);
             return __make_sexpr<__let_t<_Set, _Domain>>((_Fun&&) __fun, (_Child&&) __child);
           }
         }
