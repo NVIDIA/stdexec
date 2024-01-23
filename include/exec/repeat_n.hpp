@@ -83,7 +83,7 @@ namespace exec {
       trampoline_scheduler __sched_;
 
       __repeat_n_state(_Sender &&__sndr, _Receiver &)
-        : __pair_(__sexpr_apply((_Sender &&) __sndr, __detail::__get_data())) {
+        : __pair_(__sexpr_apply((_Sender &&) __sndr, stdexec::__detail::__get_data())) {
         // Q: should we skip __connect() if __count_ == 0?
         __connect();
       }

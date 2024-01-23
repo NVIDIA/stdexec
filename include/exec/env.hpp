@@ -27,7 +27,7 @@ namespace exec {
     stdexec::__env::__without<_Tag>,
     stdexec::__env::__with<_Value, _Tag>>;
 
-  namespace __detail {
+  namespace __envs {
     struct __with_t {
       template <class _Tag, class _Value>
       auto operator()(_Tag, _Value&& __val) const {
@@ -64,12 +64,12 @@ namespace exec {
         return (_Env&&) __env;
       }
     };
-  } // namespace __detail
+  } // namespace __envs
 
-  inline constexpr __detail::__with_t with{};
-  inline constexpr __detail::__without_t without{};
+  inline constexpr __envs::__with_t with{};
+  inline constexpr __envs::__without_t without{};
 
-  inline constexpr __detail::__make_env_t make_env{};
+  inline constexpr __envs::__make_env_t make_env{};
 
   template <class... _Ts>
   using make_env_t = stdexec::__result_of<make_env, _Ts...>;
