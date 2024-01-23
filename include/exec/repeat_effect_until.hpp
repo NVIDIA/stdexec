@@ -73,7 +73,7 @@ namespace exec {
       trampoline_scheduler __sched_;
 
       __repeat_effect_state(_Sender &&__sndr, _Receiver &)
-        : __child_(__sexpr_apply((_Sender &&) __sndr, __detail::__get_data())) {
+        : __child_(__sexpr_apply((_Sender &&) __sndr, stdexec::__detail::__get_data())) {
         __connect();
       }
 
