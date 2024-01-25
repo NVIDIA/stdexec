@@ -345,6 +345,9 @@ namespace stdexec {
       }
     };
 
+    template <class _Tag, class... _Tags>
+    __without(_Tag, _Tags...) -> __without<_Tag, _Tags...>;
+
     template <class _Env>
     struct __fwd {
       static_assert(__nothrow_move_constructible<_Env>);
