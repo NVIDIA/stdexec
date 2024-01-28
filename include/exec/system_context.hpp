@@ -21,6 +21,22 @@
 namespace exec {
   namespace __if = __system_context_interface;
 
+  namespace __detail {
+    /// Transforms from a C API signal to the `set_xxx` completion signal.
+    template <typename __R>
+    inline void __pass_to_receiver(int __completion_type, void* __exception, __R&& __recv) {
+      if (__completion_type == 0) {
+        stdexec::set_value(std::forward<__R>(__recv));
+      } else if (__completion_type == 1) {
+        stdexec::set_stopped(std::forward<__R>(__recv));
+      } else if (__completion_type == 2) {
+        stdexec::set_error(
+          std::forward<__R>(__recv),
+          std::move(*reinterpret_cast<std::exception_ptr*>(&__exception)));
+      }
+    }
+  }
+
   class system_scheduler;
   class system_sender;
   template <stdexec::sender __S, std::integral __Size, class __Fn>
@@ -87,6 +103,26 @@ namespace exec {
     __if::__exec_system_scheduler_interface* __scheduler_interface_;
   };
 
+  /// Describes the environment of this sender.
+  struct __system_scheduler_env {
+    /// Returns the system scheduler as the completion scheduler for `set_value_t`.
+    friend system_scheduler tag_invoke(
+      stdexec::get_completion_scheduler_t<stdexec::set_value_t>,
+      const __system_scheduler_env& __self) noexcept {
+      return {__self.__scheduler_impl_};
+    }
+
+    /// Returns the system scheduler as the completion scheduler for `set_stopped_t`.
+    friend system_scheduler tag_invoke(
+      stdexec::get_completion_scheduler_t<stdexec::set_stopped_t>,
+      const __system_scheduler_env& __self) noexcept {
+      return {__self.__scheduler_impl_};
+    }
+
+    /// The underlying implementation of the scheduler we are using.
+    __if::__exec_system_scheduler_interface* __scheduler_impl_;
+  };
+
   /// The sender used to schedule new work in the system context.
   class system_sender {
    public:
@@ -124,16 +160,8 @@ namespace exec {
       }
 
       static void __cb(void* __data, int __completion_type, void* __exception) {
-        __op* __self = static_cast<__op*>(__data);
-        if (__completion_type == 0) {
-          stdexec::set_value(std::move(__self->__recv_));
-        } else if (__completion_type == 1) {
-          stdexec::set_stopped(std::move(__self->__recv_));
-        } else if (__completion_type == 2) {
-          stdexec::set_error(
-            std::move(__self->__recv_),
-            std::move(*reinterpret_cast<std::exception_ptr*>(&__exception)));
-        }
+        auto __self = static_cast<__op*>(__data);
+        __detail::__pass_to_receiver(__completion_type, __exception, std::move(__self->__recv_));
       }
 
       /// Object that receives completion from the work described by the sender.
@@ -151,28 +179,9 @@ namespace exec {
       return {std::move(__r), __self.__scheduler_impl_};
     }
 
-    /// Describes the environment of this sender.
-    struct __env {
-      /// Returns the parent scheduler as the completion scheduler for `set_value_t`.
-      friend system_scheduler tag_invoke(
-        stdexec::get_completion_scheduler_t<stdexec::set_value_t>,
-        const __env& __self) noexcept {
-        return {__self.__scheduler_impl_};
-      }
-
-      /// Returns the parent scheduler as the completion scheduler for `set_stopped_t`.
-      friend system_scheduler tag_invoke(
-        stdexec::get_completion_scheduler_t<stdexec::set_stopped_t>,
-        const __env& __self) noexcept {
-        return {__self.__scheduler_impl_};
-      }
-
-      /// The underlying implementation of the scheduler we are using.
-      __if::__exec_system_scheduler_interface* __scheduler_impl_;
-    };
-
     /// Gets the environment of this sender.
-    friend __env tag_invoke(stdexec::get_env_t, const system_sender& __self) noexcept {
+    friend __system_scheduler_env
+      tag_invoke(stdexec::get_env_t, const system_sender& __self) noexcept {
       return {__self.__scheduler_impl_};
     }
 
@@ -189,8 +198,6 @@ namespace exec {
     __R __recv_;
     /// The arguments passed from the previous receiver to the function object of the bulk sender,
     void* __arguments_data_{nullptr};
-    /// Typed-erased function to be called for each item in the bulk operation.
-    __if::__exec_system_bulk_fn* __fn_{nullptr};
   };
 
   /// Receiver that is used in "bulk" to connect toe the input sender of the bulk operation.
@@ -199,9 +206,10 @@ namespace exec {
     /// Declare that this is a `receiver`.
     using receiver_concept = stdexec::receiver_t;
 
+    /// The type of the object that holds relevant data for the entire bulk operation.
     using __bulk_state_t = __bulk_state<__Previous, __Size, __Fn, __R>;
 
-    /// The operation state object corresponding to the bulk sender created from system context.
+    /// Object that holds the relevant data for the entire bulk operation.
     __bulk_state_t& __state_;
 
     /// Invoked when the previous sender completes with a value to trigger multiple operations on the system scheduler.
@@ -216,9 +224,8 @@ namespace exec {
       __self.__state_.__arguments_data_ = __inputs;
       // TODO: fix memory leak
 
-      __self.__state_.__fn_ = [](void* __state_, long __idx) {
+      auto __type_erased_fn = [](void* __state_, long __idx) {
         auto* __state = static_cast<__bulk_state_t*>(__state_);
-
         std::apply(
           [&](auto&&... __args) { __state->__snd_.__fun_(__idx, __args...); },
           *static_cast<std::tuple<__As...>*>(__state->__arguments_data_));
@@ -226,7 +233,7 @@ namespace exec {
 
       // Schedule the bulk work on the system scheduler.
       __self.__state_.__snd_.__scheduler_impl_->bulk_schedule(
-        __cb, __cb_item, &__self.__state_, __self.__state_.__snd_.__size_);
+        __cb, __type_erased_fn, &__self.__state_, __self.__state_.__snd_.__size_);
     }
 
     /// Invoked when the previous sender completes with "stopped" to stop the entire work.
@@ -248,22 +255,10 @@ namespace exec {
       return stdexec::get_env(__self.__state_.__recv_);
     }
 
-    static void __cb_item(void* __data, long __index) {
-      auto __state = static_cast<__bulk_state_t*>(__data);
-      __state->__fn_(__state, __index);
-    }
-
+    /// Called by the system scheduler when the bulk operation completes.
     static void __cb(void* __data, int __completion_type, void* __exception) {
       auto __state = static_cast<__bulk_state_t*>(__data);
-      if (__completion_type == 0) {
-        stdexec::set_value(std::move(__state->__recv_));
-      } else if (__completion_type == 1) {
-        stdexec::set_stopped(std::move(__state->__recv_));
-      } else if (__completion_type == 2) {
-        stdexec::set_error(
-          std::move(__state->__recv_),
-          std::move(*reinterpret_cast<std::exception_ptr*>(&__exception)));
-      }
+      __detail::__pass_to_receiver(__completion_type, __exception, std::move(__state->__recv_));
     }
   };
 
@@ -294,7 +289,7 @@ namespace exec {
 
     /// Starts the work stored in `__self`.
     friend void tag_invoke(stdexec::start_t, __bulk_op& __self) noexcept {
-      // Start inner operation state.
+      // Start previous operation state.
       // Bulk operation will be started when the previous sender completes.
       stdexec::start(__self.__previous_operation_state_);
     }
@@ -344,31 +339,9 @@ namespace exec {
               }};
     }
 
-    /// Describes the environment of this sender.
-    struct __env {
-      /// Returns the parent scheduler as the completion scheduler for `set_value_t`.
-      friend system_scheduler tag_invoke(
-        stdexec::get_completion_scheduler_t<stdexec::set_value_t>,
-        const __env& __self) //
-        noexcept {
-        return {__self.__scheduler_impl_};
-      }
-
-      /// Returns the parent scheduler as the completion scheduler for `set_stopped_t`.
-      friend system_scheduler tag_invoke(
-        stdexec::get_completion_scheduler_t<stdexec::set_stopped_t>,
-        const __env& __self) //
-        noexcept {
-        return {__self.__scheduler_impl_};
-      }
-
-      /// The underlying implementation of the scheduler we are using.
-      __if::__exec_system_scheduler_interface* __scheduler_impl_;
-    };
-
     /// Gets the environment of this sender.
-    friend __env tag_invoke(stdexec::get_env_t, const system_bulk_sender& __snd) noexcept {
-      // If we trigger this customization we know what the completion scheduler will be
+    friend __system_scheduler_env
+      tag_invoke(stdexec::get_env_t, const system_bulk_sender& __snd) noexcept {
       return {__snd.__scheduler_impl_};
     }
 
