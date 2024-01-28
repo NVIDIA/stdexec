@@ -19,7 +19,6 @@ namespace exec { namespace __system_context_interface {
   // TODO: transform this into a C interface
 
   struct __exec_system_scheduler_interface;
-  struct __exec_system_sender_interface;
 
   // Virtual interfaces to underlying implementations for initial simplicit
   // TODO: Potentially move to custom vtable implementations
@@ -31,11 +30,6 @@ namespace exec { namespace __system_context_interface {
   using __exec_system_bulk_shape = long;
   using __exec_system_bulk_fn = void(void*, __exec_system_bulk_shape);
 
-  struct __exec_system_bulk_function_object {
-    void* __fn_state = nullptr;
-    __exec_system_bulk_fn* __fn = nullptr;
-  };
-
   /// Callback to be called by the scheduler when new work can start.
   ///
   /// \param data The data pointer passed to the scheduler.
@@ -44,35 +38,26 @@ namespace exec { namespace __system_context_interface {
   using __exec_system_context_schedule_callback_t =
     void (*)(void* /*data*/, int /*completion_type*/, void* /*exception*/);
 
+  /// Callback to be called by the scheduler for each bulk item.
+  ///
+  /// \param data The data pointer passed to the scheduler.
+  /// \param index The index of the work item that is starting.
+  using __exec_system_context_bulk_item_callback_t = void (*)(void* /*data*/, long /*index*/);
+
   struct __exec_system_scheduler_interface {
     virtual stdexec::forward_progress_guarantee get_forward_progress_guarantee() const = 0;
 
     /// Schedules new work on the system scheduler, calling `__cb` with `__data` when the work can start.
     virtual void schedule(__exec_system_context_schedule_callback_t __cb, void* __data) = 0;
 
-    // TODO: Move chaining in here to support chaining after a system_sender or other system_bulk_sender
-    // or don't do anything that specific?
-    virtual __exec_system_sender_interface*
-      bulk(__exec_system_bulk_shape __shp, __exec_system_bulk_function_object __fn) = 0;
+    /// Schedules new bulk work of size `size` on the system scheduler, calling `__cb_item` with `__data` for indices in [0, `size`), and calling `__cb` on general completion.
+    virtual void bulk_schedule(
+      __exec_system_context_schedule_callback_t __cb,
+      __exec_system_context_bulk_item_callback_t __cb_item,
+      void* __data,
+      long size) = 0;
+
     virtual bool equals(const __exec_system_scheduler_interface* __rhs) const = 0;
-  };
-
-  struct __exec_system_operation_state_interface {
-    virtual void start() noexcept = 0;
-  };
-
-  struct __exec_system_receiver {
-    void* __cpp_recv_ = nullptr;
-    void (*set_value)(void* __cpp_recv) noexcept;
-    void (*set_stopped)(void* __cpp_recv) noexcept;
-    // Type-erase the exception pointer for extern-c-ness
-    void (*set_error)(void* __cpp_recv, void* __exception) noexcept;
-  };
-
-  struct __exec_system_sender_interface {
-    virtual __exec_system_operation_state_interface*
-      connect(__exec_system_receiver __recv) noexcept = 0;
-    virtual __exec_system_scheduler_interface* get_completion_scheduler() noexcept = 0;
   };
 
 }}

@@ -189,8 +189,8 @@ namespace exec {
     __R __recv_;
     /// The arguments passed from the previous receiver to the function object of the bulk sender,
     void* __arguments_data_{nullptr};
-    /// The underlying implementation of the operation state.
-    __if::__exec_system_operation_state_interface* __os_{nullptr};
+    /// Typed-erased function to be called for each item in the bulk operation.
+    __if::__exec_system_bulk_fn* __fn_{nullptr};
   };
 
   /// Receiver that is used in "bulk" to connect toe the input sender of the bulk operation.
@@ -199,8 +199,10 @@ namespace exec {
     /// Declare that this is a `receiver`.
     using receiver_concept = stdexec::receiver_t;
 
+    using __bulk_state_t = __bulk_state<__Previous, __Size, __Fn, __R>;
+
     /// The operation state object corresponding to the bulk sender created from system context.
-    __bulk_state<__Previous, __Size, __Fn, __R>& __state_;
+    __bulk_state_t& __state_;
 
     /// Invoked when the previous sender completes with a value to trigger multiple operations on the system scheduler.
     template <class... __As>
@@ -212,39 +214,19 @@ namespace exec {
       // Heap allocate input data in shared state as needed
       std::tuple<__As...>* __inputs = new std::tuple<__As...>{__as...};
       __self.__state_.__arguments_data_ = __inputs;
+      // TODO: fix memory leak
 
-      // Construct bulk operation with type conversions to use C ABI state
-      auto __sched = __self.__state_.__snd_.__scheduler_impl_;
-      if (__sched) {
-        __if::__exec_system_bulk_function_object __fn{
-          &__self.__state_, [](void* __state_, long __idx) {
-            __bulk_state<__Previous, __Size, __Fn, __R>* __state =
-              static_cast<__bulk_state<__Previous, __Size, __Fn, __R>*>(__state_);
+      __self.__state_.__fn_ = [](void* __state_, long __idx) {
+        auto* __state = static_cast<__bulk_state_t*>(__state_);
 
-            std::apply(
-              [&](auto&&... __args) { __state->__snd_.__fun_(__idx, __args...); },
-              *static_cast<std::tuple<__As...>*>(__state->__arguments_data_));
-          }};
+        std::apply(
+          [&](auto&&... __args) { __state->__snd_.__fun_(__idx, __args...); },
+          *static_cast<std::tuple<__As...>*>(__state->__arguments_data_));
+      };
 
-        auto* __sender = __sched->bulk(__self.__state_.__snd_.__size_, __fn);
-        // Connect to a type-erasing receiver to call our receiver on completion
-        __self.__state_.__os_ = __sender->connect(__if::__exec_system_receiver{
-          &__self.__state_.__recv_,
-          [](void* __cpp_recv) noexcept {
-            stdexec::set_value(std::move(*static_cast<__R*>(__cpp_recv)));
-          },
-          [](void* __cpp_recv) noexcept {
-            stdexec::set_stopped(std::move(*static_cast<__R*>(__cpp_recv)));
-          },
-          [](void* __cpp_recv, void* __exception) noexcept {
-            stdexec::set_error(
-              std::move(*static_cast<__R*>(__cpp_recv)),
-              std::move(*static_cast<std::exception_ptr*>(__exception)));
-          }});
-        // Start the operation state, which triggers the bulk execution.
-        __self.__state_.__os_->start();
-      }
-      // TODO: can't just drop the computation if the scheduler is null.
+      // Schedule the bulk work on the system scheduler.
+      __self.__state_.__snd_.__scheduler_impl_->bulk_schedule(
+        __cb, __cb_item, &__self.__state_, __self.__state_.__snd_.__size_);
     }
 
     /// Invoked when the previous sender completes with "stopped" to stop the entire work.
@@ -264,6 +246,24 @@ namespace exec {
     friend auto
       tag_invoke(stdexec::get_env_t, const __bulk_intermediate_receiver& __self) noexcept {
       return stdexec::get_env(__self.__state_.__recv_);
+    }
+
+    static void __cb_item(void* __data, long __index) {
+      auto __state = static_cast<__bulk_state_t*>(__data);
+      __state->__fn_(__state, __index);
+    }
+
+    static void __cb(void* __data, int __completion_type, void* __exception) {
+      auto __state = static_cast<__bulk_state_t*>(__data);
+      if (__completion_type == 0) {
+        stdexec::set_value(std::move(__state->__recv_));
+      } else if (__completion_type == 1) {
+        stdexec::set_stopped(std::move(__state->__recv_));
+      } else if (__completion_type == 2) {
+        stdexec::set_error(
+          std::move(__state->__recv_),
+          std::move(*reinterpret_cast<std::exception_ptr*>(&__exception)));
+      }
     }
   };
 
@@ -294,12 +294,8 @@ namespace exec {
 
     /// Starts the work stored in `__self`.
     friend void tag_invoke(stdexec::start_t, __bulk_op& __self) noexcept {
-      // Tell the undelying implementation to start.
-      if (auto __os = __self.__state_.__os_) {
-        __os->start();
-      }
-      // Start inner operation state
-      // Bulk operation will be started when that completes
+      // Start inner operation state.
+      // Bulk operation will be started when the previous sender completes.
       stdexec::start(__self.__previous_operation_state_);
     }
 

@@ -45,9 +45,11 @@ namespace exec { namespace __system_context_default_impl {
 
     void schedule(__if::__exec_system_context_schedule_callback_t __cb, void* __data) override;
 
-    __if::__exec_system_sender_interface* bulk(
-      __if::__exec_system_bulk_shape __shp,
-      __if::__exec_system_bulk_function_object __fn) override;
+    void bulk_schedule(
+      __if::__exec_system_context_schedule_callback_t __cb,
+      __if::__exec_system_context_bulk_item_callback_t __cb_item,
+      void* __data,
+      long __size) override;
 
     stdexec::forward_progress_guarantee get_forward_progress_guarantee() const override {
       return stdexec::forward_progress_guarantee::parallel;
@@ -57,214 +59,6 @@ namespace exec { namespace __system_context_default_impl {
       auto __rhs_impl = dynamic_cast<const __exec_system_scheduler_impl*>(__rhs);
       return __rhs_impl && __rhs_impl->__ctx_ == __ctx_;
     }
-  };
-
-  struct __exec_system_operation_state_impl;
-  using __exec_pool_sender_t =
-    decltype(stdexec::schedule(std::declval<__exec_system_scheduler_impl>().__pool_scheduler_));
-
-  struct __exec_system_pool_receiver {
-    using receiver_concept = stdexec::receiver_t;
-
-    friend void tag_invoke(stdexec::set_value_t, __exec_system_pool_receiver&&) noexcept;
-
-    friend void tag_invoke(stdexec::set_stopped_t, __exec_system_pool_receiver&&) noexcept;
-
-    friend void
-      tag_invoke(stdexec::set_error_t, __exec_system_pool_receiver&&, std::exception_ptr) noexcept;
-
-    friend stdexec::empty_env
-      tag_invoke(stdexec::get_env_t, const __exec_system_pool_receiver&) noexcept {
-      return {};
-    }
-
-    __exec_system_operation_state_impl* __os_ = nullptr;
-  };
-
-  struct __exec_system_operation_state_impl : public __if::__exec_system_operation_state_interface {
-    __exec_system_operation_state_impl(
-      __exec_pool_sender_t&& __pool_sender,
-      __if::__exec_system_receiver&& __recv)
-      : __recv_{std::move(__recv)}
-      , __pool_operation_state_{[&]() {
-        return stdexec::connect(std::move(__pool_sender), __exec_system_pool_receiver{this});
-      }()} {
-    }
-
-    __exec_system_operation_state_impl(const __exec_system_operation_state_impl&) = delete;
-    __exec_system_operation_state_impl(__exec_system_operation_state_impl&&) = delete;
-    __exec_system_operation_state_impl&
-      operator=(const __exec_system_operation_state_impl&) = delete;
-    __exec_system_operation_state_impl& operator=(__exec_system_operation_state_impl&&) = delete;
-
-    void start() noexcept override {
-      stdexec::start(__pool_operation_state_);
-    }
-
-    __if::__exec_system_receiver __recv_;
-    stdexec::connect_result_t<__exec_pool_sender_t, __exec_system_pool_receiver>
-      __pool_operation_state_;
-  };
-
-  inline void tag_invoke(stdexec::set_value_t, __exec_system_pool_receiver&& __recv) noexcept {
-    __if::__exec_system_receiver& __system_recv = __recv.__os_->__recv_;
-    __system_recv.set_value(__system_recv.__cpp_recv_);
-  }
-
-  inline void tag_invoke(stdexec::set_stopped_t, __exec_system_pool_receiver&& __recv) noexcept {
-    __if::__exec_system_receiver& __system_recv = __recv.__os_->__recv_;
-    __recv.__os_->__recv_.set_stopped(&(__system_recv.__cpp_recv_));
-  }
-
-  inline void tag_invoke(
-    stdexec::set_error_t,
-    __exec_system_pool_receiver&& __recv,
-    std::exception_ptr __ptr) noexcept {
-    __if::__exec_system_receiver& __system_recv = __recv.__os_->__recv_;
-    __recv.__os_->__recv_.set_error(&(__system_recv.__cpp_recv_), &__ptr);
-  }
-
-  struct __exec_system_sender_impl : public __if::__exec_system_sender_interface {
-    __exec_system_sender_impl(
-      __exec_system_scheduler_impl* __scheduler,
-      __exec_pool_sender_t&& __pool_sender)
-      : __scheduler_{__scheduler}
-      , __pool_sender_(std::move(__pool_sender)) {
-    }
-
-    __if::__exec_system_operation_state_interface*
-      connect(__if::__exec_system_receiver __recv) noexcept override {
-      return new __exec_system_operation_state_impl(std::move(__pool_sender_), std::move(__recv));
-    }
-
-    __if::__exec_system_scheduler_interface* get_completion_scheduler() noexcept override {
-      return __scheduler_;
-    };
-
-    __exec_system_scheduler_impl* __scheduler_;
-    __exec_pool_sender_t __pool_sender_;
-  };
-
-
-  struct __exec_system_bulk_operation_state_impl;
-
-  struct __exec_system_bulk_pool_receiver {
-    using receiver_concept = stdexec::receiver_t;
-
-    friend void tag_invoke(stdexec::set_value_t, __exec_system_bulk_pool_receiver&&) noexcept;
-
-    friend void tag_invoke(stdexec::set_stopped_t, __exec_system_bulk_pool_receiver&&) noexcept;
-
-    friend void tag_invoke(
-      stdexec::set_error_t,
-      __exec_system_bulk_pool_receiver&&,
-      std::exception_ptr) noexcept;
-
-    friend stdexec::empty_env
-      tag_invoke(stdexec::get_env_t, const __exec_system_bulk_pool_receiver&) noexcept {
-      return {};
-    }
-
-    __exec_system_bulk_operation_state_impl* __os_ = nullptr;
-  };
-
-  auto __exec_pool_operation_state(
-    __exec_system_bulk_operation_state_impl* __self,
-    __exec_pool_sender_t&& __ps,
-    __if::__exec_system_bulk_shape __shp,
-    __if::__exec_system_bulk_function_object __fn) {
-    return stdexec::connect(
-      stdexec::bulk(
-        std::move(__ps), __shp, [__fn](long __idx) { __fn.__fn(__fn.__fn_state, __idx); }),
-      __exec_system_bulk_pool_receiver{__self});
-  }
-
-  struct __exec_system_bulk_operation_state_impl
-    : public __if::__exec_system_operation_state_interface {
-    __exec_system_bulk_operation_state_impl(
-      __exec_pool_sender_t&& __pool_sender,
-      __if::__exec_system_bulk_shape __bulk_shape,
-      __if::__exec_system_bulk_function_object __bulk_function,
-      __if::__exec_system_receiver&& __recv)
-      : __recv_{std::move(__recv)}
-      , __bulk_function_{__bulk_function}
-      , __pool_operation_state_{__exec_pool_operation_state(
-          this,
-          std::move(__pool_sender),
-          __bulk_shape,
-          __bulk_function_)} {
-    }
-
-    __exec_system_bulk_operation_state_impl(
-      const __exec_system_bulk_operation_state_impl&) = delete;
-    __exec_system_bulk_operation_state_impl(__exec_system_bulk_operation_state_impl&&) = delete;
-    __exec_system_bulk_operation_state_impl&
-      operator=(const __exec_system_bulk_operation_state_impl&) = delete;
-    __exec_system_bulk_operation_state_impl&
-      operator=(__exec_system_bulk_operation_state_impl&&) = delete;
-
-    void start() noexcept override {
-      stdexec::start(__pool_operation_state_);
-    }
-
-    __if::__exec_system_receiver __recv_;
-    __if::__exec_system_bulk_function_object __bulk_function_;
-    stdexec::__result_of<
-      __exec_pool_operation_state,
-      __exec_system_bulk_operation_state_impl*,
-      __exec_pool_sender_t,
-      __if::__exec_system_bulk_shape,
-      __if::__exec_system_bulk_function_object>
-      __pool_operation_state_;
-  };
-
-  inline void tag_invoke(stdexec::set_value_t, __exec_system_bulk_pool_receiver&& __recv) noexcept {
-    __if::__exec_system_receiver& __system_recv = __recv.__os_->__recv_;
-    __system_recv.set_value((__system_recv.__cpp_recv_));
-  }
-
-  inline void
-    tag_invoke(stdexec::set_stopped_t, __exec_system_bulk_pool_receiver&& __recv) noexcept {
-    __if::__exec_system_receiver& __system_recv = __recv.__os_->__recv_;
-    __recv.__os_->__recv_.set_stopped(&(__system_recv.__cpp_recv_));
-  }
-
-  inline void tag_invoke(
-    stdexec::set_error_t,
-    __exec_system_bulk_pool_receiver&& __recv,
-    std::exception_ptr __ptr) noexcept {
-    __if::__exec_system_receiver& __system_recv = __recv.__os_->__recv_;
-    __recv.__os_->__recv_.set_error(&(__system_recv.__cpp_recv_), &__ptr);
-  }
-
-  // A bulk sender is just a system sender viewed externally.
-  // TODO: a bulk operation state is just a system operation state viewed externally
-  struct __exec_system_bulk_sender_impl : public __if::__exec_system_sender_interface {
-    __exec_system_bulk_sender_impl(
-      __exec_system_scheduler_impl* __scheduler,
-      __if::__exec_system_bulk_shape __bulk_shape,
-      __if::__exec_system_bulk_function_object __bulk_function,
-      __exec_pool_sender_t&& __pool_sender)
-      : __scheduler_{__scheduler}
-      , __bulk_shape_{__bulk_shape}
-      , __bulk_function_{__bulk_function}
-      , __pool_sender_(std::move(__pool_sender)) {
-    }
-
-    __if::__exec_system_operation_state_interface*
-      connect(__if::__exec_system_receiver __recv) noexcept override {
-      return new __exec_system_bulk_operation_state_impl(
-        std::move(__pool_sender_), __bulk_shape_, __bulk_function_, std::move(__recv));
-    }
-
-    __if::__exec_system_scheduler_interface* get_completion_scheduler() noexcept override {
-      return __scheduler_;
-    };
-
-    __exec_system_scheduler_impl* __scheduler_;
-    __if::__exec_system_bulk_shape __bulk_shape_;
-    __if::__exec_system_bulk_function_object __bulk_function_;
-    __exec_pool_sender_t __pool_sender_;
   };
 
   inline __if::__exec_system_scheduler_interface*
@@ -293,7 +87,7 @@ namespace exec { namespace __system_context_default_impl {
     }
   };
 
-  void __exec_system_scheduler_impl::schedule(
+  inline void __exec_system_scheduler_impl::schedule(
     __if::__exec_system_context_schedule_callback_t __cb,
     void* __data) {
     auto __sender = stdexec::schedule(__pool_scheduler_);
@@ -304,15 +98,23 @@ namespace exec { namespace __system_context_default_impl {
     stdexec::start(*__os);
   }
 
-  inline __if::__exec_system_sender_interface* __exec_system_scheduler_impl::bulk(
-    __if::__exec_system_bulk_shape __shp,
-    __if::__exec_system_bulk_function_object __fn) {
-    // This is bulk off a system_scheduler, so we need to start with schedule.
-    // TODO: a version later will key off a bulk *sender* and would behave slightly
-    // differently.
-    // In both cases pass in the result of schedule, or the predecessor though.
-    return new __exec_system_bulk_sender_impl(
-      this, __shp, __fn, stdexec::schedule(__pool_scheduler_));
+  inline void __exec_system_scheduler_impl::bulk_schedule(
+    __if::__exec_system_context_schedule_callback_t __cb,
+    __if::__exec_system_context_bulk_item_callback_t __cb_item,
+    void* __data,
+    long __size) {
+    // TODO
+    auto __sender = stdexec::bulk(
+      stdexec::schedule(__pool_scheduler_), __size, [__cb_item, __data](long __idx) {
+        __cb_item(__data, __idx);
+        // TODO: error, stopped
+      });
+
+    using operation_state_t = stdexec::connect_result_t<decltype(__sender), __recv>;
+    auto __os = new operation_state_t(stdexec::connect(std::move(__sender), __recv{__cb, __data}));
+    // TODO: stop leaking
+    // TODO: we have: size=???, alignment=???
+    stdexec::start(*__os);
   }
 
   // Phase 1 implementation, single implementation
