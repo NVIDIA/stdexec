@@ -19,8 +19,6 @@
 #include "__detail/__system_context_default_impl.hpp"
 
 namespace exec {
-  namespace __if = __system_context_interface;
-
   namespace __detail {
     /// Transforms from a C API signal to the `set_xxx` completion signal.
     template <typename __R>
@@ -62,7 +60,7 @@ namespace exec {
 
    private:
     /// The actual implementation of the system context.
-    __if::__exec_system_context_interface* __impl_{nullptr};
+    __exec_system_context_interface* __impl_{nullptr};
   };
 
   /// A scheduler that can add work to the system context.
@@ -72,12 +70,12 @@ namespace exec {
 
     /// Returns `true` iff `*this` refers to the same scheduler as `__rhs`.
     bool operator==(const system_scheduler& __rhs) const noexcept {
-      return __scheduler_interface_->equals(__rhs.__scheduler_interface_);
+      return __scheduler_ == __rhs.__scheduler_;
     }
 
     /// Implementation detail. Constructs the scheduler to wrap `__impl`.
-    system_scheduler(__if::__exec_system_scheduler_interface* __impl)
-      : __scheduler_interface_(__impl) {
+    system_scheduler(__exec_system_scheduler_interface* __impl)
+      : __scheduler_(__impl) {
     }
 
    private:
@@ -100,7 +98,7 @@ namespace exec {
       __Fn __fun) noexcept;
 
     /// The underlying implementation of the scheduler.
-    __if::__exec_system_scheduler_interface* __scheduler_interface_;
+    __exec_system_scheduler_interface* __scheduler_;
   };
 
   /// Describes the environment of this sender.
@@ -109,18 +107,18 @@ namespace exec {
     friend system_scheduler tag_invoke(
       stdexec::get_completion_scheduler_t<stdexec::set_value_t>,
       const __system_scheduler_env& __self) noexcept {
-      return {__self.__scheduler_impl_};
+      return {__self.__scheduler_};
     }
 
     /// Returns the system scheduler as the completion scheduler for `set_stopped_t`.
     friend system_scheduler tag_invoke(
       stdexec::get_completion_scheduler_t<stdexec::set_stopped_t>,
       const __system_scheduler_env& __self) noexcept {
-      return {__self.__scheduler_impl_};
+      return {__self.__scheduler_};
     }
 
     /// The underlying implementation of the scheduler we are using.
-    __if::__exec_system_scheduler_interface* __scheduler_impl_;
+    __exec_system_scheduler_interface* __scheduler_;
   };
 
   /// The sender used to schedule new work in the system context.
@@ -135,8 +133,8 @@ namespace exec {
       stdexec::set_error_t(std::exception_ptr) >;
 
     /// Implementation detail. Constructs the sender to wrap `__impl`.
-    system_sender(__if::__exec_system_scheduler_interface* __impl)
-      : __scheduler_impl_{__impl} {
+    system_sender(__exec_system_scheduler_interface* __impl)
+      : __scheduler_{__impl} {
     }
 
    private:
@@ -144,9 +142,9 @@ namespace exec {
     template <class __S, class __R>
     struct __op {
       /// Constructs `this` from `__recv` and `__scheduler_impl`.
-      __op(__R&& __recv, __if::__exec_system_scheduler_interface* __scheduler_impl)
+      __op(__R&& __recv, __exec_system_scheduler_interface* __scheduler_impl)
         : __recv_{std::move(__recv)}
-        , __scheduler_impl_{__scheduler_impl} {
+        , __scheduler_{__scheduler_impl} {
       }
 
       __op(const __op&) = delete;
@@ -156,7 +154,7 @@ namespace exec {
 
       /// Starts the work stored in `this`.
       friend void tag_invoke(stdexec::start_t, __op& __self) noexcept {
-        __self.__scheduler_impl_->schedule(__cb, &__self);
+        __self.__scheduler_->__schedule(__self.__scheduler_, __cb, &__self);
       }
 
       static void __cb(void* __data, int __completion_type, void* __exception) {
@@ -167,7 +165,7 @@ namespace exec {
       /// Object that receives completion from the work described by the sender.
       __R __recv_;
       /// The underlying implementation of the scheduler.
-      __if::__exec_system_scheduler_interface* __scheduler_impl_{nullptr};
+      __exec_system_scheduler_interface* __scheduler_{nullptr};
     };
 
     /// Connects `__self` to `__r`, returning the operation state containing the work to be done.
@@ -176,17 +174,17 @@ namespace exec {
       std::is_nothrow_constructible_v<std::remove_cvref_t<__R>, __R>)
       -> __op<system_sender, std::remove_cvref_t<__R>> {
 
-      return {std::move(__r), __self.__scheduler_impl_};
+      return {std::move(__r), __self.__scheduler_};
     }
 
     /// Gets the environment of this sender.
     friend __system_scheduler_env
       tag_invoke(stdexec::get_env_t, const system_sender& __self) noexcept {
-      return {__self.__scheduler_impl_};
+      return {__self.__scheduler_};
     }
 
     /// The underlying implementation of the system scheduler.
-    __if::__exec_system_scheduler_interface* __scheduler_impl_{nullptr};
+    __exec_system_scheduler_interface* __scheduler_{nullptr};
   };
 
   /// The state needed to execute the bulk sender created from system context.
@@ -233,8 +231,12 @@ namespace exec {
       };
 
       // Schedule the bulk work on the system scheduler.
-      __self.__state_.__snd_.__scheduler_impl_->bulk_schedule(
-        __cb, __type_erased_fn, &__self.__state_, __self.__state_.__snd_.__size_);
+      __self.__state_.__snd_.__scheduler_->__bulk_schedule(
+        __self.__state_.__snd_.__scheduler_,
+        __cb,
+        __type_erased_fn,
+        &__self.__state_,
+        __self.__state_.__snd_.__size_);
     }
 
     /// Invoked when the previous sender completes with "stopped" to stop the entire work.
@@ -319,11 +321,11 @@ namespace exec {
 
     /// Constructs `this`.
     system_bulk_sender(
-      __if::__exec_system_scheduler_interface* __scheduler_impl,
+      __exec_system_scheduler_interface* __scheduler_impl,
       __Previous __previous,
       __Size __size,
       __Fn&& __fun)
-      : __scheduler_impl_{__scheduler_impl}
+      : __scheduler_{__scheduler_impl}
       , __previous_{std::move(__previous)}
       , __size_{std::move(__size)}
       , __fun_{std::move(__fun)} {
@@ -346,11 +348,11 @@ namespace exec {
     /// Gets the environment of this sender.
     friend __system_scheduler_env
       tag_invoke(stdexec::get_env_t, const system_bulk_sender& __snd) noexcept {
-      return {__snd.__scheduler_impl_};
+      return {__snd.__scheduler_};
     }
 
     /// The underlying implementation of the scheduler we are using.
-    __if::__exec_system_scheduler_interface* __scheduler_impl_{nullptr};
+    __exec_system_scheduler_interface* __scheduler_{nullptr};
     /// The previous sender, the one that produces the input value for the bulk function.
     __Previous __previous_;
     /// The size of the bulk operation.
@@ -365,7 +367,7 @@ namespace exec {
   }
 
   inline system_scheduler system_context::get_scheduler() {
-    return system_scheduler{__impl_->get_scheduler()};
+    return system_scheduler{__impl_->__get_scheduler(__impl_)};
   }
 
   inline size_t system_context::max_concurrency() const noexcept {
@@ -373,12 +375,21 @@ namespace exec {
   }
 
   system_sender tag_invoke(stdexec::schedule_t, const system_scheduler& sched) noexcept {
-    return {sched.__scheduler_interface_};
+    return {sched.__scheduler_};
   }
 
   stdexec::forward_progress_guarantee
     tag_invoke(stdexec::get_forward_progress_guarantee_t, const system_scheduler& __self) noexcept {
-    return __self.__scheduler_interface_->get_forward_progress_guarantee();
+    switch (__self.__scheduler_->__get_forward_progress_guarantee(__self.__scheduler_)) {
+    case 0:
+      return stdexec::forward_progress_guarantee::concurrent;
+    case 1:
+      return stdexec::forward_progress_guarantee::parallel;
+    case 2:
+      return stdexec::forward_progress_guarantee::weakly_parallel;
+    default:
+      return stdexec::forward_progress_guarantee::parallel;
+    }
   }
 
   template <stdexec::sender __S, std::integral __Size, class __Fn>
@@ -389,7 +400,7 @@ namespace exec {
     __Size __size,
     __Fn __fun) noexcept {
     return system_bulk_sender<__S, __Size, __Fn>{
-      __self.__scheduler_interface_, (__S&&) __previous, __size, (__Fn&&) __fun};
+      __self.__scheduler_, (__S&&) __previous, __size, (__Fn&&) __fun};
   }
 
 
