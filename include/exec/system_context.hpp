@@ -196,8 +196,8 @@ namespace exec {
     system_bulk_sender<__Previous, __Size, __Fn> __snd_;
     /// The receiver object that receives completion from the work described by the sender.
     __R __recv_;
-    /// The arguments passed from the previous receiver to the function object of the bulk sender,
-    void* __arguments_data_{nullptr};
+    /// The arguments passed from the previous receiver to the function object of the bulk sender (type-erased).
+    char* __arguments_data_{nullptr};
   };
 
   /// Receiver that is used in "bulk" to connect toe the input sender of the bulk operation.
@@ -220,15 +220,16 @@ namespace exec {
       __As&&... __as) noexcept {
 
       // Heap allocate input data in shared state as needed
-      std::tuple<__As...>* __inputs = new std::tuple<__As...>{__as...};
-      __self.__state_.__arguments_data_ = __inputs;
-      // TODO: fix memory leak
+      auto __size = sizeof(std::tuple<__As...>);
+      __self.__state_.__arguments_data_ = new char[__size];
+      new (__self.__state_.__arguments_data_) std::tuple<__As...>{__as...};
+      // TODO: figure out from the completion signal the size of the input data, and preallocate this in the shared state.
 
       auto __type_erased_fn = [](void* __state_, long __idx) {
         auto* __state = static_cast<__bulk_state_t*>(__state_);
         std::apply(
           [&](auto&&... __args) { __state->__snd_.__fun_(__idx, __args...); },
-          *static_cast<std::tuple<__As...>*>(__state->__arguments_data_));
+          *reinterpret_cast<std::tuple<__As...>*>(__state->__arguments_data_));
       };
 
       // Schedule the bulk work on the system scheduler.
@@ -238,6 +239,7 @@ namespace exec {
 
     /// Invoked when the previous sender completes with "stopped" to stop the entire work.
     friend void tag_invoke(stdexec::set_stopped_t, __bulk_intermediate_receiver&& __self) noexcept {
+      delete[] __self.__state_.__arguments_data_;
       stdexec::set_stopped(std::move(__self.__state_.__recv_));
     }
 
@@ -246,6 +248,7 @@ namespace exec {
       stdexec::set_error_t,
       __bulk_intermediate_receiver&& __self,
       std::exception_ptr __ptr) noexcept {
+      delete[] __self.__state_.__arguments_data_;
       stdexec::set_error(std::move(__self.__state_.__recv_), std::move(__ptr));
     }
 
@@ -258,6 +261,7 @@ namespace exec {
     /// Called by the system scheduler when the bulk operation completes.
     static void __cb(void* __data, int __completion_type, void* __exception) {
       auto __state = static_cast<__bulk_state_t*>(__data);
+      delete[] __state->__arguments_data_;
       __detail::__pass_to_receiver(__completion_type, __exception, std::move(__state->__recv_));
     }
   };
