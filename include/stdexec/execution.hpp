@@ -3277,7 +3277,7 @@ namespace stdexec {
     struct ensure_started_t {
       template <sender _Sender, class _Env = empty_env>
         requires sender_in<_Sender, _Env> && __decay_copyable<env_of_t<_Sender>>
-      auto operator()(_Sender&& __sndr, _Env&& __env = {}) const {
+      [[nodiscard]] auto operator()(_Sender&& __sndr, _Env&& __env = {}) const {
         if constexpr (sender_expr_for<_Sender, __ensure_started_t>) {
           return (_Sender&&) __sndr;
         } else {
