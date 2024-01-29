@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <cassert>
 #include <exception>
 #include <type_traits>
@@ -158,6 +159,9 @@ namespace stdexec {
 
     char const __what_[_Len];
   };
+
+  template <std::size_t _Len>
+  __mstring(const char (&__str)[_Len]) -> __mstring<_Len>;
 
   STDEXEC_PRAGMA_PUSH()
   STDEXEC_PRAGMA_IGNORE_GNU("-Wuser-defined-literals")
