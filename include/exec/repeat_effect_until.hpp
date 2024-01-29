@@ -73,7 +73,7 @@ namespace exec {
       trampoline_scheduler __sched_;
 
       __repeat_effect_state(_Sender &&__sndr, _Receiver &)
-        : __child_(__sexpr_apply((_Sender &&) __sndr, __detail::__get_data())) {
+        : __child_(__sexpr_apply((_Sender &&) __sndr, stdexec::__detail::__get_data())) {
         __connect();
       }
 
@@ -94,8 +94,8 @@ namespace exec {
       }
 
       void __start() noexcept {
-        const bool __already_started [[maybe_unused]] =
-          __started_.test_and_set(std::memory_order_relaxed);
+        const bool __already_started
+          [[maybe_unused]] = __started_.test_and_set(std::memory_order_relaxed);
         STDEXEC_ASSERT(!__already_started);
         stdexec::start(__child_op_.__get());
       }

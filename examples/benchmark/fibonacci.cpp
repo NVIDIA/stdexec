@@ -50,7 +50,7 @@ struct fib_s {
 
     friend void tag_invoke(stdexec::start_t, operation& self) noexcept {
       if (self.n < self.cutoff) {
-        stdexec::set_value((Receiver &&) self.rcvr_, serial_fib(self.n));
+        stdexec::set_value((Receiver&&) self.rcvr_, serial_fib(self.n));
       } else {
         auto mkchild = [&](long n) {
           return stdexec::on(self.sched, fib_sender(fib_s{self.cutoff, n, self.sched}));
@@ -58,8 +58,8 @@ struct fib_s {
 
         stdexec::start_detached(
           stdexec::when_all(mkchild(self.n - 1), mkchild(self.n - 2))
-          | stdexec::then([rcvr = (Receiver &&) self.rcvr_](long a, long b) {
-              stdexec::set_value((Receiver &&) rcvr, a + b);
+          | stdexec::then([rcvr = (Receiver&&) self.rcvr_](long a, long b) {
+              stdexec::set_value((Receiver&&) rcvr, a + b);
             }));
       }
     }
@@ -67,7 +67,7 @@ struct fib_s {
 
   template <stdexec::receiver_of<completion_signatures> Receiver>
   friend operation<Receiver> tag_invoke(stdexec::connect_t, fib_s self, Receiver rcvr) {
-    return {(Receiver &&) rcvr, self.cutoff, self.n, self.sched};
+    return {(Receiver&&) rcvr, self.cutoff, self.n, self.sched};
   }
 };
 
@@ -120,10 +120,10 @@ int main(int argc, char** argv) {
     auto time = measure<std::chrono::milliseconds>([&] {
       std::tie(result) = stdexec::sync_wait(std::move(snd)).value();
     });
-    times.push_back(time);
+    times.push_back(static_cast<unsigned int>(time));
   }
 
   std::cout << "Avg time: "
-            << (std::accumulate(times.begin() + warmup, times.end(), 0) / (times.size() - warmup))
+            << (std::accumulate(times.begin() + warmup, times.end(), 0u) / (times.size() - warmup))
             << "ms. Result: " << result << std::endl;
 }

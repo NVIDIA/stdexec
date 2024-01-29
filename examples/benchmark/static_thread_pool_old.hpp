@@ -74,10 +74,7 @@ namespace exec_old {
 
     template <stdexec::sender Sender, std::integral Shape, class Fun>
     using bulk_sender_t = //
-      bulk_sender<
-        stdexec::__id<stdexec::__decay_t<Sender>>,
-        Shape,
-        Fun>;
+      bulk_sender< stdexec::__id<stdexec::__decay_t<Sender>>, Shape, Fun>;
 
 #if STDEXEC_MSVC()
     // MSVCBUG https://developercommunity.visualstudio.com/t/Alias-template-with-pack-expansion-in-no/10437850
@@ -472,16 +469,12 @@ namespace exec_old {
 
     template <class Self, class Receiver>
     using bulk_op_state_t = //
-      bulk_op_state<
-        stdexec::__cvref_id<Self, Sender>,
-        stdexec::__id<Receiver>,
-        Shape,
-        Fun>;
+      bulk_op_state< stdexec::__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun>;
 
     template <stdexec::__decays_to<bulk_sender> Self, stdexec::receiver Receiver>
       requires stdexec::
         receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-      friend bulk_op_state_t<Self, Receiver>                       //
+      friend bulk_op_state_t<Self, Receiver>                     //
       tag_invoke(stdexec::connect_t, Self&& self, Receiver rcvr) //
       noexcept(stdexec::__nothrow_constructible_from<
                bulk_op_state_t<Self, Receiver>,
@@ -685,7 +678,12 @@ namespace exec_old {
       stdexec::start(op.inner_op_);
     }
 
-    bulk_op_state(static_thread_pool& pool, Shape shape, Fun fn, CvrefSender&& sender, Receiver receiver)
+    bulk_op_state(
+      static_thread_pool& pool,
+      Shape shape,
+      Fun fn,
+      CvrefSender&& sender,
+      Receiver receiver)
       : shared_state_(pool, (Receiver&&) receiver, shape, fn)
       , inner_op_{stdexec::connect((CvrefSender&&) sender, bulk_rcvr{shared_state_})} {
     }

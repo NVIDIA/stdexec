@@ -316,4 +316,15 @@ namespace {
              | ex::let_value([](std::string& x) { return ex::just(x + ", world"); });
     wait_for_value(std::move(snd), std::string{"hallo"});
   }
+
+  TEST_CASE("let_value can nest", "[adaptors][let_value]") {
+    auto work = ex::just(2)                  //
+              | ex::let_value([](int x) {    //
+                  return ex::just()          //
+                       | ex::let_value([=] { //
+                           return ex::just(x);
+                         });
+                });
+    wait_for_value(std::move(work), 2);
+  }
 }

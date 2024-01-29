@@ -228,10 +228,6 @@ namespace {
     friend auto tag_invoke(ex::connect_t, const my_other_string_sender_t& self, Recv&& recv) {
       return ex::connect(ex::just(self.str_), std::forward<Recv>(recv));
     }
-
-    friend empty_env tag_invoke(ex::get_env_t, const my_other_string_sender_t&) noexcept {
-      return {};
-    }
   };
 
   optional<tuple<std::string>> tag_invoke(decltype(sync_wait), my_other_string_sender_t s) {
@@ -306,8 +302,8 @@ namespace {
     // The customization will return a different value
     auto snd = ex::transfer(my_multi_value_sender_t{"hello_multi"}, inline_scheduler{});
     auto snd2 = ex::transfer_just(inline_scheduler{}, std::string{"hello"});
-    optional<std::variant<std::tuple<std::string>, std::tuple<int>>> res =
-      sync_wait_with_variant(std::move(snd));
+    optional<std::variant<std::tuple<std::string>, std::tuple<int>>> res = sync_wait_with_variant(
+      std::move(snd));
     CHECK(res.has_value());
     CHECK(std::get<0>(std::get<0>(res.value())) == std::string{"hallo_multi"});
   }
@@ -317,8 +313,8 @@ namespace {
     "[consumers][sync_wait_with_variant]") {
     // The customization will return a different value
     my_multi_value_sender_t snd{std::string{"hello_multi"}};
-    optional<std::variant<std::tuple<std::string>, std::tuple<int>>> res =
-      sync_wait_with_variant(std::move(snd));
+    optional<std::variant<std::tuple<std::string>, std::tuple<int>>> res = sync_wait_with_variant(
+      std::move(snd));
     CHECK(res.has_value());
     CHECK(std::get<0>(std::get<0>(res.value())) == std::string{"ciao_multi"});
   }
@@ -334,7 +330,7 @@ namespace {
         std::tuple<>,
         ex::value_types_of_t<
           decltype(ex::just()),
-          ex::__default_env,
+          ex::empty_env,
           decayed_tuple,
           std::type_identity_t>>);
   }

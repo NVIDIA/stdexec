@@ -316,7 +316,7 @@ namespace exec {
     ////////////////////////////////////////////////////////////////////////////////
     // basic_task
     template <class _Ty, class _Context = default_task_context<_Ty>>
-    class basic_task {
+    class [[nodiscard]] basic_task {
       struct __promise;
      public:
       using __t = basic_task;

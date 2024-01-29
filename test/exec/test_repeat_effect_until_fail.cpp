@@ -19,7 +19,7 @@
 
 namespace ex = stdexec;
 
-struct not_a_bool {};
+struct not_a_bool { };
 
 int main() {
   ex::sender auto snd = ex::just(not_a_bool()) | exec::repeat_effect_until();

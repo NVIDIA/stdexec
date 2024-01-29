@@ -31,7 +31,7 @@ namespace exec {
     };
 
     template <class _BaseEnv>
-    using __env_t = __make_env_t<_BaseEnv, __with<get_stop_token_t, in_place_stop_token>>;
+    using __env_t = __env::__join_t<__env::__with<in_place_stop_token, get_stop_token_t>, _BaseEnv>;
 
     template <class _Ret, class... _Args>
     __decayed_tuple<_Ret, _Args...> __signature_to_tuple_(_Ret (*)(_Args...));
@@ -172,8 +172,8 @@ namespace exec {
         }
 
         friend __env_t<env_of_t<_Receiver>> tag_invoke(get_env_t, const __t& __self) noexcept {
-          auto __token = __mkprop(__self.__op_->__stop_source_.get_token(), get_stop_token);
-          return __make_env(get_env(__self.__op_->__receiver_), std::move(__token));
+          auto __token = __env::__with(__self.__op_->__stop_source_.get_token(), get_stop_token);
+          return __env::__join(std::move(__token), get_env(__self.__op_->__receiver_));
         }
       };
     };

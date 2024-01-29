@@ -60,16 +60,18 @@ namespace exec {
     // ```
     template <class Shape>
     std::pair<Shape, Shape> even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept {
-      const auto avg_per_thread = n / size;
+      STDEXEC_ASSERT(n >= 0);
+      using ushape_t = std::make_unsigned_t<Shape>;
+      const auto avg_per_thread = static_cast<ushape_t>(n) / size;
       const auto n_big_share = avg_per_thread + 1;
-      const auto big_shares = n % size;
+      const auto big_shares = static_cast<ushape_t>(n) % size;
       const auto is_big_share = rank < big_shares;
       const auto begin = is_big_share
                          ? n_big_share * rank
                          : n_big_share * big_shares + (rank - big_shares) * avg_per_thread;
       const auto end = begin + (is_big_share ? n_big_share : avg_per_thread);
 
-      return std::make_pair(begin, end);
+      return std::make_pair(static_cast<Shape>(begin), static_cast<Shape>(end));
     }
 
 #if STDEXEC_HAS_STD_RANGES()
@@ -215,8 +217,8 @@ namespace exec {
       };
 
       template <class CvrefSender, class Receiver, class Shape, class Fun, bool MayThrow>
-      using bulk_receiver_t = __t<
-        bulk_receiver< __cvref_id<CvrefSender>, __id<Receiver>, Shape, Fun, MayThrow>>;
+      using bulk_receiver_t =
+        __t< bulk_receiver< __cvref_id<CvrefSender>, __id<Receiver>, Shape, Fun, MayThrow>>;
 
       template <class CvrefSenderId, class ReceiverId, std::integral Shape, class Fun>
       struct bulk_op_state {
@@ -327,14 +329,16 @@ namespace exec {
           using __t = sender;
           using __id = sender;
           using sender_concept = sender_t;
-          using completion_signatures = stdexec::completion_signatures< set_value_t(), set_stopped_t()>;
+          using completion_signatures =
+            stdexec::completion_signatures< set_value_t(), set_stopped_t()>;
          private:
           template <class Receiver>
           using operation_t = stdexec::__t<operation<stdexec::__id<Receiver>>>;
 
           template <typename Receiver>
           auto make_operation_(Receiver rcvr) const -> operation_t<Receiver> {
-            return operation_t<Receiver>{pool_, queue_, (Receiver&&) rcvr, threadIndex_, constraints_};
+            return operation_t<Receiver>{
+              pool_, queue_, (Receiver&&) rcvr, threadIndex_, constraints_};
           }
 
           template <receiver Receiver>
@@ -620,7 +624,7 @@ namespace exec {
 
       struct thread_index_by_numa_node {
         int numa_node;
-        int thread_index;
+        std::size_t thread_index;
 
         friend bool operator<(
           const thread_index_by_numa_node& lhs,
@@ -655,7 +659,7 @@ namespace exec {
       for (std::uint32_t index = 0; index < threadCount; ++index) {
         threadStates_[index].emplace(this, index, params, numa);
         threadIndexByNumaNode_.push_back(
-          thread_index_by_numa_node{threadStates_[index]->numa_node(), static_cast<int>(index)});
+          thread_index_by_numa_node{threadStates_[index]->numa_node(), index});
       }
       std::sort(threadIndexByNumaNode_.begin(), threadIndexByNumaNode_.end());
       std::vector<workstealing_victim> victims{};
@@ -721,17 +725,18 @@ namespace exec {
         return 0;
       }
       auto itEnd = std::upper_bound(it, threadIndexByNumaNode_.end(), key);
-      return std::distance(it, itEnd);
+      return static_cast<std::size_t>(std::distance(it, itEnd));
     }
 
     inline std::size_t static_thread_pool_::num_threads(nodemask constraints) const noexcept {
-      const std::size_t nNodes = threadIndexByNumaNode_.back().numa_node + 1;
+      const std::size_t nNodes = static_cast<std::size_t>(
+        threadIndexByNumaNode_.back().numa_node + 1);
       std::size_t nThreads = 0;
       for (std::size_t nodeIndex = 0; nodeIndex < nNodes; ++nodeIndex) {
         if (!constraints[nodeIndex]) {
           continue;
         }
-        nThreads += num_threads(nodeIndex);
+        nThreads += num_threads(static_cast<int>(nodeIndex));
       }
       return nThreads;
     }
@@ -756,9 +761,9 @@ namespace exec {
           if (!constraints[nodeIndex]) {
             continue;
           }
-          std::size_t nThreads = num_threads(nodeIndex);
+          std::size_t nThreads = num_threads(static_cast<int>(nodeIndex));
           if (targetIndex < nThreads) {
-            return get_thread_index(nodeIndex, targetIndex);
+            return get_thread_index(static_cast<int>(nodeIndex), targetIndex);
           }
           targetIndex -= nThreads;
         }
@@ -774,7 +779,7 @@ namespace exec {
       remote_queue* correct_queue = this_id == queue.id_ ? &queue : get_remote_queue();
       std::size_t idx = correct_queue->index_;
       if (idx < threadStates_.size()) {
-        std::size_t this_node = threadStates_[idx]->numa_node();
+        std::size_t this_node = static_cast<std::size_t>(threadStates_[idx]->numa_node());
         if (constraints[this_node]) {
           threadStates_[idx]->push_local(task);
           return;
@@ -813,7 +818,7 @@ namespace exec {
       remote_queue* correct_queue = this_id == queue.id_ ? &queue : get_remote_queue();
       std::size_t idx = correct_queue->index_;
       if (idx < threadStates_.size()) {
-        std::size_t this_node = threadStates_[idx]->numa_node();
+        std::size_t this_node = static_cast<std::size_t>(threadStates_[idx]->numa_node());
         if (constraints[this_node]) {
           threadStates_[idx]->push_local(std::move(tasks));
           return;
@@ -821,7 +826,7 @@ namespace exec {
       }
       std::size_t nThreads = available_parallelism();
       for (std::size_t i = 0; i < nThreads; ++i) {
-        auto [i0, iEnd] = even_share(tasks_size, i, available_parallelism());
+        auto [i0, iEnd] = even_share(tasks_size, (std::uint32_t) i, available_parallelism());
         if (i0 == iEnd) {
           continue;
         }
@@ -870,7 +875,7 @@ namespace exec {
       if (victims.empty()) {
         return {nullptr, index_};
       }
-      std::uniform_int_distribution<std::uint32_t> dist(0, victims.size() - 1);
+      std::uniform_int_distribution<std::uint32_t> dist(0, (std::uint32_t) victims.size() - 1);
       std::uint32_t victimIndex = dist(rng_);
       auto& v = victims[victimIndex];
       return {v.try_steal(), v.index()};
@@ -1068,7 +1073,7 @@ namespace exec {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, __completions_t<Self, env_of_t<Receiver>>>
-      friend bulk_op_state_t<Self, Receiver>                //
+      friend bulk_op_state_t<Self, Receiver>              //
         tag_invoke(connect_t, Self&& self, Receiver rcvr) //
         noexcept(__nothrow_constructible_from<
                  bulk_op_state_t<Self, Receiver>,
@@ -1435,8 +1440,7 @@ namespace exec {
             while (i0 + chunkSize < size) {
               for (std::size_t i = i0; i < i0 + chunkSize; ++i) {
                 op.items_[i].__construct_with([&] {
-                  return connect(
-                    set_next(op.rcvr_, ItemSender{&op, it + i}), NextReceiver{&op});
+                  return connect(set_next(op.rcvr_, ItemSender{&op, it + i}), NextReceiver{&op});
                 });
                 start(op.items_[i].__get());
               }
@@ -1463,9 +1467,7 @@ namespace exec {
             : operation_base_with_receiver<
               Range,
               Receiver>{std::move(range), pool, static_cast<Receiver&&>(rcvr)}
-            , items_(
-                std::ranges::size(this->range_),
-                ItemAllocator(get_allocator(this->rcvr_))) {
+            , items_(std::ranges::size(this->range_), ItemAllocator(get_allocator(this->rcvr_))) {
           }
 
           ~__t() {
@@ -1490,8 +1492,8 @@ namespace exec {
 
         using sender_concept = sequence_sender_t;
 
-        using completion_signatures =
-          stdexec::completion_signatures< set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
+        using completion_signatures = stdexec::
+          completion_signatures< set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
 
         using item_types = exec::item_types<stdexec::__t<item_sender<Range>>>;
 

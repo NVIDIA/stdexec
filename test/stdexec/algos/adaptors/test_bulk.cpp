@@ -147,13 +147,13 @@ namespace {
   }
 
   TEST_CASE("bulk forwards values that can be taken by reference", "[adaptors][bulk]") {
-    constexpr int n = 9;
+    constexpr std::size_t n = 9;
     std::vector<int> vals(n, 0);
     std::vector<int> vals_expected(n);
     std::iota(vals_expected.begin(), vals_expected.end(), 0);
 
     auto snd = ex::just(std::move(vals)) //
-             | ex::bulk(n, [&](int i, std::vector<int>& vals) { vals[i] = i; });
+             | ex::bulk(n, [&](std::size_t i, std::vector<int>& vals) { vals[i] = (int) i; });
     auto op = ex::connect(std::move(snd), expect_value_receiver{vals_expected});
     ex::start(op);
   }
@@ -201,14 +201,15 @@ namespace {
     ex::scheduler auto sch = pool.get_scheduler();
 
     SECTION("Without values in the set_value channel") {
-      for (int n = 0; n < 9; n++) {
+      for (std::size_t n = 0; n < 9u; n++) {
         std::vector<int> counter(n, 42);
 
-        auto snd = ex::transfer_just(sch) | ex::bulk(n, [&counter](int idx) { counter[idx] = 0; })
-                 | ex::bulk(n, [&counter](int idx) { counter[idx]++; });
+        auto snd = ex::transfer_just(sch)
+                 | ex::bulk(n, [&counter](std::size_t idx) { counter[idx] = 0; })
+                 | ex::bulk(n, [&counter](std::size_t idx) { counter[idx]++; });
         stdexec::sync_wait(std::move(snd));
 
-        const std::size_t actual = std::count(counter.begin(), counter.end(), 1);
+        const std::size_t actual = (std::size_t) std::count(counter.begin(), counter.end(), 1);
         const std::size_t expected = n;
 
         CHECK(expected == actual);
@@ -216,18 +217,18 @@ namespace {
     }
 
     SECTION("With values in the set_value channel") {
-      for (int n = 0; n < 9; n++) {
+      for (std::size_t n = 0; n < 9; n++) {
         std::vector<int> counter(n, 42);
 
         auto snd = ex::transfer_just(sch, 42)
                  | ex::bulk(
                      n,
-                     [&counter](int idx, int val) {
+                     [&counter](std::size_t idx, int val) {
                        if (val == 42) {
                          counter[idx] = 0;
                        }
                      })
-                 | ex::bulk(n, [&counter](int idx, int val) {
+                 | ex::bulk(n, [&counter](std::size_t idx, int val) {
                      if (val == 42) {
                        counter[idx]++;
                      }
@@ -236,7 +237,7 @@ namespace {
 
         CHECK(val == 42);
 
-        const std::size_t actual = std::count(counter.begin(), counter.end(), 1);
+        const std::size_t actual = (std::size_t) std::count(counter.begin(), counter.end(), 1);
         const std::size_t expected = n;
 
         CHECK(expected == actual);
@@ -244,14 +245,15 @@ namespace {
     }
 
     SECTION("With values in the set_value channel that can be taken by reference") {
-      for (int n = 0; n < 9; n++) {
+      for (std::size_t n = 0; n < 9; n++) {
         std::vector<int> vals(n, 0);
         std::vector<int> vals_expected(n);
         std::iota(vals_expected.begin(), vals_expected.end(), 1);
 
-        auto snd = ex::transfer_just(sch, std::move(vals))
-                 | ex::bulk(n, [](int idx, std::vector<int>& vals) { vals[idx] = idx; })
-                 | ex::bulk(n, [](int idx, std::vector<int>& vals) { ++vals[idx]; });
+        auto snd =
+          ex::transfer_just(sch, std::move(vals))
+          | ex::bulk(n, [](std::size_t idx, std::vector<int>& vals) { vals[idx] = (int) idx; })
+          | ex::bulk(n, [](std::size_t idx, std::vector<int>& vals) { ++vals[idx]; });
         auto [vals_actual] = stdexec::sync_wait(std::move(snd)).value();
 
         CHECK(vals_actual == vals_expected);
@@ -267,18 +269,18 @@ namespace {
     }
 
     SECTION("With concurrent enqueueing") {
-      constexpr int n = 4;
+      constexpr std::size_t n = 4;
       std::vector<int> counters_1(n, 0);
       std::vector<int> counters_2(n, 0);
 
       stdexec::sender auto snd = stdexec::when_all(
-        stdexec::schedule(sch) | stdexec::bulk(n, [&](int id) { counters_1[id]++; }),
-        stdexec::schedule(sch) | stdexec::bulk(n, [&](int id) { counters_2[id]++; }));
+        stdexec::schedule(sch) | stdexec::bulk(n, [&](std::size_t id) { counters_1[id]++; }),
+        stdexec::schedule(sch) | stdexec::bulk(n, [&](std::size_t id) { counters_2[id]++; }));
 
       stdexec::sync_wait(std::move(snd));
 
-      CHECK(std::count(counters_1.begin(), counters_1.end(), 1) == n);
-      CHECK(std::count(counters_2.begin(), counters_2.end(), 1) == n);
+      CHECK(std::count(counters_1.begin(), counters_1.end(), 1) == (int) n);
+      CHECK(std::count(counters_2.begin(), counters_2.end(), 1) == (int) n);
     }
   }
 
@@ -289,18 +291,18 @@ namespace {
     SECTION("Without values in the set_value channel") {
       std::vector<std::thread::id> tids(42);
 
-      auto fun = [&tids](int idx) {
+      auto fun = [&tids](std::size_t idx) {
         tids[idx] = std::this_thread::get_id();
         std::this_thread::sleep_for(std::chrono::milliseconds{10});
       };
 
       auto snd = ex::just() //
-               | ex::transfer(sch) | ex::bulk((int) tids.size(), fun);
+               | ex::transfer(sch) | ex::bulk(tids.size(), fun);
       CHECK(std::equal_to<void*>()(&snd.pool_, &pool));
       stdexec::sync_wait(std::move(snd));
 
       // All the work should not have run on the same thread
-      const std::size_t actual = std::count(tids.begin(), tids.end(), tids[0]);
+      const std::size_t actual = (std::size_t) std::count(tids.begin(), tids.end(), tids[0]);
       const std::size_t wrong = tids.size();
 
       CHECK(actual != wrong);
@@ -314,17 +316,17 @@ namespace {
     SECTION("Without values in the set_value channel") {
       std::vector<std::thread::id> tids(42);
 
-      auto fun = [&tids](int idx) {
+      auto fun = [&tids](std::size_t idx) {
         tids[idx] = std::this_thread::get_id();
         std::this_thread::sleep_for(std::chrono::milliseconds{10});
       };
 
       auto snd = ex::just() //
-               | ex::bulk((int) tids.size(), fun);
+               | ex::bulk(tids.size(), fun);
       stdexec::sync_wait(stdexec::on(sch, std::move(snd)));
 
       // All the work should not have run on the same thread
-      const std::size_t actual = std::count(tids.begin(), tids.end(), tids[0]);
+      const std::size_t actual = (std::size_t) std::count(tids.begin(), tids.end(), tids[0]);
       const std::size_t wrong = tids.size();
 
       CHECK(actual != wrong);

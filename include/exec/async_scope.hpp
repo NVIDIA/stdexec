@@ -65,7 +65,7 @@ namespace exec {
           , __op_(stdexec::connect((_Constrained&&) __sndr, (_Receiver&&) __rcvr)) {
         }
 
-      private:
+       private:
         static void __notify_waiter(__task* __self) noexcept {
           start(static_cast<__t*>(__self)->__op_);
         }
@@ -172,8 +172,7 @@ namespace exec {
           __complete(__scope);
         }
 
-        friend __env_t<env_of_t<_Receiver>>
-          tag_invoke(get_env_t, const __t& __self) noexcept {
+        friend __env_t<env_of_t<_Receiver>> tag_invoke(get_env_t, const __t& __self) noexcept {
           return make_env(
             get_env(__self.__op_->__rcvr_),
             with(get_stop_token, __self.__op_->__scope_->__stop_source_.get_token()));
@@ -196,7 +195,7 @@ namespace exec {
           : __nest_op_base<_ReceiverId>{{}, __scope, (_Rcvr&&) __rcvr}
           , __op_(stdexec::connect((_Sender&&) __c, __nest_rcvr_t{this})) {
         }
-      private:
+       private:
         void __start_() noexcept {
           STDEXEC_ASSERT(this->__scope_);
           std::unique_lock __guard{this->__scope_->__lock_};
@@ -215,6 +214,7 @@ namespace exec {
     template <class _ConstrainedId>
     struct __nest_sender {
       using _Constrained = stdexec::__t<_ConstrainedId>;
+
       struct __t {
         using __id = __nest_sender;
         using sender_concept = stdexec::sender_t;
@@ -223,7 +223,8 @@ namespace exec {
         STDEXEC_ATTRIBUTE((no_unique_address)) _Constrained __c_;
 
         template <class _Receiver>
-        using __nest_operation_t = stdexec::__t<__nest_op<_ConstrainedId, stdexec::__id<_Receiver>>>;
+        using __nest_operation_t =
+          stdexec::__t<__nest_op<_ConstrainedId, stdexec::__id<_Receiver>>>;
         template <class _Receiver>
         using __nest_receiver_t = stdexec::__t<__nest_rcvr<stdexec::__id<_Receiver>>>;
 
@@ -302,7 +303,8 @@ namespace exec {
             std::unique_lock __guard{__state->__mutex_};
             // either the future is still in use or it has passed ownership to __state->__no_future_
             if (
-              __state->__no_future_.get() != nullptr || __state->__step_ != __future_step::__future) {
+              __state->__no_future_.get() != nullptr
+              || __state->__step_ != __future_step::__future) {
               // invalid state - there is a code bug in the state machine
               std::terminate();
             } else if (get_stop_token(get_env(__rcvr_)).stop_requested()) {
@@ -351,7 +353,7 @@ namespace exec {
         std::unique_ptr<__future_state<_Sender, _Env>> __state_;
         STDEXEC_ATTRIBUTE((no_unique_address)) __forward_consumer __forward_consumer_;
 
-      public:
+       public:
         using __id = __future_op;
 
         ~__t() noexcept {
@@ -583,13 +585,14 @@ namespace exec {
               __guard, __future_step::__future, __future_step::__no_future);
           }
         }
-      private:
+       private:
         friend struct async_scope;
         template <class _Self>
         using __completions_t = __future_completions_t<__mfront<_Sender, _Self>, _Env>;
 
         template <class _Receiver>
-        using __future_op_t = stdexec::__t<__future_op<_SenderId, _EnvId, stdexec::__id<_Receiver>>>;
+        using __future_op_t =
+          stdexec::__t<__future_op<_SenderId, _EnvId, stdexec::__id<_Receiver>>>;
 
         explicit __t(std::unique_ptr<__future_state<_Sender, _Env>> __state) noexcept
           : __state_(std::move(__state)) {
@@ -618,16 +621,16 @@ namespace exec {
     };
 
     template <class _Sender, class _Env>
-    using __future_t = stdexec::__t<__future<__id<__nest_sender_t<_Sender>>, __id<__decay_t<_Env>>>>;
+    using __future_t =
+      stdexec::__t<__future<__id<__nest_sender_t<_Sender>>, __id<__decay_t<_Env>>>>;
 
     ////////////////////////////////////////////////////////////////////////////
     // async_scope::spawn implementation
     template <class _Env>
-    using __spawn_env_t = __result_of<
-      __join_env,
+    using __spawn_env_t = __env::__join_t<
       _Env,
-      __env::__prop<in_place_stop_token(get_stop_token_t)>,
-      __env::__prop<__inln::__scheduler(get_scheduler_t)>>;
+      __env::__with<in_place_stop_token, get_stop_token_t>,
+      __env::__with<__inln::__scheduler, get_scheduler_t>>;
 
     template <class _EnvId>
     struct __spawn_op_base {
@@ -652,9 +655,8 @@ namespace exec {
 
         // BUGBUG NOT TO SPEC spawn shouldn't accept senders that can fail.
         template <same_as<set_error_t> _Tag>
-        [[noreturn]] friend void
-          tag_invoke(_Tag, __t&&, const std::exception_ptr&) noexcept {
-          std::terminate();
+        [[noreturn]] friend void tag_invoke(_Tag, __t&&, std::exception_ptr __eptr) noexcept {
+          std::rethrow_exception(std::move(__eptr));
         }
 
         friend const __spawn_env_t<_Env>& tag_invoke(get_env_t, const __t& __self) noexcept {
@@ -674,9 +676,9 @@ namespace exec {
       struct __t : __spawn_op_base<_EnvId> {
         template <__decays_to<_Sender> _Sndr>
         __t(_Sndr&& __sndr, _Env __env, const __impl* __scope)
-          : __spawn_op_base<_EnvId>{__join_env((_Env&&) __env,
-            __mkprop(__scope->__stop_source_.get_token(), get_stop_token),
-            __mkprop(__inln::__scheduler{}, get_scheduler)),
+          : __spawn_op_base<_EnvId>{__env::__join((_Env&&) __env,
+            __env::__with(__scope->__stop_source_.get_token(), get_stop_token),
+            __env::__with(__inln::__scheduler{}, get_scheduler)),
             [](__spawn_op_base<_EnvId>* __op) {
               delete static_cast<__t*>(__op);
             }}

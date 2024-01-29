@@ -29,24 +29,38 @@ namespace exec {
     virtual std::size_t num_nodes() = 0;
     virtual std::size_t num_cpus(int node) = 0;
     virtual int bind_to_node(int node) = 0;
-    virtual std::size_t thread_index_to_node(std::size_t index) = 0;
+    virtual int thread_index_to_node(std::size_t index) = 0;
   };
 
   class no_numa_policy : public numa_policy {
    public:
     no_numa_policy() noexcept = default;
-    std::size_t num_nodes() override { return 1; }
-    std::size_t num_cpus(int node) override { return std::thread::hardware_concurrency(); }
-    int bind_to_node(int node) override { return 0; }
-    std::size_t thread_index_to_node(std::size_t index) override { return 0; }
+
+    std::size_t num_nodes() override {
+      return 1;
+    }
+
+    std::size_t num_cpus(int node) override {
+      return std::thread::hardware_concurrency();
+    }
+
+    int bind_to_node(int node) override {
+      return 0;
+    }
+
+    int thread_index_to_node(std::size_t index) override {
+      return 0;
+    }
   };
 }
 
 #if STDEXEC_ENABLE_NUMA
 #include <numa.h>
+
 namespace exec {
   struct default_numa_policy : numa_policy {
-    default_numa_policy() : node_to_thread_index_(::numa_num_task_nodes()) {
+    default_numa_policy()
+      : node_to_thread_index_(::numa_num_task_nodes()) {
       std::size_t total_cpus = 0;
       std::size_t n_nodes = num_nodes();
       for (std::size_t node = 0; node < n_nodes; ++node) {
@@ -55,14 +69,18 @@ namespace exec {
       }
     }
 
-    std::size_t num_nodes() override { return node_to_thread_index_.size(); }
-    
-    std::size_t num_cpus(int node) override { 
+    std::size_t num_nodes() override {
+      return node_to_thread_index_.size();
+    }
+
+    std::size_t num_cpus(int node) override {
       struct ::bitmask* cpus = ::numa_allocate_cpumask();
       if (!cpus) {
         return 0;
       }
-      scope_guard sg{[&]() noexcept { ::numa_free_cpumask(cpus); }};
+      scope_guard sg{[&]() noexcept {
+        ::numa_free_cpumask(cpus);
+      }};
       int rc = ::numa_node_to_cpus(node, cpus);
       if (rc < 0) {
         return 0;
@@ -71,22 +89,24 @@ namespace exec {
       return num_cpus;
     }
 
-    int bind_to_node(int node) override { 
+    int bind_to_node(int node) override {
       struct ::bitmask* nodes = ::numa_allocate_nodemask();
       if (!nodes) {
         return -1;
       }
-      scope_guard sg{[&]() noexcept { ::numa_free_nodemask(nodes); }};
+      scope_guard sg{[&]() noexcept {
+        ::numa_free_nodemask(nodes);
+      }};
       ::numa_bitmask_setbit(nodes, node);
       ::numa_bind(nodes);
       return 0;
     }
 
-    std::size_t thread_index_to_node(std::size_t index) override {
-      index %= node_to_thread_index_.back();
+    int thread_index_to_node(std::size_t idx) override {
+      int index = (int) idx % node_to_thread_index_.back();
       auto it = std::upper_bound(node_to_thread_index_.begin(), node_to_thread_index_.end(), index);
       STDEXEC_ASSERT(it != node_to_thread_index_.end());
-      return std::distance(node_to_thread_index_.begin(), it);
+      return (int) std::distance(node_to_thread_index_.begin(), it);
     }
 
     std::vector<int> node_to_thread_index_{};
@@ -107,10 +127,14 @@ namespace exec {
     using const_pointer = const T*;
     using value_type = T;
 
-    explicit numa_allocator(int node) noexcept : node_(node) {}
+    explicit numa_allocator(int node) noexcept
+      : node_(node) {
+    }
 
     template <class U>
-    explicit numa_allocator(const numa_allocator<U>& other) noexcept : node_(other.node_) {}
+    explicit numa_allocator(const numa_allocator<U>& other) noexcept
+      : node_(other.node_) {
+    }
 
     int node_;
 
@@ -139,12 +163,11 @@ namespace exec {
       ::copy_bitmask_to_nodemask(::numa_all_nodes_ptr, &mask.mask_);
       return mask;
     }
-    
 
-  public:
-    nodemask() noexcept 
-    : mask_{}
-    {
+
+   public:
+    nodemask() noexcept
+      : mask_{} {
       ::copy_bitmask_to_nodemask(::numa_no_nodes_ptr, &mask_);
     }
 
@@ -184,7 +207,7 @@ namespace exec {
       return ::numa_bitmask_equal(&lhs_mask, &rhs_mask);
     }
 
-  private:
+   private:
     ::nodemask_t mask_;
   };
 }
@@ -203,10 +226,12 @@ namespace exec {
     using const_pointer = const T*;
     using value_type = T;
 
-    explicit numa_allocator(int) noexcept {}
+    explicit numa_allocator(int) noexcept {
+    }
 
     template <class U>
-    explicit numa_allocator(const numa_allocator<U>&) noexcept {}
+    explicit numa_allocator(const numa_allocator<U>&) noexcept {
+    }
 
     T* allocate(std::size_t n) {
       std::allocator<T> alloc{};
@@ -228,7 +253,7 @@ namespace exec {
       return mask;
     }
 
-  public:
+   public:
     nodemask() noexcept = default;
 
     static const nodemask& any() noexcept {
@@ -248,7 +273,7 @@ namespace exec {
       return lhs.mask_ == rhs.mask_;
     }
 
-  private:
+   private:
     bool mask_{false};
   };
 }

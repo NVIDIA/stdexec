@@ -83,7 +83,7 @@ namespace exec {
       trampoline_scheduler __sched_;
 
       __repeat_n_state(_Sender &&__sndr, _Receiver &)
-        : __pair_(__sexpr_apply((_Sender &&) __sndr, __detail::__get_data())) {
+        : __pair_(__sexpr_apply((_Sender &&) __sndr, stdexec::__detail::__get_data())) {
         // Q: should we skip __connect() if __count_ == 0?
         __connect();
       }
@@ -108,8 +108,8 @@ namespace exec {
         if (__pair_.__count_ == 0) {
           stdexec::set_value((_Receiver &&) this->__receiver());
         } else {
-          const bool __already_started [[maybe_unused]] =
-            __started_.test_and_set(std::memory_order_relaxed);
+          const bool __already_started
+            [[maybe_unused]] = __started_.test_and_set(std::memory_order_relaxed);
           STDEXEC_ASSERT(!__already_started);
           stdexec::start(__child_op_.__get());
         }
@@ -210,6 +210,5 @@ namespace exec {
 
 namespace stdexec {
   template <>
-  struct __sexpr_impl<exec::__repeat_n::__repeat_n_tag>
-    : exec::__repeat_n::__repeat_n_impl { };
+  struct __sexpr_impl<exec::__repeat_n::__repeat_n_tag> : exec::__repeat_n::__repeat_n_impl { };
 }

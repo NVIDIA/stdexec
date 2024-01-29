@@ -36,23 +36,19 @@ using namespace stdexec;
 
 namespace {
   TEST_CASE("repeat_n returns a sender", "[adaptors][repeat_n]") {
-    auto snd = exec::repeat_n(ex::just() | then([] { }), 10);
+    auto snd = exec::repeat_n(ex::just() | then([] {}), 10);
     static_assert(ex::sender<decltype(snd)>);
     (void) snd;
   }
 
-  TEST_CASE(
-    "repeat_n with environment returns a sender",
-    "[adaptors][repeat_n]") {
-    auto snd = exec::repeat_n(just() | then([] { }), 10);
+  TEST_CASE("repeat_n with environment returns a sender", "[adaptors][repeat_n]") {
+    auto snd = exec::repeat_n(just() | then([] {}), 10);
     static_assert(ex::sender_in<decltype(snd), empty_env>);
     (void) snd;
   }
 
-  TEST_CASE(
-    "repeat_n produces void value to downstream receiver",
-    "[adaptors][repeat_n]") {
-    sender auto source = just(1) | then([](int n) { });
+  TEST_CASE("repeat_n produces void value to downstream receiver", "[adaptors][repeat_n]") {
+    sender auto source = just(1) | then([](int n) {});
     sender auto snd = exec::repeat_n(std::move(source), 10);
     // The receiver checks if we receive the void value
     auto op = stdexec::connect(std::move(snd), expect_void_receiver{});
@@ -67,9 +63,7 @@ namespace {
   TEST_CASE("repeat_n works with with zero repetitions", "[adaptors][repeat_n]") {
     std::size_t count = 0;
     ex::sender auto snd = just() //
-                        | then([&count] { ++count; })
-                        | exec::repeat_n(0)
-                        | then([] { return 1; });
+                        | then([&count] { ++count; }) | exec::repeat_n(0) | then([] { return 1; });
     wait_for_value(std::move(snd), 1);
     CHECK(count == 0);
   }
@@ -77,9 +71,7 @@ namespace {
   TEST_CASE("repeat_n works with a single repetition", "[adaptors][repeat_n]") {
     std::size_t count = 0;
     ex::sender auto snd = just() //
-                        | then([&count] { ++count; })
-                        | exec::repeat_n(1)
-                        | then([] { return 1; });
+                        | then([&count] { ++count; }) | exec::repeat_n(1) | then([] { return 1; });
     wait_for_value(std::move(snd), 1);
     CHECK(count == 1);
   }
@@ -87,18 +79,19 @@ namespace {
   TEST_CASE("repeat_n works with multiple repetitions", "[adaptors][repeat_n]") {
     std::size_t count = 0;
     ex::sender auto snd = just() //
-                        | then([&count] { ++count; })
-                        | exec::repeat_n(3)
-                        | then([] { return 1; });
+                        | then([&count] { ++count; }) | exec::repeat_n(3) | then([] { return 1; });
     wait_for_value(std::move(snd), 1);
     CHECK(count == 3);
   }
 
-  TEST_CASE(
-    "repeat_n forwards set_error calls of other types",
-    "[adaptors][repeat_n]") {
+  TEST_CASE("repeat_n forwards set_error calls of other types", "[adaptors][repeat_n]") {
     int count = 0;
-    auto snd = let_value(just(), [&] { ++count; return just_error(std::string("error")); })
+    auto snd = let_value(
+                 just(),
+                 [&] {
+                   ++count;
+                   return just_error(std::string("error"));
+                 })
              | exec::repeat_n(10);
     auto op = ex::connect(std::move(snd), expect_error_receiver{std::string("error")});
     start(op);
@@ -107,7 +100,12 @@ namespace {
 
   TEST_CASE("repeat_n forwards set_stopped calls", "[adaptors][repeat_n]") {
     int count = 0;
-    auto snd = let_value(just(), [&] { ++count; return just_stopped(); })
+    auto snd = let_value(
+                 just(),
+                 [&] {
+                   ++count;
+                   return just_stopped();
+                 })
              | exec::repeat_n(10);
     auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
     start(op);
@@ -129,10 +127,7 @@ namespace {
     sender auto snd = exec::on(
       pool.get_scheduler(), //
       ex::just()            //
-        | ex::then([&] {
-            called = true;
-          })
-        | exec::repeat_n(10));
+        | ex::then([&] { called = true; }) | exec::repeat_n(10));
     stdexec::sync_wait(std::move(snd));
     REQUIRE(called);
   }
