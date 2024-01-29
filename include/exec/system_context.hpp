@@ -336,12 +336,12 @@ namespace exec {
     friend auto tag_invoke(stdexec::connect_t, system_bulk_sender&& __self, __R&& __r) //
       noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<__R>, __R>)
         -> __bulk_op<__Previous, __Size, __Fn, __R> {
-
+      using __receiver_t = __bulk_intermediate_receiver<__Previous, __Size, __Fn, __R>;
       return {std::move(__self), std::move(__r), [](auto& __op) {
                 // Connect bulk input receiver with the previous operation and store in the operating state.
                 return stdexec::connect(
                   std::move(__op.__state_.__snd_.__previous_),
-                  __bulk_intermediate_receiver<__Previous, __Size, __Fn, __R>{__op.__state_});
+                  __receiver_t{__op.__state_});
               }};
     }
 
