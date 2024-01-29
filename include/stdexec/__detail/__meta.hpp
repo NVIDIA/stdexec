@@ -958,18 +958,6 @@ namespace stdexec {
   using __2 = __placeholder<2>;
   using __3 = __placeholder<3>;
 
-  template <class _Ty, class _Noexcept = __mbool<true>>
-  struct __mconstruct {
-    template <class... _As>
-    auto operator()(_As&&... __as) const noexcept(__v<_Noexcept>&& noexcept(_Ty((_As&&) __as...)))
-      -> decltype(_Ty((_As&&) __as...)) {
-      return _Ty((_As&&) __as...);
-    }
-  };
-
-  template <template <class...> class _Cp, class _Noexcept = __mbool<true>>
-  using __mconstructor_for = __mcompose<__q<__mconstruct>, __q<_Cp>>;
-
 #if STDEXEC_MSVC()
   // MSVCBUG https://developercommunity.visualstudio.com/t/Incorrect-function-template-argument-sub/10437827
 
