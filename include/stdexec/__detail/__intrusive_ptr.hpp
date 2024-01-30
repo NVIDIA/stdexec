@@ -21,6 +21,8 @@
 #include <atomic>
 #include <memory>
 #include <new>
+#include <cstddef>
+#include <type_traits>
 
 #if STDEXEC_TSAN()
 #include <sanitizer/tsan_interface.h>

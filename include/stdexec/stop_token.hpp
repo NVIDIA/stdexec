@@ -16,19 +16,21 @@
  */
 #pragma once
 
+#include "concepts.hpp"
+#include "__detail/__config.hpp"
+
 #include <version>
 #include <cstdint>
 #include <utility>
 #include <type_traits>
 #include <atomic>
 #include <thread>
+#include <concepts>
 
 #if __has_include(<stop_token>) && __cpp_lib_jthread >= 201911
 #include <stop_token>
 #endif
 
-#include "concepts.hpp"
-#include "__detail/__config.hpp"
 
 namespace stdexec {
   // [stoptoken.inplace], class in_place_stop_token

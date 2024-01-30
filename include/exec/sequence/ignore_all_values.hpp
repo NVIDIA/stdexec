@@ -16,7 +16,11 @@
  */
 #pragma once
 
+#include "../../stdexec/concepts.hpp"
+#include "../../stdexec/execution.hpp"
 #include "../sequence_senders.hpp"
+
+#include <atomic>
 
 namespace exec {
   template <class _Variant, class _Type, class... _Args>

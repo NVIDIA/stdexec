@@ -15,6 +15,23 @@
  */
 #pragma once
 
+#include "__detail/__execution_fwd.hpp"
+
+#include "__detail/__config.hpp"
+#include "__detail/__type_traits.hpp"
+#include "__detail/__env.hpp"
+#include "__detail/__domain.hpp"
+#include "__detail/__intrusive_ptr.hpp"
+#include "__detail/__meta.hpp"
+#include "__detail/__scope.hpp"
+#include "__detail/__basic_sender.hpp"
+#include "__detail/__utility.hpp"
+
+#include "functional.hpp"
+#include "concepts.hpp"
+#include "coroutine.hpp"
+#include "stop_token.hpp"
+
 #include <atomic>
 #include <cassert>
 #include <concepts>
@@ -27,20 +44,9 @@
 #include <tuple>
 #include <type_traits>
 #include <variant>
-
-#include "__detail/__execution_fwd.hpp"
-
-#include "__detail/__env.hpp"
-#include "__detail/__domain.hpp"
-#include "__detail/__intrusive_ptr.hpp"
-#include "__detail/__meta.hpp"
-#include "__detail/__scope.hpp"
-#include "__detail/__basic_sender.hpp"
-#include "__detail/__utility.hpp"
-#include "functional.hpp"
-#include "concepts.hpp"
-#include "coroutine.hpp"
-#include "stop_token.hpp"
+#include <cstddef>
+#include <exception>
+#include <utility>
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wundefined-inline")

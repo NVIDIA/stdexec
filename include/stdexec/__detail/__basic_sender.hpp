@@ -17,6 +17,7 @@
 
 #include "__execution_fwd.hpp"
 
+#include "__config.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
 #include "__tuple.hpp"
@@ -25,6 +26,8 @@
 #include "../concepts.hpp"
 
 #include <utility> // for tuple_size/tuple_element
+#include <cstddef>
+#include <type_traits>
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////

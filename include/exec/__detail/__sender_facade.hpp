@@ -16,6 +16,7 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
+#include "../../stdexec/concepts.hpp"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(1302)

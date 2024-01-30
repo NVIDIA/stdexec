@@ -28,6 +28,7 @@
 
 #include <atomic>
 #include <concepts>
+#include <cstddef>
 
 namespace exec {
   namespace __repeat_n {
