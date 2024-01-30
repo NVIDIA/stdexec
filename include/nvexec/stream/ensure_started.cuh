@@ -142,7 +142,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         , op_state1_{nullptr}
         , op_state2_(connect((Sender&&) sndr, inner_receiver_t{*this})) {
         if (stream_provider_.status_ == cudaSuccess) {
-          stream_provider_.status_ = STDEXEC_DBG_ERR(cudaEventCreate(&event_));
+          stream_provider_.status_ = STDEXEC_DBG_ERR(cudaEventCreate(&event_, cudaEventDisableTiming));
         }
 
         start(op_state2_);
