@@ -15,12 +15,14 @@
  */
 #pragma once
 
-#include "__detail/__meta.hpp"
 #include "__detail/__config.hpp"
+#include "__detail/__meta.hpp"
 #include "concepts.hpp"
 
 #include <functional>
 #include <tuple>
+#include <type_traits>
+#include <cstddef>
 
 namespace stdexec::__std_concepts {
 #if STDEXEC_HAS_STD_CONCEPTS_HEADER()

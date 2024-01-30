@@ -15,14 +15,18 @@
  */
 #pragma once
 
-#include <concepts>
-
 #include "__execution_fwd.hpp"
 
+#include "__config.hpp"
+#include "__meta.hpp"
 #include "__concepts.hpp"
 
 #include "../functional.hpp"
 #include "../stop_token.hpp"
+
+#include <concepts>
+#include <type_traits>
+#include <exception>
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(probable_guiding_friend)

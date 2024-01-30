@@ -16,6 +16,8 @@
  */
 #pragma once
 
+#include "../../stdexec/__detail/__config.hpp"
+
 #if __has_include(<bit>)
 #include <bit>
 #if __cpp_lib_bit_cast >= 201806L
@@ -25,8 +27,6 @@
 
 #include <cstring>
 #include <type_traits>
-
-#include "../../stdexec/__detail/__config.hpp"
 
 namespace exec {
 

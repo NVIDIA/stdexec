@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <atomic>
 #include <condition_variable>
+#include <cstdint>
 #include <exception>
 #include <mutex>
 #include <span>

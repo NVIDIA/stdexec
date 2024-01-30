@@ -17,6 +17,9 @@
 
 #include "concepts.hpp"
 
+#include "__detail/__config.hpp"
+#include "__detail/__concepts.hpp"
+
 #include <version>
 #if __cpp_impl_coroutine >= 201902 && __cpp_lib_coroutine >= 201902
 #include <coroutine>

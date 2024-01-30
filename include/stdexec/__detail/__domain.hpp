@@ -17,6 +17,7 @@
 
 #include "__execution_fwd.hpp"
 
+#include "__config.hpp"
 #include "__basic_sender.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
