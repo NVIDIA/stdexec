@@ -19,13 +19,13 @@
 // The original idea is taken from libunifex and adapted to stdexec.
 
 #include "../stdexec/execution.hpp"
+#include "../stdexec/coroutine.hpp"
 #include "task.hpp"
 #include "inline_scheduler.hpp"
 #include "any_sender_of.hpp"
 
 #include <exception>
 #include <type_traits>
-#include <coroutine>
 
 namespace exec {
   namespace __on_coro_disp {
