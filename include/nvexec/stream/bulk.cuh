@@ -288,11 +288,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         , ready_to_complete_(new cudaEvent_t[num_devices_]) {
         // TODO Manage errors
         cudaGetDevice(&current_device_);
-        cudaEventCreate(&ready_to_launch_);
+        cudaEventCreate(&ready_to_launch_, cudaEventDisableTiming);
         for (int dev = 0; dev < num_devices_; dev++) {
           cudaSetDevice(dev);
           cudaStreamCreate(streams_.get() + dev);
-          cudaEventCreate(ready_to_complete_.get() + dev);
+          cudaEventCreate(ready_to_complete_.get() + dev, cudaEventDisableTiming);
         }
         cudaSetDevice(current_device_);
       }
