@@ -20,7 +20,6 @@
 
 #include <cstddef>
 #include <cassert>
-#include <tuple>
 #include <utility>
 
 namespace stdexec {

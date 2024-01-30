@@ -18,6 +18,7 @@
 #include "__config.hpp"
 #include "__meta.hpp"
 #include "__concepts.hpp"
+#include "__type_traits.hpp"
 
 namespace stdexec {
   struct __none_such;

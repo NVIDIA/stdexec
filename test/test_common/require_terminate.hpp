@@ -21,6 +21,9 @@
 #define REQUIRE_TERMINATE __require_terminate
 #endif
 
+#include <cstdlib>
+#include <exception>
+
 #include <catch2/catch.hpp>
 
 #ifdef REQUIRE_TERMINATE

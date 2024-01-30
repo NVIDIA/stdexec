@@ -4521,7 +4521,7 @@ namespace stdexec {
       auto operator()(_Sender&& __sndr) const {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
-          __domain, __make_sexpr<into_variant_t>(__(), std::move(__sndr)));
+          __domain, __make_sexpr<into_variant_t>(__(), std::forward<_Sender>(__sndr)));
       }
 
       STDEXEC_ATTRIBUTE((always_inline)) //
