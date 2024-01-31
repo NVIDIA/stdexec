@@ -19,7 +19,11 @@
 #include <catch2/catch.hpp>
 #include <test_common/type_helpers.hpp>
 #include <stdexec/execution.hpp>
+
+#include <atomic>
+#include <exception>
 #include <tuple>
+#include <typeinfo>
 
 namespace ex = stdexec;
 

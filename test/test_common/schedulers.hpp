@@ -19,7 +19,12 @@
 #include <stdexec/execution.hpp>
 #include <test_common/type_helpers.hpp>
 
+#include <condition_variable>
+#include <exception>
 #include <functional>
+#include <memory>
+#include <mutex>
+#include <utility>
 #include <vector>
 
 namespace ex = stdexec;
