@@ -3454,7 +3454,7 @@ namespace stdexec {
       __minvoke_if_c<
         sender_in<_Sender, _Env>,
         __q<__midentity>,
-        __mbind_back_q<__bad_result_sender, _Set, _Env>,
+        __mbind_back_q<__bad_result_sender, _Env, _Set>,
         _Sender>;
 
     // A metafunction that computes the result sender type for a given set of argument types
