@@ -1,25 +1,27 @@
+/*
+ * Copyright (c) 2024 NVIDIA Corporation
+ *
+ * Licensed under the Apache License Version 2.0 with LLVM Exceptions
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ *   https://llvm.org/LICENSE.txt
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "exec/finally.hpp"
-#include "exec/materialize.hpp"
+#include "test_common/type_helpers.hpp"
 
 #include <catch2/catch.hpp>
 
 using namespace stdexec;
 
 namespace {
-
-  template <class Haystack>
-  struct __mall_contained_in {
-    template <class... Needles>
-    using __f = __mand<__mapply<__contains<Needles>, Haystack>...>;
-  };
-
-  template <class Needles, class Haystack>
-  using __all_contained_in = __mapply<__mall_contained_in<Haystack>, Needles>;
-
-  template <class Needles, class Haystack>
-  using __equivalent = __mand<
-    __all_contained_in<Needles, Haystack>,
-    std::is_same<__mapply<__msize, Needles>, __mapply<__msize, Haystack>>>;
 
   TEST_CASE("finally is a sender", "[adaptors][finally]") {
     auto s = exec::finally(just(), just());
@@ -29,17 +31,17 @@ namespace {
   TEST_CASE("finally is a sender in empty env", "[adaptors][finally]") {
     auto s = exec::finally(just(), just());
     STATIC_REQUIRE(sender_in<decltype(s), empty_env>);
-    STATIC_REQUIRE(__v<__equivalent<
+    STATIC_REQUIRE(set_equivalent<
                      completion_signatures_of_t<decltype(s), empty_env>,
-                     completion_signatures<set_error_t(std::exception_ptr), set_value_t()>>>);
+                     completion_signatures<set_error_t(std::exception_ptr), set_value_t()>>);
   }
 
   TEST_CASE("finally executes the final action", "[adaptors][finally]") {
     bool called = false;
     auto s = exec::finally(just(), just() | then([&called]() noexcept { called = true; }));
-    STATIC_REQUIRE(__v<__equivalent<
+    STATIC_REQUIRE(set_equivalent<
                      completion_signatures_of_t<decltype(s), empty_env>,
-                     completion_signatures<set_error_t(std::exception_ptr), set_value_t()>>>);
+                     completion_signatures<set_error_t(std::exception_ptr), set_value_t()>>);
     sync_wait(s);
     CHECK(called);
   }
@@ -47,9 +49,9 @@ namespace {
   TEST_CASE("finally executes the final action and returns integer", "[adaptors][finally]") {
     bool called = false;
     auto s = exec::finally(just(42), just() | then([&called]() noexcept { called = true; }));
-    STATIC_REQUIRE(__v<__equivalent<
+    STATIC_REQUIRE(set_equivalent<
                      completion_signatures_of_t<decltype(s), empty_env>,
-                     completion_signatures<set_error_t(std::exception_ptr), set_value_t(int&&)>>>);
+                     completion_signatures<set_error_t(std::exception_ptr), set_value_t(int&&)>>);
     auto [i] = *sync_wait(s);
     CHECK(called);
     CHECK(i == 42);
@@ -64,9 +66,9 @@ namespace {
         return x;
       }),
       just() | then([&called]() noexcept { called = true; }));
-    STATIC_REQUIRE(__v<__equivalent<
+    STATIC_REQUIRE(set_equivalent<
                      completion_signatures_of_t<decltype(s), empty_env>,
-                     completion_signatures<set_error_t(std::exception_ptr), set_value_t(int&&)>>>);
+                     completion_signatures<set_error_t(std::exception_ptr), set_value_t(int&&)>>);
     CHECK_THROWS_AS(sync_wait(s), int);
     CHECK(called);
   }

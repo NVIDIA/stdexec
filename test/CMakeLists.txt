@@ -67,6 +67,7 @@ set(stdexec_test_sources
     exec/test_create.cpp
     exec/test_env.cpp
     exec/test_finally.cpp
+    exec/test_into_tuple.cpp
     exec/test_on.cpp
     exec/test_on2.cpp
     exec/test_on3.cpp
