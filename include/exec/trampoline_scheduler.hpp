@@ -107,7 +107,7 @@ namespace exec {
 
           static void __execute_impl(__operation_base* __op) noexcept {
             auto& __self = *static_cast<__t*>(__op);
-            if (std::unstoppable_token<stop_token_of_t<env_of_t<_Receiver&>>>) {
+            if (stdexec::unstoppable_token<stop_token_of_t<env_of_t<_Receiver&>>>) {
               stdexec::set_value(static_cast<_Receiver&&>(__self.__receiver_));
             } else {
               if (get_stop_token(get_env(__self.__receiver_)).stop_requested()) {
