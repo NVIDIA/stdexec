@@ -678,13 +678,6 @@ namespace stdexec {
     template <__has_id _Sender>
       requires(!same_as<__id<_Sender>, _Sender>)
     extern __id_name __name_of_v<_Sender>;
-
-    template <class _Ty>
-    _Ty __remove_rvalue_reference_fn(_Ty&&);
-
-    template <class _Ty>
-    using __remove_rvalue_reference_t =
-      decltype(__detail::__remove_rvalue_reference_fn(__declval<_Ty>()));
   } // namespace __detail
 } // namespace stdexec
 
@@ -695,7 +688,7 @@ namespace std {
 
   template <size_t _Idx, class _Impl>
   struct tuple_element<_Idx, stdexec::__sexpr<_Impl>> {
-    using type = stdexec::__detail::__remove_rvalue_reference_t<
+    using type = stdexec::__remove_rvalue_reference_t<
       stdexec::__call_result_t<_Impl, stdexec::__cp, stdexec::__nth_pack_element_t<_Idx>>>;
   };
 }

@@ -22,6 +22,23 @@ namespace ex = stdexec;
 
 namespace {
 
+  template <class Haystack>
+  struct mall_contained_in {
+    template <class... Needles>
+    using __f = ex::__mand<ex::__mapply<ex::__contains<Needles>, Haystack>...>;
+  };
+
+  template <class Needles, class Haystack>
+  concept all_contained_in = ex::__v<ex::__mapply<mall_contained_in<Haystack>, Needles>>;
+
+  template <class Needles, class Haystack>
+  concept set_equivalent =
+    ex::same_as<ex::__mapply<ex::__msize, Needles>, ex::__mapply<ex::__msize, Haystack>> &&
+    all_contained_in<Needles, Haystack>;
+
+  template <const auto& Tag, class... Args>
+  using result_of_t = ex::__result_of<Tag, Args...>;
+
   //! Used for to make a class non-movable without giving up aggregate initialization
   struct immovable {
     immovable() = default;
