@@ -1594,9 +1594,24 @@ namespace stdexec {
       };
     };
 
+    // BUGBUG NOT TO SPEC: make senders of more-than-one-value awaitable
+    // by packaging the values into a tuple.
+    // See: https://github.com/cplusplus/sender-receiver/issues/182
+    template <std::size_t _Count>
+    extern const __q<std::tuple> __as_single;
+
+    template <>
+    inline const __q<__midentity> __as_single<1>;
+
+    template <>
+    inline const __mconst<void> __as_single<0>;
+
+    template <class... _Values>
+    using __single_value = __minvoke<decltype(__as_single<sizeof...(_Values)>), _Values...>;
+
     template <class _Sender, class _Promise>
     using __value_t = __decay_t<
-      __value_types_of_t< _Sender, env_of_t<_Promise&>, __msingle_or<void>, __msingle_or<void>>>;
+      __value_types_of_t< _Sender, env_of_t<_Promise&>, __q<__single_value>, __msingle_or<void>>>;
 
     template <class _Sender, class _Promise>
     using __receiver_t = __t<__receiver<__id<_Promise>, __value_t<_Sender, _Promise>>>;
