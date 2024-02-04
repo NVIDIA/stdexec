@@ -44,12 +44,12 @@ namespace exec::__system_context_default_impl {
 
     static void __schedule_impl(
       __exec_system_scheduler_interface* __self,
-      __exec_system_context_schedule_callback_t __cb,
+      __exec_system_context_completion_callback_t __cb,
       void* __data);
 
     static void __bulk_schedule_impl(
       __exec_system_scheduler_interface* __self,
-      __exec_system_context_schedule_callback_t __cb,
+      __exec_system_context_completion_callback_t __cb,
       __exec_system_context_bulk_item_callback_t __cb_item,
       void* __data,
       long __size);
@@ -83,7 +83,7 @@ namespace exec::__system_context_default_impl {
     using receiver_concept = stdexec::receiver_t;
 
     /// The callback to be called.
-    __exec_system_context_schedule_callback_t __cb_;
+    __exec_system_context_completion_callback_t __cb_;
 
     /// The data to be passed to the callback.
     void* __data_;
@@ -112,13 +112,13 @@ namespace exec::__system_context_default_impl {
   struct __operation {
     stdexec::connect_result_t<__Sender, __recv<__Sender>> __inner_op_;
 
-    __operation(__Sender __sndr, __exec_system_context_schedule_callback_t __cb, void* __data)
+    __operation(__Sender __sndr, __exec_system_context_completion_callback_t __cb, void* __data)
       : __inner_op_(stdexec::connect(std::move(__sndr), __recv<__Sender>{__cb, __data, this})) {}
   };
 
   inline void __system_scheduler_impl::__schedule_impl(
     __exec_system_scheduler_interface* __self,
-    __exec_system_context_schedule_callback_t __cb,
+    __exec_system_context_completion_callback_t __cb,
     void* __data) {
     auto __this = static_cast<__system_scheduler_impl*>(__self);
     auto __sndr = stdexec::schedule(__this->__pool_scheduler_);
@@ -128,7 +128,7 @@ namespace exec::__system_context_default_impl {
 
   inline void __system_scheduler_impl::__bulk_schedule_impl(
     __exec_system_scheduler_interface* __self,
-    __exec_system_context_schedule_callback_t __cb,
+    __exec_system_context_completion_callback_t __cb,
     __exec_system_context_bulk_item_callback_t __cb_item,
     void* __data,
     long __size) {
