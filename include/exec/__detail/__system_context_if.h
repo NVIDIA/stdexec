@@ -26,6 +26,9 @@ struct __exec_system_scheduler_interface;
 
 /// Interface that allows interaction with the system context, allowing scheduling work on the system.
 struct __exec_system_context_interface {
+  /// Get the supported version of the system context interface, in the form YYYYMM.
+  long (*__get_version)(struct __exec_system_context_interface* /*self*/);
+
   /// Returns an interface to the system scheduler.
   struct __exec_system_scheduler_interface* (*__get_scheduler)(
     struct __exec_system_context_interface* /*self*/);
