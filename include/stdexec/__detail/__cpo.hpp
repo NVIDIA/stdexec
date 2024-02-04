@@ -20,6 +20,7 @@
 
 #define STDEXEC_EAT_THIS_this
 #define STDEXEC_EAT_AUTO_auto
+#define STDEXEC_EAT_VOID_void
 
 ///////////////////////////////////////////////////////////////////////////////
 /// To hook a customization point like stdexec::get_env, first bring the names
@@ -37,21 +38,28 @@
 /// }
 /// @endcode
 #define STDEXEC_CUSTOM(...) \
-  friend STDEXEC_TAG_INVOKE(STDEXEC_IS_AUTO(__VA_ARGS__), __VA_ARGS__) STDEXEC_TAG_INVOKE_ARGS /**/
+  friend STDEXEC_TAG_INVOKE(STDEXEC_IS_AUTO(__VA_ARGS__), __VA_ARGS__) STDEXEC_TAG_INVOKE_ARGS
 
 #define STDEXEC_TAG_INVOKE(_ISAUTO, ...) \
     STDEXEC_IIF(_ISAUTO, STDEXEC_RETURN_AUTO, STDEXEC_RETURN_TYPE)(__VA_ARGS__) \
     tag_invoke( \
-    STDEXEC_IIF(_ISAUTO, STDEXEC_TAG_AUTO, STDEXEC_TAG_TYPE)(__VA_ARGS__)
+    STDEXEC_IIF(_ISAUTO, STDEXEC_TAG_AUTO, STDEXEC_TAG_WHAT)(__VA_ARGS__)
 
-#define STDEXEC_PROBE_FN_DECL_auto STDEXEC_PROBE(~)
-#define STDEXEC_IS_AUTO(_TY, ...) STDEXEC_CHECK(STDEXEC_CAT(STDEXEC_PROBE_FN_DECL_, _TY))
+#define STDEXEC_PROBE_AUTO_auto STDEXEC_PROBE(~)
+#define STDEXEC_IS_AUTO(_TY, ...) STDEXEC_CHECK(STDEXEC_CAT(STDEXEC_PROBE_AUTO_, _TY))
 
-#define STDEXEC_RETURN_TYPE(...) ::stdexec::__arg_type_t<void(__VA_ARGS__())> /**/
-#define STDEXEC_RETURN_AUTO(...) auto                                         /**/
+#define STDEXEC_PROBE_VOID_void STDEXEC_PROBE(~)
+#define STDEXEC_IS_VOID(_TY, ...) STDEXEC_CHECK(STDEXEC_CAT(STDEXEC_PROBE_VOID_, _TY))
 
-#define STDEXEC_TAG_TYPE(...) ::stdexec::__tag_type_t<STDEXEC_CAT(__VA_ARGS__, _t::*)>
+#define STDEXEC_RETURN_AUTO(...) auto
+#define STDEXEC_RETURN_TYPE(...) ::stdexec::__arg_type_t<void(__VA_ARGS__())>
+
 #define STDEXEC_TAG_AUTO(...) STDEXEC_CAT(STDEXEC_CAT(STDEXEC_EAT_AUTO_, __VA_ARGS__), _t)
+#define STDEXEC_TAG_WHAT(...) \
+  STDEXEC_IIF(STDEXEC_IS_VOID(__VA_ARGS__), STDEXEC_TAG_VOID, STDEXEC_TAG_TYPE)(__VA_ARGS__)
+
+#define STDEXEC_TAG_VOID(...) STDEXEC_CAT(STDEXEC_CAT(STDEXEC_EAT_VOID_, __VA_ARGS__), _t)
+#define STDEXEC_TAG_TYPE(...) ::stdexec::__tag_type_t<STDEXEC_CAT(__VA_ARGS__, _t::*)>
 
 #define STDEXEC_TAG_INVOKE_ARGS(...) \
     __VA_OPT__(,) STDEXEC_CAT(STDEXEC_EAT_THIS_, __VA_ARGS__))
