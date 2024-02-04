@@ -18,6 +18,7 @@
 #include "__detail/__execution_fwd.hpp"
 
 #include "__detail/__config.hpp"
+#include "__detail/__cpo.hpp"
 #include "__detail/__type_traits.hpp"
 #include "__detail/__env.hpp"
 #include "__detail/__domain.hpp"
