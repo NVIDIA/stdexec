@@ -17,6 +17,8 @@
 #ifndef __EXEC__SYSTEM_CONTEXT_IF_H__
 #define __EXEC__SYSTEM_CONTEXT_IF_H__
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -51,16 +53,30 @@ struct __exec_system_scheduler_interface {
   /// 0 == concurrent, 1 == parallel, 2 == weakly_parallel
   int (*__get_forward_progress_guarantee)(struct __exec_system_scheduler_interface* /*self*/);
 
+  /// The size of the operation state object on the implementation side.
+  uint32_t __schedule_operation_size_;
+  /// The alignment of the operation state object on the implementation side.
+  uint32_t __schedule_operation_alignment_;
+
   /// Schedules new work on the system scheduler, calling `cb` with `data` when the work can start.
   void (*__schedule)(
     struct __exec_system_scheduler_interface* /*self*/,
+    void* /*__preallocated*/,
+    uint32_t /*__psize*/,
     __exec_system_context_completion_callback_t /*cb*/,
     void* /*data*/);
+
+  /// The size of the operation state object on the implementation side.
+  uint32_t __bulk_schedule_operation_size_;
+  /// The alignment of the operation state object on the implementation side.
+  uint32_t __bulk_schedule_operation_alignment_;
 
   /// Schedules new bulk work of size `size` on the system scheduler, calling `cb_item` with `data`
   /// for indices in [0, `size`), and calling `cb` on general completion.
   void (*__bulk_schedule)(
     struct __exec_system_scheduler_interface* /*self*/,
+    void* /*__preallocated*/,
+    uint32_t /*__psize*/,
     __exec_system_context_completion_callback_t /*cb*/,
     __exec_system_context_bulk_item_callback_t /*cb_item*/,
     void* /*data*/,

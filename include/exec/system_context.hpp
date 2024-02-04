@@ -18,6 +18,19 @@
 #include "stdexec/execution.hpp"
 #include "__detail/__system_context_default_impl.hpp"
 
+#ifndef __EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_SIZE
+#define __EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_SIZE 72
+#endif
+#ifndef __EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_ALIGN
+#define __EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_ALIGN 8
+#endif
+#ifndef __EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_SIZE
+#define __EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_SIZE 160
+#endif
+#ifndef __EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_ALIGN
+#define __EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_ALIGN 8
+#endif
+
 namespace exec {
   namespace __detail {
     /// Transforms from a C API signal to the `set_xxx` completion signal.
@@ -160,7 +173,12 @@ namespace exec {
 
       /// Starts the work stored in `this`.
       friend void tag_invoke(stdexec::start_t, __op& __self) noexcept {
-        __self.__scheduler_->__schedule(__self.__scheduler_, __cb, &__self);
+        __self.__scheduler_->__schedule(
+          __self.__scheduler_,
+          &__self.__preallocated_,
+          sizeof(__self.__preallocated_),
+          __cb,
+          &__self);
       }
 
       static void __cb(void* __data, int __completion_type, void* __exception) {
@@ -172,6 +190,11 @@ namespace exec {
       __R __recv_;
       /// The underlying implementation of the scheduler.
       __exec_system_scheduler_interface* __scheduler_{nullptr};
+
+      /// Preallocated space for storing the operation state on the implementation size.
+      struct alignas(__EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_ALIGN) __preallocated {
+        char __data[__EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_SIZE];
+      } __preallocated_;
     };
 
     /// Connects `__self` to `__r`, returning the operation state containing the work to be done.
@@ -202,6 +225,11 @@ namespace exec {
     __R __recv_;
     /// The arguments passed from the previous receiver to the function object of the bulk sender (type-erased).
     char* __arguments_data_{nullptr};
+
+    /// Preallocated space for storing the operation state on the implementation size.
+    struct alignas(__EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_ALIGN) __preallocated {
+      char __data[__EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_SIZE];
+    } __preallocated_;
   };
 
   /// Receiver that is used in "bulk" to connect toe the input sender of the bulk operation.
@@ -238,6 +266,8 @@ namespace exec {
       // Schedule the bulk work on the system scheduler.
       __self.__state_.__snd_.__scheduler_->__bulk_schedule(
         __self.__state_.__snd_.__scheduler_,
+        &__self.__state_.__preallocated_,
+        sizeof(__self.__state_.__preallocated_),
         __cb,
         __type_erased_fn,
         &__self.__state_,
