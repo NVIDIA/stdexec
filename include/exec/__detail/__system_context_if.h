@@ -28,8 +28,8 @@ struct __exec_system_scheduler_interface;
 
 /// Interface that allows interaction with the system context, allowing scheduling work on the system.
 struct __exec_system_context_interface {
-  /// Get the supported version of the system context interface, in the form YYYYMM.
-  long (*__get_version)(struct __exec_system_context_interface* /*self*/);
+  /// The supported version of the system context interface, in the form YYYYMM.
+  uint32_t __version;
 
   /// Returns an interface to the system scheduler.
   struct __exec_system_scheduler_interface* (*__get_scheduler)(
@@ -48,15 +48,15 @@ typedef void (*__exec_system_context_bulk_item_callback_t)(
   long); // the index of the work item that is starting
 
 struct __exec_system_scheduler_interface {
-  /// Gets the forward progress guarantee of the scheduler.
+  /// The forward progress guarantee of the scheduler.
   ///
   /// 0 == concurrent, 1 == parallel, 2 == weakly_parallel
-  int (*__get_forward_progress_guarantee)(struct __exec_system_scheduler_interface* /*self*/);
+  uint32_t __forward_progress_guarantee;
 
   /// The size of the operation state object on the implementation side.
-  uint32_t __schedule_operation_size_;
+  uint32_t __schedule_operation_size;
   /// The alignment of the operation state object on the implementation side.
-  uint32_t __schedule_operation_alignment_;
+  uint32_t __schedule_operation_alignment;
 
   /// Schedules new work on the system scheduler, calling `cb` with `data` when the work can start.
   void (*__schedule)(
@@ -67,9 +67,9 @@ struct __exec_system_scheduler_interface {
     void* /*data*/);
 
   /// The size of the operation state object on the implementation side.
-  uint32_t __bulk_schedule_operation_size_;
+  uint32_t __bulk_schedule_operation_size;
   /// The alignment of the operation state object on the implementation side.
-  uint32_t __bulk_schedule_operation_alignment_;
+  uint32_t __bulk_schedule_operation_alignment;
 
   /// Schedules new bulk work of size `size` on the system scheduler, calling `cb_item` with `data`
   /// for indices in [0, `size`), and calling `cb` on general completion.

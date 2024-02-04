@@ -410,7 +410,7 @@ namespace exec {
 
   stdexec::forward_progress_guarantee
     tag_invoke(stdexec::get_forward_progress_guarantee_t, const system_scheduler& __self) noexcept {
-    switch (__self.__scheduler_->__get_forward_progress_guarantee(__self.__scheduler_)) {
+    switch (__self.__scheduler_->__forward_progress_guarantee) {
     case 0:
       return stdexec::forward_progress_guarantee::concurrent;
     case 1:

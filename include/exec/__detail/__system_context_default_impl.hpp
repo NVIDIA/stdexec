@@ -91,22 +91,18 @@ namespace exec::__system_context_default_impl {
   struct __system_scheduler_impl : __exec_system_scheduler_interface {
     __system_scheduler_impl(exec::static_thread_pool& __pool)
       : __pool_scheduler_{__pool.get_scheduler()} {
-      __get_forward_progress_guarantee = __get_forward_progress_guarantee_impl;
-      __schedule_operation_size_ = sizeof(__schedule_operation_t),
-      __schedule_operation_alignment_ = alignof(__schedule_operation_t),
+      __forward_progress_guarantee = 1; // parallel
+      __schedule_operation_size = sizeof(__schedule_operation_t),
+      __schedule_operation_alignment = alignof(__schedule_operation_t),
       __schedule = __schedule_impl;
-      __bulk_schedule_operation_size_ = sizeof(__bulk_schedule_operation_t),
-      __bulk_schedule_operation_alignment_ = alignof(__bulk_schedule_operation_t),
+      __bulk_schedule_operation_size = sizeof(__bulk_schedule_operation_t),
+      __bulk_schedule_operation_alignment = alignof(__bulk_schedule_operation_t),
       __bulk_schedule = __bulk_schedule_impl;
     }
 
    private:
     /// Scheduler from the underlying thread pool.
     __pool_scheduler_t __pool_scheduler_;
-
-    static int __get_forward_progress_guarantee_impl(__exec_system_scheduler_interface*) {
-      return 1; // parallel
-    }
 
     struct __bulk_functor {
       __exec_system_context_bulk_item_callback_t __cb_item_;
@@ -160,7 +156,7 @@ namespace exec::__system_context_default_impl {
   /// Default implementation of a system context, based on `static_thread_pool`
   struct __system_context_impl : __exec_system_context_interface {
     __system_context_impl() {
-      __get_version = __get_version_impl;
+      __version = 202402;
       __get_scheduler = __get_scheduler_impl;
     }
 
