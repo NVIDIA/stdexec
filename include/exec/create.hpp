@@ -42,7 +42,7 @@ namespace exec {
       using _Result = __call_result_t<_Fun, _Context&>;
       using _State = __if_c<same_as<_Result, void>, __void, std::optional<_Result>>;
 
-      struct __t {
+      struct __t : stdexec::__immovable {
         using __id = __operation;
 
         STDEXEC_ATTRIBUTE((no_unique_address)) _Context __ctx_;
@@ -77,6 +77,7 @@ namespace exec {
           -> stdexec::__t<__operation<stdexec::__id<_Receiver>, _Fun, _ArgsId>> {
           static_assert(__nothrow_callable<_Fun, __context<_Receiver, _Args>&>);
           return {
+            {},
             {(_Receiver&&) __rcvr, ((_Self&&) __self).__args_},
             ((_Self&&) __self).__fun_
           };
@@ -99,6 +100,13 @@ namespace exec {
     };
   } // namespace __create
 
+  template <class... _Sigs>
+  extern const stdexec::__mfront<void, _Sigs...> create;
+
   template <stdexec::__completion_signature... _Sigs>
-  inline constexpr __create::__create_t<_Sigs...> create{};
+  inline constexpr __create::__create_t<_Sigs...> create<_Sigs...>{};
+
+  template <stdexec::__completion_signature... _Sigs>
+  inline constexpr __create::__create_t<_Sigs...>
+    create<stdexec::completion_signatures<_Sigs...>>{};
 }
