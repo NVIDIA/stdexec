@@ -33,11 +33,11 @@
 /// Then define a member function like this:
 ///
 /// @code
-/// STDEXEC_CUSTOM(auto get_env)(this const MySender& self) {
+/// STDEXEC_MEMFN_DECL(auto get_env)(this const MySender& self) {
 ///   return ...;  
 /// }
 /// @endcode
-#define STDEXEC_CUSTOM(...) \
+#define STDEXEC_MEMFN_DECL(...) \
   friend STDEXEC_TAG_INVOKE(STDEXEC_IS_AUTO(__VA_ARGS__), __VA_ARGS__) STDEXEC_TAG_INVOKE_ARGS
 
 #define STDEXEC_TAG_INVOKE(_ISAUTO, ...) \
@@ -63,6 +63,22 @@
 
 #define STDEXEC_TAG_INVOKE_ARGS(...) \
     __VA_OPT__(,) STDEXEC_CAT(STDEXEC_EAT_THIS_, __VA_ARGS__))
+
+#if STDEXEC_MSVC()
+#pragma deprecated(STDEXEC_CUSTOM)
+#endif
+
+#if STDEXEC_GCC()
+#define STDEXEC_CUSTOM \
+  _Pragma("GCC warning \"STDEXEC_CUSTOM is deprecated; use STDEXEC_MEMFN_DECL instead.\"") \
+  STDEXEC_MEMFN_DECL
+#else
+#define STDEXEC_CUSTOM STDEXEC_MEMFN_DECL
+#endif
+
+#if STDEXEC_CLANG()
+#pragma clang deprecated (STDEXEC_CUSTOM, "use STDEXEC_MEMFN_DECL instead.")
+#endif
 
 namespace stdexec {
   template <class>

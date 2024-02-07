@@ -82,7 +82,7 @@ IndentWrappedFunctionNames: true
 InsertTrailingCommas: None
 KeepEmptyLinesAtTheStartOfBlocks: true
 LambdaBodyIndentation: Signature
-Macros: [ 'STDEXEC_CUSTOM(X)=X' ]
+Macros: [ 'STDEXEC_MEMFN_DECL(X)=X' ]
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: All
 PackConstructorInitializers: Never
