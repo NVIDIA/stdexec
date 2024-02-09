@@ -28,6 +28,8 @@
 
 #include <atomic>
 #include <concepts>
+#include <exception>
+#include <type_traits>
 
 namespace exec {
   namespace __repeat_effect_until {
@@ -164,7 +166,7 @@ namespace exec {
 
       static constexpr auto get_state = //
         []<class _Sender, class _Receiver>(_Sender &&__sndr, _Receiver &__rcvr) {
-          return __repeat_effect_state{std::move(__sndr), __rcvr};
+          return __repeat_effect_state{(_Sender&&) __sndr, __rcvr};
         };
 
       static constexpr auto start = //

@@ -29,6 +29,8 @@
 #include <atomic>
 #include <concepts>
 #include <cstddef>
+#include <exception>
+#include <type_traits>
 
 namespace exec {
   namespace __repeat_n {
@@ -179,7 +181,7 @@ namespace exec {
 
       static constexpr auto get_state = //
         []<class _Sender, class _Receiver>(_Sender &&__sndr, _Receiver &__rcvr) {
-          return __repeat_n_state{std::move(__sndr), __rcvr};
+          return __repeat_n_state{(_Sender&&) __sndr, __rcvr};
         };
 
       static constexpr auto start = //
