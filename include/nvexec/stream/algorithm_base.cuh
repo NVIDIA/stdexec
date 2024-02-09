@@ -91,7 +91,18 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
     };
   };
 
-  template <class SenderId, class InitT, class Fun, class DerivedSender>
+  // This shouldn't be here. Imo I think algorithm_base should
+  // have a __data struct that each inheritor is responsible for providing. I put this here to get things to compile.
+  template <class _InitT, class _Fun>
+  struct __data {
+    STDEXEC_ATTRIBUTE((no_unique_address)) _InitT __init_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
+    static constexpr auto __mbrs_ = __mliterals<&__data::__init_, &__data::__fun_>();
+  };
+  template <class _InitT, class _Fun>
+  __data(_InitT, _Fun) -> __data<_InitT, _Fun>;
+
+  template <class Tag, class SenderId, class InitT, class Fun, class DerivedSender>
   struct sender_t {
     struct __t : stream_sender_base {
       using Sender = stdexec::__t<SenderId>;
@@ -104,8 +115,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       using _set_value_t = typename DerivedSender::template _set_value_t<Range>;
 
       Sender sndr_;
-      STDEXEC_ATTRIBUTE((no_unique_address)) InitT init_;
-      STDEXEC_ATTRIBUTE((no_unique_address)) Fun fun_;
+      // why is this called initT, anyway? If other algorithms will use this in the future im not sure initT is a good name
+      __data<InitT, Fun> data_;
+
+      __t(Sender sndr, InitT init, Fun fun)
+        : sndr_((Sender&&) sndr)
+        , data_{(InitT&&) init, (Fun&&) fun} {
+      }
 
       template <class Self, class Env>
       using completion_signatures = //
@@ -124,7 +140,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
           (Receiver&&) rcvr,
           [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
             -> receiver_t<Receiver> {
-            return receiver_t<Receiver>(self.init_, self.fun_, stream_provider);
+            return receiver_t<Receiver>(self.data_.__init_, self.data_.__fun_, stream_provider);
           });
       }
 
@@ -139,4 +155,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       }
     };
   };
+}
+
+namespace stdexec::__detail {
+  // for pretty-printing a stream range algorithm sender
+  template <class Tag, class SenderId, class InitT, class Fun, class DerivedSender>
+  extern __mconst<__name_of<DerivedSender>>
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun::
+                  sender_t<Tag, SenderId, InitT, Fun, DerivedSender>>;
 }

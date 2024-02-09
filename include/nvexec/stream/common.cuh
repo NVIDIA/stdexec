@@ -168,9 +168,12 @@ namespace nvexec {
     struct context_state_t {
       std::pmr::memory_resource* pinned_resource_{nullptr};
       std::pmr::memory_resource* managed_resource_{nullptr};
-      stream_pools_t* stream_pools_;
+      stream_pools_t* stream_pools_{nullptr};
       queue::task_hub_t* hub_{nullptr};
-      stream_priority priority_;
+      stream_priority priority_{stream_priority::normal};
+
+      // BUGBUG remove me
+      context_state_t() = default;
 
       context_state_t(
         std::pmr::memory_resource* pinned_resource,

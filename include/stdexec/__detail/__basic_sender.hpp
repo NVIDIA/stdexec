@@ -498,7 +498,8 @@ namespace stdexec {
       noexcept(
         __nothrow_callable<__detail::__impl_of<_Sender>, __copy_cvref_fn<_Sender>, _ApplyFn>) //
       -> __call_result_t<__detail::__impl_of<_Sender>, __copy_cvref_fn<_Sender>, _ApplyFn> {  //
-      return ((_Sender&&) __sndr).__impl_(__copy_cvref_fn<_Sender>(), (_ApplyFn&&) __fun);    //
+
+      return ((_Sender&&) __sndr).__impl_(__copy_cvref_fn<_Sender>(), (_ApplyFn&&) __fun); //
     }
 
     template <std::size_t _Idx, __decays_to_derived_from<__sexpr> _Self>
@@ -648,10 +649,10 @@ namespace stdexec {
   // The __name_of utility defined below is used to pretty-print the type names of
   // senders in compiler diagnostics.
   namespace __detail {
-    struct __basic_sender_name {
+    struct __sexpr_name {
       template <class _Sender>
       using __f = //
-        __call_result_t<__sexpr_apply_result_t<_Sender, __basic_sender_name>>;
+        __call_result_t<__sexpr_apply_result_t<_Sender, __sexpr_name>>;
 
       template <class _Tag, class _Data, class... _Child>
       auto operator()(_Tag, _Data&&, _Child&&...) const //
@@ -673,7 +674,7 @@ namespace stdexec {
     extern __mcompose<__cpclr, __name_of_fn<_Sender>> __name_of_v<const _Sender&>;
 
     template <class _Impl>
-    extern __basic_sender_name __name_of_v<__sexpr<_Impl>>;
+    extern __sexpr_name __name_of_v<__sexpr<_Impl>>;
 
     template <__has_id _Sender>
       requires(!same_as<__id<_Sender>, _Sender>)

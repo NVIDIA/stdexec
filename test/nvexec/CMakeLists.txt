@@ -30,7 +30,7 @@ set(nvexec_test_sources
     let_value.cpp
     test_main.cpp
     then.cpp
-    reduce.cpp
+    $<$<NOT:$<CXX_COMPILER_ID:Clang>>:reduce.cpp>
     split.cpp
     start_detached.cpp
     transfer.cpp
