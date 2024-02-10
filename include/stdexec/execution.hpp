@@ -3420,8 +3420,7 @@ namespace stdexec {
       friend auto tag_invoke(_Tag, const __receiver_with_sched& __self) noexcept {
         return __env::__join(
           __env::__with(__self.__sched_, get_scheduler),
-          __env::__without(get_domain),
-          get_env(__self.__rcvr_));
+          __env::__without(get_env(__self.__rcvr_), get_domain));
       }
     };
 
@@ -3434,8 +3433,9 @@ namespace stdexec {
     using __result_env_t = __if_c<
       __unknown_context<_Scheduler>,
       _Env,
-      __env::
-        __join_t< __env::__with<_Scheduler, get_scheduler_t>, __env::__without<get_domain_t>, _Env>>;
+      __env::__join_t<
+        __env::__with<_Scheduler, get_scheduler_t>,
+        __env::__without_t<_Env, get_domain_t>>>;
 
     template <class _Tp>
     using __decay_ref = __decay_t<_Tp>&;
@@ -3573,8 +3573,7 @@ namespace stdexec {
             return __env::__join(
               __env::__with(
                 get_completion_scheduler<_Set>(stdexec::get_env(__child)), get_scheduler),
-              __env::__without(get_domain),
-              __env);
+              __env::__without(__env, get_domain));
           }
         }
         STDEXEC_UNREACHABLE();
@@ -4112,12 +4111,16 @@ namespace stdexec {
 
     template <class _SchedulerId>
     struct __environ {
+      using _Scheduler = stdexec::__t<_SchedulerId>;
       struct __t
         : __env::__with<
             stdexec::__t<_SchedulerId>,
             get_completion_scheduler_t<set_value_t>,
             get_completion_scheduler_t<set_stopped_t>> {
         using __id = __environ;
+
+        explicit __t(_Scheduler __sched) noexcept
+          : __t::__with{std::move(__sched)} { }
 
         template <same_as<get_domain_t> _Key>
         friend auto tag_invoke(_Key, const __t& __self) noexcept {
@@ -4444,15 +4447,17 @@ namespace stdexec {
   struct __sexpr_impl<__write_t> : __write_::__write_impl { };
 
   namespace __detail {
-    template <class _Scheduler>
+    template <class _Env, class _Scheduler>
     STDEXEC_ATTRIBUTE((always_inline))
-    auto __mkenv_sched(_Scheduler __sched) {
-      auto __env = __env::__join(
-        __env::__with(__sched, get_scheduler), __env::__without(get_domain));
+    auto __mkenv_sched(_Env&& __env, _Scheduler __sched) {
+      auto __env2 = __env::__join(
+        __env::__with(__sched, get_scheduler),
+        __env::__without((_Env&&) __env, get_domain));
+      using _Env2 = decltype(__env2);
 
-      struct __env_t : decltype(__env) { };
+      struct __env_t : _Env2 { };
 
-      return __env_t{__env};
+      return __env_t{(_Env2&&) __env2};
     }
 
     template <class _Ty, class = __name_of<__decay_t<_Ty>>>
@@ -4487,7 +4492,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline))
       static auto __transform_env_fn(_Env&& __env) noexcept {
         return [&](__ignore, auto __sched, __ignore) noexcept {
-          return __env::__join(__detail::__mkenv_sched(__sched), (_Env&&) __env);
+          return __detail::__mkenv_sched((_Env&&) __env, __sched);
         };
       }
 
@@ -5004,7 +5009,7 @@ namespace stdexec {
         return stdexec::transform_sender(
           __domain,
           __make_sexpr<transfer_when_all_t>(
-            _Env{{(_Scheduler&&) __sched}}, (_Senders&&) __sndrs...));
+            _Env{(_Scheduler&&) __sched}, (_Senders&&) __sndrs...));
       }
 
       template <class _Sender, class _Env>
@@ -5292,7 +5297,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline))
       static auto __transform_env_fn(_Env&& __env) noexcept {
         return [&](__ignore, auto __sched, __ignore) noexcept {
-          return __env::__join(__detail::__mkenv_sched(__sched), (_Env&&) __env);
+          return __detail::__mkenv_sched((_Env&&) __env, __sched);
         };
       }
 
@@ -5324,6 +5329,22 @@ namespace stdexec {
     };
     template <class _Scheduler, class _Closure>
     __continue_on_data(_Scheduler, _Closure) -> __continue_on_data<_Scheduler, _Closure>;
+
+    template <class _Scheduler>
+    struct __with_sched {
+      _Scheduler __sched_;
+
+      friend _Scheduler tag_invoke(get_scheduler_t, const __with_sched& __self) noexcept {
+        return __self.__sched_;
+      }
+
+      friend auto tag_invoke(get_domain_t, const __with_sched& __self) noexcept {
+        return query_or(get_domain, __self.__sched_, default_domain());
+      }
+    };
+
+    template <class _Scheduler>
+    __with_sched(_Scheduler) -> __with_sched<_Scheduler>;
 
     struct continue_on_t : __no_scheduler_in_environment {
       template <sender _Sender, scheduler _Scheduler, __sender_adaptor_closure_for<_Sender> _Closure>
@@ -5360,9 +5381,9 @@ namespace stdexec {
             return __write(
               transfer(
                 ((_Closure&&) __clsur)(
-                  transfer(__write((_Child&&) __child, __detail::__mkenv_sched(__old)), __sched)),
+                  transfer(__write((_Child&&) __child, __with_sched{__old}), __sched)),
                 __old),
-              __detail::__mkenv_sched(__sched));
+              __with_sched{__sched});
           });
       }
     };
