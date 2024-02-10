@@ -317,9 +317,11 @@ namespace stdexec {
     struct __with {
       using __t = __with;
       using __id = __with;
-      _Value __value_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Value __value_;
 
-      constexpr __with(_Value __value) noexcept(__nothrow_decay_copyable<_Value>)
+      __with() = default;
+
+      constexpr explicit __with(_Value __value) noexcept(__nothrow_decay_copyable<_Value>)
         : __value_((_Value&&) __value) {
       }
 
