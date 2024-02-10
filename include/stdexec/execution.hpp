@@ -5381,9 +5381,9 @@ namespace stdexec {
             return __write(
               transfer(
                 ((_Closure&&) __clsur)(
-                  transfer(__write((_Child&&) __child, __with_sched(__old)), __sched)),
+                  transfer(__write((_Child&&) __child, __with_sched{__old}), __sched)),
                 __old),
-              __with_sched(__sched));
+              __with_sched{__sched});
           });
       }
     };

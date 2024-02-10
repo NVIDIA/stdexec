@@ -68,7 +68,7 @@
 #pragma deprecated(STDEXEC_CUSTOM)
 #endif
 
-#if STDEXEC_GCC()
+#if STDEXEC_GCC() || (STDEXEC_CLANG() && __clang_major__ < 14)
 #define STDEXEC_CUSTOM \
   _Pragma("GCC warning \"STDEXEC_CUSTOM is deprecated; use STDEXEC_MEMFN_DECL instead.\"") \
   STDEXEC_MEMFN_DECL
@@ -76,7 +76,7 @@
 #define STDEXEC_CUSTOM STDEXEC_MEMFN_DECL
 #endif
 
-#if STDEXEC_CLANG()
+#if STDEXEC_CLANG() && __clang_major__ >= 14
 #pragma clang deprecated (STDEXEC_CUSTOM, "use STDEXEC_MEMFN_DECL instead.")
 #endif
 
