@@ -340,20 +340,6 @@ namespace stdexec {
     template <class _Value, class _Tag, class... _Tags>
     __with(_Value, _Tag, _Tags...) -> __with<_Value, _Tag, _Tags...>;
 
-    template <class _Tag, class... _Tags>
-    struct __without {
-      using __t = __without;
-      using __id = __without;
-
-      __without() = default;
-
-      constexpr explicit __without(_Tag, _Tags...) noexcept {
-      }
-    };
-
-    template <class _Tag, class... _Tags>
-    __without(_Tag, _Tags...) -> __without<_Tag, _Tags...>;
-
     template <class _Env>
     struct __fwd {
       static_assert(__nothrow_move_constructible<_Env>);
@@ -373,6 +359,65 @@ namespace stdexec {
     template <class _Env>
     __fwd(_Env&&) -> __fwd<_Env>;
 
+    template <class _Env>
+    struct __ref {
+      using __t = __ref;
+      using __id = __ref;
+      const _Env& __env_;
+
+      template <class _Tag>
+        requires tag_invocable<_Tag, const _Env&>
+      friend auto tag_invoke(_Tag, const __ref& __self) //
+        noexcept(nothrow_tag_invocable<_Tag, const _Env&>)
+          -> tag_invoke_result_t<_Tag, const _Env&> {
+        return _Tag()(__self.__env_);
+      }
+    };
+
+    template <class _Env>
+    __ref(_Env&) -> __ref<_Env>;
+
+    struct __ref_fn {
+      template <class _Env>
+      constexpr auto operator()(_Env&& __env) const {
+        if constexpr (same_as<_Env, _Env&>) {
+          return __ref{(_Env&&) __env};
+        } else {
+          return (_Env&&) __env;
+        }
+      }
+    };
+
+    template <class _Env, class _Tag, class... _Tags>
+    struct __without_ : _Env {
+      static_assert(__nothrow_move_constructible<_Env>);
+      using __t = __without_;
+      using __id = __without_;
+
+      constexpr explicit __without_(_Env&& __env, _Tag, _Tags...) noexcept
+        : _Env((_Env&&) __env) { }
+
+      template <__one_of<_Tag, _Tags...> _Key, class _Self>
+        requires(std::is_base_of_v<__without_, __decay_t<_Self>>)
+      friend auto tag_invoke(_Key, _Self&&) noexcept = delete;
+    };
+
+    struct __without_fn {
+      template <class _Env, class _Tag, class... _Tags>
+      constexpr decltype(auto) operator()(_Env&& __env, _Tag, _Tags...) const noexcept {
+        if constexpr (tag_invocable<_Tag, _Env> || (tag_invocable<_Tags, _Env> ||...)) {
+          return __without_{__ref_fn()((_Env&&) __env), _Tag(), _Tags()...};
+        } else {
+          return static_cast<_Env>((_Env&&) __env);
+        }
+      }
+    };
+
+    inline constexpr __without_fn __without {};
+
+    template <class _Env, class _Tag, class... _Tags>
+    using __without_t = __result_of<__without, _Env, _Tag, _Tags...>;
+
     template <class _Second, class _First>
     struct __joined : _Second {
       static_assert(__nothrow_move_constructible<_First>);
@@ -389,18 +434,6 @@ namespace stdexec {
           -> tag_invoke_result_t<_Tag, const _First&> {
         return _Tag()(__self.__env_);
       }
-    };
-
-    template <class _Second, class _Tag, class... _Tags>
-    struct __joined<_Second, __without<_Tag, _Tags...>>
-      : _Second
-      , __without<_Tag, _Tags...> {
-      using __t = __joined;
-      using __id = __joined;
-
-      template <__one_of<_Tag, _Tags...> _Key, class _Self>
-        requires(std::is_base_of_v<__joined, __decay_t<_Self>>)
-      friend auto tag_invoke(_Key, _Self&&) noexcept = delete;
     };
 
     template <class _Second, class _First>
@@ -432,11 +465,6 @@ namespace stdexec {
       empty_env operator()(empty_env) const {
         return {};
       }
-
-      template <class _Tag, class... _Tags>
-      __without<_Tag, _Tags...> operator()(__without<_Tag, _Tags...>) const {
-        return {};
-      }
     };
 
     struct __join_fn {
@@ -453,18 +481,8 @@ namespace stdexec {
         return {};
       }
 
-      template <class _Tag, class... _Tags>
-      empty_env operator()(__without<_Tag, _Tags...>) const {
-        return {};
-      }
-
       template <class _Env>
       _Env operator()(_Env&& __env, empty_env) const {
-        return (_Env&&) __env;
-      }
-
-      template <class _Env, class _Tag, class... _Tags>
-      _Env operator()(_Env&& __env, __without<_Tag, _Tags...>) const {
         return (_Env&&) __env;
       }
 
@@ -472,29 +490,9 @@ namespace stdexec {
         return {};
       }
 
-      template <class _Tag, class... _Tags>
-      empty_env operator()(empty_env, __without<_Tag, _Tags...>) const {
-        return {};
-      }
-
-      template <class _Tag, class... _Tags>
-      empty_env operator()(__without<_Tag, _Tags...>, empty_env) const {
-        return {};
-      }
-
-      template <class _Tag, class... _Tags, class _Tag2, class... _Tags2>
-      empty_env operator()(__without<_Tag, _Tags...>, __without<_Tag2, _Tags2...>) const {
-        return {};
-      }
-
       template <class... Rest>
       decltype(auto) operator()(empty_env, Rest&&... rest) const {
         return __fwd_fn()(__join_fn()((Rest&&) rest...));
-      }
-
-      template <class _Tag, class... _Tags, class... Rest>
-      decltype(auto) operator()(__without<_Tag, _Tags...>, Rest&&... rest) const {
-        return __joined{__fwd_fn()(__join_fn()((Rest&&) rest...)), __without<_Tag, _Tags...>()};
       }
 
       template <class First, class... Rest>
