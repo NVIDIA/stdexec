@@ -109,15 +109,17 @@ namespace exec {
         .__impl_(stdexec::__copy_cvref_fn<_Sender>(), (_ApplyFn&&) __fun); //
     }
 
-#if STDEXEC_NVHPC() || (STDEXEC_CLANG() && __clang_major__ < 16)
+#if 1 //STDEXEC_NVHPC() || (STDEXEC_CLANG() && __clang_major__ < 16)
     static constexpr auto __descriptor() { return _DescriptorFn; }
 #endif
   };
 
-#if STDEXEC_NVHPC() || (STDEXEC_CLANG() && __clang_major__ < 16)
+#if 1 //STDEXEC_NVHPC() || (STDEXEC_CLANG() && __clang_major__ < 16)
 
-  template <class _Tag, class _Data, class... _Child>
-  using __seqexpr_t = __seqexpr<[] { return stdexec::__detail::__desc<_Tag, _Data, _Child...>(); }>;
+  namespace {
+    template <class _Tag, class _Data, class... _Child>
+    using __seqexpr_t = __seqexpr<[] { return stdexec::__detail::__desc<_Tag, _Data, _Child...>(); }>;
+  }
 
   template <class _Tag, class _Data, class... _Child>
   STDEXEC_ATTRIBUTE((host, device))
