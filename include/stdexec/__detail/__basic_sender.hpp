@@ -68,6 +68,9 @@ namespace stdexec {
       using __tag = _Tag;
       using __data = _Data;
       using __children = __types<_Child...>;
+
+      template <class _Fn>
+      using __f = __minvoke<_Fn, _Tag, _Data, _Child...>;
     };
 
     template <class _Fn>
@@ -405,6 +408,31 @@ namespace stdexec {
             return __fn((_Rest&&) __rest...);
           };
       };
+
+    template <class _Tag, class... _Captures>
+    constexpr auto __captures(_Tag, _Captures&&... __captures) {
+      return [... __captures = (_Captures&&) __captures]<class _Cvref, class _Fun>(
+                _Cvref, _Fun && __fun) mutable                                          //
+              noexcept(__nothrow_callable<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>) //
+              -> __call_result_t<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>
+                requires __callable<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>
+      {
+        return ((_Fun&&) __fun)(
+          _Tag(), const_cast<__minvoke<_Cvref, _Captures>&&>(__captures)...);
+      };
+    }
+
+    template <class _Tag, class _Data, class... _Child>
+    using __captures_t =
+      decltype(__detail::__captures(_Tag(), __declval<_Data>(), __declval<_Child>()...));
+
+    template <class, class, class... _Child>
+    using __tuple_size_t = char[sizeof...(_Child) + 2];
+
+    template <std::size_t _Idx, class _Descriptor>
+    concept __in_range =
+      (_Idx < sizeof(__minvoke<_Descriptor, __q<__tuple_size_t>>));
+
   } // namespace __detail
 
   struct __sexpr_defaults {
@@ -427,38 +455,32 @@ namespace stdexec {
     __result_of<__detail::__drop_front, __mtypeof<__sexpr_impl<_Tag>::get_attrs>>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  // __sexpr
+  // __basic_sender
   template <class...>
-  struct __sexpr {
-    using __id = __sexpr;
-    using __t = __sexpr;
+  struct __basic_sender {
+    using __id = __basic_sender;
+    using __t = __basic_sender;
   };
 
-  template <class _ImplFn>
-  struct __sexpr<_ImplFn> {
+  template <auto _DescriptorFn>
+  struct __sexpr {
     using sender_concept = sender_t;
-    using __t = __sexpr;
+
     using __id = __sexpr;
-    using __desc_t = __call_result_t<_ImplFn, __cp, __detail::__get_desc>;
+    using __t = __sexpr;
+    using __desc_t = decltype(_DescriptorFn());
     using __tag_t = typename __desc_t::__tag;
-    using __data_t = typename __desc_t::__data;
-    using __children_t = typename __desc_t::__children;
-    using __arity_t = __mapply<__msize, __children_t>;
+    using __captures_t = __minvoke<__desc_t, __q<__detail::__captures_t>>;
+
+    mutable __captures_t __impl_;
+
+    template <class _Tag, class _Data, class... _Child>
+    explicit __sexpr(_Tag, _Data&& __data, _Child&&... __child)
+      : __impl_(__detail::__captures(_Tag(), (_Data&&) __data, (_Child&&) __child...)) {
+    }
 
     template <class _Tag>
     using __impl = __sexpr_impl<__meval<__msecond, _Tag, __tag_t>>;
-
-    STDEXEC_ATTRIBUTE((always_inline)) //
-    static __tag_t __tag() noexcept {
-      return {};
-    }
-
-    mutable _ImplFn __impl_;
-
-    STDEXEC_ATTRIBUTE((host, device, always_inline))
-    explicit __sexpr(_ImplFn __impl)
-      : __impl_((_ImplFn&&) __impl) {
-    }
 
     template <same_as<get_env_t> _Tag, same_as<__sexpr> _Self>
     STDEXEC_ATTRIBUTE((always_inline))                         //
@@ -504,8 +526,7 @@ namespace stdexec {
     template <std::size_t _Idx, __decays_to_derived_from<__sexpr> _Self>
     STDEXEC_ATTRIBUTE((always_inline))
     friend decltype(auto) get(_Self&& __self) noexcept
-      requires(_Idx < (__v<__arity_t> + 2))
-    {
+      requires __detail::__in_range<_Idx, __desc_t> {
       if constexpr (_Idx == 0) {
         return __tag_t();
       } else {
@@ -513,11 +534,33 @@ namespace stdexec {
       }
       STDEXEC_UNREACHABLE();
     }
+
+#if STDEXEC_NVHPC() || (STDEXEC_CLANG() && __clang_major__ < 16)
+    static constexpr auto __descriptor() { return _DescriptorFn; }
+#endif
   };
 
-  template <class _ImplFn>
+#if STDEXEC_NVHPC() || (STDEXEC_CLANG() && __clang_major__ < 16)
+
+  template <class _Tag, class _Data, class... _Child>
+  using __sexpr_t = __sexpr<[] { return __detail::__desc<_Tag, _Data, _Child...>(); }>;
+
+  template <class _Tag, class _Data, class... _Child>
   STDEXEC_ATTRIBUTE((host, device))
-  __sexpr(_ImplFn) -> __sexpr<_ImplFn>;
+  __sexpr(_Tag, _Data, _Child...)
+    -> __sexpr<  __sexpr_t<_Tag, _Data, _Child...>::__descriptor() >;
+
+#else
+
+  template <class _Tag, class _Data, class... _Child>
+  STDEXEC_ATTRIBUTE((host, device))
+  __sexpr(_Tag, _Data, _Child...)
+    -> __sexpr<[] { return __detail::__desc<_Tag, _Data, _Child...>(); }>;
+
+  template <class _Tag, class _Data, class... _Child>
+  using __sexpr_t = decltype(__sexpr{_Tag(), __declval<_Data>(), __declval<_Child>()...});
+
+#endif
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __make_sexpr
@@ -525,97 +568,14 @@ namespace stdexec {
     template <class _Tag>
     struct __make_sexpr_t {
       template <class _Data = __, class... _Child>
-      constexpr auto operator()(_Data __data = {}, _Child... __child) const;
-    };
-
-#if STDEXEC_NVHPC() || (STDEXEC_GCC() && __GNUC__ < 13)
-    // The NVIDIA HPC compiler and gcc prior to v13 struggle with capture
-    // initializers for a parameter pack. As a workaround, we use a wrapper that
-    // performs moves when non-const lvalues are copied. That constructor is
-    // only used when capturing the variables, never when the resulting lambda
-    // is copied or moved.
-
-    // Move-by-copy
-    template <class _Ty>
-    struct __mbc {
-      template <class _Cvref>
-      using __f = __minvoke<_Cvref, _Ty>;
-
-      _Ty __value;
-
-      STDEXEC_ATTRIBUTE((always_inline))
-      explicit __mbc(_Ty& __v) noexcept(std::is_nothrow_move_constructible_v<_Ty>)
-        : __value((_Ty&&) __v) {
-      }
-
-      // This is a template so as to not be considered a copy/move constructor. Therefore,
-      // it doesn't suppress the generation of the default copy/move constructors.
-      STDEXEC_ATTRIBUTE((always_inline))
-      __mbc(same_as<__mbc> auto& __that) noexcept(std::is_nothrow_move_constructible_v<_Ty>)
-        : __value(static_cast<_Ty&&>(__that.__value)) {
+      constexpr auto operator()(_Data __data = {}, _Child... __child) const {
+        return __sexpr_t<_Tag, _Data, _Child...>{_Tag(), (_Data&&) __data, (_Child&&) __child...};
       }
     };
-
-    // Rather strange definition of the lambda return type below is to reap the
-    // benefits of SFINAE without nvc++ encoding the whole return type into the
-    // symbol name.
-    template <class _Ty>
-    extern _Ty (*__f)();
-
-    // Anonymous namespace here is to avoid symbol name collisions with the
-    // lambda functions returned by __make_tuple.
-    namespace {
-      constexpr auto __make_tuple = //
-        []<class _Tag, class... _Captures>(_Tag, _Captures&&... __captures) {
-          return [=]<class _Cvref, class _Fun>(_Cvref __cvref, _Fun && __fun) mutable      //
-                 noexcept(__nothrow_callable<_Fun, _Tag, __minvoke<_Captures, _Cvref>...>) //
-                 -> decltype(__f<__call_result_t<_Fun, _Tag, __minvoke<_Captures, _Cvref>...>>())
-                   requires __callable<_Fun, _Tag, __minvoke<_Captures, _Cvref>...>
-          {
-            return ((_Fun&&) __fun)(
-              _Tag(), const_cast<__minvoke<_Captures, _Cvref>&&>(__captures.__value)...);
-          };
-        };
-    } // anonymous namespace
-
-    template <class _Tag>
-    template <class _Data, class... _Child>
-    constexpr auto __make_sexpr_t<_Tag>::operator()(_Data __data, _Child... __child) const {
-      return __sexpr{__make_tuple(_Tag(), __detail::__mbc(__data), __detail::__mbc(__child)...)};
-    }
-#else
-    // Anonymous namespace here is to avoid symbol name collisions with the
-    // lambda functions returned by __make_tuple.
-    namespace {
-      constexpr auto __make_tuple = //
-        []<class _Tag, class... _Captures>(_Tag, _Captures&&... __captures) {
-          return [... __captures = (_Captures&&) __captures]<class _Cvref, class _Fun>(
-                   _Cvref, _Fun && __fun) mutable                                          //
-                 noexcept(__nothrow_callable<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>) //
-                 -> __call_result_t<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>
-                   requires __callable<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>
-          {
-            return ((_Fun&&) __fun)(
-              _Tag(), const_cast<__minvoke<_Cvref, _Captures>&&>(__captures)...);
-          };
-        };
-    } // anonymous namespace
-
-    template <class _Tag>
-    template <class _Data, class... _Child>
-    constexpr auto __make_sexpr_t<_Tag>::operator()(_Data __data, _Child... __child) const {
-      return __sexpr{__make_tuple(_Tag(), (_Data&&) __data, (_Child&&) __child...)};
-    };
-#endif
-
-    template <class _Tag>
-    inline constexpr __make_sexpr_t<_Tag> __make_sexpr{};
   } // namespace __detail
 
-  using __detail::__make_sexpr;
-
-  template <class _Tag, class _Data, class... _Child>
-  using __sexpr_t = __result_of<__make_sexpr<_Tag>, _Data, _Child...>;
+  template <class _Tag>
+  inline constexpr __detail::__make_sexpr_t<_Tag> __make_sexpr{};
 
   namespace __detail {
     struct __sexpr_apply_t {
@@ -649,13 +609,11 @@ namespace stdexec {
   // senders in compiler diagnostics.
   namespace __detail {
     struct __basic_sender_name {
-      template <class _Sender>
-      using __f = //
-        __call_result_t<__sexpr_apply_result_t<_Sender, __basic_sender_name>>;
-
       template <class _Tag, class _Data, class... _Child>
-      auto operator()(_Tag, _Data&&, _Child&&...) const //
-        -> __sexpr<_Tag, _Data, __name_of<_Child>...> (*)();
+      using __result = __basic_sender<_Tag, _Data, __name_of<_Child>...>;
+
+      template <class _Sender>
+      using __f = __minvoke<typename _Sender::__desc_t, __q<__result>>;
     };
 
     struct __id_name {
@@ -672,8 +630,8 @@ namespace stdexec {
     template <class _Sender>
     extern __mcompose<__cpclr, __name_of_fn<_Sender>> __name_of_v<const _Sender&>;
 
-    template <class _Impl>
-    extern __basic_sender_name __name_of_v<__sexpr<_Impl>>;
+    template <auto _Descriptor>
+    extern __basic_sender_name __name_of_v<__sexpr<_Descriptor>>;
 
     template <__has_id _Sender>
       requires(!same_as<__id<_Sender>, _Sender>)
@@ -682,13 +640,19 @@ namespace stdexec {
 } // namespace stdexec
 
 namespace std {
-  template <class _Impl>
-  struct tuple_size<stdexec::__sexpr<_Impl>>
-    : integral_constant< size_t, stdexec::__v<typename stdexec::__sexpr<_Impl>::__arity_t> + 2> { };
+  template <auto _Descriptor>
+  struct tuple_size<stdexec::__sexpr<_Descriptor>>
+    : integral_constant<
+        size_t,
+        stdexec::__v<stdexec::__minvoke<stdexec::__result_of<_Descriptor>, stdexec::__msize>>> { };
 
-  template <size_t _Idx, class _Impl>
-  struct tuple_element<_Idx, stdexec::__sexpr<_Impl>> {
-    using type = stdexec::__remove_rvalue_reference_t<
-      stdexec::__call_result_t<_Impl, stdexec::__cp, stdexec::__nth_pack_element_t<_Idx>>>;
+  template <size_t _Idx, auto _Descriptor>
+  struct tuple_element<_Idx, stdexec::__sexpr<_Descriptor>> {
+    using type =                            //
+      stdexec::__remove_rvalue_reference_t< //
+        stdexec::__call_result_t<           //
+          stdexec::__detail::__impl_of<stdexec::__sexpr<_Descriptor>>,
+          stdexec::__cp,
+          stdexec::__nth_pack_element_t<_Idx>>>;
   };
 }
