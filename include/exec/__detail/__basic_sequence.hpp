@@ -31,7 +31,7 @@ namespace exec {
     using __t = __basic_sequence_sender;
   };
 
-  template <auto _DescriptorFn>
+  template <auto _DescriptorFn, class = stdexec::__anon>
   struct __seqexpr {
     using sender_concept = sequence_sender_t;
     using __t = __seqexpr;
@@ -108,36 +108,14 @@ namespace exec {
       return ((_Sender&&) __sndr)
         .__impl_(stdexec::__copy_cvref_fn<_Sender>(), (_ApplyFn&&) __fun); //
     }
-
-#if 1 //STDEXEC_NVHPC() || (STDEXEC_CLANG() && __clang_major__ < 16)
-    static constexpr auto __descriptor() { return _DescriptorFn; }
-#endif
   };
 
-#if 1 //STDEXEC_NVHPC() || (STDEXEC_CLANG() && __clang_major__ < 16)
-
-  namespace {
-    template <class _Tag, class _Data, class... _Child>
-    using __seqexpr_t = __seqexpr<[] { return stdexec::__detail::__desc<_Tag, _Data, _Child...>(); }>;
-  }
-
   template <class _Tag, class _Data, class... _Child>
   STDEXEC_ATTRIBUTE((host, device))
-  __seqexpr(_Tag, _Data, _Child...)
-    -> __seqexpr<  __seqexpr_t<_Tag, _Data, _Child...>::__descriptor() >;
-
-#else
+  __seqexpr(_Tag, _Data, _Child...) -> __seqexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
 
   template <class _Tag, class _Data, class... _Child>
-  STDEXEC_ATTRIBUTE((host, device))
-  __seqexpr(_Tag, _Data, _Child...)
-    -> __seqexpr<[] { return stdexec::__detail::__desc<_Tag, _Data, _Child...>(); }>;
-
-  template <class _Tag, class _Data, class... _Child>
-  using __seqexpr_t =
-    decltype(__seqexpr{_Tag(), stdexec::__declval<_Data>(), stdexec::__declval<_Child>()...});
-
-#endif
+  using __seqexpr_t = __seqexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
 
   namespace __mkseqexpr {
     template <class _Tag, class _Domain = stdexec::default_domain>

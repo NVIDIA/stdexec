@@ -463,7 +463,7 @@ namespace stdexec {
     using __t = __basic_sender;
   };
 
-  template <auto _DescriptorFn>
+  template <auto _DescriptorFn, class = __anon>
   struct __sexpr {
     using sender_concept = sender_t;
 
@@ -536,35 +536,32 @@ namespace stdexec {
       }
       STDEXEC_UNREACHABLE();
     }
-
-#if 1 //STDEXEC_NVHPC() || (STDEXEC_CLANG() && __clang_major__ < 16)
-    static constexpr auto __descriptor() { return _DescriptorFn; }
-#endif
   };
 
-#if 1 //STDEXEC_NVHPC() || (STDEXEC_CLANG() && __clang_major__ < 16)
-
   namespace {
+    template <class _Descriptor, auto _DescriptorFn = []{ return _Descriptor(); }>
+    inline constexpr auto __descriptor_fn_v = _DescriptorFn;
+
     template <class _Tag, class _Data, class... _Child>
-    using __sexpr_t = __sexpr<[] { return __detail::__desc<_Tag, _Data, _Child...>(); }>;
+    inline constexpr auto __descriptor_fn() {
+      return __descriptor_fn_v<__detail::__desc<_Tag, _Data, _Child...>>;
+    }
   }
 
-  template <class _Tag, class _Data, class... _Child>
-  STDEXEC_ATTRIBUTE((host, device))
-  __sexpr(_Tag, _Data, _Child...)
-    -> __sexpr<  __sexpr_t<_Tag, _Data, _Child...>::__descriptor() >;
-
+#if STDEXEC_NVHPC()
+#define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child) \
+  stdexec::__descriptor_fn<_Tag, _Data, _Child>()
 #else
+#define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child) \
+  stdexec::__descriptor_fn_v<stdexec::__detail::__desc<_Tag, _Data, _Child>>
+#endif
 
   template <class _Tag, class _Data, class... _Child>
   STDEXEC_ATTRIBUTE((host, device))
-  __sexpr(_Tag, _Data, _Child...)
-    -> __sexpr<[] { return __detail::__desc<_Tag, _Data, _Child...>(); }>;
+  __sexpr(_Tag, _Data, _Child...) -> __sexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
 
   template <class _Tag, class _Data, class... _Child>
-  using __sexpr_t = decltype(__sexpr{_Tag(), __declval<_Data>(), __declval<_Child>()...});
-
-#endif
+  using __sexpr_t = __sexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __make_sexpr
