@@ -410,6 +410,7 @@ namespace stdexec {
       };
 
     template <class _Tag, class... _Captures>
+    STDEXEC_ATTRIBUTE((host, device, always_inline))
     constexpr auto __captures(_Tag, _Captures&&... __captures) {
       return [... __captures = (_Captures&&) __captures]<class _Cvref, class _Fun>(
                 _Cvref, _Fun && __fun) mutable                                          //
@@ -475,6 +476,7 @@ namespace stdexec {
     mutable __captures_t __impl_;
 
     template <class _Tag, class _Data, class... _Child>
+    STDEXEC_ATTRIBUTE((host, device, always_inline))
     explicit __sexpr(_Tag, _Data&& __data, _Child&&... __child)
       : __impl_(__detail::__captures(_Tag(), (_Data&&) __data, (_Child&&) __child...)) {
     }
@@ -613,7 +615,7 @@ namespace stdexec {
       using __result = __basic_sender<_Tag, _Data, __name_of<_Child>...>;
 
       template <class _Sender>
-      using __f = __minvoke<typename _Sender::__desc_t, __q<__result>>;
+      using __f = __minvoke<typename __decay_t<_Sender>::__desc_t, __q<__result>>;
     };
 
     struct __id_name {
