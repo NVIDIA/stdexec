@@ -318,9 +318,29 @@ if (STDEXEC_ENABLE_NUMA)
   target_link_libraries(stdexec INTERFACE numa::numa)
   target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_NUMA)
 endif()
-include(CheckIncludeFileCXX)
-CHECK_INCLUDE_FILE_CXX("linux/io_uring.h" STDEXEC_FOUND_IO_URING)
-option (STDEXEC_ENABLE_IO_URING_TESTS "Enable io_uring tests" ${STDEXEC_FOUND_IO_URING})
+
+if(CMAKE_CROSSCOMPILING)
+  include(CheckIncludeFileCXX)
+  CHECK_INCLUDE_FILE_CXX("linux/io_uring.h" STDEXEC_FOUND_IO_URING)
+else()
+  include(CheckCXXSourceRuns)
+  CHECK_CXX_SOURCE_RUNS(
+    "
+    #include <linux/io_uring.h>
+    #include <sys/syscall.h>
+    #include <unistd.h>
+
+    int main()
+    {
+      io_uring_params a = {};
+      return syscall(__NR_io_uring_setup, 1, &a) != -1
+        ? EXIT_SUCCESS
+        : EXIT_FAILURE;
+    }
+    "
+    STDEXEC_FOUND_IO_URING)
+endif()
+option(STDEXEC_ENABLE_IO_URING_TESTS "Enable io_uring tests" ${STDEXEC_FOUND_IO_URING})
 
 option(STDEXEC_BUILD_DOCS "Build stdexec documentation" OFF)
 option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
