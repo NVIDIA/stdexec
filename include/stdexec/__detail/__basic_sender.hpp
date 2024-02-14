@@ -411,15 +411,17 @@ namespace stdexec {
 
     template <class _Tag, class... _Captures>
     STDEXEC_ATTRIBUTE((host, device, always_inline))
-    constexpr auto __captures(_Tag, _Captures&&... __captures) {
-      return [... __captures = (_Captures&&) __captures]<class _Cvref, class _Fun>(
+    constexpr auto __captures(_Tag, _Captures&&... __captures2) {
+      return [... __captures3 = (_Captures&&) __captures2]<class _Cvref, class _Fun>(
                 _Cvref, _Fun && __fun) mutable                                          //
               noexcept(__nothrow_callable<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>) //
               -> __call_result_t<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>
                 requires __callable<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>
       {
+        // The use of decltype(__captures2) here instead of _Captures is a workaround for
+        // a codegen bug in nvc++.
         return ((_Fun&&) __fun)(
-          _Tag(), const_cast<__minvoke<_Cvref, _Captures>&&>(__captures)...);
+          _Tag(), const_cast<__minvoke<_Cvref, decltype(__captures3)>&&>(__captures3)...);
       };
     }
 
