@@ -41,6 +41,10 @@ namespace stdexec {
 
   struct __none_such { };
 
+  namespace {
+    struct __anon {};
+  }
+
   struct __immovable {
     __immovable() = default;
    private:
