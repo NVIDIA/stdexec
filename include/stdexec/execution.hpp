@@ -5192,6 +5192,7 @@ namespace stdexec {
   struct __sexpr_impl<__read::__read_t> : __read::__read_impl { };
 
   namespace __queries {
+    template <class _Tag>
     inline auto get_scheduler_t::operator()() const noexcept {
       return read(get_scheduler);
     }
@@ -5205,6 +5206,7 @@ namespace stdexec {
       return tag_invoke(get_scheduler_t{}, __env);
     }
 
+    template <class _Tag>
     inline auto get_delegatee_scheduler_t::operator()() const noexcept {
       return read(get_delegatee_scheduler);
     }
@@ -5218,10 +5220,12 @@ namespace stdexec {
       return tag_invoke(get_delegatee_scheduler_t{}, std::as_const(__t));
     }
 
+    template <class _Tag>
     inline auto get_allocator_t::operator()() const noexcept {
       return read(get_allocator);
     }
 
+    template <class _Tag>
     inline auto get_stop_token_t::operator()() const noexcept {
       return read(get_stop_token);
     }

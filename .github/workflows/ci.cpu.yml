@@ -19,8 +19,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "CPU (clang 12, Debug, ubuntu 20.04)",       build: "Debug",   tag: llvm12-cuda12.3-ubuntu20.04, cxxflags: "-stdlib=libc++" }
-          - { name: "CPU (clang 12, Release, ubuntu 20.04)",     build: "Release", tag: llvm12-cuda12.3-ubuntu20.04, cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (clang 13, Debug, ubuntu 20.04)",       build: "Debug",   tag: llvm13-cuda12.3-ubuntu20.04, cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (clang 13, Release, ubuntu 20.04)",     build: "Release", tag: llvm13-cuda12.3-ubuntu20.04, cxxflags: "-stdlib=libc++" }
           - { name: "CPU (gcc 11, Debug, ubuntu 22.04)",         build: "Debug",   tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "", }
           - { name: "CPU (gcc 11, Release, ubuntu 22.04)",       build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "", }
           - { name: "CPU (gcc 11, Release, ubuntu 22.04, TSAN)", build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "-fsanitize=thread" }

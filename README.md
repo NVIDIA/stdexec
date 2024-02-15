@@ -93,7 +93,7 @@ You can also try it directly on [godbolt.org](https://godbolt.org/z/acaE93xq3) w
 ### Requirements
 
 `stdexec` requires compiling with C++20 (`-std=c++20`) but otherwise does not have any dependencies and only requires a sufficiently new compiler:
-- clang 12+
+- clang 13+
 - gcc 11+
 - [nvc++ 22.11+](https://developer.nvidia.com/nvidia-hpc-sdk-releases) (required for [GPU support](#gpu-support)). If using `stdexec` from GitHub, then nvc++ 23.3+ is required.
 

@@ -134,6 +134,7 @@ namespace stdexec {
       auto operator()(const _Env& __env) const noexcept
         -> tag_invoke_result_t<get_scheduler_t, const _Env&>;
 
+      template <class _Tag = get_scheduler_t>
       auto operator()() const noexcept;
     };
 
@@ -148,6 +149,7 @@ namespace stdexec {
       auto operator()(const _Env& __t) const noexcept
         -> tag_invoke_result_t<get_delegatee_scheduler_t, const _Env&>;
 
+      template <class _Tag = get_delegatee_scheduler_t>
       auto operator()() const noexcept;
     };
 
@@ -165,6 +167,7 @@ namespace stdexec {
         return tag_invoke(get_allocator_t{}, __env);
       }
 
+      template <class _Tag = get_allocator_t>
       auto operator()() const noexcept;
     };
 
@@ -187,6 +190,7 @@ namespace stdexec {
         return tag_invoke(get_stop_token_t{}, __env);
       }
 
+      template <class _Tag = get_stop_token_t>
       auto operator()() const noexcept;
     };
 
