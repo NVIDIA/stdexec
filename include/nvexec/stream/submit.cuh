@@ -30,7 +30,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_submit {
     struct receiver_t : stream_receiver_base {
       op_state_t* op_state_;
 
-      template < __completion_tag Tag, class... As>
+      template <__completion_tag Tag, class... As>
         requires __callable<Tag, Receiver, As...>
       friend void tag_invoke(Tag, receiver_t&& self, As&&... as) //
         noexcept(__nothrow_callable<Tag, Receiver, As...>) {
@@ -64,4 +64,4 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_submit {
     }
   };
 
-}
+} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_submit

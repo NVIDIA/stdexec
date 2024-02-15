@@ -33,7 +33,7 @@ namespace nvexec {
 
       template <sender Sender>
       using schedule_from_sender_th =
-        stdexec::__t< schedule_from_sender_t<stream_scheduler, stdexec::__id<__decay_t<Sender>>>>;
+        stdexec::__t<schedule_from_sender_t<stream_scheduler, stdexec::__id<__decay_t<Sender>>>>;
 
       template <class RId>
       struct operation_state_t : stream_op_state_base {
@@ -93,7 +93,7 @@ namespace nvexec {
         };
 
         using completion_signatures =
-          completion_signatures< set_value_t(), set_error_t(cudaError_t)>;
+          completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
 
         template <class R>
         friend auto tag_invoke(connect_t, sender_t, R&& rec) //
@@ -114,8 +114,10 @@ namespace nvexec {
       };
 
       template <sender S>
-      friend schedule_from_sender_th<S>
-        tag_invoke(schedule_from_t, const multi_gpu_stream_scheduler& sch, S&& sndr) //
+      friend schedule_from_sender_th<S> tag_invoke(
+        schedule_from_t,
+        const multi_gpu_stream_scheduler& sch,
+        S&& sndr) //
         noexcept {
         return schedule_from_sender_th<S>(sch.context_state_, (S&&) sndr);
       }
@@ -133,13 +135,16 @@ namespace nvexec {
       }
 
       template <sender S, class Fn>
-      friend then_sender_th<S, Fn>
-        tag_invoke(then_t, const multi_gpu_stream_scheduler& sch, S&& sndr, Fn fun) //
+      friend then_sender_th<S, Fn> tag_invoke(
+        then_t,
+        const multi_gpu_stream_scheduler& sch,
+        S&& sndr,
+        Fn fun) //
         noexcept {
         return then_sender_th<S, Fn>{{}, (S&&) sndr, (Fn&&) fun};
       }
 
-      template < __one_of<let_value_t, let_stopped_t, let_error_t> Let, sender S, class Fn>
+      template <__one_of<let_value_t, let_stopped_t, let_error_t> Let, sender S, class Fn>
       friend let_xxx_th<Let, S, Fn>
         tag_invoke(Let, const multi_gpu_stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
         return let_xxx_th<Let, S, Fn>{{}, (S&&) sndr, (Fn&&) fun};
@@ -197,8 +202,10 @@ namespace nvexec {
       }
 
       template <sender S>
-      friend ensure_started_th<S>
-        tag_invoke(ensure_started_t, const multi_gpu_stream_scheduler& sch, S&& sndr) //
+      friend ensure_started_th<S> tag_invoke(
+        ensure_started_t,
+        const multi_gpu_stream_scheduler& sch,
+        S&& sndr) //
         noexcept {
         return ensure_started_th<S>((S&&) sndr, sch.context_state_);
       }
@@ -212,8 +219,9 @@ namespace nvexec {
         return _sync_wait::sync_wait_t{}(self.context_state_, (S&&) sndr);
       }
 
-      friend forward_progress_guarantee
-        tag_invoke(get_forward_progress_guarantee_t, const multi_gpu_stream_scheduler&) //
+      friend forward_progress_guarantee tag_invoke(
+        get_forward_progress_guarantee_t,
+        const multi_gpu_stream_scheduler&) //
         noexcept {
         return forward_progress_guarantee::weakly_parallel;
       }
@@ -231,7 +239,7 @@ namespace nvexec {
       int num_devices_{};
       context_state_t context_state_;
     };
-  }
+  } // namespace STDEXEC_STREAM_DETAIL_NS
 
   using STDEXEC_STREAM_DETAIL_NS::multi_gpu_stream_scheduler;
 
@@ -282,4 +290,4 @@ namespace nvexec {
           pinned_resource_.get(), managed_resource_.get(), &stream_pools_, &hub_, priority)};
     }
   };
-}
+} // namespace nvexec

@@ -98,9 +98,9 @@ namespace nvexec {
         __try_make_completion_signatures<
           CvrefSender,
           Env,
-          completion_signatures< set_error_t(std::exception_ptr)>,
+          completion_signatures<set_error_t(std::exception_ptr)>,
           __mbind_front_q<_set_value_t, Fun>>;
-    }
+    } // namespace _launch
 
     template <class SenderId, class Fun>
     struct launch_sender_t {
@@ -122,7 +122,7 @@ namespace nvexec {
         template <__decays_to<__t> Self, receiver Receiver>
           requires receiver_of<Receiver, completions_t<Self, env_of_t<Receiver>>>
         friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
-          -> stream_op_state_t< __copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
+          -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
           return stream_op_state<__copy_cvref_t<Self, Sender>>(
             ((Self&&) self).sndr_,
             (Receiver&&) rcvr,
@@ -146,7 +146,7 @@ namespace nvexec {
 
     struct launch_t {
       template <class Sender, class Fun>
-      using sender_t = stdexec::__t<launch_sender_t< stdexec::__id<__decay_t<Sender>>, Fun >>;
+      using sender_t = stdexec::__t<launch_sender_t<stdexec::__id<__decay_t<Sender>>, Fun>>;
 
       template <sender Sender, __movable_value Fun>
       sender_t<Sender, Fun> operator()(Sender&& sndr, Fun&& fun) const {
@@ -185,4 +185,4 @@ namespace stdexec::__detail {
   inline constexpr __mconst<
     nvexec::STDEXEC_STREAM_DETAIL_NS::launch_sender_t<__name_of<__t<SenderId>>, Fun>>
     __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::launch_sender_t<SenderId, Fun>>{};
-}
+} // namespace stdexec::__detail

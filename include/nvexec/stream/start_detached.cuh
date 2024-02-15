@@ -28,7 +28,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_start_detached {
     }
 
     template <same_as<set_error_t> _Tag>
-    [[noreturn]] friend void tag_invoke(_Tag, detached_receiver_t&&, auto&&) noexcept {
+    [[noreturn]]
+    friend void tag_invoke(_Tag, detached_receiver_t&&, auto&&) noexcept {
       std::terminate();
     }
 
@@ -41,4 +42,4 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_start_detached {
     }
   };
 
-}
+} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_start_detached

@@ -45,7 +45,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         operation_state_base_t<ReceiverId>& operation_state_;
 
-        template < __completion_tag Tag, class... As>
+        template <__completion_tag Tag, class... As>
         friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
           using tuple_t = decayed_tuple<Tag, As...>;
 
@@ -146,7 +146,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<source_sender_t> _Self, class _Env>
       friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-        -> __try_make_completion_signatures< __copy_cvref_t<_Self, Sender>, _Env> {
+        -> __try_make_completion_signatures<__copy_cvref_t<_Self, Sender>, _Env> {
         return {};
       }
 
@@ -160,7 +160,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <class _Ty>
     using error_completions_t = //
       completion_signatures<set_error_t(__decay_t<_Ty>&&)>;
-  }
+  } // namespace _sched_from
 
   template <class Scheduler, class SenderId>
   struct schedule_from_sender_t {
@@ -170,7 +170,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     struct __env {
       context_state_t context_state_;
 
-      template < __one_of<set_value_t, set_stopped_t, set_error_t> _Tag>
+      template <__one_of<set_value_t, set_stopped_t, set_error_t> _Tag>
       friend Scheduler tag_invoke(get_completion_scheduler_t<_Tag>, const __env& __self) noexcept {
         return {__self.context_state_};
       }
@@ -183,7 +183,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <class Self, class Receiver>
       using receiver_t = //
-        stdexec::__t< _sched_from::receiver_t< __cvref_id<Self, Sender>, stdexec::__id<Receiver>>>;
+        stdexec::__t<_sched_from::receiver_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>>>;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires sender_to<__copy_cvref_t<Self, source_sender_th>, Receiver>
@@ -222,11 +222,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
     };
   };
-}
+} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
 
 namespace stdexec::__detail {
   template <class _Scheduler, class _SenderId>
-  extern __mconst<nvexec::STDEXEC_STREAM_DETAIL_NS::
-                    schedule_from_sender_t<_Scheduler, __name_of<__t<_SenderId>> > >
+  extern __mconst<
+    nvexec::STDEXEC_STREAM_DETAIL_NS::schedule_from_sender_t<_Scheduler, __name_of<__t<_SenderId>>>>
     __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::schedule_from_sender_t<_Scheduler, _SenderId>>;
-}
+} // namespace stdexec::__detail
