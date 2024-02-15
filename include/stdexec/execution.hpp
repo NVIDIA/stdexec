@@ -675,7 +675,6 @@ namespace stdexec {
         } else {
           return __domain::__transform_sender()(__domain2, std::move(__sndr2), __env);
         }
-        STDEXEC_UNREACHABLE();
       });
   }
 
@@ -3307,7 +3306,6 @@ namespace stdexec {
           return stdexec::transform_sender(
             __domain, __make_sexpr<ensure_started_t>((_Env&&) __env, (_Sender&&) __sndr));
         }
-        STDEXEC_UNREACHABLE();
       }
 
       STDEXEC_ATTRIBUTE((always_inline)) //
@@ -3576,7 +3574,6 @@ namespace stdexec {
               __env::__without(__env, get_domain));
           }
         }
-        STDEXEC_UNREACHABLE();
       };
     }
 
@@ -3600,7 +3597,6 @@ namespace stdexec {
             return __make_sexpr<__let_t<_Set, _Domain>>((_Fun&&) __fun, (_Child&&) __child);
           }
         }
-        STDEXEC_UNREACHABLE();
       };
     }
 
@@ -4850,7 +4846,6 @@ namespace stdexec {
           } else {
             return __env::__with(_Domain(), get_domain);
           }
-          STDEXEC_UNREACHABLE();
         };
 
       static constexpr auto get_completion_signatures = //
@@ -4988,7 +4983,6 @@ namespace stdexec {
           } else {
             return __env::__with(_Domain(), get_domain);
           }
-          STDEXEC_UNREACHABLE();
         };
     };
 
@@ -5565,7 +5559,6 @@ namespace stdexec {
         constexpr __mstring __diag = "Unknown concept check failure."_mstr;
         return __sync_wait_error<__diag, _Sender>();
       }
-      STDEXEC_UNREACHABLE();
     }
 
     template <class _Sender>

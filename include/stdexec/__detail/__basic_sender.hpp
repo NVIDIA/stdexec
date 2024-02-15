@@ -173,7 +173,6 @@ namespace stdexec {
       } else {
         return empty_env();
       }
-      STDEXEC_UNREACHABLE();
     };
 
     inline constexpr auto __get_env = //
@@ -536,7 +535,6 @@ namespace stdexec {
       } else {
         return __self.__impl_(__copy_cvref_fn<_Self>(), __nth_pack_element<_Idx>);
       }
-      STDEXEC_UNREACHABLE();
     }
   };
 

@@ -269,7 +269,6 @@ namespace exec {
               "on which to schedule bulk work.");
             return not_a_sender<__name_of<Sender>>();
           }
-          STDEXEC_UNREACHABLE();
         }
 
         // transform the generic bulk sender into a parallel thread-pool bulk sender
@@ -289,7 +288,6 @@ namespace exec {
               "environment on which to schedule bulk work.");
             return not_a_sender<__name_of<Sender>>();
           }
-          STDEXEC_UNREACHABLE();
         }
 
 #if STDEXEC_HAS_STD_RANGES()
