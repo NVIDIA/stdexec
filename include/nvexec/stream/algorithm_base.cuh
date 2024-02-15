@@ -39,7 +39,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
 
       template <class... Range>
       struct result_size_for {
-        using __t = __msize_t< sizeof(typename DerivedReceiver::template result_t<Range...>)>;
+        using __t = __msize_t<sizeof(typename DerivedReceiver::template result_t<Range...>)>;
       };
 
       template <class... Sizes>
@@ -52,7 +52,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
         using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
 
         static constexpr ::std::size_t value = //
-          __v< __gather_completions_for<
+          __v<__gather_completions_for<
             set_value_t,
             Sender,
             env_of_t<Receiver>,
@@ -113,12 +113,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
           __copy_cvref_t<Self, Sender>,
           Env,
           completion_signatures<set_error_t(cudaError_t)>,
-          __q<_set_value_t >>;
+          __q<_set_value_t>>;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
       friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
-        -> stream_op_state_t< __copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
+        -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
           ((Self&&) self).sndr_,
           (Receiver&&) rcvr,
@@ -139,4 +139,4 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       }
     };
   };
-}
+} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun

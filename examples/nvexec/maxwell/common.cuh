@@ -30,8 +30,8 @@
 #include <math.h>
 
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
-#define STDEXEC_STDERR
-#include "nvexec/detail/throw_on_cuda_error.cuh"
+#  define STDEXEC_STDERR
+#  include "nvexec/detail/throw_on_cuda_error.cuh"
 #endif
 
 struct deleter_t {
@@ -90,7 +90,8 @@ struct fields_accessor {
 
   float *base_ptr;
 
-  STDEXEC_ATTRIBUTE((nodiscard, host, device)) float *get(field_id id) const {
+  STDEXEC_ATTRIBUTE((nodiscard, host, device))
+  float *get(field_id id) const {
     return base_ptr + static_cast<int>(id) * cells;
   }
 };
@@ -115,7 +116,8 @@ struct grid_t {
         static_cast<std::size_t>(cells) * static_cast<int>(field_id::fields_count))) {
   }
 
-  [[nodiscard]] fields_accessor accessor() const {
+  [[nodiscard]]
+  fields_accessor accessor() const {
     return {height / n, width / n, width, height, n, cells, fields_.get()};
   }
 };
@@ -137,7 +139,9 @@ struct grid_initializer_t {
   float dt;
   fields_accessor accessor;
 
-  STDEXEC_ATTRIBUTE((host, device)) void operator()(std::size_t cell_id) const {
+  STDEXEC_ATTRIBUTE((host, device))
+  void
+    operator()(std::size_t cell_id) const {
     const std::size_t row = cell_id / accessor.n;
     const std::size_t column = cell_id % accessor.n;
 
@@ -203,7 +207,9 @@ inline std::size_t top_nid(std::size_t cell_id, std::size_t row, std::size_t N) 
 struct h_field_calculator_t {
   fields_accessor accessor;
 
-  STDEXEC_ATTRIBUTE((always_inline, host, device)) void operator()(std::size_t cell_id) const {
+  STDEXEC_ATTRIBUTE((always_inline, host, device))
+  void
+    operator()(std::size_t cell_id) const {
     const std::size_t N = accessor.n;
     const std::size_t column = cell_id % N;
     const std::size_t row = cell_id / N;
@@ -241,7 +247,9 @@ struct e_field_calculator_t {
     return gaussian_pulse(t, t_0, tau);
   }
 
-  STDEXEC_ATTRIBUTE((always_inline, host, device)) void operator()(std::size_t cell_id) const {
+  STDEXEC_ATTRIBUTE((always_inline, host, device))
+  void
+    operator()(std::size_t cell_id) const {
     const std::size_t N = accessor.n;
     const std::size_t column = cell_id % N;
     const std::size_t row = cell_id / N;
@@ -375,7 +383,8 @@ class time_storage_t {
     : time_(allocate_on<float>(gpu)) {
   }
 
-  [[nodiscard]] float *get() const {
+  [[nodiscard]]
+  float *get() const {
     return time_.get();
   }
 };
@@ -431,7 +440,8 @@ std::pair<std::string_view, std::string_view> split(std::string_view str, char b
   return std::make_pair(str.substr(0, it), str.substr(it + 1, str.size() - it - 1));
 }
 
-[[nodiscard]] std::map<std::string_view, std::size_t> parse_cmd(int argc, char *argv[]) {
+[[nodiscard]]
+std::map<std::string_view, std::size_t> parse_cmd(int argc, char *argv[]) {
   std::map<std::string_view, std::size_t> params;
   const std::vector<std::string_view> args(argv + 1, argv + argc);
 
@@ -455,7 +465,8 @@ std::pair<std::string_view, std::string_view> split(std::string_view str, char b
   return params;
 }
 
-[[nodiscard]] std::size_t value(
+[[nodiscard]]
+std::size_t value(
   const std::map<std::string_view, std::size_t> &params,
   std::string_view name,
   std::size_t default_value = 0) {

@@ -18,8 +18,8 @@
 #include "common.cuh"
 
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
-#include "nvexec/stream/common.cuh"
-#include "nvexec/detail/throw_on_cuda_error.cuh"
+#  include "nvexec/stream/common.cuh"
+#  include "nvexec/detail/throw_on_cuda_error.cuh"
 #endif
 
 #include <ranges>

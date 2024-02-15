@@ -95,7 +95,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
       };
     };
-  }
+  } // namespace _upon_error
 
   template <class SenderId, class Fun>
   struct upon_error_sender_t {
@@ -133,7 +133,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
 
         static constexpr std::size_t value = //
-          __v< __gather_completions_for<
+          __v<__gather_completions_for<
             set_error_t,
             Sender,
             env_of_t<Receiver>,
@@ -144,7 +144,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class Receiver>
       using receiver_t = //
         stdexec::__t<
-          _upon_error::receiver_t< max_result_size<Receiver>::value, stdexec::__id<Receiver>, Fun>>;
+          _upon_error::receiver_t<max_result_size<Receiver>::value, stdexec::__id<Receiver>, Fun>>;
 
       template <class Self, class Env>
       using completion_signatures = //
@@ -156,7 +156,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __mbind_front_q<__set_value_invoke_t, Fun>>;
 
       template <__decays_to<__t> Self, receiver Receiver>
-        requires receiver_of< Receiver, completion_signatures<Self, env_of_t<Receiver>>>
+        requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
       friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
@@ -177,11 +177,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
     };
   };
-}
+} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
 
 namespace stdexec::__detail {
   template <class SenderId, class Fun>
   inline constexpr __mconst<
     nvexec::STDEXEC_STREAM_DETAIL_NS::upon_error_sender_t<__name_of<__t<SenderId>>, Fun>>
     __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::upon_error_sender_t<SenderId, Fun>>{};
-}
+} // namespace stdexec::__detail

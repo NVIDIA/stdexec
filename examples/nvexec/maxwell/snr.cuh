@@ -21,9 +21,9 @@
 
 
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
-#include "nvexec/detail/throw_on_cuda_error.cuh"
-#include <nvexec/stream_context.cuh>
-#include <nvexec/multi_gpu_context.cuh>
+#  include "nvexec/detail/throw_on_cuda_error.cuh"
+#  include <nvexec/stream_context.cuh>
+#  include <nvexec/multi_gpu_context.cuh>
 #else
 namespace nvexec {
   struct stream_receiver_base {
@@ -36,12 +36,12 @@ namespace nvexec {
 
   namespace detail {
     struct stream_op_state_base { };
-  }
+  } // namespace detail
 
   inline bool is_on_gpu() {
     return false;
   }
-}
+} // namespace nvexec
 #endif
 
 #include <optional>
@@ -185,7 +185,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
         }});
       }
     };
-}}
+}} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS::repeat_n
 #endif
 
 namespace repeat_n_detail {
@@ -377,7 +377,7 @@ namespace repeat_n_detail {
       return stdexec::get_env(s.sender_);
     }
   };
-}
+} // namespace repeat_n_detail
 
 struct repeat_n_t {
   template <stdexec::sender Sender, stdexec::__sender_adaptor_closure Closure>
@@ -401,7 +401,8 @@ struct repeat_n_t {
 inline constexpr repeat_n_t repeat_n{};
 
 template <class SchedulerT>
-[[nodiscard]] bool is_gpu_scheduler(SchedulerT&& scheduler) {
+[[nodiscard]]
+bool is_gpu_scheduler(SchedulerT&& scheduler) {
   auto snd = ex::just() | exec::on(scheduler, ex::then([] { return nvexec::is_on_gpu(); }));
   auto [on_gpu] = stdexec::sync_wait(std::move(snd)).value();
   return on_gpu;

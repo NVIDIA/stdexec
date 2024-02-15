@@ -104,4 +104,4 @@ namespace {
       return false;
     }
   };
-}
+} // namespace

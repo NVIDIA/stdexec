@@ -36,7 +36,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         struct receiver_t {
           __t& op_state_;
 
-          template < __completion_tag Tag, class... As >
+          template <__completion_tag Tag, class... As>
           friend void tag_invoke(Tag, receiver_t&& self, As&&... as) noexcept {
             Tag()(std::move(self.op_state_.rcvr_), (As&&) as...);
           }
@@ -102,7 +102,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         STDEXEC_IMMOVABLE(__t);
       };
     };
-  }
+  } // namespace _transfer
 
   template <class SenderId>
   struct transfer_sender_t {
@@ -114,7 +114,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class Self, class Receiver>
       using op_state_th = //
         stdexec::__t<
-          _transfer::operation_state_t< __cvref_id<Self, Sender>, stdexec::__id<Receiver>>>;
+          _transfer::operation_state_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>>>;
 
       context_state_t context_state_;
       Sender sndr_;
@@ -159,11 +159,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
     };
   };
-}
+} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
 
 namespace stdexec::__detail {
   template <class SenderId>
   inline constexpr __mconst<
     nvexec::STDEXEC_STREAM_DETAIL_NS::transfer_sender_t<__name_of<__t<SenderId>>>>
     __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::transfer_sender_t<SenderId>>{};
-}
+} // namespace stdexec::__detail

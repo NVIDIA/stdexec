@@ -132,7 +132,7 @@ namespace nvexec {
       visit_impl(
         std::integral_constant<std::size_t, I - 1>{}, (VisitorT&&) visitor, (V&&) v, index);
     }
-  }
+  } // namespace detail
 
   template <class VisitorT, class V>
   STDEXEC_ATTRIBUTE((host, device))
@@ -166,7 +166,7 @@ namespace nvexec {
     using front_t = detail::front<Ts...>;
 
     template <detail::one_of<Ts...> T>
-    using index_of = std::integral_constant< index_t, detail::find_index<index_t, T, Ts...>()>;
+    using index_of = std::integral_constant<index_t, detail::find_index<index_t, T, Ts...>()>;
 
     template <detail::one_of<Ts...> T>
     STDEXEC_ATTRIBUTE((host, device))
@@ -181,8 +181,7 @@ namespace nvexec {
       return get<detail::nth_type<I, Ts...>>();
     }
 
-    STDEXEC_ATTRIBUTE((host, device))
-    variant_t()
+    STDEXEC_ATTRIBUTE((host, device)) variant_t()
       requires std::default_initializable<front_t>
     {
       emplace<front_t>();
@@ -192,7 +191,8 @@ namespace nvexec {
       destroy();
     }
 
-    STDEXEC_ATTRIBUTE((host, device)) bool holds_alternative() const {
+    STDEXEC_ATTRIBUTE((host, device))
+    bool holds_alternative() const {
       return index_ != detail::npos<index_t>();
     }
 
@@ -210,7 +210,8 @@ namespace nvexec {
       index_ = index_of<T>();
     }
 
-    STDEXEC_ATTRIBUTE((host, device)) void destroy() {
+    STDEXEC_ATTRIBUTE((host, device))
+    void destroy() {
       if (holds_alternative()) {
         visit(
           [](auto& val) noexcept {
@@ -230,4 +231,4 @@ namespace nvexec {
     union_t storage_;
     index_t index_;
   };
-}
+} // namespace nvexec

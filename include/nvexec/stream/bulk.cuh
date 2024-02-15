@@ -85,7 +85,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
       };
     };
-  }
+  } // namespace _bulk
 
   template <class SenderId, std::integral Shape, class Fun>
   struct bulk_sender_t {
@@ -97,13 +97,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       Shape shape_;
       Fun fun_;
 
-      using _set_error_t = completion_signatures< set_error_t(cudaError_t)>;
+      using _set_error_t = completion_signatures<set_error_t(cudaError_t)>;
 
       template <class Receiver>
       using receiver_t = stdexec::__t<_bulk::receiver_t<stdexec::__id<Receiver>, Shape, Fun>>;
 
       template <class... Tys>
-      using _set_value_t = completion_signatures< set_value_t(Tys...)>;
+      using _set_value_t = completion_signatures<set_value_t(Tys...)>;
 
       template <class Self, class Env>
       using _completion_signatures_t = //
@@ -114,7 +114,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __q<_set_value_t>>;
 
       template <__decays_to<__t> Self, receiver Receiver>
-        requires receiver_of< Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
+        requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
       friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
@@ -259,7 +259,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     template <class SenderId, class ReceiverId, class Shape, class Fun>
     using operation_base_t =
-      operation_state_t< SenderId, receiver_t<SenderId, ReceiverId, Shape, Fun>, ReceiverId>;
+      operation_state_t<SenderId, receiver_t<SenderId, ReceiverId, Shape, Fun>, ReceiverId>;
 
     template <class CvrefSenderId, class ReceiverId, class Shape, class Fun>
     struct operation_t : operation_base_t<CvrefSenderId, ReceiverId, Shape, Fun> {
@@ -316,7 +316,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       std::unique_ptr<cudaEvent_t[]> ready_to_complete_;
       cudaEvent_t ready_to_launch_;
     };
-  }
+  } // namespace multi_gpu_bulk
 
   template <class SenderId, std::integral Shape, class Fun>
   struct multi_gpu_bulk_sender_t {
@@ -330,10 +330,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       Shape shape_;
       Fun fun_;
 
-      using _set_error_t = completion_signatures< set_error_t(cudaError_t)>;
+      using _set_error_t = completion_signatures<set_error_t(cudaError_t)>;
 
       template <class... Tys>
-      using _set_value_t = completion_signatures< set_value_t(Tys...)>;
+      using _set_value_t = completion_signatures<set_value_t(Tys...)>;
 
       template <class Self, class Env>
       using _completion_signatures_t = //
@@ -370,7 +370,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
     };
   };
-}
+} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
 
 namespace stdexec::__detail {
   template <class SenderId, class Shape, class Fun>
@@ -382,4 +382,4 @@ namespace stdexec::__detail {
   inline constexpr __mconst<
     nvexec::STDEXEC_STREAM_DETAIL_NS::multi_gpu_bulk_sender_t<__name_of<__t<SenderId>>, Shape, Fun>>
     __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::multi_gpu_bulk_sender_t<SenderId, Shape, Fun>>{};
-}
+} // namespace stdexec::__detail

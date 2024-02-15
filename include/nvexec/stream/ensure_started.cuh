@@ -58,7 +58,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           : shared_state_(shared_state.__intrusive_from_this()) {
         }
 
-        template < __completion_tag Tag, class... As>
+        template <__completion_tag Tag, class... As>
         friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
           SharedState& state = *self.shared_state_;
 
@@ -111,7 +111,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using enqueue_receiver_t =
         stdexec::__t<stream_enqueue_receiver<stdexec::__cvref_id<env_t>, variant_t>>;
       using intermediate_receiver = //
-        stdexec::__t< std::conditional_t<
+        stdexec::__t<std::conditional_t<
           stream_sender<Sender, env_t>,
           stdexec::__id<inner_receiver_t>,
           stdexec::__id<enqueue_receiver_t>>>;
@@ -142,7 +142,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         , op_state1_{nullptr}
         , op_state2_(connect((Sender&&) sndr, inner_receiver_t{*this})) {
         if (stream_provider_.status_ == cudaSuccess) {
-          stream_provider_.status_ = STDEXEC_DBG_ERR(cudaEventCreate(&event_, cudaEventDisableTiming));
+          stream_provider_.status_ = STDEXEC_DBG_ERR(
+            cudaEventCreate(&event_, cudaEventDisableTiming));
         }
 
         start(op_state2_);
@@ -211,7 +212,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         };
 
         using on_stop = //
-          std::optional< typename stop_token_of_t< env_of_t<Receiver>&>::template callback_type<
+          std::optional<typename stop_token_of_t<env_of_t<Receiver>&>::template callback_type<
             on_stop_requested>>;
 
         on_stop on_stop_{};
@@ -296,7 +297,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
       };
     };
-  }
+  } // namespace _ensure_started
 
   template <class SenderId>
   struct ensure_started_sender_t {
@@ -308,7 +309,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using sh_state_ = _ensure_started::sh_state_t<Sender>;
       template <class Receiver>
       using operation_t = //
-        stdexec::__t< _ensure_started::operation_t<SenderId, stdexec::__id<__decay_t<Receiver>>>>;
+        stdexec::__t<_ensure_started::operation_t<SenderId, stdexec::__id<__decay_t<Receiver>>>>;
 
       Sender sndr_;
       __intrusive_ptr<sh_state_> shared_state_;
@@ -358,11 +359,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       __t(__t&&) = default;
     };
   };
-}
+} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
 
 namespace stdexec::__detail {
   template <class SenderId>
   inline constexpr __mconst<
     nvexec::STDEXEC_STREAM_DETAIL_NS::ensure_started_sender_t<__name_of<__t<SenderId>>>>
     __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::ensure_started_sender_t<SenderId>>{};
-}
+} // namespace stdexec::__detail
