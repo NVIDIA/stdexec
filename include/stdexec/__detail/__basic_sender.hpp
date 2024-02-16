@@ -213,7 +213,7 @@ namespace stdexec {
         _SetTag()(std::move(__rcvr), (_Args&&) __args...);
       };
 
-    inline constexpr auto __get_completion_signagures = //
+    inline constexpr auto __get_completion_signatures = //
       [](__ignore, __ignore) noexcept {
         return void();
       };
@@ -417,12 +417,29 @@ namespace stdexec {
               -> __call_result_t<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>
                 requires __callable<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>
       {
-        // The use of decltype(__captures2) here instead of _Captures is a workaround for
+        // The use of decltype(__captures3) here instead of _Captures is a workaround for
         // a codegen bug in nvc++.
         return ((_Fun&&) __fun)(
           _Tag(), const_cast<__minvoke<_Cvref, decltype(__captures3)>&&>(__captures3)...);
       };
     }
+
+    template <class _Sender>
+    concept __non_dependent_sender = //
+      requires {
+        typename _Sender::completion_signatures;
+      } ||
+      requires {
+        requires _Sender::__is_non_dependent();
+      };
+
+    template <class _Tag, class... _Child>
+    concept __is_non_dependent_sexpr = //
+      !requires { typename __sexpr_impl<_Tag>::is_dependent; } &&
+      (__non_dependent_sender<_Child> &&...);
+
+    template <class _Tag, class _Data, class... _Child>
+    using __is_non_dependent_t = __mbool<__is_non_dependent_sexpr<_Tag, _Child...>>;
 
     template <class _Tag, class _Data, class... _Child>
     using __captures_t =
@@ -444,10 +461,10 @@ namespace stdexec {
     static constexpr auto connect = __detail::__connect;
     static constexpr auto start = __detail::__start;
     static constexpr auto complete = __detail::__complete;
-    static constexpr auto get_completion_signagures = __detail::__get_completion_signagures;
+    static constexpr auto get_completion_signagures = __detail::__get_completion_signatures;
   };
 
-  template <class Tag>
+  template <class _Tag>
   struct __sexpr_impl : __sexpr_defaults { };
 
   using __detail::__enable_receiver_from_this;
@@ -473,6 +490,10 @@ namespace stdexec {
     using __desc_t = decltype(_DescriptorFn());
     using __tag_t = typename __desc_t::__tag;
     using __captures_t = __minvoke<__desc_t, __q<__detail::__captures_t>>;
+
+    static constexpr bool __is_non_dependent() noexcept {
+      return __v<__minvoke<__desc_t, __q<__detail::__is_non_dependent_t>>>;
+    }
 
     mutable __captures_t __impl_;
 
