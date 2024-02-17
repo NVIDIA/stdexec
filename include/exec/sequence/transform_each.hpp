@@ -184,7 +184,7 @@ namespace exec {
       template <sender_expr_for<transform_each_t> _Self, receiver _Receiver>
         requires __callabale_adaptor_for<
                    __data_of<_Self>,
-                   __item_types_t<_Self, env_of_t<_Receiver>>>
+                   item_types_of_t<__child_of<_Self>, env_of_t<_Receiver>>>
               && sequence_receiver_of<_Receiver, __item_types_t<_Self, env_of_t<_Receiver>>>
               && sequence_sender_to<__child_of<_Self>, __receiver_t<_Self, _Receiver>>
       static auto subscribe(_Self&& __self, _Receiver __rcvr) noexcept(
