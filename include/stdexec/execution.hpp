@@ -4756,11 +4756,7 @@ namespace stdexec {
 
     template <class _Env, class _Sender>
     using __values_opt_tuple_t = //
-      __value_types_of_t<
-        _Sender,
-        __env_t<_Env>,
-        __mcompose<__q<std::optional>, __q<__decayed_tuple>>,
-        __q<__msingle>>;
+      value_types_of_t<_Sender, __env_t<_Env>, __decayed_tuple, std::optional>;
 
     template <class _Env, __max1_sender<__env_t<_Env>>... _Senders>
     struct __traits {
