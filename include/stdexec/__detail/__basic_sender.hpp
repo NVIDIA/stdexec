@@ -461,7 +461,7 @@ namespace stdexec {
     static constexpr auto connect = __detail::__connect;
     static constexpr auto start = __detail::__start;
     static constexpr auto complete = __detail::__complete;
-    static constexpr auto get_completion_signagures = __detail::__get_completion_signatures;
+    static constexpr auto get_completion_signatures = __detail::__get_completion_signatures;
   };
 
   template <class _Tag>
