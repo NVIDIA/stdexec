@@ -322,6 +322,13 @@ namespace stdexec {
   using __completion_signatures_of_t = __call_result_t<get_completion_signatures_t, _Sender, _Env>;
 
   /////////////////////////////////////////////////////////////////////////////
+  // early sender type-checking
+  template <class _Sender>
+  concept __well_formed_sender = //
+    !__detail::__non_dependent_sender<_Sender> ||
+    __valid_completion_signatures<__completion_signatures_of_t<_Sender, empty_env>>;
+
+  /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
   struct receiver_t {
     using receiver_concept = receiver_t; // NOT TO SPEC
@@ -682,16 +689,6 @@ namespace stdexec {
           return __domain::__transform_sender()(__domain2, std::move(__sndr2), __env);
         }
       });
-  }
-
-  // A helper for use when building sender trees where each node must be transformed.
-  template <class _Domain, class _Env>
-  auto __make_transformer(_Domain, const _Env& __env) {
-    return [&]<class _Tag>(_Tag) {
-      return [&]<class... _Args>(_Args&&... __args) -> decltype(auto) {
-        return stdexec::transform_sender(_Domain(), _Tag()((_Args&&) __args...), __env);
-      };
-    };
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -2576,7 +2573,7 @@ namespace stdexec {
     ////////////////////////////////////////////////////////////////////////////////////////////////
     struct then_t {
       template <sender _Sender, __movable_value _Fun>
-      auto operator()(_Sender&& __sndr, _Fun __fun) const {
+      __well_formed_sender auto operator()(_Sender&& __sndr, _Fun __fun) const {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
           __domain, __make_sexpr<then_t>((_Fun&&) __fun, (_Sender&&) __sndr));
@@ -2653,7 +2650,7 @@ namespace stdexec {
     ////////////////////////////////////////////////////////////////////////////////////////////////
     struct upon_error_t {
       template <sender _Sender, __movable_value _Fun>
-      auto operator()(_Sender&& __sndr, _Fun __fun) const {
+      __well_formed_sender auto operator()(_Sender&& __sndr, _Fun __fun) const {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
           __domain, __make_sexpr<upon_error_t>((_Fun&&) __fun, (_Sender&&) __sndr));
@@ -2728,7 +2725,7 @@ namespace stdexec {
     struct upon_stopped_t {
       template <sender _Sender, __movable_value _Fun>
         requires __callable<_Fun>
-      auto operator()(_Sender&& __sndr, _Fun __fun) const {
+      __well_formed_sender auto operator()(_Sender&& __sndr, _Fun __fun) const {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
           __domain, __make_sexpr<upon_stopped_t>((_Fun&&) __fun, (_Sender&&) __sndr));
@@ -2824,7 +2821,7 @@ namespace stdexec {
     struct bulk_t {
       template <sender _Sender, integral _Shape, __movable_value _Fun>
       STDEXEC_ATTRIBUTE((host, device))
-      auto
+      __well_formed_sender auto
         operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
@@ -3250,7 +3247,7 @@ namespace stdexec {
     struct split_t {
       template <sender _Sender, class _Env = empty_env>
         requires sender_in<_Sender, _Env> && __decay_copyable<env_of_t<_Sender>>
-      auto operator()(_Sender&& __sndr, _Env&& __env = {}) const {
+      __well_formed_sender auto operator()(_Sender&& __sndr, _Env&& __env = {}) const {
         auto __domain = __get_late_domain(__sndr, __env);
         return stdexec::transform_sender(
           __domain, __make_sexpr<split_t>((_Env&&) __env, (_Sender&&) __sndr));
@@ -3330,7 +3327,7 @@ namespace stdexec {
       template <sender _Sender, class _Env = empty_env>
         requires sender_in<_Sender, _Env> && __decay_copyable<env_of_t<_Sender>>
       [[nodiscard]]
-      auto
+      __well_formed_sender auto
         operator()(_Sender&& __sndr, _Env&& __env = {}) const {
         if constexpr (sender_expr_for<_Sender, __ensure_started_t>) {
           return (_Sender&&) __sndr;
@@ -3668,7 +3665,7 @@ namespace stdexec {
       using __t = _Set;
 
       template <sender _Sender, __movable_value _Fun>
-      auto operator()(_Sender&& __sndr, _Fun __fun) const {
+      __well_formed_sender auto operator()(_Sender&& __sndr, _Fun __fun) const {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
           __domain, __make_sexpr<__let_t<_Set>>((_Fun&&) __fun, (_Sender&&) __sndr));
@@ -4228,7 +4225,7 @@ namespace stdexec {
 
     struct schedule_from_t {
       template <scheduler _Scheduler, sender _Sender>
-      auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const {
+      __well_formed_sender auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const {
         using _Env = __t<__environ<__id<__decay_t<_Scheduler>>>>;
         auto __env = _Env{{(_Scheduler&&) __sched}};
         auto __domain = query_or(get_domain, __sched, default_domain());
@@ -4315,7 +4312,7 @@ namespace stdexec {
 
     struct transfer_t {
       template <sender _Sender, scheduler _Scheduler>
-      auto operator()(_Sender&& __sndr, _Scheduler&& __sched) const {
+      __well_formed_sender auto operator()(_Sender&& __sndr, _Scheduler&& __sched) const {
         auto __domain = __get_early_domain(__sndr);
         using _Env = __t<__environ<__id<__decay_t<_Scheduler>>>>;
         return stdexec::transform_sender(
@@ -4400,7 +4397,7 @@ namespace stdexec {
         __types<__apply_t(decltype(__transfer_just_tag_invoke()), _Data)>;
 
       template <scheduler _Scheduler, __movable_value... _Values>
-      auto operator()(_Scheduler&& __sched, _Values&&... __vals) const {
+      __well_formed_sender auto operator()(_Scheduler&& __sched, _Values&&... __vals) const {
         auto __domain = query_or(get_domain, __sched, default_domain());
         return stdexec::transform_sender(
           __domain,
@@ -4522,7 +4519,7 @@ namespace stdexec {
       using __legacy_customizations_t = __types< tag_invoke_t(on_t, _Scheduler, _Sender)>;
 
       template <scheduler _Scheduler, sender _Sender>
-      auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const {
+      __well_formed_sender auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const {
         auto __domain = query_or(get_domain, __sched, default_domain());
         return stdexec::transform_sender(
           __domain, __make_sexpr<on_t>((_Scheduler&&) __sched, (_Sender&&) __sndr));
@@ -4579,7 +4576,7 @@ namespace stdexec {
 
     struct into_variant_t {
       template <sender _Sender>
-      auto operator()(_Sender&& __sndr) const {
+      __well_formed_sender auto operator()(_Sender&& __sndr) const {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
           __domain, __make_sexpr<into_variant_t>(__(), std::forward<_Sender>(__sndr)));
@@ -4862,10 +4859,9 @@ namespace stdexec {
       using __legacy_customizations_t = //
         __types<tag_invoke_t(when_all_t, _Sender...)>;
 
-      // TODO: improve diagnostic when senders have different domains
       template <sender... _Senders>
         requires __domain::__has_common_domain<_Senders...>
-      auto operator()(_Senders&&... __sndrs) const {
+      __well_formed_sender auto operator()(_Senders&&... __sndrs) const {
         auto __domain = __domain::__common_domain_t<_Senders...>();
         return stdexec::transform_sender(
           __domain, __make_sexpr<when_all_t>(__(), (_Senders&&) __sndrs...));
@@ -5001,7 +4997,7 @@ namespace stdexec {
 
       template <sender... _Senders>
         requires __domain::__has_common_domain<_Senders...>
-      auto operator()(_Senders&&... __sndrs) const {
+      __well_formed_sender auto operator()(_Senders&&... __sndrs) const {
         auto __domain = __domain::__common_domain_t<_Senders...>();
         return stdexec::transform_sender(
           __domain, __make_sexpr<when_all_with_variant_t>(__(), (_Senders&&) __sndrs...));
@@ -5042,7 +5038,7 @@ namespace stdexec {
 
       template <scheduler _Scheduler, sender... _Senders>
         requires __domain::__has_common_domain<_Senders...>
-      auto operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const {
+      __well_formed_sender auto operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const {
         using _Env = __t<__schedule_from::__environ<__id<__decay_t<_Scheduler>>>>;
         auto __domain = query_or(get_domain, __sched, default_domain());
         return stdexec::transform_sender(
@@ -5082,7 +5078,7 @@ namespace stdexec {
 
       template <scheduler _Scheduler, sender... _Senders>
         requires __domain::__has_common_domain<_Senders...>
-      auto operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const {
+      __well_formed_sender auto operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const {
         using _Env = __t<__schedule_from::__environ<__id<__decay_t<_Scheduler>>>>;
         auto __domain = query_or(get_domain, __sched, default_domain());
         return stdexec::transform_sender(
@@ -5191,6 +5187,8 @@ namespace stdexec {
     };
 
     struct __read_impl : __sexpr_defaults {
+      using is_dependent = void;
+
       template <class _Tag, class _Env>
       using __completions_t =
         __minvoke<__mtry_catch_q<__read::__completions_t, __q<__query_failed_error>>, _Tag, _Env>;
@@ -5328,7 +5326,7 @@ namespace stdexec {
 
     struct on_t : __no_scheduler_in_environment {
       template <scheduler _Scheduler, sender _Sender>
-      auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const {
+      __well_formed_sender auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const {
         // BUGBUG __get_early_domain, or get_domain(__sched), or ...?
         auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
@@ -5390,7 +5388,7 @@ namespace stdexec {
 
     struct continue_on_t : __no_scheduler_in_environment {
       template <sender _Sender, scheduler _Scheduler, __sender_adaptor_closure_for<_Sender> _Closure>
-      auto operator()(_Sender&& __sndr, _Scheduler&& __sched, _Closure&& __clsur) const {
+      __well_formed_sender auto operator()(_Sender&& __sndr, _Scheduler&& __sched, _Closure&& __clsur) const {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
           __domain,
@@ -5439,6 +5437,16 @@ namespace stdexec {
     using __on_v2::continue_on_t;
     inline constexpr continue_on_t continue_on{};
   }
+
+  template <>
+  struct __sexpr_impl<v2::on_t> : __sexpr_defaults {
+    using is_dependent = void;
+  };
+
+  template <>
+  struct __sexpr_impl<v2::continue_on_t> : __sexpr_defaults {
+    using is_dependent = void;
+  };
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.consumers.sync_wait]
