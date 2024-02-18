@@ -54,7 +54,7 @@ namespace {
     CHECK(foo(e3) == 44);
     CHECK(bar(e3) == 43);
 
-    auto e4 = exec::make_env(e3, exec::without(foo));
+    auto e4 = exec::without(e3, foo);
     STATIC_REQUIRE(!std::invocable<Foo, decltype(e4)>);
     CHECK(bar(e4) == 43);
   }

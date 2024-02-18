@@ -20,6 +20,7 @@
 
 #include <atomic>
 #include <bit>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <new>

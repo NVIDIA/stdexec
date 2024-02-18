@@ -17,6 +17,8 @@
 
 #include "__execution_fwd.hpp"
 
+#include "__config.hpp"
+#include "__concepts.hpp"
 #include "__basic_sender.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
@@ -91,7 +93,6 @@ namespace stdexec {
       } else {
         return static_cast<_Sender>((_Sender&&) __sndr);
       }
-      STDEXEC_UNREACHABLE();
     }
 
     // Called with an environment during lazy customization
@@ -103,7 +104,6 @@ namespace stdexec {
       } else {
         return static_cast<_Sender>((_Sender&&) __sndr);
       }
-      STDEXEC_UNREACHABLE();
     }
 
     template <class _Tag, class _Sender, class... _Args>
@@ -118,7 +118,6 @@ namespace stdexec {
       } else {
         return _Tag().apply_sender((_Sender&&) __sndr, (_Args&&) __args...);
       }
-      STDEXEC_UNREACHABLE();
     }
 
     template <class _Sender, class _Env>
@@ -179,7 +178,6 @@ namespace stdexec {
       } else {
         return __def;
       }
-      STDEXEC_UNREACHABLE();
     }
   } __get_early_domain{};
 
@@ -203,7 +201,6 @@ namespace stdexec {
       } else {
         return default_domain();
       }
-      STDEXEC_UNREACHABLE();
     }
 
     // The transfer algorithm is the exception to the rule. It ignores the domain

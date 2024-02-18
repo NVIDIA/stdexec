@@ -98,7 +98,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
       };
     };
-  }
+  } // namespace _upon_stopped
 
   template <class SenderId, class Fun>
   struct upon_stopped_sender_t {
@@ -109,10 +109,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       Sender sndr_;
       Fun fun_;
 
-      using _set_error_t = completion_signatures< set_error_t(std::exception_ptr)>;
+      using _set_error_t = completion_signatures<set_error_t(std::exception_ptr)>;
 
       template <class Receiver>
-      using receiver_t = stdexec::__t< _upon_stopped::receiver_t<stdexec::__id<Receiver>, Fun>>;
+      using receiver_t = stdexec::__t<_upon_stopped::receiver_t<stdexec::__id<Receiver>, Fun>>;
 
       template <class Self, class Env>
       using completion_signatures = //
@@ -131,7 +131,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __set_value_invoke_t<Fun>>;
 
       template <__decays_to<__t> Self, receiver Receiver>
-        requires receiver_of< Receiver, completion_signatures<Self, env_of_t<Receiver>>>
+        requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
       friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
@@ -152,11 +152,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
     };
   };
-}
+} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
 
 namespace stdexec::__detail {
   template <class SenderId, class Fun>
   inline constexpr __mconst<
     nvexec::STDEXEC_STREAM_DETAIL_NS::upon_stopped_sender_t<__name_of<__t<SenderId>>, Fun>>
     __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::upon_stopped_sender_t<SenderId, Fun>>{};
-}
+} // namespace stdexec::__detail

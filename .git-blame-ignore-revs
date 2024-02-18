@@ -9,3 +9,6 @@
 
 # Put all tests in anonymous namespaces and reformat
 5d6b265c3b7ebcf49a725ce17c399b1e9666118d
+
+# Reformat everything with clang-format-17
+ab2a3baef655db23fb7ec11ce7ec49575bbd2807

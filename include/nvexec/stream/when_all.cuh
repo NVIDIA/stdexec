@@ -53,7 +53,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <class Env, class... Senders>
     struct completions {
       using InvalidArg = //
-        __minvoke< __mfind_if<__mbind_back_q<too_many_completions, Env>, __q<__mfront>>, Senders...>;
+        __minvoke<__mfind_if<__mbind_back_q<too_many_completions, Env>, __q<__mfront>>, Senders...>;
 
       using __t = stdexec::__when_all::__too_many_value_completions_error<InvalidArg, Env>;
     };
@@ -69,7 +69,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     struct completions<Env, Senders...> {
       using non_values = //
         __concat_completion_signatures_t<
-          completion_signatures< set_error_t(cudaError_t), set_stopped_t()>,
+          completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
           __try_make_completion_signatures<
             Senders,
             Env,
@@ -78,14 +78,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using values = //
         __minvoke<
           __mconcat<__qf<set_value_t>>,
-          __value_types_of_t< Senders, Env, __q<__types>, __msingle_or<__types<>>>...>;
+          __value_types_of_t<Senders, Env, __q<__types>, __msingle_or<__types<>>>...>;
       using __t = //
         __if_c<
           (__sends<set_value_t, Senders, Env> && ...),
-          __minvoke< __push_back<__q<completion_signatures>>, non_values, values>,
+          __minvoke<__push_back<__q<completion_signatures>>, non_values, values>,
           non_values>;
     };
-  }
+  } // namespace _when_all
 
   template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
   struct when_all_sender_t {
@@ -120,7 +120,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <class Completions>
       using sends_values = //
-        __mbool< __v< __gather_signal< set_value_t, Completions, __mconst<int>, __msize>> != 0>;
+        __mbool<__v<__gather_signal<set_value_t, Completions, __mconst<int>, __msize>> != 0>;
 
       template <class CvrefReceiverId>
       struct operation_t;
@@ -130,9 +130,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using WhenAll = __copy_cvref_t<CvrefReceiverId, stdexec::__t<when_all_sender_t>>;
         using Receiver = stdexec::__t<__decay_t<CvrefReceiverId>>;
         using Env = //
-          make_terminal_stream_env_t< exec::make_env_t<
+          make_terminal_stream_env_t<exec::make_env_t<
             env_of_t<Receiver>,
-            exec::with_t< get_stop_token_t, in_place_stop_token>>>;
+            exec::with_t<get_stop_token_t, in_place_stop_token>>>;
 
         struct __t
           : receiver_adaptor<__t>
@@ -226,7 +226,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <class Sender, std::size_t Index>
         using child_op_state =
-          exit_operation_state_t< Sender&&, stdexec::__t<receiver_t<CvrefReceiverId, Index>>>;
+          exit_operation_state_t<Sender&&, stdexec::__t<receiver_t<CvrefReceiverId, Index>>>;
 
         using Indices = std::index_sequence_for<SenderIds...>;
 
@@ -336,7 +336,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           : operation_t((WhenAll&&) when_all, (Receiver&&) rcvr, Indices{}) {
           for (int i = 0; i < sizeof...(SenderIds); i++) {
             if (status_ == cudaSuccess) {
-              status_ = STDEXEC_DBG_ERR(cudaEventCreate(&events_[i]));
+              status_ = STDEXEC_DBG_ERR(cudaEventCreate(&events_[i], cudaEventDisableTiming));
             }
           }
         }
@@ -395,7 +395,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           errors_{};
         child_values_tuple_t* values_{};
         in_place_stop_source stop_source_{};
-        std::optional<typename stop_token_of_t< env_of_t<Receiver>&>::template callback_type<
+        std::optional<typename stop_token_of_t<env_of_t<Receiver>&>::template callback_type<
           _when_all::on_stop_requested>>
           on_stop_{};
       };
@@ -419,7 +419,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       std::tuple<stdexec::__t<SenderIds>...> sndrs_;
     };
   };
-}
+} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
 
 namespace stdexec::__detail {
   template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
@@ -428,4 +428,4 @@ namespace stdexec::__detail {
       when_all_sender_t<WithCompletionScheduler, Scheduler, __name_of<__t<SenderIds>>...>>
     __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::
                   when_all_sender_t<WithCompletionScheduler, Scheduler, SenderIds...>>{};
-}
+} // namespace stdexec::__detail

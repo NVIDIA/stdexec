@@ -366,4 +366,4 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       return &resource_;
     }
   };
-}
+} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS

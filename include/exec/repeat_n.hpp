@@ -28,6 +28,9 @@
 
 #include <atomic>
 #include <concepts>
+#include <cstddef>
+#include <exception>
+#include <type_traits>
 
 namespace exec {
   namespace __repeat_n {
@@ -116,9 +119,9 @@ namespace exec {
       }
 
       template <class _Tag, class... _Args>
-      void __complete(_Tag, _Args &&...__args) noexcept {
+      void __complete(_Tag, _Args ...__args) noexcept { // Intentionally by value...
         STDEXEC_ASSERT(__pair_.__count_ > 0);
-        __child_op_.__destroy();
+        __child_op_.__destroy(); // ... because this could potentially invalidate them.
         if constexpr (same_as<_Tag, set_value_t>) {
           try {
             if (--__pair_.__count_ == 0) {
@@ -151,6 +154,9 @@ namespace exec {
         completion_signatures<>,
         __mexception<_INVALID_ARGUMENT_TO_REPEAT_N_<>, _WITH_SENDER_<_Sender>>>;
 
+    template <class _Error>
+    using __error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
+
     template <class _Pair, class _Env>
     using __completions_t = //
       stdexec::__try_make_completion_signatures<
@@ -159,8 +165,11 @@ namespace exec {
         stdexec::__try_make_completion_signatures<
           stdexec::schedule_result_t<exec::trampoline_scheduler>,
           _Env,
-          __with_exception_ptr>,
-        __mbind_front_q<__values_t, decltype(__decay_t<_Pair>::__child_)>>;
+          __with_exception_ptr,
+          __q<__compl_sigs::__default_set_value>,
+          __q<__error_t>>,
+        __mbind_front_q<__values_t, decltype(__decay_t<_Pair>::__child_)>,
+        __q<__error_t>>;
 
     struct __repeat_n_tag { };
 
@@ -172,7 +181,7 @@ namespace exec {
 
       static constexpr auto get_state = //
         []<class _Sender, class _Receiver>(_Sender &&__sndr, _Receiver &__rcvr) {
-          return __repeat_n_state{std::move(__sndr), __rcvr};
+          return __repeat_n_state{(_Sender&&) __sndr, __rcvr};
         };
 
       static constexpr auto start = //

@@ -45,7 +45,7 @@ namespace nvexec {
 
       return error;
     }
-  }
+  } // namespace detail
 
 #define STDEXEC_DBG_ERR(E) ::nvexec::detail::debug_cuda_error(E, __FILE__, __LINE__) /**/
-}
+} // namespace nvexec

@@ -16,11 +16,11 @@
  */
 #pragma once
 
-#include <cassert>
-#include <tuple>
-#include <utility>
-
 #include "__config.hpp"
+
+#include <cstddef>
+#include <cassert>
+#include <utility>
 
 namespace stdexec {
   namespace __queue {

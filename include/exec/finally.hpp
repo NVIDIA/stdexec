@@ -17,6 +17,7 @@
 #pragma once
 
 #include "../stdexec/execution.hpp"
+#include "../stdexec/concepts.hpp"
 
 #include "__detail/__manual_lifetime.hpp"
 

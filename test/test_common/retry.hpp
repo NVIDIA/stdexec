@@ -19,6 +19,11 @@
 // Pull in the reference implementation of P2300:
 #include <stdexec/execution.hpp>
 
+#include <concepts>
+#include <exception>
+#include <optional>
+#include <type_traits>
+
 namespace {
 
   template <class From, class To>

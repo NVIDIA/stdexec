@@ -85,7 +85,7 @@ namespace nvexec {
           requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
         friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
           -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
-          return stream_op_state< __copy_cvref_t<Self, Sender>>(
+          return stream_op_state<__copy_cvref_t<Self, Sender>>(
             ((Self&&) self).sndr_,
             (Receiver&&) rcvr,
             [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
@@ -154,12 +154,12 @@ namespace nvexec {
 
     inline constexpr scoped_t scoped{};
 
-  }} // STDEXEC_STREAM_DETAIL_NS
+  }} // namespace STDEXEC_STREAM_DETAIL_NS::nvtx
 
   namespace nvtx {
-  using STDEXEC_STREAM_DETAIL_NS::nvtx::push;
-  using STDEXEC_STREAM_DETAIL_NS::nvtx::pop;
-  using STDEXEC_STREAM_DETAIL_NS::nvtx::scoped;
-  }
+    using STDEXEC_STREAM_DETAIL_NS::nvtx::push;
+    using STDEXEC_STREAM_DETAIL_NS::nvtx::pop;
+    using STDEXEC_STREAM_DETAIL_NS::nvtx::scoped;
+  } // namespace nvtx
 
 } // namespace nvexec

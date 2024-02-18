@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <atomic>
 #include <condition_variable>
+#include <cstdint>
 #include <exception>
 #include <mutex>
 #include <span>
@@ -268,7 +269,6 @@ namespace exec {
               "on which to schedule bulk work.");
             return not_a_sender<__name_of<Sender>>();
           }
-          STDEXEC_UNREACHABLE();
         }
 
         // transform the generic bulk sender into a parallel thread-pool bulk sender
@@ -288,7 +288,6 @@ namespace exec {
               "environment on which to schedule bulk work.");
             return not_a_sender<__name_of<Sender>>();
           }
-          STDEXEC_UNREACHABLE();
         }
 
 #if STDEXEC_HAS_STD_RANGES()
@@ -1010,7 +1009,7 @@ namespace exec {
         this->__execute = [](task_base* t, const std::uint32_t /* tid */) noexcept {
           auto& op = *static_cast<__t*>(t);
           auto stoken = get_stop_token(get_env(op.rcvr_));
-          if constexpr (std::unstoppable_token<decltype(stoken)>) {
+          if constexpr (stdexec::unstoppable_token<decltype(stoken)>) {
             set_value((Receiver&&) op.rcvr_);
           } else if (stoken.stop_requested()) {
             set_stopped((Receiver&&) op.rcvr_);

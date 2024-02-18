@@ -174,4 +174,13 @@ namespace stdexec {
   inline constexpr bool __is_const<_Up const> = true;
 #endif
 
+  namespace __tt {
+    template <class _Ty>
+    _Ty __remove_rvalue_reference_fn(_Ty&&);
+  }
+
+  template <class _Ty>
+  using __remove_rvalue_reference_t =
+    decltype(__tt::__remove_rvalue_reference_fn(__declval<_Ty>()));
+
 } // namespace stdexec

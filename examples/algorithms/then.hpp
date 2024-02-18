@@ -19,6 +19,8 @@
 // Pull in the reference implementation of P2300:
 #include <stdexec/execution.hpp>
 
+using namespace stdexec::tags;
+
 ///////////////////////////////////////////////////////////////////////////////
 // then algorithm:
 template <class R, class F>
@@ -71,22 +73,18 @@ struct _then_sender {
       _set_value_t>;
 
   template <class Env>
-  friend auto tag_invoke(stdexec::get_completion_signatures_t, _then_sender&&, Env)
-    -> _completions_t<Env> {
+  STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _then_sender&&, Env) -> _completions_t<Env> {
     return {};
   }
 
   // Connect:
   template <class R>
-  //requires stdexec::receiver_of<R, _completions_t<stdexec::env_of_t<R>>>
-  //requires stdexec::receiver_of<R, stdexec::completion_signatures_of_t<S, stdexec::env_of_t<R>>>
-  friend auto tag_invoke(stdexec::connect_t, _then_sender&& self, R r)
+  STDEXEC_MEMFN_DECL(auto connect)(this _then_sender&& self, R r)
     -> stdexec::connect_result_t<S, _then_receiver<R, F>> {
     return stdexec::connect((S&&) self.s_, _then_receiver<R, F>{(R&&) r, (F&&) self.f_});
   }
 
-  friend auto tag_invoke(stdexec::get_env_t, const _then_sender& self) //
-    noexcept(noexcept(stdexec::get_env(self.s_))) -> std::invoke_result_t<stdexec::get_env_t, S> {
+  STDEXEC_MEMFN_DECL(auto get_env)(this const _then_sender& self) noexcept -> stdexec::env_of_t<S> {
     return stdexec::get_env(self.s_);
   }
 };

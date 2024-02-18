@@ -18,6 +18,8 @@
 
 #include "../../stdexec/__detail/__intrusive_queue.hpp"
 
+#include <atomic>
+
 namespace exec {
   template <auto _NextPtr>
   class __atomic_intrusive_queue;

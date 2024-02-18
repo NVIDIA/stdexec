@@ -34,7 +34,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     template <class _Fun>
     using __result_sender = //
-      __transform< __q<__decay_ref>, __mbind_front_q<__call_result_t, _Fun>>;
+      __transform<__q<__decay_ref>, __mbind_front_q<__call_result_t, _Fun>>;
 
     template <class... Sizes>
     struct max_in_pack {
@@ -131,7 +131,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
         }
 
-        template < __completion_tag _Tag, class... _As>
+        template <__completion_tag _Tag, class... _As>
           requires __none_of<_Tag, _Let> && __callable<_Tag, _Receiver, _As...>
         friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
           static_assert(__nothrow_callable<_Tag, _Receiver, _As...>);
@@ -144,7 +144,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         using __op_state_variant_t = //
           __minvoke<
-            __transform< __uncurry<__op_state_for<_Receiver, _Fun>>, __nullable_variant_t>,
+            __transform<__uncurry<__op_state_for<_Receiver, _Fun>>, __nullable_variant_t>,
             _Tuples...>;
 
         __operation<_SenderId, _ReceiverId, _Fun, _Let>* __op_state_;
@@ -153,12 +153,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
     using __receiver = //
-      stdexec::__t< __gather_completions_for<
+      stdexec::__t<__gather_completions_for<
         _Let,
         stdexec::__t<_SenderId>,
         stream_env<env_of_t<stdexec::__t<_ReceiverId>>>,
         __q<__decayed_tuple>,
-        __munique< __mbind_front_q< __receiver_, _SenderId, _ReceiverId, _Fun, _Let>>>>;
+        __munique<__mbind_front_q<__receiver_, _SenderId, _ReceiverId, _Fun, _Let>>>>;
 
     template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
     using __operation_base = //
@@ -210,7 +210,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           _Set>;
       template <class _Self, class _Receiver>
       using __receiver_t = //
-        stdexec::__t< let_xxx::__receiver<
+        stdexec::__t<let_xxx::__receiver<
           stdexec::__id<__copy_cvref_t<_Self, _Sender>>,
           stdexec::__id<__decay_t<_Receiver>>,
           _Fun,
@@ -250,11 +250,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       _Fun __fun_;
     };
   };
-}
+} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
 
 namespace stdexec::__detail {
   template <class SenderId, class Fun, class Set>
   inline constexpr __mconst<
     nvexec::STDEXEC_STREAM_DETAIL_NS::let_sender_t<__name_of<__t<SenderId>>, Fun, Set>>
     __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::let_sender_t<SenderId, Fun, Set>>{};
-}
+} // namespace stdexec::__detail

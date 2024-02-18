@@ -6,8 +6,11 @@ AlignArrayOfStructures: Right
 AlignConsecutiveAssignments: None
 AlignConsecutiveBitFields: None
 AlignConsecutiveDeclarations: None
-AlignConsecutiveMacros: None
-AlignEscapedNewlines: DontAlign
+AlignConsecutiveMacros:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true
+AlignEscapedNewlines: Right
 AlignOperands: AlignAfterOperator
 AlignTrailingComments: true
 AllowAllArgumentsOnNextLine: true
@@ -23,14 +26,11 @@ AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: true
 AlwaysBreakTemplateDeclarations: Yes
-AttributeMacros: [
-  'STDEXEC_ATTRIBUTE',
-  'STDEXEC_NO_UNIQUE_ADDRESS',
-  'STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS',
-]
+AttributeMacros: []
 BinPackArguments: false
 BinPackParameters: false
 BitFieldColonSpacing: Both
+BreakAfterAttributes: Always
 BreakBeforeBraces: Custom
 BraceWrapping:
   AfterCaseLabel: false
@@ -51,7 +51,6 @@ BraceWrapping:
   SplitEmptyFunction: false
   SplitEmptyRecord: false
   SplitEmptyNamespace: false
-BreakAfterJavaFieldAnnotations: true
 BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeConceptDeclarations: true
 BreakBeforeTernaryOperators: true
@@ -63,25 +62,33 @@ CompactNamespaces: true
 ConstructorInitializerIndentWidth: 2
 ContinuationIndentWidth: 2
 Cpp11BracedListStyle: true
-DeriveLineEnding: true
 DerivePointerAlignment: true
 EmptyLineAfterAccessModifier: Never
 EmptyLineBeforeAccessModifier: Leave
 ExperimentalAutoDetectBinPacking: true
-FixNamespaceComments: false
+FixNamespaceComments: true
 IncludeBlocks: Preserve
 IndentAccessModifiers: false
 IndentCaseBlocks: false
 IndentCaseLabels: false
 IndentExternBlock: AfterExternBlock
 IndentGotoLabels: false
-IndentPPDirectives: None
-IndentRequires: false
+IndentPPDirectives: AfterHash
 IndentWidth: 2
 IndentWrappedFunctionNames: true
 InsertTrailingCommas: None
 KeepEmptyLinesAtTheStartOfBlocks: true
 LambdaBodyIndentation: Signature
+LineEnding: LF
+Macros: [
+  'STDEXEC_MEMFN_DECL(X)=X',
+  'STDEXEC_ATTRIBUTE(X)=[[x::s]]',
+  'STDEXEC_NO_UNIQUE_ADDRESS=[[no_unique_address]]',
+  'STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS=[[no_unique_address]]',
+  'STDEXEC_MISSING_MEMBER(X,Y)=true',
+  'STDEXEC_DEFINE_MEMBER(X)=void foo() {}',
+  'STDEXEC_DEFINE_EXPLICIT_THIS_MEMFN(...)=__VA_ARGS__'
+]
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: All
 PackConstructorInitializers: Never
@@ -94,7 +101,7 @@ PenaltyBreakString: 64
 PenaltyBreakTemplateDeclaration: 4
 PenaltyExcessCharacter: 256
 PenaltyIndentedWhitespace: 2
-PenaltyReturnTypeOnItsOwnLine: 4
+PenaltyReturnTypeOnItsOwnLine: 64
 PointerAlignment: Left
 QualifierAlignment: Leave
 ReferenceAlignment: Pointer
@@ -131,13 +138,12 @@ SpaceBeforeSquareBrackets: false
 SpaceInEmptyBlock: true
 SpaceInEmptyParentheses: false
 SpacesBeforeTrailingComments: 1
-SpacesInAngles: Leave
+SpacesInAngles: Never
 SpacesInCStyleCastParentheses: false
 SpacesInConditionalStatement: false
 SpacesInContainerLiterals: true
 SpacesInParentheses: false
 Standard: c++20
 TabWidth: 0
-TypenameMacros: ['STDEXEC_DEFINE_EXPLICIT_THIS_MEMFN']
-UseCRLF: true
+TypenameMacros: []
 UseTab: Never

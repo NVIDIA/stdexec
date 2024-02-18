@@ -59,10 +59,11 @@ namespace nvexec {
   }
 #endif
 
-  inline STDEXEC_ATTRIBUTE((host, device)) bool is_on_gpu() noexcept {
+  inline STDEXEC_ATTRIBUTE((host, device))
+  bool is_on_gpu() noexcept {
     return get_device_type() == device_type::device;
   }
-}
+} // namespace nvexec
 
 namespace nvexec {
   struct stream_context;
@@ -274,7 +275,7 @@ namespace nvexec {
         __minvoke<
           __if_c<
             sizeof...(_Ts) != 0,
-            __transform< __q<__decay_t>, __munique<__q<variant_t>>>,
+            __transform<__q<__decay_t>, __munique<__q<variant_t>>>,
             __mconst<__not_a_variant>>,
           _Ts...>;
 
@@ -290,12 +291,13 @@ namespace nvexec {
       template <class _Sender, class _Env, class _State, class _Tag>
       using __bind_completions_t =
         __gather_completions_for<_Tag, _Sender, _Env, __tuple_t<_Tag>, __make_bind<_State>>;
-    }
+    } // namespace stream_storage_impl
 
     struct set_noop {
       template <class... Ts>
       STDEXEC_ATTRIBUTE((host, device))
-      void operator()(Ts&&...) const noexcept {
+      void
+        operator()(Ts&&...) const noexcept {
         // TODO TRAP
         std::printf("ERROR: use of empty variant.");
       }
@@ -303,7 +305,7 @@ namespace nvexec {
 
     template <class _Sender, class _Env>
     using variant_storage_t = //
-      __minvoke< __minvoke<
+      __minvoke<__minvoke<
         __mfold_right<
           __mbind_front_q<stream_storage_impl::variant, ::cuda::std::tuple<set_noop>>,
           __mbind_front_q<stream_storage_impl::__bind_completions_t, _Sender, _Env>>,
@@ -320,14 +322,17 @@ namespace nvexec {
         return get_stream_provider(env)->own_stream_.value();
       }
 
-      STDEXEC_ATTRIBUTE((host, device)) auto operator()() const noexcept {
+      STDEXEC_ATTRIBUTE((host, device))
+      auto
+        operator()() const noexcept {
         return stdexec::read(*this);
       }
     };
 
     template <class BaseEnv>
     auto make_stream_env(BaseEnv&& base_env, stream_provider_t* stream_provider) noexcept {
-      return __env::__join(__env::__with(stream_provider, get_stream_provider), (BaseEnv&&) base_env);
+      return __env::__join(
+        __env::__with(stream_provider, get_stream_provider), (BaseEnv&&) base_env);
     }
 
     template <class BaseEnv>
@@ -343,7 +348,8 @@ namespace nvexec {
 
     template <class BaseEnv>
     auto make_terminal_stream_env(BaseEnv&& base_env, stream_provider_t* stream_provider) noexcept {
-      return __env::__join(__env::__with(stream_provider, get_stream_provider), (BaseEnv&&) base_env);
+      return __env::__join(
+        __env::__with(stream_provider, get_stream_provider), (BaseEnv&&) base_env);
     }
     template <class BaseEnv>
     using terminal_stream_env = decltype(STDEXEC_STREAM_DETAIL_NS::make_terminal_stream_env(
@@ -594,7 +600,7 @@ namespace nvexec {
 
         operation_state_base_t<OuterReceiverId>& operation_state_;
 
-        template < __completion_tag Tag, class... As >
+        template <__completion_tag Tag, class... As>
         friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
           self.operation_state_.propagate_completion_signal(Tag(), (As&&) as...);
         }
@@ -763,7 +769,7 @@ namespace nvexec {
 
     template <class InnerReceiverProvider, class OuterReceiver>
     using inner_receiver_t = //
-      __call_result_t< InnerReceiverProvider, operation_state_base_t<stdexec::__id<OuterReceiver>>&>;
+      __call_result_t<InnerReceiverProvider, operation_state_base_t<stdexec::__id<OuterReceiver>>&>;
 
     template <class CvrefSender, class InnerReceiver, class OuterReceiver>
     using stream_op_state_t = //
@@ -789,7 +795,7 @@ namespace nvexec {
     }
 
     template <class Sender, class OuterReceiver, class ReceiverProvider>
-    stream_op_state_t< Sender, inner_receiver_t<ReceiverProvider, OuterReceiver>, OuterReceiver>
+    stream_op_state_t<Sender, inner_receiver_t<ReceiverProvider, OuterReceiver>, OuterReceiver>
       stream_op_state(
         Sender&& sndr,
         OuterReceiver&& out_receiver,
@@ -801,7 +807,7 @@ namespace nvexec {
         OuterReceiver>(
         (Sender&&) sndr, (OuterReceiver&&) out_receiver, receiver_provider, context_state);
     }
-  }
+  } // namespace STDEXEC_STREAM_DETAIL_NS
 
   inline constexpr STDEXEC_STREAM_DETAIL_NS::get_stream_t get_stream{};
-}
+} // namespace nvexec

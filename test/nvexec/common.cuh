@@ -35,8 +35,8 @@ namespace nvexec {
     }
   }
 
-#define THROW_ON_CUDA_ERROR(...) \
-  ::nvexec::throw_on_cuda_error(__VA_ARGS__, __FILE__, __LINE__); \
+#define THROW_ON_CUDA_ERROR(...)                                                                   \
+  ::nvexec::throw_on_cuda_error(__VA_ARGS__, __FILE__, __LINE__);                                  \
   /**/
 } // namespace nvexec
 
@@ -130,6 +130,7 @@ namespace {
     template <class ReceiverId, class Fun>
     struct receiver {
       using Receiver = stdexec::__t<ReceiverId>;
+
       class __t : stdexec::receiver_adaptor<__t, Receiver> {
         friend stdexec::receiver_adaptor<__t, Receiver>;
 
@@ -152,7 +153,7 @@ namespace {
           }
         }
 
-      public:
+       public:
         using __id = receiver;
         using receiver_concept = stdexec::receiver_t;
 
@@ -178,9 +179,8 @@ namespace {
         Fun fun_;
 
         template <class Self, class Receiver>
-        using op_t = _operation_state_t<
-          stdexec::__copy_cvref_t<Self, Sender>,
-          _receiver_t<Receiver, Fun>>;
+        using op_t =
+          _operation_state_t<stdexec::__copy_cvref_t<Self, Sender>, _receiver_t<Receiver, Fun>>;
 
         template <class Self, class Env>
         using __completions_t = //
@@ -205,7 +205,7 @@ namespace {
         }
 
         friend auto tag_invoke(stdexec::get_env_t, const __t& self) noexcept
-            -> stdexec::env_of_t<const Sender&> {
+          -> stdexec::env_of_t<const Sender&> {
           return stdexec::get_env(self.sndr_);
         }
       };
@@ -252,9 +252,7 @@ namespace {
         Sender sndr_;
 
         template <class Self, class Receiver>
-        using op_t = _operation_state_t<
-          stdexec::__copy_cvref_t<Self, Sender>,
-          Receiver>;
+        using op_t = _operation_state_t<stdexec::__copy_cvref_t<Self, Sender>, Receiver>;
 
         template <class Self, class Env>
         using completion_signatures = //
@@ -266,8 +264,8 @@ namespace {
         template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
           requires stdexec::
             receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-          friend auto
-          tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) -> op_t<Self, Receiver> {
+          friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
+            -> op_t<Self, Receiver> {
           return op_t<Self, Receiver>(((Self&&) self).sndr_, (Receiver&&) rcvr);
         }
 
@@ -382,4 +380,4 @@ namespace {
   };
 
   static_assert(!std::is_trivially_copyable_v<move_only_t>);
-}
+} // namespace

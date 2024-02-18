@@ -24,6 +24,21 @@ namespace ex = stdexec;
 
 namespace {
 
+  template <class... Sigs>
+  struct a_sender_of {
+    using sender_concept = ex::sender_t;
+    using completion_signatures = ex::completion_signatures<Sigs...>;
+
+    struct operation {
+      friend void tag_invoke(ex::start_t, operation&) noexcept {}
+    };
+
+    template <class Receiver>
+    friend auto tag_invoke(ex::connect_t, a_sender_of, Receiver&&) noexcept {
+      return operation();
+    }
+  };
+
   template <class... Values>
   struct fallible_just {
     std::tuple<Values...> values_;

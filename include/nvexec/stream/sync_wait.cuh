@@ -37,7 +37,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
   // What should sync_wait(just_stopped()) return?
   template <class Sender>
     requires sender_in<Sender, __env>
-  using sync_wait_result_t = value_types_of_t< Sender, __env, __decayed_tuple, __msingle>;
+  using sync_wait_result_t = value_types_of_t<Sender, __env, __decayed_tuple, __msingle>;
 
   template <class SenderId>
   struct state_t;
@@ -188,5 +188,4 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
       [[maybe_unused]] _Error __diagnostic = {}) const -> std::optional<std::tuple<int>> = delete;
 #endif
   };
-} // namespace _sync_wait
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+}} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_sync_wait

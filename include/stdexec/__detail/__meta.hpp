@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <cassert>
 #include <exception>
 #include <type_traits>
@@ -39,6 +40,10 @@ namespace stdexec {
   };
 
   struct __none_such { };
+
+  namespace {
+    struct __anon {};
+  }
 
   struct __immovable {
     __immovable() = default;
@@ -158,6 +163,9 @@ namespace stdexec {
 
     char const __what_[_Len];
   };
+
+  template <std::size_t _Len>
+  __mstring(const char (&__str)[_Len]) -> __mstring<_Len>;
 
   STDEXEC_PRAGMA_PUSH()
   STDEXEC_PRAGMA_IGNORE_GNU("-Wuser-defined-literals")
@@ -957,18 +965,6 @@ namespace stdexec {
   using __1 = __placeholder<1>;
   using __2 = __placeholder<2>;
   using __3 = __placeholder<3>;
-
-  template <class _Ty, class _Noexcept = __mbool<true>>
-  struct __mconstruct {
-    template <class... _As>
-    auto operator()(_As&&... __as) const noexcept(__v<_Noexcept>&& noexcept(_Ty((_As&&) __as...)))
-      -> decltype(_Ty((_As&&) __as...)) {
-      return _Ty((_As&&) __as...);
-    }
-  };
-
-  template <template <class...> class _Cp, class _Noexcept = __mbool<true>>
-  using __mconstructor_for = __mcompose<__q<__mconstruct>, __q<_Cp>>;
 
 #if STDEXEC_MSVC()
   // MSVCBUG https://developercommunity.visualstudio.com/t/Incorrect-function-template-argument-sub/10437827

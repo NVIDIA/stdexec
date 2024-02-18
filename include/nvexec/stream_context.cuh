@@ -54,11 +54,11 @@ namespace nvexec {
 
     template <class Scheduler, sender... Senders>
     using when_all_sender_th =
-      __t< when_all_sender_t<false, Scheduler, __id<__decay_t<Senders>>...>>;
+      __t<when_all_sender_t<false, Scheduler, __id<__decay_t<Senders>>...>>;
 
     template <class Scheduler, sender... Senders>
     using transfer_when_all_sender_th =
-      __t< when_all_sender_t<true, Scheduler, __id<__decay_t<Senders>>...>>;
+      __t<when_all_sender_t<true, Scheduler, __id<__decay_t<Senders>>...>>;
 
     template <sender Sender, class Fun>
     using upon_error_sender_th = __t<upon_error_sender_t<__id<__decay_t<Sender>>, Fun>>;
@@ -82,7 +82,7 @@ namespace nvexec {
 
       template <sender Sender>
       using schedule_from_sender_th =
-        stdexec::__t< schedule_from_sender_t<stream_scheduler, stdexec::__id<__decay_t<Sender>>>>;
+        stdexec::__t<schedule_from_sender_t<stream_scheduler, stdexec::__id<__decay_t<Sender>>>>;
 
       template <class ReceiverId>
       struct operation_state_ {
@@ -125,7 +125,7 @@ namespace nvexec {
         struct __t : stream_sender_base {
           using __id = sender_;
           using completion_signatures =
-            completion_signatures< set_value_t(), set_error_t(cudaError_t)>;
+            completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
 
           template <class R>
           friend auto tag_invoke(connect_t, const __t& self, R&& rec) //
@@ -139,8 +139,7 @@ namespace nvexec {
             return self.env_;
           };
 
-          STDEXEC_ATTRIBUTE((host, device))
-          inline __t(context_state_t context_state) noexcept
+          STDEXEC_ATTRIBUTE((host, device)) inline __t(context_state_t context_state) noexcept
             : env_{context_state} {
           }
 
@@ -200,15 +199,20 @@ namespace nvexec {
       }
 
       template <sender S, class Fn>
-      friend upon_stopped_sender_th<S, Fn>
-        tag_invoke(upon_stopped_t, const stream_scheduler& sch, S&& sndr, Fn fun) //
+      friend upon_stopped_sender_th<S, Fn> tag_invoke(
+        upon_stopped_t,
+        const stream_scheduler& sch,
+        S&& sndr,
+        Fn fun) //
         noexcept {
         return upon_stopped_sender_th<S, Fn>{{}, (S&&) sndr, (Fn&&) fun};
       }
 
       template <stream_completing_sender... Senders>
-      friend auto
-        tag_invoke(transfer_when_all_t, const stream_scheduler& sch, Senders&&... sndrs) //
+      friend auto tag_invoke(
+        transfer_when_all_t,
+        const stream_scheduler& sch,
+        Senders&&... sndrs) //
         noexcept {
         return transfer_when_all_sender_th<stream_scheduler, Senders...>(
           sch.context_state_, (Senders&&) sndrs...);
@@ -219,7 +223,7 @@ namespace nvexec {
         transfer_when_all_with_variant_t, //
         const stream_scheduler& sch,      //
         Senders&&... sndrs) noexcept {
-        return transfer_when_all_sender_th< stream_scheduler, __result_of<into_variant, Senders>...>(
+        return transfer_when_all_sender_th<stream_scheduler, __result_of<into_variant, Senders>...>(
           sch.context_state_, into_variant((Senders&&) sndrs)...);
       }
 
@@ -283,9 +287,9 @@ namespace nvexec {
     }
 
     template <stream_completing_sender... Senders>
-    when_all_sender_th< stream_scheduler, __result_of<into_variant, Senders>...>
+    when_all_sender_th<stream_scheduler, __result_of<into_variant, Senders>...>
       tag_invoke(when_all_with_variant_t, Senders&&... sndrs) noexcept {
-      return when_all_sender_th< stream_scheduler, __result_of<into_variant, Senders>...>{
+      return when_all_sender_th<stream_scheduler, __result_of<into_variant, Senders>...>{
         context_state_t{nullptr, nullptr, nullptr, nullptr},
         into_variant((Senders&&) sndrs)...
       };

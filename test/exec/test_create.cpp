@@ -80,7 +80,8 @@ namespace {
     "[detail][create]") {
     bool called = false;
     auto snd = [&called, this]() {
-      return exec::create<ex::set_value_t()>(
+      using completions = ex::completion_signatures<ex::set_value_t()>;
+      return exec::create<completions>(
         [this]<class Context>(Context& ctx) noexcept {
           aVoidAPI(&ctx, [](void* pv) {
             Context& ctx = *static_cast<Context*>(pv);

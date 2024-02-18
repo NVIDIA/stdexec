@@ -19,7 +19,9 @@
 /* Copyright (c) 2018 Arvid Gerstmann. */
 /* This code is licensed under MIT license. */
 
-#include <cstddef>
+#pragma once
+
+#include <cstdint>
 #include <random>
 
 namespace exec {

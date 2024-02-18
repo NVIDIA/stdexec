@@ -16,6 +16,7 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
+#include "../../stdexec/concepts.hpp"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(1302)
@@ -106,7 +107,6 @@ namespace exec {
           return __sender_transform_failed{};
         }
       }
-      STDEXEC_UNREACHABLE();
     }
 
     template <class _Kernel, class _Sender, class _Data, class _Receiver>
@@ -116,7 +116,6 @@ namespace exec {
       } else {
         return __kernel.transform_sender((_Sender&&) __sndr, __data, __rcvr);
       }
-      STDEXEC_UNREACHABLE();
     }
 
     template <class _Kernel, class _Sender, class _Env>
