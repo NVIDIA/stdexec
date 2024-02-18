@@ -67,17 +67,9 @@ namespace exec {
       }
     }
 
-    /// Helper function that yields a type that can store the results produced by a sender.
-    template <typename __Sender>
-    auto __tester_for_data_size() {
-      auto __snd = std::declval<__Sender>();
-      auto __res = stdexec::sync_wait(std::move(__snd)); // optional<tuple<...>>
-      return __res.value();                              // keep the tuple only
-    }
-
     /// The type large enough to store the data produced by a sender.
     template <typename __Sender>
-    using __sender_data_t = decltype(__tester_for_data_size<__Sender>());
+    using __sender_data_t = decltype(stdexec::sync_wait(std::declval<__Sender>()).value());
 
   } // namespace __detail
 
