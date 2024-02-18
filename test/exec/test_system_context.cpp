@@ -216,16 +216,18 @@ TEST_CASE("simple bulk chaining on system context", "[types][system_scheduler]")
       pool_ids[id] = std::this_thread::get_id();
     });
 
-  ex::sync_wait(std::move(bulk_snd));
+  std::optional<std::tuple<std::__thread_id>> res = ex::sync_wait(std::move(bulk_snd));
 
-
+  // Assert: first `schedule` is run on a different thread than the current thread.
   REQUIRE(pool_id != std::thread::id{});
   REQUIRE(this_id != pool_id);
+  // Assert: bulk items are run and they propagate the received value.
   for (size_t i = 0; i < num_tasks; ++i) {
     REQUIRE(pool_ids[i] != std::thread::id{});
     REQUIRE(propagated_pool_ids[i] == pool_id);
     REQUIRE(this_id != pool_ids[i]);
   }
-  (void) snd;
-  (void) bulk_snd;
+  // Assert: the result of the bulk operation is the same as the result of the first `schedule`.
+  CHECK(res.has_value());
+  CHECK(std::get<0>(res.value()) == pool_id);
 }

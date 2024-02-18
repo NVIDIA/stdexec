@@ -46,6 +46,24 @@ namespace exec {
           std::move(*reinterpret_cast<std::exception_ptr*>(&__exception)));
       }
     }
+
+    /// Same as a above, but allows passing arguments to set_value.
+    template <typename __R, typename... __SetValueArgs>
+    inline void __pass_to_receiver_with_args(
+      int __completion_type,
+      void* __exception,
+      __R&& __recv,
+      __SetValueArgs&&... __setValueArgs) {
+      if (__completion_type == 0) {
+        stdexec::set_value(std::forward<__R>(__recv), std::move(__setValueArgs)...);
+      } else if (__completion_type == 1) {
+        stdexec::set_stopped(std::forward<__R>(__recv));
+      } else if (__completion_type == 2) {
+        stdexec::set_error(
+          std::forward<__R>(__recv),
+          std::move(*reinterpret_cast<std::exception_ptr*>(&__exception)));
+      }
+    }
   }
 
   class system_scheduler;
@@ -256,22 +274,36 @@ namespace exec {
       new (__self.__state_.__arguments_data_) std::tuple<__As...>{__as...};
       // TODO: figure out from the completion signal the size of the input data, and preallocate this in the shared state.
 
-      auto __type_erased_fn = [](void* __state_, long __idx) {
-        auto* __state = static_cast<__bulk_state_t*>(__state_);
+      // The function that needs to be applied to each item in the bulk operation.
+      auto __type_erased_item_fn = [](void* __state_arg, long __idx) {
+        auto* __state = static_cast<__bulk_state_t*>(__state_arg);
         std::apply(
           [&](auto&&... __args) { __state->__snd_.__fun_(__idx, __args...); },
           *reinterpret_cast<std::tuple<__As...>*>(__state->__arguments_data_));
       };
 
+      // The function that needs to be applied when all items are complete.
+      auto __type_erased_cb_fn = [](void* __state_arg, int __completion_type, void* __exception) {
+        auto __state = static_cast<__bulk_state_t*>(__state_arg);
+        std::apply(
+          [&](auto&&... __args) {
+            __detail::__pass_to_receiver_with_args(
+              __completion_type, __exception, std::move(__state->__recv_), __args...);
+          },
+          *reinterpret_cast<std::tuple<__As...>*>(__state->__arguments_data_));
+        delete[] __state->__arguments_data_;
+      };
+
       // Schedule the bulk work on the system scheduler.
       __self.__state_.__snd_.__scheduler_->__bulk_schedule(
-        __self.__state_.__snd_.__scheduler_,
-        &__self.__state_.__preallocated_,
-        sizeof(__self.__state_.__preallocated_),
-        __cb,
-        __type_erased_fn,
-        &__self.__state_,
-        __self.__state_.__snd_.__size_);
+        __self.__state_.__snd_.__scheduler_,     // self
+        &__self.__state_.__preallocated_,        // preallocated
+        sizeof(__self.__state_.__preallocated_), // psize
+        __type_erased_cb_fn,                     // cb
+        __type_erased_item_fn,                   // cb_item
+        &__self.__state_,                        // data
+        __self.__state_.__snd_.__size_           //size
+      );
     }
 
     /// Invoked when the previous sender completes with "stopped" to stop the entire work.
@@ -293,13 +325,6 @@ namespace exec {
     friend decltype(auto)
       tag_invoke(stdexec::get_env_t, const __bulk_intermediate_receiver& __self) noexcept {
       return stdexec::get_env(__self.__state_.__recv_);
-    }
-
-    /// Called by the system scheduler when the bulk operation completes.
-    static void __cb(void* __data, int __completion_type, void* __exception) {
-      auto __state = static_cast<__bulk_state_t*>(__data);
-      delete[] __state->__arguments_data_;
-      __detail::__pass_to_receiver(__completion_type, __exception, std::move(__state->__recv_));
     }
   };
 
@@ -346,13 +371,13 @@ namespace exec {
   struct system_bulk_sender {
     /// Marks this type as being a sender; not to spec.
     using sender_concept = stdexec::sender_t;
-    /// Declares the completion signals sent by `this`.
-    using completion_signatures = stdexec::completion_signatures<
-      stdexec::set_value_t(),
-      stdexec::set_stopped_t(),
-      stdexec::set_error_t(std::exception_ptr) >;
-
-    // TODO: This can complete with different values... should propagate from __Previous
+    /// Meta-function that returns the completion signatures of `this`.
+    template <typename __Self, typename __Env>
+    using __completions_t = stdexec::make_completion_signatures<               //
+      stdexec::__copy_cvref_t<__Self, __Previous>,                             //
+      __Env,                                                                   //
+      stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)> //
+      >;
 
     /// Constructs `this`.
     system_bulk_sender(system_scheduler __sched, __Previous __previous, __Size __size, __Fn&& __fun)
@@ -373,6 +398,13 @@ namespace exec {
                 return stdexec::connect(
                   std::move(__op.__state_.__snd_.__previous_), __receiver_t{__op.__state_});
               }};
+    }
+
+    /// Gets the completion signatures for this sender.
+    template <stdexec::__decays_to<system_bulk_sender> __Self, class __Env>
+    friend auto tag_invoke(stdexec::get_completion_signatures_t, __Self&&, __Env&&)
+      -> __completions_t<__Self, __Env> {
+      return {};
     }
 
     /// Gets the environment of this sender.
