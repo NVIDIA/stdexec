@@ -19,16 +19,16 @@
 #include "__detail/__system_context_default_impl.hpp"
 
 #ifndef __EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_SIZE
-#define __EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_SIZE 72
+#  define __EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_SIZE 72
 #endif
 #ifndef __EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_ALIGN
-#define __EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_ALIGN 8
+#  define __EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_ALIGN 8
 #endif
 #ifndef __EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_SIZE
-#define __EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_SIZE 160
+#  define __EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_SIZE 160
 #endif
 #ifndef __EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_ALIGN
-#define __EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_ALIGN 8
+#  define __EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_ALIGN 8
 #endif
 
 // TODO: make these configurable by providing policy to the system context
@@ -79,7 +79,7 @@ namespace exec {
     template <typename __Sender>
     using __sender_data_t = decltype(__tester_for_data_size<__Sender>());
 
-  }
+  } // namespace __detail
 
   class system_scheduler;
   class system_sender;
@@ -182,7 +182,7 @@ namespace exec {
     using completion_signatures = stdexec::completion_signatures<
       stdexec::set_value_t(),
       stdexec::set_stopped_t(),
-      stdexec::set_error_t(std::exception_ptr) >;
+      stdexec::set_error_t(std::exception_ptr)>;
 
     /// Implementation detail. Constructs the sender to wrap `__impl`.
     system_sender(__exec_system_scheduler_interface* __impl)
@@ -288,7 +288,8 @@ namespace exec {
       __As&&... __as) noexcept {
       // Store the input data in the shared state, in the preallocated buffer.
       static_assert(sizeof(std::tuple<__As...>) <= sizeof(__self.__state_.__arguments_data_));
-      new (&__self.__state_.__arguments_data_) std::tuple<__As...>{__as...};
+      new (&__self.__state_.__arguments_data_)
+        std::tuple<stdexec::__decay_t<__As>...>{std::move(__as)...};
 
       // The function that needs to be applied to each item in the bulk operation.
       auto __type_erased_item_fn = [](void* __state_arg, long __idx) {

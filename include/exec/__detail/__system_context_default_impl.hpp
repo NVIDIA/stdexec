@@ -171,8 +171,8 @@ namespace exec::__system_context_default_impl {
       return 202402L;
     }
 
-    static __exec_system_scheduler_interface*
-      __get_scheduler_impl(__exec_system_context_interface* __self) noexcept {
+    static __exec_system_scheduler_interface* __get_scheduler_impl(
+      __exec_system_context_interface* __self) noexcept {
       return &static_cast<__system_context_impl*>(__self)->__scheduler_;
     }
   };
@@ -183,4 +183,4 @@ namespace exec::__system_context_default_impl {
     return &__impl_;
   }
 
-}
+} // namespace exec::__system_context_default_impl
