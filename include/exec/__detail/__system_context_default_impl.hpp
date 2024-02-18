@@ -200,10 +200,42 @@ namespace exec::__system_context_default_impl {
     }
   };
 
+  /// Keeps track of the object implementing the system context interface.
+  struct __instance_holder {
+
+    /// Get the only instance of this class.
+    static __instance_holder& __singleton() {
+      static __instance_holder __this_instance_;
+      return __this_instance_;
+    }
+
+    /// Get the currently selected system context object.
+    __exec_system_context_interface* __get_current_instance() const noexcept {
+      return __current_instance_;
+    }
+
+    /// Allows changing the currently selected system context object; used for testing.
+    void __set_current_instance(__exec_system_context_interface* __instance) noexcept {
+      __current_instance_ = __instance;
+    }
+
+   private:
+    __instance_holder() {
+      static __system_context_impl __default_instance_;
+      __current_instance_ = &__default_instance_;
+    }
+
+    __exec_system_context_interface* __current_instance_;
+  };
+
   /// Gets the default system context implementation.
-  static __system_context_impl* __get_exec_system_context_impl() {
-    static __system_context_impl __impl_;
-    return &__impl_;
+  static __exec_system_context_interface* __get_exec_system_context_impl() {
+    return __instance_holder::__singleton().__get_current_instance();
+  }
+
+  /// Sets the default system context implementation.
+  static void __set_exec_system_context_impl(__exec_system_context_interface* __instance) {
+    return __instance_holder::__singleton().__set_current_instance(__instance);
   }
 
 } // namespace exec::__system_context_default_impl
