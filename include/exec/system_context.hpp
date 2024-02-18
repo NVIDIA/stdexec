@@ -31,6 +31,8 @@
 #define __EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_ALIGN 8
 #endif
 
+// TODO: make these configurable by providing policy to the system context
+
 namespace exec {
   namespace __detail {
     /// Transforms from a C API signal to the `set_xxx` completion signal.
@@ -64,6 +66,19 @@ namespace exec {
           std::move(*reinterpret_cast<std::exception_ptr*>(&__exception)));
       }
     }
+
+    /// Helper function that yields a type that can store the results produced by a sender.
+    template <typename __Sender>
+    auto __tester_for_data_size() {
+      auto __snd = std::declval<__Sender>();
+      auto __res = stdexec::sync_wait(std::move(__snd)); // optional<tuple<...>>
+      return __res.value();                              // keep the tuple only
+    }
+
+    /// The type large enough to store the data produced by a sender.
+    template <typename __Sender>
+    using __sender_data_t = decltype(__tester_for_data_size<__Sender>());
+
   }
 
   class system_scheduler;
@@ -241,8 +256,11 @@ namespace exec {
     system_bulk_sender<__Previous, __Size, __Fn> __snd_;
     /// The receiver object that receives completion from the work described by the sender.
     __R __recv_;
-    /// The arguments passed from the previous receiver to the function object of the bulk sender (type-erased).
-    char* __arguments_data_{nullptr};
+    /// Storage for the arguments passed from the previous receiver to the function object of the bulk sender.
+    std::aligned_storage_t<
+      sizeof(__detail::__sender_data_t<__Previous>),
+      alignof(__detail::__sender_data_t<__Previous>)>
+      __arguments_data_;
 
     /// Preallocated space for storing the operation state on the implementation size.
     struct alignas(__EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_ALIGN) __preallocated {
@@ -268,18 +286,16 @@ namespace exec {
       stdexec::set_value_t,
       __bulk_intermediate_receiver&& __self,
       __As&&... __as) noexcept {
-      // Heap allocate input data in shared state as needed
-      auto __size = sizeof(std::tuple<__As...>);
-      __self.__state_.__arguments_data_ = new char[__size];
-      new (__self.__state_.__arguments_data_) std::tuple<__As...>{__as...};
-      // TODO: figure out from the completion signal the size of the input data, and preallocate this in the shared state.
+      // Store the input data in the shared state, in the preallocated buffer.
+      static_assert(sizeof(std::tuple<__As...>) <= sizeof(__self.__state_.__arguments_data_));
+      new (&__self.__state_.__arguments_data_) std::tuple<__As...>{__as...};
 
       // The function that needs to be applied to each item in the bulk operation.
       auto __type_erased_item_fn = [](void* __state_arg, long __idx) {
         auto* __state = static_cast<__bulk_state_t*>(__state_arg);
         std::apply(
           [&](auto&&... __args) { __state->__snd_.__fun_(__idx, __args...); },
-          *reinterpret_cast<std::tuple<__As...>*>(__state->__arguments_data_));
+          *reinterpret_cast<std::tuple<__As...>*>(&__state->__arguments_data_));
       };
 
       // The function that needs to be applied when all items are complete.
@@ -290,8 +306,7 @@ namespace exec {
             __detail::__pass_to_receiver_with_args(
               __completion_type, __exception, std::move(__state->__recv_), __args...);
           },
-          *reinterpret_cast<std::tuple<__As...>*>(__state->__arguments_data_));
-        delete[] __state->__arguments_data_;
+          *reinterpret_cast<std::tuple<__As...>*>(&__state->__arguments_data_));
       };
 
       // Schedule the bulk work on the system scheduler.
@@ -308,7 +323,6 @@ namespace exec {
 
     /// Invoked when the previous sender completes with "stopped" to stop the entire work.
     friend void tag_invoke(stdexec::set_stopped_t, __bulk_intermediate_receiver&& __self) noexcept {
-      delete[] __self.__state_.__arguments_data_;
       stdexec::set_stopped(std::move(__self.__state_.__recv_));
     }
 
@@ -317,7 +331,6 @@ namespace exec {
       stdexec::set_error_t,
       __bulk_intermediate_receiver&& __self,
       std::exception_ptr __ptr) noexcept {
-      delete[] __self.__state_.__arguments_data_;
       stdexec::set_error(std::move(__self.__state_.__recv_), std::move(__ptr));
     }
 
