@@ -323,7 +323,7 @@ CHECK_INCLUDE_FILE_CXX("linux/io_uring.h" STDEXEC_FOUND_IO_URING)
 option (STDEXEC_ENABLE_IO_URING_TESTS "Enable io_uring tests" ${STDEXEC_FOUND_IO_URING})
 
 option(STDEXEC_BUILD_DOCS "Build stdexec documentation" OFF)
-option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
+option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" OFF)
 option(STDEXEC_BUILD_TESTS "Build stdexec tests" ON)
 option(BUILD_TESTING "" ${STDEXEC_BUILD_TESTS})
 

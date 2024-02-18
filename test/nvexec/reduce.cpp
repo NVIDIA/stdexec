@@ -15,6 +15,9 @@ namespace ex = stdexec;
 
 namespace {
 
+  [[deprecated]]
+  void printer(auto elem) {}
+
   TEST_CASE(
     "nvexec reduce returns a sender with single input",
     "[cuda][stream][adaptors][reduce]") {
@@ -43,6 +46,36 @@ namespace {
 
     (void) snd;
   }
+
+  TEST_CASE("hi im scan", "[cuda][stream][adaptors][reduce]") {
+    constexpr int N = 2048;
+    int input[N] = {};
+    std::fill_n(input, N, 1);
+
+    nvexec::stream_context stream{};
+    auto snd = ex::transfer_just(stream.get_scheduler(), std::span{input})
+             | nvexec::scan(0);
+
+    // STATIC_REQUIRE(ex::sender_of<decltype(snd), ex::set_value_t(int&)>);
+
+    (void) snd;
+  }
+   TEST_CASE("nvexec scan uses sum as default", "[cuda][stream][adaptors][reduce]") {
+    constexpr int N = 2048;
+    constexpr int init = 42;
+
+    thrust::device_vector<int> input(N, 1);
+    int* first = thrust::raw_pointer_cast(input.data());
+    int* last = thrust::raw_pointer_cast(input.data()) + input.size();
+
+    nvexec::stream_context stream{};
+    auto snd = ex::transfer_just(stream.get_scheduler(), std::span{first, last})
+             | nvexec::scan(init);
+
+    auto [result] = ex::sync_wait(std::move(snd)).value();
+   // REQUIRE(result == N + init);
+  }
+
 
   TEST_CASE("nvexec reduce uses sum as default", "[cuda][stream][adaptors][reduce]") {
     constexpr int N = 2048;
