@@ -216,7 +216,7 @@ TEST_CASE("simple bulk chaining on system context", "[types][system_scheduler]")
       pool_ids[id] = std::this_thread::get_id();
     });
 
-  std::optional<std::tuple<std::__thread_id>> res = ex::sync_wait(std::move(bulk_snd));
+  std::optional<std::tuple<std::thread::id>> res = ex::sync_wait(std::move(bulk_snd));
 
   // Assert: first `schedule` is run on a different thread than the current thread.
   REQUIRE(pool_id != std::thread::id{});
