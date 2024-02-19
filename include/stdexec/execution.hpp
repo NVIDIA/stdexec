@@ -181,15 +181,6 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // completion_signatures
   namespace __compl_sigs {
-#if STDEXEC_NVHPC()
-    template <class _Ty = __q<__types>, class... _Args>
-    __types<__minvoke<_Ty, _Args...>> __test(set_value_t (*)(_Args...), set_value_t = {}, _Ty = {});
-    template <class _Ty = __q<__types>, class _Error>
-    __types<__minvoke<_Ty, _Error>> __test(set_error_t (*)(_Error), set_error_t = {}, _Ty = {});
-    template <class _Ty = __q<__types>>
-    __types<__minvoke<_Ty>> __test(set_stopped_t (*)(), set_stopped_t = {}, _Ty = {});
-    __types<> __test(__ignore, __ignore, __ignore = {});
-
     template <class _Sig>
     inline constexpr bool __is_compl_sig = false;
     template <class... _Args>
@@ -198,47 +189,16 @@ namespace stdexec {
     inline constexpr bool __is_compl_sig<set_error_t(_Error)> = true;
     template <>
     inline constexpr bool __is_compl_sig<set_stopped_t()> = true;
-
-#else
-
-    template <same_as<set_value_t> _Tag, class _Ty = __q<__types>, class... _Args>
-    __types<__minvoke<_Ty, _Args...>> __test(_Tag (*)(_Args...));
-    template <same_as<set_error_t> _Tag, class _Ty = __q<__types>, class _Error>
-    __types<__minvoke<_Ty, _Error>> __test(_Tag (*)(_Error));
-    template <same_as<set_stopped_t> _Tag, class _Ty = __q<__types>>
-    __types<__minvoke<_Ty>> __test(_Tag (*)());
-    template <class, class = void>
-    __types<> __test(...);
-    template <class _Tag, class _Ty = void, class... _Args>
-    void __test(_Tag (*)(_Args...) noexcept) = delete;
-#endif
-
-#if STDEXEC_NVHPC()
-    template <class _Sig>
-    concept __completion_signature = __compl_sigs::__is_compl_sig<_Sig>;
-
-    template <class _Sig, class _Tag, class _Ty = __q<__types>>
-    using __signal_args_t = decltype(__compl_sigs::__test((_Sig*) nullptr, _Tag{}, _Ty{}));
-#else
-    template <class _Sig>
-    concept __completion_signature = __typename<decltype(__compl_sigs::__test((_Sig*) nullptr))>;
-
-    template <class _Sig, class _Tag, class _Ty = __q<__types>>
-    using __signal_args_t = decltype(__compl_sigs::__test<_Tag, _Ty>((_Sig*) nullptr));
-#endif
   } // namespace __compl_sigs
 
-  using __compl_sigs::__completion_signature;
+  template <class _Sig>
+  concept __completion_signature = __compl_sigs::__is_compl_sig<_Sig>;
 
-  template <__compl_sigs::__completion_signature... _Sigs>
-  struct completion_signatures {
-    // Uncomment this to see where completion_signatures is
-    // erroneously getting instantiated:
-    //static_assert(sizeof...(_Sigs) == -1u);
-  };
+  template <__completion_signature... _Sigs>
+  struct completion_signatures { };
 
   namespace __compl_sigs {
-    template <class _TaggedTuple, __completion_tag _Tag, class... _Ts>
+    template <class _TaggedTuple, class _Tag, class... _Ts>
     auto __as_tagged_tuple_(_Tag (*)(_Ts...), _TaggedTuple*)
       -> __mconst<__minvoke<_TaggedTuple, _Tag, _Ts...>>;
 
