@@ -4705,18 +4705,25 @@ namespace stdexec {
 
     template <class _Receiver, class _ValuesTuple>
     void __set_values(_Receiver& __rcvr, _ValuesTuple& __values) noexcept {
-      __apply(
+      __tup::__apply(
         [&](auto&... __opt_vals) noexcept -> void {
           __apply(
             __complete_fn(set_value, __rcvr), //
-            std::tuple_cat(__apply(__tie_fn{}, *__opt_vals)...));
+            std::tuple_cat(__tup::__apply(__tie_fn{}, *__opt_vals)...));
         },
         __values);
     }
 
+    template <class... Ts>
+    using __decayed_custom_tuple = __tup::__tuple_for<__decay_t<Ts>...>;
+
     template <class _Env, class _Sender>
     using __values_opt_tuple_t = //
-      value_types_of_t<_Sender, __env_t<_Env>, __decayed_tuple, std::optional>;
+      value_types_of_t<
+        _Sender,
+        __env_t<_Env>,
+        __decayed_custom_tuple,
+        std::optional>;
 
     template <class _Env, __max1_sender<__env_t<_Env>>... _Senders>
     struct __traits {
@@ -4724,7 +4731,7 @@ namespace stdexec {
       using __values_tuple = //
         __minvoke<
           __with_default<
-            __transform< __mbind_front_q<__values_opt_tuple_t, _Env>, __q<std::tuple>>,
+            __transform< __mbind_front_q<__values_opt_tuple_t, _Env>, __q<__tup::__tuple_for>>,
             __ignore>,
           _Senders...>;
 
@@ -4926,15 +4933,15 @@ namespace stdexec {
           // We only need to bother recording the completion values
           // if we're not already in the "error" or "stopped" state.
           if (__state.__state_ == __started) {
-            auto& __opt_values = std::get<__v<_Index>>(__state.__values_);
-            static_assert(
-              same_as<decltype(*__opt_values), __decayed_tuple<_Args...>&>,
+            auto& __opt_values = __tup::__get<__v<_Index>>(__state.__values_);
+            using _Tuple = __decayed_custom_tuple<_Args...>;
+            static_assert(same_as<decltype(*__opt_values), _Tuple&>,
               "One of the senders in this when_all() is fibbing about what types it sends");
             if constexpr ((__nothrow_decay_copyable<_Args> && ...)) {
-              __opt_values.emplace((_Args&&) __args...);
+              __opt_values.emplace(_Tuple{{(_Args&&) __args}...});
             } else {
               try {
-                __opt_values.emplace((_Args&&) __args...);
+                __opt_values.emplace(_Tuple{{(_Args&&) __args}...});
               } catch (...) {
                 __set_error(__state, __rcvr, std::current_exception());
               }
