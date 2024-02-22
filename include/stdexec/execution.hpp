@@ -1567,7 +1567,7 @@ namespace stdexec {
     // by packaging the values into a tuple.
     // See: https://github.com/cplusplus/sender-receiver/issues/182
     template <std::size_t _Count>
-    extern const __q<std::tuple> __as_single;
+    extern const __q<__decayed_tuple> __as_single;
 
     template <>
     inline const __q<__midentity> __as_single<1>;
