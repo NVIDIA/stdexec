@@ -92,6 +92,10 @@ set(stdexec_test_sources
     $<$<BOOL:${STDEXEC_ENABLE_TBB}>:tbbexec/test_tbb_thread_pool.cpp>
     )
 
+if (LIBDISPATCH)
+  set(stdexec_test_sources ${stdexec_test_sources} exec/test_libdispatch.cpp)
+endif (LIBDISPATCH)
+
 add_executable(test.stdexec ${stdexec_test_sources})
 set_target_properties(test.stdexec PROPERTIES
     CXX_STANDARD 20
@@ -104,6 +108,10 @@ target_link_libraries(test.stdexec
     $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
     stdexec_executable_flags
     Catch2::Catch2)
+
+if (LIBDISPATCH)
+  target_link_libraries(test.stdexec PRIVATE dispatch)
+endif (LIBDISPATCH)
 
 add_executable(test.scratch test_main.cpp test_scratch.cpp)
 set_target_properties(test.scratch PROPERTIES
