@@ -261,6 +261,24 @@
 #define STDEXEC_IS_CONST(...) stdexec::__is_const<__VA_ARGS__>
 #endif
 
+#if STDEXEC_HAS_BUILTIN(__is_same)
+#define STDEXEC_IS_SAME(...) __is_same(__VA_ARGS__)
+#elif STDEXEC_HAS_BUILTIN(__is_same_as)
+#define STDEXEC_IS_SAME(...) __is_same_as(__VA_ARGS__)
+#elif STDEXEC_MSVC()
+// msvc replaces std::is_same_v with a compile-time constant
+#define STDEXEC_IS_SAME(...) std::is_same_v<__VA_ARGS__>
+#else
+#define STDEXEC_IS_SAME(...) stdexec::__same_as_v<__VA_ARGS__>
+namespace stdexec {
+  template <class _Ap, class _Bp>
+  inline constexpr bool __same_as_v = false;
+
+  template <class _Ap>
+  inline constexpr bool __same_as_v<_Ap, _Ap> = true;
+}
+#endif
+
 #if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L
 #define STDEXEC_UNREACHABLE() std::unreachable()
 #elif STDEXEC_HAS_BUILTIN(__builtin_unreachable)

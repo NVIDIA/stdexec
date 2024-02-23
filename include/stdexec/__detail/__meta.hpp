@@ -240,13 +240,13 @@ namespace stdexec {
   using __disp = decltype((__msuccess(), ..., __ok_t<_Ts>()));
 
   template <class _Arg>
-  concept __ok = __same_as<__ok_t<_Arg>, __msuccess>;
+  concept __ok = STDEXEC_IS_SAME(__ok_t<_Arg>, __msuccess);
 
   template <class _Arg>
-  concept __merror = !__ok<_Arg>;
+  concept __merror = !STDEXEC_IS_SAME(__ok_t<_Arg>, __msuccess);
 
   template <class... _Args>
-  concept _Ok = (__ok<_Args> && ...);
+  concept _Ok = (STDEXEC_IS_SAME(__ok_t<_Args>, __msuccess) && ...);
 
   template <bool _AllOK>
   struct __i;
