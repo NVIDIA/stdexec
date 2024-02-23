@@ -44,8 +44,8 @@ namespace {
 
     std::vector<int> data{1, 2, 3, 4, 5};
     auto size = data.size();
-    auto expensive_computation = [](auto i, auto data) {
-      return 2 * data[i];
+    auto expensive_computation = [](auto i, auto& data) {
+      data[i] = 2 * data[i];
     };
     auto add = [](auto const & data) {
       return std::accumulate(std::begin(data), std::end(data), 0);
