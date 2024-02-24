@@ -209,8 +209,15 @@ namespace exec {
         return {};
       }
 
-      static empty_env get_env(__ignore) noexcept {
-        return {};
+      static make_env_t<with_t<parallelism_t, lock_step_t>> get_env(__ignore) noexcept {
+        return make_env(with(parallelism, lock_step));
+      }
+
+      template <sender_expr_for<iterate_t> _SeqExpr>
+        requires std::ranges::sized_range<stdexec::__data_of<_SeqExpr>>
+      static auto get_env(const _SeqExpr& __seq) noexcept {
+        auto&& __rng = apply_sender(__seq, stdexec::__detail::__get_data{});
+        return make_env(with(parallelism, lock_step), with(cardinality, std::ranges::size(__rng)));
       }
     };
   }
