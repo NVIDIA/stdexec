@@ -58,8 +58,8 @@ namespace exec {
         _Receiver __r;
 
         template <class _Sender>
-        stdexec::__t<__operation_state<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>>
-          operator()(_Sender&& __s) {
+        auto operator()(_Sender&& __s)
+          -> stdexec::__t<__operation_state<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>> {
           return {static_cast<_Sender&&>(__s), static_cast<_Receiver&&>(__r)};
         }
       };
@@ -67,26 +67,25 @@ namespace exec {
       class __t : private std::variant<stdexec::__t<_SenderIds>...> {
         using __variant_t = std::variant<stdexec::__t<_SenderIds>...>;
 
-        __variant_t&& base() && noexcept {
+        auto base() && noexcept -> __variant_t&& {
           return std::move(*this);
         }
 
-        __variant_t& base() & noexcept {
+        auto base() & noexcept -> __variant_t& {
           return *this;
         }
 
-        const __variant_t& base() const & noexcept {
+        auto base() const & noexcept -> const __variant_t& {
           return *this;
         }
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires(sender_to<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver> && ...)
-        friend stdexec::__t<__operation_state<
-          stdexec::__id<_Receiver>,
-          __cvref_id<_Self, stdexec::__t<_SenderIds>>...>>
-          tag_invoke(connect_t, _Self&& __self, _Receiver __r) noexcept(
-            (__nothrow_connectable<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver>
-             && ...)) {
+        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __r) noexcept((
+          __nothrow_connectable<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver> && ...))
+          -> stdexec::__t<__operation_state<
+            stdexec::__id<_Receiver>,
+            __cvref_id<_Self, stdexec::__t<_SenderIds>>...>> {
           return std::visit(
             __visitor<_Self, _Receiver>{static_cast<_Receiver&&>(__r)},
             static_cast<_Self&&>(__self).base());

@@ -22,7 +22,7 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // A very simple std::declval replacement that doesn't handle void
   template <class _Tp>
-  _Tp&& __declval() noexcept;
+  auto __declval() noexcept -> _Tp&&;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __decay_t: An efficient implementation for std::decay
@@ -176,7 +176,7 @@ namespace stdexec {
 
   namespace __tt {
     template <class _Ty>
-    _Ty __remove_rvalue_reference_fn(_Ty&&);
+    auto __remove_rvalue_reference_fn(_Ty&&) -> _Ty;
   } // namespace __tt
 
   template <class _Ty>

@@ -41,7 +41,7 @@ namespace exec {
     using __captures_t =
       stdexec::__minvoke<__desc_t, stdexec::__q<stdexec::__detail::__captures_t>>;
 
-    static __tag_t __tag() noexcept {
+    static auto __tag() noexcept -> __tag_t {
       return {};
     }
 

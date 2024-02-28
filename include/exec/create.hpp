@@ -88,7 +88,7 @@ namespace exec {
           };
         }
 
-        friend empty_env tag_invoke(get_env_t, const __t&) noexcept {
+        friend auto tag_invoke(get_env_t, const __t&) noexcept -> empty_env {
           return {};
         }
       };

@@ -45,7 +45,7 @@ namespace stdexec {
     struct __legacy_customization {
       template <class _Tag, class _Data, class... _Children>
         requires __has_legacy_c11n<_Tag, _Data, _Children...>
-      decltype(auto) operator()(_Tag, _Data&& __data, _Children&&... __children) const {
+      auto operator()(_Tag, _Data&& __data, _Children&&... __children) const -> decltype(auto) {
         return __legacy_c11n_fn<_Tag, _Data, _Children...>()(
           static_cast<_Data&&>(__data), static_cast<_Children&&>(__children)...);
       }
@@ -125,7 +125,7 @@ namespace stdexec {
     }
 
     template <class _Sender, class _Env>
-    decltype(auto) transform_env(_Sender&& __sndr, _Env&& __env) const noexcept {
+    auto transform_env(_Sender&& __sndr, _Env&& __env) const noexcept -> decltype(auto) {
       if constexpr (__domain::__has_default_transform_env<_Sender, _Env>) {
         return tag_of_t<_Sender>().transform_env(
           static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env));
@@ -225,13 +225,13 @@ namespace stdexec {
 
   namespace __domain {
     struct __common_domain_fn {
-      static default_domain __common_domain() noexcept {
+      static auto __common_domain() noexcept -> default_domain {
         return {};
       }
 
       template <class _Domain, class... _OtherDomains>
         requires __all_of<_Domain, _OtherDomains...>
-      static _Domain __common_domain(_Domain __domain, _OtherDomains...) noexcept {
+      static auto __common_domain(_Domain __domain, _OtherDomains...) noexcept -> _Domain {
         return static_cast<_Domain&&>(__domain);
       }
 

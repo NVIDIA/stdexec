@@ -57,7 +57,7 @@ namespace exec {
     };
 
     struct empty_sequence_t {
-      __t<__sender> operator()() const noexcept {
+      auto operator()() const noexcept -> __t<__sender> {
         return {};
       }
     };

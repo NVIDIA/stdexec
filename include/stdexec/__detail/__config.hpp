@@ -37,9 +37,12 @@
 #define STDEXEC_EVAL(_MACRO, ...) _MACRO(__VA_ARGS__)
 #define STDEXEC_EAT(...)
 
-#define STDEXEC_NOT(_XP)           STDEXEC_CAT(STDEXEC_NOT_, _XP)
-#define STDEXEC_NOT_0              1
-#define STDEXEC_NOT_1              0
+#define STDEXEC_NOT(_XP) STDEXEC_CAT(STDEXEC_NOT_, _XP)
+
+enum {
+  STDEXEC_NOT_0 = 1,
+  STDEXEC_NOT_1 = 0
+};
 
 #define STDEXEC_IIF_0(_YP, ...)    __VA_ARGS__
 #define STDEXEC_IIF_1(_YP, ...)    _YP

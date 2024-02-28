@@ -46,7 +46,7 @@ namespace exec {
         }
 
         template <std::same_as<__t> _Self>
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, const _Self& __self) noexcept {
+        friend auto tag_invoke(get_env_t, const _Self& __self) noexcept -> env_of_t<_Receiver> {
           return get_env(__self.__upstream_);
         }
       };
@@ -73,9 +73,9 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-        friend connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-          tag_invoke(connect_t, _Self&& __self, _Receiver&& __receiver) noexcept(
-            __nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>) {
+        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __receiver) noexcept(
+          __nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
+          -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
           return stdexec::connect(
             static_cast<_Self&&>(__self).__sender_,
             __receiver_t<_Receiver>{static_cast<_Receiver&&>(__receiver)});
@@ -111,7 +111,7 @@ namespace exec {
         return {static_cast<_Sender&&>(__sender)};
       }
 
-      __binder_back<__materialize_t> operator()() const noexcept {
+      auto operator()() const noexcept -> __binder_back<__materialize_t> {
         return {{}, {}, {}};
       }
     };
@@ -154,7 +154,7 @@ namespace exec {
         }
 
         template <std::same_as<__t> _Self>
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, const _Self& __self) noexcept {
+        friend auto tag_invoke(get_env_t, const _Self& __self) noexcept -> env_of_t<_Receiver> {
           return get_env(__self.__upstream_);
         }
       };
@@ -181,9 +181,9 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-        friend connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-          tag_invoke(connect_t, _Self&& __self, _Receiver&& __receiver) noexcept(
-            __nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>) {
+        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __receiver) noexcept(
+          __nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
+          -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
           return stdexec::connect(
             static_cast<_Self&&>(__self).__sender_,
             __receiver_t<_Receiver>{static_cast<_Receiver&&>(__receiver)});
@@ -210,12 +210,12 @@ namespace exec {
       using __sender_t = __t<__sender<__id<_Sender>>>;
 
       template <sender _Sender>
-      __sender_t<_Sender> operator()(_Sender&& __sndr) const
-        noexcept(__nothrow_decay_copyable<_Sender>) {
+      auto operator()(_Sender&& __sndr) const noexcept(__nothrow_decay_copyable<_Sender>)
+        -> __sender_t<_Sender> {
         return __sender_t<_Sender>(static_cast<_Sender&&>(__sndr));
       }
 
-      __binder_back<__dematerialize_t> operator()() const noexcept {
+      auto operator()() const noexcept -> __binder_back<__dematerialize_t> {
         return {{}, {}, {}};
       }
     };

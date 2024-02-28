@@ -137,8 +137,8 @@ namespace exec {
         }
 
         template <receiver_of<completion_signatures> _Receiver>
-        __operation_t<_Receiver> __make_operation(_Receiver __rcvr) const
-          noexcept(__nothrow_decay_copyable<_Receiver>) {
+        auto __make_operation(_Receiver __rcvr) const noexcept(__nothrow_decay_copyable<_Receiver>)
+          -> __operation_t<_Receiver> {
           return __operation_t<_Receiver>{static_cast<_Receiver&&>(__rcvr), __max_recursion_depth_};
         }
 
@@ -148,25 +148,26 @@ namespace exec {
           return __self.__make_operation(static_cast<_Receiver&&>(__rcvr));
         }
 
-        friend __scheduler
-          tag_invoke(get_completion_scheduler_t<set_value_t>, __schedule_sender __self) noexcept {
+        friend auto
+          tag_invoke(get_completion_scheduler_t<set_value_t>, __schedule_sender __self) noexcept
+          -> __scheduler {
           return __scheduler{__self.__max_recursion_depth_};
         }
 
-        friend const __schedule_sender&
-          tag_invoke(get_env_t, const __schedule_sender& __self) noexcept {
+        friend auto tag_invoke(get_env_t, const __schedule_sender& __self) noexcept
+          -> const __schedule_sender& {
           return __self;
         }
 
         std::size_t __max_recursion_depth_;
       };
 
-      friend __schedule_sender tag_invoke(schedule_t, __scheduler __self) noexcept {
+      friend auto tag_invoke(schedule_t, __scheduler __self) noexcept -> __schedule_sender {
         return __schedule_sender{__self.__max_recursion_depth_};
       }
 
      public:
-      bool operator==(const __scheduler&) const noexcept = default;
+      auto operator==(const __scheduler&) const noexcept -> bool = default;
     };
 
     template <class _Operation>

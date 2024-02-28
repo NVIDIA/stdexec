@@ -111,7 +111,7 @@ namespace exec {
         }
 
         template <same_as<get_env_t> _GetEnv, __decays_to<__t> _Self>
-        friend env_of_t<_ItemReceiver> tag_invoke(_GetEnv, _Self&& __self) noexcept {
+        friend auto tag_invoke(_GetEnv, _Self&& __self) noexcept -> env_of_t<_ItemReceiver> {
           return stdexec::get_env(__self.__op_->__receiver_);
         }
       };
@@ -210,7 +210,7 @@ namespace exec {
         }
 
         template <same_as<get_env_t> _GetEnv, __decays_to<__t> _Self>
-        friend env_of_t<_Receiver> tag_invoke(_GetEnv, _Self&& __self) noexcept {
+        friend auto tag_invoke(_GetEnv, _Self&& __self) noexcept -> env_of_t<_Receiver> {
           return stdexec::get_env(__self.__op_->__receiver_);
         }
       };
@@ -275,8 +275,9 @@ namespace exec {
       template <class _Child>
         requires receiver_of<_Receiver, __completion_sigs<_Child>>
               && sequence_sender_to<_Child, __receiver_t<_Child>>
-      __operation_t<_Child> operator()(__ignore, __ignore, _Child&& __child) noexcept(
-        __nothrow_constructible_from<__operation_t<_Child>, _Child, _Receiver>) {
+      auto operator()(__ignore, __ignore, _Child&& __child) noexcept(
+        __nothrow_constructible_from<__operation_t<_Child>, _Child, _Receiver>)
+        -> __operation_t<_Child> {
         return {static_cast<_Child&&>(__child), static_cast<_Receiver&&>(__rcvr_)};
       }
     };
@@ -289,7 +290,7 @@ namespace exec {
           __domain, __make_sexpr<ignore_all_values_t>(__(), static_cast<_Sender&&>(__sndr)));
       }
 
-      constexpr __binder_back<ignore_all_values_t> operator()() const noexcept {
+      constexpr auto operator()() const noexcept -> __binder_back<ignore_all_values_t> {
         return {{}, {}, {}};
       }
     };

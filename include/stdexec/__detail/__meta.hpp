@@ -55,10 +55,10 @@ namespace stdexec {
     __move_only() = default;
 
     __move_only(__move_only&&) noexcept = default;
-    __move_only& operator=(__move_only&&) noexcept = default;
+    auto operator=(__move_only&&) noexcept -> __move_only& = default;
 
     __move_only(const __move_only&) = delete;
-    __move_only& operator=(const __move_only&) = delete;
+    auto operator=(const __move_only&) -> __move_only& = delete;
   };
 
   template <class _Tp>
@@ -148,16 +148,16 @@ namespace stdexec {
       : __what_{__chars...} {
     }
 
-    static constexpr std::size_t __length() noexcept {
+    static constexpr auto __length() noexcept -> std::size_t {
       return _Len;
     }
 
     template <std::size_t... _Is>
-    constexpr bool __equal(__mstring __other, __indices<_Is...>) const noexcept {
+    constexpr auto __equal(__mstring __other, __indices<_Is...>) const noexcept -> bool {
       return ((__what_[_Is] == __other.__what_[_Is]) && ...);
     }
 
-    constexpr bool operator==(__mstring __other) const noexcept {
+    constexpr auto operator==(__mstring __other) const noexcept -> bool {
       return __equal(__other, __make_indices<_Len>());
     }
 
@@ -202,14 +202,14 @@ namespace stdexec {
   // Use a standard user-defined string literal template
   template <__mstring _Str>
   [[deprecated("Use _mstr instead")]]
-  constexpr __mtypeof<_Str>
-    operator""__csz() noexcept {
+  constexpr auto
+    operator""__csz() noexcept -> __mtypeof<_Str> {
     return _Str;
   }
 
   // Use a standard user-defined string literal template
   template <__mstring _Str>
-  constexpr __mtypeof<_Str> operator""_mstr() noexcept {
+  constexpr auto operator""_mstr() noexcept -> __mtypeof<_Str> {
     return _Str;
   }
 #endif
@@ -223,7 +223,7 @@ namespace stdexec {
 
   template <class _What, class... _With>
   struct _ERROR_ {
-    _ERROR_ operator,(__msuccess) const noexcept;
+    auto operator,(__msuccess) const noexcept -> _ERROR_;
   };
 
   template <__mstring _What>
@@ -781,7 +781,7 @@ namespace stdexec {
       return static_cast<_Fn&&>(__fn_)();
     }
 
-    __t operator()() && noexcept(__nothrow_callable<_Fn>) {
+    auto operator()() && noexcept(__nothrow_callable<_Fn>) -> __t {
       return static_cast<_Fn&&>(__fn_)();
     }
   };
@@ -792,7 +792,7 @@ namespace stdexec {
   // because of a bizarre nvc++ compiler bug:
   struct __cref_fn {
     template <class _Ty>
-    const _Ty& operator()(const _Ty&);
+    auto operator()(const _Ty&) -> const _Ty&;
   };
   template <class _Ty>
   using __cref_t = decltype(__cref_fn{}(__declval<_Ty>()));
@@ -830,7 +830,7 @@ namespace stdexec {
     decltype(stdexec::__mconvert_indices<std::make_index_sequence<_Np>>);
 #else
   template <std::size_t... _Indices>
-  __types<__msize_t<_Indices>...> __mconvert_indices(std::index_sequence<_Indices...>*);
+  auto __mconvert_indices(std::index_sequence<_Indices...>*) -> __types<__msize_t<_Indices>...>;
   template <std::size_t _Np>
   using __mmake_index_sequence =
     decltype(stdexec::__mconvert_indices(static_cast<std::make_index_sequence<_Np>*>(nullptr)));
@@ -961,7 +961,7 @@ namespace stdexec {
     constexpr __placeholder(void*) noexcept {
     }
 
-    friend constexpr std::size_t __get_placeholder_offset(__placeholder) noexcept {
+    friend constexpr auto __get_placeholder_offset(__placeholder) noexcept -> std::size_t {
       return _Np;
     }
   };
@@ -1040,7 +1040,7 @@ namespace stdexec {
   template <class _Ty, std::size_t _Offset = 0>
   struct __mdispatch_ {
     template <class... _Ts>
-    _Ty operator()(_Ts&&...) const noexcept(noexcept(_Ty{})) {
+    auto operator()(_Ts&&...) const noexcept(noexcept(_Ty{})) -> _Ty {
       return _Ty{};
     }
   };
@@ -1048,7 +1048,7 @@ namespace stdexec {
   template <std::size_t _Np, std::size_t _Offset>
   struct __mdispatch_<__placeholder<_Np>, _Offset> {
     template <class... _Ts>
-    decltype(auto) operator()(_Ts&&... __ts) const noexcept {
+    auto operator()(_Ts&&... __ts) const noexcept -> decltype(auto) {
       return stdexec::__nth_pack_element<_Np + _Offset>(static_cast<_Ts&&>(__ts)...);
     }
   };
@@ -1056,7 +1056,7 @@ namespace stdexec {
   template <std::size_t _Np, std::size_t _Offset>
   struct __mdispatch_<__placeholder<_Np>&, _Offset> {
     template <class... _Ts>
-    decltype(auto) operator()(_Ts&&... __ts) const noexcept {
+    auto operator()(_Ts&&... __ts) const noexcept -> decltype(auto) {
       return stdexec::__nth_pack_element<_Np + _Offset>(__ts...);
     }
   };
@@ -1064,7 +1064,7 @@ namespace stdexec {
   template <std::size_t _Np, std::size_t _Offset>
   struct __mdispatch_<__placeholder<_Np>&&, _Offset> {
     template <class... _Ts>
-    decltype(auto) operator()(_Ts&&... __ts) const noexcept {
+    auto operator()(_Ts&&... __ts) const noexcept -> decltype(auto) {
       return std::move(stdexec::__nth_pack_element<_Np + _Offset>(__ts...));
     }
   };
@@ -1072,7 +1072,7 @@ namespace stdexec {
   template <std::size_t _Np, std::size_t _Offset>
   struct __mdispatch_<const __placeholder<_Np>&, _Offset> {
     template <class... _Ts>
-    decltype(auto) operator()(_Ts&&... __ts) const noexcept {
+    auto operator()(_Ts&&... __ts) const noexcept -> decltype(auto) {
       return std::as_const(stdexec::__nth_pack_element<_Np + _Offset>(__ts...));
     }
   };

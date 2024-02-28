@@ -40,7 +40,8 @@ namespace exec {
       return loop_.get_scheduler();
     }
 
-    std::thread::id get_thread_id() const noexcept {
+    [[nodiscard]]
+    auto get_thread_id() const noexcept -> std::thread::id {
       return thread_.get_id();
     }
   };

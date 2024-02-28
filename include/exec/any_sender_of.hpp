@@ -31,7 +31,7 @@ namespace exec {
     struct __create_vtable_t {
       template <class _VTable, class _Tp>
         requires __tag_invocable_r<const _VTable*, __create_vtable_t, __mtype<_VTable>, __mtype<_Tp>>
-      constexpr const _VTable* operator()(__mtype<_VTable>, __mtype<_Tp>) const noexcept {
+      constexpr auto operator()(__mtype<_VTable>, __mtype<_Tp>) const noexcept -> const _VTable* {
         return stdexec::tag_invoke(__create_vtable_t{}, __mtype<_VTable>{}, __mtype<_Tp>{});
       }
     };
@@ -45,7 +45,7 @@ namespace exec {
     struct __query_vfun<_Tag (*const)(_Ret (*)(_As...))> {
       _Ret (*__fn_)(void*, _As...);
 
-      _Ret operator()(_Tag, void* __rcvr, _As&&... __as) const {
+      auto operator()(_Tag, void* __rcvr, _As&&... __as) const -> _Ret {
         return __fn_(__rcvr, static_cast<_As&&>(__as)...);
       }
     };
@@ -54,7 +54,7 @@ namespace exec {
     struct __query_vfun<_Tag (*)(_Ret (*)(_As...))> {
       _Ret (*__fn_)(void*, _As...);
 
-      _Ret operator()(_Tag, void* __rcvr, _As&&... __as) const {
+      auto operator()(_Tag, void* __rcvr, _As&&... __as) const -> _Ret {
         return __fn_(__rcvr, static_cast<_As&&>(__as)...);
       }
     };
@@ -63,7 +63,7 @@ namespace exec {
     struct __query_vfun<_Tag (*const)(_Ret (*)(_As...) noexcept)> {
       _Ret (*__fn_)(void*, _As...) noexcept;
 
-      _Ret operator()(_Tag, void* __rcvr, _As&&... __as) const noexcept {
+      auto operator()(_Tag, void* __rcvr, _As&&... __as) const noexcept -> _Ret {
         return __fn_(__rcvr, static_cast<_As&&>(__as)...);
       }
     };
@@ -72,7 +72,7 @@ namespace exec {
     struct __query_vfun<_Tag (*)(_Ret (*)(_As...) noexcept)> {
       _Ret (*__fn_)(void*, _As...) noexcept;
 
-      _Ret operator()(_Tag, void* __rcvr, _As&&... __as) const noexcept {
+      auto operator()(_Tag, void* __rcvr, _As&&... __as) const noexcept -> _Ret {
         return __fn_(__rcvr, static_cast<_As&&>(__as)...);
       }
     };
@@ -234,8 +234,9 @@ namespace exec {
     inline constexpr __storage_vtable<_ParentVTable, _StorageCPOs...> __null_storage_vtbl{};
 
     template <class _ParentVTable, class... _StorageCPOs>
-    constexpr const __storage_vtable<_ParentVTable, _StorageCPOs...>*
-      __default_storage_vtable(__storage_vtable<_ParentVTable, _StorageCPOs...>*) noexcept {
+    constexpr auto
+      __default_storage_vtable(__storage_vtable<_ParentVTable, _StorageCPOs...>*) noexcept
+      -> const __storage_vtable<_ParentVTable, _StorageCPOs...>* {
       return &__null_storage_vtbl<_ParentVTable, _StorageCPOs...>;
     }
 
@@ -271,7 +272,7 @@ namespace exec {
           sizeof(_Tp) <= __buffer_size && alignof(_Tp) <= __alignment;
 
         template <class _Tp>
-        static constexpr const __vtable_t* __get_vtable_of_type() noexcept {
+        static constexpr auto __get_vtable_of_type() noexcept -> const __vtable_t* {
           return &__storage_vtbl<__t, __decay_t<_Tp>, _Vtable, __with_delete>;
         }
        public:
@@ -312,11 +313,13 @@ namespace exec {
           __vtable_ = __default_storage_vtable(static_cast<__vtable_t*>(nullptr));
         }
 
-        const _Vtable* __get_vtable() const noexcept {
+        [[nodiscard]]
+        auto __get_vtable() const noexcept -> const _Vtable* {
           return __vtable_;
         }
 
-        void* __get_object_pointer() const noexcept {
+        [[nodiscard]]
+        auto __get_object_pointer() const noexcept -> void* {
           return __object_pointer_;
         }
 
@@ -396,7 +399,7 @@ namespace exec {
         __storage_vtable<_Vtable, __with_delete, __with_move>>;
 
       template <class _Tp>
-      static constexpr const __vtable_t* __get_vtable_of_type() noexcept {
+      static constexpr auto __get_vtable_of_type() noexcept -> const __vtable_t* {
         if constexpr (_Copyable) {
           return &__storage_vtbl<
             __t,
@@ -444,7 +447,7 @@ namespace exec {
         (*__other.__vtable_)(__copy_construct, this, __other);
       }
 
-      __t& operator=(const __t& __other)
+      auto operator=(const __t& __other) -> __t&
         requires(_Copyable)
       {
         __t tmp(__other);
@@ -455,7 +458,7 @@ namespace exec {
         (*__other.__vtable_)(__move_construct, this, static_cast<__t&&>(__other));
       }
 
-      __t& operator=(__t&& __other) noexcept {
+      auto operator=(__t&& __other) noexcept -> __t& {
         __reset();
         (*__other.__vtable_)(__move_construct, this, static_cast<__t&&>(__other));
         return *this;
@@ -471,11 +474,12 @@ namespace exec {
         __vtable_ = __default_storage_vtable(static_cast<__vtable_t*>(nullptr));
       }
 
-      const _Vtable* __get_vtable() const noexcept {
+      auto __get_vtable() const noexcept -> const _Vtable* {
         return __vtable_;
       }
 
-      void* __get_object_pointer() const noexcept {
+      [[nodiscard]]
+      auto __get_object_pointer() const noexcept -> void* {
         return __object_pointer_;
       }
 
@@ -563,8 +567,8 @@ namespace exec {
 
     struct __empty_vtable {
       template <class _Sender>
-      friend const __empty_vtable*
-        tag_invoke(__create_vtable_t, __mtype<__empty_vtable>, __mtype<_Sender>) noexcept {
+      friend auto tag_invoke(__create_vtable_t, __mtype<__empty_vtable>, __mtype<_Sender>) noexcept
+        -> const __empty_vtable* {
         static const __empty_vtable __vtable_{};
         return &__vtable_;
       }
@@ -580,10 +584,10 @@ namespace exec {
     using __copyable_storage_t = __t<__storage<_VTable, _Allocator, true>>;
 
     template <class _Tag, class... _As>
-    _Tag __tag_type(_Tag (*)(_As...));
+    auto __tag_type(_Tag (*)(_As...)) -> _Tag;
 
     template <class _Tag, class... _As>
-    _Tag __tag_type(_Tag (*)(_As...) noexcept);
+    auto __tag_type(_Tag (*)(_As...) noexcept) -> _Tag;
 
     template <class _Query>
     concept __is_stop_token_query = requires {
@@ -636,7 +640,8 @@ namespace exec {
           template <class _Rcvr>
             requires receiver_of<_Rcvr, completion_signatures<_Sigs...>>
                   && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
-          friend const __t* tag_invoke(__create_vtable_t, __mtype<__t>, __mtype<_Rcvr>) noexcept {
+          friend auto tag_invoke(__create_vtable_t, __mtype<__t>, __mtype<_Rcvr>) noexcept
+            -> const __t* {
             static const __t __vtable_{
               {__rcvr_vfun_fn<_Rcvr>{}(static_cast<_Sigs*>(nullptr))}...,
               {__query_vfun_fn<_Rcvr>{}(static_cast<_Queries>(nullptr))}...};
@@ -668,7 +673,8 @@ namespace exec {
             return (*__self.__vtable_)(_Tag{}, __self.__rcvr_, static_cast<_As&&>(__as)...);
           }
 
-          friend in_place_stop_token tag_invoke(get_stop_token_t, const __env_t& __self) noexcept {
+          friend auto tag_invoke(get_stop_token_t, const __env_t& __self) noexcept
+            -> in_place_stop_token {
             return __self.__token_;
           }
         } __env_;
@@ -695,18 +701,19 @@ namespace exec {
         }
 
         template <std::same_as<__ref> Self>
-        friend const __env_t& tag_invoke(get_env_t, const Self& __self) noexcept {
+        friend auto tag_invoke(get_env_t, const Self& __self) noexcept -> const __env_t& {
           return __self.__env_;
         }
       };
 
-      __mbool<true> __test_never_stop_token(get_stop_token_t (*)(never_stop_token (*)() noexcept));
+      auto __test_never_stop_token(get_stop_token_t (*)(never_stop_token (*)() noexcept))
+        -> __mbool<true>;
 
       template <class _Tag, class _Ret, class... _As>
-      __mbool<false> __test_never_stop_token(_Tag (*)(_Ret (*)(_As...) noexcept));
+      auto __test_never_stop_token(_Tag (*)(_Ret (*)(_As...) noexcept)) -> __mbool<false>;
 
       template <class _Tag, class _Ret, class... _As>
-      __mbool<false> __test_never_stop_token(_Tag (*)(_Ret (*)(_As...)));
+      auto __test_never_stop_token(_Tag (*)(_Ret (*)(_As...))) -> __mbool<false>;
 
       template <class _Query>
       using __is_never_stop_token_query =
@@ -757,7 +764,7 @@ namespace exec {
         }
 
         template <std::same_as<__ref> Self>
-        friend const __env_t& tag_invoke(get_env_t, const Self& __self) noexcept {
+        friend auto tag_invoke(get_env_t, const Self& __self) noexcept -> const __env_t& {
           return __self.__env_;
         }
       };
@@ -769,8 +776,8 @@ namespace exec {
 
      private:
       template <class _Op>
-      friend const __operation_vtable*
-        tag_invoke(__create_vtable_t, __mtype<__operation_vtable>, __mtype<_Op>) noexcept {
+      friend auto tag_invoke(__create_vtable_t, __mtype<__operation_vtable>, __mtype<_Op>) noexcept
+        -> const __operation_vtable* {
         static __operation_vtable __vtable{[](void* __object_pointer) noexcept -> void {
           STDEXEC_ASSERT(__object_pointer);
           _Op& __op = *static_cast<_Op*>(__object_pointer);
@@ -845,7 +852,8 @@ namespace exec {
         }
 
         template <same_as<get_env_t> _GetEnv, same_as<__t> _Self>
-        friend __env_t<env_of_t<_Receiver>> tag_invoke(_GetEnv, const _Self& __self) noexcept {
+        friend auto tag_invoke(_GetEnv, const _Self& __self) noexcept
+          -> __env_t<env_of_t<_Receiver>> {
           return __env::__join(
             __env::__with(__self.__op_->__stop_source_.get_token(), get_stop_token),
             get_env(__self.__op_->__rcvr_));
@@ -921,8 +929,9 @@ namespace exec {
      private:
       template <class _EnvProvider>
         requires(__callable<__query_vfun_fn<_EnvProvider>, _Queries> && ...)
-      friend const __query_vtable*
-        tag_invoke(__create_vtable_t, __mtype<__query_vtable>, __mtype<_EnvProvider>) noexcept {
+      friend auto
+        tag_invoke(__create_vtable_t, __mtype<__query_vtable>, __mtype<_EnvProvider>) noexcept
+        -> const __query_vtable* {
         static const __query_vtable __vtable{
           {__query_vfun_fn<_EnvProvider>{}(static_cast<_Queries>(nullptr))}...};
         return &__vtable;
@@ -939,15 +948,15 @@ namespace exec {
        public:
         using __id = __vtable;
 
-        const __query_vtable<_SenderQueries>& __queries() const noexcept {
+        auto __queries() const noexcept -> const __query_vtable<_SenderQueries>& {
           return *this;
         }
 
         __immovable_operation_storage (*__connect_)(void*, __receiver_ref_t);
        private:
         template <sender_to<__receiver_ref_t> _Sender>
-        friend const __vtable*
-          tag_invoke(__create_vtable_t, __mtype<__vtable>, __mtype<_Sender>) noexcept {
+        friend auto tag_invoke(__create_vtable_t, __mtype<__vtable>, __mtype<_Sender>) noexcept
+          -> const __vtable* {
           static const __vtable __vtable_{
             {*__create_vtable(__mtype<__query_vtable<_SenderQueries>>{}, __mtype<_Sender>{})},
             [](void* __object_pointer, __receiver_ref_t __receiver)
@@ -991,10 +1000,10 @@ namespace exec {
         using sender_concept = stdexec::sender_t;
 
         __t(const __t&) = delete;
-        __t& operator=(const __t&) = delete;
+        auto operator=(const __t&) -> __t& = delete;
 
         __t(__t&&) = default;
-        __t& operator=(__t&&) = default;
+        auto operator=(__t&&) -> __t& = default;
 
         template <__not_decays_to<__t> _Sender>
           requires sender_to<_Sender, __receiver_ref<_Sigs, _ReceiverQueries>>
@@ -1002,7 +1011,7 @@ namespace exec {
           : __storage_{static_cast<_Sender&&>(__sndr)} {
         }
 
-        __immovable_operation_storage __connect(__receiver_ref_t __receiver) {
+        auto __connect(__receiver_ref_t __receiver) -> __immovable_operation_storage {
           return __storage_.__get_vtable()->__connect_(
             __storage_.__get_object_pointer(), static_cast<__receiver_ref_t&&>(__receiver));
         }
@@ -1015,12 +1024,12 @@ namespace exec {
         __unique_storage_t<__vtable> __storage_;
 
         template <receiver_of<_Sigs> _Rcvr>
-        friend stdexec::__t<__operation<stdexec::__id<__decay_t<_Rcvr>>, __with_in_place_stop_token>>
-          tag_invoke(connect_t, __t&& __self, _Rcvr&& __rcvr) {
+        friend auto tag_invoke(connect_t, __t&& __self, _Rcvr&& __rcvr)
+          -> stdexec::__t<__operation<stdexec::__id<__decay_t<_Rcvr>>, __with_in_place_stop_token>> {
           return {static_cast<__t&&>(__self), static_cast<_Rcvr&&>(__rcvr)};
         }
 
-        friend __env_t tag_invoke(get_env_t, const __t& __self) noexcept {
+        friend auto tag_invoke(get_env_t, const __t& __self) noexcept -> __env_t {
           return {__self.__storage_.__get_vtable(), __self.__storage_.__get_object_pointer()};
         }
       };
@@ -1042,13 +1051,13 @@ namespace exec {
         __sender_t (*__schedule_)(void*) noexcept;
         bool (*__equal_to_)(const void*, const void* other) noexcept;
 
-        const __query_vtable<_SchedulerQueries>& __queries() const noexcept {
+        auto __queries() const noexcept -> const __query_vtable<_SchedulerQueries>& {
           return *this;
         }
        private:
         template <scheduler _Scheduler>
-        friend const __vtable*
-          tag_invoke(__create_vtable_t, __mtype<__vtable>, __mtype<_Scheduler>) noexcept {
+        friend auto tag_invoke(__create_vtable_t, __mtype<__vtable>, __mtype<_Scheduler>) noexcept
+          -> const __vtable* {
           static const __vtable __vtable_{
             {*__create_vtable(__mtype<__query_vtable<_SchedulerQueries>>{}, __mtype<_Scheduler>{})},
             [](void* __object_pointer) noexcept -> __sender_t {
@@ -1068,7 +1077,7 @@ namespace exec {
       };
 
       template <same_as<__scheduler> _Self>
-      friend __sender_t tag_invoke(schedule_t, const _Self& __self) noexcept {
+      friend auto tag_invoke(schedule_t, const _Self& __self) noexcept -> __sender_t {
         STDEXEC_ASSERT(__self.__storage_.__get_vtable()->__schedule_);
         return __self.__storage_.__get_vtable()->__schedule_(
           __self.__storage_.__get_object_pointer());
@@ -1083,7 +1092,8 @@ namespace exec {
           _Tag{}, __self.__storage_.__get_object_pointer(), static_cast<_As&&>(__as)...);
       }
 
-      friend bool operator==(const __scheduler& __self, const __scheduler& __other) noexcept {
+      friend auto operator==(const __scheduler& __self, const __scheduler& __other) noexcept
+        -> bool {
         if (__self.__storage_.__get_vtable() != __other.__storage_.__get_vtable()) {
           return false;
         }
@@ -1095,7 +1105,8 @@ namespace exec {
             || (!__p && !__o);
       }
 
-      friend bool operator!=(const __scheduler& __self, const __scheduler& __other) noexcept {
+      friend auto operator!=(const __scheduler& __self, const __scheduler& __other) noexcept
+        -> bool {
         return !(__self == __other);
       }
 
@@ -1165,7 +1176,7 @@ namespace exec {
         using __schedule_receiver = any_receiver_ref<__schedule_completions, _ReceiverQueries...>;
 
         template <typename _Tag, typename _Sig>
-        static _Tag __ret_fn(_Tag (*const)(_Sig));
+        static auto __ret_fn(_Tag (*const)(_Sig)) -> _Tag;
 
         template <class _Tag>
         struct __ret_equals_to {
@@ -1222,8 +1233,8 @@ namespace exec {
             _Tag{}, static_cast<Self&&>(__self).__scheduler_, static_cast<_As&&>(__as)...);
         }
 
-        friend bool
-          operator==(const any_scheduler& __self, const any_scheduler& __other) noexcept = default;
+        friend auto operator==(const any_scheduler& __self, const any_scheduler& __other) noexcept
+          -> bool = default;
       };
     };
   };

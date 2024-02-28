@@ -38,7 +38,7 @@ namespace exec {
     using __env_t = __env::__join_t<__env::__with<in_place_stop_token, get_stop_token_t>, _BaseEnv>;
 
     template <class _Ret, class... _Args>
-    __decayed_tuple<_Ret, _Args...> __signature_to_tuple_(_Ret (*)(_Args...));
+    auto __signature_to_tuple_(_Ret (*)(_Args...)) -> __decayed_tuple<_Ret, _Args...>;
 
     template <class _Sig>
     using __signature_to_tuple_t = decltype(__signature_to_tuple_(static_cast<_Sig*>(nullptr)));
@@ -175,7 +175,8 @@ namespace exec {
           __self.__op_->notify(_CPO{}, static_cast<_Args&&>(__args)...);
         }
 
-        friend __env_t<env_of_t<_Receiver>> tag_invoke(get_env_t, const __t& __self) noexcept {
+        friend auto tag_invoke(get_env_t, const __t& __self) noexcept
+          -> __env_t<env_of_t<_Receiver>> {
           auto __token = __env::__with(__self.__op_->__stop_source_.get_token(), get_stop_token);
           return __env::__join(std::move(__token), get_env(__self.__op_->__receiver_));
         }
@@ -258,8 +259,9 @@ namespace exec {
           requires(
             sender_to<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, __receiver_t<_Receiver>>
             && ...)
-        friend __op_t<_Receiver> tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) //
-          noexcept(__nothrow_constructible_from<__op_t<_Receiver>, _Self&&, _Receiver&&>) {
+        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) //
+          noexcept(__nothrow_constructible_from<__op_t<_Receiver>, _Self&&, _Receiver&&>)
+            -> __op_t<_Receiver> {
           return __op_t<_Receiver>{
             static_cast<_Self&&>(__self).__senders_, static_cast<_Receiver&&>(__rcvr)};
         }
@@ -280,8 +282,8 @@ namespace exec {
 
       template <sender... _Senders>
         requires(sizeof...(_Senders) > 0 && sender<__sender_t<_Senders...>>)
-      __sender_t<_Senders...> operator()(_Senders&&... __senders) const
-        noexcept((__nothrow_decay_copyable<_Senders> && ...)) {
+      auto operator()(_Senders&&... __senders) const
+        noexcept((__nothrow_decay_copyable<_Senders> && ...)) -> __sender_t<_Senders...> {
         return __sender_t<_Senders...>(static_cast<_Senders&&>(__senders)...);
       }
     };
