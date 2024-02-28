@@ -39,8 +39,8 @@ namespace stdexec {
 
     template <class _Ty>
     struct __enable_intrusive_from_this {
-      __intrusive_ptr<_Ty> __intrusive_from_this() noexcept;
-      __intrusive_ptr<const _Ty> __intrusive_from_this() const noexcept;
+      auto __intrusive_from_this() noexcept -> __intrusive_ptr<_Ty>;
+      auto __intrusive_from_this() const noexcept -> __intrusive_ptr<const _Ty>;
      private:
       friend _Ty;
       void __inc_ref() noexcept;
@@ -68,7 +68,7 @@ namespace stdexec {
         __value().~_Ty();
       }
 
-      _Ty& __value() noexcept {
+      auto __value() noexcept -> _Ty& {
         return *reinterpret_cast<_Ty*>(__value_);
       }
 
@@ -131,17 +131,17 @@ namespace stdexec {
         : __intrusive_ptr(__that ? __that->__intrusive_from_this() : __intrusive_ptr()) {
       }
 
-      __intrusive_ptr& operator=(__intrusive_ptr&& __that) noexcept {
+      auto operator=(__intrusive_ptr&& __that) noexcept -> __intrusive_ptr& {
         [[maybe_unused]] __intrusive_ptr __old{
           std::exchange(__data_, std::exchange(__that.__data_, nullptr))};
         return *this;
       }
 
-      __intrusive_ptr& operator=(const __intrusive_ptr& __that) noexcept {
+      auto operator=(const __intrusive_ptr& __that) noexcept -> __intrusive_ptr& {
         return operator=(__intrusive_ptr(__that));
       }
 
-      __intrusive_ptr& operator=(__enable_intrusive_from_this<_Ty>* __that) noexcept {
+      auto operator=(__enable_intrusive_from_this<_Ty>* __that) noexcept -> __intrusive_ptr& {
         return operator=(__that ? __that->__intrusive_from_this() : __intrusive_ptr());
       }
 
@@ -157,15 +157,15 @@ namespace stdexec {
         std::swap(__data_, __that.__data_);
       }
 
-      _Ty* get() const noexcept {
+      auto get() const noexcept -> _Ty* {
         return &__data_->__value();
       }
 
-      _Ty* operator->() const noexcept {
+      auto operator->() const noexcept -> _Ty* {
         return &__data_->__value();
       }
 
-      _Ty& operator*() const noexcept {
+      auto operator*() const noexcept -> _Ty& {
         return __data_->__value();
       }
 
@@ -173,27 +173,28 @@ namespace stdexec {
         return __data_ != nullptr;
       }
 
-      bool operator!() const noexcept {
+      auto operator!() const noexcept -> bool {
         return __data_ == nullptr;
       }
 
-      bool operator==(const __intrusive_ptr&) const = default;
+      auto operator==(const __intrusive_ptr&) const -> bool = default;
 
-      bool operator==(std::nullptr_t) const noexcept {
+      auto operator==(std::nullptr_t) const noexcept -> bool {
         return __data_ == nullptr;
       }
     };
 
     template <class _Ty>
-    __intrusive_ptr<_Ty> __enable_intrusive_from_this<_Ty>::__intrusive_from_this() noexcept {
+    auto __enable_intrusive_from_this<_Ty>::__intrusive_from_this() noexcept
+      -> __intrusive_ptr<_Ty> {
       auto* __data = reinterpret_cast<__control_block<_Ty>*>(static_cast<_Ty*>(this));
       __data->__inc_ref_();
       return __intrusive_ptr<_Ty>{__data};
     }
 
     template <class _Ty>
-    __intrusive_ptr<const _Ty>
-      __enable_intrusive_from_this<_Ty>::__intrusive_from_this() const noexcept {
+    auto __enable_intrusive_from_this<_Ty>::__intrusive_from_this() const noexcept
+      -> __intrusive_ptr<const _Ty> {
       auto* __data = reinterpret_cast<__control_block<_Ty>*>(static_cast<const _Ty*>(this));
       __data->__inc_ref_();
       return __intrusive_ptr<const _Ty>{__data};
@@ -215,7 +216,7 @@ namespace stdexec {
     struct __make_intrusive_t {
       template <class... _Us>
         requires constructible_from<_Ty, _Us...>
-      __intrusive_ptr<_Ty> operator()(_Us&&... __us) const {
+      auto operator()(_Us&&... __us) const -> __intrusive_ptr<_Ty> {
         using _UncvTy = std::remove_cv_t<_Ty>;
         return __intrusive_ptr<_Ty>{::new __control_block<_UncvTy>{static_cast<_Us&&>(__us)...}};
       }

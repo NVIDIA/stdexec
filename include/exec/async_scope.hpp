@@ -110,8 +110,8 @@ namespace exec {
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Constrained>, _Receiver>
         [[nodiscard]]
-        friend __when_empty_op_t<_Self, _Receiver>
-          tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) {
+        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+          -> __when_empty_op_t<_Self, _Receiver> {
           return __when_empty_op_t<_Self, _Receiver>{
             __self.__scope_, static_cast<_Self&&>(__self).__c_, static_cast<_Receiver&&>(__rcvr)};
         }
@@ -122,7 +122,7 @@ namespace exec {
           return {};
         }
 
-        friend empty_env tag_invoke(get_env_t, const __t&) noexcept {
+        friend auto tag_invoke(get_env_t, const __t&) noexcept -> empty_env {
           return {};
         }
 
@@ -180,7 +180,8 @@ namespace exec {
           __complete(__scope);
         }
 
-        friend __env_t<env_of_t<_Receiver>> tag_invoke(get_env_t, const __t& __self) noexcept {
+        friend auto tag_invoke(get_env_t, const __t& __self) noexcept
+          -> __env_t<env_of_t<_Receiver>> {
           return make_env(
             get_env(__self.__op_->__rcvr_),
             with(get_stop_token, __self.__op_->__scope_->__stop_source_.get_token()));
@@ -240,8 +241,8 @@ namespace exec {
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Constrained>, __nest_receiver_t<_Receiver>>
         [[nodiscard]]
-        friend __nest_operation_t<_Receiver>
-          tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) {
+        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+          -> __nest_operation_t<_Receiver> {
           return __nest_operation_t<_Receiver>{
             __self.__scope_, static_cast<_Self&&>(__self).__c_, static_cast<_Receiver&&>(__rcvr)};
         }
@@ -252,7 +253,7 @@ namespace exec {
           return {};
         }
 
-        friend empty_env tag_invoke(get_env_t, const __t&) noexcept {
+        friend auto tag_invoke(get_env_t, const __t&) noexcept -> empty_env {
           return {};
         }
       };
@@ -412,7 +413,7 @@ namespace exec {
 #else
 
     template <class _Tag, class... _Ts>
-    std::tuple<_Tag, _Ts...> __completion_as_tuple_(_Tag (*)(_Ts&&...));
+    auto __completion_as_tuple_(_Tag (*)(_Ts&&...)) -> std::tuple<_Tag, _Ts...>;
     template <class _Fn>
     using __completion_as_tuple_t =
       decltype(__scope::__completion_as_tuple_(static_cast<_Fn*>(nullptr)));
@@ -453,7 +454,7 @@ namespace exec {
 
       template <class _Uy>
         requires convertible_to<_Uy*, _Ty*>
-      __dynamic_delete& operator=(std::default_delete<_Uy> __d) {
+      auto operator=(std::default_delete<_Uy> __d) -> __dynamic_delete& {
         __delete_ = __dynamic_delete{__d}.__delete_;
         return *this;
       }
@@ -549,7 +550,7 @@ namespace exec {
           }
         }
 
-        friend const __env_t<_Env>& tag_invoke(get_env_t, const __t& __self) noexcept {
+        friend auto tag_invoke(get_env_t, const __t& __self) noexcept -> const __env_t<_Env>& {
           return __self.__state_->__env_;
         }
       };
@@ -583,7 +584,7 @@ namespace exec {
         using sender_concept = stdexec::sender_t;
 
         __t(__t&&) = default;
-        __t& operator=(__t&&) = default;
+        auto operator=(__t&&) -> __t& = default;
 
         ~__t() noexcept {
           if (__state_ != nullptr) {
@@ -616,7 +617,8 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires receiver_of<_Receiver, __completions_t<_Self>>
-        friend __future_op_t<_Receiver> tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) {
+        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+          -> __future_op_t<_Receiver> {
           return __future_op_t<_Receiver>{
             static_cast<_Receiver&&>(__rcvr), std::move(__self.__state_)};
         }
@@ -627,7 +629,7 @@ namespace exec {
           return {};
         }
 
-        friend empty_env tag_invoke(get_env_t, const __t&) noexcept {
+        friend auto tag_invoke(get_env_t, const __t&) noexcept -> empty_env {
           return {};
         }
 
@@ -675,7 +677,8 @@ namespace exec {
           std::rethrow_exception(std::move(__eptr));
         }
 
-        friend const __spawn_env_t<_Env>& tag_invoke(get_env_t, const __t& __self) noexcept {
+        friend auto tag_invoke(get_env_t, const __t& __self) noexcept
+          -> const __spawn_env_t<_Env>& {
           return __self.__op_->__env_;
         }
       };
@@ -723,7 +726,7 @@ namespace exec {
 
       template <sender _Constrained>
       [[nodiscard]]
-      __when_empty_sender_t<_Constrained> when_empty(_Constrained&& __c) const {
+      auto when_empty(_Constrained&& __c) const -> __when_empty_sender_t<_Constrained> {
         return __when_empty_sender_t<_Constrained>{&__impl_, static_cast<_Constrained&&>(__c)};
       }
 
@@ -737,7 +740,7 @@ namespace exec {
 
       template <sender _Constrained>
       [[nodiscard]]
-      nest_result_t<_Constrained> nest(_Constrained&& __c) {
+      auto nest(_Constrained&& __c) -> nest_result_t<_Constrained> {
         return nest_result_t<_Constrained>{&__impl_, static_cast<_Constrained&&>(__c)};
       }
 
@@ -753,7 +756,7 @@ namespace exec {
       }
 
       template <__movable_value _Env = empty_env, sender_in<__env_t<_Env>> _Sender>
-      __future_t<_Sender, _Env> spawn_future(_Sender&& __sndr, _Env __env = {}) {
+      auto spawn_future(_Sender&& __sndr, _Env __env = {}) -> __future_t<_Sender, _Env> {
         using __state_t = __future_state<nest_result_t<_Sender>, _Env>;
         auto __state = std::make_unique<__state_t>(
           nest(static_cast<_Sender&&>(__sndr)), static_cast<_Env&&>(__env), &__impl_);
@@ -761,15 +764,15 @@ namespace exec {
         return __future_t<_Sender, _Env>{std::move(__state)};
       }
 
-      in_place_stop_source& get_stop_source() noexcept {
+      auto get_stop_source() noexcept -> in_place_stop_source& {
         return __impl_.__stop_source_;
       }
 
-      in_place_stop_token get_stop_token() const noexcept {
+      auto get_stop_token() const noexcept -> in_place_stop_token {
         return __impl_.__stop_source_.get_token();
       }
 
-      bool request_stop() noexcept {
+      auto request_stop() noexcept -> bool {
         return __impl_.__stop_source_.request_stop();
       }
 

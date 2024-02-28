@@ -31,7 +31,7 @@ namespace exec {
     using __atomic_node_pointer = std::atomic<_Tp *>;
 
     [[nodiscard]]
-    bool empty() const noexcept {
+    auto empty() const noexcept -> bool {
       return __head_.load(std::memory_order_relaxed) == nullptr;
     }
 
@@ -40,7 +40,7 @@ namespace exec {
       bool __was_empty;
     };
 
-    try_push_result try_push_front(__node_pointer t) noexcept {
+    auto try_push_front(__node_pointer t) noexcept -> try_push_result {
       __node_pointer __old_head = __head_.load(std::memory_order_relaxed);
       t->*_NextPtr = __old_head;
       return {
@@ -48,7 +48,7 @@ namespace exec {
         __old_head == nullptr};
     }
 
-    bool push_front(__node_pointer t) noexcept {
+    auto push_front(__node_pointer t) noexcept -> bool {
       __node_pointer __old_head = __head_.load(std::memory_order_relaxed);
       do {
         t->*_NextPtr = __old_head;
@@ -67,16 +67,16 @@ namespace exec {
       queue.clear();
     }
 
-    stdexec::__intrusive_queue<_NextPtr> pop_all() noexcept {
+    auto pop_all() noexcept -> stdexec::__intrusive_queue<_NextPtr> {
       return stdexec::__intrusive_queue<_NextPtr>::make(reset_head());
     }
 
-    stdexec::__intrusive_queue<_NextPtr> pop_all_reversed() noexcept {
+    auto pop_all_reversed() noexcept -> stdexec::__intrusive_queue<_NextPtr> {
       return stdexec::__intrusive_queue<_NextPtr>::make_reversed(reset_head());
     }
 
    private:
-    __node_pointer reset_head() noexcept {
+    auto reset_head() noexcept -> __node_pointer {
       __node_pointer __old_head = __head_.load(std::memory_order_relaxed);
       while (!__head_.compare_exchange_weak(__old_head, nullptr, std::memory_order_acq_rel)) {
         ;

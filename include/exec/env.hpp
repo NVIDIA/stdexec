@@ -34,7 +34,7 @@ namespace exec {
 
     struct __without_t {
       template <class _Env, class _Tag>
-      decltype(auto) operator()(_Env&& __env, _Tag) const {
+      auto operator()(_Env&& __env, _Tag) const -> decltype(auto) {
         return stdexec::__env::__without(static_cast<_Env&&>(__env), _Tag());
       }
     };
@@ -51,7 +51,7 @@ namespace exec {
       }
 
       template <stdexec::__nothrow_move_constructible _Env>
-      _Env operator()(_Env&& __env) const noexcept {
+      auto operator()(_Env&& __env) const noexcept -> _Env {
         return static_cast<_Env&&>(__env);
       }
     };

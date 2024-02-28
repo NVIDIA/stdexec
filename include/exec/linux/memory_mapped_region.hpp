@@ -31,17 +31,19 @@ namespace exec {
     ~memory_mapped_region();
 
     memory_mapped_region(const memory_mapped_region&) = delete;
-    memory_mapped_region& operator=(const memory_mapped_region&) = delete;
+    auto operator=(const memory_mapped_region&) -> memory_mapped_region& = delete;
 
     memory_mapped_region(memory_mapped_region&& __other) noexcept;
 
-    memory_mapped_region& operator=(memory_mapped_region&& __other) noexcept;
+    auto operator=(memory_mapped_region&& __other) noexcept -> memory_mapped_region&;
 
     explicit operator bool() const noexcept;
 
-    void* data() const noexcept;
+    [[nodiscard]]
+    auto data() const noexcept -> void*;
 
-    std::size_t size() const noexcept;
+    [[nodiscard]]
+    auto size() const noexcept -> std::size_t;
   };
 } // namespace exec
 

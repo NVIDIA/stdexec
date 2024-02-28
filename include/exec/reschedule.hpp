@@ -66,11 +66,11 @@ namespace exec {
         }
       };
 
-      friend __sender tag_invoke(schedule_t, __scheduler) noexcept {
+      friend auto tag_invoke(schedule_t, __scheduler) noexcept -> __sender {
         return {};
       }
 
-      bool operator==(const __scheduler&) const noexcept = default;
+      auto operator==(const __scheduler&) const noexcept -> bool = default;
     };
 
     struct __reschedule_t {

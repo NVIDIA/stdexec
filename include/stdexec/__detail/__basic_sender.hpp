@@ -280,7 +280,7 @@ namespace stdexec {
         , __state_(__sexpr_impl<__tag_t>::get_state(static_cast<_Sexpr&&>(__sndr), __rcvr_)) {
       }
 
-      _Receiver& __rcvr() & noexcept {
+      auto __rcvr() & noexcept -> _Receiver& {
         return __rcvr_;
       }
     };
@@ -314,11 +314,11 @@ namespace stdexec {
     struct __enable_receiver_from_this {
       using __op_base_t = __op_base<_Sexpr, _Receiver>;
 
-      decltype(auto) __receiver() noexcept {
+      auto __receiver() noexcept -> decltype(auto) {
         using __derived_t = decltype(__op_base_t::__state_);
-        __derived_t* __derived = static_cast<__derived_t*>(this);
+        auto* __derived = static_cast<__derived_t*>(this);
         constexpr std::size_t __offset = offsetof(__op_base_t, __state_);
-        __op_base_t* __base = reinterpret_cast<__op_base_t*>(
+        auto* __base = reinterpret_cast<__op_base_t*>(
           reinterpret_cast<char*>(__derived) - __offset);
         return __base->__rcvr();
       }
@@ -501,7 +501,7 @@ namespace stdexec {
     using __tag_t = typename __desc_t::__tag;
     using __captures_t = __minvoke<__desc_t, __q<__detail::__captures_t>>;
 
-    static constexpr bool __is_non_dependent() noexcept {
+    static constexpr auto __is_non_dependent() noexcept -> bool {
       return __v<__minvoke<__desc_t, __q<__detail::__is_non_dependent_t>>>;
     }
 

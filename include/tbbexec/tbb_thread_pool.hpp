@@ -48,7 +48,7 @@ namespace tbbexec {
       struct scheduler {
         using __t = scheduler;
         using __id = scheduler;
-        bool operator==(const scheduler&) const = default;
+        auto operator==(const scheduler&) const -> bool = default;
 
        private:
         template <class DerivedPoolType_, class ReceiverId>
@@ -64,25 +64,25 @@ namespace tbbexec {
 
          private:
           template <class Receiver>
-          stdexec::__t<operation<DerivedPoolType, stdexec::__id<Receiver>>>
-            make_operation_(Receiver rcvr) const {
+          auto make_operation_(Receiver rcvr) const
+            -> stdexec::__t<operation<DerivedPoolType, stdexec::__id<Receiver>>> {
             return stdexec::__t<operation<DerivedPoolType, stdexec::__id<Receiver>>>{
               this->pool_, static_cast<Receiver&&>(rcvr)};
           }
 
           template <class Receiver>
-          friend stdexec::__t<operation<DerivedPoolType, stdexec::__id<Receiver>>>
-            tag_invoke(stdexec::connect_t, sender sndr, Receiver rcvr) {
+          friend auto tag_invoke(stdexec::connect_t, sender sndr, Receiver rcvr)
+            -> stdexec::__t<operation<DerivedPoolType, stdexec::__id<Receiver>>> {
             return sndr.make_operation_(std::move(rcvr));
           }
 
           template <class CPO>
-          friend typename DerivedPoolType::scheduler
-            tag_invoke(stdexec::get_completion_scheduler_t<CPO>, sender sndr) noexcept {
+          friend auto tag_invoke(stdexec::get_completion_scheduler_t<CPO>, sender sndr) noexcept ->
+            typename DerivedPoolType::scheduler {
             return sndr.pool_.get_scheduler();
           }
 
-          friend const sender& tag_invoke(stdexec::get_env_t, const sender& sndr) noexcept {
+          friend auto tag_invoke(stdexec::get_env_t, const sender& sndr) noexcept -> const sender& {
             return sndr;
           }
 
@@ -131,8 +131,8 @@ namespace tbbexec {
           // even_share(     11,      1,         3); // -> [4,  8) -> 4 items
           // even_share(     11,      2,         3); // -> [8, 11) -> 3 items
           // ```
-          static std::pair<Shape, Shape>
-            even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept {
+          static auto even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept
+            -> std::pair<Shape, Shape> {
             const auto avg_per_thread = n / size;
             const auto n_big_share = avg_per_thread + 1;
             const auto big_shares = n % size;
@@ -145,7 +145,8 @@ namespace tbbexec {
             return std::make_pair(begin, end);
           }
 
-          std::uint32_t num_agents_required() const {
+          [[nodiscard]]
+          auto num_agents_required() const -> std::uint32_t {
             // With work stealing, is std::min necessary, or can we feel free to ask for more agents (tasks)
             // than we can actually deal with at one time?
             return std::min(shape_, static_cast<Shape>(pool_.available_parallelism()));
@@ -358,15 +359,14 @@ namespace tbbexec {
             template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
               requires stdexec::
                 receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-              friend bulk_op_state_t<Self, Receiver>
-              tag_invoke(stdexec::connect_t, Self&& self, Receiver rcvr) noexcept(
+              friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver rcvr) noexcept(
                 stdexec::__nothrow_constructible_from<
                   bulk_op_state_t<Self, Receiver>,
                   DerivedPoolType&,
                   Shape,
                   Fun,
                   Sender,
-                  Receiver>) {
+                  Receiver>) -> bulk_op_state_t<Self, Receiver> {
               return bulk_op_state_t<Self, Receiver>{
                 self.pool_,
                 self.shape_,
@@ -394,17 +394,17 @@ namespace tbbexec {
             }
 
             template <stdexec::same_as<stdexec::get_env_t> Tag>
-            friend const __t& tag_invoke(Tag tag, const __t& self) noexcept {
+            friend auto tag_invoke(Tag tag, const __t& self) noexcept -> const __t& {
               return self;
             }
           };
         };
 
-        sender make_sender() const {
+        auto make_sender() const -> sender {
           return sender{*pool_};
         }
 
-        friend sender tag_invoke(stdexec::schedule_t, const scheduler& sch) noexcept {
+        friend auto tag_invoke(stdexec::schedule_t, const scheduler& sch) noexcept -> sender {
           return sch.make_sender();
         }
 
@@ -413,22 +413,22 @@ namespace tbbexec {
           stdexec::__t<bulk_sender<stdexec::__id<stdexec::__decay_t<Sender>>, Shape, Fun>>;
 
         template <stdexec::sender S, std::integral Shape, class Fun>
-        friend bulk_sender_t<S, Shape, Fun> tag_invoke(
-          stdexec::bulk_t,
-          const scheduler& sch,
-          S&& sndr,
-          Shape shape,
-          Fun fun) noexcept {
+        friend auto
+          tag_invoke(stdexec::bulk_t, const scheduler& sch, S&& sndr, Shape shape, Fun fun) noexcept
+          -> bulk_sender_t<S, Shape, Fun> {
           return bulk_sender_t<S, Shape, Fun>{
             *sch.pool_, static_cast<S&&>(sndr), shape, static_cast<Fun&&>(fun)};
         }
 
-        constexpr stdexec::forward_progress_guarantee forward_progress_guarantee() const noexcept {
+        [[nodiscard]]
+        constexpr auto forward_progress_guarantee() const noexcept
+          -> stdexec::forward_progress_guarantee {
           return pool_->forward_progress_guarantee();
         }
 
-        friend constexpr stdexec::forward_progress_guarantee
-          tag_invoke(stdexec::get_forward_progress_guarantee_t, scheduler self) noexcept {
+        friend constexpr auto
+          tag_invoke(stdexec::get_forward_progress_guarantee_t, scheduler self) noexcept
+          -> stdexec::forward_progress_guarantee {
           return self.forward_progress_guarantee();
         }
 
@@ -442,7 +442,7 @@ namespace tbbexec {
       };
 
       [[nodiscard]]
-      scheduler get_scheduler() noexcept {
+      auto get_scheduler() noexcept -> scheduler {
         return scheduler{static_cast<DerivedPoolType&>(*this)};
       }
 
@@ -456,7 +456,7 @@ namespace tbbexec {
     }*/
 
       [[nodiscard]]
-      std::uint32_t available_parallelism() const {
+      auto available_parallelism() const -> std::uint32_t {
         return static_cast<DerivedPoolType&>(*this).available_parallelism();
       }
 
@@ -516,12 +516,12 @@ namespace tbbexec {
     }
 
     [[nodiscard]]
-    std::uint32_t available_parallelism() const {
+    auto available_parallelism() const -> std::uint32_t {
       return static_cast<std::uint32_t>(arena_.max_concurrency());
     }
    private:
     [[nodiscard]]
-    static constexpr stdexec::forward_progress_guarantee forward_progress_guarantee() {
+    static constexpr auto forward_progress_guarantee() -> stdexec::forward_progress_guarantee {
       return stdexec::forward_progress_guarantee::parallel;
     }
 

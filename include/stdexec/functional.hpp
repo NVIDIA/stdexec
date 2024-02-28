@@ -185,7 +185,7 @@ namespace stdexec {
       }
     };
 
-    __funobj __invoke_selector(__ignore, __ignore) noexcept;
+    auto __invoke_selector(__ignore, __ignore) noexcept -> __funobj;
 
     template <class _Mbr, class _Class, class _Ty>
     auto __invoke_selector(_Mbr _Class::*, const _Ty&) noexcept {

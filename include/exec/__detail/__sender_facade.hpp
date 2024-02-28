@@ -59,7 +59,7 @@ namespace exec {
 
       template <same_as<__receiver_placeholder> _Self>
       [[noreturn]]
-      friend _Env tag_invoke(get_env_t, _Self) noexcept {
+      friend auto tag_invoke(get_env_t, _Self) noexcept -> _Env {
         static_assert(
           __never_true<_Self>, "we should never be instantiating the body of this function");
         std::terminate();
@@ -240,7 +240,7 @@ namespace exec {
     };
 
     template <class _Self>
-    __minvoke<__id_<>, _Self> __is_derived_sender_(const _Self&);
+    auto __is_derived_sender_(const _Self&) -> __minvoke<__id_<>, _Self>;
 
     template <class _Self, class _DerivedId>
     concept __is_derived_sender = //
@@ -303,20 +303,17 @@ namespace exec {
             if constexpr (__mvalid<__pre_completions_t, _NewSender, _NewEnv>) {
               using _Completions =
                 __completions_t<_NewEnv, __pre_completions_t<_NewSender, _NewEnv>>;
-              if constexpr (__valid_completion_signatures<_Completions, _Env>) {
-                return (_Completions(*)()) nullptr;
-              } else {
-                // assume this is an error message and return it directly
-                return (_Completions(*)()) nullptr;
-              }
+              // either this is a valid completion signature or an error message.
+              // either way, return it directly.
+              return static_cast<_Completions (*)()>(nullptr);
             } else {
-              return (__diagnostic_t<_Env>(*)()) nullptr;
+              return static_cast<__diagnostic_t<_Env> (*)()>(nullptr);
             }
           } else if constexpr (same_as<_NewSender, __sender_transform_failed>) {
-            return (__diagnostic_t<_Env>(*)()) nullptr;
+            return static_cast<__diagnostic_t<_Env> (*)()>(nullptr);
           } else {
             // assume this is an error message and return it directly
-            return (_NewSender(*)()) nullptr;
+            return static_cast<_NewSender (*)()>(nullptr);
           }
         }
 
@@ -338,28 +335,28 @@ namespace exec {
   } // namespace __stl
 
   template <class _DerivedId, class _Sender, class _Kernel>
-  using __sender_facade = __stl::__sender<_DerivedId, _Sender, _Kernel>;
+  using __sender_facade [[deprecated]] = __stl::__sender<_DerivedId, _Sender, _Kernel>;
 
   struct __default_kernel {
     struct __no_data { };
 
     template <class _Sender>
-    static _Sender&& transform_sender(           //
+    static auto transform_sender(                //
       _Sender&& __sndr,                          //
       [[maybe_unused]] stdexec::__ignore __data, //
-      [[maybe_unused]] stdexec::__ignore __rcvr) noexcept {
+      [[maybe_unused]] stdexec::__ignore __rcvr) noexcept -> _Sender&& {
       return static_cast<_Sender&&>(__sndr);
     }
 
     template <class _Env>
-    static _Env get_env(_Env&& __env) noexcept {
+    static auto get_env(_Env&& __env) noexcept -> _Env {
       static_assert(stdexec::__nothrow_move_constructible<_Env>);
       return static_cast<_Env&&>(__env);
     }
 
-    static __no_data get_data(                   //
+    static auto get_data(                        //
       [[maybe_unused]] stdexec::__ignore __rcvr, //
-      [[maybe_unused]] void* __compl_sigs) noexcept {
+      [[maybe_unused]] void* __compl_sigs) noexcept -> __no_data {
       return {};
     }
 

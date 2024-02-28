@@ -54,7 +54,7 @@ namespace exec {
           __self.__state_->__complete(_Tag(), static_cast<_Args &&>(__args)...);
         }
 
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t &__self) noexcept {
+        friend auto tag_invoke(get_env_t, const __t &__self) noexcept -> env_of_t<_Receiver> {
           return get_env(__self.__state_->__receiver());
         }
       };

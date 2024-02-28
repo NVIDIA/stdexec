@@ -62,7 +62,7 @@ namespace stdexec {
 #  endif
 
   template <class _Awaitable>
-  decltype(auto) __get_awaiter(_Awaitable&& __awaitable, void*) {
+  auto __get_awaiter(_Awaitable&& __awaitable, void*) -> decltype(auto) {
     if constexpr (requires { static_cast<_Awaitable&&>(__awaitable).operator co_await(); }) {
       return static_cast<_Awaitable&&>(__awaitable).operator co_await();
     } else if constexpr (requires {
@@ -79,7 +79,7 @@ namespace stdexec {
   }
 
   template <class _Awaitable, class _Promise>
-  decltype(auto) __get_awaiter(_Awaitable&& __awaitable, _Promise* __promise)
+  auto __get_awaiter(_Awaitable&& __awaitable, _Promise* __promise) -> decltype(auto)
     requires requires { __promise->await_transform(static_cast<_Awaitable&&>(__awaitable)); }
   {
     if constexpr (
@@ -110,7 +110,7 @@ namespace stdexec {
     };
 
   template <class _Tp>
-  _Tp& __as_lvalue(_Tp&&);
+  auto __as_lvalue(_Tp&&) -> _Tp&;
 
   template <class _Awaitable, class _Promise = void>
     requires __awaitable<_Awaitable, _Promise>

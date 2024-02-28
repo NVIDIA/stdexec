@@ -71,7 +71,7 @@ namespace exec {
         }
 
         template <same_as<get_env_t> _GetEnv, __decays_to<__t> _Self>
-        friend env_of_t<_Receiver> tag_invoke(_GetEnv, _Self&& __self) noexcept {
+        friend auto tag_invoke(_GetEnv, _Self&& __self) noexcept -> env_of_t<_Receiver> {
           return stdexec::get_env(__self.__op_->__receiver_);
         }
       };
@@ -129,7 +129,7 @@ namespace exec {
 
     template <class _Adaptor, class _Item>
       requires stdexec::__callable<_Adaptor&, _Item>
-    stdexec::__msuccess __try_call(_Item*);
+    auto __try_call(_Item*) -> stdexec::__msuccess;
 
     template <class _Adaptor, class... _Items>
     auto __try_calls(item_types<_Items...>*) -> decltype((
@@ -159,7 +159,8 @@ namespace exec {
       using __completion_sigs_t = __sequence_completion_signatures_of_t<__child_of<_Self>, _Env>;
 
       template <sender_expr_for<transform_each_t> _Self, class _Env>
-      static __completion_sigs_t<_Self, _Env> get_completion_signatures(_Self&&, _Env&&) noexcept {
+      static auto get_completion_signatures(_Self&&, _Env&&) noexcept
+        -> __completion_sigs_t<_Self, _Env> {
         return {};
       }
 
@@ -171,7 +172,7 @@ namespace exec {
         item_types_of_t<__child_of<_Self>, _Env>>;
 
       template <sender_expr_for<transform_each_t> _Self, class _Env>
-      static __item_types_t<_Self, _Env> get_item_types(_Self&&, _Env&&) noexcept {
+      static auto get_item_types(_Self&&, _Env&&) noexcept -> __item_types_t<_Self, _Env> {
         return {};
       }
 
@@ -194,7 +195,7 @@ namespace exec {
       }
 
       template <sender_expr_for<transform_each_t> _Sexpr>
-      static env_of_t<__child_of<_Sexpr>> get_env(const _Sexpr& __sexpr) noexcept {
+      static auto get_env(const _Sexpr& __sexpr) noexcept -> env_of_t<__child_of<_Sexpr>> {
         return __sexpr_apply(__sexpr, []<class _Child>(__ignore, __ignore, const _Child& __child) {
           return stdexec::get_env(__child);
         });

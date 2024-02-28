@@ -60,7 +60,8 @@ namespace exec {
     // even_share(     11,      2,         3); // -> [8, 11) -> 3 items
     // ```
     template <class Shape>
-    std::pair<Shape, Shape> even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept {
+    auto even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept
+      -> std::pair<Shape, Shape> {
       STDEXEC_ASSERT(n >= 0);
       using ushape_t = std::make_unsigned_t<Shape>;
       const auto avg_per_thread = static_cast<ushape_t>(n) / size;
@@ -134,7 +135,7 @@ namespace exec {
         }
       }
 
-      __intrusive_queue<&task_base::next> pop_all_reversed(std::size_t tid) noexcept {
+      auto pop_all_reversed(std::size_t tid) noexcept -> __intrusive_queue<&task_base::next> {
         remote_queue* head = head_.load(std::memory_order_acquire);
         __intrusive_queue<&task_base::next> tasks{};
         while (head != nullptr) {
@@ -144,7 +145,7 @@ namespace exec {
         return tasks;
       }
 
-      remote_queue* get() {
+      auto get() -> remote_queue* {
         thread_local std::thread::id this_id = std::this_thread::get_id();
         remote_queue* head = head_.load(std::memory_order_acquire);
         remote_queue* queue = head;
@@ -154,7 +155,7 @@ namespace exec {
           }
           queue = queue->next_;
         }
-        remote_queue* new_head = new remote_queue{head, nthreads_};
+        auto* new_head = new remote_queue{head, nthreads_};
         while (!head_.compare_exchange_weak(head, new_head, std::memory_order_acq_rel)) {
           new_head->next_ = head;
         }
@@ -246,7 +247,7 @@ namespace exec {
 #if STDEXEC_HAS_STD_RANGES()
       struct transform_iterate {
         template <class Range>
-        __t<schedule_all_::sequence<Range>> operator()(exec::iterate_t, Range&& range) {
+        auto operator()(exec::iterate_t, Range&& range) -> __t<schedule_all_::sequence<Range>> {
           return {static_cast<Range&&>(range), pool_};
         }
 
@@ -317,7 +318,7 @@ namespace exec {
       struct scheduler {
         using __t = scheduler;
         using __id = scheduler;
-        bool operator==(const scheduler&) const = default;
+        auto operator==(const scheduler&) const -> bool = default;
 
        private:
         template <typename ReceiverId>
@@ -350,17 +351,18 @@ namespace exec {
             remote_queue* queue_;
 
             template <class CPO>
-            friend static_thread_pool_::scheduler
-              tag_invoke(get_completion_scheduler_t<CPO>, const env& self) noexcept {
+            friend auto tag_invoke(get_completion_scheduler_t<CPO>, const env& self) noexcept
+              -> static_thread_pool_::scheduler {
               return self.make_scheduler_();
             }
 
-            static_thread_pool_::scheduler make_scheduler_() const {
+            [[nodiscard]]
+            auto make_scheduler_() const -> static_thread_pool_::scheduler {
               return static_thread_pool_::scheduler{pool_, *queue_};
             }
           };
 
-          friend env tag_invoke(get_env_t, const sender& self) noexcept {
+          friend auto tag_invoke(get_env_t, const sender& self) noexcept -> env {
             return env{self.pool_, self.queue_};
           }
 
@@ -383,20 +385,22 @@ namespace exec {
           nodemask constraints_{};
         };
 
-        sender make_sender_() const {
+        [[nodiscard]]
+        auto make_sender_() const -> sender {
           return sender{*pool_, queue_, thread_idx_, nodemask_};
         }
 
-        friend sender tag_invoke(schedule_t, const scheduler& sch) noexcept {
+        friend auto tag_invoke(schedule_t, const scheduler& sch) noexcept -> sender {
           return sch.make_sender_();
         }
 
-        friend forward_progress_guarantee
-          tag_invoke(get_forward_progress_guarantee_t, const static_thread_pool_&) noexcept {
+        friend auto
+          tag_invoke(get_forward_progress_guarantee_t, const static_thread_pool_&) noexcept
+          -> forward_progress_guarantee {
           return forward_progress_guarantee::parallel;
         }
 
-        friend domain tag_invoke(get_domain_t, scheduler) noexcept {
+        friend auto tag_invoke(get_domain_t, scheduler) noexcept -> domain {
           return {};
         }
 
@@ -434,19 +438,19 @@ namespace exec {
         std::size_t thread_idx_{std::numeric_limits<std::size_t>::max()};
       };
 
-      scheduler get_scheduler() noexcept {
+      auto get_scheduler() noexcept -> scheduler {
         return scheduler{*this};
       }
 
-      scheduler get_scheduler_on_thread(std::size_t threadIndex) noexcept {
+      auto get_scheduler_on_thread(std::size_t threadIndex) noexcept -> scheduler {
         return scheduler{*this, *get_remote_queue(), threadIndex};
       }
 
-      scheduler get_constrained_scheduler(const nodemask& constraints) noexcept {
+      auto get_constrained_scheduler(const nodemask& constraints) noexcept -> scheduler {
         return scheduler{*this, *get_remote_queue(), constraints};
       }
 
-      remote_queue* get_remote_queue() noexcept {
+      auto get_remote_queue() noexcept -> remote_queue* {
         remote_queue* queue = remotes_.get();
         std::size_t index = 0;
         for (std::thread& t: threads_) {
@@ -461,11 +465,13 @@ namespace exec {
 
       void request_stop() noexcept;
 
-      std::uint32_t available_parallelism() const {
+      [[nodiscard]]
+      auto available_parallelism() const -> std::uint32_t {
         return threadCount_;
       }
 
-      bwos_params params() const {
+      [[nodiscard]]
+      auto params() const -> bwos_params {
         return params_;
       }
 
@@ -496,15 +502,17 @@ namespace exec {
           , numa_node_(numa_node) {
         }
 
-        task_base* try_steal() noexcept {
+        auto try_steal() noexcept -> task_base* {
           return queue_->steal_front();
         }
 
-        std::uint32_t index() const noexcept {
+        [[nodiscard]]
+        auto index() const noexcept -> std::uint32_t {
           return index_;
         }
 
-        int numa_node() const noexcept {
+        [[nodiscard]]
+        auto numa_node() const noexcept -> int {
           return numa_node_;
         }
 
@@ -547,11 +555,11 @@ namespace exec {
           rng_.seed(rd);
         }
 
-        pop_result pop();
+        auto pop() -> pop_result;
         void push_local(task_base* task);
         void push_local(__intrusive_queue<&task_base::next>&& tasks);
 
-        bool notify();
+        auto notify() -> bool;
         void request_stop();
 
         void victims(const std::vector<workstealing_victim>& victims) {
@@ -567,15 +575,17 @@ namespace exec {
           }
         }
 
-        std::uint32_t index() const noexcept {
+        [[nodiscard]]
+        auto index() const noexcept -> std::uint32_t {
           return index_;
         }
 
-        int numa_node() const noexcept {
+        [[nodiscard]]
+        auto numa_node() const noexcept -> int {
           return numa_node_;
         }
 
-        workstealing_victim as_victim() noexcept {
+        auto as_victim() noexcept -> workstealing_victim {
           return workstealing_victim{&local_queue_, index_, numa_node_};
         }
 
@@ -587,11 +597,11 @@ namespace exec {
           notified
         };
 
-        pop_result try_pop();
-        pop_result try_remote();
-        pop_result try_steal(std::span<workstealing_victim> victims);
-        pop_result try_steal_near();
-        pop_result try_steal_any();
+        auto try_pop() -> pop_result;
+        auto try_remote() -> pop_result;
+        auto try_steal(std::span<workstealing_victim> victims) -> pop_result;
+        auto try_steal_near() -> pop_result;
+        auto try_steal_any() -> pop_result;
 
         void notify_one_sleeping();
         void set_stealing();
@@ -625,19 +635,22 @@ namespace exec {
         int numa_node;
         std::size_t thread_index;
 
-        friend bool operator<(
+        friend auto operator<(
           const thread_index_by_numa_node& lhs,
-          const thread_index_by_numa_node& rhs) noexcept {
+          const thread_index_by_numa_node& rhs) noexcept -> bool {
           return lhs.numa_node < rhs.numa_node;
         }
       };
 
       std::vector<thread_index_by_numa_node> threadIndexByNumaNode_;
 
-      std::size_t num_threads(int numa) const noexcept;
-      std::size_t num_threads(nodemask constraints) const noexcept;
-      std::size_t get_thread_index(int numa, std::size_t index) const noexcept;
-      std::size_t random_thread_index_with_constraints(const nodemask& contraints) noexcept;
+      [[nodiscard]]
+      auto num_threads(int numa) const noexcept -> std::size_t;
+      [[nodiscard]]
+      auto num_threads(nodemask constraints) const noexcept -> std::size_t;
+      [[nodiscard]]
+      auto get_thread_index(int numa, std::size_t index) const noexcept -> std::size_t;
+      auto random_thread_index_with_constraints(const nodemask& contraints) noexcept -> std::size_t;
     };
 
     inline static_thread_pool_::static_thread_pool_()
@@ -717,7 +730,7 @@ namespace exec {
       this->enqueue(*get_remote_queue(), task, constraints);
     }
 
-    inline std::size_t static_thread_pool_::num_threads(int numa) const noexcept {
+    inline auto static_thread_pool_::num_threads(int numa) const noexcept -> std::size_t {
       thread_index_by_numa_node key{numa, 0};
       auto it = std::lower_bound(threadIndexByNumaNode_.begin(), threadIndexByNumaNode_.end(), key);
       if (it == threadIndexByNumaNode_.end()) {
@@ -727,9 +740,9 @@ namespace exec {
       return static_cast<std::size_t>(std::distance(it, itEnd));
     }
 
-    inline std::size_t static_thread_pool_::num_threads(nodemask constraints) const noexcept {
-      const std::size_t nNodes = static_cast<std::size_t>(
-        threadIndexByNumaNode_.back().numa_node + 1);
+    inline auto static_thread_pool_::num_threads(nodemask constraints) const noexcept
+      -> std::size_t {
+      const std::size_t nNodes = static_cast<unsigned>(threadIndexByNumaNode_.back().numa_node + 1);
       std::size_t nThreads = 0;
       for (std::size_t nodeIndex = 0; nodeIndex < nNodes; ++nodeIndex) {
         if (!constraints[nodeIndex]) {
@@ -740,8 +753,9 @@ namespace exec {
       return nThreads;
     }
 
-    inline std::size_t
-      static_thread_pool_::get_thread_index(int nodeIndex, std::size_t threadIndex) const noexcept {
+    inline auto
+      static_thread_pool_::get_thread_index(int nodeIndex, std::size_t threadIndex) const noexcept
+      -> std::size_t {
       thread_index_by_numa_node key{nodeIndex, 0};
       auto it = std::lower_bound(threadIndexByNumaNode_.begin(), threadIndexByNumaNode_.end(), key);
       STDEXEC_ASSERT(it != threadIndexByNumaNode_.end());
@@ -749,8 +763,8 @@ namespace exec {
       return it->thread_index;
     }
 
-    inline std::size_t static_thread_pool_::random_thread_index_with_constraints(
-      const nodemask& constraints) noexcept {
+    inline auto static_thread_pool_::random_thread_index_with_constraints(
+      const nodemask& constraints) noexcept -> std::size_t {
       thread_local std::uint64_t startIndex{std::uint64_t(std::random_device{}())};
       startIndex += 1;
       std::size_t targetIndex = startIndex % threadCount_;
@@ -778,7 +792,7 @@ namespace exec {
       remote_queue* correct_queue = this_id == queue.id_ ? &queue : get_remote_queue();
       std::size_t idx = correct_queue->index_;
       if (idx < threadStates_.size()) {
-        std::size_t this_node = static_cast<std::size_t>(threadStates_[idx]->numa_node());
+        auto this_node = static_cast<std::size_t>(threadStates_[idx]->numa_node());
         if (constraints[this_node]) {
           threadStates_[idx]->push_local(task);
           return;
@@ -817,7 +831,7 @@ namespace exec {
       remote_queue* correct_queue = this_id == queue.id_ ? &queue : get_remote_queue();
       std::size_t idx = correct_queue->index_;
       if (idx < threadStates_.size()) {
-        std::size_t this_node = static_cast<std::size_t>(threadStates_[idx]->numa_node());
+        auto this_node = static_cast<std::size_t>(threadStates_[idx]->numa_node());
         if (constraints[this_node]) {
           threadStates_[idx]->push_local(std::move(tasks));
           return;
@@ -848,8 +862,8 @@ namespace exec {
       tmp.clear();
     }
 
-    inline static_thread_pool_::thread_state::pop_result
-      static_thread_pool_::thread_state::try_remote() {
+    inline auto static_thread_pool_::thread_state::try_remote()
+      -> static_thread_pool_::thread_state::pop_result {
       pop_result result{nullptr, index_};
       __intrusive_queue<&task_base::next> remotes = pool_->remotes_.pop_all_reversed(index_);
       pending_queue_.append(std::move(remotes));
@@ -860,8 +874,8 @@ namespace exec {
       return result;
     }
 
-    inline static_thread_pool_::thread_state::pop_result
-      static_thread_pool_::thread_state::try_pop() {
+    inline auto static_thread_pool_::thread_state::try_pop()
+      -> static_thread_pool_::thread_state::pop_result {
       pop_result result{nullptr, index_};
       result.task = local_queue_.pop_back();
       if (result.task) [[likely]] {
@@ -870,8 +884,8 @@ namespace exec {
       return try_remote();
     }
 
-    inline static_thread_pool_::thread_state::pop_result
-      static_thread_pool_::thread_state::try_steal(std::span<workstealing_victim> victims) {
+    inline auto static_thread_pool_::thread_state::try_steal(std::span<workstealing_victim> victims)
+      -> static_thread_pool_::thread_state::pop_result {
       if (victims.empty()) {
         return {nullptr, index_};
       }
@@ -882,13 +896,13 @@ namespace exec {
       return {v.try_steal(), v.index()};
     }
 
-    inline static_thread_pool_::thread_state::pop_result
-      static_thread_pool_::thread_state::try_steal_near() {
+    inline auto static_thread_pool_::thread_state::try_steal_near()
+      -> static_thread_pool_::thread_state::pop_result {
       return try_steal(near_victims_);
     }
 
-    inline static_thread_pool_::thread_state::pop_result
-      static_thread_pool_::thread_state::try_steal_any() {
+    inline auto static_thread_pool_::thread_state::try_steal_any()
+      -> static_thread_pool_::thread_state::pop_result {
       return try_steal(all_victims_);
     }
 
@@ -927,7 +941,8 @@ namespace exec {
       }
     }
 
-    inline static_thread_pool_::thread_state::pop_result static_thread_pool_::thread_state::pop() {
+    inline auto static_thread_pool_::thread_state::pop()
+      -> static_thread_pool_::thread_state::pop_result {
       pop_result result = try_pop();
       while (!result.task) {
         set_stealing();
@@ -967,7 +982,7 @@ namespace exec {
       return result;
     }
 
-    inline bool static_thread_pool_::thread_state::notify() {
+    inline auto static_thread_pool_::thread_state::notify() -> bool {
       if (state_.exchange(state::notified, std::memory_order_relaxed) == state::sleeping) {
         {
           std::lock_guard lock{mut_};
@@ -1013,10 +1028,12 @@ namespace exec {
           auto stoken = get_stop_token(get_env(op.rcvr_));
           if constexpr (stdexec::unstoppable_token<decltype(stoken)>) {
             set_value(static_cast<Receiver&&>(op.rcvr_));
-          } else if (stoken.stop_requested()) {
-            set_stopped(static_cast<Receiver&&>(op.rcvr_));
           } else {
-            set_value(static_cast<Receiver&&>(op.rcvr_));
+            if (stoken.stop_requested()) {
+              set_stopped(static_cast<Receiver&&>(op.rcvr_));
+            } else {
+              set_value(static_cast<Receiver&&>(op.rcvr_));
+            }
           }
         };
       }
@@ -1074,7 +1091,7 @@ namespace exec {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, __completions_t<Self, env_of_t<Receiver>>>
-      friend bulk_op_state_t<Self, Receiver>              //
+      friend auto                                         //
         tag_invoke(connect_t, Self&& self, Receiver rcvr) //
         noexcept(__nothrow_constructible_from<
                  bulk_op_state_t<Self, Receiver>,
@@ -1082,7 +1099,7 @@ namespace exec {
                  Shape,
                  Fun,
                  Sender,
-                 Receiver>) {
+                 Receiver>) -> bulk_op_state_t<Self, Receiver> {
         return bulk_op_state_t<Self, Receiver>{
           self.pool_,
           self.shape_,
@@ -1175,7 +1192,8 @@ namespace exec {
       std::exception_ptr exception_;
       std::vector<bulk_task> tasks_;
 
-      std::uint32_t num_agents_required() const {
+      [[nodiscard]]
+      auto num_agents_required() const -> std::uint32_t {
         return static_cast<std::uint32_t>(
           std::min(shape_, static_cast<Shape>(pool_.available_parallelism())));
       }
@@ -1562,8 +1580,8 @@ namespace exec {
   namespace _pool_ {
     struct schedule_all_t {
       template <class Range>
-      stdexec::__t<schedule_all_::sequence<__decay_t<Range>>>
-        operator()(static_thread_pool& pool, Range&& range) const {
+      auto operator()(static_thread_pool& pool, Range&& range) const
+        -> stdexec::__t<schedule_all_::sequence<__decay_t<Range>>> {
         return {static_cast<Range&&>(range), pool};
       }
     };

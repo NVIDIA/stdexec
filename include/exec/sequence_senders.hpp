@@ -87,7 +87,7 @@ namespace exec {
         _Receiver __rcvr_;
 
         template <same_as<get_env_t> _GetEnv, same_as<__t> _Self>
-        friend env_of_t<_Receiver> tag_invoke(_GetEnv, const _Self& __self) noexcept {
+        friend auto tag_invoke(_GetEnv, const _Self& __self) noexcept -> env_of_t<_Receiver> {
           return stdexec::get_env(__self.__rcvr_);
         }
 
@@ -225,7 +225,7 @@ namespace exec {
 
   template <class _Receiver, class _Item>
     requires stdexec::__callable<set_next_t, _Receiver&, _Item>
-  stdexec::__msuccess __try_item(_Item*);
+  auto __try_item(_Item*) -> stdexec::__msuccess;
 
   template <class _Receiver, class... _Items>
   auto __try_items(exec::item_types<_Items...>*) -> decltype((
@@ -413,7 +413,7 @@ namespace exec {
         }
       }
 
-      friend constexpr bool tag_invoke(forwarding_query_t, subscribe_t) noexcept {
+      friend constexpr auto tag_invoke(forwarding_query_t, subscribe_t) noexcept -> bool {
         return false;
       }
     };

@@ -143,7 +143,7 @@ namespace exec {
         }
 
         template <std::same_as<__t> _Self>
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, const _Self& __self) noexcept {
+        friend auto tag_invoke(get_env_t, const _Self& __self) noexcept -> env_of_t<_Receiver> {
           return get_env(__self.__op_->__receiver_);
         }
       };
@@ -194,7 +194,7 @@ namespace exec {
         }
 
         template <std::same_as<__t> _Self>
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, const _Self& __self) noexcept {
+        friend auto tag_invoke(get_env_t, const _Self& __self) noexcept -> env_of_t<_Receiver> {
           return get_env(__self.__op_->__receiver_);
         }
       };
@@ -261,8 +261,8 @@ namespace exec {
         _FinalSender __final_sndr_;
 
         template <__decays_to<__t> _Self, class _Rec>
-        friend __op_t<_Self, _Rec>
-          tag_invoke(connect_t, _Self&& __self, _Rec&& __receiver) noexcept {
+        friend auto tag_invoke(connect_t, _Self&& __self, _Rec&& __receiver) noexcept
+          -> __op_t<_Self, _Rec> {
           return {
             static_cast<_Self&&>(__self).__initial_sndr_,
             static_cast<_Self&&>(__self).__final_sndr_,

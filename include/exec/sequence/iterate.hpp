@@ -108,7 +108,7 @@ namespace exec {
         }
 
         template <same_as<get_env_t> _GetEnv, __decays_to<__t> _Self>
-        friend env_of_t<_Receiver> tag_invoke(_GetEnv, _Self&& __self) noexcept {
+        friend auto tag_invoke(_GetEnv, _Self&& __self) noexcept -> env_of_t<_Receiver> {
           return stdexec::get_env(__self.__op_->__rcvr_);
         }
       };
@@ -211,7 +211,7 @@ namespace exec {
         return {};
       }
 
-      static empty_env get_env(__ignore) noexcept {
+      static auto get_env(__ignore) noexcept -> empty_env {
         return {};
       }
     };
