@@ -52,10 +52,10 @@ namespace exec {
       return 0;
     }
   };
-}
+} // namespace exec
 
 #if STDEXEC_ENABLE_NUMA
-#include <numa.h>
+#  include <numa.h>
 
 namespace exec {
   struct default_numa_policy : numa_policy {
@@ -210,7 +210,7 @@ namespace exec {
    private:
     ::nodemask_t mask_;
   };
-}
+} // namespace exec
 #else
 namespace exec {
   using default_numa_policy = no_numa_policy;
@@ -276,5 +276,5 @@ namespace exec {
    private:
     bool mask_{false};
   };
-}
+} // namespace exec
 #endif

@@ -63,4 +63,4 @@ namespace {
     CHECK(index == 1);
     CHECK(value == 42);
   }
-}
+} // namespace

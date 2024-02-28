@@ -165,6 +165,6 @@ namespace {
     "[concepts][scheduler]") {
     REQUIRE(!ex::scheduler<sched_no_completion>);
   }
-}
+} // namespace
 
 STDEXEC_PRAGMA_POP()

@@ -63,7 +63,7 @@ namespace {
     auto snd = [this](int a, int b) {
       return exec::create<ex::set_value_t(int)>([a, b, this]<class Context>(Context& ctx) noexcept {
         anIntAPI(a, b, &ctx, [](void* pv, int result) {
-          ex::set_value(std::move(static_cast<Context*>(pv)->receiver), (int) result);
+          ex::set_value(std::move(static_cast<Context*>(pv)->receiver), static_cast<int>(result));
         });
       });
     }(1, 2);

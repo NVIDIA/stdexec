@@ -17,43 +17,43 @@
 #pragma once
 
 #if !__has_include(<linux/io_uring.h>)
-#error "io_uring.h not found. Your kernel is probably too old."
+#  error "io_uring.h not found. Your kernel is probably too old."
 #else
-#include <linux/io_uring.h>
+#  include <linux/io_uring.h>
 
-#include "../../stdexec/execution.hpp"
-#include "../timed_scheduler.hpp"
+#  include "../../stdexec/execution.hpp"
+#  include "../timed_scheduler.hpp"
 
-#include "../__detail/__atomic_intrusive_queue.hpp"
-#include "../__detail/__atomic_ref.hpp"
-#include "../__detail/__bit_cast.hpp"
+#  include "../__detail/__atomic_intrusive_queue.hpp"
+#  include "../__detail/__atomic_ref.hpp"
+#  include "../__detail/__bit_cast.hpp"
 
-#include "./safe_file_descriptor.hpp"
-#include "./memory_mapped_region.hpp"
+#  include "./safe_file_descriptor.hpp"
+#  include "./memory_mapped_region.hpp"
 
-#include "../scope.hpp"
+#  include "../scope.hpp"
 
-#if !__has_include(<linux/version.h>)
-#error "linux/version.h not found. Do you use Linux?"
-#else
-#include <linux/version.h>
+#  if !__has_include(<linux/version.h>)
+#    error "linux/version.h not found. Do you use Linux?"
+#  else
+#    include <linux/version.h>
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
-#warning "Your kernel is too old to support io_uring with cancellation support."
-#include <sys/timerfd.h>
-#else
-#define STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
-#endif
+#    if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
+#      warning "Your kernel is too old to support io_uring with cancellation support."
+#      include <sys/timerfd.h>
+#    else
+#      define STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+#    endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
-#define STDEXEC_HAS_IORING_OP_READ
-#endif
+#    if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+#      define STDEXEC_HAS_IORING_OP_READ
+#    endif
 
-#include <sys/uio.h>
-#include <sys/eventfd.h>
-#include <sys/syscall.h>
+#    include <sys/uio.h>
+#    include <sys/eventfd.h>
+#    include <sys/syscall.h>
 
-#include <algorithm>
+#    include <algorithm>
 
 namespace exec {
   namespace __io_uring {
@@ -64,7 +64,7 @@ namespace exec {
     }
 
     inline safe_file_descriptor __io_uring_setup(unsigned __entries, ::io_uring_params& __params) {
-      int rc = (int) ::syscall(__NR_io_uring_setup, __entries, &__params);
+      int rc = static_cast<int>(::syscall(__NR_io_uring_setup, __entries, &__params));
       __throw_error_code_if(rc < 0, -rc);
       return safe_file_descriptor{rc};
     }
@@ -74,8 +74,8 @@ namespace exec {
       unsigned int __to_submit,
       unsigned int __min_complete,
       unsigned int __flags) {
-      int rc = (int) ::syscall(
-        __NR_io_uring_enter, __ring_fd, __to_submit, __min_complete, __flags, nullptr, 0);
+      int rc = static_cast<int>(::syscall(
+        __NR_io_uring_enter, __ring_fd, __to_submit, __min_complete, __flags, nullptr, 0));
       if (rc == -1) {
         return -errno;
       } else {
@@ -219,11 +219,11 @@ namespace exec {
             __result.__ready.push_back(__op);
           } else {
             __op->__vtable_->__submit_(__op, __sqe);
-#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+#    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
             if (__is_stopped && __sqe.opcode != IORING_OP_ASYNC_CANCEL) {
-#else
+#    else
             if (__is_stopped) {
-#endif
+#    endif
               __stop(__op);
             } else {
               __sqe.user_data = bit_cast<__u64>(__op);
@@ -264,8 +264,7 @@ namespace exec {
       // This function first completes all tasks that are ready in the completion queue of the io_uring.
       // Then it completes all tasks that are ready in the given queue of ready tasks.
       // The function returns the number of previously submitted completed tasks.
-      int
-        complete(stdexec::__intrusive_queue<& __task::__next_> __ready = __task_queue{}) noexcept {
+      int complete(stdexec::__intrusive_queue<&__task::__next_> __ready = __task_queue{}) noexcept {
         __u32 __head = __head_.load(std::memory_order_relaxed);
         __u32 __tail = __tail_.load(std::memory_order_acquire);
         int __count = 0;
@@ -293,12 +292,12 @@ namespace exec {
     struct __wakeup_operation : __task {
       __context* __context_ = nullptr;
       int __eventfd_ = -1;
-#ifdef STDEXEC_HAS_IORING_OP_READ
+#    ifdef STDEXEC_HAS_IORING_OP_READ
       std::uint64_t __buffer_ = 0;
-#else
+#    else
       std::uint64_t __value_ = 0;
       ::iovec __buffer_ = {.iov_base = &__value_, .iov_len = sizeof(__value_)};
-#endif
+#    endif
 
       static bool __ready_(__task*) noexcept {
         return false;
@@ -309,13 +308,13 @@ namespace exec {
         __entry = ::io_uring_sqe{};
         __entry.fd = __self.__eventfd_;
         __entry.addr = bit_cast<__u64>(&__self.__buffer_);
-#ifdef STDEXEC_HAS_IORING_OP_READ
+#    ifdef STDEXEC_HAS_IORING_OP_READ
         __entry.opcode = IORING_OP_READ;
         __entry.len = sizeof(__self.__buffer_);
-#else
+#    else
         __entry.opcode = IORING_OP_READV;
         __entry.len = 1;
-#endif
+#    endif
       }
 
       static void __complete_(__task* __pointer, const ::io_uring_cqe& __entry) noexcept {
@@ -425,22 +424,27 @@ namespace exec {
         __u32 __max_submissions = __params_.cq_entries - static_cast<__u32>(__n_total_submitted_);
         __pending_.append(__requests_.pop_all_reversed());
         __submission_result __result = __submission_queue_.submit(
-          (__task_queue&&) __pending_, __max_submissions, __stop_source_->stop_requested());
+          static_cast<__task_queue&&>(__pending_),
+          __max_submissions,
+          __stop_source_->stop_requested());
         __n_total_submitted_ += __result.__n_submitted;
         __n_newly_submitted_ += __result.__n_submitted;
         STDEXEC_ASSERT(__n_total_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
-        __pending_ = (__task_queue&&) __result.__pending;
+        __pending_ = static_cast<__task_queue&&>(__result.__pending);
         while (!__result.__ready.empty()) {
-          __n_total_submitted_ -= __completion_queue_.complete((__task_queue&&) __result.__ready);
+          __n_total_submitted_ -= __completion_queue_.complete(
+            static_cast<__task_queue&&>(__result.__ready));
           STDEXEC_ASSERT(0 <= __n_total_submitted_);
           __pending_.append(__requests_.pop_all_reversed());
           __max_submissions = __params_.cq_entries - static_cast<__u32>(__n_total_submitted_);
           __result = __submission_queue_.submit(
-            (__task_queue&&) __pending_, __max_submissions, __stop_source_->stop_requested());
+            static_cast<__task_queue&&>(__pending_),
+            __max_submissions,
+            __stop_source_->stop_requested());
           __n_total_submitted_ += __result.__n_submitted;
           __n_newly_submitted_ += __result.__n_submitted;
           STDEXEC_ASSERT(__n_total_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
-          __pending_ = (__task_queue&&) __result.__pending;
+          __pending_ = static_cast<__task_queue&&>(__result.__pending);
         }
       }
 
@@ -508,10 +512,10 @@ namespace exec {
           // and then stop it, finally.
           __pending_.append(__requests_.pop_all_reversed());
           __submission_result __result = __submission_queue_.submit(
-            (__task_queue&&) __pending_, __params_.cq_entries, true);
+            static_cast<__task_queue&&>(__pending_), __params_.cq_entries, true);
           STDEXEC_ASSERT(__result.__n_submitted == 0);
           STDEXEC_ASSERT(__result.__pending.empty());
-          __completion_queue_.complete((__task_queue&&) __result.__ready);
+          __completion_queue_.complete(static_cast<__task_queue&&>(__result.__ready));
         }
       }
 
@@ -636,9 +640,9 @@ namespace exec {
       __io_task<_Op> &&        //
       requires(_Op& __op) {
         {
-          ((_Op&&) __op).receiver()
+          static_cast<_Op&&>(__op).receiver()
         } noexcept
-          -> stdexec::receiver_of< stdexec::completion_signatures<stdexec::set_stopped_t()>>;
+          -> stdexec::receiver_of<stdexec::completion_signatures<stdexec::set_stopped_t()>>;
       };
 
     template <__stoppable_task _Op>
@@ -668,7 +672,7 @@ namespace exec {
       __io_task_facade(std::in_place_t, _Args&&... __args) noexcept(
         stdexec::__nothrow_constructible_from<_Base, __task*, _Args...>)
         : __task{__vtable}
-        , __base_(std::in_place, static_cast<__task*>(this), (_Args&&) __args...) {
+        , __base_(std::in_place, static_cast<__task*>(this), static_cast<_Args&&>(__args)...) {
       }
 
       template <class... _Args>
@@ -676,7 +680,7 @@ namespace exec {
       __io_task_facade(std::in_place_t, _Args&&... __args) noexcept(
         stdexec::__nothrow_constructible_from<_Base, _Args...>)
         : __task{__vtable}
-        , __base_((_Args&&) __args...) {
+        , __base_(static_cast<_Args&&>(__args)...) {
       }
 
       _Base& base() noexcept {
@@ -700,11 +704,12 @@ namespace exec {
 
       struct __impl {
         __context& __context_;
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __receiver_;
+        STDEXEC_ATTRIBUTE((no_unique_address))
+        _Receiver __receiver_;
 
         __impl(__context& __context, _Receiver&& __receiver)
           : __context_{__context}
-          , __receiver_{(_Receiver&&) __receiver} {
+          , __receiver_{static_cast<_Receiver&&>(__receiver)} {
         }
 
         __context& context() const noexcept {
@@ -721,9 +726,9 @@ namespace exec {
         void complete(const ::io_uring_cqe& __cqe) noexcept {
           auto token = stdexec::get_stop_token(stdexec::get_env(__receiver_));
           if (__cqe.res == -ECANCELED || __context_.stop_requested() || token.stop_requested()) {
-            stdexec::set_stopped((_Receiver&&) __receiver_);
+            stdexec::set_stopped(static_cast<_Receiver&&>(__receiver_));
           } else {
-            stdexec::set_value((_Receiver&&) __receiver_);
+            stdexec::set_value(static_cast<_Receiver&&>(__receiver_));
           }
         }
       };
@@ -751,7 +756,7 @@ namespace exec {
         }
 
         void submit(::io_uring_sqe& __sqe) noexcept {
-#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+#    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
           if constexpr (
             requires(_Base* __op, ::io_uring_sqe& __sqe) { __op->submit_stop(__sqe); }) {
             __op_->submit_stop(__sqe);
@@ -761,16 +766,16 @@ namespace exec {
               .addr = bit_cast<__u64>(__op_->__parent_) //
             };
           }
-#else
+#    else
           __op_->submit_stop(__sqe);
-#endif
+#    endif
         }
 
         void complete(const ::io_uring_cqe&) noexcept {
           if (__op_->__n_ops_.fetch_sub(1, std::memory_order_relaxed) == 1) {
             __op_->__on_context_stop_.reset();
             __op_->__on_receiver_stop_.reset();
-            stdexec::set_stopped(((_Base&&) *__op_).receiver());
+            stdexec::set_stopped((static_cast<_Base&&>(*__op_)).receiver());
           }
         }
 
@@ -801,7 +806,7 @@ namespace exec {
       __impl_base(__task* __parent, std::in_place_t, _Args&&... __args) noexcept(
         stdexec::__nothrow_constructible_from<_Base, _Args...>)
         : __parent_{__parent}
-        , __base_((_Args&&) __args...) {
+        , __base_(static_cast<_Args&&>(__args)...) {
       }
     };
 
@@ -814,7 +819,7 @@ namespace exec {
       __impl_base(__task* __parent, std::in_place_t, _Args&&... __args) noexcept(
         stdexec::__nothrow_constructible_from<_Base, _Args...>)
         : __parent_{__parent}
-        , __base_((_Args&&) __args...) {
+        , __base_(static_cast<_Args&&>(__args)...) {
       }
 
       void submit_stop(::io_uring_sqe& __sqe) noexcept {
@@ -855,7 +860,7 @@ namespace exec {
           requires stdexec::constructible_from<_Base, _Args...>
         __impl(std::in_place_t, __task* __parent, _Args&&... __args) noexcept(
           stdexec::__nothrow_constructible_from<_Base, _Args...>)
-          : __base_t(__parent, std::in_place, (_Args&&) __args...)
+          : __base_t(__parent, std::in_place, static_cast<_Args&&>(__args)...)
           , __stop_operation_{this} {
         }
 
@@ -868,7 +873,7 @@ namespace exec {
         }
 
         _Receiver&& receiver() && noexcept {
-          return (_Receiver&&) this->__base_.receiver();
+          return static_cast<_Receiver&&>(this->__base_.receiver());
         }
 
         bool ready() const noexcept {
@@ -894,7 +899,7 @@ namespace exec {
             __context& __context_ = this->__base_.context();
             auto token = stdexec::get_stop_token(stdexec::get_env(__receiver));
             if (__cqe.res == -ECANCELED || __context_.stop_requested() || token.stop_requested()) {
-              stdexec::set_stopped((_Receiver&&) __receiver);
+              stdexec::set_stopped(static_cast<_Receiver&&>(__receiver));
             } else {
               this->__base_.complete(__cqe);
             }
@@ -931,7 +936,7 @@ namespace exec {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       class __impl : public __stoppable_op_base<_Receiver> {
-#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+#    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
         struct __kernel_timespec {
           __s64 __tv_sec;
           __s64 __tv_nsec;
@@ -939,22 +944,22 @@ namespace exec {
 
         __kernel_timespec __duration_;
 
-        static constexpr __kernel_timespec
-          __duration_to_timespec(std::chrono::nanoseconds dur) noexcept {
+        static constexpr __kernel_timespec __duration_to_timespec(
+          std::chrono::nanoseconds dur) noexcept {
           auto secs = std::chrono::duration_cast<std::chrono::seconds>(dur);
           dur -= secs;
           secs = std::max(secs, std::chrono::seconds{0});
           dur = std::clamp(dur, std::chrono::nanoseconds{0}, std::chrono::nanoseconds{999'999'999});
           return __kernel_timespec{secs.count(), dur.count()};
         }
-#else
+#    else
         safe_file_descriptor __timerfd_;
         ::itimerspec __duration_;
         std::uint64_t __n_expirations_{0};
         ::iovec __iov_{&__n_expirations_, sizeof(__n_expirations_)};
 
-        static constexpr ::itimerspec
-          __duration_to_timespec(std::chrono::nanoseconds __nsec) noexcept {
+        static constexpr ::itimerspec __duration_to_timespec(
+          std::chrono::nanoseconds __nsec) noexcept {
           ::itimerspec __timerspec{};
           ::clock_gettime(CLOCK_REALTIME, &__timerspec.it_value);
           __nsec = std::chrono::nanoseconds{__timerspec.it_value.tv_nsec} + __nsec;
@@ -968,14 +973,14 @@ namespace exec {
             0 <= __timerspec.it_value.tv_nsec && __timerspec.it_value.tv_nsec < 1'000'000'000);
           return __timerspec;
         }
-#endif
+#    endif
 
        public:
         static constexpr std::false_type ready() noexcept {
           return {};
         }
 
-#ifndef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+#    ifndef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
         void submit_stop(::io_uring_sqe& __sqe) noexcept {
           __duration_.it_value.tv_sec = 1;
           __duration_.it_value.tv_nsec = 0;
@@ -983,54 +988,54 @@ namespace exec {
             __timerfd_, TFD_TIMER_ABSTIME | TFD_TIMER_CANCEL_ON_SET, &__duration_, nullptr);
           __sqe = ::io_uring_sqe{.opcode = IORING_OP_NOP};
         }
-#endif
+#    endif
 
         void submit(::io_uring_sqe& __sqe) noexcept {
-#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+#    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
           ::io_uring_sqe __sqe_{};
           __sqe_.opcode = IORING_OP_TIMEOUT;
           __sqe_.addr = bit_cast<__u64>(&__duration_);
           __sqe_.len = 1;
           __sqe = __sqe_;
-#else
+#    else
           ::io_uring_sqe __sqe_{};
           __sqe_.opcode = IORING_OP_READV;
           __sqe_.fd = __timerfd_;
           __sqe_.addr = bit_cast<__u64>(&__iov_);
           __sqe_.len = 1;
           __sqe = __sqe_;
-#endif
+#    endif
         }
 
         void complete(const ::io_uring_cqe& __cqe) noexcept {
-#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+#    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
           if (__cqe.res == -ETIME || __cqe.res == 0) {
-#else
+#    else
           if (__cqe.res == sizeof(std::uint64_t)) {
-#endif
-            stdexec::set_value((_Receiver&&) this->__receiver_);
+#    endif
+            stdexec::set_value(static_cast<_Receiver&&>(this->__receiver_));
           } else {
             STDEXEC_ASSERT(__cqe.res < 0);
             stdexec::set_error(
-              (_Receiver&&) this->__receiver_,
+              static_cast<_Receiver&&>(this->__receiver_),
               std::make_exception_ptr(std::system_error(-__cqe.res, std::system_category())));
           }
         }
 
         __impl(__context& __context, std::chrono::nanoseconds __duration, _Receiver&& __receiver)
-          : __stoppable_op_base<_Receiver>{__context, (_Receiver&&) __receiver}
-#ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+          : __stoppable_op_base<_Receiver>{__context, static_cast<_Receiver&&>(__receiver)}
+#    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
           , __duration_{__duration_to_timespec(__duration)}
-#else
+#    else
           , __timerfd_{::timerfd_create(CLOCK_REALTIME, 0)}
           , __duration_{__duration_to_timespec(__duration)}
-#endif
+#    endif
         {
-#ifndef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
+#    ifndef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
           int __rc = ::timerfd_settime(
             __timerfd_, TFD_TIMER_ABSTIME | TFD_TIMER_CANCEL_ON_SET, &__duration_, nullptr);
           __throw_error_code_if(__rc < 0, errno);
-#endif
+#    endif
         }
       };
 
@@ -1072,7 +1077,7 @@ namespace exec {
         }
 
         using __completion_sigs =
-          stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t()>;
+          stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
 
         template <class _Env>
         friend __completion_sigs tag_invoke(
@@ -1088,7 +1093,7 @@ namespace exec {
           const __schedule_sender& __sender,
           _Receiver&& __receiver) {
           return stdexec::__t<__schedule_operation<stdexec::__id<_Receiver>>>(
-            std::in_place, *__sender.__env_.__context_, (_Receiver&&) __receiver);
+            std::in_place, *__sender.__env_.__context_, static_cast<_Receiver&&>(__receiver));
         }
       };
 
@@ -1129,7 +1134,7 @@ namespace exec {
             std::in_place,
             *__sender.__env_.__context_,
             __sender.__duration_,
-            (_Receiver&&) __receiver);
+            static_cast<_Receiver&&>(__receiver));
         }
       };
 
@@ -1163,12 +1168,12 @@ namespace exec {
     inline __scheduler __context::get_scheduler() noexcept {
       return __scheduler{this};
     }
-  }
+  } // namespace __io_uring
 
   using __io_uring::until;
   using io_uring_context = __io_uring::__context;
   using io_uring_scheduler = __io_uring::__scheduler;
-}
+} // namespace exec
 
-#endif // if __has_include(<linux/verison.h>)
-#endif // if __has_include(<linux/io_uring.h>)
+#  endif // if __has_include(<linux/verison.h>)
+#endif   // if __has_include(<linux/io_uring.h>)

@@ -85,4 +85,4 @@ namespace {
     REQUIRE(v1 == 24);
     REQUIRE(v2 == 42);
   }
-}
+} // namespace

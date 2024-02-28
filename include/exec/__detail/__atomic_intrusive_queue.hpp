@@ -30,7 +30,8 @@ namespace exec {
     using __node_pointer = _Tp *;
     using __atomic_node_pointer = std::atomic<_Tp *>;
 
-    [[nodiscard]] bool empty() const noexcept {
+    [[nodiscard]]
+    bool empty() const noexcept {
       return __head_.load(std::memory_order_relaxed) == nullptr;
     }
 
@@ -85,4 +86,4 @@ namespace exec {
 
     __atomic_node_pointer __head_{nullptr};
   };
-}
+} // namespace exec

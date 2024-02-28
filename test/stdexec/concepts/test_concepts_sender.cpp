@@ -293,6 +293,6 @@ namespace {
     ::has_type<sender_of_tag>(::test_subsumption(ex::just()));
   }
 #endif
-}
+} // namespace
 
 STDEXEC_PRAGMA_POP()

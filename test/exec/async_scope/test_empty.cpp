@@ -172,4 +172,4 @@ namespace {
     REQUIRE(is_empty2);
   }
 #endif
-}
+} // namespace

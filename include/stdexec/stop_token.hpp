@@ -28,7 +28,7 @@
 #include <concepts>
 
 #if __has_include(<stop_token>) && __cpp_lib_jthread >= 201911
-#include <stop_token>
+#  include <stop_token>
 #endif
 
 
@@ -91,7 +91,7 @@ namespace stdexec {
 
     template <template <class> class>
     struct __check_type_alias_exists;
-  }
+  } // namespace __stok
 
   // [stoptoken.never], class never_stop_token
   struct never_stop_token {
@@ -222,7 +222,7 @@ namespace stdexec {
       : __stok::__in_place_stop_callback_base(
         __token.__source_,
         &in_place_stop_callback::__execute_impl_)
-      , __fun_((_Fun2&&) __fun) {
+      , __fun_(static_cast<_Fun2&&>(__fun)) {
       __register_callback_();
     }
 
@@ -236,7 +236,8 @@ namespace stdexec {
       std::move(static_cast<in_place_stop_callback*>(cb)->__fun_)();
     }
 
-    STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
+    STDEXEC_ATTRIBUTE((no_unique_address))
+    _Fun __fun_;
   };
 
   namespace __stok {
@@ -250,7 +251,7 @@ namespace stdexec {
         }
       }
     }
-  }
+  } // namespace __stok
 
   inline in_place_stop_source::~in_place_stop_source() {
     STDEXEC_ASSERT((__state_.load(std::memory_order_relaxed) & __locked_flag_) == 0);

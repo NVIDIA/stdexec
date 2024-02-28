@@ -58,7 +58,8 @@ namespace exec {
       }
 
       template <same_as<__receiver_placeholder> _Self>
-      [[noreturn]] friend _Env tag_invoke(get_env_t, _Self) noexcept {
+      [[noreturn]]
+      friend _Env tag_invoke(get_env_t, _Self) noexcept {
         static_assert(
           __never_true<_Self>, "we should never be instantiating the body of this function");
         std::terminate();
@@ -66,8 +67,9 @@ namespace exec {
     };
 
     template <class _Kernel, class _Receiver, class _Completions>
-    using __data_t =
-      decltype(__declval<_Kernel&>().get_data(__declval<_Receiver&>(), (_Completions*) nullptr));
+    using __data_t = decltype(__declval<_Kernel&>().get_data(
+      __declval<_Receiver&>(),
+      static_cast<_Completions*>(nullptr)));
 
     struct __with_dummy_transform_sender {
       int transform_sender;
@@ -112,9 +114,9 @@ namespace exec {
     template <class _Kernel, class _Sender, class _Data, class _Receiver>
     auto __transform_sender(_Kernel& __kernel, _Sender&& __sndr, _Data& __data, _Receiver& __rcvr) {
       if constexpr (__lacks_transform_sender<_Kernel>) {
-        return (_Sender&&) __sndr;
+        return static_cast<_Sender&&>(__sndr);
       } else {
-        return __kernel.transform_sender((_Sender&&) __sndr, __data, __rcvr);
+        return __kernel.transform_sender(static_cast<_Sender&&>(__sndr), __data, __rcvr);
       }
     }
 
@@ -137,11 +139,12 @@ namespace exec {
       -> __set_result_t<_Kernel, __receiver_placeholder<_Env>, _Tag, _As...>;
 
     template <class _Kernel, class _Env, class _Sig>
-    using __completions_from_sig_t = decltype(__stl::__completions_from_sig((_Sig*) nullptr));
+    using __completions_from_sig_t =
+      decltype(__stl::__completions_from_sig(static_cast<_Sig*>(nullptr)));
 
     template <class... _Completions>
     auto __all_completions(_Completions*...)
-      -> __minvoke< __mconcat<__munique<__q<completion_signatures>>>, _Completions...>;
+      -> __minvoke<__mconcat<__munique<__q<completion_signatures>>>, _Completions...>;
 
     template <class _Kernel, class _Env, class... _Sigs>
     auto __compute_completions_(completion_signatures<_Sigs...>*)
@@ -153,7 +156,7 @@ namespace exec {
 
     template <class _Kernel, class _Env, class _Completions>
     using __compute_completions_t =
-      decltype(__stl::__compute_completions_<_Kernel, _Env>((_Completions*) nullptr));
+      decltype(__stl::__compute_completions_<_Kernel, _Env>(static_cast<_Completions*>(nullptr)));
 
     template <class _Kernel, class _Data, class _ReceiverId>
     struct __receiver {
@@ -162,14 +165,16 @@ namespace exec {
       struct __state {
         template <class... _Sigs>
         __state(_Kernel __kernel, _Receiver __rcvr, completion_signatures<_Sigs...>* __cmpl)
-          : __rcvr_((_Receiver&&) __rcvr)
-          , __kernel_{(_Kernel&&) __kernel}
+          : __rcvr_(static_cast<_Receiver&&>(__rcvr))
+          , __kernel_{static_cast<_Kernel&&>(__kernel)}
           , __data_(__kernel_.get_data(__rcvr_, __cmpl)) {
         }
 
         _Receiver __rcvr_;
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Kernel __kernel_;
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Data __data_;
+        STDEXEC_ATTRIBUTE((no_unique_address))
+        _Kernel __kernel_;
+        STDEXEC_ATTRIBUTE((no_unique_address))
+        _Data __data_;
       };
 
       struct __t {
@@ -184,7 +189,8 @@ namespace exec {
           requires __mvalid<__set_result_t, _Kernel, _Receiver, _Tag, _As...>
         friend void tag_invoke(_Tag __tag, _Self __self, _As&&... __as) noexcept {
           __state& __st = *__self.__state_;
-          (void) __st.__kernel_.set_result(__tag, __st.__data_, __st.__rcvr_, (_As&&) __as...);
+          (void) __st.__kernel_.set_result(
+            __tag, __st.__data_, __st.__rcvr_, static_cast<_As&&>(__as)...);
         }
 
         template <same_as<get_env_t> _Tag, same_as<__t> _Self>
@@ -216,11 +222,11 @@ namespace exec {
         connect_result_t<__sender_t, __receiver_t> __op_;
 
         __t(_Sender&& __sndr, _Kernel __kernel, _Receiver __rcvr)
-          : __state_{(_Kernel&&) __kernel, (_Receiver&&) __rcvr, (__completions_t*) nullptr}
+          : __state_{static_cast<_Kernel&&>(__kernel), static_cast<_Receiver&&>(__rcvr), static_cast<__completions_t*>(nullptr)}
           , __op_(stdexec::connect(
               __stl::__transform_sender(
                 __state_.__kernel_,
-                (_Sender&&) __sndr,
+                static_cast<_Sender&&>(__sndr),
                 __state_.__data_,
                 __state_.__rcvr_),
               __receiver_t{&__state_})) {
@@ -239,15 +245,14 @@ namespace exec {
     template <class _Self, class _DerivedId>
     concept __is_derived_sender = //
       requires(_Self&& __self) {
-        { __is_derived_sender_((_Self&&) __self) } -> same_as<_DerivedId>;
+        { __is_derived_sender_(static_cast<_Self&&>(__self)) } -> same_as<_DerivedId>;
       };
 
     template <class _DerivedId, class _Sender, class _Kernel>
     struct __sender {
       template <class _Self, class _Receiver>
       using __operation_t = //
-        stdexec::__t<
-          __operation< __copy_cvref_t<_Self, _Sender>, _Kernel, stdexec::__id<_Receiver>>>;
+        stdexec::__t<__operation<__copy_cvref_t<_Self, _Sender>, _Kernel, stdexec::__id<_Receiver>>>;
 
       struct __t {
         using __id = _DerivedId;
@@ -258,14 +263,17 @@ namespace exec {
         template <class... _As>
           requires constructible_from<_Kernel, _As...>
         __t(_Sender __sndr, _As&&... __as)
-          : __sndr_((_Sender&&) __sndr)
-          , __kernel_{(_As&&) __as...} {
+          : __sndr_(static_cast<_Sender&&>(__sndr))
+          , __kernel_{static_cast<_As&&>(__as)...} {
         }
 
         template <__is_derived_sender<_DerivedId> _Self, receiver _Receiver>
         friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
           -> __operation_t<_Self, _Receiver> {
-          return {((_Self&&) __self).__sndr_, ((_Self&&) __self).__kernel_, (_Receiver&&) __rcvr};
+          return {
+            static_cast<_Self&&>(__self).__sndr_,
+            static_cast<_Self&&>(__self).__kernel_,
+            static_cast<_Receiver&&>(__rcvr)};
         }
 
         template <class _Self, class _Env>
@@ -340,13 +348,13 @@ namespace exec {
       _Sender&& __sndr,                          //
       [[maybe_unused]] stdexec::__ignore __data, //
       [[maybe_unused]] stdexec::__ignore __rcvr) noexcept {
-      return (_Sender&&) __sndr;
+      return static_cast<_Sender&&>(__sndr);
     }
 
     template <class _Env>
     static _Env get_env(_Env&& __env) noexcept {
       static_assert(stdexec::__nothrow_move_constructible<_Env>);
-      return (_Env&&) __env;
+      return static_cast<_Env&&>(__env);
     }
 
     static __no_data get_data(                   //
@@ -370,7 +378,7 @@ namespace exec {
       _Receiver& __rcvr,                         //
       _As&&... __as) noexcept                    //
       -> stdexec::completion_signatures<_Tag(_As...)>* {
-      __tag((_Receiver&&) __rcvr, (_As&&) __as...);
+      __tag(static_cast<_Receiver&&>(__rcvr), static_cast<_As&&>(__as)...);
       return {};
     }
   };

@@ -106,8 +106,8 @@ namespace exec {
           return false;
         }
 
-        static __coro::coroutine_handle<>
-          await_suspend(__coro::coroutine_handle<__promise> __h) noexcept {
+        static __coro::coroutine_handle<> await_suspend(
+          __coro::coroutine_handle<__promise> __h) noexcept {
           __promise& __p = __h.promise();
           auto __coro = __p.__is_unhandled_stopped_
                         ? __p.continuation().unhandled_stopped()
@@ -144,7 +144,8 @@ namespace exec {
         void return_void() noexcept {
         }
 
-        [[noreturn]] void unhandled_exception() noexcept {
+        [[noreturn]]
+        void unhandled_exception() noexcept {
           std::terminate();
         }
 
@@ -163,7 +164,8 @@ namespace exec {
 
         template <class _Awaitable>
         decltype(auto) await_transform(_Awaitable&& __awaitable) noexcept {
-          return as_awaitable(__at_coro_exit::__die_on_stop((_Awaitable&&) __awaitable), *this);
+          return as_awaitable(
+            __at_coro_exit::__die_on_stop(static_cast<_Awaitable&&>(__awaitable)), *this);
         }
 
         friend __env tag_invoke(get_env_t, const __promise& __self) noexcept {
@@ -188,7 +190,7 @@ namespace exec {
       static __task<_Ts...> __impl(_Action __action, _Ts... __ts) {
         task_disposition __d = co_await __get_disposition();
         if (__d == _OnCompletion) {
-          co_await ((_Action&&) __action)((_Ts&&) __ts...);
+          co_await static_cast<_Action&&>(__action)(static_cast<_Ts&&>(__ts)...);
         }
       }
 
@@ -196,7 +198,7 @@ namespace exec {
       template <class _Action, class... _Ts>
         requires __callable<__decay_t<_Action>, __decay_t<_Ts>...>
       __task<_Ts...> operator()(_Action&& __action, _Ts&&... __ts) const {
-        return __impl((_Action&&) __action, (_Ts&&) __ts...);
+        return __impl(static_cast<_Action&&>(__action), static_cast<_Ts&&>(__ts)...);
       }
     };
 

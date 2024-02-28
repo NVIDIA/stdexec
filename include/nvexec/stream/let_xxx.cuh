@@ -114,7 +114,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           result_sender_t* result_sender = static_cast<result_sender_t*>(
             __self.__op_state_->temp_storage_);
           kernel_with_result<_As&&...><<<1, 1, 0, stream>>>(
-            std::move(__self.__op_state_->__fun_), result_sender, (_As&&) __as...);
+            std::move(__self.__op_state_->__fun_), result_sender, static_cast<_As&&>(__as)...);
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
               status == cudaSuccess) {
@@ -135,7 +135,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           requires __none_of<_Tag, _Let> && __callable<_Tag, _Receiver, _As...>
         friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
           static_assert(__nothrow_callable<_Tag, _Receiver, _As...>);
-          __self.__op_state_->propagate_completion_signal(_Tag(), (_As&&) __as...);
+          __self.__op_state_->propagate_completion_signal(_Tag(), static_cast<_As&&>(__as)...);
         }
 
         friend _Env tag_invoke(get_env_t, const __t& __self) noexcept {
@@ -177,13 +177,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class _Receiver2>
       __operation(_Sender&& __sndr, _Receiver2&& __rcvr, _Fun __fun)
         : __operation_base<_SenderId, _ReceiverId, _Fun, _Let>(
-          (_Sender&&) __sndr,
-          (_Receiver2&&) __rcvr,
+          static_cast<_Sender&&>(__sndr),
+          static_cast<_Receiver2&&>(__rcvr),
           [this](operation_state_base_t<stdexec::__id<_Receiver2>>&) -> __receiver_t {
             return __receiver_t{{}, this};
           },
           get_completion_scheduler<set_value_t>(get_env(__sndr)).context_state_)
-        , __fun_((_Fun&&) __fun) {
+        , __fun_(static_cast<_Fun&&>(__fun)) {
       }
 
       STDEXEC_IMMOVABLE(__operation);
@@ -233,7 +233,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
         -> __operation_t<_Self, _Receiver> {
         return __operation_t<_Self, _Receiver>{
-          ((_Self&&) __self).__sndr_, (_Receiver&&) __rcvr, ((_Self&&) __self).__fun_};
+          static_cast<_Self&&>(__self).__sndr_,
+          static_cast<_Receiver&&>(__rcvr),
+          static_cast<_Self&&>(__self).__fun_};
       }
 
       friend auto tag_invoke(get_env_t, const __t& __self) noexcept -> env_of_t<const _Sender&> {

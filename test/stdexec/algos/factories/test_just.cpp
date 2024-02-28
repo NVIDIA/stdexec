@@ -122,4 +122,4 @@ namespace {
     CHECK(res == original);
     CHECK(cat == typecat::rvalref);
   }
-}
+} // namespace

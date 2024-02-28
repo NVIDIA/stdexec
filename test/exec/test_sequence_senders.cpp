@@ -136,4 +136,4 @@ namespace {
     STATIC_REQUIRE(sequence_sender_to<seq_sender_t, next_receiver_t>);
     STATIC_REQUIRE(sequence_sender_to<some_sequence_sender_of<set_value_t(int)>, next_receiver_t>);
   }
-}
+} // namespace

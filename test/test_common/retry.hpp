@@ -43,11 +43,11 @@ namespace {
     F f_;
 
     explicit _conv(F f) noexcept
-      : f_((F&&) f) {
+      : f_(static_cast<F&&>(f)) {
     }
 
     operator std::invoke_result_t<F>() && {
-      return ((F&&) f_)();
+      return static_cast<F&&>(f_)();
     }
   };
 
@@ -60,7 +60,7 @@ namespace {
     _op<S, R>* o_;
 
     R&& base() && noexcept {
-      return (R&&) o_->r_;
+      return static_cast<R&&>(o_->r_);
     }
 
     const R& base() const & noexcept {
@@ -83,11 +83,11 @@ namespace {
   struct _op {
     S s_;
     R r_;
-    std::optional< stdexec::connect_result_t<S&, _retry_receiver<S, R>>> o_;
+    std::optional<stdexec::connect_result_t<S&, _retry_receiver<S, R>>> o_;
 
     _op(S s, R r)
-      : s_((S&&) s)
-      , r_((R&&) r)
+      : s_(static_cast<S&&>(s))
+      , r_(static_cast<R&&>(r))
       , o_{_connect()} {
     }
 
@@ -104,7 +104,7 @@ namespace {
         o_.emplace(_connect()); // potentially throwing
         stdexec::start(*o_);
       } catch (...) {
-        stdexec::set_error((R&&) r_, std::current_exception());
+        stdexec::set_error(static_cast<R&&>(r_), std::current_exception());
       }
     }
 
@@ -119,7 +119,7 @@ namespace {
     S s_;
 
     explicit _retry_sender(S s)
-      : s_((S&&) s) {
+      : s_(static_cast<S&&>(s)) {
     }
 
     template <class>
@@ -140,7 +140,7 @@ namespace {
 
     template <stdexec::receiver R>
     friend _op<S, R> tag_invoke(stdexec::connect_t, _retry_sender&& self, R r) {
-      return {(S&&) self.s_, (R&&) r};
+      return {static_cast<S&&>(self.s_), static_cast<R&&>(r)};
     }
 
     friend auto tag_invoke(stdexec::get_env_t, const _retry_sender& self) //
@@ -151,6 +151,6 @@ namespace {
 
   template <stdexec::sender S>
   stdexec::sender auto retry(S s) {
-    return _retry_sender{(S&&) s};
+    return _retry_sender{static_cast<S&&>(s)};
   }
-}
+} // namespace

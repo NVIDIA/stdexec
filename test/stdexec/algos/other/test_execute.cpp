@@ -68,4 +68,4 @@ namespace {
     // the work should be executed
     REQUIRE(called);
   }
-}
+} // namespace

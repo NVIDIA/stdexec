@@ -52,4 +52,4 @@ namespace {
       }
     }
   }
-}
+} // namespace

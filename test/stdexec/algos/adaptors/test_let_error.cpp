@@ -360,4 +360,4 @@ namespace {
              | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
     wait_for_value(std::move(snd), std::string{"what error?"});
   }
-}
+} // namespace

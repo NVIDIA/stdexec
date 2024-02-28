@@ -51,7 +51,7 @@ namespace nvexec {
             nvtxRangePop();
           }
 
-          self.op_state_.propagate_completion_signal(tag, (As&&) as...);
+          self.op_state_.propagate_completion_signal(tag, static_cast<As&&>(as)...);
         }
 
         friend Env tag_invoke(get_env_t, const __t& self) noexcept {
@@ -86,8 +86,8 @@ namespace nvexec {
         friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
           -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
           return stream_op_state<__copy_cvref_t<Self, Sender>>(
-            ((Self&&) self).sndr_,
-            (Receiver&&) rcvr,
+            static_cast<Self&&>(self).sndr_,
+            static_cast<Receiver&&>(rcvr),
             [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
               -> receiver_t<Receiver> {
               return receiver_t<Receiver>(stream_provider, std::move(self.name_));
@@ -113,7 +113,7 @@ namespace nvexec {
     struct push_t {
       template <stdexec::sender Sender>
       nvtx_sender_th<kind::push, Sender> operator()(Sender&& sndr, std::string&& name) const {
-        return nvtx_sender_th<kind::push, Sender>{{}, (Sender&&) sndr, std::move(name)};
+        return nvtx_sender_th<kind::push, Sender>{{}, static_cast<Sender&&>(sndr), std::move(name)};
       }
 
       stdexec::__binder_back<push_t, std::string> operator()(std::string name) const {
@@ -124,7 +124,7 @@ namespace nvexec {
     struct pop_t {
       template <stdexec::sender Sender>
       nvtx_sender_th<kind::pop, Sender> operator()(Sender&& sndr) const {
-        return nvtx_sender_th<kind::pop, Sender>{{}, (Sender&&) sndr, {}};
+        return nvtx_sender_th<kind::pop, Sender>{{}, static_cast<Sender&&>(sndr), {}};
       }
 
       stdexec::__binder_back<pop_t> operator()() const {
@@ -138,7 +138,7 @@ namespace nvexec {
     struct scoped_t {
       template <stdexec::sender Sender, stdexec::__sender_adaptor_closure Closure>
       auto operator()(Sender&& __sndr, std::string&& name, Closure closure) const noexcept {
-        return (Sender&&) __sndr | push(std::move(name)) | closure | pop();
+        return static_cast<Sender&&>(__sndr) | push(std::move(name)) | closure | pop();
       }
 
       template <stdexec::__sender_adaptor_closure Closure>
@@ -147,7 +147,7 @@ namespace nvexec {
         return {
           {},
           {},
-          {std::move(name), (Closure&&) closure}
+          {std::move(name), static_cast<Closure&&>(closure)}
         };
       }
     };

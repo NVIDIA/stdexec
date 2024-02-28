@@ -43,6 +43,6 @@ namespace exec {
 
     std::size_t size() const noexcept;
   };
-}
+} // namespace exec
 
 #include "__detail/memory_mapped_region.hpp"

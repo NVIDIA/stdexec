@@ -71,12 +71,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
 
       template <same_as<set_value_t> _Tag, class Range>
       friend void tag_invoke(_Tag, __t&& self, Range&& range) noexcept {
-        DerivedReceiver::set_value_impl((__t&&) self, (Range&&) range);
+        DerivedReceiver::set_value_impl(static_cast<__t&&>(self), static_cast<Range&&>(range));
       }
 
       template <__one_of<set_error_t, set_stopped_t> Tag, class... As>
       friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-        self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
+        self.op_state_.propagate_completion_signal(Tag(), static_cast<As&&>(as)...);
       }
 
       friend env_of_t<Receiver> tag_invoke(get_env_t, const __t& self) noexcept {
@@ -85,8 +85,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
 
       __t(InitT init, Fun fun, operation_state_base_t<ReceiverId>& op_state)
         : op_state_(op_state)
-        , init_((InitT&&) init)
-        , fun_((Fun&&) fun) {
+        , init_(static_cast<InitT&&>(init))
+        , fun_(static_cast<Fun&&>(fun)) {
       }
     };
   };
@@ -120,8 +120,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
-          ((Self&&) self).sndr_,
-          (Receiver&&) rcvr,
+          static_cast<Self&&>(self).sndr_,
+          static_cast<Receiver&&>(rcvr),
           [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
             -> receiver_t<Receiver> {
             return receiver_t<Receiver>(self.init_, self.fun_, stream_provider);

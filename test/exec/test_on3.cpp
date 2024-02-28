@@ -58,4 +58,4 @@ namespace {
     CHECK(i == 42);
     stdexec::sync_wait(scope.on_empty());
   }
-}
+} // namespace

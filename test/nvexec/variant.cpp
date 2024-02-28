@@ -143,4 +143,4 @@ namespace {
       v,
       1);
   }
-}
+} // namespace

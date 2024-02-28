@@ -20,17 +20,16 @@
 
 #if STDEXEC_HAS_STD_RANGES()
 
-#include "../../stdexec/concepts.hpp"
-#include "../../stdexec/execution.hpp"
-#include "../sequence_senders.hpp"
-#include "../__detail/__basic_sequence.hpp"
+#  include "../../stdexec/concepts.hpp"
+#  include "../../stdexec/execution.hpp"
+#  include "../sequence_senders.hpp"
+#  include "../__detail/__basic_sequence.hpp"
 
-#include "../env.hpp"
-#include "../trampoline_scheduler.hpp"
+#  include "../env.hpp"
+#  include "../trampoline_scheduler.hpp"
 
-#include <exception>
-#include <ranges>
-
+#  include <exception>
+#  include <ranges>
 
 namespace exec {
   namespace __iterate {
@@ -38,8 +37,10 @@ namespace exec {
 
     template <class _Iterator, class _Sentinel>
     struct __operation_base {
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Iterator __iterator_;
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Sentinel __sentinel_;
+      STDEXEC_ATTRIBUTE((no_unique_address))
+      _Iterator __iterator_;
+      STDEXEC_ATTRIBUTE((no_unique_address))
+      _Sentinel __sentinel_;
     };
 
     template <class _Range>
@@ -50,7 +51,8 @@ namespace exec {
     struct __item_operation {
       struct __t {
         using __id = __item_operation;
-        STDEXEC_ATTRIBUTE((no_unique_address)) _ItemRcvr __rcvr_;
+        STDEXEC_ATTRIBUTE((no_unique_address))
+        _ItemRcvr __rcvr_;
         __operation_base<_Iterator, _Sentinel>* __parent_;
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
@@ -213,10 +215,10 @@ namespace exec {
         return {};
       }
     };
-  }
+  } // namespace __iterate
 
   using __iterate::iterate_t;
   inline constexpr iterate_t iterate;
-}
+} // namespace exec
 
 #endif // STDEXEC_HAS_STD_RANGES()

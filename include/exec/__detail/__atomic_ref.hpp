@@ -22,7 +22,7 @@
 template <class T>
 using __atomic_ref = std::atomic_ref<T>;
 #else
-#include <concepts>
+#  include <concepts>
 
 // clang-12 does not know about std::atomic_ref yet
 // Here we implement only what we need

@@ -84,4 +84,4 @@ namespace {
 
     REQUIRE(flags_storage.all_set_once());
   }
-}
+} // namespace

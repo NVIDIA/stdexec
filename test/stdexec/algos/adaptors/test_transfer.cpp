@@ -305,4 +305,4 @@ namespace {
     ex::start(op);
     REQUIRE(res == "goodbye");
   }
-}
+} // namespace

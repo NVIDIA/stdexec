@@ -57,7 +57,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           cudaStream_t stream = op_state.get_stream();
 
           if constexpr (does_not_return_a_value) {
-            kernel<As&&...><<<1, 1, 0, stream>>>(std::move(self.f_), (As&&) as...);
+            kernel<As&&...><<<1, 1, 0, stream>>>(std::move(self.f_), static_cast<As&&>(as)...);
 
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
@@ -69,7 +69,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             using decayed_result_t = __decay_t<result_t>;
             decayed_result_t* d_result = static_cast<decayed_result_t*>(op_state.temp_storage_);
             kernel_with_result<As&&...>
-              <<<1, 1, 0, stream>>>(std::move(self.f_), d_result, (As&&) as...);
+              <<<1, 1, 0, stream>>>(std::move(self.f_), d_result, static_cast<As&&>(as)...);
             op_state.defer_temp_storage_destruction(d_result);
 
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
@@ -83,7 +83,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <__one_of<set_error_t, set_stopped_t> Tag, class... As>
         friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
+          self.op_state_.propagate_completion_signal(Tag(), static_cast<As&&>(as)...);
         }
 
         friend typename operation_state_base_t<ReceiverId>::env_t
@@ -92,7 +92,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
 
         explicit __t(Fun fun, operation_state_base_t<ReceiverId>& op_state)
-          : f_((Fun&&) fun)
+          : f_(static_cast<Fun&&>(fun))
           , op_state_(op_state) {
         }
       };
@@ -177,8 +177,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
-          ((Self&&) self).sndr_,
-          (Receiver&&) rcvr,
+          static_cast<Self&&>(self).sndr_,
+          static_cast<Receiver&&>(rcvr),
           [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
             -> receiver_t<Receiver> { return receiver_t<Receiver>(self.fun_, stream_provider); });
       }

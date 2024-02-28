@@ -18,13 +18,13 @@
 // Internal header, do not include directly
 
 #ifdef STDEXEC_DISABLE_STD_DEPRECATIONS
-#define STDEXEC_STD_DEPRECATED
+#  define STDEXEC_STD_DEPRECATED
 #else
-#define STDEXEC_STD_DEPRECATED \
-  [[deprecated( \
-    "Please access this entity in the ::stdexec:: namespace. Define " \
-    "STDEXEC_DISABLE_STD_DEPRECATIONS to silence this " \
-    "warning.")]]
+#  define STDEXEC_STD_DEPRECATED                                                                   \
+    [[deprecated(                                                                                  \
+      "Please access this entity in the ::stdexec:: namespace. Define "                            \
+      "STDEXEC_DISABLE_STD_DEPRECATIONS to silence this "                                          \
+      "warning.")]]
 #endif
 
 namespace std {

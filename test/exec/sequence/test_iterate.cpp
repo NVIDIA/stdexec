@@ -20,9 +20,9 @@
 
 #if STDEXEC_HAS_STD_RANGES()
 
-#include <array>
-#include <catch2/catch.hpp>
-#include <numeric>
+#  include <array>
+#  include <catch2/catch.hpp>
+#  include <numeric>
 
 namespace {
 
@@ -132,6 +132,6 @@ namespace {
     CHECK(sum == (42 + 43 + 44 + 1));
   }
 
-}
+} // namespace
 
 #endif // STDEXEC_HAS_STD_RANGES()

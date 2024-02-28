@@ -18,13 +18,13 @@
 #include <stdexec/coroutine.hpp>
 
 #if !STDEXEC_STD_NO_COROUTINES_
-#include <exec/task.hpp>
-#include <exec/single_thread_context.hpp>
-#include <exec/async_scope.hpp>
+#  include <exec/task.hpp>
+#  include <exec/single_thread_context.hpp>
+#  include <exec/async_scope.hpp>
 
-#include <catch2/catch.hpp>
+#  include <catch2/catch.hpp>
 
-#include <thread>
+#  include <thread>
 
 using namespace exec;
 using namespace stdexec;
@@ -207,7 +207,7 @@ namespace {
       co_await test_stick_on_main_nested(sched1, sched2, id_main_thread, id1, id2);
       CHECK(get_id() == id_main_thread);
     }
-  }
+  } // namespace
 
   TEST_CASE("Stick on main thread if completes_inline is not used", "[types][sticky][task]") {
     single_thread_context context1;
@@ -274,6 +274,6 @@ namespace {
     CHECK(count == 3);
   }
 
-}
+} // namespace
 
 #endif

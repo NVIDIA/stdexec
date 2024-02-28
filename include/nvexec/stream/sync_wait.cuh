@@ -55,7 +55,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
       template <class Error>
       void set_error(Error err) noexcept {
         if constexpr (__decays_to<Error, cudaError_t>) {
-          state_->data_.template emplace<2>((Error&&) err);
+          state_->data_.template emplace<2>(static_cast<Error&&>(err));
         } else {
           // What is `exception_ptr` but death pending
           state_->data_.template emplace<2>(cudaErrorUnknown);
@@ -90,14 +90,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
                   &concurrent_managed_access, cudaDevAttrConcurrentManagedAccess, dev_id))
                 == cudaSuccess) {
                 // Avoid launching the destruction kernel if the memory targeting host
-                (prefetch((As&&) as, stream), ...);
+                (prefetch(static_cast<As&&>(as), stream), ...);
               }
             }
           }
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
               status == cudaSuccess) {
-            rcvr.state_->data_.template emplace<1>((As&&) as...);
+            rcvr.state_->data_.template emplace<1>(static_cast<As&&>(as)...);
           } else {
             rcvr.set_error(status);
           }
@@ -111,7 +111,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
       friend void tag_invoke(_Tag, __t&& rcvr, Error err) noexcept {
         if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
             status == cudaSuccess) {
-          rcvr.set_error((Error&&) err);
+          rcvr.set_error(static_cast<Error&&>(err));
         } else {
           rcvr.set_error(status);
         }
@@ -157,7 +157,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
       auto __op_state = make_host<exit_operation_state_t<Sender, receiver_t<Sender>>>(
         status, context_state.pinned_resource_, __conv{[&] {
           return exit_op_state(
-            (Sender&&) __sndr, receiver_t<Sender>{{}, &state, &loop}, context_state);
+            static_cast<Sender&&>(__sndr), receiver_t<Sender>{{}, &state, &loop}, context_state);
         }});
       if (status != cudaSuccess) {
         throw std::bad_alloc{};

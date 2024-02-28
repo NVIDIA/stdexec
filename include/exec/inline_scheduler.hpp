@@ -23,4 +23,4 @@ namespace exec {
   // A simple scheduler that executes its continuation inline, on the
   // thread of the caller of start().
   using inline_scheduler = stdexec::__inln::__scheduler;
-}
+} // namespace exec

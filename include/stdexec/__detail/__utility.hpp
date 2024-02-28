@@ -26,8 +26,8 @@ namespace stdexec {
     inline constexpr auto __forward_like = []<class _Uy>(_Uy&& __uy) noexcept -> auto&& {
       return static_cast<typename _Cpcvref::template __f<std::remove_reference_t<_Uy>>>(__uy);
     };
-  }
+  } // namespace __detail
 
   template <class _Ty>
   inline constexpr auto const & __forward_like = __detail::__forward_like<__copy_cvref_fn<_Ty&&>>;
-}
+} // namespace stdexec

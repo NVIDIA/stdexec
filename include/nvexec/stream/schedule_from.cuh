@@ -28,7 +28,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <class Tag, class Storage, class... As>
     __launch_bounds__(1) __global__ void kernel(Storage* storage, As... as) {
       ::new (storage) Storage();
-      storage->template emplace<decayed_tuple<Tag, As...>>(Tag(), (As&&) as...);
+      storage->template emplace<decayed_tuple<Tag, As...>>(Tag(), static_cast<As&&>(as)...);
     }
 
     template <class CvrefSenderId, class ReceiverId>
@@ -64,7 +64,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
             if constexpr (!construct_on_device) {
               ::new (storage) storage_t();
-              storage->template emplace<tuple_t>(Tag(), (As&&) as...);
+              storage->template emplace<tuple_t>(Tag(), static_cast<As&&>(as)...);
             }
 
             int dev_id{};
@@ -135,7 +135,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <__decays_to<source_sender_t> Self, receiver Receiver>
       friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
         -> connect_result_t<__copy_cvref_t<Self, Sender>, Receiver> {
-        return connect(((Self&&) self).sndr_, (Receiver&&) rcvr);
+        return connect((static_cast<Self&&>(self)).sndr_, static_cast<Receiver&&>(rcvr));
       }
 
       friend auto tag_invoke(get_env_t, const source_sender_t& self) noexcept
@@ -192,8 +192,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         receiver_t<Self, Receiver>,
         Receiver> {
         return stream_op_state<__copy_cvref_t<Self, source_sender_th>>(
-          ((Self&&) self).sndr_,
-          (Receiver&&) rcvr,
+          static_cast<Self&&>(self).sndr_,
+          static_cast<Receiver&&>(rcvr),
           [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
             -> receiver_t<Self, Receiver> {
             return receiver_t<Self, Receiver>{{}, stream_provider};
@@ -218,7 +218,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       __t(context_state_t context_state, Sender sndr)
         : env_{context_state}
-        , sndr_{{}, (Sender&&) sndr} {
+        , sndr_{{}, static_cast<Sender&&>(sndr)} {
       }
     };
   };

@@ -327,4 +327,4 @@ namespace {
                 });
     wait_for_value(std::move(work), 2);
   }
-}
+} // namespace

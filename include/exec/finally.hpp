@@ -79,8 +79,8 @@ namespace exec {
       _Receiver __receiver_;
 
       template <class _Tag, class... _Args>
-      void operator()(_Tag __tag, _Args&&... __args) const noexcept {
-        __tag((_Receiver&&) __receiver_, (_Args&&) __args...);
+      void operator()(_Tag __tag, _Args&&... __args) noexcept {
+        __tag(static_cast<_Receiver&&>(__receiver_), static_cast<_Args&&>(__args)...);
       }
     };
 
@@ -89,8 +89,10 @@ namespace exec {
       _Receiver __receiver_;
 
       template <class _Tuple>
-      void operator()(_Tuple&& __tuple) const noexcept {
-        std::apply(__applier<_Receiver>{(_Receiver&&) __receiver_}, (_Tuple&&) __tuple);
+      void operator()(_Tuple&& __tuple) noexcept {
+        std::apply(
+          __applier<_Receiver>{static_cast<_Receiver&&>(__receiver_)},
+          static_cast<_Tuple&&>(__tuple));
       }
     };
 
@@ -113,20 +115,21 @@ namespace exec {
         template <same_as<set_value_t> _Tag, __decays_to<__t> _Self>
         friend void tag_invoke(_Tag, _Self&& __self) noexcept {
           if constexpr (std::is_nothrow_move_constructible_v<_ResultType>) {
-            _ResultType __result = (_ResultType&&) __self.__op_->__result_;
+            _ResultType __result = static_cast<_ResultType&&>(__self.__op_->__result_.__get());
             __self.__op_->__result_.__destroy();
             std::visit(
-              __visitor<_Receiver>{(_Receiver&&) __self.__op_->__receiver_},
-              (_ResultType&&) __result);
+              __visitor<_Receiver>{static_cast<_Receiver&&>(__self.__op_->__receiver_)},
+              static_cast<_ResultType&&>(__result));
           } else {
             try {
-              _ResultType __result = (_ResultType&&) __self.__op_->__result_;
+              _ResultType __result = static_cast<_ResultType&&>(__self.__op_->__result_.__get());
               __self.__op_->__result_.__destroy();
               std::visit(
-                __visitor<_Receiver>{(_Receiver&&) __self.__op_->__receiver_},
-                (_ResultType&&) __result);
+                __visitor<_Receiver>{static_cast<_Receiver&&>(__self.__op_->__receiver_)},
+                static_cast<_ResultType&&>(__result));
             } catch (...) {
-              stdexec::set_error((_Receiver&&) __self.__op_->__receiver_, std::current_exception());
+              stdexec::set_error(
+                static_cast<_Receiver&&>(__self.__op_->__receiver_), std::current_exception());
             }
           }
         }
@@ -135,7 +138,8 @@ namespace exec {
           requires __callable<_Tag, _Receiver&&, _Error...>
         friend void tag_invoke(_Tag __tag, _Self&& __self, _Error&&... __error) noexcept {
           __self.__op_->__result_.__destroy();
-          __tag((_Receiver&&) __self.__op_->__receiver_, (_Error&&) __error...);
+          __tag(
+            static_cast<_Receiver&&>(__self.__op_->__receiver_), static_cast<_Error&&>(__error)...);
         }
 
         template <std::same_as<__t> _Self>
@@ -182,9 +186,10 @@ namespace exec {
           requires __callable<_Tag, _Receiver&&, _Args...>
         friend void tag_invoke(_Tag __tag, _Self&& __self, _Args&&... __args) noexcept {
           try {
-            __self.__op_->__store_result_and_start_next_op(__tag, (_Args&&) __args...);
+            __self.__op_->__store_result_and_start_next_op(__tag, static_cast<_Args&&>(__args)...);
           } catch (...) {
-            set_error((_Receiver&&) __self.__op_->__receiver_, std::current_exception());
+            set_error(
+              static_cast<_Receiver&&>(__self.__op_->__receiver_), std::current_exception());
           }
         }
 
@@ -220,21 +225,22 @@ namespace exec {
         requires std::is_constructible_v<__result_variant<__signatures>, __decayed_tuple<_Args...>>
       void __store_result_and_start_next_op(_Args&&... __args) {
         this->__result_.__construct(
-          std::in_place_type<__decayed_tuple<_Args...>>, (_Args&&) __args...);
+          std::in_place_type<__decayed_tuple<_Args...>>, static_cast<_Args&&>(__args)...);
         STDEXEC_ASSERT(__op_.index() == 0);
-        _FinalSender __final = (_FinalSender&&) std::get_if<0>(&__op_)->__sndr_;
+        _FinalSender __final = static_cast<_FinalSender&&>(std::get_if<0>(&__op_)->__sndr_);
         __final_op_t& __final_op = __op_.template emplace<1>(__conv{[&] {
-          return stdexec::connect((_FinalSender&&) __final, __final_receiver_t{this});
+          return stdexec::connect(static_cast<_FinalSender&&>(__final), __final_receiver_t{this});
         }});
         start(__final_op);
       }
 
       __t(_InitialSender&& __initial, _FinalSender&& __final, _Receiver __receiver)
-        : __base_t{{(_Receiver&&) __receiver}}
+        : __base_t{{static_cast<_Receiver&&>(__receiver)}}
         , __op_(std::in_place_index<0>, __conv{[&] {
                   return __initial_op_t{
-                    (_FinalSender&&) __final,
-                    stdexec::connect((_InitialSender&&) __initial, __initial_receiver_t{this})};
+                    static_cast<_FinalSender&&>(__final),
+                    stdexec::connect(
+                      static_cast<_InitialSender&&>(__initial), __initial_receiver_t{this})};
                 }}) {
       }
     };
@@ -255,12 +261,12 @@ namespace exec {
         _FinalSender __final_sndr_;
 
         template <__decays_to<__t> _Self, class _Rec>
-        friend __op_t< _Self, _Rec>
+        friend __op_t<_Self, _Rec>
           tag_invoke(connect_t, _Self&& __self, _Rec&& __receiver) noexcept {
           return {
-            ((_Self&&) __self).__initial_sndr_,
-            ((_Self&&) __self).__final_sndr_,
-            (_Rec&&) __receiver};
+            static_cast<_Self&&>(__self).__initial_sndr_,
+            static_cast<_Self&&>(__self).__final_sndr_,
+            static_cast<_Rec&&>(__receiver)};
         }
 
         template <__decays_to<__t> _Self, class _Env>
@@ -278,9 +284,9 @@ namespace exec {
 
         template <__decays_to<_InitialSender> _Initial, __decays_to<_FinalSender> _Final>
         __t(_Initial&& __initial, _Final&& __final) noexcept(
-          __nothrow_decay_copyable<_Initial>&& __nothrow_decay_copyable<_Final>)
-          : __initial_sndr_{(_Initial&&) __initial}
-          , __final_sndr_{(_Final&&) __final} {
+          __nothrow_decay_copyable<_Initial> && __nothrow_decay_copyable<_Final>)
+          : __initial_sndr_{static_cast<_Initial&&>(__initial)}
+          , __final_sndr_{static_cast<_Final&&>(__final)} {
         }
       };
     };
@@ -291,24 +297,29 @@ namespace exec {
       auto operator()(_Initial&& __initial, _Final&& __final) const {
         using _Domain = __domain::__common_domain_t<_Initial, _Final>;
         return stdexec::transform_sender(
-          _Domain(), __make_sexpr<finally_t>({}, (_Initial&&) __initial, (_Final&&) __final));
+          _Domain(),
+          __make_sexpr<finally_t>(
+            {}, static_cast<_Initial&&>(__initial), static_cast<_Final&&>(__final)));
       }
 
       template <sender _Final>
-      STDEXEC_ATTRIBUTE((always_inline)) //
-      auto operator()(_Final&& __final) const -> __binder_back<finally_t, __decay_t<_Final>> {
-        return {{}, {}, {(_Final&&) __final}};
+      STDEXEC_ATTRIBUTE((always_inline))
+      auto
+        operator()(_Final&& __final) const -> __binder_back<finally_t, __decay_t<_Final>> {
+        return {{}, {}, {static_cast<_Final&&>(__final)}};
       }
 
       template <class _Sender>
       static auto transform_sender(_Sender&& __sndr, __ignore) {
+
         return __sexpr_apply(
-          (_Sender&&) __sndr,
+          static_cast<_Sender&&>(__sndr),
           []<class _Initial, class _Final>(
             __ignore, __ignore, _Initial&& __initial, _Final&& __final) {
             using __result_sndr_t =
               __t<__sender<__id<__decay_t<_Initial>>, __id<__decay_t<_Final>>>>;
-            return __result_sndr_t{(_Initial&&) __initial, (_Final&&) __final};
+            return __result_sndr_t{
+              static_cast<_Initial&&>(__initial), static_cast<_Final&&>(__final)};
           });
       }
     };
@@ -316,4 +327,4 @@ namespace exec {
 
   using __final ::finally_t;
   inline constexpr __final ::finally_t finally{};
-}
+} // namespace exec

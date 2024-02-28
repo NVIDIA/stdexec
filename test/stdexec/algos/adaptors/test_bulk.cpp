@@ -152,8 +152,9 @@ namespace {
     std::vector<int> vals_expected(n);
     std::iota(vals_expected.begin(), vals_expected.end(), 0);
 
-    auto snd = ex::just(std::move(vals)) //
-             | ex::bulk(n, [&](std::size_t i, std::vector<int>& vals) { vals[i] = (int) i; });
+    auto snd =
+      ex::just(std::move(vals)) //
+      | ex::bulk(n, [&](std::size_t i, std::vector<int>& vals) { vals[i] = static_cast<int>(i); });
     auto op = ex::connect(std::move(snd), expect_value_receiver{vals_expected});
     ex::start(op);
   }
@@ -209,7 +210,8 @@ namespace {
                  | ex::bulk(n, [&counter](std::size_t idx) { counter[idx]++; });
         stdexec::sync_wait(std::move(snd));
 
-        const std::size_t actual = (std::size_t) std::count(counter.begin(), counter.end(), 1);
+        const std::size_t actual = static_cast<std::size_t>(
+          std::count(counter.begin(), counter.end(), 1));
         const std::size_t expected = n;
 
         CHECK(expected == actual);
@@ -237,7 +239,8 @@ namespace {
 
         CHECK(val == 42);
 
-        const std::size_t actual = (std::size_t) std::count(counter.begin(), counter.end(), 1);
+        const std::size_t actual = static_cast<std::size_t>(
+          std::count(counter.begin(), counter.end(), 1));
         const std::size_t expected = n;
 
         CHECK(expected == actual);
@@ -252,7 +255,8 @@ namespace {
 
         auto snd =
           ex::transfer_just(sch, std::move(vals))
-          | ex::bulk(n, [](std::size_t idx, std::vector<int>& vals) { vals[idx] = (int) idx; })
+          | ex::bulk(
+            n, [](std::size_t idx, std::vector<int>& vals) { vals[idx] = static_cast<int>(idx); })
           | ex::bulk(n, [](std::size_t idx, std::vector<int>& vals) { ++vals[idx]; });
         auto [vals_actual] = stdexec::sync_wait(std::move(snd)).value();
 
@@ -279,8 +283,8 @@ namespace {
 
       stdexec::sync_wait(std::move(snd));
 
-      CHECK(std::count(counters_1.begin(), counters_1.end(), 1) == (int) n);
-      CHECK(std::count(counters_2.begin(), counters_2.end(), 1) == (int) n);
+      CHECK(std::count(counters_1.begin(), counters_1.end(), 1) == static_cast<int>(n));
+      CHECK(std::count(counters_2.begin(), counters_2.end(), 1) == static_cast<int>(n));
     }
   }
 
@@ -302,7 +306,8 @@ namespace {
       stdexec::sync_wait(std::move(snd));
 
       // All the work should not have run on the same thread
-      const std::size_t actual = (std::size_t) std::count(tids.begin(), tids.end(), tids[0]);
+      const std::size_t actual = static_cast<std::size_t>(
+        std::count(tids.begin(), tids.end(), tids[0]));
       const std::size_t wrong = tids.size();
 
       CHECK(actual != wrong);
@@ -326,10 +331,11 @@ namespace {
       stdexec::sync_wait(stdexec::on(sch, std::move(snd)));
 
       // All the work should not have run on the same thread
-      const std::size_t actual = (std::size_t) std::count(tids.begin(), tids.end(), tids[0]);
+      const std::size_t actual = static_cast<std::size_t>(
+        std::count(tids.begin(), tids.end(), tids[0]));
       const std::size_t wrong = tids.size();
 
       CHECK(actual != wrong);
     }
   }
-}
+} // namespace

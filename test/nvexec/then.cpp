@@ -304,4 +304,4 @@ namespace {
 
     REQUIRE(handle.alive() == 0);
   }
-}
+} // namespace

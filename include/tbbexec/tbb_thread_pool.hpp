@@ -67,7 +67,7 @@ namespace tbbexec {
           stdexec::__t<operation<DerivedPoolType, stdexec::__id<Receiver>>>
             make_operation_(Receiver rcvr) const {
             return stdexec::__t<operation<DerivedPoolType, stdexec::__id<Receiver>>>{
-              this->pool_, (Receiver&&) rcvr};
+              this->pool_, static_cast<Receiver&&>(rcvr)};
           }
 
           template <class Receiver>
@@ -162,7 +162,7 @@ namespace tbbexec {
 
           bulk_shared_state(DerivedPoolType& pool, Receiver rcvr, Shape shape, Fun fun)
             : pool_(pool)
-            , rcvr_{(Receiver&&) rcvr}
+            , rcvr_{static_cast<Receiver&&>(rcvr)}
             , shape_{shape}
             , fun_{fun}
             , thread_with_exception_{num_agents_required()} {
@@ -178,7 +178,7 @@ namespace tbbexec {
               };
 
               auto completion = [&](auto&... args) {
-                stdexec::set_value((Receiver&&) self.rcvr_, std::move(args)...);
+                stdexec::set_value(static_cast<Receiver&&>(self.rcvr_), std::move(args)...);
               };
 
               if constexpr (MayThrow) {
@@ -198,7 +198,8 @@ namespace tbbexec {
 
                 if (is_last_thread) {
                   if (self.exception_) {
-                    stdexec::set_error((Receiver&&) self.rcvr_, std::move(self.exception_));
+                    stdexec::set_error(
+                      static_cast<Receiver&&>(self.rcvr_), std::move(self.exception_));
                   } else {
                     self.apply(completion);
                   }
@@ -245,12 +246,12 @@ namespace tbbexec {
 
               if constexpr (MayThrow) {
                 try {
-                  state.data_.template emplace<tuple_t>((As&&) as...);
+                  state.data_.template emplace<tuple_t>(static_cast<As&&>(as)...);
                 } catch (...) {
                   stdexec::set_error(std::move(state.rcvr_), std::current_exception());
                 }
               } else {
-                state.data_.template emplace<tuple_t>((As&&) as...);
+                state.data_.template emplace<tuple_t>(static_cast<As&&>(as)...);
               }
 
               if (state.shape_) {
@@ -267,7 +268,7 @@ namespace tbbexec {
               class... As>
             friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
               shared_state& state = self.shared_state_;
-              tag((Receiver&&) state.rcvr_, (As&&) as...);
+              tag(static_cast<Receiver&&>(state.rcvr_), static_cast<As&&>(as)...);
             }
 
             friend auto tag_invoke(stdexec::get_env_t, const __t& self) noexcept
@@ -304,8 +305,9 @@ namespace tbbexec {
             }
 
             __t(DerivedPoolType& pool, Shape shape, Fun fun, CvrefSender&& sndr, Receiver rcvr)
-              : shared_state_(pool, (Receiver&&) rcvr, shape, fun)
-              , inner_op_{stdexec::connect((CvrefSender&&) sndr, bulk_rcvr{shared_state_})} {
+              : shared_state_(pool, static_cast<Receiver&&>(rcvr), shape, fun)
+              , inner_op_{
+                  stdexec::connect(static_cast<CvrefSender&&>(sndr), bulk_rcvr{shared_state_})} {
             }
           };
         };
@@ -351,7 +353,7 @@ namespace tbbexec {
 
             template <class Self, class Receiver>
             using bulk_op_state_t = stdexec::__t<
-              bulk_op_state< stdexec::__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun>>;
+              bulk_op_state<stdexec::__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun>>;
 
             template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
               requires stdexec::
@@ -366,7 +368,11 @@ namespace tbbexec {
                   Sender,
                   Receiver>) {
               return bulk_op_state_t<Self, Receiver>{
-                self.pool_, self.shape_, self.fun_, ((Self&&) self).sndr_, (Receiver&&) rcvr};
+                self.pool_,
+                self.shape_,
+                self.fun_,
+                static_cast<Self&&>(self).sndr_,
+                static_cast<Receiver&&>(rcvr)};
             }
 
             template <stdexec::__decays_to<__t> Self, class Env>
@@ -384,7 +390,7 @@ namespace tbbexec {
                 Tag,
                 const Sender&,
                 As...> {
-              return ((Tag&&) tag)(self.sndr_, (As&&) as...);
+              return static_cast<Tag&&>(tag)(self.sndr_, static_cast<As&&>(as)...);
             }
 
             template <stdexec::same_as<stdexec::get_env_t> Tag>
@@ -404,7 +410,7 @@ namespace tbbexec {
 
         template <stdexec::sender Sender, std::integral Shape, class Fun>
         using bulk_sender_t =
-          stdexec::__t<bulk_sender< stdexec::__id<stdexec::__decay_t<Sender>>, Shape, Fun>>;
+          stdexec::__t<bulk_sender<stdexec::__id<stdexec::__decay_t<Sender>>, Shape, Fun>>;
 
         template <stdexec::sender S, std::integral Shape, class Fun>
         friend bulk_sender_t<S, Shape, Fun> tag_invoke(
@@ -413,7 +419,8 @@ namespace tbbexec {
           S&& sndr,
           Shape shape,
           Fun fun) noexcept {
-          return bulk_sender_t<S, Shape, Fun>{*sch.pool_, (S&&) sndr, shape, (Fun&&) fun};
+          return bulk_sender_t<S, Shape, Fun>{
+            *sch.pool_, static_cast<S&&>(sndr), shape, static_cast<Fun&&>(fun)};
         }
 
         constexpr stdexec::forward_progress_guarantee forward_progress_guarantee() const noexcept {
@@ -434,7 +441,8 @@ namespace tbbexec {
         DerivedPoolType* pool_;
       };
 
-      [[nodiscard]] scheduler get_scheduler() noexcept {
+      [[nodiscard]]
+      scheduler get_scheduler() noexcept {
         return scheduler{static_cast<DerivedPoolType&>(*this)};
       }
 
@@ -447,7 +455,8 @@ namespace tbbexec {
         // https://spec.oneapi.io/versions/latest/elements/oneTBB/source/task_scheduler/task_arena/task_arena_cls.html
     }*/
 
-      [[nodiscard]] std::uint32_t available_parallelism() const {
+      [[nodiscard]]
+      std::uint32_t available_parallelism() const {
         return static_cast<DerivedPoolType&>(*this).available_parallelism();
       }
 
@@ -506,12 +515,13 @@ namespace tbbexec {
       arena_.initialize();
     }
 
-    [[nodiscard]] std::uint32_t available_parallelism() const {
+    [[nodiscard]]
+    std::uint32_t available_parallelism() const {
       return static_cast<std::uint32_t>(arena_.max_concurrency());
     }
    private:
-    [[nodiscard]] static constexpr stdexec::forward_progress_guarantee
-      forward_progress_guarantee() {
+    [[nodiscard]]
+    static constexpr stdexec::forward_progress_guarantee forward_progress_guarantee() {
       return stdexec::forward_progress_guarantee::parallel;
     }
 
