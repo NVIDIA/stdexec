@@ -26,8 +26,8 @@ using namespace stdexec;
 template <sender S1, sender S2>
 exec::task<int> async_answer(S1 s1, S2 s2) {
   // Senders are implicitly awaitable (in this coroutine type):
-  co_await (S2&&) s2;
-  co_return co_await (S1&&) s1;
+  co_await static_cast<S2&&>(s2);
+  co_return co_await static_cast<S1&&>(s1);
 }
 
 template <sender S1, sender S2>

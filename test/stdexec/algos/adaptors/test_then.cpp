@@ -214,4 +214,4 @@ namespace {
              | exec::write(exec::with(ex::get_scheduler, inline_scheduler()));
     wait_for_value(std::move(snd), std::string{"hallo"});
   }
-}
+} // namespace

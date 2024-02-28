@@ -140,6 +140,6 @@ namespace {
         stdexec::__t<
           exec::__any::__sender_env<Completions, stdexec::__types<>, stdexec::__types<>>>>);
   }
-}
+} // namespace
 
 STDEXEC_PRAGMA_POP()

@@ -49,16 +49,16 @@ namespace {
 
       friend void tag_invoke(start_t, operation &self) noexcept {
         if (self.counter_ == 0) {
-          set_value((Receiver &&) self.rcvr_, true);
+          set_value(static_cast<Receiver &&>(self.rcvr_), true);
         } else {
-          set_value((Receiver &&) self.rcvr_, false);
+          set_value(static_cast<Receiver &&>(self.rcvr_), false);
         }
       }
     };
 
     template <receiver_of<completion_signatures> Receiver>
     friend operation<Receiver> tag_invoke(connect_t, boolean_sender self, Receiver rcvr) {
-      return {(Receiver &&) rcvr, --*self.counter_};
+      return {static_cast<Receiver &&>(rcvr), --*self.counter_};
     }
 
     std::shared_ptr<int> counter_ = std::make_shared<int>(1000);
@@ -165,4 +165,4 @@ namespace {
 
     REQUIRE(called);
   }
-}
+} // namespace

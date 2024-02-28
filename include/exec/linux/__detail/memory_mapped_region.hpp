@@ -40,8 +40,8 @@ namespace exec {
     , __size_(std::exchange(__other.__size_, 0)) {
   }
 
-  inline memory_mapped_region&
-    memory_mapped_region::operator=(memory_mapped_region&& __other) noexcept {
+  inline memory_mapped_region& memory_mapped_region::operator=(
+    memory_mapped_region&& __other) noexcept {
     if (this != &__other) {
       if (__ptr_) {
         ::munmap(__ptr_, __size_);
@@ -63,4 +63,4 @@ namespace exec {
   inline std::size_t memory_mapped_region::size() const noexcept {
     return __size_;
   }
-}
+} // namespace exec

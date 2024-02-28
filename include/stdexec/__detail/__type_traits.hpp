@@ -177,7 +177,7 @@ namespace stdexec {
   namespace __tt {
     template <class _Ty>
     _Ty __remove_rvalue_reference_fn(_Ty&&);
-  }
+  } // namespace __tt
 
   template <class _Ty>
   using __remove_rvalue_reference_t =

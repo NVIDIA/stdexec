@@ -41,6 +41,6 @@ namespace exec {
 
     int native_handle() const noexcept;
   };
-}
+} // namespace exec
 
 #include "__detail/safe_file_descriptor.hpp"

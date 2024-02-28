@@ -36,7 +36,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_submit {
         noexcept(__nothrow_callable<Tag, Receiver, As...>) {
         // Delete the state as cleanup:
         std::unique_ptr<op_state_t> g{self.op_state_};
-        return Tag()((Receiver&&) self.op_state_->rcvr_, (As&&) as...);
+        return Tag()(static_cast<Receiver&&>(self.op_state_->rcvr_), static_cast<As&&>(as)...);
       }
 
       // Forward all receiever queries.
@@ -50,8 +50,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_submit {
 
     template <__decays_to<Receiver> CvrefReceiver>
     op_state_t(Sender&& sndr, CvrefReceiver&& rcvr)
-      : rcvr_((CvrefReceiver&&) rcvr)
-      , op_state_(connect((Sender&&) sndr, receiver_t{{}, this})) {
+      : rcvr_(static_cast<CvrefReceiver&&>(rcvr))
+      , op_state_(connect(static_cast<Sender&&>(sndr), receiver_t{{}, this})) {
     }
   };
 
@@ -59,7 +59,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_submit {
     template <receiver Receiver, sender_to<Receiver> Sender>
     void operator()(Sender&& sndr, Receiver&& rcvr) const noexcept(false) {
       start((new op_state_t<stdexec::__id<Sender>, stdexec::__id<__decay_t<Receiver>>>{
-               (Sender&&) sndr, (Receiver&&) rcvr})
+               static_cast<Sender&&>(sndr), static_cast<Receiver&&>(rcvr)})
               ->op_state_);
     }
   };

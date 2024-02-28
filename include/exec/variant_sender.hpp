@@ -40,7 +40,8 @@ namespace exec {
         __t(_Sender&& __sender, _Receiver&& __receiver) noexcept(
           __nothrow_connectable<_Sender, _Receiver>)
           : __variant_{std::in_place_type<connect_result_t<_Sender, _Receiver>>, __conv{[&] {
-                         return stdexec::connect((_Sender&&) __sender, (_Receiver&&) __receiver);
+                         return stdexec::connect(
+                           static_cast<_Sender&&>(__sender), static_cast<_Receiver&&>(__receiver));
                        }}} {
         }
       };
@@ -57,9 +58,9 @@ namespace exec {
         _Receiver __r;
 
         template <class _Sender>
-        stdexec::__t< __operation_state<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>>
-          operator()(_Sender&& __s) const {
-          return {(_Sender&&) __s, (_Receiver&&) __r};
+        stdexec::__t<__operation_state<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>>
+          operator()(_Sender&& __s) {
+          return {static_cast<_Sender&&>(__s), static_cast<_Receiver&&>(__r)};
         }
       };
 
@@ -80,14 +81,15 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires(sender_to<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver> && ...)
-        friend stdexec::__t< __operation_state<
+        friend stdexec::__t<__operation_state<
           stdexec::__id<_Receiver>,
           __cvref_id<_Self, stdexec::__t<_SenderIds>>...>>
           tag_invoke(connect_t, _Self&& __self, _Receiver __r) noexcept(
             (__nothrow_connectable<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver>
              && ...)) {
           return std::visit(
-            __visitor<_Self, _Receiver>{(_Receiver&&) __r}, ((_Self&&) __self).base());
+            __visitor<_Self, _Receiver>{static_cast<_Receiver&&>(__r)},
+            static_cast<_Self&&>(__self).base());
         }
 
         template <__decays_to<__t> _Self, class _Env>
@@ -106,7 +108,7 @@ namespace exec {
           requires __one_of<__decay_t<_Sender>, stdexec::__t<_SenderIds>...>
         __t(_Sender&& __sender) noexcept(
           __nothrow_constructible_from<std::variant<stdexec::__t<_SenderIds>...>, _Sender>)
-          : __variant_t{(_Sender&&) __sender} {
+          : __variant_t{static_cast<_Sender&&>(__sender)} {
         }
 
         using __variant_t::operator=;
@@ -115,21 +117,21 @@ namespace exec {
         using __variant_t::swap;
       };
     };
-  }
+  } // namespace __variant
 
   template <class... _Senders>
   using variant_sender =
     stdexec::__t<__variant::__sender<stdexec::__id<stdexec::__decay_t<_Senders>>...>>;
-}
+} // namespace exec
 
 namespace stdexec::__detail {
   struct __variant_sender_name {
     template <class _Sender>
     using __f = __mapply<
-      __transform< __mcompose<__q<__name_of>, __q<__t>>, __q<exec::__variant::__sender>>,
+      __transform<__mcompose<__q<__name_of>, __q<__t>>, __q<exec::__variant::__sender>>,
       _Sender>;
   };
 
   template <class... _SenderIds>
   extern __variant_sender_name __name_of_v<exec::__variant::__sender<_SenderIds...>>;
-}
+} // namespace stdexec::__detail

@@ -40,12 +40,14 @@ namespace exec {
     template <class... _Args>
     _Ty& __construct(_Args&&... __args) noexcept(
       stdexec::__nothrow_constructible_from<_Ty, _Args...>) {
-      return *::new (static_cast<void*>(std::addressof(__value_))) _Ty((_Args&&) __args...);
+      return *::new (static_cast<void*>(std::addressof(__value_)))
+        _Ty(static_cast<_Args&&>(__args)...);
     }
 
     template <class _Func>
     _Ty& __construct_with(_Func&& func) {
-      return *::new (static_cast<void*>(std::addressof(__value_))) _Ty(((_Func&&) func)());
+      return *::new (static_cast<void*>(std::addressof(__value_)))
+        _Ty((static_cast<_Func&&>(func))());
     }
 
     void __destroy() noexcept {
@@ -57,7 +59,7 @@ namespace exec {
     }
 
     _Ty&& __get() && noexcept {
-      return (_Ty&&) __value_;
+      return static_cast<_Ty&&>(__value_);
     }
 
     const _Ty& __get() const & noexcept {
@@ -65,7 +67,7 @@ namespace exec {
     }
 
     const _Ty&& __get() const && noexcept {
-      return (const _Ty&&) __value_;
+      return static_cast<const _Ty&&>(__value_);
     }
 
    private:
@@ -73,4 +75,4 @@ namespace exec {
       _Ty __value_;
     };
   };
-}
+} // namespace exec

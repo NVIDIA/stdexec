@@ -16,7 +16,7 @@
 #pragma once
 
 #if __cpp_concepts < 201907L
-#error This library requires support for C++20 concepts
+#  error This library requires support for C++20 concepts
 #endif
 
 #include "__detail/__config.hpp"
@@ -28,15 +28,15 @@
 
 // Perhaps the stdlib lacks support for concepts though:
 #if __has_include(<concepts>) && __cpp_lib_concepts >= 202002
-#define STDEXEC_HAS_STD_CONCEPTS_HEADER() 1
+#  define STDEXEC_HAS_STD_CONCEPTS_HEADER() 1
 #else
-#define STDEXEC_HAS_STD_CONCEPTS_HEADER() 0
+#  define STDEXEC_HAS_STD_CONCEPTS_HEADER() 0
 #endif
 
 #if STDEXEC_HAS_STD_CONCEPTS_HEADER()
-#include <concepts>
+#  include <concepts>
 #else
-#include <type_traits>
+#  include <type_traits>
 #endif
 
 
@@ -88,7 +88,7 @@ namespace stdexec {
   template <class _Ty>
   inline constexpr bool __destructible_ = //
     requires {
-      { ((_Ty && (*) () noexcept) nullptr)().~_Ty() } noexcept;
+      { (static_cast < _Ty && (*) () noexcept > (nullptr))().~_Ty() } noexcept;
     };
   template <class _Ty>
   inline constexpr bool __destructible_<_Ty&> = true;
@@ -128,14 +128,14 @@ namespace stdexec {
     move_constructible<_Ty>    //
     && constructible_from<_Ty, _Ty const &>;
 
-  template <class _LHS, class _RHS >
+  template <class _LHS, class _RHS>
   concept assignable_from = //
     same_as<_LHS, _LHS&> && //
     // std::common_reference_with<
     //   const std::remove_reference_t<_LHS>&,
     //   const std::remove_reference_t<_RHS>&> &&
     requires(_LHS __lhs, _RHS&& __rhs) {
-      { __lhs = ((_RHS&&) __rhs) } -> same_as<_LHS>;
+      { __lhs = static_cast<_RHS&&>(__rhs) } -> same_as<_LHS>;
     };
 
   namespace __swap {
@@ -144,15 +144,15 @@ namespace stdexec {
     template <class _Ty, class _Uy>
     concept swappable_with =           //
       requires(_Ty&& __t, _Uy&& __u) { //
-        swap((_Ty&&) __t, (_Uy&&) __u);
+        swap(static_cast<_Ty&&>(__t), static_cast<_Uy&&>(__u));
       };
 
     inline constexpr auto const __fn = //
       []<class _Ty, swappable_with<_Ty> _Uy>(_Ty&& __t, _Uy&& __u) noexcept(
-        noexcept(swap((_Ty&&) __t, (_Uy&&) __u))) {
-        swap((_Ty&&) __t, (_Uy&&) __u);
+        noexcept(swap(static_cast<_Ty&&>(__t), static_cast<_Uy&&>(__u)))) {
+        swap(static_cast<_Ty&&>(__t), static_cast<_Uy&&>(__u));
       };
-  }
+  } // namespace __swap
 
   using __swap::swappable_with;
   inline constexpr auto const & swap = __swap::__fn;
@@ -161,7 +161,7 @@ namespace stdexec {
   concept swappable = //
     swappable_with<_Ty, _Ty>;
 
-  template < class _Ty >
+  template <class _Ty>
   concept movable =               //
     std::is_object_v<_Ty> &&      //
     move_constructible<_Ty> &&    //
@@ -190,7 +190,7 @@ namespace stdexec {
   template <class _Ty>
   concept __boolean_testable_ = convertible_to<_Ty, bool>;
 
-  template < class T, class U >
+  template <class T, class U>
   concept __partially_ordered_with = //
     requires(__cref_t<T> t, __cref_t<U> u) {
       { t < u } -> __boolean_testable_;
@@ -203,7 +203,7 @@ namespace stdexec {
       { u >= t } -> __boolean_testable_;
     };
 
-  template < class _Ty >
+  template <class _Ty>
   concept totally_ordered =     //
     equality_comparable<_Ty> && //
     __partially_ordered_with<_Ty, _Ty>;
@@ -217,7 +217,7 @@ namespace stdexec {
   concept __nothrow_movable_value = //
     __movable_value<_Ty> &&         //
     requires(_Ty&& __t) {
-      { __decay_t<_Ty>{__decay_t<_Ty>{(_Ty&&) __t}} } noexcept;
+      { __decay_t<_Ty>{__decay_t<_Ty>{static_cast<_Ty&&>(__t)}} } noexcept;
     };
 
 #if STDEXEC_HAS_BUILTIN(__is_nothrow_constructible)

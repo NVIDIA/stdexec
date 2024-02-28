@@ -32,4 +32,4 @@ namespace {
       STATIC_REQUIRE(scope == scope_t::scheduler);
     }
   }
-}
+} // namespace

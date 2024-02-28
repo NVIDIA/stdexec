@@ -268,6 +268,6 @@ namespace {
     static_assert(
       std::is_same_v<const ex::set_stopped_t, decltype(ex::set_stopped)>, "type mismatch");
   }
-}
+} // namespace
 
 STDEXEC_PRAGMA_POP()

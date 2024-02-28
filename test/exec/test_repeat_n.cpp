@@ -131,4 +131,4 @@ namespace {
     stdexec::sync_wait(std::move(snd));
     REQUIRE(called);
   }
-}
+} // namespace

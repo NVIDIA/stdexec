@@ -26,7 +26,7 @@
 #include <type_traits>
 
 #if STDEXEC_TSAN()
-#include <sanitizer/tsan_interface.h>
+#  include <sanitizer/tsan_interface.h>
 #endif
 
 namespace stdexec {
@@ -61,15 +61,15 @@ namespace stdexec {
         // Construct the value *after* the initialization of the
         // atomic in case the constructor of _Ty calls
         // __intrusive_from_this() (which increments the atomic):
-        ::new ((void*) __value_) _Ty{(_Us&&) __us...};
+        ::new (static_cast<void*>(__value_)) _Ty{static_cast<_Us&&>(__us)...};
       }
 
       ~__control_block() {
         __value().~_Ty();
       }
 
-      _Ty& __value() const noexcept {
-        return *(_Ty*) __value_;
+      _Ty& __value() noexcept {
+        return *reinterpret_cast<_Ty*>(__value_);
       }
 
       void __inc_ref_() noexcept {
@@ -186,7 +186,7 @@ namespace stdexec {
 
     template <class _Ty>
     __intrusive_ptr<_Ty> __enable_intrusive_from_this<_Ty>::__intrusive_from_this() noexcept {
-      auto* __data = (__control_block<_Ty>*) static_cast<_Ty*>(this);
+      auto* __data = reinterpret_cast<__control_block<_Ty>*>(static_cast<_Ty*>(this));
       __data->__inc_ref_();
       return __intrusive_ptr<_Ty>{__data};
     }
@@ -194,20 +194,20 @@ namespace stdexec {
     template <class _Ty>
     __intrusive_ptr<const _Ty>
       __enable_intrusive_from_this<_Ty>::__intrusive_from_this() const noexcept {
-      auto* __data = (__control_block<_Ty>*) static_cast<const _Ty*>(this);
+      auto* __data = reinterpret_cast<__control_block<_Ty>*>(static_cast<const _Ty*>(this));
       __data->__inc_ref_();
       return __intrusive_ptr<const _Ty>{__data};
     }
 
     template <class _Ty>
     void __enable_intrusive_from_this<_Ty>::__inc_ref() noexcept {
-      auto* __data = (__control_block<_Ty>*) static_cast<_Ty*>(this);
+      auto* __data = reinterpret_cast<__control_block<_Ty>*>(static_cast<_Ty*>(this));
       __data->__inc_ref_();
     }
 
     template <class _Ty>
     void __enable_intrusive_from_this<_Ty>::__dec_ref() noexcept {
-      auto* __data = (__control_block<_Ty>*) static_cast<_Ty*>(this);
+      auto* __data = reinterpret_cast<__control_block<_Ty>*>(static_cast<_Ty*>(this));
       __data->__dec_ref_();
     }
 
@@ -217,7 +217,7 @@ namespace stdexec {
         requires constructible_from<_Ty, _Us...>
       __intrusive_ptr<_Ty> operator()(_Us&&... __us) const {
         using _UncvTy = std::remove_cv_t<_Ty>;
-        return __intrusive_ptr<_Ty>{::new __control_block<_UncvTy>{(_Us&&) __us...}};
+        return __intrusive_ptr<_Ty>{::new __control_block<_UncvTy>{static_cast<_Us&&>(__us)...}};
       }
     };
   } // namespace __ptr

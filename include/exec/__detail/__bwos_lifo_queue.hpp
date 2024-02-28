@@ -31,39 +31,39 @@
 // Copyright (c) 2019 Maxim Egorushkin. MIT License.
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
-#if STDEXEC_MSVC()
-#include <intrin.h>
-#endif
+#  if STDEXEC_MSVC()
+#    include <intrin.h>
+#  endif
 namespace exec::bwos {
   static inline void spin_loop_pause() noexcept {
-#if STDEXEC_MSVC()
+#  if STDEXEC_MSVC()
     _mm_pause();
-#else
+#  else
     __builtin_ia32_pause();
-#endif
+#  endif
   }
-}
+} // namespace exec::bwos
 #elif defined(__arm__) || defined(__aarch64__) || defined(_M_ARM64)
 namespace exec::bwos {
   static inline void spin_loop_pause() noexcept {
-#if ( \
-  defined(__ARM_ARCH_6K__) || defined(__ARM_ARCH_6Z__) || defined(__ARM_ARCH_6ZK__) \
-  || defined(__ARM_ARCH_6T2__) || defined(__ARM_ARCH_7__) || defined(__ARM_ARCH_7A__) \
-  || defined(__ARM_ARCH_7R__) || defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7S__) \
-  || defined(__ARM_ARCH_8A__) || defined(__aarch64__))
+#  if (                                                                                            \
+    defined(__ARM_ARCH_6K__) || defined(__ARM_ARCH_6Z__) || defined(__ARM_ARCH_6ZK__)              \
+    || defined(__ARM_ARCH_6T2__) || defined(__ARM_ARCH_7__) || defined(__ARM_ARCH_7A__)            \
+    || defined(__ARM_ARCH_7R__) || defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7S__)            \
+    || defined(__ARM_ARCH_8A__) || defined(__aarch64__))
     asm volatile("yield" ::: "memory");
-#elif defined(_M_ARM64)
+#  elif defined(_M_ARM64)
     __yield();
-#else
+#  else
     asm volatile("nop" ::: "memory");
-#endif
+#  endif
   }
-}
+} // namespace exec::bwos
 #else
 namespace exec::bwos {
   static inline void spin_loop_pause() noexcept {
   }
-}
+} // namespace exec::bwos
 #endif
 
 /** 
@@ -492,4 +492,4 @@ namespace exec::bwos {
   bool lifo_queue<Tp, Allocator>::block_type::is_stealable() const noexcept {
     return steal_tail_.load(std::memory_order_acquire) != block_size();
   }
-}
+} // namespace exec::bwos

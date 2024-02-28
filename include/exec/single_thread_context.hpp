@@ -44,4 +44,4 @@ namespace exec {
       return thread_.get_id();
     }
   };
-}
+} // namespace exec

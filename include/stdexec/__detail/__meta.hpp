@@ -34,7 +34,7 @@ namespace stdexec {
   struct __ignore {
     __ignore() = default;
 
-    STDEXEC_ATTRIBUTE((always_inline)) //
+    STDEXEC_ATTRIBUTE((always_inline))
     constexpr __ignore(auto&&...) noexcept {
     }
   };
@@ -42,8 +42,8 @@ namespace stdexec {
   struct __none_such { };
 
   namespace {
-    struct __anon {};
-  }
+    struct __anon { };
+  } // namespace
 
   struct __immovable {
     __immovable() = default;
@@ -173,7 +173,8 @@ namespace stdexec {
 #if STDEXEC_NVHPC() && (__EDG_VERSION__ < 604)
   // Use a non-standard extension for older nvc++ releases
   template <__mchar _Char, _Char... _Str>
-  [[deprecated("Use _mstr instead")]] constexpr __mstring<sizeof...(_Str)>
+  [[deprecated("Use _mstr instead")]]
+  constexpr __mstring<sizeof...(_Str)>
     operator""__csz() noexcept {
     return {_Str...};
   }
@@ -186,7 +187,9 @@ namespace stdexec {
 #elif STDEXEC_NVHPC() && (__EDG_VERSION__ < 605)
   // This is to work around an unfiled (by me) EDG bug that fixed in build 605
   template <__mstring _Str>
-  [[deprecated("Use _mstr instead")]] constexpr __mtypeof<_Str> const operator""__csz() noexcept {
+  [[deprecated("Use _mstr instead")]]
+  constexpr __mtypeof<_Str> const
+    operator""__csz() noexcept {
     return _Str;
   }
 
@@ -198,7 +201,9 @@ namespace stdexec {
 #else
   // Use a standard user-defined string literal template
   template <__mstring _Str>
-  [[deprecated("Use _mstr instead")]] constexpr __mtypeof<_Str> operator""__csz() noexcept {
+  [[deprecated("Use _mstr instead")]]
+  constexpr __mtypeof<_Str>
+    operator""__csz() noexcept {
     return _Str;
   }
 
@@ -435,13 +440,13 @@ namespace stdexec {
   template <template <class...> class _Try, class _Catch>
   struct __mtry_catch_q {
     template <class... _Args>
-    using __f = __minvoke< __if_c<__mvalid<_Try, _Args...>, __q<_Try>, _Catch>, _Args...>;
+    using __f = __minvoke<__if_c<__mvalid<_Try, _Args...>, __q<_Try>, _Catch>, _Args...>;
   };
 
   template <class _Try, class _Catch>
   struct __mtry_catch {
     template <class... _Args>
-    using __f = __minvoke< __if_c<__minvocable<_Try, _Args...>, _Try, _Catch>, _Args...>;
+    using __f = __minvoke<__if_c<__minvocable<_Try, _Args...>, _Try, _Catch>, _Args...>;
   };
 
   template <class _Fn, class _Default>
@@ -482,7 +487,7 @@ namespace stdexec {
   struct __mfold_right_ {
     template <class _Fn, class _State, class _Head, class... _Tail>
     using __f =
-      __minvoke< __mfold_right_<sizeof...(_Tail) == 0>, _Fn, __minvoke<_Fn, _State, _Head>, _Tail...>;
+      __minvoke<__mfold_right_<sizeof...(_Tail) == 0>, _Fn, __minvoke<_Fn, _State, _Head>, _Tail...>;
   };
 
   template <>
@@ -627,7 +632,7 @@ namespace stdexec {
     template <class _List, class _Item>
     using __f = //
       __mapply<
-        __if< __mapply<__contains<_Item>, _List>, _Continuation, __mbind_back<_Continuation, _Item>>,
+        __if<__mapply<__contains<_Item>, _List>, _Continuation, __mbind_back<_Continuation, _Item>>,
         _List>;
   };
 
@@ -635,7 +640,7 @@ namespace stdexec {
   struct __munique {
     template <class... _Ts>
     using __f =
-      __mapply< _Continuation, __minvoke<__mfold_right<__types<>, __push_back_unique<>>, _Ts...>>;
+      __mapply<_Continuation, __minvoke<__mfold_right<__types<>, __push_back_unique<>>, _Ts...>>;
   };
 
   template <class...>
@@ -773,11 +778,11 @@ namespace stdexec {
     using __t = __call_result_t<_Fn>;
 
     operator __t() && noexcept(__nothrow_callable<_Fn>) {
-      return ((_Fn&&) __fn_)();
+      return static_cast<_Fn&&>(__fn_)();
     }
 
     __t operator()() && noexcept(__nothrow_callable<_Fn>) {
-      return ((_Fn&&) __fn_)();
+      return static_cast<_Fn&&>(__fn_)();
     }
   };
   template <class _Fn>
@@ -828,7 +833,7 @@ namespace stdexec {
   __types<__msize_t<_Indices>...> __mconvert_indices(std::index_sequence<_Indices...>*);
   template <std::size_t _Np>
   using __mmake_index_sequence =
-    decltype(stdexec::__mconvert_indices((std::make_index_sequence<_Np>*) nullptr));
+    decltype(stdexec::__mconvert_indices(static_cast<std::make_index_sequence<_Np>*>(nullptr)));
 #endif
 
   template <class... _Ts>
@@ -984,25 +989,28 @@ namespace stdexec {
   template <class... _Ignore>
   struct __nth_pack_element_impl {
     template <class _Ty, class... _Us>
-    STDEXEC_ATTRIBUTE((always_inline)) //
-    constexpr _Ty&& operator()(_Ignore..., _Ty&& __t, _Us&&...) const noexcept {
-      return (decltype(__t)&&) __t;
+    STDEXEC_ATTRIBUTE((always_inline))
+    constexpr _Ty&&
+      operator()(_Ignore..., _Ty&& __t, _Us&&...) const noexcept {
+      return static_cast<decltype(__t)&&>(__t);
     }
   };
 
   template <std::size_t _Np>
   struct __nth_pack_element_t {
     template <std::size_t... _Is>
-    STDEXEC_ATTRIBUTE((always_inline)) //
-    static constexpr auto __impl(__indices<_Is...>) noexcept {
+    STDEXEC_ATTRIBUTE((always_inline))
+    static constexpr auto
+      __impl(__indices<_Is...>) noexcept {
       return __nth_pack_element_impl<__ignore_t<_Is>...>();
     }
 
     template <class... _Ts>
-    STDEXEC_ATTRIBUTE((always_inline)) //
-    constexpr decltype(auto) operator()(_Ts&&... __ts) const noexcept {
+    STDEXEC_ATTRIBUTE((always_inline))
+    constexpr decltype(auto)
+      operator()(_Ts&&... __ts) const noexcept {
       static_assert(_Np < sizeof...(_Ts));
-      return __impl(__make_indices<_Np>())((_Ts&&) __ts...);
+      return __impl(__make_indices<_Np>())(static_cast<_Ts&&>(__ts)...);
     }
   };
 
@@ -1012,8 +1020,9 @@ namespace stdexec {
   template <auto... _Vs>
   struct __mliterals {
     template <std::size_t _Np>
-    STDEXEC_ATTRIBUTE((always_inline)) //
-    static constexpr auto __nth() noexcept {
+    STDEXEC_ATTRIBUTE((always_inline))
+    static constexpr auto
+      __nth() noexcept {
       return stdexec::__nth_pack_element<_Np>(_Vs...);
     }
   };
@@ -1021,9 +1030,10 @@ namespace stdexec {
   template <std::size_t _Np>
   struct __nth_member {
     template <class _Ty>
-    STDEXEC_ATTRIBUTE((always_inline)) //
-    constexpr decltype(auto) operator()(_Ty&& __ty) const noexcept {
-      return ((_Ty&&) __ty).*(__ty.__mbrs_.template __nth<_Np>());
+    STDEXEC_ATTRIBUTE((always_inline))
+    constexpr decltype(auto)
+      operator()(_Ty&& __ty) const noexcept {
+      return static_cast<_Ty&&>(__ty).*(__ty.__mbrs_.template __nth<_Np>());
     }
   };
 
@@ -1039,7 +1049,7 @@ namespace stdexec {
   struct __mdispatch_<__placeholder<_Np>, _Offset> {
     template <class... _Ts>
     decltype(auto) operator()(_Ts&&... __ts) const noexcept {
-      return stdexec::__nth_pack_element<_Np + _Offset>((_Ts&&) __ts...);
+      return stdexec::__nth_pack_element<_Np + _Offset>(static_cast<_Ts&&>(__ts)...);
     }
   };
 
@@ -1075,7 +1085,7 @@ namespace stdexec {
     auto operator()(_Ts&&... __ts) const
       noexcept(__nothrow_callable<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...>)
         -> __call_result_t<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...> {
-      return _Ret{}(__mdispatch_<_Args, _Offset>{}((_Ts&&) __ts...)...);
+      return _Ret{}(__mdispatch_<_Args, _Offset>{}(static_cast<_Ts&&>(__ts)...)...);
     }
   };
 
@@ -1083,7 +1093,8 @@ namespace stdexec {
   struct __mdispatch_<_Ret (*)(_Args..., ...), _Offset> {
     static_assert(_Offset == 0, "nested pack expressions are not supported");
     using _Pattern = __mback<_Args...>;
-    static constexpr std::size_t __offset = __get_placeholder_offset((__mtype<_Pattern>*) nullptr);
+    static constexpr std::size_t __offset = __get_placeholder_offset(
+      static_cast<__mtype<_Pattern>*>(nullptr));
 
     struct __impl {
       template <std::size_t... _Idx, class... _Ts>
@@ -1101,9 +1112,9 @@ namespace stdexec {
         _Ret,
         __call_result_t<__mdispatch_<_Args>, _Ts...>...,
         __call_result_t<__mdispatch_<_Pattern, _Idx + 1>, _Ts...>...> {
-        return _Ret()(                               //
-          __mdispatch_<_Args>()((_Ts&&) __ts...)..., //
-          __mdispatch_<_Pattern, _Idx + 1 >()((_Ts&&) __ts...)...);
+        return _Ret()(                                           //
+          __mdispatch_<_Args>()(static_cast<_Ts&&>(__ts)...)..., //
+          __mdispatch_<_Pattern, _Idx + 1>()(static_cast<_Ts&&>(__ts)...)...);
       }
     };
 
@@ -1115,7 +1126,7 @@ namespace stdexec {
         -> __msecond<
           __if_c<(__offset < sizeof...(_Ts))>,
           __call_result_t<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>> {
-      return __impl()(__make_indices<sizeof...(_Ts) - __offset - 1>(), (_Ts&&) __ts...);
+      return __impl()(__make_indices<sizeof...(_Ts) - __offset - 1>(), static_cast<_Ts&&>(__ts)...);
     }
 
     template <class... _Ts>
@@ -1126,7 +1137,8 @@ namespace stdexec {
       -> __msecond<
         __if_c<(sizeof...(_Ts) == __offset)>,
         __call_result_t<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...>*>, _Ts...>> {
-      return __mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...>*>()((_Ts&&) __ts...);
+      return __mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...>*>()(
+        static_cast<_Ts&&>(__ts)...);
     }
   };
 

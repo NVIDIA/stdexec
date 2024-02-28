@@ -81,7 +81,8 @@ namespace stdexec {
         return __result;
       }
 
-      [[nodiscard]] bool empty() const noexcept {
+      [[nodiscard]]
+      bool empty() const noexcept {
         return __head_ == nullptr;
       }
 
@@ -90,7 +91,8 @@ namespace stdexec {
         __tail_ = nullptr;
       }
 
-      [[nodiscard]] _Item* pop_front() noexcept {
+      [[nodiscard]]
+      _Item* pop_front() noexcept {
         STDEXEC_ASSERT(!empty());
         _Item* __item = std::exchange(__head_, __head_->*_Next);
         // This should test if __head_ == nullptr, but due to a bug in
@@ -162,12 +164,16 @@ namespace stdexec {
           , __item_(__item) {
         }
 
-        [[nodiscard]] _Item* operator*() const noexcept {
+        [[nodiscard]]
+        _Item*
+          operator*() const noexcept {
           STDEXEC_ASSERT(__item_ != nullptr);
           return __item_;
         }
 
-        [[nodiscard]] _Item** operator->() const noexcept {
+        [[nodiscard]]
+        _Item**
+          operator->() const noexcept {
           STDEXEC_ASSERT(__item_ != nullptr);
           return &__item_;
         }
@@ -189,11 +195,13 @@ namespace stdexec {
         friend bool operator==(const iterator&, const iterator&) noexcept = default;
       };
 
-      [[nodiscard]] iterator begin() const noexcept {
+      [[nodiscard]]
+      iterator begin() const noexcept {
         return iterator(nullptr, __head_);
       }
 
-      [[nodiscard]] iterator end() const noexcept {
+      [[nodiscard]]
+      iterator end() const noexcept {
         return iterator(__tail_, nullptr);
       }
 

@@ -30,7 +30,8 @@ namespace {
     using completion_signatures = ex::completion_signatures<Sigs...>;
 
     struct operation {
-      friend void tag_invoke(ex::start_t, operation&) noexcept {}
+      friend void tag_invoke(ex::start_t, operation&) noexcept {
+      }
     };
 
     template <class Receiver>
@@ -175,4 +176,4 @@ namespace {
       return {};
     }
   };
-}
+} // namespace

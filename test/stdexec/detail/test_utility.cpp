@@ -56,4 +56,4 @@ namespace {
     using res = __minvoke<tr, int, char>;
     static_assert(is_same_v<res, tuple<optional<int>, optional<char>>>);
   }
-}
+} // namespace

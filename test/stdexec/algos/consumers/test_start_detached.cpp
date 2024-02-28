@@ -24,7 +24,7 @@
 #include <chrono>
 
 #if STDEXEC_HAS_STD_MEMORY_RESOURCE()
-#include <memory_resource>
+#  include <memory_resource>
 #endif
 
 namespace ex = stdexec;
@@ -98,7 +98,7 @@ namespace {
 
     template <class Receiver>
     friend auto tag_invoke(ex::connect_t, custom_sender, Receiver&& rcvr) {
-      return ex::connect(ex::schedule(inline_scheduler{}), (Receiver&&) rcvr);
+      return ex::connect(ex::schedule(inline_scheduler{}), static_cast<Receiver&&>(rcvr));
     }
 
     template <class Env>
@@ -164,7 +164,7 @@ namespace {
     CHECK_FALSE(called);
   }
 
-#if STDEXEC_HAS_STD_MEMORY_RESOURCE() \
+#if STDEXEC_HAS_STD_MEMORY_RESOURCE()                                                              \
   && (defined(__cpp_lib_polymorphic_allocator) && __cpp_lib_polymorphic_allocator >= 201902L)
 
   struct counting_resource : std::pmr::memory_resource {
@@ -210,6 +210,6 @@ namespace {
   }
 #endif
 
-}
+} // namespace
 
 STDEXEC_PRAGMA_POP()

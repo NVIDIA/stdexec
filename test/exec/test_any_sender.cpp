@@ -39,7 +39,7 @@ namespace {
       requires stdexec::tag_invocable<tag_t, T>
     auto operator()(T&& t) const noexcept(stdexec::nothrow_tag_invocable<tag_t, T>)
       -> stdexec::tag_invoke_result_t<tag_t, T> {
-      return stdexec::tag_invoke(*this, (T&&) t);
+      return stdexec::tag_invoke(*this, static_cast<T&&>(t));
     }
   };
 
@@ -131,19 +131,19 @@ namespace {
     // Check set value
     CHECK(value.value_.index() == 0);
     receiver_ref ref = value;
-    set_value((receiver_ref&&) ref, 42);
+    set_value(static_cast<receiver_ref&&>(ref), 42);
     CHECK(value.value_.index() == 1);
     CHECK(std::get<1>(value.value_) == 42);
     // Check set error
     CHECK(error.value_.index() == 0);
     ref = error;
-    set_error((receiver_ref&&) ref, std::make_exception_ptr(42));
+    set_error(static_cast<receiver_ref&&>(ref), std::make_exception_ptr(42));
     CHECK(error.value_.index() == 2);
     CHECK_THROWS_AS(std::rethrow_exception(std::get<2>(error.value_)), int);
     // Check set stopped
     CHECK(stopped.value_.index() == 0);
     ref = stopped;
-    set_stopped((receiver_ref&&) ref);
+    set_stopped(static_cast<receiver_ref&&>(ref));
     CHECK(stopped.value_.index() == 3);
   }
 
@@ -674,7 +674,7 @@ namespace {
       R recv_;
 
       friend void tag_invoke(ex::start_t, operation& self) noexcept {
-        ex::set_value((R&&) self.recv_);
+        ex::set_value(static_cast<R&&>(self.recv_));
       }
     };
 
@@ -687,7 +687,7 @@ namespace {
 
       template <ex::receiver R>
       friend operation<R> tag_invoke(ex::connect_t, sender self, R r) {
-        return {{}, (R&&) r};
+        return {{}, static_cast<R&&>(r)};
       }
 
       friend auto tag_invoke(ex::get_completion_scheduler_t<ex::set_value_t>, sender) noexcept
@@ -723,4 +723,4 @@ namespace {
     }
     CHECK(counting_scheduler::count == 0);
   }
-}
+} // namespace

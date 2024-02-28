@@ -85,7 +85,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <__one_of<set_value_t, set_error_t> Tag, class... As>
         friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
+          self.op_state_.propagate_completion_signal(Tag(), static_cast<As&&>(as)...);
         }
 
         friend env_t tag_invoke(get_env_t, const __t& self) noexcept {
@@ -93,7 +93,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
 
         explicit __t(Fun fun, operation_state_base_t<ReceiverId>& op_state)
-          : f_((Fun&&) fun)
+          : f_(static_cast<Fun&&>(fun))
           , op_state_(op_state) {
         }
       };
@@ -135,8 +135,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
-          ((Self&&) self).sndr_,
-          (Receiver&&) rcvr,
+          static_cast<Self&&>(self).sndr_,
+          static_cast<Receiver&&>(rcvr),
           [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
             -> receiver_t<Receiver> { return receiver_t<Receiver>(self.fun_, stream_provider); });
       }

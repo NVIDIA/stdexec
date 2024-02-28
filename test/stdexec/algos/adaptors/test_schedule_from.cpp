@@ -252,4 +252,4 @@ namespace {
     auto op = ex::connect(std::move(snd), expect_value_receiver(3));
     ex::start(op);
   }
-}
+} // namespace

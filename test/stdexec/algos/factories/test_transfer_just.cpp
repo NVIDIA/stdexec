@@ -197,4 +197,4 @@ namespace {
     ex::start(op);
     REQUIRE(res == "Hello, world");
   }
-}
+} // namespace

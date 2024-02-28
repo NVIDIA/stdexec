@@ -22,13 +22,13 @@
 
 #include <version>
 #if __cpp_impl_coroutine >= 201902 && __cpp_lib_coroutine >= 201902
-#include <coroutine>
+#  include <coroutine>
 namespace __coro = std;
 #elif defined(__cpp_coroutines) && __has_include(<experimental/coroutine>)
-#include <experimental/coroutine>
+#  include <experimental/coroutine>
 namespace __coro = std::experimental;
 #else
-#define STDEXEC_STD_NO_COROUTINES_ 1
+#  define STDEXEC_STD_NO_COROUTINES_ 1
 #endif
 
 namespace stdexec {
@@ -53,56 +53,60 @@ namespace stdexec {
     } && //
     __with_await_suspend<_Awaiter, _Promise>;
 
-#if STDEXEC_MSVC()
+#  if STDEXEC_MSVC()
   // MSVCBUG https://developercommunity.visualstudio.com/t/operator-co_await-not-found-in-requires/10452721
 
   template <class _Awaitable>
   void __co_await_constraint(_Awaitable&& __awaitable)
-    requires requires { operator co_await((_Awaitable&&) __awaitable); };
-#endif
+    requires requires { operator co_await(static_cast<_Awaitable&&>(__awaitable)); };
+#  endif
 
   template <class _Awaitable>
   decltype(auto) __get_awaiter(_Awaitable&& __awaitable, void*) {
-    if constexpr (requires { ((_Awaitable&&) __awaitable).operator co_await(); }) {
-      return ((_Awaitable&&) __awaitable).operator co_await();
+    if constexpr (requires { static_cast<_Awaitable&&>(__awaitable).operator co_await(); }) {
+      return static_cast<_Awaitable&&>(__awaitable).operator co_await();
     } else if constexpr (requires {
-#if STDEXEC_MSVC()
-                           __co_await_constraint((_Awaitable&&) __awaitable);
-#else
-        operator co_await((_Awaitable&&) __awaitable);
-#endif
+#  if STDEXEC_MSVC()
+                           __co_await_constraint(static_cast<_Awaitable&&>(__awaitable));
+#  else
+        operator co_await(static_cast<_Awaitable&&>(__awaitable));
+#  endif
                          }) {
-      return operator co_await((_Awaitable&&) __awaitable);
+      return operator co_await(static_cast<_Awaitable&&>(__awaitable));
     } else {
-      return (_Awaitable&&) __awaitable;
+      return static_cast<_Awaitable&&>(__awaitable);
     }
   }
 
   template <class _Awaitable, class _Promise>
   decltype(auto) __get_awaiter(_Awaitable&& __awaitable, _Promise* __promise)
-    requires requires { __promise->await_transform((_Awaitable&&) __awaitable); }
+    requires requires { __promise->await_transform(static_cast<_Awaitable&&>(__awaitable)); }
   {
     if constexpr (
-      requires { __promise->await_transform((_Awaitable&&) __awaitable).operator co_await(); }) {
-      return __promise->await_transform((_Awaitable&&) __awaitable).operator co_await();
+      requires {
+        __promise->await_transform(static_cast<_Awaitable&&>(__awaitable)).operator co_await();
+      }) {
+      return __promise->await_transform(static_cast<_Awaitable&&>(__awaitable)).operator co_await();
     } else if constexpr (
       requires {
-#if STDEXEC_MSVC()
-        __co_await_constraint(__promise->await_transform((_Awaitable&&) __awaitable));
-#else
-        operator co_await(__promise->await_transform((_Awaitable&&) __awaitable));
-#endif
+#  if STDEXEC_MSVC()
+        __co_await_constraint(__promise->await_transform(static_cast<_Awaitable&&>(__awaitable)));
+#  else
+        operator co_await(__promise->await_transform(static_cast<_Awaitable&&>(__awaitable)));
+#  endif
       }) {
-      return operator co_await(__promise->await_transform((_Awaitable&&) __awaitable));
+      return operator co_await(__promise->await_transform(static_cast<_Awaitable&&>(__awaitable)));
     } else {
-      return __promise->await_transform((_Awaitable&&) __awaitable);
+      return __promise->await_transform(static_cast<_Awaitable&&>(__awaitable));
     }
   }
 
   template <class _Awaitable, class _Promise = void>
   concept __awaitable = //
     requires(_Awaitable&& __awaitable, _Promise* __promise) {
-      { stdexec::__get_awaiter((_Awaitable&&) __awaitable, __promise) } -> __awaiter<_Promise>;
+      {
+        stdexec::__get_awaiter(static_cast<_Awaitable&&>(__awaitable), __promise)
+      } -> __awaiter<_Promise>;
     };
 
   template <class _Tp>
@@ -112,7 +116,7 @@ namespace stdexec {
     requires __awaitable<_Awaitable, _Promise>
   using __await_result_t =
     decltype(stdexec::__as_lvalue(
-               stdexec::__get_awaiter(std::declval<_Awaitable>(), (_Promise*) nullptr))
+               stdexec::__get_awaiter(std::declval<_Awaitable>(), static_cast<_Promise*>(nullptr)))
                .await_resume());
 
 #else

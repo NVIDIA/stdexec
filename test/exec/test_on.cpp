@@ -199,4 +199,4 @@ namespace {
     check_sends_stopped<true>(exec::on(sched2, ex::just(2)) | _with_scheduler());
     check_sends_stopped<true>(exec::on(sched3, ex::just(3)) | _with_scheduler());
   }
-}
+} // namespace

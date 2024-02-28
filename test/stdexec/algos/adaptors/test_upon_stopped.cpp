@@ -49,4 +49,4 @@ namespace {
     // we also check that the function was invoked
     CHECK(called);
   }
-}
+} // namespace

@@ -65,4 +65,4 @@ namespace {
     scope.get_stop_source().request_stop();
     REQUIRE(scope.get_stop_token().stop_requested());
   }
-}
+} // namespace

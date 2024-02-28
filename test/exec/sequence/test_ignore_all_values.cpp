@@ -107,4 +107,4 @@ namespace {
       stdexec::set_error_t(std::exception_ptr)>;
     STATIC_REQUIRE(std::same_as<Sigs, ExpectedSigs>);
   }
-}
+} // namespace

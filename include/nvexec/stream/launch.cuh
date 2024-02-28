@@ -57,7 +57,8 @@ namespace nvexec {
 
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
-              self.op_state_.propagate_completion_signal(stdexec::set_value, (As&&) as...);
+              self.op_state_.propagate_completion_signal(
+                stdexec::set_value, static_cast<As&&>(as)...);
             } else {
               self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
@@ -65,7 +66,7 @@ namespace nvexec {
 
           template <__one_of<set_error_t, set_stopped_t> Tag, class... As>
           friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
-            self.op_state_.propagate_completion_signal(tag, (As&&) as...);
+            self.op_state_.propagate_completion_signal(tag, static_cast<As&&>(as)...);
           }
 
           friend auto tag_invoke(get_env_t, const __t& self) noexcept //
@@ -75,7 +76,7 @@ namespace nvexec {
 
           explicit __t(operation_state_base_t<ReceiverId>& op_state, Fun fun, launch_params params)
             : op_state_(op_state)
-            , fun_((Fun&&) fun)
+            , fun_(static_cast<Fun&&>(fun))
             , params_(params) {
           }
         };
@@ -124,8 +125,8 @@ namespace nvexec {
         friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
           -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
           return stream_op_state<__copy_cvref_t<Self, Sender>>(
-            ((Self&&) self).sndr_,
-            (Receiver&&) rcvr,
+            static_cast<Self&&>(self).sndr_,
+            static_cast<Receiver&&>(rcvr),
             [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
               -> receiver_t<Receiver> { //
               return receiver_t<Receiver>(stream_provider, self.fun_, self.params_);
@@ -150,17 +151,17 @@ namespace nvexec {
 
       template <sender Sender, __movable_value Fun>
       sender_t<Sender, Fun> operator()(Sender&& sndr, Fun&& fun) const {
-        return {{}, (Sender&&) sndr, (Fun&&) fun, {}};
+        return {{}, static_cast<Sender&&>(sndr), static_cast<Fun&&>(fun), {}};
       }
 
       template <sender Sender, __movable_value Fun>
       sender_t<Sender, Fun> operator()(Sender&& sndr, launch_params params, Fun&& fun) const {
-        return {{}, (Sender&&) sndr, (Fun&&) fun, params};
+        return {{}, static_cast<Sender&&>(sndr), static_cast<Fun&&>(fun), params};
       }
 
       template <__movable_value Fun>
       __binder_back<launch_t, Fun> operator()(Fun&& fun) const {
-        return {{}, {}, {(Fun&&) fun}};
+        return {{}, {}, {static_cast<Fun&&>(fun)}};
       }
 
       template <__movable_value Fun>
@@ -169,7 +170,7 @@ namespace nvexec {
         return {
           {},
           {},
-          {params, (Fun&&) fun}
+          {params, static_cast<Fun&&>(fun)}
         };
       }
     };

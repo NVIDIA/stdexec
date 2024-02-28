@@ -55,6 +55,6 @@ namespace {
   TEST_CASE("tag types can be deduced from ex::schedule", "[cpo][cpo_schedule]") {
     static_assert(std::is_same_v<const ex::schedule_t, decltype(ex::schedule)>, "type mismatch");
   }
-}
+} // namespace
 
 STDEXEC_PRAGMA_POP()

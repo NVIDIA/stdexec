@@ -503,4 +503,4 @@ namespace {
       !stdexec::__callable<stdexec::get_completion_scheduler_t<ex::set_stopped_t>, snd_t>);
     (void) snd;
   }
-}
+} // namespace
