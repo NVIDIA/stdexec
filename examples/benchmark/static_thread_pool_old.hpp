@@ -313,8 +313,11 @@ namespace exec_old {
 
       STDEXEC_ASSERT(task || queueIndex == threadIndex);
       // Make a blocking call to de-queue a task if we don't already have one.
-      if (!task && !(task = threadStates_[queueIndex].pop()))
-        return; // pop() only returns null when request_stop() was called.
+      if (!task) {
+        task = threadStates_[queueIndex].pop();
+        if (!task)
+          return; // pop() only returns null when request_stop() was called.
+      }
 
       task->__execute(task, queueIndex);
     }

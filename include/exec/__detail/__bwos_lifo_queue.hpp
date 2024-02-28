@@ -383,7 +383,7 @@ namespace exec::bwos {
   lifo_queue_error_code lifo_queue<Tp, Allocator>::block_type::put(Tp value) noexcept {
     std::uint64_t back = tail_.load(std::memory_order_relaxed);
     if (back < block_size()) [[likely]] {
-      ring_buffer_[back] = static_cast<Tp &&>(value);
+      ring_buffer_[static_cast<std::size_t>(back)] = static_cast<Tp &&>(value);
       tail_.store(back + 1, std::memory_order_release);
       return lifo_queue_error_code::success;
     }
@@ -395,7 +395,7 @@ namespace exec::bwos {
   Iterator lifo_queue<Tp, Allocator>::block_type::bulk_put(Iterator first, Sentinel last) noexcept {
     std::uint64_t back = tail_.load(std::memory_order_relaxed);
     while (first != last && back < block_size()) {
-      ring_buffer_[back] = static_cast<Tp &&>(*first);
+      ring_buffer_[static_cast<std::size_t>(back)] = static_cast<Tp &&>(*first);
       ++back;
       ++first;
     }
@@ -413,7 +413,7 @@ namespace exec::bwos {
     if (front == back) [[unlikely]] {
       return {lifo_queue_error_code::empty, nullptr};
     }
-    Tp value = static_cast<Tp &&>(ring_buffer_[back - 1]);
+    Tp value = static_cast<Tp &&>(ring_buffer_[static_cast<std::size_t>(back - 1)]);
     tail_.store(back - 1, std::memory_order_release);
     return {lifo_queue_error_code::success, value};
   }
@@ -435,7 +435,7 @@ namespace exec::bwos {
       result.status = lifo_queue_error_code::conflict;
       return result;
     }
-    result.value = static_cast<Tp &&>(ring_buffer_[spos]);
+    result.value = static_cast<Tp &&>(ring_buffer_[static_cast<std::size_t>(spos)]);
     steal_head_.fetch_add(1, std::memory_order_release);
     result.status = lifo_queue_error_code::success;
     return result;
@@ -445,10 +445,12 @@ namespace exec::bwos {
   takeover_result lifo_queue<Tp, Allocator>::block_type::takeover() noexcept {
     std::uint64_t spos = steal_tail_.exchange(block_size(), std::memory_order_relaxed);
     if (spos == block_size()) [[unlikely]] {
-      return {head_.load(std::memory_order_relaxed), tail_.load(std::memory_order_relaxed)};
+      return {static_cast<std::size_t>(head_.load(std::memory_order_relaxed)),
+              static_cast<std::size_t>(tail_.load(std::memory_order_relaxed))};
     }
     head_.store(spos, std::memory_order_relaxed);
-    return {spos, tail_.load(std::memory_order_relaxed)};
+    return {static_cast<std::size_t>(spos),
+            static_cast<std::size_t>(tail_.load(std::memory_order_relaxed))};
   }
 
   template <class Tp, class Allocator>
