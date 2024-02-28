@@ -742,7 +742,7 @@ namespace exec {
 
     inline auto static_thread_pool_::num_threads(nodemask constraints) const noexcept
       -> std::size_t {
-      const auto nNodes = static_cast<std::size_t>(threadIndexByNumaNode_.back().numa_node + 1);
+      const std::size_t nNodes = static_cast<unsigned>(threadIndexByNumaNode_.back().numa_node + 1);
       std::size_t nThreads = 0;
       for (std::size_t nodeIndex = 0; nodeIndex < nNodes; ++nodeIndex) {
         if (!constraints[nodeIndex]) {
@@ -1028,10 +1028,12 @@ namespace exec {
           auto stoken = get_stop_token(get_env(op.rcvr_));
           if constexpr (stdexec::unstoppable_token<decltype(stoken)>) {
             set_value(static_cast<Receiver&&>(op.rcvr_));
-          } else if (stoken.stop_requested()) {
-            set_stopped(static_cast<Receiver&&>(op.rcvr_));
           } else {
-            set_value(static_cast<Receiver&&>(op.rcvr_));
+            if (stoken.stop_requested()) {
+              set_stopped(static_cast<Receiver&&>(op.rcvr_));
+            } else {
+              set_value(static_cast<Receiver&&>(op.rcvr_));
+            }
           }
         };
       }

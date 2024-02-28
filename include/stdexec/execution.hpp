@@ -1691,15 +1691,18 @@ namespace stdexec {
           using _Result = tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>;
           constexpr bool _Nothrow = nothrow_tag_invocable<as_awaitable_t, _Tp, _Promise&>;
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
+          // NOLINTNEXTLINE(bugprone-branch-clone)
         } else if constexpr (__awaitable<_Tp, __unspecified>) { // NOT __awaitable<_Tp, _Promise> !!
-          return static_cast < _Tp && (*) () noexcept > (nullptr);
+          using _Result = _Tp&&;
+          return static_cast<_Result (*)() noexcept>(nullptr);
         } else if constexpr (__awaitable_sender<_Tp, _Promise>) {
           using _Result = __sender_awaitable_t<_Promise, _Tp>;
           constexpr bool _Nothrow =
             __nothrow_constructible_from<_Result, _Tp, __coro::coroutine_handle<_Promise>>;
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
         } else {
-          return static_cast < _Tp && (*) () noexcept > (nullptr);
+          using _Result = _Tp&&;
+          return static_cast<_Result (*)() noexcept>(nullptr);
         }
       }
       template <class _Tp, class _Promise>
@@ -1713,6 +1716,7 @@ namespace stdexec {
           using _Result = tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>;
           static_assert(__awaitable<_Result, _Promise>);
           return tag_invoke(*this, static_cast<_Tp&&>(__t), __promise);
+          // NOLINTNEXTLINE(bugprone-branch-clone)
         } else if constexpr (__awaitable<_Tp, __unspecified>) { // NOT __awaitable<_Tp, _Promise> !!
           return static_cast<_Tp&&>(__t);
         } else if constexpr (__awaitable_sender<_Tp, _Promise>) {
@@ -2987,11 +2991,11 @@ namespace stdexec {
     };
 
     template <class _Receiver>
-    auto __notify_visitor(_Receiver&& __rcvr) noexcept {
+    auto __notify_visitor(_Receiver& __rcvr) noexcept {
       return [&]<class _Tuple>(_Tuple&& __tupl) noexcept -> void {
         __apply(
           [&](auto __tag, auto&&... __args) noexcept -> void {
-            __tag(std::move(__rcvr), __forward_like<_Tuple>(__args)...);
+            __tag(static_cast<_Receiver&&>(__rcvr), __forward_like<_Tuple>(__args)...);
           },
           __tupl);
       };

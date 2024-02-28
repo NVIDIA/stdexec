@@ -450,8 +450,11 @@ namespace exec {
       auto operator=(const __t& __other) -> __t&
         requires(_Copyable)
       {
-        __t tmp(__other);
-        return *this = std::move(tmp);
+        if (&__other != this) {
+          __t tmp(__other);
+          *this = std::move(tmp);
+        }
+        return *this;
       }
 
       __t(__t&& __other) noexcept {

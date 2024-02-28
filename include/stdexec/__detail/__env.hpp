@@ -112,7 +112,7 @@ namespace stdexec {
       constexpr auto operator()(_Tp&&) const noexcept(noexcept(__result_t<_Tp>{}))
         -> __result_t<_Tp> {
         using _Boolean = tag_invoke_result_t<__has_algorithm_customizations_t, __cref_t<_Tp>>;
-        static_assert(_Boolean{} ? true : true); // must be contextually convertible to bool
+        static_assert(_Boolean{} ? true : false); // must be contextually convertible to bool
         return _Boolean{};
       }
 

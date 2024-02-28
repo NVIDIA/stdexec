@@ -278,7 +278,7 @@ namespace exec {
     // In a base class so it can be specialized when _Ty is void:
     template <class _Ty>
     struct __promise_base {
-      void return_value(_Ty value) noexcept {
+      void return_value(_Ty value) {
         __data_.template emplace<1>(std::move(value));
       }
 
@@ -289,7 +289,7 @@ namespace exec {
     struct __promise_base<void> {
       struct __void { };
 
-      void return_void() noexcept {
+      void return_void() {
         __data_.template emplace<1>(__void{});
       }
 

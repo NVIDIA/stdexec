@@ -303,12 +303,9 @@ namespace exec {
             if constexpr (__mvalid<__pre_completions_t, _NewSender, _NewEnv>) {
               using _Completions =
                 __completions_t<_NewEnv, __pre_completions_t<_NewSender, _NewEnv>>;
-              if constexpr (__valid_completion_signatures<_Completions>) {
-                return static_cast<_Completions (*)()>(nullptr);
-              } else {
-                // assume this is an error message and return it directly
-                return static_cast<_Completions (*)()>(nullptr);
-              }
+              // either this is a valid completion signature or an error message.
+              // either way, return it directly.
+              return static_cast<_Completions (*)()>(nullptr);
             } else {
               return static_cast<__diagnostic_t<_Env> (*)()>(nullptr);
             }
