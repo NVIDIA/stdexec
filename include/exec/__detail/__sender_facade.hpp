@@ -303,20 +303,20 @@ namespace exec {
             if constexpr (__mvalid<__pre_completions_t, _NewSender, _NewEnv>) {
               using _Completions =
                 __completions_t<_NewEnv, __pre_completions_t<_NewSender, _NewEnv>>;
-              if constexpr (__valid_completion_signatures<_Completions, _Env>) {
-                return (_Completions(*)()) nullptr;
+              if constexpr (__valid_completion_signatures<_Completions>) {
+                return static_cast<_Completions(*)()>(nullptr);
               } else {
                 // assume this is an error message and return it directly
-                return (_Completions(*)()) nullptr;
+                return static_cast<_Completions(*)()>(nullptr);
               }
             } else {
-              return (__diagnostic_t<_Env>(*)()) nullptr;
+              return static_cast<__diagnostic_t<_Env>(*)()>(nullptr);
             }
           } else if constexpr (same_as<_NewSender, __sender_transform_failed>) {
-            return (__diagnostic_t<_Env>(*)()) nullptr;
+            return static_cast<__diagnostic_t<_Env>(*)()>(nullptr);
           } else {
             // assume this is an error message and return it directly
-            return (_NewSender(*)()) nullptr;
+            return static_cast<_NewSender(*)()>(nullptr);
           }
         }
 
@@ -338,7 +338,8 @@ namespace exec {
   } // namespace __stl
 
   template <class _DerivedId, class _Sender, class _Kernel>
-  using __sender_facade = __stl::__sender<_DerivedId, _Sender, _Kernel>;
+  using __sender_facade [[deprecated]] =
+    __stl::__sender<_DerivedId, _Sender, _Kernel>;
 
   struct __default_kernel {
     struct __no_data { };

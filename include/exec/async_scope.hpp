@@ -626,7 +626,7 @@ namespace exec {
           -> __completions_t<_Self> {
           return {};
         }
-
+  
         friend empty_env tag_invoke(get_env_t, const __t&) noexcept {
           return {};
         }

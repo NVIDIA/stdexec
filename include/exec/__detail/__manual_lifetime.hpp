@@ -16,6 +16,8 @@
  */
 #pragma once
 
+#include "../../stdexec/concepts.hpp"
+
 #include <cstddef>
 #include <memory>
 #include <type_traits>
