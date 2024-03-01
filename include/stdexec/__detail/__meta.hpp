@@ -758,8 +758,17 @@ namespace stdexec {
   using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
 #endif
 
+// BUGBUG TODO file this bug with nvc++
+#if STDEXEC_NVHPC()
   template <const auto& _Fun, class... _As>
   using __result_of = __call_result_t<decltype(_Fun), _As...>;
+#else
+  template <const auto& _Fun, class... _As>
+  using __result_of = decltype(_Fun(__declval<_As>()...));
+#endif
+
+  template <const auto& _Fun, class... _As>
+  inline constexpr bool __noexcept_of = noexcept(_Fun(__declval<_As>()...));
 
   // For working around clang's lack of support for CWG#2369:
   // http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#2369

@@ -1446,7 +1446,7 @@ namespace exec {
           using NextReceiver = stdexec::__t<next_receiver<Range, ReceiverId>>;
           using ItemOperation = connect_result_t<NextSender, NextReceiver>;
 
-          using ItemAllocator = std::allocator_traits<Allocator>::template rebind_alloc<
+          using ItemAllocator = typename std::allocator_traits<Allocator>::template rebind_alloc<
             __manual_lifetime<ItemOperation>>;
 
           std::vector<__manual_lifetime<ItemOperation>, ItemAllocator> items_;

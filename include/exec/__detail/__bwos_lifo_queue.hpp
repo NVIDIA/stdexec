@@ -455,12 +455,14 @@ namespace exec::bwos {
   auto lifo_queue<Tp, Allocator>::block_type::takeover() noexcept -> takeover_result {
     std::uint64_t spos = steal_tail_.exchange(block_size(), std::memory_order_relaxed);
     if (spos == block_size()) [[unlikely]] {
-      return {static_cast<std::size_t>(head_.load(std::memory_order_relaxed)),
-              static_cast<std::size_t>(tail_.load(std::memory_order_relaxed))};
+      return {
+        static_cast<std::size_t>(head_.load(std::memory_order_relaxed)),
+        static_cast<std::size_t>(tail_.load(std::memory_order_relaxed))};
     }
     head_.store(spos, std::memory_order_relaxed);
-    return {static_cast<std::size_t>(spos),
-            static_cast<std::size_t>(tail_.load(std::memory_order_relaxed))};
+    return {
+      static_cast<std::size_t>(spos),
+      static_cast<std::size_t>(tail_.load(std::memory_order_relaxed))};
   }
 
   template <class Tp, class Allocator>
