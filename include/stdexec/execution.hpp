@@ -3466,7 +3466,95 @@ namespace stdexec {
 
   //////////////////////////////////////////////////////////////////////////////
   // [exec.let]
+
+  namespace __any {
+    template <class _Sig>
+    struct __receiver_signature_for;
+
+    template <class _Tag, class... _Args>
+    struct __receiver_signature_for<_Tag(_Args...)> {
+      void (*__complete_)(void*, _Args&&...) noexcept;
+
+      void operator()(void* __rcvr, _Tag __tag, _Args&&... __args) const noexcept {
+        __complete_(__rcvr, std::forward<_Args>(__args)...);
+      }
+    };
+
+    template <class _Receiver, class _Tag, class... _Args>
+    constexpr auto __receiver_signature_for_fn(_Tag (*)(_Args...)) noexcept {
+      return +[](void* __pointer, _Args&&... __args) noexcept {
+        _Receiver* __rcvr = static_cast<_Receiver*>(__pointer);
+        _Tag{}(static_cast<_Receiver&&>(*__rcvr), static_cast<_Args&&>(__args)...);
+      };
+    }
+  } // namespace __any
+
   namespace __let {
+
+    template <class _Sigs, class _Env>
+    struct __receiver_vtable_for;
+
+    template <class _Env, class... _Sigs>
+    struct __receiver_vtable_for<completion_signatures<_Sigs...>, _Env>
+      : stdexec::__any::__receiver_signature_for<_Sigs>... {
+
+      _Env (*__do_get_env)(const void* __rcvr) noexcept;
+
+      template <class _Receiver>
+      explicit constexpr __receiver_vtable_for(const _Receiver*) noexcept
+        : stdexec::__any::__receiver_signature_for<_Sigs>{__receiver_signature_for_fn<_Receiver>(
+          (_Sigs*) nullptr)}...
+        , __do_get_env{[](const void* __rcvr) noexcept {
+          return stdexec::get_env(*static_cast<const _Receiver*>(__rcvr));
+        }} {
+      }
+
+      using stdexec::__any::__receiver_signature_for<_Sigs>::operator()...;
+
+      auto get_env(const void* __rcvr) const noexcept -> _Env {
+        return __do_get_env(__rcvr);
+      }
+    };
+
+    template <class _Receiver, class _Sigs>
+    inline constexpr __receiver_vtable_for<_Sigs, env_of_t<_Receiver>> __receiver_vtable_for_v{
+      (const _Receiver*) nullptr};
+
+    template <class _Sigs, class _Env, class _SchedulerOrIgnore>
+    class __receiver_ref {
+     public:
+      using receiver_concept = receiver_t;
+
+      template <class _Receiver>
+      __receiver_ref(_Receiver& __rcvr, _SchedulerOrIgnore __sched)
+        : __vtable_{&__receiver_vtable_for_v<_Receiver, _Sigs>}
+        , __receiver_{&__rcvr}
+        , __scheduler_{__sched} {
+      }
+
+      template <same_as<get_env_t> _Tag>
+      friend auto tag_invoke(_Tag, const __receiver_ref& __self) noexcept -> _Env {
+        if constexpr (same_as<_SchedulerOrIgnore, __ignore>) {
+          return __self.__vtable_->get_env(__self.__receiver_);
+        } else {
+          return __env::__join(
+            __env::__with(__self.__sched_, get_scheduler),
+            __env::__without(__self.__vtable_->get_env(__self.__receiver_), get_domain));
+        }
+      }
+
+      template <__completion_tag _Tag, same_as<__receiver_ref> _Self, class... _As>
+      friend void tag_invoke(_Tag, _Self&& __self, _As&&... __as) noexcept {
+        (*__self.__vtable_)(__self.__receiver_, _Tag(), static_cast<_As&&>(__as)...);
+      }
+
+     private:
+      const __receiver_vtable_for<_Sigs, _Env>* __vtable_;
+      void* __receiver_;
+      STDEXEC_ATTRIBUTE((no_unique_address))
+      _SchedulerOrIgnore __scheduler_;
+    };
+
     template <class _Set, class _Domain = dependent_domain>
     struct __let_t;
 
