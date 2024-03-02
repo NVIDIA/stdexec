@@ -3034,10 +3034,8 @@ namespace stdexec {
 
       explicit __local_state(_CvrefSender&& __sndr) noexcept
         : __local_state::__local_state_base{{}, &__action<tag_of_t<_CvrefSender>>}
-        , __shared_state_(
-            STDEXEC_CALL_EXPLICIT_THIS_MEMFN(static_cast<_CvrefSender&&>(__sndr), apply)(
-              __detail::__get_data())
-              .__shared_state) {
+        , __shared_state_(__sndr.apply(static_cast<_CvrefSender&&>(__sndr), __detail::__get_data())
+                            .__shared_state) {
       }
 
       ~__local_state() {
@@ -3791,9 +3789,7 @@ namespace stdexec {
           _Sched __sched = query_or(
             get_completion_scheduler<_Set>, stdexec::get_env(__sndr), __none_such());
           return __let_state_t{
-            STDEXEC_CALL_EXPLICIT_THIS_MEMFN(static_cast<_Sender&&>(__sndr), apply)(
-              __detail::__get_data()),
-            __sched};
+            __sndr.apply(static_cast<_Sender&&>(__sndr), __detail::__get_data()), __sched};
         };
 
       template <class _State, class _Receiver, class... _As>

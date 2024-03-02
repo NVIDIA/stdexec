@@ -86,8 +86,7 @@ Macros: [
   'STDEXEC_NO_UNIQUE_ADDRESS=[[no_unique_address]]',
   'STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS=[[no_unique_address]]',
   'STDEXEC_MISSING_MEMBER(X,Y)=true',
-  'STDEXEC_DEFINE_MEMBER(X)=void foo() {}',
-  'STDEXEC_DEFINE_EXPLICIT_THIS_MEMFN(...)=__VA_ARGS__'
+  'STDEXEC_DEFINE_MEMBER(X)=void foo() {}'
 ]
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: All
