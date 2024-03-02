@@ -3467,7 +3467,7 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////
   // [exec.let]
 
-  namespace __any {
+  namespace __any_ {
     template <class _Sig>
     struct __receiver_signature_for;
 
@@ -3487,7 +3487,7 @@ namespace stdexec {
         _Tag{}(static_cast<_Receiver&&>(*__rcvr), static_cast<_Args&&>(__args)...);
       };
     }
-  } // namespace __any
+  } // namespace __any_
 
   namespace __let {
 
@@ -3496,22 +3496,22 @@ namespace stdexec {
 
     template <class _Env, class... _Sigs>
     struct __receiver_vtable_for<completion_signatures<_Sigs...>, _Env>
-      : stdexec::__any::__receiver_signature_for<_Sigs>... {
+      : stdexec::__any_::__receiver_signature_for<_Sigs>... {
 
       _Env (*__do_get_env)(const void* __rcvr) noexcept;
 
       template <class _Receiver>
       explicit constexpr __receiver_vtable_for(const _Receiver*) noexcept
-        : stdexec::__any::__receiver_signature_for<_Sigs>{__receiver_signature_for_fn<_Receiver>(
+        : stdexec::__any_::__receiver_signature_for<_Sigs>{__receiver_signature_for_fn<_Receiver>(
           (_Sigs*) nullptr)}...
         , __do_get_env{[](const void* __rcvr) noexcept {
           return stdexec::get_env(*static_cast<const _Receiver*>(__rcvr));
         }} {
       }
 
-      using stdexec::__any::__receiver_signature_for<_Sigs>::operator()...;
+      using stdexec::__any_::__receiver_signature_for<_Sigs>::operator()...;
 
-      auto get_env(const void* __rcvr) const noexcept -> _Env {
+      auto __get_env(const void* __rcvr) const noexcept -> _Env {
         return __do_get_env(__rcvr);
       }
     };
@@ -3520,26 +3520,26 @@ namespace stdexec {
     inline constexpr __receiver_vtable_for<_Sigs, env_of_t<_Receiver>> __receiver_vtable_for_v{
       (const _Receiver*) nullptr};
 
-    template <class _Sigs, class _Env, class _SchedulerOrIgnore>
+    template <class _Sigs, class _Env, class _SchedulerOrNoneSuch>
     class __receiver_ref {
      public:
       using receiver_concept = receiver_t;
 
       template <class _Receiver>
-      __receiver_ref(_Receiver& __rcvr, _SchedulerOrIgnore __sched)
+      __receiver_ref(_Receiver& __rcvr, _SchedulerOrNoneSuch __sched)
         : __vtable_{&__receiver_vtable_for_v<_Receiver, _Sigs>}
         , __receiver_{&__rcvr}
         , __scheduler_{__sched} {
       }
 
       template <same_as<get_env_t> _Tag>
-      friend auto tag_invoke(_Tag, const __receiver_ref& __self) noexcept -> _Env {
-        if constexpr (same_as<_SchedulerOrIgnore, __ignore>) {
-          return __self.__vtable_->get_env(__self.__receiver_);
+      friend auto tag_invoke(_Tag, const __receiver_ref& __self) noexcept {
+        if constexpr (same_as<_SchedulerOrNoneSuch, __none_such>) {
+          return __self.__vtable_->__get_env(__self.__receiver_);
         } else {
           return __env::__join(
-            __env::__with(__self.__sched_, get_scheduler),
-            __env::__without(__self.__vtable_->get_env(__self.__receiver_), get_domain));
+            __env::__with(__self.__scheduler_, get_scheduler),
+            __env::__without(__self.__vtable_->__get_env(__self.__receiver_), get_domain));
         }
       }
 
@@ -3552,7 +3552,7 @@ namespace stdexec {
       const __receiver_vtable_for<_Sigs, _Env>* __vtable_;
       void* __receiver_;
       STDEXEC_ATTRIBUTE((no_unique_address))
-      _SchedulerOrIgnore __scheduler_;
+      _SchedulerOrNoneSuch __scheduler_;
     };
 
     template <class _Set, class _Domain = dependent_domain>
@@ -3661,10 +3661,39 @@ namespace stdexec {
     using __result_receiver_t =
       __if_c<__unknown_context<_Scheduler>, _Receiver, __receiver_with_sched<_Receiver, _Scheduler>>;
 
+
+    template <class _ResultSender, class _Receiver, class _Scheduler>
+    using __receiver_ref_t = //
+      __receiver_ref<
+        completion_signatures_of_t<_ResultSender&&, __result_env_t<env_of_t<_Receiver>, _Scheduler>>,
+        env_of_t<_Receiver>,
+        _Scheduler>;
+
+    template <class _ResultSender, class _Receiver, class _Scheduler>
+    concept __need_receiver_ref =
+      __nothrow_connectable<_ResultSender&&, __receiver_ref_t<_ResultSender, _Receiver, _Scheduler>>
+      && !__nothrow_connectable<_ResultSender&&, __result_receiver_t<_Receiver, _Scheduler>>;
+
+    template <class _ResultSender, class _Env, class _Scheduler>
+    concept __nothrow_connectable_receiver_ref = __nothrow_connectable<
+      _ResultSender&&, __receiver_ref_t<_ResultSender, _Env, _Scheduler>>;
+
+    template <class _ResultSender, class _Receiver, class _Scheduler>
+    using __checked_result_receiver_t = //
+      __if_c<
+        __need_receiver_ref<_ResultSender, _Receiver, _Scheduler>,
+        __receiver_ref_t<_ResultSender, _Receiver, _Scheduler>,
+        __result_receiver_t<_Receiver, _Scheduler>>;
+
+    template <class _ResultSender, class _Receiver, class _Scheduler>
+    using __op_state_t = connect_result_t<
+      _ResultSender,
+      __checked_result_receiver_t<_ResultSender, _Receiver, _Scheduler>>;
+
     template <class _Receiver, class _Fun, class _Set, class _Sched>
     using __op_state_for = //
       __mcompose<
-        __mbind_back_q<connect_result_t, __result_receiver_t<_Receiver, _Sched>>,
+        __mbind_back_q<__op_state_t, _Receiver, _Sched>,
         __result_sender_fn<_Fun, _Set, env_of_t<_Receiver>, _Sched>>;
 
     template <class _Set, class _Sig>
@@ -3680,8 +3709,8 @@ namespace stdexec {
         __try_make_completion_signatures<
           __minvoke<__result_sender_fn<_Fun, _Set, _Env, _Sched>, _Args...>,
           __result_env_t<_Env, _Sched>,
-          // because we don't know if connect-ing the result sender will throw:
-          completion_signatures<set_error_t(std::exception_ptr)>>;
+          __if_c<__nothrow_connectable_receiver_ref<__minvoke<__result_sender_fn<_Fun, _Set, _Env, _Sched>, _Args...>, _Env, _Sched>,
+                  completion_signatures<>, completion_signatures<set_error_t(std::exception_ptr)>>>;
     };
 
     // `_Sched` is the input sender's completion scheduler, or __none_such if it doesn't have one.
@@ -3788,11 +3817,22 @@ namespace stdexec {
           __transform<__uncurry<__op_state_for<_Receiver, _Fun, _Set, _Sched>>, __nullable_variant_t>,
           _Tuples...>;
 
-      auto __get_result_receiver(_Receiver&& __rcvr) -> decltype(auto) {
-        if constexpr (__unknown_context<_Sched>) {
-          return static_cast<_Receiver&&>(__rcvr);
+
+
+      template <class _ResultSender>
+      auto __get_result_receiver(const _ResultSender&, _Receiver&& __rcvr) -> decltype(auto) {
+        if constexpr (__need_receiver_ref<_ResultSender, _Receiver, _Sched>) {
+          if constexpr (__unknown_context<_Sched>) {
+            return __receiver_ref_t<_ResultSender, _Receiver, __none_such>{__rcvr};
+          } else {
+            return __receiver_ref_t<_ResultSender, _Receiver, _Sched>{__rcvr, this->__sched_};
+          }
         } else {
-          return __receiver_with_sched{static_cast<_Receiver&&>(__rcvr), this->__sched_};
+          if constexpr (__unknown_context<_Sched>) {
+            return static_cast<_Receiver&&>(__rcvr);
+          } else {
+            return __receiver_with_sched{static_cast<_Receiver&&>(__rcvr), this->__sched_};
+          }
         }
       }
 
@@ -3881,19 +3921,31 @@ namespace stdexec {
         };
 
       template <class _State, class _Receiver, class... _As>
+      static void __bind_(_State& __state, _Receiver& __rcvr, _As&&... __as) {
+        auto& __args = __state.__args_.template emplace<__decayed_tuple<_As...>>(
+          static_cast<_As&&>(__as)...);
+        auto __sndr2 = __apply(std::move(__state.__fun_), __args);
+        auto __rcvr2 = __state.__get_result_receiver(__sndr2, static_cast<_Receiver&&>(__rcvr));
+        auto __mkop = [&] {
+          return stdexec::connect(std::move(__sndr2), std::move(__rcvr2));
+        };
+        auto& __op2 = __state.__op_state3_.template emplace<decltype(__mkop())>(__conv{__mkop});
+        stdexec::start(__op2);
+      }
+
+      template <class _State, class _Receiver, class... _As>
       static void __bind(_State& __state, _Receiver& __rcvr, _As&&... __as) noexcept {
-        try {
-          auto& __args = __state.__args_.template emplace<__decayed_tuple<_As...>>(
-            static_cast<_As&&>(__as)...);
-          auto __sndr2 = __apply(std::move(__state.__fun_), __args);
-          auto __rcvr2 = __state.__get_result_receiver(static_cast<_Receiver&&>(__rcvr));
-          auto __mkop = [&] {
-            return stdexec::connect(std::move(__sndr2), std::move(__rcvr2));
-          };
-          auto& __op2 = __state.__op_state3_.template emplace<decltype(__mkop())>(__conv{__mkop});
-          stdexec::start(__op2);
-        } catch (...) {
-          set_error(std::move(__rcvr), std::current_exception());
+        using _Fun = typename _State::__fun_t;
+        using _Sched = typename _State::__sched_t;
+        using _ResultSender = __minvoke<__result_sender_fn<_Fun, _Set, env_of_t<_Receiver>, _Sched>, _As...>;
+        if constexpr (__nothrow_connectable_receiver_ref<_ResultSender, env_of_t<_Receiver>, _Sched>) {
+          __bind_(__state, __rcvr, static_cast<_As&&>(__as)...);
+        } else {
+          try {
+            __bind_(__state, __rcvr, static_cast<_As&&>(__as)...);
+          } catch (...) {
+            set_error(std::move(__rcvr), std::current_exception());
+          }
         }
       }
 
