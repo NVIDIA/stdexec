@@ -4725,7 +4725,7 @@ namespace stdexec {
     };
 
     template <class _Env>
-    auto __mkenv(_Env&& __env, in_place_stop_source& __stop_source) noexcept {
+    auto __mkenv(_Env&& __env, const in_place_stop_source& __stop_source) noexcept {
       return __env::__join(
         __env::__with(__stop_source.get_token(), get_stop_token), static_cast<_Env&&>(__env));
     }

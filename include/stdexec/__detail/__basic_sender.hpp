@@ -148,11 +148,11 @@ namespace stdexec {
     using __state_type_t =
       __decay_t<__result_of<__sexpr_impl<_Tag>::get_state, _Sexpr, _Receiver&>>;
 
-    template <class _Tag, class _Index, class _Sexpr, class _Receiver>
+    template <class _Self, class _Tag, class _Index, class _Sexpr, class _Receiver>
     using __env_type_t = __result_of<
-      __sexpr_impl<_Tag>::get_env,
+      __sexpr_impl<__meval<__msecond, _Self, _Tag>>::get_env,
       _Index,
-      __state_type_t<_Tag, _Sexpr, _Receiver>&,
+      __state_type_t<__meval<__msecond, _Self, _Tag>, _Sexpr, _Receiver>&,
       _Receiver&>;
 
     template <class _Sexpr, class _Receiver>
@@ -245,18 +245,27 @@ namespace stdexec {
         //   return __t{__parent};
         // }
 
-        template <__completion_tag _Tag, class... _Args>
+        template <class... _Args>
         STDEXEC_ATTRIBUTE((always_inline))
-        friend void
-          tag_invoke(_Tag, __t&& __self, _Args&&... __args) noexcept {
-          __self.__op_->__complete(_Idx(), _Tag(), static_cast<_Args&&>(__args)...);
+        STDEXEC_MEMFN_DECL(void set_value)(this __t&& __self, _Args&&... __args) noexcept {
+          __self.__op_->__complete(_Idx(), stdexec::set_value, static_cast<_Args&&>(__args)...);
         }
 
-        template <same_as<get_env_t> _Tag, class _SexprTag = __tag_t>
+        template <class _Error>
         STDEXEC_ATTRIBUTE((always_inline))
-        friend auto
-          tag_invoke(_Tag, const __t& __self) noexcept
-          -> __env_type_t<_SexprTag, _Idx, _Sexpr, _Receiver> {
+        STDEXEC_MEMFN_DECL(void set_error)(this __t&& __self, _Error&& __err) noexcept {
+          __self.__op_->__complete(_Idx(), stdexec::set_error, static_cast<_Error&&>(__err));
+        }
+
+        STDEXEC_ATTRIBUTE((always_inline))
+        STDEXEC_MEMFN_DECL(void set_stopped)(this __t&& __self) noexcept {
+          __self.__op_->__complete(_Idx(), stdexec::set_stopped);
+        }
+
+        template <__same_as<__t> _Self>
+        STDEXEC_ATTRIBUTE((always_inline))
+        STDEXEC_MEMFN_DECL(auto get_env)(this const _Self& __self) noexcept
+          -> __env_type_t<_Self, __tag_t, _Idx, _Sexpr, _Receiver> {
           return __self.__op_->__get_env(_Idx());
         }
       };
@@ -281,6 +290,10 @@ namespace stdexec {
       }
 
       auto __rcvr() & noexcept -> _Receiver& {
+        return __rcvr_;
+      }
+
+      auto __rcvr() const & noexcept -> const _Receiver& {
         return __rcvr_;
       }
     };
@@ -381,10 +394,8 @@ namespace stdexec {
             __sexpr_apply(static_cast<_Sexpr&&>(__sexpr), __connect_fn<_Sexpr, _Receiver>{this})) {
       }
 
-      template <same_as<start_t> _Tag2>
       STDEXEC_ATTRIBUTE((always_inline))
-      friend void
-        tag_invoke(_Tag2, __op_state& __self) noexcept {
+      STDEXEC_MEMFN_DECL(void start)(this __op_state& __self) noexcept {
         using __tag_t = typename __op_state::__tag_t;
         auto&& __rcvr = __self.__rcvr();
         __tup::__apply(
@@ -407,7 +418,8 @@ namespace stdexec {
       template <class _Index>
       STDEXEC_ATTRIBUTE((always_inline))
       auto
-        __get_env(_Index) noexcept -> __env_type_t<__tag_t, _Index, _Sexpr, _Receiver> {
+        __get_env(_Index) const noexcept
+        -> __env_type_t<_Index, __tag_t, _Index, _Sexpr, _Receiver> {
         const auto& __rcvr = this->__rcvr();
         return __sexpr_impl<__tag_t>::get_env(_Index(), this->__state_, __rcvr);
       }
@@ -516,43 +528,34 @@ namespace stdexec {
         static_cast<_Child&&>(__child)...)) {
     }
 
-    template <class _Tag>
-    using __impl = __sexpr_impl<__meval<__msecond, _Tag, __tag_t>>;
+    template <class _Self>
+    using __impl = __sexpr_impl<__meval<__msecond, _Self, __tag_t>>;
 
-    template <same_as<get_env_t> _Tag, same_as<__sexpr> _Self>
+    template <same_as<__sexpr> _Self>
     STDEXEC_ATTRIBUTE((always_inline))
-    friend auto
-      tag_invoke(_Tag, const _Self& __self) noexcept //
-      -> __msecond<
-        __if_c<same_as<_Tag, get_env_t> && same_as<_Self, __sexpr>>, //
-        __result_of<__sexpr_apply, const _Self&, __get_attrs_fn<__tag_t>>> {
-      return __sexpr_apply(__self, __detail::__drop_front(__impl<_Tag>::get_attrs));
+    STDEXEC_MEMFN_DECL(auto get_env)(this const _Self& __self) noexcept //
+      -> __result_of<__sexpr_apply, const _Self&, __get_attrs_fn<__tag_t>> {
+      return __sexpr_apply(__self, __detail::__drop_front(__impl<_Self>::get_attrs));
     }
 
-    template <same_as<get_completion_signatures_t> _Tag, __decays_to<__sexpr> _Self, class _Env>
+    template <__decays_to<__sexpr> _Self, class _Env>
     STDEXEC_ATTRIBUTE((always_inline))
-    friend auto
-      tag_invoke(_Tag, _Self&& __self, _Env&& __env) noexcept //
+    STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&& __self, _Env&& __env) noexcept
       -> __msecond<
-        __if_c<same_as<_Tag, get_completion_signatures_t> && __decays_to<_Self, __sexpr>>,
-        __result_of<__impl<_Tag>::get_completion_signatures, _Self, _Env>> {
+        __if_c<__decays_to<_Self, __sexpr>>,
+        __result_of<__impl<_Self>::get_completion_signatures, _Self, _Env>> {
       return {};
     }
 
     // BUGBUG fix receiver constraint here:
-    template <
-      same_as<connect_t> _Tag,
-      __decays_to<__sexpr> _Self,
-      /*receiver*/ class _Receiver>
+    template <__decays_to<__sexpr> _Self, /*receiver*/ class _Receiver>
     STDEXEC_ATTRIBUTE((always_inline))
-    friend auto
-      tag_invoke(_Tag, _Self&& __self, _Receiver&& __rcvr) //
-      noexcept(noexcept(
-        __impl<_Tag>::connect(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr)))) //
+    STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver&& __rcvr) //
+      noexcept(__noexcept_of<__impl<_Self>::connect, _Self, _Receiver>)       //
       -> __msecond<
-        __if_c<same_as<_Tag, connect_t> && __decays_to<_Self, __sexpr>>,
-        __result_of<__impl<_Tag>::connect, _Self, _Receiver>> {
-      return __impl<_Tag>::connect(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
+        __if_c<__decays_to<_Self, __sexpr>>,
+        __result_of<__impl<_Self>::connect, _Self, _Receiver>> {
+      return __impl<_Self>::connect(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
     }
 
     template <class _Sender, class _ApplyFn>
@@ -566,8 +569,8 @@ namespace stdexec {
 
     template <std::size_t _Idx, __decays_to_derived_from<__sexpr> _Self>
     STDEXEC_ATTRIBUTE((always_inline))
-    friend decltype(auto)
-      get(_Self&& __self) noexcept
+    friend auto
+      get(_Self&& __self) noexcept -> decltype(auto)
       requires __detail::__in_range<_Idx, __desc_t>
     {
       if constexpr (_Idx == 0) {

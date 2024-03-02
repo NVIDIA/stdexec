@@ -81,7 +81,7 @@ KeepEmptyLinesAtTheStartOfBlocks: true
 LambdaBodyIndentation: Signature
 LineEnding: LF
 Macros: [
-  'STDEXEC_MEMFN_DECL(X)=X',
+  'STDEXEC_MEMFN_DECL(...)=__VA_ARGS__',
   'STDEXEC_ATTRIBUTE(X)=__attribute__(X) //',
   'STDEXEC_NO_UNIQUE_ADDRESS=[[no_unique_address]]',
   'STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS=[[no_unique_address]]',
