@@ -186,7 +186,7 @@ namespace stdexec {
 
     inline constexpr auto __get_state = //
       []<class _Sender>(_Sender&& __sndr, __ignore) noexcept -> decltype(auto) {
-      return STDEXEC_CALL_EXPLICIT_THIS_MEMFN(static_cast<_Sender&&>(__sndr), apply)(__get_data());
+      return __sndr.apply(static_cast<_Sender&&>(__sndr), __get_data());
     };
 
     inline constexpr auto __connect = //
@@ -557,9 +557,10 @@ namespace stdexec {
 
     template <class _Sender, class _ApplyFn>
     STDEXEC_ATTRIBUTE((always_inline))
-    STDEXEC_DEFINE_EXPLICIT_THIS_MEMFN(auto apply)(this _Sender&& __sndr, _ApplyFn&& __fun) noexcept(
-      __nothrow_callable<__detail::__impl_of<_Sender>, __copy_cvref_fn<_Sender>, _ApplyFn>)  //
-      -> __call_result_t<__detail::__impl_of<_Sender>, __copy_cvref_fn<_Sender>, _ApplyFn> { //
+    static auto
+      apply(_Sender&& __sndr, _ApplyFn&& __fun) noexcept(
+        __nothrow_callable<__detail::__impl_of<_Sender>, __copy_cvref_fn<_Sender>, _ApplyFn>) //
+      -> __call_result_t<__detail::__impl_of<_Sender>, __copy_cvref_fn<_Sender>, _ApplyFn> {  //
       return static_cast<_Sender&&>(__sndr).__impl_(
         __copy_cvref_fn<_Sender>(), static_cast<_ApplyFn&&>(__fun)); //
     }
@@ -629,13 +630,10 @@ namespace stdexec {
       template <class _Sender, class _ApplyFn>
       STDEXEC_ATTRIBUTE((always_inline))
       auto
-        operator()(_Sender&& __sndr, _ApplyFn&& __fun) const
-        noexcept(noexcept(STDEXEC_CALL_EXPLICIT_THIS_MEMFN((static_cast<_Sender&&>(__sndr)), apply)(
-          static_cast<_ApplyFn&&>(__fun)))) //
-        -> decltype(STDEXEC_CALL_EXPLICIT_THIS_MEMFN((static_cast<_Sender&&>(__sndr)), apply)(
-          static_cast<_ApplyFn&&>(__fun))) {
-        return STDEXEC_CALL_EXPLICIT_THIS_MEMFN((static_cast<_Sender&&>(__sndr)), apply)(
-          static_cast<_ApplyFn&&>(__fun)); //
+        operator()(_Sender&& __sndr, _ApplyFn&& __fun) const noexcept(
+          noexcept(__sndr.apply(static_cast<_Sender&&>(__sndr), static_cast<_ApplyFn&&>(__fun)))) //
+        -> decltype(__sndr.apply(static_cast<_Sender&&>(__sndr), static_cast<_ApplyFn&&>(__fun))) {
+        return __sndr.apply(static_cast<_Sender&&>(__sndr), static_cast<_ApplyFn&&>(__fun)); //
       }
     };
   } // namespace __detail

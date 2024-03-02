@@ -106,8 +106,7 @@ namespace exec {
     }
 
     template <class _Sender, class _ApplyFn>
-    STDEXEC_DEFINE_EXPLICIT_THIS_MEMFN(auto apply)
-    (this _Sender&& __sndr, _ApplyFn&& __fun) //
+    static auto apply(_Sender&& __sndr, _ApplyFn&& __fun) //
       noexcept(stdexec::__nothrow_callable<
                stdexec::__detail::__impl_of<_Sender>,
                stdexec::__copy_cvref_fn<_Sender>,
