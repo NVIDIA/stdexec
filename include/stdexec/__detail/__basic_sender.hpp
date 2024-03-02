@@ -190,7 +190,8 @@ namespace stdexec {
     };
 
     inline constexpr auto __connect = //
-      []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr)
+      []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(
+        std::is_nothrow_constructible_v<__op_state<_Sender, _Receiver>, _Sender&&, _Receiver&&>)
       -> __op_state<_Sender, _Receiver>
       requires __connectable<_Sender, _Receiver>
     {
@@ -284,7 +285,8 @@ namespace stdexec {
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS __state_t __state_;
 
-      __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr)
+      __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr) noexcept(
+        __nothrow_decay_copyable<_Receiver> && __nothrow_move_constructible<__state_t>)
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
         , __state_(__sexpr_impl<__tag_t>::get_state(static_cast<_Sexpr&&>(__sndr), __rcvr_)) {
       }
@@ -354,14 +356,16 @@ namespace stdexec {
 
         template <std::size_t... _Is, class _Tag, class _Data, class... _Child>
         auto operator()(__indices<_Is...>, _Tag, _Data&&, _Child&&... __child) const
-          -> __tup::__tuple<__indices<_Is...>, connect_result_t<_Child, __receiver_t<_Is>>...> {
+          noexcept((__nothrow_connectable<_Child, __receiver_t<_Is>> && ...))
+            -> __tup::__tuple<__indices<_Is...>, connect_result_t<_Child, __receiver_t<_Is>>...> {
           return __tuple{connect(static_cast<_Child&&>(__child), __receiver_t<_Is>{__op_})...};
         }
       };
 
       template <class _Tag, class _Data, class... _Child>
       auto operator()(_Tag, _Data&& __data, _Child&&... __child) const
-        -> __call_result_t<__impl, __indices_for<_Child...>, _Tag, _Data, _Child...> {
+        noexcept(__nothrow_callable<__impl, __indices_for<_Child...>, _Tag, _Data, _Child...>)
+          -> __call_result_t<__impl, __indices_for<_Child...>, _Tag, _Data, _Child...> {
         return __impl{__op_}(
           __indices_for<_Child...>(),
           _Tag(),
@@ -388,7 +392,9 @@ namespace stdexec {
       //   return (std::ptrdiff_t)((char*) &__tup::__get<_Idx>(__self->__inner_ops_) - static_cast<char*>(__self));
       // }
 
-      __op_state(_Sexpr&& __sexpr, _Receiver __rcvr)
+      __op_state(_Sexpr&& __sexpr, _Receiver __rcvr) noexcept(
+        std::is_nothrow_constructible_v<__op_base<_Sexpr, _Receiver>, _Sexpr&&, _Receiver&&>
+        && __nothrow_callable<__sexpr_apply_t, _Sexpr&&, __connect_fn<_Sexpr, _Receiver>>)
         : __op_state::__op_base{static_cast<_Sexpr&&>(__sexpr), static_cast<_Receiver&&>(__rcvr)}
         , __inner_ops_(
             __sexpr_apply(static_cast<_Sexpr&&>(__sexpr), __connect_fn<_Sexpr, _Receiver>{this})) {

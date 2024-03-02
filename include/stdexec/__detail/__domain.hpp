@@ -76,6 +76,28 @@ namespace stdexec {
     concept __has_apply_sender = requires(_DomainOrTag __tag, _Args&&... __args) {
       __tag.apply_sender(static_cast<_Args&&>(__args)...);
     };
+
+    template <class _Sender>
+    constexpr bool __is_nothrow_transform_sender() {
+      if constexpr (__callable<__sexpr_apply_t, _Sender, __domain::__legacy_customization>) {
+        return noexcept(
+          stdexec::__sexpr_apply(__declval<_Sender&&>(), __domain::__legacy_customization()));
+      } else if constexpr (__domain::__has_default_transform_sender<_Sender>) {
+        return noexcept(tag_of_t<_Sender>().transform_sender(__declval<_Sender&&>()));
+      } else {
+        return noexcept(static_cast<_Sender>(__declval<_Sender&&>()));
+      }
+    }
+
+    template <class _Sender, class _Env>
+    constexpr bool __is_nothrow_transform_sender() {
+      if constexpr (__domain::__has_default_transform_sender<_Sender, _Env>) {
+        return noexcept(
+          tag_of_t<_Sender>().transform_sender(__declval<_Sender&&>(), __declval<const _Env&>()));
+      } else {
+        return noexcept(static_cast<_Sender>(__declval<_Sender&&>()));
+      }
+    }
   } // namespace __domain
 
   struct default_domain {
@@ -85,7 +107,8 @@ namespace stdexec {
     template <class _Sender>
     STDEXEC_ATTRIBUTE((always_inline))
     decltype(auto)
-      transform_sender(_Sender&& __sndr) const {
+      transform_sender(_Sender&& __sndr) const
+      noexcept(__domain::__is_nothrow_transform_sender<_Sender>()) {
       // Look for a legacy customization for the given tag, and if found, apply it.
       if constexpr (__callable<__sexpr_apply_t, _Sender, __domain::__legacy_customization>) {
         return stdexec::__sexpr_apply(
@@ -101,7 +124,8 @@ namespace stdexec {
     template <class _Sender, class _Env>
     STDEXEC_ATTRIBUTE((always_inline))
     decltype(auto)
-      transform_sender(_Sender&& __sndr, const _Env& __env) const {
+      transform_sender(_Sender&& __sndr, const _Env& __env) const
+      noexcept(__domain::__is_nothrow_transform_sender<_Sender, _Env>()) {
       if constexpr (__domain::__has_default_transform_sender<_Sender, _Env>) {
         return tag_of_t<_Sender>().transform_sender(static_cast<_Sender&&>(__sndr), __env);
       } else {

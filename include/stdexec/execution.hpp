@@ -544,11 +544,14 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // dependent_domain
   struct dependent_domain {
+    template <class _Sender, class _Env>
+    static constexpr auto __is_nothrow_transform_sender() noexcept -> bool;
     template <sender_expr _Sender, class _Env>
       requires same_as<__early_domain_of_t<_Sender>, dependent_domain>
     STDEXEC_ATTRIBUTE((always_inline))
     decltype(auto)
-      transform_sender(_Sender&& __sndr, const _Env& __env) const;
+      transform_sender(_Sender&& __sndr, const _Env& __env) const
+      noexcept(__is_nothrow_transform_sender<_Sender, _Env>());
   };
 
   /////////////////////////////////////////////////////////////////////////////
@@ -573,8 +576,23 @@ namespace stdexec {
       template <class _Domain, class _Sender, class... _Env>
       STDEXEC_ATTRIBUTE((always_inline))
       /*constexpr*/
+      static constexpr bool
+        __is_nothrow() noexcept {
+        if constexpr (__domain::__has_transform_sender<_Domain, _Sender, _Env...>) {
+          return noexcept(__declval<_Domain&>().transform_sender(
+            __declval<_Sender&&>(), __declval<const _Env&>()...));
+        } else {
+          return noexcept(
+            default_domain().transform_sender(__declval<_Sender&&>(), __declval<const _Env&>()...));
+        }
+      }
+
+      template <class _Domain, class _Sender, class... _Env>
+      STDEXEC_ATTRIBUTE((always_inline))
+      /*constexpr*/
       decltype(auto)
-        operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const {
+        operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const
+        noexcept(__is_nothrow<_Domain, _Sender&&, const _Env&...>()) {
         if constexpr (__domain::__has_transform_sender<_Domain, _Sender, _Env...>) {
           return __dom.transform_sender(static_cast<_Sender&&>(__sndr), __env...);
         } else {
@@ -591,7 +609,8 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline))
       /*constexpr*/
       decltype(auto)
-        operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const {
+        operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const noexcept(
+          noexcept(__transform_sender_1()(__dom, static_cast<_Sender&&>(__sndr), __env...))) {
         using _Sender2 = __call_result_t<__transform_sender_1, _Domain, _Sender, const _Env&...>;
         // If the transformation doesn't change the sender's type, then do not
         // apply the transform recursively.
@@ -614,7 +633,10 @@ namespace stdexec {
       template <class _Domain, sender_expr _Sender, class _Env>
         requires same_as<__early_domain_of_t<_Sender>, dependent_domain>
       /*constexpr*/ auto operator()(_Domain __dom, _Sender&& __sndr, const _Env& __env) const
-        -> decltype(auto) {
+        noexcept(noexcept(__transform_sender()(
+          __dom,
+          dependent_domain().transform_sender(static_cast<_Sender&&>(__sndr), __env),
+          __env))) -> decltype(auto) {
         static_assert(__none_of<_Domain, dependent_domain>);
         return __transform_sender()(
           __dom, dependent_domain().transform_sender(static_cast<_Sender&&>(__sndr), __env), __env);
@@ -638,10 +660,33 @@ namespace stdexec {
 
   struct _CHILD_SENDERS_WITH_DIFFERENT_DOMAINS_ { };
 
+  template <class _Sender, class _Env>
+  constexpr auto dependent_domain::__is_nothrow_transform_sender() noexcept -> bool {
+    using _Env2 = decltype(transform_env(
+      __declval<dependent_domain&>(), __declval<_Sender&&>(), __declval<_Env>()));
+    return decltype(__sexpr_apply(
+      __declval<_Sender&&>(),
+      []<class _Tag, class _Data, class... _Childs>(_Tag, _Data&&, _Childs&&...) {
+        constexpr bool __first_transform_is_nothrow = noexcept(__make_sexpr<_Tag>(
+          __declval<_Data>(),
+          __domain::__transform_sender()(
+            __declval<dependent_domain&>(), __declval<_Childs&&>(), __declval<const _Env2&>())...));
+        using _Sender2 = decltype(__make_sexpr<_Tag>(
+          __declval<_Data>(),
+          __domain::__transform_sender()(
+            __declval<dependent_domain&>(), __declval<_Childs&&>(), __declval<const _Env2&>())...));
+        using _Domain2 =
+          decltype(__sexpr_apply(__declval<_Sender2&>(), __domain::__common_domain_fn()));
+        constexpr bool __second_transform_is_nothrow = noexcept(__domain::__transform_sender()(
+          __declval<_Domain2&>(), __declval<_Sender2&&>(), __declval<const _Env&>()));
+        return __mbool < __first_transform_is_nothrow && __second_transform_is_nothrow > ();
+      }))::value;
+  }
+
   template <sender_expr _Sender, class _Env>
     requires same_as<__early_domain_of_t<_Sender>, dependent_domain>
   auto dependent_domain::transform_sender(_Sender&& __sndr, const _Env& __env) const
-    -> decltype(auto) {
+    noexcept(__is_nothrow_transform_sender<_Sender, _Env>()) -> decltype(auto) {
     // apply any algorithm-specific transformation to the environment
     const auto& __env2 = transform_env(*this, static_cast<_Sender&&>(__sndr), __env);
 
@@ -3502,9 +3547,9 @@ namespace stdexec {
 
       template <class _Receiver>
       explicit constexpr __receiver_vtable_for(const _Receiver*) noexcept
-        : stdexec::__any_::__receiver_signature_for<_Sigs>{__receiver_signature_for_fn<_Receiver>(
-          (_Sigs*) nullptr)}...
-        , __do_get_env{[](const void* __rcvr) noexcept {
+        : stdexec::__any_::__receiver_signature_for<
+          _Sigs>{stdexec::__any_::__receiver_signature_for_fn<_Receiver>((_Sigs*) nullptr)}...
+        , __do_get_env{+[](const void* __rcvr) noexcept -> _Env {
           return stdexec::get_env(*static_cast<const _Receiver*>(__rcvr));
         }} {
       }
@@ -3526,10 +3571,11 @@ namespace stdexec {
       using receiver_concept = receiver_t;
 
       template <class _Receiver>
-      __receiver_ref(_Receiver& __rcvr, _SchedulerOrNoneSuch __sched)
+      __receiver_ref(_Receiver& __rcvr, _SchedulerOrNoneSuch __sched = {}) noexcept(
+        __nothrow_move_constructible<_SchedulerOrNoneSuch>)
         : __vtable_{&__receiver_vtable_for_v<_Receiver, _Sigs>}
         , __receiver_{&__rcvr}
-        , __scheduler_{__sched} {
+        , __scheduler_{static_cast<_SchedulerOrNoneSuch&&>(__sched)} {
       }
 
       template <same_as<get_env_t> _Tag>
@@ -3675,8 +3721,8 @@ namespace stdexec {
       && !__nothrow_connectable<_ResultSender&&, __result_receiver_t<_Receiver, _Scheduler>>;
 
     template <class _ResultSender, class _Env, class _Scheduler>
-    concept __nothrow_connectable_receiver_ref = __nothrow_connectable<
-      _ResultSender&&, __receiver_ref_t<_ResultSender, _Env, _Scheduler>>;
+    concept __nothrow_connectable_receiver_ref =
+      __nothrow_connectable<_ResultSender&&, __receiver_ref_t<_ResultSender, _Env, _Scheduler>>;
 
     template <class _ResultSender, class _Receiver, class _Scheduler>
     using __checked_result_receiver_t = //
@@ -3709,8 +3755,14 @@ namespace stdexec {
         __try_make_completion_signatures<
           __minvoke<__result_sender_fn<_Fun, _Set, _Env, _Sched>, _Args...>,
           __result_env_t<_Env, _Sched>,
-          __if_c<__nothrow_connectable_receiver_ref<__minvoke<__result_sender_fn<_Fun, _Set, _Env, _Sched>, _Args...>, _Env, _Sched>,
-                  completion_signatures<>, completion_signatures<set_error_t(std::exception_ptr)>>>;
+          __if_c<
+            __nothrow_callable<_Fun, _Args...>
+              && __nothrow_connectable_receiver_ref<
+                __minvoke<__result_sender_fn<_Fun, _Set, _Env, _Sched>, _Args...>,
+                _Env,
+                _Sched>,
+            completion_signatures<>,
+            completion_signatures<set_error_t(std::exception_ptr)>>>;
     };
 
     // `_Sched` is the input sender's completion scheduler, or __none_such if it doesn't have one.
@@ -3816,8 +3868,6 @@ namespace stdexec {
         __minvoke<
           __transform<__uncurry<__op_state_for<_Receiver, _Fun, _Set, _Sched>>, __nullable_variant_t>,
           _Tuples...>;
-
-
 
       template <class _ResultSender>
       auto __get_result_receiver(const _ResultSender&, _Receiver&& __rcvr) -> decltype(auto) {
@@ -3937,8 +3987,11 @@ namespace stdexec {
       static void __bind(_State& __state, _Receiver& __rcvr, _As&&... __as) noexcept {
         using _Fun = typename _State::__fun_t;
         using _Sched = typename _State::__sched_t;
-        using _ResultSender = __minvoke<__result_sender_fn<_Fun, _Set, env_of_t<_Receiver>, _Sched>, _As...>;
-        if constexpr (__nothrow_connectable_receiver_ref<_ResultSender, env_of_t<_Receiver>, _Sched>) {
+        using _ResultSender =
+          __minvoke<__result_sender_fn<_Fun, _Set, env_of_t<_Receiver>, _Sched>, _As...>;
+        if constexpr (
+          __nothrow_callable<_Fun, _As...>
+          && __nothrow_connectable_receiver_ref<_ResultSender, env_of_t<_Receiver>, _Sched>) {
           __bind_(__state, __rcvr, static_cast<_As&&>(__as)...);
         } else {
           try {

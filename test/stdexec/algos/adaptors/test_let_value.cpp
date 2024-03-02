@@ -287,6 +287,13 @@ namespace {
       ex::transfer_just(sched2) | ex::let_value([] { return ex::just(); }));
     check_err_types<type_array<int, std::exception_ptr>>( //
       ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
+
+    check_err_types<type_array<>>( //
+      ex::transfer_just(sched1) | ex::let_value([]() noexcept { return ex::just(); }));
+    check_err_types<type_array<std::exception_ptr>>( //
+      ex::transfer_just(sched2) | ex::let_value([]() noexcept { return ex::just(); }));
+    check_err_types<type_array<int>>( //
+      ex::transfer_just(sched3) | ex::let_value([]() noexcept { return ex::just(); }));
   }
 
   TEST_CASE("let_value keeps sends_stopped from input sender", "[adaptors][let_value]") {
