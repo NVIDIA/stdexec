@@ -39,23 +39,33 @@ namespace exec::__system_context_default_impl {
     /// The data to be passed to the callback.
     void* __data_;
 
-    /// The owning operation state, to be deleted when the operation completes; nullptr if there is nothing to delete.
+    /// The owning operation state, to be destructed when the operation completes.
     __operation<__Sender>* __op_;
+    /// True if the operation is on the heap, false if it is in the preallocated space.
+    bool __on_heap_;
 
     friend void tag_invoke(stdexec::set_value_t, __recv&& __self) noexcept {
       __self.__cb_(__self.__data_, 0, nullptr);
-      delete __self.__op_;
+      __self.__destruct();
     }
 
     friend void tag_invoke(stdexec::set_stopped_t, __recv&& __self) noexcept {
       __self.__cb_(__self.__data_, 1, nullptr);
-      delete __self.__op_;
+      __self.__destruct();
     }
 
     friend void
       tag_invoke(stdexec::set_error_t, __recv&& __self, std::exception_ptr __ptr) noexcept {
       __self.__cb_(__self.__data_, 2, *reinterpret_cast<void**>(&__ptr));
-      delete __self.__op_;
+      __self.__destruct();
+    }
+
+    void __destruct() {
+      if (__on_heap_) {
+        delete __op_;
+      } else {
+        __op_->~__operation();
+      }
     }
   };
 
@@ -72,8 +82,9 @@ namespace exec::__system_context_default_impl {
       void* __data) {
       if (__preallocated == nullptr || __psize < sizeof(__operation)) {
         return new __operation(std::move(__sndr), __cb, __data, true);
-      } else
+      } else {
         return new (__preallocated) __operation(std::move(__sndr), __cb, __data, false);
+      }
     }
 
    private:
@@ -82,9 +93,8 @@ namespace exec::__system_context_default_impl {
       __exec_system_context_completion_callback_t __cb,
       void* __data,
       bool __on_heap)
-      : __inner_op_(stdexec::connect(
-        std::move(__sndr),
-        __recv<__Sender>{__cb, __data, __on_heap ? this : nullptr})) {
+      : __inner_op_(
+        stdexec::connect(std::move(__sndr), __recv<__Sender>{__cb, __data, this, __on_heap})) {
     }
   };
 
