@@ -334,4 +334,35 @@ namespace {
                 });
     wait_for_value(std::move(work), 2);
   }
+
+  struct bad_receiver {
+    using receiver_concept = ex::receiver_t;
+
+    bad_receiver(bool& completed) noexcept
+    : completed_{completed} {}
+
+    bad_receiver(bad_receiver&& other) noexcept(false)
+    : completed_(other.completed_) {
+    }
+
+    friend void tag_invoke(ex::set_value_t, bad_receiver&& self) noexcept {
+      self.completed_ = true;
+    }
+
+    friend ex::empty_env tag_invoke(ex::get_env_t, const bad_receiver&) noexcept {
+      return {};
+    }
+
+    bool& completed_;
+  };
+
+  TEST_CASE("let_value does not add std::exception_ptr even if the receiver is bad",
+            "[adaptors][let_value]") {
+    auto snd = ex::let_value(ex::just(), []() noexcept { return ex::just(); });
+    check_err_types<type_array<>>(snd);
+    bool completed{false};
+    auto op = ex::connect(std::move(snd), bad_receiver{completed}); // should compile
+    ex::start(op);
+    CHECK(completed);
+  }
 } // namespace
