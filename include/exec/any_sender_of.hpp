@@ -605,9 +605,6 @@ namespace exec {
     using __is_not_stop_token_query_v = __mbool<__is_not_stop_token_query<_Query>>;
 
     namespace __rec {
-      template <class _Sig>
-      struct __rcvr_vfun;
-
       template <class _Sigs, class... _Queries>
       struct __vtable {
         class __t;
@@ -616,25 +613,10 @@ namespace exec {
       template <class _Sigs, class... _Queries>
       struct __ref;
 
-      template <class _Tag, class... _As>
-      struct __rcvr_vfun<_Tag(_As...)> {
-        void (*__fn_)(void*, _As...) noexcept;
-      };
-
-      template <class _Rcvr>
-      struct __rcvr_vfun_fn {
-        template <class _Tag, class... _As>
-        constexpr void (*operator()(_Tag (*)(_As...)) const noexcept)(void*, _As...) noexcept {
-          return +[](void* __rcvr, _As... __as) noexcept -> void {
-            _Tag{}(static_cast<_Rcvr&&>(*static_cast<_Rcvr*>(__rcvr)), static_cast<_As&&>(__as)...);
-          };
-        }
-      };
-
       template <class... _Sigs, class... _Queries>
       struct __vtable<completion_signatures<_Sigs...>, _Queries...> {
         class __t
-          : public __rcvr_vfun<_Sigs>...
+          : public __any_::__rcvr_vfun<_Sigs>...
           , public __query_vfun<_Queries>... {
          public:
           using __query_vfun<_Queries>::operator()...;
@@ -646,7 +628,7 @@ namespace exec {
           friend auto tag_invoke(__create_vtable_t, __mtype<__t>, __mtype<_Rcvr>) noexcept
             -> const __t* {
             static const __t __vtable_{
-              {__rcvr_vfun_fn<_Rcvr>{}(static_cast<_Sigs*>(nullptr))}...,
+              {__any_::__rcvr_vfun_fn<_Rcvr>(static_cast<_Sigs*>(nullptr))}...,
               {__query_vfun_fn<_Rcvr>{}(static_cast<_Queries>(nullptr))}...};
             return &__vtable_;
           }
@@ -699,7 +681,7 @@ namespace exec {
         template <__completion_tag _Tag, __decays_to<__ref> _Self, class... _As>
           requires __one_of<_Tag(_As...), _Sigs...>
         friend void tag_invoke(_Tag, _Self&& __self, _As&&... __as) noexcept {
-          (*static_cast<const __rcvr_vfun<_Tag(_As...)>*>(__self.__env_.__vtable_)->__fn_)(
+          (*static_cast<const __any_::__rcvr_vfun<_Tag(_As...)>*>(__self.__env_.__vtable_)->__complete_)(
             static_cast<_Self&&>(__self).__env_.__rcvr_, static_cast<_As&&>(__as)...);
         }
 
@@ -762,7 +744,7 @@ namespace exec {
         template <__completion_tag _Tag, __decays_to<__ref> _Self, class... _As>
           requires __one_of<_Tag(_As...), _Sigs...>
         friend void tag_invoke(_Tag, _Self&& __self, _As&&... __as) noexcept {
-          (*static_cast<const __rcvr_vfun<_Tag(_As...)>*>(__self.__env_.__vtable_)->__fn_)(
+          (*static_cast<const __any_::__rcvr_vfun<_Tag(_As...)>*>(__self.__env_.__vtable_)->__complete_)(
             static_cast<_Self&&>(__self).__env_.__rcvr_, static_cast<_As&&>(__as)...);
         }
 

@@ -3514,10 +3514,10 @@ namespace stdexec {
 
   namespace __any_ {
     template <class _Sig>
-    struct __receiver_signature_for;
+    struct __rcvr_vfun;
 
     template <class _Tag, class... _Args>
-    struct __receiver_signature_for<_Tag(_Args...)> {
+    struct __rcvr_vfun<_Tag(_Args...)> {
       void (*__complete_)(void*, _Args&&...) noexcept;
 
       void operator()(void* __rcvr, _Tag __tag, _Args&&... __args) const noexcept {
@@ -3526,7 +3526,7 @@ namespace stdexec {
     };
 
     template <class _Receiver, class _Tag, class... _Args>
-    constexpr auto __receiver_signature_for_fn(_Tag (*)(_Args...)) noexcept {
+    constexpr auto __rcvr_vfun_fn(_Tag (*)(_Args...)) noexcept {
       return +[](void* __pointer, _Args&&... __args) noexcept {
         _Receiver* __rcvr = static_cast<_Receiver*>(__pointer);
         _Tag{}(static_cast<_Receiver&&>(*__rcvr), static_cast<_Args&&>(__args)...);
@@ -3541,20 +3541,20 @@ namespace stdexec {
 
     template <class _Env, class... _Sigs>
     struct __receiver_vtable_for<completion_signatures<_Sigs...>, _Env>
-      : stdexec::__any_::__receiver_signature_for<_Sigs>... {
+      : stdexec::__any_::__rcvr_vfun<_Sigs>... {
 
       _Env (*__do_get_env)(const void* __rcvr) noexcept;
 
       template <class _Receiver>
       explicit constexpr __receiver_vtable_for(const _Receiver*) noexcept
-        : stdexec::__any_::__receiver_signature_for<
-          _Sigs>{stdexec::__any_::__receiver_signature_for_fn<_Receiver>((_Sigs*) nullptr)}...
+        : stdexec::__any_::__rcvr_vfun<
+          _Sigs>{stdexec::__any_::__rcvr_vfun_fn<_Receiver>((_Sigs*) nullptr)}...
         , __do_get_env{+[](const void* __rcvr) noexcept -> _Env {
           return stdexec::get_env(*static_cast<const _Receiver*>(__rcvr));
         }} {
       }
 
-      using stdexec::__any_::__receiver_signature_for<_Sigs>::operator()...;
+      using stdexec::__any_::__rcvr_vfun<_Sigs>::operator()...;
 
       auto __get_env(const void* __rcvr) const noexcept -> _Env {
         return __do_get_env(__rcvr);
