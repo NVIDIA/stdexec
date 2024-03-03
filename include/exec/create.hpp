@@ -26,14 +26,16 @@ namespace exec {
     struct __void {
       template <class _Fun>
       void emplace(_Fun&& __fun) noexcept(__nothrow_callable<_Fun>) {
-        ((_Fun&&) __fun)();
+        static_cast<_Fun&&>(__fun)();
       }
     };
 
     template <class _Receiver, class _Args>
     struct __context {
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver receiver;
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Args args;
+      STDEXEC_ATTRIBUTE((no_unique_address))
+      _Receiver receiver;
+      STDEXEC_ATTRIBUTE((no_unique_address))
+      _Args args;
     };
 
     template <class _ReceiverId, class _Fun, class _ArgsId>
@@ -45,13 +47,16 @@ namespace exec {
       struct __t : stdexec::__immovable {
         using __id = __operation;
 
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Context __ctx_;
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
-        STDEXEC_ATTRIBUTE((no_unique_address)) _State __state_{};
+        STDEXEC_ATTRIBUTE((no_unique_address))
+        _Context __ctx_;
+        STDEXEC_ATTRIBUTE((no_unique_address))
+        _Fun __fun_;
+        STDEXEC_ATTRIBUTE((no_unique_address))
+        _State __state_{};
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
           __self.__state_.emplace(__conv{[&]() noexcept {
-            return ((_Fun&&) __self.__fun_)(__self.__ctx_);
+            return static_cast<_Fun&&>(__self.__fun_)(__self.__ctx_);
           }});
         }
       };
@@ -78,12 +83,12 @@ namespace exec {
           static_assert(__nothrow_callable<_Fun, __context<_Receiver, _Args>&>);
           return {
             {},
-            {(_Receiver&&) __rcvr, ((_Self&&) __self).__args_},
-            ((_Self&&) __self).__fun_
+            {static_cast<_Receiver&&>(__rcvr), static_cast<_Self&&>(__self).__args_},
+            static_cast<_Self&&>(__self).__fun_
           };
         }
 
-        friend empty_env tag_invoke(get_env_t, const __t&) noexcept {
+        friend auto tag_invoke(get_env_t, const __t&) noexcept -> empty_env {
           return {};
         }
       };
@@ -95,7 +100,7 @@ namespace exec {
         requires move_constructible<_Fun> && constructible_from<__decayed_tuple<_Args...>, _Args...>
       auto operator()(_Fun __fun, _Args&&... __args) const
         -> __t<__sender<_Fun, __id<__decayed_tuple<_Args...>>, _Sigs...>> {
-        return {(_Fun&&) __fun, {(_Args&&) __args...}};
+        return {static_cast<_Fun&&>(__fun), {static_cast<_Args&&>(__args)...}};
       }
     };
   } // namespace __create
@@ -109,4 +114,4 @@ namespace exec {
   template <stdexec::__completion_signature... _Sigs>
   inline constexpr __create::__create_t<_Sigs...>
     create<stdexec::completion_signatures<_Sigs...>>{};
-}
+} // namespace exec

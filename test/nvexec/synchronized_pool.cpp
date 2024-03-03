@@ -87,4 +87,4 @@ namespace {
       pool.deallocate(ptr, 32, alignment);
     }
   }
-}
+} // namespace

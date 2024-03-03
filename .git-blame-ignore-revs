@@ -12,3 +12,9 @@
 
 # Reformat everything with clang-format-17
 ab2a3baef655db23fb7ec11ce7ec49575bbd2807
+
+# replace all C-style casts with C++ casts; reformat
+4410452fed3acda19d7b75b20ec2d3a3c92c9c38
+
+# clang-modernize
+3eaba4111bc8e8516ed1a4f516d753503b87e504

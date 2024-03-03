@@ -122,4 +122,4 @@ namespace {
     stdexec::sync_wait(snd);
     CHECK(result == 42);
   }
-}
+} // namespace

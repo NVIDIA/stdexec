@@ -126,4 +126,4 @@ namespace {
       std::variant<std::tuple<int>>{2}, //
       std::variant<std::tuple<double>>{3.14});
   }
-}
+} // namespace

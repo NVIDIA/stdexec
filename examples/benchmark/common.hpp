@@ -30,10 +30,10 @@
 #include <vector>
 
 #if __has_include(<memory_resource>)
-#include <memory_resource>
+#  include <memory_resource>
 namespace pmr = std::pmr;
 #else
-#define STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE 1
+#  define STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE 1
 #endif
 
 struct statistics {
@@ -100,7 +100,7 @@ struct numa_deleter {
 
 template <class Pool, class RunThread>
 void my_main(int argc, char** argv, exec::numa_policy* policy = exec::get_numa_policy()) {
-  int nthreads = (int) std::thread::hardware_concurrency();
+  int nthreads = static_cast<int>(std::thread::hardware_concurrency());
   if (argc > 1) {
     nthreads = std::atoi(argv[1]);
   }

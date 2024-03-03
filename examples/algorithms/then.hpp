@@ -39,7 +39,8 @@ class _then_receiver : stdexec::receiver_adaptor<_then_receiver<R, F>, R> {
     requires stdexec::receiver_of<R, _completions<As...>>
   void set_value(As&&... as) && noexcept {
     try {
-      stdexec::set_value(std::move(*this).base(), std::invoke((F&&) f_, (As&&) as...));
+      stdexec::set_value(
+        std::move(*this).base(), std::invoke(static_cast<F&&>(f_), static_cast<As&&>(as)...));
     } catch (...) {
       stdexec::set_error(std::move(*this).base(), std::current_exception());
     }
@@ -62,7 +63,7 @@ struct _then_sender {
   // Compute the completion signatures
   template <class... Args>
   using _set_value_t =
-    stdexec::completion_signatures< stdexec::set_value_t(std::invoke_result_t<F, Args...>)>;
+    stdexec::completion_signatures<stdexec::set_value_t(std::invoke_result_t<F, Args...>)>;
 
   template <class Env>
   using _completions_t = //
@@ -81,7 +82,9 @@ struct _then_sender {
   template <class R>
   STDEXEC_MEMFN_DECL(auto connect)(this _then_sender&& self, R r)
     -> stdexec::connect_result_t<S, _then_receiver<R, F>> {
-    return stdexec::connect((S&&) self.s_, _then_receiver<R, F>{(R&&) r, (F&&) self.f_});
+    return stdexec::connect(
+      static_cast<S&&>(self.s_),
+      _then_receiver<R, F>{static_cast<R&&>(r), static_cast<F&&>(self.f_)});
   }
 
   STDEXEC_MEMFN_DECL(auto get_env)(this const _then_sender& self) noexcept -> stdexec::env_of_t<S> {
@@ -91,5 +94,5 @@ struct _then_sender {
 
 template <stdexec::sender S, class F>
 stdexec::sender auto then(S s, F f) {
-  return _then_sender<S, F>{(S&&) s, (F&&) f};
+  return _then_sender<S, F>{static_cast<S&&>(s), static_cast<F&&>(f)};
 }

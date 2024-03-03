@@ -42,7 +42,7 @@ namespace stdexec {
         , __tail_(__tail) {
       }
 
-      __intrusive_queue& operator=(__intrusive_queue __other) noexcept {
+      auto operator=(__intrusive_queue __other) noexcept -> __intrusive_queue& {
         std::swap(__head_, __other.__head_);
         std::swap(__tail_, __other.__tail_);
         return *this;
@@ -52,7 +52,7 @@ namespace stdexec {
         STDEXEC_ASSERT(empty());
       }
 
-      static __intrusive_queue make_reversed(_Item* __list) noexcept {
+      static auto make_reversed(_Item* __list) noexcept -> __intrusive_queue {
         _Item* __new_head = nullptr;
         _Item* __new_tail = __list;
         while (__list != nullptr) {
@@ -68,7 +68,7 @@ namespace stdexec {
         return __result;
       }
 
-      static __intrusive_queue make(_Item* __list) noexcept {
+      static auto make(_Item* __list) noexcept -> __intrusive_queue {
         __intrusive_queue __result{};
         __result.__head_ = __list;
         __result.__tail_ = __list;
@@ -81,7 +81,8 @@ namespace stdexec {
         return __result;
       }
 
-      [[nodiscard]] bool empty() const noexcept {
+      [[nodiscard]]
+      auto empty() const noexcept -> bool {
         return __head_ == nullptr;
       }
 
@@ -90,7 +91,8 @@ namespace stdexec {
         __tail_ = nullptr;
       }
 
-      [[nodiscard]] _Item* pop_front() noexcept {
+      [[nodiscard]]
+      auto pop_front() noexcept -> _Item* {
         STDEXEC_ASSERT(!empty());
         _Item* __item = std::exchange(__head_, __head_->*_Next);
         // This should test if __head_ == nullptr, but due to a bug in
@@ -162,17 +164,21 @@ namespace stdexec {
           , __item_(__item) {
         }
 
-        [[nodiscard]] _Item* operator*() const noexcept {
+        [[nodiscard]]
+        auto
+          operator*() const noexcept -> _Item* {
           STDEXEC_ASSERT(__item_ != nullptr);
           return __item_;
         }
 
-        [[nodiscard]] _Item** operator->() const noexcept {
+        [[nodiscard]]
+        auto
+          operator->() const noexcept -> _Item** {
           STDEXEC_ASSERT(__item_ != nullptr);
           return &__item_;
         }
 
-        iterator& operator++() noexcept {
+        auto operator++() noexcept -> iterator& {
           __predecessor_ = __item_;
           if (__item_) {
             __item_ = __item_->*_Next;
@@ -180,20 +186,22 @@ namespace stdexec {
           return *this;
         }
 
-        iterator operator++(int) noexcept {
+        auto operator++(int) noexcept -> iterator {
           iterator __result = *this;
           ++*this;
           return __result;
         }
 
-        friend bool operator==(const iterator&, const iterator&) noexcept = default;
+        friend auto operator==(const iterator&, const iterator&) noexcept -> bool = default;
       };
 
-      [[nodiscard]] iterator begin() const noexcept {
+      [[nodiscard]]
+      auto begin() const noexcept -> iterator {
         return iterator(nullptr, __head_);
       }
 
-      [[nodiscard]] iterator end() const noexcept {
+      [[nodiscard]]
+      auto end() const noexcept -> iterator {
         return iterator(__tail_, nullptr);
       }
 
@@ -224,11 +232,11 @@ namespace stdexec {
         }
       }
 
-      _Item* front() const noexcept {
+      auto front() const noexcept -> _Item* {
         return __head_;
       }
 
-      _Item* back() const noexcept {
+      auto back() const noexcept -> _Item* {
         return __tail_;
       }
 

@@ -183,4 +183,4 @@ namespace {
 
     cudaFree(inout);
   }
-}
+} // namespace

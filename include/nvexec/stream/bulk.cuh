@@ -63,7 +63,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
-            op_state.propagate_completion_signal(stdexec::set_value, (As&&) as...);
+            op_state.propagate_completion_signal(stdexec::set_value, static_cast<As&&>(as)...);
           } else {
             op_state.propagate_completion_signal(stdexec::set_error, std::move(status));
           }
@@ -71,7 +71,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <__one_of<set_error_t, set_stopped_t> Tag, class... As>
         friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
+          self.op_state_.propagate_completion_signal(Tag(), static_cast<As&&>(as)...);
         }
 
         friend Env tag_invoke(get_env_t, const __t& self) noexcept {
@@ -80,7 +80,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         explicit __t(Shape shape, Fun fun, operation_state_base_t<ReceiverId>& op_state)
           : shape_(shape)
-          , f_((Fun&&) fun)
+          , f_(static_cast<Fun&&>(fun))
           , op_state_(op_state) {
         }
       };
@@ -118,11 +118,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
-          ((Self&&) self).sndr_,
-          (Receiver&&) rcvr,
+          static_cast<Self&&>(self).sndr_,
+          static_cast<Receiver&&>(rcvr),
           [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
             -> receiver_t<Receiver> {
-            return receiver_t<Receiver>(self.shape_, (Fun&&) self.fun_, stream_provider);
+            return receiver_t<Receiver>(
+              self.shape_, static_cast<Fun&&>(self.fun_), stream_provider);
           });
       }
 
@@ -231,7 +232,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
-            op_state.propagate_completion_signal(stdexec::set_value, (As&&) as...);
+            op_state.propagate_completion_signal(stdexec::set_value, static_cast<As&&>(as)...);
           } else {
             op_state.propagate_completion_signal(stdexec::set_error, std::move(status));
           }
@@ -239,7 +240,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <__one_of<set_error_t, set_stopped_t> Tag, class... As>
         friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          self.op_state_.propagate_completion_signal(Tag(), (As&&) as...);
+          self.op_state_.propagate_completion_signal(Tag(), static_cast<As&&>(as)...);
         }
 
         friend env_of_t<Receiver> tag_invoke(get_env_t, const __t& self) noexcept {
@@ -251,7 +252,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           Fun fun,
           operation_t<CvrefSenderId, ReceiverId, Shape, Fun>& op_state)
           : shape_(shape)
-          , f_((Fun&&) fun)
+          , f_(static_cast<Fun&&>(fun))
           , op_state_(op_state) {
         }
       };
@@ -275,8 +276,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         Fun fun,
         context_state_t context_state)
         : operation_base_t<CvrefSenderId, ReceiverId, Shape, Fun>(
-          (Sender&&) __sndr,
-          (_Receiver2&&) __rcvr,
+          static_cast<Sender&&>(__sndr),
+          static_cast<_Receiver2&&>(__rcvr),
           [&](operation_state_base_t<stdexec::__id<_Receiver2>>&)
             -> stdexec::__t<receiver_t<CvrefSenderId, ReceiverId, Shape, Fun>> {
             return stdexec::__t<receiver_t<CvrefSenderId, ReceiverId, Shape, Fun>>(
@@ -352,8 +353,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return multi_gpu_bulk::
           operation_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun>(
             self.num_devices_,
-            ((Self&&) self).sndr_,
-            (Receiver&&) rcvr,
+            static_cast<Self&&>(self).sndr_,
+            static_cast<Receiver&&>(rcvr),
             self.shape_,
             self.fun_,
             context_state);

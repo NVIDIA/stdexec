@@ -45,16 +45,16 @@ namespace {
 
       friend void tag_invoke(start_t, operation& self) noexcept {
         if (self.counter_ == 0) {
-          set_value((Receiver&&) self.rcvr_);
+          set_value(static_cast<Receiver&&>(self.rcvr_));
         } else {
-          set_error((Receiver&&) self.rcvr_, try_again{});
+          set_error(static_cast<Receiver&&>(self.rcvr_), try_again{});
         }
       }
     };
 
     template <receiver_of<completion_signatures> Receiver>
     friend operation<Receiver> tag_invoke(connect_t, fails_alot self, Receiver rcvr) {
-      return {(Receiver&&) rcvr, --*self.counter_};
+      return {static_cast<Receiver&&>(rcvr), --*self.counter_};
     }
 
     std::shared_ptr<int> counter_ = std::make_shared<int>(1'000'000);
@@ -81,4 +81,4 @@ namespace {
     auto recurse_deeply = retry(exec::on(sched, fails_alot{}));
     sync_wait(std::move(recurse_deeply));
   }
-}
+} // namespace

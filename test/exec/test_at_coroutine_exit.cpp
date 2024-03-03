@@ -18,12 +18,12 @@
 #include <stdexec/coroutine.hpp>
 
 #if !STDEXEC_STD_NO_COROUTINES_
-#include <exec/at_coroutine_exit.hpp>
-#include <exec/on_coro_disposition.hpp>
-#include <catch2/catch.hpp>
+#  include <exec/at_coroutine_exit.hpp>
+#  include <exec/on_coro_disposition.hpp>
+#  include <catch2/catch.hpp>
 
-#include "../test_common/require_terminate.hpp"
-#include "../test_common/schedulers.hpp"
+#  include "../test_common/require_terminate.hpp"
+#  include "../test_common/schedulers.hpp"
 
 using namespace exec;
 using stdexec::sync_wait;
@@ -221,7 +221,7 @@ namespace {
     result *= 3;
   }
 
-#ifdef REQUIRE_TERMINATE
+#  ifdef REQUIRE_TERMINATE
 
   void test_cancel_in_cleanup_action_causes_death(int& result) {
     task<void> t = []() -> task<void> {
@@ -271,7 +271,7 @@ namespace {
     REQUIRE_TERMINATE([&] { sync_wait(std::move(t)); });
   }
 
-#endif // REQUIRE_TERMINATE
+#  endif // REQUIRE_TERMINATE
 
   TEST_CASE("OneCleanupAction", "[task][at_coroutine_exit]") {
     int result = 0;
@@ -406,7 +406,7 @@ namespace {
     REQUIRE(result == 10);
   }
 
-#ifdef REQUIRE_TERMINATE
+#  ifdef REQUIRE_TERMINATE
 
   TEST_CASE("CancelInCleanupActionCallsTerminate", "[task][at_coroutine_exit]") {
     int result = 0;
@@ -444,7 +444,7 @@ namespace {
     test_throw_in_cleanup_action_during_cancellation_unwind_causes_death(result);
   }
 
-#endif // REQUIRE_TERMINATE
+#  endif // REQUIRE_TERMINATE
 
 } // unnamed namespace
 

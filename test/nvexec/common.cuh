@@ -118,7 +118,8 @@ namespace {
         }
 
         __t(Sender&& sender, Receiver&& receiver)
-          : inner_op_{stdexec::connect((Sender&&) sender, (Receiver&&) receiver)} {
+          : inner_op_{
+            stdexec::connect(static_cast<Sender&&>(sender), static_cast<Receiver&&>(receiver))} {
         }
       };
     };
@@ -146,10 +147,10 @@ namespace {
           using result_t = std::invoke_result_t<Fun, As&&...>;
 
           if constexpr (std::is_same_v<void, result_t>) {
-            f_((As&&) as...);
+            f_(static_cast<As&&>(as)...);
             stdexec::set_value(std::move(this->base()));
           } else {
-            stdexec::set_value(std::move(this->base()), f_((As&&) as...));
+            stdexec::set_value(std::move(this->base()), f_(static_cast<As&&>(as)...));
           }
         }
 
@@ -158,8 +159,8 @@ namespace {
         using receiver_concept = stdexec::receiver_t;
 
         explicit __t(Receiver rcvr, Fun fun)
-          : stdexec::receiver_adaptor<__t, Receiver>((Receiver&&) rcvr)
-          , f_((Fun&&) fun) {
+          : stdexec::receiver_adaptor<__t, Receiver>(static_cast<Receiver&&>(rcvr))
+          , f_(static_cast<Fun&&>(fun)) {
         }
       };
     };
@@ -195,7 +196,8 @@ namespace {
         friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) //
           -> op_t<Self, Receiver> {
           return op_t<Self, Receiver>(
-            ((Self&&) self).sndr_, _receiver_t<Receiver, Fun>((Receiver&&) rcvr, self.fun_));
+            static_cast<Self&&>(self).sndr_,
+            _receiver_t<Receiver, Fun>(static_cast<Receiver&&>(rcvr), self.fun_));
         }
 
         template <stdexec::__decays_to<__t> Self, class Env>
@@ -232,7 +234,8 @@ namespace {
         }
 
         __t(Sender&& sender, Receiver&& receiver)
-          : inner_op_{stdexec::connect((Sender&&) sender, (Receiver&&) receiver)} {
+          : inner_op_{
+            stdexec::connect(static_cast<Sender&&>(sender), static_cast<Receiver&&>(receiver))} {
         }
       };
     };
@@ -266,7 +269,8 @@ namespace {
             receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
           friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
             -> op_t<Self, Receiver> {
-          return op_t<Self, Receiver>(((Self&&) self).sndr_, (Receiver&&) rcvr);
+          return op_t<Self, Receiver>(
+            static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr));
         }
 
         template <stdexec::__decays_to<__t> Self, class Env>
@@ -303,13 +307,13 @@ namespace {
     template <stdexec::sender _Sender, class _Fun>
       requires stdexec::sender<sender_th<_Sender, _Fun>>
     sender_th<_Sender, _Fun> operator()(_Sender&& __sndr, _Fun __fun) const {
-      return sender_th<_Sender, _Fun>{(_Sender&&) __sndr, (_Fun&&) __fun};
+      return sender_th<_Sender, _Fun>{static_cast<_Sender&&>(__sndr), static_cast<_Fun&&>(__fun)};
     }
 
     template <class _Fun>
     stdexec::__binder_back<a_sender_helper_t<a_sender_kind::then>, _Fun>
       operator()(_Fun __fun) const {
-      return {{}, {}, {(_Fun&&) __fun}};
+      return {{}, {}, {static_cast<_Fun&&>(__fun)}};
     };
   };
 
@@ -321,7 +325,7 @@ namespace {
     template <stdexec::sender _Sender>
       requires stdexec::sender<receiverless_sender_th<_Sender>>
     receiverless_sender_th<_Sender> operator()(_Sender&& __sndr) const {
-      return receiverless_sender_th<_Sender>{(_Sender&&) __sndr};
+      return receiverless_sender_th<_Sender>{static_cast<_Sender&&>(__sndr)};
     }
 
     stdexec::__binder_back<a_sender_helper_t<a_sender_kind::receiverless>> operator()() const {
@@ -368,7 +372,7 @@ namespace {
 
     __host__ __device__ bool contains(int val) {
       if (this != self_) {
-        std::printf("Error: move_only_t::contains failed: %p\n", (void*) self_);
+        std::printf("Error: move_only_t::contains failed: %p\n", static_cast<void*>(self_));
         return false;
       }
 

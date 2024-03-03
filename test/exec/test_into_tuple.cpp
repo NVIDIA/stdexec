@@ -66,4 +66,4 @@ namespace {
     CHECK(i == 42);
     CHECK(j == 56);
   }
-}
+} // namespace

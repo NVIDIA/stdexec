@@ -30,4 +30,4 @@ namespace {
     // We should have all the work executed
     REQUIRE(counter == 10);
   }
-}
+} // namespace

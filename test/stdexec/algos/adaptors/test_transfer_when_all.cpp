@@ -306,4 +306,4 @@ namespace {
       wait_for_value(std::move(snd), std::string{"hello world"});
     }
   }
-}
+} // namespace

@@ -64,7 +64,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             cudaStream_t stream = state.op_state2_.get_stream();
             using tuple_t = decayed_tuple<Tag, As...>;
             state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
-            copy_kernel<Tag, As&&...><<<1, 1, 0, stream>>>(state.data_, (As&&) as...);
+            copy_kernel<Tag, As&&...><<<1, 1, 0, stream>>>(state.data_, static_cast<As&&>(as)...);
             state.stream_provider_.status_ = STDEXEC_DBG_ERR(cudaEventRecord(state.event_, stream));
           } else {
             using tuple_t = decayed_tuple<Tag, As...>;
@@ -137,7 +137,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         : context_state_(context_state)
         , stream_provider_(false, context_state)
         , data_(malloc_managed<variant_t>(stream_provider_.status_))
-        , op_state2_(connect((Sender&&) sndr, inner_receiver_t{*this})) {
+        , op_state2_(connect(static_cast<Sender&&>(sndr), inner_receiver_t{*this})) {
         if (stream_provider_.status_ == cudaSuccess) {
           stream_provider_.status_ = STDEXEC_DBG_ERR(
             cudaEventCreate(&event_, cudaEventDisableTiming));
@@ -159,7 +159,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         , env_(
             make_host(this->stream_provider_.status_, context_state_.pinned_resource_, make_env()))
         , op_state2_(connect(
-            (Sender&&) sndr,
+            static_cast<Sender&&>(sndr),
             enqueue_receiver_t{env_.get(), data_, task_, context_state.hub_->producer()})) {
       }
 
@@ -223,7 +223,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         __t(Receiver&& rcvr, std::shared_ptr<sh_state_t<Sender>> shared_state) //
           noexcept(std::is_nothrow_move_constructible_v<Receiver>)
           : operation_base_t{nullptr, notify}
-          , operation_state_base_t<ReceiverId>((Receiver&&) rcvr, shared_state->context_state_)
+          , operation_state_base_t<ReceiverId>(
+              static_cast<Receiver&&>(rcvr),
+              shared_state->context_state_)
           , shared_state_(std::move(shared_state)) {
         }
 
@@ -312,7 +314,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       friend auto tag_invoke(connect_t, Self&& self, Receiver recvr) //
         noexcept(__nothrow_constructible_from<__decay_t<Receiver>, Receiver>)
           -> operation_t<Receiver> {
-        return operation_t<Receiver>{(Receiver&&) recvr, self.shared_state_};
+        return operation_t<Receiver>{static_cast<Receiver&&>(recvr), self.shared_state_};
       }
 
       friend auto tag_invoke(get_env_t, const __t& self) noexcept -> env_of_t<const Sender&> {
@@ -337,7 +339,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       explicit __t(context_state_t context_state, Sender sndr)
-        : sndr_((Sender&&) sndr)
+        : sndr_(static_cast<Sender&&>(sndr))
         , shared_state_{std::make_shared<sh_state_>(sndr_, context_state)} {
       }
     };

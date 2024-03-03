@@ -50,10 +50,10 @@ namespace exec {
 
         template <__completion_tag _Tag, class... _Args>
         friend void tag_invoke(_Tag, __t &&__self, _Args &&...__args) noexcept {
-          __self.__state_->__complete(_Tag(), (_Args &&) __args...);
+          __self.__state_->__complete(_Tag(), static_cast<_Args &&>(__args)...);
         }
 
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t &__self) noexcept {
+        friend auto tag_invoke(get_env_t, const __t &__self) noexcept -> env_of_t<_Receiver> {
           return get_env(__self.__state_->__receiver());
         }
       };
@@ -75,7 +75,8 @@ namespace exec {
       trampoline_scheduler __sched_;
 
       __repeat_effect_state(_Sender &&__sndr, _Receiver &)
-        : __child_(__sexpr_apply((_Sender &&) __sndr, stdexec::__detail::__get_data())) {
+        : __child_(
+          __sexpr_apply(static_cast<_Sender &&>(__sndr), stdexec::__detail::__get_data())) {
         __connect();
       }
 
@@ -103,23 +104,24 @@ namespace exec {
       }
 
       template <class _Tag, class... _Args>
-      void __complete(_Tag, _Args ...__args) noexcept { // Intentionally by value...
+      void __complete(_Tag, _Args... __args) noexcept { // Intentionally by value...
         __child_op_.__destroy(); // ... because this could potentially invalidate them.
         if constexpr (same_as<_Tag, set_value_t>) {
           // If the sender completed with true, we're done
           try {
             const bool __done = (static_cast<bool>(__args) && ...);
             if (__done) {
-              stdexec::set_value((_Receiver &&) this->__receiver());
+              stdexec::set_value(static_cast<_Receiver &&>(this->__receiver()));
             } else {
               __connect();
               stdexec::start(__child_op_.__get());
             }
           } catch (...) {
-            stdexec::set_error((_Receiver &&) this->__receiver(), std::current_exception());
+            stdexec::set_error(
+              static_cast<_Receiver &&>(this->__receiver()), std::current_exception());
           }
         } else {
-          _Tag()((_Receiver &&) this->__receiver(), (_Args &&) __args...);
+          _Tag()(static_cast<_Receiver &&>(this->__receiver()), static_cast<_Args &&>(__args)...);
         }
       }
     };
@@ -166,7 +168,7 @@ namespace exec {
 
       static constexpr auto get_state = //
         []<class _Sender, class _Receiver>(_Sender &&__sndr, _Receiver &__rcvr) {
-          return __repeat_effect_state{(_Sender&&) __sndr, __rcvr};
+          return __repeat_effect_state{static_cast<_Sender &&>(__sndr), __rcvr};
         };
 
       static constexpr auto start = //
@@ -180,7 +182,7 @@ namespace exec {
       auto operator()(_Sender &&__sndr) const {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
-          __domain, __make_sexpr<repeat_effect_until_t>({}, (_Sender &&) __sndr));
+          __domain, __make_sexpr<repeat_effect_until_t>({}, static_cast<_Sender &&>(__sndr)));
       }
 
       constexpr auto operator()() const -> __binder_back<repeat_effect_until_t> {
@@ -190,7 +192,7 @@ namespace exec {
       template <class _Sender>
       auto transform_sender(_Sender &&__sndr, __ignore) {
         return __sexpr_apply(
-          (_Sender &&) __sndr, []<class _Child>(__ignore, __ignore, _Child __child) {
+          static_cast<_Sender &&>(__sndr), []<class _Child>(__ignore, __ignore, _Child __child) {
             return __make_sexpr<__repeat_effect_until_tag>(std::move(__child));
           });
       }
@@ -205,4 +207,4 @@ namespace stdexec {
   template <>
   struct __sexpr_impl<exec::__repeat_effect_until::__repeat_effect_until_tag>
     : exec::__repeat_effect_until::__repeat_effect_until_impl { };
-}
+} // namespace stdexec

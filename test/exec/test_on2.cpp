@@ -373,4 +373,4 @@ namespace {
     // Now the error is sent to the receiver
     CHECK(recv_error == 19);
   }
-}
+} // namespace

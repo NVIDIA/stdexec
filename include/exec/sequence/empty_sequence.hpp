@@ -31,7 +31,8 @@ namespace exec {
 
       struct __t {
         using __id = __operation;
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
+        STDEXEC_ATTRIBUTE((no_unique_address))
+        _Receiver __rcvr_;
 
         friend void tag_invoke(start_t, __t& __self) noexcept {
           stdexec::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
@@ -56,7 +57,7 @@ namespace exec {
     };
 
     struct empty_sequence_t {
-      __t<__sender> operator()() const noexcept {
+      auto operator()() const noexcept -> __t<__sender> {
         return {};
       }
     };

@@ -238,7 +238,7 @@ namespace {
       R recv_;
 
       friend void tag_invoke(ex::start_t, oper& self) noexcept {
-        ex::set_value((R&&) self.recv_);
+        ex::set_value(static_cast<R&&>(self.recv_));
       }
     };
 
@@ -248,7 +248,7 @@ namespace {
 
       template <typename R>
       friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
-        return {{}, (R&&) r};
+        return {{}, static_cast<R&&>(r)};
       }
 
       friend auto tag_invoke(ex::get_env_t, const my_sender&) noexcept
@@ -280,5 +280,5 @@ namespace {
                         | ex::then([] {});
     ex::sync_wait(std::move(snd));
   }
-}
+} // namespace
 STDEXEC_PRAGMA_POP()

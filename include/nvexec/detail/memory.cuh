@@ -50,7 +50,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       T* ptr = nullptr;
       if (status = STDEXEC_DBG_ERR(::cudaMalloc(&ptr, sizeof(T))); status == cudaSuccess) {
         try {
-          T h((As&&) as...);
+          T h(static_cast<As&&>(as)...);
           status = STDEXEC_DBG_ERR(::cudaMemcpy(ptr, &h, sizeof(T), cudaMemcpyHostToDevice));
           if (status == cudaSuccess) {
             return device_ptr<T>(ptr);
@@ -68,7 +68,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   template <class T = void, class A>
     requires same_as<T, void>
   device_ptr<__decay_t<A>> make_device(cudaError_t& status, A&& t) {
-    return make_device<__decay_t<A>>(status, (A&&) t);
+    return make_device<__decay_t<A>>(status, static_cast<A&&>(t));
   }
 
   template <class T>
@@ -93,7 +93,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     if (status == cudaSuccess) {
       try {
         ptr = static_cast<T*>(resource->allocate(sizeof(T), alignof(T)));
-        ::new (static_cast<void*>(ptr)) T((As&&) as...);
+        ::new (static_cast<void*>(ptr)) T(static_cast<As&&>(as)...);
         return host_ptr<T>(ptr, {resource});
       } catch (...) {
         if (ptr) {
@@ -112,7 +112,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     requires same_as<T, void>
   host_ptr<__decay_t<A>>
     make_host(cudaError_t& status, std::pmr::memory_resource* resource, A&& t) {
-    return make_host<__decay_t<A>>(status, resource, (A&&) t);
+    return make_host<__decay_t<A>>(status, resource, static_cast<A&&>(t));
   }
 
   struct pinned_resource : public std::pmr::memory_resource {

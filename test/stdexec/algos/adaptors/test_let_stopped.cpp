@@ -228,4 +228,4 @@ namespace {
              | ex::let_stopped([] { return ex::just(std::string{"stopped"}); });
     wait_for_value(std::move(snd), std::string{"Don't stop me now"});
   }
-}
+} // namespace

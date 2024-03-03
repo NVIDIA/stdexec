@@ -233,4 +233,4 @@ namespace {
     // TODO: reenable this
     // REQUIRE(P2519::__scope::empty(scope));
   }
-}
+} // namespace

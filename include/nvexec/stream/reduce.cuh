@@ -134,7 +134,8 @@ namespace nvexec {
 
       template <sender Sender, __movable_value InitT, __movable_value Fun = cub::Sum>
       __sender<Sender, InitT, Fun> operator()(Sender&& sndr, InitT init, Fun fun) const {
-        return __sender<Sender, InitT, Fun>{{}, (Sender&&) sndr, (InitT&&) init, (Fun&&) fun};
+        return __sender<Sender, InitT, Fun>{
+          {}, static_cast<Sender&&>(sndr), static_cast<InitT&&>(init), static_cast<Fun&&>(fun)};
       }
 
       template <class InitT, class Fun = cub::Sum>
@@ -142,7 +143,7 @@ namespace nvexec {
         return {
           {},
           {},
-          {(InitT&&) init, (Fun&&) fun}
+          {static_cast<InitT&&>(init), static_cast<Fun&&>(fun)}
         };
       }
     };

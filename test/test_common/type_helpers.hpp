@@ -33,8 +33,8 @@ namespace {
 
   template <class Needles, class Haystack>
   concept set_equivalent =
-    ex::same_as<ex::__mapply<ex::__msize, Needles>, ex::__mapply<ex::__msize, Haystack>> &&
-    all_contained_in<Needles, Haystack>;
+    ex::same_as<ex::__mapply<ex::__msize, Needles>, ex::__mapply<ex::__msize, Haystack>>
+    && all_contained_in<Needles, Haystack>;
 
   template <const auto& Tag, class... Args>
   using result_of_t = ex::__result_of<Tag, Args...>;
@@ -120,4 +120,4 @@ namespace {
     constexpr bool val = ex::sends_stopped<S, Env>;
     static_assert(val == Expected);
   }
-}
+} // namespace

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - "member-function-customization"
       - "pull-request/[0-9]+"
 
 concurrency:

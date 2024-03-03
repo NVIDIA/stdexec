@@ -65,4 +65,4 @@ namespace {
     auto snd = ex::just_error(crefstr);
     check_err_types<type_array<std::string>>(snd);
   }
-}
+} // namespace

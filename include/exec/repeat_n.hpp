@@ -51,10 +51,10 @@ namespace exec {
 
         template <__completion_tag _Tag, class... _Args>
         friend void tag_invoke(_Tag, __t &&__self, _Args &&...__args) noexcept {
-          __self.__state_->__complete(_Tag(), (_Args &&) __args...);
+          __self.__state_->__complete(_Tag(), static_cast<_Args &&>(__args)...);
         }
 
-        friend env_of_t<_Receiver> tag_invoke(get_env_t, const __t &__self) noexcept {
+        friend auto tag_invoke(get_env_t, const __t &__self) noexcept -> env_of_t<_Receiver> {
           return get_env(__self.__state_->__receiver());
         }
       };
@@ -86,7 +86,7 @@ namespace exec {
       trampoline_scheduler __sched_;
 
       __repeat_n_state(_Sender &&__sndr, _Receiver &)
-        : __pair_(__sexpr_apply((_Sender &&) __sndr, stdexec::__detail::__get_data())) {
+        : __pair_(__sexpr_apply(static_cast<_Sender &&>(__sndr), stdexec::__detail::__get_data())) {
         // Q: should we skip __connect() if __count_ == 0?
         __connect();
       }
@@ -109,7 +109,7 @@ namespace exec {
 
       void __start() noexcept {
         if (__pair_.__count_ == 0) {
-          stdexec::set_value((_Receiver &&) this->__receiver());
+          stdexec::set_value(static_cast<_Receiver &&>(this->__receiver()));
         } else {
           const bool __already_started
             [[maybe_unused]] = __started_.test_and_set(std::memory_order_relaxed);
@@ -119,22 +119,23 @@ namespace exec {
       }
 
       template <class _Tag, class... _Args>
-      void __complete(_Tag, _Args ...__args) noexcept { // Intentionally by value...
+      void __complete(_Tag, _Args... __args) noexcept { // Intentionally by value...
         STDEXEC_ASSERT(__pair_.__count_ > 0);
         __child_op_.__destroy(); // ... because this could potentially invalidate them.
         if constexpr (same_as<_Tag, set_value_t>) {
           try {
             if (--__pair_.__count_ == 0) {
-              stdexec::set_value((_Receiver &&) this->__receiver());
+              stdexec::set_value(static_cast<_Receiver &&>(this->__receiver()));
             } else {
               __connect();
               stdexec::start(__child_op_.__get());
             }
           } catch (...) {
-            stdexec::set_error((_Receiver &&) this->__receiver(), std::current_exception());
+            stdexec::set_error(
+              static_cast<_Receiver &&>(this->__receiver()), std::current_exception());
           }
         } else {
-          _Tag()((_Receiver &&) this->__receiver(), (_Args &&) __args...);
+          _Tag()(static_cast<_Receiver &&>(this->__receiver()), static_cast<_Args &&>(__args)...);
         }
       }
     };
@@ -181,7 +182,7 @@ namespace exec {
 
       static constexpr auto get_state = //
         []<class _Sender, class _Receiver>(_Sender &&__sndr, _Receiver &__rcvr) {
-          return __repeat_n_state{(_Sender&&) __sndr, __rcvr};
+          return __repeat_n_state{static_cast<_Sender &&>(__sndr), __rcvr};
         };
 
       static constexpr auto start = //
@@ -195,7 +196,7 @@ namespace exec {
       auto operator()(_Sender &&__sndr, std::size_t __count) const {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
-          __domain, __make_sexpr<repeat_n_t>(__count, (_Sender &&) __sndr));
+          __domain, __make_sexpr<repeat_n_t>(__count, static_cast<_Sender &&>(__sndr)));
       }
 
       constexpr auto operator()(std::size_t __count) const
@@ -206,7 +207,8 @@ namespace exec {
       template <class _Sender>
       auto transform_sender(_Sender &&__sndr, __ignore) {
         return __sexpr_apply(
-          (_Sender &&) __sndr, []<class _Child>(__ignore, std::size_t __count, _Child __child) {
+          static_cast<_Sender &&>(__sndr),
+          []<class _Child>(__ignore, std::size_t __count, _Child __child) {
             return __make_sexpr<__repeat_n_tag>(__child_count_pair{std::move(__child), __count});
           });
       }
@@ -220,4 +222,4 @@ namespace exec {
 namespace stdexec {
   template <>
   struct __sexpr_impl<exec::__repeat_n::__repeat_n_tag> : exec::__repeat_n::__repeat_n_impl { };
-}
+} // namespace stdexec

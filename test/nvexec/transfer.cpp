@@ -135,4 +135,4 @@ namespace {
 
     REQUIRE(result == true);
   }
-}
+} // namespace

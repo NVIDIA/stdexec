@@ -28,7 +28,7 @@
 #include <concepts>
 
 #if __has_include(<stop_token>) && __cpp_lib_jthread >= 201911
-#include <stop_token>
+#  include <stop_token>
 #endif
 
 
@@ -91,7 +91,7 @@ namespace stdexec {
 
     template <template <class> class>
     struct __check_type_alias_exists;
-  }
+  } // namespace __stok
 
   // [stoptoken.never], class never_stop_token
   struct never_stop_token {
@@ -104,15 +104,15 @@ namespace stdexec {
     template <class>
     using callback_type = __callback_type;
 
-    static constexpr bool stop_requested() noexcept {
+    static constexpr auto stop_requested() noexcept -> bool {
       return false;
     }
 
-    static constexpr bool stop_possible() noexcept {
+    static constexpr auto stop_possible() noexcept -> bool {
       return false;
     }
 
-    bool operator==(const never_stop_token&) const noexcept = default;
+    auto operator==(const never_stop_token&) const noexcept -> bool = default;
   };
 
   template <class _Callback>
@@ -125,11 +125,11 @@ namespace stdexec {
     ~in_place_stop_source();
     in_place_stop_source(in_place_stop_source&&) = delete;
 
-    in_place_stop_token get_token() const noexcept;
+    auto get_token() const noexcept -> in_place_stop_token;
 
-    bool request_stop() noexcept;
+    auto request_stop() noexcept -> bool;
 
-    bool stop_requested() const noexcept {
+    auto stop_requested() const noexcept -> bool {
       return (__state_.load(std::memory_order_acquire) & __stop_requested_flag_) != 0;
     }
 
@@ -139,12 +139,12 @@ namespace stdexec {
     template <class>
     friend class in_place_stop_callback;
 
-    uint8_t __lock_() const noexcept;
+    auto __lock_() const noexcept -> uint8_t;
     void __unlock_(uint8_t) const noexcept;
 
-    bool __try_lock_unless_stop_requested_(bool) const noexcept;
+    auto __try_lock_unless_stop_requested_(bool) const noexcept -> bool;
 
-    bool __try_add_callback_(__stok::__in_place_stop_callback_base*) const noexcept;
+    auto __try_add_callback_(__stok::__in_place_stop_callback_base*) const noexcept -> bool;
 
     void __remove_callback_(__stok::__in_place_stop_callback_base*) const noexcept;
 
@@ -172,18 +172,20 @@ namespace stdexec {
       : __source_(std::exchange(__other.__source_, {})) {
     }
 
-    in_place_stop_token& operator=(const in_place_stop_token& __other) noexcept = default;
+    auto operator=(const in_place_stop_token& __other) noexcept -> in_place_stop_token& = default;
 
-    in_place_stop_token& operator=(in_place_stop_token&& __other) noexcept {
+    auto operator=(in_place_stop_token&& __other) noexcept -> in_place_stop_token& {
       __source_ = std::exchange(__other.__source_, nullptr);
       return *this;
     }
 
-    bool stop_requested() const noexcept {
+    [[nodiscard]]
+    auto stop_requested() const noexcept -> bool {
       return __source_ != nullptr && __source_->stop_requested();
     }
 
-    bool stop_possible() const noexcept {
+    [[nodiscard]]
+    auto stop_possible() const noexcept -> bool {
       return __source_ != nullptr;
     }
 
@@ -191,7 +193,7 @@ namespace stdexec {
       std::swap(__source_, __other.__source_);
     }
 
-    bool operator==(const in_place_stop_token&) const noexcept = default;
+    auto operator==(const in_place_stop_token&) const noexcept -> bool = default;
 
    private:
     friend in_place_stop_source;
@@ -205,7 +207,7 @@ namespace stdexec {
     const in_place_stop_source* __source_;
   };
 
-  inline in_place_stop_token in_place_stop_source::get_token() const noexcept {
+  inline auto in_place_stop_source::get_token() const noexcept -> in_place_stop_token {
     return in_place_stop_token{this};
   }
 
@@ -222,7 +224,7 @@ namespace stdexec {
       : __stok::__in_place_stop_callback_base(
         __token.__source_,
         &in_place_stop_callback::__execute_impl_)
-      , __fun_((_Fun2&&) __fun) {
+      , __fun_(static_cast<_Fun2&&>(__fun)) {
       __register_callback_();
     }
 
@@ -236,7 +238,8 @@ namespace stdexec {
       std::move(static_cast<in_place_stop_callback*>(cb)->__fun_)();
     }
 
-    STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
+    STDEXEC_ATTRIBUTE((no_unique_address))
+    _Fun __fun_;
   };
 
   namespace __stok {
@@ -250,14 +253,14 @@ namespace stdexec {
         }
       }
     }
-  }
+  } // namespace __stok
 
   inline in_place_stop_source::~in_place_stop_source() {
     STDEXEC_ASSERT((__state_.load(std::memory_order_relaxed) & __locked_flag_) == 0);
     STDEXEC_ASSERT(__callbacks_ == nullptr);
   }
 
-  inline bool in_place_stop_source::request_stop() noexcept {
+  inline auto in_place_stop_source::request_stop() noexcept -> bool {
     if (!__try_lock_unless_stop_requested_(true))
       return true;
 
@@ -290,7 +293,7 @@ namespace stdexec {
     return false;
   }
 
-  inline uint8_t in_place_stop_source::__lock_() const noexcept {
+  inline auto in_place_stop_source::__lock_() const noexcept -> uint8_t {
     __stok::__spin_wait __spin;
     auto __old_state = __state_.load(std::memory_order_relaxed);
     do {
@@ -311,8 +314,8 @@ namespace stdexec {
     (void) __state_.store(__old_state, std::memory_order_release);
   }
 
-  inline bool in_place_stop_source::__try_lock_unless_stop_requested_(
-    bool __set_stop_requested) const noexcept {
+  inline auto in_place_stop_source::__try_lock_unless_stop_requested_(
+    bool __set_stop_requested) const noexcept -> bool {
     __stok::__spin_wait __spin;
     auto __old_state = __state_.load(std::memory_order_relaxed);
     do {
@@ -337,8 +340,8 @@ namespace stdexec {
     return true;
   }
 
-  inline bool in_place_stop_source::__try_add_callback_(
-    __stok::__in_place_stop_callback_base* __callbk) const noexcept {
+  inline auto in_place_stop_source::__try_add_callback_(
+    __stok::__in_place_stop_callback_base* __callbk) const noexcept -> bool {
     if (!__try_lock_unless_stop_requested_(false)) {
       return false;
     }

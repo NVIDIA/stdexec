@@ -21,13 +21,13 @@
 // allow user access to some of the necessary system calls.
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0) && __has_include(<linux/io_uring.h>)
 
-#include "exec/linux/io_uring_context.hpp"
-#include "exec/scope.hpp"
-#include "exec/single_thread_context.hpp"
-#include "exec/finally.hpp"
-#include "exec/when_any.hpp"
+#  include "exec/linux/io_uring_context.hpp"
+#  include "exec/scope.hpp"
+#  include "exec/single_thread_context.hpp"
+#  include "exec/finally.hpp"
+#  include "exec/when_any.hpp"
 
-#include "catch2/catch.hpp"
+#  include "catch2/catch.hpp"
 
 using namespace stdexec;
 using namespace exec;
@@ -338,6 +338,6 @@ namespace {
     CHECK(sync_wait(exec::when_any(schedule(scheduler), context.run())));
     CHECK(!sync_wait(exec::when_any(schedule(scheduler), context.run())));
   }
-}
+} // namespace
 
 #endif

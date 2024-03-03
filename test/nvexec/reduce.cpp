@@ -98,4 +98,4 @@ namespace {
 
     REQUIRE(result == N + init);
   }
-}
+} // namespace

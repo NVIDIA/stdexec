@@ -50,4 +50,4 @@ namespace {
   TEST_CASE("just_stopped advertises that it can call set_stopped", "[factories][just_stopped]") {
     check_sends_stopped<true>(ex::just_stopped());
   }
-}
+} // namespace

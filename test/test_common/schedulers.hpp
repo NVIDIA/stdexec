@@ -73,7 +73,7 @@ namespace {
 
       oper(data* shared_data, R&& recv)
         : data_(shared_data)
-        , receiver_((R&&) recv) {
+        , receiver_(static_cast<R&&>(recv)) {
       }
 
       oper(oper&&) = delete;
@@ -84,9 +84,9 @@ namespace {
         std::unique_lock lock{self.data_->mutex_};
         self.data_->all_commands_.emplace_back([&self]() {
           if (ex::get_stop_token(ex::get_env(self.receiver_)).stop_requested()) {
-            ex::set_stopped((R&&) self.receiver_);
+            ex::set_stopped(static_cast<R&&>(self.receiver_));
           } else {
-            ex::set_value((R&&) self.receiver_);
+            ex::set_value(static_cast<R&&>(self.receiver_));
           }
         });
         self.data_->cv_.notify_all();
@@ -105,7 +105,7 @@ namespace {
 
       template <class R>
       friend oper<std::decay_t<R>> tag_invoke(ex::connect_t, my_sender self, R&& r) {
-        return {self.shared_data_, (R&&) r};
+        return {self.shared_data_, static_cast<R&&>(r)};
       }
 
       friend scheduler_env<impulse_scheduler> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
@@ -191,7 +191,7 @@ namespace {
       R recv_;
 
       friend void tag_invoke(ex::start_t, oper& self) noexcept {
-        ex::set_value((R&&) self.recv_);
+        ex::set_value(static_cast<R&&>(self.recv_));
       }
     };
 
@@ -203,7 +203,7 @@ namespace {
 
       template <typename R>
       friend oper<R> tag_invoke(ex::connect_t, my_sender self, R r) {
-        return {{}, (R&&) r};
+        return {{}, static_cast<R&&>(r)};
       }
 
       friend scheduler_env<basic_inline_scheduler>
@@ -242,7 +242,7 @@ namespace {
     error_scheduler() = default;
 
     error_scheduler(E err)
-      : err_((E&&) err) {
+      : err_(static_cast<E&&>(err)) {
     }
 
     error_scheduler(error_scheduler&&) noexcept = default;
@@ -256,7 +256,7 @@ namespace {
       E err_;
 
       friend void tag_invoke(ex::start_t, oper& self) noexcept {
-        ex::set_error((R&&) self.recv_, (E&&) self.err_);
+        ex::set_error(static_cast<R&&>(self.recv_), static_cast<E&&>(self.err_));
       }
     };
 
@@ -274,7 +274,7 @@ namespace {
 
       template <typename R>
       friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
-        return {{}, (R&&) r, (E&&) self.err_};
+        return {{}, static_cast<R&&>(r), static_cast<E&&>(self.err_)};
       }
 
       friend scheduler_env<error_scheduler> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
@@ -285,7 +285,7 @@ namespace {
     E err_{};
 
     friend my_sender tag_invoke(ex::schedule_t, error_scheduler self) {
-      return {(E&&) self.err_};
+      return {static_cast<E&&>(self.err_)};
     }
 
     friend bool operator==(error_scheduler, error_scheduler) noexcept {
@@ -307,7 +307,7 @@ namespace {
       R recv_;
 
       friend void tag_invoke(ex::start_t, oper& self) noexcept {
-        ex::set_stopped((R&&) self.recv_);
+        ex::set_stopped(static_cast<R&&>(self.recv_));
       }
     };
 
@@ -322,7 +322,7 @@ namespace {
 
       template <typename R>
       friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
-        return {{}, (R&&) r};
+        return {{}, static_cast<R&&>(r)};
       }
 
       friend scheduler_env<stopped_scheduler> tag_invoke(ex::get_env_t, const my_sender&) noexcept {

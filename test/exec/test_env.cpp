@@ -58,4 +58,4 @@ namespace {
     STATIC_REQUIRE(!std::invocable<Foo, decltype(e4)>);
     CHECK(bar(e4) == 43);
   }
-}
+} // namespace

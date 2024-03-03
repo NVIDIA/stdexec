@@ -107,4 +107,4 @@ namespace {
       expect_empty(scope);
     }
   }
-}
+} // namespace

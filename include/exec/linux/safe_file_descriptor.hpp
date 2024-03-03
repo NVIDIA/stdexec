@@ -25,11 +25,11 @@ namespace exec {
     explicit safe_file_descriptor(int __fd) noexcept;
 
     safe_file_descriptor(const safe_file_descriptor&) = delete;
-    safe_file_descriptor& operator=(const safe_file_descriptor&) = delete;
+    auto operator=(const safe_file_descriptor&) -> safe_file_descriptor& = delete;
 
     safe_file_descriptor(safe_file_descriptor&& __other) noexcept;
 
-    safe_file_descriptor& operator=(safe_file_descriptor&& __other) noexcept;
+    auto operator=(safe_file_descriptor&& __other) noexcept -> safe_file_descriptor&;
 
     ~safe_file_descriptor();
 
@@ -39,8 +39,9 @@ namespace exec {
 
     operator int() const noexcept;
 
-    int native_handle() const noexcept;
+    [[nodiscard]]
+    auto native_handle() const noexcept -> int;
   };
-}
+} // namespace exec
 
 #include "__detail/safe_file_descriptor.hpp"

@@ -65,7 +65,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
       template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
       friend void tag_invoke(_Tag __tag, receiver_2_t&& __self, _Args&&... __args) noexcept {
         OpT& op_state = __self.op_state_;
-        op_state.propagate_completion_signal(_Tag{}, (_Args&&) __args...);
+        op_state.propagate_completion_signal(_Tag{}, static_cast<_Args&&>(__args)...);
       }
 
       friend void tag_invoke(ex::set_value_t, receiver_2_t&& __self) noexcept {
@@ -107,7 +107,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
       template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
       friend void tag_invoke(_Tag __tag, receiver_1_t&& __self, _Args&&... __args) noexcept {
         OpT& op_state = __self.op_state_;
-        op_state.propagate_completion_signal(_Tag{}, (_Args&&) __args...);
+        op_state.propagate_completion_signal(_Tag{}, static_cast<_Args&&>(__args)...);
       }
 
       friend void tag_invoke(ex::set_value_t, receiver_1_t&& __self) noexcept {
@@ -174,14 +174,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
 
       operation_state_t(PredSender&& pred_sender, Closure closure, Receiver&& rcvr, std::size_t n)
         : operation_state_base_t<ReceiverId>(
-          (Receiver&&) rcvr,
+          static_cast<Receiver&&>(rcvr),
           stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(pred_sender))
             .context_state_)
-        , pred_sender_{(PredSender&&) pred_sender}
+        , pred_sender_{static_cast<PredSender&&>(pred_sender)}
         , closure_(closure)
         , n_(n) {
         pred_op_state_.emplace(stdexec::__conv{[&]() noexcept {
-          return ex::connect((PredSender&&) pred_sender_, receiver_1_t{*this});
+          return ex::connect(static_cast<PredSender&&>(pred_sender_), receiver_1_t{*this});
         }});
       }
     };
@@ -203,7 +203,7 @@ namespace repeat_n_detail {
     template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
     friend void tag_invoke(_Tag __tag, receiver_2_t&& __self, _Args&&... __args) noexcept {
       OpT& op_state = __self.op_state_;
-      __tag(std::move(op_state.rcvr_), (_Args&&) __args...);
+      __tag(std::move(op_state.rcvr_), static_cast<_Args&&>(__args)...);
     }
 
     friend void tag_invoke(ex::set_value_t, receiver_2_t&& __self) noexcept {
@@ -248,7 +248,7 @@ namespace repeat_n_detail {
     template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
     friend void tag_invoke(_Tag __tag, receiver_1_t&& __self, _Args&&... __args) noexcept {
       OpT& op_state = __self.op_state_;
-      __tag(std::move(op_state.rcvr_), (_Args&&) __args...);
+      __tag(std::move(op_state.rcvr_), static_cast<_Args&&>(__args)...);
     }
 
     friend void tag_invoke(ex::set_value_t, receiver_1_t&& __self) noexcept {
@@ -309,12 +309,12 @@ namespace repeat_n_detail {
     }
 
     operation_state_t(PredSender&& pred_sender, Closure closure, Receiver&& rcvr, std::size_t n)
-      : pred_sender_{(PredSender&&) pred_sender}
+      : pred_sender_{static_cast<PredSender&&>(pred_sender)}
       , closure_(closure)
       , rcvr_(rcvr)
       , n_(n) {
       pred_op_state_.emplace(stdexec::__conv{[&]() noexcept {
-        return ex::connect((PredSender&&) pred_sender_, receiver_1_t{*this});
+        return ex::connect(static_cast<PredSender&&>(pred_sender_), receiver_1_t{*this});
       }});
     }
   };
@@ -348,7 +348,7 @@ namespace repeat_n_detail {
     friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver r)
       -> repeat_n_detail::operation_state_t<SenderId, Closure, stdexec::__id<Receiver>> {
       return repeat_n_detail::operation_state_t<SenderId, Closure, stdexec::__id<Receiver>>(
-        (Sender&&) self.sender_, self.closure_, (Receiver&&) r, self.n_);
+        static_cast<Sender&&>(self.sender_), self.closure_, static_cast<Receiver&&>(r), self.n_);
     }
 
     template <stdexec::__decays_to<repeat_n_sender_t> Self, stdexec::receiver Receiver>
@@ -359,7 +359,7 @@ namespace repeat_n_detail {
         operation_state_t<SenderId, Closure, stdexec::__id<Receiver>> {
       return nvexec::STDEXEC_STREAM_DETAIL_NS::repeat_n::
         operation_state_t<SenderId, Closure, stdexec::__id<Receiver>>(
-          (Sender&&) self.sender_, self.closure_, (Receiver&&) r, self.n_);
+          static_cast<Sender&&>(self.sender_), self.closure_, static_cast<Receiver&&>(r), self.n_);
     }
 #else
     template <stdexec::__decays_to<repeat_n_sender_t> Self, stdexec::receiver Receiver>
@@ -367,7 +367,7 @@ namespace repeat_n_detail {
     friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver r)
       -> repeat_n_detail::operation_state_t<SenderId, Closure, stdexec::__id<Receiver>> {
       return repeat_n_detail::operation_state_t<SenderId, Closure, stdexec::__id<Receiver>>(
-        (Sender&&) self.sender_, self.closure_, (Receiver&&) r, self.n_);
+        static_cast<Sender&&>(self.sender_), self.closure_, static_cast<Receiver&&>(r), self.n_);
     }
 #endif
 
@@ -393,7 +393,7 @@ struct repeat_n_t {
     return {
       {},
       {},
-      {n, (Closure&&) closure}
+      {n, static_cast<Closure&&>(closure)}
     };
   }
 };

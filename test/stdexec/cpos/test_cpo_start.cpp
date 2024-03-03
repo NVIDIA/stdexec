@@ -104,4 +104,4 @@ namespace {
   TEST_CASE("tag types can be deduced from ex::start", "[cpo][cpo_start]") {
     static_assert(std::is_same_v<const ex::start_t, decltype(ex::start)>, "type mismatch");
   }
-}
+} // namespace

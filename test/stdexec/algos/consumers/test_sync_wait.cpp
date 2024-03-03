@@ -334,4 +334,4 @@ namespace {
           decayed_tuple,
           std::type_identity_t>>);
   }
-}
+} // namespace
