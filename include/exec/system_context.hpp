@@ -191,6 +191,10 @@ namespace exec {
         , __scheduler_{__scheduler_impl} {
       }
 
+      ~__op() {
+        __scheduler_->__destruct_schedule_operation(__impl_os_);
+      }
+
       __op(const __op&) = delete;
       __op(__op&&) = delete;
       __op& operator=(const __op&) = delete;
@@ -198,7 +202,7 @@ namespace exec {
 
       /// Starts the work stored in `this`.
       friend void tag_invoke(stdexec::start_t, __op& __self) noexcept {
-        __self.__scheduler_->__schedule(
+        __self.__impl_os_ = __self.__scheduler_->__schedule(
           __self.__scheduler_,
           &__self.__preallocated_,
           sizeof(__self.__preallocated_),
@@ -215,6 +219,8 @@ namespace exec {
       __R __recv_;
       /// The underlying implementation of the scheduler.
       __exec_system_scheduler_interface* __scheduler_{nullptr};
+      /// The operating state on the implementation side.
+      void* __impl_os_;
 
       /// Preallocated space for storing the operation state on the implementation size.
       struct alignas(__EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_ALIGN) __preallocated {
@@ -248,6 +254,8 @@ namespace exec {
     system_bulk_sender<__Previous, __Size, __Fn> __snd_;
     /// The receiver object that receives completion from the work described by the sender.
     __R __recv_;
+    /// The operating state on the implementation side.
+    void* __impl_os_;
     /// Storage for the arguments passed from the previous receiver to the function object of the bulk sender.
     std::aligned_storage_t<
       sizeof(__detail::__sender_data_t<__Previous>),
@@ -258,6 +266,10 @@ namespace exec {
     struct alignas(__EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_ALIGN) __preallocated {
       char __data[__EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_SIZE];
     } __preallocated_;
+
+    ~__bulk_state() {
+      __snd_.__scheduler_->__destruct_bulk_schedule_operation(__impl_os_);
+    }
   };
 
   /// Receiver that is used in "bulk" to connect toe the input sender of the bulk operation.
@@ -303,14 +315,14 @@ namespace exec {
       };
 
       // Schedule the bulk work on the system scheduler.
-      __self.__state_.__snd_.__scheduler_->__bulk_schedule(
+      __self.__state_.__impl_os_ = __self.__state_.__snd_.__scheduler_->__bulk_schedule(
         __self.__state_.__snd_.__scheduler_,     // self
         &__self.__state_.__preallocated_,        // preallocated
         sizeof(__self.__state_.__preallocated_), // psize
         __type_erased_cb_fn,                     // cb
         __type_erased_item_fn,                   // cb_item
         &__self.__state_,                        // data
-        __self.__state_.__snd_.__size_           //size
+        __self.__state_.__snd_.__size_           // size
       );
     }
 

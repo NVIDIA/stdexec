@@ -41,37 +41,27 @@ namespace exec::__system_context_default_impl {
 
     /// The owning operation state, to be destructed when the operation completes.
     __operation<__Sender>* __op_;
-    /// True if the operation is on the heap, false if it is in the preallocated space.
-    bool __on_heap_;
 
     friend void tag_invoke(stdexec::set_value_t, __recv&& __self) noexcept {
       __self.__cb_(__self.__data_, 0, nullptr);
-      __self.__destruct();
     }
 
     friend void tag_invoke(stdexec::set_stopped_t, __recv&& __self) noexcept {
       __self.__cb_(__self.__data_, 1, nullptr);
-      __self.__destruct();
     }
 
     friend void
       tag_invoke(stdexec::set_error_t, __recv&& __self, std::exception_ptr __ptr) noexcept {
       __self.__cb_(__self.__data_, 2, *reinterpret_cast<void**>(&__ptr));
-      __self.__destruct();
-    }
-
-    void __destruct() {
-      if (__on_heap_) {
-        delete __op_;
-      } else {
-        __op_->~__operation();
-      }
     }
   };
 
   template <typename __Sender>
   struct __operation {
+    /// The inner operation state, that results out of connecting the underlying sender with the receiver.
     stdexec::connect_result_t<__Sender, __recv<__Sender>> __inner_op_;
+    /// True if the operation is on the heap, false if it is in the preallocated space.
+    bool __on_heap_;
 
     /// Try to construct the operation in the preallocated memory if it fits, otherwise allocate a new operation.
     static __operation* __construct_maybe_alloc(
@@ -87,14 +77,23 @@ namespace exec::__system_context_default_impl {
       }
     }
 
+    /// Destructs the operation; frees any allocated memory.
+    void __destruct() {
+      if (__on_heap_) {
+        delete this;
+      } else {
+        std::destroy_at(this);
+      }
+    }
+
    private:
     __operation(
       __Sender __sndr,
       __exec_system_context_completion_callback_t __cb,
       void* __data,
       bool __on_heap)
-      : __inner_op_(
-        stdexec::connect(std::move(__sndr), __recv<__Sender>{__cb, __data, this, __on_heap})) {
+      : __inner_op_(stdexec::connect(std::move(__sndr), __recv<__Sender>{__cb, __data, this}))
+      , __on_heap_(__on_heap) {
     }
   };
 
@@ -105,9 +104,11 @@ namespace exec::__system_context_default_impl {
       __schedule_operation_size = sizeof(__schedule_operation_t),
       __schedule_operation_alignment = alignof(__schedule_operation_t),
       __schedule = __schedule_impl;
+      __destruct_schedule_operation = __destruct_schedule_operation_impl;
       __bulk_schedule_operation_size = sizeof(__bulk_schedule_operation_t),
       __bulk_schedule_operation_alignment = alignof(__bulk_schedule_operation_t),
       __bulk_schedule = __bulk_schedule_impl;
+      __destruct_bulk_schedule_operation = __destruct_bulk_schedule_operation_impl;
     }
 
    private:
@@ -131,7 +132,7 @@ namespace exec::__system_context_default_impl {
       std::declval<long>(),
       std::declval<__bulk_functor>()))>;
 
-    static void __schedule_impl(
+    static void* __schedule_impl(
       __exec_system_scheduler_interface* __self,
       void* __preallocated,
       uint32_t __psize,
@@ -143,9 +144,15 @@ namespace exec::__system_context_default_impl {
       auto __os = __schedule_operation_t::__construct_maybe_alloc(
         __preallocated, __psize, std::move(__sndr), __cb, __data);
       stdexec::start(__os->__inner_op_);
+      return __os;
     }
 
-    static void __bulk_schedule_impl(
+    static void __destruct_schedule_operation_impl(void* __operation) noexcept {
+      auto __op = static_cast<__schedule_operation_t*>(__operation);
+      __op->__destruct();
+    }
+
+    static void* __bulk_schedule_impl(
       __exec_system_scheduler_interface* __self,
       void* __preallocated,
       uint32_t __psize,
@@ -160,6 +167,12 @@ namespace exec::__system_context_default_impl {
       auto __os = __bulk_schedule_operation_t::__construct_maybe_alloc(
         __preallocated, __psize, std::move(__sndr), __cb, __data);
       stdexec::start(__os->__inner_op_);
+      return __os;
+    }
+
+    static void __destruct_bulk_schedule_operation_impl(void* __operation) noexcept {
+      auto __op = static_cast<__bulk_schedule_operation_t*>(__operation);
+      __op->__destruct();
     }
   };
 

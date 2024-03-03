@@ -59,12 +59,16 @@ struct __exec_system_scheduler_interface {
   uint32_t __schedule_operation_alignment;
 
   /// Schedules new work on the system scheduler, calling `cb` with `data` when the work can start.
-  void (*__schedule)(
+  /// Returns an object that should be passed to __destruct_schedule_operation when the operation completes.
+  void* (*__schedule)(
     struct __exec_system_scheduler_interface* /*self*/,
     void* /*__preallocated*/,
     uint32_t /*__psize*/,
     __exec_system_context_completion_callback_t /*cb*/,
     void* /*data*/);
+
+  /// Destructs the operation state object.
+  void (*__destruct_schedule_operation)(void* /*operation*/);
 
   /// The size of the operation state object on the implementation side.
   uint32_t __bulk_schedule_operation_size;
@@ -73,7 +77,8 @@ struct __exec_system_scheduler_interface {
 
   /// Schedules new bulk work of size `size` on the system scheduler, calling `cb_item` with `data`
   /// for indices in [0, `size`), and calling `cb` on general completion.
-  void (*__bulk_schedule)(
+  /// Returns the operation state object that should be passed to __destruct_bulk_schedule_operation.
+  void* (*__bulk_schedule)(
     struct __exec_system_scheduler_interface* /*self*/,
     void* /*__preallocated*/,
     uint32_t /*__psize*/,
@@ -81,6 +86,9 @@ struct __exec_system_scheduler_interface {
     __exec_system_context_bulk_item_callback_t /*cb_item*/,
     void* /*data*/,
     long /*size*/);
+
+  /// Destructs the operation state object for a bulk_schedule.
+  void (*__destruct_bulk_schedule_operation)(void* /*operation*/);
 };
 
 #ifdef __cplusplus
