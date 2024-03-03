@@ -3547,8 +3547,8 @@ namespace stdexec {
 
       template <class _Receiver>
       explicit constexpr __receiver_vtable_for(const _Receiver*) noexcept
-        : stdexec::__any_::__rcvr_vfun<
-          _Sigs>{stdexec::__any_::__rcvr_vfun_fn<_Receiver>((_Sigs*) nullptr)}...
+        : stdexec::__any_::__rcvr_vfun<_Sigs>{stdexec::__any_::__rcvr_vfun_fn<_Receiver>(
+          (_Sigs*) nullptr)}...
         , __do_get_env{+[](const void* __rcvr) noexcept -> _Env {
           return stdexec::get_env(*static_cast<const _Receiver*>(__rcvr));
         }} {
@@ -3756,7 +3756,7 @@ namespace stdexec {
           __minvoke<__result_sender_fn<_Fun, _Set, _Env, _Sched>, _Args...>,
           __result_env_t<_Env, _Sched>,
           __if_c<
-            __nothrow_callable<_Fun, _Args...>
+            (__nothrow_decay_copyable<_Args> && ...) && __nothrow_callable<_Fun, _Args...>
               && __nothrow_connectable_receiver_ref<
                 __minvoke<__result_sender_fn<_Fun, _Set, _Env, _Sched>, _Args...>,
                 _Env,
@@ -3990,7 +3990,7 @@ namespace stdexec {
         using _ResultSender =
           __minvoke<__result_sender_fn<_Fun, _Set, env_of_t<_Receiver>, _Sched>, _As...>;
         if constexpr (
-          __nothrow_callable<_Fun, _As...>
+          (__nothrow_decay_copyable<_As> && ...) && __nothrow_callable<_Fun, _As...>
           && __nothrow_connectable_receiver_ref<_ResultSender, env_of_t<_Receiver>, _Sched>) {
           __bind_(__state, __rcvr, static_cast<_As&&>(__as)...);
         } else {
