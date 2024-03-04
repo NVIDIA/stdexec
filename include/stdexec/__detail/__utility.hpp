@@ -30,4 +30,9 @@ namespace stdexec {
 
   template <class _Ty>
   inline constexpr auto const & __forward_like = __detail::__forward_like<__copy_cvref_fn<_Ty&&>>;
+
+  inline constexpr auto __decay_copy = //
+    []<class _Ty>(_Ty&& __ty) noexcept(__nothrow_decay_copyable<_Ty>) {
+      return static_cast<_Ty &&>(__ty);
+    };
 } // namespace stdexec

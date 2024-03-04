@@ -438,6 +438,9 @@ namespace stdexec {
     } && //
     (!_Token::stop_possible());
 
+  template <class _Token, class _Callback>
+  using stop_callback_for_t = typename _Token::template callback_type<_Callback>;
+
   using in_place_stop_token
     [[deprecated("in_place_stop_token has been renamed inplace_stop_token")]] = inplace_stop_token;
 

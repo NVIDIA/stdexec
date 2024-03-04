@@ -73,7 +73,6 @@ namespace {
       REQUIRE(counter == 1);
       ex::start(op2);
       // The receiver will ensure that the right value is produced
-
       REQUIRE(counter == 1);
     }
 
@@ -147,7 +146,7 @@ namespace {
     auto split = ex::split(ex::just() | ex::then([&] { called = true; }));
     auto sndr = exec::write(
       ex::upon_stopped(
-        split,
+        std::move(split),
         [&] {
           ++counter;
           return 42;
@@ -156,12 +155,13 @@ namespace {
     auto op1 = ex::connect(sndr, expect_value_receiver{42});
     auto op2 = ex::connect(std::move(sndr), expect_value_receiver{42});
     ssource.request_stop();
-    REQUIRE(counter == 0);
+    CHECK(counter == 0);
     ex::start(op1);
-    REQUIRE(counter == 1);
-    REQUIRE(!called);
+    CHECK(counter == 1);
+    CHECK(!called);
     ex::start(op2);
-    REQUIRE(counter == 2);
+    CHECK(counter == 2);
+    CHECK(!called);
   }
 
   TEST_CASE("split forwards external stop signal (2)", "[adaptors][split]") {
@@ -176,7 +176,7 @@ namespace {
         }));
     auto sndr = exec::write(
       ex::upon_stopped(
-        split,
+        std::move(split),
         [&] {
           ++counter;
           return 42;
@@ -207,22 +207,23 @@ namespace {
           })));
     auto sndr = exec::write(
       ex::upon_stopped(
-        split,
+        std::move(split),
         [&] {
           ++counter;
           return 42;
         }),
       exec::with(ex::get_stop_token, ssource.get_token()));
     auto op1 = ex::connect(sndr, expect_value_receiver{42});
-    auto op2 = ex::connect(sndr, expect_value_receiver{42});
+    auto op2 = ex::connect(std::move(sndr), expect_value_receiver{42});
     REQUIRE(counter == 0);
     ex::start(op1); // puts a unit of work on the impulse_scheduler and
                     // op1 into the list of waiting operations.
     REQUIRE(counter == 0);
     REQUIRE(!called);
     ssource.request_stop();
-    ex::start(op2); // puts op2 in the list of waiting operations.
-    REQUIRE(counter == 0);
+    ex::start(op2); // Should immediately call set_stopped without
+                    // getting added to the list of waiting operations.
+    REQUIRE(counter == 1);
     REQUIRE(!called);
     sched.start_next(); // Impulse scheduler notices stop has been requested
                         // and completes op1 with "stopped", which notifies
@@ -253,14 +254,14 @@ namespace {
       ex::on(
         sched,
         ex::upon_stopped(
-          split,
+          std::move(split),
           [&] {
             ++counter;
             return 42;
           })),
       exec::with(ex::get_stop_token, ssource.get_token()));
-    auto op1 = ex::connect(sndr1, expect_value_receiver{7});
-    auto op2 = ex::connect(sndr2, expect_stopped_receiver{});
+    auto op1 = ex::connect(std::move(sndr1), expect_value_receiver{7});
+    auto op2 = ex::connect(std::move(sndr2), expect_stopped_receiver{});
     REQUIRE(counter == 0);
     ex::start(op1); // puts a unit of work on the impulse_scheduler.
     REQUIRE(counter == 0);
@@ -289,9 +290,6 @@ namespace {
     auto [val] = stdexec::sync_wait(split).value();
     REQUIRE(val == 42);
   }
-
-  template <class>
-  struct undef;
 
   TEST_CASE("split is thread-safe", "[adaptors][split]") {
     exec::static_thread_pool pool{1};
