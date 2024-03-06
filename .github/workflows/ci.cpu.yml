@@ -42,7 +42,7 @@ jobs:
         working-directory: /home/coder
     steps:
       - name: Checkout stdexec
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: stdexec
           persist-credentials: false
