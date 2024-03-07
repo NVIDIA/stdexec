@@ -55,6 +55,7 @@ int main()
 
 ## Resources
 - [Working with Asynchrony Generically: A Tour of Executors: Part 1](https://www.youtube.com/watch?v=xLboNIf7BTg) ([Part 2](https://www.youtube.com/watch?v=6a0zzUBUNW4)) (Video): A comprehensive introduction to Senders and structured concurrency
+- [What are Senders Good For, Anyway?](https://ericniebler.com/2024/02/04/what-are-senders-good-for-anyway/) (Blog): Demonstrates the value of a standard async programming model by wrapping a C-style async API in a sender
 - [From Zero to Sender/Receiver in ~60 Minutes](https://www.youtube.com/watch?v=xiaqNvqRB2E) (Video): Live-coding a toy sender/receiver implementation from scratch
 - [A Unifying Abstraction for Async in C++](https://www.youtube.com/watch?v=h-ExnuD6jms) (Video): A simple introduction to the concepts behind P2300
 - [A Universal Async Abstraction for C++](https://cor3ntin.github.io/posts/executors/) (Blog): An introduction to Senders
