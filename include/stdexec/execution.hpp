@@ -575,15 +575,14 @@ namespace stdexec {
     struct __transform_sender_1 {
       template <class _Domain, class _Sender, class... _Env>
       STDEXEC_ATTRIBUTE((always_inline))
-      /*constexpr*/
       static constexpr bool
         __is_nothrow() noexcept {
         if constexpr (__domain::__has_transform_sender<_Domain, _Sender, _Env...>) {
           return noexcept(__declval<_Domain&>().transform_sender(
-            __declval<_Sender&&>(), __declval<const _Env&>()...));
+            __declval<_Sender>(), __declval<const _Env&>()...));
         } else {
           return noexcept(
-            default_domain().transform_sender(__declval<_Sender&&>(), __declval<const _Env&>()...));
+            default_domain().transform_sender(__declval<_Sender>(), __declval<const _Env&>()...));
         }
       }
 
@@ -592,7 +591,7 @@ namespace stdexec {
       /*constexpr*/
       decltype(auto)
         operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const
-        noexcept(__is_nothrow<_Domain, _Sender&&, const _Env&...>()) {
+        noexcept(__is_nothrow<_Domain, _Sender, const _Env&...>()) {
         if constexpr (__domain::__has_transform_sender<_Domain, _Sender, _Env...>) {
           return __dom.transform_sender(static_cast<_Sender&&>(__sndr), __env...);
         } else {
@@ -610,7 +609,7 @@ namespace stdexec {
       /*constexpr*/
       decltype(auto)
         operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const noexcept(
-          noexcept(__transform_sender_1()(__dom, static_cast<_Sender&&>(__sndr), __env...))) {
+          __nothrow_callable<__transform_sender_1, _Domain, _Sender, const _Env&...>) {
         using _Sender2 = __call_result_t<__transform_sender_1, _Domain, _Sender, const _Env&...>;
         // If the transformation doesn't change the sender's type, then do not
         // apply the transform recursively.
@@ -665,20 +664,20 @@ namespace stdexec {
     using _Env2 = decltype(transform_env(
       __declval<dependent_domain&>(), __declval<_Sender&&>(), __declval<_Env>()));
     return decltype(__sexpr_apply(
-      __declval<_Sender&&>(),
+      __declval<_Sender>(),
       []<class _Tag, class _Data, class... _Childs>(_Tag, _Data&&, _Childs&&...) {
         constexpr bool __first_transform_is_nothrow = noexcept(__make_sexpr<_Tag>(
           __declval<_Data>(),
           __domain::__transform_sender()(
-            __declval<dependent_domain&>(), __declval<_Childs&&>(), __declval<const _Env2&>())...));
+            __declval<dependent_domain&>(), __declval<_Childs>(), __declval<const _Env2&>())...));
         using _Sender2 = decltype(__make_sexpr<_Tag>(
           __declval<_Data>(),
           __domain::__transform_sender()(
-            __declval<dependent_domain&>(), __declval<_Childs&&>(), __declval<const _Env2&>())...));
+            __declval<dependent_domain&>(), __declval<_Childs>(), __declval<const _Env2&>())...));
         using _Domain2 =
           decltype(__sexpr_apply(__declval<_Sender2&>(), __domain::__common_domain_fn()));
         constexpr bool __second_transform_is_nothrow = noexcept(__domain::__transform_sender()(
-          __declval<_Domain2&>(), __declval<_Sender2&&>(), __declval<const _Env&>()));
+          __declval<_Domain2&>(), __declval<_Sender2>(), __declval<const _Env&>()));
         return __mbool < __first_transform_is_nothrow && __second_transform_is_nothrow > ();
       }))::value;
   }

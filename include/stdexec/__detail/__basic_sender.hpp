@@ -191,7 +191,7 @@ namespace stdexec {
 
     inline constexpr auto __connect = //
       []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-        std::is_nothrow_constructible_v<__op_state<_Sender, _Receiver>, _Sender&&, _Receiver&&>)
+        __nothrow_constructible_from<__op_state<_Sender, _Receiver>, _Sender&&, _Receiver&&>)
       -> __op_state<_Sender, _Receiver>
       requires __connectable<_Sender, _Receiver>
     {
@@ -393,7 +393,7 @@ namespace stdexec {
       // }
 
       __op_state(_Sexpr&& __sexpr, _Receiver __rcvr) noexcept(
-        std::is_nothrow_constructible_v<__op_base<_Sexpr, _Receiver>, _Sexpr&&, _Receiver&&>
+        __nothrow_constructible_from<__op_base<_Sexpr, _Receiver>, _Sexpr&&, _Receiver&&>
         && __nothrow_callable<__sexpr_apply_t, _Sexpr&&, __connect_fn<_Sexpr, _Receiver>>)
         : __op_state::__op_base{static_cast<_Sexpr&&>(__sexpr), static_cast<_Receiver&&>(__rcvr)}
         , __inner_ops_(

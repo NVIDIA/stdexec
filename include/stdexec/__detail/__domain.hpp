@@ -80,22 +80,21 @@ namespace stdexec {
     template <class _Sender>
     constexpr bool __is_nothrow_transform_sender() {
       if constexpr (__callable<__sexpr_apply_t, _Sender, __domain::__legacy_customization>) {
-        return noexcept(
-          stdexec::__sexpr_apply(__declval<_Sender&&>(), __domain::__legacy_customization()));
+        return __nothrow_callable<__sexpr_apply_t, _Sender, __domain::__legacy_customization>;
       } else if constexpr (__domain::__has_default_transform_sender<_Sender>) {
-        return noexcept(tag_of_t<_Sender>().transform_sender(__declval<_Sender&&>()));
+        return noexcept(tag_of_t<_Sender>().transform_sender(__declval<_Sender>()));
       } else {
-        return noexcept(static_cast<_Sender>(__declval<_Sender&&>()));
+        return __nothrow_constructible_from<_Sender, _Sender>;
       }
     }
 
     template <class _Sender, class _Env>
-    constexpr bool __is_nothrow_transform_sender() {
+    constexpr bool __is_nothrow_transform_sender() noexcept {
       if constexpr (__domain::__has_default_transform_sender<_Sender, _Env>) {
         return noexcept(
-          tag_of_t<_Sender>().transform_sender(__declval<_Sender&&>(), __declval<const _Env&>()));
+          tag_of_t<_Sender>().transform_sender(__declval<_Sender>(), __declval<const _Env&>()));
       } else {
-        return noexcept(static_cast<_Sender>(__declval<_Sender&&>()));
+        return __nothrow_constructible_from<_Sender, _Sender>;
       }
     }
   } // namespace __domain
