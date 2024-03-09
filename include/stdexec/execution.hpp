@@ -4266,16 +4266,18 @@ namespace stdexec {
     };
 
     template <class _Scheduler, class _Sexpr, class _Receiver>
-    struct __state : __enable_receiver_from_this<_Sexpr, _Receiver> {
+    struct __state : __enable_receiver_from_this<_Sexpr, _Receiver>, __immovable {
       using __variant_t = __variant_for_t<__child_of<_Sexpr>, env_of_t<_Receiver>>;
       using __receiver2_t = __receiver2<_Scheduler, _Sexpr, _Receiver>;
 
       __variant_t __data_;
       connect_result_t<schedule_result_t<_Scheduler>, __receiver2_t> __state2_;
+      STDEXEC_APPLE_CLANG(__state* __self_;)
 
       explicit __state(_Scheduler __sched)
         : __data_()
-        , __state2_(connect(schedule(__sched), __receiver2_t{this})) {
+        , __state2_(connect(schedule(__sched), __receiver2_t{this}))
+        STDEXEC_APPLE_CLANG(, __self_(this)) {
       }
     };
 
@@ -4328,6 +4330,7 @@ namespace stdexec {
           auto& __rcvr,
           _Tag,
           _Args&&... __args) noexcept -> void {
+        STDEXEC_APPLE_CLANG(__state.__self_ == &__state ? void() : std::terminate());
         // Write the tag and the args into the operation state so that
         // we can forward the completion from within the scheduler's
         // execution context.
