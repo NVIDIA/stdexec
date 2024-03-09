@@ -19,6 +19,8 @@
 
 #include "catch2/catch.hpp"
 
+#include <exec/when_any.hpp>
+
 namespace {
   TEST_CASE(
     "timed_thread_scheduler - unused context",
@@ -53,5 +55,42 @@ namespace {
     exec::timed_thread_scheduler scheduler = context.get_scheduler();
     auto duration = std::chrono::milliseconds(10);
     CHECK(stdexec::sync_wait(exec::schedule_after(scheduler, duration)));
+  }
+
+  TEST_CASE("timed_thread_scheduler - when_any", "[timed_thread_scheduler][when_any]") {
+    exec::timed_thread_context context;
+    exec::timed_thread_scheduler scheduler = context.get_scheduler();
+    auto duration1 = std::chrono::milliseconds(10);
+    auto duration2 = std::chrono::milliseconds(20);
+    auto shorter = exec::when_any(
+      exec::schedule_after(scheduler, duration1),
+      exec::schedule_after(scheduler, duration2));
+    auto t0 = std::chrono::steady_clock::now();
+    CHECK(stdexec::sync_wait(std::move(shorter)).has_value());
+    auto t1 = std::chrono::steady_clock::now();
+    auto duration = t1 - t0;
+    CHECK(duration1 <= duration);
+    CHECK(duration < duration2);
+  }
+
+  TEST_CASE("timed_thread_scheduler - more when_any", "[timed_thread_scheduler][when_any]") {
+    exec::timed_thread_context context;
+    exec::timed_thread_scheduler scheduler = context.get_scheduler();
+    auto duration1 = std::chrono::milliseconds(10);
+    auto duration2 = std::chrono::milliseconds(20);
+    auto shorter = exec::when_any(
+      exec::schedule_after(scheduler, duration1),
+      exec::schedule_after(scheduler, duration2),
+      exec::schedule_after(scheduler, duration2),
+      exec::schedule_after(scheduler, duration2),
+      exec::schedule_after(scheduler, duration2),
+      exec::schedule_after(scheduler, duration2),
+      exec::schedule_after(scheduler, duration2));
+    auto t0 = std::chrono::steady_clock::now();
+    CHECK(stdexec::sync_wait(std::move(shorter)).has_value());
+    auto t1 = std::chrono::steady_clock::now();
+    auto duration = t1 - t0;
+    CHECK(duration1 <= duration);
+    CHECK(duration < duration2);
   }
 } // namespace

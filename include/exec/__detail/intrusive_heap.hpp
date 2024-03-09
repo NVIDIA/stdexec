@@ -109,6 +109,12 @@ namespace exec {
       leaf->*Prev = nullptr;
       leaf->*Left = std::exchange(root_->*Left, nullptr);
       leaf->*Right = std::exchange(root_->*Right, nullptr);
+      if (leaf->*Left) {
+        leaf->*Left->*Prev = leaf;
+      }
+      if (leaf->*Right) {
+        leaf->*Right->*Prev = leaf;
+      }
       STDEXEC_ASSERT(root_->*Prev == nullptr);
       root_ = leaf;
       top_down_heapify(root_);
@@ -160,10 +166,10 @@ namespace exec {
         parent->*Right->*Prev = parent;
       }
       if (child->*Left) {
-        child->*Left->*Prev = parent;
+        child->*Left->*Prev = child;
       }
       if (child->*Right) {
-        child->*Right->*Prev = parent;
+        child->*Right->*Prev = child;
       }
     }
 
@@ -191,7 +197,11 @@ namespace exec {
 
     Node* iterate_to_parent_of(std::size_t pos) noexcept {
       std::size_t index = detail::bit_ceil(pos);
-      STDEXEC_ASSERT(index > 0);
+      if (index > pos) {
+        index /= 4;
+      } else {
+        index /= 2;
+      }
       Node* node = root_;
       while (index > 1) {
         if (pos & index) {
@@ -205,11 +215,11 @@ namespace exec {
     }
 
     Node* iterate_to_parent_of_end() noexcept {
-      return iterate_to_parent_of(size_);
+      return iterate_to_parent_of(size_ + 1);
     }
 
     Node* iterate_to_back() noexcept {
-      Node* parent = iterate_to_parent_of(size_ - 1);
+      Node* parent = iterate_to_parent_of(size_);
       STDEXEC_ASSERT(parent->*Left != nullptr);
       if (parent->*Right) {
         return parent->*Right;
