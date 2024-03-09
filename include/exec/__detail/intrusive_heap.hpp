@@ -190,9 +190,8 @@ namespace exec {
     }
 
     Node* iterate_to_parent_of(std::size_t pos) noexcept {
-      std::size_t index = detail::bit_ceil(pos) / 2;
+      std::size_t index = detail::bit_ceil(pos);
       STDEXEC_ASSERT(index > 0);
-      STDEXEC_ASSERT(index & size_);
       Node* node = root_;
       while (index > 1) {
         if (pos & index) {
