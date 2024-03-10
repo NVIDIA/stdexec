@@ -159,8 +159,7 @@ namespace stdexec {
 
   template <class _Ty>
   concept swappable = //
-    // swappable_with<_Ty, _Ty>;
-    swappable_with<__decay_t<_Ty>&, __decay_t<_Ty>&>;
+    swappable_with<_Ty, _Ty>;
 
   template <class _Ty>
   concept movable =               //
