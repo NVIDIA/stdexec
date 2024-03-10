@@ -31,7 +31,8 @@ namespace exec {
   namespace detail {
     inline std::size_t bit_ceil(std::size_t n) noexcept {
       const int leading_zeros = __builtin_clzll(n);
-      return std::size_t{1} << (sizeof(std::size_t) * 8 - leading_zeros + 1);
+      const std::size_t p = std::size_t{1} << (sizeof(std::size_t) * 8 - leading_zeros);
+      return p < n ? p << 1 : p;
     }
   } // namespace detail
 #  else
