@@ -118,6 +118,16 @@ namespace {
   }
 
   TEST_CASE(
+    "io_uring_context Call now(io_uring) is running clock",
+    "[types][io_uring][schedulers]") {
+    io_uring_context context;
+    io_uring_scheduler scheduler = context.get_scheduler();
+    auto start = now(scheduler);
+    std::this_thread::sleep_for(10ms);
+    CHECK(start + 10ms <= now(scheduler));
+  }
+
+  TEST_CASE(
     "io_uring_context Call io_uring::run_until_empty with sync_wait",
     "[types][io_uring][schedulers]") {
     io_uring_context context;
