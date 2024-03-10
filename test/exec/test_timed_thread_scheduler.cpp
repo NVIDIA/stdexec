@@ -64,8 +64,7 @@ namespace {
     auto duration1 = std::chrono::milliseconds(10);
     auto duration2 = std::chrono::milliseconds(20);
     auto shorter = exec::when_any(
-      exec::schedule_after(scheduler, duration1),
-      exec::schedule_after(scheduler, duration2));
+      exec::schedule_after(scheduler, duration1), exec::schedule_after(scheduler, duration2));
     auto t0 = std::chrono::steady_clock::now();
     CHECK(stdexec::sync_wait(std::move(shorter)).has_value());
     auto t1 = std::chrono::steady_clock::now();
@@ -95,7 +94,9 @@ namespace {
     CHECK(duration < duration2);
   }
 
-  TEST_CASE("timed_thread_scheduler - many timers with async scope", "[timed_thread_scheduler][async_scope]") {
+  TEST_CASE(
+    "timed_thread_scheduler - many timers with async scope",
+    "[timed_thread_scheduler][async_scope]") {
     exec::timed_thread_context context;
     exec::timed_thread_scheduler scheduler = context.get_scheduler();
     exec::async_scope scope;
@@ -105,7 +106,7 @@ namespace {
     auto deadline = now + std::chrono::milliseconds(100);
     auto t0 = std::chrono::steady_clock::now();
     for (int i = 0; i < ntimers; ++i) {
-      scope.spawn(//
+      scope.spawn(                             //
         exec::schedule_at(scheduler, deadline) //
         | stdexec::then([&counter] { ++counter; }));
     }
