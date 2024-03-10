@@ -34,7 +34,8 @@ namespace {
   // This is a work-around for clang-12 bugs in Release mode
   thread_local int __thread_id = 0;
 
-  int get_id() {
+  // This is a work-around for apple clang bugs in Release mode
+  STDEXEC_APPLE_CLANG([[clang::optnone]]) int get_id() {
     return __thread_id;
   }
 
