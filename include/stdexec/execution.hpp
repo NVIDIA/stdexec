@@ -2976,17 +2976,54 @@ namespace stdexec {
   // operation is started and release itself when its completion
   // is notified.
   namespace __shared {
+    template <class _CvrefSender, class _Env>
+    struct __shared_state;
+
+    struct __shared_state_base : __immovable {
+      in_place_stop_source __stop_source_{};
+      // This is the count of outstanding senders that have not been cancelled yet.
+      std::atomic<std::size_t> __waiter_count_{1};
+
+      auto __inc_waiter() noexcept -> void {
+        [[maybe_unused]] std::size_t __old = __waiter_count_.fetch_add(
+          1, std::memory_order_relaxed);
+      }
+
+      auto __dec_waiter() noexcept -> void {
+        std::size_t __old = __waiter_count_.load(std::memory_order_acquire);
+        do {
+          // If the waiter count drops to zero, it means that the shared operation
+          // has completed and __notify has been called. Nothing is left to do.
+          if (__old == 0u) {
+            return;
+          }
+        } while (!__waiter_count_.compare_exchange_weak(
+          __old, __old - 1u, std::memory_order_release, std::memory_order_acquire));
+
+        if (__old == 1u) {
+          // We are the last waiter. We can stop the operation now.
+          __stop_source_.request_stop();
+        }
+      }
+    };
+
     template <class _BaseEnv>
     using __env_t = //
       __env::__join_t<
         __env::__with<in_place_stop_token, get_stop_token_t>,
         _BaseEnv>; // BUGBUG NOT TO SPEC
 
+    // Every operation state has one of these stop callbacks in its local state.
     struct __on_stop_request {
-      in_place_stop_source& __stop_source_;
+      __shared_state_base* __shared_state;
+      std::atomic_flag* __called_ptr;
 
       void operator()() noexcept {
-        __stop_source_.request_stop();
+        // Record the fact that the callback has been called in the local state.
+        [[maybe_unused]] bool __old = __called_ptr->test_and_set(std::memory_order_relaxed);
+        // Decrement the waiter count, since we are no longer waiting for the
+        // result of the operation.
+        __shared_state->__dec_waiter();
       }
     };
 
@@ -3001,20 +3038,12 @@ namespace stdexec {
       };
     }
 
-    enum class __action_kind : bool {
-      __notify,
-      __detach
-    };
-
     struct __local_state_base : __immovable {
-      using __action_fn = void(__local_state_base*, __action_kind) noexcept;
+      using __notify_fn = void(__local_state_base*) noexcept;
 
-      __action_fn* __action_{};
+      __notify_fn* __notify_{};
       __local_state_base* __next_{};
     };
-
-    template <class _CvrefSender, class _Env>
-    struct __shared_state;
 
     // Each operation state of a split sender has one of these,
     // created when a split sender is connected. There are 0 or
@@ -3025,50 +3054,56 @@ namespace stdexec {
     struct __local_state
       : __local_state_base
       , __enable_receiver_from_this<_CvrefSender, _Receiver> {
+      using __tag_t = tag_of_t<_CvrefSender>;
       using __data_t = __decay_t<__data_of<_CvrefSender>>;
       using __shared_state_t = __mapply<__q<__mfront>, __data_t>;
-      using __on_stop_cb_t = //
-        typename stop_token_of_t<env_of_t<_Receiver>&>::template callback_type<__on_stop_request>;
-      using __tag_t = tag_of_t<_CvrefSender>;
+      using __stop_token_t = stop_token_of_t<env_of_t<_Receiver>&>;
+      using __on_stop_cb_t = typename __stop_token_t::template callback_type<__on_stop_request>;
       static_assert(__one_of<__tag_t, __split::__split_t, __ensure_started::__ensure_started_t>);
 
       explicit __local_state(_CvrefSender&& __sndr) noexcept
-        : __local_state::__local_state_base{{}, &__action<tag_of_t<_CvrefSender>>}
+        : __local_state::__local_state_base{{}, &__notify<tag_of_t<_CvrefSender>>}
         , __shared_state_(__sndr.apply(static_cast<_CvrefSender&&>(__sndr), __detail::__get_data())
                             .__shared_state) {
+        // If __sndr is an lvalue, it will be keeping it's reference to the
+        // shared state alive. It is also still a watcher (could be connected again),
+        // so we need to increment the waiter count here.
+        if constexpr (same_as<_CvrefSender, _CvrefSender&>) {
+          __shared_state_->__inc_waiter();
+        }
       }
 
       ~__local_state() {
-        __action_(this, __action_kind::__detach);
+        // if __called_ is set, then the callback has been called and there
+        // is no further action needed. Otherwise, we need to decrement the
+        // count of waiters.
+        if (!__called_.test_and_set(std::memory_order_relaxed)) {
+          __shared_state_->__dec_waiter();
+        }
       }
 
       // This is called when the input async operation completes; or,
       // if it has already completed when start is called, it is called
       // from start:
       template <class _Tag>
-      static void __action(__local_state_base* __self, __action_kind __kind) noexcept {
+      static void __notify(__local_state_base* __self) noexcept {
         auto* const __op = static_cast<__local_state*>(__self);
-        if (__kind == __action_kind::__notify) {
-          __op->__on_stop_.reset();
+        __op->__on_stop_.reset();
 
-          // The split algorithm sends by T const&. ensure_started sends by T&&.
-          if constexpr (same_as<__split::__split_t, _Tag>) {
-            std::visit(
-              __notify_visitor(__op->__receiver()), std::as_const(__op->__shared_state_->__data_));
-          } else {
-            std::visit(
-              __notify_visitor(__op->__receiver()), std::move(__op->__shared_state_->__data_));
-          }
+        // If we reach this point, then the operation has completed, and
+        // __notify on the shared state has set the __waiter_count_ to zero.
+        // There is no need to decrement it.
+
+        // The split algorithm sends by T const&. ensure_started sends by T&&.
+        auto __visitor = __notify_visitor(__op->__receiver());
+        if constexpr (same_as<__split::__split_t, _Tag>) {
+          std::visit(__visitor, std::as_const(__op->__shared_state_->__data_));
         } else {
-          // This is a detach operation
-          if constexpr (same_as<__split::__split_t, _Tag>) {
-            // no-op
-          } else {
-            __op->__shared_state_->__detach();
-          }
+          std::visit(__visitor, std::move(__op->__shared_state_->__data_));
         }
       }
 
+      std::atomic_flag __called_ = ATOMIC_FLAG_INIT;
       std::optional<__on_stop_cb_t> __on_stop_{};
       __intrusive_ptr<__shared_state_t> __shared_state_;
     };
@@ -3088,7 +3123,10 @@ namespace stdexec {
 
         template <__completion_tag _Tag, class... _As>
         friend void tag_invoke(_Tag __tag, __t&& __self, _As&&... __as) noexcept {
+          // We can set the count of waiters to zero. Nobody is waiting for the
+          // operation to complete anymore because it has completed.
           __shared_state<_CvrefSender, _Env>& __state = *__self.__shared_state_;
+          __state.__waiter_count_.store(0, std::memory_order_release);
 
           try {
             using __tuple_t = __decayed_tuple<_Tag, _As...>;
@@ -3110,7 +3148,9 @@ namespace stdexec {
     };
 
     template <class _CvrefSender, class _Env>
-    struct __shared_state : __enable_intrusive_from_this<__shared_state<_CvrefSender, _Env>> {
+    struct __shared_state
+      : __shared_state_base
+      , __enable_intrusive_from_this<__shared_state<_CvrefSender, _Env>> {
       using __variant_t = __compl_sigs::__for_all_sigs<
         __completion_signatures_of_t<_CvrefSender, _Env>,
         __q<__decayed_tuple>,
@@ -3121,7 +3161,6 @@ namespace stdexec {
 
       using __receiver_t = __t<__receiver<__cvref_id<_CvrefSender>, __id<_Env>>>;
 
-      in_place_stop_source __stop_source_{};
       __variant_t __data_;
       std::atomic<void*> __head_{nullptr};
       __env_t<_Env> __env_;
@@ -3132,6 +3171,10 @@ namespace stdexec {
           __env::__with(__stop_source_.get_token(), get_stop_token),
           static_cast<_Env&&>(__env)))
         , __op_state2_(connect(static_cast<_CvrefSender&&>(__sndr), __receiver_t{this})) {
+      }
+
+      ~__shared_state() {
+        STDEXEC_ASSERT(__waiter_count_.load(std::memory_order_relaxed) == 0u);
       }
 
       void __start_op() noexcept {
@@ -3159,7 +3202,7 @@ namespace stdexec {
 
         while (__state != nullptr) {
           __local_state_base* __next = __state->__next_;
-          __state->__action_(__state, __action_kind::__notify);
+          __state->__notify_(__state);
           __state = __next;
         }
 
@@ -3167,14 +3210,29 @@ namespace stdexec {
         // ref-count on it:
         this->__dec_ref();
       }
+    };
 
-      void __detach() noexcept {
-        // Check to see if this operation was ever started. If not,
-        // detach the (potentially still running) operation:
-        if (nullptr == __head_.load(std::memory_order_acquire)) {
-          __stop_source_.request_stop();
+    // Each split and ensure_started sender has one of these, created
+    // when split() or ensure_started() is called.
+    template <class _ShState>
+    struct __data {
+      explicit __data(__intrusive_ptr<_ShState>&& __ptr) noexcept
+        : __shared_state(std::move(__ptr)) {
+      }
+
+      __data(__data&&) noexcept = default;
+      auto operator=(__data&&) noexcept -> __data& = default;
+
+      ~__data() {
+        if (__shared_state != nullptr) {
+          // detach from the (possibly still-running) operation,
+          // or in the case of ensure_started, the possibly
+          // unstarted operation.
+          __shared_state->__dec_waiter();
         }
       }
+
+      __intrusive_ptr<_ShState> __shared_state;
     };
 
     template <class _Cvref, class _CvrefSenderId, class _EnvId>
@@ -3235,20 +3293,18 @@ namespace stdexec {
         std::atomic<void*>& __head = __shared_state->__head_;
         void* const __completion_state = static_cast<void*>(__shared_state);
         void* __old = __head.load(std::memory_order_acquire);
+        auto __stop_token = get_stop_token(stdexec::get_env(__rcvr));
+        auto __on_stop = __on_stop_request{__shared_state, &__state.__called_};
 
         if (__old != __completion_state) {
-          __state.__on_stop_.emplace(
-            get_stop_token(stdexec::get_env(__rcvr)),
-            __on_stop_request{__shared_state->__stop_source_});
+          __state.__on_stop_.emplace(std::move(__stop_token), std::move(__on_stop));
 
-          if constexpr (same_as<_Tag, __ensure_started::__ensure_started_t>) {
-            // Check if the stop_source has requested cancellation
-            if (__shared_state->__stop_source_.stop_requested()) {
-              // Stop has already been requested. Don't bother starting
-              // the child operations.
-              stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr));
-              return;
-            }
+          // Check if the stop_source has requested cancellation
+          if (__state.__called_.test(std::memory_order_acquire)) {
+            // Stop has already been requested. Don't bother starting
+            // the child operations.
+            stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr));
+            return;
           }
         }
 
@@ -3259,7 +3315,7 @@ namespace stdexec {
         // sender has won the race and has the honor of starting the async operation.
         do {
           if (__old == __completion_state) {
-            __state.template __action<_Tag>(&__state, __action_kind::__notify);
+            __state.template __notify<_Tag>(&__state);
             return;
           }
           __state.__next_ = static_cast<__local_state_base*>(__old);
@@ -3270,6 +3326,10 @@ namespace stdexec {
           std::memory_order_acquire));
 
         if constexpr (same_as<_Tag, __split::__split_t>) {
+          // If we are starting a split sender, then we are racing with other
+          // split senders to start the async operation. If __old is nullptr,
+          // we won the race and have the honor and responsibility of starting
+          // the operation.
           if (__old == nullptr) {
             __shared_state->__start_op();
           }
@@ -3283,13 +3343,23 @@ namespace stdexec {
   namespace __split {
     using namespace __shared;
 
+    // Every split sender has one of these:
     template <class _ShState>
-    struct __data {
-      explicit __data(__intrusive_ptr<_ShState> __shared_state) noexcept
-        : __shared_state(std::move(__shared_state)) {
+    struct __data : __shared::__data<_ShState> {
+      using __shared::__data<_ShState>::__data;
+      __data(__data&&) noexcept = default;
+      auto operator=(__data&&) noexcept -> __data& = default;
+
+      __data(const __data& __other) noexcept
+        : __shared::__data<_ShState>(__intrusive_ptr<_ShState>(__other.__shared_state)) {
+        if (this->__shared_state != nullptr) {
+          this->__shared_state->__inc_waiter();
+        }
       }
 
-      __intrusive_ptr<_ShState> __shared_state;
+      auto operator=(const __data& __other) noexcept -> __data& {
+        return *this = __data(__other);
+      }
     };
 
     struct __split_t { };
@@ -3305,9 +3375,8 @@ namespace stdexec {
       }
 
       STDEXEC_ATTRIBUTE((always_inline))
-
-      __binder_back<split_t>
-        operator()() const {
+      auto
+        operator()() const noexcept -> __binder_back<split_t> {
         return {{}, {}, {}};
       }
 
@@ -3330,9 +3399,10 @@ namespace stdexec {
         return __sexpr_apply(
           static_cast<_Sender&&>(__sndr),
           [&]<class _Env, class _Child>(__ignore, _Env&& __env, _Child&& __child) {
-            auto __state = __make_intrusive<__shared_state<_Child, __decay_t<_Env>>>(
+            using __shared_state_t = __shared_state<_Child, __decay_t<_Env>>;
+            auto __state = __make_intrusive<__shared_state_t>(
               static_cast<_Child&&>(__child), static_cast<_Env&&>(__env));
-            return __make_sexpr<__split_t>(__data{std::move(__state)});
+            return __make_sexpr<__split_t>(__data<__shared_state_t>{std::move(__state)});
           });
       }
     };
@@ -3348,30 +3418,6 @@ namespace stdexec {
   // [execution.senders.adaptors.ensure_started]
   namespace __ensure_started {
     using namespace __shared;
-
-    // Each ensure_started sender has one of these, created when
-    // ensure_started() is called.
-    template <class _ShState>
-    struct __data {
-      explicit __data(__intrusive_ptr<_ShState> __ptr) noexcept
-        : __shared_state(std::move(__ptr)) {
-        // Eagerly launch the async operation.
-        __shared_state->__start_op();
-      }
-
-      __data(__data&&) noexcept = default;
-      auto operator=(__data&&) noexcept -> __data& = default;
-
-      ~__data() {
-        if (__shared_state != nullptr) {
-          // detach from the still-running operation.
-          // NOT TO SPEC: This also requests cancellation.
-          __shared_state->__detach();
-        }
-      }
-
-      __intrusive_ptr<_ShState> __shared_state;
-    };
 
     struct __ensure_started_t { };
 
@@ -3393,9 +3439,8 @@ namespace stdexec {
       }
 
       STDEXEC_ATTRIBUTE((always_inline))
-
-      __binder_back<ensure_started_t>
-        operator()() const {
+      auto
+        operator()() const noexcept -> __binder_back<ensure_started_t> {
         return {{}, {}, {}};
       }
 
@@ -3420,6 +3465,8 @@ namespace stdexec {
           [&]<class _Env, class _Child>(__ignore, _Env&& __env, _Child&& __child) {
             auto __state = __make_intrusive<__shared_state<_Child, __decay_t<_Env>>>(
               static_cast<_Child&&>(__child), static_cast<_Env&&>(__env));
+            // Eagerly launch the async operation.
+            __state->__start_op();
             return __make_sexpr<__ensure_started_t>(__data{std::move(__state)});
           });
       }
