@@ -19,6 +19,7 @@
 
 #include "catch2/catch.hpp"
 
+#include <exec/async_scope.hpp>
 #include <exec/when_any.hpp>
 
 namespace {
@@ -92,5 +93,26 @@ namespace {
     auto duration = t1 - t0;
     CHECK(duration1 <= duration);
     CHECK(duration < duration2);
+  }
+
+  TEST_CASE("timed_thread_scheduler - many timers with async scope", "[timed_thread_scheduler][async_scope]") {
+    exec::timed_thread_context context;
+    exec::timed_thread_scheduler scheduler = context.get_scheduler();
+    exec::async_scope scope;
+    int counter = 0;
+    int ntimers = 1'000'000;
+    auto now = exec::now(scheduler);
+    auto deadline = now + std::chrono::milliseconds(100);
+    auto t0 = std::chrono::steady_clock::now();
+    for (int i = 0; i < ntimers; ++i) {
+      scope.spawn(//
+        exec::schedule_at(scheduler, deadline) //
+        | stdexec::then([&counter] { ++counter; }));
+    }
+    CHECK(stdexec::sync_wait(scope.on_empty()));
+    auto t1 = std::chrono::steady_clock::now();
+    CHECK(counter == ntimers);
+    auto duration = t1 - t0;
+    CHECK(duration > std::chrono::milliseconds(100));
   }
 } // namespace

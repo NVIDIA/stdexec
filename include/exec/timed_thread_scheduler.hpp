@@ -76,6 +76,11 @@ namespace exec {
 
   class timed_thread_scheduler;
 
+  template <class Rcvr>
+  struct timed_thread_schedule_at_op {
+    class __t;
+  };
+
   class timed_thread_context {
    private:
     static constexpr std::ptrdiff_t context_closed = std::numeric_limits<std::ptrdiff_t>::min() / 2;
@@ -93,10 +98,7 @@ namespace exec {
 
    private:
     template <class Rcvr>
-    friend struct timed_thread_schedule_at_op;
-
-    template <class Rcvr>
-    friend class timed_thread_schedule_after_op;
+    friend class timed_thread_schedule_at_op<Rcvr>::__t;
 
     using command_type = detail::timed_thread_operation_base;
     using task_type = detail::timed_thread_schedule_operation_base;
@@ -187,11 +189,6 @@ namespace exec {
   };
 
   template <class Receiver>
-  struct timed_thread_schedule_at_op {
-    class __t;
-  };
-
-  template <class Receiver>
   class timed_thread_schedule_at_op<Receiver>::__t : detail::timed_thread_schedule_operation_base {
    public:
     __t(
@@ -236,7 +233,7 @@ namespace exec {
         stdexec::get_stop_token(stdexec::get_env(self.receiver_)), on_stopped_t{self});
       int expected = 0;
       if (self.ref_count_.compare_exchange_strong(expected, 1, std::memory_order_relaxed)) {
-        self.context_.schedule(&self);
+        self.schedule_this();
       } else {
         self.stop_callback_.reset();
         stdexec::set_stopped(std::move(self.receiver_));
@@ -244,6 +241,10 @@ namespace exec {
     }
 
    private:
+    void schedule_this() noexcept {
+      context_.schedule(this);
+    }
+
     struct on_stopped_t {
       __t& self_;
 
