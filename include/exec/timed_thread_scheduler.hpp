@@ -47,17 +47,18 @@ namespace exec {
 
     template <class Tp>
     struct when_type {
-        inline static std::atomic<std::size_t> global_counter{1};
-
         when_type() = default;
 
-        explicit when_type(Tp tp) noexcept
-        : time_point{std::move(tp)}, counter{global_counter.fetch_add(1, std::memory_order_relaxed)} {}
+        explicit when_type(Tp tp, std::size_t n = 0) noexcept
+        : time_point{std::move(tp)}, counter{n} {}
 
         Tp time_point{};
         std::size_t counter{};
 
-        friend auto operator<=>(const when_type&, const when_type&) = default;
+        friend bool operator<(const when_type& lhs, const when_type& rhs) noexcept {
+          return lhs.time_point < rhs.time_point ||
+            (!(rhs.time_point < lhs.time_point) && lhs.counter < rhs.counter);
+        }
     };
 
     struct timed_thread_schedule_operation_base : timed_thread_operation_base {
@@ -129,7 +130,9 @@ namespace exec {
       while (true) {
         while (command_type* op = command_queue_.pop_front()) {
           if (op->command_ == command_type::command_type::schedule) {
-            heap_.insert(static_cast<task_type*>(op));
+            task_type* task = static_cast<task_type*>(op);
+            task->when_ = detail::when_type{task->time_point_, submission_counter_++};
+            heap_.insert(task);
           } else {
             STDEXEC_ASSERT(op->command_ == command_type::command_type::stop);
             stop_type* stop_op = static_cast<stop_type*>(op);
@@ -206,6 +209,7 @@ namespace exec {
     bool stop_requested_{false};
     std::condition_variable cv_;
     std::thread run_thread_;
+    std::size_t submission_counter_{1};
   };
 
   template <class Receiver>
@@ -253,7 +257,6 @@ namespace exec {
         stdexec::get_stop_token(stdexec::get_env(self.receiver_)), on_stopped_t{self});
       int expected = 0;
       if (self.ref_count_.compare_exchange_strong(expected, 1, std::memory_order_relaxed)) {
-        self.when_ = detail::when_type{self.time_point_};
         self.schedule_this();
       } else {
         self.stop_callback_.reset();

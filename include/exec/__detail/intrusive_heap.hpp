@@ -175,7 +175,7 @@ namespace exec {
     }
 
     void bottom_up_heapify(Node* node) noexcept {
-      while (node->*Prev && node->*Key <= node->*Prev->*Key) {
+      while (node->*Prev && !(node->*Prev->*Key < node->*Key)) {
         swap_parent_child(node->*Prev, node);
       }
     }

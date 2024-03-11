@@ -62,36 +62,37 @@ namespace {
     exec::timed_thread_context context;
     exec::timed_thread_scheduler scheduler = context.get_scheduler();
     auto duration1 = std::chrono::milliseconds(10);
-    auto duration2 = std::chrono::milliseconds(20);
+    auto duration2 = std::chrono::seconds(5);
     auto shorter = exec::when_any(
-      exec::schedule_after(scheduler, duration1), exec::schedule_after(scheduler, duration2));
+      exec::schedule_after(scheduler, duration1) | stdexec::then([] { return 1; }), 
+      exec::schedule_after(scheduler, duration2) | stdexec::then([] { return 2; }));
     auto t0 = std::chrono::steady_clock::now();
-    CHECK(stdexec::sync_wait(std::move(shorter)).has_value());
+    auto [n] = stdexec::sync_wait(std::move(shorter)).value();
     auto t1 = std::chrono::steady_clock::now();
     auto duration = t1 - t0;
     CHECK(duration1 <= duration);
-    CHECK(duration < duration2);
+    CHECK(n == 1);
   }
 
   TEST_CASE("timed_thread_scheduler - more when_any", "[timed_thread_scheduler][when_any]") {
     exec::timed_thread_context context;
     exec::timed_thread_scheduler scheduler = context.get_scheduler();
     auto duration1 = std::chrono::milliseconds(10);
-    auto duration2 = std::chrono::milliseconds(20);
+    auto duration2 = std::chrono::seconds(5);
     auto shorter = exec::when_any(
-      exec::schedule_after(scheduler, duration1),
-      exec::schedule_after(scheduler, duration2),
-      exec::schedule_after(scheduler, duration2),
-      exec::schedule_after(scheduler, duration2),
-      exec::schedule_after(scheduler, duration2),
-      exec::schedule_after(scheduler, duration2),
-      exec::schedule_after(scheduler, duration2));
+      exec::schedule_after(scheduler, duration1) | stdexec::then([] { return 1; }),
+      exec::schedule_after(scheduler, duration2) | stdexec::then([] { return 2; }),
+      exec::schedule_after(scheduler, duration2) | stdexec::then([] { return 3; }),
+      exec::schedule_after(scheduler, duration2) | stdexec::then([] { return 4; }),
+      exec::schedule_after(scheduler, duration2) | stdexec::then([] { return 5; }),
+      exec::schedule_after(scheduler, duration2) | stdexec::then([] { return 6; }),
+      exec::schedule_after(scheduler, duration2) | stdexec::then([] { return 7; }));
     auto t0 = std::chrono::steady_clock::now();
-    CHECK(stdexec::sync_wait(std::move(shorter)).has_value());
+    auto [n] = stdexec::sync_wait(std::move(shorter)).value();
     auto t1 = std::chrono::steady_clock::now();
     auto duration = t1 - t0;
     CHECK(duration1 <= duration);
-    CHECK(duration < duration2);
+    CHECK(n == 1);
   }
 
   TEST_CASE(
