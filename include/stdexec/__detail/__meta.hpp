@@ -276,8 +276,7 @@ namespace stdexec {
   using __meval = __t<__meval_<_Fn, _Args...>>;
 
   template <class _Fn, class... _Args>
-  using __minvoke__ =
-    typename __i<_Ok<_Args...>, _Ok<_Fn>>::template __h<_Fn, _Args...>;
+  using __minvoke__ = typename __i<_Ok<_Args...>, _Ok<_Fn>>::template __h<_Fn, _Args...>;
 
   template <class _Fn, class... _Args>
   struct __minvoke_ { };
@@ -297,8 +296,7 @@ namespace stdexec {
   using __meval = typename __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
 
   template <class _Fn, class... _Args>
-  using __minvoke =
-    typename __i<_Ok<_Args...>, _Ok<_Fn>>::template __h<_Fn, _Args...>;
+  using __minvoke = typename __i<_Ok<_Args...>, _Ok<_Fn>>::template __h<_Fn, _Args...>;
 
 #endif
 
