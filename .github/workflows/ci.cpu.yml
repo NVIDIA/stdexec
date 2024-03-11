@@ -42,7 +42,7 @@ jobs:
         working-directory: /home/coder
     steps:
       - name: Checkout stdexec
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: stdexec
           persist-credentials: false
@@ -115,3 +115,44 @@ jobs:
       - build-cpu-windows
     steps:
       - run: echo "CI (CPU) (Windows) success"
+
+  build-cpu-macos:
+    runs-on: macos-14-large
+    name: macos-${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { compiler: "clang++",  build: "Debug",   name: "CPU (MacOS) (clang, Debug)" }
+          - { compiler: "clang++",  build: "Release", name: "CPU (MacOS) (clang, Release)" }
+    steps:
+      - name: Checkout stdexec (MacOS)
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+
+      - name: Install dependencies
+        run: |
+          brew update
+          brew install ninja
+        shell: bash
+
+      - name: Build and test CPU schedulers (MacOS)
+        shell: bash
+        run: |
+          mkdir build
+          cmake -S. -Bbuild -GNinja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build }} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} \
+            -DCMAKE_CXX_STANDARD=20
+          cmake --build build/ -v
+          cd build
+          ctest --output-on-failure
+
+  ci-cpu-macos:
+    runs-on: macos-latest-large
+    name: CI (CPU) (MacOS)
+    needs:
+      - build-cpu-macos
+    steps:
+      - run: echo "CI (CPU) (MacOS) success"

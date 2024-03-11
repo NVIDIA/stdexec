@@ -58,7 +58,7 @@ namespace exec {
         friend auto tag_invoke(connect_t, __sender, _Receiver __rcvr)
           -> connect_result_t<__schedule_sender_t<env_of_t<_Receiver>>, _Receiver> {
           auto __sched = get_scheduler(get_env(__rcvr));
-          return connect(schedule(__sched), static_cast<_Receiver&&>(__rcvr));
+          return stdexec::connect(schedule(__sched), static_cast<_Receiver&&>(__rcvr));
         }
 
         friend auto tag_invoke(get_env_t, __sender) noexcept {
