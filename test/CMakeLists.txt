@@ -90,11 +90,8 @@ set(stdexec_test_sources
     exec/sequence/test_iterate.cpp
     exec/sequence/test_transform_each.cpp
     $<$<BOOL:${STDEXEC_ENABLE_TBB}>:tbbexec/test_tbb_thread_pool.cpp>
+    $<$<BOOL:${STDEXEC_ENABLE_LIBDISPATCH}>:exec/test_libdispatch.cpp>
     )
-
-if (LIBDISPATCH)
-  set(stdexec_test_sources ${stdexec_test_sources} exec/test_libdispatch.cpp)
-endif (LIBDISPATCH)
 
 add_executable(test.stdexec ${stdexec_test_sources})
 set_target_properties(test.stdexec PROPERTIES
@@ -106,12 +103,9 @@ target_link_libraries(test.stdexec
     PUBLIC
     STDEXEC::stdexec
     $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
+    $<$<BOOL:${STDEXEC_ENABLE_LIBDISPATCH}>:dispatch>
     stdexec_executable_flags
     Catch2::Catch2)
-
-if (LIBDISPATCH)
-  target_link_libraries(test.stdexec PRIVATE dispatch)
-endif (LIBDISPATCH)
 
 add_executable(test.scratch test_main.cpp test_scratch.cpp)
 set_target_properties(test.scratch PROPERTIES
