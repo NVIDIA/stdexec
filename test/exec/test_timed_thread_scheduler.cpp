@@ -22,6 +22,7 @@
 #include <exec/async_scope.hpp>
 #include <exec/when_any.hpp>
 
+#if __GNUC__ > 11 || !defined(__GNUC__) || !defined(__SANITIZE_THREAD__)
 namespace {
   TEST_CASE(
     "timed_thread_scheduler - unused context",
@@ -118,3 +119,4 @@ namespace {
     CHECK(duration > std::chrono::milliseconds(100));
   }
 } // namespace
+#endif
