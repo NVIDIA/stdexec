@@ -290,8 +290,10 @@ namespace exec {
           __domain, __make_sexpr<ignore_all_values_t>(__(), static_cast<_Sender&&>(__sndr)));
       }
 
-      constexpr auto operator()() const noexcept -> __binder_back<ignore_all_values_t> {
-        return {{}, {}, {}};
+      STDEXEC_ATTRIBUTE((always_inline))
+      constexpr auto
+        operator()() const noexcept -> __binder_back<ignore_all_values_t> {
+        return {};
       }
     };
 

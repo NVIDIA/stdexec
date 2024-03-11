@@ -139,12 +139,9 @@ namespace nvexec {
       }
 
       template <class InitT, class Fun = cub::Sum>
-      __binder_back<reduce_t, InitT, Fun> operator()(InitT init, Fun fun = {}) const {
-        return {
-          {},
-          {},
-          {static_cast<InitT&&>(init), static_cast<Fun&&>(fun)}
-        };
+      STDEXEC_ATTRIBUTE((always_inline))
+      auto operator()(InitT init, Fun fun = {}) const -> __binder_back<reduce_t, InitT, Fun> {
+        return {{static_cast<InitT&&>(init), static_cast<Fun&&>(fun)}};
       }
     };
   } // namespace STDEXEC_STREAM_DETAIL_NS

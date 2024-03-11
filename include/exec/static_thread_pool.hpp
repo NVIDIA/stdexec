@@ -1464,7 +1464,8 @@ namespace exec {
             while (i0 + chunkSize < size) {
               for (std::size_t i = i0; i < i0 + chunkSize; ++i) {
                 op.items_[i].__construct_with([&] {
-                  return stdexec::connect(set_next(op.rcvr_, ItemSender{&op, it + i}), NextReceiver{&op});
+                  return stdexec::connect(
+                    set_next(op.rcvr_, ItemSender{&op, it + i}), NextReceiver{&op});
                 });
                 start(op.items_[i].__get());
               }
@@ -1475,7 +1476,8 @@ namespace exec {
             }
             for (std::size_t i = i0; i < size; ++i) {
               op.items_[i].__construct_with([&] {
-                return stdexec::connect(set_next(op.rcvr_, ItemSender{&op, it + i}), NextReceiver{&op});
+                return stdexec::connect(
+                  set_next(op.rcvr_, ItemSender{&op, it + i}), NextReceiver{&op});
               });
               start(op.items_[i].__get());
             }
