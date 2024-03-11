@@ -417,8 +417,16 @@ namespace stdexec {
         __complete(_Index, _Tag2, _Args&&... __args) noexcept {
         using __tag_t = typename __op_state::__tag_t;
         auto&& __rcvr = this->__rcvr();
-        __sexpr_impl<__tag_t>::complete(
-          _Index(), this->__state_, __rcvr, _Tag2(), static_cast<_Args&&>(__args)...);
+        if constexpr (requires {
+                        __sexpr_impl<__tag_t>::complete(
+                          _Index(), *this, _Tag2(), static_cast<_Args&&>(__args)...);
+                      }) {
+          __sexpr_impl<__tag_t>::complete(
+            _Index(), *this, _Tag2(), static_cast<_Args&&>(__args)...);
+        } else {
+          __sexpr_impl<__tag_t>::complete(
+            _Index(), this->__state_, __rcvr, _Tag2(), static_cast<_Args&&>(__args)...);
+        }
       }
 
       template <class _Index>

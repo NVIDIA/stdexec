@@ -3534,9 +3534,21 @@ namespace stdexec {
   } // namespace __any_
 
   namespace __let {
+    // FUTURE: when we have a scheduler query for "always completes inline",
+    // then we can use that instead of hard-coding `__inln::__scheduler` here.
+    template <class _Scheduler>
+    concept __unknown_context = __one_of<_Scheduler, __none_such, __inln::__scheduler>;
 
     template <class _Sigs, class _Env>
     struct __receiver_vtable_for;
+
+    template <class _OpState, class _Tag, class... _Args>
+    constexpr auto __rcvr_vfun_from_op_state_fn(_Tag (*)(_Args...)) noexcept {
+      return +[](void* __pointer, _Args&&... __args) noexcept {
+        auto* __op_state = static_cast<_OpState*>(__pointer);
+        _Tag{}(std::move(__op_state->__rcvr_), static_cast<_Args&&>(__args)...);
+      };
+    }
 
     template <class _Env, class... _Sigs>
     struct __receiver_vtable_for<completion_signatures<_Sigs...>, _Env>
@@ -3544,12 +3556,23 @@ namespace stdexec {
 
       _Env (*__do_get_env)(const void* __rcvr) noexcept;
 
-      template <class _Receiver>
-      explicit constexpr __receiver_vtable_for(const _Receiver*) noexcept
-        : stdexec::__any_::__rcvr_vfun<_Sigs>{stdexec::__any_::__rcvr_vfun_fn<_Receiver>(
+      template <class _OpState>
+      explicit constexpr __receiver_vtable_for(const _OpState*) noexcept
+        : stdexec::__any_::__rcvr_vfun<_Sigs>{__rcvr_vfun_from_op_state_fn<_OpState>(
           (_Sigs*) nullptr)}...
-        , __do_get_env{+[](const void* __rcvr) noexcept -> _Env {
-          return stdexec::get_env(*static_cast<const _Receiver*>(__rcvr));
+        , __do_get_env{+[](const void* __pointer) noexcept -> _Env {
+          auto* __op_state = static_cast<const _OpState*>(__pointer);
+          auto& __state = __op_state->__state_;
+          const auto& __rcvr = __op_state->__rcvr_;
+          auto __env = get_env(__rcvr);
+          auto __sched = __state.__sched_;
+          if constexpr (__unknown_context<decltype(__sched)>) {
+            return __env;
+          } else {
+            return __env::__join(
+              __env::__with(__sched, get_scheduler),
+              __env::__without(std::move(__env), get_domain));
+          }
         }} {
       }
 
@@ -3560,44 +3583,34 @@ namespace stdexec {
       }
     };
 
-    template <class _Receiver, class _Sigs>
-    inline constexpr __receiver_vtable_for<_Sigs, env_of_t<_Receiver>> __receiver_vtable_for_v{
-      (const _Receiver*) nullptr};
+    template <class _OpState, class _Env, class _Sigs>
+    inline constexpr __receiver_vtable_for<_Sigs, _Env> __receiver_vtable_for_v{
+      (const _OpState*) nullptr};
 
-    template <class _Sigs, class _Env, class _SchedulerOrNoneSuch>
+    template <class _Sigs, class _Env>
     class __receiver_ref {
      public:
       using receiver_concept = receiver_t;
 
-      template <class _Receiver>
-      __receiver_ref(_Receiver& __rcvr, _SchedulerOrNoneSuch __sched = {}) noexcept(
-        __nothrow_move_constructible<_SchedulerOrNoneSuch>)
-        : __vtable_{&__receiver_vtable_for_v<_Receiver, _Sigs>}
-        , __receiver_{&__rcvr}
-        , __scheduler_{static_cast<_SchedulerOrNoneSuch&&>(__sched)} {
+      template <class _OpState>
+      __receiver_ref(_OpState& __op_state) noexcept
+        : __vtable_{&__receiver_vtable_for_v<_OpState, _Env, _Sigs>}
+        , __state_{&__op_state} {
       }
 
       template <same_as<get_env_t> _Tag>
       friend auto tag_invoke(_Tag, const __receiver_ref& __self) noexcept {
-        if constexpr (same_as<_SchedulerOrNoneSuch, __none_such>) {
-          return __self.__vtable_->__get_env(__self.__receiver_);
-        } else {
-          return __env::__join(
-            __env::__with(__self.__scheduler_, get_scheduler),
-            __env::__without(__self.__vtable_->__get_env(__self.__receiver_), get_domain));
-        }
+        return __self.__vtable_->__get_env(__self.__state_);
       }
 
       template <__completion_tag _Tag, same_as<__receiver_ref> _Self, class... _As>
       friend void tag_invoke(_Tag, _Self&& __self, _As&&... __as) noexcept {
-        (*__self.__vtable_)(__self.__receiver_, _Tag(), static_cast<_As&&>(__as)...);
+        (*__self.__vtable_)(__self.__state_, _Tag(), static_cast<_As&&>(__as)...);
       }
 
      private:
       const __receiver_vtable_for<_Sigs, _Env>* __vtable_;
-      void* __receiver_;
-      STDEXEC_ATTRIBUTE((no_unique_address))
-      _SchedulerOrNoneSuch __scheduler_;
+      void* __state_;
     };
 
     template <class _Set, class _Domain = dependent_domain>
@@ -3616,11 +3629,6 @@ namespace stdexec {
 
     template <class _Set>
     using __on_not_callable = __callable_error<__in_which_let_msg<_Set>>;
-
-    // FUTURE: when we have a scheduler query for "always completes inline",
-    // then we can use that instead of hard-coding `__inln::__scheduler` here.
-    template <class _Scheduler>
-    concept __unknown_context = __one_of<_Scheduler, __none_such, __inln::__scheduler>;
 
     template <class _Receiver, class _Scheduler>
     struct __receiver_with_sched {
@@ -3711,8 +3719,7 @@ namespace stdexec {
     using __receiver_ref_t = //
       __receiver_ref<
         completion_signatures_of_t<_ResultSender&&, __result_env_t<env_of_t<_Receiver>, _Scheduler>>,
-        env_of_t<_Receiver>,
-        _Scheduler>;
+        __result_env_t<env_of_t<_Receiver>, _Scheduler>>;
 
     template <class _ResultSender, class _Receiver, class _Scheduler>
     concept __need_receiver_ref =
@@ -3868,15 +3875,12 @@ namespace stdexec {
           __transform<__uncurry<__op_state_for<_Receiver, _Fun, _Set, _Sched>>, __nullable_variant_t>,
           _Tuples...>;
 
-      template <class _ResultSender>
-      auto __get_result_receiver(const _ResultSender&, _Receiver&& __rcvr) -> decltype(auto) {
+      template <class _ResultSender, class _OpState>
+      auto __get_result_receiver(const _ResultSender&, _OpState& __op_state) -> decltype(auto) {
         if constexpr (__need_receiver_ref<_ResultSender, _Receiver, _Sched>) {
-          if constexpr (__unknown_context<_Sched>) {
-            return __receiver_ref_t<_ResultSender, _Receiver, __none_such>{__rcvr};
-          } else {
-            return __receiver_ref_t<_ResultSender, _Receiver, _Sched>{__rcvr, this->__sched_};
-          }
+          return __receiver_ref_t<_ResultSender, _Receiver, _Sched>{__op_state};
         } else {
+          _Receiver& __rcvr = __op_state.__rcvr_;
           if constexpr (__unknown_context<_Sched>) {
             return static_cast<_Receiver&&>(__rcvr);
           } else {
@@ -3969,12 +3973,12 @@ namespace stdexec {
             __sndr.apply(static_cast<_Sender&&>(__sndr), __detail::__get_data()), __sched};
         };
 
-      template <class _State, class _Receiver, class... _As>
-      static void __bind_(_State& __state, _Receiver& __rcvr, _As&&... __as) {
+      template <class _State, class _OpState, class... _As>
+      static void __bind_(_State& __state, _OpState& __op_state, _As&&... __as) {
         auto& __args = __state.__args_.template emplace<__decayed_tuple<_As...>>(
           static_cast<_As&&>(__as)...);
         auto __sndr2 = __apply(std::move(__state.__fun_), __args);
-        auto __rcvr2 = __state.__get_result_receiver(__sndr2, static_cast<_Receiver&&>(__rcvr));
+        auto __rcvr2 = __state.__get_result_receiver(__sndr2, __op_state);
         auto __mkop = [&] {
           return stdexec::connect(std::move(__sndr2), std::move(__rcvr2));
         };
@@ -3982,8 +3986,12 @@ namespace stdexec {
         stdexec::start(__op2);
       }
 
-      template <class _State, class _Receiver, class... _As>
-      static void __bind(_State& __state, _Receiver& __rcvr, _As&&... __as) noexcept {
+      template <class _OpState, class... _As>
+      static void __bind(_OpState& __op_state, _As&&... __as) noexcept {
+        auto& __state = __op_state.__state_;
+        auto& __rcvr = __op_state.__rcvr_;
+        using _State = __decay_t<decltype(__state)>;
+        using _Receiver = __decay_t<decltype(__rcvr)>;
         using _Fun = typename _State::__fun_t;
         using _Sched = typename _State::__sched_t;
         using _ResultSender =
@@ -3991,10 +3999,10 @@ namespace stdexec {
         if constexpr (
           (__nothrow_decay_copyable<_As> && ...) && __nothrow_callable<_Fun, _As...>
           && __nothrow_connectable_receiver_ref<_ResultSender, env_of_t<_Receiver>, _Sched>) {
-          __bind_(__state, __rcvr, static_cast<_As&&>(__as)...);
+          __bind_(__state, __op_state, static_cast<_As&&>(__as)...);
         } else {
           try {
-            __bind_(__state, __rcvr, static_cast<_As&&>(__as)...);
+            __bind_(__state, __op_state, static_cast<_As&&>(__as)...);
           } catch (...) {
             set_error(std::move(__rcvr), std::current_exception());
           }
@@ -4002,16 +4010,15 @@ namespace stdexec {
       }
 
       static constexpr auto complete = //
-        []<class _State, class _Receiver, class _Tag, class... _As>(
+        []<class _OpState, class _Tag, class... _As>(
           __ignore,
-          _State& __state,
-          _Receiver& __rcvr,
+          _OpState& __op_state,
           _Tag,
           _As&&... __as) noexcept -> void {
         if constexpr (std::same_as<_Tag, _Set>) {
-          __bind(__state, __rcvr, static_cast<_As&&>(__as)...);
+          __bind(__op_state, static_cast<_As&&>(__as)...);
         } else {
-          _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_As&&>(__as)...);
+          _Tag()(std::move(__op_state.__rcvr_), static_cast<_As&&>(__as)...);
         }
       };
     };
