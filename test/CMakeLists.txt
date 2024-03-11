@@ -103,7 +103,6 @@ target_link_libraries(test.stdexec
     PUBLIC
     STDEXEC::stdexec
     $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
-    #$<$<BOOL:${STDEXEC_ENABLE_LIBDISPATCH}>:dispatch>
     stdexec_executable_flags
     Catch2::Catch2)
 
