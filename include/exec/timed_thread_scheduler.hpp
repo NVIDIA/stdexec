@@ -45,17 +45,37 @@ namespace exec {
       void (*set_value_)(timed_thread_operation_base*) noexcept;
     };
 
+    template <class Tp>
+    struct when_type {
+        inline static std::atomic<std::size_t> global_counter{1};
+
+        when_type() = default;
+
+        explicit when_type(Tp tp) noexcept
+        : time_point{std::move(tp)}, counter{global_counter.fetch_add(1, std::memory_order_relaxed)} {}
+
+        Tp time_point{};
+        std::size_t counter{};
+
+        friend auto operator<=>(const when_type&, const when_type&) = default;
+    };
+
     struct timed_thread_schedule_operation_base : timed_thread_operation_base {
+      using time_point = std::chrono::steady_clock::time_point;
       timed_thread_schedule_operation_base(
-        std::chrono::steady_clock::time_point time_point,
+        time_point tp,
         void (*set_stopped)(timed_thread_operation_base*) noexcept,
         void (*set_value)(timed_thread_operation_base*) noexcept) noexcept
         : timed_thread_operation_base{set_value, command_type::schedule}
-        , time_point_{time_point}
+        , time_point_{tp}
         , set_stopped_{set_stopped} {
       }
 
-      std::chrono::steady_clock::time_point time_point_;
+      time_point time_point_;
+      // we increase the when counter to ensure that the heap is stable
+      // when two operations have the same time_point
+      // We do so only when the operation is started, not when it is constructed
+      when_type<time_point> when_{};
       timed_thread_schedule_operation_base* prev_ = nullptr;
       timed_thread_schedule_operation_base* left_ = nullptr;
       timed_thread_schedule_operation_base* right_ = nullptr;
@@ -178,7 +198,7 @@ namespace exec {
     }
 
     stdexec::__intrusive_mpsc_queue<&command_type::next_> command_queue_;
-    intrusive_heap<&task_type::time_point_, &task_type::prev_, &task_type::left_, &task_type::right_>
+    intrusive_heap<&task_type::when_, &task_type::prev_, &task_type::left_, &task_type::right_>
       heap_;
     std::atomic<std::ptrdiff_t> n_submissions_in_flight_{0};
     std::mutex ready_mutex_;
@@ -233,6 +253,7 @@ namespace exec {
         stdexec::get_stop_token(stdexec::get_env(self.receiver_)), on_stopped_t{self});
       int expected = 0;
       if (self.ref_count_.compare_exchange_strong(expected, 1, std::memory_order_relaxed)) {
+        self.when_ = detail::when_type{self.time_point_};
         self.schedule_this();
       } else {
         self.stop_callback_.reset();
