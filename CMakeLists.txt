@@ -310,7 +310,13 @@ if (STDEXEC_ENABLE_TBB)
         STDEXEC::stdexec
         TBB::tbb
         )
-endif ()
+endif()
+
+include(CheckIncludeFileCXX)
+if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  CHECK_INCLUDE_FILE_CXX("dispatch/dispatch.h" STDEXEC_FOUND_LIBDISPATCH)
+  option(STDEXEC_ENABLE_LIBDISPATCH "Enable the tests for the Grand Central Dispatch scheduler" ${STDEXEC_FOUND_LIBDISPATCH})
+endif()
 
 option (STDEXEC_ENABLE_NUMA "Enable NUMA affinity for static_thread_pool" OFF)
 if (STDEXEC_ENABLE_NUMA)
@@ -320,7 +326,6 @@ if (STDEXEC_ENABLE_NUMA)
 endif()
 
 if(CMAKE_CROSSCOMPILING)
-  include(CheckIncludeFileCXX)
   CHECK_INCLUDE_FILE_CXX("linux/io_uring.h" STDEXEC_FOUND_IO_URING)
 else()
   include(CheckCXXSourceRuns)
