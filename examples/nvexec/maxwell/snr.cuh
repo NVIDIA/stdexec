@@ -390,11 +390,7 @@ struct repeat_n_t {
   template <stdexec::__sender_adaptor_closure Closure>
   auto operator()(std::size_t n, Closure closure) const
     -> stdexec::__binder_back<repeat_n_t, std::size_t, Closure> {
-    return {
-      {},
-      {},
-      {n, static_cast<Closure&&>(closure)}
-    };
+    return {{n, static_cast<Closure&&>(closure)}};
   }
 };
 

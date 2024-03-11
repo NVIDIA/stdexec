@@ -313,7 +313,7 @@ namespace {
     template <class _Fun>
     stdexec::__binder_back<a_sender_helper_t<a_sender_kind::then>, _Fun>
       operator()(_Fun __fun) const {
-      return {{}, {}, {static_cast<_Fun&&>(__fun)}};
+      return {{static_cast<_Fun&&>(__fun)}};
     };
   };
 
@@ -329,7 +329,7 @@ namespace {
     }
 
     stdexec::__binder_back<a_sender_helper_t<a_sender_kind::receiverless>> operator()() const {
-      return {{}, {}, {}};
+      return {};
     }
   };
 
