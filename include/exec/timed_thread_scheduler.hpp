@@ -98,7 +98,7 @@ namespace exec {
 
    private:
     template <class Rcvr>
-    friend class timed_thread_schedule_at_op<Rcvr>::__t;
+    friend struct timed_thread_schedule_at_op;
 
     using command_type = detail::timed_thread_operation_base;
     using task_type = detail::timed_thread_schedule_operation_base;
@@ -130,6 +130,7 @@ namespace exec {
         std::unique_lock lock{ready_mutex_};
         cv_.wait_until(lock, deadline, [this] { return ready_ || stop_requested_; });
         bool stop_requested = stop_requested_;
+        ready_ = false;
         lock.unlock();
         if (stop_requested) {
           std::ptrdiff_t expected = 0;
@@ -146,7 +147,6 @@ namespace exec {
           }
           break;
         }
-        ready_ = false;
       }
     }
 

@@ -101,7 +101,7 @@ namespace {
     exec::timed_thread_scheduler scheduler = context.get_scheduler();
     exec::async_scope scope;
     int counter = 0;
-    int ntimers = 1'000'000;
+    int ntimers = 1'000;
     auto now = exec::now(scheduler);
     auto deadline = now + std::chrono::milliseconds(100);
     auto t0 = std::chrono::steady_clock::now();

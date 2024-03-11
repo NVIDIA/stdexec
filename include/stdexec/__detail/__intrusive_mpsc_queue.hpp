@@ -38,14 +38,14 @@ namespace stdexec {
 
     void push_back_nil() {
       __nil_.store(nullptr, std::memory_order_relaxed);
-      _Node* __prev = static_cast<_Node*>(__back_.exchange(&__nil_, std::memory_order_relaxed));
+      _Node* __prev = static_cast<_Node*>(__back_.exchange(&__nil_, std::memory_order_acq_rel));
       (__prev->*_Next).store(&__nil_, std::memory_order_release);
     }
 
    public:
     bool push_back(_Node* __new_node) noexcept {
       (__new_node->*_Next).store(nullptr, std::memory_order_relaxed);
-      void* __prev_back = __back_.exchange(__new_node, std::memory_order_relaxed);
+      void* __prev_back = __back_.exchange(__new_node, std::memory_order_acq_rel);
       bool __is_nil = __prev_back == static_cast<void*>(&__nil_);
       if (__is_nil) {
         __nil_.store(__new_node, std::memory_order_release);
