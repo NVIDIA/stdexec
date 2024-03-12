@@ -20,6 +20,9 @@
 
 #include "common.cuh"
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
     struct launch_params {
@@ -184,3 +187,5 @@ namespace stdexec::__detail {
     nvexec::STDEXEC_STREAM_DETAIL_NS::launch_sender_t<__name_of<__t<SenderId>>, Fun>>
     __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::launch_sender_t<SenderId, Fun>>{};
 } // namespace stdexec::__detail
+
+STDEXEC_PRAGMA_POP()

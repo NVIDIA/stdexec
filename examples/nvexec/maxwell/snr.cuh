@@ -48,6 +48,9 @@ namespace nvexec {
 #include <exec/inline_scheduler.hpp>
 #include <exec/static_thread_pool.hpp>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+
 namespace ex = stdexec;
 
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
@@ -440,3 +443,5 @@ void run_snr(
     stdexec::sync_wait(std::move(snd));
   });
 }
+
+STDEXEC_PRAGMA_POP()
