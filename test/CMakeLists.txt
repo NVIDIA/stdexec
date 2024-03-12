@@ -62,6 +62,7 @@ set(stdexec_test_sources
     exec/test_bwos_lifo_queue.cpp
     exec/test_any_sender.cpp
     exec/test_task.cpp
+    exec/test_timed_thread_scheduler.cpp
     exec/test_variant_sender.cpp
     exec/test_type_async_scope.cpp
     exec/test_create.cpp
