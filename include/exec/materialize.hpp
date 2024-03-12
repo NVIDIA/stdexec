@@ -111,8 +111,10 @@ namespace exec {
         return {static_cast<_Sender&&>(__sender)};
       }
 
-      auto operator()() const noexcept -> __binder_back<__materialize_t> {
-        return {{}, {}, {}};
+      STDEXEC_ATTRIBUTE((always_inline))
+      auto
+        operator()() const noexcept -> __binder_back<__materialize_t> {
+        return {};
       }
     };
   } // namespace __materialize
@@ -215,8 +217,10 @@ namespace exec {
         return __sender_t<_Sender>(static_cast<_Sender&&>(__sndr));
       }
 
-      auto operator()() const noexcept -> __binder_back<__dematerialize_t> {
-        return {{}, {}, {}};
+      STDEXEC_ATTRIBUTE((always_inline))
+      auto
+        operator()() const noexcept -> __binder_back<__dematerialize_t> {
+        return {};
       }
     };
   } // namespace __dematerialize

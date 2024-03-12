@@ -2255,37 +2255,40 @@ namespace stdexec {
     }
 
     template <class _Fun, class... _As>
-    struct __binder_back : sender_adaptor_closure<__binder_back<_Fun, _As...>> {
+    struct __binder_back
+      : __tup::__tuple_for<_As...>
+      , sender_adaptor_closure<__binder_back<_Fun, _As...>> {
       STDEXEC_ATTRIBUTE((no_unique_address))
-      _Fun __fun_;
-      std::tuple<_As...> __as_;
+      _Fun __fun_{};
 
       template <sender _Sender>
         requires __callable<_Fun, _Sender, _As...>
       STDEXEC_ATTRIBUTE((host, device, always_inline))
       __call_result_t<_Fun, _Sender, _As...>
         operator()(_Sender&& __sndr) && noexcept(__nothrow_callable<_Fun, _Sender, _As...>) {
-        return __apply(
-          [&__sndr, this](_As&... __as) -> __call_result_t<_Fun, _Sender, _As...> {
+        return __tup::__apply(
+          [&__sndr, this](_As&... __as) noexcept(
+            __nothrow_callable<_Fun, _Sender, _As...>) -> __call_result_t<_Fun, _Sender, _As...> {
             return static_cast<_Fun&&>(__fun_)(
               static_cast<_Sender&&>(__sndr), static_cast<_As&&>(__as)...);
           },
-          __as_);
+          *this);
       }
 
       template <sender _Sender>
         requires __callable<const _Fun&, _Sender, const _As&...>
-      STDEXEC_ATTRIBUTE((host, device))
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
       auto
         operator()(_Sender&& __sndr) const & //
         noexcept(__nothrow_callable<const _Fun&, _Sender, const _As&...>)
           -> __call_result_t<const _Fun&, _Sender, const _As&...> {
-        return __apply(
+        return __tup::__apply(
           [&__sndr,
-           this](const _As&... __as) -> __call_result_t<const _Fun&, _Sender, const _As&...> {
+           this](const _As&... __as) noexcept(__nothrow_callable<_Fun, _Sender, const _As&...>)
+            -> __call_result_t<const _Fun&, _Sender, const _As&...> {
             return __fun_(static_cast<_Sender&&>(__sndr), __as...);
           },
-          __as_);
+          *this);
       }
     };
   } // namespace __closure
@@ -2622,9 +2625,9 @@ namespace stdexec {
 
       template <__movable_value _Fun>
       STDEXEC_ATTRIBUTE((always_inline))
-      __binder_back<then_t, _Fun>
-        operator()(_Fun __fun) const {
-        return {{}, {}, {static_cast<_Fun&&>(__fun)}};
+      auto
+        operator()(_Fun __fun) const -> __binder_back<then_t, _Fun> {
+        return {{static_cast<_Fun&&>(__fun)}};
       }
 
       using _Sender = __1;
@@ -2701,9 +2704,9 @@ namespace stdexec {
 
       template <__movable_value _Fun>
       STDEXEC_ATTRIBUTE((always_inline))
-      __binder_back<upon_error_t, _Fun>
-        operator()(_Fun __fun) const {
-        return {{}, {}, {static_cast<_Fun&&>(__fun)}};
+      auto
+        operator()(_Fun __fun) const -> __binder_back<upon_error_t, _Fun> {
+        return {{static_cast<_Fun&&>(__fun)}};
       }
 
       using _Sender = __1;
@@ -2779,9 +2782,9 @@ namespace stdexec {
       template <__movable_value _Fun>
         requires __callable<_Fun>
       STDEXEC_ATTRIBUTE((always_inline))
-      __binder_back<upon_stopped_t, _Fun>
-        operator()(_Fun __fun) const {
-        return {{}, {}, {static_cast<_Fun&&>(__fun)}};
+      auto
+        operator()(_Fun __fun) const -> __binder_back<upon_stopped_t, _Fun> {
+        return {{static_cast<_Fun&&>(__fun)}};
       }
 
       using _Sender = __1;
@@ -2880,11 +2883,9 @@ namespace stdexec {
 
       template <integral _Shape, class _Fun>
       STDEXEC_ATTRIBUTE((always_inline))
-      __binder_back<bulk_t, _Shape, _Fun>
-        operator()(_Shape __shape, _Fun __fun) const {
+      auto
+        operator()(_Shape __shape, _Fun __fun) const -> __binder_back<bulk_t, _Shape, _Fun> {
         return {
-          {},
-          {},
           {static_cast<_Shape&&>(__shape), static_cast<_Fun&&>(__fun)}
         };
       }
@@ -3305,10 +3306,9 @@ namespace stdexec {
       }
 
       STDEXEC_ATTRIBUTE((always_inline))
-
-      __binder_back<split_t>
-        operator()() const {
-        return {{}, {}, {}};
+      auto
+        operator()() const noexcept -> __binder_back<split_t> {
+        return {};
       }
 
       using _Sender = __1;
@@ -3393,10 +3393,9 @@ namespace stdexec {
       }
 
       STDEXEC_ATTRIBUTE((always_inline))
-
-      __binder_back<ensure_started_t>
-        operator()() const {
-        return {{}, {}, {}};
+      auto
+        operator()() const noexcept -> __binder_back<ensure_started_t> {
+        return {};
       }
 
       using _Sender = __1;
@@ -3729,9 +3728,9 @@ namespace stdexec {
 
       template <class _Fun>
       STDEXEC_ATTRIBUTE((always_inline))
-      __binder_back<__let_t, _Fun>
-        operator()(_Fun __fun) const {
-        return {{}, {}, {static_cast<_Fun&&>(__fun)}};
+      auto
+        operator()(_Fun __fun) const -> __binder_back<__let_t, _Fun> {
+        return {{static_cast<_Fun&&>(__fun)}};
       }
 
       using _Sender = __1;
@@ -3848,9 +3847,8 @@ namespace stdexec {
       }
 
       STDEXEC_ATTRIBUTE((always_inline))
-
-      __binder_back<stopped_as_optional_t>
-        operator()() const noexcept {
+      auto
+        operator()() const noexcept -> __binder_back<stopped_as_optional_t> {
         return {};
       }
     };
@@ -3924,7 +3922,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline))
       auto
         operator()(_Error __err) const -> __binder_back<stopped_as_error_t, _Error> {
-        return {{}, {}, {static_cast<_Error&&>(__err)}};
+        return {{static_cast<_Error&&>(__err)}};
       }
     };
   } // namespace __stopped_as_xxx
@@ -4266,7 +4264,9 @@ namespace stdexec {
     };
 
     template <class _Scheduler, class _Sexpr, class _Receiver>
-    struct __state : __enable_receiver_from_this<_Sexpr, _Receiver>, __immovable {
+    struct __state
+      : __enable_receiver_from_this<_Sexpr, _Receiver>
+      , __immovable {
       using __variant_t = __variant_for_t<__child_of<_Sexpr>, env_of_t<_Receiver>>;
       using __receiver2_t = __receiver2<_Scheduler, _Sexpr, _Receiver>;
 
@@ -4277,7 +4277,7 @@ namespace stdexec {
       explicit __state(_Scheduler __sched)
         : __data_()
         , __state2_(connect(schedule(__sched), __receiver2_t{this}))
-        STDEXEC_APPLE_CLANG(, __self_(this)) {
+            STDEXEC_APPLE_CLANG(, __self_(this)) {
       }
     };
 
@@ -4384,9 +4384,9 @@ namespace stdexec {
 
       template <scheduler _Scheduler>
       STDEXEC_ATTRIBUTE((always_inline))
-      __binder_back<transfer_t, __decay_t<_Scheduler>>
-        operator()(_Scheduler&& __sched) const {
-        return {{}, {}, {static_cast<_Scheduler&&>(__sched)}};
+      auto
+        operator()(_Scheduler&& __sched) const -> __binder_back<transfer_t, __decay_t<_Scheduler>> {
+        return {{static_cast<_Scheduler&&>(__sched)}};
       }
 
       //////////////////////////////////////////////////////////////////////////////////////////////
@@ -4504,14 +4504,14 @@ namespace stdexec {
       template <sender _Sender, class... _Envs>
       auto operator()(_Sender&& __sndr, _Envs... __envs) const {
         return __make_sexpr<__write_t>(
-          __env::__join(std::move(__envs)...), static_cast<_Sender&&>(__sndr));
+          __env::__join(static_cast<_Envs&&>(__envs)...), static_cast<_Sender&&>(__sndr));
       }
 
       template <class... _Envs>
       STDEXEC_ATTRIBUTE((always_inline))
       auto
         operator()(_Envs... __envs) const -> __binder_back<__write_t, _Envs...> {
-        return {{}, {}, {std::move(__envs)...}};
+        return {{static_cast<_Envs&&>(__envs)...}};
       }
 
       template <class _Env>
@@ -4655,10 +4655,9 @@ namespace stdexec {
       }
 
       STDEXEC_ATTRIBUTE((always_inline))
-
       auto
-        operator()() const noexcept {
-        return __binder_back<into_variant_t>{};
+        operator()() const noexcept -> __binder_back<into_variant_t> {
+        return {};
       }
     };
 
@@ -5491,8 +5490,6 @@ namespace stdexec {
         operator()(_Scheduler&& __sched, _Closure&& __clsur) const
         -> __binder_back<continue_on_t, __decay_t<_Scheduler>, __decay_t<_Closure>> {
         return {
-          {},
-          {},
           {static_cast<_Scheduler&&>(__sched), static_cast<_Closure&&>(__clsur)}
         };
       }
