@@ -22,6 +22,9 @@
 
 #include "stream/common.cuh"
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+
 namespace nvexec {
 
   namespace STDEXEC_STREAM_DETAIL_NS { namespace nvtx {
@@ -162,3 +165,5 @@ namespace nvexec {
   } // namespace nvtx
 
 } // namespace nvexec
+
+STDEXEC_PRAGMA_POP()

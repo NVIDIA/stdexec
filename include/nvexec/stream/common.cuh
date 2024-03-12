@@ -263,6 +263,11 @@ namespace nvexec {
       stream_provider_t* operator()(const Env& env) const noexcept {
         return tag_invoke(get_stream_provider_t{}, env);
       }
+
+      STDEXEC_ATTRIBUTE((host, device))
+      friend constexpr bool tag_invoke(forwarding_query_t, const get_stream_provider_t&) noexcept {
+        return true;
+      }
     };
 
     template <class... Ts>
@@ -321,9 +326,13 @@ namespace nvexec {
       }
 
       STDEXEC_ATTRIBUTE((host, device))
-
       auto operator()() const noexcept {
         return stdexec::read(*this);
+      }
+
+      STDEXEC_ATTRIBUTE((host, device))
+      friend constexpr bool tag_invoke(forwarding_query_t, const get_stream_t&) noexcept {
+        return true;
       }
     };
 

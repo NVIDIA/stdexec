@@ -22,8 +22,66 @@
 #include <exec/async_scope.hpp>
 
 namespace ex = stdexec;
+using namespace ex::tags;
 
 namespace {
+  template <class Rcvr>
+  struct get_env_rcvr {
+    using receiver_concept = ex::receiver_t;
+    Rcvr rcvr;
+
+    template <class... Values>
+    STDEXEC_MEMFN_DECL(void set_value)(this get_env_rcvr&& self, Values&&...) noexcept {
+      auto env = ex::get_env(self.rcvr);
+      ex::set_value(std::move(self.rcvr), std::move(env));
+    }
+
+    template <class Error>
+    STDEXEC_MEMFN_DECL(void set_error)(this get_env_rcvr&& self, Error&& err) noexcept {
+      ex::set_error(std::move(self.rcvr), std::forward<Error>(err));
+    }
+
+    STDEXEC_MEMFN_DECL(void set_stopped)(this get_env_rcvr&& self) noexcept {
+      ex::set_stopped(std::move(self.rcvr));
+    }
+
+    STDEXEC_MEMFN_DECL(auto get_env)(this const get_env_rcvr& self) noexcept {
+      return ex::get_env(self.rcvr);
+    }
+  };
+
+  template <class Sndr>
+  struct get_env_sender {
+    using sender_concept = ex::sender_t;
+    Sndr sndr;
+
+    template <ex::__decays_to<get_env_sender> Self, ex::receiver Rcvr>
+    STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Rcvr rcvr) {
+      return ex::connect(static_cast<Self&&>(self).sndr, get_env_rcvr<Rcvr>{static_cast<Rcvr&&>(rcvr)});
+    }
+
+    template <ex::__decays_to<get_env_sender> Self, class Env>
+    STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&& self, const Env& env) {
+      return ex::__try_make_completion_signatures<
+        ex::__copy_cvref_t<Self, Sndr>,
+        Env,
+        ex::completion_signatures<set_value_t(Env)>,
+        ex::__mconst<ex::completion_signatures<>>>{};
+    }
+  };
+
+  struct probe_env_t {
+    template <ex::sender Sndr>
+    auto operator()(Sndr&& sndr) const {
+      return get_env_sender<Sndr>{static_cast<Sndr&&>(sndr)};
+    }
+
+    auto operator()() const {
+      return ex::__binder_back<probe_env_t>{};
+    }
+  };
+
+  static const auto probe_env = probe_env_t{};
 
   static const auto env = exec::make_env(exec::with(ex::get_scheduler, inline_scheduler{}));
 
@@ -46,7 +104,7 @@ namespace {
     impulse_scheduler sched;
     scope.spawn(exec::on(sched, ex::just()), env);
     sched.start_next();
-    stdexec::sync_wait(scope.on_empty());
+    ex::sync_wait(scope.on_empty());
   }
 
   TEST_CASE("Can pass exec::on sender to async_scope::spawn_future", "[adaptors][exec::on]") {
@@ -54,8 +112,24 @@ namespace {
     impulse_scheduler sched;
     auto fut = scope.spawn_future(exec::on(sched, ex::just(42)), env);
     sched.start_next();
-    auto [i] = stdexec::sync_wait(std::move(fut)).value();
+    auto [i] = ex::sync_wait(std::move(fut)).value();
     CHECK(i == 42);
-    stdexec::sync_wait(scope.on_empty());
+    ex::sync_wait(scope.on_empty());
+  }
+
+  TEST_CASE("exec::on updates the current scheduler in the receiver", "[adaptors][exec::on]") {
+    auto snd = ex::get_scheduler()
+             | exec::on(inline_scheduler{}, probe_env())
+             | ex::then([]<class Env>(Env env) noexcept {
+                 using Sched = ex::__call_result_t<ex::get_scheduler_t, Env>;
+                 static_assert(ex::same_as<Sched, inline_scheduler>);
+               })
+             | probe_env()
+             | ex::then([]<class Env>(Env env) noexcept {
+                 using Sched = ex::__call_result_t<ex::get_scheduler_t, Env>;
+                 static_assert(ex::same_as<Sched, ex::run_loop::__scheduler>);
+               });
+
+    ex::sync_wait(snd);
   }
 } // namespace

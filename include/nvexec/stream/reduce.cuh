@@ -27,6 +27,9 @@
 #include "common.cuh"
 #include "../detail/throw_on_cuda_error.cuh"
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
     namespace reduce_ {
@@ -155,3 +158,5 @@ namespace stdexec::__detail {
     nvexec::STDEXEC_STREAM_DETAIL_NS::reduce_::sender_t<__name_of<__t<SenderId>>, Init, Fun>>
     __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::reduce_::sender_t<SenderId, Init, Fun>>;
 } // namespace stdexec::__detail
+
+STDEXEC_PRAGMA_POP()
