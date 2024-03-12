@@ -20,16 +20,6 @@
 namespace exec {
   /////////////////////////////////////////////////////////////////////////////
   // A scoped version of [execution.senders.adaptors.on]
-  namespace __on {
-    struct on_t
-      : stdexec::v2::on_t
-      , stdexec::v2::continue_on_t {
-      using stdexec::v2::on_t::operator();
-      using stdexec::v2::continue_on_t::operator();
-    };
-
-  } // namespace __on
-
-  using __on::on_t;
-  inline constexpr on_t on{};
+  using stdexec::v2::on_t;
+  using stdexec::v2::on;
 } // namespace exec

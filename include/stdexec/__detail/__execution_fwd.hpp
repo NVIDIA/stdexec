@@ -169,11 +169,25 @@ namespace stdexec {
   extern const as_awaitable_t as_awaitable;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __transfer {
-    struct transfer_t;
-  } // namespace __transfer
+  namespace __start_on {
+    struct start_on_t;
+  } // namespace __start_on
 
-  using __transfer::transfer_t;
+  using __start_on::start_on_t;
+  extern const start_on_t start_on;
+
+  using on_t = start_on_t;
+  extern const on_t on;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  namespace __continue_on {
+    struct continue_on_t;
+  } // namespace __continue_on
+
+  using __continue_on::continue_on_t;
+  extern const continue_on_t continue_on;
+
+  using transfer_t = continue_on_t;
   extern const transfer_t transfer;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
