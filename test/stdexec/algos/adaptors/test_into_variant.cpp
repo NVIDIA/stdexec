@@ -144,4 +144,4 @@ namespace {
     check_sends_stopped<true>( //
       ex::just_stopped() | ex::into_variant());
   }
-}
+} // namespace

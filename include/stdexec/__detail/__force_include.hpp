@@ -16,8 +16,8 @@
 
 #if defined(__clang__) && defined(__CUDACC__)
 
-#ifdef __noinline__
-#undef __noinline__
-#endif
+#  ifdef __noinline__
+#    undef __noinline__
+#  endif
 
 #endif

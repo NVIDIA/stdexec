@@ -41,7 +41,8 @@ namespace {
 
     // Example adapted from
     // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2300r5.html#example-async-inclusive-scan
-    [[nodiscard]] stdexec::sender auto async_inclusive_scan(
+    [[nodiscard]]
+    stdexec::sender auto async_inclusive_scan(
       stdexec::scheduler auto sch,   // 2
       std::span<const double> input, // 1
       std::span<double> output,      // 1
@@ -61,7 +62,7 @@ namespace {
                auto start = i * tile_size;
                auto end = std::min(input.size(), (i + 1) * tile_size);
                partials[i + 1] = *--std::inclusive_scan(
-                   begin(input) + (long) start, begin(input) + (long) end, begin(output) + (long) start);
+                   begin(input) + static_cast<long>(start), begin(input) + static_cast<long>(end), begin(output) + static_cast<long>(start));
              })
        | then([](std::vector<double>&& partials) {
            std::inclusive_scan(begin(partials), end(partials), begin(partials));
@@ -71,7 +72,7 @@ namespace {
              [=](std::size_t i, std::span<const double> partials) {
                auto start = i * tile_size;
                auto end = std::min(input.size(), (i + 1) * tile_size);
-               std::for_each(begin(output) + (long) start, begin(output) + (long) end,
+               std::for_each(begin(output) + static_cast<long>(start), begin(output) + static_cast<long>(end),
                    [&](double& e) { e = partials[i] + e; });
              })
        | then([=](std::vector<double>&& partials) { return output; });
@@ -166,4 +167,4 @@ namespace {
     REQUIRE(value.data() == output.data());
     CHECK(output == std::array{1.0, 3.0, 2.0, 0.0});
   }
-}
+} // namespace

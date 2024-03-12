@@ -100,8 +100,8 @@ namespace exec {
         __scheduler_{exec::inline_scheduler{}};
       in_place_stop_token __stop_token_;
 
-      friend const __any_scheduler&
-        tag_invoke(get_scheduler_t, const __default_task_context_impl& __self) noexcept
+      friend auto tag_invoke(get_scheduler_t, const __default_task_context_impl& __self) noexcept
+        -> const __any_scheduler&
         requires(__with_scheduler)
       {
         return __self.__scheduler_;
@@ -117,10 +117,11 @@ namespace exec {
 
       template <scheduler _Scheduler>
       explicit __default_task_context_impl(_Scheduler&& __scheduler)
-        : __scheduler_{(_Scheduler&&) __scheduler} {
+        : __scheduler_{static_cast<_Scheduler&&>(__scheduler)} {
       }
 
-      bool stop_requested() const noexcept {
+      [[nodiscard]]
+      auto stop_requested() const noexcept -> bool {
         return __stop_token_.stop_requested();
       }
 
@@ -128,7 +129,7 @@ namespace exec {
       void set_scheduler(_Scheduler&& __sched)
         requires(__with_scheduler)
       {
-        __scheduler_ = (_Scheduler&&) __sched;
+        __scheduler_ = static_cast<_Scheduler&&>(__sched);
       }
 
       template <class _ThisPromise>
@@ -185,7 +186,7 @@ namespace exec {
         }
         static_assert(
           std::
-            is_nothrow_constructible_v< __stop_callback_t, __stop_token_t, __forward_stop_request>);
+            is_nothrow_constructible_v<__stop_callback_t, __stop_token_t, __forward_stop_request>);
         __self.__stop_token_ = __stop_source_.get_token();
       }
 
@@ -196,7 +197,7 @@ namespace exec {
     // If the parent coroutine's type has a stop token of type in_place_stop_token,
     // we don't need to register a stop callback.
     template <__indirect_stop_token_provider _ParentPromise>
-      requires std::same_as< in_place_stop_token, stop_token_of_t<env_of_t<_ParentPromise>>>
+      requires std::same_as<in_place_stop_token, stop_token_of_t<env_of_t<_ParentPromise>>>
     struct __default_awaiter_context<_ParentPromise> {
       template <__scheduler_affinity _Affinity>
       explicit __default_awaiter_context(
@@ -213,7 +214,7 @@ namespace exec {
     // If the parent coroutine's stop token is unstoppable, there's no point
     // forwarding stop tokens or stop requests at all.
     template <__indirect_stop_token_provider _ParentPromise>
-      requires unstoppable_token< stop_token_of_t<env_of_t<_ParentPromise>>>
+      requires unstoppable_token<stop_token_of_t<env_of_t<_ParentPromise>>>
     struct __default_awaiter_context<_ParentPromise> {
       template <__scheduler_affinity _Affinity>
       explicit __default_awaiter_context(
@@ -251,7 +252,7 @@ namespace exec {
         // Register a callback that will request stop on this basic_task's
         // stop_source when stop is requested on the parent coroutine's stop
         // token.
-        using __stop_token_t = stop_token_of_t< env_of_t<_ParentPromise>>;
+        using __stop_token_t = stop_token_of_t<env_of_t<_ParentPromise>>;
         using __stop_callback_t =
           typename __stop_token_t::template callback_type<__forward_stop_request>;
 
@@ -277,7 +278,7 @@ namespace exec {
     // In a base class so it can be specialized when _Ty is void:
     template <class _Ty>
     struct __promise_base {
-      void return_value(_Ty value) noexcept {
+      void return_value(_Ty value) {
         __data_.template emplace<1>(std::move(value));
       }
 
@@ -288,7 +289,7 @@ namespace exec {
     struct __promise_base<void> {
       struct __void { };
 
-      void return_void() noexcept {
+      void return_void() {
         __data_.template emplace<1>(__void{});
       }
 
@@ -308,8 +309,8 @@ namespace exec {
       };
 
       template <scheduler _Scheduler>
-      __wrap<_Scheduler> operator()(_Scheduler __sched) const noexcept {
-        return {(_Scheduler&&) __sched};
+      auto operator()(_Scheduler __sched) const noexcept -> __wrap<_Scheduler> {
+        return {static_cast<_Scheduler&&>(__sched)};
       }
     };
 
@@ -334,12 +335,12 @@ namespace exec {
 
      private:
       struct __final_awaitable {
-        static constexpr bool await_ready() noexcept {
+        static constexpr auto await_ready() noexcept -> bool {
           return false;
         }
 
-        static __coro::coroutine_handle<>
-          await_suspend(__coro::coroutine_handle<__promise> __h) noexcept {
+        static auto await_suspend(__coro::coroutine_handle<__promise> __h) noexcept
+          -> __coro::coroutine_handle<> {
           return __h.promise().continuation().handle();
         }
 
@@ -350,19 +351,20 @@ namespace exec {
       struct __promise
         : __promise_base<_Ty>
         , with_awaitable_senders<__promise> {
-        basic_task get_return_object() noexcept {
+        auto get_return_object() noexcept -> basic_task {
           return basic_task(__coro::coroutine_handle<__promise>::from_promise(*this));
         }
 
-        __coro::suspend_always initial_suspend() noexcept {
+        auto initial_suspend() noexcept -> __coro::suspend_always {
           return {};
         }
 
-        __final_awaitable final_suspend() noexcept {
+        auto final_suspend() noexcept -> __final_awaitable {
           return {};
         }
 
-        __task::disposition disposition() const noexcept {
+        [[nodiscard]]
+        auto disposition() const noexcept -> __task::disposition {
           return static_cast<__task::disposition>(this->__data_.index());
         }
 
@@ -372,17 +374,17 @@ namespace exec {
 
         template <sender _Awaitable>
           requires __scheduler_provider<_Context>
-        decltype(auto) await_transform(_Awaitable&& __awaitable) noexcept {
+        auto await_transform(_Awaitable&& __awaitable) noexcept -> decltype(auto) {
           // TODO: If we have a complete-where-it-starts query then we can optimize
           // this to avoid the reschedule
           return as_awaitable(
-            transfer((_Awaitable&&) __awaitable, get_scheduler(__context_)), *this);
+            transfer(static_cast<_Awaitable&&>(__awaitable), get_scheduler(__context_)), *this);
         }
 
         template <class _Scheduler>
           requires __scheduler_provider<_Context>
-        decltype(auto)
-          await_transform(__reschedule_coroutine_on::__wrap<_Scheduler> __box) noexcept {
+        auto await_transform(__reschedule_coroutine_on::__wrap<_Scheduler> __box) noexcept
+          -> decltype(auto) {
           if (!std::exchange(__rescheduled_, true)) {
             // Create a cleanup action that transitions back onto the current scheduler:
             auto __sched = get_scheduler(__context_);
@@ -398,13 +400,14 @@ namespace exec {
         }
 
         template <class _Awaitable>
-        decltype(auto) await_transform(_Awaitable&& __awaitable) noexcept {
-          return with_awaitable_senders<__promise>::await_transform((_Awaitable&&) __awaitable);
+        auto await_transform(_Awaitable&& __awaitable) noexcept -> decltype(auto) {
+          return with_awaitable_senders<__promise>::await_transform(
+            static_cast<_Awaitable&&>(__awaitable));
         }
 
         using __context_t = typename _Context::template promise_context_t<__promise>;
 
-        friend const __context_t& tag_invoke(get_env_t, const __promise& __self) noexcept {
+        friend auto tag_invoke(get_env_t, const __promise& __self) noexcept -> const __context_t& {
           return __self.__context_;
         }
 
@@ -422,13 +425,13 @@ namespace exec {
             __coro_.destroy();
         }
 
-        static constexpr bool await_ready() noexcept {
+        static constexpr auto await_ready() noexcept -> bool {
           return false;
         }
 
         template <class _ParentPromise2>
-        __coro::coroutine_handle<>
-          await_suspend(__coro::coroutine_handle<_ParentPromise2> __parent) noexcept {
+        auto await_suspend(__coro::coroutine_handle<_ParentPromise2> __parent) noexcept
+          -> __coro::coroutine_handle<> {
           static_assert(__one_of<_ParentPromise, _ParentPromise2, void>);
           __context_.emplace(__coro_.promise().__context_, __parent.promise());
           __coro_.promise().set_continuation(__parent);
@@ -439,7 +442,7 @@ namespace exec {
           return __coro_;
         }
 
-        _Ty await_resume() {
+        auto await_resume() -> _Ty {
           __context_.reset();
           scope_guard __on_exit{[this]() noexcept {
             std::exchange(__coro_, {}).destroy();
@@ -457,13 +460,13 @@ namespace exec {
           awaiter_context_t<__promise, _ParentPromise>,
           __promise&,
           _ParentPromise&>
-      friend __task_awaitable<_ParentPromise>
-        tag_invoke(as_awaitable_t, basic_task&& __self, _ParentPromise&) noexcept {
+      friend auto tag_invoke(as_awaitable_t, basic_task&& __self, _ParentPromise&) noexcept
+        -> __task_awaitable<_ParentPromise> {
         return __task_awaitable<_ParentPromise>{std::exchange(__self.__coro_, {})};
       }
 
       // Make this task generally awaitable:
-      friend __task_awaitable<> operator co_await(basic_task&& __self) noexcept
+      friend auto operator co_await(basic_task&& __self) noexcept -> __task_awaitable<>
         requires __mvalid<awaiter_context_t, __promise>
       {
         return __task_awaitable<>{std::exchange(__self.__coro_, {})};
@@ -473,13 +476,13 @@ namespace exec {
       //   the resulting list to __qf<set_value_t>, which uses the list of types
       //   as arguments of a function type. In other words, set_value_t() if _Ty
       //   is void, and set_value_t(_Ty) otherwise.
-      using __set_value_sig_t = __minvoke< __remove<void, __qf<set_value_t>>, _Ty>;
+      using __set_value_sig_t = __minvoke<__remove<void, __qf<set_value_t>>, _Ty>;
 
       // Specify basic_task's completion signatures
       //   This is only necessary when basic_task is not generally awaitable
       //   owing to constraints imposed by its _Context parameter.
       using __task_traits_t = //
-        completion_signatures< __set_value_sig_t, set_error_t(std::exception_ptr), set_stopped_t()>;
+        completion_signatures<__set_value_sig_t, set_error_t(std::exception_ptr), set_stopped_t()>;
 
       friend auto tag_invoke(get_completion_signatures_t, const basic_task&, auto)
         -> __task_traits_t {

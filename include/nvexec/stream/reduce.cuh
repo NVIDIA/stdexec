@@ -27,6 +27,9 @@
 #include "common.cuh"
 #include "../detail/throw_on_cuda_error.cuh"
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
     namespace reduce_ {
@@ -134,16 +137,14 @@ namespace nvexec {
 
       template <sender Sender, __movable_value InitT, __movable_value Fun = cub::Sum>
       __sender<Sender, InitT, Fun> operator()(Sender&& sndr, InitT init, Fun fun) const {
-        return __sender<Sender, InitT, Fun>{{}, (Sender&&) sndr, (InitT&&) init, (Fun&&) fun};
+        return __sender<Sender, InitT, Fun>{
+          {}, static_cast<Sender&&>(sndr), static_cast<InitT&&>(init), static_cast<Fun&&>(fun)};
       }
 
       template <class InitT, class Fun = cub::Sum>
-      __binder_back<reduce_t, InitT, Fun> operator()(InitT init, Fun fun = {}) const {
-        return {
-          {},
-          {},
-          {(InitT&&) init, (Fun&&) fun}
-        };
+      STDEXEC_ATTRIBUTE((always_inline))
+      auto operator()(InitT init, Fun fun = {}) const -> __binder_back<reduce_t, InitT, Fun> {
+        return {{static_cast<InitT&&>(init), static_cast<Fun&&>(fun)}};
       }
     };
   } // namespace STDEXEC_STREAM_DETAIL_NS
@@ -157,3 +158,5 @@ namespace stdexec::__detail {
     nvexec::STDEXEC_STREAM_DETAIL_NS::reduce_::sender_t<__name_of<__t<SenderId>>, Init, Fun>>
     __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::reduce_::sender_t<SenderId, Init, Fun>>;
 } // namespace stdexec::__detail
+
+STDEXEC_PRAGMA_POP()

@@ -527,7 +527,7 @@ namespace {
     template <typename... Ts>
     friend void tag_invoke(ex::set_value_t, fun_receiver&& self, Ts... vals) noexcept {
       try {
-        std::move(self.f_)((Ts&&) vals...);
+        std::move(self.f_)(static_cast<Ts&&>(vals)...);
       } catch (...) {
         ex::set_error(std::move(self), std::current_exception());
       }
@@ -565,12 +565,12 @@ namespace {
       stdexec::__single_value_variant_sender<S, ex::__sync_wait::__env>,
       "Sender passed to sync_wait needs to have one variant for sending set_value");
 
-    std::optional<std::tuple<Ts...>> res = stdexec::sync_wait((S&&) snd);
+    std::optional<std::tuple<Ts...>> res = stdexec::sync_wait(static_cast<S&&>(snd));
     CHECK(res.has_value());
-    std::tuple<Ts...> expected((Ts&&) val...);
+    std::tuple<Ts...> expected(static_cast<Ts&&>(val)...);
     if constexpr (std::tuple_size_v<std::tuple<Ts...>> == 1)
       CHECK(std::get<0>(res.value()) == std::get<0>(expected));
     else
       CHECK(res.value() == expected);
   }
-}
+} // namespace

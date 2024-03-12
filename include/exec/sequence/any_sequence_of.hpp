@@ -67,11 +67,12 @@ namespace exec {
           template <class _Rcvr>
             requires sequence_receiver_of<_Rcvr, __item_types>
                   && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
-          friend const __t* tag_invoke(__create_vtable_t, __mtype<__t>, __mtype<_Rcvr>) noexcept {
+          friend auto tag_invoke(__create_vtable_t, __mtype<__t>, __mtype<_Rcvr>) noexcept
+            -> const __t* {
             static const __t __vtable_{
-              {__rcvr_next_vfun_fn<_Rcvr>{}((_NextSigs*) nullptr)},
-              {__rec::__rcvr_vfun_fn<_Rcvr>{}((_Sigs*) nullptr)}...,
-              {__query_vfun_fn<_Rcvr>{}((_Queries) nullptr)}...};
+              {__rcvr_next_vfun_fn<_Rcvr>{}(static_cast<_NextSigs*>(nullptr))},
+              {__rec::__rcvr_vfun_fn<_Rcvr>{}(static_cast<_Sigs*>(nullptr))}...,
+              {__query_vfun_fn<_Rcvr>{}(static_cast<_Queries>(nullptr))}...};
             return &__vtable_;
           }
         };
@@ -93,7 +94,7 @@ namespace exec {
           friend auto tag_invoke(_Tag, const _Self& __self, _As&&... __as) noexcept(
             __nothrow_callable<const __vtable_t&, _Tag, void*, _As...>)
             -> __call_result_t<const __vtable_t&, _Tag, void*, _As...> {
-            return (*__self.__vtable_)(_Tag{}, __self.__rcvr_, (_As&&) __as...);
+            return (*__self.__vtable_)(_Tag{}, __self.__rcvr_, static_cast<_As&&>(__as)...);
           }
         };
       };
@@ -130,7 +131,7 @@ namespace exec {
 
           template <same_as<set_next_t> _SetNext, same_as<__t> _Self, class _Sender>
             requires constructible_from<__item_sender, _Sender>
-          friend __void_sender tag_invoke(_SetNext, _Self& __self, _Sender&& __sndr) {
+          friend auto tag_invoke(_SetNext, _Self& __self, _Sender&& __sndr) -> __void_sender {
             return (
               *static_cast<const __rcvr_next_vfun<__next_sigs>*>(__self.__env_.__vtable_)->__fn_)(
               __self.__env_.__rcvr_, static_cast<_Sender&&>(__sndr));
@@ -144,14 +145,14 @@ namespace exec {
           }
 
           template <same_as<set_error_t> _SetError, same_as<__t> _Self, class Error>
-            requires __v< __mapply<__contains<set_error_t(Error)>, __compl_sigs>>
+            requires __v<__mapply<__contains<set_error_t(Error)>, __compl_sigs>>
           friend void tag_invoke(_SetError, _Self&& __self, Error&& __error) noexcept {
             (*static_cast<const __vfun<set_error_t(Error)>*>(__self.__env_.__vtable_)->__fn_)(
               __self.__env_.__rcvr_, static_cast<Error&&>(__error));
           }
 
           template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
-            requires __v< __mapply<__contains<set_stopped_t()>, __compl_sigs>>
+            requires __v<__mapply<__contains<set_stopped_t()>, __compl_sigs>>
           friend void tag_invoke(_SetStopped, _Self&& __self) noexcept
 
           {
@@ -160,12 +161,12 @@ namespace exec {
           }
 
           template <same_as<get_env_t> _GetEnv, __decays_to<__t> _Self>
-          friend const __env_t& tag_invoke(_GetEnv, _Self&& __self) noexcept {
+          friend auto tag_invoke(_GetEnv, _Self&& __self) noexcept -> const __env_t& {
             return __self.__env_;
           }
         };
       };
-    }
+    } // namespace __next
 
     template <class _Sigs, class _Queries>
     using __next_receiver_ref =
@@ -177,7 +178,7 @@ namespace exec {
       using __receiver_ref_t = stdexec::__t<__next_receiver_ref<_Sigs, _ReceiverQueries>>;
 
       struct __t : public __query_vtable_t {
-        const __query_vtable_t& queries() const noexcept {
+        auto queries() const noexcept -> const __query_vtable_t& {
           return *this;
         }
 
@@ -185,7 +186,8 @@ namespace exec {
 
         template <class _Sender>
           requires sequence_sender_to<_Sender, __receiver_ref_t>
-        friend const __t* tag_invoke(__create_vtable_t, __mtype<__t>, __mtype<_Sender>) noexcept {
+        friend auto tag_invoke(__create_vtable_t, __mtype<__t>, __mtype<_Sender>) noexcept
+          -> const __t* {
           static const __t __vtable_{
             {*__create_vtable(__mtype<__query_vtable_t>{}, __mtype<_Sender>{})},
             [](void* __object_pointer, __receiver_ref_t __receiver)
@@ -223,7 +225,7 @@ namespace exec {
         friend auto tag_invoke(_Tag, const _Self& __self, _As&&... __as) noexcept(
           __nothrow_callable<const __query_vtable_t&, _Tag, void*, _As...>)
           -> __call_result_t<const __query_vtable_t&, _Tag, void*, _As...> {
-          return __self.__vtable_->queries()(_Tag{}, __self.__sender_, (_As&&) __as...);
+          return __self.__vtable_->queries()(_Tag{}, __self.__sender_, static_cast<_As&&>(__as)...);
         }
       };
     };
@@ -244,18 +246,18 @@ namespace exec {
         using sender_concept = sequence_sender_t;
 
         __t(const __t&) = delete;
-        __t& operator=(const __t&) = delete;
+        auto operator=(const __t&) -> __t& = delete;
 
         __t(__t&&) = default;
-        __t& operator=(__t&&) = default;
+        auto operator=(__t&&) -> __t& = default;
 
         template <__not_decays_to<__t> _Sender>
           requires sequence_sender_to<_Sender, __receiver_ref_t>
         __t(_Sender&& __sndr)
-          : __storage_{(_Sender&&) __sndr} {
+          : __storage_{static_cast<_Sender&&>(__sndr)} {
         }
 
-        __immovable_operation_storage __connect(__receiver_ref_t __receiver) {
+        auto __connect(__receiver_ref_t __receiver) -> __immovable_operation_storage {
           return __storage_.__get_vtable()->subscribe_(
             __storage_.__get_object_pointer(), __receiver);
         }
@@ -263,20 +265,20 @@ namespace exec {
         __unique_storage_t<__vtable_t> __storage_;
 
         template <same_as<__t> _Self, class _Rcvr>
-        friend stdexec::__t<__operation<stdexec::__id<_Rcvr>, true>>
-          tag_invoke(subscribe_t, _Self&& __self, _Rcvr __rcvr) {
+        friend auto tag_invoke(subscribe_t, _Self&& __self, _Rcvr __rcvr)
+          -> stdexec::__t<__operation<stdexec::__id<_Rcvr>, true>> {
           return {static_cast<_Self&&>(__self), static_cast<_Rcvr&&>(__rcvr)};
         }
 
         using __env_t = stdexec::__t<__sender_env<_Sigs, _SenderQueries, _ReceiverQueries>>;
 
         template <same_as<get_env_t> _GetEnv, __decays_to<__t> _Self>
-        friend __env_t tag_invoke(_GetEnv, _Self&& __self) noexcept {
+        friend auto tag_invoke(_GetEnv, _Self&& __self) noexcept -> __env_t {
           return {__self.__storage_.__get_vtable(), __self.__storage_.__get_object_pointer()};
         }
       };
     };
-  }
+  } // namespace __any
 
   template <class _Completions, auto... _ReceiverQueries>
   class any_sequence_receiver_ref {
@@ -291,7 +293,7 @@ namespace exec {
 
     template <std::same_as<stdexec::get_env_t> _GetEnv, std::same_as<__t> _Self>
       requires stdexec::__callable<stdexec::get_env_t, const __receiver_base&>
-    friend __env_t tag_invoke(_GetEnv, const _Self& __self) noexcept {
+    friend auto tag_invoke(_GetEnv, const _Self& __self) noexcept -> __env_t {
       return stdexec::get_env(__self.__receiver_);
     }
 
@@ -331,10 +333,9 @@ namespace exec {
 
     template <auto... _SenderQueries>
     class any_sender {
-      using __sender_base = stdexec::__t< __any::__sequence_sender<
-        _Completions,
-        queries<_SenderQueries...>,
-        queries<_ReceiverQueries...>>>;
+      using __sender_base = stdexec::__t<
+        __any::
+          __sequence_sender<_Completions, queries<_SenderQueries...>, queries<_ReceiverQueries...>>>;
       __sender_base __sender_;
 
      public:
@@ -353,16 +354,16 @@ namespace exec {
       }
 
       template <stdexec::same_as<__t> _Self, sequence_receiver_of<item_types> _Rcvr>
-      friend subscribe_result_t<__sender_base, _Rcvr>
-        tag_invoke(exec::subscribe_t, _Self&& __self, _Rcvr __rcvr) {
+      friend auto tag_invoke(exec::subscribe_t, _Self&& __self, _Rcvr __rcvr)
+        -> subscribe_result_t<__sender_base, _Rcvr> {
         return exec::subscribe(
           static_cast<__sender_base&&>(__self.__sender_), static_cast<_Rcvr&&>(__rcvr));
       }
 
       template <stdexec::same_as<stdexec::get_env_t> _GetEnv, stdexec::__decays_to<__t> _Self>
-      friend stdexec::env_of_t<__sender_base> tag_invoke(_GetEnv, _Self&& __self) noexcept {
+      friend auto tag_invoke(_GetEnv, _Self&& __self) noexcept -> stdexec::env_of_t<__sender_base> {
         return stdexec::get_env(__self.__sender_);
       }
     };
   };
-}
+} // namespace exec

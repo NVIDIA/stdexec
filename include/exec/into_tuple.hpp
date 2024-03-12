@@ -80,12 +80,13 @@ namespace exec {
         if constexpr (same_as<_Tag, set_value_t>) {
           using __tuple_t = __t<_State>;
           try {
-            set_value((_Receiver &&) __rcvr, __tuple_t{(_Args &&) __args...});
+            set_value(
+              static_cast<_Receiver &&>(__rcvr), __tuple_t{static_cast<_Args &&>(__args)...});
           } catch (...) {
-            set_error((_Receiver &&) __rcvr, std::current_exception());
+            set_error(static_cast<_Receiver &&>(__rcvr), std::current_exception());
           }
         } else {
-          _Tag()((_Receiver &&) __rcvr, (_Args &&) __args...);
+          _Tag()(static_cast<_Receiver &&>(__rcvr), static_cast<_Args &&>(__args)...);
         }
       };
     };
@@ -95,11 +96,13 @@ namespace exec {
       auto operator()(_Sender &&__sndr) const {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
-          __domain, __make_sexpr<into_tuple_t>({}, (_Sender &&) __sndr));
+          __domain, __make_sexpr<into_tuple_t>({}, static_cast<_Sender &&>(__sndr)));
       }
 
-      constexpr auto operator()() const noexcept -> __binder_back<into_tuple_t> {
-        return {{}, {}, {}};
+      STDEXEC_ATTRIBUTE((always_inline))
+      constexpr auto
+        operator()() const noexcept -> __binder_back<into_tuple_t> {
+        return {};
       }
     };
   } // namespace __into_tuple
@@ -111,4 +114,4 @@ namespace exec {
 namespace stdexec {
   template <>
   struct __sexpr_impl<exec::__into_tuple::into_tuple_t> : exec::__into_tuple::__into_tuple_impl { };
-}
+} // namespace stdexec

@@ -39,4 +39,4 @@ namespace {
     static_assert(ex::forwarding_query(my_derived_forwarding_query));
     static_assert(!ex::forwarding_query(my_non_forwarding_query));
   }
-}
+} // namespace

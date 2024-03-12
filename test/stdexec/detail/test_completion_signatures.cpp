@@ -317,4 +317,4 @@ namespace {
     using err_t = ex::error_types_of_t<snd_t, ex::empty_env, tr::template __f>;
     static_assert(is_same_v<err_t, stdexec::__types<>>);
   }
-}
+} // namespace

@@ -30,14 +30,14 @@ namespace exec {
 
     template <class _Env>
     using __no_scheduler_error = //
-      __mexception< _INVALID_RESCHEDULE_NO_SCHEDULER_<>, _WITH_ENVIRONMENT_<_Env>>;
+      __mexception<_INVALID_RESCHEDULE_NO_SCHEDULER_<>, _WITH_ENVIRONMENT_<_Env>>;
 
     template <class _Env>
     using __schedule_sender_t = schedule_result_t<__call_result_t<get_scheduler_t, _Env>>;
 
     template <class _Env>
     using __try_schedule_sender_t =
-      __minvoke< __mtry_catch_q<__schedule_sender_t, __q<__no_scheduler_error>>, _Env>;
+      __minvoke<__mtry_catch_q<__schedule_sender_t, __q<__no_scheduler_error>>, _Env>;
 
     template <class _Env>
     using __completions =
@@ -58,7 +58,7 @@ namespace exec {
         friend auto tag_invoke(connect_t, __sender, _Receiver __rcvr)
           -> connect_result_t<__schedule_sender_t<env_of_t<_Receiver>>, _Receiver> {
           auto __sched = get_scheduler(get_env(__rcvr));
-          return connect(schedule(__sched), (_Receiver&&) __rcvr);
+          return stdexec::connect(schedule(__sched), static_cast<_Receiver&&>(__rcvr));
         }
 
         friend auto tag_invoke(get_env_t, __sender) noexcept {
@@ -66,24 +66,24 @@ namespace exec {
         }
       };
 
-      friend __sender tag_invoke(schedule_t, __scheduler) noexcept {
+      friend auto tag_invoke(schedule_t, __scheduler) noexcept -> __sender {
         return {};
       }
 
-      bool operator==(const __scheduler&) const noexcept = default;
+      auto operator==(const __scheduler&) const noexcept -> bool = default;
     };
 
     struct __reschedule_t {
       template <sender _Sender>
       auto operator()(_Sender&& __sndr) const {
-        return stdexec::transfer((_Sender&&) __sndr, __resched::__scheduler{});
+        return stdexec::transfer(static_cast<_Sender&&>(__sndr), __resched::__scheduler{});
       }
 
       auto operator()() const {
         return stdexec::transfer(__resched::__scheduler{});
       }
     };
-  }
+  } // namespace __resched
 
   inline constexpr auto reschedule = __resched::__reschedule_t{};
-}
+} // namespace exec

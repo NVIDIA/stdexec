@@ -67,4 +67,4 @@ namespace {
     start(op);
     CHECK(count == 0);
   }
-}
+} // namespace

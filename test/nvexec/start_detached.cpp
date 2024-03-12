@@ -58,4 +58,4 @@ namespace {
     THROW_ON_CUDA_ERROR(cudaFreeHost(host_flag));
     THROW_ON_CUDA_ERROR(cudaFreeHost(device_flag));
   }
-}
+} // namespace

@@ -86,4 +86,4 @@ namespace {
       buffer.deallocate(ptr, 32, alignment);
     }
   }
-}
+} // namespace

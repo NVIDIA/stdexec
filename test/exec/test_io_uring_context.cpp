@@ -21,13 +21,13 @@
 // allow user access to some of the necessary system calls.
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0) && __has_include(<linux/io_uring.h>)
 
-#include "exec/linux/io_uring_context.hpp"
-#include "exec/scope.hpp"
-#include "exec/single_thread_context.hpp"
-#include "exec/finally.hpp"
-#include "exec/when_any.hpp"
+#  include "exec/linux/io_uring_context.hpp"
+#  include "exec/scope.hpp"
+#  include "exec/single_thread_context.hpp"
+#  include "exec/finally.hpp"
+#  include "exec/when_any.hpp"
 
-#include "catch2/catch.hpp"
+#  include "catch2/catch.hpp"
 
 using namespace stdexec;
 using namespace exec;
@@ -115,6 +115,16 @@ namespace {
     CHECK(is_called);
     CHECK(!context.is_running());
     CHECK(!context.stop_requested());
+  }
+
+  TEST_CASE(
+    "io_uring_context Call now(io_uring) is running clock",
+    "[types][io_uring][schedulers]") {
+    io_uring_context context;
+    io_uring_scheduler scheduler = context.get_scheduler();
+    auto start = now(scheduler);
+    std::this_thread::sleep_for(10ms);
+    CHECK(start + 10ms <= now(scheduler));
   }
 
   TEST_CASE(
@@ -338,6 +348,6 @@ namespace {
     CHECK(sync_wait(exec::when_any(schedule(scheduler), context.run())));
     CHECK(!sync_wait(exec::when_any(schedule(scheduler), context.run())));
   }
-}
+} // namespace
 
 #endif

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - "member-function-customization"
       - "pull-request/[0-9]+"
 
 concurrency:
@@ -43,7 +44,7 @@ jobs:
       - name: Run nvidia-smi to make sure GPU is working
         run: nvidia-smi
       - name: Checkout stdexec
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: stdexec
           persist-credentials: false

@@ -186,8 +186,7 @@ namespace {
       !ex::__get_completion_signatures::__with_member_alias<awaitable_sender_4, ex::empty_env>);
 
     static_assert(
-      std::
-        is_same_v< ex::completion_signatures_of_t<awaitable_sender_4, ex::empty_env>, Signatures>);
+      std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_4, ex::empty_env>, Signatures>);
   }
 
   struct connect_awaitable_promise : ex::with_awaitable_senders<connect_awaitable_promise> { };
@@ -263,6 +262,6 @@ namespace {
     using _Promise = ex::__env::__promise<ex::empty_env>;
     static_assert(!ex::__awaitable<_Awaitable, _Promise>);
   }
-}
+} // namespace
 
 #endif // !STDEXEC_STD_NO_COROUTINES_

@@ -30,15 +30,15 @@ namespace exec {
    public:
     using result_type = std::uint32_t;
 
-    static constexpr result_type(min)() {
+    static constexpr auto(min)() -> result_type {
       return 0;
     }
 
-    static constexpr result_type(max)() {
+    static constexpr auto(max)() -> result_type {
       return UINT32_MAX;
     }
 
-    friend bool operator==(xorshift const &, xorshift const &) = default;
+    friend auto operator==(xorshift const &, xorshift const &) -> bool = default;
 
     xorshift()
       : m_seed(0xc1f651c67c62c6e0ull) {
@@ -56,7 +56,7 @@ namespace exec {
       m_seed = std::uint64_t(rd()) << 31 | std::uint64_t(rd());
     }
 
-    result_type operator()() {
+    auto operator()() -> result_type {
       std::uint64_t result = m_seed * 0xd989bcacc137dcd5ull;
       m_seed ^= m_seed >> 11;
       m_seed ^= m_seed << 31;

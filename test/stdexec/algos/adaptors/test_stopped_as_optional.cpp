@@ -121,4 +121,4 @@ namespace {
     check_sends_stopped<false>( //
       ex::transfer_just(sched3, 3) | ex::stopped_as_optional());
   }
-}
+} // namespace

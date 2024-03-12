@@ -60,4 +60,4 @@ namespace {
   TEST_CASE("pointer type is not an operation_state", "[concepts][operation_state]") {
     REQUIRE(!ex::operation_state<op_noexcept*>);
   }
-}
+} // namespace

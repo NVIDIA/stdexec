@@ -26,36 +26,36 @@
 namespace exec {
   struct numa_policy {
     virtual ~numa_policy() = default;
-    virtual std::size_t num_nodes() = 0;
-    virtual std::size_t num_cpus(int node) = 0;
-    virtual int bind_to_node(int node) = 0;
-    virtual int thread_index_to_node(std::size_t index) = 0;
+    virtual auto num_nodes() -> std::size_t = 0;
+    virtual auto num_cpus(int node) -> std::size_t = 0;
+    virtual auto bind_to_node(int node) -> int = 0;
+    virtual auto thread_index_to_node(std::size_t index) -> int = 0;
   };
 
   class no_numa_policy : public numa_policy {
    public:
     no_numa_policy() noexcept = default;
 
-    std::size_t num_nodes() override {
+    auto num_nodes() -> std::size_t override {
       return 1;
     }
 
-    std::size_t num_cpus(int node) override {
+    auto num_cpus(int node) -> std::size_t override {
       return std::thread::hardware_concurrency();
     }
 
-    int bind_to_node(int node) override {
+    auto bind_to_node(int node) -> int override {
       return 0;
     }
 
-    int thread_index_to_node(std::size_t index) override {
+    auto thread_index_to_node(std::size_t index) -> int override {
       return 0;
     }
   };
-}
+} // namespace exec
 
 #if STDEXEC_ENABLE_NUMA
-#include <numa.h>
+#  include <numa.h>
 
 namespace exec {
   struct default_numa_policy : numa_policy {
@@ -210,12 +210,12 @@ namespace exec {
    private:
     ::nodemask_t mask_;
   };
-}
+} // namespace exec
 #else
 namespace exec {
   using default_numa_policy = no_numa_policy;
 
-  inline numa_policy* get_numa_policy() noexcept {
+  inline auto get_numa_policy() noexcept -> numa_policy* {
     thread_local default_numa_policy g_default_numa_policy{};
     return &g_default_numa_policy;
   }
@@ -233,7 +233,7 @@ namespace exec {
     explicit numa_allocator(const numa_allocator<U>&) noexcept {
     }
 
-    T* allocate(std::size_t n) {
+    auto allocate(std::size_t n) -> T* {
       std::allocator<T> alloc{};
       return alloc.allocate(n);
     }
@@ -243,11 +243,11 @@ namespace exec {
       alloc.deallocate(p, n);
     }
 
-    friend bool operator==(const numa_allocator&, const numa_allocator&) noexcept = default;
+    friend auto operator==(const numa_allocator&, const numa_allocator&) noexcept -> bool = default;
   };
 
   class nodemask {
-    static nodemask make_any() noexcept {
+    static auto make_any() noexcept -> nodemask {
       nodemask mask;
       mask.mask_ = true;
       return mask;
@@ -256,12 +256,12 @@ namespace exec {
    public:
     nodemask() noexcept = default;
 
-    static const nodemask& any() noexcept {
+    static auto any() noexcept -> const nodemask& {
       static nodemask mask = make_any();
       return mask;
     }
 
-    bool operator[](std::size_t nodemask) const noexcept {
+    auto operator[](std::size_t nodemask) const noexcept -> bool {
       return mask_ && nodemask == 0;
     }
 
@@ -269,12 +269,12 @@ namespace exec {
       mask_ |= nodemask == 0;
     }
 
-    friend bool operator==(const nodemask& lhs, const nodemask& rhs) noexcept {
+    friend auto operator==(const nodemask& lhs, const nodemask& rhs) noexcept -> bool {
       return lhs.mask_ == rhs.mask_;
     }
 
    private:
     bool mask_{false};
   };
-}
+} // namespace exec
 #endif

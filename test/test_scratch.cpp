@@ -26,4 +26,4 @@ namespace {
   TEST_CASE("a scratch test case for minimal repro of a bug", "[scratch]") {
     CHECK(true);
   }
-}
+} // namespace
