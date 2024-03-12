@@ -280,12 +280,12 @@ if(STDEXEC_ENABLE_CUDA)
 
         target_link_libraries(nvexec INTERFACE CUDA::cudart)
 
-        include(${rapids-cmake-dir}/cpm/libcudacxx.cmake)
-        rapids_cpm_libcudacxx(
+        include(${rapids-cmake-dir}/cpm/cccl.cmake)
+        rapids_cpm_cccl(
             BUILD_EXPORT_SET stdexec-exports
             INSTALL_EXPORT_SET stdexec-exports)
 
-        target_link_libraries(stdexec INTERFACE libcudacxx::libcudacxx)
+        target_link_libraries(stdexec INTERFACE CCCL::CCCL)
     endif ()
 endif ()
 

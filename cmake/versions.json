@@ -1,8 +1,8 @@
 {
   "packages" : {
-    "libcudacxx" : {
-      "version" : "1.9.0",
-      "git_url" : "https://github.com/NVIDIA/libcudacxx.git",
+    "cccl" : {
+      "version" : "v2.2.0",
+      "git_url" : "https://github.com/NVIDIA/cccl.git",
       "git_tag" : "${version}"
     }
   }
