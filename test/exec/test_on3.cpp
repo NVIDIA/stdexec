@@ -30,13 +30,15 @@ namespace {
     using receiver_concept = ex::receiver_t;
     Rcvr rcvr;
 
-    STDEXEC_MEMFN_DECL(void set_value)(this get_env_rcvr&& self, auto&&...) noexcept {
+    template <class... Values>
+    STDEXEC_MEMFN_DECL(void set_value)(this get_env_rcvr&& self, Values&&...) noexcept {
       auto env = ex::get_env(self.rcvr);
       ex::set_value(std::move(self.rcvr), std::move(env));
     }
 
-    STDEXEC_MEMFN_DECL(void set_error)(this get_env_rcvr&& self, auto&& error) noexcept {
-      ex::set_error(std::move(self.rcvr), std::forward<decltype(error)>(error));
+    template <class Error>
+    STDEXEC_MEMFN_DECL(void set_error)(this get_env_rcvr&& self, Error&& err) noexcept {
+      ex::set_error(std::move(self.rcvr), std::forward<Error>(err));
     }
 
     STDEXEC_MEMFN_DECL(void set_stopped)(this get_env_rcvr&& self) noexcept {
