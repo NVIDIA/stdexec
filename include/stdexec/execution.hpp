@@ -4339,12 +4339,12 @@ namespace stdexec {
         // we can forward the completion from within the scheduler's
         // execution context.
         using __async_result = __value_tuple<_Tag, _Args...>;
-        constexpr bool __nothrow = noexcept(
+        constexpr bool __nothrow_ = noexcept(
           __async_result{_Tag(), static_cast<_Args&&>(__args)...});
-        auto __emplace_result = [&]() noexcept(__nothrow) {
+        auto __emplace_result = [&]() noexcept(__nothrow_) {
           return __async_result{_Tag(), static_cast<_Args&&>(__args)...};
         };
-        if constexpr (__nothrow) {
+        if constexpr (__nothrow_) {
           __state.__data_.template emplace<__async_result>(__conv{__emplace_result});
         } else {
           try {
