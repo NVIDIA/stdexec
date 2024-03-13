@@ -4143,6 +4143,9 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.schedule_from]
   namespace __schedule_from {
+    template <class... _Ts>
+    using __value_tuple = __tup::__tuple_for<__decay_t<_Ts>...>;
+
     // Compute a variant type that is capable of storing the results of the
     // input sender when it completes. The variant has type:
     //   variant<
@@ -4158,7 +4161,7 @@ namespace stdexec {
     template <class _CvrefSender, class _Env>
     using __variant_for_t = __compl_sigs::__maybe_for_all_sigs<
       __completion_signatures_of_t<_CvrefSender, _Env>,
-      __q<__decayed_tuple>,
+      __q<__value_tuple>,
       __nullable_variant_t>;
 
     template <class _Tp>
@@ -4251,7 +4254,7 @@ namespace stdexec {
             if constexpr (same_as<_Tup, std::monostate>) {
               std::terminate(); // reaching this indicates a bug in schedule_from
             } else {
-              __apply(
+              __tup::__apply(
                 [&]<class... _Args>(auto __tag, _Args&... __args) noexcept -> void {
                   __tag(std::move(__state->__receiver()), static_cast<_Args&&>(__args)...);
                 },
@@ -4335,13 +4338,17 @@ namespace stdexec {
         // Write the tag and the args into the operation state so that
         // we can forward the completion from within the scheduler's
         // execution context.
-        using __async_result = __decayed_tuple<_Tag, _Args...>;
-        if constexpr (__nothrow_constructible_from<__async_result, _Tag, _Args...>) {
-          __state.__data_.template emplace<__async_result>(_Tag(), static_cast<_Args&&>(__args)...);
+        using __async_result = __value_tuple<_Tag, _Args...>;
+        constexpr bool __nothrow = noexcept(
+          __async_result{_Tag(), static_cast<_Args&&>(__args)...});
+        auto __emplace_result = [&]() noexcept(__nothrow) {
+          return __async_result{_Tag(), static_cast<_Args&&>(__args)...};
+        };
+        if constexpr (__nothrow) {
+          __state.__data_.template emplace<__async_result>(__conv{__emplace_result});
         } else {
           try {
-            __state.__data_.template emplace<__async_result>(
-              _Tag(), static_cast<_Args&&>(__args)...);
+            __state.__data_.template emplace<__async_result>(__conv{__emplace_result});
           } catch (...) {
             set_error(std::move(__rcvr), std::current_exception());
             return;
@@ -4456,14 +4463,14 @@ namespace stdexec {
     template <class _Env>
     auto __transform_sender_fn(const _Env& __env) {
       return [&]<class _Data>(__ignore, _Data&& __data) {
-        return __apply(__make_transform_fn(__env), static_cast<_Data&&>(__data));
+        return __tup::__apply(__make_transform_fn(__env), static_cast<_Data&&>(__data));
       };
     }
 
     struct transfer_just_t {
       using _Data = __0;
       using __legacy_customizations_t = //
-        __types<__apply_t(decltype(__transfer_just_tag_invoke()), _Data)>;
+        __types<__tup::__apply_t(decltype(__transfer_just_tag_invoke()), _Data)>;
 
       template <scheduler _Scheduler, __movable_value... _Values>
       auto operator()(_Scheduler&& __sched, _Values&&... __vals) const -> __well_formed_sender
@@ -4472,7 +4479,7 @@ namespace stdexec {
         return stdexec::transform_sender(
           __domain,
           __make_sexpr<transfer_just_t>(
-            std::tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Values&&>(__vals)...}));
+            __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Values&&>(__vals)...}));
       }
 
       template <class _Sender, class _Env>
@@ -4491,7 +4498,7 @@ namespace stdexec {
     struct __transfer_just_impl : __sexpr_defaults {
       static constexpr auto get_attrs = //
         []<class _Data>(const _Data& __data) noexcept {
-          return __apply(__make_env_fn(), __data);
+          return __tup::__apply(__make_env_fn(), __data);
         };
     };
   } // namespace __transfer_just
