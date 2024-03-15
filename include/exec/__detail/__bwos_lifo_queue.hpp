@@ -17,6 +17,7 @@
 #pragma once
 
 #include "../../stdexec/__detail/__config.hpp"
+#include "../../stdexec/__detail/__spin_loop_pause.hpp"
 
 #include <atomic>
 #include <bit>
@@ -27,44 +28,6 @@
 #include <utility>
 #include <vector>
 
-// The below code for spin_loop_pause is taken from https://github.com/max0x7ba/atomic_queue/blob/master/include/atomic_queue/defs.h
-// Copyright (c) 2019 Maxim Egorushkin. MIT License.
-
-#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
-#  if STDEXEC_MSVC()
-#    include <intrin.h>
-#  endif
-namespace exec::bwos {
-  static inline void spin_loop_pause() noexcept {
-#  if STDEXEC_MSVC()
-    _mm_pause();
-#  else
-    __builtin_ia32_pause();
-#  endif
-  }
-} // namespace exec::bwos
-#elif defined(__arm__) || defined(__aarch64__) || defined(_M_ARM64)
-namespace exec::bwos {
-  static inline void spin_loop_pause() noexcept {
-#  if (                                                                                            \
-    defined(__ARM_ARCH_6K__) || defined(__ARM_ARCH_6Z__) || defined(__ARM_ARCH_6ZK__)              \
-    || defined(__ARM_ARCH_6T2__) || defined(__ARM_ARCH_7__) || defined(__ARM_ARCH_7A__)            \
-    || defined(__ARM_ARCH_7R__) || defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7S__)            \
-    || defined(__ARM_ARCH_8A__) || defined(__aarch64__))
-    asm volatile("yield" ::: "memory");
-#  elif defined(_M_ARM64)
-    __yield();
-#  else
-    asm volatile("nop" ::: "memory");
-#  endif
-  }
-} // namespace exec::bwos
-#else
-namespace exec::bwos {
-  static inline void spin_loop_pause() noexcept {
-  }
-} // namespace exec::bwos
-#endif
 
 /** 
  * This is an implementation of the BWOS queue as described in
@@ -482,7 +445,7 @@ namespace exec::bwos {
   auto lifo_queue<Tp, Allocator>::block_type::reclaim() noexcept -> bool {
     std::uint64_t expected_steal_head_ = tail_.load(std::memory_order_relaxed);
     while (steal_head_.load(std::memory_order_acquire) != expected_steal_head_) {
-      spin_loop_pause();
+      stdexec::__spin_loop_pause();
     }
     head_.store(0, std::memory_order_relaxed);
     tail_.store(0, std::memory_order_relaxed);

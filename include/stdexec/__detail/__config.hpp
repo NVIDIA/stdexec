@@ -104,6 +104,9 @@ enum {
 #  if defined(_MSC_VER)
 #    define STDEXEC_CLANG_CL(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #  endif
+#  if defined(__apple_build_version__)
+#    define STDEXEC_APPLE_CLANG(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#  endif
 #elif defined(__GNUC__)
 #  define STDEXEC_GCC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #elif defined(_MSC_VER)
@@ -124,6 +127,9 @@ enum {
 #endif
 #ifndef STDEXEC_CLANG_CL
 #  define STDEXEC_CLANG_CL(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#endif
+#ifndef STDEXEC_APPLE_CLANG
+#  define STDEXEC_APPLE_CLANG(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 #ifndef STDEXEC_GCC
 #  define STDEXEC_GCC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)

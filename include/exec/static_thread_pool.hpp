@@ -1290,7 +1290,7 @@ namespace exec {
 
       __t(static_thread_pool_& pool, Shape shape, Fun fun, CvrefSender&& sndr, Receiver rcvr)
         : shared_state_(pool, static_cast<Receiver&&>(rcvr), shape, fun)
-        , inner_op_{connect(static_cast<CvrefSender&&>(sndr), bulk_rcvr{shared_state_})} {
+        , inner_op_{stdexec::connect(static_cast<CvrefSender&&>(sndr), bulk_rcvr{shared_state_})} {
       }
     };
 
@@ -1464,7 +1464,8 @@ namespace exec {
             while (i0 + chunkSize < size) {
               for (std::size_t i = i0; i < i0 + chunkSize; ++i) {
                 op.items_[i].__construct_with([&] {
-                  return connect(set_next(op.rcvr_, ItemSender{&op, it + i}), NextReceiver{&op});
+                  return stdexec::connect(
+                    set_next(op.rcvr_, ItemSender{&op, it + i}), NextReceiver{&op});
                 });
                 start(op.items_[i].__get());
               }
@@ -1475,7 +1476,8 @@ namespace exec {
             }
             for (std::size_t i = i0; i < size; ++i) {
               op.items_[i].__construct_with([&] {
-                return connect(set_next(op.rcvr_, ItemSender{&op, it + i}), NextReceiver{&op});
+                return stdexec::connect(
+                  set_next(op.rcvr_, ItemSender{&op, it + i}), NextReceiver{&op});
               });
               start(op.items_[i].__get());
             }

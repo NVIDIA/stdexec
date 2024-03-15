@@ -51,7 +51,7 @@ namespace {
     using oper_command_t = std::function<void()>;
     using cmd_vec_t = std::vector<oper_command_t>;
 
-    struct data {
+    struct data : std::enable_shared_from_this<data> {
       explicit data(int id)
         : id_(id) {
       }
@@ -93,6 +93,19 @@ namespace {
       }
     };
 
+    struct env {
+      data* data_;
+
+      auto make_scheduler() const noexcept {
+        return impulse_scheduler{data_};
+      }
+
+      template <stdexec::__one_of<ex::set_value_t, ex::set_stopped_t> Tag>
+      friend auto tag_invoke(ex::get_completion_scheduler_t<Tag>, const env& self) noexcept {
+        return self.make_scheduler();
+      }
+    };
+
     struct my_sender {
       using __id = my_sender;
       using __t = my_sender;
@@ -101,17 +114,25 @@ namespace {
       using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                     //
         ex::set_stopped_t()>;
-      data* shared_data_;
+      data* data_;
 
       template <class R>
       friend oper<std::decay_t<R>> tag_invoke(ex::connect_t, my_sender self, R&& r) {
-        return {self.shared_data_, static_cast<R&&>(r)};
+        return {self.data_, static_cast<R&&>(r)};
       }
 
-      friend scheduler_env<impulse_scheduler> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
-        return {};
+      auto make_env() const noexcept {
+        return env{data_};
+      }
+
+      friend auto tag_invoke(ex::get_env_t, const my_sender& self) noexcept {
+        return self.make_env();
       }
     };
+
+    explicit impulse_scheduler(data* shared_data)
+      : shared_data_(shared_data->shared_from_this()) {
+    }
 
    public:
     using __id = impulse_scheduler;

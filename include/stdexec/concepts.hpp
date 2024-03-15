@@ -159,7 +159,7 @@ namespace stdexec {
 
   template <class _Ty>
   concept swappable = //
-    swappable_with<_Ty, _Ty>;
+    requires(_Ty& a, _Ty& b) { swap(a, b); };
 
   template <class _Ty>
   concept movable =               //

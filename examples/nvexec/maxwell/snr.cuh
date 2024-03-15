@@ -48,6 +48,9 @@ namespace nvexec {
 #include <exec/inline_scheduler.hpp>
 #include <exec/static_thread_pool.hpp>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+
 namespace ex = stdexec;
 
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
@@ -390,11 +393,7 @@ struct repeat_n_t {
   template <stdexec::__sender_adaptor_closure Closure>
   auto operator()(std::size_t n, Closure closure) const
     -> stdexec::__binder_back<repeat_n_t, std::size_t, Closure> {
-    return {
-      {},
-      {},
-      {n, static_cast<Closure&&>(closure)}
-    };
+    return {{n, static_cast<Closure&&>(closure)}};
   }
 };
 
@@ -444,3 +443,5 @@ void run_snr(
     stdexec::sync_wait(std::move(snd));
   });
 }
+
+STDEXEC_PRAGMA_POP()

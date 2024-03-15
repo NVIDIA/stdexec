@@ -107,8 +107,7 @@ namespace exec {
       template <class _Scheduler>
         requires __has_custom_schedule_after<_Scheduler>
       auto operator()(_Scheduler&& __sched, const duration_of_t<_Scheduler>& __duration) const
-        noexcept(
-          noexcept(tag_invoke(schedule_after, static_cast<_Scheduler&&>(__sched), __duration)))
+        noexcept(stdexec::nothrow_tag_invocable<schedule_after_t, _Scheduler, const duration_of_t<_Scheduler>&>)
           -> __custom_schedule_after_sender_t<_Scheduler> {
         static_assert(sender<__custom_schedule_after_sender_t<_Scheduler>>);
         return tag_invoke(schedule_after, static_cast<_Scheduler&&>(__sched), __duration);
@@ -117,13 +116,14 @@ namespace exec {
       template <class _Scheduler>
         requires(!__has_custom_schedule_after<_Scheduler>) && //
                 __has_custom_schedule_at<_Scheduler>
-      auto operator()(_Scheduler&& __sched, const duration_of_t<_Scheduler>& __duration) const
-        noexcept(noexcept(
-          tag_invoke(schedule_at, static_cast<_Scheduler&&>(__sched), now(__sched) + __duration)))
-          -> __custom_schedule_at_sender_t<_Scheduler> {
+      auto operator()(_Scheduler&& __sched, const duration_of_t<_Scheduler>& __duration) const noexcept {
         static_assert(sender<__custom_schedule_at_sender_t<_Scheduler>>);
-        auto __time_point = now(__sched) + __duration;
-        return tag_invoke(schedule_at, static_cast<_Scheduler&&>(__sched), __time_point);
+        // TODO get_completion_scheduler<set_value_t>
+        return stdexec::let_value(stdexec::just(), [__sched, __duration]() noexcept(
+          stdexec::__nothrow_callable<schedule_at_t, _Scheduler, const time_point_of_t<_Scheduler>&> &&
+          stdexec::__nothrow_callable<now_t, const _Scheduler&>) {
+          return schedule_at(__sched, now(__sched) + __duration);
+        });
       }
     };
   } // namespace __schedule_after
@@ -137,8 +137,7 @@ namespace exec {
       template <class _Scheduler>
         requires __has_custom_schedule_at<_Scheduler>
       auto operator()(_Scheduler&& __sched, const time_point_of_t<_Scheduler>& __time_point) const
-        noexcept(
-          noexcept(tag_invoke(schedule_at, static_cast<_Scheduler&&>(__sched), __time_point)))
+        noexcept(stdexec::nothrow_tag_invocable<schedule_at_t, _Scheduler, const time_point_of_t<_Scheduler>&>)
           -> __custom_schedule_at_sender_t<_Scheduler> {
         static_assert(sender<__custom_schedule_at_sender_t<_Scheduler>>);
         return tag_invoke(schedule_at, static_cast<_Scheduler&&>(__sched), __time_point);
@@ -147,14 +146,16 @@ namespace exec {
       template <class _Scheduler>
         requires(!__has_custom_schedule_at<_Scheduler>) && //
                 __has_custom_schedule_after<_Scheduler>
-      auto operator()(_Scheduler&& __sched, const duration_of_t<_Scheduler>& __time_point) const
-        noexcept(noexcept(tag_invoke(
-          schedule_after,
-          static_cast<_Scheduler&&>(__sched),
-          __time_point - now(__sched)))) -> __custom_schedule_after_sender_t<_Scheduler> {
+      auto operator()(
+        _Scheduler&& __sched,
+        const time_point_of_t<_Scheduler>& __time_point) const noexcept {
         static_assert(sender<__custom_schedule_after_sender_t<_Scheduler>>);
-        auto __duration = __time_point - now(__sched);
-        return tag_invoke(schedule_after, static_cast<_Scheduler&&>(__sched), __duration);
+        // TODO get_completion_scheduler<set_value_t>
+        return stdexec::let_value(stdexec::just(), [__sched, __time_point]() noexcept(
+          stdexec::__nothrow_callable<schedule_after_t, _Scheduler, const duration_of_t<_Scheduler>&> &&
+          stdexec::__nothrow_callable<now_t, const _Scheduler&>) {
+          return schedule_after(__sched, __time_point - now(__sched));
+        });
       }
     };
   } // namespace __schedule_at

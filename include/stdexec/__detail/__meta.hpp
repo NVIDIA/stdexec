@@ -253,7 +253,7 @@ namespace stdexec {
   template <class... _Args>
   concept _Ok = (__ok<_Args> && ...);
 
-  template <bool _AllOK>
+  template <bool _ArgsOK, bool _FnOK = true>
   struct __i;
 
 #if STDEXEC_NVHPC()
@@ -276,7 +276,7 @@ namespace stdexec {
   using __meval = __t<__meval_<_Fn, _Args...>>;
 
   template <class _Fn, class... _Args>
-  using __minvoke__ = typename __i<_Ok<_Fn>>::template __h<_Fn, _Args...>;
+  using __minvoke__ = typename __i<_Ok<_Args...>, _Ok<_Fn>>::template __h<_Fn, _Args...>;
 
   template <class _Fn, class... _Args>
   struct __minvoke_ { };
@@ -296,24 +296,30 @@ namespace stdexec {
   using __meval = typename __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
 
   template <class _Fn, class... _Args>
-  using __minvoke = typename __i<_Ok<_Fn>>::template __h<_Fn, _Args...>;
+  using __minvoke = typename __i<_Ok<_Args...>, _Ok<_Fn>>::template __h<_Fn, _Args...>;
 
 #endif
 
-  template <bool _AllOK>
-  struct __i {
+  template <>
+  struct __i<true, true> {
     template <template <class...> class _Fn, class... _Args>
     using __g = _Fn<_Args...>;
 
     template <class _Fn, class... _Args>
-    using __h = __meval<_Fn::template __f, _Args...>;
+    using __h = typename _Fn::template __f<_Args...>;
   };
 
   template <>
-  struct __i<false> {
+  struct __i<false, true> {
     template <template <class...> class, class... _Args>
     using __g = __disp<_Args...>;
 
+    template <class _Fn, class... _Args>
+    using __h = __disp<_Args...>;
+  };
+
+  template <bool _ArgsOK>
+  struct __i<_ArgsOK, false> {
     template <class _Fn, class...>
     using __h = _Fn;
   };
@@ -321,7 +327,7 @@ namespace stdexec {
   template <template <class...> class _Fn>
   struct __q {
     template <class... _Args>
-    using __f = __meval<_Fn, _Args...>;
+    using __f = typename __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
   };
 
   template <template <class...> class _Fn, class... _Front>

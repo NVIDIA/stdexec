@@ -22,6 +22,9 @@
 
 #include "stream/common.cuh"
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+
 namespace nvexec {
 
   namespace STDEXEC_STREAM_DETAIL_NS { namespace nvtx {
@@ -116,8 +119,9 @@ namespace nvexec {
         return nvtx_sender_th<kind::push, Sender>{{}, static_cast<Sender&&>(sndr), std::move(name)};
       }
 
-      stdexec::__binder_back<push_t, std::string> operator()(std::string name) const {
-        return {{}, {}, std::move(name)};
+      STDEXEC_ATTRIBUTE((always_inline))
+      auto operator()(std::string name) const -> stdexec::__binder_back<push_t, std::string> {
+        return {std::move(name)};
       }
     };
 
@@ -127,8 +131,9 @@ namespace nvexec {
         return nvtx_sender_th<kind::pop, Sender>{{}, static_cast<Sender&&>(sndr), {}};
       }
 
-      stdexec::__binder_back<pop_t> operator()() const {
-        return {{}, {}};
+      STDEXEC_ATTRIBUTE((always_inline))
+      auto operator()() const noexcept -> stdexec::__binder_back<pop_t> {
+        return {};
       }
     };
 
@@ -142,13 +147,10 @@ namespace nvexec {
       }
 
       template <stdexec::__sender_adaptor_closure Closure>
+      STDEXEC_ATTRIBUTE((always_inline))
       auto operator()(std::string name, Closure closure) const
         -> stdexec::__binder_back<scoped_t, std::string, Closure> {
-        return {
-          {},
-          {},
-          {std::move(name), static_cast<Closure&&>(closure)}
-        };
+        return {{std::move(name), static_cast<Closure&&>(closure)}};
       }
     };
 
@@ -163,3 +165,5 @@ namespace nvexec {
   } // namespace nvtx
 
 } // namespace nvexec
+
+STDEXEC_PRAGMA_POP()
