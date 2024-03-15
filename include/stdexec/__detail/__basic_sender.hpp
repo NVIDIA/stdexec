@@ -417,10 +417,8 @@ namespace stdexec {
         __complete(_Index, _Tag2, _Args&&... __args) noexcept {
         using __tag_t = typename __op_state::__tag_t;
         auto&& __rcvr = this->__rcvr();
-        if constexpr (requires {
-                        __sexpr_impl<__tag_t>::complete(
-                          _Index(), *this, _Tag2(), static_cast<_Args&&>(__args)...);
-                      }) {
+        using _CompleteFn = __mtypeof<__sexpr_impl<__tag_t>::complete>;
+        if constexpr (__callable<_CompleteFn, _Index, __op_state&, _Tag2, _Args...>) {
           __sexpr_impl<__tag_t>::complete(
             _Index(), *this, _Tag2(), static_cast<_Args&&>(__args)...);
         } else {
