@@ -25,7 +25,7 @@ jobs:
           - { name: "CPU (gcc 11, Debug, ubuntu 22.04)",         build: "Debug",   tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "", }
           - { name: "CPU (gcc 11, Release, ubuntu 22.04)",       build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "", }
           - { name: "CPU (gcc 11, Release, ubuntu 22.04, TSAN)", build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "-fsanitize=thread" }
-          - { name: "CPU (gcc 11, Release, ubuntu 22.04, ASAN)", build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "-fsanitize=address" }
+          - { name: "CPU (gcc 11, Release, ubuntu 22.04, ASAN)", build: "Release", tag: gcc11-cuda12.3-ubuntu22.04,  cxxflags: "-fsanitize=address -fno-lto" }
     container:
       options: -u root
       image: rapidsai/devcontainers:24.02-cpp-${{matrix.tag}}
