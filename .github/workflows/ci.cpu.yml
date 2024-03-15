@@ -101,7 +101,7 @@ jobs:
           #- { compiler: "clang-cl", build: "Release", name: "CPU (Windows) (clang-cl, Release)" }
     steps:
       - name: Checkout stdexec (Windows)
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
       - name: Build and test CPU schedulers (Windows)
@@ -127,7 +127,7 @@ jobs:
           - { compiler: "clang++",  build: "Release", name: "CPU (MacOS) (clang, Release)" }
     steps:
       - name: Checkout stdexec (MacOS)
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
