@@ -218,6 +218,7 @@ namespace {
       return ex::on(sched, ex::just());
     });
     ex::start_detached(ex::v2::on(sch, std::move(snd)));
+    loop.finish();
     loop.run();
   }
 
@@ -231,6 +232,7 @@ namespace {
       return ex::on(sched, ex::just());
     });
     ex::start_detached(ex::v2::on(sch, std::move(snd)), env{});
+    loop.finish();
     loop.run();
   }
 } // namespace
