@@ -2063,24 +2063,27 @@ namespace stdexec {
     using __detached_receiver_t = __t<__detached_receiver<__id<__decay_t<_Env>>>>;
 
     struct start_detached_t {
-      template <sender_in<empty_env> _Sender>
+      template <sender_in<__root_env_t> _Sender>
         requires __callable<apply_sender_t, __early_domain_of_t<_Sender>, start_detached_t, _Sender>
       void operator()(_Sender&& __sndr) const {
         auto __domain = __get_early_domain(__sndr);
         stdexec::apply_sender(__domain, *this, static_cast<_Sender&&>(__sndr));
       }
 
-      template <class _Env, sender_in<_Env> _Sender>
+      template <class _Env, sender_in<__as_root_env_t<_Env>> _Sender>
         requires __callable<
           apply_sender_t,
-          __late_domain_of_t<_Sender, _Env>,
+          __late_domain_of_t<_Sender, __as_root_env_t<_Env>>,
           start_detached_t,
           _Sender,
-          _Env>
+          __as_root_env_t<_Env>>
       void operator()(_Sender&& __sndr, _Env&& __env) const {
         auto __domain = __get_late_domain(__sndr, __env);
         stdexec::apply_sender(
-          __domain, *this, static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env));
+          __domain,
+          *this,
+          static_cast<_Sender&&>(__sndr),
+          __as_root_env(static_cast<_Env&&>(__env)));
       }
 
       using _Sender = __0;
@@ -2091,7 +2094,7 @@ namespace stdexec {
           _Sender),
         tag_invoke_t(start_detached_t, _Sender)>;
 
-      template <class _Sender, class _Env = empty_env>
+      template <class _Sender, class _Env = __root_env_t>
         requires sender_to<_Sender, __detached_receiver_t<_Env>>
       void apply_sender(_Sender&& __sndr, _Env&& __env = {}) const {
         __submit(
@@ -5691,7 +5694,13 @@ namespace stdexec {
             // This branch handles the case where `on` was called like `on(sch, snd)`
             auto __old = query_or(get_scheduler, __env, __none_such{});
             if constexpr (same_as<decltype(__old), __none_such>) {
-              return __none_such{};
+              if constexpr (__is_root_env<_Env>) {
+                return continue_on(
+                  start_on(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)),
+                  std::move(__inln::__scheduler{}));
+              } else {
+                return __none_such{};
+              }
             } else {
               return continue_on(
                 start_on(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)),
