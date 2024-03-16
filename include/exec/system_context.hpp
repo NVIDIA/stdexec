@@ -34,6 +34,13 @@
 
 // TODO: make these configurable by providing policy to the system context
 
+/// Gets the default system context implementation.
+extern "C" __EXEC_WEAK_ATTRIBUTE __exec_system_context_interface* __get_exec_system_context_impl();
+
+/// Sets the default system context implementation.
+extern "C" __EXEC_WEAK_ATTRIBUTE void __set_exec_system_context_impl(
+  __exec_system_context_interface* __instance);
+
 namespace exec {
   namespace __detail {
     /// Transforms from a C API signal to the `set_xxx` completion signal.
@@ -73,13 +80,6 @@ namespace exec {
     using __sender_data_t = decltype(stdexec::sync_wait(std::declval<__Sender>()).value());
 
   } // namespace __detail
-
-  /// Gets the default system context implementation.
-  __EXEC_WEAK_ATTRIBUTE __exec_system_context_interface* __get_exec_system_context_impl();
-
-  /// Sets the default system context implementation.
-  __EXEC_WEAK_ATTRIBUTE void __set_exec_system_context_impl(
-    __exec_system_context_interface* __instance);
 
   class system_scheduler;
   class system_sender;

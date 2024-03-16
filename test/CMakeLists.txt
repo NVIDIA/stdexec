@@ -121,11 +121,26 @@ target_link_libraries(test.scratch
     stdexec_executable_flags
     Catch2::Catch2)
 
+    add_executable(test.system_context_replaceability test_main.cpp test_system_context_replaceability.cpp)
+    set_target_properties(test.system_context_replaceability PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF)
+    target_include_directories(test.system_context_replaceability PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+    target_link_libraries(test.system_context_replaceability
+        PUBLIC
+        STDEXEC::stdexec
+        STDEXEC::system_context
+        $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
+        stdexec_executable_flags
+        Catch2::Catch2)
+    
 # Discover the Catch2 test built by the application
 include(${Catch2_SOURCE_DIR}/contrib/Catch.cmake)
 
 catch_discover_tests(test.stdexec)
 catch_discover_tests(test.scratch)
+catch_discover_tests(test.system_context_replaceability)
 
 if(STDEXEC_ENABLE_CUDA)
     add_subdirectory(nvexec)

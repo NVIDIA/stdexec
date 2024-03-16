@@ -332,6 +332,8 @@ target_include_directories(system_context PRIVATE
                            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
                            )
 target_compile_features(system_context PRIVATE cxx_std_20)
+add_library(STDEXEC::system_context ALIAS system_context)
+
 
 
 if(CMAKE_CROSSCOMPILING)
