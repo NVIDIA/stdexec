@@ -46,7 +46,7 @@ jobs:
         with:
           path: stdexec
           persist-credentials: false
-      - if: github.repository_owner == 'not-NVIDIA'
+      - if: github.repository_owner == 'NVIDIA'
         name: Get AWS credentials for sccache bucket
         uses: aws-actions/configure-aws-credentials@v4
         with:
