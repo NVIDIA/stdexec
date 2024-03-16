@@ -192,7 +192,7 @@ namespace exec {
       }
 
       ~__op() {
-        __scheduler_->__destruct_schedule_operation(__impl_os_);
+        __scheduler_->__destruct_schedule_operation(__scheduler_, __impl_os_);
       }
 
       __op(const __op&) = delete;
@@ -268,7 +268,7 @@ namespace exec {
     } __preallocated_;
 
     ~__bulk_state() {
-      __snd_.__scheduler_->__destruct_bulk_schedule_operation(__impl_os_);
+      __snd_.__scheduler_->__destruct_bulk_schedule_operation(__snd_.__scheduler_, __impl_os_);
     }
   };
 

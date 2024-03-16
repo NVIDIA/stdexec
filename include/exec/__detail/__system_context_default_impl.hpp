@@ -147,7 +147,9 @@ namespace exec::__system_context_default_impl {
       return __os;
     }
 
-    static void __destruct_schedule_operation_impl(void* __operation) noexcept {
+    static void __destruct_schedule_operation_impl(
+      __exec_system_scheduler_interface* /*__self*/,
+      void* __operation) noexcept {
       auto __op = static_cast<__schedule_operation_t*>(__operation);
       __op->__destruct();
     }
@@ -170,7 +172,9 @@ namespace exec::__system_context_default_impl {
       return __os;
     }
 
-    static void __destruct_bulk_schedule_operation_impl(void* __operation) noexcept {
+    static void __destruct_bulk_schedule_operation_impl(
+      __exec_system_scheduler_interface* /*__self*/,
+      void* __operation) noexcept {
       auto __op = static_cast<__bulk_schedule_operation_t*>(__operation);
       __op->__destruct();
     }

@@ -68,7 +68,9 @@ struct __exec_system_scheduler_interface {
     void* /*data*/);
 
   /// Destructs the operation state object.
-  void (*__destruct_schedule_operation)(void* /*operation*/);
+  void (*__destruct_schedule_operation)(
+    struct __exec_system_scheduler_interface* /*self*/,
+    void* /*operation*/);
 
   /// The size of the operation state object on the implementation side.
   uint32_t __bulk_schedule_operation_size;
@@ -88,7 +90,9 @@ struct __exec_system_scheduler_interface {
     long /*size*/);
 
   /// Destructs the operation state object for a bulk_schedule.
-  void (*__destruct_bulk_schedule_operation)(void* /*operation*/);
+  void (*__destruct_bulk_schedule_operation)(
+    struct __exec_system_scheduler_interface* /*self*/,
+    void* /*operation*/);
 };
 
 #ifdef __cplusplus
