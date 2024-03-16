@@ -68,6 +68,7 @@ jobs:
             -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}" \
             -DCMAKE_EXE_LINKER_FLAGS="${{ matrix.linkflags }}" \
             -DSTDEXEC_ENABLE_TBB:BOOL=${{ !contains(matrix.cxxflags, '-fsanitize') }} \
+            -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
             ;
 
           # Compile
