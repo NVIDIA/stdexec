@@ -18,8 +18,11 @@
 #include <iostream>
 #include <chrono>
 
+#define __EXEC__SYSTEM_CONTEXT__HEADER_ONLY 1
+
 #include <catch2/catch.hpp>
 #include <exec/system_context.hpp>
+#include <exec/static_thread_pool.hpp>
 #include <exec/async_scope.hpp>
 #include <stdexec/execution.hpp>
 
@@ -293,7 +296,7 @@ struct my_system_context_impl : __exec_system_context_interface {
 TEST_CASE("can change the implementation of system context", "[types][system_scheduler]") {
   // Not to spec.
   my_system_context_impl ctx_impl;
-  exec::__system_context_default_impl::__set_exec_system_context_impl(&ctx_impl);
+  exec::__set_exec_system_context_impl(&ctx_impl);
 
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};

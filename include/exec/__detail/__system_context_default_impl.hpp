@@ -18,10 +18,9 @@
 #include "__system_context_if.h"
 #include "stdexec/execution.hpp"
 #include "exec/static_thread_pool.hpp"
+#include "__weak_attribute.hpp"
 
 namespace exec::__system_context_default_impl {
-
-  // TODO: move default implementation to weak pointers
 
   using __pool_scheduler_t = decltype(std::declval<exec::static_thread_pool>().get_scheduler());
 
@@ -231,15 +230,5 @@ namespace exec::__system_context_default_impl {
 
     __exec_system_context_interface* __current_instance_;
   };
-
-  /// Gets the default system context implementation.
-  static __exec_system_context_interface* __get_exec_system_context_impl() {
-    return __instance_holder::__singleton().__get_current_instance();
-  }
-
-  /// Sets the default system context implementation.
-  static void __set_exec_system_context_impl(__exec_system_context_interface* __instance) {
-    return __instance_holder::__singleton().__set_current_instance(__instance);
-  }
 
 } // namespace exec::__system_context_default_impl
