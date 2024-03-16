@@ -182,12 +182,12 @@ namespace {
     error_scheduler sched2{};
     error_scheduler<int> sched3{43};
 
-    check_err_types<type_array<std::exception_ptr&&>>(
+    check_err_types<type_array<>>(
       exec::on(sched1, ex::just(1)) | _with_scheduler());
     check_err_types<type_array<std::exception_ptr&&>>(
       exec::on(sched2, ex::just(2)) | _with_scheduler());
-    // check_err_types<type_array<std::exception_ptr&&, int&&>>(
-    //   exec::on(sched3, ex::just(3)) | _with_scheduler());
+    check_err_types<type_array<int&&>>(
+      exec::on(sched3, ex::just(3)) | _with_scheduler());
   }
 
   TEST_CASE("exec::on keeps sends_stopped from scheduler's sender", "[adaptors][exec::on]") {
