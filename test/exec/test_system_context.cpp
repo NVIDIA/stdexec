@@ -239,9 +239,11 @@ struct my_system_scheduler_impl : __exec_system_scheduler_interface {
     __forward_progress_guarantee = base_.__forward_progress_guarantee;
     __schedule_operation_size = base_.__schedule_operation_size;
     __schedule_operation_alignment = base_.__schedule_operation_alignment;
+    __destruct_schedule_operation = base_.__destruct_schedule_operation;
     __bulk_schedule_operation_size = base_.__bulk_schedule_operation_size;
     __bulk_schedule_operation_alignment = base_.__bulk_schedule_operation_alignment;
     __bulk_schedule = base_.__bulk_schedule;
+    __destruct_bulk_schedule_operation = base_.__destruct_bulk_schedule_operation;
 
     __schedule = __schedule_impl; // have our own schedule implementation
   }
@@ -255,7 +257,7 @@ struct my_system_scheduler_impl : __exec_system_scheduler_interface {
   exec::__system_context_default_impl::__system_scheduler_impl base_;
   int count_schedules_ = 0;
 
-  static void __schedule_impl(
+  static void* __schedule_impl(
     __exec_system_scheduler_interface* self_arg,
     void* preallocated,
     uint32_t psize,
@@ -265,7 +267,7 @@ struct my_system_scheduler_impl : __exec_system_scheduler_interface {
     // increment our counter.
     self->count_schedules_++;
     // delegate to the base implementation.
-    self->base_.__schedule(&self->base_, preallocated, psize, callback, data);
+    return self->base_.__schedule(&self->base_, preallocated, psize, callback, data);
   }
 };
 
