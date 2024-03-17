@@ -79,4 +79,4 @@ namespace stdexec {
       return __front;
     }
   };
-}
+} // namespace stdexec
