@@ -140,7 +140,9 @@ include(${Catch2_SOURCE_DIR}/contrib/Catch.cmake)
 
 catch_discover_tests(test.stdexec)
 catch_discover_tests(test.scratch)
-catch_discover_tests(test.system_context_replaceability)
+if(NOT STDEXEC_ENABLE_CUDA)
+    catch_discover_tests(test.system_context_replaceability)
+endif()
 
 if(STDEXEC_ENABLE_CUDA)
     add_subdirectory(nvexec)
