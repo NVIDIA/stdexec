@@ -223,6 +223,55 @@ namespace stdexec {
 
     template <class _Completions, class _TaggedTuple, class _Variant>
     using __maybe_for_all_sigs = __meval<__for_all_sigs, _Completions, _TaggedTuple, _Variant>;
+
+    template <class...>
+    struct __normalize_completions {
+      void operator()() const {
+      }
+    };
+
+    template <class _Ry, class... _As, class... _Rest>
+    struct __normalize_completions<_Ry(_As...), _Rest...> : __normalize_completions<_Rest...> {
+      auto operator()(_Ry (*)(_As&&...)) const -> _Ry (*)(_As...);
+      using __normalize_completions<_Rest...>::operator();
+    };
+
+    template <class... _As>
+    inline constexpr auto __merge_sigs = []<class _Ry, class... Bs>(_Ry (*)(Bs...))
+      -> _Ry (*)(__if_c<__same_as<Bs&&, Bs>, _As, Bs>...) {
+      return nullptr;
+    };
+
+    template <class _Ry, class... _As, class... _Rest>
+      requires __callable<__normalize_completions<_Rest...>, _Ry (*)(_As&&...)>
+    struct __normalize_completions<_Ry(_As...), _Rest...> {
+      auto operator()(_Ry (*)(_As&&...)) const -> __result_of<
+        __merge_sigs<_As...>,
+        __call_result_t<__normalize_completions<_Rest...>, _Ry (*)(_As&&...)>>;
+
+      template <class _Sig>
+      auto operator()(_Sig*) const -> __call_result_t<__normalize_completions<_Rest...>, _Sig*>;
+    };
+
+    template <class T>
+    extern __undefined<T> __norm;
+
+    template <class _Ry, class... _As>
+    extern _Ry (*__norm<_Ry(_As...)>)(_As&&...);
+
+    inline constexpr auto __convert_to_completion_signatures =
+      []<class... Sigs>(__types<Sigs*...>*) -> completion_signatures<Sigs...> {
+      return {};
+    };
+
+    template <class... Sigs>
+    using __unique_completion_signatures = __result_of<
+      __convert_to_completion_signatures,
+      __minvoke<
+        __transform<
+          __mbind_front_q<__call_result_t, __normalize_completions<Sigs...>>,
+          __munique<__q<__types>>>,
+        decltype(__norm<Sigs>)...>*>;
   } // namespace __compl_sigs
 
   template <class _Completions>
@@ -251,7 +300,7 @@ namespace stdexec {
     __minvoke<
       __if_c<
         (__valid_completion_signatures<_Completions> && ...),
-        __mconcat<__munique<__q<completion_signatures>>>,
+        __mconcat<__q<__compl_sigs::__unique_completion_signatures>>,
         _INVALID_COMPLETION_SIGNATURES_TYPE_<>>,
       _Completions...>;
 
@@ -608,8 +657,8 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline))
       /*constexpr*/
       decltype(auto)
-        operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const noexcept(
-          __nothrow_callable<__transform_sender_1, _Domain, _Sender, const _Env&...>) {
+        operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const
+        noexcept(__nothrow_callable<__transform_sender_1, _Domain, _Sender, const _Env&...>) {
         using _Sender2 = __call_result_t<__transform_sender_1, _Domain, _Sender, const _Env&...>;
         // If the transformation doesn't change the sender's type, then do not
         // apply the transform recursively.
@@ -3716,17 +3765,16 @@ namespace stdexec {
     using __result_receiver_t =
       __if_c<__unknown_context<_Scheduler>, _Receiver, __receiver_with_sched<_Receiver, _Scheduler>>;
 
-
     template <class _ResultSender, class _Receiver, class _Scheduler>
     using __receiver_ref_t = //
       __receiver_ref<
-        completion_signatures_of_t<_ResultSender&&, __result_env_t<env_of_t<_Receiver>, _Scheduler>>,
+        completion_signatures_of_t<_ResultSender, __result_env_t<env_of_t<_Receiver>, _Scheduler>>,
         __result_env_t<env_of_t<_Receiver>, _Scheduler>>;
 
     template <class _ResultSender, class _Receiver, class _Scheduler>
     concept __need_receiver_ref =
-      __nothrow_connectable<_ResultSender&&, __receiver_ref_t<_ResultSender, _Receiver, _Scheduler>>
-      && !__nothrow_connectable<_ResultSender&&, __result_receiver_t<_Receiver, _Scheduler>>;
+      __nothrow_connectable<_ResultSender, __receiver_ref_t<_ResultSender, _Receiver, _Scheduler>>
+      && !__nothrow_connectable<_ResultSender, __result_receiver_t<_Receiver, _Scheduler>>;
 
     template <class _ResultSender, class _Env, class _Scheduler>
     concept __nothrow_connectable_receiver_ref =
