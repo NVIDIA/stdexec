@@ -67,7 +67,7 @@ namespace {
     ex::sender auto snd = ex::transfer_just(sched, 11)
                         | ex::stopped_as_error(std::error_code(1, std::generic_category()));
     check_val_types<type_array<type_array<int&&>>>(snd);
-    check_err_types<type_array<std::exception_ptr, std::error_code>>(snd);
+    check_err_types<type_array<std::error_code>>(snd);
     check_sends_stopped<false>(snd);
 
     auto op = ex::connect(std::move(snd), expect_value_receiver{11});
@@ -82,7 +82,7 @@ namespace {
     std::error_code errcode(1, std::generic_category());
     ex::sender auto snd = ex::transfer_just(sched, 11) | ex::stopped_as_error(errcode);
     check_val_types<type_array<type_array<int&&>>>(snd);
-    check_err_types<type_array<std::exception_ptr, std::error_code>>(snd);
+    check_err_types<type_array<std::error_code>>(snd);
     check_sends_stopped<false>(snd);
 
     auto op = ex::connect(std::move(snd), expect_error_receiver{errcode});
@@ -128,7 +128,7 @@ namespace {
     check_err_types<type_array<std::exception_ptr, int>>( //
       ex::transfer_just(sched2, 13) | ex::stopped_as_error(-1));
 
-    check_err_types<type_array<int, std::exception_ptr>>( //
+    check_err_types<type_array<int>>( //
       ex::transfer_just(sched3, 13) | ex::stopped_as_error(-1));
 
     check_err_types<type_array<>>(  //

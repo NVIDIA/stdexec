@@ -335,6 +335,8 @@ else()
     #include <sys/syscall.h>
     #include <unistd.h>
 
+    #include <cstdlib>
+
     int main()
     {
       io_uring_params a = {};

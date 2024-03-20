@@ -210,6 +210,31 @@ namespace {
   }
 #endif
 
+  TEST_CASE("exec::on can be passed to start_detached", "[adaptors][exec::on]") {
+    ex::run_loop loop;
+    auto sch = loop.get_scheduler();
+    auto snd = ex::get_scheduler() | ex::let_value([](auto sched) {
+      static_assert(ex::same_as<decltype(sched), ex::run_loop::__scheduler>);
+      return ex::on(sched, ex::just());
+    });
+    ex::start_detached(ex::v2::on(sch, std::move(snd)));
+    loop.finish();
+    loop.run();
+  }
+
+  struct env {};
+
+  TEST_CASE("exec::on can be passed to start_detached with env", "[adaptors][exec::on]") {
+    ex::run_loop loop;
+    auto sch = loop.get_scheduler();
+    auto snd = ex::get_scheduler() | ex::let_value([](auto sched) {
+      static_assert(ex::same_as<decltype(sched), ex::run_loop::__scheduler>);
+      return ex::on(sched, ex::just());
+    });
+    ex::start_detached(ex::v2::on(sch, std::move(snd)), env{});
+    loop.finish();
+    loop.run();
+  }
 } // namespace
 
 STDEXEC_PRAGMA_POP()

@@ -59,7 +59,7 @@ namespace exec {
 
         struct __t
           : public __rcvr_next_vfun<_NextSigs>
-          , public __rec::__rcvr_vfun<_Sigs>...
+          , public __any_::__rcvr_vfun<_Sigs>...
           , public __query_vfun<_Queries>... {
           using __id = __next_vtable;
           using __query_vfun<_Queries>::operator()...;
@@ -71,7 +71,7 @@ namespace exec {
             -> const __t* {
             static const __t __vtable_{
               {__rcvr_next_vfun_fn<_Rcvr>{}(static_cast<_NextSigs*>(nullptr))},
-              {__rec::__rcvr_vfun_fn<_Rcvr>{}(static_cast<_Sigs*>(nullptr))}...,
+              {__any_::__rcvr_vfun_fn<_Rcvr>(static_cast<_Sigs*>(nullptr))}...,
               {__query_vfun_fn<_Rcvr>{}(static_cast<_Queries>(nullptr))}...};
             return &__vtable_;
           }
@@ -115,7 +115,7 @@ namespace exec {
           using __vtable_t = stdexec::__t<__next_vtable<__next_sigs, __compl_sigs, _Queries...>>;
 
           template <class Sig>
-          using __vfun = __rec::__rcvr_vfun<Sig>;
+          using __vfun = __any_::__rcvr_vfun<Sig>;
 
           using __env_t = stdexec::__t<__env<__next_sigs, _Queries...>>;
           __env_t __env_;
@@ -140,14 +140,14 @@ namespace exec {
           template <same_as<set_value_t> _SetValue, same_as<__t> _Self>
           // set_value_t() is always valid for a sequence
           friend void tag_invoke(_SetValue, _Self&& __self) noexcept {
-            (*static_cast<const __vfun<_SetValue()>*>(__self.__env_.__vtable_)->__fn_)(
+            (*static_cast<const __vfun<_SetValue()>*>(__self.__env_.__vtable_)->__complete_)(
               __self.__env_.__rcvr_);
           }
 
           template <same_as<set_error_t> _SetError, same_as<__t> _Self, class Error>
             requires __v<__mapply<__contains<set_error_t(Error)>, __compl_sigs>>
           friend void tag_invoke(_SetError, _Self&& __self, Error&& __error) noexcept {
-            (*static_cast<const __vfun<set_error_t(Error)>*>(__self.__env_.__vtable_)->__fn_)(
+            (*static_cast<const __vfun<set_error_t(Error)>*>(__self.__env_.__vtable_)->__complete_)(
               __self.__env_.__rcvr_, static_cast<Error&&>(__error));
           }
 
@@ -156,7 +156,7 @@ namespace exec {
           friend void tag_invoke(_SetStopped, _Self&& __self) noexcept
 
           {
-            (*static_cast<const __vfun<set_stopped_t()>*>(__self.__env_.__vtable_)->__fn_)(
+            (*static_cast<const __vfun<set_stopped_t()>*>(__self.__env_.__vtable_)->__complete_)(
               __self.__env_.__rcvr_);
           }
 

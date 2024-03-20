@@ -20,15 +20,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "clang 17",   cuda: "12.0", cxx: "clang++", build: "Release", tag: "llvm17-cuda12.0", gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
-          - { name: "nvc++ 23.9", cuda: "12.2", cxx: "mpic++",  build: "Release", tag: "nvhpc23.9",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
-          - { name: "nvc++ 23.9", cuda: "12.2", cxx: "mpic++",  build: "Debug",   tag: "nvhpc23.9",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "clang 18",   cuda: "12.0", cxx: "clang++", build: "Release", tag: "llvm18-cuda12.0", gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "clang 18",   cuda: "12.4", cxx: "clang++", build: "Release", tag: "llvm18-cuda12.4", gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "nvc++ 24.3", cuda: "12.4", cxx: "mpic++",  build: "Release", tag: "nvhpc24.3",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "nvc++ 24.3", cuda: "12.4", cxx: "mpic++",  build: "Debug",   tag: "nvhpc24.3",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
     runs-on: linux-${{ matrix.arch }}-gpu-${{ matrix.gpu }}-${{ matrix.driver }}-1
     container:
       options: -u root
-      image: rapidsai/devcontainers:24.02-cpp-${{ matrix.tag }}-ubuntu22.04
+      image: rapidsai/devcontainers:24.04-cpp-${{ matrix.tag }}-ubuntu22.04
       env:
-        CUDA_VERSION: "${{ matrix.cuda }}"
         SCCACHE_REGION: "us-east-2"
         SCCACHE_BUCKET: "rapids-sccache-devs"
         SCCACHE_S3_KEY_PREFIX: "nvidia-stdexec-dev"
