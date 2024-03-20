@@ -233,6 +233,25 @@ namespace stdexec {
         return true;
       }
     };
+
+    struct __root_t {
+      template <class _Env>
+        requires tag_invocable<__root_t, const _Env&>
+      constexpr auto operator()(const _Env& __env) const noexcept -> bool {
+        STDEXEC_ASSERT(tag_invoke(__root_t{}, __env) == true);
+        return true;
+      }
+
+      friend constexpr auto tag_invoke(forwarding_query_t, __root_t) noexcept -> bool {
+        return false;
+      }
+    };
+
+    struct __root_env_t {
+      friend constexpr auto tag_invoke(__root_t, const __root_env_t&) noexcept -> bool {
+        return true;
+      }
+    };
   } // namespace __queries
 
   using __queries::forwarding_query_t;
@@ -246,6 +265,8 @@ namespace stdexec {
   using __queries::get_stop_token_t;
   using __queries::get_completion_scheduler_t;
   using __queries::get_domain_t;
+  using __queries::__root_t;
+  using __queries::__root_env_t;
 
   inline constexpr forwarding_query_t forwarding_query{};
   inline constexpr query_or_t query_or{}; // NOT TO SPEC
@@ -531,6 +552,18 @@ namespace stdexec {
     requires(_EnvProvider& __ep) {
       { get_env(std::as_const(__ep)) } -> queryable;
     };
+
+  inline constexpr auto __as_root_env = []<class _Env>(_Env __env) noexcept {
+    return __env::__join(__root_env_t{}, static_cast<_Env&&>(__env));
+  };
+
+  template <class _Env>
+  using __as_root_env_t = __result_of<__as_root_env, _Env>;
+
+  template <class _Env>
+  concept __is_root_env = requires(_Env&& __env) {
+    { __root_t{}(__env) } -> same_as<bool>;
+  };
 } // namespace stdexec
 
 STDEXEC_PRAGMA_POP()

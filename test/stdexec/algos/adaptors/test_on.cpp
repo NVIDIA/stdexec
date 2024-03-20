@@ -170,9 +170,9 @@ namespace {
     error_scheduler sched2{};
     error_scheduler<int> sched3{43};
 
-    check_err_types<type_array<std::exception_ptr>>(ex::on(sched1, ex::just(1)));
+    check_err_types<type_array<>>(ex::on(sched1, ex::just(1)));
     check_err_types<type_array<std::exception_ptr>>(ex::on(sched2, ex::just(2)));
-    check_err_types<type_array<std::exception_ptr, int>>(ex::on(sched3, ex::just(3)));
+    check_err_types<type_array<int>>(ex::on(sched3, ex::just(3)));
   }
 
   TEST_CASE("on keeps sends_stopped from scheduler's sender", "[adaptors][on]") {
