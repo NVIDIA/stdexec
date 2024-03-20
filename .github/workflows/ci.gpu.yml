@@ -29,7 +29,6 @@ jobs:
       options: -u root
       image: rapidsai/devcontainers:24.04-cpp-${{ matrix.tag }}-ubuntu22.04
       env:
-        # CUDA_VERSION: "${{ matrix.cuda }}"
         SCCACHE_REGION: "us-east-2"
         SCCACHE_BUCKET: "rapids-sccache-devs"
         SCCACHE_S3_KEY_PREFIX: "nvidia-stdexec-dev"
