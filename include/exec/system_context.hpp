@@ -483,7 +483,7 @@ namespace exec {
   struct __transform_system_bulk_sender {
     template <class __Data, class __Previous>
     auto operator()(stdexec::bulk_t, __Data&& __data, __Previous&& __previous) const noexcept {
-      auto [__shape, __fn] = (__Data&&) __data;
+      auto [__shape, __fn] = static_cast<__Data&&>(__data);
       return system_bulk_sender<__Previous, decltype(__shape), decltype(__fn)>{
         __sched_, static_cast<__Previous&&>(__previous), __shape, std::move(__fn)};
     }
@@ -503,10 +503,10 @@ namespace exec {
     if constexpr (stdexec::__completes_on<__Sender, system_scheduler>) {
       auto __sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
         stdexec::get_env(__sndr));
-      return stdexec::__sexpr_apply((__Sender&&) __sndr, __transform_system_bulk_sender{__sched});
+      return stdexec::__sexpr_apply(static_cast<__Sender&&>(__sndr), __transform_system_bulk_sender{__sched});
     } else if constexpr (stdexec::__starts_on<__Sender, system_scheduler, __Env>) {
       auto __sched = stdexec::get_scheduler(__env);
-      return stdexec::__sexpr_apply((__Sender&&) __sndr, __transform_system_bulk_sender{__sched});
+      return stdexec::__sexpr_apply(static_cast<__Sender&&>(__sndr), __transform_system_bulk_sender{__sched});
     } else {
       static_assert( //
         stdexec::__starts_on<__Sender, system_scheduler, __Env>
