@@ -336,6 +336,9 @@ set_target_properties(system_context PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF)
+target_compile_options(system_context PUBLIC
+    $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus /Zc:preprocessor>
+    )
 add_library(STDEXEC::system_context ALIAS system_context)
 
 
