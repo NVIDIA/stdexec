@@ -37,32 +37,12 @@ namespace stdexec {
     template <class _Sender>
     using __impl_of = decltype((__declval<_Sender>().__impl_));
 
-    struct __get_tag {
-      template <class _Tag, class... _Rest>
-      STDEXEC_ATTRIBUTE((always_inline))
-      _Tag
-        operator()(_Tag, _Rest&&...) const noexcept {
-        return {};
-      }
-    };
-
     struct __get_data {
-      template <class _Data, class... _Rest>
+      template <class _Data>
       STDEXEC_ATTRIBUTE((always_inline))
       _Data&&
-        operator()(__ignore, _Data&& __data, _Rest&&...) const noexcept {
+        operator()(__ignore, _Data&& __data, auto&&...) const noexcept {
         return static_cast<_Data&&>(__data);
-      }
-    };
-
-    template <class _Continuation>
-    struct __get_children {
-      template <class... _Child>
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
-        operator()(__ignore, __ignore, _Child&&...) const noexcept
-        -> __mtype<__minvoke<_Continuation, _Child...>> (*)() {
-        return nullptr;
       }
     };
 
@@ -79,7 +59,6 @@ namespace stdexec {
     template <class _Fn>
     struct __sexpr_uncurry_fn {
       template <class _Tag, class _Data, class... _Child>
-        requires __minvocable<_Fn, _Tag, _Data, _Child...>
       constexpr auto operator()(_Tag, _Data&&, _Child&&...) const noexcept
         -> __minvoke<_Fn, _Tag, _Data, _Child...>;
     };
@@ -102,6 +81,29 @@ namespace stdexec {
     template <class _Sender>
     using __name_of = __minvoke<__name_of_fn<_Sender>, _Sender>;
   } // namespace __detail
+
+  namespace {
+    template <
+      class _Descriptor,
+      auto _DescriptorFn =
+        [] {
+          return _Descriptor();
+        }>
+    inline constexpr auto __descriptor_fn_v = _DescriptorFn;
+
+    template <class _Tag, class _Data, class... _Child>
+    inline constexpr auto __descriptor_fn() {
+      return __descriptor_fn_v<__detail::__desc<_Tag, _Data, _Child...>>;
+    }
+  } // namespace
+
+#if STDEXEC_NVHPC()
+#  define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                            \
+    stdexec::__descriptor_fn<_Tag, _Data, _Child>()
+#else
+#  define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                            \
+    stdexec::__descriptor_fn_v<stdexec::__detail::__desc<_Tag, _Data, _Child>>
+#endif
 
   template <class _Sender>
   using tag_of_t = typename __detail::__desc_of<_Sender>::__tag;
@@ -272,10 +274,10 @@ namespace stdexec {
       };
     };
 
-    template <class _Receiver>
-    using __sexpr_connected_with = __mapply<
-      __mbind_front_q<__m_at, typename _Receiver::__index>,
-      typename __call_result_t<__impl_of<typename _Receiver::__sexpr>, __cp, __get_desc>::__children>;
+    // template <class _Receiver>
+    // using __sexpr_connected_with = __mapply<
+    //   __mbind_front_q<__m_at, typename _Receiver::__index>,
+    //   typename __call_result_t<__impl_of<typename _Receiver::__sexpr>, __cp, __get_desc>::__children>;
 
     template <class _Sexpr, class _Receiver>
     struct __op_base : __immovable {
@@ -354,23 +356,23 @@ namespace stdexec {
       struct __impl {
         __op_state<_Sexpr, _Receiver>* __op_;
 
-        template <std::size_t... _Is, class _Tag, class _Data, class... _Child>
-        auto operator()(__indices<_Is...>, _Tag, _Data&&, _Child&&... __child) const
+        template <std::size_t... _Is, class... _Child>
+        auto operator()(__indices<_Is...>, _Child&&... __child) const
           noexcept((__nothrow_connectable<_Child, __receiver_t<_Is>> && ...))
             -> __tup::__tuple<__indices<_Is...>, connect_result_t<_Child, __receiver_t<_Is>>...> {
           return __tuple{connect(static_cast<_Child&&>(__child), __receiver_t<_Is>{__op_})...};
         }
       };
 
-      template <class _Tag, class _Data, class... _Child>
-      auto operator()(_Tag, _Data&& __data, _Child&&... __child) const
-        noexcept(__nothrow_callable<__impl, __indices_for<_Child...>, _Tag, _Data, _Child...>)
-          -> __call_result_t<__impl, __indices_for<_Child...>, _Tag, _Data, _Child...> {
-        return __impl{__op_}(
-          __indices_for<_Child...>(),
-          _Tag(),
-          static_cast<_Data&&>(__data),
-          static_cast<_Child&&>(__child)...);
+      template <class... _Child>
+      auto operator()(__ignore, __ignore, _Child&&... __child) const
+        noexcept(__nothrow_callable<__impl, __indices_for<_Child...>, _Child...>)
+          -> __call_result_t<__impl, __indices_for<_Child...>, _Child...> {
+        return __impl{__op_}(__indices_for<_Child...>(), static_cast<_Child&&>(__child)...);
+      }
+
+      auto operator()(__ignore, __ignore) const noexcept -> __tup::__tuple_for<> {
+        return {};
       }
     };
     STDEXEC_PRAGMA_POP()
@@ -380,7 +382,7 @@ namespace stdexec {
       using __desc_t = typename __decay_t<_Sexpr>::__desc_t;
       using __tag_t = typename __desc_t::__tag;
       using __data_t = typename __desc_t::__data;
-      using __children_t = typename __desc_t::__children;
+      //using __children_t = typename __desc_t::__children;
       using __state_t = typename __op_state::__state_t;
       using __inner_ops_t = __result_of<__sexpr_apply, _Sexpr, __connect_fn<_Sexpr, _Receiver>>;
 
@@ -593,29 +595,6 @@ namespace stdexec {
       }
     }
   };
-
-  namespace {
-    template <
-      class _Descriptor,
-      auto _DescriptorFn =
-        [] {
-          return _Descriptor();
-        }>
-    inline constexpr auto __descriptor_fn_v = _DescriptorFn;
-
-    template <class _Tag, class _Data, class... _Child>
-    inline constexpr auto __descriptor_fn() {
-      return __descriptor_fn_v<__detail::__desc<_Tag, _Data, _Child...>>;
-    }
-  } // namespace
-
-#if STDEXEC_NVHPC()
-#  define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                            \
-    stdexec::__descriptor_fn<_Tag, _Data, _Child>()
-#else
-#  define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                            \
-    stdexec::__descriptor_fn_v<stdexec::__detail::__desc<_Tag, _Data, _Child>>
-#endif
 
   template <class _Tag, class _Data, class... _Child>
   STDEXEC_ATTRIBUTE((host, device))

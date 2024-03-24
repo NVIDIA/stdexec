@@ -608,8 +608,8 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline))
       /*constexpr*/
       decltype(auto)
-        operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const noexcept(
-          __nothrow_callable<__transform_sender_1, _Domain, _Sender, const _Env&...>) {
+        operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const
+        noexcept(__nothrow_callable<__transform_sender_1, _Domain, _Sender, const _Env&...>) {
         using _Sender2 = __call_result_t<__transform_sender_1, _Domain, _Sender, const _Env&...>;
         // If the transformation doesn't change the sender's type, then do not
         // apply the transform recursively.
