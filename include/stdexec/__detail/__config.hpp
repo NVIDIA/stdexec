@@ -278,6 +278,7 @@ enum {
 #define STDEXEC_IS_SAME(...) __is_same_as(__VA_ARGS__)
 #elif STDEXEC_MSVC()
 // msvc replaces std::is_same_v with a compile-time constant
+#include <type_traits>
 #define STDEXEC_IS_SAME(...) std::is_same_v<__VA_ARGS__>
 #else
 #define STDEXEC_IS_SAME(...) stdexec::__same_as_v<__VA_ARGS__>
