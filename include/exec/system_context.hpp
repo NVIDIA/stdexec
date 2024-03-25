@@ -16,7 +16,8 @@
 #pragma once
 
 #include "stdexec/execution.hpp"
-#include "__detail/__system_context_default_impl.hpp"
+#include "__detail/__system_context_if.h"
+#include "__detail/__weak_attribute.hpp"
 
 #ifndef __EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_SIZE
 #  define __EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_SIZE 80
@@ -32,6 +33,13 @@
 #endif
 
 // TODO: make these configurable by providing policy to the system context
+
+/// Gets the default system context implementation.
+extern "C" __EXEC_WEAK_ATTRIBUTE __exec_system_context_interface* __get_exec_system_context_impl();
+
+/// Sets the default system context implementation.
+extern "C" __EXEC_WEAK_ATTRIBUTE void __set_exec_system_context_impl(
+  __exec_system_context_interface* __instance);
 
 namespace exec {
   namespace __detail {
@@ -192,7 +200,7 @@ namespace exec {
       }
 
       ~__op() {
-        __scheduler_->__destruct_schedule_operation(__impl_os_);
+        __scheduler_->__destruct_schedule_operation(__scheduler_, __impl_os_);
       }
 
       __op(const __op&) = delete;
@@ -268,7 +276,7 @@ namespace exec {
     } __preallocated_;
 
     ~__bulk_state() {
-      __snd_.__scheduler_->__destruct_bulk_schedule_operation(__impl_os_);
+      __snd_.__scheduler_->__destruct_bulk_schedule_operation(__snd_.__scheduler_, __impl_os_);
     }
   };
 
@@ -442,7 +450,7 @@ namespace exec {
   };
 
   inline system_context::system_context() {
-    __impl_ = __system_context_default_impl::__get_exec_system_context_impl();
+    __impl_ = __get_exec_system_context_impl();
     // TODO error handling
   }
 
@@ -509,5 +517,9 @@ namespace exec {
     }
     STDEXEC_UNREACHABLE();
   }
-
 } // namespace exec
+
+#if defined(__EXEC__SYSTEM_CONTEXT__HEADER_ONLY)
+#  define __EXEC__SYSTEM_CONTEXT__INLINE inline
+#  include "__detail/__system_context_default_impl_entry.hpp"
+#endif
