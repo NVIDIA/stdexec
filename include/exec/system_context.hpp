@@ -16,7 +16,8 @@
 #pragma once
 
 #include "stdexec/execution.hpp"
-#include "__detail/__system_context_default_impl.hpp"
+#include "__detail/__system_context_if.h"
+#include "__detail/__weak_attribute.hpp"
 
 #ifndef __EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_SIZE
 #  define __EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_SIZE 80
@@ -32,6 +33,13 @@
 #endif
 
 // TODO: make these configurable by providing policy to the system context
+
+/// Gets the default system context implementation.
+extern "C" __EXEC_WEAK_ATTRIBUTE __exec_system_context_interface* __get_exec_system_context_impl();
+
+/// Sets the default system context implementation.
+extern "C" __EXEC_WEAK_ATTRIBUTE void __set_exec_system_context_impl(
+  __exec_system_context_interface* __instance);
 
 namespace exec {
   namespace __detail {
@@ -192,7 +200,7 @@ namespace exec {
       }
 
       ~__op() {
-        __scheduler_->__destruct_schedule_operation(__impl_os_);
+        __scheduler_->__destruct_schedule_operation(__scheduler_, __impl_os_);
       }
 
       __op(const __op&) = delete;
@@ -268,7 +276,7 @@ namespace exec {
     } __preallocated_;
 
     ~__bulk_state() {
-      __snd_.__scheduler_->__destruct_bulk_schedule_operation(__impl_os_);
+      __snd_.__scheduler_->__destruct_bulk_schedule_operation(__snd_.__scheduler_, __impl_os_);
     }
   };
 
@@ -442,7 +450,7 @@ namespace exec {
   };
 
   inline system_context::system_context() {
-    __impl_ = __system_context_default_impl::__get_exec_system_context_impl();
+    __impl_ = __get_exec_system_context_impl();
     // TODO error handling
   }
 
@@ -475,7 +483,7 @@ namespace exec {
   struct __transform_system_bulk_sender {
     template <class __Data, class __Previous>
     auto operator()(stdexec::bulk_t, __Data&& __data, __Previous&& __previous) const noexcept {
-      auto [__shape, __fn] = (__Data&&) __data;
+      auto [__shape, __fn] = static_cast<__Data&&>(__data);
       return system_bulk_sender<__Previous, decltype(__shape), decltype(__fn)>{
         __sched_, static_cast<__Previous&&>(__previous), __shape, std::move(__fn)};
     }
@@ -495,10 +503,10 @@ namespace exec {
     if constexpr (stdexec::__completes_on<__Sender, system_scheduler>) {
       auto __sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
         stdexec::get_env(__sndr));
-      return stdexec::__sexpr_apply((__Sender&&) __sndr, __transform_system_bulk_sender{__sched});
+      return stdexec::__sexpr_apply(static_cast<__Sender&&>(__sndr), __transform_system_bulk_sender{__sched});
     } else if constexpr (stdexec::__starts_on<__Sender, system_scheduler, __Env>) {
       auto __sched = stdexec::get_scheduler(__env);
-      return stdexec::__sexpr_apply((__Sender&&) __sndr, __transform_system_bulk_sender{__sched});
+      return stdexec::__sexpr_apply(static_cast<__Sender&&>(__sndr), __transform_system_bulk_sender{__sched});
     } else {
       static_assert( //
         stdexec::__starts_on<__Sender, system_scheduler, __Env>
@@ -509,5 +517,9 @@ namespace exec {
     }
     STDEXEC_UNREACHABLE();
   }
-
 } // namespace exec
+
+#if defined(__EXEC__SYSTEM_CONTEXT__HEADER_ONLY)
+#  define __EXEC__SYSTEM_CONTEXT__INLINE inline
+#  include "__detail/__system_context_default_impl_entry.hpp"
+#endif

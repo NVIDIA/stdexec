@@ -325,6 +325,24 @@ if (STDEXEC_ENABLE_NUMA)
   target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_NUMA)
 endif()
 
+set(SYSTEM_CONTEXT_SOURCES src/system_context/system_context.cpp)
+add_library(system_context STATIC ${SYSTEM_CONTEXT_SOURCES})
+target_include_directories(system_context PRIVATE
+                           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
+                           $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+                           )
+target_compile_features(system_context PUBLIC cxx_std_20)
+set_target_properties(system_context PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF)
+target_compile_options(system_context PUBLIC
+    $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus /Zc:preprocessor>
+    )
+add_library(STDEXEC::system_context ALIAS system_context)
+
+
+
 if(CMAKE_CROSSCOMPILING)
   CHECK_INCLUDE_FILE_CXX("linux/io_uring.h" STDEXEC_FOUND_IO_URING)
 else()
@@ -334,6 +352,8 @@ else()
     #include <linux/io_uring.h>
     #include <sys/syscall.h>
     #include <unistd.h>
+
+    #include <cstdlib>
 
     int main()
     {

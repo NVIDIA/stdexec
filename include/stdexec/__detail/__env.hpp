@@ -316,7 +316,6 @@ namespace stdexec {
 
       template <class _EnvProvider>
       constexpr auto operator()(const _EnvProvider&) const noexcept -> empty_env {
-
         return {};
       }
     };

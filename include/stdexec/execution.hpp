@@ -608,8 +608,8 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline))
       /*constexpr*/
       decltype(auto)
-        operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const noexcept(
-          __nothrow_callable<__transform_sender_1, _Domain, _Sender, const _Env&...>) {
+        operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const
+        noexcept(__nothrow_callable<__transform_sender_1, _Domain, _Sender, const _Env&...>) {
         using _Sender2 = __call_result_t<__transform_sender_1, _Domain, _Sender, const _Env&...>;
         // If the transformation doesn't change the sender's type, then do not
         // apply the transform recursively.
@@ -3561,7 +3561,7 @@ namespace stdexec {
       template <class _OpState>
       explicit constexpr __receiver_vtable_for(const _OpState*) noexcept
         : stdexec::__any_::__rcvr_vfun<_Sigs>{__rcvr_vfun_from_op_state_fn<_OpState>(
-          (_Sigs*) nullptr)}...
+          static_cast<_Sigs*>(nullptr))}...
         , __do_get_env{+[](const void* __pointer) noexcept -> _Env {
           auto* __op_state = static_cast<const _OpState*>(__pointer);
           auto& __state = __op_state->__state_;
@@ -3587,7 +3587,7 @@ namespace stdexec {
 
     template <class _OpState, class _Env, class _Sigs>
     inline constexpr __receiver_vtable_for<_Sigs, _Env> __receiver_vtable_for_v{
-      (const _OpState*) nullptr};
+      static_cast<const _OpState*>(nullptr)};
 
     template <class _Sigs, class _Env>
     class __receiver_ref {

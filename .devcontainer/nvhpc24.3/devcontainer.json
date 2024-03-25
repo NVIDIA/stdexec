@@ -1,5 +1,5 @@
 {
-  "image": "rapidsai/devcontainers:24.02-cpp-nvhpc23.11-ubuntu22.04",
+  "image": "rapidsai/devcontainers:24.04-cpp-nvhpc24.3-ubuntu22.04",
 
   "hostRequirements": { "gpu": "optional" },
 
