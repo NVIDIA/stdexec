@@ -17,8 +17,8 @@
 
 #include <stdexec/__detail/__config.hpp>
 
-#if defined(STDEXEC_CLANG) || defined(STDEXEC_GCC)
-#  define __EXEC_WEAK_ATTRIBUTE __attribute__((weak))
+#if STDEXEC_CLANG() || STDEXEC_GCC()
+#  define __EXEC_WEAK_ATTRIBUTE __attribute__((__weak__))
 #else
 #  define __EXEC_WEAK_ATTRIBUTE /*nothing*/
 #endif
