@@ -300,9 +300,23 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   namespace __env {
+    template <class _OpStateReceiver>
+    concept __has_member_get_env = requires(const _OpStateReceiver* __op) {
+      __op->get_env();
+    };
+
     // For getting an execution environment from a receiver,
     // or the attributes from a sender.
     struct get_env_t {
+      template <class _OpStateReceiver>
+        requires __has_member_get_env<_OpStateReceiver>
+      STDEXEC_ATTRIBUTE((always_inline))
+      friend auto tag_invoke(get_env_t, const _OpStateReceiver* __op) noexcept
+        -> decltype(__op->get_env()) {
+        static_assert(noexcept(__op->get_env()));
+        return __op->get_env();
+      }
+
       template <class _EnvProvider>
         requires tag_invocable<get_env_t, const _EnvProvider&>
       STDEXEC_ATTRIBUTE((always_inline))

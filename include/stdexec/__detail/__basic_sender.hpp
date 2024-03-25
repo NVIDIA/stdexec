@@ -364,11 +364,19 @@ namespace stdexec {
         }
       };
 
-      template <class... _Child>
+      template <class _Tag, class _Data, class... _Child>
+        //requires (sizeof...(_Child) > 1)
       auto operator()(__ignore, __ignore, _Child&&... __child) const
         noexcept(__nothrow_callable<__impl, __indices_for<_Child...>, _Child...>)
           -> __call_result_t<__impl, __indices_for<_Child...>, _Child...> {
         return __impl{__op_}(__indices_for<_Child...>(), static_cast<_Child&&>(__child)...);
+      }
+
+      template <class _Child>
+      auto operator()(__ignore, __ignore, _Child&& __child) const
+        noexcept(__nothrow_connectable<_Child, __op_state<_Sexpr, _Receiver>*>)
+          -> __tup::__tuple_for<connect_result_t<_Child, __op_state<_Sexpr, _Receiver>*>> {
+        return __tuple{connect(static_cast<_Child&&>(__child), __op_)};
       }
 
       auto operator()(__ignore, __ignore) const noexcept -> __tup::__tuple_for<> {
@@ -385,6 +393,7 @@ namespace stdexec {
       //using __children_t = typename __desc_t::__children;
       using __state_t = typename __op_state::__state_t;
       using __inner_ops_t = __result_of<__sexpr_apply, _Sexpr, __connect_fn<_Sexpr, _Receiver>>;
+      using receiver_concept = receiver_t;
 
       __inner_ops_t __inner_ops_;
 
@@ -436,6 +445,27 @@ namespace stdexec {
         -> __env_type_t<_Index, __tag_t, _Index, _Sexpr, _Receiver> {
         const auto& __rcvr = this->__rcvr();
         return __sexpr_impl<__tag_t>::get_env(_Index(), this->__state_, __rcvr);
+      }
+
+      template <class... _Args>
+      STDEXEC_ATTRIBUTE((always_inline))
+      void set_value(_Args&&... __args) && noexcept {
+        this->__complete(__mconstant<0>(), stdexec::set_value, static_cast<_Args&&>(__args)...);
+      }
+      template <class _Error>
+      STDEXEC_ATTRIBUTE((always_inline))
+      void set_error(_Error&& __err) && noexcept {
+        this->__complete(__mconstant<0>(), stdexec::set_error, static_cast<_Error&&>(__err));
+      }
+      STDEXEC_ATTRIBUTE((always_inline))
+      void set_stopped() && noexcept {
+        this->__complete(__mconstant<0>(), stdexec::set_stopped);
+      }
+      template <std::size_t N = 0, class _Tag = __tag_t>
+      STDEXEC_ATTRIBUTE((always_inline))
+      auto get_env() const noexcept
+        -> __env_type_t<__mconstant<N>, _Tag, __mconstant<N>, _Sexpr, _Receiver> {
+        return this->__get_env(__mconstant<N>());
       }
     };
 

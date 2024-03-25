@@ -71,9 +71,32 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
   namespace __receivers {
+    template <class _OpStateReceiver, class... _Args>
+    concept __has_member_set_value = requires(_OpStateReceiver* __op, _Args&&... __args) {
+      static_cast<_OpStateReceiver&&>(*__op).set_value(static_cast<_Args&&>(__args)...);
+    };
+
+    template <class _OpStateReceiver, class _Error>
+    concept __has_member_set_error = requires(_OpStateReceiver* __op, _Error&& __err) {
+      static_cast<_OpStateReceiver&&>(*__op).set_error(static_cast<_Error&&>(__err));
+    };
+
+    template <class _OpStateReceiver>
+    concept __has_member_set_stopped = requires(_OpStateReceiver* __op) {
+      static_cast<_OpStateReceiver&&>(*__op).set_stopped();
+    };
+
     struct set_value_t {
       template <class _Fn, class... _Args>
       using __f = __minvoke<_Fn, _Args...>;
+
+      template <class _OpStateReceiver, class... _Args>
+        requires __has_member_set_value<_OpStateReceiver, _Args...>
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
+      friend void tag_invoke(set_value_t, _OpStateReceiver* __op, _Args&&... __args) noexcept {
+        static_assert(noexcept(static_cast<_OpStateReceiver&&>(*__op).set_value(static_cast<_Args&&>(__args)...)));
+        static_cast<_OpStateReceiver&&>(*__op).set_value(static_cast<_Args&&>(__args)...);
+      }
 
       template <class _Receiver, class... _As>
         requires tag_invocable<set_value_t, _Receiver, _As...>
@@ -91,6 +114,14 @@ namespace stdexec {
         requires(sizeof...(_Args) == 1)
       using __f = __minvoke<_Fn, _Args...>;
 
+      template <class _OpStateReceiver, class _Error>
+        requires __has_member_set_error<_OpStateReceiver, _Error>
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
+      friend void tag_invoke(set_error_t, _OpStateReceiver* __op, _Error&& __err) noexcept {
+        static_assert(noexcept(static_cast<_OpStateReceiver&&>(*__op).set_error(static_cast<_Error&&>(__err))));
+        static_cast<_OpStateReceiver&&>(*__op).set_error(static_cast<_Error&&>(__err));
+      }
+
       template <class _Receiver, class _Error>
         requires tag_invocable<set_error_t, _Receiver, _Error>
       STDEXEC_ATTRIBUTE((host, device, always_inline))
@@ -106,6 +137,14 @@ namespace stdexec {
       template <class _Fn, class... _Args>
         requires(sizeof...(_Args) == 0)
       using __f = __minvoke<_Fn, _Args...>;
+
+      template <class _OpStateReceiver>
+        requires __has_member_set_stopped<_OpStateReceiver>
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
+      friend void tag_invoke(set_stopped_t, _OpStateReceiver* __op) noexcept {
+        static_assert(noexcept(static_cast<_OpStateReceiver&&>(*__op).set_stopped()));
+        static_cast<_OpStateReceiver&&>(*__op).set_stopped();
+      }
 
       template <class _Receiver>
         requires tag_invocable<set_stopped_t, _Receiver>
@@ -310,6 +349,10 @@ namespace stdexec {
 
   template <class _Receiver>
   inline constexpr bool enable_receiver = __detail::__enable_receiver<_Receiver>; // NOT TO SPEC
+
+  template <class _OpStateReceiver>
+  inline constexpr bool enable_receiver<_OpStateReceiver*> =
+    __detail::__enable_receiver<_OpStateReceiver>; // NOT TO SPEC
 
   template <class _Receiver>
   concept receiver =

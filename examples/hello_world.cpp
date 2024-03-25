@@ -23,34 +23,65 @@
 using namespace stdexec;
 using stdexec::sync_wait;
 
+struct sink {
+  using receiver_concept = receiver_t;
+  static void set_value(auto&&...) noexcept {}
+  static void set_error(auto&&) noexcept {}
+  static void set_stopped() noexcept {}
+  static empty_env get_env() noexcept { return {}; }
+};
+
+struct operation {
+  int data;
+  using receiver_concept = receiver_t;
+  void set_value(auto&&...) noexcept {}
+  void set_error(auto&&) noexcept {}
+  void set_stopped() noexcept {}
+  empty_env get_env() noexcept { return {}; }
+  void start() noexcept {}
+};
+
 int main() {
-  exec::static_thread_pool ctx{8};
-  scheduler auto sch = ctx.get_scheduler();                              // 1
-                                                                         //
-  sender auto begin = schedule(sch);                                     // 2
-  sender auto hi_again = then(                                           // 3
-    begin,                                                               // 3
-    [] {                                                                 // 3
-      std::cout << "Hello world! Have an int.\n";                        // 3
-      return 13;                                                         // 3
-    });                                                                  // 3
-                                                                         //
-  sender auto add_42 = then(hi_again, [](int arg) { return arg + 42; }); // 4
-                                                                         //
-  auto [i] = sync_wait(std::move(add_42)).value();                       // 5
-  std::cout << "Result: " << i << std::endl;
+  operation op = {42};
+  auto op2 = connect(just(42), &op);
+  start(op2);
 
-  // Sync_wait provides a run_loop scheduler
-  std::tuple<run_loop::__scheduler> t = sync_wait(get_scheduler()).value();
-  (void) t;
+  auto op3 = connect(just(42), static_cast<sink*>(nullptr));
+  start(op3);
 
-  auto y = let_value(get_scheduler(), [](auto sched) {
-    return on(sched, then(just(), [] {
-                std::cout << "from run_loop\n";
-                return 42;
-              }));
-  });
-  sync_wait(std::move(y));
+                                                                         //
 
-  sync_wait(when_all(just(42), get_scheduler(), get_stop_token()));
+
+
+
+
+  // exec::static_thread_pool ctx{8};
+  // scheduler auto sch = ctx.get_scheduler();                              // 1
+  //                                                                        //
+  // sender auto begin = schedule(sch);                                     // 2
+  // sender auto hi_again = then(                                           // 3
+  //   begin,                                                               // 3
+  //   [] {                                                                 // 3
+  //     std::cout << "Hello world! Have an int.\n";                        // 3
+  //     return 13;                                                         // 3
+  //   });                                                                  // 3
+  //                                                                        //
+  // sender auto add_42 = then(hi_again, [](int arg) { return arg + 42; }); // 4
+
+  // auto [i] = sync_wait(std::move(add_42)).value();                       // 5
+  // std::cout << "Result: " << i << std::endl;
+
+  // // Sync_wait provides a run_loop scheduler
+  // std::tuple<run_loop::__scheduler> t = sync_wait(get_scheduler()).value();
+  // (void) t;
+
+  // auto y = let_value(get_scheduler(), [](auto sched) {
+  //   return on(sched, then(just(), [] {
+  //               std::cout << "from run_loop\n";
+  //               return 42;
+  //             }));
+  // });
+  // sync_wait(std::move(y));
+
+  // sync_wait(when_all(just(42), get_scheduler(), get_stop_token()));
 }
