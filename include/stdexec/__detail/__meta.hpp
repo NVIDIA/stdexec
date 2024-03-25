@@ -918,13 +918,17 @@ namespace stdexec {
   };
 
 #if STDEXEC_HAS_BUILTIN(__type_pack_element)
-  template <std::size_t _Np, class... _Ts>
+  template <bool>
   struct __m_at_ {
-    using __t = __type_pack_element<_Np, _Ts...>;
+    template <class _Np, class... _Ts>
+    using __f = __type_pack_element<__v<_Np>, _Ts...>;
   };
 
+  template <class _Np, class... _Ts>
+  using __m_at = __minvoke<__m_at_<__v<_Np> == ~0ul>, _Np, _Ts...>;
+
   template <std::size_t _Np, class... _Ts>
-  using __m_at_c = __t<__m_at_<_Np, _Ts...>>;
+  using __m_at_c = __minvoke<__m_at_<_Np == ~0ul>, __msize_t<_Np>, _Ts...>;
 #else
   template <std::size_t>
   using __void_ptr = void*;
@@ -945,10 +949,10 @@ namespace stdexec {
 
   template <std::size_t _Np, class... _Ts>
   using __m_at_c = __minvoke<__m_at_<std::make_index_sequence<_Np>>, _Ts...>;
-#endif
 
   template <class _Np, class... _Ts>
   using __m_at = __m_at_c<__v<_Np>, _Ts...>;
+#endif
 
   template <class... _Ts>
   using __mback = __m_at_c<sizeof...(_Ts) - 1, _Ts...>;
