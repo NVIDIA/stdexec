@@ -41,28 +41,8 @@ namespace stdexec {
   concept __typename = requires { typename __types<_Ts...>; };
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-#if STDEXEC_CLANG()
-
   template <class _Ap, class _Bp>
-  concept __same_as = __is_same(_Ap, _Bp);
-
-#elif STDEXEC_GCC()
-
-  template <class _Ap, class _Bp>
-  concept __same_as = __is_same_as(_Ap, _Bp);
-
-#else
-
-  template <class _Ap, class _Bp>
-  inline constexpr bool __same_as_v = false;
-
-  template <class _Ap>
-  inline constexpr bool __same_as_v<_Ap, _Ap> = true;
-
-  template <class _Ap, class _Bp>
-  concept __same_as = __same_as_v<_Ap, _Bp>;
-
-#endif
+  concept __same_as = STDEXEC_IS_SAME(_Ap, _Bp);
 
   // Handy concepts
   template <class _Ty, class _Up>
