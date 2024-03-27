@@ -7,3 +7,8 @@ compile_commands.json
 /*.cpp
 /*.patch
 /*.diff
+callgrind.*
+*.pbf
+*.o
+a.out
+*.code-workspace

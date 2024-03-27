@@ -18,10 +18,9 @@
 #include "__system_context_if.h"
 #include "stdexec/execution.hpp"
 #include "exec/static_thread_pool.hpp"
+#include "__weak_attribute.hpp"
 
 namespace exec::__system_context_default_impl {
-
-  // TODO: move default implementation to weak pointers
 
   using __pool_scheduler_t = decltype(std::declval<exec::static_thread_pool>().get_scheduler());
 
@@ -147,7 +146,9 @@ namespace exec::__system_context_default_impl {
       return __os;
     }
 
-    static void __destruct_schedule_operation_impl(void* __operation) noexcept {
+    static void __destruct_schedule_operation_impl(
+      __exec_system_scheduler_interface* /*__self*/,
+      void* __operation) noexcept {
       auto __op = static_cast<__schedule_operation_t*>(__operation);
       __op->__destruct();
     }
@@ -170,7 +171,9 @@ namespace exec::__system_context_default_impl {
       return __os;
     }
 
-    static void __destruct_bulk_schedule_operation_impl(void* __operation) noexcept {
+    static void __destruct_bulk_schedule_operation_impl(
+      __exec_system_scheduler_interface* /*__self*/,
+      void* __operation) noexcept {
       auto __op = static_cast<__bulk_schedule_operation_t*>(__operation);
       __op->__destruct();
     }
@@ -200,10 +203,32 @@ namespace exec::__system_context_default_impl {
     }
   };
 
-  /// Gets the default system context implementation.
-  static __system_context_impl* __get_exec_system_context_impl() {
-    static __system_context_impl __impl_;
-    return &__impl_;
-  }
+  /// Keeps track of the object implementing the system context interface.
+  struct __instance_holder {
+
+    /// Get the only instance of this class.
+    static __instance_holder& __singleton() {
+      static __instance_holder __this_instance_;
+      return __this_instance_;
+    }
+
+    /// Get the currently selected system context object.
+    __exec_system_context_interface* __get_current_instance() const noexcept {
+      return __current_instance_;
+    }
+
+    /// Allows changing the currently selected system context object; used for testing.
+    void __set_current_instance(__exec_system_context_interface* __instance) noexcept {
+      __current_instance_ = __instance;
+    }
+
+   private:
+    __instance_holder() {
+      static __system_context_impl __default_instance_;
+      __current_instance_ = &__default_instance_;
+    }
+
+    __exec_system_context_interface* __current_instance_;
+  };
 
 } // namespace exec::__system_context_default_impl

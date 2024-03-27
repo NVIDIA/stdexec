@@ -18,8 +18,11 @@
 #include <iostream>
 #include <chrono>
 
+#define __EXEC__SYSTEM_CONTEXT__HEADER_ONLY 1
+
 #include <catch2/catch.hpp>
 #include <exec/system_context.hpp>
+#include <exec/static_thread_pool.hpp>
 #include <exec/async_scope.hpp>
 #include <stdexec/execution.hpp>
 
@@ -231,4 +234,81 @@ TEST_CASE("simple bulk chaining on system context", "[types][system_scheduler]")
   // Assert: the result of the bulk operation is the same as the result of the first `schedule`.
   CHECK(res.has_value());
   CHECK(std::get<0>(res.value()) == pool_id);
+}
+
+struct my_system_scheduler_impl : __exec_system_scheduler_interface {
+  my_system_scheduler_impl()
+    : base_{pool_} {
+    __forward_progress_guarantee = base_.__forward_progress_guarantee;
+    __schedule_operation_size = base_.__schedule_operation_size;
+    __schedule_operation_alignment = base_.__schedule_operation_alignment;
+    __destruct_schedule_operation = base_.__destruct_schedule_operation;
+    __bulk_schedule_operation_size = base_.__bulk_schedule_operation_size;
+    __bulk_schedule_operation_alignment = base_.__bulk_schedule_operation_alignment;
+    __bulk_schedule = base_.__bulk_schedule;
+    __destruct_bulk_schedule_operation = base_.__destruct_bulk_schedule_operation;
+
+    __schedule = __schedule_impl; // have our own schedule implementation
+  }
+
+  int num_schedules() const {
+    return count_schedules_;
+  }
+
+ private:
+  exec::static_thread_pool pool_;
+  exec::__system_context_default_impl::__system_scheduler_impl base_;
+  int count_schedules_ = 0;
+
+  static void* __schedule_impl(
+    __exec_system_scheduler_interface* self_arg,
+    void* preallocated,
+    uint32_t psize,
+    __exec_system_context_completion_callback_t callback,
+    void* data) noexcept {
+    auto self = static_cast<my_system_scheduler_impl*>(self_arg);
+    // increment our counter.
+    self->count_schedules_++;
+    // delegate to the base implementation.
+    return self->base_.__schedule(&self->base_, preallocated, psize, callback, data);
+  }
+};
+
+struct my_system_context_impl : __exec_system_context_interface {
+  my_system_context_impl() {
+    __version = 202402;
+    __get_scheduler = __get_scheduler_impl;
+  }
+
+  int num_schedules() const {
+    return scheduler_.num_schedules();
+  }
+
+ private:
+  my_system_scheduler_impl scheduler_{};
+
+  static __exec_system_scheduler_interface* __get_scheduler_impl(
+    __exec_system_context_interface* __self) noexcept {
+    return &static_cast<my_system_context_impl*>(__self)->scheduler_;
+  }
+};
+
+TEST_CASE("can change the implementation of system context", "[types][system_scheduler]") {
+  // Not to spec.
+  my_system_context_impl ctx_impl;
+  __set_exec_system_context_impl(&ctx_impl);
+
+  std::thread::id this_id = std::this_thread::get_id();
+  std::thread::id pool_id{};
+  exec::system_context ctx;
+  exec::system_scheduler sched = ctx.get_scheduler();
+
+  auto snd = ex::then(ex::schedule(sched), [&] { pool_id = std::this_thread::get_id(); });
+
+  REQUIRE(ctx_impl.num_schedules() == 0);
+  ex::sync_wait(std::move(snd));
+  REQUIRE(ctx_impl.num_schedules() == 1);
+
+  REQUIRE(pool_id != std::thread::id{});
+  REQUIRE(this_id != pool_id);
 }
