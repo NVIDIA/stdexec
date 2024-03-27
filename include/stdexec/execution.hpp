@@ -253,25 +253,31 @@ namespace stdexec {
       auto operator()(_Sig*) const -> __call_result_t<__normalize_completions<_Rest...>, _Sig*>;
     };
 
+    template <class _Fn, class... _As>
+    using __norm_sig_t = _Fn(*)(_As&&...);
+
     template <class T>
     extern __undefined<T> __norm;
 
     template <class _Ry, class... _As>
-    extern _Ry (*__norm<_Ry(_As...)>)(_As&&...);
+    extern __norm_sig_t<_Ry, _As...> __norm<_Ry(_As...)>;
+
+    template <class _Sig>
+    using __norm_t = decltype(+__norm<_Sig>);
 
     inline constexpr auto __convert_to_completion_signatures =
       []<class... Sigs>(__types<Sigs*...>*) -> completion_signatures<Sigs...> {
       return {};
     };
 
-    template <class... Sigs>
+    template <class... _Sigs>
     using __unique_completion_signatures = __result_of<
       __convert_to_completion_signatures,
       __minvoke<
         __transform<
-          __mbind_front_q<__call_result_t, __normalize_completions<Sigs...>>,
+          __mbind_front_q<__call_result_t, __normalize_completions<_Sigs...>>,
           __munique<__q<__types>>>,
-        decltype(__norm<Sigs>)...>*>;
+        __norm_t<_Sigs>...>*>;
   } // namespace __compl_sigs
 
   template <class _Completions>
