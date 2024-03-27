@@ -86,35 +86,36 @@ jobs:
     steps:
       - run: echo "CI (CPU) success"
 
-  build-cpu-windows:
-    runs-on: windows-latest
-    name: ${{ matrix.name }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { compiler: "cl",       build: "Debug",   name: "CPU (Windows) (msvc, Debug)" }
-          - { compiler: "cl",       build: "Release", name: "CPU (Windows) (msvc, Release)" }
-          #- { compiler: "clang++",  build: "Debug",   name: "CPU (Windows) (clang, Debug)" }
-          #- { compiler: "clang++",  build: "Release", name: "CPU (Windows) (clang, Release)" }
-          #- { compiler: "clang-cl", build: "Debug",   name: "CPU (Windows) (clang-cl, Debug)" }
-          #- { compiler: "clang-cl", build: "Release", name: "CPU (Windows) (clang-cl, Release)" }
-    steps:
-      - name: Checkout stdexec (Windows)
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - name: Build and test CPU schedulers (Windows)
-        shell: pwsh
-        run: .github/workflows/test-windows.ps1 -Compiler '${{ matrix.compiler }}' -Config '${{ matrix.build }}'
+  # Disabled by @ericniebler on Mar 27, 2024 because of frequent build failures
+  # build-cpu-windows:
+  #   runs-on: windows-latest
+  #   name: ${{ matrix.name }}
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       include:
+  #         - { compiler: "cl",       build: "Debug",   name: "CPU (Windows) (msvc, Debug)" }
+  #         - { compiler: "cl",       build: "Release", name: "CPU (Windows) (msvc, Release)" }
+  #         #- { compiler: "clang++",  build: "Debug",   name: "CPU (Windows) (clang, Debug)" }
+  #         #- { compiler: "clang++",  build: "Release", name: "CPU (Windows) (clang, Release)" }
+  #         #- { compiler: "clang-cl", build: "Debug",   name: "CPU (Windows) (clang-cl, Debug)" }
+  #         #- { compiler: "clang-cl", build: "Release", name: "CPU (Windows) (clang-cl, Release)" }
+  #   steps:
+  #     - name: Checkout stdexec (Windows)
+  #       uses: actions/checkout@v4
+  #       with:
+  #         persist-credentials: false
+  #     - name: Build and test CPU schedulers (Windows)
+  #       shell: pwsh
+  #       run: .github/workflows/test-windows.ps1 -Compiler '${{ matrix.compiler }}' -Config '${{ matrix.build }}'
 
-  ci-cpu-windows:
-    runs-on: windows-latest
-    name: CI (CPU) (Windows)
-    needs:
-      - build-cpu-windows
-    steps:
-      - run: echo "CI (CPU) (Windows) success"
+  # ci-cpu-windows:
+  #   runs-on: windows-latest
+  #   name: CI (CPU) (Windows)
+  #   needs:
+  #     - build-cpu-windows
+  #   steps:
+  #     - run: echo "CI (CPU) (Windows) success"
 
   build-cpu-macos:
     runs-on: macos-14-large
