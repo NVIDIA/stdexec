@@ -1,0 +1,45 @@
+# From the current directory run:
+#   docker build -f Dockerfile.gcc11 -t gcc11 .
+
+FROM ubuntu:20.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG CMAKE_VERSION=3.24.1-0kitware1ubuntu20.04.1
+
+# Common package setup
+RUN set -xe; \
+    # Install pacakges to allow us to install other packages
+    apt-get -y update; \
+    apt-get -y install --no-install-recommends \
+        apt-transport-https ca-certificates gnupg software-properties-common wget; \
+    # Add kiware repository for CMake
+    wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -; \
+    apt-add-repository -y -n 'https://apt.kitware.com/ubuntu/'; \
+    apt-add-repository -y -n 'ppa:ubuntu-toolchain-r/test'; \
+    apt-get -y update; \
+    # Install generic build tools & python
+    apt-get -y install --no-install-recommends \
+        pkg-config make \
+        cmake=$CMAKE_VERSION \
+        cmake-data=$CMAKE_VERSION \
+        python3 python3-pip python3-setuptools \
+        ; \
+    # Cleanup apt packages
+    rm -rf /var/lib/apt/lists/*;
+
+# Build tools
+RUN set -xe; \
+     \
+    apt-get -y update; \
+    apt-get -y install --no-install-recommends \
+         g++-11 \
+         git \
+    ; \
+    rm -rf /var/lib/apt/lists/*; \
+    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100  \
+        --slave /usr/bin/g++ g++ /usr/bin/g++-11
+
+# The entry point
+COPY build-stdexec.sh /usr/local/bin/build-stdexec.sh
+WORKDIR /github/workspace
+ENTRYPOINT ["/usr/local/bin/build-stdexec.sh"]
