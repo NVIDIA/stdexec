@@ -35,6 +35,7 @@
 #include "stream/upon_stopped.cuh"
 #include "stream/when_all.cuh"
 #include "stream/reduce.cuh"
+#include "stream/scan.cuh"
 #include "stream/ensure_started.cuh"
 
 #include "stream/common.cuh"
