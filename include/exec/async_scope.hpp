@@ -38,10 +38,10 @@ namespace exec {
     };
 
     template <class _BaseEnv>
-    using __env_t = make_env_t<_BaseEnv, with_t<get_stop_token_t, in_place_stop_token>>;
+    using __env_t = make_env_t<_BaseEnv, with_t<get_stop_token_t, inplace_stop_token>>;
 
     struct __impl {
-      in_place_stop_source __stop_source_{};
+      inplace_stop_source __stop_source_{};
       mutable std::mutex __lock_{};
       mutable std::ptrdiff_t __active_ = 0;
       mutable __intrusive_queue<&__task::__next_> __waiters_{};
@@ -276,7 +276,7 @@ namespace exec {
     struct __future_state;
 
     struct __forward_stopped {
-      in_place_stop_source* __stop_source_;
+      inplace_stop_source* __stop_source_;
 
       void operator()() noexcept {
         __stop_source_->request_stop();
@@ -495,8 +495,8 @@ namespace exec {
         STDEXEC_ASSERT(actual == __from);
       }
 
-      in_place_stop_source __stop_source_;
-      std::optional<in_place_stop_callback<__forward_stopped>> __forward_scope_;
+      inplace_stop_source __stop_source_;
+      std::optional<inplace_stop_callback<__forward_stopped>> __forward_scope_;
       std::mutex __mutex_;
       __future_step __step_ = __future_step::__created;
       std::unique_ptr<__future_state_base, __dynamic_delete<__future_state_base>> __no_future_;
@@ -646,7 +646,7 @@ namespace exec {
     template <class _Env>
     using __spawn_env_t = __env::__join_t<
       _Env,
-      __env::__with<in_place_stop_token, get_stop_token_t>,
+      __env::__with<inplace_stop_token, get_stop_token_t>,
       __env::__with<__inln::__scheduler, get_scheduler_t>>;
 
     template <class _EnvId>
@@ -764,11 +764,11 @@ namespace exec {
         return __future_t<_Sender, _Env>{std::move(__state)};
       }
 
-      auto get_stop_source() noexcept -> in_place_stop_source& {
+      auto get_stop_source() noexcept -> inplace_stop_source& {
         return __impl_.__stop_source_;
       }
 
-      auto get_stop_token() const noexcept -> in_place_stop_token {
+      auto get_stop_token() const noexcept -> inplace_stop_token {
         return __impl_.__stop_source_.get_token();
       }
 

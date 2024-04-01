@@ -70,7 +70,7 @@ namespace exec {
     }
 
     struct __forward_stop_request {
-      in_place_stop_source& __stop_source_;
+      inplace_stop_source& __stop_source_;
 
       void operator()() noexcept {
         __stop_source_.request_stop();
@@ -98,7 +98,7 @@ namespace exec {
       STDEXEC_ATTRIBUTE((no_unique_address))
       __if_c<__with_scheduler, __any_scheduler, __ignore> //
         __scheduler_{exec::inline_scheduler{}};
-      in_place_stop_token __stop_token_;
+      inplace_stop_token __stop_token_;
 
       friend auto tag_invoke(get_scheduler_t, const __default_task_context_impl& __self) noexcept
         -> const __any_scheduler&
@@ -108,7 +108,7 @@ namespace exec {
       }
 
       friend auto tag_invoke(get_stop_token_t, const __default_task_context_impl& __self) noexcept
-        -> in_place_stop_token {
+        -> inplace_stop_token {
         return __self.__stop_token_;
       }
 
@@ -163,7 +163,7 @@ namespace exec {
     ////////////////////////////////////////////////////////////////////////////////
     // This is the context to be associated with basic_task's awaiter when
     // the parent coroutine's promise type is known, is a __stop_token_provider,
-    // and its stop token type is neither in_place_stop_token nor unstoppable.
+    // and its stop token type is neither inplace_stop_token nor unstoppable.
     template <__indirect_stop_token_provider _ParentPromise>
     struct __default_awaiter_context<_ParentPromise> {
       using __stop_token_t = stop_token_of_t<env_of_t<_ParentPromise>>;
@@ -190,14 +190,14 @@ namespace exec {
         __self.__stop_token_ = __stop_source_.get_token();
       }
 
-      in_place_stop_source __stop_source_{};
+      inplace_stop_source __stop_source_{};
       __stop_callback_t __stop_callback_;
     };
 
-    // If the parent coroutine's type has a stop token of type in_place_stop_token,
+    // If the parent coroutine's type has a stop token of type inplace_stop_token,
     // we don't need to register a stop callback.
     template <__indirect_stop_token_provider _ParentPromise>
-      requires std::same_as<in_place_stop_token, stop_token_of_t<env_of_t<_ParentPromise>>>
+      requires std::same_as<inplace_stop_token, stop_token_of_t<env_of_t<_ParentPromise>>>
     struct __default_awaiter_context<_ParentPromise> {
       template <__scheduler_affinity _Affinity>
       explicit __default_awaiter_context(
@@ -256,7 +256,7 @@ namespace exec {
         using __stop_callback_t =
           typename __stop_token_t::template callback_type<__forward_stop_request>;
 
-        if constexpr (std::same_as<__stop_token_t, in_place_stop_token>) {
+        if constexpr (std::same_as<__stop_token_t, inplace_stop_token>) {
           __self.__stop_token_ = get_stop_token(get_env(__parent));
         } else if (auto __token = get_stop_token(get_env(__parent)); __token.stop_possible()) {
           __stop_callback_.emplace<__stop_callback_t>(
@@ -265,7 +265,7 @@ namespace exec {
         }
       }
 
-      in_place_stop_source __stop_source_{};
+      inplace_stop_source __stop_source_{};
       std::any __stop_callback_{};
     };
 

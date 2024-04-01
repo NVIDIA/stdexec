@@ -27,7 +27,7 @@ namespace exec {
     using namespace stdexec;
 
     struct __on_stop_requested {
-      in_place_stop_source& __stop_source_;
+      inplace_stop_source& __stop_source_;
 
       void operator()() noexcept {
         __stop_source_.request_stop();
@@ -35,7 +35,7 @@ namespace exec {
     };
 
     template <class _BaseEnv>
-    using __env_t = __env::__join_t<__env::__with<in_place_stop_token, get_stop_token_t>, _BaseEnv>;
+    using __env_t = __env::__join_t<__env::__with<inplace_stop_token, get_stop_token_t>, _BaseEnv>;
 
     template <class _Ret, class... _Args>
     auto __signature_to_tuple_(_Ret (*)(_Args...)) -> __decayed_tuple<_Ret, _Args...>;
@@ -103,7 +103,7 @@ namespace exec {
         std::optional<typename stop_token_of_t<env_of_t<_Receiver>&>::template callback_type<
           __on_stop_requested>>;
 
-      in_place_stop_source __stop_source_{};
+      inplace_stop_source __stop_source_{};
       __on_stop __on_stop_{};
 
       // If this hits true, we store the result

@@ -47,13 +47,13 @@ namespace {
 
   struct env {
     const void* object_{nullptr};
-    in_place_stop_token token_;
+    inplace_stop_token token_;
 
     friend const void* tag_invoke(tag_t, env e) noexcept {
       return e.object_;
     }
 
-    friend in_place_stop_token tag_invoke(get_stop_token_t, const env& e) noexcept {
+    friend inplace_stop_token tag_invoke(get_stop_token_t, const env& e) noexcept {
       return e.token_;
     }
   };
@@ -407,13 +407,13 @@ namespace {
   stopped_receiver(Token, bool) -> stopped_receiver<Token>;
 
   static_assert(receiver_of<
-                stopped_receiver<in_place_stop_token>,
+                stopped_receiver<inplace_stop_token>,
                 completion_signatures<set_value_t(int), set_stopped_t()>>);
 
   TEST_CASE("any_sender - does connect with stop token", "[types][any_sender]") {
     using stoppable_sender = any_sender_of<set_value_t(int), set_stopped_t()>;
     stoppable_sender sender = when_any(just(21));
-    in_place_stop_source stop_source{};
+    inplace_stop_source stop_source{};
     stopped_receiver receiver{stop_source.get_token(), true};
     stop_source.request_stop();
     auto do_check = connect(std::move(sender), std::move(receiver));
@@ -442,14 +442,14 @@ namespace {
 
   TEST_CASE(
     "any_sender - does connect with stop token if the get_stop_token query is registered with "
-    "in_place_stop_token",
+    "inplace_stop_token",
     "[types][any_sender]") {
     using Sigs = completion_signatures<set_value_t(int), set_stopped_t()>;
     using receiver_ref =
-      any_receiver_ref<Sigs, get_stop_token.signature<in_place_stop_token() noexcept>>;
+      any_receiver_ref<Sigs, get_stop_token.signature<inplace_stop_token() noexcept>>;
     using stoppable_sender = receiver_ref::any_sender<>;
     stoppable_sender sender = when_any(just(21));
-    in_place_stop_source stop_source{};
+    inplace_stop_source stop_source{};
     stopped_receiver receiver{stop_source.get_token(), true};
     stop_source.request_stop();
     auto do_check = connect(std::move(sender), std::move(receiver));
@@ -466,7 +466,7 @@ namespace {
       any_receiver_ref<Sigs, get_stop_token.signature<never_stop_token() noexcept>>;
     using unstoppable_sender = receiver_ref::any_sender<>;
     unstoppable_sender sender = when_any(just(21));
-    in_place_stop_source stop_source{};
+    inplace_stop_source stop_source{};
     stopped_receiver receiver{stop_source.get_token(), false};
     stop_source.request_stop();
     auto do_check = connect(std::move(sender), std::move(receiver));

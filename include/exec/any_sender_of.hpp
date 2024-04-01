@@ -648,7 +648,7 @@ namespace exec {
         struct __env_t {
           const __vtable_t* __vtable_;
           void* __rcvr_;
-          in_place_stop_token __token_;
+          inplace_stop_token __token_;
 
           template <class _Tag, class... _As>
             requires __callable<const __vtable_t&, _Tag, void*, _As...>
@@ -659,7 +659,7 @@ namespace exec {
           }
 
           friend auto tag_invoke(get_stop_token_t, const __env_t& __self) noexcept
-            -> in_place_stop_token {
+            -> inplace_stop_token {
             return __self.__token_;
           }
         } __env_;
@@ -779,7 +779,7 @@ namespace exec {
     using __receiver_ref = __mapply<__mbind_front<__q<__rec::__ref>, _Sigs>, _Queries>;
 
     struct __on_stop_t {
-      stdexec::in_place_stop_source& __source_;
+      stdexec::inplace_stop_source& __source_;
 
       void operator()() const noexcept {
         __source_.request_stop();
@@ -790,14 +790,14 @@ namespace exec {
     struct __operation_base {
       STDEXEC_ATTRIBUTE((no_unique_address))
       _Receiver __rcvr_;
-      stdexec::in_place_stop_source __stop_source_{};
+      stdexec::inplace_stop_source __stop_source_{};
       using __stop_callback = typename stdexec::stop_token_of_t<
         stdexec::env_of_t<_Receiver>>::template callback_type<__on_stop_t>;
       std::optional<__stop_callback> __on_stop_{};
     };
 
     template <class _Env>
-    using __env_t = __env::__join_t<__env::__with<in_place_stop_token, get_stop_token_t>, _Env>;
+    using __env_t = __env::__join_t<__env::__with<inplace_stop_token, get_stop_token_t>, _Env>;
 
     template <class _ReceiverId>
     struct __stoppable_receiver {
@@ -926,7 +926,7 @@ namespace exec {
     template <class _Sigs, class _SenderQueries = __types<>, class _ReceiverQueries = __types<>>
     struct __sender {
       using __receiver_ref_t = __receiver_ref<_Sigs, _ReceiverQueries>;
-      static constexpr bool __with_in_place_stop_token =
+      static constexpr bool __with_inplace_stop_token =
         __v<__mapply<__mall_of<__q<__is_not_stop_token_query_v>>, _ReceiverQueries>>;
 
       class __vtable : public __query_vtable<_SenderQueries> {
@@ -1010,7 +1010,7 @@ namespace exec {
 
         template <receiver_of<_Sigs> _Rcvr>
         friend auto tag_invoke(connect_t, __t&& __self, _Rcvr&& __rcvr)
-          -> stdexec::__t<__operation<stdexec::__id<__decay_t<_Rcvr>>, __with_in_place_stop_token>> {
+          -> stdexec::__t<__operation<stdexec::__id<__decay_t<_Rcvr>>, __with_inplace_stop_token>> {
           return {static_cast<__t&&>(__self), static_cast<_Rcvr&&>(__rcvr)};
         }
 

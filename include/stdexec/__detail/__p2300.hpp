@@ -62,11 +62,11 @@ namespace std {
   concept unstoppable_token /*STDEXEC_STD_DEPRECATED*/ = stdexec::unstoppable_token<_Token>;
 
   using never_stop_token STDEXEC_STD_DEPRECATED = stdexec::never_stop_token;
-  using in_place_stop_token STDEXEC_STD_DEPRECATED = stdexec::in_place_stop_token;
-  using in_place_stop_source STDEXEC_STD_DEPRECATED = stdexec::in_place_stop_source;
+  using in_place_stop_token STDEXEC_STD_DEPRECATED = stdexec::inplace_stop_token;
+  using in_place_stop_source STDEXEC_STD_DEPRECATED = stdexec::inplace_stop_source;
 
   template <class _Callback>
-  using in_place_stop_callback STDEXEC_STD_DEPRECATED = stdexec::in_place_stop_callback<_Callback>;
+  using in_place_stop_callback STDEXEC_STD_DEPRECATED = stdexec::inplace_stop_callback<_Callback>;
 
   //////////////////////////////////////////////////////////////////////////////
   // <execution>

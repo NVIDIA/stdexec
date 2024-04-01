@@ -141,7 +141,7 @@ namespace {
   }
 
   TEST_CASE("split forwards external stop signal (1)", "[adaptors][split]") {
-    stdexec::in_place_stop_source ssource;
+    stdexec::inplace_stop_source ssource;
     bool called = false;
     int counter{};
     auto split = ex::split(ex::just() | ex::then([&] { called = true; }));
@@ -165,7 +165,7 @@ namespace {
   }
 
   TEST_CASE("split forwards external stop signal (2)", "[adaptors][split]") {
-    stdexec::in_place_stop_source ssource;
+    stdexec::inplace_stop_source ssource;
     bool called = false;
     int counter{};
     auto split = ex::split(
@@ -195,7 +195,7 @@ namespace {
 
   TEST_CASE("split forwards external stop signal (3)", "[adaptors][split]") {
     impulse_scheduler sched;
-    stdexec::in_place_stop_source ssource;
+    stdexec::inplace_stop_source ssource;
     bool called = false;
     int counter{};
     auto split = ex::split(ex::on(
@@ -233,7 +233,7 @@ namespace {
 
   TEST_CASE("split forwards external stop signal (4)", "[adaptors][split]") {
     impulse_scheduler sched;
-    stdexec::in_place_stop_source ssource;
+    stdexec::inplace_stop_source ssource;
     bool called = false;
     int counter{};
     auto split = ex::split(

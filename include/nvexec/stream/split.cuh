@@ -26,7 +26,7 @@
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace _split {
     inline auto __make_env(
-      const in_place_stop_source& stop_source,
+      const inplace_stop_source& stop_source,
       stream_provider_t* stream_provider) noexcept {
       return make_stream_env(
         __env::__from{[&](get_stop_token_t) noexcept {
@@ -36,7 +36,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     }
 
     using env_t = decltype(_split::__make_env(
-      __declval<const in_place_stop_source&>(),
+      __declval<const inplace_stop_source&>(),
       static_cast<stream_provider_t*>(nullptr)));
 
     template <class Tag, class... As, class Variant>
@@ -122,7 +122,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       context_state_t context_state_;
       stream_provider_t stream_provider_;
 
-      in_place_stop_source stop_source_{};
+      inplace_stop_source stop_source_{};
       std::atomic<void*> head_{nullptr};
       unsigned int index_{0};
       variant_t* data_{nullptr};
@@ -205,7 +205,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using Receiver = stdexec::__t<ReceiverId>;
 
         struct on_stop_requested {
-          in_place_stop_source& stop_source_;
+          inplace_stop_source& stop_source_;
 
           void operator()() noexcept {
             stop_source_.request_stop();
@@ -331,7 +331,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
         -> __try_make_completion_signatures<
           Sender,
-          exec::make_env_t<exec::with_t<get_stop_token_t, in_place_stop_token>>,
+          exec::make_env_t<exec::with_t<get_stop_token_t, inplace_stop_token>>,
           completion_signatures<set_error_t(const cudaError_t&)>,
           __q<_set_value_t>,
           __q<_set_error_t>> {

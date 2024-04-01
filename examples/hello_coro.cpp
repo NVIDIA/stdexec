@@ -36,7 +36,7 @@ exec::task<std::optional<int>> async_answer2(S1 s1, S2 s2) {
 }
 
 // tasks have an associated stop token
-exec::task<std::optional<stdexec::in_place_stop_token>> async_stop_token() {
+exec::task<std::optional<stdexec::inplace_stop_token>> async_stop_token() {
   co_return co_await stopped_as_optional(get_stop_token());
 }
 

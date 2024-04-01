@@ -3083,11 +3083,11 @@ namespace stdexec {
     template <class _BaseEnv>
     using __env_t = //
       __env::__join_t<
-        __env::__with<in_place_stop_token, get_stop_token_t>,
+        __env::__with<inplace_stop_token, get_stop_token_t>,
         _BaseEnv>; // BUGBUG NOT TO SPEC
 
     struct __on_stop_request {
-      in_place_stop_source& __stop_source_;
+      inplace_stop_source& __stop_source_;
 
       void operator()() noexcept {
         __stop_source_.request_stop();
@@ -3225,7 +3225,7 @@ namespace stdexec {
 
       using __receiver_t = __t<__receiver<__cvref_id<_CvrefSender>, __id<_Env>>>;
 
-      in_place_stop_source __stop_source_{};
+      inplace_stop_source __stop_source_{};
       __variant_t __data_;
       std::atomic<void*> __head_{nullptr};
       __env_t<_Env> __env_;
@@ -4988,7 +4988,7 @@ namespace stdexec {
     };
 
     struct __on_stop_request {
-      in_place_stop_source& __stop_source_;
+      inplace_stop_source& __stop_source_;
 
       void operator()() noexcept {
         __stop_source_.request_stop();
@@ -4996,14 +4996,14 @@ namespace stdexec {
     };
 
     template <class _Env>
-    auto __mkenv(_Env&& __env, const in_place_stop_source& __stop_source) noexcept {
+    auto __mkenv(_Env&& __env, const inplace_stop_source& __stop_source) noexcept {
       return __env::__join(
         __env::__with(__stop_source.get_token(), get_stop_token), static_cast<_Env&&>(__env));
     }
 
     template <class _Env>
     using __env_t = //
-      decltype(__mkenv(__declval<_Env>(), __declval<in_place_stop_source&>()));
+      decltype(__mkenv(__declval<_Env>(), __declval<inplace_stop_source&>()));
 
     template <class _Tp>
     using __decay_rvalue_ref = __decay_t<_Tp>&&;
@@ -5170,7 +5170,7 @@ namespace stdexec {
       }
 
       std::atomic<std::size_t> __count_;
-      in_place_stop_source __stop_source_{};
+      inplace_stop_source __stop_source_{};
       // Could be non-atomic here and atomic_ref everywhere except __completion_fn
       std::atomic<__state_t> __state_{__started};
       _ErrorsVariant __errors_{};
@@ -5188,7 +5188,7 @@ namespace stdexec {
         using _State = __when_all_state<_ErrorsVariant, _ValuesTuple, stop_token_of_t<_Env>>;
         return _State{
           sizeof...(_Child),
-          in_place_stop_source{},
+          inplace_stop_source{},
           __started,
           _ErrorsVariant{},
           _ValuesTuple{},
