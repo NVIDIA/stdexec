@@ -34,9 +34,13 @@
 /// }
 /// @endcode
 #define STDEXEC_MEMFN_DECL(...)                                                                    \
-  friend STDEXEC_MEMFN_DECL_TAG_INVOKE(                                                            \
-    STDEXEC_CHECK(STDEXEC_CAT(STDEXEC_MEMFN_DECL_PROBE_, __VA_ARGS__)), __VA_ARGS__)               \
+  friend STDEXEC_MEMFN_DECL_TAG_INVOKE(STDEXEC_MEMFN_DECL_WHICH(__VA_ARGS__), __VA_ARGS__)         \
     STDEXEC_MEMFN_DECL_ARGS
+
+#define STDEXEC_MEMFN_DECL_WHICH(_A1, ...)                                                         \
+  STDEXEC_CAT(STDEXEC_MEMFN_DECL_WHICH_, STDEXEC_FRONT(__VA_OPT__(1, ) 0))(_A1)
+#define STDEXEC_MEMFN_DECL_WHICH_0(_A1) STDEXEC_CHECK(STDEXEC_MEMFN_DECL_PROBE_##_A1)
+#define STDEXEC_MEMFN_DECL_WHICH_1(_A1) 0
 
 #define STDEXEC_MEMFN_DECL_TAG_INVOKE(_WHICH, ...)                                                 \
   STDEXEC_CAT(STDEXEC_MEMFN_DECL_RETURN_, _WHICH)(__VA_ARGS__) \
@@ -56,9 +60,9 @@
 #define STDEXEC_MEMFN_DECL_RETURN_1(...) auto
 #define STDEXEC_MEMFN_DECL_RETURN_2(...) void
 
-#define STDEXEC_MEMFN_DECL_TAG_0(...)    ::stdexec::__tag_type_t<STDEXEC_CAT(__VA_ARGS__, _t::*)>&
-#define STDEXEC_MEMFN_DECL_TAG_1(...)    STDEXEC_CAT(STDEXEC_CAT(STDEXEC_EAT_AUTO_, __VA_ARGS__), _t)&
-#define STDEXEC_MEMFN_DECL_TAG_2(...)    STDEXEC_CAT(STDEXEC_CAT(STDEXEC_EAT_VOID_, __VA_ARGS__), _t)&
+#define STDEXEC_MEMFN_DECL_TAG_0(...)    ::stdexec::__tag_type_t<__VA_ARGS__##_t::*>&
+#define STDEXEC_MEMFN_DECL_TAG_1(...)    STDEXEC_CAT(STDEXEC_EAT_AUTO_##__VA_ARGS__##_t)&
+#define STDEXEC_MEMFN_DECL_TAG_2(...)    STDEXEC_CAT(STDEXEC_EAT_VOID_##__VA_ARGS__##_t)&
 
 #if STDEXEC_MSVC()
 #  pragma deprecated(STDEXEC_CUSTOM)

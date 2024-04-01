@@ -83,6 +83,13 @@ enum {
 #define STDEXEC_FOR_EACH_AGAIN()       STDEXEC_FOR_EACH_HELPER
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#define STDEXEC_FRONT(...)             __VA_OPT__(STDEXEC_FRONT_HELPER(__VA_ARGS__))
+#define STDEXEC_FRONT_HELPER(_A1, ...) _A1
+#define STDEXEC_BACK(...)              __VA_OPT__(STDEXEC_EXPAND_R(STDEXEC_BACK_HELPER(__VA_ARGS__)))
+#define STDEXEC_BACK_HELPER(_A1, ...)                                                              \
+  STDEXEC_FRONT(__VA_OPT__(, ) _A1, ) __VA_OPT__(STDEXEC_BACK_AGAIN STDEXEC_PARENS(__VA_ARGS__))
+#define STDEXEC_BACK_AGAIN()           STDEXEC_BACK_HELPER
+
 // If tail is non-empty, expand to the tail. Otherwise, expand to the head
 #define STDEXEC_HEAD_OR_TAIL(_XP, ...) STDEXEC_EXPAND __VA_OPT__((__VA_ARGS__) STDEXEC_EAT)(_XP)
 
@@ -273,22 +280,23 @@ enum {
 #endif
 
 #if STDEXEC_HAS_BUILTIN(__is_same)
-#define STDEXEC_IS_SAME(...) __is_same(__VA_ARGS__)
+#  define STDEXEC_IS_SAME(...) __is_same(__VA_ARGS__)
 #elif STDEXEC_HAS_BUILTIN(__is_same_as)
-#define STDEXEC_IS_SAME(...) __is_same_as(__VA_ARGS__)
+#  define STDEXEC_IS_SAME(...) __is_same_as(__VA_ARGS__)
 #elif STDEXEC_MSVC()
 // msvc replaces std::is_same_v with a compile-time constant
-#include <type_traits>
-#define STDEXEC_IS_SAME(...) std::is_same_v<__VA_ARGS__>
+#  include <type_traits>
+#  define STDEXEC_IS_SAME(...) std::is_same_v<__VA_ARGS__>
 #else
-#define STDEXEC_IS_SAME(...) stdexec::__same_as_v<__VA_ARGS__>
+#  define STDEXEC_IS_SAME(...) stdexec::__same_as_v<__VA_ARGS__>
+
 namespace stdexec {
   template <class _Ap, class _Bp>
   inline constexpr bool __same_as_v = false;
 
   template <class _Ap>
   inline constexpr bool __same_as_v<_Ap, _Ap> = true;
-}
+} // namespace stdexec
 #endif
 
 #if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L
