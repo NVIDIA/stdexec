@@ -86,8 +86,8 @@ namespace exec {
         using receiver_concept = stdexec::receiver_t;
         __item_operation_base<_ItemReceiver, _ResultVariant>* __op_;
 
-        template <same_as<set_value_t> _Tag, same_as<__t> _Self, class... _Args>
-        friend void tag_invoke(_Tag, _Self&& __self, [[maybe_unused]] _Args&&... __args) noexcept {
+        template <same_as<__t> _Self, class... _Args>
+        STDEXEC_MEMFN_DECL(void set_value)(this _Self&& __self, [[maybe_unused]] _Args&&... __args) noexcept {
           // ignore incoming values
           stdexec::set_value(static_cast<_ItemReceiver&&>(__self.__op_->__receiver_));
         }
@@ -110,8 +110,8 @@ namespace exec {
           stdexec::set_stopped(static_cast<_ItemReceiver&&>(__self.__op_->__receiver_));
         }
 
-        template <same_as<get_env_t> _GetEnv, __decays_to<__t> _Self>
-        friend auto tag_invoke(_GetEnv, _Self&& __self) noexcept -> env_of_t<_ItemReceiver> {
+        template <__decays_to<__t> _Self>
+        STDEXEC_MEMFN_DECL(auto get_env)(this _Self&& __self) noexcept -> env_of_t<_ItemReceiver> {
           return stdexec::get_env(__self.__op_->__receiver_);
         }
       };
@@ -129,6 +129,8 @@ namespace exec {
           __result_type<_ResultVariant>* __parent,
           _Sender&& __sndr,
           _ItemReceiver __rcvr) //
+
+          //
           noexcept(
             __nothrow_decay_copyable<_ItemReceiver> //
             && __nothrow_connectable<_Sender, __item_receiver_t>)
@@ -136,7 +138,7 @@ namespace exec {
           , __op_{stdexec::connect(static_cast<_Sender&&>(__sndr), __item_receiver_t{this})} {
         }
 
-        friend void tag_invoke(start_t, __t& __self) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
           stdexec::start(__self.__op_);
         }
       };
@@ -161,8 +163,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, stdexec::receiver_of<completion_signatures> _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __item_receiver_t<_Receiver>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
-          -> __operation_t<_Self, _Receiver> {
+        STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr) -> __operation_t<_Self, _Receiver> {
           return {
             __self.__parent_,
             static_cast<_Self&&>(__self).__sender_,
@@ -186,31 +187,31 @@ namespace exec {
         using receiver_concept = stdexec::receiver_t;
         __operation_base<_Receiver, _ResultVariant>* __op_;
 
-        template <same_as<set_next_t> _SetNext, same_as<__t> _Self, sender _Item>
-        friend auto tag_invoke(_SetNext, _Self& __self, _Item&& __item) //
+        template <same_as<__t> _Self, sender _Item>
+        STDEXEC_MEMFN_DECL(auto set_next)(this _Self& __self, _Item&& __item) //
           noexcept(__nothrow_decay_copyable<_Item>)
             -> stdexec::__t<__item_sender<__decay_t<_Item>, _ResultVariant>> {
           return {static_cast<_Item&&>(__item), __self.__op_};
         }
 
-        template <same_as<set_value_t> _SetValue, same_as<__t> _Self>
-        friend void tag_invoke(_SetValue, _Self&& __self) noexcept {
+        template <same_as<__t> _Self>
+        STDEXEC_MEMFN_DECL(void set_value)(this _Self&& __self) noexcept {
           __self.__op_->__visit_result(static_cast<_Receiver&&>(__self.__op_->__receiver_));
         }
 
-        template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
-        friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
+        template <same_as<__t> _Self>
+        STDEXEC_MEMFN_DECL(void set_stopped)(this _Self&& __self) noexcept {
           stdexec::set_stopped(static_cast<_Receiver&&>(__self.__op_->__receiver_));
         }
 
-        template <same_as<set_error_t> _SetError, same_as<__t> _Self, class _Error>
-        friend void tag_invoke(_SetError, _Self&& __self, _Error&& error) noexcept {
+        template <same_as<__t> _Self, class _Error>
+        STDEXEC_MEMFN_DECL(void set_error)(this _Self&& __self, _Error&& error) noexcept {
           stdexec::set_error(
             static_cast<_Receiver&&>(__self.__op_->__receiver_), static_cast<_Error&&>(error));
         }
 
-        template <same_as<get_env_t> _GetEnv, __decays_to<__t> _Self>
-        friend auto tag_invoke(_GetEnv, _Self&& __self) noexcept -> env_of_t<_Receiver> {
+        template <__decays_to<__t> _Self>
+        STDEXEC_MEMFN_DECL(auto get_env)(this _Self&& __self) noexcept -> env_of_t<_Receiver> {
           return stdexec::get_env(__self.__op_->__receiver_);
         }
       };
@@ -247,7 +248,7 @@ namespace exec {
           , __op_{exec::subscribe(static_cast<_Sender&&>(__sndr), __receiver_t{this})} {
         }
 
-        friend void tag_invoke(start_t, __t& __self) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
           stdexec::start(__self.__op_);
         }
       };
@@ -275,9 +276,9 @@ namespace exec {
       template <class _Child>
         requires receiver_of<_Receiver, __completion_sigs<_Child>>
               && sequence_sender_to<_Child, __receiver_t<_Child>>
-      auto operator()(__ignore, __ignore, _Child&& __child) noexcept(
-        __nothrow_constructible_from<__operation_t<_Child>, _Child, _Receiver>)
-        -> __operation_t<_Child> {
+      auto operator()(__ignore, __ignore, _Child&& __child) //
+        noexcept(__nothrow_constructible_from<__operation_t<_Child>, _Child, _Receiver>)
+          -> __operation_t<_Child> {
         return {static_cast<_Child&&>(__child), static_cast<_Receiver&&>(__rcvr_)};
       }
     };
@@ -314,14 +315,12 @@ namespace exec {
       template <class _Child, class _Receiver>
       using __receiver_t = __t<__receiver<__id<_Receiver>, _ResultVariant<_Child, _Receiver>>>;
 
-      static constexpr auto connect = //
-        []<class _Sender, receiver _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-          __nothrow_callable<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>)
+      static constexpr auto connect =                                             //
+        []<class _Sender, receiver _Receiver>(_Sender&& __sndr, _Receiver __rcvr) //
+        noexcept(__nothrow_callable<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>)
         -> __call_result_t<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>
         requires receiver_of<_Receiver, __completion_sigs<__child_of<_Sender>, env_of_t<_Receiver>>>
-              && sequence_sender_to<
-                   __child_of<_Sender>,
-                   __receiver_t<__child_of<_Sender>, _Receiver>>
+              && sequence_sender_to<__child_of<_Sender>, __receiver_t<__child_of<_Sender>, _Receiver>>
       {
         static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
         return __sexpr_apply(static_cast<_Sender&&>(__sndr), __connect_fn<_Receiver>{__rcvr});

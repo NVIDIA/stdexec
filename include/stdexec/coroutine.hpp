@@ -87,14 +87,14 @@ namespace stdexec {
         __promise->await_transform(static_cast<_Awaitable&&>(__awaitable)).operator co_await();
       }) {
       return __promise->await_transform(static_cast<_Awaitable&&>(__awaitable)).operator co_await();
-    } else if constexpr (
-      requires {
+    } else if constexpr (requires {
 #  if STDEXEC_MSVC()
-        __co_await_constraint(__promise->await_transform(static_cast<_Awaitable&&>(__awaitable)));
+                           __co_await_constraint(
+                             __promise->await_transform(static_cast<_Awaitable&&>(__awaitable)));
 #  else
         operator co_await(__promise->await_transform(static_cast<_Awaitable&&>(__awaitable)));
 #  endif
-      }) {
+                         }) {
       return operator co_await(__promise->await_transform(static_cast<_Awaitable&&>(__awaitable)));
     } else {
       return __promise->await_transform(static_cast<_Awaitable&&>(__awaitable));

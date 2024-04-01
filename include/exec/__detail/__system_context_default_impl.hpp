@@ -21,6 +21,7 @@
 #include "__weak_attribute.hpp"
 
 namespace exec::__system_context_default_impl {
+  using namespace stdexec::tags;
 
   using __pool_scheduler_t = decltype(std::declval<exec::static_thread_pool>().get_scheduler());
 
@@ -41,16 +42,15 @@ namespace exec::__system_context_default_impl {
     /// The owning operation state, to be destructed when the operation completes.
     __operation<__Sender>* __op_;
 
-    friend void tag_invoke(stdexec::set_value_t, __recv&& __self) noexcept {
+    STDEXEC_MEMFN_DECL(void set_value)(this __recv&& __self) noexcept {
       __self.__cb_(__self.__data_, 0, nullptr);
     }
 
-    friend void tag_invoke(stdexec::set_stopped_t, __recv&& __self) noexcept {
+    STDEXEC_MEMFN_DECL(void set_stopped)(this __recv&& __self) noexcept {
       __self.__cb_(__self.__data_, 1, nullptr);
     }
 
-    friend void
-      tag_invoke(stdexec::set_error_t, __recv&& __self, std::exception_ptr __ptr) noexcept {
+    STDEXEC_MEMFN_DECL(void set_error)(this __recv&& __self, std::exception_ptr __ptr) noexcept {
       __self.__cb_(__self.__data_, 2, *reinterpret_cast<void**>(&__ptr));
     }
   };
@@ -197,8 +197,8 @@ namespace exec::__system_context_default_impl {
       return 202402L;
     }
 
-    static __exec_system_scheduler_interface* __get_scheduler_impl(
-      __exec_system_context_interface* __self) noexcept {
+    static __exec_system_scheduler_interface*
+      __get_scheduler_impl(__exec_system_context_interface* __self) noexcept {
       return &static_cast<__system_context_impl*>(__self)->__scheduler_;
     }
   };

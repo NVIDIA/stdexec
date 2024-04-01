@@ -52,7 +52,7 @@ namespace nvexec {
 
           template <class... As>
             requires std::invocable<Fun, cudaStream_t, As&...>
-          friend void tag_invoke(set_value_t, __t&& self, As&&... as) noexcept {
+          STDEXEC_MEMFN_DECL(void set_value)(this  __t&& self, As&&... as) noexcept {
             cudaStream_t stream = self.op_state_.get_stream();
             launch_params p = self.params_;
             kernel<As&...><<<p.grid_size, p.block_size, p.shared_memory, stream>>>(
@@ -72,7 +72,7 @@ namespace nvexec {
             self.op_state_.propagate_completion_signal(tag, static_cast<As&&>(as)...);
           }
 
-          friend auto tag_invoke(get_env_t, const __t& self) noexcept //
+          STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept //
             -> typename operation_state_base_t<ReceiverId>::env_t {
             return self.op_state_.make_env();
           }
@@ -125,7 +125,7 @@ namespace nvexec {
 
         template <__decays_to<__t> Self, receiver Receiver>
           requires receiver_of<Receiver, completions_t<Self, env_of_t<Receiver>>>
-        friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
+        STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr)
           -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
           return stream_op_state<__copy_cvref_t<Self, Sender>>(
             static_cast<Self&&>(self).sndr_,
@@ -137,12 +137,12 @@ namespace nvexec {
         }
 
         template <__decays_to<__t> Self, class Env>
-        friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
+        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&)
           -> completions_t<Self, Env> {
           return {};
         }
 
-        friend auto tag_invoke(get_env_t, const __t& self) noexcept -> env_of_t<const Sender&> {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> env_of_t<const Sender&> {
           return get_env(self.sndr_);
         }
       };

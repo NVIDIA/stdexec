@@ -111,9 +111,8 @@ namespace exec {
         static auto await_suspend(__coro::coroutine_handle<__promise> __h) noexcept
           -> __coro::coroutine_handle<> {
           __promise& __p = __h.promise();
-          auto __coro = __p.__is_unhandled_stopped_
-                        ? __p.continuation().unhandled_stopped()
-                        : __p.continuation().handle();
+          auto __coro = __p.__is_unhandled_stopped_ ? __p.continuation().unhandled_stopped()
+                                                    : __p.continuation().handle();
           return STDEXEC_DESTROY_AND_CONTINUE(__h, __coro);
         }
 
@@ -124,7 +123,7 @@ namespace exec {
       struct __env {
         const __promise& __promise_;
 
-        friend auto tag_invoke(get_scheduler_t, __env __self) noexcept -> __any_scheduler {
+        STDEXEC_MEMFN_DECL(auto query)(this __env __self, get_scheduler_t) noexcept -> __any_scheduler {
           return __self.__promise_.__scheduler_;
         }
       };
@@ -170,7 +169,7 @@ namespace exec {
             __at_coro_exit::__die_on_stop(static_cast<_Awaitable&&>(__awaitable)), *this);
         }
 
-        friend auto tag_invoke(get_env_t, const __promise& __self) noexcept -> __env {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __promise& __self) noexcept -> __env {
           return {__self};
         }
 

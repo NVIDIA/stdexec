@@ -686,9 +686,7 @@ namespace stdexec {
   struct __remove_if {
     template <class... _Args>
     using __f = //
-      __minvoke<
-        __mconcat<_Continuation>,
-        __if<__minvoke<_Pred, _Args>, __types<>, __types<_Args>>...>;
+      __minvoke<__mconcat<_Continuation>, __if<__minvoke<_Pred, _Args>, __types<>, __types<_Args>>...>;
   };
 
   template <class _Return>
@@ -980,7 +978,7 @@ namespace stdexec {
     constexpr __placeholder(void*) noexcept {
     }
 
-    friend constexpr auto __get_placeholder_offset(__placeholder) noexcept -> std::size_t {
+    constexpr friend auto __get_placeholder_offset(__placeholder) noexcept -> std::size_t {
       return _Np;
     }
   };
@@ -1112,8 +1110,8 @@ namespace stdexec {
   struct __mdispatch_<_Ret (*)(_Args..., ...), _Offset> {
     static_assert(_Offset == 0, "nested pack expressions are not supported");
     using _Pattern = __mback<_Args...>;
-    static constexpr std::size_t __offset = __get_placeholder_offset(
-      static_cast<__mtype<_Pattern>*>(nullptr));
+    static constexpr std::size_t __offset =
+      __get_placeholder_offset(static_cast<__mtype<_Pattern>*>(nullptr));
 
     struct __impl {
       template <std::size_t... _Idx, class... _Ts>
@@ -1123,14 +1121,15 @@ namespace stdexec {
                   _Ret,
                   __call_result_t<__mdispatch_<_Args>, _Ts...>...,
                   __call_result_t<__mdispatch_<_Pattern, _Idx + 1>, _Ts...>...>
-      auto operator()(__indices<_Idx...>, _Ts&&... __ts) const noexcept(
-        __nothrow_callable<                                                                  //
-          _Ret,                                                                              //
-          __call_result_t<__mdispatch_<_Args>, _Ts...>...,                                   //
-          __call_result_t<__mdispatch_<_Pattern, _Idx + 1>, _Ts...>...>) -> __call_result_t< //
-        _Ret,
-        __call_result_t<__mdispatch_<_Args>, _Ts...>...,
-        __call_result_t<__mdispatch_<_Pattern, _Idx + 1>, _Ts...>...> {
+      auto operator()(__indices<_Idx...>, _Ts&&... __ts) const
+        noexcept(__nothrow_callable<                              //
+                 _Ret,                                            //
+                 __call_result_t<__mdispatch_<_Args>, _Ts...>..., //
+                 __call_result_t<__mdispatch_<_Pattern, _Idx + 1>, _Ts...>...>)
+          -> __call_result_t< //
+            _Ret,
+            __call_result_t<__mdispatch_<_Args>, _Ts...>...,
+            __call_result_t<__mdispatch_<_Pattern, _Idx + 1>, _Ts...>...> {
         return _Ret()(                                           //
           __mdispatch_<_Args>()(static_cast<_Ts&&>(__ts)...)..., //
           __mdispatch_<_Pattern, _Idx + 1>()(static_cast<_Ts&&>(__ts)...)...);
@@ -1151,11 +1150,12 @@ namespace stdexec {
     template <class... _Ts>
       requires(sizeof...(_Ts) == __offset)
            && __callable<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...>*>, _Ts...>
-    auto operator()(_Ts&&... __ts) const noexcept(
-      __nothrow_callable<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...>*>, _Ts...>)
-      -> __msecond<
-        __if_c<(sizeof...(_Ts) == __offset)>,
-        __call_result_t<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...>*>, _Ts...>> {
+    auto operator()(_Ts&&... __ts) const //
+      noexcept(
+        __nothrow_callable<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...>*>, _Ts...>)
+        -> __msecond<
+          __if_c<(sizeof...(_Ts) == __offset)>,
+          __call_result_t<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...>*>, _Ts...>> {
       return __mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...>*>()(
         static_cast<_Ts&&>(__ts)...);
     }
@@ -1189,14 +1189,10 @@ namespace stdexec {
   struct __which<_Cp<_Signatures...>, _Continuation> {
     template <class... _Args>
     using __f = //
-      __minvoke<
-        __mfind_if<__mbind_back_q<__try_dispatch_, _Args...>, _Continuation>,
-        _Signatures...>;
+      __minvoke<__mfind_if<__mbind_back_q<__try_dispatch_, _Args...>, _Continuation>, _Signatures...>;
   };
 
   template <class _Signatures, class _DefaultFn, class... _Args>
   using __make_dispatcher = //
-    __minvoke<
-      __mtry_catch<__mcompose<__q<__mdispatch>, __which<_Signatures>>, _DefaultFn>,
-      _Args...>;
+    __minvoke<__mtry_catch<__mcompose<__q<__mdispatch>, __which<_Signatures>>, _DefaultFn>, _Args...>;
 } // namespace stdexec

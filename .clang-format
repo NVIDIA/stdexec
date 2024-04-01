@@ -26,7 +26,10 @@ AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: true
 AlwaysBreakTemplateDeclarations: Yes
-AttributeMacros: []
+AttributeMacros: [
+  '__EXEC__SYSTEM_CONTEXT__INLINE',
+  '__EXEC_WEAK_ATTRIBUTE'
+]
 BinPackArguments: false
 BinPackParameters: false
 BitFieldColonSpacing: Both
@@ -81,7 +84,9 @@ KeepEmptyLinesAtTheStartOfBlocks: true
 LambdaBodyIndentation: Signature
 LineEnding: LF
 Macros: [
-  'STDEXEC_MEMFN_DECL(...)=__VA_ARGS__',
+  'STDEXEC_MEMFN_DECL(X)=X',
+  'STDEXEC_MEMFN_DECL(X,Y)=X,Y',
+  'STDEXEC_MEMFN_DECL(X,Y,Z)=X,Y,Z',
   'STDEXEC_ATTRIBUTE(X)=__attribute__(X) //',
   'STDEXEC_NO_UNIQUE_ADDRESS=[[no_unique_address]]',
   'STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS=[[no_unique_address]]',
@@ -91,16 +96,16 @@ Macros: [
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: All
 PackConstructorInitializers: Never
-PenaltyBreakAssignment: 64
+PenaltyBreakAssignment: 10
 PenaltyBreakBeforeFirstCallParameter: 64
-PenaltyBreakComment: 512
-PenaltyBreakFirstLessLess: 64
-PenaltyBreakOpenParenthesis: 32
-PenaltyBreakString: 64
-PenaltyBreakTemplateDeclaration: 4
-PenaltyExcessCharacter: 256
-PenaltyIndentedWhitespace: 2
-PenaltyReturnTypeOnItsOwnLine: 64
+PenaltyBreakComment: 0
+PenaltyBreakFirstLessLess: 0
+PenaltyBreakOpenParenthesis: 80
+PenaltyBreakString: 10
+PenaltyBreakTemplateDeclaration: 0
+PenaltyExcessCharacter: 100
+PenaltyIndentedWhitespace: 0
+PenaltyReturnTypeOnItsOwnLine: 0
 PointerAlignment: Left
 QualifierAlignment: Leave
 ReferenceAlignment: Pointer

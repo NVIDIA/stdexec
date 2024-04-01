@@ -37,7 +37,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_start_detached {
     friend void tag_invoke(_Tag, detached_receiver_t&&) noexcept {
     }
 
-    friend empty_env tag_invoke(get_env_t, const detached_receiver_t&) noexcept {
+    STDEXEC_MEMFN_DECL(auto get_env)(this const detached_receiver_t&) noexcept -> empty_env {
       return {};
     }
   };

@@ -31,14 +31,14 @@ namespace exec {
         std::variant<connect_result_t<__cvref_t<_CvrefSenderIds>, stdexec::__t<_ReceiverId>>...>
           __variant_;
 
-        friend void tag_invoke(start_t, __t& __self) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
           std::visit([](auto& __s) { start(__s); }, __self.__variant_);
         }
 
        public:
         template <class _Sender, class _Receiver>
-        __t(_Sender&& __sender, _Receiver&& __receiver) noexcept(
-          __nothrow_connectable<_Sender, _Receiver>)
+        __t(_Sender&& __sender, _Receiver&& __receiver) //
+          noexcept(__nothrow_connectable<_Sender, _Receiver>)
           : __variant_{std::in_place_type<connect_result_t<_Sender, _Receiver>>, __conv{[&] {
                          return stdexec::connect(
                            static_cast<_Sender&&>(__sender), static_cast<_Receiver&&>(__receiver));
@@ -58,7 +58,7 @@ namespace exec {
         _Receiver __r;
 
         template <class _Sender>
-        auto operator()(_Sender&& __s)
+        auto operator()(_Sender&& __s) //
           -> stdexec::__t<__operation_state<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>> {
           return {static_cast<_Sender&&>(__s), static_cast<_Receiver&&>(__r)};
         }
@@ -81,7 +81,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires(sender_to<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver> && ...)
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __r) noexcept((
+        STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __r) noexcept((
           __nothrow_connectable<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver> && ...))
           -> stdexec::__t<__operation_state<
             stdexec::__id<_Receiver>,
@@ -92,7 +92,7 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env&&)
           -> __completion_signatures_t<_Self, _Env> {
           return {};
         }
@@ -105,8 +105,8 @@ namespace exec {
 
         template <class _Sender>
           requires __one_of<__decay_t<_Sender>, stdexec::__t<_SenderIds>...>
-        __t(_Sender&& __sender) noexcept(
-          __nothrow_constructible_from<std::variant<stdexec::__t<_SenderIds>...>, _Sender>)
+        __t(_Sender&& __sender) //
+          noexcept(__nothrow_constructible_from<std::variant<stdexec::__t<_SenderIds>...>, _Sender>)
           : __variant_t{static_cast<_Sender&&>(__sender)} {
         }
 
@@ -129,7 +129,7 @@ namespace stdexec::__detail {
     using __f = __mapply<
       __transform<__mcompose<__q<__name_of>, __q<__t>>, __q<exec::__variant::__sender>>,
       _Sender>;
-  };
+  }; // namespace stdexec::__detail
 
   template <class... _SenderIds>
   extern __variant_sender_name __name_of_v<exec::__variant::__sender<_SenderIds...>>;

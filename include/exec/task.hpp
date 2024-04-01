@@ -100,14 +100,14 @@ namespace exec {
         __scheduler_{exec::inline_scheduler{}};
       inplace_stop_token __stop_token_;
 
-      friend auto tag_invoke(get_scheduler_t, const __default_task_context_impl& __self) noexcept
+      STDEXEC_MEMFN_DECL(auto query)(this const __default_task_context_impl& __self, get_scheduler_t) noexcept
         -> const __any_scheduler&
         requires(__with_scheduler)
       {
         return __self.__scheduler_;
       }
 
-      friend auto tag_invoke(get_stop_token_t, const __default_task_context_impl& __self) noexcept
+      STDEXEC_MEMFN_DECL(auto query)(this const __default_task_context_impl& __self, get_stop_token_t) noexcept
         -> inplace_stop_token {
         return __self.__stop_token_;
       }
@@ -185,8 +185,7 @@ namespace exec {
           __self.__scheduler_ = get_scheduler(get_env(__parent));
         }
         static_assert(
-          std::
-            is_nothrow_constructible_v<__stop_callback_t, __stop_token_t, __forward_stop_request>);
+          std::is_nothrow_constructible_v<__stop_callback_t, __stop_token_t, __forward_stop_request>);
         __self.__stop_token_ = __stop_source_.get_token();
       }
 
@@ -207,6 +206,7 @@ namespace exec {
           __check_parent_promise_has_scheduler<_ParentPromise>();
           __self.__scheduler_ = get_scheduler(get_env(__parent));
         }
+
         __self.__stop_token_ = get_stop_token(get_env(__parent));
       }
     };
@@ -407,7 +407,7 @@ namespace exec {
 
         using __context_t = typename _Context::template promise_context_t<__promise>;
 
-        friend auto tag_invoke(get_env_t, const __promise& __self) noexcept -> const __context_t& {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __promise& __self) noexcept -> const __context_t& {
           return __self.__context_;
         }
 
@@ -460,7 +460,8 @@ namespace exec {
           awaiter_context_t<__promise, _ParentPromise>,
           __promise&,
           _ParentPromise&>
-      friend auto tag_invoke(as_awaitable_t, basic_task&& __self, _ParentPromise&) noexcept
+      STDEXEC_MEMFN_DECL(
+        auto as_awaitable)(this basic_task&& __self, _ParentPromise&) noexcept
         -> __task_awaitable<_ParentPromise> {
         return __task_awaitable<_ParentPromise>{std::exchange(__self.__coro_, {})};
       }
@@ -484,8 +485,7 @@ namespace exec {
       using __task_traits_t = //
         completion_signatures<__set_value_sig_t, set_error_t(std::exception_ptr), set_stopped_t()>;
 
-      friend auto tag_invoke(get_completion_signatures_t, const basic_task&, auto)
-        -> __task_traits_t {
+      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this const basic_task&, auto) -> __task_traits_t {
         return {};
       }
 

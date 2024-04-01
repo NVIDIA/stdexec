@@ -58,8 +58,8 @@ namespace exec {
       }
 
       template <same_as<__receiver_placeholder> _Self>
-      [[noreturn]]
-      friend auto tag_invoke(get_env_t, _Self) noexcept -> _Env {
+      [[noreturn]] STDEXEC_MEMFN_DECL(
+        auto get_env)(this _Self) noexcept -> _Env {
         static_assert(
           __never_true<_Self>, "we should never be instantiating the body of this function");
         std::terminate();
@@ -147,7 +147,7 @@ namespace exec {
       -> __minvoke<__mconcat<__munique<__q<completion_signatures>>>, _Completions...>;
 
     template <class _Kernel, class _Env, class... _Sigs>
-    auto __compute_completions_(completion_signatures<_Sigs...>*)
+    auto __compute_completions_(completion_signatures<_Sigs...>*) //
       -> decltype(__stl::__all_completions(
         static_cast<__completions_from_sig_t<_Kernel, _Env, _Sigs>>(nullptr)...));
 
@@ -193,9 +193,8 @@ namespace exec {
             __tag, __st.__data_, __st.__rcvr_, static_cast<_As&&>(__as)...);
         }
 
-        template <same_as<get_env_t> _Tag, same_as<__t> _Self>
-        friend auto tag_invoke(_Tag, _Self __self) noexcept
-          -> __env_t<_Kernel, env_of_t<_Receiver>> {
+        template <same_as<__t> _Self>
+        STDEXEC_MEMFN_DECL(auto get_env)(this _Self __self) noexcept -> __env_t<_Kernel, env_of_t<_Receiver>> {
           __state& __st = *__self.__state_;
           static_assert(noexcept(__st.__kernel_.get_env(stdexec::get_env(__st.__rcvr_))));
           return __st.__kernel_.get_env(stdexec::get_env(__st.__rcvr_));
@@ -232,7 +231,7 @@ namespace exec {
               __receiver_t{&__state_})) {
         }
 
-        friend void tag_invoke(start_t, __t& __self) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
           __self.__state_.__kernel_.start(
             __self.__op_, __self.__state_.__data_, __self.__state_.__rcvr_);
         }
@@ -268,8 +267,7 @@ namespace exec {
         }
 
         template <__is_derived_sender<_DerivedId> _Self, receiver _Receiver>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
-          -> __operation_t<_Self, _Receiver> {
+        STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr) -> __operation_t<_Self, _Receiver> {
           return {
             static_cast<_Self&&>(__self).__sndr_,
             static_cast<_Self&&>(__self).__kernel_,
@@ -321,12 +319,12 @@ namespace exec {
         using __new_completions_t = decltype(__new_completion_sigs_type<_Self, _Env>()());
 
         template <__is_derived_sender<_DerivedId> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env&&) //
           -> __new_completions_t<_Self, _Env> {
           return {};
         }
 
-        friend auto tag_invoke(stdexec::get_env_t, const __t& __self) noexcept
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept //
           -> env_of_t<const _Sender&> {
           return stdexec::get_env(__self.__sndr_);
         }

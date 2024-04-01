@@ -54,11 +54,12 @@ namespace exec {
             std::terminate();
           }
 
-          friend auto tag_invoke(get_env_t, const __t& __self) noexcept -> env_of_t<_Receiver> {
+          STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> env_of_t<_Receiver> {
             return get_env(__self.__receiver_);
           }
         };
       };
+
       template <class _Rec>
       using __receiver = __t<__receiver_id<_Rec>>;
 
@@ -78,7 +79,8 @@ namespace exec {
 
           template <receiver _Receiver>
             requires sender_to<_Sender, __receiver<_Receiver>>
-          friend auto tag_invoke(connect_t, __t&& __self, _Receiver&& __rcvr) noexcept
+          STDEXEC_MEMFN_DECL(
+            auto connect)(this __t&& __self, _Receiver&& __rcvr) noexcept
             -> connect_result_t<_Sender, __receiver<_Receiver>> {
             return stdexec::connect(
               static_cast<_Sender&&>(__self.__sender_),
@@ -86,12 +88,11 @@ namespace exec {
           }
 
           template <__decays_to<__t> _Self, class _Env>
-          friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
-            -> __completion_signatures<_Env> {
+          STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env&&) -> __completion_signatures<_Env> {
             return {};
           }
 
-          friend auto tag_invoke(get_env_t, const __t& __self) noexcept -> env_of_t<_Sender> {
+          STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> env_of_t<_Sender> {
             return get_env(__self.__sender_);
           }
         };
@@ -160,9 +161,8 @@ namespace exec {
         static auto await_suspend(__coro::coroutine_handle<__promise> __h) noexcept
           -> __coro::coroutine_handle<> {
           __promise& __p = __h.promise();
-          auto __coro = __p.__is_unhandled_stopped_
-                        ? __p.continuation().unhandled_stopped()
-                        : __p.continuation().handle();
+          auto __coro = __p.__is_unhandled_stopped_ ? __p.continuation().unhandled_stopped()
+                                                    : __p.continuation().handle();
           return STDEXEC_DESTROY_AND_CONTINUE(__h, __coro);
         }
 
@@ -173,7 +173,7 @@ namespace exec {
       struct __env {
         const __promise& __promise_;
 
-        friend auto tag_invoke(get_scheduler_t, __env __self) noexcept -> __any_scheduler {
+        STDEXEC_MEMFN_DECL(auto query)(this __env __self, get_scheduler_t) noexcept -> __any_scheduler {
           return __self.__promise_.__scheduler_;
         }
       };
@@ -214,7 +214,7 @@ namespace exec {
           return as_awaitable(__die_on_stop(static_cast<_Awaitable&&>(__awaitable)), *this);
         }
 
-        friend auto tag_invoke(get_env_t, const __promise& __self) noexcept -> __env {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __promise& __self) noexcept -> __env {
           return {__self};
         }
 

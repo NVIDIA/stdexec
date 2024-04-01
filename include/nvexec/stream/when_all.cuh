@@ -96,7 +96,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <__one_of<set_value_t, set_stopped_t> _Tag>
           requires WithCompletionScheduler
-        friend Scheduler tag_invoke(get_completion_scheduler_t<_Tag>, const env& self) noexcept {
+        STDEXEC_MEMFN_DECL(Scheduler query)(this const env& self, get_completion_scheduler_t<_Tag>) noexcept {
           return Scheduler(self.context_state_);
         }
       };
@@ -354,7 +354,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         STDEXEC_IMMOVABLE(operation_t);
 
-        friend void tag_invoke(start_t, operation_t& self) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this operation_t& self) noexcept {
           // register stop callback:
           self.on_stop_.emplace(
             get_stop_token(get_env(self.recvr_)), _when_all::on_stop_requested{self.stop_source_});
@@ -404,18 +404,18 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       };
 
       template <__decays_to<__t> Self, receiver Receiver>
-      friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
+      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr)
         -> operation_t<__copy_cvref_t<Self, stdexec::__id<__decay_t<Receiver>>>> {
         return {static_cast<Self&&>(self), static_cast<Receiver&&>(rcvr)};
       }
 
       template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
+      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&)
         -> completion_sigs<Env, Self> {
         return {};
       }
 
-      friend const env& tag_invoke(get_env_t, const __t& __self) noexcept {
+      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> const env& {
         return __self.env_;
       }
 

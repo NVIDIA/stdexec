@@ -57,14 +57,16 @@
 
 namespace exec {
   namespace __io_uring {
+    using namespace stdexec::tags;
+
     inline void __throw_error_code_if(bool __cond, int __ec) {
       if (__cond) {
         throw std::system_error(__ec, std::system_category());
       }
     }
 
-    inline auto __io_uring_setup(unsigned __entries, ::io_uring_params& __params)
-      -> safe_file_descriptor {
+    inline auto
+      __io_uring_setup(unsigned __entries, ::io_uring_params& __params) -> safe_file_descriptor {
       int rc = static_cast<int>(::syscall(__NR_io_uring_setup, __entries, &__params));
       __throw_error_code_if(rc < 0, -rc);
       return safe_file_descriptor{rc};
@@ -84,10 +86,10 @@ namespace exec {
       }
     }
 
-    inline auto __map_region(int __fd, ::off_t __offset, std::size_t __size)
-      -> memory_mapped_region {
-      void* __ptr = ::mmap(
-        nullptr, __size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, __fd, __offset);
+    inline auto
+      __map_region(int __fd, ::off_t __offset, std::size_t __size) -> memory_mapped_region {
+      void* __ptr =
+        ::mmap(nullptr, __size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, __fd, __offset);
       __throw_error_code_if(__ptr == MAP_FAILED, errno);
       return memory_mapped_region{__ptr, __size};
     }
@@ -409,8 +411,8 @@ namespace exec {
           return false;
         } else {
           __requests_.push_front(__op);
-          [[maybe_unused]] int __prev = __n_submissions_in_flight_.fetch_sub(
-            1, std::memory_order_relaxed);
+          [[maybe_unused]] int __prev =
+            __n_submissions_in_flight_.fetch_sub(1, std::memory_order_relaxed);
           STDEXEC_ASSERT(__prev > 0);
           return true;
         }
@@ -435,8 +437,8 @@ namespace exec {
         STDEXEC_ASSERT(__n_total_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
         __pending_ = static_cast<__task_queue&&>(__result.__pending);
         while (!__result.__ready.empty()) {
-          __n_total_submitted_ -= __completion_queue_.complete(
-            static_cast<__task_queue&&>(__result.__ready));
+          __n_total_submitted_ -=
+            __completion_queue_.complete(static_cast<__task_queue&&>(__result.__ready));
           STDEXEC_ASSERT(0 <= __n_total_submitted_);
           __pending_.append(__requests_.pop_all_reversed());
           __max_submissions = __params_.cq_entries - static_cast<__u32>(__n_total_submitted_);
@@ -541,7 +543,7 @@ namespace exec {
         using __on_stopped_callback = typename stdexec::stop_token_of_t<
           stdexec::env_of_t<_Rcvr&>>::template callback_type<__on_stop>;
 
-        friend void tag_invoke(stdexec::start_t, __run_op& __self) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this __run_op& __self) noexcept {
           std::optional<__on_stopped_callback> __callback(
             std::in_place,
             stdexec::get_stop_token(stdexec::get_env(__self.__rcvr_)),
@@ -586,7 +588,7 @@ namespace exec {
         template <
           stdexec::__decays_to<__run_sender> _Self,
           stdexec::receiver_of<completion_signatures> _Rcvr>
-        friend auto tag_invoke(stdexec::connect_t, _Self&& __self, _Rcvr&& __rcvr) noexcept
+        STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Rcvr&& __rcvr) noexcept
           -> __run_op<stdexec::__decay_t<_Rcvr>> {
           return {static_cast<_Rcvr&&>(__rcvr), *__self.__context_, __self.__mode_};
         }
@@ -672,16 +674,16 @@ namespace exec {
 
       template <class... _Args>
         requires stdexec::constructible_from<_Base, std::in_place_t, __task*, _Args...>
-      __io_task_facade(std::in_place_t, _Args&&... __args) noexcept(
-        stdexec::__nothrow_constructible_from<_Base, __task*, _Args...>)
+      __io_task_facade(std::in_place_t, _Args&&... __args) //
+        noexcept(stdexec::__nothrow_constructible_from<_Base, __task*, _Args...>)
         : __task{__vtable}
         , __base_(std::in_place, static_cast<__task*>(this), static_cast<_Args&&>(__args)...) {
       }
 
       template <class... _Args>
         requires stdexec::constructible_from<_Base, _Args...>
-      __io_task_facade(std::in_place_t, _Args&&... __args) noexcept(
-        stdexec::__nothrow_constructible_from<_Base, _Args...>)
+      __io_task_facade(std::in_place_t, _Args&&... __args) //
+        noexcept(stdexec::__nothrow_constructible_from<_Base, _Args...>)
         : __task{__vtable}
         , __base_(static_cast<_Args&&>(__args)...) {
       }
@@ -693,7 +695,7 @@ namespace exec {
      private:
       _Base __base_;
 
-      friend void tag_invoke(stdexec::start_t, __io_task_facade& __self) noexcept {
+      STDEXEC_MEMFN_DECL(void start)(this __io_task_facade& __self) noexcept {
         __context& __context = __self.__base_.context();
         if (__context.submit(&__self)) {
           __context.wakeup();
@@ -732,6 +734,7 @@ namespace exec {
           if (__cqe.res == -ECANCELED || __context_.stop_requested() || token.stop_requested()) {
             stdexec::set_stopped(static_cast<_Receiver&&>(__receiver_));
           } else {
+
             stdexec::set_value(static_cast<_Receiver&&>(__receiver_));
           }
         }
@@ -761,10 +764,12 @@ namespace exec {
 
         void submit(::io_uring_sqe& __sqe) noexcept {
 #    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
-          if constexpr (
-            requires(_Base* __op, ::io_uring_sqe& __sqe) { __op->submit_stop(__sqe); }) {
+          if constexpr (requires(_Base* __op, ::io_uring_sqe& __sqe) {
+                          __op->submit_stop(__sqe);
+                        }) {
             __op_->submit_stop(__sqe);
           } else {
+
             __sqe = ::io_uring_sqe{
               .opcode = IORING_OP_ASYNC_CANCEL,         //
               .addr = bit_cast<__u64>(__op_->__parent_) //
@@ -807,8 +812,8 @@ namespace exec {
       _Base __base_;
 
       template <class... _Args>
-      __impl_base(__task* __parent, std::in_place_t, _Args&&... __args) noexcept(
-        stdexec::__nothrow_constructible_from<_Base, _Args...>)
+      __impl_base(__task* __parent, std::in_place_t, _Args&&... __args) //
+        noexcept(stdexec::__nothrow_constructible_from<_Base, _Args...>)
         : __parent_{__parent}
         , __base_(static_cast<_Args&&>(__args)...) {
       }
@@ -820,8 +825,8 @@ namespace exec {
       _Base __base_;
 
       template <class... _Args>
-      __impl_base(__task* __parent, std::in_place_t, _Args&&... __args) noexcept(
-        stdexec::__nothrow_constructible_from<_Base, _Args...>)
+      __impl_base(__task* __parent, std::in_place_t, _Args&&... __args) //
+        noexcept(stdexec::__nothrow_constructible_from<_Base, _Args...>)
         : __parent_{__parent}
         , __base_(static_cast<_Args&&>(__args)...) {
       }
@@ -836,9 +841,8 @@ namespace exec {
       using _Receiver = __receiver_of_t<_Base>;
 
       template <class _Ty>
-      static constexpr bool __has_submit_stop_v = requires(_Ty& __base, ::io_uring_sqe& __sqe) {
-        __base.submit_stop(__sqe);
-      };
+      static constexpr bool __has_submit_stop_v =
+        requires(_Ty& __base, ::io_uring_sqe& __sqe) { __base.submit_stop(__sqe); };
 
       using __base_t = __impl_base<_Base, __has_submit_stop_v<_Base>>;
 
@@ -862,8 +866,8 @@ namespace exec {
 
         template <class... _Args>
           requires stdexec::constructible_from<_Base, _Args...>
-        __impl(std::in_place_t, __task* __parent, _Args&&... __args) noexcept(
-          stdexec::__nothrow_constructible_from<_Base, _Args...>)
+        __impl(std::in_place_t, __task* __parent, _Args&&... __args) //
+          noexcept(stdexec::__nothrow_constructible_from<_Base, _Args...>)
           : __base_t(__parent, std::in_place, static_cast<_Args&&>(__args)...)
           , __stop_operation_{this} {
         }
@@ -949,8 +953,8 @@ namespace exec {
 
         __kernel_timespec __duration_;
 
-        static constexpr auto __duration_to_timespec(std::chrono::nanoseconds dur) noexcept
-          -> __kernel_timespec {
+        static constexpr auto
+          __duration_to_timespec(std::chrono::nanoseconds dur) noexcept -> __kernel_timespec {
           auto secs = std::chrono::duration_cast<std::chrono::seconds>(dur);
           dur -= secs;
           secs = std::max(secs, std::chrono::seconds{0});
@@ -963,15 +967,15 @@ namespace exec {
         std::uint64_t __n_expirations_{0};
         ::iovec __iov_{&__n_expirations_, sizeof(__n_expirations_)};
 
-        static constexpr ::itimerspec __duration_to_timespec(
-          std::chrono::nanoseconds __nsec) noexcept {
+        static constexpr ::itimerspec
+          __duration_to_timespec(std::chrono::nanoseconds __nsec) noexcept {
           ::itimerspec __timerspec{};
           ::clock_gettime(CLOCK_REALTIME, &__timerspec.it_value);
           __nsec = std::chrono::nanoseconds{__timerspec.it_value.tv_nsec} + __nsec;
           auto __sec = std::chrono::duration_cast<std::chrono::seconds>(__nsec);
           __nsec -= __sec;
-          __nsec = std::clamp(
-            __nsec, std::chrono::nanoseconds{0}, std::chrono::nanoseconds{999'999'999});
+          __nsec =
+            std::clamp(__nsec, std::chrono::nanoseconds{0}, std::chrono::nanoseconds{999'999'999});
           __timerspec.it_value.tv_sec += __sec.count();
           __timerspec.it_value.tv_nsec = __nsec.count();
           STDEXEC_ASSERT(
@@ -1076,25 +1080,22 @@ namespace exec {
         }
 
        private:
-        friend auto tag_invoke(stdexec::get_env_t, const __schedule_sender& __sender) noexcept
-          -> __schedule_env {
-          return __sender.__env_;
-        }
-
         using __completion_sigs =
           stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
 
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __schedule_sender& __sender) noexcept -> __schedule_env {
+          return __sender.__env_;
+        }
+
         template <class _Env>
-        friend auto
-          tag_invoke(stdexec::get_completion_signatures_t, const __schedule_sender&, _Env) noexcept
+        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this const __schedule_sender&, _Env) noexcept
           -> __completion_sigs {
           return {};
         }
 
         template <stdexec::receiver_of<__completion_sigs> _Receiver>
-        friend auto
-          tag_invoke(stdexec::connect_t, const __schedule_sender& __sender, _Receiver&& __receiver)
-            -> stdexec::__t<__schedule_operation<stdexec::__id<_Receiver>>> {
+        STDEXEC_MEMFN_DECL(auto connect)(this const __schedule_sender& __sender, _Receiver&& __receiver)
+          -> stdexec::__t<__schedule_operation<stdexec::__id<_Receiver>>> {
           return stdexec::__t<__schedule_operation<stdexec::__id<_Receiver>>>(
             std::in_place, *__sender.__env_.__context_, static_cast<_Receiver&&>(__receiver));
         }
@@ -1110,8 +1111,7 @@ namespace exec {
         std::chrono::nanoseconds __duration_;
 
        private:
-        friend auto tag_invoke(stdexec::get_env_t, const __schedule_after_sender& __sender) noexcept
-          -> __schedule_env {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __schedule_after_sender& __sender) noexcept -> __schedule_env {
           return __sender.__env_;
         }
 
@@ -1121,18 +1121,13 @@ namespace exec {
           stdexec::set_stopped_t()>;
 
         template <class _Env>
-        friend auto tag_invoke(
-          stdexec::get_completion_signatures_t,
-          const __schedule_after_sender&,
-          _Env) noexcept -> __completion_sigs {
+        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this const __schedule_after_sender&, _Env) noexcept
+          -> __completion_sigs {
           return {};
         }
 
         template <stdexec::receiver_of<__completion_sigs> _Receiver>
-        friend auto tag_invoke(
-          stdexec::connect_t,
-          const __schedule_after_sender& __sender,
-          _Receiver&& __receiver)
+        STDEXEC_MEMFN_DECL(auto connect)(this const __schedule_after_sender& __sender, _Receiver&& __receiver)
           -> stdexec::__t<__schedule_after_operation<stdexec::__id<_Receiver>>> {
           return stdexec::__t<__schedule_after_operation<stdexec::__id<_Receiver>>>(
             std::in_place,
@@ -1143,7 +1138,9 @@ namespace exec {
       };
 
      private:
-      friend auto tag_invoke(stdexec::schedule_t, const __scheduler& __sched) -> __schedule_sender {
+      STDEXEC_MEMFN_FRIEND(schedule);
+
+      STDEXEC_MEMFN_DECL(auto schedule)(this const __scheduler& __sched) -> __schedule_sender {
         return __schedule_sender{__schedule_env{__sched.__context_}};
       }
 

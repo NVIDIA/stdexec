@@ -32,6 +32,8 @@ namespace exec {
   struct libdispatch_queue;
 
   namespace __libdispatch_details {
+    using namespace stdexec::tags;
+
     template <class>
     struct not_a_sender {
       using sender_concept = stdexec::sender_t;
@@ -46,6 +48,8 @@ namespace exec {
   } // namespace __libdispatch_details
 
   namespace __libdispatch_bulk {
+    using namespace stdexec::tags;
+
     template <class SenderId, std::integral Shape, class Fun>
     struct bulk_sender {
       using Sender = stdexec::__t<SenderId>;
@@ -113,8 +117,8 @@ namespace exec {
       template <stdexec::sender_expr_for<stdexec::bulk_t> Sender>
       auto transform_sender(Sender &&sndr) const noexcept {
         if constexpr (stdexec::__completes_on<Sender, libdispatch_scheduler>) {
-          auto sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
-            stdexec::get_env(sndr));
+          auto sched =
+            stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
           return stdexec::__sexpr_apply(
             std::forward<Sender>(sndr), __libdispatch_bulk::transform_bulk{*sched.queue_});
         } else {
@@ -131,8 +135,8 @@ namespace exec {
       template <stdexec::sender_expr_for<stdexec::bulk_t> Sender, class Env>
       auto transform_sender(Sender &&sndr, const Env &env) const noexcept {
         if constexpr (stdexec::__completes_on<Sender, libdispatch_scheduler>) {
-          auto sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
-            stdexec::get_env(sndr));
+          auto sched =
+            stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
           return stdexec::__sexpr_apply(
             std::forward<Sender>(sndr), __libdispatch_bulk::transform_bulk{*sched.queue_});
         } else if constexpr (stdexec::__starts_on<Sender, libdispatch_scheduler, Env>) {
@@ -165,7 +169,7 @@ namespace exec {
       }
 
       template <stdexec::receiver Receiver>
-      friend auto tag_invoke(stdexec::connect_t, sender s, Receiver r)
+      STDEXEC_MEMFN_DECL(auto connect)(this sender s, Receiver r)
         -> __libdispatch_details::operation<stdexec::__id<Receiver>> {
         return s.make_operation(std::move(r));
       }
@@ -174,8 +178,7 @@ namespace exec {
         libdispatch_queue *queue;
 
         template <typename CPO>
-        friend libdispatch_scheduler
-          tag_invoke(stdexec::get_completion_scheduler_t<CPO>, env const &self) noexcept {
+        STDEXEC_MEMFN_DECL(libdispatch_scheduler query)(this env const &self, stdexec::get_completion_scheduler_t<CPO>) noexcept {
           return self.make_scheduler();
         }
 
@@ -184,7 +187,7 @@ namespace exec {
         }
       };
 
-      friend env tag_invoke(stdexec::get_env_t, sender const &self) noexcept {
+      STDEXEC_MEMFN_DECL(env get_env)(this sender const &self) noexcept {
         return env{self.queue};
       }
 
@@ -195,16 +198,16 @@ namespace exec {
       return sender{queue_};
     }
 
-    friend sender tag_invoke(stdexec::schedule_t, libdispatch_scheduler const &s) noexcept {
+    STDEXEC_MEMFN_DECL(sender schedule)(this libdispatch_scheduler const &s) noexcept {
       return s.make_sender();
     }
 
-    friend domain tag_invoke(stdexec::get_domain_t, libdispatch_scheduler) noexcept {
+    STDEXEC_MEMFN_DECL(domain query)(this libdispatch_scheduler, stdexec::get_domain_t) noexcept {
       return {};
     }
 
-    friend stdexec::forward_progress_guarantee
-      tag_invoke(stdexec::get_forward_progress_guarantee_t, libdispatch_queue const &) noexcept {
+    STDEXEC_MEMFN_DECL(stdexec::forward_progress_guarantee
+      query)(this libdispatch_queue const &, stdexec::get_forward_progress_guarantee_t) noexcept {
       return stdexec::forward_progress_guarantee::parallel;
     }
 
@@ -252,7 +255,7 @@ namespace exec {
       queue.submit(op);
     }
 
-    friend void tag_invoke(stdexec::start_t, operation &op) noexcept {
+    STDEXEC_MEMFN_DECL(void start)(this operation &op) noexcept {
       op.enqueue(&op);
     }
   };
@@ -300,8 +303,8 @@ namespace exec {
 
     template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
       requires stdexec::receiver_of<Receiver, __completions_t<Self, stdexec::env_of_t<Receiver>>>
-    friend bulk_op_state_t<Self, Receiver>                       //
-      tag_invoke(stdexec::connect_t, Self &&self, Receiver rcvr) //
+    STDEXEC_MEMFN_DECL(
+      bulk_op_state_t<Self, Receiver> connect)(this Self &&self, Receiver rcvr) //
       noexcept(stdexec::__nothrow_constructible_from<
                bulk_op_state_t<Self, Receiver>,
                libdispatch_queue &,
@@ -318,13 +321,11 @@ namespace exec {
     }
 
     template <stdexec::__decays_to<__t> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self &&, Env &&)
-      -> __completions_t<Self, Env> {
+    STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self &&, Env &&) -> __completions_t<Self, Env> {
       return {};
     }
 
-    friend auto tag_invoke(stdexec::get_env_t, const __t &self) noexcept
-      -> stdexec::env_of_t<const Sender &> {
+    STDEXEC_MEMFN_DECL(auto get_env)(this const __t &self) noexcept -> stdexec::env_of_t<const Sender &> {
       return stdexec::get_env(self.sndr_);
     }
   };
@@ -444,8 +445,7 @@ namespace exec {
     }
 
     template <class... As>
-    friend void
-      tag_invoke(stdexec::same_as<stdexec::set_value_t> auto, __t &&self, As &&...as) noexcept {
+    STDEXEC_MEMFN_DECL(void set_value)(this __t &&self, As &&...as) noexcept {
       using tuple_t = stdexec::__decayed_tuple<As...>;
 
       shared_state &state = self.shared_state_;
@@ -469,14 +469,18 @@ namespace exec {
       }
     }
 
-    template <stdexec::__one_of<stdexec::set_error_t, stdexec::set_stopped_t> Tag, class... As>
-    friend void tag_invoke(Tag tag, __t &&self, As &&...as) noexcept {
+    template <class Error>
+    STDEXEC_MEMFN_DECL(void set_error)(this __t &&self, Error &&error) noexcept {
       shared_state &state = self.shared_state_;
-      tag(std::move(state.rcvr_), std::move(as...));
+      stdexec::set_error(std::move(state.rcvr_), static_cast<Error &&>(error));
     }
 
-    friend auto tag_invoke(stdexec::get_env_t, const __t &self) noexcept
-      -> stdexec::env_of_t<Receiver> {
+    STDEXEC_MEMFN_DECL(void set_stopped)(this __t &&self) noexcept {
+      shared_state &state = self.shared_state_;
+      stdexec::set_stopped(std::move(state.rcvr_));
+    }
+
+    STDEXEC_MEMFN_DECL(auto get_env)(this const __t &self) noexcept -> stdexec::env_of_t<Receiver> {
       return stdexec::get_env(self.shared_state_.rcvr_);
     }
   };
@@ -500,7 +504,7 @@ namespace exec {
 
     inner_op_state inner_op_;
 
-    friend void tag_invoke(stdexec::start_t, __t &op) noexcept {
+    STDEXEC_MEMFN_DECL(void start)(this __t &op) noexcept {
       stdexec::start(op.inner_op_);
     }
 

@@ -265,7 +265,7 @@ namespace nvexec {
       }
 
       STDEXEC_ATTRIBUTE((host, device))
-      friend constexpr bool tag_invoke(forwarding_query_t, const get_stream_provider_t&) noexcept {
+      constexpr STDEXEC_MEMFN_DECL(bool forwarding_query)(this const get_stream_provider_t&) noexcept {
         return true;
       }
     };
@@ -331,7 +331,7 @@ namespace nvexec {
       }
 
       STDEXEC_ATTRIBUTE((host, device))
-      friend constexpr bool tag_invoke(forwarding_query_t, const get_stream_t&) noexcept {
+      constexpr STDEXEC_MEMFN_DECL(bool forwarding_query)(this const get_stream_t&) noexcept {
         return true;
       }
     };
@@ -404,9 +404,9 @@ namespace nvexec {
           self.producer_(self.task_);
         }
 
-        template <same_as<set_error_t> _Tag, class Error>
+        template <class Error>
         STDEXEC_ATTRIBUTE((host, device))
-        friend void tag_invoke(_Tag, __t&& self, Error&& e) noexcept {
+        STDEXEC_MEMFN_DECL(void set_error)(this __t&& self, Error&& e) noexcept {
           if constexpr (__decays_to<Error, std::exception_ptr>) {
             // What is `exception_ptr` but death pending
             self.variant_->template emplace<decayed_tuple<set_error_t, cudaError_t>>(
@@ -418,7 +418,7 @@ namespace nvexec {
           self.producer_(self.task_);
         }
 
-        friend const Env& tag_invoke(get_env_t, const __t& self) noexcept {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> const Env& {
           return *self.env_;
         }
 
@@ -613,7 +613,7 @@ namespace nvexec {
           self.operation_state_.propagate_completion_signal(Tag(), static_cast<As&&>(as)...);
         }
 
-        friend decltype(auto) tag_invoke(get_env_t, const __t& self) noexcept {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> decltype(auto) {
           return self.operation_state_.make_env();
         }
       };
@@ -638,7 +638,7 @@ namespace nvexec {
           __if_c<stream_sender<sender_t, env_t>, inner_receiver_t, stream_enqueue_receiver_t>;
         using inner_op_state_t = connect_result_t<sender_t, intermediate_receiver>;
 
-        friend void tag_invoke(start_t, __t& op) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this __t& op) noexcept {
           op.started_.test_and_set(::cuda::std::memory_order::relaxed);
 
           if (op.stream_provider_.status_ != cudaSuccess) {

@@ -54,7 +54,7 @@ namespace exec {
           __self.__state_->__complete(_Tag(), static_cast<_Args &&>(__args)...);
         }
 
-        friend auto tag_invoke(get_env_t, const __t &__self) noexcept -> env_of_t<_Receiver> {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t &__self) noexcept -> env_of_t<_Receiver> {
           return get_env(__self.__state_->__receiver());
         }
       };
@@ -70,6 +70,7 @@ namespace exec {
     __child_count_pair(_Child, std::size_t) -> __child_count_pair<_Child>;
 
     STDEXEC_PRAGMA_PUSH()
+
     STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
 
     template <class _Sender, class _Receiver>
@@ -111,6 +112,7 @@ namespace exec {
         if (__pair_.__count_ == 0) {
           stdexec::set_value(static_cast<_Receiver &&>(this->__receiver()));
         } else {
+
           const bool __already_started
             [[maybe_unused]] = __started_.test_and_set(std::memory_order_relaxed);
           STDEXEC_ASSERT(!__already_started);
@@ -222,5 +224,6 @@ namespace exec {
 
 namespace stdexec {
   template <>
-  struct __sexpr_impl<exec::__repeat_n::__repeat_n_tag> : exec::__repeat_n::__repeat_n_impl { };
+  struct __sexpr_impl<exec::__repeat_n::__repeat_n_tag>
+    : exec::__repeat_n::__repeat_n_impl { }; // namespace stdexec
 } // namespace stdexec

@@ -55,7 +55,7 @@ namespace exec {
         _ItemRcvr __rcvr_;
         __operation_base<_Iterator, _Sentinel>* __parent_;
 
-        friend void tag_invoke(start_t, __t& __self) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
           stdexec::set_value(
             static_cast<_ItemRcvr&&>(__self.__rcvr_), *__self.__parent_->__iterator_++);
         }
@@ -72,7 +72,7 @@ namespace exec {
         __operation_base<_Iterator, _Sentinel>* __parent_;
 
         template <__decays_to<__t> _Self, receiver_of<completion_signatures> _ItemRcvr>
-        friend auto tag_invoke(connect_t, _Self&& __self, _ItemRcvr __rcvr) //
+        STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _ItemRcvr __rcvr) //
           noexcept(__nothrow_decay_copyable<_ItemRcvr>)
             -> stdexec::__t<__item_operation<_Iterator, _Sentinel, _ItemRcvr>> {
           return {static_cast<_ItemRcvr&&>(__rcvr), __self.__parent_};
@@ -97,18 +97,18 @@ namespace exec {
         using receiver_concept = stdexec::receiver_t;
         stdexec::__t<__operation<_Range, _ReceiverId>>* __op_;
 
-        template <same_as<set_value_t> _SetValue, same_as<__t> _Self>
-        friend void tag_invoke(_SetValue, _Self&& __self) noexcept {
+        template <same_as<__t> _Self>
+        STDEXEC_MEMFN_DECL(void set_value)(this _Self&& __self) noexcept {
           __self.__op_->__start_next();
         }
 
-        template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
-        friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
+        template <same_as<__t> _Self>
+        STDEXEC_MEMFN_DECL(void set_stopped)(this _Self&& __self) noexcept {
           __set_value_unless_stopped(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
         }
 
-        template <same_as<get_env_t> _GetEnv, __decays_to<__t> _Self>
-        friend auto tag_invoke(_GetEnv, _Self&& __self) noexcept -> env_of_t<_Receiver> {
+        template <__decays_to<__t> _Self>
+        STDEXEC_MEMFN_DECL(auto get_env)(this _Self&& __self) noexcept -> env_of_t<_Receiver> {
           return stdexec::get_env(__self.__op_->__rcvr_);
         }
       };
@@ -133,6 +133,7 @@ namespace exec {
         if (this->__iterator_ == this->__sentinel_) {
           stdexec::set_value(static_cast<_Receiver&&>(__rcvr_));
         } else {
+
           try {
             stdexec::start(__op_.emplace(__conv{[&] {
               return stdexec::connect(
@@ -146,7 +147,7 @@ namespace exec {
       }
 
       template <same_as<__t> _Self>
-      friend void tag_invoke(start_t, _Self& __self) noexcept {
+      STDEXEC_MEMFN_DECL(void start)(this _Self& __self) noexcept {
         __self.__start_next();
       }
     };
@@ -155,6 +156,7 @@ namespace exec {
     struct __subscribe_fn {
       using _ReceiverId = __id<_Receiver>;
       _Receiver __rcvr_;
+
       template <class _Range>
       using __operation_t = __t<__operation<__decay_t<_Range>, _ReceiverId>>;
 
@@ -194,9 +196,9 @@ namespace exec {
         sender_expr_for<iterate_t> _SeqExpr,
         sequence_receiver_of<item_types<_ItemSender<_SeqExpr>>> _Receiver>
         requires sender_to<_NextSender<_SeqExpr, _Receiver>, _NextReceiver<_SeqExpr, _Receiver>>
-      static auto subscribe(_SeqExpr&& __seq, _Receiver __rcvr) noexcept(
-        __nothrow_callable<__sexpr_apply_t, _SeqExpr, __subscribe_fn<_Receiver>>)
-        -> __call_result_t<__sexpr_apply_t, _SeqExpr, __subscribe_fn<_Receiver>> {
+      static auto subscribe(_SeqExpr&& __seq, _Receiver __rcvr) //
+        noexcept(__nothrow_callable<__sexpr_apply_t, _SeqExpr, __subscribe_fn<_Receiver>>)
+          -> __call_result_t<__sexpr_apply_t, _SeqExpr, __subscribe_fn<_Receiver>> {
         return __sexpr_apply(static_cast<_SeqExpr&&>(__seq), __subscribe_fn<_Receiver>{__rcvr});
       }
 
@@ -206,8 +208,8 @@ namespace exec {
       }
 
       template <sender_expr_for<iterate_t> _Sequence>
-      static auto get_item_types(_Sequence&&, __ignore) noexcept
-        -> item_types<_ItemSender<_Sequence>> {
+      static auto
+        get_item_types(_Sequence&&, __ignore) noexcept -> item_types<_ItemSender<_Sequence>> {
         return {};
       }
 

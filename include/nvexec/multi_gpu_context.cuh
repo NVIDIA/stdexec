@@ -57,7 +57,7 @@ namespace nvexec {
           return stream_;
         }
 
-        friend void tag_invoke(start_t, operation_state_t& op) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this operation_state_t& op) noexcept {
           if constexpr (stream_receiver<R>) {
             if (op.status_ == cudaSuccess) {
               stdexec::set_value(static_cast<R&&>(op.rec_));
@@ -82,8 +82,7 @@ namespace nvexec {
           context_state_t context_state_;
 
           template <class CPO>
-          friend multi_gpu_stream_scheduler
-            tag_invoke(get_completion_scheduler_t<CPO>, const env& self) noexcept {
+          STDEXEC_MEMFN_DECL(multi_gpu_stream_scheduler query)(this const env& self, get_completion_scheduler_t<CPO>) noexcept {
             return self.make_scheduler();
           }
 
@@ -96,13 +95,13 @@ namespace nvexec {
           completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
 
         template <class R>
-        friend auto tag_invoke(connect_t, sender_t, R&& rec) //
+        STDEXEC_MEMFN_DECL(auto connect)(this sender_t, R&& rec) //
           noexcept(__nothrow_constructible_from<__decay_t<R>, R>)
             -> operation_state_t<stdexec::__id<__decay_t<R>>> {
           return operation_state_t<stdexec::__id<__decay_t<R>>>(static_cast<R&&>(rec));
         }
 
-        friend const env& tag_invoke(get_env_t, const sender_t& self) noexcept {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const sender_t& self) noexcept -> const env& {
           return self.env_;
         }
 
@@ -114,18 +113,14 @@ namespace nvexec {
       };
 
       template <sender S>
-      friend schedule_from_sender_th<S> tag_invoke(
-        schedule_from_t,
-        const multi_gpu_stream_scheduler& sch,
+      STDEXEC_MEMFN_DECL(schedule_from_sender_th<S> schedule_from)(this const multi_gpu_stream_scheduler& sch,
         S&& sndr) //
         noexcept {
         return schedule_from_sender_th<S>(sch.context_state_, static_cast<S&&>(sndr));
       }
 
       template <sender S, std::integral Shape, class Fn>
-      friend multi_gpu_bulk_sender_th<S, Shape, Fn> tag_invoke( //
-        bulk_t,                                                 //
-        const multi_gpu_stream_scheduler& sch,                  //
+      STDEXEC_MEMFN_DECL(multi_gpu_bulk_sender_th<S, Shape, Fn> bulk)(this const multi_gpu_stream_scheduler& sch,                  //
         S&& sndr,                                               //
         Shape shape,                                            //
         Fn fun)                                                 //
@@ -135,9 +130,7 @@ namespace nvexec {
       }
 
       template <sender S, class Fn>
-      friend then_sender_th<S, Fn> tag_invoke(
-        then_t,
-        const multi_gpu_stream_scheduler& sch,
+      STDEXEC_MEMFN_DECL(then_sender_th<S, Fn> then)(this const multi_gpu_stream_scheduler& sch,
         S&& sndr,
         Fn fun) //
         noexcept {
@@ -145,39 +138,31 @@ namespace nvexec {
       }
 
       template <__one_of<let_value_t, let_stopped_t, let_error_t> Let, sender S, class Fn>
-      friend let_xxx_th<Let, S, Fn>
-        tag_invoke(Let, const multi_gpu_stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
+      friend let_xxx_th<Let, S, Fn> tag_invoke(Let, const multi_gpu_stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
         return let_xxx_th<Let, S, Fn>{{}, static_cast<S&&>(sndr), static_cast<Fn&&>(fun)};
       }
 
       template <sender S, class Fn>
-      friend upon_error_sender_th<S, Fn>
-        tag_invoke(upon_error_t, const multi_gpu_stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
+      STDEXEC_MEMFN_DECL(upon_error_sender_th<S, Fn> upon_error)(this const multi_gpu_stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
         return upon_error_sender_th<S, Fn>{{}, static_cast<S&&>(sndr), static_cast<Fn&&>(fun)};
       }
 
       template <sender S, class Fn>
-      friend upon_stopped_sender_th<S, Fn> tag_invoke(
-        upon_stopped_t,
-        const multi_gpu_stream_scheduler& sch,
+      STDEXEC_MEMFN_DECL(upon_stopped_sender_th<S, Fn> upon_stopped)(this const multi_gpu_stream_scheduler& sch,
         S&& sndr,
         Fn fun) noexcept {
         return upon_stopped_sender_th<S, Fn>{{}, static_cast<S&&>(sndr), static_cast<Fn&&>(fun)};
       }
 
       template <stream_completing_sender... Senders>
-      friend auto tag_invoke( //
-        transfer_when_all_t,
-        const multi_gpu_stream_scheduler& sch, //
+      STDEXEC_MEMFN_DECL(auto transfer_when_all)(this const multi_gpu_stream_scheduler& sch, //
         Senders&&... sndrs) noexcept {
         return transfer_when_all_sender_th<multi_gpu_stream_scheduler, Senders...>(
           sch.context_state_, static_cast<Senders&&>(sndrs)...);
       }
 
       template <stream_completing_sender... Senders>
-      friend auto tag_invoke(                  //
-        transfer_when_all_with_variant_t,      //
-        const multi_gpu_stream_scheduler& sch, //
+      STDEXEC_MEMFN_DECL(auto transfer_when_all_with_variant)(this const multi_gpu_stream_scheduler& sch, //
         Senders&&... sndrs) noexcept {
         return transfer_when_all_sender_th<
           multi_gpu_stream_scheduler,
@@ -186,9 +171,7 @@ namespace nvexec {
       }
 
       template <sender S, scheduler Sch>
-      friend auto tag_invoke(                  //
-        transfer_t,                            //
-        const multi_gpu_stream_scheduler& sch, //
+      STDEXEC_MEMFN_DECL(auto transfer)(this const multi_gpu_stream_scheduler& sch, //
         S&& sndr,                              //
         Sch&& scheduler) noexcept {
         return schedule_from(
@@ -197,32 +180,27 @@ namespace nvexec {
       }
 
       template <sender S>
-      friend split_sender_th<S>
-        tag_invoke(split_t, const multi_gpu_stream_scheduler& sch, S&& sndr) noexcept {
+      STDEXEC_MEMFN_DECL(split_sender_th<S> split)(this const multi_gpu_stream_scheduler& sch, S&& sndr) noexcept {
         return split_sender_th<S>(static_cast<S&&>(sndr), sch.context_state_);
       }
 
       template <sender S>
-      friend ensure_started_th<S> tag_invoke(
-        ensure_started_t,
-        const multi_gpu_stream_scheduler& sch,
+      STDEXEC_MEMFN_DECL(ensure_started_th<S> ensure_started)(this const multi_gpu_stream_scheduler& sch,
         S&& sndr) //
         noexcept {
         return ensure_started_th<S>(static_cast<S&&>(sndr), sch.context_state_);
       }
 
-      friend sender_t tag_invoke(schedule_t, const multi_gpu_stream_scheduler& self) noexcept {
+      STDEXEC_MEMFN_DECL(sender_t schedule)(this const multi_gpu_stream_scheduler& self) noexcept {
         return {self.num_devices_, self.context_state_};
       }
 
       template <sender S>
-      friend auto tag_invoke(sync_wait_t, const multi_gpu_stream_scheduler& self, S&& sndr) {
+      STDEXEC_MEMFN_DECL(auto sync_wait)(this const multi_gpu_stream_scheduler& self, S&& sndr) {
         return _sync_wait::sync_wait_t{}(self.context_state_, static_cast<S&&>(sndr));
       }
 
-      friend forward_progress_guarantee tag_invoke(
-        get_forward_progress_guarantee_t,
-        const multi_gpu_stream_scheduler&) //
+      STDEXEC_MEMFN_DECL(forward_progress_guarantee query)(this const multi_gpu_stream_scheduler&, get_forward_progress_guarantee_t) //
         noexcept {
         return forward_progress_guarantee::weakly_parallel;
       }

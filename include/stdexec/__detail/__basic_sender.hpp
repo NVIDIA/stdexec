@@ -191,9 +191,9 @@ namespace stdexec {
       return __sndr.apply(static_cast<_Sender&&>(__sndr), __get_data());
     };
 
-    inline constexpr auto __connect = //
-      []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-        __nothrow_constructible_from<__op_state<_Sender, _Receiver>, _Sender&&, _Receiver&&>)
+    inline constexpr auto __connect =                                        //
+      []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) //
+      noexcept(__nothrow_constructible_from<__op_state<_Sender, _Receiver>, _Sender&&, _Receiver&&>)
       -> __op_state<_Sender, _Receiver>
       requires __connectable<_Sender, _Receiver>
     {
@@ -250,24 +250,28 @@ namespace stdexec {
 
         template <class... _Args>
         STDEXEC_ATTRIBUTE((always_inline))
-        STDEXEC_MEMFN_DECL(void set_value)(this __t&& __self, _Args&&... __args) noexcept {
+        STDEXEC_MEMFN_DECL(
+          void set_value)(this __t&& __self, _Args&&... __args) noexcept {
           __self.__op_->__complete(_Idx(), stdexec::set_value, static_cast<_Args&&>(__args)...);
         }
 
         template <class _Error>
         STDEXEC_ATTRIBUTE((always_inline))
-        STDEXEC_MEMFN_DECL(void set_error)(this __t&& __self, _Error&& __err) noexcept {
+        STDEXEC_MEMFN_DECL(
+          void set_error)(this __t&& __self, _Error&& __err) noexcept {
           __self.__op_->__complete(_Idx(), stdexec::set_error, static_cast<_Error&&>(__err));
         }
 
         STDEXEC_ATTRIBUTE((always_inline))
-        STDEXEC_MEMFN_DECL(void set_stopped)(this __t&& __self) noexcept {
+        STDEXEC_MEMFN_DECL(
+          void set_stopped)(this __t&& __self) noexcept {
           __self.__op_->__complete(_Idx(), stdexec::set_stopped);
         }
 
         template <__same_as<__t> _Self>
         STDEXEC_ATTRIBUTE((always_inline))
-        STDEXEC_MEMFN_DECL(auto get_env)(this const _Self& __self) noexcept
+        STDEXEC_MEMFN_DECL(
+          auto get_env)(this const _Self& __self) noexcept
           -> __env_type_t<_Self, __tag_t, _Idx, _Sexpr, _Receiver> {
           return __self.__op_->__get_env(_Idx());
         }
@@ -287,8 +291,8 @@ namespace stdexec {
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS __state_t __state_;
 
-      __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr) noexcept(
-        __nothrow_decay_copyable<_Receiver> && __nothrow_move_constructible<__state_t>)
+      __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr) //
+        noexcept(__nothrow_decay_copyable<_Receiver> && __nothrow_move_constructible<__state_t>)
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
         , __state_(__sexpr_impl<__tag_t>::get_state(static_cast<_Sexpr&&>(__sndr), __rcvr_)) {
       }
@@ -335,8 +339,8 @@ namespace stdexec {
         using __derived_t = decltype(__op_base_t::__state_);
         auto* __derived = static_cast<__derived_t*>(this);
         constexpr std::size_t __offset = offsetof(__op_base_t, __state_);
-        auto* __base = reinterpret_cast<__op_base_t*>(
-          reinterpret_cast<char*>(__derived) - __offset);
+        auto* __base =
+          reinterpret_cast<__op_base_t*>(reinterpret_cast<char*>(__derived) - __offset);
         return __base->__rcvr();
       }
     };
@@ -394,16 +398,18 @@ namespace stdexec {
       //   return (std::ptrdiff_t)((char*) &__tup::__get<_Idx>(__self->__inner_ops_) - static_cast<char*>(__self));
       // }
 
-      __op_state(_Sexpr&& __sexpr, _Receiver __rcvr) noexcept(
-        __nothrow_constructible_from<__op_base<_Sexpr, _Receiver>, _Sexpr&&, _Receiver&&>
-        && __nothrow_callable<__sexpr_apply_t, _Sexpr&&, __connect_fn<_Sexpr, _Receiver>>)
+      __op_state(_Sexpr&& __sexpr, _Receiver __rcvr) //
+        noexcept(
+          __nothrow_constructible_from<__op_base<_Sexpr, _Receiver>, _Sexpr&&, _Receiver&&>
+          && __nothrow_callable<__sexpr_apply_t, _Sexpr&&, __connect_fn<_Sexpr, _Receiver>>)
         : __op_state::__op_base{static_cast<_Sexpr&&>(__sexpr), static_cast<_Receiver&&>(__rcvr)}
         , __inner_ops_(
             __sexpr_apply(static_cast<_Sexpr&&>(__sexpr), __connect_fn<_Sexpr, _Receiver>{this})) {
       }
 
       STDEXEC_ATTRIBUTE((always_inline))
-      STDEXEC_MEMFN_DECL(void start)(this __op_state& __self) noexcept {
+      STDEXEC_MEMFN_DECL(
+        void start)(this __op_state& __self) noexcept {
         using __tag_t = typename __op_state::__tag_t;
         auto&& __rcvr = __self.__rcvr();
         __tup::__apply(
@@ -421,8 +427,7 @@ namespace stdexec {
         auto&& __rcvr = this->__rcvr();
         using _CompleteFn = __mtypeof<__sexpr_impl<__tag_t>::complete>;
         if constexpr (__callable<_CompleteFn, _Index, __op_state&, _Tag2, _Args...>) {
-          __sexpr_impl<__tag_t>::complete(
-            _Index(), *this, _Tag2(), static_cast<_Args&&>(__args)...);
+          __sexpr_impl<__tag_t>::complete(_Index(), *this, _Tag2(), static_cast<_Args&&>(__args)...);
         } else {
           __sexpr_impl<__tag_t>::complete(
             _Index(), this->__state_, __rcvr, _Tag2(), static_cast<_Args&&>(__args)...);
@@ -441,11 +446,11 @@ namespace stdexec {
 
     inline constexpr auto __drop_front = //
       []<class _Fn>(_Fn __fn) noexcept {
-        return
-          [__fn = std::move(__fn)]<class... _Rest>(auto&&, _Rest&&... __rest) noexcept(
-            __nothrow_callable<const _Fn&, _Rest...>) -> __call_result_t<const _Fn&, _Rest...> {
-            return __fn(static_cast<_Rest&&>(__rest)...);
-          };
+        return [__fn = std::move(__fn)]<class... _Rest>(auto&&, _Rest&&... __rest) //
+               noexcept(__nothrow_callable<const _Fn&, _Rest...>)
+                 -> __call_result_t<const _Fn&, _Rest...> {
+                 return __fn(static_cast<_Rest&&>(__rest)...);
+               };
       };
 
     template <class _Tag, class... _Captures>
@@ -547,15 +552,15 @@ namespace stdexec {
 
     template <same_as<__sexpr> _Self>
     STDEXEC_ATTRIBUTE((always_inline))
-    STDEXEC_MEMFN_DECL(auto get_env)(this const _Self& __self) noexcept //
+    STDEXEC_MEMFN_DECL(
+      auto get_env)(this const _Self& __self) noexcept //
       -> __result_of<__sexpr_apply, const _Self&, __get_attrs_fn<__tag_t>> {
       return __sexpr_apply(__self, __detail::__drop_front(__impl<_Self>::get_attrs));
     }
 
     template <__decays_to<__sexpr> _Self, class _Env>
     STDEXEC_ATTRIBUTE((always_inline))
-    STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&& __self, _Env&& __env) noexcept
-      -> __msecond<
+    STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&& __self, _Env&& __env) noexcept -> __msecond<
         __if_c<__decays_to<_Self, __sexpr>>,
         __result_of<__impl<_Self>::get_completion_signatures, _Self, _Env>> {
       return {};
@@ -564,8 +569,9 @@ namespace stdexec {
     // BUGBUG fix receiver constraint here:
     template <__decays_to<__sexpr> _Self, /*receiver*/ class _Receiver>
     STDEXEC_ATTRIBUTE((always_inline))
-    STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver&& __rcvr) //
-      noexcept(__noexcept_of<__impl<_Self>::connect, _Self, _Receiver>)       //
+    STDEXEC_MEMFN_DECL(
+      auto connect)(this _Self&& __self, _Receiver&& __rcvr)                  //
+      noexcept(__noexcept_of<__impl<_Self>::connect, _Self, _Receiver>) //
       -> __msecond<
         __if_c<__decays_to<_Self, __sexpr>>,
         __result_of<__impl<_Self>::connect, _Self, _Receiver>> {
@@ -575,7 +581,8 @@ namespace stdexec {
     template <class _Sender, class _ApplyFn>
     STDEXEC_ATTRIBUTE((always_inline))
     static auto
-      apply(_Sender&& __sndr, _ApplyFn&& __fun) noexcept(
+      apply(_Sender&& __sndr, _ApplyFn&& __fun) //
+      noexcept(
         __nothrow_callable<__detail::__impl_of<_Sender>, __copy_cvref_fn<_Sender>, _ApplyFn>) //
       -> __call_result_t<__detail::__impl_of<_Sender>, __copy_cvref_fn<_Sender>, _ApplyFn> {  //
       return static_cast<_Sender&&>(__sndr).__impl_(
@@ -624,7 +631,8 @@ namespace stdexec {
       template <class _Sender, class _ApplyFn>
       STDEXEC_ATTRIBUTE((always_inline))
       auto
-        operator()(_Sender&& __sndr, _ApplyFn&& __fun) const noexcept(
+        operator()(_Sender&& __sndr, _ApplyFn&& __fun) const //
+        noexcept(
           noexcept(__sndr.apply(static_cast<_Sender&&>(__sndr), static_cast<_ApplyFn&&>(__fun)))) //
         -> decltype(__sndr.apply(static_cast<_Sender&&>(__sndr), static_cast<_ApplyFn&&>(__fun))) {
         return __sndr.apply(static_cast<_Sender&&>(__sndr), static_cast<_ApplyFn&&>(__fun)); //

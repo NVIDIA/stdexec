@@ -48,25 +48,25 @@ namespace exec {
         using sender_concept = sender_t;
 
         template <class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, __sender, _Env&&) noexcept
-          -> __completions<_Env> {
+        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this __sender, _Env&&) noexcept -> __completions<_Env> {
           return {};
         }
 
         template <receiver _Receiver>
           requires receiver_of<_Receiver, __completions<env_of_t<_Receiver>>>
-        friend auto tag_invoke(connect_t, __sender, _Receiver __rcvr)
+        STDEXEC_MEMFN_DECL(
+          auto connect)(this __sender, _Receiver __rcvr)
           -> connect_result_t<__schedule_sender_t<env_of_t<_Receiver>>, _Receiver> {
           auto __sched = get_scheduler(get_env(__rcvr));
           return stdexec::connect(schedule(__sched), static_cast<_Receiver&&>(__rcvr));
         }
 
-        friend auto tag_invoke(get_env_t, __sender) noexcept {
+        STDEXEC_MEMFN_DECL(auto get_env)(this __sender) noexcept {
           return __env::__with{__scheduler(), get_completion_scheduler<set_value_t>};
         }
       };
 
-      friend auto tag_invoke(schedule_t, __scheduler) noexcept -> __sender {
+      STDEXEC_MEMFN_DECL(auto schedule)(this __scheduler) noexcept -> __sender {
         return {};
       }
 

@@ -78,10 +78,7 @@ namespace exec {
       return {};
     }
 
-    template <
-      stdexec::same_as<get_item_types_t> _Tag,
-      stdexec::__decays_to<__seqexpr> _Self,
-      class _Env>
+    template <stdexec::same_as<get_item_types_t> _Tag, stdexec::__decays_to<__seqexpr> _Self, class _Env>
     friend auto tag_invoke(_Tag, _Self&& __self, _Env&& __env) //
       -> stdexec::__msecond<
         stdexec::__if_c<stdexec::same_as<_Tag, get_item_types_t>>,
