@@ -361,7 +361,8 @@ namespace stdexec {
       }
 
       template <__one_of<_Tag, _Tags...> _Key>
-      friend auto tag_invoke(_Key, const __with& __self) //
+      STDEXEC_MEMFN_DECL(auto query)
+      (this const __with& __self, _Key) //
         noexcept(__nothrow_decay_copyable<_Value>) -> _Value {
         return __self.__value_;
       }
@@ -380,7 +381,7 @@ namespace stdexec {
 
       template <__forwarding_query _Tag>
         requires tag_invocable<_Tag, const _Env&>
-      friend auto tag_invoke(_Tag, const __fwd& __self) //
+      STDEXEC_MEMFN_DECL(auto query)(this const __fwd& __self, _Tag) //
         noexcept(nothrow_tag_invocable<_Tag, const _Env&>)
           -> tag_invoke_result_t<_Tag, const _Env&> {
         return _Tag()(__self.__env_);
@@ -398,7 +399,7 @@ namespace stdexec {
 
       template <class _Tag>
         requires tag_invocable<_Tag, const _Env&>
-      friend auto tag_invoke(_Tag, const __ref& __self) //
+      STDEXEC_MEMFN_DECL(auto query)(this const __ref& __self, _Tag) //
         noexcept(nothrow_tag_invocable<_Tag, const _Env&>)
           -> tag_invoke_result_t<_Tag, const _Env&> {
         return _Tag()(__self.__env_);
@@ -431,7 +432,7 @@ namespace stdexec {
 
       template <__one_of<_Tag, _Tags...> _Key, class _Self>
         requires(std::is_base_of_v<__without_, __decay_t<_Self>>)
-      friend auto tag_invoke(_Key, _Self&&) noexcept = delete;
+      STDEXEC_MEMFN_DECL(auto query)(this _Self&&, _Key) noexcept = delete;
     };
 
     struct __without_fn {
@@ -462,7 +463,7 @@ namespace stdexec {
 
       template <class _Tag>
         requires tag_invocable<_Tag, const _First&>
-      friend auto tag_invoke(_Tag, const __joined& __self) //
+      STDEXEC_MEMFN_DECL(auto query)(this const __joined& __self, _Tag) //
         noexcept(nothrow_tag_invocable<_Tag, const _First&>)
           -> tag_invoke_result_t<_Tag, const _First&> {
         return _Tag()(__self.__env_);
@@ -481,7 +482,7 @@ namespace stdexec {
 
       template <class _Tag>
         requires __callable<const _Fun&, _Tag>
-      friend auto tag_invoke(_Tag, const __from& __self) //
+      STDEXEC_MEMFN_DECL(auto query)(this const __from& __self, _Tag) //
         noexcept(__nothrow_callable<const _Fun&, _Tag>) -> __call_result_t<const _Fun&, _Tag> {
         return __self.__fun_(_Tag());
       }
