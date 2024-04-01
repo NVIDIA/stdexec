@@ -37,16 +37,16 @@
 #define STDEXEC_EVAL(_MACRO, ...) _MACRO(__VA_ARGS__)
 #define STDEXEC_EAT(...)
 
-#define STDEXEC_NOT(_XP) STDEXEC_CAT(STDEXEC_NOT_, _XP)
+#define STDEXEC_NOT(_XP)          STDEXEC_NOT_CAT(STDEXEC_NOT_, _XP)
+#define STDEXEC_NOT_0             1
+#define STDEXEC_NOT_1             0
+#define STDEXEC_NOT_CAT(_XP, ...) _XP##__VA_ARGS__
 
-enum {
-  STDEXEC_NOT_0 = 1,
-  STDEXEC_NOT_1 = 0
-};
-
-#define STDEXEC_IIF_0(_YP, ...)    __VA_ARGS__
-#define STDEXEC_IIF_1(_YP, ...)    _YP
-#define STDEXEC_IIF(_XP, _YP, ...) STDEXEC_EVAL(STDEXEC_CAT(STDEXEC_IIF_, _XP), _YP, __VA_ARGS__)
+#define STDEXEC_IIF(_XP, _YP, ...)                                                                 \
+  STDEXEC_IIF_EVAL(STDEXEC_CAT(STDEXEC_IIF_, _XP), _YP, __VA_ARGS__)
+#define STDEXEC_IIF_0(_YP, ...)       __VA_ARGS__
+#define STDEXEC_IIF_1(_YP, ...)       _YP
+#define STDEXEC_IIF_EVAL(_MACRO, ...) _MACRO(__VA_ARGS__)
 
 #define STDEXEC_COUNT(...)                                                                         \
   STDEXEC_EXPAND(STDEXEC_COUNT_(__VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1))
@@ -80,7 +80,7 @@ enum {
   /**/
 #define STDEXEC_FOR_EACH_HELPER(_MACRO, _A1, ...)                                                  \
   _MACRO(_A1) __VA_OPT__(STDEXEC_FOR_EACH_AGAIN STDEXEC_PARENS(_MACRO, __VA_ARGS__)) /**/
-#define STDEXEC_FOR_EACH_AGAIN()       STDEXEC_FOR_EACH_HELPER
+#define STDEXEC_FOR_EACH_AGAIN()  STDEXEC_FOR_EACH_HELPER
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define STDEXEC_FRONT(...)             __VA_OPT__(STDEXEC_FRONT_HELPER(__VA_ARGS__))
