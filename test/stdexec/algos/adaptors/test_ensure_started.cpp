@@ -192,7 +192,7 @@ namespace {
   TEST_CASE(
     "stopping ensure_started before the source completes calls set_stopped",
     "[adaptors][ensure_started]") {
-    stdexec::in_place_stop_source stop_source;
+    stdexec::inplace_stop_source stop_source;
     impulse_scheduler sch;
     bool called{false};
     auto snd = ex::on(sch, ex::just(19))
@@ -210,7 +210,7 @@ namespace {
   TEST_CASE(
     "stopping ensure_started before the lazy opstate is started calls set_stopped",
     "[adaptors][ensure_started]") {
-    stdexec::in_place_stop_source stop_source;
+    stdexec::inplace_stop_source stop_source;
     impulse_scheduler sch;
     int count = 0;
     bool called{false};
@@ -231,7 +231,7 @@ namespace {
   TEST_CASE(
     "stopping ensure_started after the task has already completed doesn't change the result",
     "[adaptors][ensure_started]") {
-    stdexec::in_place_stop_source stop_source;
+    stdexec::inplace_stop_source stop_source;
     int count = 0;
     auto snd = ex::just() //
              | ex::then([&] {

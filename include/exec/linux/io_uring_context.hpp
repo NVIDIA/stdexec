@@ -376,7 +376,7 @@ namespace exec {
         return __stop_source_->stop_requested();
       }
 
-      auto get_stop_token() const noexcept -> stdexec::in_place_stop_token {
+      auto get_stop_token() const noexcept -> stdexec::inplace_stop_token {
         return __stop_source_->get_token();
       }
 
@@ -615,7 +615,7 @@ namespace exec {
       std::atomic<bool> __break_loop_{false};
       std::ptrdiff_t __n_total_submitted_{0};
       std::ptrdiff_t __n_newly_submitted_{0};
-      std::optional<stdexec::in_place_stop_source> __stop_source_{std::in_place};
+      std::optional<stdexec::inplace_stop_source> __stop_source_{std::in_place};
       __completion_queue __completion_queue_;
       __submission_queue __submission_queue_;
       __task_queue __pending_{};
@@ -851,7 +851,7 @@ namespace exec {
           }
         };
 
-        using __on_context_stop_t = std::optional<stdexec::in_place_stop_callback<__stop_callback>>;
+        using __on_context_stop_t = std::optional<stdexec::inplace_stop_callback<__stop_callback>>;
         using __on_receiver_stop_t = std::optional<typename stdexec::stop_token_of_t<
           stdexec::env_of_t<_Receiver>&>::template callback_type<__stop_callback>>;
 

@@ -34,7 +34,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     };
 
     struct on_stop_requested {
-      in_place_stop_source& stop_source_;
+      inplace_stop_source& stop_source_;
 
       void operator()() noexcept {
         stop_source_.request_stop();
@@ -42,7 +42,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     };
 
     template <class Env>
-    using env_t = exec::make_env_t<Env, exec::with_t<get_stop_token_t, in_place_stop_token>>;
+    using env_t = exec::make_env_t<Env, exec::with_t<get_stop_token_t, inplace_stop_token>>;
 
     template <class...>
     using swallow_values = completion_signatures<>;
@@ -132,7 +132,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using Env = //
           make_terminal_stream_env_t<exec::make_env_t<
             env_of_t<Receiver>,
-            exec::with_t<get_stop_token_t, in_place_stop_token>>>;
+            exec::with_t<get_stop_token_t, inplace_stop_token>>>;
 
         struct __t
           : receiver_adaptor<__t>
@@ -397,7 +397,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         error_types_of_t<stdexec::__t<when_all_sender_t>, _when_all::env_t<Env>, __variant>
           errors_{};
         child_values_tuple_t* values_{};
-        in_place_stop_source stop_source_{};
+        inplace_stop_source stop_source_{};
         std::optional<typename stop_token_of_t<env_of_t<Receiver>&>::template callback_type<
           _when_all::on_stop_requested>>
           on_stop_{};

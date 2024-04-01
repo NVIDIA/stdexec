@@ -31,7 +31,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     }
 
     inline auto __make_env(
-      const in_place_stop_source& stop_source,
+      const inplace_stop_source& stop_source,
       stream_provider_t* stream_provider) noexcept {
       return make_stream_env(
         __env::__from{[&](get_stop_token_t) noexcept {
@@ -41,7 +41,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     }
 
     using env_t = decltype(_ensure_started::__make_env(
-      __declval<const in_place_stop_source&>(),
+      __declval<const inplace_stop_source&>(),
       static_cast<stream_provider_t*>(nullptr)));
 
     template <class SenderId, class SharedState>
@@ -123,7 +123,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       unsigned int index_{0};
       variant_t* data_{nullptr};
       task_t* task_{nullptr};
-      in_place_stop_source stop_source_{};
+      inplace_stop_source stop_source_{};
       host_ptr<__decay_t<env_t>> env_{};
 
       std::atomic<void*> op_state1_;
@@ -204,7 +204,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using Receiver = stdexec::__t<ReceiverId>;
 
         struct on_stop_requested {
-          in_place_stop_source& stop_source_;
+          inplace_stop_source& stop_source_;
 
           void operator()() noexcept {
             stop_source_.request_stop();
