@@ -168,6 +168,7 @@ namespace exec {
         return __libdispatch_details::operation<stdexec::__id<Receiver>>(queue, std::move(r));
       }
 
+      STDEXEC_MEMFN_FRIEND(connect);
       template <stdexec::receiver Receiver>
       STDEXEC_MEMFN_DECL(auto connect)(this sender s, Receiver r)
         -> __libdispatch_details::operation<stdexec::__id<Receiver>> {
@@ -187,6 +188,7 @@ namespace exec {
         }
       };
 
+      STDEXEC_MEMFN_FRIEND(get_env);
       STDEXEC_MEMFN_DECL(env get_env)(this sender const &self) noexcept {
         return env{self.queue};
       }
@@ -198,6 +200,7 @@ namespace exec {
       return sender{queue_};
     }
 
+    STDEXEC_MEMFN_FRIEND(schedule);
     STDEXEC_MEMFN_DECL(sender schedule)(this libdispatch_scheduler const &s) noexcept {
       return s.make_sender();
     }
