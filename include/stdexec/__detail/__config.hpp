@@ -80,7 +80,7 @@
   /**/
 #define STDEXEC_FOR_EACH_HELPER(_MACRO, _A1, ...)                                                  \
   _MACRO(_A1) __VA_OPT__(STDEXEC_FOR_EACH_AGAIN STDEXEC_PARENS(_MACRO, __VA_ARGS__)) /**/
-#define STDEXEC_FOR_EACH_AGAIN()  STDEXEC_FOR_EACH_HELPER
+#define STDEXEC_FOR_EACH_AGAIN()       STDEXEC_FOR_EACH_HELPER
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define STDEXEC_FRONT(...)             __VA_OPT__(STDEXEC_FRONT_HELPER(__VA_ARGS__))

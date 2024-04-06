@@ -185,8 +185,8 @@ namespace stdexec {
     };
 
     template <class _Ty>
-    auto __enable_intrusive_from_this<_Ty>::__intrusive_from_this() noexcept
-      -> __intrusive_ptr<_Ty> {
+    auto
+      __enable_intrusive_from_this<_Ty>::__intrusive_from_this() noexcept -> __intrusive_ptr<_Ty> {
       auto* __data = reinterpret_cast<__control_block<_Ty>*>(static_cast<_Ty*>(this));
       __data->__inc_ref_();
       return __intrusive_ptr<_Ty>{__data};

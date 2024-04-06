@@ -87,7 +87,7 @@ namespace exec {
           start(this->__op_);
         }
 
-        friend void tag_invoke(start_t, __t& __self) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
           return __self.__start_();
         }
 
@@ -109,20 +109,18 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Constrained>, _Receiver>
-        [[nodiscard]]
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
-          -> __when_empty_op_t<_Self, _Receiver> {
+        [[nodiscard]] STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr) -> __when_empty_op_t<_Self, _Receiver> {
           return __when_empty_op_t<_Self, _Receiver>{
             __self.__scope_, static_cast<_Self&&>(__self).__c_, static_cast<_Receiver&&>(__rcvr)};
         }
 
         template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env&&)
           -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>> {
           return {};
         }
 
-        friend auto tag_invoke(get_env_t, const __t&) noexcept -> empty_env {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t&) noexcept -> empty_env {
           return {};
         }
 
@@ -180,8 +178,7 @@ namespace exec {
           __complete(__scope);
         }
 
-        friend auto tag_invoke(get_env_t, const __t& __self) noexcept
-          -> __env_t<env_of_t<_Receiver>> {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> __env_t<env_of_t<_Receiver>> {
           return make_env(
             get_env(__self.__op_->__rcvr_),
             with(get_stop_token, __self.__op_->__scope_->__stop_source_.get_token()));
@@ -214,7 +211,7 @@ namespace exec {
           start(__op_);
         }
 
-        friend void tag_invoke(start_t, __t& __self) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
           return __self.__start_();
         }
       };
@@ -235,25 +232,24 @@ namespace exec {
         template <class _Receiver>
         using __nest_operation_t =
           stdexec::__t<__nest_op<_ConstrainedId, stdexec::__id<_Receiver>>>;
+
         template <class _Receiver>
         using __nest_receiver_t = stdexec::__t<__nest_rcvr<stdexec::__id<_Receiver>>>;
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Constrained>, __nest_receiver_t<_Receiver>>
-        [[nodiscard]]
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
-          -> __nest_operation_t<_Receiver> {
+        [[nodiscard]] STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr) -> __nest_operation_t<_Receiver> {
           return __nest_operation_t<_Receiver>{
             __self.__scope_, static_cast<_Self&&>(__self).__c_, static_cast<_Receiver&&>(__rcvr)};
         }
 
         template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env&&)
           -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>> {
           return {};
         }
 
-        friend auto tag_invoke(get_env_t, const __t&) noexcept -> empty_env {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t&) noexcept -> empty_env {
           return {};
         }
       };
@@ -303,7 +299,7 @@ namespace exec {
         using __forward_consumer =
           typename stop_token_of_t<env_of_t<_Receiver>>::template callback_type<__forward_stopped>;
 
-        friend void tag_invoke(start_t, __t& __self) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
           __self.__start_();
         }
 
@@ -319,6 +315,7 @@ namespace exec {
               // invalid state - there is a code bug in the state machine
               std::terminate();
             } else if (get_stop_token(get_env(__rcvr_)).stop_requested()) {
+
               __guard.unlock();
               set_stopped(static_cast<_Receiver&&>(__rcvr_));
               __guard.lock();
@@ -340,6 +337,7 @@ namespace exec {
                 __state->__data_);
             }
           } catch (...) {
+
             set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
           }
         }
@@ -414,6 +412,7 @@ namespace exec {
 
     template <class _Tag, class... _Ts>
     auto __completion_as_tuple_(_Tag (*)(_Ts&&...)) -> std::tuple<_Tag, _Ts...>;
+
     template <class _Fn>
     using __completion_as_tuple_t =
       decltype(__scope::__completion_as_tuple_(static_cast<_Fn*>(nullptr)));
@@ -550,7 +549,7 @@ namespace exec {
           }
         }
 
-        friend auto tag_invoke(get_env_t, const __t& __self) noexcept -> const __env_t<_Env>& {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> const __env_t<_Env>& {
           return __self.__state_->__env_;
         }
       };
@@ -617,19 +616,17 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires receiver_of<_Receiver, __completions_t<_Self>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
-          -> __future_op_t<_Receiver> {
+        STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr) -> __future_op_t<_Receiver> {
           return __future_op_t<_Receiver>{
             static_cast<_Receiver&&>(__rcvr), std::move(__self.__state_)};
         }
 
         template <__decays_to<__t> _Self, class _OtherEnv>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _OtherEnv&&)
-          -> __completions_t<_Self> {
+        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _OtherEnv&&) -> __completions_t<_Self> {
           return {};
         }
 
-        friend auto tag_invoke(get_env_t, const __t&) noexcept -> empty_env {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t&) noexcept -> empty_env {
           return {};
         }
 
@@ -665,20 +662,21 @@ namespace exec {
         using receiver_concept = stdexec::receiver_t;
         __spawn_op_base<_EnvId>* __op_;
 
-        template <__one_of<set_value_t, set_stopped_t> _Tag>
-        friend void tag_invoke(_Tag, __t&& __self) noexcept {
+        STDEXEC_MEMFN_DECL(void set_value)(this __t&& __self) noexcept {
           __self.__op_->__delete_(__self.__op_);
         }
 
         // BUGBUG NOT TO SPEC spawn shouldn't accept senders that can fail.
-        template <same_as<set_error_t> _Tag>
-        [[noreturn]]
-        friend void tag_invoke(_Tag, __t&&, std::exception_ptr __eptr) noexcept {
+        [[noreturn]] STDEXEC_MEMFN_DECL(
+          void set_error)(this __t&&, std::exception_ptr __eptr) noexcept {
           std::rethrow_exception(std::move(__eptr));
         }
 
-        friend auto tag_invoke(get_env_t, const __t& __self) noexcept
-          -> const __spawn_env_t<_Env>& {
+        STDEXEC_MEMFN_DECL(void set_stopped)(this __t&& __self) noexcept {
+          __self.__op_->__delete_(__self.__op_);
+        }
+
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> const __spawn_env_t<_Env>& {
           return __self.__op_->__env_;
         }
       };
@@ -708,7 +706,7 @@ namespace exec {
           start(__op_);
         }
 
-        friend void tag_invoke(start_t, __t& __self) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
           return __self.__start_();
         }
 

@@ -20,6 +20,9 @@
 #include "__system_context_default_impl.hpp"
 #include "__weak_attribute.hpp"
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wattributes") // warning: inline function '[...]' declared weak
+
 /// Gets the default system context implementation.
 extern "C" __EXEC__SYSTEM_CONTEXT__INLINE __EXEC_WEAK_ATTRIBUTE __exec_system_context_interface*
   __get_exec_system_context_impl() {
@@ -28,8 +31,10 @@ extern "C" __EXEC__SYSTEM_CONTEXT__INLINE __EXEC_WEAK_ATTRIBUTE __exec_system_co
 }
 
 /// Sets the default system context implementation.
-extern "C" __EXEC__SYSTEM_CONTEXT__INLINE __EXEC_WEAK_ATTRIBUTE void __set_exec_system_context_impl(
-  __exec_system_context_interface* __instance) {
+extern "C" __EXEC__SYSTEM_CONTEXT__INLINE __EXEC_WEAK_ATTRIBUTE void
+  __set_exec_system_context_impl(__exec_system_context_interface* __instance) {
   return exec::__system_context_default_impl::__instance_holder::__singleton()
     .__set_current_instance(__instance);
 }
+
+STDEXEC_PRAGMA_POP()

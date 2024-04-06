@@ -148,8 +148,8 @@ namespace stdexec {
       template <class _Memptr, class _Ty, class... _Args>
       STDEXEC_ATTRIBUTE((always_inline))
       constexpr auto
-        operator()(_Memptr __mem_ptr, _Ty&& __ty, _Args&&... __args) const noexcept(
-          noexcept(((*static_cast<_Ty&&>(__ty)).*__mem_ptr)(static_cast<_Args&&>(__args)...)))
+        operator()(_Memptr __mem_ptr, _Ty&& __ty, _Args&&... __args) const
+        noexcept(noexcept(((*static_cast<_Ty&&>(__ty)).*__mem_ptr)(static_cast<_Args&&>(__args)...)))
           -> decltype(((*static_cast<_Ty&&>(__ty)).*__mem_ptr)(static_cast<_Args&&>(__args)...)) {
         return ((*static_cast<_Ty&&>(__ty)).*__mem_ptr)(static_cast<_Args&&>(__args)...);
       }
@@ -262,8 +262,8 @@ namespace stdexec {
     template <std::size_t... _Is, class _Fn, class _Tup>
     STDEXEC_ATTRIBUTE((always_inline))
     constexpr auto
-      __impl(__indices<_Is...>, _Fn&& __fn, _Tup&& __tup) noexcept(
-        noexcept(__invoke(static_cast<_Fn&&>(__fn), get<_Is>(static_cast<_Tup&&>(__tup))...)))
+      __impl(__indices<_Is...>, _Fn&& __fn, _Tup&& __tup) //
+      noexcept(noexcept(__invoke(static_cast<_Fn&&>(__fn), get<_Is>(static_cast<_Tup&&>(__tup))...)))
         -> decltype(__invoke(static_cast<_Fn&&>(__fn), get<_Is>(static_cast<_Tup&&>(__tup))...)) {
       return __invoke(static_cast<_Fn&&>(__fn), get<_Is>(static_cast<_Tup&&>(__tup))...);
     }
@@ -281,7 +281,8 @@ namespace stdexec {
 
   template <class _Fn, class _Tup>
   concept __nothrow_applicable = __applicable<_Fn, _Tup> //
-    && noexcept(
+    &&                                                   //
+    noexcept(
       __apply_::__impl(__apply_::__tuple_indices<_Tup>(), __declval<_Fn>(), __declval<_Tup>()));
 
   template <class _Fn, class _Tup>
@@ -293,8 +294,8 @@ namespace stdexec {
       requires __applicable<_Fn, _Tup>
     STDEXEC_ATTRIBUTE((always_inline))
     constexpr auto
-      operator()(_Fn&& __fn, _Tup&& __tup) const
-      noexcept(__nothrow_applicable<_Fn, _Tup>) -> __apply_result_t<_Fn, _Tup> {
+      operator()(_Fn&& __fn, _Tup&& __tup) const noexcept(__nothrow_applicable<_Fn, _Tup>)
+        -> __apply_result_t<_Fn, _Tup> {
       return __apply_::__impl(
         __apply_::__tuple_indices<_Tup>(), static_cast<_Fn&&>(__fn), static_cast<_Tup&&>(__tup));
     }

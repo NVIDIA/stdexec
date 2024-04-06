@@ -46,7 +46,7 @@ namespace exec {
         }
 
         template <std::same_as<__t> _Self>
-        friend auto tag_invoke(get_env_t, const _Self& __self) noexcept -> env_of_t<_Receiver> {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const _Self& __self) noexcept -> env_of_t<_Receiver> {
           return get_env(__self.__upstream_);
         }
       };
@@ -73,9 +73,10 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __receiver) noexcept(
-          __nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
-          -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
+        STDEXEC_MEMFN_DECL(
+          auto connect)(this _Self&& __self, _Receiver&& __receiver) //
+          noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
+            -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
           return stdexec::connect(
             static_cast<_Self&&>(__self).__sender_,
             __receiver_t<_Receiver>{static_cast<_Receiver&&>(__receiver)});
@@ -97,7 +98,7 @@ namespace exec {
           completion_signatures<set_value_t(set_stopped_t)>>;
 
         template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&& __self, _Env __env)
+        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&& __self, _Env __env)
           -> __completion_signatures_for_t<_Env> {
           return {};
         }
@@ -106,8 +107,8 @@ namespace exec {
 
     struct __materialize_t {
       template <class _Sender>
-      __t<__sender<__id<__decay_t<_Sender>>>> operator()(_Sender&& __sender) const
-        noexcept(__nothrow_decay_copyable<_Sender>) {
+      __t<__sender<__id<__decay_t<_Sender>>>>
+        operator()(_Sender&& __sender) const noexcept(__nothrow_decay_copyable<_Sender>) {
         return {static_cast<_Sender&&>(__sender)};
       }
 
@@ -156,7 +157,7 @@ namespace exec {
         }
 
         template <std::same_as<__t> _Self>
-        friend auto tag_invoke(get_env_t, const _Self& __self) noexcept -> env_of_t<_Receiver> {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const _Self& __self) noexcept -> env_of_t<_Receiver> {
           return get_env(__self.__upstream_);
         }
       };
@@ -183,9 +184,10 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __receiver) noexcept(
-          __nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
-          -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
+        STDEXEC_MEMFN_DECL(
+          auto connect)(this _Self&& __self, _Receiver&& __receiver) //
+          noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
+            -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
           return stdexec::connect(
             static_cast<_Self&&>(__self).__sender_,
             __receiver_t<_Receiver>{static_cast<_Receiver&&>(__receiver)});
@@ -200,7 +202,7 @@ namespace exec {
           make_completion_signatures<_Sender, _Env, completion_signatures<>, __dematerialize_value>;
 
         template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&& __self, _Env __env)
+        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&& __self, _Env __env)
           -> __completion_signatures_for_t<_Env> {
           return {};
         }

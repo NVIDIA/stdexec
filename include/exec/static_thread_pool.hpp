@@ -342,7 +342,7 @@ namespace exec {
           }
 
           template <receiver Receiver>
-          friend auto tag_invoke(connect_t, sender sndr, Receiver rcvr) -> operation_t<Receiver> {
+          STDEXEC_MEMFN_DECL(auto connect)(this sender sndr, Receiver rcvr) -> operation_t<Receiver> {
             return sndr.make_operation_(static_cast<Receiver&&>(rcvr));
           }
 
@@ -351,7 +351,7 @@ namespace exec {
             remote_queue* queue_;
 
             template <class CPO>
-            friend auto tag_invoke(get_completion_scheduler_t<CPO>, const env& self) noexcept
+            STDEXEC_MEMFN_DECL(auto query)(this const env& self, get_completion_scheduler_t<CPO>) noexcept
               -> static_thread_pool_::scheduler {
               return self.make_scheduler_();
             }
@@ -362,7 +362,7 @@ namespace exec {
             }
           };
 
-          friend auto tag_invoke(get_env_t, const sender& self) noexcept -> env {
+          STDEXEC_MEMFN_DECL(auto get_env)(this const sender& self) noexcept -> env {
             return env{self.pool_, self.queue_};
           }
 
@@ -390,17 +390,16 @@ namespace exec {
           return sender{*pool_, queue_, thread_idx_, nodemask_};
         }
 
-        friend auto tag_invoke(schedule_t, const scheduler& sch) noexcept -> sender {
+        STDEXEC_MEMFN_DECL(auto schedule)(this const scheduler& sch) noexcept -> sender {
           return sch.make_sender_();
         }
 
-        friend auto
-          tag_invoke(get_forward_progress_guarantee_t, const static_thread_pool_&) noexcept
+        STDEXEC_MEMFN_DECL(auto query)(this const static_thread_pool_&, get_forward_progress_guarantee_t) noexcept
           -> forward_progress_guarantee {
           return forward_progress_guarantee::parallel;
         }
 
-        friend auto tag_invoke(get_domain_t, scheduler) noexcept -> domain {
+        STDEXEC_MEMFN_DECL(auto query)(this scheduler, get_domain_t) noexcept -> domain {
           return {};
         }
 
@@ -458,6 +457,7 @@ namespace exec {
             queue->index_ = index;
             break;
           }
+
           ++index;
         }
         return queue;
@@ -673,6 +673,7 @@ namespace exec {
         threadIndexByNumaNode_.push_back(
           thread_index_by_numa_node{threadStates_[index]->numa_node(), index});
       }
+
       std::sort(threadIndexByNumaNode_.begin(), threadIndexByNumaNode_.end());
       std::vector<workstealing_victim> victims{};
       for (auto& state: threadStates_) {
@@ -740,14 +741,15 @@ namespace exec {
       return static_cast<std::size_t>(std::distance(it, itEnd));
     }
 
-    inline auto static_thread_pool_::num_threads(nodemask constraints) const noexcept
-      -> std::size_t {
+    inline auto
+      static_thread_pool_::num_threads(nodemask constraints) const noexcept -> std::size_t {
       const std::size_t nNodes = static_cast<unsigned>(threadIndexByNumaNode_.back().numa_node + 1);
       std::size_t nThreads = 0;
       for (std::size_t nodeIndex = 0; nodeIndex < nNodes; ++nodeIndex) {
         if (!constraints[nodeIndex]) {
           continue;
         }
+
         nThreads += num_threads(static_cast<int>(nodeIndex));
       }
       return nThreads;
@@ -798,6 +800,7 @@ namespace exec {
           return;
         }
       }
+
       const std::size_t threadIndex = random_thread_index_with_constraints(constraints);
       queue.queues_[threadIndex].push_front(task);
       threadStates_[threadIndex]->notify();
@@ -837,10 +840,11 @@ namespace exec {
           return;
         }
       }
+
       std::size_t nThreads = available_parallelism();
       for (std::size_t i = 0; i < nThreads; ++i) {
-        auto [i0, iEnd] = even_share(
-          tasks_size, static_cast<std::uint32_t>(i), available_parallelism());
+        auto [i0, iEnd] =
+          even_share(tasks_size, static_cast<std::uint32_t>(i), available_parallelism());
         if (i0 == iEnd) {
           continue;
         }
@@ -871,6 +875,7 @@ namespace exec {
         move_pending_to_local(pending_queue_, local_queue_);
         result.task = local_queue_.pop_back();
       }
+
       return result;
     }
 
@@ -912,8 +917,8 @@ namespace exec {
       }
     }
 
-    inline void static_thread_pool_::thread_state::push_local(
-      __intrusive_queue<&task_base::next>&& tasks) {
+    inline void
+      static_thread_pool_::thread_state::push_local(__intrusive_queue<&task_base::next>&& tasks) {
       pending_queue_.prepend(std::move(tasks));
     }
 
@@ -941,8 +946,8 @@ namespace exec {
       }
     }
 
-    inline auto static_thread_pool_::thread_state::pop()
-      -> static_thread_pool_::thread_state::pop_result {
+    inline auto
+      static_thread_pool_::thread_state::pop() -> static_thread_pool_::thread_state::pop_result {
       pop_result result = try_pop();
       while (!result.task) {
         set_stealing();
@@ -953,6 +958,7 @@ namespace exec {
             return result;
           }
         }
+
         for (std::size_t i = 0; i < pool_->maxSteals_; ++i) {
           result = try_steal_any();
           if (result.task) {
@@ -1042,11 +1048,12 @@ namespace exec {
         if (threadIndex_ < pool_.available_parallelism()) {
           pool_.enqueue(*queue_, op, threadIndex_);
         } else {
+
           pool_.enqueue(*queue_, op, constraints_);
         }
       }
 
-      friend void tag_invoke(start_t, __t& op) noexcept {
+      STDEXEC_MEMFN_DECL(void start)(this __t& op) noexcept {
         op.enqueue_(&op);
       }
     };
@@ -1066,11 +1073,8 @@ namespace exec {
       template <class Sender, class Env>
       using with_error_invoke_t = //
         __if_c<
-          __v<__value_types_of_t<
-            Sender,
-            Env,
-            __mbind_front_q<bulk_non_throwing, Fun, Shape>,
-            __q<__mand>>>,
+          __v<
+            __value_types_of_t<Sender, Env, __mbind_front_q<bulk_non_throwing, Fun, Shape>, __q<__mand>>>,
           completion_signatures<>,
           __with_exception_ptr>;
 
@@ -1091,8 +1095,7 @@ namespace exec {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, __completions_t<Self, env_of_t<Receiver>>>
-      friend auto                                         //
-        tag_invoke(connect_t, Self&& self, Receiver rcvr) //
+      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr) //
         noexcept(__nothrow_constructible_from<
                  bulk_op_state_t<Self, Receiver>,
                  static_thread_pool_&,
@@ -1109,12 +1112,11 @@ namespace exec {
       }
 
       template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
-        -> __completions_t<Self, Env> {
+      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> __completions_t<Self, Env> {
         return {};
       }
 
-      friend auto tag_invoke(get_env_t, const __t& self) noexcept -> env_of_t<const Sender&> {
+      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> env_of_t<const Sender&> {
         return get_env(self.sndr_);
       }
     };
@@ -1158,8 +1160,7 @@ namespace exec {
 
               if (is_last_thread) {
                 if (sh_state.exception_) {
-                  set_error(
-                    static_cast<Receiver&&>(sh_state.rcvr_), std::move(sh_state.exception_));
+                  set_error(static_cast<Receiver&&>(sh_state.rcvr_), std::move(sh_state.exception_));
                 } else {
                   sh_state.apply(completion);
                 }
@@ -1230,7 +1231,7 @@ namespace exec {
       }
 
       template <class... As>
-      friend void tag_invoke(same_as<set_value_t> auto, __t&& self, As&&... as) noexcept {
+      STDEXEC_MEMFN_DECL(void set_value)(this __t&& self, As&&... as) noexcept {
         using tuple_t = __decayed_tuple<As...>;
 
         shared_state& state = self.shared_state_;
@@ -1242,6 +1243,7 @@ namespace exec {
             set_error(std::move(state.rcvr_), std::current_exception());
           }
         } else {
+
           state.data_.template emplace<tuple_t>(static_cast<As&&>(as)...);
         }
 
@@ -1254,13 +1256,18 @@ namespace exec {
         }
       }
 
-      template <__one_of<set_error_t, set_stopped_t> Tag, class... As>
-      friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
+      template <class Error>
+      STDEXEC_MEMFN_DECL(void set_error)(this __t&& self, Error&& error) noexcept {
         shared_state& state = self.shared_state_;
-        tag(static_cast<Receiver&&>(state.rcvr_), static_cast<As&&>(as)...);
+        stdexec::set_error(static_cast<Receiver&&>(state.rcvr_), static_cast<Error&&>(error));
       }
 
-      friend auto tag_invoke(get_env_t, const __t& self) noexcept -> env_of_t<Receiver> {
+      STDEXEC_MEMFN_DECL(void set_stopped)(this __t&& self) noexcept {
+        shared_state& state = self.shared_state_;
+        stdexec::set_stopped(static_cast<Receiver&&>(state.rcvr_));
+      }
+
+      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> env_of_t<Receiver> {
         return get_env(self.shared_state_.rcvr_);
       }
     };
@@ -1284,7 +1291,7 @@ namespace exec {
 
       inner_op_state inner_op_;
 
-      friend void tag_invoke(start_t, __t& op) noexcept {
+      STDEXEC_MEMFN_DECL(void start)(this __t& op) noexcept {
         start(op.inner_op_);
       }
 
@@ -1301,6 +1308,7 @@ namespace exec {
         if constexpr (__callable<get_allocator_t, env_of_t<Rcvr>>) {
           return get_allocator(get_env(rcvr));
         } else {
+
           return std::allocator<char>{};
         }
       }
@@ -1317,7 +1325,7 @@ namespace exec {
         __intrusive_queue<&task_base::next> tasks_{};
         std::size_t tasks_size_{};
         std::atomic<std::size_t> countdown_{std::ranges::size(range_)};
-      };
+      }; // namespace schedule_all_
 
       template <class Range, class ItemReceiverId>
       struct item_operation {
@@ -1333,7 +1341,9 @@ namespace exec {
           std::ranges::iterator_t<Range> it_;
           operation_base<Range>* parent_;
 
-          friend void tag_invoke(start_t, __t& op) noexcept {
+          STDEXEC_MEMFN_DECL(
+
+          void start)(this __t& op) noexcept {
             std::unique_lock lock{op.parent_->start_mutex_};
             if (!op.parent_->has_started_) {
               op.parent_->tasks_.push_back(static_cast<task_base*>(&op));
@@ -1379,14 +1389,16 @@ namespace exec {
             }
           };
 
-          template <same_as<get_env_t> GetEnv, __decays_to<__t> Self>
-          friend auto tag_invoke(GetEnv, Self&& self) noexcept -> env {
+          template <__decays_to<__t> Self>
+          STDEXEC_MEMFN_DECL(
+          auto get_env)(this Self&& self) noexcept -> env {
             return {self.op_->pool_};
           }
 
           template <__decays_to<__t> Self, receiver ItemReceiver>
             requires receiver_of<ItemReceiver, completion_signatures>
-          friend auto tag_invoke(connect_t, Self&& self, ItemReceiver rcvr) noexcept
+          STDEXEC_MEMFN_DECL(
+          auto connect)(this Self&& self, ItemReceiver rcvr) noexcept
             -> stdexec::__t<item_operation<Range, stdexec::__id<ItemReceiver>>> {
             return {static_cast<ItemReceiver&&>(rcvr), self.it_, self.op_};
           }
@@ -1412,24 +1424,27 @@ namespace exec {
           using receiver_concept = receiver_t;
           operation_base_with_receiver<Range, Receiver>* op_;
 
-          template <same_as<set_value_t> SetValue, same_as<__t> Self>
-          friend void tag_invoke(SetValue, Self&& self) noexcept {
+          template <same_as<__t> Self>
+          STDEXEC_MEMFN_DECL(
+          void set_value)(this Self&& self) noexcept {
             std::size_t countdown = self.op_->countdown_.fetch_sub(1, std::memory_order_relaxed);
             if (countdown == 1) {
               set_value(static_cast<Receiver&&>(self.op_->rcvr_));
             }
           }
 
-          template <same_as<set_stopped_t> SetStopped, same_as<__t> Self>
-          friend void tag_invoke(SetStopped, Self&& self) noexcept {
+          template <same_as<__t> Self>
+          STDEXEC_MEMFN_DECL(
+          void set_stopped)(this Self&& self) noexcept {
             std::size_t countdown = self.op_->countdown_.fetch_sub(1, std::memory_order_relaxed);
             if (countdown == 1) {
               set_value(static_cast<Receiver&&>(self.op_->rcvr_));
             }
           }
 
-          template <same_as<get_env_t> GetEnv, __decays_to<__t> Self>
-          friend auto tag_invoke(GetEnv, Self&& self) noexcept -> env_of_t<Receiver> {
+          template <__decays_to<__t> Self>
+          STDEXEC_MEMFN_DECL(
+          auto get_env)(this Self&& self) noexcept -> env_of_t<Receiver> {
             return get_env(self.op_->rcvr_);
           }
         };
@@ -1452,7 +1467,8 @@ namespace exec {
           std::vector<__manual_lifetime<ItemOperation>, ItemAllocator> items_;
 
           template <same_as<__t> Self>
-          friend void tag_invoke(start_t, Self& op) noexcept {
+          STDEXEC_MEMFN_DECL(
+          void start)(this Self& op) noexcept {
             std::size_t size = op.items_.size();
             std::size_t nthreads = op.pool_.available_parallelism();
             bwos_params params = op.pool_.params();
@@ -1469,6 +1485,7 @@ namespace exec {
                 });
                 start(op.items_[i].__get());
               }
+
               std::unique_lock lock{op.start_mutex_};
               op.pool_.bulk_enqueue(remote_queue, std::move(op.tasks_), op.tasks_size_);
               lock.unlock();

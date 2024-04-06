@@ -40,8 +40,9 @@ namespace exec {
     auto operator=(__manual_lifetime&&) -> __manual_lifetime& = delete;
 
     template <class... _Args>
-    auto __construct(_Args&&... __args) noexcept(
-      stdexec::__nothrow_constructible_from<_Ty, _Args...>) -> _Ty& {
+    auto
+      __construct(_Args&&... __args) noexcept(stdexec::__nothrow_constructible_from<_Ty, _Args...>)
+        -> _Ty& {
       return *::new (static_cast<void*>(std::addressof(__value_)))
         _Ty(static_cast<_Args&&>(__args)...);
     }

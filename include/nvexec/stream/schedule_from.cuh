@@ -124,7 +124,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
         }
 
-        friend Env tag_invoke(get_env_t, const __t& self) noexcept {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> Env {
           return self.operation_state_.make_env();
         }
       };
@@ -133,19 +133,19 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <class Sender>
     struct source_sender_t : stream_sender_base {
       template <__decays_to<source_sender_t> Self, receiver Receiver>
-      friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
+      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr)
         -> connect_result_t<__copy_cvref_t<Self, Sender>, Receiver> {
         return connect((static_cast<Self&&>(self)).sndr_, static_cast<Receiver&&>(rcvr));
       }
 
-      friend auto tag_invoke(get_env_t, const source_sender_t& self) noexcept
+      STDEXEC_MEMFN_DECL(auto get_env)(this const source_sender_t& self) noexcept
         -> env_of_t<const Sender&> {
         // TODO - this code is not exercised by any test
         return get_env(self.sndr_);
       }
 
       template <__decays_to<source_sender_t> _Self, class _Env>
-      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env&&)
         -> __try_make_completion_signatures<__copy_cvref_t<_Self, Sender>, _Env> {
         return {};
       }
@@ -171,7 +171,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       context_state_t context_state_;
 
       template <__one_of<set_value_t, set_stopped_t, set_error_t> _Tag>
-      friend Scheduler tag_invoke(get_completion_scheduler_t<_Tag>, const __env& __self) noexcept {
+      STDEXEC_MEMFN_DECL(Scheduler query)(this const __env& __self, get_completion_scheduler_t<_Tag>) noexcept {
         return {__self.context_state_};
       }
     };
@@ -187,7 +187,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires sender_to<__copy_cvref_t<Self, source_sender_th>, Receiver>
-      friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr) -> stream_op_state_t<
+      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr) //
+ -> stream_op_state_t<
         __copy_cvref_t<Self, source_sender_th>,
         receiver_t<Self, Receiver>,
         Receiver> {
@@ -201,12 +202,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           self.env_.context_state_);
       }
 
-      friend const __env& tag_invoke(get_env_t, const __t& __self) noexcept {
+      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> const __env& {
         return __self.env_;
       }
 
       template <__decays_to<__t> _Self, class _Env>
-      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env&&)
         -> __try_make_completion_signatures<
           __copy_cvref_t<_Self, Sender>,
           _Env,

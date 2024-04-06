@@ -47,8 +47,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
        public:
         using __id = receiver_t;
 
-        template <same_as<set_value_t> _Tag, class... As>
-        friend void tag_invoke(_Tag, __t&& self, As&&... as) noexcept
+        template <class... As>
+        STDEXEC_MEMFN_DECL(void set_value)(this __t&& self, As&&... as) noexcept
           requires __callable<Fun, Shape&, As&...>
         {
           operation_state_base_t<ReceiverId>& op_state = self.op_state_;
@@ -74,7 +74,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           self.op_state_.propagate_completion_signal(Tag(), static_cast<As&&>(as)...);
         }
 
-        friend Env tag_invoke(get_env_t, const __t& self) noexcept {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> Env {
           return self.op_state_.make_env();
         }
 
@@ -115,7 +115,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-      friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr)
+      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
           static_cast<Self&&>(self).sndr_,
@@ -128,12 +128,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
+      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&)
         -> _completion_signatures_t<Self, Env> {
         return {};
       }
 
-      friend auto tag_invoke(get_env_t, const __t& self) noexcept -> env_of_t<const Sender&> {
+      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> env_of_t<const Sender&> {
         return get_env(self.sndr_);
       }
     };
@@ -181,8 +181,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
        public:
         using __id = receiver_t;
 
-        template <same_as<set_value_t> _Tag, class... As>
-        friend void tag_invoke(_Tag, __t&& self, As&&... as) noexcept
+        template <class... As>
+        STDEXEC_MEMFN_DECL(void set_value)(this __t&& self, As&&... as) noexcept
           requires __callable<Fun, Shape, As&...>
         {
           operation_t<CvrefSenderId, ReceiverId, Shape, Fun>& op_state = self.op_state_;
@@ -243,7 +243,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           self.op_state_.propagate_completion_signal(Tag(), static_cast<As&&>(as)...);
         }
 
-        friend env_of_t<Receiver> tag_invoke(get_env_t, const __t& self) noexcept {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> env_of_t<Receiver> {
           return get_env(self.op_state_.rcvr_);
         }
 
@@ -346,7 +346,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-      friend auto tag_invoke(connect_t, Self&& self, Receiver&& rcvr) -> multi_gpu_bulk::
+      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver&& rcvr) //
+ -> multi_gpu_bulk::
         operation_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun> {
         auto sch = get_completion_scheduler<set_value_t>(get_env(self.sndr_));
         context_state_t context_state = sch.context_state_;
@@ -361,12 +362,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
+      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&)
         -> _completion_signatures_t<Self, Env> {
         return {};
       }
 
-      friend auto tag_invoke(get_env_t, const __t& self) noexcept -> env_of_t<const Sender&> {
+      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> env_of_t<const Sender&> {
         return get_env(self.sndr_);
       }
     };

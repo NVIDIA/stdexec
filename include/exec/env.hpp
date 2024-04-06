@@ -81,7 +81,7 @@ namespace exec {
         _Default __default_;
         _Receiver __rcvr_;
 
-        friend void tag_invoke(start_t, __t& __self) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
           try {
             if constexpr (__callable<_Tag, env_of_t<_Receiver>>) {
               const auto& __env = get_env(__self.__rcvr_);
@@ -90,6 +90,7 @@ namespace exec {
               set_value(std::move(__self.__rcvr_), std::move(__self.__default_));
             }
           } catch (...) {
+
             set_error(std::move(__self.__rcvr_), std::current_exception());
           }
         }
@@ -112,29 +113,30 @@ namespace exec {
         __minvoke<__with_default<__mbind_back_q<__call_result_t, _Env>, _Default>, _Tag>;
       template <class _Env>
       using __default_t = __if_c<__callable<_Tag, _Env>, __ignore, _Default>;
+
       template <class _Env>
       using __completions_t =
         completion_signatures<set_value_t(__value_t<_Env>), set_error_t(std::exception_ptr)>;
 
       template <__decays_to<__sender> _Self, class _Receiver>
         requires receiver_of<_Receiver, __completions_t<env_of_t<_Receiver>>>
-      friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr) //
+      STDEXEC_MEMFN_DECL(
+        auto connect)(this _Self&& __self, _Receiver __rcvr) //
         noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
           -> __operation_t<_Tag, __default_t<env_of_t<_Receiver>>, _Receiver> {
         return {{}, static_cast<_Self&&>(__self).__default_, static_cast<_Receiver&&>(__rcvr)};
       }
 
       template <class _Env>
-      friend auto tag_invoke(get_completion_signatures_t, __sender, _Env&&)
-        -> __completions_t<_Env> {
+      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this __sender, _Env&&) -> __completions_t<_Env> {
         return {};
       }
     };
 
     struct __read_with_default_t {
       template <class _Tag, class _Default>
-      constexpr auto operator()(_Tag, _Default&& __default) const
-        -> __sender<_Tag, __decay_t<_Default>> {
+      constexpr auto
+        operator()(_Tag, _Default&& __default) const -> __sender<_Tag, __decay_t<_Default>> {
         return {static_cast<_Default&&>(__default)};
       }
     };

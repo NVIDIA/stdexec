@@ -34,7 +34,7 @@ namespace exec {
         STDEXEC_ATTRIBUTE((no_unique_address))
         _Receiver __rcvr_;
 
-        friend void tag_invoke(start_t, __t& __self) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
           stdexec::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
         }
       };
@@ -48,8 +48,7 @@ namespace exec {
         using item_types = exec::item_types<>;
 
         template <__decays_to<__t> _Self, receiver_of<completion_signatures> _Rcvr>
-        friend auto tag_invoke(subscribe_t, _Self&&, _Rcvr&& __rcvr) noexcept(
-          __nothrow_decay_copyable<_Rcvr>) {
+        STDEXEC_MEMFN_DECL(auto subscribe)(this _Self&&, _Rcvr&& __rcvr) noexcept(__nothrow_decay_copyable<_Rcvr>) {
           return stdexec::__t<__operation<stdexec::__id<__decay_t<_Rcvr>>>>{
             static_cast<_Rcvr&&>(__rcvr)};
         }

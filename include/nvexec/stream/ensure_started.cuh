@@ -77,7 +77,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           self.shared_state_.reset();
         }
 
-        friend env_t tag_invoke(get_env_t, const __t& self) noexcept {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> env_t {
           return self.shared_state_->make_env();
         }
       };
@@ -267,7 +267,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
         }
 
-        friend void tag_invoke(start_t, __t& self) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this __t& self) noexcept {
           sh_state_t<Sender>* shared_state = self.shared_state_.get();
           std::atomic<void*>& op_state1 = shared_state->op_state1_;
           void* const completion_state = static_cast<void*>(shared_state);
@@ -318,13 +318,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <std::same_as<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, completion_signatures_of_t<Self, empty_env>>
-      friend auto tag_invoke(connect_t, Self&& self, Receiver rcvr) //
+      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr) //
         noexcept(__nothrow_constructible_from<__decay_t<Receiver>, Receiver>)
           -> operation_t<Receiver> {
         return operation_t<Receiver>{static_cast<Receiver&&>(rcvr), std::move(self).shared_state_};
       }
 
-      friend auto tag_invoke(get_env_t, const __t& self) noexcept -> env_of_t<const Sender&> {
+      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> env_of_t<const Sender&> {
         return get_env(self.sndr_);
       }
 
@@ -335,7 +335,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using _set_error_t = completion_signatures<set_error_t(__decay_t<Ty>&&)>;
 
       template <std::same_as<__t> Self, class Env>
-      friend auto tag_invoke(get_completion_signatures_t, Self&&, Env&&)
+      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&)
         -> __try_make_completion_signatures<
           Sender,
           _ensure_started::env_t,

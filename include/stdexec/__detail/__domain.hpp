@@ -91,8 +91,9 @@ namespace stdexec {
     template <class _Sender, class _Env>
     constexpr bool __is_nothrow_transform_sender() noexcept {
       if constexpr (__domain::__has_default_transform_sender<_Sender, _Env>) {
-        return noexcept(
-          tag_of_t<_Sender>().transform_sender(__declval<_Sender>(), __declval<const _Env&>()));
+        return //
+          noexcept(
+            tag_of_t<_Sender>().transform_sender(__declval<_Sender>(), __declval<const _Env&>()));
       } else {
         return __nothrow_constructible_from<_Sender, _Sender>;
       }

@@ -46,31 +46,29 @@ namespace stdexec::ranges {
     concept __has_member_begin = requires(_Ty&& __v) { static_cast<_Ty&&>(__v).begin(); };
 
     template <class _Ty>
-    concept __has_free_begin = __has_member_begin<_Ty> || requires(_Ty&& __v) {
-      begin((static_cast<_Ty&&>(__v)));
-    };
+    concept __has_free_begin =
+      __has_member_begin<_Ty> || requires(_Ty&& __v) { begin((static_cast<_Ty&&>(__v))); };
 
     template <class _Ty>
     concept __has_member_end = requires(_Ty&& __v) { static_cast<_Ty&&>(__v).end(); };
 
     template <class _Ty>
-    concept __has_free_end = __has_member_end<_Ty> || requires(_Ty&& __v) {
-      end((static_cast<_Ty&&>(__v)));
-    };
+    concept __has_free_end =
+      __has_member_end<_Ty> || requires(_Ty&& __v) { end((static_cast<_Ty&&>(__v))); };
 
     struct __begin_t {
       template <class _Range>
         requires __has_member_begin<_Range>
-      auto operator()(_Range&& __rng) const
-        noexcept(noexcept((static_cast<_Range&&>(__rng)).begin()))
+      auto
+        operator()(_Range&& __rng) const noexcept(noexcept((static_cast<_Range&&>(__rng)).begin()))
           -> decltype((static_cast<_Range&&>(__rng)).begin()) {
         return static_cast<_Range&&>(__rng).begin();
       }
 
       template <class _Range>
         requires __has_free_begin<_Range>
-      auto operator()(_Range&& __rng) const
-        noexcept(noexcept(begin((static_cast<_Range&&>(__rng)))))
+      auto
+        operator()(_Range&& __rng) const noexcept(noexcept(begin((static_cast<_Range&&>(__rng)))))
           -> decltype(begin((static_cast<_Range&&>(__rng)))) {
         return begin((static_cast<_Range&&>(__rng)));
       }

@@ -86,21 +86,23 @@ namespace exec {
         STDEXEC_ATTRIBUTE((no_unique_address))
         _Receiver __rcvr_;
 
-        template <same_as<get_env_t> _GetEnv, same_as<__t> _Self>
-        friend auto tag_invoke(_GetEnv, const _Self& __self) noexcept -> env_of_t<_Receiver> {
+        template <same_as<__t> _Self>
+        STDEXEC_MEMFN_DECL(auto get_env)(this const _Self& __self) noexcept -> env_of_t<_Receiver> {
           return stdexec::get_env(__self.__rcvr_);
         }
 
-        template <same_as<set_value_t> _SetValue, same_as<__t> _Self>
+        template <same_as<__t> _Self>
           requires __callable<set_value_t, _Receiver&&>
-        friend void tag_invoke(_SetValue, _Self&& __self) noexcept {
+        STDEXEC_MEMFN_DECL(
+          void set_value)(this _Self&& __self) noexcept {
           return stdexec::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
         }
 
-        template <same_as<set_stopped_t> _SetStopped, same_as<__t> _Self>
+        template <same_as<__t> _Self>
           requires __callable<set_value_t, _Receiver&&>
                 && (unstoppable_token<_Token> || __callable<set_stopped_t, _Receiver &&>)
-        friend void tag_invoke(_SetStopped, _Self&& __self) noexcept {
+        STDEXEC_MEMFN_DECL(
+          void set_stopped)(this _Self&& __self) noexcept {
           if constexpr (unstoppable_token<_Token>) {
             stdexec::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
           } else {
@@ -183,8 +185,8 @@ namespace exec {
       }
 
       template <class _Sender, class _Env = empty_env>
-      constexpr auto operator()(_Sender&&, const _Env&) const noexcept
-        -> decltype(__impl<_Sender, _Env>()()) {
+      constexpr auto
+        operator()(_Sender&&, const _Env&) const noexcept -> decltype(__impl<_Sender, _Env>()()) {
         return {};
       }
     };
@@ -220,18 +222,19 @@ namespace exec {
   struct _MISSING_SET_NEXT_OVERLOAD_FOR_ITEM_ { };
 
   template <class _Receiver, class _Item>
-  auto __try_item(_Item*) -> stdexec::
-    __mexception<_MISSING_SET_NEXT_OVERLOAD_FOR_ITEM_<_Item>, _WITH_RECEIVER_<_Receiver>>;
+  auto __try_item(_Item*) //
+    -> stdexec::__mexception<_MISSING_SET_NEXT_OVERLOAD_FOR_ITEM_<_Item>, _WITH_RECEIVER_<_Receiver>>;
 
   template <class _Receiver, class _Item>
     requires stdexec::__callable<set_next_t, _Receiver&, _Item>
   auto __try_item(_Item*) -> stdexec::__msuccess;
 
   template <class _Receiver, class... _Items>
-  auto __try_items(exec::item_types<_Items...>*) -> decltype((
-    stdexec::__msuccess(),
-    ...,
-    exec::__try_item<_Receiver>(static_cast<_Items*>(nullptr))));
+  auto __try_items(exec::item_types<_Items...>*) //
+    -> decltype((
+      stdexec::__msuccess(),
+      ...,
+      exec::__try_item<_Receiver>(static_cast<_Items*>(nullptr))));
 
   template <class _Receiver, class _Items>
   concept __sequence_receiver_of = requires(_Items* __items) {
@@ -322,11 +325,10 @@ namespace exec {
 
 
     template <class _Sender, class _Receiver>
-    concept __subscribeable_with_tag_invoke =
-      receiver<_Receiver> &&                              //
-      sequence_sender_in<_Sender, env_of_t<_Receiver>> && //
-      sequence_receiver_from<_Receiver, _Sender> &&       //
-      tag_invocable<subscribe_t, _Sender, _Receiver>;
+    concept __subscribeable_with_tag_invoke = receiver<_Receiver> &&                              //
+                                              sequence_sender_in<_Sender, env_of_t<_Receiver>> && //
+                                              sequence_receiver_from<_Receiver, _Sender> &&       //
+                                              tag_invocable<subscribe_t, _Sender, _Receiver>;
 
     struct subscribe_t {
       template <class _Sender, class _Receiver>
@@ -380,8 +382,8 @@ namespace exec {
               __stopped_means_break_t<_Receiver>>>,
             "stdexec::connect(sender, receiver) must return a type that "
             "satisfies the operation_state concept");
-          next_sender_of_t<_Receiver, _TfxSender> __next = set_next(
-            __rcvr, transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env));
+          next_sender_of_t<_Receiver, _TfxSender> __next =
+            set_next(__rcvr, transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env));
           return tag_invoke(
             connect_t{},
             static_cast<next_sender_of_t<_Receiver, _TfxSender>&&>(__next),
@@ -404,8 +406,8 @@ namespace exec {
             transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env),
             static_cast<_Receiver&&>(__rcvr));
         } else {
-          next_sender_of_t<_Receiver, _TfxSender> __next = set_next(
-            __rcvr, transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env));
+          next_sender_of_t<_Receiver, _TfxSender> __next =
+            set_next(__rcvr, transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env));
           return tag_invoke(
             connect_t{},
             static_cast<next_sender_of_t<_Receiver, _TfxSender>&&>(__next),
@@ -413,7 +415,7 @@ namespace exec {
         }
       }
 
-      friend constexpr auto tag_invoke(forwarding_query_t, subscribe_t) noexcept -> bool {
+      constexpr STDEXEC_MEMFN_DECL(auto forwarding_query)(this subscribe_t) noexcept -> bool {
         return false;
       }
     };

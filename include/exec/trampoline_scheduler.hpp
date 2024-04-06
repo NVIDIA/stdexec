@@ -70,7 +70,7 @@ namespace exec {
           __execute_(this);
         }
 
-        friend void tag_invoke(start_t, __operation_base& __self) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this __operation_base& __self) noexcept {
           auto* __current_state = __trampoline_state<__operation_base>::__current_;
           if (__current_state == nullptr) {
             __trampoline_state<__operation_base> __state;
@@ -81,8 +81,8 @@ namespace exec {
             __self.__execute();
           } else {
             // Exceeded recursion limit.
-            __self.__next_ = std::exchange(
-              __current_state->__head_, static_cast<__operation_base*>(&__self));
+            __self.__next_ =
+              std::exchange(__current_state->__head_, static_cast<__operation_base*>(&__self));
           }
         }
 
@@ -100,8 +100,8 @@ namespace exec {
           STDEXEC_ATTRIBUTE((no_unique_address))
           _Receiver __receiver_;
 
-          explicit __t(_Receiver __rcvr, std::size_t __max_depth) noexcept(
-            __nothrow_decay_copyable<_Receiver>)
+          explicit __t(_Receiver __rcvr, std::size_t __max_depth) //
+            noexcept(__nothrow_decay_copyable<_Receiver>)
             : __operation_base(&__t::__execute_impl, __max_depth)
             , __receiver_(static_cast<_Receiver&&>(__rcvr)) {
           }
@@ -143,26 +143,25 @@ namespace exec {
         }
 
         template <receiver_of<completion_signatures> _Receiver>
-        friend auto tag_invoke(connect_t, __schedule_sender __self, _Receiver __rcvr) noexcept(
-          __nothrow_decay_copyable<_Receiver>) -> __operation_t<_Receiver> {
+        STDEXEC_MEMFN_DECL(auto connect)(this __schedule_sender __self, _Receiver __rcvr) //
+          noexcept(__nothrow_decay_copyable<_Receiver>) -> __operation_t<_Receiver> {
           return __self.__make_operation(static_cast<_Receiver&&>(__rcvr));
         }
 
-        friend auto
-          tag_invoke(get_completion_scheduler_t<set_value_t>, __schedule_sender __self) noexcept
+        STDEXEC_MEMFN_DECL(auto
+          query)(this __schedule_sender __self, get_completion_scheduler_t<set_value_t>) noexcept
           -> __scheduler {
           return __scheduler{__self.__max_recursion_depth_};
         }
 
-        friend auto tag_invoke(get_env_t, const __schedule_sender& __self) noexcept
-          -> const __schedule_sender& {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __schedule_sender& __self) noexcept -> const __schedule_sender& {
           return __self;
         }
 
         std::size_t __max_recursion_depth_;
       };
 
-      friend auto tag_invoke(schedule_t, __scheduler __self) noexcept -> __schedule_sender {
+      STDEXEC_MEMFN_DECL(auto schedule)(this __scheduler __self) noexcept -> __schedule_sender {
         return __schedule_sender{__self.__max_recursion_depth_};
       }
 

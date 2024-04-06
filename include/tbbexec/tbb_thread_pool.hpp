@@ -30,7 +30,9 @@ namespace tbbexec {
   //! * template<F> auto execute(F &&f) -> decltype(f())
   //!
   //! See https://spec.oneapi.io/versions/1.0-rev-3/elements/oneTBB/source/task_scheduler/task_arena/task_arena_cls.html
-  namespace detail {
+  namespace _thpool {
+    using namespace stdexec::tags;
+
     template <class PoolType, class ReceiverId>
     struct operation {
       using Receiver = stdexec::__t<ReceiverId>;
@@ -71,18 +73,18 @@ namespace tbbexec {
           }
 
           template <class Receiver>
-          friend auto tag_invoke(stdexec::connect_t, sender sndr, Receiver rcvr)
+          STDEXEC_MEMFN_DECL(auto connect)(this sender sndr, Receiver rcvr)
             -> stdexec::__t<operation<DerivedPoolType, stdexec::__id<Receiver>>> {
             return sndr.make_operation_(std::move(rcvr));
           }
 
           template <class CPO>
-          friend auto tag_invoke(stdexec::get_completion_scheduler_t<CPO>, sender sndr) noexcept ->
+          STDEXEC_MEMFN_DECL(auto query)(this sender sndr, stdexec::get_completion_scheduler_t<CPO>) noexcept ->
             typename DerivedPoolType::scheduler {
             return sndr.pool_.get_scheduler();
           }
 
-          friend auto tag_invoke(stdexec::get_env_t, const sender& sndr) noexcept -> const sender& {
+          STDEXEC_MEMFN_DECL(auto get_env)(this const sender& sndr) noexcept -> const sender& {
             return sndr;
           }
 
@@ -237,10 +239,7 @@ namespace tbbexec {
             }
 
             template <class... As>
-            friend void tag_invoke(
-              stdexec::same_as<stdexec::set_value_t> auto,
-              __t&& self,
-              As&&... as) noexcept {
+            STDEXEC_MEMFN_DECL(void set_value)(this __t&& self, As&&... as) noexcept {
               using tuple_t = stdexec::__decayed_tuple<As...>;
 
               shared_state& state = self.shared_state_;
@@ -264,16 +263,13 @@ namespace tbbexec {
               }
             }
 
-            template <
-              stdexec::__one_of<stdexec::set_error_t, stdexec::set_stopped_t> Tag,
-              class... As>
+            template <stdexec::__one_of<stdexec::set_error_t, stdexec::set_stopped_t> Tag, class... As>
             friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
               shared_state& state = self.shared_state_;
               tag(static_cast<Receiver&&>(state.rcvr_), static_cast<As&&>(as)...);
             }
 
-            friend auto tag_invoke(stdexec::get_env_t, const __t& self) noexcept
-              -> stdexec::env_of_t<Receiver> {
+            STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> stdexec::env_of_t<Receiver> {
               return stdexec::get_env(self.shared_state_.rcvr_);
             }
           };
@@ -301,7 +297,7 @@ namespace tbbexec {
 
             inner_op_state inner_op_;
 
-            friend void tag_invoke(stdexec::start_t, __t& op) noexcept {
+            STDEXEC_MEMFN_DECL(void start)(this __t& op) noexcept {
               stdexec::start(op.inner_op_);
             }
 
@@ -359,14 +355,14 @@ namespace tbbexec {
             template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
               requires stdexec::
                 receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-              friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver rcvr) noexcept(
-                stdexec::__nothrow_constructible_from<
-                  bulk_op_state_t<Self, Receiver>,
-                  DerivedPoolType&,
-                  Shape,
-                  Fun,
-                  Sender,
-                  Receiver>) -> bulk_op_state_t<Self, Receiver> {
+              STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr) //
+              noexcept(stdexec::__nothrow_constructible_from<
+                       bulk_op_state_t<Self, Receiver>,
+                       DerivedPoolType&,
+                       Shape,
+                       Fun,
+                       Sender,
+                       Receiver>) -> bulk_op_state_t<Self, Receiver> {
               return bulk_op_state_t<Self, Receiver>{
                 self.pool_,
                 self.shape_,
@@ -376,20 +372,19 @@ namespace tbbexec {
             }
 
             template <stdexec::__decays_to<__t> Self, class Env>
-            friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env&&)
-              -> completion_signatures<Self, Env> {
+            STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> completion_signatures<Self, Env> {
               return {};
             }
 
             template <stdexec::tag_category<stdexec::forwarding_query> Tag, class... As>
               requires stdexec::__callable<Tag, const Sender&, As...>
-            friend auto tag_invoke(Tag tag, const __t& self, As&&... as) noexcept(
-              stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-              -> stdexec::__call_result_if_t<
-                stdexec::tag_category<Tag, stdexec::forwarding_query>,
-                Tag,
-                const Sender&,
-                As...> {
+            friend auto tag_invoke(Tag tag, const __t& self, As&&... as) //
+              noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
+                -> stdexec::__call_result_if_t<
+                  stdexec::tag_category<Tag, stdexec::forwarding_query>,
+                  Tag,
+                  const Sender&,
+                  As...> {
               return static_cast<Tag&&>(tag)(self.sndr_, static_cast<As&&>(as)...);
             }
 
@@ -404,7 +399,9 @@ namespace tbbexec {
           return sender{*pool_};
         }
 
-        friend auto tag_invoke(stdexec::schedule_t, const scheduler& sch) noexcept -> sender {
+        STDEXEC_MEMFN_FRIEND(schedule);
+
+        STDEXEC_MEMFN_DECL(auto schedule)(this const scheduler& sch) noexcept -> sender {
           return sch.make_sender();
         }
 
@@ -412,22 +409,23 @@ namespace tbbexec {
         using bulk_sender_t =
           stdexec::__t<bulk_sender<stdexec::__id<stdexec::__decay_t<Sender>>, Shape, Fun>>;
 
+        STDEXEC_MEMFN_FRIEND(bulk);
+
         template <stdexec::sender S, std::integral Shape, class Fun>
-        friend auto
-          tag_invoke(stdexec::bulk_t, const scheduler& sch, S&& sndr, Shape shape, Fun fun) noexcept
+        STDEXEC_MEMFN_DECL(auto bulk)(this const scheduler& sch, S&& sndr, Shape shape, Fun fun) noexcept
           -> bulk_sender_t<S, Shape, Fun> {
           return bulk_sender_t<S, Shape, Fun>{
             *sch.pool_, static_cast<S&&>(sndr), shape, static_cast<Fun&&>(fun)};
         }
 
         [[nodiscard]]
-        constexpr auto forward_progress_guarantee() const noexcept
-          -> stdexec::forward_progress_guarantee {
+        constexpr auto
+          forward_progress_guarantee() const noexcept -> stdexec::forward_progress_guarantee {
           return pool_->forward_progress_guarantee();
         }
 
-        friend constexpr auto
-          tag_invoke(stdexec::get_forward_progress_guarantee_t, scheduler self) noexcept
+        constexpr STDEXEC_MEMFN_DECL(
+          auto query)(this scheduler self, stdexec::get_forward_progress_guarantee_t) noexcept
           -> stdexec::forward_progress_guarantee {
           return self.forward_progress_guarantee();
         }
@@ -499,13 +497,13 @@ namespace tbbexec {
         pool_.enqueue(this);
       }
 
-      friend void tag_invoke(stdexec::start_t, __t& op) noexcept {
+      STDEXEC_MEMFN_DECL(void start)(this __t& op) noexcept {
         op.enqueue();
       }
     };
-  } // namespace detail
+  } // namespace _thpool
 
-  class tbb_thread_pool : public detail::thread_pool_base<tbb_thread_pool> {
+  class tbb_thread_pool : public _thpool::thread_pool_base<tbb_thread_pool> {
    public:
     //! Constructor forwards to tbb::task_arena constructor:
     template <class... Args>
@@ -525,12 +523,12 @@ namespace tbbexec {
       return stdexec::forward_progress_guarantee::parallel;
     }
 
-    friend detail::thread_pool_base<tbb_thread_pool>;
+    friend _thpool::thread_pool_base<tbb_thread_pool>;
 
     template <class PoolType, class ReceiverId>
-    friend struct detail::operation;
+    friend struct _thpool::operation;
 
-    void enqueue(detail::task_base* task, std::uint32_t tid = 0) noexcept {
+    void enqueue(_thpool::task_base* task, std::uint32_t tid = 0) noexcept {
       arena_.enqueue([task, tid] { task->__execute(task, /*tid=*/tid); });
     }
 

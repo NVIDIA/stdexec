@@ -147,9 +147,9 @@ namespace stdexec {
         swap(static_cast<_Ty&&>(__t), static_cast<_Uy&&>(__u));
       };
 
-    inline constexpr auto const __fn = //
-      []<class _Ty, swappable_with<_Ty> _Uy>(_Ty&& __t, _Uy&& __u) noexcept(
-        noexcept(swap(static_cast<_Ty&&>(__t), static_cast<_Uy&&>(__u)))) {
+    inline constexpr auto const __fn =                             //
+      []<class _Ty, swappable_with<_Ty> _Uy>(_Ty&& __t, _Uy&& __u) //
+      noexcept(noexcept(swap(static_cast<_Ty&&>(__t), static_cast<_Uy&&>(__u)))) {
         swap(static_cast<_Ty&&>(__t), static_cast<_Uy&&>(__u));
       };
   } // namespace __swap

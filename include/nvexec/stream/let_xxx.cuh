@@ -138,7 +138,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __self.__op_state_->propagate_completion_signal(_Tag(), static_cast<_As&&>(__as)...);
         }
 
-        friend _Env tag_invoke(get_env_t, const __t& __self) noexcept {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> _Env {
           return __self.__op_state_->make_env();
         }
 
@@ -230,7 +230,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __completions<                      //
             __copy_cvref_t<_Self, _Sender>,   //
             stream_env<env_of_t<_Receiver>>>> //
-      friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+      STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr)
         -> __operation_t<_Self, _Receiver> {
         return __operation_t<_Self, _Receiver>{
           static_cast<_Self&&>(__self).__sndr_,
@@ -238,12 +238,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           static_cast<_Self&&>(__self).__fun_};
       }
 
-      friend auto tag_invoke(get_env_t, const __t& __self) noexcept -> env_of_t<const _Sender&> {
+      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> env_of_t<const _Sender&> {
         return get_env(__self.__sndr_);
       }
 
       template <__decays_to<__t> _Self, class _Env>
-      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
+      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env&&)
         -> __completions<__copy_cvref_t<_Self, _Sender>, stream_env<_Env>> {
         return {};
       }

@@ -53,13 +53,14 @@ namespace exec {
           __self.__state_->__complete(_Tag(), static_cast<_Args &&>(__args)...);
         }
 
-        friend auto tag_invoke(get_env_t, const __t &__self) noexcept -> env_of_t<_Receiver> {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t &__self) noexcept -> env_of_t<_Receiver> {
           return get_env(__self.__state_->__receiver());
         }
       };
     };
 
     STDEXEC_PRAGMA_PUSH()
+
     STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
 
     template <class _Sender, class _Receiver>
@@ -75,8 +76,7 @@ namespace exec {
       trampoline_scheduler __sched_;
 
       __repeat_effect_state(_Sender &&__sndr, _Receiver &)
-        : __child_(
-          __sexpr_apply(static_cast<_Sender &&>(__sndr), stdexec::__detail::__get_data())) {
+        : __child_(__sexpr_apply(static_cast<_Sender &&>(__sndr), stdexec::__detail::__get_data())) {
         __connect();
       }
 
@@ -208,5 +208,5 @@ namespace exec {
 namespace stdexec {
   template <>
   struct __sexpr_impl<exec::__repeat_effect_until::__repeat_effect_until_tag>
-    : exec::__repeat_effect_until::__repeat_effect_until_impl { };
+    : exec::__repeat_effect_until::__repeat_effect_until_impl { }; // namespace stdexec
 } // namespace stdexec

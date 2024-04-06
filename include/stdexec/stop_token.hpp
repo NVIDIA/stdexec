@@ -314,8 +314,9 @@ namespace stdexec {
     (void) __state_.store(__old_state, std::memory_order_release);
   }
 
-  inline auto inplace_stop_source::__try_lock_unless_stop_requested_(
-    bool __set_stop_requested) const noexcept -> bool {
+  inline auto
+    inplace_stop_source::__try_lock_unless_stop_requested_(bool __set_stop_requested) const noexcept
+    -> bool {
     __stok::__spin_wait __spin;
     auto __old_state = __state_.load(std::memory_order_relaxed);
     do {
@@ -427,10 +428,7 @@ namespace stdexec {
       const _Token,
       _Initializer>
     && //
-    constructible_from<
-      typename _Token::template callback_type<_Callback>,
-      const _Token&,
-      _Initializer>;
+    constructible_from<typename _Token::template callback_type<_Callback>, const _Token&, _Initializer>;
 
   template <class _Token>
   concept unstoppable_token =  //
@@ -443,8 +441,9 @@ namespace stdexec {
   using in_place_stop_token
     [[deprecated("in_place_stop_token has been renamed inplace_stop_token")]] = inplace_stop_token;
 
-  using in_place_stop_source [[deprecated(
-    "in_place_stop_token has been renamed inplace_stop_source")]] = inplace_stop_source;
+  using in_place_stop_source
+    [[deprecated("in_place_stop_token has been renamed inplace_stop_source")]] =
+      inplace_stop_source;
 
   template <class _Fun>
   using in_place_stop_callback

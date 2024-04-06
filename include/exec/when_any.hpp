@@ -175,8 +175,7 @@ namespace exec {
           __self.__op_->notify(_CPO{}, static_cast<_Args&&>(__args)...);
         }
 
-        friend auto tag_invoke(get_env_t, const __t& __self) noexcept
-          -> __env_t<env_of_t<_Receiver>> {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> __env_t<env_of_t<_Receiver>> {
           auto __token = __env::__with(__self.__op_->__stop_source_.get_token(), get_stop_token);
           return __env::__join(std::move(__token), get_env(__self.__op_->__receiver_));
         }
@@ -195,6 +194,8 @@ namespace exec {
        public:
         template <class _SenderTuple>
         __t(_SenderTuple&& __senders, _Receiver&& __rcvr) //
+
+          //
           noexcept(
             __nothrow_decay_copyable<_Receiver>
             && (__nothrow_connectable<stdexec::__t<_SenderIds>, __receiver_t> && ...))
@@ -207,6 +208,8 @@ namespace exec {
        private:
         template <class _SenderTuple, std::size_t... _Is>
         __t(_SenderTuple&& __senders, _Receiver&& __rcvr, std::index_sequence<_Is...>) //
+
+          //
           noexcept(
             __nothrow_decay_copyable<_Receiver>
             && (__nothrow_connectable<stdexec::__t<_SenderIds>, __receiver_t> && ...))
@@ -220,13 +223,14 @@ namespace exec {
 
         std::tuple<connect_result_t<stdexec::__t<_SenderIds>, __receiver_t>...> __ops_;
 
-        friend void tag_invoke(start_t, __t& __self) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
           __self.__on_stop_.emplace(
             get_stop_token(get_env(__self.__receiver_)),
             __on_stop_requested{__self.__stop_source_});
           if (__self.__stop_source_.stop_requested()) {
             set_stopped(static_cast<_Receiver&&>(__self.__receiver_));
           } else {
+
             std::apply([](auto&... __ops) { (start(__ops), ...); }, __self.__ops_);
           }
         }
@@ -259,7 +263,8 @@ namespace exec {
           requires(
             sender_to<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, __receiver_t<_Receiver>>
             && ...)
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver&& __rcvr) //
+        STDEXEC_MEMFN_DECL(
+          auto connect)(this _Self&& __self, _Receiver&& __rcvr) //
           noexcept(__nothrow_constructible_from<__op_t<_Receiver>, _Self&&, _Receiver&&>)
             -> __op_t<_Receiver> {
           return __op_t<_Receiver>{
@@ -267,7 +272,7 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&& __self, _Env __env) noexcept
+        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&& __self, _Env __env) noexcept
           -> __completion_signatures_t<_Env, _SenderIds...> {
           return {};
         }

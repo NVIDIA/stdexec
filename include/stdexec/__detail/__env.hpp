@@ -78,8 +78,7 @@ namespace stdexec {
       template <class _Tp>
         requires tag_invocable<execute_may_block_caller_t, __cref_t<_Tp>>
       constexpr auto operator()(_Tp&& __t) const noexcept -> bool {
-        static_assert(
-          same_as<bool, tag_invoke_result_t<execute_may_block_caller_t, __cref_t<_Tp>>>);
+        static_assert(same_as<bool, tag_invoke_result_t<execute_may_block_caller_t, __cref_t<_Tp>>>);
         static_assert(nothrow_tag_invocable<execute_may_block_caller_t, __cref_t<_Tp>>);
         return tag_invoke(execute_may_block_caller_t{}, std::as_const(__t));
       }
@@ -109,8 +108,8 @@ namespace stdexec {
 
       template <class _Tp>
         requires tag_invocable<__has_algorithm_customizations_t, __cref_t<_Tp>>
-      constexpr auto operator()(_Tp&&) const noexcept(noexcept(__result_t<_Tp>{}))
-        -> __result_t<_Tp> {
+      constexpr auto
+        operator()(_Tp&&) const noexcept(noexcept(__result_t<_Tp>{})) -> __result_t<_Tp> {
         using _Boolean = tag_invoke_result_t<__has_algorithm_customizations_t, __cref_t<_Tp>>;
         static_assert(_Boolean{} ? true : false); // must be contextually convertible to bool
         return _Boolean{};
@@ -126,8 +125,8 @@ namespace stdexec {
     concept __allocator_c = true;
 
     struct get_scheduler_t : __query<get_scheduler_t> {
-      friend constexpr auto tag_invoke(forwarding_query_t, const get_scheduler_t&) noexcept
-        -> bool {
+      constexpr STDEXEC_MEMFN_DECL(
+        auto forwarding_query)(this const get_scheduler_t&) noexcept -> bool {
         return true;
       }
 
@@ -141,8 +140,8 @@ namespace stdexec {
     };
 
     struct get_delegatee_scheduler_t : __query<get_delegatee_scheduler_t> {
-      friend constexpr auto
-        tag_invoke(forwarding_query_t, const get_delegatee_scheduler_t&) noexcept -> bool {
+      constexpr STDEXEC_MEMFN_DECL(
+        auto query)(this const get_delegatee_scheduler_t&, forwarding_query_t) noexcept -> bool {
         return true;
       }
 
@@ -156,8 +155,8 @@ namespace stdexec {
     };
 
     struct get_allocator_t : __query<get_allocator_t> {
-      friend constexpr auto tag_invoke(forwarding_query_t, const get_allocator_t&) noexcept
-        -> bool {
+      constexpr STDEXEC_MEMFN_DECL(
+        auto forwarding_query)(this const get_allocator_t&) noexcept -> bool {
         return true;
       }
 
@@ -175,8 +174,8 @@ namespace stdexec {
     };
 
     struct get_stop_token_t : __query<get_stop_token_t> {
-      friend constexpr auto tag_invoke(forwarding_query_t, const get_stop_token_t&) noexcept
-        -> bool {
+      constexpr STDEXEC_MEMFN_DECL(
+        auto forwarding_query)(this const get_stop_token_t&) noexcept -> bool {
         return true;
       }
 
@@ -205,8 +204,9 @@ namespace stdexec {
 
     template <__completion_tag _CPO>
     struct get_completion_scheduler_t : __query<get_completion_scheduler_t<_CPO>> {
-      friend constexpr auto
-        tag_invoke(forwarding_query_t, const get_completion_scheduler_t<_CPO>&) noexcept -> bool {
+      constexpr STDEXEC_MEMFN_DECL(
+        auto
+        query)(this const get_completion_scheduler_t<_CPO>&, forwarding_query_t) noexcept -> bool {
         return true;
       }
 
@@ -229,7 +229,7 @@ namespace stdexec {
         return tag_invoke(get_domain_t{}, __ty);
       }
 
-      friend constexpr auto tag_invoke(forwarding_query_t, get_domain_t) noexcept -> bool {
+      constexpr STDEXEC_MEMFN_DECL(auto forwarding_query)(this get_domain_t) noexcept -> bool {
         return true;
       }
     };
@@ -242,13 +242,13 @@ namespace stdexec {
         return true;
       }
 
-      friend constexpr auto tag_invoke(forwarding_query_t, __root_t) noexcept -> bool {
+      constexpr STDEXEC_MEMFN_DECL(auto forwarding_query)(this __root_t) noexcept -> bool {
         return false;
       }
     };
 
     struct __root_env_t {
-      friend constexpr auto tag_invoke(__root_t, const __root_env_t&) noexcept -> bool {
+      constexpr STDEXEC_MEMFN_DECL(auto __root)(this const __root_env_t&) noexcept -> bool {
         return true;
       }
     };
@@ -355,14 +355,13 @@ namespace stdexec {
         : __value_(static_cast<_Value&&>(__value)) {
       }
 
-      constexpr explicit __with(_Value __value, _Tag, _Tags...) noexcept(
-        __nothrow_decay_copyable<_Value>)
+      constexpr explicit __with(_Value __value, _Tag, _Tags...) //
+        noexcept(__nothrow_decay_copyable<_Value>)
         : __value_(static_cast<_Value&&>(__value)) {
       }
 
       template <__one_of<_Tag, _Tags...> _Key>
-      STDEXEC_MEMFN_DECL(auto query)
-      (this const __with& __self, _Key) //
+      STDEXEC_MEMFN_DECL(auto query)(this const __with& __self, _Key) //
         noexcept(__nothrow_decay_copyable<_Value>) -> _Value {
         return __self.__value_;
       }
@@ -381,7 +380,8 @@ namespace stdexec {
 
       template <__forwarding_query _Tag>
         requires tag_invocable<_Tag, const _Env&>
-      STDEXEC_MEMFN_DECL(auto query)(this const __fwd& __self, _Tag) //
+      STDEXEC_MEMFN_DECL(
+        auto query)(this const __fwd& __self, _Tag) //
         noexcept(nothrow_tag_invocable<_Tag, const _Env&>)
           -> tag_invoke_result_t<_Tag, const _Env&> {
         return _Tag()(__self.__env_);
@@ -399,7 +399,8 @@ namespace stdexec {
 
       template <class _Tag>
         requires tag_invocable<_Tag, const _Env&>
-      STDEXEC_MEMFN_DECL(auto query)(this const __ref& __self, _Tag) //
+      STDEXEC_MEMFN_DECL(
+        auto query)(this const __ref& __self, _Tag) //
         noexcept(nothrow_tag_invocable<_Tag, const _Env&>)
           -> tag_invoke_result_t<_Tag, const _Env&> {
         return _Tag()(__self.__env_);
@@ -432,7 +433,8 @@ namespace stdexec {
 
       template <__one_of<_Tag, _Tags...> _Key, class _Self>
         requires(std::is_base_of_v<__without_, __decay_t<_Self>>)
-      STDEXEC_MEMFN_DECL(auto query)(this _Self&&, _Key) noexcept = delete;
+      STDEXEC_MEMFN_DECL(
+        auto query)(this _Self&&, _Key) noexcept = delete;
     };
 
     struct __without_fn {
@@ -463,7 +465,8 @@ namespace stdexec {
 
       template <class _Tag>
         requires tag_invocable<_Tag, const _First&>
-      STDEXEC_MEMFN_DECL(auto query)(this const __joined& __self, _Tag) //
+      STDEXEC_MEMFN_DECL(
+        auto query)(this const __joined& __self, _Tag) //
         noexcept(nothrow_tag_invocable<_Tag, const _First&>)
           -> tag_invoke_result_t<_Tag, const _First&> {
         return _Tag()(__self.__env_);

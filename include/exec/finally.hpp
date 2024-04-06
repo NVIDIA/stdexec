@@ -29,18 +29,12 @@ namespace exec {
     using __nonempty_decayed_tuple = __decayed_tuple<_Arg, _Args...>;
 
     template <class _Sigs>
-    using __value_types_ = __gather_signal<
-      set_value_t,
-      _Sigs,
-      __mbind_front_q<__decayed_tuple, set_value_t>,
-      __q<__types>>;
+    using __value_types_ =
+      __gather_signal<set_value_t, _Sigs, __mbind_front_q<__decayed_tuple, set_value_t>, __q<__types>>;
 
     template <class _Sigs>
-    using __error_types_ = __gather_signal<
-      set_error_t,
-      _Sigs,
-      __mbind_front_q<__decayed_tuple, set_error_t>,
-      __q<__types>>;
+    using __error_types_ =
+      __gather_signal<set_error_t, _Sigs, __mbind_front_q<__decayed_tuple, set_error_t>, __q<__types>>;
 
     template <class _Sigs>
     using __stopped_types_ = __gather_signal<
@@ -112,8 +106,8 @@ namespace exec {
        private:
         __final_operation_base<_ResultType, _ReceiverId>* __op_;
 
-        template <same_as<set_value_t> _Tag, __decays_to<__t> _Self>
-        friend void tag_invoke(_Tag, _Self&& __self) noexcept {
+        template <__decays_to<__t> _Self>
+        STDEXEC_MEMFN_DECL(void set_value)(this _Self&& __self) noexcept {
           if constexpr (std::is_nothrow_move_constructible_v<_ResultType>) {
             _ResultType __result = static_cast<_ResultType&&>(__self.__op_->__result_.__get());
             __self.__op_->__result_.__destroy();
@@ -143,7 +137,7 @@ namespace exec {
         }
 
         template <std::same_as<__t> _Self>
-        friend auto tag_invoke(get_env_t, const _Self& __self) noexcept -> env_of_t<_Receiver> {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const _Self& __self) noexcept -> env_of_t<_Receiver> {
           return get_env(__self.__op_->__receiver_);
         }
       };
@@ -188,13 +182,12 @@ namespace exec {
           try {
             __self.__op_->__store_result_and_start_next_op(__tag, static_cast<_Args&&>(__args)...);
           } catch (...) {
-            set_error(
-              static_cast<_Receiver&&>(__self.__op_->__receiver_), std::current_exception());
+            set_error(static_cast<_Receiver&&>(__self.__op_->__receiver_), std::current_exception());
           }
         }
 
         template <std::same_as<__t> _Self>
-        friend auto tag_invoke(get_env_t, const _Self& __self) noexcept -> env_of_t<_Receiver> {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const _Self& __self) noexcept -> env_of_t<_Receiver> {
           return get_env(__self.__op_->__receiver_);
         }
       };
@@ -213,7 +206,7 @@ namespace exec {
       std::variant<__initial_op_t, __final_op_t> __op_;
 
       template <std::same_as<__t> _Self>
-      friend void tag_invoke(start_t, _Self& __self) noexcept {
+      STDEXEC_MEMFN_DECL(void start)(this _Self& __self) noexcept {
         STDEXEC_ASSERT(__self.__op_.index() == 0);
         start(std::get_if<0>(&__self.__op_)->__initial_operation_);
       }
@@ -261,8 +254,7 @@ namespace exec {
         _FinalSender __final_sndr_;
 
         template <__decays_to<__t> _Self, class _Rec>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Rec&& __receiver) noexcept
-          -> __op_t<_Self, _Rec> {
+        STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Rec&& __receiver) noexcept -> __op_t<_Self, _Rec> {
           return {
             static_cast<_Self&&>(__self).__initial_sndr_,
             static_cast<_Self&&>(__self).__final_sndr_,
@@ -270,11 +262,10 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&) noexcept
-          -> __completion_signatures_t<
-            __copy_cvref_t<_Self, _InitialSender>,
-            __copy_cvref_t<_Self, _FinalSender>,
-            _Env> {
+        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env&&) noexcept -> __completion_signatures_t<
+          __copy_cvref_t<_Self, _InitialSender>,
+          __copy_cvref_t<_Self, _FinalSender>,
+          _Env> {
           return {};
         }
 
@@ -283,8 +274,8 @@ namespace exec {
         using sender_concept = stdexec::sender_t;
 
         template <__decays_to<_InitialSender> _Initial, __decays_to<_FinalSender> _Final>
-        __t(_Initial&& __initial, _Final&& __final) noexcept(
-          __nothrow_decay_copyable<_Initial> && __nothrow_decay_copyable<_Final>)
+        __t(_Initial&& __initial, _Final&& __final) //
+          noexcept(__nothrow_decay_copyable<_Initial> && __nothrow_decay_copyable<_Final>)
           : __initial_sndr_{static_cast<_Initial&&>(__initial)}
           , __final_sndr_{static_cast<_Final&&>(__final)} {
         }

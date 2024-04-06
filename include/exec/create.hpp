@@ -54,7 +54,7 @@ namespace exec {
         STDEXEC_ATTRIBUTE((no_unique_address))
         _State __state_{};
 
-        friend void tag_invoke(start_t, __t& __self) noexcept {
+        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
           __self.__state_.emplace(__conv{[&]() noexcept {
             return static_cast<_Fun&&>(__self.__fun_)(__self.__ctx_);
           }});
@@ -78,7 +78,8 @@ namespace exec {
           requires __callable<_Fun, __context<_Receiver, _Args>&>
                 && constructible_from<_Fun, __copy_cvref_t<_Self, _Fun>>
                 && constructible_from<_Args, __copy_cvref_t<_Self, _Args>>
-        friend auto tag_invoke(connect_t, _Self&& __self, _Receiver __rcvr)
+        STDEXEC_MEMFN_DECL(
+          auto connect)(this _Self&& __self, _Receiver __rcvr)
           -> stdexec::__t<__operation<stdexec::__id<_Receiver>, _Fun, _ArgsId>> {
           static_assert(__nothrow_callable<_Fun, __context<_Receiver, _Args>&>);
           return {
@@ -88,7 +89,7 @@ namespace exec {
           };
         }
 
-        friend auto tag_invoke(get_env_t, const __t&) noexcept -> empty_env {
+        STDEXEC_MEMFN_DECL(auto get_env)(this const __t&) noexcept -> empty_env {
           return {};
         }
       };
@@ -112,6 +113,5 @@ namespace exec {
   inline constexpr __create::__create_t<_Sigs...> create<_Sigs...>{};
 
   template <stdexec::__completion_signature... _Sigs>
-  inline constexpr __create::__create_t<_Sigs...>
-    create<stdexec::completion_signatures<_Sigs...>>{};
+  inline constexpr __create::__create_t<_Sigs...> create<stdexec::completion_signatures<_Sigs...>>{};
 } // namespace exec
