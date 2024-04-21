@@ -16,6 +16,7 @@
  */
 #pragma once
 
+#include "../stdexec/concepts.hpp"
 #include "../stdexec/execution.hpp"
 #include "../stdexec/stop_token.hpp"
 
@@ -252,7 +253,7 @@ namespace exec {
         using __id = __sender;
         using sender_concept = stdexec::sender_t;
 
-        template <class... _Senders>
+        template <__not_decays_to<__t>... _Senders>
         explicit(sizeof...(_Senders) == 1)
           __t(_Senders&&... __senders) noexcept((__nothrow_decay_copyable<_Senders> && ...))
           : __senders_(static_cast<_Senders&&>(__senders)...) {
