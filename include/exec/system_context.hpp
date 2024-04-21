@@ -281,10 +281,8 @@ namespace exec {
       /// The operating state on the implementation side.
       void* __impl_os_;
       /// Storage for the arguments passed from the previous receiver to the function object of the bulk sender.
-      std::aligned_storage_t<
-        sizeof(__detail::__sender_data_t<__Previous>),
-        alignof(__detail::__sender_data_t<__Previous>)>
-        __arguments_data_;
+      alignas(__detail::__sender_data_t<__Previous>) unsigned char __arguments_data_[sizeof(
+        __detail::__sender_data_t<__Previous>)];
 
       /// Preallocated space for storing the operation state on the implementation size.
       struct alignas(__EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_ALIGN) __preallocated {
