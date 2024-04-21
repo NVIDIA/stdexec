@@ -226,8 +226,7 @@ namespace stdexec {
 
     template <class...>
     struct __normalize_completions {
-      void operator()() const {
-      }
+      void operator()() const;
     };
 
     template <class _Ry, class... _As, class... _Rest>
@@ -236,18 +235,18 @@ namespace stdexec {
       using __normalize_completions<_Rest...>::operator();
     };
 
-    template <class... _As>
-    inline constexpr auto __merge_sigs = []<class _Ry, class... Bs>(_Ry (*)(Bs...))
-      -> _Ry (*)(__if_c<__same_as<Bs&&, Bs>, _As, Bs>...) {
-      return nullptr;
-    };
+    // MSVCBUG: https://developercommunity.visualstudio.com/t/ICE-in-stdexec-metaprogramming/10642778
+    // Previously a lambda was used here, along with __result_of in __normalize_completions.
+    // As a workaround for this compiler bug, the lambda was replaced by a function
+    // and the use of __result_of was expanded inline.
+    template <class... _As, class _Ry, class... _Bs>
+    auto __merge_sigs(_Ry (*)(_Bs...)) -> _Ry (*)(__if_c<__same_as<_Bs&&, _Bs>, _As, _Bs>...);
 
     template <class _Ry, class... _As, class... _Rest>
       requires __callable<__normalize_completions<_Rest...>, _Ry (*)(_As&&...)>
     struct __normalize_completions<_Ry(_As...), _Rest...> {
-      auto operator()(_Ry (*)(_As&&...)) const -> __result_of<
-        __merge_sigs<_As...>,
-        __call_result_t<__normalize_completions<_Rest...>, _Ry (*)(_As&&...)>>;
+      auto operator()(_Ry (*)(_As&&...)) const -> decltype(__merge_sigs<_As...>(
+        __declval<__call_result_t<__normalize_completions<_Rest...>, _Ry (*)(_As&&...)>>()));
 
       template <class _Sig>
       auto operator()(_Sig*) const -> __call_result_t<__normalize_completions<_Rest...>, _Sig*>;
