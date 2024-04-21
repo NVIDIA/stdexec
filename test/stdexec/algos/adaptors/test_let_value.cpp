@@ -131,9 +131,8 @@ namespace {
 
   TEST_CASE("let_value can throw, and set_error will be called", "[adaptors][let_value]") {
     auto snd = ex::just(13) //
-             | ex::let_value([](int& x) {
+             | ex::let_value([](int& x) -> decltype(ex::just(0)) {
                  throw std::logic_error{"err"};
-                 return ex::just(x + 5);
                });
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);

@@ -75,9 +75,8 @@ namespace {
 
   TEST_CASE("let_stopped can throw, calling set_error", "[adaptors][let_stopped]") {
     auto snd = ex::just_stopped() //
-             | ex::let_stopped([] {
+             | ex::let_stopped([]() -> decltype(ex::just(0)) {
                  throw std::logic_error{"err"};
-                 return ex::just(1);
                });
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);

@@ -77,7 +77,6 @@ namespace {
     auto snd = ex::just(13) //
              | ex::then([](int x) -> int {
                  throw std::logic_error{"err"};
-                 return x + 5;
                });
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
