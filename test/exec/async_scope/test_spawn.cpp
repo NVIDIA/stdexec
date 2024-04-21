@@ -28,7 +28,6 @@ namespace {
     friend auto tag_invoke(ex::connect_t, throwing_sender&& self, Receiver&& rcvr)
       -> operation<std::decay_t<Receiver>> {
       throw std::logic_error("cannot connect");
-      return {std::forward<Receiver>(rcvr)};
     }
 
     friend empty_env tag_invoke(stdexec::get_env_t, const throwing_sender&) noexcept {

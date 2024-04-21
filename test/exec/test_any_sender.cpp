@@ -291,9 +291,8 @@ namespace {
     auto [value] = *sync_wait(std::move(sender));
     CHECK(value == 42);
 
-    sender = just(21) | then([&](int v) {
+    sender = just(21) | then([&](int v) -> int {
                throw 420;
-               return 2 * v;
              });
     CHECK_THROWS_AS(sync_wait(std::move(sender)), int);
   }

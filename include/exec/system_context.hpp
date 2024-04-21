@@ -542,8 +542,6 @@ namespace exec {
         "environment on which to schedule bulk work.");
       return __not_a_sender<stdexec::__name_of<__Sender>>();
     }
-
-    STDEXEC_UNREACHABLE();
   }
 } // namespace exec
 

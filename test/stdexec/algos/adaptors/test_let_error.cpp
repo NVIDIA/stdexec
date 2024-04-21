@@ -85,9 +85,8 @@ namespace {
   TEST_CASE("let_error can be used to produce values (error to value)", "[adaptors][let_error]") {
     ex::sender auto snd =
       ex::just() //
-      | ex::then([] {
+      | ex::then([]() -> std::string {
           throw std::logic_error{"error description"};
-          return std::string{"ok"};
         }) //
       | ex::let_error([](std::exception_ptr eptr) {
           try {
@@ -102,11 +101,10 @@ namespace {
 
   TEST_CASE("let_error can be used to transform errors", "[adaptors][let_error]") {
     ex::sender auto snd = ex::just_error(1) //
-                        | ex::let_error([](int error_code) {
+                        | ex::let_error([](int error_code) -> decltype(ex::just_error(std::exception_ptr{})) {
                             char buf[20];
                             std::snprintf(buf, 20, "%d", error_code);
                             throw std::logic_error(buf);
-                            return ex::just_error(std::exception_ptr{}); // not reached
                           });
 
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
