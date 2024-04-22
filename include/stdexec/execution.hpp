@@ -3365,7 +3365,13 @@ namespace stdexec {
         } while (!__head.compare_exchange_weak(
           __old,
           static_cast<void*>(&__state),
+#if STDEXEC_TSAN() && STDEXEC_GCC() && (__GNUC__ <= 11)
+// GCC-11 TSAN has a false positive with memory_order_release,
+// even though release ordering is correct.
+          std::memory_order_acq_rel,
+#else
           std::memory_order_release,
+#endif
           std::memory_order_acquire));
 
         if constexpr (same_as<_Tag, __split::__split_t>) {
@@ -6009,7 +6015,31 @@ namespace stdexec {
           _Sender),
         tag_invoke_t(sync_wait_t, _Sender)>;
 
-      // The default implementation goes here:
+      // clang-format off
+      /// @brief Synchronously wait for the result of a sender, blocking the
+      ///         current thread.
+      ///
+      /// `sync_wait` connects and starts the given sender, and then drives a
+      ///         `run_loop` instance until the sender completes. Additional work
+      ///         can be delegated to the `run_loop` by scheduling work on the
+      ///         scheduler returned by calling `get_delegatee_scheduler` on the
+      ///         receiver's environment.
+      ///
+      /// @pre The sender must have a exactly one value completion signature. That
+      ///         is, it can only complete successfully in one way, with a single
+      ///         set of values.
+      ///
+      /// @retval success Returns an engaged `std::optional` containing the result
+      ///         values in a `std::tuple`.
+      /// @retval canceled Returns an empty `std::optional`.
+      /// @retval error Throws the error.
+      ///
+      /// @throws std::rethrow_exception(error) if the error has type
+      ///         `std::exception_ptr`.
+      /// @throws std::system_error(error) if the error has type
+      ///         `std::error_code`.
+      /// @throws error otherwise
+      // clang-format on
       template <class _Sender>
         requires sender_to<_Sender, __sync_receiver_for_t<_Sender>>
       auto apply_sender(_Sender&& __sndr) const -> std::optional<__sync_wait_result_t<_Sender>> {
