@@ -3366,7 +3366,13 @@ namespace stdexec {
         } while (!__head.compare_exchange_weak(
           __old,
           static_cast<void*>(&__state),
+#if STDEXEC_TSAN() && STDEXEC_GCC() && (__GNUC__ <= 11)
+// GCC-11 TSAN has a false positive with memory_order_release,
+// even though release ordering is correct.
+          std::memory_order_acq_rel,
+#else
           std::memory_order_release,
+#endif
           std::memory_order_acquire));
 
         if constexpr (same_as<_Tag, __split::__split_t>) {
