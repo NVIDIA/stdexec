@@ -16,7 +16,15 @@
 #pragma once
 
 #if __cplusplus < 202002L
-#  error This library requires the use of C++20.
+#  if defined(_MSC_VER) && !defined(__clang__)
+#    error This library requires the use of C++20. Use /Zc:__cplusplus to enable __cplusplus conformance.
+#  else
+#    error This library requires the use of C++20.
+#  endif
+#endif
+
+#if defined(_MSC_VER) && !defined(__clang__) && (!defined(_MSVC_TRADITIONAL) || _MSVC_TRADITIONAL)
+#  error This library requires the use of the new conforming preprocessor enabled by /Zc:preprocessor.
 #endif
 
 #if __has_include(<version>)
