@@ -136,7 +136,7 @@ struct _retry_sender {
     return {static_cast<S&&>(self.s_), static_cast<R&&>(r)};
   }
 
-  friend auto tag_invoke(stdexec::get_env_t, const _retry_sender& self) //
+  friend auto tag_invoke(stdexec::get_env_t, const _retry_sender& self)
     noexcept(noexcept(stdexec::get_env(self.s_))) -> std::invoke_result_t<stdexec::get_env_t, S> {
     return stdexec::get_env(self.s_);
   }
