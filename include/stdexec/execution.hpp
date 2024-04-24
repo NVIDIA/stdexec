@@ -3279,13 +3279,13 @@ namespace stdexec {
       }
     };
 
-    template <class _Cvref, class _CvrefSenderId, class _EnvId>
+    template <class _Cvref, class _CvrefSender, class _Env>
     using __completions_t = //
       __try_make_completion_signatures<
         // NOT TO SPEC:
         // See https://github.com/cplusplus/sender-receiver/issues/23
-        __cvref_t<_CvrefSenderId>,
-        __env_t<__t<_EnvId>>,
+        _CvrefSender,
+        __env_t<_Env>,
         completion_signatures<
           set_error_t(__minvoke<_Cvref, std::exception_ptr>),
           set_stopped_t()>, // NOT TO SPEC
