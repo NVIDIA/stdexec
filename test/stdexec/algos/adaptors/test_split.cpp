@@ -503,4 +503,34 @@ namespace {
       !stdexec::__callable<stdexec::get_completion_scheduler_t<ex::set_stopped_t>, snd_t>);
     (void) snd;
   }
+
+  struct my_sender {
+    using sender_concept = stdexec::sender_t;
+    using is_sender = void;
+
+    using completion_signatures = ex::completion_signatures_of_t<decltype(ex::just())>;
+
+    template <class Recv>
+    friend auto tag_invoke(ex::connect_t, my_sender&& self, Recv&& recv) {
+      return ex::connect(ex::just(), std::forward<Recv>(recv));
+    }
+
+    template <class Recv>
+    friend auto tag_invoke(ex::connect_t, const my_sender& self, Recv&& recv) {
+      return ex::connect(ex::just(), std::forward<Recv>(recv));
+    }
+  };
+
+  TEST_CASE("split accepts a custom sender", "[adaptors][split]") {
+    auto snd1 = my_sender();
+    auto snd2 = ex::split(std::move(snd1));
+    static_assert(stdexec::__well_formed_sender<decltype(snd1)>);
+    static_assert(stdexec::__well_formed_sender<decltype(snd2)>);
+    using Snd = decltype(snd2);
+    static_assert(ex::enable_sender<Snd>);
+    static_assert(ex::sender<Snd>);
+    static_assert(ex::same_as<ex::env_of_t<Snd>, empty_env>);
+    (void) snd1;
+    (void) snd2;
+  }
 } // namespace
