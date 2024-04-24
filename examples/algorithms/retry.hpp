@@ -132,7 +132,7 @@ struct _retry_sender {
   }
 
   template <stdexec::receiver R>
-  friend _op<S, R> tag_invoke(stdexec::connect_t, _retry_sender&& self, R r) {
+  friend auto tag_invoke(stdexec::connect_t, _retry_sender&& self, R r) -> _op<S, R> {
     return {static_cast<S&&>(self.s_), static_cast<R&&>(r)};
   }
 
