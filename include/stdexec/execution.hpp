@@ -3578,7 +3578,7 @@ namespace stdexec {
     struct __rcvr_vfun<_Tag(_Args...)> {
       void (*__complete_)(void*, _Args&&...) noexcept;
 
-      void operator()(void* __rcvr, _Tag __tag, _Args&&... __args) const noexcept {
+      void operator()(void* __rcvr, _Tag, _Args&&... __args) const noexcept {
         __complete_(__rcvr, std::forward<_Args>(__args)...);
       }
     };
@@ -4712,7 +4712,7 @@ namespace stdexec {
     }
 
     template <class _Env>
-    auto __make_transform_fn(const _Env& __env) {
+    auto __make_transform_fn(const _Env&) {
       return [&]<class _Scheduler, class... _Values>(_Scheduler&& __sched, _Values&&... __vals) {
         return transfer(just(static_cast<_Values&&>(__vals)...), static_cast<_Scheduler&&>(__sched));
       };
@@ -5181,7 +5181,7 @@ namespace stdexec {
     };
 
     template <class _Env>
-    static auto __mk_state_fn(const _Env& __env) noexcept {
+    static auto __mk_state_fn(const _Env&) noexcept {
       return [&]<__max1_sender<__env_t<_Env>>... _Child>(__ignore, __ignore, _Child&&...) {
         using _Traits = __traits<_Env, _Child...>;
         using _ErrorsVariant = typename _Traits::__errors_variant;
@@ -5279,7 +5279,7 @@ namespace stdexec {
       };
 
       template <class _State, class _Receiver, class _Error>
-      static void __set_error(_State& __state, _Receiver& __rcvr, _Error&& __err) noexcept {
+      static void __set_error(_State& __state, _Receiver&, _Error&& __err) noexcept {
         // TODO: What memory orderings are actually needed here?
         if (__error != __state.__state_.exchange(__error)) {
           __state.__stop_source_.request_stop();
@@ -5354,7 +5354,7 @@ namespace stdexec {
       }
 
       template <class _Sender, class _Env>
-      static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
+      static auto transform_sender(_Sender&& __sndr, const _Env&) {
         // transform the when_all_with_variant into a regular when_all (looking for
         // early when_all customizations), then transform it again to look for
         // late customizations.
@@ -5400,7 +5400,7 @@ namespace stdexec {
       }
 
       template <class _Sender, class _Env>
-      static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
+      static auto transform_sender(_Sender&& __sndr, const _Env&) {
         // transform the transfer_when_all into a regular transform | when_all
         // (looking for early customizations), then transform it again to look for
         // late customizations.
@@ -5443,7 +5443,7 @@ namespace stdexec {
       }
 
       template <class _Sender, class _Env>
-      static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
+      static auto transform_sender(_Sender&& __sndr, const _Env&) {
         // transform the transfer_when_all_with_variant into regular transform_when_all
         // and into_variant calls/ (looking for early customizations), then transform it
         // again to look for late customizations.
@@ -5556,7 +5556,7 @@ namespace stdexec {
       };
 
       static constexpr auto get_state = //
-        []<class _Self, class _Receiver>(const _Self&, _Receiver& __rcvr) noexcept {
+        []<class _Self, class _Receiver>(const _Self&, _Receiver&) noexcept {
           using __query = __data_of<_Self>;
           using __result = __call_result_t<__query, env_of_t<_Receiver>>;
           return __state<__query, __result>();
