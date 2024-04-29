@@ -71,22 +71,33 @@ rapids_cmake_build_type(Release)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
+# Don't build tests if configuring stdexec as a submodule of another
+# CMake project, unless they explicitly set STDEXEC_BUILD_TESTS=TRUE
+if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    set(STDEXEC_BUILD_TESTS_DEFAULT ON)
+else()
+    set(STDEXEC_BUILD_TESTS_DEFAULT OFF)
+endif()
+option(STDEXEC_BUILD_TESTS "Build stdexec tests" ${STDEXEC_BUILD_TESTS_DEFAULT})
+
 ##############################################################################
 # - Dependencies -------------------------------------------------------------
 
 # Initialize CPM
 rapids_cpm_init(OVERRIDE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/versions.json)
 
-# Add Catch2
-set(Catch2_VERSION 2.13.6)
-# Always download it, don't attempt to do `find_package(Catch2)` first
-set(CPM_DOWNLOAD_Catch2 TRUE)
-rapids_cpm_find(Catch2 ${Catch2_VERSION}
-  GLOBAL_TARGETS Catch2::Catch2
-  BUILD_EXPORT_SET stdexec-exports
-  CPM_ARGS
-    URL https://github.com/catchorg/Catch2/archive/refs/tags/v${Catch2_VERSION}.zip
-)
+if (STDEXEC_BUILD_TESTS)
+    # Add Catch2
+    set(Catch2_VERSION 2.13.6)
+    # Always download it, don't attempt to do `find_package(Catch2)` first
+    set(CPM_DOWNLOAD_Catch2 TRUE)
+    rapids_cpm_find(Catch2 ${Catch2_VERSION}
+      GLOBAL_TARGETS Catch2::Catch2
+      BUILD_EXPORT_SET stdexec-exports
+      CPM_ARGS
+        URL https://github.com/catchorg/Catch2/archive/refs/tags/v${Catch2_VERSION}.zip
+    )
+endif()
 
 # Add ICM
 set(icm_VERSION 1.5.0)
@@ -369,12 +380,9 @@ option(STDEXEC_ENABLE_IO_URING_TESTS "Enable io_uring tests" ${STDEXEC_FOUND_IO_
 
 option(STDEXEC_BUILD_DOCS "Build stdexec documentation" OFF)
 option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
-option(STDEXEC_BUILD_TESTS "Build stdexec tests" ON)
 option(BUILD_TESTING "" ${STDEXEC_BUILD_TESTS})
 
-# Don't build tests if configuring stdexec as a submodule of another
-# CMake project, unless they explicitly set STDEXEC_BUILD_TESTS=TRUE
-if ((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) OR STDEXEC_BUILD_TESTS)
+if (STDEXEC_BUILD_TESTS)
     # CTest automatically calls enable_testing() if BUILD_TESTING is ON
     # https://cmake.org/cmake/help/latest/module/CTest.html#module:CTest
     include(CTest)
