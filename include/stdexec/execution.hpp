@@ -3132,10 +3132,14 @@ namespace stdexec {
               .__release()) {
       }
 
-      ~__local_state() {
-        if (!__completed_.load()) {
+      void __release_shared_state() noexcept {
+        if (__holds_ref_.exchange(false)) {
           __sh_state_->__dec_ref();
         }
+      }
+
+      ~__local_state() {
+        __release_shared_state();
       }
 
       struct __on_stop_request_fn {
@@ -3174,14 +3178,13 @@ namespace stdexec {
         // __notify function is called from the shared state's __notify_waiters function, which
         // first sets __waiters_ to the completed state. As a result, the attempt to remove `this`
         // from the waiters list above will fail and this stop request is ignored.
-        [[maybe_unused]] bool __was_completed_already = __completed_.exchange(true);
-        STDEXEC_ASSERT(!__was_completed_already);
-        __sh_state_->__dec_ref();
+        __release_shared_state();
         stdexec::set_stopped(static_cast<_Receiver&&>(this->__receiver()));
       }
 
       // This is called from __shared_state::__notify_waiters when the input async operation
       // completes; or, if it has already completed when start is called, it is called from start:
+      // __notify cannot race with __on_stop_request. See comment in __on_stop_request.
       template <class _Tag>
       static void __notify(__local_state_base* __base) noexcept {
         auto* const __self = static_cast<__local_state*>(__base);
@@ -3193,19 +3196,23 @@ namespace stdexec {
 
         __self->__on_stop_.reset();
 
-        // __notify cannot race with __on_stop_request. See comment in __on_stop_request.
+        // Copy this into a local because the call to std::visit can cause __self to be deleted.
+        auto* __sh_state = __self->__sh_state_;
+        bool const __holds_ref_ = __self->__holds_ref_.exchange(false);
+
         auto __visitor = __make_notify_visitor(__self->__receiver());
-        std::visit(__visitor, static_cast<__cv_variant_t&&>(__self->__sh_state_->__results_));
-        // The following __dec_ref cannot cause the deletion of the shared state when called from
-        // __notify_waiters. The "started" bit is still set, which keeps the shared state alive.
-        [[maybe_unused]] bool __was_completed_already = __self->__completed_.exchange(true);
-        STDEXEC_ASSERT(!__was_completed_already);
-        __self->__sh_state_->__dec_ref();
+        std::visit(__visitor, static_cast<__cv_variant_t&&>(__sh_state->__results_));
+
+        // Release the reference on the shared state after we complete the receiver since it is
+        // possible for this to cause the destruction of the shared state. (See `start` below.)
+        if (__holds_ref_) {
+          __sh_state->__dec_ref();
+        }
       }
 
       std::optional<__on_stop_cb_t> __on_stop_{};
       __sh_state_t* __sh_state_;
-      std::atomic<bool> __completed_{false};
+      std::atomic<bool> __holds_ref_{true};
     };
 
     template <class _CvrefSenderId, class _EnvId>
@@ -3456,7 +3463,8 @@ namespace stdexec {
             __self.template __notify<_Tag>(&__self);
           } else if (__stop_requested) {
             __lock.unlock();
-            std::exchange(__self.__sh_state_, nullptr)->__dec_ref();
+            __self.__on_stop_.reset();
+            __self.__release_shared_state();
             stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr));
           } else {
             // The operation is still running. Add this operation to the waiters list.
