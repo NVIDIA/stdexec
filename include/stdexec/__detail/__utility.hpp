@@ -33,6 +33,6 @@ namespace stdexec {
 
   inline constexpr auto __decay_copy = //
     []<class _Ty>(_Ty&& __ty) noexcept(__nothrow_decay_copyable<_Ty>) {
-      return static_cast<_Ty &&>(__ty);
+      return static_cast<_Ty&&>(__ty);
     };
 } // namespace stdexec

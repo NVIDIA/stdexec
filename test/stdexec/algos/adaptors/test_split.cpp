@@ -220,14 +220,16 @@ namespace {
                     // op1 into the list of waiting operations.
     REQUIRE(counter == 0);
     REQUIRE(!called);
-    ssource.request_stop();
-    ex::start(op2); // Should immediately call set_stopped without
-                    // getting added to the list of waiting operations.
+    ssource.request_stop(); // This executes op1's stop callback, which
+                            // completes op1 with "stopped". counter == 1
     REQUIRE(counter == 1);
+    ex::start(op2); // Should immediately call set_stopped without getting
+                    // added to the list of waiting operations. counter == 2
+    REQUIRE(counter == 2);
     REQUIRE(!called);
     sched.start_next(); // Impulse scheduler notices stop has been requested
-                        // and completes op1 with "stopped", which notifies
-                        // all waiting states.
+                        // and completes the underlying operation (just | then(...))
+                        // with "stopped".
     REQUIRE(counter == 2);
     REQUIRE(!called);
   }

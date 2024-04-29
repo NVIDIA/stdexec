@@ -3127,13 +3127,13 @@ namespace stdexec {
 
       explicit __local_state(_CvrefSender&& __sndr) noexcept
         : __local_state::__local_state_base{{}, &__notify<tag_of_t<_CvrefSender>>}
-        , __sh_state_(__decay_copy(
-            __sndr.apply(static_cast<_CvrefSender&&>(__sndr), __detail::__get_data()))
+        , __sh_state_(
+            __decay_copy(__sndr.apply(static_cast<_CvrefSender&&>(__sndr), __detail::__get_data()))
               .__release()) {
       }
 
       ~__local_state() {
-        if (__sh_state_) {
+        if (!__completed_.load()) {
           __sh_state_->__dec_ref();
         }
       }
@@ -3151,8 +3151,7 @@ namespace stdexec {
 
       void __register_stop_callback() noexcept {
         __on_stop_.emplace(
-          get_stop_token(stdexec::get_env(this->__receiver())),
-          __on_stop_request_fn{this});
+          get_stop_token(stdexec::get_env(this->__receiver())), __on_stop_request_fn{this});
       }
 
       void __on_stop_request() noexcept {
@@ -3165,9 +3164,8 @@ namespace stdexec {
           //   3. The underlying operation has already completed.
           //
           // In each case, the right thing to do is nothing. If (1) then we raced with another
-          // thread and lost. In that case, we don't need to do anything; the other thread will take
-          // care of it. If (2) then `start` will take care of it. If (3) then this stop request
-          // is safe to ignore.
+          // thread and lost. In that case, the other thread will take care of it. If (2) then
+          // `start` will take care of it. If (3) then this stop request is safe to ignore.
           if (!__sh_state_->__waiters_.remove(this))
             return;
         }
@@ -3176,7 +3174,9 @@ namespace stdexec {
         // __notify function is called from the shared state's __notify_waiters function, which
         // first sets __waiters_ to the completed state. As a result, the attempt to remove `this`
         // from the waiters list above will fail and this stop request is ignored.
-        std::exchange(__sh_state_, nullptr)->__dec_ref();
+        [[maybe_unused]] bool __was_completed_already = __completed_.exchange(true);
+        STDEXEC_ASSERT(!__was_completed_already);
+        __sh_state_->__dec_ref();
         stdexec::set_stopped(static_cast<_Receiver&&>(this->__receiver()));
       }
 
@@ -3195,14 +3195,17 @@ namespace stdexec {
 
         // __notify cannot race with __on_stop_request. See comment in __on_stop_request.
         auto __visitor = __make_notify_visitor(__self->__receiver());
-        std::visit(__visitor, static_cast<__cv_variant_t &&>(__self->__sh_state_->__results_));
+        std::visit(__visitor, static_cast<__cv_variant_t&&>(__self->__sh_state_->__results_));
         // The following __dec_ref cannot cause the deletion of the shared state when called from
         // __notify_waiters. The "started" bit is still set, which keeps the shared state alive.
-        std::exchange(__self->__sh_state_, nullptr)->__dec_ref();
+        [[maybe_unused]] bool __was_completed_already = __self->__completed_.exchange(true);
+        STDEXEC_ASSERT(!__was_completed_already);
+        __self->__sh_state_->__dec_ref();
       }
 
       std::optional<__on_stop_cb_t> __on_stop_{};
       __sh_state_t* __sh_state_;
+      std::atomic<bool> __completed_{false};
     };
 
     template <class _CvrefSenderId, class _EnvId>
@@ -3216,18 +3219,21 @@ namespace stdexec {
 
         template <class... _As>
         STDEXEC_ATTRIBUTE((always_inline))
-        STDEXEC_MEMFN_DECL(void set_value)(this __t&& __self, _As&&... __as) noexcept {
-          __self.__sh_state_->__complete(set_value_t(), static_cast<_As &&>(__as)...);
+        STDEXEC_MEMFN_DECL(
+          void set_value)(this __t&& __self, _As&&... __as) noexcept {
+          __self.__sh_state_->__complete(set_value_t(), static_cast<_As&&>(__as)...);
         }
 
         template <class _Error>
         STDEXEC_ATTRIBUTE((always_inline))
-        STDEXEC_MEMFN_DECL(void set_error)(this __t&& __self, _Error&& __err) noexcept {
-          __self.__sh_state_->__complete(set_error_t(), static_cast<_Error &&>(__err));
+        STDEXEC_MEMFN_DECL(
+          void set_error)(this __t&& __self, _Error&& __err) noexcept {
+          __self.__sh_state_->__complete(set_error_t(), static_cast<_Error&&>(__err));
         }
 
         STDEXEC_ATTRIBUTE((always_inline))
-        STDEXEC_MEMFN_DECL(void set_stopped)(this __t&& __self) noexcept {
+        STDEXEC_MEMFN_DECL(
+          void set_stopped)(this __t&& __self) noexcept {
           __self.__sh_state_->__complete(set_stopped_t());
         }
 
@@ -3252,14 +3258,18 @@ namespace stdexec {
           std::tuple<set_stopped_t>, // Initial state of the variant is set_stopped
           std::tuple<set_error_t, std::exception_ptr>>>;
 
+      static constexpr std::size_t __started_bit = 1ul;
+      static constexpr std::size_t __completed_bit = 2ul;
+
+      // The ref count is used to track the number of waiters, whether the shared operation has
+      // been started, and whether it is completed. A waiter is a sender or an operation state.
       std::atomic<std::size_t> __ref_count_{};
       inplace_stop_source __stop_source_{};
       __env_t<_Env> __env_;
       __variant_t __results_{}; // Defaults to the "set_stopped" state
-      std::mutex __mutex_; // This mutex guards access to __waiters_.
+      std::mutex __mutex_;      // This mutex guards access to __waiters_.
       __waiters_t __waiters_{};
       connect_result_t<_CvrefSender, __receiver_t> __op_state2_;
-      static constexpr std::size_t __started_bit = 1ul;
 
       explicit __shared_state(_CvrefSender&& __sndr, _Env __env)
         : __env_(__env::__join(
@@ -3269,20 +3279,36 @@ namespace stdexec {
       }
 
       void __inc_ref() noexcept {
-        __ref_count_.fetch_add(2, std::memory_order_relaxed);
+        __ref_count_.fetch_add(4, std::memory_order_relaxed);
       }
 
       void __dec_ref() noexcept {
-        std::size_t __old_ref_count = __ref_count_.fetch_sub(2, std::memory_order_release);
+        std::size_t __old_ref_count = __ref_count_.fetch_sub(4, std::memory_order_acq_rel);
 
-        if (4 > __old_ref_count) {
+        // Here are the old ref counts of significance and what they mean:
+        // 8. There is another waiter that is still using the shared state.
+        // 7. The last operation state has finished using the shared state, and the work has both
+        //    started and completed. The shared state is no longer needed.
+        // 6. Would indicate that the work has completed but was never started. This indicates a
+        //    bug.
+        // 5. The last operation state has finished using the shared state, and the work has not
+        //    completed. The shared state is still needed.
+        // 4. The last waiter has finished using the shared state, and the work has not started and
+        //    never will. The shared state is no longer needed.
+        // 3. Invalid
+        // 2. Invalid
+        // 1. Invalid
+        if (8 > __old_ref_count) {
+          STDEXEC_ASSERT(3 < __old_ref_count && 6 != __old_ref_count);
+
           // The last waiter has given up the ghost. Detach from the underlying operation.
-          // NOTE: this requests cancellation of the underlying operation, but does not wait for it.
+          // NOTE: this requests cancellation of the underlying operation.
           __detach();
 
-          // If the ref count has dropped to zero, delete the shared state.
-          if (2 == __old_ref_count) {
-            __destroy();
+          // If the ref count is 5, then the shared operation is still running. Otherwise, it is
+          // time to destroy the shared state.
+          if (5 != __old_ref_count) {
+            delete this;
           }
         }
       }
@@ -3294,8 +3320,7 @@ namespace stdexec {
         // only one should start the underlying async operation. Set the low-order "started" bit
         // in the shared state's ref count. If the previous value was even, then we are the first
         // consumer to start, so start the underlying async operation.
-        auto __old_ref_count = //
-          __ref_count_.fetch_or(__started_bit, std::memory_order_relaxed);
+        auto __old_ref_count = __ref_count_.fetch_or(__started_bit, std::memory_order_relaxed);
         if (__started_bit == (__old_ref_count & __started_bit)) {
           // Already started, do nothing
           return;
@@ -3340,27 +3365,21 @@ namespace stdexec {
         }
 
         STDEXEC_ASSERT(__waiters_copy.front() != __local_state_base::__get_tombstone());
-        for (__local_state_base* __item : __waiters_copy) {
+        for (__local_state_base* __item: __waiters_copy) {
           __item->__notify_(__item);
         }
 
-        // Clear the "started" bit. If the ref count drops to zero, delete the shared state.
-        if (1 == __ref_count_.fetch_and(~__started_bit, std::memory_order_relaxed)) {
-          __destroy();
+        // Set the "completed" bit in the shared state's ref count. If the old ref count
+        // was 1, then there are no more waiters. It is time to destroy the shared state.
+        auto __old_ref_count = //
+          __ref_count_.fetch_or(__completed_bit, std::memory_order_acq_rel);
+        if (__started_bit == __old_ref_count) {
+          delete this;
         }
       }
 
       void __detach() noexcept {
         __stop_source_.request_stop();
-      }
-
-      void __destroy() noexcept {
-        // This atomic thread fence is because the ref count is decremented with release semantics.
-        std::atomic_thread_fence(std::memory_order_acquire);
-        // TSan does not support std::atomic_thread_fence, so we need to use the TSan-specific
-        // __tsan_acquire instead:
-        STDEXEC_TSAN(__tsan_acquire(&__ref_count_));
-        delete this;
       }
     };
 
@@ -3418,17 +3437,16 @@ namespace stdexec {
         // count until after __self has been added to the waiters list.
         __self.__register_stop_callback();
 
-        // If the receiver's stop token has already been signaled, don't bother trying to start
-        // the underlying operation.
-        if (stdexec::get_stop_token(stdexec::get_env(__rcvr)).stop_requested()) {
-          std::exchange(__self.__sh_state_, nullptr)->__dec_ref();
-          stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr));
-          return;
-        }
-
         // We haven't put __self in the waiters list yet and we are holding a ref count to
         // __sh_state_, so nothing can happen to the __sh_state_ here.
-        __self.__sh_state_->__try_start();
+
+        // If the receiver's stop token has already been signaled, don't bother trying to start
+        // the underlying operation.
+        bool const __stop_requested =
+          stdexec::get_stop_token(stdexec::get_env(__rcvr)).stop_requested();
+        if (!__stop_requested) {
+          __self.__sh_state_->__try_start();
+        }
 
         if (std::unique_lock __lock{__self.__sh_state_->__mutex_}) {
           if (__self.__sh_state_->__waiters_.front() == __local_state_base::__get_tombstone()) {
@@ -3436,6 +3454,10 @@ namespace stdexec {
             // of waiters, pass the result to the receiver by calling __notify on the local state.
             __lock.unlock();
             __self.template __notify<_Tag>(&__self);
+          } else if (__stop_requested) {
+            __lock.unlock();
+            std::exchange(__self.__sh_state_, nullptr)->__dec_ref();
+            stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr));
           } else {
             // The operation is still running. Add this operation to the waiters list.
             __self.__sh_state_->__waiters_.push_front(&__self);
