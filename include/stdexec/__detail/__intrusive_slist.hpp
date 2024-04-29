@@ -23,7 +23,7 @@
 #include <utility>
 
 namespace stdexec {
-  namespace __queue {
+  namespace __slist {
     template <auto _Next>
     class __intrusive_slist;
 
@@ -144,8 +144,8 @@ namespace stdexec {
      private:
       _Item* __head_ = nullptr;
     };
-  } // namespace __queue
+  } // namespace __slist
 
-  using __queue::__intrusive_slist;
+  using __slist::__intrusive_slist;
 
 } // namespace stdexec
