@@ -156,7 +156,7 @@ target_compile_options(stdexec INTERFACE
 
 # Increase the concepts diagnostics depth for GCC
 target_compile_options(stdexec INTERFACE
-                       $<$<CXX_COMPILER_ID:GNU>:-fconcepts-diagnostics-depth=10>
+                       $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fconcepts-diagnostics-depth=10>
                        )
 
 # Do you want a preprocessor that works? Picky, picky.
