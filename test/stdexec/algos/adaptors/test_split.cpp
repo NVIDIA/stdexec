@@ -183,14 +183,14 @@ namespace {
         }),
       exec::with(ex::get_stop_token, ssource.get_token()));
     auto op1 = ex::connect(sndr, expect_value_receiver{7});
-    auto op2 = ex::connect(sndr, expect_value_receiver{7});
+    auto op2 = ex::connect(sndr, expect_value_receiver{42});
     REQUIRE(counter == 0);
     ex::start(op1); // operation starts and finishes.
     REQUIRE(counter == 0);
     REQUIRE(called);
     ssource.request_stop();
-    ex::start(op2); // operation is done, result is delivered.
-    REQUIRE(counter == 0);
+    ex::start(op2); // operation completes immediately with stopped.
+    REQUIRE(counter == 1);
   }
 
   TEST_CASE("split forwards external stop signal (3)", "[adaptors][split]") {

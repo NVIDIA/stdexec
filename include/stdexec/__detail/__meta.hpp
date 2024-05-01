@@ -20,47 +20,13 @@
 #include <exception>
 #include <type_traits>
 #include <utility>
+
 #include "__config.hpp"
-#include "__type_traits.hpp"
 #include "__concepts.hpp"
+#include "__type_traits.hpp"
+#include "__utility.hpp"
 
 namespace stdexec {
-
-  template <class...>
-  struct __undefined;
-
-  struct __ { };
-
-  struct __ignore {
-    __ignore() = default;
-
-    STDEXEC_ATTRIBUTE((always_inline))
-    constexpr __ignore(auto&&...) noexcept {
-    }
-  };
-
-  struct __none_such { };
-
-  namespace {
-    struct __anon { };
-  } // namespace
-
-  struct __immovable {
-    __immovable() = default;
-   private:
-    STDEXEC_IMMOVABLE(__immovable);
-  };
-
-  struct __move_only {
-    __move_only() = default;
-
-    __move_only(__move_only&&) noexcept = default;
-    auto operator=(__move_only&&) noexcept -> __move_only& = default;
-
-    __move_only(const __move_only&) = delete;
-    auto operator=(const __move_only&) -> __move_only& = delete;
-  };
-
   template <class _Tp>
   using __t = typename _Tp::__t;
 

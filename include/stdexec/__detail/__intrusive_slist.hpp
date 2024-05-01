@@ -91,8 +91,11 @@ namespace stdexec {
       }
 
       struct iterator {
+        using iterator_category = std::forward_iterator_tag;
         using difference_type = std::ptrdiff_t;
         using value_type = _Item*;
+        using reference = _Item*;
+        using pointer = _Item**;
 
         _Item* __item_ = nullptr;
 

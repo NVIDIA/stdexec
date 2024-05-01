@@ -2399,23 +2399,6 @@ namespace stdexec {
   using __closure::__binder_back;
 
   namespace __adaptors {
-    STDEXEC_PRAGMA_PUSH()
-    STDEXEC_PRAGMA_IGNORE_GNU("-Wold-style-cast")
-
-    // A derived-to-base cast that works even when the base is not
-    // accessible from derived.
-    template <class _Tp, class _Up>
-    STDEXEC_ATTRIBUTE((host, device))
-    auto
-      __c_cast(_Up&& u) noexcept -> __copy_cvref_t<_Up&&, _Tp>
-      requires __decays_to<_Tp, _Tp>
-    {
-      static_assert(std::is_reference_v<__copy_cvref_t<_Up&&, _Tp>>);
-      static_assert(STDEXEC_IS_BASE_OF(_Tp, __decay_t<_Up>));
-      return (__copy_cvref_t<_Up&&, _Tp>) static_cast<_Up&&>(u);
-    }
-    STDEXEC_PRAGMA_POP()
-
     namespace __no {
       struct __nope { };
 
@@ -2525,7 +2508,7 @@ namespace stdexec {
       static auto
         __get_base(_Dp&& __self) noexcept -> __base_t<_Dp> {
         if constexpr (__has_base) {
-          return __c_cast<receiver_adaptor>(static_cast<_Dp&&>(__self)).base();
+          return __c_upcast<receiver_adaptor>(static_cast<_Dp&&>(__self)).base();
         } else {
           return static_cast<_Dp&&>(__self).base();
         }
@@ -3101,11 +3084,6 @@ namespace stdexec {
 
       __notify_fn* __notify_{};
       __local_state_base* __next_{};
-
-      static __local_state_base* __get_tombstone() noexcept {
-        static __local_state_base __tombstone_{{}, nullptr, nullptr};
-        return &__tombstone_;
-      }
     };
 
     template <class _CvrefSender, class _Env>
@@ -3120,45 +3098,20 @@ namespace stdexec {
       : __local_state_base
       , __enable_receiver_from_this<_CvrefSender, _Receiver> {
       using __tag_t = tag_of_t<_CvrefSender>;
+      using __stok_t = stop_token_of_t<env_of_t<_Receiver>>;
       static_assert(__one_of<__tag_t, __split::__split_t, __ensure_started::__ensure_started_t>);
-
-      using __data_t = __decay_t<__data_of<_CvrefSender>>;
-      using __sh_state_t = __mapply<__q<__mfront>, __data_t>;
 
       explicit __local_state(_CvrefSender&& __sndr) noexcept
         : __local_state::__local_state_base{{}, &__notify<tag_of_t<_CvrefSender>>}
-        , __sh_state_(
-            __decay_copy(__sndr.apply(static_cast<_CvrefSender&&>(__sndr), __detail::__get_data()))
-              .__release()) {
-      }
-
-      void __release_shared_state() noexcept {
-        if (__holds_ref_.exchange(false)) {
-          __sh_state_->__dec_ref();
-        }
+        , __sh_state_(__get_sh_state(__sndr)) {
       }
 
       ~__local_state() {
-        __release_shared_state();
+        __sh_state_t::__detach(__sh_state_);
       }
 
-      struct __on_stop_request_fn {
-        __local_state* __self_;
-
-        void operator()() noexcept {
-          __self_->__on_stop_request();
-        }
-      };
-
-      using __on_stop_cb_t = //
-        stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>&>, __on_stop_request_fn>;
-
-      void __register_stop_callback() noexcept {
-        __on_stop_.emplace(
-          get_stop_token(stdexec::get_env(this->__receiver())), __on_stop_request_fn{this});
-      }
-
-      void __on_stop_request() noexcept {
+      // Stop request callback:
+      void operator()() noexcept {
         // We reach here when a split/ensure_started sender has received a stop request from the
         // receiver to which it is connected.
         if (std::unique_lock __lock{__sh_state_->__mutex_}) {
@@ -3178,7 +3131,7 @@ namespace stdexec {
         // __notify function is called from the shared state's __notify_waiters function, which
         // first sets __waiters_ to the completed state. As a result, the attempt to remove `this`
         // from the waiters list above will fail and this stop request is ignored.
-        __release_shared_state();
+        __sh_state_t::__detach(__sh_state_);
         stdexec::set_stopped(static_cast<_Receiver&&>(this->__receiver()));
       }
 
@@ -3196,23 +3149,19 @@ namespace stdexec {
 
         __self->__on_stop_.reset();
 
-        // Copy this into a local because the call to std::visit can cause __self to be deleted.
-        auto* __sh_state = __self->__sh_state_;
-        bool const __holds_ref_ = __self->__holds_ref_.exchange(false);
-
         auto __visitor = __make_notify_visitor(__self->__receiver());
-        std::visit(__visitor, static_cast<__cv_variant_t&&>(__sh_state->__results_));
-
-        // Release the reference on the shared state after we complete the receiver since it is
-        // possible for this to cause the destruction of the shared state. (See `start` below.)
-        if (__holds_ref_) {
-          __sh_state->__dec_ref();
-        }
+        std::visit(__visitor, static_cast<__cv_variant_t&&>(__self->__sh_state_->__results_));
       }
 
-      std::optional<__on_stop_cb_t> __on_stop_{};
-      __sh_state_t* __sh_state_;
-      std::atomic<bool> __holds_ref_{true};
+      static auto __get_sh_state(_CvrefSender& __sndr) noexcept {
+        return __sndr.apply(static_cast<_CvrefSender&&>(__sndr), __detail::__get_data()).__sh_state_;
+      }
+
+      using __sh_state_ptr_t = __result_of<__get_sh_state, _CvrefSender&>;
+      using __sh_state_t = typename __sh_state_ptr_t::element_type;
+
+      std::optional<stop_callback_for_t<__stok_t, __local_state&>> __on_stop_{};
+      __sh_state_ptr_t __sh_state_;
     };
 
     template <class _CvrefSenderId, class _EnvId>
@@ -3253,10 +3202,16 @@ namespace stdexec {
       };
     };
 
+    inline __local_state_base* __get_tombstone() noexcept {
+      static __local_state_base __tombstone_{{}, nullptr, nullptr};
+      return &__tombstone_;
+    }
+
     template <class _CvrefSender, class _Env>
-    struct __shared_state {
+    struct __shared_state
+      : private __enable_intrusive_from_this<__shared_state<_CvrefSender, _Env>, 2> {
       using __receiver_t = __t<__receiver<__cvref_id<_CvrefSender>, __id<_Env>>>;
-      using __waiters_t = __intrusive_slist<&__local_state_base::__next_>;
+      using __waiters_list_t = __intrusive_slist<&__local_state_base::__next_>;
       using __variant_t = __compl_sigs::__for_all_sigs<
         __completion_signatures_of_t<_CvrefSender, _Env>,
         __q<__decayed_tuple>,
@@ -3265,57 +3220,45 @@ namespace stdexec {
           std::tuple<set_stopped_t>, // Initial state of the variant is set_stopped
           std::tuple<set_error_t, std::exception_ptr>>>;
 
-      static constexpr std::size_t __started_bit = 1ul;
-      static constexpr std::size_t __completed_bit = 2ul;
+      static constexpr std::size_t __started_bit = 0;
+      static constexpr std::size_t __completed_bit = 1;
 
-      // The ref count is used to track the number of waiters, whether the shared operation has
-      // been started, and whether it is completed. A waiter is a sender or an operation state.
-      std::atomic<std::size_t> __ref_count_{};
       inplace_stop_source __stop_source_{};
       __env_t<_Env> __env_;
       __variant_t __results_{}; // Defaults to the "set_stopped" state
       std::mutex __mutex_;      // This mutex guards access to __waiters_.
-      __waiters_t __waiters_{};
-      connect_result_t<_CvrefSender, __receiver_t> __op_state2_;
+      __waiters_list_t __waiters_{};
+      connect_result_t<_CvrefSender, __receiver_t> __shared_op_;
 
       explicit __shared_state(_CvrefSender&& __sndr, _Env __env)
         : __env_(__env::__join(
           __env::__with(__stop_source_.get_token(), get_stop_token),
           static_cast<_Env&&>(__env)))
-        , __op_state2_(connect(static_cast<_CvrefSender&&>(__sndr), __receiver_t{this})) {
+        , __shared_op_(connect(static_cast<_CvrefSender&&>(__sndr), __receiver_t{this})) {
+        // add one ref count to account for the case where there are no watchers left but the
+        // shared op is still running.
+        this->__inc_ref();
       }
 
-      void __inc_ref() noexcept {
-        __ref_count_.fetch_add(4, std::memory_order_relaxed);
-      }
+      // The caller of this wants to release their reference to the shared state. The ref
+      // count must be at least 2 at this point: one owned by the caller, and one added in the
+      // __shared_state ctor.
+      static void __detach(__intrusive_ptr<__shared_state, 2>& __ptr) noexcept {
+        // Ask the intrusive ptr to stop managing the reference count so we can manage it manually.
+        if (auto* __self = __ptr.__release_()) {
+          auto __old = __self->__dec_ref();
+          STDEXEC_ASSERT(__count(__old) >= 2);
 
-      void __dec_ref() noexcept {
-        std::size_t __old_ref_count = __ref_count_.fetch_sub(4, std::memory_order_acq_rel);
+          if (__count(__old) == 2) {
+            // The last watcher has released its reference. Asked the shared op to stop.
+            static_cast<__shared_state*>(__self)->__stop_source_.request_stop();
 
-        // Here are the old ref counts of significance and what they mean:
-        // 8. There is another waiter that is still using the shared state.
-        // 7. The last operation state has finished using the shared state, and the work has both
-        //    started and completed. The shared state is no longer needed.
-        // 6. Would indicate that the work has completed but was never started. This indicates a
-        //    bug.
-        // 5. The last operation state has finished using the shared state, and the work has not
-        //    completed. The shared state is still needed.
-        // 4. The last waiter has finished using the shared state, and the work has not started and
-        //    never will. The shared state is no longer needed.
-        // 3. Invalid
-        // 2. Invalid
-        // 1. Invalid
-        if (8 > __old_ref_count) {
-          STDEXEC_ASSERT(3 < __old_ref_count && 6 != __old_ref_count);
-
-          // The last waiter has given up the ghost. Detach from the underlying operation.
-          // NOTE: this requests cancellation of the underlying operation.
-          __detach();
-
-          // If the ref count is 5, then the shared operation is still running. Otherwise, it is
-          // time to destroy the shared state.
-          if (5 != __old_ref_count) {
-            delete this;
+            // Additionally, if the shared op was never started, or if it has already completed,
+            // then the shared state is no longer needed. Decrement the ref count to 0 here, which
+            // will delete __self.
+            if (!__bit<__started_bit>(__old) || __bit<__completed_bit>(__old)) {
+              __self->__dec_ref();
+            }
           }
         }
       }
@@ -3324,26 +3267,41 @@ namespace stdexec {
       /// is set to the known "tombstone" value indicating completion.
       void __try_start() noexcept {
         // With the split algorithm, multiple split senders can be started simultaneously, but
-        // only one should start the underlying async operation. Set the low-order "started" bit
-        // in the shared state's ref count. If the previous value was even, then we are the first
-        // consumer to start, so start the underlying async operation.
-        auto __old_ref_count = __ref_count_.fetch_or(__started_bit, std::memory_order_relaxed);
-        if (__started_bit == (__old_ref_count & __started_bit)) {
-          // Already started, do nothing
+        // only one should start the shared async operation. If the "started" bit is set, then
+        // someone else has already started the shared operation. Do nothing.
+        if (this->template __is_set<__started_bit>()) {
           return;
-        }
-
-        // If stop has already been requested when we're starting the underlying the operation,
-        // don't start it; complete with set_stopped immediately.
-        if (__stop_source_.stop_requested()) {
+        } else if (__bit<__started_bit>(this->template __set_bit<__started_bit>())) {
+          return;
+        } else if (__stop_source_.stop_requested()) {
+          // Stop has already been requested. Rather than starting the operation, complete with
+          // set_stopped immediately.
           // 1. Sets __waiters_ to a known "tombstone" value
           // 2. Notifies all the waiters that the operation has stopped
-          // 3. Clears the "started" bit.
+          // 3. Sets the "completed" bit in the ref count.
           __notify_waiters();
           return;
+        } else {
+          stdexec::start(__shared_op_);
         }
+      }
 
-        stdexec::start(__op_state2_);
+      template <class _StopToken>
+      bool __try_add_waiter(__local_state_base* __waiter, _StopToken __stok) noexcept {
+        std::unique_lock __lock{__mutex_};
+        if (__waiters_.front() == __get_tombstone()) {
+          // The work has already completed. Notify the waiter immediately.
+          __lock.unlock();
+          __waiter->__notify_(__waiter);
+          return true;
+        } else if (__stok.stop_requested()) {
+          // Stop has been requested. Do not add the waiter.
+          return false;
+        } else {
+          // Add the waiter to the list.
+          __waiters_.push_front(__waiter);
+          return true;
+        }
       }
 
       /// @brief This is called when the shared async operation completes.
@@ -3364,29 +3322,24 @@ namespace stdexec {
       /// @brief This is called when the shared async operation completes.
       /// @post __waiters_ is set to a known "tombstone" value.
       void __notify_waiters() noexcept {
-        __waiters_t __waiters_copy{__local_state_base::__get_tombstone()};
+        __waiters_list_t __waiters_copy{__get_tombstone()};
 
         // Set the waiters list to a known "tombstone" value that we can check later.
-        if (std::unique_lock __lock{__mutex_}) { // always true
+        {
+          std::lock_guard __lock{__mutex_};
           __waiters_.swap(__waiters_copy);
         }
 
-        STDEXEC_ASSERT(__waiters_copy.front() != __local_state_base::__get_tombstone());
+        STDEXEC_ASSERT(__waiters_copy.front() != __get_tombstone());
         for (__local_state_base* __item: __waiters_copy) {
           __item->__notify_(__item);
         }
 
-        // Set the "completed" bit in the shared state's ref count. If the old ref count
-        // was 1, then there are no more waiters. It is time to destroy the shared state.
-        auto __old_ref_count = //
-          __ref_count_.fetch_or(__completed_bit, std::memory_order_acq_rel);
-        if (__started_bit == __old_ref_count) {
-          delete this;
+        // Set the "completed" bit in the ref count. If the ref count is 1, then there are no more
+        // waiters. Release the final reference.
+        if (__count(this->template __set_bit<__completed_bit>()) == 1) {
+          this->__dec_ref(); // release the extra ref count, deletes this
         }
-      }
-
-      void __detach() noexcept {
-        __stop_source_.request_stop();
       }
     };
 
@@ -3415,6 +3368,33 @@ namespace stdexec {
     using __completions = //
       __mapply<__mbind_front_q<__make_completions, __cvref_results_t<_Tag>>, _ShState>;
 
+    template <class _CvrefSender, class _Env, bool _Copyable = true>
+    struct __box {
+      using __tag_t = __if_c<_Copyable, __split::__split_t, __ensure_started::__ensure_started_t>;
+      using __sh_state_t = __shared_state<_CvrefSender, _Env>;
+
+      __box(__tag_t, __intrusive_ptr<__sh_state_t, 2> __sh_state) noexcept
+        : __sh_state_(std::move(__sh_state)) {
+      }
+
+      __box(__box&&) noexcept = default;
+      __box(const __box&) noexcept requires _Copyable = default;
+
+      ~__box() {
+        __sh_state_t::__detach(__sh_state_);
+      }
+
+      __intrusive_ptr<__sh_state_t, 2> __sh_state_;
+    };
+
+    template <class _CvrefSender, class _Env>
+    __box(__split::__split_t, __intrusive_ptr<__shared_state<_CvrefSender, _Env>, 2>) //
+      -> __box<_CvrefSender, _Env, true>;
+
+    template <class _CvrefSender, class _Env>
+    __box(__ensure_started::__ensure_started_t, __intrusive_ptr<__shared_state<_CvrefSender, _Env>, 2>)
+      -> __box<_CvrefSender, _Env, false>;
+
     template <class _Tag>
     struct __shared_impl : __sexpr_defaults {
       static constexpr auto get_state = //
@@ -3435,6 +3415,7 @@ namespace stdexec {
         []<class _Sender, class _Receiver>(
           __local_state<_Sender, _Receiver>& __self,
           _Receiver& __rcvr) noexcept -> void {
+        using __sh_state_t = typename __local_state<_Sender, _Receiver>::__sh_state_t;
         // Scenario: there are no more split senders, this is the only operation state, the
         // underlying operation has not yet been started, and the receiver's stop token is already
         // in the "stop requested" state. Then registering the stop callback will call
@@ -3442,35 +3423,27 @@ namespace stdexec {
         // any point after the callback is registered. Beware. We are guaranteed, however, that
         // __on_stop_request will not complete the operation or decrement the shared state's ref
         // count until after __self has been added to the waiters list.
-        __self.__register_stop_callback();
+        const auto __stok = stdexec::get_stop_token(stdexec::get_env(__rcvr));
+        __self.__on_stop_.emplace(__stok, __self);
 
         // We haven't put __self in the waiters list yet and we are holding a ref count to
         // __sh_state_, so nothing can happen to the __sh_state_ here.
 
-        // If the receiver's stop token has already been signaled, don't bother trying to start
-        // the underlying operation.
-        bool const __stop_requested =
-          stdexec::get_stop_token(stdexec::get_env(__rcvr)).stop_requested();
-        if (!__stop_requested) {
+        // Start the shared op. As an optimization, skip it if the receiver's stop token has already
+        // been signaled.
+        if (!__stok.stop_requested()) {
           __self.__sh_state_->__try_start();
-        }
-
-        if (std::unique_lock __lock{__self.__sh_state_->__mutex_}) {
-          if (__self.__sh_state_->__waiters_.front() == __local_state_base::__get_tombstone()) {
-            // The operation has already completed. Instead of adding this operation to the list
-            // of waiters, pass the result to the receiver by calling __notify on the local state.
-            __lock.unlock();
-            __self.template __notify<_Tag>(&__self);
-          } else if (__stop_requested) {
-            __lock.unlock();
-            __self.__on_stop_.reset();
-            __self.__release_shared_state();
-            stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr));
-          } else {
-            // The operation is still running. Add this operation to the waiters list.
-            __self.__sh_state_->__waiters_.push_front(&__self);
+          if (__self.__sh_state_->__try_add_waiter(&__self, __stok)) {
+            // successfully added the waiter
+            return;
           }
         }
+
+        // Otherwise, failed to add the waiter because of a stop-request.
+        // Complete synchronously with set_stopped().
+        __self.__on_stop_.reset();
+        __sh_state_t::__detach(__self.__sh_state_);
+        stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr));
       };
     };
   } // namespace __shared
@@ -3479,46 +3452,6 @@ namespace stdexec {
   // [execution.senders.adaptors.split]
   namespace __split {
     using namespace __shared;
-
-    template <class _ShState>
-    struct __data {
-      using __sh_state_t = _ShState;
-
-      __data() = default;
-
-      explicit __data(_ShState* __sh_state) noexcept
-        : __sh_state_(__sh_state) {
-        STDEXEC_ASSERT(__sh_state != nullptr);
-        __sh_state_->__inc_ref();
-      }
-
-      __data(const __data& __other) noexcept
-        : __sh_state_(__other.__sh_state_) {
-        __sh_state_->__inc_ref();
-      }
-
-      __data(__data&& __other) noexcept
-        : __sh_state_(std::exchange(__other.__sh_state_, nullptr)) {
-      }
-
-      ~__data() {
-        if (__sh_state_ != nullptr) {
-          __sh_state_->__dec_ref();
-        }
-      }
-
-      __data& operator=(__data __other) noexcept {
-        std::swap(__sh_state_, __other.__sh_state_);
-        return *this;
-      }
-
-      _ShState* __release() noexcept {
-        return std::exchange(__sh_state_, nullptr);
-      }
-
-     private:
-      _ShState* __sh_state_ = nullptr;
-    };
 
     struct __split_t { };
 
@@ -3557,10 +3490,10 @@ namespace stdexec {
         return __sexpr_apply(
           static_cast<_Sender&&>(__sndr),
           [&]<class _Env, class _Child>(__ignore, _Env&& __env, _Child&& __child) {
-            // The shared state starts life with a ref-count of zero.
-            auto* __sh_state = new __shared_state<_Child, __decay_t<_Env>>(
+            // The shared state starts life with a ref-count of one.
+            auto __sh_state = __make_intrusive<__shared_state<_Child, __decay_t<_Env>>, 2>(
               static_cast<_Child&&>(__child), static_cast<_Env&&>(__env));
-            return __make_sexpr<__split_t>(__data{__sh_state});
+            return __make_sexpr<__split_t>(__box{__split_t(), std::move(__sh_state)});
           });
       }
     };
@@ -3576,45 +3509,6 @@ namespace stdexec {
   // [execution.senders.adaptors.ensure_started]
   namespace __ensure_started {
     using namespace __shared;
-
-    // Each ensure_started sender has one of these, created when ensure_started() is called.
-    template <class _ShState>
-    struct __data {
-      using __sh_state_t = _ShState;
-
-      __data() = default;
-
-      explicit __data(_ShState* __sh_state) noexcept
-        : __sh_state_(__sh_state) {
-        __sh_state_->__inc_ref();
-        // Eagerly launch the async operation.
-        __sh_state_->__try_start();
-      }
-
-      // This makes the ensure_started sender move-only:
-      __data(__data&& __other) noexcept
-        : __sh_state_(std::exchange(__other.__sh_state_, nullptr)) {
-      }
-
-      ~__data() {
-        if (__sh_state_ != nullptr) {
-          // NOT TO SPEC: This also requests cancellation.
-          __sh_state_->__dec_ref();
-        }
-      }
-
-      auto operator=(__data __other) noexcept -> __data& {
-        std::swap(__sh_state_, __other.__sh_state_);
-        return *this;
-      }
-
-      auto __release() noexcept -> _ShState* {
-        return std::exchange(__sh_state_, nullptr);
-      }
-
-     private:
-      _ShState* __sh_state_ = nullptr;
-    };
 
     struct __ensure_started_t { };
 
@@ -3660,10 +3554,12 @@ namespace stdexec {
         return __sexpr_apply(
           static_cast<_Sender&&>(__sndr),
           [&]<class _Env, class _Child>(__ignore, _Env&& __env, _Child&& __child) {
-            // The shared state starts life with a ref-count of zero.
-            auto __sh_state = new __shared_state<_Child, __decay_t<_Env>>(
+            // The shared state starts life with a ref-count of one.
+            auto __sh_state = __make_intrusive<__shared_state<_Child, __decay_t<_Env>>, 2>(
               static_cast<_Child&&>(__child), static_cast<_Env&&>(__env));
-            return __make_sexpr<__ensure_started_t>(__data{__sh_state});
+            // Eagerly start the work:
+            __sh_state->__try_start();
+            return __make_sexpr<__ensure_started_t>(__box{__ensure_started_t(), std::move(__sh_state)});
           });
       }
     };

@@ -31,36 +31,66 @@
 
 namespace stdexec {
   namespace __ptr {
-    template <class _Ty>
+    template <std::size_t _ReservedBits>
+    struct __count_and_bits {
+      static constexpr std::size_t __ref_count_increment = 1ul << _ReservedBits;
+
+      enum struct __bits : std::size_t {};
+
+      friend constexpr std::size_t __count(__bits __b) noexcept {
+        return static_cast<std::size_t>(__b) / __ref_count_increment;
+      }
+
+      template <std::size_t _Bit>
+      friend constexpr bool __bit(__bits __b) noexcept {
+        static_assert(_Bit < _ReservedBits, "Bit index out of range");
+        return (static_cast<std::size_t>(__b) & (1ul << _Bit)) != 0;
+      }
+    };
+
+    template <std::size_t _ReservedBits>
+    using __bits_t = typename __count_and_bits<_ReservedBits>::__bits;
+
+    template <class _Ty, std::size_t _ReservedBits>
     struct __make_intrusive_t;
 
-    template <class _Ty>
+    template <class _Ty, std::size_t _ReservedBits = 0ul>
     class __intrusive_ptr;
 
-    template <class _Ty>
+    template <class _Ty, std::size_t _ReservedBits = 0ul>
     struct __enable_intrusive_from_this {
-      auto __intrusive_from_this() noexcept -> __intrusive_ptr<_Ty>;
-      auto __intrusive_from_this() const noexcept -> __intrusive_ptr<const _Ty>;
+      auto __intrusive_from_this() noexcept -> __intrusive_ptr<_Ty, _ReservedBits>;
+      auto __intrusive_from_this() const noexcept -> __intrusive_ptr<const _Ty, _ReservedBits>;
      private:
+      using __bits_t = typename __count_and_bits<_ReservedBits>::__bits;
       friend _Ty;
-      void __inc_ref() noexcept;
-      void __dec_ref() noexcept;
+      __bits_t __inc_ref() noexcept;
+      __bits_t __dec_ref() noexcept;
+
+      template <std::size_t _Bit>
+      bool __is_set() const noexcept;
+      template <std::size_t _Bit>
+      __bits_t __set_bit() noexcept;
+      template <std::size_t _Bit>
+      __bits_t __clear_bit() noexcept;
     };
 
     STDEXEC_PRAGMA_PUSH()
     STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
 
-    template <class _Ty>
+    template <class _Ty, std::size_t _ReservedBits>
     struct __control_block {
+      using __bits_t = typename __count_and_bits<_ReservedBits>::__bits;
+      static constexpr std::size_t __ref_count_increment = 1ul << _ReservedBits;
+
       alignas(_Ty) unsigned char __value_[sizeof(_Ty)];
-      std::atomic<unsigned long> __refcount_;
+      std::atomic<std::size_t> __ref_count_;
 
       template <class... _Us>
       explicit __control_block(_Us&&... __us) noexcept(noexcept(_Ty{__declval<_Us>()...}))
-        : __refcount_(1u) {
-        // Construct the value *after* the initialization of the
-        // atomic in case the constructor of _Ty calls
-        // __intrusive_from_this() (which increments the atomic):
+        : __ref_count_(__ref_count_increment) {
+        // Construct the value *after* the initialization of the atomic in case the constructor of
+        // _Ty calls __intrusive_from_this() (which increments the ref count):
         ::new (static_cast<void*>(__value_)) _Ty{static_cast<_Us&&>(__us)...};
       }
 
@@ -72,32 +102,58 @@ namespace stdexec {
         return *reinterpret_cast<_Ty*>(__value_);
       }
 
-      void __inc_ref_() noexcept {
-        __refcount_.fetch_add(1, std::memory_order_relaxed);
+      __bits_t __inc_ref_() noexcept {
+        auto __old = __ref_count_.fetch_add(__ref_count_increment, std::memory_order_relaxed);
+        return static_cast<__bits_t>(__old);
       }
 
-      void __dec_ref_() noexcept {
-        if (1u == __refcount_.fetch_sub(1, std::memory_order_release)) {
-          std::atomic_thread_fence(std::memory_order_acquire);
-          // TSan does not support std::atomic_thread_fence, so we
-          // need to use the TSan-specific __tsan_acquire instead:
-          STDEXEC_TSAN(__tsan_acquire(&__refcount_));
+      __bits_t __dec_ref_() noexcept {
+        auto __old = __ref_count_.fetch_sub(__ref_count_increment, std::memory_order_acq_rel);
+        if (__count(static_cast<__bits_t>(__old)) == 1) {
           delete this;
         }
+        return static_cast<__bits_t>(__old);
+      }
+
+      // Returns true if the bit was set, false if it was already set.
+      template <std::size_t _Bit>
+      [[nodiscard]]
+      bool __is_set_() const noexcept {
+        auto __old = __ref_count_.load(std::memory_order_relaxed);
+        return __bit<_Bit>(static_cast<__bits_t>(__old));
+      }
+
+      template <std::size_t _Bit>
+      __bits_t __set_bit_() noexcept {
+        static_assert(_Bit < _ReservedBits, "Bit index out of range");
+        constexpr std::size_t __mask = 1ul << _Bit;
+        auto __old = __ref_count_.fetch_or(__mask, std::memory_order_acq_rel);
+        return static_cast<__bits_t>(__old);
+      }
+
+      // Returns true if the bit was cleared, false if it was already cleared.
+      template <std::size_t _Bit>
+      __bits_t __clear_bit_() noexcept {
+        static_assert(_Bit < _ReservedBits, "Bit index out of range");
+        constexpr std::size_t __mask = 1ul << _Bit;
+        auto __old = __ref_count_.fetch_and(~__mask, std::memory_order_acq_rel);
+        return static_cast<__bits_t>(__old);
       }
     };
 
     STDEXEC_PRAGMA_POP()
 
-    template <class _Ty>
+    template <class _Ty, std::size_t _ReservedBits /* = 0ul */>
     class __intrusive_ptr {
       using _UncvTy = std::remove_cv_t<_Ty>;
-      friend struct __make_intrusive_t<_Ty>;
-      friend struct __enable_intrusive_from_this<_UncvTy>;
+      using __enable_intrusive_t = __enable_intrusive_from_this<_UncvTy, _ReservedBits>;
+      friend _Ty;
+      friend struct __make_intrusive_t<_Ty, _ReservedBits>;
+      friend struct __enable_intrusive_from_this<_UncvTy, _ReservedBits>;
 
-      __control_block<_UncvTy>* __data_{nullptr};
+      __control_block<_UncvTy, _ReservedBits>* __data_{nullptr};
 
-      explicit __intrusive_ptr(__control_block<_UncvTy>* __data) noexcept
+      explicit __intrusive_ptr(__control_block<_UncvTy, _ReservedBits>* __data) noexcept
         : __data_(__data) {
       }
 
@@ -111,6 +167,14 @@ namespace stdexec {
         if (__data_) {
           __data_->__dec_ref_();
         }
+      }
+
+      // For use when types want to take over manual control of the reference count.
+      // Very unsafe, but useful for implementing custom reference counting.
+      [[nodiscard]]
+      __enable_intrusive_t* __release_() noexcept {
+        auto* __data = std::exchange(__data_, nullptr);
+        return __data ? &__c_upcast<__enable_intrusive_t>(__data->__value()) : nullptr;
       }
 
      public:
@@ -127,7 +191,7 @@ namespace stdexec {
         __inc_ref_();
       }
 
-      __intrusive_ptr(__enable_intrusive_from_this<_Ty>* __that) noexcept
+      __intrusive_ptr(__enable_intrusive_from_this<_Ty, _ReservedBits>* __that) noexcept
         : __intrusive_ptr(__that ? __that->__intrusive_from_this() : __intrusive_ptr()) {
       }
 
@@ -141,7 +205,7 @@ namespace stdexec {
         return operator=(__intrusive_ptr(__that));
       }
 
-      auto operator=(__enable_intrusive_from_this<_Ty>* __that) noexcept -> __intrusive_ptr& {
+      auto operator=(__enable_intrusive_from_this<_Ty, _ReservedBits>* __that) noexcept -> __intrusive_ptr& {
         return operator=(__that ? __that->__intrusive_from_this() : __intrusive_ptr());
       }
 
@@ -184,48 +248,70 @@ namespace stdexec {
       }
     };
 
-    template <class _Ty>
+    template <class _Ty, std::size_t _ReservedBits>
     auto
-      __enable_intrusive_from_this<_Ty>::__intrusive_from_this() noexcept -> __intrusive_ptr<_Ty> {
-      auto* __data = reinterpret_cast<__control_block<_Ty>*>(static_cast<_Ty*>(this));
+      __enable_intrusive_from_this<_Ty, _ReservedBits>::__intrusive_from_this() noexcept -> __intrusive_ptr<_Ty, _ReservedBits> {
+      auto* __data = reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
       __data->__inc_ref_();
-      return __intrusive_ptr<_Ty>{__data};
+      return __intrusive_ptr<_Ty, _ReservedBits>{__data};
     }
 
-    template <class _Ty>
-    auto __enable_intrusive_from_this<_Ty>::__intrusive_from_this() const noexcept
-      -> __intrusive_ptr<const _Ty> {
-      auto* __data = reinterpret_cast<__control_block<_Ty>*>(static_cast<const _Ty*>(this));
+    template <class _Ty, std::size_t _ReservedBits>
+    auto __enable_intrusive_from_this<_Ty, _ReservedBits>::__intrusive_from_this() const noexcept
+      -> __intrusive_ptr<const _Ty, _ReservedBits> {
+      auto* __data = reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
       __data->__inc_ref_();
-      return __intrusive_ptr<const _Ty>{__data};
+      return __intrusive_ptr<const _Ty, _ReservedBits>{__data};
     }
 
-    template <class _Ty>
-    void __enable_intrusive_from_this<_Ty>::__inc_ref() noexcept {
-      auto* __data = reinterpret_cast<__control_block<_Ty>*>(static_cast<_Ty*>(this));
-      __data->__inc_ref_();
+    template <class _Ty, std::size_t _ReservedBits>
+    __bits_t<_ReservedBits> __enable_intrusive_from_this<_Ty, _ReservedBits>::__inc_ref() noexcept {
+      auto* __data = reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
+      return __data->__inc_ref_();
     }
 
-    template <class _Ty>
-    void __enable_intrusive_from_this<_Ty>::__dec_ref() noexcept {
-      auto* __data = reinterpret_cast<__control_block<_Ty>*>(static_cast<_Ty*>(this));
-      __data->__dec_ref_();
+    template <class _Ty, std::size_t _ReservedBits>
+    __bits_t<_ReservedBits> __enable_intrusive_from_this<_Ty, _ReservedBits>::__dec_ref() noexcept {
+
+      auto* __data = reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
+      return __data->__dec_ref_();
     }
 
-    template <class _Ty>
+    template <class _Ty, std::size_t _ReservedBits>
+    template <std::size_t _Bit>
+    bool __enable_intrusive_from_this<_Ty, _ReservedBits>::__is_set() const noexcept {
+      auto* __data = reinterpret_cast<const __control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
+      return __data->template __is_set_<_Bit>();
+    }
+
+    template <class _Ty, std::size_t _ReservedBits>
+    template <std::size_t _Bit>
+    __bits_t<_ReservedBits> __enable_intrusive_from_this<_Ty, _ReservedBits>::__set_bit() noexcept {
+      auto* __data = reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
+      return __data->template __set_bit_<_Bit>();
+    }
+
+    template <class _Ty, std::size_t _ReservedBits>
+    template <std::size_t _Bit>
+    __bits_t<_ReservedBits> __enable_intrusive_from_this<_Ty, _ReservedBits>::__clear_bit() noexcept {
+      auto* __data = reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
+      return __data->template __clear_bit_<_Bit>();
+    }
+
+    template <class _Ty, std::size_t _ReservedBits>
     struct __make_intrusive_t {
       template <class... _Us>
         requires constructible_from<_Ty, _Us...>
-      auto operator()(_Us&&... __us) const -> __intrusive_ptr<_Ty> {
+      auto operator()(_Us&&... __us) const -> __intrusive_ptr<_Ty, _ReservedBits> {
         using _UncvTy = std::remove_cv_t<_Ty>;
-        return __intrusive_ptr<_Ty>{::new __control_block<_UncvTy>{static_cast<_Us&&>(__us)...}};
+        return __intrusive_ptr<_Ty, _ReservedBits>{::new __control_block<_UncvTy, _ReservedBits>{static_cast<_Us&&>(__us)...}};
       }
     };
   } // namespace __ptr
 
   using __ptr::__intrusive_ptr;
   using __ptr::__enable_intrusive_from_this;
-  template <class _Ty>
-  inline constexpr __ptr::__make_intrusive_t<_Ty> __make_intrusive{};
+  template <class _Ty, std::size_t _ReservedBits = 0ul>
+  inline constexpr __ptr::__make_intrusive_t<_Ty, _ReservedBits> __make_intrusive{};
 
 } // namespace stdexec
