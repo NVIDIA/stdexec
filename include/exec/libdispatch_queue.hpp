@@ -169,6 +169,7 @@ namespace exec {
       }
 
       STDEXEC_MEMFN_FRIEND(connect);
+
       template <stdexec::receiver Receiver>
       STDEXEC_MEMFN_DECL(auto connect)(this sender s, Receiver r)
         -> __libdispatch_details::operation<stdexec::__id<Receiver>> {
