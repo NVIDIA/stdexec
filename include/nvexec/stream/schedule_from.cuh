@@ -155,11 +155,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     template <class... _Ty>
     using value_completions_t = //
-      completion_signatures<set_value_t(__decay_t<_Ty>&&...)>;
+      completion_signatures<set_value_t(__decay_t<_Ty>...)>;
 
     template <class _Ty>
     using error_completions_t = //
-      completion_signatures<set_error_t(__decay_t<_Ty>&&)>;
+      completion_signatures<set_error_t(__decay_t<_Ty>)>;
   } // namespace _sched_from
 
   template <class Scheduler, class SenderId>

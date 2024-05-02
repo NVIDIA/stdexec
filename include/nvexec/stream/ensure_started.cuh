@@ -329,10 +329,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <class... Tys>
-      using _set_value_t = completion_signatures<set_value_t(__decay_t<Tys>&&...)>;
+      using _set_value_t = completion_signatures<set_value_t(__decay_t<Tys>...)>;
 
       template <class Ty>
-      using _set_error_t = completion_signatures<set_error_t(__decay_t<Ty>&&)>;
+      using _set_error_t = completion_signatures<set_error_t(__decay_t<Ty>)>;
 
       template <std::same_as<__t> Self, class Env>
       STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&)

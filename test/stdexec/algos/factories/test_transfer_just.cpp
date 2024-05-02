@@ -118,9 +118,9 @@ namespace {
     "[factories][transfer_just]") {
     inline_scheduler sched{};
 
-    check_val_types<type_array<type_array<int&&>>>(ex::transfer_just(sched, 1));
-    check_val_types<type_array<type_array<int&&, double&&>>>(ex::transfer_just(sched, 3, 0.14));
-    check_val_types<type_array<type_array<int&&, double&&, std::string&&>>>(
+    check_val_types<type_array<type_array<int>>>(ex::transfer_just(sched, 1));
+    check_val_types<type_array<type_array<int, double>>>(ex::transfer_just(sched, 3, 0.14));
+    check_val_types<type_array<type_array<int, double, std::string>>>(
       ex::transfer_just(sched, 3, 0.14, std::string{"pi"}));
   }
 
