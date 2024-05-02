@@ -61,12 +61,12 @@ namespace exec {
         __all_nothrow_move_constructible>...>>;
 
     template <class... Args>
-    using __as_rvalues = set_value_t(__decay_t<Args>&&...);
+    using __as_rvalues = set_value_t(__decay_t<Args>...);
 
     template <class... E>
     using __as_error = completion_signatures<set_error_t(E)...>;
 
-    // Here we convert all set_value(Args...) to set_value(__decay_t<Args>&&...)
+    // Here we convert all set_value(Args...) to set_value(__decay_t<Args>...)
     // Note, we keep all error types as they are and unconditionally add set_stopped()
     template <class _Env, class... _SenderIds>
     using __completion_signatures_t = __concat_completion_signatures_t<

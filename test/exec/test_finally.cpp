@@ -51,7 +51,7 @@ namespace {
     auto s = exec::finally(just(42), just() | then([&called]() noexcept { called = true; }));
     STATIC_REQUIRE(set_equivalent<
                    completion_signatures_of_t<decltype(s), empty_env>,
-                   completion_signatures<set_error_t(std::exception_ptr), set_value_t(int&&)>>);
+                   completion_signatures<set_error_t(std::exception_ptr), set_value_t(int)>>);
     auto [i] = *sync_wait(s);
     CHECK(called);
     CHECK(i == 42);
@@ -67,7 +67,7 @@ namespace {
       just() | then([&called]() noexcept { called = true; }));
     STATIC_REQUIRE(set_equivalent<
                    completion_signatures_of_t<decltype(s), empty_env>,
-                   completion_signatures<set_error_t(std::exception_ptr), set_value_t(int&&)>>);
+                   completion_signatures<set_error_t(std::exception_ptr), set_value_t(int)>>);
     CHECK_THROWS_AS(sync_wait(s), int);
     CHECK(called);
   }

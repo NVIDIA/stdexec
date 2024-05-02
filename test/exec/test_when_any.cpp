@@ -148,7 +148,7 @@ namespace {
     static_assert(sender<decltype(just_string)>);
     static_assert(set_equivalent<
                   completion_signatures_of_t<decltype(just_string)>,
-                  completion_signatures<set_value_t(std::string&&), set_stopped_t()>>);
+                  completion_signatures<set_value_t(std::string), set_stopped_t()>>);
 
     auto just_stopped = exec::when_any(ex::just_stopped());
     static_assert(sender<decltype(just_stopped)>);
@@ -161,13 +161,13 @@ namespace {
     static_assert(
       set_equivalent<
         completion_signatures_of_t<decltype(just_then)>,
-        completion_signatures<set_value_t(int&&), set_stopped_t(), set_error_t(std::exception_ptr)>>);
+        completion_signatures<set_value_t(int), set_stopped_t(), set_error_t(std::exception_ptr)>>);
 
     auto just_then_noexcept = exec::when_any(ex::just() | ex::then([]() noexcept { return 42; }));
     static_assert(sender<decltype(just_then_noexcept)>);
     static_assert(set_equivalent<
                   completion_signatures_of_t<decltype(just_then_noexcept)>,
-                  completion_signatures<set_value_t(int&&), set_stopped_t()>>);
+                  completion_signatures<set_value_t(int), set_stopped_t()>>);
 
     auto just_move_throws = exec::when_any(ex::just(move_throws{}));
     static_assert(sender<decltype(just_move_throws)>);
@@ -175,7 +175,7 @@ namespace {
       set_equivalent<
         completion_signatures_of_t<decltype(just_move_throws)>,
         completion_signatures<
-          set_value_t(move_throws&&),
+          set_value_t(move_throws),
           set_stopped_t(),
           set_error_t(std::exception_ptr)>>);
 
@@ -190,9 +190,9 @@ namespace {
       set_equivalent<
         completion_signatures_of_t<decltype(mulitple_senders)>,
         completion_signatures<
-          set_value_t(double&&),
-          set_value_t(std::string&&),
-          set_value_t(int&&),
+          set_value_t(double),
+          set_value_t(std::string),
+          set_value_t(int),
           set_stopped_t(),
           set_error_t(std::exception_ptr)>>);
     // wait_for_value(std::move(snd), movable(42));

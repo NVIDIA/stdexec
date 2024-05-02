@@ -186,10 +186,10 @@ namespace {
     "[adaptors][schedule_from]") {
     inline_scheduler sched{};
 
-    check_val_types<type_array<type_array<int&&>>>(ex::schedule_from(sched, ex::just(1)));
-    check_val_types<type_array<type_array<int&&, double&&>>>(
+    check_val_types<type_array<type_array<int>>>(ex::schedule_from(sched, ex::just(1)));
+    check_val_types<type_array<type_array<int, double>>>(
       ex::schedule_from(sched, ex::just(3, 0.14)));
-    check_val_types<type_array<type_array<int&&, double&&, std::string&&>>>(
+    check_val_types<type_array<type_array<int, double, std::string>>>(
       ex::schedule_from(sched, ex::just(3, 0.14, std::string{"pi"})));
   }
 

@@ -59,7 +59,7 @@ namespace exec {
     };
 
     template <class... _Args>
-    using __as_rvalues = completion_signatures<set_value_t(__decay_t<_Args>&&...)>;
+    using __as_rvalues = completion_signatures<set_value_t(__decay_t<_Args>...)>;
 
     template <class _InitialSender, class _FinalSender, class _Env>
     using __completion_signatures_t = make_completion_signatures<

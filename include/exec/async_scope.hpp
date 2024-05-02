@@ -402,7 +402,7 @@ namespace exec {
     struct __completion_as_tuple2_;
 
     template <class _Tag, class... _Ts>
-    struct __completion_as_tuple2_<_Tag(_Ts&&...)> {
+    struct __completion_as_tuple2_<_Tag(_Ts...)> {
       using __t = std::tuple<_Tag, _Ts...>;
     };
     template <class _Fn>
@@ -411,7 +411,7 @@ namespace exec {
 #else
 
     template <class _Tag, class... _Ts>
-    auto __completion_as_tuple_(_Tag (*)(_Ts&&...)) -> std::tuple<_Tag, _Ts...>;
+    auto __completion_as_tuple_(_Tag (*)(_Ts...)) -> std::tuple<_Tag, _Ts...>;
 
     template <class _Fn>
     using __completion_as_tuple_t =
@@ -419,17 +419,17 @@ namespace exec {
 #endif
 
     template <class... _Ts>
-    using __decay_values_t = completion_signatures<set_value_t(__decay_t<_Ts>&&...)>;
+    using __decay_values_t = completion_signatures<set_value_t(__decay_t<_Ts>...)>;
 
-    template <class _Ty>
-    using __decay_error_t = completion_signatures<set_error_t(__decay_t<_Ty>&&)>;
+      template <class _Ty>
+    using __decay_error_t = completion_signatures<set_error_t(__decay_t<_Ty>)>;
 
     template <class _Sender, class _Env>
     using __future_completions_t = //
       make_completion_signatures<
         _Sender,
         __env_t<_Env>,
-        completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr&&)>,
+        completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr)>,
         __decay_values_t,
         __decay_error_t>;
 

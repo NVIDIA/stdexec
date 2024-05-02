@@ -3359,7 +3359,7 @@ namespace stdexec {
     // split completes with const T&. ensure_started completes with T&&.
     template <class _Tag>
     using __cvref_results_t = //
-      __mcompose<__if_c<same_as<_Tag, __split::__split_t>, __cpclr, __cprr>, __q<__decay_t>>;
+      __mcompose<__if_c<same_as<_Tag, __split::__split_t>, __cpclr, __cp>, __q<__decay_t>>;
 
     // NOTE: the use of __mapply in the return type below takes advantage of the fact that _ShState
     // denotes an instance of the __shared_state template, which is parameterized on the
@@ -4460,12 +4460,9 @@ namespace stdexec {
       __q<__value_tuple>,
       __nullable_variant_t>;
 
-    template <class _Tp>
-    using __decay_rvalue_ref = __decay_t<_Tp>&&;
-
     template <class _Tag>
     using __decay_signature =
-      __transform<__q<__decay_rvalue_ref>, __mcompose<__q<completion_signatures>, __qf<_Tag>>>;
+      __transform<__q<__decay_t>, __mcompose<__q<completion_signatures>, __qf<_Tag>>>;
 
     template <class... _Ts>
     using __all_nothrow_decay_copyable_ = __mbool<(__nothrow_decay_copyable<_Ts> && ...)>;
@@ -5042,9 +5039,6 @@ namespace stdexec {
     using __env_t = //
       decltype(__mkenv(__declval<_Env>(), __declval<inplace_stop_source&>()));
 
-    template <class _Tp>
-    using __decay_rvalue_ref = __decay_t<_Tp>&&;
-
     template <class _Sender, class _Env>
     concept __max1_sender =
       sender_in<_Sender, _Env>
@@ -5072,7 +5066,7 @@ namespace stdexec {
       __try_value_types_of_t<
         _Sender,
         _Env,
-        __transform<__q<__decay_rvalue_ref>, __q<__types>>,
+        __transform<__q<__decay_t>, __q<__types>>,
         __mbind_front_q<__value_tuple_t, _Sender, _Env>>;
 
     template <class _Env, class... _Senders>
@@ -5097,7 +5091,7 @@ namespace stdexec {
         __if<
           __all_nothrow_decay_copyable<_Env, _Senders...>,
           completion_signatures<set_stopped_t()>,
-          completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr&&)>>,
+          completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr)>>,
         __minvoke<
           __with_default<__mbind_front_q<__set_values_sig_t, _Env>, completion_signatures<>>,
           _Senders...>,
@@ -5106,7 +5100,7 @@ namespace stdexec {
           _Env,
           completion_signatures<>,
           __mconst<completion_signatures<>>,
-          __mcompose<__q<completion_signatures>, __qf<set_error_t>, __q<__decay_rvalue_ref>>>...>;
+          __mcompose<__q<completion_signatures>, __qf<set_error_t>, __q<__decay_t>>>...>;
 
     struct __not_an_error { };
 
