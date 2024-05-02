@@ -17,6 +17,7 @@
 
 #include <cstddef>
 #include <cassert>
+#include <compare>
 #include <exception>
 #include <type_traits>
 #include <utility>
@@ -93,78 +94,84 @@ namespace stdexec {
   template <class... _Ts>
   using __indices_for = __make_indices<sizeof...(_Ts)>;
 
-  template <class _Char>
-  concept __mchar = __same_as<_Char, char>;
+  constexpr std::size_t __mpow2(std::size_t __size) noexcept {
+    --__size;
+    __size |= __size >> 1;
+    __size |= __size >> 2;
+    __size |= __size >> 4;
+    __size |= __size >> 8;
+    if constexpr (sizeof(__size) >= 4)
+      __size |= __size >> 16;
+    if constexpr (sizeof(__size) >= 8)
+      __size |= __size >> 32;
+    return ++__size;
+  }
 
   template <std::size_t _Len>
-  class __mstring {
-    template <std::size_t... _Is>
-    constexpr __mstring(const char (&__str)[_Len], __indices<_Is...>) noexcept
-      : __what_{__str[_Is]...} {
+  struct __mstring {
+#if STDEXEC_NVHPC()
+    template <std::size_t _Ny, std::size_t... _Is>
+    constexpr __mstring(const char (&__str)[_Ny], __indices<_Is...>) noexcept
+      : __what_{(_Is < _Ny ? __str[_Is] : '\0')...} {
     }
 
-   public:
-    constexpr __mstring(const char (&__str)[_Len]) noexcept
+    template <std::size_t _Ny>
+    constexpr __mstring(const char (&__str)[_Ny], int = 0) noexcept
       : __mstring{__str, __make_indices<_Len>{}} {
     }
-
-    template <__mchar... _Char>
-      requires(sizeof...(_Char) == _Len)
-    constexpr __mstring(_Char... __chars) noexcept
-      : __what_{__chars...} {
+#else
+    template <std::size_t _Ny>
+    constexpr __mstring(const char (&__str)[_Ny], int = 0) noexcept
+      : __what_{} {
+      for (auto __i = 0ull; char __ch: __str) {
+        __what_[__i++] = __ch;
+      }
     }
+#endif
 
     static constexpr auto __length() noexcept -> std::size_t {
       return _Len;
     }
 
-    template <std::size_t... _Is>
-    constexpr auto __equal(__mstring __other, __indices<_Is...>) const noexcept -> bool {
-      return ((__what_[_Is] == __other.__what_[_Is]) && ...);
+    constexpr auto operator==(const __mstring&) const noexcept -> bool = default;
+
+    template <std::size_t _OtherLen>
+    constexpr auto operator==(const __mstring<_OtherLen>&) const noexcept -> bool {
+      return false;
     }
 
-    constexpr auto operator==(__mstring __other) const noexcept -> bool {
-      return __equal(__other, __make_indices<_Len>());
+#if !STDEXEC_NVHPC()
+    constexpr auto operator<=>(const __mstring&) const noexcept -> std::strong_ordering = default;
+#endif
+
+    template <std::size_t _OtherLen>
+    constexpr auto
+      operator<=>(const __mstring<_OtherLen>& __other) const noexcept -> std::strong_ordering {
+      constexpr std::size_t __len = _Len < _OtherLen ? _Len : _OtherLen;
+      for (std::size_t __i = 0; __i < __len; ++__i) {
+        auto __cmp = (__what_[__i] <=> __other.__what_[__i]);
+        if (__cmp != 0) {
+          return __cmp;
+        }
+      }
+      if constexpr (_Len == _OtherLen) {
+        return std::strong_ordering::equal;
+      }
+      return (_Len < _OtherLen) ? std::strong_ordering::less : std::strong_ordering::greater;
     }
 
-    char const __what_[_Len];
+    char __what_[_Len];
   };
 
   template <std::size_t _Len>
   __mstring(const char (&__str)[_Len]) -> __mstring<_Len>;
 
+  template <std::size_t _Len>
+  __mstring(const char (&__str)[_Len], int) -> __mstring<__mpow2(_Len)>;
+
   STDEXEC_PRAGMA_PUSH()
   STDEXEC_PRAGMA_IGNORE_GNU("-Wuser-defined-literals")
 
-#if STDEXEC_NVHPC() && (__EDG_VERSION__ < 604)
-  // Use a non-standard extension for older nvc++ releases
-  template <__mchar _Char, _Char... _Str>
-  [[deprecated("Use _mstr instead")]]
-  constexpr __mstring<sizeof...(_Str)>
-    operator""__csz() noexcept {
-    return {_Str...};
-  }
-
-  // Use a non-standard extension for older nvc++ releases
-  template <__mchar _Char, _Char... _Str>
-  constexpr __mstring<sizeof...(_Str)> operator""_mstr() noexcept {
-    return {_Str...};
-  }
-#elif STDEXEC_NVHPC() && (__EDG_VERSION__ < 605)
-  // This is to work around an unfiled (by me) EDG bug that fixed in build 605
-  template <__mstring _Str>
-  [[deprecated("Use _mstr instead")]]
-  constexpr __mtypeof<_Str> const
-    operator""__csz() noexcept {
-    return _Str;
-  }
-
-  // This is to work around an unfiled (by me) EDG bug that fixed in build 605
-  template <__mstring _Str>
-  constexpr __mtypeof<_Str> const operator""_mstr() noexcept {
-    return _Str;
-  }
-#else
   // Use a standard user-defined string literal template
   template <__mstring _Str>
   [[deprecated("Use _mstr instead")]]
@@ -178,9 +185,17 @@ namespace stdexec {
   constexpr auto operator""_mstr() noexcept -> __mtypeof<_Str> {
     return _Str;
   }
-#endif
 
   STDEXEC_PRAGMA_POP()
+
+  template <class T>
+  constexpr auto __mnameof() noexcept {
+#if STDEXEC_MSVC()
+    return __mstring{__FUNCSIG__, 0};
+#else
+    return __mstring{__PRETTY_FUNCTION__, 0};
+#endif
+  }
 
   using __msuccess = int;
 
