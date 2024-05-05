@@ -18,6 +18,7 @@
 #include "__execution_fwd.hpp"
 
 #include "__config.hpp"
+#include "__cpo.hpp"
 #include "__meta.hpp"
 #include "__concepts.hpp"
 

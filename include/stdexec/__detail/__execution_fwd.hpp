@@ -27,15 +27,15 @@ namespace stdexec {
   struct default_domain;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __receivers {
+  namespace __rcvrs {
     struct set_value_t;
     struct set_error_t;
     struct set_stopped_t;
-  } // namespace __receivers
+  } // namespace __rcvrs
 
-  using __receivers::set_value_t;
-  using __receivers::set_error_t;
-  using __receivers::set_stopped_t;
+  using __rcvrs::set_value_t;
+  using __rcvrs::set_error_t;
+  using __rcvrs::set_stopped_t;
   extern const set_value_t set_value;
   extern const set_error_t set_error;
   extern const set_stopped_t set_stopped;

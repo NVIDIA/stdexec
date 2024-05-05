@@ -17,16 +17,18 @@
 
 #include "__detail/__execution_fwd.hpp"
 
+// include these after __execution_fwd.hpp
+#include "__detail/__basic_sender.hpp"
 #include "__detail/__config.hpp"
 #include "__detail/__cpo.hpp"
-#include "__detail/__type_traits.hpp"
-#include "__detail/__env.hpp"
 #include "__detail/__domain.hpp"
+#include "__detail/__env.hpp"
 #include "__detail/__intrusive_ptr.hpp"
 #include "__detail/__intrusive_slist.hpp"
 #include "__detail/__meta.hpp"
+#include "__detail/__receivers.hpp"
 #include "__detail/__scope.hpp"
-#include "__detail/__basic_sender.hpp"
+#include "__detail/__type_traits.hpp"
 #include "__detail/__utility.hpp"
 
 #include "functional.hpp"
@@ -68,79 +70,6 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   template <class _Sender, class _Scheduler, class _Env>
   concept __starts_on = __decays_to<__call_result_t<get_scheduler_t, _Env>, _Scheduler>;
-
-  /////////////////////////////////////////////////////////////////////////////
-  // [execution.receivers]
-  namespace __receivers {
-    struct set_value_t {
-      template <class _Fn, class... _Args>
-      using __f = __minvoke<_Fn, _Args...>;
-
-      template <class _Receiver, class... _As>
-        requires tag_invocable<set_value_t, _Receiver, _As...>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      void
-        operator()(_Receiver&& __rcvr, _As&&... __as) const noexcept {
-        static_assert(nothrow_tag_invocable<set_value_t, _Receiver, _As...>);
-        (void) tag_invoke(
-          set_value_t{}, static_cast<_Receiver&&>(__rcvr), static_cast<_As&&>(__as)...);
-      }
-    };
-
-    struct set_error_t {
-      template <class _Fn, class... _Args>
-        requires(sizeof...(_Args) == 1)
-      using __f = __minvoke<_Fn, _Args...>;
-
-      template <class _Receiver, class _Error>
-        requires tag_invocable<set_error_t, _Receiver, _Error>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      void
-        operator()(_Receiver&& __rcvr, _Error&& __err) const noexcept {
-        static_assert(nothrow_tag_invocable<set_error_t, _Receiver, _Error>);
-        (void) tag_invoke(
-          set_error_t{}, static_cast<_Receiver&&>(__rcvr), static_cast<_Error&&>(__err));
-      }
-    };
-
-    struct set_stopped_t {
-      template <class _Fn, class... _Args>
-        requires(sizeof...(_Args) == 0)
-      using __f = __minvoke<_Fn, _Args...>;
-
-      template <class _Receiver>
-        requires tag_invocable<set_stopped_t, _Receiver>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      void
-        operator()(_Receiver&& __rcvr) const noexcept {
-        static_assert(nothrow_tag_invocable<set_stopped_t, _Receiver>);
-        (void) tag_invoke(set_stopped_t{}, static_cast<_Receiver&&>(__rcvr));
-      }
-    };
-  } // namespace __receivers
-
-  using __receivers::set_value_t;
-  using __receivers::set_error_t;
-  using __receivers::set_stopped_t;
-  inline constexpr set_value_t set_value{};
-  inline constexpr set_error_t set_error{};
-  inline constexpr set_stopped_t set_stopped{};
-
-  inline constexpr struct __try_call_t {
-    template <class _Receiver, class _Fun, class... _Args>
-      requires __callable<_Fun, _Args...>
-    void operator()(_Receiver&& __rcvr, _Fun __fun, _Args&&... __args) const noexcept {
-      if constexpr (__nothrow_callable<_Fun, _Args...>) {
-        static_cast<_Fun&&>(__fun)(static_cast<_Args&&>(__args)...);
-      } else {
-        try {
-          static_cast<_Fun&&>(__fun)(static_cast<_Args&&>(__args)...);
-        } catch (...) {
-          set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
-        }
-      }
-    }
-  } __try_call{};
 
   namespace __error__ {
     inline constexpr __mstring __unrecognized_sender_type_diagnostic =
