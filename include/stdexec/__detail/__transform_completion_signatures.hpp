@@ -20,7 +20,7 @@
 // include these after __execution_fwd.hpp
 #include "__completion_signatures.hpp"
 #include "__debug.hpp"
-#include "__senders.hpp"
+#include "__senders_core.hpp"
 
 #include <tuple>
 #include <variant>

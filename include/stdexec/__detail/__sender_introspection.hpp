@@ -17,7 +17,6 @@
 
 #include "__execution_fwd.hpp"
 
-
 namespace stdexec {
   namespace __detail {
     // A function object that is to senders what std::apply is to tuples:
