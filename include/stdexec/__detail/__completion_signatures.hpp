@@ -18,8 +18,8 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
+#include "__awaitable.hpp"
 #include "__concepts.hpp"
-#include "__coroutine.hpp"
 #include "__debug.hpp"
 #include "__diagnostics.hpp"
 #include "__domain.hpp"
