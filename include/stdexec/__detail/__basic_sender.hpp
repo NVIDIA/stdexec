@@ -206,7 +206,7 @@ namespace stdexec {
         _SetTag()(std::move(__rcvr), static_cast<_Args&&>(__args)...);
       };
 
-    inline constexpr auto __get_completion_signatures = //
+    inline constexpr auto __compl_sigs = //
       [](__ignore, __ignore) noexcept {
         return void();
       };
@@ -488,7 +488,7 @@ namespace stdexec {
     static constexpr auto connect = __detail::__connect;
     static constexpr auto start = __detail::__start;
     static constexpr auto complete = __detail::__complete;
-    static constexpr auto get_completion_signatures = __detail::__get_completion_signatures;
+    static constexpr auto get_completion_signatures = __detail::__compl_sigs;
   };
 
   template <class _Tag>

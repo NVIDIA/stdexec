@@ -17,9 +17,9 @@
 
 #include "__execution_fwd.hpp"
 
-#include "__completion_signatures.hpp"
 #include "__concepts.hpp"
 #include "__cpo.hpp"
+#include "__diagnostics.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
 #include "__tag_invoke.hpp"
