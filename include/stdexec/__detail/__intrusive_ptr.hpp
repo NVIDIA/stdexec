@@ -15,9 +15,8 @@
  */
 #pragma once
 
-#include "__config.hpp"
+#include "__concepts.hpp"
 #include "__meta.hpp"
-#include "../concepts.hpp"
 
 #include <atomic>
 #include <memory>
@@ -35,7 +34,8 @@ namespace stdexec {
     struct __count_and_bits {
       static constexpr std::size_t __ref_count_increment = 1ul << _ReservedBits;
 
-      enum struct __bits : std::size_t {};
+      enum struct __bits : std::size_t {
+      };
 
       friend constexpr std::size_t __count(__bits __b) noexcept {
         return static_cast<std::size_t>(__b) / __ref_count_increment;
@@ -205,7 +205,8 @@ namespace stdexec {
         return operator=(__intrusive_ptr(__that));
       }
 
-      auto operator=(__enable_intrusive_from_this<_Ty, _ReservedBits>* __that) noexcept -> __intrusive_ptr& {
+      auto operator=(__enable_intrusive_from_this<_Ty, _ReservedBits>* __that) noexcept
+        -> __intrusive_ptr& {
         return operator=(__that ? __that->__intrusive_from_this() : __intrusive_ptr());
       }
 
@@ -249,9 +250,10 @@ namespace stdexec {
     };
 
     template <class _Ty, std::size_t _ReservedBits>
-    auto
-      __enable_intrusive_from_this<_Ty, _ReservedBits>::__intrusive_from_this() noexcept -> __intrusive_ptr<_Ty, _ReservedBits> {
-      auto* __data = reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
+    auto __enable_intrusive_from_this<_Ty, _ReservedBits>::__intrusive_from_this() noexcept
+      -> __intrusive_ptr<_Ty, _ReservedBits> {
+      auto* __data =
+        reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
       __data->__inc_ref_();
       return __intrusive_ptr<_Ty, _ReservedBits>{__data};
     }
@@ -259,42 +261,49 @@ namespace stdexec {
     template <class _Ty, std::size_t _ReservedBits>
     auto __enable_intrusive_from_this<_Ty, _ReservedBits>::__intrusive_from_this() const noexcept
       -> __intrusive_ptr<const _Ty, _ReservedBits> {
-      auto* __data = reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
+      auto* __data =
+        reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
       __data->__inc_ref_();
       return __intrusive_ptr<const _Ty, _ReservedBits>{__data};
     }
 
     template <class _Ty, std::size_t _ReservedBits>
     __bits_t<_ReservedBits> __enable_intrusive_from_this<_Ty, _ReservedBits>::__inc_ref() noexcept {
-      auto* __data = reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
+      auto* __data =
+        reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
       return __data->__inc_ref_();
     }
 
     template <class _Ty, std::size_t _ReservedBits>
     __bits_t<_ReservedBits> __enable_intrusive_from_this<_Ty, _ReservedBits>::__dec_ref() noexcept {
 
-      auto* __data = reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
+      auto* __data =
+        reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
       return __data->__dec_ref_();
     }
 
     template <class _Ty, std::size_t _ReservedBits>
     template <std::size_t _Bit>
     bool __enable_intrusive_from_this<_Ty, _ReservedBits>::__is_set() const noexcept {
-      auto* __data = reinterpret_cast<const __control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
+      auto* __data =
+        reinterpret_cast<const __control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
       return __data->template __is_set_<_Bit>();
     }
 
     template <class _Ty, std::size_t _ReservedBits>
     template <std::size_t _Bit>
     __bits_t<_ReservedBits> __enable_intrusive_from_this<_Ty, _ReservedBits>::__set_bit() noexcept {
-      auto* __data = reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
+      auto* __data =
+        reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
       return __data->template __set_bit_<_Bit>();
     }
 
     template <class _Ty, std::size_t _ReservedBits>
     template <std::size_t _Bit>
-    __bits_t<_ReservedBits> __enable_intrusive_from_this<_Ty, _ReservedBits>::__clear_bit() noexcept {
-      auto* __data = reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
+    __bits_t<_ReservedBits>
+      __enable_intrusive_from_this<_Ty, _ReservedBits>::__clear_bit() noexcept {
+      auto* __data =
+        reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
       return __data->template __clear_bit_<_Bit>();
     }
 
@@ -304,7 +313,8 @@ namespace stdexec {
         requires constructible_from<_Ty, _Us...>
       auto operator()(_Us&&... __us) const -> __intrusive_ptr<_Ty, _ReservedBits> {
         using _UncvTy = std::remove_cv_t<_Ty>;
-        return __intrusive_ptr<_Ty, _ReservedBits>{::new __control_block<_UncvTy, _ReservedBits>{static_cast<_Us&&>(__us)...}};
+        return __intrusive_ptr<_Ty, _ReservedBits>{
+          ::new __control_block<_UncvTy, _ReservedBits>{static_cast<_Us&&>(__us)...}};
       }
     };
   } // namespace __ptr

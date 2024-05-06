@@ -63,6 +63,9 @@ namespace stdexec {
   template <class _Tp, class _Up>
   using __msecond = _Up;
 
+  template <class...>
+  struct __undefined;
+
   template <class _Tp>
   extern const __undefined<_Tp> __v;
 
@@ -755,15 +758,6 @@ namespace stdexec {
   template <const auto& _Fun, class... _As>
   inline constexpr bool __noexcept_of = noexcept(_Fun(__declval<_As>()...));
 
-  // For working around clang's lack of support for CWG#2369:
-  // http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#2369
-  struct __qcall_result {
-    template <class _Fun, class... _As>
-    using __f = __call_result_t<_Fun, _As...>;
-  };
-  template <bool _Enable, class _Fun, class... _As>
-  using __call_result_if_t = __minvoke<__if<__mbool<_Enable>, __qcall_result, __>, _Fun, _As...>;
-
   // For emplacing non-movable types into optionals:
   template <class _Fn>
     requires std::is_nothrow_move_constructible_v<_Fn>
@@ -781,15 +775,6 @@ namespace stdexec {
   };
   template <class _Fn>
   __conv(_Fn) -> __conv<_Fn>;
-
-  // Implemented as a class instead of a free function
-  // because of a bizarre nvc++ compiler bug:
-  struct __cref_fn {
-    template <class _Ty>
-    auto operator()(const _Ty&) -> const _Ty&;
-  };
-  template <class _Ty>
-  using __cref_t = decltype(__cref_fn{}(__declval<_Ty>()));
 
   template <class, class, class, class>
   struct __mzip_with2_;
@@ -968,21 +953,6 @@ namespace stdexec {
   using __1 = __placeholder<1>;
   using __2 = __placeholder<2>;
   using __3 = __placeholder<3>;
-
-#if STDEXEC_MSVC()
-  // MSVCBUG https://developercommunity.visualstudio.com/t/Incorrect-function-template-argument-sub/10437827
-
-  template <std::size_t>
-  struct __ignore_t {
-    __ignore_t() = default;
-
-    constexpr __ignore_t(auto&&...) noexcept {
-    }
-  };
-#else
-  template <std::size_t>
-  using __ignore_t = __ignore;
-#endif
 
   template <class... _Ignore>
   struct __nth_pack_element_impl {

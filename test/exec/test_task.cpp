@@ -17,7 +17,7 @@
 
 #include <stdexec/coroutine.hpp>
 
-#if !STDEXEC_STD_NO_COROUTINES_
+#if !STDEXEC_STD_NO_COROUTINES()
 #  include <exec/task.hpp>
 #  include <exec/single_thread_context.hpp>
 #  include <exec/async_scope.hpp>

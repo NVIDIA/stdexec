@@ -27,15 +27,15 @@ namespace stdexec {
   struct default_domain;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __receivers {
+  namespace __rcvrs {
     struct set_value_t;
     struct set_error_t;
     struct set_stopped_t;
-  } // namespace __receivers
+  } // namespace __rcvrs
 
-  using __receivers::set_value_t;
-  using __receivers::set_error_t;
-  using __receivers::set_stopped_t;
+  using __rcvrs::set_value_t;
+  using __rcvrs::set_error_t;
+  using __rcvrs::set_stopped_t;
   extern const set_value_t set_value;
   extern const set_error_t set_error;
   extern const set_stopped_t set_stopped;
@@ -106,6 +106,12 @@ namespace stdexec {
   template <__completion_tag _CPO>
   extern const get_completion_scheduler_t<_CPO> get_completion_scheduler;
 
+  struct never_stop_token;
+  class inplace_stop_source;
+  class inplace_stop_token;
+  template <class _Fn>
+  class inplace_stop_callback;
+
   template <class _Tp>
   using stop_token_of_t = __decay_t<__call_result_t<get_stop_token_t, _Tp>>;
 
@@ -118,12 +124,25 @@ namespace stdexec {
     __call_result_t<get_completion_scheduler_t<_CPO>, env_of_t<const _Sender&>>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __get_completion_signatures {
-    struct get_completion_signatures_t;
-  } // namespace __get_completion_signatures
+  namespace __compl_sigs {
+    template <class _Sig>
+    inline constexpr bool __is_compl_sig = false;
 
-  using __get_completion_signatures::get_completion_signatures_t;
+    struct get_completion_signatures_t;
+  } // namespace __compl_sigs
+
+  template <class _Sig>
+  concept __completion_signature = __compl_sigs::__is_compl_sig<_Sig>;
+
+  template <__completion_signature... _Sigs>
+  struct completion_signatures;
+
+  using __compl_sigs::get_completion_signatures_t;
   extern const get_completion_signatures_t get_completion_signatures;
+
+  template <class _Sender, class... _Env>
+  using __completion_signatures_of_t = //
+    __call_result_t<get_completion_signatures_t, _Sender, _Env...>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __connect {
@@ -153,11 +172,11 @@ namespace stdexec {
   extern const start_t start;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __schedule {
+  namespace __sched {
     struct schedule_t;
-  } // namespace __schedule
+  } // namespace __sched
 
-  using __schedule::schedule_t;
+  using __sched::schedule_t;
   extern const schedule_t schedule;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////

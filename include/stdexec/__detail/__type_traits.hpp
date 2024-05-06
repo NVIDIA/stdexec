@@ -17,6 +17,8 @@
 
 #include "__config.hpp"
 
+#include <type_traits>
+
 namespace stdexec {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -183,4 +185,12 @@ namespace stdexec {
   using __remove_rvalue_reference_t =
     decltype(__tt::__remove_rvalue_reference_fn(__declval<_Ty>()));
 
+  // Implemented as a class instead of a free function
+  // because of a bizarre nvc++ compiler bug:
+  struct __cref_fn {
+    template <class _Ty>
+    auto operator()(const _Ty&) -> const _Ty&;
+  };
+  template <class _Ty>
+  using __cref_t = decltype(__cref_fn{}(__declval<_Ty>()));
 } // namespace stdexec
