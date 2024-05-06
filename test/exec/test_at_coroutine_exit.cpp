@@ -17,7 +17,7 @@
 
 #include <stdexec/coroutine.hpp>
 
-#if !STDEXEC_STD_NO_COROUTINES_
+#if !STDEXEC_STD_NO_COROUTINES()
 #  include <exec/at_coroutine_exit.hpp>
 #  include <exec/on_coro_disposition.hpp>
 #  include <catch2/catch.hpp>
@@ -448,4 +448,4 @@ namespace {
 
 } // unnamed namespace
 
-#endif // !STDEXEC_STD_NO_COROUTINES_
+#endif // STDEXEC_STD_NO_COROUTINES()

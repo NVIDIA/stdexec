@@ -34,7 +34,6 @@
 #endif
 
 #include <cassert>
-#include <version>
 
 #define STDEXEC_STRINGIZE(_ARG)   #_ARG
 
@@ -158,6 +157,19 @@
 #  define STDEXEC_CUDA(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #else
 #  define STDEXEC_CUDA(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+#if __cpp_impl_coroutine >= 201902 && __cpp_lib_coroutine >= 201902
+#  include <coroutine>
+#  define STDEXEC_STD_NO_COROUTINES() 0
+namespace __coro = std;
+#elif defined(__cpp_coroutines) && __has_include(<experimental/coroutine>)
+#  include <experimental/coroutine>
+#  define STDEXEC_STD_NO_COROUTINES() 0
+namespace __coro = std::experimental;
+#else
+#  define STDEXEC_STD_NO_COROUTINES() 1
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

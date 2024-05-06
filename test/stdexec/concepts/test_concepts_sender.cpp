@@ -51,7 +51,7 @@ namespace {
     REQUIRE(ex::sender<P2300r7_sender_2>);
   }
 
-#if !STDEXEC_STD_NO_COROUTINES_
+#if !STDEXEC_STD_NO_COROUTINES()
   struct awaiter {
     bool await_ready();
     void await_suspend(__coro::coroutine_handle<>);
