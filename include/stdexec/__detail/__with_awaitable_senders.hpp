@@ -20,7 +20,7 @@
 #include "__as_awaitable.hpp"
 #include "__concepts.hpp"
 
-#include <execution>
+#include <exception>
 
 namespace stdexec {
 #if !STDEXEC_STD_NO_COROUTINES()
