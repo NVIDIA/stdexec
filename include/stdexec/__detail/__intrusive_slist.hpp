@@ -19,6 +19,7 @@
 
 #include <cstddef>
 #include <cassert>
+#include <iterator>
 #include <utility>
 
 namespace stdexec {
