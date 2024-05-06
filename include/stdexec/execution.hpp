@@ -27,6 +27,7 @@
 #include "__detail/__intrusive_ptr.hpp"
 #include "__detail/__intrusive_slist.hpp"
 #include "__detail/__meta.hpp"
+#include "__detail/__operation_states.hpp"
 #include "__detail/__receivers.hpp"
 #include "__detail/__schedulers.hpp"
 #include "__detail/__senders.hpp"
@@ -81,34 +82,6 @@ namespace stdexec {
     requires {
       typename __mbool<bool{_Predicate(_Tag{})}>;
       requires bool { _Predicate(_Tag{}) };
-    };
-
-  /////////////////////////////////////////////////////////////////////////////
-  // [execution.op_state]
-  namespace __start {
-    struct start_t {
-      template <class _Op>
-        requires tag_invocable<start_t, _Op&>
-      STDEXEC_ATTRIBUTE((always_inline))
-      void
-        operator()(_Op& __op) const noexcept {
-        static_assert(nothrow_tag_invocable<start_t, _Op&>);
-        (void) tag_invoke(start_t{}, __op);
-      }
-    };
-  } // namespace __start
-
-  using __start::start_t;
-  inline constexpr start_t start{};
-
-  /////////////////////////////////////////////////////////////////////////////
-  // [execution.op_state]
-  template <class _Op>
-  concept operation_state =  //
-    destructible<_Op> &&     //
-    std::is_object_v<_Op> && //
-    requires(_Op& __op) {    //
-      start(__op);
     };
 
 #if !STDEXEC_STD_NO_COROUTINES_
