@@ -21,6 +21,9 @@
 #include <cstddef>
 #include <bit>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_partial_spec_arg_list)
+
 namespace exec {
 #if defined(__cpp_lib_int_pow2) && __cpp_lib_int_pow2 >= 202002L
   namespace detail {
@@ -229,3 +232,5 @@ namespace exec {
     }
   };
 } // namespace exec
+
+STDEXEC_PRAGMA_POP()

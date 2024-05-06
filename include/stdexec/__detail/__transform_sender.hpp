@@ -25,6 +25,9 @@
 #include "__sender_introspection.hpp"
 #include "__type_traits.hpp"
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(type_qualifiers_ignored_on_reference)
+
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // dependent_domain
@@ -223,3 +226,5 @@ namespace stdexec {
   template <class _Domain, class _Tag, class _Sender, class... _Args>
   using apply_sender_result_t = __call_result_t<apply_sender_t, _Domain, _Tag, _Sender, _Args...>;
 } // namespace stdexec
+
+STDEXEC_PRAGMA_POP()
