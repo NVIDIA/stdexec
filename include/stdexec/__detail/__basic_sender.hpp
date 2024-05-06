@@ -17,8 +17,8 @@
 
 #include "__execution_fwd.hpp"
 
-#include "__config.hpp"
 #include "__concepts.hpp"
+#include "__diagnostics.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
 #include "__tuple.hpp"
@@ -71,15 +71,6 @@ namespace stdexec {
     using __desc_of = __sexpr_uncurry<_Sender, __q<__desc>>;
 
     using __get_desc = __sexpr_uncurry_fn<__q<__desc>>;
-
-    template <class _Sender>
-    extern __q<__midentity> __name_of_v;
-
-    template <class _Sender>
-    using __name_of_fn = decltype(__name_of_v<_Sender>);
-
-    template <class _Sender>
-    using __name_of = __minvoke<__name_of_fn<_Sender>, _Sender>;
   } // namespace __detail
 
   namespace {
@@ -135,9 +126,6 @@ namespace stdexec {
 
   template <class _Tag>
   struct __sexpr_impl;
-
-  template <class _Sender>
-  using __name_of = __detail::__name_of<_Sender>;
 
   namespace __detail {
     template <class _Sexpr, class _Receiver>

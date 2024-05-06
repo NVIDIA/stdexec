@@ -380,11 +380,9 @@ namespace tbbexec {
               requires stdexec::__callable<Tag, const Sender&, As...>
             friend auto tag_invoke(Tag tag, const __t& self, As&&... as) //
               noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-                -> stdexec::__call_result_if_t<
-                  stdexec::tag_category<Tag, stdexec::forwarding_query>,
-                  Tag,
-                  const Sender&,
-                  As...> {
+                -> stdexec::__msecond<
+                  stdexec::__if_c<stdexec::tag_category<Tag, stdexec::forwarding_query>>,
+                  stdexec::__call_result_t<Tag, const Sender&, As...>> {
               return static_cast<Tag&&>(tag)(self.sndr_, static_cast<As&&>(as)...);
             }
 

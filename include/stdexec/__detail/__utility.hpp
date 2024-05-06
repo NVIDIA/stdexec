@@ -34,6 +34,21 @@ namespace stdexec {
     }
   };
 
+#if STDEXEC_MSVC()
+  // MSVCBUG https://developercommunity.visualstudio.com/t/Incorrect-function-template-argument-sub/10437827
+
+  template <std::size_t>
+  struct __ignore_t {
+    __ignore_t() = default;
+
+    constexpr __ignore_t(auto&&...) noexcept {
+    }
+  };
+#else
+  template <std::size_t>
+  using __ignore_t = __ignore;
+#endif
+
   struct __none_such { };
 
   namespace {
