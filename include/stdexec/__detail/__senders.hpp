@@ -18,6 +18,7 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
+#include "__awaitable.hpp"
 #include "__completion_signatures.hpp"
 #include "__concepts.hpp"
 #include "__connect_awaitable.hpp"
@@ -31,6 +32,78 @@
 #include "__type_traits.hpp"
 
 namespace stdexec {
+  /////////////////////////////////////////////////////////////////////////////
+  // [execution.get_completion_signatures]
+  namespace __compl_sigs {
+    template <class _Sender, class _Env>
+    using __tfx_sender =
+      transform_sender_result_t<__late_domain_of_t<_Sender, _Env>, _Sender, _Env>;
+
+    template <class _Sender, class _Env>
+    concept __with_tag_invoke = //
+      tag_invocable<get_completion_signatures_t, __tfx_sender<_Sender, _Env>, _Env>;
+
+    template <class _Sender, class _Env>
+    using __member_alias_t = //
+      typename __decay_t<__tfx_sender<_Sender, _Env>>::completion_signatures;
+
+    template <class _Sender, class _Env = empty_env>
+    concept __with_member_alias = __mvalid<__member_alias_t, _Sender, _Env>;
+
+    struct get_completion_signatures_t {
+      template <class _Sender, class _Env>
+      static auto __impl() {
+        static_assert(sizeof(_Sender), "Incomplete type used with get_completion_signatures");
+        static_assert(sizeof(_Env), "Incomplete type used with get_completion_signatures");
+
+        // Compute the type of the transformed sender:
+        using _TfxSender = __tfx_sender<_Sender, _Env>;
+
+        if constexpr (__merror<_TfxSender>) {
+          // Computing the type of the transformed sender returned an error type. Propagate it.
+          return static_cast<_TfxSender (*)()>(nullptr);
+        } else if constexpr (__with_tag_invoke<_Sender, _Env>) {
+          using _Result = tag_invoke_result_t<get_completion_signatures_t, _TfxSender, _Env>;
+          return static_cast<_Result (*)()>(nullptr);
+        } else if constexpr (__with_member_alias<_Sender, _Env>) {
+          using _Result = __member_alias_t<_Sender, _Env>;
+          return static_cast<_Result (*)()>(nullptr);
+        } else if constexpr (__awaitable<_Sender, __env::__promise<_Env>>) {
+          using _AwaitResult = __await_result_t<_Sender, __env::__promise<_Env>>;
+          using _Result = completion_signatures<
+            // set_value_t() or set_value_t(T)
+            __minvoke<__remove<void, __qf<set_value_t>>, _AwaitResult>,
+            set_error_t(std::exception_ptr),
+            set_stopped_t()>;
+          return static_cast<_Result (*)()>(nullptr);
+        } else if constexpr (__is_debug_env<_Env>) {
+          using __tag_invoke::tag_invoke;
+          // This ought to cause a hard error that indicates where the problem is.
+          using _Completions
+            [[maybe_unused]] = tag_invoke_result_t<get_completion_signatures_t, _Sender, _Env>;
+          return static_cast<__debug::__completion_signatures (*)()>(nullptr);
+        } else {
+          using _Result = __mexception<
+            _UNRECOGNIZED_SENDER_TYPE_<>,
+            _WITH_SENDER_<_Sender>,
+            _WITH_ENVIRONMENT_<_Env>>;
+          return static_cast<_Result (*)()>(nullptr);
+        }
+      }
+
+      // NOT TO SPEC: if we're unable to compute the completion signatures,
+      // return an error type instead of SFINAE.
+      template <class _Sender, class _Env = empty_env>
+      constexpr auto operator()(_Sender&&, _Env&& = {}) const noexcept //
+        -> decltype(__impl<_Sender, _Env>()()) {
+        return {};
+      }
+    };
+  } // namespace __compl_sigs
+
+  using __compl_sigs::get_completion_signatures_t;
+  inline constexpr get_completion_signatures_t get_completion_signatures{};
+
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.connect]
   namespace __connect {

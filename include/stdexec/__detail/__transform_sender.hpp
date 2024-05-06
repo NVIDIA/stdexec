@@ -18,10 +18,11 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__sender_introspection.hpp"
+#include "__basic_sender.hpp"
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
 #include "__domain.hpp"
+#include "__sender_introspection.hpp"
 #include "__type_traits.hpp"
 
 namespace stdexec {

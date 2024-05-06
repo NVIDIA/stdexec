@@ -17,8 +17,9 @@
 
 #include "__execution_fwd.hpp"
 
-#include "__completion_signatures.hpp"
 #include "__concepts.hpp"
+#include "__diagnostics.hpp"
+#include "__env.hpp"
 #include "__tag_invoke.hpp"
 
 #include <exception>
@@ -101,6 +102,10 @@ namespace stdexec {
     using receiver_concept = receiver_t; // NOT TO SPEC
   };
 
+
+
+
+
   namespace __detail {
     template <class _Receiver>
     concept __enable_receiver =                                            //
@@ -119,11 +124,28 @@ namespace stdexec {
                      move_constructible<__decay_t<_Receiver>> &&  //
                      constructible_from<__decay_t<_Receiver>, _Receiver>;
 
+  namespace __detail {
+    template <class _Receiver, class _Tag, class... _Args>
+    auto __try_completion(_Tag (*)(_Args...))
+      -> __mexception<_MISSING_COMPLETION_SIGNAL_<_Tag(_Args...)>, _WITH_RECEIVER_<_Receiver>>;
+
+    template <class _Receiver, class _Tag, class... _Args>
+      requires nothrow_tag_invocable<_Tag, _Receiver, _Args...>
+    auto __try_completion(_Tag (*)(_Args...)) -> __msuccess;
+
+    template <class _Receiver, class... _Sigs>
+    auto __try_completions(completion_signatures<_Sigs...>*) //
+      -> decltype((
+        __msuccess(),
+        ...,
+        __detail::__try_completion<_Receiver>(static_cast<_Sigs*>(nullptr))));
+  }
+
   template <class _Receiver, class _Completions>
   concept receiver_of =    //
     receiver<_Receiver> && //
     requires(_Completions* __completions) {
-      { stdexec::__try_completions<__decay_t<_Receiver>>(__completions) } -> __ok;
+      { __detail::__try_completions<__decay_t<_Receiver>>(__completions) } -> __ok;
     };
 
   template <class _Receiver, class _Sender>

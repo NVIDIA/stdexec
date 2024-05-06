@@ -17,6 +17,7 @@
 
 #include "__execution_fwd.hpp"
 
+#include "__awaitable.hpp"
 #include "__completion_signatures.hpp"
 #include "__concepts.hpp"
 #include "__config.hpp"

@@ -21,7 +21,7 @@
 #include "__diagnostics.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
-#include "__senders.hpp"
+#include "__senders_core.hpp"
 #include "__sender_introspection.hpp"
 #include "__tuple.hpp"
 #include "__type_traits.hpp"
