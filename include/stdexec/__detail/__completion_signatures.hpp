@@ -244,8 +244,8 @@ namespace stdexec {
       // NOT TO SPEC: if we're unable to compute the completion signatures,
       // return an error type instead of SFINAE.
       template <class _Sender, class _Env = empty_env>
-      constexpr auto
-        operator()(_Sender&&, const _Env&) const noexcept -> decltype(__impl<_Sender, _Env>()()) {
+      constexpr auto operator()(_Sender&&, _Env&& = {}) const noexcept //
+        -> decltype(__impl<_Sender, _Env>()()) {
         return {};
       }
     };

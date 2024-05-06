@@ -140,8 +140,17 @@ namespace stdexec {
   using __compl_sigs::get_completion_signatures_t;
   extern const get_completion_signatures_t get_completion_signatures;
 
-  template <class _Sender, class _Env>
-  using __completion_signatures_of_t = __call_result_t<get_completion_signatures_t, _Sender, _Env>;
+  template <class _Sender, class... _Env>
+  using __completion_signatures_of_t = //
+    __call_result_t<get_completion_signatures_t, _Sender, _Env...>;
+
+  namespace __detail {
+    template <class _Tag>
+    struct __make_sexpr_t;
+  } // namespace __detail
+
+  template <class _Tag>
+  extern const __detail::__make_sexpr_t<_Tag> __make_sexpr;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __connect {

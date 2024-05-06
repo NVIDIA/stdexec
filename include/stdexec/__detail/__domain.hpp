@@ -19,7 +19,7 @@
 
 #include "__config.hpp"
 #include "__concepts.hpp"
-#include "__basic_sender.hpp"
+#include "__sender_introspection.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
 
