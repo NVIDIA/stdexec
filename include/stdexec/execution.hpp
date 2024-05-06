@@ -28,7 +28,7 @@
 #include "__detail/__intrusive_slist.hpp"
 #include "__detail/__meta.hpp"
 #include "__detail/__receivers.hpp"
-#include "__detail/__scope.hpp"
+#include "__detail/__schedulers.hpp"
 #include "__detail/__senders.hpp"
 #include "__detail/__transform_sender.hpp"
 #include "__detail/__transform_completion_signatures.hpp"
@@ -75,70 +75,12 @@ namespace stdexec {
   template <class _Sender, class _Scheduler, class _Env>
   concept __starts_on = __decays_to<__call_result_t<get_scheduler_t, _Env>, _Scheduler>;
 
-  /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.schedule]
-  namespace __schedule {
-    struct schedule_t {
-      template <class _Scheduler>
-        requires tag_invocable<schedule_t, _Scheduler>
-      STDEXEC_ATTRIBUTE((host, device))
-      auto
-        operator()(_Scheduler&& __sched) const
-        noexcept(nothrow_tag_invocable<schedule_t, _Scheduler>) {
-        static_assert(sender<tag_invoke_result_t<schedule_t, _Scheduler>>);
-        return tag_invoke(schedule_t{}, static_cast<_Scheduler&&>(__sched));
-      }
-
-      constexpr STDEXEC_MEMFN_DECL(auto forwarding_query)(this schedule_t) -> bool {
-        return false;
-      }
-    };
-  } // namespace __schedule
-
-  using __schedule::schedule_t;
-  inline constexpr schedule_t schedule{};
-
   // NOT TO SPEC
   template <class _Tag, const auto& _Predicate>
   concept tag_category = //
     requires {
       typename __mbool<bool{_Predicate(_Tag{})}>;
       requires bool { _Predicate(_Tag{}) };
-    };
-
-  /////////////////////////////////////////////////////////////////////////////
-  // [execution.schedulers]
-  template <class _Scheduler>
-  concept __has_schedule = //
-    requires(_Scheduler&& __sched) {
-      { schedule(static_cast<_Scheduler&&>(__sched)) } -> sender;
-    };
-
-  template <class _Scheduler>
-  concept __sender_has_completion_scheduler =
-    requires(_Scheduler&& __sched, get_completion_scheduler_t<set_value_t>&& __tag) {
-      {
-        tag_invoke(std::move(__tag), get_env(schedule(static_cast<_Scheduler&&>(__sched))))
-      } -> same_as<__decay_t<_Scheduler>>;
-    };
-
-  template <class _Scheduler>
-  concept scheduler =                                //
-    __has_schedule<_Scheduler> &&                    //
-    __sender_has_completion_scheduler<_Scheduler> && //
-    equality_comparable<__decay_t<_Scheduler>> &&    //
-    copy_constructible<__decay_t<_Scheduler>>;
-
-  template <scheduler _Scheduler>
-  using schedule_result_t = __call_result_t<schedule_t, _Scheduler>;
-
-  template <receiver _Receiver>
-  using __current_scheduler_t = __call_result_t<get_scheduler_t, env_of_t<_Receiver>>;
-
-  template <class _SchedulerProvider>
-  concept __scheduler_provider = //
-    requires(const _SchedulerProvider& __sp) {
-      { get_scheduler(__sp) } -> scheduler;
     };
 
   /////////////////////////////////////////////////////////////////////////////

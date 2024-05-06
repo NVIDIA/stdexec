@@ -180,11 +180,11 @@ namespace stdexec {
   extern const start_t start;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __schedule {
+  namespace __sched {
     struct schedule_t;
-  } // namespace __schedule
+  } // namespace __sched
 
-  using __schedule::schedule_t;
+  using __sched::schedule_t;
   extern const schedule_t schedule;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
