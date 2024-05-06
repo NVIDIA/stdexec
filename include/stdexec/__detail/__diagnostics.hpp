@@ -27,7 +27,7 @@ namespace stdexec {
 
     template <class _Ty>
     using __name_of = __minvoke<__name_of_fn<_Ty>, _Ty>;
-  }
+  } // namespace __detail
 
   // A utility for pretty-printing type names in diagnostics
   template <class _Ty>
@@ -65,4 +65,4 @@ namespace stdexec {
 
   template <class _Sig>
   struct _MISSING_COMPLETION_SIGNAL_;
-}
+} // namespace stdexec

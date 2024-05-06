@@ -421,7 +421,7 @@ namespace exec {
     template <class... _Ts>
     using __decay_values_t = completion_signatures<set_value_t(__decay_t<_Ts>...)>;
 
-      template <class _Ty>
+    template <class _Ty>
     using __decay_error_t = completion_signatures<set_error_t(__decay_t<_Ty>)>;
 
     template <class _Sender, class _Env>

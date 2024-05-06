@@ -79,41 +79,6 @@ namespace stdexec {
     || __valid_completion_signatures<__completion_signatures_of_t<_Sender, empty_env>>;
 
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.receivers]
-  struct receiver_t {
-    using receiver_concept = receiver_t; // NOT TO SPEC
-  };
-
-  namespace __detail {
-    template <class _Receiver>
-    concept __enable_receiver =                                            //
-      (STDEXEC_NVHPC(requires { typename _Receiver::receiver_concept; }&&) //
-       derived_from<typename _Receiver::receiver_concept, receiver_t>)
-      || requires { typename _Receiver::is_receiver; } // back-compat, NOT TO SPEC
-      || STDEXEC_IS_BASE_OF(receiver_t, _Receiver);    // NOT TO SPEC, for receiver_adaptor
-  }                                                    // namespace __detail
-
-  template <class _Receiver>
-  inline constexpr bool enable_receiver = __detail::__enable_receiver<_Receiver>; // NOT TO SPEC
-
-  template <class _Receiver>
-  concept receiver = enable_receiver<__decay_t<_Receiver>> &&     //
-                     environment_provider<__cref_t<_Receiver>> && //
-                     move_constructible<__decay_t<_Receiver>> &&  //
-                     constructible_from<__decay_t<_Receiver>, _Receiver>;
-
-  template <class _Receiver, class _Completions>
-  concept receiver_of =    //
-    receiver<_Receiver> && //
-    requires(_Completions* __completions) {
-      { stdexec::__try_completions<__decay_t<_Receiver>>(__completions) } -> __ok;
-    };
-
-  template <class _Receiver, class _Sender>
-  concept __receiver_from =
-    receiver_of<_Receiver, __completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
-
-  /////////////////////////////////////////////////////////////////////////////
   // Some utilities for debugging senders
   namespace __debug {
     struct __is_debug_env_t {
@@ -3106,7 +3071,9 @@ namespace stdexec {
       }
 
       __box(__box&&) noexcept = default;
-      __box(const __box&) noexcept requires _Copyable = default;
+      __box(const __box&) noexcept
+        requires _Copyable
+      = default;
 
       ~__box() {
         __sh_state_t::__detach(__sh_state_);
@@ -3117,11 +3084,12 @@ namespace stdexec {
 
     template <class _CvrefSender, class _Env>
     __box(__split::__split_t, __intrusive_ptr<__shared_state<_CvrefSender, _Env>, 2>) //
-      -> __box<_CvrefSender, _Env, true>;
+      ->__box<_CvrefSender, _Env, true>;
 
     template <class _CvrefSender, class _Env>
-    __box(__ensure_started::__ensure_started_t, __intrusive_ptr<__shared_state<_CvrefSender, _Env>, 2>)
-      -> __box<_CvrefSender, _Env, false>;
+    __box(
+      __ensure_started::__ensure_started_t,
+      __intrusive_ptr<__shared_state<_CvrefSender, _Env>, 2>) -> __box<_CvrefSender, _Env, false>;
 
     template <class _Tag>
     struct __shared_impl : __sexpr_defaults {
@@ -3287,7 +3255,8 @@ namespace stdexec {
               static_cast<_Child&&>(__child), static_cast<_Env&&>(__env));
             // Eagerly start the work:
             __sh_state->__try_start();
-            return __make_sexpr<__ensure_started_t>(__box{__ensure_started_t(), std::move(__sh_state)});
+            return __make_sexpr<__ensure_started_t>(
+              __box{__ensure_started_t(), std::move(__sh_state)});
           });
       }
     };

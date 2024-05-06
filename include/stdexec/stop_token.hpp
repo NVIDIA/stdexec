@@ -16,8 +16,7 @@
  */
 #pragma once
 
-#include "concepts.hpp"
-#include "__detail/__config.hpp"
+#include "__detail/__stop_token.hpp"
 
 #include <version>
 #include <cstdint>
@@ -31,18 +30,7 @@
 #  include <stop_token>
 #endif
 
-
 namespace stdexec {
-  // [stoptoken.inplace], class inplace_stop_token
-  class inplace_stop_token;
-
-  // [stopsource.inplace], class inplace_stop_source
-  class inplace_stop_source;
-
-  // [stopcallback.inplace], class template inplace_stop_callback
-  template <class _Callback>
-  class inplace_stop_callback;
-
   namespace __stok {
     struct __inplace_stop_callback_base {
       void __execute() noexcept {
@@ -88,9 +76,6 @@ namespace stdexec {
       static constexpr uint32_t __yield_threshold_ = 20;
       uint32_t __count_ = 0;
     };
-
-    template <template <class> class>
-    struct __check_type_alias_exists;
   } // namespace __stok
 
   // [stoptoken.never], class never_stop_token
@@ -391,55 +376,6 @@ namespace stdexec {
       }
     }
   }
-
-  template <class _Token>
-  concept stoppable_token =
-    copy_constructible<_Token> &&                   //
-    move_constructible<_Token> &&                   //
-    std::is_nothrow_copy_constructible_v<_Token> && //
-    std::is_nothrow_move_constructible_v<_Token> && //
-    equality_comparable<_Token> &&                  //
-    requires(const _Token& __token) {
-      { __token.stop_requested() } noexcept -> __boolean_testable_;
-      { __token.stop_possible() } noexcept -> __boolean_testable_;
-    // workaround ICE in appleclang 13.1
-#if !defined(__clang__)
-      typename __stok::__check_type_alias_exists<_Token::template callback_type>;
-#endif
-    };
-
-  template <class _Token, typename _Callback, typename _Initializer = _Callback>
-  concept stoppable_token_for =
-    stoppable_token<_Token> && __callable<_Callback> &&                 //
-    requires { typename _Token::template callback_type<_Callback>; } && //
-    constructible_from<_Callback, _Initializer> &&                      //
-    constructible_from<                                                 //
-      typename _Token::template callback_type<_Callback>,
-      _Token,
-      _Initializer>
-    &&                  //
-    constructible_from< //
-      typename _Token::template callback_type<_Callback>,
-      _Token&,
-      _Initializer>
-    &&                  //
-    constructible_from< //
-      typename _Token::template callback_type<_Callback>,
-      const _Token,
-      _Initializer>
-    && //
-    constructible_from<typename _Token::template callback_type<_Callback>, const _Token&, _Initializer>;
-
-  template <class _Token>
-  concept unstoppable_token =  //
-    stoppable_token<_Token> && //
-    requires {
-      { _Token::stop_possible() } -> __boolean_testable_;
-    } && //
-    (!_Token::stop_possible());
-
-  template <class _Token, class _Callback>
-  using stop_callback_for_t = typename _Token::template callback_type<_Callback>;
 
   using in_place_stop_token
     [[deprecated("in_place_stop_token has been renamed inplace_stop_token")]] = inplace_stop_token;

@@ -106,6 +106,12 @@ namespace stdexec {
   template <__completion_tag _CPO>
   extern const get_completion_scheduler_t<_CPO> get_completion_scheduler;
 
+  struct never_stop_token;
+  class inplace_stop_source;
+  class inplace_stop_token;
+  template <class _Fn>
+  class inplace_stop_callback;
+
   template <class _Tp>
   using stop_token_of_t = __decay_t<__call_result_t<get_stop_token_t, _Tp>>;
 

@@ -17,6 +17,7 @@
 
 #include "__execution_fwd.hpp"
 
+#include "__completion_signatures.hpp"
 #include "__concepts.hpp"
 #include "__tag_invoke.hpp"
 
@@ -95,4 +96,37 @@ namespace stdexec {
       }
     }
   } __try_call{};
+
+  struct receiver_t {
+    using receiver_concept = receiver_t; // NOT TO SPEC
+  };
+
+  namespace __detail {
+    template <class _Receiver>
+    concept __enable_receiver =                                            //
+      (STDEXEC_NVHPC(requires { typename _Receiver::receiver_concept; }&&) //
+       derived_from<typename _Receiver::receiver_concept, receiver_t>)
+      || requires { typename _Receiver::is_receiver; } // back-compat, NOT TO SPEC
+      || STDEXEC_IS_BASE_OF(receiver_t, _Receiver);    // NOT TO SPEC, for receiver_adaptor
+  }                                                    // namespace __detail
+
+  template <class _Receiver>
+  inline constexpr bool enable_receiver = __detail::__enable_receiver<_Receiver>; // NOT TO SPEC
+
+  template <class _Receiver>
+  concept receiver = enable_receiver<__decay_t<_Receiver>> &&     //
+                     environment_provider<__cref_t<_Receiver>> && //
+                     move_constructible<__decay_t<_Receiver>> &&  //
+                     constructible_from<__decay_t<_Receiver>, _Receiver>;
+
+  template <class _Receiver, class _Completions>
+  concept receiver_of =    //
+    receiver<_Receiver> && //
+    requires(_Completions* __completions) {
+      { stdexec::__try_completions<__decay_t<_Receiver>>(__completions) } -> __ok;
+    };
+
+  template <class _Receiver, class _Sender>
+  concept __receiver_from =
+    receiver_of<_Receiver, __completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
 } // namespace stdexec

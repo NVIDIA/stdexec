@@ -17,15 +17,12 @@
 
 #include "__execution_fwd.hpp"
 
-#include "__config.hpp"
+#include "__concepts.hpp"
 #include "__cpo.hpp"
 #include "__meta.hpp"
-#include "__concepts.hpp"
+#include "__stop_token.hpp"
+#include "__tag_invoke.hpp"
 
-#include "../functional.hpp"
-#include "../stop_token.hpp"
-
-#include <concepts>
 #include <type_traits>
 #include <exception>
 
@@ -180,12 +177,12 @@ namespace stdexec {
         return true;
       }
 
-      template <class _Env>
-      auto operator()(const _Env&) const noexcept -> never_stop_token {
+      template <class _Env, class _Token = never_stop_token>
+      auto operator()(const _Env&) const noexcept -> _Token {
         return {};
       }
 
-      template <class _Env>
+      template <class _Env, class = void>
         requires tag_invocable<get_stop_token_t, const _Env&>
       auto operator()(const _Env& __env) const noexcept
         -> tag_invoke_result_t<get_stop_token_t, const _Env&> {
