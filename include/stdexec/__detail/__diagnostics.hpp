@@ -65,4 +65,26 @@ namespace stdexec {
 
   template <class _Sig>
   struct _MISSING_COMPLETION_SIGNAL_;
+
+  template <class _Fun>
+  struct _WITH_FUNCTION_;
+
+  template <class... _Args>
+  struct _WITH_ARGUMENTS_;
+
+  inline constexpr __mstring __not_callable_diag =
+    "The specified function is not callable with the arguments provided."_mstr;
+
+  template <__mstring _Context, __mstring _Diagnostic = __not_callable_diag>
+  struct _NOT_CALLABLE_;
+
+  template <__mstring _Context>
+  struct __callable_error {
+    template <class _Fun, class... _Args>
+    using __f =     //
+      __mexception< //
+        _NOT_CALLABLE_<_Context>,
+        _WITH_FUNCTION_<_Fun>,
+        _WITH_ARGUMENTS_<_Args...>>;
+  };
 } // namespace stdexec

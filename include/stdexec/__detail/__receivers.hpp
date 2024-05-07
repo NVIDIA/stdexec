@@ -22,6 +22,8 @@
 #include "__env.hpp"
 #include "__tag_invoke.hpp"
 
+#include "../functional.hpp"
+
 #include <exception>
 
 namespace stdexec {
@@ -82,29 +84,9 @@ namespace stdexec {
   inline constexpr set_error_t set_error{};
   inline constexpr set_stopped_t set_stopped{};
 
-  inline constexpr struct __try_call_t {
-    template <class _Receiver, class _Fun, class... _Args>
-      requires __callable<_Fun, _Args...>
-    void operator()(_Receiver&& __rcvr, _Fun __fun, _Args&&... __args) const noexcept {
-      if constexpr (__nothrow_callable<_Fun, _Args...>) {
-        static_cast<_Fun&&>(__fun)(static_cast<_Args&&>(__args)...);
-      } else {
-        try {
-          static_cast<_Fun&&>(__fun)(static_cast<_Args&&>(__args)...);
-        } catch (...) {
-          set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
-        }
-      }
-    }
-  } __try_call{};
-
   struct receiver_t {
     using receiver_concept = receiver_t; // NOT TO SPEC
   };
-
-
-
-
 
   namespace __detail {
     template <class _Receiver>
@@ -119,10 +101,11 @@ namespace stdexec {
   inline constexpr bool enable_receiver = __detail::__enable_receiver<_Receiver>; // NOT TO SPEC
 
   template <class _Receiver>
-  concept receiver = enable_receiver<__decay_t<_Receiver>> &&     //
-                     environment_provider<__cref_t<_Receiver>> && //
-                     move_constructible<__decay_t<_Receiver>> &&  //
-                     constructible_from<__decay_t<_Receiver>, _Receiver>;
+  concept receiver =                             //
+    enable_receiver<__decay_t<_Receiver>>        //
+    && environment_provider<__cref_t<_Receiver>> //
+    && move_constructible<__decay_t<_Receiver>>  //
+    && constructible_from<__decay_t<_Receiver>, _Receiver>;
 
   namespace __detail {
     template <class _Receiver, class _Tag, class... _Args>
@@ -139,7 +122,7 @@ namespace stdexec {
         __msuccess(),
         ...,
         __detail::__try_completion<_Receiver>(static_cast<_Sigs*>(nullptr))));
-  }
+  } // namespace __detail
 
   template <class _Receiver, class _Completions>
   concept receiver_of =    //
@@ -151,4 +134,28 @@ namespace stdexec {
   template <class _Receiver, class _Sender>
   concept __receiver_from =
     receiver_of<_Receiver, __completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
+
+  /// A utility for calling set_value with the result of a function invocation:
+  template <bool _CanThrow = false, class _Receiver, class _Fun, class... _As>
+  void __set_value_invoke(_Receiver&& __rcvr, _Fun&& __fun, _As&&... __as) noexcept(!_CanThrow) {
+    if constexpr (_CanThrow || __nothrow_invocable<_Fun, _As...>) {
+      if constexpr (same_as<void, __invoke_result_t<_Fun, _As...>>) {
+        __invoke(static_cast<_Fun&&>(__fun), static_cast<_As&&>(__as)...);
+        set_value(static_cast<_Receiver&&>(__rcvr));
+      } else {
+        set_value(
+          static_cast<_Receiver&&>(__rcvr),
+          __invoke(static_cast<_Fun&&>(__fun), static_cast<_As&&>(__as)...));
+      }
+    } else {
+      try {
+        stdexec::__set_value_invoke<true>(
+          static_cast<_Receiver&&>(__rcvr),
+          static_cast<_Fun&&>(__fun),
+          static_cast<_As&&>(__as)...);
+      } catch (...) {
+        set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
+      }
+    }
+  }
 } // namespace stdexec

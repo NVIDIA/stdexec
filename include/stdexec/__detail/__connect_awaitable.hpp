@@ -83,7 +83,6 @@ namespace stdexec {
 
       STDEXEC_MEMFN_DECL(
 
-
       void start)(this __operation_base& __self) noexcept {
         __self.__coro_.resume();
       }

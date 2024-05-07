@@ -51,8 +51,7 @@ namespace stdexec {
     };
 
     template <class _CvrefSender, class _Fn>
-    using __sexpr_uncurry =
-      __call_result_t<__sexpr_apply_t, _CvrefSender, __sexpr_uncurry_fn<_Fn>>;
+    using __sexpr_uncurry = __call_result_t<__sexpr_apply_t, _CvrefSender, __sexpr_uncurry_fn<_Fn>>;
 
     template <class _Sender>
     using __desc_of = __sexpr_uncurry<_Sender, __q<__desc>>;
@@ -101,4 +100,4 @@ namespace stdexec {
   template <class _Sender, class _Tag>
   concept sender_expr_for = //
     sender_expr<_Sender> && same_as<tag_of_t<_Sender>, _Tag>;
-}
+} // namespace stdexec

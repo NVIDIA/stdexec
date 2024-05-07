@@ -94,80 +94,6 @@ namespace stdexec {
       requires bool { _Predicate(_Tag{}) };
     };
 
-  template <class _Receiver, class _Fun, class... _As>
-  concept __receiver_of_invoke_result = //
-    receiver_of<
-      _Receiver,
-      completion_signatures<
-        __minvoke<__remove<void, __qf<set_value_t>>, __invoke_result_t<_Fun, _As...>>>>;
-
-  template <bool _CanThrow = false, class _Receiver, class _Fun, class... _As>
-  void __set_value_invoke(_Receiver&& __rcvr, _Fun&& __fun, _As&&... __as) noexcept(!_CanThrow) {
-    if constexpr (_CanThrow || __nothrow_invocable<_Fun, _As...>) {
-      if constexpr (same_as<void, __invoke_result_t<_Fun, _As...>>) {
-        __invoke(static_cast<_Fun&&>(__fun), static_cast<_As&&>(__as)...);
-        set_value(static_cast<_Receiver&&>(__rcvr));
-      } else {
-        set_value(
-          static_cast<_Receiver&&>(__rcvr),
-          __invoke(static_cast<_Fun&&>(__fun), static_cast<_As&&>(__as)...));
-      }
-    } else {
-      try {
-        stdexec::__set_value_invoke<true>(
-          static_cast<_Receiver&&>(__rcvr),
-          static_cast<_Fun&&>(__fun),
-          static_cast<_As&&>(__as)...);
-      } catch (...) {
-        set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
-      }
-    }
-  }
-
-  template <class _Fun>
-  struct _WITH_FUNCTION_ { };
-
-  template <class... _Args>
-  struct _WITH_ARGUMENTS_ { };
-
-  inline constexpr __mstring __not_callable_diag =
-    "The specified function is not callable with the arguments provided."_mstr;
-
-  template <__mstring _Context, __mstring _Diagnostic = __not_callable_diag>
-  struct _NOT_CALLABLE_ { };
-
-  template <__mstring _Context>
-  struct __callable_error {
-    template <class _Fun, class... _Args>
-    using __f =     //
-      __mexception< //
-        _NOT_CALLABLE_<_Context>,
-        _WITH_FUNCTION_<_Fun>,
-        _WITH_ARGUMENTS_<_Args...>>;
-  };
-
-  template <class _Fun, class... _Args>
-    requires __invocable<_Fun, _Args...>
-  using __non_throwing_ = __mbool<__nothrow_invocable<_Fun, _Args...>>;
-
-  template <class _Tag, class _Fun, class _Sender, class _Env, class _Catch>
-  using __with_error_invoke_t = //
-    __if<
-      __gather_completions_for<
-        _Tag,
-        _Sender,
-        _Env,
-        __mbind_front<__mtry_catch_q<__non_throwing_, _Catch>, _Fun>,
-        __q<__mand>>,
-      completion_signatures<>,
-      __with_exception_ptr>;
-
-  template <class _Fun, class... _Args>
-    requires __invocable<_Fun, _Args...>
-  using __set_value_invoke_t = //
-    completion_signatures<
-      __minvoke<__remove<void, __qf<set_value_t>>, __invoke_result_t<_Fun, _Args...>>>;
-
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
   namespace __then {
@@ -425,7 +351,7 @@ namespace stdexec {
           _Env,
           __transform<
             __q<__decay_ref>,
-            __mbind_front<__mtry_catch_q<__non_throwing_, _Catch>, _Fun, _Shape>>,
+            __mbind_front<__mtry_catch_q<__nothrow_invocable_t, _Catch>, _Fun, _Shape>>,
           __q<__mand>>,
         completion_signatures<>,
         __with_exception_ptr>;
