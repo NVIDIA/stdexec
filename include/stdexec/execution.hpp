@@ -34,6 +34,7 @@
 #include "__detail/__receivers.hpp"
 #include "__detail/__schedulers.hpp"
 #include "__detail/__senders.hpp"
+#include "__detail/__start_detached.hpp"
 #include "__detail/__submit.hpp"
 #include "__detail/__transform_sender.hpp"
 #include "__detail/__transform_completion_signatures.hpp"
@@ -89,85 +90,6 @@ namespace stdexec {
       requires bool { _Predicate(_Tag{}) };
     };
 
-  /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.consumer.start_detached]
-  namespace __start_detached {
-    template <class _EnvId>
-    struct __detached_receiver {
-      using _Env = stdexec::__t<_EnvId>;
-
-      struct __t {
-        using receiver_concept = receiver_t;
-        using __id = __detached_receiver;
-        STDEXEC_ATTRIBUTE((no_unique_address))
-        _Env __env_;
-
-        template <class... _As>
-        STDEXEC_MEMFN_DECL(void set_value)(this __t&&, _As&&...) noexcept {
-        }
-
-        template <class _Error>
-        [[noreturn]] STDEXEC_MEMFN_DECL(
-          void set_error)(this __t&&, _Error&&) noexcept {
-          std::terminate();
-        }
-
-        template <same_as<set_stopped_t> _Tag>
-        friend void tag_invoke(_Tag, __t&&) noexcept {
-        }
-
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> const _Env& {
-          // BUGBUG NOT TO SPEC
-          return __self.__env_;
-        }
-      };
-    };
-    template <class _Env = empty_env>
-    using __detached_receiver_t = __t<__detached_receiver<__id<__decay_t<_Env>>>>;
-
-    struct start_detached_t {
-      template <sender_in<__root_env_t> _Sender>
-        requires __callable<apply_sender_t, __early_domain_of_t<_Sender>, start_detached_t, _Sender>
-      void operator()(_Sender&& __sndr) const {
-        auto __domain = __get_early_domain(__sndr);
-        stdexec::apply_sender(__domain, *this, static_cast<_Sender&&>(__sndr));
-      }
-
-      template <class _Env, sender_in<__as_root_env_t<_Env>> _Sender>
-        requires __callable<
-          apply_sender_t,
-          __late_domain_of_t<_Sender, __as_root_env_t<_Env>>,
-          start_detached_t,
-          _Sender,
-          __as_root_env_t<_Env>>
-      void operator()(_Sender&& __sndr, _Env&& __env) const {
-        auto __domain = __get_late_domain(__sndr, __env);
-        stdexec::apply_sender(
-          __domain,
-          *this,
-          static_cast<_Sender&&>(__sndr),
-          __as_root_env(static_cast<_Env&&>(__env)));
-      }
-
-      using _Sender = __0;
-      using __legacy_customizations_t = __types<
-        tag_invoke_t(
-          start_detached_t,
-          get_completion_scheduler_t<set_value_t>(get_env_t(const _Sender&)),
-          _Sender),
-        tag_invoke_t(start_detached_t, _Sender)>;
-
-      template <class _Sender, class _Env = __root_env_t>
-        requires sender_to<_Sender, __detached_receiver_t<_Env>>
-      void apply_sender(_Sender&& __sndr, _Env&& __env = {}) const {
-        __submit(
-          static_cast<_Sender&&>(__sndr), __detached_receiver_t<_Env>{static_cast<_Env&&>(__env)});
-      }
-    };
-  } // namespace __start_detached
-
-  using __start_detached::start_detached_t;
-  inline constexpr start_detached_t start_detached{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.factories]
