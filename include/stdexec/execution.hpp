@@ -33,6 +33,7 @@
 #include "__detail/__receivers.hpp"
 #include "__detail/__schedulers.hpp"
 #include "__detail/__senders.hpp"
+#include "__detail/__submit.hpp"
 #include "__detail/__transform_sender.hpp"
 #include "__detail/__transform_completion_signatures.hpp"
 #include "__detail/__type_traits.hpp"
@@ -86,109 +87,6 @@ namespace stdexec {
       typename __mbool<bool{_Predicate(_Tag{})}>;
       requires bool { _Predicate(_Tag{}) };
     };
-
-  namespace {
-    inline constexpr auto __ref = []<class _Ty>(_Ty& __ty) noexcept {
-      return [__ty = &__ty]() noexcept -> decltype(auto) {
-        return (*__ty);
-      };
-    };
-  } // namespace
-
-  template <class _Ty>
-  using __ref_t = decltype(__ref(__declval<_Ty&>()));
-
-  /////////////////////////////////////////////////////////////////////////////
-  // NOT TO SPEC: __submit
-  namespace __submit_ {
-    template <class _OpRef>
-    struct __receiver {
-      using receiver_concept = receiver_t;
-      using __t = __receiver;
-      using __id = __receiver;
-
-      using _Operation = __decay_t<__call_result_t<_OpRef>>;
-      using _Receiver = stdexec::__t<__mapply<__q<__msecond>, _Operation>>;
-
-      _OpRef __opref_;
-
-      // Forward all the receiver ops, and delete the operation state.
-      template <__completion_tag _Tag, class... _As>
-        requires __callable<_Tag, _Receiver, _As...>
-      friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept {
-        __tag(static_cast<_Receiver&&>(__self.__opref_().__rcvr_), static_cast<_As&&>(__as)...);
-        __self.__delete_op();
-      }
-
-      void __delete_op() noexcept {
-        _Operation* __op = &__opref_();
-        if constexpr (__callable<get_allocator_t, env_of_t<_Receiver>>) {
-          auto&& __env = get_env(__op->__rcvr_);
-          auto __alloc = get_allocator(__env);
-          using _Alloc = decltype(__alloc);
-          using _OpAlloc =
-            typename std::allocator_traits<_Alloc>::template rebind_alloc<_Operation>;
-          _OpAlloc __op_alloc{__alloc};
-          std::allocator_traits<_OpAlloc>::destroy(__op_alloc, __op);
-          std::allocator_traits<_OpAlloc>::deallocate(__op_alloc, __op, 1);
-        } else {
-          delete __op;
-        }
-      }
-
-      // Forward all receiever queries.
-      STDEXEC_MEMFN_DECL(
-        auto get_env)(this const __receiver& __self) noexcept -> env_of_t<_Receiver&> {
-        return get_env(__self.__opref_().__rcvr_);
-      }
-    };
-
-    template <class _SenderId, class _ReceiverId>
-    struct __operation {
-      using _Sender = stdexec::__t<_SenderId>;
-      using _Receiver = stdexec::__t<_ReceiverId>;
-      using __receiver_t = __receiver<__ref_t<__operation>>;
-
-      STDEXEC_ATTRIBUTE((no_unique_address))
-      _Receiver __rcvr_;
-      connect_result_t<_Sender, __receiver_t> __op_state_;
-
-      __operation(_Sender&& __sndr, _Receiver __rcvr)
-        : __rcvr_(static_cast<_Receiver&&>(__rcvr))
-        , __op_state_(connect(static_cast<_Sender&&>(__sndr), __receiver_t{__ref(*this)})) {
-      }
-    };
-
-    struct __submit_t {
-      template <receiver _Receiver, sender_to<_Receiver> _Sender>
-      void operator()(_Sender&& __sndr, _Receiver __rcvr) const noexcept(false) {
-        if constexpr (__callable<get_allocator_t, env_of_t<_Receiver>>) {
-          auto&& __env = get_env(__rcvr);
-          auto __alloc = get_allocator(__env);
-          using _Alloc = decltype(__alloc);
-          using _Op = __operation<__id<_Sender>, __id<_Receiver>>;
-          using _OpAlloc = typename std::allocator_traits<_Alloc>::template rebind_alloc<_Op>;
-          _OpAlloc __op_alloc{__alloc};
-          auto __op = std::allocator_traits<_OpAlloc>::allocate(__op_alloc, 1);
-          try {
-            std::allocator_traits<_OpAlloc>::construct(
-              __op_alloc, __op, static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
-            start(__op->__op_state_);
-          } catch (...) {
-            std::allocator_traits<_OpAlloc>::deallocate(__op_alloc, __op, 1);
-            throw;
-          }
-        } else {
-          start((new __operation<__id<_Sender>, __id<_Receiver>>{
-                   static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr)})
-                  ->__op_state_);
-        }
-      }
-    };
-  } // namespace __submit_
-
-  using __submit_::__submit_t;
-  inline constexpr __submit_t __submit{};
 
   namespace __inln {
     struct __schedule_t { };
