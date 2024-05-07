@@ -26,6 +26,7 @@
 #include "__detail/__debug.hpp"
 #include "__detail/__domain.hpp"
 #include "__detail/__env.hpp"
+#include "__detail/__inline_scheduler.hpp"
 #include "__detail/__intrusive_ptr.hpp"
 #include "__detail/__intrusive_slist.hpp"
 #include "__detail/__meta.hpp"
@@ -87,48 +88,6 @@ namespace stdexec {
       typename __mbool<bool{_Predicate(_Tag{})}>;
       requires bool { _Predicate(_Tag{}) };
     };
-
-  namespace __inln {
-    struct __schedule_t { };
-
-    struct __scheduler {
-      using __t = __scheduler;
-      using __id = __scheduler;
-
-      template <class _Tag = __schedule_t>
-      STDEXEC_ATTRIBUTE((host, device))
-      STDEXEC_MEMFN_DECL(
-        auto schedule)(this __scheduler) {
-        return __make_sexpr<_Tag>();
-      }
-
-      STDEXEC_MEMFN_DECL(auto query)(this __scheduler, get_forward_progress_guarantee_t) noexcept
-        -> forward_progress_guarantee {
-        return forward_progress_guarantee::weakly_parallel;
-      }
-
-      auto operator==(const __scheduler&) const noexcept -> bool = default;
-    };
-  } // namespace __inln
-
-  template <>
-  struct __sexpr_impl<__inln::__schedule_t> : __sexpr_defaults {
-    static constexpr auto get_attrs = //
-      [](__ignore) noexcept
-      -> __env::__with<__inln::__scheduler, get_completion_scheduler_t<set_value_t>> {
-      return __env::__with(__inln::__scheduler{}, get_completion_scheduler<set_value_t>);
-    };
-
-    static constexpr auto get_completion_signatures = //
-      [](__ignore, __ignore) noexcept -> completion_signatures<set_value_t()> {
-      return {};
-    };
-
-    static constexpr auto start = //
-      []<class _Receiver>(__ignore, _Receiver& __rcvr) noexcept -> void {
-      set_value(static_cast<_Receiver&&>(__rcvr));
-    };
-  };
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.consumer.start_detached]
