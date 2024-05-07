@@ -26,6 +26,7 @@
 #include "__detail/__debug.hpp"
 #include "__detail/__domain.hpp"
 #include "__detail/__env.hpp"
+#include "__detail/__execute.hpp"
 #include "__detail/__inline_scheduler.hpp"
 #include "__detail/__intrusive_ptr.hpp"
 #include "__detail/__intrusive_slist.hpp"
@@ -90,68 +91,6 @@ namespace stdexec {
       typename __mbool<bool{_Predicate(_Tag{})}>;
       requires bool { _Predicate(_Tag{}) };
     };
-
-
-
-  /////////////////////////////////////////////////////////////////////////////
-  // [execution.execute]
-  namespace __execute_ {
-    template <class _Fun>
-    struct __as_receiver {
-      using receiver_concept = receiver_t;
-      _Fun __fun_;
-
-      template <same_as<set_value_t> _Tag>
-      friend void tag_invoke(_Tag, __as_receiver&& __rcvr) noexcept {
-        try {
-          __rcvr.__fun_();
-        } catch (...) {
-          set_error(static_cast<__as_receiver&&>(__rcvr), std::exception_ptr());
-        }
-      }
-
-      template <same_as<set_error_t> _Tag>
-      [[noreturn]]
-      friend void tag_invoke(_Tag, __as_receiver&&, std::exception_ptr) noexcept {
-        std::terminate();
-      }
-
-      template <same_as<set_stopped_t> _Tag>
-      friend void tag_invoke(_Tag, __as_receiver&&) noexcept {
-      }
-
-      STDEXEC_MEMFN_DECL(auto get_env)(this const __as_receiver&) noexcept -> empty_env {
-        return {};
-      }
-    };
-
-    struct execute_t {
-      template <scheduler _Scheduler, class _Fun>
-        requires __callable<_Fun&> && move_constructible<_Fun>
-      void operator()(_Scheduler&& __sched, _Fun __fun) const noexcept(false) {
-        // Look for a legacy customization
-        if constexpr (tag_invocable<execute_t, _Scheduler, _Fun>) {
-          tag_invoke(execute_t{}, static_cast<_Scheduler&&>(__sched), static_cast<_Fun&&>(__fun));
-        } else {
-          auto __domain = query_or(get_domain, __sched, default_domain());
-          stdexec::apply_sender(
-            __domain,
-            *this,
-            schedule(static_cast<_Scheduler&&>(__sched)),
-            static_cast<_Fun&&>(__fun));
-        }
-      }
-
-      template <sender_of<set_value_t()> _Sender, class _Fun>
-        requires __callable<_Fun&> && move_constructible<_Fun>
-      void apply_sender(_Sender&& __sndr, _Fun __fun) const noexcept(false) {
-        __submit(static_cast<_Sender&&>(__sndr), __as_receiver<_Fun>{static_cast<_Fun&&>(__fun)});
-      }
-    };
-  } // namespace __execute_
-
-  using __execute_::execute_t;
-  inline constexpr execute_t execute{};
 
   // NOT TO SPEC:
   namespace __closure {
