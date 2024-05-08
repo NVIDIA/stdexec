@@ -52,7 +52,7 @@ namespace stdexec {
   using __msize_t = char[_Np + 1];
 
   template <auto _Np>
-  struct __mconstant_;
+  using __mconstant_ = std::integral_constant<decltype(_Np), _Np>;
 
   template <auto _Np>
   using __mconstant = __mconstant_<_Np>*;

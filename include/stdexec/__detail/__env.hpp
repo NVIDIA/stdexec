@@ -232,6 +232,24 @@ namespace stdexec {
       }
     };
 
+    struct __is_scheduler_affine_t {
+      template <class _Env>
+      constexpr auto operator()(const _Env& __env) const noexcept {
+        if constexpr (tag_invocable<__is_scheduler_affine_t, const _Env&>) {
+          using _Result = tag_invoke_result_t<__is_scheduler_affine_t, const _Env&>;
+          static_assert(__same_as<decltype(__v<_Result>), const bool>);
+          return _Result();
+        } else {
+          return std::false_type();
+        }
+      }
+
+      constexpr STDEXEC_MEMFN_DECL(
+        auto forwarding_query)(this __is_scheduler_affine_t) noexcept -> bool {
+        return false;
+      }
+    };
+
     struct __root_t {
       template <class _Env>
         requires tag_invocable<__root_t, const _Env&>
@@ -263,6 +281,7 @@ namespace stdexec {
   using __queries::get_stop_token_t;
   using __queries::get_completion_scheduler_t;
   using __queries::get_domain_t;
+  using __queries::__is_scheduler_affine_t;
   using __queries::__root_t;
   using __queries::__root_env_t;
 
@@ -448,6 +467,15 @@ namespace stdexec {
 
     inline constexpr __without_fn __without{};
 
+    template <class _Tag, auto _Value>
+    struct __static_env {
+      using value_type = decltype(_Value);
+
+      static constexpr value_type query(_Tag) noexcept {
+        return _Value;
+      }
+    };
+
     template <class _Env, class _Tag, class... _Tags>
     using __without_t = __result_of<__without, _Env, _Tag, _Tags...>;
 
@@ -565,6 +593,10 @@ namespace stdexec {
   concept __is_root_env = requires(_Env&& __env) {
     { __root_t{}(__env) } -> same_as<bool>;
   };
+
+  template <class _Sender>
+  concept __is_scheduler_affine = //
+    requires { requires __v<__call_result_t<__is_scheduler_affine_t, env_of_t<_Sender>>>; };
 } // namespace stdexec
 
 STDEXEC_PRAGMA_POP()

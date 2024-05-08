@@ -46,15 +46,24 @@ namespace stdexec {
 
       auto operator==(const __scheduler&) const noexcept -> bool = default;
     };
+
+    struct __env {
+      static constexpr bool query(__is_scheduler_affine_t) noexcept {
+        return true;
+      }
+
+      constexpr auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> __scheduler {
+        return {};
+      }
+    };
   } // namespace __inln
 
   template <>
   struct __sexpr_impl<__inln::__schedule_t> : __sexpr_defaults {
     static constexpr auto get_attrs = //
-      [](__ignore) noexcept
-      -> __env::__with<__inln::__scheduler, get_completion_scheduler_t<set_value_t>> {
-      return __env::__with(__inln::__scheduler{}, get_completion_scheduler<set_value_t>);
-    };
+      [](__ignore) noexcept {
+        return __inln::__env();
+      };
 
     static constexpr auto get_completion_signatures = //
       [](__ignore, __ignore) noexcept -> completion_signatures<set_value_t()> {
@@ -66,4 +75,6 @@ namespace stdexec {
       set_value(static_cast<_Receiver&&>(__rcvr));
     };
   };
+
+  static_assert(__is_scheduler_affine<schedule_result_t<__inln::__scheduler>>);
 } // namespace stdexec
