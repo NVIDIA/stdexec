@@ -39,6 +39,7 @@
 #include "__detail/__receivers.hpp"
 #include "__detail/__receiver_adaptor.hpp"
 #include "__detail/__run_loop.hpp"
+#include "__detail/__schedule_from.hpp"
 #include "__detail/__schedulers.hpp"
 #include "__detail/__senders.hpp"
 #include "__detail/__sender_adaptor_closure.hpp"
@@ -103,232 +104,9 @@ namespace stdexec {
     };
 
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.adaptors.schedule_from]
-  namespace __schedule_from {
-    template <class... _Ts>
-    using __value_tuple = __tup::__tuple_for<__decay_t<_Ts>...>;
-
-    // Compute a variant type that is capable of storing the results of the
-    // input sender when it completes. The variant has type:
-    //   variant<
-    //     monostate,
-    //     tuple<set_stopped_t>,
-    //     tuple<set_value_t, __decay_t<_Values1>...>,
-    //     tuple<set_value_t, __decay_t<_Values2>...>,
-    //        ...
-    //     tuple<set_error_t, __decay_t<_Error1>>,
-    //     tuple<set_error_t, __decay_t<_Error2>>,
-    //        ...
-    //   >
-    template <class _CvrefSender, class _Env>
-    using __variant_for_t = __compl_sigs::__maybe_for_all_sigs<
-      __completion_signatures_of_t<_CvrefSender, _Env>,
-      __q<__value_tuple>,
-      __nullable_variant_t>;
-
-    template <class _Tag>
-    using __decay_signature =
-      __transform<__q<__decay_t>, __mcompose<__q<completion_signatures>, __qf<_Tag>>>;
-
-    template <class... _Ts>
-    using __all_nothrow_decay_copyable_ = __mbool<(__nothrow_decay_copyable<_Ts> && ...)>;
-
-    template <class _CvrefSender, class _Env>
-    using __all_values_and_errors_nothrow_decay_copyable = //
-      __compl_sigs::__maybe_for_all_sigs<
-        __completion_signatures_of_t<_CvrefSender, _Env>,
-        __q<__all_nothrow_decay_copyable_>,
-        __q<__mand>>;
-
-    template <class _CvrefSender, class _Env>
-    using __with_error_t = //
-      __if<
-        __all_values_and_errors_nothrow_decay_copyable<_CvrefSender, _Env>,
-        completion_signatures<>,
-        __with_exception_ptr>;
-
-    template <class _Scheduler, class _CvrefSender, class _Env>
-    using __completions_t = //
-      __try_make_completion_signatures<
-        _CvrefSender,
-        _Env,
-        __try_make_completion_signatures<
-          schedule_result_t<_Scheduler>,
-          _Env,
-          __with_error_t<_CvrefSender, _Env>,
-          __mconst<completion_signatures<>>>,
-        __decay_signature<set_value_t>,
-        __decay_signature<set_error_t>>;
-
-    template <class _SchedulerId>
-    struct __environ {
-      using _Scheduler = stdexec::__t<_SchedulerId>;
-
-      struct __t
-        : __env::__with<
-            stdexec::__t<_SchedulerId>,
-            get_completion_scheduler_t<set_value_t>,
-            get_completion_scheduler_t<set_stopped_t>> {
-        using __id = __environ;
-
-        explicit __t(_Scheduler __sched) noexcept
-          : __t::__with{std::move(__sched)} {
-        }
-
-        template <same_as<get_domain_t> _Key>
-        friend auto tag_invoke(_Key, const __t& __self) noexcept {
-          return query_or(get_domain, __self.__value_, default_domain());
-        }
-      };
-    };
-
-    template <class _Scheduler, class _Sexpr, class _Receiver>
-    struct __state;
-
-    // This receiver is to be completed on the execution context
-    // associated with the scheduler. When the source sender
-    // completes, the completion information is saved off in the
-    // operation state so that when this receiver completes, it can
-    // read the completion out of the operation state and forward it
-    // to the output receiver after transitioning to the scheduler's
-    // context.
-    template <class _Scheduler, class _Sexpr, class _Receiver>
-    struct __receiver2 : receiver_adaptor<__receiver2<_Scheduler, _Sexpr, _Receiver>> {
-      explicit __receiver2(__state<_Scheduler, _Sexpr, _Receiver>* __state) noexcept
-        : __state_{__state} {
-      }
-
-      auto base() && noexcept -> _Receiver&& {
-        return std::move(__state_->__receiver());
-      }
-
-      auto base() const & noexcept -> const _Receiver& {
-        return __state_->__receiver();
-      }
-
-      void set_value() && noexcept {
-        STDEXEC_ASSERT(!__state_->__data_.valueless_by_exception());
-        std::visit(
-          [__state = __state_]<class _Tup>(_Tup& __tupl) noexcept -> void {
-            if constexpr (same_as<_Tup, std::monostate>) {
-              std::terminate(); // reaching this indicates a bug in schedule_from
-            } else {
-              __tup::__apply(
-                [&]<class... _Args>(auto __tag, _Args&... __args) noexcept -> void {
-                  __tag(std::move(__state->__receiver()), static_cast<_Args&&>(__args)...);
-                },
-                __tupl);
-            }
-          },
-          __state_->__data_);
-      }
-
-      __state<_Scheduler, _Sexpr, _Receiver>* __state_;
-    };
-
-    template <class _Scheduler, class _Sexpr, class _Receiver>
-    struct __state
-      : __enable_receiver_from_this<_Sexpr, _Receiver>
-      , __immovable {
-      using __variant_t = __variant_for_t<__child_of<_Sexpr>, env_of_t<_Receiver>>;
-      using __receiver2_t = __receiver2<_Scheduler, _Sexpr, _Receiver>;
-
-      __variant_t __data_;
-      connect_result_t<schedule_result_t<_Scheduler>, __receiver2_t> __state2_;
-      STDEXEC_APPLE_CLANG(__state* __self_;)
-
-      explicit __state(_Scheduler __sched)
-        : __data_()
-        , __state2_(connect(schedule(__sched), __receiver2_t{this}))
-            STDEXEC_APPLE_CLANG(, __self_(this)) {
-      }
-    };
-
-    struct schedule_from_t {
-      template <scheduler _Scheduler, sender _Sender>
-      auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto {
-        using _Env = __t<__environ<__id<__decay_t<_Scheduler>>>>;
-        auto __env = _Env{{static_cast<_Scheduler&&>(__sched)}};
-        auto __domain = query_or(get_domain, __sched, default_domain());
-        return stdexec::transform_sender(
-          __domain,
-          __make_sexpr<schedule_from_t>(std::move(__env), static_cast<_Sender&&>(__sndr)));
-      }
-
-      using _Sender = __1;
-      using _Env = __0;
-      using __legacy_customizations_t = __types<
-        tag_invoke_t(schedule_from_t, get_completion_scheduler_t<set_value_t>(_Env&), _Sender)>;
-    };
-
-    struct __schedule_from_impl : __sexpr_defaults {
-      template <class _Sender>
-      using __scheduler_t =
-        __decay_t<__call_result_t<get_completion_scheduler_t<set_value_t>, env_of_t<_Sender>>>;
-
-      static constexpr auto get_attrs = //
-        []<class _Data, class _Child>(const _Data& __data, const _Child& __child) noexcept {
-          return __env::__join(__data, stdexec::get_env(__child));
-        };
-
-      static constexpr auto get_completion_signatures = //
-        []<class _Sender, class _Env>(_Sender&&, const _Env&) noexcept
-        -> __completions_t<__scheduler_t<_Sender>, __child_of<_Sender>, _Env> {
-        static_assert(sender_expr_for<_Sender, schedule_from_t>);
-        return {};
-      };
-
-      static constexpr auto get_state =
-        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&) {
-          static_assert(sender_expr_for<_Sender, schedule_from_t>);
-          auto __sched = get_completion_scheduler<set_value_t>(stdexec::get_env(__sndr));
-          using _Scheduler = decltype(__sched);
-          return __state<_Scheduler, _Sender, _Receiver>{__sched};
-        };
-
-      static constexpr auto complete = []<class _Tag, class... _Args>(
-                                         __ignore,
-                                         auto& __state,
-                                         auto& __rcvr,
-                                         _Tag,
-                                         _Args&&... __args) noexcept -> void {
-        STDEXEC_APPLE_CLANG(__state.__self_ == &__state ? void() : std::terminate());
-        // Write the tag and the args into the operation state so that
-        // we can forward the completion from within the scheduler's
-        // execution context.
-        using __async_result = __value_tuple<_Tag, _Args...>;
-        constexpr bool __nothrow_ =
-          noexcept(__async_result{_Tag(), static_cast<_Args&&>(__args)...});
-        auto __emplace_result = [&]() noexcept(__nothrow_) {
-          return __async_result{_Tag(), static_cast<_Args&&>(__args)...};
-        };
-        if constexpr (__nothrow_) {
-          __state.__data_.template emplace<__async_result>(__conv{__emplace_result});
-        } else {
-          try {
-            __state.__data_.template emplace<__async_result>(__conv{__emplace_result});
-          } catch (...) {
-            set_error(std::move(__rcvr), std::current_exception());
-            return;
-          }
-        }
-        // Enqueue the schedule operation so the completion happens
-        // on the scheduler's execution context.
-        stdexec::start(__state.__state2_);
-      };
-    };
-  } // namespace __schedule_from
-
-  using __schedule_from::schedule_from_t;
-  inline constexpr schedule_from_t schedule_from{};
-
-  template <>
-  struct __sexpr_impl<schedule_from_t> : __schedule_from::__schedule_from_impl { };
-
-  /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.continue_on]
   namespace __continue_on {
-    using __schedule_from::__environ;
+    using __schfr::__environ;
 
     template <class _Env>
     using __scheduler_t = __result_of<get_completion_scheduler<set_value_t>, _Env>;
@@ -447,7 +225,7 @@ namespace stdexec {
 
     inline auto __make_env_fn() noexcept {
       return []<class _Scheduler>(const _Scheduler& __sched, const auto&...) noexcept {
-        using _Env = __t<__schedule_from::__environ<__id<_Scheduler>>>;
+        using _Env = __t<__schfr::__environ<__id<_Scheduler>>>;
         return _Env{__sched};
       };
     }
@@ -1087,7 +865,7 @@ namespace stdexec {
         requires __domain::__has_common_domain<_Senders...>
       auto
         operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto {
-        using _Env = __t<__schedule_from::__environ<__id<__decay_t<_Scheduler>>>>;
+        using _Env = __t<__schfr::__environ<__id<__decay_t<_Scheduler>>>>;
         auto __domain = query_or(get_domain, __sched, default_domain());
         return stdexec::transform_sender(
           __domain,
@@ -1130,7 +908,7 @@ namespace stdexec {
         requires __domain::__has_common_domain<_Senders...>
       auto
         operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto {
-        using _Env = __t<__schedule_from::__environ<__id<__decay_t<_Scheduler>>>>;
+        using _Env = __t<__schfr::__environ<__id<__decay_t<_Scheduler>>>>;
         auto __domain = query_or(get_domain, __sched, default_domain());
         return stdexec::transform_sender(
           __domain,
