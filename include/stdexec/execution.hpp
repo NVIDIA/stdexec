@@ -43,6 +43,8 @@
 #include "__detail/__sender_adaptor_closure.hpp"
 #include "__detail/__split.hpp"
 #include "__detail/__start_detached.hpp"
+#include "__detail/__stopped_as_error.hpp"
+#include "__detail/__stopped_as_optional.hpp"
 #include "__detail/__submit.hpp"
 #include "__detail/__then.hpp"
 #include "__detail/__transform_sender.hpp"
@@ -100,105 +102,6 @@ namespace stdexec {
       typename __mbool<bool{_Predicate(_Tag{})}>;
       requires bool { _Predicate(_Tag{}) };
     };
-
-  /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.adaptors.stopped_as_optional]
-  // [execution.senders.adaptors.stopped_as_error]
-  namespace __stopped_as_xxx {
-    struct stopped_as_optional_t {
-      template <sender _Sender>
-      auto operator()(_Sender&& __sndr) const {
-        return __make_sexpr<stopped_as_optional_t>(__(), static_cast<_Sender&&>(__sndr));
-      }
-
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
-        operator()() const noexcept -> __binder_back<stopped_as_optional_t> {
-        return {};
-      }
-    };
-
-    struct __stopped_as_optional_impl : __sexpr_defaults {
-      template <class... _Tys>
-        requires(sizeof...(_Tys) == 1)
-      using __set_value_t = completion_signatures<set_value_t(std::optional<__decay_t<_Tys>>...)>;
-
-      template <class _Ty>
-      using __set_error_t = completion_signatures<set_error_t(_Ty)>;
-
-      static constexpr auto get_completion_signatures =       //
-        []<class _Self, class _Env>(_Self&&, _Env&&) noexcept //
-        -> make_completion_signatures<
-          __child_of<_Self>,
-          _Env,
-          completion_signatures<set_error_t(std::exception_ptr)>,
-          __set_value_t,
-          __set_error_t,
-          completion_signatures<>> {
-        static_assert(sender_expr_for<_Self, stopped_as_optional_t>);
-        return {};
-      };
-
-      static constexpr auto get_state = //
-        []<class _Self, class _Receiver>(_Self&&, _Receiver&) noexcept
-        requires __single_typed_sender<__child_of<_Self>, env_of_t<_Receiver>>
-      {
-        static_assert(sender_expr_for<_Self, stopped_as_optional_t>);
-        using _Value = __decay_t<__single_sender_value_t<__child_of<_Self>, env_of_t<_Receiver>>>;
-        return __mtype<_Value>();
-      };
-
-      static constexpr auto complete = //
-        []<class _State, class _Receiver, __completion_tag _Tag, class... _Args>(
-          __ignore,
-          _State&,
-          _Receiver& __rcvr,
-          _Tag,
-          _Args&&... __args) noexcept -> void {
-        if constexpr (same_as<_Tag, set_value_t>) {
-          try {
-            static_assert(constructible_from<__t<_State>, _Args...>);
-            stdexec::set_value(
-              static_cast<_Receiver&&>(__rcvr),
-              std::optional<__t<_State>>{static_cast<_Args&&>(__args)...});
-          } catch (...) {
-            stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
-          }
-        } else if constexpr (same_as<_Tag, set_error_t>) {
-          stdexec::set_error(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
-        } else {
-          stdexec::set_value(
-            static_cast<_Receiver&&>(__rcvr), std::optional<__t<_State>>{std::nullopt});
-        }
-      };
-    };
-
-    struct stopped_as_error_t {
-      template <sender _Sender, __movable_value _Error>
-      auto operator()(_Sender&& __sndr, _Error __err) const {
-        return static_cast<_Sender&&>(__sndr)
-             | let_stopped([__err2 = static_cast<_Error&&>(__err)]() mutable //
-                           noexcept(std::is_nothrow_move_constructible_v<_Error>) {
-                             return just_error(static_cast<_Error&&>(__err2));
-                           });
-      }
-
-      template <__movable_value _Error>
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
-        operator()(_Error __err) const -> __binder_back<stopped_as_error_t, _Error> {
-        return {{static_cast<_Error&&>(__err)}};
-      }
-    };
-  } // namespace __stopped_as_xxx
-
-  using __stopped_as_xxx::stopped_as_optional_t;
-  inline constexpr stopped_as_optional_t stopped_as_optional{};
-  using __stopped_as_xxx::stopped_as_error_t;
-  inline constexpr stopped_as_error_t stopped_as_error{};
-
-  template <>
-  struct __sexpr_impl<stopped_as_optional_t> : __stopped_as_xxx::__stopped_as_optional_impl { };
 
   /////////////////////////////////////////////////////////////////////////////
   // run_loop
