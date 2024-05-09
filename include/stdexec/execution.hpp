@@ -75,5 +75,3 @@
 template <stdexec::sender _Ignore, stdexec::sender _Sender>
   requires stdexec::__ok<stdexec::__bad_pipe_sink_t<_Sender>>
 auto operator|(_Ignore&&, _Sender&&) noexcept;
-
-#include "__detail/__p2300.hpp"
