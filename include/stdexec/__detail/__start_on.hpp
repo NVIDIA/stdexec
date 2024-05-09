@@ -32,20 +32,6 @@
 
 namespace stdexec {
   namespace __detail {
-    template <class _Env, class _Scheduler>
-    STDEXEC_ATTRIBUTE((always_inline))
-    auto
-      __mkenv_sched(_Env&& __env, _Scheduler __sched) {
-      auto __env2 = __env::__join(
-        __env::__with(__sched, get_scheduler),
-        __env::__without(static_cast<_Env&&>(__env), get_domain));
-      using _Env2 = decltype(__env2);
-
-      struct __env_t : _Env2 { };
-
-      return __env_t{static_cast<_Env2&&>(__env2)};
-    }
-
     template <class _Ty, class = __name_of<__decay_t<_Ty>>>
     struct __always {
       _Ty __val_;
