@@ -16,6 +16,7 @@
 #pragma once
 
 #include "__concepts.hpp"
+#include "__meta.hpp"
 
 namespace stdexec::__std_concepts {
 #if STDEXEC_HAS_STD_CONCEPTS_HEADER()
