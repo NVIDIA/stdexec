@@ -71,45 +71,9 @@
 #include "coroutine.hpp"
 #include "stop_token.hpp"
 
-#include <atomic>
-#include <cassert>
-#include <concepts>
-#include <stdexcept>
-#include <memory>
-#include <optional>
-#include <system_error>
-#include <tuple>
-#include <type_traits>
-#include <variant>
-#include <cstddef>
-#include <exception>
-#include <utility>
-
-STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE_GNU("-Wundefined-inline")
-STDEXEC_PRAGMA_IGNORE_GNU("-Wsubobject-linkage")
-STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
-
-STDEXEC_PRAGMA_IGNORE_EDG(1302)
-STDEXEC_PRAGMA_IGNORE_EDG(497)
-STDEXEC_PRAGMA_IGNORE_EDG(type_qualifiers_ignored_on_reference)
-
-namespace stdexec {
-  /////////////////////////////////////////////////////////////////////////////
-  template <class _Sender, class _Scheduler, class _Tag = set_value_t>
-  concept __completes_on =
-    __decays_to<__call_result_t<get_completion_scheduler_t<_Tag>, env_of_t<_Sender>>, _Scheduler>;
-
-  /////////////////////////////////////////////////////////////////////////////
-  template <class _Sender, class _Scheduler, class _Env>
-  concept __starts_on = __decays_to<__call_result_t<get_scheduler_t, _Env>, _Scheduler>;
-} // namespace stdexec
-
 // For issuing a meaningful diagnostic for the erroneous `snd1 | snd2`.
 template <stdexec::sender _Ignore, stdexec::sender _Sender>
   requires stdexec::__ok<stdexec::__bad_pipe_sink_t<_Sender>>
 auto operator|(_Ignore&&, _Sender&&) noexcept;
 
 #include "__detail/__p2300.hpp"
-
-STDEXEC_PRAGMA_POP()
