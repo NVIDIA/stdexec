@@ -245,7 +245,7 @@ namespace exec {
       this->execute = [](__libdispatch_details::task_base *t) noexcept {
         auto &op = *static_cast<operation *>(t);
         auto stoken = stdexec::get_stop_token(stdexec::get_env(op.receiver));
-        if constexpr (std::unstoppable_token<decltype(stoken)>) {
+        if constexpr (stdexec::unstoppable_token<decltype(stoken)>) {
           stdexec::set_value(std::move(op.receiver));
         } else if (stoken.stop_requested()) {
           stdexec::set_stopped(std::move(op.receiver));
