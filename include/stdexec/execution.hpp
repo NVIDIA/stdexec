@@ -103,21 +103,6 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   template <class _Sender, class _Scheduler, class _Env>
   concept __starts_on = __decays_to<__call_result_t<get_scheduler_t, _Env>, _Scheduler>;
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  struct __ignore_sender {
-    using sender_concept = sender_t;
-
-    template <sender _Sender>
-    constexpr __ignore_sender(_Sender&&) noexcept {
-    }
-  };
-
-  template <auto _Reason = "You cannot pipe one sender into another."_mstr>
-  struct _CANNOT_PIPE_INTO_A_SENDER_ { };
-
-  template <class _Sender>
-  using __bad_pipe_sink_t = __mexception<_CANNOT_PIPE_INTO_A_SENDER_<>, _WITH_SENDER_<_Sender>>;
 } // namespace stdexec
 
 #if STDEXEC_MSVC() && _MSC_VER >= 1939
@@ -222,9 +207,9 @@ namespace stdexec {
 #endif
 
 // For issuing a meaningful diagnostic for the erroneous `snd1 | snd2`.
-template <stdexec::sender _Sender>
+template <stdexec::sender _Ignore, stdexec::sender _Sender>
   requires stdexec::__ok<stdexec::__bad_pipe_sink_t<_Sender>>
-auto operator|(stdexec::__ignore_sender, _Sender&&) noexcept -> stdexec::__ignore_sender;
+auto operator|(_Ignore&&, _Sender&&) noexcept;
 
 #include "__detail/__p2300.hpp"
 

@@ -81,6 +81,12 @@ namespace stdexec {
   template <__mstring _Context, __mstring _Diagnostic = __not_callable_diag>
   struct _NOT_CALLABLE_;
 
+  template <auto _Reason = "You cannot pipe one sender into another."_mstr>
+  struct _CANNOT_PIPE_INTO_A_SENDER_ { };
+
+  template <class _Sender>
+  using __bad_pipe_sink_t = __mexception<_CANNOT_PIPE_INTO_A_SENDER_<>, _WITH_SENDER_<_Sender>>;
+
   template <__mstring _Context>
   struct __callable_error {
     template <class _Fun, class... _Args>
