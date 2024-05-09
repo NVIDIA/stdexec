@@ -58,6 +58,7 @@
 #include "__detail/__upon_stopped.hpp"
 #include "__detail/__utility.hpp"
 #include "__detail/__with_awaitable_senders.hpp"
+#include "__detail/__write_env.hpp"
 
 #include "functional.hpp"
 #include "concepts.hpp"
@@ -104,61 +105,6 @@ namespace stdexec {
       typename __mbool<bool{_Predicate(_Tag{})}>;
       requires bool { _Predicate(_Tag{}) };
     };
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  // __write adaptor
-  namespace __write_ {
-    struct __write_t {
-      template <sender _Sender, class... _Envs>
-      auto operator()(_Sender&& __sndr, _Envs... __envs) const {
-        return __make_sexpr<__write_t>(
-          __env::__join(static_cast<_Envs&&>(__envs)...), static_cast<_Sender&&>(__sndr));
-      }
-
-      template <class... _Envs>
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
-        operator()(_Envs... __envs) const -> __binder_back<__write_t, _Envs...> {
-        return {{static_cast<_Envs&&>(__envs)...}};
-      }
-
-      template <class _Env>
-      STDEXEC_ATTRIBUTE((always_inline))
-      static auto
-        __transform_env_fn(_Env&& __env) noexcept {
-        return [&](__ignore, const auto& __state, __ignore) noexcept {
-          return __env::__join(__state, static_cast<_Env&&>(__env));
-        };
-      }
-
-      template <sender_expr_for<__write_t> _Self, class _Env>
-      static auto transform_env(const _Self& __self, _Env&& __env) noexcept {
-        return __sexpr_apply(__self, __transform_env_fn(static_cast<_Env&&>(__env)));
-      }
-    };
-
-    struct __write_impl : __sexpr_defaults {
-      static constexpr auto get_env = //
-        [](__ignore, const auto& __state, const auto& __rcvr) noexcept {
-          return __env::__join(__state, stdexec::get_env(__rcvr));
-        };
-
-      static constexpr auto get_completion_signatures = //
-        []<class _Self, class _Env>(_Self&&, _Env&&) noexcept
-        -> stdexec::__completion_signatures_of_t<
-          __child_of<_Self>,
-          __env::__join_t<const __decay_t<__data_of<_Self>>&, _Env>> {
-        static_assert(sender_expr_for<_Self, __write_t>);
-        return {};
-      };
-    };
-  } // namespace __write_
-
-  using __write_::__write_t;
-  inline constexpr __write_t __write{};
-
-  template <>
-  struct __sexpr_impl<__write_t> : __write_::__write_impl { };
 
   namespace __detail {
     template <class _Env, class _Scheduler>
