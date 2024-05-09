@@ -4316,19 +4316,21 @@ namespace stdexec {
   using __bad_pipe_sink_t = __mexception<_CANNOT_PIPE_INTO_A_SENDER_<>, _WITH_SENDER_<_Sender>>;
 } // namespace stdexec
 
-#if STDEXEC_MSVC()
+#if STDEXEC_MSVC() && _MSC_VER >= 1939
 namespace stdexec {
-  // MSVCBUG https://developercommunity.visualstudio.com/t/Incorrect-codegen-in-await_suspend-aroun/10454102
+  // MSVCBUG https://developercommunity.visualstudio.com/t/destroy-coroutine-from-final_suspend-r/10096047
 
-  // MSVC incorrectly allocates the return buffer for await_suspend calls within the suspended coroutine
-  // frame. When the suspended coroutine is destroyed within await_suspend, the continuation coroutine handle
-  // is not only used after free, but also overwritten by the debug malloc implementation when NRVO is in play.
+  // Prior to Visual Studio 17.9 (Feb, 2024), aka MSVC 19.39, MSVC incorrectly allocates the return
+  // buffer for await_suspend calls within the suspended coroutine frame. When the suspended
+  // coroutine is destroyed within await_suspend, the continuation coroutine handle is not only used
+  // after free, but also overwritten by the debug malloc implementation when NRVO is in play.
 
-  // This workaround delays the destruction of the suspended coroutine by wrapping the continuation in another
-  // coroutine which destroys the former and transfers execution to the original continuation.
+  // This workaround delays the destruction of the suspended coroutine by wrapping the continuation
+  // in another coroutine which destroys the former and transfers execution to the original
+  // continuation.
 
-  // The wrapping coroutine is thread-local and is reused within the thread for each destroy-and-continue sequence.
-  // The wrapping coroutine itself is destroyed at thread exit.
+  // The wrapping coroutine is thread-local and is reused within the thread for each
+  // destroy-and-continue sequence. The wrapping coroutine itself is destroyed at thread exit.
 
   namespace __destroy_and_continue_msvc {
     struct __task {
