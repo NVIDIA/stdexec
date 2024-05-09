@@ -104,14 +104,6 @@ namespace stdexec {
   template <class _Sender, class _Scheduler, class _Env>
   concept __starts_on = __decays_to<__call_result_t<get_scheduler_t, _Env>, _Scheduler>;
 
-  // NOT TO SPEC
-  template <class _Tag, const auto& _Predicate>
-  concept tag_category = //
-    requires {
-      typename __mbool<bool{_Predicate(_Tag{})}>;
-      requires bool { _Predicate(_Tag{}) };
-    };
-
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct __ignore_sender {
     using sender_concept = sender_t;

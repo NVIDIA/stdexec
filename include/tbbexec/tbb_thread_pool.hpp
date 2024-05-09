@@ -376,12 +376,12 @@ namespace tbbexec {
               return {};
             }
 
-            template <stdexec::tag_category<stdexec::forwarding_query> Tag, class... As>
+            template <stdexec::__forwarding_query Tag, class... As>
               requires stdexec::__callable<Tag, const Sender&, As...>
             friend auto tag_invoke(Tag tag, const __t& self, As&&... as) //
               noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
                 -> stdexec::__msecond<
-                  stdexec::__if_c<stdexec::tag_category<Tag, stdexec::forwarding_query>>,
+                  stdexec::__if_c<stdexec::__forwarding_query<Tag>>,
                   stdexec::__call_result_t<Tag, const Sender&, As...>> {
               return static_cast<Tag&&>(tag)(self.sndr_, static_cast<As&&>(as)...);
             }
