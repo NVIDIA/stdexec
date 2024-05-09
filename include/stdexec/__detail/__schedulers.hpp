@@ -80,4 +80,35 @@ namespace stdexec {
     requires(const _SchedulerProvider& __sp) {
       { get_scheduler(__sp) } -> scheduler;
     };
+
+  namespace __queries {
+    template <class _Env>
+      requires tag_invocable<get_scheduler_t, const _Env&>
+    inline auto get_scheduler_t::operator()(const _Env& __env) const noexcept
+      -> tag_invoke_result_t<get_scheduler_t, const _Env&> {
+      static_assert(nothrow_tag_invocable<get_scheduler_t, const _Env&>);
+      static_assert(scheduler<tag_invoke_result_t<get_scheduler_t, const _Env&>>);
+      return tag_invoke(get_scheduler_t{}, __env);
+    }
+
+    template <class _Env>
+      requires tag_invocable<get_delegatee_scheduler_t, const _Env&>
+    inline auto get_delegatee_scheduler_t::operator()(const _Env& __env) const noexcept
+      -> tag_invoke_result_t<get_delegatee_scheduler_t, const _Env&> {
+      static_assert(nothrow_tag_invocable<get_delegatee_scheduler_t, const _Env&>);
+      static_assert(scheduler<tag_invoke_result_t<get_delegatee_scheduler_t, const _Env&>>);
+      return tag_invoke(get_delegatee_scheduler_t{}, __env);
+    }
+
+    template <__completion_tag _Tag>
+    template <__has_completion_scheduler_for<_Tag> _Env>
+    auto get_completion_scheduler_t<_Tag>::operator()(const _Env& __env) const noexcept
+      -> tag_invoke_result_t<get_completion_scheduler_t<_Tag>, const _Env&> {
+      static_assert(
+        nothrow_tag_invocable<get_completion_scheduler_t<_Tag>, const _Env&>,
+        "get_completion_scheduler<_Tag> should be noexcept");
+      static_assert(scheduler<tag_invoke_result_t<get_completion_scheduler_t<_Tag>, const _Env&>>);
+      return tag_invoke(*this, __env);
+    }
+  } // namespace __queries
 } // namespace stdexec

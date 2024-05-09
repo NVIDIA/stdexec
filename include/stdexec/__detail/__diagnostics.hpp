@@ -72,6 +72,9 @@ namespace stdexec {
   template <class... _Args>
   struct _WITH_ARGUMENTS_;
 
+  template <class _Tag>
+  struct _WITH_QUERY_;
+
   inline constexpr __mstring __not_callable_diag =
     "The specified function is not callable with the arguments provided."_mstr;
 
