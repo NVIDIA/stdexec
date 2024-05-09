@@ -123,6 +123,8 @@ namespace stdexec {
 
       STDEXEC_MEMFN_DECL(void set_value)(this __receiver2&& __self) noexcept {
         STDEXEC_ASSERT(!__self.__state_->__data_.valueless_by_exception());
+        // Work around a but in nvc++:
+        using __receiver_t = _Receiver;
         std::visit(
           [__state = __self.__state_]<class _Tup>(_Tup& __tupl) noexcept -> void {
             if constexpr (__same_as<_Tup, std::monostate>) {
@@ -131,7 +133,7 @@ namespace stdexec {
               __tup::__apply(
                 [&]<class... _Args>(auto __tag, _Args&... __args) noexcept -> void {
                   __tag(
-                    static_cast<_Receiver&&>(__state->__receiver()),
+                    static_cast<__receiver_t&&>(__state->__receiver()),
                     static_cast<_Args&&>(__args)...);
                 },
                 __tupl);
