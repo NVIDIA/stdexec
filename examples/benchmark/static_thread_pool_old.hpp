@@ -416,7 +416,7 @@ namespace exec_old {
       this->__execute = [](task_base* t, const std::uint32_t /* tid */) noexcept {
         auto& op = *static_cast<operation*>(t);
         auto stoken = stdexec::get_stop_token(stdexec::get_env(op.receiver_));
-        if constexpr (std::unstoppable_token<decltype(stoken)>) {
+        if constexpr (stdexec::unstoppable_token<decltype(stoken)>) {
           stdexec::set_value(static_cast<Receiver&&>(op.receiver_));
         } else if (stoken.stop_requested()) {
           stdexec::set_stopped(static_cast<Receiver&&>(op.receiver_));

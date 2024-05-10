@@ -18,25 +18,23 @@
 #include <stdexec/execution.hpp>
 #include <exec/env.hpp>
 
-namespace ex = stdexec;
-
 namespace {
   // Two dummy properties:
-  constexpr struct Foo : ex::forwarding_query_t {
+  constexpr struct Foo : stdexec::forwarding_query_t {
     template <class Env>
-      requires std::tag_invocable<Foo, Env>
+      requires stdexec::tag_invocable<Foo, Env>
     auto operator()(const Env& e) const {
       return stdexec::tag_invoke(*this, e);
     }
   } foo{};
 
   constexpr struct Bar {
-    friend constexpr bool tag_invoke(ex::forwarding_query_t, const Bar&) noexcept {
+    friend constexpr bool tag_invoke(stdexec::forwarding_query_t, const Bar&) noexcept {
       return true;
     }
 
     template <class Env>
-      requires std::tag_invocable<Bar, Env>
+      requires stdexec::tag_invocable<Bar, Env>
     auto operator()(const Env& e) const {
       return stdexec::tag_invoke(*this, e);
     }

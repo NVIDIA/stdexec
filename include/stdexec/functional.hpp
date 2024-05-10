@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 NVIDIA Corporation
+ * Copyright (c) 2021-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -39,36 +39,6 @@ namespace stdexec::__std_concepts {
 } // namespace stdexec::__std_concepts
 
 namespace stdexec {
-  template <auto _Fun>
-  struct __function_constant {
-    using _FunT = decltype(_Fun);
-
-    template <class... _Args>
-      requires __callable<_FunT, _Args...>
-    STDEXEC_ATTRIBUTE((always_inline))
-    auto
-      operator()(_Args&&... __args) const noexcept(noexcept(_Fun(static_cast<_Args&&>(__args)...)))
-        -> decltype(_Fun(static_cast<_Args&&>(__args)...)) {
-      return _Fun(static_cast<_Args&&>(__args)...);
-    }
-  };
-
-  template <class _Ty, class _Cl, _Ty _Cl::*_MemPtr>
-  struct __function_constant<_MemPtr> {
-    using _FunT = _Ty _Cl::*;
-
-    template <class _Arg>
-      requires requires(_Arg&& __arg) { static_cast<_Arg&&>(__arg).*_MemPtr; }
-    STDEXEC_ATTRIBUTE((always_inline))
-    constexpr auto
-      operator()(_Arg&& __arg) const noexcept -> decltype(((static_cast<_Arg&&>(__arg)).*_MemPtr)) {
-      return static_cast<_Arg&&>(__arg).*_MemPtr;
-    }
-  };
-
-  template <auto _Fun>
-  inline constexpr __function_constant<_Fun> __function_constant_v{};
-
   template <class _Fun0, class _Fun1>
   struct __composed {
     STDEXEC_ATTRIBUTE((no_unique_address))

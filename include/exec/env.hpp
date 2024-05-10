@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 NVIDIA Corporation
+ * Copyright (c) 2021-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -144,7 +144,8 @@ namespace exec {
 
   inline constexpr __read_with_default::__read_with_default_t read_with_default{};
 
-  inline constexpr stdexec::__write_::__write_t write{};
+  inline constexpr stdexec::__write_::__write_env_t write{};
+  inline constexpr stdexec::__write_::__write_env_t write_env{};
 } // namespace exec
 
 STDEXEC_PRAGMA_POP()

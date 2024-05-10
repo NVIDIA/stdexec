@@ -528,7 +528,6 @@ namespace exec {
       return stdexec::__sexpr_apply(
         static_cast<__Sender&&>(__sndr), __transform_system_bulk_sender{__sched});
     } else if constexpr (stdexec::__starts_on<__Sender, system_scheduler, __Env>) {
-
       auto __sched = stdexec::get_scheduler(__env);
       return stdexec::__sexpr_apply(
         static_cast<__Sender&&>(__sndr), __transform_system_bulk_sender{__sched});

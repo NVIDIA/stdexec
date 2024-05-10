@@ -294,7 +294,8 @@ if(STDEXEC_ENABLE_CUDA)
         include(${rapids-cmake-dir}/cpm/cccl.cmake)
         rapids_cpm_cccl(
             BUILD_EXPORT_SET stdexec-exports
-            INSTALL_EXPORT_SET stdexec-exports)
+            INSTALL_EXPORT_SET stdexec-exports
+            SYSTEM TRUE)
 
         target_link_libraries(stdexec INTERFACE CCCL::CCCL)
     endif ()

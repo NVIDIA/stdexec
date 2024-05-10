@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 NVIDIA Corporation
+ * Copyright (c) 2021-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -22,6 +22,8 @@
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
 #include "__domain.hpp"
+#include "__env.hpp"
+#include "__meta.hpp"
 #include "__sender_introspection.hpp"
 #include "__type_traits.hpp"
 
@@ -34,6 +36,7 @@ namespace stdexec {
   struct dependent_domain {
     template <class _Sender, class _Env>
     static constexpr auto __is_nothrow_transform_sender() noexcept -> bool;
+
     template <sender_expr _Sender, class _Env>
       requires same_as<__early_domain_of_t<_Sender>, dependent_domain>
     STDEXEC_ATTRIBUTE((always_inline))
@@ -225,6 +228,15 @@ namespace stdexec {
 
   template <class _Domain, class _Tag, class _Sender, class... _Args>
   using apply_sender_result_t = __call_result_t<apply_sender_t, _Domain, _Tag, _Sender, _Args...>;
+
+  /////////////////////////////////////////////////////////////////////////////
+  template <class _Sender, class _Scheduler, class _Tag = set_value_t>
+  concept __completes_on =
+    __decays_to<__call_result_t<get_completion_scheduler_t<_Tag>, env_of_t<_Sender>>, _Scheduler>;
+
+  /////////////////////////////////////////////////////////////////////////////
+  template <class _Sender, class _Scheduler, class _Env>
+  concept __starts_on = __decays_to<__call_result_t<get_scheduler_t, _Env>, _Scheduler>;
 } // namespace stdexec
 
 STDEXEC_PRAGMA_POP()

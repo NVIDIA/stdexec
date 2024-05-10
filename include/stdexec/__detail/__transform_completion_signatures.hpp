@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 NVIDIA Corporation
+ * Copyright (c) 2021-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -299,7 +299,7 @@ namespace stdexec {
     __valid_completion_signatures _SetStopped = completion_signatures<set_stopped_t()>>
     requires sender_in<_Sender, _Env>
   using transform_completion_signatures_of = //
-    __msuccess_or_t<                 //
+    __msuccess_or_t<                         //
       __try_make_completion_signatures<_Sender, _Env, _Sigs, __q<_SetValue>, __q<_SetError>, _SetStopped>>;
 
   template <                                                                 //
@@ -313,6 +313,28 @@ namespace stdexec {
   using make_completion_signatures =
     transform_completion_signatures_of<_Sender, _Env, _Sigs, _SetValue, _SetError, _SetStopped>;
 
-  // Needed fairly often
+  // The following utilities are needed fairly often:
   using __with_exception_ptr = completion_signatures<set_error_t(std::exception_ptr)>;
+
+  template <class _Fun, class... _Args>
+    requires __invocable<_Fun, _Args...>
+  using __nothrow_invocable_t = __mbool<__nothrow_invocable<_Fun, _Args...>>;
+
+  template <class _Tag, class _Fun, class _Sender, class _Env, class _Catch>
+  using __with_error_invoke_t = //
+    __if<
+      __gather_completions_for<
+        _Tag,
+        _Sender,
+        _Env,
+        __mbind_front<__mtry_catch_q<__nothrow_invocable_t, _Catch>, _Fun>,
+        __q<__mand>>,
+      completion_signatures<>,
+      __with_exception_ptr>;
+
+  template <class _Fun, class... _Args>
+    requires __invocable<_Fun, _Args...>
+  using __set_value_invoke_t = //
+    completion_signatures<
+      __minvoke<__remove<void, __qf<set_value_t>>, __invoke_result_t<_Fun, _Args...>>>;
 } // namespace stdexec

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 NVIDIA Corporation
+ * Copyright (c) 2021-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -80,4 +80,52 @@ namespace stdexec {
     requires(const _SchedulerProvider& __sp) {
       { get_scheduler(__sp) } -> scheduler;
     };
+
+  namespace __queries {
+    template <class _Env>
+      requires tag_invocable<get_scheduler_t, const _Env&>
+    inline auto get_scheduler_t::operator()(const _Env& __env) const noexcept
+      -> tag_invoke_result_t<get_scheduler_t, const _Env&> {
+      static_assert(nothrow_tag_invocable<get_scheduler_t, const _Env&>);
+      static_assert(scheduler<tag_invoke_result_t<get_scheduler_t, const _Env&>>);
+      return tag_invoke(get_scheduler_t{}, __env);
+    }
+
+    template <class _Env>
+      requires tag_invocable<get_delegatee_scheduler_t, const _Env&>
+    inline auto get_delegatee_scheduler_t::operator()(const _Env& __env) const noexcept
+      -> tag_invoke_result_t<get_delegatee_scheduler_t, const _Env&> {
+      static_assert(nothrow_tag_invocable<get_delegatee_scheduler_t, const _Env&>);
+      static_assert(scheduler<tag_invoke_result_t<get_delegatee_scheduler_t, const _Env&>>);
+      return tag_invoke(get_delegatee_scheduler_t{}, __env);
+    }
+
+    template <__completion_tag _Tag>
+    template <__has_completion_scheduler_for<_Tag> _Env>
+    auto get_completion_scheduler_t<_Tag>::operator()(const _Env& __env) const noexcept
+      -> tag_invoke_result_t<get_completion_scheduler_t<_Tag>, const _Env&> {
+      static_assert(
+        nothrow_tag_invocable<get_completion_scheduler_t<_Tag>, const _Env&>,
+        "get_completion_scheduler<_Tag> should be noexcept");
+      static_assert(scheduler<tag_invoke_result_t<get_completion_scheduler_t<_Tag>, const _Env&>>);
+      return tag_invoke(*this, __env);
+    }
+  } // namespace __queries
+
+  namespace __detail {
+    // A handy utility for augmenting an environment with a scheduler.
+    template <class _Env, class _Scheduler>
+    STDEXEC_ATTRIBUTE((always_inline))
+    auto
+      __mkenv_sched(_Env&& __env, _Scheduler __sched) {
+      auto __env2 = __env::__join(
+        __env::__with(__sched, get_scheduler),
+        __env::__without(static_cast<_Env&&>(__env), get_domain));
+      using _Env2 = decltype(__env2);
+
+      struct __env_t : _Env2 { };
+
+      return __env_t{static_cast<_Env2&&>(__env2)};
+    }
+  } // namespace __detail
 } // namespace stdexec

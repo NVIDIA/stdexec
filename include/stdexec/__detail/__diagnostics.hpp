@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 NVIDIA Corporation
+ * Copyright (c) 2021-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -65,4 +65,35 @@ namespace stdexec {
 
   template <class _Sig>
   struct _MISSING_COMPLETION_SIGNAL_;
+
+  template <class _Fun>
+  struct _WITH_FUNCTION_;
+
+  template <class... _Args>
+  struct _WITH_ARGUMENTS_;
+
+  template <class _Tag>
+  struct _WITH_QUERY_;
+
+  inline constexpr __mstring __not_callable_diag =
+    "The specified function is not callable with the arguments provided."_mstr;
+
+  template <__mstring _Context, __mstring _Diagnostic = __not_callable_diag>
+  struct _NOT_CALLABLE_;
+
+  template <auto _Reason = "You cannot pipe one sender into another."_mstr>
+  struct _CANNOT_PIPE_INTO_A_SENDER_ { };
+
+  template <class _Sender>
+  using __bad_pipe_sink_t = __mexception<_CANNOT_PIPE_INTO_A_SENDER_<>, _WITH_SENDER_<_Sender>>;
+
+  template <__mstring _Context>
+  struct __callable_error {
+    template <class _Fun, class... _Args>
+    using __f =     //
+      __mexception< //
+        _NOT_CALLABLE_<_Context>,
+        _WITH_FUNCTION_<_Fun>,
+        _WITH_ARGUMENTS_<_Args...>>;
+  };
 } // namespace stdexec
