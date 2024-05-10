@@ -12,7 +12,8 @@
 `stdexec` is experimental in nature and subject to change without warning.
 The authors and NVIDIA do not guarantee that this code is fit for any purpose whatsoever.
 
-[![CI](https://github.com/NVIDIA/stdexec/workflows/CI/badge.svg)](https://github.com/NVIDIA/stdexec/actions)
+[![CI (CPU)](https://github.com/NVIDIA/stdexec/actions/workflows/ci.cpu.yml/badge.svg)](https://github.com/NVIDIA/stdexec/actions/workflows/ci.cpu.yml)
+[![CI (GPU)](https://github.com/NVIDIA/stdexec/actions/workflows/ci.gpu.yml/badge.svg)](https://github.com/NVIDIA/stdexec/actions/workflows/ci.gpu.yml)
 
 ## Example
 
