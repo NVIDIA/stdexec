@@ -95,12 +95,10 @@ namespace stdexec {
         }
 
         // Forward get_env query to the coroutine promise
-        STDEXEC_MEMFN_DECL(
-          auto get_env)(this const __t& __self) noexcept //
-          -> env_of_t<_Promise&> {
+        auto get_env() const noexcept -> env_of_t<_Promise&> {
           auto __continuation =
-            __coro::coroutine_handle<_Promise>::from_address(__self.__continuation_.address());
-          return get_env(__continuation.promise());
+            __coro::coroutine_handle<_Promise>::from_address(this->__continuation_.address());
+          return stdexec::get_env(__continuation.promise());
         }
       };
     };

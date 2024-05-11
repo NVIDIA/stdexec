@@ -138,8 +138,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __self.__op_state_->propagate_completion_signal(_Tag(), static_cast<_As&&>(__as)...);
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> _Env {
-          return __self.__op_state_->make_env();
+        auto get_env() const noexcept -> _Env {
+          return __op_state_->make_env();
         }
 
         using __op_state_variant_t = //
@@ -238,8 +238,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           static_cast<_Self&&>(__self).__fun_};
       }
 
-      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> env_of_t<const _Sender&> {
-        return get_env(__self.__sndr_);
+      auto get_env() const noexcept -> env_of_t<const _Sender&> {
+        return stdexec::get_env(__sndr_);
       }
 
       template <__decays_to<__t> _Self, class _Env>

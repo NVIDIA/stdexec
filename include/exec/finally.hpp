@@ -103,6 +103,10 @@ namespace exec {
           : __op_{__op} {
         }
 
+        auto get_env() const noexcept -> env_of_t<_Receiver> {
+          return stdexec::get_env(__op_->__receiver_);
+        }
+
        private:
         __final_operation_base<_ResultType, _ReceiverId>* __op_;
 
@@ -134,11 +138,6 @@ namespace exec {
           __self.__op_->__result_.__destroy();
           __tag(
             static_cast<_Receiver&&>(__self.__op_->__receiver_), static_cast<_Error&&>(__error)...);
-        }
-
-        template <std::same_as<__t> _Self>
-        STDEXEC_MEMFN_DECL(auto get_env)(this const _Self& __self) noexcept -> env_of_t<_Receiver> {
-          return get_env(__self.__op_->__receiver_);
         }
       };
     };
@@ -173,22 +172,20 @@ namespace exec {
           : __op_(__op) {
         }
 
+        auto get_env() const noexcept -> env_of_t<_Receiver> {
+          return stdexec::get_env(__op_->__receiver_);
+        }
+
        private:
         __base_op_t* __op_;
 
-        template <class _Tag, __decays_to<__t> _Self, class... _Args>
-          requires __callable<_Tag, _Receiver&&, _Args...>
+        template <__completion_tag _Tag, __same_as<__t> _Self, class... _Args>
         friend void tag_invoke(_Tag __tag, _Self&& __self, _Args&&... __args) noexcept {
           try {
             __self.__op_->__store_result_and_start_next_op(__tag, static_cast<_Args&&>(__args)...);
           } catch (...) {
             set_error(static_cast<_Receiver&&>(__self.__op_->__receiver_), std::current_exception());
           }
-        }
-
-        template <std::same_as<__t> _Self>
-        STDEXEC_MEMFN_DECL(auto get_env)(this const _Self& __self) noexcept -> env_of_t<_Receiver> {
-          return get_env(__self.__op_->__receiver_);
         }
       };
     };

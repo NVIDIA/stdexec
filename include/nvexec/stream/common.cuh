@@ -426,8 +426,8 @@ namespace nvexec {
           self.producer_(self.task_);
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> const Env& {
-          return *self.env_;
+        auto get_env() const noexcept -> const Env& {
+          return *env_;
         }
 
         __t(Env* env, Variant* variant, queue::task_base_t* task, queue::producer_t producer)
@@ -621,8 +621,8 @@ namespace nvexec {
           self.operation_state_.propagate_completion_signal(Tag(), static_cast<As&&>(as)...);
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> decltype(auto) {
-          return self.operation_state_.make_env();
+        auto get_env() const noexcept -> decltype(auto) {
+          return operation_state_.make_env();
         }
       };
     };

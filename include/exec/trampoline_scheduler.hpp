@@ -154,8 +154,8 @@ namespace exec {
           return __scheduler{__self.__max_recursion_depth_};
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __schedule_sender& __self) noexcept -> const __schedule_sender& {
-          return __self;
+        auto get_env() const noexcept -> const __schedule_sender& {
+          return *this;
         }
 
         std::size_t __max_recursion_depth_;

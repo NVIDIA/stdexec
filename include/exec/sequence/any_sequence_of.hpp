@@ -160,9 +160,8 @@ namespace exec {
               __self.__env_.__rcvr_);
           }
 
-          template <__decays_to<__t> _Self>
-          STDEXEC_MEMFN_DECL(auto get_env)(this _Self&& __self) noexcept -> const __env_t& {
-            return __self.__env_;
+          auto get_env() const noexcept -> const __env_t& {
+            return __env_;
           }
         };
       };
@@ -272,9 +271,8 @@ namespace exec {
 
         using __env_t = stdexec::__t<__sender_env<_Sigs, _SenderQueries, _ReceiverQueries>>;
 
-        template <__decays_to<__t> _Self>
-        STDEXEC_MEMFN_DECL(auto get_env)(this _Self&& __self) noexcept -> __env_t {
-          return {__self.__storage_.__get_vtable(), __self.__storage_.__get_object_pointer()};
+        auto get_env() const noexcept -> __env_t {
+          return {__storage_.__get_vtable(), __storage_.__get_object_pointer()};
         }
       };
     };
@@ -300,18 +298,14 @@ namespace exec {
       : __receiver_(__receiver) {
     }
 
+    auto get_env() const noexcept -> __env_t {
+      return stdexec::get_env(__receiver_);
+    }
+
    private:
-    STDEXEC_MEMFN_FRIEND(get_env);
     STDEXEC_MEMFN_FRIEND(set_value);
     STDEXEC_MEMFN_FRIEND(set_error);
     STDEXEC_MEMFN_FRIEND(set_stopped);
-
-    template <std::same_as<__t> _Self>
-      requires stdexec::__callable<stdexec::get_env_t, const __receiver_base&>
-    STDEXEC_MEMFN_DECL(
-      auto get_env)(this const _Self& __self) noexcept -> __env_t {
-      return stdexec::get_env(__self.__receiver_);
-    }
 
     template <std::same_as<__t> _Self, stdexec::sender _Sender>
       requires stdexec::__callable<set_next_t, _Self&, _Sender>

@@ -120,10 +120,6 @@ namespace exec {
           return {};
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t&) noexcept -> empty_env {
-          return {};
-        }
-
         const __impl* __scope_;
         STDEXEC_ATTRIBUTE((no_unique_address))
         _Constrained __c_;
@@ -178,10 +174,10 @@ namespace exec {
           __complete(__scope);
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> __env_t<env_of_t<_Receiver>> {
+        auto get_env() const noexcept -> __env_t<env_of_t<_Receiver>> {
           return make_env(
-            get_env(__self.__op_->__rcvr_),
-            with(get_stop_token, __self.__op_->__scope_->__stop_source_.get_token()));
+            stdexec::get_env(__op_->__rcvr_),
+            with(get_stop_token, __op_->__scope_->__stop_source_.get_token()));
         }
       };
     };
@@ -246,10 +242,6 @@ namespace exec {
         template <__decays_to<__t> _Self, class _Env>
         STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env&&)
           -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>> {
-          return {};
-        }
-
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t&) noexcept -> empty_env {
           return {};
         }
       };
@@ -549,8 +541,8 @@ namespace exec {
           }
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> const __env_t<_Env>& {
-          return __self.__state_->__env_;
+        auto get_env() const noexcept -> const __env_t<_Env>& {
+          return __state_->__env_;
         }
       };
     };
@@ -626,10 +618,6 @@ namespace exec {
           return {};
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t&) noexcept -> empty_env {
-          return {};
-        }
-
         std::unique_ptr<__future_state<_Sender, _Env>> __state_;
       };
     };
@@ -685,8 +673,8 @@ namespace exec {
           __self.__op_->__delete_(__self.__op_);
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> const __spawn_env_t<_Env>& {
-          return __self.__op_->__env_;
+        auto get_env() const noexcept -> const __spawn_env_t<_Env>& {
+          return __op_->__env_;
         }
       };
     };

@@ -40,8 +40,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_submit {
       }
 
       // Forward all receiever queries.
-      STDEXEC_MEMFN_DECL(auto get_env)(this const receiver_t& self) noexcept -> env_of_t<Receiver> {
-        return get_env(self.op_state_->rcvr_);
+      auto get_env() const noexcept -> env_of_t<Receiver> {
+        return stdexec::get_env(op_state_->rcvr_);
       }
     };
 

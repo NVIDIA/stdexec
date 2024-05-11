@@ -110,9 +110,8 @@ namespace exec {
           stdexec::set_stopped(static_cast<_ItemReceiver&&>(__self.__op_->__receiver_));
         }
 
-        template <__decays_to<__t> _Self>
-        STDEXEC_MEMFN_DECL(auto get_env)(this _Self&& __self) noexcept -> env_of_t<_ItemReceiver> {
-          return stdexec::get_env(__self.__op_->__receiver_);
+        auto get_env() const noexcept -> env_of_t<_ItemReceiver> {
+          return stdexec::get_env(__op_->__receiver_);
         }
       };
     };
@@ -210,9 +209,8 @@ namespace exec {
             static_cast<_Receiver&&>(__self.__op_->__receiver_), static_cast<_Error&&>(error));
         }
 
-        template <__decays_to<__t> _Self>
-        STDEXEC_MEMFN_DECL(auto get_env)(this _Self&& __self) noexcept -> env_of_t<_Receiver> {
-          return stdexec::get_env(__self.__op_->__receiver_);
+        auto get_env() const noexcept -> env_of_t<_Receiver> {
+          return stdexec::get_env(__op_->__receiver_);
         }
       };
     };

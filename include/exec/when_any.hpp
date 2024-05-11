@@ -167,6 +167,11 @@ namespace exec {
           : __op_{__op} {
         }
 
+        auto get_env() const noexcept -> __env_t<env_of_t<_Receiver>> {
+          auto __token = __env::__with(__op_->__stop_source_.get_token(), get_stop_token);
+          return __env::__join(std::move(__token), stdexec::get_env(__op_->__receiver_));
+        }
+
        private:
         __op_base<_Receiver, _ResultVariant>* __op_;
 
@@ -174,11 +179,6 @@ namespace exec {
           requires __result_constructible_from<_ResultVariant, _CPO, _Args...>
         friend void tag_invoke(_CPO, __t&& __self, _Args&&... __args) noexcept {
           __self.__op_->notify(_CPO{}, static_cast<_Args&&>(__args)...);
-        }
-
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> __env_t<env_of_t<_Receiver>> {
-          auto __token = __env::__with(__self.__op_->__stop_source_.get_token(), get_stop_token);
-          return __env::__join(std::move(__token), get_env(__self.__op_->__receiver_));
         }
       };
     };

@@ -97,8 +97,8 @@ namespace nvexec {
           return operation_state_t<stdexec::__id<__decay_t<R>>>(static_cast<R&&>(rec));
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const sender_t& self) noexcept -> const env& {
-          return self.env_;
+        auto get_env() const noexcept -> const env& {
+          return env_;
         }
 
         sender_t(int num_devices, context_state_t context_state) noexcept

@@ -61,7 +61,7 @@ namespace exec {
           return stdexec::connect(schedule(__sched), static_cast<_Receiver&&>(__rcvr));
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this __sender) noexcept {
+        auto get_env() const noexcept {
           return __env::__with{__scheduler(), get_completion_scheduler<set_value_t>};
         }
       };

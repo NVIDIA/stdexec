@@ -130,8 +130,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
         rcvr.loop_->finish();
       }
 
-      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& rcvr) noexcept -> __env {
-        return {rcvr.loop_->get_scheduler()};
+      auto get_env() const noexcept -> __env {
+        return {loop_->get_scheduler()};
       }
     };
   };

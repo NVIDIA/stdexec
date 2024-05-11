@@ -88,8 +88,8 @@ namespace stdexec { namespace __any_ {
       , __op_state_{&__op_state} {
     }
 
-    STDEXEC_MEMFN_DECL(auto get_env)(this const __receiver_ref& __self) noexcept -> decltype(auto) {
-      return __self.__vtable_->__get_env(__self.__op_state_);
+    auto get_env() const noexcept -> decltype(auto) {
+      return __vtable_->__get_env(__op_state_);
     }
 
     template <class... _As>

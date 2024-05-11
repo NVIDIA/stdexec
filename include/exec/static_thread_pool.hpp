@@ -333,12 +333,27 @@ namespace exec {
         friend struct operation;
 
         class sender {
+          struct env {
+            static_thread_pool_& pool_;
+            remote_queue* queue_;
+
+            template <class CPO>
+            auto query(get_completion_scheduler_t<CPO>) const noexcept
+              -> static_thread_pool_::scheduler {
+              return static_thread_pool_::scheduler{pool_, *queue_};
+            }
+          };
+
          public:
           using __t = sender;
           using __id = sender;
           using sender_concept = sender_t;
           using completion_signatures =
             stdexec::completion_signatures<set_value_t(), set_stopped_t()>;
+
+          auto get_env() const noexcept -> env {
+            return env{pool_, queue_};
+          }
          private:
           template <class Receiver>
           using operation_t = stdexec::__t<operation<stdexec::__id<Receiver>>>;
@@ -352,21 +367,6 @@ namespace exec {
           template <receiver Receiver>
           STDEXEC_MEMFN_DECL(auto connect)(this sender sndr, Receiver rcvr) -> operation_t<Receiver> {
             return sndr.make_operation_(static_cast<Receiver&&>(rcvr));
-          }
-
-          struct env {
-            static_thread_pool_& pool_;
-            remote_queue* queue_;
-
-            template <class CPO>
-            auto query(get_completion_scheduler_t<CPO>) const noexcept
-              -> static_thread_pool_::scheduler {
-              return static_thread_pool_::scheduler{pool_, *queue_};
-            }
-          };
-
-          STDEXEC_MEMFN_DECL(auto get_env)(this const sender& self) noexcept -> env {
-            return env{self.pool_, self.queue_};
           }
 
           friend struct static_thread_pool_::scheduler;
@@ -1110,8 +1110,8 @@ namespace exec {
         return {};
       }
 
-      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> env_of_t<const Sender&> {
-        return get_env(self.sndr_);
+      auto get_env() const noexcept -> env_of_t<const Sender&> {
+        return stdexec::get_env(sndr_);
       }
     };
 
@@ -1261,8 +1261,8 @@ namespace exec {
         stdexec::set_stopped(static_cast<Receiver&&>(state.rcvr_));
       }
 
-      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> env_of_t<Receiver> {
-        return get_env(self.shared_state_.rcvr_);
+      auto get_env() const noexcept -> env_of_t<Receiver> {
+        return stdexec::get_env(shared_state_.rcvr_);
       }
     };
 
@@ -1383,10 +1383,8 @@ namespace exec {
             }
           };
 
-          template <__decays_to<__t> Self>
-          STDEXEC_MEMFN_DECL(
-          auto get_env)(this Self&& self) noexcept -> env {
-            return {self.op_->pool_};
+          auto get_env() const noexcept -> env {
+            return {op_->pool_};
           }
 
           template <__decays_to<__t> Self, receiver ItemReceiver>
@@ -1436,10 +1434,8 @@ namespace exec {
             }
           }
 
-          template <__decays_to<__t> Self>
-          STDEXEC_MEMFN_DECL(
-          auto get_env)(this Self&& self) noexcept -> env_of_t<Receiver> {
-            return get_env(self.op_->rcvr_);
+          auto get_env() const noexcept -> env_of_t<Receiver> {
+            return stdexec::get_env(op_->rcvr_);
           }
         };
       };

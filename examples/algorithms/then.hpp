@@ -87,8 +87,8 @@ struct _then_sender {
       _then_receiver<R, F>{static_cast<R&&>(r), static_cast<F&&>(self.f_)});
   }
 
-  STDEXEC_MEMFN_DECL(auto get_env)(this const _then_sender& self) noexcept -> stdexec::env_of_t<S> {
-    return stdexec::get_env(self.s_);
+  auto get_env() const noexcept -> stdexec::env_of_t<S> {
+    return stdexec::get_env(s_);
   }
 };
 

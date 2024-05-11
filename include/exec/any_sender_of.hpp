@@ -698,9 +698,8 @@ namespace exec {
           (*__vfun->__complete_)(__self.__env_.__rcvr_);
         }
 
-        template <same_as<__ref> Self>
-        STDEXEC_MEMFN_DECL(auto get_env)(this const Self& __self) noexcept -> const __env_t& {
-          return __self.__env_;
+        auto get_env() const noexcept -> const __env_t& {
+          return __env_;
         }
       };
 
@@ -778,9 +777,8 @@ namespace exec {
           (*__vfun->__complete_)(__self.__env_.__rcvr_);
         }
 
-        template <same_as<__ref> Self>
-        STDEXEC_MEMFN_DECL(auto get_env)(this const Self& __self) noexcept -> const __env_t& {
-          return __self.__env_;
+        auto get_env() const noexcept -> const __env_t& {
+          return __env_;
         }
       };
     } // namespace __rec
@@ -871,11 +869,10 @@ namespace exec {
           stdexec::set_stopped(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
         }
 
-        template <same_as<__t> _Self>
-        STDEXEC_MEMFN_DECL(auto get_env)(this const _Self& __self) noexcept -> __env_t<env_of_t<_Receiver>> {
+        auto get_env() const noexcept -> __env_t<env_of_t<_Receiver>> {
           return __env::__join(
-            __env::__with(__self.__op_->__stop_source_.get_token(), get_stop_token),
-            get_env(__self.__op_->__rcvr_));
+            __env::__with(__op_->__stop_source_.get_token(), get_stop_token),
+            stdexec::get_env(__op_->__rcvr_));
         }
       };
     };
@@ -1031,6 +1028,10 @@ namespace exec {
           return __get_object_pointer(__storage_) != nullptr;
         }
 
+        auto get_env() const noexcept -> __env_t {
+          return {__storage_.__get_vtable(), __storage_.__get_object_pointer()};
+        }
+
        private:
         __unique_storage_t<__vtable> __storage_;
 
@@ -1038,10 +1039,6 @@ namespace exec {
         STDEXEC_MEMFN_DECL(auto connect)(this __t&& __self, _Rcvr&& __rcvr)
           -> stdexec::__t<__operation<stdexec::__id<__decay_t<_Rcvr>>, __with_inplace_stop_token>> {
           return {static_cast<__t&&>(__self), static_cast<_Rcvr&&>(__rcvr)};
-        }
-
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> __env_t {
-          return {__self.__storage_.__get_vtable(), __self.__storage_.__get_object_pointer()};
         }
       };
     };

@@ -85,8 +85,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           self.op_state_.propagate_completion_signal(Tag(), static_cast<As&&>(as)...);
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> env_t {
-          return self.op_state_.make_env();
+        auto get_env() const noexcept -> env_t {
+          return op_state_.make_env();
         }
 
         explicit __t(Fun fun, operation_state_base_t<ReceiverId>& op_state)
@@ -172,8 +172,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return {};
       }
 
-      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> env_of_t<const Sender&> {
-        return get_env(self.sndr_);
+      auto get_env() const noexcept -> env_of_t<const Sender&> {
+        return stdexec::get_env(sndr_);
       }
     };
   };

@@ -124,8 +124,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> Env {
-          return self.operation_state_.make_env();
+        auto get_env() const noexcept -> Env {
+          return operation_state_.make_env();
         }
       };
     };
@@ -138,9 +138,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return connect((static_cast<Self&&>(self)).sndr_, static_cast<Receiver&&>(rcvr));
       }
 
-      STDEXEC_MEMFN_DECL(auto get_env)(this const source_sender_t& self) noexcept -> env_of_t<const Sender&> {
+      auto get_env() const noexcept -> env_of_t<const Sender&> {
         // TODO - this code is not exercised by any test
-        return get_env(self.sndr_);
+        return stdexec::get_env(sndr_);
       }
 
       template <__decays_to<source_sender_t> _Self, class _Env>
@@ -202,8 +202,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           self.env_.context_state_);
       }
 
-      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> const __env& {
-        return __self.env_;
+      auto get_env() const noexcept -> const __env& {
+        return env_;
       }
 
       template <__decays_to<__t> _Self, class _Env>

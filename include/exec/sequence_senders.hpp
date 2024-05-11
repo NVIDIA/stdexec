@@ -86,9 +86,8 @@ namespace exec {
         STDEXEC_ATTRIBUTE((no_unique_address))
         _Receiver __rcvr_;
 
-        template <same_as<__t> _Self>
-        STDEXEC_MEMFN_DECL(auto get_env)(this const _Self& __self) noexcept -> env_of_t<_Receiver> {
-          return stdexec::get_env(__self.__rcvr_);
+        auto get_env() const noexcept -> env_of_t<_Receiver> {
+          return stdexec::get_env(__rcvr_);
         }
 
         template <same_as<__t> _Self>

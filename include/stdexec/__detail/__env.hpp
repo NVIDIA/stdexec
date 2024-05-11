@@ -310,9 +310,16 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   namespace __get_env {
-    // For getting an execution environment from a receiver,
-    // or the attributes from a sender.
+    // For getting an execution environment from a receiver or the attributes from a sender.
     struct get_env_t {
+      template <__same_as<get_env_t> _Self, class _EnvProvider>
+      STDEXEC_ATTRIBUTE((always_inline))
+      friend auto tag_invoke(_Self, const _EnvProvider& __env_provider) noexcept
+        -> decltype(__env_provider.get_env()) {
+        static_assert(noexcept(__env_provider.get_env()), "get_env() members must be noexcept");
+        return __env_provider.get_env();
+      }
+
       template <class _EnvProvider>
         requires tag_invocable<get_env_t, const _EnvProvider&>
       STDEXEC_ATTRIBUTE((always_inline))
@@ -348,10 +355,7 @@ namespace stdexec {
         return tag_invoke(as_awaitable, static_cast<_Ty&&>(__value), *this);
       }
 
-      template <same_as<get_env_t> _Tag>
-      friend auto tag_invoke(_Tag, const __promise&) noexcept -> const _Env& {
-        std::terminate();
-      }
+      auto get_env() const noexcept -> const _Env&;
     };
 
     template <class _Value, class _Tag, class... _Tags>
@@ -546,8 +550,8 @@ namespace stdexec {
 
     inline constexpr __join_fn __join{};
 
-    template <class... _Envs>
-    using __join_t = __result_of<__join, _Envs...>;
+    template <class _First, class _Second>
+    using __join_t = __result_of<__join, _First, _Second>;
   } // namespace __env
 
   using __get_env::get_env_t;

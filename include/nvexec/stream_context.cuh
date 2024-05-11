@@ -130,8 +130,8 @@ namespace nvexec {
               static_cast<R&&>(rec), self.env_.context_state_);
           }
 
-          STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> const env& {
-            return self.env_;
+          auto get_env() const noexcept -> const env& {
+            return env_;
           };
 
           STDEXEC_ATTRIBUTE((host, device))

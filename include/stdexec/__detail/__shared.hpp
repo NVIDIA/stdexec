@@ -187,8 +187,8 @@ namespace stdexec {
           __self.__sh_state_->__complete(set_stopped_t());
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> const __env_t<_Env>& {
-          return __self.__sh_state_->__env_;
+        auto get_env() const noexcept -> const __env_t<_Env>& {
+          return __sh_state_->__env_;
         }
 
         // The receiver does not hold a reference to the shared state.

@@ -107,9 +107,8 @@ namespace exec {
           __set_value_unless_stopped(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
         }
 
-        template <__decays_to<__t> _Self>
-        STDEXEC_MEMFN_DECL(auto get_env)(this _Self&& __self) noexcept -> env_of_t<_Receiver> {
-          return stdexec::get_env(__self.__op_->__rcvr_);
+        auto get_env() const noexcept -> env_of_t<_Receiver> {
+          return stdexec::get_env(__op_->__rcvr_);
         }
       };
     };

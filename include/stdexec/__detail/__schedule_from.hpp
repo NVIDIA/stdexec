@@ -154,8 +154,8 @@ namespace stdexec {
         stdexec::set_stopped(static_cast<_Receiver&&>(__self.__state_->__receiver()));
       }
 
-      STDEXEC_MEMFN_DECL(auto get_env)(this const __receiver2& __self) noexcept -> env_of_t<_Receiver> {
-        return stdexec::get_env(__self.__state_->__receiver());
+      auto get_env() const noexcept -> env_of_t<_Receiver> {
+        return stdexec::get_env(__state_->__receiver());
       }
 
       __state<_Scheduler, _Sexpr, _Receiver>* __state_;
