@@ -116,7 +116,9 @@ namespace stdexec {
       auto
         operator()(_Scheduler&& __sched, _Closure&& __clsur) const {
         return __binder_back<on_t, __decay_t<_Scheduler>, __decay_t<_Closure>>{
-          {{static_cast<_Scheduler&&>(__sched)}, {static_cast<_Closure&&>(__clsur)}}
+          {{static_cast<_Scheduler&&>(__sched)}, {static_cast<_Closure&&>(__clsur)}},
+          {},
+          {}
         };
       }
 

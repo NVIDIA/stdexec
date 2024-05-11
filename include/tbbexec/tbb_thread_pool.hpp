@@ -133,7 +133,7 @@ namespace tbbexec {
           // even_share(     11,      1,         3); // -> [4,  8) -> 4 items
           // even_share(     11,      2,         3); // -> [8, 11) -> 3 items
           // ```
-          static auto even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept
+          static auto even_share(Shape n, std::size_t rank, std::size_t size) noexcept
             -> std::pair<Shape, Shape> {
             const auto avg_per_thread = n / size;
             const auto n_big_share = avg_per_thread + 1;
@@ -151,7 +151,8 @@ namespace tbbexec {
           auto num_agents_required() const -> std::uint32_t {
             // With work stealing, is std::min necessary, or can we feel free to ask for more agents (tasks)
             // than we can actually deal with at one time?
-            return std::min(shape_, static_cast<Shape>(pool_.available_parallelism()));
+            return static_cast<std::uint32_t>(
+              std::min(shape_, static_cast<Shape>(pool_.available_parallelism())));
           }
 
           template <class F>
@@ -387,7 +388,7 @@ namespace tbbexec {
             }
 
             template <stdexec::same_as<stdexec::get_env_t> Tag>
-            friend auto tag_invoke(Tag tag, const __t& self) noexcept -> const __t& {
+            friend auto tag_invoke(Tag, const __t& self) noexcept -> const __t& {
               return self;
             }
           };
@@ -462,7 +463,7 @@ namespace tbbexec {
       }
 
       void bulk_enqueue(task_base* task, std::uint32_t n_threads) noexcept {
-        for (std::size_t tid = 0; tid < n_threads; ++tid) {
+        for (std::uint32_t tid = 0; tid < n_threads; ++tid) {
           this->enqueue(task, tid);
         }
       }

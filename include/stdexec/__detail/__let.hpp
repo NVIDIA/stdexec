@@ -371,8 +371,8 @@ namespace stdexec {
 
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS _Fun __fun_;
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS _Sched __sched_;
-      __result_variant __args_;
-      __op_state_variant __op_state3_;
+      __result_variant __args_{};
+      __op_state_variant __op_state3_{};
     };
 
     template <class _Set, class _Domain>
@@ -392,7 +392,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline))
       auto
         operator()(_Fun __fun) const -> __binder_back<__let_t, _Fun> {
-        return {{static_cast<_Fun&&>(__fun)}};
+        return {{static_cast<_Fun&&>(__fun)}, {}, {}};
       }
 
       using _Sender = __1;

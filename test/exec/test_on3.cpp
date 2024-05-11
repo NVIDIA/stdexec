@@ -61,7 +61,7 @@ namespace {
     }
 
     template <ex::__decays_to<get_env_sender> Self, class Env>
-    STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&& self, const Env& env) {
+    STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, const Env&) {
       return ex::__try_make_completion_signatures<
         ex::__copy_cvref_t<Self, Sndr>,
         Env,
@@ -77,7 +77,7 @@ namespace {
     }
 
     auto operator()() const {
-      return ex::__binder_back<probe_env_t>{};
+      return ex::__binder_back<probe_env_t>{{}, {}, {}};
     }
   };
 
@@ -120,12 +120,12 @@ namespace {
   TEST_CASE("exec::on updates the current scheduler in the receiver", "[adaptors][exec::on]") {
     auto snd = ex::get_scheduler()
              | exec::on(inline_scheduler{}, probe_env())
-             | ex::then([]<class Env>(Env env) noexcept {
+             | ex::then([]<class Env>(Env) noexcept {
                  using Sched = ex::__call_result_t<ex::get_scheduler_t, Env>;
                  static_assert(ex::same_as<Sched, inline_scheduler>);
                })
              | probe_env()
-             | ex::then([]<class Env>(Env env) noexcept {
+             | ex::then([]<class Env>(Env) noexcept {
                  using Sched = ex::__call_result_t<ex::get_scheduler_t, Env>;
                  static_assert(ex::same_as<Sched, ex::run_loop::__scheduler>);
                });

@@ -188,7 +188,7 @@ namespace exec {
       STDEXEC_ATTRIBUTE((always_inline))
       constexpr auto
         operator()() const -> __binder_back<repeat_effect_until_t> {
-        return {};
+        return {{}, {}, {}};
       }
 
       template <class _Sender>

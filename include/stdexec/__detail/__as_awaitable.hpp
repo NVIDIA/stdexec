@@ -137,7 +137,7 @@ namespace stdexec {
       auto await_resume() -> _Value {
         switch (__result_.index()) {
         case 0: // receiver contract not satisfied
-          STDEXEC_ASSERT(!"_Should never get here");
+          STDEXEC_ASSERT("_Should never get here" == nullptr);
           break;
         case 1: // set_value
           if constexpr (!__same_as<_Value, void>)

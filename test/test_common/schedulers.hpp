@@ -223,7 +223,7 @@ namespace {
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <typename R>
-      friend oper<R> tag_invoke(ex::connect_t, my_sender self, R r) {
+      friend oper<R> tag_invoke(ex::connect_t, my_sender, R r) {
         return {{}, static_cast<R&&>(r)};
       }
 
@@ -342,7 +342,7 @@ namespace {
         ex::set_stopped_t()>;
 
       template <typename R>
-      friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
+      friend oper<R> tag_invoke(ex::connect_t, my_sender, R&& r) {
         return {{}, static_cast<R&&>(r)};
       }
 

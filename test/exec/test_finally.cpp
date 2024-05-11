@@ -61,7 +61,7 @@ namespace {
     bool called = false;
 
     auto s = exec::finally(
-      just(21) | then([](int x) -> int {
+      just(21) | then([](int) -> int {
         throw 42;
       }),
       just() | then([&called]() noexcept { called = true; }));

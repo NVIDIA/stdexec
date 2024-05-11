@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <cstdlib>
 #include <iostream>
 
 #include <tbbexec/tbb_thread_pool.hpp>
@@ -22,7 +23,7 @@
 #include <exec/any_sender_of.hpp>
 #include <stdexec/execution.hpp>
 
-long serial_fib(int n) {
+long serial_fib(long n) {
   return n < 2 ? n : serial_fib(n - 1) + serial_fib(n - 2);
 }
 
@@ -90,9 +91,9 @@ int main(int argc, char** argv) {
   // skip 'warmup' iterations for performance measurements
   static constexpr size_t warmup = 1;
 
-  int cutoff = std::atoi(argv[1]);
-  int n = std::atoi(argv[2]);
-  int nruns = std::atoi(argv[3]);
+  long cutoff = std::strtol(argv[1], nullptr, 10);
+  long n = std::strtol(argv[2], nullptr, 10);
+  std::size_t nruns = std::strtoul(argv[3], nullptr, 10);
 
   if (nruns <= warmup) {
     std::cerr << "nruns should be >= " << warmup << std::endl;

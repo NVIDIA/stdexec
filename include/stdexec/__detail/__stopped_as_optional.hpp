@@ -44,7 +44,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline))
       auto
         operator()() const noexcept -> __binder_back<stopped_as_optional_t> {
-        return {};
+        return {{}, {}, {}};
       }
     };
 

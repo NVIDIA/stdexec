@@ -204,7 +204,7 @@ namespace exec {
       STDEXEC_ATTRIBUTE((always_inline))
       constexpr auto
         operator()(std::size_t __count) const -> __binder_back<repeat_n_t, std::size_t> {
-        return {{__count}};
+        return {{__count}, {}, {}};
       }
 
       template <class _Sender>

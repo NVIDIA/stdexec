@@ -88,7 +88,9 @@ namespace stdexec {
       auto
         operator()(_Shape __shape, _Fun __fun) const -> __binder_back<bulk_t, _Shape, _Fun> {
         return {
-          {static_cast<_Shape&&>(__shape), static_cast<_Fun&&>(__fun)}
+          {static_cast<_Shape&&>(__shape), static_cast<_Fun&&>(__fun)},
+          {},
+          {}
         };
       }
 

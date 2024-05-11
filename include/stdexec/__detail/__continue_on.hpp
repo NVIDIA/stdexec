@@ -62,7 +62,7 @@ namespace stdexec {
       auto
         operator()(_Scheduler&& __sched) const
         -> __binder_back<continue_on_t, __decay_t<_Scheduler>> {
-        return {{static_cast<_Scheduler&&>(__sched)}};
+        return {{static_cast<_Scheduler&&>(__sched)}, {}, {}};
       }
 
       //////////////////////////////////////////////////////////////////////////////////////////////

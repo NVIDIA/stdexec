@@ -118,7 +118,7 @@ namespace exec::__system_context_default_impl {
       __exec_system_context_bulk_item_callback_t __cb_item_;
       void* __data_;
 
-      void operator()(long __idx) const noexcept {
+      void operator()(unsigned long __idx) const noexcept {
         __cb_item_(__data_, __idx);
       }
     };
@@ -128,7 +128,7 @@ namespace exec::__system_context_default_impl {
 
     using __bulk_schedule_operation_t = __operation<decltype(stdexec::bulk(
       stdexec::schedule(std::declval<__pool_scheduler_t>()),
-      std::declval<long>(),
+      std::declval<unsigned long>(),
       std::declval<__bulk_functor>()))>;
 
     static void* __schedule_impl(
@@ -160,7 +160,7 @@ namespace exec::__system_context_default_impl {
       __exec_system_context_completion_callback_t __cb,
       __exec_system_context_bulk_item_callback_t __cb_item,
       void* __data,
-      long __size) noexcept {
+      unsigned long __size) noexcept {
 
       auto __this = static_cast<__system_scheduler_impl*>(__self);
       auto __sndr = stdexec::bulk(

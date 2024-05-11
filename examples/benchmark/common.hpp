@@ -48,7 +48,7 @@ statistics compute_perf(
   auto dur = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
   auto dur_ms = std::chrono::duration_cast<std::chrono::milliseconds>(dur);
   auto dur_dbl = std::chrono::duration_cast<std::chrono::duration<double>>(dur);
-  double ops_per_sec = total_scheds / dur_dbl.count();
+  double ops_per_sec = static_cast<double>(total_scheds) / dur_dbl.count();
   return {dur_ms, ops_per_sec};
 }
 
@@ -72,7 +72,7 @@ statistics_all compute_perf(
   double min = std::numeric_limits<double>::max();
   for (std::size_t j = i0; j <= i; ++j) {
     auto stats = compute_perf(start[j], end[j], total_scheds);
-    average += stats.ops_per_sec / (i + 1 - i0);
+    average += stats.ops_per_sec / static_cast<double>(i + 1 - i0);
     max = std::max(max, stats.ops_per_sec);
     min = std::min(min, stats.ops_per_sec);
   }
@@ -82,7 +82,7 @@ statistics_all compute_perf(
     auto stats = compute_perf(start[j], end[j], total_scheds);
     variance += (stats.ops_per_sec - average) * (stats.ops_per_sec - average);
   }
-  variance /= (i + 1 - i0);
+  variance /= static_cast<double>(i + 1 - i0);
   double stddev = std::sqrt(variance);
   auto stats = compute_perf(start[i], end[i], total_scheds);
   statistics_all all{stats.total_time_ms, stats.ops_per_sec, average, max, min, stddev};

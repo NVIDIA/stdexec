@@ -48,7 +48,7 @@ namespace {
   }
 
   TEST_CASE("repeat_n produces void value to downstream receiver", "[adaptors][repeat_n]") {
-    sender auto source = just(1) | then([](int n) {});
+    sender auto source = just(1) | then([](int) {});
     sender auto snd = exec::repeat_n(std::move(source), 10);
     // The receiver checks if we receive the void value
     auto op = stdexec::connect(std::move(snd), expect_void_receiver{});

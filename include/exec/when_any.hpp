@@ -273,7 +273,7 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class _Env>
-        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&& __self, _Env __env) noexcept
+        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env) noexcept
           -> __completion_signatures_t<_Env, _SenderIds...> {
           return {};
         }

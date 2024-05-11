@@ -394,7 +394,7 @@ namespace {
     struct basic_domain {
       template <ex::sender_expr_for<Tag> Sender, class... Env>
         requires(sizeof...(Env) == C)
-      auto transform_sender(Sender&& sender, const Env&...) const {
+      auto transform_sender(Sender&&, const Env&...) const {
         return Fun();
       }
     };

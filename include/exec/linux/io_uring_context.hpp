@@ -54,6 +54,7 @@
 #    include <sys/syscall.h>
 
 #    include <algorithm>
+#    include <cstring>
 
 namespace exec {
   namespace __io_uring {
@@ -97,7 +98,7 @@ namespace exec {
     // This base class maps the kernel's io_uring data structures into the process.
     struct __context_base : stdexec::__immovable {
       explicit __context_base(unsigned __entries, unsigned __flags = 0)
-        : __params_{.flags = __flags}
+        : __params_{__context_base::__init_params(__flags)}
         , __ring_fd_{__io_uring_setup(__entries, __params_)}
         , __eventfd_{::eventfd(0, EFD_CLOEXEC)} {
         __throw_error_code_if(!__eventfd_, errno);
@@ -113,6 +114,12 @@ namespace exec {
         if (!(__params_.features & IORING_FEAT_SINGLE_MMAP)) {
           __completion_queue_region_ = __map_region(__ring_fd_, IORING_OFF_CQ_RING, __cring_sz);
         }
+      }
+
+      static ::io_uring_params __init_params(unsigned __flags) noexcept {
+        ::io_uring_params __params{};
+        __params.flags = __flags;
+        return __params;
       }
 
       // memory mapped regions for submission and completion queue
@@ -285,7 +292,8 @@ namespace exec {
         __head_.store(__head, std::memory_order_release);
         while (!__ready.empty()) {
           __task* __op = __ready.pop_front();
-          ::io_uring_cqe __dummy_cqe{.user_data = bit_cast<__u64>(__op)};
+          ::io_uring_cqe __dummy_cqe{};
+          __dummy_cqe.user_data = bit_cast<__u64>(__op);
           __op->__vtable_->__complete_(__op, __dummy_cqe);
         }
         return __count;
@@ -322,7 +330,7 @@ namespace exec {
 #    endif
       }
 
-      static void __complete_(__task* __pointer, const ::io_uring_cqe& __entry) noexcept {
+      static void __complete_(__task* __pointer, const ::io_uring_cqe&) noexcept {
         __wakeup_operation& __self = *static_cast<__wakeup_operation*>(__pointer);
         __self.start();
       }
@@ -489,7 +497,10 @@ namespace exec {
             0 <= __n_total_submitted_
             && __n_total_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
           int rc = __io_uring_enter(
-            __ring_fd_, __n_newly_submitted_, __min_complete, IORING_ENTER_GETEVENTS);
+            __ring_fd_,
+            static_cast<unsigned>(__n_newly_submitted_),
+            __min_complete,
+            IORING_ENTER_GETEVENTS);
           __throw_error_code_if(rc < 0 && rc != -EINTR, -rc);
           if (rc != -EINTR) {
             STDEXEC_ASSERT(rc <= __n_newly_submitted_);
@@ -726,7 +737,7 @@ namespace exec {
           return {};
         }
 
-        static constexpr void submit(::io_uring_sqe& __entry) noexcept {
+        static constexpr void submit(::io_uring_sqe&) noexcept {
         }
 
         void complete(const ::io_uring_cqe& __cqe) noexcept {
@@ -769,11 +780,9 @@ namespace exec {
                         }) {
             __op_->submit_stop(__sqe);
           } else {
-
-            __sqe = ::io_uring_sqe{
-              .opcode = IORING_OP_ASYNC_CANCEL,         //
-              .addr = bit_cast<__u64>(__op_->__parent_) //
-            };
+            std::memset(&__sqe, 0, sizeof(__sqe));
+            __sqe.opcode = IORING_OP_ASYNC_CANCEL;
+            __sqe.addr = bit_cast<__u64>(__op_->__parent_);
           }
 #    else
           __op_->submit_stop(__sqe);
@@ -1144,7 +1153,7 @@ namespace exec {
         return __schedule_sender{__schedule_env{__sched.__context_}};
       }
 
-      friend auto tag_invoke(exec::now_t, const __scheduler& __sched) noexcept
+      friend auto tag_invoke(exec::now_t, const __scheduler&) noexcept
         -> std::chrono::time_point<std::chrono::steady_clock> {
         return std::chrono::steady_clock::now();
       }

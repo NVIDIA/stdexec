@@ -47,7 +47,7 @@ namespace {
 
   struct env {
     const void* object_{nullptr};
-    inplace_stop_token token_;
+    inplace_stop_token token_{};
 
     friend const void* tag_invoke(tag_t, env e) noexcept {
       return e.object_;
@@ -291,7 +291,7 @@ namespace {
     auto [value] = *sync_wait(std::move(sender));
     CHECK(value == 42);
 
-    sender = just(21) | then([&](int v) -> int {
+    sender = just(21) | then([&](int) -> int {
                throw 420;
              });
     CHECK_THROWS_AS(sync_wait(std::move(sender)), int);
@@ -685,7 +685,7 @@ namespace {
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <ex::receiver R>
-      friend operation<R> tag_invoke(ex::connect_t, sender self, R r) {
+      friend operation<R> tag_invoke(ex::connect_t, sender, R r) {
         return {{}, static_cast<R&&>(r)};
       }
 

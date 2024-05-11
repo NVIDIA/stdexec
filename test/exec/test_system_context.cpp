@@ -187,7 +187,7 @@ TEST_CASE("simple bulk task on system context", "[types][system_scheduler]") {
   exec::system_context ctx;
   exec::system_scheduler sched = ctx.get_scheduler();
 
-  auto bulk_snd = ex::bulk(ex::schedule(sched), num_tasks, [&](long id) {
+  auto bulk_snd = ex::bulk(ex::schedule(sched), num_tasks, [&](unsigned long id) {
     pool_ids[id] = std::this_thread::get_id();
   });
 
@@ -215,7 +215,7 @@ TEST_CASE("simple bulk chaining on system context", "[types][system_scheduler]")
   });
 
   auto bulk_snd = ex::bulk(
-    std::move(snd), num_tasks, [&](long id, std::thread::id propagated_pool_id) {
+    std::move(snd), num_tasks, [&](unsigned long id, std::thread::id propagated_pool_id) {
       propagated_pool_ids[id] = propagated_pool_id;
       pool_ids[id] = std::this_thread::get_id();
     });

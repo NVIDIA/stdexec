@@ -217,7 +217,7 @@ namespace {
   using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
 
   template <typename Fun>
-  auto tag_invoke(ex::let_stopped_t, inline_scheduler sched, my_string_sender_t, Fun) {
+  auto tag_invoke(ex::let_stopped_t, inline_scheduler, my_string_sender_t, Fun) {
     return ex::just(std::string{"Don't stop me now"});
   }
 

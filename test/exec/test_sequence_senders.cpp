@@ -39,7 +39,7 @@ namespace {
     using completion_signatures = stdexec::completion_signatures<_Sigs...>;
 
     template <class R>
-    friend nop_operation tag_invoke(connect_t, some_sender_of self, R&& rcvr) {
+    friend nop_operation tag_invoke(connect_t, some_sender_of, R&&) {
       return {};
     }
   };

@@ -44,8 +44,8 @@ typedef void (*__exec_system_context_completion_callback_t)(
 
 /// Callback to be called by the scheduler for each bulk item.
 typedef void (*__exec_system_context_bulk_item_callback_t)(
-  void*, // data pointer passed to scheduler
-  long); // the index of the work item that is starting
+  void*,          // data pointer passed to scheduler
+  unsigned long); // the index of the work item that is starting
 
 struct __exec_system_scheduler_interface {
   /// The forward progress guarantee of the scheduler.
@@ -87,7 +87,7 @@ struct __exec_system_scheduler_interface {
     __exec_system_context_completion_callback_t /*cb*/,
     __exec_system_context_bulk_item_callback_t /*cb_item*/,
     void* /*data*/,
-    long /*size*/);
+    unsigned long /*size*/);
 
   /// Destructs the operation state object for a bulk_schedule.
   void (*__destruct_bulk_schedule_operation)(

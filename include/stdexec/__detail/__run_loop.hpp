@@ -40,8 +40,8 @@ namespace stdexec {
       __task* __next_ = this;
 
       union {
+        __task* __tail_ = nullptr;
         void (*__execute_)(__task*) noexcept;
-        __task* __tail_;
       };
 
       void __execute() noexcept {
@@ -74,13 +74,14 @@ namespace stdexec {
         }
 
         explicit __t(__task* __tail) noexcept
-          : __task{.__tail_ = __tail} {
+          : __task{{}, this, __tail} {
         }
 
         __t(__task* __next, run_loop* __loop, _Receiver __rcvr)
-          : __task{{}, __next, {&__execute_impl}}
+          : __task{{}, __next, {}}
           , __loop_{__loop}
           , __rcvr_{static_cast<_Receiver&&>(__rcvr)} {
+          __execute_ = &__execute_impl;
         }
 
         STDEXEC_ATTRIBUTE((always_inline))
@@ -191,7 +192,7 @@ namespace stdexec {
 
       std::mutex __mutex_;
       std::condition_variable __cv_;
-      __task __head_{.__tail_ = &__head_};
+      __task __head_{{}, &__head_, {&__head_}};
       bool __stop_ = false;
     };
 

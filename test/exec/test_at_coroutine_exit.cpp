@@ -223,14 +223,14 @@ namespace {
 
 #  ifdef REQUIRE_TERMINATE
 
-  void test_cancel_in_cleanup_action_causes_death(int& result) {
+  void test_cancel_in_cleanup_action_causes_death(int&) {
     task<void> t = []() -> task<void> {
       co_await at_coroutine_exit([]() -> task<void> { co_await stop(); });
     }();
     REQUIRE_TERMINATE([&] { sync_wait(std::move(t)); });
   }
 
-  void test_cancel_during_cancellation_unwind_causes_death(int& result) {
+  void test_cancel_during_cancellation_unwind_causes_death(int&) {
     task<void> t = []() -> task<void> {
       co_await at_coroutine_exit([]() -> task<void> {
         co_await stop(); // BOOM
@@ -240,14 +240,14 @@ namespace {
     REQUIRE_TERMINATE([&] { sync_wait(std::move(t)); });
   }
 
-  void test_throw_in_cleanup_action_causes_death(int& result) {
+  void test_throw_in_cleanup_action_causes_death(int&) {
     task<void> t = []() -> task<void> {
       co_await at_coroutine_exit([]() -> task<void> { throw 42; });
     }();
     REQUIRE_TERMINATE([&] { sync_wait(std::move(t)); });
   }
 
-  void test_throw_in_cleanup_action_during_exception_unwind_causes_death(int& result) {
+  void test_throw_in_cleanup_action_during_exception_unwind_causes_death(int&) {
     task<void> t = []() -> task<void> {
       co_await at_coroutine_exit([]() -> task<void> { throw 42; });
       throw 42;
@@ -255,7 +255,7 @@ namespace {
     REQUIRE_TERMINATE([&] { sync_wait(std::move(t)); });
   }
 
-  void test_cancel_in_cleanup_action_during_exception_unwind_causes_death(int& result) {
+  void test_cancel_in_cleanup_action_during_exception_unwind_causes_death(int&) {
     task<void> t = []() -> task<void> {
       co_await at_coroutine_exit([]() -> task<void> { co_await stop(); });
       throw 42;
@@ -263,7 +263,7 @@ namespace {
     REQUIRE_TERMINATE([&] { sync_wait(std::move(t)); });
   }
 
-  void test_throw_in_cleanup_action_during_cancellation_unwind_causes_death(int& result) {
+  void test_throw_in_cleanup_action_during_cancellation_unwind_causes_death(int&) {
     task<void> t = []() -> task<void> {
       co_await at_coroutine_exit([]() -> task<void> { throw 42; });
       co_await stop();

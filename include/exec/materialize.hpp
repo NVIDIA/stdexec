@@ -40,7 +40,7 @@ namespace exec {
 
         template <__completion_tag _Tag, __decays_to<__t> _Self, class... _Args>
           requires tag_invocable<set_value_t, _Receiver&&, _Tag, _Args...>
-        friend void tag_invoke(_Tag tag, _Self&& __self, _Args&&... __args) noexcept {
+        friend void tag_invoke(_Tag, _Self&& __self, _Args&&... __args) noexcept {
           set_value(
             static_cast<_Receiver&&>(__self.__upstream_), _Tag{}, static_cast<_Args&&>(__args)...);
         }
@@ -98,8 +98,7 @@ namespace exec {
           completion_signatures<set_value_t(set_stopped_t)>>;
 
         template <__decays_to<__t> _Self, class _Env>
-        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&& __self, _Env __env)
-          -> __completion_signatures_for_t<_Env> {
+        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env) -> __completion_signatures_for_t<_Env> {
           return {};
         }
       };
@@ -115,7 +114,7 @@ namespace exec {
       STDEXEC_ATTRIBUTE((always_inline))
       auto
         operator()() const noexcept -> __binder_back<__materialize_t> {
-        return {};
+        return {{}, {}, {}};
       }
     };
   } // namespace __materialize
@@ -202,8 +201,7 @@ namespace exec {
           make_completion_signatures<_Sender, _Env, completion_signatures<>, __dematerialize_value>;
 
         template <__decays_to<__t> _Self, class _Env>
-        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&& __self, _Env __env)
-          -> __completion_signatures_for_t<_Env> {
+        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env) -> __completion_signatures_for_t<_Env> {
           return {};
         }
       };
@@ -222,7 +220,7 @@ namespace exec {
       STDEXEC_ATTRIBUTE((always_inline))
       auto
         operator()() const noexcept -> __binder_back<__dematerialize_t> {
-        return {};
+        return {{}, {}, {}};
       }
     };
   } // namespace __dematerialize

@@ -86,7 +86,8 @@ namespace nvexec {
 
         template <__decays_to<__t> Self, receiver Receiver>
           requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-        STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr)
+        STDEXEC_MEMFN_DECL(
+          auto connect)(this Self&& self, Receiver rcvr)
           -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
           return stream_op_state<__copy_cvref_t<Self, Sender>>(
             static_cast<Self&&>(self).sndr_,
@@ -98,8 +99,7 @@ namespace nvexec {
         }
 
         template <__decays_to<__t> Self, class Env>
-        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&)
-          -> _completion_signatures_t<Self, Env> {
+        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> _completion_signatures_t<Self, Env> {
           return {};
         }
 
@@ -120,8 +120,9 @@ namespace nvexec {
       }
 
       STDEXEC_ATTRIBUTE((always_inline))
-      auto operator()(std::string name) const -> stdexec::__binder_back<push_t, std::string> {
-        return {std::move(name)};
+      auto
+        operator()(std::string name) const -> stdexec::__binder_back<push_t, std::string> {
+        return {{std::move(name)}, {}, {}};
       }
     };
 
@@ -132,8 +133,9 @@ namespace nvexec {
       }
 
       STDEXEC_ATTRIBUTE((always_inline))
-      auto operator()() const noexcept -> stdexec::__binder_back<pop_t> {
-        return {};
+      auto
+        operator()() const noexcept -> stdexec::__binder_back<pop_t> {
+        return {{}, {}, {}};
       }
     };
 
@@ -148,9 +150,14 @@ namespace nvexec {
 
       template <stdexec::__sender_adaptor_closure Closure>
       STDEXEC_ATTRIBUTE((always_inline))
-      auto operator()(std::string name, Closure closure) const
+      auto
+        operator()(std::string name, Closure closure) const
         -> stdexec::__binder_back<scoped_t, std::string, Closure> {
-        return {{std::move(name), static_cast<Closure&&>(closure)}};
+        return {
+          {std::move(name), static_cast<Closure&&>(closure)},
+          {},
+          {}
+        };
       }
     };
 

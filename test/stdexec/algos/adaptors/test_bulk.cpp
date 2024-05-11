@@ -43,19 +43,19 @@ namespace {
   };
 
   TEST_CASE("bulk returns a sender", "[adaptors][bulk]") {
-    auto snd = ex::bulk(ex::just(19), 8, [](int idx, int val) {});
+    auto snd = ex::bulk(ex::just(19), 8, [](int, int) {});
     static_assert(ex::sender<decltype(snd)>);
     (void) snd;
   }
 
   TEST_CASE("bulk with environment returns a sender", "[adaptors][bulk]") {
-    auto snd = ex::bulk(ex::just(19), 8, [](int idx, int val) {});
+    auto snd = ex::bulk(ex::just(19), 8, [](int, int) {});
     static_assert(ex::sender_in<decltype(snd), empty_env>);
     (void) snd;
   }
 
   TEST_CASE("bulk can be piped", "[adaptors][bulk]") {
-    ex::sender auto snd = ex::just() | ex::bulk(42, [](int i) {});
+    ex::sender auto snd = ex::just() | ex::bulk(42, [](int) {});
     (void) snd;
   }
 
@@ -164,7 +164,7 @@ namespace {
     constexpr int n = 2;
 
     auto snd = ex::just(magic_number)
-             | ex::bulk(n, [](int i, int) { return function_object_t<int>{nullptr}; });
+             | ex::bulk(n, [](int, int) { return function_object_t<int>{nullptr}; });
 
     auto op = ex::connect(std::move(snd), expect_value_receiver{magic_number});
     ex::start(op);
@@ -174,7 +174,7 @@ namespace {
     constexpr int n = 2;
 
     auto snd = ex::just() //
-             | ex::bulk(n, [](int i) -> int { throw std::logic_error{"err"}; });
+             | ex::bulk(n, [](int) -> int { throw std::logic_error{"err"}; });
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
   }
@@ -267,7 +267,7 @@ namespace {
     SECTION("With exception") {
       constexpr int n = 9;
       auto snd = ex::transfer_just(sch)
-               | ex::bulk(n, [](int idx) { throw std::runtime_error("bulk"); });
+               | ex::bulk(n, [](int) { throw std::runtime_error("bulk"); });
 
       CHECK_THROWS_AS(stdexec::sync_wait(std::move(snd)), std::runtime_error);
     }

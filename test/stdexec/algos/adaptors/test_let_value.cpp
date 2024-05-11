@@ -131,7 +131,7 @@ namespace {
 
   TEST_CASE("let_value can throw, and set_error will be called", "[adaptors][let_value]") {
     auto snd = ex::just(13) //
-             | ex::let_value([](int& x) -> decltype(ex::just(0)) {
+             | ex::let_value([](int&) -> decltype(ex::just(0)) {
                  throw std::logic_error{"err"};
                });
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
@@ -213,7 +213,7 @@ namespace {
     impulse_scheduler sched;
 
     ex::sender auto snd = ex::just(my_type(&param_destructed)) //
-                        | ex::let_value([&](const my_type& obj) {
+                        | ex::let_value([&](const my_type&) {
                             CHECK_FALSE(param_destructed);
                             fun_called = true;
                             return ex::transfer_just(sched, 13);
@@ -312,7 +312,7 @@ namespace {
   using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
 
   template <typename Fun>
-  auto tag_invoke(ex::let_value_t, inline_scheduler sched, my_string_sender_t, Fun) {
+  auto tag_invoke(ex::let_value_t, inline_scheduler, my_string_sender_t, Fun) {
     return ex::just(std::string{"hallo"});
   }
 

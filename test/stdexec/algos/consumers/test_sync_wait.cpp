@@ -203,7 +203,7 @@ namespace {
   using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
 
   optional<tuple<std::string>>
-    tag_invoke(decltype(sync_wait), inline_scheduler sched, my_string_sender_t&& s) {
+    tag_invoke(decltype(sync_wait), inline_scheduler, my_string_sender_t&& s) {
     std::string res;
     auto op = ex::connect(std::move(s), expect_value_receiver_ex{res});
     ex::start(op);
@@ -279,7 +279,7 @@ namespace {
 
   optional<std::variant<std::tuple<std::string>, std::tuple<int>>> tag_invoke(
     decltype(sync_wait_with_variant),
-    inline_scheduler sched,
+    inline_scheduler,
     my_transfered_multi_value_sender_t&& s) {
     std::string res;
     auto op = ex::connect(std::move(s), expect_value_receiver_ex{res});
