@@ -335,13 +335,13 @@ namespace exec {
 
         // Schedule the bulk work on the system scheduler.
         __state_.__impl_os_ = __state_.__snd_.__scheduler_->__bulk_schedule(
-          __state_.__snd_.__scheduler_,     // self
-          &__state_.__preallocated_,        // preallocated
-          sizeof(__state_.__preallocated_), // psize
-          __type_erased_cb_fn,              // cb
-          __type_erased_item_fn,            // cb_item
-          &__state_,                        // data
-          __state_.__snd_.__size_           // size
+          __state_.__snd_.__scheduler_,                       // self
+          &__state_.__preallocated_,                          // preallocated
+          sizeof(__state_.__preallocated_),                   // psize
+          __type_erased_cb_fn,                                // cb
+          __type_erased_item_fn,                              // cb_item
+          &__state_,                                          // data
+          static_cast<unsigned long>(__state_.__snd_.__size_) // size
         );
       }
 
