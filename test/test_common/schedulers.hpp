@@ -33,8 +33,8 @@ namespace ex = stdexec;
 namespace {
   template <class S>
   struct scheduler_env {
-    template <stdexec::__one_of<ex::set_value_t, ex::set_error_t, ex::set_stopped_t> CPO>
-    friend S tag_invoke(ex::get_completion_scheduler_t<CPO>, const scheduler_env&) noexcept {
+    template <stdexec::__completion_tag Tag>
+    S query(ex::get_completion_scheduler_t<Tag>) const noexcept {
       return {};
     }
   };
@@ -96,13 +96,9 @@ namespace {
     struct env {
       data* data_;
 
-      auto make_scheduler() const noexcept {
-        return impulse_scheduler{data_};
-      }
-
       template <stdexec::__one_of<ex::set_value_t, ex::set_stopped_t> Tag>
-      friend auto tag_invoke(ex::get_completion_scheduler_t<Tag>, const env& self) noexcept {
-        return self.make_scheduler();
+      auto query(ex::get_completion_scheduler_t<Tag>) const noexcept {
+        return impulse_scheduler{data_};
       }
     };
 

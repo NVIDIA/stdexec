@@ -149,7 +149,16 @@ namespace exec_old {
       using __id = scheduler;
       bool operator==(const scheduler&) const = default;
 
-     private:
+      stdexec::forward_progress_guarantee
+        query(stdexec::get_forward_progress_guarantee_t) const noexcept {
+        return stdexec::forward_progress_guarantee::parallel;
+      }
+
+      domain query(stdexec::get_domain_t) const noexcept {
+        return {};
+      }
+
+ private:
       template <typename ReceiverId>
       friend class operation;
 
@@ -176,12 +185,8 @@ namespace exec_old {
           static_thread_pool& pool_;
 
           template <class CPO>
-          friend static_thread_pool::scheduler
-            tag_invoke(stdexec::get_completion_scheduler_t<CPO>, const env& self) noexcept {
-            return self.make_scheduler_();
-          }
-
-          static_thread_pool::scheduler make_scheduler_() const {
+          static_thread_pool::scheduler
+            query(stdexec::get_completion_scheduler_t<CPO>) const noexcept {
             return static_thread_pool::scheduler{pool_};
           }
         };
@@ -205,15 +210,6 @@ namespace exec_old {
 
       friend sender tag_invoke(stdexec::schedule_t, const scheduler& s) noexcept {
         return s.make_sender_();
-      }
-
-      friend stdexec::forward_progress_guarantee
-        tag_invoke(stdexec::get_forward_progress_guarantee_t, const static_thread_pool&) noexcept {
-        return stdexec::forward_progress_guarantee::parallel;
-      }
-
-      friend domain tag_invoke(stdexec::get_domain_t, scheduler) noexcept {
-        return {};
       }
 
       friend class static_thread_pool;

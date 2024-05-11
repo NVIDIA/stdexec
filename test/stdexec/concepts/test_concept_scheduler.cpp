@@ -28,7 +28,7 @@ namespace {
   template <class Scheduler>
   struct default_env {
     template <typename CPO>
-    friend Scheduler tag_invoke(ex::get_completion_scheduler_t<CPO>, const default_env&) {
+    Scheduler query(ex::get_completion_scheduler_t<CPO>) const noexcept {
       return {};
     }
   };

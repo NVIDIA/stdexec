@@ -39,7 +39,7 @@ namespace stdexec {
         return tag_invoke(schedule_t{}, static_cast<_Scheduler&&>(__sched));
       }
 
-      constexpr STDEXEC_MEMFN_DECL(auto forwarding_query)(this schedule_t) -> bool {
+      static constexpr auto query(forwarding_query_t) noexcept -> bool {
         return false;
       }
     };
@@ -111,6 +111,16 @@ namespace stdexec {
       return tag_invoke(*this, __env);
     }
   } // namespace __queries
+
+  /////////////////////////////////////////////////////////////////////////////
+  namespace __get_env {
+    // NOT TO SPEC: So that calls to `get_env` on a scheduler succeed and return the scheduler
+    // itself.
+    template <__same_as<get_env_t> Tag, scheduler _Scheduler>
+    auto tag_invoke(Tag, const _Scheduler& __sched) noexcept -> const _Scheduler& {
+      return __sched;
+    }
+  } // namespace __get_env
 
   namespace __detail {
     // A handy utility for augmenting an environment with a scheduler.

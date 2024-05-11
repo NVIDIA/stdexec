@@ -59,7 +59,9 @@ namespace nvexec {
   }
 #endif
 
-  inline STDEXEC_ATTRIBUTE((host, device)) bool is_on_gpu() noexcept {
+  inline STDEXEC_ATTRIBUTE((host, device))
+  bool
+    is_on_gpu() noexcept {
     return get_device_type() == device_type::device;
   }
 } // namespace nvexec
@@ -265,7 +267,8 @@ namespace nvexec {
       }
 
       STDEXEC_ATTRIBUTE((host, device))
-      constexpr STDEXEC_MEMFN_DECL(bool forwarding_query)(this const get_stream_provider_t&) noexcept {
+      static constexpr auto
+        query(stdexec::forwarding_query_t) noexcept -> bool {
         return true;
       }
     };
@@ -300,7 +303,8 @@ namespace nvexec {
     struct set_noop {
       template <class... Ts>
       STDEXEC_ATTRIBUTE((host, device))
-      void operator()(Ts&&...) const noexcept {
+      void
+        operator()(Ts&&...) const noexcept {
         // TODO TRAP
         std::printf("ERROR: use of empty variant.");
       }
@@ -326,12 +330,14 @@ namespace nvexec {
       }
 
       STDEXEC_ATTRIBUTE((host, device))
-      auto operator()() const noexcept {
+      auto
+        operator()() const noexcept {
         return stdexec::read(*this);
       }
 
       STDEXEC_ATTRIBUTE((host, device))
-      constexpr STDEXEC_MEMFN_DECL(bool forwarding_query)(this const get_stream_t&) noexcept {
+      static constexpr auto
+        query(stdexec::forwarding_query_t) noexcept -> bool {
         return true;
       }
     };
@@ -399,14 +405,16 @@ namespace nvexec {
 
         template <__one_of<set_value_t, set_stopped_t> Tag, class... As>
         STDEXEC_ATTRIBUTE((host, device))
-        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
+        friend void
+          tag_invoke(Tag, __t&& self, As&&... as) noexcept {
           self.variant_->template emplace<decayed_tuple<Tag, As...>>(Tag(), std::move(as)...);
           self.producer_(self.task_);
         }
 
         template <class Error>
         STDEXEC_ATTRIBUTE((host, device))
-        STDEXEC_MEMFN_DECL(void set_error)(this __t&& self, Error&& e) noexcept {
+        STDEXEC_MEMFN_DECL(
+          void set_error)(this __t&& self, Error&& e) noexcept {
           if constexpr (__decays_to<Error, std::exception_ptr>) {
             // What is `exception_ptr` but death pending
             self.variant_->template emplace<decayed_tuple<set_error_t, cudaError_t>>(

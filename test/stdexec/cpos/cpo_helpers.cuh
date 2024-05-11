@@ -68,7 +68,7 @@ namespace {
 
     struct env_t {
       template <stdexec::__one_of<ex::set_value_t, CompletionSignals...> Tag>
-      friend scheduler_t tag_invoke(ex::get_completion_scheduler_t<Tag>, const env_t&) noexcept {
+      scheduler_t query(ex::get_completion_scheduler_t<Tag>) const noexcept {
         return {};
       }
     };

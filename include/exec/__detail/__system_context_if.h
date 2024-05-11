@@ -17,6 +17,7 @@
 #ifndef __EXEC__SYSTEM_CONTEXT_IF_H__
 #define __EXEC__SYSTEM_CONTEXT_IF_H__
 
+#include <stddef.h>
 #include <stdint.h>
 
 #ifdef __cplusplus

@@ -110,13 +110,9 @@ namespace nvexec {
       struct env {
         context_state_t context_state_;
 
-        stream_scheduler make_scheduler() const {
-          return stream_scheduler{context_state_};
-        }
-
         template <class CPO>
-        STDEXEC_MEMFN_DECL(stream_scheduler query)(this const env& self, get_completion_scheduler_t<CPO>) noexcept {
-          return self.make_scheduler();
+        stream_scheduler query(get_completion_scheduler_t<CPO>) const noexcept {
+          return stream_scheduler{context_state_};
         }
       };
 
@@ -192,7 +188,8 @@ namespace nvexec {
       }
 
       template <sender S, class Fn>
-      STDEXEC_MEMFN_DECL(upon_stopped_sender_th<S, Fn> upon_stopped)(this const stream_scheduler& sch,
+      STDEXEC_MEMFN_DECL(upon_stopped_sender_th<S, Fn> upon_stopped)(
+        this const stream_scheduler& sch,
         S&& sndr,
         Fn fun) //
         noexcept {
@@ -200,7 +197,8 @@ namespace nvexec {
       }
 
       template <stream_completing_sender... Senders>
-      STDEXEC_MEMFN_DECL(auto transfer_when_all)(this const stream_scheduler& sch,
+      STDEXEC_MEMFN_DECL(auto transfer_when_all)(
+        this const stream_scheduler& sch,
         Senders&&... sndrs) //
         noexcept {
         return transfer_when_all_sender_th<stream_scheduler, Senders...>(
@@ -208,7 +206,8 @@ namespace nvexec {
       }
 
       template <stream_completing_sender... Senders>
-      STDEXEC_MEMFN_DECL(auto transfer_when_all_with_variant)(this const stream_scheduler& sch,      //
+      STDEXEC_MEMFN_DECL(auto transfer_when_all_with_variant)(
+        this const stream_scheduler& sch, //
         Senders&&... sndrs) noexcept {
         return transfer_when_all_sender_th<stream_scheduler, __result_of<into_variant, Senders>...>(
           sch.context_state_, into_variant(static_cast<Senders&&>(sndrs))...);
@@ -242,7 +241,7 @@ namespace nvexec {
         return _sync_wait::sync_wait_t{}(self.context_state_, static_cast<S&&>(sndr));
       }
 
-      STDEXEC_MEMFN_DECL(forward_progress_guarantee query)(this const stream_scheduler&, get_forward_progress_guarantee_t) noexcept {
+      forward_progress_guarantee query(get_forward_progress_guarantee_t) const noexcept {
         return forward_progress_guarantee::weakly_parallel;
       }
 

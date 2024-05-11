@@ -103,6 +103,16 @@ namespace stdexec {
         using __id = __scheduler;
         auto operator==(const __scheduler&) const noexcept -> bool = default;
 
+        auto query(get_forward_progress_guarantee_t) const noexcept
+          -> stdexec::forward_progress_guarantee {
+          return stdexec::forward_progress_guarantee::parallel;
+        }
+
+        // BUGBUG NOT TO SPEC
+        auto query(execute_may_block_caller_t) const noexcept -> bool {
+          return false;
+        }
+
        private:
         struct __schedule_task {
           using __t = __schedule_task;
@@ -129,12 +139,14 @@ namespace stdexec {
           }
 
           struct __env {
+            using __t = __env;
+            using __id = __env;
+
             run_loop* __loop_;
 
             template <class _CPO>
-            STDEXEC_MEMFN_DECL(auto query)(this const __env& __self, get_completion_scheduler_t<_CPO>) noexcept
-              -> __scheduler {
-              return __self.__loop_->get_scheduler();
+            auto query(get_completion_scheduler_t<_CPO>) const noexcept -> __scheduler {
+              return __loop_->get_scheduler();
             }
           };
 
@@ -157,17 +169,6 @@ namespace stdexec {
 
         STDEXEC_MEMFN_DECL(auto schedule)(this const __scheduler& __self) noexcept -> __schedule_task {
           return __self.__schedule();
-        }
-
-        STDEXEC_MEMFN_DECL(auto query)(this const __scheduler&, get_forward_progress_guarantee_t) noexcept
-          -> stdexec::forward_progress_guarantee {
-          return stdexec::forward_progress_guarantee::parallel;
-        }
-
-        // BUGBUG NOT TO SPEC
-        STDEXEC_MEMFN_DECL(
-          auto execute_may_block_caller)(this const __scheduler&) noexcept -> bool {
-          return false;
         }
 
         [[nodiscard]]

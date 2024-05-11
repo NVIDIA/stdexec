@@ -448,10 +448,18 @@ namespace stdexec {
             __q<__decayed_tuple>,
             __mk_let_state>;
 
-          _Sched __sched = query_or(
-            get_completion_scheduler<_Set>, stdexec::get_env(__sndr), __unknown_scheduler());
-          return __let_state_t{
-            __sndr.apply(static_cast<_Sender&&>(__sndr), __detail::__get_data()), __sched};
+          return __sndr.apply(
+            static_cast<_Sender&&>(__sndr),
+            [&]<class _Fn, class _Child>(__ignore, _Fn&& __fn, _Child&& __child) {
+              _Sched __sched = query_or(
+                get_completion_scheduler<_Set>, stdexec::get_env(__child), __unknown_scheduler());
+              return __let_state_t{static_cast<_Fn&&>(__fn), __sched};
+            });
+
+          // _Sched __sched = query_or(
+          //   get_completion_scheduler<_Set>, stdexec::get_env(__sndr), __unknown_scheduler());
+          // return __let_state_t{
+          //   __sndr.apply(static_cast<_Sender&&>(__sndr), __detail::__get_data()), __sched};
         };
 
       template <class _State, class _OpState, class... _As>

@@ -29,8 +29,7 @@ namespace stdexec {
   // Some utilities for debugging senders
   namespace __debug {
     struct __is_debug_env_t {
-      constexpr STDEXEC_MEMFN_DECL(
-        auto forwarding_query)(this const __is_debug_env_t&) noexcept -> bool {
+      static constexpr auto query(forwarding_query_t) noexcept -> bool {
         return true;
       }
       template <class _Env>

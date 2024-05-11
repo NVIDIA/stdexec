@@ -138,8 +138,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return connect((static_cast<Self&&>(self)).sndr_, static_cast<Receiver&&>(rcvr));
       }
 
-      STDEXEC_MEMFN_DECL(auto get_env)(this const source_sender_t& self) noexcept
-        -> env_of_t<const Sender&> {
+      STDEXEC_MEMFN_DECL(auto get_env)(this const source_sender_t& self) noexcept -> env_of_t<const Sender&> {
         // TODO - this code is not exercised by any test
         return get_env(self.sndr_);
       }
@@ -171,8 +170,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       context_state_t context_state_;
 
       template <__one_of<set_value_t, set_stopped_t, set_error_t> _Tag>
-      STDEXEC_MEMFN_DECL(Scheduler query)(this const __env& __self, get_completion_scheduler_t<_Tag>) noexcept {
-        return {__self.context_state_};
+      Scheduler query(get_completion_scheduler_t<_Tag>) const noexcept {
+        return {context_state_};
       }
     };
 
@@ -187,11 +186,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires sender_to<__copy_cvref_t<Self, source_sender_th>, Receiver>
-      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr) //
- -> stream_op_state_t<
-        __copy_cvref_t<Self, source_sender_th>,
-        receiver_t<Self, Receiver>,
-        Receiver> {
+      STDEXEC_MEMFN_DECL(
+        auto connect)(this Self&& self, Receiver rcvr) //
+        -> stream_op_state_t<
+          __copy_cvref_t<Self, source_sender_th>,
+          receiver_t<Self, Receiver>,
+          Receiver> {
         return stream_op_state<__copy_cvref_t<Self, source_sender_th>>(
           static_cast<Self&&>(self).sndr_,
           static_cast<Receiver&&>(rcvr),
@@ -207,13 +207,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> _Self, class _Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env&&)
-        -> __try_make_completion_signatures<
-          __copy_cvref_t<_Self, Sender>,
-          _Env,
-          completion_signatures<set_error_t(cudaError_t)>,
-          __q<_sched_from::value_completions_t>,
-          __q<_sched_from::error_completions_t>> {
+      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env&&) -> __try_make_completion_signatures<
+        __copy_cvref_t<_Self, Sender>,
+        _Env,
+        completion_signatures<set_error_t(cudaError_t)>,
+        __q<_sched_from::value_completions_t>,
+        __q<_sched_from::error_completions_t>> {
         return {};
       }
 

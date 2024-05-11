@@ -39,8 +39,7 @@ namespace stdexec {
         return __make_sexpr<_Tag>();
       }
 
-      STDEXEC_MEMFN_DECL(auto query)(this __scheduler, get_forward_progress_guarantee_t) noexcept
-        -> forward_progress_guarantee {
+      auto query(get_forward_progress_guarantee_t) const noexcept -> forward_progress_guarantee {
         return forward_progress_guarantee::weakly_parallel;
       }
 

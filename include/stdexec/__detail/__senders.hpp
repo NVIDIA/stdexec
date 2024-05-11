@@ -208,7 +208,7 @@ namespace stdexec {
         }
       }
 
-      constexpr STDEXEC_MEMFN_DECL(auto forwarding_query)(this connect_t) noexcept -> bool {
+      static constexpr auto query(forwarding_query_t) noexcept -> bool {
         return false;
       }
     };

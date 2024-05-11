@@ -104,8 +104,10 @@ namespace stdexec {
           : __t::__with{std::move(__sched)} {
         }
 
-        STDEXEC_MEMFN_DECL(auto query)(this const __t& __self, get_domain_t) noexcept {
-          return query_or(get_domain, __self.__value_, default_domain());
+        using __t::__with::query;
+
+        auto query(get_domain_t) const noexcept {
+          return query_or(get_domain, this->__value_, default_domain());
         }
       };
     };

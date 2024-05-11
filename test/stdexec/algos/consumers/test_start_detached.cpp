@@ -120,8 +120,7 @@ namespace {
     struct sender : ex::schedule_result_t<inline_scheduler> {
       struct env {
         template <class Tag>
-        friend custom_scheduler
-          tag_invoke(ex::get_completion_scheduler_t<Tag>, const env&) noexcept {
+        custom_scheduler query(ex::get_completion_scheduler_t<Tag>) const noexcept {
           return {};
         }
       };
@@ -138,7 +137,7 @@ namespace {
       }
     };
 
-    friend domain tag_invoke(ex::get_domain_t, custom_scheduler) noexcept {
+    domain query(ex::get_domain_t) const noexcept {
       return {};
     }
 
