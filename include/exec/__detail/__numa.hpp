@@ -40,15 +40,15 @@ namespace exec {
       return 1;
     }
 
-    auto num_cpus(int node) -> std::size_t override {
+    auto num_cpus(int) -> std::size_t override {
       return std::thread::hardware_concurrency();
     }
 
-    auto bind_to_node(int node) -> int override {
+    auto bind_to_node(int) -> int override {
       return 0;
     }
 
-    auto thread_index_to_node(std::size_t index) -> int override {
+    auto thread_index_to_node(std::size_t) -> int override {
       return 0;
     }
   };

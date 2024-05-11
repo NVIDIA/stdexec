@@ -41,7 +41,7 @@ namespace {
 
   task<void> test_stickiness_for_two_single_thread_contexts_nested(
     scheduler auto scheduler1,
-    scheduler auto scheduler2,
+    scheduler auto,
     auto id1,
     auto id2) {
     CHECK(get_id() == id2);                       // This task is started in context2
@@ -185,7 +185,7 @@ namespace {
   namespace {
     task<void> test_stick_on_main_nested(
       scheduler auto sched1,
-      scheduler auto sched2,
+      scheduler auto,
       auto id_main_thread,
       [[maybe_unused]] auto id1,
       [[maybe_unused]] auto id2) {

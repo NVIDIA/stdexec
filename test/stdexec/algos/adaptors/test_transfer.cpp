@@ -228,13 +228,13 @@ namespace {
 
   // Customization of transfer
   // Return a different sender when we invoke this custom defined transfer implementation
-  auto tag_invoke(decltype(ex::transfer), just_val1_sender_t, inline_scheduler sched) {
+  auto tag_invoke(decltype(ex::transfer), just_val1_sender_t, inline_scheduler) {
     return ex::just(val_type1{53});
   }
 
   // Customization of schedule_from
   // Return a different sender when we invoke this custom defined transfer implementation
-  auto tag_invoke(decltype(ex::schedule_from), inline_scheduler sched, just_val2_sender_t) {
+  auto tag_invoke(decltype(ex::schedule_from), inline_scheduler, just_val2_sender_t) {
     return ex::just(val_type2{59});
   }
 
@@ -281,14 +281,14 @@ namespace {
 
   struct test_domain_A {
     template <ex::sender_expr_for<ex::transfer_t> Sender, class Env>
-    auto transform_sender(Sender&& sndr, Env&& env) const {
+    auto transform_sender(Sender&&, Env&&) const {
       return ex::just(std::string("hello"));
     }
   };
 
   struct test_domain_B {
     template <ex::sender_expr_for<ex::transfer_t> Sender, class Env>
-    auto transform_sender(Sender&& sndr, Env&& env) const {
+    auto transform_sender(Sender&&, Env&&) const {
       return ex::just(std::string("goodbye"));
     }
   };

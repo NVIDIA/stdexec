@@ -230,7 +230,7 @@ namespace {
 
   // Customization of schedule_from
   // Return a different sender
-  auto tag_invoke(decltype(ex::schedule_from), inline_scheduler sched, just_string_sender_t) {
+  auto tag_invoke(decltype(ex::schedule_from), inline_scheduler, just_string_sender_t) {
     return ex::just(std::string{"hijacked"});
   }
 

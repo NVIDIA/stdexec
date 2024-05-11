@@ -279,15 +279,15 @@ namespace exec {
       /// The receiver object that receives completion from the work described by the sender.
       __R __recv_;
       /// The operating state on the implementation side.
-      void* __impl_os_;
+      void* __impl_os_ = nullptr;
       /// Storage for the arguments passed from the previous receiver to the function object of the bulk sender.
       alignas(__detail::__sender_data_t<__Previous>) unsigned char __arguments_data_[sizeof(
-        __detail::__sender_data_t<__Previous>)];
+        __detail::__sender_data_t<__Previous>)]{};
 
       /// Preallocated space for storing the operation state on the implementation size.
       struct alignas(__EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_ALIGN) __preallocated {
         char __data[__EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_SIZE];
-      } __preallocated_;
+      } __preallocated_{};
 
       ~__bulk_state() {
         __snd_.__scheduler_->__destruct_bulk_schedule_operation(__snd_.__scheduler_, __impl_os_);
@@ -314,7 +314,7 @@ namespace exec {
           std::tuple<stdexec::__decay_t<__As>...>{std::move(__as)...};
 
         // The function that needs to be applied to each item in the bulk operation.
-        auto __type_erased_item_fn = [](void* __state_arg, long __idx) {
+        auto __type_erased_item_fn = +[](void* __state_arg, unsigned long __idx) {
           auto* __state = static_cast<__bulk_state_t*>(__state_arg);
           std::apply(
             [&](auto&&... __args) { __state->__snd_.__fun_(__idx, __args...); },
@@ -322,25 +322,26 @@ namespace exec {
         };
 
         // The function that needs to be applied when all items are complete.
-        auto __type_erased_cb_fn = [](void* __state_arg, int __completion_type, void* __exception) {
-          auto __state = static_cast<__bulk_state_t*>(__state_arg);
-          std::apply(
-            [&](auto&&... __args) {
-              __detail::__pass_to_receiver_with_args(
-                __completion_type, __exception, std::move(__state->__recv_), __args...);
-            },
-            *reinterpret_cast<std::tuple<__As...>*>(&__state->__arguments_data_));
-        };
+        auto __type_erased_cb_fn =
+          +[](void* __state_arg, int __completion_type, void* __exception) {
+            auto __state = static_cast<__bulk_state_t*>(__state_arg);
+            std::apply(
+              [&](auto&&... __args) {
+                __detail::__pass_to_receiver_with_args(
+                  __completion_type, __exception, std::move(__state->__recv_), __args...);
+              },
+              *reinterpret_cast<std::tuple<__As...>*>(&__state->__arguments_data_));
+          };
 
         // Schedule the bulk work on the system scheduler.
         __state_.__impl_os_ = __state_.__snd_.__scheduler_->__bulk_schedule(
-          __state_.__snd_.__scheduler_,     // self
-          &__state_.__preallocated_,        // preallocated
-          sizeof(__state_.__preallocated_), // psize
-          __type_erased_cb_fn,              // cb
-          __type_erased_item_fn,            // cb_item
-          &__state_,                        // data
-          __state_.__snd_.__size_           // size
+          __state_.__snd_.__scheduler_,                       // self
+          &__state_.__preallocated_,                          // preallocated
+          sizeof(__state_.__preallocated_),                   // psize
+          __type_erased_cb_fn,                                // cb
+          __type_erased_item_fn,                              // cb_item
+          &__state_,                                          // data
+          static_cast<unsigned long>(__state_.__snd_.__size_) // size
         );
       }
 

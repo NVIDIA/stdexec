@@ -81,7 +81,7 @@ namespace {
   TEST_CASE(
     "repeat_effect_until produces void value to downstream receiver",
     "[adaptors][repeat_effect_until]") {
-    sender auto source = just(1) | then([](int n) { return true; });
+    sender auto source = just(1) | then([](int) { return true; });
     sender auto snd = exec::repeat_effect_until(std::move(source));
     // The receiver checks if we receive the void value
     auto op = stdexec::connect(std::move(snd), expect_void_receiver{});

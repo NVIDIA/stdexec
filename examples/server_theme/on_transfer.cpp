@@ -69,7 +69,7 @@ struct sync_stream {
 
 std::mutex sync_stream::s_mtx_{};
 
-size_t legacy_read_from_socket(int sock, char* buffer, size_t buffer_len) {
+size_t legacy_read_from_socket(int, char* buffer, size_t buffer_len) {
   const char fake_data[] = "Hello, world!";
   size_t sz = sizeof(fake_data) - 1;
   size_t count = std::min(sz, buffer_len);

@@ -93,7 +93,7 @@ namespace {
       ex::set_error_t(std::exception_ptr),                   //
       ex::set_stopped_t()>;
 
-    friend oper tag_invoke(ex::connect_t, my_sender0, empty_recv::recv0&& r) {
+    friend oper tag_invoke(ex::connect_t, my_sender0, empty_recv::recv0&&) {
       return {};
     }
 
@@ -127,7 +127,7 @@ namespace {
       ex::set_error_t(std::exception_ptr),                   //
       ex::set_stopped_t()>;
 
-    friend oper tag_invoke(ex::connect_t, my_sender_int, empty_recv::recv_int&& r) {
+    friend oper tag_invoke(ex::connect_t, my_sender_int, empty_recv::recv_int&&) {
       return {};
     }
 
@@ -185,7 +185,7 @@ namespace {
       ex::set_value_t(short, long),                          //
       ex::set_error_t(std::exception_ptr)>;
 
-    friend oper tag_invoke(ex::connect_t, multival_sender, empty_recv::recv_int&& r) {
+    friend oper tag_invoke(ex::connect_t, multival_sender, empty_recv::recv_int&&) {
       return {};
     }
 
@@ -211,7 +211,7 @@ namespace {
       ex::set_error_t(std::exception_ptr),                   //
       ex::set_error_t(int)>;
 
-    friend oper tag_invoke(ex::connect_t, ec_sender, empty_recv::recv_int&& r) {
+    friend oper tag_invoke(ex::connect_t, ec_sender, empty_recv::recv_int&&) {
       return {};
     }
 
@@ -236,7 +236,7 @@ namespace {
       ex::set_error_t(std::exception_ptr),                   //
       ex::set_stopped_t()>;
 
-    friend oper tag_invoke(ex::connect_t, my_r5_sender0, empty_recv::recv0&& r) {
+    friend oper tag_invoke(ex::connect_t, my_r5_sender0, empty_recv::recv0&&) {
       return {};
     }
   };

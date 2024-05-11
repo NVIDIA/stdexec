@@ -40,7 +40,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline))
       auto
         operator()(_Envs... __envs) const -> __binder_back<__write_env_t, _Envs...> {
-        return {{static_cast<_Envs&&>(__envs)...}};
+        return {{static_cast<_Envs&&>(__envs)...}, {}, {}};
       }
 
       template <class _Env>

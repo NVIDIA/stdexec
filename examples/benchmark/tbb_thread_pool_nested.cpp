@@ -33,8 +33,6 @@ struct RunThread {
     int numa_node = numa->thread_index_to_node(tid);
     numa->bind_to_node(numa_node);
     auto scheduler = pool.get_scheduler();
-    std::mutex mut;
-    std::condition_variable cv;
     while (true) {
       barrier.arrive_and_wait();
       if (stop.load()) {

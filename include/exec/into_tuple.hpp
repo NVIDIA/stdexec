@@ -66,7 +66,7 @@ namespace exec {
         };
 
       static constexpr auto get_state = //
-        []<class _Sender, class _Receiver>(_Sender &&__sndr, _Receiver &__rcvr) {
+        []<class _Sender, class _Receiver>(_Sender &&, _Receiver &) {
           return __mtype<__result_tuple_t<__child_of<_Sender>, env_of_t<_Receiver>>>();
         };
 
@@ -102,7 +102,7 @@ namespace exec {
       STDEXEC_ATTRIBUTE((always_inline))
       constexpr auto
         operator()() const noexcept -> __binder_back<into_tuple_t> {
-        return {};
+        return {{}, {}, {}};
       }
     };
   } // namespace __into_tuple

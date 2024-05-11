@@ -52,7 +52,8 @@ namespace nvexec {
 
           template <class... As>
             requires std::invocable<Fun, cudaStream_t, As&...>
-          STDEXEC_MEMFN_DECL(void set_value)(this  __t&& self, As&&... as) noexcept {
+          STDEXEC_MEMFN_DECL(
+            void set_value)(this __t&& self, As&&... as) noexcept {
             cudaStream_t stream = self.op_state_.get_stream();
             launch_params p = self.params_;
             kernel<As&...><<<p.grid_size, p.block_size, p.shared_memory, stream>>>(
@@ -125,7 +126,8 @@ namespace nvexec {
 
         template <__decays_to<__t> Self, receiver Receiver>
           requires receiver_of<Receiver, completions_t<Self, env_of_t<Receiver>>>
-        STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr)
+        STDEXEC_MEMFN_DECL(
+          auto connect)(this Self&& self, Receiver rcvr)
           -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
           return stream_op_state<__copy_cvref_t<Self, Sender>>(
             static_cast<Self&&>(self).sndr_,
@@ -137,8 +139,7 @@ namespace nvexec {
         }
 
         template <__decays_to<__t> Self, class Env>
-        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&)
-          -> completions_t<Self, Env> {
+        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> completions_t<Self, Env> {
           return {};
         }
 
@@ -164,14 +165,21 @@ namespace nvexec {
 
       template <__movable_value Fun>
       STDEXEC_ATTRIBUTE((always_inline))
-      auto operator()(Fun&& fun) const -> __binder_back<launch_t, Fun> {
+      auto
+        operator()(Fun&& fun) const -> __binder_back<launch_t, Fun> {
         return {{static_cast<Fun&&>(fun)}};
       }
 
       template <__movable_value Fun>
       STDEXEC_ATTRIBUTE((always_inline))
-      auto operator()(launch_params params, Fun&& fun) const -> __binder_back<launch_t, launch_params, Fun> {
-        return {{params, static_cast<Fun&&>(fun)}};
+      auto
+        operator()(launch_params params, Fun&& fun) const
+        -> __binder_back<launch_t, launch_params, Fun> {
+        return {
+          {params, static_cast<Fun&&>(fun)},
+          {},
+          {}
+        };
       }
     };
 

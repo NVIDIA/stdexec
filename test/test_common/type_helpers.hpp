@@ -95,7 +95,7 @@ namespace {
 
   //! Check that the value_types of a sender matches the expected type
   template <typename ExpectedValType, typename Env = empty_env, typename S>
-  inline void check_val_types(S snd) {
+  inline void check_val_types(S) {
     using t = typename ex::value_types_of_t<S, Env, type_array, type_array>;
     static_assert(std::same_as<t, ExpectedValType>);
   }
@@ -109,14 +109,14 @@ namespace {
 
   //! Check that the error_types of a sender matches the expected type
   template <typename ExpectedValType, typename Env = empty_env, typename S>
-  inline void check_err_types(S snd) {
+  inline void check_err_types(S) {
     using t = ex::error_types_of_t<S, Env, type_array>;
     static_assert(std::same_as<t, ExpectedValType>);
   }
 
   //! Check that the sends_stopped of a sender matches the expected value
   template <bool Expected, typename Env = empty_env, typename S>
-  inline void check_sends_stopped(S snd) {
+  inline void check_sends_stopped(S) {
     constexpr bool val = ex::sends_stopped<S, Env>;
     static_assert(val == Expected);
   }

@@ -86,7 +86,7 @@ namespace {
       ex::set_error_t(Error3)>;
 
     template <typename R>
-    friend oper<R> tag_invoke(ex::connect_t, many_error_sender self, R&& r) {
+    friend oper<R> tag_invoke(ex::connect_t, many_error_sender, R&& r) {
       return {{}, static_cast<R&&>(r)};
     }
 
@@ -120,7 +120,7 @@ namespace {
     }
 
     {
-      auto s = many_error_sender<ex::set_value_t(int)>{} | ex::upon_error([](auto e) { return 0; });
+      auto s = many_error_sender<ex::set_value_t(int)>{} | ex::upon_error([](auto) { return 0; });
 
       using S = decltype(s);
       static_assert(ex::sender<S>);
@@ -133,7 +133,7 @@ namespace {
 
     {
       auto s = many_error_sender<ex::set_value_t(double)>{}
-             | ex::upon_error([](auto e) { return 0; });
+             | ex::upon_error([](auto) { return 0; });
 
       using S = decltype(s);
       static_assert(ex::sender<S>);

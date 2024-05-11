@@ -234,7 +234,7 @@ namespace stdexec {
 
     struct __is_scheduler_affine_t {
       template <class _Env>
-      constexpr auto operator()(const _Env& __env) const noexcept {
+      constexpr auto operator()(const _Env&) const noexcept {
         if constexpr (tag_invocable<__is_scheduler_affine_t, const _Env&>) {
           using _Result = tag_invoke_result_t<__is_scheduler_affine_t, const _Env&>;
           static_assert(__same_as<decltype(__v<_Result>), const bool>);

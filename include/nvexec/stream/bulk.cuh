@@ -56,8 +56,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           if (self.shape_) {
             cudaStream_t stream = op_state.get_stream();
             constexpr int block_threads = 256;
-            const int grid_blocks = (static_cast<int>(self.shape_) + block_threads - 1)
-                                  / block_threads;
+            const int grid_blocks =
+              (static_cast<int>(self.shape_) + block_threads - 1) / block_threads;
             kernel<block_threads, As&...>
               <<<grid_blocks, block_threads, 0, stream>>>(self.shape_, std::move(self.f_), as...);
           }
@@ -115,21 +115,20 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr)
+      STDEXEC_MEMFN_DECL(
+        auto connect)(this Self&& self, Receiver rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
           static_cast<Self&&>(self).sndr_,
           static_cast<Receiver&&>(rcvr),
           [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
             -> receiver_t<Receiver> {
-            return receiver_t<Receiver>(
-              self.shape_, static_cast<Fun&&>(self.fun_), stream_provider);
+            return receiver_t<Receiver>(self.shape_, static_cast<Fun&&>(self.fun_), stream_provider);
           });
       }
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&)
-        -> _completion_signatures_t<Self, Env> {
+      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> _completion_signatures_t<Self, Env> {
         return {};
       }
 
@@ -165,7 +164,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         operation_t<CvrefSenderId, ReceiverId, Shape, Fun>& op_state_;
 
         static std::pair<Shape, Shape>
-          even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept {
+          even_share(Shape n, std::size_t rank, std::size_t size) noexcept {
           const auto avg_per_thread = n / size;
           const auto n_big_share = avg_per_thread + 1;
           const auto big_shares = n % size;
@@ -346,9 +345,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver&& rcvr) //
- -> multi_gpu_bulk::
-        operation_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun> {
+      STDEXEC_MEMFN_DECL(
+        auto connect)(this Self&& self, Receiver&& rcvr) //
+        -> multi_gpu_bulk::operation_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun> {
         auto sch = get_completion_scheduler<set_value_t>(get_env(self.sndr_));
         context_state_t context_state = sch.context_state_;
         return multi_gpu_bulk::
@@ -362,8 +361,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&)
-        -> _completion_signatures_t<Self, Env> {
+      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> _completion_signatures_t<Self, Env> {
         return {};
       }
 

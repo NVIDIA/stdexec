@@ -294,7 +294,7 @@ namespace exec {
       STDEXEC_ATTRIBUTE((always_inline))
       constexpr auto
         operator()() const noexcept -> __binder_back<ignore_all_values_t> {
-        return {};
+        return {{}, {}, {}};
       }
     };
 
@@ -303,7 +303,7 @@ namespace exec {
       using __completion_sigs = __sequence_completion_signatures_of_t<_Sequence, _Env>;
 
       static constexpr auto get_completion_signatures = //
-        []<class _Sender, class _Env>(_Sender&& __sndr, _Env&&)
+        []<class _Sender, class _Env>(_Sender&&, _Env&&)
         -> __completion_sigs<__child_of<_Sender>, _Env> {
         static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
         return {};

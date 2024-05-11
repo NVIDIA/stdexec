@@ -35,12 +35,8 @@ namespace nvexec {
     namespace reduce_ {
       template <class SenderId, class ReceiverId, class InitT, class Fun>
       struct receiver_t
-        : public __algo_range_init_fun::receiver_t<
-            SenderId,
-            ReceiverId,
-            InitT,
-            Fun,
-            receiver_t<SenderId, ReceiverId, InitT, Fun>> {
+        : public __algo_range_init_fun::
+            receiver_t<SenderId, ReceiverId, InitT, Fun, receiver_t<SenderId, ReceiverId, InitT, Fun>> {
         using base = __algo_range_init_fun::
           receiver_t<SenderId, ReceiverId, InitT, Fun, receiver_t<SenderId, ReceiverId, InitT, Fun>>;
 
@@ -143,8 +139,13 @@ namespace nvexec {
 
       template <class InitT, class Fun = cub::Sum>
       STDEXEC_ATTRIBUTE((always_inline))
-      auto operator()(InitT init, Fun fun = {}) const -> __binder_back<reduce_t, InitT, Fun> {
-        return {{static_cast<InitT&&>(init), static_cast<Fun&&>(fun)}};
+      auto
+        operator()(InitT init, Fun fun = {}) const -> __binder_back<reduce_t, InitT, Fun> {
+        return {
+          {static_cast<InitT&&>(init), static_cast<Fun&&>(fun)},
+          {},
+          {}
+        };
       }
     };
   } // namespace STDEXEC_STREAM_DETAIL_NS

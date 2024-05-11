@@ -188,7 +188,7 @@ namespace {
   // Return a different sender when we invoke this custom defined on implementation
   using just_string_sender_t = decltype(ex::just(std::string{}));
 
-  auto tag_invoke(decltype(ex::on), inline_scheduler sched, just_string_sender_t) {
+  auto tag_invoke(decltype(ex::on), inline_scheduler, just_string_sender_t) {
     return ex::just(std::string{"Hello, world!"});
   }
 
@@ -247,7 +247,7 @@ namespace {
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <typename R>
-      friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
+      friend oper<R> tag_invoke(ex::connect_t, my_sender, R&& r) {
         return {{}, static_cast<R&&>(r)};
       }
 

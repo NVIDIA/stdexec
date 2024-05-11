@@ -187,7 +187,7 @@ namespace {
   TEST_CASE("let_error of just_error with custom type", "[adaptors][let_error]") {
     bool param_destructed{false};
     ex::sender auto snd = ex::just_error(my_type(&param_destructed)) //
-                        | ex::let_error([&](const my_type& obj) { return ex::just(13); });
+                        | ex::let_error([&](const my_type&) { return ex::just(13); });
 
     {
       auto op = ex::connect(std::move(snd), expect_value_receiver{13});
@@ -208,7 +208,7 @@ namespace {
 
     ex::sender auto s1 = ex::just_error(my_type(&param_destructed));
     ex::sender auto snd = ex::just_error(my_type(&param_destructed)) //
-                        | ex::let_error([&](const my_type& obj) {
+                        | ex::let_error([&](const my_type&) {
                             CHECK_FALSE(param_destructed);
                             fun_called = true;
                             return ex::transfer_just(sched, 13);
@@ -348,7 +348,7 @@ namespace {
   using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
 
   template <typename Fun>
-  auto tag_invoke(ex::let_error_t, inline_scheduler sched, my_string_sender_t, Fun) {
+  auto tag_invoke(ex::let_error_t, inline_scheduler, my_string_sender_t, Fun) {
     return ex::just(std::string{"what error?"});
   }
 

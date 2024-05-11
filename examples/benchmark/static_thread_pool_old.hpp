@@ -43,7 +43,7 @@ namespace exec_old {
   // ```
   template <class Shape>
   static std::pair<Shape, Shape>
-    even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept {
+    even_share(Shape n, std::size_t rank, std::size_t size) noexcept {
     const auto avg_per_thread = n / size;
     const auto n_big_share = avg_per_thread + 1;
     const auto big_shares = n % size;

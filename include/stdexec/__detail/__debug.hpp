@@ -217,7 +217,7 @@ namespace stdexec {
     template <class _Env = empty_env, class _Sender>
     void __debug_sender(_Sender&& __sndr, const _Env& = {}) {
       if constexpr (!__is_debug_env<_Env>) {
-        if (sizeof(_Sender) == ~0) { // never true
+        if (sizeof(_Sender) == ~0ul) { // never true
           using _Sigs = __completion_signatures_of_t<_Sender, __debug_env_t<_Env>>;
           if constexpr (!same_as<_Sigs, __debug::__completion_signatures>) {
             using _Receiver = __debug_receiver<__cvref_id<_Sender>, _Env, _Sigs>;

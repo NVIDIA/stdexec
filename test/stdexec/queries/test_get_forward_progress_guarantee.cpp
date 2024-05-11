@@ -26,7 +26,7 @@ namespace ex = stdexec;
 namespace {
   struct uncustomized_scheduler {
     struct operation_state {
-      friend void tag_invoke(ex::start_t, operation_state& self) noexcept {
+      friend void tag_invoke(ex::start_t, operation_state&) noexcept {
       }
     };
 
@@ -69,7 +69,7 @@ namespace {
   template <ex::forward_progress_guarantee fpg>
   struct customized_scheduler {
     struct operation_state {
-      friend void tag_invoke(ex::start_t, operation_state& self) noexcept {
+      friend void tag_invoke(ex::start_t, operation_state&) noexcept {
       }
     };
 

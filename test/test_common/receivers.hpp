@@ -228,7 +228,7 @@ namespace {
       FAIL_CHECK("set_value called with wrong value types on expect_value_receiver");
     }
 
-    friend void tag_invoke(ex::set_stopped_t, expect_value_receiver&& self) noexcept {
+    friend void tag_invoke(ex::set_stopped_t, expect_value_receiver&&) noexcept {
       FAIL_CHECK("set_stopped called on expect_value_receiver");
     }
 
@@ -387,7 +387,7 @@ namespace {
       FAIL_CHECK("set_value called on expect_error_receiver");
     }
 
-    friend void tag_invoke(ex::set_stopped_t, expect_error_receiver&& self) noexcept {
+    friend void tag_invoke(ex::set_stopped_t, expect_error_receiver&&) noexcept {
       FAIL_CHECK("set_stopped called on expect_error_receiver");
     }
 
@@ -399,7 +399,7 @@ namespace {
     }
 
     template <typename E>
-    friend void tag_invoke(ex::set_error_t, expect_error_receiver&& self, E) noexcept {
+    friend void tag_invoke(ex::set_error_t, expect_error_receiver&&, E) noexcept {
       FAIL_CHECK("set_error called on expect_error_receiver with wrong error type");
     }
   };
@@ -506,11 +506,11 @@ namespace {
       *self.cat_ = typecat::rvalref;
     }
 
-    friend void tag_invoke(ex::set_stopped_t, typecat_receiver self) noexcept {
+    friend void tag_invoke(ex::set_stopped_t, typecat_receiver) noexcept {
       FAIL_CHECK("set_stopped called");
     }
 
-    friend void tag_invoke(ex::set_error_t, typecat_receiver self, std::exception_ptr) noexcept {
+    friend void tag_invoke(ex::set_error_t, typecat_receiver, std::exception_ptr) noexcept {
       FAIL_CHECK("set_error called");
     }
 

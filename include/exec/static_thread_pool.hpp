@@ -60,8 +60,8 @@ namespace exec {
     // even_share(     11,      2,         3); // -> [8, 11) -> 3 items
     // ```
     template <class Shape>
-    auto even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept
-      -> std::pair<Shape, Shape> {
+    auto
+      even_share(Shape n, std::size_t rank, std::size_t size) noexcept -> std::pair<Shape, Shape> {
       STDEXEC_ASSERT(n >= 0);
       using ushape_t = std::make_unsigned_t<Shape>;
       const auto avg_per_thread = static_cast<ushape_t>(n) / size;
@@ -91,8 +91,8 @@ namespace exec {
     };
 
     struct task_base {
-      task_base* next;
-      void (*__execute)(task_base*, std::uint32_t tid) noexcept;
+      task_base* next = nullptr;
+      void (*__execute)(task_base*, std::uint32_t tid) noexcept = nullptr;
     };
 
     struct remote_queue {
@@ -818,7 +818,7 @@ namespace exec {
     template <std::derived_from<task_base> TaskT>
     void static_thread_pool_::bulk_enqueue(TaskT* task, std::uint32_t n_threads) noexcept {
       auto& queue = *get_remote_queue();
-      for (std::size_t i = 0; i < n_threads; ++i) {
+      for (std::uint32_t i = 0; i < n_threads; ++i) {
         std::uint32_t index = i % available_parallelism();
         queue.queues_[index].push_front(task + i);
         threadStates_[index]->notify();

@@ -52,7 +52,7 @@ namespace {
       ex::set_stopped_t()>;
 
     template <class... Ts>
-    friend auto tag_invoke(CPO, const free_standing_sender_t& self, Ts&&...) noexcept {
+    friend auto tag_invoke(CPO, const free_standing_sender_t&, Ts&&...) noexcept {
       return cpo_t<scope_t::free_standing>{};
     }
 

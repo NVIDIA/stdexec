@@ -75,7 +75,7 @@ namespace {
                std::for_each(begin(output) + static_cast<long>(start), begin(output) + static_cast<long>(end),
                    [&](double& e) { e = partials[i] + e; });
              })
-       | then([=](std::vector<double>&& partials) { return output; });
+       | then([=](std::vector<double>&&) { return output; });
       // clang-format on
     }
 
@@ -142,9 +142,9 @@ namespace {
     exec::static_thread_pool other_pool(1);
     {
       CHECK_THROWS(stdexec::sync_wait(
-        on(tbb_pool.get_scheduler(), just(0)) | then([](auto i) { throw std::exception(); })));
+        on(tbb_pool.get_scheduler(), just(0)) | then([](auto) { throw std::exception(); })));
       CHECK_THROWS(stdexec::sync_wait(
-        on(other_pool.get_scheduler(), just(0)) | then([](auto i) { throw std::exception(); })));
+        on(other_pool.get_scheduler(), just(0)) | then([](auto) { throw std::exception(); })));
     }
     // Ensure it still works normally after exceptions:
     {
