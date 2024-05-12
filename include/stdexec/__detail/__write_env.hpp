@@ -30,17 +30,17 @@ namespace stdexec {
   // __write adaptor
   namespace __write_ {
     struct __write_env_t {
-      template <sender _Sender, class... _Envs>
-      auto operator()(_Sender&& __sndr, _Envs... __envs) const {
+      template <sender _Sender, class _Env>
+      auto operator()(_Sender&& __sndr, _Env __env) const {
         return __make_sexpr<__write_env_t>(
-          __env::__join(static_cast<_Envs&&>(__envs)...), static_cast<_Sender&&>(__sndr));
+          static_cast<_Env&&>(__env), static_cast<_Sender&&>(__sndr));
       }
 
-      template <class... _Envs>
+      template <class _Env>
       STDEXEC_ATTRIBUTE((always_inline))
       auto
-        operator()(_Envs... __envs) const -> __binder_back<__write_env_t, _Envs...> {
-        return {{static_cast<_Envs&&>(__envs)...}, {}, {}};
+        operator()(_Env __env) const -> __binder_back<__write_env_t, _Env> {
+        return {{static_cast<_Env&&>(__env)}, {}, {}};
       }
 
       template <class _Env>

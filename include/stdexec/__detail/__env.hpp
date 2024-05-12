@@ -392,9 +392,9 @@ namespace stdexec {
         _Env __env_;
 
 #if STDEXEC_GCC() && __GNUC__ < 12
-      using __cvref_env_t = std::add_const_t<_Env>&;
+        using __cvref_env_t = std::add_const_t<_Env>&;
 #else
-      using __cvref_env_t = const _Env&;
+        using __cvref_env_t = const _Env&;
 #endif
 
         template <__forwarding_query _Tag>
@@ -417,7 +417,7 @@ namespace stdexec {
       }
     };
 
-    template <class _EnvId, class _Tag, class... _Tags>
+    template <class _EnvId, class _Tag>
     struct __without_ {
       using _Env = __cvref_t<_EnvId>;
       static_assert(__nothrow_move_constructible<_Env>);
@@ -427,27 +427,27 @@ namespace stdexec {
         _Env __env_;
 
 #if STDEXEC_GCC() && __GNUC__ < 12
-      using __cvref_env_t = std::add_const_t<_Env>&;
+        using __cvref_env_t = std::add_const_t<_Env>&;
 #else
-      using __cvref_env_t = const _Env&;
+        using __cvref_env_t = const _Env&;
 #endif
 
-        template <__none_of<_Tag, _Tags...> _Key>
-          requires tag_invocable<_Key, __cvref_env_t>
+        auto query(_Tag) const noexcept = delete;
+
+        template <tag_invocable<__cvref_env_t> _Key>
         STDEXEC_ATTRIBUTE((always_inline))
         auto
-          query(_Key) const noexcept(nothrow_tag_invocable<_Key, __cvref_env_t>)
-            -> tag_invoke_result_t<_Key, __cvref_env_t> {
+          query(_Key) const noexcept(nothrow_tag_invocable<_Key, __cvref_env_t>) -> decltype(auto) {
           return tag_invoke(_Key(), __env_);
         }
       };
     };
 
     struct __without_fn {
-      template <class _Env, class _Tag, class... _Tags>
-      constexpr auto operator()(_Env&& __env, _Tag, _Tags...) const noexcept -> decltype(auto) {
-        if constexpr (tag_invocable<_Tag, _Env> || (tag_invocable<_Tags, _Env> || ...)) {
-          using _Without = __t<__without_<__cvref_id<_Env>, _Tag, _Tags...>>;
+      template <class _Env, class _Tag>
+      constexpr auto operator()(_Env&& __env, _Tag) const noexcept -> decltype(auto) {
+        if constexpr (tag_invocable<_Tag, _Env>) {
+          using _Without = __t<__without_<__cvref_id<_Env>, _Tag>>;
           return _Without{static_cast<_Env&&>(__env)};
         } else {
           return static_cast<_Env>(static_cast<_Env&&>(__env));
@@ -488,7 +488,7 @@ namespace stdexec {
         STDEXEC_ATTRIBUTE((always_inline))
         auto
           query(_Tag) const noexcept(nothrow_tag_invocable<_Tag, __cvref_second_t>)
-            -> tag_invoke_result_t<_Tag, __cvref_second_t> {
+            -> decltype(auto) {
           return tag_invoke(_Tag(), __second_);
         }
 
@@ -497,17 +497,11 @@ namespace stdexec {
         STDEXEC_ATTRIBUTE((always_inline))
         auto
           query(_Tag) const noexcept(nothrow_tag_invocable<_Tag, __cvref_first_t>)
-            -> tag_invoke_result_t<_Tag, __cvref_first_t> {
+            -> decltype(auto) {
           return tag_invoke(_Tag(), __first_);
         }
       };
     };
-
-    template <class _Second, class _First>
-    constexpr auto __mk_joined(_Second&& __second, _First&& __first) noexcept {
-      using _Joined = __t<__joined<__cvref_id<_Second>, __cvref_id<_First>>>;
-      return _Joined{static_cast<_Second&&>(__second), static_cast<_First&&>(__first)};
-    }
 
     template <__nothrow_move_constructible _Fun>
     struct __from {
@@ -528,37 +522,25 @@ namespace stdexec {
     __from(_Fun) -> __from<_Fun>;
 
     struct __join_fn {
-      auto operator()() const -> empty_env {
+      auto operator()(empty_env, empty_env) const noexcept -> empty_env {
         return {};
       }
 
       template <class _Env>
-      auto operator()(_Env&& __env) const -> _Env {
+      auto operator()(_Env&& __env, empty_env) const noexcept -> _Env {
         return static_cast<_Env&&>(__env);
-      }
-
-      auto operator()(empty_env) const -> empty_env {
-        return {};
       }
 
       template <class _Env>
-      auto operator()(_Env&& __env, empty_env) const -> _Env {
-        return static_cast<_Env&&>(__env);
+      auto operator()(empty_env, _Env&& __env) const noexcept -> decltype(auto) {
+        return __fwd_fn()(static_cast<_Env&&>(__env));
       }
 
-      auto operator()(empty_env, empty_env) const -> empty_env {
-        return {};
-      }
-
-      template <class... Rest>
-      auto operator()(empty_env, Rest&&... rest) const -> decltype(auto) {
-        return __fwd_fn()(__join_fn()(static_cast<Rest&&>(rest)...));
-      }
-
-      template <class First, class... Rest>
-      auto operator()(First&& first, Rest&&... rest) const -> decltype(auto) {
-        return __mk_joined(
-          __fwd_fn()(__join_fn()(static_cast<Rest&&>(rest)...)), static_cast<First&&>(first));
+      template <class _First, class _Second>
+      auto operator()(_First&& __first, _Second&& __second) const noexcept -> decltype(auto) {
+        using _FwdSecond = decltype(__fwd_fn()(static_cast<_Second&&>(__second)));
+        using _Joined = __t<__joined<__cvref_id<_FwdSecond>, __cvref_id<_First>>>;
+        return _Joined{__fwd_fn()(static_cast<_Second&&>(__second)), static_cast<_First&&>(__first)};
       }
     };
 
