@@ -77,18 +77,17 @@ namespace exec {
       }
     };
 
-    template <class>
+    template <class _Queryable, bool _IsEnvProvider = true>
     struct __query_vfun_fn;
 
     template <class _EnvProvider>
-      requires __callable<get_env_t, const _EnvProvider&>
-    struct __query_vfun_fn<_EnvProvider> {
+    struct __query_vfun_fn<_EnvProvider, true> {
       template <class _Tag, class _Ret, class... _As>
         requires __callable<_Tag, env_of_t<const _EnvProvider&>, _As...>
       constexpr _Ret (*operator()(_Tag (*)(_Ret (*)(_As...))) const noexcept)(void*, _As...) {
         return +[](void* __env_provider, _As... __as) -> _Ret {
           return _Tag{}(
-            get_env(*static_cast<const _EnvProvider*>(__env_provider)),
+            stdexec::get_env(*static_cast<const _EnvProvider*>(__env_provider)),
             static_cast<_As&&>(__as)...);
         };
       }
@@ -100,15 +99,14 @@ namespace exec {
         return +[](void* __env_provider, _As... __as) noexcept -> _Ret {
           static_assert(__nothrow_callable<_Tag, const env_of_t<_EnvProvider>&, _As...>);
           return _Tag{}(
-            get_env(*static_cast<const _EnvProvider*>(__env_provider)),
+            stdexec::get_env(*static_cast<const _EnvProvider*>(__env_provider)),
             static_cast<_As&&>(__as)...);
         };
       }
     };
 
     template <class _Queryable>
-      requires(!__callable<get_env_t, const _Queryable&>)
-    struct __query_vfun_fn<_Queryable> {
+    struct __query_vfun_fn<_Queryable, false> {
       template <class _Tag, class _Ret, class... _As>
         requires __callable<_Tag, const _Queryable&, _As...>
       constexpr _Ret (*operator()(_Tag (*)(_Ret (*)(_As...))) const noexcept)(void*, _As...) {
@@ -940,21 +938,21 @@ namespace exec {
       };
     };
 
-    template <class _Queries>
+    template <class _Queries, bool _IsEnvProvider = true>
     class __query_vtable;
 
-    template <template <class...> class _List, typename... _Queries>
-    class __query_vtable<_List<_Queries...>> : public __query_vfun<_Queries>... {
+    template <template <class...> class _List, class... _Queries, bool _IsEnvProvider>
+    class __query_vtable<_List<_Queries...>, _IsEnvProvider> : public __query_vfun<_Queries>... {
      public:
       using __query_vfun<_Queries>::operator()...;
      private:
-      template <class _EnvProvider>
-        requires(__callable<__query_vfun_fn<_EnvProvider>, _Queries> && ...)
+      template <class _Queryable>
+        requires(__callable<__query_vfun_fn<_Queryable, _IsEnvProvider>, _Queries> && ...)
       STDEXEC_MEMFN_DECL(
-        auto __create_vtable)(this __mtype<__query_vtable>, __mtype<_EnvProvider>) noexcept
+        auto __create_vtable)(this __mtype<__query_vtable>, __mtype<_Queryable>) noexcept
         -> const __query_vtable* {
         static const __query_vtable __vtable{
-          {__query_vfun_fn<_EnvProvider>{}(static_cast<_Queries>(nullptr))}...};
+          {__query_vfun_fn<_Queryable, _IsEnvProvider>{}(static_cast<_Queries>(nullptr))}...};
         return &__vtable;
       }
     };
@@ -1062,8 +1060,8 @@ namespace exec {
         : __storage_{static_cast<_Scheduler&&>(__scheduler)} {
         static_assert(
           __is_small<_Scheduler>,
-          "any_scheduler<> must have a nothrow copy constructor,"
-          " so the scheduler object must be small enough to be stored in the internal buffer");
+          "any_scheduler<> must have a nothrow copy constructor, so the scheduler object must be "
+          "small enough to be stored in the internal buffer to avoid dynamic allocation.");
       }
 
       __scheduler(__scheduler&&) noexcept = default;
@@ -1074,28 +1072,28 @@ namespace exec {
       using __sender_t = _ScheduleSender;
 
       template <class _Tag, class... _As>
-        requires __callable<const __query_vtable<_SchedulerQueries>&, _Tag, void*, _As...>
+        requires __callable<const __query_vtable<_SchedulerQueries, false>&, _Tag, void*, _As...>
       auto query(_Tag, _As&&... __as) const //
-        noexcept(__nothrow_callable<const __query_vtable<_SchedulerQueries>&, _Tag, void*, _As...>)
-          -> __call_result_t<const __query_vtable<_SchedulerQueries>&, _Tag, void*, _As...> {
+        noexcept(__nothrow_callable<const __query_vtable<_SchedulerQueries, false>&, _Tag, void*, _As...>)
+          -> __call_result_t<const __query_vtable<_SchedulerQueries, false>&, _Tag, void*, _As...> {
         return __storage_.__get_vtable()->__queries()(
           _Tag{}, __storage_.__get_object_pointer(), static_cast<_As&&>(__as)...);
       }
 
      private:
-      class __vtable : public __query_vtable<_SchedulerQueries> {
+      class __vtable : public __query_vtable<_SchedulerQueries, false> {
        public:
         __sender_t (*__schedule_)(void*) noexcept;
         bool (*__equal_to_)(const void*, const void* other) noexcept;
 
-        auto __queries() const noexcept -> const __query_vtable<_SchedulerQueries>& {
+        auto __queries() const noexcept -> const __query_vtable<_SchedulerQueries, false>& {
           return *this;
         }
        private:
         template <scheduler _Scheduler>
         STDEXEC_MEMFN_DECL(auto __create_vtable)(this __mtype<__vtable>, __mtype<_Scheduler>) noexcept -> const __vtable* {
           static const __vtable __vtable_{
-            {*__create_vtable(__mtype<__query_vtable<_SchedulerQueries>>{}, __mtype<_Scheduler>{})},
+            {*__create_vtable(__mtype<__query_vtable<_SchedulerQueries, false>>{}, __mtype<_Scheduler>{})},
             [](void* __object_pointer) noexcept -> __sender_t {
               const _Scheduler& __scheduler = *static_cast<const _Scheduler*>(__object_pointer);
               return __sender_t{schedule(__scheduler)};
