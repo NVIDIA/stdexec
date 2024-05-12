@@ -142,11 +142,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         , op_state1_{nullptr}
         , op_state2_(connect(static_cast<Sender&&>(sndr), inner_receiver_t{*this})) {
         if (stream_provider_.status_ == cudaSuccess) {
-          stream_provider_.status_ = STDEXEC_DBG_ERR(
-            cudaEventCreate(&event_, cudaEventDisableTiming));
+          stream_provider_.status_ =
+            STDEXEC_DBG_ERR(cudaEventCreate(&event_, cudaEventDisableTiming));
         }
 
-        start(op_state2_);
+        stdexec::start(op_state2_);
       }
 
       explicit sh_state_t(Sender& sndr, context_state_t context_state)
@@ -166,7 +166,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         , op_state2_(connect(
             static_cast<Sender&&>(sndr),
             enqueue_receiver_t{env_.get(), data_, task_, context_state.hub_->producer()})) {
-        start(op_state2_);
+        stdexec::start(op_state2_);
       }
 
       ~sh_state_t() {
@@ -318,7 +318,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <std::same_as<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, completion_signatures_of_t<Self, empty_env>>
-      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr) //
+      STDEXEC_MEMFN_DECL(
+        auto connect)(this Self&& self, Receiver rcvr) //
         noexcept(__nothrow_constructible_from<__decay_t<Receiver>, Receiver>)
           -> operation_t<Receiver> {
         return operation_t<Receiver>{static_cast<Receiver&&>(rcvr), std::move(self).shared_state_};
@@ -335,13 +336,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using _set_error_t = completion_signatures<set_error_t(__decay_t<Ty>)>;
 
       template <std::same_as<__t> Self, class Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&)
-        -> __try_make_completion_signatures<
-          Sender,
-          _ensure_started::env_t,
-          completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
-          __q<_set_value_t>,
-          __q<_set_error_t>> {
+      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> __try_make_completion_signatures<
+        Sender,
+        _ensure_started::env_t,
+        completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
+        __q<_set_value_t>,
+        __q<_set_error_t>> {
         return {};
       }
 

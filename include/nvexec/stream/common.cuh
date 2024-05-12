@@ -668,7 +668,7 @@ namespace nvexec {
             }
           }
 
-          start(op.inner_op_);
+          stdexec::start(op.inner_op_);
         }
 
         template <__decays_to<outer_receiver_t> OutR, class ReceiverProvider>

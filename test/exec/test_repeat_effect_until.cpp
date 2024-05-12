@@ -85,7 +85,7 @@ namespace {
     sender auto snd = exec::repeat_effect_until(std::move(source));
     // The receiver checks if we receive the void value
     auto op = stdexec::connect(std::move(snd), expect_void_receiver{});
-    start(op);
+    stdexec::start(op);
   }
 
   TEST_CASE("simple example for repeat_effect_until", "[adaptors][repeat_effect_until]") {
@@ -105,7 +105,7 @@ namespace {
     "[adaptors][repeat_effect_until]") {
     sender auto snd = exec::repeat_effect_until(just(1));
     auto op = stdexec::connect(std::move(snd), expect_void_receiver{});
-    start(op);
+    stdexec::start(op);
   }
 
   TEST_CASE(
@@ -129,13 +129,13 @@ namespace {
     "[adaptors][repeat_effect_until]") {
     auto snd = just_error(std::string("error")) | exec::repeat_effect_until();
     auto op = ex::connect(std::move(snd), expect_error_receiver{std::string("error")});
-    start(op);
+    stdexec::start(op);
   }
 
   TEST_CASE("repeat_effect_until forwards set_stopped calls", "[adaptors][repeat_effect_until]") {
     auto snd = just_stopped() | exec::repeat_effect_until();
     auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
-    start(op);
+    stdexec::start(op);
   }
 
   TEST_CASE(

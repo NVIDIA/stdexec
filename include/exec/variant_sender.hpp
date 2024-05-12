@@ -32,7 +32,7 @@ namespace exec {
           __variant_;
 
         STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
-          std::visit([](auto& __s) { start(__s); }, __self.__variant_);
+          std::visit([](auto& __s) { stdexec::start(__s); }, __self.__variant_);
         }
 
        public:

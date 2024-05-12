@@ -71,7 +71,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             return;
           }
 
-          start(op.inner_op_);
+          stdexec::start(op.inner_op_);
         }
 
         __t(Sender&& sender, Receiver&& rcvr, context_state_t context_state)
@@ -89,11 +89,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           , env_(make_host(this->status_, context_state_.pinned_resource_, this->make_env()))
           , inner_op_{connect(
               static_cast<Sender&&>(sender),
-              enqueue_receiver{
-                env_.get(),
-                storage_.get(),
-                task_,
-                context_state_.hub_->producer()})} {
+              enqueue_receiver{env_.get(), storage_.get(), task_, context_state_.hub_->producer()})} {
           if (this->status_ == cudaSuccess) {
             this->status_ = task_->status_;
           }
@@ -113,8 +109,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <class Self, class Receiver>
       using op_state_th = //
-        stdexec::__t<
-          _transfer::operation_state_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>>>;
+        stdexec::__t<_transfer::operation_state_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>>>;
 
       context_state_t context_state_;
       Sender sndr_;
@@ -144,8 +139,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&)
-        -> _completion_signatures_t<Self, Env> {
+      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> _completion_signatures_t<Self, Env> {
         return {};
       }
 

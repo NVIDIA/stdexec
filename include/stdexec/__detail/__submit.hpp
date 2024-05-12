@@ -112,7 +112,7 @@ namespace stdexec {
           try {
             std::allocator_traits<_OpAlloc>::construct(
               __op_alloc, __op, static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
-            start(__op->__op_state_);
+            stdexec::start(__op->__op_state_);
           } catch (...) {
             std::allocator_traits<_OpAlloc>::deallocate(__op_alloc, __op, 1);
             throw;

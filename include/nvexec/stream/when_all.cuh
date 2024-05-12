@@ -359,7 +359,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               self.complete();
             } else {
               std::apply(
-                [](auto&&... __child_ops) noexcept -> void { (start(__child_ops), ...); },
+                [](auto&&... __child_ops) noexcept -> void { (stdexec::start(__child_ops), ...); },
                 self.child_states_);
             }
           }

@@ -232,7 +232,7 @@ namespace exec {
             set_stopped(static_cast<_Receiver&&>(__self.__receiver_));
           } else {
 
-            std::apply([](auto&... __ops) { (start(__ops), ...); }, __self.__ops_);
+            std::apply([](auto&... __ops) { (stdexec::start(__ops), ...); }, __self.__ops_);
           }
         }
       };

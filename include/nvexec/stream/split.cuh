@@ -139,8 +139,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         , data_(malloc_managed<variant_t>(stream_provider_.status_))
         , op_state2_(connect(static_cast<Sender&&>(sndr), inner_receiver_t{*this})) {
         if (stream_provider_.status_ == cudaSuccess) {
-          stream_provider_.status_ = STDEXEC_DBG_ERR(
-            cudaEventCreate(&event_, cudaEventDisableTiming));
+          stream_provider_.status_ =
+            STDEXEC_DBG_ERR(cudaEventCreate(&event_, cudaEventDisableTiming));
         }
       }
 
@@ -286,7 +286,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               shared_state->notify();
             } else {
               shared_state->started_.test_and_set(::cuda::memory_order_relaxed);
-              start(shared_state->op_state2_);
+              stdexec::start(shared_state->op_state2_);
             }
           }
         }
@@ -311,7 +311,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, completion_signatures_of_t<Self, empty_env>>
-      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver recvr) //
+      STDEXEC_MEMFN_DECL(
+        auto connect)(this Self&& self, Receiver recvr) //
         noexcept(__nothrow_constructible_from<__decay_t<Receiver>, Receiver>)
           -> operation_t<Receiver> {
         return operation_t<Receiver>{static_cast<Receiver&&>(recvr), self.shared_state_};
@@ -328,13 +329,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using _set_error_t = completion_signatures<set_error_t(const __decay_t<Ty>&)>;
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&)
-        -> __try_make_completion_signatures<
-          Sender,
-          exec::make_env_t<exec::with_t<get_stop_token_t, inplace_stop_token>>,
-          completion_signatures<set_error_t(const cudaError_t&)>,
-          __q<_set_value_t>,
-          __q<_set_error_t>> {
+      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> __try_make_completion_signatures<
+        Sender,
+        exec::make_env_t<exec::with_t<get_stop_token_t, inplace_stop_token>>,
+        completion_signatures<set_error_t(const cudaError_t&)>,
+        __q<_set_value_t>,
+        __q<_set_error_t>> {
         return {};
       }
 

@@ -169,7 +169,7 @@ namespace stdexec {
         }
 
         void await_suspend(__coro::coroutine_handle<_Promise>) noexcept {
-          start(__op_state_);
+          stdexec::start(__op_state_);
         }
 
        private:

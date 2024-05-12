@@ -72,7 +72,7 @@ namespace exec {
 
        private:
         static void __notify_waiter(__task* __self) noexcept {
-          start(static_cast<__t*>(__self)->__op_);
+          stdexec::start(static_cast<__t*>(__self)->__op_);
         }
 
         void __start_() noexcept {
@@ -84,7 +84,7 @@ namespace exec {
             return;
           }
           __guard.unlock();
-          start(this->__op_);
+          stdexec::start(this->__op_);
         }
 
         STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
@@ -204,7 +204,7 @@ namespace exec {
           auto& __active = this->__scope_->__active_;
           ++__active;
           __guard.unlock();
-          start(__op_);
+          stdexec::start(__op_);
         }
 
         STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
@@ -699,7 +699,7 @@ namespace exec {
         }
 
         void __start_() noexcept {
-          start(__op_);
+          stdexec::start(__op_);
         }
 
         STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {

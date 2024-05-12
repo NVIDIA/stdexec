@@ -49,6 +49,6 @@ namespace stdexec {
     destructible<_Op> &&     //
     std::is_object_v<_Op> && //
     requires(_Op& __op) {    //
-      start(__op);
+      stdexec::start(__op);
     };
 } // namespace stdexec

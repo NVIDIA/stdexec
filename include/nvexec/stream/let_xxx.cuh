@@ -63,9 +63,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <class _Receiver, class _Fun>
     using __op_state_for = //
       __mcompose<
-        __mbind_back_q<
-          connect_result_t,
-          stdexec::__t<propagate_receiver_t<stdexec::__id<_Receiver>>>>,
+        __mbind_back_q<connect_result_t, stdexec::__t<propagate_receiver_t<stdexec::__id<_Receiver>>>>,
         __result_sender<_Fun>>;
 
     template <class _Set, class _Sig>
@@ -111,8 +109,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           using op_state_t = __minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
 
           cudaStream_t stream = __self.__op_state_->get_stream();
-          result_sender_t* result_sender = static_cast<result_sender_t*>(
-            __self.__op_state_->temp_storage_);
+          result_sender_t* result_sender =
+            static_cast<result_sender_t*>(__self.__op_state_->temp_storage_);
           kernel_with_result<_As&&...><<<1, 1, 0, stream>>>(
             std::move(__self.__op_state_->__fun_), result_sender, static_cast<_As&&>(__as)...);
 
@@ -125,7 +123,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                 stdexec::__t<propagate_receiver_t<_ReceiverId>>{
                   {}, static_cast<operation_state_base_t<_ReceiverId>&>(*__self.__op_state_)});
             }});
-            start(__op);
+            stdexec::start(__op);
           } else {
             __self.__op_state_->propagate_completion_signal(stdexec::set_error, std::move(status));
           }
@@ -225,13 +223,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __completion_signatures_of_t<_Sender, _Env>>;
 
       template <__decays_to<__t> _Self, receiver _Receiver>
-        requires receiver_of<                 //
-          _Receiver,                          //
-          __completions<                      //
-            __copy_cvref_t<_Self, _Sender>,   //
+        requires receiver_of<               //
+          _Receiver,                        //
+          __completions<                    //
+            __copy_cvref_t<_Self, _Sender>, //
             stream_env<env_of_t<_Receiver>>>> //
-      STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr)
-        -> __operation_t<_Self, _Receiver> {
+      STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr) -> __operation_t<_Self, _Receiver> {
         return __operation_t<_Self, _Receiver>{
           static_cast<_Self&&>(__self).__sndr_,
           static_cast<_Receiver&&>(__rcvr),

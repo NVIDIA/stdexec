@@ -52,7 +52,7 @@ namespace {
     sender auto snd = exec::repeat_n(std::move(source), 10);
     // The receiver checks if we receive the void value
     auto op = stdexec::connect(std::move(snd), expect_void_receiver{});
-    start(op);
+    stdexec::start(op);
   }
 
   TEST_CASE("simple example for repeat_n", "[adaptors][repeat_n]") {
@@ -94,7 +94,7 @@ namespace {
                  })
              | exec::repeat_n(10);
     auto op = ex::connect(std::move(snd), expect_error_receiver{std::string("error")});
-    start(op);
+    stdexec::start(op);
     CHECK(count == 1);
   }
 
@@ -108,7 +108,7 @@ namespace {
                  })
              | exec::repeat_n(10);
     auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
-    start(op);
+    stdexec::start(op);
     CHECK(count == 1);
   }
 

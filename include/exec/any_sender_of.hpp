@@ -795,7 +795,7 @@ namespace exec {
           STDEXEC_ASSERT(__object_pointer);
           _Op& __op = *static_cast<_Op*>(__object_pointer);
           static_assert(operation_state<_Op>);
-          start(__op);
+          stdexec::start(__op);
         }};
         return &__vtable;
       }
@@ -1071,7 +1071,8 @@ namespace exec {
       template <class _Tag, class... _As>
         requires __callable<const __query_vtable<_SchedulerQueries, false>&, _Tag, void*, _As...>
       auto query(_Tag, _As&&... __as) const //
-        noexcept(__nothrow_callable<const __query_vtable<_SchedulerQueries, false>&, _Tag, void*, _As...>)
+        noexcept(
+          __nothrow_callable<const __query_vtable<_SchedulerQueries, false>&, _Tag, void*, _As...>)
           -> __call_result_t<const __query_vtable<_SchedulerQueries, false>&, _Tag, void*, _As...> {
         return __storage_.__get_vtable()->__queries()(
           _Tag{}, __storage_.__get_object_pointer(), static_cast<_As&&>(__as)...);
@@ -1090,7 +1091,8 @@ namespace exec {
         template <scheduler _Scheduler>
         STDEXEC_MEMFN_DECL(auto __create_vtable)(this __mtype<__vtable>, __mtype<_Scheduler>) noexcept -> const __vtable* {
           static const __vtable __vtable_{
-            {*__create_vtable(__mtype<__query_vtable<_SchedulerQueries, false>>{}, __mtype<_Scheduler>{})},
+            {*__create_vtable(
+              __mtype<__query_vtable<_SchedulerQueries, false>>{}, __mtype<_Scheduler>{})},
             [](void* __object_pointer) noexcept -> __sender_t {
               const _Scheduler& __scheduler = *static_cast<const _Scheduler*>(__object_pointer);
               return __sender_t{schedule(__scheduler)};

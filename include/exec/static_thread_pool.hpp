@@ -1286,7 +1286,7 @@ namespace exec {
       inner_op_state inner_op_;
 
       STDEXEC_MEMFN_DECL(void start)(this __t& op) noexcept {
-        start(op.inner_op_);
+        stdexec::start(op.inner_op_);
       }
 
       __t(static_thread_pool_& pool, Shape shape, Fun fun, CvrefSender&& sndr, Receiver rcvr)
@@ -1473,7 +1473,7 @@ namespace exec {
                   return stdexec::connect(
                     set_next(op.rcvr_, ItemSender{&op, it + i}), NextReceiver{&op});
                 });
-                start(op.items_[i].__get());
+                stdexec::start(op.items_[i].__get());
               }
 
               std::unique_lock lock{op.start_mutex_};
@@ -1486,7 +1486,7 @@ namespace exec {
                 return stdexec::connect(
                   set_next(op.rcvr_, ItemSender{&op, it + i}), NextReceiver{&op});
               });
-              start(op.items_[i].__get());
+              stdexec::start(op.items_[i].__get());
             }
             std::unique_lock lock{op.start_mutex_};
             op.has_started_ = true;

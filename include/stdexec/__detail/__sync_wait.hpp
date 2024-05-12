@@ -270,7 +270,7 @@ namespace stdexec {
         // exception_ptr in __local.
         auto __op_state =
           connect(static_cast<_Sender&&>(__sndr), __receiver_t<_Sender>{&__local, &__result});
-        start(__op_state);
+        stdexec::start(__op_state);
 
         // Wait for the variant to be filled in.
         __local.__loop_.run();
