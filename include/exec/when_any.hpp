@@ -139,7 +139,7 @@ namespace exec {
           __on_stop_.reset();
           auto stop_token = get_stop_token(get_env(__receiver_));
           if (stop_token.stop_requested()) {
-            set_stopped(static_cast<_Receiver&&>(__receiver_));
+            stdexec::set_stopped(static_cast<_Receiver&&>(__receiver_));
             return;
           }
           STDEXEC_ASSERT(__result_.has_value());
@@ -210,7 +210,7 @@ namespace exec {
           this->__on_stop_.emplace(
             get_stop_token(get_env(this->__receiver_)), __on_stop_requested{this->__stop_source_});
           if (this->__stop_source_.stop_requested()) {
-            set_stopped(static_cast<_Receiver&&>(this->__receiver_));
+            stdexec::set_stopped(static_cast<_Receiver&&>(this->__receiver_));
           } else {
             std::apply([](auto&... __ops) { (stdexec::start(__ops), ...); }, __ops_);
           }

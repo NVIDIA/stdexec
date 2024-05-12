@@ -490,7 +490,7 @@ namespace stdexec {
             __bind_(__state, __op_state, static_cast<_As&&>(__as)...);
           } catch (...) {
             using _Receiver = decltype(__op_state.__rcvr_);
-            set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
+            stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
           }
         }
       }

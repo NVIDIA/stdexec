@@ -83,7 +83,7 @@ namespace exec {
             set_value(
               static_cast<_Receiver &&>(__rcvr), __tuple_t{static_cast<_Args &&>(__args)...});
           } catch (...) {
-            set_error(static_cast<_Receiver &&>(__rcvr), std::current_exception());
+            stdexec::set_error(static_cast<_Receiver &&>(__rcvr), std::current_exception());
           }
         } else {
           _Tag()(static_cast<_Receiver &&>(__rcvr), static_cast<_Args &&>(__args)...);

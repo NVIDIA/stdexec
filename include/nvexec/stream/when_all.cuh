@@ -182,7 +182,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           template <class Error>
             requires tag_invocable<set_error_t, Receiver, Error>
           void set_error(Error&& err) && noexcept {
-            set_error(static_cast<Error&&>(err), _when_all::started);
+            stdexec::set_error(static_cast<Error&&>(err), _when_all::started);
           }
 
           void set_stopped() && noexcept {

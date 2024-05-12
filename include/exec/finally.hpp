@@ -184,7 +184,7 @@ namespace exec {
           try {
             __self.__op_->__store_result_and_start_next_op(__tag, static_cast<_Args&&>(__args)...);
           } catch (...) {
-            set_error(static_cast<_Receiver&&>(__self.__op_->__receiver_), std::current_exception());
+            stdexec::set_error(static_cast<_Receiver&&>(__self.__op_->__receiver_), std::current_exception());
           }
         }
       };

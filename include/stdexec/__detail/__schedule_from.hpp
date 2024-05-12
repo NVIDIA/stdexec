@@ -244,7 +244,7 @@ namespace stdexec {
           try {
             __state.__data_.template emplace<__result>(__conv{__emplace_result});
           } catch (...) {
-            set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
+            stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
             return;
           }
         }

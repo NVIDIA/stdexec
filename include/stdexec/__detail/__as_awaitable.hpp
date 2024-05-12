@@ -58,7 +58,7 @@ namespace stdexec {
           __self.__result_->template emplace<1>(static_cast<_Us&&>(__us)...);
           __self.__continuation_.resume();
         } catch (...) {
-          set_error(static_cast<__receiver_base&&>(__self), std::current_exception());
+          stdexec::set_error(static_cast<__receiver_base&&>(__self), std::current_exception());
         }
       }
 

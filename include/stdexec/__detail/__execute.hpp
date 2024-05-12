@@ -44,7 +44,7 @@ namespace stdexec {
         try {
           __rcvr.__fun_();
         } catch (...) {
-          set_error(static_cast<__as_receiver&&>(__rcvr), std::exception_ptr());
+          stdexec::set_error(static_cast<__as_receiver&&>(__rcvr), std::exception_ptr());
         }
       }
 

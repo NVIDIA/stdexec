@@ -583,7 +583,7 @@ namespace nvexec {
         template <__decays_to<cudaError_t> Error>
         void propagate_completion_signal(set_error_t, Error&& status) noexcept {
           if constexpr (stream_receiver<outer_receiver_t>) {
-            set_error(static_cast<outer_receiver_t&&>(rcvr_), cudaError_t(status));
+            stdexec::set_error(static_cast<outer_receiver_t&&>(rcvr_), cudaError_t(status));
           } else {
             // pass a cudaError_t by value:
             continuation_kernel<outer_receiver_t, Error><<<1, 1, 0, get_stream()>>>(

@@ -297,7 +297,7 @@ namespace exec {
             } else if (get_stop_token(get_env(__rcvr_)).stop_requested()) {
 
               __guard.unlock();
-              set_stopped(static_cast<_Receiver&&>(__rcvr_));
+              stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr_));
               __guard.lock();
             } else {
               std::visit(
@@ -318,7 +318,7 @@ namespace exec {
             }
           } catch (...) {
 
-            set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
+            stdexec::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
           }
         }
 
@@ -371,7 +371,7 @@ namespace exec {
               }
             }
           } catch (...) {
-            set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
+            stdexec::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
           }
         }
       };

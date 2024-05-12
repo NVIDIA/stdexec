@@ -141,7 +141,7 @@ namespace stdexec {
     if constexpr (_CanThrow || __nothrow_invocable<_Fun, _As...>) {
       if constexpr (same_as<void, __invoke_result_t<_Fun, _As...>>) {
         __invoke(static_cast<_Fun&&>(__fun), static_cast<_As&&>(__as)...);
-        set_value(static_cast<_Receiver&&>(__rcvr));
+        stdexec::set_value(static_cast<_Receiver&&>(__rcvr));
       } else {
         set_value(
           static_cast<_Receiver&&>(__rcvr),
@@ -154,7 +154,7 @@ namespace stdexec {
           static_cast<_Fun&&>(__fun),
           static_cast<_As&&>(__as)...);
       } catch (...) {
-        set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
+        stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
       }
     }
   }

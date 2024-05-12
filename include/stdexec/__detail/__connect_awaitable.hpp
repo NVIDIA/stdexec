@@ -109,7 +109,7 @@ namespace stdexec {
         }
 
         auto unhandled_stopped() noexcept -> __coro::coroutine_handle<> {
-          set_stopped(static_cast<_Receiver&&>(__rcvr_));
+          stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr_));
           // Returning noop_coroutine here causes the __connect_awaitable
           // coroutine to never resume past the point where it co_await's
           // the awaitable.

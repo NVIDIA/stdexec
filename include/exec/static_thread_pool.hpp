@@ -1027,12 +1027,12 @@ namespace exec {
           auto& op = *static_cast<__t*>(t);
           auto stoken = get_stop_token(get_env(op.rcvr_));
           if constexpr (stdexec::unstoppable_token<decltype(stoken)>) {
-            set_value(static_cast<Receiver&&>(op.rcvr_));
+            stdexec::set_value(static_cast<Receiver&&>(op.rcvr_));
           } else {
             if (stoken.stop_requested()) {
-              set_stopped(static_cast<Receiver&&>(op.rcvr_));
+              stdexec::set_stopped(static_cast<Receiver&&>(op.rcvr_));
             } else {
-              set_value(static_cast<Receiver&&>(op.rcvr_));
+              stdexec::set_value(static_cast<Receiver&&>(op.rcvr_));
             }
           }
         };
@@ -1135,7 +1135,7 @@ namespace exec {
             };
 
             auto completion = [&](auto&... args) {
-              set_value(static_cast<Receiver&&>(sh_state.rcvr_), std::move(args)...);
+              stdexec::set_value(static_cast<Receiver&&>(sh_state.rcvr_), std::move(args)...);
             };
 
             if constexpr (MayThrow) {
@@ -1155,7 +1155,7 @@ namespace exec {
 
               if (is_last_thread) {
                 if (sh_state.exception_) {
-                  set_error(static_cast<Receiver&&>(sh_state.rcvr_), std::move(sh_state.exception_));
+                  stdexec::set_error(static_cast<Receiver&&>(sh_state.rcvr_), std::move(sh_state.exception_));
                 } else {
                   sh_state.apply(completion);
                 }
@@ -1235,7 +1235,7 @@ namespace exec {
           try {
             state.data_.template emplace<tuple_t>(static_cast<As&&>(as)...);
           } catch (...) {
-            set_error(std::move(state.rcvr_), std::current_exception());
+            stdexec::set_error(std::move(state.rcvr_), std::current_exception());
           }
         } else {
 
@@ -1246,7 +1246,7 @@ namespace exec {
           self.enqueue();
         } else {
           state.apply([&](auto&... args) {
-            set_value(std::move(state.rcvr_), std::move(args)...);
+            stdexec::set_value(std::move(state.rcvr_), std::move(args)...);
           });
         }
       }
@@ -1329,7 +1329,7 @@ namespace exec {
 
           static void execute_(task_base* base, std::uint32_t /* tid */) noexcept {
             auto op = static_cast<__t*>(base);
-            set_value(static_cast<ItemReceiver&&>(op->item_receiver_), *op->it_);
+            stdexec::set_value(static_cast<ItemReceiver&&>(op->item_receiver_), *op->it_);
           }
 
           ItemReceiver item_receiver_;
@@ -1420,7 +1420,7 @@ namespace exec {
           void set_value)(this Self&& self) noexcept {
             std::size_t countdown = self.op_->countdown_.fetch_sub(1, std::memory_order_relaxed);
             if (countdown == 1) {
-              set_value(static_cast<Receiver&&>(self.op_->rcvr_));
+              stdexec::set_value(static_cast<Receiver&&>(self.op_->rcvr_));
             }
           }
 
@@ -1429,7 +1429,7 @@ namespace exec {
           void set_stopped)(this Self&& self) noexcept {
             std::size_t countdown = self.op_->countdown_.fetch_sub(1, std::memory_order_relaxed);
             if (countdown == 1) {
-              set_value(static_cast<Receiver&&>(self.op_->rcvr_));
+              stdexec::set_value(static_cast<Receiver&&>(self.op_->rcvr_));
             }
           }
 

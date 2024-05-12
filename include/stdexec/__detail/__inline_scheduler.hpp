@@ -71,7 +71,7 @@ namespace stdexec {
 
     static constexpr auto start = //
       []<class _Receiver>(__ignore, _Receiver& __rcvr) noexcept -> void {
-      set_value(static_cast<_Receiver&&>(__rcvr));
+      stdexec::set_value(static_cast<_Receiver&&>(__rcvr));
     };
   };
 

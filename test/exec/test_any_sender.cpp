@@ -131,19 +131,19 @@ namespace {
     // Check set value
     CHECK(value.value_.index() == 0);
     receiver_ref ref = value;
-    set_value(static_cast<receiver_ref&&>(ref), 42);
+    stdexec::set_value(static_cast<receiver_ref&&>(ref), 42);
     CHECK(value.value_.index() == 1);
     CHECK(std::get<1>(value.value_) == 42);
     // Check set error
     CHECK(error.value_.index() == 0);
     ref = error;
-    set_error(static_cast<receiver_ref&&>(ref), std::make_exception_ptr(42));
+    stdexec::set_error(static_cast<receiver_ref&&>(ref), std::make_exception_ptr(42));
     CHECK(error.value_.index() == 2);
     CHECK_THROWS_AS(std::rethrow_exception(std::get<2>(error.value_)), int);
     // Check set stopped
     CHECK(stopped.value_.index() == 0);
     ref = stopped;
-    set_stopped(static_cast<receiver_ref&&>(ref));
+    stdexec::set_stopped(static_cast<receiver_ref&&>(ref));
     CHECK(stopped.value_.index() == 3);
   }
 
