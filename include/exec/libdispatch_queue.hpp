@@ -186,8 +186,8 @@ namespace exec {
       };
 
       STDEXEC_MEMFN_FRIEND(get_env);
-      STDEXEC_MEMFN_DECL(env get_env)(this sender const &self) noexcept {
-        return env{self.queue};
+      env get_env() const noexcept {
+        return env{queue};
       }
 
       libdispatch_queue *queue;
@@ -325,8 +325,8 @@ namespace exec {
       return {};
     }
 
-    STDEXEC_MEMFN_DECL(auto get_env)(this const __t &self) noexcept -> stdexec::env_of_t<const Sender &> {
-      return stdexec::get_env(self.sndr_);
+    auto get_env() const noexcept -> stdexec::env_of_t<const Sender &> {
+      return stdexec::get_env(sndr_);
     }
   };
 
@@ -480,8 +480,8 @@ namespace exec {
       stdexec::set_stopped(std::move(state.rcvr_));
     }
 
-    STDEXEC_MEMFN_DECL(auto get_env)(this const __t &self) noexcept -> stdexec::env_of_t<Receiver> {
-      return stdexec::get_env(self.shared_state_.rcvr_);
+    auto get_env() const noexcept -> stdexec::env_of_t<Receiver> {
+      return stdexec::get_env(shared_state_.rcvr_);
     }
   };
 

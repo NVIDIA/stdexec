@@ -45,8 +45,8 @@ namespace {
       ex::set_stopped(std::move(self.rcvr));
     }
 
-    STDEXEC_MEMFN_DECL(auto get_env)(this const get_env_rcvr& self) noexcept {
-      return ex::get_env(self.rcvr);
+    auto get_env() const noexcept {
+      return ex::get_env(rcvr);
     }
   };
 

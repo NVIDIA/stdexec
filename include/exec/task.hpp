@@ -405,8 +405,8 @@ namespace exec {
 
         using __context_t = typename _Context::template promise_context_t<__promise>;
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __promise& __self) noexcept -> const __context_t& {
-          return __self.__context_;
+        auto get_env() const noexcept -> const __context_t& {
+          return __context_;
         }
 
         __context_t __context_;

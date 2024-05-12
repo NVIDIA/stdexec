@@ -63,13 +63,13 @@ namespace stdexec {
         static void __execute_impl(__task* __p) noexcept {
           auto& __rcvr = static_cast<__t*>(__p)->__rcvr_;
           try {
-            if (get_stop_token(get_env(__rcvr)).stop_requested()) {
-              set_stopped(static_cast<_Receiver&&>(__rcvr));
+            if (stdexec::get_stop_token(stdexec::get_env(__rcvr)).stop_requested()) {
+              stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr));
             } else {
-              set_value(static_cast<_Receiver&&>(__rcvr));
+              stdexec::set_value(static_cast<_Receiver&&>(__rcvr));
             }
           } catch (...) {
-            set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
+            stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
           }
         }
 
@@ -150,15 +150,16 @@ namespace stdexec {
             }
           };
 
-          STDEXEC_MEMFN_DECL(auto get_env)(this const __schedule_task& __self) noexcept -> __env {
-            return __env{__self.__loop_};
-          }
-
           explicit __schedule_task(run_loop* __loop) noexcept
             : __loop_(__loop) {
           }
 
           run_loop* const __loop_;
+
+         public:
+          auto get_env() const noexcept -> __env {
+            return __env{__loop_};
+          }
         };
 
         friend run_loop;

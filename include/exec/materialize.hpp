@@ -35,6 +35,10 @@ namespace exec {
           : __upstream_{static_cast<_Receiver&&>(__upstream)} {
         }
 
+        auto get_env() const noexcept -> env_of_t<_Receiver> {
+          return stdexec::get_env(__upstream_);
+        }
+
        private:
         _Receiver __upstream_;
 
@@ -43,11 +47,6 @@ namespace exec {
         friend void tag_invoke(_Tag, _Self&& __self, _Args&&... __args) noexcept {
           set_value(
             static_cast<_Receiver&&>(__self.__upstream_), _Tag{}, static_cast<_Args&&>(__args)...);
-        }
-
-        template <std::same_as<__t> _Self>
-        STDEXEC_MEMFN_DECL(auto get_env)(this const _Self& __self) noexcept -> env_of_t<_Receiver> {
-          return get_env(__self.__upstream_);
         }
       };
     };
@@ -155,9 +154,8 @@ namespace exec {
           tag(static_cast<_Receiver&&>(__self.__upstream_), static_cast<_Args&&>(__args)...);
         }
 
-        template <std::same_as<__t> _Self>
-        STDEXEC_MEMFN_DECL(auto get_env)(this const _Self& __self) noexcept -> env_of_t<_Receiver> {
-          return get_env(__self.__upstream_);
+        auto get_env() const noexcept -> env_of_t<_Receiver> {
+          return stdexec::get_env(__upstream_);
         }
       };
     };

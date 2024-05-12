@@ -79,8 +79,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
         self.op_state_.propagate_completion_signal(Tag(), static_cast<As&&>(as)...);
       }
 
-      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> env_of_t<Receiver> {
-        return get_env(self.op_state_.rcvr_);
+      auto get_env() const noexcept -> env_of_t<Receiver> {
+        return stdexec::get_env(op_state_.rcvr_);
       }
 
       __t(InitT init, Fun fun, operation_state_base_t<ReceiverId>& op_state)
@@ -134,8 +134,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
         return {};
       }
 
-      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> env_of_t<const Sender&> {
-        return get_env(self.sndr_);
+      auto get_env() const noexcept -> env_of_t<const Sender&> {
+        return stdexec::get_env(sndr_);
       }
     };
   };

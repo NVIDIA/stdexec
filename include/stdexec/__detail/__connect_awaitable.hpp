@@ -137,10 +137,8 @@ namespace stdexec {
         }
 
         // Pass through the get_env receiver query
-        STDEXEC_MEMFN_DECL(
-        auto get_env)(this const __t& __self) noexcept //
-          -> env_of_t<_Receiver> {
-          return get_env(__self.__rcvr_);
+        auto get_env() const noexcept -> env_of_t<_Receiver> {
+          return stdexec::get_env(__rcvr_);
         }
 
         _Receiver& __rcvr_;

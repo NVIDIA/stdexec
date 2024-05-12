@@ -63,8 +63,8 @@ namespace stdexec {
       void __delete_op() noexcept {
         _Operation* __op = &__opref_();
         if constexpr (__callable<get_allocator_t, env_of_t<_Receiver>>) {
-          auto&& __env = get_env(__op->__rcvr_);
-          auto __alloc = get_allocator(__env);
+          auto&& __env = stdexec::get_env(__op->__rcvr_);
+          auto __alloc = stdexec::get_allocator(__env);
           using _Alloc = decltype(__alloc);
           using _OpAlloc =
             typename std::allocator_traits<_Alloc>::template rebind_alloc<_Operation>;
@@ -77,9 +77,8 @@ namespace stdexec {
       }
 
       // Forward all receiever queries.
-      STDEXEC_MEMFN_DECL(
-        auto get_env)(this const __receiver& __self) noexcept -> env_of_t<_Receiver&> {
-        return get_env(__self.__opref_().__rcvr_);
+      auto get_env() const noexcept -> env_of_t<_Receiver&> {
+        return stdexec::get_env(__opref_().__rcvr_);
       }
     };
 

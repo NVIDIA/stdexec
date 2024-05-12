@@ -1088,13 +1088,13 @@ namespace exec {
           : __env_{__env} {
         }
 
+        auto get_env() const noexcept -> __schedule_env {
+          return __env_;
+        }
+
        private:
         using __completion_sigs =
           stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
-
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __schedule_sender& __sender) noexcept -> __schedule_env {
-          return __sender.__env_;
-        }
 
         template <class _Env>
         STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this const __schedule_sender&, _Env) noexcept
@@ -1119,11 +1119,11 @@ namespace exec {
         __schedule_env __env_;
         std::chrono::nanoseconds __duration_;
 
-       private:
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __schedule_after_sender& __sender) noexcept -> __schedule_env {
-          return __sender.__env_;
+        auto get_env() const noexcept -> __schedule_env {
+          return __env_;
         }
 
+       private:
         using __completion_sigs = stdexec::completion_signatures<
           stdexec::set_value_t(),
           stdexec::set_error_t(std::exception_ptr),

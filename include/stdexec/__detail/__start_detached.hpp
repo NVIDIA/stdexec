@@ -54,9 +54,9 @@ namespace stdexec {
         friend void tag_invoke(_Tag, __t&&) noexcept {
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> const _Env& {
+        auto get_env() const noexcept -> const _Env& {
           // BUGBUG NOT TO SPEC
-          return __self.__env_;
+          return __env_;
         }
       };
     };

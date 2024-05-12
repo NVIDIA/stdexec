@@ -54,8 +54,8 @@ namespace exec {
           __self.__state_->__complete(_Tag(), static_cast<_Args &&>(__args)...);
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t &__self) noexcept -> env_of_t<_Receiver> {
-          return get_env(__self.__state_->__receiver());
+        auto get_env() const noexcept -> env_of_t<_Receiver> {
+          return stdexec::get_env(__state_->__receiver());
         }
       };
     };

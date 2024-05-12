@@ -54,8 +54,8 @@ namespace exec {
             std::terminate();
           }
 
-          STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> env_of_t<_Receiver> {
-            return get_env(__self.__receiver_);
+          auto get_env() const noexcept -> env_of_t<_Receiver> {
+            return stdexec::get_env(__receiver_);
           }
         };
       };
@@ -92,8 +92,8 @@ namespace exec {
             return {};
           }
 
-          STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> env_of_t<_Sender> {
-            return get_env(__self.__sender_);
+          auto get_env() const noexcept -> env_of_t<_Sender> {
+            return stdexec::get_env(__sender_);
           }
         };
       };
@@ -214,8 +214,8 @@ namespace exec {
           return as_awaitable(__die_on_stop(static_cast<_Awaitable&&>(__awaitable)), *this);
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __promise& __self) noexcept -> __env {
-          return {__self};
+        auto get_env() const noexcept -> __env {
+          return {*this};
         }
 
         bool __is_unhandled_stopped_{false};

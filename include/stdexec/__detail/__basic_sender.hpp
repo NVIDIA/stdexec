@@ -202,12 +202,10 @@ namespace stdexec {
           __self.__op_->__complete(_Idx(), stdexec::set_stopped);
         }
 
-        template <__same_as<__t> _Self>
+        template <__same_as<__t> _Self = __t>
         STDEXEC_ATTRIBUTE((always_inline))
-        STDEXEC_MEMFN_DECL(
-          auto get_env)(this const _Self& __self) noexcept
-          -> __env_type_t<_Self, __tag_t, _Idx, _Sexpr, _Receiver> {
-          return __self.__op_->__get_env(_Idx());
+        auto get_env() const noexcept -> __env_type_t<_Self, __tag_t, _Idx, _Sexpr, _Receiver> {
+          return __op_->__get_env(_Idx());
         }
       };
     };
@@ -479,12 +477,11 @@ namespace stdexec {
     template <class _Self>
     using __impl = __sexpr_impl<__meval<__msecond, _Self, __tag_t>>;
 
-    template <same_as<__sexpr> _Self>
+    template <class _Self = __sexpr>
     STDEXEC_ATTRIBUTE((always_inline))
-    STDEXEC_MEMFN_DECL(
-      auto get_env)(this const _Self& __self) noexcept //
+    auto get_env() const noexcept
       -> __result_of<__sexpr_apply, const _Self&, __get_attrs_fn<__tag_t>> {
-      return __sexpr_apply(__self, __detail::__drop_front(__impl<_Self>::get_attrs));
+      return __sexpr_apply(*this, __detail::__drop_front(__impl<_Self>::get_attrs));
     }
 
     template <__decays_to<__sexpr> _Self, class _Env>

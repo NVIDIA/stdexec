@@ -88,10 +88,6 @@ namespace exec {
             static_cast<_Self&&>(__self).__fun_
           };
         }
-
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t&) noexcept -> empty_env {
-          return {};
-        }
       };
     };
 

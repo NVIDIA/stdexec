@@ -57,11 +57,10 @@ namespace exec {
           __never_true<_Tag, _As...>, "we should never be instantiating the body of this function");
       }
 
-      template <same_as<__receiver_placeholder> _Self>
-      [[noreturn]] STDEXEC_MEMFN_DECL(
-        auto get_env)(this _Self) noexcept -> _Env {
+      template <class _Void = void>
+      [[noreturn]] auto get_env() const noexcept -> _Env {
         static_assert(
-          __never_true<_Self>, "we should never be instantiating the body of this function");
+          __never_true<_Void>, "we should never be instantiating the body of this function");
         std::terminate();
       }
     };
@@ -193,9 +192,8 @@ namespace exec {
             __tag, __st.__data_, __st.__rcvr_, static_cast<_As&&>(__as)...);
         }
 
-        template <same_as<__t> _Self>
-        STDEXEC_MEMFN_DECL(auto get_env)(this _Self __self) noexcept -> __env_t<_Kernel, env_of_t<_Receiver>> {
-          __state& __st = *__self.__state_;
+        auto get_env() const noexcept -> __env_t<_Kernel, env_of_t<_Receiver>> {
+          __state& __st = *__state_;
           static_assert(noexcept(__st.__kernel_.get_env(stdexec::get_env(__st.__rcvr_))));
           return __st.__kernel_.get_env(stdexec::get_env(__st.__rcvr_));
         }
@@ -324,9 +322,8 @@ namespace exec {
           return {};
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept //
-          -> env_of_t<const _Sender&> {
-          return stdexec::get_env(__self.__sndr_);
+        auto get_env() const noexcept -> env_of_t<const _Sender&> {
+          return stdexec::get_env(__sndr_);
         }
       };
     };

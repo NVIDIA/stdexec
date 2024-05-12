@@ -75,6 +75,10 @@ namespace tbbexec {
             return pool_.get_scheduler();
           }
 
+          auto get_env() const noexcept -> const sender& {
+            return *this;
+          }
+
          private:
           template <class Receiver>
           auto make_operation_(Receiver rcvr) const
@@ -87,10 +91,6 @@ namespace tbbexec {
           STDEXEC_MEMFN_DECL(auto connect)(this sender sndr, Receiver rcvr)
             -> stdexec::__t<operation<DerivedPoolType, stdexec::__id<Receiver>>> {
             return sndr.make_operation_(std::move(rcvr));
-          }
-
-          STDEXEC_MEMFN_DECL(auto get_env)(this const sender& sndr) noexcept -> const sender& {
-            return sndr;
           }
 
           friend struct DerivedPoolType::tbb_thread_pool::scheduler;
@@ -275,8 +275,8 @@ namespace tbbexec {
               tag(static_cast<Receiver&&>(state.rcvr_), static_cast<As&&>(as)...);
             }
 
-            STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> stdexec::env_of_t<Receiver> {
-              return stdexec::get_env(self.shared_state_.rcvr_);
+            auto get_env() const noexcept -> stdexec::env_of_t<Receiver> {
+              return stdexec::get_env(shared_state_.rcvr_);
             }
           };
         };

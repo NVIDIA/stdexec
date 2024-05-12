@@ -37,6 +37,7 @@ namespace stdexec {
       auto operator()(const _Env&) const noexcept
         -> tag_invoke_result_t<__is_debug_env_t, const _Env&>;
     };
+
     template <class _Env>
     using __debug_env_t = __env::__join_t<__env::__with<bool, __is_debug_env_t>, _Env>;
 
@@ -96,8 +97,7 @@ namespace stdexec {
       using receiver_concept = receiver_t;
 
       STDEXEC_ATTRIBUTE((host, device))
-      STDEXEC_MEMFN_DECL(
-        auto get_env)(this __debug_receiver) noexcept -> __debug_env_t<_Env> {
+      auto get_env() const noexcept -> __debug_env_t<_Env> {
         STDEXEC_TERMINATE();
       }
     };

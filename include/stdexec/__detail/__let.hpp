@@ -53,7 +53,7 @@ namespace stdexec {
       struct __sender {
         using sender_concept = sender_t;
 
-        constexpr STDEXEC_MEMFN_DECL(auto get_env)(this __sender) noexcept {
+        constexpr auto get_env() const noexcept -> __env {
           return __env();
         }
       };
@@ -101,11 +101,10 @@ namespace stdexec {
         _Tag()(static_cast<_Receiver&&>(__self.__rcvr_), static_cast<_As&&>(__as)...);
       }
 
-      template <same_as<get_env_t> _Tag>
-      friend auto tag_invoke(_Tag, const __receiver_with_sched& __self) noexcept {
+      auto get_env() const noexcept {
         return __env::__join(
-          __env::__with(__self.__sched_, get_scheduler),
-          __env::__without(get_env(__self.__rcvr_), get_domain));
+          __env::__with(__sched_, get_scheduler),
+          __env::__without(stdexec::get_env(__rcvr_), get_domain));
       }
     };
 
@@ -285,7 +284,7 @@ namespace stdexec {
         __try_common_domain_fn<_Set>>;
 
     template <class _LetTag, class _Env>
-    auto __mk_transform_env_fn(const _Env& __env) noexcept {
+    auto __mk_transform_env_fn(_Env&& __env) noexcept {
       using _Set = __t<_LetTag>;
       return [&]<class _Fun, class _Child>(__ignore, _Fun&&, _Child&& __child) -> decltype(auto) {
         using __completions_t = __completion_signatures_of_t<_Child, _Env>;
@@ -299,14 +298,14 @@ namespace stdexec {
             return __env::__join(
               __env::__with(
                 get_completion_scheduler<_Set>(stdexec::get_env(__child)), get_scheduler),
-              __env::__without(__env, get_domain));
+              __env::__without(static_cast<_Env&&>(__env), get_domain));
           }
         }
       };
     }
 
     template <class _LetTag, class _Env>
-    auto __mk_transform_sender_fn(const _Env&) noexcept {
+    auto __mk_transform_sender_fn(_Env&&) noexcept {
       using _Set = __t<_LetTag>;
 
       return []<class _Fun, class _Child>(__ignore, _Fun&& __fun, _Child&& __child) {
@@ -455,11 +454,6 @@ namespace stdexec {
                 get_completion_scheduler<_Set>, stdexec::get_env(__child), __unknown_scheduler());
               return __let_state_t{static_cast<_Fn&&>(__fn), __sched};
             });
-
-          // _Sched __sched = query_or(
-          //   get_completion_scheduler<_Set>, stdexec::get_env(__sndr), __unknown_scheduler());
-          // return __let_state_t{
-          //   __sndr.apply(static_cast<_Sender&&>(__sndr), __detail::__get_data()), __sched};
         };
 
       template <class _State, class _OpState, class... _As>

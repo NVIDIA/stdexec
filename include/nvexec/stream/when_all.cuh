@@ -253,7 +253,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           // Synchronize streams
           if (status_ == cudaSuccess) {
             if constexpr (stream_receiver<Receiver>) {
-              auto env = get_env(recvr_);
+              auto env = stdexec::get_env(recvr_);
               stream_provider_t* stream_provider = get_stream_provider(env);
               cudaStream_t stream = stream_provider->own_stream_.value();
 
@@ -304,8 +304,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <size_t Index>
         context_state_t get_context_state(WhenAll& when_all) {
-          auto sch =
-            get_completion_scheduler<set_value_t>(get_env(std::get<Index>(when_all.sndrs_)));
+          auto sch = stdexec::get_completion_scheduler<set_value_t>(
+            stdexec::get_env(std::get<Index>(when_all.sndrs_)));
           return sch.context_state_;
         }
 
@@ -348,8 +348,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         STDEXEC_MEMFN_DECL(void start)(this operation_t& self) noexcept {
           // register stop callback:
-          self.on_stop_.emplace(
-            get_stop_token(get_env(self.recvr_)), _when_all::on_stop_requested{self.stop_source_});
+          auto tok = stdexec::get_stop_token(stdexec::get_env(self.recvr_));
+          self.on_stop_.emplace(std::move(tok), _when_all::on_stop_requested{self.stop_source_});
           if (self.stop_source_.stop_requested()) {
             // Stop has already been requested. Don't bother starting
             // the child operations.
@@ -406,8 +406,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return {};
       }
 
-      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __self) noexcept -> const env& {
-        return __self.env_;
+      auto get_env() const noexcept -> const env& {
+        return env_;
       }
 
       std::tuple<stdexec::__t<SenderIds>...> sndrs_;

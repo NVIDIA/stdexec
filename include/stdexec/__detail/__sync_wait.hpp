@@ -20,6 +20,7 @@
 // include these after __execution_fwd.hpp
 #include "__concepts.hpp"
 #include "__cpo.hpp"
+#include "__debug.hpp"
 #include "__diagnostics.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
@@ -43,16 +44,20 @@ namespace stdexec {
   // [execution.senders.consumers.sync_wait]
   // [execution.senders.consumers.sync_wait_with_variant]
   namespace __sync_wait {
-    inline auto __make_env(run_loop& __loop) noexcept {
-      return __env::__with(__loop.get_scheduler(), get_scheduler, get_delegatee_scheduler);
-    }
+    struct __env {
+      run_loop* __loop_ = nullptr;
 
-    struct __env : __result_of<__make_env, run_loop&> {
-      __env();
-
-      explicit __env(run_loop& __loop) noexcept
-        : __result_of<__make_env, run_loop&>{__sync_wait::__make_env(__loop)} {
+      auto query(get_scheduler_t) const noexcept -> run_loop::__scheduler {
+        return __loop_->get_scheduler();
       }
+
+      auto query(get_delegatee_scheduler_t) const noexcept -> run_loop::__scheduler {
+        return __loop_->get_scheduler();
+      }
+
+      // static constexpr auto query(__debug::__is_debug_env_t) noexcept -> bool {
+      //   return true;
+      // }
     };
 
     // What should sync_wait(just_stopped()) return?
@@ -71,10 +76,9 @@ namespace stdexec {
     using __sync_wait_with_variant_result_t =
       __mtry_eval<__sync_wait_result_impl, __result_of<into_variant, _Sender>, __q<__midentity>>;
 
-    template <class... _Values>
     struct __state {
-      using _Tuple = std::tuple<_Values...>;
-      std::variant<std::monostate, _Tuple, std::exception_ptr, set_stopped_t> __data_{};
+      std::exception_ptr __eptr_;
+      run_loop __loop_;
     };
 
     template <class... _Values>
@@ -82,45 +86,40 @@ namespace stdexec {
       struct __t {
         using receiver_concept = receiver_t;
         using __id = __receiver;
-        __state<_Values...>* __state_;
-        run_loop* __loop_;
-
-        template <class _Error>
-        void __set_error(_Error __err) noexcept {
-          if constexpr (__decays_to<_Error, std::exception_ptr>)
-            __state_->__data_.template emplace<2>(static_cast<_Error&&>(__err));
-          else if constexpr (__decays_to<_Error, std::error_code>)
-            __state_->__data_.template emplace<2>(std::make_exception_ptr(std::system_error(__err)));
-          else
-            __state_->__data_.template emplace<2>(
-              std::make_exception_ptr(static_cast<_Error&&>(__err)));
-          __loop_->finish();
-        }
+        __state* __state_;
+        std::optional<std::tuple<_Values...>>* __values_;
 
         template <class... _As>
           requires constructible_from<std::tuple<_Values...>, _As...>
         STDEXEC_MEMFN_DECL(
           void set_value)(this __t&& __rcvr, _As&&... __as) noexcept {
           try {
-            __rcvr.__state_->__data_.template emplace<1>(static_cast<_As&&>(__as)...);
-            __rcvr.__loop_->finish();
+            __rcvr.__values_->emplace(static_cast<_As&&>(__as)...);
           } catch (...) {
-            __rcvr.__set_error(std::current_exception());
+            __rcvr.__state_->__eptr_ = std::current_exception();
           }
+          __rcvr.__state_->__loop_.finish();
         }
 
         template <class _Error>
         STDEXEC_MEMFN_DECL(void set_error)(this __t&& __rcvr, _Error __err) noexcept {
-          __rcvr.__set_error(static_cast<_Error&&>(__err));
+          if constexpr (__same_as<_Error, std::exception_ptr>) {
+            STDEXEC_ASSERT(__err != nullptr); // std::exception_ptr must not be null.
+            __rcvr.__state_->__eptr_ = static_cast<_Error&&>(__err);
+          } else if constexpr (__same_as<_Error, std::error_code>) {
+            __rcvr.__state_->__eptr_ = std::make_exception_ptr(std::system_error(__err));
+          } else {
+            __rcvr.__state_->__eptr_ = std::make_exception_ptr(static_cast<_Error&&>(__err));
+          }
+          __rcvr.__state_->__loop_.finish();
         }
 
         STDEXEC_MEMFN_DECL(void set_stopped)(this __t&& __rcvr) noexcept {
-          __rcvr.__state_->__data_.template emplace<3>(set_stopped_t{});
-          __rcvr.__loop_->finish();
+          __rcvr.__state_->__loop_.finish();
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& __rcvr) noexcept -> __env {
-          return __env(*__rcvr.__loop_);
+        auto get_env() const noexcept -> __env {
+          return __env{&__state_->__loop_};
         }
       };
     };
@@ -262,29 +261,25 @@ namespace stdexec {
       ///         `std::error_code`.
       /// @throws error otherwise
       // clang-format on
-      template <class _Sender>
-        requires sender_to<_Sender, __sync_receiver_for_t<_Sender>>
+      template <sender_in<__env> _Sender>
       auto apply_sender(_Sender&& __sndr) const -> std::optional<__sync_wait_result_t<_Sender>> {
-        using state_t = __sync_wait_result_impl<_Sender, __q<__state>>;
-        state_t __state{};
-        run_loop __loop;
+        __state __local{};
+        std::optional<__sync_wait_result_t<_Sender>> __result{};
 
-        // Launch the sender with a continuation that will fill in a variant
-        // and notify a condition variable.
+        // Launch the sender with a continuation that will fill in the __result optional or set the
+        // exception_ptr in __local.
         auto __op_state =
-          connect(static_cast<_Sender&&>(__sndr), __receiver_t<_Sender>{&__state, &__loop});
+          connect(static_cast<_Sender&&>(__sndr), __receiver_t<_Sender>{&__local, &__result});
         start(__op_state);
 
         // Wait for the variant to be filled in.
-        __loop.run();
+        __local.__loop_.run();
 
-        if (__state.__data_.index() == 2)
-          std::rethrow_exception(std::get<2>(__state.__data_));
+        if (__local.__eptr_) {
+          std::rethrow_exception(static_cast<std::exception_ptr&&>(__local.__eptr_));
+        }
 
-        if (__state.__data_.index() == 3)
-          return std::nullopt;
-
-        return std::move(std::get<1>(__state.__data_));
+        return __result;
       }
     };
 

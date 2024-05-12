@@ -55,10 +55,6 @@ namespace stdexec {
 
       STDEXEC_MEMFN_DECL(void set_stopped)(this __as_receiver&&) noexcept {
       }
-
-      STDEXEC_MEMFN_DECL(auto get_env)(this const __as_receiver&) noexcept -> empty_env {
-        return {};
-      }
     };
 
     struct execute_t {

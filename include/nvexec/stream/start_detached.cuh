@@ -36,10 +36,6 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_start_detached {
     template <same_as<set_stopped_t> _Tag>
     friend void tag_invoke(_Tag, detached_receiver_t&&) noexcept {
     }
-
-    STDEXEC_MEMFN_DECL(auto get_env)(this const detached_receiver_t&) noexcept -> empty_env {
-      return {};
-    }
   };
 
 } // namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_start_detached

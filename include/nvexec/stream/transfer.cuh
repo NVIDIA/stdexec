@@ -41,8 +41,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             Tag()(std::move(self.op_state_.rcvr_), static_cast<As&&>(as)...);
           }
 
-          STDEXEC_MEMFN_DECL(auto get_env)(this const receiver_t& self) noexcept -> Env {
-            return self.op_state_.make_env();
+          auto get_env() const noexcept -> Env {
+            return op_state_.make_env();
           }
         };
 
@@ -149,8 +149,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return {};
       }
 
-      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> env_of_t<const Sender&> {
-        return get_env(self.sndr_);
+      auto get_env() const noexcept -> env_of_t<const Sender&> {
+        return stdexec::get_env(sndr_);
       }
 
       __t(context_state_t context_state, Sender sndr)

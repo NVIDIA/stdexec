@@ -138,12 +138,12 @@ namespace stdexec {
         }
       }
 
-      template <same_as<set_value_t> _SetValue, class... _As>
+      template <__same_as<set_value_t> _SetValue, class... _As>
       STDEXEC_ATTRIBUTE((host, device, always_inline))
       friend auto
         tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept //
         -> __msecond<                                                    //
-          __if_c<same_as<set_value_t, _SetValue>>,
+          __if_c<__same_as<set_value_t, _SetValue>>,
           decltype(STDEXEC_CALL_MEMBER(
             set_value,
             static_cast<_Derived&&>(__self),
@@ -153,7 +153,7 @@ namespace stdexec {
         STDEXEC_CALL_MEMBER(set_value, static_cast<_Derived&&>(__self), static_cast<_As&&>(__as)...);
       }
 
-      template <same_as<set_value_t> _SetValue, class _Dp = _Derived, class... _As>
+      template <__same_as<set_value_t> _SetValue, class _Dp = _Derived, class... _As>
         requires STDEXEC_MISSING_MEMBER(_Dp, set_value) && tag_invocable<_SetValue, __base_t<_Dp>, _As...>
       STDEXEC_ATTRIBUTE((host, device, always_inline))
       friend void
@@ -161,12 +161,12 @@ namespace stdexec {
         stdexec::set_value(__get_base(static_cast<_Dp&&>(__self)), static_cast<_As&&>(__as)...);
       }
 
-      template <same_as<set_error_t> _SetError, class _Error>
+      template <__same_as<set_error_t> _SetError, class _Error>
       STDEXEC_ATTRIBUTE((host, device, always_inline))
       friend auto
         tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept //
         -> __msecond<                                                     //
-          __if_c<same_as<set_error_t, _SetError>>,
+          __if_c<__same_as<set_error_t, _SetError>>,
           decltype(STDEXEC_CALL_MEMBER(
             set_error,
             static_cast<_Derived&&>(__self),
@@ -177,7 +177,7 @@ namespace stdexec {
           set_error, static_cast<_Derived&&>(__self), static_cast<_Error&&>(__err));
       }
 
-      template <same_as<set_error_t> _SetError, class _Error, class _Dp = _Derived>
+      template <__same_as<set_error_t> _SetError, class _Error, class _Dp = _Derived>
         requires STDEXEC_MISSING_MEMBER(_Dp, set_error) && tag_invocable<_SetError, __base_t<_Dp>, _Error>
       STDEXEC_ATTRIBUTE((host, device, always_inline))
       friend void
@@ -186,18 +186,18 @@ namespace stdexec {
           __get_base(static_cast<_Derived&&>(__self)), static_cast<_Error&&>(__err));
       }
 
-      template <same_as<set_stopped_t> _SetStopped, class _Dp = _Derived>
+      template <__same_as<set_stopped_t> _SetStopped, class _Dp = _Derived>
       STDEXEC_ATTRIBUTE((host, device, always_inline))
       friend auto
         tag_invoke(_SetStopped, _Derived&& __self) noexcept //
         -> __msecond<                                       //
-          __if_c<same_as<set_stopped_t, _SetStopped>>,
+          __if_c<__same_as<set_stopped_t, _SetStopped>>,
           decltype(STDEXEC_CALL_MEMBER(set_stopped, static_cast<_Dp&&>(__self)))> {
         static_assert(noexcept(STDEXEC_CALL_MEMBER(set_stopped, static_cast<_Derived&&>(__self))));
         STDEXEC_CALL_MEMBER(set_stopped, static_cast<_Derived&&>(__self));
       }
 
-      template <same_as<set_stopped_t> _SetStopped, class _Dp = _Derived>
+      template <__same_as<set_stopped_t> _SetStopped, class _Dp = _Derived>
         requires STDEXEC_MISSING_MEMBER(_Dp, set_stopped) && tag_invocable<_SetStopped, __base_t<_Dp>>
       STDEXEC_ATTRIBUTE((host, device, always_inline))
       friend void
@@ -206,7 +206,7 @@ namespace stdexec {
       }
 
       // Pass through the get_env receiver query
-      template <same_as<get_env_t> _GetEnv, class _Dp = _Derived>
+      template <__same_as<get_env_t> _GetEnv, class _Dp = _Derived>
       STDEXEC_ATTRIBUTE((host, device, always_inline))
       friend auto
         tag_invoke(_GetEnv, const _Derived& __self) noexcept
@@ -215,7 +215,7 @@ namespace stdexec {
         return STDEXEC_CALL_MEMBER(get_env, __self);
       }
 
-      template <same_as<get_env_t> _GetEnv, class _Dp = _Derived>
+      template <__same_as<get_env_t> _GetEnv, class _Dp = _Derived>
         requires STDEXEC_MISSING_MEMBER(_Dp, get_env)
           STDEXEC_ATTRIBUTE((host, device, always_inline))
       friend auto

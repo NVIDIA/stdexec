@@ -169,8 +169,8 @@ namespace exec {
             __at_coro_exit::__die_on_stop(static_cast<_Awaitable&&>(__awaitable)), *this);
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __promise& __self) noexcept -> __env {
-          return {__self};
+        auto get_env() const noexcept -> __env {
+          return {*this};
         }
 
         bool __is_unhandled_stopped_{false};

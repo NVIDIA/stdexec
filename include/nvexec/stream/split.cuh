@@ -74,8 +74,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           state.notify();
         }
 
-        STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> env_t {
-          return self.sh_state_.make_env();
+        auto get_env() const noexcept -> env_t {
+          return sh_state_.make_env();
         }
 
         explicit __t(SharedState& sh_state_t) noexcept
@@ -317,8 +317,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return operation_t<Receiver>{static_cast<Receiver&&>(recvr), self.shared_state_};
       }
 
-      STDEXEC_MEMFN_DECL(auto get_env)(this const __t& self) noexcept -> env_of_t<const Sender&> {
-        return get_env(self.sndr_);
+      auto get_env() const noexcept -> env_of_t<const Sender&> {
+        return stdexec::get_env(sndr_);
       }
 
       template <class... Tys>

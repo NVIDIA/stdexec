@@ -203,6 +203,11 @@ namespace exec {
       : __scheduler_{__impl} {
     }
 
+    /// Gets the environment of this sender.
+    auto get_env() const noexcept -> __detail::__system_scheduler_env {
+      return {__scheduler_};
+    }
+
    private:
     STDEXEC_MEMFN_FRIEND(get_env);
     STDEXEC_MEMFN_FRIEND(connect);
@@ -214,12 +219,6 @@ namespace exec {
         -> __detail::__system_op<system_sender, std::remove_cvref_t<__R>> {
 
       return {std::move(__r), __self.__scheduler_};
-    }
-
-    /// Gets the environment of this sender.
-    STDEXEC_MEMFN_DECL(
-      auto get_env)(this const system_sender& __self) noexcept -> __detail::__system_scheduler_env {
-      return {__self.__scheduler_};
     }
 
     /// The underlying implementation of the system scheduler.
@@ -240,11 +239,11 @@ namespace exec {
     }
 
     /// Returns the forward progress guarantee of `this`.
-    stdexec::forward_progress_guarantee
-      query(stdexec::get_forward_progress_guarantee_t) const noexcept;
+    auto query(stdexec::get_forward_progress_guarantee_t) const noexcept
+      -> stdexec::forward_progress_guarantee;
 
     /// Returns the execution domain of `this`.
-    system_scheduler_domain query(stdexec::get_domain_t) const noexcept {
+    auto query(stdexec::get_domain_t) const noexcept -> system_scheduler_domain {
       return {};
     }
 
@@ -262,6 +261,7 @@ namespace exec {
     /// The underlying implementation of the scheduler.
     __exec_system_scheduler_interface* __scheduler_;
   };
+
 
   namespace __detail {
     template <class T>
@@ -363,9 +363,8 @@ namespace exec {
       }
 
       /// Gets the environment of this receiver; returns the environment of the connected receiver.
-      STDEXEC_MEMFN_DECL(
-        auto get_env)(this const __bulk_intermediate_receiver& __self) noexcept -> decltype(auto) {
-        return stdexec::get_env(__self.__state_.__recv_);
+      auto get_env() const noexcept -> decltype(auto) {
+        return stdexec::get_env(__state_.__recv_);
       }
     };
 
@@ -423,8 +422,12 @@ namespace exec {
       , __fun_{std::move(__fun)} {
     }
 
+    /// Gets the environment of this sender.
+    auto get_env() const noexcept -> __detail::__system_scheduler_env {
+      return {__scheduler_};
+    }
+
    private:
-    STDEXEC_MEMFN_FRIEND(get_env);
     STDEXEC_MEMFN_FRIEND(connect);
     STDEXEC_MEMFN_FRIEND(get_completion_signatures);
     /// Meta-function that returns the completion signatures of `this`.
@@ -458,13 +461,6 @@ namespace exec {
       return {};
     }
 
-    /// Gets the environment of this sender.
-    STDEXEC_MEMFN_DECL(
-      auto
-      get_env)(this const system_bulk_sender& __snd) noexcept -> __detail::__system_scheduler_env {
-      return {__snd.__scheduler_};
-    }
-
     /// The underlying implementation of the scheduler we are using.
     __exec_system_scheduler_interface* __scheduler_{nullptr};
     /// The previous sender, the one that produces the input value for the bulk function.
@@ -488,8 +484,8 @@ namespace exec {
     return std::thread::hardware_concurrency();
   }
 
-  stdexec::forward_progress_guarantee
-    system_scheduler::query(stdexec::get_forward_progress_guarantee_t) const noexcept {
+  auto system_scheduler::query(stdexec::get_forward_progress_guarantee_t) const noexcept
+    -> stdexec::forward_progress_guarantee {
     switch (__scheduler_->__forward_progress_guarantee) {
     case 0:
       return stdexec::forward_progress_guarantee::concurrent;
