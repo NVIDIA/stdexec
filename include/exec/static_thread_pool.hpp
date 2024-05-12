@@ -320,6 +320,14 @@ namespace exec {
         using __id = scheduler;
         auto operator==(const scheduler&) const -> bool = default;
 
+        auto query(get_forward_progress_guarantee_t) const noexcept -> forward_progress_guarantee {
+          return forward_progress_guarantee::parallel;
+        }
+
+        auto query(get_domain_t) const noexcept -> domain {
+          return {};
+        }
+
        private:
         template <typename ReceiverId>
         friend struct operation;
@@ -351,13 +359,8 @@ namespace exec {
             remote_queue* queue_;
 
             template <class CPO>
-            STDEXEC_MEMFN_DECL(auto query)(this const env& self, get_completion_scheduler_t<CPO>) noexcept
+            auto query(get_completion_scheduler_t<CPO>) const noexcept
               -> static_thread_pool_::scheduler {
-              return self.make_scheduler_();
-            }
-
-            [[nodiscard]]
-            auto make_scheduler_() const -> static_thread_pool_::scheduler {
               return static_thread_pool_::scheduler{pool_, *queue_};
             }
           };
@@ -392,15 +395,6 @@ namespace exec {
 
         STDEXEC_MEMFN_DECL(auto schedule)(this const scheduler& sch) noexcept -> sender {
           return sch.make_sender_();
-        }
-
-        STDEXEC_MEMFN_DECL(auto query)(this const static_thread_pool_&, get_forward_progress_guarantee_t) noexcept
-          -> forward_progress_guarantee {
-          return forward_progress_guarantee::parallel;
-        }
-
-        STDEXEC_MEMFN_DECL(auto query)(this scheduler, get_domain_t) noexcept -> domain {
-          return {};
         }
 
         friend class static_thread_pool_;
@@ -1383,9 +1377,9 @@ namespace exec {
           struct env {
             static_thread_pool_* pool_;
 
-            template <same_as<get_completion_scheduler_t<set_value_t>> Query>
-            friend auto tag_invoke(Query, const env& e) noexcept -> static_thread_pool_::scheduler {
-              return e.pool_->get_scheduler();
+            auto query(get_completion_scheduler_t<set_value_t>) noexcept
+              -> static_thread_pool_::scheduler {
+              return pool_->get_scheduler();
             }
           };
 

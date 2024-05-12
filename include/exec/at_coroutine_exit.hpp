@@ -173,8 +173,8 @@ namespace exec {
       struct __env {
         const __promise& __promise_;
 
-        STDEXEC_MEMFN_DECL(auto query)(this __env __self, get_scheduler_t) noexcept -> __any_scheduler {
-          return __self.__promise_.__scheduler_;
+        auto query(get_scheduler_t) const noexcept -> __any_scheduler {
+          return __promise_.__scheduler_;
         }
       };
 

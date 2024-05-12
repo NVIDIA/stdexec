@@ -41,9 +41,8 @@ namespace {
       }
 
       struct env {
-        template <stdexec::__one_of<ex::set_value_t, ex::set_error_t, ex::set_stopped_t> CPO>
-        friend uncustomized_scheduler tag_invoke(ex::get_completion_scheduler_t<CPO>, const env&) //
-          noexcept {
+        template <stdexec::__completion_tag Tag>
+        uncustomized_scheduler query(ex::get_completion_scheduler_t<Tag>) const noexcept {
           return {};
         }
       };
@@ -84,9 +83,8 @@ namespace {
       }
 
       struct env {
-        template <stdexec::__one_of<ex::set_value_t, ex::set_error_t, ex::set_stopped_t> CPO>
-        friend customized_scheduler tag_invoke(ex::get_completion_scheduler_t<CPO>, const env&) //
-          noexcept {
+        template <stdexec::__completion_tag Tag>
+        customized_scheduler query(ex::get_completion_scheduler_t<Tag>) const noexcept {
           return {};
         }
       };
@@ -108,8 +106,8 @@ namespace {
       return false;
     }
 
-    constexpr friend ex::forward_progress_guarantee
-      tag_invoke(ex::get_forward_progress_guarantee_t, customized_scheduler) {
+    constexpr auto query(ex::get_forward_progress_guarantee_t) const noexcept
+      -> ex::forward_progress_guarantee {
       return fpg;
     }
   };

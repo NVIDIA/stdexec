@@ -640,11 +640,20 @@ namespace exec {
 
     ////////////////////////////////////////////////////////////////////////////
     // async_scope::spawn implementation
+    struct __spawn_env_ {
+      inplace_stop_token __token_;
+
+      auto query(get_stop_token_t) const noexcept -> inplace_stop_token {
+        return __token_;
+      }
+
+      auto query(get_scheduler_t) const noexcept -> __inln::__scheduler {
+        return {};
+      }
+    };
+
     template <class _Env>
-    using __spawn_env_t = __env::__join_t<
-      _Env,
-      __env::__with<inplace_stop_token, get_stop_token_t>,
-      __env::__with<__inln::__scheduler, get_scheduler_t>>;
+    using __spawn_env_t = __env::__join_t<_Env, __spawn_env_>;
 
     template <class _EnvId>
     struct __spawn_op_base {
@@ -694,8 +703,7 @@ namespace exec {
         template <__decays_to<_Sender> _Sndr>
         __t(_Sndr&& __sndr, _Env __env, const __impl* __scope)
           : __spawn_op_base<_EnvId>{__env::__join(static_cast<_Env&&>(__env),
-            __env::__with(__scope->__stop_source_.get_token(), get_stop_token),
-            __env::__with(__inln::__scheduler{}, get_scheduler)),
+            __spawn_env_{__scope->__stop_source_.get_token()}),
             [](__spawn_op_base<_EnvId>* __op) {
               delete static_cast<__t*>(__op);
             }}

@@ -239,6 +239,15 @@ namespace exec {
       : __scheduler_(__impl) {
     }
 
+    /// Returns the forward progress guarantee of `this`.
+    stdexec::forward_progress_guarantee
+      query(stdexec::get_forward_progress_guarantee_t) const noexcept;
+
+    /// Returns the execution domain of `this`.
+    system_scheduler_domain query(stdexec::get_domain_t) const noexcept {
+      return {};
+    }
+
    private:
     template <stdexec::sender, std::integral, class>
     friend struct system_bulk_sender;
@@ -248,17 +257,6 @@ namespace exec {
     STDEXEC_MEMFN_DECL(
       system_sender schedule)(this const system_scheduler& sched) noexcept {
       return {sched.__scheduler_};
-    }
-
-    /// Returns the forward progress guarantee of `this`.
-    STDEXEC_MEMFN_DECL(
-      stdexec::forward_progress_guarantee
-      query)(this const system_scheduler&, stdexec::get_forward_progress_guarantee_t) noexcept;
-
-    /// Returns the execution domain of `this`.
-    STDEXEC_MEMFN_DECL(
-      system_scheduler_domain query)(this const system_scheduler&, stdexec::get_domain_t) noexcept {
-      return {};
     }
 
     /// The underlying implementation of the scheduler.
@@ -491,8 +489,8 @@ namespace exec {
   }
 
   stdexec::forward_progress_guarantee
-    tag_invoke(stdexec::get_forward_progress_guarantee_t, const system_scheduler& __self) noexcept {
-    switch (__self.__scheduler_->__forward_progress_guarantee) {
+    system_scheduler::query(stdexec::get_forward_progress_guarantee_t) const noexcept {
+    switch (__scheduler_->__forward_progress_guarantee) {
     case 0:
       return stdexec::forward_progress_guarantee::concurrent;
     case 1:

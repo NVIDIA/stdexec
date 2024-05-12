@@ -52,6 +52,11 @@ namespace tbbexec {
         using __id = scheduler;
         auto operator==(const scheduler&) const -> bool = default;
 
+        constexpr auto query(stdexec::get_forward_progress_guarantee_t) const noexcept
+          -> stdexec::forward_progress_guarantee {
+          return forward_progress_guarantee();
+        }
+
        private:
         template <class DerivedPoolType_, class ReceiverId>
         friend struct operation;
@@ -63,6 +68,12 @@ namespace tbbexec {
           using __id = sender;
           using completion_signatures =
             stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
+
+          template <class CPO>
+          auto query(stdexec::get_completion_scheduler_t<CPO>) const noexcept ->
+            typename DerivedPoolType::scheduler {
+            return pool_.get_scheduler();
+          }
 
          private:
           template <class Receiver>
@@ -76,12 +87,6 @@ namespace tbbexec {
           STDEXEC_MEMFN_DECL(auto connect)(this sender sndr, Receiver rcvr)
             -> stdexec::__t<operation<DerivedPoolType, stdexec::__id<Receiver>>> {
             return sndr.make_operation_(std::move(rcvr));
-          }
-
-          template <class CPO>
-          STDEXEC_MEMFN_DECL(auto query)(this sender sndr, stdexec::get_completion_scheduler_t<CPO>) noexcept ->
-            typename DerivedPoolType::scheduler {
-            return sndr.pool_.get_scheduler();
           }
 
           STDEXEC_MEMFN_DECL(auto get_env)(this const sender& sndr) noexcept -> const sender& {
@@ -421,12 +426,6 @@ namespace tbbexec {
         constexpr auto
           forward_progress_guarantee() const noexcept -> stdexec::forward_progress_guarantee {
           return pool_->forward_progress_guarantee();
-        }
-
-        constexpr STDEXEC_MEMFN_DECL(
-          auto query)(this scheduler self, stdexec::get_forward_progress_guarantee_t) noexcept
-          -> stdexec::forward_progress_guarantee {
-          return self.forward_progress_guarantee();
         }
 
         friend thread_pool_base;

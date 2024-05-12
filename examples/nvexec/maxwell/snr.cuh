@@ -146,9 +146,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
       using PredSender = stdexec::__t<PredecessorSenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
       using Scheduler =
-        stdexec::tag_invoke_result_t<stdexec::get_scheduler_t, stdexec::env_of_t<Receiver>>;
+        std::invoke_result_t<stdexec::get_scheduler_t, stdexec::env_of_t<Receiver>>;
       using InnerSender =
-        std::invoke_result_t<Closure, stdexec::tag_invoke_result_t<stdexec::schedule_t, Scheduler>>;
+        std::invoke_result_t<Closure, stdexec::schedule_result_t<Scheduler>>;
 
       using predecessor_op_state_t =
         ex::connect_result_t<PredSender, receiver_1_t<operation_state_t>>;
@@ -287,9 +287,9 @@ namespace repeat_n_detail {
     using PredSender = stdexec::__t<PredecessorSenderId>;
     using Receiver = stdexec::__t<ReceiverId>;
     using Scheduler =
-      stdexec::tag_invoke_result_t<stdexec::get_scheduler_t, stdexec::env_of_t<Receiver>>;
+      std::invoke_result_t<stdexec::get_scheduler_t, stdexec::env_of_t<Receiver>>;
     using InnerSender =
-      std::invoke_result_t<Closure, stdexec::tag_invoke_result_t<stdexec::schedule_t, Scheduler>>;
+      std::invoke_result_t<Closure, stdexec::schedule_result_t<Scheduler>>;
 
     using predecessor_op_state_t =
       ex::connect_result_t<PredSender, receiver_1_t<operation_state_t>>;

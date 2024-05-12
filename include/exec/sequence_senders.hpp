@@ -415,7 +415,7 @@ namespace exec {
         }
       }
 
-      constexpr STDEXEC_MEMFN_DECL(auto forwarding_query)(this subscribe_t) noexcept -> bool {
+      static constexpr auto query(stdexec::forwarding_query_t) noexcept -> bool {
         return false;
       }
     };

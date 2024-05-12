@@ -689,7 +689,7 @@ namespace {
         return {{}, static_cast<R&&>(r)};
       }
 
-      friend auto tag_invoke(ex::get_completion_scheduler_t<ex::set_value_t>, sender) noexcept
+      auto query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept
         -> counting_scheduler {
         return {};
       }

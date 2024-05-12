@@ -22,18 +22,20 @@
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
   struct __env {
+    using __t = __env;
+    using __id = __env;
+
     run_loop::__scheduler __sched_;
 
-    STDEXEC_MEMFN_DECL(auto query)(this const __env& __self, get_scheduler_t) noexcept -> run_loop::__scheduler {
-      return __self.__sched_;
+    auto query(get_scheduler_t) const noexcept -> run_loop::__scheduler {
+      return __sched_;
     }
 
-    STDEXEC_MEMFN_DECL(auto query)(this const __env& __self, get_delegatee_scheduler_t) noexcept
-      -> run_loop::__scheduler {
-      return __self.__sched_;
+    auto query(get_delegatee_scheduler_t) const noexcept -> run_loop::__scheduler {
+      return __sched_;
     }
   };
- 
+
   // What should sync_wait(just_stopped()) return?
   template <class Sender>
     requires sender_in<Sender, __env>
@@ -77,7 +79,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
 
       template <class Sender2 = Sender, class... As>
         requires std::constructible_from<sync_wait_result_t<Sender2>, As...>
-      STDEXEC_MEMFN_DECL(void set_value)(this __t&& rcvr, As&&... as) noexcept {
+      STDEXEC_MEMFN_DECL(
+        void set_value)(this __t&& rcvr, As&&... as) noexcept {
         try {
           int dev_id{};
           cudaStream_t stream = rcvr.state_->stream_;
@@ -117,7 +120,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
         }
       }
 
-      STDEXEC_MEMFN_DECL(void set_stopped)(this  __t&& rcvr) noexcept {
+      STDEXEC_MEMFN_DECL(void set_stopped)(this __t&& rcvr) noexcept {
         if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
             status == cudaSuccess) {
           rcvr.state_->data_.template emplace<3>(set_stopped_t());

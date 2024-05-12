@@ -70,11 +70,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using non_values = //
         __concat_completion_signatures_t<
           completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
-          __try_make_completion_signatures<
-            Senders,
-            Env,
-            completion_signatures<>,
-            __q<swallow_values>>...>;
+          __try_make_completion_signatures<Senders, Env, completion_signatures<>, __q<swallow_values>>...>;
       using values = //
         __minvoke<
           __mconcat<__qf<set_value_t>>,
@@ -96,8 +92,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <__one_of<set_value_t, set_stopped_t> _Tag>
           requires WithCompletionScheduler
-        STDEXEC_MEMFN_DECL(Scheduler query)(this const env& self, get_completion_scheduler_t<_Tag>) noexcept {
-          return Scheduler(self.context_state_);
+        Scheduler query(get_completion_scheduler_t<_Tag>) const noexcept {
+          return Scheduler(context_state_);
         }
       };
      public:
@@ -130,9 +126,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using WhenAll = __copy_cvref_t<CvrefReceiverId, stdexec::__t<when_all_sender_t>>;
         using Receiver = stdexec::__t<__decay_t<CvrefReceiverId>>;
         using Env = //
-          make_terminal_stream_env_t<exec::make_env_t<
-            env_of_t<Receiver>,
-            exec::with_t<get_stop_token_t, inplace_stop_token>>>;
+          make_terminal_stream_env_t<
+            exec::make_env_t<env_of_t<Receiver>, exec::with_t<get_stop_token_t, inplace_stop_token>>>;
 
         struct __t
           : receiver_adaptor<__t>
@@ -175,8 +170,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
                 if constexpr (stream_receiver<Receiver>) {
                   if (op_state_->status_ == cudaSuccess) {
-                    op_state_->status_ = STDEXEC_DBG_ERR(
-                      cudaEventRecord(op_state_->events_[Index], stream));
+                    op_state_->status_ =
+                      STDEXEC_DBG_ERR(cudaEventRecord(op_state_->events_[Index], stream));
                   }
                 }
               }
@@ -309,8 +304,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <size_t Index>
         context_state_t get_context_state(WhenAll& when_all) {
-          auto sch = get_completion_scheduler<set_value_t>(
-            get_env(std::get<Index>(when_all.sndrs_)));
+          auto sch =
+            get_completion_scheduler<set_value_t>(get_env(std::get<Index>(when_all.sndrs_)));
           return sch.context_state_;
         }
 
@@ -333,10 +328,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
 
         operation_t(WhenAll&& when_all, Receiver rcvr)
-          : operation_t(
-            static_cast<WhenAll&&>(when_all),
-            static_cast<Receiver&&>(rcvr),
-            Indices{}) {
+          : operation_t(static_cast<WhenAll&&>(when_all), static_cast<Receiver&&>(rcvr), Indices{}) {
           for (int i = 0; i < sizeof...(SenderIds); i++) {
             if (status_ == cudaSuccess) {
               status_ = STDEXEC_DBG_ERR(cudaEventCreate(&events_[i], cudaEventDisableTiming));
@@ -410,8 +402,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&)
-        -> completion_sigs<Env, Self> {
+      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> completion_sigs<Env, Self> {
         return {};
       }
 

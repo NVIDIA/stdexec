@@ -76,14 +76,17 @@ namespace stdexec {
 
     template <class _Scheduler>
     struct __with_sched {
+      using __t = __with_sched;
+      using __id = __with_sched;
+
       _Scheduler __sched_;
 
-      STDEXEC_MEMFN_DECL(auto query)(this const __with_sched& __self, get_scheduler_t) noexcept -> _Scheduler {
-        return __self.__sched_;
+      auto query(get_scheduler_t) const noexcept -> _Scheduler {
+        return __sched_;
       }
 
-      STDEXEC_MEMFN_DECL(auto query)(this const __with_sched& __self, get_domain_t) noexcept {
-        return query_or(get_domain, __self.__sched_, default_domain());
+      auto query(get_domain_t) const noexcept {
+        return query_or(get_domain, __sched_, default_domain());
       }
     };
 

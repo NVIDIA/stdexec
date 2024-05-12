@@ -100,24 +100,22 @@ namespace exec {
         __scheduler_{exec::inline_scheduler{}};
       inplace_stop_token __stop_token_;
 
-      STDEXEC_MEMFN_DECL(auto query)(this const __default_task_context_impl& __self, get_scheduler_t) noexcept
-        -> const __any_scheduler&
-        requires(__with_scheduler)
-      {
-        return __self.__scheduler_;
-      }
-
-      STDEXEC_MEMFN_DECL(auto query)(this const __default_task_context_impl& __self, get_stop_token_t) noexcept
-        -> inplace_stop_token {
-        return __self.__stop_token_;
-      }
-
      public:
       __default_task_context_impl() = default;
 
       template <scheduler _Scheduler>
       explicit __default_task_context_impl(_Scheduler&& __scheduler)
         : __scheduler_{static_cast<_Scheduler&&>(__scheduler)} {
+      }
+
+      auto query(get_scheduler_t) const noexcept -> const __any_scheduler&
+        requires(__with_scheduler)
+      {
+        return __scheduler_;
+      }
+
+      auto query(get_stop_token_t) const noexcept -> inplace_stop_token {
+        return __stop_token_;
       }
 
       [[nodiscard]]

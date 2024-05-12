@@ -39,7 +39,7 @@ namespace stdexec {
         return tag_invoke(schedule_t{}, static_cast<_Scheduler&&>(__sched));
       }
 
-      constexpr STDEXEC_MEMFN_DECL(auto forwarding_query)(this schedule_t) -> bool {
+      static constexpr auto query(forwarding_query_t) noexcept -> bool {
         return false;
       }
     };

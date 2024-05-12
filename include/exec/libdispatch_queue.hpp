@@ -180,11 +180,7 @@ namespace exec {
         libdispatch_queue *queue;
 
         template <typename CPO>
-        STDEXEC_MEMFN_DECL(libdispatch_scheduler query)(this env const &self, stdexec::get_completion_scheduler_t<CPO>) noexcept {
-          return self.make_scheduler();
-        }
-
-        auto make_scheduler() const -> libdispatch_scheduler {
+        libdispatch_scheduler query(stdexec::get_completion_scheduler_t<CPO>) const noexcept {
           return libdispatch_scheduler{queue};
         }
       };
@@ -206,12 +202,12 @@ namespace exec {
       return s.make_sender();
     }
 
-    STDEXEC_MEMFN_DECL(domain query)(this libdispatch_scheduler, stdexec::get_domain_t) noexcept {
+    domain query(stdexec::get_domain_t) const noexcept {
       return {};
     }
 
-    STDEXEC_MEMFN_DECL(stdexec::forward_progress_guarantee
-      query)(this libdispatch_queue const &, stdexec::get_forward_progress_guarantee_t) noexcept {
+    stdexec::forward_progress_guarantee
+      query(stdexec::get_forward_progress_guarantee_t) const noexcept {
       return stdexec::forward_progress_guarantee::parallel;
     }
 
