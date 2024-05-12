@@ -62,16 +62,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         host_ptr<__decay_t<Env>> env_{};
         inner_op_state_t inner_op_;
 
-        STDEXEC_MEMFN_DECL(void start)(this __t& op) noexcept {
-          op.started_.test_and_set(::cuda::std::memory_order::relaxed);
+        void start() & noexcept {
+          started_.test_and_set(::cuda::std::memory_order::relaxed);
 
-          if (op.status_ != cudaSuccess) {
+          if (status_ != cudaSuccess) {
             // Couldn't allocate memory for operation state, complete with error
-            stdexec::set_error(std::move(op.rcvr_), std::move(op.status_));
+            stdexec::set_error(std::move(this->rcvr_), std::move(status_));
             return;
           }
 
-          stdexec::start(op.inner_op_);
+          stdexec::start(inner_op_);
         }
 
         __t(Sender&& sender, Receiver&& rcvr, context_state_t context_state)

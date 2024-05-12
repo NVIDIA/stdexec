@@ -202,12 +202,6 @@ namespace exec {
 
       std::variant<__initial_op_t, __final_op_t> __op_;
 
-      template <std::same_as<__t> _Self>
-      STDEXEC_MEMFN_DECL(void start)(this _Self& __self) noexcept {
-        STDEXEC_ASSERT(__self.__op_.index() == 0);
-        stdexec::start(std::get_if<0>(&__self.__op_)->__initial_operation_);
-      }
-
      public:
       using __id = __operation_state;
 
@@ -232,6 +226,11 @@ namespace exec {
                     stdexec::connect(
                       static_cast<_InitialSender&&>(__initial), __initial_receiver_t{this})};
                 }}) {
+      }
+
+      void start() & noexcept {
+        STDEXEC_ASSERT(__op_.index() == 0);
+        stdexec::start(std::get_if<0>(&__op_)->__initial_operation_);
       }
     };
 

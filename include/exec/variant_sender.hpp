@@ -31,10 +31,6 @@ namespace exec {
         std::variant<connect_result_t<__cvref_t<_CvrefSenderIds>, stdexec::__t<_ReceiverId>>...>
           __variant_;
 
-        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
-          std::visit([](auto& __s) { stdexec::start(__s); }, __self.__variant_);
-        }
-
        public:
         template <class _Sender, class _Receiver>
         __t(_Sender&& __sender, _Receiver&& __receiver) //
@@ -43,6 +39,10 @@ namespace exec {
                          return stdexec::connect(
                            static_cast<_Sender&&>(__sender), static_cast<_Receiver&&>(__receiver));
                        }}} {
+        }
+
+        void start() & noexcept {
+          std::visit([](auto& __s) { stdexec::start(__s); }, __variant_);
         }
       };
     };

@@ -204,7 +204,8 @@ namespace stdexec {
 
         template <__same_as<__t> _Self = __t>
         STDEXEC_ATTRIBUTE((always_inline))
-        auto get_env() const noexcept -> __env_type_t<_Self, __tag_t, _Idx, _Sexpr, _Receiver> {
+        auto
+          get_env() const noexcept -> __env_type_t<_Self, __tag_t, _Idx, _Sexpr, _Receiver> {
           return __op_->__get_env(_Idx());
         }
       };
@@ -340,15 +341,15 @@ namespace stdexec {
       }
 
       STDEXEC_ATTRIBUTE((always_inline))
-      STDEXEC_MEMFN_DECL(
-        void start)(this __op_state& __self) noexcept {
+      void
+        start() & noexcept {
         using __tag_t = typename __op_state::__tag_t;
-        auto&& __rcvr = __self.__rcvr();
+        auto&& __rcvr = this->__rcvr();
         __tup::__apply(
           [&](auto&... __ops) noexcept {
-            __sexpr_impl<__tag_t>::start(__self.__state_, __rcvr, __ops...);
+            __sexpr_impl<__tag_t>::start(this->__state_, __rcvr, __ops...);
           },
-          __self.__inner_ops_);
+          __inner_ops_);
       }
 
       template <class _Index, class _Tag2, class... _Args>
@@ -479,7 +480,8 @@ namespace stdexec {
 
     template <class _Self = __sexpr>
     STDEXEC_ATTRIBUTE((always_inline))
-    auto get_env() const noexcept
+    auto
+      get_env() const noexcept
       -> __result_of<__sexpr_apply, const _Self&, __get_attrs_fn<__tag_t>> {
       return __sexpr_apply(*this, __detail::__drop_front(__impl<_Self>::get_attrs));
     }

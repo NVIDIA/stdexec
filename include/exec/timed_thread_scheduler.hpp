@@ -261,15 +261,15 @@ namespace exec {
             this} {
       }
 
-      STDEXEC_MEMFN_DECL(void start)(this __t& self) noexcept {
-        self.stop_callback_.emplace(
-          stdexec::get_stop_token(stdexec::get_env(self.receiver_)), on_stopped_t{self});
+      void start() & noexcept {
+        stop_callback_.emplace(
+          stdexec::get_stop_token(stdexec::get_env(receiver_)), on_stopped_t{*this});
         int expected = 0;
-        if (self.ref_count_.compare_exchange_strong(expected, 1, std::memory_order_relaxed)) {
-          self.schedule_this();
+        if (ref_count_.compare_exchange_strong(expected, 1, std::memory_order_relaxed)) {
+          schedule_this();
         } else {
-          self.stop_callback_.reset();
-          stdexec::set_stopped(std::move(self.receiver_));
+          stop_callback_.reset();
+          stdexec::set_stopped(std::move(receiver_));
         }
       }
 

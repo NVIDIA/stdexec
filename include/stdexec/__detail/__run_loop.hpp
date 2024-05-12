@@ -84,13 +84,7 @@ namespace stdexec {
           __execute_ = &__execute_impl;
         }
 
-        STDEXEC_ATTRIBUTE((always_inline))
-        STDEXEC_MEMFN_DECL(
-          void start)(this __t& __self) noexcept {
-          __self.__start_();
-        }
-
-        void __start_() noexcept;
+        void start() & noexcept;
       };
     };
 
@@ -199,7 +193,7 @@ namespace stdexec {
     };
 
     template <class _ReceiverId>
-    inline void __operation<_ReceiverId>::__t::__start_() noexcept {
+    inline void __operation<_ReceiverId>::__t::start() & noexcept {
       try {
         __loop_->__push_back_(this);
       } catch (...) {

@@ -70,12 +70,7 @@ namespace exec {
               static_cast<_Receiver&&>(__rcvr))) {
         }
 
-       private:
-        static void __notify_waiter(__task* __self) noexcept {
-          stdexec::start(static_cast<__t*>(__self)->__op_);
-        }
-
-        void __start_() noexcept {
+        void start() & noexcept {
           std::unique_lock __guard{this->__scope_->__lock_};
           auto& __active = this->__scope_->__active_;
           auto& __waiters = this->__scope_->__waiters_;
@@ -87,8 +82,9 @@ namespace exec {
           stdexec::start(this->__op_);
         }
 
-        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
-          return __self.__start_();
+       private:
+        static void __notify_waiter(__task* __self) noexcept {
+          stdexec::start(static_cast<__t*>(__self)->__op_);
         }
 
         STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS connect_result_t<_Constrained, _Receiver> __op_;
@@ -197,18 +193,14 @@ namespace exec {
           : __nest_op_base<_ReceiverId>{{}, __scope, static_cast<_Rcvr&&>(__rcvr)}
           , __op_(stdexec::connect(static_cast<_Sender&&>(__c), __nest_rcvr_t{this})) {
         }
-       private:
-        void __start_() noexcept {
+
+        void start() & noexcept {
           STDEXEC_ASSERT(this->__scope_);
           std::unique_lock __guard{this->__scope_->__lock_};
           auto& __active = this->__scope_->__active_;
           ++__active;
           __guard.unlock();
           stdexec::start(__op_);
-        }
-
-        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
-          return __self.__start_();
         }
       };
     };
@@ -291,10 +283,6 @@ namespace exec {
         using __forward_consumer =
           typename stop_token_of_t<env_of_t<_Receiver>>::template callback_type<__forward_stopped>;
 
-        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
-          __self.__start_();
-        }
-
         void __complete_() noexcept {
           try {
             auto __state = std::move(__state_);
@@ -334,22 +322,6 @@ namespace exec {
           }
         }
 
-        void __start_() noexcept {
-          try {
-            if (!!__state_) {
-              std::unique_lock __guard{__state_->__mutex_};
-              if (__state_->__data_.index() != 0) {
-                __guard.unlock();
-                __complete_();
-              } else {
-                __state_->__subscribers_.push_back(this);
-              }
-            }
-          } catch (...) {
-            set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
-          }
-        }
-
         STDEXEC_ATTRIBUTE((no_unique_address))
         _Receiver __rcvr_;
         std::unique_ptr<__future_state<_Sender, _Env>> __state_;
@@ -385,6 +357,22 @@ namespace exec {
           , __state_(std::move(__state))
           , __forward_consumer_(get_stop_token(get_env(__rcvr_)),
               __forward_stopped{&__state_->__stop_source_}) {
+        }
+
+        void start() & noexcept {
+          try {
+            if (!!__state_) {
+              std::unique_lock __guard{__state_->__mutex_};
+              if (__state_->__data_.index() != 0) {
+                __guard.unlock();
+                __complete_();
+              } else {
+                __state_->__subscribers_.push_back(this);
+              }
+            }
+          } catch (...) {
+            set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
+          }
         }
       };
     };
@@ -698,12 +686,8 @@ namespace exec {
           , __op_(stdexec::connect(static_cast<_Sndr&&>(__sndr), __spawn_receiver_t<_Env>{this})) {
         }
 
-        void __start_() noexcept {
+        void start() & noexcept {
           stdexec::start(__op_);
-        }
-
-        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
-          return __self.__start_();
         }
 
         connect_result_t<_Sender, __spawn_receiver_t<_Env>> __op_;

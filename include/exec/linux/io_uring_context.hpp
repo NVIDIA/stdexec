@@ -343,7 +343,7 @@ namespace exec {
         , __eventfd_{__eventfd} {
       }
 
-      void start() noexcept;
+      void start() & noexcept;
     };
 
     class __scheduler;
@@ -554,26 +554,26 @@ namespace exec {
         using __on_stopped_callback = typename stdexec::stop_token_of_t<
           stdexec::env_of_t<_Rcvr&>>::template callback_type<__on_stop>;
 
-        STDEXEC_MEMFN_DECL(void start)(this __run_op& __self) noexcept {
+        void start() & noexcept {
           std::optional<__on_stopped_callback> __callback(
             std::in_place,
-            stdexec::get_stop_token(stdexec::get_env(__self.__rcvr_)),
-            __on_stop{__self.__context_});
+            stdexec::get_stop_token(stdexec::get_env(__rcvr_)),
+            __on_stop{__context_});
           try {
-            if (__self.__mode_ == until::stopped) {
-              __self.__context_.run_until_stopped();
+            if (__mode_ == until::stopped) {
+              __context_.run_until_stopped();
             } else {
-              __self.__context_.run_until_empty();
+              __context_.run_until_empty();
             }
           } catch (...) {
             __callback.reset();
-            stdexec::set_error(static_cast<_Rcvr&&>(__self.__rcvr_), std::current_exception());
+            stdexec::set_error(static_cast<_Rcvr&&>(__rcvr_), std::current_exception());
           }
           __callback.reset();
-          if (__self.__context_.stop_requested()) {
-            stdexec::set_stopped(static_cast<_Rcvr&&>(__self.__rcvr_));
+          if (__context_.stop_requested()) {
+            stdexec::set_stopped(static_cast<_Rcvr&&>(__rcvr_));
           } else {
-            stdexec::set_value(static_cast<_Rcvr&&>(__self.__rcvr_));
+            stdexec::set_value(static_cast<_Rcvr&&>(__rcvr_));
           }
         }
       };
@@ -636,7 +636,7 @@ namespace exec {
       __wakeup_operation __wakeup_operation_;
     };
 
-    inline void __wakeup_operation::start() noexcept {
+    inline void __wakeup_operation::start() & noexcept {
       if (!__context_->__stop_source_->stop_requested()) {
         __context_->__pending_.push_front(this);
       }
@@ -703,15 +703,15 @@ namespace exec {
         return __base_;
       }
 
-     private:
-      _Base __base_;
-
-      STDEXEC_MEMFN_DECL(void start)(this __io_task_facade& __self) noexcept {
-        __context& __context = __self.__base_.context();
-        if (__context.submit(&__self)) {
+      void start() & noexcept {
+        __context& __context = __base_.context();
+        if (__context.submit(this)) {
           __context.wakeup();
         }
       }
+
+     private:
+      _Base __base_;
     };
 
     template <class _ReceiverId>
@@ -804,7 +804,7 @@ namespace exec {
           , __op_{__op} {
         }
 
-        void start() noexcept {
+        void start() & noexcept {
           int expected = 1;
           if (__op_->__n_ops_.compare_exchange_strong(expected, 2, std::memory_order_relaxed)) {
             if (__op_->context().submit(this)) {

@@ -58,7 +58,8 @@ namespace exec {
       }
 
       template <class _Void = void>
-      [[noreturn]] auto get_env() const noexcept -> _Env {
+      [[noreturn]]
+      auto get_env() const noexcept -> _Env {
         static_assert(
           __never_true<_Void>, "we should never be instantiating the body of this function");
         std::terminate();
@@ -229,7 +230,7 @@ namespace exec {
               __receiver_t{&__state_})) {
         }
 
-        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
+        void start() & noexcept {
           __self.__state_.__kernel_.start(
             __self.__op_, __self.__state_.__data_, __self.__state_.__rcvr_);
         }

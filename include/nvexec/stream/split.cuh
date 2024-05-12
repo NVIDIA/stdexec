@@ -257,25 +257,26 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
         }
 
-        STDEXEC_MEMFN_DECL(void start)(this __t& self) noexcept {
-          sh_state_t<Sender>* shared_state = self.shared_state_.get();
+        void start() & noexcept {
+          sh_state_t<Sender>* shared_state = shared_state_.get();
           std::atomic<void*>& head = shared_state->head_;
           void* const completion_state = static_cast<void*>(shared_state);
           void* old = head.load(std::memory_order_acquire);
 
           if (old != completion_state) {
-            self.on_stop_.emplace(
-              get_stop_token(get_env(self.rcvr_)), on_stop_requested{shared_state->stop_source_});
+            on_stop_.emplace(
+              get_stop_token(stdexec::get_env(this->rcvr_)),
+              on_stop_requested{shared_state->stop_source_});
           }
 
           do {
             if (old == completion_state) {
-              self.notify(&self);
+              notify(this);
               return;
             }
-            self.next_ = static_cast<operation_base_t*>(old);
+            next_ = static_cast<operation_base_t*>(old);
           } while (!head.compare_exchange_weak(
-            old, static_cast<void*>(&self), std::memory_order_release, std::memory_order_acquire));
+            old, static_cast<void*>(this), std::memory_order_release, std::memory_order_acquire));
 
           if (old == nullptr) {
             // the inner sender isn't running

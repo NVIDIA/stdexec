@@ -267,32 +267,33 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
         }
 
-        STDEXEC_MEMFN_DECL(void start)(this __t& self) noexcept {
-          sh_state_t<Sender>* shared_state = self.shared_state_.get();
+        void start() & noexcept {
+          sh_state_t<Sender>* shared_state = shared_state_.get();
           std::atomic<void*>& op_state1 = shared_state->op_state1_;
           void* const completion_state = static_cast<void*>(shared_state);
           void* const old = op_state1.load(std::memory_order_acquire);
           if (old == completion_state) {
-            self.notify(&self);
+            notify(this);
           } else {
             // register stop callback:
-            self.on_stop_.emplace(
-              get_stop_token(get_env(self.rcvr_)), on_stop_requested{shared_state->stop_source_});
+            on_stop_.emplace(
+              get_stop_token(stdexec::get_env(this->rcvr_)),
+              on_stop_requested{shared_state->stop_source_});
             // Check if the stop_source has requested cancellation
             if (shared_state->stop_source_.stop_requested()) {
               // Stop has already been requested. Don't bother starting
               // the child operations.
-              self.propagate_completion_signal(set_stopped_t{});
+              this->propagate_completion_signal(set_stopped_t{});
             } else {
               // Otherwise, the inner source hasn't notified completion.
               // Set this operation as the op_state1 so it's notified.
               void* old = nullptr;
               if (!op_state1.compare_exchange_weak(
-                    old, &self, std::memory_order_release, std::memory_order_acquire)) {
+                    old, this, std::memory_order_release, std::memory_order_acquire)) {
                 // We get here when the task completed during the execution
                 // of this function. Complete the operation synchronously.
                 STDEXEC_ASSERT(old == completion_state);
-                self.notify(&self);
+                notify(this);
               }
             }
           }

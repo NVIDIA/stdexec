@@ -303,8 +303,8 @@ namespace tbbexec {
 
             inner_op_state inner_op_;
 
-            STDEXEC_MEMFN_DECL(void start)(this __t& op) noexcept {
-              stdexec::start(op.inner_op_);
+            void start() & noexcept {
+              stdexec::start(inner_op_);
             }
 
             __t(DerivedPoolType& pool, Shape shape, Fun fun, CvrefSender&& sndr, Receiver rcvr)
@@ -495,8 +495,8 @@ namespace tbbexec {
         pool_.enqueue(this);
       }
 
-      STDEXEC_MEMFN_DECL(void start)(this __t& op) noexcept {
-        op.enqueue();
+      void start() & noexcept {
+        enqueue();
       }
     };
   } // namespace _thpool

@@ -646,29 +646,29 @@ namespace nvexec {
           __if_c<stream_sender<sender_t, env_t>, inner_receiver_t, stream_enqueue_receiver_t>;
         using inner_op_state_t = connect_result_t<sender_t, intermediate_receiver>;
 
-        STDEXEC_MEMFN_DECL(void start)(this __t& op) noexcept {
-          op.started_.test_and_set(::cuda::std::memory_order::relaxed);
+        void start() & noexcept {
+          started_.test_and_set(::cuda::std::memory_order::relaxed);
 
-          if (op.stream_provider_.status_ != cudaSuccess) {
+          if (this->stream_provider_.status_ != cudaSuccess) {
             // Couldn't allocate memory for operation state, complete with error
-            op.propagate_completion_signal(
-              stdexec::set_error, std::move(op.stream_provider_.status_));
+            this->propagate_completion_signal(
+              stdexec::set_error, std::move(this->stream_provider_.status_));
             return;
           }
 
           if constexpr (stream_receiver<inner_receiver_t>) {
             if (inner_receiver_t::memory_allocation_size) {
               try {
-                op.temp_storage_ = op.context_state_.managed_resource_->allocate(
+                this->temp_storage_ = this->context_state_.managed_resource_->allocate(
                   inner_receiver_t::memory_allocation_size);
               } catch (...) {
-                op.propagate_completion_signal(stdexec::set_error, cudaErrorMemoryAllocation);
+                this->propagate_completion_signal(stdexec::set_error, cudaErrorMemoryAllocation);
                 return;
               }
             }
           }
 
-          stdexec::start(op.inner_op_);
+          stdexec::start(inner_op_);
         }
 
         template <__decays_to<outer_receiver_t> OutR, class ReceiverProvider>
@@ -737,7 +737,6 @@ namespace nvexec {
         task_t* task_{};
         ::cuda::std::atomic_flag started_{};
         host_ptr<__decay_t<env_t>> env_{};
-
         inner_op_state_t inner_op_;
       };
     };
