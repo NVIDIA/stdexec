@@ -34,8 +34,8 @@ namespace exec {
         STDEXEC_ATTRIBUTE((no_unique_address))
         _Receiver __rcvr_;
 
-        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
-          stdexec::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
+        void start() & noexcept {
+          stdexec::set_value(static_cast<_Receiver&&>(__rcvr_));
         }
       };
     };

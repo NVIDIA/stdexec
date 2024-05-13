@@ -97,7 +97,8 @@ namespace stdexec {
       using receiver_concept = receiver_t;
 
       STDEXEC_ATTRIBUTE((host, device))
-      auto get_env() const noexcept -> __debug_env_t<_Env> {
+      auto
+        get_env() const noexcept -> __debug_env_t<_Env> {
         STDEXEC_TERMINATE();
       }
     };
@@ -207,7 +208,7 @@ namespace stdexec {
           //static_assert(receiver_of<_Receiver, _Sigs>);
           if constexpr (!same_as<_Operation, __debug_operation>) {
             auto __op = connect(static_cast<_Sender&&>(__sndr), _Receiver{});
-            start(__op);
+            stdexec::start(__op);
           }
         }
       }
@@ -224,7 +225,7 @@ namespace stdexec {
             //static_assert(receiver_of<_Receiver, _Sigs>);
             if constexpr (!same_as<_Operation, __debug_operation>) {
               auto __op = connect(static_cast<_Sender&&>(__sndr), _Receiver{});
-              start(__op);
+              stdexec::start(__op);
             }
           }
         }

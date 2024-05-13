@@ -346,21 +346,21 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         STDEXEC_IMMOVABLE(operation_t);
 
-        STDEXEC_MEMFN_DECL(void start)(this operation_t& self) noexcept {
+        void start() & noexcept {
           // register stop callback:
-          auto tok = stdexec::get_stop_token(stdexec::get_env(self.recvr_));
-          self.on_stop_.emplace(std::move(tok), _when_all::on_stop_requested{self.stop_source_});
-          if (self.stop_source_.stop_requested()) {
+          auto tok = stdexec::get_stop_token(stdexec::get_env(recvr_));
+          on_stop_.emplace(std::move(tok), _when_all::on_stop_requested{stop_source_});
+          if (stop_source_.stop_requested()) {
             // Stop has already been requested. Don't bother starting
             // the child operations.
-            stdexec::set_stopped(static_cast<Receiver&&>(self.recvr_));
+            stdexec::set_stopped(static_cast<Receiver&&>(recvr_));
           } else {
             if constexpr (sizeof...(SenderIds) == 0) {
-              self.complete();
+              complete();
             } else {
               std::apply(
-                [](auto&&... __child_ops) noexcept -> void { (start(__child_ops), ...); },
-                self.child_states_);
+                [](auto&&... __child_ops) noexcept -> void { (stdexec::start(__child_ops), ...); },
+                child_states_);
             }
           }
         }

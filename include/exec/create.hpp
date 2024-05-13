@@ -54,9 +54,9 @@ namespace exec {
         STDEXEC_ATTRIBUTE((no_unique_address))
         _State __state_{};
 
-        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
-          __self.__state_.emplace(__conv{[&]() noexcept {
-            return static_cast<_Fun&&>(__self.__fun_)(__self.__ctx_);
+        void start() & noexcept {
+          __state_.emplace(__conv{[&]() noexcept {
+            return static_cast<_Fun&&>(__fun_)(__ctx_);
           }});
         }
       };

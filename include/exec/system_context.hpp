@@ -158,14 +158,9 @@ namespace exec {
       __system_op& operator=(__system_op&&) = delete;
 
       /// Starts the work stored in `this`.
-      STDEXEC_MEMFN_DECL(
-        void start)(this __system_op& __self) noexcept {
-        __self.__impl_os_ = __self.__scheduler_->__schedule(
-          __self.__scheduler_,
-          &__self.__preallocated_,
-          sizeof(__self.__preallocated_),
-          __cb,
-          &__self);
+      void start() & noexcept {
+        __impl_os_ = __scheduler_->__schedule(
+          __scheduler_, &__preallocated_, sizeof(__preallocated_), __cb, this);
       }
 
       static void __cb(void* __data, int __completion_type, void* __exception) {
@@ -261,7 +256,6 @@ namespace exec {
     /// The underlying implementation of the scheduler.
     __exec_system_scheduler_interface* __scheduler_;
   };
-
 
   namespace __detail {
     template <class T>
@@ -394,11 +388,10 @@ namespace exec {
       __system_bulk_op& operator=(__system_bulk_op&&) = delete;
 
       /// Starts the work stored in `__self`.
-      STDEXEC_MEMFN_DECL(
-        void start)(this __system_bulk_op& __self) noexcept {
+      void start() & noexcept {
         // Start previous operation state.
         // Bulk operation will be started when the previous sender completes.
-        stdexec::start(__self.__previous_operation_state_);
+        stdexec::start(__previous_operation_state_);
       }
 
       /// The state of this bulk operation.

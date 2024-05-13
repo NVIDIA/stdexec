@@ -98,8 +98,8 @@ namespace nvexec {
             : operation_state_base_t<ReceiverId>(static_cast<Receiver&&>(rcvr), context_state) {
           }
 
-          STDEXEC_MEMFN_DECL(void start)(this __t& op) noexcept {
-            op.propagate_completion_signal(set_value);
+          void start() & noexcept {
+            this->propagate_completion_signal(set_value);
           }
         };
       };

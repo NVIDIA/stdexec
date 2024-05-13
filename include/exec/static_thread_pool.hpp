@@ -1047,8 +1047,9 @@ namespace exec {
         }
       }
 
-      STDEXEC_MEMFN_DECL(void start)(this __t& op) noexcept {
-        op.enqueue_(&op);
+     public:
+      void start() & noexcept {
+        enqueue_(this);
       }
     };
 
@@ -1285,8 +1286,8 @@ namespace exec {
 
       inner_op_state inner_op_;
 
-      STDEXEC_MEMFN_DECL(void start)(this __t& op) noexcept {
-        start(op.inner_op_);
+      void start() & noexcept {
+        stdexec::start(inner_op_);
       }
 
       __t(static_thread_pool_& pool, Shape shape, Fun fun, CvrefSender&& sndr, Receiver rcvr)
@@ -1335,19 +1336,6 @@ namespace exec {
           std::ranges::iterator_t<Range> it_;
           operation_base<Range>* parent_;
 
-          STDEXEC_MEMFN_DECL(
-
-          void start)(this __t& op) noexcept {
-            std::unique_lock lock{op.parent_->start_mutex_};
-            if (!op.parent_->has_started_) {
-              op.parent_->tasks_.push_back(static_cast<task_base*>(&op));
-              op.parent_->tasks_size_ += 1;
-            } else {
-              lock.unlock();
-              op.parent_->pool_.enqueue(static_cast<task_base*>(&op));
-            }
-          }
-
          public:
           using __id = item_operation;
 
@@ -1359,6 +1347,17 @@ namespace exec {
             , item_receiver_(static_cast<ItemReceiver&&>(item_receiver))
             , it_(it)
             , parent_(parent) {
+          }
+
+          void start() & noexcept {
+            std::unique_lock lock{parent_->start_mutex_};
+            if (!parent_->has_started_) {
+              parent_->tasks_.push_back(static_cast<task_base*>(this));
+              parent_->tasks_size_ += 1;
+            } else {
+              lock.unlock();
+              parent_->pool_.enqueue(static_cast<task_base*>(this));
+            }
           }
         };
       };
@@ -1456,43 +1455,6 @@ namespace exec {
 
           std::vector<__manual_lifetime<ItemOperation>, ItemAllocator> items_;
 
-          template <same_as<__t> Self>
-          STDEXEC_MEMFN_DECL(
-          void start)(this Self& op) noexcept {
-            std::size_t size = op.items_.size();
-            std::size_t nthreads = op.pool_.available_parallelism();
-            bwos_params params = op.pool_.params();
-            std::size_t localSize = params.blockSize * params.numBlocks;
-            std::size_t chunkSize = std::min<std::size_t>(size / nthreads, localSize * nthreads);
-            auto& remote_queue = *op.pool_.get_remote_queue();
-            std::ranges::iterator_t<Range> it = std::ranges::begin(op.range_);
-            std::size_t i0 = 0;
-            while (i0 + chunkSize < size) {
-              for (std::size_t i = i0; i < i0 + chunkSize; ++i) {
-                op.items_[i].__construct_with([&] {
-                  return stdexec::connect(
-                    set_next(op.rcvr_, ItemSender{&op, it + i}), NextReceiver{&op});
-                });
-                start(op.items_[i].__get());
-              }
-
-              std::unique_lock lock{op.start_mutex_};
-              op.pool_.bulk_enqueue(remote_queue, std::move(op.tasks_), op.tasks_size_);
-              lock.unlock();
-              i0 += chunkSize;
-            }
-            for (std::size_t i = i0; i < size; ++i) {
-              op.items_[i].__construct_with([&] {
-                return stdexec::connect(
-                  set_next(op.rcvr_, ItemSender{&op, it + i}), NextReceiver{&op});
-              });
-              start(op.items_[i].__get());
-            }
-            std::unique_lock lock{op.start_mutex_};
-            op.has_started_ = true;
-            op.pool_.bulk_enqueue(remote_queue, std::move(op.tasks_), op.tasks_size_);
-          }
-
          public:
           using __id = operation;
 
@@ -1509,6 +1471,41 @@ namespace exec {
                 item.__destroy();
               }
             }
+          }
+
+          void start() & noexcept {
+            std::size_t size = items_.size();
+            std::size_t nthreads = this->pool_.available_parallelism();
+            bwos_params params = this->pool_.params();
+            std::size_t localSize = params.blockSize * params.numBlocks;
+            std::size_t chunkSize = std::min<std::size_t>(size / nthreads, localSize * nthreads);
+            auto& remote_queue = *this->pool_.get_remote_queue();
+            std::ranges::iterator_t<Range> it = std::ranges::begin(this->range_);
+            std::size_t i0 = 0;
+            while (i0 + chunkSize < size) {
+              for (std::size_t i = i0; i < i0 + chunkSize; ++i) {
+                items_[i].__construct_with([&] {
+                  return stdexec::connect(
+                    set_next(this->rcvr_, ItemSender{this, it + i}), NextReceiver{this});
+                });
+                stdexec::start(items_[i].__get());
+              }
+
+              std::unique_lock lock{this->start_mutex_};
+              this->pool_.bulk_enqueue(remote_queue, std::move(this->tasks_), this->tasks_size_);
+              lock.unlock();
+              i0 += chunkSize;
+            }
+            for (std::size_t i = i0; i < size; ++i) {
+              items_[i].__construct_with([&] {
+                return stdexec::connect(
+                  set_next(this->rcvr_, ItemSender{this, it + i}), NextReceiver{this});
+              });
+              stdexec::start(items_[i].__get());
+            }
+            std::unique_lock lock{this->start_mutex_};
+            this->has_started_ = true;
+            this->pool_.bulk_enqueue(remote_queue, std::move(this->tasks_), this->tasks_size_);
           }
         };
       };

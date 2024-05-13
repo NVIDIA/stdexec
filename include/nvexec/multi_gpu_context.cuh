@@ -57,19 +57,19 @@ namespace nvexec {
           return stream_;
         }
 
-        STDEXEC_MEMFN_DECL(void start)(this operation_state_t& op) noexcept {
+        void start() & noexcept {
           if constexpr (stream_receiver<R>) {
-            if (op.status_ == cudaSuccess) {
-              stdexec::set_value(static_cast<R&&>(op.rec_));
+            if (status_ == cudaSuccess) {
+              stdexec::set_value(static_cast<R&&>(rec_));
             } else {
-              stdexec::set_error(static_cast<R&&>(op.rec_), std::move(op.status_));
+              stdexec::set_error(static_cast<R&&>(rec_), std::move(status_));
             }
           } else {
-            if (op.status_ == cudaSuccess) {
-              continuation_kernel<<<1, 1, 0, op.stream_>>>(std::move(op.rec_), stdexec::set_value);
+            if (status_ == cudaSuccess) {
+              continuation_kernel<<<1, 1, 0, stream_>>>(std::move(rec_), stdexec::set_value);
             } else {
-              continuation_kernel<<<1, 1, 0, op.stream_>>>(
-                std::move(op.rec_), stdexec::set_error, std::move(op.status_));
+              continuation_kernel<<<1, 1, 0, stream_>>>(
+                std::move(rec_), stdexec::set_error, std::move(status_));
             }
           }
         }

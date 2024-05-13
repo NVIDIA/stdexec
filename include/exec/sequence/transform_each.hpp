@@ -96,8 +96,8 @@ namespace exec {
               stdexec::__t<__receiver<_ReceiverId, _Adaptor>>{this})} {
         }
 
-        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
-          stdexec::start(__self.__op_);
+        void start() & noexcept {
+          stdexec::start(__op_);
         }
       };
     };

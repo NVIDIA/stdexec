@@ -186,6 +186,7 @@ namespace exec {
       };
 
       STDEXEC_MEMFN_FRIEND(get_env);
+
       env get_env() const noexcept {
         return env{queue};
       }
@@ -255,8 +256,8 @@ namespace exec {
       queue.submit(op);
     }
 
-    STDEXEC_MEMFN_DECL(void start)(this operation &op) noexcept {
-      op.enqueue(&op);
+    void start() & noexcept {
+      enqueue(this);
     }
   };
 
@@ -504,8 +505,8 @@ namespace exec {
 
     inner_op_state inner_op_;
 
-    STDEXEC_MEMFN_DECL(void start)(this __t &op) noexcept {
-      stdexec::start(op.inner_op_);
+    void start() & noexcept {
+      stdexec::start(inner_op_);
     }
 
     __t(libdispatch_queue &queue, Shape shape, Fun fun, CvrefSender &&sndr, Receiver rcvr)

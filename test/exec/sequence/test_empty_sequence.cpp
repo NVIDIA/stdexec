@@ -64,7 +64,7 @@ namespace {
 
     int count{0};
     auto op = subscribe(empty_sequence(), count_set_next_receiver_t{count});
-    start(op);
+    stdexec::start(op);
     CHECK(count == 0);
   }
 } // namespace

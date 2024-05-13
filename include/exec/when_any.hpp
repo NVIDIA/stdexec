@@ -206,6 +206,16 @@ namespace exec {
             std::index_sequence_for<_SenderIds...>{}} {
         }
 
+        void start() & noexcept {
+          this->__on_stop_.emplace(
+            get_stop_token(get_env(this->__receiver_)), __on_stop_requested{this->__stop_source_});
+          if (this->__stop_source_.stop_requested()) {
+            set_stopped(static_cast<_Receiver&&>(this->__receiver_));
+          } else {
+            std::apply([](auto&... __ops) { (stdexec::start(__ops), ...); }, __ops_);
+          }
+        }
+
        private:
         template <class _SenderTuple, std::size_t... _Is>
         __t(_SenderTuple&& __senders, _Receiver&& __rcvr, std::index_sequence<_Is...>) //
@@ -223,18 +233,6 @@ namespace exec {
         }
 
         std::tuple<connect_result_t<stdexec::__t<_SenderIds>, __receiver_t>...> __ops_;
-
-        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
-          __self.__on_stop_.emplace(
-            get_stop_token(get_env(__self.__receiver_)),
-            __on_stop_requested{__self.__stop_source_});
-          if (__self.__stop_source_.stop_requested()) {
-            set_stopped(static_cast<_Receiver&&>(__self.__receiver_));
-          } else {
-
-            std::apply([](auto&... __ops) { (start(__ops), ...); }, __self.__ops_);
-          }
-        }
       };
     };
 

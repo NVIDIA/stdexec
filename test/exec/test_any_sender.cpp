@@ -157,7 +157,7 @@ namespace {
     auto sndr = when_any(just(42));
     CHECK(rcvr.value_.index() == 0);
     auto op = connect(std::move(sndr), std::move(ref));
-    start(op);
+    stdexec::start(op);
     CHECK(rcvr.value_.index() == 1);
     CHECK(std::get<1>(rcvr.value_) == 42);
   }
@@ -291,9 +291,7 @@ namespace {
     auto [value] = *sync_wait(std::move(sender));
     CHECK(value == 42);
 
-    sender = just(21) | then([&](int) -> int {
-               throw 420;
-             });
+    sender = just(21) | then([&](int) -> int { throw 420; });
     CHECK_THROWS_AS(sync_wait(std::move(sender)), int);
   }
 
@@ -308,7 +306,7 @@ namespace {
       receiver_ref ref = rcvr;
       auto op = connect(std::move(sndr), std::move(ref));
       CHECK(rcvr.value_.index() == 0);
-      start(op);
+      stdexec::start(op);
       CHECK(rcvr.value_.index() == 3);
     }
     sndr = just(42);
@@ -317,7 +315,7 @@ namespace {
       receiver_ref ref = rcvr;
       auto op = connect(std::move(sndr), std::move(ref));
       CHECK(rcvr.value_.index() == 0);
-      start(op);
+      stdexec::start(op);
       CHECK(rcvr.value_.index() == 1);
     }
     sndr = when_any(just(42));
@@ -326,7 +324,7 @@ namespace {
       receiver_ref ref = rcvr;
       auto op = connect(std::move(sndr), std::move(ref));
       CHECK(rcvr.value_.index() == 0);
-      start(op);
+      stdexec::start(op);
       CHECK(rcvr.value_.index() == 1);
     }
   }
@@ -417,7 +415,7 @@ namespace {
     stop_source.request_stop();
     auto do_check = connect(std::move(sender), std::move(receiver));
     // This CHECKS whether set_value is called
-    start(do_check);
+    stdexec::start(do_check);
   }
 
   TEST_CASE("any_sender - does connect with an user-defined stop token", "[types][any_sender]") {
@@ -428,14 +426,14 @@ namespace {
       stopped_receiver receiver{token, true};
       auto do_check = connect(std::move(sender), std::move(receiver));
       // This CHECKS whether set_value is called
-      start(do_check);
+      stdexec::start(do_check);
     }
     SECTION("stopped false") {
       stopped_token token{false};
       stopped_receiver receiver{token, false};
       auto do_check = connect(std::move(sender), std::move(receiver));
       // This CHECKS whether set_value is called
-      start(do_check);
+      stdexec::start(do_check);
     }
   }
 
@@ -453,7 +451,7 @@ namespace {
     stop_source.request_stop();
     auto do_check = connect(std::move(sender), std::move(receiver));
     // This CHECKS whether a set_stopped is called
-    start(do_check);
+    stdexec::start(do_check);
   }
 
   TEST_CASE(
@@ -470,7 +468,7 @@ namespace {
     stop_source.request_stop();
     auto do_check = connect(std::move(sender), std::move(receiver));
     // This CHECKS whether a set_stopped is called
-    start(do_check);
+    stdexec::start(do_check);
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -487,8 +485,8 @@ namespace {
 
     auto sched = schedule(scheduler);
     static_assert(sender<decltype(sched)>);
-    std::same_as<my_scheduler<>> auto get_sched = get_completion_scheduler<set_value_t>(
-      get_env(sched));
+    std::same_as<my_scheduler<>> auto get_sched =
+      get_completion_scheduler<set_value_t>(get_env(sched));
     CHECK(get_sched == scheduler);
 
     bool called = false;
@@ -506,8 +504,8 @@ namespace {
 
     auto sched = schedule(scheduler);
     static_assert(sender<decltype(sched)>);
-    std::same_as<my_scheduler2> auto get_sched = get_completion_scheduler<set_value_t>(
-      get_env(sched));
+    std::same_as<my_scheduler2> auto get_sched =
+      get_completion_scheduler<set_value_t>(get_env(sched));
     CHECK(get_sched == scheduler);
 
     CHECK(
@@ -569,8 +567,8 @@ namespace {
 
     auto sched = schedule(scheduler);
     static_assert(sender<decltype(sched)>);
-    std::same_as<stoppable_scheduler<>> auto get_sched = get_completion_scheduler<set_value_t>(
-      get_env(sched));
+    std::same_as<stoppable_scheduler<>> auto get_sched =
+      get_completion_scheduler<set_value_t>(get_env(sched));
     CHECK(get_sched == scheduler);
 
     bool called = false;
@@ -589,8 +587,8 @@ namespace {
 
     auto sched = schedule(scheduler);
     static_assert(sender<decltype(sched)>);
-    std::same_as<my_scheduler> auto get_sched = get_completion_scheduler<set_value_t>(
-      get_env(sched));
+    std::same_as<my_scheduler> auto get_sched =
+      get_completion_scheduler<set_value_t>(get_env(sched));
     CHECK(get_sched == scheduler);
 
     CHECK(
@@ -610,17 +608,17 @@ namespace {
     scheduler_t scheduler = exec::inline_scheduler();
     {
       auto op = connect(schedule(scheduler), expect_void_receiver{});
-      start(op);
+      stdexec::start(op);
     }
     scheduler = stopped_scheduler();
     {
       auto op = connect(schedule(scheduler), expect_stopped_receiver{});
-      start(op);
+      stdexec::start(op);
     }
     scheduler = error_scheduler<>{std::make_exception_ptr(std::logic_error("test"))};
     {
       auto op = connect(schedule(scheduler), expect_error_receiver<>{});
-      start(op);
+      stdexec::start(op);
     }
   }
 
@@ -634,11 +632,11 @@ namespace {
     scheduler = stopped_scheduler();
     {
       auto op = connect(schedule(scheduler), expect_stopped_receiver{});
-      start(op);
+      stdexec::start(op);
     }
     {
       auto op = connect(std::move(sched), expect_void_receiver{});
-      start(op);
+      stdexec::start(op);
     }
   }
 
@@ -717,7 +715,7 @@ namespace {
       scheduler = counting_scheduler{};
       {
         auto op = connect(schedule(scheduler), expect_value_receiver<>{});
-        start(op);
+        stdexec::start(op);
       }
     }
     CHECK(counting_scheduler::count == 0);

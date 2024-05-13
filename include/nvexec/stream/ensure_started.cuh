@@ -142,11 +142,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         , op_state1_{nullptr}
         , op_state2_(connect(static_cast<Sender&&>(sndr), inner_receiver_t{*this})) {
         if (stream_provider_.status_ == cudaSuccess) {
-          stream_provider_.status_ = STDEXEC_DBG_ERR(
-            cudaEventCreate(&event_, cudaEventDisableTiming));
+          stream_provider_.status_ =
+            STDEXEC_DBG_ERR(cudaEventCreate(&event_, cudaEventDisableTiming));
         }
 
-        start(op_state2_);
+        stdexec::start(op_state2_);
       }
 
       explicit sh_state_t(Sender& sndr, context_state_t context_state)
@@ -166,7 +166,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         , op_state2_(connect(
             static_cast<Sender&&>(sndr),
             enqueue_receiver_t{env_.get(), data_, task_, context_state.hub_->producer()})) {
-        start(op_state2_);
+        stdexec::start(op_state2_);
       }
 
       ~sh_state_t() {
@@ -267,32 +267,33 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
         }
 
-        STDEXEC_MEMFN_DECL(void start)(this __t& self) noexcept {
-          sh_state_t<Sender>* shared_state = self.shared_state_.get();
+        void start() & noexcept {
+          sh_state_t<Sender>* shared_state = shared_state_.get();
           std::atomic<void*>& op_state1 = shared_state->op_state1_;
           void* const completion_state = static_cast<void*>(shared_state);
           void* const old = op_state1.load(std::memory_order_acquire);
           if (old == completion_state) {
-            self.notify(&self);
+            notify(this);
           } else {
             // register stop callback:
-            self.on_stop_.emplace(
-              get_stop_token(get_env(self.rcvr_)), on_stop_requested{shared_state->stop_source_});
+            on_stop_.emplace(
+              get_stop_token(stdexec::get_env(this->rcvr_)),
+              on_stop_requested{shared_state->stop_source_});
             // Check if the stop_source has requested cancellation
             if (shared_state->stop_source_.stop_requested()) {
               // Stop has already been requested. Don't bother starting
               // the child operations.
-              self.propagate_completion_signal(set_stopped_t{});
+              this->propagate_completion_signal(set_stopped_t{});
             } else {
               // Otherwise, the inner source hasn't notified completion.
               // Set this operation as the op_state1 so it's notified.
               void* old = nullptr;
               if (!op_state1.compare_exchange_weak(
-                    old, &self, std::memory_order_release, std::memory_order_acquire)) {
+                    old, this, std::memory_order_release, std::memory_order_acquire)) {
                 // We get here when the task completed during the execution
                 // of this function. Complete the operation synchronously.
                 STDEXEC_ASSERT(old == completion_state);
-                self.notify(&self);
+                notify(this);
               }
             }
           }
@@ -318,7 +319,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <std::same_as<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, completion_signatures_of_t<Self, empty_env>>
-      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr) //
+      STDEXEC_MEMFN_DECL(
+        auto connect)(this Self&& self, Receiver rcvr) //
         noexcept(__nothrow_constructible_from<__decay_t<Receiver>, Receiver>)
           -> operation_t<Receiver> {
         return operation_t<Receiver>{static_cast<Receiver&&>(rcvr), std::move(self).shared_state_};
@@ -335,13 +337,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using _set_error_t = completion_signatures<set_error_t(__decay_t<Ty>)>;
 
       template <std::same_as<__t> Self, class Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&)
-        -> __try_make_completion_signatures<
-          Sender,
-          _ensure_started::env_t,
-          completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
-          __q<_set_value_t>,
-          __q<_set_error_t>> {
+      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> __try_make_completion_signatures<
+        Sender,
+        _ensure_started::env_t,
+        completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
+        __q<_set_value_t>,
+        __q<_set_error_t>> {
         return {};
       }
 

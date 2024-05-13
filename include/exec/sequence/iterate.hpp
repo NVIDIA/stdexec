@@ -55,9 +55,8 @@ namespace exec {
         _ItemRcvr __rcvr_;
         __operation_base<_Iterator, _Sentinel>* __parent_;
 
-        STDEXEC_MEMFN_DECL(void start)(this __t& __self) noexcept {
-          stdexec::set_value(
-            static_cast<_ItemRcvr&&>(__self.__rcvr_), *__self.__parent_->__iterator_++);
+        void start() & noexcept {
+          stdexec::set_value(static_cast<_ItemRcvr&&>(__rcvr_), *__parent_->__iterator_++);
         }
       };
     };
@@ -145,9 +144,8 @@ namespace exec {
         }
       }
 
-      template <same_as<__t> _Self>
-      STDEXEC_MEMFN_DECL(void start)(this _Self& __self) noexcept {
-        __self.__start_next();
+      void start() & noexcept {
+        __start_next();
       }
     };
 
