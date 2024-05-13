@@ -18,8 +18,8 @@
 #include <exec/static_thread_pool.hpp>
 
 #if STDEXEC_HAS_STD_RANGES()
-#include <ranges>
-#include <exec/sequence/ignore_all_values.hpp>
+#  include <ranges>
+#  include <exec/sequence/ignore_all_values.hpp>
 
 struct RunThread {
   void operator()(
@@ -27,9 +27,9 @@ struct RunThread {
     std::size_t total_scheds,
     std::size_t tid,
     std::barrier<>& barrier,
-#ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
+#  ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
     std::span<char> buffer,
-#endif
+#  endif
     std::atomic<bool>& stop,
     exec::numa_policy* numa) {
     int numa_node = numa->thread_index_to_node(tid);
@@ -40,17 +40,17 @@ struct RunThread {
       if (stop.load()) {
         break;
       }
-#ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
+#  ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
       pmr::monotonic_buffer_resource rsrc{buffer.data(), buffer.size()};
       pmr::polymorphic_allocator<char> alloc{&rsrc};
       auto env = exec::make_env(exec::with(stdexec::get_allocator, alloc));
       auto [start, end] = exec::_pool_::even_share(total_scheds, tid, pool.available_parallelism());
       auto iterate = exec::iterate(std::views::iota(start, end)) | exec::ignore_all_values()
                    | exec::write(env);
-#else
+#  else
       auto [start, end] = exec::_pool_::even_share(total_scheds, tid, pool.available_parallelism());
       auto iterate = exec::iterate(std::views::iota(start, end)) | exec::ignore_all_values();
-#endif
+#  endif
       stdexec::sync_wait(stdexec::on(scheduler, iterate));
       barrier.arrive_and_wait();
     }

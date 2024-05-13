@@ -42,16 +42,16 @@ namespace exec::__system_context_default_impl {
     /// The owning operation state, to be destructed when the operation completes.
     __operation<__Sender>* __op_;
 
-    STDEXEC_MEMFN_DECL(void set_value)(this __recv&& __self) noexcept {
-      __self.__cb_(__self.__data_, 0, nullptr);
+    void set_value() noexcept {
+      __cb_(__data_, 0, nullptr);
     }
 
-    STDEXEC_MEMFN_DECL(void set_stopped)(this __recv&& __self) noexcept {
-      __self.__cb_(__self.__data_, 1, nullptr);
+    void set_error(std::exception_ptr __ptr) noexcept {
+      __cb_(__data_, 2, *reinterpret_cast<void**>(&__ptr));
     }
 
-    STDEXEC_MEMFN_DECL(void set_error)(this __recv&& __self, std::exception_ptr __ptr) noexcept {
-      __self.__cb_(__self.__data_, 2, *reinterpret_cast<void**>(&__ptr));
+    void set_stopped() noexcept {
+      __cb_(__data_, 1, nullptr);
     }
   };
 

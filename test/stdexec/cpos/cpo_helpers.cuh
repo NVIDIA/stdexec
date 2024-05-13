@@ -35,10 +35,6 @@ namespace {
       ex::set_value_t(),                                     //
       ex::set_error_t(std::exception_ptr),                   //
       ex::set_stopped_t()>;
-
-    friend empty_env tag_invoke(ex::get_env_t, const cpo_t&) noexcept {
-      return {};
-    }
   };
 
   template <class CPO>
@@ -54,10 +50,6 @@ namespace {
     template <class... Ts>
     friend auto tag_invoke(CPO, const free_standing_sender_t&, Ts&&...) noexcept {
       return cpo_t<scope_t::free_standing>{};
-    }
-
-    friend empty_env tag_invoke(ex::get_env_t, const free_standing_sender_t&) noexcept {
-      return {};
     }
   };
 

@@ -74,25 +74,23 @@ namespace {
   TEST_CASE("when_any forwards stop signal", "[adaptors][when_any]") {
     stopped_scheduler stop;
     int result = 42;
-    ex::sender auto snd =
-      exec::when_any(        //
-        completes_if{false}, //
-        ex::schedule(stop)   //
-        )
-      | ex::then([&result] { result += 1; });
+    ex::sender auto snd = exec::when_any(        //
+                            completes_if{false}, //
+                            ex::schedule(stop)   //
+                            )
+                        | ex::then([&result] { result += 1; });
     ex::sync_wait(std::move(snd));
     REQUIRE(result == 42);
   }
 
   TEST_CASE("nested when_any is stoppable", "[adaptors][when_any]") {
     int result = 41;
-    ex::sender auto snd =
-      exec::when_any(
-        exec::when_any(completes_if{false}, completes_if{false}),
-        completes_if{false},
-        ex::just(),
-        completes_if{false})
-      | ex::then([&result] { result += 1; });
+    ex::sender auto snd = exec::when_any(
+                            exec::when_any(completes_if{false}, completes_if{false}),
+                            completes_if{false},
+                            ex::just(),
+                            completes_if{false})
+                        | ex::then([&result] { result += 1; });
     ex::sync_wait(std::move(snd));
     REQUIRE(result == 42);
   }
@@ -171,13 +169,12 @@ namespace {
 
     auto just_move_throws = exec::when_any(ex::just(move_throws{}));
     static_assert(sender<decltype(just_move_throws)>);
-    static_assert(
-      set_equivalent<
-        completion_signatures_of_t<decltype(just_move_throws)>,
-        completion_signatures<
-          set_value_t(move_throws),
-          set_stopped_t(),
-          set_error_t(std::exception_ptr)>>);
+    static_assert(set_equivalent<
+                  completion_signatures_of_t<decltype(just_move_throws)>,
+                  completion_signatures<
+                    set_value_t(move_throws),
+                    set_stopped_t(),
+                    set_error_t(std::exception_ptr)>>);
 
     auto mulitple_senders = exec::when_any(
       ex::just(3.1415),
@@ -186,15 +183,14 @@ namespace {
       ex::just() | ex::then([] { return 42; }),
       ex::just() | ex::then([] { return 42; }));
     static_assert(sender<decltype(mulitple_senders)>);
-    static_assert(
-      set_equivalent<
-        completion_signatures_of_t<decltype(mulitple_senders)>,
-        completion_signatures<
-          set_value_t(double),
-          set_value_t(std::string),
-          set_value_t(int),
-          set_stopped_t(),
-          set_error_t(std::exception_ptr)>>);
+    static_assert(set_equivalent<
+                  completion_signatures_of_t<decltype(mulitple_senders)>,
+                  completion_signatures<
+                    set_value_t(double),
+                    set_value_t(std::string),
+                    set_value_t(int),
+                    set_stopped_t(),
+                    set_error_t(std::exception_ptr)>>);
     // wait_for_value(std::move(snd), movable(42));
   }
 

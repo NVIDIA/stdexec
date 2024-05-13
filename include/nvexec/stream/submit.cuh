@@ -30,13 +30,26 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_submit {
     struct receiver_t : stream_receiver_base {
       op_state_t* op_state_;
 
-      template <__completion_tag Tag, class... As>
-        requires __callable<Tag, Receiver, As...>
-      friend void tag_invoke(Tag, receiver_t&& self, As&&... as) //
-        noexcept(__nothrow_callable<Tag, Receiver, As...>) {
+      template <class... As>
+        requires __callable<set_value_t, Receiver, As...>
+      void set_value(As&&... as) noexcept {
         // Delete the state as cleanup:
-        std::unique_ptr<op_state_t> g{self.op_state_};
-        return Tag()(static_cast<Receiver&&>(self.op_state_->rcvr_), static_cast<As&&>(as)...);
+        std::unique_ptr<op_state_t> g{op_state_};
+        stdexec::set_value(static_cast<Receiver&&>(op_state_->rcvr_), static_cast<As&&>(as)...);
+      }
+
+      template <class Error>
+        requires __callable<set_error_t, Receiver, Error>
+      void set_error(Error&& err) noexcept {
+        // Delete the state as cleanup:
+        std::unique_ptr<op_state_t> g{op_state_};
+        stdexec::set_error(static_cast<Receiver&&>(op_state_->rcvr_), static_cast<Error&&>(err));
+      }
+
+      void set_stopped() noexcept requires __callable<set_stopped_t, Receiver> {
+        // Delete the state as cleanup:
+        std::unique_ptr<op_state_t> g{op_state_};
+        stdexec::set_stopped(static_cast<Receiver&&>(op_state_->rcvr_));
       }
 
       // Forward all receiever queries.

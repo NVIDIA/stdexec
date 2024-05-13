@@ -90,26 +90,24 @@ namespace exec {
           return stdexec::get_env(__rcvr_);
         }
 
-        template <same_as<__t> _Self>
-          requires __callable<set_value_t, _Receiver&&>
-        STDEXEC_MEMFN_DECL(
-          void set_value)(this _Self&& __self) noexcept {
-          return stdexec::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
+        void set_value() noexcept
+          requires __callable<set_value_t, _Receiver>
+        {
+          return stdexec::set_value(static_cast<_Receiver&&>(__rcvr_));
         }
 
-        template <same_as<__t> _Self>
-          requires __callable<set_value_t, _Receiver&&>
-                && (unstoppable_token<_Token> || __callable<set_stopped_t, _Receiver &&>)
-        STDEXEC_MEMFN_DECL(
-          void set_stopped)(this _Self&& __self) noexcept {
+        void set_stopped() noexcept
+          requires __callable<set_value_t, _Receiver>
+                && (unstoppable_token<_Token> || __callable<set_stopped_t, _Receiver>)
+        {
           if constexpr (unstoppable_token<_Token>) {
-            stdexec::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
+            stdexec::set_value(static_cast<_Receiver&&>(__rcvr_));
           } else {
-            auto __token = stdexec::get_stop_token(stdexec::get_env(__self.__rcvr_));
+            auto __token = stdexec::get_stop_token(stdexec::get_env(__rcvr_));
             if (__token.stop_requested()) {
-              stdexec::set_stopped(static_cast<_Receiver&&>(__self.__rcvr_));
+              stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr_));
             } else {
-              stdexec::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
+              stdexec::set_value(static_cast<_Receiver&&>(__rcvr_));
             }
           }
         }

@@ -58,23 +58,38 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           : shared_state_(shared_state.__intrusive_from_this()) {
         }
 
-        template <__completion_tag Tag, class... As>
-        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          SharedState& state = *self.shared_state_;
-
+        template <class Tag, class... As>
+        void _set_result(Tag, As&&... as) noexcept {
           if constexpr (stream_sender<Sender, env_t>) {
-            cudaStream_t stream = state.stream_provider_.own_stream_.value();
+            cudaStream_t stream = shared_state_->stream_provider_.own_stream_.value();
             using tuple_t = decayed_tuple<Tag, As...>;
-            state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
-            copy_kernel<Tag, As&&...><<<1, 1, 0, stream>>>(state.data_, static_cast<As&&>(as)...);
-            state.stream_provider_.status_ = STDEXEC_DBG_ERR(cudaEventRecord(state.event_, stream));
+            shared_state_->index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+            copy_kernel<Tag, As&&...><<<1, 1, 0, stream>>>(shared_state_->data_, static_cast<As&&>(as)...);
+            shared_state_->stream_provider_.status_ = STDEXEC_DBG_ERR(cudaEventRecord(shared_state_->event_, stream));
           } else {
             using tuple_t = decayed_tuple<Tag, As...>;
-            state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+            shared_state_->index_ = SharedState::variant_t::template index_of<tuple_t>::value;
           }
+        }
 
-          state.notify();
-          self.shared_state_.reset();
+        template <class... _Args>
+        void set_value(_Args &&...__args) noexcept {
+          _set_result(set_value_t(), static_cast<_Args &&>(__args)...);
+          shared_state_->notify();
+          shared_state_.reset();
+        }
+
+        template <class _Error>
+        void set_error(_Error &&__err) noexcept {
+          _set_result(set_error_t(), static_cast<_Error &&>(__err));
+          shared_state_->notify();
+          shared_state_.reset();
+        }
+
+        void set_stopped() noexcept {
+          _set_result(set_stopped_t());
+          shared_state_->notify();
+          shared_state_.reset();
         }
 
         auto get_env() const noexcept -> env_t {

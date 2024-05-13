@@ -184,22 +184,22 @@ namespace stdexec {
 
         template <class... _Args>
         STDEXEC_ATTRIBUTE((always_inline))
-        STDEXEC_MEMFN_DECL(
-          void set_value)(this __t&& __self, _Args&&... __args) noexcept {
-          __self.__op_->__complete(_Idx(), stdexec::set_value, static_cast<_Args&&>(__args)...);
+        void
+          set_value(_Args&&... __args) noexcept {
+          __op_->__complete(_Idx(), stdexec::set_value, static_cast<_Args&&>(__args)...);
         }
 
         template <class _Error>
         STDEXEC_ATTRIBUTE((always_inline))
-        STDEXEC_MEMFN_DECL(
-          void set_error)(this __t&& __self, _Error&& __err) noexcept {
-          __self.__op_->__complete(_Idx(), stdexec::set_error, static_cast<_Error&&>(__err));
+        void
+          set_error(_Error&& __err) noexcept {
+          __op_->__complete(_Idx(), stdexec::set_error, static_cast<_Error&&>(__err));
         }
 
         STDEXEC_ATTRIBUTE((always_inline))
-        STDEXEC_MEMFN_DECL(
-          void set_stopped)(this __t&& __self) noexcept {
-          __self.__op_->__complete(_Idx(), stdexec::set_stopped);
+        void
+          set_stopped() noexcept {
+          __op_->__complete(_Idx(), stdexec::set_stopped);
         }
 
         template <__same_as<__t> _Self = __t>

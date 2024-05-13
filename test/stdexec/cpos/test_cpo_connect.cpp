@@ -47,10 +47,6 @@ namespace {
     friend op_state<R> tag_invoke(ex::connect_t, my_sender&& s, R&& r) {
       return {{}, s.value_, static_cast<R&&>(r)};
     }
-
-    friend empty_env tag_invoke(ex::get_env_t, const my_sender&) noexcept {
-      return {};
-    }
   };
 
   struct my_sender_unconstrained {
@@ -62,10 +58,6 @@ namespace {
     template <class R> // accept any type here
     friend op_state<R> tag_invoke(ex::connect_t, my_sender_unconstrained&& s, R&& r) {
       return {{}, s.value_, static_cast<R&&>(r)};
-    }
-
-    friend empty_env tag_invoke(ex::get_env_t, const my_sender_unconstrained&) noexcept {
-      return {};
     }
   };
 
@@ -91,18 +83,14 @@ namespace {
       return {{}, 19, std::move(self)};
     }
 
-    friend inline void tag_invoke(ex::set_value_t, strange_receiver, int val) noexcept {
+    void set_value(int val) noexcept {
       REQUIRE(val == 19);
     }
 
-    friend void tag_invoke(ex::set_stopped_t, strange_receiver) noexcept {
+    void set_stopped() noexcept {
     }
 
-    friend void tag_invoke(ex::set_error_t, strange_receiver, std::exception_ptr) noexcept {
-    }
-
-    friend empty_env tag_invoke(ex::get_env_t, const strange_receiver&) noexcept {
-      return {};
+    void set_error(std::exception_ptr) noexcept {
     }
   };
 

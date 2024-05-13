@@ -75,8 +75,8 @@ namespace {
     "[cuda][stream][adaptors][transfer_when_all]") {
     nvexec::stream_context stream_ctx{};
     auto gpu = stream_ctx.get_scheduler();
-    auto snd1 = ex::transfer_when_all(
-      gpu, ex::transfer_just(gpu, 3), ex::transfer_just(gpu, 0.1415));
+    auto snd1 =
+      ex::transfer_when_all(gpu, ex::transfer_just(gpu, 3), ex::transfer_just(gpu, 0.1415));
     auto snd2 = std::move(snd1) | ex::then([](int x, double y) { return x + y; });
     wait_for_value(std::move(snd2), 3.1415);
   }

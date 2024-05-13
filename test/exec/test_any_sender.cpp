@@ -63,16 +63,16 @@ namespace {
 
     std::variant<std::monostate, int, std::exception_ptr, set_stopped_t> value_{};
 
-    friend void tag_invoke(set_value_t, sink_receiver&& r, int value) noexcept {
-      r.value_ = value;
+    void set_value(int value) noexcept {
+      value_ = value;
     }
 
-    friend void tag_invoke(set_error_t, sink_receiver&& r, std::exception_ptr e) noexcept {
-      r.value_ = e;
+    void set_error(std::exception_ptr e) noexcept {
+      value_ = e;
     }
 
-    friend void tag_invoke(set_stopped_t, sink_receiver&& r) noexcept {
-      r.value_ = set_stopped;
+    void set_stopped() noexcept {
+      value_ = set_stopped_t();
     }
 
     friend env tag_invoke(get_env_t, const sink_receiver& r) noexcept {
@@ -387,12 +387,12 @@ namespace {
     bool expect_stop_{false};
 
     template <class... Args>
-    friend void tag_invoke(set_value_t, const stopped_receiver& r, Args&&...) noexcept {
-      CHECK(!r.expect_stop_);
+    void set_value(Args&&...) noexcept {
+      CHECK(!expect_stop_);
     }
 
-    friend void tag_invoke(set_stopped_t, const stopped_receiver& r) noexcept {
-      CHECK(r.expect_stop_);
+    void set_stopped() noexcept {
+      CHECK(expect_stop_);
     }
 
     friend stopped_receiver_env<Token> tag_invoke(get_env_t, const stopped_receiver& r) noexcept {

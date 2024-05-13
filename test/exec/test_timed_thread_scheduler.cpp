@@ -65,7 +65,7 @@ namespace {
     auto duration1 = std::chrono::milliseconds(10);
     auto duration2 = std::chrono::seconds(5);
     auto shorter = exec::when_any(
-      exec::schedule_after(scheduler, duration1) | stdexec::then([] { return 1; }), 
+      exec::schedule_after(scheduler, duration1) | stdexec::then([] { return 1; }),
       exec::schedule_after(scheduler, duration2) | stdexec::then([] { return 2; }));
     auto t0 = std::chrono::steady_clock::now();
     auto [n] = stdexec::sync_wait(std::move(shorter)).value();

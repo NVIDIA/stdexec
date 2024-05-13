@@ -25,7 +25,7 @@
 struct fail_some {
   using sender_concept = stdexec::sender_t;
   using completion_signatures = stdexec::
-    completion_signatures< stdexec::set_value_t(int), stdexec::set_error_t(std::exception_ptr)>;
+    completion_signatures<stdexec::set_value_t(int), stdexec::set_error_t(std::exception_ptr)>;
 
   template <class R>
   struct op {
@@ -46,12 +46,6 @@ struct fail_some {
   template <class R>
   friend op<R> tag_invoke(stdexec::connect_t, fail_some, R r) {
     return {std::move(r)};
-  }
-
-  struct empty_env { };
-
-  friend empty_env tag_invoke(stdexec::get_env_t, const fail_some&) noexcept {
-    return {};
   }
 };
 

@@ -151,8 +151,8 @@ void my_main(int argc, char** argv, exec::numa_policy* policy = exec::get_numa_p
     if (i < warmup) {
       std::cout << "warmup: skip results\n";
     } else {
-      auto [dur_ms, ops_per_sec, avg, max, min, stddev] = compute_perf(
-        starts, ends, warmup, i, total_scheds);
+      auto [dur_ms, ops_per_sec, avg, max, min, stddev] =
+        compute_perf(starts, ends, warmup, i, total_scheds);
       auto percent = stddev / ops_per_sec * 100;
       std::cout << i + 1 << " " << dur_ms.count() << "ms, throughput: " << std::setprecision(3)
                 << ops_per_sec << ", average: " << avg << ", max: " << max << ", min: " << min
@@ -164,7 +164,7 @@ void my_main(int argc, char** argv, exec::numa_policy* policy = exec::get_numa_p
   for (auto& thread: threads) {
     thread.join();
   }
-  auto [dur_ms, ops_per_sec, avg, max, min, stddev] = compute_perf(
-    starts, ends, warmup, nRuns - 1, total_scheds);
+  auto [dur_ms, ops_per_sec, avg, max, min, stddev] =
+    compute_perf(starts, ends, warmup, nRuns - 1, total_scheds);
   std::cout << avg << " | " << max << " | " << min << " | " << stddev << "\n";
 }

@@ -91,31 +91,30 @@ namespace stdexec {
 
         template <class... _As>
           requires constructible_from<std::tuple<_Values...>, _As...>
-        STDEXEC_MEMFN_DECL(
-          void set_value)(this __t&& __rcvr, _As&&... __as) noexcept {
+        void set_value(_As&&... __as) noexcept {
           try {
-            __rcvr.__values_->emplace(static_cast<_As&&>(__as)...);
+            __values_->emplace(static_cast<_As&&>(__as)...);
           } catch (...) {
-            __rcvr.__state_->__eptr_ = std::current_exception();
+            __state_->__eptr_ = std::current_exception();
           }
-          __rcvr.__state_->__loop_.finish();
+          __state_->__loop_.finish();
         }
 
         template <class _Error>
-        STDEXEC_MEMFN_DECL(void set_error)(this __t&& __rcvr, _Error __err) noexcept {
+        void set_error(_Error __err) noexcept {
           if constexpr (__same_as<_Error, std::exception_ptr>) {
             STDEXEC_ASSERT(__err != nullptr); // std::exception_ptr must not be null.
-            __rcvr.__state_->__eptr_ = static_cast<_Error&&>(__err);
+            __state_->__eptr_ = static_cast<_Error&&>(__err);
           } else if constexpr (__same_as<_Error, std::error_code>) {
-            __rcvr.__state_->__eptr_ = std::make_exception_ptr(std::system_error(__err));
+            __state_->__eptr_ = std::make_exception_ptr(std::system_error(__err));
           } else {
-            __rcvr.__state_->__eptr_ = std::make_exception_ptr(static_cast<_Error&&>(__err));
+            __state_->__eptr_ = std::make_exception_ptr(static_cast<_Error&&>(__err));
           }
-          __rcvr.__state_->__loop_.finish();
+          __state_->__loop_.finish();
         }
 
-        STDEXEC_MEMFN_DECL(void set_stopped)(this __t&& __rcvr) noexcept {
-          __rcvr.__state_->__loop_.finish();
+        void set_stopped() noexcept {
+          __state_->__loop_.finish();
         }
 
         auto get_env() const noexcept -> __env {

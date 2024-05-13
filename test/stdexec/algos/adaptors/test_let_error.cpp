@@ -57,8 +57,8 @@ namespace {
 
   TEST_CASE("let_error simple example reference", "[adaptors][let_error]") {
     bool called{false};
-    auto snd = ex::let_error(
-      ex::split(ex::just_error(std::exception_ptr{})), [&](std::exception_ptr) {
+    auto snd =
+      ex::let_error(ex::split(ex::just_error(std::exception_ptr{})), [&](std::exception_ptr) {
         called = true;
         return ex::just();
       });
@@ -84,10 +84,8 @@ namespace {
 
   TEST_CASE("let_error can be used to produce values (error to value)", "[adaptors][let_error]") {
     ex::sender auto snd =
-      ex::just() //
-      | ex::then([]() -> std::string {
-          throw std::logic_error{"error description"};
-        }) //
+      ex::just()                                                                       //
+      | ex::then([]() -> std::string { throw std::logic_error{"error description"}; }) //
       | ex::let_error([](std::exception_ptr eptr) {
           try {
             std::rethrow_exception(eptr);
@@ -100,12 +98,13 @@ namespace {
   }
 
   TEST_CASE("let_error can be used to transform errors", "[adaptors][let_error]") {
-    ex::sender auto snd = ex::just_error(1) //
-                        | ex::let_error([](int error_code) -> decltype(ex::just_error(std::exception_ptr{})) {
-                            char buf[20];
-                            std::snprintf(buf, 20, "%d", error_code);
-                            throw std::logic_error(buf);
-                          });
+    ex::sender auto snd =
+      ex::just_error(1) //
+      | ex::let_error([](int error_code) -> decltype(ex::just_error(std::exception_ptr{})) {
+          char buf[20];
+          std::snprintf(buf, 20, "%d", error_code);
+          throw std::logic_error(buf);
+        });
 
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
@@ -132,13 +131,12 @@ namespace {
   TEST_CASE("let_error function is not called on regular flow", "[adaptors][let_error]") {
     bool called{false};
     error_scheduler sched;
-    ex::sender auto snd =
-      ex::just()                    //
-      | ex::then([] { return 13; }) //
-      | ex::let_error([&](std::exception_ptr) {
-          called = true;
-          return ex::just(0);
-        });
+    ex::sender auto snd = ex::just()                  //
+                        | ex::then([] { return 13; }) //
+                        | ex::let_error([&](std::exception_ptr) {
+                            called = true;
+                            return ex::just(0);
+                          });
     auto op = ex::connect(std::move(snd), expect_value_receiver{13});
     ex::start(op);
     CHECK_FALSE(called);
@@ -253,13 +251,12 @@ namespace {
     std::atomic<bool> called{false};
     {
       // lunch some work on the thread pool
-      ex::sender auto snd =
-        ex::on(pool.get_scheduler(), ex::just_error(7)) //
-        | ex::let_error(int_err_transform{})            //
-        | ex::then([&](auto x) -> void {
-            CHECK(x == 13);
-            called.store(true);
-          });
+      ex::sender auto snd = ex::on(pool.get_scheduler(), ex::just_error(7)) //
+                          | ex::let_error(int_err_transform{})              //
+                          | ex::then([&](auto x) -> void {
+                              CHECK(x == 13);
+                              called.store(true);
+                            });
       ex::start_detached(std::move(snd));
     }
     // wait for the work to be executed, with timeout

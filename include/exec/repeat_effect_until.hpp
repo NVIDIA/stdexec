@@ -48,9 +48,18 @@ namespace exec {
         using receiver_concept = stdexec::receiver_t;
         __repeat_effect_state<_Sender, _Receiver> *__state_;
 
-        template <__completion_tag _Tag, class... _Args>
-        friend void tag_invoke(_Tag, __t &&__self, _Args &&...__args) noexcept {
-          __self.__state_->__complete(_Tag(), static_cast<_Args &&>(__args)...);
+        template <class... _Args>
+        void set_value(_Args &&...__args) noexcept {
+          __state_->__complete(set_value_t(), static_cast<_Args &&>(__args)...);
+        }
+
+        template <class _Error>
+        void set_error(_Error &&__err) noexcept {
+          __state_->__complete(set_error_t(), static_cast<_Error &&>(__err));
+        }
+
+        void set_stopped() noexcept {
+          __state_->__complete(set_stopped_t());
         }
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {

@@ -41,7 +41,7 @@ namespace exec {
     using __captures_t =
       stdexec::__minvoke<__desc_t, stdexec::__q<stdexec::__detail::__captures_t>>;
 
-    static auto __tag() noexcept -> __tag_t {
+    static constexpr auto __tag() noexcept -> __tag_t {
       return {};
     }
 
@@ -56,13 +56,10 @@ namespace exec {
         static_cast<_Child&&>(__child)...)) {
     }
 
-    template <stdexec::same_as<stdexec::get_env_t> _Tag, stdexec::same_as<__seqexpr> _Self>
-    friend auto tag_invoke(_Tag, const _Self& __self) noexcept //
-      -> stdexec::__msecond<
-        stdexec::__if_c<stdexec::same_as<_Tag, stdexec::get_env_t>>, //
-        decltype(__self.__tag().get_env(__self))> {
-      static_assert(noexcept(__self.__tag().get_env(__self)));
-      return __tag_t::get_env(__self);
+    template <stdexec::same_as<__seqexpr> _Self = __seqexpr>
+    auto get_env() const noexcept -> decltype(_Self::__tag().get_env(*this)) {
+      static_assert(noexcept(_Self::__tag().get_env(*this)));
+      return _Self::__tag().get_env(*this);
     }
 
     template <

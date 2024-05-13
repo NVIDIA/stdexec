@@ -96,9 +96,18 @@ namespace stdexec {
       _Receiver __rcvr_;
       _Scheduler __sched_;
 
-      template <__completion_tag _Tag, same_as<__receiver_with_sched> _Self, class... _As>
-      friend void tag_invoke(_Tag, _Self&& __self, _As&&... __as) noexcept {
-        _Tag()(static_cast<_Receiver&&>(__self.__rcvr_), static_cast<_As&&>(__as)...);
+      template <class... _As>
+      void set_value(_As&&... __as) noexcept {
+        stdexec::set_value(static_cast<_Receiver&&>(__rcvr_), static_cast<_As&&>(__as)...);
+      }
+
+      template <class _Error>
+      void set_error(_Error&& __err) noexcept {
+        stdexec::set_error(static_cast<_Receiver&&>(__rcvr_), static_cast<_Error&&>(__err));
+      }
+
+      void set_stopped() noexcept {
+        stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr_));
       }
 
       auto get_env() const noexcept {

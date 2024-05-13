@@ -52,27 +52,24 @@ namespace stdexec {
 
       template <class... _Us>
         requires constructible_from<__value_or_void_t<_Value>, _Us...>
-      STDEXEC_MEMFN_DECL(
-        void set_value)(this __receiver_base&& __self, _Us&&... __us) noexcept {
+      void set_value(_Us&&... __us) noexcept {
         try {
-          __self.__result_->template emplace<1>(static_cast<_Us&&>(__us)...);
-          __self.__continuation_.resume();
+          __result_->template emplace<1>(static_cast<_Us&&>(__us)...);
+          __continuation_.resume();
         } catch (...) {
-          stdexec::set_error(static_cast<__receiver_base&&>(__self), std::current_exception());
+          stdexec::set_error(static_cast<__receiver_base&&>(*this), std::current_exception());
         }
       }
 
       template <class _Error>
-      STDEXEC_MEMFN_DECL(
-      void set_error)(this __receiver_base&& __self, _Error&& __err) noexcept {
+      void set_error(_Error&& __err) noexcept {
         if constexpr (__decays_to<_Error, std::exception_ptr>)
-          __self.__result_->template emplace<2>(static_cast<_Error&&>(__err));
+          __result_->template emplace<2>(static_cast<_Error&&>(__err));
         else if constexpr (__decays_to<_Error, std::error_code>)
-          __self.__result_->template emplace<2>(std::make_exception_ptr(std::system_error(__err)));
+          __result_->template emplace<2>(std::make_exception_ptr(std::system_error(__err)));
         else
-          __self.__result_->template emplace<2>(
-            std::make_exception_ptr(static_cast<_Error&&>(__err)));
-        __self.__continuation_.resume();
+          __result_->template emplace<2>(std::make_exception_ptr(static_cast<_Error&&>(__err)));
+        __continuation_.resume();
       }
 
       __expected_t<_Value>* __result_;
@@ -86,9 +83,9 @@ namespace stdexec {
       struct __t : __receiver_base<_Value> {
         using __id = __receiver;
 
-        STDEXEC_MEMFN_DECL(void set_stopped)(this __t&& __self) noexcept {
+        void set_stopped() noexcept {
           auto __continuation =
-            __coro::coroutine_handle<_Promise>::from_address(__self.__continuation_.address());
+            __coro::coroutine_handle<_Promise>::from_address(this->__continuation_.address());
           __coro::coroutine_handle<> __stopped_continuation =
             __continuation.promise().unhandled_stopped();
           __stopped_continuation.resume();

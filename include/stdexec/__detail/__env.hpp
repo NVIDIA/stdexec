@@ -314,7 +314,8 @@ namespace stdexec {
     struct get_env_t {
       template <__same_as<get_env_t> _Self, class _EnvProvider>
       STDEXEC_ATTRIBUTE((always_inline))
-      friend auto tag_invoke(_Self, const _EnvProvider& __env_provider) noexcept
+      friend auto
+        tag_invoke(_Self, const _EnvProvider& __env_provider) noexcept
         -> decltype(__env_provider.get_env()) {
         static_assert(noexcept(__env_provider.get_env()), "get_env() members must be noexcept");
         return __env_provider.get_env();

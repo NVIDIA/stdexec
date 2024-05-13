@@ -175,8 +175,7 @@ namespace {
     inline_scheduler sched{};
 
     check_val_types<type_array<type_array<int>>>(ex::transfer(ex::just(1), sched));
-    check_val_types<type_array<type_array<int, double>>>(
-      ex::transfer(ex::just(3, 0.14), sched));
+    check_val_types<type_array<type_array<int, double>>>(ex::transfer(ex::just(3, 0.14), sched));
     check_val_types<type_array<type_array<int, double, std::string>>>(
       ex::transfer(ex::just(3, 0.14, std::string{"pi"}), sched));
   }

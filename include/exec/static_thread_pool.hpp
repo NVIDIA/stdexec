@@ -1155,7 +1155,8 @@ namespace exec {
 
               if (is_last_thread) {
                 if (sh_state.exception_) {
-                  stdexec::set_error(static_cast<Receiver&&>(sh_state.rcvr_), std::move(sh_state.exception_));
+                  stdexec::set_error(
+                    static_cast<Receiver&&>(sh_state.rcvr_), std::move(sh_state.exception_));
                 } else {
                   sh_state.apply(completion);
                 }
@@ -1226,10 +1227,10 @@ namespace exec {
       }
 
       template <class... As>
-      STDEXEC_MEMFN_DECL(void set_value)(this __t&& self, As&&... as) noexcept {
+      void set_value(As&&... as) noexcept {
         using tuple_t = __decayed_tuple<As...>;
 
-        shared_state& state = self.shared_state_;
+        shared_state& state = shared_state_;
 
         if constexpr (MayThrow) {
           try {
@@ -1238,12 +1239,11 @@ namespace exec {
             stdexec::set_error(std::move(state.rcvr_), std::current_exception());
           }
         } else {
-
           state.data_.template emplace<tuple_t>(static_cast<As&&>(as)...);
         }
 
         if (state.shape_) {
-          self.enqueue();
+          enqueue();
         } else {
           state.apply([&](auto&... args) {
             stdexec::set_value(std::move(state.rcvr_), std::move(args)...);
@@ -1252,13 +1252,13 @@ namespace exec {
       }
 
       template <class Error>
-      STDEXEC_MEMFN_DECL(void set_error)(this __t&& self, Error&& error) noexcept {
-        shared_state& state = self.shared_state_;
+      void set_error(Error&& error) noexcept {
+        shared_state& state = shared_state_;
         stdexec::set_error(static_cast<Receiver&&>(state.rcvr_), static_cast<Error&&>(error));
       }
 
-      STDEXEC_MEMFN_DECL(void set_stopped)(this __t&& self) noexcept {
-        shared_state& state = self.shared_state_;
+      void set_stopped() noexcept {
+        shared_state& state = shared_state_;
         stdexec::set_stopped(static_cast<Receiver&&>(state.rcvr_));
       }
 
@@ -1415,21 +1415,17 @@ namespace exec {
           using receiver_concept = receiver_t;
           operation_base_with_receiver<Range, Receiver>* op_;
 
-          template <same_as<__t> Self>
-          STDEXEC_MEMFN_DECL(
-          void set_value)(this Self&& self) noexcept {
-            std::size_t countdown = self.op_->countdown_.fetch_sub(1, std::memory_order_relaxed);
+          void set_value() noexcept {
+            std::size_t countdown = op_->countdown_.fetch_sub(1, std::memory_order_relaxed);
             if (countdown == 1) {
-              stdexec::set_value(static_cast<Receiver&&>(self.op_->rcvr_));
+              stdexec::set_value(static_cast<Receiver&&>(op_->rcvr_));
             }
           }
 
-          template <same_as<__t> Self>
-          STDEXEC_MEMFN_DECL(
-          void set_stopped)(this Self&& self) noexcept {
-            std::size_t countdown = self.op_->countdown_.fetch_sub(1, std::memory_order_relaxed);
+          void set_stopped() noexcept {
+            std::size_t countdown = op_->countdown_.fetch_sub(1, std::memory_order_relaxed);
             if (countdown == 1) {
-              stdexec::set_value(static_cast<Receiver&&>(self.op_->rcvr_));
+              stdexec::set_value(static_cast<Receiver&&>(op_->rcvr_));
             }
           }
 

@@ -107,38 +107,41 @@ namespace exec {
           return stdexec::get_env(__op_->__receiver_);
         }
 
-       private:
-        __final_operation_base<_ResultType, _ReceiverId>* __op_;
-
-        template <__decays_to<__t> _Self>
-        STDEXEC_MEMFN_DECL(void set_value)(this _Self&& __self) noexcept {
+        void set_value() noexcept {
           if constexpr (std::is_nothrow_move_constructible_v<_ResultType>) {
-            _ResultType __result = static_cast<_ResultType&&>(__self.__op_->__result_.__get());
-            __self.__op_->__result_.__destroy();
+            _ResultType __result = static_cast<_ResultType&&>(__op_->__result_.__get());
+            __op_->__result_.__destroy();
             std::visit(
-              __visitor<_Receiver>{static_cast<_Receiver&&>(__self.__op_->__receiver_)},
+              __visitor<_Receiver>{static_cast<_Receiver&&>(__op_->__receiver_)},
               static_cast<_ResultType&&>(__result));
           } else {
             try {
-              _ResultType __result = static_cast<_ResultType&&>(__self.__op_->__result_.__get());
-              __self.__op_->__result_.__destroy();
+              _ResultType __result = static_cast<_ResultType&&>(__op_->__result_.__get());
+              __op_->__result_.__destroy();
               std::visit(
-                __visitor<_Receiver>{static_cast<_Receiver&&>(__self.__op_->__receiver_)},
+                __visitor<_Receiver>{static_cast<_Receiver&&>(__op_->__receiver_)},
                 static_cast<_ResultType&&>(__result));
             } catch (...) {
               stdexec::set_error(
-                static_cast<_Receiver&&>(__self.__op_->__receiver_), std::current_exception());
+                static_cast<_Receiver&&>(__op_->__receiver_), std::current_exception());
             }
           }
         }
 
-        template <__one_of<set_error_t, set_stopped_t> _Tag, __decays_to<__t> _Self, class... _Error>
-          requires __callable<_Tag, _Receiver&&, _Error...>
-        friend void tag_invoke(_Tag __tag, _Self&& __self, _Error&&... __error) noexcept {
-          __self.__op_->__result_.__destroy();
-          __tag(
-            static_cast<_Receiver&&>(__self.__op_->__receiver_), static_cast<_Error&&>(__error)...);
+        template <class _Error>
+        void set_error(_Error&& __error) noexcept {
+          __op_->__result_.__destroy();
+          stdexec::set_error(
+            static_cast<_Receiver&&>(__op_->__receiver_), static_cast<_Error&&>(__error));
         }
+
+        void set_stopped() noexcept {
+          __op_->__result_.__destroy();
+          stdexec::set_stopped(static_cast<_Receiver&&>(__op_->__receiver_));
+        }
+
+       private:
+        __final_operation_base<_ResultType, _ReceiverId>* __op_;
       };
     };
 
@@ -172,21 +175,42 @@ namespace exec {
           : __op_(__op) {
         }
 
+        template <class... _As>
+        void set_value(_As&&... __as) noexcept {
+          try {
+            __op_->__store_result_and_start_next_op(stdexec::set_value, static_cast<_As&&>(__as)...);
+          } catch (...) {
+            stdexec::set_error(
+              static_cast<_Receiver&&>(__op_->__receiver_), std::current_exception());
+          }
+        }
+
+        template <class _Error>
+        void set_error(_Error&& __err) noexcept {
+          try {
+            __op_->__store_result_and_start_next_op(
+              stdexec::set_error, static_cast<_Error&&>(__err));
+          } catch (...) {
+            stdexec::set_error(
+              static_cast<_Receiver&&>(__op_->__receiver_), std::current_exception());
+          }
+        }
+
+        void set_stopped() noexcept {
+          try {
+            __op_->__store_result_and_start_next_op(stdexec::set_stopped);
+          } catch (...) {
+            stdexec::set_error(
+              static_cast<_Receiver&&>(__op_->__receiver_), std::current_exception());
+          }
+        }
+
         auto get_env() const noexcept -> env_of_t<_Receiver> {
           return stdexec::get_env(__op_->__receiver_);
         }
 
        private:
         __base_op_t* __op_;
-
-        template <__completion_tag _Tag, __same_as<__t> _Self, class... _Args>
-        friend void tag_invoke(_Tag __tag, _Self&& __self, _Args&&... __args) noexcept {
-          try {
-            __self.__op_->__store_result_and_start_next_op(__tag, static_cast<_Args&&>(__args)...);
-          } catch (...) {
-            stdexec::set_error(static_cast<_Receiver&&>(__self.__op_->__receiver_), std::current_exception());
-          }
-        }
       };
     };
 

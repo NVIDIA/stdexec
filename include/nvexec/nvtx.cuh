@@ -43,18 +43,32 @@ namespace nvexec {
         operation_state_base_t<ReceiverId>& op_state_;
         std::string name_;
 
-       public:
-        using __id = receiver_t;
-
-        template <__completion_tag Tag, class... As>
-        friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
+        template <class Tag, class... As>
+        void _complete(Tag tag, As&&... as) noexcept {
           if constexpr (Kind == kind::push) {
-            nvtxRangePushA(self.name_.c_str());
+            nvtxRangePushA(name_.c_str());
           } else {
             nvtxRangePop();
           }
 
-          self.op_state_.propagate_completion_signal(tag, static_cast<As&&>(as)...);
+          op_state_.propagate_completion_signal(tag, static_cast<As&&>(as)...);
+        }
+
+       public:
+        using __id = receiver_t;
+
+        template <class... _Args>
+        void set_value(_Args&&... __args) noexcept {
+          _complete(stdexec::set_value, static_cast<_Args&&>(__args)...);
+        }
+
+        template <class _Error>
+        void set_error(_Error&& __error) noexcept {
+          _complete(stdexec::set_error, static_cast<_Error&&>(__error));
+        }
+
+        void set_stopped() noexcept {
+          _complete(stdexec::set_stopped);
         }
 
         auto get_env() const noexcept -> Env {

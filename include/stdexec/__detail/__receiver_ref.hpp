@@ -93,17 +93,17 @@ namespace stdexec { namespace __any_ {
     }
 
     template <class... _As>
-    STDEXEC_MEMFN_DECL(void set_value)(this __receiver_ref&& __self, _As&&... __as) noexcept {
-      (*__self.__vtable_)(__self.__op_state_, set_value_t(), static_cast<_As&&>(__as)...);
+    void set_value(_As&&... __as) noexcept {
+      (*__vtable_)(__op_state_, set_value_t(), static_cast<_As&&>(__as)...);
     }
 
     template <class _Error>
-    STDEXEC_MEMFN_DECL(void set_error)(this __receiver_ref&& __self, _Error&& __err) noexcept {
-      (*__self.__vtable_)(__self.__op_state_, set_error_t(), static_cast<_Error&&>(__err));
+    void set_error(_Error&& __err) noexcept {
+      (*__vtable_)(__op_state_, set_error_t(), static_cast<_Error&&>(__err));
     }
 
-    STDEXEC_MEMFN_DECL(void set_stopped)(this __receiver_ref&& __self) noexcept {
-      (*__self.__vtable_)(__self.__op_state_, set_stopped_t());
+    void set_stopped() noexcept {
+      (*__vtable_)(__op_state_, set_stopped_t());
     }
 
    private:

@@ -31,11 +31,11 @@ namespace {
     auto o3 = ex::connect(ex::just(3), expect_value_receiver(3));
     ex::start(o3);
 
-    auto o4 = ex::connect(
-      ex::just(std::string("this")), expect_value_receiver(std::string("this")));
+    auto o4 =
+      ex::connect(ex::just(std::string("this")), expect_value_receiver(std::string("this")));
     ex::start(o4);
-    auto o5 = ex::connect(
-      ex::just(std::string("that")), expect_value_receiver(std::string("that")));
+    auto o5 =
+      ex::connect(ex::just(std::string("that")), expect_value_receiver(std::string("that")));
     ex::start(o5);
   }
 

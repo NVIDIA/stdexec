@@ -31,80 +31,64 @@ namespace {
   struct recv_value {
     int* target_;
 
-    friend void tag_invoke(ex::set_value_t, recv_value self, int val) noexcept {
-      *self.target_ = val;
+    void set_value(int val) noexcept {
+      *target_ = val;
     }
 
-    friend void tag_invoke(ex::set_error_t, recv_value self, int ec) noexcept {
-      *self.target_ = -ec;
+    void set_error(int ec) noexcept {
+      *target_ = -ec;
     }
 
-    friend void tag_invoke(ex::set_stopped_t, recv_value self) noexcept {
-      *self.target_ = INT_MAX;
-    }
-
-    friend empty_env tag_invoke(ex::get_env_t, const recv_value&) noexcept {
-      return {};
+    void set_stopped() noexcept {
+      *target_ = INT_MAX;
     }
   };
 
   struct recv_rvalref {
     int* target_;
 
-    friend void tag_invoke(ex::set_value_t, recv_rvalref&& self, int val) noexcept {
-      *self.target_ = val;
+    void set_value(int val) noexcept {
+      *target_ = val;
     }
 
-    friend void tag_invoke(ex::set_error_t, recv_rvalref&& self, int ec) noexcept {
-      *self.target_ = -ec;
+    void set_error(int ec) noexcept {
+      *target_ = -ec;
     }
 
-    friend void tag_invoke(ex::set_stopped_t, recv_rvalref&& self) noexcept {
-      *self.target_ = INT_MAX;
-    }
-
-    friend empty_env tag_invoke(ex::get_env_t, const recv_rvalref&) noexcept {
-      return {};
+    void set_stopped() noexcept {
+      *target_ = INT_MAX;
     }
   };
 
   struct recv_ref {
     int* target_;
 
-    friend void tag_invoke(ex::set_value_t, recv_ref& self, int val) noexcept {
-      *self.target_ = val;
+    void set_value(int val) noexcept {
+      *target_ = val;
     }
 
-    friend void tag_invoke(ex::set_error_t, recv_ref& self, int ec) noexcept {
-      *self.target_ = -ec;
+    void set_error(int ec) noexcept {
+      *target_ = -ec;
     }
 
-    friend void tag_invoke(ex::set_stopped_t, recv_ref& self) noexcept {
-      *self.target_ = INT_MAX;
-    }
-
-    friend empty_env tag_invoke(ex::get_env_t, const recv_ref&) noexcept {
-      return {};
+    void set_stopped() noexcept {
+      *target_ = INT_MAX;
     }
   };
 
   struct recv_cref {
     int* target_;
 
-    friend void tag_invoke(ex::set_value_t, const recv_cref& self, int val) noexcept {
-      *self.target_ = val;
+    void set_value(int val) noexcept {
+      *target_ = val;
     }
 
-    friend void tag_invoke(ex::set_error_t, const recv_cref& self, int ec) noexcept {
-      *self.target_ = -ec;
+    void set_error(int ec) noexcept {
+      *target_ = -ec;
     }
 
-    friend void tag_invoke(ex::set_stopped_t, const recv_cref& self) noexcept {
-      *self.target_ = INT_MAX;
-    }
-
-    friend empty_env tag_invoke(ex::get_env_t, const recv_cref&) noexcept {
-      return {};
+    void set_stopped() noexcept {
+      *target_ = INT_MAX;
     }
   };
 
@@ -244,19 +228,19 @@ namespace {
 
   TEST_CASE("set_value can be called through tag_invoke", "[cpo][cpo_receiver]") {
     int val = 0;
-    tag_invoke(ex::set_value, recv_value{&val}, 10);
+    tag_invoke(stdexec::set_value, recv_value{&val}, 10);
     REQUIRE(val == 10);
   }
 
   TEST_CASE("set_error can be called through tag_invoke", "[cpo][cpo_receiver]") {
     int val = 0;
-    tag_invoke(ex::set_error, recv_value{&val}, 10);
+    tag_invoke(stdexec::set_error, recv_value{&val}, 10);
     REQUIRE(val == -10);
   }
 
   TEST_CASE("set_stopped can be called through tag_invoke", "[cpo][cpo_receiver]") {
     int val = 0;
-    tag_invoke(ex::set_stopped, recv_value{&val});
+    tag_invoke(stdexec::set_stopped, recv_value{&val});
     REQUIRE(val == INT_MAX);
   }
 

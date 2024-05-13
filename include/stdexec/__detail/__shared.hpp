@@ -169,22 +169,22 @@ namespace stdexec {
 
         template <class... _As>
         STDEXEC_ATTRIBUTE((always_inline))
-        STDEXEC_MEMFN_DECL(
-          void set_value)(this __t&& __self, _As&&... __as) noexcept {
-          __self.__sh_state_->__complete(set_value_t(), static_cast<_As&&>(__as)...);
+        void
+          set_value(_As&&... __as) noexcept {
+          __sh_state_->__complete(set_value_t(), static_cast<_As&&>(__as)...);
         }
 
         template <class _Error>
         STDEXEC_ATTRIBUTE((always_inline))
-        STDEXEC_MEMFN_DECL(
-          void set_error)(this __t&& __self, _Error&& __err) noexcept {
-          __self.__sh_state_->__complete(set_error_t(), static_cast<_Error&&>(__err));
+        void
+          set_error(_Error&& __err) noexcept {
+          __sh_state_->__complete(set_error_t(), static_cast<_Error&&>(__err));
         }
 
         STDEXEC_ATTRIBUTE((always_inline))
-        STDEXEC_MEMFN_DECL(
-          void set_stopped)(this __t&& __self) noexcept {
-          __self.__sh_state_->__complete(set_stopped_t());
+        void
+          set_stopped() noexcept {
+          __sh_state_->__complete(set_stopped_t());
         }
 
         auto get_env() const noexcept -> const __env_t<_Env>& {

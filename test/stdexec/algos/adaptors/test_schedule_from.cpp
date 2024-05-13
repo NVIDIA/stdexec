@@ -193,9 +193,7 @@ namespace {
       ex::schedule_from(sched, ex::just(3, 0.14, std::string{"pi"})));
   }
 
-  TEST_CASE(
-    "schedule_from keeps error_types from scheduler's sender",
-    "[adaptors][schedule_from]") {
+  TEST_CASE("schedule_from keeps error_types from scheduler's sender", "[adaptors][schedule_from]") {
     inline_scheduler sched1{};
     error_scheduler sched2{};
     error_scheduler<int> sched3{43};
@@ -247,8 +245,8 @@ namespace {
     typename exec::any_receiver_ref<stdexec::completion_signatures<Ts...>>::template any_sender<>;
 
   TEST_CASE("schedule_from can handle any_sender", "[adaptors][schedule_from]") {
-    auto snd = stdexec::schedule_from(
-      inline_scheduler{}, any_sender_of<ex::set_value_t(int)>(ex::just(3)));
+    auto snd =
+      stdexec::schedule_from(inline_scheduler{}, any_sender_of<ex::set_value_t(int)>(ex::just(3)));
     auto op = ex::connect(std::move(snd), expect_value_receiver(3));
     ex::start(op);
   }

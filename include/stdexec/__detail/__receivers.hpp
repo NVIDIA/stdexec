@@ -34,6 +34,22 @@ namespace stdexec {
       template <class _Fn, class... _Args>
       using __f = __minvoke<_Fn, _Args...>;
 
+      template <__same_as<set_value_t> _Self, class _Receiver, class... _As>
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
+      friend auto
+        tag_invoke(_Self, _Receiver&& __rcvr, _As&&... __as) noexcept
+        -> decltype(static_cast<_Receiver&&>(__rcvr).set_value(static_cast<_As&&>(__as)...)) {
+        static_assert(
+          noexcept(static_cast<_Receiver&&>(__rcvr).set_value(static_cast<_As&&>(__as)...)),
+          "set_value member functions must be noexcept");
+        static_assert(
+          __same_as<
+            decltype(static_cast<_Receiver&&>(__rcvr).set_value(static_cast<_As&&>(__as)...)),
+            void>,
+          "set_value member functions must return void");
+        static_cast<_Receiver&&>(__rcvr).set_value(static_cast<_As&&>(__as)...);
+      }
+
       template <class _Receiver, class... _As>
         requires tag_invocable<set_value_t, _Receiver, _As...>
       STDEXEC_ATTRIBUTE((host, device, always_inline))
@@ -41,7 +57,7 @@ namespace stdexec {
         operator()(_Receiver&& __rcvr, _As&&... __as) const noexcept {
         static_assert(nothrow_tag_invocable<set_value_t, _Receiver, _As...>);
         (void) tag_invoke(
-          set_value_t{}, static_cast<_Receiver&&>(__rcvr), static_cast<_As&&>(__as)...);
+          stdexec::set_value_t{}, static_cast<_Receiver&&>(__rcvr), static_cast<_As&&>(__as)...);
       }
     };
 
@@ -50,6 +66,22 @@ namespace stdexec {
         requires(sizeof...(_Args) == 1)
       using __f = __minvoke<_Fn, _Args...>;
 
+      template <__same_as<set_error_t> _Self, class _Receiver, class _Error>
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
+      friend auto
+        tag_invoke(_Self, _Receiver&& __rcvr, _Error&& __err) noexcept
+        -> decltype(static_cast<_Receiver&&>(__rcvr).set_error(static_cast<_Error&&>(__err))) {
+        static_assert(
+          noexcept(static_cast<_Receiver&&>(__rcvr).set_error(static_cast<_Error&&>(__err))),
+          "set_error member functions must be noexcept");
+        static_assert(
+          __same_as<
+            decltype(static_cast<_Receiver&&>(__rcvr).set_error(static_cast<_Error&&>(__err))),
+            void>,
+          "set_error member functions must return void");
+        static_cast<_Receiver&&>(__rcvr).set_error(static_cast<_Error&&>(__err));
+      }
+
       template <class _Receiver, class _Error>
         requires tag_invocable<set_error_t, _Receiver, _Error>
       STDEXEC_ATTRIBUTE((host, device, always_inline))
@@ -57,7 +89,7 @@ namespace stdexec {
         operator()(_Receiver&& __rcvr, _Error&& __err) const noexcept {
         static_assert(nothrow_tag_invocable<set_error_t, _Receiver, _Error>);
         (void) tag_invoke(
-          set_error_t{}, static_cast<_Receiver&&>(__rcvr), static_cast<_Error&&>(__err));
+          stdexec::set_error_t{}, static_cast<_Receiver&&>(__rcvr), static_cast<_Error&&>(__err));
       }
     };
 
@@ -66,13 +98,27 @@ namespace stdexec {
         requires(sizeof...(_Args) == 0)
       using __f = __minvoke<_Fn, _Args...>;
 
+      template <__same_as<set_stopped_t> _Self, class _Receiver>
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
+      friend auto
+        tag_invoke(_Self, _Receiver&& __rcvr) noexcept
+        -> decltype(static_cast<_Receiver&&>(__rcvr).set_stopped()) {
+        static_assert(
+          noexcept(static_cast<_Receiver&&>(__rcvr).set_stopped()),
+          "set_stopped member functions must be noexcept");
+        static_assert(
+          __same_as<decltype(static_cast<_Receiver&&>(__rcvr).set_stopped()), void>,
+          "set_stopped member functions must return void");
+        static_cast<_Receiver&&>(__rcvr).set_stopped();
+      }
+
       template <class _Receiver>
         requires tag_invocable<set_stopped_t, _Receiver>
       STDEXEC_ATTRIBUTE((host, device, always_inline))
       void
         operator()(_Receiver&& __rcvr) const noexcept {
         static_assert(nothrow_tag_invocable<set_stopped_t, _Receiver>);
-        (void) tag_invoke(set_stopped_t{}, static_cast<_Receiver&&>(__rcvr));
+        (void) tag_invoke(stdexec::set_stopped_t{}, static_cast<_Receiver&&>(__rcvr));
       }
     };
   } // namespace __rcvrs

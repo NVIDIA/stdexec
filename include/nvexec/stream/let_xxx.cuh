@@ -104,36 +104,50 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         template <__one_of<_Let> _Tag, class... _As>
           requires __minvocable<__result_sender<_Fun>, _As...>
                 && sender_to<__minvoke<__result_sender<_Fun>, _As...>, _PropagateReceiver>
-        friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
+        void __complete(_Tag, _As&&... __as) noexcept {
           using result_sender_t = __minvoke<__result_sender<_Fun>, _As...>;
           using op_state_t = __minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
 
-          cudaStream_t stream = __self.__op_state_->get_stream();
+          cudaStream_t stream = __op_state_->get_stream();
           result_sender_t* result_sender =
-            static_cast<result_sender_t*>(__self.__op_state_->temp_storage_);
+            static_cast<result_sender_t*>(__op_state_->temp_storage_);
           kernel_with_result<_As&&...><<<1, 1, 0, stream>>>(
-            std::move(__self.__op_state_->__fun_), result_sender, static_cast<_As&&>(__as)...);
+            std::move(__op_state_->__fun_), result_sender, static_cast<_As&&>(__as)...);
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
               status == cudaSuccess) {
-            __self.__op_state_->defer_temp_storage_destruction(result_sender);
-            auto& __op = __self.__op_state_->__op_state3_.template emplace<op_state_t>(__conv{[&] {
+            __op_state_->defer_temp_storage_destruction(result_sender);
+            auto& __op = __op_state_->__op_state3_.template emplace<op_state_t>(__conv{[&] {
               return connect(
                 std::move(*result_sender),
                 stdexec::__t<propagate_receiver_t<_ReceiverId>>{
-                  {}, static_cast<operation_state_base_t<_ReceiverId>&>(*__self.__op_state_)});
+                  {}, static_cast<operation_state_base_t<_ReceiverId>&>(*__op_state_)});
             }});
             stdexec::start(__op);
           } else {
-            __self.__op_state_->propagate_completion_signal(stdexec::set_error, std::move(status));
+            __op_state_->propagate_completion_signal(stdexec::set_error, std::move(status));
           }
         }
 
-        template <__completion_tag _Tag, class... _As>
+        template <class _Tag, class... _As>
           requires __none_of<_Tag, _Let> && __callable<_Tag, _Receiver, _As...>
-        friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
+        void __complete(_Tag, _As&&... __as) noexcept {
           static_assert(__nothrow_callable<_Tag, _Receiver, _As...>);
-          __self.__op_state_->propagate_completion_signal(_Tag(), static_cast<_As&&>(__as)...);
+          __op_state_->propagate_completion_signal(_Tag(), static_cast<_As&&>(__as)...);
+        }
+
+        template <class... _Args>
+        void set_value(_Args &&...__args) noexcept {
+          __complete(set_value_t(), static_cast<_Args &&>(__args)...);
+        }
+
+        template <class _Error>
+        void set_error(_Error &&__err) noexcept {
+          __complete(set_error_t(), static_cast<_Error &&>(__err));
+        }
+
+        void set_stopped() noexcept {
+          __complete(set_stopped_t());
         }
 
         auto get_env() const noexcept -> _Env {

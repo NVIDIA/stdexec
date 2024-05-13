@@ -52,25 +52,28 @@ namespace nvexec {
 
           template <class... As>
             requires std::invocable<Fun, cudaStream_t, As&...>
-          STDEXEC_MEMFN_DECL(
-            void set_value)(this __t&& self, As&&... as) noexcept {
-            cudaStream_t stream = self.op_state_.get_stream();
-            launch_params p = self.params_;
+          void set_value(As&&... as) noexcept {
+            cudaStream_t stream = op_state_.get_stream();
+            launch_params p = params_;
             kernel<As&...><<<p.grid_size, p.block_size, p.shared_memory, stream>>>(
-              std::move(self.fun_), stream, as...);
+              std::move(fun_), stream, as...);
 
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
-              self.op_state_.propagate_completion_signal(
+              op_state_.propagate_completion_signal(
                 stdexec::set_value, static_cast<As&&>(as)...);
             } else {
-              self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+              op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
           }
 
-          template <__one_of<set_error_t, set_stopped_t> Tag, class... As>
-          friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
-            self.op_state_.propagate_completion_signal(tag, static_cast<As&&>(as)...);
+          template <class Error>
+          void set_error(Error&& err) noexcept {
+            op_state_.propagate_completion_signal(set_error_t(), static_cast<Error&&>(err));
+          }
+
+          void set_stopped() noexcept {
+            op_state_.propagate_completion_signal(set_stopped_t());
           }
 
           auto get_env() const noexcept -> typename operation_state_base_t<ReceiverId>::env_t {

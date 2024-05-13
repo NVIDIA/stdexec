@@ -674,28 +674,25 @@ namespace exec {
             stdexec::get_stop_token(stdexec::get_env(__rcvr))} {
         }
 
-        template <same_as<__ref> _Self, class... _As>
+        template <class... _As>
           requires __one_of<set_value_t(_As...), _Sigs...>
-        STDEXEC_MEMFN_DECL(
-          void set_value)(this _Self&& __self, _As&&... __as) noexcept {
-          const __any_::__rcvr_vfun<set_value_t(_As...)>* __vfun = __self.__env_.__vtable_;
-          (*__vfun->__complete_)(__self.__env_.__rcvr_, static_cast<_As&&>(__as)...);
+        void set_value(_As&&... __as) noexcept {
+          const __any_::__rcvr_vfun<set_value_t(_As...)>* __vfun = __env_.__vtable_;
+          (*__vfun->__complete_)(__env_.__rcvr_, static_cast<_As&&>(__as)...);
         }
 
-        template <same_as<__ref> _Self, class _Error>
+        template <class _Error>
           requires __one_of<set_error_t(_Error), _Sigs...>
-        STDEXEC_MEMFN_DECL(
-          void set_error)(this _Self&& __self, _Error&& __err) noexcept {
-          const __any_::__rcvr_vfun<set_error_t(_Error)>* __vfun = __self.__env_.__vtable_;
-          (*__vfun->__complete_)(__self.__env_.__rcvr_, static_cast<_Error&&>(__err));
+        void set_error(_Error&& __err) noexcept {
+          const __any_::__rcvr_vfun<set_error_t(_Error)>* __vfun = __env_.__vtable_;
+          (*__vfun->__complete_)(__env_.__rcvr_, static_cast<_Error&&>(__err));
         }
 
-        template <same_as<__ref> _Self>
+        void set_stopped() noexcept
           requires __one_of<set_stopped_t(), _Sigs...>
-        STDEXEC_MEMFN_DECL(
-          void set_stopped)(this _Self&& __self) noexcept {
-          const __any_::__rcvr_vfun<set_stopped_t()>* __vfun = __self.__env_.__vtable_;
-          (*__vfun->__complete_)(__self.__env_.__rcvr_);
+        {
+          const __any_::__rcvr_vfun<set_stopped_t()>* __vfun = __env_.__vtable_;
+          (*__vfun->__complete_)(__env_.__rcvr_);
         }
 
         auto get_env() const noexcept -> const __env_t& {
@@ -753,28 +750,25 @@ namespace exec {
           : __env_{__create_vtable(__mtype<__vtable_t>{}, __mtype<_Rcvr>{}), &__rcvr} {
         }
 
-        template <same_as<__ref> _Self, class... _As>
+        template <class... _As>
           requires __one_of<set_value_t(_As...), _Sigs...>
-        STDEXEC_MEMFN_DECL(
-          void set_value)(this _Self&& __self, _As&&... __as) noexcept {
-          const __any_::__rcvr_vfun<set_value_t(_As...)>* __vfun = __self.__env_.__vtable_;
-          (*__vfun->__complete_)(__self.__env_.__rcvr_, static_cast<_As&&>(__as)...);
+        void set_value(_As&&... __as) noexcept {
+          const __any_::__rcvr_vfun<set_value_t(_As...)>* __vfun = __env_.__vtable_;
+          (*__vfun->__complete_)(__env_.__rcvr_, static_cast<_As&&>(__as)...);
         }
 
-        template <same_as<__ref> _Self, class _Error>
+        template <class _Error>
           requires __one_of<set_error_t(_Error), _Sigs...>
-        STDEXEC_MEMFN_DECL(
-          void set_error)(this _Self&& __self, _Error&& __err) noexcept {
-          const __any_::__rcvr_vfun<set_error_t(_Error)>* __vfun = __self.__env_.__vtable_;
-          (*__vfun->__complete_)(__self.__env_.__rcvr_, static_cast<_Error&&>(__err));
+        void set_error(_Error&& __err) noexcept {
+          const __any_::__rcvr_vfun<set_error_t(_Error)>* __vfun = __env_.__vtable_;
+          (*__vfun->__complete_)(__env_.__rcvr_, static_cast<_Error&&>(__err));
         }
 
-        template <same_as<__ref> _Self>
+        void set_stopped() noexcept
           requires __one_of<set_stopped_t(), _Sigs...>
-        STDEXEC_MEMFN_DECL(
-          void set_stopped)(this _Self&& __self) noexcept {
-          const __any_::__rcvr_vfun<set_stopped_t()>* __vfun = __self.__env_.__vtable_;
-          (*__vfun->__complete_)(__self.__env_.__rcvr_);
+        {
+          const __any_::__rcvr_vfun<set_stopped_t()>* __vfun = __env_.__vtable_;
+          (*__vfun->__complete_)(__env_.__rcvr_);
         }
 
         auto get_env() const noexcept -> const __env_t& {
@@ -843,30 +837,26 @@ namespace exec {
           return exec::set_next(__self.__op_->__rcvr_, static_cast<_Item&&>(__item));
         }
 
-        template <same_as<__t> _Self, class... _Args>
-          requires __callable<set_value_t, _Receiver&&, _Args...>
-        STDEXEC_MEMFN_DECL(
-          void set_value)(this _Self&& __self, _Args&&... __args) noexcept {
-          __self.__op_->__on_stop_.reset();
+        template <class... _Args>
+          requires __callable<set_value_t, _Receiver, _Args...>
+        void set_value(_Args&&... __args) noexcept {
+          __op_->__on_stop_.reset();
           stdexec::set_value(
-            static_cast<_Receiver&&>(__self.__op_->__rcvr_), static_cast<_Args&&>(__args)...);
+            static_cast<_Receiver&&>(__op_->__rcvr_), static_cast<_Args&&>(__args)...);
         }
 
-        template <same_as<__t> _Self, class _Error>
-          requires __callable<set_error_t, _Receiver&&, _Error>
-        STDEXEC_MEMFN_DECL(
-          void set_error)(this _Self&& __self, _Error&& __err) noexcept {
-          __self.__op_->__on_stop_.reset();
-          stdexec::set_error(
-            static_cast<_Receiver&&>(__self.__op_->__rcvr_), static_cast<_Error&&>(__err));
+        template <class _Error>
+          requires __callable<set_error_t, _Receiver, _Error>
+        void set_error(_Error&& __err) noexcept {
+          __op_->__on_stop_.reset();
+          stdexec::set_error(static_cast<_Receiver&&>(__op_->__rcvr_), static_cast<_Error&&>(__err));
         }
 
-        template <same_as<__t> _Self>
-          requires __callable<set_stopped_t, _Receiver&&>
-        STDEXEC_MEMFN_DECL(
-          void set_stopped)(this _Self&& __self) noexcept {
-          __self.__op_->__on_stop_.reset();
-          stdexec::set_stopped(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
+        void set_stopped() noexcept
+          requires __callable<set_stopped_t, _Receiver>
+        {
+          __op_->__on_stop_.reset();
+          stdexec::set_stopped(static_cast<_Receiver&&>(__op_->__rcvr_));
         }
 
         auto get_env() const noexcept -> __env_t<env_of_t<_Receiver>> {
@@ -1148,15 +1138,6 @@ namespace exec {
     using __env_t = stdexec::env_of_t<__receiver_base>;
     __receiver_base __receiver_;
 
-    template <class _Tag, stdexec::__decays_to<any_receiver_ref> Self, class... _As>
-      requires stdexec::tag_invocable<_Tag, stdexec::__copy_cvref_t<Self, __receiver_base>, _As...>
-    friend auto tag_invoke(_Tag, Self&& __self, _As&&... __as) //
-      noexcept(
-        stdexec::nothrow_tag_invocable<_Tag, stdexec::__copy_cvref_t<Self, __receiver_base>, _As...>) {
-      return stdexec::tag_invoke(
-        _Tag{}, static_cast<Self&&>(__self).__receiver_, static_cast<_As&&>(__as)...);
-    }
-
    public:
     using receiver_concept = stdexec::receiver_t;
     using __t = any_receiver_ref;
@@ -1168,6 +1149,34 @@ namespace exec {
     any_receiver_ref(_Receiver& __receiver) //
       noexcept(stdexec::__nothrow_constructible_from<__receiver_base, _Receiver>)
       : __receiver_(__receiver) {
+    }
+
+    template <class... _As>
+      requires stdexec::tag_invocable<stdexec::set_value_t, __receiver_base, _As...>
+    void set_value(_As&&... __as) noexcept {
+      stdexec::tag_invoke(
+        stdexec::set_value,
+        static_cast<__receiver_base&&>(__receiver_),
+        static_cast<_As&&>(__as)...);
+    }
+
+    template <class _Error>
+      requires stdexec::tag_invocable<stdexec::set_error_t, __receiver_base, _Error>
+    void set_error(_Error&& __err) noexcept {
+      stdexec::tag_invoke(
+        stdexec::set_error,
+        static_cast<__receiver_base&&>(__receiver_),
+        static_cast<_Error&&>(__err));
+    }
+
+    void set_stopped() noexcept
+      requires stdexec::tag_invocable<stdexec::set_stopped_t, __receiver_base>
+    {
+      stdexec::tag_invoke(stdexec::set_stopped, static_cast<__receiver_base&&>(__receiver_));
+    }
+
+    auto get_env() const noexcept -> stdexec::env_of_t<__receiver_base> {
+      return stdexec::get_env(__receiver_);
     }
 
     template <auto... _SenderQueries>

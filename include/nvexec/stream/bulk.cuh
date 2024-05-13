@@ -48,18 +48,17 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using __id = receiver_t;
 
         template <class... As>
-        STDEXEC_MEMFN_DECL(void set_value)(this __t&& self, As&&... as) noexcept
           requires __callable<Fun, Shape&, As&...>
-        {
-          operation_state_base_t<ReceiverId>& op_state = self.op_state_;
+        void set_value(As&&... as) noexcept {
+          operation_state_base_t<ReceiverId>& op_state = op_state_;
 
-          if (self.shape_) {
+          if (shape_) {
             cudaStream_t stream = op_state.get_stream();
             constexpr int block_threads = 256;
             const int grid_blocks =
-              (static_cast<int>(self.shape_) + block_threads - 1) / block_threads;
+              (static_cast<int>(shape_) + block_threads - 1) / block_threads;
             kernel<block_threads, As&...>
-              <<<grid_blocks, block_threads, 0, stream>>>(self.shape_, std::move(self.f_), as...);
+              <<<grid_blocks, block_threads, 0, stream>>>(shape_, std::move(f_), as...);
           }
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
@@ -69,9 +68,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
         }
 
-        template <__one_of<set_error_t, set_stopped_t> Tag, class... As>
-        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          self.op_state_.propagate_completion_signal(Tag(), static_cast<As&&>(as)...);
+        template <class Error>
+        void set_error(Error&& err) noexcept {
+          op_state_.propagate_completion_signal(set_error_t(), static_cast<Error&&>(err));
+        }
+
+        void set_stopped() noexcept {
+          op_state_.propagate_completion_signal(set_stopped_t());
         }
 
         auto get_env() const noexcept -> Env {
@@ -181,65 +184,66 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using __id = receiver_t;
 
         template <class... As>
-        STDEXEC_MEMFN_DECL(void set_value)(this __t&& self, As&&... as) noexcept
           requires __callable<Fun, Shape, As&...>
-        {
-          operation_t<CvrefSenderId, ReceiverId, Shape, Fun>& op_state = self.op_state_;
-
+        void set_value(As&&... as) noexcept {
           // TODO Manage errors
           // TODO Usual logic when there's only a single GPU
-          cudaStream_t baseline_stream = op_state.get_stream();
-          cudaEventRecord(op_state.ready_to_launch_, baseline_stream);
+          cudaStream_t baseline_stream = op_state_.get_stream();
+          cudaEventRecord(op_state_.ready_to_launch_, baseline_stream);
 
-          if (self.shape_) {
+          if (shape_) {
             constexpr int block_threads = 256;
-            for (int dev = 0; dev < op_state.num_devices_; dev++) {
-              if (op_state.current_device_ != dev) {
-                cudaStream_t stream = op_state.streams_[dev];
-                auto [begin, end] = even_share(self.shape_, dev, op_state.num_devices_);
+            for (int dev = 0; dev < op_state_.num_devices_; dev++) {
+              if (op_state_.current_device_ != dev) {
+                cudaStream_t stream = op_state_.streams_[dev];
+                auto [begin, end] = even_share(shape_, dev, op_state_.num_devices_);
                 auto shape = static_cast<int>(end - begin);
                 const int grid_blocks = (shape + block_threads - 1) / block_threads;
 
                 if (begin < end) {
                   cudaSetDevice(dev);
-                  cudaStreamWaitEvent(stream, op_state.ready_to_launch_, 0);
+                  cudaStreamWaitEvent(stream, op_state_.ready_to_launch_, 0);
                   kernel<block_threads, As&...>
-                    <<<grid_blocks, block_threads, 0, stream>>>(begin, end, self.f_, as...);
-                  cudaEventRecord(op_state.ready_to_complete_[dev], op_state.streams_[dev]);
+                    <<<grid_blocks, block_threads, 0, stream>>>(begin, end, f_, as...);
+                  cudaEventRecord(op_state_.ready_to_complete_[dev], op_state_.streams_[dev]);
                 }
               }
             }
 
             {
-              const int dev = op_state.current_device_;
+              const int dev = op_state_.current_device_;
               cudaSetDevice(dev);
-              auto [begin, end] = even_share(self.shape_, dev, op_state.num_devices_);
+              auto [begin, end] = even_share(shape_, dev, op_state_.num_devices_);
               auto shape = static_cast<int>(end - begin);
               const int grid_blocks = (shape + block_threads - 1) / block_threads;
 
               if (begin < end) {
                 kernel<block_threads, As&...>
-                  <<<grid_blocks, block_threads, 0, baseline_stream>>>(begin, end, self.f_, as...);
+                  <<<grid_blocks, block_threads, 0, baseline_stream>>>(begin, end, f_, as...);
               }
             }
 
-            for (int dev = 0; dev < op_state.num_devices_; dev++) {
-              if (dev != op_state.current_device_) {
-                cudaStreamWaitEvent(baseline_stream, op_state.ready_to_complete_[dev], 0);
+            for (int dev = 0; dev < op_state_.num_devices_; dev++) {
+              if (dev != op_state_.current_device_) {
+                cudaStreamWaitEvent(baseline_stream, op_state_.ready_to_complete_[dev], 0);
               }
             }
           }
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
-            op_state.propagate_completion_signal(stdexec::set_value, static_cast<As&&>(as)...);
+            op_state_.propagate_completion_signal(stdexec::set_value, static_cast<As&&>(as)...);
           } else {
-            op_state.propagate_completion_signal(stdexec::set_error, std::move(status));
+            op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
           }
         }
 
-        template <__one_of<set_error_t, set_stopped_t> Tag, class... As>
-        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          self.op_state_.propagate_completion_signal(Tag(), static_cast<As&&>(as)...);
+        template <class _Error>
+        void set_error(_Error &&__err) noexcept {
+          op_state_.propagate_completion_signal(set_error_t(), static_cast<_Error &&>(__err));
+        }
+
+        void set_stopped() noexcept {
+          op_state_.propagate_completion_signal(set_stopped_t());
         }
 
         auto get_env() const noexcept -> env_of_t<Receiver> {

@@ -86,28 +86,32 @@ namespace exec {
         using receiver_concept = stdexec::receiver_t;
         __item_operation_base<_ItemReceiver, _ResultVariant>* __op_;
 
-        template <same_as<__t> _Self, class... _Args>
-        STDEXEC_MEMFN_DECL(void set_value)(this _Self&& __self, [[maybe_unused]] _Args&&... __args) noexcept {
+        template <class... _Args>
+        void set_value([[maybe_unused]] _Args&&... __args) noexcept {
           // ignore incoming values
-          stdexec::set_value(static_cast<_ItemReceiver&&>(__self.__op_->__receiver_));
+          stdexec::set_value(static_cast<_ItemReceiver&&>(__op_->__receiver_));
         }
 
-        template <same_as<set_error_t> _Tag, same_as<__t> _Self, class _Error>
-          requires __variant_emplaceable<_ResultVariant, __decayed_tuple<_Tag, _Error>, _Tag, _Error>
-                && __callable<stdexec::set_stopped_t, _ItemReceiver&&>
-        friend void tag_invoke(_Tag, _Self&& __self, _Error&& __error) noexcept {
+        template <class _Error>
+          requires __variant_emplaceable<
+                     _ResultVariant,
+                     __decayed_tuple<set_error_t, _Error>,
+                     set_error_t,
+                     _Error>
+                && __callable<stdexec::set_stopped_t, _ItemReceiver>
+        void set_error(_Error&& __error) noexcept {
           // store error and signal stop
-          __self.__op_->__result_->__emplace(_Tag{}, static_cast<_Error&&>(__error));
-          stdexec::set_stopped(static_cast<_ItemReceiver&&>(__self.__op_->__receiver_));
+          __op_->__result_->__emplace(set_error_t(), static_cast<_Error&&>(__error));
+          stdexec::set_stopped(static_cast<_ItemReceiver&&>(__op_->__receiver_));
         }
 
-        template <same_as<set_stopped_t> _Tag, same_as<__t> _Self>
-          requires __variant_emplaceable<_ResultVariant, __decayed_tuple<_Tag>, _Tag>
-                && __callable<_Tag, _ItemReceiver&&>
-        friend void tag_invoke(_Tag, _Self&& __self) noexcept {
+        void set_stopped() noexcept
+          requires __variant_emplaceable<_ResultVariant, __decayed_tuple<set_stopped_t>, set_stopped_t>
+                && __callable<set_stopped_t, _ItemReceiver>
+        {
           // stop without error
-          __self.__op_->__result_->__emplace(_Tag{});
-          stdexec::set_stopped(static_cast<_ItemReceiver&&>(__self.__op_->__receiver_));
+          __op_->__result_->__emplace(set_stopped_t());
+          stdexec::set_stopped(static_cast<_ItemReceiver&&>(__op_->__receiver_));
         }
 
         auto get_env() const noexcept -> env_of_t<_ItemReceiver> {
@@ -117,22 +121,17 @@ namespace exec {
     };
 
     template <class _Sender, class _ItemReceiver, class _ResultVariant>
-    struct __item_operation : __item_operation_base<_ItemReceiver, _ResultVariant> {
+    struct __item_operation {
       using __base_type = __item_operation_base<_ItemReceiver, _ResultVariant>;
       using __item_receiver_t = stdexec::__t<__item_receiver<_ItemReceiver, _ResultVariant>>;
 
       struct __t : __base_type {
+        using __id = __item_operation;
         connect_result_t<_Sender, __item_receiver_t> __op_;
 
-        __t(
-          __result_type<_ResultVariant>* __parent,
-          _Sender&& __sndr,
-          _ItemReceiver __rcvr) //
-
-          //
-          noexcept(
-            __nothrow_decay_copyable<_ItemReceiver> //
-            && __nothrow_connectable<_Sender, __item_receiver_t>)
+        __t(__result_type<_ResultVariant>* __parent, _Sender&& __sndr, _ItemReceiver __rcvr) noexcept(
+          __nothrow_decay_copyable<_ItemReceiver>
+          && __nothrow_connectable<_Sender, __item_receiver_t>)
           : __base_type{static_cast<_ItemReceiver&&>(__rcvr), __parent}
           , __op_{stdexec::connect(static_cast<_Sender&&>(__sndr), __item_receiver_t{this})} {
         }
@@ -193,20 +192,18 @@ namespace exec {
           return {static_cast<_Item&&>(__item), __self.__op_};
         }
 
-        template <same_as<__t> _Self>
-        STDEXEC_MEMFN_DECL(void set_value)(this _Self&& __self) noexcept {
-          __self.__op_->__visit_result(static_cast<_Receiver&&>(__self.__op_->__receiver_));
+        void set_value() noexcept {
+          __op_->__visit_result(static_cast<_Receiver&&>(__op_->__receiver_));
         }
 
-        template <same_as<__t> _Self>
-        STDEXEC_MEMFN_DECL(void set_stopped)(this _Self&& __self) noexcept {
-          stdexec::set_stopped(static_cast<_Receiver&&>(__self.__op_->__receiver_));
-        }
-
-        template <same_as<__t> _Self, class _Error>
-        STDEXEC_MEMFN_DECL(void set_error)(this _Self&& __self, _Error&& error) noexcept {
+        template <class _Error>
+        void set_error(_Error&& error) noexcept {
           stdexec::set_error(
-            static_cast<_Receiver&&>(__self.__op_->__receiver_), static_cast<_Error&&>(error));
+            static_cast<_Receiver&&>(__op_->__receiver_), static_cast<_Error&&>(error));
+        }
+
+        void set_stopped() noexcept {
+          stdexec::set_stopped(static_cast<_Receiver&&>(__op_->__receiver_));
         }
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {

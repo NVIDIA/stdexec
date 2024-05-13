@@ -243,31 +243,30 @@ namespace {
 
     check_val_types<type_array<type_array<>>>(ex::when_all(ex::just()));
 
-    check_val_types<type_array<type_array<int, double>>>(
-      ex::when_all(ex::just(3), ex::just(0.14)));
+    check_val_types<type_array<type_array<int, double>>>(ex::when_all(ex::just(3), ex::just(0.14)));
     check_val_types<type_array<type_array<int, double, int, double>>>( //
-      ex::when_all(                                                            //
-        ex::just(3),                                                           //
-        ex::just(0.14),                                                        //
-        ex::just(1, 0.4142)                                                    //
-        )                                                                      //
+      ex::when_all(                                                    //
+        ex::just(3),                                                   //
+        ex::just(0.14),                                                //
+        ex::just(1, 0.4142)                                            //
+        )                                                              //
     );
 
     // if one child returns void, then the value is simply missing
     check_val_types<type_array<type_array<int, double>>>( //
-      ex::when_all(                                           //
-        ex::just(3),                                          //
-        ex::just(),                                           //
-        ex::just(0.14)                                        //
-        )                                                     //
+      ex::when_all(                                       //
+        ex::just(3),                                      //
+        ex::just(),                                       //
+        ex::just(0.14)                                    //
+        )                                                 //
     );
 
     // if children send references, they get decayed
     check_val_types<type_array<type_array<int, double>>>( //
-      ex::when_all(                                           //
-        ex::split(ex::just(3)),                               //
-        ex::split(ex::just(0.14))                             //
-        )                                                     //
+      ex::when_all(                                       //
+        ex::split(ex::just(3)),                           //
+        ex::split(ex::just(0.14))                         //
+        )                                                 //
     );
   }
 
@@ -277,22 +276,21 @@ namespace {
 
     check_err_types<type_array<>>(ex::when_all(ex::just()));
 
-    check_err_types<type_array<int, double>>(
-      ex::when_all(ex::just_error(3), ex::just_error(0.14)));
+    check_err_types<type_array<int, double>>(ex::when_all(ex::just_error(3), ex::just_error(0.14)));
     check_err_types<type_array<int, double, std::string>>( //
-      ex::when_all(                                              //
-        ex::just_error(3),                                       //
-        ex::just_error(0.14),                                    //
-        ex::just_error(std::string{"err"})                       //
-        )                                                        //
+      ex::when_all(                                        //
+        ex::just_error(3),                                 //
+        ex::just_error(0.14),                              //
+        ex::just_error(std::string{"err"})                 //
+        )                                                  //
     );
 
     check_err_types<type_array<std::exception_ptr>>( //
-      ex::when_all(                                    //
-        ex::just(13),                                  //
-        ex::just_error(std::exception_ptr{}),          //
-        ex::just_stopped()                             //
-        )                                              //
+      ex::when_all(                                  //
+        ex::just(13),                                //
+        ex::just_error(std::exception_ptr{}),        //
+        ex::just_stopped()                           //
+        )                                            //
     );
   }
 

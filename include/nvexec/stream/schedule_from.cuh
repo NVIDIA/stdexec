@@ -45,21 +45,21 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         operation_state_base_t<ReceiverId>& operation_state_;
 
-        template <__completion_tag Tag, class... As>
-        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
+        template <class Tag, class... As>
+        void complete(Tag, As&&... as) noexcept {
           using tuple_t = decayed_tuple<Tag, As...>;
 
           // As an optimization, if there are no values to persist to temporary
           // storage, skip it and simply propagate the completion signal.
           if constexpr (sizeof...(As) == 0) {
-            self.operation_state_.propagate_completion_signal(Tag());
+            operation_state_.propagate_completion_signal(Tag());
           } else {
             // If there are values in the completion channel, we have to construct
             // the temporary storage. If the values are trivially copyable, we launch
             // a kernel and construct the temporary storage on the device to avoid managed
             // memory movements. Otherwise, we construct the temporary storage on the host
             // and prefetch it to the device.
-            storage_t* storage = static_cast<storage_t*>(self.operation_state_.temp_storage_);
+            storage_t* storage = static_cast<storage_t*>(operation_state_.temp_storage_);
             constexpr bool construct_on_device = trivially_copyable<__decay_t<As>...>;
 
             if constexpr (!construct_on_device) {
@@ -70,7 +70,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             int dev_id{};
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaGetDevice(&dev_id));
                 status != cudaSuccess) {
-              self.operation_state_.propagate_completion_signal(
+              operation_state_.propagate_completion_signal(
                 stdexec::set_error, std::move(status));
               return;
             }
@@ -79,18 +79,18 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaDeviceGetAttribute(
                   &concurrent_managed_access, cudaDevAttrConcurrentManagedAccess, dev_id));
                 status != cudaSuccess) {
-              self.operation_state_.propagate_completion_signal(
+              operation_state_.propagate_completion_signal(
                 stdexec::set_error, std::move(status));
               return;
             }
 
-            cudaStream_t stream = self.operation_state_.get_stream();
+            cudaStream_t stream = operation_state_.get_stream();
 
             if (concurrent_managed_access) {
               if (cudaError_t status = STDEXEC_DBG_ERR(
                     cudaMemPrefetchAsync(storage, sizeof(storage_t), dev_id, stream));
                   status != cudaSuccess) {
-                self.operation_state_.propagate_completion_signal(
+                operation_state_.propagate_completion_signal(
                   stdexec::set_error, std::move(status));
                 return;
               }
@@ -101,13 +101,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
               if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                   status != cudaSuccess) {
-                self.operation_state_.propagate_completion_signal(
+                operation_state_.propagate_completion_signal(
                   stdexec::set_error, std::move(status));
                 return;
               }
             }
 
-            self.operation_state_.defer_temp_storage_destruction(storage);
+            operation_state_.defer_temp_storage_destruction(storage);
 
             unsigned int index = storage_t::template index_of<tuple_t>::value;
 
@@ -115,13 +115,27 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               [&](auto& tpl) noexcept {
                 ::cuda::std::apply(
                   [&]<class Tag2, class... Bs>(Tag2, Bs&... tas) noexcept {
-                    self.operation_state_.propagate_completion_signal(Tag2(), std::move(tas)...);
+                    operation_state_.propagate_completion_signal(Tag2(), std::move(tas)...);
                   },
                   tpl);
               },
               *storage,
               index);
           }
+        }
+
+        template <class... _Args>
+        void set_value(_Args &&...__args) noexcept {
+          complete(set_value_t(), static_cast<_Args &&>(__args)...);
+        }
+
+        template <class _Error>
+        void set_error(_Error &&__err) noexcept {
+          complete(set_error_t(), static_cast<_Error &&>(__err));
+        }
+
+        void set_stopped() noexcept {
+          complete(set_stopped_t());
         }
 
         auto get_env() const noexcept -> Env {
@@ -169,7 +183,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     struct __env {
       context_state_t context_state_;
 
-      template <__one_of<set_value_t, set_stopped_t, set_error_t> _Tag>
+      template <class _Tag>
       Scheduler query(get_completion_scheduler_t<_Tag>) const noexcept {
         return {context_state_};
       }

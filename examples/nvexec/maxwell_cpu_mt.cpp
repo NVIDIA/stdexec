@@ -20,22 +20,21 @@
 #include "maxwell/cpp.cuh"
 
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
-#include "maxwell/cuda.cuh"
+#  include "maxwell/cuda.cuh"
 #endif
 
 int main(int argc, char *argv[]) {
   auto params = parse_cmd(argc, argv);
 
   if (value(params, "help") || value(params, "h")) {
-    std::cout
-      << "Usage: " << argv[0] << " [OPTION]...\n"
-      << "\t--write-vtk\n"
-      << "\t--iterations\n"
-      << "\t--run-std\n"
-      << "\t--run-stdpar\n"
-      << "\t--run-thread-pool-scheduler\n"
-      << "\t--N\n"
-      << std::endl;
+    std::cout << "Usage: " << argv[0] << " [OPTION]...\n"
+              << "\t--write-vtk\n"
+              << "\t--iterations\n"
+              << "\t--run-std\n"
+              << "\t--run-stdpar\n"
+              << "\t--run-thread-pool-scheduler\n"
+              << "\t--N\n"
+              << std::endl;
     return 0;
   }
 

@@ -172,14 +172,26 @@ namespace exec {
           return __env::__join(std::move(__token), stdexec::get_env(__op_->__receiver_));
         }
 
+        template <class... _Args>
+          requires __result_constructible_from<_ResultVariant, set_value_t, _Args...>
+        void set_value(_Args&&... __args) noexcept {
+          __op_->notify(set_value_t(), static_cast<_Args&&>(__args)...);
+        }
+
+        template <class _Error>
+          requires __result_constructible_from<_ResultVariant, set_error_t, _Error>
+        void set_error(_Error&& __err) noexcept {
+          __op_->notify(set_error_t(), static_cast<_Error&&>(__err));
+        }
+
+        void set_stopped() noexcept
+          requires __result_constructible_from<_ResultVariant, set_stopped_t>
+        {
+          __op_->notify(set_stopped_t());
+        }
+
        private:
         __op_base<_Receiver, _ResultVariant>* __op_;
-
-        template <__completion_tag _CPO, class... _Args>
-          requires __result_constructible_from<_ResultVariant, _CPO, _Args...>
-        friend void tag_invoke(_CPO, __t&& __self, _Args&&... __args) noexcept {
-          __self.__op_->notify(_CPO{}, static_cast<_Args&&>(__args)...);
-        }
       };
     };
 

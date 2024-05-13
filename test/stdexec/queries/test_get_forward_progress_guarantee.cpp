@@ -106,8 +106,8 @@ namespace {
       return false;
     }
 
-    constexpr auto query(ex::get_forward_progress_guarantee_t) const noexcept
-      -> ex::forward_progress_guarantee {
+    constexpr auto
+      query(ex::get_forward_progress_guarantee_t) const noexcept -> ex::forward_progress_guarantee {
       return fpg;
     }
   };

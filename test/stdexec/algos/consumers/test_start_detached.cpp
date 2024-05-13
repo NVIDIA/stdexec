@@ -110,10 +110,6 @@ namespace {
     friend void tag_invoke(ex::start_detached_t, custom_sender sndr) {
       *sndr.called = true;
     }
-
-    friend empty_env tag_invoke(ex::get_env_t, const custom_sender&) noexcept {
-      return {};
-    }
   };
 
   struct custom_scheduler {
@@ -213,23 +209,23 @@ namespace {
     ex::run_loop loop;
     auto sch = loop.get_scheduler();
     auto snd = ex::get_scheduler() | ex::let_value([](auto sched) {
-      static_assert(ex::same_as<decltype(sched), ex::run_loop::__scheduler>);
-      return ex::on(sched, ex::just());
-    });
+                 static_assert(ex::same_as<decltype(sched), ex::run_loop::__scheduler>);
+                 return ex::on(sched, ex::just());
+               });
     ex::start_detached(ex::v2::on(sch, std::move(snd)));
     loop.finish();
     loop.run();
   }
 
-  struct env {};
+  struct env { };
 
   TEST_CASE("exec::on can be passed to start_detached with env", "[adaptors][exec::on]") {
     ex::run_loop loop;
     auto sch = loop.get_scheduler();
     auto snd = ex::get_scheduler() | ex::let_value([](auto sched) {
-      static_assert(ex::same_as<decltype(sched), ex::run_loop::__scheduler>);
-      return ex::on(sched, ex::just());
-    });
+                 static_assert(ex::same_as<decltype(sched), ex::run_loop::__scheduler>);
+                 return ex::on(sched, ex::just());
+               });
     ex::start_detached(ex::v2::on(sch, std::move(snd)), env{});
     loop.finish();
     loop.run();

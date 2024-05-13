@@ -69,8 +69,8 @@ namespace {
    private:
     my_system_scheduler_impl scheduler_{};
 
-    static __exec_system_scheduler_interface* __get_scheduler_impl(
-      __exec_system_context_interface* __self) noexcept {
+    static __exec_system_scheduler_interface*
+      __get_scheduler_impl(__exec_system_context_interface* __self) noexcept {
       return &static_cast<my_system_context_impl*>(__self)->scheduler_;
     }
   };

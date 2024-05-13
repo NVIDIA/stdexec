@@ -214,8 +214,8 @@ TEST_CASE("simple bulk chaining on system context", "[types][system_scheduler]")
     return pool_id;
   });
 
-  auto bulk_snd = ex::bulk(
-    std::move(snd), num_tasks, [&](unsigned long id, std::thread::id propagated_pool_id) {
+  auto bulk_snd =
+    ex::bulk(std::move(snd), num_tasks, [&](unsigned long id, std::thread::id propagated_pool_id) {
       propagated_pool_ids[id] = propagated_pool_id;
       pool_ids[id] = std::this_thread::get_id();
     });
@@ -287,8 +287,8 @@ struct my_system_context_impl : __exec_system_context_interface {
  private:
   my_system_scheduler_impl scheduler_{};
 
-  static __exec_system_scheduler_interface* __get_scheduler_impl(
-    __exec_system_context_interface* __self) noexcept {
+  static __exec_system_scheduler_interface*
+    __get_scheduler_impl(__exec_system_context_interface* __self) noexcept {
     return &static_cast<my_system_context_impl*>(__self)->scheduler_;
   }
 };

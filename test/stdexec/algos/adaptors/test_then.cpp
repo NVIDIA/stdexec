@@ -75,9 +75,7 @@ namespace {
 
   TEST_CASE("then can throw, and set_error will be called", "[adaptors][then]") {
     auto snd = ex::just(13) //
-             | ex::then([](int) -> int {
-                 throw std::logic_error{"err"};
-               });
+             | ex::then([](int) -> int { throw std::logic_error{"err"}; });
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
   }
@@ -151,8 +149,9 @@ namespace {
   TEST_CASE("then has the values_type corresponding to the given values", "[adaptors][then]") {
     check_val_types<type_array<type_array<int>>>(ex::just() | ex::then([] { return 7; }));
     check_val_types<type_array<type_array<double>>>(ex::just() | ex::then([] { return 3.14; }));
-    check_val_types<type_array<type_array<std::string>>>(
-      ex::just() | ex::then([] { return std::string{"hello"}; }));
+    check_val_types<type_array<type_array<std::string>>>(ex::just() | ex::then([] {
+                                                           return std::string{"hello"};
+                                                         }));
   }
 
   TEST_CASE("then keeps error_types from input sender", "[adaptors][then]") {

@@ -245,10 +245,10 @@ namespace tbbexec {
             }
 
             template <class... As>
-            STDEXEC_MEMFN_DECL(void set_value)(this __t&& self, As&&... as) noexcept {
+            void set_value(As&&... as) noexcept {
               using tuple_t = stdexec::__decayed_tuple<As...>;
 
-              shared_state& state = self.shared_state_;
+              shared_state& state = shared_state_;
 
               if constexpr (MayThrow) {
                 try {
@@ -261,7 +261,7 @@ namespace tbbexec {
               }
 
               if (state.shape_) {
-                self.enqueue();
+                enqueue();
               } else {
                 state.apply([&](auto&... args) {
                   stdexec::set_value(std::move(state.rcvr_), std::move(args)...);
@@ -269,10 +269,15 @@ namespace tbbexec {
               }
             }
 
-            template <stdexec::__one_of<stdexec::set_error_t, stdexec::set_stopped_t> Tag, class... As>
-            friend void tag_invoke(Tag tag, __t&& self, As&&... as) noexcept {
-              shared_state& state = self.shared_state_;
-              tag(static_cast<Receiver&&>(state.rcvr_), static_cast<As&&>(as)...);
+            template <class Error>
+            void set_error(Error&& err) noexcept {
+              shared_state& state = shared_state_;
+              stdexec::set_error(static_cast<Receiver&&>(state.rcvr_), static_cast<Error&&>(err));
+            }
+
+            void set_stopped() noexcept {
+              shared_state& state = shared_state_;
+              stdexec::set_stopped(static_cast<Receiver&&>(state.rcvr_));
             }
 
             auto get_env() const noexcept -> stdexec::env_of_t<Receiver> {
@@ -384,17 +389,13 @@ namespace tbbexec {
 
             template <stdexec::__forwarding_query Tag, class... As>
               requires stdexec::__callable<Tag, const Sender&, As...>
-            friend auto tag_invoke(Tag tag, const __t& self, As&&... as) //
-              noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>)
-                -> stdexec::__msecond<
-                  stdexec::__if_c<stdexec::__forwarding_query<Tag>>,
-                  stdexec::__call_result_t<Tag, const Sender&, As...>> {
-              return static_cast<Tag&&>(tag)(self.sndr_, static_cast<As&&>(as)...);
+            auto query(Tag, As&&... as) const
+              noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>) -> decltype(auto) {
+              return Tag()(sndr_, static_cast<As&&>(as)...);
             }
 
-            template <stdexec::same_as<stdexec::get_env_t> Tag>
-            friend auto tag_invoke(Tag, const __t& self) noexcept -> const __t& {
-              return self;
+            auto get_env() const noexcept -> const __t& {
+              return *this;
             }
           };
         };

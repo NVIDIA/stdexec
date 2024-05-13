@@ -48,41 +48,45 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         constexpr static std::size_t memory_allocation_size = MemoryAllocationSize;
 
+        template <class... _Args>
+        void set_value(_Args &&...__args) noexcept {
+          op_state_.propagate_completion_signal(set_value_t(), static_cast<_Args &&>(__args)...);
+        }
+
         template <class Error>
-        STDEXEC_MEMFN_DECL(void set_error)(this __t&& self, Error&& error) noexcept
           requires std::invocable<Fun, Error>
+        void set_error(Error&& error) noexcept
         {
           using result_t = std::invoke_result_t<Fun, Error>;
           constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
-          cudaStream_t stream = self.op_state_.get_stream();
+          cudaStream_t stream = op_state_.get_stream();
 
           if constexpr (does_not_return_a_value) {
-            kernel<Error&&><<<1, 1, 0, stream>>>(std::move(self.f_), static_cast<Error&&>(error));
+            kernel<Error&&><<<1, 1, 0, stream>>>(std::move(f_), static_cast<Error&&>(error));
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
-              self.op_state_.propagate_completion_signal(stdexec::set_value);
+              op_state_.propagate_completion_signal(stdexec::set_value);
             } else {
-              self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+              op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
           } else {
             using decayed_result_t = __decay_t<result_t>;
             decayed_result_t* d_result = static_cast<decayed_result_t*>(
-              self.op_state_.temp_storage_);
+              op_state_.temp_storage_);
             kernel_with_result<Error&&>
-              <<<1, 1, 0, stream>>>(std::move(self.f_), d_result, static_cast<Error&&>(error));
+              <<<1, 1, 0, stream>>>(std::move(f_), d_result, static_cast<Error&&>(error));
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
-              self.op_state_.defer_temp_storage_destruction(d_result);
-              self.op_state_.propagate_completion_signal(stdexec::set_value, std::move(*d_result));
+              op_state_.defer_temp_storage_destruction(d_result);
+              op_state_.propagate_completion_signal(stdexec::set_value, std::move(*d_result));
             } else {
-              self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+              op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
           }
         }
 
-        template <__one_of<set_value_t, set_stopped_t> Tag, class... As>
-        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          self.op_state_.propagate_completion_signal(Tag(), static_cast<As&&>(as)...);
+        void set_stopped() noexcept {
+          op_state_.propagate_completion_signal(set_stopped_t());
         }
 
         auto get_env() const noexcept -> env_t {

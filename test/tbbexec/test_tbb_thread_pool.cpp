@@ -141,15 +141,18 @@ namespace {
     tbbexec::tbb_thread_pool tbb_pool;
     exec::static_thread_pool other_pool(1);
     {
-      CHECK_THROWS(stdexec::sync_wait(
-        on(tbb_pool.get_scheduler(), just(0)) | then([](auto) { throw std::exception(); })));
-      CHECK_THROWS(stdexec::sync_wait(
-        on(other_pool.get_scheduler(), just(0)) | then([](auto) { throw std::exception(); })));
+      CHECK_THROWS(stdexec::sync_wait(on(tbb_pool.get_scheduler(), just(0)) | then([](auto) {
+                                        throw std::exception();
+                                      })));
+      CHECK_THROWS(stdexec::sync_wait(on(other_pool.get_scheduler(), just(0)) | then([](auto) {
+                                        throw std::exception();
+                                      })));
     }
     // Ensure it still works normally after exceptions:
     {
-      auto tbb_result = stdexec::sync_wait(
-        on(tbb_pool.get_scheduler(), just(0)) | then([](auto i) { return i + 1; }));
+      auto tbb_result = stdexec::sync_wait(on(tbb_pool.get_scheduler(), just(0)) | then([](auto i) {
+                                             return i + 1;
+                                           }));
       CHECK(tbb_result.has_value());
       auto other_result = stdexec::sync_wait(
         on(other_pool.get_scheduler(), just(0)) | then([](auto i) { return i + 1; }));

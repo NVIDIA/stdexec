@@ -62,8 +62,8 @@ namespace {
   TEST_CASE("bulk keeps values_type from input sender", "[adaptors][bulk]") {
     constexpr int n = 42;
     check_val_types<type_array<type_array<>>>(ex::just() | ex::bulk(n, [](int) {}));
-    check_val_types<type_array<type_array<double>>>(
-      ex::just(4.2) | ex::bulk(n, [](int, double) {}));
+    check_val_types<type_array<type_array<double>>>(ex::just(4.2) | ex::bulk(n, [](int, double) {
+                                                    }));
     check_val_types<type_array<type_array<double, std::string>>>(
       ex::just(4.2, std::string{}) | ex::bulk(n, [](int, double, std::string) {}));
   }
@@ -210,8 +210,8 @@ namespace {
                  | ex::bulk(n, [&counter](std::size_t idx) { counter[idx]++; });
         stdexec::sync_wait(std::move(snd));
 
-        const std::size_t actual = static_cast<std::size_t>(
-          std::count(counter.begin(), counter.end(), 1));
+        const std::size_t actual =
+          static_cast<std::size_t>(std::count(counter.begin(), counter.end(), 1));
         const std::size_t expected = n;
 
         CHECK(expected == actual);
@@ -239,8 +239,8 @@ namespace {
 
         CHECK(val == 42);
 
-        const std::size_t actual = static_cast<std::size_t>(
-          std::count(counter.begin(), counter.end(), 1));
+        const std::size_t actual =
+          static_cast<std::size_t>(std::count(counter.begin(), counter.end(), 1));
         const std::size_t expected = n;
 
         CHECK(expected == actual);
@@ -306,8 +306,8 @@ namespace {
       stdexec::sync_wait(std::move(snd));
 
       // All the work should not have run on the same thread
-      const std::size_t actual = static_cast<std::size_t>(
-        std::count(tids.begin(), tids.end(), tids[0]));
+      const std::size_t actual =
+        static_cast<std::size_t>(std::count(tids.begin(), tids.end(), tids[0]));
       const std::size_t wrong = tids.size();
 
       CHECK(actual != wrong);
@@ -331,8 +331,8 @@ namespace {
       stdexec::sync_wait(stdexec::on(sch, std::move(snd)));
 
       // All the work should not have run on the same thread
-      const std::size_t actual = static_cast<std::size_t>(
-        std::count(tids.begin(), tids.end(), tids[0]));
+      const std::size_t actual =
+        static_cast<std::size_t>(std::count(tids.begin(), tids.end(), tids[0]));
       const std::size_t wrong = tids.size();
 
       CHECK(actual != wrong);
