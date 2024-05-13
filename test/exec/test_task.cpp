@@ -65,8 +65,7 @@ namespace {
     co_await reschedule_coroutine_on(scheduler2); // Transition to context2
     CHECK(get_id() == id2);                       // Now we are in context2
     // Child task inherits context2
-    co_await test_stickiness_for_two_single_thread_contexts_nested(
-      scheduler1, scheduler2, id1, id2);
+    co_await test_stickiness_for_two_single_thread_contexts_nested(scheduler1, scheduler2, id1, id2);
     CHECK(get_id() == id2); // Child task is done, we are still in context2
   }                         // Reschedules back to context1
 
@@ -146,14 +145,12 @@ namespace {
       schedule(scheduler2) | then([] { __thread_id = 2; })));
     auto id1 = 1;
     auto id2 = 2;
-    auto t = test_stickiness_for_two_single_thread_contexts_with_sender(
-      scheduler1, scheduler2, id1, id2);
+    auto t =
+      test_stickiness_for_two_single_thread_contexts_with_sender(scheduler1, scheduler2, id1, id2);
     sync_wait(std::move(t));
   }
 
-  TEST_CASE(
-    "Test stickiness with two single threads with sender with on",
-    "[types][sticky][task]") {
+  TEST_CASE("Test stickiness with two single threads with sender with on", "[types][sticky][task]") {
     single_thread_context context1;
     single_thread_context context2;
     scheduler auto scheduler1 = context1.get_scheduler();
@@ -165,8 +162,7 @@ namespace {
     auto id2 = 2;
     auto t = on(
       scheduler1,
-      test_stickiness_for_two_single_thread_contexts_with_sender_(
-        scheduler1, scheduler2, id1, id2));
+      test_stickiness_for_two_single_thread_contexts_with_sender_(scheduler1, scheduler2, id1, id2));
     sync_wait(std::move(t) | then([&] { CHECK(get_id() == id1); }));
   }
 

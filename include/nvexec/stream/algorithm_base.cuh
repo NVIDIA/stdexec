@@ -70,13 +70,17 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       constexpr static ::std::size_t memory_allocation_size = max_result_size::value;
 
       template <class Range>
-      STDEXEC_MEMFN_DECL(void set_value)(this __t&& self, Range&& range) noexcept {
-        DerivedReceiver::set_value_impl(static_cast<__t&&>(self), static_cast<Range&&>(range));
+      void set_value(Range&& range) noexcept {
+        DerivedReceiver::set_value_impl(static_cast<__t&&>(*this), static_cast<Range&&>(range));
       }
 
-      template <__one_of<set_error_t, set_stopped_t> Tag, class... As>
-      friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-        self.op_state_.propagate_completion_signal(Tag(), static_cast<As&&>(as)...);
+      template <class Error>
+      void set_error(Error&& err) noexcept {
+        op_state_.propagate_completion_signal(set_error_t(), static_cast<Error&&>(err));
+      }
+
+      void set_stopped() noexcept {
+        op_state_.propagate_completion_signal(set_stopped_t());
       }
 
       auto get_env() const noexcept -> env_of_t<Receiver> {

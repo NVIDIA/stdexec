@@ -47,11 +47,7 @@ namespace {
       return just();
     }
 
-    friend void tag_invoke(set_value_t, count_set_next_receiver_t&&) noexcept {
-    }
-
-    friend empty_env tag_invoke(get_env_t, const count_set_next_receiver_t&) noexcept {
-      return {};
+    void set_value() noexcept {
     }
   };
 

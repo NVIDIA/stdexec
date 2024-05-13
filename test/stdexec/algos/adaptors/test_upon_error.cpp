@@ -109,14 +109,13 @@ namespace {
       using S = decltype(s);
       static_assert(ex::sender<S>);
       using completion_sigs = decltype(ex::get_completion_signatures(s, ex::empty_env{}));
-      static_assert(
-        std::same_as<
-          completion_sigs,
-          ex::completion_signatures<
-            ex::set_error_t(std::exception_ptr),
-            ex::set_value_t(Error1),
-            ex::set_value_t(Error2),
-            ex::set_value_t(Error4)>>);
+      static_assert(std::same_as<
+                    completion_sigs,
+                    ex::completion_signatures<
+                      ex::set_error_t(std::exception_ptr),
+                      ex::set_value_t(Error1),
+                      ex::set_value_t(Error2),
+                      ex::set_value_t(Error4)>>);
     }
 
     {
@@ -138,13 +137,12 @@ namespace {
       using S = decltype(s);
       static_assert(ex::sender<S>);
       using completion_sigs = decltype(ex::get_completion_signatures(s, ex::empty_env{}));
-      static_assert(
-        std::same_as<
-          completion_sigs,
-          ex::completion_signatures<
-            ex::set_error_t(std::exception_ptr),
-            ex::set_value_t(double),
-            ex::set_value_t(int)>>);
+      static_assert(std::same_as<
+                    completion_sigs,
+                    ex::completion_signatures<
+                      ex::set_error_t(std::exception_ptr),
+                      ex::set_value_t(double),
+                      ex::set_value_t(int)>>);
     }
   }
 } // namespace

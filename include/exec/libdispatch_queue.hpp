@@ -446,39 +446,35 @@ namespace exec {
     }
 
     template <class... As>
-    STDEXEC_MEMFN_DECL(void set_value)(this __t &&self, As &&...as) noexcept {
+    void set_value(As &&...as) noexcept {
       using tuple_t = stdexec::__decayed_tuple<As...>;
-
-      shared_state &state = self.shared_state_;
 
       if constexpr (MayThrow) {
         try {
-          state.data_.template emplace<tuple_t>(std::move(as)...);
+          shared_state_.data_.template emplace<tuple_t>(std::move(as)...);
         } catch (...) {
-          stdexec::set_error(std::move(state.rcvr_), std::current_exception());
+          stdexec::set_error(std::move(shared_state_.rcvr_), std::current_exception());
         }
       } else {
-        state.data_.template emplace<tuple_t>(std::move(as)...);
+        shared_state_.data_.template emplace<tuple_t>(std::move(as)...);
       }
 
-      if (state.shape_) {
-        self.enqueue();
+      if (shared_state_.shape_) {
+        enqueue();
       } else {
-        state.apply([&](auto &...args) {
-          stdexec::set_value(std::move(state.rcvr_), std::move(args)...);
+        shared_state_.apply([&](auto &...args) {
+          stdexec::set_value(std::move(shared_state_.rcvr_), std::move(args)...);
         });
       }
     }
 
     template <class Error>
-    STDEXEC_MEMFN_DECL(void set_error)(this __t &&self, Error &&error) noexcept {
-      shared_state &state = self.shared_state_;
-      stdexec::set_error(std::move(state.rcvr_), static_cast<Error &&>(error));
+    void set_error(Error &&error) noexcept {
+      stdexec::set_error(std::move(shared_state_.rcvr_), static_cast<Error &&>(error));
     }
 
-    STDEXEC_MEMFN_DECL(void set_stopped)(this __t &&self) noexcept {
-      shared_state &state = self.shared_state_;
-      stdexec::set_stopped(std::move(state.rcvr_));
+    void set_stopped() noexcept {
+      stdexec::set_stopped(std::move(shared_state_.rcvr_));
     }
 
     auto get_env() const noexcept -> stdexec::env_of_t<Receiver> {

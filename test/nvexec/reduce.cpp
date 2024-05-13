@@ -15,9 +15,7 @@ namespace ex = stdexec;
 
 namespace {
 
-  TEST_CASE(
-    "nvexec reduce returns a sender with single input",
-    "[cuda][stream][adaptors][reduce]") {
+  TEST_CASE("nvexec reduce returns a sender with single input", "[cuda][stream][adaptors][reduce]") {
     constexpr int N = 2048;
     int input[N] = {};
     std::fill_n(input, N, 1);

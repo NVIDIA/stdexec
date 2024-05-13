@@ -29,8 +29,8 @@ namespace {
     };
     auto sender = stdexec::transfer_just(sch, std::move(data)) | stdexec::then(add);
 
-    auto completion_scheduler = stdexec::get_completion_scheduler<stdexec::set_value_t>(
-      stdexec::get_env(sender));
+    auto completion_scheduler =
+      stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sender));
 
     CHECK(completion_scheduler == sch);
     auto [res] = stdexec::sync_wait(sender).value();
@@ -54,8 +54,8 @@ namespace {
                 | stdexec::bulk(size, expensive_computation)   //
                 | stdexec::then(add);
 
-    auto completion_scheduler = stdexec::get_completion_scheduler<stdexec::set_value_t>(
-      stdexec::get_env(sender));
+    auto completion_scheduler =
+      stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sender));
 
     CHECK(completion_scheduler == sch);
     auto [res] = stdexec::sync_wait(sender).value();

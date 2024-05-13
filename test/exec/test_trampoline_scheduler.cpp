@@ -45,9 +45,9 @@ namespace {
 
       friend void tag_invoke(start_t, operation& self) noexcept {
         if (self.counter_ == 0) {
-          set_value(static_cast<Receiver&&>(self.rcvr_));
+          stdexec::set_value(static_cast<Receiver&&>(self.rcvr_));
         } else {
-          set_error(static_cast<Receiver&&>(self.rcvr_), try_again{});
+          stdexec::set_error(static_cast<Receiver&&>(self.rcvr_), try_again{});
         }
       }
     };

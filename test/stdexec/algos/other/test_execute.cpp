@@ -39,9 +39,7 @@ namespace {
     CHECK(called);
   }
 
-  TEST_CASE(
-    "execute works with schedulers that need to be triggered manually",
-    "[other][execute]") {
+  TEST_CASE("execute works with schedulers that need to be triggered manually", "[other][execute]") {
     impulse_scheduler sched;
     bool called{false};
     ex::execute(sched, [&] { called = true; });

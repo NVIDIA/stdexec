@@ -35,19 +35,28 @@ namespace exec {
           : __upstream_{static_cast<_Receiver&&>(__upstream)} {
         }
 
+        template <class... _As>
+        void set_value(_As&&... __as) noexcept {
+          stdexec::set_value(
+            static_cast<_Receiver&&>(__upstream_), set_value_t(), static_cast<_As&&>(__as)...);
+        }
+
+        template <class _Error>
+        void set_error(_Error __err) noexcept {
+          stdexec::set_value(
+            static_cast<_Receiver&&>(__upstream_), set_error_t(), static_cast<_Error&&>(__err));
+        }
+
+        void set_stopped() noexcept {
+          stdexec::set_value(static_cast<_Receiver&&>(__upstream_), set_stopped_t());
+        }
+
         auto get_env() const noexcept -> env_of_t<_Receiver> {
           return stdexec::get_env(__upstream_);
         }
 
        private:
         _Receiver __upstream_;
-
-        template <__completion_tag _Tag, __decays_to<__t> _Self, class... _Args>
-          requires tag_invocable<set_value_t, _Receiver&&, _Tag, _Args...>
-        friend void tag_invoke(_Tag, _Self&& __self, _Args&&... __args) noexcept {
-          set_value(
-            static_cast<_Receiver&&>(__self.__upstream_), _Tag{}, static_cast<_Args&&>(__args)...);
-        }
       };
     };
 
@@ -66,9 +75,6 @@ namespace exec {
         __t(_Sndr&& __sender)
           : __sender_{static_cast<_Sndr&&>(__sender)} {
         }
-
-        //  private:
-        _Sender __sender_;
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
@@ -100,6 +106,9 @@ namespace exec {
         STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env) -> __completion_signatures_for_t<_Env> {
           return {};
         }
+
+       private:
+        _Sender __sender_;
       };
     };
 
@@ -135,28 +144,27 @@ namespace exec {
           : __upstream_{static_cast<_Receiver&&>(__upstream)} {
         }
 
-       private:
-        _Receiver __upstream_;
-
-        template <
-          same_as<set_value_t> _Tag,
-          __completion_tag _Tag2,
-          __decays_to<__t> _Self,
-          class... _Args>
-          requires tag_invocable<_Tag2, _Receiver&&, _Args...>
-        friend void tag_invoke(_Tag, _Self&& __self, _Tag2 tag2, _Args&&... __args) noexcept {
-          tag2(static_cast<_Receiver&&>(__self.__upstream_), static_cast<_Args&&>(__args)...);
+        template <__completion_tag _Tag, class... _Args>
+          requires tag_invocable<_Tag, _Receiver&&, _Args...>
+        void set_value(_Tag, _Args&&... __args) noexcept {
+          _Tag()(static_cast<_Receiver&&>(__upstream_), static_cast<_Args&&>(__args)...);
         }
 
-        template <__one_of<set_stopped_t, set_error_t> _Tag, __decays_to<__t> _Self, class... _Args>
-          requires tag_invocable<_Tag, _Receiver&&, _Args...>
-        friend void tag_invoke(_Tag tag, _Self&& __self, _Args&&... __args) noexcept {
-          tag(static_cast<_Receiver&&>(__self.__upstream_), static_cast<_Args&&>(__args)...);
+        template <class Error>
+        void set_error(Error&& err) noexcept {
+          stdexec::set_error(static_cast<_Receiver&&>(__upstream_), static_cast<Error&&>(err));
+        }
+
+        void set_stopped() noexcept {
+          stdexec::set_stopped(static_cast<_Receiver&&>(__upstream_));
         }
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {
           return stdexec::get_env(__upstream_);
         }
+
+       private:
+        _Receiver __upstream_;
       };
     };
 
@@ -175,9 +183,6 @@ namespace exec {
         __t(_Sndr&& __sndr) noexcept(__nothrow_decay_copyable<_Sndr>)
           : __sender_{static_cast<_Sndr&&>(__sndr)} {
         }
-
-       private:
-        _Sender __sender_;
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
@@ -202,6 +207,9 @@ namespace exec {
         STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env) -> __completion_signatures_for_t<_Env> {
           return {};
         }
+
+       private:
+        _Sender __sender_;
       };
     };
 

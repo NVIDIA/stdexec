@@ -56,22 +56,35 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
        public:
         using __id = receiver_t;
 
-        template <__completion_tag Tag, class... As>
-        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          SharedState& state = self.sh_state_;
-
+        template <class Tag, class... As>
+        void set_result(Tag, As&&... as) noexcept {
           if constexpr (stream_sender<Sender, env_t>) {
-            cudaStream_t stream = state.op_state2_.get_stream();
+            cudaStream_t stream = sh_state_.op_state2_.get_stream();
             using tuple_t = decayed_tuple<Tag, As...>;
-            state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
-            copy_kernel<Tag, As&&...><<<1, 1, 0, stream>>>(state.data_, static_cast<As&&>(as)...);
-            state.stream_provider_.status_ = STDEXEC_DBG_ERR(cudaEventRecord(state.event_, stream));
+            sh_state_.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+            copy_kernel<Tag, As&&...><<<1, 1, 0, stream>>>(sh_state_.data_, static_cast<As&&>(as)...);
+            sh_state_.stream_provider_.status_ = STDEXEC_DBG_ERR(cudaEventRecord(sh_state_.event_, stream));
           } else {
             using tuple_t = decayed_tuple<Tag, As...>;
-            state.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+            sh_state_.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
           }
+        }
 
-          state.notify();
+        template <class... _Args>
+        void set_value(_Args &&...__args) noexcept {
+          set_result(set_value_t(), static_cast<_Args &&>(__args)...);
+          sh_state_.notify();
+        }
+
+        template <class _Error>
+        void set_error(_Error &&__err) noexcept {
+          set_result(set_error_t(), static_cast<_Error &&>(__err));
+          sh_state_.notify();
+        }
+
+        void set_stopped() noexcept {
+          set_result(set_stopped_t());
+          sh_state_.notify();
         }
 
         auto get_env() const noexcept -> env_t {

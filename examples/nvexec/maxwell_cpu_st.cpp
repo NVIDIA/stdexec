@@ -21,14 +21,13 @@ int main(int argc, char *argv[]) {
   auto params = parse_cmd(argc, argv);
 
   if (value(params, "help") || value(params, "h")) {
-    std::cout
-      << "Usage: " << argv[0] << " [OPTION]...\n"
-      << "\t--write-vtk\n"
-      << "\t--iterations\n"
-      << "\t--run-cpp\n"
-      << "\t--run-inline-scheduler\n"
-      << "\t--N\n"
-      << std::endl;
+    std::cout << "Usage: " << argv[0] << " [OPTION]...\n"
+              << "\t--write-vtk\n"
+              << "\t--iterations\n"
+              << "\t--run-cpp\n"
+              << "\t--run-inline-scheduler\n"
+              << "\t--N\n"
+              << std::endl;
     return 0;
   }
 

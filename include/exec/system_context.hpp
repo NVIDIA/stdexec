@@ -299,7 +299,7 @@ namespace exec {
       __bulk_state_t& __state_;
 
       template <class... __As>
-      void __set_value(__As&&... __as) noexcept {
+      void set_value(__As&&... __as) noexcept {
         // Store the input data in the shared state, in the preallocated buffer.
         static_assert(sizeof(std::tuple<__As...>) <= sizeof(__state_.__arguments_data_));
         new (&__state_.__arguments_data_)
@@ -337,23 +337,14 @@ namespace exec {
         );
       }
 
-      /// Invoked when the previous sender completes with a value to trigger multiple operations on the system scheduler.
-      template <class... __As>
-      STDEXEC_MEMFN_DECL(void set_value)(this __bulk_intermediate_receiver&& __self, __As&&... __as) noexcept {
-        __self.__set_value(static_cast<__As&&>(__as)...);
-      }
-
       /// Invoked when the previous sender completes with "stopped" to stop the entire work.
-      STDEXEC_MEMFN_DECL(
-        void set_stopped)(this __bulk_intermediate_receiver&& __self) noexcept {
-        stdexec::set_stopped(std::move(__self.__state_.__recv_));
+      void set_stopped() noexcept {
+        stdexec::set_stopped(std::move(__state_.__recv_));
       }
 
       /// Invoked when the previous sender completes with error to forward the error to the connected receiver.
-      STDEXEC_MEMFN_DECL(
-        void
-        set_error)(this __bulk_intermediate_receiver&& __self, std::exception_ptr __ptr) noexcept {
-        stdexec::set_error(std::move(__self.__state_.__recv_), std::move(__ptr));
+      void set_error(std::exception_ptr __ptr) noexcept {
+        stdexec::set_error(std::move(__state_.__recv_), std::move(__ptr));
       }
 
       /// Gets the environment of this receiver; returns the environment of the connected receiver.

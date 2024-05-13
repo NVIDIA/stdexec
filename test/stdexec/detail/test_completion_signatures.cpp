@@ -114,9 +114,7 @@ namespace {
     static_assert(is_same_v<err_types_tr_just, variant<exception_ptr>>);
   }
 
-  TEST_CASE(
-    "__error_types_of_t can also transform error types",
-    "[detail][completion_signatures]") {
+  TEST_CASE("__error_types_of_t can also transform error types", "[detail][completion_signatures]") {
     using snd_eptr_t = decltype(ex::just_error(exception_ptr{}));
     using snd_ec_t = decltype(ex::just_error(error_code{}));
     using snd_str_t = decltype(ex::just_error(std::string{}));

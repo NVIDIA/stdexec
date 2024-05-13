@@ -41,17 +41,16 @@ namespace stdexec {
         _Env __env_;
 
         template <class... _As>
-        STDEXEC_MEMFN_DECL(void set_value)(this __t&&, _As&&...) noexcept {
+        void set_value(_As&&...) noexcept {
         }
 
         template <class _Error>
-        [[noreturn]] STDEXEC_MEMFN_DECL(
-          void set_error)(this __t&&, _Error&&) noexcept {
+        [[noreturn]]
+        void set_error(_Error&&) noexcept {
           std::terminate();
         }
 
-        template <same_as<set_stopped_t> _Tag>
-        friend void tag_invoke(_Tag, __t&&) noexcept {
+        void set_stopped() noexcept {
         }
 
         auto get_env() const noexcept -> const _Env& {

@@ -160,11 +160,31 @@ namespace exec {
           }
         }
 
-        template <__completion_tag _Tag, class... _As>
-          requires __callable<_Tag, _Receiver, _As...>
-        friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
-          auto __scope = __self.__op_->__scope_;
-          _Tag{}(std::move(__self.__op_->__rcvr_), static_cast<_As&&>(__as)...);
+        template <class... _As>
+          requires __callable<set_value_t, _Receiver, _As...>
+        void set_value(_As&&... __as) noexcept {
+          auto __scope = __op_->__scope_;
+          stdexec::set_value(std::move(__op_->__rcvr_), static_cast<_As&&>(__as)...);
+          // do not access __op_
+          // do not access this
+          __complete(__scope);
+        }
+
+        template <class _Error>
+          requires __callable<set_error_t, _Receiver, _Error>
+        void set_error(_Error&& __err) noexcept {
+          auto __scope = __op_->__scope_;
+          stdexec::set_error(std::move(__op_->__rcvr_), static_cast<_Error&&>(__err));
+          // do not access __op_
+          // do not access this
+          __complete(__scope);
+        }
+
+        void set_stopped() noexcept
+          requires __callable<set_stopped_t, _Receiver>
+        {
+          auto __scope = __op_->__scope_;
+          stdexec::set_stopped(std::move(__op_->__rcvr_));
           // do not access __op_
           // do not access this
           __complete(__scope);
@@ -297,7 +317,7 @@ namespace exec {
             } else if (get_stop_token(get_env(__rcvr_)).stop_requested()) {
 
               __guard.unlock();
-              set_stopped(static_cast<_Receiver&&>(__rcvr_));
+              stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr_));
               __guard.lock();
             } else {
               std::visit(
@@ -318,7 +338,7 @@ namespace exec {
             }
           } catch (...) {
 
-            set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
+            stdexec::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
           }
         }
 
@@ -371,7 +391,7 @@ namespace exec {
               }
             }
           } catch (...) {
-            set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
+            stdexec::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
           }
         }
       };
@@ -514,18 +534,38 @@ namespace exec {
           }
         }
 
-        template <__completion_tag _Tag, __movable_value... _As>
-        friend void tag_invoke(_Tag, __t&& __self, _As&&... __as) noexcept {
-          auto& __state = *__self.__state_;
+        template <class _Tag, class... _As>
+        bool __save_completion(_Tag, _As&&... __as) noexcept {
+          auto& __state = *__state_;
           try {
             std::unique_lock __guard{__state.__mutex_};
             using _Tuple = __decayed_tuple<_Tag, _As...>;
-            __state.__data_.template emplace<_Tuple>(_Tag{}, static_cast<_As&&>(__as)...);
-            __guard.unlock();
-            __self.__dispatch_result_();
+            __state.__data_.template emplace<_Tuple>(_Tag(), static_cast<_As&&>(__as)...);
+            return true;
           } catch (...) {
             using _Tuple = std::tuple<set_error_t, std::exception_ptr>;
-            __state.__data_.template emplace<_Tuple>(set_error_t{}, std::current_exception());
+            __state.__data_.template emplace<_Tuple>(set_error_t(), std::current_exception());
+          }
+          return false;
+        }
+
+        template <__movable_value... _As>
+        void set_value(_As&&... __as) noexcept {
+          if (__save_completion(set_value_t(), static_cast<_As&&>(__as)...)) {
+            __dispatch_result_();
+          }
+        }
+
+        template <__movable_value _Error>
+        void set_error(_Error&& __err) noexcept {
+          if (__save_completion(set_error_t(), static_cast<_Error&&>(__err))) {
+            __dispatch_result_();
+          }
+        }
+
+        void set_stopped() noexcept {
+          if (__save_completion(set_stopped_t())) {
+            __dispatch_result_();
           }
         }
 
@@ -647,18 +687,18 @@ namespace exec {
         using receiver_concept = stdexec::receiver_t;
         __spawn_op_base<_EnvId>* __op_;
 
-        STDEXEC_MEMFN_DECL(void set_value)(this __t&& __self) noexcept {
-          __self.__op_->__delete_(__self.__op_);
+        void set_value() noexcept {
+          __op_->__delete_(__op_);
         }
 
         // BUGBUG NOT TO SPEC spawn shouldn't accept senders that can fail.
-        [[noreturn]] STDEXEC_MEMFN_DECL(
-          void set_error)(this __t&&, std::exception_ptr __eptr) noexcept {
+        [[noreturn]]
+        void set_error(std::exception_ptr __eptr) noexcept {
           std::rethrow_exception(std::move(__eptr));
         }
 
-        STDEXEC_MEMFN_DECL(void set_stopped)(this __t&& __self) noexcept {
-          __self.__op_->__delete_(__self.__op_);
+        void set_stopped() noexcept {
+          __op_->__delete_(__op_);
         }
 
         auto get_env() const noexcept -> const __spawn_env_t<_Env>& {

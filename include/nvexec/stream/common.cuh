@@ -403,27 +403,31 @@ namespace nvexec {
         using receiver_concept = stdexec::receiver_t;
         using __id = stream_enqueue_receiver;
 
-        template <__one_of<set_value_t, set_stopped_t> Tag, class... As>
+        template <class... As>
         STDEXEC_ATTRIBUTE((host, device))
-        friend void
-          tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          self.variant_->template emplace<decayed_tuple<Tag, As...>>(Tag(), std::move(as)...);
-          self.producer_(self.task_);
+        void set_value(As&&... as) noexcept {
+          variant_->template emplace<decayed_tuple<set_value_t, As...>>(set_value_t(), static_cast<As&&>(as)...);
+          producer_(task_);
+        }
+
+        STDEXEC_ATTRIBUTE((host, device))
+        void set_stopped() noexcept {
+          variant_->template emplace<decayed_tuple<set_stopped_t>>(set_stopped_t());
+          producer_(task_);
         }
 
         template <class Error>
         STDEXEC_ATTRIBUTE((host, device))
-        STDEXEC_MEMFN_DECL(
-          void set_error)(this __t&& self, Error&& e) noexcept {
+        void set_error(Error&& err) noexcept {
           if constexpr (__decays_to<Error, std::exception_ptr>) {
             // What is `exception_ptr` but death pending
-            self.variant_->template emplace<decayed_tuple<set_error_t, cudaError_t>>(
+            variant_->template emplace<decayed_tuple<set_error_t, cudaError_t>>(
               stdexec::set_error, cudaErrorUnknown);
           } else {
-            self.variant_->template emplace<decayed_tuple<set_error_t, Error>>(
-              set_error_t{}, std::move(e));
+            variant_->template emplace<decayed_tuple<set_error_t, Error>>(
+              set_error_t(), static_cast<Error&&>(err));
           }
-          self.producer_(self.task_);
+          producer_(task_);
         }
 
         auto get_env() const noexcept -> const Env& {
@@ -583,7 +587,7 @@ namespace nvexec {
         template <__decays_to<cudaError_t> Error>
         void propagate_completion_signal(set_error_t, Error&& status) noexcept {
           if constexpr (stream_receiver<outer_receiver_t>) {
-            set_error(static_cast<outer_receiver_t&&>(rcvr_), cudaError_t(status));
+            stdexec::set_error(static_cast<outer_receiver_t&&>(rcvr_), cudaError_t(status));
           } else {
             // pass a cudaError_t by value:
             continuation_kernel<outer_receiver_t, Error><<<1, 1, 0, get_stream()>>>(
@@ -616,9 +620,18 @@ namespace nvexec {
 
         operation_state_base_t<OuterReceiverId>& operation_state_;
 
-        template <__completion_tag Tag, class... As>
-        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          self.operation_state_.propagate_completion_signal(Tag(), static_cast<As&&>(as)...);
+        template <class... _Args>
+        void set_value(_Args &&...__args) noexcept {
+          operation_state_.propagate_completion_signal(set_value_t(), static_cast<_Args &&>(__args)...);
+        }
+
+        template <class _Error>
+        void set_error(_Error &&__err) noexcept {
+          operation_state_.propagate_completion_signal(set_error_t(), static_cast<_Error &&>(__err));
+        }
+
+        void set_stopped() noexcept {
+          operation_state_.propagate_completion_signal(set_stopped_t());
         }
 
         auto get_env() const noexcept -> decltype(auto) {

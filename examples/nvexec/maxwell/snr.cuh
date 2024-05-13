@@ -65,34 +65,36 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
       OpT& op_state_;
 
      public:
-      template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
-      friend void tag_invoke(_Tag __tag, receiver_2_t&& __self, _Args&&... __args) noexcept {
-        OpT& op_state = __self.op_state_;
-        op_state.propagate_completion_signal(_Tag{}, static_cast<_Args&&>(__args)...);
-      }
-
-      friend void tag_invoke(ex::set_value_t, receiver_2_t&& __self) noexcept {
+      void set_value() noexcept {
         using inner_op_state_t = typename OpT::inner_op_state_t;
 
-        OpT& op_state = __self.op_state_;
-        op_state.i_++;
+        op_state_.i_++;
 
-        if (op_state.i_ == op_state.n_) {
-          op_state.propagate_completion_signal(stdexec::set_value);
+        if (op_state_.i_ == op_state_.n_) {
+          op_state_.propagate_completion_signal(stdexec::set_value);
           return;
         }
 
-        auto sch = stdexec::get_scheduler(stdexec::get_env(op_state.rcvr_));
-        inner_op_state_t& inner_op_state = op_state.inner_op_state_.emplace(
+        auto sch = stdexec::get_scheduler(stdexec::get_env(op_state_.rcvr_));
+        inner_op_state_t& inner_op_state = op_state_.inner_op_state_.emplace(
           stdexec::__conv{[&]() noexcept {
-            return ex::connect(ex::schedule(sch) | op_state.closure_, receiver_2_t<OpT>{op_state});
+            return ex::connect(ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
           }});
 
         ex::start(inner_op_state);
       }
 
-      friend typename OpT::env_t tag_invoke(ex::get_env_t, const receiver_2_t& self) noexcept {
-        return self.op_state_.make_env();
+      template <class Error>
+      void set_error(Error&& err) noexcept {
+        op_state_.propagate_completion_signal(set_error_t(), static_cast<Error&&>(err));
+      }
+
+      void set_stopped() noexcept {
+        op_state_.propagate_completion_signal(set_stopped_t());
+      }
+
+      auto get_env() const noexcept -> typename OpT::env_t {
+        return op_state_.make_env();
       }
 
       explicit receiver_2_t(OpT& op_state)
@@ -107,33 +109,34 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
       OpT& op_state_;
 
      public:
-      template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
-      friend void tag_invoke(_Tag __tag, receiver_1_t&& __self, _Args&&... __args) noexcept {
-        OpT& op_state = __self.op_state_;
-        op_state.propagate_completion_signal(_Tag{}, static_cast<_Args&&>(__args)...);
-      }
-
-      friend void tag_invoke(ex::set_value_t, receiver_1_t&& __self) noexcept {
+      void set_value() noexcept {
         using inner_op_state_t = typename OpT::inner_op_state_t;
 
-        OpT& op_state = __self.op_state_;
-
-        if (op_state.n_) {
-          auto sch = stdexec::get_scheduler(stdexec::get_env(op_state.rcvr_));
-          inner_op_state_t& inner_op_state = op_state.inner_op_state_.emplace(
+        if (op_state_.n_) {
+          auto sch = stdexec::get_scheduler(stdexec::get_env(op_state_.rcvr_));
+          inner_op_state_t& inner_op_state = op_state_.inner_op_state_.emplace(
             stdexec::__conv{[&]() noexcept {
               return ex::connect(
-                ex::schedule(sch) | op_state.closure_, receiver_2_t<OpT>{op_state});
+                ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
             }});
 
           ex::start(inner_op_state);
         } else {
-          op_state.propagate_completion_signal(stdexec::set_value);
+          op_state_.propagate_completion_signal(set_value_t());
         }
       }
 
-      friend typename OpT::env_t tag_invoke(ex::get_env_t, const receiver_1_t& self) noexcept {
-        return self.op_state_.make_env();
+      template <class Error>
+      void set_error(Error&& err) noexcept {
+        op_state_.propagate_completion_signal(set_error_t(), static_cast<Error&&>(err));
+      }
+
+      void set_stopped() noexcept {
+        op_state_.propagate_completion_signal(set_stopped_t());
+      }
+
+      auto get_env() const noexcept -> typename OpT::env_t {
+        return op_state_.make_env();
       }
 
       explicit receiver_1_t(OpT& op_state)
@@ -203,35 +206,36 @@ namespace repeat_n_detail {
    public:
     using receiver_concept = stdexec::receiver_t;
 
-    template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
-    friend void tag_invoke(_Tag __tag, receiver_2_t&& __self, _Args&&... __args) noexcept {
-      OpT& op_state = __self.op_state_;
-      __tag(std::move(op_state.rcvr_), static_cast<_Args&&>(__args)...);
-    }
-
-    friend void tag_invoke(ex::set_value_t, receiver_2_t&& __self) noexcept {
+    void set_value() noexcept {
       using inner_op_state_t = typename OpT::inner_op_state_t;
 
-      OpT& op_state = __self.op_state_;
-      op_state.i_++;
+      op_state_.i_++;
 
-      if (op_state.i_ == op_state.n_) {
-        stdexec::set_value(std::move(op_state.rcvr_));
+      if (op_state_.i_ == op_state_.n_) {
+        stdexec::set_value(std::move(op_state_.rcvr_));
         return;
       }
 
-      auto sch = stdexec::get_scheduler(stdexec::get_env(op_state.rcvr_));
-      inner_op_state_t& inner_op_state = op_state.inner_op_state_.emplace(
+      auto sch = stdexec::get_scheduler(stdexec::get_env(op_state_.rcvr_));
+      inner_op_state_t& inner_op_state = op_state_.inner_op_state_.emplace(
         stdexec::__conv{[&]() noexcept {
-          return ex::connect(ex::schedule(sch) | op_state.closure_, receiver_2_t<OpT>{op_state});
+          return ex::connect(ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
         }});
 
       ex::start(inner_op_state);
     }
 
-    friend auto tag_invoke(ex::get_env_t, const receiver_2_t& self) noexcept
-      -> stdexec::env_of_t<Receiver> {
-      return stdexec::get_env(self.op_state_.rcvr_);
+    template <class Error>
+    void set_error(Error&& err) noexcept {
+      stdexec::set_error(std::move(op_state_.rcvr_), static_cast<Error&&>(err));
+    }
+
+    void set_stopped() noexcept {
+      stdexec::set_stopped(std::move(op_state_.rcvr_));
+    }
+
+    auto get_env() const noexcept -> stdexec::env_of_t<Receiver> {
+      return stdexec::get_env(op_state_.rcvr_);
     }
 
     explicit receiver_2_t(OpT& op_state)
@@ -248,33 +252,33 @@ namespace repeat_n_detail {
    public:
     using receiver_concept = stdexec::receiver_t;
 
-    template <stdexec::__one_of<ex::set_error_t, ex::set_stopped_t> _Tag, class... _Args>
-    friend void tag_invoke(_Tag __tag, receiver_1_t&& __self, _Args&&... __args) noexcept {
-      OpT& op_state = __self.op_state_;
-      __tag(std::move(op_state.rcvr_), static_cast<_Args&&>(__args)...);
-    }
-
-    friend void tag_invoke(ex::set_value_t, receiver_1_t&& __self) noexcept {
+    void set_value() noexcept {
       using inner_op_state_t = typename OpT::inner_op_state_t;
 
-      OpT& op_state = __self.op_state_;
-
-      if (op_state.n_) {
-        auto sch = stdexec::get_scheduler(stdexec::get_env(op_state.rcvr_));
-        inner_op_state_t& inner_op_state = op_state.inner_op_state_.emplace(
+      if (op_state_.n_) {
+        auto sch = stdexec::get_scheduler(stdexec::get_env(op_state_.rcvr_));
+        inner_op_state_t& inner_op_state = op_state_.inner_op_state_.emplace(
           stdexec::__conv{[&]() noexcept {
-            return ex::connect(ex::schedule(sch) | op_state.closure_, receiver_2_t<OpT>{op_state});
+            return ex::connect(ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
           }});
 
         ex::start(inner_op_state);
       } else {
-        stdexec::set_value(std::move(op_state.rcvr_));
+        stdexec::set_value(std::move(op_state_.rcvr_));
       }
     }
 
-    friend auto tag_invoke(ex::get_env_t, const receiver_1_t& self) noexcept
-      -> stdexec::env_of_t<Receiver> {
-      return stdexec::get_env(self.op_state_.rcvr_);
+    template <class Error>
+    void set_error(Error&& err) noexcept {
+      stdexec::set_error(std::move(op_state_.rcvr_), static_cast<Error&&>(err));
+    }
+
+    void set_stopped() noexcept {
+      stdexec::set_stopped(std::move(op_state_.rcvr_));
+    }
+
+    auto get_env() const noexcept -> stdexec::env_of_t<Receiver> {
+      return stdexec::get_env(op_state_.rcvr_);
     }
 
     explicit receiver_1_t(OpT& op_state)

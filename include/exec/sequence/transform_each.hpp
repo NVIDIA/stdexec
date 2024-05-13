@@ -53,24 +53,21 @@ namespace exec {
             __self.__op_->__receiver_, __self.__op_->__adaptor_(static_cast<_Item&&>(__item)));
         }
 
-        template <same_as<__t> _Self>
-        STDEXEC_MEMFN_DECL(void set_value)(this _Self&& __self) noexcept {
-          stdexec::set_value(static_cast<_Receiver&&>(__self.__op_->__receiver_));
+        void set_value() noexcept {
+          stdexec::set_value(static_cast<_Receiver&&>(__op_->__receiver_));
         }
 
-        template <same_as<__t> _Self>
-          requires __callable<set_stopped_t, _Receiver&&>
-        STDEXEC_MEMFN_DECL(
-          void set_stopped)(this _Self&& __self) noexcept {
-          stdexec::set_stopped(static_cast<_Receiver&&>(__self.__op_->__receiver_));
-        }
-
-        template <same_as<__t> _Self, class _Error>
-          requires __callable<set_error_t, _Receiver&&, _Error>
-        STDEXEC_MEMFN_DECL(
-          void set_error)(this _Self&& __self, _Error&& __error) noexcept {
+        template <class _Error>
+          requires __callable<set_error_t, _Receiver, _Error>
+        void set_error(_Error&& __error) noexcept {
           stdexec::set_error(
-            static_cast<_Receiver&&>(__self.__op_->__receiver_), static_cast<_Error&&>(__error));
+            static_cast<_Receiver&&>(__op_->__receiver_), static_cast<_Error&&>(__error));
+        }
+
+        void set_stopped() noexcept
+          requires __callable<set_stopped_t, _Receiver>
+        {
+          stdexec::set_stopped(static_cast<_Receiver&&>(__op_->__receiver_));
         }
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {

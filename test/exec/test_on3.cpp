@@ -31,18 +31,18 @@ namespace {
     Rcvr rcvr;
 
     template <class... Values>
-    STDEXEC_MEMFN_DECL(void set_value)(this get_env_rcvr&& self, Values&&...) noexcept {
-      auto env = ex::get_env(self.rcvr);
-      ex::set_value(std::move(self.rcvr), std::move(env));
+    void set_value(Values&&...) noexcept {
+      auto env = ex::get_env(rcvr);
+      ex::set_value(std::move(rcvr), std::move(env));
     }
 
     template <class Error>
-    STDEXEC_MEMFN_DECL(void set_error)(this get_env_rcvr&& self, Error&& err) noexcept {
-      ex::set_error(std::move(self.rcvr), std::forward<Error>(err));
+    void set_error(Error&& err) noexcept {
+      ex::set_error(std::move(rcvr), std::forward<Error>(err));
     }
 
-    STDEXEC_MEMFN_DECL(void set_stopped)(this get_env_rcvr&& self) noexcept {
-      ex::set_stopped(std::move(self.rcvr));
+    void set_stopped() noexcept {
+      ex::set_stopped(std::move(rcvr));
     }
 
     auto get_env() const noexcept {
@@ -57,7 +57,8 @@ namespace {
 
     template <ex::__decays_to<get_env_sender> Self, ex::receiver Rcvr>
     STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Rcvr rcvr) {
-      return ex::connect(static_cast<Self&&>(self).sndr, get_env_rcvr<Rcvr>{static_cast<Rcvr&&>(rcvr)});
+      return ex::connect(
+        static_cast<Self&&>(self).sndr, get_env_rcvr<Rcvr>{static_cast<Rcvr&&>(rcvr)});
     }
 
     template <ex::__decays_to<get_env_sender> Self, class Env>
@@ -118,14 +119,12 @@ namespace {
   }
 
   TEST_CASE("exec::on updates the current scheduler in the receiver", "[adaptors][exec::on]") {
-    auto snd = ex::get_scheduler()
-             | exec::on(inline_scheduler{}, probe_env())
+    auto snd = ex::get_scheduler() | exec::on(inline_scheduler{}, probe_env())
              | ex::then([]<class Env>(Env) noexcept {
                  using Sched = ex::__call_result_t<ex::get_scheduler_t, Env>;
                  static_assert(ex::same_as<Sched, inline_scheduler>);
                })
-             | probe_env()
-             | ex::then([]<class Env>(Env) noexcept {
+             | probe_env() | ex::then([]<class Env>(Env) noexcept {
                  using Sched = ex::__call_result_t<ex::get_scheduler_t, Env>;
                  static_assert(ex::same_as<Sched, ex::run_loop::__scheduler>);
                });

@@ -37,17 +37,17 @@ namespace {
     }
 
     template <class... As>
-    friend void tag_invoke(stdexec::set_value_t, ignore_all_item_rcvr&& self, As&&...) noexcept {
-      stdexec::set_value(static_cast<Receiver&&>(self.rcvr));
+    void set_value(As&&...) noexcept {
+      stdexec::set_value(static_cast<Receiver&&>(rcvr));
     }
 
-    friend void tag_invoke(stdexec::set_stopped_t, ignore_all_item_rcvr&& self) noexcept {
-      stdexec::set_value(static_cast<Receiver&&>(self.rcvr));
+    void set_stopped() noexcept {
+      stdexec::set_value(static_cast<Receiver&&>(rcvr));
     }
 
     template <class E>
-    friend void tag_invoke(stdexec::set_error_t, ignore_all_item_rcvr&& self, E&&) noexcept {
-      stdexec::set_value(static_cast<Receiver&&>(self.rcvr));
+    void set_error(E&&) noexcept {
+      stdexec::set_value(static_cast<Receiver&&>(rcvr));
     }
   };
 
@@ -77,18 +77,13 @@ namespace {
       return {static_cast<Item&&>(item)};
     }
 
-    friend void tag_invoke(stdexec::set_value_t, ignore_all_receiver&&) noexcept {
+    void set_value() noexcept {
     }
 
-    friend void tag_invoke(stdexec::set_stopped_t, ignore_all_receiver&&) noexcept {
+    void set_stopped() noexcept {
     }
 
-    friend void
-      tag_invoke(stdexec::set_error_t, ignore_all_receiver&&, std::exception_ptr) noexcept {
-    }
-
-    friend stdexec::empty_env tag_invoke(stdexec::get_env_t, const ignore_all_receiver&) noexcept {
-      return {};
+    void set_error(std::exception_ptr) noexcept {
     }
   };
 
@@ -137,8 +132,7 @@ namespace {
     STATIC_REQUIRE(
       stdexec::same_as<
         env_t,
-        stdexec::__t<
-          exec::__any::__sender_env<Completions, stdexec::__types<>, stdexec::__types<>>>>);
+        stdexec::__t<exec::__any::__sender_env<Completions, stdexec::__types<>, stdexec::__types<>>>>);
   }
 } // namespace
 

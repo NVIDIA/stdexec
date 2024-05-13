@@ -96,10 +96,6 @@ namespace {
     friend oper tag_invoke(ex::connect_t, my_sender0, empty_recv::recv0&&) {
       return {};
     }
-
-    friend empty_env tag_invoke(ex::get_env_t, const my_sender0&) noexcept {
-      return {};
-    }
   };
 
   TEST_CASE("type w/ proper types, is a sender", "[concepts][sender]") {
@@ -128,10 +124,6 @@ namespace {
       ex::set_stopped_t()>;
 
     friend oper tag_invoke(ex::connect_t, my_sender_int, empty_recv::recv_int&&) {
-      return {};
-    }
-
-    friend empty_env tag_invoke(ex::get_env_t, const my_sender_int&) noexcept {
       return {};
     }
   };
@@ -188,17 +180,12 @@ namespace {
     friend oper tag_invoke(ex::connect_t, multival_sender, empty_recv::recv_int&&) {
       return {};
     }
-
-    friend empty_env tag_invoke(ex::get_env_t, const multival_sender&) noexcept {
-      return {};
-    }
   };
 
   TEST_CASE(
     "check completion signatures for sender that advertises multiple sets of values",
     "[concepts][sender]") {
-    check_val_types<type_array<type_array<int, double>, type_array<short, long>>>(
-      multival_sender{});
+    check_val_types<type_array<type_array<int, double>, type_array<short, long>>>(multival_sender{});
     check_err_types<type_array<std::exception_ptr>>(multival_sender{});
     check_sends_stopped<false>(multival_sender{});
     REQUIRE_FALSE(ex::sender_of<multival_sender, ex::set_value_t(int, double)>);
@@ -212,10 +199,6 @@ namespace {
       ex::set_error_t(int)>;
 
     friend oper tag_invoke(ex::connect_t, ec_sender, empty_recv::recv_int&&) {
-      return {};
-    }
-
-    friend empty_env tag_invoke(ex::get_env_t, const ec_sender&) noexcept {
       return {};
     }
   };

@@ -61,9 +61,7 @@ namespace {
     bool called = false;
 
     auto s = exec::finally(
-      just(21) | then([](int) -> int {
-        throw 42;
-      }),
+      just(21) | then([](int) -> int { throw 42; }),
       just() | then([&called]() noexcept { called = true; }));
     STATIC_REQUIRE(set_equivalent<
                    completion_signatures_of_t<decltype(s), empty_env>,

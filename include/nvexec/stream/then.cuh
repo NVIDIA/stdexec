@@ -48,16 +48,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         constexpr static std::size_t memory_allocation_size = MemoryAllocationSize;
 
         template <class... As>
-        STDEXEC_MEMFN_DECL(void set_value)(this __t&& self, As&&... as) noexcept
           requires std::invocable<Fun, __decay_t<As>...>
+        void set_value(As&&... as) noexcept
         {
           using result_t = std::invoke_result_t<Fun, __decay_t<As>...>;
           constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
-          operation_state_base_t<ReceiverId>& op_state = self.op_state_;
+          operation_state_base_t<ReceiverId>& op_state = op_state_;
           cudaStream_t stream = op_state.get_stream();
 
           if constexpr (does_not_return_a_value) {
-            kernel<As&&...><<<1, 1, 0, stream>>>(std::move(self.f_), static_cast<As&&>(as)...);
+            kernel<As&&...><<<1, 1, 0, stream>>>(std::move(f_), static_cast<As&&>(as)...);
 
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
@@ -69,7 +69,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             using decayed_result_t = __decay_t<result_t>;
             decayed_result_t* d_result = static_cast<decayed_result_t*>(op_state.temp_storage_);
             kernel_with_result<As&&...>
-              <<<1, 1, 0, stream>>>(std::move(self.f_), d_result, static_cast<As&&>(as)...);
+              <<<1, 1, 0, stream>>>(std::move(f_), d_result, static_cast<As&&>(as)...);
             op_state.defer_temp_storage_destruction(d_result);
 
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
@@ -81,9 +81,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
         }
 
-        template <__one_of<set_error_t, set_stopped_t> Tag, class... As>
-        friend void tag_invoke(Tag, __t&& self, As&&... as) noexcept {
-          self.op_state_.propagate_completion_signal(Tag(), static_cast<As&&>(as)...);
+        template <class Error>
+        void set_error(Error&& err) noexcept {
+          op_state_.propagate_completion_signal(set_error_t(), static_cast<Error&&>(err));
+        }
+
+        void set_stopped() noexcept {
+          op_state_.propagate_completion_signal(set_stopped_t());
         }
 
         auto get_env() const noexcept -> typename operation_state_base_t<ReceiverId>::env_t {

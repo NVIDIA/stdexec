@@ -123,12 +123,12 @@ namespace stdexec {
     struct __receiver2 {
       using receiver_concept = receiver_t;
 
-      STDEXEC_MEMFN_DECL(void set_value)(this __receiver2&& __self) noexcept {
-        STDEXEC_ASSERT(!__self.__state_->__data_.valueless_by_exception());
+      void set_value() noexcept {
+        STDEXEC_ASSERT(!__state_->__data_.valueless_by_exception());
         // Work around a but in nvc++:
         using __receiver_t = _Receiver;
         std::visit(
-          [__state = __self.__state_]<class _Tup>(_Tup& __tupl) noexcept -> void {
+          [__state = __state_]<class _Tup>(_Tup& __tupl) noexcept -> void {
             if constexpr (__same_as<_Tup, std::monostate>) {
               std::terminate(); // reaching this indicates a bug in schedule_from
             } else {
@@ -141,17 +141,17 @@ namespace stdexec {
                 __tupl);
             }
           },
-          __self.__state_->__data_);
+          __state_->__data_);
       }
 
       template <class _Error>
-      STDEXEC_MEMFN_DECL(void set_error)(this __receiver2&& __self, _Error&& __err) noexcept {
+      void set_error(_Error&& __err) noexcept {
         stdexec::set_error(
-          static_cast<_Receiver&&>(__self.__state_->__receiver()), static_cast<_Error&&>(__err));
+          static_cast<_Receiver&&>(__state_->__receiver()), static_cast<_Error&&>(__err));
       }
 
-      STDEXEC_MEMFN_DECL(void set_stopped)(this __receiver2&& __self) noexcept {
-        stdexec::set_stopped(static_cast<_Receiver&&>(__self.__state_->__receiver()));
+      void set_stopped() noexcept {
+        stdexec::set_stopped(static_cast<_Receiver&&>(__state_->__receiver()));
       }
 
       auto get_env() const noexcept -> env_of_t<_Receiver> {
@@ -244,7 +244,7 @@ namespace stdexec {
           try {
             __state.__data_.template emplace<__result>(__conv{__emplace_result});
           } catch (...) {
-            set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
+            stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
             return;
           }
         }

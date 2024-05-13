@@ -68,10 +68,6 @@ namespace {
       -> operation<std::decay_t<Receiver>> {
       return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
     }
-
-    friend empty_env tag_invoke(ex::get_env_t, const fallible_just&) noexcept {
-      return {};
-    }
   };
 
   template <class... Values>
@@ -170,10 +166,6 @@ namespace {
     friend auto tag_invoke(ex::connect_t, Self&& self, Receiver&& rcvr) noexcept
       -> operation<std::decay_t<Receiver>> {
       return {self.condition_, std::forward<Receiver>(rcvr)};
-    }
-
-    friend empty_env tag_invoke(ex::get_env_t, const completes_if&) noexcept {
-      return {};
     }
   };
 } // namespace

@@ -193,13 +193,13 @@ int main() {
     ex::sender auto snd = handle_classify_request(req);
 
     // Pack this into a simplified flow and execute it asynchronously
-    ex::sender auto action =
-      std::move(snd) //
-      | ex::then([](http_response resp) {
-          std::ostringstream oss;
-          oss << "Sending response: " << resp.status_code_ << " / " << resp.body_ << "\n";
-          std::cout << oss.str();
-        });
+    ex::sender auto action = std::move(snd) //
+                           | ex::then([](http_response resp) {
+                               std::ostringstream oss;
+                               oss << "Sending response: " << resp.status_code_ << " / "
+                                   << resp.body_ << "\n";
+                               std::cout << oss.str();
+                             });
     scope.spawn(ex::on(sched, std::move(action)));
   }
 

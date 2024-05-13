@@ -197,7 +197,7 @@ namespace stdexec {
       try {
         __loop_->__push_back_(this);
       } catch (...) {
-        set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
+        stdexec::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
       }
     }
 

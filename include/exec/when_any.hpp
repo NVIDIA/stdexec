@@ -139,7 +139,7 @@ namespace exec {
           __on_stop_.reset();
           auto stop_token = get_stop_token(get_env(__receiver_));
           if (stop_token.stop_requested()) {
-            set_stopped(static_cast<_Receiver&&>(__receiver_));
+            stdexec::set_stopped(static_cast<_Receiver&&>(__receiver_));
             return;
           }
           STDEXEC_ASSERT(__result_.has_value());
@@ -172,14 +172,26 @@ namespace exec {
           return __env::__join(std::move(__token), stdexec::get_env(__op_->__receiver_));
         }
 
+        template <class... _Args>
+          requires __result_constructible_from<_ResultVariant, set_value_t, _Args...>
+        void set_value(_Args&&... __args) noexcept {
+          __op_->notify(set_value_t(), static_cast<_Args&&>(__args)...);
+        }
+
+        template <class _Error>
+          requires __result_constructible_from<_ResultVariant, set_error_t, _Error>
+        void set_error(_Error&& __err) noexcept {
+          __op_->notify(set_error_t(), static_cast<_Error&&>(__err));
+        }
+
+        void set_stopped() noexcept
+          requires __result_constructible_from<_ResultVariant, set_stopped_t>
+        {
+          __op_->notify(set_stopped_t());
+        }
+
        private:
         __op_base<_Receiver, _ResultVariant>* __op_;
-
-        template <__completion_tag _CPO, class... _Args>
-          requires __result_constructible_from<_ResultVariant, _CPO, _Args...>
-        friend void tag_invoke(_CPO, __t&& __self, _Args&&... __args) noexcept {
-          __self.__op_->notify(_CPO{}, static_cast<_Args&&>(__args)...);
-        }
       };
     };
 
@@ -210,7 +222,7 @@ namespace exec {
           this->__on_stop_.emplace(
             get_stop_token(get_env(this->__receiver_)), __on_stop_requested{this->__stop_source_});
           if (this->__stop_source_.stop_requested()) {
-            set_stopped(static_cast<_Receiver&&>(this->__receiver_));
+            stdexec::set_stopped(static_cast<_Receiver&&>(this->__receiver_));
           } else {
             std::apply([](auto&... __ops) { (stdexec::start(__ops), ...); }, __ops_);
           }

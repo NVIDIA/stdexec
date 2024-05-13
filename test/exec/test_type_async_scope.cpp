@@ -88,8 +88,9 @@ namespace {
         ex::sender auto ftr = scope.spawn_future(begin | stdexec::then([&]() { produced = true; }));
         (void) ftr;
       }
-      stdexec::sync_wait(
-        scope.on_empty() | stdexec::then([&]() { STDEXEC_ASSERT(produced.load()); }));
+      stdexec::sync_wait(scope.on_empty() | stdexec::then([&]() {
+                           STDEXEC_ASSERT(produced.load());
+                         }));
       expect_empty(scope);
     }
 
@@ -99,8 +100,9 @@ namespace {
       std::atomic_bool produced{false};
       ex::sender auto begin = ex::schedule(sch);
       ex::sender auto ftr = scope.spawn_future(begin | stdexec::then([&]() { produced = true; }));
-      stdexec::sync_wait(
-        scope.on_empty() | stdexec::then([&]() { STDEXEC_ASSERT(produced.load()); }));
+      stdexec::sync_wait(scope.on_empty() | stdexec::then([&]() {
+                           STDEXEC_ASSERT(produced.load());
+                         }));
       auto op = ex::connect(std::move(ftr), expect_void_receiver{});
       ex::start(op);
       stdexec::sync_wait(scope.on_empty());

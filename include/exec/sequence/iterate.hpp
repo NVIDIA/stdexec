@@ -96,14 +96,12 @@ namespace exec {
         using receiver_concept = stdexec::receiver_t;
         stdexec::__t<__operation<_Range, _ReceiverId>>* __op_;
 
-        template <same_as<__t> _Self>
-        STDEXEC_MEMFN_DECL(void set_value)(this _Self&& __self) noexcept {
-          __self.__op_->__start_next();
+        void set_value() noexcept {
+          __op_->__start_next();
         }
 
-        template <same_as<__t> _Self>
-        STDEXEC_MEMFN_DECL(void set_stopped)(this _Self&& __self) noexcept {
-          __set_value_unless_stopped(static_cast<_Receiver&&>(__self.__op_->__rcvr_));
+        void set_stopped() noexcept {
+          __set_value_unless_stopped(static_cast<_Receiver&&>(__op_->__rcvr_));
         }
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {

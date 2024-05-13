@@ -36,9 +36,18 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         struct receiver_t {
           __t& op_state_;
 
-          template <__completion_tag Tag, class... As>
-          friend void tag_invoke(Tag, receiver_t&& self, As&&... as) noexcept {
-            Tag()(std::move(self.op_state_.rcvr_), static_cast<As&&>(as)...);
+          template <class... _Args>
+          void set_value(_Args &&...__args) noexcept {
+            stdexec::set_value(std::move(op_state_.rcvr_), static_cast<_Args &&>(__args)...);
+          }
+
+          template <class _Error>
+          void set_error(_Error &&__err) noexcept {
+            stdexec::set_error(std::move(op_state_.rcvr_), static_cast<_Error &&>(__err));
+          }
+
+          void set_stopped() noexcept {
+            stdexec::set_stopped(std::move(op_state_.rcvr_));
           }
 
           auto get_env() const noexcept -> Env {

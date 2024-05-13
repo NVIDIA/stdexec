@@ -52,14 +52,6 @@ namespace stdexec {
 
       _OpRef __opref_;
 
-      // Forward all the receiver ops, and delete the operation state.
-      template <__completion_tag _Tag, class... _As>
-        requires __callable<_Tag, _Receiver, _As...>
-      friend void tag_invoke(_Tag __tag, __receiver&& __self, _As&&... __as) noexcept {
-        __tag(static_cast<_Receiver&&>(__self.__opref_().__rcvr_), static_cast<_As&&>(__as)...);
-        __self.__delete_op();
-      }
-
       void __delete_op() noexcept {
         _Operation* __op = &__opref_();
         if constexpr (__callable<get_allocator_t, env_of_t<_Receiver>>) {
@@ -74,6 +66,26 @@ namespace stdexec {
         } else {
           delete __op;
         }
+      }
+
+      // Forward all the receiver ops, and delete the operation state.
+      template <class... _As>
+      void set_value(_As&&... __as) noexcept {
+        stdexec::set_value(
+          static_cast<_Receiver&&>(__opref_().__rcvr_), static_cast<_As&&>(__as)...);
+        __delete_op();
+      }
+
+      template <class _Error>
+      void set_error(_Error&& __err) noexcept {
+        stdexec::set_error(
+          static_cast<_Receiver&&>(__opref_().__rcvr_), static_cast<_Error&&>(__err));
+        __delete_op();
+      }
+
+      void set_stopped() noexcept {
+        stdexec::set_stopped(__opref_().__rcvr_);
+        __delete_op();
       }
 
       // Forward all receiever queries.

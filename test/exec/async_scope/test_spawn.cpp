@@ -29,10 +29,6 @@ namespace {
       -> operation<std::decay_t<Receiver>> {
       throw std::logic_error("cannot connect");
     }
-
-    friend empty_env tag_invoke(stdexec::get_env_t, const throwing_sender&) noexcept {
-      return {};
-    }
   };
 
   TEST_CASE("spawn will execute its work", "[async_scope][spawn]") {

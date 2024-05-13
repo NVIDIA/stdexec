@@ -51,8 +51,9 @@ namespace {
     void aVoidAPI(void* context, void (*completed)(void* context)) {
       // Execute some work asynchronously on some other thread. When its
       // work is finished, pass the result to the callback.
-      scope_.spawn(ex::on(
-        pool_.get_scheduler(), ex::then(ex::just(), [=]() noexcept { completed(context); })));
+      scope_.spawn(ex::on(pool_.get_scheduler(), ex::then(ex::just(), [=]() noexcept {
+                            completed(context);
+                          })));
     }
   };
 

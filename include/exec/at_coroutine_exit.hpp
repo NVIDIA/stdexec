@@ -42,15 +42,21 @@ namespace exec {
           using __id = __receiver_id;
           _Receiver __receiver_;
 
-          template <__one_of<set_value_t, set_error_t> _Tag, __decays_to<__t> _Self, class... _Args>
-            requires __callable<_Tag, _Receiver, _Args...>
-          friend void tag_invoke(_Tag, _Self&& __self, _Args&&... __args) noexcept {
-            _Tag{}(static_cast<_Receiver&&>(__self.__receiver_), static_cast<_Args&&>(__args)...);
+          template <class... _Args>
+            requires __callable<set_value_t, _Receiver, _Args...>
+          void set_value(_Args&&... __args) noexcept {
+            stdexec::set_value(
+              static_cast<_Receiver&&>(__receiver_), static_cast<_Args&&>(__args)...);
           }
 
-          template <same_as<set_stopped_t> _Tag>
+          template <class _Error>
+            requires __callable<set_error_t, _Receiver, _Error>
+          void set_error(_Error&& __err) noexcept {
+            stdexec::set_error(static_cast<_Receiver&&>(__receiver_), static_cast<_Error&&>(__err));
+          }
+
           [[noreturn]]
-          friend void tag_invoke(_Tag, __t&&) noexcept {
+          void set_stopped() noexcept {
             std::terminate();
           }
 

@@ -55,11 +55,13 @@ namespace distributed {
 
     float *base_ptr;
 
-    [[nodiscard]] __host__ __device__ std::size_t own_cells() const {
+    [[nodiscard]]
+    __host__ __device__ std::size_t own_cells() const {
       return end - begin;
     }
 
-    [[nodiscard]] __host__ __device__ float *get(field_id id) const {
+    [[nodiscard]]
+    __host__ __device__ float *get(field_id id) const {
       return base_ptr + static_cast<int>(id) * (own_cells() + 2 * n) + n;
     }
   };
@@ -90,7 +92,8 @@ namespace distributed {
           static_cast<std::size_t>(own_cells + n * 2) * static_cast<int>(field_id::fields_count))) {
     }
 
-    [[nodiscard]] fields_accessor accessor() const {
+    [[nodiscard]]
+    fields_accessor accessor() const {
       return {height / n, width / n, width, height, n, cells, begin, end, fields_.get()};
     }
   };
@@ -198,11 +201,7 @@ namespace distributed {
     }
 
    public:
-    result_dumper_t(
-      bool write_results,
-      int rank,
-      std::size_t &report_step,
-      fields_accessor accessor)
+    result_dumper_t(bool write_results, int rank, std::size_t &report_step, fields_accessor accessor)
       : write_results_(write_results)
       , rank_(rank)
       , report_step_(report_step)
@@ -323,11 +322,13 @@ namespace distributed {
     AccessorT accessor;
     std::size_t source_position;
 
-    [[nodiscard]] __host__ __device__ float gaussian_pulse(float t, float t_0, float tau) const {
+    [[nodiscard]]
+    __host__ __device__ float gaussian_pulse(float t, float t_0, float tau) const {
       return exp(-(((t - t_0) / tau) * (t - t_0) / tau));
     }
 
-    [[nodiscard]] __host__ __device__ float calculate_source(float t, float frequency) const {
+    [[nodiscard]]
+    __host__ __device__ float calculate_source(float t, float frequency) const {
       const float tau = 0.5f / frequency;
       const float t_0 = 6.0f * tau;
       return gaussian_pulse(t, t_0, tau);
@@ -367,7 +368,7 @@ namespace distributed {
     std::size_t source_position = accessor.n / 2 + (accessor.n * (accessor.n / 2));
     return {dt, time, accessor, source_position};
   }
-}
+} // namespace distributed
 
 // TODO Combine hz/hy in a float2 type to pass in a single MPI copy
 int main(int argc, char *argv[]) {
@@ -409,8 +410,8 @@ int main(int argc, char *argv[]) {
 
   nvexec::stream_context stream_context{};
   nvexec::stream_scheduler gpu = stream_context.get_scheduler(nvexec::stream_priority::low);
-  nvexec::stream_scheduler gpu_with_priority = stream_context.get_scheduler(
-    nvexec::stream_priority::high);
+  nvexec::stream_scheduler gpu_with_priority =
+    stream_context.get_scheduler(nvexec::stream_priority::high);
 
   time_storage_t time{true /* on gpu */};
 

@@ -92,9 +92,7 @@ namespace {
   // `stopped_as_error` is implemented in terms of `let_error`, so the tests for `let_error` cover
   // more ground.
 
-  TEST_CASE(
-    "stopped_as_error keeps values_type from input sender",
-    "[adaptors][stopped_as_error]") {
+  TEST_CASE("stopped_as_error keeps values_type from input sender", "[adaptors][stopped_as_error]") {
     inline_scheduler sched;
     check_val_types<type_array<type_array<int>>>(
       ex::transfer_just(sched, 23) | ex::stopped_as_error(-1));
@@ -102,9 +100,7 @@ namespace {
       ex::transfer_just(sched, 3.1415) | ex::stopped_as_error(-1));
   }
 
-  TEST_CASE(
-    "stopped_as_error keeps error_types from input sender",
-    "[adaptors][stopped_as_error]") {
+  TEST_CASE("stopped_as_error keeps error_types from input sender", "[adaptors][stopped_as_error]") {
     inline_scheduler sched1{};
     error_scheduler sched2{};
     error_scheduler<int> sched3{-1};

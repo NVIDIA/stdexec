@@ -40,20 +40,17 @@ namespace stdexec {
       using receiver_concept = receiver_t;
       _Fun __fun_;
 
-      STDEXEC_MEMFN_DECL(void set_value)(this __as_receiver&& __rcvr) noexcept {
-        try {
-          __rcvr.__fun_();
-        } catch (...) {
-          set_error(static_cast<__as_receiver&&>(__rcvr), std::exception_ptr());
-        }
+      void set_value() noexcept {
+        // terminates on exception:
+        __fun_();
       }
 
-      [[noreturn]] STDEXEC_MEMFN_DECL(
-        void set_error)(this __as_receiver&&, std::exception_ptr) noexcept {
+      [[noreturn]]
+      void set_error(std::exception_ptr) noexcept {
         std::terminate();
       }
 
-      STDEXEC_MEMFN_DECL(void set_stopped)(this __as_receiver&&) noexcept {
+      void set_stopped() noexcept {
       }
     };
 

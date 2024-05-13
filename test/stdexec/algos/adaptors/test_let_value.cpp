@@ -117,11 +117,10 @@ namespace {
         throw std::logic_error("not prime");
       return ex::just(x);
     };
-    ex::sender auto snd =
-      ex::just(13)        //
-      | ex::let_value(f1) //
-      | ex::let_value(f2) //
-      | ex::let_value(f3) //
+    ex::sender auto snd = ex::just(13)      //
+                        | ex::let_value(f1) //
+                        | ex::let_value(f2) //
+                        | ex::let_value(f3) //
       ;
     wait_for_value(std::move(snd), 29);
     CHECK(called1);
@@ -131,9 +130,7 @@ namespace {
 
   TEST_CASE("let_value can throw, and set_error will be called", "[adaptors][let_value]") {
     auto snd = ex::just(13) //
-             | ex::let_value([](int&) -> decltype(ex::just(0)) {
-                 throw std::logic_error{"err"};
-               });
+             | ex::let_value([](int&) -> decltype(ex::just(0)) { throw std::logic_error{"err"}; });
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
   }
@@ -246,13 +243,12 @@ namespace {
     std::atomic<bool> called{false};
     {
       // lunch some work on the thread pool
-      ex::sender auto snd =
-        ex::transfer_just(pool.get_scheduler(), 7)                  //
-        | ex::let_value([](int& x) { return ex::just(x * 2 - 1); }) //
-        | ex::then([&](int x) {
-            CHECK(x == 13);
-            called.store(true);
-          });
+      ex::sender auto snd = ex::transfer_just(pool.get_scheduler(), 7)                //
+                          | ex::let_value([](int& x) { return ex::just(x * 2 - 1); }) //
+                          | ex::then([&](int x) {
+                              CHECK(x == 13);
+                              called.store(true);
+                            });
       ex::start_detached(std::move(snd));
     }
     // wait for the work to be executed, with timeout
@@ -267,12 +263,15 @@ namespace {
   TEST_CASE(
     "let_value has the values_type corresponding to the given values",
     "[adaptors][let_value]") {
-    check_val_types<type_array<type_array<int>>>(
-      ex::just() | ex::let_value([] { return ex::just(7); }));
-    check_val_types<type_array<type_array<double>>>(
-      ex::just() | ex::let_value([] { return ex::just(3.14); }));
-    check_val_types<type_array<type_array<std::string>>>(
-      ex::just() | ex::let_value([] { return ex::just(std::string{"hello"}); }));
+    check_val_types<type_array<type_array<int>>>(ex::just() | ex::let_value([] {
+                                                   return ex::just(7);
+                                                 }));
+    check_val_types<type_array<type_array<double>>>(ex::just() | ex::let_value([] {
+                                                      return ex::just(3.14);
+                                                    }));
+    check_val_types<type_array<type_array<std::string>>>(ex::just() | ex::let_value([] {
+                                                           return ex::just(std::string{"hello"});
+                                                         }));
   }
 
   TEST_CASE("let_value keeps error_types from input sender", "[adaptors][let_value]") {
@@ -338,25 +337,23 @@ namespace {
     using receiver_concept = ex::receiver_t;
 
     bad_receiver(bool& completed) noexcept
-    : completed_{completed} {}
+      : completed_{completed} {
+    }
 
     bad_receiver(bad_receiver&& other) noexcept(false)
-    : completed_(other.completed_) {
+      : completed_(other.completed_) {
     }
 
-    friend void tag_invoke(ex::set_value_t, bad_receiver&& self) noexcept {
-      self.completed_ = true;
-    }
-
-    friend ex::empty_env tag_invoke(ex::get_env_t, const bad_receiver&) noexcept {
-      return {};
+    void set_value() noexcept {
+      completed_ = true;
     }
 
     bool& completed_;
   };
 
-  TEST_CASE("let_value does not add std::exception_ptr even if the receiver is bad",
-            "[adaptors][let_value]") {
+  TEST_CASE(
+    "let_value does not add std::exception_ptr even if the receiver is bad",
+    "[adaptors][let_value]") {
     auto snd = ex::let_value(ex::just(), []() noexcept { return ex::just(); });
     check_err_types<type_array<>>(snd);
     bool completed{false};

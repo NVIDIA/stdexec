@@ -145,7 +145,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
 
           template <class Error>
-          void set_error(Error&& err, _when_all::state_t expected) noexcept {
+          void _set_error_impl(Error&& err, _when_all::state_t expected) noexcept {
             // TODO: _What memory orderings are actually needed here?
             if (op_state_->state_.compare_exchange_strong(expected, _when_all::error)) {
               op_state_->stop_source_.request_stop();
@@ -182,7 +182,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           template <class Error>
             requires tag_invocable<set_error_t, Receiver, Error>
           void set_error(Error&& err) && noexcept {
-            set_error(static_cast<Error&&>(err), _when_all::started);
+            _set_error_impl(static_cast<Error&&>(err), _when_all::started);
           }
 
           void set_stopped() && noexcept {

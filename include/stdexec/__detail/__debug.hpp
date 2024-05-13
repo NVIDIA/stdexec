@@ -73,11 +73,27 @@ namespace stdexec {
 
     template <class... _Sigs>
     struct __valid_completions {
-      template <derived_from<__valid_completions> _Self, class _Tag, class... _Args>
-        requires __one_of<_Tag (*)(_Args&&...), _Sigs...>
+      template <class... _Args>
+        requires __one_of<set_value_t (*)(_Args&&...), _Sigs...>
       STDEXEC_ATTRIBUTE((host, device))
-      friend void
-        tag_invoke(_Tag, _Self&&, _Args&&...) noexcept {
+      void
+        set_value(_Args&&...) noexcept {
+        STDEXEC_TERMINATE();
+      }
+
+      template <class _Error>
+        requires __one_of<set_error_t (*)(_Error&&), _Sigs...>
+      STDEXEC_ATTRIBUTE((host, device))
+      void
+        set_error(_Error&&) noexcept {
+        STDEXEC_TERMINATE();
+      }
+
+      STDEXEC_ATTRIBUTE((host, device))
+      void
+        set_stopped() noexcept
+        requires __one_of<set_stopped_t (*)(), _Sigs...>
+      {
         STDEXEC_TERMINATE();
       }
     };
@@ -150,8 +166,7 @@ namespace stdexec {
     }
 
     struct __debug_operation {
-      template <same_as<start_t> _Tag>
-      friend void tag_invoke(_Tag, __debug_operation&) noexcept {
+      void start() & noexcept {
       }
     };
 

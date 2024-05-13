@@ -41,11 +41,7 @@ namespace {
       return item;
     }
 
-    friend void tag_invoke(stdexec::set_value_t, next_rcvr) noexcept {
-    }
-
-    friend stdexec::empty_env tag_invoke(stdexec::get_env_t, next_rcvr) noexcept {
-      return {};
+    void set_value() noexcept {
     }
   };
 

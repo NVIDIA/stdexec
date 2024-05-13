@@ -293,7 +293,7 @@ namespace {
 
   TEST_CASE("ensure_started with move only input sender", "[adaptors][ensure_started]") {
     bool called{false};
-    auto snd1 = ex::just(movable(42)) | ex::then([&](movable &&) { called = true; });
+    auto snd1 = ex::just(movable(42)) | ex::then([&](movable&&) { called = true; });
     CHECK_FALSE(called);
     auto snd = ex::ensure_started(std::move(snd1));
     CHECK(called);

@@ -247,11 +247,10 @@ namespace {
         }));
     auto sndr1 = ex::on(
       sched,
-      ex::upon_stopped(
-        exec::write(split, exec::with(ex::get_stop_token, ssource.get_token())), [&] {
-          ++counter;
-          return 42;
-        }));
+      ex::upon_stopped(exec::write(split, exec::with(ex::get_stop_token, ssource.get_token())), [&] {
+        ++counter;
+        return 42;
+      }));
     auto sndr2 = exec::write(
       ex::on(
         sched,
@@ -454,8 +453,9 @@ namespace {
           counter++;
           return counter;
         }));
-    auto wa = ex::when_all(
-      snd | ex::then([](auto) { return 10; }), snd | ex::then([](auto) { return 20; }));
+    auto wa = ex::when_all(snd | ex::then([](auto) { return 10; }), snd | ex::then([](auto) {
+                                                                      return 20;
+                                                                    }));
     REQUIRE(counter == 0);
     auto [v1, v2] = stdexec::sync_wait(std::move(wa)).value();
     REQUIRE(counter == 1);
@@ -495,10 +495,8 @@ namespace {
 
     auto snd = ex::transfer_just(sched, 42) | ex::split();
     using snd_t = decltype(snd);
-    static_assert(
-      !stdexec::__callable<stdexec::get_completion_scheduler_t<ex::set_value_t>, snd_t>);
-    static_assert(
-      !stdexec::__callable<stdexec::get_completion_scheduler_t<ex::set_error_t>, snd_t>);
+    static_assert(!stdexec::__callable<stdexec::get_completion_scheduler_t<ex::set_value_t>, snd_t>);
+    static_assert(!stdexec::__callable<stdexec::get_completion_scheduler_t<ex::set_error_t>, snd_t>);
     static_assert(
       !stdexec::__callable<stdexec::get_completion_scheduler_t<ex::set_stopped_t>, snd_t>);
     (void) snd;

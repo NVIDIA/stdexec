@@ -25,7 +25,7 @@ using namespace exec;
 namespace {
 
   struct nop_operation {
-    friend void tag_invoke(start_t, nop_operation&) noexcept {
+    void start() & noexcept {
     }
   };
 
@@ -59,13 +59,19 @@ namespace {
   struct test_receiver {
     using receiver_concept = stdexec::receiver_t;
 
-    template <class _Tag, class... _Args>
-      requires __one_of<_Tag(_Args...), _Sigs...>
-    friend void tag_invoke(_Tag, test_receiver&&, _Args&&...) noexcept {
+    template <class... _Args>
+      requires __one_of<set_value_t(_Args...), _Sigs...>
+    void set_value(_Args&&...) noexcept {
     }
 
-    friend empty_env tag_invoke(get_env_t, test_receiver) noexcept {
-      return {};
+    template <class E>
+      requires __one_of<set_error_t(E), _Sigs...>
+    void set_error(E&&) noexcept {
+    }
+
+    void set_stopped() noexcept
+      requires __one_of<set_stopped_t(), _Sigs...>
+    {
     }
   };
 
@@ -93,18 +99,14 @@ namespace {
       return __item;
     }
 
-    friend void tag_invoke(set_value_t, next_receiver&&) noexcept {
+    void set_value() noexcept {
     }
 
-    friend void tag_invoke(set_stopped_t, next_receiver&&) noexcept {
+    void set_stopped() noexcept {
     }
 
     template <class E>
-    friend void tag_invoke(set_error_t, next_receiver&&, E&&) noexcept {
-    }
-
-    friend empty_env tag_invoke(get_env_t, const next_receiver&) noexcept {
-      return {};
+    void set_error(E&&) noexcept {
     }
   };
 

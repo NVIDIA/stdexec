@@ -55,7 +55,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
       run_loop* loop_;
 
       template <class Error>
-      void set_error(Error err) noexcept {
+      void set_error_(Error err) noexcept {
         if constexpr (__decays_to<Error, cudaError_t>) {
           state_->data_.template emplace<2>(static_cast<Error&&>(err));
         } else {
@@ -79,11 +79,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
 
       template <class Sender2 = Sender, class... As>
         requires std::constructible_from<sync_wait_result_t<Sender2>, As...>
-      STDEXEC_MEMFN_DECL(
-        void set_value)(this __t&& rcvr, As&&... as) noexcept {
+      void set_value(As&&... as) noexcept {
         try {
           int dev_id{};
-          cudaStream_t stream = rcvr.state_->stream_;
+          cudaStream_t stream = state_->stream_;
 
           if constexpr (sizeof...(As)) {
             if (STDEXEC_DBG_ERR(cudaGetDevice(&dev_id)) == cudaSuccess) {
@@ -100,34 +99,34 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
 
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
               status == cudaSuccess) {
-            rcvr.state_->data_.template emplace<1>(static_cast<As&&>(as)...);
+            state_->data_.template emplace<1>(static_cast<As&&>(as)...);
           } else {
-            rcvr.set_error(status);
+            set_error_(status);
           }
-          rcvr.loop_->finish();
+          loop_->finish();
         } catch (...) {
-          rcvr.set_error(std::current_exception());
+          set_error_(std::current_exception());
         }
       }
 
       template <class Error>
-      STDEXEC_MEMFN_DECL(void set_error)(this __t&& rcvr, Error err) noexcept {
-        if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
+      void set_error(Error err) noexcept {
+        if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(state_->stream_));
             status == cudaSuccess) {
-          rcvr.set_error(static_cast<Error&&>(err));
+          set_error_(static_cast<Error&&>(err));
         } else {
-          rcvr.set_error(status);
+          set_error_(status);
         }
       }
 
-      STDEXEC_MEMFN_DECL(void set_stopped)(this __t&& rcvr) noexcept {
-        if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(rcvr.state_->stream_));
+      void set_stopped() noexcept {
+        if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(state_->stream_));
             status == cudaSuccess) {
-          rcvr.state_->data_.template emplace<3>(set_stopped_t());
+          state_->data_.template emplace<3>(set_stopped_t());
         } else {
-          rcvr.set_error(status);
+          set_error_(status);
         }
-        rcvr.loop_->finish();
+        loop_->finish();
       }
 
       auto get_env() const noexcept -> __env {

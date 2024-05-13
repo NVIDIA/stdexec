@@ -71,7 +71,8 @@ namespace exec {
             auto __create_vtable)(this __mtype<__t>, __mtype<_Rcvr>) noexcept -> const __t* {
             static const __t __vtable_{
               {__rcvr_next_vfun_fn<_Rcvr>{}(static_cast<_NextSigs*>(nullptr))},
-              {__any_::__rcvr_vfun_fn(static_cast<_Rcvr*>(nullptr), static_cast<_Sigs*>(nullptr))}...,
+              {__any_::__rcvr_vfun_fn(
+                static_cast<_Rcvr*>(nullptr), static_cast<_Sigs*>(nullptr))}...,
               {__query_vfun_fn<_Rcvr>{}(static_cast<_Queries>(nullptr))}...};
             return &__vtable_;
           }
@@ -89,12 +90,12 @@ namespace exec {
           const __vtable_t* __vtable_;
           void* __rcvr_;
 
-          template <class _Tag, same_as<__t> _Self, class... _As>
+          template <class _Tag, class... _As>
             requires __callable<const __vtable_t&, _Tag, void*, _As...>
-          friend auto tag_invoke(_Tag, const _Self& __self, _As&&... __as) //
+          auto query(_Tag, _As&&... __as) const //
             noexcept(__nothrow_callable<const __vtable_t&, _Tag, void*, _As...>)
               -> __call_result_t<const __vtable_t&, _Tag, void*, _As...> {
-            return (*__self.__vtable_)(_Tag{}, __self.__rcvr_, static_cast<_As&&>(__as)...);
+            return (*__vtable_)(_Tag(), __rcvr_, static_cast<_As&&>(__as)...);
           }
         };
       };
@@ -136,28 +137,24 @@ namespace exec {
                        ->__fn_)(__self.__env_.__rcvr_, static_cast<_Sender&&>(__sndr));
           }
 
-          template <same_as<__t> _Self>
           // set_value_t() is always valid for a sequence
-          STDEXEC_MEMFN_DECL(
-            void set_value)(this _Self&& __self) noexcept {
-            (*static_cast<const __vfun<set_value_t()>*>(__self.__env_.__vtable_)->__complete_)(
-              __self.__env_.__rcvr_);
+          void set_value() noexcept {
+            (*static_cast<const __vfun<set_value_t()>*>(__env_.__vtable_)->__complete_)(
+              __env_.__rcvr_);
           }
 
-          template <same_as<__t> _Self, class Error>
+          template <class Error>
             requires __v<__mapply<__contains<set_error_t(Error)>, __compl_sigs>>
-          STDEXEC_MEMFN_DECL(
-            void set_error)(this _Self&& __self, Error&& __error) noexcept {
-            (*static_cast<const __vfun<set_error_t(Error)>*>(__self.__env_.__vtable_)->__complete_)(
-              __self.__env_.__rcvr_, static_cast<Error&&>(__error));
+          void set_error(Error&& __error) noexcept {
+            (*static_cast<const __vfun<set_error_t(Error)>*>(__env_.__vtable_)->__complete_)(
+              __env_.__rcvr_, static_cast<Error&&>(__error));
           }
 
-          template <same_as<__t> _Self>
+          void set_stopped() noexcept
             requires __v<__mapply<__contains<set_stopped_t()>, __compl_sigs>>
-          STDEXEC_MEMFN_DECL(
-            void set_stopped)(this _Self&& __self) noexcept {
-            (*static_cast<const __vfun<set_stopped_t()>*>(__self.__env_.__vtable_)->__complete_)(
-              __self.__env_.__rcvr_);
+          {
+            (*static_cast<const __vfun<set_stopped_t()>*>(__env_.__vtable_)->__complete_)(
+              __env_.__rcvr_);
           }
 
           auto get_env() const noexcept -> const __env_t& {
@@ -219,12 +216,12 @@ namespace exec {
         const __vtable_t* __vtable_;
         void* __sender_;
 
-        template <class _Tag, same_as<__t> _Self, class... _As>
+        template <class _Tag, class... _As>
           requires __callable<const __query_vtable_t&, _Tag, void*, _As...>
-        friend auto tag_invoke(_Tag, const _Self& __self, _As&&... __as) //
+        auto query(_Tag, _As&&... __as) const //
           noexcept(__nothrow_callable<const __query_vtable_t&, _Tag, void*, _As...>)
             -> __call_result_t<const __query_vtable_t&, _Tag, void*, _As...> {
-          return __self.__vtable_->queries()(_Tag{}, __self.__sender_, static_cast<_As&&>(__as)...);
+          return __vtable_->queries()(_Tag(), __sender_, static_cast<_As&&>(__as)...);
         }
       };
     };
@@ -314,26 +311,23 @@ namespace exec {
       return exec::set_next(__self.__receiver_, static_cast<_Sender&&>(__sender));
     }
 
-    template <std::same_as<__t> _Self>
+    void set_value() noexcept
       requires stdexec::__callable<stdexec::set_value_t, __receiver_base&&>
-    STDEXEC_MEMFN_DECL(
-      void set_value)(this _Self&& __self) noexcept {
-      stdexec::set_value(static_cast<__receiver_base&&>(__self.__receiver_));
+    {
+      stdexec::set_value(static_cast<__receiver_base&&>(__receiver_));
     }
 
-    template <std::same_as<__t> _Self, class _Error>
+    template <class _Error>
       requires stdexec::__callable<stdexec::set_error_t, __receiver_base&&, _Error>
-    STDEXEC_MEMFN_DECL(
-      void set_error)(this _Self&& __self, _Error&& __error) noexcept {
+    void set_error(_Error&& __error) noexcept {
       stdexec::set_error(
-        static_cast<__receiver_base&&>(__self.__receiver_), static_cast<_Error&&>(__error));
+        static_cast<__receiver_base&&>(__receiver_), static_cast<_Error&&>(__error));
     }
 
-    template <std::same_as<__t> _Self>
+    void set_stopped() noexcept
       requires stdexec::__callable<stdexec::set_stopped_t, __receiver_base&&>
-    STDEXEC_MEMFN_DECL(
-      void set_stopped)(this _Self&& __self) noexcept {
-      stdexec::set_stopped(static_cast<__receiver_base&&>(__self.__receiver_));
+    {
+      stdexec::set_stopped(static_cast<__receiver_base&&>(__receiver_));
     }
   };
 

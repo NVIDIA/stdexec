@@ -42,8 +42,7 @@ namespace exec_old {
   // even_share(     11,      2,         3); // -> [8, 11) -> 3 items
   // ```
   template <class Shape>
-  static std::pair<Shape, Shape>
-    even_share(Shape n, std::size_t rank, std::size_t size) noexcept {
+  static std::pair<Shape, Shape> even_share(Shape n, std::size_t rank, std::size_t size) noexcept {
     const auto avg_per_thread = n / size;
     const auto n_big_share = avg_per_thread + 1;
     const auto big_shares = n % size;
@@ -125,8 +124,8 @@ namespace exec_old {
       // For eager customization
       template <stdexec::sender_expr_for<stdexec::bulk_t> Sender>
       auto transform_sender(Sender&& sndr) const noexcept {
-        auto sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
-          stdexec::get_env(sndr));
+        auto sched =
+          stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
         return stdexec::apply_sender(static_cast<Sender&&>(sndr), transform_bulk{*sched.pool_});
       }
 
@@ -158,7 +157,7 @@ namespace exec_old {
         return {};
       }
 
- private:
+     private:
       template <typename ReceiverId>
       friend class operation;
 
@@ -333,8 +332,8 @@ namespace exec_old {
 
     // First try to enqueue to one of the threads without blocking.
     for (std::uint32_t i = 0; i < threadCount; ++i) {
-      const auto index =
-        (startIndex + i) < threadCount ? (startIndex + i) : (startIndex + i - threadCount);
+      const auto index = (startIndex + i) < threadCount ? (startIndex + i)
+                                                        : (startIndex + i - threadCount);
       if (threadStates_[index].try_push(task)) {
         return;
       }
@@ -619,42 +618,40 @@ namespace exec_old {
     }
 
     template <class... As>
-    friend void tag_invoke(
-      stdexec::same_as<stdexec::set_value_t> auto,
-      bulk_receiver&& self,
-      As&&... as) noexcept {
+    void set_value(As&&... as) noexcept {
       using tuple_t = stdexec::__decayed_tuple<As...>;
-
-      shared_state& state = self.shared_state_;
 
       if constexpr (MayThrow) {
         try {
-          state.data_.template emplace<tuple_t>(static_cast<As&&>(as)...);
+          shared_state_.data_.template emplace<tuple_t>(static_cast<As&&>(as)...);
         } catch (...) {
-          stdexec::set_error(std::move(state.receiver_), std::current_exception());
+          stdexec::set_error(std::move(shared_state_.receiver_), std::current_exception());
         }
       } else {
-        state.data_.template emplace<tuple_t>(static_cast<As&&>(as)...);
+        shared_state_.data_.template emplace<tuple_t>(static_cast<As&&>(as)...);
       }
 
-      if (state.shape_) {
-        self.enqueue();
+      if (shared_state_.shape_) {
+        enqueue();
       } else {
-        state.apply([&](auto&... args) {
-          stdexec::set_value(std::move(state.receiver_), std::move(args)...);
+        shared_state_.apply([&](auto&... args) {
+          stdexec::set_value(std::move(shared_state_.receiver_), std::move(args)...);
         });
       }
     }
 
-    template <stdexec::__one_of<stdexec::set_error_t, stdexec::set_stopped_t> Tag, class... As>
-    friend void tag_invoke(Tag tag, bulk_receiver&& self, As&&... as) noexcept {
-      shared_state& state = self.shared_state_;
-      tag(static_cast<Receiver&&>(state.receiver_), static_cast<As&&>(as)...);
+    template <class Error>
+    void set_error(Error&& err) noexcept {
+      stdexec::set_error(
+        static_cast<Receiver&&>(shared_state_.receiver_), static_cast<Error&&>(err));
     }
 
-    friend auto tag_invoke(stdexec::get_env_t, const bulk_receiver& self) noexcept
-      -> stdexec::env_of_t<Receiver> {
-      return stdexec::get_env(self.shared_state_.receiver_);
+    void set_stopped() noexcept {
+      stdexec::set_stopped(static_cast<Receiver&&>(shared_state_.receiver_));
+    }
+
+    auto get_env() const noexcept -> stdexec::env_of_t<Receiver> {
+      return stdexec::get_env(shared_state_.receiver_);
     }
   };
 
