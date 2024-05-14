@@ -66,7 +66,7 @@ namespace exec {
         }
       };
 
-      STDEXEC_MEMFN_DECL(auto schedule)(this __scheduler) noexcept -> __sender {
+      auto schedule() const noexcept -> __sender {
         return {};
       }
 

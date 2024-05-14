@@ -184,17 +184,11 @@ namespace {
       cmd();
     }
 
-    friend my_sender tag_invoke(ex::schedule_t, const impulse_scheduler& self) {
-      return my_sender{self.shared_data_.get()};
+    my_sender schedule() const {
+      return my_sender{shared_data_.get()};
     }
 
-    friend bool operator==(impulse_scheduler, impulse_scheduler) noexcept {
-      return true;
-    }
-
-    friend bool operator!=(impulse_scheduler, impulse_scheduler) noexcept {
-      return false;
-    }
+    bool operator==(const impulse_scheduler&) const noexcept = default;
   };
 
   //! Scheduler that executes everything inline, i.e., on the same thread
@@ -229,19 +223,13 @@ namespace {
       }
     };
 
-    friend my_sender tag_invoke(ex::schedule_t, const basic_inline_scheduler&) {
+    my_sender schedule() const noexcept {
       return {};
     }
 
-    friend bool operator==(const basic_inline_scheduler&, const basic_inline_scheduler&) noexcept {
-      return true;
-    }
+    bool operator==(const basic_inline_scheduler&) const noexcept = default;
 
-    friend bool operator!=(const basic_inline_scheduler&, const basic_inline_scheduler&) noexcept {
-      return false;
-    }
-
-    friend Domain tag_invoke(ex::get_domain_t, const basic_inline_scheduler&) noexcept
+    Domain query(ex::get_domain_t) const noexcept
       requires(!ex::same_as<Domain, void>)
     {
       return Domain();
@@ -294,24 +282,19 @@ namespace {
         return {{}, static_cast<R&&>(r), static_cast<E&&>(self.err_)};
       }
 
-      friend scheduler_env<error_scheduler> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+      scheduler_env<error_scheduler> get_env() const noexcept {
         return {};
       }
     };
 
     E err_{};
 
-    friend my_sender tag_invoke(ex::schedule_t, error_scheduler self) {
-      return {static_cast<E&&>(self.err_)};
+   public:
+    my_sender schedule() const {
+      return {err_};
     }
 
-    friend bool operator==(error_scheduler, error_scheduler) noexcept {
-      return true;
-    }
-
-    friend bool operator!=(error_scheduler, error_scheduler) noexcept {
-      return false;
-    }
+    bool operator==(const error_scheduler&) const noexcept = default;
   };
 
   //! Scheduler that returns a sender that always completes with cancellation.
@@ -347,16 +330,10 @@ namespace {
       }
     };
 
-    friend my_sender tag_invoke(ex::schedule_t, stopped_scheduler) {
+    my_sender schedule() const {
       return {};
     }
 
-    friend bool operator==(stopped_scheduler, stopped_scheduler) noexcept {
-      return true;
-    }
-
-    friend bool operator!=(stopped_scheduler, stopped_scheduler) noexcept {
-      return false;
-    }
+    bool operator==(const stopped_scheduler&) const noexcept = default;
   };
 } // anonymous namespace

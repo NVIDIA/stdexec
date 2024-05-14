@@ -257,7 +257,7 @@ namespace {
       }
     };
 
-    friend my_sender tag_invoke(ex::schedule_t, move_checking_inline_scheduler) {
+    my_sender schedule() const noexcept {
       return {};
     }
 

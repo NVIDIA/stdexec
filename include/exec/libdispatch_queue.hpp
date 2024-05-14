@@ -194,21 +194,16 @@ namespace exec {
       libdispatch_queue *queue;
     };
 
-    sender make_sender() const {
+    auto schedule() const noexcept -> sender {
       return sender{queue_};
     }
 
-    STDEXEC_MEMFN_FRIEND(schedule);
-    STDEXEC_MEMFN_DECL(sender schedule)(this libdispatch_scheduler const &s) noexcept {
-      return s.make_sender();
-    }
-
-    domain query(stdexec::get_domain_t) const noexcept {
+    auto query(stdexec::get_domain_t) const noexcept -> domain {
       return {};
     }
 
-    stdexec::forward_progress_guarantee
-      query(stdexec::get_forward_progress_guarantee_t) const noexcept {
+    auto query(stdexec::get_forward_progress_guarantee_t) const noexcept
+      -> stdexec::forward_progress_guarantee {
       return stdexec::forward_progress_guarantee::parallel;
     }
 

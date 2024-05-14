@@ -84,16 +84,10 @@ namespace {
       return cpo_t<scope_t::scheduler>{};
     }
 
-    friend sender_t tag_invoke(ex::schedule_t, scheduler_t) {
+    sender_t schedule() const noexcept {
       return sender_t{};
     }
 
-    friend bool operator==(scheduler_t, scheduler_t) noexcept {
-      return true;
-    }
-
-    friend bool operator!=(scheduler_t, scheduler_t) noexcept {
-      return false;
-    }
+    bool operator==(const scheduler_t&) const noexcept = default;
   };
 } // namespace

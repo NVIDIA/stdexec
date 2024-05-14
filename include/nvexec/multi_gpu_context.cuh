@@ -193,8 +193,8 @@ namespace nvexec {
         return ensure_started_th<S>(static_cast<S&&>(sndr), sch.context_state_);
       }
 
-      STDEXEC_MEMFN_DECL(sender_t schedule)(this const multi_gpu_stream_scheduler& self) noexcept {
-        return {self.num_devices_, self.context_state_};
+      sender_t schedule() const noexcept {
+        return {num_devices_, context_state_};
       }
 
       template <sender S>

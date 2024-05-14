@@ -316,23 +316,11 @@ namespace exec {
       ~static_thread_pool_();
 
       struct scheduler {
-        using __t = scheduler;
-        using __id = scheduler;
-        auto operator==(const scheduler&) const -> bool = default;
-
-        auto query(get_forward_progress_guarantee_t) const noexcept -> forward_progress_guarantee {
-          return forward_progress_guarantee::parallel;
-        }
-
-        auto query(get_domain_t) const noexcept -> domain {
-          return {};
-        }
-
        private:
         template <typename ReceiverId>
         friend struct operation;
 
-        class sender {
+        class _sender {
           struct env {
             static_thread_pool_& pool_;
             remote_queue* queue_;
@@ -345,8 +333,8 @@ namespace exec {
           };
 
          public:
-          using __t = sender;
-          using __id = sender;
+          using __t = _sender;
+          using __id = _sender;
           using sender_concept = sender_t;
           using completion_signatures =
             stdexec::completion_signatures<set_value_t(), set_stopped_t()>;
@@ -365,13 +353,13 @@ namespace exec {
           }
 
           template <receiver Receiver>
-          STDEXEC_MEMFN_DECL(auto connect)(this sender sndr, Receiver rcvr) -> operation_t<Receiver> {
+          STDEXEC_MEMFN_DECL(auto connect)(this _sender sndr, Receiver rcvr) -> operation_t<Receiver> {
             return sndr.make_operation_(static_cast<Receiver&&>(rcvr));
           }
 
           friend struct static_thread_pool_::scheduler;
 
-          explicit sender(
+          explicit _sender(
             static_thread_pool_& pool,
             remote_queue* queue,
             std::size_t threadIndex,
@@ -387,15 +375,6 @@ namespace exec {
           std::size_t threadIndex_{std::numeric_limits<std::size_t>::max()};
           nodemask constraints_{};
         };
-
-        [[nodiscard]]
-        auto make_sender_() const -> sender {
-          return sender{*pool_, queue_, thread_idx_, nodemask_};
-        }
-
-        STDEXEC_MEMFN_DECL(auto schedule)(this const scheduler& sch) noexcept -> sender {
-          return sch.make_sender_();
-        }
 
         friend class static_thread_pool_;
 
@@ -429,6 +408,24 @@ namespace exec {
         remote_queue* queue_;
         nodemask nodemask_;
         std::size_t thread_idx_{std::numeric_limits<std::size_t>::max()};
+
+       public:
+        using __t = scheduler;
+        using __id = scheduler;
+        auto operator==(const scheduler&) const -> bool = default;
+
+        [[nodiscard]]
+        auto schedule() const noexcept -> _sender {
+          return _sender{*pool_, queue_, thread_idx_, nodemask_};
+        }
+
+        auto query(get_forward_progress_guarantee_t) const noexcept -> forward_progress_guarantee {
+          return forward_progress_guarantee::parallel;
+        }
+
+        auto query(get_domain_t) const noexcept -> domain {
+          return {};
+        }
       };
 
       auto get_scheduler() noexcept -> scheduler {
@@ -1004,7 +1001,7 @@ namespace exec {
     template <typename ReceiverId>
     class static_thread_pool_::operation<ReceiverId>::__t : public task_base {
       using __id = operation;
-      friend static_thread_pool_::scheduler::sender;
+      friend static_thread_pool_::scheduler::_sender;
 
       static_thread_pool_& pool_;
       remote_queue* queue_;

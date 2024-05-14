@@ -697,7 +697,8 @@ namespace {
       }
     };
 
-    friend sender tag_invoke(ex::schedule_t, counting_scheduler) noexcept {
+   public:
+    sender schedule() const noexcept {
       return {};
     }
   };

@@ -1146,11 +1146,8 @@ namespace exec {
         }
       };
 
-     private:
-      STDEXEC_MEMFN_FRIEND(schedule);
-
-      STDEXEC_MEMFN_DECL(auto schedule)(this const __scheduler& __sched) -> __schedule_sender {
-        return __schedule_sender{__schedule_env{__sched.__context_}};
+      auto schedule() const -> __schedule_sender {
+        return __schedule_sender{__schedule_env{__context_}};
       }
 
       friend auto tag_invoke(exec::now_t, const __scheduler&) noexcept

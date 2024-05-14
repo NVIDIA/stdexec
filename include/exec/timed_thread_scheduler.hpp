@@ -355,17 +355,13 @@ namespace exec {
       return schedule_at{*self.context_, tp};
     }
 
-   private:
-    STDEXEC_MEMFN_FRIEND(schedule);
-
-    STDEXEC_MEMFN_DECL(auto schedule)(this const timed_thread_scheduler& self) noexcept -> schedule_at {
-      return exec::schedule_at(self, time_point());
+    auto schedule() const noexcept -> schedule_at {
+      return exec::schedule_at(*this, time_point());
     }
 
-    friend auto
-      operator==(const timed_thread_scheduler& sched1, const timed_thread_scheduler& sched2) noexcept
-      -> bool = default;
+    auto operator==(const timed_thread_scheduler&) const noexcept -> bool = default;
 
+   private:
     timed_thread_context* context_;
   };
 

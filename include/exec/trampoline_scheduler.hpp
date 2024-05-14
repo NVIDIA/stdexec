@@ -160,11 +160,11 @@ namespace exec {
         std::size_t __max_recursion_depth_;
       };
 
-      STDEXEC_MEMFN_DECL(auto schedule)(this __scheduler __self) noexcept -> __schedule_sender {
-        return __schedule_sender{__self.__max_recursion_depth_};
+     public:
+      auto schedule() const noexcept -> __schedule_sender {
+        return __schedule_sender{__max_recursion_depth_};
       }
 
-     public:
       auto operator==(const __scheduler&) const noexcept -> bool = default;
     };
 
