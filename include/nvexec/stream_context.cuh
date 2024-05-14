@@ -228,8 +228,9 @@ namespace nvexec {
 
       STDEXEC_ATTRIBUTE((host, device))
 
-      inline STDEXEC_MEMFN_DECL(sender_t schedule)(this const stream_scheduler& self) noexcept {
-        return {self.context_state_};
+      inline auto
+        schedule() const noexcept -> sender_t {
+        return {context_state_};
       }
 
       STDEXEC_MEMFN_DECL(std::true_type __has_algorithm_customizations)(this const stream_scheduler& self) noexcept {

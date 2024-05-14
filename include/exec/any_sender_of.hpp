@@ -1058,6 +1058,11 @@ namespace exec {
 
       using __sender_t = _ScheduleSender;
 
+      auto schedule() const noexcept -> __sender_t {
+        STDEXEC_ASSERT(__storage_.__get_vtable()->__schedule_);
+        return __storage_.__get_vtable()->__schedule_(__storage_.__get_object_pointer());
+      }
+
       template <class _Tag, class... _As>
         requires __callable<const __query_vtable<_SchedulerQueries, false>&, _Tag, void*, _As...>
       auto query(_Tag, _As&&... __as) const //
@@ -1085,7 +1090,7 @@ namespace exec {
               __mtype<__query_vtable<_SchedulerQueries, false>>{}, __mtype<_Scheduler>{})},
             [](void* __object_pointer) noexcept -> __sender_t {
               const _Scheduler& __scheduler = *static_cast<const _Scheduler*>(__object_pointer);
-              return __sender_t{schedule(__scheduler)};
+              return __sender_t{stdexec::schedule(__scheduler)};
             },
             [](const void* __self, const void* __other) noexcept -> bool {
               static_assert(
@@ -1098,13 +1103,6 @@ namespace exec {
           return &__vtable_;
         }
       };
-
-      template <same_as<__scheduler> _Self>
-      STDEXEC_MEMFN_DECL(auto schedule)(this const _Self& __self) noexcept -> __sender_t {
-        STDEXEC_ASSERT(__self.__storage_.__get_vtable()->__schedule_);
-        return __self.__storage_.__get_vtable()->__schedule_(
-          __self.__storage_.__get_object_pointer());
-      }
 
       friend auto
         operator==(const __scheduler& __self, const __scheduler& __other) noexcept -> bool {
@@ -1245,31 +1243,30 @@ namespace exec {
           __any::__scheduler<__schedule_sender, queries<_SchedulerQueries...>>;
 
         __scheduler_base __scheduler_;
+
        public:
         using __t = any_scheduler;
         using __id = any_scheduler;
 
-        template <class _Scheduler>
-          requires(
-            !stdexec::__decays_to<_Scheduler, any_scheduler> && stdexec::scheduler<_Scheduler>)
-        any_scheduler(_Scheduler&& __scheduler)
+        template <stdexec::__none_of<any_scheduler> _Scheduler>
+          requires stdexec::scheduler<_Scheduler>
+        any_scheduler(_Scheduler __scheduler)
           : __scheduler_{static_cast<_Scheduler&&>(__scheduler)} {
         }
 
-       private:
-        template <class _Tag, stdexec::__decays_to<any_scheduler> Self, class... _As>
-          requires stdexec::
-            tag_invocable<_Tag, stdexec::__copy_cvref_t<Self, __scheduler_base>, _As...>
-          friend auto tag_invoke(_Tag, Self&& __self, _As&&... __as) //
-          noexcept(
-            std::
-              is_nothrow_invocable_v<_Tag, stdexec::__copy_cvref_t<Self, __scheduler_base>, _As...>) {
-          return stdexec::tag_invoke(
-            _Tag{}, static_cast<Self&&>(__self).__scheduler_, static_cast<_As&&>(__as)...);
+        auto schedule() const noexcept -> __schedule_sender {
+          return __scheduler_.schedule();
         }
 
-        friend auto operator==(const any_scheduler& __self, const any_scheduler& __other) noexcept
-          -> bool = default;
+        template <class _Tag, class... _As>
+          requires stdexec::tag_invocable<_Tag, const __scheduler_base&, _As...>
+        auto query(_Tag, _As&&... __as) const
+          noexcept(stdexec::nothrow_tag_invocable<_Tag, const __scheduler_base&, _As...>)
+            -> stdexec::tag_invoke_result_t<_Tag, const __scheduler_base&, _As...> {
+          return stdexec::tag_invoke(_Tag(), __scheduler_, static_cast<_As&&>(__as)...);
+        }
+
+        auto operator==(const any_scheduler&) const noexcept -> bool = default;
       };
     };
   };

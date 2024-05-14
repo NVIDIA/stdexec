@@ -46,7 +46,7 @@ namespace {
       }
     };
 
-    friend my_sender tag_invoke(ex::schedule_t, my_scheduler) {
+    my_sender schedule() const {
       return {};
     }
 
@@ -86,7 +86,7 @@ namespace {
       }
     };
 
-    friend my_sender tag_invoke(ex::schedule_t, my_scheduler_except) {
+    my_sender schedule() const {
       throw std::logic_error("err");
       return {};
     }
@@ -117,7 +117,7 @@ namespace {
       }
     };
 
-    friend my_sender tag_invoke(ex::schedule_t, noeq_sched) {
+    my_sender schedule() const {
       return {};
     }
   };
@@ -147,7 +147,7 @@ namespace {
       }
     };
 
-    friend my_sender tag_invoke(ex::schedule_t, sched_no_completion) {
+    my_sender schedule() const {
       return {};
     }
 

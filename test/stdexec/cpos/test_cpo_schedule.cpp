@@ -36,9 +36,11 @@ namespace {
   };
 
   struct my_scheduler {
-    friend my_sender tag_invoke(ex::schedule_t, my_scheduler) {
+    my_sender schedule() const noexcept {
       return my_sender{true};
     }
+
+    bool operator==(const my_scheduler&) const noexcept = default;
   };
 
   TEST_CASE("can call schedule on an appropriate type", "[cpo][cpo_schedule]") {

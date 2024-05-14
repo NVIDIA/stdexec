@@ -29,6 +29,18 @@ namespace stdexec {
   // [execution.senders.schedule]
   namespace __sched {
     struct schedule_t {
+      template <__same_as<schedule_t> _Self, class _Scheduler>
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
+      friend auto
+        tag_invoke(_Self, _Scheduler&& __sched) //
+        noexcept(noexcept(static_cast<_Scheduler&&>(__sched).schedule()))
+          -> decltype(static_cast<_Scheduler&&>(__sched).schedule()) {
+        static_assert(
+          sender<decltype(static_cast<_Scheduler&&>(__sched).schedule())>,
+          "schedule() member functions must return a sender");
+        return static_cast<_Scheduler&&>(__sched).schedule();
+      }
+
       template <class _Scheduler>
         requires tag_invocable<schedule_t, _Scheduler>
       STDEXEC_ATTRIBUTE((host, device))

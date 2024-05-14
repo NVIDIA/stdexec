@@ -148,8 +148,8 @@ namespace exec_old {
       using __id = scheduler;
       bool operator==(const scheduler&) const = default;
 
-      stdexec::forward_progress_guarantee
-        query(stdexec::get_forward_progress_guarantee_t) const noexcept {
+      auto query(stdexec::get_forward_progress_guarantee_t) const noexcept
+        -> stdexec::forward_progress_guarantee {
         return stdexec::forward_progress_guarantee::parallel;
       }
 
@@ -168,6 +168,7 @@ namespace exec_old {
         using sender_concept = stdexec::sender_t;
         using completion_signatures =
           stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
+
        private:
         template <typename Receiver>
         auto make_operation_(Receiver r) const -> operation<stdexec::__id<Receiver>> {
@@ -203,14 +204,6 @@ namespace exec_old {
         static_thread_pool& pool_;
       };
 
-      sender make_sender_() const {
-        return sender{*pool_};
-      }
-
-      friend sender tag_invoke(stdexec::schedule_t, const scheduler& s) noexcept {
-        return s.make_sender_();
-      }
-
       friend class static_thread_pool;
 
       explicit scheduler(static_thread_pool& pool) noexcept
@@ -218,6 +211,11 @@ namespace exec_old {
       }
 
       static_thread_pool* pool_;
+
+     public:
+      sender schedule() const noexcept {
+        return sender{*pool_};
+      }
     };
 
     scheduler get_scheduler() noexcept {

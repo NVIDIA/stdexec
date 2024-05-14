@@ -48,15 +48,6 @@ namespace tbbexec {
 
      public:
       struct scheduler {
-        using __t = scheduler;
-        using __id = scheduler;
-        auto operator==(const scheduler&) const -> bool = default;
-
-        constexpr auto query(stdexec::get_forward_progress_guarantee_t) const noexcept
-          -> stdexec::forward_progress_guarantee {
-          return forward_progress_guarantee();
-        }
-
        private:
         template <class DerivedPoolType_, class ReceiverId>
         friend struct operation;
@@ -400,16 +391,6 @@ namespace tbbexec {
           };
         };
 
-        auto make_sender() const -> sender {
-          return sender{*pool_};
-        }
-
-        STDEXEC_MEMFN_FRIEND(schedule);
-
-        STDEXEC_MEMFN_DECL(auto schedule)(this const scheduler& sch) noexcept -> sender {
-          return sch.make_sender();
-        }
-
         template <stdexec::sender Sender, std::integral Shape, class Fun>
         using bulk_sender_t =
           stdexec::__t<bulk_sender<stdexec::__id<stdexec::__decay_t<Sender>>, Shape, Fun>>;
@@ -436,6 +417,20 @@ namespace tbbexec {
         }
 
         DerivedPoolType* pool_;
+
+       public:
+        using __t = scheduler;
+        using __id = scheduler;
+        auto operator==(const scheduler&) const -> bool = default;
+
+        constexpr auto query(stdexec::get_forward_progress_guarantee_t) const noexcept
+          -> stdexec::forward_progress_guarantee {
+          return forward_progress_guarantee();
+        }
+
+        auto schedule() const noexcept -> sender {
+          return sender{*pool_};
+        }
       };
 
       [[nodiscard]]

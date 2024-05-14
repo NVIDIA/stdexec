@@ -137,7 +137,7 @@ namespace {
       return {};
     }
 
-    friend sender tag_invoke(ex::schedule_t, custom_scheduler) noexcept {
+    sender schedule() const noexcept {
       return {};
     }
 

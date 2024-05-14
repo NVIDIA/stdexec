@@ -26,7 +26,7 @@ namespace ex = stdexec;
 namespace {
   struct uncustomized_scheduler {
     struct operation_state {
-      friend void tag_invoke(ex::start_t, operation_state&) noexcept {
+      void start() & noexcept {
       }
     };
 
@@ -47,22 +47,16 @@ namespace {
         }
       };
 
-      friend env tag_invoke(ex::get_env_t, const sender&) noexcept {
+      env get_env() const noexcept {
         return {};
       }
     };
 
-    friend sender tag_invoke(ex::schedule_t, uncustomized_scheduler) {
+    sender schedule() const noexcept {
       return {};
     }
 
-    friend bool operator==(uncustomized_scheduler, uncustomized_scheduler) noexcept {
-      return true;
-    }
-
-    friend bool operator!=(uncustomized_scheduler, uncustomized_scheduler) noexcept {
-      return false;
-    }
+    bool operator==(const uncustomized_scheduler&) const noexcept = default;
   };
 
   template <ex::forward_progress_guarantee fpg>
@@ -94,7 +88,7 @@ namespace {
       }
     };
 
-    friend sender tag_invoke(ex::schedule_t, customized_scheduler) {
+    sender schedule() const {
       return {};
     }
 
