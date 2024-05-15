@@ -24,15 +24,18 @@ using namespace stdexec::tags;
 ///////////////////////////////////////////////////////////////////////////////
 // then algorithm:
 template <class R, class F>
-class _then_receiver : stdexec::receiver_adaptor<_then_receiver<R, F>, R> {
-  friend stdexec::receiver_adaptor<_then_receiver, R>;
-  F f_;
-
+class _then_receiver : public stdexec::receiver_adaptor<_then_receiver<R, F>, R> {
   template <class... As>
   using _completions = //
     stdexec::completion_signatures<
       stdexec::set_value_t(std::invoke_result_t<F, As...>),
       stdexec::set_error_t(std::exception_ptr)>;
+
+ public:
+  _then_receiver(R r, F f)
+    : stdexec::receiver_adaptor<_then_receiver, R>{std::move(r)}
+    , f_(std::move(f)) {
+  }
 
   // Customize set_value by invoking the callable and passing the result to the inner receiver
   template <class... As>
@@ -46,11 +49,8 @@ class _then_receiver : stdexec::receiver_adaptor<_then_receiver<R, F>, R> {
     }
   }
 
- public:
-  _then_receiver(R r, F f)
-    : stdexec::receiver_adaptor<_then_receiver, R>{std::move(r)}
-    , f_(std::move(f)) {
-  }
+ private:
+  F f_;
 };
 
 template <stdexec::sender S, class F>
@@ -67,26 +67,27 @@ struct _then_sender {
 
   template <class Env>
   using _completions_t = //
-    stdexec::make_completion_signatures<
+    stdexec::transform_completion_signatures_of<
       S,
       Env,
       stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
       _set_value_t>;
 
   template <class Env>
-  STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _then_sender&&, Env) -> _completions_t<Env> {
-    return {};
+  STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _then_sender&&, Env&&) {
+    return _completions_t<Env>();
   }
 
   // Connect:
-  template <class R>
-  STDEXEC_MEMFN_DECL(auto connect)(this _then_sender&& self, R r) -> stdexec::connect_result_t<S, _then_receiver<R, F>> {
+  template <stdexec::receiver R>
+    requires stdexec::sender_to<S, _then_receiver<R, F>>
+  STDEXEC_MEMFN_DECL(auto connect)(this _then_sender&& self, R r) {
     return stdexec::connect(
       static_cast<S&&>(self.s_),
       _then_receiver<R, F>{static_cast<R&&>(r), static_cast<F&&>(self.f_)});
   }
 
-  auto get_env() const noexcept -> stdexec::env_of_t<S> {
+  auto get_env() const noexcept -> decltype(auto) {
     return stdexec::get_env(s_);
   }
 };

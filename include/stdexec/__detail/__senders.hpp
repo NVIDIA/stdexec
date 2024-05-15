@@ -148,8 +148,7 @@ namespace stdexec {
       static constexpr auto __select_impl() noexcept {
         using _Domain = __late_domain_of_t<_Sender, env_of_t<_Receiver&>>;
         constexpr bool _NothrowTfxSender =
-          __nothrow_callable<get_env_t, _Receiver&>
-          && __nothrow_callable<transform_sender_t, _Domain, _Sender, env_of_t<_Receiver&>>;
+          __nothrow_callable<transform_sender_t, _Domain, _Sender, env_of_t<_Receiver&>>;
         using _TfxSender = __tfx_sender<_Sender, _Receiver&>;
 
 #if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()

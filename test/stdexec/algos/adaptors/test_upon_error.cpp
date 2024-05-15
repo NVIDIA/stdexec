@@ -89,10 +89,6 @@ namespace {
     friend oper<R> tag_invoke(ex::connect_t, many_error_sender, R&& r) {
       return {{}, static_cast<R&&>(r)};
     }
-
-    friend auto tag_invoke(ex::get_env_t, const many_error_sender&) noexcept -> ex::empty_env {
-      return {};
-    }
   };
 
   TEST_CASE("upon_error many input error types", "[adaptors][upon_error]") {

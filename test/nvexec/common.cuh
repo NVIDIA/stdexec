@@ -113,8 +113,8 @@ namespace {
 
         inner_op_state_t inner_op_;
 
-        friend void tag_invoke(stdexec::start_t, __t& op) noexcept {
-          stdexec::start(op.inner_op_);
+        void start() & noexcept {
+          stdexec::start(inner_op_);
         }
 
         __t(Sender&& sender, Receiver&& receiver)
@@ -132,31 +132,29 @@ namespace {
     struct receiver {
       using Receiver = stdexec::__t<ReceiverId>;
 
-      class __t : stdexec::receiver_adaptor<__t, Receiver> {
+      class __t : public stdexec::receiver_adaptor<__t, Receiver> {
         friend stdexec::receiver_adaptor<__t, Receiver>;
 
         static_assert(std::is_trivially_copyable_v<Receiver>);
         static_assert(std::is_trivially_copyable_v<Fun>);
         Fun f_;
 
-        template <class... As>
-        STDEXEC_ATTRIBUTE((host, device))
-        void set_value(As&&... as) && noexcept
-          requires stdexec::__callable<Fun, As&&...>
-        {
-          using result_t = std::invoke_result_t<Fun, As&&...>;
-
-          if constexpr (std::is_same_v<void, result_t>) {
-            f_(static_cast<As&&>(as)...);
-            stdexec::set_value(std::move(this->base()));
-          } else {
-            stdexec::set_value(std::move(this->base()), f_(static_cast<As&&>(as)...));
-          }
-        }
-
        public:
         using __id = receiver;
-        using receiver_concept = stdexec::receiver_t;
+
+        template <class... As>
+          requires std::invocable<Fun, As...>
+        STDEXEC_ATTRIBUTE((host, device))
+        void set_value(As&&... as) && noexcept {
+          using result_t = std::invoke_result_t<Fun, As...>;
+
+          if constexpr (std::is_same_v<void, result_t>) {
+            std::invoke(f_, static_cast<As&&>(as)...);
+            stdexec::set_value(std::move(this->base()));
+          } else {
+            stdexec::set_value(std::move(this->base()), std::invoke(f_, static_cast<As&&>(as)...));
+          }
+        }
 
         explicit __t(Receiver rcvr, Fun fun)
           : stdexec::receiver_adaptor<__t, Receiver>(static_cast<Receiver&&>(rcvr))
@@ -206,9 +204,8 @@ namespace {
           return {};
         }
 
-        friend auto tag_invoke(stdexec::get_env_t, const __t& self) noexcept
-          -> stdexec::env_of_t<const Sender&> {
-          return stdexec::get_env(self.sndr_);
+        auto get_env() const noexcept -> stdexec::env_of_t<const Sender&> {
+          return stdexec::get_env(sndr_);
         }
       };
     };
@@ -279,10 +276,8 @@ namespace {
           return {};
         }
 
-        friend auto tag_invoke(stdexec::get_env_t, const __t& self) //
-          noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
-            -> stdexec::env_of_t<const Sender&> {
-          return stdexec::get_env(self.sndr_);
+        auto get_env() const noexcept -> stdexec::env_of_t<const Sender&> {
+          return stdexec::get_env(sndr_);
         }
       };
     };

@@ -360,9 +360,8 @@ namespace exec {
         static_cast<__sender_base&&>(__self.__sender_), static_cast<_Rcvr&&>(__rcvr));
     }
 
-    template <stdexec::same_as<stdexec::get_env_t> _GetEnv, stdexec::__decays_to<__t> _Self>
-    friend auto tag_invoke(_GetEnv, _Self&& __self) noexcept -> stdexec::env_of_t<__sender_base> {
-      return stdexec::get_env(__self.__sender_);
+    auto get_env() const noexcept -> stdexec::env_of_t<__sender_base> {
+      return stdexec::get_env(__sender_);
     }
   };
 

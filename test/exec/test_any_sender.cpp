@@ -75,8 +75,8 @@ namespace {
       value_ = set_stopped_t();
     }
 
-    friend env tag_invoke(get_env_t, const sink_receiver& r) noexcept {
-      return {static_cast<const void*>(&r)};
+    env get_env() const noexcept {
+      return {static_cast<const void*>(this)};
     }
   };
 
@@ -395,8 +395,8 @@ namespace {
       CHECK(expect_stop_);
     }
 
-    friend stopped_receiver_env<Token> tag_invoke(get_env_t, const stopped_receiver& r) noexcept {
-      return {&r};
+    stopped_receiver_env<Token> get_env() const noexcept {
+      return {this};
     }
   };
 
@@ -692,8 +692,8 @@ namespace {
         return {};
       }
 
-      friend const sender& tag_invoke(ex::get_env_t, const sender& self) noexcept {
-        return self;
+      auto get_env() const noexcept -> const sender& {
+        return *this;
       }
     };
 

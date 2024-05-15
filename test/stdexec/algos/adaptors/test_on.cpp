@@ -251,8 +251,7 @@ namespace {
         return {{}, static_cast<R&&>(r)};
       }
 
-      friend auto tag_invoke(ex::get_env_t, const my_sender&) noexcept
-        -> scheduler_env<move_checking_inline_scheduler> {
+      auto get_env() const noexcept -> scheduler_env<move_checking_inline_scheduler> {
         return {};
       }
     };
