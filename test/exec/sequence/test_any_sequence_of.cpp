@@ -31,9 +31,8 @@ namespace {
     using receiver_concept = stdexec::receiver_t;
     Receiver rcvr;
 
-    friend stdexec::env_of_t<Receiver>
-      tag_invoke(stdexec::get_env_t, const ignore_all_item_rcvr& self) noexcept {
-      return stdexec::get_env(self.rcvr);
+    auto get_env() const noexcept -> stdexec::env_of_t<Receiver> {
+      return stdexec::get_env(rcvr);
     }
 
     template <class... As>

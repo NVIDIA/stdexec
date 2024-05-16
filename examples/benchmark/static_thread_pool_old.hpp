@@ -191,10 +191,6 @@ namespace exec_old {
           }
         };
 
-        friend env tag_invoke(stdexec::get_env_t, const sender& self) noexcept {
-          return env{self.pool_};
-        }
-
         friend struct static_thread_pool::scheduler;
 
         explicit sender(static_thread_pool& pool) noexcept
@@ -202,6 +198,11 @@ namespace exec_old {
         }
 
         static_thread_pool& pool_;
+
+       public:
+        env get_env() const noexcept {
+          return env{pool_};
+        }
       };
 
       friend class static_thread_pool;
@@ -493,9 +494,8 @@ namespace exec_old {
       return {};
     }
 
-    friend auto tag_invoke(stdexec::get_env_t, const bulk_sender& self) noexcept
-      -> stdexec::env_of_t<const Sender&> {
-      return stdexec::get_env(self.sndr_);
+    auto get_env() const noexcept -> stdexec::env_of_t<const Sender&> {
+      return stdexec::get_env(sndr_);
     }
   };
 

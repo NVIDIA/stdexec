@@ -117,12 +117,8 @@ namespace {
         return {self.data_, static_cast<R&&>(r)};
       }
 
-      auto make_env() const noexcept {
+      auto get_env() const noexcept -> env {
         return env{data_};
-      }
-
-      friend auto tag_invoke(ex::get_env_t, const my_sender& self) noexcept {
-        return self.make_env();
       }
     };
 
@@ -217,8 +213,7 @@ namespace {
         return {{}, static_cast<R&&>(r)};
       }
 
-      friend scheduler_env<basic_inline_scheduler>
-        tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+      auto get_env() const noexcept -> scheduler_env<basic_inline_scheduler> {
         return {};
       }
     };
@@ -325,7 +320,7 @@ namespace {
         return {{}, static_cast<R&&>(r)};
       }
 
-      friend scheduler_env<stopped_scheduler> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+      scheduler_env<stopped_scheduler> get_env() const noexcept {
         return {};
       }
     };

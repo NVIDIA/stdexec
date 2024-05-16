@@ -235,7 +235,7 @@ namespace {
   struct awaitable_with_get_env {
     Awaiter operator co_await();
 
-    friend awaitable_env tag_invoke(ex::get_env_t, const awaitable_with_get_env&) noexcept {
+    awaitable_env get_env() const noexcept {
       return {};
     }
   };

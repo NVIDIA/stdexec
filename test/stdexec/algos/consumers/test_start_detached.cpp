@@ -121,7 +121,7 @@ namespace {
         }
       };
 
-      friend env tag_invoke(ex::get_env_t, const sender&) noexcept {
+      env get_env() const noexcept {
         return {};
       }
     };

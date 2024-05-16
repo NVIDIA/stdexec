@@ -31,13 +31,11 @@ namespace stdexec {
 
       struct __receiver : __nope {
         using receiver_concept = receiver_t;
-      };
 
-      template <same_as<set_error_t> _Tag>
-      void tag_invoke(_Tag, __receiver, std::exception_ptr) noexcept;
-      template <same_as<set_stopped_t> _Tag>
-      void tag_invoke(_Tag, __receiver) noexcept;
-      auto tag_invoke(get_env_t, __receiver) noexcept -> empty_env;
+        void set_error(std::exception_ptr) noexcept;
+        void set_stopped() noexcept;
+        auto get_env() const noexcept -> empty_env;
+      };
     } // namespace __no
 
     using __not_a_receiver = __no::__receiver;
@@ -110,124 +108,67 @@ namespace stdexec {
     struct receiver_adaptor
       : __adaptor_base<_Base>
       , receiver_t {
-      friend _Derived;
-      STDEXEC_DEFINE_MEMBER(set_value);
-      STDEXEC_DEFINE_MEMBER(set_error);
-      STDEXEC_DEFINE_MEMBER(set_stopped);
-      STDEXEC_DEFINE_MEMBER(get_env);
 
       static constexpr bool __has_base = !derived_from<_Base, __no::__nope>;
 
-      template <class _Dp>
-      using __base_from_derived_t = decltype(__declval<_Dp>().base());
+      template <class _Self>
+      using __base_from_derived_t = decltype(__declval<_Self>().base());
 
-      using __get_base_t =
+      using __get_base_fn =
         __if_c<__has_base, __mbind_back_q<__copy_cvref_t, _Base>, __q<__base_from_derived_t>>;
 
-      template <class _Dp>
-      using __base_t = __minvoke<__get_base_t, _Dp&&>;
+      template <class _Self>
+      using __base_t = __minvoke<__get_base_fn, _Self&&>;
 
-      template <class _Dp>
+      template <class _Self>
       STDEXEC_ATTRIBUTE((host, device))
       static auto
-        __get_base(_Dp&& __self) noexcept -> __base_t<_Dp> {
+        __get_base(_Self&& __self) noexcept -> __base_t<_Self> {
         if constexpr (__has_base) {
-          return __c_upcast<receiver_adaptor>(static_cast<_Dp&&>(__self)).base();
+          return __c_upcast<receiver_adaptor>(static_cast<_Self&&>(__self)).base();
         } else {
-          return static_cast<_Dp&&>(__self).base();
+          return static_cast<_Self&&>(__self).base();
         }
       }
 
-      template <__same_as<set_value_t> _SetValue, class... _As>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      friend auto
-        tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept //
-        -> __msecond<                                                    //
-          __if_c<__same_as<set_value_t, _SetValue>>,
-          decltype(STDEXEC_CALL_MEMBER(
-            set_value,
-            static_cast<_Derived&&>(__self),
-            static_cast<_As&&>(__as)...))> {
-        static_assert(noexcept(STDEXEC_CALL_MEMBER(
-          set_value, static_cast<_Derived&&>(__self), static_cast<_As&&>(__as)...)));
-        STDEXEC_CALL_MEMBER(set_value, static_cast<_Derived&&>(__self), static_cast<_As&&>(__as)...);
-      }
-
-      template <__same_as<set_value_t> _SetValue, class _Dp = _Derived, class... _As>
-        requires STDEXEC_MISSING_MEMBER(_Dp, set_value) && tag_invocable<_SetValue, __base_t<_Dp>, _As...>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      friend void
-        tag_invoke(_SetValue, _Derived&& __self, _As&&... __as) noexcept {
-        stdexec::set_value(__get_base(static_cast<_Dp&&>(__self)), static_cast<_As&&>(__as)...);
-      }
-
-      template <__same_as<set_error_t> _SetError, class _Error>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      friend auto
-        tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept //
-        -> __msecond<                                                     //
-          __if_c<__same_as<set_error_t, _SetError>>,
-          decltype(STDEXEC_CALL_MEMBER(
-            set_error,
-            static_cast<_Derived&&>(__self),
-            static_cast<_Error&&>(__err)))> {
-        static_assert(noexcept(STDEXEC_CALL_MEMBER(
-          set_error, static_cast<_Derived&&>(__self), static_cast<_Error&&>(__err))));
-        STDEXEC_CALL_MEMBER(
-          set_error, static_cast<_Derived&&>(__self), static_cast<_Error&&>(__err));
-      }
-
-      template <__same_as<set_error_t> _SetError, class _Error, class _Dp = _Derived>
-        requires STDEXEC_MISSING_MEMBER(_Dp, set_error) && tag_invocable<_SetError, __base_t<_Dp>, _Error>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      friend void
-        tag_invoke(_SetError, _Derived&& __self, _Error&& __err) noexcept {
-        stdexec::set_error(
-          __get_base(static_cast<_Derived&&>(__self)), static_cast<_Error&&>(__err));
-      }
-
-      template <__same_as<set_stopped_t> _SetStopped, class _Dp = _Derived>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      friend auto
-        tag_invoke(_SetStopped, _Derived&& __self) noexcept //
-        -> __msecond<                                       //
-          __if_c<__same_as<set_stopped_t, _SetStopped>>,
-          decltype(STDEXEC_CALL_MEMBER(set_stopped, static_cast<_Dp&&>(__self)))> {
-        static_assert(noexcept(STDEXEC_CALL_MEMBER(set_stopped, static_cast<_Derived&&>(__self))));
-        STDEXEC_CALL_MEMBER(set_stopped, static_cast<_Derived&&>(__self));
-      }
-
-      template <__same_as<set_stopped_t> _SetStopped, class _Dp = _Derived>
-        requires STDEXEC_MISSING_MEMBER(_Dp, set_stopped) && tag_invocable<_SetStopped, __base_t<_Dp>>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      friend void
-        tag_invoke(_SetStopped, _Derived&& __self) noexcept {
-        stdexec::set_stopped(__get_base(static_cast<_Derived&&>(__self)));
-      }
-
-      // Pass through the get_env receiver query
-      template <__same_as<get_env_t> _GetEnv, class _Dp = _Derived>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      friend auto
-        tag_invoke(_GetEnv, const _Derived& __self) noexcept
-        -> decltype(STDEXEC_CALL_MEMBER(get_env, static_cast<const _Dp&>(__self))) {
-        static_assert(noexcept(STDEXEC_CALL_MEMBER(get_env, __self)));
-        return STDEXEC_CALL_MEMBER(get_env, __self);
-      }
-
-      template <__same_as<get_env_t> _GetEnv, class _Dp = _Derived>
-        requires STDEXEC_MISSING_MEMBER(_Dp, get_env)
-          STDEXEC_ATTRIBUTE((host, device, always_inline))
-      friend auto
-        tag_invoke(_GetEnv, const _Derived& __self) noexcept -> env_of_t<__base_t<const _Dp&>> {
-        return stdexec::get_env(__get_base(__self));
-      }
-
      public:
+      using receiver_concept = receiver_t;
+
       receiver_adaptor() = default;
       using __adaptor_base<_Base>::__adaptor_base;
 
-      using receiver_concept = receiver_t;
+      template <class... _As, class _Self = _Derived>
+        requires __callable<set_value_t, __base_t<_Self>, _As...>
+      STDEXEC_ATTRIBUTE((host, device))
+      void
+        set_value(_As&&... __as) && noexcept {
+        return stdexec::set_value(
+          __get_base(static_cast<_Self&&>(*this)), static_cast<_As&&>(__as)...);
+      }
+
+      template <class _Error, class _Self = _Derived>
+        requires __callable<set_error_t, __base_t<_Self>, _Error>
+      STDEXEC_ATTRIBUTE((host, device))
+      void
+        set_error(_Error&& __err) && noexcept {
+        return stdexec::set_error(
+          __get_base(static_cast<_Self&&>(*this)), static_cast<_Error&&>(__err));
+      }
+
+      template <class _Self = _Derived>
+        requires __callable<set_stopped_t, __base_t<_Self>>
+      STDEXEC_ATTRIBUTE((host, device))
+      void
+        set_stopped() && noexcept {
+        return stdexec::set_stopped(__get_base(static_cast<_Self&&>(*this)));
+      }
+
+      template <class _Self = _Derived>
+      STDEXEC_ATTRIBUTE((host, device))
+      auto
+        get_env() const noexcept -> env_of_t<__base_t<const _Self&>> {
+        return stdexec::get_env(__get_base(static_cast<const _Self&>(*this)));
+      }
     };
   } // namespace __adaptors
 

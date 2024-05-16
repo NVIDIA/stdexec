@@ -32,9 +32,8 @@ namespace {
     Receiver rcvr;
     int* sum_;
 
-    friend stdexec::env_of_t<Receiver>
-      tag_invoke(stdexec::get_env_t, const sum_item_rcvr& self) noexcept {
-      return stdexec::get_env(self.rcvr);
+    auto get_env() const noexcept -> stdexec::env_of_t<Receiver> {
+      return stdexec::get_env(rcvr);
     }
 
     template <class... As>
@@ -93,8 +92,8 @@ namespace {
     void set_error(std::exception_ptr) noexcept {
     }
 
-    friend Env tag_invoke(stdexec::get_env_t, const sum_receiver& self) noexcept {
-      return self.env_;
+    Env get_env() const noexcept {
+      return env_;
     }
   };
 

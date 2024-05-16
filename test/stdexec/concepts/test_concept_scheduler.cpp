@@ -41,7 +41,7 @@ namespace {
         ex::set_error_t(std::exception_ptr),                   //
         ex::set_stopped_t()>;
 
-      friend default_env<my_scheduler> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+      default_env<my_scheduler> get_env() const noexcept {
         return {};
       }
     };
@@ -81,7 +81,7 @@ namespace {
         ex::set_error_t(std::exception_ptr),                   //
         ex::set_stopped_t()>;
 
-      friend default_env<my_scheduler_except> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+      default_env<my_scheduler_except> get_env() const noexcept {
         return {};
       }
     };
@@ -112,7 +112,7 @@ namespace {
         ex::set_error_t(std::exception_ptr),                   //
         ex::set_stopped_t()>;
 
-      friend default_env<noeq_sched> tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+      default_env<noeq_sched> get_env() const noexcept {
         return {};
       }
     };
@@ -142,7 +142,7 @@ namespace {
         }
       };
 
-      friend env tag_invoke(ex::get_env_t, const my_sender&) noexcept {
+      env get_env() const noexcept {
         return {};
       }
     };

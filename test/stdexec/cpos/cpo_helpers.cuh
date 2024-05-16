@@ -74,7 +74,7 @@ namespace {
         ex::set_error_t(std::exception_ptr),                   //
         ex::set_stopped_t()>;
 
-      friend env_t tag_invoke(ex::get_env_t, const sender_t&) noexcept {
+      env_t get_env() const noexcept {
         return {};
       }
     };

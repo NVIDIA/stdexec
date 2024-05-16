@@ -378,10 +378,8 @@ namespace repeat_n_detail {
     }
 #endif
 
-    friend auto tag_invoke(stdexec::get_env_t, const repeat_n_sender_t& s) //
-      noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
-        -> stdexec::env_of_t<const Sender&> {
-      return stdexec::get_env(s.sender_);
+    auto get_env() const noexcept -> stdexec::env_of_t<const Sender&> {
+      return stdexec::get_env(sender_);
     }
   };
 } // namespace repeat_n_detail

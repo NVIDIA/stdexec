@@ -102,8 +102,8 @@ namespace {
       return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
     }
 
-    friend Env tag_invoke(ex::get_env_t, const just_with_env& self) noexcept {
-      return self.env_;
+    Env get_env() const noexcept {
+      return env_;
     }
   };
 

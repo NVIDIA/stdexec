@@ -28,8 +28,8 @@
 using namespace stdexec;
 using stdexec::sync_wait;
 
-class noop_receiver : receiver_adaptor<noop_receiver> {
-  friend receiver_adaptor<noop_receiver>;
+struct noop_receiver {
+  using receiver_concept = receiver_t;
 
   template <class... _As>
   void set_value(_As&&...) noexcept {
@@ -42,7 +42,7 @@ class noop_receiver : receiver_adaptor<noop_receiver> {
   }
 
   auto get_env() const & noexcept {
-    return exec::make_env(exec::with(get_stop_token, stdexec::never_stop_token{}));
+    return exec::with(get_stop_token, stdexec::never_stop_token{});
   }
 };
 

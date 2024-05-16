@@ -129,20 +129,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           make_terminal_stream_env_t<
             exec::make_env_t<env_of_t<Receiver>, exec::with_t<get_stop_token_t, inplace_stop_token>>>;
 
-        struct __t
-          : receiver_adaptor<__t>
-          , stream_receiver_base {
+        struct __t : stream_receiver_base {
+          using receiver_concept = stdexec::receiver_t;
           using __id = receiver_t;
           using SenderId = nvexec::detail::nth_type<Index, SenderIds...>;
           using Completions = completion_sigs<env_of_t<Receiver>, CvrefReceiverId>;
-
-          Receiver&& base() && noexcept {
-            return static_cast<Receiver&&>(op_state_->recvr_);
-          }
-
-          const Receiver& base() const & noexcept {
-            return op_state_->recvr_;
-          }
 
           template <class Error>
           void _set_error_impl(Error&& err, _when_all::state_t expected) noexcept {
@@ -199,7 +190,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           Env get_env() const noexcept {
             auto env = make_terminal_stream_env(
               exec::make_env(
-                stdexec::get_env(base()),
+                stdexec::get_env(op_state_->recvr_),
                 __env::__with(op_state_->stop_source_.get_token(), get_stop_token)),
               &const_cast<stream_provider_t&>(op_state_->stream_providers_[Index]));
 
@@ -321,7 +312,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               decltype(std::get<Is>((static_cast<WhenAll&&>(when_all)).sndrs_)),
               stdexec::__t<receiver_t<CvrefReceiverId, Is>>>(
               std::get<Is>((static_cast<WhenAll&&>(when_all)).sndrs_),
-              stdexec::__t<receiver_t<CvrefReceiverId, Is>>{{}, {}, parent_op},
+              stdexec::__t<receiver_t<CvrefReceiverId, Is>>{{}, parent_op},
               context_state);
           }}...} {
           status_ = STDEXEC_DBG_ERR(cudaMallocManaged(&values_, sizeof(child_values_tuple_t)));
