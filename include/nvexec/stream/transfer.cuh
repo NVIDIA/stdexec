@@ -37,13 +37,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __t& op_state_;
 
           template <class... _Args>
-          void set_value(_Args &&...__args) noexcept {
-            stdexec::set_value(std::move(op_state_.rcvr_), static_cast<_Args &&>(__args)...);
+          void set_value(_Args&&... __args) noexcept {
+            stdexec::set_value(std::move(op_state_.rcvr_), static_cast<_Args&&>(__args)...);
           }
 
           template <class _Error>
-          void set_error(_Error &&__err) noexcept {
-            stdexec::set_error(std::move(op_state_.rcvr_), static_cast<_Error &&>(__err));
+          void set_error(_Error&& __err) noexcept {
+            stdexec::set_error(std::move(op_state_.rcvr_), static_cast<_Error&&>(__err));
           }
 
           void set_stopped() noexcept {
@@ -148,7 +148,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> _completion_signatures_t<Self, Env> {
+      static auto get_completion_signatures(Self&&, Env&&) -> _completion_signatures_t<Self, Env> {
         return {};
       }
 

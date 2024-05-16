@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef __EXEC__SYSTEM_CONTEXT_IF_H__
-#define __EXEC__SYSTEM_CONTEXT_IF_H__
+#ifndef STDEXEC_SYSTEM_CONTEXT_IF_H
+#define STDEXEC_SYSTEM_CONTEXT_IF_H
 
 #include <stddef.h>
 #include <stdint.h>

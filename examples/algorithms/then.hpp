@@ -74,8 +74,8 @@ struct _then_sender {
       _set_value_t>;
 
   template <class Env>
-  STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _then_sender&&, Env&&) {
-    return _completions_t<Env>();
+  auto get_completion_signatures(Env&&) && -> _completions_t<Env> {
+    return {};
   }
 
   // Connect:

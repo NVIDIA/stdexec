@@ -18,7 +18,6 @@
 #include "__system_context_if.h"
 #include "stdexec/execution.hpp"
 #include "exec/static_thread_pool.hpp"
-#include "__weak_attribute.hpp"
 
 namespace exec::__system_context_default_impl {
   using namespace stdexec::tags;
@@ -26,10 +25,10 @@ namespace exec::__system_context_default_impl {
   using __pool_scheduler_t = decltype(std::declval<exec::static_thread_pool>().get_scheduler());
 
   /// Receiver that calls the callback when the operation completes.
-  template <class __Sender>
+  template <class _Sender>
   struct __operation;
 
-  template <class __Sender>
+  template <class _Sender>
   struct __recv {
     using receiver_concept = stdexec::receiver_t;
 
@@ -40,7 +39,7 @@ namespace exec::__system_context_default_impl {
     void* __data_;
 
     /// The owning operation state, to be destructed when the operation completes.
-    __operation<__Sender>* __op_;
+    __operation<_Sender>* __op_;
 
     void set_value() noexcept {
       __cb_(__data_, 0, nullptr);
@@ -55,10 +54,10 @@ namespace exec::__system_context_default_impl {
     }
   };
 
-  template <typename __Sender>
+  template <typename _Sender>
   struct __operation {
     /// The inner operation state, that results out of connecting the underlying sender with the receiver.
-    stdexec::connect_result_t<__Sender, __recv<__Sender>> __inner_op_;
+    stdexec::connect_result_t<_Sender, __recv<_Sender>> __inner_op_;
     /// True if the operation is on the heap, false if it is in the preallocated space.
     bool __on_heap_;
 
@@ -66,7 +65,7 @@ namespace exec::__system_context_default_impl {
     static __operation* __construct_maybe_alloc(
       void* __preallocated,
       size_t __psize,
-      __Sender __sndr,
+      _Sender __sndr,
       __exec_system_context_completion_callback_t __cb,
       void* __data) {
       if (__preallocated == nullptr || __psize < sizeof(__operation)) {
@@ -87,11 +86,11 @@ namespace exec::__system_context_default_impl {
 
    private:
     __operation(
-      __Sender __sndr,
+      _Sender __sndr,
       __exec_system_context_completion_callback_t __cb,
       void* __data,
       bool __on_heap)
-      : __inner_op_(stdexec::connect(std::move(__sndr), __recv<__Sender>{__cb, __data, this}))
+      : __inner_op_(stdexec::connect(std::move(__sndr), __recv<_Sender>{__cb, __data, this}))
       , __on_heap_(__on_heap) {
     }
   };

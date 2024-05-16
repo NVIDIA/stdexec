@@ -102,7 +102,7 @@ namespace {
     }
 
     template <class Env>
-    friend auto tag_invoke(ex::get_completion_signatures_t, custom_sender, Env) noexcept
+    auto get_completion_signatures(Env&&) const noexcept
       -> ex::completion_signatures<ex::set_value_t()> {
       return {};
     }

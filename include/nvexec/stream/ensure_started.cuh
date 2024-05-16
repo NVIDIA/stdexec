@@ -64,8 +64,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             cudaStream_t stream = shared_state_->stream_provider_.own_stream_.value();
             using tuple_t = decayed_tuple<Tag, As...>;
             shared_state_->index_ = SharedState::variant_t::template index_of<tuple_t>::value;
-            copy_kernel<Tag, As&&...><<<1, 1, 0, stream>>>(shared_state_->data_, static_cast<As&&>(as)...);
-            shared_state_->stream_provider_.status_ = STDEXEC_DBG_ERR(cudaEventRecord(shared_state_->event_, stream));
+            copy_kernel<Tag, As&&...>
+              <<<1, 1, 0, stream>>>(shared_state_->data_, static_cast<As&&>(as)...);
+            shared_state_->stream_provider_.status_ =
+              STDEXEC_DBG_ERR(cudaEventRecord(shared_state_->event_, stream));
           } else {
             using tuple_t = decayed_tuple<Tag, As...>;
             shared_state_->index_ = SharedState::variant_t::template index_of<tuple_t>::value;
@@ -73,15 +75,15 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
 
         template <class... _Args>
-        void set_value(_Args &&...__args) noexcept {
-          _set_result(set_value_t(), static_cast<_Args &&>(__args)...);
+        void set_value(_Args&&... __args) noexcept {
+          _set_result(set_value_t(), static_cast<_Args&&>(__args)...);
           shared_state_->notify();
           shared_state_.reset();
         }
 
         template <class _Error>
-        void set_error(_Error &&__err) noexcept {
-          _set_result(set_error_t(), static_cast<_Error &&>(__err));
+        void set_error(_Error&& __err) noexcept {
+          _set_result(set_error_t(), static_cast<_Error&&>(__err));
           shared_state_->notify();
           shared_state_.reset();
         }
@@ -351,8 +353,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class Ty>
       using _set_error_t = completion_signatures<set_error_t(__decay_t<Ty>)>;
 
-      template <std::same_as<__t> Self, class Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> __try_make_completion_signatures<
+      template <class Env>
+      auto get_completion_signatures(Env&&) && -> __try_make_completion_signatures<
         Sender,
         _ensure_started::env_t,
         completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,

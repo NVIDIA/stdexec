@@ -49,8 +49,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <class... As>
           requires std::invocable<Fun, __decay_t<As>...>
-        void set_value(As&&... as) noexcept
-        {
+        void set_value(As&&... as) noexcept {
           using result_t = std::invoke_result_t<Fun, __decay_t<As>...>;
           constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
           operation_state_base_t<ReceiverId>& op_state = op_state_;
@@ -177,7 +176,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr)
+      STDEXEC_MEMFN_DECL(
+        auto connect)(this Self&& self, Receiver rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
           static_cast<Self&&>(self).sndr_,
@@ -187,8 +187,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&)
-        -> _completion_signatures_t<Self, Env> {
+      static auto get_completion_signatures(Self&&, Env&&) -> _completion_signatures_t<Self, Env> {
         return {};
       }
 

@@ -1078,7 +1078,11 @@ namespace exec {
       };
 
       class __schedule_sender {
+        using __completion_sigs =
+          stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
+
         __schedule_env __env_;
+
        public:
         using sender_concept = stdexec::sender_t;
         using __id = __schedule_sender;
@@ -1092,13 +1096,7 @@ namespace exec {
           return __env_;
         }
 
-       private:
-        using __completion_sigs =
-          stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
-
-        template <class _Env>
-        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this const __schedule_sender&, _Env) noexcept
-          -> __completion_sigs {
+        auto get_completion_signatures(stdexec::__ignore = {}) const noexcept -> __completion_sigs {
           return {};
         }
 
@@ -1111,6 +1109,11 @@ namespace exec {
       };
 
       class __schedule_after_sender {
+        using __completion_sigs = stdexec::completion_signatures<
+          stdexec::set_value_t(),
+          stdexec::set_error_t(std::exception_ptr),
+          stdexec::set_stopped_t()>;
+
        public:
         using sender_concept = stdexec::sender_t;
         using __id = __schedule_after_sender;
@@ -1123,14 +1126,8 @@ namespace exec {
           return __env_;
         }
 
-       private:
-        using __completion_sigs = stdexec::completion_signatures<
-          stdexec::set_value_t(),
-          stdexec::set_error_t(std::exception_ptr),
-          stdexec::set_stopped_t()>;
-
         template <class _Env>
-        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this const __schedule_after_sender&, _Env) noexcept
+        static auto get_completion_signatures(const __schedule_after_sender&, _Env) noexcept
           -> __completion_sigs {
           return {};
         }

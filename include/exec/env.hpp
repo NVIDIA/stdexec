@@ -128,7 +128,7 @@ namespace exec {
       }
 
       template <class _Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this __sender, _Env&&) -> __completions_t<_Env> {
+      auto get_completion_signatures(_Env&&) -> __completions_t<_Env> {
         return {};
       }
     };

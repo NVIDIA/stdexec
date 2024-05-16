@@ -489,7 +489,7 @@ namespace exec_old {
     }
 
     template <stdexec::__decays_to<bulk_sender> Self, class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env&&)
+    static auto get_completion_signatures(Self&&, Env&&)
       -> completion_signatures<Self, Env> {
       return {};
     }

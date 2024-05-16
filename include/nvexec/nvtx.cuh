@@ -113,7 +113,8 @@ namespace nvexec {
         }
 
         template <__decays_to<__t> Self, class Env>
-        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> _completion_signatures_t<Self, Env> {
+        static auto
+          get_completion_signatures(Self&&, Env&&) -> _completion_signatures_t<Self, Env> {
           return {};
         }
 

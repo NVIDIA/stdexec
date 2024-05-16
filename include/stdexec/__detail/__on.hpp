@@ -58,7 +58,8 @@ namespace stdexec {
     struct __no_scheduler_in_environment {
       using sender_concept = sender_t;
 
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this const __no_scheduler_in_environment&, const auto&) noexcept {
+      static auto
+        get_completion_signatures(const __no_scheduler_in_environment&, const auto&) noexcept {
         return __mexception<
           _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_<>,
           _WITH_SENDER_<_Sender>,

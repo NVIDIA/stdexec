@@ -62,7 +62,7 @@ namespace {
     }
 
     template <ex::__decays_to<get_env_sender> Self, class Env>
-    STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, const Env&) {
+    static auto get_completion_signatures(Self&&, const Env&) {
       return ex::__try_make_completion_signatures<
         ex::__copy_cvref_t<Self, Sndr>,
         Env,

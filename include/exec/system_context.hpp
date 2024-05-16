@@ -17,28 +17,30 @@
 
 #include "stdexec/execution.hpp"
 #include "__detail/__system_context_if.h"
-#include "__detail/__weak_attribute.hpp"
 
-#ifndef __EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_SIZE
-#  define __EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_SIZE 80
+#ifndef _EXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE
+#  define _EXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE 80
 #endif
-#ifndef __EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_ALIGN
-#  define __EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_ALIGN 8
+#ifndef _EXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN
+#  define _EXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN 8
 #endif
-#ifndef __EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_SIZE
-#  define __EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_SIZE 168
+#ifndef _EXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE
+#  define _EXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE 168
 #endif
-#ifndef __EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_ALIGN
-#  define __EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_ALIGN 8
+#ifndef _EXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN
+#  define _EXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN 8
 #endif
 
 // TODO: make these configurable by providing policy to the system context
 
 /// Gets the default system context implementation.
-extern "C" __EXEC_WEAK_ATTRIBUTE __exec_system_context_interface* __get_exec_system_context_impl();
+extern "C" STDEXEC_ATTRIBUTE((weak))
+__exec_system_context_interface*
+  __get_exec_system_context_impl();
 
 /// Sets the default system context implementation.
-extern "C" __EXEC_WEAK_ATTRIBUTE void
+extern "C" STDEXEC_ATTRIBUTE((weak))
+  void
   __set_exec_system_context_impl(__exec_system_context_interface* __instance);
 
 namespace exec {
@@ -46,47 +48,47 @@ namespace exec {
     using namespace stdexec::tags;
 
     /// Transforms from a C API signal to the `set_xxx` completion signal.
-    template <typename __R>
-    inline void __pass_to_receiver(int __completion_type, void* __exception, __R&& __recv) {
+    template <typename _Rcvr>
+    inline void __pass_to_receiver(int __completion_type, void* __exception, _Rcvr&& __rcvr) {
       if (__completion_type == 0) {
-        stdexec::set_value(std::forward<__R>(__recv));
+        stdexec::set_value(std::forward<_Rcvr>(__rcvr));
       } else if (__completion_type == 1) {
-        stdexec::set_stopped(std::forward<__R>(__recv));
+        stdexec::set_stopped(std::forward<_Rcvr>(__rcvr));
       } else if (__completion_type == 2) {
         stdexec::set_error(
-          std::forward<__R>(__recv),
+          std::forward<_Rcvr>(__rcvr),
           std::move(*reinterpret_cast<std::exception_ptr*>(&__exception)));
       }
     }
 
     /// Same as a above, but allows passing arguments to set_value.
-    template <typename __R, typename... __SetValueArgs>
+    template <typename _Rcvr, typename... _SetValueArgs>
     inline void __pass_to_receiver_with_args(
       int __completion_type,
       void* __exception,
-      __R&& __recv,
-      __SetValueArgs&&... __setValueArgs) {
+      _Rcvr&& __rcvr,
+      _SetValueArgs&&... __setValueArgs) {
       if (__completion_type == 0) {
-        stdexec::set_value(std::forward<__R>(__recv), std::move(__setValueArgs)...);
+        stdexec::set_value(std::forward<_Rcvr>(__rcvr), std::move(__setValueArgs)...);
       } else if (__completion_type == 1) {
-        stdexec::set_stopped(std::forward<__R>(__recv));
+        stdexec::set_stopped(std::forward<_Rcvr>(__rcvr));
       } else if (__completion_type == 2) {
         stdexec::set_error(
-          std::forward<__R>(__recv),
+          std::forward<_Rcvr>(__rcvr),
           std::move(*reinterpret_cast<std::exception_ptr*>(&__exception)));
       }
     }
 
     /// The type large enough to store the data produced by a sender.
-    template <typename __Sender>
-    using __sender_data_t = decltype(stdexec::sync_wait(std::declval<__Sender>()).value());
+    template <typename _Sender>
+    using __sender_data_t = decltype(stdexec::sync_wait(std::declval<_Sender>()).value());
 
   } // namespace __detail
 
   class system_scheduler;
   class system_sender;
-  template <stdexec::sender __S, std::integral __Size, class __Fn>
-  struct system_bulk_sender;
+  template <stdexec::sender _S, std::integral _Size, class _Fn>
+  class system_bulk_sender;
 
   /// Provides a view on some global underlying execution context supporting parallel forward progress.
   class system_context {
@@ -117,8 +119,8 @@ namespace exec {
     /// Schedules new bulk work, calling `__fun` with the index of each chunk in range `[0, __size]`,
     /// and the value(s) resulting from completing `__previous`; returns a sender that completes
     /// when all chunks complete.
-    template <stdexec::sender_expr_for<stdexec::bulk_t> __Sender, class __Env>
-    auto transform_sender(__Sender&& __sndr, const __Env& __env) const noexcept;
+    template <stdexec::sender_expr_for<stdexec::bulk_t> _Sender, class _Env>
+    auto transform_sender(_Sender&& __sndr, const _Env& __env) const noexcept;
   };
 
   namespace __detail {
@@ -140,11 +142,11 @@ namespace exec {
     };
 
     /// The operation state used to execute the work described by this sender.
-    template <class __S, class __R>
+    template <class _S, class _Rcvr>
     struct __system_op {
-      /// Constructs `this` from `__recv` and `__scheduler_impl`.
-      __system_op(__R&& __recv, __exec_system_scheduler_interface* __scheduler_impl)
-        : __recv_{std::move(__recv)}
+      /// Constructs `this` from `__rcvr` and `__scheduler_impl`.
+      __system_op(_Rcvr&& __rcvr, __exec_system_scheduler_interface* __scheduler_impl)
+        : __rcvr_{std::move(__rcvr)}
         , __scheduler_{__scheduler_impl} {
       }
 
@@ -165,25 +167,26 @@ namespace exec {
 
       static void __cb(void* __data, int __completion_type, void* __exception) {
         auto __self = static_cast<__system_op*>(__data);
-        __detail::__pass_to_receiver(__completion_type, __exception, std::move(__self->__recv_));
+        __detail::__pass_to_receiver(__completion_type, __exception, std::move(__self->__rcvr_));
       }
 
       /// Object that receives completion from the work described by the sender.
-      __R __recv_;
+      _Rcvr __rcvr_;
       /// The underlying implementation of the scheduler.
       __exec_system_scheduler_interface* __scheduler_{nullptr};
       /// The operating state on the implementation side.
       void* __impl_os_;
 
       /// Preallocated space for storing the operation state on the implementation size.
-      struct alignas(__EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_ALIGN) __preallocated {
-        char __data[__EXEC__SYSTEM_CONTEXT__SCHEDULE_OP_SIZE];
+      struct alignas(_EXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN) __preallocated {
+        char __data[_EXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE];
       } __preallocated_;
     };
   } // namespace __detail
 
   /// The sender used to schedule new work in the system context.
   class system_sender {
+    STDEXEC_MEMFN_FRIEND(connect);
    public:
     /// Marks this type as being a sender; not to spec.
     using sender_concept = stdexec::sender_t;
@@ -203,19 +206,15 @@ namespace exec {
       return {__scheduler_};
     }
 
-   private:
-    STDEXEC_MEMFN_FRIEND(get_env);
-    STDEXEC_MEMFN_FRIEND(connect);
-
-    /// Connects `__self` to `__r`, returning the operation state containing the work to be done.
-    template <stdexec::receiver __R>
-    STDEXEC_MEMFN_DECL(auto connect)(this system_sender&& __self, __R&& __r) //
-      noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<__R>, __R>)
-        -> __detail::__system_op<system_sender, std::remove_cvref_t<__R>> {
-
-      return {std::move(__r), __self.__scheduler_};
+    /// Connects `__self` to `__rcvr`, returning the operation state containing the work to be done.
+    template <stdexec::receiver _Rcvr>
+    STDEXEC_MEMFN_DECL(auto connect)(this system_sender&& __self, _Rcvr __rcvr) //
+      noexcept(stdexec::__nothrow_move_constructible<_Rcvr>)
+        -> __detail::__system_op<system_sender, _Rcvr> {
+      return {std::move(__rcvr), __self.__scheduler_};
     }
 
+   private:
     /// The underlying implementation of the system scheduler.
     __exec_system_scheduler_interface* __scheduler_{nullptr};
   };
@@ -244,7 +243,7 @@ namespace exec {
 
    private:
     template <stdexec::sender, std::integral, class>
-    friend struct system_bulk_sender;
+    friend class system_bulk_sender;
     STDEXEC_MEMFN_FRIEND(schedule);
 
     /// Schedules new work, returning the sender that signals the start of the work.
@@ -264,21 +263,21 @@ namespace exec {
     }
 
     /// The state needed to execute the bulk sender created from system context.
-    template <stdexec::sender __Previous, std::integral __Size, class __Fn, class __R>
+    template <stdexec::sender _Previous, std::integral _Size, class _Fn, class _Rcvr>
     struct __bulk_state {
       /// The sender object that describes the work to be done.
-      system_bulk_sender<__Previous, __Size, __Fn> __snd_;
+      system_bulk_sender<_Previous, _Size, _Fn> __snd_;
       /// The receiver object that receives completion from the work described by the sender.
-      __R __recv_;
+      _Rcvr __rcvr_;
       /// The operating state on the implementation side.
       void* __impl_os_ = nullptr;
       /// Storage for the arguments passed from the previous receiver to the function object of the bulk sender.
-      alignas(__detail::__sender_data_t<__Previous>) unsigned char __arguments_data_[sizeof(
-        __detail::__sender_data_t<__Previous>)]{};
+      alignas(__detail::__sender_data_t<_Previous>) unsigned char __arguments_data_[sizeof(
+        __detail::__sender_data_t<_Previous>)]{};
 
       /// Preallocated space for storing the operation state on the implementation size.
-      struct alignas(__EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_ALIGN) __preallocated {
-        char __data[__EXEC__SYSTEM_CONTEXT__BULK_SCHEDULE_OP_SIZE];
+      struct alignas(_EXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN) __preallocated {
+        char __data[_EXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE];
       } __preallocated_{};
 
       ~__bulk_state() {
@@ -287,30 +286,30 @@ namespace exec {
     }; // namespace __detail
 
     /// Receiver that is used in "bulk" to connect toe the input sender of the bulk operation.
-    template <stdexec::sender __Previous, std::integral __Size, class __Fn, class __R>
+    template <stdexec::sender _Previous, std::integral _Size, class _Fn, class _Rcvr>
     struct __bulk_intermediate_receiver {
       /// Declare that this is a `receiver`.
       using receiver_concept = stdexec::receiver_t;
 
       /// The type of the object that holds relevant data for the entire bulk operation.
-      using __bulk_state_t = __bulk_state<__Previous, __Size, __Fn, __R>;
+      using __bulk_state_t = __bulk_state<_Previous, _Size, _Fn, _Rcvr>;
 
       /// Object that holds the relevant data for the entire bulk operation.
       __bulk_state_t& __state_;
 
-      template <class... __As>
-      void set_value(__As&&... __as) noexcept {
+      template <class... _As>
+      void set_value(_As&&... __as) noexcept {
         // Store the input data in the shared state, in the preallocated buffer.
-        static_assert(sizeof(std::tuple<__As...>) <= sizeof(__state_.__arguments_data_));
+        static_assert(sizeof(std::tuple<_As...>) <= sizeof(__state_.__arguments_data_));
         new (&__state_.__arguments_data_)
-          std::tuple<stdexec::__decay_t<__As>...>{std::move(__as)...};
+          std::tuple<stdexec::__decay_t<_As>...>{std::move(__as)...};
 
         // The function that needs to be applied to each item in the bulk operation.
         auto __type_erased_item_fn = +[](void* __state_arg, unsigned long __idx) {
           auto* __state = static_cast<__bulk_state_t*>(__state_arg);
           std::apply(
             [&](auto&&... __args) { __state->__snd_.__fun_(__idx, __args...); },
-            *reinterpret_cast<std::tuple<__As...>*>(&__state->__arguments_data_));
+            *reinterpret_cast<std::tuple<_As...>*>(&__state->__arguments_data_));
         };
 
         // The function that needs to be applied when all items are complete.
@@ -320,9 +319,9 @@ namespace exec {
             std::apply(
               [&](auto&&... __args) {
                 __detail::__pass_to_receiver_with_args(
-                  __completion_type, __exception, std::move(__state->__recv_), __args...);
+                  __completion_type, __exception, std::move(__state->__rcvr_), __args...);
               },
-              *reinterpret_cast<std::tuple<__As...>*>(&__state->__arguments_data_));
+              *reinterpret_cast<std::tuple<_As...>*>(&__state->__arguments_data_));
           };
 
         // Schedule the bulk work on the system scheduler.
@@ -339,37 +338,37 @@ namespace exec {
 
       /// Invoked when the previous sender completes with "stopped" to stop the entire work.
       void set_stopped() noexcept {
-        stdexec::set_stopped(std::move(__state_.__recv_));
+        stdexec::set_stopped(std::move(__state_.__rcvr_));
       }
 
       /// Invoked when the previous sender completes with error to forward the error to the connected receiver.
       void set_error(std::exception_ptr __ptr) noexcept {
-        stdexec::set_error(std::move(__state_.__recv_), std::move(__ptr));
+        stdexec::set_error(std::move(__state_.__rcvr_), std::move(__ptr));
       }
 
       /// Gets the environment of this receiver; returns the environment of the connected receiver.
       auto get_env() const noexcept -> decltype(auto) {
-        return stdexec::get_env(__state_.__recv_);
+        return stdexec::get_env(__state_.__rcvr_);
       }
     };
 
     /// The operation state object for the system bulk sender.
-    template <stdexec::sender __Previous, std::integral __Size, class __Fn, class __R>
+    template <stdexec::sender _Previous, std::integral _Size, class _Fn, class _Rcvr>
     struct __system_bulk_op {
       /// The inner operation state, which is the result of connecting the previous sender to the bulk intermediate receiver.
       using __inner_op_state = stdexec::
-        connect_result_t<__Previous, __bulk_intermediate_receiver<__Previous, __Size, __Fn, __R>>;
+        connect_result_t<_Previous, __bulk_intermediate_receiver<_Previous, _Size, _Fn, _Rcvr>>;
 
-      /// Constructs `this` from `__snd` and `__recv`, using the object returned by `__initFunc` to start the operation.
+      /// Constructs `this` from `__snd` and `__rcvr`, using the object returned by `__initFunc` to start the operation.
       ///
       /// Using a functor to initialize the operation state allows the use of `this` to get the
       /// underlying implementation object.
-      template <class __InitF>
+      template <class _InitF>
       __system_bulk_op(
-        system_bulk_sender<__Previous, __Size, __Fn>&& __snd,
-        __R&& __recv,
-        __InitF&& __initFunc)
-        : __state_{std::move(__snd), std::move(__recv)}
+        system_bulk_sender<_Previous, _Size, _Fn>&& __snd,
+        _Rcvr&& __rcvr,
+        _InitF&& __initFunc)
+        : __state_{std::move(__snd), std::move(__rcvr)}
         , __previous_operation_state_{__initFunc(*this)} {
       }
 
@@ -378,7 +377,7 @@ namespace exec {
       __system_bulk_op& operator=(const __system_bulk_op&) = delete;
       __system_bulk_op& operator=(__system_bulk_op&&) = delete;
 
-      /// Starts the work stored in `__self`.
+      /// Starts the work stored in `*this`.
       void start() & noexcept {
         // Start previous operation state.
         // Bulk operation will be started when the previous sender completes.
@@ -386,20 +385,34 @@ namespace exec {
       }
 
       /// The state of this bulk operation.
-      __bulk_state<__Previous, __Size, __Fn, __R> __state_;
+      __bulk_state<_Previous, _Size, _Fn, _Rcvr> __state_;
       /// The operation state object of the previous computation.
       __inner_op_state __previous_operation_state_;
     };
   } // namespace __detail
 
   /// The sender used to schedule bulk work in the system context.
-  template <stdexec::sender __Previous, std::integral __Size, class __Fn>
-  struct system_bulk_sender {
-    /// Marks this type as being a sender; not to spec.
+  template <stdexec::sender _Previous, std::integral _Size, class _Fn>
+  class system_bulk_sender {
+    /// Meta-function that returns the completion signatures of `this`.
+    template <typename _Self, typename _Env>
+    using __completions_t = stdexec::make_completion_signatures<               //
+      stdexec::__copy_cvref_t<_Self, _Previous>,                               //
+      _Env,                                                                    //
+      stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)> //
+      >;
+    template <stdexec::sender, std::integral, class, class>
+    friend struct __detail::__bulk_state;
+    template <stdexec::sender, std::integral, class, class>
+    friend struct __detail::__bulk_intermediate_receiver;
+    STDEXEC_MEMFN_FRIEND(connect);
+
+   public:
+    /// Marks this type as being a sender
     using sender_concept = stdexec::sender_t;
 
     /// Constructs `this`.
-    system_bulk_sender(system_scheduler __sched, __Previous __previous, __Size __size, __Fn&& __fun)
+    system_bulk_sender(system_scheduler __sched, _Previous __previous, _Size __size, _Fn&& __fun)
       : __scheduler_{__sched.__scheduler_}
       , __previous_{std::move(__previous)}
       , __size_{std::move(__size)}
@@ -411,28 +424,13 @@ namespace exec {
       return {__scheduler_};
     }
 
-   private:
-    STDEXEC_MEMFN_FRIEND(connect);
-    STDEXEC_MEMFN_FRIEND(get_completion_signatures);
-    /// Meta-function that returns the completion signatures of `this`.
-    template <typename __Self, typename __Env>
-    using __completions_t = stdexec::make_completion_signatures<               //
-      stdexec::__copy_cvref_t<__Self, __Previous>,                             //
-      __Env,                                                                   //
-      stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)> //
-      >;
-    template <stdexec::sender, std::integral, class, class>
-    friend struct __detail::__bulk_state;
-    template <stdexec::sender, std::integral, class, class>
-    friend struct __detail::__bulk_intermediate_receiver;
-
-    /// Connects `__self` to `__r`, returning the operation state containing the work to be done.
-    template <stdexec::receiver __R>
-    STDEXEC_MEMFN_DECL(auto connect)(this system_bulk_sender&& __self, __R&& __r) //
-      noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<__R>, __R>)
-        -> __detail::__system_bulk_op<__Previous, __Size, __Fn, __R> {
-      using __receiver_t = __detail::__bulk_intermediate_receiver<__Previous, __Size, __Fn, __R>;
-      return {std::move(__self), std::move(__r), [](auto& __op) {
+    /// Connects `__self` to `__rcvr`, returning the operation state containing the work to be done.
+    template <stdexec::receiver _Rcvr>
+    STDEXEC_MEMFN_DECL(auto connect)(this system_bulk_sender&& __self, _Rcvr __rcvr) //
+      noexcept(stdexec::__nothrow_move_constructible<_Rcvr>)
+        -> __detail::__system_bulk_op<_Previous, _Size, _Fn, _Rcvr> {
+      using __receiver_t = __detail::__bulk_intermediate_receiver<_Previous, _Size, _Fn, _Rcvr>;
+      return {std::move(__self), std::move(__rcvr), [](auto& __op) {
                 // Connect bulk input receiver with the previous operation and store in the operating state.
                 return stdexec::connect(
                   std::move(__op.__state_.__snd_.__previous_), __receiver_t{__op.__state_});
@@ -440,19 +438,20 @@ namespace exec {
     }
 
     /// Gets the completion signatures for this sender.
-    template <stdexec::__decays_to<system_bulk_sender> __Self, class __Env>
-    STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this __Self&&, __Env&&) -> __completions_t<__Self, __Env> {
+    template <stdexec::__decays_to<system_bulk_sender> _Self, class _Env>
+    static auto get_completion_signatures(_Self&&, _Env&&) -> __completions_t<_Self, _Env> {
       return {};
     }
 
+   private:
     /// The underlying implementation of the scheduler we are using.
     __exec_system_scheduler_interface* __scheduler_{nullptr};
     /// The previous sender, the one that produces the input value for the bulk function.
-    __Previous __previous_;
+    _Previous __previous_;
     /// The size of the bulk operation.
-    __Size __size_;
+    _Size __size_;
     /// The function to be executed to perform the bulk work.
-    __Fn __fun_;
+    _Fn __fun_;
   };
 
   inline system_context::system_context() {
@@ -483,45 +482,45 @@ namespace exec {
   }
 
   struct __transform_system_bulk_sender {
-    template <class __Data, class __Previous>
-    auto operator()(stdexec::bulk_t, __Data&& __data, __Previous&& __previous) const noexcept {
-      auto [__shape, __fn] = static_cast<__Data&&>(__data);
-      return system_bulk_sender<__Previous, decltype(__shape), decltype(__fn)>{
-        __sched_, static_cast<__Previous&&>(__previous), __shape, std::move(__fn)};
+    template <class _Data, class _Previous>
+    auto operator()(stdexec::bulk_t, _Data&& __data, _Previous&& __previous) const noexcept {
+      auto [__shape, __fn] = static_cast<_Data&&>(__data);
+      return system_bulk_sender<_Previous, decltype(__shape), decltype(__fn)>{
+        __sched_, static_cast<_Previous&&>(__previous), __shape, std::move(__fn)};
     }
 
     system_scheduler __sched_;
   };
 
-  template <class __Sender>
+  template <class _Sender>
   struct __not_a_sender {
     using sender_concept = stdexec::sender_t;
   };
 
-  template <stdexec::sender_expr_for<stdexec::bulk_t> __Sender, class __Env>
+  template <stdexec::sender_expr_for<stdexec::bulk_t> _Sender, class _Env>
   auto
-    system_scheduler_domain::transform_sender(__Sender&& __sndr, const __Env& __env) const noexcept {
-    if constexpr (stdexec::__completes_on<__Sender, system_scheduler>) {
+    system_scheduler_domain::transform_sender(_Sender&& __sndr, const _Env& __env) const noexcept {
+    if constexpr (stdexec::__completes_on<_Sender, system_scheduler>) {
       auto __sched =
         stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(__sndr));
       return stdexec::__sexpr_apply(
-        static_cast<__Sender&&>(__sndr), __transform_system_bulk_sender{__sched});
-    } else if constexpr (stdexec::__starts_on<__Sender, system_scheduler, __Env>) {
+        static_cast<_Sender&&>(__sndr), __transform_system_bulk_sender{__sched});
+    } else if constexpr (stdexec::__starts_on<_Sender, system_scheduler, _Env>) {
       auto __sched = stdexec::get_scheduler(__env);
       return stdexec::__sexpr_apply(
-        static_cast<__Sender&&>(__sndr), __transform_system_bulk_sender{__sched});
+        static_cast<_Sender&&>(__sndr), __transform_system_bulk_sender{__sched});
     } else {
       static_assert( //
-        stdexec::__starts_on<__Sender, system_scheduler, __Env>
-          || stdexec::__completes_on<__Sender, system_scheduler>,
+        stdexec::__starts_on<_Sender, system_scheduler, _Env>
+          || stdexec::__completes_on<_Sender, system_scheduler>,
         "No system_scheduler instance can be found in the sender's or receiver's "
         "environment on which to schedule bulk work.");
-      return __not_a_sender<stdexec::__name_of<__Sender>>();
+      return __not_a_sender<stdexec::__name_of<_Sender>>();
     }
   }
 } // namespace exec
 
-#if defined(__EXEC__SYSTEM_CONTEXT__HEADER_ONLY)
-#  define __EXEC__SYSTEM_CONTEXT__INLINE inline
+#if defined(_EXEC_SYSTEM_CONTEXT_HEADER_ONLY)
+#  define _EXEC_SYSTEM_CONTEXT_INLINE inline
 #  include "__detail/__system_context_default_impl_entry.hpp"
 #endif

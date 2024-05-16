@@ -27,8 +27,7 @@ AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: true
 AlwaysBreakTemplateDeclarations: Yes
 AttributeMacros: [
-  '__EXEC__SYSTEM_CONTEXT__INLINE',
-  '__EXEC_WEAK_ATTRIBUTE'
+  'STDEXEC_SYSTEM_CONTEXT_INLINE'
 ]
 BinPackArguments: false
 BinPackParameters: false

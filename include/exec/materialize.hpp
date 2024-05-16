@@ -103,7 +103,8 @@ namespace exec {
           completion_signatures<set_value_t(set_stopped_t)>>;
 
         template <__decays_to<__t> _Self, class _Env>
-        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env) -> __completion_signatures_for_t<_Env> {
+        static auto
+          get_completion_signatures(_Self&&, _Env) -> __completion_signatures_for_t<_Env> {
           return {};
         }
 
@@ -204,7 +205,8 @@ namespace exec {
           make_completion_signatures<_Sender, _Env, completion_signatures<>, __dematerialize_value>;
 
         template <__decays_to<__t> _Self, class _Env>
-        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env) -> __completion_signatures_for_t<_Env> {
+        static auto
+          get_completion_signatures(_Self&&, _Env) -> __completion_signatures_for_t<_Env> {
           return {};
         }
 

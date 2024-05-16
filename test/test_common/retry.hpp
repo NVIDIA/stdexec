@@ -128,7 +128,7 @@ namespace {
     using _value = stdexec::completion_signatures<stdexec::set_value_t(Ts...)>;
 
     template <class Env>
-    friend auto tag_invoke(stdexec::get_completion_signatures_t, const _retry_sender&, Env)
+    auto get_completion_signatures(Env&&) const
       -> stdexec::make_completion_signatures<
         S&,
         Env,

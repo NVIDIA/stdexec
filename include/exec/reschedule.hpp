@@ -47,8 +47,7 @@ namespace exec {
       struct __sender {
         using sender_concept = sender_t;
 
-        template <class _Env>
-        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this __sender, _Env&&) noexcept -> __completions<_Env> {
+        auto get_completion_signatures(__ignore = {}) noexcept -> __completions<_Env> {
           return {};
         }
 

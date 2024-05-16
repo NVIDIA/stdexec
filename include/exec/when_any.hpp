@@ -269,7 +269,6 @@ namespace exec {
           : __senders_(static_cast<_Senders&&>(__senders)...) {
         }
 
-       private:
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires(
             sender_to<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, __receiver_t<_Receiver>>
@@ -283,11 +282,11 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class _Env>
-        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env) noexcept
-          -> __completion_signatures_t<_Env, _SenderIds...> {
-          return {};
+        static auto get_completion_signatures(_Self&&, _Env) noexcept {
+          return __completion_signatures_t<_Env, _SenderIds...>{};
         }
 
+       private:
         std::tuple<stdexec::__t<_SenderIds>...> __senders_;
       };
     };
