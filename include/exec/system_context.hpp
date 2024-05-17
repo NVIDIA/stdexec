@@ -18,17 +18,17 @@
 #include "stdexec/execution.hpp"
 #include "__detail/__system_context_if.h"
 
-#ifndef _EXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE
-#  define _EXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE 80
+#ifndef STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE
+#  define STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE 80
 #endif
-#ifndef _EXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN
-#  define _EXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN 8
+#ifndef STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN
+#  define STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN 8
 #endif
-#ifndef _EXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE
-#  define _EXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE 168
+#ifndef STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE
+#  define STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE 168
 #endif
-#ifndef _EXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN
-#  define _EXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN 8
+#ifndef STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN
+#  define STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN 8
 #endif
 
 // TODO: make these configurable by providing policy to the system context
@@ -131,10 +131,8 @@ namespace exec {
     struct __system_scheduler_env {
       /// Returns the system scheduler as the completion scheduler for `set_value_t`.
       template <stdexec::__none_of<stdexec::set_error_t> _Tag>
-      STDEXEC_MEMFN_DECL(auto query)(
-        this const __system_scheduler_env& __self,
-        stdexec::get_completion_scheduler_t<_Tag>) noexcept {
-        return __detail::__make_system_scheduler_from(_Tag(), __self.__scheduler_);
+      auto query(stdexec::get_completion_scheduler_t<_Tag>) const noexcept {
+        return __detail::__make_system_scheduler_from(_Tag(), __scheduler_);
       }
 
       /// The underlying implementation of the scheduler we are using.
@@ -178,8 +176,8 @@ namespace exec {
       void* __impl_os_;
 
       /// Preallocated space for storing the operation state on the implementation size.
-      struct alignas(_EXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN) __preallocated {
-        char __data[_EXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE];
+      struct alignas(STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN) __preallocated {
+        char __data[STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE];
       } __preallocated_;
     };
   } // namespace __detail
@@ -241,16 +239,14 @@ namespace exec {
       return {};
     }
 
+    /// Schedules new work, returning the sender that signals the start of the work.
+    system_sender schedule() const noexcept {
+      return {__scheduler_};
+    }
+
    private:
     template <stdexec::sender, std::integral, class>
     friend class system_bulk_sender;
-    STDEXEC_MEMFN_FRIEND(schedule);
-
-    /// Schedules new work, returning the sender that signals the start of the work.
-    STDEXEC_MEMFN_DECL(
-      system_sender schedule)(this const system_scheduler& sched) noexcept {
-      return {sched.__scheduler_};
-    }
 
     /// The underlying implementation of the scheduler.
     __exec_system_scheduler_interface* __scheduler_;
@@ -276,8 +272,8 @@ namespace exec {
         __detail::__sender_data_t<_Previous>)]{};
 
       /// Preallocated space for storing the operation state on the implementation size.
-      struct alignas(_EXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN) __preallocated {
-        char __data[_EXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE];
+      struct alignas(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN) __preallocated {
+        char __data[STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE];
       } __preallocated_{};
 
       ~__bulk_state() {
@@ -520,7 +516,7 @@ namespace exec {
   }
 } // namespace exec
 
-#if defined(_EXEC_SYSTEM_CONTEXT_HEADER_ONLY)
-#  define _EXEC_SYSTEM_CONTEXT_INLINE inline
+#if defined(STDEXEC_SYSTEM_CONTEXT_HEADER_ONLY)
+#  define STDEXEC_SYSTEM_CONTEXT_INLINE inline
 #  include "__detail/__system_context_default_impl_entry.hpp"
 #endif

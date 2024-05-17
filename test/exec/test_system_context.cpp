@@ -26,7 +26,6 @@
 #include <exec/inline_scheduler.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <exec/system_context.hpp>
-#include <exec/__detail/__system_context_default_impl.hpp>
 
 #include <catch2/catch.hpp>
 #include <test_common/receivers.hpp>
