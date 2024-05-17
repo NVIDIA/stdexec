@@ -452,6 +452,7 @@ namespace exec {
         }
       };
 
+     public:
       // Make this task awaitable within a particular context:
       template <class _ParentPromise>
         requires constructible_from<
@@ -465,10 +466,10 @@ namespace exec {
       }
 
       // Make this task generally awaitable:
-      friend auto operator co_await(basic_task&& __self) noexcept -> __task_awaitable<>
+      auto operator co_await() && noexcept -> __task_awaitable<>
         requires __mvalid<awaiter_context_t, __promise>
       {
-        return __task_awaitable<>{std::exchange(__self.__coro_, {})};
+        return __task_awaitable<>{std::exchange(__coro_, {})};
       }
 
       // From the list of types [_Ty], remove any types that are void, and send
@@ -483,7 +484,7 @@ namespace exec {
       using __task_traits_t = //
         completion_signatures<__set_value_sig_t, set_error_t(std::exception_ptr), set_stopped_t()>;
 
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this const basic_task&, auto) -> __task_traits_t {
+      auto get_completion_signatures(__ignore = {}) const -> __task_traits_t {
         return {};
       }
 

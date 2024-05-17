@@ -111,7 +111,7 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class _Env>
-        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env&&)
+        static auto get_completion_signatures(_Self&&, _Env&&)
           -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>> {
           return {};
         }
@@ -252,7 +252,7 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class _Env>
-        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env&&)
+        static auto get_completion_signatures(_Self&&, _Env&&)
           -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>> {
           return {};
         }
@@ -598,7 +598,15 @@ namespace exec {
       using _Sender = stdexec::__t<_SenderId>;
       using _Env = stdexec::__t<_EnvId>;
 
-      struct __t {
+      class __t {
+        template <class _Self>
+        using __completions_t = __future_completions_t<__mfront<_Sender, _Self>, _Env>;
+
+        template <class _Receiver>
+        using __future_op_t =
+          stdexec::__t<__future_op<_SenderId, _EnvId, stdexec::__id<_Receiver>>>;
+
+       public:
         using __id = __future;
         using sender_concept = stdexec::sender_t;
 
@@ -619,20 +627,6 @@ namespace exec {
               __guard, __future_step::__future, __future_step::__no_future);
           }
         }
-       private:
-        friend struct async_scope;
-        template <class _Self>
-        using __completions_t = __future_completions_t<__mfront<_Sender, _Self>, _Env>;
-
-        template <class _Receiver>
-        using __future_op_t =
-          stdexec::__t<__future_op<_SenderId, _EnvId, stdexec::__id<_Receiver>>>;
-
-        explicit __t(std::unique_ptr<__future_state<_Sender, _Env>> __state) noexcept
-          : __state_(std::move(__state)) {
-          std::unique_lock __guard{__state_->__mutex_};
-          __state_->__step_from_to_(__guard, __future_step::__created, __future_step::__future);
-        }
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires receiver_of<_Receiver, __completions_t<_Self>>
@@ -642,8 +636,17 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class _OtherEnv>
-        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _OtherEnv&&) -> __completions_t<_Self> {
+        static auto get_completion_signatures(_Self&&, _OtherEnv&&) -> __completions_t<_Self> {
           return {};
+        }
+
+       private:
+        friend struct async_scope;
+
+        explicit __t(std::unique_ptr<__future_state<_Sender, _Env>> __state) noexcept
+          : __state_(std::move(__state)) {
+          std::unique_lock __guard{__state_->__mutex_};
+          __state_->__step_from_to_(__guard, __future_step::__created, __future_step::__future);
         }
 
         std::unique_ptr<__future_state<_Sender, _Env>> __state_;

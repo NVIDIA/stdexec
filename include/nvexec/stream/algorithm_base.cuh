@@ -61,8 +61,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       };
 
       operation_state_base_t<ReceiverId>& op_state_;
-      STDEXEC_ATTRIBUTE((no_unique_address)) InitT init_;
-      STDEXEC_ATTRIBUTE((no_unique_address)) Fun fun_;
+      STDEXEC_ATTRIBUTE((no_unique_address))
+      InitT init_;
+      STDEXEC_ATTRIBUTE((no_unique_address))
+      Fun fun_;
 
      public:
       using __id = receiver_t;
@@ -108,8 +110,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       using _set_value_t = typename DerivedSender::template _set_value_t<Range>;
 
       Sender sndr_;
-      STDEXEC_ATTRIBUTE((no_unique_address)) InitT init_;
-      STDEXEC_ATTRIBUTE((no_unique_address)) Fun fun_;
+      STDEXEC_ATTRIBUTE((no_unique_address))
+      InitT init_;
+      STDEXEC_ATTRIBUTE((no_unique_address))
+      Fun fun_;
 
       template <class Self, class Env>
       using completion_signatures = //
@@ -121,7 +125,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
-      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr)
+      STDEXEC_MEMFN_DECL(
+        auto connect)(this Self&& self, Receiver rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
           static_cast<Self&&>(self).sndr_,
@@ -133,8 +138,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       }
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&)
-        -> completion_signatures<Self, Env> {
+      static auto get_completion_signatures(Self&&, Env&&) -> completion_signatures<Self, Env> {
         return {};
       }
 

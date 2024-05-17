@@ -386,6 +386,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           on_stop_{};
       };
 
+     public:
       template <__decays_to<__t> Self, receiver Receiver>
       STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr)
         -> operation_t<__copy_cvref_t<Self, stdexec::__id<__decay_t<Receiver>>>> {
@@ -393,7 +394,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> completion_sigs<Env, Self> {
+      static auto get_completion_signatures(Self&&, Env&&) -> completion_sigs<Env, Self> {
         return {};
       }
 
@@ -401,6 +402,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return env_;
       }
 
+     private:
       std::tuple<stdexec::__t<SenderIds>...> sndrs_;
     };
   };

@@ -62,16 +62,11 @@ namespace exec {
       return _Self::__tag().get_env(*this);
     }
 
-    template <
-      stdexec::same_as<stdexec::get_completion_signatures_t> _Tag,
-      stdexec::__decays_to<__seqexpr> _Self,
-      class _Env>
-    friend auto tag_invoke(_Tag, _Self&& __self, _Env&& __env) //
-      -> stdexec::__msecond<
-        stdexec::__if_c<stdexec::same_as<_Tag, stdexec::get_completion_signatures_t>>,
-        decltype(__self.__tag().get_completion_signatures(
-          static_cast<_Self&&>(__self),
-          static_cast<_Env&&>(__env)))> {
+    template <stdexec::__decays_to<__seqexpr> _Self, class _Env>
+    static auto get_completion_signatures(_Self&& __self, _Env&& __env) //
+      -> decltype(__self.__tag().get_completion_signatures(
+        static_cast<_Self&&>(__self),
+        static_cast<_Env&&>(__env))) {
       return {};
     }
 

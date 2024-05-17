@@ -77,7 +77,7 @@ namespace {
 } // namespace
 
 // Should replace the function defined in __system_context_default_impl.hpp
-extern "C" __EXEC_WEAK_ATTRIBUTE __exec_system_context_interface* __get_exec_system_context_impl() {
+extern "C" STDEXEC_ATTRIBUTE((weak)) __exec_system_context_interface* __get_exec_system_context_impl() {
   printf("Using my_system_context_impl\n");
   static my_system_context_impl instance;
   return &instance;

@@ -15,23 +15,28 @@
  */
 #pragma once
 
-// Assumes __EXEC__SYSTEM_CONTEXT__INLINE is defined
+// Assumes STDEXEC_SYSTEM_CONTEXT_INLINE is defined
+
+#if !defined(STDEXEC_SYSTEM_CONTEXT_INLINE)
+#  error "STDEXEC_SYSTEM_CONTEXT_INLINE must be defined before including this header"
+#endif
 
 #include "__system_context_default_impl.hpp"
-#include "__weak_attribute.hpp"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wattributes") // warning: inline function '[...]' declared weak
 
 /// Gets the default system context implementation.
-extern "C" __EXEC__SYSTEM_CONTEXT__INLINE __EXEC_WEAK_ATTRIBUTE __exec_system_context_interface*
+extern "C" STDEXEC_SYSTEM_CONTEXT_INLINE STDEXEC_ATTRIBUTE((weak))
+__exec_system_context_interface*
   __get_exec_system_context_impl() {
   return exec::__system_context_default_impl::__instance_holder::__singleton()
     .__get_current_instance();
 }
 
 /// Sets the default system context implementation.
-extern "C" __EXEC__SYSTEM_CONTEXT__INLINE __EXEC_WEAK_ATTRIBUTE void
+extern "C" STDEXEC_SYSTEM_CONTEXT_INLINE STDEXEC_ATTRIBUTE((weak))
+  void
   __set_exec_system_context_impl(__exec_system_context_interface* __instance) {
   return exec::__system_context_default_impl::__instance_holder::__singleton()
     .__set_current_instance(__instance);

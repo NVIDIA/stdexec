@@ -273,22 +273,6 @@ namespace exec {
         _InitialSender __initial_sndr_;
         _FinalSender __final_sndr_;
 
-        template <__decays_to<__t> _Self, class _Rec>
-        STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Rec&& __receiver) noexcept -> __op_t<_Self, _Rec> {
-          return {
-            static_cast<_Self&&>(__self).__initial_sndr_,
-            static_cast<_Self&&>(__self).__final_sndr_,
-            static_cast<_Rec&&>(__receiver)};
-        }
-
-        template <__decays_to<__t> _Self, class _Env>
-        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env&&) noexcept -> __completion_signatures_t<
-          __copy_cvref_t<_Self, _InitialSender>,
-          __copy_cvref_t<_Self, _FinalSender>,
-          _Env> {
-          return {};
-        }
-
        public:
         using __id = __sender;
         using sender_concept = stdexec::sender_t;
@@ -298,6 +282,23 @@ namespace exec {
           noexcept(__nothrow_decay_copyable<_Initial> && __nothrow_decay_copyable<_Final>)
           : __initial_sndr_{static_cast<_Initial&&>(__initial)}
           , __final_sndr_{static_cast<_Final&&>(__final)} {
+        }
+
+        template <__decays_to<__t> _Self, class _Rec>
+        STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Rec&& __receiver) noexcept -> __op_t<_Self, _Rec> {
+          return {
+            static_cast<_Self&&>(__self).__initial_sndr_,
+            static_cast<_Self&&>(__self).__final_sndr_,
+            static_cast<_Rec&&>(__receiver)};
+        }
+
+        template <__decays_to<__t> _Self, class _Env>
+        static auto
+          get_completion_signatures(_Self&&, _Env&&) noexcept -> __completion_signatures_t<
+            __copy_cvref_t<_Self, _InitialSender>,
+            __copy_cvref_t<_Self, _FinalSender>,
+            _Env> {
+          return {};
         }
       };
     };

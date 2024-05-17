@@ -228,6 +228,14 @@ namespace __coro = std::experimental;
 #endif
 #define STDEXEC_ATTR_always_inline STDEXEC_PROBE(~, 4)
 
+#if STDEXEC_CLANG() || STDEXEC_GCC()
+#  define STDEXEC_ATTR_WHICH_5(_ATTR) __attribute__((__weak__))
+#else
+#  define STDEXEC_ATTR_WHICH_5(_ATTR) /*nothing*/
+#endif
+#define STDEXEC_ATTR_weak     STDEXEC_PROBE(~, 5)
+#define STDEXEC_ATTR___weak__ STDEXEC_PROBE(~, 5)
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // warning push/pop portability macros
 #if STDEXEC_NVCC()

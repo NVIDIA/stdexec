@@ -55,8 +55,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           if (shape_) {
             cudaStream_t stream = op_state.get_stream();
             constexpr int block_threads = 256;
-            const int grid_blocks =
-              (static_cast<int>(shape_) + block_threads - 1) / block_threads;
+            const int grid_blocks = (static_cast<int>(shape_) + block_threads - 1) / block_threads;
             kernel<block_threads, As&...>
               <<<grid_blocks, block_threads, 0, stream>>>(shape_, std::move(f_), as...);
           }
@@ -131,7 +130,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> _completion_signatures_t<Self, Env> {
+      static auto get_completion_signatures(Self&&, Env&&) -> _completion_signatures_t<Self, Env> {
         return {};
       }
 
@@ -238,8 +237,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
 
         template <class _Error>
-        void set_error(_Error &&__err) noexcept {
-          op_state_.propagate_completion_signal(set_error_t(), static_cast<_Error &&>(__err));
+        void set_error(_Error&& __err) noexcept {
+          op_state_.propagate_completion_signal(set_error_t(), static_cast<_Error&&>(__err));
         }
 
         void set_stopped() noexcept {
@@ -365,7 +364,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> _completion_signatures_t<Self, Env> {
+      static auto get_completion_signatures(Self&&, Env&&) -> _completion_signatures_t<Self, Env> {
         return {};
       }
 

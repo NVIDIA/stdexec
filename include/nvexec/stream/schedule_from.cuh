@@ -70,8 +70,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             int dev_id{};
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaGetDevice(&dev_id));
                 status != cudaSuccess) {
-              operation_state_.propagate_completion_signal(
-                stdexec::set_error, std::move(status));
+              operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
               return;
             }
 
@@ -79,8 +78,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaDeviceGetAttribute(
                   &concurrent_managed_access, cudaDevAttrConcurrentManagedAccess, dev_id));
                 status != cudaSuccess) {
-              operation_state_.propagate_completion_signal(
-                stdexec::set_error, std::move(status));
+              operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
               return;
             }
 
@@ -90,8 +88,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               if (cudaError_t status = STDEXEC_DBG_ERR(
                     cudaMemPrefetchAsync(storage, sizeof(storage_t), dev_id, stream));
                   status != cudaSuccess) {
-                operation_state_.propagate_completion_signal(
-                  stdexec::set_error, std::move(status));
+                operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
                 return;
               }
             }
@@ -101,8 +98,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
               if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                   status != cudaSuccess) {
-                operation_state_.propagate_completion_signal(
-                  stdexec::set_error, std::move(status));
+                operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
                 return;
               }
             }
@@ -125,13 +121,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
 
         template <class... _Args>
-        void set_value(_Args &&...__args) noexcept {
-          complete(set_value_t(), static_cast<_Args &&>(__args)...);
+        void set_value(_Args&&... __args) noexcept {
+          complete(set_value_t(), static_cast<_Args&&>(__args)...);
         }
 
         template <class _Error>
-        void set_error(_Error &&__err) noexcept {
-          complete(set_error_t(), static_cast<_Error &&>(__err));
+        void set_error(_Error&& __err) noexcept {
+          complete(set_error_t(), static_cast<_Error&&>(__err));
         }
 
         void set_stopped() noexcept {
@@ -158,7 +154,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<source_sender_t> _Self, class _Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env&&)
+      static auto get_completion_signatures(_Self&&, _Env&&)
         -> __try_make_completion_signatures<__copy_cvref_t<_Self, Sender>, _Env> {
         return {};
       }
@@ -221,7 +217,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> _Self, class _Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env&&) -> __try_make_completion_signatures<
+      static auto get_completion_signatures(_Self&&, _Env&&) -> __try_make_completion_signatures<
         __copy_cvref_t<_Self, Sender>,
         _Env,
         completion_signatures<set_error_t(cudaError_t)>,

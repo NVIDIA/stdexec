@@ -42,9 +42,9 @@ namespace exec {
 
         template <__valid_completion_signatures _Sigs>
         constexpr __void_sender (*operator()(_Sigs*) const)(void*, __item_sender<_Sigs>&&) {
-          return +[](void* __r, __item_sender<_Sigs>&& __sndr) noexcept -> __void_sender {
+          return +[](void* __rcvr, __item_sender<_Sigs>&& __sndr) noexcept -> __void_sender {
             return __void_sender{
-              set_next(*static_cast<_Rcvr*>(__r), static_cast<__item_sender<_Sigs>&&>(__sndr))};
+              set_next(*static_cast<_Rcvr*>(__rcvr), static_cast<__item_sender<_Sigs>&&>(__sndr))};
           };
         }
       };

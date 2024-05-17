@@ -62,8 +62,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             cudaStream_t stream = sh_state_.op_state2_.get_stream();
             using tuple_t = decayed_tuple<Tag, As...>;
             sh_state_.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
-            copy_kernel<Tag, As&&...><<<1, 1, 0, stream>>>(sh_state_.data_, static_cast<As&&>(as)...);
-            sh_state_.stream_provider_.status_ = STDEXEC_DBG_ERR(cudaEventRecord(sh_state_.event_, stream));
+            copy_kernel<Tag, As&&...>
+              <<<1, 1, 0, stream>>>(sh_state_.data_, static_cast<As&&>(as)...);
+            sh_state_.stream_provider_.status_ =
+              STDEXEC_DBG_ERR(cudaEventRecord(sh_state_.event_, stream));
           } else {
             using tuple_t = decayed_tuple<Tag, As...>;
             sh_state_.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
@@ -71,14 +73,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
 
         template <class... _Args>
-        void set_value(_Args &&...__args) noexcept {
-          set_result(set_value_t(), static_cast<_Args &&>(__args)...);
+        void set_value(_Args&&... __args) noexcept {
+          set_result(set_value_t(), static_cast<_Args&&>(__args)...);
           sh_state_.notify();
         }
 
         template <class _Error>
-        void set_error(_Error &&__err) noexcept {
-          set_result(set_error_t(), static_cast<_Error &&>(__err));
+        void set_error(_Error&& __err) noexcept {
+          set_result(set_error_t(), static_cast<_Error&&>(__err));
           sh_state_.notify();
         }
 
@@ -317,8 +319,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     struct __t : stream_sender_base {
       using __id = split_sender_t;
       template <class Receiver>
-      using operation_t =
-        stdexec::__t<_split::operation_t<SenderId, stdexec::__id<__decay_t<Receiver>>>>;
+      using operation_t = stdexec::__t<_split::operation_t<SenderId, stdexec::__id<Receiver>>>;
 
       Sender sndr_;
       std::shared_ptr<sh_state_> shared_state_;
@@ -343,7 +344,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using _set_error_t = completion_signatures<set_error_t(const __decay_t<Ty>&)>;
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> __try_make_completion_signatures<
+      static auto get_completion_signatures(Self&&, Env&&) -> __try_make_completion_signatures<
         Sender,
         exec::make_env_t<exec::with_t<get_stop_token_t, inplace_stop_token>>,
         completion_signatures<set_error_t(const cudaError_t&)>,

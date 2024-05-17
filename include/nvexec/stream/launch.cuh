@@ -60,8 +60,7 @@ namespace nvexec {
 
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
                 status == cudaSuccess) {
-              op_state_.propagate_completion_signal(
-                stdexec::set_value, static_cast<As&&>(as)...);
+              op_state_.propagate_completion_signal(stdexec::set_value, static_cast<As&&>(as)...);
             } else {
               op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             }
@@ -141,7 +140,7 @@ namespace nvexec {
         }
 
         template <__decays_to<__t> Self, class Env>
-        STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&) -> completions_t<Self, Env> {
+        static auto get_completion_signatures(Self&&, Env&&) -> completions_t<Self, Env> {
           return {};
         }
 

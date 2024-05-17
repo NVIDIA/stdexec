@@ -199,8 +199,7 @@ namespace {
         }
 
         template <stdexec::__decays_to<__t> Self, class Env>
-        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-          -> __completions_t<Self, Env> {
+        static auto get_completion_signatures(Self&&, Env) -> __completions_t<Self, Env> {
           return {};
         }
 
@@ -271,8 +270,7 @@ namespace {
         }
 
         template <stdexec::__decays_to<__t> Self, class Env>
-        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
-          -> completion_signatures<Self, Env> {
+        static auto get_completion_signatures(Self&&, Env&&) -> completion_signatures<Self, Env> {
           return {};
         }
 

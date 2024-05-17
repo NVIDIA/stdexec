@@ -14,5 +14,5 @@
  * limitations under the License.
  */
 
-#define __EXEC__SYSTEM_CONTEXT__INLINE /*no inline*/
+#define STDEXEC_SYSTEM_CONTEXT_INLINE /*no inline*/
 #include <exec/__detail/__system_context_default_impl_entry.hpp>

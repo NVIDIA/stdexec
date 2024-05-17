@@ -51,6 +51,21 @@ namespace stdexec {
     concept __with_member_alias = __mvalid<__member_alias_t, _Sender, _Env>;
 
     struct get_completion_signatures_t {
+      template <__same_as<get_completion_signatures_t> _Self, sender _Sender, class... _Env>
+      constexpr friend auto tag_invoke(_Self, _Sender&& __sndr, _Env&&... __env) noexcept
+        -> decltype(static_cast<_Sender&&>(__sndr).get_completion_signatures(
+          static_cast<_Env&&>(__env)...)) {
+        return {};
+      }
+
+      template <__same_as<get_completion_signatures_t> _Self, sender _Sender, class... _Env>
+      constexpr friend auto tag_invoke(_Self, _Sender&& __sndr, _Env&&... __env) noexcept
+        -> decltype(__decay_t<_Sender>::get_completion_signatures(
+          static_cast<_Sender&&>(__sndr),
+          static_cast<_Env&&>(__env)...)) {
+        return {};
+      }
+
       template <class _Sender, class _Env>
       static auto __impl() {
         static_assert(sizeof(_Sender), "Incomplete type used with get_completion_signatures");

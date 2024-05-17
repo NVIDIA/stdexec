@@ -18,15 +18,16 @@
 #include <iostream>
 #include <chrono>
 
-#define __EXEC__SYSTEM_CONTEXT__HEADER_ONLY 1
+#define STDEXEC_SYSTEM_CONTEXT_HEADER_ONLY 1
 
-#include <catch2/catch.hpp>
-#include <exec/system_context.hpp>
-#include <exec/static_thread_pool.hpp>
-#include <exec/async_scope.hpp>
 #include <stdexec/execution.hpp>
 
+#include <exec/async_scope.hpp>
 #include <exec/inline_scheduler.hpp>
+#include <exec/static_thread_pool.hpp>
+#include <exec/system_context.hpp>
+
+#include <catch2/catch.hpp>
 #include <test_common/receivers.hpp>
 
 

@@ -488,7 +488,8 @@ namespace stdexec {
 
     template <__decays_to<__sexpr> _Self, class _Env>
     STDEXEC_ATTRIBUTE((always_inline))
-    STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this _Self&&, _Env&&) noexcept -> __msecond<
+    static auto
+      get_completion_signatures(_Self&&, _Env&&) noexcept -> __msecond<
         __if_c<__decays_to<_Self, __sexpr>>,
         __result_of<__impl<_Self>::get_completion_signatures, _Self, _Env>> {
       return {};

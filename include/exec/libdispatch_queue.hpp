@@ -317,7 +317,7 @@ namespace exec {
     }
 
     template <stdexec::__decays_to<__t> Self, class Env>
-    STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self &&, Env &&) -> __completions_t<Self, Env> {
+    static auto get_completion_signatures(Self &&, Env &&) -> __completions_t<Self, Env> {
       return {};
     }
 

@@ -49,14 +49,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         constexpr static std::size_t memory_allocation_size = MemoryAllocationSize;
 
         template <class... _Args>
-        void set_value(_Args &&...__args) noexcept {
-          op_state_.propagate_completion_signal(set_value_t(), static_cast<_Args &&>(__args)...);
+        void set_value(_Args&&... __args) noexcept {
+          op_state_.propagate_completion_signal(set_value_t(), static_cast<_Args&&>(__args)...);
         }
 
         template <class Error>
           requires std::invocable<Fun, Error>
-        void set_error(Error&& error) noexcept
-        {
+        void set_error(Error&& error) noexcept {
           using result_t = std::invoke_result_t<Fun, Error>;
           constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
           cudaStream_t stream = op_state_.get_stream();
@@ -71,8 +70,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             }
           } else {
             using decayed_result_t = __decay_t<result_t>;
-            decayed_result_t* d_result = static_cast<decayed_result_t*>(
-              op_state_.temp_storage_);
+            decayed_result_t* d_result = static_cast<decayed_result_t*>(op_state_.temp_storage_);
             kernel_with_result<Error&&>
               <<<1, 1, 0, stream>>>(std::move(f_), d_result, static_cast<Error&&>(error));
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
@@ -161,7 +159,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
-      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr)
+      STDEXEC_MEMFN_DECL(
+        auto connect)(this Self&& self, Receiver rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
           static_cast<Self&&>(self).sndr_,
@@ -171,8 +170,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class Env>
-      STDEXEC_MEMFN_DECL(auto get_completion_signatures)(this Self&&, Env&&)
-        -> completion_signatures<Self, Env> {
+      static auto get_completion_signatures(Self&&, Env&&) -> completion_signatures<Self, Env> {
         return {};
       }
 
