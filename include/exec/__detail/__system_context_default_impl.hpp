@@ -43,14 +43,17 @@ namespace exec::__system_context_default_impl {
 
     void set_value() noexcept {
       __cb_(__data_, 0, nullptr);
+      __op_->__destruct();
     }
 
     void set_error(std::exception_ptr __ptr) noexcept {
       __cb_(__data_, 2, *reinterpret_cast<void**>(&__ptr));
+      __op_->__destruct();
     }
 
     void set_stopped() noexcept {
       __cb_(__data_, 1, nullptr);
+      __op_->__destruct();
     }
   };
 
@@ -102,11 +105,9 @@ namespace exec::__system_context_default_impl {
       __schedule_operation_size = sizeof(__schedule_operation_t),
       __schedule_operation_alignment = alignof(__schedule_operation_t),
       __schedule = __schedule_impl;
-      __destruct_schedule_operation = __destruct_schedule_operation_impl;
       __bulk_schedule_operation_size = sizeof(__bulk_schedule_operation_t),
       __bulk_schedule_operation_alignment = alignof(__bulk_schedule_operation_t),
       __bulk_schedule = __bulk_schedule_impl;
-      __destruct_bulk_schedule_operation = __destruct_bulk_schedule_operation_impl;
     }
 
    private:
@@ -130,7 +131,7 @@ namespace exec::__system_context_default_impl {
       std::declval<unsigned long>(),
       std::declval<__bulk_functor>()))>;
 
-    static void* __schedule_impl(
+    static void __schedule_impl(
       __exec_system_scheduler_interface* __self,
       void* __preallocated,
       uint32_t __psize,
@@ -142,17 +143,9 @@ namespace exec::__system_context_default_impl {
       auto __os = __schedule_operation_t::__construct_maybe_alloc(
         __preallocated, __psize, std::move(__sndr), __cb, __data);
       stdexec::start(__os->__inner_op_);
-      return __os;
     }
 
-    static void __destruct_schedule_operation_impl(
-      __exec_system_scheduler_interface* /*__self*/,
-      void* __operation) noexcept {
-      auto __op = static_cast<__schedule_operation_t*>(__operation);
-      __op->__destruct();
-    }
-
-    static void* __bulk_schedule_impl(
+    static void __bulk_schedule_impl(
       __exec_system_scheduler_interface* __self,
       void* __preallocated,
       uint32_t __psize,
@@ -167,14 +160,6 @@ namespace exec::__system_context_default_impl {
       auto __os = __bulk_schedule_operation_t::__construct_maybe_alloc(
         __preallocated, __psize, std::move(__sndr), __cb, __data);
       stdexec::start(__os->__inner_op_);
-      return __os;
-    }
-
-    static void __destruct_bulk_schedule_operation_impl(
-      __exec_system_scheduler_interface* /*__self*/,
-      void* __operation) noexcept {
-      auto __op = static_cast<__bulk_schedule_operation_t*>(__operation);
-      __op->__destruct();
     }
   };
 
