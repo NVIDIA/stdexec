@@ -57,13 +57,13 @@ namespace stdexec {
     && move_constructible<__decay_t<_Sender>>             //
     && constructible_from<__decay_t<_Sender>, _Sender>;
 
-  template <class _Sender, class... _Env>
+  template <class _Sender, class... _Receiver>
   concept sender_in =
-    (sizeof...(_Env) <= 1) //
+    (sizeof...(_Receiver) <= 1) //
     && sender<_Sender>     //
-    && requires(_Sender&& __sndr, _Env&&... __env) {
+    && requires(_Sender&& __sndr, _Receiver&&... __rcvr) {
          {
-           get_completion_signatures(static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env)...)
+           get_completion_signatures(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr)...)
          } -> __valid_completion_signatures;
        };
 
