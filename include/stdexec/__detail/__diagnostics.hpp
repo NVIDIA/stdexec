@@ -75,6 +75,8 @@ namespace stdexec {
   template <class _Tag>
   struct _WITH_QUERY_;
 
+  struct _SENDER_TYPE_IS_NOT_COPYABLE_;
+
   inline constexpr __mstring __not_callable_diag =
     "The specified function is not callable with the arguments provided."_mstr;
 
