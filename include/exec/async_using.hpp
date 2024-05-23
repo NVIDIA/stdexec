@@ -51,9 +51,10 @@ using __non_value_completion_signatures_t = stdexec::make_completion_signatures<
   stdexec::completion_signatures<>,
   __omit_set_value_t>;
 
-template <class _ResultId, class _ReceiverId>
+template <class _ResultId, class _ErrorCompletionFilterId, class _ReceiverId>
 struct __destructed {
   using _Result = stdexec::__t<_ResultId>;
+  using _ErrorCompletionFilter = stdexec::__t<_ErrorCompletionFilterId>;
   using _Receiver = stdexec::__t<_ReceiverId>;
 
   struct __t {
@@ -74,7 +75,15 @@ struct __destructed {
           } else {
             stdexec::__apply(
               [&]<class... _Args>(auto __tag, _Args&... __args) noexcept -> void {
-                __tag(std::move(*__rcvr.__rcvr_), (_Args&&) __args...);
+                // use calculation of the completion_signatures in __sender
+                // to filter out set_error_t(std::exception_ptr) when it cannot occur
+                if constexpr (stdexec::same_as<
+                  stdexec::completion_signatures<decltype(__tag)(_Args...)>, 
+                  _ErrorCompletionFilter>) {
+                  std::terminate();
+                } else {
+                  __tag(std::move(*__rcvr.__rcvr_), (_Args&&) __args...);
+                }
               },
               __tupl);
           }
@@ -92,7 +101,15 @@ struct __destructed {
           } else {
             stdexec::__apply(
               [&]<class... _Args>(auto __tag, _Args&... __args) noexcept -> void {
-                __tag(std::move(*__rcvr.__rcvr_), (_Args&&) __args...);
+                // use calculation of the completion_signatures in __sender
+                // to filter out set_error_t(std::exception_ptr) when it cannot occur
+                if constexpr (stdexec::same_as<
+                  stdexec::completion_signatures<decltype(__tag)(_Args...)>, 
+                  _ErrorCompletionFilter>) {
+                  std::terminate();
+                } else {
+                  __tag(std::move(*__rcvr.__rcvr_), (_Args&&) __args...);
+                }
               },
               __tupl);
           }
@@ -148,12 +165,13 @@ struct __outside {
   };
 };
 
-template <class _ResultId, class _InnerFnId, class _InsideStateId, class _DestructStateId, class _ReceiverId, class... _FynId>
+template <class _ResultId, class _InnerFnId, class _InsideStateId, class _DestructStateId, class _ErrorCompletionFilterId, class _ReceiverId, class... _FynId>
 struct __constructed {
   using _Result = stdexec::__t<_ResultId>;
   using _InnerFn = stdexec::__t<_InnerFnId>;
   using _InsideState = stdexec::__t<_InsideStateId>;
   using _DestructState = stdexec::__t<_DestructStateId>;
+  using _ErrorCompletionFilter = stdexec::__t<_ErrorCompletionFilterId>;
   using _Receiver = stdexec::__t<_ReceiverId>;
 
   struct __t {
@@ -166,7 +184,7 @@ struct __constructed {
 
     using __inside = stdexec::__call_result_t<_InnerFn, typename stdexec::__t<_FynId>::handle...>;
 
-    using __destructed_t = stdexec::__t<__destructed<_ResultId, _ReceiverId>>;
+    using __destructed_t = stdexec::__t<__destructed<_ResultId, _ErrorCompletionFilterId, _ReceiverId>>;
     using __outside_t = stdexec::__t<__outside<_ResultId, _DestructStateId, _ReceiverId>>;
 
     __fyn_t* __fyn_;
@@ -228,10 +246,11 @@ struct __constructed {
 // async-using operation state. 
 // constructs all the async-objects into reserved storage
 // destructs all the async-objects in the reserved storage
-template <class _InnerFnId, class _ReceiverId, class... _FynId>
+template <class _InnerFnId, class _ReceiverId, class _ErrorCompletionFilterId, class... _FynId>
 struct __operation {
   using _InnerFn = stdexec::__t<_InnerFnId>;
   using _Receiver = stdexec::__t<_ReceiverId>;
+  using _ErrorCompletionFilter = stdexec::__t<_ErrorCompletionFilterId>;
   using fyn_t = stdexec::__decayed_tuple<stdexec::__t<_FynId>...>;
   using stgn_t = stdexec::__decayed_tuple<typename stdexec::__t<_FynId>::storage...>;
 
@@ -251,7 +270,7 @@ struct __operation {
         // completion-signatures can be calculated
         stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>>>;
 
-    using __destructed_t = stdexec::__t<__destructed<stdexec::__id<__result_t>, _ReceiverId>>;
+    using __destructed_t = stdexec::__t<__destructed<stdexec::__id<__result_t>, _ErrorCompletionFilterId, _ReceiverId>>;
     template<class _O>
     using __destruction_n = stdexec::__call_result_t<async_destruct_t, _O&, typename _O::storage&>;
     template<class... _Dn>
@@ -262,7 +281,7 @@ struct __operation {
     using __outside_t = stdexec::__t<__outside<stdexec::__id<__result_t>, stdexec::__id<__destruct_state>, _ReceiverId>>;
     using __inside_state = stdexec::connect_result_t<__inside, __outside_t>;
 
-    using __constructed_t = stdexec::__t<__constructed<stdexec::__id<__result_t>, _InnerFnId, stdexec::__id<__inside_state>, stdexec::__id<__destruct_state>, _ReceiverId, _FynId...>>;
+    using __constructed_t = stdexec::__t<__constructed<stdexec::__id<__result_t>, _InnerFnId, stdexec::__id<__inside_state>, stdexec::__id<__destruct_state>, _ErrorCompletionFilterId, _ReceiverId, _FynId...>>;
     using __construct_state = stdexec::connect_result_t<__construction, __constructed_t>;
 
     STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
@@ -339,7 +358,7 @@ struct __sender {
         stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>>>;
 
     template <class _Receiver>
-    using __destructed_t = stdexec::__t<__destructed<stdexec::__id<__result_t<_Receiver>>, _Receiver>>;
+    using __destructed_t = stdexec::__t<__destructed<stdexec::__id<__result_t<_Receiver>>, stdexec::__id<stdexec::completion_signatures<>>, _Receiver>>;
     template<class _O>
     using __destruction_n = stdexec::__call_result_t<async_destruct_t, _O&, typename _O::storage&>;
     using __destruction = stdexec::__call_result_t<stdexec::when_all_t, __destruction_n<stdexec::__t<_FynId>>...>;
@@ -352,6 +371,12 @@ struct __sender {
     template <class _Env>
     using __fake_rcvr = stdexec::__t<exec::__decl_receiver<_Env>>;
 
+    // calculate if using InnerFn can throw 
+    template<class _Env>
+    static constexpr bool __inner_nothrow = 
+      stdexec::__nothrow_callable<_InnerFn, typename stdexec::__t<_FynId>::handle...> &&
+      stdexec::__nothrow_callable<stdexec::connect_t, __inside, __outside_t<__fake_rcvr<_Env>>>;
+
     template < stdexec::same_as<stdexec::get_completion_signatures_t> _Tag, stdexec::__decays_to<__t> _Self, class _Env>
     STDEXEC_ATTRIBUTE((always_inline))                                  //
     friend auto tag_invoke(_Tag, _Self&& __self, _Env&& __env) noexcept //
@@ -362,16 +387,22 @@ struct __sender {
           __async_using::__non_value_completion_signatures_t<__construction, _Env>,
           // add std::exception_ptr if using InnerFn can throw 
           stdexec::__if_c<
-            stdexec::__nothrow_callable<_InnerFn, typename stdexec::__t<_FynId>::handle...> &&
-            stdexec::__nothrow_callable<stdexec::connect_t, __inside, __outside_t<__fake_rcvr<_Env>>>,
+            __inner_nothrow<_Env>,
             stdexec::completion_signatures<>,
             stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>>> {
       return {};
     }
 
   private:
+    // calculate the filter to use when applying result_t to the _Receiver
+    template<class _Receiver>
+    using __error_completion_filter = stdexec::__if_c<
+      __inner_nothrow<stdexec::env_of_t<_Receiver>>,
+      stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
+      stdexec::completion_signatures<>>;
+
     template <class _Receiver>
-    using __operation = stdexec::__t<__operation<_InnerFnId, stdexec::__id<std::remove_cvref_t<_Receiver>>, _FynId...>>;
+    using __operation = stdexec::__t<__operation<_InnerFnId, stdexec::__id<std::remove_cvref_t<_Receiver>>, stdexec::__id<__error_completion_filter<_Receiver>>, _FynId...>>;
 
     template <class _Receiver>
     friend __operation<_Receiver> tag_invoke(
@@ -389,8 +420,8 @@ struct __sender {
 template<class _InnerFn, class... _Fyn>
 using __sender_t = stdexec::__t<__sender<stdexec::__id<std::remove_cvref_t<_InnerFn>>, stdexec::__id<std::remove_cvref_t<_Fyn>>...>>;
 
-template <class _InnerFnId, class _ReceiverId, class... _FynId>
-inline void __operation<_InnerFnId, _ReceiverId, _FynId...>::__t::__start_() noexcept {
+template <class _InnerFnId, class _ReceiverId, class _ErrorCompletionFilterId, class... _FynId>
+inline void __operation<_InnerFnId, _ReceiverId, _ErrorCompletionFilterId, _FynId...>::__t::__start_() noexcept {
   stdexec::start(__construct_state_);
 }
 

@@ -93,7 +93,7 @@ struct stop_object {
       auto stop_token = source->get_token();
       auto bind = [sender, stop_token, source = this->source](auto ext_stop) noexcept {
         auto callback = [source]() noexcept {source->request_stop();};
-        auto with_callback = [sender, stop_token](auto cb) {
+        auto with_callback = [sender, stop_token](auto cb) noexcept {
           return stdexec::__write_env(
             std::move(sender), 
             stdexec::__env::__with(stop_token, stdexec::get_stop_token));

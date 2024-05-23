@@ -23,6 +23,11 @@
 
 namespace exec {
 
+// disable spurious warning in clang 
+// https://github.com/llvm/llvm-project/issues/61566
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wundefined-internal")
+
 // fake receiver used to calculate whether inner connect is nothrow
 template<class _Env>
 struct __decl_receiver {
@@ -43,5 +48,7 @@ struct __decl_receiver {
   template <stdexec::same_as<stdexec::get_env_t> _Tag>
   friend _Env tag_invoke(_Tag, const __t& __rcvr) noexcept;
 };
+
+STDEXEC_PRAGMA_POP()
 
 } // namespace exec

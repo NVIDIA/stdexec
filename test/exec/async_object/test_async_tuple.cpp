@@ -15,7 +15,7 @@ using stdexec::sync_wait;
 namespace {
 
   TEST_CASE("async_tuple simple", "[stop_object][async_object][async_tuple]") {
-    auto with_tuple = [](auto tpl) {
+    auto with_tuple = [](auto tpl) noexcept {
       auto [s0, s1] = tpl.handles();
       return s0.chain(ex::just(false));
     };

@@ -105,7 +105,6 @@ set_target_properties(test.stdexec PROPERTIES
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF)
 target_include_directories(test.stdexec PRIVATE ${CMAKE_CURRENT_LIST_DIR})
-target_compile_options(test.stdexec PRIVATE -ftime-trace)
 target_link_libraries(test.stdexec
     PUBLIC
     STDEXEC::stdexec

@@ -13,7 +13,7 @@ namespace {
   using handle = typename stop_object::handle;
 
   TEST_CASE("stop_object unused", "[stop_object][async_object]") {
-    auto with_stop_object = [](handle s0) {
+    auto with_stop_object = [](handle s0) noexcept {
       return s0.chain(ex::just(false));
     };
     ex::sender auto snd = async_using(with_stop_object, stop_object{});

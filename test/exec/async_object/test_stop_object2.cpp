@@ -13,7 +13,7 @@ namespace {
   using handle = typename stop_object::handle;
 
   TEST_CASE("chained stop_object is stopped", "[stop_object][async_object]") {
-    auto with_stop_objects = [](handle s0, handle s1) {
+    auto with_stop_objects = [](handle s0, handle s1) noexcept {
       auto with_s1_stop_token = [s0](auto stp) mutable noexcept { 
         REQUIRE(s0.stop_requested() == false);
         REQUIRE(stp.stop_requested() == false);
