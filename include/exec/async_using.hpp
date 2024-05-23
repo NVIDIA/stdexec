@@ -281,7 +281,14 @@ struct __operation {
     using __outside_t = stdexec::__t<__outside<stdexec::__id<__result_t>, stdexec::__id<__destruct_state>, _ReceiverId>>;
     using __inside_state = stdexec::connect_result_t<__inside, __outside_t>;
 
-    using __constructed_t = stdexec::__t<__constructed<stdexec::__id<__result_t>, _InnerFnId, stdexec::__id<__inside_state>, stdexec::__id<__destruct_state>, _ErrorCompletionFilterId, _ReceiverId, _FynId...>>;
+    using __constructed_t = stdexec::__t<__constructed<
+      stdexec::__id<__result_t>, 
+      _InnerFnId, 
+      stdexec::__id<__inside_state>, 
+      stdexec::__id<__destruct_state>, 
+      _ErrorCompletionFilterId, 
+      _ReceiverId, 
+      _FynId...>>;
     using __construct_state = stdexec::connect_result_t<__construction, __constructed_t>;
 
     STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
@@ -348,6 +355,8 @@ struct __sender {
 
     using __inside = stdexec::__call_result_t<_InnerFn, typename stdexec::__t<_FynId>::handle...>;
 
+    using __exception_completion = stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>;
+
     template <class _Receiver>
     using __result_t = __async_using::__variant_for_t<
       stdexec::__concat_completion_signatures_t<
@@ -355,10 +364,20 @@ struct __sender {
         stdexec::completion_signatures_of_t<__inside, stdexec::env_of_t<_Receiver>>,
         // always reserve *storage* for exception_ptr so that the actual 
         // completion-signatures can be calculated
-        stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>>>;
+        __exception_completion>>;
+
+    //
+    // calculate the completion_signatures using a __decl_receiver<_Env>
+    // and an empty error completion filter
+    //
 
     template <class _Receiver>
-    using __destructed_t = stdexec::__t<__destructed<stdexec::__id<__result_t<_Receiver>>, stdexec::__id<stdexec::completion_signatures<>>, _Receiver>>;
+    using __destructed_t = stdexec::__t<__destructed<
+      stdexec::__id<__result_t<_Receiver>>, 
+      // do not filter out any completion in result_t 
+      // so that the actual completion-signatures can be calculated
+      stdexec::__id<stdexec::completion_signatures<>>, 
+      stdexec::__id<_Receiver>>>;
     template<class _O>
     using __destruction_n = stdexec::__call_result_t<async_destruct_t, _O&, typename _O::storage&>;
     using __destruction = stdexec::__call_result_t<stdexec::when_all_t, __destruction_n<stdexec::__t<_FynId>>...>;
@@ -366,16 +385,19 @@ struct __sender {
     using __destruct_state = stdexec::connect_result_t<__destruction, __destructed_t<_Receiver>>;
 
     template <class _Receiver>
-    using __outside_t = stdexec::__t<__outside<stdexec::__id<__result_t<_Receiver>>, stdexec::__id<__destruct_state<_Receiver>>, _Receiver>>;
+    using __outside_t = stdexec::__t<__outside<
+      stdexec::__id<__result_t<_Receiver>>, 
+      stdexec::__id<__destruct_state<_Receiver>>, 
+      stdexec::__id<_Receiver>>>;
 
     template <class _Env>
     using __fake_rcvr = stdexec::__t<exec::__decl_receiver<_Env>>;
 
     // calculate if using InnerFn can throw 
-    template<class _Env>
+    template<class _Receiver>
     static constexpr bool __inner_nothrow = 
       stdexec::__nothrow_callable<_InnerFn, typename stdexec::__t<_FynId>::handle...> &&
-      stdexec::__nothrow_callable<stdexec::connect_t, __inside, __outside_t<__fake_rcvr<_Env>>>;
+      stdexec::__nothrow_callable<stdexec::connect_t, __inside, __outside_t<_Receiver>>;
 
     template < stdexec::same_as<stdexec::get_completion_signatures_t> _Tag, stdexec::__decays_to<__t> _Self, class _Env>
     STDEXEC_ATTRIBUTE((always_inline))                                  //
@@ -387,22 +409,30 @@ struct __sender {
           __async_using::__non_value_completion_signatures_t<__construction, _Env>,
           // add std::exception_ptr if using InnerFn can throw 
           stdexec::__if_c<
-            __inner_nothrow<_Env>,
+            __inner_nothrow<__fake_rcvr<_Env>>,
             stdexec::completion_signatures<>,
-            stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>>> {
+            __exception_completion>> {
       return {};
     }
 
   private:
+    //
+    // produce the actual operation once the receiver is connected
+    //
+
     // calculate the filter to use when applying result_t to the _Receiver
     template<class _Receiver>
     using __error_completion_filter = stdexec::__if_c<
-      __inner_nothrow<stdexec::env_of_t<_Receiver>>,
-      stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
+      __inner_nothrow<_Receiver>,
+      __exception_completion,
       stdexec::completion_signatures<>>;
 
     template <class _Receiver>
-    using __operation = stdexec::__t<__operation<_InnerFnId, stdexec::__id<std::remove_cvref_t<_Receiver>>, stdexec::__id<__error_completion_filter<_Receiver>>, _FynId...>>;
+    using __operation = stdexec::__t<__operation<
+      _InnerFnId, stdexec::__id<std::remove_cvref_t<_Receiver>>, 
+      // apply the filter to use when applying result_t to the _Receiver
+      stdexec::__id<__error_completion_filter<_Receiver>>, 
+      _FynId...>>;
 
     template <class _Receiver>
     friend __operation<_Receiver> tag_invoke(
