@@ -192,19 +192,40 @@ struct __constructed {
     _Result* __result_;
     _InnerFn* __inner_;
     std::optional<_InsideState>* __inside_state_; 
-    _DestructState* __destruct_state_; 
+    std::optional<_DestructState>* __destruct_state_; 
     _Receiver* __rcvr_;
 
     template<class _O>
     using __destruction_n = stdexec::__call_result_t<async_destruct_t, _O&, typename _O::storage&>;
-    using __destruction = stdexec::__call_result_t<stdexec::when_all_t, __destruction_n<stdexec::__t<_FynId>>...>;
+    template<class... _Dn>
+    using __destruct_all = stdexec::__call_result_t<stdexec::when_all_t, _Dn...>;
+    using __destruction = exec::__apply_reverse<__destruct_all, __destruction_n<stdexec::__t<_FynId>>...>;
+    using __destruct_state = stdexec::connect_result_t<__destruction, __destructed_t>;
+
+    void __make_destruct() noexcept {
+      auto __destruct = [&, this](){
+        return stdexec::connect(
+          stdexec::__apply(
+            [&](auto&&... __fy_){ 
+              return stdexec::__apply(
+                [&](auto&... __stg_){ 
+                  return stdexec::__apply(
+                    [&](auto&&... __d_){ 
+                      return stdexec::when_all(__d_...);
+                    }, exec::__tuple_reverse(std::make_tuple(async_destruct(__fy_, __stg_)...)));
+                }, *__stgn_);
+            }, *__fyn_), __destructed_t{__result_, __rcvr_});
+      };
+      __destruct_state_->emplace(stdexec::__conv{__destruct});
+    }
 
     template <stdexec::same_as<stdexec::set_value_t> _Tag>
     friend void tag_invoke(_Tag, __t&& __rcvr, typename stdexec::__t<_FynId>::handle... __o) noexcept {
       // launch nested function
       auto inside = [&] {
+        __rcvr.__make_destruct();
         auto inner = (*__rcvr.__inner_)(typename stdexec::__t<_FynId>::handle{__o}...);
-        return stdexec::connect(std::move(inner), __outside_t{__rcvr.__result_, __rcvr.__destruct_state_, __rcvr.__rcvr_});
+        return stdexec::connect(std::move(inner), __outside_t{__rcvr.__result_, &__rcvr.__destruct_state_->value(), __rcvr.__rcvr_});
       };
       if constexpr (
         stdexec::__nothrow_callable<_InnerFn, typename stdexec::__t<_FynId>::handle...> && 
@@ -216,7 +237,8 @@ struct __constructed {
         } catch (...) {
           using __async_result = stdexec::__decayed_tuple<stdexec::set_error_t, std::exception_ptr>;
           __rcvr.__result_->template emplace<__async_result>(stdexec::set_error, std::current_exception());
-          stdexec::start(*__rcvr.__destruct_state_);
+          __rcvr.__make_destruct();
+          stdexec::start(__rcvr.__destruct_state_->value());
           return;
         }
       }
@@ -227,14 +249,16 @@ struct __constructed {
     friend void tag_invoke(_Tag, __t&& __rcvr, _Error&& __err) noexcept {
       using __async_result = stdexec::__decayed_tuple<_Tag, _Error>;
       __rcvr.__result_->template emplace<__async_result>(_Tag(), (_Error&&) __err);
-      stdexec::start(*__rcvr.__destruct_state_);
+      __rcvr.__make_destruct();
+      stdexec::start(__rcvr.__destruct_state_->value());
     }
 
     template <stdexec::same_as<stdexec::set_stopped_t> _Tag>
     friend void tag_invoke(_Tag __d, __t&& __rcvr) noexcept {
       using __async_result = stdexec::__decayed_tuple<_Tag>;
       __rcvr.__result_->template emplace<__async_result>(_Tag());
-      stdexec::start(*__rcvr.__destruct_state_);
+      __rcvr.__make_destruct();
+      stdexec::start(__rcvr.__destruct_state_->value());
     }
 
     friend stdexec::env_of_t<_Receiver> tag_invoke(stdexec::get_env_t, const __t& __rcvr) noexcept {
@@ -298,7 +322,7 @@ struct __operation {
     STDEXEC_ATTRIBUTE((no_unique_address)) stgn_t __stgn_;
     STDEXEC_ATTRIBUTE((no_unique_address)) __result_t __result_;
     STDEXEC_ATTRIBUTE((no_unique_address)) __construct_state __construct_state_;
-    STDEXEC_ATTRIBUTE((no_unique_address)) __destruct_state __destruct_state_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) std::optional<__destruct_state> __destruct_state_;
     STDEXEC_ATTRIBUTE((no_unique_address)) std::optional<__inside_state> __inside_state_;
 
     __t(_Receiver __r_, _InnerFn __i_, fyn_t __fy_) : 
@@ -311,19 +335,7 @@ struct __operation {
                 [&](auto&&... __stg_){ 
                   return stdexec::when_all(async_construct(__fy_, __stg_)...); 
                 }, __stgn_);
-            }, __fyn_), __constructed_t{&__fyn_, &__stgn_, &__result_, &__inner_, &__inside_state_, &__destruct_state_, &__rcvr_})),
-      __destruct_state_(
-        stdexec::connect(
-          stdexec::__apply(
-            [&](auto&&... __fy_){ 
-              return stdexec::__apply(
-                [&](auto&... __stg_){ 
-                  return stdexec::__apply(
-                    [&](auto&&... __d_){ 
-                      return stdexec::when_all(__d_...);
-                    }, exec::__tuple_reverse(std::make_tuple(async_destruct(__fy_, __stg_)...)));
-                }, __stgn_);
-            }, __fyn_), __destructed_t{&__result_, &__rcvr_})) {
+            }, __fyn_), __constructed_t{&__fyn_, &__stgn_, &__result_, &__inner_, &__inside_state_, &__destruct_state_, &__rcvr_})) {
     }
 
     friend void tag_invoke(stdexec::start_t, __t& __self) noexcept {

@@ -25,6 +25,8 @@
 
 #include "async_object.hpp"
 
+#include "variant_sender.hpp"
+
 namespace exec {
 
 //
@@ -73,21 +75,36 @@ struct __async_tuple {
       });
       return oc;
     }
+
+    using __ref_storage = stdexec::__call_result_t<stdexec::just_t, std::reference_wrapper<storage>>;
+    template<class _O>
+    using __destruction_n = stdexec::__call_result_t<async_destruct_t, _O&, typename _O::storage&>;
+    template<class... _Dn>
+    using __destruct_all = stdexec::__call_result_t<stdexec::when_all_t, __ref_storage, _Dn...>;
+    using __destruction = exec::__apply_reverse<__destruct_all, __destruction_n<stdexec::__t<_FynId>>...>;
+
     auto async_destruct(storage& stg) noexcept { 
-      auto md = stdexec::__apply(
-        [&](typename stdexec::__t<_FynId>&&... __fyn) noexcept {
+      auto make_destruct = [&] () noexcept -> exec::variant_sender<__destruction, __ref_storage> {
+        if (stg.__fyn_.has_value()) {
           return stdexec::__apply(
-            [&](typename stdexec::__t<_FynId>::storage&... __stgn) noexcept {
+            [&](typename stdexec::__t<_FynId>&&... __fyn) noexcept {
               return stdexec::__apply(
-                [&](auto&&... __d) noexcept {
-                  return stdexec::when_all(
-                    stdexec::just(std::ref(stg)),
-                    __d...);
-                }, exec::__tuple_reverse(std::make_tuple(exec::async_destruct(__fyn, __stgn)...))); 
-            }, stg.__stgn_);
-        }, std::move(stg.__fyn_.value()));
-      auto od = stdexec::then(md, [](storage& stg) noexcept {
+                [&](typename stdexec::__t<_FynId>::storage&... __stgn) noexcept {
+                  return stdexec::__apply(
+                    [&](auto&&... __d) noexcept {
+                      return stdexec::when_all(
+                        stdexec::just(std::ref(stg)),
+                        __d...);
+                    }, exec::__tuple_reverse(std::make_tuple(exec::async_destruct(__fyn, __stgn)...))); 
+                }, stg.__stgn_);
+            }, std::move(stg.__fyn_.value()));
+        } else {
+          return stdexec::just(std::ref(stg));
+        }
+      };
+      auto od = stdexec::then(make_destruct(), [](storage& stg) noexcept {
         stg.o.reset();
+        stg.__fyn_.reset();
       });
       return od;
     }
