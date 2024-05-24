@@ -67,7 +67,7 @@ namespace {
     ex::sender auto in_snd =
       fallible_just{13} //
       | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
-    check_val_types<type_array<type_array<int>, type_array<std::string>>>(in_snd);
+    check_val_types<ex::__mset<pack<int>, pack<std::string>>>(in_snd);
 
     ex::sender auto snd = std::move(in_snd) | ex::into_variant();
     wait_for_value(
@@ -104,17 +104,16 @@ namespace {
   TEST_CASE(
     "into_variant has the values_type corresponding to the given values",
     "[adaptors][into_variant]") {
-    check_val_types<type_array<type_array<std::variant<std::tuple<>>>>>(
-      ex::just() | ex::into_variant());
-    check_val_types<type_array<type_array<std::variant<std::tuple<int>>>>>(
+    check_val_types<ex::__mset<pack<std::variant<std::tuple<>>>>>(ex::just() | ex::into_variant());
+    check_val_types<ex::__mset<pack<std::variant<std::tuple<int>>>>>(
       ex::just(23) | ex::into_variant());
-    check_val_types<type_array<type_array<std::variant<std::tuple<double>>>>>(
+    check_val_types<ex::__mset<pack<std::variant<std::tuple<double>>>>>(
       ex::just(3.1415) | ex::into_variant());
 
-    check_val_types<type_array<type_array<std::variant<std::tuple<int, double>>>>>(
+    check_val_types<ex::__mset<pack<std::variant<std::tuple<int, double>>>>>(
       ex::just(3, 0.1415) | ex::into_variant());
 
-    check_val_types<type_array<type_array<std::variant<std::tuple<int>, std::tuple<std::string>>>>>(
+    check_val_types<ex::__mset<pack<std::variant<std::tuple<int>, std::tuple<std::string>>>>>(
       fallible_just{13}                                                                //
       | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); }) //
       // sender here can send either `int` or `std::string`
@@ -125,11 +124,11 @@ namespace {
     inline_scheduler sched1{};
     error_scheduler sched2{};
 
-    check_err_types<type_array<std::exception_ptr>>( //
+    check_err_types<ex::__mset<std::exception_ptr>>( //
       ex::transfer_just(sched1) | ex::into_variant());
-    check_err_types<type_array<std::exception_ptr>>( //
+    check_err_types<ex::__mset<std::exception_ptr>>( //
       ex::transfer_just(sched2) | ex::into_variant());
-    check_err_types<type_array<std::exception_ptr, int>>( //
+    check_err_types<ex::__mset<std::exception_ptr, int>>( //
       ex::just_error(-1) | ex::into_variant());
   }
 

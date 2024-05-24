@@ -426,7 +426,7 @@ namespace exec {
 
     template <class _Sender, class _Env>
     using __future_completions_t = //
-      make_completion_signatures<
+      transform_completion_signatures_of<
         _Sender,
         __env_t<_Env>,
         completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr)>,

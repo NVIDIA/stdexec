@@ -278,7 +278,7 @@ namespace exec {
           stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
           stdexec::__q<stdexec::__mand>>>,
         stdexec::completion_signatures<>,
-        stdexec::__with_exception_ptr>;
+        stdexec::__eptr_completion>;
 
     template <class... Tys>
     using set_value_t =

@@ -1068,7 +1068,7 @@ namespace exec {
           __v<
             __value_types_of_t<Sender, Env, __mbind_front_q<bulk_non_throwing, Fun, Shape>, __q<__mand>>>,
           completion_signatures<>,
-          __with_exception_ptr>;
+          __eptr_completion>;
 
       template <class... Tys>
       using set_value_t = completion_signatures<set_value_t(stdexec::__decay_t<Tys>...)>;

@@ -135,7 +135,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
 
         static constexpr std::size_t value = //
-          __v<__gather_completions_for<
+          __v<__gather_completions_of<
             set_error_t,
             Sender,
             env_of_t<Receiver>,
@@ -154,7 +154,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __copy_cvref_t<Self, Sender>,
           Env,
           completion_signatures<set_error_t(cudaError_t)>,
-          __q<__compl_sigs::__default_set_value>,
+          __q<__sigs::__default_set_value>,
           __mbind_front_q<__set_value_invoke_t, Fun>>;
 
       template <__decays_to<__t> Self, receiver Receiver>

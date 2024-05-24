@@ -450,7 +450,7 @@ namespace exec_old {
           stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
           stdexec::__q<stdexec::__mand>>>,
         stdexec::completion_signatures<>,
-        stdexec::__with_exception_ptr>;
+        stdexec::__eptr_completion>;
 
     template <class... Tys>
     using set_value_t =
@@ -489,8 +489,7 @@ namespace exec_old {
     }
 
     template <stdexec::__decays_to<bulk_sender> Self, class Env>
-    static auto get_completion_signatures(Self&&, Env&&)
-      -> completion_signatures<Self, Env> {
+    static auto get_completion_signatures(Self&&, Env&&) -> completion_signatures<Self, Env> {
       return {};
     }
 

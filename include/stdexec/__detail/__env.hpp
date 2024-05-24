@@ -44,12 +44,25 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // [exec.queries]
   namespace __queries {
+    template <class _Tp>
+    concept __is_bool_constant = //
+      requires {                 //
+        typename __mbool<_Tp::value>;
+      };
+
     struct forwarding_query_t {
       template <class _Query>
-      constexpr auto operator()(_Query __query) const noexcept -> bool {
+      consteval auto operator()(_Query __query) const noexcept -> bool {
         if constexpr (tag_invocable<forwarding_query_t, _Query>) {
-          return tag_invoke(*this, static_cast<_Query&&>(__query));
-        } else if constexpr (std::derived_from<_Query, forwarding_query_t>) {
+          using __result_t = tag_invoke_result_t<forwarding_query_t, _Query>;
+          // If this a integral type wrapper, unpack it and return the value. Otherwise, return the
+          // result of the tag_invoke call expression.
+          if constexpr (__is_bool_constant<__result_t>) {
+            return __result_t::value;
+          } else {
+            return tag_invoke(*this, static_cast<_Query&&>(__query));
+          }
+        } else if constexpr (derived_from<_Query, forwarding_query_t>) {
           return true;
         } else {
           return false;
@@ -191,20 +204,20 @@ namespace stdexec {
       auto operator()() const noexcept;
     };
 
-    template <class _Queryable, class _CPO>
+    template <class _Queryable, class _Tag>
     concept __has_completion_scheduler_for =
       queryable<_Queryable> && //
-      tag_invocable<get_completion_scheduler_t<_CPO>, const _Queryable&>;
+      tag_invocable<get_completion_scheduler_t<_Tag>, const _Queryable&>;
 
-    template <__completion_tag _CPO>
-    struct get_completion_scheduler_t : __query<get_completion_scheduler_t<_CPO>> {
+    template <__completion_tag _Tag>
+    struct get_completion_scheduler_t : __query<get_completion_scheduler_t<_Tag>> {
       static constexpr auto query(forwarding_query_t) noexcept -> bool {
         return true;
       }
 
-      template <__has_completion_scheduler_for<_CPO> _Queryable>
+      template <__has_completion_scheduler_for<_Tag> _Queryable>
       auto operator()(const _Queryable& __queryable) const noexcept
-        -> tag_invoke_result_t<get_completion_scheduler_t<_CPO>, const _Queryable&>;
+        -> tag_invoke_result_t<get_completion_scheduler_t<_Tag>, const _Queryable&>;
     };
 
     struct get_domain_t {
@@ -288,8 +301,8 @@ namespace stdexec {
   inline constexpr get_allocator_t get_allocator{};
   inline constexpr get_stop_token_t get_stop_token{};
 #if !STDEXEC_GCC() || defined(__OPTIMIZE_SIZE__)
-  template <__completion_tag _CPO>
-  inline constexpr get_completion_scheduler_t<_CPO> get_completion_scheduler{};
+  template <__completion_tag _Tag>
+  inline constexpr get_completion_scheduler_t<_Tag> get_completion_scheduler{};
 #else
   template <>
   inline constexpr get_completion_scheduler_t<set_value_t> get_completion_scheduler<set_value_t>{};

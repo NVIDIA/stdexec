@@ -44,9 +44,6 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <class Env>
     using env_t = exec::make_env_t<Env, exec::with_t<get_stop_token_t, inplace_stop_token>>;
 
-    template <class...>
-    using swallow_values = completion_signatures<>;
-
     template <class Sender, class Env>
     using too_many_completions = __mbool<(1 < __v<__count_of<set_value_t, Sender, Env>>)>;
 
@@ -68,9 +65,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       requires(!__v<too_many_completions<Senders, Env>> && ...)
     struct completions<Env, Senders...> {
       using non_values = //
-        __concat_completion_signatures_t<
+        __meval<
+          __concat_completion_signatures,
           completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
-          __try_make_completion_signatures<Senders, Env, completion_signatures<>, __q<swallow_values>>...>;
+          __try_make_completion_signatures<
+            Senders,
+            Env,
+            completion_signatures<>,
+            __mconst<completion_signatures<>>>...>;
       using values = //
         __minvoke<
           __mconcat<__qf<set_value_t>>,
@@ -116,7 +118,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <class Completions>
       using sends_values = //
-        __mbool<__v<__gather_signal<set_value_t, Completions, __mconst<int>, __msize>> != 0>;
+        __gather_completion_signatures<
+          Completions,
+          set_value_t,
+          __mconst<__mbool<true>>::__f,
+          __mconst<__mbool<false>>::__f,
+          __mor_t>;
 
       template <class CvrefReceiverId>
       struct operation_t;
@@ -149,7 +156,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           template <class... Values>
           void set_value(Values&&... vals) && noexcept {
-            if constexpr (sends_values<Completions>::value) {
+            if constexpr (__v<sends_values<Completions>>) {
               // We only need to bother recording the completion values
               // if we're not already in the "error" or "stopped" state.
               if (op_state_->state_ == _when_all::started) {
@@ -262,7 +269,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             // All child operations have completed and arrived at the barrier.
             switch (state_.load(std::memory_order_relaxed)) {
             case _when_all::started:
-              if constexpr (sends_values<Completions>::value) {
+              if constexpr (__v<sends_values<Completions>>) {
                 // All child operations completed successfully:
                 ::cuda::std::apply(
                   [this](auto&... opt_vals) -> void {

@@ -206,13 +206,15 @@ namespace stdexec {
       : private __enable_intrusive_from_this<__shared_state<_CvrefSender, _Env>, 2> {
       using __receiver_t = __t<__receiver<__cvref_id<_CvrefSender>, __id<_Env>>>;
       using __waiters_list_t = __intrusive_slist<&__local_state_base::__next_>;
-      using __variant_t = __compl_sigs::__for_all_sigs<
-        __completion_signatures_of_t<_CvrefSender, _Env>,
-        __q<__decayed_tuple>,
-        __mbind_front_q<
-          __variant,
-          std::tuple<set_stopped_t>, // Initial state of the variant is set_stopped
-          std::tuple<set_error_t, std::exception_ptr>>>;
+
+      using __variant_t = //
+        __transform_completion_signatures<
+          __completion_signatures_of_t<_CvrefSender, _Env>,
+          __mbind_front_q<__decayed_tuple, set_value_t>::__f,
+          __mbind_front_q<__decayed_tuple, set_error_t>::__f,
+          std::tuple<set_error_t, std::exception_ptr>,
+          __munique<__mbind_front_q<std::variant, std::tuple<set_stopped_t>>>::__f,
+          std::tuple<set_error_t, std::exception_ptr>>;
 
       static constexpr std::size_t __started_bit = 0;
       static constexpr std::size_t __completed_bit = 1;

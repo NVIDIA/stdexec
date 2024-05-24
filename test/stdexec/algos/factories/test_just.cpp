@@ -59,17 +59,16 @@ namespace {
   }
 
   TEST_CASE("value types are properly set for just", "[factories][just]") {
-    check_val_types<type_array<type_array<int>>>(ex::just(1));
-    check_val_types<type_array<type_array<double>>>(ex::just(3.14));
-    check_val_types<type_array<type_array<std::string>>>(ex::just(std::string{}));
+    check_val_types<ex::__mset<pack<int>>>(ex::just(1));
+    check_val_types<ex::__mset<pack<double>>>(ex::just(3.14));
+    check_val_types<ex::__mset<pack<std::string>>>(ex::just(std::string{}));
 
-    check_val_types<type_array<type_array<int, double>>>(ex::just(1, 3.14));
-    check_val_types<type_array<type_array<int, double, std::string>>>(
-      ex::just(1, 3.14, std::string{}));
+    check_val_types<ex::__mset<pack<int, double>>>(ex::just(1, 3.14));
+    check_val_types<ex::__mset<pack<int, double, std::string>>>(ex::just(1, 3.14, std::string{}));
   }
 
   TEST_CASE("error types are properly set for just", "[factories][just]") {
-    check_err_types<type_array<>>(ex::just(1));
+    check_err_types<ex::__mset<>>(ex::just(1));
   }
 
   TEST_CASE("just cannot call set_stopped", "[factories][just]") {
@@ -80,7 +79,7 @@ namespace {
     auto snd = ex::just(std::string{"hello"});
 
     // Check reported type
-    check_val_types<type_array<type_array<std::string>>>(snd);
+    check_val_types<ex::__mset<pack<std::string>>>(snd);
 
     // Check received value
     std::string res;
@@ -96,7 +95,7 @@ namespace {
     auto snd = ex::just(original);
 
     // Check reported type
-    check_val_types<type_array<type_array<std::string>>>(snd);
+    check_val_types<ex::__mset<pack<std::string>>>(snd);
 
     // Check received value
     std::string res;
@@ -112,7 +111,7 @@ namespace {
     auto snd = ex::just(original);
 
     // Check reported type
-    check_val_types<type_array<type_array<std::string>>>(snd);
+    check_val_types<ex::__mset<pack<std::string>>>(snd);
 
     // Check received value
     std::string res;

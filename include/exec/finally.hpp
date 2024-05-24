@@ -26,26 +26,7 @@ namespace exec {
     using namespace stdexec;
 
     template <class _Sigs>
-    using __value_types_ =
-      __gather_signal<set_value_t, _Sigs, __mbind_front_q<__decayed_tuple, set_value_t>, __q<__types>>;
-
-    template <class _Sigs>
-    using __error_types_ =
-      __gather_signal<set_error_t, _Sigs, __mbind_front_q<__decayed_tuple, set_error_t>, __q<__types>>;
-
-    template <class _Sigs>
-    using __stopped_types_ = __gather_signal<
-      set_stopped_t,
-      _Sigs,
-      __mbind_front_q<__decayed_tuple, set_stopped_t>,
-      __q<__types>>;
-
-    template <class _Sigs>
-    using __result_variant = __minvoke<
-      __mconcat<__q<__variant>>,
-      __value_types_<_Sigs>,
-      __error_types_<_Sigs>,
-      __stopped_types_<_Sigs>>;
+    using __result_variant = __for_each_completion_signature<_Sigs, __decayed_tuple, __variant>;
 
     template <class _ResultType, class _ReceiverId>
     struct __final_operation_base {

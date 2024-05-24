@@ -34,7 +34,7 @@
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.get_completion_signatures]
-  namespace __compl_sigs {
+  namespace __sigs {
     template <class _Sender, class _Env>
     using __tfx_sender =
       transform_sender_result_t<__late_domain_of_t<_Sender, _Env>, _Sender, _Env>;
@@ -114,9 +114,9 @@ namespace stdexec {
         return {};
       }
     };
-  } // namespace __compl_sigs
+  } // namespace __sigs
 
-  using __compl_sigs::get_completion_signatures_t;
+  using __sigs::get_completion_signatures_t;
   inline constexpr get_completion_signatures_t get_completion_signatures{};
 
   /////////////////////////////////////////////////////////////////////////////
@@ -251,11 +251,11 @@ namespace stdexec {
   concept sender_of =        //
     sender_in<_Sender, _Env> //
     && same_as<
-      __types<_SetSig>,
-      __gather_completions_for<
+      __types_ref<_SetSig>,
+      __gather_completions_of<
         __tag_of_sig_t<_SetSig>,
         _Sender,
         _Env,
-        __qf<__tag_of_sig_t<_SetSig>>,
-        __q<__types>>>;
+        __mcompose_q<__types_ref, __qf<__tag_of_sig_t<_SetSig>>::template __f>,
+        __mappend_into_q<__types_ref>>>;
 } // namespace stdexec

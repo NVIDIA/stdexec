@@ -258,6 +258,10 @@ namespace __coro = std::experimental;
 #  define STDEXEC_PRAGMA_POP() _Pragma("GCC diagnostic pop")
 #  define STDEXEC_PRAGMA_IGNORE_GNU(...)                                                           \
     _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored __VA_ARGS__))
+#elif STDEXEC_MSVC()
+#  define STDEXEC_PRAGMA_PUSH()           __pragma(warning(push))
+#  define STDEXEC_PRAGMA_POP()            __pragma(warning(pop))
+#  define STDEXEC_PRAGMA_IGNORE_MSVC(...) __pragma(warning(disable : __VA_ARGS__))
 #else
 #  define STDEXEC_PRAGMA_PUSH()
 #  define STDEXEC_PRAGMA_POP()
@@ -268,6 +272,9 @@ namespace __coro = std::experimental;
 #endif
 #ifndef STDEXEC_PRAGMA_IGNORE_EDG
 #  define STDEXEC_PRAGMA_IGNORE_EDG(...)
+#endif
+#ifndef STDEXEC_PRAGMA_IGNORE_MSVC
+#  define STDEXEC_PRAGMA_IGNORE_MSVC(...)
 #endif
 
 #if !STDEXEC_MSVC() && defined(__has_builtin)

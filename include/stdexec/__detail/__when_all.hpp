@@ -95,7 +95,7 @@ namespace stdexec {
 
     template <class _Env, class _Sender>
     using __single_values_of_t = //
-      __try_value_types_of_t<
+      __value_types_of_t<
         _Sender,
         _Env,
         __transform<__q<__decay_t>, __q<__types>>,
@@ -108,31 +108,33 @@ namespace stdexec {
         __minvoke<__mconcat<__qf<set_value_t>>, __single_values_of_t<_Env, _Senders>...>>;
 
     template <class... _Args>
-    using __all_nothrow_decay_copyable_ = __mbool<(__nothrow_decay_copyable<_Args> && ...)>;
+    using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Args> && ...)>;
 
     template <class _Env, class... _Senders>
-    using __all_nothrow_decay_copyable = //
-      __mand<__compl_sigs::__maybe_for_all_sigs<
-        __completion_signatures_of_t<_Senders, _Env>,
-        __q<__all_nothrow_decay_copyable_>,
-        __q<__mand>>...>;
+    using __all_nothrow_decay_copyable_results = //
+      __mand_t<                                  //
+        __for_each_completion_signature<
+          completion_signatures_of_t<_Senders, _Env>,
+          __all_nothrow_decay_copyable,
+          __mand_t>...>;
+
+    template <class _Error>
+    using __set_error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
     template <class _Env, class... _Senders>
     using __completions_t = //
-      __concat_completion_signatures_t<
-        __if<
-          __all_nothrow_decay_copyable<_Env, _Senders...>,
-          completion_signatures<set_stopped_t()>,
-          completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr)>>,
+      __concat_completion_signatures<
+        __eptr_completion_if_t<__all_nothrow_decay_copyable_results<_Env, _Senders...>>,
+        completion_signatures<set_stopped_t()>,
         __minvoke<
           __with_default<__mbind_front_q<__set_values_sig_t, _Env>, completion_signatures<>>,
           _Senders...>,
-        __try_make_completion_signatures<
-          _Senders,
-          _Env,
+        __transform_completion_signatures<
+          __completion_signatures_of_t<_Senders, _Env>,
+          __mconst<completion_signatures<>>::__f,
+          __set_error_t,
           completion_signatures<>,
-          __mconst<completion_signatures<>>,
-          __mcompose<__q<completion_signatures>, __qf<set_error_t>, __q<__decay_t>>>...>;
+          __concat_completion_signatures>...>;
 
     struct __not_an_error { };
 
@@ -189,7 +191,7 @@ namespace stdexec {
 
       using __errors_variant = //
         __if<
-          __all_nothrow_decay_copyable<_Env, _Senders...>,
+          __all_nothrow_decay_copyable_results<_Env, _Senders...>,
           __error_types,
           __minvoke<__push_back_unique<__q<std::variant>>, __error_types, std::exception_ptr>>;
     };
@@ -198,7 +200,7 @@ namespace stdexec {
 
     template <class _ErrorsVariant, class _ValuesTuple, class _StopToken>
     struct __when_all_state {
-      using __stop_callback_t = typename _StopToken::template callback_type<__on_stop_request>;
+      using __stop_callback_t = stop_callback_for_t<_StopToken, __on_stop_request>;
 
       template <class _Receiver>
       void __arrive(_Receiver& __rcvr) noexcept {

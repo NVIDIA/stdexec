@@ -35,7 +35,7 @@ namespace stdexec {
     using __on_not_callable = __callable_error<__then_context>;
 
     template <class _Fun, class _CvrefSender, class _Env>
-    using __completion_signatures_t = //
+    using __completions_t = //
       __try_make_completion_signatures<
         _CvrefSender,
         _Env,
@@ -72,11 +72,11 @@ namespace stdexec {
 
     struct __then_impl : __sexpr_defaults {
       static constexpr auto get_completion_signatures = //
-        []<class _Sender, class _Env>(_Sender&&, _Env&&) noexcept
-        -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env> {
-        static_assert(sender_expr_for<_Sender, then_t>);
-        return {};
-      };
+        []<class _Sender, class _Env>(_Sender&&, _Env&&) noexcept {
+          return __completions_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env>{};
+          //static_assert(sender_expr_for<_Sender, then_t>);
+          //return {};
+        };
 
       static constexpr auto complete = //
         []<class _Tag, class _State, class _Receiver, class... _Args>(

@@ -127,7 +127,7 @@ namespace stdexec {
 
     inline constexpr auto __connect =                                        //
       []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) //
-      noexcept(__nothrow_constructible_from<__op_state<_Sender, _Receiver>, _Sender&&, _Receiver&&>)
+      noexcept(__nothrow_constructible_from<__op_state<_Sender, _Receiver>, _Sender, _Receiver>)
       -> __op_state<_Sender, _Receiver>
       requires __connectable<_Sender, _Receiver>
     {
@@ -154,7 +154,7 @@ namespace stdexec {
         _SetTag()(std::move(__rcvr), static_cast<_Args&&>(__args)...);
       };
 
-    inline constexpr auto __compl_sigs = //
+    inline constexpr auto __sigs = //
       [](__ignore, __ignore) noexcept {
         return void();
       };
@@ -286,7 +286,7 @@ namespace stdexec {
     template <class _Sexpr, class _Receiver>
     struct __connect_fn {
       template <std::size_t _Idx>
-      using __receiver_t = __t<__receiver<__id<_Receiver>, _Sexpr, __mconstant<_Idx>>>;
+      using __receiver_t = __t<__receiver<__id<_Receiver>, _Sexpr, __msize_t<_Idx>>>;
 
       __op_state<_Sexpr, _Receiver>* __op_;
 
@@ -430,7 +430,7 @@ namespace stdexec {
     static constexpr auto connect = __detail::__connect;
     static constexpr auto start = __detail::__start;
     static constexpr auto complete = __detail::__complete;
-    static constexpr auto get_completion_signatures = __detail::__compl_sigs;
+    static constexpr auto get_completion_signatures = __detail::__sigs;
   };
 
   template <class _Tag>

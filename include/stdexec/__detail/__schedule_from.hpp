@@ -50,31 +50,29 @@ namespace stdexec {
     //        ...
     //   >
     template <class _CvrefSender, class _Env>
-    using __variant_for_t = __compl_sigs::__maybe_for_all_sigs<
+    using __variant_for_t = //
+      __for_each_completion_signature<
       __completion_signatures_of_t<_CvrefSender, _Env>,
-      __q<__value_tuple>,
-      __nullable_variant_t>;
+      __value_tuple,
+      __nullable_variant_fn::__f>;
 
     template <class _Tag>
-    using __decay_signature =
+    using __decay_signature_fn =
       __transform<__q<__decay_t>, __mcompose<__q<completion_signatures>, __qf<_Tag>>>;
 
     template <class... _Ts>
-    using __all_nothrow_decay_copyable_ = __mbool<(__nothrow_decay_copyable<_Ts> && ...)>;
+    using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Ts> && ...)>;
 
     template <class _CvrefSender, class _Env>
-    using __all_values_and_errors_nothrow_decay_copyable = //
-      __compl_sigs::__maybe_for_all_sigs<
+    using __all_nothrow_decay_copyable_results = //
+      __for_each_completion_signature<
         __completion_signatures_of_t<_CvrefSender, _Env>,
-        __q<__all_nothrow_decay_copyable_>,
-        __q<__mand>>;
+        __all_nothrow_decay_copyable,
+        __mand_t>;
 
     template <class _CvrefSender, class _Env>
     using __with_error_t = //
-      __if<
-        __all_values_and_errors_nothrow_decay_copyable<_CvrefSender, _Env>,
-        completion_signatures<>,
-        __with_exception_ptr>;
+      __eptr_completion_if_t<__all_nothrow_decay_copyable_results<_CvrefSender, _Env>>;
 
     template <class _Scheduler, class _CvrefSender, class _Env>
     using __completions_t = //
@@ -86,28 +84,25 @@ namespace stdexec {
           _Env,
           __with_error_t<_CvrefSender, _Env>,
           __mconst<completion_signatures<>>>,
-        __decay_signature<set_value_t>,
-        __decay_signature<set_error_t>>;
+        __decay_signature_fn<set_value_t>,
+        __decay_signature_fn<set_error_t>>;
 
     template <class _SchedulerId>
     struct __environ {
       using _Scheduler = stdexec::__t<_SchedulerId>;
 
-      struct __t
-        : __env::__with<
-            stdexec::__t<_SchedulerId>,
-            get_completion_scheduler_t<set_value_t>,
-            get_completion_scheduler_t<set_stopped_t>> {
+      struct __t {
         using __id = __environ;
 
-        explicit __t(_Scheduler __sched) noexcept
-          : __t::__with{std::move(__sched)} {
+        _Scheduler __sched_;
+
+        template <__one_of<set_value_t, set_stopped_t> _Tag>
+        auto query(get_completion_scheduler_t<_Tag>) const noexcept {
+          return __sched_;
         }
 
-        using __t::__with::query;
-
         auto query(get_domain_t) const noexcept {
-          return query_or(get_domain, this->__value_, default_domain());
+          return query_or(get_domain, __sched_, default_domain());
         }
       };
     };

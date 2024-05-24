@@ -81,9 +81,9 @@ namespace exec {
 
       template <class _Sigs, class... _Queries>
       struct __env {
-        using __compl_sigs = __to_sequence_completions_t<_Sigs>;
+        using __sigs = __to_sequence_completions_t<_Sigs>;
 
-        using __vtable_t = stdexec::__t<__next_vtable<_Sigs, __compl_sigs, _Queries...>>;
+        using __vtable_t = stdexec::__t<__next_vtable<_Sigs, __sigs, _Queries...>>;
 
         struct __t {
           using __id = __env;
@@ -109,11 +109,11 @@ namespace exec {
           using __return_sigs = completion_signatures<set_value_t(), set_stopped_t()>;
           using __void_sender = typename any_receiver_ref<__return_sigs>::template any_sender<>;
           using __next_sigs = completion_signatures<_Sigs...>;
-          using __compl_sigs = __to_sequence_completions_t<__next_sigs>;
+          using __sigs = __to_sequence_completions_t<__next_sigs>;
           using __item_sender = typename any_receiver_ref<__next_sigs>::template any_sender<>;
           using __item_types = item_types<__item_sender>;
 
-          using __vtable_t = stdexec::__t<__next_vtable<__next_sigs, __compl_sigs, _Queries...>>;
+          using __vtable_t = stdexec::__t<__next_vtable<__next_sigs, __sigs, _Queries...>>;
 
           template <class Sig>
           using __vfun = __any_::__rcvr_vfun<Sig>;
@@ -144,14 +144,14 @@ namespace exec {
           }
 
           template <class Error>
-            requires __v<__mapply<__contains<set_error_t(Error)>, __compl_sigs>>
+            requires __v<__mapply<__contains<set_error_t(Error)>, __sigs>>
           void set_error(Error&& __error) noexcept {
             (*static_cast<const __vfun<set_error_t(Error)>*>(__env_.__vtable_)->__complete_)(
               __env_.__rcvr_, static_cast<Error&&>(__error));
           }
 
           void set_stopped() noexcept
-            requires __v<__mapply<__contains<set_stopped_t()>, __compl_sigs>>
+            requires __v<__mapply<__contains<set_stopped_t()>, __sigs>>
           {
             (*static_cast<const __vfun<set_stopped_t()>*>(__env_.__vtable_)->__complete_)(
               __env_.__rcvr_);
@@ -231,13 +231,13 @@ namespace exec {
       using __receiver_ref_t = stdexec::__t<__next_receiver_ref<_Sigs, _ReceiverQueries>>;
       using __vtable_t = stdexec::__t<__sender_vtable<_Sigs, _SenderQueries, _ReceiverQueries>>;
 
-      using __compl_sigs = __to_sequence_completions_t<_Sigs>;
+      using __sigs = __to_sequence_completions_t<_Sigs>;
       using __item_sender = typename any_receiver_ref<_Sigs>::template any_sender<>;
 
       class __t {
        public:
         using __id = __sequence_sender;
-        using completion_signatures = __compl_sigs;
+        using completion_signatures = __sigs;
         using item_types = exec::item_types<__item_sender>;
         using sender_concept = sequence_sender_t;
 

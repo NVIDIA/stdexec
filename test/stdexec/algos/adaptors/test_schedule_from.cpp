@@ -186,10 +186,9 @@ namespace {
     "[adaptors][schedule_from]") {
     inline_scheduler sched{};
 
-    check_val_types<type_array<type_array<int>>>(ex::schedule_from(sched, ex::just(1)));
-    check_val_types<type_array<type_array<int, double>>>(
-      ex::schedule_from(sched, ex::just(3, 0.14)));
-    check_val_types<type_array<type_array<int, double, std::string>>>(
+    check_val_types<ex::__mset<pack<int>>>(ex::schedule_from(sched, ex::just(1)));
+    check_val_types<ex::__mset<pack<int, double>>>(ex::schedule_from(sched, ex::just(3, 0.14)));
+    check_val_types<ex::__mset<pack<int, double, std::string>>>(
       ex::schedule_from(sched, ex::just(3, 0.14, std::string{"pi"})));
   }
 
@@ -198,9 +197,9 @@ namespace {
     error_scheduler sched2{};
     error_scheduler<int> sched3{43};
 
-    check_err_types<type_array<>>(ex::schedule_from(sched1, ex::just(1)));
-    check_err_types<type_array<std::exception_ptr>>(ex::schedule_from(sched2, ex::just(2)));
-    check_err_types<type_array<int>>(ex::schedule_from(sched3, ex::just(3)));
+    check_err_types<ex::__mset<>>(ex::schedule_from(sched1, ex::just(1)));
+    check_err_types<ex::__mset<std::exception_ptr>>(ex::schedule_from(sched2, ex::just(2)));
+    check_err_types<ex::__mset<int>>(ex::schedule_from(sched3, ex::just(3)));
   }
 
   TEST_CASE(
@@ -208,7 +207,7 @@ namespace {
     "[adaptors][schedule_from]") {
     inline_scheduler sched{};
 
-    check_err_types<type_array<std::exception_ptr>>(
+    check_err_types<ex::__mset<std::exception_ptr>>(
       ex::schedule_from(sched, ex::just(potentially_throwing{})));
   }
 

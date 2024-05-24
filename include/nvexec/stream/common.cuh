@@ -276,30 +276,6 @@ namespace nvexec {
     template <class... Ts>
     using decayed_tuple = ::cuda::std::tuple<__decay_t<Ts>...>;
 
-    namespace stream_storage_impl {
-      template <class... _Ts>
-      using variant = //
-        __minvoke<
-          __if_c<
-            sizeof...(_Ts) != 0,
-            __transform<__q<__decay_t>, __munique<__q<variant_t>>>,
-            __mconst<__not_a_variant>>,
-          _Ts...>;
-
-      template <class _State, class... _Tuples>
-      using __make_bind_ = __mbind_back<_State, _Tuples...>;
-
-      template <class _State>
-      using __make_bind = __mbind_front_q<__make_bind_, _State>;
-
-      template <class _Tag>
-      using __tuple_t = __mbind_front_q<decayed_tuple, _Tag>;
-
-      template <class _Sender, class _Env, class _State, class _Tag>
-      using __bind_completions_t =
-        __gather_completions_for<_Tag, _Sender, _Env, __tuple_t<_Tag>, __make_bind<_State>>;
-    } // namespace stream_storage_impl
-
     struct set_noop {
       template <class... Ts>
       STDEXEC_ATTRIBUTE((host, device))
@@ -310,15 +286,19 @@ namespace nvexec {
       }
     };
 
+    template <class... Ts>
+    using _nullable_variant_t =
+      variant_t<::cuda::std::tuple<set_noop>, Ts...>;
+
+    template <class... Ts>
+    using decayed_tuple = ::cuda::std::tuple<__decay_t<Ts>...>;
+
     template <class _Sender, class _Env>
     using variant_storage_t = //
-      __minvoke<__minvoke<
-        __mfold_right<
-          __mbind_front_q<stream_storage_impl::variant, ::cuda::std::tuple<set_noop>>,
-          __mbind_front_q<stream_storage_impl::__bind_completions_t, _Sender, _Env>>,
-        set_value_t,
-        set_error_t,
-        set_stopped_t>>;
+      __for_each_completion_signature<
+        __completion_signatures_of_t<_Sender, _Env>,
+        decayed_tuple,
+        __munique<__q<_nullable_variant_t>>::__f>;
 
     inline constexpr get_stream_provider_t get_stream_provider{};
 

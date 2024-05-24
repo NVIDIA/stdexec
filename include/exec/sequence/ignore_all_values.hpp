@@ -212,15 +212,18 @@ namespace exec {
       };
     };
 
-    template <class _Tag, class _Sigs>
-    using __gather_types =
-      __gather_signal<_Tag, _Sigs, __mbind_front_q<__decayed_tuple, _Tag>, __q<__types>>;
+    template <class _Tag>
+    using __result_tuple_fn = //
+      __mcompose_q<__types_ref, __mbind_front_q<__decayed_tuple, _Tag>::template __f>;
 
     template <class _Sigs>
-    using __result_variant_ = __minvoke<
-      __mconcat<__nullable_variant_t>,
-      __gather_types<set_error_t, _Sigs>,
-      __gather_types<set_stopped_t, _Sigs>>;
+    using __result_variant_ = //
+      __transform_completion_signatures<
+        _Sigs,
+        __mconst<__types_ref<>>::__f,
+        __mcompose_q<__types_ref, __mbind_front_q<__decayed_tuple, set_error_t>::__f>::__f,
+        __types_ref<std::tuple<set_stopped_t>>,
+        __mappend_into_q<__nullable_variant_fn::__f>::__f>;
 
     template <class _Sender, class _Env>
     using __result_variant_t =

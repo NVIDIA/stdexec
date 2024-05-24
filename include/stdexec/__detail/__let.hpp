@@ -264,7 +264,7 @@ namespace stdexec {
             _Fun,
             __t<_LetTag>,
             __completion_sched<_CvrefSender, __t<_LetTag>>>,
-          __q<__concat_completion_signatures_t>>,
+          __mtry_q<__concat_completion_signatures>>,
         __completion_signatures_of_t<_CvrefSender, _Env>>;
 
     template <__mstring _Where, __mstring _What>
@@ -285,10 +285,9 @@ namespace stdexec {
     // Compute all the domains of all the result senders and make sure they're all the same
     template <class _Set, class _Child, class _Fun, class _Env, class _Sched>
     using __result_domain_t = //
-      __gather_completions_for<
+      __gather_completions<
         _Set,
-        _Child,
-        _Env,
+        __completion_signatures_of_t<_Child, _Env>,
         __result_sender_fn<_Fun, _Set, _Env, _Sched>,
         __try_common_domain_fn<_Set>>;
 
@@ -349,7 +348,7 @@ namespace stdexec {
       using __result_variant = std::variant<std::monostate, _Tuples...>;
       using __op_state_variant = //
         __minvoke<
-          __transform<__uncurry<__op_state_for<_Receiver, _Fun, _Set, _Sched>>, __nullable_variant_t>,
+          __transform<__uncurry<__op_state_for<_Receiver, _Fun, _Set, _Sched>>, __nullable_variant_fn>,
           _Tuples...>;
 
       template <class _ResultSender, class _OpState>
@@ -449,7 +448,7 @@ namespace stdexec {
           using _Sched = __completion_sched<_Child, _Set>;
           using __mk_let_state = __mbind_front_q<__let_state, _Receiver, _Fun, _Set, _Sched>;
 
-          using __let_state_t = __gather_completions_for<
+          using __let_state_t = __gather_completions_of<
             _Set,
             _Child,
             env_of_t<_Receiver>,

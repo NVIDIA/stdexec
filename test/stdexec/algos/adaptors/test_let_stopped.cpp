@@ -116,13 +116,13 @@ namespace {
   TEST_CASE(
     "let_stopped has the values_type from the input sender if returning error",
     "[adaptors][let_stopped]") {
-    check_val_types<type_array<type_array<int>>>(
+    check_val_types<ex::__mset<pack<int>>>(
       ex::just(7) //
       | ex::let_stopped([] { return ex::just_error(0); }));
-    check_val_types<type_array<type_array<double>>>(
+    check_val_types<ex::__mset<pack<double>>>(
       ex::just(3.14) //
       | ex::let_stopped([] { return ex::just_error(0); }));
-    check_val_types<type_array<type_array<std::string>>>(
+    check_val_types<ex::__mset<pack<std::string>>>(
       ex::just(std::string{"hello"}) //
       | ex::let_stopped([] { return ex::just_error(0); }));
   }
@@ -130,13 +130,13 @@ namespace {
   TEST_CASE(
     "let_stopped adds to values_type the value types of the returned sender",
     "[adaptors][let_stopped]") {
-    check_val_types<type_array<type_array<int>>>(
+    check_val_types<ex::__mset<pack<int>>>(
       ex::just(1) //
       | ex::let_stopped([] { return ex::just(11); }));
-    check_val_types<type_array<type_array<int>>>(
+    check_val_types<ex::__mset<pack<int>>>(
       ex::just(1) //
       | ex::let_stopped([] { return ex::just(3.14); }));
-    check_val_types<type_array<type_array<int>>>(
+    check_val_types<ex::__mset<pack<int>>>(
       ex::just(1) //
       | ex::let_stopped([] { return ex::just(std::string{"hello"}); }));
   }
@@ -144,13 +144,13 @@ namespace {
   TEST_CASE(
     "let_stopped has the error_type from the input sender if returning value",
     "[adaptors][let_stopped]") {
-    check_err_types<type_array<int>>( //
+    check_err_types<ex::__mset<int>>( //
       ex::just_error(7)               //
       | ex::let_stopped([] { return ex::just(0); }));
-    check_err_types<type_array<double>>( //
+    check_err_types<ex::__mset<double>>( //
       ex::just_error(3.14)               //
       | ex::let_stopped([] { return ex::just(0); }));
-    check_err_types<type_array<std::string>>( //
+    check_err_types<ex::__mset<std::string>>( //
       ex::just_error(std::string{"hello"})    //
       | ex::let_stopped([] { return ex::just(0); }));
   }
@@ -158,13 +158,13 @@ namespace {
   TEST_CASE("let_stopped adds to error_type of the input sender", "[adaptors][let_stopped]") {
     impulse_scheduler sched;
     ex::sender auto in_snd = ex::transfer_just(sched, 11);
-    check_err_types<type_array<std::exception_ptr, int>>( //
+    check_err_types<ex::__mset<std::exception_ptr, int>>( //
       in_snd                                              //
       | ex::let_stopped([] { return ex::just_error(0); }));
-    check_err_types<type_array<std::exception_ptr, double>>( //
+    check_err_types<ex::__mset<std::exception_ptr, double>>( //
       in_snd                                                 //
       | ex::let_stopped([] { return ex::just_error(3.14); }));
-    check_err_types<type_array<std::exception_ptr, std::string>>( //
+    check_err_types<ex::__mset<std::exception_ptr, std::string>>( //
       in_snd                                                      //
       | ex::let_stopped([] { return ex::just_error(std::string{"err"}); }));
   }
@@ -172,14 +172,14 @@ namespace {
   TEST_CASE("let_stopped can be used instead of stopped_as_error", "[adaptors][let_stopped]") {
     impulse_scheduler sched;
     ex::sender auto in_snd = ex::transfer_just(sched, 11);
-    check_val_types<type_array<type_array<int>>>(in_snd);
-    check_err_types<type_array<>>(in_snd);
+    check_val_types<ex::__mset<pack<int>>>(in_snd);
+    check_err_types<ex::__mset<>>(in_snd);
     check_sends_stopped<true>(in_snd);
 
     ex::sender auto snd = std::move(in_snd) | ex::let_stopped([] { return ex::just_error(-1); });
 
-    check_val_types<type_array<type_array<int>>>(snd);
-    check_err_types<type_array<std::exception_ptr, int>>(snd);
+    check_val_types<ex::__mset<pack<int>>>(snd);
+    check_err_types<ex::__mset<std::exception_ptr, int>>(snd);
     check_sends_stopped<false>(snd);
   }
 

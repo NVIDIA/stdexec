@@ -31,9 +31,6 @@ namespace stdexec {
   template <class _Tp>
   using __t = typename _Tp::__t;
 
-  template <bool _Bp>
-  using __mbool = std::bool_constant<_Bp>;
-
   template <class _Ty>
   struct __mtype {
     using __t = _Ty;
@@ -45,17 +42,88 @@ namespace stdexec {
   template <class...>
   struct __types;
 
+  template <class... _Ts>
+  using __types_ref = __types<_Ts...> &;
+
+  template <class... _Ts>
+  auto operator+(__types<_Ts...> &) -> __types<_Ts...>;
+
+  template <class... _Ts, template <class...> class _List, class... _Us>
+  auto operator+(__types<_Ts...> &, _List<_Us...> &) -> __types<_Ts..., _Us...> &;
+
+  template <template <class...> class _Fn>
+  struct __mappend_into_q {
+    template <class... _Lists>
+    static auto __concat(__types<> &__list, _Lists &...__lists) //
+      -> decltype((__list + ... + __lists));
+
+#if STDEXEC_MSVC()
+    template <class... _Ts>
+    struct __result {
+      using __t = _Fn<_Ts...>;
+    };
+
+    template <class... _Ts>
+      requires __typename<_Fn<_Ts...>>
+    using __result_t = __t<__result<_Ts...>>;
+#else
+    template <class... _Ts>
+    using __result_t = _Fn<_Ts...>;
+#endif
+
+    template <class... _Ts>
+    static auto __apply(__types<_Ts...> &) -> __result_t<_Ts...>;
+
+    template <class... _Lists>
+    using __f = decltype(__mappend_into_q::__apply(
+      __mappend_into_q::__concat(__declval<__types<> &>(), __declval<_Lists &>()...)));
+  };
+
+  template <class _Fn>
+  using __mappend_into = __mappend_into_q<_Fn::template __f>;
+
   template <class _Tp>
   using __midentity = _Tp;
 
+  template <auto _Np>
+  struct __mconstant {
+    using type = __mconstant;
+    using value_type = __mtypeof<_Np>;
+    static constexpr auto value = _Np;
+
+    constexpr operator value_type() const noexcept {
+      return value;
+    }
+
+    constexpr auto operator()() const noexcept -> value_type {
+      return value;
+    }
+  };
+
+  // Because of nvc++ nvbugs#4679848, we can't make __mbool a simple alias for __mconstant,
+  // and because of nvc++ nvbugs#4668709 it can't be a simple alias for std::bool_constant,
+  // either. :-(
+  // template <bool _Bp>
+  // using __mbool = __mconstant<_Bp>;
+
+  template <bool _Bp>
+  struct __mbool : std::bool_constant<_Bp> { };
+
+  using __mtrue = __mbool<true>;
+  using __mfalse = __mbool<false>;
+
+  // nvbugs#4679848 and nvbugs#4668709 also preclude __mconstant from representing a compile-time
+  // size_t.
+  enum class __muchar : unsigned char {
+  };
+
+#if STDEXEC_MSVC()
   template <std::size_t _Np>
-  using __msize_t = char[_Np + 1];
-
-  template <auto _Np>
-  using __mconstant_ = std::integral_constant<decltype(_Np), _Np>;
-
-  template <auto _Np>
-  using __mconstant = __mconstant_<_Np>*;
+  using __msize_t = __mconstant<_Np>;
+#else
+  template <std::size_t _Np>
+  using __msize_t = __muchar (*)[_Np + 1]; // +1 to avoid zero-size array
+#endif
 
   template <class _Tp, class _Up>
   using __mfirst = _Tp;
@@ -73,6 +141,8 @@ namespace stdexec {
     requires __typename<__mtypeof<_Tp::value>>
   inline constexpr auto __v<_Tp> = _Tp::value;
 
+  // These specializations exist because instantiating a variable template is cheaper than
+  // instantiating a class template.
   template <class _Tp, class _Up>
   inline constexpr bool __v<std::is_same<_Tp, _Up>> = false;
 
@@ -83,10 +153,10 @@ namespace stdexec {
   inline constexpr _Tp __v<std::integral_constant<_Tp, _Ip>> = _Ip;
 
   template <auto _Np>
-  inline constexpr __mtypeof<_Np> __v<__mconstant<_Np>> = _Np;
+  inline constexpr auto __v<__mconstant<_Np>> = _Np;
 
-  template <std::size_t _Ip>
-  inline constexpr std::size_t __v<char[_Ip]> = _Ip - 1;
+  template <std::size_t _Np>
+  inline constexpr std::size_t __v<__muchar (*)[_Np]> = _Np - 1; // see definition of __msize_t
 
   namespace __pack {
     template <std::size_t... _Is>
@@ -94,7 +164,7 @@ namespace stdexec {
   } // namespace __pack
 
   template <std::size_t... _Is>
-  using __indices = __pack::__t<_Is...>*;
+  using __indices = __pack::__t<_Is...> *;
 
 #if STDEXEC_MSVC()
   namespace __pack {
@@ -144,6 +214,9 @@ namespace stdexec {
   template <class... _Ts>
   using __indices_for = __make_indices<sizeof...(_Ts)>;
 
+  STDEXEC_PRAGMA_PUSH()
+  STDEXEC_PRAGMA_IGNORE_MSVC(4293)
+
   constexpr std::size_t __mpow2(std::size_t __size) noexcept {
     --__size;
     __size |= __size >> 1;
@@ -156,6 +229,8 @@ namespace stdexec {
       __size |= __size >> 32;
     return ++__size;
   }
+
+  STDEXEC_PRAGMA_POP()
 
   template <std::size_t _Len>
   struct __mstring {
@@ -183,20 +258,20 @@ namespace stdexec {
       return _Len;
     }
 
-    constexpr auto operator==(const __mstring&) const noexcept -> bool = default;
+    constexpr auto operator==(const __mstring &) const noexcept -> bool = default;
 
     template <std::size_t _OtherLen>
-    constexpr auto operator==(const __mstring<_OtherLen>&) const noexcept -> bool {
+    constexpr auto operator==(const __mstring<_OtherLen> &) const noexcept -> bool {
       return false;
     }
 
 #if !STDEXEC_NVHPC()
-    constexpr auto operator<=>(const __mstring&) const noexcept -> std::strong_ordering = default;
+    constexpr auto operator<=>(const __mstring &) const noexcept -> std::strong_ordering = default;
 #endif
 
     template <std::size_t _OtherLen>
     constexpr auto
-      operator<=>(const __mstring<_OtherLen>& __other) const noexcept -> std::strong_ordering {
+      operator<=>(const __mstring<_OtherLen> &__other) const noexcept -> std::strong_ordering {
       constexpr std::size_t __len = _Len < _OtherLen ? _Len : _OtherLen;
       for (std::size_t __i = 0; __i < __len; ++__i) {
         auto __cmp = (__what_[__i] <=> __other.__what_[__i]);
@@ -375,6 +450,24 @@ namespace stdexec {
     template <class... _Args>
     using __f = typename __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
   };
+
+  template <template <class...> class _Fn>
+  struct __qq {
+    template <class... _Args>
+    using __f = _Fn<_Args...>;
+  };
+
+  template <template <class> class _Fn>
+  struct __q1 {
+    template <class _Ty>
+    using __f = _Fn<_Ty>;
+  };
+
+  template <template <class...> class _Fn>
+  using __mtry_q = __q<_Fn>;
+
+  template <class _Fn>
+  struct __mtry : __mtry_q<_Fn::template __f> { };
 
   template <template <class...> class _Fn, class... _Front>
   struct __mbind_front_q {
@@ -647,6 +740,7 @@ namespace stdexec {
     template <class _Tp>
     using __f = __t<__uncurry_<_Fn, _Tp>>;
   };
+
   template <class _Fn, class _List>
   using __mapply = __minvoke<__uncurry<_Fn>, _List>;
 
@@ -688,13 +782,6 @@ namespace stdexec {
         _List>;
   };
 
-  template <class _Continuation = __q<__types>>
-  struct __munique {
-    template <class... _Ts>
-    using __f =
-      __mapply<_Continuation, __minvoke<__mfold_right<__types<>, __push_back_unique<>>, _Ts...>>;
-  };
-
   template <class...>
   struct __mcompose { };
 
@@ -711,6 +798,12 @@ namespace stdexec {
   struct __mcompose<_Last, _Penultimate, _Rest...> {
     template <class... _Args>
     using __f = __minvoke<_Last, __minvoke<__mcompose<_Penultimate, _Rest...>, _Args...>>;
+  };
+
+  template <template <class...> class _Second, template <class...> class _First>
+  struct __mcompose_q {
+    template <class... _Args>
+    using __f = _Second<_First<_Args...>>;
   };
 
   template <class _Old, class _New, class _Continuation = __q<__types>>
@@ -810,14 +903,14 @@ namespace stdexec {
 
 // BUGBUG TODO file this bug with nvc++
 #if STDEXEC_NVHPC()
-  template <const auto& _Fun, class... _As>
+  template <const auto &_Fun, class... _As>
   using __result_of = __call_result_t<decltype(_Fun), _As...>;
 #else
-  template <const auto& _Fun, class... _As>
+  template <const auto &_Fun, class... _As>
   using __result_of = decltype(_Fun(__declval<_As>()...));
 #endif
 
-  template <const auto& _Fun, class... _As>
+  template <const auto &_Fun, class... _As>
   inline constexpr bool __noexcept_of = noexcept(_Fun(__declval<_As>()...));
 
   // For emplacing non-movable types into optionals:
@@ -828,11 +921,11 @@ namespace stdexec {
     using __t = __call_result_t<_Fn>;
 
     operator __t() && noexcept(__nothrow_callable<_Fn>) {
-      return static_cast<_Fn&&>(__fn_)();
+      return static_cast<_Fn &&>(__fn_)();
     }
 
     auto operator()() && noexcept(__nothrow_callable<_Fn>) -> __t {
-      return static_cast<_Fn&&>(__fn_)();
+      return static_cast<_Fn &&>(__fn_)();
     }
   };
   template <class _Fn>
@@ -891,20 +984,36 @@ namespace stdexec {
     using __f = __msize_t<(sizeof...(_Args) - __v<__minvoke<__mfind_if<_Fn, __msize>, _Args...>>)>;
   };
 
-  template <class... _Booleans>
-  using __mand_ = __mbool<(__v<_Booleans> && ...)>;
-  template <class... _Booleans>
-  using __mand = __meval<__mand_, _Booleans...>;
+#if STDEXEC_MSVC()
+#  define __mvalue_of(...) __VA_ARGS__::value
+#else
+#  define __mvalue_of(...) __v<__VA_ARGS__>
+#endif
 
   template <class... _Booleans>
-  using __mor_ = __mbool<(__v<_Booleans> || ...)>;
+  using __mand_t = __mbool<(__mvalue_of(_Booleans) && ...)>;
   template <class... _Booleans>
-  using __mor = __meval<__mor_, _Booleans...>;
+  using __mand = __meval<__mand_t, _Booleans...>;
+
+  template <class... _Booleans>
+  using __mor_t = __mbool<(__mvalue_of(_Booleans) || ...)>;
+  template <class... _Booleans>
+  using __mor = __meval<__mor_t, _Booleans...>;
 
   template <class _Boolean>
-  using __mnot_ = __mbool<!__v<_Boolean>>;
+  using __mnot_t = __mbool<!__mvalue_of(_Boolean)>;
   template <class _Boolean>
-  using __mnot = __meval<__mnot_, _Boolean>;
+  using __mnot = __meval<__mnot_t, _Boolean>;
+
+#if STDEXEC_NVHPC()
+  template <class... _Ints>
+  struct __mplus_t : __mconstant<(__v<_Ints> + ...)> { };
+#else
+  template <class... _Ints>
+  using __mplus_t = __mconstant<(__mvalue_of(_Ints) + ...)>;
+#endif
+
+#undef __mvalue_of
 
   template <class _Fn>
   struct __mall_of {
@@ -938,10 +1047,10 @@ namespace stdexec {
   using __m_at_c = __minvoke<__m_at_<_Np == ~0ul>, __msize_t<_Np>, _Ts...>;
 #else
   template <std::size_t>
-  using __void_ptr = void*;
+  using __void_ptr = void *;
 
   template <class _Ty>
-  using __mtype_ptr = __mtype<_Ty>*;
+  using __mtype_ptr = __mtype<_Ty> *;
 
   template <class _Ty>
   struct __m_at_;
@@ -949,7 +1058,7 @@ namespace stdexec {
   template <std::size_t... _Is>
   struct __m_at_<__indices<_Is...>> {
     template <class _Up, class... _Us>
-    static _Up __f_(__void_ptr<_Is>..., _Up*, _Us*...);
+    static _Up __f_(__void_ptr<_Is>..., _Up *, _Us *...);
     template <class... _Ts>
     using __f = __t<decltype(__m_at_::__f_(__mtype_ptr<_Ts>()...))>;
   };
@@ -984,7 +1093,7 @@ namespace stdexec {
   struct __placeholder {
     __placeholder() = default;
 
-    constexpr __placeholder(void*) noexcept {
+    constexpr __placeholder(void *) noexcept {
     }
 
     constexpr friend auto __get_placeholder_offset(__placeholder) noexcept -> std::size_t {
@@ -1001,9 +1110,9 @@ namespace stdexec {
   struct __nth_pack_element_impl {
     template <class _Ty, class... _Us>
     STDEXEC_ATTRIBUTE((always_inline))
-    constexpr _Ty&&
-      operator()(_Ignore..., _Ty&& __t, _Us&&...) const noexcept {
-      return static_cast<decltype(__t)&&>(__t);
+    constexpr _Ty &&
+      operator()(_Ignore..., _Ty &&__t, _Us &&...) const noexcept {
+      return static_cast<decltype(__t) &&>(__t);
     }
   };
 
@@ -1019,9 +1128,9 @@ namespace stdexec {
     template <class... _Ts>
     STDEXEC_ATTRIBUTE((always_inline))
     constexpr decltype(auto)
-      operator()(_Ts&&... __ts) const noexcept {
+      operator()(_Ts &&...__ts) const noexcept {
       static_assert(_Np < sizeof...(_Ts));
-      return __impl(__make_indices<_Np>())(static_cast<_Ts&&>(__ts)...);
+      return __impl(__make_indices<_Np>())(static_cast<_Ts &&>(__ts)...);
     }
   };
 
@@ -1043,15 +1152,15 @@ namespace stdexec {
     template <class _Ty>
     STDEXEC_ATTRIBUTE((always_inline))
     constexpr decltype(auto)
-      operator()(_Ty&& __ty) const noexcept {
-      return static_cast<_Ty&&>(__ty).*(__ty.__mbrs_.template __nth<_Np>());
+      operator()(_Ty &&__ty) const noexcept {
+      return static_cast<_Ty &&>(__ty).*(__ty.__mbrs_.template __nth<_Np>());
     }
   };
 
   template <class _Ty, std::size_t _Offset = 0>
   struct __mdispatch_ {
     template <class... _Ts>
-    auto operator()(_Ts&&...) const noexcept(noexcept(_Ty{})) -> _Ty {
+    auto operator()(_Ts &&...) const noexcept(noexcept(_Ty{})) -> _Ty {
       return _Ty{};
     }
   };
@@ -1059,31 +1168,31 @@ namespace stdexec {
   template <std::size_t _Np, std::size_t _Offset>
   struct __mdispatch_<__placeholder<_Np>, _Offset> {
     template <class... _Ts>
-    auto operator()(_Ts&&... __ts) const noexcept -> decltype(auto) {
-      return stdexec::__nth_pack_element<_Np + _Offset>(static_cast<_Ts&&>(__ts)...);
+    auto operator()(_Ts &&...__ts) const noexcept -> decltype(auto) {
+      return stdexec::__nth_pack_element<_Np + _Offset>(static_cast<_Ts &&>(__ts)...);
     }
   };
 
   template <std::size_t _Np, std::size_t _Offset>
-  struct __mdispatch_<__placeholder<_Np>&, _Offset> {
+  struct __mdispatch_<__placeholder<_Np> &, _Offset> {
     template <class... _Ts>
-    auto operator()(_Ts&&... __ts) const noexcept -> decltype(auto) {
+    auto operator()(_Ts &&...__ts) const noexcept -> decltype(auto) {
       return stdexec::__nth_pack_element<_Np + _Offset>(__ts...);
     }
   };
 
   template <std::size_t _Np, std::size_t _Offset>
-  struct __mdispatch_<__placeholder<_Np>&&, _Offset> {
+  struct __mdispatch_<__placeholder<_Np> &&, _Offset> {
     template <class... _Ts>
-    auto operator()(_Ts&&... __ts) const noexcept -> decltype(auto) {
+    auto operator()(_Ts &&...__ts) const noexcept -> decltype(auto) {
       return std::move(stdexec::__nth_pack_element<_Np + _Offset>(__ts...));
     }
   };
 
   template <std::size_t _Np, std::size_t _Offset>
-  struct __mdispatch_<const __placeholder<_Np>&, _Offset> {
+  struct __mdispatch_<const __placeholder<_Np> &, _Offset> {
     template <class... _Ts>
-    auto operator()(_Ts&&... __ts) const noexcept -> decltype(auto) {
+    auto operator()(_Ts &&...__ts) const noexcept -> decltype(auto) {
       return std::as_const(stdexec::__nth_pack_element<_Np + _Offset>(__ts...));
     }
   };
@@ -1093,10 +1202,10 @@ namespace stdexec {
     template <class... _Ts>
       requires(__callable<__mdispatch_<_Args, _Offset>, _Ts...> && ...)
            && __callable<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...>
-    auto operator()(_Ts&&... __ts) const
+    auto operator()(_Ts &&...__ts) const
       noexcept(__nothrow_callable<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...>)
         -> __call_result_t<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...> {
-      return _Ret{}(__mdispatch_<_Args, _Offset>{}(static_cast<_Ts&&>(__ts)...)...);
+      return _Ret{}(__mdispatch_<_Args, _Offset>{}(static_cast<_Ts &&>(__ts)...)...);
     }
   };
 
@@ -1105,7 +1214,7 @@ namespace stdexec {
     static_assert(_Offset == 0, "nested pack expressions are not supported");
     using _Pattern = __mback<_Args...>;
     static constexpr std::size_t __offset =
-      __get_placeholder_offset(static_cast<__mtype<_Pattern>*>(nullptr));
+      __get_placeholder_offset(static_cast<__mtype<_Pattern> *>(nullptr));
 
     struct __impl {
       template <std::size_t... _Idx, class... _Ts>
@@ -1115,7 +1224,7 @@ namespace stdexec {
                   _Ret,
                   __call_result_t<__mdispatch_<_Args>, _Ts...>...,
                   __call_result_t<__mdispatch_<_Pattern, _Idx + 1>, _Ts...>...>
-      auto operator()(__indices<_Idx...>, _Ts&&... __ts) const
+      auto operator()(__indices<_Idx...>, _Ts &&...__ts) const
         noexcept(__nothrow_callable<                              //
                  _Ret,                                            //
                  __call_result_t<__mdispatch_<_Args>, _Ts...>..., //
@@ -1124,34 +1233,34 @@ namespace stdexec {
             _Ret,
             __call_result_t<__mdispatch_<_Args>, _Ts...>...,
             __call_result_t<__mdispatch_<_Pattern, _Idx + 1>, _Ts...>...> {
-        return _Ret()(                                           //
-          __mdispatch_<_Args>()(static_cast<_Ts&&>(__ts)...)..., //
-          __mdispatch_<_Pattern, _Idx + 1>()(static_cast<_Ts&&>(__ts)...)...);
+        return _Ret()(                                            //
+          __mdispatch_<_Args>()(static_cast<_Ts &&>(__ts)...)..., //
+          __mdispatch_<_Pattern, _Idx + 1>()(static_cast<_Ts &&>(__ts)...)...);
       }
     };
 
     template <class... _Ts>
       requires(__offset < sizeof...(_Ts))
            && __callable<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>
-    auto operator()(_Ts&&... __ts) const
+    auto operator()(_Ts &&...__ts) const
       noexcept(__nothrow_callable<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>)
         -> __msecond<
           __if_c<(__offset < sizeof...(_Ts))>,
           __call_result_t<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>> {
-      return __impl()(__make_indices<sizeof...(_Ts) - __offset - 1>(), static_cast<_Ts&&>(__ts)...);
+      return __impl()(__make_indices<sizeof...(_Ts) - __offset - 1>(), static_cast<_Ts &&>(__ts)...);
     }
 
     template <class... _Ts>
       requires(sizeof...(_Ts) == __offset)
-           && __callable<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...>*>, _Ts...>
-    auto operator()(_Ts&&... __ts) const //
+           && __callable<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...> *>, _Ts...>
+    auto operator()(_Ts &&...__ts) const //
       noexcept(
-        __nothrow_callable<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...>*>, _Ts...>)
+        __nothrow_callable<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...> *>, _Ts...>)
         -> __msecond<
           __if_c<(sizeof...(_Ts) == __offset)>,
-          __call_result_t<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...>*>, _Ts...>> {
-      return __mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...>*>()(
-        static_cast<_Ts&&>(__ts)...);
+          __call_result_t<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...> *>, _Ts...>> {
+      return __mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...> *>()(
+        static_cast<_Ts &&>(__ts)...);
     }
   };
 
@@ -1189,4 +1298,56 @@ namespace stdexec {
   template <class _Signatures, class _DefaultFn, class... _Args>
   using __make_dispatcher = //
     __minvoke<__mtry_catch<__mcompose<__q<__mdispatch>, __which<_Signatures>>, _DefaultFn>, _Args...>;
+
+  template <class _Set, class... _Ty>
+  concept __mset_contains = (STDEXEC_IS_BASE_OF(__mtype<_Ty>, _Set) && ...);
+
+  namespace __set {
+    template <class... _Ts>
+    struct __inherit { };
+
+    template <class _Ty, class... _Ts>
+    struct __inherit<_Ty, _Ts...>
+      : __mtype<_Ty>
+      , __inherit<_Ts...> { };
+
+    template <class... _Set>
+    auto operator+(__inherit<_Set...> &) -> __inherit<_Set...>;
+
+    template <class... _Set, class _Ty>
+    auto operator%(__inherit<_Set...> &, __mtype<_Ty> &) //
+      -> __if_c<                                         //
+        __mset_contains<__inherit<_Set...>, _Ty>,
+        __inherit<_Set...>,
+        __inherit<_Ty, _Set...>> &;
+
+    template <class _ExpectedSet, class... _Ts>
+    concept __mset_eq =                                           //
+      (sizeof...(_Ts) == __v<__mapply<__msize, _ExpectedSet>>) && //
+      __mset_contains<_ExpectedSet, _Ts...>;
+
+    template <class _ExpectedSet>
+    struct __eq {
+      template <class... _Ts>
+      using __f = __mbool<__mset_eq<_ExpectedSet, _Ts...>>;
+    };
+  } // namespace __set
+
+  template <class... _Ts>
+  using __mset = __set::__inherit<_Ts...>;
+
+  template <class _Set, class... _Ts>
+  using __mset_insert = decltype(+(__declval<_Set &>() % ... % __declval<__mtype<_Ts> &>()));
+
+  template <class... _Ts>
+  using __mmake_set = __mset_insert<__mset<>, _Ts...>;
+
+  template <class _Set1, class _Set2>
+  concept __mset_eq = __v<__mapply<__set::__eq<_Set1>, _Set2>>;
+
+  template <class _Continuation = __q<__types>>
+  struct __munique {
+    template <class... _Ts>
+    using __f = __mapply<_Continuation, __mmake_set<_Ts...>>;
+  };
 } // namespace stdexec

@@ -58,7 +58,7 @@ namespace stdexec {
 
       static constexpr auto get_completion_signatures =       //
         []<class _Self, class _Env>(_Self&&, _Env&&) noexcept //
-        -> make_completion_signatures<
+        -> transform_completion_signatures_of<
           __child_of<_Self>,
           _Env,
           completion_signatures<set_error_t(std::exception_ptr)>,
@@ -71,7 +71,7 @@ namespace stdexec {
 
       static constexpr auto get_state = //
         []<class _Self, class _Receiver>(_Self&&, _Receiver&) noexcept
-        requires __single_typed_sender<__child_of<_Self>, env_of_t<_Receiver>>
+        requires __single_value_sender<__child_of<_Self>, env_of_t<_Receiver>>
       {
         static_assert(sender_expr_for<_Self, stopped_as_optional_t>);
         using _Value = __decay_t<__single_sender_value_t<__child_of<_Self>, env_of_t<_Receiver>>>;

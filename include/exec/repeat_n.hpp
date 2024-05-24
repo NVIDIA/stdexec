@@ -177,8 +177,8 @@ namespace exec {
         stdexec::__try_make_completion_signatures<
           stdexec::schedule_result_t<exec::trampoline_scheduler>,
           _Env,
-          __with_exception_ptr,
-          __q<__compl_sigs::__default_set_value>,
+          __eptr_completion,
+          __q<__sigs::__default_set_value>,
           __q<__error_t>>,
         __mbind_front_q<__values_t, decltype(__decay_t<_Pair>::__child_)>,
         __q<__error_t>>;
