@@ -38,7 +38,6 @@ struct __async_tuple {
     using __id = __async_tuple;
 
     using __fyn_t = stdexec::__decayed_tuple<stdexec::__t<_FynId>...>;
-    using __hn_t = std::tuple<typename stdexec::__t<_FynId>::handle...>;
     using __stgn_t = stdexec::__decayed_tuple<typename stdexec::__t<_FynId>::storage...>;
 
     STDEXEC_ATTRIBUTE((no_unique_address)) __fyn_t __fyn_;
@@ -47,28 +46,9 @@ struct __async_tuple {
     explicit __t(__fyn_t __fyn) : __fyn_(std::move(__fyn)) {}
     explicit __t(stdexec::__t<_FynId>... __fyn) : __fyn_(std::move(__fyn)...) {}
 
-    struct object : stdexec::__immovable { 
-      object() = delete;
-      __hn_t handles;
-    private:
-      friend struct __t;
-      explicit object(__hn_t hn) noexcept : handles(hn) {}
-    };
-    class handle {
-      object* source;
-      friend struct __async_tuple;
-      explicit handle(object& s) : source(&s) {}
-    public:
-      handle() = delete;
-      handle(const handle&) = default;
-      handle(handle&&) = default;
-      handle& operator=(const handle&) = default;
-      handle& operator=(handle&&) = default;
-
-      __hn_t& handles() & {return source->handles;}
-      const __hn_t& handles() const& {return source->handles;}
-    };
-struct storage : stdexec::__immovable { 
+    using object = std::tuple<typename stdexec::__t<_FynId>::handle...>;
+    using handle = std::tuple<typename stdexec::__t<_FynId>::handle...>;
+    struct storage : stdexec::__immovable { 
       STDEXEC_ATTRIBUTE((no_unique_address)) std::optional<__fyn_t> __fyn_;
       STDEXEC_ATTRIBUTE((no_unique_address)) __stgn_t __stgn_;
       std::optional<object> o;
@@ -87,7 +67,7 @@ struct storage : stdexec::__immovable {
             }, stg.__stgn_);
         }, stg.__fyn_.value());
       auto oc = stdexec::then(mc, [](storage& stg, typename stdexec::__t<_FynId>::handle... hn) noexcept {
-        auto construct = [&]() noexcept { return object{__hn_t{hn...}}; };
+        auto construct = [&]() noexcept { return object{hn...}; };
         stg.o.emplace(stdexec::__conv{construct}); 
         return handle{stg.o.value()};
       });

@@ -16,7 +16,7 @@ namespace {
 
   TEST_CASE("async_tuple simple", "[stop_object][async_object][async_tuple]") {
     auto with_tuple = [](auto tpl) noexcept {
-      auto [s0, s1] = tpl.handles();
+      auto [s0, s1] = tpl;
       return s0.chain(ex::just(false));
     };
     ex::sender auto snd = async_using(
