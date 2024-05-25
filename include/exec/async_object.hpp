@@ -31,6 +31,7 @@ struct async_construct_t {
     using __construct = decltype(((_O&&)__o).async_construct(__stg, ((_An&&)__an)...));
     static_assert(!stdexec::same_as<__construct, void>, "async_construct must not return void");
     static_assert(stdexec::__single_typed_sender<__construct>, "async_construct must return a sender with a single set_value overload");
+    static_assert(stdexec::sender_of<__construct, stdexec::set_value_t(typename std::remove_cvref_t<_O>::handle)>, "async_construct must return a sender that completes with set_value(handle)");
     return ((_O&&)__o).async_construct(__stg, ((_An&&)__an)...);
   }
   template<class _O, class _Stg, class... _An>
