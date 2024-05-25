@@ -36,17 +36,15 @@ struct __decl_receiver {
 
   using receiver_concept = stdexec::receiver_t;
 
-  template <stdexec::same_as<stdexec::set_value_t> _Tag, class... _An>
-  friend void tag_invoke(_Tag, __t&& __rcvr, _An&&... __an) noexcept;
+  template <class... _An>
+  void set_value_t(_An&&... __an) && noexcept;
 
-  template <stdexec::same_as<stdexec::set_error_t> _Tag, class _Error>
-  friend void tag_invoke(_Tag, __t&& __rcvr, _Error&& __err) noexcept;
+  template <class _Error>
+  void set_error_t(_Error&& __err) && noexcept;
 
-  template <stdexec::same_as<stdexec::set_stopped_t> _Tag>
-  friend void tag_invoke(_Tag, __t&& __rcvr) noexcept;
+  void set_stopped_t() && noexcept;
 
-  template <stdexec::same_as<stdexec::get_env_t> _Tag>
-  friend _Env tag_invoke(_Tag, const __t& __rcvr) noexcept;
+  _Env get_env_t() const& noexcept;
 };
 
 STDEXEC_PRAGMA_POP()
