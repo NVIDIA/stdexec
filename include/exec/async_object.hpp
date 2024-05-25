@@ -27,9 +27,10 @@ struct async_construct_t {
   template<class _O, class _Stg, class... _An>
   auto operator()(_O&& __o, _Stg& __stg, _An&&... __an) const 
     noexcept(noexcept(((_O&&)__o).async_construct(__stg, ((_An&&)__an)...)))
-    -> std::enable_if_t<
-      !stdexec::same_as<decltype(((_O&&)__o).async_construct(__stg, ((_An&&)__an)...)), void>,
-      decltype(((_O&&)__o).async_construct(__stg, ((_An&&)__an)...))> {
+    -> decltype(((_O&&)__o).async_construct(__stg, ((_An&&)__an)...)) {
+    using __construct = decltype(((_O&&)__o).async_construct(__stg, ((_An&&)__an)...));
+    static_assert(!stdexec::same_as<__construct, void>, "async_construct must not return void");
+    static_assert(stdexec::__single_typed_sender<__construct>, "async_construct must return a sender with a single set_value overload");
     return ((_O&&)__o).async_construct(__stg, ((_An&&)__an)...);
   }
   template<class _O, class _Stg, class... _An>
@@ -51,7 +52,12 @@ struct async_destruct_t {
     -> std::enable_if_t<
       !stdexec::same_as<decltype(((_O&&)__o).async_destruct(__stg)), void>,
       decltype(((_O&&)__o).async_destruct(__stg))> {
-    static_assert(noexcept(((_O&&)__o).async_destruct(__stg)));
+    static_assert(noexcept(((_O&&)__o).async_destruct(__stg)), "async_destruct must be noexcept");
+    using __destruct = decltype(((_O&&)__o).async_destruct(__stg));
+    static_assert(!stdexec::same_as<__destruct, void>, "async_destruct must not return void");
+    static_assert(stdexec::__single_typed_sender<__destruct>, "async_destruct must return a sender with a single set_value overload");
+    static_assert(stdexec::sender_of<__destruct, stdexec::set_value_t()>, "async_destruct must return a sender that completes with set_value()");
+    static_assert(stdexec::__nofail_sender<__destruct>, "async_destruct must return a sender that has no set_error(..) completions");
     return ((_O&&)__o).async_destruct(__stg);
   }
   template<class _O, class _Stg>
