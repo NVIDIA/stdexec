@@ -65,11 +65,10 @@ struct __destructed {
     _Result* __result_;
     _Receiver* __rcvr_;
 
-    template <stdexec::same_as<stdexec::set_value_t> _Tag>
-    friend void tag_invoke(_Tag, __t&& __rcvr) noexcept {
-      STDEXEC_ASSERT(!__rcvr.__result_->valueless_by_exception());
+    void set_value() && noexcept {
+      STDEXEC_ASSERT(!__result_->valueless_by_exception());
       std::visit(
-        [__rcvr = __rcvr]<class _Tup>(_Tup& __tupl) noexcept -> void {
+        [__rcvr = this->__rcvr_]<class _Tup>(_Tup& __tupl) noexcept -> void {
           if constexpr (stdexec::same_as<_Tup, std::monostate>) {
             std::terminate(); // reaching this indicates a bug
           } else {
@@ -82,20 +81,22 @@ struct __destructed {
                   _ErrorCompletionFilter>) {
                   std::terminate();
                 } else {
-                  __tag(std::move(*__rcvr.__rcvr_), (_Args&&) __args...);
+                  __tag(std::move(*__rcvr), (_Args&&) __args...);
                 }
               },
               __tupl);
           }
         },
-        *__rcvr.__result_);
+        *__result_);
     }
 
-    template <stdexec::same_as<stdexec::set_stopped_t> _Tag>
-    friend void tag_invoke(_Tag __d, __t&& __rcvr) noexcept {
-      STDEXEC_ASSERT(!__rcvr.__result_->valueless_by_exception());
+    template<class _Error>
+    void set_error(_Error&&) && noexcept = delete;
+
+    void set_stopped() && noexcept {
+      STDEXEC_ASSERT(!__result_->valueless_by_exception());
       std::visit(
-        [__rcvr = __rcvr]<class _Tup>(_Tup& __tupl) noexcept -> void {
+        [__rcvr = this->__rcvr_]<class _Tup>(_Tup& __tupl) noexcept -> void {
           if constexpr (stdexec::same_as<_Tup, std::monostate>) {
             std::terminate(); // reaching this indicates a bug
           } else {
@@ -108,17 +109,17 @@ struct __destructed {
                   _ErrorCompletionFilter>) {
                   std::terminate();
                 } else {
-                  __tag(std::move(*__rcvr.__rcvr_), (_Args&&) __args...);
+                  __tag(std::move(*__rcvr), (_Args&&) __args...);
                 }
               },
               __tupl);
           }
         },
-        *__rcvr.__result_);
+        *__result_);
     }
 
-    friend stdexec::env_of_t<_Receiver> tag_invoke(stdexec::get_env_t, const __t& __rcvr) noexcept {
-      return stdexec::get_env(*__rcvr.__rcvr_);
+    stdexec::env_of_t<_Receiver> get_env() && noexcept {
+      return stdexec::get_env(*__rcvr_);
     }
   };
 };
@@ -138,29 +139,28 @@ struct __outside {
     _DestructState* __destruct_state_; 
     _Receiver* __rcvr_;
 
-    template <stdexec::same_as<stdexec::set_value_t> _Tag, class... _An>
-    friend void tag_invoke(_Tag, __t&& __rcvr, _An&&... __an) noexcept {
-      using __async_result = stdexec::__decayed_tuple<_Tag, _An...>;
-      __rcvr.__result_->template emplace<__async_result>(_Tag(), (_An&&)__an...);
-      stdexec::start(*__rcvr.__destruct_state_);
+    template <class... _An>
+    void set_value(_An&&... __an) && noexcept {
+      using __async_result = stdexec::__decayed_tuple<stdexec::set_value_t, _An...>;
+      __result_->template emplace<__async_result>(stdexec::set_value, (_An&&)__an...);
+      stdexec::start(*__destruct_state_);
     }
 
-    template <stdexec::same_as<stdexec::set_error_t> _Tag, class _Error>
-    friend void tag_invoke(_Tag, __t&& __rcvr, _Error&& __err) noexcept {
-      using __async_result = stdexec::__decayed_tuple<_Tag, _Error>;
-      __rcvr.__result_->template emplace<__async_result>(_Tag(), (_Error&&) __err);
-      stdexec::start(*__rcvr.__destruct_state_);
+    template <class _Error>
+    void set_error(_Error&& __err) && noexcept {
+      using __async_result = stdexec::__decayed_tuple<stdexec::set_error_t, _Error>;
+      __result_->template emplace<__async_result>(stdexec::set_error, (_Error&&) __err);
+      stdexec::start(*__destruct_state_);
     }
 
-    template <stdexec::same_as<stdexec::set_stopped_t> _Tag>
-    friend void tag_invoke(_Tag __d, __t&& __rcvr) noexcept {
-      using __async_result = stdexec::__decayed_tuple<_Tag>;
-      __rcvr.__result_->template emplace<__async_result>(_Tag());
-      stdexec::start(*__rcvr.__destruct_state_);
+    void set_stopped() && noexcept {
+      using __async_result = stdexec::__decayed_tuple<stdexec::set_stopped_t>;
+      __result_->template emplace<__async_result>(stdexec::set_stopped);
+      stdexec::start(*__destruct_state_);
     }
 
-    friend stdexec::env_of_t<_Receiver> tag_invoke(stdexec::get_env_t, const __t& __rcvr) noexcept {
-      return stdexec::get_env(*__rcvr.__rcvr_);
+    stdexec::env_of_t<_Receiver> get_env() const& noexcept {
+      return stdexec::get_env(*__rcvr_);
     }
   };
 };
@@ -219,50 +219,48 @@ struct __constructed {
       __destruct_state_->emplace(stdexec::__conv{__destruct});
     }
 
-    template <stdexec::same_as<stdexec::set_value_t> _Tag>
-    friend void tag_invoke(_Tag, __t&& __rcvr, typename stdexec::__t<_FynId>::handle... __o) noexcept {
+    void set_value(typename stdexec::__t<_FynId>::handle... __o) && noexcept {
       // launch nested function
-      auto inside = [&] {
-        __rcvr.__make_destruct();
-        auto inner = (*__rcvr.__inner_)(typename stdexec::__t<_FynId>::handle{__o}...);
-        return stdexec::connect(std::move(inner), __outside_t{__rcvr.__result_, &__rcvr.__destruct_state_->value(), __rcvr.__rcvr_});
+      auto inside = [&, this] {
+        __make_destruct();
+        auto inner = (*__inner_)(typename stdexec::__t<_FynId>::handle{__o}...);
+        return stdexec::connect(std::move(inner), __outside_t{__result_, &__destruct_state_->value(), __rcvr_});
       };
       if constexpr (
         stdexec::__nothrow_callable<_InnerFn, typename stdexec::__t<_FynId>::handle...> && 
         stdexec::__nothrow_callable<stdexec::connect_t, __inside, __outside_t>) {
-        __rcvr.__inside_state_->emplace(stdexec::__conv{inside});
+        __inside_state_->emplace(stdexec::__conv{inside});
       } else {
         try {
-          __rcvr.__inside_state_->emplace(stdexec::__conv{inside});
+          __inside_state_->emplace(stdexec::__conv{inside});
         } catch (...) {
           using __async_result = stdexec::__decayed_tuple<stdexec::set_error_t, std::exception_ptr>;
-          __rcvr.__result_->template emplace<__async_result>(stdexec::set_error, std::current_exception());
-          __rcvr.__make_destruct();
-          stdexec::start(__rcvr.__destruct_state_->value());
+          __result_->template emplace<__async_result>(stdexec::set_error, std::current_exception());
+          __make_destruct();
+          stdexec::start(__destruct_state_->value());
           return;
         }
       }
-      stdexec::start(__rcvr.__inside_state_->value());
+      stdexec::start(__inside_state_->value());
     }
 
-    template <stdexec::same_as<stdexec::set_error_t> _Tag, class _Error>
-    friend void tag_invoke(_Tag, __t&& __rcvr, _Error&& __err) noexcept {
-      using __async_result = stdexec::__decayed_tuple<_Tag, _Error>;
-      __rcvr.__result_->template emplace<__async_result>(_Tag(), (_Error&&) __err);
-      __rcvr.__make_destruct();
-      stdexec::start(__rcvr.__destruct_state_->value());
+    template <class _Error>
+    void set_error(_Error&& __err) && noexcept {
+      using __async_result = stdexec::__decayed_tuple<stdexec::set_error_t, _Error>;
+      __result_->template emplace<__async_result>(stdexec::set_error, (_Error&&) __err);
+      __make_destruct();
+      stdexec::start(__destruct_state_->value());
     }
 
-    template <stdexec::same_as<stdexec::set_stopped_t> _Tag>
-    friend void tag_invoke(_Tag __d, __t&& __rcvr) noexcept {
-      using __async_result = stdexec::__decayed_tuple<_Tag>;
-      __rcvr.__result_->template emplace<__async_result>(_Tag());
-      __rcvr.__make_destruct();
-      stdexec::start(__rcvr.__destruct_state_->value());
+    void set_stopped() && noexcept {
+      using __async_result = stdexec::__decayed_tuple<stdexec::set_stopped_t>;
+      __result_->template emplace<__async_result>(stdexec::set_stopped);
+      __make_destruct();
+      stdexec::start(__destruct_state_->value());
     }
 
-    friend stdexec::env_of_t<_Receiver> tag_invoke(stdexec::get_env_t, const __t& __rcvr) noexcept {
-      return stdexec::get_env(*__rcvr.__rcvr_);
+    stdexec::env_of_t<_Receiver> get_env() const& noexcept {
+      return stdexec::get_env(*__rcvr_);
     }
   };
 };
@@ -338,11 +336,7 @@ struct __operation {
             }, __fyn_), __constructed_t{&__fyn_, &__stgn_, &__result_, &__inner_, &__inside_state_, &__destruct_state_, &__rcvr_})) {
     }
 
-    friend void tag_invoke(stdexec::start_t, __t& __self) noexcept {
-      __self.__start_();
-    }
-
-    void __start_() noexcept;
+    void start() noexcept;  
   };
 };
 
@@ -411,9 +405,9 @@ struct __sender {
       stdexec::__nothrow_callable<_InnerFn, typename stdexec::__t<_FynId>::handle...> &&
       stdexec::__nothrow_callable<stdexec::connect_t, __inside, __outside_t<_Receiver>>;
 
-    template < stdexec::same_as<stdexec::get_completion_signatures_t> _Tag, stdexec::__decays_to<__t> _Self, class _Env>
-    STDEXEC_ATTRIBUTE((always_inline))                                  //
-    friend auto tag_invoke(_Tag, _Self&& __self, _Env&& __env) noexcept //
+    template <class _Env>
+    STDEXEC_ATTRIBUTE((always_inline))                          //
+    auto get_completion_signatures(_Env&& __env) const noexcept //
       -> stdexec::__concat_completion_signatures_t<
           // add completions of sender returned from InnerFn  
           stdexec::completion_signatures_of_t<__inside, _Env>,
@@ -446,16 +440,11 @@ struct __sender {
       stdexec::__id<__error_completion_filter<_Receiver>>, 
       _FynId...>>;
 
-    template <class _Receiver>
-    friend __operation<_Receiver> tag_invoke(
-      stdexec::connect_t,
-      const __t& __self,
-      _Receiver __rcvr) {
-      return __self.__connect_((_Receiver&&) __rcvr);
-    }
-    template <class _Receiver>
-    __operation<_Receiver> __connect_(_Receiver&& __rcvr) const {
-      return {(_Receiver&&) __rcvr, __inner_, __fyn_};
+    using connect_t = stdexec::connect_t;
+    template <stdexec::receiver _Receiver>
+      requires stdexec::receiver_of<_Receiver, stdexec::completion_signatures_of_t<__t, stdexec::env_of_t<_Receiver>>>
+    STDEXEC_MEMFN_DECL(auto connect)(this const __t& __self, _Receiver __rcvr) -> __operation<_Receiver> {
+      return {(_Receiver&&) __rcvr, __self.__inner_, __self.__fyn_};
     }
   };
 };
@@ -463,7 +452,7 @@ template<class _InnerFn, class... _Fyn>
 using __sender_t = stdexec::__t<__sender<stdexec::__id<std::remove_cvref_t<_InnerFn>>, stdexec::__id<std::remove_cvref_t<_Fyn>>...>>;
 
 template <class _InnerFnId, class _ReceiverId, class _ErrorCompletionFilterId, class... _FynId>
-inline void __operation<_InnerFnId, _ReceiverId, _ErrorCompletionFilterId, _FynId...>::__t::__start_() noexcept {
+inline void __operation<_InnerFnId, _ReceiverId, _ErrorCompletionFilterId, _FynId...>::__t::start() noexcept {
   stdexec::start(__construct_state_);
 }
 
