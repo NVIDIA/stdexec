@@ -31,6 +31,14 @@ namespace exec {
     struct __impl;
     struct async_scope;
 
+    template<class _A> 
+    concept __async_scope = 
+      !std::is_copy_constructible_v<_A> && !std::is_move_constructible_v<_A> && 
+      !std::is_copy_assignable_v<_A> && !std::is_move_assignable_v<_A> && 
+      requires (_A& __a) {
+      {__a.nest(stdexec::just())} -> sender_of<stdexec::set_value_t()>;
+    };
+
     struct __task : __immovable {
       const __impl* __scope_;
       void (*__notify_waiter)(__task*) noexcept;

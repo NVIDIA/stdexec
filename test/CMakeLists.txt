@@ -77,6 +77,7 @@ set(stdexec_test_sources
     exec/async_scope/test_dtor.cpp
     exec/async_scope/test_spawn.cpp
     exec/async_scope/test_spawn_future.cpp
+    exec/async_scope/test_start_now.cpp
     exec/async_scope/test_empty.cpp
     exec/async_scope/test_stop.cpp
     exec/test_when_any.cpp
