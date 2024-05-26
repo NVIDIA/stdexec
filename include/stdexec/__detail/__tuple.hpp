@@ -86,6 +86,18 @@ namespace stdexec {
     STDEXEC_ATTRIBUTE((host, device))
     __tuple(_Ts...) -> __tuple<__indices_for<_Ts...>{}, _Ts...>;
 
+    template <class _Fn, class _Tuple, class... _Us>
+    using __apply_result_t = //
+      decltype(__declval<_Tuple>()
+                 .apply(__declval<_Fn>(), __declval<_Tuple>(), __declval<_Us>()...));
+
+    template <class _Fn, class _Tuple, class... _Us>
+    concept __applicable = requires { typename __apply_result_t<_Fn, _Tuple, _Us...>; };
+
+    template <class _Fn, class _Tuple, class... _Us>
+    concept __nothrow_applicable = __applicable<_Fn, _Tuple, _Us...> && noexcept(
+      __declval<_Tuple>().apply(__declval<_Fn>(), __declval<_Tuple>(), __declval<_Us>()...));
+
 #if STDEXEC_GCC()
     template <class... _Ts>
     struct __mk_tuple {
@@ -99,33 +111,57 @@ namespace stdexec {
 #endif
 
     template <std::size_t _Idx, class _Ty>
-    STDEXEC_ATTRIBUTE((always_inline))
+    STDEXEC_ATTRIBUTE((host, device, always_inline))
     constexpr _Ty &&
       __get(__box<_Ty, _Idx> &&__self) noexcept {
       return static_cast<_Ty &&>(__self.__value);
     }
 
     template <std::size_t _Idx, class _Ty>
-    STDEXEC_ATTRIBUTE((always_inline))
+    STDEXEC_ATTRIBUTE((host, device, always_inline))
     constexpr _Ty &
       __get(__box<_Ty, _Idx> &__self) noexcept {
       return __self.__value;
     }
 
     template <std::size_t _Idx, class _Ty>
-    STDEXEC_ATTRIBUTE((always_inline))
+    STDEXEC_ATTRIBUTE((host, device, always_inline))
     constexpr const _Ty &
       __get(const __box<_Ty, _Idx> &__self) noexcept {
       return __self.__value;
     }
 
+    template <class _Fn, class _Tuple>
+    STDEXEC_ATTRIBUTE((host, device, always_inline))
+    auto
+      operator<<(_Tuple &&__tup, _Fn __fn) noexcept(__nothrow_move_constructible<_Fn>) {
+      return
+        [&__tup, __fn]<class... _Us>(_Us &&...__us) //
+        noexcept(__nothrow_applicable<_Fn, _Tuple, _Us...>)
+          -> __apply_result_t<_Fn, _Tuple, _Us...> {
+          return __tup.apply(__fn, static_cast<_Tuple &&>(__tup), static_cast<_Us &&>(__us)...);
+        };
+    }
+
+    template <class _Fn, class... _Tuples>
+    auto __cat_apply(_Fn __fn, _Tuples &&...__tups)                          //
+      noexcept(noexcept((static_cast<_Tuples &&>(__tups) << ... << __fn)())) //
+      -> decltype((static_cast<_Tuples &&>(__tups) << ... << __fn)()) {
+      return (static_cast<_Tuples &&>(__tups) << ... << __fn)();
+    }
+
     STDEXEC_PRAGMA_PUSH()
     STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
-    inline constexpr auto __mktuple =
-      []<class... _Ts>(_Ts &&...__ts) noexcept(noexcept(__tuple{static_cast<_Ts &&>(__ts)...})) {
+    inline constexpr struct __mktuple_t {
+      template <class... _Ts>
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
+      auto
+        operator()(_Ts &&...__ts) const noexcept(noexcept(__tuple{static_cast<_Ts &&>(__ts)...}))
+          -> decltype(__tuple{static_cast<_Ts &&>(__ts)...}) {
         return __tuple{static_cast<_Ts &&>(__ts)...};
-      };
+      }
+    } __mktuple{};
 
     STDEXEC_PRAGMA_POP()
 

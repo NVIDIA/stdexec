@@ -179,7 +179,7 @@ namespace nvexec {
         std::pmr::memory_resource* managed_resource,
         stream_pools_t* stream_pools,
         queue::task_hub_t* hub,
-        stream_priority priority = stream_priority::normal)
+        stream_priority priority = stream_priority::normal) noexcept
         : pinned_resource_(pinned_resource)
         , managed_resource_(managed_resource)
         , stream_pools_(stream_pools)
@@ -273,9 +273,6 @@ namespace nvexec {
       }
     };
 
-    template <class... Ts>
-    using decayed_tuple = ::cuda::std::tuple<__decay_t<Ts>...>;
-
     struct set_noop {
       template <class... Ts>
       STDEXEC_ATTRIBUTE((host, device))
@@ -287,8 +284,7 @@ namespace nvexec {
     };
 
     template <class... Ts>
-    using _nullable_variant_t =
-      variant_t<::cuda::std::tuple<set_noop>, Ts...>;
+    using _nullable_variant_t = variant_t<::cuda::std::tuple<set_noop>, Ts...>;
 
     template <class... Ts>
     using decayed_tuple = ::cuda::std::tuple<__decay_t<Ts>...>;
@@ -385,20 +381,24 @@ namespace nvexec {
 
         template <class... As>
         STDEXEC_ATTRIBUTE((host, device))
-        void set_value(As&&... as) noexcept {
-          variant_->template emplace<decayed_tuple<set_value_t, As...>>(set_value_t(), static_cast<As&&>(as)...);
+        void
+          set_value(As&&... as) noexcept {
+          variant_->template emplace<decayed_tuple<set_value_t, As...>>(
+            set_value_t(), static_cast<As&&>(as)...);
           producer_(task_);
         }
 
         STDEXEC_ATTRIBUTE((host, device))
-        void set_stopped() noexcept {
+        void
+          set_stopped() noexcept {
           variant_->template emplace<decayed_tuple<set_stopped_t>>(set_stopped_t());
           producer_(task_);
         }
 
         template <class Error>
         STDEXEC_ATTRIBUTE((host, device))
-        void set_error(Error&& err) noexcept {
+        void
+          set_error(Error&& err) noexcept {
           if constexpr (__decays_to<Error, std::exception_ptr>) {
             // What is `exception_ptr` but death pending
             variant_->template emplace<decayed_tuple<set_error_t, cudaError_t>>(
@@ -601,13 +601,14 @@ namespace nvexec {
         operation_state_base_t<OuterReceiverId>& operation_state_;
 
         template <class... _Args>
-        void set_value(_Args &&...__args) noexcept {
-          operation_state_.propagate_completion_signal(set_value_t(), static_cast<_Args &&>(__args)...);
+        void set_value(_Args&&... __args) noexcept {
+          operation_state_.propagate_completion_signal(
+            set_value_t(), static_cast<_Args&&>(__args)...);
         }
 
         template <class _Error>
-        void set_error(_Error &&__err) noexcept {
-          operation_state_.propagate_completion_signal(set_error_t(), static_cast<_Error &&>(__err));
+        void set_error(_Error&& __err) noexcept {
+          operation_state_.propagate_completion_signal(set_error_t(), static_cast<_Error&&>(__err));
         }
 
         void set_stopped() noexcept {

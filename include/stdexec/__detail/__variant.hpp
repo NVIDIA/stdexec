@@ -179,6 +179,7 @@ namespace stdexec {
   template <class... _Ts>
   using __variant_ = __variant_impl<std::make_index_sequence<sizeof...(_Ts)>, _Ts...>;
 
-  template <class... _Ts>
-  using __decayed_variant_ = __variant_<__decay_t<_Ts>...>;
+  template <class... Ts>
+  using __uniqued_variant_ = __mcall<__munique<__qq<__variant_>>, __decay_t<Ts>...>;
+
 } // namespace stdexec

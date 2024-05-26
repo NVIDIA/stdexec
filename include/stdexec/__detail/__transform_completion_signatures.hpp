@@ -526,15 +526,16 @@ namespace stdexec {
     value_types_of_t<_Sender, _Env, __msingle_or<void>::__f, __msingle>;
 
   template <class _Sender, class _Env = empty_env>
-  concept __single_value_sender = sender_in<_Sender, _Env> && //
-                                  requires { typename __single_sender_value_t<_Sender, _Env>; };
+  concept __single_value_sender = //
+    sender_in<_Sender, _Env> &&   //
+    requires { typename __single_sender_value_t<_Sender, _Env>; };
 
   template <class _Sender, class _Env = empty_env>
   using __single_value_variant_sender_t = value_types_of_t<_Sender, _Env, __types, __msingle>;
 
   template <class _Sender, class _Env = empty_env>
-  concept __single_value_variant_sender =
-    sender_in<_Sender, _Env> && //
+  concept __single_value_variant_sender = //
+    sender_in<_Sender, _Env> &&           //
     requires { typename __single_value_variant_sender_t<_Sender, _Env>; };
 
   // The following utilities are needed fairly often:

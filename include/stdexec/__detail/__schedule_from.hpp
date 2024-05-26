@@ -232,7 +232,7 @@ namespace stdexec {
         STDEXEC_APPLE_CLANG(__state.__self_ == &__state ? void() : std::terminate());
         // Write the tag and the args into the operation state so that we can forward the completion
         // from within the scheduler's execution context.
-        if constexpr (__nothrow_callable<decltype(__tup::__mktuple), _Tag, _Args...>) {
+        if constexpr (__nothrow_callable<__tup::__mktuple_t, _Tag, _Args...>) {
           __state.__data_.emplace_from(__tup::__mktuple, __tag, static_cast<_Args&&>(__args)...);
         } else {
           try {

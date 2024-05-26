@@ -131,9 +131,6 @@ namespace stdexec {
         __env::__with<_Scheduler, get_scheduler_t>,
         __env::__without_t<_Env, get_domain_t>>>;
 
-    template <class _Tp>
-    using __decay_ref = __decay_t<_Tp>&;
-
     template <__mstring _Where, __mstring _What>
     struct _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_ { };
 

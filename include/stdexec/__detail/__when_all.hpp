@@ -69,7 +69,7 @@ namespace stdexec {
 
     template <class _Env>
     using __env_t = //
-      decltype(__mkenv(__declval<_Env>(), __declval<inplace_stop_source&>()));
+      decltype(__when_all::__mkenv(__declval<_Env>(), __declval<inplace_stop_source&>()));
 
     template <class _Sender, class _Env>
     concept __max1_sender =
@@ -158,19 +158,14 @@ namespace stdexec {
     void __set_values(_Receiver& __rcvr, _ValuesTuple& __values) noexcept {
       __values.apply(
         [&](auto&... __opt_vals) noexcept -> void {
-          __apply(
-            __complete_fn(set_value, __rcvr), //
-            std::tuple_cat(__opt_vals->apply(__tie_fn{}, *__opt_vals)...));
+          __tup::__cat_apply(__when_all::__complete_fn(set_value, __rcvr), *__opt_vals...);
         },
         __values);
     }
 
-    template <class... Ts>
-    using __decayed_custom_tuple = __tup::__tuple_for<__decay_t<Ts>...>;
-
     template <class _Env, class _Sender>
     using __values_opt_tuple_t = //
-      value_types_of_t<_Sender, __env_t<_Env>, __decayed_custom_tuple, std::optional>;
+      value_types_of_t<_Sender, __env_t<_Env>, __tup::__decayed_tuple, std::optional>;
 
     template <class _Env, __max1_sender<__env_t<_Env>>... _Senders>
     struct __traits {
@@ -383,7 +378,7 @@ namespace stdexec {
           // if we're not already in the "error" or "stopped" state.
           if (__state.__state_ == __started) {
             auto& __opt_values = __tup::__get<__v<_Index>>(__state.__values_);
-            using _Tuple = __decayed_custom_tuple<_Args...>;
+            using _Tuple = __tup::__decayed_tuple<_Args...>;
             static_assert(
               __same_as<decltype(*__opt_values), _Tuple&>,
               "One of the senders in this when_all() is fibbing about what types it sends");
