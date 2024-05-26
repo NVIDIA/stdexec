@@ -345,7 +345,7 @@ namespace stdexec {
         start() & noexcept {
         using __tag_t = typename __op_state::__tag_t;
         auto&& __rcvr = this->__rcvr();
-        __tup::__apply(
+        __inner_ops_.apply(
           [&](auto&... __ops) noexcept {
             __sexpr_impl<__tag_t>::start(this->__state_, __rcvr, __ops...);
           },

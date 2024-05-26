@@ -99,7 +99,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((host, device, always_inline))
       __call_result_t<_Fun, _Sender, _As...>
         operator()(_Sender&& __sndr) && noexcept(__nothrow_callable<_Fun, _Sender, _As...>) {
-        return __tup::__apply(
+        return this->apply(
           [&__sndr, this](_As&... __as) noexcept(__nothrow_callable<_Fun, _Sender, _As...>)
             -> __call_result_t<_Fun, _Sender, _As...> {
             return static_cast<_Fun&&>(__fun_)(
@@ -115,7 +115,7 @@ namespace stdexec {
         operator()(_Sender&& __sndr) const & //
         noexcept(__nothrow_callable<const _Fun&, _Sender, const _As&...>)
           -> __call_result_t<const _Fun&, _Sender, const _As&...> {
-        return __tup::__apply(
+        return this->apply(
           [&__sndr,
            this](const _As&... __as) noexcept(__nothrow_callable<_Fun, _Sender, const _As&...>)
             -> __call_result_t<const _Fun&, _Sender, const _As&...> {

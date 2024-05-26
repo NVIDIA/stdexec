@@ -66,7 +66,7 @@ namespace stdexec {
       __value_types_of_t<_Sender, __env, __transform<__q<__decay_t>, _Continuation>, __q<__msingle>>;
 
     template <class _Sender>
-    using __sync_wait_result_t = __mtry_eval<__sync_wait_result_impl, _Sender, __q<std::tuple>>;
+    using __sync_wait_result_t = __mtry_eval<__sync_wait_result_impl, _Sender, __qq<std::tuple>>;
 
     template <class _Sender>
     using __sync_wait_with_variant_result_t =

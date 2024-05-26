@@ -119,24 +119,18 @@ namespace stdexec {
       return __self.__value;
     }
 
-    template <auto _Idx, class... _Ts>
-    void __tuple_like_(const __tuple<_Idx, _Ts...> &);
+    STDEXEC_PRAGMA_PUSH()
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
-    template <class _Tup>
-    concept __tuple_like = requires(_Tup &__tup) { __tup::__tuple_like_(__tup); };
+    inline constexpr auto __mktuple =
+      []<class... _Ts>(_Ts &&...__ts) noexcept(noexcept(__tuple{static_cast<_Ts &&>(__ts)...})) {
+        return __tuple{static_cast<_Ts &&>(__ts)...};
+      };
 
-    struct __apply_t {
-      template <class _Fun, __tuple_like _Tuple>
-      STDEXEC_ATTRIBUTE((always_inline))
-      constexpr auto
-        operator()(_Fun &&__fun, _Tuple &&__tup) const //
-        noexcept(noexcept(__tup.apply(static_cast<_Fun &&>(__fun), static_cast<_Tuple &&>(__tup))))
-          -> decltype(__tup.apply(static_cast<_Fun &&>(__fun), static_cast<_Tuple &&>(__tup))) {
-        return __tup.apply(static_cast<_Fun &&>(__fun), static_cast<_Tuple &&>(__tup));
-      }
-    };
+    STDEXEC_PRAGMA_POP()
 
-    inline constexpr __apply_t __apply{};
+    template <class... _Ts>
+    using __decayed_tuple = __tuple_for<__decay_t<_Ts>...>;
   } // namespace __tup
 
   using __tup::__tuple;

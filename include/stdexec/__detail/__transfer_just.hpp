@@ -57,14 +57,22 @@ namespace stdexec {
     template <class _Env>
     auto __transform_sender_fn(const _Env& __env) {
       return [&]<class _Data>(__ignore, _Data&& __data) {
-        return __tup::__apply(__make_transform_fn(__env), static_cast<_Data&&>(__data));
+        return __data.apply(__make_transform_fn(__env), static_cast<_Data&&>(__data));
       };
     }
+
+    struct __legacy_customization_fn {
+      template <class _Data>
+      auto operator()(_Data&& __data) const
+        -> decltype(__data.apply(__transfer_just_tag_invoke(), static_cast<_Data&&>(__data))) {
+        return __data.apply(__transfer_just_tag_invoke(), static_cast<_Data&&>(__data));
+      }
+    };
 
     struct transfer_just_t {
       using _Data = __0;
       using __legacy_customizations_t = //
-        __types<__tup::__apply_t(decltype(__transfer_just_tag_invoke()), _Data)>;
+        __types<__legacy_customization_fn(_Data)>;
 
       template <scheduler _Scheduler, __movable_value... _Values>
       auto
@@ -92,7 +100,7 @@ namespace stdexec {
     struct __transfer_just_impl : __sexpr_defaults {
       static constexpr auto get_attrs = //
         []<class _Data>(const _Data& __data) noexcept {
-          return __tup::__apply(__make_env_fn(), __data);
+          return __data.apply(__make_env_fn(), __data);
         };
     };
   } // namespace __transfer_just

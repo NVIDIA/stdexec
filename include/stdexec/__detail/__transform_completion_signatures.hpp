@@ -301,8 +301,11 @@ namespace stdexec {
     template <class... _Values>
     using __default_set_value = completion_signatures<set_value_t(_Values...)>;
 
-    template <class _Error>
-    using __default_set_error = completion_signatures<set_error_t(_Error)>;
+    template <class... _Error>
+    using __default_set_error = completion_signatures<set_error_t(_Error...)>;
+
+    template <class _Tag, class... _Args>
+    using __default_completion = completion_signatures<_Tag(_Args...)>;
   } // namespace __sigs
 
   template <
@@ -384,7 +387,7 @@ namespace stdexec {
     __valid_completion_signatures _Sigs,
     class _MoreSigs = completion_signatures<>,
     template <class...> class _ValueTransform = __sigs::__default_set_value,
-    template <class> class _ErrorTransform = __sigs::__default_set_error,
+    template <class...> class _ErrorTransform = __sigs::__default_set_error,
     __valid_completion_signatures _StoppedSigs = completion_signatures<set_stopped_t()>>
   using transform_completion_signatures = //
     __transform_completion_signatures<
@@ -400,7 +403,7 @@ namespace stdexec {
     class _Env = empty_env,
     class _MoreSigs = completion_signatures<>,
     template <class...> class _ValueTransform = __sigs::__default_set_value,
-    template <class> class _ErrorTransform = __sigs::__default_set_error,
+    template <class...> class _ErrorTransform = __sigs::__default_set_error,
     class _StoppedSigs = completion_signatures<set_stopped_t()>>
     requires sender_in<_Sndr, _Env>
   using transform_completion_signatures_of = //
@@ -423,8 +426,8 @@ namespace stdexec {
     class _Sender,                                              //
     class _Env = empty_env,                                     //
     class _More = completion_signatures<>,                      //
-    class _SetValue = __q<__sigs::__default_set_value>,         //
-    class _SetError = __q<__sigs::__default_set_error>,         //
+    class _SetValue = __qq<__sigs::__default_set_value>,        //
+    class _SetError = __qq<__sigs::__default_set_error>,        //
     class _SetStopped = completion_signatures<set_stopped_t()>> //
   using __try_make_completion_signatures =                      //
     __transform_completion_signatures<

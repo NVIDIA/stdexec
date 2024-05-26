@@ -156,11 +156,11 @@ namespace stdexec {
 
     template <class _Receiver, class _ValuesTuple>
     void __set_values(_Receiver& __rcvr, _ValuesTuple& __values) noexcept {
-      __tup::__apply(
+      __values.apply(
         [&](auto&... __opt_vals) noexcept -> void {
           __apply(
             __complete_fn(set_value, __rcvr), //
-            std::tuple_cat(__tup::__apply(__tie_fn{}, *__opt_vals)...));
+            std::tuple_cat(__opt_vals->apply(__tie_fn{}, *__opt_vals)...));
         },
         __values);
     }
