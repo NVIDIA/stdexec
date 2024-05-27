@@ -55,7 +55,7 @@ namespace stdexec {
   };
 
   template <class... _Ts>
-  using __variant = //
+  using __std_variant = //
     __minvoke<
       __if_c<
         sizeof...(_Ts) != 0,
@@ -63,10 +63,12 @@ namespace stdexec {
         __mconst<__not_a_variant>>,
       _Ts...>;
 
-  using __nullable_variant_fn = __munique<__mbind_front_q<std::variant, std::monostate>>;
+  template <class... _Ts>
+  using __nullable_std_variant =
+    __mcall<__munique<__mbind_front<__qq<std::variant>, std::monostate>>, __decay_t<_Ts>...>;
 
   template <class... _Ts>
-  using __decayed_tuple = __meval<std::tuple, __decay_t<_Ts>...>;
+  using __decayed_std_tuple = __meval<std::tuple, __decay_t<_Ts>...>;
 
   namespace __set {
     // Used by __concat_completion_signatures below to merge completion signatures.
@@ -471,30 +473,30 @@ namespace stdexec {
   using make_completion_signatures =
     transform_completion_signatures_of<_Sender, _Env, _Sigs, _SetValue, _SetError, _SetStopped>;
 
-  template <                             //
-    class _Sender,                       //
-    class _Env = empty_env,              //
-    class _Tuple = __q<__decayed_tuple>, //
-    class _Variant = __q<__variant>>
+  template <                                 //
+    class _Sender,                           //
+    class _Env = empty_env,                  //
+    class _Tuple = __q<__decayed_std_tuple>, //
+    class _Variant = __q<__std_variant>>
   using __value_types_of_t = //
     __gather_completions<set_value_t, __completion_signatures_of_t<_Sender, _Env>, _Tuple, _Variant>;
 
-  template <class _Sender, class _Env = empty_env, class _Variant = __q<__variant>>
+  template <class _Sender, class _Env = empty_env, class _Variant = __q<__std_variant>>
   using __error_types_of_t = __gather_completions<
     set_error_t,
     __completion_signatures_of_t<_Sender, _Env>,
     __q<__midentity>,
     _Variant>;
 
-  template <                                            //
-    class _Sender,                                      //
-    class _Env = empty_env,                             //
-    template <class...> class _Tuple = __decayed_tuple, //
-    template <class...> class _Variant = __variant>
+  template <                                                //
+    class _Sender,                                          //
+    class _Env = empty_env,                                 //
+    template <class...> class _Tuple = __decayed_std_tuple, //
+    template <class...> class _Variant = __std_variant>
     requires sender_in<_Sender, _Env>
   using value_types_of_t = __value_types_of_t<_Sender, _Env, __q<_Tuple>, __q<_Variant>>;
 
-  template <class _Sender, class _Env = empty_env, template <class...> class _Variant = __variant>
+  template <class _Sender, class _Env = empty_env, template <class...> class _Variant = __std_variant>
     requires sender_in<_Sender, _Env>
   using error_types_of_t = __error_types_of_t<_Sender, _Env, __q<_Variant>>;
 

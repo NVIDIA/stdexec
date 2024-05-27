@@ -338,9 +338,11 @@ namespace stdexec {
       using __fun_t = _Fun;
       using __sched_t = _Sched;
       using __env_t = __result_env_t<env_of_t<_Receiver>, _Sched>;
-      using __result_variant = __variant_<__monostate, _Tuples...>;
+      using __result_variant = __variant_for<__monostate, _Tuples...>;
       using __op_state_variant = //
-        __variant_<__monostate, __mapply<__op_state_for<_Receiver, _Fun, _Set, _Sched>, _Tuples>...>;
+        __variant_for<
+          __monostate,
+          __mapply<__op_state_for<_Receiver, _Fun, _Set, _Sched>, _Tuples>...>;
 
       template <class _ResultSender, class _OpState>
       auto __get_result_receiver(const _ResultSender&, _OpState& __op_state) -> decltype(auto) {
@@ -443,7 +445,7 @@ namespace stdexec {
             _Set,
             _Child,
             env_of_t<_Receiver>,
-            __q<__tup::__decayed_tuple>,
+            __q<__decayed_tuple>,
             __mk_let_state>;
 
           return __sndr.apply(

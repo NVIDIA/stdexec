@@ -103,11 +103,6 @@ namespace stdexec {
     struct __mk_tuple {
       using __t = __tuple<__indices_for<_Ts...>{}, _Ts...>;
     };
-    template <class... _Ts>
-    using __tuple_for = __t<__mk_tuple<_Ts...>>;
-#else
-    template <class... _Ts>
-    using __tuple_for = __tuple<__indices_for<_Ts...>{}, _Ts...>;
 #endif
 
     template <std::size_t _Idx, class _Ty>
@@ -165,11 +160,20 @@ namespace stdexec {
 
     STDEXEC_PRAGMA_POP()
 
-    template <class... _Ts>
-    using __decayed_tuple = __tuple_for<__decay_t<_Ts>...>;
   } // namespace __tup
 
   using __tup::__tuple;
+
+#if STDEXEC_GCC()
+  template <class... _Ts>
+  using __tuple_for = __t<__tup::__mk_tuple<_Ts...>>;
+#else
+  template <class... _Ts>
+  using __tuple_for = __tuple<__indices_for<_Ts...>{}, _Ts...>;
+#endif
+
+  template <class... _Ts>
+  using __decayed_tuple = __tuple_for<__decay_t<_Ts>...>;
 
   // So we can use __tuple as a typelist and ignore the first template parameter
   template <class _Fn, auto _Idx, class... _Ts>

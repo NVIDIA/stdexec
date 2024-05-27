@@ -23,6 +23,9 @@
 #include <type_traits>
 #include <exception>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+
 namespace exec {
   namespace __when_any {
     using namespace stdexec;
@@ -56,9 +59,12 @@ namespace exec {
     template <class... E>
     using __as_error = set_error_t (*)(E...);
 
-    template <class... _CvrefSenders, class _Env>
-    auto __completions_fn(_Env&&) //
-      -> __concat_completion_signatures<
+    // Here we convert all set_value(Args...) to set_value(__decay_t<Args>...). Note, we keep all
+    // error types as they are and unconditionally add set_stopped(). The indirection through the
+    // __completions_fn is to avoid a pack expansion bug in nvc++.
+    template <class _Env, class... _CvrefSenders>
+    using __completions_t = //
+      __concat_completion_signatures<
         __eptr_completion_if_t<__all_value_args_nothrow_decay_copyable<_Env, _CvrefSenders...>>,
         completion_signatures<set_stopped_t()>,
         __transform_completion_signatures<
@@ -68,33 +74,21 @@ namespace exec {
           set_stopped_t (*)(),
           __completion_signature_ptrs>...>;
 
-    // Here we convert all set_value(Args...) to set_value(__decay_t<Args>...). Note, we keep all
-    // error types as they are and unconditionally add set_stopped(). The indirection through the
-    // __completions_fn is to avoid a pack expansion bug in nvc++.
-    template <class _Env, class... _CvrefSenders>
-    using __completions_t = //
-      decltype(__completions_fn<_CvrefSenders...>(__declval<_Env>()));
-
     template <class _Env, class... _CvrefSenders>
     using __result_type_t = //
       __for_each_completion_signature<
         __completions_t<_Env, _CvrefSenders...>,
         __decayed_tuple,
-        __munique<__q<std::variant>>::__f>;
-
-    template <class _Variant, class... _Ts>
-    concept __nothrow_result_constructible_from =
-      __nothrow_constructible_from<__decayed_tuple<_Ts...>, _Ts...>
-      && __nothrow_constructible_from<_Variant, __decayed_tuple<_Ts...>>;
+        __uniqued_variant_for>;
 
     template <class _Receiver>
     auto __make_visitor_fn(_Receiver& __rcvr) noexcept {
       return [&__rcvr]<class _Tuple>(_Tuple&& __result) noexcept {
-        std::apply(
-          [&__rcvr]<class _Tag, class... _As>(_Tag, _As&&... __args) noexcept {
-            _Tag{}(static_cast<_Receiver&&>(__rcvr), static_cast<_As&&>(__args)...);
+        __result.apply(
+          [&__rcvr]<class... _As>(auto __tag, _As&... __args) noexcept {
+            __tag(static_cast<_Receiver&&>(__rcvr), static_cast<_As&&>(__args)...);
           },
-          static_cast<_Tuple&&>(__result));
+          __result);
       };
     }
 
@@ -117,21 +111,23 @@ namespace exec {
       std::atomic<std::size_t> __count_{};
 
       _Receiver __rcvr_;
-      std::optional<_ResultVariant> __result_{};
+      _ResultVariant __result_{};
 
       template <class _Tag, class... _Args>
       void notify(_Tag, _Args&&... __args) noexcept {
+        using __result_t = __decayed_tuple<_Tag, _Args...>;
         bool __expect = false;
         if (__emplaced_.compare_exchange_strong(
               __expect, true, std::memory_order_relaxed, std::memory_order_relaxed)) {
           // This emplacement can happen only once
-          if constexpr (__nothrow_result_constructible_from<_ResultVariant, _Tag, _Args...>) {
-            __result_.emplace(std::tuple{_Tag{}, static_cast<_Args&&>(__args)...});
+          if constexpr ((__nothrow_decay_copyable<_Args> && ...)) {
+            __result_.template emplace<__result_t>(_Tag{}, static_cast<_Args&&>(__args)...);
           } else {
             try {
-              __result_.emplace(std::tuple{_Tag{}, static_cast<_Args&&>(__args)...});
+              __result_.template emplace<__result_t>(_Tag{}, static_cast<_Args&&>(__args)...);
             } catch (...) {
-              __result_.emplace(std::tuple{set_error_t{}, std::current_exception()});
+              using __error_t = __tuple_for<set_error_t, std::exception_ptr>;
+              __result_.template emplace<__error_t>(set_error_t{}, std::current_exception());
             }
           }
           // stop pending operations
@@ -146,9 +142,9 @@ namespace exec {
             stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr_));
             return;
           }
-          STDEXEC_ASSERT(__result_.has_value());
-          std::visit(
-            __when_any::__make_visitor_fn(__rcvr_), static_cast<_ResultVariant&&>(*__result_));
+          STDEXEC_ASSERT(!__result_.is_valueless());
+          __result_.visit(
+            __when_any::__make_visitor_fn(__rcvr_), static_cast<_ResultVariant&&>(__result_));
         }
       }
     };
@@ -201,13 +197,19 @@ namespace exec {
         && (__nothrow_connectable<__cvref_t<_CvrefSenderIds>, __receiver_t> && ...);
 
       class __t : __op_base_t {
+        using __opstate_tuple =
+          __tuple_for<connect_result_t<stdexec::__cvref_t<_CvrefSenderIds>, __receiver_t>...>;
        public:
         template <class _SenderTuple>
         __t(_SenderTuple&& __senders, _Receiver&& __rcvr) noexcept(__nothrow_construct)
-          : __t{
-            static_cast<_SenderTuple&&>(__senders),
-            static_cast<_Receiver&&>(__rcvr),
-            std::index_sequence_for<_CvrefSenderIds...>{}} {
+          : __op_base_t{static_cast<_Receiver&&>(__rcvr), sizeof...(_CvrefSenderIds)}
+          , __ops_{__senders.apply(
+              [this]<class... _Senders>(_Senders&&... __sndrs) noexcept(__nothrow_construct)
+                -> __opstate_tuple {
+                return __opstate_tuple{
+                  {stdexec::connect(static_cast<_Senders&&>(__sndrs), __receiver_t{this})}...};
+              },
+              static_cast<_SenderTuple&&>(__senders))} {
         }
 
         void start() & noexcept {
@@ -216,23 +218,12 @@ namespace exec {
           if (this->__stop_source_.stop_requested()) {
             stdexec::set_stopped(static_cast<_Receiver&&>(this->__rcvr_));
           } else {
-            std::apply([](auto&... __ops) { (stdexec::start(__ops), ...); }, __ops_);
+            __ops_.apply([](auto&... __ops) { (stdexec::start(__ops), ...); }, __ops_);
           }
         }
 
        private:
-        template <class _SenderTuple, std::size_t... _Is>
-        __t(_SenderTuple&& __senders, _Receiver&& __rcvr, std::index_sequence<_Is...>) //
-          noexcept(__nothrow_construct)
-          : __op_base_t{static_cast<_Receiver&&>(__rcvr), sizeof...(_CvrefSenderIds)}
-          , __ops_{__conv{[&__senders, this] {
-            return stdexec::connect(
-              std::get<_Is>(static_cast<_SenderTuple&&>(__senders)),
-              __receiver_t{static_cast<__op_base_t*>(this)});
-          }}...} {
-        }
-
-        std::tuple<connect_result_t<stdexec::__cvref_t<_CvrefSenderIds>, __receiver_t>...> __ops_;
+        __opstate_tuple __ops_;
       };
     };
 
@@ -248,34 +239,41 @@ namespace exec {
       template <class _Self, class _Receiver>
       using __op_t = stdexec::__t<__op<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>>;
 
+      template <class _Self, class _Env>
+      using __completions_t = //
+        __when_any::__completions_t<_Env, __copy_cvref_t<_Self, stdexec::__t<_SenderIds>>...>;
+
       class __t {
        public:
         using __id = __sender;
         using sender_concept = stdexec::sender_t;
+        using __senders_tuple = __tuple_for<stdexec::__t<_SenderIds>...>;
 
         template <__not_decays_to<__t>... _Senders>
         explicit(sizeof...(_Senders) == 1)
           __t(_Senders&&... __senders) noexcept((__nothrow_decay_copyable<_Senders> && ...))
-          : __senders_(static_cast<_Senders&&>(__senders)...) {
+          : __senders_{{static_cast<_Senders&&>(__senders)}...} {
         }
 
         template <__decays_to<__t> _Self, receiver _Receiver>
         STDEXEC_MEMFN_DECL(
           auto connect)(this _Self&& __self, _Receiver __rcvr) //
-          noexcept(__nothrow_constructible_from<__op_t<_Self, _Receiver>, _Self, _Receiver>)
-            -> __op_t<_Self, _Receiver> {
+          noexcept(__nothrow_constructible_from<
+                   __op_t<_Self, _Receiver>,
+                   __copy_cvref_t<_Self, __senders_tuple>,
+                   _Receiver>) -> __op_t<_Self, _Receiver> {
           return __op_t<_Self, _Receiver>{
             static_cast<_Self&&>(__self).__senders_, static_cast<_Receiver&&>(__rcvr)};
         }
 
         template <__decays_to<__t> _Self, class _Env>
-        static auto get_completion_signatures(_Self&&, _Env&&) noexcept
-          -> __completions_t<_Env, __copy_cvref_t<_Self, stdexec::__t<_SenderIds>>...> {
+        static auto
+          get_completion_signatures(_Self&&, _Env&&) noexcept -> __completions_t<_Self, _Env> {
           return {};
         }
 
        private:
-        std::tuple<stdexec::__t<_SenderIds>...> __senders_;
+        __senders_tuple __senders_;
       };
     };
 
@@ -296,3 +294,5 @@ namespace exec {
 
   using __when_any::when_any;
 } // namespace exec
+
+STDEXEC_PRAGMA_POP()

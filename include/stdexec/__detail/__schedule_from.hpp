@@ -34,10 +34,10 @@ namespace stdexec {
   // [execution.senders.adaptors.schedule_from]
   namespace __schfr {
     template <class... _Ts>
-    using __tuple_t = __tup::__tuple_for<__decay_t<_Ts>...>;
+    using __tuple_t = __tuple_for<__decay_t<_Ts>...>;
 
     template <class... _Ts>
-    using __variant_t = __variant_<__monostate, _Ts...>;
+    using __variant_t = __variant_for<__monostate, _Ts...>;
 
     // Compute a variant type that is capable of storing the results of the
     // input sender when it completes. The variant has type:
@@ -56,7 +56,7 @@ namespace stdexec {
       __for_each_completion_signature<
         __completion_signatures_of_t<_CvrefSender, _Env>,
         __tuple_t,
-        __munique<__qq<__variant_>>::__f>;
+        __munique<__qq<__variant_for>>::__f>;
 
     template <class... _Values>
     using __decay_value_sig = set_value_t (*)(__decay_t<_Values>...);

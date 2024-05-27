@@ -25,6 +25,8 @@
 #include "__intrusive_slist.hpp"
 #include "__meta.hpp"
 #include "__transform_completion_signatures.hpp"
+#include "__tuple.hpp"
+#include "__variant.hpp"
 
 #include "../stop_token.hpp"
 #include "../functional.hpp"
@@ -32,7 +34,6 @@
 #include <exception>
 #include <mutex>
 #include <optional>
-#include <variant>
 
 namespace stdexec {
   ////////////////////////////////////////////////////////////////////////////
@@ -65,7 +66,7 @@ namespace stdexec {
     template <class _Receiver>
     auto __make_notify_visitor(_Receiver& __rcvr) noexcept {
       return [&]<class _Tuple>(_Tuple&& __tupl) noexcept -> void {
-        __apply(
+        __tupl.apply(
           [&](auto __tag, auto&&... __args) noexcept -> void {
             __tag(static_cast<_Receiver&&>(__rcvr), __forward_like<_Tuple>(__args)...);
           },
@@ -144,7 +145,8 @@ namespace stdexec {
         __self->__on_stop_.reset();
 
         auto __visitor = __make_notify_visitor(__self->__receiver());
-        std::visit(__visitor, static_cast<__cv_variant_t&&>(__self->__sh_state_->__results_));
+        __variant_t::visit(
+          __visitor, static_cast<__cv_variant_t&&>(__self->__sh_state_->__results_));
       }
 
       static auto __get_sh_state(_CvrefSender& __sndr) noexcept {
@@ -212,9 +214,9 @@ namespace stdexec {
           __completion_signatures_of_t<_CvrefSender, _Env>,
           __mbind_front_q<__decayed_tuple, set_value_t>::__f,
           __mbind_front_q<__decayed_tuple, set_error_t>::__f,
-          std::tuple<set_error_t, std::exception_ptr>,
-          __munique<__mbind_front_q<std::variant, std::tuple<set_stopped_t>>>::__f,
-          std::tuple<set_error_t, std::exception_ptr>>;
+          __tuple_for<set_error_t, std::exception_ptr>,
+          __munique<__mbind_front_q<__variant_for, __tuple_for<set_stopped_t>>>::__f,
+          __tuple_for<set_error_t, std::exception_ptr>>;
 
       static constexpr std::size_t __started_bit = 0;
       static constexpr std::size_t __completed_bit = 1;

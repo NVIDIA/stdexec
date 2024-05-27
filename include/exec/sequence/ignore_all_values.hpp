@@ -45,7 +45,7 @@ namespace exec {
       void __emplace(_Args&&... __args) noexcept {
         int __expected = 0;
         if (__emplaced_.compare_exchange_strong(__expected, 1, std::memory_order_relaxed)) {
-          __result_.template emplace<__decayed_tuple<_Args...>>(static_cast<_Args&&>(__args)...);
+          __result_.template emplace<__decayed_std_tuple<_Args...>>(static_cast<_Args&&>(__args)...);
           __emplaced_.store(2, std::memory_order_release);
         }
       }
@@ -95,7 +95,7 @@ namespace exec {
         template <class _Error>
           requires __variant_emplaceable<
                      _ResultVariant,
-                     __decayed_tuple<set_error_t, _Error>,
+                     __decayed_std_tuple<set_error_t, _Error>,
                      set_error_t,
                      _Error>
                 && __callable<stdexec::set_stopped_t, _ItemReceiver>
@@ -106,7 +106,10 @@ namespace exec {
         }
 
         void set_stopped() noexcept
-          requires __variant_emplaceable<_ResultVariant, __decayed_tuple<set_stopped_t>, set_stopped_t>
+          requires __variant_emplaceable<
+                     _ResultVariant,
+                     __decayed_std_tuple<set_stopped_t>,
+                     set_stopped_t>
                 && __callable<set_stopped_t, _ItemReceiver>
         {
           // stop without error
@@ -214,16 +217,16 @@ namespace exec {
 
     template <class _Tag>
     using __result_tuple_fn = //
-      __mcompose_q<__types_ref, __mbind_front_q<__decayed_tuple, _Tag>::template __f>;
+      __mcompose_q<__types_ref, __mbind_front_q<__decayed_std_tuple, _Tag>::template __f>;
 
     template <class _Sigs>
     using __result_variant_ = //
       __transform_completion_signatures<
         _Sigs,
         __mconst<__types_ref<>>::__f,
-        __mcompose_q<__types_ref, __mbind_front_q<__decayed_tuple, set_error_t>::__f>::__f,
+        __mcompose_q<__types_ref, __mbind_front_q<__decayed_std_tuple, set_error_t>::__f>::__f,
         __types_ref<std::tuple<set_stopped_t>>,
-        __mappend_into_q<__nullable_variant_fn::__f>::__f>;
+        __mappend_into_q<__nullable_std_variant>::__f>;
 
     template <class _Sender, class _Env>
     using __result_variant_t =

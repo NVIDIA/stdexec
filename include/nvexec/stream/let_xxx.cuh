@@ -156,7 +156,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         using __op_state_variant_t = //
           __minvoke<
-            __transform<__uncurry<__op_state_for<_Receiver, _Fun>>, __nullable_variant_fn>,
+            __transform<__uncurry<__op_state_for<_Receiver, _Fun>>, __qq<__nullable_std_variant>>,
             _Tuples...>;
 
         __operation<_SenderId, _ReceiverId, _Fun, _Let>* __op_state_;
@@ -169,7 +169,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         _Let,
         stdexec::__t<_SenderId>,
         stream_env<env_of_t<stdexec::__t<_ReceiverId>>>,
-        __q<__decayed_tuple>,
+        __q<__decayed_std_tuple>,
         __munique<__mbind_front_q<__receiver_, _SenderId, _ReceiverId, _Fun, _Let>>>>;
 
     template <class _SenderId, class _ReceiverId, class _Fun, class _Let>

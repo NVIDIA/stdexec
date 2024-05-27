@@ -73,7 +73,7 @@ namespace stdexec {
     auto operator=(const __move_only&) -> __move_only& = delete;
   };
 
-  inline constexpr std::size_t __max(std::initializer_list<std::size_t> __il) noexcept {
+  inline constexpr std::size_t __umax(std::initializer_list<std::size_t> __il) noexcept {
     std::size_t __m = 0;
     for (std::size_t __i: __il) {
       if (__i > __m) {

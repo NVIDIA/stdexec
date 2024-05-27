@@ -89,7 +89,7 @@ namespace stdexec {
 
     template <class _Fun, class... _As>
     struct __binder_back
-      : __tup::__tuple_for<_As...>
+      : __tuple_for<_As...>
       , sender_adaptor_closure<__binder_back<_Fun, _As...>> {
       STDEXEC_ATTRIBUTE((no_unique_address))
       _Fun __fun_{};

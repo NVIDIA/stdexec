@@ -38,7 +38,7 @@ namespace exec {
 
     template <class _Sender, class _Env>
     using __try_result_tuple_t = //
-      __value_types_of_t<_Sender, _Env, __q<__decayed_tuple>, __q<__msingle>>;
+      __value_types_of_t<_Sender, _Env, __q<__decayed_std_tuple>, __q<__msingle>>;
 
     template <class _Sender, class _Env>
     using __result_tuple_t = //

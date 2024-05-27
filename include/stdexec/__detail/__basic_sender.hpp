@@ -296,7 +296,7 @@ namespace stdexec {
         template <std::size_t... _Is, class... _Child>
         auto operator()(__indices<_Is...>, _Child&&... __child) const
           noexcept((__nothrow_connectable<_Child, __receiver_t<_Is>> && ...))
-            -> __tup::__tuple_for<connect_result_t<_Child, __receiver_t<_Is>>...> {
+            -> __tuple_for<connect_result_t<_Child, __receiver_t<_Is>>...> {
           return __tuple{connect(static_cast<_Child&&>(__child), __receiver_t<_Is>{__op_})...};
         }
       };
@@ -308,7 +308,7 @@ namespace stdexec {
         return __impl{__op_}(__indices_for<_Child...>(), static_cast<_Child&&>(__child)...);
       }
 
-      auto operator()(__ignore, __ignore) const noexcept -> __tup::__tuple_for<> {
+      auto operator()(__ignore, __ignore) const noexcept -> __tuple_for<> {
         return {};
       }
     };

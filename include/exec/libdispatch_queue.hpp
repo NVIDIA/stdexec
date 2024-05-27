@@ -68,7 +68,7 @@ namespace exec {
     using bulk_non_throwing = //
       stdexec::__mbool<
         stdexec::__nothrow_callable<Fun, Shape, Args &...>
-        && noexcept(stdexec::__decayed_tuple<Args...>(std::declval<Args>()...))>;
+        && noexcept(stdexec::__decayed_std_tuple<Args...>(std::declval<Args>()...))>;
 
     template <class CvrefSenderId, class ReceiverId, class Shape, class Fun, bool MayThrow>
     struct bulk_receiver {
@@ -389,8 +389,8 @@ namespace exec {
       stdexec::__value_types_of_t<
         CvrefSender,
         stdexec::env_of_t<Receiver>,
-        stdexec::__q<stdexec::__decayed_tuple>,
-        stdexec::__q<stdexec::__variant>>;
+        stdexec::__q<stdexec::__decayed_std_tuple>,
+        stdexec::__q<stdexec::__std_variant>>;
 
     variant_t data_;
     Receiver rcvr_;
@@ -442,7 +442,7 @@ namespace exec {
 
     template <class... As>
     void set_value(As &&...as) noexcept {
-      using tuple_t = stdexec::__decayed_tuple<As...>;
+      using tuple_t = stdexec::__decayed_std_tuple<As...>;
 
       if constexpr (MayThrow) {
         try {

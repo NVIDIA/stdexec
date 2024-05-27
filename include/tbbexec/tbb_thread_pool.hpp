@@ -98,7 +98,7 @@ namespace tbbexec {
           // If function invocation doesn't throw
           stdexec::__nothrow_callable<Fun, Shape, Args...> &&
           // and emplacing a tuple doesn't throw
-          noexcept(stdexec::__decayed_tuple<Args...>(std::declval<Args>()...))
+          noexcept(stdexec::__decayed_std_tuple<Args...>(std::declval<Args>()...))
           // there's no need to advertise completion with `exception_ptr`
           >;
 
@@ -107,8 +107,8 @@ namespace tbbexec {
           using variant_t = stdexec::__value_types_of_t<
             CvrefSender,
             stdexec::env_of_t<Receiver>,
-            stdexec::__q<stdexec::__decayed_tuple>,
-            stdexec::__q<stdexec::__variant>>;
+            stdexec::__q<stdexec::__decayed_std_tuple>,
+            stdexec::__q<stdexec::__std_variant>>;
 
           variant_t data_;
           DerivedPoolType& pool_;
@@ -237,7 +237,7 @@ namespace tbbexec {
 
             template <class... As>
             void set_value(As&&... as) noexcept {
-              using tuple_t = stdexec::__decayed_tuple<As...>;
+              using tuple_t = stdexec::__decayed_std_tuple<As...>;
 
               shared_state& state = shared_state_;
 

@@ -165,7 +165,7 @@ namespace stdexec {
 
     template <class _Env, class _Sender>
     using __values_opt_tuple_t = //
-      value_types_of_t<_Sender, __env_t<_Env>, __tup::__decayed_tuple, std::optional>;
+      value_types_of_t<_Sender, __env_t<_Env>, __decayed_tuple, std::optional>;
 
     template <class _Env, __max1_sender<__env_t<_Env>>... _Senders>
     struct __traits {
@@ -173,7 +173,7 @@ namespace stdexec {
       using __values_tuple = //
         __minvoke<
           __with_default<
-            __transform<__mbind_front_q<__values_opt_tuple_t, _Env>, __q<__tup::__tuple_for>>,
+            __transform<__mbind_front_q<__values_opt_tuple_t, _Env>, __q<__tuple_for>>,
             __ignore>,
           _Senders...>;
 
@@ -378,7 +378,7 @@ namespace stdexec {
           // if we're not already in the "error" or "stopped" state.
           if (__state.__state_ == __started) {
             auto& __opt_values = __tup::__get<__v<_Index>>(__state.__values_);
-            using _Tuple = __tup::__decayed_tuple<_Args...>;
+            using _Tuple = __decayed_tuple<_Args...>;
             static_assert(
               __same_as<decltype(*__opt_values), _Tuple&>,
               "One of the senders in this when_all() is fibbing about what types it sends");

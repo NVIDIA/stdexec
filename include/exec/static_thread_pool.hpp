@@ -188,7 +188,7 @@ namespace exec {
 
       template <class... Args>
       struct __bulk_non_throwing {
-        using __t = __decayed_tuple<Args...>;
+        using __t = __decayed_std_tuple<Args...>;
         static constexpr bool __v = noexcept(__t(std::declval<Args>()...));
       };
 #endif
@@ -203,7 +203,7 @@ namespace exec {
 #if STDEXEC_MSVC()
           __bulk_non_throwing<Args...>::__v
 #else
-          noexcept(__decayed_tuple<Args...>(std::declval<Args>()...))
+          noexcept(__decayed_std_tuple<Args...>(std::declval<Args>()...))
 #endif
           // there's no need to advertise completion with `exception_ptr`
           >;
@@ -1173,7 +1173,11 @@ namespace exec {
       };
 
       using variant_t = //
-        __value_types_of_t<CvrefSender, env_of_t<Receiver>, __q<__decayed_tuple>, __q<__variant>>;
+        __value_types_of_t<
+          CvrefSender,
+          env_of_t<Receiver>,
+          __q<__decayed_std_tuple>,
+          __q<__std_variant>>;
 
       variant_t data_;
       static_thread_pool_& pool_;
@@ -1225,7 +1229,7 @@ namespace exec {
 
       template <class... As>
       void set_value(As&&... as) noexcept {
-        using tuple_t = __decayed_tuple<As...>;
+        using tuple_t = __decayed_std_tuple<As...>;
 
         shared_state& state = shared_state_;
 

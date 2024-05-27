@@ -58,7 +58,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <class... As, class TupleT>
     __launch_bounds__(1) __global__ void copy_kernel(TupleT* tpl, As... as) {
       static_assert(trivially_copyable<As...>);
-      *tpl = __tup::__decayed_tuple<As...>{{static_cast<As&&>(as)}...};
+      *tpl = __decayed_tuple<As...>{{static_cast<As&&>(as)}...};
     }
 
     template <class Env, class... Senders>
@@ -225,11 +225,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using Indices = __indices_for<SenderIds...>;
 
         template <size_t... Is>
-        static auto
-          connect_children_(operation_t* parent_op, WhenAll&& when_all, __indices<Is...>)
-            -> __tup::__tuple_for<child_op_state_t<SenderIds, Is>...> {
+        static auto connect_children_(operation_t* parent_op, WhenAll&& when_all, __indices<Is...>)
+          -> __tuple_for<child_op_state_t<SenderIds, Is>...> {
 
-          using __child_ops_t = __tup::__tuple_for<child_op_state_t<SenderIds, Is>...>;
+          using __child_ops_t = __tuple_for<child_op_state_t<SenderIds, Is>...>;
           return when_all.sndrs_.apply(
             [parent_op]<class... Children>(Children&&... children) -> __child_ops_t {
               return __child_ops_t{{STDEXEC_STREAM_DETAIL_NS::exit_op_state(
@@ -373,13 +372,19 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __if<
             sends_values<Completions>,
             __minvoke<
-              __q<__tup::__tuple_for>,
+              __q<__tuple_for>,
               __value_types_of_t<
                 stdexec::__t<SenderIds>,
                 _when_all::env_t<Env>,
-                __q<__tup::__decayed_tuple>,
+                __q<__decayed_tuple>,
                 __msingle_or<void>>...>,
             __>;
+
+        using errors_variant_t = //
+          error_types_of_t<
+            stdexec::__t<when_all_sender_t>,
+            _when_all::env_t<Env>,
+            __uniqued_variant_for>;
 
         Receiver rcvr_;
         std::atomic<std::size_t> count_{sizeof...(SenderIds)};
@@ -389,8 +394,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         // Could be non-atomic here and atomic_ref everywhere except __completion_fn
         std::atomic<_when_all::state_t> state_{_when_all::started};
 
-        error_types_of_t<stdexec::__t<when_all_sender_t>, _when_all::env_t<Env>, __uniqued_variant_>
-          errors_{};
+        errors_variant_t errors_{};
         child_values_tuple_t* values_{};
         inplace_stop_source stop_source_{};
 
@@ -416,7 +420,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
      private:
-      __tup::__tuple_for<stdexec::__t<SenderIds>...> sndrs_;
+      __tuple_for<stdexec::__t<SenderIds>...> sndrs_;
     };
   };
 } // namespace nvexec::STDEXEC_STREAM_DETAIL_NS

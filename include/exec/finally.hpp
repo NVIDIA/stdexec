@@ -26,7 +26,8 @@ namespace exec {
     using namespace stdexec;
 
     template <class _Sigs>
-    using __result_variant = __for_each_completion_signature<_Sigs, __decayed_tuple, __variant>;
+    using __result_variant =
+      __for_each_completion_signature<_Sigs, __decayed_std_tuple, __std_variant>;
 
     template <class _ResultType, class _ReceiverId>
     struct __final_operation_base {
@@ -212,10 +213,10 @@ namespace exec {
       using __id = __operation_state;
 
       template <class... _Args>
-        requires constructible_from<__result_variant<__signatures>, __decayed_tuple<_Args...>>
+        requires constructible_from<__result_variant<__signatures>, __decayed_std_tuple<_Args...>>
       void __store_result_and_start_next_op(_Args&&... __args) {
         this->__result_.__construct(
-          std::in_place_type<__decayed_tuple<_Args...>>, static_cast<_Args&&>(__args)...);
+          std::in_place_type<__decayed_std_tuple<_Args...>>, static_cast<_Args&&>(__args)...);
         STDEXEC_ASSERT(__op_.index() == 0);
         _FinalSender& __final = std::get_if<0>(&__op_)->__sndr_;
         __final_op_t& __final_op = __op_.template emplace<1>(__conv{[&] {

@@ -539,7 +539,7 @@ namespace exec {
           auto& __state = *__state_;
           try {
             std::unique_lock __guard{__state.__mutex_};
-            using _Tuple = __decayed_tuple<_Tag, _As...>;
+            using _Tuple = __decayed_std_tuple<_Tag, _As...>;
             __state.__data_.template emplace<_Tuple>(_Tag(), static_cast<_As&&>(__as)...);
             return true;
           } catch (...) {
