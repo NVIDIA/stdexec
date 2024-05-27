@@ -39,8 +39,11 @@ namespace stdexec {
     struct __ensure_started_t { };
 
     struct ensure_started_t {
+      template <class _CvrefSender, class _Env>
+      using __receiver_t = __t<__meval<__receiver, __cvref_id<_CvrefSender>, __id<_Env>>>;
+
       template <sender _Sender, class _Env = empty_env>
-        requires sender_in<_Sender, _Env> && __decay_copyable<env_of_t<_Sender>>
+        requires sender_in<_Sender, __receiver_t<_Sender, _Env>> && __decay_copyable<env_of_t<_Sender>>
       [[nodiscard]]
       auto
         operator()(_Sender&& __sndr, _Env&& __env = {}) const -> __well_formed_sender auto {
@@ -69,9 +72,6 @@ namespace stdexec {
             get_completion_scheduler_t<set_value_t>(get_env_t(const _Sender&)),
             _Sender),
           tag_invoke_t(ensure_started_t, _Sender)>;
-
-      template <class _CvrefSender, class _Env>
-      using __receiver_t = __t<__meval<__receiver, __cvref_id<_CvrefSender>, __id<_Env>>>;
 
       template <class _Sender>
       static auto transform_sender(_Sender&& __sndr) {

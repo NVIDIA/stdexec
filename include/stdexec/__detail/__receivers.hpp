@@ -179,7 +179,7 @@ namespace stdexec {
 
   template <class _Receiver, class _Sender>
   concept __receiver_from =
-    receiver_of<_Receiver, __completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
+    receiver_of<_Receiver, __completion_signatures_of_t<_Sender, _Receiver>>;
 
   /// A utility for calling set_value with the result of a function invocation:
   template <bool _CanThrow = false, class _Receiver, class _Fun, class... _As>

@@ -61,9 +61,18 @@ namespace stdexec {
       using __t = empty_env;
       using __id = empty_env;
     };
+
+    struct empty_receiver
+    {
+      using __t = empty_receiver;
+      using __id = empty_receiver;
+      using receiver_concept = receiver_t;
+      auto get_env() const noexcept -> empty_env { return {}; }
+    };
   } // namespace __env
 
   using __env::empty_env;
+  using __env::empty_receiver;
 
   template <class _EnvProvider>
   using env_of_t = __call_result_t<get_env_t, _EnvProvider>;
