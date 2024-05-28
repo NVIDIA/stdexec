@@ -39,11 +39,11 @@ namespace stdexec {
   struct __monostate { };
 
   namespace __var {
-    template <class _Idx, class... _Ts>
+    template <auto _Idx, class... _Ts>
     class __variant;
 
     template <>
-    class __variant<std::index_sequence<>> {
+    class __variant<__indices<>{}> {
      public:
       template <class _Fn, class... _Us>
       STDEXEC_ATTRIBUTE((host, device))
@@ -64,8 +64,8 @@ namespace stdexec {
       }
     };
 
-    template <std::size_t... _Idx, class... _Ts>
-    class __variant<std::index_sequence<_Idx...>, _Ts...> {
+    template <std::size_t... _Is, __indices<_Is...> _Idx, class... _Ts>
+    class __variant<_Idx, _Ts...> {
       static constexpr std::size_t __max_size = stdexec::__umax({sizeof(_Ts)...});
       static_assert(__max_size != 0);
       std::size_t __index_{__variant_npos};
@@ -78,14 +78,14 @@ namespace stdexec {
         if (__variant_npos != __index) {
 #if STDEXEC_NVHPC()
           // Unknown nvc++ name lookup bug
-          ((_Idx == __index ? reinterpret_cast<const __at<_Idx> *>(__storage_)->_Ts::~_Ts()
-                            : void(0)),
+          ((_Is == __index ? reinterpret_cast<const __at<_Is> *>(__storage_)->_Ts::~_Ts()
+                           : void(0)),
            ...);
 #else
           // casting the destructor expression to void is necessary for MSVC in
           // /permissive- mode.
-          ((_Idx == __index ? void(reinterpret_cast<const __at<_Idx> *>(__storage_)->~_Ts())
-                            : void(0)),
+          ((_Is == __index ? void(reinterpret_cast<const __at<_Is> *>(__storage_)->~_Ts())
+                           : void(0)),
            ...);
 #endif
         }
@@ -174,14 +174,14 @@ namespace stdexec {
         noexcept((__nothrow_callable<_Fn, _As..., __copy_cvref_t<_Self, _Ts>> && ...)) {
         STDEXEC_ASSERT(__self.__index_ != __variant_npos);
         auto __index = __self.__index_; // make it local so we don't access it after it's deleted.
-        ((_Idx == __index ? static_cast<_Fn &&>(__fn)(
-            static_cast<_As &&>(__as)..., static_cast<_Self &&>(__self).template get<_Idx>())
-                          : void()),
+        ((_Is == __index ? static_cast<_Fn &&>(__fn)(
+            static_cast<_As &&>(__as)..., static_cast<_Self &&>(__self).template get<_Is>())
+                         : void()),
          ...);
       }
 
       template <std::size_t _Ny>
-      STDEXEC_ATTRIBUTE((host, device))
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
       decltype(auto)
         get() && noexcept {
         STDEXEC_ASSERT(_Ny == __index_);
@@ -189,7 +189,7 @@ namespace stdexec {
       }
 
       template <std::size_t _Ny>
-      STDEXEC_ATTRIBUTE((host, device))
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
       decltype(auto)
         get() & noexcept {
         STDEXEC_ASSERT(_Ny == __index_);
@@ -197,7 +197,7 @@ namespace stdexec {
       }
 
       template <std::size_t _Ny>
-      STDEXEC_ATTRIBUTE((host, device))
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
       decltype(auto)
         get() const & noexcept {
         STDEXEC_ASSERT(_Ny == __index_);
@@ -209,10 +209,17 @@ namespace stdexec {
   using __var::__variant;
 
   template <class... _Ts>
-  using __variant_for = __variant<std::make_index_sequence<sizeof...(_Ts)>, _Ts...>;
+  using __variant_for = __variant<__indices_for<_Ts...>{}, _Ts...>;
 
   template <class... Ts>
   using __uniqued_variant_for = __mcall<__munique<__qq<__variant_for>>, __decay_t<Ts>...>;
+
+  // So we can use __variant as a typelist
+  template <class _Fn, auto _Idx, class... _Ts>
+    requires __minvocable<_Fn, _Ts...>
+  struct __uncurry_<_Fn, __variant<_Idx, _Ts...>> {
+    using __t = __minvoke<_Fn, _Ts...>;
+  };
 } // namespace stdexec
 
 STDEXEC_PRAGMA_POP()

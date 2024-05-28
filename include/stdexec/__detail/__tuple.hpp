@@ -175,7 +175,7 @@ namespace stdexec {
   template <class... _Ts>
   using __decayed_tuple = __tuple_for<__decay_t<_Ts>...>;
 
-  // So we can use __tuple as a typelist and ignore the first template parameter
+  // So we can use __tuple as a typelist
   template <class _Fn, auto _Idx, class... _Ts>
     requires __minvocable<_Fn, _Ts...>
   struct __uncurry_<_Fn, __tuple<_Idx, _Ts...>> {

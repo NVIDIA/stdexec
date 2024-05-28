@@ -564,8 +564,8 @@ namespace exec_old {
       stdexec::__value_types_of_t<
         CvrefSender,
         stdexec::env_of_t<Receiver>,
-        stdexec::__q<stdexec::__decayed_tuple>,
-        stdexec::__q<stdexec::__variant>>;
+        stdexec::__q<stdexec::__decayed_std_tuple>,
+        stdexec::__q<stdexec::__std_variant>>;
 
     variant_t data_;
     static_thread_pool& pool_;
