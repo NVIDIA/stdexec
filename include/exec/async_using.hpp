@@ -24,6 +24,7 @@
 
 #include "__detail/__decl_receiver.hpp"
 #include "__detail/__tuple_reverse.hpp"
+#include "__detail/__tuple_index_pack.hpp"
 
 #include "async_object.hpp"
 
@@ -203,18 +204,15 @@ struct __constructed {
     using __destruct_state = stdexec::connect_result_t<__destruction, __destructed_t>;
 
     void __make_destruct() noexcept {
-      auto __destruct = [&, this](){
+      auto __destruct = [this](){
         return stdexec::connect(
-          stdexec::__apply(
-            [&](auto&&... __fy_){ 
-              return stdexec::__apply(
-                [&](auto&... __stg_){ 
-                  return stdexec::__apply(
-                    [&](auto&&... __d_){ 
-                      return stdexec::when_all(__d_...);
-                    }, exec::__tuple_reverse(std::make_tuple(async_destruct(__fy_, __stg_)...)));
-                }, *__stgn_);
-            }, *__fyn_), __destructed_t{__result_, __rcvr_});
+          exec::__tuple_index_pack(
+            []<std::size_t... Idx>(std::index_sequence<Idx...>, auto&& __fyn, auto&& __stgn) noexcept { 
+              return stdexec::when_all(exec::async_destruct(
+                std::get<sizeof...(Idx) - 1 - Idx>(__fyn), 
+                std::get<sizeof...(Idx) - 1 - Idx>(__stgn))...);
+            }, *__fyn_, *__stgn_), 
+          __destructed_t{__result_, __rcvr_});
       };
       __destruct_state_->emplace(stdexec::__conv{__destruct});
     }
@@ -319,21 +317,22 @@ struct __operation {
 
     STDEXEC_ATTRIBUTE((no_unique_address)) stgn_t __stgn_;
     STDEXEC_ATTRIBUTE((no_unique_address)) __result_t __result_;
-    STDEXEC_ATTRIBUTE((no_unique_address)) __construct_state __construct_state_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) std::optional<__construct_state> __construct_state_;
     STDEXEC_ATTRIBUTE((no_unique_address)) std::optional<__destruct_state> __destruct_state_;
     STDEXEC_ATTRIBUTE((no_unique_address)) std::optional<__inside_state> __inside_state_;
 
     __t(_Receiver __r_, _InnerFn __i_, fyn_t __fy_) : 
       __rcvr_(std::move(__r_)), __inner_(std::move(__i_)), 
-      __fyn_(std::move(__fy_)), __construct_state_(
-        stdexec::connect(
-          stdexec::__apply(
-            [this](auto&&... __fy_){ 
-              return stdexec::__apply(
-                [&](auto&&... __stg_){ 
-                  return stdexec::when_all(async_construct(__fy_, __stg_)...); 
-                }, __stgn_);
-            }, __fyn_), __constructed_t{&__fyn_, &__stgn_, &__result_, &__inner_, &__inside_state_, &__destruct_state_, &__rcvr_})) {
+      __fyn_(std::move(__fy_)) {
+      auto __construct = [this](){
+        return stdexec::connect(
+          exec::__tuple_index_pack(
+            [&]<std::size_t... Idx>(std::index_sequence<Idx...>, auto&& __fyn, auto&& __stgn) noexcept { 
+              return stdexec::when_all(exec::async_construct(std::get<Idx>(__fyn), std::get<Idx>(__stgn))...);
+            }, __fyn_, __stgn_), 
+          __constructed_t{&__fyn_, &__stgn_, &__result_, &__inner_, &__inside_state_, &__destruct_state_, &__rcvr_});
+      };
+      __construct_state_.emplace(stdexec::__conv{__construct});
     }
 
     void start() noexcept;  
@@ -453,7 +452,7 @@ using __sender_t = stdexec::__t<__sender<stdexec::__id<std::remove_cvref_t<_Inne
 
 template <class _InnerFnId, class _ReceiverId, class _ErrorCompletionFilterId, class... _FynId>
 inline void __operation<_InnerFnId, _ReceiverId, _ErrorCompletionFilterId, _FynId...>::__t::start() noexcept {
-  stdexec::start(__construct_state_);
+  stdexec::start(__construct_state_.value());
 }
 
 } // namespace __async_using
