@@ -169,12 +169,10 @@ namespace stdexec {
   template <class _From, class _To>
   using __copy_cvref_t = typename __copy_cvref_fn<_From>::template __f<_To>;
 
-#if !STDEXEC_HAS_BUILTIN(__is_const)
   template <class>
-  inline constexpr bool __is_const = false;
+  inline constexpr bool __is_const_ = false;
   template <class _Up>
-  inline constexpr bool __is_const<_Up const> = true;
-#endif
+  inline constexpr bool __is_const_<_Up const> = true;
 
   namespace __tt {
     template <class _Ty>
