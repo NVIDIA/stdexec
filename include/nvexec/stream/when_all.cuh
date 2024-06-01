@@ -214,10 +214,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using child_op_state =
           exit_operation_state_t<Sender&&, stdexec::__t<receiver_t<CvrefReceiverId, Index>>>;
 
-        using Indices = std::index_sequence_for<SenderIds...>;
+        using Indices = __indices_for<SenderIds...>;
 
         template <size_t... Is>
-        static auto connect_children_(std::index_sequence<Is...>)
+        static auto connect_children_(__indices<Is...>)
           -> std::tuple<child_op_state<stdexec::__t<SenderIds>, Is>...>;
 
         using child_op_states_tuple_t = decltype(operation_t::connect_children_(Indices{}));
@@ -301,7 +301,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         }
 
         template <size_t... Is>
-        operation_t(WhenAll&& when_all, Receiver rcvr, std::index_sequence<Is...>)
+        operation_t(WhenAll&& when_all, Receiver rcvr, __indices<Is...>)
           : recvr_(static_cast<Receiver&&>(rcvr))
           , stream_providers_{get_context_state<Is>(when_all)...}
           , child_states_{__conv{[&when_all, this]() {

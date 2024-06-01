@@ -88,11 +88,58 @@ namespace stdexec {
   template <std::size_t _Ip>
   inline constexpr std::size_t __v<char[_Ip]> = _Ip - 1;
 
+  namespace __pack {
+    template <std::size_t... _Is>
+    struct __t;
+  } // namespace __pack
+
   template <std::size_t... _Is>
-  using __indices = std::index_sequence<_Is...>*;
+  using __indices = __pack::__t<_Is...>*;
+
+#if STDEXEC_MSVC()
+  namespace __pack {
+    template <class _Ty, _Ty... _Is>
+    struct __idx;
+
+    template <class>
+    extern int __mkidx;
+
+    template <std::size_t... _Is>
+    extern __indices<_Is...> __mkidx<__idx<std::size_t, _Is...>>;
+  } // namespace __pack
 
   template <std::size_t _Np>
-  using __make_indices = std::make_index_sequence<_Np>*;
+  using __make_indices = //
+    decltype(__pack::__mkidx<__make_integer_seq<__pack::__idx, std::size_t, _Np>>);
+#elif STDEXEC_HAS_BUILTIN(__make_integer_seq)
+  namespace __pack {
+    template <class _Ty, _Ty... _Is>
+    using __idx = __indices<_Is...>;
+  } // namespace __pack
+
+  template <std::size_t _Np>
+  using __make_indices = __make_integer_seq<__pack::__idx, std::size_t, _Np>;
+#elif STDEXEC_HAS_BUILTIN(__integer_pack)
+  namespace __pack {
+    template <std::size_t _Np>
+    extern __indices<__integer_pack(_Np)...> __make_indices;
+  } // namespace __pack
+
+  template <std::size_t _Np>
+  using __make_indices = decltype(__pack::__make_indices<_Np>);
+#else
+  namespace __pack {
+    template <std::size_t... _Is>
+    auto __mk_indices(__indices<0, _Is...>) -> __indices<_Is...>;
+
+    template <std::size_t _Np, class = char[_Np], std::size_t... _Is>
+    auto __mk_indices(__indices<_Np, _Is...>)
+      -> decltype(__mk_indices(__indices<_Np - 1, 0, (_Is + 1)...>{}));
+  } // namespace __pack
+
+  template <std::size_t _Np>
+  using __make_indices = decltype(__pack::__mk_indices(__indices<_Np>{}));
+#endif
 
   template <class... _Ts>
   using __indices_for = __make_indices<sizeof...(_Ts)>;
@@ -814,25 +861,6 @@ namespace stdexec {
     using __f = __t<__mzip_with2_<_Fn, _Continuation, _Cp, _Dp>>;
   };
 
-#if STDEXEC_GCC() && (__GNUC__ < 12)
-  template <class>
-  extern int __mconvert_indices;
-  template <std::size_t... _Indices>
-  extern __types<__msize_t<_Indices>...> __mconvert_indices<std::index_sequence<_Indices...>>;
-  template <std::size_t _Np>
-  using __mmake_index_sequence =
-    decltype(stdexec::__mconvert_indices<std::make_index_sequence<_Np>>);
-#else
-  template <std::size_t... _Indices>
-  auto __mconvert_indices(std::index_sequence<_Indices...>*) -> __types<__msize_t<_Indices>...>;
-  template <std::size_t _Np>
-  using __mmake_index_sequence =
-    decltype(stdexec::__mconvert_indices(static_cast<std::make_index_sequence<_Np>*>(nullptr)));
-#endif
-
-  template <class... _Ts>
-  using __mindex_sequence_for = __mmake_index_sequence<sizeof...(_Ts)>;
-
   template <bool>
   struct __mfind_if_ {
     template <class _Fn, class _Continuation, class _Head, class... _Tail>
@@ -919,7 +947,7 @@ namespace stdexec {
   struct __m_at_;
 
   template <std::size_t... _Is>
-  struct __m_at_<std::index_sequence<_Is...>> {
+  struct __m_at_<__indices<_Is...>> {
     template <class _Up, class... _Us>
     static _Up __f_(__void_ptr<_Is>..., _Up*, _Us*...);
     template <class... _Ts>
@@ -927,7 +955,7 @@ namespace stdexec {
   };
 
   template <std::size_t _Np, class... _Ts>
-  using __m_at_c = __minvoke<__m_at_<std::make_index_sequence<_Np>>, _Ts...>;
+  using __m_at_c = __minvoke<__m_at_<__make_indices<_Np>>, _Ts...>;
 
   template <class _Np, class... _Ts>
   using __m_at = __m_at_c<__v<_Np>, _Ts...>;
