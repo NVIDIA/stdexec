@@ -160,10 +160,6 @@ namespace stdexec {
   concept destructible = __destructible_<T>;
 #endif
 
-#if !defined(STDEXEC_IS_CONSTRUCTIBLE)
-#error here
-#endif
-
   template <class _Ty, class... _As>
   concept constructible_from = //
     destructible<_Ty> &&       //
