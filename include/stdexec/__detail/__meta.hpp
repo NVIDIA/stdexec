@@ -96,14 +96,29 @@ namespace stdexec {
   template <std::size_t... _Is>
   using __indices = __pack::__t<_Is...>*;
 
-#if STDEXEC_HAS_BUILTIN(__make_integer_seq) || STDEXEC_MSVC()
+#if STDEXEC_MSVC()
   namespace __pack {
     template <class _Ty, _Ty... _Is>
-    using __indices_t = __indices<_Is...>;
+    struct __idx;
+
+    template <class>
+    extern int __mkidx;
+
+    template <std::size_t... _Is>
+    extern __indices<_Is...> __mkidx<__idx<std::size_t, _Is...>>;
   } // namespace __pack
 
   template <std::size_t _Np>
-  using __make_indices = __make_integer_seq<__pack::__indices_t, std::size_t, _Np>;
+  using __make_indices = //
+    decltype(__pack::__mkidx<__make_integer_seq<__pack::__idx, std::size_t, _Np>>);
+#elif STDEXEC_HAS_BUILTIN(__make_integer_seq)
+  namespace __pack {
+    template <class _Ty, _Ty... _Is>
+    using __idx = __indices<_Is...>;
+  } // namespace __pack
+
+  template <std::size_t _Np>
+  using __make_indices = __make_integer_seq<__pack::__idx, std::size_t, _Np>;
 #elif STDEXEC_HAS_BUILTIN(__integer_pack)
   namespace __pack {
     template <std::size_t _Np>
