@@ -63,14 +63,10 @@ namespace stdexec {
     // What should sync_wait(just_stopped()) return?
     template <class _Sender, class _Continuation>
     using __sync_wait_result_impl = //
-      __try_value_types_of_t<
-        _Sender,
-        __env,
-        __transform<__q<__decay_t>, _Continuation>,
-        __q<__msingle>>;
+      __value_types_of_t<_Sender, __env, __transform<__q<__decay_t>, _Continuation>, __q<__msingle>>;
 
     template <class _Sender>
-    using __sync_wait_result_t = __mtry_eval<__sync_wait_result_impl, _Sender, __q<std::tuple>>;
+    using __sync_wait_result_t = __mtry_eval<__sync_wait_result_impl, _Sender, __qq<std::tuple>>;
 
     template <class _Sender>
     using __sync_wait_with_variant_result_t =
@@ -293,7 +289,16 @@ namespace stdexec {
           __early_domain_of_t<_Sender>,
           sync_wait_with_variant_t,
           _Sender>
-      auto operator()(_Sender&& __sndr) const -> std::optional<__variant_for_t<_Sender>> {
+      auto operator()(_Sender&& __sndr) const -> decltype(auto) {
+        using __result_t = __call_result_t<
+          apply_sender_t,
+          __early_domain_of_t<_Sender>,
+          sync_wait_with_variant_t,
+          _Sender>;
+        static_assert(__is_instance_of<__result_t, std::optional>);
+        using __variant_t = typename __result_t::value_type;
+        static_assert(__is_instance_of<__variant_t, std::variant>);
+
         auto __domain = __get_early_domain(__sndr);
         return stdexec::apply_sender(__domain, *this, static_cast<_Sender&&>(__sndr));
       }

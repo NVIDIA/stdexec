@@ -61,10 +61,9 @@ namespace {
 
   TEST_CASE("bulk keeps values_type from input sender", "[adaptors][bulk]") {
     constexpr int n = 42;
-    check_val_types<type_array<type_array<>>>(ex::just() | ex::bulk(n, [](int) {}));
-    check_val_types<type_array<type_array<double>>>(ex::just(4.2) | ex::bulk(n, [](int, double) {
-                                                    }));
-    check_val_types<type_array<type_array<double, std::string>>>(
+    check_val_types<ex::__mset<pack<>>>(ex::just() | ex::bulk(n, [](int) {}));
+    check_val_types<ex::__mset<pack<double>>>(ex::just(4.2) | ex::bulk(n, [](int, double) {}));
+    check_val_types<ex::__mset<pack<double, std::string>>>(
       ex::just(4.2, std::string{}) | ex::bulk(n, [](int, double, std::string) {}));
   }
 
@@ -74,15 +73,15 @@ namespace {
     error_scheduler sched2{};
     error_scheduler<int> sched3{43};
 
-    check_err_types<type_array<>>( //
+    check_err_types<ex::__mset<>>( //
       ex::transfer_just(sched1) | ex::bulk(n, [](int) noexcept {}));
-    check_err_types<type_array<std::exception_ptr>>( //
+    check_err_types<ex::__mset<std::exception_ptr>>( //
       ex::transfer_just(sched2) | ex::bulk(n, [](int) noexcept {}));
-    check_err_types<type_array<int>>( //
+    check_err_types<ex::__mset<int>>( //
       ex::just_error(n) | ex::bulk(n, [](int) noexcept {}));
-    check_err_types<type_array<int>>( //
+    check_err_types<ex::__mset<int>>( //
       ex::transfer_just(sched3) | ex::bulk(n, [](int) noexcept {}));
-    check_err_types<type_array<std::exception_ptr, int>>( //
+    check_err_types<ex::__mset<std::exception_ptr, int>>( //
       ex::transfer_just(sched3) | ex::bulk(n, [](int) { throw std::logic_error{"err"}; }));
   }
 

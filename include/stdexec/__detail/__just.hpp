@@ -42,7 +42,7 @@ namespace stdexec {
 
       static constexpr auto start =
         []<class _State, class _Receiver>(_State& __state, _Receiver& __rcvr) noexcept -> void {
-        __tup::__apply(
+        __state.apply(
           [&]<class... _Ts>(_Ts&... __ts) noexcept {
             __tag_t()(static_cast<_Receiver&&>(__rcvr), static_cast<_Ts&&>(__ts)...);
           },

@@ -107,11 +107,12 @@ namespace nvexec {
 
     template <class VisitorT, class V>
     STDEXEC_ATTRIBUTE((host, device))
-    void visit_impl(
-      std::integral_constant<std::size_t, 0>,
-      VisitorT&& visitor,
-      V&& v,
-      std::size_t index) {
+    void
+      visit_impl(
+        std::integral_constant<std::size_t, 0>,
+        VisitorT&& visitor,
+        V&& v,
+        std::size_t index) {
       if (0 == index) {
         static_cast<VisitorT&&>(visitor)((static_cast<V&&>(v)).template get<0>());
       }
@@ -119,11 +120,12 @@ namespace nvexec {
 
     template <std::size_t I, class VisitorT, class V>
     STDEXEC_ATTRIBUTE((host, device))
-    void visit_impl(
-      std::integral_constant<std::size_t, I>,
-      VisitorT&& visitor,
-      V&& v,
-      std::size_t index) {
+    void
+      visit_impl(
+        std::integral_constant<std::size_t, I>,
+        VisitorT&& visitor,
+        V&& v,
+        std::size_t index) {
       if (I == index) {
         static_cast<VisitorT&&>(visitor)((static_cast<V&&>(v)).template get<I>());
         return;
@@ -139,7 +141,8 @@ namespace nvexec {
 
   template <class VisitorT, class V>
   STDEXEC_ATTRIBUTE((host, device))
-  void visit(VisitorT&& visitor, V&& v) {
+  void
+    visit(VisitorT&& visitor, V&& v) {
     detail::visit_impl(
       std::integral_constant<std::size_t, stdexec::__decay_t<V>::size - 1>{},
       static_cast<VisitorT&&>(visitor),
@@ -149,7 +152,8 @@ namespace nvexec {
 
   template <class VisitorT, class V>
   STDEXEC_ATTRIBUTE((host, device))
-  void visit(VisitorT&& visitor, V&& v, std::size_t index) {
+  void
+    visit(VisitorT&& visitor, V&& v, std::size_t index) {
     detail::visit_impl(
       std::integral_constant<std::size_t, stdexec::__decay_t<V>::size - 1>{},
       static_cast<VisitorT&&>(visitor),
@@ -180,7 +184,8 @@ namespace nvexec {
 
     template <std::size_t I>
     STDEXEC_ATTRIBUTE((host, device))
-    detail::nth_type<I, Ts...>& get() noexcept {
+    detail::nth_type<I, Ts...>&
+      get() noexcept {
       return get<detail::nth_type<I, Ts...>>();
     }
 
@@ -197,28 +202,30 @@ namespace nvexec {
     }
 
     STDEXEC_ATTRIBUTE((host, device))
-
-    bool holds_alternative() const {
+    bool
+      holds_alternative() const {
       return index_ != detail::npos<index_t>();
     }
 
     template <detail::one_of<Ts...> T, class... As>
     STDEXEC_ATTRIBUTE((host, device))
-    void emplace(As&&... as) {
+    void
+      emplace(As&&... as) {
       destroy();
       construct<T>(static_cast<As&&>(as)...);
     }
 
     template <detail::one_of<Ts...> T, class... As>
     STDEXEC_ATTRIBUTE((host, device))
-    void construct(As&&... as) {
+    void
+      construct(As&&... as) {
       ::new (storage_.data_) T(static_cast<As&&>(as)...);
       index_ = index_of<T>();
     }
 
     STDEXEC_ATTRIBUTE((host, device))
-
-    void destroy() {
+    void
+      destroy() {
       if (holds_alternative()) {
         visit(
           [](auto& val) noexcept {

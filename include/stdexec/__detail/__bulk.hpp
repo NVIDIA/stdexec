@@ -53,7 +53,7 @@ namespace stdexec {
     template <class _CvrefSender, class _Env, class _Shape, class _Fun, class _Catch>
     using __with_error_invoke_t = //
       __if<
-        __try_value_types_of_t<
+        __value_types_of_t<
           _CvrefSender,
           _Env,
           __transform<
@@ -61,7 +61,7 @@ namespace stdexec {
             __mbind_front<__mtry_catch_q<__nothrow_invocable_t, _Catch>, _Fun, _Shape>>,
           __q<__mand>>,
         completion_signatures<>,
-        __with_exception_ptr>;
+        __eptr_completion>;
 
     template <class _CvrefSender, class _Env, class _Shape, class _Fun>
     using __completion_signatures = //
