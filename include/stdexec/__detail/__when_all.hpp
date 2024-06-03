@@ -112,9 +112,9 @@ namespace stdexec {
 
     template <class _Env, class... _Senders>
     using __all_nothrow_decay_copyable_results = //
-      __mand_t<                                  //
+      __mand<                                    //
         __for_each_completion_signature<
-          completion_signatures_of_t<_Senders, _Env>,
+          __completion_signatures_of_t<_Senders, _Env>,
           __all_nothrow_decay_copyable,
           __mand_t>...>;
 
@@ -123,8 +123,9 @@ namespace stdexec {
 
     template <class _Env, class... _Senders>
     using __completions_t = //
-      __concat_completion_signatures<
-        __eptr_completion_if_t<__all_nothrow_decay_copyable_results<_Env, _Senders...>>,
+      __meval<              //
+        __concat_completion_signatures,
+        __meval<__eptr_completion_if_t, __all_nothrow_decay_copyable_results<_Env, _Senders...>>,
         completion_signatures<set_stopped_t()>,
         __minvoke<
           __with_default<__mbind_front_q<__set_values_sig_t, _Env>, completion_signatures<>>,
