@@ -23,6 +23,7 @@
 #include "__env.hpp"
 #include "__intrusive_ptr.hpp"
 #include "__intrusive_slist.hpp"
+#include "__optional.hpp"
 #include "__meta.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__tuple.hpp"
@@ -33,7 +34,6 @@
 
 #include <exception>
 #include <mutex>
-#include <optional>
 
 namespace stdexec {
   ////////////////////////////////////////////////////////////////////////////
@@ -156,7 +156,7 @@ namespace stdexec {
       using __sh_state_ptr_t = __result_of<__get_sh_state, _CvrefSender&>;
       using __sh_state_t = typename __sh_state_ptr_t::element_type;
 
-      std::optional<stop_callback_for_t<__stok_t, __local_state&>> __on_stop_{};
+      __optional<stop_callback_for_t<__stok_t, __local_state&>> __on_stop_{};
       __sh_state_ptr_t __sh_state_;
     };
 
