@@ -30,7 +30,8 @@ namespace {
     async_scope scope;
 
     // This will be a blocking call
-    auto stg = start_now(scope, 
+    auto stg = start_now(
+      scope,
       ex::just() | ex::then([&]() noexcept { executedA = true; }),
       ex::just() | ex::then([&]() noexcept { executedB = true; }));
     sync_wait(stg.async_wait());
@@ -44,7 +45,9 @@ namespace {
     async_scope scope;
 
     // This will be a blocking call
-    auto stg = start_now(stdexec::__root_env_t{}, scope, 
+    auto stg = start_now(
+      stdexec::__root_env{},
+      scope,
       ex::just() | ex::then([&]() noexcept { executedA = true; }),
       ex::just() | ex::then([&]() noexcept { executedB = true; }));
     sync_wait(stg.async_wait());
@@ -59,7 +62,8 @@ namespace {
     exec::static_thread_pool pool{2};
 
     // This will be a blocking call
-    auto stg = start_now(scope, 
+    auto stg = start_now(
+      scope,
       ex::schedule(pool.get_scheduler()) | ex::then([&]() noexcept { executedA = true; }),
       ex::schedule(pool.get_scheduler()) | ex::then([&]() noexcept { executedB = true; }));
     sync_wait(ex::on(pool.get_scheduler(), stg.async_wait()));

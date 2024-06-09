@@ -64,7 +64,7 @@ namespace stdexec {
     using __detached_receiver_t = __t<__detached_receiver<__id<__decay_t<_Env>>>>;
 
     struct start_detached_t {
-      template <sender_in<__root_env_t> _Sender>
+      template <sender_in<__root_env> _Sender>
         requires __callable<apply_sender_t, __early_domain_of_t<_Sender>, start_detached_t, _Sender>
       void operator()(_Sender&& __sndr) const {
         auto __domain = __get_early_domain(__sndr);
@@ -95,7 +95,7 @@ namespace stdexec {
           _Sender),
         tag_invoke_t(start_detached_t, _Sender)>;
 
-      template <class _Sender, class _Env = __root_env_t>
+      template <class _Sender, class _Env = __root_env>
         requires sender_to<_Sender, __detached_receiver_t<_Env>>
       void apply_sender(_Sender&& __sndr, _Env&& __env = {}) const {
         __submit(
