@@ -44,7 +44,7 @@ namespace stdexec {
       requires true // so this overload is preferred over the one below
     STDEXEC_ATTRIBUTE((always_inline))
     constexpr auto
-      tag_invoke(_Tag, const _Env&) noexcept -> __mconstant_<_Env::query(_Tag())> {
+      tag_invoke(_Tag, const _Env&) noexcept -> __mconstant<_Env::query(_Tag())> {
       return {};
     }
 

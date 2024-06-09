@@ -119,7 +119,7 @@ namespace {
   TEST_CASE("sync_wait doesn't accept multi-variant senders", "[consumers][sync_wait]") {
     ex::sender auto snd = fallible_just{13} //
                         | ex::let_error(always(ex::just(std::string{"err"})));
-    check_val_types<type_array<type_array<int>, type_array<std::string>>>(snd);
+    check_val_types<ex::__mset<pack<int>, pack<std::string>>>(snd);
     static_assert(!std::invocable<decltype(sync_wait), decltype(snd)>);
   }
 
@@ -127,7 +127,7 @@ namespace {
     "sync_wait_with_variant accepts multi-variant senders",
     "[consumers][sync_wait_with_variant]") {
     ex::sender auto snd = fallible_just{13} | ex::let_error(always(ex::just(std::string{"err"})));
-    check_val_types<type_array<type_array<int>, type_array<std::string>>>(snd);
+    check_val_types<ex::__mset<pack<int>, pack<std::string>>>(snd);
     static_assert(std::invocable<decltype(sync_wait_with_variant), decltype(snd)>);
 
     std::optional<std::tuple<std::variant<std::tuple<int>, std::tuple<std::string>>>> res =
@@ -141,7 +141,7 @@ namespace {
     "sync_wait_with_variant accepts single-value senders",
     "[consumers][sync_wait_with_variant]") {
     ex::sender auto snd = ex::just(13);
-    check_val_types<type_array<type_array<int>>>(snd);
+    check_val_types<ex::__mset<pack<int>>>(snd);
     static_assert(std::invocable<decltype(sync_wait_with_variant), decltype(snd)>);
 
     std::optional<std::tuple<std::variant<std::tuple<int>>>> res = sync_wait_with_variant(snd);

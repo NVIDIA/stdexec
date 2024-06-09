@@ -271,13 +271,13 @@ namespace {
   TEST_CASE(
     "let_error has the values_type from the input sender if returning error",
     "[adaptors][let_error]") {
-    check_val_types<type_array<type_array<int>>>(
+    check_val_types<ex::__mset<pack<int>>>(
       fallible_just{7} //
       | ex::let_error([](std::exception_ptr) { return ex::just_error(0); }));
-    check_val_types<type_array<type_array<double>>>(
+    check_val_types<ex::__mset<pack<double>>>(
       fallible_just{3.14} //
       | ex::let_error([](std::exception_ptr) { return ex::just_error(0); }));
-    check_val_types<type_array<type_array<std::string>>>(
+    check_val_types<ex::__mset<pack<std::string>>>(
       fallible_just{std::string{"hello"}} //
       | ex::let_error([](std::exception_ptr) { return ex::just_error(0); }));
   }
@@ -285,13 +285,13 @@ namespace {
   TEST_CASE(
     "let_error adds to values_type the value types of the returned sender",
     "[adaptors][let_error]") {
-    check_val_types<type_array<type_array<int>>>(
+    check_val_types<ex::__mset<pack<int>>>(
       fallible_just{1} //
       | ex::let_error([](std::exception_ptr) { return ex::just(11); }));
-    check_val_types<type_array<type_array<int>, type_array<double>>>(
+    check_val_types<ex::__mset<pack<int>, pack<double>>>(
       fallible_just{1} //
       | ex::let_error([](std::exception_ptr) { return ex::just(3.14); }));
-    check_val_types<type_array<type_array<int>, type_array<std::string>>>(
+    check_val_types<ex::__mset<pack<int>, pack<std::string>>>(
       fallible_just{1} //
       | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"hello"}); }));
   }
@@ -304,26 +304,26 @@ namespace {
     error_scheduler<int> sched3{43};
 
     // Returning ex::just_error
-    check_err_types<type_array<>>( //
+    check_err_types<ex::__mset<>>( //
       ex::transfer_just(sched1)    //
       | ex::let_error([](std::exception_ptr) { return ex::just_error(std::string{"err"}); }));
-    check_err_types<type_array<std::exception_ptr, std::string>>( //
+    check_err_types<ex::__mset<std::exception_ptr, std::string>>( //
       ex::transfer_just(sched2)                                   //
       | ex::let_error([](std::exception_ptr) { return ex::just_error(std::string{"err"}); }));
-    check_err_types<type_array<std::exception_ptr, std::string>>( //
+    check_err_types<ex::__mset<std::exception_ptr, std::string>>( //
       ex::transfer_just(sched3)                                   //
       | ex::let_error([](stdexec::__one_of<int, std::exception_ptr> auto) {
           return ex::just_error(std::string{"err"});
         }));
 
     // Returning ex::just
-    check_err_types<type_array<>>( //
+    check_err_types<ex::__mset<>>( //
       ex::transfer_just(sched1)    //
       | ex::let_error([](std::exception_ptr) { return ex::just(); }));
-    check_err_types<type_array<std::exception_ptr>>( //
+    check_err_types<ex::__mset<std::exception_ptr>>( //
       ex::transfer_just(sched2)                      //
       | ex::let_error([](std::exception_ptr) { return ex::just(); }));
-    check_err_types<type_array<std::exception_ptr>>( //
+    check_err_types<ex::__mset<std::exception_ptr>>( //
       ex::transfer_just(sched3)                      //
       | ex::let_error([](stdexec::__one_of<int, std::exception_ptr> auto) { return ex::just(); }));
   }

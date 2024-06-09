@@ -66,8 +66,8 @@ namespace {
     impulse_scheduler sched; // scheduler that can send stopped signals
     ex::sender auto snd = ex::transfer_just(sched, 11)
                         | ex::stopped_as_error(std::error_code(1, std::generic_category()));
-    check_val_types<type_array<type_array<int>>>(snd);
-    check_err_types<type_array<std::error_code>>(snd);
+    check_val_types<ex::__mset<pack<int>>>(snd);
+    check_err_types<ex::__mset<std::error_code>>(snd);
     check_sends_stopped<false>(snd);
 
     auto op = ex::connect(std::move(snd), expect_value_receiver{11});
@@ -81,8 +81,8 @@ namespace {
     stopped_scheduler sched;
     std::error_code errcode(1, std::generic_category());
     ex::sender auto snd = ex::transfer_just(sched, 11) | ex::stopped_as_error(errcode);
-    check_val_types<type_array<type_array<int>>>(snd);
-    check_err_types<type_array<std::error_code>>(snd);
+    check_val_types<ex::__mset<pack<int>>>(snd);
+    check_err_types<ex::__mset<std::error_code>>(snd);
     check_sends_stopped<false>(snd);
 
     auto op = ex::connect(std::move(snd), expect_error_receiver{errcode});
@@ -94,9 +94,8 @@ namespace {
 
   TEST_CASE("stopped_as_error keeps values_type from input sender", "[adaptors][stopped_as_error]") {
     inline_scheduler sched;
-    check_val_types<type_array<type_array<int>>>(
-      ex::transfer_just(sched, 23) | ex::stopped_as_error(-1));
-    check_val_types<type_array<type_array<double>>>(
+    check_val_types<ex::__mset<pack<int>>>(ex::transfer_just(sched, 23) | ex::stopped_as_error(-1));
+    check_val_types<ex::__mset<pack<double>>>(
       ex::transfer_just(sched, 3.1415) | ex::stopped_as_error(-1));
   }
 
@@ -105,12 +104,12 @@ namespace {
     error_scheduler sched2{};
     error_scheduler<int> sched3{-1};
 
-    check_err_types<type_array<>>( //
+    check_err_types<ex::__mset<>>( //
       ex::transfer_just(sched1, 11) | ex::stopped_as_error(std::exception_ptr{}));
-    check_err_types<type_array<std::exception_ptr>>( //
+    check_err_types<ex::__mset<std::exception_ptr>>( //
       ex::transfer_just(sched2, 13) | ex::stopped_as_error(std::exception_ptr{}));
 
-    check_err_types<type_array<int, std::exception_ptr>>( //
+    check_err_types<ex::__mset<int, std::exception_ptr>>( //
       ex::transfer_just(sched3, 13) | ex::stopped_as_error(std::exception_ptr{}));
   }
 
@@ -119,15 +118,15 @@ namespace {
     error_scheduler sched2{};
     error_scheduler<int> sched3{-1};
 
-    check_err_types<type_array<>>( //
+    check_err_types<ex::__mset<>>( //
       ex::transfer_just(sched1, 11) | ex::stopped_as_error(-1));
-    check_err_types<type_array<std::exception_ptr, int>>( //
+    check_err_types<ex::__mset<std::exception_ptr, int>>( //
       ex::transfer_just(sched2, 13) | ex::stopped_as_error(-1));
 
-    check_err_types<type_array<int>>( //
+    check_err_types<ex::__mset<int>>( //
       ex::transfer_just(sched3, 13) | ex::stopped_as_error(-1));
 
-    check_err_types<type_array<>>(  //
+    check_err_types<ex::__mset<>>(  //
       ex::transfer_just(sched1, 11) //
       | ex::stopped_as_error(-1)    //
       | ex::stopped_as_error(std::string{"err"}));

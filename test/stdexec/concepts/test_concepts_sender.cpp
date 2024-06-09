@@ -155,8 +155,8 @@ namespace {
   TEST_CASE(
     "can query completion signatures for a typed sender that sends nothing",
     "[concepts][sender]") {
-    check_val_types<type_array<type_array<>>>(my_sender0{});
-    check_err_types<type_array<std::exception_ptr>>(my_sender0{});
+    check_val_types<ex::__mset<pack<>>>(my_sender0{});
+    check_err_types<ex::__mset<std::exception_ptr>>(my_sender0{});
     check_sends_stopped<true>(my_sender0{});
     REQUIRE(ex::sender_of<my_sender0, ex::set_value_t()>);
   }
@@ -164,8 +164,8 @@ namespace {
   TEST_CASE(
     "can query completion signatures for a typed sender that sends int",
     "[concepts][sender]") {
-    check_val_types<type_array<type_array<int>>>(my_sender_int{});
-    check_err_types<type_array<std::exception_ptr>>(my_sender_int{});
+    check_val_types<ex::__mset<pack<int>>>(my_sender_int{});
+    check_err_types<ex::__mset<std::exception_ptr>>(my_sender_int{});
     check_sends_stopped<true>(my_sender_int{});
     REQUIRE(ex::sender_of<my_sender_int, ex::set_value_t(int)>);
   }
@@ -185,8 +185,8 @@ namespace {
   TEST_CASE(
     "check completion signatures for sender that advertises multiple sets of values",
     "[concepts][sender]") {
-    check_val_types<type_array<type_array<int, double>, type_array<short, long>>>(multival_sender{});
-    check_err_types<type_array<std::exception_ptr>>(multival_sender{});
+    check_val_types<ex::__mset<pack<int, double>, pack<short, long>>>(multival_sender{});
+    check_err_types<ex::__mset<std::exception_ptr>>(multival_sender{});
     check_sends_stopped<false>(multival_sender{});
     REQUIRE_FALSE(ex::sender_of<multival_sender, ex::set_value_t(int, double)>);
   }
@@ -206,8 +206,8 @@ namespace {
   TEST_CASE(
     "check completion signatures for sender that also supports error codes",
     "[concepts][sender]") {
-    check_val_types<type_array<type_array<>>>(ec_sender{});
-    check_err_types<type_array<std::exception_ptr, int>>(ec_sender{});
+    check_val_types<ex::__mset<pack<>>>(ec_sender{});
+    check_err_types<ex::__mset<std::exception_ptr, int>>(ec_sender{});
     check_sends_stopped<false>(ec_sender{});
     REQUIRE(ex::sender_of<ec_sender, ex::set_value_t()>);
   }

@@ -450,7 +450,7 @@ namespace exec_old {
           stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
           stdexec::__q<stdexec::__mand>>>,
         stdexec::completion_signatures<>,
-        stdexec::__with_exception_ptr>;
+        stdexec::__eptr_completion>;
 
     template <class... Tys>
     using set_value_t =
@@ -489,8 +489,7 @@ namespace exec_old {
     }
 
     template <stdexec::__decays_to<bulk_sender> Self, class Env>
-    static auto get_completion_signatures(Self&&, Env&&)
-      -> completion_signatures<Self, Env> {
+    static auto get_completion_signatures(Self&&, Env&&) -> completion_signatures<Self, Env> {
       return {};
     }
 
@@ -565,8 +564,8 @@ namespace exec_old {
       stdexec::__value_types_of_t<
         CvrefSender,
         stdexec::env_of_t<Receiver>,
-        stdexec::__q<stdexec::__decayed_tuple>,
-        stdexec::__q<stdexec::__variant>>;
+        stdexec::__q<stdexec::__decayed_std_tuple>,
+        stdexec::__q<stdexec::__std_variant>>;
 
     variant_t data_;
     static_thread_pool& pool_;

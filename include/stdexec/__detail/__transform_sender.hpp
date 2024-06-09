@@ -154,7 +154,7 @@ namespace stdexec {
   template <class _Sender, class _Env>
   constexpr auto dependent_domain::__is_nothrow_transform_sender() noexcept -> bool {
     using _Env2 = __call_result_t<__domain::__transform_env, dependent_domain&, _Sender, _Env>;
-    return decltype(__sexpr_apply(
+    return __v<decltype(__sexpr_apply(
       __declval<_Sender>(),
       []<class _Tag, class _Data, class... _Childs>(_Tag, _Data&&, _Childs&&...) {
         constexpr bool __first_transform_is_nothrow = noexcept(__make_sexpr<_Tag>(
@@ -170,7 +170,7 @@ namespace stdexec {
         constexpr bool __second_transform_is_nothrow = noexcept(__domain::__transform_sender()(
           __declval<_Domain2&>(), __declval<_Sender2>(), __declval<const _Env&>()));
         return __mbool < __first_transform_is_nothrow && __second_transform_is_nothrow > ();
-      }))::value;
+      }))>;
   }
 
   template <sender_expr _Sender, class _Env>

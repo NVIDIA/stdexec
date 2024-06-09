@@ -431,7 +431,7 @@ namespace exec {
 
     template <class _Sender, class _Env>
     using __future_completions_t = //
-      make_completion_signatures<
+      transform_completion_signatures_of<
         _Sender,
         __env_t<_Env>,
         completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr)>,
@@ -544,7 +544,7 @@ namespace exec {
           auto& __state = *__state_;
           try {
             std::unique_lock __guard{__state.__mutex_};
-            using _Tuple = __decayed_tuple<_Tag, _As...>;
+            using _Tuple = __decayed_std_tuple<_Tag, _As...>;
             __state.__data_.template emplace<_Tuple>(_Tag(), static_cast<_As&&>(__as)...);
             return true;
           } catch (...) {

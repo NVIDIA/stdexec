@@ -159,9 +159,9 @@ namespace {
   TEST_CASE("on has the values_type corresponding to the given values", "[adaptors][on]") {
     inline_scheduler sched{};
 
-    check_val_types<type_array<type_array<int>>>(ex::on(sched, ex::just(1)));
-    check_val_types<type_array<type_array<int, double>>>(ex::on(sched, ex::just(3, 0.14)));
-    check_val_types<type_array<type_array<int, double, std::string>>>(
+    check_val_types<ex::__mset<pack<int>>>(ex::on(sched, ex::just(1)));
+    check_val_types<ex::__mset<pack<int, double>>>(ex::on(sched, ex::just(3, 0.14)));
+    check_val_types<ex::__mset<pack<int, double, std::string>>>(
       ex::on(sched, ex::just(3, 0.14, std::string{"pi"})));
   }
 
@@ -170,9 +170,9 @@ namespace {
     error_scheduler sched2{};
     error_scheduler<int> sched3{43};
 
-    check_err_types<type_array<>>(ex::on(sched1, ex::just(1)));
-    check_err_types<type_array<std::exception_ptr>>(ex::on(sched2, ex::just(2)));
-    check_err_types<type_array<int>>(ex::on(sched3, ex::just(3)));
+    check_err_types<ex::__mset<>>(ex::on(sched1, ex::just(1)));
+    check_err_types<ex::__mset<std::exception_ptr>>(ex::on(sched2, ex::just(2)));
+    check_err_types<ex::__mset<int>>(ex::on(sched3, ex::just(3)));
   }
 
   TEST_CASE("on keeps sends_stopped from scheduler's sender", "[adaptors][on]") {

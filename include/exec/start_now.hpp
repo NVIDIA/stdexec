@@ -172,7 +172,7 @@ namespace exec {
       template <class _Sender>
       using __nested_t = nest_result_t<_AsyncScope, _Sender>;
 
-      stdexec::__tup::__tuple_for<
+      stdexec::__tuple_for<
         stdexec::connect_result_t<__nested_t<stdexec::__cvref_t<_SenderIds>>, __receiver_t>...>
         __op_state_;
 
@@ -183,7 +183,7 @@ namespace exec {
             __scope.nest(static_cast<stdexec::__cvref_t<_SenderIds>&&>(__sndr)),
             __receiver_t{this})}...} {
         // Start all of the child operations
-        stdexec::__tup::__apply(
+        __op_state_.apply(
           [](auto&... __op_state) noexcept { (stdexec::start(__op_state), ...); }, __op_state_);
       }
 

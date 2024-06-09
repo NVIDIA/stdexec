@@ -34,6 +34,7 @@
 #endif
 
 #include <cassert>
+#include <type_traits>
 
 #define STDEXEC_STRINGIZE(_ARG)   #_ARG
 
@@ -257,6 +258,10 @@ namespace __coro = std::experimental;
 #  define STDEXEC_PRAGMA_POP() _Pragma("GCC diagnostic pop")
 #  define STDEXEC_PRAGMA_IGNORE_GNU(...)                                                           \
     _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored __VA_ARGS__))
+#elif STDEXEC_MSVC()
+#  define STDEXEC_PRAGMA_PUSH()           __pragma(warning(push))
+#  define STDEXEC_PRAGMA_POP()            __pragma(warning(pop))
+#  define STDEXEC_PRAGMA_IGNORE_MSVC(...) __pragma(warning(disable : __VA_ARGS__))
 #else
 #  define STDEXEC_PRAGMA_PUSH()
 #  define STDEXEC_PRAGMA_POP()
@@ -267,6 +272,9 @@ namespace __coro = std::experimental;
 #endif
 #ifndef STDEXEC_PRAGMA_IGNORE_EDG
 #  define STDEXEC_PRAGMA_IGNORE_EDG(...)
+#endif
+#ifndef STDEXEC_PRAGMA_IGNORE_MSVC
+#  define STDEXEC_PRAGMA_IGNORE_MSVC(...)
 #endif
 
 #if !STDEXEC_MSVC() && defined(__has_builtin)
@@ -304,7 +312,7 @@ namespace __coro = std::experimental;
 #if STDEXEC_HAS_BUILTIN(__is_const)
 #  define STDEXEC_IS_CONST(...) __is_const(__VA_ARGS__)
 #else
-#  define STDEXEC_IS_CONST(...) stdexec::__is_const<__VA_ARGS__>
+#  define STDEXEC_IS_CONST(...) stdexec::__is_const_<__VA_ARGS__>
 #endif
 
 #if STDEXEC_HAS_BUILTIN(__is_same)
@@ -313,10 +321,34 @@ namespace __coro = std::experimental;
 #  define STDEXEC_IS_SAME(...) __is_same_as(__VA_ARGS__)
 #elif STDEXEC_MSVC()
 // msvc replaces std::is_same_v with a compile-time constant
-#  include <type_traits>
 #  define STDEXEC_IS_SAME(...) std::is_same_v<__VA_ARGS__>
 #else
 #  define STDEXEC_IS_SAME(...) stdexec::__same_as_v<__VA_ARGS__>
+#endif
+
+#if STDEXEC_HAS_BUILTIN(__is_constructible) || STDEXEC_MSVC()
+#  define STDEXEC_IS_CONSTRUCTIBLE(...) __is_constructible(__VA_ARGS__)
+#else
+#  define STDEXEC_IS_CONSTRUCTIBLE(...) std::is_constructible_v<__VA_ARGS__>
+#endif
+
+#if STDEXEC_HAS_BUILTIN(__is_nothrow_constructible) || STDEXEC_MSVC()
+#  define STDEXEC_IS_NOTHROW_CONSTRUCTIBLE(...) __is_nothrow_constructible(__VA_ARGS__)
+#else
+#  define STDEXEC_IS_NOTHROW_CONSTRUCTIBLE(...) std::is_nothrow_constructible_v<__VA_ARGS__>
+#endif
+
+#if STDEXEC_HAS_BUILTIN(__is_trivially_constructible) || STDEXEC_MSVC()
+#  define STDEXEC_IS_TRIVIALLY_CONSTRUCTIBLE(...) __is_trivially_constructible(__VA_ARGS__)
+#else
+#  define STDEXEC_IS_TRIVIALLY_CONSTRUCTIBLE(...) std::is_trivially_constructible_v<__VA_ARGS__>
+#endif
+
+#if STDEXEC_HAS_BUILTIN(__is_empty) || STDEXEC_MSVC()
+#  define STDEXEC_IS_EMPTY(...) __is_empty(__VA_ARGS__)
+#else
+#  define STDEXEC_IS_EMPTY(...) std::is_empty_v<__VA_ARGS__>
+#endif
 
 namespace stdexec {
   template <class _Ap, class _Bp>
@@ -325,7 +357,6 @@ namespace stdexec {
   template <class _Ap>
   inline constexpr bool __same_as_v<_Ap, _Ap> = true;
 } // namespace stdexec
-#endif
 
 #if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L
 #  define STDEXEC_UNREACHABLE() std::unreachable()

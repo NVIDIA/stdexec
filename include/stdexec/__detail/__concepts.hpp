@@ -140,14 +140,14 @@ namespace stdexec {
 
   // Avoid using libstdc++'s object concepts because they instantiate a
   // lot of templates.
-#if STDEXEC_HAS_BUILTIN(__is_nothrow_destructible)
+#if STDEXEC_HAS_BUILTIN(__is_nothrow_destructible) || STDEXEC_MSVC()
   template <class _Ty>
   concept destructible = __is_nothrow_destructible(_Ty);
 #else
   template <class _Ty>
   inline constexpr bool __destructible_ = //
-    requires {
-      { (static_cast < _Ty && (*) () noexcept > (nullptr))().~_Ty() } noexcept;
+    requires (_Ty && (&__fn) () noexcept) {
+      { __fn().~_Ty() } noexcept;
     };
   template <class _Ty>
   inline constexpr bool __destructible_<_Ty&> = true;
@@ -160,17 +160,10 @@ namespace stdexec {
   concept destructible = __destructible_<T>;
 #endif
 
-#if STDEXEC_HAS_BUILTIN(__is_constructible)
   template <class _Ty, class... _As>
   concept constructible_from = //
     destructible<_Ty> &&       //
-    __is_constructible(_Ty, _As...);
-#else
-  template <class _Ty, class... _As>
-  concept constructible_from = //
-    destructible<_Ty> &&       //
-    std::is_constructible_v<_Ty, _As...>;
-#endif
+    STDEXEC_IS_CONSTRUCTIBLE(_Ty, _As...);
 
   template <class _Ty>
   concept default_initializable = //
@@ -279,15 +272,9 @@ namespace stdexec {
       { __decay_t<_Ty>{__decay_t<_Ty>{static_cast<_Ty&&>(__t)}} } noexcept;
     };
 
-#if STDEXEC_HAS_BUILTIN(__is_nothrow_constructible)
   template <class _Ty, class... _As>
   concept __nothrow_constructible_from =
-    constructible_from<_Ty, _As...> && __is_nothrow_constructible(_Ty, _As...);
-#else
-  template <class _Ty, class... _As>
-  concept __nothrow_constructible_from =
-    constructible_from<_Ty, _As...> && std::is_nothrow_constructible_v<_Ty, _As...>;
-#endif
+    constructible_from<_Ty, _As...> && STDEXEC_IS_NOTHROW_CONSTRUCTIBLE(_Ty, _As...);
 
   template <class _Ty>
   concept __nothrow_move_constructible = __nothrow_constructible_from<_Ty, _Ty>;

@@ -52,7 +52,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using __sender_size_for_t = stdexec::__t<__sender_size_for_<_As...>>;
 
       static constexpr std::size_t value = //
-        __v<__gather_completions_for<
+        __v<__gather_completions_of<
           _SetTag,
           _Sender,
           env_of_t<_PropagateReceiver>,
@@ -156,7 +156,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         using __op_state_variant_t = //
           __minvoke<
-            __transform<__uncurry<__op_state_for<_Receiver, _Fun>>, __nullable_variant_t>,
+            __transform<__uncurry<__op_state_for<_Receiver, _Fun>>, __qq<__nullable_std_variant>>,
             _Tuples...>;
 
         __operation<_SenderId, _ReceiverId, _Fun, _Let>* __op_state_;
@@ -165,11 +165,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
     using __receiver = //
-      stdexec::__t<__gather_completions_for<
+      stdexec::__t<__gather_completions_of<
         _Let,
         stdexec::__t<_SenderId>,
         stream_env<env_of_t<stdexec::__t<_ReceiverId>>>,
-        __q<__decayed_tuple>,
+        __q<__decayed_std_tuple>,
         __munique<__mbind_front_q<__receiver_, _SenderId, _ReceiverId, _Fun, _Let>>>>;
 
     template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
@@ -233,7 +233,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         __mapply<
           __transform<
             __mbind_front_q<let_xxx::__tfx_signal_t, _Env, _Fun, _Set>,
-            __q<__concat_completion_signatures_t>>,
+            __mtry_q<__concat_completion_signatures>>,
           __completion_signatures_of_t<_Sender, _Env>>;
 
       template <__decays_to<__t> _Self, receiver _Receiver>

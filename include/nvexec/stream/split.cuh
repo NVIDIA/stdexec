@@ -327,10 +327,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, completion_signatures_of_t<Self, empty_env>>
       STDEXEC_MEMFN_DECL(
-        auto connect)(this Self&& self, Receiver recvr) //
+        auto connect)(this Self&& self, Receiver rcvr) //
         noexcept(__nothrow_constructible_from<__decay_t<Receiver>, Receiver>)
           -> operation_t<Receiver> {
-        return operation_t<Receiver>{static_cast<Receiver&&>(recvr), self.shared_state_};
+        return operation_t<Receiver>{static_cast<Receiver&&>(rcvr), self.shared_state_};
       }
 
       auto get_env() const noexcept -> env_of_t<const Sender&> {

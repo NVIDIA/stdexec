@@ -147,11 +147,11 @@ namespace {
   }
 
   TEST_CASE("then has the values_type corresponding to the given values", "[adaptors][then]") {
-    check_val_types<type_array<type_array<int>>>(ex::just() | ex::then([] { return 7; }));
-    check_val_types<type_array<type_array<double>>>(ex::just() | ex::then([] { return 3.14; }));
-    check_val_types<type_array<type_array<std::string>>>(ex::just() | ex::then([] {
-                                                           return std::string{"hello"};
-                                                         }));
+    check_val_types<ex::__mset<pack<int>>>(ex::just() | ex::then([] { return 7; }));
+    check_val_types<ex::__mset<pack<double>>>(ex::just() | ex::then([] { return 3.14; }));
+    check_val_types<ex::__mset<pack<std::string>>>(ex::just() | ex::then([] {
+                                                     return std::string{"hello"};
+                                                   }));
   }
 
   TEST_CASE("then keeps error_types from input sender", "[adaptors][then]") {
@@ -159,11 +159,11 @@ namespace {
     error_scheduler sched2{};
     error_scheduler<int> sched3{43};
 
-    check_err_types<type_array<>>( //
+    check_err_types<ex::__mset<>>( //
       ex::transfer_just(sched1) | ex::then([]() noexcept {}));
-    check_err_types<type_array<std::exception_ptr>>( //
+    check_err_types<ex::__mset<std::exception_ptr>>( //
       ex::transfer_just(sched2) | ex::then([]() noexcept {}));
-    check_err_types<type_array<std::exception_ptr, int>>( //
+    check_err_types<ex::__mset<std::exception_ptr, int>>( //
       ex::transfer_just(sched3) | ex::then([] {}));
   }
 
