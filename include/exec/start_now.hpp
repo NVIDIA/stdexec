@@ -214,21 +214,21 @@ namespace exec {
         noexcept(
           stdexec::__nothrow_move_constructible<std::unwrap_reference_t<_Env>>
           && (stdexec::__nothrow_move_constructible<_Sender> && ...)) {
-        using __env_t = stdexec::__as_root_env_t<std::unwrap_reference_t<_Env>>;
+        using __local_env_t = stdexec::__as_root_env_t<std::unwrap_reference_t<_Env>>;
         static_assert(
           !stdexec::sender<_Env>,
           "The first argument to start_now() must be either an environment or an async_scope");
         static_assert(
-          stdexec::unstoppable_token<stdexec::stop_token_of_t<__env_t>>,
+          stdexec::unstoppable_token<stdexec::stop_token_of_t<__local_env_t>>,
           "start_now() requires that the given environment does not have a stoppable token");
         static_assert(
-          (stdexec::__nofail_sender<_Sender, __env_t> && ...),
+          (stdexec::__nofail_sender<_Sender, __local_env_t> && ...),
           "start_now() requires that the given senders have no set_error(..) completions");
         using __receiver_t = stdexec::__t<__receiver<stdexec::__id<_Env>>>;
         static_assert(
           (stdexec::sender_to<_Sender, __receiver_t> && ...),
           "The senders passed to start_now do not satisfy the constraints");
-        return __storage_t<__env_t, _AsyncScope, _Sender...>{
+        return __storage_t<__local_env_t, _AsyncScope, _Sender...>{
           stdexec::__as_root_env(static_cast<std::unwrap_reference_t<_Env>&&>(__env)),
           __scope,
           static_cast<_Sender&&>(__sndr)...};
