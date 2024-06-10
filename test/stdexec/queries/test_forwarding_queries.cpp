@@ -19,6 +19,14 @@ namespace ex = stdexec;
 
 namespace {
 
+  struct my_forwarding_query_t {
+    constexpr bool query(ex::forwarding_query_t) const noexcept {
+      return true;
+    }
+  };
+
+  inline constexpr my_forwarding_query_t my_forwarding_query{};
+
   struct my_derived_forwarding_query_t : ex::forwarding_query_t { };
 
   inline constexpr my_derived_forwarding_query_t my_derived_forwarding_query{};
@@ -36,6 +44,7 @@ namespace {
     static_assert(ex::forwarding_query(ex::get_completion_scheduler<ex::set_error_t>));
     static_assert(ex::forwarding_query(ex::get_completion_scheduler<ex::set_stopped_t>));
 
+    static_assert(ex::forwarding_query(my_forwarding_query));
     static_assert(ex::forwarding_query(my_derived_forwarding_query));
     static_assert(!ex::forwarding_query(my_non_forwarding_query));
   }

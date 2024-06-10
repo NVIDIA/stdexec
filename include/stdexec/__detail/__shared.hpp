@@ -60,7 +60,7 @@ namespace stdexec {
     template <class _BaseEnv>
     using __env_t = //
       __env::__join_t<
-        __env::__with<inplace_stop_token, get_stop_token_t>,
+        prop<get_stop_token_t, inplace_stop_token>,
         _BaseEnv>; // BUGBUG NOT TO SPEC
 
     template <class _Receiver>
@@ -230,7 +230,7 @@ namespace stdexec {
 
       explicit __shared_state(_CvrefSender&& __sndr, _Env __env)
         : __env_(__env::__join(
-          __env::__with(__stop_source_.get_token(), get_stop_token),
+          prop(get_stop_token, __stop_source_.get_token()),
           static_cast<_Env&&>(__env)))
         , __shared_op_(connect(static_cast<_CvrefSender&&>(__sndr), __receiver_t{this})) {
         // add one ref count to account for the case where there are no watchers left but the
