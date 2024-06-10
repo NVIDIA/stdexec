@@ -48,6 +48,18 @@ namespace stdexec {
   template <class _Sender>
   extern const bool enable_receiver;
 
+  namespace __env {
+    template <class _Query, class _Value>
+    struct prop;
+
+    template <class... _Envs>
+    struct env;
+  } // namespace __env
+
+  using __env::prop;
+  using __env::env;
+  using empty_env = env<>;
+
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __get_env {
     struct get_env_t;
@@ -55,15 +67,6 @@ namespace stdexec {
 
   using __get_env::get_env_t;
   extern const get_env_t get_env;
-
-  namespace __env {
-    struct empty_env {
-      using __t = empty_env;
-      using __id = empty_env;
-    };
-  } // namespace __env
-
-  using __env::empty_env;
 
   template <class _EnvProvider>
   using env_of_t = __call_result_t<get_env_t, _EnvProvider>;

@@ -201,7 +201,7 @@ namespace stdexec {
     template <class _Sender, class _Default = default_domain>
     auto operator()(const _Sender&, _Default __def = {}) const noexcept {
       if constexpr (__callable<get_domain_t, env_of_t<_Sender>>) {
-        return __call_result_t<get_domain_t, env_of_t<_Sender>>();
+        return __domain_of_t<env_of_t<_Sender>>();
       } else if constexpr (__detail::__has_completion_domain<_Sender>) {
         return __detail::__completion_domain_of<_Sender>();
       } else {

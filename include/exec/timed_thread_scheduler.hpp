@@ -322,9 +322,9 @@ namespace exec {
       }
 
       auto get_env() const noexcept {
-        return stdexec::__env::__with(
-          timed_thread_scheduler{*context_},
-          stdexec::get_completion_scheduler<stdexec::set_value_t>);
+        return stdexec::prop(
+          stdexec::get_completion_scheduler<stdexec::set_value_t>,
+          timed_thread_scheduler{*context_});
       }
 
       template <class Receiver>

@@ -41,8 +41,8 @@ namespace exec {
         requires tag_invocable<now_t, const _Scheduler&>
       auto operator()(const _Scheduler& __sched) const
         noexcept(nothrow_tag_invocable<now_t, const _Scheduler&>)
-          -> tag_invoke_result_t<now_t, const _Scheduler&> {
-        static_assert(time_point<tag_invoke_result_t<now_t, const _Scheduler&>>);
+          -> __decay_t<tag_invoke_result_t<now_t, const _Scheduler&>> {
+        static_assert(time_point<__decay_t<tag_invoke_result_t<now_t, const _Scheduler&>>>);
         return tag_invoke(now_t{}, __sched);
       }
     };

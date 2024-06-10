@@ -43,7 +43,7 @@ struct RunThread {
 #  ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
       pmr::monotonic_buffer_resource rsrc{buffer.data(), buffer.size()};
       pmr::polymorphic_allocator<char> alloc{&rsrc};
-      auto env = exec::make_env(exec::with(stdexec::get_allocator, alloc));
+      auto env = exec::make_env(stdexec::prop(stdexec::get_allocator, alloc));
       auto [start, end] = exec::_pool_::even_share(total_scheds, tid, pool.available_parallelism());
       auto iterate = exec::iterate(std::views::iota(start, end)) | exec::ignore_all_values()
                    | exec::write(env);

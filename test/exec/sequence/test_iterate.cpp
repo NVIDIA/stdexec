@@ -123,7 +123,7 @@ namespace {
     auto iterate = exec::iterate(std::views::all(array));
     STATIC_REQUIRE(exec::sequence_sender_in<decltype(iterate), stdexec::empty_env>);
     STATIC_REQUIRE(stdexec::sender_expr_for<decltype(iterate), exec::iterate_t>);
-    auto env = exec::make_env(exec::with(stdexec::get_domain, my_domain{}));
+    auto env = exec::make_env(stdexec::prop(stdexec::get_domain, my_domain{}));
     using Env = decltype(env);
     int sum = 0;
     auto op = exec::subscribe(iterate, sum_receiver<Env>{sum, env});
