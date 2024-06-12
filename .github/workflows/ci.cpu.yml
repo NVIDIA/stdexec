@@ -110,8 +110,8 @@ jobs:
         shell: pwsh
         run: |
           docker run \
-          rapidsai/devcontainers:24.08-cuda12.4-cl14.28-windows2022 \
-          .github/workflows/test-windows.ps1 -Compiler '${{ matrix.compiler }}' -Config '${{ matrix.build }}'
+            rapidsai/devcontainers:24.08-cuda12.4-cl14.28-windows2022 \
+            .github/workflows/test-windows.ps1 -Compiler '${{ matrix.compiler }}' -Config '${{ matrix.build }}'
 
   ci-cpu-windows:
     runs-on: windows-latest
