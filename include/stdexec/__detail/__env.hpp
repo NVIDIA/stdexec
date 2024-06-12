@@ -570,17 +570,18 @@ namespace stdexec {
     template <class _First, class _Second>
     using __join_t = __result_of<__join, _First, _Second>;
 
-    template <class _Env>
-    using __as_root_env_t = __join_t<__root_env, _Env>;
-
     struct __as_root_env_fn {
       template <class _Env>
-      constexpr auto operator()(_Env&& __env) const noexcept -> __as_root_env_t<_Env> {
-        return __join(__root_env{}, static_cast<_Env&&>(__env));
+      constexpr auto operator()(_Env __env) const noexcept
+        -> __join_t<__root_env, std::unwrap_reference_t<_Env>> {
+        return __join(__root_env{}, static_cast<std::unwrap_reference_t<_Env>&&>(__env));
       }
     };
 
     inline constexpr __as_root_env_fn __as_root_env{};
+
+    template <class _Env>
+    using __as_root_env_t = __result_of<__as_root_env, _Env>;
   } // namespace __env
 
   using __get_env::get_env_t;
