@@ -87,7 +87,7 @@ jobs:
       - run: echo "CI (CPU) success"
 
   build-cpu-windows:
-    runs-on: windows-latest
+    runs-on: windows2022
     name: ${{ matrix.name }}
     strategy:
       fail-fast: false
@@ -100,36 +100,18 @@ jobs:
           #- { compiler: "clang-cl", build: "Debug",   name: "CPU (Windows) (clang-cl, Debug)" }
           #- { compiler: "clang-cl", build: "Release", name: "CPU (Windows) (clang-cl, Release)" }
 
-    container:
-      options: -u root
-      image: rapidsai/devcontainers:24.08-cuda12.4-cl14.28-windows2022
-      env:
-        SCCACHE_REGION: "us-east-2"
-        SCCACHE_BUCKET: "rapids-sccache-devs"
-        SCCACHE_S3_KEY_PREFIX: "nvidia-stdexec-dev"
-    permissions:
-      id-token: write # This is required for configure-aws-credentials
-      contents: read  # This is required for actions/checkout
-    # defaults:
-    #   run:
-    #     shell: su coder {0}
-    #     working-directory: /home/coder
-
     steps:
       - name: Checkout stdexec (Windows)
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - if: github.repository_owner == 'NVIDIA'
-        name: Get AWS credentials for sccache bucket
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: us-east-2
-          role-duration-seconds: 28800 # 8 hours
-          role-to-assume: arn:aws:iam::279114543810:role/gha-oidc-NVIDIA
+
       - name: Build and test CPU schedulers (Windows)
         shell: pwsh
-        run: .github/workflows/test-windows.ps1 -Compiler '${{ matrix.compiler }}' -Config '${{ matrix.build }}'
+        run: |
+          docker run \
+          rapidsai/devcontainers:24.08-cuda12.4-cl14.28-windows2022 \
+          .github/workflows/test-windows.ps1 -Compiler '${{ matrix.compiler }}' -Config '${{ matrix.build }}'
 
   ci-cpu-windows:
     runs-on: windows-latest
