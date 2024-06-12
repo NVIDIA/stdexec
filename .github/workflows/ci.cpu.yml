@@ -87,7 +87,7 @@ jobs:
       - run: echo "CI (CPU) success"
 
   build-cpu-windows:
-    runs-on: windows2022
+    runs-on: windows-2022
     name: ${{ matrix.name }}
     strategy:
       fail-fast: false
