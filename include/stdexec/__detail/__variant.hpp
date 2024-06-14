@@ -53,7 +53,7 @@ namespace stdexec {
       }
 
       STDEXEC_ATTRIBUTE((host, device))
-      static constexpr bool
+      static constexpr std::size_t
         index() noexcept {
         return __variant_npos;
       }

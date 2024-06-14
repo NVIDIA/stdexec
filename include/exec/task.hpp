@@ -19,11 +19,12 @@
 #include <cassert>
 #include <exception>
 #include <utility>
-#include <variant>
 
 #include "../stdexec/coroutine.hpp"
 #include "../stdexec/execution.hpp"
 #include "../stdexec/__detail/__meta.hpp"
+#include "../stdexec/__detail/__optional.hpp"
+#include "../stdexec/__detail/__variant.hpp"
 
 #include "any_sender_of.hpp"
 #include "at_coroutine_exit.hpp"
@@ -263,7 +264,7 @@ namespace exec {
         __data_.template emplace<1>(std::move(value));
       }
 
-      std::variant<std::monostate, _Ty, std::exception_ptr> __data_{};
+      __variant_for<__monostate, _Ty, std::exception_ptr> __data_{};
     };
 
     template <>
@@ -274,7 +275,7 @@ namespace exec {
         __data_.template emplace<1>(__void{});
       }
 
-      std::variant<std::monostate, __void, std::exception_ptr> __data_{};
+      __variant_for<__monostate, __void, std::exception_ptr> __data_{};
     };
 
     enum class disposition : unsigned {
@@ -392,14 +393,14 @@ namespace exec {
           return *__context_;
         }
 
-        std::optional<__context_t> __context_;
+        __optional<__context_t> __context_{};
         bool __rescheduled_{false};
       };
 
       template <class _ParentPromise = void>
       struct __task_awaitable {
         __coro::coroutine_handle<__promise> __coro_;
-        std::optional<awaiter_context_t<__promise, _ParentPromise>> __context_{};
+        __optional<awaiter_context_t<__promise, _ParentPromise>> __context_{};
 
         ~__task_awaitable() {
           if (__coro_)
@@ -430,9 +431,9 @@ namespace exec {
             std::exchange(__coro_, {}).destroy();
           }};
           if (__coro_.promise().__data_.index() == 2)
-            std::rethrow_exception(std::get<2>(std::move(__coro_.promise().__data_)));
+            std::rethrow_exception(std::move(__coro_.promise().__data_.template get<2>()));
           if constexpr (!std::is_void_v<_Ty>)
-            return std::get<1>(std::move(__coro_.promise().__data_));
+            return std::move(__coro_.promise().__data_.template get<1>());
         }
       };
 

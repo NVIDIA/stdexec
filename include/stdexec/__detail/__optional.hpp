@@ -119,6 +119,16 @@ namespace stdexec {
         return static_cast<_Tp&&>(__value);
       }
 
+      _Tp* operator->() & noexcept {
+        STDEXEC_ASSERT(__has_value);
+        return &__value;
+      }
+
+      const _Tp* operator->() const & noexcept {
+        STDEXEC_ASSERT(__has_value);
+        return &__value;
+      }
+
       bool has_value() const noexcept {
         return __has_value;
       }
