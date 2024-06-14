@@ -261,10 +261,10 @@ namespace exec {
     template <class _Ty>
     struct __promise_base {
       void return_value(_Ty value) {
-        __data_.template emplace<1>(std::move(value));
+        __data_.template emplace<0>(std::move(value));
       }
 
-      __variant_for<__monostate, _Ty, std::exception_ptr> __data_{};
+      __variant_for<_Ty, std::exception_ptr> __data_{};
     };
 
     template <>
@@ -272,10 +272,10 @@ namespace exec {
       struct __void { };
 
       void return_void() {
-        __data_.template emplace<1>(__void{});
+        __data_.template emplace<0>(__void{});
       }
 
-      __variant_for<__monostate, __void, std::exception_ptr> __data_{};
+      __variant_for<__void, std::exception_ptr> __data_{};
     };
 
     enum class disposition : unsigned {
@@ -347,11 +347,18 @@ namespace exec {
 
         [[nodiscard]]
         auto disposition() const noexcept -> __task::disposition {
-          return static_cast<__task::disposition>(this->__data_.index());
+          switch (this->__data_.index()) {
+          case 0:
+            return __task::disposition::succeeded;
+          case 1:
+            return __task::disposition::failed;
+          default:
+            return __task::disposition::stopped;
+          }
         }
 
         void unhandled_exception() noexcept {
-          this->__data_.template emplace<2>(std::current_exception());
+          this->__data_.template emplace<1>(std::current_exception());
         }
 
         template <sender _Awaitable>
@@ -430,10 +437,10 @@ namespace exec {
           scope_guard __on_exit{[this]() noexcept {
             std::exchange(__coro_, {}).destroy();
           }};
-          if (__coro_.promise().__data_.index() == 2)
-            std::rethrow_exception(std::move(__coro_.promise().__data_.template get<2>()));
+          if (__coro_.promise().__data_.index() == 1)
+            std::rethrow_exception(std::move(__coro_.promise().__data_.template get<1>()));
           if constexpr (!std::is_void_v<_Ty>)
-            return std::move(__coro_.promise().__data_.template get<1>());
+            return std::move(__coro_.promise().__data_.template get<0>());
         }
       };
 
