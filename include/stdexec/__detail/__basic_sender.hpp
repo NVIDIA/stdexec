@@ -127,7 +127,7 @@ namespace stdexec {
 
     inline constexpr auto __connect =                                        //
       []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) //
-      noexcept(__nothrow_constructible_from<__op_state<_Sender, _Receiver>, _Sender&&, _Receiver&&>)
+      noexcept(__nothrow_constructible_from<__op_state<_Sender, _Receiver>, _Sender, _Receiver>)
       -> __op_state<_Sender, _Receiver>
       requires __connectable<_Sender, _Receiver>
     {
@@ -154,7 +154,7 @@ namespace stdexec {
         _SetTag()(std::move(__rcvr), static_cast<_Args&&>(__args)...);
       };
 
-    inline constexpr auto __compl_sigs = //
+    inline constexpr auto __sigs = //
       [](__ignore, __ignore) noexcept {
         return void();
       };
@@ -286,7 +286,7 @@ namespace stdexec {
     template <class _Sexpr, class _Receiver>
     struct __connect_fn {
       template <std::size_t _Idx>
-      using __receiver_t = __t<__receiver<__id<_Receiver>, _Sexpr, __mconstant<_Idx>>>;
+      using __receiver_t = __t<__receiver<__id<_Receiver>, _Sexpr, __msize_t<_Idx>>>;
 
       __op_state<_Sexpr, _Receiver>* __op_;
 
@@ -296,7 +296,7 @@ namespace stdexec {
         template <std::size_t... _Is, class... _Child>
         auto operator()(__indices<_Is...>, _Child&&... __child) const
           noexcept((__nothrow_connectable<_Child, __receiver_t<_Is>> && ...))
-            -> __tup::__tuple<__indices<_Is...>, connect_result_t<_Child, __receiver_t<_Is>>...> {
+            -> __tuple_for<connect_result_t<_Child, __receiver_t<_Is>>...> {
           return __tuple{connect(static_cast<_Child&&>(__child), __receiver_t<_Is>{__op_})...};
         }
       };
@@ -308,7 +308,7 @@ namespace stdexec {
         return __impl{__op_}(__indices_for<_Child...>(), static_cast<_Child&&>(__child)...);
       }
 
-      auto operator()(__ignore, __ignore) const noexcept -> __tup::__tuple_for<> {
+      auto operator()(__ignore, __ignore) const noexcept -> __tuple_for<> {
         return {};
       }
     };
@@ -345,7 +345,7 @@ namespace stdexec {
         start() & noexcept {
         using __tag_t = typename __op_state::__tag_t;
         auto&& __rcvr = this->__rcvr();
-        __tup::__apply(
+        __inner_ops_.apply(
           [&](auto&... __ops) noexcept {
             __sexpr_impl<__tag_t>::start(this->__state_, __rcvr, __ops...);
           },
@@ -430,7 +430,7 @@ namespace stdexec {
     static constexpr auto connect = __detail::__connect;
     static constexpr auto start = __detail::__start;
     static constexpr auto complete = __detail::__complete;
-    static constexpr auto get_completion_signatures = __detail::__compl_sigs;
+    static constexpr auto get_completion_signatures = __detail::__sigs;
   };
 
   template <class _Tag>

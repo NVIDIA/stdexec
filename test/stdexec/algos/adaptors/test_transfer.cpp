@@ -174,9 +174,9 @@ namespace {
     "[adaptors][transfer]") {
     inline_scheduler sched{};
 
-    check_val_types<type_array<type_array<int>>>(ex::transfer(ex::just(1), sched));
-    check_val_types<type_array<type_array<int, double>>>(ex::transfer(ex::just(3, 0.14), sched));
-    check_val_types<type_array<type_array<int, double, std::string>>>(
+    check_val_types<ex::__mset<pack<int>>>(ex::transfer(ex::just(1), sched));
+    check_val_types<ex::__mset<pack<int, double>>>(ex::transfer(ex::just(3, 0.14), sched));
+    check_val_types<ex::__mset<pack<int, double, std::string>>>(
       ex::transfer(ex::just(3, 0.14, std::string{"pi"}), sched));
   }
 
@@ -185,9 +185,9 @@ namespace {
     error_scheduler sched2{};
     error_scheduler<int> sched3{43};
 
-    check_err_types<type_array<>>(ex::transfer(ex::just(1), sched1));
-    check_err_types<type_array<std::exception_ptr>>(ex::transfer(ex::just(2), sched2));
-    check_err_types<type_array<int>>(ex::transfer(ex::just(3), sched3));
+    check_err_types<ex::__mset<>>(ex::transfer(ex::just(1), sched1));
+    check_err_types<ex::__mset<std::exception_ptr>>(ex::transfer(ex::just(2), sched2));
+    check_err_types<ex::__mset<int>>(ex::transfer(ex::just(3), sched3));
   }
 
   TEST_CASE(
@@ -195,7 +195,7 @@ namespace {
     "[adaptors][transfer]") {
     inline_scheduler sched{};
 
-    check_err_types<type_array<std::exception_ptr>>(
+    check_err_types<ex::__mset<std::exception_ptr>>(
       ex::transfer(ex::just(potentially_throwing{}), sched));
   }
 

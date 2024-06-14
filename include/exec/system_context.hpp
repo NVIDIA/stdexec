@@ -380,7 +380,7 @@ namespace exec {
   class system_bulk_sender {
     /// Meta-function that returns the completion signatures of `this`.
     template <typename _Self, typename _Env>
-    using __completions_t = stdexec::make_completion_signatures<               //
+    using __completions_t = stdexec::transform_completion_signatures_of<       //
       stdexec::__copy_cvref_t<_Self, _Previous>,                               //
       _Env,                                                                    //
       stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)> //

@@ -52,15 +52,15 @@ namespace {
   TEST_CASE(
     "set_value_sig can be used to transform value types to corresponding completion signatures",
     "[detail][completion_signatures]") {
-    using set_value_f = stdexec::__q<set_value_sig>;
+    using set_value_f = ex::__q<set_value_sig>;
 
-    using tr = stdexec::__transform<set_value_f, stdexec::__q<stdexec::__types>>;
+    using tr = ex::__transform<set_value_f, ex::__q<ex::__types>>;
 
-    using res = stdexec::__minvoke<tr, int, double, string>;
-    using expected = stdexec::__types< //
-      ex::set_value_t(int),            //
-      ex::set_value_t(double),         //
-      ex::set_value_t(string)          //
+    using res = ex::__minvoke<tr, int, double, string>;
+    using expected = ex::__types< //
+      ex::set_value_t(int),       //
+      ex::set_value_t(double),    //
+      ex::set_value_t(string)     //
       >;
     static_assert(is_same_v<res, expected>);
   }
@@ -68,15 +68,15 @@ namespace {
   TEST_CASE(
     "set_error_sig can be used to transform error types to corresponding completion signatures",
     "[detail][completion_signatures]") {
-    using set_error_f = stdexec::__q<set_error_sig>;
+    using set_error_f = ex::__q<set_error_sig>;
 
-    using tr = stdexec::__transform<set_error_f, stdexec::__q<stdexec::__types>>;
+    using tr = ex::__transform<set_error_f, ex::__q<ex::__types>>;
 
-    using res = stdexec::__minvoke<tr, exception_ptr, error_code, string>;
-    using expected = stdexec::__types< //
-      ex::set_error_t(exception_ptr),  //
-      ex::set_error_t(error_code),     //
-      ex::set_error_t(string)          //
+    using res = ex::__minvoke<tr, exception_ptr, error_code, string>;
+    using expected = ex::__types<     //
+      ex::set_error_t(exception_ptr), //
+      ex::set_error_t(error_code),    //
+      ex::set_error_t(string)         //
       >;
     static_assert(is_same_v<res, expected>);
   }
@@ -84,13 +84,13 @@ namespace {
   TEST_CASE(
     "set_error_sig can be used to transform exception_ptr",
     "[detail][completion_signatures]") {
-    using set_error_f = stdexec::__q<set_error_sig>;
+    using set_error_f = ex::__q<set_error_sig>;
 
-    using tr = stdexec::__transform<set_error_f, stdexec::__q<stdexec::__types>>;
+    using tr = ex::__transform<set_error_f, ex::__q<ex::__types>>;
 
-    using res = stdexec::__minvoke<tr, exception_ptr>;
-    using expected = stdexec::__types< //
-      ex::set_error_t(exception_ptr)   //
+    using res = ex::__minvoke<tr, exception_ptr>;
+    using expected = ex::__types<    //
+      ex::set_error_t(exception_ptr) //
       >;
     static_assert(is_same_v<res, expected>);
   }
@@ -103,10 +103,10 @@ namespace {
     using snd_str_t = decltype(ex::just_error(std::string{}));
     using snd_tr_just_t = decltype(ex::transfer_just(error_scheduler{}));
 
-    using err_types_eptr = stdexec::__error_types_of_t<snd_eptr_t>;
-    using err_types_ec = stdexec::__error_types_of_t<snd_ec_t>;
-    using err_types_str = stdexec::__error_types_of_t<snd_str_t>;
-    using err_types_tr_just = stdexec::__error_types_of_t<snd_tr_just_t>;
+    using err_types_eptr = ex::__error_types_of_t<snd_eptr_t>;
+    using err_types_ec = ex::__error_types_of_t<snd_ec_t>;
+    using err_types_str = ex::__error_types_of_t<snd_str_t>;
+    using err_types_tr_just = ex::__error_types_of_t<snd_tr_just_t>;
 
     static_assert(is_same_v<err_types_eptr, variant<exception_ptr>>);
     static_assert(is_same_v<err_types_ec, variant<error_code>>);
@@ -119,40 +119,36 @@ namespace {
     using snd_ec_t = decltype(ex::just_error(error_code{}));
     using snd_str_t = decltype(ex::just_error(std::string{}));
 
-    using set_error_f = stdexec::__q<set_error_sig>;
-    using tr = stdexec::__transform<set_error_f>;
+    using set_error_f = ex::__q<set_error_sig>;
+    using tr = ex::__transform<set_error_f>;
 
-    using sig_eptr = stdexec::__error_types_of_t<snd_eptr_t, ex::empty_env, tr>;
-    using sig_ec = stdexec::__error_types_of_t<snd_ec_t, ex::empty_env, tr>;
-    using sig_str = stdexec::__error_types_of_t<snd_str_t, ex::empty_env, tr>;
+    using sig_eptr = ex::__error_types_of_t<snd_eptr_t, ex::empty_env, tr>;
+    using sig_ec = ex::__error_types_of_t<snd_ec_t, ex::empty_env, tr>;
+    using sig_str = ex::__error_types_of_t<snd_str_t, ex::empty_env, tr>;
 
-    static_assert(is_same_v<sig_eptr, stdexec::__types<ex::set_error_t(exception_ptr)>>);
-    static_assert(is_same_v<sig_ec, stdexec::__types<ex::set_error_t(error_code)>>);
-    static_assert(is_same_v<sig_str, stdexec::__types<ex::set_error_t(string)>>);
+    static_assert(is_same_v<sig_eptr, ex::__types<ex::set_error_t(exception_ptr)>>);
+    static_assert(is_same_v<sig_ec, ex::__types<ex::set_error_t(error_code)>>);
+    static_assert(is_same_v<sig_str, ex::__types<ex::set_error_t(string)>>);
   }
 
-  template <typename CS, typename ExpectedValTypes>
+  template <class CS, class... Expected>
   void expect_val_types() {
-    using t = stdexec::__gather_signal<
-      stdexec::set_value_t,
-      CS,
-      stdexec::__q<stdexec::__types>,
-      stdexec::__q<stdexec::__types>>;
-    static_assert(is_same_v<t, ExpectedValTypes>);
+    using expected_t = ex::__mmake_set<Expected...>;
+    using actual_t =
+      ex::__gather_completions<ex::set_value_t, CS, ex::__q<ex::__types>, ex::__q<ex::__mset>>;
+    static_assert(ex::__mset_eq<actual_t, expected_t>);
   }
 
-  template <typename CS, typename ExpectedErrTypes>
+  template <class CS, class... Expected>
   void expect_err_types() {
-    using t = stdexec::__gather_signal<
-      stdexec::set_error_t,
-      CS,
-      stdexec::__q<stdexec::__midentity>,
-      stdexec::__q<stdexec::__types>>;
-    static_assert(is_same_v<t, ExpectedErrTypes>);
+    using expected_t = ex::__mmake_set<Expected...>;
+    using actual_t =
+      ex::__gather_completions<ex::set_error_t, CS, ex::__q<ex::__midentity>, ex::__q<ex::__mset>>;
+    static_assert(ex::__mset_eq<actual_t, expected_t>);
   }
 
   TEST_CASE(
-    "make_completion_signatures can replicate the completion signatures of input senders",
+    "transform_completion_signatures_of can replicate the completion signatures of input senders",
     "[detail][completion_signatures]") {
     using snd_int_t = decltype(ex::just(0));
     using snd_double_char_t = decltype(ex::just(3.14, 'p'));
@@ -160,27 +156,27 @@ namespace {
     using snd_ec_t = decltype(ex::just_error(error_code{}));
     using snd_stopped_t = decltype(ex::just_stopped());
 
-    using cs_int = ex::make_completion_signatures<snd_int_t>;
-    using cs_double_char = ex::make_completion_signatures<snd_double_char_t>;
-    using cs_eptr = ex::make_completion_signatures<snd_eptr_t>;
-    using cs_ec = ex::make_completion_signatures<snd_ec_t>;
-    using cs_stopped = ex::make_completion_signatures<snd_stopped_t>;
+    using cs_int = ex::transform_completion_signatures_of<snd_int_t>;
+    using cs_double_char = ex::transform_completion_signatures_of<snd_double_char_t>;
+    using cs_eptr = ex::transform_completion_signatures_of<snd_eptr_t>;
+    using cs_ec = ex::transform_completion_signatures_of<snd_ec_t>;
+    using cs_stopped = ex::transform_completion_signatures_of<snd_stopped_t>;
 
-    expect_val_types<cs_int, stdexec::__types<stdexec::__types<int>>>();
-    expect_val_types<cs_double_char, stdexec::__types<stdexec::__types<double, char>>>();
-    expect_val_types<cs_eptr, stdexec::__types<>>();
-    expect_val_types<cs_ec, stdexec::__types<>>();
-    expect_val_types<cs_stopped, stdexec::__types<>>();
+    expect_val_types<cs_int, ex::__types<int>>();
+    expect_val_types<cs_double_char, ex::__types<double, char>>();
+    expect_val_types<cs_eptr>();
+    expect_val_types<cs_ec>();
+    expect_val_types<cs_stopped>();
 
-    expect_err_types<cs_int, stdexec::__types<>>();
-    expect_err_types<cs_double_char, stdexec::__types<>>();
-    expect_err_types<cs_eptr, stdexec::__types<exception_ptr>>();
-    expect_err_types<cs_ec, stdexec::__types<error_code>>();
-    expect_err_types<cs_stopped, stdexec::__types<>>();
+    expect_err_types<cs_int>();
+    expect_err_types<cs_double_char>();
+    expect_err_types<cs_eptr, exception_ptr>();
+    expect_err_types<cs_ec, error_code>();
+    expect_err_types<cs_stopped>();
   }
 
   TEST_CASE(
-    "make_completion_signatures with empty_env can replicate the completion signatures of "
+    "transform_completion_signatures_of with empty_env can replicate the completion signatures of "
     "input "
     "senders",
     "[detail][completion_signatures]") {
@@ -190,56 +186,56 @@ namespace {
     using snd_ec_t = decltype(ex::just_error(error_code{}));
     using snd_stopped_t = decltype(ex::just_stopped());
 
-    using cs_int = ex::make_completion_signatures<snd_int_t, ex::empty_env>;
-    using cs_double_char = ex::make_completion_signatures<snd_double_char_t, ex::empty_env>;
-    using cs_eptr = ex::make_completion_signatures<snd_eptr_t, ex::empty_env>;
-    using cs_ec = ex::make_completion_signatures<snd_ec_t, ex::empty_env>;
-    using cs_stopped = ex::make_completion_signatures<snd_stopped_t, ex::empty_env>;
+    using cs_int = ex::transform_completion_signatures_of<snd_int_t, ex::empty_env>;
+    using cs_double_char = ex::transform_completion_signatures_of<snd_double_char_t, ex::empty_env>;
+    using cs_eptr = ex::transform_completion_signatures_of<snd_eptr_t, ex::empty_env>;
+    using cs_ec = ex::transform_completion_signatures_of<snd_ec_t, ex::empty_env>;
+    using cs_stopped = ex::transform_completion_signatures_of<snd_stopped_t, ex::empty_env>;
 
-    expect_val_types<cs_int, stdexec::__types<stdexec::__types<int>>>();
-    expect_val_types<cs_double_char, stdexec::__types<stdexec::__types<double, char>>>();
-    expect_val_types<cs_eptr, stdexec::__types<>>();
-    expect_val_types<cs_ec, stdexec::__types<>>();
-    expect_val_types<cs_stopped, stdexec::__types<>>();
+    expect_val_types<cs_int, ex::__types<int>>();
+    expect_val_types<cs_double_char, ex::__types<double, char>>();
+    expect_val_types<cs_eptr>();
+    expect_val_types<cs_ec>();
+    expect_val_types<cs_stopped>();
 
-    expect_err_types<cs_int, stdexec::__types<>>();
-    expect_err_types<cs_double_char, stdexec::__types<>>();
-    expect_err_types<cs_eptr, stdexec::__types<exception_ptr>>();
-    expect_err_types<cs_ec, stdexec::__types<error_code>>();
-    expect_err_types<cs_stopped, stdexec::__types<>>();
+    expect_err_types<cs_int>();
+    expect_err_types<cs_double_char>();
+    expect_err_types<cs_eptr, exception_ptr>();
+    expect_err_types<cs_ec, error_code>();
+    expect_err_types<cs_stopped>();
   }
 
   TEST_CASE(
-    "make_completion_signatures can add other error signatures",
+    "transform_completion_signatures_of can add other error signatures",
     "[detail][completion_signatures]") {
     using snd_double_t = decltype(ex::just_error(std::exception_ptr{}));
-    using cs_with_ec = ex::make_completion_signatures<
+    using cs_with_ec = ex::transform_completion_signatures_of<
       snd_double_t,
       ex::empty_env,
       ex::completion_signatures<ex::set_error_t(error_code)>>;
 
-    expect_val_types<cs_with_ec, stdexec::__types<>>();
-    expect_err_types<cs_with_ec, stdexec::__types<error_code, exception_ptr>>();
+    expect_val_types<cs_with_ec>();
+    expect_err_types<cs_with_ec, error_code, exception_ptr>();
   }
 
   TEST_CASE(
-    "make_completion_signatures can add other error signatures, but will dedup them",
+    "transform_completion_signatures_of can add other error signatures, but will dedup them",
     "[detail][completion_signatures]") {
     using snd_double_t = decltype(ex::just(3.14));
-    using cs_with_ec = ex::make_completion_signatures<
+    using cs_with_ec = ex::transform_completion_signatures_of<
       snd_double_t,
       ex::empty_env,
       ex::completion_signatures<ex::set_error_t(exception_ptr)>>;
 
     // exception_ptr appears only once
-    expect_err_types<cs_with_ec, stdexec::__types<exception_ptr>>();
+    expect_err_types<cs_with_ec, exception_ptr>();
   }
 
   TEST_CASE(
-    "make_completion_signatures can add other value signatures",
+    "transform_completion_signatures_of can add other value signatures",
     "[detail][completion_signatures]") {
     using snd_double_t = decltype(ex::just(3.14));
-    using cs = ex::make_completion_signatures<
+    using cs = ex::transform_completion_signatures_of<
       snd_double_t,
       ex::empty_env,
       ex::completion_signatures< //
@@ -248,7 +244,7 @@ namespace {
         >>;
 
     // will add int, double will appear only once
-    expect_val_types<cs, stdexec::__types<stdexec::__types<int>, stdexec::__types<double>>>();
+    expect_val_types<cs, ex::__types<int>, ex::__types<double>>();
   }
 
   template <class... Args>
@@ -258,10 +254,10 @@ namespace {
   using optional_set_error_sig = ex::completion_signatures<ex::set_error_t(optional<Err>)>;
 
   TEST_CASE(
-    "make_completion_signatures can transform value types signatures",
+    "transform_completion_signatures_of can transform value types signatures",
     "[detail][completion_signatures]") {
     using snd_double_t = decltype(ex::just(3.14));
-    using cs = ex::make_completion_signatures<
+    using cs = ex::transform_completion_signatures_of<
       snd_double_t,
       ex::empty_env,
       ex::completion_signatures< //
@@ -273,46 +269,44 @@ namespace {
 
     // will transform the original "double" into <string, double>
     // then will add the other "int" and "double"
-    expect_val_types<
-      cs,
-      stdexec::
-        __types<stdexec::__types<int>, stdexec::__types<double>, stdexec::__types<string, double>>>();
+    expect_val_types<cs, ex::__types<int>, ex::__types<double>, ex::__types<string, double>>();
   }
 
   TEST_CASE(
-    "make_completion_signatures can transform error types signatures",
+    "transform_completion_signatures_of can transform error types signatures",
     "[detail][completion_signatures]") {
-    using snd_double_t = decltype(ex::just_error(std::exception_ptr{}));
-    using cs = ex::make_completion_signatures<
-      snd_double_t,
+    using snd_eptr_t = decltype(ex::just_error(std::exception_ptr{}));
+    using cs = ex::transform_completion_signatures_of<
+      snd_eptr_t,
       ex::empty_env,
-      ex::completion_signatures<                  //
-        ex::set_error_t(error_code)               //
-        >,                                        //
-      stdexec::__compl_sigs::__default_set_value, //
+      ex::completion_signatures<       //
+        ex::set_error_t(error_code)    //
+        >,                             //
+      ex::__sigs::__default_set_value, //
       optional_set_error_sig>;
 
     // will transform the original "exception_ptr" into optional<exception_ptr>
     // then will add the other "error_code" as specified in the additional signatures
-    expect_err_types<cs, stdexec::__types<error_code, optional<exception_ptr>>>();
+    expect_err_types<cs, error_code, optional<exception_ptr>>();
   }
 
-  template <template <class...> class Variant = stdexec::__types>
-  using my_error_types = Variant<exception_ptr>;
-
   TEST_CASE("error_types_of_t can be used to get error types", "[detail][completion_signatures]") {
-    using snd_t = decltype(ex::transfer_just(inline_scheduler{}, 1));
-    using err_t = ex::error_types_of_t<snd_t, ex::empty_env, stdexec::__types>;
-    static_assert(is_same_v<err_t, stdexec::__types<>>);
+    using snd_t = decltype(ex::when_all(
+      ex::just_error(std::error_code{}), ex::just_error(std::exception_ptr{})));
+    using actual_t = ex::error_types_of_t<snd_t, ex::empty_env, ex::__mset>;
+    using expected_t = ex::__mset<std::error_code, std::exception_ptr>;
+    static_assert(ex::__mset_eq<actual_t, expected_t>);
   }
 
   TEST_CASE(
     "regression: error_types_of_t can be used to transform error types",
     "[detail][completion_signatures]") {
-    using tr = stdexec::__transform<stdexec::__q<set_error_sig>>;
+    using tr = ex::__transform<ex::__q<optional>, ex::__q<ex::__mset>>;
 
-    using snd_t = decltype(ex::transfer_just(inline_scheduler{}, 1));
-    using err_t = ex::error_types_of_t<snd_t, ex::empty_env, tr::template __f>;
-    static_assert(is_same_v<err_t, stdexec::__types<>>);
+    using snd_t = decltype(ex::when_all(
+      ex::just_error(std::error_code{}), ex::just_error(std::exception_ptr{})));
+    using actual_t = ex::error_types_of_t<snd_t, ex::empty_env, tr::__f>;
+    using expected_t = ex::__mset<optional<std::error_code>, optional<std::exception_ptr>>;
+    static_assert(ex::__mset_eq<actual_t, expected_t>);
   }
 } // namespace

@@ -42,14 +42,14 @@ namespace stdexec {
     using __into_variant_result_t = value_types_of_t<_Sender, _Env>;
 
     template <class _Sender, class _Env>
-    using __variant_t = __try_value_types_of_t<_Sender, _Env>;
+    using __variant_t = __value_types_of_t<_Sender, _Env>;
 
     template <class _Variant>
     using __variant_completions =
       completion_signatures<set_value_t(_Variant), set_error_t(std::exception_ptr)>;
 
     template <class _Sender, class _Env>
-    using __compl_sigs = //
+    using __sigs = //
       __try_make_completion_signatures<
         _Sender,
         _Env,
@@ -101,7 +101,7 @@ namespace stdexec {
 
       static constexpr auto get_completion_signatures =       //
         []<class _Self, class _Env>(_Self&&, _Env&&) noexcept //
-        -> __compl_sigs<__child_of<_Self>, _Env> {
+        -> __sigs<__child_of<_Self>, _Env> {
         static_assert(sender_expr_for<_Self, into_variant_t>);
         return {};
       };

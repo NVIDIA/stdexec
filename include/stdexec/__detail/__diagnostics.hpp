@@ -45,6 +45,10 @@ namespace stdexec {
     struct _WITH_SENDERS_;
   } // namespace __errs
 
+  struct _WHERE_;
+
+  struct _IN_ALGORITHM_;
+
   template <__mstring _Diagnostic = __errs::__unrecognized_sender_type_diagnostic>
   struct _UNRECOGNIZED_SENDER_TYPE_;
 
@@ -74,6 +78,8 @@ namespace stdexec {
 
   template <class _Tag>
   struct _WITH_QUERY_;
+
+  struct _SENDER_TYPE_IS_NOT_COPYABLE_;
 
   inline constexpr __mstring __not_callable_diag =
     "The specified function is not callable with the arguments provided."_mstr;

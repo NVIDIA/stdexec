@@ -138,7 +138,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
 
         static constexpr std::size_t value = //
-          __v<__gather_completions_for<
+          __v<__gather_completions_of<
             set_value_t,
             Sender,
             env_of_t<Receiver>,
@@ -156,7 +156,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <class Self, class Env>
       using __error_completions_t = //
-        __concat_completion_signatures_t<
+        __meval<
+          __concat_completion_signatures,
           __with_error_invoke_t<
             set_value_t,
             Fun,

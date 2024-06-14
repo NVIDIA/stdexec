@@ -263,15 +263,13 @@ namespace {
   TEST_CASE(
     "let_value has the values_type corresponding to the given values",
     "[adaptors][let_value]") {
-    check_val_types<type_array<type_array<int>>>(ex::just() | ex::let_value([] {
-                                                   return ex::just(7);
-                                                 }));
-    check_val_types<type_array<type_array<double>>>(ex::just() | ex::let_value([] {
-                                                      return ex::just(3.14);
-                                                    }));
-    check_val_types<type_array<type_array<std::string>>>(ex::just() | ex::let_value([] {
-                                                           return ex::just(std::string{"hello"});
-                                                         }));
+    check_val_types<ex::__mset<pack<int>>>(ex::just() | ex::let_value([] { return ex::just(7); }));
+    check_val_types<ex::__mset<pack<double>>>(ex::just() | ex::let_value([] {
+                                                return ex::just(3.14);
+                                              }));
+    check_val_types<ex::__mset<pack<std::string>>>(ex::just() | ex::let_value([] {
+                                                     return ex::just(std::string{"hello"});
+                                                   }));
   }
 
   TEST_CASE("let_value keeps error_types from input sender", "[adaptors][let_value]") {
@@ -279,18 +277,18 @@ namespace {
     error_scheduler sched2{};
     error_scheduler<int> sched3{43};
 
-    check_err_types<type_array<std::exception_ptr>>( //
+    check_err_types<ex::__mset<std::exception_ptr>>( //
       ex::transfer_just(sched1) | ex::let_value([] { return ex::just(); }));
-    check_err_types<type_array<std::exception_ptr>>( //
+    check_err_types<ex::__mset<std::exception_ptr>>( //
       ex::transfer_just(sched2) | ex::let_value([] { return ex::just(); }));
-    check_err_types<type_array<int, std::exception_ptr>>( //
+    check_err_types<ex::__mset<int, std::exception_ptr>>( //
       ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
 
-    check_err_types<type_array<>>( //
+    check_err_types<ex::__mset<>>( //
       ex::transfer_just(sched1) | ex::let_value([]() noexcept { return ex::just(); }));
-    check_err_types<type_array<std::exception_ptr>>( //
+    check_err_types<ex::__mset<std::exception_ptr>>( //
       ex::transfer_just(sched2) | ex::let_value([]() noexcept { return ex::just(); }));
-    check_err_types<type_array<int>>( //
+    check_err_types<ex::__mset<int>>( //
       ex::transfer_just(sched3) | ex::let_value([]() noexcept { return ex::just(); }));
   }
 
@@ -355,7 +353,7 @@ namespace {
     "let_value does not add std::exception_ptr even if the receiver is bad",
     "[adaptors][let_value]") {
     auto snd = ex::let_value(ex::just(), []() noexcept { return ex::just(); });
-    check_err_types<type_array<>>(snd);
+    check_err_types<ex::__mset<>>(snd);
     bool completed{false};
     auto op = ex::connect(std::move(snd), bad_receiver{completed}); // should compile
     ex::start(op);

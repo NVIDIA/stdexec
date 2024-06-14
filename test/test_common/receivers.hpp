@@ -112,11 +112,7 @@ namespace {
       , env_(std::move(other.env_)) {
     }
 
-    base_expect_receiver& operator=(base_expect_receiver&& other) {
-      called_.store(other.called_.exchange(true));
-      env_ = std::move(other.env_);
-      return *this;
-    }
+    base_expect_receiver& operator=(base_expect_receiver&& other) = delete;
 
     void set_called() {
       called_.store(true);
@@ -190,8 +186,7 @@ namespace {
       , values_(std::move(vals)...) {
     }
 
-    void set_value(const Ts&... vals) //
-      noexcept {
+    void set_value(const Ts&... vals) noexcept {
       CHECK(values_ == std::tie(vals...));
       this->set_called();
     }

@@ -1204,7 +1204,7 @@ namespace exec {
 
       template <auto... _SchedulerQueries>
       class any_scheduler {
-        using __schedule_completions = stdexec::__concat_completion_signatures_t<
+        using __schedule_completions = stdexec::__concat_completion_signatures<
           _Completions,
           stdexec::completion_signatures<stdexec::set_value_t()>>;
         using __schedule_receiver = any_receiver_ref<__schedule_completions, _ReceiverQueries...>;

@@ -36,7 +36,7 @@ namespace exec {
     using __mall_contained_in = __mapply<__mall_contained_in_impl<_Haystack>, _Needles>;
 
     template <class _Needles, class _Haystack>
-    concept __all_contained_in = __mall_contained_in<_Needles, _Haystack>::value;
+    concept __all_contained_in = __v<__mall_contained_in<_Needles, _Haystack>>;
 
     // This concept checks if a given sender satisfies the requirements to be returned from `set_next`.
     template <class _Sender, class _Env = empty_env>
@@ -243,46 +243,40 @@ namespace exec {
     stdexec::receiver<_Receiver> && //
     __sequence_receiver_of<_Receiver, _SequenceItems>;
 
-  template <class _Items, class _Env>
-  using __concat_item_signatures_t = stdexec::__mapply<
-    stdexec::__q<stdexec::__concat_completion_signatures_t>,
-    stdexec::__mapply<
-      stdexec::__transform<stdexec::__mbind_back_q<stdexec::completion_signatures_of_t, _Env>>,
-      _Items>>;
-
   template <class _Completions>
-  using __gather_error_signals = stdexec::__only_gather_signal<stdexec::set_error_t, _Completions>;
-
-  template <class _Completions>
-  using __gather_stopped_signals =
-    stdexec::__only_gather_signal<stdexec::set_stopped_t, _Completions>;
-
-  template <class _Completions>
-  using __to_sequence_completions_t = stdexec::__concat_completion_signatures_t<
-    stdexec::completion_signatures<stdexec::set_value_t()>,
-    __gather_error_signals<_Completions>,
-    __gather_stopped_signals<_Completions>>;
+  using __to_sequence_completions_t = //
+    stdexec::__transform_completion_signatures<
+      _Completions,
+      stdexec::__mconst<stdexec::completion_signatures<stdexec::set_value_t()>>::__f,
+      stdexec::__sigs::__default_set_error,
+      stdexec::completion_signatures<stdexec::set_stopped_t()>,
+      stdexec::__concat_completion_signatures>;
 
   template <class _Sender, class _Env>
-  using __to_sequence_completion_signatures = stdexec::make_completion_signatures<
-    _Sender,
-    _Env,
-    stdexec::completion_signatures<stdexec::set_value_t()>,
-    stdexec::__mconst<stdexec::completion_signatures<>>::__f>;
-
+  using __item_completion_signatures = //
+    stdexec::transform_completion_signatures_of<
+      _Sender,
+      _Env,
+      stdexec::completion_signatures<stdexec::set_value_t()>,
+      stdexec::__mconst<stdexec::completion_signatures<>>::__f>;
 
   template <class _Sequence, class _Env>
-  using __sequence_completion_signatures_of_t = stdexec::__concat_completion_signatures_t<
+  using __sequence_completion_signatures = //
     stdexec::__try_make_completion_signatures<
       _Sequence,
       _Env,
       stdexec::completion_signatures<stdexec::set_value_t()>,
-      stdexec::__mconst<stdexec::completion_signatures<>>>,
+      stdexec::__mconst<stdexec::completion_signatures<>>>;
+
+  template <class _Sequence, class _Env>
+  using __sequence_completion_signatures_of_t = //
     stdexec::__mapply<
-      stdexec::__q<stdexec::__concat_completion_signatures_t>,
-      stdexec::__mapply<
-        stdexec::__transform<stdexec::__mbind_back_q<__to_sequence_completion_signatures, _Env>>,
-        item_types_of_t<_Sequence, _Env>>>>;
+      stdexec::__transform<
+        stdexec::__mbind_back_q<__item_completion_signatures, _Env>,
+        stdexec::__mbind_back<
+          stdexec::__mtry_q<stdexec::__concat_completion_signatures>,
+          __sequence_completion_signatures<_Sequence, _Env>>>,
+      item_types_of_t<_Sequence, _Env>>;
 
   template <class _Receiver, class _Sender>
   concept sequence_receiver_from =                                                             //

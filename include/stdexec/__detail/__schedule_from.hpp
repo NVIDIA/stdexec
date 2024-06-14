@@ -27,15 +27,17 @@
 #include "__schedulers.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__tuple.hpp"
-
-#include <variant>
+#include "__variant.hpp"
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.schedule_from]
   namespace __schfr {
     template <class... _Ts>
-    using __value_tuple = __tup::__tuple_for<__decay_t<_Ts>...>;
+    using __tuple_t = __tuple_for<__decay_t<_Ts>...>;
+
+    template <class... _Ts>
+    using __variant_t = __variant_for<__monostate, _Ts...>;
 
     // Compute a variant type that is capable of storing the results of the
     // input sender when it completes. The variant has type:
@@ -50,70 +52,86 @@ namespace stdexec {
     //        ...
     //   >
     template <class _CvrefSender, class _Env>
-    using __variant_for_t = __compl_sigs::__maybe_for_all_sigs<
-      __completion_signatures_of_t<_CvrefSender, _Env>,
-      __q<__value_tuple>,
-      __nullable_variant_t>;
+    using __variant_for = //
+      __for_each_completion_signature<
+        __completion_signatures_of_t<_CvrefSender, _Env>,
+        __tuple_t,
+        __munique<__qq<__variant_for>>::__f>;
 
-    template <class _Tag>
-    using __decay_signature =
-      __transform<__q<__decay_t>, __mcompose<__q<completion_signatures>, __qf<_Tag>>>;
+    template <class... _Values>
+    using __decay_value_sig = set_value_t (*)(__decay_t<_Values>...);
+
+    template <class _Error>
+    using __decay_error_sig = set_error_t (*)(__decay_t<_Error>);
 
     template <class... _Ts>
-    using __all_nothrow_decay_copyable_ = __mbool<(__nothrow_decay_copyable<_Ts> && ...)>;
+    using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Ts> && ...)>;
 
     template <class _CvrefSender, class _Env>
-    using __all_values_and_errors_nothrow_decay_copyable = //
-      __compl_sigs::__maybe_for_all_sigs<
+    using __all_nothrow_decay_copyable_results = //
+      __for_each_completion_signature<
         __completion_signatures_of_t<_CvrefSender, _Env>,
-        __q<__all_nothrow_decay_copyable_>,
-        __q<__mand>>;
+        __all_nothrow_decay_copyable,
+        __mand_t>;
 
     template <class _CvrefSender, class _Env>
     using __with_error_t = //
-      __if<
-        __all_values_and_errors_nothrow_decay_copyable<_CvrefSender, _Env>,
-        completion_signatures<>,
-        __with_exception_ptr>;
+      __eptr_completion_if_t<__all_nothrow_decay_copyable_results<_CvrefSender, _Env>>;
 
     template <class _Scheduler, class _CvrefSender, class _Env>
     using __completions_t = //
-      __try_make_completion_signatures<
-        _CvrefSender,
-        _Env,
+      __mtry_q<__concat_completion_signatures>::__f<
+        __transform_completion_signatures<
+          __completion_signatures_of_t<_CvrefSender, _Env>,
+          __decay_value_sig,
+          __decay_error_sig,
+          set_stopped_t (*)(),
+          __completion_signature_ptrs>,
         __try_make_completion_signatures<
           schedule_result_t<_Scheduler>,
           _Env,
-          __with_error_t<_CvrefSender, _Env>,
-          __mconst<completion_signatures<>>>,
-        __decay_signature<set_value_t>,
-        __decay_signature<set_error_t>>;
+          __eptr_completion_if_t<__all_nothrow_decay_copyable_results<_CvrefSender, _Env>>,
+          __mconst<completion_signatures<>>>>;
 
     template <class _SchedulerId>
     struct __environ {
       using _Scheduler = stdexec::__t<_SchedulerId>;
 
-      struct __t
-        : __env::__with<
-            stdexec::__t<_SchedulerId>,
-            get_completion_scheduler_t<set_value_t>,
-            get_completion_scheduler_t<set_stopped_t>> {
+      struct __t {
         using __id = __environ;
 
-        explicit __t(_Scheduler __sched) noexcept
-          : __t::__with{std::move(__sched)} {
+        _Scheduler __sched_;
+
+        template <__one_of<set_value_t, set_stopped_t> _Tag>
+        auto query(get_completion_scheduler_t<_Tag>) const noexcept {
+          return __sched_;
         }
 
-        using __t::__with::query;
-
         auto query(get_domain_t) const noexcept {
-          return query_or(get_domain, this->__value_, default_domain());
+          return query_or(get_domain, __sched_, default_domain());
         }
       };
     };
 
     template <class _Scheduler, class _Sexpr, class _Receiver>
     struct __state;
+
+    template <class _State>
+    STDEXEC_ATTRIBUTE((always_inline))
+    auto
+      __make_visitor_fn(_State* __state) noexcept {
+      return [__state]<class _Tup>(_Tup& __tupl) noexcept -> void {
+        if constexpr (__same_as<_Tup, __monostate>) {
+          std::terminate(); // reaching this indicates a bug in schedule_from
+        } else {
+          __tupl.apply(
+            [&]<class... _Args>(auto __tag, _Args&... __args) noexcept -> void {
+              __tag(std::move(__state->__receiver()), static_cast<_Args&&>(__args)...);
+            },
+            __tupl);
+        }
+      };
+    }
 
     // This receiver is to be completed on the execution context associated with the scheduler. When
     // the source sender completes, the completion information is saved off in the operation state
@@ -124,24 +142,7 @@ namespace stdexec {
       using receiver_concept = receiver_t;
 
       void set_value() noexcept {
-        STDEXEC_ASSERT(!__state_->__data_.valueless_by_exception());
-        // Work around a but in nvc++:
-        using __receiver_t = _Receiver;
-        std::visit(
-          [__state = __state_]<class _Tup>(_Tup& __tupl) noexcept -> void {
-            if constexpr (__same_as<_Tup, std::monostate>) {
-              std::terminate(); // reaching this indicates a bug in schedule_from
-            } else {
-              __tup::__apply(
-                [&]<class... _Args>(auto __tag, _Args&... __args) noexcept -> void {
-                  __tag(
-                    static_cast<__receiver_t&&>(__state->__receiver()),
-                    static_cast<_Args&&>(__args)...);
-                },
-                __tupl);
-            }
-          },
-          __state_->__data_);
+        __state_->__data_.visit(__schfr::__make_visitor_fn(__state_), __state_->__data_);
       }
 
       template <class _Error>
@@ -165,7 +166,7 @@ namespace stdexec {
     struct __state
       : __enable_receiver_from_this<_Sexpr, _Receiver>
       , __immovable {
-      using __variant_t = __variant_for_t<__child_of<_Sexpr>, env_of_t<_Receiver>>;
+      using __variant_t = __variant_for<__child_of<_Sexpr>, env_of_t<_Receiver>>;
       using __receiver2_t = __receiver2<_Scheduler, _Sexpr, _Receiver>;
 
       __variant_t __data_;
@@ -226,23 +227,16 @@ namespace stdexec {
           __ignore,
           _State& __state,
           _Receiver& __rcvr,
-          _Tag,
+          _Tag __tag,
           _Args&&... __args) noexcept -> void {
         STDEXEC_APPLE_CLANG(__state.__self_ == &__state ? void() : std::terminate());
         // Write the tag and the args into the operation state so that we can forward the completion
         // from within the scheduler's execution context.
-        using __result = __value_tuple<_Tag, _Args...>;
-        constexpr bool __nothrow_ = noexcept(__result{{_Tag()}, {static_cast<_Args&&>(__args)}...});
-
-        auto __emplace_result = [&]() noexcept(__nothrow_) {
-          return __result{{_Tag()}, {static_cast<_Args&&>(__args)}...};
-        };
-
-        if constexpr (__nothrow_) {
-          __state.__data_.template emplace<__result>(__conv{__emplace_result});
+        if constexpr (__nothrow_callable<__tup::__mktuple_t, _Tag, _Args...>) {
+          __state.__data_.emplace_from(__tup::__mktuple, __tag, static_cast<_Args&&>(__args)...);
         } else {
           try {
-            __state.__data_.template emplace<__result>(__conv{__emplace_result});
+            __state.__data_.emplace_from(__tup::__mktuple, __tag, static_cast<_Args&&>(__args)...);
           } catch (...) {
             stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
             return;

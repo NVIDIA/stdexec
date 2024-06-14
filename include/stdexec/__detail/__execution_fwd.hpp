@@ -127,20 +127,20 @@ namespace stdexec {
     __call_result_t<get_completion_scheduler_t<_CPO>, env_of_t<const _Sender&>>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __compl_sigs {
+  namespace __sigs {
     template <class _Sig>
     inline constexpr bool __is_compl_sig = false;
 
     struct get_completion_signatures_t;
-  } // namespace __compl_sigs
+  } // namespace __sigs
 
   template <class _Sig>
-  concept __completion_signature = __compl_sigs::__is_compl_sig<_Sig>;
+  concept __completion_signature = __sigs::__is_compl_sig<_Sig>;
 
-  template <__completion_signature... _Sigs>
+  template <class... _Sigs>
   struct completion_signatures;
 
-  using __compl_sigs::get_completion_signatures_t;
+  using __sigs::get_completion_signatures_t;
   extern const get_completion_signatures_t get_completion_signatures;
 
   template <class _Sender, class... _Env>
@@ -265,8 +265,8 @@ namespace stdexec {
 
 template <class...>
 [[deprecated]]
-void print() {
+void __print() {
 }
 
-template <class>
-struct undef;
+template <class...>
+struct __undef;
