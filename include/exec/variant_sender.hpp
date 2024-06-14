@@ -50,8 +50,9 @@ namespace exec {
     template <class... _SenderIds>
     struct __sender {
       template <class _Self, class _Env>
-      using __completion_signatures_t = __concat_completion_signatures_t<
-        __completion_signatures_of_t<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Env>...>;
+      using __completion_signatures_t = //
+        __mtry_q<stdexec::__concat_completion_signatures>::__f<
+          __completion_signatures_of_t<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Env>...>;
 
       template <class _Self, class _Receiver>
       struct __visitor {

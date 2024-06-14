@@ -30,6 +30,7 @@ namespace exec {
       class __t {
        public:
         using receiver_concept = stdexec::receiver_t;
+        using __id = __receiver;
 
         __t(_Receiver&& __upstream)
           : __upstream_{static_cast<_Receiver&&>(__upstream)} {
@@ -70,6 +71,7 @@ namespace exec {
       class __t {
        public:
         using sender_concept = stdexec::sender_t;
+        using __id = __sender;
 
         template <__decays_to<_Sender> _Sndr>
         __t(_Sndr&& __sender)
@@ -94,17 +96,17 @@ namespace exec {
         using __materialize_error = completion_signatures<set_value_t(set_error_t, _Err)>;
 
         template <class _Env>
-        using __completion_signatures_for_t = make_completion_signatures<
-          _Sender,
-          _Env,
-          completion_signatures<>,
-          __materialize_value,
-          __materialize_error,
-          completion_signatures<set_value_t(set_stopped_t)>>;
+        using __completion_signatures_for_t = //
+          __transform_completion_signatures<
+            __completion_signatures_of_t<_Sender, _Env>,
+            __materialize_value,
+            __materialize_error,
+            completion_signatures<set_value_t(set_stopped_t)>,
+            __mappend_into_q<completion_signatures>::__f>;
 
         template <__decays_to<__t> _Self, class _Env>
-        static auto
-          get_completion_signatures(_Self&&, _Env) -> __completion_signatures_for_t<_Env> {
+        static auto get_completion_signatures(_Self&&, _Env&&) //
+          -> __completion_signatures_for_t<_Env> {
           return {};
         }
 
@@ -140,6 +142,7 @@ namespace exec {
       class __t {
        public:
         using receiver_concept = stdexec::receiver_t;
+        using __id = __receiver;
 
         __t(_Receiver&& __upstream)
           : __upstream_{static_cast<_Receiver&&>(__upstream)} {
@@ -179,6 +182,7 @@ namespace exec {
       class __t {
        public:
         using sender_concept = stdexec::sender_t;
+        using __id = __sender;
 
         template <__decays_to<_Sender> _Sndr>
         __t(_Sndr&& __sndr) noexcept(__nothrow_decay_copyable<_Sndr>)
@@ -201,12 +205,15 @@ namespace exec {
         using __dematerialize_value = completion_signatures<__decay_t<_Tag>(_Args...)>;
 
         template <class _Env>
-        using __completion_signatures_for_t =
-          make_completion_signatures<_Sender, _Env, completion_signatures<>, __dematerialize_value>;
+        using __completion_signatures_for_t = __try_make_completion_signatures<
+          _Sender,
+          _Env,
+          completion_signatures<>,
+          __q<__dematerialize_value>>;
 
         template <__decays_to<__t> _Self, class _Env>
-        static auto
-          get_completion_signatures(_Self&&, _Env) -> __completion_signatures_for_t<_Env> {
+        static auto get_completion_signatures(_Self&&, _Env&&) //
+          -> __completion_signatures_for_t<_Env> {
           return {};
         }
 

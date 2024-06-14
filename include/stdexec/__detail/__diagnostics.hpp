@@ -45,6 +45,10 @@ namespace stdexec {
     struct _WITH_SENDERS_;
   } // namespace __errs
 
+  struct _WHERE_;
+
+  struct _IN_ALGORITHM_;
+
   template <__mstring _Diagnostic = __errs::__unrecognized_sender_type_diagnostic>
   struct _UNRECOGNIZED_SENDER_TYPE_;
 

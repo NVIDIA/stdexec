@@ -41,7 +41,7 @@ namespace stdexec {
         _CvrefSender,
         _Env,
         __with_error_invoke_t<set_error_t, _Fun, _CvrefSender, _Env, __on_not_callable>,
-        __q<__compl_sigs::__default_set_value>,
+        __q<__sigs::__default_set_value>,
         __mbind_front<__mtry_catch_q<__set_value_invoke_t, __on_not_callable>, _Fun>>;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

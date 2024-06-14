@@ -40,19 +40,19 @@ namespace {
   }
 
   TEST_CASE("error types are properly set for just_error<int>", "[factories][just_error]") {
-    check_err_types<type_array<int>>(ex::just_error(1));
+    check_err_types<ex::__mset<int>>(ex::just_error(1));
   }
 
   TEST_CASE(
     "error types are properly set for just_error<exception_ptr>",
     "[factories][just_error]") {
     // we should not get std::exception_ptr twice
-    check_err_types<type_array<std::exception_ptr>>(ex::just_error(std::exception_ptr()));
+    check_err_types<ex::__mset<std::exception_ptr>>(ex::just_error(std::exception_ptr()));
   }
 
   TEST_CASE("value types are properly set for just_error", "[factories][just_error]") {
     // there is no variant of calling `set_value(recv)`
-    check_val_types<type_array<>>(ex::just_error(1));
+    check_val_types<ex::__mset<>>(ex::just_error(1));
   }
 
   TEST_CASE("just_error cannot call set_stopped", "[factories][just_error]") {
@@ -63,6 +63,6 @@ namespace {
     std::string str{"hello"};
     const std::string& crefstr = str;
     auto snd = ex::just_error(crefstr);
-    check_err_types<type_array<std::string>>(snd);
+    check_err_types<ex::__mset<std::string>>(snd);
   }
 } // namespace

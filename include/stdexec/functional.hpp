@@ -26,18 +26,6 @@
 #include <type_traits>
 #include <cstddef>
 
-namespace stdexec::__std_concepts {
-#if STDEXEC_HAS_STD_CONCEPTS_HEADER()
-  using std::invocable;
-#else
-  template <class _Fun, class... _As>
-  concept invocable = //
-    requires(_Fun&& __f, _As&&... __as) {
-      std::invoke(static_cast<_Fun&&>(__f), static_cast<_As&&>(__as)...);
-    };
-#endif
-} // namespace stdexec::__std_concepts
-
 namespace stdexec {
   template <class _Fun0, class _Fun1>
   struct __composed {

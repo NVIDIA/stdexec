@@ -20,6 +20,7 @@
 #include "__type_traits.hpp"
 
 #include <type_traits>
+#include <initializer_list>
 
 namespace stdexec {
   template <class...>
@@ -71,6 +72,27 @@ namespace stdexec {
     __move_only(const __move_only&) = delete;
     auto operator=(const __move_only&) -> __move_only& = delete;
   };
+
+  inline constexpr std::size_t __umax(std::initializer_list<std::size_t> __il) noexcept {
+    std::size_t __m = 0;
+    for (std::size_t __i: __il) {
+      if (__i > __m) {
+        __m = __i;
+      }
+    }
+    return __m;
+  }
+
+  template <class _Ty, class... _Ts>
+  inline constexpr std::size_t __index_of() noexcept {
+    constexpr bool __same[] = {STDEXEC_IS_SAME(_Ty, _Ts)...};
+    for (std::size_t __i = 0; __i < sizeof...(_Ts); ++__i) {
+      if (__same[__i]) {
+        return __i;
+      }
+    }
+    return ~0UL;
+  }
 
   namespace __detail {
     template <class _Cpcvref>

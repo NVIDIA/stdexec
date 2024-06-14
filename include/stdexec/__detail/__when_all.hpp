@@ -26,6 +26,7 @@
 #include "__env.hpp"
 #include "__into_variant.hpp"
 #include "__meta.hpp"
+#include "__optional.hpp"
 #include "__schedulers.hpp"
 #include "__senders.hpp"
 #include "__transform_completion_signatures.hpp"
@@ -33,14 +34,12 @@
 #include "__tuple.hpp"
 #include "__type_traits.hpp"
 #include "__utility.hpp"
+#include "__variant.hpp"
 
 #include "../stop_token.hpp"
 
 #include <atomic>
 #include <exception>
-#include <optional>
-#include <tuple>
-#include <variant>
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
@@ -69,7 +68,7 @@ namespace stdexec {
 
     template <class _Env>
     using __env_t = //
-      decltype(__mkenv(__declval<_Env>(), __declval<inplace_stop_source&>()));
+      decltype(__when_all::__mkenv(__declval<_Env>(), __declval<inplace_stop_source&>()));
 
     template <class _Sender, class _Env>
     concept __max1_sender =
@@ -95,7 +94,7 @@ namespace stdexec {
 
     template <class _Env, class _Sender>
     using __single_values_of_t = //
-      __try_value_types_of_t<
+      __value_types_of_t<
         _Sender,
         _Env,
         __transform<__q<__decay_t>, __q<__types>>,
@@ -108,67 +107,54 @@ namespace stdexec {
         __minvoke<__mconcat<__qf<set_value_t>>, __single_values_of_t<_Env, _Senders>...>>;
 
     template <class... _Args>
-    using __all_nothrow_decay_copyable_ = __mbool<(__nothrow_decay_copyable<_Args> && ...)>;
+    using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Args> && ...)>;
 
     template <class _Env, class... _Senders>
-    using __all_nothrow_decay_copyable = //
-      __mand<__compl_sigs::__maybe_for_all_sigs<
-        __completion_signatures_of_t<_Senders, _Env>,
-        __q<__all_nothrow_decay_copyable_>,
-        __q<__mand>>...>;
+    using __all_nothrow_decay_copyable_results = //
+      __mand<                                    //
+        __for_each_completion_signature<
+          __completion_signatures_of_t<_Senders, _Env>,
+          __all_nothrow_decay_copyable,
+          __mand_t>...>;
+
+    template <class _Error>
+    using __set_error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
     template <class _Env, class... _Senders>
     using __completions_t = //
-      __concat_completion_signatures_t<
-        __if<
-          __all_nothrow_decay_copyable<_Env, _Senders...>,
-          completion_signatures<set_stopped_t()>,
-          completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr)>>,
+      __meval<              //
+        __concat_completion_signatures,
+        __meval<__eptr_completion_if_t, __all_nothrow_decay_copyable_results<_Env, _Senders...>>,
+        completion_signatures<set_stopped_t()>,
         __minvoke<
           __with_default<__mbind_front_q<__set_values_sig_t, _Env>, completion_signatures<>>,
           _Senders...>,
-        __try_make_completion_signatures<
-          _Senders,
-          _Env,
+        __transform_completion_signatures<
+          __completion_signatures_of_t<_Senders, _Env>,
+          __mconst<completion_signatures<>>::__f,
+          __set_error_t,
           completion_signatures<>,
-          __mconst<completion_signatures<>>,
-          __mcompose<__q<completion_signatures>, __qf<set_error_t>, __q<__decay_t>>>...>;
-
-    struct __not_an_error { };
-
-    struct __tie_fn {
-      template <class... _Ty>
-      auto operator()(_Ty&... __vals) noexcept -> std::tuple<_Ty&...> {
-        return std::tuple<_Ty&...>{__vals...};
-      }
-    };
+          __concat_completion_signatures>...>;
 
     template <class _Tag, class _Receiver>
     auto __complete_fn(_Tag, _Receiver& __rcvr) noexcept {
       return [&]<class... _Ts>(_Ts&... __ts) noexcept {
-        if constexpr (!__same_as<__types<_Ts...>, __types<__not_an_error>>) {
-          _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Ts&&>(__ts)...);
-        }
+        _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Ts&&>(__ts)...);
       };
     }
 
     template <class _Receiver, class _ValuesTuple>
     void __set_values(_Receiver& __rcvr, _ValuesTuple& __values) noexcept {
-      __tup::__apply(
+      __values.apply(
         [&](auto&... __opt_vals) noexcept -> void {
-          __apply(
-            __complete_fn(set_value, __rcvr), //
-            std::tuple_cat(__tup::__apply(__tie_fn{}, *__opt_vals)...));
+          __tup::__cat_apply(__when_all::__complete_fn(set_value, __rcvr), *__opt_vals...);
         },
         __values);
     }
 
-    template <class... Ts>
-    using __decayed_custom_tuple = __tup::__tuple_for<__decay_t<Ts>...>;
-
     template <class _Env, class _Sender>
     using __values_opt_tuple_t = //
-      value_types_of_t<_Sender, __env_t<_Env>, __decayed_custom_tuple, std::optional>;
+      value_types_of_t<_Sender, __env_t<_Env>, __decayed_tuple, __optional>;
 
     template <class _Env, __max1_sender<__env_t<_Env>>... _Senders>
     struct __traits {
@@ -176,29 +162,29 @@ namespace stdexec {
       using __values_tuple = //
         __minvoke<
           __with_default<
-            __transform<__mbind_front_q<__values_opt_tuple_t, _Env>, __q<__tup::__tuple_for>>,
+            __transform<__mbind_front_q<__values_opt_tuple_t, _Env>, __q<__tuple_for>>,
             __ignore>,
           _Senders...>;
 
-      using __nullable_variant_t_ = __munique<__mbind_front_q<std::variant, __not_an_error>>;
+      using __collect_errors = __mbind_front_q<__mset_insert, __mset<>>;
 
-      using __error_types = //
+      using __errors_list = //
         __minvoke<
-          __mconcat<__transform<__q<__decay_t>, __nullable_variant_t_>>,
-          error_types_of_t<_Senders, __env_t<_Env>, __types>...>;
+          __mconcat<>,
+          __if<
+            __all_nothrow_decay_copyable_results<_Env, _Senders...>,
+            __types<>,
+            __types<std::exception_ptr>>,
+          __error_types_of_t<_Senders, __env_t<_Env>, __q<__types>>...>;
 
-      using __errors_variant = //
-        __if<
-          __all_nothrow_decay_copyable<_Env, _Senders...>,
-          __error_types,
-          __minvoke<__push_back_unique<__q<std::variant>>, __error_types, std::exception_ptr>>;
+      using __errors_variant = __mapply<__q<__uniqued_variant_for>, __errors_list>;
     };
 
     struct _INVALID_ARGUMENTS_TO_WHEN_ALL_ { };
 
     template <class _ErrorsVariant, class _ValuesTuple, class _StopToken>
     struct __when_all_state {
-      using __stop_callback_t = typename _StopToken::template callback_type<__on_stop_request>;
+      using __stop_callback_t = stop_callback_for_t<_StopToken, __on_stop_request>;
 
       template <class _Receiver>
       void __arrive(_Receiver& __rcvr) noexcept {
@@ -220,9 +206,9 @@ namespace stdexec {
           }
           break;
         case __error:
-          if constexpr (!__same_as<_ErrorsVariant, std::variant<std::monostate>>) {
+          if constexpr (!__same_as<_ErrorsVariant, __variant_for<>>) {
             // One or more child operations completed with an error:
-            std::visit(__complete_fn(set_error, __rcvr), __errors_);
+            __errors_.visit(__complete_fn(set_error, __rcvr), __errors_);
           }
           break;
         case __stopped:
@@ -239,7 +225,7 @@ namespace stdexec {
       _ErrorsVariant __errors_{};
       STDEXEC_ATTRIBUTE((no_unique_address))
       _ValuesTuple __values_{};
-      std::optional<__stop_callback_t> __on_stop_{};
+      __optional<__stop_callback_t> __on_stop_{};
     };
 
     template <class _Env>
@@ -255,7 +241,7 @@ namespace stdexec {
           __started,
           _ErrorsVariant{},
           _ValuesTuple{},
-          std::nullopt};
+          __nullopt};
       };
     }
 
@@ -381,7 +367,7 @@ namespace stdexec {
           // if we're not already in the "error" or "stopped" state.
           if (__state.__state_ == __started) {
             auto& __opt_values = __tup::__get<__v<_Index>>(__state.__values_);
-            using _Tuple = __decayed_custom_tuple<_Args...>;
+            using _Tuple = __decayed_tuple<_Args...>;
             static_assert(
               __same_as<decltype(*__opt_values), _Tuple&>,
               "One of the senders in this when_all() is fibbing about what types it sends");

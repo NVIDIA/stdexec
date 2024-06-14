@@ -56,7 +56,7 @@ namespace {
     using S = decltype(snd);
     static_assert(ex::sender<S>);
     using completion_sigs = decltype(ex::get_completion_signatures(snd, ex::empty_env{}));
-    static_assert(std::same_as<completion_sigs, ex::completion_signatures<ex::set_value_t()>>);
+    static_assert(ex::__mset_eq<ex::__mset<ex::set_value_t()>, completion_sigs>);
   }
 
   template <typename R>
@@ -105,13 +105,13 @@ namespace {
       using S = decltype(s);
       static_assert(ex::sender<S>);
       using completion_sigs = decltype(ex::get_completion_signatures(s, ex::empty_env{}));
-      static_assert(std::same_as<
-                    completion_sigs,
-                    ex::completion_signatures<
+      static_assert(ex::__mset_eq<
+                    ex::__mset<
                       ex::set_error_t(std::exception_ptr),
                       ex::set_value_t(Error1),
                       ex::set_value_t(Error2),
-                      ex::set_value_t(Error4)>>);
+                      ex::set_value_t(Error4)>,
+                    completion_sigs>);
     }
 
     {
@@ -120,10 +120,9 @@ namespace {
       using S = decltype(s);
       static_assert(ex::sender<S>);
       using completion_sigs = decltype(ex::get_completion_signatures(s, ex::empty_env{}));
-      static_assert(
-        std::same_as<
-          completion_sigs,
-          ex::completion_signatures<ex::set_error_t(std::exception_ptr), ex::set_value_t(int)>>);
+      static_assert(ex::__mset_eq<
+                    ex::__mset<ex::set_error_t(std::exception_ptr), ex::set_value_t(int)>,
+                    completion_sigs>);
     }
 
     {
@@ -133,12 +132,11 @@ namespace {
       using S = decltype(s);
       static_assert(ex::sender<S>);
       using completion_sigs = decltype(ex::get_completion_signatures(s, ex::empty_env{}));
-      static_assert(std::same_as<
-                    completion_sigs,
-                    ex::completion_signatures<
-                      ex::set_error_t(std::exception_ptr),
-                      ex::set_value_t(double),
-                      ex::set_value_t(int)>>);
+      static_assert(
+        ex::__mset_eq<
+          ex::
+            __mset<ex::set_error_t(std::exception_ptr), ex::set_value_t(double), ex::set_value_t(int)>,
+          completion_sigs>);
     }
   }
 } // namespace

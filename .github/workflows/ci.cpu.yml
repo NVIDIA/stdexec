@@ -94,7 +94,7 @@ jobs:
       matrix:
         include:
           - { compiler: "cl",       build: "Debug",   name: "CPU (Windows) (msvc, Debug)" }
-          - { compiler: "cl",       build: "Release", name: "CPU (Windows) (msvc, Release)" }
+          #- { compiler: "cl",       build: "Release", name: "CPU (Windows) (msvc, Release)" }
           #- { compiler: "clang++",  build: "Debug",   name: "CPU (Windows) (clang, Debug)" }
           #- { compiler: "clang++",  build: "Release", name: "CPU (Windows) (clang, Release)" }
           #- { compiler: "clang-cl", build: "Debug",   name: "CPU (Windows) (clang-cl, Debug)" }

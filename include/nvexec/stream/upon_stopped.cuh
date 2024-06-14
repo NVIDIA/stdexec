@@ -129,8 +129,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             __copy_cvref_t<Self, Sender>,
             Env,
             __callable_error<"In nvexec::upon_stopped(Sender, Function)..."_mstr>>,
-          __q<__compl_sigs::__default_set_value>,
-          __q<__compl_sigs::__default_set_error>,
+          __q<__sigs::__default_set_value>,
+          __q<__sigs::__default_set_error>,
           __set_value_invoke_t<Fun>>;
 
       template <__decays_to<__t> Self, receiver Receiver>
