@@ -39,8 +39,8 @@ struct __async_tuple {
   struct __t {
     using __id = __async_tuple;
 
-    using __fyn_t = stdexec::__decayed_tuple<stdexec::__t<_FynId>...>;
-    using __stgn_t = stdexec::__decayed_tuple<typename stdexec::__t<_FynId>::storage...>;
+    using __fyn_t = stdexec::__decayed_std_tuple<stdexec::__t<_FynId>...>;
+    using __stgn_t = stdexec::__decayed_std_tuple<typename stdexec::__t<_FynId>::storage...>;
 
     STDEXEC_ATTRIBUTE((no_unique_address)) __fyn_t __fyn_;
 

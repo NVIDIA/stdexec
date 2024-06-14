@@ -111,9 +111,9 @@ namespace stdexec {
         } else {
           constexpr bool _Nothrow = __nothrow_callable<__query, env_of_t<_Receiver>>;
           auto __query_fn = [&]() noexcept(_Nothrow) -> __result&& {
-            __state.__result_.emplace(__conv{[&]() noexcept(_Nothrow) {
+            __state.__result_.emplace_from([&]() noexcept(_Nothrow) {
               return __query()(stdexec::get_env(__rcvr));
-            }});
+            });
             return static_cast<__result&&>(*__state.__result_);
           };
           stdexec::__set_value_invoke(static_cast<_Receiver&&>(__rcvr), __query_fn);

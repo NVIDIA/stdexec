@@ -75,10 +75,18 @@ namespace stdexec {
       }
 
       template <class... _Us>
-        requires constructible_from<_Tp, _Us...>
       _Tp& emplace(_Us&&... __us) noexcept(__nothrow_constructible_from<_Tp, _Us...>) {
         reset(); // sets __has_value to false in case the next line throws
         ::new (&__value) _Tp{static_cast<_Us&&>(__us)...};
+        __has_value = true;
+        return __value;
+      }
+
+      template <class _Fn>
+      _Tp& emplace_from(_Fn&& __fn) noexcept(__nothrow_callable<_Fn>) {
+        static_assert(__same_as<__call_result_t<_Fn>, _Tp>);
+        reset(); // sets __has_value to false in case the next line throws
+        ::new (&__value) _Tp(static_cast<_Fn&&>(__fn)());
         __has_value = true;
         return __value;
       }

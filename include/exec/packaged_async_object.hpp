@@ -36,7 +36,7 @@ struct packaged_async_object {
   using object = typename _O::object;
   using handle = typename _O::handle;
   using storage = typename _O::storage;
-  using arguments = stdexec::__decayed_tuple<_An...>;
+  using arguments = stdexec::__decayed_std_tuple<_An...>;
 
   packaged_async_object() = delete;
   template<stdexec::__decays_to<_O> _T, class... _Tn>

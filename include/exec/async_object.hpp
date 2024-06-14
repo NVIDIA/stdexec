@@ -30,7 +30,7 @@ struct async_construct_t {
     -> decltype(((_O&&)__o).async_construct(__stg, ((_An&&)__an)...)) {
     using __construct = decltype(((_O&&)__o).async_construct(__stg, ((_An&&)__an)...));
     static_assert(!stdexec::same_as<__construct, void>, "async_construct must not return void");
-    static_assert(stdexec::__single_typed_sender<__construct>, "async_construct must return a sender with a single set_value overload");
+    static_assert(stdexec::__single_value_sender<__construct>, "async_construct must return a sender with a single set_value overload");
     static_assert(stdexec::sender_of<__construct, stdexec::set_value_t(typename std::remove_cvref_t<_O>::handle)>, "async_construct must return a sender that completes with set_value(handle)");
     return ((_O&&)__o).async_construct(__stg, ((_An&&)__an)...);
   }
@@ -56,7 +56,7 @@ struct async_destruct_t {
     static_assert(noexcept(((_O&&)__o).async_destruct(__stg)), "async_destruct must be noexcept");
     using __destruct = decltype(((_O&&)__o).async_destruct(__stg));
     static_assert(!stdexec::same_as<__destruct, void>, "async_destruct must not return void");
-    static_assert(stdexec::__single_typed_sender<__destruct>, "async_destruct must return a sender with a single set_value overload");
+    static_assert(stdexec::__single_value_sender<__destruct>, "async_destruct must return a sender with a single set_value overload");
     static_assert(stdexec::sender_of<__destruct, stdexec::set_value_t()>, "async_destruct must return a sender that completes with set_value()");
     static_assert(stdexec::__nofail_sender<__destruct>, "async_destruct must return a sender that has no set_error(..) completions");
     return ((_O&&)__o).async_destruct(__stg);
@@ -94,7 +94,7 @@ concept __storage =
 
 template<class _S>
 concept __async_destruct_result_valid = 
-  stdexec::__single_typed_sender<_S> &&
+  stdexec::__single_value_sender<_S> &&
   stdexec::sender_of<_S, stdexec::set_value_t()>;
 
 } // namespace __async_object

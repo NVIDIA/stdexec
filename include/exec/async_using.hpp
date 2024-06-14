@@ -37,20 +37,22 @@ namespace exec {
 namespace __async_using {
 
 template <class _Sigs>
-using __variant_for_t = stdexec::__compl_sigs::__maybe_for_all_sigs<
-  _Sigs,
-  stdexec::__q<stdexec::__decayed_tuple>,
-  stdexec::__nullable_variant_t>;
+using __variant_for_t = //
+  stdexec::__for_each_completion_signature<
+    _Sigs,
+    stdexec::__decayed_std_tuple,
+    stdexec::__nullable_std_variant>;
 
 template <class... _Tys>
 using __omit_set_value_t = stdexec::completion_signatures<>;
 
 template <class _Sender, class _Env>
-using __non_value_completion_signatures_t = stdexec::make_completion_signatures<
-  _Sender,
-  _Env,
-  stdexec::completion_signatures<>,
-  __omit_set_value_t>;
+using __non_value_completion_signatures_t = //
+  stdexec::transform_completion_signatures_of<
+    _Sender,
+    _Env,
+    stdexec::completion_signatures<>,
+    __omit_set_value_t>;
 
 template <class _ResultId, class _ErrorCompletionFilterId, class _ReceiverId>
 struct __destructed {
@@ -142,20 +144,20 @@ struct __outside {
 
     template <class... _An>
     void set_value(_An&&... __an) && noexcept {
-      using __async_result = stdexec::__decayed_tuple<stdexec::set_value_t, _An...>;
+      using __async_result = stdexec::__decayed_std_tuple<stdexec::set_value_t, _An...>;
       __result_->template emplace<__async_result>(stdexec::set_value, (_An&&)__an...);
       stdexec::start(*__destruct_state_);
     }
 
     template <class _Error>
     void set_error(_Error&& __err) && noexcept {
-      using __async_result = stdexec::__decayed_tuple<stdexec::set_error_t, _Error>;
+      using __async_result = stdexec::__decayed_std_tuple<stdexec::set_error_t, _Error>;
       __result_->template emplace<__async_result>(stdexec::set_error, (_Error&&) __err);
       stdexec::start(*__destruct_state_);
     }
 
     void set_stopped() && noexcept {
-      using __async_result = stdexec::__decayed_tuple<stdexec::set_stopped_t>;
+      using __async_result = stdexec::__decayed_std_tuple<stdexec::set_stopped_t>;
       __result_->template emplace<__async_result>(stdexec::set_stopped);
       stdexec::start(*__destruct_state_);
     }
@@ -180,8 +182,8 @@ struct __constructed {
 
     using receiver_concept = stdexec::receiver_t;
 
-    using __fyn_t = stdexec::__decayed_tuple<stdexec::__t<_FynId>...>;
-    using __stgn_t = stdexec::__decayed_tuple<typename stdexec::__t<_FynId>::storage...>;
+    using __fyn_t = stdexec::__decayed_std_tuple<stdexec::__t<_FynId>...>;
+    using __stgn_t = stdexec::__decayed_std_tuple<typename stdexec::__t<_FynId>::storage...>;
 
     using __inside = stdexec::__call_result_t<_InnerFn, typename stdexec::__t<_FynId>::handle...>;
 
@@ -232,7 +234,7 @@ struct __constructed {
         try {
           __inside_state_->emplace(stdexec::__conv{inside});
         } catch (...) {
-          using __async_result = stdexec::__decayed_tuple<stdexec::set_error_t, std::exception_ptr>;
+          using __async_result = stdexec::__decayed_std_tuple<stdexec::set_error_t, std::exception_ptr>;
           __result_->template emplace<__async_result>(stdexec::set_error, std::current_exception());
           __make_destruct();
           stdexec::start(__destruct_state_->value());
@@ -244,14 +246,14 @@ struct __constructed {
 
     template <class _Error>
     void set_error(_Error&& __err) && noexcept {
-      using __async_result = stdexec::__decayed_tuple<stdexec::set_error_t, _Error>;
+      using __async_result = stdexec::__decayed_std_tuple<stdexec::set_error_t, _Error>;
       __result_->template emplace<__async_result>(stdexec::set_error, (_Error&&) __err);
       __make_destruct();
       stdexec::start(__destruct_state_->value());
     }
 
     void set_stopped() && noexcept {
-      using __async_result = stdexec::__decayed_tuple<stdexec::set_stopped_t>;
+      using __async_result = stdexec::__decayed_std_tuple<stdexec::set_stopped_t>;
       __result_->template emplace<__async_result>(stdexec::set_stopped);
       __make_destruct();
       stdexec::start(__destruct_state_->value());
@@ -271,8 +273,8 @@ struct __operation {
   using _InnerFn = stdexec::__t<_InnerFnId>;
   using _Receiver = stdexec::__t<_ReceiverId>;
   using _ErrorCompletionFilter = stdexec::__t<_ErrorCompletionFilterId>;
-  using fyn_t = stdexec::__decayed_tuple<stdexec::__t<_FynId>...>;
-  using stgn_t = stdexec::__decayed_tuple<typename stdexec::__t<_FynId>::storage...>;
+  using fyn_t = stdexec::__decayed_std_tuple<stdexec::__t<_FynId>...>;
+  using stgn_t = stdexec::__decayed_std_tuple<typename stdexec::__t<_FynId>::storage...>;
 
   struct __t {
     using __id = __operation;
@@ -283,7 +285,7 @@ struct __operation {
 
     using __inside = stdexec::__call_result_t<_InnerFn, typename stdexec::__t<_FynId>::handle...>;
     using __result_t = __async_using::__variant_for_t<
-      stdexec::__concat_completion_signatures_t<
+      stdexec::__concat_completion_signatures<
         __async_using::__non_value_completion_signatures_t<__construction, stdexec::env_of_t<_Receiver>>,
         stdexec::completion_signatures_of_t<__inside, stdexec::env_of_t<_Receiver>>,
         // always reserve storage for exception_ptr so that the actual 
@@ -346,7 +348,7 @@ struct __sender {
   struct __t {
     using __id = __sender;
 
-    using __fyn_t = stdexec::__decayed_tuple<stdexec::__t<_FynId>...>;
+    using __fyn_t = stdexec::__decayed_std_tuple<stdexec::__t<_FynId>...>;
 
     _InnerFn __inner_;
     __fyn_t __fyn_;
@@ -364,7 +366,7 @@ struct __sender {
 
     template <class _Receiver>
     using __result_t = __async_using::__variant_for_t<
-      stdexec::__concat_completion_signatures_t<
+      stdexec::__concat_completion_signatures<
         __async_using::__non_value_completion_signatures_t<__construction, stdexec::env_of_t<_Receiver>>,
         stdexec::completion_signatures_of_t<__inside, stdexec::env_of_t<_Receiver>>,
         // always reserve *storage* for exception_ptr so that the actual 
@@ -407,7 +409,7 @@ struct __sender {
     template <class _Env>
     STDEXEC_ATTRIBUTE((always_inline))                          //
     auto get_completion_signatures(_Env&& __env) const noexcept //
-      -> stdexec::__concat_completion_signatures_t<
+      -> stdexec::__concat_completion_signatures<
           // add completions of sender returned from InnerFn  
           stdexec::completion_signatures_of_t<__inside, _Env>,
           // add non-set_value completions of all the async-constructors  
