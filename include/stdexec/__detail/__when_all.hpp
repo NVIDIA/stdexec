@@ -26,6 +26,7 @@
 #include "__env.hpp"
 #include "__into_variant.hpp"
 #include "__meta.hpp"
+#include "__optional.hpp"
 #include "__schedulers.hpp"
 #include "__senders.hpp"
 #include "__transform_completion_signatures.hpp"
@@ -39,7 +40,6 @@
 
 #include <atomic>
 #include <exception>
-#include <optional>
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
@@ -154,7 +154,7 @@ namespace stdexec {
 
     template <class _Env, class _Sender>
     using __values_opt_tuple_t = //
-      value_types_of_t<_Sender, __env_t<_Env>, __decayed_tuple, std::optional>;
+      value_types_of_t<_Sender, __env_t<_Env>, __decayed_tuple, __optional>;
 
     template <class _Env, __max1_sender<__env_t<_Env>>... _Senders>
     struct __traits {
@@ -225,7 +225,7 @@ namespace stdexec {
       _ErrorsVariant __errors_{};
       STDEXEC_ATTRIBUTE((no_unique_address))
       _ValuesTuple __values_{};
-      std::optional<__stop_callback_t> __on_stop_{};
+      __optional<__stop_callback_t> __on_stop_{};
     };
 
     template <class _Env>
@@ -241,7 +241,7 @@ namespace stdexec {
           __started,
           _ErrorsVariant{},
           _ValuesTuple{},
-          std::nullopt};
+          __nullopt};
       };
     }
 
