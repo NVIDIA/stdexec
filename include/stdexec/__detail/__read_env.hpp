@@ -23,12 +23,12 @@
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
 #include "__env.hpp"
+#include "__optional.hpp"
 #include "__meta.hpp"
 #include "__receivers.hpp"
 #include "__tag_invoke.hpp"
 
 #include <exception>
-#include <optional>
 
 namespace stdexec {
   namespace __read {
@@ -62,7 +62,7 @@ namespace stdexec {
     struct __state {
       using __query = _Tag;
       using __result = _Ty;
-      std::optional<_Ty> __result_;
+      __optional<_Ty> __result_;
     };
 
     template <class _Tag, class _Ty>
