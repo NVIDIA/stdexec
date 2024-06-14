@@ -110,7 +110,7 @@ jobs:
         shell: pwsh
         run: |
           docker pull rapidsai/devcontainers:24.08-cuda12.4-cl14.28-windows2022
-          docker run --isolation=process rapidsai/devcontainers:24.08-cuda12.4-cl14.28-windows2022 .github/workflows/test-windows.ps1 -Compiler '${{ matrix.compiler }}' -Config '${{ matrix.build }}'
+          docker run --isolation=process -v "$(pwd):C:/stdexec" rapidsai/devcontainers:24.08-cuda12.4-cl14.28-windows2022 C:/stdexec/.github/workflows/test-windows.ps1 -Compiler '${{ matrix.compiler }}' -Config '${{ matrix.build }}'
 
   ci-cpu-windows:
     runs-on: windows-latest
