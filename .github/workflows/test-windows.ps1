@@ -12,7 +12,7 @@ function Invoke-NativeCommand($Command) {
 	}
 }
 
-Set-Location -Path $PSScriptRoot/.. -PassThru
+Set-Location -Path "$PSScriptRoot/../.." -PassThru
 
 if (Test-Path -PathType Container $BuildDirectory) {
 	Remove-Item -Recurse $BuildDirectory | Out-Null
