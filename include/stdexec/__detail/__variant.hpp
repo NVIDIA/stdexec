@@ -79,15 +79,11 @@ namespace stdexec {
         if (__variant_npos != __index) {
 #if STDEXEC_NVHPC()
           // Unknown nvc++ name lookup bug
-          ((_Is == __index ? reinterpret_cast<const __at<_Is> *>(__storage_)->_Ts::~_Ts()
-                           : void(0)),
-           ...);
+          ((_Is == __index ? static_cast<_Ts *>(__get_ptr())->_Ts::~_Ts() : void(0)), ...);
 #else
           // casting the destructor expression to void is necessary for MSVC in
           // /permissive- mode.
-          ((_Is == __index ? void(reinterpret_cast<const __at<_Is> *>(__storage_)->~_Ts())
-                           : void(0)),
-           ...);
+          ((_Is == __index ? void(static_cast<_Ts *>(__get_ptr())->~_Ts()) : void(0)), ...);
 #endif
         }
       }
