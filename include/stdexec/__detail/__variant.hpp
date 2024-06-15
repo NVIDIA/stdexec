@@ -83,7 +83,7 @@ namespace stdexec {
 #else
           // casting the destructor expression to void is necessary for MSVC in
           // /permissive- mode.
-          ((_Is == __index ? void(static_cast<_Ts *>(__get_ptr())->~_Ts()) : void(0)), ...);
+          ((_Is == __index ? void((*static_cast<_Ts *>(__get_ptr())).~_Ts()) : void(0)), ...);
 #endif
         }
       }
