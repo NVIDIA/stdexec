@@ -31,7 +31,7 @@ include(rapids-cpm)
 
 # Define the project and set the version and languages
 if(NOT EXISTS ${CMAKE_BINARY_DIR}/execution.bs)
-  file(DOWNLOAD "https://raw.githubusercontent.com/brycelelbach/wg21_p2300_execution/main/execution.bs"
+  file(DOWNLOAD "https://raw.githubusercontent.com/cplusplus/sender-receiver/main/execution.bs"
       ${CMAKE_BINARY_DIR}/execution.bs)
 endif()
 file(STRINGS "${CMAKE_BINARY_DIR}/execution.bs" STD_EXECUTION_BS_REVISION_LINE REGEX "Revision: [0-9]+")
