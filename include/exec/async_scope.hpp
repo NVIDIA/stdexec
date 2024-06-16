@@ -46,10 +46,6 @@ namespace exec {
     using __env_t = make_env_t<_BaseEnv, with_t<get_stop_token_t, inplace_stop_token>>;
 
     struct __impl {
-      #if STDEXEC_NVHPC()
-      // part of a workaround for NVHPC codegen bug:
-      unsigned int const __cookie_ = 0xDEADBEEF;
-      #endif
       inplace_stop_source __stop_source_{};
       mutable std::mutex __lock_{};
       mutable std::ptrdiff_t __active_ = 0;
@@ -225,10 +221,6 @@ namespace exec {
 
         void start() & noexcept {
           STDEXEC_ASSERT(this->__scope_);
-          #if STDEXEC_NVHPC()
-          // work around for NVHPC codegen bug:
-          void(this->__scope_->__cookie_ == 0xDEADBEEF ? void() : std::terminate());
-          #endif
           std::unique_lock __guard{this->__scope_->__lock_};
           auto& __active = this->__scope_->__active_;
           ++__active;

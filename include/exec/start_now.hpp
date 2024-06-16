@@ -48,6 +48,12 @@ namespace exec {
       void (*__op_)(void*) noexcept = nullptr;
       void* __ptr_ = nullptr;
 
+#if STDEXEC_NVHPC()
+      // workaround for NVHPC bug:
+      constexpr ~__joiner() {
+      }
+#endif
+
       void join() const noexcept {
         if (__op_) {
           __op_(__ptr_);
