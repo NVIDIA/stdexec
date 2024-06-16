@@ -269,8 +269,11 @@ namespace stdexec {
       }
     };
 
-    struct __root_env_t {
-      constexpr STDEXEC_MEMFN_DECL(auto __root)(this const __root_env_t&) noexcept -> bool {
+    struct __root_env {
+      using __t = __root_env;
+      using __id = __root_env;
+
+      constexpr STDEXEC_MEMFN_DECL(auto __root)(this const __root_env&) noexcept -> bool {
         return true;
       }
     };
@@ -289,7 +292,7 @@ namespace stdexec {
   using __queries::get_domain_t;
   using __queries::__is_scheduler_affine_t;
   using __queries::__root_t;
-  using __queries::__root_env_t;
+  using __queries::__root_env;
 
   inline constexpr forwarding_query_t forwarding_query{};
   inline constexpr query_or_t query_or{}; // NOT TO SPEC
@@ -566,6 +569,19 @@ namespace stdexec {
 
     template <class _First, class _Second>
     using __join_t = __result_of<__join, _First, _Second>;
+
+    struct __as_root_env_fn {
+      template <class _Env>
+      constexpr auto operator()(_Env __env) const noexcept
+        -> __join_t<__root_env, std::unwrap_reference_t<_Env>> {
+        return __join(__root_env{}, static_cast<std::unwrap_reference_t<_Env>&&>(__env));
+      }
+    };
+
+    inline constexpr __as_root_env_fn __as_root_env{};
+
+    template <class _Env>
+    using __as_root_env_t = __result_of<__as_root_env, _Env>;
   } // namespace __env
 
   using __get_env::get_env_t;
@@ -578,12 +594,8 @@ namespace stdexec {
       { get_env(std::as_const(__ep)) } -> queryable;
     };
 
-  inline constexpr auto __as_root_env = []<class _Env>(_Env __env) noexcept {
-    return __env::__join(__root_env_t{}, static_cast<_Env&&>(__env));
-  };
-
-  template <class _Env>
-  using __as_root_env_t = __result_of<__as_root_env, _Env>;
+  using __env::__as_root_env_t;
+  using __env::__as_root_env;
 
   template <class _Env>
   concept __is_root_env = requires(_Env&& __env) {
