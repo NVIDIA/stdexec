@@ -386,11 +386,11 @@ namespace stdexec {
   //  If any of the above type computations are ill-formed, `transform_completion_signatures<Sndr,
   //  Env, AdditionalSigs, SetValue, SetError, SendsStopped>` is ill-formed.
   template <
-    __valid_completion_signatures _Sigs,
+    class _Sigs,
     class _MoreSigs = completion_signatures<>,
     template <class...> class _ValueTransform = __sigs::__default_set_value,
     template <class...> class _ErrorTransform = __sigs::__default_set_error,
-    __valid_completion_signatures _StoppedSigs = completion_signatures<set_stopped_t()>>
+    class _StoppedSigs = completion_signatures<set_stopped_t()>>
   using transform_completion_signatures = //
     __transform_completion_signatures<
       _Sigs,
@@ -407,7 +407,6 @@ namespace stdexec {
     template <class...> class _ValueTransform = __sigs::__default_set_value,
     template <class...> class _ErrorTransform = __sigs::__default_set_error,
     class _StoppedSigs = completion_signatures<set_stopped_t()>>
-    requires sender_in<_Sndr, _Env>
   using transform_completion_signatures_of = //
     transform_completion_signatures<
       completion_signatures_of_t<_Sndr, _Env>,
@@ -418,11 +417,11 @@ namespace stdexec {
 
   using __eptr_completion = completion_signatures<set_error_t(std::exception_ptr)>;
 
-  template <bool _NoExcept>
-  using __eptr_completion_if = __if_c<_NoExcept, completion_signatures<>, __eptr_completion>;
-
   template <class _NoExcept>
-  using __eptr_completion_if_t = __eptr_completion_if<__v<_NoExcept>>;
+  using __eptr_completion_if_t = __if<_NoExcept, completion_signatures<>, __eptr_completion>;
+
+  template <bool _NoExcept>
+  using __eptr_completion_if = __eptr_completion_if_t<__mbool<_NoExcept>>;
 
   template <                                                    //
     class _Sender,                                              //
@@ -465,13 +464,19 @@ namespace stdexec {
   template <                                                           //
     class _Sender,                                                     //
     class _Env = empty_env,                                            //
-    __valid_completion_signatures _Sigs = completion_signatures<>,     //
+    class _Sigs = completion_signatures<>,                             //
     template <class...> class _SetValue = __sigs::__default_set_value, //
     template <class> class _SetError = __sigs::__default_set_error,    //
     class _SetStopped = completion_signatures<set_stopped_t()>>
-    requires sender_in<_Sender, _Env>
   using make_completion_signatures =
     transform_completion_signatures_of<_Sender, _Env, _Sigs, _SetValue, _SetError, _SetStopped>;
+
+  template <                                 //
+    class _Sigs,                             //
+    class _Tuple = __q<__decayed_std_tuple>, //
+    class _Variant = __q<__std_variant>>
+  using __value_types_t = //
+    __gather_completions<set_value_t, _Sigs, _Tuple, _Variant>;
 
   template <                                 //
     class _Sender,                           //
@@ -479,77 +484,80 @@ namespace stdexec {
     class _Tuple = __q<__decayed_std_tuple>, //
     class _Variant = __q<__std_variant>>
   using __value_types_of_t = //
-    __gather_completions<set_value_t, __completion_signatures_of_t<_Sender, _Env>, _Tuple, _Variant>;
+    __value_types_t<__completion_signatures_of_t<_Sender, _Env>, _Tuple, _Variant>;
+
+  template <class _Sigs, class _Variant = __q<__std_variant>>
+  using __error_types_t = __gather_completions<set_error_t, _Sigs, __q<__midentity>, _Variant>;
 
   template <class _Sender, class _Env = empty_env, class _Variant = __q<__std_variant>>
-  using __error_types_of_t = __gather_completions<
-    set_error_t,
-    __completion_signatures_of_t<_Sender, _Env>,
-    __q<__midentity>,
-    _Variant>;
+  using __error_types_of_t = __error_types_t<__completion_signatures_of_t<_Sender, _Env>, _Variant>;
 
   template <                                                //
     class _Sender,                                          //
     class _Env = empty_env,                                 //
     template <class...> class _Tuple = __decayed_std_tuple, //
     template <class...> class _Variant = __std_variant>
-    requires sender_in<_Sender, _Env>
   using value_types_of_t = __value_types_of_t<_Sender, _Env, __q<_Tuple>, __q<_Variant>>;
 
   template <class _Sender, class _Env = empty_env, template <class...> class _Variant = __std_variant>
-    requires sender_in<_Sender, _Env>
   using error_types_of_t = __error_types_of_t<_Sender, _Env, __q<_Variant>>;
 
-  template <class _Tag, class _Sender, class _Env = empty_env>
+  template <class _Tag, class _Sender, class... _Env>
   using __count_of = //
     __gather_completion_signatures<
-      __completion_signatures_of_t<_Sender, _Env>,
+      __completion_signatures_of_t<_Sender, _Env...>,
       _Tag,
       __mconst<__msize_t<1>>::__f,
       __mconst<__msize_t<0>>::__f,
       __mplus_t>;
 
-  template <class _Tag, class _Sender, class _Env = empty_env>
-    requires sender_in<_Sender, _Env>
+  template <class _Tag, class _Sender, class... _Env>
+    requires sender_in<_Sender, _Env...>
   inline constexpr bool __sends = //
     __v<__gather_completion_signatures<
-      __completion_signatures_of_t<_Sender, _Env>,
+      __completion_signatures_of_t<_Sender, _Env...>,
       _Tag,
       __mconst<__mtrue>::__f,
       __mconst<__mfalse>::__f,
       __mor_t>>;
 
-  template <class _Sender, class _Env = empty_env>
+  template <class _Sender, class... _Env>
   concept sends_stopped = //
-    sender_in<_Sender, _Env> && __sends<set_stopped_t, _Sender, _Env>;
+    sender_in<_Sender, _Env...> && __sends<set_stopped_t, _Sender, _Env...>;
 
-  template <class _Sender, class _Env = empty_env>
+  template <class _Sender, class... _Env>
   using __single_sender_value_t =
-    value_types_of_t<_Sender, _Env, __msingle_or<void>::__f, __msingle>;
+    __value_types_t<
+      __completion_signatures_of_t<_Sender, _Env...>,
+      __msingle_or<void>,
+      __q<__msingle>>;
 
-  template <class _Sender, class _Env = empty_env>
+  template <class _Sender, class... _Env>
   concept __single_value_sender = //
-    sender_in<_Sender, _Env> &&   //
-    requires { typename __single_sender_value_t<_Sender, _Env>; };
+    sender_in<_Sender, _Env...> &&   //
+    requires { typename __single_sender_value_t<_Sender, _Env...>; };
 
-  template <class _Sender, class _Env = empty_env>
-  using __single_value_variant_sender_t = value_types_of_t<_Sender, _Env, __types, __msingle>;
+  template <class _Sender, class... _Env>
+  using __single_value_variant_sender_t =
+    __value_types_t<
+      __completion_signatures_of_t<_Sender, _Env...>,
+      __qq<__types>, __q<__msingle>>;
 
-  template <class _Sender, class _Env = empty_env>
+  template <class _Sender, class... _Env>
   concept __single_value_variant_sender = //
-    sender_in<_Sender, _Env> &&           //
-    requires { typename __single_value_variant_sender_t<_Sender, _Env>; };
+    sender_in<_Sender, _Env...> &&           //
+    requires { typename __single_value_variant_sender_t<_Sender, _Env...>; };
 
   // The following utilities are needed fairly often:
   template <class _Fun, class... _Args>
     requires __invocable<_Fun, _Args...>
   using __nothrow_invocable_t = __mbool<__nothrow_invocable<_Fun, _Args...>>;
 
-  template <class _Tag, class _Fun, class _Sender, class _Env, class _Catch>
+  template <class _Catch, class _Tag, class _Fun, class _Sender, class... _Env>
   using __with_error_invoke_t = //
     __if<
       __gather_completion_signatures<
-        __completion_signatures_of_t<_Sender, _Env>,
+        __completion_signatures_of_t<_Sender, _Env...>,
         _Tag,
         __mbind_front<__mtry_catch_q<__nothrow_invocable_t, _Catch>, _Fun>::template __f,
         __mconst<__mbool<true>>::__f,

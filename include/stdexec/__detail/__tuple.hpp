@@ -36,7 +36,7 @@ namespace stdexec {
       STDEXEC_IS_EMPTY(_Ty) && STDEXEC_IS_TRIVIALLY_CONSTRUCTIBLE(_Ty);
 
     template <__empty _Ty>
-    inline _Ty __value {};
+    inline _Ty __value{};
 
     // A specialization for empty types so that they don't take up space.
     template <__empty _Ty, std::size_t _Idx>
@@ -46,7 +46,7 @@ namespace stdexec {
       constexpr __box(__not_decays_to<__box> auto &&) noexcept {
       }
 
-      static constexpr _Ty& __value = __tup::__value<_Ty>;
+      static constexpr _Ty &__value = __tup::__value<_Ty>;
     };
 
     template <auto _Idx, class... _Ts>

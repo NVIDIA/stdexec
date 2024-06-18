@@ -115,9 +115,9 @@ namespace exec {
             __self.__scope_, static_cast<_Self&&>(__self).__c_, static_cast<_Receiver&&>(__rcvr)};
         }
 
-        template <__decays_to<__t> _Self, class _Env>
-        static auto get_completion_signatures(_Self&&, _Env&&)
-          -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>> {
+        template <__decays_to<__t> _Self, class... _Env>
+        static auto get_completion_signatures(_Self&&, _Env&&...)
+          -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>...> {
           return {};
         }
 
@@ -256,9 +256,9 @@ namespace exec {
             __self.__scope_, static_cast<_Self&&>(__self).__c_, static_cast<_Receiver&&>(__rcvr)};
         }
 
-        template <__decays_to<__t> _Self, class _Env>
-        static auto get_completion_signatures(_Self&&, _Env&&)
-          -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>> {
+        template <__decays_to<__t> _Self, class... _Env>
+        static auto get_completion_signatures(_Self&&, _Env&&...)
+          -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>...> {
           return {};
         }
       };
@@ -640,8 +640,8 @@ namespace exec {
             static_cast<_Receiver&&>(__rcvr), std::move(__self.__state_)};
         }
 
-        template <__decays_to<__t> _Self, class _OtherEnv>
-        static auto get_completion_signatures(_Self&&, _OtherEnv&&) -> __completions_t<_Self> {
+        template <__decays_to<__t> _Self, class... _OtherEnv>
+        static auto get_completion_signatures(_Self&&, _OtherEnv&&...) -> __completions_t<_Self> {
           return {};
         }
 

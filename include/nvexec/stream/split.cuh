@@ -343,8 +343,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class Ty>
       using _set_error_t = completion_signatures<set_error_t(const __decay_t<Ty>&)>;
 
-      template <__decays_to<__t> Self, class Env>
-      static auto get_completion_signatures(Self&&, Env&&) -> __try_make_completion_signatures<
+      template <__decays_to<__t> Self, class... Env>
+      static auto get_completion_signatures(Self&&, Env&&...) //
+      -> __try_make_completion_signatures<
         Sender,
         exec::make_env_t<exec::with_t<get_stop_token_t, inplace_stop_token>>,
         completion_signatures<set_error_t(const cudaError_t&)>,

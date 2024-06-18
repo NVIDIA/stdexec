@@ -36,33 +36,35 @@ namespace exec {
       _WITH_SENDER_<_Sender>,
       _WITH_ENVIRONMENT_<_Env>>;
 
-    template <class _Sender, class _Env>
+    template <class _Sender, class... _Env>
     using __try_result_tuple_t = //
-      __value_types_of_t<_Sender, _Env, __q<__decayed_std_tuple>, __q<__msingle>>;
+      __value_types_t<
+        __completion_signatures_of_t<_Sender, _Env...>,
+        __q<__decayed_std_tuple>,
+        __q<__msingle>>;
 
-    template <class _Sender, class _Env>
+    template <class _Sender, class... _Env>
     using __result_tuple_t = //
       __minvoke<             //
         __mtry_catch_q<__try_result_tuple_t, __q<__too_many_completions_error>>,
         _Sender,
-        _Env>;
+        _Env...>;
 
     template <class _Tuple>
     using __tuple_completions_t = //
       stdexec::completion_signatures<set_error_t(std::exception_ptr), set_value_t(_Tuple)>;
 
-    template <class _Sender, class _Env>
+    template <class _Sender, class... _Env>
     using __completions_t = //
-      __try_make_completion_signatures<
-        _Sender,
-        _Env,
-        __meval<__tuple_completions_t, __result_tuple_t<_Sender, _Env>>,
-        __mconst<stdexec::completion_signatures<>>>;
+      transform_completion_signatures<
+        __completion_signatures_of_t<_Sender, _Env...>,
+        __meval<__tuple_completions_t, __result_tuple_t<_Sender, _Env...>>,
+        __mconst<stdexec::completion_signatures<>>::__f>;
 
     struct __into_tuple_impl : __sexpr_defaults {
       static constexpr auto get_completion_signatures = //
-        []<class _Sender, class _Env>(_Sender &&, _Env &&) noexcept {
-          return __completions_t<__child_of<_Sender>, _Env>{};
+        []<class _Sender, class... _Env>(_Sender &&, _Env &&...) noexcept {
+          return __completions_t<__child_of<_Sender>, _Env...>{};
         };
 
       static constexpr auto get_state = //

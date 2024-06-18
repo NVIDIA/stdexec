@@ -97,6 +97,12 @@ namespace stdexec {
         -> decltype(auto) {
         return __env::__join(__data, stdexec::get_env(__child));
       };
+
+      static constexpr auto get_completion_signatures = //
+        []<class _Sender>(_Sender&&) noexcept           //
+        -> __completion_signatures_of_t<                //
+          transform_sender_result_t<default_domain, _Sender, empty_env>> {
+      };
     };
   } // namespace __continue_on
 

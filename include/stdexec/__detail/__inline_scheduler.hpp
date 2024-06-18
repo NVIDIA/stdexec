@@ -65,7 +65,7 @@ namespace stdexec {
       };
 
     static constexpr auto get_completion_signatures = //
-      [](__ignore, __ignore) noexcept -> completion_signatures<set_value_t()> {
+      [](__ignore, __ignore = {}) noexcept -> completion_signatures<set_value_t()> {
       return {};
     };
 

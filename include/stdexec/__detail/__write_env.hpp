@@ -65,10 +65,10 @@ namespace stdexec {
         };
 
       static constexpr auto get_completion_signatures = //
-        []<class _Self, class _Env>(_Self&&, _Env&&) noexcept
+        []<class _Self, class... _Env>(_Self&&, _Env&&...) noexcept
         -> __completion_signatures_of_t<
           __child_of<_Self>,
-          __env::__join_t<const __decay_t<__data_of<_Self>>&, _Env>> {
+          __meval<__env::__join_t, const __decay_t<__data_of<_Self>>&, _Env...>> {
         static_assert(sender_expr_for<_Self, __write_env_t>);
         return {};
       };

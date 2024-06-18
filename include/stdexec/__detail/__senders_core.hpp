@@ -35,11 +35,6 @@ namespace stdexec {
 
   namespace __detail {
     template <class _Sender>
-    concept __non_dependent_sender = //
-      requires { typename _Sender::completion_signatures; }
-      || requires { requires _Sender::__is_non_dependent(); };
-
-    template <class _Sender>
     concept __enable_sender = //
       derived_from<typename _Sender::sender_concept, sender_t>
       || requires { typename _Sender::is_sender; } // NOT TO SPEC back compat
@@ -66,11 +61,4 @@ namespace stdexec {
            get_completion_signatures(static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env)...)
          } -> __valid_completion_signatures;
        };
-
-  /////////////////////////////////////////////////////////////////////////////
-  // early sender type-checking
-  template <class _Sender>
-  concept __well_formed_sender = //
-    !__detail::__non_dependent_sender<_Sender>
-    || __valid_completion_signatures<__completion_signatures_of_t<_Sender>>;
 } // namespace stdexec

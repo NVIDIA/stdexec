@@ -35,7 +35,7 @@ namespace stdexec {
       using __tag_t = typename _JustTag::__tag_t;
 
       static constexpr auto get_completion_signatures =
-        []<class _Sender>(_Sender&&, __ignore) noexcept {
+        []<class _Sender>(_Sender&&, auto&&...) noexcept {
           static_assert(sender_expr_for<_Sender, _JustTag>);
           return completion_signatures<__mapply<__qf<__tag_t>, __decay_t<__data_of<_Sender>>>>{};
         };
