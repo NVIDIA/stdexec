@@ -273,7 +273,7 @@ namespace exec {
     using with_error_invoke_t = //
       stdexec::__if_c<
         stdexec::__v<stdexec::__value_types_t<
-          __completion_signatures_of_t<Sender, Env...>,
+          stdexec::__completion_signatures_of_t<Sender, Env...>,
           stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
           stdexec::__q<stdexec::__mand>>>,
         stdexec::completion_signatures<>,
@@ -286,9 +286,9 @@ namespace exec {
     template <class Self, class... Env>
     using __completions_t = //
       stdexec::transform_completion_signatures<
-        __completion_signatures_of_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
+        stdexec::__completion_signatures_of_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
         with_error_invoke_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
-        stdexec::__q<set_value_t>>;
+        set_value_t>;
 
     template <class Self, class Receiver>
     using bulk_op_state_t = //
