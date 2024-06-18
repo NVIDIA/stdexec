@@ -78,6 +78,18 @@ struct _op {
   R r_;
   std::optional<stdexec::connect_result_t<S&, _retry_receiver<S, R>>> o_;
 
+  template <class>
+  using _error = stdexec::completion_signatures<>;
+  template <class... Ts>
+  using _value = stdexec::completion_signatures<stdexec::set_value_t(Ts...)>;
+
+  using completion_signatures = stdexec::transform_completion_signatures_of<
+    S&,
+    Env,
+    stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
+    _value,
+    _error>;
+
   _op(S s, R r)
     : s_(static_cast<S&&>(s))
     , r_(static_cast<R&&>(r))
@@ -113,21 +125,6 @@ struct _retry_sender {
 
   explicit _retry_sender(S s)
     : s_(static_cast<S&&>(s)) {
-  }
-
-  template <class>
-  using _error = stdexec::completion_signatures<>;
-  template <class... Ts>
-  using _value = stdexec::completion_signatures<stdexec::set_value_t(Ts...)>;
-
-  template <class Env>
-  auto get_completion_signatures(Env&&) const -> stdexec::transform_completion_signatures_of<
-    S&,
-    Env,
-    stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
-    _value,
-    _error> {
-    return {};
   }
 
   template <stdexec::receiver R>
