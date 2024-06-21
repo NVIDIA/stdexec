@@ -31,6 +31,11 @@ namespace exec {
     struct __impl;
     struct async_scope;
 
+    template <class _A>
+    concept __async_scope = requires(_A& __a) {
+      { __a.nest(stdexec::just()) } -> sender_of<stdexec::set_value_t()>;
+    };
+
     struct __task : __immovable {
       const __impl* __scope_;
       void (*__notify_waiter)(__task*) noexcept;
@@ -803,4 +808,8 @@ namespace exec {
   } // namespace __scope
 
   using __scope::async_scope;
+
+  template <class _AsyncScope, class _Sender>
+  using nest_result_t =
+    decltype(stdexec::__declval<_AsyncScope&>().nest(stdexec::__declval<_Sender&&>()));
 } // namespace exec

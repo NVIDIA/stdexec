@@ -258,4 +258,18 @@ namespace stdexec {
         _Env,
         __mcompose_q<__types_ref, __qf<__tag_of_sig_t<_SetSig>>::template __f>,
         __mappend_into_q<__types_ref>>>;
+
+  template <class _Error>
+    requires false
+  using __nofail_t = _Error;
+
+  template <class _Sender, class _Env = empty_env>
+  concept __nofail_sender = sender_in<_Sender, _Env> && requires {
+    typename __gather_completion_signatures<
+      __completion_signatures_of_t<_Sender, _Env>,
+      set_error_t,
+      __nofail_t,
+      __sigs::__default_completion,
+      __types>;
+  };
 } // namespace stdexec
