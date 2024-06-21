@@ -32,11 +32,9 @@ namespace {
       __forward_progress_guarantee = base_.__forward_progress_guarantee;
       __schedule_operation_size = base_.__schedule_operation_size;
       __schedule_operation_alignment = base_.__schedule_operation_alignment;
-      __destruct_schedule_operation = base_.__destruct_schedule_operation;
       __bulk_schedule_operation_size = base_.__bulk_schedule_operation_size;
       __bulk_schedule_operation_alignment = base_.__bulk_schedule_operation_alignment;
       __bulk_schedule = base_.__bulk_schedule;
-      __destruct_bulk_schedule_operation = base_.__destruct_bulk_schedule_operation;
 
       __schedule = __schedule_impl; // have our own schedule implementation
     }
@@ -45,7 +43,7 @@ namespace {
     exec::static_thread_pool pool_;
     exec::__system_context_default_impl::__system_scheduler_impl base_;
 
-    static void* __schedule_impl(
+    static void __schedule_impl(
       __exec_system_scheduler_interface* self_arg,
       void* preallocated,
       uint32_t psize,
@@ -56,7 +54,7 @@ namespace {
       // increment our counter.
       count_schedules++;
       // delegate to the base implementation.
-      return self->base_.__schedule(&self->base_, preallocated, psize, callback, data);
+      self->base_.__schedule(&self->base_, preallocated, psize, callback, data);
     }
   };
 
