@@ -105,7 +105,8 @@ namespace stdexec {
           // This branch is strictly for backwards compatibility
           using _Result = tag_invoke_result_t<get_completion_signatures_t, _Sender, empty_env>;
           return static_cast<_Result (*)()>(nullptr);
-        } else if constexpr (__awaitable<_TfxSender, __env::__promise<_Env>...>) {
+          // [WAR] The explicit cast to bool below is to work around a bug in nvc++ (nvbug#4707793)
+        } else if constexpr (bool(__awaitable<_TfxSender, __env::__promise<_Env>...>)) {
           using _AwaitResult = __await_result_t<_TfxSender, __env::__promise<_Env>...>;
           using _Result = completion_signatures<
             // set_value_t() or set_value_t(T)
