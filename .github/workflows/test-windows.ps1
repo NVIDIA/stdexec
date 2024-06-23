@@ -20,5 +20,5 @@ if (Test-Path -PathType Container $BuildDirectory) {
 New-Item -ItemType Directory $BuildDirectory | Out-Null
 
 Invoke-NativeCommand cmake -B $BuildDirectory -G Ninja "-DCMAKE_BUILD_TYPE=$Config" .
-Invoke-NativeCommand cmake --build $BuildDirectory
+Invoke-NativeCommand cmake --parallel 1 --build $BuildDirectory
 Invoke-NativeCommand ctest --test-dir $BuildDirectory
