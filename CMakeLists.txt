@@ -409,7 +409,7 @@ endif()
 
 include(CPack)
 
-install(TARGETS stdexec
+install(TARGETS stdexec system_context
         DESTINATION ${CMAKE_INSTALL_LIBDIR}
         EXPORT stdexec-exports)
 

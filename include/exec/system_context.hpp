@@ -34,12 +34,12 @@
 // TODO: make these configurable by providing policy to the system context
 
 /// Gets the default system context implementation.
-extern "C" STDEXEC_ATTRIBUTE((weak))
+extern "C"
 __exec_system_context_interface*
   __get_exec_system_context_impl();
 
 /// Sets the default system context implementation.
-extern "C" STDEXEC_ATTRIBUTE((weak))
+extern "C"
   void
   __set_exec_system_context_impl(__exec_system_context_interface* __instance);
 

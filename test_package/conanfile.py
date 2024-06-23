@@ -13,6 +13,7 @@ class StdexecTestPackage(ConanFile):
     cmake = CMake(self)
     cmake.configure()
     cmake.build()
+    cmake.test()
 
   def layout(self):
     cmake_layout(self)
