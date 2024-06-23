@@ -1,17 +1,23 @@
-import os
+from conan import ConanFile
+from conan.tools.cmake import CMake, cmake_layout
+from conan.tools.build import can_run
 
-from conans import ConanFile, CMake, tools
+class StdexecTestPackage(ConanFile):
+  settings = "os", "arch", "compiler", "build_type"
+  generators = "CMakeDeps", "CMakeToolchain"
 
-class P2300TestConan(ConanFile):
-    settings = "compiler"
-    generators = "cmake"
+  def requirements(self):
+    self.requires(self.tested_reference_str)
 
-    def build(self):
-        cmake = CMake(self)
-        cmake.configure()
-        cmake.build()
+  def build(self):
+    cmake = CMake(self)
+    cmake.configure()
+    cmake.build()
+    cmake.test()
 
-    def test(self):
-        if not tools.cross_building(self):
-            os.chdir("bin")
-            self.run(".{}test_p2300".format(os.sep))
+  def layout(self):
+    cmake_layout(self)
+
+  def test(self):
+    if can_run(self):
+      CMake(self).test()
