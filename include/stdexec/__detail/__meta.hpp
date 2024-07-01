@@ -42,46 +42,6 @@ namespace stdexec {
   template <class...>
   struct __types;
 
-  template <class... _Ts>
-  using __types_ref = __types<_Ts...> &;
-
-  template <class... _Ts>
-  auto operator+(__types<_Ts...> &) -> __types<_Ts...>;
-
-  template <class... _Ts, template <class...> class _List, class... _Us>
-  auto operator+(__types<_Ts...> &, _List<_Us...> &) -> __types<_Ts..., _Us...> &;
-
-  template <template <class...> class _Fn>
-  struct __mappend_into_q {
-    template <class... _Lists>
-    static auto __concat(__types<> &__list, _Lists &...__lists) //
-      -> decltype((__list + ... + __lists));
-
-#if STDEXEC_MSVC()
-    template <class... _Ts>
-    struct __result {
-      using __t = _Fn<_Ts...>;
-    };
-
-    template <class... _Ts>
-      requires __typename<_Fn<_Ts...>>
-    using __result_t = __t<__result<_Ts...>>;
-#else
-    template <class... _Ts>
-    using __result_t = _Fn<_Ts...>;
-#endif
-
-    template <class... _Ts>
-    static auto __apply(__types<_Ts...> &) -> __result_t<_Ts...>;
-
-    template <class... _Lists>
-    using __f = decltype(__mappend_into_q::__apply(
-      __mappend_into_q::__concat(__declval<__types<> &>(), __declval<_Lists &>()...)));
-  };
-
-  template <class _Fn>
-  using __mappend_into = __mappend_into_q<_Fn::template __f>;
-
   template <class _Tp>
   using __midentity = _Tp;
 
@@ -650,102 +610,76 @@ namespace stdexec {
     using __f = __minvoke<__mfold_right_<sizeof...(_Args) == 0>, _Fn, _Init, _Args...>;
   };
 
-  template <class _Continuation, class... _As>
-  struct __mconcat_ { };
-
-  template <class _Continuation, class... _As>
-    requires(sizeof...(_As) == 0) && __minvocable<_Continuation, _As...>
-  struct __mconcat_<_Continuation, _As...> {
-    using __t = __minvoke<_Continuation, _As...>;
-  };
-
-  template <class _Continuation, template <class...> class _Ap, class... _As>
-    requires __minvocable<_Continuation, _As...>
-  struct __mconcat_<_Continuation, _Ap<_As...>> {
-    using __t = __minvoke<_Continuation, _As...>;
-  };
-
-  template <             //
-    class _Continuation, //
-    template <class...>
-    class _Ap,
-    class... _As, //
-    template <class...>
-    class _Bp,
-    class... _Bs>
-    requires __minvocable<_Continuation, _As..., _Bs...>
-  struct __mconcat_<_Continuation, _Ap<_As...>, _Bp<_Bs...>> {
-    using __t = __minvoke<_Continuation, _As..., _Bs...>;
-  };
-
-  template <             //
-    class _Continuation, //
-    template <class...>
-    class _Ap,
-    class... _As, //
-    template <class...>
-    class _Bp,
-    class... _Bs, //
-    template <class...>
-    class _Cp,
-    class... _Cs>
-    requires __minvocable<_Continuation, _As..., _Bs..., _Cs...>
-  struct __mconcat_<_Continuation, _Ap<_As...>, _Bp<_Bs...>, _Cp<_Cs...>> {
-    using __t = __minvoke<_Continuation, _As..., _Bs..., _Cs...>;
-  };
-
-  template <             //
-    class _Continuation, //
-    template <class...>
-    class _Ap,
-    class... _As, //
-    template <class...>
-    class _Bp,
-    class... _Bs, //
-    template <class...>
-    class _Cp,
-    class... _Cs, //
-    template <class...>
-    class _Dp,
-    class... _Ds, //
-    class... _Tail>
-  struct __mconcat_<_Continuation, _Ap<_As...>, _Bp<_Bs...>, _Cp<_Cs...>, _Dp<_Ds...>, _Tail...>
-    : __mconcat_<_Continuation, __types<_As..., _Bs..., _Cs..., _Ds...>, _Tail...> { };
-
-  template <class _Continuation = __q<__types>>
-  struct __mconcat {
-    template <class... _Args>
-    using __f = __t<__mconcat_<_Continuation, _Args...>>;
-  };
-
   template <class _Fn>
   struct __curry {
     template <class... _Ts>
     using __f = __minvoke<_Fn, _Ts...>;
   };
 
-  template <class _Fn, class _Tp>
+  template <class _Tp>
   struct __uncurry_;
 
-  template <__merror _Fn, class _Tp>
-  struct __uncurry_<_Fn, _Tp> {
-    using __t = _Fn;
+  template <template <class...> class _Ap, class... _As>
+  struct __uncurry_<_Ap<_As...>> {
+    template <class _Fn>
+    using __f = __minvoke<_Fn, _As...>;
   };
 
-  template <class _Fn, template <class...> class _Ap, class... _As>
-    requires __minvocable<_Fn, _As...>
-  struct __uncurry_<_Fn, _Ap<_As...>> {
-    using __t = __minvoke<_Fn, _As...>;
+  template <class... _As>
+  struct __uncurry_<__types<_As...> *> {
+    template <class _Fn>
+    using __f = __minvoke<_Fn, _As...>;
+  };
+
+  template <class _What, class... _With>
+  struct __uncurry_<_ERROR_<_What, _With...>> {
+    template <class _Fn>
+    using __f = _ERROR_<_What, _With...>;
   };
 
   template <class _Fn>
   struct __uncurry {
     template <class _Tp>
-    using __f = __t<__uncurry_<_Fn, _Tp>>;
+    using __f = typename __uncurry_<_Tp>::template __f<_Fn>;
   };
 
   template <class _Fn, class _List>
   using __mapply = __minvoke<__uncurry<_Fn>, _List>;
+
+  struct __mconcat_ {
+    template <class... _As>
+    static auto __f(__types<_As...> *) -> __types<_As...> *;
+
+    template <
+      class _Self = __mconcat_,
+      class... _Ts,
+      template <class...> class _Ap = __types,
+      class... _As,
+      template <class...> class _Bp = __types,
+      class... _Bs,
+      template <class...> class _Cp = __types,
+      class... _Cs,
+      template <class...> class _Dp = __types,
+      class... _Ds,
+      class... _Tail>
+    static auto __f(
+      __types<_Ts...> *,
+      _Ap<_As...> *,
+      _Bp<_Bs...> * = nullptr,
+      _Cp<_Cs...> * = nullptr,
+      _Dp<_Ds...> * = nullptr,
+      _Tail *...__tail)
+      -> decltype(_Self::__f(
+        static_cast<__types<_Ts..., _As..., _Bs..., _Cs..., _Ds...> *>(nullptr),
+        __tail...));
+  };
+
+  template <class _Continuation = __qq<__types>>
+  struct __mconcat {
+    template <class... _Args>
+    using __f =
+      __mapply<_Continuation, decltype(__mconcat_::__f({}, static_cast<_Args *>(nullptr)...))>;
+  };
 
   struct __msize {
     template <class... _Ts>
