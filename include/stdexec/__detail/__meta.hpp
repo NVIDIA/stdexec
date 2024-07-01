@@ -646,12 +646,9 @@ namespace stdexec {
   template <class _Fn, class _List>
   using __mapply = __minvoke<__uncurry<_Fn>, _List>;
 
+  template <bool>
   struct __mconcat_ {
-    template <class... _As>
-    static auto __f(__types<_As...> *) -> __types<_As...> *;
-
     template <
-      class _Self = __mconcat_,
       class... _Ts,
       template <class...> class _Ap = __types,
       class... _As,
@@ -669,16 +666,23 @@ namespace stdexec {
       _Cp<_Cs...> * = nullptr,
       _Dp<_Ds...> * = nullptr,
       _Tail *...__tail)
-      -> decltype(_Self::__f(
+      -> decltype(__mconcat_<(sizeof...(_Tail) == 0)>::__f(
         static_cast<__types<_Ts..., _As..., _Bs..., _Cs..., _Ds...> *>(nullptr),
         __tail...));
+  };
+
+  template <>
+  struct __mconcat_<true> {
+    template <class... _As>
+    static auto __f(__types<_As...> *) -> __types<_As...> *;
   };
 
   template <class _Continuation = __qq<__types>>
   struct __mconcat {
     template <class... _Args>
-    using __f =
-      __mapply<_Continuation, decltype(__mconcat_::__f({}, static_cast<_Args *>(nullptr)...))>;
+    using __f = __mapply<
+        _Continuation,
+        decltype(__mconcat_<(sizeof...(_Args) == 0)>::__f({}, static_cast<_Args *>(nullptr)...))>;
   };
 
   struct __msize {
