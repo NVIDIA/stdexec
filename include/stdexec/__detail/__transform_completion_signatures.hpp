@@ -96,51 +96,6 @@ namespace stdexec {
     template <class Completions>
     using __normalize_completions_t =
       decltype(__sigs::__normalize_completions(static_cast<Completions *>(nullptr)));
-
-    struct __concat_sigs_into_set {
-      template <class... _Sigs>
-      static auto __f(__mset<_Sigs...>) -> __mset<_Sigs...>;
-
-      template <
-        class _Self = __concat_sigs_into_set,
-        class... _Sigs,
-        class... _As,
-        class... _Bs,
-        class... _Cs,
-        class... _Ds,
-        class... _Es,
-        class... _Fs,
-        class... _Gs,
-        class... _Hs,
-        class... _Rest>
-      static auto __f(
-        __mset<_Sigs...>,
-        completion_signatures<_As...> *,
-        completion_signatures<_Bs...> * = nullptr,
-        completion_signatures<_Cs...> * = nullptr,
-        completion_signatures<_Ds...> * = nullptr,
-        completion_signatures<_Es...> * = nullptr,
-        completion_signatures<_Fs...> * = nullptr,
-        completion_signatures<_Gs...> * = nullptr,
-        completion_signatures<_Hs...> * = nullptr,
-        _Rest *...__rest)
-        -> decltype(_Self::__f(
-          __mset_insert<
-            __mset<_Sigs...>,
-            _As...,
-            _Bs...,
-            _Cs...,
-            _Ds...,
-            _Es...,
-            _Fs...,
-            _Gs...,
-            _Hs...>{},
-          __rest...));
-    };
-
-    template <class... _Sigs>
-    using __concat_sigs_into_set_t = //
-      decltype(__concat_sigs_into_set::__f({}, static_cast<_Sigs *>(nullptr)...));
   } // namespace __sigs
 
   template <class... SigPtrs>
@@ -149,7 +104,8 @@ namespace stdexec {
 
   template <class... _Sigs>
   using __concat_completion_signatures = //
-    __mconcat<__q<completion_signatures>>::__f<__sigs::__concat_sigs_into_set_t<_Sigs...>>;
+    __mconcat<__qq<completion_signatures>>::__f<
+      __mconcat<__qq<__mmake_set>>::__f<_Sigs...>>;
 
   namespace __sigs {
     //////////////////////////////////////////////////////////////////////////////////////////////////
