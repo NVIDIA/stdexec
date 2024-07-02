@@ -102,7 +102,7 @@ namespace exec {
             __materialize_value,
             __materialize_error,
             completion_signatures<set_value_t(set_stopped_t)>,
-            __mappend_into_q<completion_signatures>::__f>;
+            __mconcat<__qq<completion_signatures>>::__f>;
 
         template <__decays_to<__t> _Self, class _Env>
         static auto get_completion_signatures(_Self&&, _Env&&) //
