@@ -101,4 +101,13 @@ namespace stdexec {
   template <>
   struct __sexpr_impl<__ensure_started::__ensure_started_t>
     : __shared::__shared_impl<__ensure_started::__ensure_started_t> { };
+
+  template <>
+  struct __sexpr_impl<ensure_started_t> : __sexpr_defaults {
+    static constexpr auto get_completion_signatures = //
+      []<class _Sender>(_Sender&&) noexcept           //
+      -> __completion_signatures_of_t<                //
+        transform_sender_result_t<default_domain, _Sender, empty_env>> {
+    };
+  };
 } // namespace stdexec

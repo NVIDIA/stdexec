@@ -102,6 +102,12 @@ namespace stdexec {
         []<class _Data>(const _Data& __data) noexcept {
           return __data.apply(__make_env_fn(), __data);
         };
+
+      static constexpr auto get_completion_signatures = //
+        []<class _Sender>(_Sender&&) noexcept           //
+        -> __completion_signatures_of_t<                //
+          transform_sender_result_t<default_domain, _Sender, empty_env>> {
+      };
     };
   } // namespace __transfer_just
 

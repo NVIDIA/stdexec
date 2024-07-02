@@ -169,26 +169,24 @@ namespace exec {
     template <class _Error>
     using __error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
-    template <class _Pair, class _Env>
+    template <class _Pair, class... _Env>
     using __completions_t = //
-      stdexec::__try_make_completion_signatures<
-        decltype(__decay_t<_Pair>::__child_) &,
-        _Env,
-        stdexec::__try_make_completion_signatures<
-          stdexec::schedule_result_t<exec::trampoline_scheduler>,
-          _Env,
+      stdexec::transform_completion_signatures<
+        __completion_signatures_of_t<decltype(__decay_t<_Pair>::__child_) &, _Env...>,
+        stdexec::transform_completion_signatures<
+          __completion_signatures_of_t<stdexec::schedule_result_t<exec::trampoline_scheduler>, _Env...>,
           __eptr_completion,
-          __q<__sigs::__default_set_value>,
-          __q<__error_t>>,
-        __mbind_front_q<__values_t, decltype(__decay_t<_Pair>::__child_)>,
-        __q<__error_t>>;
+          __sigs::__default_set_value,
+          __error_t>,
+        __mbind_front_q<__values_t, decltype(__decay_t<_Pair>::__child_)>::template __f,
+        __error_t>;
 
     struct __repeat_n_tag { };
 
     struct __repeat_n_impl : __sexpr_defaults {
       static constexpr auto get_completion_signatures = //
-        []<class _Sender, class _Env>(_Sender &&, _Env &&) noexcept {
-          return __completions_t<__data_of<_Sender>, _Env>{};
+        []<class _Sender, class... _Env>(_Sender &&, _Env &&...) noexcept {
+          return __completions_t<__data_of<_Sender>, _Env...>{};
         };
 
       static constexpr auto get_state = //
@@ -234,5 +232,14 @@ namespace exec {
 namespace stdexec {
   template <>
   struct __sexpr_impl<exec::__repeat_n::__repeat_n_tag>
-    : exec::__repeat_n::__repeat_n_impl { }; // namespace stdexec
+    : exec::__repeat_n::__repeat_n_impl { };
+
+  template <>
+  struct __sexpr_impl<exec::repeat_n_t> : __sexpr_defaults {
+    static constexpr auto get_completion_signatures = //
+      []<class _Sender>(_Sender&&) noexcept           //
+      -> __completion_signatures_of_t<                //
+        transform_sender_result_t<default_domain, _Sender, empty_env>> {
+    };
+  };
 } // namespace stdexec

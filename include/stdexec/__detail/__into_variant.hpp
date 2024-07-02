@@ -41,20 +41,19 @@ namespace stdexec {
       requires sender_in<_Sender, _Env>
     using __into_variant_result_t = value_types_of_t<_Sender, _Env>;
 
-    template <class _Sender, class _Env>
-    using __variant_t = __value_types_of_t<_Sender, _Env>;
+    template <class _Sender, class... _Env>
+    using __variant_t = __value_types_t<__completion_signatures_of_t<_Sender, _Env...>>;
 
     template <class _Variant>
     using __variant_completions =
       completion_signatures<set_value_t(_Variant), set_error_t(std::exception_ptr)>;
 
-    template <class _Sender, class _Env>
-    using __sigs = //
-      __try_make_completion_signatures<
-        _Sender,
-        _Env,
-        __meval<__variant_completions, __variant_t<_Sender, _Env>>,
-        __mconst<completion_signatures<>>>;
+    template <class _Sender, class... _Env>
+    using __completions = //
+      transform_completion_signatures<
+        __completion_signatures_of_t<_Sender, _Env...>,
+        __meval<__variant_completions, __variant_t<_Sender, _Env...>>,
+        __mconst<completion_signatures<>>::__f>;
 
     struct into_variant_t {
       template <sender _Sender>
@@ -99,9 +98,9 @@ namespace stdexec {
         }
       };
 
-      static constexpr auto get_completion_signatures =       //
-        []<class _Self, class _Env>(_Self&&, _Env&&) noexcept //
-        -> __sigs<__child_of<_Self>, _Env> {
+      static constexpr auto get_completion_signatures =             //
+        []<class _Self, class... _Env>(_Self&&, _Env&&...) noexcept //
+        -> __completions<__child_of<_Self>, _Env...> {
         static_assert(sender_expr_for<_Self, into_variant_t>);
         return {};
       };

@@ -21,16 +21,17 @@
 #include "exec/static_thread_pool.hpp"
 #include "stdexec/concepts.hpp"
 #include "stdexec/execution.hpp"
-#include <exception>
-#include <system_error>
+
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
-#include <iostream>
 
 #include <catch2/catch.hpp>
+
+#include <memory>
 #include <type_traits>
+#include <utility>
 
 using namespace stdexec;
 

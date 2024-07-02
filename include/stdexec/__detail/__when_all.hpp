@@ -82,59 +82,62 @@ namespace stdexec {
         "Use stdexec::when_all_with_variant() instead."_mstr>
     struct _INVALID_WHEN_ALL_ARGUMENT_;
 
-    template <class _Sender, class _Env>
+    template <class _Sender, class... _Env>
     using __too_many_value_completions_error =
-      __mexception<_INVALID_WHEN_ALL_ARGUMENT_<>, _WITH_SENDER_<_Sender>, _WITH_ENVIRONMENT_<_Env>>;
-
-    template <class _Sender, class _Env, class _ValueTuple, class... _Rest>
-    using __value_tuple_t = __minvoke<
-      __if_c<(0 == sizeof...(_Rest)), __mconst<_ValueTuple>, __q<__too_many_value_completions_error>>,
-      _Sender,
-      _Env>;
-
-    template <class _Env, class _Sender>
-    using __single_values_of_t = //
-      __value_types_of_t<
-        _Sender,
-        _Env,
-        __transform<__q<__decay_t>, __q<__types>>,
-        __mbind_front_q<__value_tuple_t, _Sender, _Env>>;
-
-    template <class _Env, class... _Senders>
-    using __set_values_sig_t = //
-      __meval<
-        completion_signatures,
-        __minvoke<__mconcat<__qf<set_value_t>>, __single_values_of_t<_Env, _Senders>...>>;
+      __mexception<_INVALID_WHEN_ALL_ARGUMENT_<>, _WITH_SENDER_<_Sender>, _WITH_ENVIRONMENT_<_Env>...>;
 
     template <class... _Args>
     using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Args> && ...)>;
 
-    template <class _Env, class... _Senders>
-    using __all_nothrow_decay_copyable_results = //
-      __mand<                                    //
-        __for_each_completion_signature<
-          __completion_signatures_of_t<_Senders, _Env>,
-          __all_nothrow_decay_copyable,
-          __mand_t>...>;
-
     template <class _Error>
     using __set_error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
-    template <class _Env, class... _Senders>
-    using __completions_t = //
-      __meval<              //
-        __concat_completion_signatures,
-        __meval<__eptr_completion_if_t, __all_nothrow_decay_copyable_results<_Env, _Senders...>>,
-        completion_signatures<set_stopped_t()>,
-        __minvoke<
-          __with_default<__mbind_front_q<__set_values_sig_t, _Env>, completion_signatures<>>,
-          _Senders...>,
-        __transform_completion_signatures<
-          __completion_signatures_of_t<_Senders, _Env>,
-          __mconst<completion_signatures<>>::__f,
-          __set_error_t,
-          completion_signatures<>,
-          __concat_completion_signatures>...>;
+    template <class _Sender, class... _Env>
+    using __nothrow_decay_copyable_results = //
+      __for_each_completion_signature<
+        __completion_signatures_of_t<_Sender, _Env...>,
+        __all_nothrow_decay_copyable,
+        __mand_t>;
+
+    template <class... _Env>
+    struct __completions_t {
+      template <class... _Senders>
+      using __all_nothrow_decay_copyable_results = //
+        __mand<__nothrow_decay_copyable_results<_Senders, _Env...>...>;
+
+      template <class _Sender, class _ValueTuple, class... _Rest>
+      using __value_tuple_t = __minvoke<
+        __if_c<(0 == sizeof...(_Rest)), __mconst<_ValueTuple>, __q<__too_many_value_completions_error>>,
+        _Sender,
+        _Env...>;
+
+      template <class _Sender>
+      using __single_values_of_t = //
+        __value_types_t<
+          __completion_signatures_of_t<_Sender, _Env...>,
+          __transform<__q<__decay_t>, __q<__types>>,
+          __mbind_front_q<__value_tuple_t, _Sender>>;
+
+      template <class... _Senders>
+      using __set_values_sig_t = //
+        __meval<
+          completion_signatures,
+          __minvoke<__mconcat<__qf<set_value_t>>, __single_values_of_t<_Senders>...>>;
+
+      template <class... _Senders>
+      using __f = //
+        __meval<  //
+          __concat_completion_signatures,
+          __meval<__eptr_completion_if_t, __all_nothrow_decay_copyable_results<_Senders...>>,
+          completion_signatures<set_stopped_t()>,
+          __minvoke<__with_default<__qq<__set_values_sig_t>, completion_signatures<>>, _Senders...>,
+          __transform_completion_signatures<
+            __completion_signatures_of_t<_Senders, _Env...>,
+            __mconst<completion_signatures<>>::__f,
+            __set_error_t,
+            completion_signatures<>,
+            __concat_completion_signatures>...>;
+    };
 
     template <class _Tag, class _Receiver>
     auto __complete_fn(_Tag, _Receiver& __rcvr) noexcept {
@@ -172,7 +175,7 @@ namespace stdexec {
         __minvoke<
           __mconcat<>,
           __if<
-            __all_nothrow_decay_copyable_results<_Env, _Senders...>,
+            __mand<__nothrow_decay_copyable_results<_Senders, _Env>...>,
             __types<>,
             __types<std::exception_ptr>>,
           __error_types_of_t<_Senders, __env_t<_Env>, __q<__types>>...>;
@@ -270,9 +273,8 @@ namespace stdexec {
         __children_of<_Self, __q<_WITH_SENDERS_>>,
         _WITH_ENVIRONMENT_<_Env>>;
 
-      template <class _Self, class _Env>
-      using __completions = //
-        __children_of<_Self, __mbind_front_q<__completions_t, __env_t<_Env>>>;
+      template <class _Self, class... _Env>
+      using __completions = __children_of<_Self, __completions_t<__env_t<_Env>...>>;
 
       static constexpr auto get_attrs = //
         []<class... _Child>(__ignore, const _Child&...) noexcept {
@@ -285,9 +287,9 @@ namespace stdexec {
         };
 
       static constexpr auto get_completion_signatures = //
-        []<class _Self, class _Env>(_Self&&, _Env&&) noexcept {
+        []<class _Self, class... _Env>(_Self&&, _Env&&...) noexcept {
           static_assert(sender_expr_for<_Self, when_all_t>);
-          return __minvoke<__mtry_catch<__q<__completions>, __q<__error_t>>, _Self, _Env>();
+          return __minvoke<__mtry_catch<__q<__completions>, __q<__error_t>>, _Self, _Env...>();
         };
 
       static constexpr auto get_env = //
@@ -424,6 +426,13 @@ namespace stdexec {
             return __env::__with(_Domain(), get_domain);
           }
         };
+
+      static constexpr auto get_completion_signatures = //
+        []<class _Sender>(_Sender&&) noexcept           //
+        -> __completion_signatures_of_t<                //
+          transform_sender_result_t<default_domain, _Sender, empty_env>> {
+        return {};
+      };
     };
 
     struct transfer_when_all_t {
@@ -467,6 +476,13 @@ namespace stdexec {
         []<class _Data>(const _Data& __data, const auto&...) noexcept -> const _Data& {
         return __data;
       };
+
+      static constexpr auto get_completion_signatures = //
+        []<class _Sender>(_Sender&&) noexcept           //
+        -> __completion_signatures_of_t<                //
+          transform_sender_result_t<default_domain, _Sender, empty_env>> {
+        return {};
+      };
     };
 
     struct transfer_when_all_with_variant_t {
@@ -509,6 +525,13 @@ namespace stdexec {
       static constexpr auto get_attrs = //
         []<class _Data>(const _Data& __data, const auto&...) noexcept -> const _Data& {
         return __data;
+      };
+
+      static constexpr auto get_completion_signatures = //
+        []<class _Sender>(_Sender&&) noexcept           //
+        -> __completion_signatures_of_t<                //
+          transform_sender_result_t<default_domain, _Sender, empty_env>> {
+        return {};
       };
     };
   } // namespace __when_all

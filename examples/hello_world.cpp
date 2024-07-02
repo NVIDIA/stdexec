@@ -36,7 +36,6 @@ int main() {
     });                                                                  // 3
                                                                          //
   sender auto add_42 = then(hi_again, [](int arg) { return arg + 42; }); // 4
-                                                                         //
   auto [i] = sync_wait(std::move(add_42)).value();                       // 5
   std::cout << "Result: " << i << std::endl;
 

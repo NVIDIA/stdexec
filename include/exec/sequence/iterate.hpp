@@ -197,7 +197,7 @@ namespace exec {
         return __sexpr_apply(static_cast<_SeqExpr&&>(__seq), __subscribe_fn<_Receiver>{__rcvr});
       }
 
-      static auto get_completion_signatures(__ignore, __ignore) noexcept
+      static auto get_completion_signatures(__ignore, __ignore = {}) noexcept
         -> completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()> {
         return {};
       }

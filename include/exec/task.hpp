@@ -63,11 +63,12 @@ namespace exec {
       };
 
     template <class _ParentPromise>
-    void __check_parent_promise_has_scheduler() noexcept {
+    constexpr bool __check_parent_promise_has_scheduler() noexcept {
       static_assert(
         __indirect_scheduler_provider<_ParentPromise>,
         "exec::task<T> cannot be co_await-ed in a coroutine that "
         "does not have an associated scheduler.");
+      return __indirect_scheduler_provider<_ParentPromise>;
     }
 
     struct __forward_stop_request {
@@ -89,7 +90,7 @@ namespace exec {
       __sticky
     };
 
-    struct __parent_promise_t {};
+    struct __parent_promise_t { };
 
     template <__scheduler_affinity _SchedulerAffinity = __scheduler_affinity::__sticky>
     class __default_task_context_impl {
@@ -107,11 +108,12 @@ namespace exec {
       template <class _ParentPromise>
       explicit __default_task_context_impl(__parent_promise_t, _ParentPromise& __parent) noexcept {
         if constexpr (_SchedulerAffinity == __scheduler_affinity::__sticky) {
-          __check_parent_promise_has_scheduler<_ParentPromise>();
-          __scheduler_ = get_scheduler(get_env(__parent));
+          if constexpr (__check_parent_promise_has_scheduler<_ParentPromise>()) {
+            __scheduler_ = get_scheduler(get_env(__parent));
+          }
         }
       }
-      
+
       template <scheduler _Scheduler>
       explicit __default_task_context_impl(_Scheduler&& __scheduler)
         : __scheduler_{static_cast<_Scheduler&&>(__scheduler)} {
@@ -143,6 +145,7 @@ namespace exec {
       using promise_context_t = __default_task_context_impl;
 
       template <class _ThisPromise, class _ParentPromise = void>
+        requires(!__with_scheduler) || __indirect_scheduler_provider<_ParentPromise>
       using awaiter_context_t = __default_awaiter_context<_ParentPromise>;
     };
 
@@ -235,8 +238,7 @@ namespace exec {
         // stop_source when stop is requested on the parent coroutine's stop
         // token.
         using __stop_token_t = stop_token_of_t<env_of_t<_ParentPromise>>;
-        using __stop_callback_t =
-          typename __stop_token_t::template callback_type<__forward_stop_request>;
+        using __stop_callback_t = stop_callback_for_t<__stop_token_t, __forward_stop_request>;
 
         if constexpr (std::same_as<__stop_token_t, inplace_stop_token>) {
           __self.__stop_token_ = get_stop_token(get_env(__parent));
@@ -330,9 +332,14 @@ namespace exec {
         }
       };
 
+      using __promise_context_t = typename _Context::template promise_context_t<__promise>;
+
       struct __promise
         : __promise_base<_Ty>
         , with_awaitable_senders<__promise> {
+        using __t = __promise;
+        using __id = __promise;
+
         auto get_return_object() noexcept -> basic_task {
           return basic_task(__coro::coroutine_handle<__promise>::from_promise(*this));
         }
@@ -394,13 +401,11 @@ namespace exec {
             static_cast<_Awaitable&&>(__awaitable));
         }
 
-        using __context_t = typename _Context::template promise_context_t<__promise>;
-
-        auto get_env() const noexcept -> const __context_t& {
+        auto get_env() const noexcept -> const __promise_context_t& {
           return *__context_;
         }
 
-        __optional<__context_t> __context_{};
+        __optional<__promise_context_t> __context_{};
         bool __rescheduled_{false};
       };
 
@@ -449,10 +454,10 @@ namespace exec {
       template <class _ParentPromise>
         requires constructible_from<
           awaiter_context_t<__promise, _ParentPromise>,
-          __promise&,
+          __promise_context_t&,
           _ParentPromise&>
       STDEXEC_MEMFN_DECL(
-        auto as_awaitable)(this basic_task&& __self, _ParentPromise&) noexcept
+        auto as_awaitable)(this basic_task&& __self, _ParentPromise& p) noexcept
         -> __task_awaitable<_ParentPromise> {
         return __task_awaitable<_ParentPromise>{std::exchange(__self.__coro_, {})};
       }
@@ -504,5 +509,10 @@ namespace exec {
 
   inline constexpr __task::__reschedule_coroutine_on reschedule_coroutine_on{};
 } // namespace exec
+
+namespace stdexec {
+  template <class _Ty, class _Context>
+  inline constexpr bool enable_sender<exec::basic_task<_Ty, _Context>> = true;
+} // namespace stdexec
 
 STDEXEC_PRAGMA_POP()

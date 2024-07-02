@@ -107,13 +107,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class... Tys>
       using _set_value_t = completion_signatures<set_value_t(Tys...)>;
 
-      template <class Self, class Env>
+      template <class Self, class... Env>
       using _completion_signatures_t = //
-        __try_make_completion_signatures<
-          __copy_cvref_t<Self, Sender>,
-          Env,
+        transform_completion_signatures<
+          __completion_signatures_of_t< __copy_cvref_t<Self, Sender>, Env...>,
           _set_error_t,
-          __q<_set_value_t>>;
+          _set_value_t>;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
@@ -129,8 +128,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           });
       }
 
-      template <__decays_to<__t> Self, class Env>
-      static auto get_completion_signatures(Self&&, Env&&) -> _completion_signatures_t<Self, Env> {
+      template <__decays_to<__t> Self, class... Env>
+      static auto get_completion_signatures(Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
         return {};
       }
 
@@ -338,13 +337,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class... Tys>
       using _set_value_t = completion_signatures<set_value_t(Tys...)>;
 
-      template <class Self, class Env>
+      template <class Self, class... Env>
       using _completion_signatures_t = //
-        __try_make_completion_signatures<
-          __copy_cvref_t<Self, Sender>,
-          Env,
+        transform_completion_signatures<
+          __completion_signatures_of_t< __copy_cvref_t<Self, Sender>, Env...>,
           _set_error_t,
-          __q<_set_value_t>>;
+          _set_value_t>;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
@@ -363,8 +361,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             context_state);
       }
 
-      template <__decays_to<__t> Self, class Env>
-      static auto get_completion_signatures(Self&&, Env&&) -> _completion_signatures_t<Self, Env> {
+      template <__decays_to<__t> Self, class... Env>
+      static auto get_completion_signatures(Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
         return {};
       }
 

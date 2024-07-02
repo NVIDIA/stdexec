@@ -217,6 +217,13 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<v2::on_t> : __sexpr_defaults {
-    using is_dependent = void;
+    static constexpr auto get_completion_signatures = //
+      []<class _Sender>(_Sender&&) noexcept           //
+      -> __merror_or_t<                               //
+        __completion_signatures_of_t<                 //
+          transform_sender_result_t<default_domain, _Sender, empty_env>>,
+        dependent_completions> {
+      return {};
+    };
   };
 } // namespace stdexec

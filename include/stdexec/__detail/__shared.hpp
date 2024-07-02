@@ -406,7 +406,7 @@ namespace stdexec {
       };
 
       static constexpr auto get_completion_signatures = //
-        []<class _Self, class _OtherEnv>(const _Self&, _OtherEnv&&) noexcept
+        []<class _Self>(const _Self&, auto&&...) noexcept
         -> __completions<_Tag, typename __data_of<_Self>::__sh_state_t> {
         static_assert(sender_expr_for<_Self, _Tag>);
         return {};

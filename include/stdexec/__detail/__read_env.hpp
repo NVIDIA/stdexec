@@ -80,18 +80,14 @@ namespace stdexec {
     };
 
     struct __read_env_impl : __sexpr_defaults {
-      using is_dependent = void;
-
       template <class _Tag, class _Env>
       using __completions_t =
         __minvoke<__mtry_catch_q<__read::__completions_t, __q<__query_failed_error>>, _Tag, _Env>;
 
-      static constexpr auto get_completion_signatures =            //
-        []<class _Self, class _Env>(const _Self&, _Env&&) noexcept //
-        -> __completions_t<__data_of<_Self>, _Env> {
-        static_assert(sender_expr_for<_Self, __read_env_t>);
-        return {};
-      };
+      static constexpr auto get_completion_signatures = //
+        []<class _Self, class _Env>(const _Self&, _Env&&) noexcept -> __completions_t<__data_of<_Self>, _Env> {
+          return {};
+        };
 
       static constexpr auto get_state = //
         []<class _Self, class _Receiver>(const _Self&, _Receiver&) noexcept {

@@ -1062,24 +1062,25 @@ namespace exec {
       Shape shape_;
       Fun fun_;
 
-      template <class Sender, class Env>
+      template <class Sender, class... Env>
       using with_error_invoke_t = //
         __if_c<
-          __v<
-            __value_types_of_t<Sender, Env, __mbind_front_q<bulk_non_throwing, Fun, Shape>, __q<__mand>>>,
+          __v<__value_types_t<
+            __completion_signatures_of_t<Sender, Env...>,
+            __mbind_front_q<bulk_non_throwing, Fun, Shape>,
+            __q<__mand>>>,
           completion_signatures<>,
           __eptr_completion>;
 
       template <class... Tys>
       using set_value_t = completion_signatures<set_value_t(stdexec::__decay_t<Tys>...)>;
 
-      template <class Self, class Env>
+      template <class Self, class... Env>
       using __completions_t = //
-        stdexec::__try_make_completion_signatures<
-          __copy_cvref_t<Self, Sender>,
-          Env,
-          with_error_invoke_t<__copy_cvref_t<Self, Sender>, Env>,
-          __q<set_value_t>>;
+        stdexec::transform_completion_signatures<
+          __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
+          with_error_invoke_t<__copy_cvref_t<Self, Sender>, Env...>,
+          set_value_t>;
 
       template <class Self, class Receiver>
       using bulk_op_state_t = //
@@ -1103,8 +1104,8 @@ namespace exec {
           static_cast<Receiver&&>(rcvr)};
       }
 
-      template <__decays_to<__t> Self, class Env>
-      static auto get_completion_signatures(Self&&, Env&&) -> __completions_t<Self, Env> {
+      template <__decays_to<__t> Self, class... Env>
+      static auto get_completion_signatures(Self&&, Env&&...) -> __completions_t<Self, Env...> {
         return {};
       }
 

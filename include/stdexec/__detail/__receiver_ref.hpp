@@ -77,10 +77,12 @@ namespace stdexec { namespace __any_ {
     _GetEnv{},
     _GetReceiver{}};
 
-  template <class _Sigs, class _Env>
+  template <class _Sigs, class _Env = empty_env>
   class __receiver_ref {
    public:
     using receiver_concept = receiver_t;
+    using __t = __receiver_ref;
+    using __id = __receiver_ref;
 
     template <class _OpState, class _GetEnv, class _GetReceiver = std::identity>
     __receiver_ref(_OpState& __op_state, _GetEnv, _GetReceiver = {}) noexcept

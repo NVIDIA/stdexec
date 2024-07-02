@@ -117,20 +117,18 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class Receiver>
       using receiver_t = stdexec::__t<_upon_stopped::receiver_t<stdexec::__id<Receiver>, Fun>>;
 
-      template <class Self, class Env>
+      template <class Self, class... Env>
       using completion_signatures = //
-        __meval<
-          __try_make_completion_signatures,
-          __copy_cvref_t<Self, Sender>,
-          Env,
+        transform_completion_signatures<
+          __completion_signatures_of_t< __copy_cvref_t<Self, Sender>, Env...>,
           __with_error_invoke_t<
+            __callable_error<"In nvexec::upon_stopped(Sender, Function)..."_mstr>,
             set_stopped_t,
             Fun,
             __copy_cvref_t<Self, Sender>,
-            Env,
-            __callable_error<"In nvexec::upon_stopped(Sender, Function)..."_mstr>>,
-          __q<__sigs::__default_set_value>,
-          __q<__sigs::__default_set_error>,
+            Env...>,
+          __sigs::__default_set_value,
+          __sigs::__default_set_error,
           __set_value_invoke_t<Fun>>;
 
       template <__decays_to<__t> Self, receiver Receiver>
@@ -145,8 +143,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             -> receiver_t<Receiver> { return receiver_t<Receiver>(self.fun_, stream_provider); });
       }
 
-      template <__decays_to<__t> Self, class Env>
-      static auto get_completion_signatures(Self&&, Env&&) -> completion_signatures<Self, Env> {
+      template <__decays_to<__t> Self, class... Env>
+      static auto get_completion_signatures(Self&&, Env&&...) -> completion_signatures<Self, Env...> {
         return {};
       }
 

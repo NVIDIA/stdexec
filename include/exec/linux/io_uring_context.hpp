@@ -1126,8 +1126,8 @@ namespace exec {
           return __env_;
         }
 
-        template <class _Env>
-        static auto get_completion_signatures(const __schedule_after_sender&, _Env) noexcept
+        template <class... _Env>
+        static auto get_completion_signatures(const __schedule_after_sender&, _Env&&...) noexcept
           -> __completion_sigs {
           return {};
         }

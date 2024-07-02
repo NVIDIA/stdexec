@@ -56,11 +56,10 @@ namespace stdexec {
       template <class _Ty>
       using __set_error_t = completion_signatures<set_error_t(_Ty)>;
 
-      static constexpr auto get_completion_signatures =       //
-        []<class _Self, class _Env>(_Self&&, _Env&&) noexcept //
-        -> transform_completion_signatures_of<
-          __child_of<_Self>,
-          _Env,
+      static constexpr auto get_completion_signatures =             //
+        []<class _Self, class... _Env>(_Self&&, _Env&&...) noexcept //
+        -> transform_completion_signatures<
+          __completion_signatures_of_t<__child_of<_Self>, _Env...>,
           completion_signatures<set_error_t(std::exception_ptr)>,
           __set_value_t,
           __set_error_t,

@@ -71,11 +71,11 @@ namespace exec {
 
       template <class _Sender>
       struct __sender_id {
-        template <class _Env>
+        template <class... _Env>
         using __completion_signatures = //
           __mapply<
             __remove<set_stopped_t(), __q<completion_signatures>>,
-            completion_signatures_of_t<_Sender, _Env>>;
+            __completion_signatures_of_t<_Sender, _Env...>>;
 
         struct __t {
           using __id = __sender_id;
@@ -93,8 +93,9 @@ namespace exec {
               __receiver<_Receiver>{static_cast<_Receiver&&>(__rcvr)});
           }
 
-          template <__decays_to<__t> _Self, class _Env>
-          static auto get_completion_signatures(_Self&&, _Env&&) -> __completion_signatures<_Env> {
+          template <__decays_to<__t> _Self, class... _Env>
+          static auto
+            get_completion_signatures(_Self&&, _Env&&...) -> __completion_signatures<_Env...> {
             return {};
           }
 

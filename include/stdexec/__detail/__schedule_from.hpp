@@ -67,31 +67,26 @@ namespace stdexec {
     template <class... _Ts>
     using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Ts> && ...)>;
 
-    template <class _CvrefSender, class _Env>
+    template <class _CvrefSender, class... _Env>
     using __all_nothrow_decay_copyable_results = //
       __for_each_completion_signature<
-        __completion_signatures_of_t<_CvrefSender, _Env>,
+        __completion_signatures_of_t<_CvrefSender, _Env...>,
         __all_nothrow_decay_copyable,
         __mand_t>;
 
-    template <class _CvrefSender, class _Env>
-    using __with_error_t = //
-      __eptr_completion_if_t<__all_nothrow_decay_copyable_results<_CvrefSender, _Env>>;
-
-    template <class _Scheduler, class _CvrefSender, class _Env>
+    template <class _Scheduler, class _CvrefSender, class... _Env>
     using __completions_t = //
       __mtry_q<__concat_completion_signatures>::__f<
         __transform_completion_signatures<
-          __completion_signatures_of_t<_CvrefSender, _Env>,
+          __completion_signatures_of_t<_CvrefSender, _Env...>,
           __decay_value_sig,
           __decay_error_sig,
           set_stopped_t (*)(),
           __completion_signature_ptrs>,
-        __try_make_completion_signatures<
-          schedule_result_t<_Scheduler>,
-          _Env,
-          __eptr_completion_if_t<__all_nothrow_decay_copyable_results<_CvrefSender, _Env>>,
-          __mconst<completion_signatures<>>>>;
+        transform_completion_signatures<
+          __completion_signatures_of_t<schedule_result_t<_Scheduler>, _Env...>,
+          __eptr_completion_if_t<__all_nothrow_decay_copyable_results<_CvrefSender, _Env...>>,
+          __mconst<completion_signatures<>>::__f>>;
 
     template <class _SchedulerId>
     struct __environ {
@@ -208,8 +203,8 @@ namespace stdexec {
         };
 
       static constexpr auto get_completion_signatures = //
-        []<class _Sender, class _Env>(_Sender&&, _Env&&) noexcept
-        -> __completions_t<__scheduler_t<_Sender>, __child_of<_Sender>, _Env> {
+        []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
+        -> __completions_t<__scheduler_t<_Sender>, __child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, schedule_from_t>);
         return {};
       };

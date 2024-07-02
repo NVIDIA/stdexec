@@ -155,8 +155,10 @@ namespace stdexec {
       };
 
     inline constexpr auto __sigs = //
-      [](__ignore, __ignore) noexcept {
-        return void();
+      []<class _Sender>(_Sender&& __sndr, __ignore = {}) noexcept {
+        static_assert(
+          __mnever<tag_of_t<_Sender>>,
+          "No customization of get_completion_signatures for this sender tag type.");
       };
 
     template <class _ReceiverId, class _Sexpr, class _Idx>
@@ -403,14 +405,6 @@ namespace stdexec {
       };
     }
 
-    template <class _Tag, class... _Child>
-    concept __is_non_dependent_sexpr = //
-      !requires { typename __sexpr_impl<_Tag>::is_dependent; }
-      && (__non_dependent_sender<_Child> && ...);
-
-    template <class _Tag, class _Data, class... _Child>
-    using __is_non_dependent_t = __mbool<__is_non_dependent_sexpr<_Tag, _Child...>>;
-
     template <class _Tag, class _Data, class... _Child>
     using __captures_t =
       decltype(__detail::__captures(_Tag(), __declval<_Data>(), __declval<_Child>()...));
@@ -460,10 +454,6 @@ namespace stdexec {
     using __tag_t = typename __desc_t::__tag;
     using __captures_t = __minvoke<__desc_t, __q<__detail::__captures_t>>;
 
-    static constexpr auto __is_non_dependent() noexcept -> bool {
-      return __v<__minvoke<__desc_t, __q<__detail::__is_non_dependent_t>>>;
-    }
-
     mutable __captures_t __impl_;
 
     template <class _Tag, class _Data, class... _Child>
@@ -486,12 +476,13 @@ namespace stdexec {
       return __sexpr_apply(*this, __detail::__drop_front(__impl<_Self>::get_attrs));
     }
 
-    template <__decays_to<__sexpr> _Self, class _Env>
+    template <__decays_to<__sexpr> _Self, class... _Env>
     STDEXEC_ATTRIBUTE((always_inline))
     static auto
-      get_completion_signatures(_Self&&, _Env&&) noexcept -> __msecond<
+      get_completion_signatures(_Self&&, _Env&&...) noexcept //
+      -> __msecond<
         __if_c<__decays_to<_Self, __sexpr>>,
-        __result_of<__impl<_Self>::get_completion_signatures, _Self, _Env>> {
+        __result_of<__impl<_Self>::get_completion_signatures, _Self, _Env...>> {
       return {};
     }
 
