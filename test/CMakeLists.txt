@@ -100,7 +100,8 @@ add_executable(test.stdexec ${stdexec_test_sources})
 set_target_properties(test.stdexec PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON
-    CXX_EXTENSIONS OFF)
+    CXX_EXTENSIONS OFF
+    MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>")
 target_include_directories(test.stdexec PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 target_link_libraries(test.stdexec
     PUBLIC
@@ -113,7 +114,8 @@ add_executable(test.scratch test_main.cpp test_scratch.cpp)
 set_target_properties(test.scratch PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON
-    CXX_EXTENSIONS OFF)
+    CXX_EXTENSIONS OFF
+    MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>")
 target_include_directories(test.scratch PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 target_link_libraries(test.scratch
     PUBLIC
@@ -126,7 +128,8 @@ target_link_libraries(test.scratch
     set_target_properties(test.system_context_replaceability PROPERTIES
         CXX_STANDARD 20
         CXX_STANDARD_REQUIRED ON
-        CXX_EXTENSIONS OFF)
+        CXX_EXTENSIONS OFF
+        MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>")
     target_include_directories(test.system_context_replaceability PRIVATE ${CMAKE_CURRENT_LIST_DIR})
     target_link_libraries(test.system_context_replaceability
         PUBLIC
