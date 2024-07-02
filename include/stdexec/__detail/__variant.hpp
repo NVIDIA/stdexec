@@ -212,10 +212,10 @@ namespace stdexec {
   using __uniqued_variant_for = __mcall<__munique<__qq<__variant_for>>, __decay_t<Ts>...>;
 
   // So we can use __variant as a typelist
-  template <class _Fn, auto _Idx, class... _Ts>
-    requires __minvocable<_Fn, _Ts...>
-  struct __uncurry_<_Fn, __variant<_Idx, _Ts...>> {
-    using __t = __minvoke<_Fn, _Ts...>;
+  template <auto _Idx, class... _Ts>
+  struct __uncurry_<__variant<_Idx, _Ts...>> {
+    template <class _Fn>
+    using __f = __minvoke<_Fn, _Ts...>;
   };
 } // namespace stdexec
 
