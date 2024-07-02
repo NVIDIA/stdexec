@@ -625,12 +625,6 @@ namespace stdexec {
     using __f = __minvoke<_Fn, _As...>;
   };
 
-  template <class... _As>
-  struct __uncurry_<__types<_As...> *> {
-    template <class _Fn>
-    using __f = __minvoke<_Fn, _As...>;
-  };
-
   template <class _What, class... _With>
   struct __uncurry_<_ERROR_<_What, _With...>> {
     template <class _Fn>
@@ -674,7 +668,7 @@ namespace stdexec {
   template <>
   struct __mconcat_<true> {
     template <class... _As>
-    static auto __f(__types<_As...> *) -> __types<_As...> *;
+    static auto __f(__types<_As...> *) -> __types<_As...>;
   };
 
   template <class _Continuation = __qq<__types>>

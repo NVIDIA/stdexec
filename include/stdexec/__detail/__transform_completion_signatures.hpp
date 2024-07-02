@@ -123,7 +123,7 @@ namespace stdexec {
       class... _More,
       class _What,
       class... _With>
-    auto __for_each_completion_signature_fn(_ERROR_<_What, _With...> *) -> _ERROR_<_What, _With...>;
+    auto __for_each_completion_signature_fn(_ERROR_<_What, _With...> **) -> _ERROR_<_What, _With...>;
 
     template <
       template <class...>
@@ -132,7 +132,7 @@ namespace stdexec {
       class _Variant,
       class... _More,
       class... _Sigs>
-    auto __for_each_completion_signature_fn(completion_signatures<_Sigs...> *)
+    auto __for_each_completion_signature_fn(completion_signatures<_Sigs...> **)
       -> _Variant<__for_each_sig_t<_Sigs, _Tuple>..., _More...>;
   } // namespace __sigs
 
@@ -145,7 +145,7 @@ namespace stdexec {
     class... _More>
   using __for_each_completion_signature =
     decltype(__sigs::__for_each_completion_signature_fn<_Tuple, _Variant, _More...>(
-      static_cast<_Sigs *>(nullptr)));
+      static_cast<_Sigs **>(nullptr)));
 
   namespace __sigs {
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -156,7 +156,7 @@ namespace stdexec {
       class _SetErr,
       class _SetStp,
       class... _Values>
-    auto __transform_sig(set_value_t (*)(_Values...)) -> _SetVal<_Values...> *;
+    auto __transform_sig(set_value_t (*)(_Values...)) -> _SetVal<_Values...>;
 
     template <
       template <class...>
@@ -165,13 +165,10 @@ namespace stdexec {
       class _SetErr,
       class _SetStp,
       class _Error>
-    auto __transform_sig(set_error_t (*)(_Error)) -> _SetErr<_Error> *;
+    auto __transform_sig(set_error_t (*)(_Error)) -> _SetErr<_Error>;
 
     template <template <class...> class _SetVal, template <class...> class _SetErr, class _SetStp>
-    auto __transform_sig(set_stopped_t (*)()) -> _SetStp *;
-
-    template <class... _Ts>
-    auto __collect_transforms(_Ts *...) -> __types<_Ts...> *;
+    auto __transform_sig(set_stopped_t (*)()) -> _SetStp;
 
     template <
       class _Sig,
@@ -189,10 +186,12 @@ namespace stdexec {
       template <class...>
       class _SetErr,
       class _SetStp,
+      template <class...>
+      class _Variant,
       class... _More,
       class _What,
       class... _With>
-    auto __transform_sigs_fn(_ERROR_<_What, _With...> **) -> _ERROR_<_What, _With...> *;
+    auto __transform_sigs_fn(_ERROR_<_What, _With...> **) -> _ERROR_<_What, _With...>;
 
     template <
       template <class...>
@@ -200,12 +199,12 @@ namespace stdexec {
       template <class...>
       class _SetErr,
       class _SetStp,
+      template <class...>
+      class _Variant,
       class... _More,
       class... _Sigs>
     auto __transform_sigs_fn(completion_signatures<_Sigs...> **) //
-      -> decltype(__sigs::__collect_transforms(
-        __sigs::__transform_sig_t<_Sigs, _SetVal, _SetErr, _SetStp>()...,
-        static_cast<_More *>(nullptr)...));
+      -> _Variant<__transform_sig_t<_Sigs, _SetVal, _SetErr, _SetStp>..., _More...>;
   } // namespace __sigs
 
   template <
@@ -219,10 +218,8 @@ namespace stdexec {
     class _Variant,
     class... _More>
   using __transform_completion_signatures = //
-    __mapply<
-      __q<_Variant>,
-      decltype(__sigs::__transform_sigs_fn<_SetVal, _SetErr, _SetStp, _More...>(
-        static_cast<_Sigs **>(nullptr)))>;
+    decltype(__sigs::__transform_sigs_fn<_SetVal, _SetErr, _SetStp, _Variant, _More...>(
+      static_cast<_Sigs **>(nullptr)));
 
   namespace __sigs {
     ////////////////////////////////////////////////////////////////////////////////////////////////
