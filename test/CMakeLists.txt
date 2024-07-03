@@ -96,46 +96,46 @@ set(stdexec_test_sources
     $<$<BOOL:${STDEXEC_ENABLE_LIBDISPATCH}>:exec/test_libdispatch.cpp>
     )
 
-add_executable(test.stdexec ${stdexec_test_sources})
-set_target_properties(test.stdexec PROPERTIES
+add_library(common_test_settings INTERFACE)
+set_target_properties(common_test_settings PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON
-    CXX_EXTENSIONS OFF)
+    CXX_EXTENSIONS OFF
+    MSVC_DEBUG_INFORMATION_FORMAT Embedded)
+
+add_executable(test.stdexec ${stdexec_test_sources})
 target_include_directories(test.stdexec PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 target_link_libraries(test.stdexec
     PUBLIC
     STDEXEC::stdexec
     $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
     stdexec_executable_flags
-    Catch2::Catch2)
+    Catch2::Catch2
+    PRIVATE
+    common_test_settings)
 
 add_executable(test.scratch test_main.cpp test_scratch.cpp)
-set_target_properties(test.scratch PROPERTIES
-    CXX_STANDARD 20
-    CXX_STANDARD_REQUIRED ON
-    CXX_EXTENSIONS OFF)
 target_include_directories(test.scratch PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 target_link_libraries(test.scratch
     PUBLIC
     STDEXEC::stdexec
     $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
     stdexec_executable_flags
-    Catch2::Catch2)
+    Catch2::Catch2
+    PRIVATE
+    common_test_settings)
 
     add_executable(test.system_context_replaceability test_main.cpp test_system_context_replaceability.cpp)
-    set_target_properties(test.system_context_replaceability PROPERTIES
-        CXX_STANDARD 20
-        CXX_STANDARD_REQUIRED ON
-        CXX_EXTENSIONS OFF)
     target_include_directories(test.system_context_replaceability PRIVATE ${CMAKE_CURRENT_LIST_DIR})
     target_link_libraries(test.system_context_replaceability
         PUBLIC
         STDEXEC::stdexec
         STDEXEC::system_context
-        $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
         stdexec_executable_flags
-        Catch2::Catch2)
-    
+        Catch2::Catch2
+        PRIVATE
+        common_test_settings)
+
 # Discover the Catch2 test built by the application
 include(${Catch2_SOURCE_DIR}/contrib/Catch.cmake)
 
