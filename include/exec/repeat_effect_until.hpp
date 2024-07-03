@@ -221,8 +221,8 @@ namespace stdexec {
   template <>
   struct __sexpr_impl<exec::repeat_effect_until_t> : __sexpr_defaults {
     static constexpr auto get_completion_signatures = //
-      []<class _Sender>(
-        _Sender &&) noexcept -> exec::__repeat_effect_until::__completions_t<_Sender> {
+      []<class _Sender>(_Sender &&) noexcept          //
+        -> exec::__repeat_effect_until::__completions_t<__data_of<_Sender>> {
       return {};
     };
   };
