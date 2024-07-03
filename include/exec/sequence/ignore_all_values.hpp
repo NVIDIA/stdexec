@@ -300,12 +300,12 @@ namespace exec {
     };
 
     struct __ignore_all_values_impl : __sexpr_defaults {
-      template <class _Sequence, class _Env>
-      using __completion_sigs = __sequence_completion_signatures_of_t<_Sequence, _Env>;
+      template <class _Sequence, class... _Env>
+      using __completion_sigs = __sequence_completion_signatures_of_t<_Sequence, _Env...>;
 
       static constexpr auto get_completion_signatures = //
-        []<class _Sender, class _Env>(_Sender&&, _Env&&)
-        -> __completion_sigs<__child_of<_Sender>, _Env> {
+        []<class _Sender, class... _Env>(_Sender&&, _Env&&...)
+        -> __completion_sigs<__child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
         return {};
       };

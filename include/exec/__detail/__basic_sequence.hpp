@@ -62,11 +62,11 @@ namespace exec {
       return _Self::__tag().get_env(*this);
     }
 
-    template <stdexec::__decays_to<__seqexpr> _Self, class _Env>
-    static auto get_completion_signatures(_Self&& __self, _Env&& __env) //
+    template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
+    static auto get_completion_signatures(_Self&& __self, _Env&&... __env) //
       -> decltype(__self.__tag().get_completion_signatures(
         static_cast<_Self&&>(__self),
-        static_cast<_Env&&>(__env))) {
+        static_cast<_Env&&>(__env)...)) {
       return {};
     }
 
@@ -127,6 +127,20 @@ namespace exec {
     };
   } // namespace __mkseqexpr
 
+  struct __basic_sequence_sender_name {
+    template <class _Tag, class _Data, class... _Child>
+    using __result = __basic_sequence_sender<_Tag, _Data, stdexec::__name_of<_Child>...>;
+
+    template <class _Sender>
+    using __f =
+      stdexec::__minvoke<typename stdexec::__decay_t<_Sender>::__desc_t, stdexec::__q<__result>>;
+  };
+
   template <class _Tag, class _Domain = stdexec::default_domain>
   inline constexpr __mkseqexpr::make_sequence_expr_t<_Tag, _Domain> make_sequence_expr{};
 } // namespace exec
+
+namespace stdexec::__detail {
+  template <auto _DescriptorFn>
+  extern exec::__basic_sequence_sender_name __name_of_v<exec::__seqexpr<_DescriptorFn>>;
+} // namespace stdexec::__detail

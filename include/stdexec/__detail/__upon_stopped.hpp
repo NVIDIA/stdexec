@@ -35,14 +35,13 @@ namespace stdexec {
       "In stdexec::upon_stopped(Sender, Function)..."_mstr;
     using __on_not_callable = __callable_error<__upon_stopped_context>;
 
-    template <class _Fun, class _CvrefSender, class _Env>
+    template <class _Fun, class _CvrefSender, class... _Env>
     using __completion_signatures_t = //
-      __try_make_completion_signatures<
-        _CvrefSender,
-        _Env,
-        __with_error_invoke_t<set_stopped_t, _Fun, _CvrefSender, _Env, __on_not_callable>,
-        __q<__sigs::__default_set_value>,
-        __q<__sigs::__default_set_error>,
+      transform_completion_signatures<
+        __completion_signatures_of_t<_CvrefSender, _Env...>,
+        __with_error_invoke_t<__on_not_callable, set_stopped_t, _Fun, _CvrefSender, _Env...>,
+        __sigs::__default_set_value,
+        __sigs::__default_set_error,
         __set_value_invoke_t<_Fun>>;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,8 +76,8 @@ namespace stdexec {
 
     struct __upon_stopped_impl : __sexpr_defaults {
       static constexpr auto get_completion_signatures = //
-        []<class _Sender, class _Env>(_Sender&&, _Env&&) noexcept
-        -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env> {
+        []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
+        -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, upon_stopped_t>);
         return {};
       };

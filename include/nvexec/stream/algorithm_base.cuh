@@ -115,13 +115,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       STDEXEC_ATTRIBUTE((no_unique_address))
       Fun fun_;
 
-      template <class Self, class Env>
+      template <class Self, class... Env>
       using completion_signatures = //
-        __try_make_completion_signatures<
-          __copy_cvref_t<Self, Sender>,
-          Env,
+        stdexec::transform_completion_signatures<
+          __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
           completion_signatures<set_error_t(cudaError_t)>,
-          __q<_set_value_t>>;
+          __mtry_q<_set_value_t>::template __f>;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
@@ -137,8 +136,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
           });
       }
 
-      template <__decays_to<__t> Self, class Env>
-      static auto get_completion_signatures(Self&&, Env&&) -> completion_signatures<Self, Env> {
+      template <__decays_to<__t> Self, class... Env>
+      static auto
+        get_completion_signatures(Self&&, Env&&...) -> completion_signatures<Self, Env...> {
         return {};
       }
 
@@ -148,3 +148,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
     };
   };
 } // namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun
+
+namespace stdexec::__detail {
+  template <class SenderId, class InitT, class Fun, class DerivedSender>
+  extern __mconst<nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun::
+                    sender_t<__name_of<__t<SenderId>>, InitT, Fun, __name_of<DerivedSender>>>
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun::
+                  sender_t<SenderId, InitT, Fun, DerivedSender>>;
+} // namespace stdexec::__detail

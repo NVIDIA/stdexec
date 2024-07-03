@@ -50,12 +50,11 @@ namespace stdexec {
     template <class _Ty>
     using __decay_ref = __decay_t<_Ty>&;
 
-    template <class _CvrefSender, class _Env, class _Shape, class _Fun, class _Catch>
+    template <class _Catch, class _Fun, class _Shape, class _CvrefSender, class... _Env>
     using __with_error_invoke_t = //
       __if<
-        __value_types_of_t<
-          _CvrefSender,
-          _Env,
+        __value_types_t<
+          __completion_signatures_of_t<_CvrefSender, _Env...>,
           __transform<
             __q<__decay_ref>,
             __mbind_front<__mtry_catch_q<__nothrow_invocable_t, _Catch>, _Fun, _Shape>>,
@@ -63,12 +62,11 @@ namespace stdexec {
         completion_signatures<>,
         __eptr_completion>;
 
-    template <class _CvrefSender, class _Env, class _Shape, class _Fun>
+    template <class _Fun, class _Shape, class _CvrefSender, class... _Env>
     using __completion_signatures = //
-      __try_make_completion_signatures<
-        _CvrefSender,
-        _Env,
-        __with_error_invoke_t<_CvrefSender, _Env, _Shape, _Fun, __on_not_callable>>;
+      transform_completion_signatures<
+        __completion_signatures_of_t<_CvrefSender, _Env...>,
+        __with_error_invoke_t<__on_not_callable, _Fun, _Shape, _CvrefSender, _Env...>>;
 
     struct bulk_t {
       template <sender _Sender, integral _Shape, __movable_value _Fun>
@@ -117,8 +115,8 @@ namespace stdexec {
       using __shape_t = decltype(__decay_t<__data_of<_Sender>>::__shape_);
 
       static constexpr auto get_completion_signatures = //
-        []<class _Sender, class _Env>(_Sender&&, _Env&&) noexcept
-        -> __completion_signatures<__child_of<_Sender>, _Env, __shape_t<_Sender>, __fun_t<_Sender>> {
+        []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
+        -> __completion_signatures<__fun_t<_Sender>, __shape_t<_Sender>, __child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, bulk_t>);
         return {};
       };

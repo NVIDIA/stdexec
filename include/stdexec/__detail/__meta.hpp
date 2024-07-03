@@ -36,6 +36,9 @@ namespace stdexec {
     using __t = _Ty;
   };
 
+  template <class...>
+  inline constexpr bool __mnever = false;
+
   template <auto _Value>
   using __mtypeof = decltype(_Value);
 
@@ -584,6 +587,9 @@ namespace stdexec {
 
   template <class _Ty, class... _Default>
   using __msuccess_or_t = __if_c<__ok<_Ty>, _Ty, _Default...>;
+
+  template <class _Ty, class... _Default>
+  using __merror_or_t = __if_c<__merror<_Ty>, _Ty, _Default...>;
 
   template <class _Fn, class _Continuation = __q<__types>>
   struct __transform {

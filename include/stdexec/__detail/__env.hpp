@@ -548,7 +548,7 @@ namespace stdexec {
       }
 
       template <class _Env>
-      auto operator()(_Env&& __env, empty_env) const noexcept -> _Env {
+      auto operator()(_Env&& __env, empty_env = {}) const noexcept -> _Env {
         return static_cast<_Env&&>(__env);
       }
 
@@ -567,8 +567,8 @@ namespace stdexec {
 
     inline constexpr __join_fn __join{};
 
-    template <class _First, class _Second>
-    using __join_t = __result_of<__join, _First, _Second>;
+    template <class _First, class... _Second>
+    using __join_t = __result_of<__join, _First, _Second...>;
 
     struct __as_root_env_fn {
       template <class _Env>

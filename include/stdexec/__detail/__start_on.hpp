@@ -92,4 +92,14 @@ namespace stdexec {
 
   using on_t = start_on_t;
   inline constexpr on_t on{};
+
+  template <>
+  struct __sexpr_impl<start_on_t> : __sexpr_defaults {
+    static constexpr auto get_completion_signatures = //
+      []<class _Sender>(_Sender&&) noexcept           //
+      -> __completion_signatures_of_t<                //
+        transform_sender_result_t<default_domain, _Sender, empty_env>> {
+      return {};
+    };
+  };
 } // namespace stdexec

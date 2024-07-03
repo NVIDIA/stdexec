@@ -45,14 +45,6 @@ namespace exec {
     using __nothrow_decay_copyable_and_move_constructible_t = __mbool<(
       (__nothrow_decay_copyable<_Ts> && __nothrow_move_constructible<__decay_t<_Ts>>) &&...)>;
 
-    template <class _Env, class... _CvrefSenders>
-    using __all_value_args_nothrow_decay_copyable = //
-      __mand_t<value_types_of_t<
-        _CvrefSenders,
-        _Env,
-        __nothrow_decay_copyable_and_move_constructible_t,
-        __mand_t>...>;
-
     template <class... Args>
     using __as_rvalues = set_value_t (*)(__decay_t<Args>...);
 
@@ -62,22 +54,31 @@ namespace exec {
     // Here we convert all set_value(Args...) to set_value(__decay_t<Args>...). Note, we keep all
     // error types as they are and unconditionally add set_stopped(). The indirection through the
     // __completions_fn is to avoid a pack expansion bug in nvc++.
-    template <class _Env, class... _CvrefSenders>
-    using __completions_t = //
-      __concat_completion_signatures<
-        __eptr_completion_if_t<__all_value_args_nothrow_decay_copyable<_Env, _CvrefSenders...>>,
+    template <class... _Env>
+    struct __completions_fn {
+      template <class... _CvrefSenders>
+      using __all_value_args_nothrow_decay_copyable = //
+        __mand_t<__value_types_t<
+          __completion_signatures_of_t<_CvrefSenders, _Env...>,
+          __qq<__nothrow_decay_copyable_and_move_constructible_t>,
+          __qq<__mand_t>>...>;
+
+      template <class... _CvrefSenders>
+      using __f = __mtry_q<__concat_completion_signatures>::__f<
+        __eptr_completion_if_t<__all_value_args_nothrow_decay_copyable<_CvrefSenders...>>,
         completion_signatures<set_stopped_t()>,
         __transform_completion_signatures<
-          __completion_signatures_of_t<_CvrefSenders, _Env>,
+          __completion_signatures_of_t<_CvrefSenders, _Env...>,
           __as_rvalues,
           __as_error,
           set_stopped_t (*)(),
           __completion_signature_ptrs>...>;
+    };
 
     template <class _Env, class... _CvrefSenders>
     using __result_type_t = //
       __for_each_completion_signature<
-        __completions_t<_Env, _CvrefSenders...>,
+        __minvoke<__completions_fn<_Env>, _CvrefSenders...>,
         __decayed_tuple,
         __uniqued_variant_for>;
 
@@ -239,9 +240,11 @@ namespace exec {
       template <class _Self, class _Receiver>
       using __op_t = stdexec::__t<__op<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>>;
 
-      template <class _Self, class _Env>
+      template <class _Self, class... _Env>
       using __completions_t = //
-        __when_any::__completions_t<_Env, __copy_cvref_t<_Self, stdexec::__t<_SenderIds>>...>;
+        __minvoke<
+          __when_any::__completions_fn<_Env...>,
+          __copy_cvref_t<_Self, stdexec::__t<_SenderIds>>...>;
 
       class __t {
        public:
@@ -266,9 +269,9 @@ namespace exec {
             static_cast<_Self&&>(__self).__senders_, static_cast<_Receiver&&>(__rcvr)};
         }
 
-        template <__decays_to<__t> _Self, class _Env>
-        static auto
-          get_completion_signatures(_Self&&, _Env&&) noexcept -> __completions_t<_Self, _Env> {
+        template <__decays_to<__t> _Self, class... _Env>
+        static auto get_completion_signatures(_Self&&, _Env&&...) noexcept
+          -> __completions_t<_Self, _Env...> {
           return {};
         }
 
