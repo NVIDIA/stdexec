@@ -149,7 +149,9 @@ namespace exec {
       }
 
       ~__system_op() {
-        __scheduler_->__destruct_schedule_operation(__scheduler_, __impl_os_);
+        if (__impl_os_ != nullptr) {
+          __scheduler_->__destruct_schedule_operation(__scheduler_, __impl_os_);
+        }
       }
 
       __system_op(const __system_op&) = delete;
@@ -173,7 +175,7 @@ namespace exec {
       /// The underlying implementation of the scheduler.
       __exec_system_scheduler_interface* __scheduler_{nullptr};
       /// The operating state on the implementation side.
-      void* __impl_os_;
+      void* __impl_os_{nullptr};
 
       /// Preallocated space for storing the operation state on the implementation size.
       struct alignas(STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN) __preallocated {

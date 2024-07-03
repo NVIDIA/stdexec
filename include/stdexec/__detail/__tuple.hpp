@@ -176,9 +176,9 @@ namespace stdexec {
   using __decayed_tuple = __tuple_for<__decay_t<_Ts>...>;
 
   // So we can use __tuple as a typelist
-  template <class _Fn, auto _Idx, class... _Ts>
-    requires __minvocable<_Fn, _Ts...>
-  struct __uncurry_<_Fn, __tuple<_Idx, _Ts...>> {
-    using __t = __minvoke<_Fn, _Ts...>;
+  template <auto _Idx, class... _Ts>
+  struct __uncurry_<__tuple<_Idx, _Ts...>> {
+    template <class _Fn>
+    using __f = __minvoke<_Fn, _Ts...>;
   };
 } // namespace stdexec

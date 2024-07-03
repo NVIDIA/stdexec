@@ -296,13 +296,13 @@ namespace stdexec {
   concept sender_of =        //
     sender_in<_Sender, _Env> //
     && same_as<
-      __types_ref<_SetSig>,
+      __types<_SetSig>,
       __gather_completions_of<
         __tag_of_sig_t<_SetSig>,
         _Sender,
         _Env,
-        __mcompose_q<__types_ref, __qf<__tag_of_sig_t<_SetSig>>::template __f>,
-        __mappend_into_q<__types_ref>>>;
+        __mcompose_q<__types, __qf<__tag_of_sig_t<_SetSig>>::template __f>,
+        __mconcat<__qq<__types>>>>;
 
   template <class _Error>
     requires false
