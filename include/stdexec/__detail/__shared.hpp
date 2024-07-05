@@ -329,7 +329,14 @@ namespace stdexec {
         }
 
         STDEXEC_ASSERT(__waiters_copy.front() != __get_tombstone());
-        for (__local_state_base* __item: __waiters_copy) {
+        for (auto __itr = __waiters_copy.begin(); __itr != __waiters_copy.end(); ) {
+          __local_state_base* __item = *__itr;
+
+          // We must increment the iterator before calling notify, since notify
+          // may end up triggering *__item to be destructed on another thread,
+          // and the intrusive slist's iterator increment relies on __item.
+          ++__itr;
+
           __item->__notify_(__item);
         }
 
