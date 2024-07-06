@@ -96,7 +96,7 @@ namespace exec::__system_context_default_impl {
   };
 
   struct __system_scheduler_impl : __exec_system_scheduler_interface {
-    __system_scheduler_impl(exec::static_thread_pool& __pool)
+    explicit __system_scheduler_impl(exec::static_thread_pool& __pool)
       : __pool_scheduler_{__pool.get_scheduler()} {
       __forward_progress_guarantee = 1; // parallel
       __schedule_operation_size = sizeof(__schedule_operation_t),
@@ -191,10 +191,6 @@ namespace exec::__system_context_default_impl {
 
     /// The system scheduler implementation.
     __system_scheduler_impl __scheduler_{__pool_};
-
-    static long __get_version_impl(__exec_system_context_interface*) noexcept {
-      return 202402L;
-    }
 
     static __exec_system_scheduler_interface*
       __get_scheduler_impl(__exec_system_context_interface* __self) noexcept {
