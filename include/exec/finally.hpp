@@ -264,7 +264,7 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class _Rec>
-        STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Rec&& __receiver) noexcept -> __op_t<_Self, _Rec> {
+        static auto connect(_Self&& __self, _Rec&& __receiver) noexcept -> __op_t<_Self, _Rec> {
           return {
             static_cast<_Self&&>(__self).__initial_sndr_,
             static_cast<_Self&&>(__self).__final_sndr_,

@@ -301,17 +301,12 @@ namespace exec {
       completion_signatures<set_value_t(), set_stopped_t()>>;
 
     template <class _Sender, class _Receiver>
-    concept __next_connectable_with_tag_invoke =
+    concept __next_connectable =
       receiver<_Receiver> &&                                                      //
       sender_in<_Sender, env_of_t<_Receiver>> &&                                  //
       !sequence_sender_in<_Sender, env_of_t<_Receiver>> &&                        //
       sequence_receiver_of<_Receiver, item_types<stdexec::__decay_t<_Sender>>> && //
-      __receiver_from<__stopped_means_break_t<_Receiver>, next_sender_of_t<_Receiver, _Sender>>
-      && //
-      __connect::__with_tag_invoke<
-        next_sender_of_t<_Receiver, _Sender>&&,
-        __stopped_means_break_t<_Receiver>>;
-
+      sender_to<next_sender_of_t<_Receiver, _Sender>, __stopped_means_break_t<_Receiver>>;
 
     template <class _Sender, class _Receiver>
     concept __subscribeable_with_tag_invoke = receiver<_Receiver> &&                              //
@@ -329,13 +324,11 @@ namespace exec {
         constexpr bool _NothrowTfxSender =
           __nothrow_callable<transform_sender_t, _Domain, _Sender, env_of_t<_Receiver&>>;
         using _TfxSender = __tfx_sndr<_Sender, _Receiver>;
-        if constexpr (__next_connectable_with_tag_invoke<_TfxSender, _Receiver>) {
-          using _Result = tag_invoke_result_t<
-            connect_t,
+        if constexpr (__next_connectable<_TfxSender, _Receiver>) {
+          using _Result = connect_result_t<
             next_sender_of_t<_Receiver, _TfxSender>,
             __stopped_means_break_t<_Receiver>>;
-          constexpr bool _Nothrow = nothrow_tag_invocable<
-            connect_t,
+          constexpr bool _Nothrow = __nothrow_connectable<
             next_sender_of_t<_Receiver, _TfxSender>,
             __stopped_means_break_t<_Receiver>>;
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
@@ -353,27 +346,25 @@ namespace exec {
       using __select_impl_t = decltype(__select_impl<_Sender, _Receiver>());
 
       template <sender _Sender, receiver _Receiver>
-        requires __next_connectable_with_tag_invoke<__tfx_sndr<_Sender, _Receiver>, _Receiver>
-              || __subscribeable_with_tag_invoke<__tfx_sndr<_Sender, _Receiver>, _Receiver>
-              || __is_debug_env<env_of_t<_Receiver>>
+        requires __next_connectable<__tfx_sndr<_Sender, _Receiver>, _Receiver>
+                || __subscribeable_with_tag_invoke<__tfx_sndr<_Sender, _Receiver>, _Receiver>
+                || __is_debug_env<env_of_t<_Receiver>>
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
         noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
           -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
         using _TfxSender = __tfx_sndr<_Sender, _Receiver>;
         auto&& __env = get_env(__rcvr);
         auto __domain = __get_late_domain(__sndr, __env);
-        if constexpr (__next_connectable_with_tag_invoke<_TfxSender, _Receiver>) {
+        if constexpr (__next_connectable<_TfxSender, _Receiver>) {
           static_assert(
-            operation_state<tag_invoke_result_t<
-              connect_t,
+            operation_state<connect_result_t<
               next_sender_of_t<_Receiver, _TfxSender>,
               __stopped_means_break_t<_Receiver>>>,
             "stdexec::connect(sender, receiver) must return a type that "
             "satisfies the operation_state concept");
           next_sender_of_t<_Receiver, _TfxSender> __next =
             set_next(__rcvr, transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env));
-          return tag_invoke(
-            connect_t{},
+          return stdexec::connect(
             static_cast<next_sender_of_t<_Receiver, _TfxSender>&&>(__next),
             __stopped_means_break_t<_Receiver>{static_cast<_Receiver&&>(__rcvr)});
         } else if constexpr (__subscribeable_with_tag_invoke<_TfxSender, _Receiver>) {
@@ -423,7 +414,7 @@ namespace exec {
   concept sequence_sender_to =
     sequence_receiver_from<_Receiver, _Sender> && //
     requires(_Sender&& __sndr, _Receiver&& __rcvr) {
-      { subscribe(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr)) };
+      subscribe(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
     };
 
   template <class _Receiver>

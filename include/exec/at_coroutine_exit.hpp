@@ -85,17 +85,15 @@ namespace exec {
 
           template <receiver _Receiver>
             requires sender_to<_Sender, __receiver<_Receiver>>
-          STDEXEC_MEMFN_DECL(
-            auto connect)(this __t&& __self, _Receiver&& __rcvr) noexcept
+          auto connect(_Receiver __rcvr) && noexcept
             -> connect_result_t<_Sender, __receiver<_Receiver>> {
             return stdexec::connect(
-              static_cast<_Sender&&>(__self.__sender_),
+              static_cast<_Sender&&>(__sender_),
               __receiver<_Receiver>{static_cast<_Receiver&&>(__rcvr)});
           }
 
-          template <__decays_to<__t> _Self, class... _Env>
-          static auto
-            get_completion_signatures(_Self&&, _Env&&...) -> __completion_signatures<_Env...> {
+          template <class... _Env>
+          auto get_completion_signatures(_Env&&...) -> __completion_signatures<_Env...> {
             return {};
           }
 

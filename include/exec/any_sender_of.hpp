@@ -991,8 +991,7 @@ namespace exec {
         }
       };
 
-      class __t {
-       public:
+      struct __t {
         using __id = __sender;
         using completion_signatures = _Sigs;
         using sender_concept = stdexec::sender_t;
@@ -1022,14 +1021,14 @@ namespace exec {
           return {__storage_.__get_vtable(), __storage_.__get_object_pointer()};
         }
 
+        template <receiver_of<_Sigs> _Rcvr>
+        auto connect(_Rcvr __rcvr) && //
+          -> stdexec::__t<__operation<stdexec::__id<_Rcvr>, __with_inplace_stop_token>> {
+          return {static_cast<__t&&>(*this), static_cast<_Rcvr&&>(__rcvr)};
+        }
+
        private:
         __unique_storage_t<__vtable> __storage_;
-
-        template <receiver_of<_Sigs> _Rcvr>
-        STDEXEC_MEMFN_DECL(auto connect)(this __t&& __self, _Rcvr&& __rcvr)
-          -> stdexec::__t<__operation<stdexec::__id<__decay_t<_Rcvr>>, __with_inplace_stop_token>> {
-          return {static_cast<__t&&>(__self), static_cast<_Rcvr&&>(__rcvr)};
-        }
       };
     };
 
@@ -1200,6 +1199,11 @@ namespace exec {
       any_sender(_Sender&& __sender) //
         noexcept(stdexec::__nothrow_constructible_from<__sender_base, _Sender>)
         : __sender_(static_cast<_Sender&&>(__sender)) {
+      }
+
+      template <stdexec::receiver_of<_Completions> _Receiver>
+      auto connect(_Receiver __rcvr) && -> stdexec::connect_result_t<__sender_base, _Receiver> {
+        return static_cast<__sender_base&&>(__sender_).connect(static_cast<_Receiver&&>(__rcvr));
       }
 
       template <auto... _SchedulerQueries>

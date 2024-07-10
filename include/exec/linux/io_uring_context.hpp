@@ -586,6 +586,11 @@ namespace exec {
           stdexec::set_error_t(std::exception_ptr),
           stdexec::set_stopped_t()>;
 
+        template <stdexec::receiver_of<completion_signatures> _Rcvr>
+        auto connect(_Rcvr __rcvr) const noexcept -> __run_op<_Rcvr> {
+          return {static_cast<_Rcvr&&>(__rcvr), *__context_, __mode_};
+        }
+
        private:
         friend class __context;
         __context* __context_;
@@ -594,14 +599,6 @@ namespace exec {
         explicit __run_sender(__context* __context, until __mode) noexcept
           : __context_{__context}
           , __mode_{__mode} {
-        }
-
-        template <
-          stdexec::__decays_to<__run_sender> _Self,
-          stdexec::receiver_of<completion_signatures> _Rcvr>
-        STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Rcvr&& __rcvr) noexcept
-          -> __run_op<stdexec::__decay_t<_Rcvr>> {
-          return {static_cast<_Rcvr&&>(__rcvr), *__self.__context_, __self.__mode_};
         }
       };
 
@@ -1101,10 +1098,10 @@ namespace exec {
         }
 
         template <stdexec::receiver_of<__completion_sigs> _Receiver>
-        STDEXEC_MEMFN_DECL(auto connect)(this const __schedule_sender& __sender, _Receiver&& __receiver)
+        auto connect(_Receiver __receiver) const & //
           -> stdexec::__t<__schedule_operation<stdexec::__id<_Receiver>>> {
           return stdexec::__t<__schedule_operation<stdexec::__id<_Receiver>>>(
-            std::in_place, *__sender.__env_.__context_, static_cast<_Receiver&&>(__receiver));
+            std::in_place, *__env_.__context_, static_cast<_Receiver&&>(__receiver));
         }
       };
 
@@ -1133,13 +1130,10 @@ namespace exec {
         }
 
         template <stdexec::receiver_of<__completion_sigs> _Receiver>
-        STDEXEC_MEMFN_DECL(auto connect)(this const __schedule_after_sender& __sender, _Receiver&& __receiver)
+        auto connect(_Receiver __receiver) const & //
           -> stdexec::__t<__schedule_after_operation<stdexec::__id<_Receiver>>> {
           return stdexec::__t<__schedule_after_operation<stdexec::__id<_Receiver>>>(
-            std::in_place,
-            *__sender.__env_.__context_,
-            __sender.__duration_,
-            static_cast<_Receiver&&>(__receiver));
+            std::in_place, *__env_.__context_, __duration_, static_cast<_Receiver&&>(__receiver));
         }
       };
 

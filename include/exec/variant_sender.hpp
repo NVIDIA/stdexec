@@ -100,11 +100,13 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires(sender_to<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver> && ...)
-        STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr) noexcept((
-          __nothrow_connectable<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver> && ...))
-          -> stdexec::__t<__operation_state<
-            stdexec::__id<_Receiver>,
-            __cvref_id<_Self, stdexec::__t<_SenderIds>>...>> {
+        static auto connect(_Self&& __self, _Receiver __rcvr) //
+          noexcept(
+            (__nothrow_connectable<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver>
+             && ...))
+            -> stdexec::__t<__operation_state<
+              stdexec::__id<_Receiver>,
+              __cvref_id<_Self, stdexec::__t<_SenderIds>>...>> {
           return std::visit(
             __visitor<_Self, _Receiver>{static_cast<_Receiver&&>(__rcvr)},
             static_cast<_Self&&>(__self).base());

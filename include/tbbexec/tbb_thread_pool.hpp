@@ -70,20 +70,14 @@ namespace tbbexec {
             return *this;
           }
 
-         private:
           template <class Receiver>
-          auto make_operation_(Receiver rcvr) const
+          auto connect(Receiver rcvr) const
             -> stdexec::__t<operation<DerivedPoolType, stdexec::__id<Receiver>>> {
             return stdexec::__t<operation<DerivedPoolType, stdexec::__id<Receiver>>>{
               this->pool_, static_cast<Receiver&&>(rcvr)};
           }
 
-          template <class Receiver>
-          STDEXEC_MEMFN_DECL(auto connect)(this sender sndr, Receiver rcvr)
-            -> stdexec::__t<operation<DerivedPoolType, stdexec::__id<Receiver>>> {
-            return sndr.make_operation_(std::move(rcvr));
-          }
-
+         private:
           friend struct DerivedPoolType::tbb_thread_pool::scheduler;
 
           explicit sender(DerivedPoolType& pool) noexcept
@@ -350,9 +344,10 @@ namespace tbbexec {
               bulk_op_state<stdexec::__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun>>;
 
             template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
-              requires stdexec::
-                receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-              STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr) //
+              requires stdexec::receiver_of<
+                         Receiver,
+                         completion_signatures<Self, stdexec::env_of_t<Receiver>>>
+            static auto connect(Self&& self, Receiver rcvr) //
               noexcept(stdexec::__nothrow_constructible_from<
                        bulk_op_state_t<Self, Receiver>,
                        DerivedPoolType&,

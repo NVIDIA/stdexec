@@ -101,22 +101,16 @@ namespace stdexec {
           using completion_signatures = stdexec::
             completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
 
-         private:
-          friend __scheduler;
-
           template <class _Receiver>
           using __operation = stdexec::__t<__operation<stdexec::__id<_Receiver>>>;
 
           template <class _Receiver>
-          STDEXEC_MEMFN_DECL(auto connect)(this const __schedule_task& __self, _Receiver __rcvr)
-            -> __operation<_Receiver> {
-            return __self.__connect_(static_cast<_Receiver&&>(__rcvr));
-          }
-
-          template <class _Receiver>
-          auto __connect_(_Receiver&& __rcvr) const -> __operation<_Receiver> {
+          auto connect(_Receiver __rcvr) const -> __operation<_Receiver> {
             return {&__loop_->__head_, __loop_, static_cast<_Receiver&&>(__rcvr)};
           }
+
+         private:
+          friend __scheduler;
 
           struct __env {
             using __t = __env;

@@ -186,7 +186,6 @@ namespace exec {
 
   /// The sender used to schedule new work in the system context.
   class system_sender {
-    STDEXEC_MEMFN_FRIEND(connect);
    public:
     /// Marks this type as being a sender; not to spec.
     using sender_concept = stdexec::sender_t;
@@ -208,10 +207,9 @@ namespace exec {
 
     /// Connects `__self` to `__rcvr`, returning the operation state containing the work to be done.
     template <stdexec::receiver _Rcvr>
-    STDEXEC_MEMFN_DECL(auto connect)(this system_sender&& __self, _Rcvr __rcvr) //
-      noexcept(stdexec::__nothrow_move_constructible<_Rcvr>)
-        -> __detail::__system_op<system_sender, _Rcvr> {
-      return {std::move(__rcvr), __self.__scheduler_};
+    auto connect(_Rcvr __rcvr) && noexcept(stdexec::__nothrow_move_constructible<_Rcvr>) //
+      -> __detail::__system_op<system_sender, _Rcvr> {
+      return {std::move(__rcvr), __scheduler_};
     }
 
    private:
@@ -401,7 +399,6 @@ namespace exec {
     friend struct __detail::__bulk_state;
     template <stdexec::sender, std::integral, class, class>
     friend struct __detail::__bulk_intermediate_receiver;
-    STDEXEC_MEMFN_FRIEND(connect);
 
    public:
     /// Marks this type as being a sender
@@ -422,11 +419,10 @@ namespace exec {
 
     /// Connects `__self` to `__rcvr`, returning the operation state containing the work to be done.
     template <stdexec::receiver _Rcvr>
-    STDEXEC_MEMFN_DECL(auto connect)(this system_bulk_sender&& __self, _Rcvr __rcvr) //
-      noexcept(stdexec::__nothrow_move_constructible<_Rcvr>)
-        -> __detail::__system_bulk_op<_Previous, _Size, _Fn, _Rcvr> {
+    auto connect(_Rcvr __rcvr) && noexcept(stdexec::__nothrow_move_constructible<_Rcvr>) //
+      -> __detail::__system_bulk_op<_Previous, _Size, _Fn, _Rcvr> {
       using __receiver_t = __detail::__bulk_intermediate_receiver<_Previous, _Size, _Fn, _Rcvr>;
-      return {std::move(__self), std::move(__rcvr), [](auto& __op) {
+      return {std::move(*this), std::move(__rcvr), [](auto& __op) {
                 // Connect bulk input receiver with the previous operation and store in the operating state.
                 return stdexec::connect(
                   std::move(__op.__state_.__snd_.__previous_), __receiver_t{__op.__state_});

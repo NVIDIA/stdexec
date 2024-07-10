@@ -79,13 +79,11 @@ struct _then_sender {
   }
 
   // Connect:
-  template <stdexec::same_as<_then_sender> Self, stdexec::receiver R>
+  template <stdexec::receiver R>
     requires stdexec::sender_to<S, _then_receiver<R, F>>
-  STDEXEC_MEMFN_DECL(
-    auto connect)(this Self&& self, R r) {
+  auto connect(R r) && {
     return stdexec::connect(
-      static_cast<S&&>(self.s_),
-      _then_receiver<R, F>{static_cast<R&&>(r), static_cast<F&&>(self.f_)});
+      static_cast<S&&>(s_), _then_receiver<R, F>{static_cast<R&&>(r), static_cast<F&&>(f_)});
   }
 
   auto get_env() const noexcept -> decltype(auto) {

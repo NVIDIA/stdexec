@@ -489,8 +489,8 @@ namespace stdexec {
     // BUGBUG fix receiver constraint here:
     template <__decays_to<__sexpr> _Self, /*receiver*/ class _Receiver>
     STDEXEC_ATTRIBUTE((always_inline))
-    STDEXEC_MEMFN_DECL(
-      auto connect)(this _Self&& __self, _Receiver&& __rcvr)                  //
+    static auto
+      connect(_Self&& __self, _Receiver&& __rcvr)                       //
       noexcept(__noexcept_of<__impl<_Self>::connect, _Self, _Receiver>) //
       -> __msecond<
         __if_c<__decays_to<_Self, __sexpr>>,

@@ -54,9 +54,9 @@ namespace stdexec {
       decltype(__declval<_Sender>().get_completion_signatures(__declval<_Env>()...));
 
     template <class _Sender, class... _Env>
-    using __static_member_result_t = decltype(__declval<_Sender>().get_completion_signatures(
-      __declval<_Sender>(),
-      __declval<_Env>()...));
+    using __static_member_result_t =             //
+      decltype(STDEXEC_REMOVE_REFERENCE(_Sender) //
+               ::get_completion_signatures(__declval<_Sender>(), __declval<_Env>()...));
 
     template <class _Sender, class... _Env>
     concept __with_member = __mvalid<__member_result_t, _Sender, _Env...>;
@@ -135,6 +135,7 @@ namespace stdexec {
       // NOT TO SPEC: if we're unable to compute the completion signatures,
       // return an error type instead of SFINAE.
       template <class _Sender, class... _Env>
+        requires(sizeof...(_Env) <= 1)
       constexpr auto operator()(_Sender&&, _Env&&...) const noexcept //
         -> decltype(__impl<_Sender, _Env...>()()) {
         return {};
@@ -159,22 +160,21 @@ namespace stdexec {
     using __member_result_t = decltype(__declval<_Sender>().connect(__declval<_Receiver>()));
 
     template <class _Sender, class _Receiver>
-    concept __with_member =                      //
-      receiver<_Receiver>                        //
-      && sender_in<_Sender, env_of_t<_Receiver>> //
-      && __receiver_from<_Receiver, _Sender>     //
-      && __mvalid<__member_result_t, _Sender, _Receiver>;
+    using __static_member_result_t =
+      decltype(STDEXEC_REMOVE_REFERENCE(_Sender) //
+               ::connect(__declval<_Sender>(), __declval<_Receiver>()));
 
     template <class _Sender, class _Receiver>
-    concept __with_tag_invoke =                  //
-      receiver<_Receiver>                        //
-      && sender_in<_Sender, env_of_t<_Receiver>> //
-      && __receiver_from<_Receiver, _Sender>     //
-      && tag_invocable<connect_t, _Sender, _Receiver>;
+    concept __with_member = __mvalid<__member_result_t, _Sender, _Receiver>;
 
     template <class _Sender, class _Receiver>
-    concept __with_co_await = //
-      __callable<__connect_awaitable_t, _Sender, _Receiver>;
+    concept __with_static_member = __mvalid<__static_member_result_t, _Sender, _Receiver>;
+
+    template <class _Sender, class _Receiver>
+    concept __with_tag_invoke = tag_invocable<connect_t, _Sender, _Receiver>;
+
+    template <class _Sender, class _Receiver>
+    concept __with_co_await = __callable<__connect_awaitable_t, _Sender, _Receiver>;
 
     struct connect_t {
       template <class _Sender, class _Env>
@@ -194,18 +194,25 @@ namespace stdexec {
       template <class _Sender, class _Receiver>
       static constexpr auto __select_impl() noexcept {
         using _Domain = __late_domain_of_t<_Sender, env_of_t<_Receiver>>;
+        using _TfxSender = __tfx_sender<_Sender, _Receiver>;
         constexpr bool _NothrowTfxSender =
           __nothrow_callable<transform_sender_t, _Domain, _Sender, env_of_t<_Receiver>>;
-        using _TfxSender = __tfx_sender<_Sender, _Receiver>;
 
 #if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
         static_assert(__check_signatures<_TfxSender, env_of_t<_Receiver>>());
 #endif
 
-        if constexpr (__with_member<_TfxSender, _Receiver>) {
+        if constexpr (__with_static_member<_TfxSender, _Receiver>) {
+          using _Result = __static_member_result_t<_TfxSender, _Receiver>;
+          constexpr bool _Nothrow = //
+            _NothrowTfxSender
+            && noexcept(
+              __declval<_TfxSender>().connect(__declval<_TfxSender>(), __declval<_Receiver>()));
+          return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
+        } else if constexpr (__with_member<_TfxSender, _Receiver>) {
           using _Result = __member_result_t<_TfxSender, _Receiver>;
           constexpr bool _Nothrow = //
-            _NothrowTfxSender&& noexcept(__declval<_TfxSender>().connect(__declval<_Receiver>));
+            _NothrowTfxSender && noexcept(__declval<_TfxSender>().connect(__declval<_Receiver>()));
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
         } else if constexpr (__with_tag_invoke<_TfxSender, _Receiver>) {
           using _Result = tag_invoke_result_t<connect_t, _TfxSender, _Receiver>;
@@ -225,10 +232,11 @@ namespace stdexec {
       using __select_impl_t = decltype(__select_impl<_Sender, _Receiver>());
 
       template <sender _Sender, receiver _Receiver>
-        requires __with_member<__tfx_sender<_Sender, _Receiver>, _Receiver>
-              || __with_tag_invoke<__tfx_sender<_Sender, _Receiver>, _Receiver>
-              || __with_co_await<__tfx_sender<_Sender, _Receiver>, _Receiver>
-              || __is_debug_env<env_of_t<_Receiver>>
+        requires __with_static_member<__tfx_sender<_Sender, _Receiver>, _Receiver>
+                || __with_member<__tfx_sender<_Sender, _Receiver>, _Receiver>
+                || __with_tag_invoke<__tfx_sender<_Sender, _Receiver>, _Receiver>
+                || __with_co_await<__tfx_sender<_Sender, _Receiver>, _Receiver>
+                || __is_debug_env<env_of_t<_Receiver>>
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
         noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
           -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
@@ -236,7 +244,15 @@ namespace stdexec {
         auto&& __env = get_env(__rcvr);
         auto __domain = __get_late_domain(__sndr, __env);
 
-        if constexpr (__with_member<_TfxSender, _Receiver>) {
+        if constexpr (__with_static_member<_TfxSender, _Receiver>) {
+          static_assert(
+            operation_state<__static_member_result_t<_TfxSender, _Receiver>>,
+            "Sender::connect(sender, receiver) must return a type that "
+            "satisfies the operation_state concept");
+          auto&& __tfx_sndr = transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env);
+          return __tfx_sndr.connect(
+            static_cast<_TfxSender&&>(__tfx_sndr), static_cast<_Receiver&&>(__rcvr));
+        } else if constexpr (__with_member<_TfxSender, _Receiver>) {
           static_assert(
             operation_state<__member_result_t<_TfxSender, _Receiver>>,
             "sender.connect(receiver) must return a type that "

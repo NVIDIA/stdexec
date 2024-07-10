@@ -155,11 +155,10 @@ namespace exec {
         using connect_t = stdexec::connect_t;
 
         template <stdexec::receiver_of<__completions_t> _Receiver>
-        STDEXEC_MEMFN_DECL(
-          auto connect)(this const __t& __self, _Receiver __rcvr) //
+        auto connect(_Receiver __rcvr) const
           noexcept(stdexec::__nothrow_move_constructible<_Receiver>)
             -> __operation<_EnvId, _Receiver> {
-          return {__self.__stg_, static_cast<_Receiver&&>(__rcvr)};
+          return {__stg_, static_cast<_Receiver&&>(__rcvr)};
         }
 
         auto get_completion_signatures(stdexec::__ignore = {}) -> __completions_t {

@@ -80,8 +80,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-        STDEXEC_MEMFN_DECL(
-          auto connect)(this _Self&& __self, _Receiver&& __receiver) //
+        static auto connect(_Self&& __self, _Receiver __receiver) //
           noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
             -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
           return stdexec::connect(
@@ -191,8 +190,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-        STDEXEC_MEMFN_DECL(
-          auto connect)(this _Self&& __self, _Receiver&& __receiver) //
+        static auto connect(_Self&& __self, _Receiver __receiver) //
           noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
             -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
           return stdexec::connect(

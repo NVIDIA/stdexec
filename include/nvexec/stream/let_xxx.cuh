@@ -236,12 +236,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __completion_signatures_of_t<_Sender, _Env...>>;
 
       template <__decays_to<__t> _Self, receiver _Receiver>
-        requires receiver_of<               //
-          _Receiver,                        //
-          __completions<                    //
-            __copy_cvref_t<_Self, _Sender>, //
-            stream_env<env_of_t<_Receiver>>>> //
-      STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr) -> __operation_t<_Self, _Receiver> {
+        requires receiver_of<                          //
+                   _Receiver,                          //
+                   __completions<                      //
+                     __copy_cvref_t<_Self, _Sender>,   //
+                     stream_env<env_of_t<_Receiver>>>> //
+      static auto connect(_Self&& __self, _Receiver __rcvr) -> __operation_t<_Self, _Receiver> {
         return __operation_t<_Self, _Receiver>{
           static_cast<_Self&&>(__self).__sndr_,
           static_cast<_Receiver&&>(__rcvr),
