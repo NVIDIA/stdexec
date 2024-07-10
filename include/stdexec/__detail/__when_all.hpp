@@ -233,18 +233,12 @@ namespace stdexec {
 
     template <class _Env>
     static auto __mk_state_fn(const _Env&) noexcept {
-      return [&]<__max1_sender<__env_t<_Env>>... _Child>(__ignore, __ignore, _Child&&...) {
+      return []<__max1_sender<__env_t<_Env>>... _Child>(__ignore, __ignore, _Child&&...) {
         using _Traits = __traits<_Env, _Child...>;
         using _ErrorsVariant = typename _Traits::__errors_variant;
         using _ValuesTuple = typename _Traits::__values_tuple;
         using _State = __when_all_state<_ErrorsVariant, _ValuesTuple, stop_token_of_t<_Env>>;
-        return _State{
-          sizeof...(_Child),
-          inplace_stop_source{},
-          __started,
-          _ErrorsVariant{},
-          _ValuesTuple{},
-          __nullopt};
+        return _State{sizeof...(_Child)};
       };
     }
 
