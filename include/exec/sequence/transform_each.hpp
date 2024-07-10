@@ -107,7 +107,7 @@ namespace exec {
       auto operator()(__ignore, _Adaptor __adaptor, _Sequence&& __sequence) //
         noexcept(
           __nothrow_decay_copyable<_Adaptor> && __nothrow_decay_copyable<_Sequence>
-          && __nothrow_decay_copyable<_Receiver>)
+          && __nothrow_move_constructible<_Receiver>)
           -> __t<__operation<_Sequence, __id<_Receiver>, _Adaptor>> {
         return {
           static_cast<_Sequence&&>(__sequence),

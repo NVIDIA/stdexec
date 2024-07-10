@@ -110,7 +110,9 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Constrained>, _Receiver>
-        [[nodiscard]] STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr) -> __when_empty_op_t<_Self, _Receiver> {
+        [[nodiscard]]
+        static auto connect(_Self&& __self, _Receiver __rcvr) //
+          -> __when_empty_op_t<_Self, _Receiver> {
           return __when_empty_op_t<_Self, _Receiver>{
             __self.__scope_, static_cast<_Self&&>(__self).__c_, static_cast<_Receiver&&>(__rcvr)};
         }
@@ -251,7 +253,8 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Constrained>, __nest_receiver_t<_Receiver>>
-        [[nodiscard]] STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr) -> __nest_operation_t<_Receiver> {
+        [[nodiscard]]
+        static auto connect(_Self&& __self, _Receiver __rcvr) -> __nest_operation_t<_Receiver> {
           return __nest_operation_t<_Receiver>{
             __self.__scope_, static_cast<_Self&&>(__self).__c_, static_cast<_Receiver&&>(__rcvr)};
         }
@@ -635,9 +638,9 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires receiver_of<_Receiver, __completions_t<_Self>>
-        STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr) -> __future_op_t<_Receiver> {
+        static auto connect(_Self&& __self, _Receiver __rcvr) -> __future_op_t<_Receiver> {
           return __future_op_t<_Receiver>{
-            static_cast<_Receiver&&>(__rcvr), std::move(__self.__state_)};
+            static_cast<_Receiver&&>(__rcvr), static_cast<_Self&&>(__self).__state_};
         }
 
         template <__decays_to<__t> _Self, class... _OtherEnv>

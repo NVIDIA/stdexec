@@ -56,7 +56,7 @@ namespace {
     Sndr sndr;
 
     template <ex::__decays_to<get_env_sender> Self, ex::receiver Rcvr>
-    STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Rcvr rcvr) {
+    static auto connect(Self&& self, Rcvr rcvr) {
       return ex::connect(
         static_cast<Self&&>(self).sndr, get_env_rcvr<Rcvr>{static_cast<Rcvr&&>(rcvr)});
     }

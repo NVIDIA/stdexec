@@ -194,7 +194,7 @@ namespace exec {
       using __op_base_t = __op_base<_Receiver, __result_t>;
 
       static constexpr bool __nothrow_construct = //
-        __nothrow_decay_copyable<_Receiver>
+        __nothrow_move_constructible<_Receiver>
         && (__nothrow_connectable<__cvref_t<_CvrefSenderIds>, __receiver_t> && ...);
 
       class __t : __op_base_t {
@@ -259,8 +259,7 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, receiver _Receiver>
-        STDEXEC_MEMFN_DECL(
-          auto connect)(this _Self&& __self, _Receiver __rcvr) //
+        static auto connect(_Self&& __self, _Receiver __rcvr) //
           noexcept(__nothrow_constructible_from<
                    __op_t<_Self, _Receiver>,
                    __copy_cvref_t<_Self, __senders_tuple>,

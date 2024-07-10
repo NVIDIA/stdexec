@@ -120,8 +120,7 @@ namespace exec {
 
       template <__decays_to<__sender> _Self, class _Receiver>
         requires receiver_of<_Receiver, __completions_t<env_of_t<_Receiver>>>
-      STDEXEC_MEMFN_DECL(
-        auto connect)(this _Self&& __self, _Receiver __rcvr) //
+      static auto connect(_Self&& __self, _Receiver __rcvr) //
         noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
           -> __operation_t<_Tag, __default_t<env_of_t<_Receiver>>, _Receiver> {
         return {{}, static_cast<_Self&&>(__self).__default_, static_cast<_Receiver&&>(__rcvr)};

@@ -66,7 +66,7 @@ namespace {
     //! Shared pointer to allow the scheduler to be copied (not the best semantics, but it will do)
     std::shared_ptr<data> shared_data_{};
 
-    template <typename R>
+    template <class R>
     struct oper {
       data* data_;
       R receiver_;
@@ -193,7 +193,7 @@ namespace {
     using __t = basic_inline_scheduler;
     using __id = basic_inline_scheduler;
 
-    template <typename R>
+    template <class R>
     struct oper : immovable {
       R recv_;
 
@@ -208,7 +208,7 @@ namespace {
       using sender_concept = stdexec::sender_t;
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
-      template <typename R>
+      template <class R>
       friend oper<R> tag_invoke(ex::connect_t, my_sender, R r) {
         return {{}, static_cast<R&&>(r)};
       }
@@ -234,7 +234,7 @@ namespace {
   using inline_scheduler = basic_inline_scheduler<>;
 
   //! Scheduler that returns a sender that always completes with error.
-  template <typename E = std::exception_ptr>
+  template <class E = std::exception_ptr>
   struct error_scheduler {
     using __id = error_scheduler;
     using __t = error_scheduler;
@@ -250,7 +250,7 @@ namespace {
     error_scheduler(const error_scheduler&) noexcept = default;
 
    private:
-    template <typename R>
+    template <class R>
     struct oper : immovable {
       R recv_;
       E err_;
@@ -272,7 +272,7 @@ namespace {
 
       E err_;
 
-      template <typename R>
+      template <class R>
       friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
         return {{}, static_cast<R&&>(r), static_cast<E&&>(self.err_)};
       }
@@ -297,12 +297,12 @@ namespace {
     using __id = stopped_scheduler;
     using __t = stopped_scheduler;
 
-    template <typename R>
+    template <class R>
     struct oper : immovable {
       R recv_;
 
-      friend void tag_invoke(ex::start_t, oper& self) noexcept {
-        ex::set_stopped(static_cast<R&&>(self.recv_));
+      void start() & noexcept {
+        ex::set_stopped(static_cast<R&&>(recv_));
       }
     };
 
@@ -315,8 +315,8 @@ namespace {
         ex::set_value_t(),                                     //
         ex::set_stopped_t()>;
 
-      template <typename R>
-      friend oper<R> tag_invoke(ex::connect_t, my_sender, R&& r) {
+      template <class R>
+      oper<R> connect(R r) const {
         return {{}, static_cast<R&&>(r)};
       }
 

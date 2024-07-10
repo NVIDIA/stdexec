@@ -336,27 +336,23 @@ namespace exec {
           using __t = _sender;
           using __id = _sender;
           using sender_concept = sender_t;
+          template <class Receiver>
+          using operation_t = stdexec::__t<operation<stdexec::__id<Receiver>>>;
+
           using completion_signatures =
             stdexec::completion_signatures<set_value_t(), set_stopped_t()>;
 
           auto get_env() const noexcept -> env {
             return env{pool_, queue_};
           }
-         private:
-          template <class Receiver>
-          using operation_t = stdexec::__t<operation<stdexec::__id<Receiver>>>;
 
-          template <typename Receiver>
-          auto make_operation_(Receiver rcvr) const -> operation_t<Receiver> {
+          template <receiver Receiver>
+          auto connect(Receiver rcvr) const -> operation_t<Receiver> {
             return operation_t<Receiver>{
               pool_, queue_, static_cast<Receiver&&>(rcvr), threadIndex_, constraints_};
           }
 
-          template <receiver Receiver>
-          STDEXEC_MEMFN_DECL(auto connect)(this _sender sndr, Receiver rcvr) -> operation_t<Receiver> {
-            return sndr.make_operation_(static_cast<Receiver&&>(rcvr));
-          }
-
+         private:
           friend struct static_thread_pool_::scheduler;
 
           explicit _sender(
@@ -1088,7 +1084,7 @@ namespace exec {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, __completions_t<Self, env_of_t<Receiver>>>
-      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr) //
+      static auto connect(Self&& self, Receiver rcvr) //
         noexcept(__nothrow_constructible_from<
                  bulk_op_state_t<Self, Receiver>,
                  static_thread_pool_&,
@@ -1388,12 +1384,11 @@ namespace exec {
             return {op_->pool_};
           }
 
-          template <__decays_to<__t> Self, receiver ItemReceiver>
+          template <receiver ItemReceiver>
             requires receiver_of<ItemReceiver, completion_signatures>
-          STDEXEC_MEMFN_DECL(
-          auto connect)(this Self&& self, ItemReceiver rcvr) noexcept
+          auto connect(ItemReceiver rcvr) const noexcept
             -> stdexec::__t<item_operation<Range, stdexec::__id<ItemReceiver>>> {
-            return {static_cast<ItemReceiver&&>(rcvr), self.it_, self.op_};
+            return {static_cast<ItemReceiver&&>(rcvr), it_, op_};
           }
         };
       };

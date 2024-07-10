@@ -423,8 +423,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
      public:
       template <__decays_to<__t> Self, receiver Receiver>
-      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr)
-        -> operation_t<__copy_cvref_t<Self, stdexec::__id<__decay_t<Receiver>>>> {
+      static auto connect(Self&& self, Receiver rcvr)
+        -> operation_t<__copy_cvref_t<Self, stdexec::__id<Receiver>>> {
         return {static_cast<Self&&>(self), static_cast<Receiver&&>(rcvr)};
       }
 

@@ -327,16 +327,13 @@ namespace exec {
           stdexec::get_completion_scheduler<stdexec::set_value_t>);
       }
 
-     private:
-      STDEXEC_MEMFN_FRIEND(get_env);
-      STDEXEC_MEMFN_FRIEND(connect);
-
       template <class Receiver>
-      STDEXEC_MEMFN_DECL(auto connect)(this const schedule_at& self, Receiver receiver) noexcept ->
+      auto connect(Receiver receiver) const & noexcept ->
         typename _time_thrd_sched::timed_thread_schedule_at_op<Receiver>::__t {
-        return {*self.context_, self.time_point_, std::move(receiver)};
+        return {*context_, time_point_, std::move(receiver)};
       }
 
+     private:
       timed_thread_scheduler get_scheduler() const noexcept;
 
       timed_thread_context* context_;

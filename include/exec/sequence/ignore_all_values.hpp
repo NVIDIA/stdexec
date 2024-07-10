@@ -164,7 +164,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, stdexec::receiver_of<completion_signatures> _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __item_receiver_t<_Receiver>>
-        STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr) -> __operation_t<_Self, _Receiver> {
+        static auto connect(_Self&& __self, _Receiver __rcvr) -> __operation_t<_Self, _Receiver> {
           return {
             __self.__parent_,
             static_cast<_Self&&>(__self).__sender_,
@@ -243,8 +243,7 @@ namespace exec {
 
         subscribe_result_t<_Sender, __receiver_t> __op_;
 
-        __t(_Sender&& __sndr, _Receiver __rcvr) //
-          noexcept(__nothrow_decay_copyable<_Receiver>)
+        __t(_Sender&& __sndr, _Receiver __rcvr) noexcept(__nothrow_move_constructible<_Receiver>)
           : __base_type{{}, static_cast<_Receiver&&>(__rcvr)}
           , __op_{exec::subscribe(static_cast<_Sender&&>(__sndr), __receiver_t{this})} {
         }

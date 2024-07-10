@@ -70,11 +70,10 @@ namespace exec {
           stdexec::completion_signatures<set_value_t(std::iter_reference_t<_Iterator>)>;
         __operation_base<_Iterator, _Sentinel>* __parent_;
 
-        template <__decays_to<__t> _Self, receiver_of<completion_signatures> _ItemRcvr>
-        STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _ItemRcvr __rcvr) //
-          noexcept(__nothrow_decay_copyable<_ItemRcvr>)
-            -> stdexec::__t<__item_operation<_Iterator, _Sentinel, _ItemRcvr>> {
-          return {static_cast<_ItemRcvr&&>(__rcvr), __self.__parent_};
+        template <receiver_of<completion_signatures> _ItemRcvr>
+        auto connect(_ItemRcvr __rcvr) const & noexcept(__nothrow_decay_copyable<_ItemRcvr>)
+          -> stdexec::__t<__item_operation<_Iterator, _Sentinel, _ItemRcvr>> {
+          return {static_cast<_ItemRcvr&&>(__rcvr), __parent_};
         }
       };
     };
@@ -157,7 +156,7 @@ namespace exec {
 
       template <class _Range>
       auto operator()(__ignore, _Range&& __range) //
-        noexcept(__nothrow_decay_copyable<_Receiver>) -> __operation_t<_Range> {
+        noexcept(__nothrow_move_constructible<_Receiver>) -> __operation_t<_Range> {
         return {
           {std::ranges::begin(__range), std::ranges::end(__range)},
           static_cast<_Receiver&&>(__rcvr_)

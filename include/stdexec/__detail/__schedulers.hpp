@@ -66,14 +66,10 @@ namespace stdexec {
       { schedule(static_cast<_Scheduler&&>(__sched)) } -> sender;
     };
 
-  namespace __detail {
-    using _GetComplSched = get_completion_scheduler_t<set_value_t>;
-  } // namespace __detail
-
   template <class _Scheduler>
   concept __sender_has_completion_scheduler = requires(_Scheduler&& __sched) {
     {
-      tag_invoke(__detail::_GetComplSched(), get_env(schedule(static_cast<_Scheduler&&>(__sched))))
+      get_completion_scheduler<set_value_t>(get_env(schedule(static_cast<_Scheduler&&>(__sched))))
     } -> same_as<__decay_t<_Scheduler>>;
   };
 

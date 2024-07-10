@@ -91,9 +91,8 @@ namespace nvexec {
           completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
 
         template <class R>
-        STDEXEC_MEMFN_DECL(auto connect)(this sender_t, R&& rec) //
-          noexcept(__nothrow_constructible_from<__decay_t<R>, R>)
-            -> operation_state_t<stdexec::__id<__decay_t<R>>> {
+        auto connect(R rec) const & noexcept(__nothrow_move_constructible<R>) //
+          -> operation_state_t<stdexec::__id<__decay_t<R>>> {
           return operation_state_t<stdexec::__id<__decay_t<R>>>(static_cast<R&&>(rec));
         }
 
