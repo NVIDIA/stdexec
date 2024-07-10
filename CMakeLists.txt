@@ -388,12 +388,13 @@ option(STDEXEC_ENABLE_IO_URING_TESTS "Enable io_uring tests" ${STDEXEC_FOUND_IO_
 
 option(STDEXEC_BUILD_DOCS "Build stdexec documentation" OFF)
 option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
-option(BUILD_TESTING "" ${STDEXEC_BUILD_TESTS})
 
 if (STDEXEC_BUILD_TESTS)
-    # CTest automatically calls enable_testing() if BUILD_TESTING is ON
-    # https://cmake.org/cmake/help/latest/module/CTest.html#module:CTest
-    include(CTest)
+  set(BUILD_TESTING ON)
+
+  # CTest automatically calls enable_testing() if BUILD_TESTING is ON
+  # https://cmake.org/cmake/help/latest/module/CTest.html#module:CTest
+  include(CTest)
 endif()
 
 # Configure documentation
