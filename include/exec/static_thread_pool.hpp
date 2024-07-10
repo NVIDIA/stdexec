@@ -376,7 +376,7 @@ namespace exec {
 
         explicit scheduler(
           static_thread_pool_& pool,
-          const nodemask& mask = nodemask::any()) noexcept
+          const nodemask* mask = &nodemask::any()) noexcept
           : pool_(&pool)
           , queue_{pool.get_remote_queue()}
           , nodemask_{mask} {
@@ -385,7 +385,7 @@ namespace exec {
         explicit scheduler(
           static_thread_pool_& pool,
           remote_queue& queue,
-          const nodemask& mask = nodemask::any()) noexcept
+          const nodemask* mask = &nodemask::any()) noexcept
           : pool_(&pool)
           , queue_{&queue}
           , nodemask_{mask} {
@@ -402,7 +402,7 @@ namespace exec {
 
         static_thread_pool_* pool_;
         remote_queue* queue_;
-        nodemask nodemask_;
+        const nodemask* nodemask_;
         std::size_t thread_idx_{std::numeric_limits<std::size_t>::max()};
 
        public:
@@ -412,7 +412,7 @@ namespace exec {
 
         [[nodiscard]]
         auto schedule() const noexcept -> _sender {
-          return _sender{*pool_, queue_, thread_idx_, nodemask_};
+          return _sender{*pool_, queue_, thread_idx_, *nodemask_};
         }
 
         auto query(get_forward_progress_guarantee_t) const noexcept -> forward_progress_guarantee {
@@ -432,7 +432,8 @@ namespace exec {
         return scheduler{*this, *get_remote_queue(), threadIndex};
       }
 
-      auto get_constrained_scheduler(const nodemask& constraints) noexcept -> scheduler {
+      // The caller must ensure that the constraints object is valid for the lifetime of the scheduler.
+      auto get_constrained_scheduler(const nodemask* constraints) noexcept -> scheduler {
         return scheduler{*this, *get_remote_queue(), constraints};
       }
 
@@ -1035,7 +1036,6 @@ namespace exec {
         if (threadIndex_ < pool_.available_parallelism()) {
           pool_.enqueue(*queue_, op, threadIndex_);
         } else {
-
           pool_.enqueue(*queue_, op, constraints_);
         }
       }

@@ -32,7 +32,7 @@ struct RunThread {
     numa->bind_to_node(numa_node);
     exec::nodemask mask{};
     mask.set(static_cast<std::size_t>(numa_node));
-    auto scheduler = pool.get_constrained_scheduler(mask);
+    auto scheduler = pool.get_constrained_scheduler(&mask);
     std::mutex mut;
     std::condition_variable cv;
     while (true) {

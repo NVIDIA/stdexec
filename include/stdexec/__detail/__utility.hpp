@@ -19,8 +19,9 @@
 #include "__concepts.hpp"
 #include "__type_traits.hpp"
 
-#include <type_traits>
 #include <initializer_list>
+#include <memory> // for addressof
+#include <type_traits>
 
 namespace stdexec {
   constexpr std::size_t __npos = ~0UL;
@@ -139,6 +140,29 @@ namespace stdexec {
 
   template <class _Ty>
   _Ty __decay_copy(_Ty) noexcept;
+
+  template <class _Ty>
+  struct __indestructible {
+    template <class... _Us>
+    __indestructible(_Us&&... __us) noexcept(__nothrow_constructible_from<_Ty, _Us...>) {
+      ::new (static_cast<void*>(std::addressof(__value))) _Ty(static_cast<_Us&&>(__us)...);
+    }
+
+    ~__indestructible() {
+    }
+
+    _Ty& get() noexcept {
+      return __value;
+    }
+
+    const _Ty& get() const noexcept {
+      return __value;
+    }
+
+    union {
+      _Ty __value;
+    };
+  };
 } // namespace stdexec
 
 #if defined(__cpp_auto_cast) && (__cpp_auto_cast >= 202110UL)

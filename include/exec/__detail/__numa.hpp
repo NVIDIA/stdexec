@@ -25,16 +25,17 @@
 
 namespace exec {
   struct numa_policy {
+    numa_policy() = default;
     virtual ~numa_policy() = default;
+
     virtual auto num_nodes() -> std::size_t = 0;
     virtual auto num_cpus(int node) -> std::size_t = 0;
     virtual auto bind_to_node(int node) -> int = 0;
     virtual auto thread_index_to_node(std::size_t index) -> int = 0;
   };
 
-  class no_numa_policy : public numa_policy {
-   public:
-    no_numa_policy() noexcept = default;
+  struct no_numa_policy : numa_policy {
+    no_numa_policy() = default;
 
     auto num_nodes() -> std::size_t override {
       return 1;
@@ -58,35 +59,47 @@ namespace exec {
 #  include <numa.h>
 
 namespace exec {
-  struct default_numa_policy : numa_policy {
-    default_numa_policy()
-      : node_to_thread_index_(::numa_num_task_nodes()) {
-      std::size_t total_cpus = 0;
-      std::size_t n_nodes = num_nodes();
-      for (std::size_t node = 0; node < n_nodes; ++node) {
-        total_cpus += this->num_cpus(node);
-        node_to_thread_index_[node] = total_cpus;
-      }
+  inline std::size_t _get_numa_num_cpus(int node) {
+    struct ::bitmask* cpus = ::numa_allocate_cpumask();
+    if (!cpus) {
+      return 0;
     }
+    scope_guard sg{[&]() noexcept {
+      ::numa_free_cpumask(cpus);
+    }};
+    int rc = ::numa_node_to_cpus(node, cpus);
+    if (rc < 0) {
+      return 0;
+    }
+    std::size_t num_cpus = ::numa_bitmask_weight(cpus);
+    return num_cpus;
+  }
+
+  struct _node_to_thread_index {
+    static const std::vector<int>& get() noexcept {
+      // This leaks one memory block at shutdown, but it's fine. Clang's and gcc's leak
+      // sanitizer do not report it.
+      static const stdexec::__indestructible<std::vector<int>> g_node_to_thread_index{[] {
+        std::vector<int> index(::numa_num_task_nodes());
+        for (std::size_t node = 0, total_cpus = 0; node < index.size(); ++node) {
+          total_cpus += exec::_get_numa_num_cpus(static_cast<int>(node));
+          index[node] = static_cast<int>(total_cpus);
+        }
+        return index;
+      }()};
+      return g_node_to_thread_index.get();
+    }
+  };
+
+  struct default_numa_policy : numa_policy {
+    default_numa_policy() = default;
 
     std::size_t num_nodes() override {
-      return node_to_thread_index_.size();
+      return _node_to_thread_index::get().size();
     }
 
     std::size_t num_cpus(int node) override {
-      struct ::bitmask* cpus = ::numa_allocate_cpumask();
-      if (!cpus) {
-        return 0;
-      }
-      scope_guard sg{[&]() noexcept {
-        ::numa_free_cpumask(cpus);
-      }};
-      int rc = ::numa_node_to_cpus(node, cpus);
-      if (rc < 0) {
-        return 0;
-      }
-      std::size_t num_cpus = ::numa_bitmask_weight(cpus);
-      return num_cpus;
+      return exec::_get_numa_num_cpus(node);
     }
 
     int bind_to_node(int node) override {
@@ -103,22 +116,21 @@ namespace exec {
     }
 
     int thread_index_to_node(std::size_t idx) override {
-      int index = (int) idx % node_to_thread_index_.back();
-      auto it = std::upper_bound(node_to_thread_index_.begin(), node_to_thread_index_.end(), index);
-      STDEXEC_ASSERT(it != node_to_thread_index_.end());
-      return (int) std::distance(node_to_thread_index_.begin(), it);
+      const auto& node_to_thread_index = _node_to_thread_index::get();
+      int index = static_cast<int>(idx) % node_to_thread_index.back();
+      auto it = std::upper_bound(node_to_thread_index.begin(), node_to_thread_index.end(), index);
+      STDEXEC_ASSERT(it != node_to_thread_index.end());
+      return static_cast<int>(std::distance(node_to_thread_index.begin(), it));
     }
-
-    std::vector<int> node_to_thread_index_{};
   };
 
   inline numa_policy* get_numa_policy() noexcept {
-    thread_local default_numa_policy g_default_numa_policy{};
-    thread_local no_numa_policy g_no_numa_policy{};
+    thread_local stdexec::__indestructible<default_numa_policy> g_default_numa_policy{};
+    thread_local stdexec::__indestructible<no_numa_policy> g_no_numa_policy{};
     if (::numa_available() < 0) {
-      return &g_no_numa_policy;
+      return &g_no_numa_policy.get();
     }
-    return &g_default_numa_policy;
+    return &g_default_numa_policy.get();
   }
 
   template <class T>
@@ -164,7 +176,6 @@ namespace exec {
       return mask;
     }
 
-
    public:
     nodemask() noexcept
       : mask_{} {
@@ -172,29 +183,29 @@ namespace exec {
     }
 
     static const nodemask& any() noexcept {
-      static nodemask mask = make_any();
-      return mask;
+      static const stdexec::__indestructible<nodemask> mask{make_any()};
+      return mask.get();
     }
 
     bool operator[](std::size_t nodemask) const noexcept {
       ::bitmask mask;
       mask.maskp = const_cast<unsigned long*>(mask_.n);
       mask.size = sizeof(nodemask_t);
-      return ::numa_bitmask_isbitset(&mask, nodemask);
+      return ::numa_bitmask_isbitset(&mask, static_cast<unsigned int>(nodemask));
     }
 
     void set(std::size_t nodemask) noexcept {
       ::bitmask mask;
       mask.maskp = const_cast<unsigned long*>(mask_.n);
       mask.size = sizeof(nodemask_t);
-      ::numa_bitmask_setbit(&mask, nodemask);
+      ::numa_bitmask_setbit(&mask, static_cast<unsigned int>(nodemask));
     }
 
     bool get(std::size_t nodemask) const noexcept {
       ::bitmask mask;
       mask.maskp = const_cast<unsigned long*>(mask_.n);
       mask.size = sizeof(nodemask_t);
-      return ::numa_bitmask_isbitset(&mask, nodemask);
+      return ::numa_bitmask_isbitset(&mask, static_cast<unsigned int>(nodemask));
     }
 
     friend bool operator==(const nodemask& lhs, const nodemask& rhs) noexcept {
@@ -216,8 +227,8 @@ namespace exec {
   using default_numa_policy = no_numa_policy;
 
   inline auto get_numa_policy() noexcept -> numa_policy* {
-    thread_local default_numa_policy g_default_numa_policy{};
-    return &g_default_numa_policy;
+    thread_local stdexec::__indestructible<default_numa_policy> g_default_numa_policy{};
+    return &g_default_numa_policy.get();
   }
 
   template <class T>
