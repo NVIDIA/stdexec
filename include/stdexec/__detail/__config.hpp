@@ -350,6 +350,24 @@ namespace __coro = std::experimental;
 #  define STDEXEC_IS_EMPTY(...) std::is_empty_v<__VA_ARGS__>
 #endif
 
+#if STDEXEC_HAS_BUILTIN(__remove_reference)
+namespace stdexec {
+  template <class Ty>
+  using _remove_reference_t = __remove_reference(Ty);
+} // namespace stdexec
+
+#  define STDEXEC_REMOVE_REFERENCE(...) stdexec::_remove_reference_t<__VA_ARGS__>
+#elif STDEXEC_HAS_BUILTIN(__remove_reference_t)
+namespace stdexec {
+  template <class Ty>
+  using _remove_reference_t = __remove_reference_t(Ty);
+} // namespace stdexec
+
+#  define STDEXEC_REMOVE_REFERENCE(...) stdexec::_remove_reference_t<__VA_ARGS__>
+#else
+#  define STDEXEC_REMOVE_REFERENCE(...) ::std::remove_reference_t<__VA_ARGS__>
+#endif
+
 namespace stdexec {
   template <class _Ap, class _Bp>
   inline constexpr bool __same_as_v = false;

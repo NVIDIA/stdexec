@@ -54,9 +54,9 @@ namespace stdexec {
       decltype(__declval<_Sender>().get_completion_signatures(__declval<_Env>()...));
 
     template <class _Sender, class... _Env>
-    using __static_member_result_t = decltype(__declval<_Sender>().get_completion_signatures(
-      __declval<_Sender>(),
-      __declval<_Env>()...));
+    using __static_member_result_t =             //
+      decltype(STDEXEC_REMOVE_REFERENCE(_Sender) //
+               ::get_completion_signatures(__declval<_Sender>(), __declval<_Env>()...));
 
     template <class _Sender, class... _Env>
     concept __with_member = __mvalid<__member_result_t, _Sender, _Env...>;
@@ -160,7 +160,8 @@ namespace stdexec {
 
     template <class _Sender, class _Receiver>
     using __static_member_result_t =
-      decltype(__declval<_Sender>().connect(__declval<_Sender>(), __declval<_Receiver>()));
+      decltype(STDEXEC_REMOVE_REFERENCE(_Sender) //
+               ::connect(__declval<_Sender>(), __declval<_Receiver>()));
 
     template <class _Sender, class _Receiver>
     concept __with_member = __mvalid<__member_result_t, _Sender, _Receiver>;
