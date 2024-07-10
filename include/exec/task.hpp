@@ -215,8 +215,8 @@ namespace exec {
     struct __default_awaiter_context<_ParentPromise> {
       template <__scheduler_affinity _Affinity>
       explicit __default_awaiter_context(
-        __default_task_context_impl<_Affinity>& __self,
-        _ParentPromise& __parent) noexcept {
+        __default_task_context_impl<_Affinity>&,
+        _ParentPromise&) noexcept {
       }
     };
 
@@ -453,11 +453,11 @@ namespace exec {
       // Make this task awaitable within a particular context:
       template <class _ParentPromise>
         requires constructible_from<
-          awaiter_context_t<__promise, _ParentPromise>,
-          __promise_context_t&,
-          _ParentPromise&>
+                   awaiter_context_t<__promise, _ParentPromise>,
+                   __promise_context_t&,
+                   _ParentPromise&>
       STDEXEC_MEMFN_DECL(
-        auto as_awaitable)(this basic_task&& __self, _ParentPromise& p) noexcept
+        auto as_awaitable)(this basic_task&& __self, _ParentPromise&) noexcept
         -> __task_awaitable<_ParentPromise> {
         return __task_awaitable<_ParentPromise>{std::exchange(__self.__coro_, {})};
       }
