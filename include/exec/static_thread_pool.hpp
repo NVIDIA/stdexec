@@ -255,6 +255,11 @@ namespace exec {
       };
 #endif
 
+      static unsigned int _hardware_concurrency() noexcept {
+        unsigned int n = std::thread::hardware_concurrency();
+        return n == 0 ? 1 : n;
+      }
+
      public:
       struct domain {
         // For eager customization
@@ -642,7 +647,7 @@ namespace exec {
     };
 
     inline static_thread_pool_::static_thread_pool_()
-      : static_thread_pool_(std::thread::hardware_concurrency()) {
+      : static_thread_pool_(_hardware_concurrency()) {
     }
 
     inline static_thread_pool_::static_thread_pool_(
