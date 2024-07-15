@@ -24,6 +24,7 @@ using namespace stdexec;
 using stdexec::sync_wait;
 
 int main() {
+  exec::numa_policy numa{exec::no_numa_policy{}};
   exec::static_thread_pool ctx{8};
   scheduler auto sch = ctx.get_scheduler();                              // 1
                                                                          //

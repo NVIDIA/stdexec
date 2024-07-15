@@ -317,7 +317,7 @@ namespace exec {
       static_thread_pool_(
         std::uint32_t threadCount,
         bwos_params params = {},
-        numa_policy* numa = get_numa_policy());
+        numa_policy numa = get_numa_policy());
       ~static_thread_pool_();
 
       struct scheduler {
@@ -516,9 +516,9 @@ namespace exec {
       };
 
       struct thread_state_base {
-        explicit thread_state_base(std::uint32_t index, numa_policy* numa) noexcept
+        explicit thread_state_base(std::uint32_t index, const numa_policy& numa) noexcept
           : index_(index)
-          , numa_node_(numa->thread_index_to_node(index)) {
+          , numa_node_(numa.thread_index_to_node(index)) {
         }
 
         std::uint32_t index_;
@@ -536,7 +536,7 @@ namespace exec {
           static_thread_pool_* pool,
           std::uint32_t index,
           bwos_params params,
-          numa_policy* numa) noexcept
+          const numa_policy& numa) noexcept
           : thread_state_base(index, numa)
           , local_queue_(
               params.numBlocks,
@@ -612,7 +612,7 @@ namespace exec {
         xorshift rng_{};
       };
 
-      void run(std::uint32_t index, numa_policy* numa) noexcept;
+      void run(std::uint32_t index) noexcept;
       void join() noexcept;
 
       alignas(64) std::atomic<std::uint32_t> numThiefs_{};
@@ -622,7 +622,7 @@ namespace exec {
       bwos_params params_;
       std::vector<std::thread> threads_;
       std::vector<std::optional<thread_state>> threadStates_;
-      numa_policy* numa_;
+      numa_policy numa_;
 
       struct thread_index_by_numa_node {
         int numa_node;
@@ -653,16 +653,16 @@ namespace exec {
     inline static_thread_pool_::static_thread_pool_(
       std::uint32_t threadCount,
       bwos_params params,
-      numa_policy* numa)
+      numa_policy numa)
       : remotes_(threadCount)
       , threadCount_(threadCount)
       , params_(params)
       , threadStates_(threadCount)
-      , numa_{numa} {
+      , numa_(std::move(numa)) {
       STDEXEC_ASSERT(threadCount > 0);
 
       for (std::uint32_t index = 0; index < threadCount; ++index) {
-        threadStates_[index].emplace(this, index, params, numa);
+        threadStates_[index].emplace(this, index, params, numa_);
         threadIndexByNumaNode_.push_back(
           thread_index_by_numa_node{threadStates_[index]->numa_node(), index});
       }
@@ -679,7 +679,7 @@ namespace exec {
 
       try {
         for (std::uint32_t i = 0; i < threadCount; ++i) {
-          threads_.emplace_back([this, i, numa] { run(i, numa); });
+          threads_.emplace_back([this, i] { run(i); });
         }
       } catch (...) {
         request_stop();
@@ -699,8 +699,8 @@ namespace exec {
       }
     }
 
-    inline void static_thread_pool_::run(std::uint32_t threadIndex, numa_policy* numa) noexcept {
-      numa->bind_to_node(threadStates_[threadIndex]->numa_node());
+    inline void static_thread_pool_::run(std::uint32_t threadIndex) noexcept {
+      numa_.bind_to_node(threadStates_[threadIndex]->numa_node());
       STDEXEC_ASSERT(threadIndex < threadCount_);
       while (true) {
         // Make a blocking call to de-queue a task if we don't already have one.
@@ -765,7 +765,7 @@ namespace exec {
       std::size_t targetIndex = startIndex % threadCount_;
       std::size_t nThreads = num_threads(constraints);
       if (nThreads != 0) {
-        for (std::size_t nodeIndex = 0; nodeIndex < numa_->num_nodes(); ++nodeIndex) {
+        for (std::size_t nodeIndex = 0; nodeIndex < numa_.num_nodes(); ++nodeIndex) {
           if (!constraints[nodeIndex]) {
             continue;
           }
@@ -1554,8 +1554,8 @@ namespace exec {
     static_thread_pool(
       std::uint32_t threadCount,
       bwos_params params = {},
-      numa_policy* numa = get_numa_policy())
-      : _pool_::static_thread_pool_(threadCount, params, numa) {
+      numa_policy numa = get_numa_policy())
+      : _pool_::static_thread_pool_(threadCount, params, std::move(numa)) {
     }
 
     // struct scheduler;
