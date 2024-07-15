@@ -25,6 +25,7 @@
 #include "__sender_adaptor_closure.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__transform_sender.hpp"
+#include "__senders.hpp"
 
 // include these after __execution_fwd.hpp
 namespace stdexec {

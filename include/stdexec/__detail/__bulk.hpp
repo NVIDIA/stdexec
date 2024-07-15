@@ -26,6 +26,7 @@
 #include "__sender_adaptor_closure.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__transform_sender.hpp"
+#include "__senders.hpp"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
