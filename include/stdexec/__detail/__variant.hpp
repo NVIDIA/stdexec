@@ -20,6 +20,7 @@
 #include "__utility.hpp"
 
 #include <cstddef>
+#include <memory>
 #include <new>
 #include <type_traits>
 
@@ -77,14 +78,7 @@ namespace stdexec {
         __destroy() noexcept {
         auto __index = std::exchange(__index_, __variant_npos);
         if (__variant_npos != __index) {
-#if STDEXEC_NVHPC()
-          // Unknown nvc++ name lookup bug
-          ((_Is == __index ? static_cast<_Ts *>(__get_ptr())->_Ts::~_Ts() : void(0)), ...);
-#else
-          // casting the destructor expression to void is necessary for MSVC in
-          // /permissive- mode.
-          ((_Is == __index ? void((*static_cast<_Ts *>(__get_ptr())).~_Ts()) : void(0)), ...);
-#endif
+          ((_Is == __index ? std::destroy_at(static_cast<_Ts *>(__get_ptr())) : void(0)), ...);
         }
       }
 
