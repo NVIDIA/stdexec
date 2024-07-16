@@ -23,6 +23,7 @@
 
 #include <new>
 #include <exception>
+#include <memory>
 #include <utility>
 
 namespace stdexec {
@@ -70,7 +71,7 @@ namespace stdexec {
 
       ~__optional() {
         if (__has_value) {
-          __value.~_Tp();
+          std::destroy_at(std::addressof(__value));
         }
       }
 
@@ -135,7 +136,7 @@ namespace stdexec {
 
       void reset() noexcept {
         if (__has_value) {
-          __value.~_Tp();
+          std::destroy_at(std::addressof(__value));
           __has_value = false;
         }
       }
