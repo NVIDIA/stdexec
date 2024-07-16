@@ -31,9 +31,9 @@ struct RunThread {
     std::span<char> buffer,
 #  endif
     std::atomic<bool>& stop,
-    exec::numa_policy* numa) {
-    int numa_node = numa->thread_index_to_node(tid);
-    numa->bind_to_node(numa_node);
+    exec::numa_policy numa) {
+    int numa_node = numa.thread_index_to_node(tid);
+    numa.bind_to_node(numa_node);
     while (true) {
       barrier.arrive_and_wait();
       if (stop.load()) {
@@ -58,14 +58,14 @@ struct RunThread {
 };
 
 struct my_numa_distribution : public exec::default_numa_policy {
-  int thread_index_to_node(std::size_t index) override {
+  int thread_index_to_node(std::size_t index) const noexcept {
     return exec::default_numa_policy::thread_index_to_node(2 * index);
   }
 };
 
 int main(int argc, char** argv) {
-  my_numa_distribution numa{};
-  my_main<exec::static_thread_pool, RunThread>(argc, argv, &numa);
+  exec::numa_policy numa{my_numa_distribution{}};
+  my_main<exec::static_thread_pool, RunThread>(argc, argv, std::move(numa));
 }
 #else
 int main() {

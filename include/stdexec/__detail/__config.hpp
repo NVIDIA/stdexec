@@ -45,16 +45,16 @@
 #define STDEXEC_EVAL(_MACRO, ...) _MACRO(__VA_ARGS__)
 #define STDEXEC_EAT(...)
 
-#define STDEXEC_NOT(_XP)          STDEXEC_NOT_CAT(STDEXEC_NOT_, _XP)
-#define STDEXEC_NOT_0             1
-#define STDEXEC_NOT_1             0
-#define STDEXEC_NOT_CAT(_XP, ...) _XP##__VA_ARGS__
-
 #define STDEXEC_IIF(_XP, _YP, ...)                                                                 \
   STDEXEC_IIF_EVAL(STDEXEC_CAT(STDEXEC_IIF_, _XP), _YP, __VA_ARGS__)
 #define STDEXEC_IIF_0(_YP, ...)       __VA_ARGS__
 #define STDEXEC_IIF_1(_YP, ...)       _YP
 #define STDEXEC_IIF_EVAL(_MACRO, ...) _MACRO(__VA_ARGS__)
+
+#define STDEXEC_COMPL(_B)             STDEXEC_COMPL_CAT(STDEXEC_COMPL_, _B)
+#define STDEXEC_COMPL_0               1
+#define STDEXEC_COMPL_1               0
+#define STDEXEC_COMPL_CAT(_XP, ...)   _XP##__VA_ARGS__
 
 #define STDEXEC_COUNT(...)                                                                         \
   STDEXEC_EXPAND(STDEXEC_COUNT_(__VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1))
@@ -64,6 +64,14 @@
 #define STDEXEC_CHECK_(_XP, _NP, ...)                                     _NP
 #define STDEXEC_PROBE(...)                                                STDEXEC_PROBE_(__VA_ARGS__, 1)
 #define STDEXEC_PROBE_(_XP, _NP, ...)                                     _XP, _NP,
+
+#define STDEXEC_NOT(_XP)                                                  STDEXEC_CHECK(STDEXEC_CAT(STDEXEC_NOT_, _XP))
+#define STDEXEC_NOT_0                                                     STDEXEC_PROBE(~, 1)
+
+#define STDEXEC_BOOL(_XP)                                                 STDEXEC_COMPL(STDEXEC_NOT(_XP))
+#define STDEXEC_IF(_XP, _YP, ...)                                         STDEXEC_IIF(STDEXEC_BOOL(_XP), _YP, __VA_ARGS__)
+
+#define STDEXEC_WHEN(_XP, ...)                                            STDEXEC_IF(_XP, STDEXEC_EXPAND, STDEXEC_EAT)(__VA_ARGS__)
 
 ////////////////////////////////////////////////////////////////////////////////
 // STDEXEC_FOR_EACH
@@ -151,6 +159,10 @@
 #endif
 #ifndef STDEXEC_MSVC
 #  define STDEXEC_MSVC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#endif
+
+#if STDEXEC_NVHPC()
+#  define STDEXEC_NVHPC_VERSION() (__NVCOMPILER_MAJOR__ * 100 + __NVCOMPILER_MINOR__)
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
