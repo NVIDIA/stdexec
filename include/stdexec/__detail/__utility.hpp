@@ -144,11 +144,11 @@ namespace stdexec {
   template <class _Ty>
   struct __indestructible {
     template <class... _Us>
-    __indestructible(_Us&&... __us) noexcept(__nothrow_constructible_from<_Ty, _Us...>) {
-      ::new (static_cast<void*>(std::addressof(__value))) _Ty(static_cast<_Us&&>(__us)...);
+    constexpr __indestructible(_Us&&... __us) noexcept(__nothrow_constructible_from<_Ty, _Us...>)
+      : __value(static_cast<_Us&&>(__us)...) {
     }
 
-    ~__indestructible() {
+    constexpr ~__indestructible() {
     }
 
     _Ty& get() noexcept {
