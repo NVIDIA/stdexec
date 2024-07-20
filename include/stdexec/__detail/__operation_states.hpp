@@ -24,6 +24,9 @@
 #include <type_traits>
 
 namespace stdexec {
+  // operation state tag type
+  struct operation_state_t { };
+
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
   namespace __start {
