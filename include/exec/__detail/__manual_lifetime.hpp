@@ -27,10 +27,10 @@ namespace exec {
   template <class _Ty>
   class __manual_lifetime {
    public:
-    __manual_lifetime() noexcept {
+    constexpr __manual_lifetime() noexcept {
     }
 
-    ~__manual_lifetime() {
+    constexpr ~__manual_lifetime() {
     }
 
     __manual_lifetime(const __manual_lifetime&) = delete;
@@ -43,39 +43,37 @@ namespace exec {
     auto
       __construct(_Args&&... __args) noexcept(stdexec::__nothrow_constructible_from<_Ty, _Args...>)
         -> _Ty& {
-      return *::new (static_cast<void*>(std::addressof(__value_)))
-        _Ty(static_cast<_Args&&>(__args)...);
+      return *std::construct_at(&__get(), static_cast<_Args&&>(__args)...);
     }
 
     template <class _Func>
     auto __construct_with(_Func&& func) -> _Ty& {
-      return *::new (static_cast<void*>(std::addressof(__value_)))
-        _Ty((static_cast<_Func&&>(func))());
+      // This doesn't use std::construct_at to support the case where the function returns an
+      // immovable type.
+      return *::new (static_cast<void*>(__buffer_)) _Ty((static_cast<_Func&&>(func))());
     }
 
     void __destroy() noexcept {
-      __value_.~_Ty();
+      std::destroy_at(&__get());
     }
 
     auto __get() & noexcept -> _Ty& {
-      return __value_;
+      return *reinterpret_cast<_Ty*>(__buffer_);
     }
 
     auto __get() && noexcept -> _Ty&& {
-      return static_cast<_Ty&&>(__value_);
+      return static_cast<_Ty&&>(*reinterpret_cast<_Ty*>(__buffer_));
     }
 
     auto __get() const & noexcept -> const _Ty& {
-      return __value_;
+      return *reinterpret_cast<const _Ty*>(__buffer_);
     }
 
     auto __get() const && noexcept -> const _Ty&& {
-      return static_cast<const _Ty&&>(__value_);
+      return static_cast<const _Ty&&>(*reinterpret_cast<const _Ty*>(__buffer_));
     }
 
    private:
-    union {
-      _Ty __value_;
-    };
+    alignas(_Ty) unsigned char __buffer_[sizeof(_Ty)]{};
   };
 } // namespace exec
