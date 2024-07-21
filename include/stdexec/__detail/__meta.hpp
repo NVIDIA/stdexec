@@ -616,6 +616,25 @@ namespace stdexec {
     using __f = __minvoke<__mfold_right_<sizeof...(_Args) == 0>, _Fn, _Init, _Args...>;
   };
 
+  template <bool>
+  struct __mfold_left_ {
+    template <class _Fn, class _State, class _Head, class... _Tail>
+    using __f =
+      __minvoke<_Fn, __mcall<__mfold_left_<sizeof...(_Tail) == 0>, _Fn, _State, _Tail...>, _Head>;
+  };
+
+  template <>
+  struct __mfold_left_<true> { // empty pack
+    template <class _Fn, class _State, class...>
+    using __f = _State;
+  };
+
+  template <class _Init, class _Fn>
+  struct __mfold_left {
+    template <class... _Args>
+    using __f = __minvoke<__mfold_left_<sizeof...(_Args) == 0>, _Fn, _Init, _Args...>;
+  };
+
   template <class _Fn>
   struct __mcurry {
     template <class... _Ts>
