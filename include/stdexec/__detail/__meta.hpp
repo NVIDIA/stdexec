@@ -429,6 +429,12 @@ namespace stdexec {
     using __f = _Fn<_Ty>;
   };
 
+  template <template <class, class> class _Fn>
+  struct __q2 {
+    template <class _Ty, class _Uy>
+    using __f = _Fn<_Ty, _Uy>;
+  };
+
   template <template <class...> class _Fn>
   using __mtry_q = __q<_Fn>;
 
