@@ -157,7 +157,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
 
       cudaError_t status = cudaSuccess;
       auto __op_state = make_host<exit_operation_state_t<Sender, receiver_t<Sender>>>(
-        status, context_state.pinned_resource_, __conv{[&] {
+        status, context_state.pinned_resource_, __emplace_from{[&] {
           return exit_op_state(
             static_cast<Sender&&>(__sndr), receiver_t<Sender>{{}, &state, &loop}, context_state);
         }});

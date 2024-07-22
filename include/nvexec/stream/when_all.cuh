@@ -98,7 +98,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using __t = //
         __if_c<
           (__sends<set_value_t, Senders, Env...> && ...),
-          __minvoke<__push_back<__q<completion_signatures>>, non_values, values>,
+          __minvoke<__mpush_back<__q<completion_signatures>>, non_values, values>,
           non_values>;
     };
   } // namespace _when_all

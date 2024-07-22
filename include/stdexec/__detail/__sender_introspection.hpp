@@ -89,7 +89,7 @@ namespace stdexec {
 
   template <class _Tp>
     requires __mvalid<tag_of_t, _Tp>
-  struct __uncurry_<_Tp> {
+  struct __muncurry_<_Tp> {
     template <class _Fn>
     using __f = __detail::__sexpr_uncurry<_Tp, _Fn>;
   };

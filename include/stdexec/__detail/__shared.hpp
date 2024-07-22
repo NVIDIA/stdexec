@@ -358,8 +358,8 @@ namespace stdexec {
         completion_signatures<
           set_error_t(__minvoke<_Cvref, std::exception_ptr>),
           set_stopped_t()>, // NOT TO SPEC
-        __transform<_Cvref, __mcompose<__q<completion_signatures>, __qf<set_value_t>>>,
-        __transform<_Cvref, __mcompose<__q<completion_signatures>, __qf<set_error_t>>>>;
+        __mtransform<_Cvref, __mcompose<__q<completion_signatures>, __qf<set_value_t>>>,
+        __mtransform<_Cvref, __mcompose<__q<completion_signatures>, __qf<set_error_t>>>>;
 
     // split completes with const T&. ensure_started completes with T&&.
     template <class _Tag>

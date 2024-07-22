@@ -170,7 +170,7 @@ namespace exec {
 
       template <class _Self, class... _Env>
       using __item_types_t = stdexec::__mapply<
-        stdexec::__transform<
+        stdexec::__mtransform<
           stdexec::__mbind_front_q<__call_result_t, __data_of<_Self>&>,
           stdexec::__munique<stdexec::__q<item_types>>>,
         item_types_of_t<__child_of<_Self>, _Env...>>;

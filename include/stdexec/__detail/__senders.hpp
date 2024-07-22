@@ -110,7 +110,7 @@ namespace stdexec {
           using _AwaitResult = __await_result_t<_TfxSender, __env::__promise<_Env>...>;
           using _Result = completion_signatures<
             // set_value_t() or set_value_t(T)
-            __minvoke<__remove<void, __qf<set_value_t>>, _AwaitResult>,
+            __minvoke<__mremove<void, __qf<set_value_t>>, _AwaitResult>,
             set_error_t(std::exception_ptr),
             set_stopped_t()>;
           return static_cast<_Result (*)()>(nullptr);

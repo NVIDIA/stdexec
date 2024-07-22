@@ -177,7 +177,7 @@ namespace stdexec {
 
   // So we can use __tuple as a typelist
   template <auto _Idx, class... _Ts>
-  struct __uncurry_<__tuple<_Idx, _Ts...>> {
+  struct __muncurry_<__tuple<_Idx, _Ts...>> {
     template <class _Fn>
     using __f = __minvoke<_Fn, _Ts...>;
   };

@@ -324,7 +324,7 @@ namespace tbbexec {
             template <class Sender, class... Env>
             using _with_error_invoke_t = stdexec::__eptr_completion_if_t<stdexec::__value_types_t<
               stdexec::__completion_signatures_of_t<Sender, Env...>,
-              stdexec::__transform<
+              stdexec::__mtransform<
                 stdexec::__q1<__decay_ref>,
                 stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>>,
               stdexec::__q<stdexec::__mand>>>;

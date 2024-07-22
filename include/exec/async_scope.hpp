@@ -444,7 +444,7 @@ namespace exec {
     template <class _Completions>
     using __completions_as_variant = //
       __mapply<
-        __transform<__q<__completion_as_tuple_t>, __mbind_front_q<std::variant, std::monostate>>,
+        __mtransform<__q<__completion_as_tuple_t>, __mbind_front_q<std::variant, std::monostate>>,
         _Completions>;
 
     template <class _Ty>

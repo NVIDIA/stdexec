@@ -76,8 +76,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
         }
 
         auto sch = stdexec::get_scheduler(stdexec::get_env(op_state_.rcvr_));
-        inner_op_state_t& inner_op_state = op_state_.inner_op_state_.emplace(
-          stdexec::__conv{[&]() noexcept {
+        inner_op_state_t& inner_op_state =
+          op_state_.inner_op_state_.emplace(stdexec::__emplace_from{[&]() noexcept {
             return ex::connect(ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
           }});
 
@@ -114,8 +114,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
 
         if (op_state_.n_) {
           auto sch = stdexec::get_scheduler(stdexec::get_env(op_state_.rcvr_));
-          inner_op_state_t& inner_op_state = op_state_.inner_op_state_.emplace(
-            stdexec::__conv{[&]() noexcept {
+          inner_op_state_t& inner_op_state =
+            op_state_.inner_op_state_.emplace(stdexec::__emplace_from{[&]() noexcept {
               return ex::connect(
                 ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
             }});
@@ -186,7 +186,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
         , pred_sender_{static_cast<PredSender&&>(pred_sender)}
         , closure_(closure)
         , n_(n) {
-        pred_op_state_.emplace(stdexec::__conv{[&]() noexcept {
+        pred_op_state_.emplace(stdexec::__emplace_from{[&]() noexcept {
           return ex::connect(static_cast<PredSender&&>(pred_sender_), receiver_1_t{*this});
         }});
       }
@@ -217,8 +217,8 @@ namespace repeat_n_detail {
       }
 
       auto sch = stdexec::get_scheduler(stdexec::get_env(op_state_.rcvr_));
-      inner_op_state_t& inner_op_state = op_state_.inner_op_state_.emplace(
-        stdexec::__conv{[&]() noexcept {
+      inner_op_state_t& inner_op_state =
+        op_state_.inner_op_state_.emplace(stdexec::__emplace_from{[&]() noexcept {
           return ex::connect(ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
         }});
 
@@ -257,8 +257,8 @@ namespace repeat_n_detail {
 
       if (op_state_.n_) {
         auto sch = stdexec::get_scheduler(stdexec::get_env(op_state_.rcvr_));
-        inner_op_state_t& inner_op_state = op_state_.inner_op_state_.emplace(
-          stdexec::__conv{[&]() noexcept {
+        inner_op_state_t& inner_op_state =
+          op_state_.inner_op_state_.emplace(stdexec::__emplace_from{[&]() noexcept {
             return ex::connect(ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
           }});
 
@@ -320,7 +320,7 @@ namespace repeat_n_detail {
       , closure_(closure)
       , rcvr_(rcvr)
       , n_(n) {
-      pred_op_state_.emplace(stdexec::__conv{[&]() noexcept {
+      pred_op_state_.emplace(stdexec::__emplace_from{[&]() noexcept {
         return ex::connect(static_cast<PredSender&&>(pred_sender_), receiver_1_t{*this});
       }});
     }

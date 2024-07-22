@@ -473,7 +473,7 @@ namespace exec {
       //   the resulting list to __qf<set_value_t>, which uses the list of types
       //   as arguments of a function type. In other words, set_value_t() if _Ty
       //   is void, and set_value_t(_Ty) otherwise.
-      using __set_value_sig_t = __minvoke<__remove<void, __qf<set_value_t>>, _Ty>;
+      using __set_value_sig_t = __minvoke<__mremove<void, __qf<set_value_t>>, _Ty>;
 
       // Specify basic_task's completion signatures
       //   This is only necessary when basic_task is not generally awaitable

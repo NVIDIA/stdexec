@@ -466,11 +466,11 @@ namespace stdexec {
   concept __minvocable_succeeds = __minvocable<_Fn, _Args...> && __ok<__minvoke<_Fn, _Args...>>;
 
   template <class _Fn, class... _Args>
-  struct __force_minvoke_ {
+  struct __minvoke_force_ {
     using __t = __minvoke<_Fn, _Args...>;
   };
   template <class _Fn, class... _Args>
-  using __force_minvoke = __t<__force_minvoke_<_Fn, _Args...>>;
+  using __minvoke_force = __t<__minvoke_force_<_Fn, _Args...>>;
 
   template <class _Fn, class... _Args>
   struct __mdefer_ { };
@@ -592,7 +592,7 @@ namespace stdexec {
   using __merror_or_t = __if_c<__merror<_Ty>, _Ty, _Default...>;
 
   template <class _Fn, class _Continuation = __q<__types>>
-  struct __transform {
+  struct __mtransform {
     template <class... _Args>
     using __f = __minvoke<_Continuation, __minvoke<_Fn, _Args>...>;
   };
@@ -617,34 +617,34 @@ namespace stdexec {
   };
 
   template <class _Fn>
-  struct __curry {
+  struct __mcurry {
     template <class... _Ts>
     using __f = __minvoke<_Fn, _Ts...>;
   };
 
   template <class _Tp>
-  struct __uncurry_;
+  struct __muncurry_;
 
   template <template <class...> class _Ap, class... _As>
-  struct __uncurry_<_Ap<_As...>> {
+  struct __muncurry_<_Ap<_As...>> {
     template <class _Fn>
     using __f = __minvoke<_Fn, _As...>;
   };
 
   template <class _What, class... _With>
-  struct __uncurry_<_ERROR_<_What, _With...>> {
+  struct __muncurry_<_ERROR_<_What, _With...>> {
     template <class _Fn>
     using __f = _ERROR_<_What, _With...>;
   };
 
   template <class _Fn>
-  struct __uncurry {
+  struct __muncurry {
     template <class _Tp>
-    using __f = typename __uncurry_<_Tp>::template __f<_Fn>;
+    using __f = typename __muncurry_<_Tp>::template __f<_Fn>;
   };
 
   template <class _Fn, class _List>
-  using __mapply = __minvoke<__uncurry<_Fn>, _List>;
+  using __mapply = __minvoke<__muncurry<_Fn>, _List>;
 
   template <bool>
   struct __mconcat_ {
@@ -703,24 +703,15 @@ namespace stdexec {
   };
 
   template <class _Tp>
-  struct __contains {
+  struct __mcontains {
     template <class... _Args>
     using __f = __mbool<(__same_as<_Tp, _Args> || ...)>;
   };
 
   template <class _Continuation = __q<__types>>
-  struct __push_back {
+  struct __mpush_back {
     template <class _List, class _Item>
     using __f = __mapply<__mbind_back<_Continuation, _Item>, _List>;
-  };
-
-  template <class _Continuation = __q<__types>>
-  struct __push_back_unique {
-    template <class _List, class _Item>
-    using __f = //
-      __mapply<
-        __if<__mapply<__contains<_Item>, _List>, _Continuation, __mbind_back<_Continuation, _Item>>,
-        _List>;
   };
 
   template <class...>
@@ -748,13 +739,13 @@ namespace stdexec {
   };
 
   template <class _Old, class _New, class _Continuation = __q<__types>>
-  struct __replace {
+  struct __mreplace {
     template <class... _Args>
     using __f = __minvoke<_Continuation, __if_c<__same_as<_Args, _Old>, _New, _Args>...>;
   };
 
   template <class _Old, class _Continuation = __q<__types>>
-  struct __remove {
+  struct __mremove {
     template <class... _Args>
     using __f = //
       __minvoke<
@@ -763,7 +754,7 @@ namespace stdexec {
   };
 
   template <class _Pred, class _Continuation = __q<__types>>
-  struct __remove_if {
+  struct __mremove_if {
     template <class... _Args>
     using __f = //
       __minvoke<__mconcat<_Continuation>, __if<__minvoke<_Pred, _Args>, __types<>, __types<_Args>>...>;
@@ -787,12 +778,6 @@ namespace stdexec {
   using __msingle_or_ = __mfront<_As..., _Default>;
   template <class _Default>
   using __msingle_or = __mbind_front_q<__msingle_or_, _Default>;
-
-  template <class _Continuation = __q<__types>>
-  struct __pop_front {
-    template <class, class... _Ts>
-    using __f = __minvoke<_Continuation, _Ts...>;
-  };
 
   template <class _Ty>
   concept __has_id = requires { typename _Ty::__id; };
@@ -857,7 +842,7 @@ namespace stdexec {
   // For emplacing non-movable types into optionals:
   template <class _Fn>
     requires std::is_nothrow_move_constructible_v<_Fn>
-  struct __conv {
+  struct __emplace_from {
     _Fn __fn_;
     using __t = __call_result_t<_Fn>;
 
@@ -869,8 +854,9 @@ namespace stdexec {
       return static_cast<_Fn &&>(__fn_)();
     }
   };
+
   template <class _Fn>
-  __conv(_Fn) -> __conv<_Fn>;
+  __emplace_from(_Fn) -> __emplace_from<_Fn>;
 
   template <class, class, class, class>
   struct __mzip_with2_;

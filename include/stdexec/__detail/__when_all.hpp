@@ -115,7 +115,7 @@ namespace stdexec {
       using __single_values_of_t = //
         __value_types_t<
           __completion_signatures_of_t<_Sender, _Env...>,
-          __transform<__q<__decay_t>, __q<__types>>,
+          __mtransform<__q<__decay_t>, __q<__types>>,
           __mbind_front_q<__value_tuple_t, _Sender>>;
 
       template <class... _Senders>
@@ -165,7 +165,7 @@ namespace stdexec {
       using __values_tuple = //
         __minvoke<
           __with_default<
-            __transform<__mbind_front_q<__values_opt_tuple_t, _Env>, __q<__tuple_for>>,
+            __mtransform<__mbind_front_q<__values_opt_tuple_t, _Env>, __q<__tuple_for>>,
             __ignore>,
           _Senders...>;
 

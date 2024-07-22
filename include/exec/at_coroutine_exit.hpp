@@ -74,7 +74,7 @@ namespace exec {
         template <class... _Env>
         using __completion_signatures = //
           __mapply<
-            __remove<set_stopped_t(), __q<completion_signatures>>,
+            __mremove<set_stopped_t(), __q<completion_signatures>>,
             __completion_signatures_of_t<_Sender, _Env...>>;
 
         struct __t {

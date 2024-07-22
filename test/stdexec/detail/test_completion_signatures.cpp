@@ -54,7 +54,7 @@ namespace {
     "[detail][completion_signatures]") {
     using set_value_f = ex::__q<set_value_sig>;
 
-    using tr = ex::__transform<set_value_f, ex::__q<ex::__types>>;
+    using tr = ex::__mtransform<set_value_f, ex::__q<ex::__types>>;
 
     using res = ex::__minvoke<tr, int, double, string>;
     using expected = ex::__types< //
@@ -70,7 +70,7 @@ namespace {
     "[detail][completion_signatures]") {
     using set_error_f = ex::__q<set_error_sig>;
 
-    using tr = ex::__transform<set_error_f, ex::__q<ex::__types>>;
+    using tr = ex::__mtransform<set_error_f, ex::__q<ex::__types>>;
 
     using res = ex::__minvoke<tr, exception_ptr, error_code, string>;
     using expected = ex::__types<     //
@@ -86,7 +86,7 @@ namespace {
     "[detail][completion_signatures]") {
     using set_error_f = ex::__q<set_error_sig>;
 
-    using tr = ex::__transform<set_error_f, ex::__q<ex::__types>>;
+    using tr = ex::__mtransform<set_error_f, ex::__q<ex::__types>>;
 
     using res = ex::__minvoke<tr, exception_ptr>;
     using expected = ex::__types<    //
@@ -120,7 +120,7 @@ namespace {
     using snd_str_t = decltype(ex::just_error(std::string{}));
 
     using set_error_f = ex::__q<set_error_sig>;
-    using tr = ex::__transform<set_error_f>;
+    using tr = ex::__mtransform<set_error_f>;
 
     using sig_eptr = ex::__error_types_of_t<snd_eptr_t, ex::empty_env, tr>;
     using sig_ec = ex::__error_types_of_t<snd_ec_t, ex::empty_env, tr>;
@@ -301,7 +301,7 @@ namespace {
   TEST_CASE(
     "regression: error_types_of_t can be used to transform error types",
     "[detail][completion_signatures]") {
-    using tr = ex::__transform<ex::__q<optional>, ex::__q<ex::__mset>>;
+    using tr = ex::__mtransform<ex::__q<optional>, ex::__q<ex::__mset>>;
 
     using snd_t = decltype(ex::when_all(
       ex::just_error(std::error_code{}), ex::just_error(std::exception_ptr{})));

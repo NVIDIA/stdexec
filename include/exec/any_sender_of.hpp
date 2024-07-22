@@ -722,7 +722,7 @@ namespace exec {
        private:
 #endif
         using _FilteredQueries =
-          __minvoke<__remove_if<__q<__is_never_stop_token_query>>, _Queries...>;
+          __minvoke<__mremove_if<__q<__is_never_stop_token_query>>, _Queries...>;
         using __vtable_t = stdexec::__t<
           __mapply<__mbind_front_q<__vtable, completion_signatures<_Sigs...>>, _FilteredQueries>>;
 
@@ -968,11 +968,11 @@ namespace exec {
               -> __immovable_operation_storage {
               _Sender& __sender = *static_cast<_Sender*>(__object_pointer);
               using __op_state_t = connect_result_t<_Sender, __receiver_ref_t>;
-              return __immovable_operation_storage{std::in_place_type<__op_state_t>, __conv{[&] {
-                                                     return stdexec::connect(
-                                                       static_cast<_Sender&&>(__sender),
-                                                       static_cast<__receiver_ref_t&&>(__receiver));
-                                                   }}};
+              return __immovable_operation_storage{
+                std::in_place_type<__op_state_t>, __emplace_from{[&] {
+                  return stdexec::connect(
+                    static_cast<_Sender&&>(__sender), static_cast<__receiver_ref_t&&>(__receiver));
+                }}};
             }};
           return &__vtable_;
         }
@@ -1223,7 +1223,7 @@ namespace exec {
         };
 
         using schedule_sender_queries = stdexec::__minvoke<
-          stdexec::__remove_if<
+          stdexec::__mremove_if<
             __ret_equals_to<stdexec::get_completion_scheduler_t<stdexec::set_value_t>>>,
           decltype(_SenderQueries)...>;
 

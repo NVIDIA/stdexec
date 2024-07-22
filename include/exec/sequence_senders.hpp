@@ -29,7 +29,7 @@ namespace exec {
     template <class _Haystack>
     struct __mall_contained_in_impl {
       template <class... _Needles>
-      using __f = __mand<__mapply<__contains<_Needles>, _Haystack>...>;
+      using __f = __mand<__mapply<__mcontains<_Needles>, _Haystack>...>;
     };
 
     template <class _Needles, class _Haystack>
@@ -269,7 +269,7 @@ namespace exec {
   template <class _Sequence, class... _Env>
   using __sequence_completion_signatures_of_t = //
     stdexec::__mapply<
-      stdexec::__transform<
+      stdexec::__mtransform<
         stdexec::__mbind_back_q<__item_completion_signatures, _Env...>,
         stdexec::__mbind_back<
           stdexec::__mtry_q<stdexec::__concat_completion_signatures>,

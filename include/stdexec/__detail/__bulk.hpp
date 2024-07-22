@@ -56,7 +56,7 @@ namespace stdexec {
       __if<
         __value_types_t<
           __completion_signatures_of_t<_CvrefSender, _Env...>,
-          __transform<
+          __mtransform<
             __q<__decay_ref>,
             __mbind_front<__mtry_catch_q<__nothrow_invocable_t, _Catch>, _Fun, _Shape>>,
           __q<__mand>>,
