@@ -330,7 +330,7 @@ namespace stdexec {
       // template <std::size_t _Idx>
       // static std::ptrdiff_t __get_child_op_offset() noexcept {
       //   __op_state* __self = (__op_state*) &__self;
-      //   return (std::ptrdiff_t)((char*) &__tup::__get<_Idx>(__self->__inner_ops_) - static_cast<char*>(__self));
+      //   return (std::ptrdiff_t)((char*) &__tup::get<_Idx>(__self->__inner_ops_) - static_cast<char*>(__self));
       // }
 
       __op_state(_Sexpr&& __sexpr, _Receiver __rcvr) //

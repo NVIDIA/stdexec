@@ -362,7 +362,7 @@ namespace stdexec {
           // We only need to bother recording the completion values
           // if we're not already in the "error" or "stopped" state.
           if (__state.__state_ == __started) {
-            auto& __opt_values = __tup::__get<__v<_Index>>(__state.__values_);
+            auto& __opt_values = __tup::get<__v<_Index>>(__state.__values_);
             using _Tuple = __decayed_tuple<_Args...>;
             static_assert(
               __same_as<decltype(*__opt_values), _Tuple&>,
