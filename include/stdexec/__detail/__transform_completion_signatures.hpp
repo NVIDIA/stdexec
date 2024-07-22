@@ -59,7 +59,7 @@ namespace stdexec {
     __minvoke<
       __if_c<
         sizeof...(_Ts) != 0,
-        __transform<__q<__decay_t>, __munique<__q<std::variant>>>,
+        __mtransform<__q<__decay_t>, __munique<__q<std::variant>>>,
         __mconst<__not_a_variant>>,
       _Ts...>;
 
@@ -555,5 +555,5 @@ namespace stdexec {
     requires __invocable<_Fun, _Args...>
   using __set_value_invoke_t = //
     completion_signatures<
-      __minvoke<__remove<void, __qf<set_value_t>>, __invoke_result_t<_Fun, _Args...>>>;
+      __minvoke<__mremove<void, __qf<set_value_t>>, __invoke_result_t<_Fun, _Args...>>>;
 } // namespace stdexec

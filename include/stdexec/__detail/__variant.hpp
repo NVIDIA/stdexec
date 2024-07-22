@@ -207,7 +207,7 @@ namespace stdexec {
 
   // So we can use __variant as a typelist
   template <auto _Idx, class... _Ts>
-  struct __uncurry_<__variant<_Idx, _Ts...>> {
+  struct __muncurry_<__variant<_Idx, _Ts...>> {
     template <class _Fn>
     using __f = __minvoke<_Fn, _Ts...>;
   };

@@ -217,7 +217,7 @@ namespace exec {
           std::in_place_type<__decayed_std_tuple<_Args...>>, static_cast<_Args&&>(__args)...);
         STDEXEC_ASSERT(__op_.index() == 0);
         _FinalSender& __final = std::get_if<0>(&__op_)->__sndr_;
-        __final_op_t& __final_op = __op_.template emplace<1>(__conv{[&] {
+        __final_op_t& __final_op = __op_.template emplace<1>(__emplace_from{[&] {
           return stdexec::connect(static_cast<_FinalSender&&>(__final), __final_receiver_t{this});
         }});
         stdexec::start(__final_op);
@@ -225,7 +225,7 @@ namespace exec {
 
       __t(_InitialSender&& __initial, _FinalSender __final, _Receiver __receiver)
         : __base_t{{static_cast<_Receiver&&>(__receiver)}}
-        , __op_(std::in_place_index<0>, __conv{[&] {
+        , __op_(std::in_place_index<0>, __emplace_from{[&] {
                   return __initial_op_t{
                     static_cast<_FinalSender&&>(__final),
                     stdexec::connect(

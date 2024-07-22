@@ -25,7 +25,7 @@ namespace {
   template <class Haystack>
   struct mall_contained_in {
     template <class... Needles>
-    using __f = ex::__mand<ex::__mapply<ex::__contains<Needles>, Haystack>...>;
+    using __f = ex::__mand<ex::__mapply<ex::__mcontains<Needles>, Haystack>...>;
   };
 
   template <class Needles, class Haystack>

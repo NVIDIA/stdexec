@@ -176,9 +176,9 @@ namespace stdexec {
     template <class _Env>
     struct __completion_domain_or_none_
       : __mdefer_<
-          __transform<
+          __mtransform<
             __mbind_front_q<__completion_domain_for, _Env>,
-            __remove<__none_such, __munique<__msingle_or<__none_such>>>>,
+            __mremove<__none_such, __munique<__msingle_or<__none_such>>>>,
           set_value_t,
           set_error_t,
           set_stopped_t> { };

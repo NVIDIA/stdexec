@@ -34,7 +34,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     template <class _Fun>
     using __result_sender_fn = //
-      __transform<__q<__decay_ref>, __mbind_front_q<__call_result_t, _Fun>>;
+      __mtransform<__q<__decay_ref>, __mbind_front_q<__call_result_t, _Fun>>;
 
     template <class... Sizes>
     struct max_in_pack {
@@ -116,7 +116,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
               status == cudaSuccess) {
             __op_state_->defer_temp_storage_destruction(result_sender);
-            auto& __op = __op_state_->__op_state3_.template emplace<op_state_t>(__conv{[&] {
+            auto& __op = __op_state_->__op_state3_.template emplace<op_state_t>(__emplace_from{[&] {
               return connect(
                 std::move(*result_sender),
                 stdexec::__t<propagate_receiver_t<_ReceiverId>>{
@@ -155,7 +155,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         using __op_state_variant_t = //
           __minvoke<
-            __transform<__uncurry<__op_state_for<_Receiver, _Fun>>, __qq<__nullable_std_variant>>,
+            __mtransform<__muncurry<__op_state_for<_Receiver, _Fun>>, __qq<__nullable_std_variant>>,
             _Tuples...>;
 
         __operation<_SenderId, _ReceiverId, _Fun, _Let>* __op_state_;
@@ -230,7 +230,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class _Sender, class... _Env>
       using __completions = //
         __mapply<
-          __transform<
+          __mtransform<
             __mbind_back_q<let_xxx::__tfx_signal_t, _Fun, _Set, _Env...>,
             __mtry_q<__concat_completion_signatures>>,
           __completion_signatures_of_t<_Sender, _Env...>>;

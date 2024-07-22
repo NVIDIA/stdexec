@@ -144,14 +144,14 @@ namespace exec {
           }
 
           template <class Error>
-            requires __v<__mapply<__contains<set_error_t(Error)>, __sigs>>
+            requires __v<__mapply<__mcontains<set_error_t(Error)>, __sigs>>
           void set_error(Error&& __error) noexcept {
             (*static_cast<const __vfun<set_error_t(Error)>*>(__env_.__vtable_)->__complete_)(
               __env_.__rcvr_, static_cast<Error&&>(__error));
           }
 
           void set_stopped() noexcept
-            requires __v<__mapply<__contains<set_stopped_t()>, __sigs>>
+            requires __v<__mapply<__mcontains<set_stopped_t()>, __sigs>>
           {
             (*static_cast<const __vfun<set_stopped_t()>*>(__env_.__vtable_)->__complete_)(
               __env_.__rcvr_);
@@ -190,11 +190,11 @@ namespace exec {
               -> __immovable_operation_storage {
               _Sender& __sender = *static_cast<_Sender*>(__object_pointer);
               using __op_state_t = subscribe_result_t<_Sender, __receiver_ref_t>;
-              return __immovable_operation_storage{std::in_place_type<__op_state_t>, __conv{[&] {
-                                                     return ::exec::subscribe(
-                                                       static_cast<_Sender&&>(__sender),
-                                                       static_cast<__receiver_ref_t&&>(__receiver));
-                                                   }}};
+              return __immovable_operation_storage{
+                std::in_place_type<__op_state_t>, __emplace_from{[&] {
+                  return ::exec::subscribe(
+                    static_cast<_Sender&&>(__sender), static_cast<__receiver_ref_t&&>(__receiver));
+                }}};
             }};
           return &__vtable_;
         }

@@ -35,7 +35,7 @@ namespace exec {
         template <class _Sender, class _Receiver>
         __t(_Sender&& __sender, _Receiver&& __receiver) //
           noexcept(__nothrow_connectable<_Sender, _Receiver>)
-          : __variant_{std::in_place_type<connect_result_t<_Sender, _Receiver>>, __conv{[&] {
+          : __variant_{std::in_place_type<connect_result_t<_Sender, _Receiver>>, __emplace_from{[&] {
                          return stdexec::connect(
                            static_cast<_Sender&&>(__sender), static_cast<_Receiver&&>(__receiver));
                        }}} {
@@ -130,7 +130,7 @@ namespace stdexec::__detail {
   struct __variant_sender_name {
     template <class _Sender>
     using __f = __mapply<
-      __transform<__mcompose<__q<__name_of>, __q<__t>>, __q<exec::__variant::__sender>>,
+      __mtransform<__mcompose<__q<__name_of>, __q<__t>>, __q<exec::__variant::__sender>>,
       _Sender>;
   }; // namespace stdexec::__detail
 
