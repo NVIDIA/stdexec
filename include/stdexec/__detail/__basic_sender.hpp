@@ -428,7 +428,9 @@ namespace stdexec {
   };
 
   template <class _Tag>
-  struct __sexpr_impl : __sexpr_defaults { };
+  struct __sexpr_impl : __sexpr_defaults {
+    using not_specialized = void;
+  };
 
   using __detail::__enable_receiver_from_this;
 
