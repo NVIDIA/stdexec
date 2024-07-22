@@ -985,7 +985,13 @@ namespace stdexec {
     using __f = __mor<__minvoke<_Fn, _Args>...>;
   };
 
-#if STDEXEC_HAS_BUILTIN(__type_pack_element)
+#if defined(__cpp_pack_indexing)
+  template <class _Np, class... _Ts>
+  using __m_at = _Ts...[__v<_Np>];
+
+  template <std::size_t _Np, class... _Ts>
+  using __m_at_c = _Ts...[_Np];
+#elif STDEXEC_HAS_BUILTIN(__type_pack_element)
   template <bool>
   struct __m_at_ {
     template <class _Np, class... _Ts>
@@ -1058,6 +1064,18 @@ namespace stdexec {
   using __2 = __placeholder<2>;
   using __3 = __placeholder<3>;
 
+#if defined(__cpp_pack_indexing)
+  template <std::size_t _Np>
+  struct __nth_pack_element_t {
+    template <class... _Ts>
+    STDEXEC_ATTRIBUTE((always_inline))
+    constexpr decltype(auto)
+      operator()(_Ts &&...__ts) const noexcept {
+      static_assert(_Np < sizeof...(_Ts));
+      return (static_cast<_Ts &&>(__ts)...[_Np]);
+    }
+  };
+#else
   template <class... _Ignore>
   struct __nth_pack_element_impl {
     template <class _Ty, class... _Us>
@@ -1085,6 +1103,7 @@ namespace stdexec {
       return __impl(__make_indices<_Np>())(static_cast<_Ts &&>(__ts)...);
     }
   };
+#endif
 
   template <std::size_t _Np>
   inline constexpr __nth_pack_element_t<_Np> __nth_pack_element{};
