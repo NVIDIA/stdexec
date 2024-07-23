@@ -302,8 +302,7 @@ namespace stdexec {
             return (__env);
           } else {
             return __env::__join(
-              prop(
-                get_scheduler, get_completion_scheduler<_Set>(stdexec::get_env(__child))),
+              prop{get_scheduler, get_completion_scheduler<_Set>(stdexec::get_env(__child))},
               __env::__without(static_cast<_Env&&>(__env), get_domain));
           }
         }
