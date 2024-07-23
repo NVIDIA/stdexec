@@ -122,6 +122,29 @@ namespace exec {
      private:
       std::atomic<bool> __locked_{false};
     };
+
+    extern std::atomic<system_context_interface*> __system_context_instance;
+
+    // The job of this object is to hold a reference to whatever object
+    // is the current system context from the time the first system
+    // context object is created until after main exits.
+    struct __system_context_keep_alive {
+      __system_context_keep_alive() {
+        (void) get_system_context_instance();
+      }
+
+      ~__system_context_keep_alive() {
+        release_system_context_instance(__system_context_instance.load());
+      }
+    };
+
+    struct __system_context_base {
+      __system_context_base() {
+        // This static will create the system context, and decrement its
+        // ref count after main exits.
+        static __system_context_keep_alive __s_keep_alive;
+      }
+    };
   } // namespace __detail
 
   class system_scheduler;
@@ -207,7 +230,7 @@ namespace exec {
   };
 
   /// Provides a view on some global underlying execution context supporting parallel forward progress.
-  class system_context {
+  class system_context : __detail::__system_context_base {
    public:
     /// Initializes the system context with the default implementation.
     system_context();
