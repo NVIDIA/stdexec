@@ -27,11 +27,6 @@
 #include "__type_traits.hpp"
 #include "__utility.hpp"
 
-STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE_GNU("-Wnon-template-friend")
-STDEXEC_PRAGMA_IGNORE_EDG(probable_guiding_friend)
-STDEXEC_PRAGMA_IGNORE_EDG(declared_but_not_referenced)
-
 namespace stdexec {
   template <class _Tp>
   using __t = typename _Tp::__t;
@@ -1021,38 +1016,6 @@ namespace stdexec {
     using __f = __minvoke<__impl<__make_indices<sizeof...(_Ts) - 1>>, _Ts...>;
   };
 
-  // Implementation of a compile-time counter using stateful metaprogramming
-  // via friend injection. Code adapted from:
-  // From https://mc-deltat.github.io/articles/stateful-metaprogramming-cpp20
-  namespace __mut {
-    template<class _Slot, std::size_t _Ny>
-    struct __mreader {
-      friend auto __flag(__mreader<_Slot, _Ny>);
-    };
-
-    template<class _Slot, std::size_t _Ny>
-    struct __mwriter {
-      friend auto __flag(__mreader<_Slot, _Ny>) {}
-      static constexpr std::size_t __count = _Ny;
-    };
-
-    template<class _Slot, std::size_t _NextVal = 0, class _Tag>
-    consteval auto __mcounter(_Tag __tag) {
-      constexpr bool __counted_past_value = requires(__mreader<_Slot, _NextVal> __r) {
-        __flag(__r); // unqualified for ADL
-      };
-
-      if constexpr (__counted_past_value) {
-        return __mcounter<_Slot, _NextVal + 1>(__tag);
-      } else {
-        return __mwriter<_Slot, _NextVal>().__count;
-      }
-    }
-  } // namespace __mut
-
-  template<class _Slot, std::size_t _Val = __mut::__mcounter<_Slot>([]{})>
-  constexpr std::size_t __mcounter = _Val;
-
   template <std::size_t _Np>
   struct __placeholder {
     __placeholder() = default;
@@ -1315,5 +1278,3 @@ namespace stdexec {
     using __f = __mapply<_Continuation, __mmake_set<_Ts...>>;
   };
 } // namespace stdexec
-
-STDEXEC_PRAGMA_POP()
