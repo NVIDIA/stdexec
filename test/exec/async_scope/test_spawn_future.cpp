@@ -16,7 +16,7 @@ namespace {
     CHECK_FALSE(stdexec::execute_may_block_caller(sch));
     auto op = ex::connect(
       ex::then(scope.on_empty(), [&]() { loop.finish(); }),
-      expect_void_receiver{exec::make_env(stdexec::prop(ex::get_scheduler, sch))});
+      expect_void_receiver{exec::make_env(stdexec::prop{ex::get_scheduler, sch})});
     ex::start(op);
     loop.run();
   }

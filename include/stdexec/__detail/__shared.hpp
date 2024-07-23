@@ -230,8 +230,8 @@ namespace stdexec {
 
       explicit __shared_state(_CvrefSender&& __sndr, _Env __env)
         : __env_(__env::__join(
-          prop(get_stop_token, __stop_source_.get_token()),
-          static_cast<_Env&&>(__env)))
+            prop{get_stop_token, __stop_source_.get_token()},
+            static_cast<_Env&&>(__env)))
         , __shared_op_(connect(static_cast<_CvrefSender&&>(__sndr), __receiver_t{this})) {
         // add one ref count to account for the case where there are no watchers left but the
         // shared op is still running.

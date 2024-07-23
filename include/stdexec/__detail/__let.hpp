@@ -113,8 +113,7 @@ namespace stdexec {
 
       auto get_env() const noexcept {
         return __env::__join(
-          prop(get_scheduler, __sched_),
-          __env::__without(stdexec::get_env(__rcvr_), get_domain));
+          prop{get_scheduler, __sched_}, __env::__without(stdexec::get_env(__rcvr_), get_domain));
       }
     };
 
@@ -379,8 +378,7 @@ namespace stdexec {
           return stdexec::get_env(__rcvr);
         } else {
           return __env::__join(
-            prop(get_scheduler, __sched_),
-            __env::__without(stdexec::get_env(__rcvr), get_domain));
+            prop{get_scheduler, __sched_}, __env::__without(stdexec::get_env(__rcvr), get_domain));
         }
       }
 
@@ -438,7 +436,7 @@ namespace stdexec {
     struct __let_impl : __sexpr_defaults {
       static constexpr auto get_attrs = //
         []<class _Child>(__ignore, const _Child& __child) noexcept {
-          return __env::__join(prop(get_domain, _Domain()), stdexec::get_env(__child));
+          return __env::__join(prop{get_domain, _Domain()}, stdexec::get_env(__child));
         };
 
       static constexpr auto get_completion_signatures = //

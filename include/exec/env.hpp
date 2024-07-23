@@ -28,7 +28,7 @@ namespace exec {
     struct __with_t {
       template <class _Tag, class _Value>
       auto operator()(_Tag, _Value&& __val) const {
-        return stdexec::prop(_Tag(), static_cast<_Value&&>(__val));
+        return stdexec::prop{_Tag(), static_cast<_Value&&>(__val)};
       }
     };
 

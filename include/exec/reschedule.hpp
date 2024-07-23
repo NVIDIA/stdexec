@@ -60,7 +60,7 @@ namespace exec {
         }
 
         auto get_env() const noexcept {
-          return stdexec::prop(get_completion_scheduler<set_value_t>, __scheduler());
+          return stdexec::prop{get_completion_scheduler<set_value_t>, __scheduler()};
         }
       };
 

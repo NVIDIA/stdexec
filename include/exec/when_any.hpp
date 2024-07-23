@@ -162,7 +162,7 @@ namespace exec {
         }
 
         auto get_env() const noexcept -> __env_t<env_of_t<_Receiver>> {
-          auto __token = prop(get_stop_token, __op_->__stop_source_.get_token());
+          auto __token = prop{get_stop_token, __op_->__stop_source_.get_token()};
           return __env::__join(std::move(__token), stdexec::get_env(__op_->__rcvr_));
         }
 

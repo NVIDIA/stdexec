@@ -37,7 +37,7 @@ namespace exec {
     inline constexpr auto __mkenv =
       []<class _Env>(_Env&& __env, stdexec::inplace_stop_source& __source) {
         return stdexec::__env::__join(
-          stdexec::prop(stdexec::get_stop_token, __source.get_token()), static_cast<_Env&&>(__env));
+          stdexec::prop{stdexec::get_stop_token, __source.get_token()}, static_cast<_Env&&>(__env));
       };
 
     template <class _Env>

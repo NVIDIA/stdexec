@@ -63,7 +63,7 @@ namespace stdexec {
     template <class _Env>
     auto __mkenv(_Env&& __env, const inplace_stop_source& __stop_source) noexcept {
       return __env::__join(
-        prop(get_stop_token, __stop_source.get_token()), static_cast<_Env&&>(__env));
+        prop{get_stop_token, __stop_source.get_token()}, static_cast<_Env&&>(__env));
     }
 
     template <class _Env>
@@ -276,7 +276,7 @@ namespace stdexec {
           if constexpr (__same_as<_Domain, default_domain>) {
             return env();
           } else {
-            return prop(get_domain, _Domain());
+            return prop{get_domain, _Domain()};
           }
         };
 
@@ -417,7 +417,7 @@ namespace stdexec {
           if constexpr (same_as<_Domain, default_domain>) {
             return env();
           } else {
-            return prop(get_domain, _Domain());
+            return prop{get_domain, _Domain()};
           }
         };
 

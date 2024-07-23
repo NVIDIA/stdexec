@@ -127,8 +127,7 @@ namespace stdexec {
     auto
       __mkenv_sched(_Env&& __env, _Scheduler __sched) {
       auto __env2 = __env::__join(
-        prop(get_scheduler, __sched),
-        __env::__without(static_cast<_Env&&>(__env), get_domain));
+        prop{get_scheduler, __sched}, __env::__without(static_cast<_Env&&>(__env), get_domain));
       using _Env2 = decltype(__env2);
 
       struct __env_t : _Env2 { };

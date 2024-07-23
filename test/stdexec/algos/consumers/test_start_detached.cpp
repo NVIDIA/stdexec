@@ -155,7 +155,7 @@ namespace {
     bool called = false;
     ex::start_detached(
       ex::just() | ex::then([&] { called = true; }),
-      exec::make_env(stdexec::prop(ex::get_scheduler, custom_scheduler{})));
+      exec::make_env(stdexec::prop{ex::get_scheduler, custom_scheduler{}}));
     CHECK_FALSE(called);
   }
 
@@ -198,7 +198,7 @@ namespace {
     std::pmr::polymorphic_allocator<std::byte> alloc(&res);
     ex::start_detached(
       ex::just() | ex::then([&] { called = true; }),
-      exec::make_env(stdexec::prop(ex::get_allocator, alloc)));
+      exec::make_env(stdexec::prop{ex::get_allocator, alloc}));
     CHECK(called);
     CHECK(res.get_count() == 1);
     CHECK(res.get_alive() == 0);
