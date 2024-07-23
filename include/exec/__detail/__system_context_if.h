@@ -21,84 +21,121 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
+#  define STDEXEC_SYSTEM_CONTEXT_NOEXCEPT noexcept
+namespace exec {
+  extern "C" {
+#else
+#  define STDEXEC_SYSTEM_CONTEXT_NOEXCEPT
 #endif
 
-struct __exec_system_context_interface;
-struct __exec_system_scheduler_interface;
+  struct system_context_interface;
+  struct system_scheduler_interface;
 
-/// Interface that allows interaction with the system context, allowing scheduling work on the system.
-struct __exec_system_context_interface {
-  /// The supported version of the system context interface, in the form YYYYMM.
-  uint32_t __version;
+  union __system_context_interface_reserved {
+    void* __object_ptr;
+    void* (*__function_ptr)();
+    uintptr_t __int;
+  };
 
-  /// Returns an interface to the system scheduler.
-  struct __exec_system_scheduler_interface* (*__get_scheduler)(
-    struct __exec_system_context_interface* /*self*/);
-};
+  /// Interface that allows interaction with the system context, allowing scheduling work on the system.
+  struct system_context_interface {
+    /// The supported version of the system context interface, in the form YYYYMM.
+    uint32_t version;
 
-/// Callback to be called by the scheduler when new work can start.
-typedef void (*__exec_system_context_completion_callback_t)(
-  void*,  // data pointer passed to scheduler
-  int,    // completion type: 0 for normal completion, 1 for cancellation, 2 for exception
-  void*); // If completion type is 2, this is the exception pointer.
+    /// The ref count of the system context.
+    uint32_t ref_count;
 
-/// Callback to be called by the scheduler for each bulk item.
-typedef void (*__exec_system_context_bulk_item_callback_t)(
-  void*,          // data pointer passed to scheduler
-  unsigned long); // the index of the work item that is starting
+    /// Destroys an instance of the system scheduler.
+    void (*destroy_fn)(struct system_context_interface* /*self*/) STDEXEC_SYSTEM_CONTEXT_NOEXCEPT;
 
-struct __exec_system_scheduler_interface {
-  /// The forward progress guarantee of the scheduler.
-  ///
-  /// 0 == concurrent, 1 == parallel, 2 == weakly_parallel
-  uint32_t __forward_progress_guarantee;
+    /// Returns an interface to the system scheduler.
+    struct system_scheduler_interface* (*get_scheduler_fn)(
+      struct system_context_interface* /*self*/) STDEXEC_SYSTEM_CONTEXT_NOEXCEPT;
 
-  /// The size of the operation state object on the implementation side.
-  uint32_t __schedule_operation_size;
-  /// The alignment of the operation state object on the implementation side.
-  uint32_t __schedule_operation_alignment;
+    /// Unused slots for future expansion.
+    union __system_context_interface_reserved __reserved_for_future_use[8];
+  };
 
-  /// Schedules new work on the system scheduler, calling `cb` with `data` when the work can start.
-  /// Returns an object that should be passed to __destruct_schedule_operation when the operation completes.
-  void* (*__schedule)(
-    struct __exec_system_scheduler_interface* /*self*/,
-    void* /*__preallocated*/,
-    uint32_t /*__psize*/,
-    __exec_system_context_completion_callback_t /*cb*/,
-    void* /*data*/);
+  /// Function pointer type for registering a new system context.
+  typedef system_context_interface* (*new_system_context_handler)();
 
-  /// Destructs the operation state object.
-  void (*__destruct_schedule_operation)(
-    struct __exec_system_scheduler_interface* /*self*/,
-    void* /*operation*/);
+  /// Sets the handler for creating new system contexts.
+  /// Usage:
+  ///  auto old_handler = exec::set_new_system_context_handler(
+  ///    []() -> exec::system_context_interface* {
+  ///      return new my_system_context_impl{};
+  ///    });
+  new_system_context_handler set_new_system_context_handler(new_system_context_handler /*handler*/);
 
-  /// The size of the operation state object on the implementation side.
-  uint32_t __bulk_schedule_operation_size;
-  /// The alignment of the operation state object on the implementation side.
-  uint32_t __bulk_schedule_operation_alignment;
+  /// Callback to be called by the scheduler when new work can start.
+  typedef void (*system_context_completion_callback)(
+    void*,  // data pointer passed to scheduler
+    int,    // completion type: 0 for normal completion, 1 for cancellation, 2 for exception
+    void*); // If completion type is 2, this is the exception pointer.
 
-  /// Schedules new bulk work of size `size` on the system scheduler, calling `cb_item` with `data`
-  /// for indices in [0, `size`), and calling `cb` on general completion.
-  /// Returns the operation state object that should be passed to __destruct_bulk_schedule_operation.
-  void* (*__bulk_schedule)(
-    struct __exec_system_scheduler_interface* /*self*/,
-    void* /*__preallocated*/,
-    uint32_t /*__psize*/,
-    __exec_system_context_completion_callback_t /*cb*/,
-    __exec_system_context_bulk_item_callback_t /*cb_item*/,
-    void* /*data*/,
-    unsigned long /*size*/);
+  /// Callback to be called by the scheduler for each bulk item.
+  typedef void (*system_context_bulk_item_callback)(
+    void*,     // data pointer passed to scheduler
+    uint64_t); // the index of the work item that is starting
 
-  /// Destructs the operation state object for a bulk_schedule.
-  void (*__destruct_bulk_schedule_operation)(
-    struct __exec_system_scheduler_interface* /*self*/,
-    void* /*operation*/);
-};
+  struct system_operation_state { };
+
+  struct system_bulk_operation_state { };
+
+  struct system_scheduler_interface {
+    /// The forward progress guarantee of the scheduler.
+    ///
+    /// 0 == concurrent, 1 == parallel, 2 == weakly_parallel
+    uint32_t forward_progress_guarantee;
+
+    /// The size of the operation state object on the implementation side.
+    uint32_t schedule_operation_size;
+    /// The alignment of the operation state object on the implementation side.
+    uint32_t schedule_operation_alignment;
+
+    /// Schedules new work on the system scheduler, calling `cb` with `data` when the work can start.
+    /// Returns an object that should be passed to destroy_schedule_operation_fn when the operation completes.
+    struct system_operation_state* (*schedule_fn)(
+      struct system_scheduler_interface* /*self*/,
+      void* /*__preallocated*/,
+      uint32_t /*__psize*/,
+      system_context_completion_callback /*cb*/,
+      void* /*data*/);
+
+    /// Destructs the operation state object.
+    void (*destroy_schedule_operation_fn)(
+      struct system_scheduler_interface* /*self*/,
+      struct system_operation_state* /*operation*/) STDEXEC_SYSTEM_CONTEXT_NOEXCEPT;
+
+    /// The size of the operation state object on the implementation side.
+    uint32_t bulk_schedule_operation_size;
+    /// The alignment of the operation state object on the implementation side.
+    uint32_t bulk_schedule_operation_alignment;
+
+    /// Schedules new bulk work of size `size` on the system scheduler, calling `cb_item` with `data`
+    /// for indices in [0, `size`), and calling `cb` on general completion.
+    /// Returns the operation state object that should be passed to destroy_bulk_schedule_operation_fn.
+    struct system_bulk_operation_state* (*bulk_schedule_fn)(
+      struct system_scheduler_interface* /*self*/,
+      void* /*__preallocated*/,
+      uint32_t /*__psize*/,
+      system_context_completion_callback /*cb*/,
+      system_context_bulk_item_callback /*cb_item*/,
+      void* /*data*/,
+      uint64_t /*size*/);
+
+    /// Destructs the operation state object for a bulk_schedule.
+    void (*destroy_bulk_schedule_operation_fn)(
+      struct system_scheduler_interface* /*self*/,
+      struct system_bulk_operation_state* /*operation*/) STDEXEC_SYSTEM_CONTEXT_NOEXCEPT;
+
+    /// Unused slots for future expansion.
+    union __system_context_interface_reserved __reserved_for_future_use[8];
+  };
 
 #ifdef __cplusplus
-}
+  } // extern "C"
+} // namespace exec
 #endif
-
 
 #endif

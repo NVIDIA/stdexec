@@ -26,68 +26,67 @@ namespace {
 
   static int count_schedules = 0;
 
-  struct my_system_scheduler_impl : __exec_system_scheduler_interface {
-    my_system_scheduler_impl()
-      : base_{pool_} {
-      __forward_progress_guarantee = base_.__forward_progress_guarantee;
-      __schedule_operation_size = base_.__schedule_operation_size;
-      __schedule_operation_alignment = base_.__schedule_operation_alignment;
-      __destruct_schedule_operation = base_.__destruct_schedule_operation;
-      __bulk_schedule_operation_size = base_.__bulk_schedule_operation_size;
-      __bulk_schedule_operation_alignment = base_.__bulk_schedule_operation_alignment;
-      __bulk_schedule = base_.__bulk_schedule;
-      __destruct_bulk_schedule_operation = base_.__destruct_bulk_schedule_operation;
+  struct my_system_scheduler_impl_base {
+    exec::static_thread_pool pool_;
+  };
 
-      __schedule = __schedule_impl; // have our own schedule implementation
+  struct my_system_scheduler_impl
+    : my_system_scheduler_impl_base
+    , exec::__detail::__system_scheduler_impl {
+    my_system_scheduler_impl()
+      : exec::__detail::__system_scheduler_impl{pool_}
+      , parent_schedule_impl{std::exchange(schedule_fn, my_schedule_impl)} {
     }
 
    private:
-    exec::static_thread_pool pool_;
-    exec::__system_context_default_impl::__system_scheduler_impl base_;
+    using schedule_fn_t = exec::system_operation_state*(
+      exec::system_scheduler_interface*,
+      void*,
+      uint32_t,
+      exec::system_context_completion_callback,
+      void*);
 
-    static void* __schedule_impl(
-      __exec_system_scheduler_interface* self_arg,
+    schedule_fn_t* parent_schedule_impl;
+
+    static exec::system_operation_state* my_schedule_impl(
+      exec::system_scheduler_interface* self_arg,
       void* preallocated,
       uint32_t psize,
-      __exec_system_context_completion_callback_t callback,
-      void* data) noexcept {
-      printf("Using my_system_scheduler_impl::__schedule_impl\n");
+      exec::system_context_completion_callback callback,
+      void* data) {
       auto self = static_cast<my_system_scheduler_impl*>(self_arg);
+      printf("Using my_system_scheduler_impl::my_schedule_impl\n");
       // increment our counter.
       count_schedules++;
       // delegate to the base implementation.
-      return self->base_.__schedule(&self->base_, preallocated, psize, callback, data);
+      return self->parent_schedule_impl(self, preallocated, psize, callback, data);
     }
   };
 
-  struct my_system_context_impl : __exec_system_context_interface {
-    my_system_context_impl() {
-      __version = 202402;
-      __get_scheduler = __get_scheduler_impl;
+  struct my_system_context_impl : exec::system_context_base {
+    my_system_context_impl() noexcept
+      : exec::system_context_base(this) {
+    }
+
+    exec::system_scheduler_interface* get_scheduler() noexcept {
+      return &scheduler_;
     }
 
    private:
     my_system_scheduler_impl scheduler_{};
-
-    static __exec_system_scheduler_interface*
-      __get_scheduler_impl(__exec_system_context_interface* __self) noexcept {
-      return &static_cast<my_system_context_impl*>(__self)->scheduler_;
-    }
   };
 } // namespace
 
-// Should replace the function defined in __system_context_default_impl.hpp
-extern "C" STDEXEC_ATTRIBUTE((weak)) __exec_system_context_interface* __get_exec_system_context_impl() {
-  printf("Using my_system_context_impl\n");
-  static my_system_context_impl instance;
-  return &instance;
-}
-
 TEST_CASE(
-  "Check that we are using a replaced system context (with weak linking)",
+  "Check that we are using a replaced system context (at runtime)",
   "[system_scheduler][replaceability]") {
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};
+
+  exec::set_new_system_context_handler([]() -> exec::system_context_interface* {
+    return new my_system_context_impl;
+  });
+
   exec::system_context ctx;
   exec::system_scheduler sched = ctx.get_scheduler();
 
