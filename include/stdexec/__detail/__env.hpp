@@ -22,9 +22,11 @@
 #include "__meta.hpp"
 #include "__stop_token.hpp"
 #include "__tag_invoke.hpp"
+#include "__tuple.hpp"
 
 #include <type_traits>
 #include <exception>
+#include <functional>
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(probable_guiding_friend)
@@ -104,7 +106,7 @@ namespace stdexec {
         requires tag_invocable<get_forward_progress_guarantee_t, __cref_t<_Tp>>
       constexpr auto operator()(_Tp&& __t) const
         noexcept(nothrow_tag_invocable<get_forward_progress_guarantee_t, __cref_t<_Tp>>)
-          -> tag_invoke_result_t<get_forward_progress_guarantee_t, __cref_t<_Tp>> {
+          -> __decay_t<tag_invoke_result_t<get_forward_progress_guarantee_t, __cref_t<_Tp>>> {
         return tag_invoke(get_forward_progress_guarantee_t{}, std::as_const(__t));
       }
 
@@ -196,7 +198,8 @@ namespace stdexec {
       auto operator()(const _Env& __env) const noexcept
         -> tag_invoke_result_t<get_stop_token_t, const _Env&> {
         static_assert(nothrow_tag_invocable<get_stop_token_t, const _Env&>);
-        static_assert(stoppable_token<tag_invoke_result_t<get_stop_token_t, const _Env&>>);
+        static_assert(
+          stoppable_token<__decay_t<tag_invoke_result_t<get_stop_token_t, const _Env&>>>);
         return tag_invoke(get_stop_token_t{}, __env);
       }
 
@@ -224,14 +227,14 @@ namespace stdexec {
       template <class _Ty>
         requires tag_invocable<get_domain_t, const _Ty&>
       constexpr auto operator()(const _Ty& __ty) const noexcept
-        -> tag_invoke_result_t<get_domain_t, const _Ty&> {
+        -> __decay_t<tag_invoke_result_t<get_domain_t, const _Ty&>> {
         static_assert(
           nothrow_tag_invocable<get_domain_t, const _Ty&>,
           "Customizations of get_domain must be noexcept.");
         static_assert(
-          __class<tag_invoke_result_t<get_domain_t, const _Ty&>>,
+          __class<__decay_t<tag_invoke_result_t<get_domain_t, const _Ty&>>>,
           "Customizations of get_domain must return a class type.");
-        return tag_invoke(get_domain_t{}, __ty);
+        return {};
       }
 
       static constexpr auto query(forwarding_query_t) noexcept -> bool {
@@ -321,39 +324,11 @@ namespace stdexec {
 
   inline constexpr get_domain_t get_domain{};
 
+  template <class _Env>
+  using __domain_of_t = __decay_t<__call_result_t<get_domain_t, _Env>>;
+
   template <class _Tag, class _Queryable, class _Default>
   using __query_result_or_t = __call_result_t<query_or_t, _Tag, _Queryable, _Default>;
-
-  /////////////////////////////////////////////////////////////////////////////
-  namespace __get_env {
-    // For getting an execution environment from a receiver or the attributes from a sender.
-    struct get_env_t {
-      template <__same_as<get_env_t> _Self, class _EnvProvider>
-      STDEXEC_ATTRIBUTE((always_inline))
-      friend auto
-        tag_invoke(_Self, const _EnvProvider& __env_provider) noexcept
-        -> decltype(__env_provider.get_env()) {
-        static_assert(noexcept(__env_provider.get_env()), "get_env() members must be noexcept");
-        return __env_provider.get_env();
-      }
-
-      template <class _EnvProvider>
-        requires tag_invocable<get_env_t, const _EnvProvider&>
-      STDEXEC_ATTRIBUTE((always_inline))
-      constexpr auto
-        operator()(const _EnvProvider& __env_provider) const noexcept
-        -> tag_invoke_result_t<get_env_t, const _EnvProvider&> {
-        static_assert(queryable<tag_invoke_result_t<get_env_t, const _EnvProvider&>>);
-        static_assert(nothrow_tag_invocable<get_env_t, const _EnvProvider&>);
-        return tag_invoke(*this, __env_provider);
-      }
-
-      template <class _EnvProvider>
-      constexpr auto operator()(const _EnvProvider&) const noexcept -> empty_env {
-        return {};
-      }
-    };
-  } // namespace __get_env
 
   namespace __env {
     // To be kept in sync with the promise type used in __connect_awaitable
@@ -375,6 +350,108 @@ namespace stdexec {
       auto get_env() const noexcept -> const _Env&;
     };
 
+    template <class _Env, class _Query, class... _Args>
+    concept __queryable = //
+      tag_invocable<_Query, const _Env&, _Args...>;
+
+    template <class _Env, class _Query, class... _Args>
+    concept __nothrow_queryable = //
+      nothrow_tag_invocable<_Query, const _Env&, _Args...>;
+
+    template <class _Env, class _Query, class... _Args>
+    using __query_result_t = //
+      tag_invoke_result_t<_Query, const _Env&, _Args...>;
+
+    // A singleton environment from a query/value pair
+    template <class _Query, class _Value>
+    struct prop {
+      using __t = prop;
+      using __id = prop;
+
+      STDEXEC_ATTRIBUTE((no_unique_address))
+      _Query __query;
+
+      STDEXEC_ATTRIBUTE((no_unique_address))
+      _Value __value;
+
+      STDEXEC_ATTRIBUTE((nodiscard))
+      constexpr const _Value&
+        query(_Query) const noexcept {
+        return __value;
+      }
+
+      prop& operator=(const prop&) = delete;
+    };
+
+    template <class _Query, class _Value>
+    prop(_Query, _Value) -> prop<_Query, std::unwrap_reference_t<_Value>>;
+
+    // utility for joining multiple environments
+    template <class... _Envs>
+    struct env {
+      using __t = env;
+      using __id = env;
+
+      __tuple_for<_Envs...> __tup_;
+
+      // return a reference to the first child env for which
+      // __queryable<_Envs, _Query, _Args...> is true.
+      template <class _Query, class... _Args>
+      STDEXEC_ATTRIBUTE((always_inline))
+      constexpr decltype(auto) __get_1st() const noexcept {
+        constexpr bool __flags[] = {__queryable<_Envs, _Query, _Args...>...};
+        constexpr std::size_t __idx = __pos_of(__flags, __flags + sizeof...(_Envs));
+        return __tup::__get<__idx>(__tup_);
+      }
+
+      template <class _Query, class... _Args>
+        requires(__queryable<_Envs, _Query, _Args...> || ...)
+      STDEXEC_ATTRIBUTE((always_inline))
+      constexpr decltype(auto) query(_Query __q, _Args&&... __args) const noexcept(
+        __nothrow_queryable<decltype(__get_1st<_Query, _Args...>()), _Query, _Args...>) {
+        return tag_invoke(__q, __get_1st<_Query, _Args...>(), static_cast<_Args&&>(__args)...);
+      }
+
+      env& operator=(const env&) = delete;
+    };
+
+    // specialization for two envs to avoid warnings about elided braces
+    template <class _Env0, class _Env1>
+    struct env<_Env0, _Env1> {
+      using __t = env;
+      using __id = env;
+
+      STDEXEC_ATTRIBUTE((no_unique_address))
+      _Env0 __env0_;
+      STDEXEC_ATTRIBUTE((no_unique_address))
+      _Env1 __env1_;
+
+      // return a reference to the first child env for which
+      // __queryable<_Envs, _Query, _Args...> is true.
+      template <class _Query, class... _Args>
+      STDEXEC_ATTRIBUTE((always_inline))
+      constexpr decltype(auto) __get_1st() const noexcept {
+        if constexpr (__queryable<_Env0, _Query, _Args...>) {
+          return (__env0_);
+        } else {
+          return (__env1_);
+        }
+      }
+
+      template <class _Query, class... _Args>
+        requires __queryable<_Env0, _Query, _Args...> || __queryable<_Env1, _Query, _Args...>
+      STDEXEC_ATTRIBUTE((always_inline))
+      constexpr decltype(auto) query(_Query __q, _Args&&... __args) const noexcept(
+        __nothrow_queryable<decltype(__get_1st<_Query, _Args...>()), _Query, _Args...>) {
+        return tag_invoke(__q, __get_1st<_Query, _Args...>(), static_cast<_Args&&>(__args)...);
+      }
+
+      env& operator=(const env&) = delete;
+    };
+
+    template <class... _Envs>
+    env(_Envs...) -> env<std::unwrap_reference_t<_Envs>...>;
+
     template <class _Value, class _Tag, class... _Tags>
     struct __with {
       using __t = __with;
@@ -394,9 +471,11 @@ namespace stdexec {
       }
 
       template <__one_of<_Tag, _Tags...> _Key>
-      auto query(_Key) const noexcept(__nothrow_decay_copyable<const _Value&>) -> _Value {
+      auto query(_Key) const noexcept -> const _Value& {
         return __value_;
       }
+
+      __with& operator=(const __with&) = delete;
     };
 
     template <class _Value, class _Tag, class... _Tags>
@@ -424,6 +503,8 @@ namespace stdexec {
           -> tag_invoke_result_t<_Tag, __cvref_env_t> {
           return tag_invoke(_Tag(), __env_);
         }
+
+        __t& operator=(const __t&) = delete;
       };
     };
 
@@ -461,6 +542,8 @@ namespace stdexec {
           query(_Key) const noexcept(nothrow_tag_invocable<_Key, __cvref_env_t>) -> decltype(auto) {
           return tag_invoke(_Key(), __env_);
         }
+
+        __t& operator=(const __t&) = delete;
       };
     };
 
@@ -481,49 +564,6 @@ namespace stdexec {
     template <class _Env, class _Tag, class... _Tags>
     using __without_t = __result_of<__without, _Env, _Tag, _Tags...>;
 
-    template <class _SecondId, class _FirstId>
-    struct __joined {
-      using _First = stdexec::__cvref_t<_FirstId>;
-      using _Second = stdexec::__cvref_t<_SecondId>;
-      static_assert(__nothrow_move_constructible<_First>);
-      static_assert(__nothrow_move_constructible<_Second>);
-
-#if STDEXEC_GCC() && __GNUC__ < 12
-      using __cvref_first_t = std::add_const_t<_First>&;
-      using __cvref_second_t = std::add_const_t<_Second>&;
-#else
-      using __cvref_first_t = const _First&;
-      using __cvref_second_t = const _Second&;
-#endif
-
-      struct __t {
-        using __id = __joined;
-
-        STDEXEC_ATTRIBUTE((no_unique_address))
-        _Second __second_;
-        STDEXEC_ATTRIBUTE((no_unique_address))
-        _First __first_;
-
-        template <class _Tag>
-          requires tag_invocable<_Tag, __cvref_first_t> || tag_invocable<_Tag, __cvref_second_t>
-        STDEXEC_ATTRIBUTE((always_inline))
-        auto
-          query(_Tag) const noexcept(nothrow_tag_invocable<_Tag, __cvref_second_t>)
-            -> decltype(auto) {
-          return tag_invoke(_Tag(), __second_);
-        }
-
-        template <class _Tag>
-          requires tag_invocable<_Tag, __cvref_first_t>
-        STDEXEC_ATTRIBUTE((always_inline))
-        auto
-          query(_Tag) const noexcept(nothrow_tag_invocable<_Tag, __cvref_first_t>)
-            -> decltype(auto) {
-          return tag_invoke(_Tag(), __first_);
-        }
-      };
-    };
-
     template <__nothrow_move_constructible _Fun>
     struct __from {
       using __t = __from;
@@ -537,6 +577,8 @@ namespace stdexec {
         -> __call_result_t<const _Fun&, _Tag> {
         return __fun_(_Tag());
       }
+
+      __from& operator=(const __from&) = delete;
     };
 
     template <class _Fun>
@@ -558,10 +600,9 @@ namespace stdexec {
       }
 
       template <class _First, class _Second>
-      auto operator()(_First&& __first, _Second&& __second) const noexcept -> decltype(auto) {
-        using _FwdSecond = decltype(__fwd_fn()(static_cast<_Second&&>(__second)));
-        using _Joined = __t<__joined<__cvref_id<_FwdSecond>, __cvref_id<_First>>>;
-        return _Joined{__fwd_fn()(static_cast<_Second&&>(__second)), static_cast<_First&&>(__first)};
+      auto operator()(_First&& __first, _Second&& __second) const noexcept
+        -> env<_First, __call_result_t<__fwd_fn, _Second>> {
+        return {static_cast<_First&&>(__first), __fwd_fn()(static_cast<_Second&&>(__second))};
       }
     };
 
@@ -584,8 +625,42 @@ namespace stdexec {
     using __as_root_env_t = __result_of<__as_root_env, _Env>;
   } // namespace __env
 
+  using __env::prop;
+  using __env::env;
+  using empty_env = env<>;
+
+  /////////////////////////////////////////////////////////////////////////////
+  namespace __get_env {
+    // For getting an execution environment from a receiver or the attributes from a sender.
+    struct get_env_t {
+      template <__same_as<get_env_t> _Self, class _EnvProvider>
+      STDEXEC_ATTRIBUTE((always_inline))
+      friend auto
+        tag_invoke(_Self, const _EnvProvider& __env_provider) noexcept
+        -> decltype(__env_provider.get_env()) {
+        static_assert(noexcept(__env_provider.get_env()), "get_env() members must be noexcept");
+        return __env_provider.get_env();
+      }
+
+      template <class _EnvProvider>
+        requires tag_invocable<get_env_t, const _EnvProvider&>
+      STDEXEC_ATTRIBUTE((always_inline))
+      constexpr auto
+        operator()(const _EnvProvider& __env_provider) const noexcept
+        -> tag_invoke_result_t<get_env_t, const _EnvProvider&> {
+        static_assert(queryable<tag_invoke_result_t<get_env_t, const _EnvProvider&>>);
+        static_assert(nothrow_tag_invocable<get_env_t, const _EnvProvider&>);
+        return tag_invoke(*this, __env_provider);
+      }
+
+      template <class _EnvProvider>
+      constexpr auto operator()(const _EnvProvider&) const noexcept -> empty_env {
+        return {};
+      }
+    };
+  } // namespace __get_env
+
   using __get_env::get_env_t;
-  using __env::empty_env;
   inline constexpr get_env_t get_env{};
 
   template <class _EnvProvider>

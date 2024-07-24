@@ -42,7 +42,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     };
 
     template <class Env>
-    using env_t = exec::make_env_t<Env, exec::with_t<get_stop_token_t, inplace_stop_token>>;
+    using env_t = exec::make_env_t<Env, stdexec::prop<get_stop_token_t, inplace_stop_token>>;
 
     template <class Sender, class... Env>
     concept valid_child_sender =
@@ -152,7 +152,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using Receiver = stdexec::__t<__decay_t<CvrefReceiverId>>;
         using Env = //
           make_terminal_stream_env_t<
-            exec::make_env_t<env_of_t<Receiver>, exec::with_t<get_stop_token_t, inplace_stop_token>>>;
+            exec::make_env_t<env_of_t<Receiver>, stdexec::prop<get_stop_token_t, inplace_stop_token>>>;
 
         struct __t : stream_receiver_base {
           using receiver_concept = stdexec::receiver_t;
@@ -216,7 +216,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             auto env = make_terminal_stream_env(
               exec::make_env(
                 stdexec::get_env(op_state_->rcvr_),
-                __env::__with(op_state_->stop_source_.get_token(), get_stop_token)),
+                stdexec::prop{get_stop_token, op_state_->stop_source_.get_token()}),
               &const_cast<stream_provider_t&>(op_state_->stream_providers_[Index]));
 
             return env;

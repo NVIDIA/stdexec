@@ -330,7 +330,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       using completion_signatures = //
         __try_make_completion_signatures<
           Sender,
-          exec::make_env_t<exec::with_t<get_stop_token_t, inplace_stop_token>>,
+          exec::make_env_t<stdexec::prop<get_stop_token_t, inplace_stop_token>>,
           stdexec::completion_signatures<set_error_t(const cudaError_t&)>,
           __q<_set_value_t>,
           __q<_set_error_t>>;

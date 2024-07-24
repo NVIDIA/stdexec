@@ -35,7 +35,7 @@ namespace {
     (void) snd;
   }
 
-  static const auto env = exec::make_env(exec::with(ex::get_scheduler, inline_scheduler{}));
+  static const auto env = exec::make_env(stdexec::prop{ex::get_scheduler, inline_scheduler{}});
 
   TEST_CASE("ensure_started with environment returns a sender", "[adaptors][ensure_started]") {
     auto snd = ex::ensure_started(ex::just(19), env);
@@ -196,7 +196,7 @@ namespace {
     impulse_scheduler sch;
     bool called{false};
     auto snd = ex::on(sch, ex::just(19))
-             | exec::write(exec::with(ex::get_stop_token, stop_source.get_token()))
+             | exec::write(stdexec::prop{ex::get_stop_token, stop_source.get_token()})
              | ex::ensure_started();
     auto op = ex::connect(std::move(snd), expect_stopped_receiver_ex{called});
     ex::start(op);
@@ -216,7 +216,7 @@ namespace {
     bool called{false};
     auto snd = ex::let_value(
                  ex::just() | ex::then([&] { ++count; }), [=] { return ex::on(sch, ex::just(19)); })
-             | exec::write(exec::with(ex::get_stop_token, stop_source.get_token()))
+             | exec::write(stdexec::prop{ex::get_stop_token, stop_source.get_token()})
              | ex::ensure_started();
     CHECK(count == 1);
     auto op = ex::connect(std::move(snd), expect_stopped_receiver_ex{called});
@@ -238,7 +238,7 @@ namespace {
                  ++count;
                  return 42;
                })
-             | exec::write(exec::with(ex::get_stop_token, stop_source.get_token()))
+             | exec::write(stdexec::prop{ex::get_stop_token, stop_source.get_token()})
              | ex::ensure_started();
     CHECK(count == 1);
     auto op = ex::connect(std::move(snd), expect_value_receiver{42});

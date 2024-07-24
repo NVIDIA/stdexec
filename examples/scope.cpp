@@ -42,7 +42,7 @@ struct noop_receiver {
   }
 
   auto get_env() const & noexcept {
-    return exec::with(get_stop_token, stdexec::never_stop_token{});
+    return stdexec::prop{get_stop_token, stdexec::never_stop_token{}};
   }
 };
 

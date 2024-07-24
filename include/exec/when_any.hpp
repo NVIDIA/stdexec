@@ -39,7 +39,7 @@ namespace exec {
     };
 
     template <class _BaseEnv>
-    using __env_t = __env::__join_t<__env::__with<inplace_stop_token, get_stop_token_t>, _BaseEnv>;
+    using __env_t = __env::__join_t<prop<get_stop_token_t, inplace_stop_token>, _BaseEnv>;
 
     template <class... _Ts>
     using __nothrow_decay_copyable_and_move_constructible_t = __mbool<(
@@ -162,7 +162,7 @@ namespace exec {
         }
 
         auto get_env() const noexcept -> __env_t<env_of_t<_Receiver>> {
-          auto __token = __env::__with(__op_->__stop_source_.get_token(), get_stop_token);
+          auto __token = prop{get_stop_token, __op_->__stop_source_.get_token()};
           return __env::__join(std::move(__token), stdexec::get_env(__op_->__rcvr_));
         }
 

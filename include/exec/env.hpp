@@ -22,13 +22,13 @@ STDEXEC_PRAGMA_IGNORE_EDG(1302)
 
 namespace exec {
   template <class _Tag, class _Value>
-  using with_t = stdexec::__env::__with<_Value, _Tag>;
+  using with_t = stdexec::prop<_Tag, _Value>;
 
   namespace __envs {
     struct __with_t {
       template <class _Tag, class _Value>
       auto operator()(_Tag, _Value&& __val) const {
-        return stdexec::__env::__with(static_cast<_Value&&>(__val), _Tag());
+        return stdexec::prop{_Tag(), static_cast<_Value&&>(__val)};
       }
     };
 

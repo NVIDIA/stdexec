@@ -113,8 +113,7 @@ namespace stdexec {
 
       auto get_env() const noexcept {
         return __env::__join(
-          __env::__with(__sched_, get_scheduler),
-          __env::__without(stdexec::get_env(__rcvr_), get_domain));
+          prop{get_scheduler, __sched_}, __env::__without(stdexec::get_env(__rcvr_), get_domain));
       }
     };
 
@@ -128,7 +127,7 @@ namespace stdexec {
       __is_scheduler_affine<schedule_result_t<_Scheduler>>,
       _Env,
       __env::__join_t< //
-        __env::__with<_Scheduler, get_scheduler_t>,
+        prop<get_scheduler_t, _Scheduler>,
         __env::__without_t<_Env, get_domain_t>>>;
 
     template <__mstring _Where, __mstring _What>
@@ -303,8 +302,7 @@ namespace stdexec {
             return (__env);
           } else {
             return __env::__join(
-              __env::__with(
-                get_completion_scheduler<_Set>(stdexec::get_env(__child)), get_scheduler),
+              prop{get_scheduler, get_completion_scheduler<_Set>(stdexec::get_env(__child))},
               __env::__without(static_cast<_Env&&>(__env), get_domain));
           }
         }
@@ -379,8 +377,7 @@ namespace stdexec {
           return stdexec::get_env(__rcvr);
         } else {
           return __env::__join(
-            __env::__with(__sched_, get_scheduler),
-            __env::__without(stdexec::get_env(__rcvr), get_domain));
+            prop{get_scheduler, __sched_}, __env::__without(stdexec::get_env(__rcvr), get_domain));
         }
       }
 
@@ -438,7 +435,7 @@ namespace stdexec {
     struct __let_impl : __sexpr_defaults {
       static constexpr auto get_attrs = //
         []<class _Child>(__ignore, const _Child& __child) noexcept {
-          return __env::__join(__env::__with(_Domain(), get_domain), stdexec::get_env(__child));
+          return __env::__join(prop{get_domain, _Domain()}, stdexec::get_env(__child));
         };
 
       static constexpr auto get_completion_signatures = //

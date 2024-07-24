@@ -39,10 +39,10 @@ namespace stdexec {
     };
 
     template <class _Env>
-    using __debug_env_t = __env::__join_t<__env::__with<bool, __is_debug_env_t>, _Env>;
+    using __debug_env_t = env<prop<__is_debug_env_t, bool>, _Env>;
 
     template <class _Env>
-    concept __is_debug_env = tag_invocable<__debug::__is_debug_env_t, _Env>;
+    concept __is_debug_env = tag_invocable<__is_debug_env_t, _Env>;
 
     struct __completion_signatures { };
 

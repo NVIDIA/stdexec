@@ -43,7 +43,7 @@ namespace exec {
     };
 
     template <class _BaseEnv>
-    using __env_t = make_env_t<_BaseEnv, with_t<get_stop_token_t, inplace_stop_token>>;
+    using __env_t = make_env_t<_BaseEnv, prop<get_stop_token_t, inplace_stop_token>>;
 
     struct __impl {
       inplace_stop_source __stop_source_{};
@@ -200,7 +200,7 @@ namespace exec {
         auto get_env() const noexcept -> __env_t<env_of_t<_Receiver>> {
           return make_env(
             stdexec::get_env(__op_->__rcvr_),
-            with(get_stop_token, __op_->__scope_->__stop_source_.get_token()));
+            stdexec::prop{get_stop_token, __op_->__scope_->__stop_source_.get_token()});
         }
       };
     };
@@ -479,7 +479,7 @@ namespace exec {
         : __forward_scope_{std::in_place, __scope->__stop_source_.get_token(), __forward_stopped{&__stop_source_}}
         , __env_(make_env(
             static_cast<_Env&&>(__env),
-            with(get_stop_token, __scope->__stop_source_.get_token()))) {
+            stdexec::prop{get_stop_token, __scope->__stop_source_.get_token()})) {
       }
 
       ~__future_state_base() {
