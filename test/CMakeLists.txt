@@ -59,41 +59,6 @@ set(stdexec_test_sources
     stdexec/detail/test_utility.cpp
     stdexec/queries/test_get_forward_progress_guarantee.cpp
     stdexec/queries/test_forwarding_queries.cpp
-    exec/test_bwos_lifo_queue.cpp
-    exec/test_any_sender.cpp
-    exec/test_task.cpp
-    exec/test_timed_thread_scheduler.cpp
-    exec/test_variant_sender.cpp
-    exec/test_type_async_scope.cpp
-    exec/test_create.cpp
-    exec/test_env.cpp
-    exec/test_finally.cpp
-    exec/test_into_tuple.cpp
-    exec/test_on.cpp
-    exec/test_on2.cpp
-    exec/test_on3.cpp
-    exec/test_repeat_effect_until.cpp
-    exec/test_repeat_n.cpp
-    exec/async_scope/test_dtor.cpp
-    exec/async_scope/test_spawn.cpp
-    exec/async_scope/test_spawn_future.cpp
-    exec/async_scope/test_start_now.cpp
-    exec/async_scope/test_empty.cpp
-    exec/async_scope/test_stop.cpp
-    exec/test_when_any.cpp
-    exec/test_at_coroutine_exit.cpp
-    exec/test_materialize.cpp
-    $<$<BOOL:${STDEXEC_ENABLE_IO_URING_TESTS}>:exec/test_io_uring_context.cpp>
-    exec/test_trampoline_scheduler.cpp
-    exec/test_sequence_senders.cpp
-    exec/sequence/test_any_sequence_of.cpp
-    exec/sequence/test_empty_sequence.cpp
-    exec/sequence/test_ignore_all_values.cpp
-    exec/sequence/test_iterate.cpp
-    exec/sequence/test_transform_each.cpp
-    $<$<BOOL:${STDEXEC_ENABLE_TBB}>:tbbexec/test_tbb_thread_pool.cpp>
-    exec/test_system_context.cpp
-    $<$<BOOL:${STDEXEC_ENABLE_LIBDISPATCH}>:exec/test_libdispatch.cpp>
     )
 
 add_library(common_test_settings INTERFACE)
@@ -101,21 +66,20 @@ set_target_properties(common_test_settings PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF
-    MSVC_DEBUG_INFORMATION_FORMAT Embedded)
+    MSVC_DEBUG_INFORMATION_FORMAT Embedded
+    )
+target_include_directories(common_test_settings INTERFACE "${CMAKE_CURRENT_LIST_DIR}")
 
 add_executable(test.stdexec ${stdexec_test_sources})
-target_include_directories(test.stdexec PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 target_link_libraries(test.stdexec
     PUBLIC
     STDEXEC::stdexec
-    $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
     stdexec_executable_flags
     Catch2::Catch2
     PRIVATE
     common_test_settings)
 
 add_executable(test.scratch test_main.cpp test_scratch.cpp)
-target_include_directories(test.scratch PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 target_link_libraries(test.scratch
     PUBLIC
     STDEXEC::stdexec
@@ -125,35 +89,23 @@ target_link_libraries(test.scratch
     PRIVATE
     common_test_settings)
 
-    add_executable(test.system_context_replaceability test_main.cpp test_system_context_replaceability.cpp)
-    target_include_directories(test.system_context_replaceability PRIVATE ${CMAKE_CURRENT_LIST_DIR})
-    target_link_libraries(test.system_context_replaceability
-        PUBLIC
-        STDEXEC::stdexec
-        STDEXEC::system_context
-        stdexec_executable_flags
-        Catch2::Catch2
-        PRIVATE
-        common_test_settings)
-
 # Discover the Catch2 test built by the application
 include(${Catch2_SOURCE_DIR}/contrib/Catch.cmake)
 
+# For testing that builds fail as expected
+include(${icm_SOURCE_DIR}/icm_build_failure_testing.cmake)
+
 catch_discover_tests(test.stdexec)
 catch_discover_tests(test.scratch)
-if(NOT STDEXEC_ENABLE_CUDA)
-    catch_discover_tests(test.system_context_replaceability)
-endif()
+
+add_subdirectory(exec)
 
 if(STDEXEC_ENABLE_CUDA)
     add_subdirectory(nvexec)
 endif()
 
-# build failure tests:
-
-include(${icm_SOURCE_DIR}/icm_build_failure_testing.cmake)
-
-# Test which parses a source file for an expected error message
+# build failure tests: tests which parse a source file for an expected error
+# message
 icm_add_build_failure_test(
     NAME test_let_fail1
     TARGET test_let_fail1
@@ -166,22 +118,6 @@ icm_add_build_failure_test(
     NAME test_then_fail1
     TARGET test_then_fail1
     SOURCES PARSE stdexec/algos/adaptors/test_then_fail1.cpp
-    LIBRARIES stdexec
-    FOLDER test
-)
-
-icm_add_build_failure_test(
-    NAME test_repeat_effect_until_fail
-    TARGET test_repeat_effect_until_fail
-    SOURCES PARSE exec/test_repeat_effect_until_fail.cpp
-    LIBRARIES stdexec
-    FOLDER test
-)
-
-icm_add_build_failure_test(
-    NAME test_repeat_n_fail
-    TARGET test_repeat_n_fail
-    SOURCES PARSE exec/test_repeat_n_fail.cpp
     LIBRARIES stdexec
     FOLDER test
 )
