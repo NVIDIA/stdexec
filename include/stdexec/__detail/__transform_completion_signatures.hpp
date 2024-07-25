@@ -452,7 +452,7 @@ namespace stdexec {
     class _Env = empty_env,                                            //
     class _Sigs = completion_signatures<>,                             //
     template <class...> class _SetValue = __sigs::__default_set_value, //
-    template <class> class _SetError = __sigs::__default_set_error,    //
+    template <class...> class _SetError = __sigs::__default_set_error, //
     class _SetStopped = completion_signatures<set_stopped_t()>>
   using make_completion_signatures =
     transform_completion_signatures_of<_Sender, _Env, _Sigs, _SetValue, _SetError, _SetStopped>;
