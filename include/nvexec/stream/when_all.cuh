@@ -178,10 +178,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               // We only need to bother recording the completion values
               // if we're not already in the "error" or "stopped" state.
               if (op_state_->state_ == _when_all::started) {
-                cudaStream_t stream = __tup::__get<Index>(op_state_->child_states_).get_stream();
+                cudaStream_t stream = __tup::get<Index>(op_state_->child_states_).get_stream();
                 if constexpr (sizeof...(Values)) {
                   _when_all::copy_kernel<Values&&...><<<1, 1, 0, stream>>>(
-                    &__tup::__get<Index>(*op_state_->values_), static_cast<Values&&>(vals)...);
+                    &__tup::get<Index>(*op_state_->values_), static_cast<Values&&>(vals)...);
                 }
 
                 if constexpr (stream_receiver<Receiver>) {

@@ -43,14 +43,17 @@ namespace exec {
     auto
       __construct(_Args&&... __args) noexcept(stdexec::__nothrow_constructible_from<_Ty, _Args...>)
         -> _Ty& {
-      return *std::construct_at(&__get(), static_cast<_Args&&>(__args)...);
+      // Use placement new instead of std::construct_at to support aggregate initialization with
+      // brace elision.
+      return *::new (static_cast<void*>(__buffer_)) _Ty{static_cast<_Args&&>(__args)...};
     }
 
-    template <class _Func>
-    auto __construct_with(_Func&& func) -> _Ty& {
-      // This doesn't use std::construct_at to support the case where the function returns an
-      // immovable type.
-      return *::new (static_cast<void*>(__buffer_)) _Ty((static_cast<_Func&&>(func))());
+    template <class _Func, class... _Args>
+    auto __construct_with(_Func&& func, _Args&&... __args) -> _Ty& {
+      // Use placement new instead of std::construct_at in case the function returns an immovable
+      // type.
+      return *::new (static_cast<void*>(__buffer_))
+        _Ty((static_cast<_Func&&>(func))(static_cast<_Args&&>(__args)...));
     }
 
     void __destroy() noexcept {
