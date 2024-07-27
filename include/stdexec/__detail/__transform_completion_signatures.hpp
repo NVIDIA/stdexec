@@ -56,11 +56,10 @@ namespace stdexec {
 
   template <class... _Ts>
   using __std_variant = //
-    __minvoke<
-      __if_c<
-        sizeof...(_Ts) != 0,
-        __mtransform<__q<__decay_t>, __munique<__q<std::variant>>>,
-        __mconst<__not_a_variant>>,
+    __minvoke_if_c<
+      sizeof...(_Ts) != 0,
+      __mtransform<__q1<__decay_t>, __munique<__qq<std::variant>>>,
+      __mconst<__not_a_variant>,
       _Ts...>;
 
   template <class... _Ts>
@@ -75,32 +74,29 @@ namespace stdexec {
     // that rvalue-references are stripped from the types in the completion signatures. For example,
     // the completion signature `set_value_t(int &&)` would be normalized to `set_value_t(int)`,
     // but `set_value_t(int)` and `set_value_t(int &)` would remain unchanged.
-    template <class Ty>
-    auto __remove_rvalue_reference_fn(Ty &&) -> Ty;
+    template <class _Tag, class... _Args>
+    auto __normalize_sig_impl(_Args &&...) -> _Tag (*)(_Args...);
 
-    template <class Ty>
-    using __remove_rvalue_reference =
-      decltype(__sigs::__remove_rvalue_reference_fn(__declval<Ty>()));
+    template <class _Tag, class... _Args>
+    auto __normalize_sig(_Tag (*)(_Args...))
+      -> decltype(__sigs::__normalize_sig_impl<_Tag>(__declval<_Args>()...));
 
-    template <class Tag, class... Args>
-    auto __normalize_sig(Tag (*)(Args...)) -> Tag (*)(__remove_rvalue_reference<Args>...);
+    template <class... _Sigs>
+    auto __repack_completions(_Sigs *...) -> completion_signatures<_Sigs...>;
 
-    template <class... Sigs>
-    auto __repack_completions(Sigs *...) -> completion_signatures<Sigs...>;
-
-    template <class... Sigs>
-    auto __normalize_completions(completion_signatures<Sigs...> *)
+    template <class... _Sigs>
+    auto __normalize_completions(completion_signatures<_Sigs...> *)
       -> decltype(__sigs::__repack_completions(
-        __sigs::__normalize_sig(static_cast<Sigs *>(nullptr))...));
+        __sigs::__normalize_sig(static_cast<_Sigs *>(nullptr))...));
 
-    template <class Completions>
+    template <class _Completions>
     using __normalize_completions_t =
-      decltype(__sigs::__normalize_completions(static_cast<Completions *>(nullptr)));
+      decltype(__sigs::__normalize_completions(static_cast<_Completions *>(nullptr)));
   } // namespace __sigs
 
-  template <class... SigPtrs>
+  template <class... _SigPtrs>
   using __completion_signature_ptrs = //
-    decltype(__sigs::__repack_completions(static_cast<SigPtrs>(nullptr)...));
+    decltype(__sigs::__repack_completions(static_cast<_SigPtrs>(nullptr)...));
 
   template <class... _Sigs>
   using __concat_completion_signatures = //
