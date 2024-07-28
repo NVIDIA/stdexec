@@ -42,18 +42,21 @@ namespace exec::__system_context_default_impl {
     __operation<_Sender>* __op_;
 
     void set_value() noexcept {
+      auto __op = __op_;
       __cb_(__data_, 0, nullptr);
-      __op_->__destruct();
+      __op->__destruct();
     }
 
     void set_error(std::exception_ptr __ptr) noexcept {
+      auto __op = __op_;
       __cb_(__data_, 2, *reinterpret_cast<void**>(&__ptr));
-      __op_->__destruct();
+      __op->__destruct();
     }
 
     void set_stopped() noexcept {
+      auto __op = __op_;
       __cb_(__data_, 1, nullptr);
-      __op_->__destruct();
+      __op->__destruct();
     }
   };
 
