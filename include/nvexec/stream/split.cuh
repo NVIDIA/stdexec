@@ -321,36 +321,31 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class Receiver>
       using operation_t = stdexec::__t<_split::operation_t<SenderId, stdexec::__id<Receiver>>>;
 
-      Sender sndr_;
-      std::shared_ptr<sh_state_> shared_state_;
-
-      template <__decays_to<__t> Self, receiver Receiver>
-        requires receiver_of<Receiver, completion_signatures_of_t<Self, empty_env>>
-      STDEXEC_MEMFN_DECL(
-        auto connect)(this Self&& self, Receiver rcvr) //
-        noexcept(__nothrow_constructible_from<__decay_t<Receiver>, Receiver>)
-          -> operation_t<Receiver> {
-        return operation_t<Receiver>{static_cast<Receiver&&>(rcvr), self.shared_state_};
-      }
-
-      auto get_env() const noexcept -> env_of_t<const Sender&> {
-        return stdexec::get_env(sndr_);
-      }
-
       template <class... Tys>
       using _set_value_t = completion_signatures<set_value_t(const __decay_t<Tys>&...)>;
 
       template <class Ty>
       using _set_error_t = completion_signatures<set_error_t(const __decay_t<Ty>&)>;
 
-      template <__decays_to<__t> Self, class Env>
-      static auto get_completion_signatures(Self&&, Env&&) -> __try_make_completion_signatures<
-        Sender,
-        exec::make_env_t<exec::with_t<get_stop_token_t, inplace_stop_token>>,
-        completion_signatures<set_error_t(const cudaError_t&)>,
-        __q<_set_value_t>,
-        __q<_set_error_t>> {
-        return {};
+      using completion_signatures = //
+        __try_make_completion_signatures<
+          Sender,
+          exec::make_env_t<stdexec::prop<get_stop_token_t, inplace_stop_token>>,
+          stdexec::completion_signatures<set_error_t(const cudaError_t&)>,
+          __q<_set_value_t>,
+          __q<_set_error_t>>;
+
+      Sender sndr_;
+      std::shared_ptr<sh_state_> shared_state_;
+
+      template <receiver_of<completion_signatures> Receiver>
+      auto connect(Receiver rcvr) const & noexcept(__nothrow_move_constructible<Receiver>) //
+        -> operation_t<Receiver> {
+        return operation_t<Receiver>{static_cast<Receiver&&>(rcvr), shared_state_};
+      }
+
+      auto get_env() const noexcept -> env_of_t<const Sender&> {
+        return stdexec::get_env(sndr_);
       }
 
       explicit __t(context_state_t context_state, Sender sndr)

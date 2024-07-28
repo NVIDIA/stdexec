@@ -99,7 +99,7 @@ struct numa_deleter {
 };
 
 template <class Pool, class RunThread>
-void my_main(int argc, char** argv, exec::numa_policy* policy = exec::get_numa_policy()) {
+void my_main(int argc, char** argv, exec::numa_policy policy = exec::get_numa_policy()) {
   int nthreads = static_cast<int>(std::thread::hardware_concurrency());
   if (argc > 1) {
     nthreads = std::atoi(argv[1]);
@@ -120,7 +120,7 @@ void my_main(int argc, char** argv, exec::numa_policy* policy = exec::get_numa_p
 #ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
   std::size_t buffer_size = 2000 << 20;
   for (std::size_t i = 0; i < static_cast<std::size_t>(nthreads); ++i) {
-    exec::numa_allocator<char> alloc(policy->thread_index_to_node(i));
+    exec::numa_allocator<char> alloc(policy.thread_index_to_node(i));
     buffers.push_back(std::unique_ptr<char, numa_deleter>{
       alloc.allocate(buffer_size), numa_deleter{buffer_size, alloc}
     });

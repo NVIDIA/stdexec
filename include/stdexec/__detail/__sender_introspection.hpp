@@ -87,10 +87,11 @@ namespace stdexec {
   template <class _Sender>
   inline constexpr std::size_t __nbr_children_of = __v<__children_of<_Sender, __msize>>;
 
-  template <class _Fn, class _Tp>
-    requires __mvalid<tag_of_t, _Tp> && __mvalid<__detail::__sexpr_uncurry, _Tp, _Fn>
-  struct __uncurry_<_Fn, _Tp> {
-    using __t = __detail::__sexpr_uncurry<_Tp, _Fn>;
+  template <class _Tp>
+    requires __mvalid<tag_of_t, _Tp>
+  struct __muncurry_<_Tp> {
+    template <class _Fn>
+    using __f = __detail::__sexpr_uncurry<_Tp, _Fn>;
   };
 
   template <class _Sender>

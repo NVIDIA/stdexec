@@ -99,13 +99,12 @@ namespace nvexec {
           __mbind_front_q<launch_error_t, Fun>>,
         As...>;
 
-      template <class CvrefSender, class Env, class Fun>
+      template <class Fun, class CvrefSender, class... Env>
       using completions_t = //
-        __try_make_completion_signatures<
-          CvrefSender,
-          Env,
+        transform_completion_signatures<
+          __completion_signatures_of_t<CvrefSender, Env...>,
           completion_signatures<set_error_t(std::exception_ptr)>,
-          __mbind_front_q<_set_value_t, Fun>>;
+          __mbind_front_q<_set_value_t, Fun>::template __f>;
     } // namespace _launch
 
     template <class SenderId, class Fun>
@@ -119,16 +118,15 @@ namespace nvexec {
         Fun fun_;
         launch_params params_;
 
-        template <class Self, class Env>
-        using completions_t = _launch::completions_t<__copy_cvref_t<Self, Sender>, Env, Fun>;
+        template <class Self, class... Env>
+        using completions_t = _launch::completions_t<Fun, __copy_cvref_t<Self, Sender>, Env...>;
 
         template <class Receiver>
         using receiver_t = stdexec::__t<_launch::receiver_t<stdexec::__id<Receiver>, Fun>>;
 
         template <__decays_to<__t> Self, receiver Receiver>
           requires receiver_of<Receiver, completions_t<Self, env_of_t<Receiver>>>
-        STDEXEC_MEMFN_DECL(
-          auto connect)(this Self&& self, Receiver rcvr)
+        static auto connect(Self&& self, Receiver rcvr)
           -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
           return stream_op_state<__copy_cvref_t<Self, Sender>>(
             static_cast<Self&&>(self).sndr_,
@@ -139,8 +137,8 @@ namespace nvexec {
             });
         }
 
-        template <__decays_to<__t> Self, class Env>
-        static auto get_completion_signatures(Self&&, Env&&) -> completions_t<Self, Env> {
+        template <__decays_to<__t> Self, class... Env>
+        static auto get_completion_signatures(Self&&, Env&&...) -> completions_t<Self, Env...> {
           return {};
         }
 

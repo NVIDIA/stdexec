@@ -33,8 +33,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     using __decay_ref = __decay_t<_Tp>&;
 
     template <class _Fun>
-    using __result_sender = //
-      __transform<__q<__decay_ref>, __mbind_front_q<__call_result_t, _Fun>>;
+    using __result_sender_fn = //
+      __mtransform<__q<__decay_ref>, __mbind_front_q<__call_result_t, _Fun>>;
 
     template <class... Sizes>
     struct max_in_pack {
@@ -46,7 +46,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     struct __max_sender_size {
       template <class... _As>
       struct __sender_size_for_ {
-        using __t = __msize_t<sizeof(__minvoke<__result_sender<_Fun>, _As...>)>;
+        using __t = __msize_t<sizeof(__minvoke<__result_sender_fn<_Fun>, _As...>)>;
       };
       template <class... _As>
       using __sender_size_for_t = stdexec::__t<__sender_size_for_<_As...>>;
@@ -64,26 +64,25 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     using __op_state_for = //
       __mcompose<
         __mbind_back_q<connect_result_t, stdexec::__t<propagate_receiver_t<stdexec::__id<_Receiver>>>>,
-        __result_sender<_Fun>>;
+        __result_sender_fn<_Fun>>;
 
     template <class _Set, class _Sig>
     struct __tfx_signal_ {
-      template <class, class>
+      template <class, class...>
       using __f = completion_signatures<_Sig>;
     };
 
     template <class _Set, class... _Args>
     struct __tfx_signal_<_Set, _Set(_Args...)> {
-      template <class _StreamEnv, class _Fun>
+      template <class _Fun, class... _StreamEnv>
       using __f = //
-        __try_make_completion_signatures<
-          __minvoke<__result_sender<_Fun>, _Args...>,
-          _StreamEnv,
+        transform_completion_signatures<
+          __completion_signatures_of_t< __minvoke<__result_sender_fn<_Fun>, _Args...>, _StreamEnv...>,
           completion_signatures<set_error_t(cudaError_t)>>;
     };
 
-    template <class _StreamEnv, class _Fun, class _Set, class _Sig>
-    using __tfx_signal_t = __minvoke<__tfx_signal_<_Set, _Sig>, _StreamEnv, _Fun>;
+    template <class _Sig, class _Fun, class _Set, class... _StreamEnv>
+    using __tfx_signal_t = __minvoke<__tfx_signal_<_Set, _Sig>, _Fun, _StreamEnv...>;
 
     template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
     struct __operation;
@@ -102,10 +101,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           __v<__max_sender_size<_Sender, _PropagateReceiver, _Fun, _Let>>;
 
         template <__one_of<_Let> _Tag, class... _As>
-          requires __minvocable<__result_sender<_Fun>, _As...>
-                && sender_to<__minvoke<__result_sender<_Fun>, _As...>, _PropagateReceiver>
+          requires __minvocable<__result_sender_fn<_Fun>, _As...>
+                && sender_to<__minvoke<__result_sender_fn<_Fun>, _As...>, _PropagateReceiver>
         void __complete(_Tag, _As&&... __as) noexcept {
-          using result_sender_t = __minvoke<__result_sender<_Fun>, _As...>;
+          using result_sender_t = __minvoke<__result_sender_fn<_Fun>, _As...>;
           using op_state_t = __minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
 
           cudaStream_t stream = __op_state_->get_stream();
@@ -117,7 +116,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
               status == cudaSuccess) {
             __op_state_->defer_temp_storage_destruction(result_sender);
-            auto& __op = __op_state_->__op_state3_.template emplace<op_state_t>(__conv{[&] {
+            auto& __op = __op_state_->__op_state3_.template emplace<op_state_t>(__emplace_from{[&] {
               return connect(
                 std::move(*result_sender),
                 stdexec::__t<propagate_receiver_t<_ReceiverId>>{
@@ -156,7 +155,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         using __op_state_variant_t = //
           __minvoke<
-            __transform<__uncurry<__op_state_for<_Receiver, _Fun>>, __qq<__nullable_std_variant>>,
+            __mtransform<__muncurry<__op_state_for<_Receiver, _Fun>>, __qq<__nullable_std_variant>>,
             _Tuples...>;
 
         __operation<_SenderId, _ReceiverId, _Fun, _Let>* __op_state_;
@@ -228,21 +227,21 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           _Fun,
           _Set>>;
 
-      template <class _Sender, class _Env>
+      template <class _Sender, class... _Env>
       using __completions = //
         __mapply<
-          __transform<
-            __mbind_front_q<let_xxx::__tfx_signal_t, _Env, _Fun, _Set>,
+          __mtransform<
+            __mbind_back_q<let_xxx::__tfx_signal_t, _Fun, _Set, _Env...>,
             __mtry_q<__concat_completion_signatures>>,
-          __completion_signatures_of_t<_Sender, _Env>>;
+          __completion_signatures_of_t<_Sender, _Env...>>;
 
       template <__decays_to<__t> _Self, receiver _Receiver>
-        requires receiver_of<               //
-          _Receiver,                        //
-          __completions<                    //
-            __copy_cvref_t<_Self, _Sender>, //
-            stream_env<env_of_t<_Receiver>>>> //
-      STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr) -> __operation_t<_Self, _Receiver> {
+        requires receiver_of<                          //
+                   _Receiver,                          //
+                   __completions<                      //
+                     __copy_cvref_t<_Self, _Sender>,   //
+                     stream_env<env_of_t<_Receiver>>>> //
+      static auto connect(_Self&& __self, _Receiver __rcvr) -> __operation_t<_Self, _Receiver> {
         return __operation_t<_Self, _Receiver>{
           static_cast<_Self&&>(__self).__sndr_,
           static_cast<_Receiver&&>(__rcvr),
@@ -253,9 +252,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return stdexec::get_env(__sndr_);
       }
 
-      template <__decays_to<__t> _Self, class _Env>
-      static auto get_completion_signatures(_Self&&, _Env&&)
-        -> __completions<__copy_cvref_t<_Self, _Sender>, stream_env<_Env>> {
+      template <__decays_to<__t> _Self, class... _Env>
+      static auto get_completion_signatures(_Self&&, _Env&&...)
+        -> __completions<__copy_cvref_t<_Self, _Sender>, stream_env<_Env>...> {
         return {};
       }
 

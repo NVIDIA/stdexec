@@ -162,18 +162,10 @@ namespace exec {
       using completion_signatures =
         stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
 
-      template <typename Receiver>
-      auto make_operation(Receiver r) const
+      template <stdexec::receiver Receiver>
+      auto connect(Receiver r) const //
         -> __libdispatch_details::operation<stdexec::__id<Receiver>> {
         return __libdispatch_details::operation<stdexec::__id<Receiver>>(queue, std::move(r));
-      }
-
-      STDEXEC_MEMFN_FRIEND(connect);
-
-      template <stdexec::receiver Receiver>
-      STDEXEC_MEMFN_DECL(auto connect)(this sender s, Receiver r)
-        -> __libdispatch_details::operation<stdexec::__id<Receiver>> {
-        return s.make_operation(std::move(r));
       }
 
       struct env {
@@ -269,12 +261,11 @@ namespace exec {
     Shape shape_;
     Fun fun_;
 
-    template <class Sender, class Env>
+    template <class Sender, class... Env>
     using with_error_invoke_t = //
       stdexec::__if_c<
-        stdexec::__v<stdexec::__value_types_of_t<
-          Sender,
-          Env,
+        stdexec::__v<stdexec::__value_types_t<
+          stdexec::__completion_signatures_of_t<Sender, Env...>,
           stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
           stdexec::__q<stdexec::__mand>>>,
         stdexec::completion_signatures<>,
@@ -284,13 +275,12 @@ namespace exec {
     using set_value_t =
       stdexec::completion_signatures<stdexec::set_value_t(stdexec::__decay_t<Tys>...)>;
 
-    template <class Self, class Env>
+    template <class Self, class... Env>
     using __completions_t = //
-      stdexec::__try_make_completion_signatures<
-        stdexec::__copy_cvref_t<Self, Sender>,
-        Env,
-        with_error_invoke_t<stdexec::__copy_cvref_t<Self, Sender>, Env>,
-        stdexec::__q<set_value_t>>;
+      stdexec::transform_completion_signatures<
+        stdexec::__completion_signatures_of_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
+        with_error_invoke_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
+        set_value_t>;
 
     template <class Self, class Receiver>
     using bulk_op_state_t = //
@@ -299,8 +289,7 @@ namespace exec {
 
     template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
       requires stdexec::receiver_of<Receiver, __completions_t<Self, stdexec::env_of_t<Receiver>>>
-    STDEXEC_MEMFN_DECL(
-      bulk_op_state_t<Self, Receiver> connect)(this Self &&self, Receiver rcvr) //
+    static bulk_op_state_t<Self, Receiver> connect(Self &&self, Receiver rcvr) //
       noexcept(stdexec::__nothrow_constructible_from<
                bulk_op_state_t<Self, Receiver>,
                libdispatch_queue &,
@@ -316,8 +305,8 @@ namespace exec {
         (std::forward<Receiver>(rcvr))};
     }
 
-    template <stdexec::__decays_to<__t> Self, class Env>
-    static auto get_completion_signatures(Self &&, Env &&) -> __completions_t<Self, Env> {
+    template <stdexec::__decays_to<__t> Self, class... Env>
+    static auto get_completion_signatures(Self &&, Env &&...) -> __completions_t<Self, Env...> {
       return {};
     }
 

@@ -100,7 +100,7 @@ namespace exec {
           _Receiver __receiver_;
 
           explicit __t(_Receiver __rcvr, std::size_t __max_depth) //
-            noexcept(__nothrow_decay_copyable<_Receiver>)
+            noexcept(__nothrow_move_constructible<_Receiver>)
             : __operation_base(&__t::__execute_impl, __max_depth)
             , __receiver_(static_cast<_Receiver&&>(__rcvr)) {
           }
@@ -136,21 +136,13 @@ namespace exec {
         }
 
         template <receiver_of<completion_signatures> _Receiver>
-        auto __make_operation(_Receiver __rcvr) const noexcept(__nothrow_decay_copyable<_Receiver>)
+        auto connect(_Receiver __rcvr) const noexcept(__nothrow_move_constructible<_Receiver>) //
           -> __operation_t<_Receiver> {
           return __operation_t<_Receiver>{static_cast<_Receiver&&>(__rcvr), __max_recursion_depth_};
         }
 
-        template <receiver_of<completion_signatures> _Receiver>
-        STDEXEC_MEMFN_DECL(auto connect)(this __schedule_sender __self, _Receiver __rcvr) //
-          noexcept(__nothrow_decay_copyable<_Receiver>) -> __operation_t<_Receiver> {
-          return __self.__make_operation(static_cast<_Receiver&&>(__rcvr));
-        }
-
-        STDEXEC_MEMFN_DECL(auto
-          query)(this __schedule_sender __self, get_completion_scheduler_t<set_value_t>) noexcept
-          -> __scheduler {
-          return __scheduler{__self.__max_recursion_depth_};
+        auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> __scheduler {
+          return __scheduler{__max_recursion_depth_};
         }
 
         auto get_env() const noexcept -> const __schedule_sender& {

@@ -153,27 +153,26 @@ namespace exec {
     template <class _Error>
     using __error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
-    template <class _Sender, class _Env>
+    template <class _Sender, class... _Env>
     using __completions_t = //
-      stdexec::__try_make_completion_signatures<
-        __decay_t<_Sender> &,
-        _Env,
-        stdexec::__try_make_completion_signatures<
-          stdexec::schedule_result_t<exec::trampoline_scheduler>,
-          _Env,
+      stdexec::transform_completion_signatures<
+        __completion_signatures_of_t<__decay_t<_Sender> &, _Env...>,
+        stdexec::transform_completion_signatures<
+          __completion_signatures_of_t<stdexec::schedule_result_t<exec::trampoline_scheduler>, _Env...>,
           __eptr_completion,
-          __q<__sigs::__default_set_value>,
-          __q<__error_t>>,
-        __mbind_front_q<__values_t, _Sender>,
-        __q<__error_t>>;
+          __sigs::__default_set_value,
+          __error_t>,
+        __mbind_front_q<__values_t, _Sender>::template __f,
+        __error_t>;
 
     struct __repeat_effect_until_tag { };
 
     struct __repeat_effect_until_impl : __sexpr_defaults {
       static constexpr auto get_completion_signatures = //
-        []<class _Sender, class _Env>(_Sender &&, _Env &&) noexcept {
-          return __completions_t<__data_of<_Sender>, _Env>{};
-        };
+        []<class _Sender, class... _Env>(_Sender &&, _Env &&...) noexcept
+        -> __completions_t<__data_of<_Sender>, _Env...> {
+        return {};
+      };
 
       static constexpr auto get_state = //
         []<class _Sender, class _Receiver>(_Sender &&__sndr, _Receiver &__rcvr) {
@@ -218,4 +217,13 @@ namespace stdexec {
   template <>
   struct __sexpr_impl<exec::__repeat_effect_until::__repeat_effect_until_tag>
     : exec::__repeat_effect_until::__repeat_effect_until_impl { }; // namespace stdexec
+
+  template <>
+  struct __sexpr_impl<exec::repeat_effect_until_t> : __sexpr_defaults {
+    static constexpr auto get_completion_signatures = //
+      []<class _Sender>(_Sender &&) noexcept          //
+        -> exec::__repeat_effect_until::__completions_t<__data_of<_Sender>> {
+      return {};
+    };
+  };
 } // namespace stdexec

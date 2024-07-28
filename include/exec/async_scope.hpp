@@ -31,6 +31,11 @@ namespace exec {
     struct __impl;
     struct async_scope;
 
+    template <class _A>
+    concept __async_scope = requires(_A& __a) {
+      { __a.nest(stdexec::just()) } -> sender_of<stdexec::set_value_t()>;
+    };
+
     struct __task : __immovable {
       const __impl* __scope_;
       void (*__notify_waiter)(__task*) noexcept;
@@ -38,7 +43,7 @@ namespace exec {
     };
 
     template <class _BaseEnv>
-    using __env_t = make_env_t<_BaseEnv, with_t<get_stop_token_t, inplace_stop_token>>;
+    using __env_t = make_env_t<_BaseEnv, prop<get_stop_token_t, inplace_stop_token>>;
 
     struct __impl {
       inplace_stop_source __stop_source_{};
@@ -105,14 +110,16 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Constrained>, _Receiver>
-        [[nodiscard]] STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr) -> __when_empty_op_t<_Self, _Receiver> {
+        [[nodiscard]]
+        static auto connect(_Self&& __self, _Receiver __rcvr) //
+          -> __when_empty_op_t<_Self, _Receiver> {
           return __when_empty_op_t<_Self, _Receiver>{
             __self.__scope_, static_cast<_Self&&>(__self).__c_, static_cast<_Receiver&&>(__rcvr)};
         }
 
-        template <__decays_to<__t> _Self, class _Env>
-        static auto get_completion_signatures(_Self&&, _Env&&)
-          -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>> {
+        template <__decays_to<__t> _Self, class... _Env>
+        static auto get_completion_signatures(_Self&&, _Env&&...)
+          -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>...> {
           return {};
         }
 
@@ -193,7 +200,7 @@ namespace exec {
         auto get_env() const noexcept -> __env_t<env_of_t<_Receiver>> {
           return make_env(
             stdexec::get_env(__op_->__rcvr_),
-            with(get_stop_token, __op_->__scope_->__stop_source_.get_token()));
+            stdexec::prop{get_stop_token, __op_->__scope_->__stop_source_.get_token()});
         }
       };
     };
@@ -246,14 +253,15 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Constrained>, __nest_receiver_t<_Receiver>>
-        [[nodiscard]] STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr) -> __nest_operation_t<_Receiver> {
+        [[nodiscard]]
+        static auto connect(_Self&& __self, _Receiver __rcvr) -> __nest_operation_t<_Receiver> {
           return __nest_operation_t<_Receiver>{
             __self.__scope_, static_cast<_Self&&>(__self).__c_, static_cast<_Receiver&&>(__rcvr)};
         }
 
-        template <__decays_to<__t> _Self, class _Env>
-        static auto get_completion_signatures(_Self&&, _Env&&)
-          -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>> {
+        template <__decays_to<__t> _Self, class... _Env>
+        static auto get_completion_signatures(_Self&&, _Env&&...)
+          -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>...> {
           return {};
         }
       };
@@ -436,7 +444,7 @@ namespace exec {
     template <class _Completions>
     using __completions_as_variant = //
       __mapply<
-        __transform<__q<__completion_as_tuple_t>, __mbind_front_q<std::variant, std::monostate>>,
+        __mtransform<__q<__completion_as_tuple_t>, __mbind_front_q<std::variant, std::monostate>>,
         _Completions>;
 
     template <class _Ty>
@@ -471,7 +479,7 @@ namespace exec {
         : __forward_scope_{std::in_place, __scope->__stop_source_.get_token(), __forward_stopped{&__stop_source_}}
         , __env_(make_env(
             static_cast<_Env&&>(__env),
-            with(get_stop_token, __scope->__stop_source_.get_token()))) {
+            stdexec::prop{get_stop_token, __scope->__stop_source_.get_token()})) {
       }
 
       ~__future_state_base() {
@@ -630,13 +638,13 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires receiver_of<_Receiver, __completions_t<_Self>>
-        STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr) -> __future_op_t<_Receiver> {
+        static auto connect(_Self&& __self, _Receiver __rcvr) -> __future_op_t<_Receiver> {
           return __future_op_t<_Receiver>{
-            static_cast<_Receiver&&>(__rcvr), std::move(__self.__state_)};
+            static_cast<_Receiver&&>(__rcvr), static_cast<_Self&&>(__self).__state_};
         }
 
-        template <__decays_to<__t> _Self, class _OtherEnv>
-        static auto get_completion_signatures(_Self&&, _OtherEnv&&) -> __completions_t<_Self> {
+        template <__decays_to<__t> _Self, class... _OtherEnv>
+        static auto get_completion_signatures(_Self&&, _OtherEnv&&...) -> __completions_t<_Self> {
           return {};
         }
 
@@ -803,4 +811,8 @@ namespace exec {
   } // namespace __scope
 
   using __scope::async_scope;
+
+  template <class _AsyncScope, class _Sender>
+  using nest_result_t =
+    decltype(stdexec::__declval<_AsyncScope&>().nest(stdexec::__declval<_Sender&&>()));
 } // namespace exec

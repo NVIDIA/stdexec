@@ -70,6 +70,9 @@ namespace stdexec {
   template <class _Sig>
   struct _MISSING_COMPLETION_SIGNAL_;
 
+  template <class _Sig>
+  struct _WITH_COMPLETION_SIGNATURE_;
+
   template <class _Fun>
   struct _WITH_FUNCTION_;
 

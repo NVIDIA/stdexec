@@ -36,7 +36,7 @@ namespace stdexec {
       STDEXEC_IS_EMPTY(_Ty) && STDEXEC_IS_TRIVIALLY_CONSTRUCTIBLE(_Ty);
 
     template <__empty _Ty>
-    inline _Ty __value {};
+    inline _Ty __value{};
 
     // A specialization for empty types so that they don't take up space.
     template <__empty _Ty, std::size_t _Idx>
@@ -46,7 +46,7 @@ namespace stdexec {
       constexpr __box(__not_decays_to<__box> auto &&) noexcept {
       }
 
-      static constexpr _Ty& __value = __tup::__value<_Ty>;
+      static constexpr _Ty &__value = __tup::__value<_Ty>;
     };
 
     template <auto _Idx, class... _Ts>
@@ -108,21 +108,21 @@ namespace stdexec {
     template <std::size_t _Idx, class _Ty>
     STDEXEC_ATTRIBUTE((host, device, always_inline))
     constexpr _Ty &&
-      __get(__box<_Ty, _Idx> &&__self) noexcept {
+      get(__box<_Ty, _Idx> &&__self) noexcept {
       return static_cast<_Ty &&>(__self.__value);
     }
 
     template <std::size_t _Idx, class _Ty>
     STDEXEC_ATTRIBUTE((host, device, always_inline))
     constexpr _Ty &
-      __get(__box<_Ty, _Idx> &__self) noexcept {
+      get(__box<_Ty, _Idx> &__self) noexcept {
       return __self.__value;
     }
 
     template <std::size_t _Idx, class _Ty>
     STDEXEC_ATTRIBUTE((host, device, always_inline))
     constexpr const _Ty &
-      __get(const __box<_Ty, _Idx> &__self) noexcept {
+      get(const __box<_Ty, _Idx> &__self) noexcept {
       return __self.__value;
     }
 
@@ -176,9 +176,9 @@ namespace stdexec {
   using __decayed_tuple = __tuple_for<__decay_t<_Ts>...>;
 
   // So we can use __tuple as a typelist
-  template <class _Fn, auto _Idx, class... _Ts>
-    requires __minvocable<_Fn, _Ts...>
-  struct __uncurry_<_Fn, __tuple<_Idx, _Ts...>> {
-    using __t = __minvoke<_Fn, _Ts...>;
+  template <auto _Idx, class... _Ts>
+  struct __muncurry_<__tuple<_Idx, _Ts...>> {
+    template <class _Fn>
+    using __f = __minvoke<_Fn, _Ts...>;
   };
 } // namespace stdexec

@@ -722,7 +722,7 @@ namespace exec {
        private:
 #endif
         using _FilteredQueries =
-          __minvoke<__remove_if<__q<__is_never_stop_token_query>>, _Queries...>;
+          __minvoke<__mremove_if<__q<__is_never_stop_token_query>>, _Queries...>;
         using __vtable_t = stdexec::__t<
           __mapply<__mbind_front_q<__vtable, completion_signatures<_Sigs...>>, _FilteredQueries>>;
 
@@ -819,7 +819,7 @@ namespace exec {
     };
 
     template <class _Env>
-    using __env_t = __env::__join_t<__env::__with<inplace_stop_token, get_stop_token_t>, _Env>;
+    using __env_t = __env::__join_t<prop<get_stop_token_t, inplace_stop_token>, _Env>;
 
     template <class _ReceiverId>
     struct __stoppable_receiver {
@@ -861,7 +861,7 @@ namespace exec {
 
         auto get_env() const noexcept -> __env_t<env_of_t<_Receiver>> {
           return __env::__join(
-            __env::__with(__op_->__stop_source_.get_token(), get_stop_token),
+            prop{get_stop_token, __op_->__stop_source_.get_token()},
             stdexec::get_env(__op_->__rcvr_));
         }
       };
@@ -968,11 +968,11 @@ namespace exec {
               -> __immovable_operation_storage {
               _Sender& __sender = *static_cast<_Sender*>(__object_pointer);
               using __op_state_t = connect_result_t<_Sender, __receiver_ref_t>;
-              return __immovable_operation_storage{std::in_place_type<__op_state_t>, __conv{[&] {
-                                                     return stdexec::connect(
-                                                       static_cast<_Sender&&>(__sender),
-                                                       static_cast<__receiver_ref_t&&>(__receiver));
-                                                   }}};
+              return __immovable_operation_storage{
+                std::in_place_type<__op_state_t>, __emplace_from{[&] {
+                  return stdexec::connect(
+                    static_cast<_Sender&&>(__sender), static_cast<__receiver_ref_t&&>(__receiver));
+                }}};
             }};
           return &__vtable_;
         }
@@ -991,8 +991,7 @@ namespace exec {
         }
       };
 
-      class __t {
-       public:
+      struct __t {
         using __id = __sender;
         using completion_signatures = _Sigs;
         using sender_concept = stdexec::sender_t;
@@ -1022,14 +1021,14 @@ namespace exec {
           return {__storage_.__get_vtable(), __storage_.__get_object_pointer()};
         }
 
+        template <receiver_of<_Sigs> _Rcvr>
+        auto connect(_Rcvr __rcvr) && //
+          -> stdexec::__t<__operation<stdexec::__id<_Rcvr>, __with_inplace_stop_token>> {
+          return {static_cast<__t&&>(*this), static_cast<_Rcvr&&>(__rcvr)};
+        }
+
        private:
         __unique_storage_t<__vtable> __storage_;
-
-        template <receiver_of<_Sigs> _Rcvr>
-        STDEXEC_MEMFN_DECL(auto connect)(this __t&& __self, _Rcvr&& __rcvr)
-          -> stdexec::__t<__operation<stdexec::__id<__decay_t<_Rcvr>>, __with_inplace_stop_token>> {
-          return {static_cast<__t&&>(__self), static_cast<_Rcvr&&>(__rcvr)};
-        }
       };
     };
 
@@ -1202,6 +1201,11 @@ namespace exec {
         : __sender_(static_cast<_Sender&&>(__sender)) {
       }
 
+      template <stdexec::receiver_of<_Completions> _Receiver>
+      auto connect(_Receiver __rcvr) && -> stdexec::connect_result_t<__sender_base, _Receiver> {
+        return static_cast<__sender_base&&>(__sender_).connect(static_cast<_Receiver&&>(__rcvr));
+      }
+
       template <auto... _SchedulerQueries>
       class any_scheduler {
         using __schedule_completions = stdexec::__concat_completion_signatures<
@@ -1219,7 +1223,7 @@ namespace exec {
         };
 
         using schedule_sender_queries = stdexec::__minvoke<
-          stdexec::__remove_if<
+          stdexec::__mremove_if<
             __ret_equals_to<stdexec::get_completion_scheduler_t<stdexec::set_value_t>>>,
           decltype(_SenderQueries)...>;
 

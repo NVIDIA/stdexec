@@ -176,9 +176,9 @@ namespace stdexec {
     template <class _Env>
     struct __completion_domain_or_none_
       : __mdefer_<
-          __transform<
+          __mtransform<
             __mbind_front_q<__completion_domain_for, _Env>,
-            __remove<__none_such, __munique<__msingle_or<__none_such>>>>,
+            __mremove<__none_such, __munique<__msingle_or<__none_such>>>>,
           set_value_t,
           set_error_t,
           set_stopped_t> { };
@@ -201,7 +201,7 @@ namespace stdexec {
     template <class _Sender, class _Default = default_domain>
     auto operator()(const _Sender&, _Default __def = {}) const noexcept {
       if constexpr (__callable<get_domain_t, env_of_t<_Sender>>) {
-        return __call_result_t<get_domain_t, env_of_t<_Sender>>();
+        return __domain_of_t<env_of_t<_Sender>>();
       } else if constexpr (__detail::__has_completion_domain<_Sender>) {
         return __detail::__completion_domain_of<_Sender>();
       } else {

@@ -42,17 +42,35 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     };
 
     template <class Env>
-    using env_t = exec::make_env_t<Env, exec::with_t<get_stop_token_t, inplace_stop_token>>;
+    using env_t = exec::make_env_t<Env, stdexec::prop<get_stop_token_t, inplace_stop_token>>;
 
-    template <class Sender, class Env>
-    using too_many_completions = __mbool<(1 < __v<__count_of<set_value_t, Sender, Env>>)>;
+    template <class Sender, class... Env>
+    concept valid_child_sender =
+      sender_in<Sender, Env...> &&
+      requires {
+        requires (__v<__count_of<set_value_t, Sender, Env...>> <= 1);
+      };
+
+    template <class Sender, class... Env>
+    concept too_many_completions_sender =
+      sender_in<Sender, Env...> &&
+      requires {
+        requires (__v<__count_of<set_value_t, Sender, Env...>> > 1);
+      };
 
     template <class Env, class... Senders>
-    struct completions {
-      using InvalidArg = //
-        __minvoke<__mfind_if<__mbind_back_q<too_many_completions, Env>, __q<__mfront>>, Senders...>;
+    struct completions {};
 
-      using __t = stdexec::__when_all::__too_many_value_completions_error<InvalidArg, Env>;
+    template <class... Env, class... Senders>
+      requires(too_many_completions_sender<Senders, Env...> || ...)
+    struct completions<__types<Env...>, Senders...> {
+      static constexpr std::size_t position_of() noexcept {
+        constexpr bool which[] = {too_many_completions_sender<Senders, Env...>...};
+        return __pos_of(which, which + sizeof...(Senders));
+      }
+
+      using InvalidArg = __m_at_c<position_of(), Senders...>;
+      using __t = stdexec::__when_all::__too_many_value_completions_error<InvalidArg, Env...>;
     };
 
     template <class... As, class TupleT>
@@ -61,26 +79,26 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       *tpl = __decayed_tuple<As...>{{static_cast<As&&>(as)}...};
     }
 
-    template <class Env, class... Senders>
-      requires(!__v<too_many_completions<Senders, Env>> && ...)
-    struct completions<Env, Senders...> {
+    template <class... Env, class... Senders>
+      requires(valid_child_sender<Senders, Env...> && ...)
+    struct completions<__types<Env...>, Senders...> {
       using non_values = //
         __meval<
           __concat_completion_signatures,
           completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
-          __try_make_completion_signatures<
-            Senders,
-            Env,
+          transform_completion_signatures<
+            __completion_signatures_of_t<Senders, Env...>,
             completion_signatures<>,
-            __mconst<completion_signatures<>>>...>;
+            __mconst<completion_signatures<>>::__f>...>;
       using values = //
         __minvoke<
           __mconcat<__qf<set_value_t>>,
-          __value_types_of_t<Senders, Env, __q<__types>, __msingle_or<__types<>>>...>;
+          __value_types_t<
+            __completion_signatures_of_t<Senders, Env...>, __q<__types>, __msingle_or<__types<>>>...>;
       using __t = //
         __if_c<
-          (__sends<set_value_t, Senders, Env> && ...),
-          __minvoke<__push_back<__q<completion_signatures>>, non_values, values>,
+          (__sends<set_value_t, Senders, Env...> && ...),
+          __minvoke<__mpush_back<__q<completion_signatures>>, non_values, values>,
           non_values>;
     };
   } // namespace _when_all
@@ -110,10 +128,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
      private:
       env env_;
 
-      template <class Env, class Cvref>
+      template <class Cvref, class... Env>
       using completion_sigs = //
         stdexec::__t<_when_all::completions<
-          _when_all::env_t<Env>,
+          __types<_when_all::env_t<Env>...>,
           __copy_cvref_t<Cvref, stdexec::__t<SenderIds>>...>>;
 
       template <class Completions>
@@ -134,7 +152,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using Receiver = stdexec::__t<__decay_t<CvrefReceiverId>>;
         using Env = //
           make_terminal_stream_env_t<
-            exec::make_env_t<env_of_t<Receiver>, exec::with_t<get_stop_token_t, inplace_stop_token>>>;
+            exec::make_env_t<env_of_t<Receiver>, stdexec::prop<get_stop_token_t, inplace_stop_token>>>;
 
         struct __t : stream_receiver_base {
           using receiver_concept = stdexec::receiver_t;
@@ -144,7 +162,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           template <class Error>
           void _set_error_impl(Error&& err, _when_all::state_t expected) noexcept {
-            // TODO: _What memory orderings are actually needed here?
+            // TODO: What memory orderings are actually needed here?
             if (op_state_->state_.compare_exchange_strong(expected, _when_all::error)) {
               op_state_->stop_source_.request_stop();
               // We won the race, free to write the error into the operation
@@ -160,10 +178,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               // We only need to bother recording the completion values
               // if we're not already in the "error" or "stopped" state.
               if (op_state_->state_ == _when_all::started) {
-                cudaStream_t stream = __tup::__get<Index>(op_state_->child_states_).get_stream();
+                cudaStream_t stream = __tup::get<Index>(op_state_->child_states_).get_stream();
                 if constexpr (sizeof...(Values)) {
                   _when_all::copy_kernel<Values&&...><<<1, 1, 0, stream>>>(
-                    &__tup::__get<Index>(*op_state_->values_), static_cast<Values&&>(vals)...);
+                    &__tup::get<Index>(*op_state_->values_), static_cast<Values&&>(vals)...);
                 }
 
                 if constexpr (stream_receiver<Receiver>) {
@@ -198,7 +216,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             auto env = make_terminal_stream_env(
               exec::make_env(
                 stdexec::get_env(op_state_->rcvr_),
-                __env::__with(op_state_->stop_source_.get_token(), get_stop_token)),
+                stdexec::prop{get_stop_token, op_state_->stop_source_.get_token()}),
               &const_cast<stream_provider_t&>(op_state_->stream_providers_[Index]));
 
             return env;
@@ -405,13 +423,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
      public:
       template <__decays_to<__t> Self, receiver Receiver>
-      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr)
-        -> operation_t<__copy_cvref_t<Self, stdexec::__id<__decay_t<Receiver>>>> {
+      static auto connect(Self&& self, Receiver rcvr)
+        -> operation_t<__copy_cvref_t<Self, stdexec::__id<Receiver>>> {
         return {static_cast<Self&&>(self), static_cast<Receiver&&>(rcvr)};
       }
 
-      template <__decays_to<__t> Self, class Env>
-      static auto get_completion_signatures(Self&&, Env&&) -> completion_sigs<Env, Self> {
+      template <__decays_to<__t> Self, class... Env>
+      static auto get_completion_signatures(Self&&, Env&&...) -> completion_sigs<Self, Env...> {
         return {};
       }
 

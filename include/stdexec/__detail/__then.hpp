@@ -25,6 +25,7 @@
 #include "__sender_adaptor_closure.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__transform_sender.hpp"
+#include "__senders.hpp"
 
 // include these after __execution_fwd.hpp
 namespace stdexec {
@@ -34,13 +35,12 @@ namespace stdexec {
     inline constexpr __mstring __then_context = "In stdexec::then(Sender, Function)..."_mstr;
     using __on_not_callable = __callable_error<__then_context>;
 
-    template <class _Fun, class _CvrefSender, class _Env>
+    template <class _Fun, class _CvrefSender, class... _Env>
     using __completions_t = //
-      __try_make_completion_signatures<
-        _CvrefSender,
-        _Env,
-        __with_error_invoke_t<set_value_t, _Fun, _CvrefSender, _Env, __on_not_callable>,
-        __mbind_front<__mtry_catch_q<__set_value_invoke_t, __on_not_callable>, _Fun>>;
+      transform_completion_signatures<
+        __completion_signatures_of_t<_CvrefSender, _Env...>,
+        __with_error_invoke_t<__on_not_callable, set_value_t, _Fun, _CvrefSender, _Env...>,
+        __mbind_front<__mtry_catch_q<__set_value_invoke_t, __on_not_callable>, _Fun>::template __f>;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     struct then_t {
@@ -72,8 +72,8 @@ namespace stdexec {
 
     struct __then_impl : __sexpr_defaults {
       static constexpr auto get_completion_signatures = //
-        []<class _Sender, class _Env>(_Sender&&, _Env&&) noexcept
-        -> __completions_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env> {
+        []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
+        -> __completions_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, then_t>);
         return {};
       };

@@ -206,7 +206,7 @@ namespace stdexec {
       using __completions_t = //
         completion_signatures<
           __minvoke< // set_value_t() or set_value_t(T)
-            __remove<void, __qf<set_value_t>>,
+            __mremove<void, __qf<set_value_t>>,
             __await_result_t<_Awaitable, __promise_t<_Receiver>>>,
           set_error_t(std::exception_ptr),
           set_stopped_t()>;

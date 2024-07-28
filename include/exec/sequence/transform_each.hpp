@@ -107,7 +107,7 @@ namespace exec {
       auto operator()(__ignore, _Adaptor __adaptor, _Sequence&& __sequence) //
         noexcept(
           __nothrow_decay_copyable<_Adaptor> && __nothrow_decay_copyable<_Sequence>
-          && __nothrow_decay_copyable<_Receiver>)
+          && __nothrow_move_constructible<_Receiver>)
           -> __t<__operation<_Sequence, __id<_Receiver>, _Adaptor>> {
         return {
           static_cast<_Sequence&&>(__sequence),
@@ -168,12 +168,12 @@ namespace exec {
         return {};
       }
 
-      template <class _Self, class _Env>
+      template <class _Self, class... _Env>
       using __item_types_t = stdexec::__mapply<
-        stdexec::__transform<
+        stdexec::__mtransform<
           stdexec::__mbind_front_q<__call_result_t, __data_of<_Self>&>,
           stdexec::__munique<stdexec::__q<item_types>>>,
-        item_types_of_t<__child_of<_Self>, _Env>>;
+        item_types_of_t<__child_of<_Self>, _Env...>>;
 
       template <sender_expr_for<transform_each_t> _Self, class _Env>
       static auto get_item_types(_Self&&, _Env&&) noexcept -> __item_types_t<_Self, _Env> {

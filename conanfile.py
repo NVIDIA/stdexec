@@ -14,7 +14,14 @@ class StdexecPackage(ConanFile):
   license = "Apache 2.0"
 
   settings = "os", "arch", "compiler", "build_type"
-  exports_sources = "include/*"
+  exports_sources = (
+    "include/*",
+    "src/*",
+    "test/*",
+    "examples/*",
+    "cmake/*",
+    "CMakeLists.txt"
+  )
   generators = "CMakeToolchain"
 
   def validate(self):
@@ -29,23 +36,25 @@ class StdexecPackage(ConanFile):
     cmake_layout(self)
 
   def build(self):
-    if not self.conf.get("tools.build:skip_test", default=False):
-      cmake = CMake(self)
-      cmake.configure()
-      cmake.build()
-      cmake.test()
+    tests = "OFF" if self.conf.get("tools.build:skip_test", default=False) else "ON"
+
+    cmake = CMake(self)
+    cmake.configure(variables={
+      "STDEXEC_BUILD_TESTS": tests,
+      "STDEXEC_BUILD_EXAMPLES": tests,
+    })
+    cmake.build()
+    cmake.test()
 
   def package_id(self):
     # Clear settings because this package is header-only.
     self.info.clear()
 
   def package(self):
-    copy(self, "*.hpp", self.source_folder, self.package_folder)
+    cmake = CMake(self)
+    cmake.install()
 
   def package_info(self):
     self.cpp_info.set_property("cmake_file_name", "P2300")
     self.cpp_info.set_property("cmake_target_name", "P2300::P2300")
-
-    # Clear bin and lib dirs because this package is header-only.
-    self.cpp_info.bindirs = []
-    self.cpp_info.libdirs = []
+    self.cpp_info.libs = ["system_context"]

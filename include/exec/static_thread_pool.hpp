@@ -255,6 +255,11 @@ namespace exec {
       };
 #endif
 
+      static unsigned int _hardware_concurrency() noexcept {
+        unsigned int n = std::thread::hardware_concurrency();
+        return n == 0 ? 1 : n;
+      }
+
      public:
       struct domain {
         // For eager customization
@@ -312,7 +317,7 @@ namespace exec {
       static_thread_pool_(
         std::uint32_t threadCount,
         bwos_params params = {},
-        numa_policy* numa = get_numa_policy());
+        numa_policy numa = get_numa_policy());
       ~static_thread_pool_();
 
       struct scheduler {
@@ -336,27 +341,23 @@ namespace exec {
           using __t = _sender;
           using __id = _sender;
           using sender_concept = sender_t;
+          template <class Receiver>
+          using operation_t = stdexec::__t<operation<stdexec::__id<Receiver>>>;
+
           using completion_signatures =
             stdexec::completion_signatures<set_value_t(), set_stopped_t()>;
 
           auto get_env() const noexcept -> env {
             return env{pool_, queue_};
           }
-         private:
-          template <class Receiver>
-          using operation_t = stdexec::__t<operation<stdexec::__id<Receiver>>>;
 
-          template <typename Receiver>
-          auto make_operation_(Receiver rcvr) const -> operation_t<Receiver> {
+          template <receiver Receiver>
+          auto connect(Receiver rcvr) const -> operation_t<Receiver> {
             return operation_t<Receiver>{
               pool_, queue_, static_cast<Receiver&&>(rcvr), threadIndex_, constraints_};
           }
 
-          template <receiver Receiver>
-          STDEXEC_MEMFN_DECL(auto connect)(this _sender sndr, Receiver rcvr) -> operation_t<Receiver> {
-            return sndr.make_operation_(static_cast<Receiver&&>(rcvr));
-          }
-
+         private:
           friend struct static_thread_pool_::scheduler;
 
           explicit _sender(
@@ -380,7 +381,7 @@ namespace exec {
 
         explicit scheduler(
           static_thread_pool_& pool,
-          const nodemask& mask = nodemask::any()) noexcept
+          const nodemask* mask = &nodemask::any()) noexcept
           : pool_(&pool)
           , queue_{pool.get_remote_queue()}
           , nodemask_{mask} {
@@ -389,7 +390,7 @@ namespace exec {
         explicit scheduler(
           static_thread_pool_& pool,
           remote_queue& queue,
-          const nodemask& mask = nodemask::any()) noexcept
+          const nodemask* mask = &nodemask::any()) noexcept
           : pool_(&pool)
           , queue_{&queue}
           , nodemask_{mask} {
@@ -406,7 +407,7 @@ namespace exec {
 
         static_thread_pool_* pool_;
         remote_queue* queue_;
-        nodemask nodemask_;
+        const nodemask* nodemask_;
         std::size_t thread_idx_{std::numeric_limits<std::size_t>::max()};
 
        public:
@@ -416,7 +417,7 @@ namespace exec {
 
         [[nodiscard]]
         auto schedule() const noexcept -> _sender {
-          return _sender{*pool_, queue_, thread_idx_, nodemask_};
+          return _sender{*pool_, queue_, thread_idx_, *nodemask_};
         }
 
         auto query(get_forward_progress_guarantee_t) const noexcept -> forward_progress_guarantee {
@@ -436,7 +437,8 @@ namespace exec {
         return scheduler{*this, *get_remote_queue(), threadIndex};
       }
 
-      auto get_constrained_scheduler(const nodemask& constraints) noexcept -> scheduler {
+      // The caller must ensure that the constraints object is valid for the lifetime of the scheduler.
+      auto get_constrained_scheduler(const nodemask* constraints) noexcept -> scheduler {
         return scheduler{*this, *get_remote_queue(), constraints};
       }
 
@@ -514,9 +516,9 @@ namespace exec {
       };
 
       struct thread_state_base {
-        explicit thread_state_base(std::uint32_t index, numa_policy* numa) noexcept
+        explicit thread_state_base(std::uint32_t index, const numa_policy& numa) noexcept
           : index_(index)
-          , numa_node_(numa->thread_index_to_node(index)) {
+          , numa_node_(numa.thread_index_to_node(index)) {
         }
 
         std::uint32_t index_;
@@ -534,7 +536,7 @@ namespace exec {
           static_thread_pool_* pool,
           std::uint32_t index,
           bwos_params params,
-          numa_policy* numa) noexcept
+          const numa_policy& numa) noexcept
           : thread_state_base(index, numa)
           , local_queue_(
               params.numBlocks,
@@ -610,7 +612,7 @@ namespace exec {
         xorshift rng_{};
       };
 
-      void run(std::uint32_t index, numa_policy* numa) noexcept;
+      void run(std::uint32_t index) noexcept;
       void join() noexcept;
 
       alignas(64) std::atomic<std::uint32_t> numThiefs_{};
@@ -620,7 +622,7 @@ namespace exec {
       bwos_params params_;
       std::vector<std::thread> threads_;
       std::vector<std::optional<thread_state>> threadStates_;
-      numa_policy* numa_;
+      numa_policy numa_;
 
       struct thread_index_by_numa_node {
         int numa_node;
@@ -645,22 +647,22 @@ namespace exec {
     };
 
     inline static_thread_pool_::static_thread_pool_()
-      : static_thread_pool_(std::thread::hardware_concurrency()) {
+      : static_thread_pool_(_hardware_concurrency()) {
     }
 
     inline static_thread_pool_::static_thread_pool_(
       std::uint32_t threadCount,
       bwos_params params,
-      numa_policy* numa)
+      numa_policy numa)
       : remotes_(threadCount)
       , threadCount_(threadCount)
       , params_(params)
       , threadStates_(threadCount)
-      , numa_{numa} {
+      , numa_(std::move(numa)) {
       STDEXEC_ASSERT(threadCount > 0);
 
       for (std::uint32_t index = 0; index < threadCount; ++index) {
-        threadStates_[index].emplace(this, index, params, numa);
+        threadStates_[index].emplace(this, index, params, numa_);
         threadIndexByNumaNode_.push_back(
           thread_index_by_numa_node{threadStates_[index]->numa_node(), index});
       }
@@ -677,7 +679,7 @@ namespace exec {
 
       try {
         for (std::uint32_t i = 0; i < threadCount; ++i) {
-          threads_.emplace_back([this, i, numa] { run(i, numa); });
+          threads_.emplace_back([this, i] { run(i); });
         }
       } catch (...) {
         request_stop();
@@ -697,8 +699,8 @@ namespace exec {
       }
     }
 
-    inline void static_thread_pool_::run(std::uint32_t threadIndex, numa_policy* numa) noexcept {
-      numa->bind_to_node(threadStates_[threadIndex]->numa_node());
+    inline void static_thread_pool_::run(std::uint32_t threadIndex) noexcept {
+      numa_.bind_to_node(threadStates_[threadIndex]->numa_node());
       STDEXEC_ASSERT(threadIndex < threadCount_);
       while (true) {
         // Make a blocking call to de-queue a task if we don't already have one.
@@ -763,7 +765,7 @@ namespace exec {
       std::size_t targetIndex = startIndex % threadCount_;
       std::size_t nThreads = num_threads(constraints);
       if (nThreads != 0) {
-        for (std::size_t nodeIndex = 0; nodeIndex < numa_->num_nodes(); ++nodeIndex) {
+        for (std::size_t nodeIndex = 0; nodeIndex < numa_.num_nodes(); ++nodeIndex) {
           if (!constraints[nodeIndex]) {
             continue;
           }
@@ -1039,7 +1041,6 @@ namespace exec {
         if (threadIndex_ < pool_.available_parallelism()) {
           pool_.enqueue(*queue_, op, threadIndex_);
         } else {
-
           pool_.enqueue(*queue_, op, constraints_);
         }
       }
@@ -1062,24 +1063,25 @@ namespace exec {
       Shape shape_;
       Fun fun_;
 
-      template <class Sender, class Env>
+      template <class Sender, class... Env>
       using with_error_invoke_t = //
         __if_c<
-          __v<
-            __value_types_of_t<Sender, Env, __mbind_front_q<bulk_non_throwing, Fun, Shape>, __q<__mand>>>,
+          __v<__value_types_t<
+            __completion_signatures_of_t<Sender, Env...>,
+            __mbind_front_q<bulk_non_throwing, Fun, Shape>,
+            __q<__mand>>>,
           completion_signatures<>,
           __eptr_completion>;
 
       template <class... Tys>
       using set_value_t = completion_signatures<set_value_t(stdexec::__decay_t<Tys>...)>;
 
-      template <class Self, class Env>
+      template <class Self, class... Env>
       using __completions_t = //
-        stdexec::__try_make_completion_signatures<
-          __copy_cvref_t<Self, Sender>,
-          Env,
-          with_error_invoke_t<__copy_cvref_t<Self, Sender>, Env>,
-          __q<set_value_t>>;
+        stdexec::transform_completion_signatures<
+          __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
+          with_error_invoke_t<__copy_cvref_t<Self, Sender>, Env...>,
+          set_value_t>;
 
       template <class Self, class Receiver>
       using bulk_op_state_t = //
@@ -1087,7 +1089,7 @@ namespace exec {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, __completions_t<Self, env_of_t<Receiver>>>
-      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr) //
+      static auto connect(Self&& self, Receiver rcvr) //
         noexcept(__nothrow_constructible_from<
                  bulk_op_state_t<Self, Receiver>,
                  static_thread_pool_&,
@@ -1103,8 +1105,8 @@ namespace exec {
           static_cast<Receiver&&>(rcvr)};
       }
 
-      template <__decays_to<__t> Self, class Env>
-      static auto get_completion_signatures(Self&&, Env&&) -> __completions_t<Self, Env> {
+      template <__decays_to<__t> Self, class... Env>
+      static auto get_completion_signatures(Self&&, Env&&...) -> __completions_t<Self, Env...> {
         return {};
       }
 
@@ -1387,12 +1389,11 @@ namespace exec {
             return {op_->pool_};
           }
 
-          template <__decays_to<__t> Self, receiver ItemReceiver>
+          template <receiver ItemReceiver>
             requires receiver_of<ItemReceiver, completion_signatures>
-          STDEXEC_MEMFN_DECL(
-          auto connect)(this Self&& self, ItemReceiver rcvr) noexcept
+          auto connect(ItemReceiver rcvr) const noexcept
             -> stdexec::__t<item_operation<Range, stdexec::__id<ItemReceiver>>> {
-            return {static_cast<ItemReceiver&&>(rcvr), self.it_, self.op_};
+            return {static_cast<ItemReceiver&&>(rcvr), it_, op_};
           }
         };
       };
@@ -1553,8 +1554,8 @@ namespace exec {
     static_thread_pool(
       std::uint32_t threadCount,
       bwos_params params = {},
-      numa_policy* numa = get_numa_policy())
-      : _pool_::static_thread_pool_(threadCount, params, numa) {
+      numa_policy numa = get_numa_policy())
+      : _pool_::static_thread_pool_(threadCount, params, std::move(numa)) {
     }
 
     // struct scheduler;

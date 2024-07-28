@@ -164,7 +164,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, stdexec::receiver_of<completion_signatures> _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __item_receiver_t<_Receiver>>
-        STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Receiver __rcvr) -> __operation_t<_Self, _Receiver> {
+        static auto connect(_Self&& __self, _Receiver __rcvr) -> __operation_t<_Self, _Receiver> {
           return {
             __self.__parent_,
             static_cast<_Self&&>(__self).__sender_,
@@ -217,16 +217,16 @@ namespace exec {
 
     template <class _Tag>
     using __result_tuple_fn = //
-      __mcompose_q<__types_ref, __mbind_front_q<__decayed_std_tuple, _Tag>::template __f>;
+      __mcompose_q<__types, __mbind_front_q<__decayed_std_tuple, _Tag>::template __f>;
 
     template <class _Sigs>
     using __result_variant_ = //
       __transform_completion_signatures<
         _Sigs,
-        __mconst<__types_ref<>>::__f,
-        __mcompose_q<__types_ref, __mbind_front_q<__decayed_std_tuple, set_error_t>::__f>::__f,
-        __types_ref<std::tuple<set_stopped_t>>,
-        __mappend_into_q<__nullable_std_variant>::__f>;
+        __mconst<__types<>>::__f,
+        __mcompose_q<__types, __mbind_front_q<__decayed_std_tuple, set_error_t>::__f>::__f,
+        __types<std::tuple<set_stopped_t>>,
+        __mconcat<__qq<__nullable_std_variant>>::__f>;
 
     template <class _Sender, class _Env>
     using __result_variant_t =
@@ -243,8 +243,7 @@ namespace exec {
 
         subscribe_result_t<_Sender, __receiver_t> __op_;
 
-        __t(_Sender&& __sndr, _Receiver __rcvr) //
-          noexcept(__nothrow_decay_copyable<_Receiver>)
+        __t(_Sender&& __sndr, _Receiver __rcvr) noexcept(__nothrow_move_constructible<_Receiver>)
           : __base_type{{}, static_cast<_Receiver&&>(__rcvr)}
           , __op_{exec::subscribe(static_cast<_Sender&&>(__sndr), __receiver_t{this})} {
         }
@@ -300,12 +299,12 @@ namespace exec {
     };
 
     struct __ignore_all_values_impl : __sexpr_defaults {
-      template <class _Sequence, class _Env>
-      using __completion_sigs = __sequence_completion_signatures_of_t<_Sequence, _Env>;
+      template <class _Sequence, class... _Env>
+      using __completion_sigs = __sequence_completion_signatures_of_t<_Sequence, _Env...>;
 
       static constexpr auto get_completion_signatures = //
-        []<class _Sender, class _Env>(_Sender&&, _Env&&)
-        -> __completion_sigs<__child_of<_Sender>, _Env> {
+        []<class _Sender, class... _Env>(_Sender&&, _Env&&...)
+        -> __completion_sigs<__child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
         return {};
       };

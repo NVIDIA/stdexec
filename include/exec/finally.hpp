@@ -40,16 +40,14 @@ namespace exec {
     template <class... _Args>
     using __as_rvalues = completion_signatures<set_value_t(__decay_t<_Args>...)>;
 
-    template <class _InitialSender, class _FinalSender, class _Env>
-    using __completion_signatures_t = __try_make_completion_signatures<
-      _InitialSender,
-      _Env,
-      __try_make_completion_signatures<
-        _FinalSender,
-        _Env,
+    template <class _InitialSender, class _FinalSender, class... _Env>
+    using __completion_signatures_t = transform_completion_signatures<
+      __completion_signatures_of_t<_InitialSender, _Env...>,
+      transform_completion_signatures<
+        __completion_signatures_of_t<_FinalSender, _Env...>,
         completion_signatures<set_error_t(std::exception_ptr)>,
-        __mconst<completion_signatures<>>>, // swallow the final sender's value completions
-      __q<__as_rvalues>>;
+        __mconst<completion_signatures<>>::__f>, // swallow the final sender's value completions
+      __as_rvalues>;
 
     template <class _Receiver>
     struct __applier {
@@ -219,7 +217,7 @@ namespace exec {
           std::in_place_type<__decayed_std_tuple<_Args...>>, static_cast<_Args&&>(__args)...);
         STDEXEC_ASSERT(__op_.index() == 0);
         _FinalSender& __final = std::get_if<0>(&__op_)->__sndr_;
-        __final_op_t& __final_op = __op_.template emplace<1>(__conv{[&] {
+        __final_op_t& __final_op = __op_.template emplace<1>(__emplace_from{[&] {
           return stdexec::connect(static_cast<_FinalSender&&>(__final), __final_receiver_t{this});
         }});
         stdexec::start(__final_op);
@@ -227,7 +225,7 @@ namespace exec {
 
       __t(_InitialSender&& __initial, _FinalSender __final, _Receiver __receiver)
         : __base_t{{static_cast<_Receiver&&>(__receiver)}}
-        , __op_(std::in_place_index<0>, __conv{[&] {
+        , __op_(std::in_place_index<0>, __emplace_from{[&] {
                   return __initial_op_t{
                     static_cast<_FinalSender&&>(__final),
                     stdexec::connect(
@@ -266,22 +264,22 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class _Rec>
-        STDEXEC_MEMFN_DECL(auto connect)(this _Self&& __self, _Rec&& __receiver) noexcept -> __op_t<_Self, _Rec> {
+        static auto connect(_Self&& __self, _Rec&& __receiver) noexcept -> __op_t<_Self, _Rec> {
           return {
             static_cast<_Self&&>(__self).__initial_sndr_,
             static_cast<_Self&&>(__self).__final_sndr_,
             static_cast<_Rec&&>(__receiver)};
         }
 
-        template <__decays_to<__t> _Self, class _Env>
-        static auto get_completion_signatures(_Self&&, _Env&&) noexcept
-          -> __completion_signatures_t<__copy_cvref_t<_Self, _InitialSender>, _FinalSender, _Env> {
+        template <__decays_to<__t> _Self, class... _Env>
+        static auto get_completion_signatures(_Self&&, _Env&&...) noexcept
+          -> __completion_signatures_t<__copy_cvref_t<_Self, _InitialSender>, _FinalSender, _Env...> {
           return {};
         }
 
-        template <__decays_to<__t> _Self, class _Env>
+        template <__decays_to<__t> _Self, class... _Env>
           requires(!__decay_copyable<__copy_cvref_t<_Self, _FinalSender>>)
-        static auto get_completion_signatures(_Self&&, _Env&&) noexcept {
+        static auto get_completion_signatures(_Self&&, _Env&&...) noexcept {
           return _ERROR_<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_FinalSender>>{};
         }
       };
@@ -307,7 +305,6 @@ namespace exec {
 
       template <class _Sender>
       static auto transform_sender(_Sender&& __sndr, __ignore) {
-
         return __sexpr_apply(
           static_cast<_Sender&&>(__sndr),
           []<class _Initial, class _Final>(
@@ -324,3 +321,14 @@ namespace exec {
   using __final ::finally_t;
   inline constexpr __final ::finally_t finally{};
 } // namespace exec
+
+namespace stdexec {
+  template <>
+  struct __sexpr_impl<exec::finally_t> : __sexpr_defaults {
+    static constexpr auto get_completion_signatures = //
+      []<class _Sender>(_Sender&&) noexcept           //
+      -> __completion_signatures_of_t<                //
+        transform_sender_result_t<default_domain, _Sender, empty_env>> {
+    };
+  };
+} // namespace stdexec

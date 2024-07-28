@@ -1,10 +1,17 @@
-cmake_minimum_required(VERSION 3.22.1)
+cmake_minimum_required(VERSION 3.25.0)
 
 if(POLICY CMP0135)
   # make the timestamps of ExternalProject_ADD match the download time
   # https://cmake.org/cmake/help/latest/policy/CMP0135.html
   cmake_policy(SET CMP0135 NEW)
   set(CMAKE_POLICY_DEFAULT_CMP0135 NEW)
+endif()
+
+if(POLICY CMP0141)
+  # Enables the use of the MSVC_DEBUG_INFORMATION_FORMAT target property
+  # https://cmake.org/cmake/help/latest/policy/CMP0141.html
+  cmake_policy(SET CMP0141 NEW)
+  set(CMAKE_POLICY_DEFAULT_CMP0141 NEW)
 endif()
 
 ##############################################################################
@@ -31,7 +38,7 @@ include(rapids-cpm)
 
 # Define the project and set the version and languages
 if(NOT EXISTS ${CMAKE_BINARY_DIR}/execution.bs)
-  file(DOWNLOAD "https://raw.githubusercontent.com/brycelelbach/wg21_p2300_execution/main/execution.bs"
+  file(DOWNLOAD "https://raw.githubusercontent.com/cplusplus/sender-receiver/main/execution.bs"
       ${CMAKE_BINARY_DIR}/execution.bs)
 endif()
 file(STRINGS "${CMAKE_BINARY_DIR}/execution.bs" STD_EXECUTION_BS_REVISION_LINE REGEX "Revision: [0-9]+")
@@ -72,13 +79,24 @@ rapids_cmake_build_type(Release)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
 # Don't build tests if configuring stdexec as a submodule of another
-# CMake project, unless they explicitly set STDEXEC_BUILD_TESTS=TRUE
-if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+# CMake project, unless they explicitly set STDEXEC_BUILD_TESTS=TRUE,
+# or they enabled CTest's BUILD_TESTING option
+if ((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) OR BUILD_TESTING)
     set(STDEXEC_BUILD_TESTS_DEFAULT ON)
 else()
     set(STDEXEC_BUILD_TESTS_DEFAULT OFF)
 endif()
 option(STDEXEC_BUILD_TESTS "Build stdexec tests" ${STDEXEC_BUILD_TESTS_DEFAULT})
+
+# STDEXEC_BUILD_TESTS is used solely to configure CTest's BUILD_TESTING option,
+# which is CMake's preferred option for enabling testing when using CTest.
+set(BUILD_TESTING ${STDEXEC_BUILD_TESTS})
+
+if (BUILD_TESTING)
+  # CTest automatically calls enable_testing() if BUILD_TESTING is ON
+  # https://cmake.org/cmake/help/latest/module/CTest.html#module:CTest
+  include(CTest)
+endif()
 
 ##############################################################################
 # - Dependencies -------------------------------------------------------------
@@ -86,7 +104,7 @@ option(STDEXEC_BUILD_TESTS "Build stdexec tests" ${STDEXEC_BUILD_TESTS_DEFAULT})
 # Initialize CPM
 rapids_cpm_init(OVERRIDE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/versions.json)
 
-if (STDEXEC_BUILD_TESTS)
+if (BUILD_TESTING)
     # Add Catch2
     set(Catch2_VERSION 2.13.6)
     # Always download it, don't attempt to do `find_package(Catch2)` first
@@ -381,13 +399,6 @@ option(STDEXEC_ENABLE_IO_URING_TESTS "Enable io_uring tests" ${STDEXEC_FOUND_IO_
 
 option(STDEXEC_BUILD_DOCS "Build stdexec documentation" OFF)
 option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
-option(BUILD_TESTING "" ${STDEXEC_BUILD_TESTS})
-
-if (STDEXEC_BUILD_TESTS)
-    # CTest automatically calls enable_testing() if BUILD_TESTING is ON
-    # https://cmake.org/cmake/help/latest/module/CTest.html#module:CTest
-    include(CTest)
-endif()
 
 # Configure documentation
 if(STDEXEC_BUILD_DOCS)
@@ -409,7 +420,7 @@ endif()
 
 include(CPack)
 
-install(TARGETS stdexec
+install(TARGETS stdexec system_context
         DESTINATION ${CMAKE_INSTALL_LIBDIR}
         EXPORT stdexec-exports)
 

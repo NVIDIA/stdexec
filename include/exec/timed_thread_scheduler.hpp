@@ -322,21 +322,18 @@ namespace exec {
       }
 
       auto get_env() const noexcept {
-        return stdexec::__env::__with(
-          timed_thread_scheduler{*context_},
-          stdexec::get_completion_scheduler<stdexec::set_value_t>);
+        return stdexec::prop{
+          stdexec::get_completion_scheduler<stdexec::set_value_t>,
+          timed_thread_scheduler{*context_}};
+      }
+
+      template <class Receiver>
+      auto connect(Receiver receiver) const & noexcept ->
+        typename _time_thrd_sched::timed_thread_schedule_at_op<Receiver>::__t {
+        return {*context_, time_point_, std::move(receiver)};
       }
 
      private:
-      STDEXEC_MEMFN_FRIEND(get_env);
-      STDEXEC_MEMFN_FRIEND(connect);
-
-      template <class Receiver>
-      STDEXEC_MEMFN_DECL(auto connect)(this const schedule_at& self, Receiver receiver) noexcept ->
-        typename _time_thrd_sched::timed_thread_schedule_at_op<Receiver>::__t {
-        return {*self.context_, self.time_point_, std::move(receiver)};
-      }
-
       timed_thread_scheduler get_scheduler() const noexcept;
 
       timed_thread_context* context_;

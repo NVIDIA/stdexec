@@ -23,12 +23,12 @@
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
 #include "__env.hpp"
+#include "__optional.hpp"
 #include "__meta.hpp"
 #include "__receivers.hpp"
 #include "__tag_invoke.hpp"
 
 #include <exception>
-#include <optional>
 
 namespace stdexec {
   namespace __read {
@@ -62,7 +62,7 @@ namespace stdexec {
     struct __state {
       using __query = _Tag;
       using __result = _Ty;
-      std::optional<_Ty> __result_;
+      __optional<_Ty> __result_;
     };
 
     template <class _Tag, class _Ty>
@@ -80,18 +80,14 @@ namespace stdexec {
     };
 
     struct __read_env_impl : __sexpr_defaults {
-      using is_dependent = void;
-
       template <class _Tag, class _Env>
       using __completions_t =
         __minvoke<__mtry_catch_q<__read::__completions_t, __q<__query_failed_error>>, _Tag, _Env>;
 
-      static constexpr auto get_completion_signatures =            //
-        []<class _Self, class _Env>(const _Self&, _Env&&) noexcept //
-        -> __completions_t<__data_of<_Self>, _Env> {
-        static_assert(sender_expr_for<_Self, __read_env_t>);
-        return {};
-      };
+      static constexpr auto get_completion_signatures = //
+        []<class _Self, class _Env>(const _Self&, _Env&&) noexcept -> __completions_t<__data_of<_Self>, _Env> {
+          return {};
+        };
 
       static constexpr auto get_state = //
         []<class _Self, class _Receiver>(const _Self&, _Receiver&) noexcept {
@@ -111,7 +107,7 @@ namespace stdexec {
         } else {
           constexpr bool _Nothrow = __nothrow_callable<__query, env_of_t<_Receiver>>;
           auto __query_fn = [&]() noexcept(_Nothrow) -> __result&& {
-            __state.__result_.emplace(__conv{[&]() noexcept(_Nothrow) {
+            __state.__result_.emplace(__emplace_from{[&]() noexcept(_Nothrow) {
               return __query()(stdexec::get_env(__rcvr));
             }});
             return static_cast<__result&&>(*__state.__result_);

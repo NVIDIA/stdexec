@@ -100,8 +100,7 @@ namespace nvexec {
 
         template <__decays_to<__t> Self, receiver Receiver>
           requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-        STDEXEC_MEMFN_DECL(
-          auto connect)(this Self&& self, Receiver rcvr)
+        static auto connect(Self&& self, Receiver rcvr)
           -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
           return stream_op_state<__copy_cvref_t<Self, Sender>>(
             static_cast<Self&&>(self).sndr_,

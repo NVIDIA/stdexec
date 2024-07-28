@@ -27,12 +27,12 @@ struct RunThread {
     std::span<char> buffer,
 #endif
     std::atomic<bool>& stop,
-    exec::numa_policy* numa) {
-    int numa_node = numa->thread_index_to_node(tid);
-    numa->bind_to_node(numa_node);
+    exec::numa_policy numa) {
+    int numa_node = numa.thread_index_to_node(tid);
+    numa.bind_to_node(numa_node);
     exec::nodemask mask{};
     mask.set(static_cast<std::size_t>(numa_node));
-    auto scheduler = pool.get_constrained_scheduler(mask);
+    auto scheduler = pool.get_constrained_scheduler(&mask);
     std::mutex mut;
     std::condition_variable cv;
     while (true) {
@@ -47,7 +47,7 @@ struct RunThread {
       auto [start, end] = exec::_pool_::even_share(total_scheds, tid, pool.available_parallelism());
       std::size_t scheds = end - start;
       std::atomic<std::size_t> counter{scheds};
-      auto env = exec::make_env(exec::with(stdexec::get_allocator, alloc));
+      auto env = exec::make_env(stdexec::prop{stdexec::get_allocator, alloc});
       while (scheds) {
         stdexec::start_detached(       //
           stdexec::schedule(scheduler) //
@@ -87,12 +87,12 @@ struct RunThread {
 };
 
 struct my_numa_distribution : public exec::default_numa_policy {
-  int thread_index_to_node(std::size_t index) override {
+  int thread_index_to_node(std::size_t index) const noexcept {
     return exec::default_numa_policy::thread_index_to_node(2 * index);
   }
 };
 
 int main(int argc, char** argv) {
   my_numa_distribution numa{};
-  my_main<exec::static_thread_pool, RunThread>(argc, argv, &numa);
+  my_main<exec::static_thread_pool, RunThread>(argc, argv, numa);
 }

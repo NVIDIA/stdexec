@@ -34,12 +34,12 @@
 // TODO: make these configurable by providing policy to the system context
 
 /// Gets the default system context implementation.
-extern "C" STDEXEC_ATTRIBUTE((weak))
+extern "C"
 __exec_system_context_interface*
   __get_exec_system_context_impl();
 
 /// Sets the default system context implementation.
-extern "C" STDEXEC_ATTRIBUTE((weak))
+extern "C"
   void
   __set_exec_system_context_impl(__exec_system_context_interface* __instance);
 
@@ -48,7 +48,7 @@ namespace exec {
     using namespace stdexec::tags;
 
     /// Transforms from a C API signal to the `set_xxx` completion signal.
-    template <typename _Rcvr>
+    template <class _Rcvr>
     inline void __pass_to_receiver(int __completion_type, void* __exception, _Rcvr&& __rcvr) {
       if (__completion_type == 0) {
         stdexec::set_value(std::forward<_Rcvr>(__rcvr));
@@ -62,7 +62,7 @@ namespace exec {
     }
 
     /// Same as a above, but allows passing arguments to set_value.
-    template <typename _Rcvr, typename... _SetValueArgs>
+    template <class _Rcvr, class... _SetValueArgs>
     inline void __pass_to_receiver_with_args(
       int __completion_type,
       void* __exception,
@@ -80,7 +80,7 @@ namespace exec {
     }
 
     /// The type large enough to store the data produced by a sender.
-    template <typename _Sender>
+    template <class _Sender>
     using __sender_data_t = decltype(stdexec::sync_wait(std::declval<_Sender>()).value());
 
   } // namespace __detail
@@ -178,7 +178,6 @@ namespace exec {
 
   /// The sender used to schedule new work in the system context.
   class system_sender {
-    STDEXEC_MEMFN_FRIEND(connect);
    public:
     /// Marks this type as being a sender; not to spec.
     using sender_concept = stdexec::sender_t;
@@ -200,10 +199,9 @@ namespace exec {
 
     /// Connects `__self` to `__rcvr`, returning the operation state containing the work to be done.
     template <stdexec::receiver _Rcvr>
-    STDEXEC_MEMFN_DECL(auto connect)(this system_sender&& __self, _Rcvr __rcvr) //
-      noexcept(stdexec::__nothrow_move_constructible<_Rcvr>)
-        -> __detail::__system_op<system_sender, _Rcvr> {
-      return {std::move(__rcvr), __self.__scheduler_};
+    auto connect(_Rcvr __rcvr) && noexcept(stdexec::__nothrow_move_constructible<_Rcvr>) //
+      -> __detail::__system_op<system_sender, _Rcvr> {
+      return {std::move(__rcvr), __scheduler_};
     }
 
    private:
@@ -379,17 +377,14 @@ namespace exec {
   template <stdexec::sender _Previous, std::integral _Size, class _Fn>
   class system_bulk_sender {
     /// Meta-function that returns the completion signatures of `this`.
-    template <typename _Self, typename _Env>
-    using __completions_t = stdexec::transform_completion_signatures_of<       //
-      stdexec::__copy_cvref_t<_Self, _Previous>,                               //
-      _Env,                                                                    //
-      stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)> //
-      >;
+    template <class _Self, class... _Env>
+    using __completions_t = stdexec::transform_completion_signatures<                            //
+      stdexec::__completion_signatures_of_t<stdexec::__copy_cvref_t<_Self, _Previous>, _Env...>, //
+      stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>>;
     template <stdexec::sender, std::integral, class, class>
     friend struct __detail::__bulk_state;
     template <stdexec::sender, std::integral, class, class>
     friend struct __detail::__bulk_intermediate_receiver;
-    STDEXEC_MEMFN_FRIEND(connect);
 
    public:
     /// Marks this type as being a sender
@@ -410,11 +405,10 @@ namespace exec {
 
     /// Connects `__self` to `__rcvr`, returning the operation state containing the work to be done.
     template <stdexec::receiver _Rcvr>
-    STDEXEC_MEMFN_DECL(auto connect)(this system_bulk_sender&& __self, _Rcvr __rcvr) //
-      noexcept(stdexec::__nothrow_move_constructible<_Rcvr>)
-        -> __detail::__system_bulk_op<_Previous, _Size, _Fn, _Rcvr> {
+    auto connect(_Rcvr __rcvr) && noexcept(stdexec::__nothrow_move_constructible<_Rcvr>) //
+      -> __detail::__system_bulk_op<_Previous, _Size, _Fn, _Rcvr> {
       using __receiver_t = __detail::__bulk_intermediate_receiver<_Previous, _Size, _Fn, _Rcvr>;
-      return {std::move(__self), std::move(__rcvr), [](auto& __op) {
+      return {std::move(*this), std::move(__rcvr), [](auto& __op) {
                 // Connect bulk input receiver with the previous operation and store in the operating state.
                 return stdexec::connect(
                   std::move(__op.__state_.__snd_.__previous_), __receiver_t{__op.__state_});
@@ -422,8 +416,8 @@ namespace exec {
     }
 
     /// Gets the completion signatures for this sender.
-    template <stdexec::__decays_to<system_bulk_sender> _Self, class _Env>
-    static auto get_completion_signatures(_Self&&, _Env&&) -> __completions_t<_Self, _Env> {
+    template <stdexec::__decays_to<system_bulk_sender> _Self, class... _Env>
+    static auto get_completion_signatures(_Self&&, _Env&&...) -> __completions_t<_Self, _Env...> {
       return {};
     }
 

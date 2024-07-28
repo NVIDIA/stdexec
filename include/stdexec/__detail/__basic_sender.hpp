@@ -155,8 +155,10 @@ namespace stdexec {
       };
 
     inline constexpr auto __sigs = //
-      [](__ignore, __ignore) noexcept {
-        return void();
+      []<class _Sender>(_Sender&& __sndr, __ignore = {}) noexcept {
+        static_assert(
+          __mnever<tag_of_t<_Sender>>,
+          "No customization of get_completion_signatures for this sender tag type.");
       };
 
     template <class _ReceiverId, class _Sexpr, class _Idx>
@@ -328,7 +330,7 @@ namespace stdexec {
       // template <std::size_t _Idx>
       // static std::ptrdiff_t __get_child_op_offset() noexcept {
       //   __op_state* __self = (__op_state*) &__self;
-      //   return (std::ptrdiff_t)((char*) &__tup::__get<_Idx>(__self->__inner_ops_) - static_cast<char*>(__self));
+      //   return (std::ptrdiff_t)((char*) &__tup::get<_Idx>(__self->__inner_ops_) - static_cast<char*>(__self));
       // }
 
       __op_state(_Sexpr&& __sexpr, _Receiver __rcvr) //
@@ -403,14 +405,6 @@ namespace stdexec {
       };
     }
 
-    template <class _Tag, class... _Child>
-    concept __is_non_dependent_sexpr = //
-      !requires { typename __sexpr_impl<_Tag>::is_dependent; }
-      && (__non_dependent_sender<_Child> && ...);
-
-    template <class _Tag, class _Data, class... _Child>
-    using __is_non_dependent_t = __mbool<__is_non_dependent_sexpr<_Tag, _Child...>>;
-
     template <class _Tag, class _Data, class... _Child>
     using __captures_t =
       decltype(__detail::__captures(_Tag(), __declval<_Data>(), __declval<_Child>()...));
@@ -434,7 +428,9 @@ namespace stdexec {
   };
 
   template <class _Tag>
-  struct __sexpr_impl : __sexpr_defaults { };
+  struct __sexpr_impl : __sexpr_defaults {
+    using not_specialized = void;
+  };
 
   using __detail::__enable_receiver_from_this;
 
@@ -460,10 +456,6 @@ namespace stdexec {
     using __tag_t = typename __desc_t::__tag;
     using __captures_t = __minvoke<__desc_t, __q<__detail::__captures_t>>;
 
-    static constexpr auto __is_non_dependent() noexcept -> bool {
-      return __v<__minvoke<__desc_t, __q<__detail::__is_non_dependent_t>>>;
-    }
-
     mutable __captures_t __impl_;
 
     template <class _Tag, class _Data, class... _Child>
@@ -486,20 +478,21 @@ namespace stdexec {
       return __sexpr_apply(*this, __detail::__drop_front(__impl<_Self>::get_attrs));
     }
 
-    template <__decays_to<__sexpr> _Self, class _Env>
+    template <__decays_to<__sexpr> _Self, class... _Env>
     STDEXEC_ATTRIBUTE((always_inline))
     static auto
-      get_completion_signatures(_Self&&, _Env&&) noexcept -> __msecond<
+      get_completion_signatures(_Self&&, _Env&&...) noexcept //
+      -> __msecond<
         __if_c<__decays_to<_Self, __sexpr>>,
-        __result_of<__impl<_Self>::get_completion_signatures, _Self, _Env>> {
+        __result_of<__impl<_Self>::get_completion_signatures, _Self, _Env...>> {
       return {};
     }
 
     // BUGBUG fix receiver constraint here:
     template <__decays_to<__sexpr> _Self, /*receiver*/ class _Receiver>
     STDEXEC_ATTRIBUTE((always_inline))
-    STDEXEC_MEMFN_DECL(
-      auto connect)(this _Self&& __self, _Receiver&& __rcvr)                  //
+    static auto
+      connect(_Self&& __self, _Receiver&& __rcvr)                       //
       noexcept(__noexcept_of<__impl<_Self>::connect, _Self, _Receiver>) //
       -> __msecond<
         __if_c<__decays_to<_Self, __sexpr>>,

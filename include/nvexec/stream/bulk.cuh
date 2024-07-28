@@ -107,18 +107,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class... Tys>
       using _set_value_t = completion_signatures<set_value_t(Tys...)>;
 
-      template <class Self, class Env>
+      template <class Self, class... Env>
       using _completion_signatures_t = //
-        __try_make_completion_signatures<
-          __copy_cvref_t<Self, Sender>,
-          Env,
+        transform_completion_signatures<
+          __completion_signatures_of_t< __copy_cvref_t<Self, Sender>, Env...>,
           _set_error_t,
-          __q<_set_value_t>>;
+          _set_value_t>;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-      STDEXEC_MEMFN_DECL(
-        auto connect)(this Self&& self, Receiver rcvr)
+      static auto connect(Self&& self, Receiver rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
           static_cast<Self&&>(self).sndr_,
@@ -129,8 +127,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           });
       }
 
-      template <__decays_to<__t> Self, class Env>
-      static auto get_completion_signatures(Self&&, Env&&) -> _completion_signatures_t<Self, Env> {
+      template <__decays_to<__t> Self, class... Env>
+      static auto get_completion_signatures(Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
         return {};
       }
 
@@ -338,18 +336,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class... Tys>
       using _set_value_t = completion_signatures<set_value_t(Tys...)>;
 
-      template <class Self, class Env>
+      template <class Self, class... Env>
       using _completion_signatures_t = //
-        __try_make_completion_signatures<
-          __copy_cvref_t<Self, Sender>,
-          Env,
+        transform_completion_signatures<
+          __completion_signatures_of_t< __copy_cvref_t<Self, Sender>, Env...>,
           _set_error_t,
-          __q<_set_value_t>>;
+          _set_value_t>;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-      STDEXEC_MEMFN_DECL(
-        auto connect)(this Self&& self, Receiver&& rcvr) //
+      static auto connect(Self&& self, Receiver&& rcvr) //
         -> multi_gpu_bulk::operation_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun> {
         auto sch = stdexec::get_completion_scheduler<set_value_t>(stdexec::get_env(self.sndr_));
         context_state_t context_state = sch.context_state_;
@@ -363,8 +359,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             context_state);
       }
 
-      template <__decays_to<__t> Self, class Env>
-      static auto get_completion_signatures(Self&&, Env&&) -> _completion_signatures_t<Self, Env> {
+      template <__decays_to<__t> Self, class... Env>
+      static auto get_completion_signatures(Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
         return {};
       }
 

@@ -55,7 +55,7 @@ namespace exec {
         _State __state_{};
 
         void start() & noexcept {
-          __state_.emplace(__conv{[&]() noexcept {
+          __state_.emplace(__emplace_from{[&]() noexcept {
             return static_cast<_Fun&&>(__fun_)(__ctx_);
           }});
         }
@@ -76,10 +76,9 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver_of<completion_signatures> _Receiver>
           requires __callable<_Fun, __context<_Receiver, _Args>&>
-                && constructible_from<_Fun, __copy_cvref_t<_Self, _Fun>>
-                && constructible_from<_Args, __copy_cvref_t<_Self, _Args>>
-        STDEXEC_MEMFN_DECL(
-          auto connect)(this _Self&& __self, _Receiver __rcvr)
+                  && constructible_from<_Fun, __copy_cvref_t<_Self, _Fun>>
+                  && constructible_from<_Args, __copy_cvref_t<_Self, _Args>>
+        static auto connect(_Self&& __self, _Receiver __rcvr)
           -> stdexec::__t<__operation<stdexec::__id<_Receiver>, _Fun, _ArgsId>> {
           static_assert(__nothrow_callable<_Fun, __context<_Receiver, _Args>&>);
           return {

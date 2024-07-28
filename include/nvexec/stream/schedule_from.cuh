@@ -143,9 +143,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <class Sender>
     struct source_sender_t : stream_sender_base {
       template <__decays_to<source_sender_t> Self, receiver Receiver>
-      STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr)
+      static auto connect(Self&& self, Receiver rcvr)
         -> connect_result_t<__copy_cvref_t<Self, Sender>, Receiver> {
-        return connect((static_cast<Self&&>(self)).sndr_, static_cast<Receiver&&>(rcvr));
+        return stdexec::connect(static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr));
       }
 
       auto get_env() const noexcept -> env_of_t<const Sender&> {
@@ -153,9 +153,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return stdexec::get_env(sndr_);
       }
 
-      template <__decays_to<source_sender_t> _Self, class _Env>
-      static auto get_completion_signatures(_Self&&, _Env&&)
-        -> __try_make_completion_signatures<__copy_cvref_t<_Self, Sender>, _Env> {
+      template <__decays_to<source_sender_t> _Self, class... _Env>
+      static auto get_completion_signatures(_Self&&, _Env&&...)
+        -> __completion_signatures_of_t<__copy_cvref_t<_Self, Sender>, _Env...> {
         return {};
       }
 
@@ -196,8 +196,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires sender_to<__copy_cvref_t<Self, source_sender_th>, Receiver>
-      STDEXEC_MEMFN_DECL(
-        auto connect)(this Self&& self, Receiver rcvr) //
+      static auto connect(Self&& self, Receiver rcvr) //
         -> stream_op_state_t<
           __copy_cvref_t<Self, source_sender_th>,
           receiver_t<Self, Receiver>,
@@ -216,13 +215,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return env_;
       }
 
-      template <__decays_to<__t> _Self, class _Env>
-      static auto get_completion_signatures(_Self&&, _Env&&) -> __try_make_completion_signatures<
-        __copy_cvref_t<_Self, Sender>,
-        _Env,
+      template <__decays_to<__t> _Self, class... _Env>
+      static auto get_completion_signatures(_Self&&, _Env&&...) //
+      -> transform_completion_signatures<
+        __completion_signatures_of_t<__copy_cvref_t<_Self, Sender>, _Env...>,
         completion_signatures<set_error_t(cudaError_t)>,
-        __q<_sched_from::value_completions_t>,
-        __q<_sched_from::error_completions_t>> {
+        _sched_from::value_completions_t,
+        _sched_from::error_completions_t> {
         return {};
       }
 

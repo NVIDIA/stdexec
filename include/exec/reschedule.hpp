@@ -53,15 +53,14 @@ namespace exec {
 
         template <receiver _Receiver>
           requires receiver_of<_Receiver, __completions<env_of_t<_Receiver>>>
-        STDEXEC_MEMFN_DECL(
-          auto connect)(this __sender, _Receiver __rcvr)
+        auto connect(_Receiver __rcvr) const
           -> connect_result_t<__schedule_sender_t<env_of_t<_Receiver>>, _Receiver> {
           auto __sched = get_scheduler(get_env(__rcvr));
           return stdexec::connect(schedule(__sched), static_cast<_Receiver&&>(__rcvr));
         }
 
         auto get_env() const noexcept {
-          return __env::__with{__scheduler(), get_completion_scheduler<set_value_t>};
+          return stdexec::prop{get_completion_scheduler<set_value_t>, __scheduler()};
         }
       };
 

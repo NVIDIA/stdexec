@@ -70,20 +70,14 @@ namespace tbbexec {
             return *this;
           }
 
-         private:
           template <class Receiver>
-          auto make_operation_(Receiver rcvr) const
+          auto connect(Receiver rcvr) const
             -> stdexec::__t<operation<DerivedPoolType, stdexec::__id<Receiver>>> {
             return stdexec::__t<operation<DerivedPoolType, stdexec::__id<Receiver>>>{
               this->pool_, static_cast<Receiver&&>(rcvr)};
           }
 
-          template <class Receiver>
-          STDEXEC_MEMFN_DECL(auto connect)(this sender sndr, Receiver rcvr)
-            -> stdexec::__t<operation<DerivedPoolType, stdexec::__id<Receiver>>> {
-            return sndr.make_operation_(std::move(rcvr));
-          }
-
+         private:
           friend struct DerivedPoolType::tbb_thread_pool::scheduler;
 
           explicit sender(DerivedPoolType& pool) noexcept
@@ -327,37 +321,33 @@ namespace tbbexec {
             Shape shape_;
             Fun fun_;
 
-            template <class Sender, class Env>
-            using with_error_invoke_t = stdexec::__if_c<
-              stdexec::__v<stdexec::__value_types_of_t<
-                Sender,
-                Env,
-                stdexec::__transform<
-                  stdexec::__q<__decay_ref>,
-                  stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>>,
-                stdexec::__q<stdexec::__mand>>>,
-              stdexec::completion_signatures<>,
-              stdexec::__eptr_completion>;
+            template <class Sender, class... Env>
+            using _with_error_invoke_t = stdexec::__eptr_completion_if_t<stdexec::__value_types_t<
+              stdexec::__completion_signatures_of_t<Sender, Env...>,
+              stdexec::__mtransform<
+                stdexec::__q1<__decay_ref>,
+                stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>>,
+              stdexec::__q<stdexec::__mand>>>;
 
             template <class... Tys>
-            using set_value_t =
+            using _set_value_t =
               stdexec::completion_signatures<stdexec::set_value_t(stdexec::__decay_t<Tys>...)>;
 
-            template <class Self, class Env>
-            using completion_signatures = stdexec::__try_make_completion_signatures<
-              stdexec::__copy_cvref_t<Self, Sender>,
-              Env,
-              with_error_invoke_t<stdexec::__copy_cvref_t<Self, Sender>, Env>,
-              stdexec::__q<set_value_t>>;
+            template <class Self, class... Env>
+            using completion_signatures = stdexec::transform_completion_signatures<
+              stdexec::__completion_signatures_of_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
+              _with_error_invoke_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
+              _set_value_t>;
 
             template <class Self, class Receiver>
             using bulk_op_state_t = stdexec::__t<
               bulk_op_state<stdexec::__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun>>;
 
             template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
-              requires stdexec::
-                receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-              STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Receiver rcvr) //
+              requires stdexec::receiver_of<
+                         Receiver,
+                         completion_signatures<Self, stdexec::env_of_t<Receiver>>>
+            static auto connect(Self&& self, Receiver rcvr) //
               noexcept(stdexec::__nothrow_constructible_from<
                        bulk_op_state_t<Self, Receiver>,
                        DerivedPoolType&,
@@ -373,9 +363,9 @@ namespace tbbexec {
                 static_cast<Receiver&&>(rcvr)};
             }
 
-            template <stdexec::__decays_to<__t> Self, class Env>
+            template <stdexec::__decays_to<__t> Self, class... Env>
             static auto
-              get_completion_signatures(Self&&, Env&&) -> completion_signatures<Self, Env> {
+              get_completion_signatures(Self&&, Env&&...) -> completion_signatures<Self, Env...> {
               return {};
             }
 

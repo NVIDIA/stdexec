@@ -56,7 +56,7 @@ namespace {
     Sndr sndr;
 
     template <ex::__decays_to<get_env_sender> Self, ex::receiver Rcvr>
-    STDEXEC_MEMFN_DECL(auto connect)(this Self&& self, Rcvr rcvr) {
+    static auto connect(Self&& self, Rcvr rcvr) {
       return ex::connect(
         static_cast<Self&&>(self).sndr, get_env_rcvr<Rcvr>{static_cast<Rcvr&&>(rcvr)});
     }
@@ -84,7 +84,7 @@ namespace {
 
   static const auto probe_env = probe_env_t{};
 
-  static const auto env = exec::make_env(exec::with(ex::get_scheduler, inline_scheduler{}));
+  static const auto env = exec::make_env(stdexec::prop{ex::get_scheduler, inline_scheduler{}});
 
   TEST_CASE("Can pass exec::on sender to start_detached", "[adaptors][exec::on]") {
     ex::start_detached(exec::on(inline_scheduler{}, ex::just()), env);

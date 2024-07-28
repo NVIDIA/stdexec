@@ -148,19 +148,20 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         stdexec::__t<
           _upon_error::receiver_t<max_result_size<Receiver>::value, stdexec::__id<Receiver>, Fun>>;
 
-      template <class Self, class Env>
+      template <class Error>
+      using _set_error_t = __set_value_invoke_t<Fun, Error>;
+
+      template <class Self, class... Env>
       using completion_signatures = //
-        __try_make_completion_signatures<
-          __copy_cvref_t<Self, Sender>,
-          Env,
+        transform_completion_signatures<
+          __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
           completion_signatures<set_error_t(cudaError_t)>,
-          __q<__sigs::__default_set_value>,
-          __mbind_front_q<__set_value_invoke_t, Fun>>;
+          __sigs::__default_set_value,
+          _set_error_t>;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
-      STDEXEC_MEMFN_DECL(
-        auto connect)(this Self&& self, Receiver rcvr)
+      static auto connect(Self&& self, Receiver rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
           static_cast<Self&&>(self).sndr_,
@@ -169,8 +170,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             -> receiver_t<Receiver> { return receiver_t<Receiver>(self.fun_, stream_provider); });
       }
 
-      template <__decays_to<__t> Self, class Env>
-      static auto get_completion_signatures(Self&&, Env&&) -> completion_signatures<Self, Env> {
+      template <__decays_to<__t> Self, class... Env>
+      static auto get_completion_signatures(Self&&, Env&&...) -> completion_signatures<Self, Env...> {
         return {};
       }
 

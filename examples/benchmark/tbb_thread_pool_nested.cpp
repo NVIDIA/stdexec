@@ -29,9 +29,9 @@ struct RunThread {
     [[maybe_unused]] std::span<char> buffer,
 #endif
     std::atomic<bool>& stop,
-    exec::numa_policy* numa) {
-    int numa_node = numa->thread_index_to_node(tid);
-    numa->bind_to_node(numa_node);
+    exec::numa_policy numa) {
+    int numa_node = numa.thread_index_to_node(tid);
+    numa.bind_to_node(numa_node);
     auto scheduler = pool.get_scheduler();
     while (true) {
       barrier.arrive_and_wait();

@@ -20,6 +20,7 @@
 #include "__utility.hpp"
 
 #include <cstddef>
+#include <memory>
 #include <new>
 #include <type_traits>
 
@@ -53,7 +54,7 @@ namespace stdexec {
       }
 
       STDEXEC_ATTRIBUTE((host, device))
-      static constexpr bool
+      static constexpr std::size_t
         index() noexcept {
         return __variant_npos;
       }
@@ -77,18 +78,7 @@ namespace stdexec {
         __destroy() noexcept {
         auto __index = std::exchange(__index_, __variant_npos);
         if (__variant_npos != __index) {
-#if STDEXEC_NVHPC()
-          // Unknown nvc++ name lookup bug
-          ((_Is == __index ? reinterpret_cast<const __at<_Is> *>(__storage_)->_Ts::~_Ts()
-                           : void(0)),
-           ...);
-#else
-          // casting the destructor expression to void is necessary for MSVC in
-          // /permissive- mode.
-          ((_Is == __index ? void(reinterpret_cast<const __at<_Is> *>(__storage_)->~_Ts())
-                           : void(0)),
-           ...);
-#endif
+          ((_Is == __index ? std::destroy_at(static_cast<_Ts *>(__get_ptr())) : void(0)), ...);
         }
       }
 
@@ -216,10 +206,10 @@ namespace stdexec {
   using __uniqued_variant_for = __mcall<__munique<__qq<__variant_for>>, __decay_t<Ts>...>;
 
   // So we can use __variant as a typelist
-  template <class _Fn, auto _Idx, class... _Ts>
-    requires __minvocable<_Fn, _Ts...>
-  struct __uncurry_<_Fn, __variant<_Idx, _Ts...>> {
-    using __t = __minvoke<_Fn, _Ts...>;
+  template <auto _Idx, class... _Ts>
+  struct __muncurry_<__variant<_Idx, _Ts...>> {
+    template <class _Fn>
+    using __f = __minvoke<_Fn, _Ts...>;
   };
 } // namespace stdexec
 

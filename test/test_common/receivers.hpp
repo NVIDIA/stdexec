@@ -135,7 +135,7 @@ namespace {
       this->set_called();
     }
 
-    template <typename... Ts>
+    template <class... Ts>
     void set_value(Ts...) noexcept {
       FAIL_CHECK("set_value called on expect_void_receiver with some non-void value");
     }
@@ -175,7 +175,7 @@ namespace {
 
   struct env_tag { };
 
-  template <class Env = empty_env, typename... Ts>
+  template <class Env = empty_env, class... Ts>
   struct expect_value_receiver : base_expect_receiver<Env> {
     explicit(sizeof...(Ts) != 1) expect_value_receiver(Ts... vals)
       : values_(std::move(vals)...) {
@@ -191,7 +191,7 @@ namespace {
       this->set_called();
     }
 
-    template <typename... Us>
+    template <class... Us>
     void set_value(const Us&...) noexcept {
       FAIL_CHECK("set_value called with wrong value types on expect_value_receiver");
     }
@@ -200,7 +200,7 @@ namespace {
       FAIL_CHECK("set_stopped called on expect_value_receiver");
     }
 
-    template <typename E>
+    template <class E>
     void set_error(E) noexcept {
       FAIL_CHECK("set_error called on expect_value_receiver");
     }
@@ -209,7 +209,7 @@ namespace {
     std::tuple<Ts...> values_;
   };
 
-  template <typename T, class Env = empty_env>
+  template <class T, class Env = empty_env>
   class expect_value_receiver_ex {
     T* dest_;
     Env env_{};
@@ -230,7 +230,7 @@ namespace {
       *dest_ = val;
     }
 
-    template <typename... Ts>
+    template <class... Ts>
     void set_value(Ts...) noexcept {
       FAIL_CHECK("set_value called with wrong value types on expect_value_receiver_ex");
     }
@@ -256,7 +256,7 @@ namespace {
       : base_expect_receiver<Env>(std::move(env)) {
     }
 
-    template <typename... Ts>
+    template <class... Ts>
     void set_value(Ts...) noexcept {
       FAIL_CHECK("set_value called on expect_stopped_receiver");
     }
@@ -283,7 +283,7 @@ namespace {
       , env_(std::move(env)) {
     }
 
-    template <typename... Ts>
+    template <class... Ts>
     void set_value(Ts...) noexcept {
       FAIL_CHECK("set_value called on expect_stopped_receiver_ex");
     }
@@ -316,8 +316,8 @@ namespace {
     }
   }
 
-  template <typename T>
-  inline T to_comparable(T value) {
+  template <class T>
+  inline const T& to_comparable(const T& value) {
     return value;
   }
 
@@ -346,7 +346,7 @@ namespace {
       return *this;
     }
 
-    template <typename... Ts>
+    template <class... Ts>
     void set_value(Ts...) noexcept {
       FAIL_CHECK("set_value called on expect_error_receiver");
     }
@@ -362,7 +362,7 @@ namespace {
       }
     }
 
-    template <typename E>
+    template <class E>
     void set_error(E) noexcept {
       FAIL_CHECK("set_error called on expect_error_receiver with wrong error type");
     }
@@ -384,7 +384,7 @@ namespace {
       , env_(std::move(env)) {
     }
 
-    template <typename... Ts>
+    template <class... Ts>
     void set_value(Ts...) noexcept {
       FAIL_CHECK("set_value called on expect_error_receiver_ex");
     }
@@ -418,7 +418,7 @@ namespace {
       : state_(&state) {
     }
 
-    template <typename... Args>
+    template <class... Args>
     void set_value(Args...) noexcept {
       *state_ = 0;
     }
@@ -427,7 +427,7 @@ namespace {
       *state_ = 1;
     }
 
-    template <typename E>
+    template <class E>
     void set_error(E) noexcept {
       *state_ = 2;
     }
@@ -444,7 +444,7 @@ namespace {
     rvalref,
   };
 
-  template <typename T>
+  template <class T>
   struct typecat_receiver {
     using receiver_concept = stdexec::receiver_t;
     T* value_;
@@ -478,12 +478,12 @@ namespace {
     }
   };
 
-  template <typename F>
+  template <class F>
   struct fun_receiver {
     using receiver_concept = stdexec::receiver_t;
     F f_;
 
-    template <typename... Ts>
+    template <class... Ts>
     void set_value(Ts... vals) noexcept {
       try {
         std::move(f_)(static_cast<Ts&&>(vals)...);
@@ -507,12 +507,12 @@ namespace {
     }
   };
 
-  template <typename F>
+  template <class F>
   fun_receiver<F> make_fun_receiver(F f) {
     return fun_receiver<F>{std::forward<F>(f)};
   }
 
-  template <ex::sender S, typename... Ts>
+  template <ex::sender S, class... Ts>
   inline void wait_for_value(S&& snd, Ts&&... val) {
     // Ensure that the given sender type has only one variant for set_value calls
     // If not, sync_wait will not work

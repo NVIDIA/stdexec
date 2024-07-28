@@ -23,6 +23,7 @@
 #include "__env.hpp"
 #include "__intrusive_ptr.hpp"
 #include "__intrusive_slist.hpp"
+#include "__optional.hpp"
 #include "__meta.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__tuple.hpp"
@@ -33,7 +34,6 @@
 
 #include <exception>
 #include <mutex>
-#include <optional>
 
 namespace stdexec {
   ////////////////////////////////////////////////////////////////////////////
@@ -60,7 +60,7 @@ namespace stdexec {
     template <class _BaseEnv>
     using __env_t = //
       __env::__join_t<
-        __env::__with<inplace_stop_token, get_stop_token_t>,
+        prop<get_stop_token_t, inplace_stop_token>,
         _BaseEnv>; // BUGBUG NOT TO SPEC
 
     template <class _Receiver>
@@ -156,7 +156,7 @@ namespace stdexec {
       using __sh_state_ptr_t = __result_of<__get_sh_state, _CvrefSender&>;
       using __sh_state_t = typename __sh_state_ptr_t::element_type;
 
-      std::optional<stop_callback_for_t<__stok_t, __local_state&>> __on_stop_{};
+      __optional<stop_callback_for_t<__stok_t, __local_state&>> __on_stop_{};
       __sh_state_ptr_t __sh_state_;
     };
 
@@ -230,8 +230,8 @@ namespace stdexec {
 
       explicit __shared_state(_CvrefSender&& __sndr, _Env __env)
         : __env_(__env::__join(
-          __env::__with(__stop_source_.get_token(), get_stop_token),
-          static_cast<_Env&&>(__env)))
+            prop{get_stop_token, __stop_source_.get_token()},
+            static_cast<_Env&&>(__env)))
         , __shared_op_(connect(static_cast<_CvrefSender&&>(__sndr), __receiver_t{this})) {
         // add one ref count to account for the case where there are no watchers left but the
         // shared op is still running.
@@ -329,7 +329,14 @@ namespace stdexec {
         }
 
         STDEXEC_ASSERT(__waiters_copy.front() != __get_tombstone());
-        for (__local_state_base* __item: __waiters_copy) {
+        for (auto __itr = __waiters_copy.begin(); __itr != __waiters_copy.end(); ) {
+          __local_state_base* __item = *__itr;
+
+          // We must increment the iterator before calling notify, since notify
+          // may end up triggering *__item to be destructed on another thread,
+          // and the intrusive slist's iterator increment relies on __item.
+          ++__itr;
+
           __item->__notify_(__item);
         }
 
@@ -351,8 +358,8 @@ namespace stdexec {
         completion_signatures<
           set_error_t(__minvoke<_Cvref, std::exception_ptr>),
           set_stopped_t()>, // NOT TO SPEC
-        __transform<_Cvref, __mcompose<__q<completion_signatures>, __qf<set_value_t>>>,
-        __transform<_Cvref, __mcompose<__q<completion_signatures>, __qf<set_error_t>>>>;
+        __mtransform<_Cvref, __mcompose<__q<completion_signatures>, __qf<set_value_t>>>,
+        __mtransform<_Cvref, __mcompose<__q<completion_signatures>, __qf<set_error_t>>>>;
 
     // split completes with const T&. ensure_started completes with T&&.
     template <class _Tag>
@@ -406,7 +413,7 @@ namespace stdexec {
       };
 
       static constexpr auto get_completion_signatures = //
-        []<class _Self, class _OtherEnv>(const _Self&, _OtherEnv&&) noexcept
+        []<class _Self>(const _Self&, auto&&...) noexcept
         -> __completions<_Tag, typename __data_of<_Self>::__sh_state_t> {
         static_assert(sender_expr_for<_Self, _Tag>);
         return {};

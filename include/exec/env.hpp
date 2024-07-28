@@ -22,13 +22,13 @@ STDEXEC_PRAGMA_IGNORE_EDG(1302)
 
 namespace exec {
   template <class _Tag, class _Value>
-  using with_t = stdexec::__env::__with<_Value, _Tag>;
+  using with_t = stdexec::prop<_Tag, _Value>;
 
   namespace __envs {
     struct __with_t {
       template <class _Tag, class _Value>
       auto operator()(_Tag, _Value&& __val) const {
-        return stdexec::__env::__with(static_cast<_Value&&>(__val), _Tag());
+        return stdexec::prop{_Tag(), static_cast<_Value&&>(__val)};
       }
     };
 
@@ -120,8 +120,7 @@ namespace exec {
 
       template <__decays_to<__sender> _Self, class _Receiver>
         requires receiver_of<_Receiver, __completions_t<env_of_t<_Receiver>>>
-      STDEXEC_MEMFN_DECL(
-        auto connect)(this _Self&& __self, _Receiver __rcvr) //
+      static auto connect(_Self&& __self, _Receiver __rcvr) //
         noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
           -> __operation_t<_Tag, __default_t<env_of_t<_Receiver>>, _Receiver> {
         return {{}, static_cast<_Self&&>(__self).__default_, static_cast<_Receiver&&>(__rcvr)};

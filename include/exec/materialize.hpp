@@ -80,8 +80,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-        STDEXEC_MEMFN_DECL(
-          auto connect)(this _Self&& __self, _Receiver&& __receiver) //
+        static auto connect(_Self&& __self, _Receiver __receiver) //
           noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
             -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
           return stdexec::connect(
@@ -95,18 +94,18 @@ namespace exec {
         template <class _Err>
         using __materialize_error = completion_signatures<set_value_t(set_error_t, _Err)>;
 
-        template <class _Env>
+        template <class... _Env>
         using __completion_signatures_for_t = //
           __transform_completion_signatures<
-            __completion_signatures_of_t<_Sender, _Env>,
+            __completion_signatures_of_t<_Sender, _Env...>,
             __materialize_value,
             __materialize_error,
             completion_signatures<set_value_t(set_stopped_t)>,
-            __mappend_into_q<completion_signatures>::__f>;
+            __mconcat<__qq<completion_signatures>>::__f>;
 
-        template <__decays_to<__t> _Self, class _Env>
-        static auto get_completion_signatures(_Self&&, _Env&&) //
-          -> __completion_signatures_for_t<_Env> {
+        template <__decays_to<__t> _Self, class... _Env>
+        static auto get_completion_signatures(_Self&&, _Env&&...) //
+          -> __completion_signatures_for_t<_Env...> {
           return {};
         }
 
@@ -191,8 +190,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-        STDEXEC_MEMFN_DECL(
-          auto connect)(this _Self&& __self, _Receiver&& __receiver) //
+        static auto connect(_Self&& __self, _Receiver __receiver) //
           noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
             -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
           return stdexec::connect(
@@ -204,16 +202,19 @@ namespace exec {
           requires __completion_tag<__decay_t<_Tag>>
         using __dematerialize_value = completion_signatures<__decay_t<_Tag>(_Args...)>;
 
-        template <class _Env>
-        using __completion_signatures_for_t = __try_make_completion_signatures<
-          _Sender,
-          _Env,
-          completion_signatures<>,
-          __q<__dematerialize_value>>;
+        template <class... Ts>
+        using __foo = __meval<__dematerialize_value, Ts...>;
 
-        template <__decays_to<__t> _Self, class _Env>
-        static auto get_completion_signatures(_Self&&, _Env&&) //
-          -> __completion_signatures_for_t<_Env> {
+        template <class... _Env>
+        using __completion_signatures_for_t = //
+          transform_completion_signatures<
+            __completion_signatures_of_t<_Sender, _Env...>,
+            completion_signatures<>,
+            __mtry_q<__dematerialize_value>::template __f>;
+
+        template <__decays_to<__t> _Self, class... _Env>
+        static auto get_completion_signatures(_Self&&, _Env&&...) //
+          -> __completion_signatures_for_t<_Env...> {
           return {};
         }
 

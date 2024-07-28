@@ -154,31 +154,32 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class _Error>
       using _set_error_t = completion_signatures<set_error_t(_Error)>;
 
-      template <class Self, class Env>
+      template <class Self, class... Env>
       using __error_completions_t = //
         __meval<
           __concat_completion_signatures,
           __with_error_invoke_t<
+            __callable_error<"In nvexec::then(Sender, Function)..."_mstr>,
             set_value_t,
             Fun,
             __copy_cvref_t<Self, Sender>,
-            Env,
-            __callable_error<"In nvexec::then(Sender, Function)..."_mstr>>,
+            Env...>,
           completion_signatures<set_error_t(cudaError_t)>>;
 
-      template <class Self, class Env>
+      template <class... As>
+      using _set_value_t = __set_value_invoke_t<Fun, As...>;
+
+      template <class Self, class... Env>
       using _completion_signatures_t = //
-        __try_make_completion_signatures<
-          __copy_cvref_t<Self, Sender>,
-          Env,
-          __error_completions_t<Self, Env>,
-          __mbind_front_q<__set_value_invoke_t, Fun>,
-          __q<_set_error_t>>;
+        transform_completion_signatures<
+          __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
+          __error_completions_t<Self, Env...>,
+          _set_value_t,
+          _set_error_t>;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-      STDEXEC_MEMFN_DECL(
-        auto connect)(this Self&& self, Receiver rcvr)
+      static auto connect(Self&& self, Receiver rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
           static_cast<Self&&>(self).sndr_,
@@ -187,8 +188,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             -> receiver_t<Receiver> { return receiver_t<Receiver>(self.fun_, stream_provider); });
       }
 
-      template <__decays_to<__t> Self, class Env>
-      static auto get_completion_signatures(Self&&, Env&&) -> _completion_signatures_t<Self, Env> {
+      template <__decays_to<__t> Self, class... Env>
+      static auto get_completion_signatures(Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
         return {};
       }
 

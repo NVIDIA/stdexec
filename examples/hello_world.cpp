@@ -24,6 +24,7 @@ using namespace stdexec;
 using stdexec::sync_wait;
 
 int main() {
+  exec::numa_policy numa{exec::no_numa_policy{}};
   exec::static_thread_pool ctx{8};
   scheduler auto sch = ctx.get_scheduler();                              // 1
                                                                          //
@@ -36,7 +37,6 @@ int main() {
     });                                                                  // 3
                                                                          //
   sender auto add_42 = then(hi_again, [](int arg) { return arg + 42; }); // 4
-                                                                         //
   auto [i] = sync_wait(std::move(add_42)).value();                       // 5
   std::cout << "Result: " << i << std::endl;
 

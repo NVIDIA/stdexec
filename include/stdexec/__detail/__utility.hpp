@@ -19,10 +19,13 @@
 #include "__concepts.hpp"
 #include "__type_traits.hpp"
 
-#include <type_traits>
 #include <initializer_list>
+#include <memory> // for addressof
+#include <type_traits>
 
 namespace stdexec {
+  constexpr std::size_t __npos = ~0UL;
+
   template <class...>
   struct __undefined;
 
@@ -83,15 +86,19 @@ namespace stdexec {
     return __m;
   }
 
-  template <class _Ty, class... _Ts>
-  inline constexpr std::size_t __index_of() noexcept {
-    constexpr bool __same[] = {STDEXEC_IS_SAME(_Ty, _Ts)...};
-    for (std::size_t __i = 0; __i < sizeof...(_Ts); ++__i) {
-      if (__same[__i]) {
-        return __i;
+  inline constexpr std::size_t __pos_of(const bool* const __first, const bool* const __last) noexcept {
+    for (const bool* __where = __first; __where != __last; ++__where) {
+      if (*__where) {
+        return static_cast<std::size_t>(__where - __first);
       }
     }
-    return ~0UL;
+    return __npos;
+  }
+
+  template <class _Ty, class... _Ts>
+  inline constexpr std::size_t __index_of() noexcept {
+    constexpr bool __same[] = {STDEXEC_IS_SAME(_Ty, _Ts)..., false};
+    return __pos_of(__same, __same + sizeof...(_Ts));
   }
 
   namespace __detail {
@@ -133,6 +140,29 @@ namespace stdexec {
 
   template <class _Ty>
   _Ty __decay_copy(_Ty) noexcept;
+
+  template <class _Ty>
+  struct __indestructible {
+    template <class... _Us>
+    constexpr __indestructible(_Us&&... __us) noexcept(__nothrow_constructible_from<_Ty, _Us...>)
+      : __value(static_cast<_Us&&>(__us)...) {
+    }
+
+    constexpr ~__indestructible() {
+    }
+
+    _Ty& get() noexcept {
+      return __value;
+    }
+
+    const _Ty& get() const noexcept {
+      return __value;
+    }
+
+    union {
+      _Ty __value;
+    };
+  };
 } // namespace stdexec
 
 #if defined(__cpp_auto_cast) && (__cpp_auto_cast >= 202110UL)
