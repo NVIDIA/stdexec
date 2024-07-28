@@ -282,11 +282,11 @@ namespace stdexec {
   template <class _Ty>
   concept __nothrow_copy_constructible = __nothrow_constructible_from<_Ty, const _Ty&>;
 
-  template <class _Ty>
-  concept __decay_copyable = constructible_from<__decay_t<_Ty>, _Ty>;
+  template <class... _Ts>
+  concept __decay_copyable = (constructible_from<__decay_t<_Ts>, _Ts> && ...);
 
-  template <class _Ty>
-  concept __nothrow_decay_copyable = __nothrow_constructible_from<__decay_t<_Ty>, _Ty>;
+  template <class... _Ts>
+  concept __nothrow_decay_copyable = (__nothrow_constructible_from<__decay_t<_Ts>, _Ts> && ...);
 
   template <class _Ty, class _Up>
   concept __decays_to_derived_from = derived_from<__decay_t<_Ty>, _Up>;

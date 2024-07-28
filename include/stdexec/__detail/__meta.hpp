@@ -295,7 +295,7 @@ namespace stdexec {
     auto operator,(__msuccess) const noexcept -> _ERROR_;
   };
 
-  template <__mstring _What>
+  template <__mstring... _What>
   struct _WHAT_ { };
 
   template <class _What, class... _With>
