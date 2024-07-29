@@ -18,8 +18,7 @@
 
 #include "../stdexec/execution.hpp"
 #include "../stdexec/concepts.hpp"
-
-#include "__detail/__manual_lifetime.hpp"
+#include "../stdexec/__detail/__manual_lifetime.hpp"
 
 namespace exec {
   namespace __final {
@@ -34,7 +33,7 @@ namespace exec {
       using _Receiver = __t<_ReceiverId>;
 
       _Receiver __receiver_{};
-      __manual_lifetime<_ResultType> __result_{};
+      stdexec::__manual_lifetime<_ResultType> __result_{};
     };
 
     template <class... _Args>

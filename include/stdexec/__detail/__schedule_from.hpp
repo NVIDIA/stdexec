@@ -159,7 +159,7 @@ namespace stdexec {
 
     template <class _Scheduler, class _Sexpr, class _Receiver>
     struct __state
-      : __enable_receiver_from_this<_Sexpr, _Receiver>
+      : __enable_receiver_from_this<_Sexpr, _Receiver, __state<_Scheduler, _Sexpr, _Receiver>>
       , __immovable {
       using __variant_t = __variant_for<__child_of<_Sexpr>, env_of_t<_Receiver>>;
       using __receiver2_t = __receiver2<_Scheduler, _Sexpr, _Receiver>;

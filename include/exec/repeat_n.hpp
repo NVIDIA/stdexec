@@ -21,10 +21,10 @@
 #include "../stdexec/functional.hpp"
 #include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__basic_sender.hpp"
+#include "../stdexec/__detail/__manual_lifetime.hpp"
 
 #include "on.hpp"
 #include "trampoline_scheduler.hpp"
-#include "__detail/__manual_lifetime.hpp"
 
 #include <atomic>
 #include <concepts>
@@ -83,7 +83,9 @@ namespace exec {
     STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
 
     template <class _Sender, class _Receiver>
-    struct __repeat_n_state : stdexec::__enable_receiver_from_this<_Sender, _Receiver> {
+    struct __repeat_n_state
+      : stdexec::
+          __enable_receiver_from_this<_Sender, _Receiver, __repeat_n_state<_Sender, _Receiver>> {
       using __child_count_pair_t = __decay_t<__data_of<_Sender>>;
       using __child_t = decltype(__child_count_pair_t::__child_);
       using __receiver_t = stdexec::__t<__receiver<__id<_Sender>, __id<_Receiver>>>;
@@ -92,7 +94,7 @@ namespace exec {
 
       __child_count_pair<__child_t> __pair_;
       std::atomic_flag __started_{};
-      __manual_lifetime<__child_op_t> __child_op_;
+      stdexec::__manual_lifetime<__child_op_t> __child_op_;
       trampoline_scheduler __sched_;
 
       __repeat_n_state(_Sender &&__sndr, _Receiver &)
@@ -112,7 +114,7 @@ namespace exec {
       }
 
       void __connect() {
-        __child_op_.__construct_with([this] {
+        __child_op_.__construct_from([this] {
           return stdexec::connect(stdexec::on(__sched_, __pair_.__child_), __receiver_t{this});
         });
       }
