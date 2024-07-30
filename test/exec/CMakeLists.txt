@@ -43,6 +43,8 @@ set(exec_test_sources
     $<$<BOOL:${STDEXEC_ENABLE_IO_URING_TESTS}>:test_io_uring_context.cpp>
     test_trampoline_scheduler.cpp
     test_sequence_senders.cpp
+    test_sequence.cpp
+    test_just_from.cpp
     sequence/test_any_sequence_of.cpp
     sequence/test_empty_sequence.cpp
     sequence/test_ignore_all_values.cpp

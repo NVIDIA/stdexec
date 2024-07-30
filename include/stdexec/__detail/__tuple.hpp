@@ -108,21 +108,21 @@ namespace stdexec {
     template <std::size_t _Idx, class _Ty>
     STDEXEC_ATTRIBUTE((host, device, always_inline))
     constexpr _Ty &&
-      __get(__box<_Ty, _Idx> &&__self) noexcept {
+      get(__box<_Ty, _Idx> &&__self) noexcept {
       return static_cast<_Ty &&>(__self.__value);
     }
 
     template <std::size_t _Idx, class _Ty>
     STDEXEC_ATTRIBUTE((host, device, always_inline))
     constexpr _Ty &
-      __get(__box<_Ty, _Idx> &__self) noexcept {
+      get(__box<_Ty, _Idx> &__self) noexcept {
       return __self.__value;
     }
 
     template <std::size_t _Idx, class _Ty>
     STDEXEC_ATTRIBUTE((host, device, always_inline))
     constexpr const _Ty &
-      __get(const __box<_Ty, _Idx> &__self) noexcept {
+      get(const __box<_Ty, _Idx> &__self) noexcept {
       return __self.__value;
     }
 
