@@ -21,14 +21,14 @@
 #include "../stdexec/__detail/__config.hpp"
 #include "../stdexec/__detail/__intrusive_queue.hpp"
 #include "../stdexec/__detail/__meta.hpp"
-#include "./__detail/__atomic_intrusive_queue.hpp"
-#include "./__detail/__bwos_lifo_queue.hpp"
-#include "./__detail/__manual_lifetime.hpp"
-#include "./__detail/__xorshift.hpp"
-#include "./__detail/__numa.hpp"
+#include "../stdexec/__detail/__manual_lifetime.hpp"
+#include "__detail/__atomic_intrusive_queue.hpp"
+#include "__detail/__bwos_lifo_queue.hpp"
+#include "__detail/__xorshift.hpp"
+#include "__detail/__numa.hpp"
 
-#include "./sequence_senders.hpp"
-#include "./sequence/iterate.hpp"
+#include "sequence_senders.hpp"
+#include "sequence/iterate.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -1449,7 +1449,7 @@ namespace exec {
           using ItemOperation = connect_result_t<NextSender, NextReceiver>;
 
           using ItemAllocator = typename std::allocator_traits<Allocator>::template rebind_alloc<
-            __manual_lifetime<ItemOperation>>;
+            stdexec::__manual_lifetime<ItemOperation>>;
 
           std::vector<__manual_lifetime<ItemOperation>, ItemAllocator> items_;
 
@@ -1482,7 +1482,7 @@ namespace exec {
             std::size_t i0 = 0;
             while (i0 + chunkSize < size) {
               for (std::size_t i = i0; i < i0 + chunkSize; ++i) {
-                items_[i].__construct_with([&] {
+                items_[i].__construct_from([&] {
                   return stdexec::connect(
                     set_next(this->rcvr_, ItemSender{this, it + i}), NextReceiver{this});
                 });
@@ -1495,7 +1495,7 @@ namespace exec {
               i0 += chunkSize;
             }
             for (std::size_t i = i0; i < size; ++i) {
-              items_[i].__construct_with([&] {
+              items_[i].__construct_from([&] {
                 return stdexec::connect(
                   set_next(this->rcvr_, ItemSender{this, it + i}), NextReceiver{this});
               });

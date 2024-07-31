@@ -16,7 +16,7 @@
 #pragma once
 
 #include <stdexec/execution.hpp>
-#include <exec/__detail/__manual_lifetime.hpp>
+#include <stdexec/__detail/__manual_lifetime.hpp>
 
 namespace exec {
   namespace _seq {
@@ -118,8 +118,8 @@ namespace exec {
         stdexec::connect_result_t<Sndr, _rcvr<Sndr, Rest...>> _op;
       };
 
-      __manual_lifetime<_head_t> _head;
-      __manual_lifetime<_ops_variant<Rest...>> _tail;
+      stdexec::__manual_lifetime<_head_t> _head;
+      stdexec::__manual_lifetime<_ops_variant<Rest...>> _tail;
     };
 
     template <class Rcvr, class... Sndrs>
