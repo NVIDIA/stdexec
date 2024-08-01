@@ -91,7 +91,7 @@ namespace stdexec {
     template <class _CvrefSender, class _Receiver>
     struct __local_state
       : __local_state_base
-      , __enable_receiver_from_this<_CvrefSender, _Receiver> {
+      , __enable_receiver_from_this<_CvrefSender, _Receiver, __local_state<_CvrefSender, _Receiver>> {
       using __tag_t = tag_of_t<_CvrefSender>;
       using __stok_t = stop_token_of_t<env_of_t<_Receiver>>;
       static_assert(__one_of<__tag_t, __split::__split_t, __ensure_started::__ensure_started_t>);
