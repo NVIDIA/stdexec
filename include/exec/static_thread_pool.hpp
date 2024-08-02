@@ -1115,20 +1115,6 @@ namespace exec {
       }
     };
 
-    template <class Receiver>
-    auto make_set_value_fn(Receiver& rcvr) noexcept {
-      return [&](auto&... args) {
-        stdexec::set_value(static_cast<Receiver&&>(rcvr), std::move(args)...);
-      };
-    }
-
-    template <class Fun>
-    auto make_bulk_visitor_fn(Fun& fun) noexcept {
-      return [&](auto& tupl) -> void {
-        std::apply([&](auto&... args) -> void { fun(args...); }, tupl);
-      };
-    }
-
     template <class CvrefSender, class Receiver, class Shape, class Fun, bool MayThrow>
     struct static_thread_pool_::bulk_shared_state {
       struct bulk_task : task_base {
@@ -1147,7 +1133,9 @@ namespace exec {
               }
             };
 
-            auto completion = _pool_::make_set_value_fn(sh_state.rcvr_);
+            auto completion = [&](auto&... args) {
+              stdexec::set_value(static_cast<Receiver&&>(sh_state.rcvr_), std::move(args)...);
+            };
 
             if constexpr (MayThrow) {
               try {
@@ -1212,7 +1200,9 @@ namespace exec {
 
       template <class F>
       void apply(F f) {
-        std::visit(_pool_::make_bulk_visitor_fn(f), data_);
+        std::visit(
+          [&](auto& tupl) -> void { std::apply([&](auto&... args) -> void { f(args...); }, tupl); },
+          data_);
       }
 
       bulk_shared_state(static_thread_pool_& pool, Receiver rcvr, Shape shape, Fun fun)
@@ -1258,7 +1248,9 @@ namespace exec {
         if (state.shape_) {
           enqueue();
         } else {
-          state.apply(_pool_::make_set_value_fn(state.rcvr_));
+          state.apply([&](auto&... args) {
+            stdexec::set_value(std::move(state.rcvr_), std::move(args)...);
+          });
         }
       }
 
