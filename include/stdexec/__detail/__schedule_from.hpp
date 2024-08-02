@@ -166,12 +166,10 @@ namespace stdexec {
 
       __variant_t __data_;
       connect_result_t<schedule_result_t<_Scheduler>, __receiver2_t> __state2_;
-      STDEXEC_APPLE_CLANG(__state* __self_;)
 
       explicit __state(_Scheduler __sched)
         : __data_()
-        , __state2_(connect(schedule(__sched), __receiver2_t{this}))
-            STDEXEC_APPLE_CLANG(, __self_(this)) {
+        , __state2_(connect(schedule(__sched), __receiver2_t{this})) {
       }
     };
 
@@ -224,7 +222,6 @@ namespace stdexec {
           _Receiver& __rcvr,
           _Tag __tag,
           _Args&&... __args) noexcept -> void {
-        STDEXEC_APPLE_CLANG(__state.__self_ == &__state ? void() : std::terminate());
         // Write the tag and the args into the operation state so that we can forward the completion
         // from within the scheduler's execution context.
         if constexpr (__nothrow_callable<__tup::__mktuple_t, _Tag, _Args...>) {
