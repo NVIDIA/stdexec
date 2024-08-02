@@ -43,15 +43,9 @@ namespace exec {
     template <class _Env>
     using __env_t = stdexec::__result_of<__mkenv, _Env, stdexec::inplace_stop_source&>;
 
-    struct __joiner {
+    struct __joiner : stdexec::__immovable {
       void (*__op_)(void*) noexcept = nullptr;
       void* __ptr_ = nullptr;
-
-#if STDEXEC_NVHPC()
-      // workaround for NVHPC bug:
-      constexpr ~__joiner() {
-      }
-#endif
 
       void join() const noexcept {
         if (__op_) {
@@ -127,7 +121,7 @@ namespace exec {
       }
 
       __operation(const __storage_base<_EnvId>* __stg, _Receiver&& __rcvr)
-        : __joiner{__join, this}
+        : __joiner{{}, __join, this}
         , __stg_(__stg)
         , __rcvr_(static_cast<_Receiver&&>(__rcvr)) {
       }
