@@ -148,6 +148,12 @@ namespace exec {
         , __scheduler_{__scheduler_impl} {
       }
 
+      ~__system_op() {
+        if (__impl_os_ != nullptr) {
+          __scheduler_->__destruct_schedule_operation(__scheduler_, __impl_os_);
+        }
+      }
+
       __system_op(const __system_op&) = delete;
       __system_op(__system_op&&) = delete;
       __system_op& operator=(const __system_op&) = delete;
@@ -155,7 +161,7 @@ namespace exec {
 
       /// Starts the work stored in `this`.
       void start() & noexcept {
-        __scheduler_->__schedule(
+        __impl_os_ = __scheduler_->__schedule(
           __scheduler_, &__preallocated_, sizeof(__preallocated_), __cb, this);
       }
 
@@ -168,6 +174,8 @@ namespace exec {
       _Rcvr __rcvr_;
       /// The underlying implementation of the scheduler.
       __exec_system_scheduler_interface* __scheduler_{nullptr};
+      /// The operating state on the implementation side.
+      void* __impl_os_{nullptr};
 
       /// Preallocated space for storing the operation state on the implementation size.
       struct alignas(STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN) __preallocated {
@@ -257,6 +265,8 @@ namespace exec {
       system_bulk_sender<_Previous, _Size, _Fn> __snd_;
       /// The receiver object that receives completion from the work described by the sender.
       _Rcvr __rcvr_;
+      /// The operating state on the implementation side.
+      void* __impl_os_ = nullptr;
       /// Storage for the arguments passed from the previous receiver to the function object of the bulk sender.
       alignas(__detail::__sender_data_t<_Previous>) unsigned char __arguments_data_[sizeof(
         __detail::__sender_data_t<_Previous>)]{};
@@ -265,6 +275,10 @@ namespace exec {
       struct alignas(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN) __preallocated {
         char __data[STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE];
       } __preallocated_{};
+
+      ~__bulk_state() {
+        __snd_.__scheduler_->__destruct_bulk_schedule_operation(__snd_.__scheduler_, __impl_os_);
+      }
     }; // namespace __detail
 
     /// Receiver that is used in "bulk" to connect toe the input sender of the bulk operation.
@@ -307,7 +321,7 @@ namespace exec {
           };
 
         // Schedule the bulk work on the system scheduler.
-        __state_.__snd_.__scheduler_->__bulk_schedule(
+        __state_.__impl_os_ = __state_.__snd_.__scheduler_->__bulk_schedule(
           __state_.__snd_.__scheduler_,                       // self
           &__state_.__preallocated_,                          // preallocated
           sizeof(__state_.__preallocated_),                   // psize
