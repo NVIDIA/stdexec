@@ -248,7 +248,7 @@ namespace exec {
     template <class _Previous, class _BulkState, class... _As>
     struct __typed_forward_args_receiver : __forward_args_receiver<_Previous> {
       using __base_t = __forward_args_receiver<_Previous>;
-      using __rcvr_t = _BulkState::__rcvr_t;
+      using __rcvr_t = typename _BulkState::__rcvr_t;
 
       /// Stores `__state` and `__as` in the base class storage, with the right types.
       explicit __typed_forward_args_receiver(_BulkState* __state, _As&&... __as) {
