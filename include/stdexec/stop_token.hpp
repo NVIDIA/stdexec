@@ -303,6 +303,7 @@ namespace stdexec {
     inplace_stop_source::__try_lock_unless_stop_requested_(bool __set_stop_requested) const noexcept
     -> bool {
     __stok::__spin_wait __spin;
+    usleep(2000);
     auto __old_state = __state_.load(std::memory_order_relaxed);
     do {
       while (true) {
