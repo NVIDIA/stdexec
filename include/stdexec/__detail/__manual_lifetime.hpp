@@ -16,13 +16,14 @@
  */
 #pragma once
 
-#include "../../stdexec/concepts.hpp"
+#include "../concepts.hpp"
 
 #include <cstddef>
 #include <memory>
+#include <new>
 #include <type_traits>
 
-namespace exec {
+namespace stdexec {
 
   template <class _Ty>
   class __manual_lifetime {
@@ -45,15 +46,16 @@ namespace exec {
         -> _Ty& {
       // Use placement new instead of std::construct_at to support aggregate initialization with
       // brace elision.
-      return *::new (static_cast<void*>(__buffer_)) _Ty{static_cast<_Args&&>(__args)...};
+      return *std::launder(::new (static_cast<void*>(__buffer_))
+                             _Ty{static_cast<_Args&&>(__args)...});
     }
 
     template <class _Func, class... _Args>
-    auto __construct_with(_Func&& func, _Args&&... __args) -> _Ty& {
+    auto __construct_from(_Func&& func, _Args&&... __args) -> _Ty& {
       // Use placement new instead of std::construct_at in case the function returns an immovable
       // type.
-      return *::new (static_cast<void*>(__buffer_))
-        _Ty((static_cast<_Func&&>(func))(static_cast<_Args&&>(__args)...));
+      return *std::launder(::new (static_cast<void*>(__buffer_))
+                             _Ty{(static_cast<_Func&&>(func))(static_cast<_Args&&>(__args)...)});
     }
 
     void __destroy() noexcept {
@@ -72,11 +74,9 @@ namespace exec {
       return *reinterpret_cast<const _Ty*>(__buffer_);
     }
 
-    auto __get() const && noexcept -> const _Ty&& {
-      return static_cast<const _Ty&&>(*reinterpret_cast<const _Ty*>(__buffer_));
-    }
+    auto __get() const && noexcept -> const _Ty&& = delete;
 
    private:
     alignas(_Ty) unsigned char __buffer_[sizeof(_Ty)]{};
   };
-} // namespace exec
+} // namespace stdexec

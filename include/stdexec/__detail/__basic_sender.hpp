@@ -20,6 +20,7 @@
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
 #include "__env.hpp"
+#include "__manual_lifetime.hpp"
 #include "__meta.hpp"
 #include "__senders_core.hpp"
 #include "__sender_introspection.hpp"
@@ -219,6 +220,62 @@ namespace stdexec {
     //   typename __call_result_t<__impl_of<typename _Receiver::__sexpr>, __cp, __get_desc>::__children>;
 
     template <class _Sexpr, class _Receiver>
+    using __state_t = //
+      __state_type_t<typename __decay_t<_Sexpr>::__tag_t, _Sexpr, _Receiver>;
+
+    template <class _Sexpr, class _Receiver>
+    struct __op_base;
+
+    template <class _Receiver>
+    struct __receiver_box {
+      _Receiver __rcvr_;
+
+      STDEXEC_ATTRIBUTE((always_inline))
+      auto
+        __rcvr() & noexcept -> _Receiver& {
+        return this->__rcvr_;
+      }
+
+      STDEXEC_ATTRIBUTE((always_inline))
+      auto
+        __rcvr() const & noexcept -> const _Receiver& {
+        return this->__rcvr_;
+      }
+    };
+
+    template <class _Sexpr, class _Receiver>
+    struct __state_box {
+      using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
+      using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
+
+      __state_box(_Sexpr&& __sndr, _Receiver& __rcvr) //
+        noexcept(__nothrow_callable<decltype(__sexpr_impl<__tag_t>::get_state), _Sexpr, _Receiver>)
+        : __state_(__sexpr_impl<__tag_t>::get_state(static_cast<_Sexpr&&>(__sndr), __rcvr)) {
+      }
+
+      __state_t __state_;
+    };
+
+    template <class _Sexpr, class _Receiver, class _State>
+    struct __enable_receiver_from_this {
+#if STDEXEC_HAS_FEATURE(undefined_behavior_sanitizer) && STDEXEC_CLANG()
+      // See https://github.com/llvm/llvm-project/issues/101276
+      [[clang::noinline]]
+#endif
+      auto __receiver() noexcept -> decltype(auto) {
+        void* __state = static_cast<_State*>(this);
+        auto* __sbox = static_cast<__state_box<_Sexpr, _Receiver>*>(__state);
+        return (static_cast<__op_base<_Sexpr, _Receiver>*>(__sbox)->__rcvr_);
+      }
+    };
+
+    template <class _Sexpr, class _Receiver>
+    concept __state_uses_receiver = //
+      derived_from<
+        __state_t<_Sexpr, _Receiver>,
+        __enable_receiver_from_this<_Sexpr, _Receiver, __state_t<_Sexpr, _Receiver>>>;
+
+    template <class _Sexpr, class _Receiver>
     struct __op_base : __immovable {
       using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
       using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
@@ -227,17 +284,40 @@ namespace stdexec {
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS __state_t __state_;
 
       __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr) //
-        noexcept(__nothrow_decay_copyable<_Receiver> && __nothrow_move_constructible<__state_t>)
+        noexcept(
+          __nothrow_decay_copyable<_Receiver>
+          && __nothrow_callable<decltype(__sexpr_impl<__tag_t>::get_state), _Sexpr, _Receiver>)
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
         , __state_(__sexpr_impl<__tag_t>::get_state(static_cast<_Sexpr&&>(__sndr), __rcvr_)) {
       }
 
-      auto __rcvr() & noexcept -> _Receiver& {
+      STDEXEC_ATTRIBUTE((always_inline))
+      auto
+        __rcvr() & noexcept -> _Receiver& {
         return __rcvr_;
       }
 
-      auto __rcvr() const & noexcept -> const _Receiver& {
+      STDEXEC_ATTRIBUTE((always_inline))
+      auto
+        __rcvr() const & noexcept -> const _Receiver& {
         return __rcvr_;
+      }
+    };
+
+    template <class _Sexpr, class _Receiver>
+      requires __state_uses_receiver<_Sexpr, _Receiver>
+    struct __op_base<_Sexpr, _Receiver>
+      : __receiver_box<_Receiver>
+      , __state_box<_Sexpr, _Receiver> {
+      using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
+      using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
+
+      STDEXEC_IMMOVABLE(__op_base);
+
+      __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr) //
+        noexcept(__nothrow_decay_copyable<_Receiver> && __nothrow_move_constructible<__state_t>)
+        : __receiver_box<_Receiver>{static_cast<_Receiver&&>(__rcvr)}
+        , __state_box<_Sexpr, _Receiver>{static_cast<_Sexpr&&>(__sndr), this->__rcvr_} {
       }
     };
 
@@ -261,26 +341,6 @@ namespace stdexec {
     //         const_cast<__op_base*>(this)));
     //   }
     // };
-
-    STDEXEC_PRAGMA_PUSH()
-    STDEXEC_PRAGMA_IGNORE_GNU("-Winvalid-offsetof")
-    STDEXEC_PRAGMA_IGNORE_EDG(offset_in_non_POD_nonstandard)
-
-    template <class _Sexpr, class _Receiver>
-    struct __enable_receiver_from_this {
-      using __op_base_t = __op_base<_Sexpr, _Receiver>;
-
-      auto __receiver() noexcept -> decltype(auto) {
-        using __derived_t = decltype(__op_base_t::__state_);
-        auto* __derived = static_cast<__derived_t*>(this);
-        constexpr std::size_t __offset = offsetof(__op_base_t, __state_);
-        auto* __base =
-          reinterpret_cast<__op_base_t*>(reinterpret_cast<char*>(__derived) - __offset);
-        return __base->__rcvr();
-      }
-    };
-
-    STDEXEC_PRAGMA_POP()
 
     STDEXEC_PRAGMA_PUSH()
     STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")

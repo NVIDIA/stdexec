@@ -18,8 +18,7 @@
 
 #include "../stdexec/execution.hpp"
 #include "../stdexec/concepts.hpp"
-
-#include "__detail/__manual_lifetime.hpp"
+#include "../stdexec/__detail/__manual_lifetime.hpp"
 
 namespace exec {
   namespace __final {
@@ -34,7 +33,7 @@ namespace exec {
       using _Receiver = __t<_ReceiverId>;
 
       _Receiver __receiver_{};
-      __manual_lifetime<_ResultType> __result_{};
+      stdexec::__manual_lifetime<_ResultType> __result_{};
     };
 
     template <class... _Args>
@@ -216,7 +215,7 @@ namespace exec {
         this->__result_.__construct(
           std::in_place_type<__decayed_std_tuple<_Args...>>, static_cast<_Args&&>(__args)...);
         STDEXEC_ASSERT(__op_.index() == 0);
-        _FinalSender& __final = std::get_if<0>(&__op_)->__sndr_;
+        auto __final = static_cast<_FinalSender&&>(std::get_if<0>(&__op_)->__sndr_);
         __final_op_t& __final_op = __op_.template emplace<1>(__emplace_from{[&] {
           return stdexec::connect(static_cast<_FinalSender&&>(__final), __final_receiver_t{this});
         }});
