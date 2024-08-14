@@ -45,20 +45,26 @@ namespace exec::__system_context_default_impl {
 
     void set_value() noexcept {
       auto __op = __op_;
-      __r_->set_value();
-      __op->__destruct();
+      auto __r = __r_;
+      __op->__destruct(); // destroys the operation, including `this`.
+      __r->set_value();
+      // Note: when calling a completion signal, the parent operation might complete, making the
+      // static storage passed to this operation invalid. Thus, we need to ensure that we are not
+      // using the operation state after the completion signal.
     }
 
     void set_error(std::exception_ptr __ptr) noexcept {
       auto __op = __op_;
-      __r_->set_error(__ptr);
-      __op->__destruct();
+      auto __r = __r_;
+      __op->__destruct(); // destroys the operation, including `this`.
+      __r->set_error(__ptr);
     }
 
     void set_stopped() noexcept {
       auto __op = __op_;
-      __r_->set_stopped();
-      __op->__destruct();
+      auto __r = __r_;
+      __op->__destruct(); // destroys the operation, including `this`.
+      __r->set_stopped();
     }
   };
 
