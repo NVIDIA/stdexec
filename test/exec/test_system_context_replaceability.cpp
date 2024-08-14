@@ -22,6 +22,12 @@
 namespace ex = stdexec;
 
 namespace {
+  using namespace stdexec::tags;
+  using exec::system_context_replaceability::receiver;
+  using exec::system_context_replaceability::bulk_item_receiver;
+  using exec::system_context_replaceability::storage;
+  using exec::system_context_replaceability::system_scheduler;
+  using exec::system_context_replaceability::__system_context_replaceability;
 
   static int count_schedules = 0;
 
@@ -31,15 +37,15 @@ namespace {
     my_system_scheduler_impl() = default;
 
     void schedule(
-      exec::__system_context_default_impl::storage __s,
-      exec::__system_context_default_impl::receiver* __r) noexcept override {
+      exec::system_context_replaceability::storage __s,
+      exec::system_context_replaceability::receiver* __r) noexcept override {
       count_schedules++;
       base_t::schedule(__s, __r);
     }
   };
 
   void* my_query_system_context_interface(std::type_index id) noexcept {
-    if (id == typeid(exec::__system_context_default_impl::system_scheduler)) {
+    if (id == typeid(exec::system_context_replaceability::system_scheduler)) {
       static my_system_scheduler_impl instance;
       return &instance;
     }

@@ -518,5 +518,5 @@ namespace exec {
 
 #if defined(STDEXEC_SYSTEM_CONTEXT_HEADER_ONLY)
 #  define STDEXEC_SYSTEM_CONTEXT_INLINE inline
-#  include "__detail/__system_context_default_impl_entry.hpp"
+#  include "__detail/__system_context_backend_entry.hpp"
 #endif

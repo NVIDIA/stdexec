@@ -26,6 +26,7 @@
 #include <exec/inline_scheduler.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <exec/system_context.hpp>
+#include <exec/__detail/__system_context_default_impl.hpp>
 
 #include <catch2/catch.hpp>
 #include <test_common/receivers.hpp>
@@ -247,8 +248,8 @@ struct my_system_scheduler_impl : exec::__system_context_default_impl::__system_
   }
 
   void schedule(
-    exec::__system_context_default_impl::storage __s,
-    exec::__system_context_default_impl::receiver* __r) noexcept override {
+    exec::system_context_replaceability::storage __s,
+    exec::system_context_replaceability::receiver* __r) noexcept override {
     count_schedules_++;
     base_t::schedule(__s, __r);
   }
