@@ -155,12 +155,12 @@ namespace exec {
           std::unique_lock __guard{__scope->__lock_};
           auto& __active = __scope->__active_;
           if (--__active == 0) {
-            auto __local = std::move(__scope->__waiters_);
+            auto __local_waiters = std::move(__scope->__waiters_);
             __guard.unlock();
             __scope = nullptr;
             // do not access __scope
-            while (!__local.empty()) {
-              auto* __next = __local.pop_front();
+            while (!__local_waiters.empty()) {
+              auto* __next = __local_waiters.pop_front();
               __next->__notify_waiter(__next);
               // __scope must be considered deleted
             }
@@ -525,7 +525,7 @@ namespace exec {
         void __dispatch_result_() noexcept {
           auto& __state = *__state_;
           std::unique_lock __guard{__state.__mutex_};
-          auto __local = std::move(__state.__subscribers_);
+          auto __local_subscribers = std::move(__state.__subscribers_);
           __state.__forward_scope_ = std::nullopt;
           if (__state.__no_future_.get() != nullptr) {
             // nobody is waiting for the results
@@ -536,8 +536,8 @@ namespace exec {
             return;
           }
           __guard.unlock();
-          while (!__local.empty()) {
-            auto* __sub = __local.pop_front();
+          while (!__local_subscribers.empty()) {
+            auto* __sub = __local_subscribers.pop_front();
             __sub->__complete();
           }
         }

@@ -258,20 +258,20 @@ namespace stdexec {
       // clang-format on
       template <sender_in<__env> _Sender>
       auto apply_sender(_Sender&& __sndr) const -> std::optional<__sync_wait_result_t<_Sender>> {
-        __state __local{};
+        __state __local_state{};
         std::optional<__sync_wait_result_t<_Sender>> __result{};
 
         // Launch the sender with a continuation that will fill in the __result optional or set the
-        // exception_ptr in __local.
+        // exception_ptr in __local_state.
         auto __op_state =
-          connect(static_cast<_Sender&&>(__sndr), __receiver_t<_Sender>{&__local, &__result});
+          connect(static_cast<_Sender&&>(__sndr), __receiver_t<_Sender>{&__local_state, &__result});
         stdexec::start(__op_state);
 
         // Wait for the variant to be filled in.
-        __local.__loop_.run();
+        __local_state.__loop_.run();
 
-        if (__local.__eptr_) {
-          std::rethrow_exception(static_cast<std::exception_ptr&&>(__local.__eptr_));
+        if (__local_state.__eptr_) {
+          std::rethrow_exception(static_cast<std::exception_ptr&&>(__local_state.__eptr_));
         }
 
         return __result;
