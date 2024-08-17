@@ -781,7 +781,7 @@ namespace exec {
         // after this, which means we can rely on its self-ownership to ensure
         // that it is eventually deleted
         stdexec::start(
-          *new __op_t{nest(static_cast<_Sender&&>(__sndr)), static_cast<_Env&&>(__env), &__impl_});
+          *(new __op_t{nest(static_cast<_Sender&&>(__sndr)), static_cast<_Env&&>(__env), &__impl_}));
       }
 
       template <__movable_value _Env = empty_env, sender_in<__env_t<_Env>> _Sender>

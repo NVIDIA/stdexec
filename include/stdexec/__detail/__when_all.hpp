@@ -191,7 +191,7 @@ namespace stdexec {
 
       template <class _Receiver>
       void __arrive(_Receiver& __rcvr) noexcept {
-        if (0 == --__count_) {
+        if (1 == __count_.fetch_sub(1)) {
           __complete(__rcvr);
         }
       }
@@ -361,7 +361,7 @@ namespace stdexec {
         } else if constexpr (!__same_as<decltype(_State::__values_), __ignore>) {
           // We only need to bother recording the completion values
           // if we're not already in the "error" or "stopped" state.
-          if (__state.__state_ == __started) {
+          if (__state.__state_.load() == __started) {
             auto& __opt_values = __tup::get<__v<_Index>>(__state.__values_);
             using _Tuple = __decayed_tuple<_Args...>;
             static_assert(

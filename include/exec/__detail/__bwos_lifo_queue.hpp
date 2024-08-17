@@ -152,7 +152,7 @@ namespace exec::bwos {
       block_type(block_size, allocator),
       allocator_of_t<block_type>(allocator))
     , mask_(blocks_.size() - 1) {
-    blocks_[owner_block_].reclaim();
+    blocks_[owner_block_.load()].reclaim();
   }
 
   template <class Tp, class Allocator>
