@@ -175,15 +175,6 @@ namespace exec::__system_context_default_impl {
         __r->set_error(std::current_exception());
       }
     }
-
-    uint32_t max_concurrency() noexcept override {
-      uint32_t n = std::thread::hardware_concurrency();
-      return n == 0 ? 1 : n;
-    }
-
-    stdexec::forward_progress_guarantee get_forward_progress_guarantee() noexcept override {
-      return stdexec::forward_progress_guarantee::parallel;
-    }
   };
 
   /// Keeps track of the object implementing the system context interfaces.

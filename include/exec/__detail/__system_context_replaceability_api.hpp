@@ -88,10 +88,6 @@ namespace exec::system_context_replaceability {
     /// Schedule bulk work of size `__n` on system scheduler, calling `__br` for each item, calling `__r` when done and using `__s` for preallocated memory.
     virtual void
       bulk_schedule(uint32_t __n, storage __s, receiver* __r, bulk_item_receiver* __br) noexcept = 0;
-    /// Returns the maximum concurrency supported by the system scheduler.
-    virtual uint32_t max_concurrency() noexcept = 0;
-    /// Get the forward progress guarantee promised by the system scheduler.
-    virtual stdexec::forward_progress_guarantee get_forward_progress_guarantee() noexcept = 0;
   };
 
   /// Implementation-defined mechanism for replacing the system scheduler backend at run-time.

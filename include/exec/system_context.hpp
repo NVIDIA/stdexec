@@ -469,12 +469,12 @@ namespace exec {
   }
 
   inline size_t system_context::max_concurrency() const noexcept {
-    return __impl_->max_concurrency();
+    return std::thread::hardware_concurrency();
   }
 
   inline auto system_scheduler::query(stdexec::get_forward_progress_guarantee_t) const noexcept
     -> stdexec::forward_progress_guarantee {
-    return __impl_->get_forward_progress_guarantee();
+    return stdexec::forward_progress_guarantee::parallel;
   }
 
   struct __transform_system_bulk_sender {
