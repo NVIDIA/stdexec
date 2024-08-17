@@ -38,8 +38,8 @@ namespace {
     }
   };
 
-  void* my_query_system_context_interface(std::type_index id) noexcept {
-    if (id == typeid(exec::__system_context_default_impl::system_scheduler)) {
+  void* my_query_system_context_interface(__uuid id) noexcept {
+    if (id == exec::__system_context_default_impl::system_scheduler::__interface_identifier) {
       static my_system_scheduler_impl instance;
       return &instance;
     }
@@ -51,7 +51,7 @@ namespace {
 // Should replace the function defined in __system_context_default_impl.hpp
 extern STDEXEC_ATTRIBUTE((weak))
   void*
-  __query_system_context_interface(std::type_index id) noexcept {
+  __query_system_context_interface(const __uuid& id) noexcept {
   return my_query_system_context_interface(id);
 }
 

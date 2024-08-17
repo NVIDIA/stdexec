@@ -21,15 +21,32 @@
 
 #include <typeindex>
 
+struct __uuid {
+  uint64_t __parts1;
+  uint64_t __parts2;
 
-/// Implementation-defined mechanism of querying a system context interface of type `id`.
-extern void* __query_system_context_interface(std::type_index id) noexcept;
+  friend bool operator==(__uuid, __uuid) noexcept = default;
+};
+
+/// Implementation-defined mechanism of querying a system context interface identified by `__id`.
+extern void* __query_system_context_interface(const __uuid& __id) noexcept;
 
 namespace exec::system_context_replaceability {
+
+  //! Helper for the `__queryable_interface` concept.
+  template <__uuid X>
+  using __check_constexpr_uuid = void;
+
+  //! Concept for a queryable interface. Ensures that the interface has a `__interface_identifier` member.
+  template <typename _T>
+  concept __queryable_interface =
+    requires() { typename __check_constexpr_uuid<_T::__interface_identifier>; };
+
   /// Query the system context for an interface of type `_Interface`.
-  template <typename _Interface>
+  template <__queryable_interface _Interface>
   inline _Interface* query_system_context() {
-    return static_cast<_Interface*>(__query_system_context_interface(typeid(_Interface)));
+    return static_cast<_Interface*>(
+      __query_system_context_interface(_Interface::__interface_identifier));
   }
 
   /// Interface for completing a sender operation.
@@ -62,6 +79,8 @@ namespace exec::system_context_replaceability {
 
   /// Interface for the system scheduler
   struct system_scheduler {
+    static constexpr __uuid __interface_identifier{0x5ee9202498c4bd4f, 0xa1df2508ffcd9d7e};
+
     virtual ~system_scheduler() = default;
 
     /// Schedule work on system scheduler, calling `__r` when done and using `__s` for preallocated memory.
@@ -77,6 +96,8 @@ namespace exec::system_context_replaceability {
 
   /// Implementation-defined mechanism for replacing the system scheduler backend at run-time.
   struct __system_context_replaceability {
+    static constexpr __uuid __interface_identifier{0xc008a3be3bb9284b, 0xb98edb3a740ee02c};
+
     /// Globally replaces the system scheduler backend.
     /// This needs to be called within `main()` and before the system scheduler is accessed.
     virtual void __set_system_scheduler(system_scheduler*) noexcept = 0;

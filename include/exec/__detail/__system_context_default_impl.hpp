@@ -222,10 +222,10 @@ namespace exec::__system_context_default_impl {
     }
   };
 
-  void* __default_query_system_context_interface(std::type_index __id) noexcept {
-    if (__id == typeid(system_scheduler)) {
+  void* __default_query_system_context_interface(const __uuid& __id) noexcept {
+    if (__id == system_scheduler::__interface_identifier) {
       return __instance_holder::__singleton().__get_current_instance();
-    } else if (__id == typeid(__system_context_replaceability)) {
+    } else if (__id == __system_context_replaceability::__interface_identifier) {
       static __system_context_replaceability_impl __impl;
       return &__impl;
     }
