@@ -62,10 +62,8 @@ namespace exec::system_context_replaceability {
     virtual void set_stopped() noexcept = 0;
   };
 
-  /// Interface for receiving bulk item signals.
-  struct bulk_item_receiver {
-    virtual ~bulk_item_receiver() = default;
-
+  /// Receiver for bulk sheduling operations.
+  struct bulk_item_receiver : receiver {
     /// Called for each item of a bulk operation, possible on different threads.
     virtual void start(uint32_t) noexcept = 0;
   };
@@ -85,9 +83,8 @@ namespace exec::system_context_replaceability {
 
     /// Schedule work on system scheduler, calling `__r` when done and using `__s` for preallocated memory.
     virtual void schedule(storage __s, receiver* __r) noexcept = 0;
-    /// Schedule bulk work of size `__n` on system scheduler, calling `__br` for each item, calling `__r` when done and using `__s` for preallocated memory.
-    virtual void
-      bulk_schedule(uint32_t __n, storage __s, receiver* __r, bulk_item_receiver* __br) noexcept = 0;
+    /// Schedule bulk work of size `__n` on system scheduler, calling `__r` for each item and then when done, and using `__s` for preallocated memory.
+    virtual void bulk_schedule(uint32_t __n, storage __s, bulk_item_receiver* __r) noexcept = 0;
   };
 
   /// Implementation-defined mechanism for replacing the system scheduler backend at run-time.

@@ -133,10 +133,10 @@ namespace exec::__system_context_default_impl {
 
     //! Functor called by the `bulk` operation; sends a `start` signal to the frontend.
     struct __bulk_functor {
-      bulk_item_receiver* __item_r_;
+      bulk_item_receiver* __r_;
 
       void operator()(unsigned long __idx) const noexcept {
-        __item_r_->start(static_cast<uint32_t>(__idx));
+        __r_->start(static_cast<uint32_t>(__idx));
       }
     };
 
@@ -163,11 +163,10 @@ namespace exec::__system_context_default_impl {
     void bulk_schedule(
       uint32_t __size,
       storage __storage,
-      receiver* __r,
-      bulk_item_receiver* __item_r) noexcept override {
+      bulk_item_receiver* __r) noexcept override {
       try {
         auto __sndr =
-          stdexec::bulk(stdexec::schedule(__pool_scheduler_), __size, __bulk_functor{__item_r});
+          stdexec::bulk(stdexec::schedule(__pool_scheduler_), __size, __bulk_functor{__r});
         auto __os =
           __bulk_schedule_operation_t::__construct_maybe_alloc(__storage, __r, std::move(__sndr));
         __os->start();

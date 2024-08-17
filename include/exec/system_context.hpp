@@ -233,8 +233,7 @@ namespace exec {
     /// Derived class will properly implement the receiver methods.
     template <class _Previous>
     struct __forward_args_receiver
-      : system_context_replaceability::receiver
-      , system_context_replaceability::bulk_item_receiver {
+      : system_context_replaceability::bulk_item_receiver {
       using __storage_t = __detail::__sender_data_t<_Previous>;
 
       /// Pointer to the `__system_bulk_op` object.
@@ -337,7 +336,7 @@ namespace exec {
         system_context_replaceability::storage __storage{
           &__state_.__preallocated_, sizeof(__state_.__preallocated_)};
         __state_.__snd_.__scheduler_->bulk_schedule(
-          static_cast<uint32_t>(__state_.__snd_.__size_), __storage, __r, __r);
+          static_cast<uint32_t>(__state_.__snd_.__size_), __storage, __r);
       }
 
       /// Invoked when the previous sender completes with "stopped" to stop the entire work.
