@@ -78,7 +78,7 @@ namespace tbbexec {
           }
 
          private:
-          friend struct DerivedPoolType::tbb_thread_pool::scheduler;
+          friend struct DerivedPoolType::scheduler;
 
           explicit sender(DerivedPoolType& pool) noexcept
             : pool_(pool) {
