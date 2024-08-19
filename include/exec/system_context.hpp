@@ -19,13 +19,13 @@
 #include "__detail/__system_context_replaceability_api.hpp"
 
 #ifndef STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE
-#  define STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE 80
+#  define STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE 72
 #endif
 #ifndef STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN
 #  define STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN 8
 #endif
 #ifndef STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE
-#  define STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE 168
+#  define STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE 152
 #endif
 #ifndef STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN
 #  define STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN 8
@@ -56,6 +56,7 @@ namespace exec {
         stdexec::set_stopped(std::forward<_Rcvr>(__rcvr_));
       }
 
+      [[no_unique_address]]
       _Rcvr __rcvr_;
     };
 
@@ -119,13 +120,61 @@ namespace exec {
       system_context_replaceability::system_scheduler* __scheduler_;
     };
 
+    template <size_t _Size, size_t _Align>
+    struct __aligned_storage {
+      alignas(_Align) unsigned char __data_[_Size];
+
+      system_context_replaceability::storage __as_storage() noexcept {
+        return {__data_, _Size};
+      }
+
+      template <class _T>
+      _T& __as() noexcept {
+        static_assert(alignof(_T) <= _Align);
+        return *reinterpret_cast<_T*>(__data_);
+      }
+
+      void* __as_ptr() noexcept {
+        return __data_;
+      }
+    };
+
+    /*
+    Storage needed for a frontend operation-state:
+
+    schedule:
+    - __receiver_adapter::__vtable -- 8
+    - __receiver_adapter::__rcvr_ (Rcvr) -- assuming 0
+    - __system_op::__preallocated_ (__preallocated) -- 72
+    ---------------------
+    Total: 80; extra 8 bytes compared to backend needs.
+
+    for bulk:
+    - __bulk_state_base::__fun_ (_Fn) -- 0 (assuming empty function)
+    - __bulk_state_base::__rcvr_ (_Rcvr) -- 0 (assuming empty receiver)
+    - __forward_args_receiver::__vtable -- 8
+    - __forward_args_receiver::__arguments_data_ (array of bytes) -- 8 (depending on previous sender)
+    - __bulk_state_base::__prepare_storage_for_backend (fun ptr) -- 8
+    - __bulk_state::__preallocated_ (__preallocated_) -- 152
+      - __previous_operation_state_ (__inner_op_state) -- 104
+        - __bulk_intermediate_receiver::__state_ (__state_&) -- 8
+        - __bulk_intermediate_receiver::__scheduler_ (system_scheduler*) -- 8
+        - __bulk_intermediate_receiver::__size_ (_Size) -- 4
+    ---------------------
+    Total: 176; extra 24 bytes compared to backend needs.
+
+    [*] sizes taken on an Apple M2 Pro arm64 arch. They may differ on other architectures, or with different implementations.
+    */
+
     /// The operation state used to execute the work described by this sender.
     template <class _S, class _Rcvr>
     struct __system_op {
       /// Constructs `this` from `__rcvr` and `__scheduler_impl`.
       __system_op(_Rcvr&& __rcvr, system_context_replaceability::system_scheduler* __scheduler_impl)
-        : __rcvr_{std::forward<_Rcvr>(__rcvr)}
-        , __scheduler_{__scheduler_impl} {
+        : __rcvr_{std::forward<_Rcvr>(__rcvr)} {
+        // Before the operation starts, we store the scheduelr implementation in __preallocated_.
+        // After the operation starts, we don't need this pointer anymore, and the storage can be used by the backend
+        __preallocated_.__as<system_context_replaceability::system_scheduler*>() = __scheduler_impl;
       }
 
       ~__system_op() = default;
@@ -137,19 +186,20 @@ namespace exec {
 
       /// Starts the work stored in `this`.
       void start() & noexcept {
-        system_context_replaceability::storage __storage{&__preallocated_, sizeof(__preallocated_)};
-        __scheduler_->schedule(__storage, &__rcvr_);
+        auto* __scheduler_impl =
+          __preallocated_.__as<system_context_replaceability::system_scheduler*>();
+        __scheduler_impl->schedule(__preallocated_.__as_storage(), &__rcvr_);
       }
 
       /// Object that receives completion from the work described by the sender.
       __receiver_adapter<_Rcvr> __rcvr_;
-      /// The underlying implementation of the scheduler.
-      system_context_replaceability::system_scheduler* __scheduler_;
 
       /// Preallocated space for storing the operation state on the implementation size.
-      struct alignas(STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN) __preallocated {
-        char __data[STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE];
-      } __preallocated_;
+      /// We also store here the backend interface for the scheduler before we actually start the operation.
+      __aligned_storage<
+        STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE,
+        STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN>
+        __preallocated_;
     };
   } // namespace __detail
 
@@ -221,6 +271,9 @@ namespace exec {
     system_context_replaceability::system_scheduler* __impl_;
   };
 
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  // bulk
+
   namespace __detail {
     template <class T>
     auto
@@ -232,12 +285,9 @@ namespace exec {
     /// This represents the base class that abstracts the storage of the values sent by the previous sender.
     /// Derived class will properly implement the receiver methods.
     template <class _Previous>
-    struct __forward_args_receiver
-      : system_context_replaceability::bulk_item_receiver {
+    struct __forward_args_receiver : system_context_replaceability::bulk_item_receiver {
       using __storage_t = __detail::__sender_data_t<_Previous>;
 
-      /// Pointer to the `__system_bulk_op` object.
-      void* __state_;
       /// Storage for the arguments received from the previous sender.
       alignas(__storage_t) unsigned char __arguments_data_[sizeof(__storage_t)];
     };
@@ -249,9 +299,8 @@ namespace exec {
       using __base_t = __forward_args_receiver<_Previous>;
       using __rcvr_t = typename _BulkState::__rcvr_t;
 
-      /// Stores `__state` and `__as` in the base class storage, with the right types.
-      explicit __typed_forward_args_receiver(_BulkState* __state, _As&&... __as) {
-        __base_t::__state_ = __state;
+      /// Stores `__as` in the base class storage, with the right types.
+      explicit __typed_forward_args_receiver(_As&&... __as) {
         static_assert(sizeof(std::tuple<_As...>) <= sizeof(__base_t::__arguments_data_));
         new (__base_t::__arguments_data_)
           std::tuple<stdexec::__decay_t<_As>...>{std::move(__as)...};
@@ -259,7 +308,7 @@ namespace exec {
 
       /// Calls `set_value()` on the final receiver of the bulk operation, using the values from the previous sender.
       void set_value() noexcept override {
-        auto __state = static_cast<_BulkState*>(__base_t::__state_);
+        auto __state = reinterpret_cast<_BulkState*>(this);
         std::apply(
           [&](auto&&... __args) {
             stdexec::set_value(
@@ -270,73 +319,85 @@ namespace exec {
 
       /// Calls `set_error()` on the final receiver of the bulk operation, passing `__ex`.
       void set_error(std::exception_ptr __ex) noexcept override {
-        auto __state = static_cast<_BulkState*>(__base_t::__state_);
+        auto __state = reinterpret_cast<_BulkState*>(this);
         stdexec::set_error(std::forward<__rcvr_t>(__state->__rcvr_), std::move(__ex));
       }
 
       /// Calls `set_stopped()` on the final receiver of the bulk operation.
       void set_stopped() noexcept override {
-        auto __state = static_cast<_BulkState*>(__base_t::__state_);
+        auto __state = reinterpret_cast<_BulkState*>(this);
         stdexec::set_stopped(std::forward<__rcvr_t>(__state->__rcvr_));
       }
 
       /// Calls the bulk functor passing `__index` and the values from the previous sender.
       void start(uint32_t __index) noexcept override {
-        auto __state = static_cast<_BulkState*>(__base_t::__state_);
+        auto __state = reinterpret_cast<_BulkState*>(this);
         std::apply(
-          [&](auto&&... __args) { __state->__snd_.__fun_(__index, __args...); },
+          [&](auto&&... __args) { __state->__fun_(__index, __args...); },
           *reinterpret_cast<std::tuple<_As...>*>(__base_t::__arguments_data_));
       }
     };
 
-    /// The state needed to execute the bulk sender created from system context.
-    template <stdexec::sender _Previous, std::integral _Size, class _Fn, class _Rcvr>
-    struct __bulk_state {
+    /// The state needed to execute the bulk sender created from system context, minus the preallocates space.
+    /// The preallocated space is obtained by calling the `__prepare_storage_for_backend` function pointer.
+    template <stdexec::sender _Previous, class _Fn, class _Rcvr>
+    struct __bulk_state_base {
       using __rcvr_t = _Rcvr;
       using __forward_args_helper_t = __forward_args_receiver<_Previous>;
 
-      /// The sender object that describes the work to be done.
-      system_bulk_sender<_Previous, _Size, _Fn> __snd_;
-      /// The receiver object that receives completion from the work described by the sender.
-      _Rcvr __rcvr_;
       /// Storage for the arguments and the helper needed to pass the arguments from the previous bulk sender to the bulk functor and receiver.
+      /// Needs to be the first member, to easier the convertion between `__forward_args_helper_` and `this`.
       alignas(__forward_args_helper_t) unsigned char __forward_args_helper_[sizeof(
         __forward_args_helper_t)]{};
 
-      /// Preallocated space for storing the operation state on the implementation size.
-      struct alignas(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN) __preallocated {
-        char __data[STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE];
-      } __preallocated_{};
+      /// The function to be executed to perform the bulk work.
+      [[no_unique_address]]
+      _Fn __fun_;
+      /// The receiver object that receives completion from the work described by the sender.
+      [[no_unique_address]]
+      _Rcvr __rcvr_;
 
-      ~__bulk_state() = default;
-    }; // namespace __detail
+      /// Function that prepares the preallocated storage for calling the backend.
+      system_context_replaceability::storage (*__prepare_storage_for_backend)(__bulk_state_base*){
+        nullptr};
+
+      __bulk_state_base(_Fn&& __fun, _Rcvr&& __rcvr)
+        : __fun_{std::move(__fun)}
+        , __rcvr_{std::move(__rcvr)} {
+        static_assert(offsetof(__bulk_state_base, __forward_args_helper_) == 0);
+      }
+    };
 
     /// Receiver that is used in "bulk" to connect to the input sender of the bulk operation.
-    template <stdexec::sender _Previous, std::integral _Size, class _Fn, class _Rcvr>
+    template <class _BulkState, stdexec::sender _Previous, std::integral _Size>
     struct __bulk_intermediate_receiver {
       /// Declare that this is a `receiver`.
       using receiver_concept = stdexec::receiver_t;
 
-      /// The type of the object that holds relevant data for the entire bulk operation.
-      using __bulk_state_t = __bulk_state<_Previous, _Size, _Fn, _Rcvr>;
-
       /// Object that holds the relevant data for the entire bulk operation.
-      __bulk_state_t& __state_;
+      _BulkState& __state_;
+      /// The underlying implementation of the scheduler we are using.
+      system_context_replaceability::system_scheduler* __scheduler_{nullptr};
+      /// The size of the bulk operation.
+      _Size __size_;
 
       template <class... _As>
       void set_value(_As&&... __as) noexcept {
         // Store the input data in the shared state.
         using __typed_forward_args_receiver_t =
-          __typed_forward_args_receiver<_Previous, __bulk_state_t, _As...>;
+          __typed_forward_args_receiver<_Previous, _BulkState, _As...>;
         auto __r = new (&__state_.__forward_args_helper_)
-          __typed_forward_args_receiver_t(&__state_, std::move(__as)...);
+          __typed_forward_args_receiver_t(std::forward<_As>(__as)...);
+
+        auto __scheduler = __scheduler_;
+        auto __size = static_cast<uint32_t>(__size_);
+
+        auto __storage = __state_.__prepare_storage_for_backend(&__state_);
+        // This might destroy the `this` object.
 
         // Schedule the bulk work on the system scheduler.
         // This will invoke `start` on our receiver multiple times, and then a completion signal (e.g., `set_value`).
-        system_context_replaceability::storage __storage{
-          &__state_.__preallocated_, sizeof(__state_.__preallocated_)};
-        __state_.__snd_.__scheduler_->bulk_schedule(
-          static_cast<uint32_t>(__state_.__snd_.__size_), __storage, __r);
+        __scheduler->bulk_schedule(__size, __storage, __r);
       }
 
       /// Invoked when the previous sender completes with "stopped" to stop the entire work.
@@ -357,10 +418,35 @@ namespace exec {
 
     /// The operation state object for the system bulk sender.
     template <stdexec::sender _Previous, std::integral _Size, class _Fn, class _Rcvr>
-    struct __system_bulk_op {
-      /// The inner operation state, which is the result of connecting the previous sender to the bulk intermediate receiver.
-      using __inner_op_state = stdexec::
-        connect_result_t<_Previous, __bulk_intermediate_receiver<_Previous, _Size, _Fn, _Rcvr>>;
+    struct __system_bulk_op : __bulk_state_base<_Previous, _Fn, _Rcvr> {
+
+      /// The type that holds the state of the bulk operation.
+      using __bulk_state_base_t = __bulk_state_base<_Previous, _Fn, _Rcvr>;
+
+      /// The type of the receiver that will be connected to the previous sender.
+      using __intermediate_receiver_t =
+        __bulk_intermediate_receiver<__bulk_state_base_t, _Previous, _Size>;
+
+      /// The type of inner operation state, which is the result of connecting the previous sender to the bulk intermediate receiver.
+      using __inner_op_state = stdexec::connect_result_t<_Previous, __intermediate_receiver_t>;
+
+      static constexpr size_t _PreallocatedSize =
+        std::max(size_t(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE), sizeof(__inner_op_state));
+      static constexpr size_t _PreallocatedAlign =
+        std::max(size_t(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN), alignof(__inner_op_state));
+
+      /// Preallocated space for storing the inner operation state, and then storage space for the backend call.
+      __aligned_storage<_PreallocatedSize, _PreallocatedAlign> __preallocated_;
+
+      /// Destroys the inner operation state object, and returns the preallocated storage for it to be used by the backend.
+      static system_context_replaceability::storage
+        __prepare_storage_for_backend_impl(__bulk_state_base_t* __base) {
+        auto* __self = static_cast<__system_bulk_op*>(__base);
+        // We don't need anymore the storage for the previous operation state.
+        __self->__preallocated_.template __as<__inner_op_state>().~__inner_op_state();
+        // Reuse the preallocated storage for the backend.
+        return __self->__preallocated_.__as_storage();
+      }
 
       /// Constructs `this` from `__snd` and `__rcvr`, using the object returned by `__initFunc` to start the operation.
       ///
@@ -371,8 +457,13 @@ namespace exec {
         system_bulk_sender<_Previous, _Size, _Fn>&& __snd,
         _Rcvr&& __rcvr,
         _InitF&& __initFunc)
-        : __state_{std::move(__snd), std::move(__rcvr)}
-        , __previous_operation_state_{__initFunc(*this)} {
+        : __bulk_state_base_t{std::move(__snd.__fun_), std::move(__rcvr)} {
+        // Write the function that prepares the storage for the backend.
+        __bulk_state_base_t::__prepare_storage_for_backend =
+          &__system_bulk_op::__prepare_storage_for_backend_impl;
+
+        // Start using the preallocated buffer to store the inner operation state.
+        new (__preallocated_.__as_ptr()) __inner_op_state(__initFunc(*this));
       }
 
       __system_bulk_op(const __system_bulk_op&) = delete;
@@ -384,13 +475,8 @@ namespace exec {
       void start() & noexcept {
         // Start previous operation state.
         // Bulk operation will be started when the previous sender completes.
-        stdexec::start(__previous_operation_state_);
+        stdexec::start(__preallocated_.template __as<__inner_op_state>());
       }
-
-      /// The state of this bulk operation.
-      __bulk_state<_Previous, _Size, _Fn, _Rcvr> __state_;
-      /// The operation state object of the previous computation.
-      __inner_op_state __previous_operation_state_;
     };
   } // namespace __detail
 
@@ -402,12 +488,9 @@ namespace exec {
     using __completions_t = stdexec::transform_completion_signatures<                            //
       stdexec::__completion_signatures_of_t<stdexec::__copy_cvref_t<_Self, _Previous>, _Env...>, //
       stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>>;
+
     template <stdexec::sender, std::integral, class, class>
-    friend struct __detail::__bulk_state;
-    template <stdexec::sender, std::integral, class, class>
-    friend struct __detail::__bulk_intermediate_receiver;
-    template <class, class, class...>
-    friend struct __detail::__typed_forward_args_receiver;
+    friend struct __detail::__system_bulk_op;
 
    public:
     /// Marks this type as being a sender
@@ -430,11 +513,13 @@ namespace exec {
     template <stdexec::receiver _Rcvr>
     auto connect(_Rcvr __rcvr) && noexcept(stdexec::__nothrow_move_constructible<_Rcvr>) //
       -> __detail::__system_bulk_op<_Previous, _Size, _Fn, _Rcvr> {
-      using __receiver_t = __detail::__bulk_intermediate_receiver<_Previous, _Size, _Fn, _Rcvr>;
-      return {std::move(*this), std::move(__rcvr), [](auto& __op) {
+      using __res_t = __detail::__system_bulk_op<_Previous, _Size, _Fn, _Rcvr>;
+      using __receiver_t = typename __res_t::__intermediate_receiver_t;
+      return {std::move(*this), std::move(__rcvr), [this](auto& __op) {
                 // Connect bulk input receiver with the previous operation and store in the operating state.
                 return stdexec::connect(
-                  std::move(__op.__state_.__snd_.__previous_), __receiver_t{__op.__state_});
+                  std::move(this->__previous_),
+                  __receiver_t{__op, this->__scheduler_, this->__size_});
               }};
     }
 
@@ -452,6 +537,7 @@ namespace exec {
     /// The size of the bulk operation.
     _Size __size_;
     /// The function to be executed to perform the bulk work.
+    [[no_unique_address]]
     _Fn __fun_;
   };
 

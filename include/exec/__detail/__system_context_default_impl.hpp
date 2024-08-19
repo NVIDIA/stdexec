@@ -33,6 +33,29 @@ namespace exec::__system_context_default_impl {
   template <class _Sender>
   struct __operation;
 
+  /*
+  Storage needed for a backend operation-state:
+
+  schedule:
+  - __recv::__r_ (receiver*) -- 8
+  - __recv::__op_ (__operation*) -- 8
+  - __operation::__inner_op_ (stdexec::connect_result_t<_Sender, __recv<_Sender>>) -- 56 (when connected with an empty receiver)
+  - __operation::__on_heap_ (bool) -- optimized away
+  ---------------------
+  Total: 72; extra 16 bytes compared to internal operation state.
+
+  extra for bulk:
+  - __recv::__r_ (receiver*) -- 8
+  - __recv::__op_ (__operation*) -- 8
+  - __operation::__inner_op_ (stdexec::connect_result_t<_Sender, __recv<_Sender>>) -- 128 (when connected with an empty receiver & fun)
+  - __operation::__on_heap_ (bool) -- optimized away
+  - __bulk_functor::__r_ (bulk_item_receiver*) - 8
+  ---------------------
+  Total: 152; extra 24 bytes compared to internal operation state.
+
+  [*] sizes taken on an Apple M2 Pro arm64 arch. They may differ on other architectures, or with different implementations.
+  */
+
   template <class _Sender>
   struct __recv {
     using receiver_concept = stdexec::receiver_t;
@@ -160,10 +183,8 @@ namespace exec::__system_context_default_impl {
       }
     }
 
-    void bulk_schedule(
-      uint32_t __size,
-      storage __storage,
-      bulk_item_receiver* __r) noexcept override {
+    void
+      bulk_schedule(uint32_t __size, storage __storage, bulk_item_receiver* __r) noexcept override {
       try {
         auto __sndr =
           stdexec::bulk(stdexec::schedule(__pool_scheduler_), __size, __bulk_functor{__r});
