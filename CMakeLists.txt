@@ -330,12 +330,12 @@ if (STDEXEC_ENABLE_TBB)
         INSTALL_EXPORT_SET stdexec-exports
     )
 
-    file(GLOB_RECURSE tbbexec_sources include/tbbexec/*.hpp)
-    add_library(tbbexec INTERFACE ${tbbexec_sources})
-    list(APPEND stdexec_export_targets tbbexec)
-    add_library(STDEXEC::tbbexec ALIAS tbbexec)
+    file(GLOB_RECURSE tbbpool_sources include/execpools/tbb/*.hpp)
+    add_library(tbbpool INTERFACE ${tbbpool_sources})
+    list(APPEND stdexec_export_targets tbbpool)
+    add_library(STDEXEC::tbbpool ALIAS tbbpool)
 
-    target_link_libraries(tbbexec
+    target_link_libraries(tbbpool
         INTERFACE
         STDEXEC::stdexec
         TBB::tbb

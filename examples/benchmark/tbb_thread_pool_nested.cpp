@@ -16,12 +16,12 @@
  */
 #include "./common.hpp"
 
-#include <tbbexec/tbb_thread_pool.hpp>
+#include <execpools/tbb/tbb_thread_pool.hpp>
 #include <tbb/task_group.h>
 
 struct RunThread {
   void operator()(
-    tbbexec::tbb_thread_pool& pool,
+    execpools::tbb_thread_pool& pool,
     std::size_t total_scheds,
     std::size_t tid,
     std::barrier<>& barrier,
@@ -57,5 +57,5 @@ struct RunThread {
 };
 
 int main(int argc, char** argv) {
-  my_main<tbbexec::tbb_thread_pool, RunThread>(argc, argv);
+  my_main<execpools::tbb_thread_pool, RunThread>(argc, argv);
 }

@@ -50,7 +50,7 @@ set(exec_test_sources
     sequence/test_ignore_all_values.cpp
     sequence/test_iterate.cpp
     sequence/test_transform_each.cpp
-    $<$<BOOL:${STDEXEC_ENABLE_TBB}>:../tbbexec/test_tbb_thread_pool.cpp>
+    $<$<BOOL:${STDEXEC_ENABLE_TBB}>:../execpools/test_tbb_thread_pool.cpp>
     test_system_context.cpp
     $<$<BOOL:${STDEXEC_ENABLE_LIBDISPATCH}>:test_libdispatch.cpp>
     )
@@ -59,7 +59,7 @@ add_executable(test.exec ${exec_test_sources})
 target_link_libraries(test.exec
     PUBLIC
     STDEXEC::stdexec
-    $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
+    $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbpool>
     stdexec_executable_flags
     Catch2::Catch2
     PRIVATE
