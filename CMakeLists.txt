@@ -342,6 +342,27 @@ if (STDEXEC_ENABLE_TBB)
         )
 endif()
 
+option(STDEXEC_ENABLE_TASKFLOW "Enable TaskFlow targets" OFF)
+
+if(STDEXEC_ENABLE_TASKFLOW)
+    include(rapids-find)
+    rapids_cpm_find(Taskflow 3.7.0
+    CPM_ARGS
+      GITHUB_REPOSITORY taskflow/taskflow
+      GIT_TAG v3.7.0
+    )
+    file(GLOB_RECURSE taskflow_pool include/execpools/taskflow/*.hpp)
+      add_library(taskflow_pool INTERFACE ${taskflowexec_sources})
+      list(APPEND stdexec_export_targets taskflow_pool)
+      add_library(STDEXEC::taskflow_pool ALIAS taskflow_pool)
+
+      target_link_libraries(taskflow_pool
+          INTERFACE
+          STDEXEC::taskflow_pool
+          Taskflow
+      )
+endif()
+
 include(CheckIncludeFileCXX)
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   CHECK_INCLUDE_FILE_CXX("dispatch/dispatch.h" STDEXEC_FOUND_LIBDISPATCH)
