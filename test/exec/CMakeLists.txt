@@ -52,6 +52,7 @@ set(exec_test_sources
     sequence/test_transform_each.cpp
     $<$<BOOL:${STDEXEC_ENABLE_TBB}>:../execpools/test_tbb_thread_pool.cpp>
     $<$<BOOL:${STDEXEC_ENABLE_TASKFLOW}>:../execpools/test_taskflow_thread_pool.cpp>
+    $<$<BOOL:${STDEXEC_ENABLE_BOOST}>:../execpools/test_boost_thread_pool.cpp>
     test_system_context.cpp
     $<$<BOOL:${STDEXEC_ENABLE_LIBDISPATCH}>:test_libdispatch.cpp>
     )
@@ -62,6 +63,7 @@ target_link_libraries(test.exec
     STDEXEC::stdexec
     $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbpool>
     $<TARGET_NAME_IF_EXISTS:STDEXEC::taskflow_pool>
+    $<TARGET_NAME_IF_EXISTS:STDEXEC::boost_pool>
     stdexec_executable_flags
     Catch2::Catch2
     PRIVATE

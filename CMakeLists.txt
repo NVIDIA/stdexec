@@ -358,8 +358,30 @@ if(STDEXEC_ENABLE_TASKFLOW)
 
       target_link_libraries(taskflow_pool
           INTERFACE
-          STDEXEC::taskflow_pool
+          STDEXEC::stdexec
           Taskflow
+      )
+endif()
+
+option(STDEXEC_ENABLE_BOOST "Enable Boost targets" OFF)
+
+if(STDEXEC_ENABLE_BOOST)
+    include(rapids-find)
+    set(BOOST_ENABLE_COMPATIBILITY_TARGETS TRUE)
+    rapids_cpm_find(Boost 1.86.0
+    CPM_ARGS
+      GITHUB_REPOSITORY boostorg/boost
+      GIT_TAG boost-1.86.0
+    )
+    file(GLOB_RECURSE boost_pool_sources include/execpools/boost/*.hpp)
+      add_library(stdexec_boost_pool INTERFACE ${boost_pool_sources})
+      list(APPEND stdexec_export_targets stdexec_boost_pool)
+      add_library(STDEXEC::boost_pool ALIAS stdexec_boost_pool)
+
+      target_link_libraries(stdexec_boost_pool
+          INTERFACE
+          STDEXEC::stdexec
+          Boost::boost
       )
 endif()
 
