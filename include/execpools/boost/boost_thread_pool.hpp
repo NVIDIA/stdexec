@@ -18,15 +18,13 @@ namespace execpools {
   class boost_thread_pool : public execpools::thread_pool_base<boost_thread_pool> {
    public:
     boost_thread_pool()
-     : pool_()
-     , executor_(pool_.executor()) {
-
-     }
+      : pool_()
+      , executor_(pool_.executor()) {
+    }
 
     explicit boost_thread_pool(uint32_t num_threads)
-     : pool_(num_threads)
-     , executor_(pool_.executor()) {
-
+      : pool_(num_threads)
+      , executor_(pool_.executor()) {
     }
 
     ~boost_thread_pool() = default;
@@ -54,4 +52,4 @@ namespace execpools {
     // Need to store implicitly the executor, thread_pool::executor() is not const
     boost::asio::thread_pool::executor_type executor_;
   };
-} // namespace tbbexec
+} // namespace execpools

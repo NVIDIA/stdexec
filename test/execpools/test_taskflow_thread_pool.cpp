@@ -148,9 +148,8 @@ namespace {
     }
     // Ensure it still works normally after exceptions:
     {
-      auto tbb_result = stdexec::sync_wait(on(taskflow_pool.get_scheduler(), just(0)) | then([](auto i) {
-                                             return i + 1;
-                                           }));
+      auto tbb_result = stdexec::sync_wait(
+        on(taskflow_pool.get_scheduler(), just(0)) | then([](auto i) { return i + 1; }));
       CHECK(tbb_result.has_value());
       auto other_result = stdexec::sync_wait(
         on(other_pool.get_scheduler(), just(0)) | then([](auto i) { return i + 1; }));
