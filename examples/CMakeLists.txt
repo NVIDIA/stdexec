@@ -80,3 +80,13 @@ if (STDEXEC_ENABLE_TBB)
  add_executable(example.benchmark.fibonacci benchmark/fibonacci.cpp)
  target_link_libraries(example.benchmark.fibonacci PRIVATE STDEXEC::tbbpool)
 endif()
+
+if(STDEXEC_ENABLE_TASKFLOW)
+ add_executable(example.benchmark.taskflow_thread_pool benchmark/taskflow_thread_pool.cpp)
+ target_link_libraries(example.benchmark.taskflow_thread_pool PRIVATE STDEXEC::taskflow_pool)
+endif()
+
+if(STDEXEC_ENABLE_BOOST)
+add_executable(example.benchmark.boost_thread_pool benchmark/boost_thread_pool.cpp)
+target_link_libraries(example.benchmark.boost_thread_pool PRIVATE STDEXEC::boost_pool)
+endif()

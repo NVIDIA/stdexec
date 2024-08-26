@@ -19,7 +19,7 @@ namespace execpools {
     template <class... Args>
       requires stdexec::constructible_from<tf::Executor, Args...>
     explicit taskflow_thread_pool(Args&&... args)
-      : executor_{std::forward<Args>(args)...} {
+      : executor_(std::forward<Args>(args)...) {
     }
 
     [[nodiscard]]
