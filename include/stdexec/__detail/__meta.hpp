@@ -1072,7 +1072,7 @@ namespace stdexec {
     constexpr decltype(auto)
       operator()(_Ts &&...__ts) const noexcept {
       static_assert(_Np < sizeof...(_Ts));
-      return (static_cast<_Ts &&>(__ts)...[_Np]);
+      return static_cast<_Ts...[_Np] &&>(__ts...[_Np]);
     }
   };
 #else
