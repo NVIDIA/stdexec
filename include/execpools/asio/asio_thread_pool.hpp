@@ -7,31 +7,27 @@
  */
 #pragma once
 
-#include "boost/asio/execution/occupancy.hpp"
-#include <boost/asio/thread_pool.hpp>
-#include <boost/asio/post.hpp>
-
+#include <asio_config.hpp>
 #include <execpools/thread_pool_base.hpp>
 
 namespace execpools {
-
-  class boost_thread_pool : public execpools::thread_pool_base<boost_thread_pool> {
+  class asio_thread_pool : public execpools::thread_pool_base<asio_thread_pool> {
    public:
-    boost_thread_pool()
+    asio_thread_pool()
       : pool_()
       , executor_(pool_.executor()) {
     }
 
-    explicit boost_thread_pool(uint32_t num_threads)
+    explicit asio_thread_pool(uint32_t num_threads)
       : pool_(num_threads)
       , executor_(pool_.executor()) {
     }
 
-    ~boost_thread_pool() = default;
+    ~asio_thread_pool() = default;
 
     [[nodiscard]]
     auto available_parallelism() const -> std::uint32_t {
-      return boost::asio::query(executor_, boost::asio::execution::occupancy);
+      return asio_impl::query(executor_, asio_impl::execution::occupancy);
     }
    private:
     [[nodiscard]]
@@ -39,17 +35,17 @@ namespace execpools {
       return stdexec::forward_progress_guarantee::parallel;
     }
 
-    friend execpools::thread_pool_base<boost_thread_pool>;
+    friend execpools::thread_pool_base<asio_thread_pool>;
 
     template <class PoolType, class ReceiverId>
     friend struct execpools::operation;
 
     void enqueue(execpools::task_base* task, std::uint32_t tid = 0) noexcept {
-      boost::asio::post(pool_, [task, tid] { task->__execute(task, /*tid=*/tid); });
+      asio_impl::post(pool_, [task, tid] { task->__execute(task, /*tid=*/tid); });
     }
 
-    boost::asio::thread_pool pool_;
+    asio_impl::thread_pool pool_;
     // Need to store implicitly the executor, thread_pool::executor() is not const
-    boost::asio::thread_pool::executor_type executor_;
+    asio_impl::thread_pool::executor_type executor_;
   };
 } // namespace execpools

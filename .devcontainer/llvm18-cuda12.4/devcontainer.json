@@ -3,9 +3,9 @@
 
   "hostRequirements": { "gpu": "optional" },
 
-  "initializeCommand": ["/bin/bash", "-c", "mkdir -p .cache/.{aws,config}"],
+  "_initializeCommand": ["/bin/bash", "-c", "mkdir -p .cache/.{aws,config}"],
 
-  "containerEnv": {
+  "_containerEnv": {
     "SCCACHE_REGION": "us-east-2",
     "SCCACHE_BUCKET": "rapids-sccache-devs",
     "SCCACHE_S3_KEY_PREFIX": "nvidia-stdexec-dev",

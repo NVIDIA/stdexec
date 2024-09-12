@@ -26,7 +26,7 @@
 #include <exec/env.hpp>
 #include <exec/inline_scheduler.hpp>
 
-#include <execpools/boost/boost_thread_pool.hpp>
+#include <execpools/asio/asio_thread_pool.hpp>
 
 namespace ex = stdexec;
 
@@ -82,9 +82,9 @@ namespace {
   } // namespace
 
   TEST_CASE(
-    "exec::on works when changing threads with execpools::boost_thread_pool",
+    "exec::on works when changing threads with execpools::asio_thread_pool",
     "[adaptors][exec::on]") {
-    execpools::boost_thread_pool pool;
+    execpools::asio_thread_pool pool;
     auto pool_sched = pool.get_scheduler();
     CHECK(
       stdexec::get_forward_progress_guarantee(pool_sched)
@@ -98,13 +98,13 @@ namespace {
     REQUIRE(called);
   }
 
-  TEST_CASE("more boost_thread_pool") {
+  TEST_CASE("more asio_thread_pool") {
 
     auto compute = [](int x) -> int {
       return x + 1;
     };
 
-    execpools::boost_thread_pool pool(1ul);
+    execpools::asio_thread_pool pool(1ul);
 
     exec::static_thread_pool other_pool(1);
 
@@ -133,10 +133,10 @@ namespace {
     CHECK(k == 5);
   }
 
-  TEST_CASE("boost_thread_pool exceptions") {
+  TEST_CASE("asio_thread_pool exceptions") {
     using namespace stdexec;
 
-    execpools::boost_thread_pool taskflow_pool;
+    execpools::asio_thread_pool taskflow_pool;
     exec::static_thread_pool other_pool(1ul);
     {
       CHECK_THROWS(stdexec::sync_wait(on(taskflow_pool.get_scheduler(), just(0)) | then([](auto) {
@@ -157,10 +157,10 @@ namespace {
     }
   }
 
-  TEST_CASE("boost_thread_pool async_inclusive_scan") {
+  TEST_CASE("asio_thread_pool async_inclusive_scan") {
     const auto input = std::array{1.0, 2.0, -1.0, -2.0};
     std::remove_const_t<decltype(input)> output;
-    execpools::boost_thread_pool pool{2ul};
+    execpools::asio_thread_pool pool{2ul};
     auto [value] =
       stdexec::sync_wait(async_inclusive_scan(pool.get_scheduler(), input, output, 0.0, 4)).value();
     STATIC_REQUIRE(std::is_same_v<decltype(value), std::span<double>>);

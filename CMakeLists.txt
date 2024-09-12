@@ -363,26 +363,63 @@ if(STDEXEC_ENABLE_TASKFLOW)
       )
 endif()
 
-option(STDEXEC_ENABLE_BOOST "Enable Boost targets" OFF)
+option(STDEXEC_ENABLE_ASIO "Enable Boost targets" OFF)
+set(STDEXEC_ASIO_IMPLEMENTATION "boost" CACHE STRING "boost")
+set_property(CACHE STDEXEC_ASIO_IMPLEMENTATION PROPERTY STRINGS boost standalone)
 
-if(STDEXEC_ENABLE_BOOST)
+if(STDEXEC_ENABLE_ASIO)
+    set(STDEXEC_ASIO_USES_ASIO FALSE)
+    set(STDEXEC_ASIO_USES_STANDALONE FALSE)
+
     include(rapids-find)
-    set(BOOST_ENABLE_COMPATIBILITY_TARGETS TRUE)
-    rapids_cpm_find(Boost 1.86.0
-    CPM_ARGS
-      GITHUB_REPOSITORY boostorg/boost
-      GIT_TAG boost-1.86.0
-    )
-    file(GLOB_RECURSE boost_pool_sources include/execpools/boost/*.hpp)
+    if(${STDEXEC_ASIO_IMPLEMENTATION} STREQUAL "boost")
+      set(STDEXEC_ASIO_USES_BOOST TRUE)
+    elseif(${STDEXEC_ASIO_IMPLEMENTATION} STREQUAL "standalone")
+      set(STDEXEC_ASIO_USES_STANDALONE TRUE)
+    else()
+      message(FATAL_ERROR "Unknown configuration for ASIO implementation: " ${STDEXEC_ASIO_IMPLEMENTATION})
+    endif()
+
+    file(GLOB_RECURSE boost_pool_sources include/execpools/asio/*.hpp)
+    set(STDEXEC_ASIO_CONFIG_FILE_PATH ${CMAKE_CURRENT_BINARY_DIR}/generated_include/asio)
+    configure_file(include/execpools/asio/asio_config.hpp.in ${STDEXEC_ASIO_CONFIG_FILE_PATH}/asio_config.hpp)
+
+    if(${STDEXEC_ASIO_USES_BOOST})
+      set(BOOST_ENABLE_COMPATIBILITY_TARGETS TRUE)
+      rapids_cpm_find(Boost 1.86.0
+      CPM_ARGS
+        GITHUB_REPOSITORY boostorg/boost
+        GIT_TAG boost-1.86.0
+      )
       add_library(stdexec_boost_pool INTERFACE ${boost_pool_sources})
       list(APPEND stdexec_export_targets stdexec_boost_pool)
-      add_library(STDEXEC::boost_pool ALIAS stdexec_boost_pool)
+      add_library(STDEXEC::asio_pool ALIAS stdexec_boost_pool)
 
       target_link_libraries(stdexec_boost_pool
           INTERFACE
           STDEXEC::stdexec
           Boost::boost
       )
+      target_include_directories(stdexec_boost_pool INTERFACE ${STDEXEC_ASIO_CONFIG_FILE_PATH})
+    elseif(${STDEXEC_ASIO_USES_STANDALONE})
+      include(cmake/import_standalone_asio.cmake)
+      import_standalone_asio(
+        TAG "asio-1-31-0"
+        VERSION "1.31.0")
+
+      add_library(stdexec_asio_pool INTERFACE ${boost_pool_sources})
+      list(APPEND stdexec_export_targets stdexec_asio_pool)
+      add_library(STDEXEC::asio_pool ALIAS stdexec_asio_pool)
+
+      target_link_libraries(stdexec_asio_pool
+          INTERFACE
+          STDEXEC::stdexec
+          asio
+      )
+      target_include_directories(stdexec_asio_pool INTERFACE ${STDEXEC_ASIO_CONFIG_FILE_PATH})
+    else()
+      message(FATAL_ERROR "ASIO implementation is not configured")
+    endif()
 endif()
 
 include(CheckIncludeFileCXX)

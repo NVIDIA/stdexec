@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 #include "./common.hpp"
-#include <execpools/boost/boost_thread_pool.hpp>
+#include <execpools/asio/asio_thread_pool.hpp>
 
 struct RunThread {
   void operator()(
-    execpools::boost_thread_pool& pool,
+    execpools::asio_thread_pool& pool,
     std::size_t total_scheds,
     std::size_t tid,
     std::barrier<>& barrier,
@@ -85,5 +85,5 @@ struct RunThread {
 };
 
 int main(int argc, char** argv) {
-  my_main<execpools::boost_thread_pool, RunThread>(argc, argv);
+  my_main<execpools::asio_thread_pool, RunThread>(argc, argv);
 }
