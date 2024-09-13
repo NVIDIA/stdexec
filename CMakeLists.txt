@@ -381,7 +381,7 @@ if(STDEXEC_ENABLE_ASIO)
     endif()
 
     file(GLOB_RECURSE boost_pool_sources include/execpools/asio/*.hpp)
-    set(STDEXEC_ASIO_CONFIG_FILE_PATH ${CMAKE_CURRENT_BINARY_DIR}/generated_include/asio)
+    set(STDEXEC_ASIO_CONFIG_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/include/execpools/asio)
     configure_file(include/execpools/asio/asio_config.hpp.in ${STDEXEC_ASIO_CONFIG_FILE_PATH}/asio_config.hpp)
 
     if(${STDEXEC_ASIO_USES_BOOST})
@@ -400,7 +400,6 @@ if(STDEXEC_ENABLE_ASIO)
           STDEXEC::stdexec
           Boost::boost
       )
-      target_include_directories(stdexec_boost_pool INTERFACE ${STDEXEC_ASIO_CONFIG_FILE_PATH})
     elseif(${STDEXEC_ASIO_USES_STANDALONE})
       include(cmake/import_standalone_asio.cmake)
       import_standalone_asio(
@@ -416,7 +415,6 @@ if(STDEXEC_ENABLE_ASIO)
           STDEXEC::stdexec
           asio
       )
-      target_include_directories(stdexec_asio_pool INTERFACE ${STDEXEC_ASIO_CONFIG_FILE_PATH})
     else()
       message(FATAL_ERROR "ASIO implementation is not configured")
     endif()
