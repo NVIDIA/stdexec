@@ -68,12 +68,12 @@ namespace stdexec {
     };
 
     template <class _Scheduler, class _Closure>
-    struct __continue_on_data {
+    struct __on_data {
       _Scheduler __sched_;
       _Closure __clsur_;
     };
     template <class _Scheduler, class _Closure>
-    __continue_on_data(_Scheduler, _Closure) -> __continue_on_data<_Scheduler, _Closure>;
+    __on_data(_Scheduler, _Closure) -> __on_data<_Scheduler, _Closure>;
 
     template <class _Scheduler>
     struct __with_sched {
@@ -111,7 +111,7 @@ namespace stdexec {
         return stdexec::transform_sender(
           __domain,
           __make_sexpr<on_t>(
-            __continue_on_data{static_cast<_Scheduler&&>(__sched), static_cast<_Closure&&>(__clsur)},
+            __on_data{static_cast<_Scheduler&&>(__sched), static_cast<_Closure&&>(__clsur)},
             static_cast<_Sender&&>(__sndr)));
       }
 
