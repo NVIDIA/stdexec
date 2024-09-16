@@ -71,7 +71,7 @@ namespace exec {
       }
 
       void __complete() noexcept {
-        if (--__pending_ == 0) {
+        if (__pending_.fetch_sub(1) == 1) {
           auto __joiner = __joiner_.exchange(nullptr);
           if (__joiner) {
             __joiner->join();
