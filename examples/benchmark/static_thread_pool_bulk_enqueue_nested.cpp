@@ -51,7 +51,7 @@ struct RunThread {
       auto [start, end] = exec::_pool_::even_share(total_scheds, tid, pool.available_parallelism());
       auto iterate = exec::iterate(std::views::iota(start, end)) | exec::ignore_all_values();
 #  endif
-      stdexec::sync_wait(stdexec::on(scheduler, iterate));
+      stdexec::sync_wait(stdexec::starts_on(scheduler, iterate));
       barrier.arrive_and_wait();
     }
   }

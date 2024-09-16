@@ -211,7 +211,7 @@ namespace {
       | ex::let_stopped([] { return ex::just_stopped(); }));
   }
 
-  // Return a different sender when we invoke this custom defined on implementation
+  // Return a different sender when we invoke this custom defined let_stopped implementation
   using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
 
   template <typename Fun>

@@ -198,7 +198,7 @@ namespace {
     ex::inplace_stop_source ssource;
     bool called = false;
     int counter{};
-    auto split = ex::split(ex::on(
+    auto split = ex::split(ex::starts_on(
       sched,
       ex::just() //
         | ex::then([&] {
@@ -245,7 +245,7 @@ namespace {
           called = true;
           return 7;
         }));
-    auto sndr1 = ex::on(
+    auto sndr1 = ex::starts_on(
       sched,
       ex::upon_stopped(
         exec::write(split, stdexec::prop{ex::get_stop_token, ssource.get_token()}), [&] {
@@ -253,7 +253,7 @@ namespace {
           return 42;
         }));
     auto sndr2 = exec::write(
-      ex::on(
+      ex::starts_on(
         sched,
         ex::upon_stopped(
           std::move(split),
@@ -322,7 +322,7 @@ namespace {
 
         std::this_thread::sleep_for(delays[tid]);
         auto [val] =
-          ex::sync_wait(split | ex::transfer(scheduler) | ex::then([](int v) { return v; })).value();
+          ex::sync_wait(split | ex::continues_on(scheduler) | ex::then([](int v) { return v; })).value();
         thread_results[tid] = val;
       });
     }

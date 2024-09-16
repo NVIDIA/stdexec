@@ -49,7 +49,7 @@ namespace stdexec {
     template <class _Env>
     auto __make_transform_fn(const _Env&) {
       return [&]<class _Scheduler, class... _Values>(_Scheduler&& __sched, _Values&&... __vals) {
-        return continue_on(
+        return continues_on(
           just(static_cast<_Values&&>(__vals)...), static_cast<_Scheduler&&>(__sched));
       };
     }

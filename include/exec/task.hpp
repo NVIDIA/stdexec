@@ -374,7 +374,8 @@ namespace exec {
           // TODO: If we have a complete-where-it-starts query then we can optimize
           // this to avoid the reschedule
           return as_awaitable(
-            transfer(static_cast<_Awaitable&&>(__awaitable), get_scheduler(*__context_)), *this);
+            continues_on(static_cast<_Awaitable&&>(__awaitable), get_scheduler(*__context_)),
+            *this);
         }
 
         template <class _Scheduler>

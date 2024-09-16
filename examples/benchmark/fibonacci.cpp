@@ -54,7 +54,7 @@ struct fib_s {
         stdexec::set_value(static_cast<Receiver&&>(self.rcvr_), serial_fib(self.n));
       } else {
         auto mkchild = [&](long n) {
-          return stdexec::on(self.sched, fib_sender(fib_s{self.cutoff, n, self.sched}));
+          return stdexec::starts_on(self.sched, fib_sender(fib_s{self.cutoff, n, self.sched}));
         };
 
         stdexec::start_detached(

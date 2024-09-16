@@ -57,7 +57,7 @@ int main() {
   sender auto printVoid = then(begin, []() noexcept { printf("void\n"); }); // 3
                                                                             //
   sender auto printEmpty = then(
-    on(sch, scope.on_empty()),
+    starts_on(sch, scope.on_empty()),
     []() noexcept {                                                 // 4
       printf("scope is empty\n");                                   //
     });                                                             //

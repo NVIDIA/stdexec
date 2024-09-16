@@ -180,11 +180,11 @@ namespace {
     bool called1{false};
     bool called3{false};
     bool cancelled{false};
-    ex::sender auto snd = ex::when_all(                              //
-      ex::on(sched, ex::just()) | ex::then([&] { called1 = true; }), //
-      ex::on(sched, ex::transfer_just(err_sched, 5)),                //
-      ex::on(sched, ex::just())                                      //
-        | ex::then([&] { called3 = true; })                          //
+    ex::sender auto snd = ex::when_all(                                     //
+      ex::starts_on(sched, ex::just()) | ex::then([&] { called1 = true; }), //
+      ex::starts_on(sched, ex::transfer_just(err_sched, 5)),                //
+      ex::starts_on(sched, ex::just())                                      //
+        | ex::then([&] { called3 = true; })                                 //
         | ex::let_stopped([&] {
             cancelled = true;
             return ex::just();
@@ -210,11 +210,11 @@ namespace {
     bool called1{false};
     bool called3{false};
     bool cancelled{false};
-    ex::sender auto snd = ex::when_all(                              //
-      ex::on(sched, ex::just()) | ex::then([&] { called1 = true; }), //
-      ex::on(sched, ex::transfer_just(stopped_sched, 5)),            //
-      ex::on(sched, ex::just())                                      //
-        | ex::then([&] { called3 = true; })                          //
+    ex::sender auto snd = ex::when_all(                                     //
+      ex::starts_on(sched, ex::just()) | ex::then([&] { called1 = true; }), //
+      ex::starts_on(sched, ex::transfer_just(stopped_sched, 5)),            //
+      ex::starts_on(sched, ex::just())                                      //
+        | ex::then([&] { called3 = true; })                                 //
         | ex::let_stopped([&] {
             cancelled = true;
             return ex::just();
@@ -328,7 +328,7 @@ namespace {
   };
 
   auto tag_invoke(ex::when_all_t, my_string_sender_t, my_string_sender_t) {
-    // Return a different sender when we invoke this custom defined on implementation
+    // Return a different sender when we invoke this custom defined when_all implementation
     return ex::just(std::string{"first program"});
   }
 
@@ -342,7 +342,7 @@ namespace {
   }
 
   auto tag_invoke(ex::when_all_with_variant_t, my_string_sender_t, my_string_sender_t) {
-    // Return a different sender when we invoke this custom defined on implementation
+    // Return a different sender when we invoke this custom defined when_all_with_variant implementation
     return ex::just(std::string{"first program"});
   }
 
@@ -361,7 +361,7 @@ namespace {
   // using my_string_variant_sender_t = decltype(ex::into_variant(my_string_sender_t{std::string{}}));
   //
   // auto tag_invoke(ex::when_all_t, my_string_variant_sender_t, my_string_variant_sender_t) {
-  //   // Return a different sender when we invoke this custom defined on implementation
+  //   // Return a different sender when we invoke this custom defined when_all implementation
   //   return ex::just(std::string{"first program"});
   // }
 
@@ -431,7 +431,7 @@ namespace {
       using domain = basic_domain<ex::when_all_t, customize::late, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::on(
+      auto snd = ex::starts_on(
         scheduler(),
         ex::when_all(      //
           ex::just(3),     //
@@ -474,7 +474,7 @@ namespace {
       using domain = basic_domain<ex::when_all_with_variant_t, customize::late, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::on(
+      auto snd = ex::starts_on(
         scheduler(),
         ex::when_all_with_variant( //
           ex::just(3),             //
@@ -517,7 +517,7 @@ namespace {
       using domain = basic_domain<ex::when_all_t, customize::late, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::on(
+      auto snd = ex::starts_on(
         scheduler(),
         ex::when_all_with_variant( //
           ex::just(3),             //

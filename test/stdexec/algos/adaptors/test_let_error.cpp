@@ -251,8 +251,8 @@ namespace {
     std::atomic<bool> called{false};
     {
       // lunch some work on the thread pool
-      ex::sender auto snd = ex::on(pool.get_scheduler(), ex::just_error(7)) //
-                          | ex::let_error(int_err_transform{})              //
+      ex::sender auto snd = ex::starts_on(pool.get_scheduler(), ex::just_error(7)) //
+                          | ex::let_error(int_err_transform{})                     //
                           | ex::then([&](auto x) -> void {
                               CHECK(x == 13);
                               called.store(true);
@@ -341,7 +341,7 @@ namespace {
       ex::transfer_just(sched3) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
   }
 
-  // Return a different sender when we invoke this custom defined on implementation
+  // Return a different sender when we invoke this custom defined let_error implementation
   using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
 
   template <typename Fun>

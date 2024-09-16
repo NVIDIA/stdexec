@@ -13,7 +13,7 @@ namespace {
   TEST_CASE("nvexec upon_stopped returns a sender", "[cuda][stream][adaptors][upon_stopped]") {
     nvexec::stream_context stream_ctx{};
 
-    auto snd = ex::just_stopped() | ex::transfer(stream_ctx.get_scheduler())
+    auto snd = ex::just_stopped() | ex::continues_on(stream_ctx.get_scheduler())
              | ex::upon_stopped([] { return ex::just(); });
     STATIC_REQUIRE(ex::sender<decltype(snd)>);
     (void) snd;
@@ -26,7 +26,7 @@ namespace {
     auto flags = flags_storage.get();
 
     auto snd = ex::just_stopped() //
-             | ex::transfer(stream_ctx.get_scheduler()) | ex::upon_stopped([=] {
+             | ex::continues_on(stream_ctx.get_scheduler()) | ex::upon_stopped([=] {
                  if (is_on_gpu()) {
                    flags.set();
                  }

@@ -89,7 +89,8 @@ namespace exec {
       using __child_count_pair_t = __decay_t<__data_of<_Sender>>;
       using __child_t = decltype(__child_count_pair_t::__child_);
       using __receiver_t = stdexec::__t<__receiver<__id<_Sender>, __id<_Receiver>>>;
-      using __child_on_sched_sender_t = __result_of<stdexec::on, trampoline_scheduler, __child_t &>;
+      using __child_on_sched_sender_t =
+        __result_of<stdexec::starts_on, trampoline_scheduler, __child_t &>;
       using __child_op_t = stdexec::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
       __child_count_pair<__child_t> __pair_;
@@ -115,7 +116,8 @@ namespace exec {
 
       void __connect() {
         __child_op_.__construct_from([this] {
-          return stdexec::connect(stdexec::on(__sched_, __pair_.__child_), __receiver_t{this});
+          return stdexec::connect(
+            stdexec::starts_on(__sched_, __pair_.__child_), __receiver_t{this});
         });
       }
 

@@ -149,15 +149,15 @@ namespace stdexec {
             auto __old = query_or(get_scheduler, __env, __none_such{});
             if constexpr (__same_as<decltype(__old), __none_such>) {
               if constexpr (__is_root_env<_Env>) {
-                return continue_on(
-                  start_on(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)),
+                return continues_on(
+                  starts_on(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)),
                   __inln::__scheduler{});
               } else {
                 return __none_such{};
               }
             } else {
-              return continue_on(
-                start_on(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)),
+              return continues_on(
+                starts_on(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)),
                 static_cast<decltype(__old)&&>(__old));
             }
           } else {
@@ -171,9 +171,9 @@ namespace stdexec {
             } else {
               auto&& [__sched, __clsur] = static_cast<_Data&&>(__data);
               return __write_env(                                                       //
-                continue_on(                                                            //
+                continues_on(                                                           //
                   __forward_like<_Data>(__clsur)(                                       //
-                    continue_on(                                                        //
+                    continues_on(                                                       //
                       __write_env(static_cast<_Child&&>(__child), __with_sched{__old}), //
                       __sched)),                                                        //
                   __old),

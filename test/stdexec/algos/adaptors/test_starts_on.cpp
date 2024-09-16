@@ -33,29 +33,29 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wunneeded-internal-declaration")
 
 namespace {
 
-  TEST_CASE("on returns a sender", "[adaptors][on]") {
-    auto snd = ex::on(inline_scheduler{}, ex::just(13));
+  TEST_CASE("starts_on returns a sender", "[adaptors][starts_on]") {
+    auto snd = ex::starts_on(inline_scheduler{}, ex::just(13));
     static_assert(ex::sender<decltype(snd)>);
     (void) snd;
   }
 
-  TEST_CASE("on with environment returns a sender", "[adaptors][on]") {
-    auto snd = ex::on(inline_scheduler{}, ex::just(13));
+  TEST_CASE("starts_on with environment returns a sender", "[adaptors][starts_on]") {
+    auto snd = ex::starts_on(inline_scheduler{}, ex::just(13));
     static_assert(ex::sender_in<decltype(snd), empty_env>);
     (void) snd;
   }
 
-  TEST_CASE("on simple example", "[adaptors][on]") {
-    auto snd = ex::on(inline_scheduler{}, ex::just(13));
+  TEST_CASE("starts_on simple example", "[adaptors][starts_on]") {
+    auto snd = ex::starts_on(inline_scheduler{}, ex::just(13));
     auto op = ex::connect(std::move(snd), expect_value_receiver{13});
     ex::start(op);
     // The receiver checks if we receive the right value
   }
 
-  TEST_CASE("on calls the receiver when the scheduler dictates", "[adaptors][on]") {
+  TEST_CASE("starts_on calls the receiver when the scheduler dictates", "[adaptors][starts_on]") {
     int recv_value{0};
     impulse_scheduler sched;
-    auto snd = ex::on(sched, ex::just(13));
+    auto snd = ex::starts_on(sched, ex::just(13));
     auto op = ex::connect(std::move(snd), expect_value_receiver_ex{recv_value});
     ex::start(op);
     // Up until this point, the scheduler didn't start any task; no effect expected
@@ -66,7 +66,9 @@ namespace {
     CHECK(recv_value == 13);
   }
 
-  TEST_CASE("on calls the given sender when the scheduler dictates", "[adaptors][on]") {
+  TEST_CASE(
+    "starts_on calls the given sender when the scheduler dictates",
+    "[adaptors][starts_on]") {
     bool called{false};
     auto snd_base = ex::just() //
                   | ex::then([&]() -> int {
@@ -76,7 +78,7 @@ namespace {
 
     int recv_value{0};
     impulse_scheduler sched;
-    auto snd = ex::on(sched, std::move(snd_base));
+    auto snd = ex::starts_on(sched, std::move(snd_base));
     auto op = ex::connect(std::move(snd), expect_value_receiver_ex{recv_value});
     ex::start(op);
     // Up until this point, the scheduler didn't start any task
@@ -91,12 +93,12 @@ namespace {
     CHECK(recv_value == 19);
   }
 
-  TEST_CASE("on works when changing threads", "[adaptors][on]") {
+  TEST_CASE("starts_on works when changing threads", "[adaptors][starts_on]") {
     exec::static_thread_pool pool{2};
     std::atomic<bool> called{false};
     {
       // lunch some work on the thread pool
-      ex::sender auto snd = ex::on(pool.get_scheduler(), ex::just()) //
+      ex::sender auto snd = ex::starts_on(pool.get_scheduler(), ex::just()) //
                           | ex::then([&] { called.store(true); });
       ex::start_detached(std::move(snd));
     }
@@ -109,92 +111,94 @@ namespace {
     REQUIRE(called);
   }
 
-  TEST_CASE("on can be called with rvalue ref scheduler", "[adaptors][on]") {
-    auto snd = ex::on(inline_scheduler{}, ex::just(13));
+  TEST_CASE("starts_on can be called with rvalue ref scheduler", "[adaptors][starts_on]") {
+    auto snd = ex::starts_on(inline_scheduler{}, ex::just(13));
     auto op = ex::connect(std::move(snd), expect_value_receiver{13});
     ex::start(op);
     // The receiver checks if we receive the right value
   }
 
-  TEST_CASE("on can be called with const ref scheduler", "[adaptors][on]") {
+  TEST_CASE("starts_on can be called with const ref scheduler", "[adaptors][starts_on]") {
     const inline_scheduler sched;
-    auto snd = ex::on(sched, ex::just(13));
+    auto snd = ex::starts_on(sched, ex::just(13));
     auto op = ex::connect(std::move(snd), expect_value_receiver{13});
     ex::start(op);
     // The receiver checks if we receive the right value
   }
 
-  TEST_CASE("on can be called with ref scheduler", "[adaptors][on]") {
+  TEST_CASE("starts_on can be called with ref scheduler", "[adaptors][starts_on]") {
     inline_scheduler sched;
-    auto snd = ex::on(sched, ex::just(13));
+    auto snd = ex::starts_on(sched, ex::just(13));
     auto op = ex::connect(std::move(snd), expect_value_receiver{13});
     ex::start(op);
     // The receiver checks if we receive the right value
   }
 
-  TEST_CASE("on forwards set_error calls", "[adaptors][on]") {
+  TEST_CASE("starts_on forwards set_error calls", "[adaptors][starts_on]") {
     error_scheduler<std::exception_ptr> sched{std::exception_ptr{}};
-    auto snd = ex::on(sched, ex::just(13));
+    auto snd = ex::starts_on(sched, ex::just(13));
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
     // The receiver checks if we receive an error
   }
 
-  TEST_CASE("on forwards set_error calls of other types", "[adaptors][on]") {
+  TEST_CASE("starts_on forwards set_error calls of other types", "[adaptors][starts_on]") {
     error_scheduler<std::string> sched{std::string{"error"}};
-    auto snd = ex::on(sched, ex::just(13));
+    auto snd = ex::starts_on(sched, ex::just(13));
     auto op = ex::connect(std::move(snd), expect_error_receiver{std::string{"error"}});
     ex::start(op);
     // The receiver checks if we receive an error
   }
 
-  TEST_CASE("on forwards set_stopped calls", "[adaptors][on]") {
+  TEST_CASE("starts_on forwards set_stopped calls", "[adaptors][starts_on]") {
     stopped_scheduler sched{};
-    auto snd = ex::on(sched, ex::just(13));
+    auto snd = ex::starts_on(sched, ex::just(13));
     auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
     ex::start(op);
     // The receiver checks if we receive the stopped signal
   }
 
-  TEST_CASE("on has the values_type corresponding to the given values", "[adaptors][on]") {
+  TEST_CASE(
+    "starts_on has the values_type corresponding to the given values",
+    "[adaptors][starts_on]") {
     inline_scheduler sched{};
 
-    check_val_types<ex::__mset<pack<int>>>(ex::on(sched, ex::just(1)));
-    check_val_types<ex::__mset<pack<int, double>>>(ex::on(sched, ex::just(3, 0.14)));
+    check_val_types<ex::__mset<pack<int>>>(ex::starts_on(sched, ex::just(1)));
+    check_val_types<ex::__mset<pack<int, double>>>(ex::starts_on(sched, ex::just(3, 0.14)));
     check_val_types<ex::__mset<pack<int, double, std::string>>>(
-      ex::on(sched, ex::just(3, 0.14, std::string{"pi"})));
+      ex::starts_on(sched, ex::just(3, 0.14, std::string{"pi"})));
   }
 
-  TEST_CASE("on keeps error_types from scheduler's sender", "[adaptors][on]") {
+  TEST_CASE("starts_on keeps error_types from scheduler's sender", "[adaptors][starts_on]") {
     inline_scheduler sched1{};
     error_scheduler sched2{};
     error_scheduler<int> sched3{43};
 
-    check_err_types<ex::__mset<>>(ex::on(sched1, ex::just(1)));
-    check_err_types<ex::__mset<std::exception_ptr>>(ex::on(sched2, ex::just(2)));
-    check_err_types<ex::__mset<int>>(ex::on(sched3, ex::just(3)));
+    check_err_types<ex::__mset<>>(ex::starts_on(sched1, ex::just(1)));
+    check_err_types<ex::__mset<std::exception_ptr>>(ex::starts_on(sched2, ex::just(2)));
+    check_err_types<ex::__mset<int>>(ex::starts_on(sched3, ex::just(3)));
   }
 
-  TEST_CASE("on keeps sends_stopped from scheduler's sender", "[adaptors][on]") {
+  TEST_CASE("starts_on keeps sends_stopped from scheduler's sender", "[adaptors][starts_on]") {
     inline_scheduler sched1{};
     error_scheduler sched2{};
     stopped_scheduler sched3{};
 
-    check_sends_stopped<false>(ex::on(sched1, ex::just(1)));
-    check_sends_stopped<true>(ex::on(sched2, ex::just(2)));
-    check_sends_stopped<true>(ex::on(sched3, ex::just(3)));
+    check_sends_stopped<false>(ex::starts_on(sched1, ex::just(1)));
+    check_sends_stopped<true>(ex::starts_on(sched2, ex::just(2)));
+    check_sends_stopped<true>(ex::starts_on(sched3, ex::just(3)));
   }
 
-  // Return a different sender when we invoke this custom defined on implementation
+  // Return a different sender when we invoke this custom defined starts_on implementation
   using just_string_sender_t = decltype(ex::just(std::string{}));
 
-  auto tag_invoke(decltype(ex::on), inline_scheduler, just_string_sender_t) {
+  auto tag_invoke(decltype(ex::starts_on), inline_scheduler, just_string_sender_t) {
     return ex::just(std::string{"Hello, world!"});
   }
 
-  TEST_CASE("on can be customized", "[adaptors][on]") {
+  TEST_CASE("starts_on can be customized", "[adaptors][starts_on]") {
     // The customization will return a different value
-    auto snd = ex::on(inline_scheduler{}, ex::just(std::string{"world"}));
+    auto snd = ex::starts_on(inline_scheduler{}, ex::just(std::string{"world"}));
     std::string res;
     auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
     ex::start(op);
@@ -273,9 +277,9 @@ namespace {
     move_checker mc_;
   };
 
-  TEST_CASE("on does not reference a moved-from scheduler", "[adaptors][on]") {
+  TEST_CASE("starts_on does not reference a moved-from scheduler", "[adaptors][starts_on]") {
     move_checking_inline_scheduler is;
-    ex::sender auto snd = ex::on(is, ex::just()) //
+    ex::sender auto snd = ex::starts_on(is, ex::just()) //
                         | ex::then([] {});
     ex::sync_wait(std::move(snd));
   }
