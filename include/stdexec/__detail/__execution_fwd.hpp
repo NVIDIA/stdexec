@@ -205,15 +205,18 @@ namespace stdexec {
   extern const on_t on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __continue_on {
-    struct continue_on_t;
-  } // namespace __continue_on
+  namespace __continues_on {
+    struct continues_on_t;
+  } // namespace __continues_on
 
-  using __continue_on::continue_on_t;
-  extern const continue_on_t continue_on;
+  using __continues_on::continues_on_t;
+  extern const continues_on_t continues_on;
 
-  using transfer_t = continue_on_t;
-  extern const transfer_t transfer;
+  using transfer_t = continues_on_t;
+  extern const continues_on_t transfer;
+
+  using continue_t = continues_on_t;
+  extern const continues_on_t continue_on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __transfer_just {

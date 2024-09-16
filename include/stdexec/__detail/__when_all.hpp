@@ -20,7 +20,7 @@
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__concepts.hpp"
-#include "__continue_on.hpp"
+#include "__continues_on.hpp"
 #include "__diagnostics.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
