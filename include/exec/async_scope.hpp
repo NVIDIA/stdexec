@@ -522,9 +522,8 @@ namespace exec {
         __future_state_base<_Completions, _Env>* __state_;
         const __impl* __scope_;
 
-        void __dispatch_result_() noexcept {
+        void __dispatch_result_(std::unique_lock<std::mutex>& __guard) noexcept {
           auto& __state = *__state_;
-          std::unique_lock __guard{__state.__mutex_};
           auto __local_subscribers = std::move(__state.__subscribers_);
           __state.__forward_scope_ = std::nullopt;
           if (__state.__no_future_.get() != nullptr) {
@@ -543,38 +542,38 @@ namespace exec {
         }
 
         template <class _Tag, class... _As>
-        bool __save_completion(_Tag, _As&&... __as) noexcept {
+        void __save_completion(_Tag, _As&&... __as) noexcept {
           auto& __state = *__state_;
           try {
-            std::unique_lock __guard{__state.__mutex_};
             using _Tuple = __decayed_std_tuple<_Tag, _As...>;
             __state.__data_.template emplace<_Tuple>(_Tag(), static_cast<_As&&>(__as)...);
-            return true;
           } catch (...) {
             using _Tuple = std::tuple<set_error_t, std::exception_ptr>;
             __state.__data_.template emplace<_Tuple>(set_error_t(), std::current_exception());
           }
-          return false;
         }
 
         template <__movable_value... _As>
         void set_value(_As&&... __as) noexcept {
-          if (__save_completion(set_value_t(), static_cast<_As&&>(__as)...)) {
-            __dispatch_result_();
-          }
+          auto& __state = *__state_;
+          std::unique_lock __guard{__state.__mutex_};
+          __save_completion(set_value_t(), static_cast<_As&&>(__as)...);
+          __dispatch_result_(__guard);
         }
 
         template <__movable_value _Error>
         void set_error(_Error&& __err) noexcept {
-          if (__save_completion(set_error_t(), static_cast<_Error&&>(__err))) {
-            __dispatch_result_();
-          }
+          auto& __state = *__state_;
+          std::unique_lock __guard{__state.__mutex_};
+          __save_completion(set_error_t(), static_cast<_Error&&>(__err));
+          __dispatch_result_(__guard);
         }
 
         void set_stopped() noexcept {
-          if (__save_completion(set_stopped_t())) {
-            __dispatch_result_();
-          }
+          auto& __state = *__state_;
+          std::unique_lock __guard{__state.__mutex_};
+          __save_completion(set_stopped_t());
+          __dispatch_result_(__guard);
         }
 
         auto get_env() const noexcept -> const __env_t<_Env>& {

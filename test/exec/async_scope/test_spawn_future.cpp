@@ -1,6 +1,7 @@
 #include <catch2/catch.hpp>
 #include <exec/async_scope.hpp>
 #include <exec/env.hpp>
+#include <exec/static_thread_pool.hpp>
 #include "test_common/schedulers.hpp"
 #include "test_common/receivers.hpp"
 #include "test_common/type_helpers.hpp"
@@ -132,6 +133,27 @@ namespace {
     sch.start_next();
     REQUIRE(executed);
     expect_empty(scope);
+  }
+
+  TEST_CASE("spawn_future with throwing copy", "[async_scope][spawn_future]") {
+    async_scope scope;
+    exec::static_thread_pool pool{2};
+
+    struct throwing_copy {
+        throwing_copy() = default;
+        throwing_copy(const throwing_copy&) {
+            throw std::logic_error("cannot copy");
+        }
+    };
+
+    ex::sender auto snd = scope.spawn_future(ex::on(pool.get_scheduler(), ex::just(throwing_copy())));
+    try {
+      sync_wait(std::move(snd));
+      FAIL("Exceptions should have been thrown");
+    } catch (const std::logic_error& e) {
+      SUCCEED("correct exception caught");
+    }
+    sync_wait(scope.on_empty());
   }
 
   TEST_CASE(
