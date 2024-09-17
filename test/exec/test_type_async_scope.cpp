@@ -108,5 +108,15 @@ namespace {
       stdexec::sync_wait(scope.on_empty());
       expect_empty(scope);
     }
+
+    SECTION("request_stop nested spawn_future") {
+      exec::static_thread_pool ctx{1};
+      exec::async_scope scope;
+      ex::sender auto begin = ex::schedule(sch);
+      ex::sender auto ftr = scope.spawn_future(scope.spawn_future(begin));
+      scope.request_stop();
+      stdexec::sync_wait(ex::when_all(scope.on_empty(), std::move(ftr)));
+      // Verify the program finishes without crashing
+    }
   }
 } // namespace
