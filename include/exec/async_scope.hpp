@@ -21,6 +21,7 @@
 #include "env.hpp"
 
 #include <mutex>
+#include <optional>
 
 namespace exec {
   /////////////////////////////////////////////////////////////////////////////
@@ -313,6 +314,7 @@ namespace exec {
 
         void __complete_() noexcept {
           try {
+            __forward_consumer_.reset();
             auto __state = std::move(__state_);
             STDEXEC_ASSERT(__state != nullptr);
             std::unique_lock __guard{__state->__mutex_};
@@ -354,7 +356,7 @@ namespace exec {
         _Receiver __rcvr_;
         std::unique_ptr<__future_state<_Sender, _Env>> __state_;
         STDEXEC_ATTRIBUTE((no_unique_address))
-        __forward_consumer __forward_consumer_;
+        std::optional<__forward_consumer> __forward_consumer_;
 
        public:
         using __id = __future_op;
@@ -383,7 +385,7 @@ namespace exec {
             }}
           , __rcvr_(static_cast<_Receiver2&&>(__rcvr))
           , __state_(std::move(__state))
-          , __forward_consumer_(get_stop_token(get_env(__rcvr_)),
+          , __forward_consumer_(std::in_place, get_stop_token(get_env(__rcvr_)),
               __forward_stopped{&__state_->__stop_source_}) {
         }
 

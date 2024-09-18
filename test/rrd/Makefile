@@ -29,19 +29,6 @@ all: tests
 .PHONY: tests
 tests: $(test_exe_files)
 
-$(build_dir)/%.check-result: $(build_dir)/% always-run
-	@ \
-	printf '%s%s ...%s\n' $(ansi_term_bold) $(*) $(ansi_term_reset) >&2; \
-	$(<); \
-	status="$${?}"; \
-	printf %d "$${status}" >$(@); \
-	if [ "$${status}" -eq 0 ]; then \
-		printf '%s%s %s%s\n' $(ansi_term_green) $(*) OK $(ansi_term_reset); \
-	else \
-		printf '%s%s %s%s\n' $(ansi_term_red) $(*) FAIL $(ansi_term_reset); \
-	fi >&2; \
-	exit "$${status}"
-
 $(build_dir)/%: $(build_dir)/%.cpp.o
 	$(LINK.cpp) $(^) -o $(@)
 
@@ -52,8 +39,5 @@ $(build_dir)/%.cpp.o: %.cpp
 .PHONY: clean
 clean:
 	rm -fr -- $(build_dir)/
-
-.PHONY: always-run
-always-run:
 
 -include $(o_files:=.d)
