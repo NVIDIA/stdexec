@@ -18,10 +18,10 @@
 #include "../stdexec/execution.hpp"
 #include "../stdexec/stop_token.hpp"
 #include "../stdexec/__detail/__intrusive_queue.hpp"
+#include "../stdexec/__detail/__optional.hpp"
 #include "env.hpp"
 
 #include <mutex>
-#include <optional>
 
 namespace exec {
   /////////////////////////////////////////////////////////////////////////////
@@ -356,7 +356,7 @@ namespace exec {
         _Receiver __rcvr_;
         std::unique_ptr<__future_state<_Sender, _Env>> __state_;
         STDEXEC_ATTRIBUTE((no_unique_address))
-        std::optional<__forward_consumer> __forward_consumer_;
+        stdexec::__optional<__forward_consumer> __forward_consumer_;
 
        public:
         using __id = __future_op;
@@ -505,7 +505,7 @@ namespace exec {
       }
 
       inplace_stop_source __stop_source_;
-      std::optional<inplace_stop_callback<__forward_stopped>> __forward_scope_;
+      stdexec::__optional<inplace_stop_callback<__forward_stopped>> __forward_scope_;
       std::mutex __mutex_;
       __future_step __step_ = __future_step::__created;
       std::unique_ptr<__future_state_base, __dynamic_delete<__future_state_base>> __no_future_;
@@ -527,7 +527,7 @@ namespace exec {
         void __dispatch_result_(std::unique_lock<std::mutex>& __guard) noexcept {
           auto& __state = *__state_;
           auto __local_subscribers = std::move(__state.__subscribers_);
-          __state.__forward_scope_ = std::nullopt;
+          __state.__forward_scope_.reset();
           if (__state.__no_future_.get() != nullptr) {
             // nobody is waiting for the results
             // delete this and return
