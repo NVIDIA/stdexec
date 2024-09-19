@@ -129,7 +129,7 @@ namespace {
       schedule(scheduler2) | then([] { __thread_id = 2; })));
     auto id1 = 1;
     auto id2 = 2;
-    auto t = on(
+    auto t = starts_on(
       scheduler1,
       test_stickiness_for_two_single_thread_contexts_(scheduler1, scheduler2, id1, id2));
     sync_wait(std::move(t) | then([&] { CHECK(get_id() == id1); }));
@@ -150,7 +150,9 @@ namespace {
     sync_wait(std::move(t));
   }
 
-  TEST_CASE("Test stickiness with two single threads with sender with on", "[types][sticky][task]") {
+  TEST_CASE(
+    "Test stickiness with two single threads with sender with starts_on",
+    "[types][sticky][task]") {
     single_thread_context context1;
     single_thread_context context2;
     scheduler auto scheduler1 = context1.get_scheduler();
@@ -160,7 +162,7 @@ namespace {
       schedule(scheduler2) | then([] { __thread_id = 2; })));
     auto id1 = 1;
     auto id2 = 2;
-    auto t = on(
+    auto t = starts_on(
       scheduler1,
       test_stickiness_for_two_single_thread_contexts_with_sender_(scheduler1, scheduler2, id1, id2));
     sync_wait(std::move(t) | then([&] { CHECK(get_id() == id1); }));
@@ -229,7 +231,7 @@ namespace {
   TEST_CASE("task - stop token is forwarded", "[types][task]") {
     single_thread_context context{};
     exec::async_scope scope;
-    scope.spawn(stdexec::on(context.get_scheduler(), check_stop_possible()));
+    scope.spawn(stdexec::starts_on(context.get_scheduler(), check_stop_possible()));
     CHECK(stdexec::sync_wait(scope.on_empty()));
   }
 

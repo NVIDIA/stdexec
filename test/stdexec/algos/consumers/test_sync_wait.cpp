@@ -271,7 +271,7 @@ namespace {
   };
 
   using my_transfered_multi_value_sender_t =
-    decltype(ex::transfer(my_multi_value_sender_t{}, inline_scheduler{}));
+    decltype(ex::continues_on(my_multi_value_sender_t{}, inline_scheduler{}));
 
   optional<std::variant<std::tuple<std::string>, std::tuple<int>>> tag_invoke(
     decltype(sync_wait_with_variant),
@@ -296,7 +296,7 @@ namespace {
     "sync_wait_with_variant can be customized with scheduler",
     "[consumers][sync_wait_with_variant]") {
     // The customization will return a different value
-    auto snd = ex::transfer(my_multi_value_sender_t{"hello_multi"}, inline_scheduler{});
+    auto snd = ex::continues_on(my_multi_value_sender_t{"hello_multi"}, inline_scheduler{});
     auto snd2 = ex::transfer_just(inline_scheduler{}, std::string{"hello"});
     optional<std::variant<std::tuple<std::string>, std::tuple<int>>> res =
       sync_wait_with_variant(std::move(snd));

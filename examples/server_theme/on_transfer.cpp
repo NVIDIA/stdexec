@@ -30,7 +30,7 @@
  *
  * Example goals:
  * - show how one can change the execution context
- * - exemplify the use of `on` and `transfer` algorithms
+ * - exemplify the use of `starts_on` and `continues_on` algorithms
  */
 
 #include <iostream>
@@ -103,9 +103,9 @@ int main() {
     // The entire flow
     auto snd =
       // start by reading data on the I/O thread
-      ex::on(io_sched, std::move(snd_read))
+      ex::starts_on(io_sched, std::move(snd_read))
       // do the processing on the worker threads pool
-      | ex::transfer(work_sched)
+      | ex::continues_on(work_sched)
       // process the incoming data (on worker threads)
       | ex::then([buf](size_t read_len) { process_read_data(buf, read_len); })
       // done

@@ -74,11 +74,11 @@ namespace exec {
     struct __reschedule_t {
       template <sender _Sender>
       auto operator()(_Sender&& __sndr) const {
-        return stdexec::transfer(static_cast<_Sender&&>(__sndr), __resched::__scheduler{});
+        return stdexec::continues_on(static_cast<_Sender&&>(__sndr), __resched::__scheduler{});
       }
 
       auto operator()() const {
-        return stdexec::transfer(__resched::__scheduler{});
+        return stdexec::continues_on(__resched::__scheduler{});
       }
     };
   } // namespace __resched

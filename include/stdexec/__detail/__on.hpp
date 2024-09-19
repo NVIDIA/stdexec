@@ -20,7 +20,7 @@
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__concepts.hpp"
-#include "__continue_on.hpp"
+#include "__continues_on.hpp"
 #include "__cpo.hpp"
 #include "__diagnostics.hpp"
 #include "__domain.hpp"
@@ -68,12 +68,12 @@ namespace stdexec {
     };
 
     template <class _Scheduler, class _Closure>
-    struct __continue_on_data {
+    struct __on_data {
       _Scheduler __sched_;
       _Closure __clsur_;
     };
     template <class _Scheduler, class _Closure>
-    __continue_on_data(_Scheduler, _Closure) -> __continue_on_data<_Scheduler, _Closure>;
+    __on_data(_Scheduler, _Closure) -> __on_data<_Scheduler, _Closure>;
 
     template <class _Scheduler>
     struct __with_sched {
@@ -111,7 +111,7 @@ namespace stdexec {
         return stdexec::transform_sender(
           __domain,
           __make_sexpr<on_t>(
-            __continue_on_data{static_cast<_Scheduler&&>(__sched), static_cast<_Closure&&>(__clsur)},
+            __on_data{static_cast<_Scheduler&&>(__sched), static_cast<_Closure&&>(__clsur)},
             static_cast<_Sender&&>(__sndr)));
       }
 
@@ -149,15 +149,15 @@ namespace stdexec {
             auto __old = query_or(get_scheduler, __env, __none_such{});
             if constexpr (__same_as<decltype(__old), __none_such>) {
               if constexpr (__is_root_env<_Env>) {
-                return continue_on(
-                  start_on(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)),
+                return continues_on(
+                  starts_on(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)),
                   __inln::__scheduler{});
               } else {
                 return __none_such{};
               }
             } else {
-              return continue_on(
-                start_on(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)),
+              return continues_on(
+                starts_on(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)),
                 static_cast<decltype(__old)&&>(__old));
             }
           } else {
@@ -171,9 +171,9 @@ namespace stdexec {
             } else {
               auto&& [__sched, __clsur] = static_cast<_Data&&>(__data);
               return __write_env(                                                       //
-                continue_on(                                                            //
+                continues_on(                                                           //
                   __forward_like<_Data>(__clsur)(                                       //
-                    continue_on(                                                        //
+                    continues_on(                                                       //
                       __write_env(static_cast<_Child&&>(__child), __with_sched{__old}), //
                       __sched)),                                                        //
                   __old),

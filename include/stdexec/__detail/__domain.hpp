@@ -232,10 +232,10 @@ namespace stdexec {
       }
     }
 
-    // The transfer algorithm is the exception to the rule. It ignores the domain
-    // of the predecessor, and dispatches based on the domain of the scheduler
-    // to which execution is being transferred.
-    template <sender_expr_for<transfer_t> _Sender, class _Env>
+    // The continues_on algorithm is the exception to the rule. It ignores the
+    // domain of the predecessor, and dispatches based on the domain of the
+    // scheduler to which execution is being transferred.
+    template <sender_expr_for<continues_on_t> _Sender, class _Env>
     auto operator()(const _Sender& __sndr, const _Env&) const noexcept {
       return __sexpr_apply(__sndr, [](__ignore, auto& __data, __ignore) noexcept {
         auto __sched = get_completion_scheduler<set_value_t>(__data);

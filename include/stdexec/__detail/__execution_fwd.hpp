@@ -194,26 +194,36 @@ namespace stdexec {
   extern const as_awaitable_t as_awaitable;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __start_on {
-    struct start_on_t;
-  } // namespace __start_on
+  namespace __starts_on_ns {
+    struct starts_on_t;
+  } // namespace __starts_on_ns
 
-  using __start_on::start_on_t;
-  extern const start_on_t start_on;
+  using __starts_on_ns::starts_on_t;
+  extern const starts_on_t starts_on;
 
-  using on_t = start_on_t;
-  extern const on_t on;
+  using on_t [[deprecated("on_t has been renamed starts_on_t")]] = starts_on_t;
+  [[deprecated("on has been renamed starts_on")]]
+  extern const starts_on_t on;
+
+  using start_on_t [[deprecated("start_on_t has been renamed starts_on_t")]] = starts_on_t;
+  [[deprecated("start_on has been renamed starts_on")]]
+  extern const starts_on_t start_on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __continue_on {
-    struct continue_on_t;
-  } // namespace __continue_on
+  namespace __continues_on {
+    struct continues_on_t;
+  } // namespace __continues_on
 
-  using __continue_on::continue_on_t;
-  extern const continue_on_t continue_on;
+  using __continues_on::continues_on_t;
+  extern const continues_on_t continues_on;
 
-  using transfer_t = continue_on_t;
-  extern const transfer_t transfer;
+  using transfer_t [[deprecated("transfer_t has been renamed continues_on_t")]] = continues_on_t;
+  [[deprecated("transfer has been renamed continues_on")]]
+  extern const continues_on_t transfer;
+
+  using continue_t [[deprecated("continue_on_t has been renamed continues_on_t")]] = continues_on_t;
+  [[deprecated("continue_on has been renamed continues_on")]]
+  extern const continues_on_t continue_on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __transfer_just {

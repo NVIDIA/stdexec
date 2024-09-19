@@ -113,7 +113,7 @@ namespace {
 
   auto
     tag_invoke(ex::transfer_when_all_t, inline_scheduler, my_string_sender_t, my_string_sender_t) {
-    // Return a different sender when we invoke this custom defined on implementation
+    // Return a different sender when we invoke this custom defined transfer_when_all implementation
     return ex::just(std::string{"first program"});
   }
 
@@ -132,7 +132,7 @@ namespace {
     inline_scheduler,
     my_string_sender_t,
     my_string_sender_t) {
-    // Return a different sender when we invoke this custom defined on implementation
+    // Return a different sender when we invoke this custom defined transfer_when_all_with_variant implementation
     return ex::just(std::string{"first program"});
   }
 
@@ -198,7 +198,7 @@ namespace {
       using domain = basic_domain<ex::transfer_when_all_t, customize::late, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::on(
+      auto snd = ex::starts_on(
         inline_scheduler(),
         ex::transfer_when_all( //
           scheduler(),         //
@@ -246,7 +246,7 @@ namespace {
       using domain = basic_domain<ex::transfer_when_all_with_variant_t, customize::late, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::on(
+      auto snd = ex::starts_on(
         inline_scheduler(),
         ex::transfer_when_all_with_variant( //
           scheduler(),                      //
@@ -294,7 +294,7 @@ namespace {
       using domain = basic_domain<ex::transfer_when_all_t, customize::late, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::on(
+      auto snd = ex::starts_on(
         inline_scheduler(),
         ex::transfer_when_all_with_variant( //
           scheduler(),                      //

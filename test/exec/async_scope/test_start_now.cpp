@@ -66,7 +66,7 @@ namespace {
       scope,
       ex::schedule(pool.get_scheduler()) | ex::then([&]() noexcept { executedA = true; }),
       ex::schedule(pool.get_scheduler()) | ex::then([&]() noexcept { executedB = true; }));
-    sync_wait(ex::on(pool.get_scheduler(), stg.async_wait()));
+    sync_wait(ex::starts_on(pool.get_scheduler(), stg.async_wait()));
     REQUIRE(executedA);
     REQUIRE(executedB);
   }

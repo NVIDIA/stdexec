@@ -305,7 +305,7 @@ namespace {
       ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
   }
 
-  // Return a different sender when we invoke this custom defined on implementation
+  // Return a different sender when we invoke this custom defined let_value implementation
   using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
 
   template <typename Fun>

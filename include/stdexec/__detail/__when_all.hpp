@@ -20,7 +20,7 @@
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__concepts.hpp"
-#include "__continue_on.hpp"
+#include "__continues_on.hpp"
 #include "__diagnostics.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
@@ -458,7 +458,7 @@ namespace stdexec {
         return __sexpr_apply(
           static_cast<_Sender&&>(__sndr),
           [&]<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child) {
-            return continue_on(
+            return continues_on(
               when_all_t()(static_cast<_Child&&>(__child)...),
               get_completion_scheduler<set_value_t>(__data));
           });

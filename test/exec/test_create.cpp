@@ -42,18 +42,18 @@ namespace {
     void anIntAPI(int a, int b, void* context, void (*completed)(void* context, int result)) {
       // Execute some work asynchronously on some other thread. When its
       // work is finished, pass the result to the callback.
-      scope_.spawn(ex::on(pool_.get_scheduler(), ex::then(ex::just(), [=]() noexcept {
-                            auto result = a + b;
-                            completed(context, result);
-                          })));
+      scope_.spawn(ex::starts_on(pool_.get_scheduler(), ex::then(ex::just(), [=]() noexcept {
+                                   auto result = a + b;
+                                   completed(context, result);
+                                 })));
     }
 
     void aVoidAPI(void* context, void (*completed)(void* context)) {
       // Execute some work asynchronously on some other thread. When its
       // work is finished, pass the result to the callback.
-      scope_.spawn(ex::on(pool_.get_scheduler(), ex::then(ex::just(), [=]() noexcept {
-                            completed(context);
-                          })));
+      scope_.spawn(ex::starts_on(pool_.get_scheduler(), ex::then(ex::just(), [=]() noexcept {
+                                   completed(context);
+                                 })));
     }
   };
 
