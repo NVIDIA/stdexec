@@ -1,13 +1,13 @@
 ## Relacy tests
 
 [Relacy (RRD)](https://www.1024cores.net/home/relacy-race-detector/rrd-introduction)
-is a data race detector. It replaces the OS scheduler with an scheduler that
+is a data race detector. It replaces the OS scheduler with a scheduler that
 explores many different thread interleavings, and logs detected races or assertion
 failures. Relacy can also simulate relaxed hardware by simulating old values of a
 variable as allowed by the C++11 memory model.
 
 Relacy requires a specialized build. In particular, it is a header only library that
-replaces the standard library and pthread APIs at compile time. Since it places some
+replaces the standard library and pthread APIs at compile time. Since it replaces some
 standard library includes, writing new tests may require working around certain
 limitations in terms of what the replacement headers and accompanying runtime can
 support. For example, Relacy's atomic replacements cannot support `++x`, so the
@@ -18,10 +18,10 @@ stdexec library could needs to use `x.fetch_add(1)` to be compatible with Relacy
 Run the following commands from within this directory (`./tests/rrd`).
 
 ```
-# TODO: Merge patches into upstream Relacy @ dvyukov's version
-git clone -b stdexec https://github.com/ccotter/relacy
+git clone -b stdexec https://github.com/dvyukov/relacy
 CXX=g++-11 make -j 4
 ./build/split
+./build/async_scope
 ```
 
 ## Recommended use
