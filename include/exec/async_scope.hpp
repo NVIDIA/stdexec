@@ -93,7 +93,8 @@ namespace exec {
           stdexec::start(static_cast<__t*>(__self)->__op_);
         }
 
-        STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS connect_result_t<_Constrained, _Receiver> __op_;
+        STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+        connect_result_t<_Constrained, _Receiver> __op_;
       };
     };
 
@@ -214,7 +215,8 @@ namespace exec {
       struct __t : __nest_op_base<_ReceiverId> {
         using __id = __nest_op;
         using __nest_rcvr_t = stdexec::__t<__nest_rcvr<_ReceiverId>>;
-        STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS connect_result_t<_Constrained, __nest_rcvr_t> __op_;
+        STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+        connect_result_t<_Constrained, __nest_rcvr_t> __op_;
 
         template <__decays_to<_Constrained> _Sender, __decays_to<_Receiver> _Rcvr>
         explicit __t(const __impl* __scope, _Sender&& __c, _Rcvr&& __rcvr)
@@ -356,7 +358,8 @@ namespace exec {
         _Receiver __rcvr_;
         std::unique_ptr<__future_state<_Sender, _Env>> __state_;
         STDEXEC_ATTRIBUTE((no_unique_address))
-        stdexec::__optional<__forward_consumer> __forward_consumer_;
+        stdexec::__optional<__forward_consumer>
+          __forward_consumer_;
 
        public:
         using __id = __future_op;
@@ -381,7 +384,7 @@ namespace exec {
           _Receiver2&& __rcvr, std::unique_ptr<__future_state<_Sender, _Env>> __state)
           : __subscription{{},
             [](__subscription* __self) noexcept -> void {
-              static_cast<__t*>(__self)->__complete_();
+                static_cast<__t*>(__self)->__complete_();
             }}
           , __rcvr_(static_cast<_Receiver2&&>(__rcvr))
           , __state_(std::move(__state))
@@ -733,7 +736,7 @@ namespace exec {
           : __spawn_op_base<_EnvId>{__env::__join(static_cast<_Env&&>(__env),
             __spawn_env_{__scope->__stop_source_.get_token()}),
             [](__spawn_op_base<_EnvId>* __op) {
-              delete static_cast<__t*>(__op);
+                delete static_cast<__t*>(__op);
             }}
           , __op_(stdexec::connect(static_cast<_Sndr&&>(__sndr), __spawn_receiver_t<_Env>{this})) {
         }
@@ -781,8 +784,8 @@ namespace exec {
         // start is noexcept so we can assume that the operation will complete
         // after this, which means we can rely on its self-ownership to ensure
         // that it is eventually deleted
-        stdexec::start(
-          *(new __op_t{nest(static_cast<_Sender&&>(__sndr)), static_cast<_Env&&>(__env), &__impl_}));
+        stdexec::start(*(
+          new __op_t{nest(static_cast<_Sender&&>(__sndr)), static_cast<_Env&&>(__env), &__impl_}));
       }
 
       template <__movable_value _Env = empty_env, sender_in<__env_t<_Env>> _Sender>

@@ -159,9 +159,9 @@ namespace stdexec {
         __t(_Sender&& sndr, __coro::coroutine_handle<_Promise> __hcoro) //
           noexcept(__nothrow_connectable<_Sender, __receiver>)
           : __op_state_(connect(
-            static_cast<_Sender&&>(sndr),
-            __receiver{
-              {&this->__result_, __hcoro}
+              static_cast<_Sender&&>(sndr),
+              __receiver{
+                {&this->__result_, __hcoro}
         })) {
         }
 

@@ -412,7 +412,8 @@ namespace {
         ex::transfer_just(scheduler(), 0.1415) //
       );
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_t>);
-      [[maybe_unused]] domain dom = ex::get_domain(ex::get_env(snd));
+      [[maybe_unused]]
+      domain dom = ex::get_domain(ex::get_env(snd));
     }
 
     SECTION("early customization") {
@@ -455,7 +456,8 @@ namespace {
         ex::transfer_just(scheduler(), 0.1415) //
       );
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_with_variant_t>);
-      [[maybe_unused]] domain dom = ex::get_domain(ex::get_env(snd));
+      [[maybe_unused]]
+      domain dom = ex::get_domain(ex::get_env(snd));
     }
 
     SECTION("early customization") {
@@ -498,7 +500,8 @@ namespace {
         ex::transfer_just(scheduler(), 0.1415) //
       );
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_with_variant_t>);
-      [[maybe_unused]] domain dom = ex::get_domain(ex::get_env(snd));
+      [[maybe_unused]]
+      domain dom = ex::get_domain(ex::get_env(snd));
     }
 
     SECTION("early customization") {

@@ -213,7 +213,7 @@ namespace stdexec {
 
     using continue_on_t = v2::on_t;
     inline constexpr continue_on_t continue_on{}; // for back-compat
-  }                                               // namespace v2
+  } // namespace v2
 
   template <>
   struct __sexpr_impl<v2::on_t> : __sexpr_defaults {

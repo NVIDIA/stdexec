@@ -209,7 +209,7 @@ namespace stdexec {
     struct sync_wait_t {
       template <sender_in<__env> _Sender>
         requires __valid_sync_wait_argument<_Sender>
-              && __has_implementation_for<sync_wait_t, __early_domain_of_t<_Sender>, _Sender>
+                && __has_implementation_for<sync_wait_t, __early_domain_of_t<_Sender>, _Sender>
       auto operator()(_Sender&& __sndr) const -> std::optional<__value_tuple_for_t<_Sender>> {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::apply_sender(__domain, *this, static_cast<_Sender&&>(__sndr));
@@ -285,10 +285,10 @@ namespace stdexec {
 
       template <sender_in<__env> _Sender>
         requires __callable<
-          apply_sender_t,
-          __early_domain_of_t<_Sender>,
-          sync_wait_with_variant_t,
-          _Sender>
+                   apply_sender_t,
+                   __early_domain_of_t<_Sender>,
+                   sync_wait_with_variant_t,
+                   _Sender>
       auto operator()(_Sender&& __sndr) const -> decltype(auto) {
         using __result_t = __call_result_t<
           apply_sender_t,

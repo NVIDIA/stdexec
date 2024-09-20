@@ -329,7 +329,7 @@ namespace stdexec {
         }
 
         STDEXEC_ASSERT(__waiters_copy.front() != __get_tombstone());
-        for (auto __itr = __waiters_copy.begin(); __itr != __waiters_copy.end(); ) {
+        for (auto __itr = __waiters_copy.begin(); __itr != __waiters_copy.end();) {
           __local_state_base* __item = *__itr;
 
           // We must increment the iterator before calling notify, since notify

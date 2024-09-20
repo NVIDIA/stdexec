@@ -228,8 +228,8 @@ namespace exec {
       using __sender_t = __t<__sender<__id<_Sender>>>;
 
       template <sender _Sender>
-      auto operator()(_Sender&& __sndr) const noexcept(__nothrow_decay_copyable<_Sender>)
-        -> __sender_t<_Sender> {
+      auto operator()(_Sender&& __sndr) const
+        noexcept(__nothrow_decay_copyable<_Sender>) -> __sender_t<_Sender> {
         return __sender_t<_Sender>(static_cast<_Sender&&>(__sndr));
       }
 

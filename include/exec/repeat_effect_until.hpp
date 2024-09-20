@@ -109,8 +109,8 @@ namespace exec {
       }
 
       void __start() noexcept {
-        const bool __already_started
-          [[maybe_unused]] = __started_.test_and_set(std::memory_order_relaxed);
+        const bool __already_started [[maybe_unused]]
+        = __started_.test_and_set(std::memory_order_relaxed);
         STDEXEC_ASSERT(!__already_started);
         stdexec::start(__child_op_.__get());
       }
@@ -225,7 +225,7 @@ namespace stdexec {
   struct __sexpr_impl<exec::repeat_effect_until_t> : __sexpr_defaults {
     static constexpr auto get_completion_signatures = //
       []<class _Sender>(_Sender &&) noexcept          //
-        -> exec::__repeat_effect_until::__completions_t<__data_of<_Sender>> {
+      -> exec::__repeat_effect_until::__completions_t<__data_of<_Sender>> {
       return {};
     };
   };

@@ -322,7 +322,8 @@ namespace {
 
         std::this_thread::sleep_for(delays[tid]);
         auto [val] =
-          ex::sync_wait(split | ex::continues_on(scheduler) | ex::then([](int v) { return v; })).value();
+          ex::sync_wait(split | ex::continues_on(scheduler) | ex::then([](int v) { return v; }))
+            .value();
         thread_results[tid] = val;
       });
     }

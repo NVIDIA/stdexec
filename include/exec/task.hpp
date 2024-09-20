@@ -184,8 +184,8 @@ namespace exec {
         // stop_source when stop is requested on the parent coroutine's stop
         // token.
         : __stop_callback_{
-          get_stop_token(get_env(__parent)),
-          __forward_stop_request{__stop_source_}} {
+            get_stop_token(get_env(__parent)),
+            __forward_stop_request{__stop_source_}} {
         static_assert(
           std::is_nothrow_constructible_v<__stop_callback_t, __stop_token_t, __forward_stop_request>);
         __self.__stop_token_ = __stop_source_.get_token();
@@ -323,8 +323,8 @@ namespace exec {
           return false;
         }
 
-        static auto await_suspend(__coro::coroutine_handle<__promise> __h) noexcept
-          -> __coro::coroutine_handle<> {
+        static auto await_suspend(
+          __coro::coroutine_handle<__promise> __h) noexcept -> __coro::coroutine_handle<> {
           return __h.promise().continuation().handle();
         }
 

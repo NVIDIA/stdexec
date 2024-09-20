@@ -381,8 +381,10 @@ namespace stdexec {
         }
       }
 
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS _Fun __fun_;
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS _Sched __sched_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Fun __fun_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Sched __sched_;
       __result_variant __args_{};
       __op_state_variant __op_state3_{};
     };

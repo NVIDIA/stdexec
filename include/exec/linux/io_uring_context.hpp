@@ -275,8 +275,8 @@ namespace exec {
       // This function first completes all tasks that are ready in the completion queue of the io_uring.
       // Then it completes all tasks that are ready in the given queue of ready tasks.
       // The function returns the number of previously submitted completed tasks.
-      auto complete(stdexec::__intrusive_queue<&__task::__next_> __ready = __task_queue{}) noexcept
-        -> int {
+      auto complete(
+        stdexec::__intrusive_queue<&__task::__next_> __ready = __task_queue{}) noexcept -> int {
         __u32 __head = __head_.load(std::memory_order_relaxed);
         __u32 __tail = __tail_.load(std::memory_order_acquire);
         int __count = 0;
@@ -419,8 +419,8 @@ namespace exec {
           return false;
         } else {
           __requests_.push_front(__op);
-          [[maybe_unused]] int __prev =
-            __n_submissions_in_flight_.fetch_sub(1, std::memory_order_relaxed);
+          [[maybe_unused]]
+          int __prev = __n_submissions_in_flight_.fetch_sub(1, std::memory_order_relaxed);
           STDEXEC_ASSERT(__prev > 0);
           return true;
         }
@@ -654,8 +654,7 @@ namespace exec {
       requires(_Op& __op) {
         {
           static_cast<_Op&&>(__op).receiver()
-        } noexcept
-          -> stdexec::receiver_of<stdexec::completion_signatures<stdexec::set_stopped_t()>>;
+        } noexcept -> stdexec::receiver_of<stdexec::completion_signatures<stdexec::set_stopped_t()>>;
       };
 
     template <__stoppable_task _Op>
@@ -896,7 +895,8 @@ namespace exec {
         }
 
         void submit(::io_uring_sqe& __sqe) noexcept {
-          [[maybe_unused]] int prev = __n_ops_.fetch_add(1, std::memory_order_relaxed);
+          [[maybe_unused]]
+          int prev = __n_ops_.fetch_add(1, std::memory_order_relaxed);
           STDEXEC_ASSERT(prev == 0);
           __context& __context_ = this->__base_.context();
           _Receiver& __receiver = this->__base_.receiver();

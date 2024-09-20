@@ -66,7 +66,7 @@ namespace exec {
 
           template <class _Rcvr>
             requires sequence_receiver_of<_Rcvr, __item_types>
-                  && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
+                    && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
           STDEXEC_MEMFN_DECL(
             auto __create_vtable)(this __mtype<__t>, __mtype<_Rcvr>) noexcept -> const __t* {
             static const __t __vtable_{
