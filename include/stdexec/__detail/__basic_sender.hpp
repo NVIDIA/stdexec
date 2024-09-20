@@ -141,8 +141,8 @@ namespace stdexec {
         __ignore,
         __ignore,
         _ChildOps&... __ops) noexcept {
-      (_StartTag()(__ops), ...);
-    };
+        (_StartTag()(__ops), ...);
+      };
 
     inline constexpr auto __complete = //
       []<class _Index, class _Receiver, class _SetTag, class... _Args>(
@@ -280,8 +280,10 @@ namespace stdexec {
       using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
       using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS __state_t __state_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Receiver __rcvr_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      __state_t __state_;
 
       __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr) //
         noexcept(
@@ -522,9 +524,9 @@ namespace stdexec {
     STDEXEC_ATTRIBUTE((host, device, always_inline))
     explicit __sexpr(_Tag, _Data&& __data, _Child&&... __child)
       : __impl_(__detail::__captures(
-        _Tag(),
-        static_cast<_Data&&>(__data),
-        static_cast<_Child&&>(__child)...)) {
+          _Tag(),
+          static_cast<_Data&&>(__data),
+          static_cast<_Child&&>(__child)...)) {
     }
 
     template <class _Self>
@@ -533,8 +535,7 @@ namespace stdexec {
     template <class _Self = __sexpr>
     STDEXEC_ATTRIBUTE((always_inline))
     auto
-      get_env() const noexcept
-      -> __result_of<__sexpr_apply, const _Self&, __get_attrs_fn<__tag_t>> {
+      get_env() const noexcept -> __result_of<__sexpr_apply, const _Self&, __get_attrs_fn<__tag_t>> {
       return __sexpr_apply(*this, __detail::__drop_front(__impl<_Self>::get_attrs));
     }
 

@@ -128,12 +128,13 @@ namespace {
     using _value = stdexec::completion_signatures<stdexec::set_value_t(Ts...)>;
 
     template <class Env>
-    auto get_completion_signatures(Env&&) const -> stdexec::transform_completion_signatures_of<
-      S&,
-      Env,
-      stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
-      _value,
-      _error> {
+    auto get_completion_signatures(Env&&) const
+      -> stdexec::transform_completion_signatures_of<
+        S&,
+        Env,
+        stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
+        _value,
+        _error> {
       return {};
     }
 

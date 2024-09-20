@@ -34,7 +34,8 @@ namespace stdexec {
       }
     };
 
-    inline constexpr struct __nullopt_t {} __nullopt {};
+    inline constexpr struct __nullopt_t {
+    } __nullopt{};
 
     // A simplified version of std::optional for better compile times
     template <class _Tp>

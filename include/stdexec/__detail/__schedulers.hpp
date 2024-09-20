@@ -69,7 +69,8 @@ namespace stdexec {
   template <class _Scheduler>
   concept __sender_has_completion_scheduler = requires(_Scheduler&& __sched) {
     {
-      stdexec::__decay_copy(get_completion_scheduler<set_value_t>(get_env(schedule(static_cast<_Scheduler&&>(__sched)))))
+      stdexec::__decay_copy(get_completion_scheduler<set_value_t>(
+        get_env(schedule(static_cast<_Scheduler&&>(__sched)))))
     } -> same_as<__decay_t<_Scheduler>>;
   };
 

@@ -86,7 +86,8 @@ namespace stdexec {
     return __m;
   }
 
-  inline constexpr std::size_t __pos_of(const bool* const __first, const bool* const __last) noexcept {
+  inline constexpr std::size_t
+    __pos_of(const bool* const __first, const bool* const __last) noexcept {
     for (const bool* __where = __first; __where != __last; ++__where) {
       if (*__where) {
         return static_cast<std::size_t>(__where - __first);

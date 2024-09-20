@@ -133,22 +133,22 @@ namespace stdexec {
 
   struct __cplr {
     template <class _Tp>
-    using __f = _Tp&;
+    using __f = _Tp &;
   };
 
   struct __cprr {
     template <class _Tp>
-    using __f = _Tp&&;
+    using __f = _Tp &&;
   };
 
   struct __cpclr {
     template <class _Tp>
-    using __f = const _Tp&;
+    using __f = const _Tp &;
   };
 
   struct __cpcrr {
     template <class _Tp>
-    using __f = const _Tp&&;
+    using __f = const _Tp &&;
   };
 
   template <class>
@@ -156,13 +156,13 @@ namespace stdexec {
   template <class _Tp>
   extern __cpc __cpcvr<const _Tp>;
   template <class _Tp>
-  extern __cplr __cpcvr<_Tp&>;
+  extern __cplr __cpcvr<_Tp &>;
   template <class _Tp>
-  extern __cprr __cpcvr<_Tp&&>;
+  extern __cprr __cpcvr<_Tp &&>;
   template <class _Tp>
-  extern __cpclr __cpcvr<const _Tp&>;
+  extern __cpclr __cpcvr<const _Tp &>;
   template <class _Tp>
-  extern __cpcrr __cpcvr<const _Tp&&>;
+  extern __cpcrr __cpcvr<const _Tp &&>;
   template <class _Tp>
   using __copy_cvref_fn = decltype(__cpcvr<_Tp>);
 
@@ -176,7 +176,7 @@ namespace stdexec {
 
   namespace __tt {
     template <class _Ty>
-    auto __remove_rvalue_reference_fn(_Ty&&) -> _Ty;
+    auto __remove_rvalue_reference_fn(_Ty &&) -> _Ty;
   } // namespace __tt
 
   template <class _Ty>
@@ -187,7 +187,7 @@ namespace stdexec {
   // because of a bizarre nvc++ compiler bug:
   struct __cref_fn {
     template <class _Ty>
-    auto operator()(const _Ty&) -> const _Ty&;
+    auto operator()(const _Ty &) -> const _Ty &;
   };
   template <class _Ty>
   using __cref_t = decltype(__cref_fn{}(__declval<_Ty>()));

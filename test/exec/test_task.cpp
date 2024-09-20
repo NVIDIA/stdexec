@@ -49,7 +49,7 @@ namespace {
     CHECK(get_id() == id2);                       // But this task is still in context2
     co_await reschedule_coroutine_on(scheduler1); // Transition to context1
     CHECK(get_id() == id1);                       // Now we are in context1
-  }                                               // Reschedules back to context2
+  } // Reschedules back to context2
 
   task<void> test_stickiness_for_two_single_thread_contexts_(
     auto scheduler1,
@@ -67,7 +67,7 @@ namespace {
     // Child task inherits context2
     co_await test_stickiness_for_two_single_thread_contexts_nested(scheduler1, scheduler2, id1, id2);
     CHECK(get_id() == id2); // Child task is done, we are still in context2
-  }                         // Reschedules back to context1
+  } // Reschedules back to context1
 
   task<void> test_stickiness_for_two_single_thread_contexts_with_sender_(
     auto scheduler1,

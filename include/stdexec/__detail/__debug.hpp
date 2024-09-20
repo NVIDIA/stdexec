@@ -34,8 +34,8 @@ namespace stdexec {
       }
       template <class _Env>
         requires tag_invocable<__is_debug_env_t, const _Env&>
-      auto operator()(const _Env&) const noexcept
-        -> tag_invoke_result_t<__is_debug_env_t, const _Env&>;
+      auto
+        operator()(const _Env&) const noexcept -> tag_invoke_result_t<__is_debug_env_t, const _Env&>;
     };
 
     template <class _Env>

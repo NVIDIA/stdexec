@@ -108,8 +108,8 @@ namespace exec {
           return false;
         }
 
-        static auto await_suspend(__coro::coroutine_handle<__promise> __h) noexcept
-          -> __coro::coroutine_handle<> {
+        static auto await_suspend(
+          __coro::coroutine_handle<__promise> __h) noexcept -> __coro::coroutine_handle<> {
           __promise& __p = __h.promise();
           auto __coro = __p.__is_unhandled_stopped_ ? __p.continuation().unhandled_stopped()
                                                     : __p.continuation().handle();

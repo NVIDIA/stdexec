@@ -113,10 +113,7 @@ int main(int argc, char** argv) {
   long result;
   for (unsigned long i = 0; i < nruns; ++i) {
     auto snd = std::visit(
-      [&](auto&& pool) {
-        return fib_sender(fib_s{cutoff, n, pool.get_scheduler()});
-      },
-      pool);
+      [&](auto&& pool) { return fib_sender(fib_s{cutoff, n, pool.get_scheduler()}); }, pool);
 
     auto time = measure<std::chrono::milliseconds>([&] {
       std::tie(result) = stdexec::sync_wait(std::move(snd)).value();

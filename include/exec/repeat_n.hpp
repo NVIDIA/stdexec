@@ -126,8 +126,8 @@ namespace exec {
           stdexec::set_value(static_cast<_Receiver &&>(this->__receiver()));
         } else {
 
-          const bool __already_started
-            [[maybe_unused]] = __started_.test_and_set(std::memory_order_relaxed);
+          const bool __already_started [[maybe_unused]]
+          = __started_.test_and_set(std::memory_order_relaxed);
           STDEXEC_ASSERT(!__already_started);
           stdexec::start(__child_op_.__get());
         }
@@ -235,13 +235,12 @@ namespace exec {
 
 namespace stdexec {
   template <>
-  struct __sexpr_impl<exec::__repeat_n::__repeat_n_tag>
-    : exec::__repeat_n::__repeat_n_impl { };
+  struct __sexpr_impl<exec::__repeat_n::__repeat_n_tag> : exec::__repeat_n::__repeat_n_impl { };
 
   template <>
   struct __sexpr_impl<exec::repeat_n_t> : __sexpr_defaults {
     static constexpr auto get_completion_signatures = //
-      []<class _Sender>(_Sender&&) noexcept           //
+      []<class _Sender>(_Sender &&) noexcept          //
       -> __completion_signatures_of_t<                //
         transform_sender_result_t<default_domain, _Sender, empty_env>> {
     };

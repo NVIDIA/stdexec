@@ -36,8 +36,8 @@ namespace {
     template <class T>
     // BUGBUG ambiguous!
       requires stdexec::tag_invocable<tag_t, T>
-    auto operator()(T&& t) const noexcept(stdexec::nothrow_tag_invocable<tag_t, T>)
-      -> stdexec::tag_invoke_result_t<tag_t, T> {
+    auto operator()(T&& t) const
+      noexcept(stdexec::nothrow_tag_invocable<tag_t, T>) -> stdexec::tag_invoke_result_t<tag_t, T> {
       return stdexec::tag_invoke(*this, static_cast<T&&>(t));
     }
   };
@@ -686,8 +686,8 @@ namespace {
         return {{}, static_cast<R&&>(r)};
       }
 
-      auto query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept
-        -> counting_scheduler {
+      auto
+        query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept -> counting_scheduler {
         return {};
       }
 

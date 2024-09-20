@@ -337,9 +337,6 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // early sender type-checking
   template <class _Sender>
-  concept __well_formed_sender =
-    __detail::__well_formed_sender<
-      __minvoke<
-        __with_default_q<__completion_signatures_of_t, dependent_completions>,
-        _Sender>>;
+  concept __well_formed_sender = __detail::__well_formed_sender<
+    __minvoke<__with_default_q<__completion_signatures_of_t, dependent_completions>, _Sender>>;
 } // namespace stdexec

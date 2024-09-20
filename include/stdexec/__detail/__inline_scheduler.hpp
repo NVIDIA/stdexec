@@ -34,8 +34,7 @@ namespace stdexec {
 
       template <class _Tag = __schedule_t>
       STDEXEC_ATTRIBUTE((host, device))
-      STDEXEC_MEMFN_DECL(
-        auto schedule)(this __scheduler) {
+      STDEXEC_MEMFN_DECL(auto schedule)(this __scheduler) {
         return __make_sexpr<_Tag>();
       }
 

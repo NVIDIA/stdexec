@@ -165,15 +165,13 @@ namespace stdexec {
         }
 
         [[nodiscard]]
-        auto
-          operator*() const noexcept -> _Item* {
+        auto operator*() const noexcept -> _Item* {
           STDEXEC_ASSERT(__item_ != nullptr);
           return __item_;
         }
 
         [[nodiscard]]
-        auto
-          operator->() const noexcept -> _Item** {
+        auto operator->() const noexcept -> _Item** {
           STDEXEC_ASSERT(__item_ != nullptr);
           return &__item_;
         }

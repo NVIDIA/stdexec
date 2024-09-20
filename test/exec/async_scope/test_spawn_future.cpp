@@ -37,8 +37,8 @@ namespace {
     };
 
     template <class Receiver>
-    friend auto tag_invoke(ex::connect_t, throwing_sender&&, Receiver&&)
-      -> operation<std::decay_t<Receiver>> {
+    friend auto
+      tag_invoke(ex::connect_t, throwing_sender&&, Receiver&&) -> operation<std::decay_t<Receiver>> {
       throw std::logic_error("cannot connect");
     }
   };
@@ -140,10 +140,11 @@ namespace {
     exec::static_thread_pool pool{2};
 
     struct throwing_copy {
-        throwing_copy() = default;
-        throwing_copy(const throwing_copy&) {
-            throw std::logic_error("cannot copy");
-        }
+      throwing_copy() = default;
+
+      throwing_copy(const throwing_copy&) {
+        throw std::logic_error("cannot copy");
+      }
     };
 
     ex::sender auto snd =
