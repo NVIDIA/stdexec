@@ -18,3 +18,6 @@ ab2a3baef655db23fb7ec11ce7ec49575bbd2807
 
 # clang-modernize
 3eaba4111bc8e8516ed1a4f516d753503b87e504
+
+# Reformat everything with clang-format-18
+413749037ac3cd2f66a476fdd593e54e3b4b60b7
