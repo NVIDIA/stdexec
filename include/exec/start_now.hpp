@@ -71,7 +71,7 @@ namespace exec {
       }
 
       void __complete() noexcept {
-        if (--__pending_ == 0) {
+        if (__pending_.fetch_sub(1) == 1) {
           auto __joiner = __joiner_.exchange(nullptr);
           if (__joiner) {
             __joiner->join();
@@ -148,9 +148,8 @@ namespace exec {
         using connect_t = stdexec::connect_t;
 
         template <stdexec::receiver_of<__completions_t> _Receiver>
-        auto connect(_Receiver __rcvr) const
-          noexcept(stdexec::__nothrow_move_constructible<_Receiver>)
-            -> __operation<_EnvId, _Receiver> {
+        auto connect(_Receiver __rcvr) const noexcept(
+          stdexec::__nothrow_move_constructible<_Receiver>) -> __operation<_EnvId, _Receiver> {
           return {__stg_, static_cast<_Receiver&&>(__rcvr)};
         }
 

@@ -54,7 +54,7 @@ struct fib_s {
         stdexec::set_value(static_cast<Receiver&&>(self.rcvr_), serial_fib(self.n));
       } else {
         auto mkchild = [&](long n) {
-          return stdexec::on(self.sched, fib_sender(fib_s{self.cutoff, n, self.sched}));
+          return stdexec::starts_on(self.sched, fib_sender(fib_s{self.cutoff, n, self.sched}));
         };
 
         stdexec::start_detached(
@@ -113,10 +113,7 @@ int main(int argc, char** argv) {
   long result;
   for (unsigned long i = 0; i < nruns; ++i) {
     auto snd = std::visit(
-      [&](auto&& pool) {
-        return fib_sender(fib_s{cutoff, n, pool.get_scheduler()});
-      },
-      pool);
+      [&](auto&& pool) { return fib_sender(fib_s{cutoff, n, pool.get_scheduler()}); }, pool);
 
     auto time = measure<std::chrono::milliseconds>([&] {
       std::tie(result) = stdexec::sync_wait(std::move(snd)).value();

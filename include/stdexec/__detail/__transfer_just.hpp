@@ -20,7 +20,7 @@
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__concepts.hpp"
-#include "__continue_on.hpp"
+#include "__continues_on.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
 #include "__just.hpp"
@@ -49,7 +49,7 @@ namespace stdexec {
     template <class _Env>
     auto __make_transform_fn(const _Env&) {
       return [&]<class _Scheduler, class... _Values>(_Scheduler&& __sched, _Values&&... __vals) {
-        return continue_on(
+        return continues_on(
           just(static_cast<_Values&&>(__vals)...), static_cast<_Scheduler&&>(__sched));
       };
     }

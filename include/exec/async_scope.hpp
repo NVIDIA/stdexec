@@ -18,6 +18,7 @@
 #include "../stdexec/execution.hpp"
 #include "../stdexec/stop_token.hpp"
 #include "../stdexec/__detail/__intrusive_queue.hpp"
+#include "../stdexec/__detail/__optional.hpp"
 #include "env.hpp"
 
 #include <mutex>
@@ -92,7 +93,8 @@ namespace exec {
           stdexec::start(static_cast<__t*>(__self)->__op_);
         }
 
-        STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS connect_result_t<_Constrained, _Receiver> __op_;
+        STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+        connect_result_t<_Constrained, _Receiver> __op_;
       };
     };
 
@@ -155,12 +157,12 @@ namespace exec {
           std::unique_lock __guard{__scope->__lock_};
           auto& __active = __scope->__active_;
           if (--__active == 0) {
-            auto __local = std::move(__scope->__waiters_);
+            auto __local_waiters = std::move(__scope->__waiters_);
             __guard.unlock();
             __scope = nullptr;
             // do not access __scope
-            while (!__local.empty()) {
-              auto* __next = __local.pop_front();
+            while (!__local_waiters.empty()) {
+              auto* __next = __local_waiters.pop_front();
               __next->__notify_waiter(__next);
               // __scope must be considered deleted
             }
@@ -213,7 +215,8 @@ namespace exec {
       struct __t : __nest_op_base<_ReceiverId> {
         using __id = __nest_op;
         using __nest_rcvr_t = stdexec::__t<__nest_rcvr<_ReceiverId>>;
-        STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS connect_result_t<_Constrained, __nest_rcvr_t> __op_;
+        STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+        connect_result_t<_Constrained, __nest_rcvr_t> __op_;
 
         template <__decays_to<_Constrained> _Sender, __decays_to<_Receiver> _Rcvr>
         explicit __t(const __impl* __scope, _Sender&& __c, _Rcvr&& __rcvr)
@@ -313,6 +316,7 @@ namespace exec {
 
         void __complete_() noexcept {
           try {
+            __forward_consumer_.reset();
             auto __state = std::move(__state_);
             STDEXEC_ASSERT(__state != nullptr);
             std::unique_lock __guard{__state->__mutex_};
@@ -354,7 +358,8 @@ namespace exec {
         _Receiver __rcvr_;
         std::unique_ptr<__future_state<_Sender, _Env>> __state_;
         STDEXEC_ATTRIBUTE((no_unique_address))
-        __forward_consumer __forward_consumer_;
+        stdexec::__optional<__forward_consumer>
+          __forward_consumer_;
 
        public:
         using __id = __future_op;
@@ -379,11 +384,11 @@ namespace exec {
           _Receiver2&& __rcvr, std::unique_ptr<__future_state<_Sender, _Env>> __state)
           : __subscription{{},
             [](__subscription* __self) noexcept -> void {
-              static_cast<__t*>(__self)->__complete_();
+                static_cast<__t*>(__self)->__complete_();
             }}
           , __rcvr_(static_cast<_Receiver2&&>(__rcvr))
           , __state_(std::move(__state))
-          , __forward_consumer_(get_stop_token(get_env(__rcvr_)),
+          , __forward_consumer_(std::in_place, get_stop_token(get_env(__rcvr_)),
               __forward_stopped{&__state_->__stop_source_}) {
         }
 
@@ -503,7 +508,7 @@ namespace exec {
       }
 
       inplace_stop_source __stop_source_;
-      std::optional<inplace_stop_callback<__forward_stopped>> __forward_scope_;
+      stdexec::__optional<inplace_stop_callback<__forward_stopped>> __forward_scope_;
       std::mutex __mutex_;
       __future_step __step_ = __future_step::__created;
       std::unique_ptr<__future_state_base, __dynamic_delete<__future_state_base>> __no_future_;
@@ -522,11 +527,10 @@ namespace exec {
         __future_state_base<_Completions, _Env>* __state_;
         const __impl* __scope_;
 
-        void __dispatch_result_() noexcept {
+        void __dispatch_result_(std::unique_lock<std::mutex>& __guard) noexcept {
           auto& __state = *__state_;
-          std::unique_lock __guard{__state.__mutex_};
-          auto __local = std::move(__state.__subscribers_);
-          __state.__forward_scope_ = std::nullopt;
+          auto __local_subscribers = std::move(__state.__subscribers_);
+          __state.__forward_scope_.reset();
           if (__state.__no_future_.get() != nullptr) {
             // nobody is waiting for the results
             // delete this and return
@@ -536,45 +540,45 @@ namespace exec {
             return;
           }
           __guard.unlock();
-          while (!__local.empty()) {
-            auto* __sub = __local.pop_front();
+          while (!__local_subscribers.empty()) {
+            auto* __sub = __local_subscribers.pop_front();
             __sub->__complete();
           }
         }
 
         template <class _Tag, class... _As>
-        bool __save_completion(_Tag, _As&&... __as) noexcept {
+        void __save_completion(_Tag, _As&&... __as) noexcept {
           auto& __state = *__state_;
           try {
-            std::unique_lock __guard{__state.__mutex_};
             using _Tuple = __decayed_std_tuple<_Tag, _As...>;
             __state.__data_.template emplace<_Tuple>(_Tag(), static_cast<_As&&>(__as)...);
-            return true;
           } catch (...) {
             using _Tuple = std::tuple<set_error_t, std::exception_ptr>;
             __state.__data_.template emplace<_Tuple>(set_error_t(), std::current_exception());
           }
-          return false;
         }
 
         template <__movable_value... _As>
         void set_value(_As&&... __as) noexcept {
-          if (__save_completion(set_value_t(), static_cast<_As&&>(__as)...)) {
-            __dispatch_result_();
-          }
+          auto& __state = *__state_;
+          std::unique_lock __guard{__state.__mutex_};
+          __save_completion(set_value_t(), static_cast<_As&&>(__as)...);
+          __dispatch_result_(__guard);
         }
 
         template <__movable_value _Error>
         void set_error(_Error&& __err) noexcept {
-          if (__save_completion(set_error_t(), static_cast<_Error&&>(__err))) {
-            __dispatch_result_();
-          }
+          auto& __state = *__state_;
+          std::unique_lock __guard{__state.__mutex_};
+          __save_completion(set_error_t(), static_cast<_Error&&>(__err));
+          __dispatch_result_(__guard);
         }
 
         void set_stopped() noexcept {
-          if (__save_completion(set_stopped_t())) {
-            __dispatch_result_();
-          }
+          auto& __state = *__state_;
+          std::unique_lock __guard{__state.__mutex_};
+          __save_completion(set_stopped_t());
+          __dispatch_result_(__guard);
         }
 
         auto get_env() const noexcept -> const __env_t<_Env>& {
@@ -732,7 +736,7 @@ namespace exec {
           : __spawn_op_base<_EnvId>{__env::__join(static_cast<_Env&&>(__env),
             __spawn_env_{__scope->__stop_source_.get_token()}),
             [](__spawn_op_base<_EnvId>* __op) {
-              delete static_cast<__t*>(__op);
+                delete static_cast<__t*>(__op);
             }}
           , __op_(stdexec::connect(static_cast<_Sndr&&>(__sndr), __spawn_receiver_t<_Env>{this})) {
         }
@@ -780,8 +784,8 @@ namespace exec {
         // start is noexcept so we can assume that the operation will complete
         // after this, which means we can rely on its self-ownership to ensure
         // that it is eventually deleted
-        stdexec::start(
-          *new __op_t{nest(static_cast<_Sender&&>(__sndr)), static_cast<_Env&&>(__env), &__impl_});
+        stdexec::start(*(
+          new __op_t{nest(static_cast<_Sender&&>(__sndr)), static_cast<_Env&&>(__env), &__impl_}));
       }
 
       template <__movable_value _Env = empty_env, sender_in<__env_t<_Env>> _Sender>

@@ -209,7 +209,7 @@ namespace stdexec {
     struct sync_wait_t {
       template <sender_in<__env> _Sender>
         requires __valid_sync_wait_argument<_Sender>
-              && __has_implementation_for<sync_wait_t, __early_domain_of_t<_Sender>, _Sender>
+                && __has_implementation_for<sync_wait_t, __early_domain_of_t<_Sender>, _Sender>
       auto operator()(_Sender&& __sndr) const -> std::optional<__value_tuple_for_t<_Sender>> {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::apply_sender(__domain, *this, static_cast<_Sender&&>(__sndr));
@@ -258,20 +258,20 @@ namespace stdexec {
       // clang-format on
       template <sender_in<__env> _Sender>
       auto apply_sender(_Sender&& __sndr) const -> std::optional<__sync_wait_result_t<_Sender>> {
-        __state __local{};
+        __state __local_state{};
         std::optional<__sync_wait_result_t<_Sender>> __result{};
 
         // Launch the sender with a continuation that will fill in the __result optional or set the
-        // exception_ptr in __local.
+        // exception_ptr in __local_state.
         auto __op_state =
-          connect(static_cast<_Sender&&>(__sndr), __receiver_t<_Sender>{&__local, &__result});
+          connect(static_cast<_Sender&&>(__sndr), __receiver_t<_Sender>{&__local_state, &__result});
         stdexec::start(__op_state);
 
         // Wait for the variant to be filled in.
-        __local.__loop_.run();
+        __local_state.__loop_.run();
 
-        if (__local.__eptr_) {
-          std::rethrow_exception(static_cast<std::exception_ptr&&>(__local.__eptr_));
+        if (__local_state.__eptr_) {
+          std::rethrow_exception(static_cast<std::exception_ptr&&>(__local_state.__eptr_));
         }
 
         return __result;
@@ -285,10 +285,10 @@ namespace stdexec {
 
       template <sender_in<__env> _Sender>
         requires __callable<
-          apply_sender_t,
-          __early_domain_of_t<_Sender>,
-          sync_wait_with_variant_t,
-          _Sender>
+                   apply_sender_t,
+                   __early_domain_of_t<_Sender>,
+                   sync_wait_with_variant_t,
+                   _Sender>
       auto operator()(_Sender&& __sndr) const -> decltype(auto) {
         using __result_t = __call_result_t<
           apply_sender_t,

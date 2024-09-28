@@ -85,7 +85,7 @@ namespace stdexec {
   concept __all_of = (__same_as<_Ty, _Us> && ...);
 
   template <class _Ty, class... _Us>
-  concept __none_of = ((!__same_as<_Ty, _Us>) &&...);
+  concept __none_of = ((!__same_as<_Ty, _Us>) && ...);
 
   template <class, template <class...> class>
   constexpr bool __is_instance_of_ = false;
@@ -146,7 +146,7 @@ namespace stdexec {
 #else
   template <class _Ty>
   inline constexpr bool __destructible_ = //
-    requires (_Ty && (&__fn) () noexcept) {
+    requires(_Ty && (&__fn)() noexcept) {
       { __fn().~_Ty() } noexcept;
     };
   template <class _Ty>

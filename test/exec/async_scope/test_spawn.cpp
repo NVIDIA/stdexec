@@ -25,8 +25,8 @@ namespace {
     };
 
     template <class Receiver>
-    friend auto tag_invoke(ex::connect_t, throwing_sender&&, Receiver&&)
-      -> operation<std::decay_t<Receiver>> {
+    friend auto
+      tag_invoke(ex::connect_t, throwing_sender&&, Receiver&&) -> operation<std::decay_t<Receiver>> {
       throw std::logic_error("cannot connect");
     }
   };
@@ -37,7 +37,7 @@ namespace {
     async_scope scope;
 
     // Non-blocking call
-    scope.spawn(ex::on(sch, ex::just() | ex::then([&] { executed = true; })));
+    scope.spawn(ex::starts_on(sch, ex::just() | ex::then([&] { executed = true; })));
     REQUIRE_FALSE(executed);
     // Run the operation on the scheduler
     sch.start_next();
@@ -82,7 +82,7 @@ namespace {
     // REQUIRE(P2519::__scope::empty(scope));
 
     // Non-blocking call
-    scope.spawn(ex::on(sch, ex::just() | ex::then([&] { executed = true; })));
+    scope.spawn(ex::starts_on(sch, ex::just() | ex::then([&] { executed = true; })));
     REQUIRE_FALSE(executed);
 
     // The scope is now non-empty
@@ -113,7 +113,7 @@ namespace {
 
     constexpr std::size_t num_oper = 10;
     for (std::size_t i = 0; i < num_oper; i++) {
-      scope.spawn(ex::on(sch, ex::just() | ex::then([&] { num_executed++; })));
+      scope.spawn(ex::starts_on(sch, ex::just() | ex::then([&] { num_executed++; })));
       size_t num_expected_ops = i + 1;
       // TODO: reenable this
       // REQUIRE(P2519::__scope::op_count(scope) == num_expected_ops);
@@ -142,14 +142,14 @@ namespace {
     bool cancelled1{false};
     bool cancelled2{false};
 
-    scope.spawn(ex::on(
+    scope.spawn(ex::starts_on(
       sch,
       ex::just() //
         | ex::let_stopped([&] {
             cancelled1 = true;
             return ex::just();
           })));
-    scope.spawn(ex::on(
+    scope.spawn(ex::starts_on(
       sch,
       ex::just() //
         | ex::let_stopped([&] {
@@ -214,7 +214,7 @@ namespace {
     // TODO: reenable this
     // REQUIRE(P2519::__scope::empty(scope));
 
-    scope.spawn(ex::on(sch, ex::just_stopped()));
+    scope.spawn(ex::starts_on(sch, ex::just_stopped()));
 
     // The scope is now non-empty
     // TODO: reenable this

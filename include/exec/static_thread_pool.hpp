@@ -872,8 +872,8 @@ namespace exec {
       return result;
     }
 
-    inline auto static_thread_pool_::thread_state::try_pop()
-      -> static_thread_pool_::thread_state::pop_result {
+    inline auto
+      static_thread_pool_::thread_state::try_pop() -> static_thread_pool_::thread_state::pop_result {
       pop_result result{nullptr, index_};
       result.task = local_queue_.pop_back();
       if (result.task) [[likely]] {
@@ -882,8 +882,8 @@ namespace exec {
       return try_remote();
     }
 
-    inline auto static_thread_pool_::thread_state::try_steal(std::span<workstealing_victim> victims)
-      -> static_thread_pool_::thread_state::pop_result {
+    inline auto static_thread_pool_::thread_state::try_steal(
+      std::span<workstealing_victim> victims) -> static_thread_pool_::thread_state::pop_result {
       if (victims.empty()) {
         return {nullptr, index_};
       }
@@ -1379,8 +1379,8 @@ namespace exec {
           struct env {
             static_thread_pool_* pool_;
 
-            auto query(get_completion_scheduler_t<set_value_t>) noexcept
-              -> static_thread_pool_::scheduler {
+            auto query(
+              get_completion_scheduler_t<set_value_t>) noexcept -> static_thread_pool_::scheduler {
               return pool_->get_scheduler();
             }
           };
@@ -1458,8 +1458,8 @@ namespace exec {
 
           __t(Range range, static_thread_pool_& pool, Receiver rcvr)
             : operation_base_with_receiver<
-              Range,
-              Receiver>{std::move(range), pool, static_cast<Receiver&&>(rcvr)}
+                Range,
+                Receiver>{std::move(range), pool, static_cast<Receiver&&>(rcvr)}
             , items_(std::ranges::size(this->range_), ItemAllocator(get_allocator(this->rcvr_))) {
           }
 

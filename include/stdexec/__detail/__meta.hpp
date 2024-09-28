@@ -263,8 +263,7 @@ namespace stdexec {
   // Use a standard user-defined string literal template
   template <__mstring _Str>
   [[deprecated("Use _mstr instead")]]
-  constexpr auto
-    operator""__csz() noexcept -> __mtypeof<_Str> {
+  constexpr auto operator""__csz() noexcept -> __mtypeof<_Str> {
     return _Str;
   }
 
@@ -706,8 +705,8 @@ namespace stdexec {
   struct __mconcat {
     template <class... _Args>
     using __f = __mapply<
-        _Continuation,
-        decltype(__mconcat_<(sizeof...(_Args) == 0)>::__f({}, static_cast<_Args *>(nullptr)...))>;
+      _Continuation,
+      decltype(__mconcat_<(sizeof...(_Args) == 0)>::__f({}, static_cast<_Args *>(nullptr)...))>;
   };
 
   struct __msize {
@@ -1072,7 +1071,7 @@ namespace stdexec {
     constexpr decltype(auto)
       operator()(_Ts &&...__ts) const noexcept {
       static_assert(_Np < sizeof...(_Ts));
-      return (static_cast<_Ts &&>(__ts)...[_Np]);
+      return static_cast<_Ts...[_Np] &&>(__ts...[_Np]);
     }
   };
 #else
@@ -1172,7 +1171,7 @@ namespace stdexec {
   struct __mdispatch_<_Ret (*)(_Args...), _Offset> {
     template <class... _Ts>
       requires(__callable<__mdispatch_<_Args, _Offset>, _Ts...> && ...)
-           && __callable<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...>
+             && __callable<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...>
     auto operator()(_Ts &&...__ts) const
       noexcept(__nothrow_callable<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...>)
         -> __call_result_t<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...> {
@@ -1190,8 +1189,8 @@ namespace stdexec {
     struct __impl {
       template <std::size_t... _Idx, class... _Ts>
         requires(__callable<__mdispatch_<_Args>, _Ts...> && ...)
-             && (__callable<__mdispatch_<_Pattern, _Idx + 1>, _Ts...> && ...)
-             && __callable< //
+               && (__callable<__mdispatch_<_Pattern, _Idx + 1>, _Ts...> && ...)
+               && __callable< //
                   _Ret,
                   __call_result_t<__mdispatch_<_Args>, _Ts...>...,
                   __call_result_t<__mdispatch_<_Pattern, _Idx + 1>, _Ts...>...>
@@ -1212,7 +1211,7 @@ namespace stdexec {
 
     template <class... _Ts>
       requires(__offset < sizeof...(_Ts))
-           && __callable<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>
+             && __callable<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>
     auto operator()(_Ts &&...__ts) const
       noexcept(__nothrow_callable<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>)
         -> __msecond<
@@ -1223,7 +1222,7 @@ namespace stdexec {
 
     template <class... _Ts>
       requires(sizeof...(_Ts) == __offset)
-           && __callable<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...> *>, _Ts...>
+             && __callable<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...> *>, _Ts...>
     auto operator()(_Ts &&...__ts) const //
       noexcept(
         __nothrow_callable<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...> *>, _Ts...>)

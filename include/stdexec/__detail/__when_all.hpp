@@ -20,7 +20,7 @@
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__concepts.hpp"
-#include "__continue_on.hpp"
+#include "__continues_on.hpp"
 #include "__diagnostics.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
@@ -191,7 +191,7 @@ namespace stdexec {
 
       template <class _Receiver>
       void __arrive(_Receiver& __rcvr) noexcept {
-        if (0 == --__count_) {
+        if (1 == __count_.fetch_sub(1)) {
           __complete(__rcvr);
         }
       }
@@ -361,7 +361,7 @@ namespace stdexec {
         } else if constexpr (!__same_as<decltype(_State::__values_), __ignore>) {
           // We only need to bother recording the completion values
           // if we're not already in the "error" or "stopped" state.
-          if (__state.__state_ == __started) {
+          if (__state.__state_.load() == __started) {
             auto& __opt_values = __tup::get<__v<_Index>>(__state.__values_);
             using _Tuple = __decayed_tuple<_Args...>;
             static_assert(
@@ -458,7 +458,7 @@ namespace stdexec {
         return __sexpr_apply(
           static_cast<_Sender&&>(__sndr),
           [&]<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child) {
-            return continue_on(
+            return continues_on(
               when_all_t()(static_cast<_Child&&>(__child)...),
               get_completion_scheduler<set_value_t>(__data));
           });

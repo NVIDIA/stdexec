@@ -30,8 +30,8 @@ namespace exec {
     : __fd_(std::exchange(__other.__fd_, -1)) {
   }
 
-  inline auto safe_file_descriptor::operator=(safe_file_descriptor&& __other) noexcept
-    -> safe_file_descriptor& {
+  inline auto safe_file_descriptor::operator=(
+    safe_file_descriptor&& __other) noexcept -> safe_file_descriptor& {
     if (this != &__other) {
       if (__fd_ != -1) {
         ::close(__fd_);

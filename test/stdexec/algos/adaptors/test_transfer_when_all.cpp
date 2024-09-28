@@ -113,7 +113,7 @@ namespace {
 
   auto
     tag_invoke(ex::transfer_when_all_t, inline_scheduler, my_string_sender_t, my_string_sender_t) {
-    // Return a different sender when we invoke this custom defined on implementation
+    // Return a different sender when we invoke this custom defined transfer_when_all implementation
     return ex::just(std::string{"first program"});
   }
 
@@ -132,7 +132,7 @@ namespace {
     inline_scheduler,
     my_string_sender_t,
     my_string_sender_t) {
-    // Return a different sender when we invoke this custom defined on implementation
+    // Return a different sender when we invoke this custom defined transfer_when_all_with_variant implementation
     return ex::just(std::string{"first program"});
   }
 
@@ -178,7 +178,8 @@ namespace {
         ex::just(0.1415) //
       );
       static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_t>);
-      [[maybe_unused]] domain dom = ex::get_domain(ex::get_env(snd));
+      [[maybe_unused]]
+      domain dom = ex::get_domain(ex::get_env(snd));
     }
 
     SECTION("early customization") {
@@ -198,7 +199,7 @@ namespace {
       using domain = basic_domain<ex::transfer_when_all_t, customize::late, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::on(
+      auto snd = ex::starts_on(
         inline_scheduler(),
         ex::transfer_when_all( //
           scheduler(),         //
@@ -226,7 +227,8 @@ namespace {
         ex::just(0.1415)                             //
       );
       static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_with_variant_t>);
-      [[maybe_unused]] domain dom = ex::get_domain(ex::get_env(snd));
+      [[maybe_unused]]
+      domain dom = ex::get_domain(ex::get_env(snd));
     }
 
     SECTION("early customization") {
@@ -246,7 +248,7 @@ namespace {
       using domain = basic_domain<ex::transfer_when_all_with_variant_t, customize::late, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::on(
+      auto snd = ex::starts_on(
         inline_scheduler(),
         ex::transfer_when_all_with_variant( //
           scheduler(),                      //
@@ -274,7 +276,8 @@ namespace {
         ex::just(0.1415)                             //
       );
       static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_with_variant_t>);
-      [[maybe_unused]] domain dom = ex::get_domain(ex::get_env(snd));
+      [[maybe_unused]]
+      domain dom = ex::get_domain(ex::get_env(snd));
     }
 
     SECTION("early customization") {
@@ -294,7 +297,7 @@ namespace {
       using domain = basic_domain<ex::transfer_when_all_t, customize::late, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::on(
+      auto snd = ex::starts_on(
         inline_scheduler(),
         ex::transfer_when_all_with_variant( //
           scheduler(),                      //

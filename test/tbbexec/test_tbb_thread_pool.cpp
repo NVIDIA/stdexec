@@ -120,9 +120,9 @@ namespace {
 
     // clang-format off
   auto work = when_all(
-      on(tbb_sched, just(1))    | then(compute) | then(compute),
-      on(other_sched, just(0))  | then(compute) | transfer(tbb_sched)   | then(compute),
-      on(inline_sched, just(2)) | then(compute) | transfer(other_sched) | then(compute) | transfer(tbb_sched) | then(compute)
+      starts_on(tbb_sched, just(1))    | then(compute) | then(compute),
+      starts_on(other_sched, just(0))  | then(compute) | continues_on(tbb_sched)   | then(compute),
+      starts_on(inline_sched, just(2)) | then(compute) | continues_on(other_sched) | then(compute) | continues_on(tbb_sched) | then(compute)
   );
     // clang-format on
 
@@ -141,21 +141,20 @@ namespace {
     tbbexec::tbb_thread_pool tbb_pool;
     exec::static_thread_pool other_pool(1);
     {
-      CHECK_THROWS(stdexec::sync_wait(on(tbb_pool.get_scheduler(), just(0)) | then([](auto) {
+      CHECK_THROWS(stdexec::sync_wait(starts_on(tbb_pool.get_scheduler(), just(0)) | then([](auto) {
                                         throw std::exception();
                                       })));
-      CHECK_THROWS(stdexec::sync_wait(on(other_pool.get_scheduler(), just(0)) | then([](auto) {
-                                        throw std::exception();
-                                      })));
+      CHECK_THROWS(stdexec::sync_wait(
+        starts_on(other_pool.get_scheduler(), just(0))
+        | then([](auto) { throw std::exception(); })));
     }
     // Ensure it still works normally after exceptions:
     {
-      auto tbb_result = stdexec::sync_wait(on(tbb_pool.get_scheduler(), just(0)) | then([](auto i) {
-                                             return i + 1;
-                                           }));
+      auto tbb_result = stdexec::sync_wait(
+        starts_on(tbb_pool.get_scheduler(), just(0)) | then([](auto i) { return i + 1; }));
       CHECK(tbb_result.has_value());
       auto other_result = stdexec::sync_wait(
-        on(other_pool.get_scheduler(), just(0)) | then([](auto i) { return i + 1; }));
+        starts_on(other_pool.get_scheduler(), just(0)) | then([](auto i) { return i + 1; }));
       CHECK(tbb_result == other_result);
     }
   }

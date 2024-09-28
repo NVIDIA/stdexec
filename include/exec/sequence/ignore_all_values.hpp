@@ -275,7 +275,7 @@ namespace exec {
 
       template <class _Child>
         requires receiver_of<_Receiver, __completion_sigs<_Child>>
-              && sequence_sender_to<_Child, __receiver_t<_Child>>
+                && sequence_sender_to<_Child, __receiver_t<_Child>>
       auto operator()(__ignore, __ignore, _Child&& __child) //
         noexcept(__nothrow_constructible_from<__operation_t<_Child>, _Child, _Receiver>)
           -> __operation_t<_Child> {

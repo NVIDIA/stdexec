@@ -114,7 +114,7 @@ namespace exec {
       using _Receiver = stdexec::__t<_ReceiverId>;
       _Receiver __rcvr_;
 
-      using _ItemSender = decltype(stdexec::on(
+      using _ItemSender = decltype(stdexec::starts_on(
         std::declval<trampoline_scheduler&>(),
         std::declval<__sender_t<_Range>>()));
 
@@ -132,7 +132,7 @@ namespace exec {
           try {
             stdexec::start(__op_.emplace(__emplace_from{[&] {
               return stdexec::connect(
-                exec::set_next(__rcvr_, stdexec::on(__scheduler_, __sender_t<_Range>{this})),
+                exec::set_next(__rcvr_, stdexec::starts_on(__scheduler_, __sender_t<_Range>{this})),
                 __next_receiver_t{this});
             }}));
           } catch (...) {
@@ -176,7 +176,7 @@ namespace exec {
 
 
       template <class _Sequence>
-      using _ItemSender = decltype(stdexec::on(
+      using _ItemSender = decltype(stdexec::starts_on(
         __declval<trampoline_scheduler&>(),
         __declval<__sender_t<__data_of<_Sequence>>>()));
 

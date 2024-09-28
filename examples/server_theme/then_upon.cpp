@@ -200,7 +200,7 @@ int main() {
                                    << resp.body_ << "\n";
                                std::cout << oss.str();
                              });
-    scope.spawn(ex::on(sched, std::move(action)));
+    scope.spawn(ex::starts_on(sched, std::move(action)));
   }
 
   stdexec::sync_wait(scope.on_empty());

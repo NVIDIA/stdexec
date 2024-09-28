@@ -78,7 +78,8 @@ namespace exec {
           __enable_receiver_from_this<_Sender, _Receiver, __repeat_effect_state<_Sender, _Receiver>> {
       using __child_t = __decay_t<__data_of<_Sender>>;
       using __receiver_t = stdexec::__t<__receiver<__id<_Sender>, __id<_Receiver>>>;
-      using __child_on_sched_sender_t = __result_of<stdexec::on, trampoline_scheduler, __child_t &>;
+      using __child_on_sched_sender_t =
+        __result_of<stdexec::starts_on, trampoline_scheduler, __child_t &>;
       using __child_op_t = stdexec::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
       __child_t __child_;
@@ -103,13 +104,13 @@ namespace exec {
 
       void __connect() {
         __child_op_.__construct_from([this] {
-          return stdexec::connect(stdexec::on(__sched_, __child_), __receiver_t{this});
+          return stdexec::connect(stdexec::starts_on(__sched_, __child_), __receiver_t{this});
         });
       }
 
       void __start() noexcept {
-        const bool __already_started
-          [[maybe_unused]] = __started_.test_and_set(std::memory_order_relaxed);
+        const bool __already_started [[maybe_unused]]
+        = __started_.test_and_set(std::memory_order_relaxed);
         STDEXEC_ASSERT(!__already_started);
         stdexec::start(__child_op_.__get());
       }
@@ -224,7 +225,7 @@ namespace stdexec {
   struct __sexpr_impl<exec::repeat_effect_until_t> : __sexpr_defaults {
     static constexpr auto get_completion_signatures = //
       []<class _Sender>(_Sender &&) noexcept          //
-        -> exec::__repeat_effect_until::__completions_t<__data_of<_Sender>> {
+      -> exec::__repeat_effect_until::__completions_t<__data_of<_Sender>> {
       return {};
     };
   };

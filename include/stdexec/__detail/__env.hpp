@@ -398,7 +398,8 @@ namespace stdexec {
       // __queryable<_Envs, _Query, _Args...> is true.
       template <class _Query, class... _Args>
       STDEXEC_ATTRIBUTE((always_inline))
-      constexpr decltype(auto) __get_1st() const noexcept {
+      constexpr decltype(auto)
+        __get_1st() const noexcept {
         constexpr bool __flags[] = {__queryable<_Envs, _Query, _Args...>...};
         constexpr std::size_t __idx = __pos_of(__flags, __flags + sizeof...(_Envs));
         return __tup::get<__idx>(__tup_);
@@ -407,8 +408,9 @@ namespace stdexec {
       template <class _Query, class... _Args>
         requires(__queryable<_Envs, _Query, _Args...> || ...)
       STDEXEC_ATTRIBUTE((always_inline))
-      constexpr decltype(auto) query(_Query __q, _Args&&... __args) const noexcept(
-        __nothrow_queryable<decltype(__get_1st<_Query, _Args...>()), _Query, _Args...>) {
+      constexpr decltype(auto)
+        query(_Query __q, _Args&&... __args) const
+        noexcept(__nothrow_queryable<decltype(__get_1st<_Query, _Args...>()), _Query, _Args...>) {
         return tag_invoke(__q, __get_1st<_Query, _Args...>(), static_cast<_Args&&>(__args)...);
       }
 
@@ -430,7 +432,8 @@ namespace stdexec {
       // __queryable<_Envs, _Query, _Args...> is true.
       template <class _Query, class... _Args>
       STDEXEC_ATTRIBUTE((always_inline))
-      constexpr decltype(auto) __get_1st() const noexcept {
+      constexpr decltype(auto)
+        __get_1st() const noexcept {
         if constexpr (__queryable<_Env0, _Query, _Args...>) {
           return (__env0_);
         } else {
@@ -441,8 +444,9 @@ namespace stdexec {
       template <class _Query, class... _Args>
         requires __queryable<_Env0, _Query, _Args...> || __queryable<_Env1, _Query, _Args...>
       STDEXEC_ATTRIBUTE((always_inline))
-      constexpr decltype(auto) query(_Query __q, _Args&&... __args) const noexcept(
-        __nothrow_queryable<decltype(__get_1st<_Query, _Args...>()), _Query, _Args...>) {
+      constexpr decltype(auto)
+        query(_Query __q, _Args&&... __args) const
+        noexcept(__nothrow_queryable<decltype(__get_1st<_Query, _Args...>()), _Query, _Args...>) {
         return tag_invoke(__q, __get_1st<_Query, _Args...>(), static_cast<_Args&&>(__args)...);
       }
 
@@ -573,8 +577,8 @@ namespace stdexec {
 
       template <class _Tag>
         requires __callable<const _Fun&, _Tag>
-      auto query(_Tag) const noexcept(__nothrow_callable<const _Fun&, _Tag>)
-        -> __call_result_t<const _Fun&, _Tag> {
+      auto query(_Tag) const
+        noexcept(__nothrow_callable<const _Fun&, _Tag>) -> __call_result_t<const _Fun&, _Tag> {
         return __fun_(_Tag());
       }
 

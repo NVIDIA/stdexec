@@ -165,9 +165,10 @@ namespace stdexec {
         noexcept((__nothrow_callable<_Fn, _As..., __copy_cvref_t<_Self, _Ts>> && ...)) {
         STDEXEC_ASSERT(__self.__index_ != __variant_npos);
         auto __index = __self.__index_; // make it local so we don't access it after it's deleted.
-        ((_Is == __index ? static_cast<_Fn &&>(__fn)(
-            static_cast<_As &&>(__as)..., static_cast<_Self &&>(__self).template get<_Is>())
-                         : void()),
+        ((_Is == __index
+            ? static_cast<_Fn &&>(__fn)(
+                static_cast<_As &&>(__as)..., static_cast<_Self &&>(__self).template get<_Is>())
+            : void()),
          ...);
       }
 

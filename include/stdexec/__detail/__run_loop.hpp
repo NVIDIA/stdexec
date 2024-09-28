@@ -154,8 +154,8 @@ namespace stdexec {
           return __schedule_task{__loop_};
         }
 
-        auto query(get_forward_progress_guarantee_t) const noexcept
-          -> stdexec::forward_progress_guarantee {
+        auto query(
+          get_forward_progress_guarantee_t) const noexcept -> stdexec::forward_progress_guarantee {
           return stdexec::forward_progress_guarantee::parallel;
         }
 

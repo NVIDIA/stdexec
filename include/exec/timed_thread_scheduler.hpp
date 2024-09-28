@@ -229,23 +229,23 @@ namespace exec {
         std::chrono::steady_clock::time_point time_point,
         Receiver receiver) noexcept
         : _time_thrd_sched::timed_thread_schedule_operation_base{
-          time_point,
-          [](_time_thrd_sched::timed_thread_operation_base* op) noexcept {
-            auto* self = static_cast<__t*>(op);
-            int counter = self->ref_count_.fetch_sub(1, std::memory_order_relaxed);
-            if (counter == 1) {
-              self->stop_callback_.reset();
-              stdexec::set_stopped(std::move(self->receiver_));
-            }
-          },
-          [](_time_thrd_sched::timed_thread_operation_base* op) noexcept {
-            auto* self = static_cast<__t*>(op);
-            int counter = self->ref_count_.fetch_sub(1, std::memory_order_relaxed);
-            if (counter == 1) {
-              self->stop_callback_.reset();
-              stdexec::set_value(std::move(self->receiver_));
-            }
-          }}
+            time_point,
+            [](_time_thrd_sched::timed_thread_operation_base* op) noexcept {
+              auto* self = static_cast<__t*>(op);
+              int counter = self->ref_count_.fetch_sub(1, std::memory_order_relaxed);
+              if (counter == 1) {
+                self->stop_callback_.reset();
+                stdexec::set_stopped(std::move(self->receiver_));
+              }
+            },
+            [](_time_thrd_sched::timed_thread_operation_base* op) noexcept {
+              auto* self = static_cast<__t*>(op);
+              int counter = self->ref_count_.fetch_sub(1, std::memory_order_relaxed);
+              if (counter == 1) {
+                self->stop_callback_.reset();
+                stdexec::set_value(std::move(self->receiver_));
+              }
+            }}
         , context_{context}
         , receiver_{std::move(receiver)}
         , stop_op_{

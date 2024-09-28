@@ -18,7 +18,7 @@ namespace {
     exec::inline_scheduler cpu{};
     nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
 
-    auto snd = ex::schedule(cpu) | ex::transfer(gpu);
+    auto snd = ex::schedule(cpu) | ex::continues_on(gpu);
     STATIC_REQUIRE(ex::sender<decltype(snd)>);
     (void) snd;
   }
@@ -31,7 +31,7 @@ namespace {
     exec::inline_scheduler cpu{};
     nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
 
-    auto snd = ex::schedule(gpu) | ex::transfer(cpu);
+    auto snd = ex::schedule(gpu) | ex::continues_on(cpu);
     STATIC_REQUIRE(ex::sender<decltype(snd)>);
     (void) snd;
   }
@@ -49,7 +49,7 @@ namespace {
                  }
                  return 0;
                })
-             | ex::transfer(gpu) //
+             | ex::continues_on(gpu) //
              | ex::then([=](int val) -> int {
                  if (is_on_gpu() && val == 1) {
                    return 2;
@@ -74,7 +74,7 @@ namespace {
                  }
                  return 0;
                })
-             | ex::transfer(cpu) //
+             | ex::continues_on(cpu) //
              | ex::then([=](int val) -> int {
                  if (!is_on_gpu() && val == 1) {
                    return 2;
@@ -124,7 +124,7 @@ namespace {
     exec::inline_scheduler cpu{};
     nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
 
-    auto snd = ex::schedule(gpu) | ex::then([] { return move_only_t{42}; }) | ex::transfer(cpu)
+    auto snd = ex::schedule(gpu) | ex::then([] { return move_only_t{42}; }) | ex::continues_on(cpu)
              | ex::then([=](move_only_t val) noexcept {
                  if (!is_on_gpu() && val.contains(42)) {
                    return true;

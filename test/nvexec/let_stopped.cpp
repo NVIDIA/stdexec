@@ -13,7 +13,7 @@ namespace {
   TEST_CASE("nvexec let_stopped returns a sender", "[cuda][stream][adaptors][let_stopped]") {
     nvexec::stream_context stream_ctx{};
 
-    auto snd = ex::just_stopped() | ex::transfer(stream_ctx.get_scheduler())
+    auto snd = ex::just_stopped() | ex::continues_on(stream_ctx.get_scheduler())
              | ex::let_stopped([] { return ex::just(); });
     STATIC_REQUIRE(ex::sender<decltype(snd)>);
     (void) snd;
@@ -26,7 +26,7 @@ namespace {
     auto flags = flags_storage.get();
 
     auto snd = ex::just_stopped() //
-             | ex::transfer(stream_ctx.get_scheduler()) | ex::let_stopped([=] {
+             | ex::continues_on(stream_ctx.get_scheduler()) | ex::let_stopped([=] {
                  if (is_on_gpu()) {
                    flags.set();
                  }
@@ -46,7 +46,7 @@ namespace {
     flags_storage_t<2> flags_storage{};
     auto flags = flags_storage.get();
 
-    auto snd = ex::just_stopped() | ex::transfer(stream_ctx.get_scheduler()) //
+    auto snd = ex::just_stopped() | ex::continues_on(stream_ctx.get_scheduler()) //
              | ex::let_stopped([flags] {
                  if (is_on_gpu()) {
                    flags.set(0);
@@ -70,7 +70,7 @@ namespace {
     flags_storage_t flags_storage{};
     auto flags = flags_storage.get();
 
-    auto snd = ex::just_stopped() | ex::transfer(sch) | a_sender([]() noexcept {})
+    auto snd = ex::just_stopped() | ex::continues_on(sch) | a_sender([]() noexcept {})
              | ex::let_stopped([=] {
                  if (is_on_gpu()) {
                    flags.set();

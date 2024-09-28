@@ -186,7 +186,7 @@ namespace {
 
   // Modify the value when we invoke this custom defined transfer_just implementation
   auto tag_invoke(decltype(ex::transfer_just), inline_scheduler sched, std::string value) {
-    return ex::transfer(ex::just("Hello, " + value), sched);
+    return ex::continues_on(ex::just("Hello, " + value), sched);
   }
 
   TEST_CASE("transfer_just can be customized", "[factories][transfer_just]") {
