@@ -151,6 +151,9 @@ namespace stdexec {
       auto operator()() const noexcept;
     };
 
+    //! The type for `get_delegation_scheduler` [exec.get.delegation.scheduler]
+    //! A query object that asks for a scheduler that can be used to delegate
+    //! work to for the purpose of forward progress delegation ([intro.progress]).
     struct get_delegation_scheduler_t : __query<get_delegation_scheduler_t> {
       static constexpr auto query(forwarding_query_t) noexcept -> bool {
         return true;
