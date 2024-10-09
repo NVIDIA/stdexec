@@ -51,7 +51,7 @@ namespace stdexec {
         return __loop_->get_scheduler();
       }
 
-      auto query(get_delegatee_scheduler_t) const noexcept -> run_loop::__scheduler {
+      auto query(get_delegation_scheduler_t) const noexcept -> run_loop::__scheduler {
         return __loop_->get_scheduler();
       }
 
@@ -238,7 +238,7 @@ namespace stdexec {
       /// `sync_wait` connects and starts the given sender, and then drives a
       ///         `run_loop` instance until the sender completes. Additional work
       ///         can be delegated to the `run_loop` by scheduling work on the
-      ///         scheduler returned by calling `get_delegatee_scheduler` on the
+      ///         scheduler returned by calling `get_delegation_scheduler` on the
       ///         receiver's environment.
       ///
       /// @pre The sender must have a exactly one value completion signature. That
