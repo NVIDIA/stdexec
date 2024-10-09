@@ -203,6 +203,7 @@ namespace stdexec {
       return &__tombstone_;
     }
 
+    //! Heap-allocatable shared state for things like `stdexec::split`.
     template <class _CvrefSender, class _Env>
     struct __shared_state
       : private __enable_intrusive_from_this<__shared_state<_CvrefSender, _Env>, 2> {
