@@ -28,6 +28,8 @@
 
 #include <execpools/tbb/tbb_thread_pool.hpp>
 
+#include <tbbexec/tbb_thread_pool.hpp>
+
 namespace ex = stdexec;
 
 namespace {
@@ -83,7 +85,7 @@ namespace {
 
   TEST_CASE(
     "exec::on works when changing threads with execpools::tbb_thread_pool",
-    "[adaptors][exec::on]") {
+    "[adaptors][exec::starts_on]") {
     execpools::tbb_thread_pool pool;
     auto pool_sched = pool.get_scheduler();
     CHECK(
@@ -91,7 +93,7 @@ namespace {
       == stdexec::forward_progress_guarantee::parallel);
     bool called{false};
     // launch some work on the thread pool
-    ex::sender auto snd = exec::on(pool_sched, ex::just()) //
+    ex::sender auto snd = ex::starts_on(pool_sched, ex::just()) //
                         | ex::then([&] { called = true; }) | _with_scheduler();
     stdexec::sync_wait(std::move(snd));
     // the work should be executed

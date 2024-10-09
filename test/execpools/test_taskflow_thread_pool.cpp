@@ -83,7 +83,7 @@ namespace {
 
   TEST_CASE(
     "exec::on works when changing threads with execpools::taskflow_thread_pool",
-    "[adaptors][exec::on]") {
+    "[adaptors][exec::starts_on]") {
     execpools::taskflow_thread_pool pool;
     auto pool_sched = pool.get_scheduler();
     CHECK(
@@ -91,7 +91,7 @@ namespace {
       == stdexec::forward_progress_guarantee::parallel);
     bool called{false};
     // launch some work on the thread pool
-    ex::sender auto snd = exec::on(pool_sched, ex::just()) //
+    ex::sender auto snd = ex::starts_on(pool_sched, ex::just()) //
                         | ex::then([&] { called = true; }) | _with_scheduler();
     stdexec::sync_wait(std::move(snd));
     // the work should be executed
@@ -120,9 +120,9 @@ namespace {
 
     // clang-format off
   auto work = when_all(
-      on(taskflow_sched, just(1))    | then(compute) | then(compute),
-      on(other_sched, just(0))  | then(compute) | transfer(taskflow_sched)   | then(compute),
-      on(inline_sched, just(2)) | then(compute) | transfer(other_sched) | then(compute) | transfer(taskflow_sched) | then(compute)
+      starts_on(taskflow_sched, just(1))    | then(compute) | then(compute),
+      starts_on(other_sched, just(0))  | then(compute) | continues_on(taskflow_sched)   | then(compute),
+      starts_on(inline_sched, just(2)) | then(compute) | continues_on(other_sched) | then(compute) | continues_on(taskflow_sched) | then(compute)
   );
     // clang-format on
 
@@ -139,20 +139,20 @@ namespace {
     execpools::taskflow_thread_pool taskflow_pool;
     exec::static_thread_pool other_pool(1ul);
     {
-      CHECK_THROWS(stdexec::sync_wait(on(taskflow_pool.get_scheduler(), just(0)) | then([](auto) {
+      CHECK_THROWS(stdexec::sync_wait(starts_on(taskflow_pool.get_scheduler(), just(0)) | then([](auto) {
                                         throw std::exception();
                                       })));
-      CHECK_THROWS(stdexec::sync_wait(on(other_pool.get_scheduler(), just(0)) | then([](auto) {
+      CHECK_THROWS(stdexec::sync_wait(starts_on(other_pool.get_scheduler(), just(0)) | then([](auto) {
                                         throw std::exception();
                                       })));
     }
     // Ensure it still works normally after exceptions:
     {
       auto tbb_result = stdexec::sync_wait(
-        on(taskflow_pool.get_scheduler(), just(0)) | then([](auto i) { return i + 1; }));
+        starts_on(taskflow_pool.get_scheduler(), just(0)) | then([](auto i) { return i + 1; }));
       CHECK(tbb_result.has_value());
       auto other_result = stdexec::sync_wait(
-        on(other_pool.get_scheduler(), just(0)) | then([](auto i) { return i + 1; }));
+        starts_on(other_pool.get_scheduler(), just(0)) | then([](auto i) { return i + 1; }));
       CHECK(tbb_result == other_result);
     }
   }

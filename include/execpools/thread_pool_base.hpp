@@ -20,14 +20,13 @@
 #include <exec/static_thread_pool.hpp>
 
 namespace execpools {
-  //! This is a P2300-style thread pool wrapping tbb::task_arena, which its docs describe as "A class that represents an
+  //! This is a P2300-style thread pool wrapping base class, which its docs describe as "A class that represents an
   //! explicit, user-managed task scheduler arena."
-  //! Once set up, a tbb::task_arena has
+  //! Once set up, a task arena and it has
   //! * template<F> void enqueue(F &&f)
   //! and
   //! * template<F> auto execute(F &&f) -> decltype(f())
   //!
-  //! See https://spec.oneapi.io/versions/1.0-rev-3/elements/oneTBB/source/task_scheduler/task_arena/task_arena_cls.html
   using namespace stdexec::tags;
 
   template <class PoolType, class ReceiverId>
@@ -424,15 +423,6 @@ namespace execpools {
     auto get_scheduler() noexcept -> scheduler {
       return scheduler{static_cast<DerivedPoolType&>(*this)};
     }
-
-    /* Is this even needed? Looks like no.
-     * void request_stop() noexcept {
-        // Should this do anything? TBB supports its own flavor of cancelation at a tbb::task_group level
-        //
-    https://spec.oneapi.io/versions/latest/elements/oneTBB/source/task_scheduler/scheduling_controls/task_group_context_cls.html
-        // but not at the tbb::task_arena level.
-        // https://spec.oneapi.io/versions/latest/elements/oneTBB/source/task_scheduler/task_arena/task_arena_cls.html
-    }*/
 
     [[nodiscard]]
     auto available_parallelism() const -> std::uint32_t {
