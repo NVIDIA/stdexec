@@ -151,6 +151,142 @@ set(stdexec_export_targets)
 # Define the main library
 add_library(stdexec INTERFACE)
 
+target_sources(stdexec
+PUBLIC
+  FILE_SET headers
+  TYPE HEADERS
+  BASE_DIRS include
+  FILES
+    include/exec/__detail/__atomic_intrusive_queue.hpp
+    include/exec/__detail/__atomic_ref.hpp
+    include/exec/__detail/__basic_sequence.hpp
+    include/exec/__detail/__bit_cast.hpp
+    include/exec/__detail/__bwos_lifo_queue.hpp
+    include/exec/__detail/__numa.hpp
+    include/exec/__detail/__system_context_default_impl.hpp
+    include/exec/__detail/__system_context_default_impl_entry.hpp
+    include/exec/__detail/__system_context_replaceability_api.hpp
+    include/exec/__detail/__xorshift.hpp
+    include/exec/__detail/intrusive_heap.hpp
+    include/exec/any_sender_of.hpp
+    include/exec/async_scope.hpp
+    include/exec/at_coroutine_exit.hpp
+    include/exec/create.hpp
+    include/exec/env.hpp
+    include/exec/finally.hpp
+    include/exec/inline_scheduler.hpp
+    include/exec/into_tuple.hpp
+    include/exec/just_from.hpp
+    include/exec/libdispatch_queue.hpp
+    include/exec/linux/__detail/memory_mapped_region.hpp
+    include/exec/linux/__detail/safe_file_descriptor.hpp
+    include/exec/linux/io_uring_context.hpp
+    include/exec/linux/memory_mapped_region.hpp
+    include/exec/linux/safe_file_descriptor.hpp
+    include/exec/materialize.hpp
+    include/exec/on.hpp
+    include/exec/on_coro_disposition.hpp
+    include/exec/repeat_effect_until.hpp
+    include/exec/repeat_n.hpp
+    include/exec/reschedule.hpp
+    include/exec/scope.hpp
+    include/exec/sequence.hpp
+    include/exec/sequence/any_sequence_of.hpp
+    include/exec/sequence/empty_sequence.hpp
+    include/exec/sequence/ignore_all_values.hpp
+    include/exec/sequence/iterate.hpp
+    include/exec/sequence/transform_each.hpp
+    include/exec/sequence_senders.hpp
+    include/exec/single_thread_context.hpp
+    include/exec/start_now.hpp
+    include/exec/static_thread_pool.hpp
+    include/exec/system_context.hpp
+    include/exec/task.hpp
+    include/exec/timed_scheduler.hpp
+    include/exec/timed_thread_scheduler.hpp
+    include/exec/trampoline_scheduler.hpp
+    include/exec/variant_sender.hpp
+    include/exec/when_any.hpp
+    include/stdexec/__detail/__as_awaitable.hpp
+    include/stdexec/__detail/__awaitable.hpp
+    include/stdexec/__detail/__basic_sender.hpp
+    include/stdexec/__detail/__bulk.hpp
+    include/stdexec/__detail/__completion_signatures.hpp
+    include/stdexec/__detail/__concepts.hpp
+    include/stdexec/__detail/__config.hpp
+    include/stdexec/__detail/__connect_awaitable.hpp
+    include/stdexec/__detail/__continues_on.hpp
+    include/stdexec/__detail/__cpo.hpp
+    include/stdexec/__detail/__debug.hpp
+    include/stdexec/__detail/__diagnostics.hpp
+    include/stdexec/__detail/__domain.hpp
+    include/stdexec/__detail/__ensure_started.hpp
+    include/stdexec/__detail/__env.hpp
+    include/stdexec/__detail/__execute.hpp
+    include/stdexec/__detail/__execution_fwd.hpp
+    include/stdexec/__detail/__force_include.hpp
+    include/stdexec/__detail/__inline_scheduler.hpp
+    include/stdexec/__detail/__into_variant.hpp
+    include/stdexec/__detail/__intrusive_mpsc_queue.hpp
+    include/stdexec/__detail/__intrusive_ptr.hpp
+    include/stdexec/__detail/__intrusive_queue.hpp
+    include/stdexec/__detail/__intrusive_slist.hpp
+    include/stdexec/__detail/__just.hpp
+    include/stdexec/__detail/__let.hpp
+    include/stdexec/__detail/__manual_lifetime.hpp
+    include/stdexec/__detail/__meta.hpp
+    include/stdexec/__detail/__on.hpp
+    include/stdexec/__detail/__operation_states.hpp
+    include/stdexec/__detail/__optional.hpp
+    include/stdexec/__detail/__ranges.hpp
+    include/stdexec/__detail/__read_env.hpp
+    include/stdexec/__detail/__receiver_adaptor.hpp
+    include/stdexec/__detail/__receiver_ref.hpp
+    include/stdexec/__detail/__receivers.hpp
+    include/stdexec/__detail/__run_loop.hpp
+    include/stdexec/__detail/__schedule_from.hpp
+    include/stdexec/__detail/__schedulers.hpp
+    include/stdexec/__detail/__scope.hpp
+    include/stdexec/__detail/__sender_adaptor_closure.hpp
+    include/stdexec/__detail/__sender_introspection.hpp
+    include/stdexec/__detail/__senders.hpp
+    include/stdexec/__detail/__senders_core.hpp
+    include/stdexec/__detail/__shared.hpp
+    include/stdexec/__detail/__spin_loop_pause.hpp
+    include/stdexec/__detail/__split.hpp
+    include/stdexec/__detail/__start_detached.hpp
+    include/stdexec/__detail/__starts_on.hpp
+    include/stdexec/__detail/__stop_token.hpp
+    include/stdexec/__detail/__stopped_as_error.hpp
+    include/stdexec/__detail/__stopped_as_optional.hpp
+    include/stdexec/__detail/__submit.hpp
+    include/stdexec/__detail/__sync_wait.hpp
+    include/stdexec/__detail/__tag_invoke.hpp
+    include/stdexec/__detail/__then.hpp
+    include/stdexec/__detail/__transfer_just.hpp
+    include/stdexec/__detail/__transform_completion_signatures.hpp
+    include/stdexec/__detail/__transform_sender.hpp
+    include/stdexec/__detail/__tuple.hpp
+    include/stdexec/__detail/__type_traits.hpp
+    include/stdexec/__detail/__upon_error.hpp
+    include/stdexec/__detail/__upon_stopped.hpp
+    include/stdexec/__detail/__utility.hpp
+    include/stdexec/__detail/__variant.hpp
+    include/stdexec/__detail/__when_all.hpp
+    include/stdexec/__detail/__with_awaitable_senders.hpp
+    include/stdexec/__detail/__write_env.hpp
+    include/stdexec/concepts.hpp
+    include/stdexec/coroutine.hpp
+    include/stdexec/execution.hpp
+    include/stdexec/functional.hpp
+    include/stdexec/stop_token.hpp
+  # stdexec_version_config.hpp is generated by raipds' script
+  FILE_SET version_config
+  TYPE HEADERS
+  BASE_DIRS ${CMAKE_BINARY_DIR}/include
+  FILES
+    ${CMAKE_BINARY_DIR}/include/stdexec_version_config.hpp
+)
 list(APPEND stdexec_export_targets stdexec)
 
 # Set library version
@@ -160,10 +296,6 @@ set_target_properties(stdexec PROPERTIES
 
 # Declare the public include directories
 include(GNUInstallDirs)
-target_include_directories(stdexec INTERFACE
-                           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
-                           $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-                           )
 
 target_link_libraries(stdexec INTERFACE Threads::Threads)
 
@@ -270,8 +402,41 @@ endif()
 
 if(STDEXEC_ENABLE_CUDA)
 
-    file(GLOB_RECURSE nvexec_sources include/nvexec/*.cuh)
-    add_library(nvexec INTERFACE ${nvexec_sources})
+    add_library(nvexec INTERFACE)
+    target_sources(nvexec
+    PUBLIC
+      FILE_SET headers
+      TYPE HEADERS
+      BASE_DIRS include
+      FILES
+        include/nvexec/detail/config.cuh
+        include/nvexec/detail/cuda_atomic.cuh
+        include/nvexec/detail/cuda_fwd.cuh
+        include/nvexec/detail/memory.cuh
+        include/nvexec/detail/queue.cuh
+        include/nvexec/detail/throw_on_cuda_error.cuh
+        include/nvexec/detail/variant.cuh
+        include/nvexec/multi_gpu_context.cuh
+        include/nvexec/nvtx.cuh
+        include/nvexec/stream/algorithm_base.cuh
+        include/nvexec/stream/bulk.cuh
+        include/nvexec/stream/common.cuh
+        include/nvexec/stream/continues_on.cuh
+        include/nvexec/stream/ensure_started.cuh
+        include/nvexec/stream/launch.cuh
+        include/nvexec/stream/let_xxx.cuh
+        include/nvexec/stream/reduce.cuh
+        include/nvexec/stream/schedule_from.cuh
+        include/nvexec/stream/split.cuh
+        include/nvexec/stream/start_detached.cuh
+        include/nvexec/stream/submit.cuh
+        include/nvexec/stream/sync_wait.cuh
+        include/nvexec/stream/then.cuh
+        include/nvexec/stream/upon_error.cuh
+        include/nvexec/stream/upon_stopped.cuh
+        include/nvexec/stream/when_all.cuh
+        include/nvexec/stream_context.cuh
+    )
     list(APPEND stdexec_export_targets nvexec)
     add_library(STDEXEC::nvexec ALIAS nvexec)
 
@@ -282,6 +447,10 @@ if(STDEXEC_ENABLE_CUDA)
       $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=cc${CMAKE_CUDA_ARCHITECTURES}>)
     target_link_options(nvexec INTERFACE
       $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=cc${CMAKE_CUDA_ARCHITECTURES}>)
+
+    install(TARGETS nvexec
+        EXPORT stdexec-exports
+        FILE_SET headers)
 
     if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC"))
         include(rapids-cuda)
@@ -330,8 +499,15 @@ if (STDEXEC_ENABLE_TBB)
         INSTALL_EXPORT_SET stdexec-exports
     )
 
-    file(GLOB_RECURSE tbbexec_sources include/tbbexec/*.hpp)
-    add_library(tbbexec INTERFACE ${tbbexec_sources})
+    add_library(tbbexec INTERFACE)
+    target_sources(tbbexec
+    PUBLIC
+      FILE_SET headers
+      TYPE HEADERS
+      BASE_DIRS include
+      FILES
+        include/tbbexec/tbb_thread_pool.hpp
+    )
     list(APPEND stdexec_export_targets tbbexec)
     add_library(STDEXEC::tbbexec ALIAS tbbexec)
 
@@ -340,6 +516,10 @@ if (STDEXEC_ENABLE_TBB)
         STDEXEC::stdexec
         TBB::tbb
         )
+
+    install(TARGETS tbbexec
+        EXPORT stdexec-exports
+        FILE_SET headers)
 endif()
 
 include(CheckIncludeFileCXX)
@@ -357,10 +537,6 @@ endif()
 
 set(SYSTEM_CONTEXT_SOURCES src/system_context/system_context.cpp)
 add_library(system_context STATIC ${SYSTEM_CONTEXT_SOURCES})
-target_include_directories(system_context PRIVATE
-                           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
-                           $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-                           )
 target_compile_features(system_context PUBLIC cxx_std_20)
 set_target_properties(system_context PROPERTIES
     CXX_STANDARD 20
@@ -370,7 +546,7 @@ target_compile_options(system_context PUBLIC
     $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus /Zc:preprocessor>
     )
 add_library(STDEXEC::system_context ALIAS system_context)
-
+target_link_libraries(system_context PUBLIC stdexec)
 
 
 if(CMAKE_CROSSCOMPILING)
@@ -421,16 +597,9 @@ endif()
 include(CPack)
 
 install(TARGETS stdexec system_context
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        EXPORT stdexec-exports)
-
-install(
-  DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-
-install(
-  FILES ${CMAKE_CURRENT_BINARY_DIR}/include/stdexec_version_config.hpp
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+	EXPORT stdexec-exports
+	FILE_SET headers
+	FILE_SET version_config)
 
 ##############################################################################
 # Install exports ------------------------------------------------------------
