@@ -1,0 +1,18 @@
+#pragma once
+
+#cmakedefine01 STDEXEC_ASIO_USES_STANDALONE
+#cmakedefine01 STDEXEC_ASIO_USES_BOOST
+
+#if STDEXEC_ASIO_USES_BOOST
+#  include <boost/asio.hpp>
+#elif STDEXEC_ASIO_USES_STANDALONE
+#  include <asio.hpp>
+#endif
+
+namespace execpools {
+#if STDEXEC_ASIO_USES_BOOST
+  namespace asio_impl = boost::asio;
+#elif STDEXEC_ASIO_USES_STANDALONE
+  namespace asio_impl = asio;
+#endif
+} // namespace execpools
