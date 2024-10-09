@@ -28,6 +28,9 @@
 #include "__utility.hpp"
 
 namespace stdexec {
+  //! Convenience metafunction getting the dependant type `__t` out of `_Tp`.
+  //! That is, `typename _Tp::__t`.
+  //! See MAINTAINERS.md#class-template-parameters for details.
   template <class _Tp>
   using __t = typename _Tp::__t;
 
@@ -373,6 +376,9 @@ namespace stdexec {
     typename __i<_Ok<_Args...>>    //
     ::template __g<_Fn, _Args...>; //
 
+  //! Metafunction invocation
+  //! Given a metafunction, `_Fn`, and args.
+  //! We expect `_Fn::__f` to be type alias template "implementing" the metafunction `_Fn`.
   template <class _Fn, class... _Args>
   using __minvoke =                       //
     typename __i<_Ok<_Args...>, _Ok<_Fn>> //
@@ -818,9 +824,13 @@ namespace stdexec {
   template <class _Default>
   using __msingle_or = __mbind_front_q<__msingle_or_, _Default>;
 
+  //! A concept checking if `_Ty` has a dependent type `_Ty::__id`.
+  //! See MAINTAINERS.md#class-template-parameters.
   template <class _Ty>
   concept __has_id = requires { typename _Ty::__id; };
 
+  //! Identity mapping `_Ty` to itself.
+  //! That is, `std::is_same_v<T, typename _Id<T>::__t>`.
   template <class _Ty>
   struct _Id {
     using __t = _Ty;
@@ -833,6 +843,7 @@ namespace stdexec {
     //static_assert(!__has_id<std::remove_cvref_t<_Ty>>);
   };
 
+  //! Helper metafunction detail of `__id`, below.
   template <bool = true>
   struct __id_ {
     template <class _Ty>
@@ -845,6 +856,10 @@ namespace stdexec {
     using __f = _Id<_Ty>;
   };
 
+  //! Metafunction mapping `_Ty` to either
+  //! * `typename _Ty::__id` if that exists, or to 
+  //! * `_Ty` (itself) otherwise.
+  //! See MAINTAINERS.md#class-template-parameters.
   template <class _Ty>
   using __id = __minvoke<__id_<__has_id<_Ty>>, _Ty>;
 
