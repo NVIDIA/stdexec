@@ -94,9 +94,11 @@ namespace stdexec {
   using __msize_t = __muchar (*)[_Np + 1]; // +1 to avoid zero-size array
 #endif
 
+  //! Metafunction selects the first of two type arguments.
   template <class _Tp, class _Up>
   using __mfirst = _Tp;
 
+  //! Metafunction selects the second of two type arguments.
   template <class _Tp, class _Up>
   using __msecond = _Up;
 
@@ -327,6 +329,9 @@ namespace stdexec {
   template <class... _Args>
   concept _Ok = (STDEXEC_IS_SAME(__ok_t<_Args>, __msuccess) && ...);
 
+  //! If both are true:
+  //! Then __i<true, true>::__g<F, Args...> is an alias for F<Args...>
+  //! and __i<true, true>::__f<F> is an alias for F. 
   template <bool _ArgsOK, bool _FnOK = true>
   struct __i;
 
@@ -419,6 +424,7 @@ namespace stdexec {
     using __f = _Fn;
   };
 
+  //! Metafunction takes a function and provides a checked version of it?
   template <template <class...> class _Fn>
   struct __q {
     template <class... _Args>
@@ -505,6 +511,9 @@ namespace stdexec {
   using __mmemoize_q = __mmemoize<__q<_Fn>, _Args...>;
 
   struct __if_ {
+    //! Metafunction selects `_True` if the bool template is `true`, otherwise the second.
+    //! That is, `__<true>::__f<A, B>` is `A` and `__false<>::__f<A, B>` is B.
+    //! This is similar to `std::conditional_t<Cond, A, B>`.
     template <bool>
     struct __ {
       template <class _True, class...>
@@ -515,6 +524,7 @@ namespace stdexec {
     using __f = __minvoke<__<static_cast<bool>(__v<_Pred>)>, _True, _False...>;
   };
 
+  // Specialization; see above.
   template <>
   struct __if_::__<false> {
     template <class, class _False>

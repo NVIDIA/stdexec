@@ -504,14 +504,18 @@ namespace stdexec {
   // __basic_sender
   template <class...>
   struct __basic_sender {
+    // See MAINTAINERS.md#class-template-parameters for `__id` and `__t`.
     using __id = __basic_sender;
     using __t = __basic_sender;
   };
 
+  //! A struct template to aid in creating senders.
+  //! A `__sexpr<Desc>` 
   template <auto _DescriptorFn, class = __anon>
   struct __sexpr {
     using sender_concept = sender_t;
 
+    // See MAINTAINERS.md#class-template-parameters for `__id` and `__t`.
     using __id = __sexpr;
     using __t = __sexpr;
     using __desc_t = decltype(_DescriptorFn());
@@ -595,6 +599,9 @@ namespace stdexec {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __make_sexpr
+  //! A tagged function-object
+  //! Takes data and children and 
+  //! returns `__sexpr_t<_Tag, _Data, _Child...>{_Tag(), data, children...}`.
   namespace __detail {
     template <class _Tag>
     struct __make_sexpr_t {
