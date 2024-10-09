@@ -84,7 +84,7 @@ namespace stdexec {
     struct get_forward_progress_guarantee_t;
     struct __has_algorithm_customizations_t;
     struct get_scheduler_t;
-    struct get_delegatee_scheduler_t;
+    struct get_delegation_scheduler_t;
     struct get_allocator_t;
     struct get_stop_token_t;
     template <__completion_tag _CPO>
@@ -97,7 +97,7 @@ namespace stdexec {
   using __queries::get_forward_progress_guarantee_t;
   using __queries::get_allocator_t;
   using __queries::get_scheduler_t;
-  using __queries::get_delegatee_scheduler_t;
+  using __queries::get_delegation_scheduler_t;
   using __queries::get_stop_token_t;
   using __queries::get_completion_scheduler_t;
 
@@ -106,7 +106,7 @@ namespace stdexec {
   extern const __has_algorithm_customizations_t __has_algorithm_customizations;
   extern const get_forward_progress_guarantee_t get_forward_progress_guarantee;
   extern const get_scheduler_t get_scheduler;
-  extern const get_delegatee_scheduler_t get_delegatee_scheduler;
+  extern const get_delegation_scheduler_t get_delegation_scheduler;
   extern const get_allocator_t get_allocator;
   extern const get_stop_token_t get_stop_token;
   template <__completion_tag _CPO>
