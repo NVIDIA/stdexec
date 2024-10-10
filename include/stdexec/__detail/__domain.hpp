@@ -197,6 +197,11 @@ namespace stdexec {
   } // namespace __detail
 
   /////////////////////////////////////////////////////////////////////////////
+  //! Function object implementing `get-domain-early(snd)`
+  //! from [exec.snd.general] item 3.9. It is the first well-formed expression of
+  //! a) `get_domain(get_env(sndr))`
+  //! b) `completion-domain(sndr)`
+  //! c) `default_domain()`
   inline constexpr struct __get_early_domain_t {
     template <class _Sender, class _Default = default_domain>
     auto operator()(const _Sender&, _Default __def = {}) const noexcept {
