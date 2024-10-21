@@ -655,6 +655,18 @@ namespace stdexec {
     using __f = __minvoke<_Fn, _As...>;
   };
 
+  template <std::size_t... _Ns>
+  struct __muncurry_<__pack::__t<_Ns...> *> {
+    template <class _Fn>
+    using __f = __minvoke<_Fn, __msize_t<_Ns>...>;
+  };
+
+  template <template <class _Np, _Np...> class _Cp, class _Np, _Np... _Ns>
+  struct __muncurry_<_Cp<_Np, _Ns...>> {
+    template <class _Fn>
+    using __f = __minvoke<_Fn, std::integral_constant<_Np, _Ns>...>;
+  };
+
   template <class _What, class... _With>
   struct __muncurry_<_ERROR_<_What, _With...>> {
     template <class _Fn>
@@ -829,6 +841,7 @@ namespace stdexec {
     template <class _Ty>
     using __f = _Id<_Ty>;
   };
+
   template <class _Ty>
   using __id = __minvoke<__id_<__has_id<_Ty>>, _Ty>;
 
@@ -882,8 +895,13 @@ namespace stdexec {
   template <class _Fn>
   __emplace_from(_Fn) -> __emplace_from<_Fn>;
 
-  template <class, class, class, class>
-  struct __mzip_with2_;
+  template <class _Fn, class _Continuation, class _List1, class _List2>
+  struct __mzip_with2_
+    : __mzip_with2_<
+        _Fn,
+        _Continuation,
+        __mapply<__qq<__types>, _List1>,
+        __mapply<__qq<__types>, _List2>> { };
 
   template <             //
     class _Fn,           //
