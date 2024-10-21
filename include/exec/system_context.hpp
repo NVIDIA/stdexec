@@ -364,7 +364,6 @@ namespace exec {
       __bulk_state_base(_Fn&& __fun, _Rcvr&& __rcvr)
         : __fun_{std::move(__fun)}
         , __rcvr_{std::move(__rcvr)} {
-        static_assert(offsetof(__bulk_state_base, __forward_args_helper_) == 0);
       }
     };
 
