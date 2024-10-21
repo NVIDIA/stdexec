@@ -424,7 +424,14 @@ namespace stdexec {
     using __f = _Fn;
   };
 
-  //! Metafunction takes a function and provides a checked version of it?
+  //! This struct template is like [mpl::quote](https://www.boost.org/doc/libs/1_86_0/libs/mpl/doc/refmanual/quote.html).
+  //! It turns an alias/class template into a metafunction that also propagates "meta-exceptions".
+  //! All of the meta utilities recognize specializations of stdexec::_ERROR_ as an error type. 
+  //! Error types short-circuit the evaluation of the metafunction and are automatically propagated like an exception. 
+  //! Note: `__minvoke` and `__meval` also participate in this error propagation.
+  //!
+  //! This design lets us report type errors briefly at the library boundary, even if the 
+  //! actual error happens deep inside a meta-program.
   template <template <class...> class _Fn>
   struct __q {
     template <class... _Args>
