@@ -9,7 +9,7 @@
     "SCCACHE_REGION": "us-east-2",
     "SCCACHE_BUCKET": "rapids-sccache-devs",
     "SCCACHE_S3_KEY_PREFIX": "nvidia-stdexec-dev",
-    "VAULT_HOST": "https://vault.ops.k8s.rapids.ai",
+    "AWS_ROLE_ARN": "arn:aws:iam::279114543810:role/nv-gha-token-sccache-devs",
     "HISTFILE": "${containerWorkspaceFolder}/.cache/._bash_history"
   },
 
