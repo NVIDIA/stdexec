@@ -15,6 +15,8 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
+STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
+
 namespace ex = stdexec;
 
 namespace {
