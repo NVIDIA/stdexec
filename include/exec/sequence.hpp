@@ -84,7 +84,7 @@ namespace exec {
       using _senders_tuple_t = stdexec::__tuple_for<stdexec::__ignore, Sndrs...>;
 
       template <size_t Idx>
-      using _rcvr_t = _rcvr<Rcvr, stdexec::__id<_opstate>, stdexec::__msize_t<Idx>>;
+      using _rcvr_t = _seq::_rcvr<Rcvr, stdexec::__id<_opstate>, stdexec::__msize_t<Idx>>;
 
       template <class Sndr, class Idx>
       using _child_opstate_t = stdexec::connect_result_t<Sndr, _rcvr_t<stdexec::__v<Idx>>>;
