@@ -512,7 +512,7 @@ namespace stdexec {
 
   struct __if_ {
     //! Metafunction selects `_True` if the bool template is `true`, otherwise the second.
-    //! That is, `__<true>::__f<A, B>` is `A` and `__false<>::__f<A, B>` is B.
+    //! That is, `__<true>::__f<A, B>` is `A` and `__<false>::__f<A, B>` is B.
     //! This is similar to `std::conditional_t<Cond, A, B>`.
     template <bool>
     struct __ {
