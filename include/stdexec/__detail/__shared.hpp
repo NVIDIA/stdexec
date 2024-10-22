@@ -342,6 +342,7 @@ namespace stdexec {
 
         // Set the "completed" bit in the ref count. If the ref count is 1, then there are no more
         // waiters. Release the final reference.
+        usleep(1000);
         if (__count(this->template __set_bit<__completed_bit>()) == 1) {
           this->__dec_ref(); // release the extra ref count, deletes this
         }
