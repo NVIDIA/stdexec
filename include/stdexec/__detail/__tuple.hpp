@@ -54,6 +54,15 @@ namespace stdexec {
 
     template <std::size_t... _Is, __indices<_Is...> _Idx, class... _Ts>
     struct __tuple<_Idx, _Ts...> : __box<_Ts, _Is>... {
+      template <class... _Us>
+      static __tuple __convert_from(__tuple<_Idx, _Us...> &&__tup) {
+        return __tuple{{static_cast<_Us &&>(__tup.__box<_Us, _Is>::__value)}...};
+      }
+
+      template <class... _Us>
+      static __tuple __convert_from(__tuple<_Idx, _Us...> const &__tup) {
+        return __tuple{{__tup.__box<_Us, _Is>::__value}...};
+      }
 
       template <class _Fn, class _Self, class... _Us>
       STDEXEC_ATTRIBUTE((host, device, always_inline))

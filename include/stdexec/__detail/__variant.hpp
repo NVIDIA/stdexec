@@ -127,7 +127,7 @@ namespace stdexec {
         __destroy();
         ::new (__storage_) _Ty{static_cast<_As &&>(__as)...};
         __index_ = __new_index;
-        return *reinterpret_cast<_Ty *>(__storage_);
+        return *std::launder(reinterpret_cast<_Ty *>(__storage_));
       }
 
       template <std::size_t _Ny, class... _As>
@@ -140,22 +140,33 @@ namespace stdexec {
         __destroy();
         ::new (__storage_) __at<_Ny>{static_cast<_As &&>(__as)...};
         __index_ = _Ny;
-        return *reinterpret_cast<__at<_Ny> *>(__storage_);
+        return *std::launder(reinterpret_cast<__at<_Ny> *>(__storage_));
+      }
+
+      template <std::size_t _Ny, class _Fn, class... _As>
+      STDEXEC_ATTRIBUTE((host, device))
+      __at<_Ny> &
+        emplace_from_at(_Fn &&__fn, _As &&...__as) //
+        noexcept(__nothrow_callable<_Fn, _As...>) {
+        static_assert(
+          __same_as<__call_result_t<_Fn, _As...>, __at<_Ny>>,
+          "callable does not return the correct type");
+
+        __destroy();
+        ::new (__storage_) __at<_Ny>(static_cast<_Fn &&>(__fn)(static_cast<_As &&>(__as)...));
+        __index_ = _Ny;
+        return *std::launder(reinterpret_cast<__at<_Ny> *>(__storage_));
       }
 
       template <class _Fn, class... _As>
-      STDEXEC_ATTRIBUTE((host, device))
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
       auto
         emplace_from(_Fn &&__fn, _As &&...__as) //
         noexcept(__nothrow_callable<_Fn, _As...>) -> __call_result_t<_Fn, _As...> & {
         using __result_t = __call_result_t<_Fn, _As...>;
         constexpr std::size_t __new_index = stdexec::__index_of<__result_t, _Ts...>();
         static_assert(__new_index != __variant_npos, "Type not in variant");
-
-        __destroy();
-        ::new (__storage_) __result_t(static_cast<_Fn &&>(__fn)(static_cast<_As &&>(__as)...));
-        __index_ = __new_index;
-        return *reinterpret_cast<__result_t *>(__storage_);
+        return emplace_from_at<__new_index>(static_cast<_Fn &&>(__fn), static_cast<_As &&>(__as)...);
       }
 
       template <class _Fn, class _Self, class... _As>
