@@ -80,7 +80,10 @@ namespace stdexec {
   enum class __muchar : unsigned char {
   };
 
-#if STDEXEC_MSVC()
+#if STDEXEC_NVCC() || STDEXEC_NVHPC()
+  template <std::size_t _Np>
+  using __msize_t = std::integral_constant<std::size_t, _Np>;
+#elif STDEXEC_MSVC()
   template <std::size_t _Np>
   using __msize_t = __mconstant<_Np>;
 #else
