@@ -329,9 +329,15 @@ namespace stdexec {
   template <class... _Args>
   concept _Ok = (STDEXEC_IS_SAME(__ok_t<_Args>, __msuccess) && ...);
 
-  //! If both are true:
-  //! Then __i<true, true>::__g<F, Args...> is an alias for F<Args...>
-  //! and __i<true, true>::__f<F> is an alias for F. 
+  //! The struct `__i` is the implementation of P2300's  
+  //! [_`META-APPLY`_](https://eel.is/c++draft/exec#util.cmplsig-5).
+  //! > [Note [1](https://eel.is/c++draft/exec#util.cmplsig-note-1): 
+  //! > The purpose of META-APPLY is to make it valid to use non-variadic 
+  //! > templates as Variant and Tuple arguments to gather-signatures. — end note]
+  //! In addition to avoiding the dreaded "pack expanded into non-pack argument" error,
+  //! it is part of the meta-error propagation mechanism. if any of the argument types 
+  //! are a specialization of `_ERROR_`, `__i` will short-circuit and return the error.
+  //! `__minvoke` and `__meval` are implemented in terms of `__i`.
   template <bool _ArgsOK, bool _FnOK = true>
   struct __i;
 

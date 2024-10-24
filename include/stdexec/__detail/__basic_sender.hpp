@@ -500,8 +500,8 @@ namespace stdexec {
   using __get_attrs_fn =
     __result_of<__detail::__drop_front, __mtypeof<__sexpr_impl<_Tag>::get_attrs>>;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  // __basic_sender
+  //! A dummy type used only for diagnostic purposes. 
+  //! See `__sexpr` for the implementation of P2300's _`basic-sender`_.
   template <class...>
   struct __basic_sender {
     // See MAINTAINERS.md#class-template-parameters for `__id` and `__t`.
@@ -510,7 +510,9 @@ namespace stdexec {
   };
 
   //! A struct template to aid in creating senders.
-  //! A `__sexpr<Desc>` 
+  //! This struct closely resembles P2300's [_`basic-sender`_](https://eel.is/c++draft/exec#snd.expos-24),
+  //! but is not an exact implementation.
+  //! Note: The struct named `__basic_sender` is just a dummy type and is also not _`basic-sender`_.
   template <auto _DescriptorFn, class = __anon>
   struct __sexpr {
     using sender_concept = sender_t;
