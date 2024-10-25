@@ -19,6 +19,7 @@
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 #include <exec/static_thread_pool.hpp>
 
@@ -336,5 +337,19 @@ namespace {
 
       CHECK(actual != wrong);
     }
+  }
+
+  TEST_CASE("default bulk works with non-default constructible types", "[adaptors][bulk]") {
+    ex::sender auto s = ex::just(non_default_constructible{42}) | ex::bulk(1, [](int, auto&) {});
+    ex::sync_wait(std::move(s));
+  }
+
+  TEST_CASE("static thread pool works with non-default constructible types", "[adaptors][bulk]") {
+    exec::static_thread_pool pool{4};
+    ex::scheduler auto sch = pool.get_scheduler();
+
+    ex::sender auto s = ex::just(non_default_constructible{42}) | ex::continues_on(sch)
+                      | ex::bulk(1, [](int, auto&) {});
+    ex::sync_wait(std::move(s));
   }
 } // namespace
