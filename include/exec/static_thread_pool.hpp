@@ -1179,7 +1179,7 @@ namespace exec {
           CvrefSender,
           env_of_t<Receiver>,
           __q<__decayed_std_tuple>,
-          __q<__std_variant>>;
+          __q<__nullable_std_variant>>;
 
       variant_t data_;
       static_thread_pool_& pool_;
@@ -1201,7 +1201,13 @@ namespace exec {
       template <class F>
       void apply(F f) {
         std::visit(
-          [&](auto& tupl) -> void { std::apply([&](auto&... args) -> void { f(args...); }, tupl); },
+          [&](auto& tupl) -> void {
+            if constexpr (same_as<__decay_t<decltype(tupl)>, std::monostate>) {
+              std::terminate();
+            } else {
+              std::apply([&](auto&... args) -> void { f(args...); }, tupl);
+            }
+          },
           data_);
       }
 

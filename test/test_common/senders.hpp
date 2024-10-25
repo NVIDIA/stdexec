@@ -168,4 +168,17 @@ namespace {
       return {self.condition_, std::forward<Receiver>(rcvr)};
     }
   };
+
+  struct non_default_constructible {
+    int x;
+
+    non_default_constructible(int x)
+      : x(x) {
+    }
+
+    friend bool
+      operator==(non_default_constructible const & lhs, non_default_constructible const & rhs) {
+      return lhs.x == rhs.x;
+    }
+  };
 } // namespace
