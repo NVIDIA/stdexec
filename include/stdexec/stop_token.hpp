@@ -207,8 +207,8 @@ namespace stdexec {
       _Fun2&& __fun) //
       noexcept(__nothrow_constructible_from<_Fun, _Fun2>)
       : __stok::__inplace_stop_callback_base(
-        __token.__source_,
-        &inplace_stop_callback::__execute_impl_)
+          __token.__source_,
+          &inplace_stop_callback::__execute_impl_)
       , __fun_(static_cast<_Fun2&&>(__fun)) {
       __register_callback_();
     }
@@ -299,9 +299,8 @@ namespace stdexec {
     (void) __state_.store(__old_state, std::memory_order_release);
   }
 
-  inline auto
-    inplace_stop_source::__try_lock_unless_stop_requested_(bool __set_stop_requested) const noexcept
-    -> bool {
+  inline auto inplace_stop_source::__try_lock_unless_stop_requested_(
+    bool __set_stop_requested) const noexcept -> bool {
     __stok::__spin_wait __spin;
     auto __old_state = __state_.load(std::memory_order_relaxed);
     do {

@@ -69,7 +69,8 @@ namespace stdexec {
   template <class _Scheduler>
   concept __sender_has_completion_scheduler = requires(_Scheduler&& __sched) {
     {
-      stdexec::__decay_copy(get_completion_scheduler<set_value_t>(get_env(schedule(static_cast<_Scheduler&&>(__sched)))))
+      stdexec::__decay_copy(get_completion_scheduler<set_value_t>(
+        get_env(schedule(static_cast<_Scheduler&&>(__sched)))))
     } -> same_as<__decay_t<_Scheduler>>;
   };
 
@@ -100,12 +101,12 @@ namespace stdexec {
     }
 
     template <class _Env>
-      requires tag_invocable<get_delegatee_scheduler_t, const _Env&>
-    inline auto get_delegatee_scheduler_t::operator()(const _Env& __env) const noexcept
-      -> tag_invoke_result_t<get_delegatee_scheduler_t, const _Env&> {
-      static_assert(nothrow_tag_invocable<get_delegatee_scheduler_t, const _Env&>);
-      static_assert(scheduler<tag_invoke_result_t<get_delegatee_scheduler_t, const _Env&>>);
-      return tag_invoke(get_delegatee_scheduler_t{}, __env);
+      requires tag_invocable<get_delegation_scheduler_t, const _Env&>
+    inline auto get_delegation_scheduler_t::operator()(const _Env& __env) const noexcept
+      -> tag_invoke_result_t<get_delegation_scheduler_t, const _Env&> {
+      static_assert(nothrow_tag_invocable<get_delegation_scheduler_t, const _Env&>);
+      static_assert(scheduler<tag_invoke_result_t<get_delegation_scheduler_t, const _Env&>>);
+      return tag_invoke(get_delegation_scheduler_t{}, __env);
     }
 
     template <__completion_tag _Tag>

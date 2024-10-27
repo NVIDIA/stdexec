@@ -139,8 +139,8 @@ namespace stdexec {
         __ignore,
         __ignore,
         _ChildOps&... __ops) noexcept {
-      (_StartTag()(__ops), ...);
-    };
+        (_StartTag()(__ops), ...);
+      };
 
     inline constexpr auto __complete = //
       []<class _Index, class _Receiver, class _SetTag, class... _Args>(
@@ -278,8 +278,10 @@ namespace stdexec {
       using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
       using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS __state_t __state_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Receiver __rcvr_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      __state_t __state_;
 
       __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr) //
         noexcept(
@@ -496,18 +498,24 @@ namespace stdexec {
   using __get_attrs_fn =
     __result_of<__detail::__drop_front, __mtypeof<__sexpr_impl<_Tag>::get_attrs>>;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  // __basic_sender
+  //! A dummy type used only for diagnostic purposes. 
+  //! See `__sexpr` for the implementation of P2300's _`basic-sender`_.
   template <class...>
   struct __basic_sender {
+    // See MAINTAINERS.md#class-template-parameters for `__id` and `__t`.
     using __id = __basic_sender;
     using __t = __basic_sender;
   };
 
+  //! A struct template to aid in creating senders.
+  //! This struct closely resembles P2300's [_`basic-sender`_](https://eel.is/c++draft/exec#snd.expos-24),
+  //! but is not an exact implementation.
+  //! Note: The struct named `__basic_sender` is just a dummy type and is also not _`basic-sender`_.
   template <auto _DescriptorFn, class = __anon>
   struct __sexpr {
     using sender_concept = sender_t;
 
+    // See MAINTAINERS.md#class-template-parameters for `__id` and `__t`.
     using __id = __sexpr;
     using __t = __sexpr;
     using __desc_t = decltype(_DescriptorFn());
@@ -520,9 +528,9 @@ namespace stdexec {
     STDEXEC_ATTRIBUTE((host, device, always_inline))
     explicit __sexpr(_Tag, _Data&& __data, _Child&&... __child)
       : __impl_(__detail::__captures(
-        _Tag(),
-        static_cast<_Data&&>(__data),
-        static_cast<_Child&&>(__child)...)) {
+          _Tag(),
+          static_cast<_Data&&>(__data),
+          static_cast<_Child&&>(__child)...)) {
     }
 
     template <class _Self>
@@ -531,8 +539,7 @@ namespace stdexec {
     template <class _Self = __sexpr>
     STDEXEC_ATTRIBUTE((always_inline))
     auto
-      get_env() const noexcept
-      -> __result_of<__sexpr_apply, const _Self&, __get_attrs_fn<__tag_t>> {
+      get_env() const noexcept -> __result_of<__sexpr_apply, const _Self&, __get_attrs_fn<__tag_t>> {
       return __sexpr_apply(*this, __detail::__drop_front(__impl<_Self>::get_attrs));
     }
 
@@ -592,6 +599,9 @@ namespace stdexec {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __make_sexpr
+  //! A tagged function-object
+  //! Takes data and children and 
+  //! returns `__sexpr_t<_Tag, _Data, _Child...>{_Tag(), data, children...}`.
   namespace __detail {
     template <class _Tag>
     struct __make_sexpr_t {

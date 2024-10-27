@@ -475,6 +475,11 @@ namespace exec {
         const nodemask& contraints = nodemask::any()) noexcept;
       void enqueue(remote_queue& queue, task_base* task, std::size_t threadIndex) noexcept;
 
+      //! Enqueue a contiguous span of tasks across task queues.
+      //! Note: We use the concrete `TaskT` because we enqueue
+      //! tasks `task + 0`, `task + 1`, etc. so std::span<task_base>
+      //! wouldn't be correct.
+      //! This is O(n_threads) on the calling thread.
       template <std::derived_from<task_base> TaskT>
       void bulk_enqueue(TaskT* task, std::uint32_t n_threads) noexcept;
       void bulk_enqueue(
@@ -810,12 +815,15 @@ namespace exec {
 
     template <std::derived_from<task_base> TaskT>
     void static_thread_pool_::bulk_enqueue(TaskT* task, std::uint32_t n_threads) noexcept {
-      auto& queue = *get_remote_queue();
+      auto& queue = *this->get_remote_queue();
       for (std::uint32_t i = 0; i < n_threads; ++i) {
-        std::uint32_t index = i % available_parallelism();
+        std::uint32_t index = i % this->available_parallelism();
         queue.queues_[index].push_front(task + i);
         threadStates_[index]->notify();
       }
+      // At this point the calling thread can exit and the pool will take over.
+      // Ultimately, the last completing thread passes the result forward.
+      // See `if (is_last_thread)` above.
     }
 
     inline void static_thread_pool_::bulk_enqueue(
@@ -872,8 +880,8 @@ namespace exec {
       return result;
     }
 
-    inline auto static_thread_pool_::thread_state::try_pop()
-      -> static_thread_pool_::thread_state::pop_result {
+    inline auto
+      static_thread_pool_::thread_state::try_pop() -> static_thread_pool_::thread_state::pop_result {
       pop_result result{nullptr, index_};
       result.task = local_queue_.pop_back();
       if (result.task) [[likely]] {
@@ -882,8 +890,8 @@ namespace exec {
       return try_remote();
     }
 
-    inline auto static_thread_pool_::thread_state::try_steal(std::span<workstealing_victim> victims)
-      -> static_thread_pool_::thread_state::pop_result {
+    inline auto static_thread_pool_::thread_state::try_steal(
+      std::span<workstealing_victim> victims) -> static_thread_pool_::thread_state::pop_result {
       if (victims.empty()) {
         return {nullptr, index_};
       }
@@ -1115,8 +1123,11 @@ namespace exec {
       }
     };
 
+    //! The customized operation state for `stdexec::bulk` operations
     template <class CvrefSender, class Receiver, class Shape, class Fun, bool MayThrow>
     struct static_thread_pool_::bulk_shared_state {
+      //! The actual `bulk_task` holds a pointer to the shared state
+      //! and its `__execute` function reads from that shared state.
       struct bulk_task : task_base {
         bulk_shared_state* sh_state_;
 
@@ -1127,6 +1138,9 @@ namespace exec {
             auto total_threads = sh_state.num_agents_required();
 
             auto computation = [&](auto&... args) {
+              // Each computation does one or more call to the the bulk function.
+              // In the case that the shape is much larger than the total number of threads,
+              // then each call to computation will call the function many times.
               auto [begin, end] = even_share(sh_state.shape_, tid, total_threads);
               for (Shape i = begin; i < end; ++i) {
                 sh_state.fun_(i, args...);
@@ -1192,6 +1206,8 @@ namespace exec {
       std::exception_ptr exception_;
       std::vector<bulk_task> tasks_;
 
+      //! The number of agents required is the minimum of `shape_` and the available parallelism.
+      //! That is, we don't need an agent for each of the shape values.
       [[nodiscard]]
       auto num_agents_required() const -> std::uint32_t {
         return static_cast<std::uint32_t>(
@@ -1205,6 +1221,8 @@ namespace exec {
           data_);
       }
 
+      //! Construct from a pool, receiver, shape, and function.
+      //! Allocates O(min(shape, available_parallelism())) memory.
       bulk_shared_state(static_thread_pool_& pool, Receiver rcvr, Shape shape, Fun fun)
         : pool_{pool}
         , rcvr_{static_cast<Receiver&&>(rcvr)}
@@ -1215,6 +1233,8 @@ namespace exec {
       }
     };
 
+
+    //! A customized receiver to allow parallel execution of `stdexec::bulk` operations:
     template <class CvrefSenderId, class ReceiverId, class Shape, class Fun, bool MayThrow>
     struct static_thread_pool_::bulk_receiver<CvrefSenderId, ReceiverId, Shape, Fun, MayThrow>::__t {
       using __id = bulk_receiver;
@@ -1379,8 +1399,8 @@ namespace exec {
           struct env {
             static_thread_pool_* pool_;
 
-            auto query(get_completion_scheduler_t<set_value_t>) noexcept
-              -> static_thread_pool_::scheduler {
+            auto query(
+              get_completion_scheduler_t<set_value_t>) noexcept -> static_thread_pool_::scheduler {
               return pool_->get_scheduler();
             }
           };
@@ -1458,8 +1478,8 @@ namespace exec {
 
           __t(Range range, static_thread_pool_& pool, Receiver rcvr)
             : operation_base_with_receiver<
-              Range,
-              Receiver>{std::move(range), pool, static_cast<Receiver&&>(rcvr)}
+                Range,
+                Receiver>{std::move(range), pool, static_cast<Receiver&&>(rcvr)}
             , items_(std::ranges::size(this->range_), ItemAllocator(get_allocator(this->rcvr_))) {
           }
 

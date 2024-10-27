@@ -203,6 +203,7 @@ namespace stdexec {
       return &__tombstone_;
     }
 
+    //! Heap-allocatable shared state for things like `stdexec::split`.
     template <class _CvrefSender, class _Env>
     struct __shared_state
       : private __enable_intrusive_from_this<__shared_state<_CvrefSender, _Env>, 2> {
@@ -329,7 +330,7 @@ namespace stdexec {
         }
 
         STDEXEC_ASSERT(__waiters_copy.front() != __get_tombstone());
-        for (auto __itr = __waiters_copy.begin(); __itr != __waiters_copy.end(); ) {
+        for (auto __itr = __waiters_copy.begin(); __itr != __waiters_copy.end();) {
           __local_state_base* __item = *__itr;
 
           // We must increment the iterator before calling notify, since notify

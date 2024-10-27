@@ -35,8 +35,8 @@
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.adaptors.continue_on]
-  namespace __continue_on {
+  // [execution.senders.adaptors.continues_on]
+  namespace __continues_on {
     using __schfr::__environ;
 
     template <class _Env>
@@ -46,14 +46,14 @@ namespace stdexec {
     using __lowered_t = //
       __result_of<schedule_from, __scheduler_t<__data_of<_Sender>>, __child_of<_Sender>>;
 
-    struct continue_on_t {
+    struct continues_on_t {
       template <sender _Sender, scheduler _Scheduler>
       auto operator()(_Sender&& __sndr, _Scheduler&& __sched) const -> __well_formed_sender auto {
         auto __domain = __get_early_domain(__sndr);
         using _Env = __t<__environ<__id<__decay_t<_Scheduler>>>>;
         return stdexec::transform_sender(
           __domain,
-          __make_sexpr<continue_on_t>(
+          __make_sexpr<continues_on_t>(
             _Env{{static_cast<_Scheduler&&>(__sched)}}, static_cast<_Sender&&>(__sndr)));
       }
 
@@ -61,7 +61,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline))
       auto
         operator()(_Scheduler&& __sched) const
-        -> __binder_back<continue_on_t, __decay_t<_Scheduler>> {
+        -> __binder_back<continues_on_t, __decay_t<_Scheduler>> {
         return {{static_cast<_Scheduler&&>(__sched)}, {}, {}};
       }
 
@@ -71,11 +71,11 @@ namespace stdexec {
       using __legacy_customizations_t = //
         __types<
           tag_invoke_t(
-            continue_on_t,
+            continues_on_t,
             get_completion_scheduler_t<set_value_t>(get_env_t(const _Sender&)),
             _Sender,
             get_completion_scheduler_t<set_value_t>(_Env)),
-          tag_invoke_t(continue_on_t, _Sender, get_completion_scheduler_t<set_value_t>(_Env))>;
+          tag_invoke_t(continues_on_t, _Sender, get_completion_scheduler_t<set_value_t>(_Env))>;
 
       template <class _Env>
       static auto __transform_sender_fn(const _Env&) {
@@ -91,7 +91,7 @@ namespace stdexec {
       }
     };
 
-    struct __continue_on_impl : __sexpr_defaults {
+    struct __continues_on_impl : __sexpr_defaults {
       static constexpr auto get_attrs = //
         []<class _Data, class _Child>(const _Data& __data, const _Child& __child) noexcept
         -> decltype(auto) {
@@ -104,14 +104,17 @@ namespace stdexec {
           transform_sender_result_t<default_domain, _Sender, empty_env>> {
       };
     };
-  } // namespace __continue_on
+  } // namespace __continues_on
 
-  using __continue_on::continue_on_t;
-  inline constexpr continue_on_t continue_on{};
+  using __continues_on::continues_on_t;
+  inline constexpr continues_on_t continues_on{};
 
-  using transfer_t = continue_on_t;
-  inline constexpr transfer_t transfer{};
+  using transfer_t = continues_on_t;
+  inline constexpr continues_on_t transfer{};
+
+  using continue_on_t = continues_on_t;
+  inline constexpr continues_on_t continue_on{};
 
   template <>
-  struct __sexpr_impl<continue_on_t> : __continue_on::__continue_on_impl { };
+  struct __sexpr_impl<continues_on_t> : __continues_on::__continues_on_impl { };
 } // namespace stdexec

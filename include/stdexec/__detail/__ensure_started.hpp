@@ -42,8 +42,7 @@ namespace stdexec {
       template <sender _Sender, class _Env = empty_env>
         requires sender_in<_Sender, _Env> && __decay_copyable<env_of_t<_Sender>>
       [[nodiscard]]
-      auto
-        operator()(_Sender&& __sndr, _Env&& __env = {}) const -> __well_formed_sender auto {
+      auto operator()(_Sender&& __sndr, _Env&& __env = {}) const -> __well_formed_sender auto {
         if constexpr (sender_expr_for<_Sender, __ensure_started_t>) {
           return static_cast<_Sender&&>(__sndr);
         } else {

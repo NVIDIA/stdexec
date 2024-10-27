@@ -83,6 +83,7 @@ namespace exec {
             T{static_cast<T&&>(*reinterpret_cast<T*>(other->buf))};
         }
       }
+
       // copy
       static auto _copy(_storage* self, const _storage* other) noexcept -> void {
         if constexpr (!_is_small<T>::value) {
@@ -91,6 +92,7 @@ namespace exec {
           ::new (static_cast<void*>(self->buf)) T{*reinterpret_cast<const T*>(other->buf)};
         }
       }
+
       // destroy
       static auto _destroy(_storage* self) noexcept -> void {
         if constexpr (!_is_small<T>::value) {
@@ -99,6 +101,7 @@ namespace exec {
           std::destroy_at(reinterpret_cast<T*>(self->buf));
         }
       }
+
       // num_nodes
       static auto _num_nodes(const _storage* self) noexcept -> std::size_t {
         if constexpr (!_is_small<T>::value) {
@@ -107,6 +110,7 @@ namespace exec {
           return reinterpret_cast<const T*>(self->buf)->num_nodes();
         }
       }
+
       // num_cpus
       static auto _num_cpus(const _storage* self, int node) noexcept -> std::size_t {
         if constexpr (!_is_small<T>::value) {
@@ -115,6 +119,7 @@ namespace exec {
           return reinterpret_cast<const T*>(self->buf)->num_cpus(node);
         }
       }
+
       // bind_to_node
       static auto _bind_to_node(const _storage* self, int node) noexcept -> int {
         if constexpr (!_is_small<T>::value) {
@@ -123,6 +128,7 @@ namespace exec {
           return reinterpret_cast<const T*>(self->buf)->bind_to_node(node);
         }
       }
+
       // thread_index_to_node
       static auto _thread_index_to_node(const _storage* self, std::size_t index) noexcept -> int {
         if constexpr (!_is_small<T>::value) {

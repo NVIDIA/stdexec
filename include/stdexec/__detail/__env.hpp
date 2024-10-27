@@ -151,17 +151,20 @@ namespace stdexec {
       auto operator()() const noexcept;
     };
 
-    struct get_delegatee_scheduler_t : __query<get_delegatee_scheduler_t> {
+    //! The type for `get_delegation_scheduler` [exec.get.delegation.scheduler]
+    //! A query object that asks for a scheduler that can be used to delegate
+    //! work to for the purpose of forward progress delegation ([intro.progress]).
+    struct get_delegation_scheduler_t : __query<get_delegation_scheduler_t> {
       static constexpr auto query(forwarding_query_t) noexcept -> bool {
         return true;
       }
 
       template <class _Env>
-        requires tag_invocable<get_delegatee_scheduler_t, const _Env&>
+        requires tag_invocable<get_delegation_scheduler_t, const _Env&>
       auto operator()(const _Env& __t) const noexcept
-        -> tag_invoke_result_t<get_delegatee_scheduler_t, const _Env&>;
+        -> tag_invoke_result_t<get_delegation_scheduler_t, const _Env&>;
 
-      template <class _Tag = get_delegatee_scheduler_t>
+      template <class _Tag = get_delegation_scheduler_t>
       auto operator()() const noexcept;
     };
 
@@ -289,7 +292,10 @@ namespace stdexec {
   using __queries::get_forward_progress_guarantee_t;
   using __queries::get_allocator_t;
   using __queries::get_scheduler_t;
-  using __queries::get_delegatee_scheduler_t;
+  using __queries::get_delegation_scheduler_t;
+  using get_delegatee_scheduler_t
+    [[deprecated("get_delegatee_scheduler_t has been renamed get_delegation_scheduler_t")]] =
+      get_delegation_scheduler_t;
   using __queries::get_stop_token_t;
   using __queries::get_completion_scheduler_t;
   using __queries::get_domain_t;
@@ -303,7 +309,10 @@ namespace stdexec {
   inline constexpr __has_algorithm_customizations_t __has_algorithm_customizations{};
   inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{};
   inline constexpr get_scheduler_t get_scheduler{};
-  inline constexpr get_delegatee_scheduler_t get_delegatee_scheduler{};
+  inline constexpr get_delegation_scheduler_t get_delegation_scheduler{};
+  inline constexpr auto& get_delegatee_scheduler
+    [[deprecated("get_delegatee_scheduler has been renamed get_delegation_scheduler")]] =
+      get_delegation_scheduler;
   inline constexpr get_allocator_t get_allocator{};
   inline constexpr get_stop_token_t get_stop_token{};
 #if !STDEXEC_GCC() || defined(__OPTIMIZE_SIZE__)
@@ -398,7 +407,8 @@ namespace stdexec {
       // __queryable<_Envs, _Query, _Args...> is true.
       template <class _Query, class... _Args>
       STDEXEC_ATTRIBUTE((always_inline))
-      constexpr decltype(auto) __get_1st() const noexcept {
+      constexpr decltype(auto)
+        __get_1st() const noexcept {
         constexpr bool __flags[] = {__queryable<_Envs, _Query, _Args...>...};
         constexpr std::size_t __idx = __pos_of(__flags, __flags + sizeof...(_Envs));
         return __tup::get<__idx>(__tup_);
@@ -407,8 +417,9 @@ namespace stdexec {
       template <class _Query, class... _Args>
         requires(__queryable<_Envs, _Query, _Args...> || ...)
       STDEXEC_ATTRIBUTE((always_inline))
-      constexpr decltype(auto) query(_Query __q, _Args&&... __args) const noexcept(
-        __nothrow_queryable<decltype(__get_1st<_Query, _Args...>()), _Query, _Args...>) {
+      constexpr decltype(auto)
+        query(_Query __q, _Args&&... __args) const
+        noexcept(__nothrow_queryable<decltype(__get_1st<_Query, _Args...>()), _Query, _Args...>) {
         return tag_invoke(__q, __get_1st<_Query, _Args...>(), static_cast<_Args&&>(__args)...);
       }
 
@@ -430,7 +441,8 @@ namespace stdexec {
       // __queryable<_Envs, _Query, _Args...> is true.
       template <class _Query, class... _Args>
       STDEXEC_ATTRIBUTE((always_inline))
-      constexpr decltype(auto) __get_1st() const noexcept {
+      constexpr decltype(auto)
+        __get_1st() const noexcept {
         if constexpr (__queryable<_Env0, _Query, _Args...>) {
           return (__env0_);
         } else {
@@ -441,8 +453,9 @@ namespace stdexec {
       template <class _Query, class... _Args>
         requires __queryable<_Env0, _Query, _Args...> || __queryable<_Env1, _Query, _Args...>
       STDEXEC_ATTRIBUTE((always_inline))
-      constexpr decltype(auto) query(_Query __q, _Args&&... __args) const noexcept(
-        __nothrow_queryable<decltype(__get_1st<_Query, _Args...>()), _Query, _Args...>) {
+      constexpr decltype(auto)
+        query(_Query __q, _Args&&... __args) const
+        noexcept(__nothrow_queryable<decltype(__get_1st<_Query, _Args...>()), _Query, _Args...>) {
         return tag_invoke(__q, __get_1st<_Query, _Args...>(), static_cast<_Args&&>(__args)...);
       }
 

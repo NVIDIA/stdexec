@@ -32,6 +32,7 @@
 
 namespace stdexec {
   namespace __detail {
+    //! Constant function object always returning `__val_`.
     template <class _Ty, class = __name_of<__decay_t<_Ty>>>
     struct __always {
       _Ty __val_;
@@ -46,19 +47,19 @@ namespace stdexec {
   } // namespace __detail
 
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.adaptors.start_on]
-  namespace __start_on {
-    struct start_on_t {
+  // [execution.senders.adaptors.starts_on]
+  namespace __starts_on_ns {
+    struct starts_on_t {
       using _Sender = __1;
       using _Scheduler = __0;
-      using __legacy_customizations_t = __types<tag_invoke_t(start_on_t, _Scheduler, _Sender)>;
+      using __legacy_customizations_t = __types<tag_invoke_t(starts_on_t, _Scheduler, _Sender)>;
 
       template <scheduler _Scheduler, sender _Sender>
       auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto {
         auto __domain = query_or(get_domain, __sched, default_domain());
         return stdexec::transform_sender(
           __domain,
-          __make_sexpr<start_on_t>(
+          __make_sexpr<starts_on_t>(
             static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr)));
       }
 
@@ -81,20 +82,24 @@ namespace stdexec {
         return __sexpr_apply(
           static_cast<_Sender&&>(__sndr),
           []<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
+            // This is the heart of starts_on: It uses `let_value` to schedule `__child` on the given scheduler:
             return let_value(schedule(__data), __detail::__always{static_cast<_Child&&>(__child)});
           });
       }
     };
-  } // namespace __start_on
+  } // namespace __starts_on_ns
 
-  using __start_on::start_on_t;
-  inline constexpr start_on_t start_on{};
+  using __starts_on_ns::starts_on_t;
+  inline constexpr starts_on_t starts_on{};
 
-  using on_t = start_on_t;
-  inline constexpr on_t on{};
+  using on_t = starts_on_t;
+  inline constexpr starts_on_t on{};
+
+  using start_on_t = starts_on_t;
+  inline constexpr starts_on_t start_on{};
 
   template <>
-  struct __sexpr_impl<start_on_t> : __sexpr_defaults {
+  struct __sexpr_impl<starts_on_t> : __sexpr_defaults {
     static constexpr auto get_completion_signatures = //
       []<class _Sender>(_Sender&&) noexcept           //
       -> __completion_signatures_of_t<                //

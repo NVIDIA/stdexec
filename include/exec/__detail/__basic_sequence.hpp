@@ -51,9 +51,9 @@ namespace exec {
     STDEXEC_ATTRIBUTE((host, device))
     explicit __seqexpr(_Tag, _Data&& __data, _Child&&... __child)
       : __impl_(stdexec::__detail::__captures(
-        _Tag(),
-        static_cast<_Data&&>(__data),
-        static_cast<_Child&&>(__child)...)) {
+          _Tag(),
+          static_cast<_Data&&>(__data),
+          static_cast<_Child&&>(__child)...)) {
     }
 
     template <stdexec::same_as<__seqexpr> _Self = __seqexpr>

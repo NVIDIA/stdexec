@@ -29,7 +29,7 @@
 #include "stream/submit.cuh"
 #include "stream/split.cuh"
 #include "stream/then.cuh"
-#include "stream/transfer.cuh"
+#include "stream/continues_on.cuh"
 #include "stream/launch.cuh"
 #include "stream/upon_error.cuh"
 #include "stream/upon_stopped.cuh"
@@ -70,7 +70,7 @@ namespace nvexec {
     using let_xxx_th = __t<let_sender_t<__id<__decay_t<Sender>>, Fun, Set>>;
 
     template <sender Sender>
-    using transfer_sender_th = __t<transfer_sender_t<__id<__decay_t<Sender>>>>;
+    using continues_on_sender_th = __t<continues_on_sender_t<__id<__decay_t<Sender>>>>;
 
     template <sender Sender>
     using ensure_started_th = __t<ensure_started_sender_t<__id<Sender>>>;
@@ -162,8 +162,7 @@ namespace nvexec {
       }
 
       template <sender S>
-      STDEXEC_MEMFN_DECL(auto ensure_started)(this const stream_scheduler& sch, S&& sndr) noexcept
-        -> ensure_started_th<S> {
+      STDEXEC_MEMFN_DECL(auto ensure_started)(this const stream_scheduler& sch, S&& sndr) noexcept -> ensure_started_th<S> {
         return ensure_started_th<S>(sch.context_state_, static_cast<S&&>(sndr));
       }
 
@@ -216,11 +215,11 @@ namespace nvexec {
       }
 
       template <sender S, scheduler Sch>
-      STDEXEC_MEMFN_DECL(auto transfer)(this const stream_scheduler& sch, S&& sndr, Sch&& scheduler) //
-        noexcept -> __result_of<schedule_from, Sch, transfer_sender_th<S>> {
+      STDEXEC_MEMFN_DECL(auto continues_on)(this const stream_scheduler& sch, S&& sndr, Sch&& scheduler) //
+        noexcept -> __result_of<schedule_from, Sch, continues_on_sender_th<S>> {
         return schedule_from(
           static_cast<Sch&&>(scheduler),
-          transfer_sender_th<S>(sch.context_state_, static_cast<S&&>(sndr)));
+          continues_on_sender_th<S>(sch.context_state_, static_cast<S&&>(sndr)));
       }
 
       template <sender S>

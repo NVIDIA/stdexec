@@ -89,7 +89,8 @@ namespace exec {
       using __child_count_pair_t = __decay_t<__data_of<_Sender>>;
       using __child_t = decltype(__child_count_pair_t::__child_);
       using __receiver_t = stdexec::__t<__receiver<__id<_Sender>, __id<_Receiver>>>;
-      using __child_on_sched_sender_t = __result_of<stdexec::on, trampoline_scheduler, __child_t &>;
+      using __child_on_sched_sender_t =
+        __result_of<stdexec::starts_on, trampoline_scheduler, __child_t &>;
       using __child_op_t = stdexec::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
       __child_count_pair<__child_t> __pair_;
@@ -115,7 +116,8 @@ namespace exec {
 
       void __connect() {
         __child_op_.__construct_from([this] {
-          return stdexec::connect(stdexec::on(__sched_, __pair_.__child_), __receiver_t{this});
+          return stdexec::connect(
+            stdexec::starts_on(__sched_, __pair_.__child_), __receiver_t{this});
         });
       }
 
@@ -124,8 +126,8 @@ namespace exec {
           stdexec::set_value(static_cast<_Receiver &&>(this->__receiver()));
         } else {
 
-          const bool __already_started
-            [[maybe_unused]] = __started_.test_and_set(std::memory_order_relaxed);
+          const bool __already_started [[maybe_unused]]
+          = __started_.test_and_set(std::memory_order_relaxed);
           STDEXEC_ASSERT(!__already_started);
           stdexec::start(__child_op_.__get());
         }
@@ -233,13 +235,12 @@ namespace exec {
 
 namespace stdexec {
   template <>
-  struct __sexpr_impl<exec::__repeat_n::__repeat_n_tag>
-    : exec::__repeat_n::__repeat_n_impl { };
+  struct __sexpr_impl<exec::__repeat_n::__repeat_n_tag> : exec::__repeat_n::__repeat_n_impl { };
 
   template <>
   struct __sexpr_impl<exec::repeat_n_t> : __sexpr_defaults {
     static constexpr auto get_completion_signatures = //
-      []<class _Sender>(_Sender&&) noexcept           //
+      []<class _Sender>(_Sender &&) noexcept          //
       -> __completion_signatures_of_t<                //
         transform_sender_result_t<default_domain, _Sender, empty_env>> {
     };

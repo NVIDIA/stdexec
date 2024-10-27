@@ -84,7 +84,7 @@ namespace stdexec {
     struct get_forward_progress_guarantee_t;
     struct __has_algorithm_customizations_t;
     struct get_scheduler_t;
-    struct get_delegatee_scheduler_t;
+    struct get_delegation_scheduler_t;
     struct get_allocator_t;
     struct get_stop_token_t;
     template <__completion_tag _CPO>
@@ -97,7 +97,7 @@ namespace stdexec {
   using __queries::get_forward_progress_guarantee_t;
   using __queries::get_allocator_t;
   using __queries::get_scheduler_t;
-  using __queries::get_delegatee_scheduler_t;
+  using __queries::get_delegation_scheduler_t;
   using __queries::get_stop_token_t;
   using __queries::get_completion_scheduler_t;
 
@@ -106,7 +106,7 @@ namespace stdexec {
   extern const __has_algorithm_customizations_t __has_algorithm_customizations;
   extern const get_forward_progress_guarantee_t get_forward_progress_guarantee;
   extern const get_scheduler_t get_scheduler;
-  extern const get_delegatee_scheduler_t get_delegatee_scheduler;
+  extern const get_delegation_scheduler_t get_delegation_scheduler;
   extern const get_allocator_t get_allocator;
   extern const get_stop_token_t get_stop_token;
   template <__completion_tag _CPO>
@@ -194,26 +194,36 @@ namespace stdexec {
   extern const as_awaitable_t as_awaitable;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __start_on {
-    struct start_on_t;
-  } // namespace __start_on
+  namespace __starts_on_ns {
+    struct starts_on_t;
+  } // namespace __starts_on_ns
 
-  using __start_on::start_on_t;
-  extern const start_on_t start_on;
+  using __starts_on_ns::starts_on_t;
+  extern const starts_on_t starts_on;
 
-  using on_t = start_on_t;
-  extern const on_t on;
+  using on_t [[deprecated("on_t has been renamed starts_on_t")]] = starts_on_t;
+  [[deprecated("on has been renamed starts_on")]]
+  extern const starts_on_t on;
+
+  using start_on_t [[deprecated("start_on_t has been renamed starts_on_t")]] = starts_on_t;
+  [[deprecated("start_on has been renamed starts_on")]]
+  extern const starts_on_t start_on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __continue_on {
-    struct continue_on_t;
-  } // namespace __continue_on
+  namespace __continues_on {
+    struct continues_on_t;
+  } // namespace __continues_on
 
-  using __continue_on::continue_on_t;
-  extern const continue_on_t continue_on;
+  using __continues_on::continues_on_t;
+  extern const continues_on_t continues_on;
 
-  using transfer_t = continue_on_t;
-  extern const transfer_t transfer;
+  using transfer_t [[deprecated("transfer_t has been renamed continues_on_t")]] = continues_on_t;
+  [[deprecated("transfer has been renamed continues_on")]]
+  extern const continues_on_t transfer;
+
+  using continue_t [[deprecated("continue_on_t has been renamed continues_on_t")]] = continues_on_t;
+  [[deprecated("continue_on has been renamed continues_on")]]
+  extern const continues_on_t continue_on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __transfer_just {

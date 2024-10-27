@@ -22,7 +22,7 @@ namespace {
 
       // Add some work into the scope
       for (int i = 0; i < 10; i++)
-        scope.spawn(ex::on(sch, ex::just() | ex::then([&] { counter++; })));
+        scope.spawn(ex::starts_on(sch, ex::just() | ex::then([&] { counter++; })));
 
       // Wait on the work, before calling destructor
       sync_wait(scope.on_empty());

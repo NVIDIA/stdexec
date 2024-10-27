@@ -100,8 +100,7 @@ namespace stdexec {
 
   template <class... _Sigs>
   using __concat_completion_signatures = //
-    __mconcat<__qq<completion_signatures>>::__f<
-      __mconcat<__qq<__mmake_set>>::__f<_Sigs...>>;
+    __mconcat<__qq<completion_signatures>>::__f<__mconcat<__qq<__mmake_set>>::__f<_Sigs...>>;
 
   namespace __sigs {
     //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -119,7 +118,8 @@ namespace stdexec {
       class... _More,
       class _What,
       class... _With>
-    auto __for_each_completion_signature_fn(_ERROR_<_What, _With...> **) -> _ERROR_<_What, _With...>;
+    auto
+      __for_each_completion_signature_fn(_ERROR_<_What, _With...> **) -> _ERROR_<_What, _With...>;
 
     template <
       template <class...>
@@ -508,26 +508,23 @@ namespace stdexec {
     sender_in<_Sender, _Env...> && __sends<set_stopped_t, _Sender, _Env...>;
 
   template <class _Sender, class... _Env>
-  using __single_sender_value_t =
-    __value_types_t<
-      __completion_signatures_of_t<_Sender, _Env...>,
-      __msingle_or<void>,
-      __q<__msingle>>;
+  using __single_sender_value_t = __value_types_t<
+    __completion_signatures_of_t<_Sender, _Env...>,
+    __msingle_or<void>,
+    __q<__msingle>>;
 
   template <class _Sender, class... _Env>
-  concept __single_value_sender = //
-    sender_in<_Sender, _Env...> &&   //
+  concept __single_value_sender =  //
+    sender_in<_Sender, _Env...> && //
     requires { typename __single_sender_value_t<_Sender, _Env...>; };
 
   template <class _Sender, class... _Env>
   using __single_value_variant_sender_t =
-    __value_types_t<
-      __completion_signatures_of_t<_Sender, _Env...>,
-      __qq<__types>, __q<__msingle>>;
+    __value_types_t<__completion_signatures_of_t<_Sender, _Env...>, __qq<__types>, __q<__msingle>>;
 
   template <class _Sender, class... _Env>
   concept __single_value_variant_sender = //
-    sender_in<_Sender, _Env...> &&           //
+    sender_in<_Sender, _Env...> &&        //
     requires { typename __single_value_variant_sender_t<_Sender, _Env...>; };
 
   // The following utilities are needed fairly often:

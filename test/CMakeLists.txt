@@ -35,8 +35,8 @@ set(stdexec_test_sources
     stdexec/algos/factories/test_just_error.cpp
     stdexec/algos/factories/test_just_stopped.cpp
     stdexec/algos/factories/test_read.cpp
-    stdexec/algos/adaptors/test_on.cpp
-    stdexec/algos/adaptors/test_transfer.cpp
+    stdexec/algos/adaptors/test_starts_on.cpp
+    stdexec/algos/adaptors/test_continues_on.cpp
     stdexec/algos/adaptors/test_schedule_from.cpp
     stdexec/algos/adaptors/test_then.cpp
     stdexec/algos/adaptors/test_upon_error.cpp
@@ -83,7 +83,7 @@ add_executable(test.scratch test_main.cpp test_scratch.cpp)
 target_link_libraries(test.scratch
     PUBLIC
     STDEXEC::stdexec
-    $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
+    $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbpool>
     stdexec_executable_flags
     Catch2::Catch2
     PRIVATE

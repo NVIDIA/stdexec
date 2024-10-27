@@ -620,7 +620,7 @@ namespace exec {
          private:
           template <class _Rcvr>
             requires receiver_of<_Rcvr, completion_signatures<_Sigs...>>
-                  && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
+                    && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
           STDEXEC_MEMFN_DECL(
             auto __create_vtable)(this __mtype<__t>, __mtype<_Rcvr>) noexcept -> const __t* {
             static const __t __vtable_{
@@ -669,9 +669,9 @@ namespace exec {
                 && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
         __ref(_Rcvr& __rcvr) noexcept
           : __env_{
-            __create_vtable(__mtype<__vtable_t>{}, __mtype<_Rcvr>{}),
-            &__rcvr,
-            stdexec::get_stop_token(stdexec::get_env(__rcvr))} {
+              __create_vtable(__mtype<__vtable_t>{}, __mtype<_Rcvr>{}),
+              &__rcvr,
+              stdexec::get_stop_token(stdexec::get_env(__rcvr))} {
         }
 
         template <class... _As>
@@ -700,8 +700,8 @@ namespace exec {
         }
       };
 
-      auto __test_never_stop_token(get_stop_token_t (*)(never_stop_token (*)() noexcept))
-        -> __mbool<true>;
+      auto __test_never_stop_token(
+        get_stop_token_t (*)(never_stop_token (*)() noexcept)) -> __mbool<true>;
 
       template <class _Tag, class _Ret, class... _As>
       auto __test_never_stop_token(_Tag (*)(_Ret (*)(_As...) noexcept)) -> __mbool<false>;

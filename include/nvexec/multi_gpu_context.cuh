@@ -170,13 +170,13 @@ namespace nvexec {
       }
 
       template <sender S, scheduler Sch>
-      STDEXEC_MEMFN_DECL(auto transfer)(
+      STDEXEC_MEMFN_DECL(auto continues_on)(
         this const multi_gpu_stream_scheduler& sch, //
         S&& sndr,                                   //
         Sch&& scheduler) noexcept {
         return schedule_from(
           static_cast<Sch&&>(scheduler),
-          transfer_sender_th<S>(sch.context_state_, static_cast<S&&>(sndr)));
+          continues_on_sender_th<S>(sch.context_state_, static_cast<S&&>(sndr)));
       }
 
       template <sender S>

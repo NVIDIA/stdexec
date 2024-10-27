@@ -22,7 +22,7 @@
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
-  namespace _transfer {
+  namespace _continues_on {
     template <class CvrefSenderId, class ReceiverId>
     struct operation_state_t {
       using Sender = __cvref_t<CvrefSenderId>;
@@ -107,18 +107,19 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         STDEXEC_IMMOVABLE(__t);
       };
     };
-  } // namespace _transfer
+  } // namespace _continues_on
 
   template <class SenderId>
-  struct transfer_sender_t {
+  struct continues_on_sender_t {
     using Sender = stdexec::__t<SenderId>;
 
     struct __t : stream_sender_base {
-      using __id = transfer_sender_t;
+      using __id = continues_on_sender_t;
 
       template <class Self, class Receiver>
       using op_state_th = //
-        stdexec::__t<_transfer::operation_state_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>>>;
+        stdexec::__t<
+          _continues_on::operation_state_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>>>;
 
       context_state_t context_state_;
       Sender sndr_;
@@ -147,7 +148,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class... Env>
-      static auto get_completion_signatures(Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
+      static auto
+        get_completion_signatures(Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
         return {};
       }
 
@@ -166,6 +168,6 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 namespace stdexec::__detail {
   template <class SenderId>
   inline constexpr __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::transfer_sender_t<__name_of<__t<SenderId>>>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::transfer_sender_t<SenderId>>{};
+    nvexec::STDEXEC_STREAM_DETAIL_NS::continues_on_sender_t<__name_of<__t<SenderId>>>>
+    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::continues_on_sender_t<SenderId>>{};
 } // namespace stdexec::__detail

@@ -31,7 +31,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
       return __sched_;
     }
 
-    auto query(get_delegatee_scheduler_t) const noexcept -> run_loop::__scheduler {
+    auto query(get_delegation_scheduler_t) const noexcept -> run_loop::__scheduler {
       return __sched_;
     }
   };

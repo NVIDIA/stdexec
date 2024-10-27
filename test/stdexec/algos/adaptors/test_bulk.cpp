@@ -300,7 +300,7 @@ namespace {
       };
 
       auto snd = ex::just() //
-               | ex::transfer(sch) | ex::bulk(tids.size(), fun);
+               | ex::continues_on(sch) | ex::bulk(tids.size(), fun);
       CHECK(std::equal_to<void*>()(&snd.pool_, &pool));
       stdexec::sync_wait(std::move(snd));
 
@@ -327,7 +327,7 @@ namespace {
 
       auto snd = ex::just() //
                | ex::bulk(tids.size(), fun);
-      stdexec::sync_wait(stdexec::on(sch, std::move(snd)));
+      stdexec::sync_wait(stdexec::starts_on(sch, std::move(snd)));
 
       // All the work should not have run on the same thread
       const std::size_t actual =

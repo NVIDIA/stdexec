@@ -127,7 +127,7 @@ namespace {
       REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd)) == sched);
     }
     SECTION("for stop channel") {
-      ex::sender auto snd = ex::just_stopped() | ex::transfer(sched) | ex::then([] {});
+      ex::sender auto snd = ex::just_stopped() | ex::continues_on(sched) | ex::then([] {});
       REQUIRE(ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(snd)) == sched);
     }
   }
@@ -180,7 +180,7 @@ namespace {
       ex::transfer_just(sched3) | ex::then([] {}));
   }
 
-  // Return a different sender when we invoke this custom defined on implementation
+  // Return a different sender when we invoke this custom defined then implementation
   using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
 
   template <class Fun>

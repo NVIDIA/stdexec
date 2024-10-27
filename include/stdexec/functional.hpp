@@ -236,8 +236,9 @@ namespace stdexec {
   concept __applicable = __mvalid<__apply_::__result_t, _Fn, _Tup>;
 
   template <class _Fn, class _Tup>
-  concept __nothrow_applicable = __applicable<_Fn, _Tup> //
-    &&                                                   //
+  concept __nothrow_applicable =
+    __applicable<_Fn, _Tup> //
+    &&                      //
     noexcept(
       __apply_::__impl(__apply_::__tuple_indices<_Tup>(), __declval<_Fn>(), __declval<_Tup>()));
 
@@ -250,8 +251,8 @@ namespace stdexec {
       requires __applicable<_Fn, _Tup>
     STDEXEC_ATTRIBUTE((always_inline))
     constexpr auto
-      operator()(_Fn&& __fn, _Tup&& __tup) const noexcept(__nothrow_applicable<_Fn, _Tup>)
-        -> __apply_result_t<_Fn, _Tup> {
+      operator()(_Fn&& __fn, _Tup&& __tup) const
+      noexcept(__nothrow_applicable<_Fn, _Tup>) -> __apply_result_t<_Fn, _Tup> {
       return __apply_::__impl(
         __apply_::__tuple_indices<_Tup>(), static_cast<_Fn&&>(__fn), static_cast<_Tup&&>(__tup));
     }

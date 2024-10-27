@@ -17,7 +17,7 @@
 #include <cstdlib>
 #include <iostream>
 
-#include <tbbexec/tbb_thread_pool.hpp>
+#include <execpools/tbb/tbb_thread_pool.hpp>
 #include <exec/static_thread_pool.hpp>
 
 #include <exec/any_sender_of.hpp>
@@ -54,7 +54,7 @@ struct fib_s {
         stdexec::set_value(static_cast<Receiver&&>(self.rcvr_), serial_fib(self.n));
       } else {
         auto mkchild = [&](long n) {
-          return stdexec::on(self.sched, fib_sender(fib_s{self.cutoff, n, self.sched}));
+          return stdexec::starts_on(self.sched, fib_sender(fib_s{self.cutoff, n, self.sched}));
         };
 
         stdexec::start_detached(
@@ -100,10 +100,10 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  std::variant<tbbexec::tbb_thread_pool, exec::static_thread_pool> pool;
+  std::variant<execpools::tbb_thread_pool, exec::static_thread_pool> pool;
 
   if (argv[4] == std::string_view("tbb")) {
-    pool.emplace<tbbexec::tbb_thread_pool>(static_cast<int>(std::thread::hardware_concurrency()));
+    pool.emplace<execpools::tbb_thread_pool>(static_cast<int>(std::thread::hardware_concurrency()));
   } else {
     pool.emplace<exec::static_thread_pool>(
       std::thread::hardware_concurrency(), exec::bwos_params{}, exec::get_numa_policy());
@@ -113,10 +113,7 @@ int main(int argc, char** argv) {
   long result;
   for (unsigned long i = 0; i < nruns; ++i) {
     auto snd = std::visit(
-      [&](auto&& pool) {
-        return fib_sender(fib_s{cutoff, n, pool.get_scheduler()});
-      },
-      pool);
+      [&](auto&& pool) { return fib_sender(fib_s{cutoff, n, pool.get_scheduler()}); }, pool);
 
     auto time = measure<std::chrono::milliseconds>([&] {
       std::tie(result) = stdexec::sync_wait(std::move(snd)).value();

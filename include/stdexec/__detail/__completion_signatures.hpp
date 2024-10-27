@@ -44,8 +44,7 @@ namespace stdexec {
 
   template <class _Completions>
   concept __valid_completion_signatures = //
-    __same_as<__ok_t<_Completions>, __msuccess>
-    && __sigs::__is_completion_signatures<_Completions>;
+    __same_as<__ok_t<_Completions>, __msuccess> && __sigs::__is_completion_signatures<_Completions>;
 
   template <class _Sender, class _Env>
   using __unrecognized_sender_error = //

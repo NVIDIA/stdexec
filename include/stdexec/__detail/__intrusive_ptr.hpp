@@ -196,8 +196,8 @@ namespace stdexec {
       }
 
       auto operator=(__intrusive_ptr&& __that) noexcept -> __intrusive_ptr& {
-        [[maybe_unused]] __intrusive_ptr __old{
-          std::exchange(__data_, std::exchange(__that.__data_, nullptr))};
+        [[maybe_unused]]
+        __intrusive_ptr __old{std::exchange(__data_, std::exchange(__that.__data_, nullptr))};
         return *this;
       }
 
@@ -205,8 +205,8 @@ namespace stdexec {
         return operator=(__intrusive_ptr(__that));
       }
 
-      auto operator=(__enable_intrusive_from_this<_Ty, _ReservedBits>* __that) noexcept
-        -> __intrusive_ptr& {
+      auto operator=(
+        __enable_intrusive_from_this<_Ty, _ReservedBits>* __that) noexcept -> __intrusive_ptr& {
         return operator=(__that ? __that->__intrusive_from_this() : __intrusive_ptr());
       }
 

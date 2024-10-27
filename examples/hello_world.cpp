@@ -45,10 +45,10 @@ int main() {
   (void) t;
 
   auto y = let_value(get_scheduler(), [](auto sched) {
-    return on(sched, then(just(), [] {
-                std::cout << "from run_loop\n";
-                return 42;
-              }));
+    return starts_on(sched, then(just(), [] {
+                       std::cout << "from run_loop\n";
+                       return 42;
+                     }));
   });
   sync_wait(std::move(y));
 

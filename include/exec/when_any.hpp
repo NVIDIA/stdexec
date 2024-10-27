@@ -43,7 +43,7 @@ namespace exec {
 
     template <class... _Ts>
     using __nothrow_decay_copyable_and_move_constructible_t = __mbool<(
-      (__nothrow_decay_copyable<_Ts> && __nothrow_move_constructible<__decay_t<_Ts>>) &&...)>;
+      (__nothrow_decay_copyable<_Ts> && __nothrow_move_constructible<__decay_t<_Ts>>) && ...)>;
 
     template <class... Args>
     using __as_rvalues = set_value_t (*)(__decay_t<Args>...);
@@ -269,8 +269,8 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class... _Env>
-        static auto get_completion_signatures(_Self&&, _Env&&...) noexcept
-          -> __completions_t<_Self, _Env...> {
+        static auto
+          get_completion_signatures(_Self&&, _Env&&...) noexcept -> __completions_t<_Self, _Env...> {
           return {};
         }
 

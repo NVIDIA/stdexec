@@ -28,6 +28,9 @@
 #include "__utility.hpp"
 
 namespace stdexec {
+  //! Convenience metafunction getting the dependant type `__t` out of `_Tp`.
+  //! That is, `typename _Tp::__t`.
+  //! See MAINTAINERS.md#class-template-parameters for details.
   template <class _Tp>
   using __t = typename _Tp::__t;
 
@@ -80,7 +83,10 @@ namespace stdexec {
   enum class __muchar : unsigned char {
   };
 
-#if STDEXEC_MSVC()
+#if STDEXEC_NVCC() || STDEXEC_NVHPC()
+  template <std::size_t _Np>
+  using __msize_t = std::integral_constant<std::size_t, _Np>;
+#elif STDEXEC_MSVC()
   template <std::size_t _Np>
   using __msize_t = __mconstant<_Np>;
 #else
@@ -88,9 +94,11 @@ namespace stdexec {
   using __msize_t = __muchar (*)[_Np + 1]; // +1 to avoid zero-size array
 #endif
 
+  //! Metafunction selects the first of two type arguments.
   template <class _Tp, class _Up>
   using __mfirst = _Tp;
 
+  //! Metafunction selects the second of two type arguments.
   template <class _Tp, class _Up>
   using __msecond = _Up;
 
@@ -263,8 +271,7 @@ namespace stdexec {
   // Use a standard user-defined string literal template
   template <__mstring _Str>
   [[deprecated("Use _mstr instead")]]
-  constexpr auto
-    operator""__csz() noexcept -> __mtypeof<_Str> {
+  constexpr auto operator""__csz() noexcept -> __mtypeof<_Str> {
     return _Str;
   }
 
@@ -322,6 +329,15 @@ namespace stdexec {
   template <class... _Args>
   concept _Ok = (STDEXEC_IS_SAME(__ok_t<_Args>, __msuccess) && ...);
 
+  //! The struct `__i` is the implementation of P2300's  
+  //! [_`META-APPLY`_](https://eel.is/c++draft/exec#util.cmplsig-5).
+  //! > [Note [1](https://eel.is/c++draft/exec#util.cmplsig-note-1): 
+  //! > The purpose of META-APPLY is to make it valid to use non-variadic 
+  //! > templates as Variant and Tuple arguments to gather-signatures. — end note]
+  //! In addition to avoiding the dreaded "pack expanded into non-pack argument" error,
+  //! it is part of the meta-error propagation mechanism. if any of the argument types 
+  //! are a specialization of `_ERROR_`, `__i` will short-circuit and return the error.
+  //! `__minvoke` and `__meval` are implemented in terms of `__i`.
   template <bool _ArgsOK, bool _FnOK = true>
   struct __i;
 
@@ -371,6 +387,9 @@ namespace stdexec {
     typename __i<_Ok<_Args...>>    //
     ::template __g<_Fn, _Args...>; //
 
+  //! Metafunction invocation
+  //! Given a metafunction, `_Fn`, and args.
+  //! We expect `_Fn::__f` to be type alias template "implementing" the metafunction `_Fn`.
   template <class _Fn, class... _Args>
   using __minvoke =                       //
     typename __i<_Ok<_Args...>, _Ok<_Fn>> //
@@ -411,6 +430,14 @@ namespace stdexec {
     using __f = _Fn;
   };
 
+  //! This struct template is like [mpl::quote](https://www.boost.org/doc/libs/1_86_0/libs/mpl/doc/refmanual/quote.html).
+  //! It turns an alias/class template into a metafunction that also propagates "meta-exceptions".
+  //! All of the meta utilities recognize specializations of stdexec::_ERROR_ as an error type. 
+  //! Error types short-circuit the evaluation of the metafunction and are automatically propagated like an exception. 
+  //! Note: `__minvoke` and `__meval` also participate in this error propagation.
+  //!
+  //! This design lets us report type errors briefly at the library boundary, even if the 
+  //! actual error happens deep inside a meta-program.
   template <template <class...> class _Fn>
   struct __q {
     template <class... _Args>
@@ -497,6 +524,9 @@ namespace stdexec {
   using __mmemoize_q = __mmemoize<__q<_Fn>, _Args...>;
 
   struct __if_ {
+    //! Metafunction selects `_True` if the bool template is `true`, otherwise the second.
+    //! That is, `__<true>::__f<A, B>` is `A` and `__<false>::__f<A, B>` is B.
+    //! This is similar to `std::conditional_t<Cond, A, B>`.
     template <bool>
     struct __ {
       template <class _True, class...>
@@ -507,6 +537,7 @@ namespace stdexec {
     using __f = __minvoke<__<static_cast<bool>(__v<_Pred>)>, _True, _False...>;
   };
 
+  // Specialization; see above.
   template <>
   struct __if_::__<false> {
     template <class, class _False>
@@ -656,6 +687,18 @@ namespace stdexec {
     using __f = __minvoke<_Fn, _As...>;
   };
 
+  template <std::size_t... _Ns>
+  struct __muncurry_<__pack::__t<_Ns...> *> {
+    template <class _Fn>
+    using __f = __minvoke<_Fn, __msize_t<_Ns>...>;
+  };
+
+  template <template <class _Np, _Np...> class _Cp, class _Np, _Np... _Ns>
+  struct __muncurry_<_Cp<_Np, _Ns...>> {
+    template <class _Fn>
+    using __f = __minvoke<_Fn, std::integral_constant<_Np, _Ns>...>;
+  };
+
   template <class _What, class... _With>
   struct __muncurry_<_ERROR_<_What, _With...>> {
     template <class _Fn>
@@ -706,8 +749,8 @@ namespace stdexec {
   struct __mconcat {
     template <class... _Args>
     using __f = __mapply<
-        _Continuation,
-        decltype(__mconcat_<(sizeof...(_Args) == 0)>::__f({}, static_cast<_Args *>(nullptr)...))>;
+      _Continuation,
+      decltype(__mconcat_<(sizeof...(_Args) == 0)>::__f({}, static_cast<_Args *>(nullptr)...))>;
   };
 
   struct __msize {
@@ -804,9 +847,13 @@ namespace stdexec {
   template <class _Default>
   using __msingle_or = __mbind_front_q<__msingle_or_, _Default>;
 
+  //! A concept checking if `_Ty` has a dependent type `_Ty::__id`.
+  //! See MAINTAINERS.md#class-template-parameters.
   template <class _Ty>
   concept __has_id = requires { typename _Ty::__id; };
 
+  //! Identity mapping `_Ty` to itself.
+  //! That is, `std::is_same_v<T, typename _Id<T>::__t>`.
   template <class _Ty>
   struct _Id {
     using __t = _Ty;
@@ -819,6 +866,7 @@ namespace stdexec {
     //static_assert(!__has_id<std::remove_cvref_t<_Ty>>);
   };
 
+  //! Helper metafunction detail of `__id`, below.
   template <bool = true>
   struct __id_ {
     template <class _Ty>
@@ -830,6 +878,11 @@ namespace stdexec {
     template <class _Ty>
     using __f = _Id<_Ty>;
   };
+
+  //! Metafunction mapping `_Ty` to either
+  //! * `typename _Ty::__id` if that exists, or to 
+  //! * `_Ty` (itself) otherwise.
+  //! See MAINTAINERS.md#class-template-parameters.
   template <class _Ty>
   using __id = __minvoke<__id_<__has_id<_Ty>>, _Ty>;
 
@@ -883,8 +936,13 @@ namespace stdexec {
   template <class _Fn>
   __emplace_from(_Fn) -> __emplace_from<_Fn>;
 
-  template <class, class, class, class>
-  struct __mzip_with2_;
+  template <class _Fn, class _Continuation, class _List1, class _List2>
+  struct __mzip_with2_
+    : __mzip_with2_<
+        _Fn,
+        _Continuation,
+        __mapply<__qq<__types>, _List1>,
+        __mapply<__qq<__types>, _List2>> { };
 
   template <             //
     class _Fn,           //
@@ -1172,7 +1230,7 @@ namespace stdexec {
   struct __mdispatch_<_Ret (*)(_Args...), _Offset> {
     template <class... _Ts>
       requires(__callable<__mdispatch_<_Args, _Offset>, _Ts...> && ...)
-           && __callable<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...>
+             && __callable<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...>
     auto operator()(_Ts &&...__ts) const
       noexcept(__nothrow_callable<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...>)
         -> __call_result_t<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...> {
@@ -1190,8 +1248,8 @@ namespace stdexec {
     struct __impl {
       template <std::size_t... _Idx, class... _Ts>
         requires(__callable<__mdispatch_<_Args>, _Ts...> && ...)
-             && (__callable<__mdispatch_<_Pattern, _Idx + 1>, _Ts...> && ...)
-             && __callable< //
+               && (__callable<__mdispatch_<_Pattern, _Idx + 1>, _Ts...> && ...)
+               && __callable< //
                   _Ret,
                   __call_result_t<__mdispatch_<_Args>, _Ts...>...,
                   __call_result_t<__mdispatch_<_Pattern, _Idx + 1>, _Ts...>...>
@@ -1212,7 +1270,7 @@ namespace stdexec {
 
     template <class... _Ts>
       requires(__offset < sizeof...(_Ts))
-           && __callable<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>
+             && __callable<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>
     auto operator()(_Ts &&...__ts) const
       noexcept(__nothrow_callable<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>)
         -> __msecond<
@@ -1223,7 +1281,7 @@ namespace stdexec {
 
     template <class... _Ts>
       requires(sizeof...(_Ts) == __offset)
-           && __callable<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...> *>, _Ts...>
+             && __callable<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...> *>, _Ts...>
     auto operator()(_Ts &&...__ts) const //
       noexcept(
         __nothrow_callable<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...> *>, _Ts...>)

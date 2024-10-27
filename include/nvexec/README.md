@@ -14,7 +14,7 @@
 - [x] `let_error`
 - [x] `let_stopped`
 - [x] `schedule_from`
-- [x] `transfer`
+- [x] `continues_on`
 - [x] `sync_wait`
 - [x] `ensure_started`
 - [x] `start_detached`

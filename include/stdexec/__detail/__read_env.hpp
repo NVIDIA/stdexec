@@ -85,9 +85,10 @@ namespace stdexec {
         __minvoke<__mtry_catch_q<__read::__completions_t, __q<__query_failed_error>>, _Tag, _Env>;
 
       static constexpr auto get_completion_signatures = //
-        []<class _Self, class _Env>(const _Self&, _Env&&) noexcept -> __completions_t<__data_of<_Self>, _Env> {
-          return {};
-        };
+        []<class _Self, class _Env>(const _Self&, _Env&&) noexcept
+        -> __completions_t<__data_of<_Self>, _Env> {
+        return {};
+      };
 
       static constexpr auto get_state = //
         []<class _Self, class _Receiver>(const _Self&, _Receiver&) noexcept {
@@ -131,8 +132,8 @@ namespace stdexec {
     }
 
     template <class _Tag>
-    inline auto get_delegatee_scheduler_t::operator()() const noexcept {
-      return read_env(get_delegatee_scheduler);
+    inline auto get_delegation_scheduler_t::operator()() const noexcept {
+      return read_env(get_delegation_scheduler);
     }
 
     template <class _Tag>

@@ -54,6 +54,15 @@ namespace stdexec {
 
     template <std::size_t... _Is, __indices<_Is...> _Idx, class... _Ts>
     struct __tuple<_Idx, _Ts...> : __box<_Ts, _Is>... {
+      template <class... _Us>
+      static __tuple __convert_from(__tuple<_Idx, _Us...> &&__tup) {
+        return __tuple{{static_cast<_Us &&>(__tup.__box<_Us, _Is>::__value)}...};
+      }
+
+      template <class... _Us>
+      static __tuple __convert_from(__tuple<_Idx, _Us...> const &__tup) {
+        return __tuple{{__tup.__box<_Us, _Is>::__value}...};
+      }
 
       template <class _Fn, class _Self, class... _Us>
       STDEXEC_ATTRIBUTE((host, device, always_inline))
@@ -95,8 +104,10 @@ namespace stdexec {
     concept __applicable = requires { typename __apply_result_t<_Fn, _Tuple, _Us...>; };
 
     template <class _Fn, class _Tuple, class... _Us>
-    concept __nothrow_applicable = __applicable<_Fn, _Tuple, _Us...> && noexcept(
-      __declval<_Tuple>().apply(__declval<_Fn>(), __declval<_Tuple>(), __declval<_Us>()...));
+    concept __nothrow_applicable =
+      __applicable<_Fn, _Tuple, _Us...>
+      && noexcept(
+        __declval<_Tuple>().apply(__declval<_Fn>(), __declval<_Tuple>(), __declval<_Us>()...));
 
 #if STDEXEC_GCC()
     template <class... _Ts>
@@ -152,8 +163,8 @@ namespace stdexec {
       template <class... _Ts>
       STDEXEC_ATTRIBUTE((host, device, always_inline))
       auto
-        operator()(_Ts &&...__ts) const noexcept(noexcept(__tuple{static_cast<_Ts &&>(__ts)...}))
-          -> decltype(__tuple{static_cast<_Ts &&>(__ts)...}) {
+        operator()(_Ts &&...__ts) const noexcept(noexcept(__tuple{
+          static_cast<_Ts &&>(__ts)...})) -> decltype(__tuple{static_cast<_Ts &&>(__ts)...}) {
         return __tuple{static_cast<_Ts &&>(__ts)...};
       }
     } __mktuple{};

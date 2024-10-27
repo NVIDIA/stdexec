@@ -330,16 +330,94 @@ if (STDEXEC_ENABLE_TBB)
         INSTALL_EXPORT_SET stdexec-exports
     )
 
-    file(GLOB_RECURSE tbbexec_sources include/tbbexec/*.hpp)
-    add_library(tbbexec INTERFACE ${tbbexec_sources})
-    list(APPEND stdexec_export_targets tbbexec)
-    add_library(STDEXEC::tbbexec ALIAS tbbexec)
+    file(GLOB_RECURSE tbbpool_sources include/execpools/tbb/*.hpp)
+    add_library(tbbpool INTERFACE ${tbbpool_sources})
+    list(APPEND stdexec_export_targets tbbpool)
+    add_library(STDEXEC::tbbpool ALIAS tbbpool)
 
-    target_link_libraries(tbbexec
+    target_link_libraries(tbbpool
         INTERFACE
         STDEXEC::stdexec
         TBB::tbb
         )
+endif()
+
+option(STDEXEC_ENABLE_TASKFLOW "Enable TaskFlow targets" OFF)
+
+if(STDEXEC_ENABLE_TASKFLOW)
+    include(rapids-find)
+    rapids_cpm_find(Taskflow 3.7.0
+    CPM_ARGS
+      GITHUB_REPOSITORY taskflow/taskflow
+      GIT_TAG v3.7.0
+    )
+    file(GLOB_RECURSE taskflow_pool include/execpools/taskflow/*.hpp)
+      add_library(taskflow_pool INTERFACE ${taskflowexec_sources})
+      list(APPEND stdexec_export_targets taskflow_pool)
+      add_library(STDEXEC::taskflow_pool ALIAS taskflow_pool)
+
+      target_link_libraries(taskflow_pool
+          INTERFACE
+          STDEXEC::stdexec
+          Taskflow
+      )
+endif()
+
+option(STDEXEC_ENABLE_ASIO "Enable Boost targets" OFF)
+set(STDEXEC_ASIO_IMPLEMENTATION "boost" CACHE STRING "boost")
+set_property(CACHE STDEXEC_ASIO_IMPLEMENTATION PROPERTY STRINGS boost standalone)
+
+if(STDEXEC_ENABLE_ASIO)
+    set(STDEXEC_ASIO_USES_ASIO FALSE)
+    set(STDEXEC_ASIO_USES_STANDALONE FALSE)
+
+    include(rapids-find)
+    if(${STDEXEC_ASIO_IMPLEMENTATION} STREQUAL "boost")
+      set(STDEXEC_ASIO_USES_BOOST TRUE)
+    elseif(${STDEXEC_ASIO_IMPLEMENTATION} STREQUAL "standalone")
+      set(STDEXEC_ASIO_USES_STANDALONE TRUE)
+    else()
+      message(FATAL_ERROR "Unknown configuration for ASIO implementation: " ${STDEXEC_ASIO_IMPLEMENTATION})
+    endif()
+
+    file(GLOB_RECURSE boost_pool_sources include/execpools/asio/*.hpp)
+    set(STDEXEC_ASIO_CONFIG_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/include/execpools/asio)
+    configure_file(include/execpools/asio/asio_config.hpp.in ${STDEXEC_ASIO_CONFIG_FILE_PATH}/asio_config.hpp)
+
+    if(${STDEXEC_ASIO_USES_BOOST})
+      set(BOOST_ENABLE_COMPATIBILITY_TARGETS TRUE)
+      rapids_cpm_find(Boost 1.86.0
+      CPM_ARGS
+        GITHUB_REPOSITORY boostorg/boost
+        GIT_TAG boost-1.86.0
+      )
+      add_library(stdexec_boost_pool INTERFACE ${boost_pool_sources})
+      list(APPEND stdexec_export_targets stdexec_boost_pool)
+      add_library(STDEXEC::asio_pool ALIAS stdexec_boost_pool)
+
+      target_link_libraries(stdexec_boost_pool
+          INTERFACE
+          STDEXEC::stdexec
+          Boost::boost
+      )
+    elseif(${STDEXEC_ASIO_USES_STANDALONE})
+      include(cmake/import_standalone_asio.cmake)
+      import_standalone_asio(
+        TAG "asio-1-31-0"
+        VERSION "1.31.0")
+
+      add_library(stdexec_asio_pool INTERFACE ${boost_pool_sources})
+      list(APPEND stdexec_export_targets stdexec_asio_pool)
+      add_library(STDEXEC::asio_pool ALIAS stdexec_asio_pool)
+
+      target_link_libraries(stdexec_asio_pool
+          INTERFACE
+          STDEXEC::stdexec
+          asio
+      )
+    else()
+      message(FATAL_ERROR "ASIO implementation is not configured")
+    endif()
 endif()
 
 include(CheckIncludeFileCXX)

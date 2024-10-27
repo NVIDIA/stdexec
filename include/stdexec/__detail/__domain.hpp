@@ -197,6 +197,11 @@ namespace stdexec {
   } // namespace __detail
 
   /////////////////////////////////////////////////////////////////////////////
+  //! Function object implementing `get-domain-early(snd)`
+  //! from [exec.snd.general] item 3.9. It is the first well-formed expression of
+  //! a) `get_domain(get_env(sndr))`
+  //! b) `completion-domain(sndr)`
+  //! c) `default_domain()`
   inline constexpr struct __get_early_domain_t {
     template <class _Sender, class _Default = default_domain>
     auto operator()(const _Sender&, _Default __def = {}) const noexcept {
@@ -232,10 +237,10 @@ namespace stdexec {
       }
     }
 
-    // The transfer algorithm is the exception to the rule. It ignores the domain
-    // of the predecessor, and dispatches based on the domain of the scheduler
-    // to which execution is being transferred.
-    template <sender_expr_for<transfer_t> _Sender, class _Env>
+    // The continues_on algorithm is the exception to the rule. It ignores the
+    // domain of the predecessor, and dispatches based on the domain of the
+    // scheduler to which execution is being transferred.
+    template <sender_expr_for<continues_on_t> _Sender, class _Env>
     auto operator()(const _Sender& __sndr, const _Env&) const noexcept {
       return __sexpr_apply(__sndr, [](__ignore, auto& __data, __ignore) noexcept {
         auto __sched = get_completion_scheduler<set_value_t>(__data);
