@@ -56,12 +56,12 @@ namespace stdexec {
     struct __tuple<_Idx, _Ts...> : __box<_Ts, _Is>... {
       template <class... _Us>
       static __tuple __convert_from(__tuple<_Idx, _Us...> &&__tup) {
-        return __tuple{{static_cast<_Us &&>(__tup.__box<_Us, _Is>::__value)}...};
+        return __tuple{{static_cast<_Us &&>(__tup.template __box<_Us, _Is>::__value)}...};
       }
 
       template <class... _Us>
       static __tuple __convert_from(__tuple<_Idx, _Us...> const &__tup) {
-        return __tuple{{__tup.__box<_Us, _Is>::__value}...};
+        return __tuple{{__tup.template __box<_Us, _Is>::__value}...};
       }
 
       template <class _Fn, class _Self, class... _Us>
@@ -70,12 +70,12 @@ namespace stdexec {
         apply(_Fn &&__fn, _Self &&__self, _Us &&...__us) //
         noexcept(noexcept(static_cast<_Fn &&>(__fn)(
           static_cast<_Us &&>(__us)...,
-          static_cast<_Self &&>(__self).__box<_Ts, _Is>::__value...)))
+          static_cast<_Self &&>(__self).template __box<_Ts, _Is>::__value...)))
           -> decltype(static_cast<_Fn &&>(__fn)(
             static_cast<_Us &&>(__us)...,
-            static_cast<_Self &&>(__self).__box<_Ts, _Is>::__value...)) {
+            static_cast<_Self &&>(__self).template __box<_Ts, _Is>::__value...)) {
         return static_cast<_Fn &&>(__fn)(
-          static_cast<_Us &&>(__us)..., static_cast<_Self &&>(__self).__box<_Ts, _Is>::__value...);
+          static_cast<_Us &&>(__us)..., static_cast<_Self &&>(__self).template __box<_Ts, _Is>::__value...);
       }
 
       template <class _Fn, class _Self, class... _Us>
@@ -86,7 +86,7 @@ namespace stdexec {
         noexcept((__nothrow_callable<_Fn, _Us..., __copy_cvref_t<_Self, _Ts>> && ...)) -> void {
         return (
           static_cast<_Fn &&>(__fn)(
-            static_cast<_Us &&>(__us)..., static_cast<_Self &&>(__self).__box<_Ts, _Is>::__value),
+            static_cast<_Us &&>(__us)..., static_cast<_Self &&>(__self).template __box<_Ts, _Is>::__value),
           ...);
       }
     };
