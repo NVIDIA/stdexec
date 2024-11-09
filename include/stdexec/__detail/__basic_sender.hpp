@@ -63,7 +63,7 @@ namespace stdexec {
     }
   } // namespace
 
-#if STDEXEC_NVHPC()
+#if STDEXEC_EDG()
 #  define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                            \
     stdexec::__descriptor_fn<_Tag, _Data, _Child>()
 #else

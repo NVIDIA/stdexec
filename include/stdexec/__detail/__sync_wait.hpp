@@ -173,7 +173,7 @@ namespace stdexec {
       _Sender,
       __env>>;
 
-#if STDEXEC_NVHPC()
+#if STDEXEC_EDG()
     // It requires some hoop-jumping to get the NVHPC compiler to report a meaningful
     // diagnostic for SFINAE failures.
     template <class _Sender>
@@ -215,7 +215,7 @@ namespace stdexec {
         return stdexec::apply_sender(__domain, *this, static_cast<_Sender&&>(__sndr));
       }
 
-#if STDEXEC_NVHPC()
+#if STDEXEC_EDG()
       // This is needed to get sensible diagnostics from nvc++
       template <class _Sender, class _Error = __error_description_t<_Sender>>
       auto operator()(_Sender&&, [[maybe_unused]] _Error __diagnostic = {}) const
@@ -303,7 +303,7 @@ namespace stdexec {
         return stdexec::apply_sender(__domain, *this, static_cast<_Sender&&>(__sndr));
       }
 
-#if STDEXEC_NVHPC()
+#if STDEXEC_EDG()
       template <
         class _Sender,
         class _Error = __error_description_t<__result_of<into_variant, _Sender>>>

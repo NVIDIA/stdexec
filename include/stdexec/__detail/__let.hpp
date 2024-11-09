@@ -133,7 +133,7 @@ namespace stdexec {
     template <__mstring _Where, __mstring _What>
     struct _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_ { };
 
-#if STDEXEC_NVHPC()
+#if STDEXEC_EDG()
     template <class _Sender, class _Set, class... _Env>
     struct __bad_result_sender_ {
       using __t = __mexception<

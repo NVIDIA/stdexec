@@ -33,7 +33,7 @@ namespace stdexec {
   template <class _Ty>
   using __decay_t = __decay(_Ty);
 
-#elif STDEXEC_NVHPC()
+#elif STDEXEC_EDG()
 
   template <class _Ty>
   using __decay_t = std::decay_t<_Ty>;

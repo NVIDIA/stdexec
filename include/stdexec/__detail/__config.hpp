@@ -118,10 +118,15 @@
 // macro name; nothing, otherwise.
 #if defined(__NVCC__)
 #  define STDEXEC_NVCC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
-#elif defined(__NVCOMPILER)
-#  define STDEXEC_NVHPC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #elif defined(__EDG__)
 #  define STDEXEC_EDG(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#  if defined(__NVCOMPILER)
+#    define STDEXEC_NVHPC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#  endif
+#  if defined(__INTELLISENSE__)
+#    define STDEXEC_INTELLISENSE(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#    define STDEXEC_MSVC_HEADERS(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#  endif
 #elif defined(__clang__)
 #  define STDEXEC_CLANG(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #  if defined(_MSC_VER)
@@ -134,6 +139,7 @@
 #  define STDEXEC_GCC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #elif defined(_MSC_VER)
 #  define STDEXEC_MSVC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#  define STDEXEC_MSVC_HEADERS(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #endif
 
 #ifndef STDEXEC_NVCC
@@ -159,6 +165,12 @@
 #endif
 #ifndef STDEXEC_MSVC
 #  define STDEXEC_MSVC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#endif
+#ifndef STDEXEC_MSVC_HEADERS
+#  define STDEXEC_MSVC_HEADERS(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#endif
+#ifndef STDEXEC_INTELLISENSE
+#  define STDEXEC_INTELLISENSE(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 
 #if STDEXEC_NVHPC()
@@ -255,7 +267,7 @@ namespace __coro = std::experimental;
 #  define STDEXEC_PRAGMA_PUSH()          _Pragma("nv_diagnostic push")
 #  define STDEXEC_PRAGMA_POP()           _Pragma("nv_diagnostic pop")
 #  define STDEXEC_PRAGMA_IGNORE_EDG(...) _Pragma(STDEXEC_STRINGIZE(nv_diag_suppress __VA_ARGS__))
-#elif STDEXEC_NVHPC() || STDEXEC_EDG()
+#elif STDEXEC_EDG()
 #  define STDEXEC_PRAGMA_PUSH()                                                                    \
     _Pragma("diagnostic push") STDEXEC_PRAGMA_IGNORE_EDG(invalid_error_number)
 #  define STDEXEC_PRAGMA_POP()           _Pragma("diagnostic pop")
