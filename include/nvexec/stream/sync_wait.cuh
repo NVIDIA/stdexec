@@ -181,7 +181,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
       return std::move(std::get<1>(state.data_));
     }
 
-#if STDEXEC_NVHPC()
+#if STDEXEC_EDG()
     // For reporting better diagnostics with nvc++
     template <class _Sender, class _Error = stdexec::__sync_wait::__error_description_t<_Sender>>
     auto operator()(

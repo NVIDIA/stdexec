@@ -83,7 +83,7 @@ namespace stdexec {
   enum class __muchar : unsigned char {
   };
 
-#if STDEXEC_NVCC() || STDEXEC_NVHPC()
+#if STDEXEC_NVCC() || STDEXEC_EDG()
   template <std::size_t _Np>
   using __msize_t = std::integral_constant<std::size_t, _Np>;
 #elif STDEXEC_MSVC()
@@ -205,7 +205,7 @@ namespace stdexec {
 
   template <std::size_t _Len>
   struct __mstring {
-#if STDEXEC_NVHPC()
+#if STDEXEC_EDG()
     template <std::size_t _Ny, std::size_t... _Is>
     constexpr __mstring(const char (&__str)[_Ny], __indices<_Is...>) noexcept
       : __what_{(_Is < _Ny ? __str[_Is] : '\0')...} {
@@ -236,7 +236,7 @@ namespace stdexec {
       return false;
     }
 
-#if !STDEXEC_NVHPC()
+#if !STDEXEC_EDG()
     constexpr auto operator<=>(const __mstring &) const noexcept -> std::strong_ordering = default;
 #endif
 
@@ -341,7 +341,7 @@ namespace stdexec {
   template <bool _ArgsOK, bool _FnOK = true>
   struct __i;
 
-#if STDEXEC_NVHPC()
+#if STDEXEC_EDG()
   // Most compilers memoize alias template specializations, but
   // nvc++ does not. So we memoize the type computations by
   // indirecting through a class template specialization.
@@ -892,7 +892,7 @@ namespace stdexec {
   template <class _From, class _To = __decay_t<_From>>
   using __cvref_id = __copy_cvref_t<_From, __id<_To>>;
 
-#if STDEXEC_NVHPC()
+#if STDEXEC_EDG()
   // nvc++ doesn't cache the results of alias template specializations.
   // To avoid repeated computation of the same function return type,
   // cache the result ourselves in a class template specialization.
@@ -906,7 +906,7 @@ namespace stdexec {
 #endif
 
 // BUGBUG TODO file this bug with nvc++
-#if STDEXEC_NVHPC()
+#if STDEXEC_EDG()
   template <const auto &_Fun, class... _As>
   using __result_of = __call_result_t<decltype(_Fun), _As...>;
 #else
@@ -1015,7 +1015,7 @@ namespace stdexec {
   template <class _Boolean>
   using __mnot = __meval<__mnot_t, _Boolean>;
 
-#if STDEXEC_NVHPC()
+#if STDEXEC_EDG()
   template <class... _Ints>
   struct __mplus_t : __mconstant<(__v<_Ints> + ...)> { };
 #else

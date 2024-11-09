@@ -22,14 +22,14 @@
 // Copyright (c) 2019 Maxim Egorushkin. MIT License.
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
-#  if STDEXEC_MSVC()
+#  if STDEXEC_MSVC_HEADERS()
 #    include <intrin.h>
 #  endif
 namespace stdexec {
   STDEXEC_ATTRIBUTE((always_inline))
   static void
     __spin_loop_pause() noexcept {
-#  if STDEXEC_MSVC()
+#  if STDEXEC_MSVC_HEADERS()
     _mm_pause();
 #  else
     __builtin_ia32_pause();

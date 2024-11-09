@@ -410,7 +410,7 @@ namespace exec {
       };
     };
 
-#if STDEXEC_NVHPC()
+#if STDEXEC_EDG()
     template <class _Fn>
     struct __completion_as_tuple2_;
 
