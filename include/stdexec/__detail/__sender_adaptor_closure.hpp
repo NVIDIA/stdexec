@@ -97,10 +97,13 @@ namespace stdexec {
       template <sender _Sender>
         requires __callable<_Fun, _Sender, _As...>
       STDEXEC_ATTRIBUTE((host, device, always_inline))
-      __call_result_t<_Fun, _Sender, _As...>
-        operator()(_Sender&& __sndr) && noexcept(__nothrow_callable<_Fun, _Sender, _As...>) {
+      auto
+        operator()(_Sender&& __sndr) && //
+        noexcept(__nothrow_callable<_Fun, _Sender, _As...>)
+          -> __call_result_t<_Fun, _Sender, _As...> {
         return this->apply(
-          [&__sndr, this](_As&... __as) noexcept(__nothrow_callable<_Fun, _Sender, _As...>)
+          [&__sndr, this](_As&... __as) //
+          noexcept(__nothrow_callable<_Fun, _Sender, _As...>)
             -> __call_result_t<_Fun, _Sender, _As...> {
             return static_cast<_Fun&&>(__fun_)(
               static_cast<_Sender&&>(__sndr), static_cast<_As&&>(__as)...);
@@ -116,8 +119,8 @@ namespace stdexec {
         noexcept(__nothrow_callable<const _Fun&, _Sender, const _As&...>)
           -> __call_result_t<const _Fun&, _Sender, const _As&...> {
         return this->apply(
-          [&__sndr,
-           this](const _As&... __as) noexcept(__nothrow_callable<_Fun, _Sender, const _As&...>)
+          [&__sndr, this](const _As&... __as) //
+          noexcept(__nothrow_callable<const _Fun&, _Sender, const _As&...>)
             -> __call_result_t<const _Fun&, _Sender, const _As&...> {
             return __fun_(static_cast<_Sender&&>(__sndr), __as...);
           },
