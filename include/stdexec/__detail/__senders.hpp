@@ -81,6 +81,7 @@ namespace stdexec {
 
     struct get_completion_signatures_t {
       template <class _Sender, class... _Env>
+        requires (sizeof...(_Env) <= 1)
       static auto __impl() {
         // Compute the type of the transformed sender:
         using __tfx_fn = __if_c<sizeof...(_Env) == 0, __mconst<_Sender>, __q<__tfx_sender>>;
