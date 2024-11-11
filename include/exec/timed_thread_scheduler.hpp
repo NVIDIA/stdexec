@@ -206,7 +206,13 @@ namespace exec {
     }
 
     stdexec::__intrusive_mpsc_queue<&command_type::next_> command_queue_;
-    intrusive_heap<&task_type::when_, &task_type::prev_, &task_type::left_, &task_type::right_>
+    intrusive_heap<
+      task_type,
+      _time_thrd_sched::when_type<time_point>,
+      &task_type::when_,
+      &task_type::prev_,
+      &task_type::left_,
+      &task_type::right_>
       heap_;
     std::atomic<std::ptrdiff_t> n_submissions_in_flight_{0};
     std::mutex ready_mutex_;
