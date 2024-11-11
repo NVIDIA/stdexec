@@ -129,10 +129,17 @@ namespace exec {
       };
 
       struct __promise : with_awaitable_senders<__promise> {
+#if STDEXEC_EDG()
+        template <class _Action>
+        __promise(_Action&&, _Ts&&... __ts) noexcept
+          : __args_{__ts...} {
+        }
+#else
         template <class _Action>
         explicit __promise(_Action&&, _Ts&... __ts) noexcept
           : __args_{__ts...} {
         }
+#endif
 
         auto initial_suspend() noexcept -> __coro::suspend_always {
           return {};
@@ -189,6 +196,12 @@ namespace exec {
      private:
       template <class _Action, class... _Ts>
       static auto __impl(_Action __action, _Ts... __ts) -> __task<_Ts...> {
+#if STDEXEC_EDG()
+        // This works around an EDG bug where the compiler misinterprets __get_disposition:
+        // operand to this co_await expression resolves to non-class "<unnamed>"
+        using __get_disposition =
+          std::enable_if_t<sizeof(_Action) != 0, __on_coro_disp::__get_disposition>;
+#endif
         task_disposition __d = co_await __get_disposition();
         if (__d == _OnCompletion) {
           co_await static_cast<_Action&&>(__action)(static_cast<_Ts&&>(__ts)...);

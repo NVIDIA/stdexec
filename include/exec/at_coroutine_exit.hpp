@@ -132,9 +132,15 @@ namespace exec {
      public:
       using promise_type = __promise;
 
+#if STDEXEC_EDG()
+      __task(__coro::coroutine_handle<__promise> __coro) noexcept
+        : __coro_(__coro) {
+      }
+#else
       explicit __task(__coro::coroutine_handle<__promise> __coro) noexcept
         : __coro_(__coro) {
       }
+#endif
 
       __task(__task&& __that) noexcept
         : __coro_(std::exchange(__that.__coro_, {})) {
@@ -184,10 +190,17 @@ namespace exec {
       };
 
       struct __promise : with_awaitable_senders<__promise> {
+#if STDEXEC_EDG()
+        template <class _Action>
+        __promise(_Action&&, _Ts&&... __ts) noexcept
+          : __args_{__ts...} {
+        }
+#else
         template <class _Action>
         explicit __promise(_Action&&, _Ts&... __ts) noexcept
           : __args_{__ts...} {
         }
+#endif
 
         auto initial_suspend() noexcept -> __coro::suspend_always {
           return {};

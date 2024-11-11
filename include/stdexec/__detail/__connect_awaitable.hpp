@@ -104,9 +104,15 @@ namespace stdexec {
       struct __t : __promise_base {
         using __id = __promise;
 
+#if STDEXEC_EDG()
+        __t(auto&&, _Receiver&& __rcvr) noexcept
+          : __rcvr_(__rcvr) {
+        }
+#else
         explicit __t(auto&, _Receiver& __rcvr) noexcept
           : __rcvr_(__rcvr) {
         }
+#endif
 
         auto unhandled_stopped() noexcept -> __coro::coroutine_handle<> {
           stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr_));
