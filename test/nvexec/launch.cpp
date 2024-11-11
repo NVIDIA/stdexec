@@ -61,13 +61,13 @@ namespace { namespace {
              | nvexec::launch(                    //
                  {NUM_BLOCKS, THREAD_BLOCK_SIZE}, //
                  [flags](cudaStream_t stm, int* first, int* last) -> void {
-                   // this should be executing on the GPU
-                   if (nvexec::is_on_gpu()) {
-                     flags.set(0);
-                   }
-
                    const int32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
                    const ptrdiff_t size = last - first;
+
+                   // this should be executing on the GPU
+                   if (idx == 0 && nvexec::is_on_gpu()) {
+                     flags.set(0);
+                   }
 
                    if (idx < size) {
                      first[idx] *= scaling;

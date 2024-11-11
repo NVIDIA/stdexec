@@ -32,6 +32,7 @@
 
 namespace stdexec {
   namespace __detail {
+    //! Constant function object always returning `__val_`.
     template <class _Ty, class = __name_of<__decay_t<_Ty>>>
     struct __always {
       _Ty __val_;
@@ -81,6 +82,7 @@ namespace stdexec {
         return __sexpr_apply(
           static_cast<_Sender&&>(__sndr),
           []<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
+            // This is the heart of starts_on: It uses `let_value` to schedule `__child` on the given scheduler:
             return let_value(schedule(__data), __detail::__always{static_cast<_Child&&>(__child)});
           });
       }
