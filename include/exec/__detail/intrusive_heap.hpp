@@ -54,7 +54,7 @@ namespace exec {
 #  endif
 #endif
 
-  template <auto Key, auto Prev, auto Left, auto Right>
+  template <class Node, class KeyT, auto Key, auto Prev, auto Left, auto Right>
   class intrusive_heap;
 
   template <
@@ -64,7 +64,7 @@ namespace exec {
     Node* Node::*Prev,
     Node* Node::*Left,
     Node* Node::*Right>
-  class intrusive_heap<Key, Prev, Left, Right> {
+  class intrusive_heap<Node, KeyT, Key, Prev, Left, Right> {
    public:
     void insert(Node* node) noexcept {
       node->*Prev = nullptr;
