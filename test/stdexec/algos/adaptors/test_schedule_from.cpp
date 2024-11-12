@@ -18,6 +18,7 @@
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 #include <exec/any_sender_of.hpp>
 #include <exec/static_thread_pool.hpp>
@@ -111,19 +112,6 @@ namespace {
     // the work should be executed
     REQUIRE(called);
   }
-
-  struct non_default_constructible {
-    int x;
-
-    non_default_constructible(int x)
-      : x(x) {
-    }
-
-    friend bool
-      operator==(non_default_constructible const & lhs, non_default_constructible const & rhs) {
-      return lhs.x == rhs.x;
-    }
-  };
 
   TEST_CASE(
     "schedule_from can accept non-default constructible types",
