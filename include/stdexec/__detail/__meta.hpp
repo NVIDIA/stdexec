@@ -1043,7 +1043,8 @@ namespace stdexec {
     using __f = __mor<__minvoke<_Fn, _Args>...>;
   };
 
-#if defined(__cpp_pack_indexing)
+// test_transfer_when_all.cpp fails on clang-19 with pack indexing.
+#if defined(__cpp_pack_indexing) && !STDEXEC_CLANG()
   template <class _Np, class... _Ts>
   using __m_at = _Ts...[__v<_Np>];
 
