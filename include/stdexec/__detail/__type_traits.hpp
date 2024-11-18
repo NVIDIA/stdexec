@@ -31,13 +31,14 @@ namespace stdexec {
 #if STDEXEC_HAS_BUILTIN(__decay)
 
   namespace __tt {
-    template <class _Ty>
-    struct __decay {
-      using type = __decay(_Ty);
+    template <bool>
+    struct __decay_ {
+      template <class _Ty>
+      using __f = __decay(_Ty);
     };
   } // namespace __tt
   template <class _Ty>
-  using __decay_t = typename __tt::__decay<_Ty>::type;
+  using __decay_t = typename __tt::__decay_<sizeof(_Ty) == ~0ul>::template __f<_Ty>;
 
 #elif STDEXEC_NVHPC()
 
