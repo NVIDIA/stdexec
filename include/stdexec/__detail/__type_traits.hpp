@@ -30,8 +30,14 @@ namespace stdexec {
   // __decay_t: An efficient implementation for std::decay
 #if STDEXEC_HAS_BUILTIN(__decay)
 
+  namespace __tt {
+    template <class _Ty>
+    struct __decay {
+      using type = __decay(_Ty);
+    };
+  } // namespace __tt
   template <class _Ty>
-  using __decay_t = __decay(_Ty);
+  using __decay_t = typename __tt::__decay<_Ty>::type;
 
 #elif STDEXEC_NVHPC()
 
