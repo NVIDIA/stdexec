@@ -1043,7 +1043,8 @@ namespace stdexec {
     using __f = __mor<__minvoke<_Fn, _Args>...>;
   };
 
-// test_transfer_when_all.cpp fails on clang-19 with pack indexing.
+// C++23 pack indexing is disabled for clang because of
+// https://github.com/llvm/llvm-project/issues/116105
 #if defined(__cpp_pack_indexing) && !STDEXEC_CLANG()
   template <class _Np, class... _Ts>
   using __m_at = _Ts...[__v<_Np>];
