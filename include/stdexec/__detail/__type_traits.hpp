@@ -38,7 +38,7 @@ namespace stdexec {
     };
   } // namespace __tt
   template <class _Ty>
-  using __decay_t = typename __tt::__decay_<sizeof(_Ty) == ~0ul>::template __f<_Ty>;
+  using __decay_t = typename __tt::__decay_<sizeof(__declval<_Ty>) == ~0ul>::template __f<_Ty>;
 
 #elif STDEXEC_NVHPC()
 
