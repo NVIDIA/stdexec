@@ -49,13 +49,11 @@ namespace stdexec {
   } // namespace __detail
 
   namespace {
-    template <
-      class _Descriptor,
-      auto _DescriptorFn =
-        [] {
-          return _Descriptor();
-        }>
-    inline constexpr auto __descriptor_fn_v = _DescriptorFn;
+    template <class _Descriptor>
+    auto _DescriptorFn = [] { return _Descriptor{}; };
+
+    template <class _Descriptor>
+    inline constexpr auto __descriptor_fn_v = _DescriptorFn<_Descriptor>;
 
     template <class _Tag, class _Data, class... _Child>
     inline constexpr auto __descriptor_fn() {
