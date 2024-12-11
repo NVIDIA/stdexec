@@ -15,8 +15,8 @@
  */
 #pragma once
 
-#include "../../exec/env.hpp"
-#include "../../stdexec/execution.hpp"
+#include "exec/env.hpp"
+#include "stdexec/execution.hpp"
 #include <type_traits>
 
 #include "common.cuh"

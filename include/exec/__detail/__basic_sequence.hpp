@@ -16,9 +16,9 @@
  */
 #pragma once
 
-#include "../../stdexec/__detail/__config.hpp"
-#include "../../stdexec/__detail/__meta.hpp"
-#include "../../stdexec/__detail/__basic_sender.hpp"
+#include "stdexec/__detail/__config.hpp"
+#include "stdexec/__detail/__meta.hpp"
+#include "stdexec/__detail/__basic_sender.hpp"
 
 #include "../sequence_senders.hpp"
 

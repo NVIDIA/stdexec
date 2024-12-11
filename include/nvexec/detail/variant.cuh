@@ -17,8 +17,8 @@
 
 #include <algorithm>
 #include <type_traits>
-#include "../../stdexec/concepts.hpp"
-#include "../../stdexec/execution.hpp"
+#include "stdexec/concepts.hpp"
+#include "stdexec/execution.hpp"
 
 #include "config.cuh"
 

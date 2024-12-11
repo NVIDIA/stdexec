@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "../../stdexec/execution.hpp"
+#include "stdexec/execution.hpp"
 
 #include <memory_resource>
 #include <type_traits>

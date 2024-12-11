@@ -15,8 +15,8 @@
  */
 #pragma once
 
-#include "../../stdexec/execution.hpp"
-#include "../../stdexec/__detail/__ranges.hpp"
+#include "stdexec/execution.hpp"
+#include "stdexec/__detail/__ranges.hpp"
 #include <type_traits>
 
 #include <cuda/std/type_traits>

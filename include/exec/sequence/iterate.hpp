@@ -16,7 +16,7 @@
  */
 #pragma once
 
-#include "../../stdexec/__detail/__config.hpp"
+#include "stdexec/__detail/__config.hpp"
 
 #if STDEXEC_HAS_STD_RANGES()
 

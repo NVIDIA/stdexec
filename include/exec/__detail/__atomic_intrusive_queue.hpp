@@ -16,7 +16,7 @@
  */
 #pragma once
 
-#include "../../stdexec/__detail/__intrusive_queue.hpp"
+#include "stdexec/__detail/__intrusive_queue.hpp"
 
 #include <atomic>
 

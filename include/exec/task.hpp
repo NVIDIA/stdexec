@@ -20,11 +20,11 @@
 #include <exception>
 #include <utility>
 
-#include "../stdexec/coroutine.hpp"
-#include "../stdexec/execution.hpp"
-#include "../stdexec/__detail/__meta.hpp"
-#include "../stdexec/__detail/__optional.hpp"
-#include "../stdexec/__detail/__variant.hpp"
+#include "stdexec/coroutine.hpp"
+#include "stdexec/execution.hpp"
+#include "stdexec/__detail/__meta.hpp"
+#include "stdexec/__detail/__optional.hpp"
+#include "stdexec/__detail/__variant.hpp"
 
 #include "any_sender_of.hpp"
 #include "at_coroutine_exit.hpp"

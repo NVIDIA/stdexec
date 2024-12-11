@@ -16,7 +16,7 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
+#include "stdexec/execution.hpp"
 
 #include <variant>
 #include <type_traits>

@@ -16,7 +16,7 @@
  */
 #pragma once
 
-#include "../../stdexec/__detail/__config.hpp"
+#include "stdexec/__detail/__config.hpp"
 #include "../scope.hpp"
 
 #include <algorithm>

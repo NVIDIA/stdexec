@@ -20,8 +20,8 @@
 #include "./timed_scheduler.hpp"
 #include "./__detail/intrusive_heap.hpp"
 
-#include "../stdexec/__detail/__intrusive_mpsc_queue.hpp"
-#include "../stdexec/__detail/__spin_loop_pause.hpp"
+#include "stdexec/__detail/__intrusive_mpsc_queue.hpp"
+#include "stdexec/__detail/__spin_loop_pause.hpp"
 
 #include <bit>
 

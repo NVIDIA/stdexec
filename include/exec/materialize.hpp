@@ -16,8 +16,8 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
-#include "../stdexec/concepts.hpp"
+#include "stdexec/execution.hpp"
+#include "stdexec/concepts.hpp"
 
 namespace exec {
   namespace __materialize {

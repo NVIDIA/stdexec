@@ -15,9 +15,9 @@
  */
 #pragma once
 
-#include "../stdexec/concepts.hpp"
-#include "../stdexec/execution.hpp"
-#include "../stdexec/functional.hpp"
+#include "stdexec/concepts.hpp"
+#include "stdexec/execution.hpp"
+#include "stdexec/functional.hpp"
 
 #include "./sequence_senders.hpp"
 

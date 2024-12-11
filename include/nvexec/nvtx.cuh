@@ -17,7 +17,7 @@
 
 #include <nvtx3/nvToolsExt.h>
 
-#include "../stdexec/execution.hpp"
+#include "stdexec/execution.hpp"
 #include <type_traits>
 
 #include "stream/common.cuh"

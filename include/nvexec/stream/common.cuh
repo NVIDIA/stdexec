@@ -18,7 +18,7 @@
 #include <stack>
 #include <atomic>
 #include <memory_resource>
-#include "../../stdexec/execution.hpp"
+#include "stdexec/execution.hpp"
 
 #include <cuda/std/type_traits>
 #include <cuda/std/tuple>

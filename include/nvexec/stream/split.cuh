@@ -16,8 +16,8 @@
 #pragma once
 
 #include <atomic>
-#include "../../stdexec/execution.hpp"
-#include "../../exec/env.hpp"
+#include "stdexec/execution.hpp"
+#include "exec/env.hpp"
 #include <type_traits>
 
 #include "common.cuh"

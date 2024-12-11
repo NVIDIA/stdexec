@@ -15,9 +15,9 @@
  */
 #pragma once
 
-#include "../stdexec/__detail/__meta.hpp"
-#include "../stdexec/concepts.hpp"
-#include "../stdexec/execution.hpp"
+#include "stdexec/__detail/__meta.hpp"
+#include "stdexec/concepts.hpp"
+#include "stdexec/execution.hpp"
 
 namespace exec {
   struct AN_ERROR_COMPLETION_MUST_HAVE_EXACTLY_ONE_ERROR_ARGUMENT;

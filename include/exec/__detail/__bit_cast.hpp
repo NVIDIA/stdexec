@@ -16,7 +16,7 @@
  */
 #pragma once
 
-#include "../../stdexec/__detail/__config.hpp"
+#include "stdexec/__detail/__config.hpp"
 
 #if __has_include(<bit>)
 #  include <bit>
