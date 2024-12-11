@@ -16,8 +16,8 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
-#include "../stdexec/functional.hpp"
+#include "stdexec/execution.hpp"
+#include "stdexec/functional.hpp"
 
 namespace exec {
   namespace __now {

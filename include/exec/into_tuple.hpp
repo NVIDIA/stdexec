@@ -15,11 +15,11 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
-#include "../stdexec/concepts.hpp"
-#include "../stdexec/functional.hpp"
-#include "../stdexec/__detail/__meta.hpp"
-#include "../stdexec/__detail/__basic_sender.hpp"
+#include "stdexec/execution.hpp"
+#include "stdexec/concepts.hpp"
+#include "stdexec/functional.hpp"
+#include "stdexec/__detail/__meta.hpp"
+#include "stdexec/__detail/__basic_sender.hpp"
 
 namespace exec {
   namespace __into_tuple {

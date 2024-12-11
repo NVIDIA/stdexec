@@ -16,8 +16,8 @@
  */
 #pragma once
 
-#include "../../stdexec/concepts.hpp"
-#include "../../stdexec/execution.hpp"
+#include "stdexec/concepts.hpp"
+#include "stdexec/execution.hpp"
 #include "../sequence_senders.hpp"
 
 #include "../__detail/__basic_sequence.hpp"

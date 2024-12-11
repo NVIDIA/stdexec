@@ -16,8 +16,8 @@
  */
 #pragma once
 
-#include "../../stdexec/__detail/__config.hpp"
-#include "../../stdexec/__detail/__spin_loop_pause.hpp"
+#include "stdexec/__detail/__config.hpp"
+#include "stdexec/__detail/__spin_loop_pause.hpp"
 
 #include <atomic>
 #include <bit>

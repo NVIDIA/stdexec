@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "../stdexec/__detail/__scope.hpp"
+#include "stdexec/__detail/__scope.hpp"
 
 namespace exec {
 

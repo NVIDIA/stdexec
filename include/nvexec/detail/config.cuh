@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "../../stdexec/__detail/__config.hpp"
+#include "stdexec/__detail/__config.hpp"
 
 #if !defined(_NVHPC_CUDA) && !defined(__CUDACC__)
 #  error The NVIDIA schedulers and utilities require CUDA support

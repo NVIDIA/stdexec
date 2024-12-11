@@ -16,8 +16,8 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
-#include "../stdexec/stop_token.hpp"
+#include "stdexec/execution.hpp"
+#include "stdexec/stop_token.hpp"
 
 #include <cstddef>
 #include <type_traits>

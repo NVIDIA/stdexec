@@ -15,10 +15,10 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
-#include "../stdexec/stop_token.hpp"
-#include "../stdexec/__detail/__intrusive_queue.hpp"
-#include "../stdexec/__detail/__optional.hpp"
+#include "stdexec/execution.hpp"
+#include "stdexec/stop_token.hpp"
+#include "stdexec/__detail/__intrusive_queue.hpp"
+#include "stdexec/__detail/__optional.hpp"
 #include "env.hpp"
 
 #include <mutex>

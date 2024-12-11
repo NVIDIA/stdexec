@@ -16,7 +16,7 @@
  */
 #pragma once
 
-#include "../../stdexec/__detail/__config.hpp"
+#include "stdexec/__detail/__config.hpp"
 
 // The below code for spin_loop_pause is taken from https://github.com/max0x7ba/atomic_queue/blob/master/include/atomic_queue/defs.h
 // Copyright (c) 2019 Maxim Egorushkin. MIT License.
