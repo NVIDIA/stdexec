@@ -15,6 +15,7 @@
  */
 
 #include "exec/just_from.hpp"
+#include "test_common/tuple.hpp"
 #include "test_common/type_helpers.hpp"
 
 #include <catch2/catch.hpp>
@@ -75,7 +76,7 @@ TEST_CASE("just_from with multiple completions", "[just_from]") {
       constexpr auto N = std::tuple_size_v<Tupl>;
       CHECK(N == 2);
       if constexpr (N == 2) {
-        CHECK(tupl == std::tuple{43, 44});
+        CHECK_TUPLE(tupl == std::tuple{43, 44});
       }
     },
     var);
