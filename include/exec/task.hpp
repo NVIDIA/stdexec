@@ -303,6 +303,7 @@ namespace exec {
     template <class _Ty, class _Context = default_task_context<_Ty>>
     class [[nodiscard]] basic_task {
       struct __promise;
+      using __promise_context_t = typename _Context::template promise_context_t<__promise>;
      public:
       using __t = basic_task;
       using __id = basic_task;
@@ -315,6 +316,10 @@ namespace exec {
       ~basic_task() {
         if (__coro_)
           __coro_.destroy();
+      }
+
+      auto get_env() const noexcept -> const __promise_context_t& {
+        return __coro_.promise().get_env();
       }
 
      private:
@@ -331,8 +336,6 @@ namespace exec {
         static void await_resume() noexcept {
         }
       };
-
-      using __promise_context_t = typename _Context::template promise_context_t<__promise>;
 
       struct __promise
         : __promise_base<_Ty>
