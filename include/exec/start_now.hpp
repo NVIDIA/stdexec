@@ -180,8 +180,7 @@ namespace exec {
             __scope.nest(static_cast<stdexec::__cvref_t<_SenderIds>&&>(__sndr)),
             __receiver_t{this})}...} {
         // Start all of the child operations
-        __op_state_.apply(
-          [](auto&... __op_state) noexcept { (stdexec::start(__op_state), ...); }, __op_state_);
+        __op_state_.for_each(stdexec::start, __op_state_);
       }
 
       bool request_stop() noexcept {

@@ -378,9 +378,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             if constexpr (sizeof...(SenderIds) == 0) {
               complete();
             } else {
-              child_states_.apply(
-                [](auto&... __child_ops) noexcept -> void { (stdexec::start(__child_ops), ...); },
-                child_states_);
+              child_states_.for_each(stdexec::start, child_states_);
             }
           }
         }

@@ -219,7 +219,7 @@ namespace exec {
           if (this->__stop_source_.stop_requested()) {
             stdexec::set_stopped(static_cast<_Receiver&&>(this->__rcvr_));
           } else {
-            __ops_.apply([](auto&... __ops) { (stdexec::start(__ops), ...); }, __ops_);
+            __ops_.for_each(stdexec::start, __ops_);
           }
         }
 
