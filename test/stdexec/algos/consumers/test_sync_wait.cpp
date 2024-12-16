@@ -19,6 +19,7 @@
 #include <test_common/schedulers.hpp>
 #include <test_common/senders.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/tuple.hpp>
 #include <test_common/type_helpers.hpp>
 #include <exec/static_thread_pool.hpp>
 
@@ -134,7 +135,7 @@ namespace {
       sync_wait_with_variant(snd);
 
     CHECK(res.has_value());
-    CHECK(std::get<0>(std::get<0>(res.value())) == std::make_tuple(13));
+    CHECK_TUPLE(std::get<0>(std::get<0>(res.value())) == std::make_tuple(13));
   }
 
   TEST_CASE(
@@ -147,7 +148,7 @@ namespace {
     std::optional<std::tuple<std::variant<std::tuple<int>>>> res = sync_wait_with_variant(snd);
 
     CHECK(res.has_value());
-    CHECK(std::get<0>(std::get<0>(res.value())) == std::make_tuple(13));
+    CHECK_TUPLE(std::get<0>(std::get<0>(res.value())) == std::make_tuple(13));
   }
 
   TEST_CASE("sync_wait works if signaled from a different thread", "[consumers][sync_wait]") {

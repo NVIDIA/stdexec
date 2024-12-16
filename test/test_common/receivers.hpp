@@ -17,6 +17,7 @@
 #pragma once
 
 #include <catch2/catch.hpp>
+#include <test_common/tuple.hpp>
 #include <test_common/type_helpers.hpp>
 #include <stdexec/execution.hpp>
 
@@ -187,7 +188,7 @@ namespace {
     }
 
     void set_value(const Ts&... vals) noexcept {
-      CHECK(values_ == std::tie(vals...));
+      CHECK_TUPLE(values_ == std::tie(vals...));
       this->set_called();
     }
 
@@ -524,8 +525,8 @@ namespace {
     CHECK(res.has_value());
     std::tuple<Ts...> expected(static_cast<Ts&&>(val)...);
     if constexpr (std::tuple_size_v<std::tuple<Ts...>> == 1)
-      CHECK(std::get<0>(res.value()) == std::get<0>(expected));
+      CHECK_TUPLE(std::get<0>(res.value()) == std::get<0>(expected));
     else
-      CHECK(res.value() == expected);
+      CHECK_TUPLE(res.value() == expected);
   }
 } // namespace
