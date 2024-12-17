@@ -24,6 +24,7 @@
 #include "__meta.hpp"
 
 #include "../functional.hpp"
+#include "__utility.hpp"
 
 namespace stdexec {
 
@@ -254,20 +255,15 @@ namespace stdexec {
 
   namespace __domain {
     struct __common_domain_fn {
-      static auto __common_domain() noexcept -> default_domain {
-        return {};
-      }
-
-      template <class _Domain, class... _OtherDomains>
-        requires __all_of<_Domain, _OtherDomains...>
-      static auto __common_domain(_Domain __domain, _OtherDomains...) noexcept -> _Domain {
-        return static_cast<_Domain&&>(__domain);
-      }
-
       template <class... _Domains>
-      static auto __common_domain(_Domains...) noexcept //
-        -> __if_c<__one_of<dependent_domain, _Domains...>, dependent_domain, __none_such> {
-        return {};
+      static auto __common_domain(_Domains...) noexcept {
+        if constexpr (__one_of<dependent_domain, _Domains...>) {
+          return dependent_domain();
+        } else if constexpr (stdexec::__mvalid<std::common_type_t, _Domains...>) {
+          return std::common_type_t<_Domains...>();
+        } else {
+          return __none_such();
+        }
       }
 
       auto operator()(__ignore, __ignore, const auto&... __sndrs) const noexcept {
