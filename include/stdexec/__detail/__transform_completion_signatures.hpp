@@ -20,7 +20,7 @@
 // include these after __execution_fwd.hpp
 #include "__completion_signatures.hpp"
 #include "__concepts.hpp"
-#include "__debug.hpp"
+#include "__debug.hpp" // IWYU pragma: keep
 #include "__diagnostics.hpp"
 #include "__senders_core.hpp"
 #include "__meta.hpp"
