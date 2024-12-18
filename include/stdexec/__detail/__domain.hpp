@@ -24,6 +24,7 @@
 #include "__meta.hpp"
 
 #include "../functional.hpp"
+#include "__utility.hpp"
 
 namespace stdexec {
 
@@ -78,7 +79,7 @@ namespace stdexec {
     };
 
     template <class _Sender>
-    constexpr bool __is_nothrow_transform_sender() {
+    constexpr bool __is_nothrow_transform_sender() noexcept {
       if constexpr (__callable<__sexpr_apply_t, _Sender, __domain::__legacy_customization>) {
         return __nothrow_callable<__sexpr_apply_t, _Sender, __domain::__legacy_customization>;
       } else if constexpr (__domain::__has_default_transform_sender<_Sender>) {
@@ -99,6 +100,43 @@ namespace stdexec {
       }
     }
   } // namespace __domain
+
+  namespace __detail {
+    ///////////////////////////////////////////////////////////////////////////
+    template <class _Env, class _Tag>
+    using __completion_scheduler_for =
+      __meval_or<__call_result_t, __none_such, get_completion_scheduler_t<_Tag>, _Env>;
+
+    template <class _Env, class _Tag>
+    using __completion_domain_for =
+      __meval_or<__call_result_t, __none_such, get_domain_t, __completion_scheduler_for<_Env, _Tag>>;
+
+    // Check the value, error, and stopped channels for completion schedulers.
+    // Of the completion schedulers that are known, they must all have compatible
+    // domains. This computes that domain, or else returns __none_such if there
+    // are no completion schedulers or if they don't specify a domain.
+    template <class _Env>
+    struct __completion_domain_or_none_
+      : __mdefer_<
+          __mtransform<
+            __mbind_front_q<__completion_domain_for, _Env>,
+            __mremove<__none_such, __munique<__msingle_or<__none_such>>>>,
+          set_value_t,
+          set_error_t,
+          set_stopped_t> { };
+
+    template <class _Sender>
+    using __completion_domain_or_none = __t<__completion_domain_or_none_<env_of_t<_Sender>>>;
+
+    template <class _Sender>
+    concept __consistent_completion_domains = __mvalid<__completion_domain_or_none, _Sender>;
+
+    template <class _Sender>
+    concept __has_completion_domain = (!same_as<__completion_domain_or_none<_Sender>, __none_such>);
+
+    template <__has_completion_domain _Sender>
+    using __completion_domain_of = __completion_domain_or_none<_Sender>;
+  } // namespace __detail
 
   struct default_domain {
     default_domain() = default;
@@ -160,43 +198,6 @@ namespace stdexec {
   };
 
   /////////////////////////////////////////////////////////////////////////////
-  namespace __detail {
-    template <class _Env, class _Tag>
-    using __completion_scheduler_for =
-      __meval_or<__call_result_t, __none_such, get_completion_scheduler_t<_Tag>, _Env>;
-
-    template <class _Env, class _Tag>
-    using __completion_domain_for =
-      __meval_or<__call_result_t, __none_such, get_domain_t, __completion_scheduler_for<_Env, _Tag>>;
-
-    // Check the value, error, and stopped channels for completion schedulers.
-    // Of the completion schedulers that are known, they must all have compatible
-    // domains. This computes that domain, or else returns __none_such if there
-    // are no completion schedulers or if they don't specify a domain.
-    template <class _Env>
-    struct __completion_domain_or_none_
-      : __mdefer_<
-          __mtransform<
-            __mbind_front_q<__completion_domain_for, _Env>,
-            __mremove<__none_such, __munique<__msingle_or<__none_such>>>>,
-          set_value_t,
-          set_error_t,
-          set_stopped_t> { };
-
-    template <class _Sender>
-    using __completion_domain_or_none = __t<__completion_domain_or_none_<env_of_t<_Sender>>>;
-
-    template <class _Sender>
-    concept __consistent_completion_domains = __mvalid<__completion_domain_or_none, _Sender>;
-
-    template <class _Sender>
-    concept __has_completion_domain = (!same_as<__completion_domain_or_none<_Sender>, __none_such>);
-
-    template <__has_completion_domain _Sender>
-    using __completion_domain_of = __completion_domain_or_none<_Sender>;
-  } // namespace __detail
-
-  /////////////////////////////////////////////////////////////////////////////
   //! Function object implementing `get-domain-early(snd)`
   //! from [exec.snd.general] item 3.9. It is the first well-formed expression of
   //! a) `get_domain(get_env(sndr))`
@@ -252,22 +253,35 @@ namespace stdexec {
   template <class _Sender, class _Env>
   using __late_domain_of_t = __call_result_t<__get_late_domain_t, _Sender, _Env>;
 
+  /////////////////////////////////////////////////////////////////////////////
+  // dependent_domain
+  struct dependent_domain {
+    // defined in __transform_sender.hpp
+    template <class _Sender, class _Env>
+    static constexpr auto __is_nothrow_transform_sender() noexcept -> bool;
+
+    // defined in __transform_sender.hpp
+    template <sender_expr _Sender, class _Env>
+      requires same_as<__early_domain_of_t<_Sender>, dependent_domain>
+    STDEXEC_ATTRIBUTE((always_inline))
+    decltype(auto)
+      transform_sender(_Sender&& __sndr, const _Env& __env) const
+      noexcept(__is_nothrow_transform_sender<_Sender, _Env>());
+  };
+
   namespace __domain {
     struct __common_domain_fn {
-      static auto __common_domain() noexcept -> default_domain {
-        return {};
-      }
-
-      template <class _Domain, class... _OtherDomains>
-        requires __all_of<_Domain, _OtherDomains...>
-      static auto __common_domain(_Domain __domain, _OtherDomains...) noexcept -> _Domain {
-        return static_cast<_Domain&&>(__domain);
-      }
-
       template <class... _Domains>
-      static auto __common_domain(_Domains...) noexcept //
-        -> __if_c<__one_of<dependent_domain, _Domains...>, dependent_domain, __none_such> {
-        return {};
+      static auto __common_domain(_Domains...) noexcept {
+        if constexpr (sizeof...(_Domains) == 0) {
+          return default_domain();
+        } else if constexpr (__one_of<dependent_domain, _Domains...>) {
+          return dependent_domain();
+        } else if constexpr (stdexec::__mvalid<std::common_type_t, _Domains...>) {
+          return std::common_type_t<_Domains...>();
+        } else {
+          return __none_such();
+        }
       }
 
       auto operator()(__ignore, __ignore, const auto&... __sndrs) const noexcept {

@@ -32,20 +32,6 @@ STDEXEC_PRAGMA_IGNORE_EDG(type_qualifiers_ignored_on_reference)
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
-  // dependent_domain
-  struct dependent_domain {
-    template <class _Sender, class _Env>
-    static constexpr auto __is_nothrow_transform_sender() noexcept -> bool;
-
-    template <sender_expr _Sender, class _Env>
-      requires same_as<__early_domain_of_t<_Sender>, dependent_domain>
-    STDEXEC_ATTRIBUTE((always_inline))
-    decltype(auto)
-      transform_sender(_Sender&& __sndr, const _Env& __env) const
-      noexcept(__is_nothrow_transform_sender<_Sender, _Env>());
-  };
-
-  /////////////////////////////////////////////////////////////////////////////
   // [execution.transform_sender]
   namespace __domain {
     struct __transform_env {

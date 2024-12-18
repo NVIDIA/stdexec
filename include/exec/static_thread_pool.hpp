@@ -261,7 +261,7 @@ namespace exec {
       }
 
      public:
-      struct domain {
+      struct domain : stdexec::default_domain {
         // For eager customization
         template <sender_expr_for<bulk_t> Sender>
         auto transform_sender(Sender&& sndr) const noexcept {
