@@ -439,9 +439,7 @@ namespace exec {
         (*__other.__vtable_)(__copy_construct, this, __other);
       }
 
-      auto operator=(const __t& __other) -> __t&
-        requires(_Copyable)
-      {
+      auto operator=(const __t& __other) -> __t& requires(_Copyable) {
         if (&__other != this) {
           __t tmp(__other);
           *this = std::move(tmp);
@@ -615,6 +613,7 @@ namespace exec {
           , public __query_vfun<_Queries>... {
          public:
           using __query_vfun<_Queries>::operator()...;
+          using __any_::__rcvr_vfun<_Sigs>::operator()...;
 
          private:
           template <class _Rcvr>
@@ -674,24 +673,21 @@ namespace exec {
         }
 
         template <class... _As>
-          requires __one_of<set_value_t(_As...), _Sigs...>
+          requires __callable<__vtable_t, void*, set_value_t, _As...>
         void set_value(_As&&... __as) noexcept {
-          const __any_::__rcvr_vfun<set_value_t(_As...)>* __vfun = __env_.__vtable_;
-          (*__vfun->__complete_)(__env_.__rcvr_, static_cast<_As&&>(__as)...);
+          (*__env_.__vtable_)(__env_.__rcvr_, set_value_t(), static_cast<_As&&>(__as)...);
         }
 
         template <class _Error>
-          requires __one_of<set_error_t(_Error), _Sigs...>
+          requires __callable<__vtable_t, void*, set_error_t, _Error>
         void set_error(_Error&& __err) noexcept {
-          const __any_::__rcvr_vfun<set_error_t(_Error)>* __vfun = __env_.__vtable_;
-          (*__vfun->__complete_)(__env_.__rcvr_, static_cast<_Error&&>(__err));
+          (*__env_.__vtable_)(__env_.__rcvr_, set_error_t(), static_cast<_Error&&>(__err));
         }
 
         void set_stopped() noexcept
-          requires __one_of<set_stopped_t(), _Sigs...>
+          requires __callable<__vtable_t, void*, set_stopped_t>
         {
-          const __any_::__rcvr_vfun<set_stopped_t()>* __vfun = __env_.__vtable_;
-          (*__vfun->__complete_)(__env_.__rcvr_);
+          (*__env_.__vtable_)(__env_.__rcvr_, set_stopped_t());
         }
 
         auto get_env() const noexcept -> const __env_t& {

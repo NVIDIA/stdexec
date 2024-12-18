@@ -259,10 +259,9 @@ namespace {
   TEST_CASE("sync_wait works on any_sender_of", "[types][any_sender]") {
     int value = 0;
     any_sender_of<set_value_t()> sender = just(42) | then([&](int v) noexcept { value = v; });
-    CHECK(
-      std::same_as<
-        completion_signatures_of_t<any_sender_of<set_value_t()>>,
-        completion_signatures<set_value_t()>>);
+    CHECK(std::same_as<
+          completion_signatures_of_t<any_sender_of<set_value_t()>>,
+          completion_signatures<set_value_t()>>);
     sync_wait(std::move(sender));
     CHECK(value == 42);
   }
@@ -276,10 +275,9 @@ namespace {
 
   TEST_CASE("sync_wait returns value", "[types][any_sender]") {
     any_sender_of<set_value_t(int)> sender = just(21) | then([&](int v) noexcept { return 2 * v; });
-    CHECK(
-      std::same_as<
-        completion_signatures_of_t<any_sender_of<set_value_t(int)>>,
-        completion_signatures<set_value_t(int)>>);
+    CHECK(std::same_as<
+          completion_signatures_of_t<any_sender_of<set_value_t(int)>>,
+          completion_signatures<set_value_t(int)>>);
     auto [value1] = *sync_wait(std::move(sender));
     CHECK(value1 == 42);
   }
@@ -328,6 +326,23 @@ namespace {
       stdexec::start(op);
       CHECK(rcvr.value_.index() == 1);
     }
+  }
+
+  template <class... Vals>
+  using my_stoppable_sender_of =
+    any_sender_of<set_value_t(Vals)..., set_error_t(std::exception_ptr), set_stopped_t()>;
+
+  TEST_CASE("any_sender uses overload rules for completion signatures", "[types][any_sender]") {
+    auto split_sender = split(just(42));
+    static_assert(sender_of<decltype(split_sender), set_error_t(const std::exception_ptr&)>);
+    static_assert(sender_of<decltype(split_sender), set_value_t(const int&)>);
+    my_stoppable_sender_of<int> sender = split_sender;
+
+    auto [value] = *sync_wait(std::move(sender));
+    CHECK(value == 42);
+
+    sender = just(21) | then([&](int) -> int { throw 420; });
+    CHECK_THROWS_AS(sync_wait(std::move(sender)), int);
   }
 
   class stopped_token {
