@@ -440,9 +440,7 @@ namespace exec {
         (*__other.__vtable_)(__copy_construct, this, __other);
       }
 
-      auto operator=(const __t& __other) -> __t&
-        requires(_Copyable)
-      {
+      auto operator=(const __t& __other) -> __t& requires(_Copyable) {
         if (&__other != this) {
           __t tmp(__other);
           *this = std::move(tmp);
@@ -520,7 +518,8 @@ namespace exec {
       }
 
       template <class _Tp>
-      STDEXEC_MEMFN_DECL(void __move_construct)(this __mtype<_Tp>, __t& __self, __t&& __other) noexcept {
+      STDEXEC_MEMFN_DECL(
+        void __move_construct)(this __mtype<_Tp>, __t& __self, __t&& __other) noexcept {
         if (!__other.__object_pointer_) {
           return;
         }
@@ -540,8 +539,7 @@ namespace exec {
 
       template <class _Tp>
         requires _Copyable
-      STDEXEC_MEMFN_DECL(
-        void __copy_construct)(this __mtype<_Tp>, __t& __self, const __t& __other) {
+      STDEXEC_MEMFN_DECL(void __copy_construct)(this __mtype<_Tp>, __t& __self, const __t& __other) {
         if (!__other.__object_pointer_) {
           return;
         }
@@ -563,7 +561,8 @@ namespace exec {
 
     struct __empty_vtable {
       template <class _Sender>
-      STDEXEC_MEMFN_DECL(auto __create_vtable)(this __mtype<__empty_vtable>, __mtype<_Sender>) noexcept
+      STDEXEC_MEMFN_DECL(
+        auto __create_vtable)(this __mtype<__empty_vtable>, __mtype<_Sender>) noexcept
         -> const __empty_vtable* {
         static const __empty_vtable __vtable_{};
         return &__vtable_;
@@ -616,11 +615,12 @@ namespace exec {
           , public __query_vfun<_Queries>... {
          public:
           using __query_vfun<_Queries>::operator()...;
+          using __any_::__rcvr_vfun<_Sigs>::operator()...;
 
          private:
           template <class _Rcvr>
             requires receiver_of<_Rcvr, completion_signatures<_Sigs...>>
-                    && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
+                  && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
           STDEXEC_MEMFN_DECL(
             auto __create_vtable)(this __mtype<__t>, __mtype<_Rcvr>) noexcept -> const __t* {
             static const __t __vtable_{
@@ -675,24 +675,21 @@ namespace exec {
         }
 
         template <class... _As>
-          requires __one_of<set_value_t(_As...), _Sigs...>
+          requires __callable<__vtable_t, void*, set_value_t, _As...>
         void set_value(_As&&... __as) noexcept {
-          const __any_::__rcvr_vfun<set_value_t(_As...)>* __vfun = __env_.__vtable_;
-          (*__vfun->__complete_)(__env_.__rcvr_, static_cast<_As&&>(__as)...);
+          (*__env_.__vtable_)(__env_.__rcvr_, set_value_t(), static_cast<_As&&>(__as)...);
         }
 
         template <class _Error>
-          requires __one_of<set_error_t(_Error), _Sigs...>
+          requires __callable<__vtable_t, void*, set_error_t, _Error>
         void set_error(_Error&& __err) noexcept {
-          const __any_::__rcvr_vfun<set_error_t(_Error)>* __vfun = __env_.__vtable_;
-          (*__vfun->__complete_)(__env_.__rcvr_, static_cast<_Error&&>(__err));
+          (*__env_.__vtable_)(__env_.__rcvr_, set_error_t(), static_cast<_Error&&>(__err));
         }
 
         void set_stopped() noexcept
-          requires __one_of<set_stopped_t(), _Sigs...>
+          requires __callable<__vtable_t, void*, set_stopped_t>
         {
-          const __any_::__rcvr_vfun<set_stopped_t()>* __vfun = __env_.__vtable_;
-          (*__vfun->__complete_)(__env_.__rcvr_);
+          (*__env_.__vtable_)(__env_.__rcvr_, set_stopped_t());
         }
 
         auto get_env() const noexcept -> const __env_t& {
@@ -700,8 +697,8 @@ namespace exec {
         }
       };
 
-      auto __test_never_stop_token(
-        get_stop_token_t (*)(never_stop_token (*)() noexcept)) -> __mbool<true>;
+      auto __test_never_stop_token(get_stop_token_t (*)(never_stop_token (*)() noexcept))
+        -> __mbool<true>;
 
       template <class _Tag, class _Ret, class... _As>
       auto __test_never_stop_token(_Tag (*)(_Ret (*)(_As...) noexcept)) -> __mbool<false>;
@@ -783,7 +780,8 @@ namespace exec {
 
      private:
       template <class _Op>
-      STDEXEC_MEMFN_DECL(auto __create_vtable)(this __mtype<__operation_vtable>, __mtype<_Op>) noexcept
+      STDEXEC_MEMFN_DECL(
+        auto __create_vtable)(this __mtype<__operation_vtable>, __mtype<_Op>) noexcept
         -> const __operation_vtable* {
         static __operation_vtable __vtable{[](void* __object_pointer) noexcept -> void {
           STDEXEC_ASSERT(__object_pointer);
@@ -831,8 +829,7 @@ namespace exec {
 
         template <same_as<__t> _Self, class _Item>
           requires __callable<set_next_t, _Receiver&, _Item>
-        STDEXEC_MEMFN_DECL(
-          auto set_next)(this _Self& __self, _Item&& __item) noexcept
+        STDEXEC_MEMFN_DECL(auto set_next)(this _Self& __self, _Item&& __item) noexcept
           -> __call_result_t<set_next_t, _Receiver&, _Item> {
           return exec::set_next(__self.__op_->__rcvr_, static_cast<_Item&&>(__item));
         }
@@ -961,7 +958,9 @@ namespace exec {
         __immovable_operation_storage (*__connect_)(void*, __receiver_ref_t);
        private:
         template <sender_to<__receiver_ref_t> _Sender>
-        STDEXEC_MEMFN_DECL(auto __create_vtable)(this __mtype<__vtable>, __mtype<_Sender>) noexcept -> const __vtable* {
+        STDEXEC_MEMFN_DECL(
+          auto
+          __create_vtable)(this __mtype<__vtable>, __mtype<_Sender>) noexcept -> const __vtable* {
           static const __vtable __vtable_{
             {*__create_vtable(__mtype<__query_vtable<_SenderQueries>>{}, __mtype<_Sender>{})},
             [](void* __object_pointer, __receiver_ref_t __receiver)
@@ -1083,7 +1082,9 @@ namespace exec {
         }
        private:
         template <scheduler _Scheduler>
-        STDEXEC_MEMFN_DECL(auto __create_vtable)(this __mtype<__vtable>, __mtype<_Scheduler>) noexcept -> const __vtable* {
+        STDEXEC_MEMFN_DECL(
+          auto
+          __create_vtable)(this __mtype<__vtable>, __mtype<_Scheduler>) noexcept -> const __vtable* {
           static const __vtable __vtable_{
             {*__create_vtable(
               __mtype<__query_vtable<_SchedulerQueries, false>>{}, __mtype<_Scheduler>{})},

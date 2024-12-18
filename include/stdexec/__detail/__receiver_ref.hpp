@@ -30,16 +30,16 @@ namespace stdexec { namespace __any_ {
 
   template <class _Tag, class... _Args>
   struct __rcvr_vfun<_Tag(_Args...)> {
-    void (*__complete_)(void*, _Args&&...) noexcept;
+    void (*__complete_)(void*, _Args...) noexcept;
 
-    void operator()(void* __obj, _Tag, _Args&&... __args) const noexcept {
+    void operator()(void* __obj, _Tag, _Args... __args) const noexcept {
       __complete_(__obj, static_cast<_Args&&>(__args)...);
     }
   };
 
   template <class _GetReceiver = std::identity, class _Obj, class _Tag, class... _Args>
   constexpr auto __rcvr_vfun_fn(_Obj*, _Tag (*)(_Args...)) noexcept {
-    return +[](void* __ptr, _Args&&... __args) noexcept {
+    return +[](void* __ptr, _Args... __args) noexcept {
       _Obj* __obj = static_cast<_Obj*>(__ptr);
       _Tag()(std::move(_GetReceiver()(*__obj)), static_cast<_Args&&>(__args)...);
     };
@@ -95,16 +95,20 @@ namespace stdexec { namespace __any_ {
     }
 
     template <class... _As>
+      requires __callable<__receiver_vtable_for<_Sigs, _Env>, void*, set_value_t, _As...>
     void set_value(_As&&... __as) noexcept {
       (*__vtable_)(__op_state_, set_value_t(), static_cast<_As&&>(__as)...);
     }
 
     template <class _Error>
+      requires __callable<__receiver_vtable_for<_Sigs, _Env>, void*, set_error_t, _Error>
     void set_error(_Error&& __err) noexcept {
       (*__vtable_)(__op_state_, set_error_t(), static_cast<_Error&&>(__err));
     }
 
-    void set_stopped() noexcept {
+    void set_stopped() noexcept
+      requires __callable<__receiver_vtable_for<_Sigs, _Env>, void*, set_stopped_t>
+    {
       (*__vtable_)(__op_state_, set_stopped_t());
     }
 

@@ -36,8 +36,8 @@ namespace {
     template <class T>
     // BUGBUG ambiguous!
       requires stdexec::tag_invocable<tag_t, T>
-    auto operator()(T&& t) const
-      noexcept(stdexec::nothrow_tag_invocable<tag_t, T>) -> stdexec::tag_invoke_result_t<tag_t, T> {
+    auto operator()(T&& t) const noexcept(stdexec::nothrow_tag_invocable<tag_t, T>)
+      -> stdexec::tag_invoke_result_t<tag_t, T> {
       return stdexec::tag_invoke(*this, static_cast<T&&>(t));
     }
   };
@@ -326,6 +326,23 @@ namespace {
       stdexec::start(op);
       CHECK(rcvr.value_.index() == 1);
     }
+  }
+
+  template <class... Vals>
+  using my_stoppable_sender_of =
+    any_sender_of<set_value_t(Vals)..., set_error_t(std::exception_ptr), set_stopped_t()>;
+
+  TEST_CASE("any_sender uses overload rules for completion signatures", "[types][any_sender]") {
+    auto split_sender = split(just(21));
+    static_assert(sender_of<decltype(split_sender), set_error_t(const std::exception_ptr&)>);
+    static_assert(sender_of<decltype(split_sender), set_value_t(const int&)>);
+    my_stoppable_sender_of<int> sender = split_sender;
+
+    auto [value] = *sync_wait(std::move(sender));
+    CHECK(value == 42);
+
+    sender = just(21) | then([&](int) -> int { throw 420; });
+    CHECK_THROWS_AS(sync_wait(std::move(sender)), int);
   }
 
   class stopped_token {
@@ -686,8 +703,8 @@ namespace {
         return {{}, static_cast<R&&>(r)};
       }
 
-      auto
-        query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept -> counting_scheduler {
+      auto query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept
+        -> counting_scheduler {
         return {};
       }
 
