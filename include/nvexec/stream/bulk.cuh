@@ -110,7 +110,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class Self, class... Env>
       using _completion_signatures_t = //
         transform_completion_signatures<
-          __completion_signatures_of_t< __copy_cvref_t<Self, Sender>, Env...>,
+          __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
           _set_error_t,
           _set_value_t>;
 
@@ -128,7 +128,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class... Env>
-      static auto get_completion_signatures(Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
+      static auto
+        get_completion_signatures(Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
         return {};
       }
 
@@ -276,14 +277,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         Fun fun,
         context_state_t context_state)
         : operation_base_t<CvrefSenderId, ReceiverId, Shape, Fun>(
-          static_cast<Sender&&>(__sndr),
-          static_cast<_Receiver2&&>(__rcvr),
-          [&](operation_state_base_t<stdexec::__id<_Receiver2>>&)
-            -> stdexec::__t<receiver_t<CvrefSenderId, ReceiverId, Shape, Fun>> {
-            return stdexec::__t<receiver_t<CvrefSenderId, ReceiverId, Shape, Fun>>(
-              shape, fun, *this);
-          },
-          context_state)
+            static_cast<Sender&&>(__sndr),
+            static_cast<_Receiver2&&>(__rcvr),
+            [&](operation_state_base_t<stdexec::__id<_Receiver2>>&)
+              -> stdexec::__t<receiver_t<CvrefSenderId, ReceiverId, Shape, Fun>> {
+              return stdexec::__t<receiver_t<CvrefSenderId, ReceiverId, Shape, Fun>>(
+                shape, fun, *this);
+            },
+            context_state)
         , num_devices_(num_devices)
         , streams_(new cudaStream_t[num_devices_])
         , ready_to_complete_(new cudaEvent_t[num_devices_]) {
@@ -339,7 +340,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class Self, class... Env>
       using _completion_signatures_t = //
         transform_completion_signatures<
-          __completion_signatures_of_t< __copy_cvref_t<Self, Sender>, Env...>,
+          __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
           _set_error_t,
           _set_value_t>;
 
@@ -360,7 +361,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class... Env>
-      static auto get_completion_signatures(Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
+      static auto
+        get_completion_signatures(Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
         return {};
       }
 

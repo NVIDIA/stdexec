@@ -79,8 +79,8 @@ namespace {
     SECTION("without parameters") {
       int counter{};
       auto snd = ex::split(ex::just() | ex::then([&] { counter++; }));
-      ex::sync_wait(snd | ex::then([] {}));
-      ex::sync_wait(snd | ex::then([] {}));
+      ex::sync_wait(snd | ex::then([] { }));
+      ex::sync_wait(snd | ex::then([] { }));
       REQUIRE(counter == 1);
     }
   }
@@ -198,13 +198,14 @@ namespace {
     ex::inplace_stop_source ssource;
     bool called = false;
     int counter{};
-    auto split = ex::split(ex::starts_on(
-      sched,
-      ex::just() //
-        | ex::then([&] {
-            called = true;
-            return 7;
-          })));
+    auto split = ex::split(
+      ex::starts_on(
+        sched,
+        ex::just() //
+          | ex::then([&] {
+              called = true;
+              return 7;
+            })));
     auto sndr = exec::write(
       ex::upon_stopped(
         std::move(split),
@@ -363,31 +364,31 @@ namespace {
 
   TEST_CASE("split into then", "[adaptors][split]") {
     SECTION("split with move only input sender of temporary") {
-      auto snd = ex::split(ex::just(move_only_type{0})) | ex::then([](const move_only_type&) {});
+      auto snd = ex::split(ex::just(move_only_type{0})) | ex::then([](const move_only_type&) { });
       ex::sync_wait(snd);
     }
 
     SECTION("split with move only input sender by moving in") {
       auto snd0 = ex::just(move_only_type{});
-      auto snd = ex::split(std::move(snd0)) | ex::then([](const move_only_type&) {});
+      auto snd = ex::split(std::move(snd0)) | ex::then([](const move_only_type&) { });
       ex::sync_wait(snd);
     }
 
     SECTION("split with copyable rvalue input sender") {
       auto snd = ex::split(ex::just(copy_and_movable_type{0}))
-               | ex::then([](const copy_and_movable_type&) {});
+               | ex::then([](const copy_and_movable_type&) { });
       ex::sync_wait(snd);
     }
 
     SECTION("split with copyable lvalue input sender") {
       auto snd0 = ex::just(copy_and_movable_type{0});
-      auto snd = ex::split(snd0) | ex::then([](const copy_and_movable_type&) {});
+      auto snd = ex::split(snd0) | ex::then([](const copy_and_movable_type&) { });
       ex::sync_wait(snd);
     }
 
     SECTION("lvalue split move only sender") {
       auto multishot = ex::split(ex::just(move_only_type{0}));
-      auto snd = multishot | ex::then([](const move_only_type&) {});
+      auto snd = multishot | ex::then([](const move_only_type&) { });
 
       REQUIRE(ex::sender_of<decltype(multishot), ex::set_value_t(const move_only_type&)>);
       REQUIRE(!ex::sender_of<decltype(multishot), ex::set_value_t(move_only_type)>);
@@ -400,7 +401,7 @@ namespace {
     SECTION("lvalue split copyable sender") {
       auto multishot = ex::split(ex::just(copy_and_movable_type{0}));
       ex::get_completion_signatures(multishot, ex::empty_env{});
-      auto snd = multishot | ex::then([](const copy_and_movable_type&) {});
+      auto snd = multishot | ex::then([](const copy_and_movable_type&) { });
 
       REQUIRE(!ex::sender_of<decltype(multishot), ex::set_value_t(copy_and_movable_type)>);
       REQUIRE(!ex::sender_of<decltype(multishot), ex::set_value_t(const copy_and_movable_type)>);

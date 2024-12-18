@@ -120,7 +120,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       template <class Self, class... Env>
       using completion_signatures = //
         transform_completion_signatures<
-          __completion_signatures_of_t< __copy_cvref_t<Self, Sender>, Env...>,
+          __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
           __with_error_invoke_t<
             __callable_error<"In nvexec::upon_stopped(Sender, Function)..."_mstr>,
             set_stopped_t,
@@ -143,7 +143,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class... Env>
-      static auto get_completion_signatures(Self&&, Env&&...) -> completion_signatures<Self, Env...> {
+      static auto
+        get_completion_signatures(Self&&, Env&&...) -> completion_signatures<Self, Env...> {
         return {};
       }
 

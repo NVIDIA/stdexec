@@ -46,7 +46,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_submit {
         stdexec::set_error(static_cast<Receiver&&>(op_state_->rcvr_), static_cast<Error&&>(err));
       }
 
-      void set_stopped() noexcept requires __callable<set_stopped_t, Receiver> {
+      void set_stopped() noexcept
+        requires __callable<set_stopped_t, Receiver>
+      {
         // Delete the state as cleanup:
         std::unique_ptr<op_state_t> g{op_state_};
         stdexec::set_stopped(static_cast<Receiver&&>(op_state_->rcvr_));

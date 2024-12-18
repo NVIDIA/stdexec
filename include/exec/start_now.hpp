@@ -148,8 +148,9 @@ namespace exec {
         using connect_t = stdexec::connect_t;
 
         template <stdexec::receiver_of<__completions_t> _Receiver>
-        auto connect(_Receiver __rcvr) const noexcept(
-          stdexec::__nothrow_move_constructible<_Receiver>) -> __operation<_EnvId, _Receiver> {
+        auto
+          connect(_Receiver __rcvr) const noexcept(stdexec::__nothrow_move_constructible<_Receiver>)
+            -> __operation<_EnvId, _Receiver> {
           return {__stg_, static_cast<_Receiver&&>(__rcvr)};
         }
 

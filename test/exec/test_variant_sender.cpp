@@ -49,15 +49,16 @@ namespace {
     variant.emplace<1>(just(42));
     auto [value] = sync_wait(
                      variant
-                     | then(overloaded{
-                       [&index] {
-                         index = 0;
-                         return 0;
-                       },
-                       [&index](int xs) {
-                         index = 1;
-                         return xs;
-                       }}))
+                     | then(
+                       overloaded{
+                         [&index] {
+                           index = 0;
+                           return 0;
+                         },
+                         [&index](int xs) {
+                           index = 1;
+                           return xs;
+                         }}))
                      .value();
     CHECK(index == 1);
     CHECK(value == 42);

@@ -163,16 +163,12 @@ namespace nvexec {
       }
 
       template <__movable_value Fun>
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
-        operator()(Fun&& fun) const -> __binder_back<launch_t, Fun> {
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(Fun&& fun) const -> __binder_back<launch_t, Fun> {
         return {{static_cast<Fun&&>(fun)}};
       }
 
       template <__movable_value Fun>
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
-        operator()(launch_params params, Fun&& fun) const
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(launch_params params, Fun&& fun) const
         -> __binder_back<launch_t, launch_params, Fun> {
         return {
           {params, static_cast<Fun&&>(fun)},

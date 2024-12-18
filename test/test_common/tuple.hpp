@@ -22,7 +22,7 @@
 
 // Workaround for https://github.com/llvm/llvm-project/issues/113087
 #if defined(__clang__) && defined(__cpp_lib_tuple_like)
-#define CHECK_TUPLE(...) CHECK((__VA_ARGS__))
+#  define CHECK_TUPLE(...) CHECK((__VA_ARGS__))
 #else
-#define CHECK_TUPLE CHECK
+#  define CHECK_TUPLE CHECK
 #endif

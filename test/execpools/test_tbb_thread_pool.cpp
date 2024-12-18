@@ -146,9 +146,10 @@ namespace {
       CHECK_THROWS(stdexec::sync_wait(starts_on(tbb_pool.get_scheduler(), just(0)) | then([](auto) {
                                         throw std::exception();
                                       })));
-      CHECK_THROWS(stdexec::sync_wait(
-        starts_on(other_pool.get_scheduler(), just(0))
-        | then([](auto) { throw std::exception(); })));
+      CHECK_THROWS(
+        stdexec::sync_wait(starts_on(other_pool.get_scheduler(), just(0)) | then([](auto) {
+                             throw std::exception();
+                           })));
     }
     // Ensure it still works normally after exceptions:
     {

@@ -48,12 +48,12 @@ namespace exec {
     mutable __captures_t __impl_;
 
     template <class _Tag, class _Data, class... _Child>
-    STDEXEC_ATTRIBUTE((host, device))
-    explicit __seqexpr(_Tag, _Data&& __data, _Child&&... __child)
-      : __impl_(stdexec::__detail::__captures(
-          _Tag(),
-          static_cast<_Data&&>(__data),
-          static_cast<_Child&&>(__child)...)) {
+    STDEXEC_ATTRIBUTE((host, device)) explicit __seqexpr(_Tag, _Data&& __data, _Child&&... __child)
+      : __impl_(
+          stdexec::__detail::__captures(
+            _Tag(),
+            static_cast<_Data&&>(__data),
+            static_cast<_Child&&>(__child)...)) {
     }
 
     template <stdexec::same_as<__seqexpr> _Self = __seqexpr>
@@ -110,8 +110,8 @@ namespace exec {
   };
 
   template <class _Tag, class _Data, class... _Child>
-  STDEXEC_ATTRIBUTE((host, device))
-  __seqexpr(_Tag, _Data, _Child...) -> __seqexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
+  STDEXEC_ATTRIBUTE((host, device)) __seqexpr(_Tag, _Data, _Child...)
+    -> __seqexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
 
   template <class _Tag, class _Data, class... _Child>
   using __seqexpr_t = __seqexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;

@@ -121,8 +121,9 @@ void my_main(int argc, char** argv, exec::numa_policy policy = exec::get_numa_po
   std::size_t buffer_size = 2000 << 20;
   for (std::size_t i = 0; i < static_cast<std::size_t>(nthreads); ++i) {
     exec::numa_allocator<char> alloc(policy.thread_index_to_node(i));
-    buffers.push_back(std::unique_ptr<char, numa_deleter>{
-      alloc.allocate(buffer_size), numa_deleter{buffer_size, alloc}
+    buffers.push_back(
+      std::unique_ptr<char, numa_deleter>{
+        alloc.allocate(buffer_size), numa_deleter{buffer_size, alloc}
     });
   }
 #endif

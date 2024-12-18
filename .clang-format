@@ -27,7 +27,7 @@ AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: true
 AlwaysBreakTemplateDeclarations: Yes
 AttributeMacros: [
-  'STDEXEC_SYSTEM_CONTEXT_INLINE'
+  STDEXEC_SYSTEM_CONTEXT_INLINE
 ]
 BinPackArguments: false
 BinPackParameters: false
@@ -86,7 +86,7 @@ Macros: [
   'STDEXEC_MEMFN_DECL(X)=X',
   'STDEXEC_MEMFN_DECL(X,Y)=X,Y',
   'STDEXEC_MEMFN_DECL(X,Y,Z)=X,Y,Z',
-  'STDEXEC_ATTRIBUTE(X)=__attribute__(X) //',
+  'STDEXEC_ATTRIBUTE(X)=[[]]',
   'STDEXEC_NO_UNIQUE_ADDRESS=[[no_unique_address]]',
   'STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS=[[no_unique_address]]',
   'STDEXEC_MISSING_MEMBER(X,Y)=true',

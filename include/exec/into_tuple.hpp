@@ -101,9 +101,7 @@ namespace exec {
           __domain, __make_sexpr<into_tuple_t>({}, static_cast<_Sender &&>(__sndr)));
       }
 
-      STDEXEC_ATTRIBUTE((always_inline))
-      constexpr auto
-        operator()() const noexcept -> __binder_back<into_tuple_t> {
+      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto operator()() const noexcept -> __binder_back<into_tuple_t> {
         return {{}, {}, {}};
       }
     };

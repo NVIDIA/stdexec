@@ -100,8 +100,7 @@ namespace stdexec {
       using _Receiver = stdexec::__t<_ReceiverId>;
       using __receiver_t = __receiver<__ref_t<__operation>>;
 
-      STDEXEC_ATTRIBUTE((no_unique_address))
-      _Receiver __rcvr_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
       connect_result_t<_Sender, __receiver_t> __op_state_;
 
       __operation(_Sender&& __sndr, _Receiver __rcvr)

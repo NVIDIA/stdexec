@@ -51,8 +51,7 @@ struct deleter_t {
 };
 
 template <class T>
-STDEXEC_ATTRIBUTE((host, device))
-inline std::unique_ptr<T, deleter_t> allocate_on(bool gpu, std::size_t elements = 1) {
+STDEXEC_ATTRIBUTE((host, device)) inline std::unique_ptr<T, deleter_t> allocate_on(bool gpu, std::size_t elements = 1) {
   T *ptr{};
 
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
@@ -90,8 +89,7 @@ struct fields_accessor {
 
   float *base_ptr;
 
-  STDEXEC_ATTRIBUTE((nodiscard, host, device))
-  float *get(field_id id) const {
+  STDEXEC_ATTRIBUTE((nodiscard, host, device)) float *get(field_id id) const {
     return base_ptr + static_cast<int>(id) * cells;
   }
 };
@@ -111,9 +109,10 @@ struct grid_t {
   grid_t(std::size_t n, bool gpu)
     : n(n)
     , cells(n * n)
-    , fields_(allocate_on<float>(
-        gpu,
-        static_cast<std::size_t>(cells) * static_cast<int>(field_id::fields_count))) {
+    , fields_(
+        allocate_on<float>(
+          gpu,
+          static_cast<std::size_t>(cells) * static_cast<int>(field_id::fields_count))) {
   }
 
   [[nodiscard]]
@@ -124,8 +123,8 @@ struct grid_t {
 
 constexpr float C0 = 299792458.0f; // Speed of light [metres per second]
 
-STDEXEC_ATTRIBUTE((host, device))
-inline bool is_circle_part(float x, float y, float object_x, float object_y, float object_size) {
+STDEXEC_ATTRIBUTE((host, device)) inline bool
+  is_circle_part(float x, float y, float object_x, float object_y, float object_size) {
   const float os2 = object_size * object_size;
   return ((x - object_x) * (x - object_x) + (y - object_y) * (y - object_y) <= os2);
 }
@@ -139,9 +138,7 @@ struct grid_initializer_t {
   float dt;
   fields_accessor accessor;
 
-  STDEXEC_ATTRIBUTE((host, device))
-  void
-    operator()(std::size_t cell_id) const {
+  STDEXEC_ATTRIBUTE((host, device)) void operator()(std::size_t cell_id) const {
     const std::size_t row = cell_id / accessor.n;
     const std::size_t column = cell_id % accessor.n;
 
@@ -184,32 +181,26 @@ inline grid_initializer_t grid_initializer(float dt, fields_accessor accessor) {
   return {dt, accessor};
 }
 
-STDEXEC_ATTRIBUTE((host, device))
-inline std::size_t right_nid(std::size_t cell_id, std::size_t col, std::size_t N) {
+STDEXEC_ATTRIBUTE((host, device)) inline std::size_t right_nid(std::size_t cell_id, std::size_t col, std::size_t N) {
   return col == N - 1 ? cell_id - (N - 1) : cell_id + 1;
 }
 
-STDEXEC_ATTRIBUTE((host, device))
-inline std::size_t left_nid(std::size_t cell_id, std::size_t col, std::size_t N) {
+STDEXEC_ATTRIBUTE((host, device)) inline std::size_t left_nid(std::size_t cell_id, std::size_t col, std::size_t N) {
   return col == 0 ? cell_id + N - 1 : cell_id - 1;
 }
 
-STDEXEC_ATTRIBUTE((host, device))
-inline std::size_t bottom_nid(std::size_t cell_id, std::size_t row, std::size_t N) {
+STDEXEC_ATTRIBUTE((host, device)) inline std::size_t bottom_nid(std::size_t cell_id, std::size_t row, std::size_t N) {
   return row == 0 ? cell_id + N * (N - 1) : cell_id - N;
 }
 
-STDEXEC_ATTRIBUTE((host, device))
-inline std::size_t top_nid(std::size_t cell_id, std::size_t row, std::size_t N) {
+STDEXEC_ATTRIBUTE((host, device)) inline std::size_t top_nid(std::size_t cell_id, std::size_t row, std::size_t N) {
   return row == N - 1 ? cell_id - N * (N - 1) : cell_id + N;
 }
 
 struct h_field_calculator_t {
   fields_accessor accessor;
 
-  STDEXEC_ATTRIBUTE((always_inline, host, device))
-  void
-    operator()(std::size_t cell_id) const {
+  STDEXEC_ATTRIBUTE((always_inline, host, device)) void operator()(std::size_t cell_id) const {
     const std::size_t N = accessor.n;
     const std::size_t column = cell_id % N;
     const std::size_t row = cell_id / N;
@@ -235,21 +226,17 @@ struct e_field_calculator_t {
   fields_accessor accessor;
   std::size_t source_position;
 
-  STDEXEC_ATTRIBUTE((nodiscard, host, device))
-  float gaussian_pulse(float t, float t_0, float tau) const {
+  STDEXEC_ATTRIBUTE((nodiscard, host, device)) float gaussian_pulse(float t, float t_0, float tau) const {
     return exp(-(((t - t_0) / tau) * (t - t_0) / tau));
   }
 
-  STDEXEC_ATTRIBUTE((nodiscard, host, device))
-  float calculate_source(float t, float frequency) const {
+  STDEXEC_ATTRIBUTE((nodiscard, host, device)) float calculate_source(float t, float frequency) const {
     const float tau = 0.5f / frequency;
     const float t_0 = 6.0f * tau;
     return gaussian_pulse(t, t_0, tau);
   }
 
-  STDEXEC_ATTRIBUTE((always_inline, host, device))
-  void
-    operator()(std::size_t cell_id) const {
+  STDEXEC_ATTRIBUTE((always_inline, host, device)) void operator()(std::size_t cell_id) const {
     const std::size_t N = accessor.n;
     const std::size_t column = cell_id % N;
     const std::size_t row = cell_id / N;
@@ -364,8 +351,8 @@ class result_dumper_t {
 
   void operator()(bool update_time = true) const {
     int rank_ = 0;
-    const std::string filename = std::string("output_") + std::to_string(rank_) + "_"
-                               + std::to_string(0) + ".vtk";
+    const std::string filename =
+      std::string("output_") + std::to_string(rank_) + "_" + std::to_string(0) + ".vtk";
 
     write_vtk(filename);
   }

@@ -296,9 +296,7 @@ namespace exec {
       }
 
       template <sender _Final>
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
-        operator()(_Final&& __final) const -> __binder_back<finally_t, __decay_t<_Final>> {
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Final&& __final) const -> __binder_back<finally_t, __decay_t<_Final>> {
         return {{static_cast<_Final&&>(__final)}, {}, {}};
       }
 

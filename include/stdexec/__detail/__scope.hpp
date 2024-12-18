@@ -25,10 +25,8 @@ namespace stdexec {
 
   template <class _Fn>
   struct __scope_guard<_Fn> {
-    STDEXEC_ATTRIBUTE((no_unique_address))
-    _Fn __fn_;
-    STDEXEC_ATTRIBUTE((no_unique_address))
-    __immovable __hidden_{};
+    STDEXEC_ATTRIBUTE((no_unique_address)) _Fn __fn_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) __immovable __hidden_{};
     bool __dismissed_{false};
 
     ~__scope_guard() {
@@ -43,12 +41,9 @@ namespace stdexec {
 
   template <class _Fn, class _T0>
   struct __scope_guard<_Fn, _T0> {
-    STDEXEC_ATTRIBUTE((no_unique_address))
-    _Fn __fn_;
-    STDEXEC_ATTRIBUTE((no_unique_address))
-    _T0 __t0_;
-    STDEXEC_ATTRIBUTE((no_unique_address))
-    __immovable __hidden_{};
+    STDEXEC_ATTRIBUTE((no_unique_address)) _Fn __fn_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) _T0 __t0_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) __immovable __hidden_{};
 
     bool __dismissed_{false};
 
@@ -64,14 +59,10 @@ namespace stdexec {
 
   template <class _Fn, class _T0, class _T1>
   struct __scope_guard<_Fn, _T0, _T1> {
-    STDEXEC_ATTRIBUTE((no_unique_address))
-    _Fn __fn_;
-    STDEXEC_ATTRIBUTE((no_unique_address))
-    _T0 __t0_;
-    STDEXEC_ATTRIBUTE((no_unique_address))
-    _T1 __t1_;
-    STDEXEC_ATTRIBUTE((no_unique_address))
-    __immovable __hidden_{};
+    STDEXEC_ATTRIBUTE((no_unique_address)) _Fn __fn_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) _T0 __t0_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) _T1 __t1_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) __immovable __hidden_{};
 
     bool __dismissed_{false};
 
@@ -87,16 +78,11 @@ namespace stdexec {
 
   template <class _Fn, class _T0, class _T1, class _T2>
   struct __scope_guard<_Fn, _T0, _T1, _T2> {
-    STDEXEC_ATTRIBUTE((no_unique_address))
-    _Fn __fn_;
-    STDEXEC_ATTRIBUTE((no_unique_address))
-    _T0 __t0_;
-    STDEXEC_ATTRIBUTE((no_unique_address))
-    _T1 __t1_;
-    STDEXEC_ATTRIBUTE((no_unique_address))
-    _T2 __t2_;
-    STDEXEC_ATTRIBUTE((no_unique_address))
-    __immovable __hidden_{};
+    STDEXEC_ATTRIBUTE((no_unique_address)) _Fn __fn_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) _T0 __t0_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) _T1 __t1_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) _T2 __t2_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) __immovable __hidden_{};
 
     bool __dismissed_{false};
 

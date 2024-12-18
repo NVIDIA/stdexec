@@ -391,7 +391,7 @@ namespace stdexec {
       _Sched __sched_;
       //! Variant to hold the results passed from upstream before passing them to the function:
       __result_variant __args_{};
-      //! Variant type for holding the operation state from connecting 
+      //! Variant type for holding the operation state from connecting
       //! the function result to the downstream receiver:
       __op_state_variant __op_state3_{};
     };
@@ -411,9 +411,7 @@ namespace stdexec {
       }
 
       template <class _Fun>
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
-        operator()(_Fun __fun) const -> __binder_back<__let_t, _Fun> {
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Fun __fun) const -> __binder_back<__let_t, _Fun> {
         return {{static_cast<_Fun&&>(__fun)}, {}, {}};
       }
 

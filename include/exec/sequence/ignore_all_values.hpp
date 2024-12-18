@@ -74,8 +74,7 @@ namespace exec {
 
     template <class _ItemReceiver, class _ResultVariant>
     struct __item_operation_base {
-      STDEXEC_ATTRIBUTE((no_unique_address))
-      _ItemReceiver __receiver_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _ItemReceiver __receiver_;
       __result_type<_ResultVariant>* __result_;
     };
 
@@ -175,8 +174,7 @@ namespace exec {
 
     template <class _Receiver, class _ResultVariant>
     struct __operation_base : __result_type<_ResultVariant> {
-      STDEXEC_ATTRIBUTE((no_unique_address))
-      _Receiver __receiver_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __receiver_;
     };
 
     template <class _ReceiverId, class _ResultVariant>
@@ -275,7 +273,7 @@ namespace exec {
 
       template <class _Child>
         requires receiver_of<_Receiver, __completion_sigs<_Child>>
-                && sequence_sender_to<_Child, __receiver_t<_Child>>
+              && sequence_sender_to<_Child, __receiver_t<_Child>>
       auto operator()(__ignore, __ignore, _Child&& __child) //
         noexcept(__nothrow_constructible_from<__operation_t<_Child>, _Child, _Receiver>)
           -> __operation_t<_Child> {
@@ -291,9 +289,7 @@ namespace exec {
           __domain, __make_sexpr<ignore_all_values_t>(__(), static_cast<_Sender&&>(__sndr)));
       }
 
-      STDEXEC_ATTRIBUTE((always_inline))
-      constexpr auto
-        operator()() const noexcept -> __binder_back<ignore_all_values_t> {
+      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto operator()() const noexcept -> __binder_back<ignore_all_values_t> {
         return {{}, {}, {}};
       }
     };

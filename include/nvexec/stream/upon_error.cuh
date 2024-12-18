@@ -171,7 +171,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
 
       template <__decays_to<__t> Self, class... Env>
-      static auto get_completion_signatures(Self&&, Env&&...) -> completion_signatures<Self, Env...> {
+      static auto
+        get_completion_signatures(Self&&, Env&&...) -> completion_signatures<Self, Env...> {
         return {};
       }
 

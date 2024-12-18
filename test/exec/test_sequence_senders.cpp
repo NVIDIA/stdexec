@@ -47,12 +47,14 @@ namespace {
   TEST_CASE("sequence_senders - some_sender_of is a sender", "[sequence_senders]") {
     STATIC_REQUIRE(sender<some_sender_of<set_value_t()>>);
     STATIC_REQUIRE(sender_in<some_sender_of<set_value_t()>, empty_env>);
-    STATIC_REQUIRE(same_as<
-                   completion_signatures_of_t<some_sender_of<set_value_t()>>,
-                   completion_signatures<set_value_t()>>);
-    STATIC_REQUIRE(same_as<
-                   completion_signatures_of_t<some_sender_of<set_value_t(int)>>,
-                   completion_signatures<set_value_t(int)>>);
+    STATIC_REQUIRE(
+      same_as<
+        completion_signatures_of_t<some_sender_of<set_value_t()>>,
+        completion_signatures<set_value_t()>>);
+    STATIC_REQUIRE(
+      same_as<
+        completion_signatures_of_t<some_sender_of<set_value_t(int)>>,
+        completion_signatures<set_value_t(int)>>);
   }
 
   template <__completion_signature... _Sigs>
@@ -85,9 +87,10 @@ namespace {
     STATIC_REQUIRE_FALSE(
       receiver_of<test_receiver<set_value_t()>, completion_signatures<set_stopped_t()>>);
     STATIC_REQUIRE(sender_to<some_sender_of<set_value_t()>, test_receiver<set_value_t()>>);
-    STATIC_REQUIRE_FALSE(sender_to<
-                         some_sender_of<set_value_t(int), set_stopped_t()>,
-                         test_receiver<set_value_t(), set_stopped_t()>>);
+    STATIC_REQUIRE_FALSE(
+      sender_to<
+        some_sender_of<set_value_t(int), set_stopped_t()>,
+        test_receiver<set_value_t(), set_stopped_t()>>);
   }
 
   template <__completion_signature... _Sigs>

@@ -27,13 +27,13 @@ namespace ex = stdexec;
 
 namespace {
   TEST_CASE("then returns a sender", "[adaptors][then]") {
-    auto snd = ex::then(ex::just(), [] {});
+    auto snd = ex::then(ex::just(), [] { });
     static_assert(ex::sender<decltype(snd)>);
     (void) snd;
   }
 
   TEST_CASE("then with environment returns a sender", "[adaptors][then]") {
-    auto snd = ex::then(ex::just(), [] {});
+    auto snd = ex::then(ex::just(), [] { });
     static_assert(ex::sender_in<decltype(snd), empty_env>);
     (void) snd;
   }
@@ -49,12 +49,12 @@ namespace {
   }
 
   TEST_CASE("then can be piped", "[adaptors][then]") {
-    ex::sender auto snd = ex::just() | ex::then([] {});
+    ex::sender auto snd = ex::just() | ex::then([] { });
     (void) snd;
   }
 
   TEST_CASE("then returning void can we waited on", "[adaptors][then]") {
-    ex::sender auto snd = ex::just() | ex::then([] {});
+    ex::sender auto snd = ex::just() | ex::then([] { });
     stdexec::sync_wait(std::move(snd));
   }
 
@@ -123,24 +123,24 @@ namespace {
     inline_scheduler sched{};
 
     SECTION("for value channel") {
-      ex::sender auto snd = ex::schedule(sched) | ex::then([] {});
+      ex::sender auto snd = ex::schedule(sched) | ex::then([] { });
       REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd)) == sched);
     }
     SECTION("for stop channel") {
-      ex::sender auto snd = ex::just_stopped() | ex::continues_on(sched) | ex::then([] {});
+      ex::sender auto snd = ex::just_stopped() | ex::continues_on(sched) | ex::then([] { });
       REQUIRE(ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(snd)) == sched);
     }
   }
 
   TEST_CASE("then forwards env", "[adaptors][then]") {
     SECTION("returns env by value") {
-      auto snd = just_with_env<value_env, int>{value_env{100}, {0}} | ex::then([](int) {});
+      auto snd = just_with_env<value_env, int>{value_env{100}, {0}} | ex::then([](int) { });
       static_assert(std::same_as<decltype(ex::get_env(snd)), value_env>);
       CHECK(ex::get_env(snd).value == 100);
     }
 
     SECTION("returns env by reference") {
-      auto snd = just_with_env<const value_env&, int>{value_env{100}, {0}} | ex::then([](int) {});
+      auto snd = just_with_env<const value_env&, int>{value_env{100}, {0}} | ex::then([](int) { });
       static_assert(std::same_as<decltype(ex::get_env(snd)), const value_env&>);
       CHECK(ex::get_env(snd).value == 100);
     }

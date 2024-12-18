@@ -58,9 +58,7 @@ namespace stdexec {
       }
 
       template <scheduler _Scheduler>
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
-        operator()(_Scheduler&& __sched) const
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Scheduler&& __sched) const
         -> __binder_back<continues_on_t, __decay_t<_Scheduler>> {
         return {{static_cast<_Scheduler&&>(__sched)}, {}, {}};
       }

@@ -48,9 +48,7 @@ namespace stdexec {
           __make_sexpr<split_t>(static_cast<_Env&&>(__env), static_cast<_Sender&&>(__sndr)));
       }
 
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
-        operator()() const noexcept -> __binder_back<split_t> {
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()() const noexcept -> __binder_back<split_t> {
         return {{}, {}, {}};
       }
 

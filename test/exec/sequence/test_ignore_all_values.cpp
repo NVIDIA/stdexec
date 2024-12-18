@@ -26,9 +26,10 @@ namespace {
     auto sndr = exec::ignore_all_values(exec::empty_sequence());
     using Sender = decltype(sndr);
     STATIC_REQUIRE(stdexec::sender_in<Sender, stdexec::empty_env>);
-    STATIC_REQUIRE(stdexec::same_as<
-                   stdexec::completion_signatures<stdexec::set_value_t()>,
-                   stdexec::completion_signatures_of_t<Sender, stdexec::empty_env>>);
+    STATIC_REQUIRE(
+      stdexec::same_as<
+        stdexec::completion_signatures<stdexec::set_value_t()>,
+        stdexec::completion_signatures_of_t<Sender, stdexec::empty_env>>);
     STATIC_REQUIRE(stdexec::sender_expr_for<Sender, exec::ignore_all_values_t>);
     CHECK(stdexec::sync_wait(sndr));
   }
@@ -37,9 +38,10 @@ namespace {
     auto sndr = exec::ignore_all_values(stdexec::just(42));
     using Sender = decltype(sndr);
     STATIC_REQUIRE(stdexec::sender_in<Sender, stdexec::empty_env>);
-    STATIC_REQUIRE(stdexec::same_as<
-                   stdexec::completion_signatures<stdexec::set_value_t()>,
-                   stdexec::completion_signatures_of_t<Sender, stdexec::empty_env>>);
+    STATIC_REQUIRE(
+      stdexec::same_as<
+        stdexec::completion_signatures<stdexec::set_value_t()>,
+        stdexec::completion_signatures_of_t<Sender, stdexec::empty_env>>);
     CHECK(stdexec::sync_wait(sndr));
   }
 
@@ -47,9 +49,10 @@ namespace {
     auto sndr = exec::ignore_all_values(stdexec::just());
     using Sender = decltype(sndr);
     STATIC_REQUIRE(stdexec::sender_in<Sender, stdexec::empty_env>);
-    STATIC_REQUIRE(stdexec::same_as<
-                   stdexec::completion_signatures<stdexec::set_value_t()>,
-                   stdexec::completion_signatures_of_t<Sender, stdexec::empty_env>>);
+    STATIC_REQUIRE(
+      stdexec::same_as<
+        stdexec::completion_signatures<stdexec::set_value_t()>,
+        stdexec::completion_signatures_of_t<Sender, stdexec::empty_env>>);
     CHECK(stdexec::sync_wait(sndr));
   }
 
@@ -57,9 +60,10 @@ namespace {
     auto sndr = exec::ignore_all_values(stdexec::just_stopped());
     using Sender = decltype(sndr);
     STATIC_REQUIRE(stdexec::sender_in<Sender, stdexec::empty_env>);
-    STATIC_REQUIRE(stdexec::__mset_eq<
-                   stdexec::__mset<stdexec::set_value_t(), stdexec::set_stopped_t()>,
-                   stdexec::completion_signatures_of_t<Sender, stdexec::empty_env>>);
+    STATIC_REQUIRE(
+      stdexec::__mset_eq<
+        stdexec::__mset<stdexec::set_value_t(), stdexec::set_stopped_t()>,
+        stdexec::completion_signatures_of_t<Sender, stdexec::empty_env>>);
     CHECK_FALSE(stdexec::sync_wait(sndr));
   }
 
@@ -68,9 +72,10 @@ namespace {
       stdexec::just_error(std::make_exception_ptr(std::runtime_error("test"))));
     using Sender = decltype(sndr);
     STATIC_REQUIRE(stdexec::sender_in<Sender, stdexec::empty_env>);
-    STATIC_REQUIRE(stdexec::__mset_eq<
-                   stdexec::__mset<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>,
-                   stdexec::completion_signatures_of_t<Sender, stdexec::empty_env>>);
+    STATIC_REQUIRE(
+      stdexec::__mset_eq<
+        stdexec::__mset<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>,
+        stdexec::completion_signatures_of_t<Sender, stdexec::empty_env>>);
     CHECK_THROWS(stdexec::sync_wait(sndr));
   }
 

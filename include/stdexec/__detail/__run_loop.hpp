@@ -57,8 +57,7 @@ namespace stdexec {
         using __id = __operation;
 
         run_loop* __loop_;
-        STDEXEC_ATTRIBUTE((no_unique_address))
-        _Receiver __rcvr_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
 
         static void __execute_impl(__task* __p) noexcept {
           auto& __rcvr = static_cast<__t*>(__p)->__rcvr_;
@@ -154,8 +153,8 @@ namespace stdexec {
           return __schedule_task{__loop_};
         }
 
-        auto query(
-          get_forward_progress_guarantee_t) const noexcept -> stdexec::forward_progress_guarantee {
+        auto query(get_forward_progress_guarantee_t) const noexcept
+          -> stdexec::forward_progress_guarantee {
           return stdexec::forward_progress_guarantee::parallel;
         }
 

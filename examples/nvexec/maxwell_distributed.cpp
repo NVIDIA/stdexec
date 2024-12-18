@@ -88,8 +88,10 @@ namespace distributed {
       , begin(grid_begin)
       , end(grid_end)
       , own_cells(end - begin)
-      , fields_(device_alloc<float>(
-          static_cast<std::size_t>(own_cells + n * 2) * static_cast<int>(field_id::fields_count))) {
+      , fields_(
+          device_alloc<float>(
+            static_cast<std::size_t>(own_cells + n * 2)
+            * static_cast<int>(field_id::fields_count))) {
     }
 
     [[nodiscard]]

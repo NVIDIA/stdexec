@@ -223,8 +223,7 @@ namespace stdexec {
       std::move(static_cast<inplace_stop_callback*>(cb)->__fun_)();
     }
 
-    STDEXEC_ATTRIBUTE((no_unique_address))
-    _Fun __fun_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
   };
 
   namespace __stok {
@@ -299,8 +298,9 @@ namespace stdexec {
     (void) __state_.store(__old_state, std::memory_order_release);
   }
 
-  inline auto inplace_stop_source::__try_lock_unless_stop_requested_(
-    bool __set_stop_requested) const noexcept -> bool {
+  inline auto
+    inplace_stop_source::__try_lock_unless_stop_requested_(bool __set_stop_requested) const noexcept
+    -> bool {
     __stok::__spin_wait __spin;
     auto __old_state = __state_.load(std::memory_order_relaxed);
     do {

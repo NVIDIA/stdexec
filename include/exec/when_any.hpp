@@ -269,8 +269,8 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class... _Env>
-        static auto
-          get_completion_signatures(_Self&&, _Env&&...) noexcept -> __completions_t<_Self, _Env...> {
+        static auto get_completion_signatures(_Self&&, _Env&&...) noexcept
+          -> __completions_t<_Self, _Env...> {
           return {};
         }
 

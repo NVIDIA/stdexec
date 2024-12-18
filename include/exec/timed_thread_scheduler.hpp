@@ -354,7 +354,9 @@ namespace exec {
       return std::chrono::steady_clock::now();
     }
 
-    STDEXEC_MEMFN_DECL(auto schedule_at)(this const timed_thread_scheduler& self, time_point tp) noexcept -> schedule_at {
+    STDEXEC_MEMFN_DECL(
+      auto
+      schedule_at)(this const timed_thread_scheduler& self, time_point tp) noexcept -> schedule_at {
       return schedule_at{*self.context_, tp};
     }
 

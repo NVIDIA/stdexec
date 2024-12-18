@@ -170,14 +170,15 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         : context_state_(context_state)
         , stream_provider_(false, context_state)
         , data_(malloc_managed<variant_t>(stream_provider_.status_))
-        , task_(make_host<task_t>(
-                  stream_provider_.status_,
-                  context_state.pinned_resource_,
-                  inner_receiver_t{*this},
-                  data_,
-                  stream_provider_.own_stream_.value(),
-                  context_state.pinned_resource_)
-                  .release())
+        , task_(
+            make_host<task_t>(
+              stream_provider_.status_,
+              context_state.pinned_resource_,
+              inner_receiver_t{*this},
+              data_,
+              stream_provider_.own_stream_.value(),
+              context_state.pinned_resource_)
+              .release())
         , env_(
             make_host(this->stream_provider_.status_, context_state_.pinned_resource_, make_env()))
         , op_state2_(connect(

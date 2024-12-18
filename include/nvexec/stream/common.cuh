@@ -59,9 +59,7 @@ namespace nvexec {
   }
 #endif
 
-  inline STDEXEC_ATTRIBUTE((host, device))
-  bool
-    is_on_gpu() noexcept {
+  inline STDEXEC_ATTRIBUTE((host, device)) bool is_on_gpu() noexcept {
     return get_device_type() == device_type::device;
   }
 } // namespace nvexec
@@ -77,7 +75,7 @@ namespace nvexec {
 #else
     template <class... Ts>
     concept trivially_copyable =
-      ((STDEXEC_IS_TRIVIALLY_COPYABLE(Ts) || std::is_reference_v<Ts>) &&...);
+      ((STDEXEC_IS_TRIVIALLY_COPYABLE(Ts) || std::is_reference_v<Ts>) && ...);
 #endif
 
     inline std::pair<int, cudaError_t> get_stream_priority(stream_priority priority) {
@@ -266,18 +264,14 @@ namespace nvexec {
         return tag_invoke(get_stream_provider_t{}, env);
       }
 
-      STDEXEC_ATTRIBUTE((host, device))
-      static constexpr auto
-        query(stdexec::forwarding_query_t) noexcept -> bool {
+      STDEXEC_ATTRIBUTE((host, device)) static constexpr auto query(stdexec::forwarding_query_t) noexcept -> bool {
         return true;
       }
     };
 
     struct set_noop {
       template <class... Ts>
-      STDEXEC_ATTRIBUTE((host, device))
-      void
-        operator()(Ts&&...) const noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) void operator()(Ts&&...) const noexcept {
         // TODO TRAP
         std::printf("ERROR: use of empty variant.");
       }
@@ -305,15 +299,11 @@ namespace nvexec {
         return get_stream_provider(env)->own_stream_.value();
       }
 
-      STDEXEC_ATTRIBUTE((host, device))
-      auto
-        operator()() const noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) auto operator()() const noexcept {
         return stdexec::read(*this);
       }
 
-      STDEXEC_ATTRIBUTE((host, device))
-      static constexpr auto
-        query(stdexec::forwarding_query_t) noexcept -> bool {
+      STDEXEC_ATTRIBUTE((host, device)) static constexpr auto query(stdexec::forwarding_query_t) noexcept -> bool {
         return true;
       }
     };
@@ -380,25 +370,19 @@ namespace nvexec {
         using __id = stream_enqueue_receiver;
 
         template <class... As>
-        STDEXEC_ATTRIBUTE((host, device))
-        void
-          set_value(As&&... as) noexcept {
+        STDEXEC_ATTRIBUTE((host, device)) void set_value(As&&... as) noexcept {
           variant_->template emplace<decayed_tuple<set_value_t, As...>>(
             set_value_t(), static_cast<As&&>(as)...);
           producer_(task_);
         }
 
-        STDEXEC_ATTRIBUTE((host, device))
-        void
-          set_stopped() noexcept {
+        STDEXEC_ATTRIBUTE((host, device)) void set_stopped() noexcept {
           variant_->template emplace<decayed_tuple<set_stopped_t>>(set_stopped_t());
           producer_(task_);
         }
 
         template <class Error>
-        STDEXEC_ATTRIBUTE((host, device))
-        void
-          set_error(Error&& err) noexcept {
+        STDEXEC_ATTRIBUTE((host, device)) void set_error(Error&& err) noexcept {
           if constexpr (__decays_to<Error, std::exception_ptr>) {
             // What is `exception_ptr` but death pending
             variant_->template emplace<decayed_tuple<set_error_t, cudaError_t>>(
@@ -687,18 +671,20 @@ namespace nvexec {
           : base_t(static_cast<outer_receiver_t&&>(out_receiver), context_state)
           , storage_(
               make_host<variant_t>(this->stream_provider_.status_, context_state.pinned_resource_))
-          , task_(make_host<task_t>(
-                    this->stream_provider_.status_,
-                    context_state.pinned_resource_,
-                    receiver_provider(*this),
-                    storage_.get(),
-                    this->get_stream(),
-                    context_state.pinned_resource_)
-                    .release())
-          , env_(make_host<env_t>(
-              this->stream_provider_.status_,
-              context_state.pinned_resource_,
-              this->make_env()))
+          , task_(
+              make_host<task_t>(
+                this->stream_provider_.status_,
+                context_state.pinned_resource_,
+                receiver_provider(*this),
+                storage_.get(),
+                this->get_stream(),
+                context_state.pinned_resource_)
+                .release())
+          , env_(
+              make_host<env_t>(
+                this->stream_provider_.status_,
+                context_state.pinned_resource_,
+                this->make_env()))
           , inner_op_{connect(
               static_cast<sender_t&&>(sender),
               stream_enqueue_receiver_t{

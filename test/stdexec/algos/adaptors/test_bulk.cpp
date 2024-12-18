@@ -44,28 +44,28 @@ namespace {
   };
 
   TEST_CASE("bulk returns a sender", "[adaptors][bulk]") {
-    auto snd = ex::bulk(ex::just(19), 8, [](int, int) {});
+    auto snd = ex::bulk(ex::just(19), 8, [](int, int) { });
     static_assert(ex::sender<decltype(snd)>);
     (void) snd;
   }
 
   TEST_CASE("bulk with environment returns a sender", "[adaptors][bulk]") {
-    auto snd = ex::bulk(ex::just(19), 8, [](int, int) {});
+    auto snd = ex::bulk(ex::just(19), 8, [](int, int) { });
     static_assert(ex::sender_in<decltype(snd), empty_env>);
     (void) snd;
   }
 
   TEST_CASE("bulk can be piped", "[adaptors][bulk]") {
-    ex::sender auto snd = ex::just() | ex::bulk(42, [](int) {});
+    ex::sender auto snd = ex::just() | ex::bulk(42, [](int) { });
     (void) snd;
   }
 
   TEST_CASE("bulk keeps values_type from input sender", "[adaptors][bulk]") {
     constexpr int n = 42;
-    check_val_types<ex::__mset<pack<>>>(ex::just() | ex::bulk(n, [](int) {}));
-    check_val_types<ex::__mset<pack<double>>>(ex::just(4.2) | ex::bulk(n, [](int, double) {}));
+    check_val_types<ex::__mset<pack<>>>(ex::just() | ex::bulk(n, [](int) { }));
+    check_val_types<ex::__mset<pack<double>>>(ex::just(4.2) | ex::bulk(n, [](int, double) { }));
     check_val_types<ex::__mset<pack<double, std::string>>>(
-      ex::just(4.2, std::string{}) | ex::bulk(n, [](int, double, std::string) {}));
+      ex::just(4.2, std::string{}) | ex::bulk(n, [](int, double, std::string) { }));
   }
 
   TEST_CASE("bulk keeps error_types from input sender", "[adaptors][bulk]") {
@@ -340,7 +340,7 @@ namespace {
   }
 
   TEST_CASE("default bulk works with non-default constructible types", "[adaptors][bulk]") {
-    ex::sender auto s = ex::just(non_default_constructible{42}) | ex::bulk(1, [](int, auto&) {});
+    ex::sender auto s = ex::just(non_default_constructible{42}) | ex::bulk(1, [](int, auto&) { });
     ex::sync_wait(std::move(s));
   }
 
@@ -349,7 +349,7 @@ namespace {
     ex::scheduler auto sch = pool.get_scheduler();
 
     ex::sender auto s = ex::just(non_default_constructible{42}) | ex::continues_on(sch)
-                      | ex::bulk(1, [](int, auto&) {});
+                      | ex::bulk(1, [](int, auto&) { });
     ex::sync_wait(std::move(s));
   }
 } // namespace

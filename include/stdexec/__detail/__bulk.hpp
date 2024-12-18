@@ -41,8 +41,7 @@ namespace stdexec {
     template <class _Shape, class _Fun>
     struct __data {
       _Shape __shape_;
-      STDEXEC_ATTRIBUTE((no_unique_address))
-      _Fun __fun_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
       static constexpr auto __mbrs_ = __mliterals<&__data::__shape_, &__data::__fun_>();
     };
     template <class _Shape, class _Fun>
@@ -71,10 +70,8 @@ namespace stdexec {
 
     struct bulk_t {
       template <sender _Sender, integral _Shape, __movable_value _Fun>
-      STDEXEC_ATTRIBUTE((host, device))
-      auto
-        operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const -> __well_formed_sender
-        auto {
+      STDEXEC_ATTRIBUTE((host, device)) auto operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const
+        -> __well_formed_sender auto {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
           __domain,
@@ -83,8 +80,7 @@ namespace stdexec {
       }
 
       template <integral _Shape, class _Fun>
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
+      STDEXEC_ATTRIBUTE((always_inline)) auto
         operator()(_Shape __shape, _Fun __fun) const -> __binder_back<bulk_t, _Shape, _Fun> {
         return {
           {static_cast<_Shape&&>(__shape), static_cast<_Fun&&>(__fun)},

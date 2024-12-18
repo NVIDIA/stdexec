@@ -280,7 +280,7 @@ namespace {
   TEST_CASE("starts_on does not reference a moved-from scheduler", "[adaptors][starts_on]") {
     move_checking_inline_scheduler is;
     ex::sender auto snd = ex::starts_on(is, ex::just()) //
-                        | ex::then([] {});
+                        | ex::then([] { });
     ex::sync_wait(std::move(snd));
   }
 } // namespace

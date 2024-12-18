@@ -121,9 +121,7 @@ namespace exec {
         return {static_cast<_Sender&&>(__sender)};
       }
 
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
-        operator()() const noexcept -> __binder_back<__materialize_t> {
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()() const noexcept -> __binder_back<__materialize_t> {
         return {{}, {}, {}};
       }
     };
@@ -228,14 +226,12 @@ namespace exec {
       using __sender_t = __t<__sender<__id<_Sender>>>;
 
       template <sender _Sender>
-      auto operator()(_Sender&& __sndr) const
-        noexcept(__nothrow_decay_copyable<_Sender>) -> __sender_t<_Sender> {
+      auto operator()(_Sender&& __sndr) const noexcept(__nothrow_decay_copyable<_Sender>)
+        -> __sender_t<_Sender> {
         return __sender_t<_Sender>(static_cast<_Sender&&>(__sndr));
       }
 
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
-        operator()() const noexcept -> __binder_back<__dematerialize_t> {
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()() const noexcept -> __binder_back<__dematerialize_t> {
         return {{}, {}, {}};
       }
     };

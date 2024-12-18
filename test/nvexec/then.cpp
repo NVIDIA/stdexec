@@ -13,7 +13,7 @@ namespace {
 
   TEST_CASE("nvexec then returns a sender", "[cuda][stream][adaptors][then]") {
     nvexec::stream_context stream_ctx{};
-    auto snd = ex::then(ex::schedule(stream_ctx.get_scheduler()), [] {});
+    auto snd = ex::then(ex::schedule(stream_ctx.get_scheduler()), [] { });
     STATIC_REQUIRE(ex::sender<decltype(snd)>);
     (void) snd;
   }

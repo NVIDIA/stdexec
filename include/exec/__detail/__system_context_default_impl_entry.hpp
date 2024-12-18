@@ -27,10 +27,7 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wattributes") // warning: inline function '[...]' declared weak
 
 /// Gets the default system context implementation.
-extern
-  STDEXEC_SYSTEM_CONTEXT_INLINE
-  STDEXEC_ATTRIBUTE((weak))
-  void*
+extern STDEXEC_SYSTEM_CONTEXT_INLINE STDEXEC_ATTRIBUTE((weak)) void*
   __query_system_context_interface(const __uuid& __id) noexcept {
   return exec::__system_context_default_impl::__default_query_system_context_interface(__id);
 }

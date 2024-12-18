@@ -116,9 +116,7 @@ namespace stdexec {
       }
 
       template <scheduler _Scheduler, __sender_adaptor_closure _Closure>
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
-        operator()(_Scheduler&& __sched, _Closure&& __clsur) const {
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Scheduler&& __sched, _Closure&& __clsur) const {
         return __binder_back<on_t, __decay_t<_Scheduler>, __decay_t<_Closure>>{
           {{static_cast<_Scheduler&&>(__sched)}, {static_cast<_Closure&&>(__clsur)}},
           {},
@@ -127,9 +125,7 @@ namespace stdexec {
       }
 
       template <class _Env>
-      STDEXEC_ATTRIBUTE((always_inline))
-      static auto
-        __transform_env_fn(_Env&& __env) noexcept {
+      STDEXEC_ATTRIBUTE((always_inline)) static auto __transform_env_fn(_Env&& __env) noexcept {
         return [&]<class _Data>(__ignore, _Data&& __data, __ignore) noexcept -> decltype(auto) {
           if constexpr (scheduler<_Data>) {
             return __detail::__mkenv_sched(static_cast<_Env&&>(__env), static_cast<_Data&&>(__data));
@@ -140,9 +136,7 @@ namespace stdexec {
       }
 
       template <class _Env>
-      STDEXEC_ATTRIBUTE((always_inline))
-      static auto
-        __transform_sender_fn(const _Env& __env) noexcept {
+      STDEXEC_ATTRIBUTE((always_inline)) static auto __transform_sender_fn(const _Env& __env) noexcept {
         return [&]<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
           if constexpr (scheduler<_Data>) {
             // This branch handles the case where `on` was called like `on(sch, snd)`
@@ -158,7 +152,7 @@ namespace stdexec {
             } else {
               return continues_on(
                 starts_on(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)),
-                static_cast<decltype(__old)&&>(__old));
+                static_cast<decltype(__old) &&>(__old));
             }
           } else {
             // This branch handles the case where `on` was called like `on(snd, sch, clsur)`
@@ -184,16 +178,12 @@ namespace stdexec {
       }
 
       template <class _Sender, class _Env>
-      STDEXEC_ATTRIBUTE((always_inline))
-      static auto
-        transform_env(const _Sender& __sndr, _Env&& __env) noexcept {
+      STDEXEC_ATTRIBUTE((always_inline)) static auto transform_env(const _Sender& __sndr, _Env&& __env) noexcept {
         return __sexpr_apply(__sndr, __transform_env_fn(static_cast<_Env&&>(__env)));
       }
 
       template <class _Sender, class _Env>
-      STDEXEC_ATTRIBUTE((always_inline))
-      static auto
-        transform_sender(_Sender&& __sndr, const _Env& __env) {
+      STDEXEC_ATTRIBUTE((always_inline)) static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
         auto __tfx_sndr_fn = __transform_sender_fn(__env);
         using _TfxSndrFn = decltype(__tfx_sndr_fn);
         using _NewSndr = __sexpr_apply_result_t<_Sender, _TfxSndrFn>;

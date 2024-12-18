@@ -196,9 +196,7 @@ namespace exec {
           __domain, __make_sexpr<repeat_effect_until_t>({}, static_cast<_Sender &&>(__sndr)));
       }
 
-      STDEXEC_ATTRIBUTE((always_inline))
-      constexpr auto
-        operator()() const -> __binder_back<repeat_effect_until_t> {
+      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto operator()() const -> __binder_back<repeat_effect_until_t> {
         return {{}, {}, {}};
       }
 

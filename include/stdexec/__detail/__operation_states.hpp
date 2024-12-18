@@ -32,9 +32,7 @@ namespace stdexec {
   namespace __start {
     struct start_t {
       template <__same_as<start_t> _Self, class _OpState>
-      STDEXEC_ATTRIBUTE((always_inline))
-      friend auto
-        tag_invoke(_Self, _OpState& __op) noexcept -> decltype(__op.start()) {
+      STDEXEC_ATTRIBUTE((always_inline)) friend auto tag_invoke(_Self, _OpState& __op) noexcept -> decltype(__op.start()) {
         static_assert(noexcept(__op.start()), "start() members must be noexcept");
         static_assert(__same_as<decltype(__op.start()), void>, "start() members must return void");
         __op.start();
@@ -42,9 +40,7 @@ namespace stdexec {
 
       template <class _Op>
         requires tag_invocable<start_t, _Op&>
-      STDEXEC_ATTRIBUTE((always_inline))
-      void
-        operator()(_Op& __op) const noexcept {
+      STDEXEC_ATTRIBUTE((always_inline)) void operator()(_Op& __op) const noexcept {
         static_assert(nothrow_tag_invocable<start_t, _Op&>);
         (void) tag_invoke(start_t{}, __op);
       }

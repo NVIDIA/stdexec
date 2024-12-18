@@ -32,10 +32,8 @@ namespace exec {
 
     template <class _Receiver, class _Args>
     struct __context {
-      STDEXEC_ATTRIBUTE((no_unique_address))
-      _Receiver receiver;
-      STDEXEC_ATTRIBUTE((no_unique_address))
-      _Args args;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver receiver;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Args args;
     };
 
     template <class _ReceiverId, class _Fun, class _ArgsId>
@@ -47,12 +45,9 @@ namespace exec {
       struct __t : stdexec::__immovable {
         using __id = __operation;
 
-        STDEXEC_ATTRIBUTE((no_unique_address))
-        _Context __ctx_;
-        STDEXEC_ATTRIBUTE((no_unique_address))
-        _Fun __fun_;
-        STDEXEC_ATTRIBUTE((no_unique_address))
-        _State __state_{};
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Context __ctx_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _State __state_{};
 
         void start() & noexcept {
           __state_.emplace(__emplace_from{[&]() noexcept {
@@ -76,8 +71,8 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver_of<completion_signatures> _Receiver>
           requires __callable<_Fun, __context<_Receiver, _Args>&>
-                  && constructible_from<_Fun, __copy_cvref_t<_Self, _Fun>>
-                  && constructible_from<_Args, __copy_cvref_t<_Self, _Args>>
+                && constructible_from<_Fun, __copy_cvref_t<_Self, _Fun>>
+                && constructible_from<_Args, __copy_cvref_t<_Self, _Args>>
         static auto connect(_Self&& __self, _Receiver __rcvr)
           -> stdexec::__t<__operation<stdexec::__id<_Receiver>, _Fun, _ArgsId>> {
           static_assert(__nothrow_callable<_Fun, __context<_Receiver, _Args>&>);
@@ -94,7 +89,7 @@ namespace exec {
     struct __create_t {
       template <class _Fun, class... _Args>
         requires move_constructible<_Fun>
-                && constructible_from<__decayed_std_tuple<_Args...>, _Args...>
+              && constructible_from<__decayed_std_tuple<_Args...>, _Args...>
       auto operator()(_Fun __fun, _Args&&... __args) const
         -> __t<__sender<_Fun, __id<__decayed_std_tuple<_Args...>>, _Sigs...>> {
         return {static_cast<_Fun&&>(__fun), {static_cast<_Args&&>(__args)...}};

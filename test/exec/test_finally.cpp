@@ -31,17 +31,19 @@ namespace {
   TEST_CASE("finally is a sender in empty env", "[adaptors][finally]") {
     auto s = exec::finally(just(), just());
     STATIC_REQUIRE(sender_in<decltype(s), empty_env>);
-    STATIC_REQUIRE(set_equivalent<
-                   completion_signatures_of_t<decltype(s), empty_env>,
-                   completion_signatures<set_error_t(std::exception_ptr), set_value_t()>>);
+    STATIC_REQUIRE(
+      set_equivalent<
+        completion_signatures_of_t<decltype(s), empty_env>,
+        completion_signatures<set_error_t(std::exception_ptr), set_value_t()>>);
   }
 
   TEST_CASE("finally executes the final action", "[adaptors][finally]") {
     bool called = false;
     auto s = exec::finally(just(), just() | then([&called]() noexcept { called = true; }));
-    STATIC_REQUIRE(set_equivalent<
-                   completion_signatures_of_t<decltype(s), empty_env>,
-                   completion_signatures<set_error_t(std::exception_ptr), set_value_t()>>);
+    STATIC_REQUIRE(
+      set_equivalent<
+        completion_signatures_of_t<decltype(s), empty_env>,
+        completion_signatures<set_error_t(std::exception_ptr), set_value_t()>>);
     sync_wait(s);
     CHECK(called);
   }
@@ -49,9 +51,10 @@ namespace {
   TEST_CASE("finally executes the final action and returns integer", "[adaptors][finally]") {
     bool called = false;
     auto s = exec::finally(just(42), just() | then([&called]() noexcept { called = true; }));
-    STATIC_REQUIRE(set_equivalent<
-                   completion_signatures_of_t<decltype(s), empty_env>,
-                   completion_signatures<set_error_t(std::exception_ptr), set_value_t(int)>>);
+    STATIC_REQUIRE(
+      set_equivalent<
+        completion_signatures_of_t<decltype(s), empty_env>,
+        completion_signatures<set_error_t(std::exception_ptr), set_value_t(int)>>);
     auto [i] = *sync_wait(s);
     CHECK(called);
     CHECK(i == 42);
@@ -63,9 +66,10 @@ namespace {
     auto s = exec::finally(
       just(21) | then([](int) -> int { throw 42; }),
       just() | then([&called]() noexcept { called = true; }));
-    STATIC_REQUIRE(set_equivalent<
-                   completion_signatures_of_t<decltype(s), empty_env>,
-                   completion_signatures<set_error_t(std::exception_ptr), set_value_t(int)>>);
+    STATIC_REQUIRE(
+      set_equivalent<
+        completion_signatures_of_t<decltype(s), empty_env>,
+        completion_signatures<set_error_t(std::exception_ptr), set_value_t(int)>>);
     CHECK_THROWS_AS(sync_wait(s), int);
     CHECK(called);
   }

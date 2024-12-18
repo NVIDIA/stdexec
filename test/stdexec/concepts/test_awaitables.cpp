@@ -205,10 +205,8 @@ namespace {
   }
 
   template <typename Error, typename... Values>
-  auto signature_error_values(Error, Values...) -> ex::completion_signatures<
-                                                  ex::set_value_t(Values...),
-                                                  ex::set_error_t(Error),
-                                                  ex::set_stopped_t()>* {
+  auto signature_error_values(Error, Values...) -> ex::
+    completion_signatures<ex::set_value_t(Values...), ex::set_error_t(Error), ex::set_stopped_t()>* {
     return {};
   }
 
@@ -251,7 +249,7 @@ namespace {
   TEST_CASE("env_promise bug when CWG 2369 is fixed", "[sndtraits][awaitables]") {
     exec::static_thread_pool ctx{1};
     ex::scheduler auto sch = ctx.get_scheduler();
-    ex::sender auto snd = ex::when_all(ex::then(ex::schedule(sch), []() {}));
+    ex::sender auto snd = ex::when_all(ex::then(ex::schedule(sch), []() { }));
 
     using _Awaitable = decltype(snd);
     using _Promise = ex::__env::__promise<ex::empty_env>;

@@ -36,19 +36,19 @@ using namespace stdexec;
 
 namespace {
   TEST_CASE("repeat_n returns a sender", "[adaptors][repeat_n]") {
-    auto snd = exec::repeat_n(ex::just() | then([] {}), 10);
+    auto snd = exec::repeat_n(ex::just() | then([] { }), 10);
     static_assert(ex::sender<decltype(snd)>);
     (void) snd;
   }
 
   TEST_CASE("repeat_n with environment returns a sender", "[adaptors][repeat_n]") {
-    auto snd = exec::repeat_n(just() | then([] {}), 10);
+    auto snd = exec::repeat_n(just() | then([] { }), 10);
     static_assert(ex::sender_in<decltype(snd), empty_env>);
     (void) snd;
   }
 
   TEST_CASE("repeat_n produces void value to downstream receiver", "[adaptors][repeat_n]") {
-    sender auto source = just(1) | then([](int) {});
+    sender auto source = just(1) | then([](int) { });
     sender auto snd = exec::repeat_n(std::move(source), 10);
     // The receiver checks if we receive the void value
     auto op = stdexec::connect(std::move(snd), expect_void_receiver{});

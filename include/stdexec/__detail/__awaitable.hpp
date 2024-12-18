@@ -101,9 +101,10 @@ namespace stdexec {
 
   template <class _Awaitable, class... _Promise>
     requires __awaitable<_Awaitable, _Promise...>
-  using __await_result_t = decltype(stdexec::__as_lvalue(stdexec::__get_awaiter(
-                                                           std::declval<_Awaitable>(),
-                                                           static_cast<_Promise*>(nullptr)...))
+  using __await_result_t = decltype(stdexec::__as_lvalue(
+                                      stdexec::__get_awaiter(
+                                        std::declval<_Awaitable>(),
+                                        static_cast<_Promise*>(nullptr)...))
                                       .await_resume());
 
 #else

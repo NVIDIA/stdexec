@@ -84,10 +84,10 @@ int main() {
                                                                     //
   sender auto printFortyTwo = then(
     std::move(fortyTwoFuture),
-    [](int fortyTwo) noexcept {                          // 9
-      printf("%d\n", fortyTwo);                          //
-    });                                                  //
-                                                         //
+    [](int fortyTwo) noexcept { // 9
+      printf("%d\n", fortyTwo); //
+    });                         //
+                                //
   sender auto allDone = then(                            //
     when_all(printEmpty, std::move(printFortyTwo)),      //
     [](auto&&...) noexcept { printf("\nall done\n"); }); // 10

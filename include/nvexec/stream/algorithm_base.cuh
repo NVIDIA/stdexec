@@ -61,10 +61,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       };
 
       operation_state_base_t<ReceiverId>& op_state_;
-      STDEXEC_ATTRIBUTE((no_unique_address))
-      InitT init_;
-      STDEXEC_ATTRIBUTE((no_unique_address))
-      Fun fun_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) InitT init_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) Fun fun_;
 
      public:
       using __id = receiver_t;
@@ -110,10 +108,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       using _set_value_t = typename DerivedSender::template _set_value_t<Range>;
 
       Sender sndr_;
-      STDEXEC_ATTRIBUTE((no_unique_address))
-      InitT init_;
-      STDEXEC_ATTRIBUTE((no_unique_address))
-      Fun fun_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) InitT init_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) Fun fun_;
 
       template <class Self, class... Env>
       using completion_signatures = //
