@@ -49,25 +49,18 @@ namespace stdexec {
       }
 
      private:
-      STDEXEC_ATTRIBUTE((no_unique_address))
-      _Base __base_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Base __base_;
 
      protected:
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      _Base&
-        base() & noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) _Base& base() & noexcept {
         return __base_;
       }
 
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      const _Base&
-        base() const & noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) const _Base& base() const & noexcept {
         return __base_;
       }
 
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      _Base&&
-        base() && noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) _Base&& base() && noexcept {
         return static_cast<_Base&&>(__base_);
       }
     };
@@ -121,9 +114,7 @@ namespace stdexec {
       using __base_t = __minvoke<__get_base_fn, _Self&&>;
 
       template <class _Self>
-      STDEXEC_ATTRIBUTE((host, device))
-      static auto
-        __get_base(_Self&& __self) noexcept -> __base_t<_Self> {
+      STDEXEC_ATTRIBUTE((host, device)) static auto __get_base(_Self&& __self) noexcept -> __base_t<_Self> {
         if constexpr (__has_base) {
           return __c_upcast<receiver_adaptor>(static_cast<_Self&&>(__self)).base();
         } else {
@@ -139,34 +130,26 @@ namespace stdexec {
 
       template <class... _As, class _Self = _Derived>
         requires __callable<set_value_t, __base_t<_Self>, _As...>
-      STDEXEC_ATTRIBUTE((host, device))
-      void
-        set_value(_As&&... __as) && noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) void set_value(_As&&... __as) && noexcept {
         return stdexec::set_value(
           __get_base(static_cast<_Self&&>(*this)), static_cast<_As&&>(__as)...);
       }
 
       template <class _Error, class _Self = _Derived>
         requires __callable<set_error_t, __base_t<_Self>, _Error>
-      STDEXEC_ATTRIBUTE((host, device))
-      void
-        set_error(_Error&& __err) && noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) void set_error(_Error&& __err) && noexcept {
         return stdexec::set_error(
           __get_base(static_cast<_Self&&>(*this)), static_cast<_Error&&>(__err));
       }
 
       template <class _Self = _Derived>
         requires __callable<set_stopped_t, __base_t<_Self>>
-      STDEXEC_ATTRIBUTE((host, device))
-      void
-        set_stopped() && noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) void set_stopped() && noexcept {
         return stdexec::set_stopped(__get_base(static_cast<_Self&&>(*this)));
       }
 
       template <class _Self = _Derived>
-      STDEXEC_ATTRIBUTE((host, device))
-      auto
-        get_env() const noexcept -> env_of_t<__base_t<const _Self&>> {
+      STDEXEC_ATTRIBUTE((host, device)) auto get_env() const noexcept -> env_of_t<__base_t<const _Self&>> {
         return stdexec::get_env(__get_base(static_cast<const _Self&>(*this)));
       }
     };

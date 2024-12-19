@@ -60,10 +60,10 @@ namespace exec {
   template <
     class Node,
     class KeyT,
-    KeyT Node::*Key,
-    Node* Node::*Prev,
-    Node* Node::*Left,
-    Node* Node::*Right>
+    KeyT Node::* Key,
+    Node* Node::* Prev,
+    Node* Node::* Left,
+    Node* Node::* Right>
   class intrusive_heap<Node, KeyT, Key, Prev, Left, Right> {
    public:
     void insert(Node* node) noexcept {

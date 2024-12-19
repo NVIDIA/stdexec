@@ -119,7 +119,7 @@ namespace {
 
         __t(Sender&& sender, Receiver&& receiver)
           : inner_op_{
-            stdexec::connect(static_cast<Sender&&>(sender), static_cast<Receiver&&>(receiver))} {
+              stdexec::connect(static_cast<Sender&&>(sender), static_cast<Receiver&&>(receiver))} {
         }
       };
     };
@@ -144,8 +144,7 @@ namespace {
 
         template <class... As>
           requires std::invocable<Fun, As...>
-        STDEXEC_ATTRIBUTE((host, device))
-        void set_value(As&&... as) && noexcept {
+        STDEXEC_ATTRIBUTE((host, device)) void set_value(As&&... as) && noexcept {
           using result_t = std::invoke_result_t<Fun, As...>;
 
           if constexpr (std::is_same_v<void, result_t>) {
@@ -231,7 +230,7 @@ namespace {
 
         __t(Sender&& sender, Receiver&& receiver)
           : inner_op_{
-            stdexec::connect(static_cast<Sender&&>(sender), static_cast<Receiver&&>(receiver))} {
+              stdexec::connect(static_cast<Sender&&>(sender), static_cast<Receiver&&>(receiver))} {
         }
       };
     };
@@ -263,8 +262,8 @@ namespace {
         template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
           requires stdexec::
             receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-          friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr)
-            -> op_t<Self, Receiver> {
+          friend auto
+          tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) -> op_t<Self, Receiver> {
           return op_t<Self, Receiver>(
             static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr));
         }

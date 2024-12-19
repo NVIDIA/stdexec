@@ -384,7 +384,8 @@ namespace execpools {
       STDEXEC_MEMFN_FRIEND(bulk);
 
       template <stdexec::sender S, std::integral Shape, class Fun>
-        STDEXEC_MEMFN_DECL(auto bulk)(this const scheduler& sch, S&& sndr, Shape shape, Fun fun) noexcept
+      STDEXEC_MEMFN_DECL(
+        auto bulk)(this const scheduler& sch, S&& sndr, Shape shape, Fun fun) noexcept
         -> bulk_sender_t<S, Shape, Fun> {
         return bulk_sender_t<S, Shape, Fun>{
           *sch.pool_, static_cast<S&&>(sndr), shape, static_cast<Fun&&>(fun)};

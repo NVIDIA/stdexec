@@ -142,12 +142,16 @@ namespace nvexec {
       }
 
       template <sender S, class Fn>
-      STDEXEC_MEMFN_DECL(upon_error_sender_th<S, Fn> upon_error)(this const multi_gpu_stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
+      STDEXEC_MEMFN_DECL(
+        upon_error_sender_th<S, Fn>
+        upon_error)(this const multi_gpu_stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
         return upon_error_sender_th<S, Fn>{{}, static_cast<S&&>(sndr), static_cast<Fn&&>(fun)};
       }
 
       template <sender S, class Fn>
-      STDEXEC_MEMFN_DECL(upon_stopped_sender_th<S, Fn> upon_stopped)(this const multi_gpu_stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
+      STDEXEC_MEMFN_DECL(
+        upon_stopped_sender_th<S, Fn>
+        upon_stopped)(this const multi_gpu_stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
         return upon_stopped_sender_th<S, Fn>{{}, static_cast<S&&>(sndr), static_cast<Fn&&>(fun)};
       }
 
@@ -180,7 +184,8 @@ namespace nvexec {
       }
 
       template <sender S>
-      STDEXEC_MEMFN_DECL(split_sender_th<S> split)(this const multi_gpu_stream_scheduler& sch, S&& sndr) noexcept {
+      STDEXEC_MEMFN_DECL(
+        split_sender_th<S> split)(this const multi_gpu_stream_scheduler& sch, S&& sndr) noexcept {
         return split_sender_th<S>(static_cast<S&&>(sndr), sch.context_state_);
       }
 

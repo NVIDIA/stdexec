@@ -15,7 +15,7 @@ namespace {
     nvexec::stream_context stream_ctx{};
 
     auto snd = ex::just_error(42) | ex::continues_on(stream_ctx.get_scheduler())
-             | ex::upon_error([](int) {});
+             | ex::upon_error([](int) { });
     STATIC_REQUIRE(ex::sender<decltype(snd)>);
     (void) snd;
   }

@@ -41,7 +41,7 @@ namespace stdexec {
     };
   } // namespace __tt
   template <class _Ty>
-  using __decay_t = typename __tt::__decay_<sizeof(__tt::__wrap<_Ty>*) == ~0ul>::template __f<_Ty>;
+  using __decay_t = typename __tt::__decay_<sizeof(__tt::__wrap<_Ty> *) == ~0ul>::template __f<_Ty>;
 
 #elif STDEXEC_EDG()
 

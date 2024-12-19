@@ -212,8 +212,7 @@ namespace exec {
           __domain, __make_sexpr<repeat_n_t>(__count, static_cast<_Sender &&>(__sndr)));
       }
 
-      STDEXEC_ATTRIBUTE((always_inline))
-      constexpr auto
+      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto
         operator()(std::size_t __count) const -> __binder_back<repeat_n_t, std::size_t> {
         return {{__count}, {}, {}};
       }

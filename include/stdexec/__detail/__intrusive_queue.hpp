@@ -27,7 +27,7 @@ namespace stdexec {
     template <auto _Next>
     class __intrusive_queue;
 
-    template <class _Item, _Item* _Item::*_Next>
+    template <class _Item, _Item* _Item::* _Next>
     class __intrusive_queue<_Next> {
      public:
       __intrusive_queue() noexcept = default;

@@ -34,8 +34,8 @@ namespace stdexec {
       }
       template <class _Env>
         requires tag_invocable<__is_debug_env_t, const _Env&>
-      auto
-        operator()(const _Env&) const noexcept -> tag_invoke_result_t<__is_debug_env_t, const _Env&>;
+      auto operator()(const _Env&) const noexcept
+        -> tag_invoke_result_t<__is_debug_env_t, const _Env&>;
     };
 
     template <class _Env>
@@ -75,23 +75,17 @@ namespace stdexec {
     struct __valid_completions {
       template <class... _Args>
         requires __one_of<set_value_t (*)(_Args&&...), _Sigs...>
-      STDEXEC_ATTRIBUTE((host, device))
-      void
-        set_value(_Args&&...) noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) void set_value(_Args&&...) noexcept {
         STDEXEC_TERMINATE();
       }
 
       template <class _Error>
         requires __one_of<set_error_t (*)(_Error&&), _Sigs...>
-      STDEXEC_ATTRIBUTE((host, device))
-      void
-        set_error(_Error&&) noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) void set_error(_Error&&) noexcept {
         STDEXEC_TERMINATE();
       }
 
-      STDEXEC_ATTRIBUTE((host, device))
-      void
-        set_stopped() noexcept
+      STDEXEC_ATTRIBUTE((host, device)) void set_stopped() noexcept
         requires __one_of<set_stopped_t (*)(), _Sigs...>
       {
         STDEXEC_TERMINATE();
@@ -112,9 +106,7 @@ namespace stdexec {
       using __id = __debug_receiver;
       using receiver_concept = receiver_t;
 
-      STDEXEC_ATTRIBUTE((host, device))
-      auto
-        get_env() const noexcept -> __debug_env_t<_Env> {
+      STDEXEC_ATTRIBUTE((host, device)) auto get_env() const noexcept -> __debug_env_t<_Env> {
         STDEXEC_TERMINATE();
       }
     };
@@ -135,8 +127,7 @@ namespace stdexec {
       "The sender claims to send a particular set of completions,"
       " but in actual fact it completes with a result that is not"
       " one of the declared completion signatures.")]]
-    STDEXEC_ATTRIBUTE((host, device))
-    void _ATTENTION_() noexcept {
+    STDEXEC_ATTRIBUTE((host, device)) void _ATTENTION_() noexcept {
     }
 
     template <class _Sig>
@@ -160,9 +151,7 @@ namespace stdexec {
     };
 
     template <__completion_tag _Tag, class... _Args>
-    STDEXEC_ATTRIBUTE((host, device))
-    void
-      tag_invoke(_Tag, __t<__invalid_completion<_Tag(_Args...)>>, _Args&&...) noexcept {
+    STDEXEC_ATTRIBUTE((host, device)) void tag_invoke(_Tag, __t<__invalid_completion<_Tag(_Args...)>>, _Args&&...) noexcept {
     }
 
     struct __debug_operation {

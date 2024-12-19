@@ -63,9 +63,7 @@ namespace stdexec {
           __domain, __make_sexpr<into_variant_t>(__(), static_cast<_Sender&&>(__sndr)));
       }
 
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
-        operator()() const noexcept -> __binder_back<into_variant_t> {
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()() const noexcept -> __binder_back<into_variant_t> {
         return {{}, {}, {}};
       }
     };

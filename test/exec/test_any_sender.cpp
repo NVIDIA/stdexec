@@ -36,8 +36,8 @@ namespace {
     template <class T>
     // BUGBUG ambiguous!
       requires stdexec::tag_invocable<tag_t, T>
-    auto operator()(T&& t) const
-      noexcept(stdexec::nothrow_tag_invocable<tag_t, T>) -> stdexec::tag_invoke_result_t<tag_t, T> {
+    auto operator()(T&& t) const noexcept(stdexec::nothrow_tag_invocable<tag_t, T>)
+      -> stdexec::tag_invoke_result_t<tag_t, T> {
       return stdexec::tag_invoke(*this, static_cast<T&&>(t));
     }
   };
@@ -259,9 +259,10 @@ namespace {
   TEST_CASE("sync_wait works on any_sender_of", "[types][any_sender]") {
     int value = 0;
     any_sender_of<set_value_t()> sender = just(42) | then([&](int v) noexcept { value = v; });
-    CHECK(std::same_as<
-          completion_signatures_of_t<any_sender_of<set_value_t()>>,
-          completion_signatures<set_value_t()>>);
+    CHECK(
+      std::same_as<
+        completion_signatures_of_t<any_sender_of<set_value_t()>>,
+        completion_signatures<set_value_t()>>);
     sync_wait(std::move(sender));
     CHECK(value == 42);
   }
@@ -275,9 +276,10 @@ namespace {
 
   TEST_CASE("sync_wait returns value", "[types][any_sender]") {
     any_sender_of<set_value_t(int)> sender = just(21) | then([&](int v) noexcept { return 2 * v; });
-    CHECK(std::same_as<
-          completion_signatures_of_t<any_sender_of<set_value_t(int)>>,
-          completion_signatures<set_value_t(int)>>);
+    CHECK(
+      std::same_as<
+        completion_signatures_of_t<any_sender_of<set_value_t(int)>>,
+        completion_signatures<set_value_t(int)>>);
     auto [value1] = *sync_wait(std::move(sender));
     CHECK(value1 == 42);
   }
@@ -686,8 +688,8 @@ namespace {
         return {{}, static_cast<R&&>(r)};
       }
 
-      auto
-        query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept -> counting_scheduler {
+      auto query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept
+        -> counting_scheduler {
         return {};
       }
 

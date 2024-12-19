@@ -99,8 +99,7 @@ namespace exec {
 
       static constexpr bool __with_scheduler = _SchedulerAffinity == __scheduler_affinity::__sticky;
 
-      STDEXEC_ATTRIBUTE((no_unique_address))
-      __if_c<__with_scheduler, __any_scheduler, __ignore> //
+      STDEXEC_ATTRIBUTE((no_unique_address)) __if_c<__with_scheduler, __any_scheduler, __ignore> //
         __scheduler_{exec::inline_scheduler{}};
       inplace_stop_token __stop_token_;
 
@@ -323,8 +322,8 @@ namespace exec {
           return false;
         }
 
-        static auto await_suspend(
-          __coro::coroutine_handle<__promise> __h) noexcept -> __coro::coroutine_handle<> {
+        static auto await_suspend(__coro::coroutine_handle<__promise> __h) noexcept
+          -> __coro::coroutine_handle<> {
           return __h.promise().continuation().handle();
         }
 
@@ -454,11 +453,10 @@ namespace exec {
       // Make this task awaitable within a particular context:
       template <class _ParentPromise>
         requires constructible_from<
-                   awaiter_context_t<__promise, _ParentPromise>,
-                   __promise_context_t&,
-                   _ParentPromise&>
-      STDEXEC_MEMFN_DECL(
-        auto as_awaitable)(this basic_task&& __self, _ParentPromise&) noexcept
+          awaiter_context_t<__promise, _ParentPromise>,
+          __promise_context_t&,
+          _ParentPromise&>
+      STDEXEC_MEMFN_DECL(auto as_awaitable)(this basic_task&& __self, _ParentPromise&) noexcept
         -> __task_awaitable<_ParentPromise> {
         return __task_awaitable<_ParentPromise>{std::exchange(__self.__coro_, {})};
       }

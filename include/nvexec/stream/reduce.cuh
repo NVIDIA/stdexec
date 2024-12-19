@@ -65,15 +65,16 @@ namespace nvexec {
 
           std::size_t num_items = std::distance(first, last);
 
-          if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
-                d_temp_storage,
-                temp_storage_size,
-                first,
-                d_out,
-                num_items,
-                self.fun_,
-                self.init_,
-                stream));
+          if (status = STDEXEC_DBG_ERR(
+                cub::DeviceReduce::Reduce(
+                  d_temp_storage,
+                  temp_storage_size,
+                  first,
+                  d_out,
+                  num_items,
+                  self.fun_,
+                  self.init_,
+                  stream));
               status != cudaSuccess) {
             self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             return;
@@ -86,15 +87,16 @@ namespace nvexec {
             return;
           }
 
-          if (status = STDEXEC_DBG_ERR(cub::DeviceReduce::Reduce(
-                d_temp_storage,
-                temp_storage_size,
-                first,
-                d_out,
-                num_items,
-                self.fun_,
-                self.init_,
-                stream));
+          if (status = STDEXEC_DBG_ERR(
+                cub::DeviceReduce::Reduce(
+                  d_temp_storage,
+                  temp_storage_size,
+                  first,
+                  d_out,
+                  num_items,
+                  self.fun_,
+                  self.init_,
+                  stream));
               status != cudaSuccess) {
             self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             return;
@@ -138,9 +140,7 @@ namespace nvexec {
       }
 
       template <class InitT, class Fun = cub::Sum>
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
-        operator()(InitT init, Fun fun = {}) const -> __binder_back<reduce_t, InitT, Fun> {
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(InitT init, Fun fun = {}) const -> __binder_back<reduce_t, InitT, Fun> {
         return {
           {static_cast<InitT&&>(init), static_cast<Fun&&>(fun)},
           {},

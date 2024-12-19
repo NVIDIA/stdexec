@@ -139,12 +139,14 @@ namespace {
     execpools::asio_thread_pool taskflow_pool;
     exec::static_thread_pool other_pool(1ul);
     {
-      CHECK_THROWS(stdexec::sync_wait(starts_on(taskflow_pool.get_scheduler(), just(0)) | then([](auto) {
-                                        throw std::exception();
-                                      })));
-      CHECK_THROWS(stdexec::sync_wait(starts_on(other_pool.get_scheduler(), just(0)) | then([](auto) {
-                                        throw std::exception();
-                                      })));
+      CHECK_THROWS(
+        stdexec::sync_wait(starts_on(taskflow_pool.get_scheduler(), just(0)) | then([](auto) {
+                             throw std::exception();
+                           })));
+      CHECK_THROWS(
+        stdexec::sync_wait(starts_on(other_pool.get_scheduler(), just(0)) | then([](auto) {
+                             throw std::exception();
+                           })));
     }
     // Ensure it still works normally after exceptions:
     {

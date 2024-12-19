@@ -49,9 +49,7 @@ namespace {
 } // namespace
 
 // Should replace the function defined in __system_context_default_impl.hpp
-extern STDEXEC_ATTRIBUTE((weak))
-  void*
-  __query_system_context_interface(const __uuid& id) noexcept {
+extern STDEXEC_ATTRIBUTE((weak)) void* __query_system_context_interface(const __uuid& id) noexcept {
   return my_query_system_context_interface(id);
 }
 

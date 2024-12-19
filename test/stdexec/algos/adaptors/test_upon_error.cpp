@@ -25,13 +25,13 @@ namespace ex = stdexec;
 namespace {
 
   TEST_CASE("upon_error returns a sender", "[adaptors][upon_error]") {
-    auto snd = ex::upon_error(ex::just_error(std::exception_ptr{}), [](std::exception_ptr) {});
+    auto snd = ex::upon_error(ex::just_error(std::exception_ptr{}), [](std::exception_ptr) { });
     static_assert(ex::sender<decltype(snd)>);
     (void) snd;
   }
 
   TEST_CASE("upon_error with environment returns a sender", "[adaptors][upon_error]") {
-    auto snd = ex::upon_error(ex::just_error(std::exception_ptr{}), [](std::exception_ptr) {});
+    auto snd = ex::upon_error(ex::just_error(std::exception_ptr{}), [](std::exception_ptr) { });
     static_assert(ex::sender_in<decltype(snd), empty_env>);
     (void) snd;
   }

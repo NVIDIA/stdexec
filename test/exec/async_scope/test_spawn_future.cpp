@@ -37,8 +37,8 @@ namespace {
     };
 
     template <class Receiver>
-    friend auto
-      tag_invoke(ex::connect_t, throwing_sender&&, Receiver&&) -> operation<std::decay_t<Receiver>> {
+    friend auto tag_invoke(ex::connect_t, throwing_sender&&, Receiver&&)
+      -> operation<std::decay_t<Receiver>> {
       throw std::logic_error("cannot connect");
     }
   };
@@ -313,20 +313,22 @@ namespace {
     bool cancelled2{false};
 
     {
-      ex::sender auto snd1 = scope.spawn_future(ex::starts_on(
-        sch,
-        ex::just() //
-          | ex::let_stopped([&] {
-              cancelled1 = true;
-              return ex::just();
-            })));
-      ex::sender auto snd2 = scope.spawn_future(ex::starts_on(
-        sch,
-        ex::just() //
-          | ex::let_stopped([&] {
-              cancelled2 = true;
-              return ex::just();
-            })));
+      ex::sender auto snd1 = scope.spawn_future(
+        ex::starts_on(
+          sch,
+          ex::just() //
+            | ex::let_stopped([&] {
+                cancelled1 = true;
+                return ex::just();
+              })));
+      ex::sender auto snd2 = scope.spawn_future(
+        ex::starts_on(
+          sch,
+          ex::just() //
+            | ex::let_stopped([&] {
+                cancelled2 = true;
+                return ex::just();
+              })));
       (void) snd1;
       (void) snd2;
     }

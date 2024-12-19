@@ -148,10 +148,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
     struct operation_state_t : operation_state_base_t<ReceiverId> {
       using PredSender = stdexec::__t<PredecessorSenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
-      using Scheduler =
-        std::invoke_result_t<stdexec::get_scheduler_t, stdexec::env_of_t<Receiver>>;
-      using InnerSender =
-        std::invoke_result_t<Closure, stdexec::schedule_result_t<Scheduler>>;
+      using Scheduler = std::invoke_result_t<stdexec::get_scheduler_t, stdexec::env_of_t<Receiver>>;
+      using InnerSender = std::invoke_result_t<Closure, stdexec::schedule_result_t<Scheduler>>;
 
       using predecessor_op_state_t =
         ex::connect_result_t<PredSender, receiver_1_t<operation_state_t>>;
@@ -167,8 +165,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
       friend void tag_invoke(stdexec::start_t, operation_state_t& op) noexcept {
         if (op.stream_provider_.status_ != cudaSuccess) {
           // Couldn't allocate memory for operation state, complete with error
-          op.propagate_completion_signal(
-            stdexec::set_error, std::move(op.stream_provider_.status_));
+          op.propagate_completion_signal(stdexec::set_error, std::move(op.stream_provider_.status_));
         } else {
           if (op.n_) {
             stdexec::start(*op.pred_op_state_);
@@ -180,9 +177,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
 
       operation_state_t(PredSender&& pred_sender, Closure closure, Receiver&& rcvr, std::size_t n)
         : operation_state_base_t<ReceiverId>(
-          static_cast<Receiver&&>(rcvr),
-          stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(pred_sender))
-            .context_state_)
+            static_cast<Receiver&&>(rcvr),
+            stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(pred_sender))
+              .context_state_)
         , pred_sender_{static_cast<PredSender&&>(pred_sender)}
         , closure_(closure)
         , n_(n) {
@@ -290,10 +287,8 @@ namespace repeat_n_detail {
   struct operation_state_t {
     using PredSender = stdexec::__t<PredecessorSenderId>;
     using Receiver = stdexec::__t<ReceiverId>;
-    using Scheduler =
-      std::invoke_result_t<stdexec::get_scheduler_t, stdexec::env_of_t<Receiver>>;
-    using InnerSender =
-      std::invoke_result_t<Closure, stdexec::schedule_result_t<Scheduler>>;
+    using Scheduler = std::invoke_result_t<stdexec::get_scheduler_t, stdexec::env_of_t<Receiver>>;
+    using InnerSender = std::invoke_result_t<Closure, stdexec::schedule_result_t<Scheduler>>;
 
     using predecessor_op_state_t =
       ex::connect_result_t<PredSender, receiver_1_t<operation_state_t>>;
@@ -395,7 +390,11 @@ struct repeat_n_t {
   template <stdexec::__sender_adaptor_closure Closure>
   auto operator()(std::size_t n, Closure closure) const
     -> stdexec::__binder_back<repeat_n_t, std::size_t, Closure> {
-    return {{n, static_cast<Closure&&>(closure)}, {}, {}};
+    return {
+      {n, static_cast<Closure&&>(closure)},
+      {},
+      {}
+    };
   }
 };
 

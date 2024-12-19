@@ -35,9 +35,7 @@ namespace stdexec {
       using __f = __minvoke<_Fn, _Args...>;
 
       template <__same_as<set_value_t> _Self, class _Receiver, class... _As>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      friend auto
-        tag_invoke(_Self, _Receiver&& __rcvr, _As&&... __as) noexcept
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) friend auto tag_invoke(_Self, _Receiver&& __rcvr, _As&&... __as) noexcept
         -> decltype(static_cast<_Receiver&&>(__rcvr).set_value(static_cast<_As&&>(__as)...)) {
         static_assert(
           noexcept(static_cast<_Receiver&&>(__rcvr).set_value(static_cast<_As&&>(__as)...)),
@@ -52,9 +50,7 @@ namespace stdexec {
 
       template <class _Receiver, class... _As>
         requires tag_invocable<set_value_t, _Receiver, _As...>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      void
-        operator()(_Receiver&& __rcvr, _As&&... __as) const noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) void operator()(_Receiver&& __rcvr, _As&&... __as) const noexcept {
         static_assert(nothrow_tag_invocable<set_value_t, _Receiver, _As...>);
         (void) tag_invoke(
           stdexec::set_value_t{}, static_cast<_Receiver&&>(__rcvr), static_cast<_As&&>(__as)...);
@@ -67,9 +63,7 @@ namespace stdexec {
       using __f = __minvoke<_Fn, _Args...>;
 
       template <__same_as<set_error_t> _Self, class _Receiver, class _Error>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      friend auto
-        tag_invoke(_Self, _Receiver&& __rcvr, _Error&& __err) noexcept
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) friend auto tag_invoke(_Self, _Receiver&& __rcvr, _Error&& __err) noexcept
         -> decltype(static_cast<_Receiver&&>(__rcvr).set_error(static_cast<_Error&&>(__err))) {
         static_assert(
           noexcept(static_cast<_Receiver&&>(__rcvr).set_error(static_cast<_Error&&>(__err))),
@@ -84,9 +78,7 @@ namespace stdexec {
 
       template <class _Receiver, class _Error>
         requires tag_invocable<set_error_t, _Receiver, _Error>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      void
-        operator()(_Receiver&& __rcvr, _Error&& __err) const noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) void operator()(_Receiver&& __rcvr, _Error&& __err) const noexcept {
         static_assert(nothrow_tag_invocable<set_error_t, _Receiver, _Error>);
         (void) tag_invoke(
           stdexec::set_error_t{}, static_cast<_Receiver&&>(__rcvr), static_cast<_Error&&>(__err));
@@ -99,9 +91,7 @@ namespace stdexec {
       using __f = __minvoke<_Fn, _Args...>;
 
       template <__same_as<set_stopped_t> _Self, class _Receiver>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      friend auto
-        tag_invoke(_Self, _Receiver&& __rcvr) noexcept
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) friend auto tag_invoke(_Self, _Receiver&& __rcvr) noexcept
         -> decltype(static_cast<_Receiver&&>(__rcvr).set_stopped()) {
         static_assert(
           noexcept(static_cast<_Receiver&&>(__rcvr).set_stopped()),
@@ -114,9 +104,7 @@ namespace stdexec {
 
       template <class _Receiver>
         requires tag_invocable<set_stopped_t, _Receiver>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      void
-        operator()(_Receiver&& __rcvr) const noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) void operator()(_Receiver&& __rcvr) const noexcept {
         static_assert(nothrow_tag_invocable<set_stopped_t, _Receiver>);
         (void) tag_invoke(stdexec::set_stopped_t{}, static_cast<_Receiver&&>(__rcvr));
       }
@@ -136,7 +124,7 @@ namespace stdexec {
 
   namespace __detail {
     template <class _Receiver>
-    concept __enable_receiver =                                            //
+    concept __enable_receiver =                                          //
       (STDEXEC_EDG(requires { typename _Receiver::receiver_concept; }&&) //
        derived_from<typename _Receiver::receiver_concept, receiver_t>)
       || requires { typename _Receiver::is_receiver; } // back-compat, NOT TO SPEC

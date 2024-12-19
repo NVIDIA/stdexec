@@ -37,8 +37,7 @@ namespace stdexec {
       struct __t {
         using receiver_concept = receiver_t;
         using __id = __detached_receiver;
-        STDEXEC_ATTRIBUTE((no_unique_address))
-        _Env __env_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Env __env_;
 
         template <class... _As>
         void set_value(_As&&...) noexcept {

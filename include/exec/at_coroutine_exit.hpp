@@ -106,8 +106,8 @@ namespace exec {
       using __sender = __t<__sender_id<__decay_t<_Sender>>>;
 
       template <sender _Sender>
-      auto operator()(_Sender&& __sndr) const
-        noexcept(__nothrow_decay_copyable<_Sender>) -> __sender<_Sender> {
+      auto operator()(_Sender&& __sndr) const noexcept(__nothrow_decay_copyable<_Sender>)
+        -> __sender<_Sender> {
         return __sender<_Sender>{static_cast<_Sender&&>(__sndr)};
       }
 
@@ -169,8 +169,8 @@ namespace exec {
           return false;
         }
 
-        static auto await_suspend(
-          __coro::coroutine_handle<__promise> __h) noexcept -> __coro::coroutine_handle<> {
+        static auto await_suspend(__coro::coroutine_handle<__promise> __h) noexcept
+          -> __coro::coroutine_handle<> {
           __promise& __p = __h.promise();
           auto __coro = __p.__is_unhandled_stopped_ ? __p.continuation().unhandled_stopped()
                                                     : __p.continuation().handle();

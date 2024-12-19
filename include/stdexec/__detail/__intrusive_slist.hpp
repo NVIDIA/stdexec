@@ -27,7 +27,7 @@ namespace stdexec {
     template <auto _Next>
     class __intrusive_slist;
 
-    template <class _Item, _Item* _Item::*_Next>
+    template <class _Item, _Item* _Item::* _Next>
     class __intrusive_slist<_Next> {
      public:
       __intrusive_slist() noexcept = default;

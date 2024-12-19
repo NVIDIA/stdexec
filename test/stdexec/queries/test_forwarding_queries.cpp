@@ -43,8 +43,9 @@ namespace {
     static_assert(ex::forwarding_query(ex::get_stop_token));
     static_assert(ex::forwarding_query(ex::get_scheduler));
     static_assert(ex::forwarding_query(ex::get_delegation_scheduler));
-    static_assert(std::is_same_v<ex::get_delegatee_scheduler_t, ex::get_delegation_scheduler_t>,
-        "Deprecated type is the same type.");
+    static_assert(
+      std::is_same_v<ex::get_delegatee_scheduler_t, ex::get_delegation_scheduler_t>,
+      "Deprecated type is the same type.");
     static_assert(&ex::get_delegatee_scheduler == &ex::get_delegation_scheduler);
     static_assert(ex::forwarding_query(ex::get_completion_scheduler<ex::set_value_t>));
     static_assert(ex::forwarding_query(ex::get_completion_scheduler<ex::set_error_t>));

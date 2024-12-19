@@ -30,7 +30,7 @@ namespace stdexec {
   template <auto _Ptr>
   class __intrusive_mpsc_queue;
 
-  template <class _Node, std::atomic<void*> _Node::*_Next>
+  template <class _Node, std::atomic<void*> _Node::* _Next>
   class __intrusive_mpsc_queue<_Next> {
     std::atomic<void*> __back_{&__nil_};
     void* __front_{&__nil_};

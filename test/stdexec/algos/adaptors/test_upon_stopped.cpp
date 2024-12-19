@@ -26,13 +26,13 @@ namespace {
 
   // TODO: implement upon_stopped
   TEST_CASE("upon_stopped returns a sender", "[adaptors][upon_stopped]") {
-    auto snd = ex::upon_stopped(ex::just_stopped(), []() {});
+    auto snd = ex::upon_stopped(ex::just_stopped(), []() { });
     static_assert(ex::sender<decltype(snd)>);
     (void) snd;
   }
 
   TEST_CASE("upon_stopped with environment returns a sender", "[adaptors][upon_stopped]") {
-    auto snd = ex::upon_stopped(ex::just_stopped(), []() {});
+    auto snd = ex::upon_stopped(ex::just_stopped(), []() { });
     static_assert(ex::sender_in<decltype(snd), empty_env>);
     (void) snd;
   }

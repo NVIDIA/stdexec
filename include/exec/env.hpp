@@ -77,8 +77,7 @@ namespace exec {
       struct __t : __immovable {
         using __id = __operation;
 
-        STDEXEC_ATTRIBUTE((no_unique_address))
-        _Default __default_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Default __default_;
         _Receiver __rcvr_;
 
         void start() & noexcept {
@@ -105,8 +104,7 @@ namespace exec {
       using __id = __sender;
       using __t = __sender;
       using sender_concept = stdexec::sender_t;
-      STDEXEC_ATTRIBUTE((no_unique_address))
-      _Default __default_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Default __default_;
 
       template <class _Env>
       using __value_t =

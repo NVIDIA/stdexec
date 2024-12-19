@@ -37,8 +37,7 @@ namespace stdexec {
     struct __transform_env {
       template <class _Domain, class _Sender, class _Env>
       STDEXEC_ATTRIBUTE((always_inline))
-      /*constexpr*/
-      decltype(auto)
+      /*constexpr*/ decltype(auto)
         operator()(_Domain __dom, _Sender&& __sndr, _Env&& __env) const noexcept {
         if constexpr (__domain::__has_transform_env<_Domain, _Sender, _Env>) {
           return __dom.transform_env(static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env));
@@ -51,9 +50,7 @@ namespace stdexec {
 
     struct __transform_sender_1 {
       template <class _Domain, class _Sender, class... _Env>
-      STDEXEC_ATTRIBUTE((always_inline))
-      static constexpr bool
-        __is_nothrow() noexcept {
+      STDEXEC_ATTRIBUTE((always_inline)) static constexpr bool __is_nothrow() noexcept {
         if constexpr (__domain::__has_transform_sender<_Domain, _Sender, _Env...>) {
           return noexcept(__declval<_Domain&>().transform_sender(
             __declval<_Sender>(), __declval<const _Env&>()...));
@@ -66,8 +63,7 @@ namespace stdexec {
 
       template <class _Domain, class _Sender, class... _Env>
       STDEXEC_ATTRIBUTE((always_inline))
-      /*constexpr*/
-      decltype(auto)
+      /*constexpr*/ decltype(auto)
         operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const
         noexcept(__is_nothrow<_Domain, _Sender, const _Env&...>()) {
         if constexpr (__domain::__has_transform_sender<_Domain, _Sender, _Env...>) {
@@ -84,8 +80,7 @@ namespace stdexec {
     struct __transform_sender {
       template <class _Self = __transform_sender, class _Domain, class _Sender, class... _Env>
       STDEXEC_ATTRIBUTE((always_inline))
-      /*constexpr*/
-      decltype(auto)
+      /*constexpr*/ decltype(auto)
         operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const
         noexcept(__nothrow_callable<__transform_sender_1, _Domain, _Sender, const _Env&...>) {
         using _Sender2 = __call_result_t<__transform_sender_1, _Domain, _Sender, const _Env&...>;
@@ -155,7 +150,7 @@ namespace stdexec {
           decltype(__sexpr_apply(__declval<_Sender2&>(), __domain::__common_domain_fn()));
         constexpr bool __second_transform_is_nothrow = noexcept(__domain::__transform_sender()(
           __declval<_Domain2&>(), __declval<_Sender2>(), __declval<const _Env&>()));
-        return __mbool < __first_transform_is_nothrow && __second_transform_is_nothrow > ();
+        return __mbool<__first_transform_is_nothrow && __second_transform_is_nothrow>();
       }))>;
   }
 
@@ -199,8 +194,7 @@ namespace stdexec {
     template <class _Domain, class _Tag, class _Sender, class... _Args>
       requires __has_implementation_for<_Tag, _Domain, _Sender, _Args...>
     STDEXEC_ATTRIBUTE((always_inline))
-    /*constexpr*/
-    decltype(auto)
+    /*constexpr*/ decltype(auto)
       operator()(_Domain __dom, _Tag, _Sender&& __sndr, _Args&&... __args) const {
       if constexpr (__domain::__has_apply_sender<_Domain, _Tag, _Sender, _Args...>) {
         return __dom.apply_sender(

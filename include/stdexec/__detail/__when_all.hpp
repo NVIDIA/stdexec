@@ -226,8 +226,7 @@ namespace stdexec {
       // Could be non-atomic here and atomic_ref everywhere except __completion_fn
       std::atomic<__state_t> __state_{__started};
       _ErrorsVariant __errors_{};
-      STDEXEC_ATTRIBUTE((no_unique_address))
-      _ValuesTuple __values_{};
+      STDEXEC_ATTRIBUTE((no_unique_address)) _ValuesTuple __values_{};
       __optional<__stop_callback_t> __on_stop_{};
     };
 

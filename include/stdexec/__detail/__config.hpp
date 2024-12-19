@@ -138,7 +138,7 @@
 #elif defined(__GNUC__)
 #  define STDEXEC_GCC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #elif defined(_MSC_VER)
-#  define STDEXEC_MSVC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#  define STDEXEC_MSVC(...)         STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #  define STDEXEC_MSVC_HEADERS(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #endif
 

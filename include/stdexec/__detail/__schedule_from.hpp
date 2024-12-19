@@ -112,9 +112,7 @@ namespace stdexec {
     struct __state;
 
     template <class _State>
-    STDEXEC_ATTRIBUTE((always_inline))
-    auto
-      __make_visitor_fn(_State* __state) noexcept {
+    STDEXEC_ATTRIBUTE((always_inline)) auto __make_visitor_fn(_State* __state) noexcept {
       return [__state]<class _Tup>(_Tup& __tupl) noexcept -> void {
         if constexpr (__same_as<_Tup, __monostate>) {
           std::terminate(); // reaching this indicates a bug in schedule_from

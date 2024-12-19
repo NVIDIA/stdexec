@@ -71,9 +71,10 @@ namespace exec {
 
         explicit __t(const __impl* __scope, _Constrained&& __sndr, _Receiver __rcvr)
           : __task{{}, __scope, __notify_waiter}
-          , __op_(stdexec::connect(
-              static_cast<_Constrained&&>(__sndr),
-              static_cast<_Receiver&&>(__rcvr))) {
+          , __op_(
+              stdexec::connect(
+                static_cast<_Constrained&&>(__sndr),
+                static_cast<_Receiver&&>(__rcvr))) {
         }
 
         void start() & noexcept {
@@ -126,8 +127,7 @@ namespace exec {
         }
 
         const __impl* __scope_;
-        STDEXEC_ATTRIBUTE((no_unique_address))
-        _Constrained __c_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Constrained __c_;
       };
     };
 
@@ -140,8 +140,7 @@ namespace exec {
     struct __nest_op_base : __immovable {
       using _Receiver = stdexec::__t<_ReceiverId>;
       const __impl* __scope_;
-      STDEXEC_ATTRIBUTE((no_unique_address))
-      _Receiver __rcvr_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
     };
 
     template <class _ReceiverId>
@@ -244,8 +243,7 @@ namespace exec {
         using sender_concept = stdexec::sender_t;
 
         const __impl* __scope_;
-        STDEXEC_ATTRIBUTE((no_unique_address))
-        _Constrained __c_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Constrained __c_;
 
         template <class _Receiver>
         using __nest_operation_t =
@@ -354,12 +352,9 @@ namespace exec {
           }
         }
 
-        STDEXEC_ATTRIBUTE((no_unique_address))
-        _Receiver __rcvr_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
         std::unique_ptr<__future_state<_Sender, _Env>> __state_;
-        STDEXEC_ATTRIBUTE((no_unique_address))
-        stdexec::__optional<__forward_consumer>
-          __forward_consumer_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) stdexec::__optional<__forward_consumer> __forward_consumer_;
 
        public:
         using __id = __future_op;
@@ -597,9 +592,10 @@ namespace exec {
 
       __future_state(_Sender __sndr, _Env __env, const __impl* __scope)
         : __future_state_base<_Completions, _Env>(static_cast<_Env&&>(__env), __scope)
-        , __op_(stdexec::connect(
-            static_cast<_Sender&&>(__sndr),
-            __future_receiver_t<_Sender, _Env>{this, __scope})) {
+        , __op_(
+            stdexec::connect(
+              static_cast<_Sender&&>(__sndr),
+              __future_receiver_t<_Sender, _Env>{this, __scope})) {
       }
 
       connect_result_t<_Sender, __future_receiver_t<_Sender, _Env>> __op_;

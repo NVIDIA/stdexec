@@ -37,16 +37,12 @@ namespace stdexec {
       }
 
       template <class _Env>
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
-        operator()(_Env __env) const -> __binder_back<__write_env_t, _Env> {
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Env __env) const -> __binder_back<__write_env_t, _Env> {
         return {{static_cast<_Env&&>(__env)}, {}, {}};
       }
 
       template <class _Env>
-      STDEXEC_ATTRIBUTE((always_inline))
-      static auto
-        __transform_env_fn(_Env&& __env) noexcept {
+      STDEXEC_ATTRIBUTE((always_inline)) static auto __transform_env_fn(_Env&& __env) noexcept {
         return [&](__ignore, const auto& __state, __ignore) noexcept {
           return __env::__join(__state, static_cast<_Env&&>(__env));
         };

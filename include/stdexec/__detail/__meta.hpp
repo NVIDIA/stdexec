@@ -329,13 +329,13 @@ namespace stdexec {
   template <class... _Args>
   concept _Ok = (STDEXEC_IS_SAME(__ok_t<_Args>, __msuccess) && ...);
 
-  //! The struct `__i` is the implementation of P2300's  
+  //! The struct `__i` is the implementation of P2300's
   //! [_`META-APPLY`_](https://eel.is/c++draft/exec#util.cmplsig-5).
   //! > [Note [1](https://eel.is/c++draft/exec#util.cmplsig-note-1): 
-  //! > The purpose of META-APPLY is to make it valid to use non-variadic 
+  //! > The purpose of META-APPLY is to make it valid to use non-variadic
   //! > templates as Variant and Tuple arguments to gather-signatures. — end note]
   //! In addition to avoiding the dreaded "pack expanded into non-pack argument" error,
-  //! it is part of the meta-error propagation mechanism. if any of the argument types 
+  //! it is part of the meta-error propagation mechanism. if any of the argument types
   //! are a specialization of `_ERROR_`, `__i` will short-circuit and return the error.
   //! `__minvoke` and `__meval` are implemented in terms of `__i`.
   template <bool _ArgsOK, bool _FnOK = true>
@@ -432,11 +432,11 @@ namespace stdexec {
 
   //! This struct template is like [mpl::quote](https://www.boost.org/doc/libs/1_86_0/libs/mpl/doc/refmanual/quote.html).
   //! It turns an alias/class template into a metafunction that also propagates "meta-exceptions".
-  //! All of the meta utilities recognize specializations of stdexec::_ERROR_ as an error type. 
-  //! Error types short-circuit the evaluation of the metafunction and are automatically propagated like an exception. 
+  //! All of the meta utilities recognize specializations of stdexec::_ERROR_ as an error type.
+  //! Error types short-circuit the evaluation of the metafunction and are automatically propagated like an exception.
   //! Note: `__minvoke` and `__meval` also participate in this error propagation.
   //!
-  //! This design lets us report type errors briefly at the library boundary, even if the 
+  //! This design lets us report type errors briefly at the library boundary, even if the
   //! actual error happens deep inside a meta-program.
   template <template <class...> class _Fn>
   struct __q {
@@ -880,7 +880,7 @@ namespace stdexec {
   };
 
   //! Metafunction mapping `_Ty` to either
-  //! * `typename _Ty::__id` if that exists, or to 
+  //! * `typename _Ty::__id` if that exists, or to
   //! * `_Ty` (itself) otherwise.
   //! See MAINTAINERS.md#class-template-parameters.
   template <class _Ty>
@@ -1128,9 +1128,7 @@ namespace stdexec {
   template <std::size_t _Np>
   struct __nth_pack_element_t {
     template <class... _Ts>
-    STDEXEC_ATTRIBUTE((always_inline))
-    constexpr decltype(auto)
-      operator()(_Ts &&...__ts) const noexcept {
+    STDEXEC_ATTRIBUTE((always_inline)) constexpr decltype(auto) operator()(_Ts &&...__ts) const noexcept {
       static_assert(_Np < sizeof...(_Ts));
       return static_cast<_Ts...[_Np] &&>(__ts...[_Np]);
     }
@@ -1139,9 +1137,7 @@ namespace stdexec {
   template <class... _Ignore>
   struct __nth_pack_element_impl {
     template <class _Ty, class... _Us>
-    STDEXEC_ATTRIBUTE((always_inline))
-    constexpr _Ty &&
-      operator()(_Ignore..., _Ty &&__t, _Us &&...) const noexcept {
+    STDEXEC_ATTRIBUTE((always_inline)) constexpr _Ty &&operator()(_Ignore..., _Ty &&__t, _Us &&...) const noexcept {
       return static_cast<decltype(__t) &&>(__t);
     }
   };
@@ -1149,16 +1145,12 @@ namespace stdexec {
   template <std::size_t _Np>
   struct __nth_pack_element_t {
     template <std::size_t... _Is>
-    STDEXEC_ATTRIBUTE((always_inline))
-    static constexpr auto
-      __impl(__indices<_Is...>) noexcept {
+    STDEXEC_ATTRIBUTE((always_inline)) static constexpr auto __impl(__indices<_Is...>) noexcept {
       return __nth_pack_element_impl<__ignore_t<_Is>...>();
     }
 
     template <class... _Ts>
-    STDEXEC_ATTRIBUTE((always_inline))
-    constexpr decltype(auto)
-      operator()(_Ts &&...__ts) const noexcept {
+    STDEXEC_ATTRIBUTE((always_inline)) constexpr decltype(auto) operator()(_Ts &&...__ts) const noexcept {
       static_assert(_Np < sizeof...(_Ts));
       return __impl(__make_indices<_Np>())(static_cast<_Ts &&>(__ts)...);
     }
@@ -1171,9 +1163,7 @@ namespace stdexec {
   template <auto... _Vs>
   struct __mliterals {
     template <std::size_t _Np>
-    STDEXEC_ATTRIBUTE((always_inline))
-    static constexpr auto
-      __nth() noexcept {
+    STDEXEC_ATTRIBUTE((always_inline)) static constexpr auto __nth() noexcept {
       return stdexec::__nth_pack_element<_Np>(_Vs...);
     }
   };
@@ -1181,9 +1171,7 @@ namespace stdexec {
   template <std::size_t _Np>
   struct __nth_member {
     template <class _Ty>
-    STDEXEC_ATTRIBUTE((always_inline))
-    constexpr decltype(auto)
-      operator()(_Ty &&__ty) const noexcept {
+    STDEXEC_ATTRIBUTE((always_inline)) constexpr decltype(auto) operator()(_Ty &&__ty) const noexcept {
       return static_cast<_Ty &&>(__ty).*(__ty.__mbrs_.template __nth<_Np>());
     }
   };
@@ -1232,7 +1220,7 @@ namespace stdexec {
   struct __mdispatch_<_Ret (*)(_Args...), _Offset> {
     template <class... _Ts>
       requires(__callable<__mdispatch_<_Args, _Offset>, _Ts...> && ...)
-             && __callable<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...>
+           && __callable<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...>
     auto operator()(_Ts &&...__ts) const
       noexcept(__nothrow_callable<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...>)
         -> __call_result_t<_Ret, __call_result_t<__mdispatch_<_Args, _Offset>, _Ts...>...> {
@@ -1272,7 +1260,7 @@ namespace stdexec {
 
     template <class... _Ts>
       requires(__offset < sizeof...(_Ts))
-             && __callable<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>
+           && __callable<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>
     auto operator()(_Ts &&...__ts) const
       noexcept(__nothrow_callable<__impl, __make_indices<sizeof...(_Ts) - __offset - 1>, _Ts...>)
         -> __msecond<
@@ -1283,7 +1271,7 @@ namespace stdexec {
 
     template <class... _Ts>
       requires(sizeof...(_Ts) == __offset)
-             && __callable<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...> *>, _Ts...>
+           && __callable<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...> *>, _Ts...>
     auto operator()(_Ts &&...__ts) const //
       noexcept(
         __nothrow_callable<__mdispatch_<__minvoke<__mpop_back<__qf<_Ret>>, _Args...> *>, _Ts...>)

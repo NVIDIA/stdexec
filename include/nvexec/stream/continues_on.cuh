@@ -87,14 +87,15 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           : operation_state_base_t<ReceiverId>(static_cast<Receiver&&>(rcvr), context_state)
           , context_state_(context_state)
           , storage_(make_host<variant_t>(this->status_, context_state.pinned_resource_))
-          , task_(make_host<task_t>(
-                    this->status_,
-                    context_state.pinned_resource_,
-                    receiver_t{*this},
-                    storage_.get(),
-                    this->get_stream(),
-                    context_state.pinned_resource_)
-                    .release())
+          , task_(
+              make_host<task_t>(
+                this->status_,
+                context_state.pinned_resource_,
+                receiver_t{*this},
+                storage_.get(),
+                this->get_stream(),
+                context_state.pinned_resource_)
+                .release())
           , env_(make_host(this->status_, context_state_.pinned_resource_, this->make_env()))
           , inner_op_{connect(
               static_cast<Sender&&>(sender),

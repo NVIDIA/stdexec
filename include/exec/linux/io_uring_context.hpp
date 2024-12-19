@@ -275,8 +275,8 @@ namespace exec {
       // This function first completes all tasks that are ready in the completion queue of the io_uring.
       // Then it completes all tasks that are ready in the given queue of ready tasks.
       // The function returns the number of previously submitted completed tasks.
-      auto complete(
-        stdexec::__intrusive_queue<&__task::__next_> __ready = __task_queue{}) noexcept -> int {
+      auto complete(stdexec::__intrusive_queue<&__task::__next_> __ready = __task_queue{}) noexcept
+        -> int {
         __u32 __head = __head_.load(std::memory_order_relaxed);
         __u32 __tail = __tail_.load(std::memory_order_acquire);
         int __count = 0;
@@ -654,7 +654,8 @@ namespace exec {
       requires(_Op& __op) {
         {
           static_cast<_Op&&>(__op).receiver()
-        } noexcept -> stdexec::receiver_of<stdexec::completion_signatures<stdexec::set_stopped_t()>>;
+        } noexcept
+          -> stdexec::receiver_of<stdexec::completion_signatures<stdexec::set_stopped_t()>>;
       };
 
     template <__stoppable_task _Op>
@@ -716,8 +717,7 @@ namespace exec {
 
       struct __impl {
         __context& __context_;
-        STDEXEC_ATTRIBUTE((no_unique_address))
-        _Receiver __receiver_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __receiver_;
 
         __impl(__context& __context, _Receiver&& __receiver)
           : __context_{__context}

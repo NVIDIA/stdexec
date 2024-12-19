@@ -30,9 +30,7 @@ namespace stdexec {
   namespace __sched {
     struct schedule_t {
       template <__same_as<schedule_t> _Self, class _Scheduler>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      friend auto
-        tag_invoke(_Self, _Scheduler&& __sched) //
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) friend auto tag_invoke(_Self, _Scheduler&& __sched) //
         noexcept(noexcept(static_cast<_Scheduler&&>(__sched).schedule()))
           -> decltype(static_cast<_Scheduler&&>(__sched).schedule()) {
         static_assert(
@@ -43,9 +41,7 @@ namespace stdexec {
 
       template <class _Scheduler>
         requires tag_invocable<schedule_t, _Scheduler>
-      STDEXEC_ATTRIBUTE((host, device))
-      auto
-        operator()(_Scheduler&& __sched) const
+      STDEXEC_ATTRIBUTE((host, device)) auto operator()(_Scheduler&& __sched) const
         noexcept(nothrow_tag_invocable<schedule_t, _Scheduler>) {
         static_assert(sender<tag_invoke_result_t<schedule_t, _Scheduler>>);
         return tag_invoke(schedule_t{}, static_cast<_Scheduler&&>(__sched));
@@ -69,8 +65,8 @@ namespace stdexec {
   template <class _Scheduler>
   concept __sender_has_completion_scheduler = requires(_Scheduler&& __sched) {
     {
-      stdexec::__decay_copy(get_completion_scheduler<set_value_t>(
-        get_env(schedule(static_cast<_Scheduler&&>(__sched)))))
+      stdexec::__decay_copy(
+        get_completion_scheduler<set_value_t>(get_env(schedule(static_cast<_Scheduler&&>(__sched)))))
     } -> same_as<__decay_t<_Scheduler>>;
   };
 
@@ -124,9 +120,7 @@ namespace stdexec {
   namespace __detail {
     // A handy utility for augmenting an environment with a scheduler.
     template <class _Env, class _Scheduler>
-    STDEXEC_ATTRIBUTE((always_inline))
-    auto
-      __mkenv_sched(_Env&& __env, _Scheduler __sched) {
+    STDEXEC_ATTRIBUTE((always_inline)) auto __mkenv_sched(_Env&& __env, _Scheduler __sched) {
       auto __env2 = __env::__join(
         prop{get_scheduler, __sched}, __env::__without(static_cast<_Env&&>(__env), get_domain));
       using _Env2 = decltype(__env2);

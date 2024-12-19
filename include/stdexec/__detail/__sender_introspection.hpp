@@ -22,9 +22,7 @@ namespace stdexec {
     // A function object that is to senders what std::apply is to tuples:
     struct __sexpr_apply_t {
       template <class _Sender, class _ApplyFn>
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
-        operator()(_Sender&& __sndr, _ApplyFn&& __fun) const //
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Sender&& __sndr, _ApplyFn&& __fun) const //
         noexcept(
           noexcept(__sndr.apply(static_cast<_Sender&&>(__sndr), static_cast<_ApplyFn&&>(__fun)))) //
         -> decltype(__sndr.apply(static_cast<_Sender&&>(__sndr), static_cast<_ApplyFn&&>(__fun))) {

@@ -42,18 +42,14 @@ namespace stdexec {
     // For handling queryables with a static constexpr query member function:
     template <class _Tag, class _Env>
       requires true // so this overload is preferred over the one below
-    STDEXEC_ATTRIBUTE((always_inline))
-    constexpr auto
-      tag_invoke(_Tag, const _Env&) noexcept -> __mconstant<_Env::query(_Tag())> {
+    STDEXEC_ATTRIBUTE((always_inline)) constexpr auto tag_invoke(_Tag, const _Env&) noexcept -> __mconstant<_Env::query(_Tag())> {
       return {};
     }
 
     // For handling queryables with a query member function:
     template <class _Tag, class _Env>
-    STDEXEC_ATTRIBUTE((always_inline))
-    constexpr auto
-      tag_invoke(_Tag, const _Env& __env) noexcept(noexcept(__env.query(_Tag())))
-        -> decltype(__env.query(_Tag())) {
+    STDEXEC_ATTRIBUTE((always_inline)) constexpr auto tag_invoke(_Tag, const _Env& __env) noexcept(noexcept(__env.query(_Tag())))
+      -> decltype(__env.query(_Tag())) {
       return __env.query(_Tag());
     }
 
@@ -97,9 +93,7 @@ namespace stdexec {
     struct tag_invoke_t {
       template <class _Tag, class... _Args>
         requires tag_invocable<_Tag, _Args...>
-      STDEXEC_ATTRIBUTE((always_inline))
-      constexpr auto
-        operator()(_Tag __tag, _Args&&... __args) const
+      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto operator()(_Tag __tag, _Args&&... __args) const
         noexcept(nothrow_tag_invocable<_Tag, _Args...>) -> tag_invoke_result_t<_Tag, _Args...> {
         return tag_invoke(static_cast<_Tag&&>(__tag), static_cast<_Args&&>(__args)...);
       }

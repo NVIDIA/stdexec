@@ -41,9 +41,7 @@ namespace stdexec {
         return __make_sexpr<stopped_as_optional_t>(__(), static_cast<_Sender&&>(__sndr));
       }
 
-      STDEXEC_ATTRIBUTE((always_inline))
-      auto
-        operator()() const noexcept -> __binder_back<stopped_as_optional_t> {
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()() const noexcept -> __binder_back<stopped_as_optional_t> {
         return {{}, {}, {}};
       }
     };

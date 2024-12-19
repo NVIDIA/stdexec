@@ -880,8 +880,8 @@ namespace exec {
       return result;
     }
 
-    inline auto
-      static_thread_pool_::thread_state::try_pop() -> static_thread_pool_::thread_state::pop_result {
+    inline auto static_thread_pool_::thread_state::try_pop()
+      -> static_thread_pool_::thread_state::pop_result {
       pop_result result{nullptr, index_};
       result.task = local_queue_.pop_back();
       if (result.task) [[likely]] {
@@ -890,8 +890,8 @@ namespace exec {
       return try_remote();
     }
 
-    inline auto static_thread_pool_::thread_state::try_steal(
-      std::span<workstealing_victim> victims) -> static_thread_pool_::thread_state::pop_result {
+    inline auto static_thread_pool_::thread_state::try_steal(std::span<workstealing_victim> victims)
+      -> static_thread_pool_::thread_state::pop_result {
       if (victims.empty()) {
         return {nullptr, index_};
       }
@@ -1239,7 +1239,6 @@ namespace exec {
       }
     };
 
-
     //! A customized receiver to allow parallel execution of `stdexec::bulk` operations:
     template <class CvrefSenderId, class ReceiverId, class Shape, class Fun, bool MayThrow>
     struct static_thread_pool_::bulk_receiver<CvrefSenderId, ReceiverId, Shape, Fun, MayThrow>::__t {
@@ -1405,8 +1404,8 @@ namespace exec {
           struct env {
             static_thread_pool_* pool_;
 
-            auto query(
-              get_completion_scheduler_t<set_value_t>) noexcept -> static_thread_pool_::scheduler {
+            auto query(get_completion_scheduler_t<set_value_t>) noexcept
+              -> static_thread_pool_::scheduler {
               return pool_->get_scheduler();
             }
           };

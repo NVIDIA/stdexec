@@ -68,9 +68,7 @@ namespace exec {
       Rcvr& _rcvr;
 
       template <class... Ts>
-      STDEXEC_ATTRIBUTE((always_inline, host, device))
-      void
-        operator()(Ts&&... ts) const noexcept {
+      STDEXEC_ATTRIBUTE((always_inline, host, device)) void operator()(Ts&&... ts) const noexcept {
         _set_tag_t()(static_cast<Rcvr&&>(_rcvr), static_cast<Ts&&>(ts)...);
       }
     };
@@ -82,9 +80,7 @@ namespace exec {
       Rcvr _rcvr;
       Fn _fn;
 
-      STDEXEC_ATTRIBUTE((host, device))
-      void
-        start() & noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) void start() & noexcept {
         if constexpr (stdexec::__nothrow_callable<Fn, _complete_fn<Rcvr>>) {
           static_cast<Fn&&>(_fn)(_complete_fn<Rcvr>{_rcvr});
         } else {
@@ -123,22 +119,17 @@ namespace exec {
       using sender_concept = stdexec::sender_t;
       using completion_signatures = _completions<Fn>;
 
-      STDEXEC_ATTRIBUTE((no_unique_address))
-      JustTag _tag;
+      STDEXEC_ATTRIBUTE((no_unique_address)) JustTag _tag;
       Fn _fn;
 
       template <class Rcvr>
-      STDEXEC_ATTRIBUTE((host, device))
-      auto
-        connect(Rcvr rcvr) && //
+      STDEXEC_ATTRIBUTE((host, device)) auto connect(Rcvr rcvr) && //
         noexcept(stdexec::__nothrow_decay_copyable<Rcvr, Fn>) -> _opstate<Rcvr, Fn> {
         return _opstate<Rcvr, Fn>{static_cast<Rcvr&&>(rcvr), static_cast<Fn&&>(_fn)};
       }
 
       template <class Rcvr>
-      STDEXEC_ATTRIBUTE((host, device))
-      auto
-        connect(Rcvr rcvr) const & //
+      STDEXEC_ATTRIBUTE((host, device)) auto connect(Rcvr rcvr) const & //
         noexcept(stdexec::__nothrow_decay_copyable<Rcvr, Fn const &>) -> _opstate<Rcvr, Fn> {
         return _opstate<Rcvr, Fn>{static_cast<Rcvr&&>(rcvr), _fn};
       }
@@ -149,9 +140,7 @@ namespace exec {
 
    public:
     template <class Fn>
-    STDEXEC_ATTRIBUTE((always_inline, host, device))
-    auto
-      operator()(Fn fn) const noexcept {
+    STDEXEC_ATTRIBUTE((always_inline, host, device)) auto operator()(Fn fn) const noexcept {
       if constexpr (stdexec::__callable<Fn, _probe_fn>) {
         using _completions = stdexec::__call_result_t<Fn, _probe_fn>;
         static_assert(

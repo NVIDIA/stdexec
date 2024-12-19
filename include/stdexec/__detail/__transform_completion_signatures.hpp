@@ -111,10 +111,8 @@ namespace stdexec {
     using __for_each_sig_t = decltype(__sigs::__for_each_sig<_Tuple>(static_cast<_Sig *>(nullptr)));
 
     template <
-      template <class...>
-      class _Tuple,
-      template <class...>
-      class _Variant,
+      template <class...> class _Tuple,
+      template <class...> class _Variant,
       class... _More,
       class _What,
       class... _With>
@@ -122,10 +120,8 @@ namespace stdexec {
       __for_each_completion_signature_fn(_ERROR_<_What, _With...> **) -> _ERROR_<_What, _With...>;
 
     template <
-      template <class...>
-      class _Tuple,
-      template <class...>
-      class _Variant,
+      template <class...> class _Tuple,
+      template <class...> class _Variant,
       class... _More,
       class... _Sigs>
     auto __for_each_completion_signature_fn(completion_signatures<_Sigs...> **)
@@ -134,10 +130,8 @@ namespace stdexec {
 
   template <
     class _Sigs,
-    template <class...>
-    class _Tuple,
-    template <class...>
-    class _Variant,
+    template <class...> class _Tuple,
+    template <class...> class _Variant,
     class... _More>
   using __for_each_completion_signature =
     decltype(__sigs::__for_each_completion_signature_fn<_Tuple, _Variant, _More...>(
@@ -146,19 +140,15 @@ namespace stdexec {
   namespace __sigs {
     ////////////////////////////////////////////////////////////////////////////////////////////////
     template <
-      template <class...>
-      class _SetVal,
-      template <class...>
-      class _SetErr,
+      template <class...> class _SetVal,
+      template <class...> class _SetErr,
       class _SetStp,
       class... _Values>
     auto __transform_sig(set_value_t (*)(_Values...)) -> _SetVal<_Values...>;
 
     template <
-      template <class...>
-      class _SetVal,
-      template <class...>
-      class _SetErr,
+      template <class...> class _SetVal,
+      template <class...> class _SetErr,
       class _SetStp,
       class _Error>
     auto __transform_sig(set_error_t (*)(_Error)) -> _SetErr<_Error>;
@@ -168,35 +158,27 @@ namespace stdexec {
 
     template <
       class _Sig,
-      template <class...>
-      class _SetVal,
-      template <class...>
-      class _SetErr,
+      template <class...> class _SetVal,
+      template <class...> class _SetErr,
       class _SetStp>
     using __transform_sig_t =
       decltype(__sigs::__transform_sig<_SetVal, _SetErr, _SetStp>(static_cast<_Sig *>(nullptr)));
 
     template <
-      template <class...>
-      class _SetVal,
-      template <class...>
-      class _SetErr,
+      template <class...> class _SetVal,
+      template <class...> class _SetErr,
       class _SetStp,
-      template <class...>
-      class _Variant,
+      template <class...> class _Variant,
       class... _More,
       class _What,
       class... _With>
     auto __transform_sigs_fn(_ERROR_<_What, _With...> **) -> _ERROR_<_What, _With...>;
 
     template <
-      template <class...>
-      class _SetVal,
-      template <class...>
-      class _SetErr,
+      template <class...> class _SetVal,
+      template <class...> class _SetErr,
       class _SetStp,
-      template <class...>
-      class _Variant,
+      template <class...> class _Variant,
       class... _More,
       class... _Sigs>
     auto __transform_sigs_fn(completion_signatures<_Sigs...> **) //
@@ -205,13 +187,10 @@ namespace stdexec {
 
   template <
     class _Sigs,
-    template <class...>
-    class _SetVal,
-    template <class...>
-    class _SetErr,
+    template <class...> class _SetVal,
+    template <class...> class _SetErr,
     class _SetStp,
-    template <class...>
-    class _Variant,
+    template <class...> class _Variant,
     class... _More>
   using __transform_completion_signatures = //
     decltype(__sigs::__transform_sigs_fn<_SetVal, _SetErr, _SetStp, _Variant, _More...>(
@@ -226,12 +205,9 @@ namespace stdexec {
     struct __gather_sigs_fn<set_value_t> {
       template <
         class _Sigs,
-        template <class...>
-        class _Then,
-        template <class...>
-        class _Else,
-        template <class...>
-        class _Variant,
+        template <class...> class _Then,
+        template <class...> class _Else,
+        template <class...> class _Variant,
         class... _More>
       using __f = __transform_completion_signatures<
         _Sigs,
@@ -246,12 +222,9 @@ namespace stdexec {
     struct __gather_sigs_fn<set_error_t> {
       template <
         class _Sigs,
-        template <class...>
-        class _Then,
-        template <class...>
-        class _Else,
-        template <class...>
-        class _Variant,
+        template <class...> class _Then,
+        template <class...> class _Else,
+        template <class...> class _Variant,
         class... _More>
       using __f = __transform_completion_signatures<
         _Sigs,
@@ -266,12 +239,9 @@ namespace stdexec {
     struct __gather_sigs_fn<set_stopped_t> {
       template <
         class _Sigs,
-        template <class...>
-        class _Then,
-        template <class...>
-        class _Else,
-        template <class...>
-        class _Variant,
+        template <class...> class _Then,
+        template <class...> class _Else,
+        template <class...> class _Variant,
         class... _More>
       using __f = __transform_completion_signatures<
         _Sigs,
@@ -295,12 +265,9 @@ namespace stdexec {
   template <
     class _Sigs,
     class _WantedTag,
-    template <class...>
-    class _Then,
-    template <class...>
-    class _Else,
-    template <class...>
-    class _Variant,
+    template <class...> class _Then,
+    template <class...> class _Else,
+    template <class...> class _Variant,
     class... _More>
   using __gather_completion_signatures = typename __sigs::__gather_sigs_fn<
     _WantedTag>::template __f<_Sigs, _Then, _Else, _Variant, _More...>;

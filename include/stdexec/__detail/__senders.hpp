@@ -81,7 +81,7 @@ namespace stdexec {
 
     struct get_completion_signatures_t {
       template <class _Sender, class... _Env>
-        requires (sizeof...(_Env) <= 1)
+        requires(sizeof...(_Env) <= 1)
       static auto __impl() {
         // Compute the type of the transformed sender:
         using __tfx_fn = __if_c<sizeof...(_Env) == 0, __mconst<_Sender>, __q<__tfx_sender>>;
@@ -234,10 +234,10 @@ namespace stdexec {
 
       template <sender _Sender, receiver _Receiver>
         requires __with_static_member<__tfx_sender<_Sender, _Receiver>, _Receiver>
-                || __with_member<__tfx_sender<_Sender, _Receiver>, _Receiver>
-                || __with_tag_invoke<__tfx_sender<_Sender, _Receiver>, _Receiver>
-                || __with_co_await<__tfx_sender<_Sender, _Receiver>, _Receiver>
-                || __is_debug_env<env_of_t<_Receiver>>
+              || __with_member<__tfx_sender<_Sender, _Receiver>, _Receiver>
+              || __with_tag_invoke<__tfx_sender<_Sender, _Receiver>, _Receiver>
+              || __with_co_await<__tfx_sender<_Sender, _Receiver>, _Receiver>
+              || __is_debug_env<env_of_t<_Receiver>>
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
         noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
           -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {

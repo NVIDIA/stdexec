@@ -45,21 +45,17 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     using env_t = exec::make_env_t<Env, stdexec::prop<get_stop_token_t, inplace_stop_token>>;
 
     template <class Sender, class... Env>
-    concept valid_child_sender =
-      sender_in<Sender, Env...> &&
-      requires {
-        requires (__v<__count_of<set_value_t, Sender, Env...>> <= 1);
-      };
+    concept valid_child_sender = sender_in<Sender, Env...> && requires {
+      requires(__v<__count_of<set_value_t, Sender, Env...>> <= 1);
+    };
 
     template <class Sender, class... Env>
-    concept too_many_completions_sender =
-      sender_in<Sender, Env...> &&
-      requires {
-        requires (__v<__count_of<set_value_t, Sender, Env...>> > 1);
-      };
+    concept too_many_completions_sender = sender_in<Sender, Env...> && requires {
+      requires(__v<__count_of<set_value_t, Sender, Env...>> > 1);
+    };
 
     template <class Env, class... Senders>
-    struct completions {};
+    struct completions { };
 
     template <class... Env, class... Senders>
       requires(too_many_completions_sender<Senders, Env...> || ...)
@@ -94,7 +90,9 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         __minvoke<
           __mconcat<__qf<set_value_t>>,
           __value_types_t<
-            __completion_signatures_of_t<Senders, Env...>, __q<__types>, __msingle_or<__types<>>>...>;
+            __completion_signatures_of_t<Senders, Env...>,
+            __q<__types>,
+            __msingle_or<__types<>>>...>;
       using __t = //
         __if_c<
           (__sends<set_value_t, Senders, Env...> && ...),

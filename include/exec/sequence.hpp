@@ -26,15 +26,11 @@ namespace exec {
 
     struct sequence_t {
       template <class Sndr>
-      STDEXEC_ATTRIBUTE((nodiscard, host, device))
-      Sndr
-        operator()(Sndr sndr) const;
+      STDEXEC_ATTRIBUTE((nodiscard, host, device)) Sndr operator()(Sndr sndr) const;
 
       template <class... Sndrs>
         requires(sizeof...(Sndrs) > 1) && stdexec::__domain::__has_common_domain<Sndrs...>
-      STDEXEC_ATTRIBUTE((nodiscard, host, device))
-      _sndr<Sndrs...>
-        operator()(Sndrs... sndrs) const;
+      STDEXEC_ATTRIBUTE((nodiscard, host, device)) _sndr<Sndrs...> operator()(Sndrs... sndrs) const;
     };
 
     template <class Rcvr, class OpStateId, class Index>
@@ -44,29 +40,21 @@ namespace exec {
       _opstate_t* _opstate;
 
       template <class... Args>
-      STDEXEC_ATTRIBUTE((always_inline, host, device))
-      void
-        set_value(Args&&... args) && noexcept {
+      STDEXEC_ATTRIBUTE((always_inline, host, device)) void set_value(Args&&... args) && noexcept {
         _opstate->_set_value(Index(), static_cast<Args&&>(args)...);
       }
 
       template <class Error>
-      STDEXEC_ATTRIBUTE((host, device))
-      void
-        set_error(Error&& err) && noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) void set_error(Error&& err) && noexcept {
         stdexec::set_error(static_cast<Rcvr&&>(_opstate->_rcvr), static_cast<Error&&>(err));
       }
 
-      STDEXEC_ATTRIBUTE((host, device))
-      void
-        set_stopped() && noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) void set_stopped() && noexcept {
         stdexec::set_stopped(static_cast<Rcvr&&>(_opstate->_rcvr));
       }
 
       // TODO: use the predecessor's completion scheduler as the current scheduler here.
-      STDEXEC_ATTRIBUTE((host, device))
-      stdexec::env_of_t<Rcvr>
-        get_env() const noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) stdexec::env_of_t<Rcvr> get_env() const noexcept {
         return stdexec::get_env(_opstate->_rcvr);
       }
     };
@@ -98,8 +86,7 @@ namespace exec {
         stdexec::__make_indices<sizeof...(Sndrs) + 1>>;
 
       template <class CvrefSndrs>
-      STDEXEC_ATTRIBUTE((host, device))
-      explicit _opstate(Rcvr&& rcvr, CvrefSndrs&& sndrs)
+      STDEXEC_ATTRIBUTE((host, device)) explicit _opstate(Rcvr&& rcvr, CvrefSndrs&& sndrs)
         : _rcvr{static_cast<Rcvr&&>(rcvr)}
         , _sndrs{_senders_tuple_t::__convert_from(static_cast<CvrefSndrs&&>(sndrs))}
         // move all but the first sender into the opstate.
@@ -114,9 +101,7 @@ namespace exec {
       }
 
       template <class Index, class... Args>
-      STDEXEC_ATTRIBUTE((host, device))
-      void
-        _set_value(Index, [[maybe_unused]] Args&&... args) noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) void _set_value(Index, [[maybe_unused]] Args&&... args) noexcept {
         try {
           constexpr size_t Idx = stdexec::__v<Index> + 1;
           if constexpr (Idx == sizeof...(Sndrs) + 1) {
@@ -132,9 +117,7 @@ namespace exec {
         }
       }
 
-      STDEXEC_ATTRIBUTE((host, device))
-      void
-        start() & noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) void start() & noexcept {
         stdexec::start(_ops.template get<0>());
       }
 
@@ -192,38 +175,28 @@ namespace exec {
 
       template <class Self, class... Env>
         requires(stdexec::__decay_copyable<stdexec::__copy_cvref_t<Self, Sndrs>> && ...)
-      STDEXEC_ATTRIBUTE((host, device))
-      static auto
-        get_completion_signatures(Self&&, Env&&...) -> _completions_t<Env...> {
+      STDEXEC_ATTRIBUTE((host, device)) static auto get_completion_signatures(Self&&, Env&&...) -> _completions_t<Env...> {
         return {};
       }
 
       template <class Self, class Rcvr>
-      STDEXEC_ATTRIBUTE((host, device))
-      static auto
-        connect(Self&& self, Rcvr rcvr) {
+      STDEXEC_ATTRIBUTE((host, device)) static auto connect(Self&& self, Rcvr rcvr) {
         return _opstate<Rcvr, Sndrs...>{static_cast<Rcvr&&>(rcvr), static_cast<Self&&>(self)._sndrs};
       }
 
-      STDEXEC_ATTRIBUTE((no_unique_address, maybe_unused))
-      sequence_t _tag;           //
-      STDEXEC_ATTRIBUTE((no_unique_address, maybe_unused))
-      stdexec::__ignore _ignore; //
+      STDEXEC_ATTRIBUTE((no_unique_address, maybe_unused)) sequence_t _tag; //
+      STDEXEC_ATTRIBUTE((no_unique_address, maybe_unused)) stdexec::__ignore _ignore; //
       stdexec::__tuple_for<Sndrs...> _sndrs;
     };
 
     template <class Sndr>
-    STDEXEC_ATTRIBUTE((host, device))
-    Sndr
-      sequence_t::operator()(Sndr sndr) const {
+    STDEXEC_ATTRIBUTE((host, device)) Sndr sequence_t::operator()(Sndr sndr) const {
       return sndr;
     }
 
     template <class... Sndrs>
       requires(sizeof...(Sndrs) > 1) && stdexec::__domain::__has_common_domain<Sndrs...>
-    STDEXEC_ATTRIBUTE((host, device))
-    _sndr<Sndrs...>
-      sequence_t::operator()(Sndrs... sndrs) const {
+    STDEXEC_ATTRIBUTE((host, device)) _sndr<Sndrs...> sequence_t::operator()(Sndrs... sndrs) const {
       return _sndr<Sndrs...>{{}, {}, {{static_cast<Sndrs&&>(sndrs)}...}};
     }
   } // namespace _seq

@@ -83,8 +83,7 @@ namespace exec {
         using __id = __stopped_means_break;
         using _Receiver = stdexec::__t<_ReceiverId>;
         using _Token = stop_token_of_t<env_of_t<_Receiver>>;
-        STDEXEC_ATTRIBUTE((no_unique_address))
-        _Receiver __rcvr_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {
           return stdexec::get_env(__rcvr_);
@@ -347,8 +346,8 @@ namespace exec {
 
       template <sender _Sender, receiver _Receiver>
         requires __next_connectable<__tfx_sndr<_Sender, _Receiver>, _Receiver>
-                || __subscribeable_with_tag_invoke<__tfx_sndr<_Sender, _Receiver>, _Receiver>
-                || __is_debug_env<env_of_t<_Receiver>>
+              || __subscribeable_with_tag_invoke<__tfx_sndr<_Sender, _Receiver>, _Receiver>
+              || __is_debug_env<env_of_t<_Receiver>>
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
         noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
           -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {

@@ -170,22 +170,16 @@ namespace stdexec {
         using __id = __receiver;
 
         template <class... _As>
-        STDEXEC_ATTRIBUTE((always_inline))
-        void
-          set_value(_As&&... __as) noexcept {
+        STDEXEC_ATTRIBUTE((always_inline)) void set_value(_As&&... __as) noexcept {
           __sh_state_->__complete(set_value_t(), static_cast<_As&&>(__as)...);
         }
 
         template <class _Error>
-        STDEXEC_ATTRIBUTE((always_inline))
-        void
-          set_error(_Error&& __err) noexcept {
+        STDEXEC_ATTRIBUTE((always_inline)) void set_error(_Error&& __err) noexcept {
           __sh_state_->__complete(set_error_t(), static_cast<_Error&&>(__err));
         }
 
-        STDEXEC_ATTRIBUTE((always_inline))
-        void
-          set_stopped() noexcept {
+        STDEXEC_ATTRIBUTE((always_inline)) void set_stopped() noexcept {
           __sh_state_->__complete(set_stopped_t());
         }
 
@@ -230,9 +224,10 @@ namespace stdexec {
       connect_result_t<_CvrefSender, __receiver_t> __shared_op_;
 
       explicit __shared_state(_CvrefSender&& __sndr, _Env __env)
-        : __env_(__env::__join(
-            prop{get_stop_token, __stop_source_.get_token()},
-            static_cast<_Env&&>(__env)))
+        : __env_(
+            __env::__join(
+              prop{get_stop_token, __stop_source_.get_token()},
+              static_cast<_Env&&>(__env)))
         , __shared_op_(connect(static_cast<_CvrefSender&&>(__sndr), __receiver_t{this})) {
         // add one ref count to account for the case where there are no watchers left but the
         // shared op is still running.

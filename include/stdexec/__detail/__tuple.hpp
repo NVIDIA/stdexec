@@ -65,9 +65,7 @@ namespace stdexec {
       }
 
       template <class _Fn, class _Self, class... _Us>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      static auto
-        apply(_Fn &&__fn, _Self &&__self, _Us &&...__us) //
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) static auto apply(_Fn &&__fn, _Self &&__self, _Us &&...__us) //
         noexcept(noexcept(static_cast<_Fn &&>(__fn)(
           static_cast<_Us &&>(__us)...,
           static_cast<_Self &&>(__self).__box<_Ts, _Is>::__value...)))
@@ -80,9 +78,7 @@ namespace stdexec {
 
       template <class _Fn, class _Self, class... _Us>
         requires(__callable<_Fn, _Us..., __copy_cvref_t<_Self, _Ts>> && ...)
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      static auto
-        for_each(_Fn &&__fn, _Self &&__self, _Us &&...__us) //
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) static auto for_each(_Fn &&__fn, _Self &&__self, _Us &&...__us) //
         noexcept((__nothrow_callable<_Fn, _Us..., __copy_cvref_t<_Self, _Ts>> && ...)) -> void {
         return (
           static_cast<_Fn &&>(__fn)(
@@ -92,8 +88,7 @@ namespace stdexec {
     };
 
     template <class... _Ts>
-    STDEXEC_ATTRIBUTE((host, device))
-    __tuple(_Ts...) -> __tuple<__indices_for<_Ts...>{}, _Ts...>;
+    STDEXEC_ATTRIBUTE((host, device)) __tuple(_Ts...) -> __tuple<__indices_for<_Ts...>{}, _Ts...>;
 
     template <class _Fn, class _Tuple, class... _Us>
     using __apply_result_t = //
@@ -117,30 +112,22 @@ namespace stdexec {
 #endif
 
     template <std::size_t _Idx, class _Ty>
-    STDEXEC_ATTRIBUTE((host, device, always_inline))
-    constexpr _Ty &&
-      get(__box<_Ty, _Idx> &&__self) noexcept {
+    STDEXEC_ATTRIBUTE((host, device, always_inline)) constexpr _Ty &&get(__box<_Ty, _Idx> &&__self) noexcept {
       return static_cast<_Ty &&>(__self.__value);
     }
 
     template <std::size_t _Idx, class _Ty>
-    STDEXEC_ATTRIBUTE((host, device, always_inline))
-    constexpr _Ty &
-      get(__box<_Ty, _Idx> &__self) noexcept {
+    STDEXEC_ATTRIBUTE((host, device, always_inline)) constexpr _Ty &get(__box<_Ty, _Idx> &__self) noexcept {
       return __self.__value;
     }
 
     template <std::size_t _Idx, class _Ty>
-    STDEXEC_ATTRIBUTE((host, device, always_inline))
-    constexpr const _Ty &
-      get(const __box<_Ty, _Idx> &__self) noexcept {
+    STDEXEC_ATTRIBUTE((host, device, always_inline)) constexpr const _Ty &get(const __box<_Ty, _Idx> &__self) noexcept {
       return __self.__value;
     }
 
     template <class _Fn, class _Tuple>
-    STDEXEC_ATTRIBUTE((host, device, always_inline))
-    auto
-      operator<<(_Tuple &&__tup, _Fn __fn) noexcept(__nothrow_move_constructible<_Fn>) {
+    STDEXEC_ATTRIBUTE((host, device, always_inline)) auto operator<<(_Tuple &&__tup, _Fn __fn) noexcept(__nothrow_move_constructible<_Fn>) {
       return
         [&__tup, __fn]<class... _Us>(_Us &&...__us) //
         noexcept(__nothrow_applicable<_Fn, _Tuple, _Us...>)
@@ -161,10 +148,9 @@ namespace stdexec {
 
     inline constexpr struct __mktuple_t {
       template <class... _Ts>
-      STDEXEC_ATTRIBUTE((host, device, always_inline))
-      auto
-        operator()(_Ts &&...__ts) const noexcept(noexcept(__tuple{
-          static_cast<_Ts &&>(__ts)...})) -> decltype(__tuple{static_cast<_Ts &&>(__ts)...}) {
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) auto
+        operator()(_Ts &&...__ts) const noexcept(noexcept(__tuple{static_cast<_Ts &&>(__ts)...}))
+          -> decltype(__tuple{static_cast<_Ts &&>(__ts)...}) {
         return __tuple{static_cast<_Ts &&>(__ts)...};
       }
     } __mktuple{};

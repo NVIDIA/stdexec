@@ -64,9 +64,7 @@ namespace stdexec {
       }
 
       template <class _Env>
-      STDEXEC_ATTRIBUTE((always_inline))
-      static auto
-        __transform_env_fn(_Env&& __env) noexcept {
+      STDEXEC_ATTRIBUTE((always_inline)) static auto __transform_env_fn(_Env&& __env) noexcept {
         return [&](__ignore, auto __sched, __ignore) noexcept {
           return __detail::__mkenv_sched(static_cast<_Env&&>(__env), __sched);
         };

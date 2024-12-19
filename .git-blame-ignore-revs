@@ -21,3 +21,6 @@ ab2a3baef655db23fb7ec11ce7ec49575bbd2807
 
 # Reformat everything with clang-format-18
 413749037ac3cd2f66a476fdd593e54e3b4b60b7
+
+# Reformat everything with clang-format-20
+aee392a046a26ae2340849fe98e38332d9537397

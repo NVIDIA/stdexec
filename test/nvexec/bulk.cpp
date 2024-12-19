@@ -14,7 +14,7 @@ namespace {
 
   TEST_CASE("nvexec bulk returns a sender", "[cuda][stream][adaptors][bulk]") {
     nvexec::stream_context stream_ctx{};
-    auto snd = ex::bulk(ex::schedule(stream_ctx.get_scheduler()), 42, [] {});
+    auto snd = ex::bulk(ex::schedule(stream_ctx.get_scheduler()), 42, [] { });
     STATIC_REQUIRE(ex::sender<decltype(snd)>);
     (void) snd;
   }
