@@ -58,8 +58,7 @@ TEST_CASE(
   "[system_scheduler][replaceability]") {
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};
-  exec::system_context ctx;
-  exec::system_scheduler sched = ctx.get_scheduler();
+  exec::system_scheduler sched = exec::get_system_scheduler();
 
   auto snd = ex::then(ex::schedule(sched), [&] { pool_id = std::this_thread::get_id(); });
 
