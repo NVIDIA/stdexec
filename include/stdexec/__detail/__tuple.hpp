@@ -22,7 +22,7 @@
 
 #include <cstddef>
 
-#if STDEXEC_GCC()
+#if STDEXEC_GCC() || STDEXEC_NVHPC()
 // GCC (as of v14) does not implement the resolution of CWG1835
 // https://cplusplus.github.io/CWG/issues/1835.html
 // See: https://godbolt.org/z/TzxrhK6ea
