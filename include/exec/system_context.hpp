@@ -71,28 +71,8 @@ namespace exec {
   template <stdexec::sender _S, std::integral _Size, class _Fn>
   class system_bulk_sender;
 
-  /// Provides a view on some global underlying execution context supporting parallel forward progress.
-  class system_context {
-   public:
-    /// Initializes the system context with the default implementation.
-    system_context();
-    ~system_context() = default;
-
-    system_context(const system_context&) = delete;
-    system_context(system_context&&) = delete;
-    system_context& operator=(const system_context&) = delete;
-    system_context& operator=(system_context&&) = delete;
-
-    // Returns a scheduler that can add work to the underlying execution context.
-    system_scheduler get_scheduler();
-
-    /// Returns the maximum number of threads the context may support; this is just a hint.
-    size_t max_concurrency() const noexcept;
-
-   private:
-    /// The actual implementation of the system context.
-    system_context_replaceability::system_scheduler* __impl_{nullptr};
-  };
+  /// Returns a scheduler that can add work to the underlying execution context.
+  system_scheduler get_system_scheduler();
 
   /// The execution domain of the system_scheduler, used for the purposes of customizing
   /// sender algorithms such as `bulk`.
@@ -540,20 +520,13 @@ namespace exec {
     _Fn __fun_;
   };
 
-  inline system_context::system_context() {
-    __impl_ = system_context_replaceability::query_system_context<
+  inline system_scheduler get_system_scheduler() {
+    auto __impl = system_context_replaceability::query_system_context<
       system_context_replaceability::system_scheduler>();
-    if (!__impl_) {
+    if (!__impl) {
       throw std::runtime_error{"No system context implementation found"};
     }
-  }
-
-  inline system_scheduler system_context::get_scheduler() {
-    return system_scheduler{__impl_};
-  }
-
-  inline size_t system_context::max_concurrency() const noexcept {
-    return std::thread::hardware_concurrency();
+    return system_scheduler{__impl};
   }
 
   inline auto system_scheduler::query(stdexec::get_forward_progress_guarantee_t) const noexcept
