@@ -22,6 +22,19 @@
 
 #include <cstddef>
 
+#if STDEXEC_GCC()
+// GCC (as of v14) does not implement the resolution of CWG1835
+// https://cplusplus.github.io/CWG/issues/1835.html
+// See: https://godbolt.org/z/TzxrhK6ea
+#  define STDEXEC_NO_CWG1835
+#endif
+
+#ifdef STDEXEC_NO_CWG1835
+#  define STDEXEC_CWG1835_TEMPLATE
+#else
+#  define STDEXEC_CWG1835_TEMPLATE template
+#endif
+
 namespace stdexec {
   namespace __tup {
     template <class _Ty, std::size_t _Idx>
@@ -56,12 +69,13 @@ namespace stdexec {
     struct __tuple<_Idx, _Ts...> : __box<_Ts, _Is>... {
       template <class... _Us>
       static __tuple __convert_from(__tuple<_Idx, _Us...> &&__tup) {
-        return __tuple{{static_cast<_Us &&>(__tup.template __box<_Us, _Is>::__value)}...};
+        return __tuple{
+          {static_cast<_Us &&>(__tup.STDEXEC_CWG1835_TEMPLATE __box<_Us, _Is>::__value)}...};
       }
 
       template <class... _Us>
       static __tuple __convert_from(__tuple<_Idx, _Us...> const &__tup) {
-        return __tuple{{__tup.template __box<_Us, _Is>::__value}...};
+        return __tuple{{__tup.STDEXEC_CWG1835_TEMPLATE __box<_Us, _Is>::__value}...};
       }
 
       template <class _Fn, class _Self, class... _Us>
@@ -70,12 +84,13 @@ namespace stdexec {
         apply(_Fn &&__fn, _Self &&__self, _Us &&...__us) //
         noexcept(noexcept(static_cast<_Fn &&>(__fn)(
           static_cast<_Us &&>(__us)...,
-          static_cast<_Self &&>(__self).template __box<_Ts, _Is>::__value...)))
+          static_cast<_Self &&>(__self).STDEXEC_CWG1835_TEMPLATE __box<_Ts, _Is>::__value...)))
           -> decltype(static_cast<_Fn &&>(__fn)(
             static_cast<_Us &&>(__us)...,
-            static_cast<_Self &&>(__self).template __box<_Ts, _Is>::__value...)) {
+            static_cast<_Self &&>(__self).STDEXEC_CWG1835_TEMPLATE __box<_Ts, _Is>::__value...)) {
         return static_cast<_Fn &&>(__fn)(
-          static_cast<_Us &&>(__us)..., static_cast<_Self &&>(__self).template __box<_Ts, _Is>::__value...);
+          static_cast<_Us &&>(__us)...,
+          static_cast<_Self &&>(__self).STDEXEC_CWG1835_TEMPLATE __box<_Ts, _Is>::__value...);
       }
 
       template <class _Fn, class _Self, class... _Us>
@@ -86,7 +101,8 @@ namespace stdexec {
         noexcept((__nothrow_callable<_Fn, _Us..., __copy_cvref_t<_Self, _Ts>> && ...)) -> void {
         return (
           static_cast<_Fn &&>(__fn)(
-            static_cast<_Us &&>(__us)..., static_cast<_Self &&>(__self).template __box<_Ts, _Is>::__value),
+            static_cast<_Us &&>(__us)...,
+            static_cast<_Self &&>(__self).STDEXEC_CWG1835_TEMPLATE __box<_Ts, _Is>::__value),
           ...);
       }
     };
