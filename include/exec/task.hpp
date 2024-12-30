@@ -38,10 +38,14 @@ namespace exec {
   namespace __task {
     using namespace stdexec;
 
-    using __any_scheduler =                                                     //
-      any_receiver_ref<                                                         //
-        completion_signatures<set_error_t(std::exception_ptr), set_stopped_t()> //
-        >::any_sender<>::any_scheduler<>;
+    // The required set_value_t() scheduler-sender completion signature is added in
+    // any_receiver_ref::any_sender::any_scheduler.
+    using __any_scheduler_completions =
+      completion_signatures<set_error_t(std::exception_ptr), set_stopped_t()>;
+
+    using __any_scheduler =
+      any_receiver_ref<__any_scheduler_completions>::any_sender<>::any_scheduler<>;
+
     static_assert(scheduler<__any_scheduler>);
 
     template <class _Ty>
