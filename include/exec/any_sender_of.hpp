@@ -567,8 +567,13 @@ namespace exec {
       }
     };
 
-    template <class _VTable = __empty_vtable, class _Allocator = std::allocator<std::byte>>
-    using __immovable_storage_t = __t<__immovable_storage<_VTable, _Allocator>>;
+    template <
+      class _VTable = __empty_vtable,
+      class _Allocator = std::allocator<std::byte>,
+      std::size_t _InlineSize = 3 * sizeof(void*),
+      std::size_t _Alignment = alignof(std::max_align_t)>
+    using __immovable_storage_t =
+      __t<__immovable_storage<_VTable, _Allocator, _InlineSize, _Alignment>>;
 
     template <class _VTable, class _Allocator = std::allocator<std::byte>>
     using __unique_storage_t = __t<__storage<_VTable, _Allocator>>;
@@ -791,7 +796,8 @@ namespace exec {
       }
     };
 
-    using __immovable_operation_storage = __immovable_storage_t<__operation_vtable>;
+    using __immovable_operation_storage =
+      __immovable_storage_t<__operation_vtable, std::allocator<std::byte>, 6 * sizeof(void*)>;
 
     template <class _Sigs, class _Queries>
     using __receiver_ref = __mapply<__mbind_front<__q<__rec::__ref>, _Sigs>, _Queries>;
@@ -1205,6 +1211,7 @@ namespace exec {
 
       template <auto... _SchedulerQueries>
       class any_scheduler {
+        // Add the required set_value_t() completions to the schedule-sender.
         using __schedule_completions = stdexec::__concat_completion_signatures<
           _Completions,
           stdexec::completion_signatures<stdexec::set_value_t()>>;
@@ -1216,10 +1223,11 @@ namespace exec {
         template <class _Tag>
         struct __ret_equals_to {
           template <class _Sig>
-          using __f = std::is_same<_Tag, decltype(__ret_fn(static_cast<_Sig>(nullptr)))>;
+          using __f =
+            stdexec::__mbool<STDEXEC_IS_SAME(_Tag, decltype(__ret_fn(static_cast<_Sig>(nullptr))))>;
         };
 
-        using schedule_sender_queries = stdexec::__minvoke<
+        using __schedule_sender_queries = stdexec::__minvoke<
           stdexec::__mremove_if<
             __ret_equals_to<stdexec::get_completion_scheduler_t<stdexec::set_value_t>>>,
           decltype(_SenderQueries)...>;
@@ -1238,7 +1246,7 @@ namespace exec {
           stdexec::get_completion_scheduler<stdexec::set_value_t>.template signature<any_scheduler() noexcept>>;
 #endif
         using __schedule_sender =
-          stdexec::__mapply<stdexec::__q<__schedule_sender_fn>, schedule_sender_queries>;
+          stdexec::__mapply<stdexec::__q<__schedule_sender_fn>, __schedule_sender_queries>;
 
         using __scheduler_base =
           __any::__scheduler<__schedule_sender, queries<_SchedulerQueries...>>;
