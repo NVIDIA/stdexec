@@ -38,6 +38,7 @@ set(exec_test_sources
     async_scope/test_empty.cpp
     async_scope/test_stop.cpp
     test_when_any.cpp
+    test_when_all_range.cpp
     test_at_coroutine_exit.cpp
     test_materialize.cpp
     $<$<BOOL:${STDEXEC_ENABLE_IO_URING_TESTS}>:test_io_uring_context.cpp>
