@@ -339,6 +339,13 @@ namespace __coro = std::experimental;
 #  define STDEXEC_IS_CONST(...) stdexec::__is_const_<__VA_ARGS__>
 #endif
 
+#if STDEXEC_HAS_BUILTIN(__is_function)
+#  define STDEXEC_IS_FUNCTION(...) __is_function(__VA_ARGS__)
+#else
+#  define STDEXEC_IS_FUNCTION(...)                                                                 \
+    (!STDEXEC_IS_CONST(__VA_ARGS__) && !STDEXEC_IS_CONST(const __VA_ARGS__))
+#endif
+
 #if STDEXEC_HAS_BUILTIN(__is_same)
 #  define STDEXEC_IS_SAME(...) __is_same(__VA_ARGS__)
 #elif STDEXEC_HAS_BUILTIN(__is_same_as)
