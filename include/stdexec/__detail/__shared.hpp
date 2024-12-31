@@ -268,7 +268,7 @@ namespace stdexec {
       }
 
       void __detach() noexcept {
-        if (__ref_count_.load(std::memory_order_acq_rel) < 4ul) {
+        if (__ref_count_.load() < 4ul) {
           // We are the final "consumer", and we are about to release our reference
           // to the shared state. Ask the operation to stop early.
           __stop_source_.request_stop();
