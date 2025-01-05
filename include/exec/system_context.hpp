@@ -168,7 +168,8 @@ namespace exec {
       void start() & noexcept {
         auto* __scheduler_impl =
           __preallocated_.__as<system_context_replaceability::system_scheduler*>();
-        __scheduler_impl->schedule(__preallocated_.__as_storage(), &__rcvr_);
+        system_context_replaceability::env __e{};
+        __scheduler_impl->schedule(__preallocated_.__as_storage(), &__rcvr_, __e);
       }
 
       /// Object that receives completion from the work described by the sender.
@@ -382,7 +383,8 @@ namespace exec {
 
         // Schedule the bulk work on the system scheduler.
         // This will invoke `start` on our receiver multiple times, and then a completion signal (e.g., `set_value`).
-        __scheduler->bulk_schedule(__size, __storage, __r);
+        system_context_replaceability::env __e{};
+        __scheduler->bulk_schedule(__size, __storage, __r, __e);
       }
 
       /// Invoked when the previous sender completes with "stopped" to stop the entire work.

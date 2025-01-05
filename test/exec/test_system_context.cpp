@@ -208,9 +208,9 @@ struct my_system_scheduler_impl : exec::__system_context_default_impl::__system_
     return count_schedules_;
   }
 
-  void schedule(scr::storage __s, scr::receiver* __r) noexcept override {
+  void schedule(scr::storage __s, scr::receiver* __r, scr::env __e) noexcept override {
     count_schedules_++;
-    base_t::schedule(__s, __r);
+    base_t::schedule(__s, __r, __e);
   }
 
 
@@ -218,7 +218,23 @@ struct my_system_scheduler_impl : exec::__system_context_default_impl::__system_
   int count_schedules_ = 0;
 };
 
-TEST_CASE("can change the implementation of system context", "[types][system_scheduler]") {
+struct my_inline_scheduler_impl : scr::system_scheduler {
+  void schedule(scr::storage s, scr::receiver* r, scr::env e) noexcept override {
+    r->set_value();
+  }
+
+  void
+    bulk_schedule(uint32_t count, scr::storage s, scr::bulk_item_receiver* r, scr::env e) noexcept
+    override {
+    for (uint32_t i = 0; i < count; ++i)
+      r->start(i);
+    r->set_value();
+  }
+};
+
+TEST_CASE(
+  "can change the implementation of system context at runtime",
+  "[types][system_scheduler]") {
   my_system_scheduler_impl my_scheduler;
   bool r = scr::set_system_context_backend<scr::system_scheduler>(&my_scheduler);
   REQUIRE(r);
@@ -235,4 +251,66 @@ TEST_CASE("can change the implementation of system context", "[types][system_sch
 
   REQUIRE(pool_id != std::thread::id{});
   REQUIRE(this_id != pool_id);
+}
+
+TEST_CASE(
+  "can change the implementation of system context at runtime, with an inline scheduler",
+  "[types][system_scheduler]") {
+  my_inline_scheduler_impl my_scheduler;
+  bool r = scr::set_system_context_backend<scr::system_scheduler>(&my_scheduler);
+  REQUIRE(r);
+
+  std::thread::id this_id = std::this_thread::get_id();
+  std::thread::id pool_id{};
+  exec::system_scheduler sched = exec::get_system_scheduler();
+
+  auto snd = ex::then(ex::schedule(sched), [&] { pool_id = std::this_thread::get_id(); });
+
+  ex::sync_wait(std::move(snd));
+
+  REQUIRE(this_id == pool_id);
+}
+
+TEST_CASE("empty environment always returns nullopt for any query", "[types][system_scheduler]") {
+  scr::env frontend_env{};
+
+  scr::env env = frontend_env; // simulate a copy to the backend
+  REQUIRE(env.try_query<stdexec::inplace_stop_token>() == std::nullopt);
+  REQUIRE(env.try_query<int>() == std::nullopt);
+  REQUIRE(env.try_query<std::allocator<int>>() == std::nullopt);
+}
+
+TEST_CASE("environment with a stop token can expose its stop token", "[types][system_scheduler]") {
+  stdexec::inplace_stop_source ss;
+  auto token = ss.get_token();
+  scr::env frontend_env{token};
+
+  scr::env env = frontend_env; // simulate a copy to the backend
+  auto o1 = env.try_query<stdexec::inplace_stop_token>();
+  REQUIRE(o1.has_value());
+  REQUIRE(o1.value().stop_requested() == false);
+  REQUIRE(o1.value() == token);
+
+  ss.request_stop();
+  REQUIRE(o1.value().stop_requested() == true);
+
+  REQUIRE(env.try_query<int>() == std::nullopt);
+  REQUIRE(env.try_query<std::allocator<int>>() == std::nullopt);
+}
+
+TEST_CASE("environment constructed with tuple", "[types][system_scheduler]") {
+  stdexec::inplace_stop_source ss;
+  std::tuple<stdexec::inplace_stop_token> data{ss.get_token()};
+  scr::env frontend_env{data};
+  scr::env env = frontend_env; // simulate a copy to the backend
+
+  // Can extract the stop token
+  auto o1 = env.try_query<stdexec::inplace_stop_token>();
+  REQUIRE(o1.has_value());
+  REQUIRE(o1.value().stop_requested() == false);
+  REQUIRE(o1.value() == ss.get_token());
+
+  // Cannot extract other types
+  REQUIRE(env.try_query<int>() == std::nullopt);
+  REQUIRE(env.try_query<std::allocator<int>>() == std::nullopt);
 }

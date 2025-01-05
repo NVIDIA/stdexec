@@ -24,6 +24,7 @@ namespace exec::__system_context_default_impl {
   using system_context_replaceability::receiver;
   using system_context_replaceability::bulk_item_receiver;
   using system_context_replaceability::storage;
+  using system_context_replaceability::env;
   using system_context_replaceability::system_scheduler;
 
   using __pool_scheduler_t = decltype(std::declval<exec::static_thread_pool>().get_scheduler());
@@ -171,7 +172,7 @@ namespace exec::__system_context_default_impl {
       std::declval<__bulk_functor>()))>;
 
    public:
-    void schedule(storage __storage, receiver* __r) noexcept override {
+    void schedule(storage __storage, receiver* __r, env __e) noexcept override {
       try {
         auto __sndr = stdexec::schedule(__pool_scheduler_);
         auto __os =
@@ -183,7 +184,8 @@ namespace exec::__system_context_default_impl {
     }
 
     void
-      bulk_schedule(uint32_t __size, storage __storage, bulk_item_receiver* __r) noexcept override {
+      bulk_schedule(uint32_t __size, storage __storage, bulk_item_receiver* __r, env __e) noexcept
+      override {
       try {
         auto __sndr =
           stdexec::bulk(stdexec::schedule(__pool_scheduler_), __size, __bulk_functor{__r});
