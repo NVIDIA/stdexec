@@ -26,10 +26,33 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wattributes") // warning: inline function '[...]' declared weak
 
-/// Gets the default system context implementation.
-extern STDEXEC_SYSTEM_CONTEXT_INLINE STDEXEC_ATTRIBUTE((weak)) void*
-  __query_system_context_interface(const __uuid& __id) noexcept {
-  return exec::__system_context_default_impl::__default_query_system_context_interface(__id);
-}
+namespace exec::system_context_replaceability {
+  /// The default implementation of the `query_system_context` function template.
+  template <__queryable_interface _Interface>
+  extern STDEXEC_SYSTEM_CONTEXT_INLINE STDEXEC_ATTRIBUTE((weak)) _Interface* query_system_context() {
+    return nullptr;
+  }
+
+  template <>
+  exec::system_context_replaceability::system_scheduler*
+    query_system_context<exec::system_context_replaceability::system_scheduler>() {
+    return exec::__system_context_default_impl::__instance_holder::__singleton()
+      .__get_current_instance();
+  }
+
+  /// The default implementation of the `query_system_context` function template.
+  template <typename _Interface>
+  extern STDEXEC_SYSTEM_CONTEXT_INLINE STDEXEC_ATTRIBUTE((weak)) bool set_system_context_backend(_Interface* __backend) {
+    return false;
+  }
+
+  template <>
+  bool
+    set_system_context_backend(exec::system_context_replaceability::system_scheduler* __backend) {
+    exec::__system_context_default_impl::__instance_holder::__singleton().__set_current_instance(
+      __backend);
+    return true;
+  }
+} // namespace exec::system_context_replaceability
 
 STDEXEC_PRAGMA_POP()

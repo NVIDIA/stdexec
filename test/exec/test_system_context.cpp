@@ -32,6 +32,7 @@
 
 
 namespace ex = stdexec;
+namespace scr = exec::system_context_replaceability;
 
 TEST_CASE("system_context can return a scheduler", "[types][system_scheduler]") {
   auto sched = exec::get_system_scheduler();
@@ -207,9 +208,7 @@ struct my_system_scheduler_impl : exec::__system_context_default_impl::__system_
     return count_schedules_;
   }
 
-  void schedule(
-    exec::__system_context_default_impl::storage __s,
-    exec::__system_context_default_impl::receiver* __r) noexcept override {
+  void schedule(scr::storage __s, scr::receiver* __r) noexcept override {
     count_schedules_++;
     base_t::schedule(__s, __r);
   }
@@ -220,12 +219,9 @@ struct my_system_scheduler_impl : exec::__system_context_default_impl::__system_
 };
 
 TEST_CASE("can change the implementation of system context", "[types][system_scheduler]") {
-  using namespace exec::system_context_replaceability;
-
-  // Not to spec.
   my_system_scheduler_impl my_scheduler;
-  auto scr = query_system_context<__system_context_replaceability>();
-  scr->__set_system_scheduler(&my_scheduler);
+  bool r = scr::set_system_context_backend<scr::system_scheduler>(&my_scheduler);
+  REQUIRE(r);
 
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};

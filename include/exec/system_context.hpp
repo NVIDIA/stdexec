@@ -210,6 +210,7 @@ namespace exec {
       -> __detail::__system_op<system_sender, _Rcvr> {
       return {std::move(__rcvr), __scheduler_};
     }
+
     template <stdexec::receiver _Rcvr>
     auto connect(_Rcvr __rcvr) & noexcept(stdexec::__nothrow_move_constructible<_Rcvr>) //
       -> __detail::__system_op<system_sender, _Rcvr> {
@@ -526,9 +527,15 @@ namespace exec {
     _Fn __fun_;
   };
 
+  // Add an indirection to the instantiation of `query_system_context<_Interface>`.
+  template <typename _Interface>
+  _Interface* __query_system_context_interface() {
+    return system_context_replaceability::query_system_context<_Interface>();
+  }
+
   inline system_scheduler get_system_scheduler() {
-    auto __impl = system_context_replaceability::query_system_context<
-      system_context_replaceability::system_scheduler>();
+    auto __impl =
+      __query_system_context_interface<system_context_replaceability::system_scheduler>();
     if (!__impl) {
       throw std::runtime_error{"No system context implementation found"};
     }

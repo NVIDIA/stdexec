@@ -25,7 +25,6 @@ namespace exec::__system_context_default_impl {
   using system_context_replaceability::bulk_item_receiver;
   using system_context_replaceability::storage;
   using system_context_replaceability::system_scheduler;
-  using system_context_replaceability::__system_context_replaceability;
 
   using __pool_scheduler_t = decltype(std::declval<exec::static_thread_pool>().get_scheduler());
 
@@ -224,24 +223,5 @@ namespace exec::__system_context_default_impl {
 
     system_scheduler* __current_instance_;
   };
-
-  struct __system_context_replaceability_impl : __system_context_replaceability {
-    //! Globally replaces the system scheduler backend.
-    //! This needs to be called within `main()` and before the system scheduler is accessed.
-    void __set_system_scheduler(system_scheduler* __backend) noexcept override {
-      __instance_holder::__singleton().__set_current_instance(__backend);
-    }
-  };
-
-  void* __default_query_system_context_interface(const __uuid& __id) noexcept {
-    if (__id == system_scheduler::__interface_identifier) {
-      return __instance_holder::__singleton().__get_current_instance();
-    } else if (__id == __system_context_replaceability::__interface_identifier) {
-      static __system_context_replaceability_impl __impl;
-      return &__impl;
-    }
-
-    return nullptr;
-  }
 
 } // namespace exec::__system_context_default_impl

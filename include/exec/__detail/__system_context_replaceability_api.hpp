@@ -28,9 +28,6 @@ struct __uuid {
   friend bool operator==(__uuid, __uuid) noexcept = default;
 };
 
-/// Implementation-defined mechanism of querying a system context interface identified by `__id`.
-extern void* __query_system_context_interface(const __uuid& __id) noexcept;
-
 namespace exec::system_context_replaceability {
 
   //! Helper for the `__queryable_interface` concept.
@@ -44,10 +41,11 @@ namespace exec::system_context_replaceability {
 
   /// Query the system context for an interface of type `_Interface`.
   template <__queryable_interface _Interface>
-  inline _Interface* query_system_context() {
-    return static_cast<_Interface*>(
-      __query_system_context_interface(_Interface::__interface_identifier));
-  }
+  extern _Interface* query_system_context();
+
+  /// Sets the system context backend for an interface of type `_Interface`.
+  template <__queryable_interface _Interface>
+  extern bool set_system_context_backend(_Interface* __backend);
 
   /// Interface for completing a sender operation.
   /// Backend will call frontend though this interface for completing the `schedule` and `schedule_bulk` operations.
@@ -85,15 +83,6 @@ namespace exec::system_context_replaceability {
     virtual void schedule(storage __s, receiver* __r) noexcept = 0;
     /// Schedule bulk work of size `__n` on system scheduler, calling `__r` for each item and then when done, and using `__s` for preallocated memory.
     virtual void bulk_schedule(uint32_t __n, storage __s, bulk_item_receiver* __r) noexcept = 0;
-  };
-
-  /// Implementation-defined mechanism for replacing the system scheduler backend at run-time.
-  struct __system_context_replaceability {
-    static constexpr __uuid __interface_identifier{0xc008a3be3bb9284b, 0xb98edb3a740ee02c};
-
-    /// Globally replaces the system scheduler backend.
-    /// This needs to be called within `main()` and before the system scheduler is accessed.
-    virtual void __set_system_scheduler(system_scheduler*) noexcept = 0;
   };
 
 } // namespace exec::system_context_replaceability

@@ -20,6 +20,7 @@
 #include <exec/__detail/__system_context_default_impl.hpp>
 
 namespace ex = stdexec;
+namespace scr = exec::system_context_replaceability;
 
 namespace {
 
@@ -30,28 +31,23 @@ namespace {
 
     my_system_scheduler_impl() = default;
 
-    void schedule(
-      exec::__system_context_default_impl::storage __s,
-      exec::__system_context_default_impl::receiver* __r) noexcept override {
+    void schedule(scr::storage __s, scr::receiver* __r) noexcept override {
       count_schedules++;
       base_t::schedule(__s, __r);
     }
   };
 
-  void* my_query_system_context_interface(__uuid id) noexcept {
-    if (id == exec::__system_context_default_impl::system_scheduler::__interface_identifier) {
-      static my_system_scheduler_impl instance;
-      return &instance;
-    }
-    return nullptr;
-  }
-
 } // namespace
 
-// Should replace the function defined in __system_context_default_impl.hpp
-extern STDEXEC_ATTRIBUTE((weak)) void* __query_system_context_interface(const __uuid& id) noexcept {
-  return my_query_system_context_interface(id);
-}
+namespace exec::system_context_replaceability {
+  // Should replace the function instantiation defined in __system_context_default_impl.hpp
+  template <>
+  exec::system_context_replaceability::system_scheduler*
+    query_system_context<exec::system_context_replaceability::system_scheduler>() {
+    static my_system_scheduler_impl instance;
+    return &instance;
+  }
+} // namespace exec::system_context_replaceability
 
 TEST_CASE(
   "Check that we are using a replaced system context (with weak linking)",
