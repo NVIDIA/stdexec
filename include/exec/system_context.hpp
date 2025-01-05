@@ -166,9 +166,17 @@ namespace exec {
 
       /// Starts the work stored in `this`.
       void start() & noexcept {
+        auto st = stdexec::get_stop_token(stdexec::get_env(__rcvr_.__rcvr_));
+        if (st.stop_requested()) {
+          stdexec::set_stopped(__rcvr_);
+          return;
+        }
+        system_context_replaceability::env __e{};
+        if constexpr (std::is_same_v<stdexec::inplace_stop_token, std::decay_t<decltype(st)>>) {
+          __e = system_context_replaceability::env{st};
+        }
         auto* __scheduler_impl =
           __preallocated_.__as<system_context_replaceability::system_scheduler*>();
-        system_context_replaceability::env __e{};
         __scheduler_impl->schedule(__preallocated_.__as_storage(), &__rcvr_, __e);
       }
 
@@ -369,6 +377,16 @@ namespace exec {
 
       template <class... _As>
       void set_value(_As&&... __as) noexcept {
+        auto st = stdexec::get_stop_token(stdexec::get_env(__state_.__rcvr_));
+        if (st.stop_requested()) {
+          stdexec::set_stopped(__state_.__rcvr_);
+          return;
+        }
+        system_context_replaceability::env __e{};
+        if constexpr (std::is_same_v<stdexec::inplace_stop_token, std::decay_t<decltype(st)>>) {
+          __e = system_context_replaceability::env{st};
+        }
+
         // Store the input data in the shared state.
         using __typed_forward_args_receiver_t =
           __typed_forward_args_receiver<_Previous, _BulkState, _As...>;
@@ -383,7 +401,6 @@ namespace exec {
 
         // Schedule the bulk work on the system scheduler.
         // This will invoke `start` on our receiver multiple times, and then a completion signal (e.g., `set_value`).
-        system_context_replaceability::env __e{};
         __scheduler->bulk_schedule(__size, __storage, __r, __e);
       }
 

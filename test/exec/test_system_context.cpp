@@ -124,26 +124,25 @@ TEST_CASE("simple chain task on system context", "[types][system_scheduler]") {
   (void) snd2;
 }
 
-// TODO: fix this test. This also makes tsan and asan unhappy.
-// TEST_CASE("checks stop_token before starting the work", "[types][system_scheduler]") {
-//   exec::system_scheduler sched = exec::get_system_scheduler();
+TEST_CASE("checks stop_token before starting the work", "[types][system_scheduler]") {
+  exec::system_scheduler sched = exec::get_system_scheduler();
 
-//   exec::async_scope scope;
-//   scope.request_stop();
+  exec::async_scope scope;
+  scope.request_stop();
+  REQUIRE(scope.get_stop_source().stop_requested());
 
-//   bool called = false;
-//   auto snd = ex::then(ex::schedule(sched), [&called] { called = true; });
+  bool called = false;
+  auto snd = ex::then(ex::schedule(sched), [&called] { called = true; });
 
-//   // Start the sender in a stopped scope
-//   scope.spawn(std::move(snd));
+  // Start the sender in a stopped scope
+  scope.spawn(std::move(snd));
 
-//   // Wait for everything to be completed.
-//   ex::sync_wait(scope.on_empty());
+  // Wait for everything to be completed.
+  ex::sync_wait(scope.on_empty());
 
-//   // Assert.
-//   // TODO: called should be false
-//   REQUIRE(called);
-// }
+  // Assert.
+  REQUIRE_FALSE(called);
+}
 
 TEST_CASE("simple bulk task on system context", "[types][system_scheduler]") {
   std::thread::id this_id = std::this_thread::get_id();

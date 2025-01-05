@@ -40,18 +40,20 @@ namespace exec::__system_context_default_impl {
   - __recv::__r_ (receiver*) -- 8
   - __recv::__op_ (__operation*) -- 8
   - __operation::__inner_op_ (stdexec::connect_result_t<_Sender, __recv<_Sender>>) -- 56 (when connected with an empty receiver)
+  - __operation::__stop_token_ (inplace_stop_token) -- 8
   - __operation::__on_heap_ (bool) -- optimized away
   ---------------------
-  Total: 72; extra 16 bytes compared to internal operation state.
+  Total: 80; extra 24 bytes compared to internal operation state.
 
   extra for bulk:
   - __recv::__r_ (receiver*) -- 8
   - __recv::__op_ (__operation*) -- 8
   - __operation::__inner_op_ (stdexec::connect_result_t<_Sender, __recv<_Sender>>) -- 128 (when connected with an empty receiver & fun)
+  - __operation::__stop_token_ (inplace_stop_token) -- 8
   - __operation::__on_heap_ (bool) -- optimized away
   - __bulk_functor::__r_ (bulk_item_receiver*) - 8
   ---------------------
-  Total: 152; extra 24 bytes compared to internal operation state.
+  Total: 160; extra 32 bytes compared to internal operation state.
 
   [*] sizes taken on an Apple M2 Pro arm64 arch. They may differ on other architectures, or with different implementations.
   */
@@ -89,6 +91,14 @@ namespace exec::__system_context_default_impl {
       __op->__destruct(); // destroys the operation, including `this`.
       __r->set_stopped();
     }
+
+    decltype(auto) get_env() const noexcept {
+      return stdexec::prop{stdexec::get_stop_token, __get_stop_token()};
+    }
+
+    stdexec::inplace_stop_token __get_stop_token() const noexcept {
+      return __op_->__stop_token_;
+    }
   };
 
   /// Ensure that `__storage` is aligned to `__alignment`. Shrinks the storage, if needed, to match desired alignment.
@@ -110,17 +120,22 @@ namespace exec::__system_context_default_impl {
   struct __operation {
     /// The inner operation state, that results out of connecting the underlying sender with the receiver.
     stdexec::connect_result_t<_Sender, __recv<_Sender>> __inner_op_;
+    /// The stop token sent to the operation throught dynamic environment.
+    stdexec::inplace_stop_token __stop_token_;
     /// True if the operation is on the heap, false if it is in the preallocated space.
     bool __on_heap_;
 
     /// Try to construct the operation in the preallocated memory if it fits, otherwise allocate a new operation.
-    static __operation*
-      __construct_maybe_alloc(storage __storage, receiver* __completion, _Sender __sndr) {
+    static __operation* __construct_maybe_alloc(
+      storage __storage,
+      receiver* __completion,
+      _Sender __sndr,
+      stdexec::inplace_stop_token __st) {
       __storage = __ensure_alignment(__storage, alignof(__operation));
       if (__storage.__data == nullptr || __storage.__size < sizeof(__operation)) {
-        return new __operation(std::move(__sndr), __completion, true);
+        return new __operation(std::move(__sndr), __completion, __st, true);
       } else {
-        return new (__storage.__data) __operation(std::move(__sndr), __completion, false);
+        return new (__storage.__data) __operation(std::move(__sndr), __completion, __st, false);
       }
     }
 
@@ -139,8 +154,13 @@ namespace exec::__system_context_default_impl {
     }
 
    private:
-    __operation(_Sender __sndr, receiver* __completion, bool __on_heap)
+    __operation(
+      _Sender __sndr,
+      receiver* __completion,
+      stdexec::inplace_stop_token __st,
+      bool __on_heap)
       : __inner_op_(stdexec::connect(std::move(__sndr), __recv<_Sender>{__completion, this}))
+      , __stop_token_(std::move(__st))
       , __on_heap_(__on_heap) {
     }
   };
@@ -174,9 +194,11 @@ namespace exec::__system_context_default_impl {
    public:
     void schedule(storage __storage, receiver* __r, env __e) noexcept override {
       try {
+        auto __o = __e.template try_query<stdexec::inplace_stop_token>();
+        auto __st = __o ? *__o : stdexec::inplace_stop_token{};
         auto __sndr = stdexec::schedule(__pool_scheduler_);
-        auto __os =
-          __schedule_operation_t::__construct_maybe_alloc(__storage, __r, std::move(__sndr));
+        auto __os = __schedule_operation_t::__construct_maybe_alloc(
+          __storage, __r, std::move(__sndr), std::move(__st));
         __os->start();
       } catch (std::exception& __e) {
         __r->set_error(std::current_exception());
@@ -187,10 +209,12 @@ namespace exec::__system_context_default_impl {
       bulk_schedule(uint32_t __size, storage __storage, bulk_item_receiver* __r, env __e) noexcept
       override {
       try {
+        auto __o = __e.template try_query<stdexec::inplace_stop_token>();
+        auto __st = __o ? *__o : stdexec::inplace_stop_token{};
         auto __sndr =
           stdexec::bulk(stdexec::schedule(__pool_scheduler_), __size, __bulk_functor{__r});
-        auto __os =
-          __bulk_schedule_operation_t::__construct_maybe_alloc(__storage, __r, std::move(__sndr));
+        auto __os = __bulk_schedule_operation_t::__construct_maybe_alloc(
+          __storage, __r, std::move(__sndr), std::move(__st));
         __os->start();
       } catch (std::exception& __e) {
         __r->set_error(std::current_exception());
