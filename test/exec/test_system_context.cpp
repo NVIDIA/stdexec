@@ -103,8 +103,6 @@ TEST_CASE("simple schedule forward progress guarantee", "[types][system_schedule
 TEST_CASE("get_completion_scheduler", "[types][system_scheduler]") {
   exec::system_scheduler sched = exec::get_system_scheduler();
   REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::schedule(sched))) == sched);
-  REQUIRE(
-    ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(ex::schedule(sched))) == sched);
 }
 
 TEST_CASE("simple chain task on system context", "[types][system_scheduler]") {

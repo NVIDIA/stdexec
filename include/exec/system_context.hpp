@@ -91,7 +91,7 @@ namespace exec {
     /// Describes the environment of this sender.
     struct __system_scheduler_env {
       /// Returns the system scheduler as the completion scheduler for `set_value_t`.
-      template <stdexec::__none_of<stdexec::set_error_t> _Tag>
+      template <stdexec::__one_of<stdexec::set_value_t> _Tag>
       auto query(stdexec::get_completion_scheduler_t<_Tag>) const noexcept {
         return __detail::__make_system_scheduler_from(_Tag(), __scheduler_);
       }
@@ -207,6 +207,11 @@ namespace exec {
     /// Connects `__self` to `__rcvr`, returning the operation state containing the work to be done.
     template <stdexec::receiver _Rcvr>
     auto connect(_Rcvr __rcvr) && noexcept(stdexec::__nothrow_move_constructible<_Rcvr>) //
+      -> __detail::__system_op<system_sender, _Rcvr> {
+      return {std::move(__rcvr), __scheduler_};
+    }
+    template <stdexec::receiver _Rcvr>
+    auto connect(_Rcvr __rcvr) & noexcept(stdexec::__nothrow_move_constructible<_Rcvr>) //
       -> __detail::__system_op<system_sender, _Rcvr> {
       return {std::move(__rcvr), __scheduler_};
     }
@@ -385,8 +390,9 @@ namespace exec {
       }
 
       /// Invoked when the previous sender completes with error to forward the error to the connected receiver.
-      void set_error(std::exception_ptr __ptr) noexcept {
-        stdexec::set_error(std::move(__state_.__rcvr_), std::move(__ptr));
+      template <typename __E>
+      void set_error(__E __e) noexcept {
+        stdexec::set_error(std::move(__state_.__rcvr_), std::move(__e));
       }
 
       /// Gets the environment of this receiver; returns the environment of the connected receiver.
