@@ -19,6 +19,9 @@
 #include "stdexec/execution.hpp"
 #include "exec/static_thread_pool.hpp"
 
+#include <thread>
+#include <atomic>
+
 namespace exec::__system_context_default_impl {
   using namespace stdexec::tags;
   using system_context_replaceability::receiver;
@@ -26,6 +29,7 @@ namespace exec::__system_context_default_impl {
   using system_context_replaceability::storage;
   using system_context_replaceability::env;
   using system_context_replaceability::system_scheduler;
+  using system_context_replaceability::__system_context_backend_factory;
 
   using __pool_scheduler_t = decltype(std::declval<exec::static_thread_pool>().get_scheduler());
 
@@ -222,32 +226,59 @@ namespace exec::__system_context_default_impl {
     }
   };
 
-  /// Keeps track of the object implementing the system context interfaces.
-  struct __instance_holder {
+  /// Keeps track of the backends for the system context interfaces.
+  template <typename _Interface, typename _Impl>
+  struct __instance_data {
+    /// Gets the current instance; if there is no instance, uses the current factory to create one.
+    std::shared_ptr<_Interface> __get_current_instance() {
+      // If we have a valid instance, return it.
+      __instance_mutex_.lock();
+      auto __r = __instance_;
+      __instance_mutex_.unlock();
+      if (__r) {
+        return __r;
+      }
 
-    /// Get the only instance of this class.
-    static __instance_holder& __singleton() {
-      static __instance_holder __this_instance_;
-      return __this_instance_;
+      // Otherwise, create a new instance using the factory.
+      // Note: we are lazy-loading the instance to avoid creating it if it is not needed.
+      auto __new_instance = __factory_.load(std::memory_order_relaxed)();
+
+      // Store the newly created instance.
+      __instance_mutex_.lock();
+      __instance_ = __new_instance;
+      __instance_mutex_.unlock();
+      return __new_instance;
     }
 
-    /// Get the currently selected system context object.
-    system_scheduler* __get_current_instance() const noexcept {
-      return __current_instance_;
-    }
-
-    /// Allows changing the currently selected system context object; used for testing.
-    void __set_current_instance(system_scheduler* __instance) noexcept {
-      __current_instance_ = __instance;
+    /// Set `__new_factory` as the new factory for `_Interface` and return the old one.
+    __system_context_backend_factory<_Interface>
+      __set_backend_factory(__system_context_backend_factory<_Interface> __new_factory) {
+      // Replace the factory, keeping track of the old one.
+      auto __old_factory = __factory_.exchange(__new_factory);
+      // Create a new instance with the new factory.
+      auto __new_instance = __new_factory();
+      // Replace the current instance with the new one.
+      __instance_mutex_.lock();
+      auto __old_instance = std::exchange(__instance_, __new_instance);
+      __instance_mutex_.unlock();
+      // Make sure to delete the old instance after releasing the lock.
+      __old_instance.reset();
+      return __old_factory;
     }
 
    private:
-    __instance_holder() {
-      static __system_scheduler_impl __default_instance_;
-      __current_instance_ = &__default_instance_;
-    }
+    std::mutex __instance_mutex_{};
+    std::shared_ptr<_Interface> __instance_{nullptr};
+    std::atomic<__system_context_backend_factory<_Interface>> __factory_{__default_factory};
 
-    system_scheduler* __current_instance_;
+    /// The default factory returns an instance of `_Impl`.
+    static std::shared_ptr<_Interface> __default_factory() {
+      return std::make_shared<_Impl>();
+    }
   };
+
+  /// The singleton to hold the `system_scheduler` instance.
+  inline constinit __instance_data<system_scheduler, __system_scheduler_impl>
+    __system_scheduler_singleton{};
 
 } // namespace exec::__system_context_default_impl

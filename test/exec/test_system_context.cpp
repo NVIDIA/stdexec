@@ -234,9 +234,9 @@ struct my_inline_scheduler_impl : scr::system_scheduler {
 TEST_CASE(
   "can change the implementation of system context at runtime",
   "[types][system_scheduler]") {
-  my_system_scheduler_impl my_scheduler;
-  bool r = scr::set_system_context_backend<scr::system_scheduler>(&my_scheduler);
-  REQUIRE(r);
+  static auto my_scheduler_backend = std::make_shared<my_system_scheduler_impl>();
+  auto old_factory = scr::set_system_context_backend_factory<scr::system_scheduler>(
+    []() -> std::shared_ptr<scr::system_scheduler> { return my_scheduler_backend; });
 
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};
@@ -244,20 +244,23 @@ TEST_CASE(
 
   auto snd = ex::then(ex::schedule(sched), [&] { pool_id = std::this_thread::get_id(); });
 
-  REQUIRE(my_scheduler.num_schedules() == 0);
+  REQUIRE(my_scheduler_backend->num_schedules() == 0);
   ex::sync_wait(std::move(snd));
-  REQUIRE(my_scheduler.num_schedules() == 1);
+  REQUIRE(my_scheduler_backend->num_schedules() == 1);
 
   REQUIRE(pool_id != std::thread::id{});
   REQUIRE(this_id != pool_id);
+
+  (void) scr::set_system_context_backend_factory<scr::system_scheduler>(old_factory);
 }
 
 TEST_CASE(
   "can change the implementation of system context at runtime, with an inline scheduler",
   "[types][system_scheduler]") {
-  my_inline_scheduler_impl my_scheduler;
-  bool r = scr::set_system_context_backend<scr::system_scheduler>(&my_scheduler);
-  REQUIRE(r);
+  auto old_factory = scr::set_system_context_backend_factory<scr::system_scheduler>(
+    []() -> std::shared_ptr<scr::system_scheduler> {
+      return std::make_shared<my_inline_scheduler_impl>();
+    });
 
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};
@@ -268,6 +271,8 @@ TEST_CASE(
   ex::sync_wait(std::move(snd));
 
   REQUIRE(this_id == pool_id);
+
+  (void) scr::set_system_context_backend_factory<scr::system_scheduler>(old_factory);
 }
 
 TEST_CASE("empty environment always returns nullopt for any query", "[types][system_scheduler]") {

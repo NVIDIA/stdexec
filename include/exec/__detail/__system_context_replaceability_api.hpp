@@ -62,11 +62,16 @@ namespace exec::system_context_replaceability {
 
   /// Query the system context for an interface of type `_Interface`.
   template <__queryable_interface _Interface>
-  extern _Interface* query_system_context();
+  extern std::shared_ptr<_Interface> query_system_context();
 
-  /// Sets the system context backend for an interface of type `_Interface`.
+  /// The type of a factory that can create interfaces of type `_Interface`.
   template <__queryable_interface _Interface>
-  extern bool set_system_context_backend(_Interface* __backend);
+  using __system_context_backend_factory = std::shared_ptr<_Interface> (*)();
+
+  /// Sets the factory that creates the system context backend for an interface of type `_Interface`.
+  template <__queryable_interface _Interface>
+  extern __system_context_backend_factory<_Interface>
+    set_system_context_backend_factory(__system_context_backend_factory<_Interface> __new_factory);
 
   /// Interface for completing a sender operation.
   /// Backend will call frontend though this interface for completing the `schedule` and `schedule_bulk` operations.

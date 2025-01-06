@@ -42,10 +42,9 @@ namespace {
 namespace exec::system_context_replaceability {
   // Should replace the function instantiation defined in __system_context_default_impl.hpp
   template <>
-  exec::system_context_replaceability::system_scheduler*
+  std::shared_ptr<exec::system_context_replaceability::system_scheduler>
     query_system_context<exec::system_context_replaceability::system_scheduler>() {
-    static my_system_scheduler_impl instance;
-    return &instance;
+    return std::make_shared<my_system_scheduler_impl>();
   }
 } // namespace exec::system_context_replaceability
 

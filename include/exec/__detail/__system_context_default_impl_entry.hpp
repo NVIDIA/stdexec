@@ -23,36 +23,36 @@
 
 #include "__system_context_default_impl.hpp"
 
-STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE_GNU("-Wattributes") // warning: inline function '[...]' declared weak
+#define __STDEXEC_SYSTEM_CONTEXT_API extern STDEXEC_SYSTEM_CONTEXT_INLINE STDEXEC_ATTRIBUTE((weak))
 
 namespace exec::system_context_replaceability {
   /// The default implementation of the `query_system_context` function template.
   template <__queryable_interface _Interface>
-  extern STDEXEC_SYSTEM_CONTEXT_INLINE STDEXEC_ATTRIBUTE((weak)) _Interface* query_system_context() {
+  __STDEXEC_SYSTEM_CONTEXT_API std::shared_ptr<_Interface> query_system_context() {
+    return {};
+  }
+
+  /// The default specialization of `query_system_context` for `system_scheduler`.
+  template <>
+  std::shared_ptr<system_scheduler> query_system_context<system_scheduler>() {
+    return __system_context_default_impl::__system_scheduler_singleton.__get_current_instance();
+  }
+
+  /// The default implementation of the `set_system_context_backend_factory` function template.
+  template <__queryable_interface _Interface>
+  __STDEXEC_SYSTEM_CONTEXT_API __system_context_backend_factory<_Interface>
+    set_system_context_backend_factory(__system_context_backend_factory<_Interface> __new_factory) {
     return nullptr;
   }
 
+  /// The default specialization of `set_system_context_backend_factory` for `system_scheduler`.
   template <>
-  exec::system_context_replaceability::system_scheduler*
-    query_system_context<exec::system_context_replaceability::system_scheduler>() {
-    return exec::__system_context_default_impl::__instance_holder::__singleton()
-      .__get_current_instance();
+  __system_context_backend_factory<system_scheduler>
+    set_system_context_backend_factory<system_scheduler>(
+      __system_context_backend_factory<system_scheduler> __new_factory) {
+    return __system_context_default_impl::__system_scheduler_singleton.__set_backend_factory(
+      __new_factory);
   }
 
-  /// The default implementation of the `query_system_context` function template.
-  template <typename _Interface>
-  extern STDEXEC_SYSTEM_CONTEXT_INLINE STDEXEC_ATTRIBUTE((weak)) bool set_system_context_backend(_Interface* __backend) {
-    return false;
-  }
 
-  template <>
-  bool
-    set_system_context_backend(exec::system_context_replaceability::system_scheduler* __backend) {
-    exec::__system_context_default_impl::__instance_holder::__singleton().__set_current_instance(
-      __backend);
-    return true;
-  }
 } // namespace exec::system_context_replaceability
-
-STDEXEC_PRAGMA_POP()
