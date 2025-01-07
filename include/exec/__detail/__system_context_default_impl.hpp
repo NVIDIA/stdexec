@@ -18,6 +18,9 @@
 #include "__system_context_replaceability_api.hpp"
 #include "stdexec/execution.hpp"
 #include "exec/static_thread_pool.hpp"
+#if STDEXEC_ENABLE_LIBDISPATCH
+#  include "exec/libdispatch_queue.hpp"
+#endif
 
 #include <thread>
 #include <atomic>
@@ -30,8 +33,6 @@ namespace exec::__system_context_default_impl {
   using system_context_replaceability::env;
   using system_context_replaceability::system_scheduler;
   using system_context_replaceability::__system_context_backend_factory;
-
-  using __pool_scheduler_t = decltype(std::declval<exec::static_thread_pool>().get_scheduler());
 
   /// Receiver that calls the callback when the operation completes.
   template <class _Sender>
@@ -58,6 +59,8 @@ namespace exec::__system_context_default_impl {
   - __bulk_functor::__r_ (bulk_item_receiver*) - 8
   ---------------------
   Total: 160; extra 32 bytes compared to internal operation state.
+
+  Using libdispatch backend, the operation sizes are 48 (down from 80) and 128 (down from 160).
 
   [*] sizes taken on an Apple M2 Pro arm64 arch. They may differ on other architectures, or with different implementations.
   */
@@ -169,13 +172,16 @@ namespace exec::__system_context_default_impl {
     }
   };
 
-  struct __system_scheduler_impl : system_scheduler {
-    __system_scheduler_impl()
+  template <typename _BaseSchedulerContext>
+  struct __system_scheduler_generic_impl : system_scheduler {
+    __system_scheduler_generic_impl()
       : __pool_scheduler_(__pool_.get_scheduler()) {
     }
    private:
+    using __pool_scheduler_t = decltype(std::declval<_BaseSchedulerContext>().get_scheduler());
+
     /// The underlying thread pool.
-    exec::static_thread_pool __pool_;
+    _BaseSchedulerContext __pool_;
     __pool_scheduler_t __pool_scheduler_;
 
     //! Functor called by the `bulk` operation; sends a `start` signal to the frontend.
@@ -276,6 +282,12 @@ namespace exec::__system_context_default_impl {
       return std::make_shared<_Impl>();
     }
   };
+
+#if STDEXEC_ENABLE_LIBDISPATCH
+  using __system_scheduler_impl = __system_scheduler_generic_impl<exec::libdispatch_queue>;
+#else
+  using __system_scheduler_impl = __system_scheduler_generic_impl<exec::static_thread_pool>;
+#endif
 
   /// The singleton to hold the `system_scheduler` instance.
   inline constinit __instance_data<system_scheduler, __system_scheduler_impl>
