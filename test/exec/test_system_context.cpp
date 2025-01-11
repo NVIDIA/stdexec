@@ -207,9 +207,9 @@ struct my_system_scheduler_impl : exec::__system_context_default_impl::__system_
     return count_schedules_;
   }
 
-  void schedule(scr::storage __s, scr::receiver* __r, scr::env __e) noexcept override {
+  void schedule(scr::storage __s, scr::receiver* __r) noexcept override {
     count_schedules_++;
-    base_t::schedule(__s, __r, __e);
+    base_t::schedule(__s, __r);
   }
 
 
@@ -218,13 +218,11 @@ struct my_system_scheduler_impl : exec::__system_context_default_impl::__system_
 };
 
 struct my_inline_scheduler_impl : scr::system_scheduler {
-  void schedule(scr::storage s, scr::receiver* r, scr::env e) noexcept override {
+  void schedule(scr::storage s, scr::receiver* r) noexcept override {
     r->set_value();
   }
 
-  void
-    bulk_schedule(uint32_t count, scr::storage s, scr::bulk_item_receiver* r, scr::env e) noexcept
-    override {
+  void bulk_schedule(uint32_t count, scr::storage s, scr::bulk_item_receiver* r) noexcept override {
     for (uint32_t i = 0; i < count; ++i)
       r->start(i);
     r->set_value();
@@ -276,45 +274,62 @@ TEST_CASE(
 }
 
 TEST_CASE("empty environment always returns nullopt for any query", "[types][system_scheduler]") {
-  scr::env frontend_env{};
+  struct my_receiver : scr::receiver {
+    bool __query_env(__uuid, void*) noexcept override {
+      return false;
+    }
 
-  scr::env env = frontend_env; // simulate a copy to the backend
-  REQUIRE(env.try_query<stdexec::inplace_stop_token>() == std::nullopt);
-  REQUIRE(env.try_query<int>() == std::nullopt);
-  REQUIRE(env.try_query<std::allocator<int>>() == std::nullopt);
+    void set_value() noexcept override {
+    }
+
+    void set_error(std::exception_ptr) noexcept override {
+    }
+
+    void set_stopped() noexcept override {
+    }
+  };
+
+  my_receiver rcvr{};
+
+  REQUIRE(rcvr.try_query<stdexec::inplace_stop_token>() == std::nullopt);
+  REQUIRE(rcvr.try_query<int>() == std::nullopt);
+  REQUIRE(rcvr.try_query<std::allocator<int>>() == std::nullopt);
 }
 
 TEST_CASE("environment with a stop token can expose its stop token", "[types][system_scheduler]") {
-  stdexec::inplace_stop_source ss;
-  auto token = ss.get_token();
-  scr::env frontend_env{token};
+  struct my_receiver : scr::receiver {
+    bool __query_env(__uuid uuid, void* dest) noexcept override {
+      if (
+        uuid
+        == scr::__runtime_property_helper<stdexec::inplace_stop_token>::__property_identifier) {
+        *static_cast<stdexec::inplace_stop_token*>(dest) = ss.get_token();
+        return true;
+      }
+      return false;
+    }
 
-  scr::env env = frontend_env; // simulate a copy to the backend
-  auto o1 = env.try_query<stdexec::inplace_stop_token>();
+    void set_value() noexcept override {
+    }
+
+    void set_error(std::exception_ptr) noexcept override {
+    }
+
+    void set_stopped() noexcept override {
+    }
+
+    stdexec::inplace_stop_source ss;
+  };
+
+  my_receiver rcvr{};
+
+  auto o1 = rcvr.try_query<stdexec::inplace_stop_token>();
   REQUIRE(o1.has_value());
   REQUIRE(o1.value().stop_requested() == false);
-  REQUIRE(o1.value() == token);
+  REQUIRE(o1.value() == rcvr.ss.get_token());
 
-  ss.request_stop();
+  rcvr.ss.request_stop();
   REQUIRE(o1.value().stop_requested() == true);
 
-  REQUIRE(env.try_query<int>() == std::nullopt);
-  REQUIRE(env.try_query<std::allocator<int>>() == std::nullopt);
-}
-
-TEST_CASE("environment constructed with tuple", "[types][system_scheduler]") {
-  stdexec::inplace_stop_source ss;
-  std::tuple<stdexec::inplace_stop_token> data{ss.get_token()};
-  scr::env frontend_env{data};
-  scr::env env = frontend_env; // simulate a copy to the backend
-
-  // Can extract the stop token
-  auto o1 = env.try_query<stdexec::inplace_stop_token>();
-  REQUIRE(o1.has_value());
-  REQUIRE(o1.value().stop_requested() == false);
-  REQUIRE(o1.value() == ss.get_token());
-
-  // Cannot extract other types
-  REQUIRE(env.try_query<int>() == std::nullopt);
-  REQUIRE(env.try_query<std::allocator<int>>() == std::nullopt);
+  REQUIRE(rcvr.try_query<int>() == std::nullopt);
+  REQUIRE(rcvr.try_query<std::allocator<int>>() == std::nullopt);
 }

@@ -44,6 +44,20 @@ namespace exec {
         : __rcvr_{std::forward<_Rcvr>(__rcvr)} {
       }
 
+      bool __query_env(__uuid __id, void* __dest) noexcept override {
+        using system_context_replaceability::__runtime_property_helper;
+        using __StopToken = decltype(stdexec::get_stop_token(stdexec::get_env(__rcvr_)));
+        if constexpr (std::is_same_v<stdexec::inplace_stop_token, __StopToken>) {
+          if (
+            __id == __runtime_property_helper<stdexec::inplace_stop_token>::__property_identifier) {
+            *static_cast<stdexec::inplace_stop_token*>(__dest) =
+              stdexec::get_stop_token(stdexec::get_env(__rcvr_));
+            return true;
+          }
+        }
+        return false;
+      }
+
       void set_value() noexcept override {
         stdexec::set_value(std::forward<_Rcvr>(__rcvr_));
       }
@@ -174,14 +188,10 @@ namespace exec {
           stdexec::set_stopped(__rcvr_);
           return;
         }
-        system_context_replaceability::env __e{};
-        if constexpr (std::is_same_v<stdexec::inplace_stop_token, std::decay_t<decltype(st)>>) {
-          __e = system_context_replaceability::env{st};
-        }
         auto& __scheduler_impl = __preallocated_.__as<__system_scheduler_ptr>();
         auto __impl = std::move(__scheduler_impl);
         std::destroy_at(&__scheduler_impl);
-        __impl->schedule(__preallocated_.__as_storage(), &__rcvr_, __e);
+        __impl->schedule(__preallocated_.__as_storage(), &__rcvr_);
       }
 
       /// Object that receives completion from the work described by the sender.
@@ -304,6 +314,21 @@ namespace exec {
           std::tuple<stdexec::__decay_t<_As>...>{std::move(__as)...};
       }
 
+      bool __query_env(__uuid __id, void* __dest) noexcept override {
+        auto __state = reinterpret_cast<_BulkState*>(this);
+        using system_context_replaceability::__runtime_property_helper;
+        using __StopToken = decltype(stdexec::get_stop_token(stdexec::get_env(__state->__rcvr_)));
+        if constexpr (std::is_same_v<stdexec::inplace_stop_token, __StopToken>) {
+          if (
+            __id == __runtime_property_helper<stdexec::inplace_stop_token>::__property_identifier) {
+            *static_cast<stdexec::inplace_stop_token*>(__dest) =
+              stdexec::get_stop_token(stdexec::get_env(__state->__rcvr_));
+            return true;
+          }
+        }
+        return false;
+      }
+
       /// Calls `set_value()` on the final receiver of the bulk operation, using the values from the previous sender.
       void set_value() noexcept override {
         auto __state = reinterpret_cast<_BulkState*>(this);
@@ -385,10 +410,6 @@ namespace exec {
           stdexec::set_stopped(__state_.__rcvr_);
           return;
         }
-        system_context_replaceability::env __e{};
-        if constexpr (std::is_same_v<stdexec::inplace_stop_token, std::decay_t<decltype(st)>>) {
-          __e = system_context_replaceability::env{st};
-        }
 
         // Store the input data in the shared state.
         using __typed_forward_args_receiver_t =
@@ -404,7 +425,7 @@ namespace exec {
 
         // Schedule the bulk work on the system scheduler.
         // This will invoke `start` on our receiver multiple times, and then a completion signal (e.g., `set_value`).
-        __scheduler->bulk_schedule(__size, __storage, __r, __e);
+        __scheduler->bulk_schedule(__size, __storage, __r);
       }
 
       /// Invoked when the previous sender completes with "stopped" to stop the entire work.

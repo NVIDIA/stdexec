@@ -31,9 +31,9 @@ namespace {
 
     my_system_scheduler_impl() = default;
 
-    void schedule(scr::storage __s, scr::receiver* __r, scr::env __e) noexcept override {
+    void schedule(scr::storage __s, scr::receiver* __r) noexcept override {
       count_schedules++;
-      base_t::schedule(__s, __r, __e);
+      base_t::schedule(__s, __r);
     }
   };
 
