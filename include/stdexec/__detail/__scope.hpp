@@ -16,7 +16,8 @@
 #pragma once
 
 #include "__config.hpp"
-#include "__meta.hpp"
+#include "__concepts.hpp"
+#include "__utility.hpp"
 
 namespace stdexec {
   template <class _Fn, class... _Ts>

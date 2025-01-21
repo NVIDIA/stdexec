@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__execution_fwd.hpp" // IWYU pragma: keep
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"

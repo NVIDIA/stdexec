@@ -19,7 +19,6 @@
 #include "../stdexec/execution.hpp"
 
 #include <variant>
-#include <type_traits>
 
 namespace exec {
   namespace __variant {

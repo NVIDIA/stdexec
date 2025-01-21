@@ -16,12 +16,10 @@
  */
 #pragma once
 
-#include "../concepts.hpp"
+#include "__concepts.hpp"
 
-#include <cstddef>
 #include <memory>
 #include <new>
-#include <type_traits>
 
 namespace stdexec {
 

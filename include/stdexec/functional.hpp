@@ -17,9 +17,8 @@
 
 #include "__detail/__config.hpp"
 #include "__detail/__meta.hpp"
-#include "__detail/__tag_invoke.hpp"
 
-#include "concepts.hpp"
+#include "concepts.hpp" // IWYU pragma: keep
 
 #include <functional>
 #include <tuple>

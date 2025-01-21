@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__execution_fwd.hpp" // IWYU pragma: keep
 
 #include "__concepts.hpp"
 #include "__cpo.hpp"
@@ -25,8 +25,7 @@
 #include "__tuple.hpp"
 
 #include <type_traits>
-#include <exception>
-#include <functional>
+#include <functional> // IWYU pragma: keep for unwrap_reference_t
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(probable_guiding_friend)

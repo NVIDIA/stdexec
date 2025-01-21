@@ -15,16 +15,16 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__execution_fwd.hpp" // IWYU pragma: keep
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__diagnostics.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
-#include "__inline_scheduler.hpp"
 #include "__meta.hpp"
-#include "__receiver_ref.hpp"
+#include "__receiver_ref.hpp" // IWYU pragma: keep for __any::__receiver_ref
+#include "__schedulers.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
 #include "__tag_invoke.hpp"

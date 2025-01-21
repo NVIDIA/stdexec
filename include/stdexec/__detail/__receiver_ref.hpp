@@ -15,12 +15,11 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__execution_fwd.hpp" // IWYU pragma: keep
 
 #include "__completion_signatures.hpp"
-#include "__cpo.hpp"
 #include "__env.hpp"
-#include "__schedulers.hpp"
+#include "__receivers.hpp"
 
 #include <functional>
 

@@ -233,7 +233,7 @@ namespace exec::__system_context_default_impl {
     }
   };
 
-  void* __default_query_system_context_interface(const __uuid& __id) noexcept {
+  inline void* __default_query_system_context_interface(const __uuid& __id) noexcept {
     if (__id == system_scheduler::__interface_identifier) {
       return __instance_holder::__singleton().__get_current_instance();
     } else if (__id == __system_context_replaceability::__interface_identifier) {

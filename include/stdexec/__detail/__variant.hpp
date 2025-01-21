@@ -22,7 +22,6 @@
 #include <cstddef>
 #include <memory>
 #include <new>
-#include <type_traits>
 
 /********************************************************************************/
 /* NB: The variant type implemented here default-constructs into the valueless  */

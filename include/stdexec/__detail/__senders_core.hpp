@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__execution_fwd.hpp" // IWYU pragma: keep
 
 // include these after __execution_fwd.hpp
 #include "__awaitable.hpp"
@@ -23,7 +23,6 @@
 #include "__concepts.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
-#include "__receivers.hpp"
 #include "__type_traits.hpp"
 
 namespace stdexec {

@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__execution_fwd.hpp" // IWYU pragma: keep
 
 #include "__concepts.hpp"
 #include "__env.hpp"

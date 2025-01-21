@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__execution_fwd.hpp" // IWYU pragma: keep
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
@@ -26,7 +26,7 @@
 #include "__sender_adaptor_closure.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__transform_sender.hpp"
-#include "__senders.hpp"
+#include "__senders.hpp" // IWYU pragma: keep for __well_formed_sender
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")

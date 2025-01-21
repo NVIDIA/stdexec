@@ -16,11 +16,9 @@
  */
 #pragma once
 
-#include "../stdexec/concepts.hpp"
 #include "../stdexec/execution.hpp"
 #include "../stdexec/stop_token.hpp"
 
-#include <type_traits>
 #include <exception>
 
 STDEXEC_PRAGMA_PUSH()

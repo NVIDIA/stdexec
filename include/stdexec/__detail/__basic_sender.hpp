@@ -15,12 +15,11 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__execution_fwd.hpp" // IWYU pragma: keep
 
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
 #include "__env.hpp"
-#include "__manual_lifetime.hpp"
 #include "__meta.hpp"
 #include "__senders_core.hpp"
 #include "__sender_introspection.hpp"
