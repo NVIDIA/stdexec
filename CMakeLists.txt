@@ -175,6 +175,12 @@ set_target_properties(stdexec PROPERTIES
                       VERSION "${STDEXEC_VERSION}"
                       SOVERSION "${STDEXEC_VERSION_MAJOR}")
 
+if (BUILD_TESTING)
+  # Test headers are self-contained
+  set_target_properties(stdexec PROPERTIES
+                        VERIFY_INTERFACE_HEADER_SETS TRUE)
+endif()
+
 # Declare the public include directories
 include(GNUInstallDirs)
 
