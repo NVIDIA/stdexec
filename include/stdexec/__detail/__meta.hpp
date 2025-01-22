@@ -18,7 +18,6 @@
 #include <cstddef>
 #include <cassert>
 #include <compare>
-#include <exception>
 #include <type_traits>
 #include <utility>
 

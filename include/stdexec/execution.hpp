@@ -15,61 +15,61 @@
  */
 #pragma once
 
-#include "__detail/__execution_fwd.hpp"
+#include "__detail/__execution_fwd.hpp" // IWYU pragma: keep
 
 // include these after __execution_fwd.hpp
-#include "__detail/__as_awaitable.hpp"
-#include "__detail/__basic_sender.hpp"
-#include "__detail/__bulk.hpp"
-#include "__detail/__completion_signatures.hpp"
-#include "__detail/__connect_awaitable.hpp"
-#include "__detail/__continues_on.hpp"
-#include "__detail/__cpo.hpp"
-#include "__detail/__debug.hpp"
-#include "__detail/__domain.hpp"
-#include "__detail/__ensure_started.hpp"
-#include "__detail/__env.hpp"
-#include "__detail/__execute.hpp"
-#include "__detail/__inline_scheduler.hpp"
-#include "__detail/__into_variant.hpp"
-#include "__detail/__intrusive_ptr.hpp"
-#include "__detail/__intrusive_slist.hpp"
-#include "__detail/__just.hpp"
-#include "__detail/__let.hpp"
-#include "__detail/__meta.hpp"
-#include "__detail/__on.hpp"
-#include "__detail/__operation_states.hpp"
-#include "__detail/__read_env.hpp"
-#include "__detail/__receivers.hpp"
-#include "__detail/__receiver_adaptor.hpp"
-#include "__detail/__run_loop.hpp"
-#include "__detail/__schedule_from.hpp"
-#include "__detail/__schedulers.hpp"
-#include "__detail/__senders.hpp"
-#include "__detail/__sender_adaptor_closure.hpp"
-#include "__detail/__split.hpp"
-#include "__detail/__start_detached.hpp"
-#include "__detail/__starts_on.hpp"
-#include "__detail/__stopped_as_error.hpp"
-#include "__detail/__stopped_as_optional.hpp"
-#include "__detail/__submit.hpp"
-#include "__detail/__sync_wait.hpp"
-#include "__detail/__then.hpp"
-#include "__detail/__transfer_just.hpp"
-#include "__detail/__transform_sender.hpp"
-#include "__detail/__transform_completion_signatures.hpp"
-#include "__detail/__type_traits.hpp"
-#include "__detail/__upon_error.hpp"
-#include "__detail/__upon_stopped.hpp"
-#include "__detail/__utility.hpp"
-#include "__detail/__when_all.hpp"
-#include "__detail/__with_awaitable_senders.hpp"
-#include "__detail/__write_env.hpp"
+#include "__detail/__as_awaitable.hpp"                    // IWYU pragma: export
+#include "__detail/__basic_sender.hpp"                    // IWYU pragma: export
+#include "__detail/__bulk.hpp"                            // IWYU pragma: export
+#include "__detail/__completion_signatures.hpp"           // IWYU pragma: export
+#include "__detail/__connect_awaitable.hpp"               // IWYU pragma: export
+#include "__detail/__continues_on.hpp"                    // IWYU pragma: export
+#include "__detail/__cpo.hpp"                             // IWYU pragma: export
+#include "__detail/__debug.hpp"                           // IWYU pragma: export
+#include "__detail/__domain.hpp"                          // IWYU pragma: export
+#include "__detail/__ensure_started.hpp"                  // IWYU pragma: export
+#include "__detail/__env.hpp"                             // IWYU pragma: export
+#include "__detail/__execute.hpp"                         // IWYU pragma: export
+#include "__detail/__inline_scheduler.hpp"                // IWYU pragma: export
+#include "__detail/__into_variant.hpp"                    // IWYU pragma: export
+#include "__detail/__intrusive_ptr.hpp"                   // IWYU pragma: export
+#include "__detail/__intrusive_slist.hpp"                 // IWYU pragma: export
+#include "__detail/__just.hpp"                            // IWYU pragma: export
+#include "__detail/__let.hpp"                             // IWYU pragma: export
+#include "__detail/__meta.hpp"                            // IWYU pragma: export
+#include "__detail/__on.hpp"                              // IWYU pragma: export
+#include "__detail/__operation_states.hpp"                // IWYU pragma: export
+#include "__detail/__read_env.hpp"                        // IWYU pragma: export
+#include "__detail/__receivers.hpp"                       // IWYU pragma: export
+#include "__detail/__receiver_adaptor.hpp"                // IWYU pragma: export
+#include "__detail/__run_loop.hpp"                        // IWYU pragma: export
+#include "__detail/__schedule_from.hpp"                   // IWYU pragma: export
+#include "__detail/__schedulers.hpp"                      // IWYU pragma: export
+#include "__detail/__senders.hpp"                         // IWYU pragma: export
+#include "__detail/__sender_adaptor_closure.hpp"          // IWYU pragma: export
+#include "__detail/__split.hpp"                           // IWYU pragma: export
+#include "__detail/__start_detached.hpp"                  // IWYU pragma: export
+#include "__detail/__starts_on.hpp"                       // IWYU pragma: export
+#include "__detail/__stopped_as_error.hpp"                // IWYU pragma: export
+#include "__detail/__stopped_as_optional.hpp"             // IWYU pragma: export
+#include "__detail/__submit.hpp"                          // IWYU pragma: export
+#include "__detail/__sync_wait.hpp"                       // IWYU pragma: export
+#include "__detail/__then.hpp"                            // IWYU pragma: export
+#include "__detail/__transfer_just.hpp"                   // IWYU pragma: export
+#include "__detail/__transform_sender.hpp"                // IWYU pragma: export
+#include "__detail/__transform_completion_signatures.hpp" // IWYU pragma: export
+#include "__detail/__type_traits.hpp"                     // IWYU pragma: export
+#include "__detail/__upon_error.hpp"                      // IWYU pragma: export
+#include "__detail/__upon_stopped.hpp"                    // IWYU pragma: export
+#include "__detail/__utility.hpp"                         // IWYU pragma: export
+#include "__detail/__when_all.hpp"                        // IWYU pragma: export
+#include "__detail/__with_awaitable_senders.hpp"          // IWYU pragma: export
+#include "__detail/__write_env.hpp"                       // IWYU pragma: export
 
-#include "functional.hpp"
-#include "concepts.hpp"
-#include "coroutine.hpp"
-#include "stop_token.hpp"
+#include "functional.hpp" // IWYU pragma: export
+#include "concepts.hpp"   // IWYU pragma: export
+#include "coroutine.hpp"  // IWYU pragma: export
+#include "stop_token.hpp" // IWYU pragma: export
 
 // For issuing a meaningful diagnostic for the erroneous `snd1 | snd2`.
 template <stdexec::sender _Ignore, stdexec::sender _Sender>

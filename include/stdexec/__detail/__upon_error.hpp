@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__execution_fwd.hpp" // IWYU pragma: keep
 
 #include "__basic_sender.hpp"
 #include "__diagnostics.hpp"
@@ -25,7 +25,7 @@
 #include "__sender_adaptor_closure.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__transform_sender.hpp"
-#include "__senders.hpp"
+#include "__senders.hpp" // IWYU pragma: keep for __well_formed_sender
 
 // include these after __execution_fwd.hpp
 namespace stdexec {

@@ -17,13 +17,12 @@
 #ifndef STDEXEC_SYSTEM_CONTEXT_REPLACEABILITY_API_H
 #define STDEXEC_SYSTEM_CONTEXT_REPLACEABILITY_API_H
 
-#include "stdexec/__detail/__execution_fwd.hpp"
-
-#include <typeindex>
+#include <cstdint>
+#include <exception>
 
 struct __uuid {
-  uint64_t __parts1;
-  uint64_t __parts2;
+  std::uint64_t __parts1;
+  std::uint64_t __parts2;
 
   friend bool operator==(__uuid, __uuid) noexcept = default;
 };
@@ -37,7 +36,8 @@ namespace exec::system_context_replaceability {
   template <__uuid X>
   using __check_constexpr_uuid = void;
 
-  //! Concept for a queryable interface. Ensures that the interface has a `__interface_identifier` member.
+  //! Concept for a queryable interface. Ensures that the interface has a `__interface_identifier`
+  //! member.
   template <typename _T>
   concept __queryable_interface =
     requires() { typename __check_constexpr_uuid<_T::__interface_identifier>; };
@@ -49,8 +49,8 @@ namespace exec::system_context_replaceability {
       __query_system_context_interface(_Interface::__interface_identifier));
   }
 
-  /// Interface for completing a sender operation.
-  /// Backend will call frontend though this interface for completing the `schedule` and `schedule_bulk` operations.
+  /// Interface for completing a sender operation. Backend will call frontend though this interface
+  /// for completing the `schedule` and `schedule_bulk` operations.
   struct receiver {
     virtual ~receiver() = default;
 
@@ -65,14 +65,14 @@ namespace exec::system_context_replaceability {
   /// Receiver for bulk sheduling operations.
   struct bulk_item_receiver : receiver {
     /// Called for each item of a bulk operation, possible on different threads.
-    virtual void start(uint32_t) noexcept = 0;
+    virtual void start(std::uint32_t) noexcept = 0;
   };
 
   /// Describes a storage space.
   /// Used to pass preallocated storage from the frontend to the backend.
   struct storage {
     void* __data;
-    uint32_t __size;
+    std::uint32_t __size;
   };
 
   /// Interface for the system scheduler
@@ -81,10 +81,13 @@ namespace exec::system_context_replaceability {
 
     virtual ~system_scheduler() = default;
 
-    /// Schedule work on system scheduler, calling `__r` when done and using `__s` for preallocated memory.
+    /// Schedule work on system scheduler, calling `__r` when done and using `__s` for preallocated
+    /// memory.
     virtual void schedule(storage __s, receiver* __r) noexcept = 0;
-    /// Schedule bulk work of size `__n` on system scheduler, calling `__r` for each item and then when done, and using `__s` for preallocated memory.
-    virtual void bulk_schedule(uint32_t __n, storage __s, bulk_item_receiver* __r) noexcept = 0;
+    /// Schedule bulk work of size `__n` on system scheduler, calling `__r` for each item and then
+    /// when done, and using `__s` for preallocated memory.
+    virtual void
+      bulk_schedule(std::uint32_t __n, storage __s, bulk_item_receiver* __r) noexcept = 0;
   };
 
   /// Implementation-defined mechanism for replacing the system scheduler backend at run-time.

@@ -13,7 +13,6 @@ ImplementationFileExtensions:
   - cpp
   - cxx
 HeaderFilterRegex: ''
-AnalyzeTemporaryDtors: false
 FormatStyle:     none
 User:            eniebler
 CheckOptions:

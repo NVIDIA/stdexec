@@ -25,7 +25,6 @@
 #include "any_sender_of.hpp"
 
 #include <exception>
-#include <type_traits>
 
 namespace exec {
   namespace __on_coro_disp {

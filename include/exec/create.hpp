@@ -16,7 +16,6 @@
 #pragma once
 
 #include "../stdexec/__detail/__meta.hpp"
-#include "../stdexec/concepts.hpp"
 #include "../stdexec/execution.hpp"
 
 namespace exec {

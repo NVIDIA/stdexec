@@ -20,6 +20,7 @@
 
 #include <cstddef>
 #include <bit>
+#include <utility>
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_partial_spec_arg_list)

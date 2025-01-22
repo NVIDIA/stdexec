@@ -15,21 +15,20 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__execution_fwd.hpp" // IWYU pragma: keep
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
-#include "__cpo.hpp"
 #include "__env.hpp"
 #include "__intrusive_slist.hpp"
 #include "__optional.hpp"
 #include "__meta.hpp"
+#include "__receivers.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__tuple.hpp"
-#include "__variant.hpp"
+#include "__variant.hpp" // IWYU pragma: keep
 
 #include "../stop_token.hpp"
-#include "../functional.hpp"
 
 #include <atomic>
 #include <exception>

@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__config.hpp"
+#include "__config.hpp" // IWYU pragma: keep
 #include "__type_traits.hpp"
 
 #if 0 //STDEXEC_HAS_STD_RANGES()

@@ -21,7 +21,7 @@
 #  error "STDEXEC_SYSTEM_CONTEXT_INLINE must be defined before including this header"
 #endif
 
-#include "__system_context_default_impl.hpp"
+#include "__system_context_default_impl.hpp" // IWYU pragma: keep
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wattributes") // warning: inline function '[...]' declared weak

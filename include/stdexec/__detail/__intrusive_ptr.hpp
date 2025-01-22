@@ -16,13 +16,12 @@
 #pragma once
 
 #include "__concepts.hpp"
-#include "__meta.hpp"
 
 #include <atomic>
-#include <memory>
-#include <new>
+#include <new> // IWYU pragma: keep for ::new
 #include <cstddef>
 #include <type_traits>
+#include <utility>
 
 #if STDEXEC_TSAN()
 #  include <sanitizer/tsan_interface.h>
