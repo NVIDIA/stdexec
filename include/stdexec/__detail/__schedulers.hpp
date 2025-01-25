@@ -15,13 +15,12 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__execution_fwd.hpp" // IWYU pragma: keep
 
 // include these after __execution_fwd.hpp
 #include "__concepts.hpp"
-#include "__cpo.hpp"
 #include "__env.hpp"
-#include "__senders.hpp"
+#include "__senders_core.hpp"
 #include "__tag_invoke.hpp"
 
 namespace stdexec {

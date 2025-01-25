@@ -15,16 +15,17 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__execution_fwd.hpp" // IWYU pragma: keep
 
 // include these after __execution_fwd.hpp
 #include "__completion_signatures.hpp"
 #include "__concepts.hpp"
 #include "__debug.hpp" // IWYU pragma: keep
-#include "__diagnostics.hpp"
 #include "__senders_core.hpp"
 #include "__meta.hpp"
+#include "__transform_completion_signatures.hpp" // IWYU pragma: keep for __eptr_completion_if
 
+#include <exception>
 #include <tuple>
 #include <variant>
 

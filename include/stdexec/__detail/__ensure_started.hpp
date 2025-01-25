@@ -15,20 +15,17 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__execution_fwd.hpp" // IWYU pragma: keep
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__concepts.hpp"
-#include "__intrusive_ptr.hpp"
 #include "__meta.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
 #include "__shared.hpp"
 #include "__transform_sender.hpp"
 #include "__type_traits.hpp"
-
-#include <utility>
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
@@ -79,14 +76,13 @@ namespace stdexec {
           static_cast<_Sender&&>(__sndr),
           [&]<class _Env, class _Child>(__ignore, _Env&& __env, _Child&& __child) {
             // The shared state starts life with a ref-count of one.
-            auto __sh_state = __make_intrusive<__shared_state<_Child, __decay_t<_Env>>, 2>(
-              static_cast<_Child&&>(__child), static_cast<_Env&&>(__env));
+            auto* __sh_state =
+              new __shared_state{static_cast<_Child&&>(__child), static_cast<_Env&&>(__env)};
 
             // Eagerly start the work:
-            __sh_state->__try_start();
+            __sh_state->__try_start(); // cannot throw
 
-            return __make_sexpr<__ensure_started_t>(
-              __box{__ensure_started_t(), std::move(__sh_state)});
+            return __make_sexpr<__ensure_started_t>(__box{__ensure_started_t(), __sh_state});
           });
       }
     };

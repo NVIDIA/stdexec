@@ -16,6 +16,8 @@
 
 #pragma once
 
+#if __has_include(<dispatch/dispatch.h>)
+
 // TODO: This is needed for libdispatch to compile with GCC. Need to look for
 // workaround.
 #ifndef __has_feature
@@ -496,3 +498,5 @@ namespace exec {
   };
 
 } // namespace exec
+
+#endif // __has_include(<dispatch/dispatch.h>)

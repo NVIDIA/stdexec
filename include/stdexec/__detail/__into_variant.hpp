@@ -15,23 +15,22 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__execution_fwd.hpp" // IWYU pragma: keep
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__concepts.hpp"
 #include "__domain.hpp"
-#include "__env.hpp"
 #include "__meta.hpp"
 #include "__sender_adaptor_closure.hpp"
-#include "__senders.hpp"
+#include "__senders.hpp" // IWYU pragma: keep for __well_formed_sender
 #include "__transform_completion_signatures.hpp"
 #include "__transform_sender.hpp"
 #include "__utility.hpp"
 
 #include <exception>
 #include <tuple>
-#include <variant>
+#include <variant> // IWYU pragma: keep
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////

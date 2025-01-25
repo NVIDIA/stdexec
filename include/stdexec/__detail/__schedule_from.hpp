@@ -15,15 +15,16 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__execution_fwd.hpp" // IWYU pragma: keep
 
 // include these after __execution_fwd.hpp
+#include "__basic_sender.hpp"
 #include "__concepts.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
 #include "__operation_states.hpp"
-#include "__senders_core.hpp"
+#include "__senders.hpp"
 #include "__schedulers.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__tuple.hpp"

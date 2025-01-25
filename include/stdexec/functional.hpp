@@ -17,9 +17,8 @@
 
 #include "__detail/__config.hpp"
 #include "__detail/__meta.hpp"
-#include "__detail/__tag_invoke.hpp"
 
-#include "concepts.hpp"
+#include "concepts.hpp" // IWYU pragma: keep
 
 #include <functional>
 #include <tuple>
@@ -123,17 +122,8 @@ namespace stdexec {
 
     template <class _Mbr, class _Class, class _Ty>
     auto __invoke_selector(_Mbr _Class::*, const _Ty&) noexcept {
-      if constexpr (STDEXEC_IS_CONST(_Mbr) || STDEXEC_IS_CONST(_Mbr const)) {
+      if constexpr (STDEXEC_IS_FUNCTION(_Mbr)) {
         // member function ptr case
-        if constexpr (STDEXEC_IS_BASE_OF(_Class, _Ty)) {
-          return __memobj{};
-        } else if constexpr (__is_refwrap<_Ty>) {
-          return __memobj_refwrap{};
-        } else {
-          return __memobj_smartptr{};
-        }
-      } else {
-        // member object ptr case
         if constexpr (STDEXEC_IS_BASE_OF(_Class, _Ty)) {
           return __memfn{};
         } else if constexpr (__is_refwrap<_Ty>) {
@@ -141,28 +131,36 @@ namespace stdexec {
         } else {
           return __memfn_smartptr{};
         }
+      } else {
+        // member object ptr case
+        if constexpr (STDEXEC_IS_BASE_OF(_Class, _Ty)) {
+          return __memobj{};
+        } else if constexpr (__is_refwrap<_Ty>) {
+          return __memobj_refwrap{};
+        } else {
+          return __memobj_smartptr{};
+        }
       }
     }
 
     struct __invoke_t {
       template <class _Fun>
-      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto
-        operator()(_Fun&& __fun) const noexcept(noexcept((static_cast<_Fun&&>(__fun))()))
-          -> decltype((static_cast<_Fun&&>(__fun))()) {
+      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto operator()(_Fun&& __fun) const
+        noexcept(noexcept(static_cast<_Fun&&>(__fun)())) -> decltype(static_cast<_Fun&&>(__fun)()) {
         return static_cast<_Fun&&>(__fun)();
       }
 
       template <class _Fun, class _Ty, class... _Args>
-    STDEXEC_ATTRIBUTE((always_inline)) constexpr auto operator()(_Fun&& __fun, _Ty&& __ty, _Args&&... __args) const
-        noexcept(noexcept(__invoke_selector(__fun, __ty)(
+      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto operator()(_Fun&& __fun, _Ty&& __ty, _Args&&... __args) const
+        noexcept(noexcept(__invoke_::__invoke_selector(__fun, __ty)(
           static_cast<_Fun&&>(__fun),
           static_cast<_Ty&&>(__ty),
           static_cast<_Args&&>(__args)...)))
-          -> decltype(__invoke_selector(__fun, __ty)(
+          -> decltype(__invoke_::__invoke_selector(__fun, __ty)(
             static_cast<_Fun&&>(__fun),
             static_cast<_Ty&&>(__ty),
             static_cast<_Args&&>(__args)...)) {
-        return decltype(__invoke_selector(__fun, __ty))()(
+        return decltype(__invoke_::__invoke_selector(__fun, __ty))()(
           static_cast<_Fun&&>(__fun), static_cast<_Ty&&>(__ty), static_cast<_Args&&>(__args)...);
       }
     };
@@ -230,25 +228,4 @@ namespace stdexec {
   };
 
   inline constexpr __apply_t __apply{};
-
-  template <class _Tag, class _Ty>
-  struct __field {
-    STDEXEC_ATTRIBUTE((always_inline)) _Ty operator()(_Tag) const noexcept(__nothrow_decay_copyable<const _Ty&>) {
-      return __t_;
-    }
-
-    _Ty __t_;
-  };
-
-  template <class _Tag>
-  struct __mkfield_ {
-    template <class _Ty>
-    STDEXEC_ATTRIBUTE((always_inline)) __field<_Tag, __decay_t<_Ty>>
-      operator()(_Ty&& __ty) const noexcept(__nothrow_decay_copyable<_Ty>) {
-      return {static_cast<_Ty&&>(__ty)};
-    }
-  };
-
-  template <class _Tag>
-  inline constexpr __mkfield_<_Tag> __mkfield{};
 } // namespace stdexec

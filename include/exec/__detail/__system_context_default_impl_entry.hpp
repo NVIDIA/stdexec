@@ -21,7 +21,7 @@
 #  error "STDEXEC_SYSTEM_CONTEXT_INLINE must be defined before including this header"
 #endif
 
-#include "__system_context_default_impl.hpp"
+#include "__system_context_default_impl.hpp" // IWYU pragma: keep
 
 #define __STDEXEC_SYSTEM_CONTEXT_API extern STDEXEC_SYSTEM_CONTEXT_INLINE STDEXEC_ATTRIBUTE((weak))
 

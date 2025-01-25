@@ -17,13 +17,15 @@
 #pragma once
 
 #include "../../stdexec/__detail/__config.hpp"
-#include "../scope.hpp"
+#include "../../stdexec/__detail/__meta.hpp"
+#include "../scope.hpp" // IWYU pragma: keep
 
-#include <algorithm>
+#include <algorithm> // IWYU pragma: keep
 #include <cstddef>
 #include <memory>
-#include <new>
+#include <new> // IWYU pragma: keep
 #include <thread>
+#include <utility>
 
 // Work around a bug in the NVHPC compilers prior to version 24.03
 #if STDEXEC_NVHPC()

@@ -15,11 +15,9 @@
  */
 #pragma once
 
-#include "../stdexec/concepts.hpp"
 #include "../stdexec/execution.hpp"
-#include "../stdexec/functional.hpp"
 
-#include "./sequence_senders.hpp"
+#include "sequence_senders.hpp"
 
 #include <cstddef>
 #include <utility>
@@ -439,9 +437,7 @@ namespace exec {
         (*__other.__vtable_)(__copy_construct, this, __other);
       }
 
-      auto operator=(const __t& __other) -> __t&
-        requires(_Copyable)
-      {
+      auto operator=(const __t& __other) -> __t& requires(_Copyable) {
         if (&__other != this) {
           __t tmp(__other);
           *this = std::move(tmp);
@@ -569,8 +565,13 @@ namespace exec {
       }
     };
 
-    template <class _VTable = __empty_vtable, class _Allocator = std::allocator<std::byte>>
-    using __immovable_storage_t = __t<__immovable_storage<_VTable, _Allocator>>;
+    template <
+      class _VTable = __empty_vtable,
+      class _Allocator = std::allocator<std::byte>,
+      std::size_t _InlineSize = 3 * sizeof(void*),
+      std::size_t _Alignment = alignof(std::max_align_t)>
+    using __immovable_storage_t =
+      __t<__immovable_storage<_VTable, _Allocator, _InlineSize, _Alignment>>;
 
     template <class _VTable, class _Allocator = std::allocator<std::byte>>
     using __unique_storage_t = __t<__storage<_VTable, _Allocator>>;
@@ -615,6 +616,7 @@ namespace exec {
           , public __query_vfun<_Queries>... {
          public:
           using __query_vfun<_Queries>::operator()...;
+          using __any_::__rcvr_vfun<_Sigs>::operator()...;
 
          private:
           template <class _Rcvr>
@@ -674,24 +676,21 @@ namespace exec {
         }
 
         template <class... _As>
-          requires __one_of<set_value_t(_As...), _Sigs...>
+          requires __callable<__vtable_t, void*, set_value_t, _As...>
         void set_value(_As&&... __as) noexcept {
-          const __any_::__rcvr_vfun<set_value_t(_As...)>* __vfun = __env_.__vtable_;
-          (*__vfun->__complete_)(__env_.__rcvr_, static_cast<_As&&>(__as)...);
+          (*__env_.__vtable_)(__env_.__rcvr_, set_value_t(), static_cast<_As&&>(__as)...);
         }
 
         template <class _Error>
-          requires __one_of<set_error_t(_Error), _Sigs...>
+          requires __callable<__vtable_t, void*, set_error_t, _Error>
         void set_error(_Error&& __err) noexcept {
-          const __any_::__rcvr_vfun<set_error_t(_Error)>* __vfun = __env_.__vtable_;
-          (*__vfun->__complete_)(__env_.__rcvr_, static_cast<_Error&&>(__err));
+          (*__env_.__vtable_)(__env_.__rcvr_, set_error_t(), static_cast<_Error&&>(__err));
         }
 
         void set_stopped() noexcept
-          requires __one_of<set_stopped_t(), _Sigs...>
+          requires __callable<__vtable_t, void*, set_stopped_t>
         {
-          const __any_::__rcvr_vfun<set_stopped_t()>* __vfun = __env_.__vtable_;
-          (*__vfun->__complete_)(__env_.__rcvr_);
+          (*__env_.__vtable_)(__env_.__rcvr_, set_stopped_t());
         }
 
         auto get_env() const noexcept -> const __env_t& {
@@ -795,7 +794,8 @@ namespace exec {
       }
     };
 
-    using __immovable_operation_storage = __immovable_storage_t<__operation_vtable>;
+    using __immovable_operation_storage =
+      __immovable_storage_t<__operation_vtable, std::allocator<std::byte>, 6 * sizeof(void*)>;
 
     template <class _Sigs, class _Queries>
     using __receiver_ref = __mapply<__mbind_front<__q<__rec::__ref>, _Sigs>, _Queries>;
@@ -1209,6 +1209,7 @@ namespace exec {
 
       template <auto... _SchedulerQueries>
       class any_scheduler {
+        // Add the required set_value_t() completions to the schedule-sender.
         using __schedule_completions = stdexec::__concat_completion_signatures<
           _Completions,
           stdexec::completion_signatures<stdexec::set_value_t()>>;
@@ -1220,10 +1221,11 @@ namespace exec {
         template <class _Tag>
         struct __ret_equals_to {
           template <class _Sig>
-          using __f = std::is_same<_Tag, decltype(__ret_fn(static_cast<_Sig>(nullptr)))>;
+          using __f =
+            stdexec::__mbool<STDEXEC_IS_SAME(_Tag, decltype(__ret_fn(static_cast<_Sig>(nullptr))))>;
         };
 
-        using schedule_sender_queries = stdexec::__minvoke<
+        using __schedule_sender_queries = stdexec::__minvoke<
           stdexec::__mremove_if<
             __ret_equals_to<stdexec::get_completion_scheduler_t<stdexec::set_value_t>>>,
           decltype(_SenderQueries)...>;
@@ -1242,7 +1244,7 @@ namespace exec {
           stdexec::get_completion_scheduler<stdexec::set_value_t>.template signature<any_scheduler() noexcept>>;
 #endif
         using __schedule_sender =
-          stdexec::__mapply<stdexec::__q<__schedule_sender_fn>, schedule_sender_queries>;
+          stdexec::__mapply<stdexec::__q<__schedule_sender_fn>, __schedule_sender_queries>;
 
         using __scheduler_base =
           __any::__scheduler<__schedule_sender, queries<_SchedulerQueries...>>;

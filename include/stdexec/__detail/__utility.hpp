@@ -20,7 +20,6 @@
 #include "__type_traits.hpp"
 
 #include <initializer_list>
-#include <memory> // for addressof
 #include <type_traits>
 
 namespace stdexec {

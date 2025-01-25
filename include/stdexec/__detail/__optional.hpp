@@ -15,13 +15,12 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__execution_fwd.hpp" // IWYU pragma: keep
 
 // include these after __execution_fwd.hpp
 #include "__concepts.hpp"
-#include "__type_traits.hpp"
 
-#include <new>
+#include <new> // IWYU pragma: keep for ::new
 #include <exception>
 #include <memory>
 #include <utility>

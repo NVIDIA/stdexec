@@ -34,7 +34,7 @@
 #endif
 
 #include <cassert>
-#include <type_traits>
+#include <type_traits> // IWYU pragma: keep
 
 #define STDEXEC_STRINGIZE(_ARG)   #_ARG
 
@@ -186,9 +186,9 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #if __cpp_impl_coroutine >= 201902 && __cpp_lib_coroutine >= 201902
-#  include <coroutine>
+#  include <coroutine> // IWYU pragma: keep
 #  define STDEXEC_STD_NO_COROUTINES() 0
-namespace __coro = std;
+namespace __coro = std; // NOLINT(misc-unused-alias-decls)
 #elif defined(__cpp_coroutines) && __has_include(<experimental/coroutine>)
 #  include <experimental/coroutine>
 #  define STDEXEC_STD_NO_COROUTINES() 0
@@ -337,6 +337,13 @@ namespace __coro = std::experimental;
 #  define STDEXEC_IS_CONST(...) __is_const(__VA_ARGS__)
 #else
 #  define STDEXEC_IS_CONST(...) stdexec::__is_const_<__VA_ARGS__>
+#endif
+
+#if STDEXEC_HAS_BUILTIN(__is_function)
+#  define STDEXEC_IS_FUNCTION(...) __is_function(__VA_ARGS__)
+#else
+#  define STDEXEC_IS_FUNCTION(...)                                                                 \
+    (!STDEXEC_IS_CONST(__VA_ARGS__) && !STDEXEC_IS_CONST(const __VA_ARGS__))
 #endif
 
 #if STDEXEC_HAS_BUILTIN(__is_same)

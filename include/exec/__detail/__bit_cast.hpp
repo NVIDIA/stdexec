@@ -26,7 +26,6 @@
 #endif
 
 #include <cstring>
-#include <type_traits>
 
 namespace exec {
 

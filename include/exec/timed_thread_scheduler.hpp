@@ -23,8 +23,6 @@
 #include "../stdexec/__detail/__intrusive_mpsc_queue.hpp"
 #include "../stdexec/__detail/__spin_loop_pause.hpp"
 
-#include <bit>
-
 namespace exec {
   class timed_thread_scheduler;
 

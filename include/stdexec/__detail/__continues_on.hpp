@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__execution_fwd.hpp" // IWYU pragma: keep
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
@@ -26,7 +26,7 @@
 #include "__schedulers.hpp"
 #include "__sender_introspection.hpp"
 #include "__sender_adaptor_closure.hpp"
-#include "__senders.hpp"
+#include "__senders_core.hpp"
 #include "__tag_invoke.hpp"
 #include "__transform_sender.hpp"
 #include "__type_traits.hpp"

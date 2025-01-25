@@ -15,10 +15,9 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__execution_fwd.hpp" // IWYU pragma: keep
 
 #include "__meta.hpp"
-#include "__cpo.hpp"
 #include "__env.hpp"
 #include "__receivers.hpp"
 #include "__senders.hpp"

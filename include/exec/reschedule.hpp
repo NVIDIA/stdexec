@@ -47,7 +47,8 @@ namespace exec {
       struct __sender {
         using sender_concept = sender_t;
 
-        auto get_completion_signatures(__ignore = {}) noexcept -> __completions<_Env> {
+        template <class _Env>
+        auto get_completion_signatures(_Env&&) noexcept -> __completions<_Env> {
           return {};
         }
 
@@ -55,8 +56,8 @@ namespace exec {
           requires receiver_of<_Receiver, __completions<env_of_t<_Receiver>>>
         auto connect(_Receiver __rcvr) const
           -> connect_result_t<__schedule_sender_t<env_of_t<_Receiver>>, _Receiver> {
-          auto __sched = get_scheduler(get_env(__rcvr));
-          return stdexec::connect(schedule(__sched), static_cast<_Receiver&&>(__rcvr));
+          auto __sched = get_scheduler(stdexec::get_env(__rcvr));
+          return stdexec::connect(stdexec::schedule(__sched), static_cast<_Receiver&&>(__rcvr));
         }
 
         auto get_env() const noexcept {

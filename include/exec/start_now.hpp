@@ -22,13 +22,10 @@
 #include "stdexec/__detail/__receivers.hpp"
 #include "stdexec/__detail/__senders.hpp"
 #include "stdexec/__detail/__meta.hpp"
-#include "stdexec/__detail/__type_traits.hpp"
 
 #include "async_scope.hpp"
 
 #include <atomic>
-#include <functional>
-#include <utility>
 
 namespace exec {
   /////////////////////////////////////////////////////////////////////////////

@@ -26,19 +26,13 @@ namespace stdexec {
   concept __await_suspend_result =
     __one_of<_Tp, void, bool> || __is_instance_of<_Tp, __coro::coroutine_handle>;
 
-  template <class _Awaiter, class _Promise>
-  concept __with_await_suspend =
-    requires(_Awaiter& __awaiter, __coro::coroutine_handle<_Promise> __h) {
-      { __awaiter.await_suspend(__h) } -> __await_suspend_result;
-    };
-
   template <class _Awaiter, class... _Promise>
   concept __awaiter = //
-    requires(_Awaiter& __awaiter) {
+    requires(_Awaiter& __awaiter, __coro::coroutine_handle<_Promise...> __h) {
       __awaiter.await_ready() ? 1 : 0;
+      { __awaiter.await_suspend(__h) } -> __await_suspend_result;
       __awaiter.await_resume();
-    } && //
-    (__with_await_suspend<_Awaiter, _Promise> && ...);
+    };
 
 #  if STDEXEC_MSVC()
   // MSVCBUG https://developercommunity.visualstudio.com/t/operator-co_await-not-found-in-requires/10452721

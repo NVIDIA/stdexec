@@ -407,7 +407,7 @@ namespace exec {
 
         static_thread_pool_* pool_;
         remote_queue* queue_;
-        const nodemask* nodemask_;
+        const nodemask* nodemask_ = &nodemask::any();
         std::size_t thread_idx_{std::numeric_limits<std::size_t>::max()};
 
        public:
