@@ -35,7 +35,7 @@ namespace {
 
     nvexec::stream_context stream{};
     auto snd = ex::transfer_just(stream.get_scheduler(), std::span{input})
-             | nvexec::reduce(0, cub::Sum{});
+             | nvexec::reduce(0, cuda::std::plus{});
 
     STATIC_REQUIRE(ex::sender_of<decltype(snd), ex::set_value_t(int&)>);
 
@@ -69,7 +69,7 @@ namespace {
 
     nvexec::stream_context stream{};
     auto snd = ex::transfer_just(stream.get_scheduler(), std::span{first, last})
-             | nvexec::reduce(init, cub::Min{});
+             | nvexec::reduce(init, cuda::minimum{});
 
     auto [result] = ex::sync_wait(std::move(snd)).value();
 

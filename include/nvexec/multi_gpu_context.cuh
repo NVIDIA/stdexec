@@ -20,6 +20,9 @@
 
 #include "stream_context.cuh"
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
+
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
     template <sender Sender, std::integral Shape, class Fun>
@@ -275,3 +278,5 @@ namespace nvexec {
     }
   };
 } // namespace nvexec
+
+STDEXEC_PRAGMA_POP()

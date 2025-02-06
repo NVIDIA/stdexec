@@ -275,9 +275,9 @@ target_compile_definitions(
 add_library(nvexec_executable_flags INTERFACE)
 
 target_compile_options(nvexec_executable_flags INTERFACE
-                       $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-gpu=nomanaged>)
+                       $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-gpu=mem:separate>)
 target_link_options(nvexec_executable_flags INTERFACE
-                    $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-gpu=nomanaged>)
+                    $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-gpu=mem:separate>)
 
 # Set up nvexec library
 option(STDEXEC_ENABLE_CUDA "Enable CUDA targets for non-nvc++ compilers" OFF)

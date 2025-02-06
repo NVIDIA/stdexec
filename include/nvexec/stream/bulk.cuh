@@ -20,6 +20,9 @@
 
 #include "common.cuh"
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
+
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   namespace _bulk {
@@ -384,3 +387,5 @@ namespace stdexec::__detail {
     nvexec::STDEXEC_STREAM_DETAIL_NS::multi_gpu_bulk_sender_t<__name_of<__t<SenderId>>, Shape, Fun>>
     __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::multi_gpu_bulk_sender_t<SenderId, Shape, Fun>>{};
 } // namespace stdexec::__detail
+
+STDEXEC_PRAGMA_POP()

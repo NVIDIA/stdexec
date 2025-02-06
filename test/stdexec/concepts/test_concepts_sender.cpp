@@ -30,8 +30,8 @@ namespace {
   struct not_a_sender { };
 
   TEST_CASE("Sender concept rejects non-sender types", "[concepts][sender]") {
-    REQUIRE(!ex::sender<int>);
-    REQUIRE(!ex::sender<not_a_sender>);
+    STATIC_REQUIRE(!ex::sender<int>);
+    STATIC_REQUIRE(!ex::sender<not_a_sender>);
   }
 
   struct P2300r7_sender_1 {
@@ -47,8 +47,8 @@ inline constexpr bool stdexec::enable_sender<P2300r7_sender_2> = true;
 namespace {
 
   TEST_CASE("Sender concept accepts P2300R7-style senders", "[concepts][sender]") {
-    REQUIRE(ex::sender<P2300r7_sender_1>);
-    REQUIRE(ex::sender<P2300r7_sender_2>);
+    STATIC_REQUIRE(ex::sender<P2300r7_sender_1>);
+    STATIC_REQUIRE(ex::sender<P2300r7_sender_2>);
   }
 
 #if !STDEXEC_STD_NO_COROUTINES()
@@ -72,9 +72,9 @@ namespace {
   };
 
   TEST_CASE("Sender concept accepts awaiters and awaitables", "[concepts][sender]") {
-    REQUIRE(ex::sender<awaiter>);
-    REQUIRE(ex::sender<awaitable>);
-    REQUIRE(ex::sender<as_awaitable>);
+    STATIC_REQUIRE(ex::sender<awaiter>);
+    STATIC_REQUIRE(ex::sender<awaitable>);
+    STATIC_REQUIRE(ex::sender<as_awaitable>);
   }
 #endif
 
@@ -98,22 +98,47 @@ namespace {
     }
   };
 
-  TEST_CASE("type w/ proper types, is a sender", "[concepts][sender]") {
-    REQUIRE(ex::sender<my_sender0>);
-    REQUIRE(ex::sender_in<my_sender0, empty_env>);
+  struct void_sender {
+    using sender_concept = stdexec::sender_t;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
-    REQUIRE(ex::sender_of<my_sender0, ex::set_value_t()>);
-    REQUIRE(ex::sender_of<my_sender0, ex::set_error_t(std::exception_ptr)>);
-    REQUIRE(ex::sender_of<my_sender0, ex::set_stopped_t()>);
-    REQUIRE(ex::sender_of<my_sender0, ex::set_value_t(), empty_env>);
-    REQUIRE(ex::sender_of<my_sender0, ex::set_error_t(std::exception_ptr), empty_env>);
-    REQUIRE(ex::sender_of<my_sender0, ex::set_stopped_t(), empty_env>);
+    template <class Receiver>
+    oper connect(Receiver) {
+      return {};
+    }
+  };
+
+  struct invalid_receiver {
+    using receiver_concept = stdexec::receiver_t;
+
+    template <class... As>
+    void set_value(As&&...) noexcept {
+      static_assert(sizeof...(As) == ~size_t(0)); // hard error always
+    }
+  };
+
+  TEST_CASE("type w/ proper types, is a sender", "[concepts][sender]") {
+    STATIC_REQUIRE(ex::sender<my_sender0>);
+    STATIC_REQUIRE(ex::sender_in<my_sender0, empty_env>);
+
+    STATIC_REQUIRE(ex::sender_of<my_sender0, ex::set_value_t()>);
+    STATIC_REQUIRE(ex::sender_of<my_sender0, ex::set_error_t(std::exception_ptr)>);
+    STATIC_REQUIRE(ex::sender_of<my_sender0, ex::set_stopped_t()>);
+    STATIC_REQUIRE(ex::sender_of<my_sender0, ex::set_value_t(), empty_env>);
+    STATIC_REQUIRE(ex::sender_of<my_sender0, ex::set_error_t(std::exception_ptr), empty_env>);
+    STATIC_REQUIRE(ex::sender_of<my_sender0, ex::set_stopped_t(), empty_env>);
+  }
+
+  TEST_CASE(
+    "sender_to concept does not instantiate the receiver's completion functions",
+    "[concepts][sender]") {
+    STATIC_REQUIRE(ex::sender_to<void_sender, invalid_receiver>);
   }
 
   TEST_CASE(
     "sender that accepts a void sender models sender_to the given sender",
     "[concepts][sender]") {
-    REQUIRE(ex::sender_to<my_sender0, empty_recv::recv0>);
+    STATIC_REQUIRE(ex::sender_to<my_sender0, empty_recv::recv0>);
   }
 
   struct my_sender_int {
@@ -129,16 +154,16 @@ namespace {
   };
 
   TEST_CASE("my_sender_int is a sender", "[concepts][sender]") {
-    REQUIRE(ex::sender<my_sender_int>);
-    REQUIRE(ex::sender_in<my_sender_int, empty_env>);
-    REQUIRE(ex::sender_of<my_sender_int, ex::set_value_t(int)>);
-    REQUIRE(ex::sender_of<my_sender_int, ex::set_value_t(int), empty_env>);
+    STATIC_REQUIRE(ex::sender<my_sender_int>);
+    STATIC_REQUIRE(ex::sender_in<my_sender_int, empty_env>);
+    STATIC_REQUIRE(ex::sender_of<my_sender_int, ex::set_value_t(int)>);
+    STATIC_REQUIRE(ex::sender_of<my_sender_int, ex::set_value_t(int), empty_env>);
   }
 
   TEST_CASE(
     "sender that accepts an int receiver models sender_to the given receiver",
     "[concepts][sender]") {
-    REQUIRE(ex::sender_to<my_sender_int, empty_recv::recv_int>);
+    STATIC_REQUIRE(ex::sender_to<my_sender_int, empty_recv::recv_int>);
   }
 
   TEST_CASE(
@@ -158,7 +183,7 @@ namespace {
     check_val_types<ex::__mset<pack<>>>(my_sender0{});
     check_err_types<ex::__mset<std::exception_ptr>>(my_sender0{});
     check_sends_stopped<true>(my_sender0{});
-    REQUIRE(ex::sender_of<my_sender0, ex::set_value_t()>);
+    STATIC_REQUIRE(ex::sender_of<my_sender0, ex::set_value_t()>);
   }
 
   TEST_CASE(
@@ -167,7 +192,7 @@ namespace {
     check_val_types<ex::__mset<pack<int>>>(my_sender_int{});
     check_err_types<ex::__mset<std::exception_ptr>>(my_sender_int{});
     check_sends_stopped<true>(my_sender_int{});
-    REQUIRE(ex::sender_of<my_sender_int, ex::set_value_t(int)>);
+    STATIC_REQUIRE(ex::sender_of<my_sender_int, ex::set_value_t(int)>);
   }
 
   struct multival_sender {
@@ -209,7 +234,7 @@ namespace {
     check_val_types<ex::__mset<pack<>>>(ec_sender{});
     check_err_types<ex::__mset<std::exception_ptr, int>>(ec_sender{});
     check_sends_stopped<false>(ec_sender{});
-    REQUIRE(ex::sender_of<ec_sender, ex::set_value_t()>);
+    STATIC_REQUIRE(ex::sender_of<ec_sender, ex::set_value_t()>);
   }
 
   struct my_r5_sender0 {
@@ -264,7 +289,7 @@ namespace {
 
   template <class Expected, class T>
   void has_type(T&&) {
-    REQUIRE(ex::same_as<T, Expected>);
+    STATIC_REQUIRE(ex::same_as<T, Expected>);
   }
 
   TEST_CASE(

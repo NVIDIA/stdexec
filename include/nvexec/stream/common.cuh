@@ -30,6 +30,10 @@
 #include "../detail/throw_on_cuda_error.cuh"
 #include "../detail/queue.cuh"
 #include "../detail/variant.cuh"
+#include "stdexec/__detail/__config.hpp"
+
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nvexec {
   using stdexec::operator""_mstr;
@@ -813,3 +817,5 @@ namespace nvexec {
 
   inline constexpr STDEXEC_STREAM_DETAIL_NS::get_stream_t get_stream{};
 } // namespace nvexec
+
+STDEXEC_PRAGMA_POP()
