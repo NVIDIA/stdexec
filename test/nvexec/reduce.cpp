@@ -7,6 +7,7 @@
 
 #include <thrust/device_vector.h>
 #include <cub/thread/thread_operators.cuh>
+#include <cuda/functional>
 
 #include <algorithm>
 #include <span>
