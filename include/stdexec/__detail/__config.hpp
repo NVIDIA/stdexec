@@ -269,7 +269,8 @@ namespace __coro = std::experimental;
 #  define STDEXEC_PRAGMA_IGNORE_EDG(...) _Pragma(STDEXEC_STRINGIZE(nv_diag_suppress __VA_ARGS__))
 #elif STDEXEC_EDG()
 #  define STDEXEC_PRAGMA_PUSH()                                                                    \
-    _Pragma("diagnostic push") STDEXEC_PRAGMA_IGNORE_EDG(invalid_error_number)
+    _Pragma("diagnostic push") STDEXEC_PRAGMA_IGNORE_EDG(invalid_error_number)                     \
+      STDEXEC_PRAGMA_IGNORE_EDG(invalid_error_tag)
 #  define STDEXEC_PRAGMA_POP()           _Pragma("diagnostic pop")
 #  define STDEXEC_PRAGMA_IGNORE_EDG(...) _Pragma(STDEXEC_STRINGIZE(diag_suppress __VA_ARGS__))
 #elif STDEXEC_CLANG() || STDEXEC_GCC()
