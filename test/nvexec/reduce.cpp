@@ -7,7 +7,6 @@
 
 #include <thrust/device_vector.h>
 #include <cub/thread/thread_operators.cuh>
-#include <cuda/functional>
 
 #include <algorithm>
 #include <span>
@@ -15,6 +14,13 @@
 namespace ex = stdexec;
 
 namespace {
+  struct minimum {
+    template <class T1, class T2>
+    constexpr auto
+      operator()(const T1& lhs, const T2& rhs) const -> _CUDA_VSTD::common_type_t<T1, T2> {
+      return (lhs < rhs) ? lhs : rhs;
+    }
+  };
 
   TEST_CASE("nvexec reduce returns a sender with single input", "[cuda][stream][adaptors][reduce]") {
     constexpr int N = 2048;
@@ -70,7 +76,7 @@ namespace {
 
     nvexec::stream_context stream{};
     auto snd = ex::transfer_just(stream.get_scheduler(), std::span{first, last})
-             | nvexec::reduce(init, cuda::minimum{});
+             | nvexec::reduce(init, minimum{});
 
     auto [result] = ex::sync_wait(std::move(snd)).value();
 

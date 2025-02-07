@@ -74,6 +74,5 @@ namespace stdexec {
        };
 
   template <class _Sender, class _Receiver>
-    requires sender_to<_Sender, _Receiver>
   using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
 } // namespace stdexec
