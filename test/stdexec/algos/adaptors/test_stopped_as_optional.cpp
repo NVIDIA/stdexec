@@ -55,7 +55,7 @@ namespace {
     "stopped_as_optional shall not work with multi-value senders",
     "[adaptors][stopped_as_optional]") {
     auto snd = ex::just(3, 0.1415) | ex::stopped_as_optional();
-    static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver<>>);
+    static_assert(!ex::sender_to<decltype(snd), expect_error_receiver<>>);
   }
 
   TEST_CASE(
@@ -66,7 +66,7 @@ namespace {
       | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
     check_val_types<ex::__mset<pack<int>, pack<std::string>>>(in_snd);
     auto snd = std::move(in_snd) | ex::stopped_as_optional();
-    static_assert(!std::invocable<ex::connect_t, decltype(snd), expect_error_receiver<>>);
+    static_assert(!ex::sender_to<decltype(snd), expect_error_receiver<>>);
   }
 
   TEST_CASE("stopped_as_optional forwards errors", "[adaptors][stopped_as_optional]") {

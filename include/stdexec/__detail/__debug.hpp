@@ -21,6 +21,7 @@
 #include "__diagnostics.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
+#include "__senders_core.hpp"
 #include "__tag_invoke.hpp"
 
 #include <exception> // IWYU pragma: keep for std::terminate

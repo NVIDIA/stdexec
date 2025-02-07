@@ -74,7 +74,7 @@ namespace exec {
 
         template <__decays_to<_Sender> _Sndr>
         __t(_Sndr&& __sender)
-          : __sender_{static_cast<_Sndr&&>(__sender)} {
+          : __sndr_{static_cast<_Sndr&&>(__sender)} {
         }
 
         template <__decays_to<__t> _Self, class _Receiver>
@@ -83,7 +83,7 @@ namespace exec {
           noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
             -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
           return stdexec::connect(
-            static_cast<_Self&&>(__self).__sender_,
+            static_cast<_Self&&>(__self).__sndr_,
             __receiver_t<_Receiver>{static_cast<_Receiver&&>(__receiver)});
         }
 
@@ -93,10 +93,10 @@ namespace exec {
         template <class _Err>
         using __materialize_error = completion_signatures<set_value_t(set_error_t, _Err)>;
 
-        template <class... _Env>
-        using __completion_signatures_for_t = //
+        template <class _Self, class... _Env>
+        using __completions_t = //
           __transform_completion_signatures<
-            __completion_signatures_of_t<_Sender, _Env...>,
+            __completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...>,
             __materialize_value,
             __materialize_error,
             completion_signatures<set_value_t(set_stopped_t)>,
@@ -104,12 +104,12 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class... _Env>
         static auto get_completion_signatures(_Self&&, _Env&&...) //
-          -> __completion_signatures_for_t<_Env...> {
+          -> __completions_t<_Self, _Env...> {
           return {};
         }
 
        private:
-        _Sender __sender_;
+        _Sender __sndr_;
       };
     };
 
@@ -145,7 +145,7 @@ namespace exec {
         }
 
         template <__completion_tag _Tag, class... _Args>
-          requires tag_invocable<_Tag, _Receiver&&, _Args...>
+          requires __callable<_Tag, _Receiver, _Args...>
         void set_value(_Tag, _Args&&... __args) noexcept {
           _Tag()(static_cast<_Receiver&&>(__upstream_), static_cast<_Args&&>(__args)...);
         }
@@ -182,7 +182,7 @@ namespace exec {
 
         template <__decays_to<_Sender> _Sndr>
         __t(_Sndr&& __sndr) noexcept(__nothrow_decay_copyable<_Sndr>)
-          : __sender_{static_cast<_Sndr&&>(__sndr)} {
+          : __sndr_{static_cast<_Sndr&&>(__sndr)} {
         }
 
         template <__decays_to<__t> _Self, class _Receiver>
@@ -191,7 +191,7 @@ namespace exec {
           noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
             -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
           return stdexec::connect(
-            static_cast<_Self&&>(__self).__sender_,
+            static_cast<_Self&&>(__self).__sndr_,
             __receiver_t<_Receiver>{static_cast<_Receiver&&>(__receiver)});
         }
 
@@ -199,24 +199,21 @@ namespace exec {
           requires __completion_tag<__decay_t<_Tag>>
         using __dematerialize_value = completion_signatures<__decay_t<_Tag>(_Args...)>;
 
-        template <class... Ts>
-        using __foo = __meval<__dematerialize_value, Ts...>;
-
-        template <class... _Env>
-        using __completion_signatures_for_t = //
+        template <class _Self, class... _Env>
+        using __completions_t = //
           transform_completion_signatures<
-            __completion_signatures_of_t<_Sender, _Env...>,
+            __completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...>,
             completion_signatures<>,
             __mtry_q<__dematerialize_value>::template __f>;
 
         template <__decays_to<__t> _Self, class... _Env>
         static auto get_completion_signatures(_Self&&, _Env&&...) //
-          -> __completion_signatures_for_t<_Env...> {
+          -> __completions_t<_Self, _Env...> {
           return {};
         }
 
        private:
-        _Sender __sender_;
+        _Sender __sndr_;
       };
     };
 

@@ -476,10 +476,8 @@ namespace stdexec {
     sender_in<_Sender, _Env...> && __sends<set_stopped_t, _Sender, _Env...>;
 
   template <class _Sender, class... _Env>
-  using __single_sender_value_t = __value_types_t<
-    __completion_signatures_of_t<_Sender, _Env...>,
-    __msingle_or<void>,
-    __q<__msingle>>;
+  using __single_sender_value_t =
+    __value_types_t<__completion_signatures_of_t<_Sender, _Env...>, __q<__msingle>, __q<__msingle>>;
 
   template <class _Sender, class... _Env>
   concept __single_value_sender =  //

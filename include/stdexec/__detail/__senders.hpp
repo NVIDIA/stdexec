@@ -177,6 +177,10 @@ namespace stdexec {
     template <class _Sender, class _Receiver>
     concept __with_co_await = __callable<__connect_awaitable_t, _Sender, _Receiver>;
 
+    struct _NO_USABLE_CONNECT_CUSTOMIZATION_FOUND_ {
+      void operator()() const noexcept = delete;
+    };
+
     struct connect_t {
       template <class _Sender, class _Env>
       static constexpr auto __check_signatures() -> bool {
@@ -199,12 +203,19 @@ namespace stdexec {
         constexpr bool _NothrowTfxSender =
           __nothrow_callable<transform_sender_t, _Domain, _Sender, env_of_t<_Receiver>>;
 
+        static_assert(sender<_Sender>, "The first argument to stdexec::connect must be a sender");
+        static_assert(
+          receiver<_Receiver>, "The second argument to stdexec::connect must be a receiver");
 #if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
         static_assert(__check_signatures<_TfxSender, env_of_t<_Receiver>>());
 #endif
 
         if constexpr (__with_static_member<_TfxSender, _Receiver>) {
           using _Result = __static_member_result_t<_TfxSender, _Receiver>;
+          static_assert(
+            operation_state<_Result>,
+            "Sender::connect(sender, receiver) must return a type that "
+            "satisfies the operation_state concept");
           constexpr bool _Nothrow = //
             _NothrowTfxSender
             && noexcept(
@@ -212,32 +223,37 @@ namespace stdexec {
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
         } else if constexpr (__with_member<_TfxSender, _Receiver>) {
           using _Result = __member_result_t<_TfxSender, _Receiver>;
+          static_assert(
+            operation_state<_Result>,
+            "sender.connect(receiver) must return a type that "
+            "satisfies the operation_state concept");
           constexpr bool _Nothrow = //
             _NothrowTfxSender && noexcept(__declval<_TfxSender>().connect(__declval<_Receiver>()));
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
         } else if constexpr (__with_tag_invoke<_TfxSender, _Receiver>) {
           using _Result = tag_invoke_result_t<connect_t, _TfxSender, _Receiver>;
+          static_assert(
+            operation_state<_Result>,
+            "stdexec::connect(sender, receiver) must return a type that "
+            "satisfies the operation_state concept");
           constexpr bool _Nothrow = //
             _NothrowTfxSender && nothrow_tag_invocable<connect_t, _TfxSender, _Receiver>;
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
         } else if constexpr (__with_co_await<_TfxSender, _Receiver>) {
           using _Result = __call_result_t<__connect_awaitable_t, _TfxSender, _Receiver>;
           return static_cast<_Result (*)()>(nullptr);
-        } else {
+        } else if constexpr (__is_debug_env<env_of_t<_Receiver>>) {
           using _Result = __debug::__debug_operation;
           return static_cast<_Result (*)() noexcept(_NothrowTfxSender)>(nullptr);
+        } else {
+          return _NO_USABLE_CONNECT_CUSTOMIZATION_FOUND_();
         }
       }
 
       template <class _Sender, class _Receiver>
       using __select_impl_t = decltype(__select_impl<_Sender, _Receiver>());
 
-      template <sender _Sender, receiver _Receiver>
-        requires __with_static_member<__tfx_sender<_Sender, _Receiver>, _Receiver>
-              || __with_member<__tfx_sender<_Sender, _Receiver>, _Receiver>
-              || __with_tag_invoke<__tfx_sender<_Sender, _Receiver>, _Receiver>
-              || __with_co_await<__tfx_sender<_Sender, _Receiver>, _Receiver>
-              || __is_debug_env<env_of_t<_Receiver>>
+      template <class _Sender, class _Receiver>
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
         noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
           -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
@@ -246,25 +262,13 @@ namespace stdexec {
         auto __domain = __get_late_domain(__sndr, __env);
 
         if constexpr (__with_static_member<_TfxSender, _Receiver>) {
-          static_assert(
-            operation_state<__static_member_result_t<_TfxSender, _Receiver>>,
-            "Sender::connect(sender, receiver) must return a type that "
-            "satisfies the operation_state concept");
           auto&& __tfx_sndr = transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env);
           return __tfx_sndr.connect(
             static_cast<_TfxSender&&>(__tfx_sndr), static_cast<_Receiver&&>(__rcvr));
         } else if constexpr (__with_member<_TfxSender, _Receiver>) {
-          static_assert(
-            operation_state<__member_result_t<_TfxSender, _Receiver>>,
-            "sender.connect(receiver) must return a type that "
-            "satisfies the operation_state concept");
           return transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env)
             .connect(static_cast<_Receiver&&>(__rcvr));
         } else if constexpr (__with_tag_invoke<_TfxSender, _Receiver>) {
-          static_assert(
-            operation_state<tag_invoke_result_t<connect_t, _TfxSender, _Receiver>>,
-            "stdexec::connect(sender, receiver) must return a type that "
-            "satisfies the operation_state concept");
           return tag_invoke(
             connect_t(),
             transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env),
@@ -295,15 +299,6 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   // [exec.snd]
-  template <class _Sender, class _Receiver>
-  concept sender_to =                          //
-    receiver<_Receiver>                        //
-    && sender_in<_Sender, env_of_t<_Receiver>> //
-    && __receiver_from<_Receiver, _Sender>     //
-    && requires(_Sender&& __sndr, _Receiver&& __rcvr) {
-         connect(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
-       };
-
   template <class _Tag, class... _Args>
   auto __tag_of_sig_(_Tag (*)(_Args...)) -> _Tag;
   template <class _Sig>

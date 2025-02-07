@@ -23,6 +23,9 @@
 #include "../detail/queue.cuh"
 #include "../detail/throw_on_cuda_error.cuh"
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
+
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   namespace _when_all {
@@ -447,3 +450,5 @@ namespace stdexec::__detail {
     __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::
                   when_all_sender_t<WithCompletionScheduler, Scheduler, SenderIds...>>{};
 } // namespace stdexec::__detail
+
+STDEXEC_PRAGMA_POP()

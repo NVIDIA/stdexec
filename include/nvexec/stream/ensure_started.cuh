@@ -21,6 +21,9 @@
 #include "../detail/throw_on_cuda_error.cuh"
 #include "common.cuh"
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
+
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace _ensure_started {
     template <class Tag, class... As, class Variant>
@@ -386,3 +389,5 @@ namespace stdexec::__detail {
     nvexec::STDEXEC_STREAM_DETAIL_NS::ensure_started_sender_t<__name_of<__t<SenderId>>>>
     __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::ensure_started_sender_t<SenderId>>{};
 } // namespace stdexec::__detail
+
+STDEXEC_PRAGMA_POP()

@@ -159,9 +159,6 @@ namespace stdexec {
   extern const connect_t connect;
 
   template <class _Sender, class _Receiver>
-  using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
-
-  template <class _Sender, class _Receiver>
   concept __nothrow_connectable = __nothrow_callable<connect_t, _Sender, _Receiver>;
 
   struct sender_t;

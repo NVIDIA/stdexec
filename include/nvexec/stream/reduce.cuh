@@ -133,13 +133,13 @@ namespace nvexec {
       using __sender =
         stdexec::__t<reduce_::sender_t<stdexec::__id<__decay_t<Sender>>, InitT, Fun>>;
 
-      template <sender Sender, __movable_value InitT, __movable_value Fun = cub::Sum>
+      template <sender Sender, __movable_value InitT, __movable_value Fun = cuda::std::plus<>>
       __sender<Sender, InitT, Fun> operator()(Sender&& sndr, InitT init, Fun fun) const {
         return __sender<Sender, InitT, Fun>{
           {}, static_cast<Sender&&>(sndr), static_cast<InitT&&>(init), static_cast<Fun&&>(fun)};
       }
 
-      template <class InitT, class Fun = cub::Sum>
+      template <class InitT, class Fun = cuda::std::plus<>>
       STDEXEC_ATTRIBUTE((always_inline)) auto operator()(InitT init, Fun fun = {}) const -> __binder_back<reduce_t, InitT, Fun> {
         return {
           {static_cast<InitT&&>(init), static_cast<Fun&&>(fun)},
