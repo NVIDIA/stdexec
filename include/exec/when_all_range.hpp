@@ -151,8 +151,16 @@ namespace exec {
       storage_type result_{};
     };
 
+    template <class Result>
+    struct operation_results_base {
+      intrusive_queue<&local_operation_result<Result>::next_> results_{};
+    };
+
+    template <>
+    struct operation_results_base<void> { };
+
     template <class Result, class ErrorVariant, class Receiver>
-    struct operation_base {
+    struct operation_base : operation_results_base<Result> {
       struct stop_callback_t {
         operation_base& op_;
 
@@ -167,7 +175,6 @@ namespace exec {
       ErrorVariant error_{};
       Receiver receiver_;
       stdexec::inplace_stop_source stop_source_{};
-      intrusive_queue<&local_operation_result<Result>::next_> results_{};
       std::atomic<std::ptrdiff_t> count_{0};
       std::atomic<int> disposition_{0};
       stdexec::__manual_lifetime<stop_callback_type> stop_callback_{};
@@ -190,8 +197,8 @@ namespace exec {
               stdexec::set_value(std::move(receiver_));
             } else {
               std::vector<Result> result;
-              result.reserve(results_.size());
-              while (auto* item = results_.pop()) {
+              result.reserve(this->results_.size());
+              while (auto* item = this->results_.pop()) {
                 assert(item->result_);
                 result.push_back(*std::exchange(item->result_, std::nullopt));
               }
@@ -247,7 +254,9 @@ namespace exec {
       explicit local_operation_base(operation_base<Result, ErrorVariant, Receiver>& parent) noexcept
         : local_operation_result<Result>{}
         , parent_{parent} {
-        parent_.results_.push(*this);
+        if constexpr (!std::is_void_v<Result>) {
+          parent_.results_.push(*this);
+        }
       }
 
       local_operation_base(const local_operation_base&) = delete;
