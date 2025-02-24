@@ -28,6 +28,7 @@
 
 #include <utility> // for tuple_size/tuple_element
 #include <cstddef>
+#include <new> // IWYU pragma: keep for placement new
 #include <type_traits>
 
 namespace stdexec {
@@ -235,19 +236,26 @@ namespace stdexec {
       using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
       __state_box(_Sexpr&& __sndr, _Receiver& __rcvr) //
-        noexcept(__nothrow_callable<decltype(__sexpr_impl<__tag_t>::get_state), _Sexpr, _Receiver>)
-        : __state_(__sexpr_impl<__tag_t>::get_state(static_cast<_Sexpr&&>(__sndr), __rcvr)) {
+        noexcept(__nothrow_callable<decltype(__sexpr_impl<__tag_t>::get_state), _Sexpr, _Receiver>) {
+        ::new (static_cast<void*>(__buf_)) auto(
+          __sexpr_impl<__tag_t>::get_state(static_cast<_Sexpr&&>(__sndr), __rcvr));
+      }
+
+      ~__state_box() {
+        reinterpret_cast<__state_t*>(__buf_)->~__state_t();
       }
 
       STDEXEC_ATTRIBUTE((always_inline)) auto __state() & noexcept -> __state_t& {
-        return __state_;
+        return *reinterpret_cast<__state_t*>(__buf_);
       }
 
       STDEXEC_ATTRIBUTE((always_inline)) auto __state() const & noexcept -> const __state_t& {
-        return __state_;
+        return *reinterpret_cast<const __state_t*>(__buf_);
       }
 
-      __state_t __state_;
+      // We use a buffer to store the state object to make __state_box a standard-layout type
+      // regardless of whether __state_t is standard-layout or not.
+      alignas(__state_t) std::byte __buf_[sizeof(__state_t)]; // NOLINT(modernize-avoid-c-arrays)
     };
 
     template <class _Sexpr, class _Receiver, class _State>
@@ -257,7 +265,9 @@ namespace stdexec {
       [[clang::noinline]]
 #endif
       auto __receiver() noexcept -> decltype(auto) {
-        auto* __state = static_cast<_State*>(this);
+        void* __state = static_cast<_State*>(this);
+        // The following cast use the pointer-interconvertibility between the __state_box::__buf_
+        // member and the containing __state_box object itself.
         auto* __sbox = static_cast<__state_box<_Sexpr, _Receiver>*>(__state);
         return (static_cast<__op_base<_Sexpr, _Receiver>*>(__sbox)->__rcvr_);
       }
@@ -268,26 +278,6 @@ namespace stdexec {
       derived_from<
         __state_t<_Sexpr, _Receiver>,
         __enable_receiver_from_this<_Sexpr, _Receiver, __state_t<_Sexpr, _Receiver>>>;
-
-    template <class _Sexpr, class _Receiver>
-      requires __state_uses_receiver<_Sexpr, _Receiver>
-    struct __state_box<_Sexpr, _Receiver> : __state_type_t<typename __decay_t<_Sexpr>::__tag_t, _Sexpr, _Receiver> {
-      using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
-      using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
-
-      __state_box(_Sexpr&& __sndr, _Receiver& __rcvr) //
-        noexcept(__nothrow_callable<decltype(__sexpr_impl<__tag_t>::get_state), _Sexpr, _Receiver>)
-        : __state_t{__emplace_from{[&]{return __sexpr_impl<__tag_t>::get_state(static_cast<_Sexpr&&>(__sndr), __rcvr);}}} {
-      }
-
-      STDEXEC_ATTRIBUTE((always_inline)) auto __state() & noexcept -> __state_t& {
-        return *this;
-      }
-
-      STDEXEC_ATTRIBUTE((always_inline)) auto __state() const & noexcept -> const __state_t& {
-        return *this;
-      }
-    };
 
     template <class _Sexpr, class _Receiver>
     struct __op_base : __immovable {
@@ -338,6 +328,9 @@ namespace stdexec {
         noexcept(__nothrow_decay_copyable<_Receiver> && __nothrow_move_constructible<__state_t>)
         : __receiver_box<_Receiver>{static_cast<_Receiver&&>(__rcvr)}
         , __state_box<_Sexpr, _Receiver>{static_cast<_Sexpr&&>(__sndr), this->__rcvr_} {
+        // This is necessary to ensure that the state object is pointer-interconvertible
+        // with the __state_box object for the sake of __enable_receiver_from_this.
+        static_assert(std::is_standard_layout_v<__state_box<_Sexpr, _Receiver>>);
       }
     };
 
