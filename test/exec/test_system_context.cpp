@@ -32,6 +32,7 @@
 
 
 namespace ex = stdexec;
+namespace scr = exec::system_context_replaceability;
 
 TEST_CASE("system_context can return a scheduler", "[types][system_scheduler]") {
   auto sched = exec::get_system_scheduler();
@@ -103,8 +104,6 @@ TEST_CASE("simple schedule forward progress guarantee", "[types][system_schedule
 TEST_CASE("get_completion_scheduler", "[types][system_scheduler]") {
   exec::system_scheduler sched = exec::get_system_scheduler();
   REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::schedule(sched))) == sched);
-  REQUIRE(
-    ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(ex::schedule(sched))) == sched);
 }
 
 TEST_CASE("simple chain task on system context", "[types][system_scheduler]") {
@@ -125,26 +124,25 @@ TEST_CASE("simple chain task on system context", "[types][system_scheduler]") {
   (void) snd2;
 }
 
-// TODO: fix this test. This also makes tsan and asan unhappy.
-// TEST_CASE("checks stop_token before starting the work", "[types][system_scheduler]") {
-//   exec::system_scheduler sched = exec::get_system_scheduler();
+TEST_CASE("checks stop_token before starting the work", "[types][system_scheduler]") {
+  exec::system_scheduler sched = exec::get_system_scheduler();
 
-//   exec::async_scope scope;
-//   scope.request_stop();
+  exec::async_scope scope;
+  scope.request_stop();
+  REQUIRE(scope.get_stop_source().stop_requested());
 
-//   bool called = false;
-//   auto snd = ex::then(ex::schedule(sched), [&called] { called = true; });
+  bool called = false;
+  auto snd = ex::then(ex::schedule(sched), [&called] { called = true; });
 
-//   // Start the sender in a stopped scope
-//   scope.spawn(std::move(snd));
+  // Start the sender in a stopped scope
+  scope.spawn(std::move(snd));
 
-//   // Wait for everything to be completed.
-//   ex::sync_wait(scope.on_empty());
+  // Wait for everything to be completed.
+  ex::sync_wait(scope.on_empty());
 
-//   // Assert.
-//   // TODO: called should be false
-//   REQUIRE(called);
-// }
+  // Assert.
+  REQUIRE_FALSE(called);
+}
 
 TEST_CASE("simple bulk task on system context", "[types][system_scheduler]") {
   std::thread::id this_id = std::this_thread::get_id();
@@ -209,9 +207,7 @@ struct my_system_scheduler_impl : exec::__system_context_default_impl::__system_
     return count_schedules_;
   }
 
-  void schedule(
-    exec::__system_context_default_impl::storage __s,
-    exec::__system_context_default_impl::receiver* __r) noexcept override {
+  void schedule(scr::storage __s, scr::receiver* __r) noexcept override {
     count_schedules_++;
     base_t::schedule(__s, __r);
   }
@@ -221,13 +217,24 @@ struct my_system_scheduler_impl : exec::__system_context_default_impl::__system_
   int count_schedules_ = 0;
 };
 
-TEST_CASE("can change the implementation of system context", "[types][system_scheduler]") {
-  using namespace exec::system_context_replaceability;
+struct my_inline_scheduler_impl : scr::system_scheduler {
+  void schedule(scr::storage s, scr::receiver* r) noexcept override {
+    r->set_value();
+  }
 
-  // Not to spec.
-  my_system_scheduler_impl my_scheduler;
-  auto scr = query_system_context<__system_context_replaceability>();
-  scr->__set_system_scheduler(&my_scheduler);
+  void bulk_schedule(uint32_t count, scr::storage s, scr::bulk_item_receiver* r) noexcept override {
+    for (uint32_t i = 0; i < count; ++i)
+      r->start(i);
+    r->set_value();
+  }
+};
+
+TEST_CASE(
+  "can change the implementation of system context at runtime",
+  "[types][system_scheduler]") {
+  static auto my_scheduler_backend = std::make_shared<my_system_scheduler_impl>();
+  auto old_factory = scr::set_system_context_backend_factory<scr::system_scheduler>(
+    []() -> std::shared_ptr<scr::system_scheduler> { return my_scheduler_backend; });
 
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};
@@ -235,10 +242,94 @@ TEST_CASE("can change the implementation of system context", "[types][system_sch
 
   auto snd = ex::then(ex::schedule(sched), [&] { pool_id = std::this_thread::get_id(); });
 
-  REQUIRE(my_scheduler.num_schedules() == 0);
+  REQUIRE(my_scheduler_backend->num_schedules() == 0);
   ex::sync_wait(std::move(snd));
-  REQUIRE(my_scheduler.num_schedules() == 1);
+  REQUIRE(my_scheduler_backend->num_schedules() == 1);
 
   REQUIRE(pool_id != std::thread::id{});
   REQUIRE(this_id != pool_id);
+
+  (void) scr::set_system_context_backend_factory<scr::system_scheduler>(old_factory);
+}
+
+TEST_CASE(
+  "can change the implementation of system context at runtime, with an inline scheduler",
+  "[types][system_scheduler]") {
+  auto old_factory = scr::set_system_context_backend_factory<scr::system_scheduler>(
+    []() -> std::shared_ptr<scr::system_scheduler> {
+      return std::make_shared<my_inline_scheduler_impl>();
+    });
+
+  std::thread::id this_id = std::this_thread::get_id();
+  std::thread::id pool_id{};
+  exec::system_scheduler sched = exec::get_system_scheduler();
+
+  auto snd = ex::then(ex::schedule(sched), [&] { pool_id = std::this_thread::get_id(); });
+
+  ex::sync_wait(std::move(snd));
+
+  REQUIRE(this_id == pool_id);
+
+  (void) scr::set_system_context_backend_factory<scr::system_scheduler>(old_factory);
+}
+
+TEST_CASE("empty environment always returns nullopt for any query", "[types][system_scheduler]") {
+  struct my_receiver : scr::receiver {
+    bool __query_env(__uuid, void*) noexcept override {
+      return false;
+    }
+
+    void set_value() noexcept override {
+    }
+
+    void set_error(std::exception_ptr) noexcept override {
+    }
+
+    void set_stopped() noexcept override {
+    }
+  };
+
+  my_receiver rcvr{};
+
+  REQUIRE(rcvr.try_query<stdexec::inplace_stop_token>() == std::nullopt);
+  REQUIRE(rcvr.try_query<int>() == std::nullopt);
+  REQUIRE(rcvr.try_query<std::allocator<int>>() == std::nullopt);
+}
+
+TEST_CASE("environment with a stop token can expose its stop token", "[types][system_scheduler]") {
+  struct my_receiver : scr::receiver {
+    bool __query_env(__uuid uuid, void* dest) noexcept override {
+      if (
+        uuid
+        == scr::__runtime_property_helper<stdexec::inplace_stop_token>::__property_identifier) {
+        *static_cast<stdexec::inplace_stop_token*>(dest) = ss.get_token();
+        return true;
+      }
+      return false;
+    }
+
+    void set_value() noexcept override {
+    }
+
+    void set_error(std::exception_ptr) noexcept override {
+    }
+
+    void set_stopped() noexcept override {
+    }
+
+    stdexec::inplace_stop_source ss;
+  };
+
+  my_receiver rcvr{};
+
+  auto o1 = rcvr.try_query<stdexec::inplace_stop_token>();
+  REQUIRE(o1.has_value());
+  REQUIRE(o1.value().stop_requested() == false);
+  REQUIRE(o1.value() == rcvr.ss.get_token());
+
+  rcvr.ss.request_stop();
+  REQUIRE(o1.value().stop_requested() == true);
+
+  REQUIRE(rcvr.try_query<int>() == std::nullopt);
+  REQUIRE(rcvr.try_query<std::allocator<int>>() == std::nullopt);
 }
