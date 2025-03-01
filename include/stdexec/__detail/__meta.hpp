@@ -1124,6 +1124,9 @@ namespace stdexec {
   using __3 = __placeholder<3>;
 
 #if defined(__cpp_pack_indexing)
+  STDEXEC_PRAGMA_PUSH()
+  STDEXEC_PRAGMA_IGNORE_GNU("-Wc++26-extensions")
+
   template <std::size_t _Np>
   struct __nth_pack_element_t {
     template <class... _Ts>
@@ -1132,6 +1135,8 @@ namespace stdexec {
       return static_cast<_Ts...[_Np] &&>(__ts...[_Np]);
     }
   };
+
+  STDEXEC_PRAGMA_POP()
 #else
   template <class... _Ignore>
   struct __nth_pack_element_impl {

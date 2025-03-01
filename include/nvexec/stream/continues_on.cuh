@@ -16,7 +16,9 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
-#include <type_traits>
+#include <utility>
+
+#include "../detail/cuda_atomic.cuh" // IWYU pragma: keep
 
 #include "common.cuh"
 

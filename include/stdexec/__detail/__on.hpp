@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
@@ -151,7 +151,7 @@ namespace stdexec {
             } else {
               return continues_on(
                 starts_on(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)),
-                static_cast<decltype(__old) &&>(__old));
+                static_cast<decltype(__old)&&>(__old));
             }
           } else {
             // This branch handles the case where `on` was called like `on(snd, sch, clsur)`

@@ -15,7 +15,9 @@
  */
 #pragma once
 
-#include "../../stdexec/__detail/__config.hpp"
+// IWYU pragma: always_keep
+
+#include "../../stdexec/__detail/__config.hpp" // IWYU pragma: export
 
 #if !defined(_NVHPC_CUDA) && !defined(__CUDACC__)
 #  error The NVIDIA schedulers and utilities require CUDA support

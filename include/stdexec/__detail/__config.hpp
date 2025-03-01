@@ -15,6 +15,8 @@
  */
 #pragma once
 
+// IWYU pragma: always_keep
+
 #if __cplusplus < 202002L
 #  if defined(_MSC_VER) && !defined(__clang__)
 #    error This library requires the use of C++20. Use /Zc:__cplusplus to enable __cplusplus conformance.

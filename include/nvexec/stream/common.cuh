@@ -15,18 +15,18 @@
  */
 #pragma once
 
-#include <stack>
-#include <atomic>
-#include <memory_resource>
 #include "../../stdexec/execution.hpp"
 
 #include <cuda/std/type_traits>
 #include <cuda/std/tuple>
+
 #include <optional>
 #include <type_traits>
+#include <stack>
+#include <memory_resource>
 
 #include "../detail/config.cuh"
-#include "../detail/cuda_atomic.cuh"
+#include "../detail/cuda_atomic.cuh" // IWYU pragma: keep
 #include "../detail/throw_on_cuda_error.cuh"
 #include "../detail/queue.cuh"
 #include "../detail/variant.cuh"

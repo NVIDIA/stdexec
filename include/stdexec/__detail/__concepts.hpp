@@ -40,15 +40,15 @@
 namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   template <class _Fun, class... _As>
-  concept __callable =                                         //
-    requires(_Fun&& __fun, _As&&... __as) {                    //
-      static_cast<_Fun&&>(__fun)(static_cast<_As&&>(__as)...); //
+  concept __callable =                                           //
+    requires(_Fun&& __fun, _As&&... __as) {                      //
+      static_cast<_Fun &&>(__fun)(static_cast<_As &&>(__as)...); //
     };
   template <class _Fun, class... _As>
   concept __nothrow_callable =  //
     __callable<_Fun, _As...> && //
     requires(_Fun&& __fun, _As&&... __as) {
-      { static_cast<_Fun&&>(__fun)(static_cast<_As&&>(__as)...) } noexcept;
+      { static_cast<_Fun &&>(__fun)(static_cast<_As &&>(__as)...) } noexcept;
     };
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -187,7 +187,7 @@ namespace stdexec {
     //   const std::remove_reference_t<_LHS>&,
     //   const std::remove_reference_t<_RHS>&> &&
     requires(_LHS __lhs, _RHS&& __rhs) {
-      { __lhs = static_cast<_RHS&&>(__rhs) } -> same_as<_LHS>;
+      { __lhs = static_cast<_RHS &&>(__rhs) } -> same_as<_LHS>;
     };
 
   namespace __swap {
@@ -196,7 +196,7 @@ namespace stdexec {
     template <class _Ty, class _Uy>
     concept swappable_with =           //
       requires(_Ty&& __t, _Uy&& __u) { //
-        swap(static_cast<_Ty&&>(__t), static_cast<_Uy&&>(__u));
+        swap(static_cast<_Ty &&>(__t), static_cast<_Uy &&>(__u));
       };
 
     inline constexpr auto const __fn =                             //
@@ -269,7 +269,7 @@ namespace stdexec {
   concept __nothrow_movable_value = //
     __movable_value<_Ty> &&         //
     requires(_Ty&& __t) {
-      { __decay_t<_Ty>{__decay_t<_Ty>{static_cast<_Ty&&>(__t)}} } noexcept;
+      { __decay_t<_Ty>{__decay_t<_Ty>{static_cast<_Ty &&>(__t)}} } noexcept;
     };
 
   template <class _Ty, class... _As>

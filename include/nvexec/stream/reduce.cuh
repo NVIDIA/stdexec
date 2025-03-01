@@ -17,14 +17,12 @@
 
 #include "../../stdexec/execution.hpp"
 #include <type_traits>
-#include <ranges>
 
 #include <cuda/std/type_traits>
 
 #include <cub/device/device_reduce.cuh>
 
 #include "algorithm_base.cuh"
-#include "common.cuh"
 #include "../detail/throw_on_cuda_error.cuh"
 
 STDEXEC_PRAGMA_PUSH()

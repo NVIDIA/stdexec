@@ -15,10 +15,13 @@
  */
 #pragma once
 
-#include <algorithm>
-#include <type_traits>
-#include "../../stdexec/concepts.hpp"
 #include "../../stdexec/execution.hpp"
+
+#include <algorithm>
+#include <concepts>
+#include <cstddef>
+#include <exception>
+#include <type_traits>
 
 #include "config.cuh"
 

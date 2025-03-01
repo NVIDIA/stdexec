@@ -356,9 +356,9 @@ namespace repeat_n_detail {
     template <stdexec::__decays_to<repeat_n_sender_t> Self, stdexec::receiver Receiver>
       requires(stdexec::sender_to<Sender, Receiver>)
            && (nvexec::STDEXEC_STREAM_DETAIL_NS::receiver_with_stream_env<Receiver>)
-    friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver r)
-      -> nvexec::STDEXEC_STREAM_DETAIL_NS::repeat_n::
-        operation_state_t<SenderId, Closure, stdexec::__id<Receiver>> {
+    friend auto
+      tag_invoke(stdexec::connect_t, Self&& self, Receiver r) -> nvexec::STDEXEC_STREAM_DETAIL_NS::
+        repeat_n::operation_state_t<SenderId, Closure, stdexec::__id<Receiver>> {
       return nvexec::STDEXEC_STREAM_DETAIL_NS::repeat_n::
         operation_state_t<SenderId, Closure, stdexec::__id<Receiver>>(
           static_cast<Sender&&>(self.sender_), self.closure_, static_cast<Receiver&&>(r), self.n_);

@@ -16,7 +16,11 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
-#include <type_traits>
+#include <algorithm>
+#include <cstddef>
+#include <utility>
+
+#include <cuda/std/utility>
 
 #include "common.cuh"
 

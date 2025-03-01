@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
 #include "__awaitable.hpp"
@@ -58,7 +58,7 @@ namespace stdexec {
     && sender<_Sender>     //
     && requires(_Sender&& __sndr, _Env&&... __env) {
          {
-           get_completion_signatures(static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env)...)
+           get_completion_signatures(static_cast<_Sender &&>(__sndr), static_cast<_Env &&>(__env)...)
          } -> __valid_completion_signatures;
        };
 

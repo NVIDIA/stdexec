@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__detail/__execution_fwd.hpp" // IWYU pragma: keep
+#include "__detail/__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
 #include "__detail/__as_awaitable.hpp"                    // IWYU pragma: export

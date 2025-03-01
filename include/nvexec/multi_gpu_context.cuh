@@ -16,7 +16,9 @@
 #pragma once
 
 #include "../stdexec/execution.hpp"
-#include <type_traits>
+
+#include <concepts>
+#include <utility>
 
 #include "stream_context.cuh"
 

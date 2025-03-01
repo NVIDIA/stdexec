@@ -54,7 +54,7 @@ namespace exec {
   concept __timed_scheduler =              //
     stdexec::scheduler<_TimedScheduler> && //
     requires(_TimedScheduler&& __sched) {  //
-      now(static_cast<_TimedScheduler&&>(__sched));
+      now(static_cast<_TimedScheduler &&>(__sched));
     };
 
   template <__timed_scheduler _TimedScheduler>
@@ -180,13 +180,13 @@ namespace exec {
   template <class _Scheduler>
   concept __has_schedule_after = //
     requires(_Scheduler&& __sched, const duration_of_t<_Scheduler>& __duration) {
-      { schedule_after(static_cast<_Scheduler&&>(__sched), __duration) } -> stdexec::sender;
+      { schedule_after(static_cast<_Scheduler &&>(__sched), __duration) } -> stdexec::sender;
     };
 
   template <class _Scheduler>
   concept __has_schedule_at = //
     requires(_Scheduler&& __sched, const time_point_of_t<_Scheduler>& __time_point) {
-      { schedule_at(static_cast<_Scheduler&&>(__sched), __time_point) } -> stdexec::sender;
+      { schedule_at(static_cast<_Scheduler &&>(__sched), __time_point) } -> stdexec::sender;
     };
 
   template <class _Scheduler, class _Clock = std::chrono::system_clock>
