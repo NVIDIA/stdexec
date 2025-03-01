@@ -437,7 +437,9 @@ namespace exec {
         (*__other.__vtable_)(__copy_construct, this, __other);
       }
 
-      auto operator=(const __t& __other) -> __t& requires(_Copyable) {
+      auto operator=(const __t& __other) -> __t&
+        requires(_Copyable)
+      {
         if (&__other != this) {
           __t tmp(__other);
           *this = std::move(tmp);

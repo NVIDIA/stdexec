@@ -16,7 +16,12 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
+#include <atomic>
+#include <optional>
 #include <type_traits>
+#include <utility>
+
+#include <cuda/std/tuple>
 
 #include "../detail/throw_on_cuda_error.cuh"
 #include "common.cuh"

@@ -20,9 +20,10 @@
 #include <cuda/std/tuple>
 #include <thrust/universal_vector.h>
 
-#include "nvexec/detail/throw_on_cuda_error.cuh"
 #include "nvexec/detail/variant.cuh"
 #include "common.cuh"
+
+STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 using nvexec::variant_t;
 using nvexec::visit;

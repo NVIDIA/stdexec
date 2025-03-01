@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 #include "__concepts.hpp"
 #include "__cpo.hpp"
@@ -37,7 +37,7 @@ namespace stdexec {
   concept queryable = destructible<T>;
 
   template <class Tag>
-  struct __query {
+  struct __query { // NOLINT(bugprone-crtp-constructor-accessibility)
     template <class Sig>
     static inline constexpr Tag (*signature)(Sig) = nullptr;
   };

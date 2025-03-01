@@ -15,12 +15,16 @@
  */
 #pragma once
 
-#include "../../exec/env.hpp"
 #include "../../stdexec/execution.hpp"
-#include <type_traits>
+#include "../../exec/env.hpp"
+
+#include <array>
+#include <atomic>
+#include <cstddef>
+#include <optional>
+#include <utility>
 
 #include "common.cuh"
-#include "../detail/queue.cuh"
 #include "../detail/throw_on_cuda_error.cuh"
 
 STDEXEC_PRAGMA_PUSH()

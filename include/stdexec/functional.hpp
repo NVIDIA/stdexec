@@ -171,14 +171,14 @@ namespace stdexec {
   template <class _Fun, class... _As>
   concept __invocable = //
     requires(_Fun&& __f, _As&&... __as) {
-      __invoke(static_cast<_Fun&&>(__f), static_cast<_As&&>(__as)...);
+      __invoke(static_cast<_Fun &&>(__f), static_cast<_As &&>(__as)...);
     };
 
   template <class _Fun, class... _As>
   concept __nothrow_invocable =  //
     __invocable<_Fun, _As...> && //
     requires(_Fun&& __f, _As&&... __as) {
-      { __invoke(static_cast<_Fun&&>(__f), static_cast<_As&&>(__as)...) } noexcept;
+      { __invoke(static_cast<_Fun &&>(__f), static_cast<_As &&>(__as)...) } noexcept;
     };
 
   template <class _Fun, class... _As>

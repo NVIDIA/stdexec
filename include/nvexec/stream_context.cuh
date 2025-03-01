@@ -16,30 +16,29 @@
 #pragma once
 
 #include "../stdexec/execution.hpp"
+#include <concepts>
 #include <type_traits>
-#include <memory_resource>
 
-#include "detail/config.cuh"
-#include "detail/memory.cuh"
-#include "stream/sync_wait.cuh"
-#include "stream/bulk.cuh"
-#include "stream/let_xxx.cuh"
-#include "stream/schedule_from.cuh"
-#include "stream/start_detached.cuh"
-#include "stream/submit.cuh"
-#include "stream/split.cuh"
-#include "stream/then.cuh"
-#include "stream/continues_on.cuh"
-#include "stream/launch.cuh"
-#include "stream/upon_error.cuh"
-#include "stream/upon_stopped.cuh"
-#include "stream/when_all.cuh"
-#include "stream/reduce.cuh"
-#include "stream/ensure_started.cuh"
-
-#include "stream/common.cuh"
-#include "detail/queue.cuh"
-#include "detail/throw_on_cuda_error.cuh"
+#include "detail/config.cuh"              // IWYU pragma: export
+#include "detail/memory.cuh"              // IWYU pragma: export
+#include "stream/sync_wait.cuh"           // IWYU pragma: export
+#include "stream/bulk.cuh"                // IWYU pragma: export
+#include "stream/let_xxx.cuh"             // IWYU pragma: export
+#include "stream/schedule_from.cuh"       // IWYU pragma: export
+#include "stream/start_detached.cuh"      // IWYU pragma: export
+#include "stream/submit.cuh"              // IWYU pragma: export
+#include "stream/split.cuh"               // IWYU pragma: export
+#include "stream/then.cuh"                // IWYU pragma: export
+#include "stream/continues_on.cuh"        // IWYU pragma: export
+#include "stream/launch.cuh"              // IWYU pragma: export
+#include "stream/upon_error.cuh"          // IWYU pragma: export
+#include "stream/upon_stopped.cuh"        // IWYU pragma: export
+#include "stream/when_all.cuh"            // IWYU pragma: export
+#include "stream/reduce.cuh"              // IWYU pragma: export
+#include "stream/ensure_started.cuh"      // IWYU pragma: export
+#include "stream/common.cuh"              // IWYU pragma: export
+#include "detail/queue.cuh"               // IWYU pragma: export
+#include "detail/throw_on_cuda_error.cuh" // IWYU pragma: export
 
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {

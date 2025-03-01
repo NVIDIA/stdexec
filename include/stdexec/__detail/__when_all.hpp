@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
@@ -467,7 +467,7 @@ namespace stdexec {
     struct __transfer_when_all_impl : __sexpr_defaults {
       static constexpr auto get_attrs = //
         []<class _Data>(const _Data& __data, const auto&...) noexcept -> const _Data& {
-        return __data;
+        return __data; // NOLINT(bugprone-return-const-ref-from-parameter)
       };
 
       static constexpr auto get_completion_signatures = //
@@ -517,7 +517,7 @@ namespace stdexec {
     struct __transfer_when_all_with_variant_impl : __sexpr_defaults {
       static constexpr auto get_attrs = //
         []<class _Data>(const _Data& __data, const auto&...) noexcept -> const _Data& {
-        return __data;
+        return __data; // NOLINT(bugprone-return-const-ref-from-parameter)
       };
 
       static constexpr auto get_completion_signatures = //

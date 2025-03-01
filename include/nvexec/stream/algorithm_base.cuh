@@ -17,14 +17,14 @@
 
 #include "../../stdexec/execution.hpp"
 #include "../../stdexec/__detail/__ranges.hpp"
-#include <type_traits>
+#include <algorithm>
+#include <cstddef>
 
 #include <cuda/std/type_traits>
 
 #include <cub/device/device_reduce.cuh>
 
 #include "common.cuh"
-#include "../detail/throw_on_cuda_error.cuh"
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
   template <class Range, class InitT, class Fun>

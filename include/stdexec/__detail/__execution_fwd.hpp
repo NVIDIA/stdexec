@@ -15,10 +15,12 @@
  */
 #pragma once
 
-#include "__config.hpp" // IWYU pragma: keep
+#include "__config.hpp"
 #include "__meta.hpp"
 #include "__concepts.hpp"
 #include "__type_traits.hpp"
+
+// IWYU pragma: always_keep
 
 namespace stdexec {
   struct __none_such;

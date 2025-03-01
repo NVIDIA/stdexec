@@ -16,7 +16,7 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
-#include <type_traits>
+#include <memory>
 
 #include "common.cuh"
 

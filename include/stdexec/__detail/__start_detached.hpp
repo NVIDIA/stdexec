@@ -15,12 +15,11 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 #include "__meta.hpp"
 #include "__env.hpp"
 #include "__receivers.hpp"
-#include "__senders.hpp"
 #include "__submit.hpp"
 #include "__transform_sender.hpp"
 #include "__type_traits.hpp"

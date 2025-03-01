@@ -20,15 +20,15 @@
 
 // TODO: This is needed for libdispatch to compile with GCC. Need to look for
 // workaround.
-#ifndef __has_feature
-#  define __has_feature(x) false
-#endif
-#ifndef __has_extension
-#  define __has_extension(x) false
-#endif
+#  ifndef __has_feature
+#    define __has_feature(x) false
+#  endif
+#  ifndef __has_extension
+#    define __has_extension(x) false
+#  endif
 
-#include "stdexec/execution.hpp"
-#include <dispatch/dispatch.h>
+#  include "stdexec/execution.hpp"
+#  include <dispatch/dispatch.h>
 
 namespace exec {
   struct libdispatch_queue;

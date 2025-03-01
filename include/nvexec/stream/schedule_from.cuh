@@ -16,7 +16,10 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
-#include <type_traits>
+#include <cstddef>
+#include <utility>
+
+#include <cuda/std/tuple>
 
 #include "common.cuh"
 #include "../detail/variant.cuh"

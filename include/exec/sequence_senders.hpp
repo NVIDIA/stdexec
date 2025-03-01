@@ -202,7 +202,7 @@ namespace exec {
 
   template <class _Sender, class... _Env>
   concept has_sequence_item_types = requires(_Sender&& __sndr, _Env&&... __env) {
-    get_item_types(static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env)...);
+    get_item_types(static_cast<_Sender &&>(__sndr), static_cast<_Env &&>(__env)...);
   };
 
   template <class _Sender, class... _Env>
@@ -413,7 +413,7 @@ namespace exec {
   concept sequence_sender_to =
     sequence_receiver_from<_Receiver, _Sender> && //
     requires(_Sender&& __sndr, _Receiver&& __rcvr) {
-      subscribe(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
+      subscribe(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr));
     };
 
   template <class _Receiver>

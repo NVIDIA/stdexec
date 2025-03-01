@@ -15,12 +15,11 @@
  */
 #pragma once
 
-#include "../../stdexec/execution.hpp"
-
 #include "config.cuh"
 
-#include <stdexcept>
 #include <cstdio>
+
+#include <cuda_runtime_api.h>
 
 namespace nvexec {
   namespace detail {
