@@ -472,6 +472,7 @@ include(CheckIncludeFileCXX)
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   CHECK_INCLUDE_FILE_CXX("dispatch/dispatch.h" STDEXEC_FOUND_LIBDISPATCH)
   option(STDEXEC_ENABLE_LIBDISPATCH "Enable the tests for the Grand Central Dispatch scheduler" ${STDEXEC_FOUND_LIBDISPATCH})
+  target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_LIBDISPATCH)
 endif()
 
 option (STDEXEC_ENABLE_NUMA "Enable NUMA affinity for static_thread_pool" OFF)
