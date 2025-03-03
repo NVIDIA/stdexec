@@ -21,9 +21,8 @@
 
 #include <cstdint>
 #include <exception>
-#include <typeindex>
-#include <type_traits>
 #include <optional>
+#include <memory>
 
 struct __uuid {
   std::uint64_t __parts1;
