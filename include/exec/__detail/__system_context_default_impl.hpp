@@ -18,16 +18,19 @@
 #include "__system_context_replaceability_api.hpp"
 #include "stdexec/execution.hpp"
 #include "exec/static_thread_pool.hpp"
+#if STDEXEC_ENABLE_LIBDISPATCH
+#  include "exec/libdispatch_queue.hpp"
+#endif
+
+#include <thread>
+#include <atomic>
 
 namespace exec::__system_context_default_impl {
   using namespace stdexec::tags;
   using system_context_replaceability::receiver;
   using system_context_replaceability::bulk_item_receiver;
-  using system_context_replaceability::storage;
-  using system_context_replaceability::system_scheduler;
-  using system_context_replaceability::__system_context_replaceability;
-
-  using __pool_scheduler_t = decltype(std::declval<exec::static_thread_pool>().get_scheduler());
+  using system_context_replaceability::parallel_scheduler_backend;
+  using system_context_replaceability::__parallel_scheduler_backend_factory;
 
   /// Receiver that calls the callback when the operation completes.
   template <class _Sender>
@@ -52,6 +55,8 @@ namespace exec::__system_context_default_impl {
   - __bulk_functor::__r_ (bulk_item_receiver*) - 8
   ---------------------
   Total: 152; extra 24 bytes compared to internal operation state.
+
+  Using libdispatch backend, the operation sizes are 48 (down from 80) and 128 (down from 160).
 
   [*] sizes taken on an Apple M2 Pro arm64 arch. They may differ on other architectures, or with different implementations.
   */
@@ -89,20 +94,27 @@ namespace exec::__system_context_default_impl {
       __op->__destruct(); // destroys the operation, including `this`.
       __r->set_stopped();
     }
+
+    decltype(auto) get_env() const noexcept {
+      auto __o = __r_->try_query<stdexec::inplace_stop_token>();
+      stdexec::inplace_stop_token __st = __o ? *__o : stdexec::inplace_stop_token{};
+      return stdexec::prop{stdexec::get_stop_token, __st};
+    }
   };
 
   /// Ensure that `__storage` is aligned to `__alignment`. Shrinks the storage, if needed, to match desired alignment.
-  inline storage __ensure_alignment(storage __storage, size_t __alignment) noexcept {
-    auto __pn = reinterpret_cast<uintptr_t>(__storage.__data);
+  inline std::span<std::byte>
+    __ensure_alignment(std::span<std::byte> __storage, size_t __alignment) noexcept {
+    auto __pn = reinterpret_cast<uintptr_t>(__storage.data());
     if (__pn % __alignment == 0) {
       return __storage;
-    } else if (__storage.__size < __alignment) {
-      return {nullptr, 0};
+    } else if (__storage.size() < __alignment) {
+      return {};
     } else {
       auto __new_pn = (__pn + __alignment - 1) & ~(__alignment - 1);
       return {
-        reinterpret_cast<void*>(__new_pn),
-        static_cast<uint32_t>(__storage.__size - (__new_pn - __pn))};
+        reinterpret_cast<std::byte*>(__new_pn),
+        static_cast<size_t>(__storage.size() - (__new_pn - __pn))};
     }
   }
 
@@ -114,13 +126,15 @@ namespace exec::__system_context_default_impl {
     bool __on_heap_;
 
     /// Try to construct the operation in the preallocated memory if it fits, otherwise allocate a new operation.
-    static __operation*
-      __construct_maybe_alloc(storage __storage, receiver* __completion, _Sender __sndr) {
+    static __operation* __construct_maybe_alloc(
+      std::span<std::byte> __storage,
+      receiver* __completion,
+      _Sender __sndr) {
       __storage = __ensure_alignment(__storage, alignof(__operation));
-      if (__storage.__data == nullptr || __storage.__size < sizeof(__operation)) {
+      if (__storage.data() == nullptr || __storage.size() < sizeof(__operation)) {
         return new __operation(std::move(__sndr), __completion, true);
       } else {
-        return new (__storage.__data) __operation(std::move(__sndr), __completion, false);
+        return new (__storage.data()) __operation(std::move(__sndr), __completion, false);
       }
     }
 
@@ -145,13 +159,16 @@ namespace exec::__system_context_default_impl {
     }
   };
 
-  struct __system_scheduler_impl : system_scheduler {
-    __system_scheduler_impl()
+  template <typename _BaseSchedulerContext>
+  struct __generic_impl : parallel_scheduler_backend {
+    __generic_impl()
       : __pool_scheduler_(__pool_.get_scheduler()) {
     }
    private:
+    using __pool_scheduler_t = decltype(std::declval<_BaseSchedulerContext>().get_scheduler());
+
     /// The underlying thread pool.
-    exec::static_thread_pool __pool_;
+    _BaseSchedulerContext __pool_;
     __pool_scheduler_t __pool_scheduler_;
 
     //! Functor called by the `bulk` operation; sends a `start` signal to the frontend.
@@ -159,7 +176,7 @@ namespace exec::__system_context_default_impl {
       bulk_item_receiver* __r_;
 
       void operator()(unsigned long __idx) const noexcept {
-        __r_->start(static_cast<uint32_t>(__idx));
+        __r_->execute(static_cast<uint32_t>(__idx));
       }
     };
 
@@ -172,76 +189,92 @@ namespace exec::__system_context_default_impl {
       std::declval<__bulk_functor>()))>;
 
    public:
-    void schedule(storage __storage, receiver* __r) noexcept override {
+    void schedule(std::span<std::byte> __storage, receiver& __r) noexcept override {
       try {
         auto __sndr = stdexec::schedule(__pool_scheduler_);
         auto __os =
-          __schedule_operation_t::__construct_maybe_alloc(__storage, __r, std::move(__sndr));
+          __schedule_operation_t::__construct_maybe_alloc(__storage, &__r, std::move(__sndr));
         __os->start();
       } catch (std::exception& __e) {
-        __r->set_error(std::current_exception());
+        __r.set_error(std::current_exception());
       }
     }
 
-    void
-      bulk_schedule(uint32_t __size, storage __storage, bulk_item_receiver* __r) noexcept override {
+    void bulk_schedule(
+      uint32_t __size,
+      std::span<std::byte> __storage,
+      bulk_item_receiver& __r) noexcept override {
       try {
         auto __sndr =
-          stdexec::bulk(stdexec::schedule(__pool_scheduler_), __size, __bulk_functor{__r});
+          stdexec::bulk(stdexec::schedule(__pool_scheduler_), __size, __bulk_functor{&__r});
         auto __os =
-          __bulk_schedule_operation_t::__construct_maybe_alloc(__storage, __r, std::move(__sndr));
+          __bulk_schedule_operation_t::__construct_maybe_alloc(__storage, &__r, std::move(__sndr));
         __os->start();
       } catch (std::exception& __e) {
-        __r->set_error(std::current_exception());
+        __r.set_error(std::current_exception());
       }
     }
   };
 
-  /// Keeps track of the object implementing the system context interfaces.
-  struct __instance_holder {
+  /// Keeps track of the backends for the system context interfaces.
+  template <typename _Interface, typename _Impl>
+  struct __instance_data {
+    /// Gets the current instance; if there is no instance, uses the current factory to create one.
+    std::shared_ptr<_Interface> __get_current_instance() {
+      // If we have a valid instance, return it.
+      __instance_mutex_.lock();
+      auto __r = __instance_;
+      __instance_mutex_.unlock();
+      if (__r) {
+        return __r;
+      }
 
-    /// Get the only instance of this class.
-    static __instance_holder& __singleton() {
-      static __instance_holder __this_instance_;
-      return __this_instance_;
+      // Otherwise, create a new instance using the factory.
+      // Note: we are lazy-loading the instance to avoid creating it if it is not needed.
+      auto __new_instance = __factory_.load(std::memory_order_relaxed)();
+
+      // Store the newly created instance.
+      __instance_mutex_.lock();
+      __instance_ = __new_instance;
+      __instance_mutex_.unlock();
+      return __new_instance;
     }
 
-    /// Get the currently selected system context object.
-    system_scheduler* __get_current_instance() const noexcept {
-      return __current_instance_;
-    }
-
-    /// Allows changing the currently selected system context object; used for testing.
-    void __set_current_instance(system_scheduler* __instance) noexcept {
-      __current_instance_ = __instance;
+    /// Set `__new_factory` as the new factory for `_Interface` and return the old one.
+    __parallel_scheduler_backend_factory
+      __set_backend_factory(__parallel_scheduler_backend_factory __new_factory) {
+      // Replace the factory, keeping track of the old one.
+      auto __old_factory = __factory_.exchange(__new_factory);
+      // Create a new instance with the new factory.
+      auto __new_instance = __new_factory();
+      // Replace the current instance with the new one.
+      __instance_mutex_.lock();
+      auto __old_instance = std::exchange(__instance_, __new_instance);
+      __instance_mutex_.unlock();
+      // Make sure to delete the old instance after releasing the lock.
+      __old_instance.reset();
+      return __old_factory;
     }
 
    private:
-    __instance_holder() {
-      static __system_scheduler_impl __default_instance_;
-      __current_instance_ = &__default_instance_;
-    }
+    std::mutex __instance_mutex_{};
+    std::shared_ptr<_Interface> __instance_{nullptr};
+    std::atomic<__parallel_scheduler_backend_factory> __factory_{__default_factory};
 
-    system_scheduler* __current_instance_;
-  };
-
-  struct __system_context_replaceability_impl : __system_context_replaceability {
-    //! Globally replaces the system scheduler backend.
-    //! This needs to be called within `main()` and before the system scheduler is accessed.
-    void __set_system_scheduler(system_scheduler* __backend) noexcept override {
-      __instance_holder::__singleton().__set_current_instance(__backend);
+    /// The default factory returns an instance of `_Impl`.
+    static std::shared_ptr<_Interface> __default_factory() {
+      return std::make_shared<_Impl>();
     }
   };
 
-  inline void* __default_query_system_context_interface(const __uuid& __id) noexcept {
-    if (__id == system_scheduler::__interface_identifier) {
-      return __instance_holder::__singleton().__get_current_instance();
-    } else if (__id == __system_context_replaceability::__interface_identifier) {
-      static __system_context_replaceability_impl __impl;
-      return &__impl;
-    }
+#if STDEXEC_ENABLE_LIBDISPATCH
+  using __parallel_scheduler_backend_impl = __generic_impl<exec::libdispatch_queue>;
+#else
+  using __parallel_scheduler_backend_impl = __generic_impl<exec::static_thread_pool>;
+#endif
 
-    return nullptr;
-  }
+  /// The singleton to hold the `parallel_scheduler_backend` instance.
+  inline constinit __instance_data<parallel_scheduler_backend, __parallel_scheduler_backend_impl>
+    __parallel_scheduler_backend_singleton{};
 
 } // namespace exec::__system_context_default_impl
