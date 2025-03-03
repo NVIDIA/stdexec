@@ -35,40 +35,40 @@ namespace ex = stdexec;
 namespace scr = exec::system_context_replaceability;
 
 TEST_CASE("system_context can return a scheduler", "[types][system_scheduler]") {
-  auto sched = exec::get_system_scheduler();
+  auto sched = exec::get_parallel_scheduler();
   STATIC_REQUIRE(ex::scheduler<decltype(sched)>);
 }
 
 TEST_CASE("system scheduler is not default constructible", "[types][system_scheduler]") {
-  auto sched = exec::get_system_scheduler();
+  auto sched = exec::get_parallel_scheduler();
   using sched_t = decltype(sched);
   STATIC_REQUIRE(!std::is_default_constructible_v<sched_t>);
   STATIC_REQUIRE(std::is_destructible_v<sched_t>);
 }
 
 TEST_CASE("system scheduler is copyable and movable", "[types][system_scheduler]") {
-  auto sched = exec::get_system_scheduler();
+  auto sched = exec::get_parallel_scheduler();
   using sched_t = decltype(sched);
   STATIC_REQUIRE(std::is_copy_constructible_v<sched_t>);
   STATIC_REQUIRE(std::is_move_constructible_v<sched_t>);
 }
 
 TEST_CASE("a copied scheduler is equal to the original", "[types][system_scheduler]") {
-  auto sched1 = exec::get_system_scheduler();
+  auto sched1 = exec::get_parallel_scheduler();
   auto sched2 = sched1;
   REQUIRE(sched1 == sched2);
 }
 
 TEST_CASE(
-  "two schedulers obtained from get_system_scheduler() are equal",
+  "two schedulers obtained from get_parallel_scheduler() are equal",
   "[types][system_scheduler]") {
-  auto sched1 = exec::get_system_scheduler();
-  auto sched2 = exec::get_system_scheduler();
+  auto sched1 = exec::get_parallel_scheduler();
+  auto sched2 = exec::get_parallel_scheduler();
   REQUIRE(sched1 == sched2);
 }
 
 TEST_CASE("system scheduler can produce a sender", "[types][system_scheduler]") {
-  auto snd = ex::schedule(exec::get_system_scheduler());
+  auto snd = ex::schedule(exec::get_parallel_scheduler());
   using sender_t = decltype(snd);
 
   STATIC_REQUIRE(ex::sender<sender_t>);
@@ -77,7 +77,7 @@ TEST_CASE("system scheduler can produce a sender", "[types][system_scheduler]") 
 }
 
 TEST_CASE("trivial schedule task on system context", "[types][system_scheduler]") {
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
   ex::sync_wait(ex::schedule(sched));
 }
@@ -85,7 +85,7 @@ TEST_CASE("trivial schedule task on system context", "[types][system_scheduler]"
 TEST_CASE("simple schedule task on system context", "[types][system_scheduler]") {
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
   auto snd = ex::then(ex::schedule(sched), [&] { pool_id = std::this_thread::get_id(); });
 
@@ -97,12 +97,12 @@ TEST_CASE("simple schedule task on system context", "[types][system_scheduler]")
 }
 
 TEST_CASE("simple schedule forward progress guarantee", "[types][system_scheduler]") {
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
   REQUIRE(ex::get_forward_progress_guarantee(sched) == ex::forward_progress_guarantee::parallel);
 }
 
 TEST_CASE("get_completion_scheduler", "[types][system_scheduler]") {
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
   REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::schedule(sched))) == sched);
 }
 
@@ -110,7 +110,7 @@ TEST_CASE("simple chain task on system context", "[types][system_scheduler]") {
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};
   std::thread::id pool_id2{};
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
   auto snd = ex::then(ex::schedule(sched), [&] { pool_id = std::this_thread::get_id(); });
   auto snd2 = ex::then(std::move(snd), [&] { pool_id2 = std::this_thread::get_id(); });
@@ -125,7 +125,7 @@ TEST_CASE("simple chain task on system context", "[types][system_scheduler]") {
 }
 
 TEST_CASE("checks stop_token before starting the work", "[types][system_scheduler]") {
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
   exec::async_scope scope;
   scope.request_stop();
@@ -148,7 +148,7 @@ TEST_CASE("simple bulk task on system context", "[types][system_scheduler]") {
   std::thread::id this_id = std::this_thread::get_id();
   constexpr size_t num_tasks = 16;
   std::thread::id pool_ids[num_tasks];
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
   auto bulk_snd = ex::bulk(ex::schedule(sched), num_tasks, [&](unsigned long id) {
     pool_ids[id] = std::this_thread::get_id();
@@ -169,7 +169,7 @@ TEST_CASE("simple bulk chaining on system context", "[types][system_scheduler]")
   std::thread::id pool_id{};
   std::thread::id propagated_pool_ids[num_tasks];
   std::thread::id pool_ids[num_tasks];
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
   auto snd = ex::then(ex::schedule(sched), [&] {
     pool_id = std::this_thread::get_id();
@@ -241,7 +241,7 @@ TEST_CASE(
 
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
   auto snd = ex::then(ex::schedule(sched), [&] { pool_id = std::this_thread::get_id(); });
 
@@ -265,7 +265,7 @@ TEST_CASE(
 
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
   auto snd = ex::then(ex::schedule(sched), [&] { pool_id = std::this_thread::get_id(); });
 

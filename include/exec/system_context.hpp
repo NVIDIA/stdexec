@@ -80,17 +80,17 @@ namespace exec {
 
   } // namespace __detail
 
-  class system_scheduler;
-  class system_sender;
+  class parallel_scheduler;
+  class __parallel_sender;
   template <stdexec::sender _S, std::integral _Size, class _Fn>
-  class system_bulk_sender;
+  class __parallel_bulk_sender;
 
   /// Returns a scheduler that can add work to the underlying execution context.
-  system_scheduler get_system_scheduler();
+  parallel_scheduler get_parallel_scheduler();
 
-  /// The execution domain of the system_scheduler, used for the purposes of customizing
+  /// The execution domain of the parallel_scheduler, used for the purposes of customizing
   /// sender algorithms such as `bulk`.
-  struct system_scheduler_domain : stdexec::default_domain {
+  struct __parallel_scheduler_domain : stdexec::default_domain {
     /// Schedules new bulk work, calling `__fun` with the index of each chunk in range `[0, __size]`,
     /// and the value(s) resulting from completing `__previous`; returns a sender that completes
     /// when all chunks complete.
@@ -103,14 +103,14 @@ namespace exec {
       std::shared_ptr<system_context_replaceability::parallel_scheduler_backend>;
 
     template <class T>
-    auto __make_system_scheduler_from(T, __backend_ptr) noexcept;
+    auto __make_parallel_scheduler_from(T, __backend_ptr) noexcept;
 
     /// Describes the environment of this sender.
-    struct __system_scheduler_env {
+    struct __parallel_scheduler_env {
       /// Returns the system scheduler as the completion scheduler for `set_value_t`.
       template <stdexec::__one_of<stdexec::set_value_t> _Tag>
       auto query(stdexec::get_completion_scheduler_t<_Tag>) const noexcept {
-        return __detail::__make_system_scheduler_from(_Tag(), __scheduler_);
+        return __detail::__make_parallel_scheduler_from(_Tag(), __scheduler_);
       }
 
       /// The underlying implementation of the scheduler we are using.
@@ -155,7 +155,7 @@ namespace exec {
     - __bulk_state::__preallocated_ (__preallocated_) -- 152
       - __previous_operation_state_ (__inner_op_state) -- 104
         - __bulk_intermediate_receiver::__state_ (__state_&) -- 8
-        - __bulk_intermediate_receiver::__scheduler_ (system_scheduler*) -- 8
+        - __bulk_intermediate_receiver::__scheduler_ (parallel_scheduler*) -- 8
         - __bulk_intermediate_receiver::__size_ (_Size) -- 4
     ---------------------
     Total: 176; extra 24 bytes compared to backend needs.
@@ -208,7 +208,7 @@ namespace exec {
   } // namespace __detail
 
   /// The sender used to schedule new work in the system context.
-  class system_sender {
+  class __parallel_sender {
    public:
     /// Marks this type as being a sender; not to spec.
     using sender_concept = stdexec::sender_t;
@@ -219,25 +219,25 @@ namespace exec {
       stdexec::set_error_t(std::exception_ptr)>;
 
     /// Implementation detail. Constructs the sender to wrap `__impl`.
-    explicit system_sender(__detail::__backend_ptr __impl)
+    explicit __parallel_sender(__detail::__backend_ptr __impl)
       : __scheduler_{__impl} {
     }
 
     /// Gets the environment of this sender.
-    auto get_env() const noexcept -> __detail::__system_scheduler_env {
+    auto get_env() const noexcept -> __detail::__parallel_scheduler_env {
       return {__scheduler_};
     }
 
     /// Connects `__self` to `__rcvr`, returning the operation state containing the work to be done.
     template <stdexec::receiver _Rcvr>
     auto connect(_Rcvr __rcvr) && noexcept(stdexec::__nothrow_move_constructible<_Rcvr>) //
-      -> __detail::__system_op<system_sender, _Rcvr> {
+      -> __detail::__system_op<__parallel_sender, _Rcvr> {
       return {std::move(__rcvr), std::move(__scheduler_)};
     }
 
     template <stdexec::receiver _Rcvr>
     auto connect(_Rcvr __rcvr) & noexcept(stdexec::__nothrow_move_constructible<_Rcvr>) //
-      -> __detail::__system_op<system_sender, _Rcvr> {
+      -> __detail::__system_op<__parallel_sender, _Rcvr> {
       return {std::move(__rcvr), __scheduler_};
     }
 
@@ -247,15 +247,15 @@ namespace exec {
   };
 
   /// A scheduler that can add work to the system context.
-  class system_scheduler {
+  class parallel_scheduler {
    public:
-    system_scheduler() = delete;
+    parallel_scheduler() = delete;
 
     /// Returns `true` iff `*this` refers to the same scheduler as the argument.
-    bool operator==(const system_scheduler&) const noexcept = default;
+    bool operator==(const parallel_scheduler&) const noexcept = default;
 
     /// Implementation detail. Constructs the scheduler to wrap `__impl`.
-    explicit system_scheduler(__detail::__backend_ptr&& __impl)
+    explicit parallel_scheduler(__detail::__backend_ptr&& __impl)
       : __impl_(__impl) {
     }
 
@@ -264,18 +264,18 @@ namespace exec {
       -> stdexec::forward_progress_guarantee;
 
     /// Returns the execution domain of `this`.
-    auto query(stdexec::get_domain_t) const noexcept -> system_scheduler_domain {
+    auto query(stdexec::get_domain_t) const noexcept -> __parallel_scheduler_domain {
       return {};
     }
 
     /// Schedules new work, returning the sender that signals the start of the work.
-    system_sender schedule() const noexcept {
-      return system_sender{__impl_};
+    __parallel_sender schedule() const noexcept {
+      return __parallel_sender{__impl_};
     }
 
    private:
     template <stdexec::sender, std::integral, class>
-    friend class system_bulk_sender;
+    friend class __parallel_bulk_sender;
 
     /// The underlying implementation of the scheduler.
     __detail::__backend_ptr __impl_;
@@ -286,8 +286,8 @@ namespace exec {
 
   namespace __detail {
     template <class T>
-    auto __make_system_scheduler_from(T, __backend_ptr __impl) noexcept {
-      return system_scheduler{std::move(__impl)};
+    auto __make_parallel_scheduler_from(T, __backend_ptr __impl) noexcept {
+      return parallel_scheduler{std::move(__impl)};
     }
 
     /// Helper that knows how to store the values sent by `_Previous` and pass them to bulk item calls or to the completion signal.
@@ -484,7 +484,7 @@ namespace exec {
       /// underlying implementation object.
       template <class _InitF>
       __system_bulk_op(
-        system_bulk_sender<_Previous, _Size, _Fn>&& __snd,
+        __parallel_bulk_sender<_Previous, _Size, _Fn>&& __snd,
         _Rcvr&& __rcvr,
         _InitF&& __initFunc)
         : __bulk_state_base_t{std::move(__snd.__fun_), std::move(__rcvr)} {
@@ -512,7 +512,7 @@ namespace exec {
 
   /// The sender used to schedule bulk work in the system context.
   template <stdexec::sender _Previous, std::integral _Size, class _Fn>
-  class system_bulk_sender {
+  class __parallel_bulk_sender {
     /// Meta-function that returns the completion signatures of `this`.
     template <class _Self, class... _Env>
     using __completions_t = stdexec::transform_completion_signatures<                            //
@@ -527,7 +527,11 @@ namespace exec {
     using sender_concept = stdexec::sender_t;
 
     /// Constructs `this`.
-    system_bulk_sender(system_scheduler __sched, _Previous __previous, _Size __size, _Fn&& __fun)
+    __parallel_bulk_sender(
+      parallel_scheduler __sched,
+      _Previous __previous,
+      _Size __size,
+      _Fn&& __fun)
       : __scheduler_{__sched.__impl_}
       , __previous_{std::move(__previous)}
       , __size_{std::move(__size)}
@@ -535,7 +539,7 @@ namespace exec {
     }
 
     /// Gets the environment of this sender.
-    auto get_env() const noexcept -> __detail::__system_scheduler_env {
+    auto get_env() const noexcept -> __detail::__parallel_scheduler_env {
       return {__scheduler_};
     }
 
@@ -554,7 +558,7 @@ namespace exec {
     }
 
     /// Gets the completion signatures for this sender.
-    template <stdexec::__decays_to<system_bulk_sender> _Self, class... _Env>
+    template <stdexec::__decays_to<__parallel_bulk_sender> _Self, class... _Env>
     static auto get_completion_signatures(_Self&&, _Env&&...) -> __completions_t<_Self, _Env...> {
       return {};
     }
@@ -571,28 +575,28 @@ namespace exec {
     _Fn __fun_;
   };
 
-  inline system_scheduler get_system_scheduler() {
+  inline parallel_scheduler get_parallel_scheduler() {
     auto __impl = system_context_replaceability::query_parallel_scheduler_backend();
     if (!__impl) {
       throw std::runtime_error{"No system context implementation found"};
     }
-    return system_scheduler{std::move(__impl)};
+    return parallel_scheduler{std::move(__impl)};
   }
 
-  inline auto system_scheduler::query(stdexec::get_forward_progress_guarantee_t) const noexcept
+  inline auto parallel_scheduler::query(stdexec::get_forward_progress_guarantee_t) const noexcept
     -> stdexec::forward_progress_guarantee {
     return stdexec::forward_progress_guarantee::parallel;
   }
 
-  struct __transform_system_bulk_sender {
+  struct __transform_parallel_bulk_sender {
     template <class _Data, class _Previous>
     auto operator()(stdexec::bulk_t, _Data&& __data, _Previous&& __previous) const noexcept {
       auto [__shape, __fn] = static_cast<_Data&&>(__data);
-      return system_bulk_sender<_Previous, decltype(__shape), decltype(__fn)>{
+      return __parallel_bulk_sender<_Previous, decltype(__shape), decltype(__fn)>{
         __sched_, static_cast<_Previous&&>(__previous), __shape, std::move(__fn)};
     }
 
-    system_scheduler __sched_;
+    parallel_scheduler __sched_;
   };
 
   template <class _Sender>
@@ -601,22 +605,22 @@ namespace exec {
   };
 
   template <stdexec::sender_expr_for<stdexec::bulk_t> _Sender, class _Env>
-  auto
-    system_scheduler_domain::transform_sender(_Sender&& __sndr, const _Env& __env) const noexcept {
-    if constexpr (stdexec::__completes_on<_Sender, system_scheduler>) {
+  auto __parallel_scheduler_domain::transform_sender(_Sender&& __sndr, const _Env& __env)
+    const noexcept {
+    if constexpr (stdexec::__completes_on<_Sender, parallel_scheduler>) {
       auto __sched =
         stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(__sndr));
       return stdexec::__sexpr_apply(
-        static_cast<_Sender&&>(__sndr), __transform_system_bulk_sender{__sched});
-    } else if constexpr (stdexec::__starts_on<_Sender, system_scheduler, _Env>) {
+        static_cast<_Sender&&>(__sndr), __transform_parallel_bulk_sender{__sched});
+    } else if constexpr (stdexec::__starts_on<_Sender, parallel_scheduler, _Env>) {
       auto __sched = stdexec::get_scheduler(__env);
       return stdexec::__sexpr_apply(
-        static_cast<_Sender&&>(__sndr), __transform_system_bulk_sender{__sched});
+        static_cast<_Sender&&>(__sndr), __transform_parallel_bulk_sender{__sched});
     } else {
       static_assert( //
-        stdexec::__starts_on<_Sender, system_scheduler, _Env>
-          || stdexec::__completes_on<_Sender, system_scheduler>,
-        "No system_scheduler instance can be found in the sender's or receiver's "
+        stdexec::__starts_on<_Sender, parallel_scheduler, _Env>
+          || stdexec::__completes_on<_Sender, parallel_scheduler>,
+        "No parallel_scheduler instance can be found in the sender's or receiver's "
         "environment on which to schedule bulk work.");
       return __not_a_sender<stdexec::__name_of<_Sender>>();
     }
