@@ -16,7 +16,7 @@
 #pragma once
 
 #include "__config.hpp"
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 ///////////////////////////////////////////////////////////////////////////////
 /// To hook a customization point like stdexec::get_env, first bring the names

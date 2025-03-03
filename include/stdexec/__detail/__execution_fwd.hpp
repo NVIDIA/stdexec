@@ -15,10 +15,12 @@
  */
 #pragma once
 
-#include "__config.hpp" // IWYU pragma: keep
+#include "__config.hpp"
 #include "__meta.hpp"
 #include "__concepts.hpp"
 #include "__type_traits.hpp"
+
+// IWYU pragma: always_keep
 
 namespace stdexec {
   struct __none_such;
@@ -157,9 +159,6 @@ namespace stdexec {
 
   using __connect::connect_t;
   extern const connect_t connect;
-
-  template <class _Sender, class _Receiver>
-  using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
 
   template <class _Sender, class _Receiver>
   concept __nothrow_connectable = __nothrow_callable<connect_t, _Sender, _Receiver>;

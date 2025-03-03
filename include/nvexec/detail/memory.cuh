@@ -20,11 +20,13 @@
 #include <cuda/std/bit>
 
 #include <algorithm>
+#include <cstddef>
 #include <memory_resource>
 #include <new>
-#include <type_traits>
+#include <memory>
 #include <mutex>
 #include <set>
+#include <vector>
 
 #include "config.cuh"
 #include "throw_on_cuda_error.cuh"

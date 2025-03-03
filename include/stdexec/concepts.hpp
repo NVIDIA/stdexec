@@ -15,4 +15,4 @@
  */
 #pragma once
 
-#include "__detail/__concepts.hpp"
+#include "__detail/__concepts.hpp" // IWYU pragma: export

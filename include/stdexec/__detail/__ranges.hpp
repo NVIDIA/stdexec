@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__config.hpp" // IWYU pragma: keep
+#include "__config.hpp"
 #include "__type_traits.hpp"
 
 #if 0 //STDEXEC_HAS_STD_RANGES()
@@ -43,18 +43,18 @@ namespace stdexec::ranges {
     void end();
 
     template <class _Ty>
-    concept __has_member_begin = requires(_Ty&& __v) { static_cast<_Ty&&>(__v).begin(); };
+    concept __has_member_begin = requires(_Ty&& __v) { static_cast<_Ty &&>(__v).begin(); };
 
     template <class _Ty>
     concept __has_free_begin =
-      __has_member_begin<_Ty> || requires(_Ty&& __v) { begin((static_cast<_Ty&&>(__v))); };
+      __has_member_begin<_Ty> || requires(_Ty&& __v) { begin((static_cast<_Ty &&>(__v))); };
 
     template <class _Ty>
-    concept __has_member_end = requires(_Ty&& __v) { static_cast<_Ty&&>(__v).end(); };
+    concept __has_member_end = requires(_Ty&& __v) { static_cast<_Ty &&>(__v).end(); };
 
     template <class _Ty>
     concept __has_free_end =
-      __has_member_end<_Ty> || requires(_Ty&& __v) { end((static_cast<_Ty&&>(__v))); };
+      __has_member_end<_Ty> || requires(_Ty&& __v) { end((static_cast<_Ty &&>(__v))); };
 
     struct __begin_t {
       template <class _Range>

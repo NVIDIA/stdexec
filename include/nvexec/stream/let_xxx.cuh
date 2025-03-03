@@ -16,9 +16,16 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
-#include <type_traits>
+#include <algorithm>
+#include <cstddef>
+#include <utility>
+
+#include <cuda/std/utility>
 
 #include "common.cuh"
+
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace let_xxx {
@@ -270,3 +277,5 @@ namespace stdexec::__detail {
     nvexec::STDEXEC_STREAM_DETAIL_NS::let_sender_t<__name_of<__t<SenderId>>, Fun, Set>>
     __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::let_sender_t<SenderId, Fun, Set>>{};
 } // namespace stdexec::__detail
+
+STDEXEC_PRAGMA_POP()

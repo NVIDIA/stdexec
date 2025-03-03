@@ -102,13 +102,16 @@ namespace stdexec {
 
   namespace __detail {
     template <class _Cpcvref>
-    inline constexpr auto __forward_like = []<class _Uy>(_Uy&& __uy) noexcept -> auto&& {
-      return static_cast<typename _Cpcvref::template __f<std::remove_reference_t<_Uy>>>(__uy);
+    struct __forward_like_fn {
+      template <class _Uy>
+      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto operator()(_Uy&& __uy) const noexcept -> auto&& {
+        return static_cast<typename _Cpcvref::template __f<std::remove_reference_t<_Uy>>>(__uy);
+      }
     };
   } // namespace __detail
 
   template <class _Ty>
-  inline constexpr auto const & __forward_like = __detail::__forward_like<__copy_cvref_fn<_Ty&&>>;
+  inline constexpr __detail::__forward_like_fn<__copy_cvref_fn<_Ty&&>> __forward_like{};
 
   STDEXEC_PRAGMA_PUSH()
   STDEXEC_PRAGMA_IGNORE_GNU("-Wold-style-cast")

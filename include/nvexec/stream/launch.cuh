@@ -16,12 +16,17 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
-#include <type_traits>
+#include <concepts>
+#include <cstddef>
+#include <exception>
+
+#include <cuda/std/utility>
 
 #include "common.cuh"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {

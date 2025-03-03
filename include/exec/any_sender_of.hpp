@@ -437,7 +437,9 @@ namespace exec {
         (*__other.__vtable_)(__copy_construct, this, __other);
       }
 
-      auto operator=(const __t& __other) -> __t& requires(_Copyable) {
+      auto operator=(const __t& __other) -> __t&
+        requires(_Copyable)
+      {
         if (&__other != this) {
           __t tmp(__other);
           *this = std::move(tmp);
@@ -1150,27 +1152,21 @@ namespace exec {
     }
 
     template <class... _As>
-      requires stdexec::tag_invocable<stdexec::set_value_t, __receiver_base, _As...>
+      requires stdexec::__callable<stdexec::set_value_t, __receiver_base, _As...>
     void set_value(_As&&... __as) noexcept {
-      stdexec::tag_invoke(
-        stdexec::set_value,
-        static_cast<__receiver_base&&>(__receiver_),
-        static_cast<_As&&>(__as)...);
+      stdexec::set_value(static_cast<__receiver_base&&>(__receiver_), static_cast<_As&&>(__as)...);
     }
 
     template <class _Error>
-      requires stdexec::tag_invocable<stdexec::set_error_t, __receiver_base, _Error>
+      requires stdexec::__callable<stdexec::set_error_t, __receiver_base, _Error>
     void set_error(_Error&& __err) noexcept {
-      stdexec::tag_invoke(
-        stdexec::set_error,
-        static_cast<__receiver_base&&>(__receiver_),
-        static_cast<_Error&&>(__err));
+      stdexec::set_error(static_cast<__receiver_base&&>(__receiver_), static_cast<_Error&&>(__err));
     }
 
     void set_stopped() noexcept
-      requires stdexec::tag_invocable<stdexec::set_stopped_t, __receiver_base>
+      requires stdexec::__callable<stdexec::set_stopped_t, __receiver_base>
     {
-      stdexec::tag_invoke(stdexec::set_stopped, static_cast<__receiver_base&&>(__receiver_));
+      stdexec::set_stopped(static_cast<__receiver_base&&>(__receiver_));
     }
 
     auto get_env() const noexcept -> stdexec::env_of_t<__receiver_base> {

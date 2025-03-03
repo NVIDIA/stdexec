@@ -16,9 +16,16 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
+#include <cstddef>
+#include <exception>
 #include <type_traits>
 
+#include <cuda/std/utility>
+
 #include "common.cuh"
+
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
@@ -161,3 +168,5 @@ namespace stdexec::__detail {
     nvexec::STDEXEC_STREAM_DETAIL_NS::upon_stopped_sender_t<__name_of<__t<SenderId>>, Fun>>
     __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::upon_stopped_sender_t<SenderId, Fun>>{};
 } // namespace stdexec::__detail
+
+STDEXEC_PRAGMA_POP()

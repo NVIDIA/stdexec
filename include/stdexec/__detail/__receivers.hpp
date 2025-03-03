@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
@@ -30,13 +30,18 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
   namespace __rcvrs {
-    struct set_value_t {
-      template <class _Fn, class... _Args>
-      using __f = __minvoke<_Fn, _Args...>;
+    template <class _Receiver, class... _As>
+    concept __set_value_member = requires(_Receiver&& __rcvr, _As&&... __args) {
+      static_cast<_Receiver &&>(__rcvr).set_value(static_cast<_As &&>(__args)...);
+    };
 
-      template <__same_as<set_value_t> _Self, class _Receiver, class... _As>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) friend auto tag_invoke(_Self, _Receiver&& __rcvr, _As&&... __as) noexcept
-        -> decltype(static_cast<_Receiver&&>(__rcvr).set_value(static_cast<_As&&>(__as)...)) {
+    struct set_value_t {
+      template <class _Fn, class... _As>
+      using __f = __minvoke<_Fn, _As...>;
+
+      template <class _Receiver, class... _As>
+        requires __set_value_member<_Receiver, _As...>
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) friend void tag_invoke(set_value_t, _Receiver&& __rcvr, _As&&... __as) noexcept {
         static_assert(
           noexcept(static_cast<_Receiver&&>(__rcvr).set_value(static_cast<_As&&>(__as)...)),
           "set_value member functions must be noexcept");
@@ -57,14 +62,19 @@ namespace stdexec {
       }
     };
 
+    template <class _Receiver, class _Error>
+    concept __set_error_member = requires(_Receiver&& __rcvr, _Error&& __err) {
+      static_cast<_Receiver &&>(__rcvr).set_error(static_cast<_Error &&>(__err));
+    };
+
     struct set_error_t {
       template <class _Fn, class... _Args>
         requires(sizeof...(_Args) == 1)
       using __f = __minvoke<_Fn, _Args...>;
 
-      template <__same_as<set_error_t> _Self, class _Receiver, class _Error>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) friend auto tag_invoke(_Self, _Receiver&& __rcvr, _Error&& __err) noexcept
-        -> decltype(static_cast<_Receiver&&>(__rcvr).set_error(static_cast<_Error&&>(__err))) {
+      template <class _Receiver, class _Error>
+        requires __set_error_member<_Receiver, _Error>
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) friend void tag_invoke(set_error_t, _Receiver&& __rcvr, _Error&& __err) noexcept {
         static_assert(
           noexcept(static_cast<_Receiver&&>(__rcvr).set_error(static_cast<_Error&&>(__err))),
           "set_error member functions must be noexcept");
@@ -85,14 +95,19 @@ namespace stdexec {
       }
     };
 
+    template <class _Receiver>
+    concept __set_stopped_member = requires(_Receiver&& __rcvr) { //
+      static_cast<_Receiver &&>(__rcvr).set_stopped();
+    };
+
     struct set_stopped_t {
       template <class _Fn, class... _Args>
         requires(sizeof...(_Args) == 0)
       using __f = __minvoke<_Fn, _Args...>;
 
-      template <__same_as<set_stopped_t> _Self, class _Receiver>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) friend auto tag_invoke(_Self, _Receiver&& __rcvr) noexcept
-        -> decltype(static_cast<_Receiver&&>(__rcvr).set_stopped()) {
+      template <class _Receiver>
+        requires __set_stopped_member<_Receiver>
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) friend void tag_invoke(set_stopped_t, _Receiver&& __rcvr) noexcept {
         static_assert(
           noexcept(static_cast<_Receiver&&>(__rcvr).set_stopped()),
           "set_stopped member functions must be noexcept");
@@ -147,7 +162,7 @@ namespace stdexec {
       -> __mexception<_MISSING_COMPLETION_SIGNAL_<_Tag(_Args...)>, _WITH_RECEIVER_<_Receiver>>;
 
     template <class _Receiver, class _Tag, class... _Args>
-      requires nothrow_tag_invocable<_Tag, _Receiver, _Args...>
+      requires __callable<_Tag, _Receiver, _Args...>
     auto __try_completion(_Tag (*)(_Args...)) -> __msuccess;
 
     template <class _Receiver, class... _Sigs>

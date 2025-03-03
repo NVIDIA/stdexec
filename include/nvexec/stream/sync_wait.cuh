@@ -16,11 +16,17 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
-#include <type_traits>
+#include <concepts>
+#include <exception>
+#include <new>
+#include <optional>
+#include <tuple> // IWYU pragma: keep
+#include <utility>
+#include <variant>
 
 #include "common.cuh"
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
+namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_sync_wait {
   struct __env {
     using __t = __env;
     using __id = __env;
@@ -190,4 +196,4 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { namespace _sync_wait {
       [[maybe_unused]] _Error __diagnostic = {}) const -> std::optional<std::tuple<int>> = delete;
 #endif
   };
-}} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_sync_wait
+} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_sync_wait

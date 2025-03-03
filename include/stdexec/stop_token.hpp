@@ -16,18 +16,16 @@
  */
 #pragma once
 
-#include "__detail/__stop_token.hpp"
+#include "__detail/__stop_token.hpp" // IWYU pragma: export
 
 #include <version>
 #include <cstdint>
 #include <utility>
-#include <type_traits>
 #include <atomic>
 #include <thread>
-#include <concepts>
 
 #if __has_include(<stop_token>) && __cpp_lib_jthread >= 201911
-#  include <stop_token>
+#  include <stop_token> // IWYU pragma: export
 #endif
 
 namespace stdexec {

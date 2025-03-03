@@ -15,13 +15,22 @@
  */
 #pragma once
 
-#include <atomic>
 #include "../../stdexec/execution.hpp"
 #include "../../exec/env.hpp"
+
+#include <atomic>
+#include <memory>
+#include <optional>
 #include <type_traits>
 
+#include <cuda/std/tuple>
+
 #include "common.cuh"
+#include "../detail/cuda_atomic.cuh" // IWYU pragma: keep
 #include "../detail/throw_on_cuda_error.cuh"
+
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace _split {
@@ -362,3 +371,5 @@ namespace stdexec::__detail {
   extern __mconst<nvexec::STDEXEC_STREAM_DETAIL_NS::split_sender_t<__name_of<__t<SenderId>>>>
     __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::split_sender_t<SenderId>>;
 } // namespace stdexec::__detail
+
+STDEXEC_PRAGMA_POP()

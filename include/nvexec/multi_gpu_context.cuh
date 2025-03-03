@@ -16,9 +16,14 @@
 #pragma once
 
 #include "../stdexec/execution.hpp"
-#include <type_traits>
+
+#include <concepts>
+#include <utility>
 
 #include "stream_context.cuh"
+
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nvexec {
   namespace STDEXEC_STREAM_DETAIL_NS {
@@ -275,3 +280,5 @@ namespace nvexec {
     }
   };
 } // namespace nvexec
+
+STDEXEC_PRAGMA_POP()

@@ -69,7 +69,7 @@ namespace {
 
   TEST_CASE("cannot connect sender with invalid receiver", "[cpo][cpo_connect]") {
     static_assert(ex::sender<my_sender_unconstrained>);
-    REQUIRE_FALSE(std::invocable<ex::connect_t, my_sender_unconstrained, int>);
+    REQUIRE_FALSE(ex::sender_to<my_sender_unconstrained, int>);
   }
 
   struct strange_receiver {

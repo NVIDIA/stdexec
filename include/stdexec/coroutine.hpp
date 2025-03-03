@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__detail/__awaitable.hpp" // IWYU pragma: keep
+#include "__detail/__awaitable.hpp" // IWYU pragma: export
 #include "__detail/__config.hpp"
 
 #if STDEXEC_MSVC() && _MSC_VER <= 1939

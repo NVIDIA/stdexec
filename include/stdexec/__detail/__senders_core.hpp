@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
 #include "__awaitable.hpp"
@@ -23,6 +23,7 @@
 #include "__concepts.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
+#include "__receivers.hpp"
 #include "__type_traits.hpp"
 
 namespace stdexec {
@@ -57,7 +58,21 @@ namespace stdexec {
     && sender<_Sender>     //
     && requires(_Sender&& __sndr, _Env&&... __env) {
          {
-           get_completion_signatures(static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env)...)
+           get_completion_signatures(static_cast<_Sender &&>(__sndr), static_cast<_Env &&>(__env)...)
          } -> __valid_completion_signatures;
        };
+
+  /////////////////////////////////////////////////////////////////////////////
+  // [exec.snd]
+  template <class _Sender, class _Receiver>
+  concept sender_to =                          //
+    receiver<_Receiver>                        //
+    && sender_in<_Sender, env_of_t<_Receiver>> //
+    && __receiver_from<_Receiver, _Sender>     //
+    && requires(_Sender&& __sndr, _Receiver&& __rcvr) {
+         connect(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr));
+       };
+
+  template <class _Sender, class _Receiver>
+  using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
 } // namespace stdexec
