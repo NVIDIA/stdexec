@@ -62,18 +62,21 @@ namespace exec::system_context_replaceability {
   template <typename _T>
   concept __runtime_property = __runtime_property_helper<_T>::__is_property;
 
-  /// Query the system context for an interface of type `_Interface`.
-  template <__queryable_interface _Interface>
-  extern std::shared_ptr<_Interface> query_system_context();
+  struct parallel_scheduler_backend;
 
-  /// The type of a factory that can create interfaces of type `_Interface`.
-  template <__queryable_interface _Interface>
-  using __system_context_backend_factory = std::shared_ptr<_Interface> (*)();
+  /// Get the backend for the parallel scheduler.
+  /// Users might replace this function.
+  std::shared_ptr<parallel_scheduler_backend> query_parallel_scheduler_backend();
 
-  /// Sets the factory that creates the system context backend for an interface of type `_Interface`.
-  template <__queryable_interface _Interface>
-  extern __system_context_backend_factory<_Interface>
-    set_system_context_backend_factory(__system_context_backend_factory<_Interface> __new_factory);
+  /// The type of a factory that can create `parallel_scheduler_backend` instances.
+  /// Out of spec.
+  using __parallel_scheduler_backend_factory = std::shared_ptr<parallel_scheduler_backend> (*)();
+
+  /// Set a factory for the parallel scheduler backend.
+  /// Can be used to replace the parallel scheduler at runtime.
+  /// Out of spec.
+  __parallel_scheduler_backend_factory
+    set_parallel_scheduler_backend(__parallel_scheduler_backend_factory __new_factory);
 
   /// Interface for completing a sender operation. Backend will call frontend though this interface
   /// for completing the `schedule` and `schedule_bulk` operations.

@@ -31,7 +31,7 @@ namespace exec::__system_context_default_impl {
   using system_context_replaceability::bulk_item_receiver;
   using system_context_replaceability::storage;
   using system_context_replaceability::parallel_scheduler_backend;
-  using system_context_replaceability::__system_context_backend_factory;
+  using system_context_replaceability::__parallel_scheduler_backend_factory;
 
   /// Receiver that calls the callback when the operation completes.
   template <class _Sender>
@@ -237,8 +237,8 @@ namespace exec::__system_context_default_impl {
     }
 
     /// Set `__new_factory` as the new factory for `_Interface` and return the old one.
-    __system_context_backend_factory<_Interface>
-      __set_backend_factory(__system_context_backend_factory<_Interface> __new_factory) {
+    __parallel_scheduler_backend_factory
+      __set_backend_factory(__parallel_scheduler_backend_factory __new_factory) {
       // Replace the factory, keeping track of the old one.
       auto __old_factory = __factory_.exchange(__new_factory);
       // Create a new instance with the new factory.
@@ -255,7 +255,7 @@ namespace exec::__system_context_default_impl {
    private:
     std::mutex __instance_mutex_{};
     std::shared_ptr<_Interface> __instance_{nullptr};
-    std::atomic<__system_context_backend_factory<_Interface>> __factory_{__default_factory};
+    std::atomic<__parallel_scheduler_backend_factory> __factory_{__default_factory};
 
     /// The default factory returns an instance of `_Impl`.
     static std::shared_ptr<_Interface> __default_factory() {

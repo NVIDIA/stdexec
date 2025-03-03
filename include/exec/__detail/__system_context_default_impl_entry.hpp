@@ -26,34 +26,21 @@
 #define __STDEXEC_SYSTEM_CONTEXT_API extern STDEXEC_SYSTEM_CONTEXT_INLINE STDEXEC_ATTRIBUTE((weak))
 
 namespace exec::system_context_replaceability {
-  /// The default implementation of the `query_system_context` function template.
-  template <__queryable_interface _Interface>
-  __STDEXEC_SYSTEM_CONTEXT_API std::shared_ptr<_Interface> query_system_context() {
-    return {};
-  }
 
-  /// The default specialization of `query_system_context` for `parallel_scheduler_backend`.
-  template <>
-  std::shared_ptr<parallel_scheduler_backend> query_system_context<parallel_scheduler_backend>() {
+  /// Get the backend for the parallel scheduler.
+  /// Users might replace this function.
+  std::shared_ptr<parallel_scheduler_backend> query_parallel_scheduler_backend() {
     return __system_context_default_impl::__parallel_scheduler_backend_singleton
       .__get_current_instance();
   }
 
-  /// The default implementation of the `set_system_context_backend_factory` function template.
-  template <__queryable_interface _Interface>
-  __STDEXEC_SYSTEM_CONTEXT_API __system_context_backend_factory<_Interface>
-    set_system_context_backend_factory(__system_context_backend_factory<_Interface> __new_factory) {
-    return nullptr;
-  }
-
-  /// The default specialization of `set_system_context_backend_factory` for `parallel_scheduler_backend`.
-  template <>
-  __system_context_backend_factory<parallel_scheduler_backend>
-    set_system_context_backend_factory<parallel_scheduler_backend>(
-      __system_context_backend_factory<parallel_scheduler_backend> __new_factory) {
+  /// Set a factory for the parallel scheduler backend.
+  /// Can be used to replace the parallel scheduler at runtime.
+  /// Out of spec.
+  __parallel_scheduler_backend_factory
+    set_parallel_scheduler_backend(__parallel_scheduler_backend_factory __new_factory) {
     return __system_context_default_impl::__parallel_scheduler_backend_singleton
       .__set_backend_factory(__new_factory);
   }
-
 
 } // namespace exec::system_context_replaceability

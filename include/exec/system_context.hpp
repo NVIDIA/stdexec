@@ -571,15 +571,8 @@ namespace exec {
     _Fn __fun_;
   };
 
-  // Add an indirection to the instantiation of `query_system_context<_Interface>`.
-  template <typename _Interface>
-  std::shared_ptr<_Interface> __query_system_context_interface() {
-    return system_context_replaceability::query_system_context<_Interface>();
-  }
-
   inline system_scheduler get_system_scheduler() {
-    auto __impl =
-      __query_system_context_interface<system_context_replaceability::parallel_scheduler_backend>();
+    auto __impl = system_context_replaceability::query_parallel_scheduler_backend();
     if (!__impl) {
       throw std::runtime_error{"No system context implementation found"};
     }
