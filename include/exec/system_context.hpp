@@ -99,10 +99,11 @@ namespace exec {
   };
 
   namespace __detail {
-    using __system_scheduler_ptr = std::shared_ptr<system_context_replaceability::system_scheduler>;
+    using __backend_ptr =
+      std::shared_ptr<system_context_replaceability::parallel_scheduler_backend>;
 
     template <class T>
-    auto __make_system_scheduler_from(T, __system_scheduler_ptr) noexcept;
+    auto __make_system_scheduler_from(T, __backend_ptr) noexcept;
 
     /// Describes the environment of this sender.
     struct __system_scheduler_env {
@@ -113,7 +114,7 @@ namespace exec {
       }
 
       /// The underlying implementation of the scheduler we are using.
-      __system_scheduler_ptr __scheduler_;
+      __backend_ptr __scheduler_;
     };
 
     template <size_t _Size, size_t _Align>
@@ -166,11 +167,11 @@ namespace exec {
     template <class _S, class _Rcvr>
     struct __system_op {
       /// Constructs `this` from `__rcvr` and `__scheduler_impl`.
-      __system_op(_Rcvr&& __rcvr, __system_scheduler_ptr __scheduler_impl)
+      __system_op(_Rcvr&& __rcvr, __backend_ptr __scheduler_impl)
         : __rcvr_{std::forward<_Rcvr>(__rcvr)} {
         // Before the operation starts, we store the scheduelr implementation in __preallocated_.
         // After the operation starts, we don't need this pointer anymore, and the storage can be used by the backend
-        auto* __p = &__preallocated_.__as<__system_scheduler_ptr>();
+        auto* __p = &__preallocated_.__as<__backend_ptr>();
         std::construct_at(__p, std::move(__scheduler_impl));
       }
 
@@ -188,7 +189,7 @@ namespace exec {
           stdexec::set_stopped(__rcvr_);
           return;
         }
-        auto& __scheduler_impl = __preallocated_.__as<__system_scheduler_ptr>();
+        auto& __scheduler_impl = __preallocated_.__as<__backend_ptr>();
         auto __impl = std::move(__scheduler_impl);
         std::destroy_at(&__scheduler_impl);
         __impl->schedule(__preallocated_.__as_storage(), &__rcvr_);
@@ -218,7 +219,7 @@ namespace exec {
       stdexec::set_error_t(std::exception_ptr)>;
 
     /// Implementation detail. Constructs the sender to wrap `__impl`.
-    explicit system_sender(__detail::__system_scheduler_ptr __impl)
+    explicit system_sender(__detail::__backend_ptr __impl)
       : __scheduler_{__impl} {
     }
 
@@ -242,7 +243,7 @@ namespace exec {
 
    private:
     /// The underlying implementation of the system scheduler.
-    __detail::__system_scheduler_ptr __scheduler_;
+    __detail::__backend_ptr __scheduler_;
   };
 
   /// A scheduler that can add work to the system context.
@@ -254,7 +255,7 @@ namespace exec {
     bool operator==(const system_scheduler&) const noexcept = default;
 
     /// Implementation detail. Constructs the scheduler to wrap `__impl`.
-    explicit system_scheduler(__detail::__system_scheduler_ptr&& __impl)
+    explicit system_scheduler(__detail::__backend_ptr&& __impl)
       : __impl_(__impl) {
     }
 
@@ -277,7 +278,7 @@ namespace exec {
     friend class system_bulk_sender;
 
     /// The underlying implementation of the scheduler.
-    __detail::__system_scheduler_ptr __impl_;
+    __detail::__backend_ptr __impl_;
   };
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -285,7 +286,7 @@ namespace exec {
 
   namespace __detail {
     template <class T>
-    auto __make_system_scheduler_from(T, __system_scheduler_ptr __impl) noexcept {
+    auto __make_system_scheduler_from(T, __backend_ptr __impl) noexcept {
       return system_scheduler{std::move(__impl)};
     }
 
@@ -399,7 +400,7 @@ namespace exec {
       /// Object that holds the relevant data for the entire bulk operation.
       _BulkState& __state_;
       /// The underlying implementation of the scheduler we are using.
-      __system_scheduler_ptr __scheduler_{nullptr};
+      __backend_ptr __scheduler_{nullptr};
       /// The size of the bulk operation.
       _Size __size_;
 
@@ -560,7 +561,7 @@ namespace exec {
 
    private:
     /// The underlying implementation of the scheduler we are using.
-    __detail::__system_scheduler_ptr __scheduler_{nullptr};
+    __detail::__backend_ptr __scheduler_{nullptr};
     /// The previous sender, the one that produces the input value for the bulk function.
     _Previous __previous_;
     /// The size of the bulk operation.
@@ -578,7 +579,7 @@ namespace exec {
 
   inline system_scheduler get_system_scheduler() {
     auto __impl =
-      __query_system_context_interface<system_context_replaceability::system_scheduler>();
+      __query_system_context_interface<system_context_replaceability::parallel_scheduler_backend>();
     if (!__impl) {
       throw std::runtime_error{"No system context implementation found"};
     }

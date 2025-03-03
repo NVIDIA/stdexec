@@ -26,10 +26,11 @@ namespace {
 
   static int count_schedules = 0;
 
-  struct my_system_scheduler_impl : exec::__system_context_default_impl::__system_scheduler_impl {
-    using base_t = exec::__system_context_default_impl::__system_scheduler_impl;
+  struct my_parallel_scheduler_backend_impl
+    : exec::__system_context_default_impl::__parallel_scheduler_backend_impl {
+    using base_t = exec::__system_context_default_impl::__parallel_scheduler_backend_impl;
 
-    my_system_scheduler_impl() = default;
+    my_parallel_scheduler_backend_impl() = default;
 
     void schedule(scr::storage __s, scr::receiver* __r) noexcept override {
       count_schedules++;
@@ -42,9 +43,9 @@ namespace {
 namespace exec::system_context_replaceability {
   // Should replace the function instantiation defined in __system_context_default_impl.hpp
   template <>
-  std::shared_ptr<exec::system_context_replaceability::system_scheduler>
-    query_system_context<exec::system_context_replaceability::system_scheduler>() {
-    return std::make_shared<my_system_scheduler_impl>();
+  std::shared_ptr<exec::system_context_replaceability::parallel_scheduler_backend>
+    query_system_context<exec::system_context_replaceability::parallel_scheduler_backend>() {
+    return std::make_shared<my_parallel_scheduler_backend_impl>();
   }
 } // namespace exec::system_context_replaceability
 

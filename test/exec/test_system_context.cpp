@@ -198,10 +198,11 @@ TEST_CASE("simple bulk chaining on system context", "[types][system_scheduler]")
   CHECK(std::get<0>(res.value()) == pool_id);
 }
 
-struct my_system_scheduler_impl : exec::__system_context_default_impl::__system_scheduler_impl {
-  using base_t = exec::__system_context_default_impl::__system_scheduler_impl;
+struct my_parallel_scheduler_backend_impl
+  : exec::__system_context_default_impl::__parallel_scheduler_backend_impl {
+  using base_t = exec::__system_context_default_impl::__parallel_scheduler_backend_impl;
 
-  my_system_scheduler_impl() = default;
+  my_parallel_scheduler_backend_impl() = default;
 
   int num_schedules() const {
     return count_schedules_;
@@ -217,7 +218,7 @@ struct my_system_scheduler_impl : exec::__system_context_default_impl::__system_
   int count_schedules_ = 0;
 };
 
-struct my_inline_scheduler_impl : scr::system_scheduler {
+struct my_inline_scheduler_backend_impl : scr::parallel_scheduler_backend {
   void schedule(scr::storage s, scr::receiver* r) noexcept override {
     r->set_value();
   }
@@ -232,9 +233,9 @@ struct my_inline_scheduler_impl : scr::system_scheduler {
 TEST_CASE(
   "can change the implementation of system context at runtime",
   "[types][system_scheduler]") {
-  static auto my_scheduler_backend = std::make_shared<my_system_scheduler_impl>();
-  auto old_factory = scr::set_system_context_backend_factory<scr::system_scheduler>(
-    []() -> std::shared_ptr<scr::system_scheduler> { return my_scheduler_backend; });
+  static auto my_scheduler_backend = std::make_shared<my_parallel_scheduler_backend_impl>();
+  auto old_factory = scr::set_system_context_backend_factory<scr::parallel_scheduler_backend>(
+    []() -> std::shared_ptr<scr::parallel_scheduler_backend> { return my_scheduler_backend; });
 
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};
@@ -249,15 +250,15 @@ TEST_CASE(
   REQUIRE(pool_id != std::thread::id{});
   REQUIRE(this_id != pool_id);
 
-  (void) scr::set_system_context_backend_factory<scr::system_scheduler>(old_factory);
+  (void) scr::set_system_context_backend_factory<scr::parallel_scheduler_backend>(old_factory);
 }
 
 TEST_CASE(
   "can change the implementation of system context at runtime, with an inline scheduler",
   "[types][system_scheduler]") {
-  auto old_factory = scr::set_system_context_backend_factory<scr::system_scheduler>(
-    []() -> std::shared_ptr<scr::system_scheduler> {
-      return std::make_shared<my_inline_scheduler_impl>();
+  auto old_factory = scr::set_system_context_backend_factory<scr::parallel_scheduler_backend>(
+    []() -> std::shared_ptr<scr::parallel_scheduler_backend> {
+      return std::make_shared<my_inline_scheduler_backend_impl>();
     });
 
   std::thread::id this_id = std::this_thread::get_id();
@@ -270,7 +271,7 @@ TEST_CASE(
 
   REQUIRE(this_id == pool_id);
 
-  (void) scr::set_system_context_backend_factory<scr::system_scheduler>(old_factory);
+  (void) scr::set_system_context_backend_factory<scr::parallel_scheduler_backend>(old_factory);
 }
 
 TEST_CASE("empty environment always returns nullopt for any query", "[types][system_scheduler]") {

@@ -118,16 +118,16 @@ namespace exec::system_context_replaceability {
     std::uint32_t __size;
   };
 
-  /// Interface for the system scheduler
-  struct system_scheduler {
+  /// Interface for the parallel scheduler backend.
+  struct parallel_scheduler_backend {
     static constexpr __uuid __interface_identifier{0x5ee9202498c4bd4f, 0xa1df2508ffcd9d7e};
 
-    virtual ~system_scheduler() = default;
+    virtual ~parallel_scheduler_backend() = default;
 
-    /// Schedule work on system scheduler, calling `__r` when done and using `__s` for preallocated
+    /// Schedule work on parallel scheduler, calling `__r` when done and using `__s` for preallocated
     /// memory.
     virtual void schedule(storage __s, receiver* __r) noexcept = 0;
-    /// Schedule bulk work of size `__n` on system scheduler, calling `__r` for each item and then
+    /// Schedule bulk work of size `__n` on parallel scheduler, calling `__r` for each item and then
     /// when done, and using `__s` for preallocated memory.
     virtual void
       bulk_schedule(std::uint32_t __n, storage __s, bulk_item_receiver* __r) noexcept = 0;

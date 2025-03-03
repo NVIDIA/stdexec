@@ -32,10 +32,11 @@ namespace exec::system_context_replaceability {
     return {};
   }
 
-  /// The default specialization of `query_system_context` for `system_scheduler`.
+  /// The default specialization of `query_system_context` for `parallel_scheduler_backend`.
   template <>
-  std::shared_ptr<system_scheduler> query_system_context<system_scheduler>() {
-    return __system_context_default_impl::__system_scheduler_singleton.__get_current_instance();
+  std::shared_ptr<parallel_scheduler_backend> query_system_context<parallel_scheduler_backend>() {
+    return __system_context_default_impl::__parallel_scheduler_backend_singleton
+      .__get_current_instance();
   }
 
   /// The default implementation of the `set_system_context_backend_factory` function template.
@@ -45,13 +46,13 @@ namespace exec::system_context_replaceability {
     return nullptr;
   }
 
-  /// The default specialization of `set_system_context_backend_factory` for `system_scheduler`.
+  /// The default specialization of `set_system_context_backend_factory` for `parallel_scheduler_backend`.
   template <>
-  __system_context_backend_factory<system_scheduler>
-    set_system_context_backend_factory<system_scheduler>(
-      __system_context_backend_factory<system_scheduler> __new_factory) {
-    return __system_context_default_impl::__system_scheduler_singleton.__set_backend_factory(
-      __new_factory);
+  __system_context_backend_factory<parallel_scheduler_backend>
+    set_system_context_backend_factory<parallel_scheduler_backend>(
+      __system_context_backend_factory<parallel_scheduler_backend> __new_factory) {
+    return __system_context_default_impl::__parallel_scheduler_backend_singleton
+      .__set_backend_factory(__new_factory);
   }
 
 

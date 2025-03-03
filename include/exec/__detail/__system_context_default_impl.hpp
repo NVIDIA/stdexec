@@ -30,7 +30,7 @@ namespace exec::__system_context_default_impl {
   using system_context_replaceability::receiver;
   using system_context_replaceability::bulk_item_receiver;
   using system_context_replaceability::storage;
-  using system_context_replaceability::system_scheduler;
+  using system_context_replaceability::parallel_scheduler_backend;
   using system_context_replaceability::__system_context_backend_factory;
 
   /// Receiver that calls the callback when the operation completes.
@@ -158,8 +158,8 @@ namespace exec::__system_context_default_impl {
   };
 
   template <typename _BaseSchedulerContext>
-  struct __system_scheduler_generic_impl : system_scheduler {
-    __system_scheduler_generic_impl()
+  struct __generic_impl : parallel_scheduler_backend {
+    __generic_impl()
       : __pool_scheduler_(__pool_.get_scheduler()) {
     }
    private:
@@ -199,8 +199,7 @@ namespace exec::__system_context_default_impl {
     }
 
     void
-      bulk_schedule(uint32_t __size, storage __storage, bulk_item_receiver* __r) noexcept
-      override {
+      bulk_schedule(uint32_t __size, storage __storage, bulk_item_receiver* __r) noexcept override {
       try {
         auto __sndr =
           stdexec::bulk(stdexec::schedule(__pool_scheduler_), __size, __bulk_functor{__r});
@@ -265,13 +264,13 @@ namespace exec::__system_context_default_impl {
   };
 
 #if STDEXEC_ENABLE_LIBDISPATCH
-  using __system_scheduler_impl = __system_scheduler_generic_impl<exec::libdispatch_queue>;
+  using __parallel_scheduler_backend_impl = __generic_impl<exec::libdispatch_queue>;
 #else
-  using __system_scheduler_impl = __system_scheduler_generic_impl<exec::static_thread_pool>;
+  using __parallel_scheduler_backend_impl = __generic_impl<exec::static_thread_pool>;
 #endif
 
-  /// The singleton to hold the `system_scheduler` instance.
-  inline constinit __instance_data<system_scheduler, __system_scheduler_impl>
-    __system_scheduler_singleton{};
+  /// The singleton to hold the `parallel_scheduler_backend` instance.
+  inline constinit __instance_data<parallel_scheduler_backend, __parallel_scheduler_backend_impl>
+    __parallel_scheduler_backend_singleton{};
 
 } // namespace exec::__system_context_default_impl
