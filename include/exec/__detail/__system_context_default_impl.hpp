@@ -29,7 +29,6 @@ namespace exec::__system_context_default_impl {
   using namespace stdexec::tags;
   using system_context_replaceability::receiver;
   using system_context_replaceability::bulk_item_receiver;
-  using system_context_replaceability::storage;
   using system_context_replaceability::parallel_scheduler_backend;
   using system_context_replaceability::__parallel_scheduler_backend_factory;
 
@@ -104,17 +103,18 @@ namespace exec::__system_context_default_impl {
   };
 
   /// Ensure that `__storage` is aligned to `__alignment`. Shrinks the storage, if needed, to match desired alignment.
-  inline storage __ensure_alignment(storage __storage, size_t __alignment) noexcept {
-    auto __pn = reinterpret_cast<uintptr_t>(__storage.__data);
+  inline std::span<std::byte>
+    __ensure_alignment(std::span<std::byte> __storage, size_t __alignment) noexcept {
+    auto __pn = reinterpret_cast<uintptr_t>(__storage.data());
     if (__pn % __alignment == 0) {
       return __storage;
-    } else if (__storage.__size < __alignment) {
-      return {nullptr, 0};
+    } else if (__storage.size() < __alignment) {
+      return {};
     } else {
       auto __new_pn = (__pn + __alignment - 1) & ~(__alignment - 1);
       return {
-        reinterpret_cast<void*>(__new_pn),
-        static_cast<uint32_t>(__storage.__size - (__new_pn - __pn))};
+        reinterpret_cast<std::byte*>(__new_pn),
+        static_cast<size_t>(__storage.size() - (__new_pn - __pn))};
     }
   }
 
@@ -126,13 +126,15 @@ namespace exec::__system_context_default_impl {
     bool __on_heap_;
 
     /// Try to construct the operation in the preallocated memory if it fits, otherwise allocate a new operation.
-    static __operation*
-      __construct_maybe_alloc(storage __storage, receiver* __completion, _Sender __sndr) {
+    static __operation* __construct_maybe_alloc(
+      std::span<std::byte> __storage,
+      receiver* __completion,
+      _Sender __sndr) {
       __storage = __ensure_alignment(__storage, alignof(__operation));
-      if (__storage.__data == nullptr || __storage.__size < sizeof(__operation)) {
+      if (__storage.data() == nullptr || __storage.size() < sizeof(__operation)) {
         return new __operation(std::move(__sndr), __completion, true);
       } else {
-        return new (__storage.__data) __operation(std::move(__sndr), __completion, false);
+        return new (__storage.data()) __operation(std::move(__sndr), __completion, false);
       }
     }
 
@@ -174,7 +176,7 @@ namespace exec::__system_context_default_impl {
       bulk_item_receiver* __r_;
 
       void operator()(unsigned long __idx) const noexcept {
-        __r_->start(static_cast<uint32_t>(__idx));
+        __r_->execute(static_cast<uint32_t>(__idx));
       }
     };
 
@@ -187,27 +189,29 @@ namespace exec::__system_context_default_impl {
       std::declval<__bulk_functor>()))>;
 
    public:
-    void schedule(storage __storage, receiver* __r) noexcept override {
+    void schedule(std::span<std::byte> __storage, receiver& __r) noexcept override {
       try {
         auto __sndr = stdexec::schedule(__pool_scheduler_);
         auto __os =
-          __schedule_operation_t::__construct_maybe_alloc(__storage, __r, std::move(__sndr));
+          __schedule_operation_t::__construct_maybe_alloc(__storage, &__r, std::move(__sndr));
         __os->start();
       } catch (std::exception& __e) {
-        __r->set_error(std::current_exception());
+        __r.set_error(std::current_exception());
       }
     }
 
-    void
-      bulk_schedule(uint32_t __size, storage __storage, bulk_item_receiver* __r) noexcept override {
+    void bulk_schedule(
+      uint32_t __size,
+      std::span<std::byte> __storage,
+      bulk_item_receiver& __r) noexcept override {
       try {
         auto __sndr =
-          stdexec::bulk(stdexec::schedule(__pool_scheduler_), __size, __bulk_functor{__r});
+          stdexec::bulk(stdexec::schedule(__pool_scheduler_), __size, __bulk_functor{&__r});
         auto __os =
-          __bulk_schedule_operation_t::__construct_maybe_alloc(__storage, __r, std::move(__sndr));
+          __bulk_schedule_operation_t::__construct_maybe_alloc(__storage, &__r, std::move(__sndr));
         __os->start();
       } catch (std::exception& __e) {
-        __r->set_error(std::current_exception());
+        __r.set_error(std::current_exception());
       }
     }
   };

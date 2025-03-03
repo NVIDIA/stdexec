@@ -20,9 +20,11 @@
 #include "stdexec/__detail/__execution_fwd.hpp"
 
 #include <cstdint>
+#include <cstddef>
 #include <exception>
 #include <optional>
 #include <memory>
+#include <span>
 
 struct __uuid {
   std::uint64_t __parts1;
@@ -111,14 +113,7 @@ namespace exec::system_context_replaceability {
   /// Receiver for bulk sheduling operations.
   struct bulk_item_receiver : receiver {
     /// Called for each item of a bulk operation, possible on different threads.
-    virtual void start(std::uint32_t) noexcept = 0;
-  };
-
-  /// Describes a storage space.
-  /// Used to pass preallocated storage from the frontend to the backend.
-  struct storage {
-    void* __data;
-    std::uint32_t __size;
+    virtual void execute(std::uint32_t) noexcept = 0;
   };
 
   /// Interface for the parallel scheduler backend.
@@ -129,11 +124,13 @@ namespace exec::system_context_replaceability {
 
     /// Schedule work on parallel scheduler, calling `__r` when done and using `__s` for preallocated
     /// memory.
-    virtual void schedule(storage __s, receiver* __r) noexcept = 0;
+    virtual void schedule(std::span<std::byte> __s, receiver& __r) noexcept = 0;
     /// Schedule bulk work of size `__n` on parallel scheduler, calling `__r` for each item and then
     /// when done, and using `__s` for preallocated memory.
-    virtual void
-      bulk_schedule(std::uint32_t __n, storage __s, bulk_item_receiver* __r) noexcept = 0;
+    virtual void bulk_schedule(
+      std::uint32_t __n,
+      std::span<std::byte> __s,
+      bulk_item_receiver& __r) noexcept = 0;
   };
 
 } // namespace exec::system_context_replaceability

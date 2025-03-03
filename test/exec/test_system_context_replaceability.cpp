@@ -32,7 +32,7 @@ namespace {
 
     my_parallel_scheduler_backend_impl() = default;
 
-    void schedule(scr::storage __s, scr::receiver* __r) noexcept override {
+    void schedule(std::span<std::byte> __s, scr::receiver& __r) noexcept override {
       count_schedules++;
       base_t::schedule(__s, __r);
     }

@@ -121,8 +121,8 @@ namespace exec {
     struct __aligned_storage {
       alignas(_Align) unsigned char __data_[_Size];
 
-      system_context_replaceability::storage __as_storage() noexcept {
-        return {__data_, _Size};
+      std::span<std::byte> __as_storage() noexcept {
+        return {reinterpret_cast<std::byte*>(__data_), _Size};
       }
 
       template <class _T>
@@ -192,7 +192,7 @@ namespace exec {
         auto& __scheduler_impl = __preallocated_.__as<__backend_ptr>();
         auto __impl = std::move(__scheduler_impl);
         std::destroy_at(&__scheduler_impl);
-        __impl->schedule(__preallocated_.__as_storage(), &__rcvr_);
+        __impl->schedule(__preallocated_.__as_storage(), __rcvr_);
       }
 
       /// Object that receives completion from the work described by the sender.
@@ -227,6 +227,10 @@ namespace exec {
     auto get_env() const noexcept -> __detail::__parallel_scheduler_env {
       return {__scheduler_};
     }
+
+    /// Value completion happens on the parallel scheduler.
+    parallel_scheduler
+      query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept;
 
     /// Connects `__self` to `__rcvr`, returning the operation state containing the work to be done.
     template <stdexec::receiver _Rcvr>
@@ -354,7 +358,7 @@ namespace exec {
       }
 
       /// Calls the bulk functor passing `__index` and the values from the previous sender.
-      void start(uint32_t __index) noexcept override {
+      void execute(uint32_t __index) noexcept override {
         auto __state = reinterpret_cast<_BulkState*>(this);
         std::apply(
           [&](auto&&... __args) { __state->__fun_(__index, __args...); },
@@ -382,8 +386,7 @@ namespace exec {
       _Rcvr __rcvr_;
 
       /// Function that prepares the preallocated storage for calling the backend.
-      system_context_replaceability::storage (*__prepare_storage_for_backend)(__bulk_state_base*){
-        nullptr};
+      std::span<std::byte> (*__prepare_storage_for_backend)(__bulk_state_base*){nullptr};
 
       __bulk_state_base(_Fn&& __fun, _Rcvr&& __rcvr)
         : __fun_{std::move(__fun)}
@@ -426,7 +429,7 @@ namespace exec {
 
         // Schedule the bulk work on the system scheduler.
         // This will invoke `start` on our receiver multiple times, and then a completion signal (e.g., `set_value`).
-        __scheduler->bulk_schedule(__size, __storage, __r);
+        __scheduler->bulk_schedule(__size, __storage, *__r);
       }
 
       /// Invoked when the previous sender completes with "stopped" to stop the entire work.
@@ -469,8 +472,7 @@ namespace exec {
       __aligned_storage<_PreallocatedSize, _PreallocatedAlign> __preallocated_;
 
       /// Destroys the inner operation state object, and returns the preallocated storage for it to be used by the backend.
-      static system_context_replaceability::storage
-        __prepare_storage_for_backend_impl(__bulk_state_base_t* __base) {
+      static std::span<std::byte> __prepare_storage_for_backend_impl(__bulk_state_base_t* __base) {
         auto* __self = static_cast<__system_bulk_op*>(__base);
         // We don't need anymore the storage for the previous operation state.
         __self->__preallocated_.template __as<__inner_op_state>().~__inner_op_state();
@@ -581,6 +583,11 @@ namespace exec {
       throw std::runtime_error{"No system context implementation found"};
     }
     return parallel_scheduler{std::move(__impl)};
+  }
+
+  inline parallel_scheduler __parallel_sender::query(
+    stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept {
+    return __detail::__make_parallel_scheduler_from(stdexec::set_value_t{}, __scheduler_);
   }
 
   inline auto parallel_scheduler::query(stdexec::get_forward_progress_guarantee_t) const noexcept

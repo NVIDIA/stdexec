@@ -208,7 +208,7 @@ struct my_parallel_scheduler_backend_impl
     return count_schedules_;
   }
 
-  void schedule(scr::storage __s, scr::receiver* __r) noexcept override {
+  void schedule(std::span<std::byte> __s, scr::receiver& __r) noexcept override {
     count_schedules_++;
     base_t::schedule(__s, __r);
   }
@@ -219,14 +219,15 @@ struct my_parallel_scheduler_backend_impl
 };
 
 struct my_inline_scheduler_backend_impl : scr::parallel_scheduler_backend {
-  void schedule(scr::storage s, scr::receiver* r) noexcept override {
-    r->set_value();
+  void schedule(std::span<std::byte> s, scr::receiver& r) noexcept override {
+    r.set_value();
   }
 
-  void bulk_schedule(uint32_t count, scr::storage s, scr::bulk_item_receiver* r) noexcept override {
+  void bulk_schedule(uint32_t count, std::span<std::byte> s, scr::bulk_item_receiver& r) noexcept
+    override {
     for (uint32_t i = 0; i < count; ++i)
-      r->start(i);
-    r->set_value();
+      r.execute(i);
+    r.set_value();
   }
 };
 
