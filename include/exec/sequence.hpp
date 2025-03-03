@@ -19,6 +19,9 @@
 #include <stdexec/__detail/__tuple.hpp>
 #include <stdexec/__detail/__variant.hpp>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+
 namespace exec {
   namespace _seq {
     template <class... Sndrs>
@@ -96,7 +99,7 @@ namespace exec {
         // result is that the first sender in `sndrs` is not moved from, but the rest are.
         _ops.template emplace_from_at<0>(
           stdexec::connect,
-          stdexec::__tup::get<0>(static_cast<CvrefSndrs&&>(sndrs)),
+          sndrs.template __get<0>(static_cast<CvrefSndrs&&>(sndrs)),
           _rcvr_t<0>{this});
       }
 
@@ -107,7 +110,7 @@ namespace exec {
           if constexpr (Idx == sizeof...(Sndrs) + 1) {
             stdexec::set_value(static_cast<Rcvr&&>(_rcvr), static_cast<Args&&>(args)...);
           } else {
-            auto& sndr = stdexec::__tup::get<Idx>(_sndrs);
+            auto& sndr = _sndrs.template __get<Idx>(_sndrs);
             auto& op = _ops.template emplace_from_at<Idx>(
               stdexec::connect, std::move(sndr), _rcvr_t<Idx>{this});
             stdexec::start(op);
@@ -197,7 +200,7 @@ namespace exec {
     template <class... Sndrs>
       requires(sizeof...(Sndrs) > 1) && stdexec::__domain::__has_common_domain<Sndrs...>
     STDEXEC_ATTRIBUTE((host, device)) _sndr<Sndrs...> sequence_t::operator()(Sndrs... sndrs) const {
-      return _sndr<Sndrs...>{{}, {}, {{static_cast<Sndrs&&>(sndrs)}...}};
+      return _sndr<Sndrs...>{{}, {}, {static_cast<Sndrs&&>(sndrs)...}};
     }
   } // namespace _seq
 
@@ -215,3 +218,5 @@ namespace std {
     using type = stdexec::__m_at_c<I, exec::sequence_t, stdexec::__, Sndrs...>;
   };
 } // namespace std
+
+STDEXEC_PRAGMA_POP()

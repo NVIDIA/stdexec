@@ -21,6 +21,10 @@ namespace ex = stdexec;
 namespace {
 
   TEST_CASE("read returns empty env", "[factories][read]") {
-    check_env_type<ex::empty_env>(ex::read(ex::get_allocator));
+    auto sndr = ex::read_env(ex::get_allocator);
+    using Sndr = decltype(sndr);
+    static_assert(ex::sender<Sndr>);
+    static_assert(!ex::sender_in<Sndr>);
+    static_assert(ex::__is_scheduler_affine<Sndr>);
   }
 } // namespace

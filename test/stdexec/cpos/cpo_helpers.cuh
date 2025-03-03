@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+// clang-format Language: Cpp
+
+#pragma once
+
 #include <stdexec/execution.hpp>
 #include <test_common/type_helpers.hpp>
 

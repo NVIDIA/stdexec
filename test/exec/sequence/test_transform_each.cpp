@@ -108,7 +108,7 @@ namespace {
     basic_inline_scheduler<my_domain> sched;
     int result = 0;
     auto start = ex::just(std::string{"hello"});
-    auto with_scheduler = exec::write(stdexec::prop{ex::get_scheduler, inline_scheduler()});
+    auto with_scheduler = exec::write_env(stdexec::prop{ex::get_scheduler, inline_scheduler()});
     auto adaptor = exec::on(sched, ex::then([](std::string x) { return x + ", world"; }))
                  | with_scheduler;
     auto snd = start                                                      //

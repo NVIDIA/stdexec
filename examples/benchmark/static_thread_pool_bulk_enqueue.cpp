@@ -45,7 +45,7 @@ struct RunThread {
       auto env = exec::make_env(stdexec::prop{stdexec::get_allocator, alloc});
       auto [start, end] = exec::_pool_::even_share(total_scheds, tid, pool.available_parallelism());
       auto iterate = exec::schedule_all(pool, std::views::iota(start, end))
-                   | exec::ignore_all_values() | exec::write(env);
+                   | exec::ignore_all_values() | exec::write_env(env);
 #  else
       auto [start, end] = exec::_pool_::even_share(total_scheds, tid, pool.available_parallelism());
       auto iterate = exec::schedule_all(pool, std::views::iota(start, end))

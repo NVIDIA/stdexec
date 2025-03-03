@@ -144,7 +144,7 @@ namespace {
     bool called = false;
     int counter{};
     auto split = ex::split(ex::just() | ex::then([&] { called = true; }));
-    auto sndr = exec::write(
+    auto sndr = exec::write_env(
       ex::upon_stopped(
         std::move(split),
         [&] {
@@ -174,7 +174,7 @@ namespace {
           called = true;
           return 7;
         }));
-    auto sndr = exec::write(
+    auto sndr = exec::write_env(
       ex::upon_stopped(
         std::move(split),
         [&] {
@@ -206,7 +206,7 @@ namespace {
               called = true;
               return 7;
             })));
-    auto sndr = exec::write(
+    auto sndr = exec::write_env(
       ex::upon_stopped(
         std::move(split),
         [&] {
@@ -249,11 +249,11 @@ namespace {
     auto sndr1 = ex::starts_on(
       sched,
       ex::upon_stopped(
-        exec::write(split, stdexec::prop{ex::get_stop_token, ssource.get_token()}), [&] {
+        exec::write_env(split, stdexec::prop{ex::get_stop_token, ssource.get_token()}), [&] {
           ++counter;
           return 42;
         }));
-    auto sndr2 = exec::write(
+    auto sndr2 = exec::write_env(
       ex::starts_on(
         sched,
         ex::upon_stopped(

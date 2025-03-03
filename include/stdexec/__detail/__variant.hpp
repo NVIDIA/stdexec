@@ -34,7 +34,9 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace stdexec {
-  inline constexpr std::size_t __variant_npos = ~0UL;
+  //constexpr std::size_t __variant_npos = ~0ULL;
+
+#define __variant_npos ~0ULL
 
   struct __monostate { };
 

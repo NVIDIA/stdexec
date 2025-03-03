@@ -79,7 +79,7 @@ namespace stdexec {
     };
 
     template <class _Sender>
-    constexpr bool __is_nothrow_transform_sender() noexcept {
+    constexpr auto __is_nothrow_transform_sender() noexcept -> bool {
       if constexpr (__callable<__sexpr_apply_t, _Sender, __domain::__legacy_customization>) {
         return __nothrow_callable<__sexpr_apply_t, _Sender, __domain::__legacy_customization>;
       } else if constexpr (__domain::__has_default_transform_sender<_Sender>) {
@@ -90,7 +90,7 @@ namespace stdexec {
     }
 
     template <class _Sender, class _Env>
-    constexpr bool __is_nothrow_transform_sender() noexcept {
+    constexpr auto __is_nothrow_transform_sender() noexcept -> bool {
       if constexpr (__domain::__has_default_transform_sender<_Sender, _Env>) {
         return //
           noexcept(

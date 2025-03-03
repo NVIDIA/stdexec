@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "config.cuh"
@@ -51,17 +54,17 @@ namespace nvexec::detail {
     cudaGetLastError();
 
 #if defined(STDEXEC_STDERR)
-      if (error != cudaSuccess) {
-        std::printf(
-          "CUDA error %s [%s:%d]: %s\n",
-          cudaGetErrorName(error),
-          file_name,
-          line,
-          cudaGetErrorString(error));
-      }
+    if (error != cudaSuccess) {
+      std::printf(
+        "CUDA error %s [%s:%d]: %s\n",
+        cudaGetErrorName(error),
+        file_name,
+        line,
+        cudaGetErrorString(error));
+    }
 #endif
 
-      return error;
+    return error;
   }
 } // namespace nvexec::detail
 

@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "common.cuh"
@@ -54,7 +57,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 namespace ex = stdexec;
 
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
+namespace nvexec::_strm { //
 
   namespace repeat_n {
     template <class OpT>
@@ -188,7 +191,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
         }});
       }
     };
-}} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS::repeat_n
+}} // namespace nvexec::_strm::repeat_n
 #endif
 
 namespace repeat_n_detail {
@@ -346,7 +349,7 @@ namespace repeat_n_detail {
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
     template <stdexec::__decays_to<repeat_n_sender_t> Self, stdexec::receiver Receiver>
       requires(stdexec::sender_to<Sender, Receiver>)
-           && (!nvexec::STDEXEC_STREAM_DETAIL_NS::receiver_with_stream_env<Receiver>)
+           && (!nvexec::_strm::receiver_with_stream_env<Receiver>)
     friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver r)
       -> repeat_n_detail::operation_state_t<SenderId, Closure, stdexec::__id<Receiver>> {
       return repeat_n_detail::operation_state_t<SenderId, Closure, stdexec::__id<Receiver>>(
@@ -355,13 +358,11 @@ namespace repeat_n_detail {
 
     template <stdexec::__decays_to<repeat_n_sender_t> Self, stdexec::receiver Receiver>
       requires(stdexec::sender_to<Sender, Receiver>)
-           && (nvexec::STDEXEC_STREAM_DETAIL_NS::receiver_with_stream_env<Receiver>)
-    friend auto
-      tag_invoke(stdexec::connect_t, Self&& self, Receiver r) -> nvexec::STDEXEC_STREAM_DETAIL_NS::
-        repeat_n::operation_state_t<SenderId, Closure, stdexec::__id<Receiver>> {
-      return nvexec::STDEXEC_STREAM_DETAIL_NS::repeat_n::
-        operation_state_t<SenderId, Closure, stdexec::__id<Receiver>>(
-          static_cast<Sender&&>(self.sender_), self.closure_, static_cast<Receiver&&>(r), self.n_);
+           && (nvexec::_strm::receiver_with_stream_env<Receiver>)
+    friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver r)
+      -> nvexec::_strm::repeat_n::operation_state_t<SenderId, Closure, stdexec::__id<Receiver>> {
+      return nvexec::_strm::repeat_n::operation_state_t<SenderId, Closure, stdexec::__id<Receiver>>(
+        static_cast<Sender&&>(self.sender_), self.closure_, static_cast<Receiver&&>(r), self.n_);
     }
 #else
     template <stdexec::__decays_to<repeat_n_sender_t> Self, stdexec::receiver Receiver>
