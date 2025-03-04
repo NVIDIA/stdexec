@@ -57,7 +57,7 @@ namespace {
 
       // clang-format off
   return transfer_just(sch, std::move(partials))
-       | bulk(tile_count,
+       | bulk(ex::par, tile_count,
              [=](std::size_t i, std::span<double> partials) {
                auto start = i * tile_size;
                auto end = std::min(input.size(), (i + 1) * tile_size);
@@ -68,7 +68,7 @@ namespace {
            std::inclusive_scan(begin(partials), end(partials), begin(partials));
            return std::move(partials);
          })
-       | bulk(tile_count,
+       | bulk(ex::par, tile_count,
              [=](std::size_t i, std::span<const double> partials) {
                auto start = i * tile_size;
                auto end = std::min(input.size(), (i + 1) * tile_size);
@@ -144,10 +144,9 @@ namespace {
       CHECK_THROWS(stdexec::sync_wait(starts_on(tbb_pool.get_scheduler(), just(0)) | then([](auto) {
                                         throw std::exception();
                                       })));
-      CHECK_THROWS(
-        stdexec::sync_wait(starts_on(other_pool.get_scheduler(), just(0)) | then([](auto) {
-                             throw std::exception();
-                           })));
+      CHECK_THROWS(stdexec::sync_wait(
+        starts_on(other_pool.get_scheduler(), just(0))
+        | then([](auto) { throw std::exception(); })));
     }
     // Ensure it still works normally after exceptions:
     {

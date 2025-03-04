@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include "__execution_legacy.hpp"
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
@@ -35,7 +36,8 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.bulk]
   namespace __bulk {
-    inline constexpr __mstring __bulk_context = "In stdexec::bulk(Sender, Shape, Function)..."_mstr;
+    inline constexpr __mstring __bulk_context =
+      "In stdexec::bulk(Sender, Policy, Shape, Function)..."_mstr;
     using __on_not_callable = __callable_error<__bulk_context>;
 
     template <class _Shape, class _Fun>
@@ -69,8 +71,9 @@ namespace stdexec {
         __with_error_invoke_t<__on_not_callable, _Fun, _Shape, _CvrefSender, _Env...>>;
 
     struct bulk_t {
-      template <sender _Sender, integral _Shape, __movable_value _Fun>
-      STDEXEC_ATTRIBUTE((host, device)) auto operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const
+      template <sender _Sender, typename _Policy, integral _Shape, __movable_value _Fun>
+        requires is_execution_policy_v<std::remove_cvref_t<_Policy>>
+      STDEXEC_ATTRIBUTE((host, device)) auto operator()(_Sender&& __sndr, _Policy&& __pol, _Shape __shape, _Fun __fun) const
         -> __well_formed_sender auto {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
@@ -79,11 +82,14 @@ namespace stdexec {
             __data{__shape, static_cast<_Fun&&>(__fun)}, static_cast<_Sender&&>(__sndr)));
       }
 
-      template <integral _Shape, class _Fun>
-      STDEXEC_ATTRIBUTE((always_inline)) auto
-        operator()(_Shape __shape, _Fun __fun) const -> __binder_back<bulk_t, _Shape, _Fun> {
+      template <typename _Policy, integral _Shape, class _Fun>
+        requires is_execution_policy_v<std::remove_cvref_t<_Policy>>
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Policy&& __pol, _Shape __shape, _Fun __fun) const
+        -> __binder_back<bulk_t, _Policy, _Shape, _Fun> {
         return {
-          {static_cast<_Shape&&>(__shape), static_cast<_Fun&&>(__fun)},
+          {static_cast<_Policy&&>(__pol),
+           static_cast<_Shape&&>(__shape),
+           static_cast<_Fun&&>(__fun)},
           {},
           {}
         };
