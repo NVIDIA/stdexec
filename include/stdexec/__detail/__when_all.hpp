@@ -429,24 +429,20 @@ namespace stdexec {
     };
 
     struct transfer_when_all_t {
-      using _Env = __0;
+      using _Sched = __0;
       using _Sender = __1;
       using __legacy_customizations_t = //
-        __types<tag_invoke_t(
-          transfer_when_all_t,
-          get_completion_scheduler_t<set_value_t>(const _Env&),
-          _Sender...)>;
+        __types<tag_invoke_t(transfer_when_all_t, _Sched, _Sender...)>;
 
       template <scheduler _Scheduler, sender... _Senders>
         requires __domain::__has_common_domain<_Senders...>
       auto
-        operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto {
-        using _Env = __t<__schfr::__environ<__id<__decay_t<_Scheduler>>>>;
+        operator()(_Scheduler __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto {
         auto __domain = query_or(get_domain, __sched, default_domain());
         return stdexec::transform_sender(
           __domain,
           __make_sexpr<transfer_when_all_t>(
-            _Env{static_cast<_Scheduler&&>(__sched)}, static_cast<_Senders&&>(__sndrs)...));
+            static_cast<_Scheduler&&>(__sched), static_cast<_Senders&&>(__sndrs)...));
       }
 
       template <class _Sender, class _Env>
@@ -458,45 +454,40 @@ namespace stdexec {
           static_cast<_Sender&&>(__sndr),
           [&]<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child) {
             return continues_on(
-              when_all_t()(static_cast<_Child&&>(__child)...),
-              get_completion_scheduler<set_value_t>(__data));
+              when_all_t()(static_cast<_Child&&>(__child)...), static_cast<_Data&&>(__data));
           });
       }
     };
 
     struct __transfer_when_all_impl : __sexpr_defaults {
       static constexpr auto get_attrs = //
-        []<class _Data>(const _Data& __data, const auto&...) noexcept -> const _Data& {
-        return __data; // NOLINT(bugprone-return-const-ref-from-parameter)
-      };
+        []<class _Data>(const _Data& __data, const auto&...) noexcept {
+          return __sched_attrs{std::cref(__data)};
+        };
 
       static constexpr auto get_completion_signatures = //
-        []<class _Sender>(_Sender&&) noexcept           //
-        -> __completion_signatures_of_t<                //
+        []<class _Sender>(_Sender&&) noexcept
+        -> __completion_signatures_of_t<
           transform_sender_result_t<default_domain, _Sender, empty_env>> {
         return {};
       };
     };
 
     struct transfer_when_all_with_variant_t {
-      using _Env = __0;
+      using _Sched = __0;
       using _Sender = __1;
       using __legacy_customizations_t = //
-        __types<tag_invoke_t(
-          transfer_when_all_with_variant_t,
-          get_completion_scheduler_t<set_value_t>(const _Env&),
-          _Sender...)>;
+        __types<tag_invoke_t(transfer_when_all_with_variant_t, _Sched, _Sender...)>;
 
       template <scheduler _Scheduler, sender... _Senders>
         requires __domain::__has_common_domain<_Senders...>
       auto
         operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto {
-        using _Env = __t<__schfr::__environ<__id<__decay_t<_Scheduler>>>>;
         auto __domain = query_or(get_domain, __sched, default_domain());
         return stdexec::transform_sender(
           __domain,
           __make_sexpr<transfer_when_all_with_variant_t>(
-            _Env{{static_cast<_Scheduler&&>(__sched)}}, static_cast<_Senders&&>(__sndrs)...));
+            static_cast<_Scheduler&&>(__sched), static_cast<_Senders&&>(__sndrs)...));
       }
 
       template <class _Sender, class _Env>
@@ -508,17 +499,16 @@ namespace stdexec {
           static_cast<_Sender&&>(__sndr),
           [&]<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child) {
             return transfer_when_all_t()(
-              get_completion_scheduler<set_value_t>(static_cast<_Data&&>(__data)),
-              into_variant(static_cast<_Child&&>(__child))...);
+              static_cast<_Data&&>(__data), into_variant(static_cast<_Child&&>(__child))...);
           });
       }
     };
 
     struct __transfer_when_all_with_variant_impl : __sexpr_defaults {
       static constexpr auto get_attrs = //
-        []<class _Data>(const _Data& __data, const auto&...) noexcept -> const _Data& {
-        return __data; // NOLINT(bugprone-return-const-ref-from-parameter)
-      };
+        []<class _Data>(const _Data& __data, const auto&...) noexcept {
+          return __sched_attrs{std::cref(__data)};
+        };
 
       static constexpr auto get_completion_signatures = //
         []<class _Sender>(_Sender&&) noexcept           //
