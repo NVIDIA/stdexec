@@ -65,7 +65,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             // a kernel and construct the temporary storage on the device to avoid managed
             // memory movements. Otherwise, we construct the temporary storage on the host
             // and prefetch it to the device.
-            storage_t* storage = static_cast<storage_t*>(operation_state_.temp_storage_);
+            auto* storage = static_cast<storage_t*>(operation_state_.temp_storage_);
             constexpr bool construct_on_device = trivially_copyable<__decay_t<As>...>;
 
             if constexpr (!construct_on_device) {

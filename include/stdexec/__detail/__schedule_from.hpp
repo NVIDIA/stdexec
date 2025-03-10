@@ -89,26 +89,6 @@ namespace stdexec {
           __eptr_completion_if_t<__all_nothrow_decay_copyable_results<_CvrefSender, _Env...>>,
           __mconst<completion_signatures<>>::__f>>;
 
-    template <class _SchedulerId>
-    struct __environ {
-      using _Scheduler = stdexec::__t<_SchedulerId>;
-
-      struct __t {
-        using __id = __environ;
-
-        _Scheduler __sched_;
-
-        template <__one_of<set_value_t, set_stopped_t> _Tag>
-        auto query(get_completion_scheduler_t<_Tag>) const noexcept {
-          return __sched_;
-        }
-
-        auto query(get_domain_t) const noexcept {
-          return query_or(get_domain, __sched_, default_domain());
-        }
-      };
-    };
-
     template <class _Scheduler, class _Sexpr, class _Receiver>
     struct __state;
 
@@ -174,19 +154,17 @@ namespace stdexec {
 
     struct schedule_from_t {
       template <scheduler _Scheduler, sender _Sender>
-      auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto {
-        using _Env = __t<__environ<__id<__decay_t<_Scheduler>>>>;
-        auto __env = _Env{{static_cast<_Scheduler&&>(__sched)}};
+      auto operator()(_Scheduler __sched, _Sender&& __sndr) const -> __well_formed_sender auto {
         auto __domain = query_or(get_domain, __sched, default_domain());
         return stdexec::transform_sender(
           __domain,
-          __make_sexpr<schedule_from_t>(std::move(__env), static_cast<_Sender&&>(__sndr)));
+          __make_sexpr<schedule_from_t>(
+            static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr)));
       }
 
+      using _Sched = __0;
       using _Sender = __1;
-      using _Env = __0;
-      using __legacy_customizations_t = __types<
-        tag_invoke_t(schedule_from_t, get_completion_scheduler_t<set_value_t>(_Env&), _Sender)>;
+      using __legacy_customizations_t = __types<tag_invoke_t(schedule_from_t, _Sched, _Sender)>;
     };
 
     struct __schedule_from_impl : __sexpr_defaults {
@@ -196,7 +174,7 @@ namespace stdexec {
 
       static constexpr auto get_attrs = //
         []<class _Data, class _Child>(const _Data& __data, const _Child& __child) noexcept {
-          return __env::__join(__data, stdexec::get_env(__child));
+          return __env::__join(__sched_attrs{std::cref(__data)}, stdexec::get_env(__child));
         };
 
       static constexpr auto get_completion_signatures = //

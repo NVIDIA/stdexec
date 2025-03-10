@@ -187,8 +187,7 @@ namespace stdexec {
 #  if STDEXEC_GCC() && (__GNUC__ > 11)
       __attribute__((__used__))
 #  endif
-      static auto
-        __co_impl(_Awaitable __awaitable, _Receiver __rcvr) -> __operation_t<_Receiver> {
+      static auto __co_impl(_Awaitable __awaitable, _Receiver __rcvr) -> __operation_t<_Receiver> {
         using __result_t = __await_result_t<_Awaitable, __promise_t<_Receiver>>;
         std::exception_ptr __eptr;
         try {

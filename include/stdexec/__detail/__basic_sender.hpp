@@ -37,13 +37,6 @@ namespace stdexec {
   namespace __detail {
     template <class _Sender>
     using __impl_of = decltype((__declval<_Sender>().__impl_));
-
-    struct __get_data {
-      template <class _Data>
-      STDEXEC_ATTRIBUTE((always_inline)) _Data&& operator()(__ignore, _Data&& __data, auto&&...) const noexcept {
-        return static_cast<_Data&&>(__data);
-      }
-    };
   } // namespace __detail
 
   namespace {

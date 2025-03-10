@@ -91,6 +91,7 @@ namespace stdexec {
     struct get_stop_token_t;
     template <__completion_tag _CPO>
     struct get_completion_scheduler_t;
+    struct get_domain_t;
   } // namespace __queries
 
   using __queries::forwarding_query_t;
@@ -102,6 +103,7 @@ namespace stdexec {
   using __queries::get_delegation_scheduler_t;
   using __queries::get_stop_token_t;
   using __queries::get_completion_scheduler_t;
+  using __queries::get_domain_t;
 
   extern const forwarding_query_t forwarding_query;
   extern const execute_may_block_caller_t execute_may_block_caller;
@@ -113,6 +115,7 @@ namespace stdexec {
   extern const get_stop_token_t get_stop_token;
   template <__completion_tag _CPO>
   extern const get_completion_scheduler_t<_CPO> get_completion_scheduler;
+  extern const get_domain_t get_domain;
 
   struct never_stop_token;
   class inplace_stop_source;
@@ -130,6 +133,9 @@ namespace stdexec {
   template <class _Sender, class _CPO>
   using __completion_scheduler_for =
     __call_result_t<get_completion_scheduler_t<_CPO>, env_of_t<const _Sender&>>;
+
+  template <class _Env>
+  using __domain_of_t = __decay_t<__call_result_t<get_domain_t, _Env>>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __sigs {
@@ -209,6 +215,13 @@ namespace stdexec {
   extern const starts_on_t start_on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  namespace __schfr {
+    struct schedule_from_t;
+  } // namespace __schfr
+
+  using __schfr::schedule_from_t;
+  extern const schedule_from_t schedule_from;
+
   namespace __continues_on {
     struct continues_on_t;
   } // namespace __continues_on

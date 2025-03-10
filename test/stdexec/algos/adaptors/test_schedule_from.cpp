@@ -23,8 +23,6 @@
 #include <exec/any_sender_of.hpp>
 #include <exec/static_thread_pool.hpp>
 
-#include <chrono>
-
 namespace ex = stdexec;
 
 using namespace std::chrono_literals;
