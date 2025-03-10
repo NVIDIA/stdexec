@@ -21,8 +21,6 @@
 #include <test_common/type_helpers.hpp>
 #include <exec/static_thread_pool.hpp>
 
-#include <chrono>
-
 namespace ex = stdexec;
 
 using namespace std::chrono_literals;

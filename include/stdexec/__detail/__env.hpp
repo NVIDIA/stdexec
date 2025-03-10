@@ -332,9 +332,6 @@ namespace stdexec {
 
   inline constexpr get_domain_t get_domain{};
 
-  template <class _Env>
-  using __domain_of_t = __decay_t<__call_result_t<get_domain_t, _Env>>;
-
   template <class _Tag, class _Queryable, class _Default>
   using __query_result_or_t = __call_result_t<query_or_t, _Tag, _Queryable, _Default>;
 
@@ -658,6 +655,31 @@ namespace stdexec {
     requires(_EnvProvider& __ep) {
       { get_env(std::as_const(__ep)) } -> queryable;
     };
+
+  template <class _Scheduler>
+  struct __sched_attrs {
+    using __t = __sched_attrs;
+    using __id = __sched_attrs;
+
+    using __scheduler_t = __decay_t<_Scheduler>;
+    _Scheduler __sched_;
+
+    auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> __scheduler_t {
+      return __sched_;
+    }
+
+    auto query(get_completion_scheduler_t<set_stopped_t>) const noexcept -> __scheduler_t {
+      return __sched_;
+    }
+
+    template <class _Sched = _Scheduler>
+    auto query(get_domain_t) const noexcept -> __domain_of_t<_Sched> {
+      return get_domain(__sched_);
+    }
+  };
+
+  template <class _Scheduler>
+  __sched_attrs(_Scheduler) -> __sched_attrs<std::unwrap_reference_t<_Scheduler>>;
 
   using __env::__as_root_env_t;
   using __env::__as_root_env;

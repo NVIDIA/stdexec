@@ -19,8 +19,8 @@
 
 #include "__config.hpp"
 #include "__concepts.hpp"
-#include "__sender_introspection.hpp"
 #include "__env.hpp"
+#include "__sender_introspection.hpp"
 #include "__meta.hpp"
 
 #include "../functional.hpp"
@@ -215,13 +215,19 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   inline constexpr struct __get_late_domain_t {
-    // When connect is looking for a customization, it first checks the sender's
-    // domain. If the sender knows the domain in which it completes, then that is
-    // where the subsequent task will execute. Otherwise, look to the receiver for
-    // late-bound information about the current execution context.
+    // When connect is looking for a customization, it first checks the sender's domain. If the
+    // sender knows the domain in which it completes, then that is where the subsequent task will
+    // execute. Otherwise, look to the receiver for late-bound information about the current
+    // execution context.
     template <class _Sender, class _Env>
     auto operator()(const _Sender& __sndr, const _Env& __env) const noexcept {
-      if constexpr (!same_as<dependent_domain, __early_domain_of_t<_Sender, dependent_domain>>) {
+      // The schedule_from algorithm is the exception to the rule. It ignores the domain of the
+      // predecessor, and dispatches based on the domain of the scheduler to which execution is
+      // being transferred.
+      if constexpr (sender_expr_for<_Sender, schedule_from_t>) {
+        return query_or(get_domain, __sexpr_apply(__sndr, __detail::__get_data()), default_domain());
+      } else if constexpr (
+        !same_as<dependent_domain, __early_domain_of_t<_Sender, dependent_domain>>) {
         return __get_early_domain(__sndr);
       } else if constexpr (__callable<get_domain_t, const _Env&>) {
         return get_domain(__env);
@@ -230,17 +236,6 @@ namespace stdexec {
       } else {
         return default_domain();
       }
-    }
-
-    // The continues_on algorithm is the exception to the rule. It ignores the
-    // domain of the predecessor, and dispatches based on the domain of the
-    // scheduler to which execution is being transferred.
-    template <sender_expr_for<continues_on_t> _Sender, class _Env>
-    auto operator()(const _Sender& __sndr, const _Env&) const noexcept {
-      return __sexpr_apply(__sndr, [](__ignore, auto& __data, __ignore) noexcept {
-        auto __sched = get_completion_scheduler<set_value_t>(__data);
-        return query_or(get_domain, __sched, default_domain());
-      });
     }
   } __get_late_domain{};
 
