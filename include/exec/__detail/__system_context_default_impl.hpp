@@ -219,9 +219,9 @@ namespace exec::__system_context_default_impl {
     /// Gets the current instance; if there is no instance, uses the current factory to create one.
     std::shared_ptr<_Interface> __get_current_instance() {
       // If we have a valid instance, return it.
-      __instance_mutex_.lock();
+      __acquire_instance_lock();
       auto __r = __instance_;
-      __instance_mutex_.unlock();
+      __release_instance_lock();
       if (__r) {
         return __r;
       }
@@ -231,9 +231,9 @@ namespace exec::__system_context_default_impl {
       auto __new_instance = __factory_.load(std::memory_order_relaxed)();
 
       // Store the newly created instance.
-      __instance_mutex_.lock();
+      __acquire_instance_lock();
       __instance_ = __new_instance;
-      __instance_mutex_.unlock();
+      __release_instance_lock();
       return __new_instance;
     }
 
@@ -245,22 +245,31 @@ namespace exec::__system_context_default_impl {
       // Create a new instance with the new factory.
       auto __new_instance = __new_factory();
       // Replace the current instance with the new one.
-      __instance_mutex_.lock();
+      __acquire_instance_lock();
       auto __old_instance = std::exchange(__instance_, __new_instance);
-      __instance_mutex_.unlock();
+      __release_instance_lock();
       // Make sure to delete the old instance after releasing the lock.
       __old_instance.reset();
       return __old_factory;
     }
 
    private:
-    std::mutex __instance_mutex_{};
+    std::atomic<bool> __instance_locked_{false};
     std::shared_ptr<_Interface> __instance_{nullptr};
     std::atomic<__system_context_backend_factory<_Interface>> __factory_{__default_factory};
 
     /// The default factory returns an instance of `_Impl`.
     static std::shared_ptr<_Interface> __default_factory() {
       return std::make_shared<_Impl>();
+    }
+
+    void __acquire_instance_lock() {
+      while (__instance_locked_.exchange(true, std::memory_order_acquire)) {
+        // Spin until we acquire the lock.
+      }
+    }
+    void __release_instance_lock() {
+      __instance_locked_.store(false, std::memory_order_release);
     }
   };
 
