@@ -17,8 +17,12 @@
 #ifndef STDEXEC_SYSTEM_CONTEXT_REPLACEABILITY_API_H
 #define STDEXEC_SYSTEM_CONTEXT_REPLACEABILITY_API_H
 
+#include "stdexec/__detail/__execution_fwd.hpp"
+
 #include <cstdint>
 #include <exception>
+#include <optional>
+#include <memory>
 
 struct __uuid {
   std::uint64_t __parts1;
@@ -27,39 +31,78 @@ struct __uuid {
   friend bool operator==(__uuid, __uuid) noexcept = default;
 };
 
-/// Implementation-defined mechanism of querying a system context interface identified by `__id`.
-extern void* __query_system_context_interface(const __uuid& __id) noexcept;
-
 namespace exec::system_context_replaceability {
 
-  //! Helper for the `__queryable_interface` concept.
+  /// Helper for the `__queryable_interface` concept.
   template <__uuid X>
   using __check_constexpr_uuid = void;
 
-  //! Concept for a queryable interface. Ensures that the interface has a `__interface_identifier`
-  //! member.
+  /// Concept for a queryable interface. Ensures that the interface has a `__interface_identifier` member.
   template <typename _T>
   concept __queryable_interface =
     requires() { typename __check_constexpr_uuid<_T::__interface_identifier>; };
 
+  /// The details for making `_T` a runtime property.
+  template <typename _T>
+  struct __runtime_property_helper {
+    /// Is `_T` a property?
+    static constexpr bool __is_property = false;
+    /// The unique identifier for the property.
+    static constexpr __uuid __property_identifier{0, 0};
+  };
+
+  /// `inplace_stope_token` is a runtime property.
+  template <>
+  struct __runtime_property_helper<stdexec::inplace_stop_token> {
+    static constexpr bool __is_property = true;
+    static constexpr __uuid __property_identifier{0x8779c09d8aa249df, 0x867db0e653202604};
+  };
+
+  /// Concept for a runtime property.
+  template <typename _T>
+  concept __runtime_property = __runtime_property_helper<_T>::__is_property;
+
   /// Query the system context for an interface of type `_Interface`.
   template <__queryable_interface _Interface>
-  inline _Interface* query_system_context() {
-    return static_cast<_Interface*>(
-      __query_system_context_interface(_Interface::__interface_identifier));
-  }
+  extern std::shared_ptr<_Interface> query_system_context();
+
+  /// The type of a factory that can create interfaces of type `_Interface`.
+  template <__queryable_interface _Interface>
+  using __system_context_backend_factory = std::shared_ptr<_Interface> (*)();
+
+  /// Sets the factory that creates the system context backend for an interface of type `_Interface`.
+  template <__queryable_interface _Interface>
+  extern __system_context_backend_factory<_Interface>
+    set_system_context_backend_factory(__system_context_backend_factory<_Interface> __new_factory);
 
   /// Interface for completing a sender operation. Backend will call frontend though this interface
   /// for completing the `schedule` and `schedule_bulk` operations.
   struct receiver {
     virtual ~receiver() = default;
 
+   protected:
+    virtual bool __query_env(__uuid, void*) noexcept = 0;
+
+   public:
     /// Called when the system scheduler completes successfully.
     virtual void set_value() noexcept = 0;
     /// Called when the system scheduler completes with an error.
     virtual void set_error(std::exception_ptr) noexcept = 0;
     /// Called when the system scheduler was stopped.
     virtual void set_stopped() noexcept = 0;
+
+    /// Query the receiver for a property of type `_P`.
+    template <typename _P>
+    std::optional<std::decay_t<_P>> try_query() noexcept {
+      if constexpr (__runtime_property<_P>) {
+        std::decay_t<_P> __p;
+        bool __success =
+          __query_env(__runtime_property_helper<std::decay_t<_P>>::__property_identifier, &__p);
+        return __success ? std::make_optional(std::move(__p)) : std::nullopt;
+      } else {
+        return std::nullopt;
+      }
+    }
   };
 
   /// Receiver for bulk sheduling operations.
@@ -88,15 +131,6 @@ namespace exec::system_context_replaceability {
     /// when done, and using `__s` for preallocated memory.
     virtual void
       bulk_schedule(std::uint32_t __n, storage __s, bulk_item_receiver* __r) noexcept = 0;
-  };
-
-  /// Implementation-defined mechanism for replacing the system scheduler backend at run-time.
-  struct __system_context_replaceability {
-    static constexpr __uuid __interface_identifier{0xc008a3be3bb9284b, 0xb98edb3a740ee02c};
-
-    /// Globally replaces the system scheduler backend.
-    /// This needs to be called within `main()` and before the system scheduler is accessed.
-    virtual void __set_system_scheduler(system_scheduler*) noexcept = 0;
   };
 
 } // namespace exec::system_context_replaceability
