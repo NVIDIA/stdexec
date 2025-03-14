@@ -323,16 +323,17 @@ namespace stdexec {
 
       template <class _State, class _Receiver, class _Error>
       static void __set_error(_State& __state, _Receiver&, _Error&& __err) noexcept {
+        // Transition to the "error" state and switch on the prior state.
         // TODO: What memory orderings are actually needed here?
-        auto __old_state = __state.__state_.exchange(__error);
-        // If the previous state was __error or __stopped, then we have already requested
-        // stop on the stop source. Otherwise, request stop.
-        if (__old_state == __started) {
+        switch (__state.__state_.exchange(__error)) {
+        case __started:
+          // We must request stop. When the previous state is __error or __stopped, then stop has
+          // already been requested.
           __state.__stop_source_.request_stop();
-        }
-        // If we are the first child to complete with an error, we must save the error.
-        // (Any subsequent errors are ignores.)
-        if (__old_state != __error) {
+          [[fallthrough]];
+        case __stopped:
+          // We are the first child to complete with an error, so we must save the error. (Any
+          // subsequent errors are ignored.)
           if constexpr (__nothrow_decay_copyable<_Error>) {
             __state.__errors_.template emplace<__decay_t<_Error>>(static_cast<_Error&&>(__err));
           } else {
@@ -342,6 +343,8 @@ namespace stdexec {
               __state.__errors_.template emplace<std::exception_ptr>(std::current_exception());
             }
           }
+          break;
+        case __error:; // We're already in the "error" state. Ignore the error.
         }
       }
 

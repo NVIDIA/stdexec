@@ -168,19 +168,22 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           template <class Error>
           void _set_error_impl(Error&& err) noexcept {
+            // Transition to the "error" state and switch on the prior state.
             // TODO: What memory orderings are actually needed here?
-            auto old_state = op_state_->state_.exchange(_when_all::error);
-            // If the previous state was error or stopped, then we have already requested
-            // stop on the stop source. Otherwise, request stop.
-            if (old_state == _when_all::started) {
+            switch (op_state_->state_.exchange(_when_all::error)) {
+            case _when_all::started:
+              // We must request stop. When the previous state is "error" or "stopped", then stop
+              // has already been requested.
               op_state_->stop_source_.request_stop();
-            }
-            // If we are the first child to complete with an error, we must save the error.
-            // (Any subsequent errors are ignores.)
-            if (old_state != _when_all::error) {
+              [[fallthrough]];
+            case _when_all::stopped:
+              // We are the first child to complete with an error, so we must save the error.
+              // (Any subsequent errors are ignored.)
+              static_assert(__nothrow_constructible_from<__decay_t<Error>, Error>);
               op_state_->errors_.template emplace<__decay_t<Error>>(static_cast<Error&&>(err));
+              break;
+            case _when_all::error:; // We're already in the "error" state. Ignore the error.
             }
-            op_state_->arrive();
           }
 
           template <class... Values>
@@ -210,13 +213,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             requires tag_invocable<set_error_t, Receiver, Error>
           void set_error(Error&& err) && noexcept {
             _set_error_impl(static_cast<Error&&>(err));
+            op_state_->arrive();
           }
 
           void set_stopped() && noexcept {
             _when_all::state_t expected = _when_all::started;
-            // Transition to the "stopped" state if and only if we're in the
-            // "started" state. (If this fails, it's because we're in an
-            // error state, which trumps cancellation.)
+            // Transition to the "stopped" state if and only if we're in the "started" state. (If
+            // this fails, it's because we're in the "error" state, which trumps cancellation.)
             if (op_state_->state_.compare_exchange_strong(expected, _when_all::stopped)) {
               op_state_->stop_source_.request_stop();
             }
