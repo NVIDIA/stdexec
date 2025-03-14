@@ -588,7 +588,7 @@ namespace exec {
         }
 
        private:
-        enum state {
+        enum state : std::uint32_t {
           running,
           stealing,
           sleeping,

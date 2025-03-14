@@ -206,7 +206,7 @@ namespace exec {
               [this]<class... _Senders>(_Senders&&... __sndrs) noexcept(__nothrow_construct)
                 -> __opstate_tuple {
                 return __opstate_tuple{
-                  {stdexec::connect(static_cast<_Senders&&>(__sndrs), __receiver_t{this})}...};
+                  stdexec::connect(static_cast<_Senders&&>(__sndrs), __receiver_t{this})...};
               },
               static_cast<_SenderTuple&&>(__senders))} {
         }
@@ -253,7 +253,7 @@ namespace exec {
         template <__not_decays_to<__t>... _Senders>
         explicit(sizeof...(_Senders) == 1)
           __t(_Senders&&... __senders) noexcept((__nothrow_decay_copyable<_Senders> && ...))
-          : __senders_{{static_cast<_Senders&&>(__senders)}...} {
+          : __senders_{static_cast<_Senders&&>(__senders)...} {
         }
 
         template <__decays_to<__t> _Self, receiver _Receiver>

@@ -624,8 +624,8 @@ namespace exec {
           template <class _Rcvr>
             requires receiver_of<_Rcvr, completion_signatures<_Sigs...>>
                   && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
-          STDEXEC_MEMFN_DECL(
-            auto __create_vtable)(this __mtype<__t>, __mtype<_Rcvr>) noexcept -> const __t* {
+          STDEXEC_MEMFN_DECL(auto __create_vtable)(this __mtype<__t>, __mtype<_Rcvr>) noexcept
+            -> const __t* {
             static const __t __vtable_{
               {__any_::__rcvr_vfun_fn(
                 static_cast<_Rcvr*>(nullptr), static_cast<_Sigs*>(nullptr))}...,
@@ -960,9 +960,8 @@ namespace exec {
         __immovable_operation_storage (*__connect_)(void*, __receiver_ref_t);
        private:
         template <sender_to<__receiver_ref_t> _Sender>
-        STDEXEC_MEMFN_DECL(
-          auto
-          __create_vtable)(this __mtype<__vtable>, __mtype<_Sender>) noexcept -> const __vtable* {
+        STDEXEC_MEMFN_DECL(auto __create_vtable)(this __mtype<__vtable>, __mtype<_Sender>) noexcept
+          -> const __vtable* {
           static const __vtable __vtable_{
             {*__create_vtable(__mtype<__query_vtable<_SenderQueries>>{}, __mtype<_Sender>{})},
             [](void* __object_pointer, __receiver_ref_t __receiver)
@@ -1085,8 +1084,8 @@ namespace exec {
        private:
         template <scheduler _Scheduler>
         STDEXEC_MEMFN_DECL(
-          auto
-          __create_vtable)(this __mtype<__vtable>, __mtype<_Scheduler>) noexcept -> const __vtable* {
+          auto __create_vtable)(this __mtype<__vtable>, __mtype<_Scheduler>) noexcept
+          -> const __vtable* {
           static const __vtable __vtable_{
             {*__create_vtable(
               __mtype<__query_vtable<_SchedulerQueries, false>>{}, __mtype<_Scheduler>{})},

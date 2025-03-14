@@ -207,4 +207,11 @@ namespace stdexec {
       }
     }
   }
+
+  template <class _Tag, class _Receiver>
+  auto __mk_completion_fn(_Tag, _Receiver& __rcvr) noexcept {
+    return [&]<class... _Args>(_Args&&... __args) noexcept {
+      _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
+    };
+  }
 } // namespace stdexec

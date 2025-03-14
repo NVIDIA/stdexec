@@ -53,6 +53,13 @@ namespace stdexec {
     };
 
     struct __write_env_impl : __sexpr_defaults {
+      static constexpr auto get_attrs = //
+        []<class _Child>(__ignore, const _Child& __child) noexcept {
+          return __env::__join(
+            prop{__is_scheduler_affine_t{}, __mbool<__is_scheduler_affine<_Child>>{}},
+            stdexec::get_env(__child));
+        };
+
       static constexpr auto get_env = //
         [](__ignore, const auto& __state, const auto& __rcvr) noexcept {
           return __env::__join(__state, stdexec::get_env(__rcvr));

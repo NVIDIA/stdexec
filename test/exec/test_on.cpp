@@ -29,7 +29,7 @@ namespace {
 
   template <ex::scheduler Sched = inline_scheduler>
   inline auto _with_scheduler(Sched sched = {}) {
-    return exec::write(stdexec::prop{ex::get_scheduler, std::move(sched)});
+    return exec::write_env(stdexec::prop{ex::get_scheduler, std::move(sched)});
   }
 
   template <ex::scheduler Sched = inline_scheduler>

@@ -73,8 +73,21 @@ namespace {
   template <class... Values>
   fallible_just(Values...) -> fallible_just<Values...>;
 
+  inline constexpr struct value_query_t : ex::forwarding_query_t {
+    template <class Env>
+    [[nodiscard]]
+    auto operator()(Env const & env) const noexcept -> decltype(env.query(*this)) {
+      return env.query(*this);
+    }
+  } value_query;
+
   struct value_env {
-    int value;
+    int value{};
+
+    [[nodiscard]]
+    auto query(value_query_t) const noexcept -> int {
+      return value;
+    }
   };
 
   template <class Env, class... Values>

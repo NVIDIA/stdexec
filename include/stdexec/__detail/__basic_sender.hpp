@@ -88,19 +88,10 @@ namespace stdexec {
       __callable<__impl_of<_Sexpr>, __copy_cvref_fn<_Sexpr>, __connect_fn<_Sexpr, _Receiver>>
       && __mvalid<__state_type_t, tag_of_t<_Sexpr>, _Sexpr, _Receiver>;
 
-    // // Note: This is UB. UBSAN allows it for now.
-    // template <class _Parent, class _Child>
-    // _Parent* __parent_from_child(_Child* __child, _Child _Parent::*__mbr_ptr) noexcept {
-    //   alignas(_Parent) char __buf[sizeof(_Parent)];
-    //   _Parent* __parent = (_Parent*) &__buf;
-    //   const std::ptrdiff_t __offset = (char*) &(__parent->*__mbr_ptr) - __buf;
-    //   return (_Parent*) (static_cast<char*>(__child) - __offset);
-    // }
-
     inline constexpr auto __get_attrs = //
       [](__ignore, const auto&... __child) noexcept -> decltype(auto) {
       if constexpr (sizeof...(__child) == 1) {
-        return stdexec::get_env(__child...); // BUGBUG: should be only the forwarding queries
+        return __env::__fwd_fn()(stdexec::get_env(__child...));
       } else {
         return empty_env();
       }
@@ -168,14 +159,6 @@ namespace stdexec {
         // this receiver.
         __parent_op_t* __op_;
 
-        // template <class _ChildSexpr, class _ChildReceiver>
-        // static __t __from_op_state(__op_state<_ChildSexpr, _ChildReceiver>* __child) noexcept {
-        //   using __parent_op_t = __op_state<_Sexpr, _Receiver>;
-        //   std::ptrdiff_t __offset = __parent_op_t::template __get_child_op_offset<__v<_Idx>>();
-        //   __parent_op_t* __parent = (__parent_op_t*) (static_cast<char*>(__child) - __offset);
-        //   return __t{__parent};
-        // }
-
         template <class... _Args>
         STDEXEC_ATTRIBUTE((always_inline)) void set_value(_Args&&... __args) noexcept {
           __op_->__complete(_Idx(), stdexec::set_value, static_cast<_Args&&>(__args)...);
@@ -197,11 +180,6 @@ namespace stdexec {
         }
       };
     };
-
-    // template <class _Receiver>
-    // using __sexpr_connected_with = __mapply<
-    //   __mbind_front_q<__m_at, typename _Receiver::__index>,
-    //   typename __call_result_t<__impl_of<typename _Receiver::__sexpr>, __cp, __get_desc>::__children>;
 
     template <class _Sexpr, class _Receiver>
     using __state_t = //
@@ -229,7 +207,7 @@ namespace stdexec {
       using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
       __state_box(_Sexpr&& __sndr, _Receiver& __rcvr) //
-        noexcept(__nothrow_callable<decltype(__sexpr_impl<__tag_t>::get_state), _Sexpr, _Receiver>) {
+        noexcept(__noexcept_of<__sexpr_impl<__tag_t>::get_state, _Sexpr, _Receiver&>) {
         ::new (static_cast<void*>(__buf_)) auto(
           __sexpr_impl<__tag_t>::get_state(static_cast<_Sexpr&&>(__sndr), __rcvr));
       }
@@ -285,7 +263,7 @@ namespace stdexec {
       __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr) //
         noexcept(
           __nothrow_decay_copyable<_Receiver>
-          && __nothrow_callable<decltype(__sexpr_impl<__tag_t>::get_state), _Sexpr, _Receiver>)
+          && __noexcept_of<__sexpr_impl<__tag_t>::get_state, _Sexpr, _Receiver&>)
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
         , __state_(__sexpr_impl<__tag_t>::get_state(static_cast<_Sexpr&&>(__sndr), __rcvr_)) {
       }
@@ -327,27 +305,6 @@ namespace stdexec {
       }
     };
 
-    // template <class _Sexpr, class _Receiver>
-    //   requires __is_instance_of<__id<_Receiver>, __receiver>
-    //         && __decays_to<_Sexpr, __sexpr_connected_with<_Receiver>>
-    // struct __op_base<_Sexpr, _Receiver> : __immovable {
-    //   using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
-    //   using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
-
-    //   STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS __state_t __state_;
-
-    //   __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr)
-    //     : __state_(__sexpr_impl<__tag_t>::get_state(static_cast<_Sexpr&&>(__sndr), __rcvr)) {
-    //     STDEXEC_ASSERT(this->__rcvr().__op_ == __rcvr.__op_);
-    //   }
-
-    //   _Receiver __rcvr() const noexcept {
-    //     return _Receiver::__from_op_state(             //
-    //       static_cast<__op_state<_Sexpr, _Receiver>*>( //
-    //         const_cast<__op_base*>(this)));
-    //   }
-    // };
-
     STDEXEC_PRAGMA_PUSH()
     STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
@@ -380,6 +337,7 @@ namespace stdexec {
         return {};
       }
     };
+
     STDEXEC_PRAGMA_POP()
 
     template <class _Sexpr, class _Receiver>
@@ -387,22 +345,15 @@ namespace stdexec {
       using __desc_t = typename __decay_t<_Sexpr>::__desc_t;
       using __tag_t = typename __desc_t::__tag;
       using __data_t = typename __desc_t::__data;
-      //using __children_t = typename __desc_t::__children;
       using __state_t = typename __op_state::__state_t;
       using __inner_ops_t = __result_of<__sexpr_apply, _Sexpr, __connect_fn<_Sexpr, _Receiver>>;
 
       __inner_ops_t __inner_ops_;
 
-      // template <std::size_t _Idx>
-      // static std::ptrdiff_t __get_child_op_offset() noexcept {
-      //   __op_state* __self = (__op_state*) &__self;
-      //   return (std::ptrdiff_t)((char*) &__tup::get<_Idx>(__self->__inner_ops_) - static_cast<char*>(__self));
-      // }
-
       __op_state(_Sexpr&& __sexpr, _Receiver __rcvr) //
         noexcept(
-          __nothrow_constructible_from<__op_base<_Sexpr, _Receiver>, _Sexpr&&, _Receiver&&>
-          && __nothrow_callable<__sexpr_apply_t, _Sexpr&&, __connect_fn<_Sexpr, _Receiver>>)
+          __nothrow_constructible_from<__op_base<_Sexpr, _Receiver>, _Sexpr, _Receiver>
+          && __noexcept_of<__sexpr_apply, _Sexpr, __connect_fn<_Sexpr, _Receiver>>)
         : __op_state::__op_base{static_cast<_Sexpr&&>(__sexpr), static_cast<_Receiver&&>(__rcvr)}
         , __inner_ops_(
             __sexpr_apply(static_cast<_Sexpr&&>(__sexpr), __connect_fn<_Sexpr, _Receiver>{this})) {
@@ -468,7 +419,7 @@ namespace stdexec {
       decltype(__detail::__captures(_Tag(), __declval<_Data>(), __declval<_Child>()...));
 
     template <class, class, class... _Child>
-    using __tuple_size_t = char[sizeof...(_Child) + 2];
+    using __tuple_size_t = char[sizeof...(_Child) + 2]; // NOLINT(modernize-avoid-c-arrays)
 
     template <std::size_t _Idx, class _Descriptor>
     concept __in_range = (_Idx < sizeof(__minvoke<_Descriptor, __q<__tuple_size_t>>));

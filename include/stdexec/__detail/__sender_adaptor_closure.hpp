@@ -68,7 +68,8 @@ namespace stdexec {
     template <__class _Dp>
     struct sender_adaptor_closure { };
 
-    template <sender _Sender, __sender_adaptor_closure_for<_Sender> _Closure>
+    //template <sender _Sender, __sender_adaptor_closure_for<_Sender> _Closure>
+    template <sender _Sender, class _Closure>
     STDEXEC_ATTRIBUTE((always_inline)) __call_result_t<_Closure, _Sender> operator|(_Sender&& __sndr, _Closure&& __clsur) {
       return static_cast<_Closure&&>(__clsur)(static_cast<_Sender&&>(__sndr));
     }

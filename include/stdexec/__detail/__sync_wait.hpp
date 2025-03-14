@@ -44,12 +44,17 @@ namespace stdexec {
   // [execution.senders.consumers.sync_wait_with_variant]
   namespace __sync_wait {
     struct __env {
+      using __t = __env;
+      using __id = __env;
+
       run_loop* __loop_ = nullptr;
 
+      [[nodiscard]]
       auto query(get_scheduler_t) const noexcept -> run_loop::__scheduler {
         return __loop_->get_scheduler();
       }
 
+      [[nodiscard]]
       auto query(get_delegation_scheduler_t) const noexcept -> run_loop::__scheduler {
         return __loop_->get_scheduler();
       }
@@ -210,8 +215,8 @@ namespace stdexec {
         requires __valid_sync_wait_argument<_Sender>
               && __has_implementation_for<sync_wait_t, __early_domain_of_t<_Sender>, _Sender>
       auto operator()(_Sender&& __sndr) const -> std::optional<__value_tuple_for_t<_Sender>> {
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::apply_sender(__domain, *this, static_cast<_Sender&&>(__sndr));
+        using _Domain = __late_domain_of_t<_Sender, __env>;
+        return stdexec::apply_sender(_Domain(), *this, static_cast<_Sender&&>(__sndr));
       }
 
 #if STDEXEC_EDG()
@@ -299,8 +304,8 @@ namespace stdexec {
         using __variant_t = typename __result_t::value_type;
         static_assert(__is_instance_of<__variant_t, std::variant>);
 
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::apply_sender(__domain, *this, static_cast<_Sender&&>(__sndr));
+        using _Domain = __late_domain_of_t<_Sender, __env>;
+        return stdexec::apply_sender(_Domain(), *this, static_cast<_Sender&&>(__sndr));
       }
 
 #if STDEXEC_EDG()

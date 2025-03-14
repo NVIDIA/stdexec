@@ -1,5 +1,6 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
+#include <exec/env.hpp>
 
 #include "nvexec/stream_context.cuh"
 #include "common.cuh"
@@ -25,14 +26,16 @@ namespace {
     flags_storage_t flags_storage{};
     auto flags = flags_storage.get();
 
-    auto snd = ex::just_error(42) | ex::continues_on(stream_ctx.get_scheduler())
-             | ex::let_error([=](int err) {
-                 if (is_on_gpu() && err == 42) {
-                   flags.set();
-                 }
+    auto snd =                                       //
+      ex::just_error(42)                             //
+      | ex::continues_on(stream_ctx.get_scheduler()) //
+      | ex::let_error([=](int err) {
+          if (is_on_gpu() && err == 42) {
+            flags.set();
+          }
 
-                 return ex::just();
-               });
+          return ex::just() | exec::write_attrs(ex::prop{ex::get_domain, nvexec::stream_domain()});
+        });
     stdexec::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
@@ -53,7 +56,8 @@ namespace {
                    flags.set(0);
                  }
 
-                 return ex::just();
+                 return ex::just()
+                      | exec::write_attrs(ex::prop{ex::get_domain, nvexec::stream_domain()});
                })
              | a_sender([flags] {
                  if (is_on_gpu()) {

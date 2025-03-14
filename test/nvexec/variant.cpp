@@ -23,6 +23,7 @@
 #include "nvexec/detail/variant.cuh"
 #include "common.cuh"
 
+STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 using nvexec::variant_t;
@@ -145,3 +146,5 @@ namespace {
       1);
   }
 } // namespace
+
+STDEXEC_PRAGMA_POP()
