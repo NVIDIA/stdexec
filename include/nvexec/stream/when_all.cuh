@@ -25,6 +25,7 @@
 #include <utility>
 
 #include "common.cuh"
+#include "../detail/event.cuh"
 #include "../detail/throw_on_cuda_error.cuh"
 
 STDEXEC_PRAGMA_PUSH()
@@ -166,9 +167,17 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           using Completions = completion_sigs<env_of_t<Receiver>, CvrefReceiverId>;
 
           template <class Error>
-          void _set_error_impl(Error&& err, _when_all::state_t expected) noexcept {
+          void _set_error_impl(Error&& err) noexcept {
             // TODO: What memory orderings are actually needed here?
-            if (op_state_->state_.compare_exchange_strong(expected, _when_all::error)) {
+            auto old_state = op_state_->__state_.exchange(_when_all::error);
+            // If the previous state was __error or __stopped, then we have already requested
+            // stop on the stop source. Otherwise, request stop.
+            if (old_state == _when_all::started) {
+              op_state_->__stop_source_.request_stop();
+            }
+            // If we are the first child to complete with an error, we must save the error.
+            // (Any subsequent errors are ignores.)
+            if (old_state != _when_all::error) {
               op_state_->stop_source_.request_stop();
               // We won the race, free to write the error into the operation
               // state without worry.
@@ -187,12 +196,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
                 if constexpr (sizeof...(Values)) {
                   _when_all::copy_kernel<Values&&...><<<1, 1, 0, stream>>>(
                     &__tup::get<Index>(*op_state_->values_), static_cast<Values&&>(vals)...);
+                  op_state_->statuses_[Index] = cudaGetLastError();
                 }
 
                 if constexpr (stream_receiver<Receiver>) {
-                  if (op_state_->status_ == cudaSuccess) {
-                    op_state_->status_ =
-                      STDEXEC_DBG_ERR(cudaEventRecord(op_state_->events_[Index], stream));
+                  if (op_state_->statuses_[Index] == cudaSuccess) {
+                    op_state_->statuses_[Index] = op_state_->events_[Index].try_record(stream);
                   }
                 }
               }
@@ -203,7 +212,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           template <class Error>
             requires tag_invocable<set_error_t, Receiver, Error>
           void set_error(Error&& err) && noexcept {
-            _set_error_impl(static_cast<Error&&>(err), _when_all::started);
+            _set_error_impl(static_cast<Error&&>(err));
           }
 
           void set_stopped() && noexcept {
@@ -237,8 +246,6 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using Receiver = stdexec::__t<__decay_t<CvrefReceiverId>>; // NOT __cvref_t
         using Env = env_of_t<Receiver>;
         using Completions = completion_sigs<Env, CvrefReceiverId>;
-
-        cudaError_t status_{cudaSuccess};
 
         template <class SenderId, std::size_t Index>
         using child_op_state_t = exit_operation_state_t<
@@ -285,6 +292,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           // Stop callback is no longer needed. Destroy it.
           on_stop_.reset();
 
+          // See if any child operations completed with an error status:
+          for (auto status: statuses_) {
+            if (status != cudaSuccess) {
+              status_ = status;
+              break;
+            }
+          }
+
           // Synchronize streams
           if (status_ == cudaSuccess) {
             if constexpr (stream_receiver<Receiver>) {
@@ -294,7 +309,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
               for (int i = 0; i < sizeof...(SenderIds); i++) {
                 if (status_ == cudaSuccess) {
-                  status_ = STDEXEC_DBG_ERR(cudaStreamWaitEvent(stream, events_[i], 0));
+                  status_ = events_[i].try_wait(stream);
                 }
               }
             } else {
@@ -354,19 +369,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           , child_states_{
               operation_t::connect_children_(this, static_cast<WhenAll&&>(when_all), Indices{})} {
           status_ = STDEXEC_DBG_ERR(cudaMallocManaged(&values_, sizeof(child_values_tuple_t)));
-          for (std::size_t i = 0; i < sizeof...(SenderIds); ++i) {
-            if (status_ == cudaSuccess) {
-              status_ = STDEXEC_DBG_ERR(cudaEventCreate(&events_[i], cudaEventDisableTiming));
-            }
-          }
         }
 
         ~operation_t() {
           STDEXEC_DBG_ERR(cudaFree(values_));
-
-          for (int i = 0; i < sizeof...(SenderIds); i++) {
-            STDEXEC_DBG_ERR(cudaEventDestroy(events_[i]));
-          }
         }
 
         STDEXEC_IMMOVABLE(operation_t);
@@ -388,7 +394,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           }
         }
 
-        // tuple<optional<tuple<Vs1...>>, optional<tuple<Vs2...>>, ...>
+        // tuple<tuple<Vs1...>, tuple<Vs2...>, ...>
         using child_values_tuple_t = //
           __if<
             sends_values<Completions>,
@@ -408,9 +414,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             __uniqued_variant_for>;
 
         Receiver rcvr_;
+        cudaError_t status_{cudaSuccess};
         std::atomic<std::size_t> count_{sizeof...(SenderIds)};
         std::array<stream_provider_t, sizeof...(SenderIds)> stream_providers_;
-        std::array<cudaEvent_t, sizeof...(SenderIds)> events_;
+        std::array<detail::cuda_event, sizeof...(SenderIds)> events_{};
+        std::array<cudaError_t, sizeof...(SenderIds)> statuses_{}; // all initialized to cudaSuccess
         child_op_states_tuple_t child_states_;
         // Could be non-atomic here and atomic_ref everywhere except __completion_fn
         std::atomic<_when_all::state_t> state_{_when_all::started};

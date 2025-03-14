@@ -324,10 +324,15 @@ namespace stdexec {
       template <class _State, class _Receiver, class _Error>
       static void __set_error(_State& __state, _Receiver&, _Error&& __err) noexcept {
         // TODO: What memory orderings are actually needed here?
-        if (__error != __state.__state_.exchange(__error)) {
+        auto __old_state = __state.__state_.exchange(__error);
+        // If the previous state was __error or __stopped, then we have already requested
+        // stop on the stop source. Otherwise, request stop.
+        if (__old_state == __started) {
           __state.__stop_source_.request_stop();
-          // We won the race, free to write the error into the operation
-          // state without worry.
+        }
+        // If we are the first child to complete with an error, we must save the error.
+        // (Any subsequent errors are ignores.)
+        if (__old_state != __error) {
           if constexpr (__nothrow_decay_copyable<_Error>) {
             __state.__errors_.template emplace<__decay_t<_Error>>(static_cast<_Error&&>(__err));
           } else {
