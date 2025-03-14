@@ -15,7 +15,7 @@ If:
 CompileFlags:
   Add:
     # Allow variadic CUDA functions
-    - "-fcuda-allow-variadic-functions"
+    - "-Xclang=-fcuda-allow-variadic-functions"
 
 ---
 
