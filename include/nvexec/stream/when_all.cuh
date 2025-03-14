@@ -169,18 +169,15 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           template <class Error>
           void _set_error_impl(Error&& err) noexcept {
             // TODO: What memory orderings are actually needed here?
-            auto old_state = op_state_->__state_.exchange(_when_all::error);
-            // If the previous state was __error or __stopped, then we have already requested
+            auto old_state = op_state_->state_.exchange(_when_all::error);
+            // If the previous state was error or stopped, then we have already requested
             // stop on the stop source. Otherwise, request stop.
             if (old_state == _when_all::started) {
-              op_state_->__stop_source_.request_stop();
+              op_state_->stop_source_.request_stop();
             }
             // If we are the first child to complete with an error, we must save the error.
             // (Any subsequent errors are ignores.)
             if (old_state != _when_all::error) {
-              op_state_->stop_source_.request_stop();
-              // We won the race, free to write the error into the operation
-              // state without worry.
               op_state_->errors_.template emplace<__decay_t<Error>>(static_cast<Error&&>(err));
             }
             op_state_->arrive();
