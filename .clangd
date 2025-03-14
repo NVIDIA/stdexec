@@ -46,6 +46,7 @@ CompileFlags:
 CompileFlags:
   CompilationDatabase: .
   Add:
+    - "-DLIBCUDACXX_ENABLE_EXPERIMENTAL_MEMORY_RESOURCE"
     # report all errors
     - "-ferror-limit=0"
     - "-fmacro-backtrace-limit=0"
