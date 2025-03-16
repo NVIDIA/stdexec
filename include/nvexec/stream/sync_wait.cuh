@@ -29,7 +29,7 @@
 
 #include "common.cuh"
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_sync_wait {
+namespace nvexec::_strm::_sync_wait {
   struct __env {
     using __t = __env;
     using __id = __env;
@@ -202,4 +202,4 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_sync_wait {
       [[maybe_unused]] _Error __diagnostic = {}) const -> std::optional<std::tuple<int>> = delete;
 #endif
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_sync_wait
+} // namespace nvexec::_strm::_sync_wait

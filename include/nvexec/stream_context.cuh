@@ -44,7 +44,7 @@
 #include "detail/throw_on_cuda_error.cuh" // IWYU pragma: export
 
 namespace nvexec {
-  namespace STDEXEC_STREAM_DETAIL_NS {
+  namespace _strm {
     template <sender Sender, std::integral Shape, class Fun>
     using bulk_sender_th = __t<bulk_sender_t<__id<__decay_t<Sender>>, Shape, Fun>>;
 
@@ -302,16 +302,14 @@ namespace nvexec {
       return upon_stopped_sender_th<S, Fn>{{}, static_cast<S&&>(sndr), static_cast<Fn&&>(fun)};
     }
 
-  } // namespace STDEXEC_STREAM_DETAIL_NS
+  } // namespace _strm
 
-  using STDEXEC_STREAM_DETAIL_NS::stream_scheduler;
+  using _strm::stream_scheduler;
 
   struct stream_context {
-    STDEXEC_STREAM_DETAIL_NS::resource_storage<STDEXEC_STREAM_DETAIL_NS::pinned_resource>
-      pinned_resource_{};
-    STDEXEC_STREAM_DETAIL_NS::resource_storage<STDEXEC_STREAM_DETAIL_NS::managed_resource>
-      managed_resource_{};
-    STDEXEC_STREAM_DETAIL_NS::stream_pools_t stream_pools_{};
+    _strm::resource_storage<_strm::pinned_resource> pinned_resource_{};
+    _strm::resource_storage<_strm::managed_resource> managed_resource_{};
+    _strm::stream_pools_t stream_pools_{};
 
     static auto get_device() -> int {
       int dev_id{};
@@ -320,7 +318,7 @@ namespace nvexec {
     }
 
     int dev_id_{};
-    STDEXEC_STREAM_DETAIL_NS::queue::task_hub_t hub_;
+    _strm::queue::task_hub_t hub_;
 
     stream_context()
       : dev_id_(get_device())
@@ -328,7 +326,7 @@ namespace nvexec {
     }
 
     auto get_scheduler(stream_priority priority = stream_priority::normal) -> stream_scheduler {
-      return stream_scheduler{STDEXEC_STREAM_DETAIL_NS::context_state_t(
+      return stream_scheduler{_strm::context_state_t(
         pinned_resource_.get(), managed_resource_.get(), &stream_pools_, &hub_, priority)};
     }
   };

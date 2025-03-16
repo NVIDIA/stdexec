@@ -32,7 +32,7 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace nvexec {
-  namespace STDEXEC_STREAM_DETAIL_NS {
+  namespace _strm {
     namespace reduce_ {
       template <class SenderId, class ReceiverId, class InitT, class Fun>
       struct receiver_t
@@ -149,16 +149,15 @@ namespace nvexec {
         };
       }
     };
-  } // namespace STDEXEC_STREAM_DETAIL_NS
+  } // namespace _strm
 
-  inline constexpr STDEXEC_STREAM_DETAIL_NS::reduce_t reduce{};
+  inline constexpr _strm::reduce_t reduce{};
 } // namespace nvexec
 
 namespace stdexec::__detail {
   template <class SenderId, class Init, class Fun>
-  extern __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::reduce_::sender_t<__name_of<__t<SenderId>>, Init, Fun>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::reduce_::sender_t<SenderId, Init, Fun>>;
+  extern __mconst<nvexec::_strm::reduce_::sender_t<__name_of<__t<SenderId>>, Init, Fun>>
+    __name_of_v<nvexec::_strm::reduce_::sender_t<SenderId, Init, Fun>>;
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

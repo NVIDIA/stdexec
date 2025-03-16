@@ -25,7 +25,7 @@
 
 #include "common.cuh"
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+namespace nvexec::_strm {
 
   namespace _continues_on {
     template <class CvrefSenderId, class ReceiverId>
@@ -169,11 +169,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
     };
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+} // namespace nvexec::_strm
 
 namespace stdexec::__detail {
   template <class SenderId>
-  inline constexpr __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::continues_on_sender_t<__name_of<__t<SenderId>>>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::continues_on_sender_t<SenderId>>{};
+  inline constexpr __mconst<nvexec::_strm::continues_on_sender_t<__name_of<__t<SenderId>>>>
+    __name_of_v<nvexec::_strm::continues_on_sender_t<SenderId>>{};
 } // namespace stdexec::__detail

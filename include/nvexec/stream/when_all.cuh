@@ -34,7 +34,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+namespace nvexec::_strm {
 
   namespace _when_all {
 
@@ -264,7 +264,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           using __child_ops_t = __tuple_for<child_op_state_t<SenderIds, Is>...>;
           return when_all.sndrs_.apply(
             [parent_op]<class... Children>(Children&&... children) -> __child_ops_t {
-              return __child_ops_t{{STDEXEC_STREAM_DETAIL_NS::exit_op_state(
+              return __child_ops_t{{_strm::exit_op_state(
                 static_cast<Children&&>(children),
                 stdexec::__t<receiver_t<CvrefReceiverId, Is>>{{}, parent_op},
                 stdexec::get_completion_scheduler<set_value_t>(stdexec::get_env(children))
@@ -455,15 +455,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       __tuple_for<stdexec::__t<SenderIds>...> sndrs_;
     };
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+} // namespace nvexec::_strm
 
 namespace stdexec::__detail {
   template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
   inline constexpr __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::
-      when_all_sender_t<WithCompletionScheduler, Scheduler, __name_of<__t<SenderIds>>...>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::
-                  when_all_sender_t<WithCompletionScheduler, Scheduler, SenderIds...>>{};
+    nvexec::_strm::when_all_sender_t<WithCompletionScheduler, Scheduler, __name_of<__t<SenderIds>>...>>
+    __name_of_v<nvexec::_strm::when_all_sender_t<WithCompletionScheduler, Scheduler, SenderIds...>>{};
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

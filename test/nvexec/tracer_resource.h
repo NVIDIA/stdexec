@@ -6,7 +6,7 @@
 
 #include <catch2/catch.hpp>
 
-namespace nvdetail = nvexec::STDEXEC_STREAM_DETAIL_NS;
+namespace nvdetail = nvexec::_strm;
 
 namespace {
 

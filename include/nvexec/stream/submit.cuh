@@ -23,7 +23,7 @@
 
 #include "common.cuh"
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_submit {
+namespace nvexec::_strm::_submit {
 
   template <class SenderId, class ReceiverId>
   struct op_state_t {
@@ -82,4 +82,4 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_submit {
     }
   };
 
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_submit
+} // namespace nvexec::_strm::_submit

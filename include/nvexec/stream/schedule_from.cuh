@@ -30,7 +30,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+namespace nvexec::_strm {
 
   namespace _sched_from {
 
@@ -240,13 +240,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
     };
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+} // namespace nvexec::_strm
 
 namespace stdexec::__detail {
   template <class _Scheduler, class _SenderId>
-  extern __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::schedule_from_sender_t<_Scheduler, __name_of<__t<_SenderId>>>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::schedule_from_sender_t<_Scheduler, _SenderId>>;
+  extern __mconst<nvexec::_strm::schedule_from_sender_t<_Scheduler, __name_of<__t<_SenderId>>>>
+    __name_of_v<nvexec::_strm::schedule_from_sender_t<_Scheduler, _SenderId>>;
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

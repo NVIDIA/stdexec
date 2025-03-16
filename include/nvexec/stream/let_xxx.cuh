@@ -30,7 +30,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+namespace nvexec::_strm {
   namespace let_xxx {
     template <class... As, class Fun, class ResultSenderT>
     __launch_bounds__(1) __global__
@@ -271,13 +271,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       _Fun __fun_;
     };
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+} // namespace nvexec::_strm
 
 namespace stdexec::__detail {
   template <class SenderId, class Fun, class Set>
-  inline constexpr __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::let_sender_t<__name_of<__t<SenderId>>, Fun, Set>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::let_sender_t<SenderId, Fun, Set>>{};
+  inline constexpr __mconst<nvexec::_strm::let_sender_t<__name_of<__t<SenderId>>, Fun, Set>>
+    __name_of_v<nvexec::_strm::let_sender_t<SenderId, Fun, Set>>{};
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

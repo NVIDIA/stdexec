@@ -34,7 +34,7 @@
 #include "config.cuh"
 #include "throw_on_cuda_error.cuh"
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+namespace nvexec::_strm {
 
   struct device_deleter {
     template <class T>
@@ -375,4 +375,4 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       return &resource_;
     }
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+} // namespace nvexec::_strm

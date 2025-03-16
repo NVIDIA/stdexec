@@ -179,9 +179,9 @@ namespace nvexec {
   } // namespace _strm::nvtx
 
   namespace nvtx {
-    using STDEXEC_STREAM_DETAIL_NS::nvtx::push;
-    using STDEXEC_STREAM_DETAIL_NS::nvtx::pop;
-    using STDEXEC_STREAM_DETAIL_NS::nvtx::scoped;
+    using _strm::nvtx::push;
+    using _strm::nvtx::pop;
+    using _strm::nvtx::scoped;
   } // namespace nvtx
 
 } // namespace nvexec

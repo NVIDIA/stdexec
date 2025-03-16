@@ -35,7 +35,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+namespace nvexec::_strm {
   namespace _split {
     inline auto __make_env(
       const inplace_stop_source& stop_source,
@@ -368,12 +368,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
     };
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+} // namespace nvexec::_strm
 
 namespace stdexec::__detail {
   template <class SenderId>
-  extern __mconst<nvexec::STDEXEC_STREAM_DETAIL_NS::split_sender_t<__name_of<__t<SenderId>>>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::split_sender_t<SenderId>>;
+  extern __mconst<nvexec::_strm::split_sender_t<__name_of<__t<SenderId>>>>
+    __name_of_v<nvexec::_strm::split_sender_t<SenderId>>;
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

@@ -74,7 +74,7 @@ namespace nvexec {
 namespace nvexec {
   struct stream_context;
 
-  namespace STDEXEC_STREAM_DETAIL_NS {
+  namespace _strm {
 
 #if STDEXEC_HAS_BUILTIN(__is_reference)
     template <class... Ts>
@@ -328,7 +328,7 @@ namespace nvexec {
     }
 
     template <class BaseEnv>
-    using stream_env = decltype(STDEXEC_STREAM_DETAIL_NS::make_stream_env(
+    using stream_env = decltype(_strm::make_stream_env(
       __declval<BaseEnv>(),
       static_cast<stream_provider_t*>(nullptr)));
 
@@ -338,7 +338,7 @@ namespace nvexec {
         prop{get_stream_provider, stream_provider}, static_cast<BaseEnv&&>(base_env));
     }
     template <class BaseEnv>
-    using terminal_stream_env = decltype(STDEXEC_STREAM_DETAIL_NS::make_terminal_stream_env(
+    using terminal_stream_env = decltype(_strm::make_terminal_stream_env(
       __declval<BaseEnv>(),
       static_cast<stream_provider_t*>(nullptr)));
 
@@ -508,7 +508,7 @@ namespace nvexec {
 
           if constexpr (borrows_stream) {
             const outer_env_t& env = get_env(rcvr_);
-            stream_provider = ::nvexec::STDEXEC_STREAM_DETAIL_NS::get_stream_provider(env);
+            stream_provider = ::nvexec::_strm::get_stream_provider(env);
           } else {
             stream_provider = &const_cast<stream_provider_t&>(stream_provider_);
           }
@@ -818,9 +818,9 @@ namespace nvexec {
         receiver_provider,
         context_state);
     }
-  } // namespace STDEXEC_STREAM_DETAIL_NS
+  } // namespace _strm
 
-  inline constexpr STDEXEC_STREAM_DETAIL_NS::get_stream_t get_stream{};
+  inline constexpr _strm::get_stream_t get_stream{};
 } // namespace nvexec
 
 STDEXEC_PRAGMA_POP()

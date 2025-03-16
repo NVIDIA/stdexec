@@ -29,7 +29,7 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nvexec {
-  namespace STDEXEC_STREAM_DETAIL_NS {
+  namespace _strm {
     template <sender Sender, std::integral Shape, class Fun>
     using multi_gpu_bulk_sender_th =
       stdexec::__t<multi_gpu_bulk_sender_t<stdexec::__id<__decay_t<Sender>>, Shape, Fun>>;
@@ -236,21 +236,19 @@ namespace nvexec {
       int num_devices_{};
       context_state_t context_state_;
     };
-  } // namespace STDEXEC_STREAM_DETAIL_NS
+  } // namespace _strm
 
-  using STDEXEC_STREAM_DETAIL_NS::multi_gpu_stream_scheduler;
+  using _strm::multi_gpu_stream_scheduler;
 
   struct multi_gpu_stream_context {
     int num_devices_{};
 
-    STDEXEC_STREAM_DETAIL_NS::resource_storage<STDEXEC_STREAM_DETAIL_NS::pinned_resource>
-      pinned_resource_{};
-    STDEXEC_STREAM_DETAIL_NS::resource_storage<STDEXEC_STREAM_DETAIL_NS::managed_resource>
-      managed_resource_{};
-    STDEXEC_STREAM_DETAIL_NS::stream_pools_t stream_pools_{};
+    _strm::resource_storage<_strm::pinned_resource> pinned_resource_{};
+    _strm::resource_storage<_strm::managed_resource> managed_resource_{};
+    _strm::stream_pools_t stream_pools_{};
 
     int dev_id_{};
-    STDEXEC_STREAM_DETAIL_NS::queue::task_hub_t hub_;
+    _strm::queue::task_hub_t hub_;
 
     static auto get_device() -> int {
       int dev_id{};
@@ -284,7 +282,7 @@ namespace nvexec {
       -> multi_gpu_stream_scheduler {
       return {
         num_devices_,
-        STDEXEC_STREAM_DETAIL_NS::context_state_t(
+        _strm::context_state_t(
           pinned_resource_.get(), managed_resource_.get(), &stream_pools_, &hub_, priority)};
     }
   };
