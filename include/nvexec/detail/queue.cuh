@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include <cstddef>
@@ -128,7 +131,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::queue {
       , poller_(dev_id, head_.get()) {
     }
 
-    producer_t producer() {
+    auto producer() -> producer_t {
       return producer_t{tail_ptr_.get()};
     }
   };

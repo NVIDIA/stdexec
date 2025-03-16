@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
@@ -186,7 +189,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       context_state_t context_state_;
 
       template <class _Tag>
-      Scheduler query(get_completion_scheduler_t<_Tag>) const noexcept {
+      auto query(get_completion_scheduler_t<_Tag>) const noexcept -> Scheduler {
         return {context_state_};
       }
     };

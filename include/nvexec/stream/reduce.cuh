@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
@@ -53,7 +56,7 @@ namespace nvexec {
           }
 
           using value_t = result_t<Range>;
-          value_t* d_out = static_cast<value_t*>(self.op_state_.temp_storage_);
+          auto* d_out = static_cast<value_t*>(self.op_state_.temp_storage_);
 
           void* d_temp_storage{};
           std::size_t temp_storage_size{};
@@ -132,7 +135,7 @@ namespace nvexec {
         stdexec::__t<reduce_::sender_t<stdexec::__id<__decay_t<Sender>>, InitT, Fun>>;
 
       template <sender Sender, __movable_value InitT, __movable_value Fun = cuda::std::plus<>>
-      __sender<Sender, InitT, Fun> operator()(Sender&& sndr, InitT init, Fun fun) const {
+      auto operator()(Sender&& sndr, InitT init, Fun fun) const -> __sender<Sender, InitT, Fun> {
         return __sender<Sender, InitT, Fun>{
           {}, static_cast<Sender&&>(sndr), static_cast<InitT&&>(init), static_cast<Fun&&>(fun)};
       }

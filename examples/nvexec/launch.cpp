@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <algorithm>
 #include <nvexec/stream_context.cuh>
 #include <stdexec/execution.hpp>
 
@@ -26,16 +27,18 @@ constexpr std::size_t N = 2 * 1024;
 constexpr std::size_t THREAD_BLOCK_SIZE = 128u;
 constexpr std::size_t NUM_BLOCKS = (N + THREAD_BLOCK_SIZE - 1) / THREAD_BLOCK_SIZE;
 
-#define scaling 2
+enum {
+  scaling = 2
+};
 
-int bench() {
+auto bench() -> int {
   std::vector<int> input(N, 0);
   std::iota(input.begin(), input.end(), 1);
-  std::transform(input.begin(), input.end(), input.begin(), [](int i) { return i * scaling; });
+  std::ranges::transform(input, input.begin(), [](int i) { return i * scaling; });
   return std::accumulate(input.begin(), input.end(), 0);
 }
 
-int main() {
+auto main() -> int {
   thrust::device_vector<int> input(N, 0);
   std::iota(input.begin(), input.end(), 1);
   int* first = thrust::raw_pointer_cast(input.data());
@@ -45,7 +48,7 @@ int main() {
 
   auto snd = stdexec::transfer_just(stream.get_scheduler(), first, last)
            | nvexec::launch(
-               {NUM_BLOCKS, THREAD_BLOCK_SIZE},
+               {.grid_size = NUM_BLOCKS, .block_size = THREAD_BLOCK_SIZE},
                [](cudaStream_t stm, int* first, int* last) {
                  assert(nvexec::is_on_gpu());
                  int32_t idx = blockIdx.x * blockDim.x + threadIdx.x;

@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
@@ -102,6 +105,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           shared_state_.reset();
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> env_t {
           return shared_state_->make_env();
         }
@@ -114,7 +118,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     };
 
     template <class T>
-    T* malloc_managed(cudaError_t& status) {
+    auto malloc_managed(cudaError_t& status) -> T* {
       T* ptr{};
 
       if (status == cudaSuccess) {
@@ -154,7 +158,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       std::atomic<void*> op_state1_;
       inner_op_state_t op_state2_;
 
-      env_t make_env() const noexcept {
+      auto make_env() const noexcept -> env_t {
         return _ensure_started::__make_env(
           stop_source_, &const_cast<stream_provider_t&>(stream_provider_));
       }

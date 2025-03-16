@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "common.cuh"
@@ -29,7 +32,7 @@
 #include <thrust/iterator/counting_iterator.h>
 
 template <class Policy>
-bool is_gpu_policy(Policy&& policy) {
+auto is_gpu_policy(Policy&& policy) -> bool {
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
   bool* flag{};
   STDEXEC_DBG_ERR(cudaMallocHost(&flag, sizeof(bool)));

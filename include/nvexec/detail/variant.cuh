@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
@@ -20,7 +23,7 @@
 #include <algorithm>
 #include <concepts>
 #include <cstddef>
-#include <exception>
+#include <exception> // IWYU pragma: keep
 #include <type_traits>
 
 #include "config.cuh"
@@ -62,29 +65,29 @@ namespace nvexec {
     using nth_type = typename nth_type_<I, T...>::type;
 
     template <class... Ts>
-    constexpr std::size_t variadic_max(Ts... as) {
+    constexpr auto variadic_max(Ts... as) -> std::size_t {
       std::size_t val = 0;
       ((val = std::max(as, val)), ...);
       return val;
     }
 
     template <std::unsigned_integral IndexT>
-    constexpr IndexT not_found() {
+    constexpr auto not_found() -> IndexT {
       return ~IndexT(0);
     }
 
     template <std::unsigned_integral IndexT>
-    constexpr IndexT npos() {
+    constexpr auto npos() -> IndexT {
       return not_found<IndexT>();
     }
 
     template <std::unsigned_integral IndexT>
-    constexpr IndexT ambiguous() {
+    constexpr auto ambiguous() -> IndexT {
       return not_found<IndexT>() - 1;
     }
 
     template <std::unsigned_integral IndexT, class T, class... Ts>
-    constexpr IndexT find_index() {
+    constexpr auto find_index() -> IndexT {
       constexpr bool matches[] = {std::is_same_v<T, Ts>...};
       IndexT result = not_found<IndexT>();
       for (IndexT i = 0; i < sizeof...(Ts); ++i) {
@@ -171,13 +174,13 @@ namespace nvexec {
     using index_of = std::integral_constant<index_t, detail::find_index<index_t, T, Ts...>()>;
 
     template <detail::one_of<Ts...> T>
-    STDEXEC_ATTRIBUTE((host, device)) T& get() noexcept {
+    STDEXEC_ATTRIBUTE((host, device)) auto get() noexcept -> T& {
       void* data = storage_.data_;
       return *static_cast<T*>(data);
     }
 
     template <std::size_t I>
-    STDEXEC_ATTRIBUTE((host, device)) detail::nth_type<I, Ts...>& get() noexcept {
+    STDEXEC_ATTRIBUTE((host, device)) auto get() noexcept -> detail::nth_type<I, Ts...>& {
       return get<detail::nth_type<I, Ts...>>();
     }
 
@@ -191,7 +194,7 @@ namespace nvexec {
       destroy();
     }
 
-    STDEXEC_ATTRIBUTE((host, device)) bool holds_alternative() const {
+    STDEXEC_ATTRIBUTE((host, device)) auto holds_alternative() const -> bool {
       return index_ != detail::npos<index_t>();
     }
 

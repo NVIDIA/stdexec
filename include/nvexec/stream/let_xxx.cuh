@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
@@ -115,8 +118,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           using op_state_t = __minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
 
           cudaStream_t stream = __op_state_->get_stream();
-          result_sender_t* result_sender =
-            static_cast<result_sender_t*>(__op_state_->temp_storage_);
+          auto* result_sender = static_cast<result_sender_t*>(__op_state_->temp_storage_);
           kernel_with_result<_As&&...><<<1, 1, 0, stream>>>(
             std::move(__op_state_->__fun_), result_sender, static_cast<_As&&>(__as)...);
 

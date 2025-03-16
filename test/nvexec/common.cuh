@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include <algorithm>
@@ -71,7 +74,7 @@ namespace {
     void operator()(const flags_storage_t&) = delete;
     void operator()(flags_storage_t&&) = delete;
 
-    flags_t get() {
+    auto get() -> flags_t {
       return {flags_};
     }
 
@@ -85,18 +88,18 @@ namespace {
       flags_ = nullptr;
     }
 
-    bool is_set_n_times(int n) {
+    auto is_set_n_times(int n) -> bool {
       int host_flags[N];
       THROW_ON_CUDA_ERROR(cudaMemcpy(host_flags, flags_, sizeof(int) * N, cudaMemcpyDeviceToHost));
 
       return std::count(host_flags, host_flags + N, n) == N;
     }
 
-    bool all_set_once() {
+    auto all_set_once() -> bool {
       return is_set_n_times(1);
     }
 
-    bool all_unset() {
+    auto all_unset() -> bool {
       return !all_set_once();
     }
   };
@@ -298,13 +301,13 @@ namespace {
 
     template <stdexec::sender _Sender, class _Fun>
       requires stdexec::sender<sender_th<_Sender, _Fun>>
-    sender_th<_Sender, _Fun> operator()(_Sender&& __sndr, _Fun __fun) const {
+    auto operator()(_Sender&& __sndr, _Fun __fun) const -> sender_th<_Sender, _Fun> {
       return sender_th<_Sender, _Fun>{static_cast<_Sender&&>(__sndr), static_cast<_Fun&&>(__fun)};
     }
 
     template <class _Fun>
-    stdexec::__binder_back<a_sender_helper_t<a_sender_kind::then>, _Fun>
-      operator()(_Fun __fun) const {
+    auto operator()(_Fun __fun) const
+      -> stdexec::__binder_back<a_sender_helper_t<a_sender_kind::then>, _Fun> {
       return {{static_cast<_Fun&&>(__fun)}, {}, {}};
     };
   };
@@ -316,11 +319,12 @@ namespace {
 
     template <stdexec::sender _Sender>
       requires stdexec::sender<receiverless_sender_th<_Sender>>
-    receiverless_sender_th<_Sender> operator()(_Sender&& __sndr) const {
+    auto operator()(_Sender&& __sndr) const -> receiverless_sender_th<_Sender> {
       return receiverless_sender_th<_Sender>{static_cast<_Sender&&>(__sndr)};
     }
 
-    stdexec::__binder_back<a_sender_helper_t<a_sender_kind::receiverless>> operator()() const {
+    auto
+      operator()() const -> stdexec::__binder_back<a_sender_helper_t<a_sender_kind::receiverless>> {
       return {{}, {}, {}};
     }
   };
@@ -335,14 +339,14 @@ namespace {
   constexpr a_sender_t a_sender;
 
   struct move_only_t {
-    static constexpr int invalid() {
+    static constexpr auto invalid() -> int {
       return -42;
     }
 
     move_only_t() = delete;
     move_only_t(const move_only_t&) = delete;
-    move_only_t& operator=(move_only_t&&) = delete;
-    move_only_t& operator=(const move_only_t&) = delete;
+    auto operator=(move_only_t&&) -> move_only_t& = delete;
+    auto operator=(const move_only_t&) -> move_only_t& = delete;
 
     __host__ __device__ move_only_t(int data)
       : data_(data)
@@ -362,7 +366,7 @@ namespace {
       data_ = invalid();
     }
 
-    __host__ __device__ bool contains(int val) {
+    __host__ __device__ auto contains(int val) -> bool {
       if (this != self_) {
         std::printf("Error: move_only_t::contains failed: %p\n", static_cast<void*>(self_));
         return false;

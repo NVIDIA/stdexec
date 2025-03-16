@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../stdexec/execution.hpp"
@@ -90,7 +93,7 @@ namespace nvexec {
         struct __t : operation_state_base_t<ReceiverId> {
           using __id = operation_state_;
 
-          cudaStream_t stream_{0};
+          cudaStream_t stream_{nullptr};
           cudaError_t status_{cudaSuccess};
 
           __t(Receiver&& rcvr, context_state_t context_state)
@@ -110,7 +113,7 @@ namespace nvexec {
         context_state_t context_state_;
 
         template <class CPO>
-        stream_scheduler query(get_completion_scheduler_t<CPO>) const noexcept {
+        auto query(get_completion_scheduler_t<CPO>) const noexcept -> stream_scheduler {
           return stream_scheduler{context_state_};
         }
       };
@@ -127,6 +130,7 @@ namespace nvexec {
             return operation_state_t<stdexec::__id<R>>(static_cast<R&&>(rec), env_.context_state_);
           }
 
+          [[nodiscard]]
           auto get_env() const noexcept -> const env& {
             return env_;
           };
@@ -156,9 +160,8 @@ namespace nvexec {
       }
 
       template <sender S, class Fn>
-      STDEXEC_MEMFN_DECL(
-        auto
-        then)(this const stream_scheduler& sch, S&& sndr, Fn fun) noexcept -> then_sender_th<S, Fn> {
+      STDEXEC_MEMFN_DECL(auto then)(this const stream_scheduler& sch, S&& sndr, Fn fun) noexcept
+        -> then_sender_th<S, Fn> {
         return then_sender_th<S, Fn>{{}, static_cast<S&&>(sndr), static_cast<Fn&&>(fun)};
       }
 
@@ -249,11 +252,12 @@ namespace nvexec {
         return _sync_wait::sync_wait_t{}(self.context_state_, static_cast<S&&>(sndr));
       }
 
+      [[nodiscard]]
       auto query(get_forward_progress_guarantee_t) const noexcept -> forward_progress_guarantee {
         return forward_progress_guarantee::weakly_parallel;
       }
 
-      bool operator==(const stream_scheduler& other) const noexcept {
+      auto operator==(const stream_scheduler& other) const noexcept -> bool {
         return context_state_.hub_ == other.context_state_.hub_;
       }
 
@@ -271,8 +275,8 @@ namespace nvexec {
     }
 
     template <stream_completing_sender... Senders>
-    when_all_sender_th<stream_scheduler, Senders...>
-      tag_invoke(when_all_t, Senders&&... sndrs) noexcept {
+    auto tag_invoke(when_all_t, Senders&&... sndrs) noexcept
+      -> when_all_sender_th<stream_scheduler, Senders...> {
       return when_all_sender_th<stream_scheduler, Senders...>{
         context_state_t{nullptr, nullptr, nullptr, nullptr},
         static_cast<Senders&&>(sndrs)...
@@ -280,8 +284,8 @@ namespace nvexec {
     }
 
     template <stream_completing_sender... Senders>
-    when_all_sender_th<stream_scheduler, __result_of<into_variant, Senders>...>
-      tag_invoke(when_all_with_variant_t, Senders&&... sndrs) noexcept {
+    auto tag_invoke(when_all_with_variant_t, Senders&&... sndrs) noexcept
+      -> when_all_sender_th<stream_scheduler, __result_of<into_variant, Senders>...> {
       return when_all_sender_th<stream_scheduler, __result_of<into_variant, Senders>...>{
         context_state_t{nullptr, nullptr, nullptr, nullptr},
         into_variant(static_cast<Senders&&>(sndrs))...
@@ -289,12 +293,12 @@ namespace nvexec {
     }
 
     template <sender S, class Fn>
-    upon_error_sender_th<S, Fn> tag_invoke(upon_error_t, S&& sndr, Fn fun) noexcept {
+    auto tag_invoke(upon_error_t, S&& sndr, Fn fun) noexcept -> upon_error_sender_th<S, Fn> {
       return upon_error_sender_th<S, Fn>{{}, static_cast<S&&>(sndr), static_cast<Fn&&>(fun)};
     }
 
     template <sender S, class Fn>
-    upon_stopped_sender_th<S, Fn> tag_invoke(upon_stopped_t, S&& sndr, Fn fun) noexcept {
+    auto tag_invoke(upon_stopped_t, S&& sndr, Fn fun) noexcept -> upon_stopped_sender_th<S, Fn> {
       return upon_stopped_sender_th<S, Fn>{{}, static_cast<S&&>(sndr), static_cast<Fn&&>(fun)};
     }
 
@@ -309,7 +313,7 @@ namespace nvexec {
       managed_resource_{};
     STDEXEC_STREAM_DETAIL_NS::stream_pools_t stream_pools_{};
 
-    static int get_device() {
+    static auto get_device() -> int {
       int dev_id{};
       cudaGetDevice(&dev_id);
       return dev_id;
@@ -323,7 +327,7 @@ namespace nvexec {
       , hub_(dev_id_, pinned_resource_.get()) {
     }
 
-    stream_scheduler get_scheduler(stream_priority priority = stream_priority::normal) {
+    auto get_scheduler(stream_priority priority = stream_priority::normal) -> stream_scheduler {
       return stream_scheduler{STDEXEC_STREAM_DETAIL_NS::context_state_t(
         pinned_resource_.get(), managed_resource_.get(), &stream_pools_, &hub_, priority)};
     }

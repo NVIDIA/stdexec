@@ -33,8 +33,8 @@ namespace {
     void do_deallocate(void* ptr, size_t bytes, size_t alignment) override {
       INFO("Deallocate: " << bytes << " bytes, " << alignment << " alignment");
 
-      auto it = std::find(
-        allocations.begin(), allocations.end(), allocation_info_t{ptr, bytes, alignment});
+      auto it =
+        std::find(allocations.begin(), allocations.end(), allocation_info_t{ptr, bytes, alignment});
 
       REQUIRE(it != allocations.end());
 

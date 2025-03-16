@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
@@ -79,7 +82,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             }
           } else {
             using decayed_result_t = __decay_t<result_t>;
-            decayed_result_t* d_result = static_cast<decayed_result_t*>(op_state_.temp_storage_);
+            auto* d_result = static_cast<decayed_result_t*>(op_state_.temp_storage_);
             kernel_with_result<Error&&>
               <<<1, 1, 0, stream>>>(std::move(f_), d_result, static_cast<Error&&>(error));
             if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());

@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "common.cuh"
@@ -54,27 +57,65 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 namespace ex = stdexec;
 
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
+//
 
-  namespace repeat_n {
-    template <class OpT>
-    class receiver_2_t : public stream_receiver_base {
-      using Sender = typename OpT::PredSender;
-      using Receiver = typename OpT::Receiver;
+namespace nvexec::_strm::repeat_n {
+  template <class OpT>
+  class receiver_2_t : public stream_receiver_base {
+    using Sender = typename OpT::PredSender;
+    using Receiver = typename OpT::Receiver;
 
-      OpT& op_state_;
+    OpT& op_state_;
 
-     public:
-      void set_value() noexcept {
-        using inner_op_state_t = typename OpT::inner_op_state_t;
+   public:
+    void set_value() noexcept {
+      using inner_op_state_t = typename OpT::inner_op_state_t;
 
-        op_state_.i_++;
+      op_state_.i_++;
 
-        if (op_state_.i_ == op_state_.n_) {
-          op_state_.propagate_completion_signal(stdexec::set_value);
-          return;
-        }
+      if (op_state_.i_ == op_state_.n_) {
+        op_state_.propagate_completion_signal(stdexec::set_value);
+        return;
+      }
 
+      auto sch = stdexec::get_scheduler(stdexec::get_env(op_state_.rcvr_));
+      inner_op_state_t& inner_op_state =
+        op_state_.inner_op_state_.emplace(stdexec::__emplace_from{[&]() noexcept {
+          return ex::connect(ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
+        }});
+
+      ex::start(inner_op_state);
+    }
+
+    template <class Error>
+    void set_error(Error&& err) noexcept {
+      op_state_.propagate_completion_signal(set_error_t(), static_cast<Error&&>(err));
+    }
+
+    void set_stopped() noexcept {
+      op_state_.propagate_completion_signal(set_stopped_t());
+    }
+
+    auto get_env() const noexcept -> typename OpT::env_t {
+      return op_state_.make_env();
+    }
+
+    explicit receiver_2_t(OpT& op_state)
+      : op_state_(op_state) {
+    }
+  };
+
+  template <class OpT>
+  class receiver_1_t : public stream_receiver_base {
+    using Receiver = typename OpT::Receiver;
+
+    OpT& op_state_;
+
+   public:
+    void set_value() noexcept {
+      using inner_op_state_t = typename OpT::inner_op_state_t;
+
+      if (op_state_.n_) {
         auto sch = stdexec::get_scheduler(stdexec::get_env(op_state_.rcvr_));
         inner_op_state_t& inner_op_state =
           op_state_.inner_op_state_.emplace(stdexec::__emplace_from{[&]() noexcept {
@@ -82,113 +123,74 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS { //
           }});
 
         ex::start(inner_op_state);
+      } else {
+        op_state_.propagate_completion_signal(set_value_t());
       }
+    }
 
-      template <class Error>
-      void set_error(Error&& err) noexcept {
-        op_state_.propagate_completion_signal(set_error_t(), static_cast<Error&&>(err));
-      }
+    template <class Error>
+    void set_error(Error&& err) noexcept {
+      op_state_.propagate_completion_signal(set_error_t(), static_cast<Error&&>(err));
+    }
 
-      void set_stopped() noexcept {
-        op_state_.propagate_completion_signal(set_stopped_t());
-      }
+    void set_stopped() noexcept {
+      op_state_.propagate_completion_signal(set_stopped_t());
+    }
 
-      auto get_env() const noexcept -> typename OpT::env_t {
-        return op_state_.make_env();
-      }
+    auto get_env() const noexcept -> typename OpT::env_t {
+      return op_state_.make_env();
+    }
 
-      explicit receiver_2_t(OpT& op_state)
-        : op_state_(op_state) {
-      }
-    };
+    explicit receiver_1_t(OpT& op_state)
+      : op_state_(op_state) {
+    }
+  };
 
-    template <class OpT>
-    class receiver_1_t : public stream_receiver_base {
-      using Receiver = typename OpT::Receiver;
+  template <class PredecessorSenderId, class Closure, class ReceiverId>
+  struct operation_state_t : operation_state_base_t<ReceiverId> {
+    using PredSender = stdexec::__t<PredecessorSenderId>;
+    using Receiver = stdexec::__t<ReceiverId>;
+    using Scheduler = std::invoke_result_t<stdexec::get_scheduler_t, stdexec::env_of_t<Receiver>>;
+    using InnerSender = std::invoke_result_t<Closure, stdexec::schedule_result_t<Scheduler>>;
 
-      OpT& op_state_;
+    using predecessor_op_state_t =
+      ex::connect_result_t<PredSender, receiver_1_t<operation_state_t>>;
+    using inner_op_state_t = ex::connect_result_t<InnerSender, receiver_2_t<operation_state_t>>;
 
-     public:
-      void set_value() noexcept {
-        using inner_op_state_t = typename OpT::inner_op_state_t;
+    PredSender pred_sender_;
+    Closure closure_;
+    std::optional<predecessor_op_state_t> pred_op_state_;
+    std::optional<inner_op_state_t> inner_op_state_;
+    std::size_t n_{};
+    std::size_t i_{};
 
-        if (op_state_.n_) {
-          auto sch = stdexec::get_scheduler(stdexec::get_env(op_state_.rcvr_));
-          inner_op_state_t& inner_op_state =
-            op_state_.inner_op_state_.emplace(stdexec::__emplace_from{[&]() noexcept {
-              return ex::connect(
-                ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
-            }});
-
-          ex::start(inner_op_state);
+    friend void tag_invoke(stdexec::start_t, operation_state_t& op) noexcept {
+      if (op.stream_provider_.status_ != cudaSuccess) {
+        // Couldn't allocate memory for operation state, complete with error
+        op.propagate_completion_signal(stdexec::set_error, std::move(op.stream_provider_.status_));
+      } else {
+        if (op.n_) {
+          stdexec::start(*op.pred_op_state_);
         } else {
-          op_state_.propagate_completion_signal(set_value_t());
+          op.propagate_completion_signal(stdexec::set_value);
         }
       }
+    }
 
-      template <class Error>
-      void set_error(Error&& err) noexcept {
-        op_state_.propagate_completion_signal(set_error_t(), static_cast<Error&&>(err));
-      }
-
-      void set_stopped() noexcept {
-        op_state_.propagate_completion_signal(set_stopped_t());
-      }
-
-      auto get_env() const noexcept -> typename OpT::env_t {
-        return op_state_.make_env();
-      }
-
-      explicit receiver_1_t(OpT& op_state)
-        : op_state_(op_state) {
-      }
-    };
-
-    template <class PredecessorSenderId, class Closure, class ReceiverId>
-    struct operation_state_t : operation_state_base_t<ReceiverId> {
-      using PredSender = stdexec::__t<PredecessorSenderId>;
-      using Receiver = stdexec::__t<ReceiverId>;
-      using Scheduler = std::invoke_result_t<stdexec::get_scheduler_t, stdexec::env_of_t<Receiver>>;
-      using InnerSender = std::invoke_result_t<Closure, stdexec::schedule_result_t<Scheduler>>;
-
-      using predecessor_op_state_t =
-        ex::connect_result_t<PredSender, receiver_1_t<operation_state_t>>;
-      using inner_op_state_t = ex::connect_result_t<InnerSender, receiver_2_t<operation_state_t>>;
-
-      PredSender pred_sender_;
-      Closure closure_;
-      std::optional<predecessor_op_state_t> pred_op_state_;
-      std::optional<inner_op_state_t> inner_op_state_;
-      std::size_t n_{};
-      std::size_t i_{};
-
-      friend void tag_invoke(stdexec::start_t, operation_state_t& op) noexcept {
-        if (op.stream_provider_.status_ != cudaSuccess) {
-          // Couldn't allocate memory for operation state, complete with error
-          op.propagate_completion_signal(stdexec::set_error, std::move(op.stream_provider_.status_));
-        } else {
-          if (op.n_) {
-            stdexec::start(*op.pred_op_state_);
-          } else {
-            op.propagate_completion_signal(stdexec::set_value);
-          }
-        }
-      }
-
-      operation_state_t(PredSender&& pred_sender, Closure closure, Receiver&& rcvr, std::size_t n)
-        : operation_state_base_t<ReceiverId>(
-            static_cast<Receiver&&>(rcvr),
-            stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(pred_sender))
-              .context_state_)
-        , pred_sender_{static_cast<PredSender&&>(pred_sender)}
-        , closure_(closure)
-        , n_(n) {
-        pred_op_state_.emplace(stdexec::__emplace_from{[&]() noexcept {
-          return ex::connect(static_cast<PredSender&&>(pred_sender_), receiver_1_t{*this});
-        }});
-      }
-    };
-}} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS::repeat_n
+    operation_state_t(PredSender&& pred_sender, Closure closure, Receiver&& rcvr, std::size_t n)
+      : operation_state_base_t<ReceiverId>(
+          static_cast<Receiver&&>(rcvr),
+          stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(pred_sender))
+            .context_state_)
+      , pred_sender_{static_cast<PredSender&&>(pred_sender)}
+      , closure_(closure)
+      , n_(n) {
+      pred_op_state_.emplace(stdexec::__emplace_from{[&]() noexcept {
+        return ex::connect(static_cast<PredSender&&>(pred_sender_), receiver_1_t{*this});
+      }});
+    }
+  };
+} // namespace nvexec::_strm::repeat_n
 #endif
 
 namespace repeat_n_detail {
@@ -402,7 +404,7 @@ inline constexpr repeat_n_t repeat_n{};
 
 template <class SchedulerT>
 [[nodiscard]]
-bool is_gpu_scheduler(SchedulerT&& scheduler) {
+auto is_gpu_scheduler(SchedulerT&& scheduler) -> bool {
   auto snd = ex::just() | exec::on(scheduler, ex::then([] { return nvexec::is_on_gpu(); }));
   auto [on_gpu] = stdexec::sync_wait(std::move(snd)).value();
   return on_gpu;

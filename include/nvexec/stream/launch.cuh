@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
@@ -158,12 +161,13 @@ namespace nvexec {
       using sender_t = stdexec::__t<launch_sender_t<stdexec::__id<__decay_t<Sender>>, Fun>>;
 
       template <sender Sender, __movable_value Fun>
-      sender_t<Sender, Fun> operator()(Sender&& sndr, Fun&& fun) const {
+      auto operator()(Sender&& sndr, Fun&& fun) const -> sender_t<Sender, Fun> {
         return {{}, static_cast<Sender&&>(sndr), static_cast<Fun&&>(fun), {}};
       }
 
       template <sender Sender, __movable_value Fun>
-      sender_t<Sender, Fun> operator()(Sender&& sndr, launch_params params, Fun&& fun) const {
+      auto
+        operator()(Sender&& sndr, launch_params params, Fun&& fun) const -> sender_t<Sender, Fun> {
         return {{}, static_cast<Sender&&>(sndr), static_cast<Fun&&>(fun), params};
       }
 

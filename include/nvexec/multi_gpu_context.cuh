@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../stdexec/execution.hpp"
@@ -45,7 +48,7 @@ namespace nvexec {
         using R = stdexec::__t<RId>;
 
         R rec_;
-        cudaStream_t stream_{0};
+        cudaStream_t stream_{nullptr};
         cudaError_t status_{cudaSuccess};
 
         template <__decays_to<R> Receiver>
@@ -58,7 +61,7 @@ namespace nvexec {
           STDEXEC_DBG_ERR(cudaStreamDestroy(stream_));
         }
 
-        cudaStream_t get_stream() {
+        auto get_stream() -> cudaStream_t {
           return stream_;
         }
 
@@ -87,7 +90,7 @@ namespace nvexec {
           context_state_t context_state_;
 
           template <class CPO>
-          multi_gpu_stream_scheduler query(get_completion_scheduler_t<CPO>) const noexcept {
+          auto query(get_completion_scheduler_t<CPO>) const noexcept -> multi_gpu_stream_scheduler {
             return multi_gpu_stream_scheduler{num_devices_, context_state_};
           }
         };
@@ -101,12 +104,13 @@ namespace nvexec {
           return operation_state_t<stdexec::__id<__decay_t<R>>>(static_cast<R&&>(rec));
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> const env& {
           return env_;
         }
 
         sender_t(int num_devices, context_state_t context_state) noexcept
-          : env_{num_devices, context_state} {
+          : env_{.num_devices_ = num_devices, .context_state_ = context_state} {
         }
 
         env env_;
@@ -141,22 +145,24 @@ namespace nvexec {
       }
 
       template <__one_of<let_value_t, let_stopped_t, let_error_t> Let, sender S, class Fn>
-      friend let_xxx_th<Let, S, Fn>
-        tag_invoke(Let, const multi_gpu_stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
+      friend auto tag_invoke(Let, const multi_gpu_stream_scheduler& sch, S&& sndr, Fn fun) noexcept
+        -> let_xxx_th<Let, S, Fn> {
         return let_xxx_th<Let, S, Fn>{{}, static_cast<S&&>(sndr), static_cast<Fn&&>(fun)};
       }
 
       template <sender S, class Fn>
-      STDEXEC_MEMFN_DECL(
-        upon_error_sender_th<S, Fn>
-        upon_error)(this const multi_gpu_stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
+      STDEXEC_MEMFN_DECL(upon_error_sender_th<S, Fn> upon_error)(
+        this const multi_gpu_stream_scheduler& sch,
+        S&& sndr,
+        Fn fun) noexcept {
         return upon_error_sender_th<S, Fn>{{}, static_cast<S&&>(sndr), static_cast<Fn&&>(fun)};
       }
 
       template <sender S, class Fn>
-      STDEXEC_MEMFN_DECL(
-        upon_stopped_sender_th<S, Fn>
-        upon_stopped)(this const multi_gpu_stream_scheduler& sch, S&& sndr, Fn fun) noexcept {
+      STDEXEC_MEMFN_DECL(upon_stopped_sender_th<S, Fn> upon_stopped)(
+        this const multi_gpu_stream_scheduler& sch,
+        S&& sndr,
+        Fn fun) noexcept {
         return upon_stopped_sender_th<S, Fn>{{}, static_cast<S&&>(sndr), static_cast<Fn&&>(fun)};
       }
 
@@ -202,7 +208,8 @@ namespace nvexec {
         return ensure_started_th<S>(static_cast<S&&>(sndr), sch.context_state_);
       }
 
-      sender_t schedule() const noexcept {
+      [[nodiscard]]
+      auto schedule() const noexcept -> sender_t {
         return {num_devices_, context_state_};
       }
 
@@ -211,11 +218,12 @@ namespace nvexec {
         return _sync_wait::sync_wait_t{}(self.context_state_, static_cast<S&&>(sndr));
       }
 
-      forward_progress_guarantee query(get_forward_progress_guarantee_t) const noexcept {
+      [[nodiscard]]
+      auto query(get_forward_progress_guarantee_t) const noexcept -> forward_progress_guarantee {
         return forward_progress_guarantee::weakly_parallel;
       }
 
-      bool operator==(const multi_gpu_stream_scheduler& other) const noexcept {
+      auto operator==(const multi_gpu_stream_scheduler& other) const noexcept -> bool {
         return context_state_.hub_ == other.context_state_.hub_;
       }
 
@@ -244,7 +252,7 @@ namespace nvexec {
     int dev_id_{};
     STDEXEC_STREAM_DETAIL_NS::queue::task_hub_t hub_;
 
-    static int get_device() {
+    static auto get_device() -> int {
       int dev_id{};
       cudaGetDevice(&dev_id);
       return dev_id;
@@ -272,7 +280,8 @@ namespace nvexec {
       cudaSetDevice(dev_id_);
     }
 
-    multi_gpu_stream_scheduler get_scheduler(stream_priority priority = stream_priority::normal) {
+    auto get_scheduler(stream_priority priority = stream_priority::normal)
+      -> multi_gpu_stream_scheduler {
       return {
         num_devices_,
         STDEXEC_STREAM_DETAIL_NS::context_state_t(

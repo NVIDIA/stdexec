@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include <nvtx3/nvToolsExt.h>
@@ -28,7 +31,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace nvexec {
 
-  namespace STDEXEC_STREAM_DETAIL_NS { namespace nvtx {
+  namespace _strm::nvtx {
 
     enum class kind {
       push,
@@ -78,7 +81,7 @@ namespace nvexec {
 
         explicit __t(operation_state_base_t<ReceiverId>& op_state, std::string name)
           : op_state_(op_state)
-          , name_(name) {
+          , name_(std::move(name)) {
         }
       };
     };
@@ -130,7 +133,8 @@ namespace nvexec {
 
     struct push_t {
       template <stdexec::sender Sender>
-      nvtx_sender_th<kind::push, Sender> operator()(Sender&& sndr, std::string&& name) const {
+      auto
+        operator()(Sender&& sndr, std::string&& name) const -> nvtx_sender_th<kind::push, Sender> {
         return nvtx_sender_th<kind::push, Sender>{{}, static_cast<Sender&&>(sndr), std::move(name)};
       }
 
@@ -141,7 +145,7 @@ namespace nvexec {
 
     struct pop_t {
       template <stdexec::sender Sender>
-      nvtx_sender_th<kind::pop, Sender> operator()(Sender&& sndr) const {
+      auto operator()(Sender&& sndr) const -> nvtx_sender_th<kind::pop, Sender> {
         return nvtx_sender_th<kind::pop, Sender>{{}, static_cast<Sender&&>(sndr), {}};
       }
 
@@ -172,7 +176,7 @@ namespace nvexec {
 
     inline constexpr scoped_t scoped{};
 
-  }} // namespace STDEXEC_STREAM_DETAIL_NS::nvtx
+  } // namespace _strm::nvtx
 
   namespace nvtx {
     using STDEXEC_STREAM_DETAIL_NS::nvtx::push;

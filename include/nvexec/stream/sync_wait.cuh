@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
@@ -33,10 +36,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_sync_wait {
 
     run_loop::__scheduler __sched_;
 
+    [[nodiscard]]
     auto query(get_scheduler_t) const noexcept -> run_loop::__scheduler {
       return __sched_;
     }
 
+    [[nodiscard]]
     auto query(get_delegation_scheduler_t) const noexcept -> run_loop::__scheduler {
       return __sched_;
     }
@@ -135,6 +140,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_sync_wait {
         loop_->finish();
       }
 
+      [[nodiscard]]
       auto get_env() const noexcept -> __env {
         return {loop_->get_scheduler()};
       }

@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
@@ -68,7 +71,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <class... Env, class... Senders>
       requires(too_many_completions_sender<Senders, Env...> || ...)
     struct completions<__types<Env...>, Senders...> {
-      static constexpr std::size_t position_of() noexcept {
+      static constexpr auto position_of() noexcept -> std::size_t {
         constexpr bool which[] = {too_many_completions_sender<Senders, Env...>...};
         return __pos_of(which, which + sizeof...(Senders));
       }
@@ -118,7 +121,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         template <__one_of<set_value_t, set_stopped_t> _Tag>
           requires WithCompletionScheduler
-        Scheduler query(get_completion_scheduler_t<_Tag>) const noexcept {
+        auto query(get_completion_scheduler_t<_Tag>) const noexcept -> Scheduler {
           return Scheduler(context_state_);
         }
       };
@@ -226,7 +229,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             op_state_->arrive();
           }
 
-          Env get_env() const noexcept {
+          auto get_env() const noexcept -> Env {
             auto env = make_terminal_stream_env(
               exec::make_env(
                 stdexec::get_env(op_state_->rcvr_),
@@ -353,7 +356,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         using stream_providers_t = std::array<stream_provider_t, sizeof...(SenderIds)>;
 
-        static stream_providers_t get_stream_providers(WhenAll& when_all) {
+        static auto get_stream_providers(WhenAll& when_all) -> stream_providers_t {
           return when_all.sndrs_.apply(
             [](auto&... sndrs) -> stream_providers_t {
               return stream_providers_t{
