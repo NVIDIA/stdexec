@@ -3,9 +3,9 @@
 #include <exec/env.hpp>
 #include <exec/just_from.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <exec/just_from.hpp>
 #include "test_common/schedulers.hpp"
 #include "test_common/receivers.hpp"
-#include "test_common/type_helpers.hpp"
 
 namespace ex = stdexec;
 using exec::async_scope;

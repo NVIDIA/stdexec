@@ -390,6 +390,18 @@ namespace nvexec::_strm {
       __t(__t&&) = default;
     };
   };
+
+  template <>
+  struct transform_sender_for<ensure_started_t> {
+    template <class Sender>
+    using _sender_t = __t<ensure_started_sender_t<__id<__decay_t<Sender>>>>;
+
+    template <class Env, stream_completing_sender Sender>
+    auto operator()(__ignore, Env&& /*env*/, Sender&& sndr) const -> _sender_t<Sender> {
+      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
+      return _sender_t<Sender>{sched.context_state_, static_cast<Sender&&>(sndr)};
+    }
+  };
 } // namespace nvexec::_strm
 
 namespace stdexec::__detail {
