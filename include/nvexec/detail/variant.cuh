@@ -48,22 +48,6 @@ namespace nvexec {
       requires(sizeof...(As) > 0)
     using front = typename front_<As...>::type;
 
-    template <std::size_t I, typename... T>
-    struct nth_type_;
-
-    template <typename T0, typename... T>
-    struct nth_type_<0, T0, T...> {
-      using type = T0;
-    };
-
-    template <std::size_t I, typename T0, typename... T>
-    struct nth_type_<I, T0, T...> {
-      using type = typename nth_type_<I - 1, T...>::type;
-    };
-
-    template <std::size_t I, typename... T>
-    using nth_type = typename nth_type_<I, T...>::type;
-
     template <class... Ts>
     constexpr auto variadic_max(Ts... as) -> std::size_t {
       std::size_t val = 0;
@@ -180,8 +164,8 @@ namespace nvexec {
     }
 
     template <std::size_t I>
-    STDEXEC_ATTRIBUTE((host, device)) auto get() noexcept -> detail::nth_type<I, Ts...>& {
-      return get<detail::nth_type<I, Ts...>>();
+    STDEXEC_ATTRIBUTE((host, device)) auto get() noexcept -> stdexec::__m_at_c<I, Ts...>& {
+      return get<stdexec::__m_at_c<I, Ts...>>();
     }
 
     STDEXEC_ATTRIBUTE((host, device)) variant_t()
