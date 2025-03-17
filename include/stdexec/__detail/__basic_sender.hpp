@@ -100,7 +100,7 @@ namespace stdexec {
     inline constexpr auto __get_attrs = //
       [](__ignore, const auto&... __child) noexcept -> decltype(auto) {
       if constexpr (sizeof...(__child) == 1) {
-        return stdexec::get_env(__child...); // BUGBUG: should be only the forwarding queries
+        return __env::__fwd_fn()(stdexec::get_env(__child...));
       } else {
         return empty_env();
       }

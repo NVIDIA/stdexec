@@ -134,15 +134,15 @@ namespace {
 
   TEST_CASE("then forwards env", "[adaptors][then]") {
     SECTION("returns env by value") {
-      auto snd = just_with_env<value_env, int>{value_env{100}, {0}} | ex::then([](int) { });
-      static_assert(std::same_as<decltype(ex::get_env(snd)), value_env>);
-      CHECK(ex::get_env(snd).value == 100);
+      auto snd = just_with_env<value_env, int>{.env_ = value_env{100}, .values_ = {0}}
+               | ex::then([](int) { });
+      CHECK(value_query(ex::get_env(snd)) == 100);
     }
 
     SECTION("returns env by reference") {
-      auto snd = just_with_env<const value_env&, int>{value_env{100}, {0}} | ex::then([](int) { });
-      static_assert(std::same_as<decltype(ex::get_env(snd)), const value_env&>);
-      CHECK(ex::get_env(snd).value == 100);
+      auto snd = just_with_env<const value_env&, int>{.env_ = value_env{100}, .values_ = {0}}
+               | ex::then([](int) { });
+      CHECK(value_query(ex::get_env(snd)) == 100);
     }
   }
 
