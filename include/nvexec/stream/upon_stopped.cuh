@@ -101,6 +101,7 @@ namespace nvexec::_strm {
           }
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> env_t {
           return op_state_.make_env();
         }

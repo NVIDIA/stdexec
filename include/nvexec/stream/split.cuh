@@ -19,7 +19,6 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
-#include "../../exec/env.hpp"
 
 #include <atomic>
 #include <memory>
@@ -344,7 +343,7 @@ namespace nvexec::_strm {
       using completion_signatures = //
         __try_make_completion_signatures<
           Sender,
-          exec::make_env_t<stdexec::prop<get_stop_token_t, inplace_stop_token>>,
+          stdexec::prop<get_stop_token_t, inplace_stop_token>,
           stdexec::completion_signatures<set_error_t(const cudaError_t&)>,
           __q<_set_value_t>,
           __q<_set_error_t>>;
@@ -358,6 +357,7 @@ namespace nvexec::_strm {
         return operation_t<Receiver>{static_cast<Receiver&&>(rcvr), shared_state_};
       }
 
+      [[nodiscard]]
       auto get_env() const noexcept -> env_of_t<const Sender&> {
         return stdexec::get_env(sndr_);
       }

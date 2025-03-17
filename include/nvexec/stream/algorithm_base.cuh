@@ -86,6 +86,7 @@ namespace nvexec::_strm::__algo_range_init_fun {
         op_state_.propagate_completion_signal(set_stopped_t());
       }
 
+      [[nodiscard]]
       auto get_env() const noexcept -> env_of_t<Receiver> {
         return stdexec::get_env(op_state_.rcvr_);
       }

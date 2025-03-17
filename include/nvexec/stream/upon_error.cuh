@@ -99,6 +99,7 @@ namespace nvexec::_strm {
           op_state_.propagate_completion_signal(set_stopped_t());
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> env_t {
           return op_state_.make_env();
         }

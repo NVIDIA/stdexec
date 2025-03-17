@@ -33,7 +33,6 @@
 #include "../detail/throw_on_cuda_error.cuh"
 #include "../detail/queue.cuh"
 #include "../detail/variant.cuh"
-#include "stdexec/__detail/__config.hpp"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
@@ -52,7 +51,7 @@ namespace nvexec {
     device
   };
 
-#if defined(__clang__) && defined(__CUDA__)
+#if defined(__clang__) && defined(__CUDA__) && !defined(STDEXEC_CLANG_TIDY)
   __host__ inline auto get_device_type() noexcept -> device_type {
     return device_type::host;
   }
@@ -61,12 +60,12 @@ namespace nvexec {
     return device_type::device;
   }
 #else
-  __host__ __device__ inline device_type get_device_type() noexcept {
+  __host__ __device__ inline auto get_device_type() noexcept -> device_type {
     NV_IF_TARGET(NV_IS_HOST, (return device_type::host;), (return device_type::device;));
   }
 #endif
 
-  inline STDEXEC_ATTRIBUTE((host, device)) bool is_on_gpu() noexcept {
+  inline STDEXEC_ATTRIBUTE((host, device)) auto is_on_gpu() noexcept -> bool {
     return get_device_type() == device_type::device;
   }
 } // namespace nvexec
@@ -470,15 +469,8 @@ namespace nvexec {
     };
 
     template <class Env>
-      requires tag_invocable<get_stream_provider_t, const __decay_t<Env>&>
     constexpr auto borrows_stream_h() -> bool {
-      return true;
-    }
-
-    template <class Env>
-      requires(!tag_invocable<get_stream_provider_t, const __decay_t<Env>>)
-    constexpr auto borrows_stream_h() -> bool {
-      return false;
+      return __callable<get_stream_provider_t, const Env&>;
     }
 
     template <class OuterReceiverId>
@@ -741,7 +733,7 @@ namespace nvexec {
         stdexec::__id<OuterReceiver>>;
 
     template <class Sender, class OuterReceiver>
-    auto exit_op_state(Sender&& sndr, OuterReceiver&& rcvr, context_state_t context_state) noexcept
+    auto exit_op_state(Sender&& sndr, OuterReceiver rcvr, context_state_t context_state) noexcept
       -> exit_operation_state_t<Sender, OuterReceiver> {
       using ReceiverId = stdexec::__id<OuterReceiver>;
       return exit_operation_state_t<Sender, OuterReceiver>(

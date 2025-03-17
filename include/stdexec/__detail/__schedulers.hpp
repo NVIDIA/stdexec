@@ -40,7 +40,7 @@ namespace stdexec {
 
       template <class _Scheduler>
         requires tag_invocable<schedule_t, _Scheduler>
-      STDEXEC_ATTRIBUTE((host, device)) auto operator()(_Scheduler&& __sched) const
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) auto operator()(_Scheduler&& __sched) const
         noexcept(nothrow_tag_invocable<schedule_t, _Scheduler>) {
         static_assert(sender<tag_invoke_result_t<schedule_t, _Scheduler>>);
         return tag_invoke(schedule_t{}, static_cast<_Scheduler&&>(__sched));

@@ -84,6 +84,7 @@ namespace nvexec::_strm {
           op_state_.propagate_completion_signal(set_stopped_t());
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> Env {
           return op_state_.make_env();
         }
@@ -172,7 +173,7 @@ namespace nvexec::_strm {
 
         operation_t<CvrefSenderId, ReceiverId, Shape, Fun>& op_state_;
 
-        static auto even_share(Shape n, std::size_t rank, std::size_t size) noexcept
+        static auto even_share(Shape n, std::size_t rank, std::size_t size) noexcept //
           -> std::pair<Shape, Shape> {
           const auto avg_per_thread = n / size;
           const auto n_big_share = avg_per_thread + 1;
@@ -252,6 +253,7 @@ namespace nvexec::_strm {
           op_state_.propagate_completion_signal(set_stopped_t());
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> env_of_t<Receiver> {
           return stdexec::get_env(op_state_.rcvr_);
         }
@@ -328,10 +330,11 @@ namespace nvexec::_strm {
     };
   } // namespace multi_gpu_bulk
 
-  template <class SenderId, std::integral Shape, class Fun>
+  template <class SenderId, class Shape, class Fun>
   struct multi_gpu_bulk_sender_t {
     using sender_concept = stdexec::sender_t;
     using Sender = stdexec::__t<SenderId>;
+    static_assert(std::integral<Shape>);
 
     struct __t : stream_sender_base {
       using __id = multi_gpu_bulk_sender_t;

@@ -114,24 +114,6 @@ namespace stdexec {
       }
     };
 
-    struct __has_algorithm_customizations_t : __query<__has_algorithm_customizations_t> {
-      template <class _Tp>
-      using __result_t = tag_invoke_result_t<__has_algorithm_customizations_t, __cref_t<_Tp>>;
-
-      template <class _Tp>
-        requires tag_invocable<__has_algorithm_customizations_t, __cref_t<_Tp>>
-      constexpr auto
-        operator()(_Tp&&) const noexcept(noexcept(__result_t<_Tp>{})) -> __result_t<_Tp> {
-        using _Boolean = tag_invoke_result_t<__has_algorithm_customizations_t, __cref_t<_Tp>>;
-        static_assert(_Boolean{} ? true : false); // must be contextually convertible to bool
-        return _Boolean{};
-      }
-
-      constexpr auto operator()(auto&&) const noexcept -> std::false_type {
-        return {};
-      }
-    };
-
     // TODO: implement allocator concept
     template <class _T0>
     concept __allocator_c = true;
@@ -287,7 +269,6 @@ namespace stdexec {
   using __queries::forwarding_query_t;
   using __queries::query_or_t;
   using __queries::execute_may_block_caller_t;
-  using __queries::__has_algorithm_customizations_t;
   using __queries::get_forward_progress_guarantee_t;
   using __queries::get_allocator_t;
   using __queries::get_scheduler_t;
@@ -305,7 +286,6 @@ namespace stdexec {
   inline constexpr forwarding_query_t forwarding_query{};
   inline constexpr query_or_t query_or{}; // NOT TO SPEC
   inline constexpr execute_may_block_caller_t execute_may_block_caller{};
-  inline constexpr __has_algorithm_customizations_t __has_algorithm_customizations{};
   inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{};
   inline constexpr get_scheduler_t get_scheduler{};
   inline constexpr get_delegation_scheduler_t get_delegation_scheduler{};
@@ -386,7 +366,7 @@ namespace stdexec {
 
     template <class _Query, class _Value>
     STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
-    prop(_Query, _Value) -> prop<_Query, std::unwrap_reference_t<_Value>>;
+      prop(_Query, _Value) -> prop<_Query, std::unwrap_reference_t<_Value>>;
 
     // utility for joining multiple environments
     template <class... _Envs>

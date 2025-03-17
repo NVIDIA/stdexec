@@ -66,17 +66,16 @@ namespace nvexec::_strm::_submit {
     Receiver rcvr_;
     connect_result_t<Sender, receiver_t> op_state_;
 
-    template <__decays_to<Receiver> CvrefReceiver>
-    op_state_t(Sender&& sndr, CvrefReceiver&& rcvr)
-      : rcvr_(static_cast<CvrefReceiver&&>(rcvr))
+    op_state_t(Sender&& sndr, Receiver rcvr)
+      : rcvr_(static_cast<Receiver&&>(rcvr))
       , op_state_(connect(static_cast<Sender&&>(sndr), receiver_t{{}, this})) {
     }
   };
 
   struct submit_t {
     template <receiver Receiver, sender_to<Receiver> Sender>
-    void operator()(Sender&& sndr, Receiver&& rcvr) const noexcept(false) {
-      start((new op_state_t<stdexec::__id<Sender>, stdexec::__id<__decay_t<Receiver>>>{
+    void operator()(Sender&& sndr, Receiver rcvr) const noexcept(false) {
+      start((new op_state_t<__id<Sender>, __id<Receiver>>{
                static_cast<Sender&&>(sndr), static_cast<Receiver&&>(rcvr)})
               ->op_state_);
     }

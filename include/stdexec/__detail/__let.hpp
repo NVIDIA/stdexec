@@ -453,7 +453,7 @@ namespace stdexec {
       static constexpr auto get_attrs = //
         []<class _Fun, class _Child>(const _Fun&, const _Child& __child) noexcept {
           if constexpr (!same_as<_Domain, dependent_domain>) {
-          return __env::__join(prop{get_domain, _Domain()}, stdexec::get_env(__child));
+            return __env::__join(prop{get_domain, _Domain()}, stdexec::get_env(__child));
           } else {
             using _Sched = __completion_sched<_Child, _Set>;
             using _Domain2 = __result_domain_t<_Set, _Child, _Fun, _Sched>;

@@ -39,7 +39,7 @@ namespace nvexec::_strm {
 
   namespace _when_all {
 
-    enum state_t {
+    enum state_t : std::uint32_t {
       started,
       error,
       stopped
@@ -123,7 +123,10 @@ namespace nvexec::_strm {
 
   template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
   struct when_all_sender_t {
-    struct __t : stream_sender_base {
+    struct type;
+    using __t = type;
+
+    struct type : stream_sender_base {
      private:
       struct env {
         context_state_t context_state_;
@@ -138,7 +141,7 @@ namespace nvexec::_strm {
       using __id = when_all_sender_t;
 
       template <class... Sndrs>
-      explicit __t(context_state_t context_state, Sndrs&&... __sndrs)
+      explicit type(context_state_t context_state, Sndrs&&... __sndrs)
         : env_{context_state}
         , sndrs_{static_cast<Sndrs&&>(__sndrs)...} {
       }
@@ -174,7 +177,10 @@ namespace nvexec::_strm {
           make_terminal_stream_env_t<
             exec::make_env_t<env_of_t<Receiver>, stdexec::prop<get_stop_token_t, inplace_stop_token>>>;
 
-        struct __t : stream_receiver_base {
+        struct type;
+        using __t = type;
+
+        struct type : stream_receiver_base {
           using receiver_concept = stdexec::receiver_t;
           using __id = receiver_t;
 
@@ -287,7 +293,7 @@ namespace nvexec::_strm {
                     __tup::__cat_apply(
                       __mk_completion_fn(stdexec::set_value, rcvr_),
                       static_cast<Tuples&&>(value_tupls)...);
-                      },
+                  },
                   static_cast<child_values_tuple_t&&>(*values_));
               }
               break;
@@ -404,7 +410,7 @@ namespace nvexec::_strm {
           // error state, which trumps cancellation.)
           if (state_.compare_exchange_strong(expected, _when_all::stopped)) {
             stop_source_.request_stop();
-            }
+          }
           arrive();
         }
 
@@ -447,13 +453,13 @@ namespace nvexec::_strm {
       };
 
      public:
-      template <__decays_to<__t> Self, receiver Receiver>
+      template <__decays_to<type> Self, receiver Receiver>
       static auto connect(Self&& self, Receiver rcvr)
         -> operation_t<__copy_cvref_t<Self, stdexec::__id<Receiver>>> {
         return {static_cast<Self&&>(self), static_cast<Receiver&&>(rcvr)};
       }
 
-      template <__decays_to<__t> Self, class... Env>
+      template <__decays_to<type> Self, class... Env>
       static auto get_completion_signatures(Self&&, Env&&...) -> completion_sigs<Self, Env...> {
         return {};
       }

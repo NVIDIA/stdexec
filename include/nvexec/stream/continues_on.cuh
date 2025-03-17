@@ -55,6 +55,7 @@ namespace nvexec::_strm {
             stdexec::set_stopped(std::move(op_state_.rcvr_));
           }
 
+          [[nodiscard]]
           auto get_env() const noexcept -> Env {
             return op_state_.make_env();
           }

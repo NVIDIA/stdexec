@@ -57,7 +57,6 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 namespace ex = stdexec;
 
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
-//
 
 namespace nvexec::_strm::repeat_n {
   template <class OpT>

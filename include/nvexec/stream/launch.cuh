@@ -83,6 +83,7 @@ namespace nvexec {
             op_state_.propagate_completion_signal(set_stopped_t());
           }
 
+          [[nodiscard]]
           auto get_env() const noexcept -> typename operation_state_base_t<ReceiverId>::env_t {
             return op_state_.make_env();
           }

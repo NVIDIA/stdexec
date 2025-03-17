@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <iostream>
+
 #include "maxwell/snr.cuh"
 #include "maxwell/std.cuh"
 #include "maxwell/stdpar.cuh"

@@ -28,8 +28,6 @@
 
 #include <execpools/tbb/tbb_thread_pool.hpp>
 
-#include <tbbexec/tbb_thread_pool.hpp>
-
 namespace ex = stdexec;
 
 namespace {

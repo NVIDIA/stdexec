@@ -143,6 +143,7 @@ namespace nvexec::_strm {
           complete(set_stopped_t());
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> Env {
           return operation_state_.make_env();
         }
@@ -157,6 +158,7 @@ namespace nvexec::_strm {
         return stdexec::connect(static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr));
       }
 
+      [[nodiscard]]
       auto get_env() const noexcept -> env_of_t<const Sender&> {
         // TODO - this code is not exercised by any test
         return stdexec::get_env(sndr_);
