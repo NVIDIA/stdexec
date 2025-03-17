@@ -48,4 +48,4 @@ namespace {
       return this == &other;
     }
   };
-}
+} // namespace
