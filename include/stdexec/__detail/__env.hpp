@@ -401,7 +401,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline)) constexpr decltype(auto) __get_1st() const noexcept {
         constexpr bool __flags[] = {__queryable<_Envs, _Query, _Args...>...};
         constexpr std::size_t __idx = __pos_of(__flags, __flags + sizeof...(_Envs));
-        return __tup::get<__idx>(__tup_);
+        return __tup_.template __get<__idx>(__tup_);
       }
 
       template <class _Query, class... _Args>

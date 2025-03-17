@@ -139,20 +139,14 @@ namespace stdexec {
             __concat_completion_signatures>...>;
     };
 
-    template <class _Tag, class _Receiver>
-    auto __complete_fn(_Tag, _Receiver& __rcvr) noexcept {
-      return [&]<class... _Ts>(_Ts&... __ts) noexcept {
-        _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Ts&&>(__ts)...);
-      };
-    }
-
     template <class _Receiver, class _ValuesTuple>
     void __set_values(_Receiver& __rcvr, _ValuesTuple& __values) noexcept {
       __values.apply(
-        [&](auto&... __opt_vals) noexcept -> void {
-          __tup::__cat_apply(__when_all::__complete_fn(set_value, __rcvr), *__opt_vals...);
+        [&]<class... OptTuples>(OptTuples&&... __opt_vals) noexcept -> void {
+          __tup::__cat_apply(
+            __mk_completion_fn(set_value, __rcvr), *static_cast<OptTuples&&>(__opt_vals)...);
         },
-        __values);
+        static_cast<_ValuesTuple&&>(__values));
     }
 
     template <class _Env, class _Sender>
@@ -211,7 +205,8 @@ namespace stdexec {
         case __error:
           if constexpr (!__same_as<_ErrorsVariant, __variant_for<>>) {
             // One or more child operations completed with an error:
-            __errors_.visit(__complete_fn(set_error, __rcvr), __errors_);
+            __errors_.visit(
+              __mk_completion_fn(set_error, __rcvr), static_cast<_ErrorsVariant&&>(__errors_));
           }
           break;
         case __stopped:
@@ -355,6 +350,7 @@ namespace stdexec {
           _Receiver& __rcvr,
           _Set,
           _Args&&... __args) noexcept -> void {
+        using _ValuesTuple = decltype(_State::__values_);
         if constexpr (__same_as<_Set, set_error_t>) {
           __set_error(__state, __rcvr, static_cast<_Args&&>(__args)...);
         } else if constexpr (__same_as<_Set, set_stopped_t>) {
@@ -365,20 +361,20 @@ namespace stdexec {
           if (__state.__state_.compare_exchange_strong(__expected, __stopped)) {
             __state.__stop_source_.request_stop();
           }
-        } else if constexpr (!__same_as<decltype(_State::__values_), __ignore>) {
+        } else if constexpr (!__same_as<_ValuesTuple, __ignore>) {
           // We only need to bother recording the completion values
           // if we're not already in the "error" or "stopped" state.
           if (__state.__state_.load() == __started) {
-            auto& __opt_values = __tup::get<__v<_Index>>(__state.__values_);
+            auto& __opt_values = _ValuesTuple::template __get<__v<_Index>>(__state.__values_);
             using _Tuple = __decayed_tuple<_Args...>;
             static_assert(
               __same_as<decltype(*__opt_values), _Tuple&>,
               "One of the senders in this when_all() is fibbing about what types it sends");
             if constexpr ((__nothrow_decay_copyable<_Args> && ...)) {
-              __opt_values.emplace(_Tuple{{static_cast<_Args&&>(__args)}...});
+              __opt_values.emplace(_Tuple{static_cast<_Args&&>(__args)...});
             } else {
               try {
-                __opt_values.emplace(_Tuple{{static_cast<_Args&&>(__args)}...});
+                __opt_values.emplace(_Tuple{static_cast<_Args&&>(__args)...});
               } catch (...) {
                 __set_error(__state, __rcvr, std::current_exception());
               }

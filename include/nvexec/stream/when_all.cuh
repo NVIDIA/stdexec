@@ -33,6 +33,7 @@
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace nvexec::_strm {
 
@@ -83,7 +84,7 @@ namespace nvexec::_strm {
     template <class... As, class TupleT>
     __launch_bounds__(1) __global__ void copy_kernel(TupleT* tpl, As... as) {
       static_assert(trivially_copyable<As...>);
-      *tpl = __decayed_tuple<As...>{{static_cast<As&&>(as)}...};
+      *tpl = __decayed_tuple<As...>{static_cast<As&&>(as)...};
     }
 
     template <class... Env, class... Senders>
@@ -110,6 +111,14 @@ namespace nvexec::_strm {
           __minvoke<__mpush_back<__q<completion_signatures>>, non_values, values>,
           non_values>;
     };
+
+    inline constexpr auto _sync_op = []<class OpT>(OpT& op) noexcept {
+      if constexpr (STDEXEC_IS_BASE_OF(stream_op_state_base, OpT)) {
+        if (op.stream_provider_.status_ == cudaSuccess) {
+          op.stream_provider_.status_ = STDEXEC_DBG_ERR(cudaStreamSynchronize(op.get_stream()));
+        }
+      }
+    };
   } // namespace _when_all
 
   template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
@@ -131,7 +140,7 @@ namespace nvexec::_strm {
       template <class... Sndrs>
       explicit __t(context_state_t context_state, Sndrs&&... __sndrs)
         : env_{context_state}
-        , sndrs_{{static_cast<Sndrs&&>(__sndrs)}...} {
+        , sndrs_{static_cast<Sndrs&&>(__sndrs)...} {
       }
 
      private:
@@ -159,6 +168,8 @@ namespace nvexec::_strm {
       struct receiver_t {
         using WhenAll = __copy_cvref_t<CvrefReceiverId, stdexec::__t<when_all_sender_t>>;
         using Receiver = stdexec::__t<__decay_t<CvrefReceiverId>>;
+        using SenderId = __m_at_c<Index, SenderIds...>;
+        using Completions = completion_sigs<env_of_t<Receiver>, CvrefReceiverId>;
         using Env = //
           make_terminal_stream_env_t<
             exec::make_env_t<env_of_t<Receiver>, stdexec::prop<get_stop_token_t, inplace_stop_token>>>;
@@ -166,69 +177,22 @@ namespace nvexec::_strm {
         struct __t : stream_receiver_base {
           using receiver_concept = stdexec::receiver_t;
           using __id = receiver_t;
-          using SenderId = nvexec::detail::nth_type<Index, SenderIds...>;
-          using Completions = completion_sigs<env_of_t<Receiver>, CvrefReceiverId>;
-
-          template <class Error>
-          void _set_error_impl(Error&& err) noexcept {
-            // Transition to the "error" state and switch on the prior state.
-            // TODO: What memory orderings are actually needed here?
-            switch (op_state_->state_.exchange(_when_all::error)) {
-            case _when_all::started:
-              // We must request stop. When the previous state is "error" or "stopped", then stop
-              // has already been requested.
-              op_state_->stop_source_.request_stop();
-              [[fallthrough]];
-            case _when_all::stopped:
-              // We are the first child to complete with an error, so we must save the error.
-              // (Any subsequent errors are ignored.)
-              static_assert(__nothrow_constructible_from<__decay_t<Error>, Error>);
-              op_state_->errors_.template emplace<__decay_t<Error>>(static_cast<Error&&>(err));
-              break;
-            case _when_all::error:; // We're already in the "error" state. Ignore the error.
-            }
-          }
 
           template <class... Values>
-          void set_value(Values&&... vals) && noexcept {
-            if constexpr (__v<sends_values<Completions>>) {
-              // We only need to bother recording the completion values
-              // if we're not already in the "error" or "stopped" state.
-              if (op_state_->state_ == _when_all::started) {
-                cudaStream_t stream = __tup::get<Index>(op_state_->child_states_).get_stream();
-                if constexpr (sizeof...(Values)) {
-                  _when_all::copy_kernel<Values&&...><<<1, 1, 0, stream>>>(
-                    &__tup::get<Index>(*op_state_->values_), static_cast<Values&&>(vals)...);
-                  op_state_->statuses_[Index] = cudaGetLastError();
-                }
-
-                if constexpr (stream_receiver<Receiver>) {
-                  if (op_state_->statuses_[Index] == cudaSuccess) {
-                    op_state_->statuses_[Index] = op_state_->events_[Index].try_record(stream);
-                  }
-                }
-              }
-            }
-            op_state_->arrive();
+          STDEXEC_ATTRIBUTE((always_inline)) void set_value(Values&&... vals) && noexcept {
+            op_state_->template _set_value<Index>(static_cast<Values&&>(vals)...);
           }
 
           template <class Error>
-            requires tag_invocable<set_error_t, Receiver, Error>
-          void set_error(Error&& err) && noexcept {
-            _set_error_impl(static_cast<Error&&>(err));
-            op_state_->arrive();
+          STDEXEC_ATTRIBUTE((always_inline)) void set_error(Error&& err) && noexcept {
+            op_state_->_set_error(static_cast<Error&&>(err));
           }
 
-          void set_stopped() && noexcept {
-            _when_all::state_t expected = _when_all::started;
-            // Transition to the "stopped" state if and only if we're in the "started" state. (If
-            // this fails, it's because we're in the "error" state, which trumps cancellation.)
-            if (op_state_->state_.compare_exchange_strong(expected, _when_all::stopped)) {
-              op_state_->stop_source_.request_stop();
-            }
-            op_state_->arrive();
+          STDEXEC_ATTRIBUTE((always_inline)) void set_stopped() && noexcept {
+            op_state_->_set_stopped();
           }
 
+          [[nodiscard]]
           auto get_env() const noexcept -> Env {
             auto env = make_terminal_stream_env(
               exec::make_env(
@@ -264,11 +228,11 @@ namespace nvexec::_strm {
           using __child_ops_t = __tuple_for<child_op_state_t<SenderIds, Is>...>;
           return when_all.sndrs_.apply(
             [parent_op]<class... Children>(Children&&... children) -> __child_ops_t {
-              return __child_ops_t{{_strm::exit_op_state(
+              return __child_ops_t{_strm::exit_op_state(
                 static_cast<Children&&>(children),
                 stdexec::__t<receiver_t<CvrefReceiverId, Is>>{{}, parent_op},
                 stdexec::get_completion_scheduler<set_value_t>(stdexec::get_env(children))
-                  .context_state_)}...};
+                  .context_state_)...};
             },
             static_cast<WhenAll&&>(when_all).sndrs_);
         }
@@ -277,17 +241,8 @@ namespace nvexec::_strm {
           decltype(operation_t::connect_children_({}, __declval<WhenAll>(), Indices{}));
 
         void arrive() noexcept {
-          if (0 == --count_) {
+          if (1 == count_.fetch_sub(1)) {
             complete();
-          }
-        }
-
-        template <class OpT>
-        static void sync(OpT& op) noexcept {
-          if constexpr (STDEXEC_IS_BASE_OF(stream_op_state_base, OpT)) {
-            if (op.stream_provider_.status_ == cudaSuccess) {
-              op.stream_provider_.status_ = STDEXEC_DBG_ERR(cudaStreamSynchronize(op.get_stream()));
-            }
           }
         }
 
@@ -316,7 +271,8 @@ namespace nvexec::_strm {
                 }
               }
             } else {
-              child_states_.apply([](auto&... ops) { (sync(ops), ...); }, child_states_);
+              // Synchronize the streams of all the child operations
+              child_states_.for_each(_when_all::_sync_op, child_states_);
             }
           }
 
@@ -327,22 +283,18 @@ namespace nvexec::_strm {
               if constexpr (__v<sends_values<Completions>>) {
                 // All child operations completed successfully:
                 values_->apply(
-                  [this](auto&... opt_vals) -> void {
+                  [this]<class... Tuples>(Tuples&&... value_tupls) -> void {
                     __tup::__cat_apply(
-                      [this](auto&... all_vals) -> void {
-                        stdexec::set_value(static_cast<Receiver&&>(rcvr_), std::move(all_vals)...);
+                      __mk_completion_fn(stdexec::set_value, rcvr_),
+                      static_cast<Tuples&&>(value_tupls)...);
                       },
-                      opt_vals...);
-                  },
-                  *values_);
+                  static_cast<child_values_tuple_t&&>(*values_));
               }
               break;
             case _when_all::error:
               errors_.visit(
-                [this](auto& err) noexcept {
-                  stdexec::set_error(static_cast<Receiver&&>(rcvr_), std::move(err));
-                },
-                errors_);
+                __mk_completion_fn(stdexec::set_error, rcvr_),
+                static_cast<errors_variant_t&&>(errors_));
               break;
             case _when_all::stopped:
               stdexec::set_stopped(static_cast<Receiver&&>(rcvr_));
@@ -389,12 +341,71 @@ namespace nvexec::_strm {
             // the child operations.
             stdexec::set_stopped(static_cast<Receiver&&>(rcvr_));
           } else {
+            child_states_.for_each(stdexec::start, child_states_);
             if constexpr (sizeof...(SenderIds) == 0) {
               complete();
-            } else {
-              child_states_.for_each(stdexec::start, child_states_);
             }
           }
+        }
+
+        template <class Error>
+        void _set_error_impl(Error&& err) noexcept {
+          // Transition to the "error" state and switch on the prior state.
+          // TODO: What memory orderings are actually needed here?
+          switch (state_.exchange(_when_all::error)) {
+          case _when_all::started:
+            // We must request stop. When the previous state is "error" or "stopped", then stop
+            // has already been requested.
+            stop_source_.request_stop();
+            [[fallthrough]];
+          case _when_all::stopped:
+            // We are the first child to complete with an error, so we must save the error.
+            // (Any subsequent errors are ignored.)
+            static_assert(__nothrow_constructible_from<__decay_t<Error>, Error>);
+            errors_.template emplace<__decay_t<Error>>(static_cast<Error&&>(err));
+            break;
+          case _when_all::error:; // We're already in the "error" state. Ignore the error.
+          }
+        }
+
+        template <std::size_t Index, class... Args>
+        void _set_value(Args&&... args) noexcept {
+          if constexpr (__v<sends_values<Completions>>) {
+            // We only need to bother recording the completion values
+            // if we're not already in the "error" or "stopped" state.
+            if (state_.load() == _when_all::started) {
+              cudaStream_t stream = child_states_.template __get<Index>(child_states_).get_stream();
+              if constexpr (sizeof...(Args)) {
+                _when_all::copy_kernel<Args&&...><<<1, 1, 0, stream>>>(
+                  &(values_->template __get<Index>(*values_)), static_cast<Args&&>(args)...);
+                statuses_[Index] = cudaGetLastError();
+              }
+
+              if constexpr (stream_receiver<Receiver>) {
+                if (statuses_[Index] == cudaSuccess) {
+                  statuses_[Index] = events_[Index].try_record(stream);
+                }
+              }
+            }
+          }
+          arrive();
+        }
+
+        template <class Error>
+        void _set_error(Error&& err) noexcept {
+          _set_error_impl(static_cast<Error&&>(err));
+          arrive();
+        }
+
+        void _set_stopped() noexcept {
+          auto expected = _when_all::started;
+          // Transition to the "stopped" state if and only if we're in the
+          // "started" state. (If this fails, it's because we're in an
+          // error state, which trumps cancellation.)
+          if (state_.compare_exchange_strong(expected, _when_all::stopped)) {
+            stop_source_.request_stop();
+            }
+          arrive();
         }
 
         // tuple<tuple<Vs1...>, tuple<Vs2...>, ...>
@@ -402,11 +413,11 @@ namespace nvexec::_strm {
           __if<
             sends_values<Completions>,
             __minvoke<
-              __q<__tuple_for>,
+              __qq<__tuple_for>,
               __value_types_of_t<
                 stdexec::__t<SenderIds>,
                 _when_all::env_t<Env>,
-                __q<__decayed_tuple>,
+                __qq<__decayed_tuple>,
                 __msingle_or<void>>...>,
             __>;
 
@@ -447,6 +458,7 @@ namespace nvexec::_strm {
         return {};
       }
 
+      [[nodiscard]]
       auto get_env() const noexcept -> const env& {
         return env_;
       }
