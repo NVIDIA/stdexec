@@ -209,7 +209,7 @@ namespace {
              | exec::on(
                  sched, //
                  ex::then([](std::string x) { return x + ", world"; }))
-             | exec::write(stdexec::prop{ex::get_scheduler, inline_scheduler()});
+             | exec::write_env(stdexec::prop{ex::get_scheduler, inline_scheduler()});
     wait_for_value(std::move(snd), std::string{"hallo"});
   }
 } // namespace

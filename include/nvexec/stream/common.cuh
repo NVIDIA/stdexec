@@ -307,7 +307,7 @@ namespace nvexec {
       }
 
       STDEXEC_ATTRIBUTE((host, device)) auto operator()() const noexcept {
-        return stdexec::read(*this);
+        return stdexec::read_env(*this);
       }
 
       STDEXEC_ATTRIBUTE((host, device)) static constexpr auto query(stdexec::forwarding_query_t) noexcept -> bool {
@@ -680,20 +680,18 @@ namespace nvexec {
           : base_t(static_cast<outer_receiver_t&&>(out_receiver), context_state)
           , storage_(
               make_host<variant_t>(this->stream_provider_.status_, context_state.pinned_resource_))
-          , task_(
-              make_host<task_t>(
-                this->stream_provider_.status_,
-                context_state.pinned_resource_,
-                receiver_provider(*this),
-                storage_.get(),
-                this->get_stream(),
-                context_state.pinned_resource_)
-                .release())
-          , env_(
-              make_host<env_t>(
-                this->stream_provider_.status_,
-                context_state.pinned_resource_,
-                this->make_env()))
+          , task_(make_host<task_t>(
+                    this->stream_provider_.status_,
+                    context_state.pinned_resource_,
+                    receiver_provider(*this),
+                    storage_.get(),
+                    this->get_stream(),
+                    context_state.pinned_resource_)
+                    .release())
+          , env_(make_host<env_t>(
+              this->stream_provider_.status_,
+              context_state.pinned_resource_,
+              this->make_env()))
           , inner_op_{connect(
               static_cast<sender_t&&>(sender),
               stream_enqueue_receiver_t{

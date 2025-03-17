@@ -43,7 +43,7 @@ namespace stdexec {
     template <class _Tag, class _Env>
     using __query_failed_error = //
       __mexception<              //
-        _NOT_CALLABLE_<"In stdexec::read()..."_mstr, __query_failed_diag>,
+        _NOT_CALLABLE_<"In stdexec::read_env()..."_mstr, __query_failed_diag>,
         _WITH_QUERY_<_Tag>,
         _WITH_ENVIRONMENT_<_Env>>;
 
@@ -118,6 +118,7 @@ namespace stdexec {
     };
   } // namespace __read
 
+  [[deprecated("read has been renamed to read_env")]]
   inline constexpr __read::__read_env_t read{};
   inline constexpr __read::__read_env_t read_env{};
 
