@@ -269,25 +269,33 @@ namespace stdexec {
         __in_which_let_msg<_Set>,
         "The senders returned by Function do not all share a common domain"_mstr>;
 
-    template <class _Set>
+    template <class _Set, class _Sched>
     struct __try_common_domain_fn {
       struct __error_fn {
         template <class... _Senders>
         using __f = __mexception<__no_common_domain_t<_Set>, _WITH_SENDERS_<_Senders...>>;
       };
 
+      // If a sender is "scheduler affine", then it will complete on the same execution
+      // context on which it was started (e.g., just(42)). In this case, the domain of the
+      // scheduler is the domain of the sender.
       template <class... _Senders>
-      using __f = __mcall<__mtry_catch_q<__domain::__common_domain_t, __error_fn>, _Senders...>;
+      using __common_domain_t = //
+        __domain::__common_domain_t<
+          __if_c<__is_scheduler_affine<_Senders>, schedule_result_t<_Sched>, _Senders>...>;
+
+      template <class... _Senders>
+      using __f = __mcall<__mtry_catch_q<__common_domain_t, __error_fn>, _Senders...>;
     };
 
     // Compute all the domains of all the result senders and make sure they're all the same
-    template <class _Set, class _Child, class _Fun, class _Env, class _Sched>
+    template <class _Set, class _Child, class _Fun, class _Sched, class... _Env>
     using __result_domain_t = //
       __gather_completions<
         _Set,
-        __completion_signatures_of_t<_Child, _Env>,
-        __result_sender_fn<_Set, _Fun, _Sched, _Env>,
-        __try_common_domain_fn<_Set>>;
+        __completion_signatures_of_t<_Child, _Env...>,
+        __result_sender_fn<_Set, _Fun, _Sched, _Env...>,
+        __try_common_domain_fn<_Set, _Sched>>;
 
     template <class _LetTag, class _Env>
     auto __mk_transform_env_fn(_Env&& __env) noexcept {
@@ -320,7 +328,7 @@ namespace stdexec {
           return __completions_t();
         } else {
           using _Sched = __completion_sched<_Child, _Set>;
-          using _Domain = __result_domain_t<_Set, _Child, _Fun, _Env, _Sched>;
+          using _Domain = __result_domain_t<_Set, _Child, _Fun, _Sched, _Env>;
 
           if constexpr (__merror<_Domain>) {
             return _Domain();
@@ -443,8 +451,19 @@ namespace stdexec {
     template <class _Set, class _Domain>
     struct __let_impl : __sexpr_defaults {
       static constexpr auto get_attrs = //
-        []<class _Child>(__ignore, const _Child& __child) noexcept {
+        []<class _Fun, class _Child>(const _Fun&, const _Child& __child) noexcept {
+          if constexpr (!same_as<_Domain, dependent_domain>) {
           return __env::__join(prop{get_domain, _Domain()}, stdexec::get_env(__child));
+          } else {
+            using _Sched = __completion_sched<_Child, _Set>;
+            using _Domain2 = __result_domain_t<_Set, _Child, _Fun, _Sched>;
+
+            if constexpr (__merror<_Domain2>) {
+              return __env::__join(prop{get_domain, dependent_domain()}, stdexec::get_env(__child));
+            } else {
+              return __env::__join(prop{get_domain, _Domain2()}, stdexec::get_env(__child));
+            }
+          }
         };
 
       static constexpr auto get_completion_signatures = //

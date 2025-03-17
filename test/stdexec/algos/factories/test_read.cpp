@@ -25,5 +25,6 @@ namespace {
     using Sndr = decltype(sndr);
     static_assert(ex::sender<Sndr>);
     static_assert(!ex::sender_in<Sndr>);
+    static_assert(ex::__is_scheduler_affine<Sndr>);
   }
 } // namespace
