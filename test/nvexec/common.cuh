@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include <algorithm>
@@ -71,7 +74,7 @@ namespace {
     void operator()(const flags_storage_t&) = delete;
     void operator()(flags_storage_t&&) = delete;
 
-    flags_t get() {
+    auto get() -> flags_t {
       return {flags_};
     }
 
@@ -85,18 +88,18 @@ namespace {
       flags_ = nullptr;
     }
 
-    bool is_set_n_times(int n) {
-      int host_flags[N];
+    auto is_set_n_times(int n) -> bool {
+      int host_flags[N]; // NOLINT
       THROW_ON_CUDA_ERROR(cudaMemcpy(host_flags, flags_, sizeof(int) * N, cudaMemcpyDeviceToHost));
 
       return std::count(host_flags, host_flags + N, n) == N;
     }
 
-    bool all_set_once() {
+    auto all_set_once() -> bool {
       return is_set_n_times(1);
     }
 
-    bool all_unset() {
+    auto all_unset() -> bool {
       return !all_set_once();
     }
   };
@@ -180,13 +183,12 @@ namespace {
         using op_t =
           _operation_state_t<stdexec::__copy_cvref_t<Self, Sender>, _receiver_t<Receiver, Fun>>;
 
-        template <class Self, class Env>
+        template <class Self, class... Env>
         using __completions_t = //
-          stdexec::__try_make_completion_signatures<
-            stdexec::__copy_cvref_t<Self, Sender>,
-            Env,
+          stdexec::transform_completion_signatures<
+            stdexec::__completion_signatures_of_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
             stdexec::completion_signatures<>,
-            stdexec::__mbind_front_q<stdexec::__set_value_invoke_t, Fun>>;
+            stdexec::__mbind_front_q<stdexec::__set_value_invoke_t, Fun>::template __f>;
 
         template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
           requires stdexec::receiver_of<Receiver, __completions_t<Self, stdexec::env_of_t<Receiver>>>
@@ -197,8 +199,8 @@ namespace {
             _receiver_t<Receiver, Fun>(static_cast<Receiver&&>(rcvr), self.fun_));
         }
 
-        template <stdexec::__decays_to<__t> Self, class Env>
-        static auto get_completion_signatures(Self&&, Env) -> __completions_t<Self, Env> {
+        template <stdexec::__decays_to<__t> Self, class... Env>
+        static auto get_completion_signatures(Self&&, Env&&...) -> __completions_t<Self, Env...> {
           return {};
         }
 
@@ -252,24 +254,19 @@ namespace {
         template <class Self, class Receiver>
         using op_t = _operation_state_t<stdexec::__copy_cvref_t<Self, Sender>, Receiver>;
 
-        template <class Self, class Env>
-        using completion_signatures = //
-          stdexec::__try_make_completion_signatures<
-            stdexec::__copy_cvref_t<Self, Sender>,
-            Env,
-            stdexec::completion_signatures<>>;
+        template <class Self, class... Env>
+        using _completions_t = //
+          stdexec::__completion_signatures_of_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>;
 
         template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
-          requires stdexec::
-            receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-          friend auto
-          tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) -> op_t<Self, Receiver> {
+          requires stdexec::receiver_of<Receiver, _completions_t<Self, stdexec::env_of_t<Receiver>>>
+        static auto connect(Self&& self, Receiver&& rcvr) -> op_t<Self, Receiver> {
           return op_t<Self, Receiver>(
             static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr));
         }
 
-        template <stdexec::__decays_to<__t> Self, class Env>
-        static auto get_completion_signatures(Self&&, Env&&) -> completion_signatures<Self, Env> {
+        template <stdexec::__decays_to<__t> Self, class... Env>
+        static auto get_completion_signatures(Self&&, Env&&...) -> _completions_t<Self, Env...> {
           return {};
         }
 
@@ -297,14 +294,13 @@ namespace {
     using sender_th = detail::a_sender::_sender_t<_Sender, _Fun>;
 
     template <stdexec::sender _Sender, class _Fun>
-      requires stdexec::sender<sender_th<_Sender, _Fun>>
-    sender_th<_Sender, _Fun> operator()(_Sender&& __sndr, _Fun __fun) const {
+    auto operator()(_Sender&& __sndr, _Fun __fun) const -> sender_th<_Sender, _Fun> {
       return sender_th<_Sender, _Fun>{static_cast<_Sender&&>(__sndr), static_cast<_Fun&&>(__fun)};
     }
 
     template <class _Fun>
-    stdexec::__binder_back<a_sender_helper_t<a_sender_kind::then>, _Fun>
-      operator()(_Fun __fun) const {
+    auto operator()(_Fun __fun) const
+      -> stdexec::__binder_back<a_sender_helper_t<a_sender_kind::then>, _Fun> {
       return {{static_cast<_Fun&&>(__fun)}, {}, {}};
     };
   };
@@ -315,12 +311,12 @@ namespace {
     using receiverless_sender_th = detail::a_receiverless_sender::_sender_t<_Sender>;
 
     template <stdexec::sender _Sender>
-      requires stdexec::sender<receiverless_sender_th<_Sender>>
-    receiverless_sender_th<_Sender> operator()(_Sender&& __sndr) const {
+    auto operator()(_Sender&& __sndr) const -> receiverless_sender_th<_Sender> {
       return receiverless_sender_th<_Sender>{static_cast<_Sender&&>(__sndr)};
     }
 
-    stdexec::__binder_back<a_sender_helper_t<a_sender_kind::receiverless>> operator()() const {
+    auto
+      operator()() const -> stdexec::__binder_back<a_sender_helper_t<a_sender_kind::receiverless>> {
       return {{}, {}, {}};
     }
   };
@@ -332,17 +328,17 @@ namespace {
     using a_sender_helper_t<a_sender_kind::receiverless>::operator();
   };
 
-  constexpr a_sender_t a_sender;
+  constexpr a_sender_t a_sender; // NOLINT (unused-const-variable)
 
   struct move_only_t {
-    static constexpr int invalid() {
+    static constexpr auto invalid() -> int {
       return -42;
     }
 
     move_only_t() = delete;
     move_only_t(const move_only_t&) = delete;
-    move_only_t& operator=(move_only_t&&) = delete;
-    move_only_t& operator=(const move_only_t&) = delete;
+    auto operator=(move_only_t&&) -> move_only_t& = delete;
+    auto operator=(const move_only_t&) -> move_only_t& = delete;
 
     __host__ __device__ move_only_t(int data)
       : data_(data)
@@ -362,7 +358,7 @@ namespace {
       data_ = invalid();
     }
 
-    __host__ __device__ bool contains(int val) {
+    __host__ __device__ auto contains(int val) -> bool {
       if (this != self_) {
         std::printf("Error: move_only_t::contains failed: %p\n", static_cast<void*>(self_));
         return false;

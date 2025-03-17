@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "common.cuh"
@@ -23,7 +26,7 @@
 #include <barrier>
 
 template <class Shape>
-std::pair<Shape, Shape> even_share(Shape n, std::size_t rank, std::size_t size) noexcept {
+auto even_share(Shape n, std::size_t rank, std::size_t size) noexcept -> std::pair<Shape, Shape> {
   const auto avg_per_thread = n / size;
   const auto n_big_share = avg_per_thread + 1;
   const auto big_shares = n % size;

@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
@@ -29,7 +32,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+namespace nvexec::_strm {
   namespace _ensure_started {
     template <class Tag, class... As, class Variant>
     __launch_bounds__(1) __global__ void copy_kernel(Variant* var, As... as) {
@@ -102,6 +105,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           shared_state_.reset();
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> env_t {
           return shared_state_->make_env();
         }
@@ -114,7 +118,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     };
 
     template <class T>
-    T* malloc_managed(cudaError_t& status) {
+    auto malloc_managed(cudaError_t& status) -> T* {
       T* ptr{};
 
       if (status == cudaSuccess) {
@@ -154,7 +158,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       std::atomic<void*> op_state1_;
       inner_op_state_t op_state2_;
 
-      env_t make_env() const noexcept {
+      auto make_env() const noexcept -> env_t {
         return _ensure_started::__make_env(
           stop_source_, &const_cast<stream_provider_t&>(stream_provider_));
       }
@@ -386,13 +390,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       __t(__t&&) = default;
     };
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+} // namespace nvexec::_strm
 
 namespace stdexec::__detail {
   template <class SenderId>
-  inline constexpr __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::ensure_started_sender_t<__name_of<__t<SenderId>>>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::ensure_started_sender_t<SenderId>>{};
+  inline constexpr __mconst<nvexec::_strm::ensure_started_sender_t<__name_of<__t<SenderId>>>>
+    __name_of_v<nvexec::_strm::ensure_started_sender_t<SenderId>>{};
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

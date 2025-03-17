@@ -92,6 +92,9 @@ function(def_cpu_example example)
                 stdexec_executable_flags
     )
     set_source_files_properties(${source} PROPERTIES LANGUAGE ${_lang_cxx})
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        target_link_options(${target} PRIVATE -lc++abi -ltbb)
+    endif()
 endfunction()
 
 foreach(example ${nvexec_cpu_examples})

@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
@@ -30,7 +33,6 @@
 #include "../detail/throw_on_cuda_error.cuh"
 #include "../detail/queue.cuh"
 #include "../detail/variant.cuh"
-#include "stdexec/__detail/__config.hpp"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
@@ -49,21 +51,21 @@ namespace nvexec {
     device
   };
 
-#if defined(__clang__) && defined(__CUDA__)
-  __host__ inline device_type get_device_type() noexcept {
+#if defined(__clang__) && defined(__CUDA__) && !defined(STDEXEC_CLANG_TIDY)
+  __host__ inline auto get_device_type() noexcept -> device_type {
     return device_type::host;
   }
 
-  __device__ inline device_type get_device_type() noexcept {
+  __device__ inline auto get_device_type() noexcept -> device_type {
     return device_type::device;
   }
 #else
-  __host__ __device__ inline device_type get_device_type() noexcept {
+  __host__ __device__ inline auto get_device_type() noexcept -> device_type {
     NV_IF_TARGET(NV_IS_HOST, (return device_type::host;), (return device_type::device;));
   }
 #endif
 
-  inline STDEXEC_ATTRIBUTE((host, device)) bool is_on_gpu() noexcept {
+  inline STDEXEC_ATTRIBUTE((host, device)) auto is_on_gpu() noexcept -> bool {
     return get_device_type() == device_type::device;
   }
 } // namespace nvexec
@@ -71,7 +73,7 @@ namespace nvexec {
 namespace nvexec {
   struct stream_context;
 
-  namespace STDEXEC_STREAM_DETAIL_NS {
+  namespace _strm {
 
 #if STDEXEC_HAS_BUILTIN(__is_reference)
     template <class... Ts>
@@ -82,7 +84,7 @@ namespace nvexec {
       ((STDEXEC_IS_TRIVIALLY_COPYABLE(Ts) || std::is_reference_v<Ts>) && ...);
 #endif
 
-    inline std::pair<int, cudaError_t> get_stream_priority(stream_priority priority) {
+    inline auto get_stream_priority(stream_priority priority) -> std::pair<int, cudaError_t> {
       int least{};
       int greatest{};
 
@@ -107,9 +109,9 @@ namespace nvexec {
      public:
       stream_pool_t() = default;
       stream_pool_t(const stream_pool_t&) = delete;
-      stream_pool_t& operator=(const stream_pool_t&) = delete;
+      auto operator=(const stream_pool_t&) -> stream_pool_t& = delete;
 
-      std::pair<cudaStream_t, cudaError_t> borrow_stream(stream_priority priority) {
+      auto borrow_stream(stream_priority priority) -> std::pair<cudaStream_t, cudaError_t> {
         std::lock_guard<std::mutex> lock(mtx_);
 
         if (streams_.empty()) {
@@ -155,12 +157,12 @@ namespace nvexec {
     class stream_pools_t {
       std::array<stream_pool_t, 3> pools_;
 
-      stream_pool_t& get(stream_priority priority) {
+      auto get(stream_priority priority) -> stream_pool_t& {
         return pools_[static_cast<int>(priority)];
       }
 
      public:
-      std::pair<cudaStream_t, cudaError_t> borrow_stream(stream_priority priority) {
+      auto borrow_stream(stream_priority priority) -> std::pair<cudaStream_t, cudaError_t> {
         return get(priority).borrow_stream(priority);
       }
 
@@ -189,7 +191,7 @@ namespace nvexec {
         , priority_(priority) {
       }
 
-      std::pair<cudaStream_t, cudaError_t> borrow_stream() {
+      auto borrow_stream() -> std::pair<cudaStream_t, cudaError_t> {
         return stream_pools_->borrow_stream(priority_);
       }
 
@@ -264,7 +266,7 @@ namespace nvexec {
     struct get_stream_provider_t {
       template <class Env>
         requires tag_invocable<get_stream_provider_t, const Env&>
-      stream_provider_t* operator()(const Env& env) const noexcept {
+      auto operator()(const Env& env) const noexcept -> stream_provider_t* {
         return tag_invoke(get_stream_provider_t{}, env);
       }
 
@@ -299,12 +301,12 @@ namespace nvexec {
     struct get_stream_t {
       template <class Env>
         requires __callable<get_stream_provider_t, const Env&>
-      cudaStream_t operator()(const Env& env) const noexcept {
+      auto operator()(const Env& env) const noexcept -> cudaStream_t {
         return get_stream_provider(env)->own_stream_.value();
       }
 
       STDEXEC_ATTRIBUTE((host, device)) auto operator()() const noexcept {
-        return stdexec::read(*this);
+        return stdexec::read_env(*this);
       }
 
       STDEXEC_ATTRIBUTE((host, device)) static constexpr auto query(stdexec::forwarding_query_t) noexcept -> bool {
@@ -320,12 +322,12 @@ namespace nvexec {
 
     template <class BaseEnv>
       requires __callable<get_stream_provider_t, const BaseEnv&>
-    __decay_t<BaseEnv> make_stream_env(BaseEnv&& base_env, stream_provider_t*) noexcept {
+    auto make_stream_env(BaseEnv&& base_env, stream_provider_t*) noexcept -> __decay_t<BaseEnv> {
       return static_cast<BaseEnv&&>(base_env);
     }
 
     template <class BaseEnv>
-    using stream_env = decltype(STDEXEC_STREAM_DETAIL_NS::make_stream_env(
+    using stream_env = decltype(_strm::make_stream_env(
       __declval<BaseEnv>(),
       static_cast<stream_provider_t*>(nullptr)));
 
@@ -335,7 +337,7 @@ namespace nvexec {
         prop{get_stream_provider, stream_provider}, static_cast<BaseEnv&&>(base_env));
     }
     template <class BaseEnv>
-    using terminal_stream_env = decltype(STDEXEC_STREAM_DETAIL_NS::make_terminal_stream_env(
+    using terminal_stream_env = decltype(_strm::make_terminal_stream_env(
       __declval<BaseEnv>(),
       static_cast<stream_provider_t*>(nullptr)));
 
@@ -467,15 +469,8 @@ namespace nvexec {
     };
 
     template <class Env>
-      requires tag_invocable<get_stream_provider_t, const __decay_t<Env>&>
-    constexpr bool borrows_stream_h() {
-      return true;
-    }
-
-    template <class Env>
-      requires(!tag_invocable<get_stream_provider_t, const __decay_t<Env>>)
-    constexpr bool borrows_stream_h() {
-      return false;
+    constexpr auto borrows_stream_h() -> bool {
+      return __callable<get_stream_provider_t, const Env&>;
     }
 
     template <class OuterReceiverId>
@@ -499,12 +494,13 @@ namespace nvexec {
           , stream_provider_(borrows_stream, context_state) {
         }
 
-        stream_provider_t* get_stream_provider() const {
+        [[nodiscard]]
+        auto get_stream_provider() const -> stream_provider_t* {
           stream_provider_t* stream_provider{};
 
           if constexpr (borrows_stream) {
             const outer_env_t& env = get_env(rcvr_);
-            stream_provider = ::nvexec::STDEXEC_STREAM_DETAIL_NS::get_stream_provider(env);
+            stream_provider = ::nvexec::_strm::get_stream_provider(env);
           } else {
             stream_provider = &const_cast<stream_provider_t&>(stream_provider_);
           }
@@ -512,7 +508,8 @@ namespace nvexec {
           return stream_provider;
         }
 
-        cudaStream_t get_stream() const {
+        [[nodiscard]]
+        auto get_stream() const -> cudaStream_t {
           return get_stream_provider()->own_stream_.value();
         }
 
@@ -548,7 +545,7 @@ namespace nvexec {
           }
         }
 
-        env_t make_env() const noexcept {
+        auto make_env() const noexcept -> env_t {
           return make_stream_env(get_env(rcvr_), get_stream_provider());
         }
 
@@ -675,20 +672,18 @@ namespace nvexec {
           : base_t(static_cast<outer_receiver_t&&>(out_receiver), context_state)
           , storage_(
               make_host<variant_t>(this->stream_provider_.status_, context_state.pinned_resource_))
-          , task_(
-              make_host<task_t>(
-                this->stream_provider_.status_,
-                context_state.pinned_resource_,
-                receiver_provider(*this),
-                storage_.get(),
-                this->get_stream(),
-                context_state.pinned_resource_)
-                .release())
-          , env_(
-              make_host<env_t>(
-                this->stream_provider_.status_,
-                context_state.pinned_resource_,
-                this->make_env()))
+          , task_(make_host<task_t>(
+                    this->stream_provider_.status_,
+                    context_state.pinned_resource_,
+                    receiver_provider(*this),
+                    storage_.get(),
+                    this->get_stream(),
+                    context_state.pinned_resource_)
+                    .release())
+          , env_(make_host<env_t>(
+              this->stream_provider_.status_,
+              context_state.pinned_resource_,
+              this->make_env()))
           , inner_op_{connect(
               static_cast<sender_t&&>(sender),
               stream_enqueue_receiver_t{
@@ -738,8 +733,8 @@ namespace nvexec {
         stdexec::__id<OuterReceiver>>;
 
     template <class Sender, class OuterReceiver>
-    exit_operation_state_t<Sender, OuterReceiver>
-      exit_op_state(Sender&& sndr, OuterReceiver&& rcvr, context_state_t context_state) noexcept {
+    auto exit_op_state(Sender&& sndr, OuterReceiver rcvr, context_state_t context_state) noexcept
+      -> exit_operation_state_t<Sender, OuterReceiver> {
       using ReceiverId = stdexec::__id<OuterReceiver>;
       return exit_operation_state_t<Sender, OuterReceiver>(
         static_cast<Sender&&>(sndr),
@@ -779,11 +774,11 @@ namespace nvexec {
         stdexec::__id<OuterReceiver>>;
 
     template <stream_completing_sender Sender, class OuterReceiver, class ReceiverProvider>
-    stream_op_state_t<Sender, inner_receiver_t<ReceiverProvider, OuterReceiver>, OuterReceiver>
-      stream_op_state(
-        Sender&& sndr,
-        OuterReceiver&& out_receiver,
-        ReceiverProvider receiver_provider) {
+    auto stream_op_state(
+      Sender&& sndr,
+      OuterReceiver&& out_receiver,
+      ReceiverProvider receiver_provider)
+      -> stream_op_state_t<Sender, inner_receiver_t<ReceiverProvider, OuterReceiver>, OuterReceiver> {
       auto sch = get_completion_scheduler<set_value_t>(get_env(sndr));
       context_state_t context_state = sch.context_state_;
 
@@ -798,12 +793,12 @@ namespace nvexec {
     }
 
     template <class Sender, class OuterReceiver, class ReceiverProvider>
-    stream_op_state_t<Sender, inner_receiver_t<ReceiverProvider, OuterReceiver>, OuterReceiver>
-      stream_op_state(
-        Sender&& sndr,
-        OuterReceiver&& out_receiver,
-        ReceiverProvider receiver_provider,
-        context_state_t context_state) {
+    auto stream_op_state(
+      Sender&& sndr,
+      OuterReceiver&& out_receiver,
+      ReceiverProvider receiver_provider,
+      context_state_t context_state)
+      -> stream_op_state_t<Sender, inner_receiver_t<ReceiverProvider, OuterReceiver>, OuterReceiver> {
       return stream_op_state_t<
         Sender,
         inner_receiver_t<ReceiverProvider, OuterReceiver>,
@@ -813,9 +808,9 @@ namespace nvexec {
         receiver_provider,
         context_state);
     }
-  } // namespace STDEXEC_STREAM_DETAIL_NS
+  } // namespace _strm
 
-  inline constexpr STDEXEC_STREAM_DETAIL_NS::get_stream_t get_stream{};
+  inline constexpr _strm::get_stream_t get_stream{};
 } // namespace nvexec
 
 STDEXEC_PRAGMA_POP()

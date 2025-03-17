@@ -67,8 +67,8 @@ namespace exec {
           template <class _Rcvr>
             requires sequence_receiver_of<_Rcvr, __item_types>
                   && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
-          STDEXEC_MEMFN_DECL(
-            auto __create_vtable)(this __mtype<__t>, __mtype<_Rcvr>) noexcept -> const __t* {
+          STDEXEC_MEMFN_DECL(auto __create_vtable)(this __mtype<__t>, __mtype<_Rcvr>) noexcept
+            -> const __t* {
             static const __t __vtable_{
               {__rcvr_next_vfun_fn<_Rcvr>{}(static_cast<_NextSigs*>(nullptr))},
               {__any_::__rcvr_vfun_fn(
@@ -182,8 +182,8 @@ namespace exec {
 
         template <class _Sender>
           requires sequence_sender_to<_Sender, __receiver_ref_t>
-        STDEXEC_MEMFN_DECL(
-          auto __create_vtable)(this __mtype<__t>, __mtype<_Sender>) noexcept -> const __t* {
+        STDEXEC_MEMFN_DECL(auto __create_vtable)(this __mtype<__t>, __mtype<_Sender>) noexcept
+          -> const __t* {
           static const __t __vtable_{
             {*__create_vtable(__mtype<__query_vtable_t>{}, __mtype<_Sender>{})},
             [](void* __object_pointer, __receiver_ref_t __receiver)

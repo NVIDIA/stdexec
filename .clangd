@@ -51,6 +51,7 @@ CompileFlags:
     - "-ferror-limit=0"
     - "-fmacro-backtrace-limit=0"
     - "-ftemplate-backtrace-limit=0"
+    - "-std=gnu++20"
   Remove:
     - "-stdpar*"
     # strip CUDA fatbin args

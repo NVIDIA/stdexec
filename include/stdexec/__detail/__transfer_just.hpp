@@ -25,7 +25,6 @@
 #include "__env.hpp"
 #include "__just.hpp"
 #include "__meta.hpp"
-#include "__schedule_from.hpp"
 #include "__schedulers.hpp"
 #include "__sender_introspection.hpp"
 #include "__tag_invoke.hpp"

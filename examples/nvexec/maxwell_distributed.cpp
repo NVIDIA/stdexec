@@ -20,8 +20,8 @@
 #include <mpi.h>
 #include <vector>
 
-static std::pair<std::size_t, std::size_t>
-  even_share(std::size_t n, std::size_t rank, std::size_t size) noexcept {
+static auto even_share(std::size_t n, std::size_t rank, std::size_t size) noexcept
+  -> std::pair<std::size_t, std::size_t> {
   const auto avg_per_thread = n / size;
   const auto n_big_share = avg_per_thread + 1;
   const auto big_shares = n % size;
@@ -34,7 +34,7 @@ static std::pair<std::size_t, std::size_t>
 }
 
 template <class T>
-std::unique_ptr<T, deleter_t> device_alloc(std::size_t elements = 1) {
+auto device_alloc(std::size_t elements = 1) -> std::unique_ptr<T, deleter_t> {
   T *ptr{};
   STDEXEC_DBG_ERR(cudaMalloc(&ptr, elements * sizeof(T)));
   return std::unique_ptr<T, deleter_t>(ptr, deleter_t{true});
@@ -56,12 +56,12 @@ namespace distributed {
     float *base_ptr;
 
     [[nodiscard]]
-    __host__ __device__ std::size_t own_cells() const {
+    __host__ __device__ auto own_cells() const -> std::size_t {
       return end - begin;
     }
 
     [[nodiscard]]
-    __host__ __device__ float *get(field_id id) const {
+    __host__ __device__ auto get(field_id id) const -> float * {
       return base_ptr + static_cast<int>(id) * (own_cells() + 2 * n) + n;
     }
   };
@@ -95,7 +95,7 @@ namespace distributed {
     }
 
     [[nodiscard]]
-    fields_accessor accessor() const {
+    auto accessor() const -> fields_accessor {
       return {height / n, width / n, width, height, n, cells, begin, end, fields_.get()};
     }
   };
@@ -218,8 +218,9 @@ namespace distributed {
     }
   };
 
-  __host__ result_dumper_t
-    dump_vtk(bool write_results, int rank, std::size_t &report_step, fields_accessor accessor) {
+  __host__ auto
+    dump_vtk(bool write_results, int rank, std::size_t &report_step, fields_accessor accessor)
+      -> result_dumper_t {
     return {write_results, rank, report_step, accessor};
   }
 
@@ -267,28 +268,28 @@ namespace distributed {
   };
 
   template <class AccessorT>
-  __host__ __device__ inline grid_initializer_t<AccessorT>
-    grid_initializer(float dt, AccessorT accessor) {
+  __host__ __device__ inline auto
+    grid_initializer(float dt, AccessorT accessor) -> grid_initializer_t<AccessorT> {
     return {dt, accessor};
   }
 
-  __host__ __device__ inline std::size_t
-    right_nid(std::size_t cell_id, std::size_t col, std::size_t N) {
+  __host__ __device__ inline auto
+    right_nid(std::size_t cell_id, std::size_t col, std::size_t N) -> std::size_t {
     return col == N - 1 ? cell_id - (N - 1) : cell_id + 1;
   }
 
-  __host__ __device__ inline std::size_t
-    left_nid(std::size_t cell_id, std::size_t col, std::size_t N) {
+  __host__ __device__ inline auto
+    left_nid(std::size_t cell_id, std::size_t col, std::size_t N) -> std::size_t {
     return col == 0 ? cell_id + N - 1 : cell_id - 1;
   }
 
-  __host__ __device__ inline std::size_t
-    bottom_nid(std::size_t cell_id, std::size_t row, std::size_t N) {
+  __host__ __device__ inline auto
+    bottom_nid(std::size_t cell_id, std::size_t row, std::size_t N) -> std::size_t {
     return cell_id - N;
   }
 
-  __host__ __device__ inline std::size_t
-    top_nid(std::size_t cell_id, std::size_t row, std::size_t N) {
+  __host__ __device__ inline auto
+    top_nid(std::size_t cell_id, std::size_t row, std::size_t N) -> std::size_t {
     return cell_id + N;
   }
 
@@ -313,7 +314,7 @@ namespace distributed {
   };
 
   template <class AccessorT>
-  __host__ __device__ inline h_field_calculator_t<AccessorT> update_h(AccessorT accessor) {
+  __host__ __device__ inline auto update_h(AccessorT accessor) -> h_field_calculator_t<AccessorT> {
     return {accessor};
   }
 
@@ -325,12 +326,12 @@ namespace distributed {
     std::size_t source_position;
 
     [[nodiscard]]
-    __host__ __device__ float gaussian_pulse(float t, float t_0, float tau) const {
+    __host__ __device__ auto gaussian_pulse(float t, float t_0, float tau) const -> float {
       return exp(-(((t - t_0) / tau) * (t - t_0) / tau));
     }
 
     [[nodiscard]]
-    __host__ __device__ float calculate_source(float t, float frequency) const {
+    __host__ __device__ auto calculate_source(float t, float frequency) const -> float {
       const float tau = 0.5f / frequency;
       const float t_0 = 6.0f * tau;
       return gaussian_pulse(t, t_0, tau);
@@ -365,15 +366,15 @@ namespace distributed {
   };
 
   template <class AccessorT>
-  __host__ __device__ inline e_field_calculator_t<AccessorT>
-    update_e(float *time, float dt, AccessorT accessor) {
+  __host__ __device__ inline auto
+    update_e(float *time, float dt, AccessorT accessor) -> e_field_calculator_t<AccessorT> {
     std::size_t source_position = accessor.n / 2 + (accessor.n * (accessor.n / 2));
     return {dt, time, accessor, source_position};
   }
 } // namespace distributed
 
 // TODO Combine hz/hy in a float2 type to pass in a single MPI copy
-int main(int argc, char *argv[]) {
+auto main(int argc, char *argv[]) -> int {
   int rank{};
   int size{1};
 

@@ -27,6 +27,9 @@
 
 #include <atomic>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+
 namespace exec {
   /////////////////////////////////////////////////////////////////////////////
   // NOT TO SPEC: __start_now
@@ -174,9 +177,9 @@ namespace exec {
      public:
       __storage(_Env&& __env, _AsyncScope& __scope, stdexec::__cvref_t<_SenderIds>&&... __sndr)
         : __storage_base<_EnvId>(static_cast<_Env&&>(__env), sizeof...(__sndr))
-        , __op_state_{{stdexec::connect(
+        , __op_state_{stdexec::connect(
             __scope.nest(static_cast<stdexec::__cvref_t<_SenderIds>&&>(__sndr)),
-            __receiver_t{this})}...} {
+            __receiver_t{this})...} {
         // Start all of the child operations
         __op_state_.for_each(stdexec::start, __op_state_);
       }
@@ -250,3 +253,5 @@ namespace exec {
   using __start_now_::start_now_t;
   inline constexpr start_now_t start_now{};
 } // namespace exec
+
+STDEXEC_PRAGMA_POP()
