@@ -113,6 +113,13 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+#if STDEXEC_CLANG() && STDEXEC_CUDA()
+#  define STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __host__ __device__
+#else
+#  define STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 #if __cpp_impl_coroutine >= 201902 && __cpp_lib_coroutine >= 201902
 #  include <coroutine> // IWYU pragma: keep
 #  define STDEXEC_STD_NO_COROUTINES() 0
