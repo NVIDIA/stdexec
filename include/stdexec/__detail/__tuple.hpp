@@ -46,7 +46,8 @@ namespace stdexec {
 
     template <class _Ty>
     concept __empty = //
-      STDEXEC_IS_EMPTY(_Ty) && STDEXEC_IS_TRIVIALLY_CONSTRUCTIBLE(_Ty);
+      STDEXEC_IS_EMPTY(_Ty) && STDEXEC_IS_TRIVIALLY_CONSTRUCTIBLE(_Ty)
+      && STDEXEC_IS_TRIVIALLY_COPYABLE(_Ty);
 
     template <__empty _Ty>
     inline _Ty __value{};

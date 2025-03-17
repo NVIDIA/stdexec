@@ -37,7 +37,7 @@ namespace stdexec {
     struct __always {
       _Ty __val_;
 
-      auto operator()() noexcept -> _Ty {
+      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto operator()() noexcept(__nothrow_constructible_from<_Ty, _Ty>) -> _Ty {
         return static_cast<_Ty&&>(__val_);
       }
     };
