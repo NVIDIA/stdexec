@@ -144,6 +144,67 @@ namespace exec {
   [[deprecated("exec::write_env has been renamed to exec::write_env")]]
   inline constexpr stdexec::__write_::__write_env_t write{};
   inline constexpr stdexec::__write_::__write_env_t write_env{};
+
+  namespace __write_attrs {
+    using namespace stdexec;
+
+    template <class _SenderId, class _Attrs>
+    struct __sender {
+      using _Sender = stdexec::__t<_SenderId>;
+
+      struct __t {
+        using sender_concept = sender_t;
+        using __id = __sender;
+        _Sender __sndr_;
+        _Attrs __attrs_;
+
+        auto get_env() const noexcept -> __env::__join_t<const _Attrs&, env_of_t<_Sender>> {
+          return stdexec::__env::__join(__attrs_, stdexec::get_env(__sndr_));
+        }
+
+        template <__decays_to<__t> _Self, class... _Env>
+        static auto get_completion_signatures(_Self&&, _Env&&...)
+          -> completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...> {
+          return {};
+        }
+
+        template <__decays_to<__t> _Self, class _Receiver>
+          requires sender_in<__copy_cvref_t<_Self, _Sender>, env_of_t<_Receiver>>
+        static auto connect(_Self&& __self, _Receiver __rcvr)
+          -> connect_result_t<__copy_cvref_t<_Self, _Sender>, _Receiver> {
+          return stdexec::connect(std::forward<_Self>(__self).__sndr_, std::move(__rcvr));
+        }
+      };
+    };
+
+    struct __write_attrs_t {
+      template <class _Sender, class _Attrs>
+      STDEXEC_ATTRIBUTE((host, device)) auto operator()(_Sender snd, _Attrs __attrs_) const //
+        -> __write_attrs::__sender<_Sender, _Attrs> {
+        return __t<__write_attrs::__sender<__id<_Sender>, _Attrs>>{
+          static_cast<_Sender&&>(snd), static_cast<_Attrs&&>(__attrs_)};
+      }
+
+      template <class _Attrs>
+      struct __closure {
+        _Attrs __attrs_;
+
+        template <class _Sender>
+        STDEXEC_ATTRIBUTE((host, device)) friend auto operator|(_Sender __sndr_, __closure _clsr) {
+          return __t<__write_attrs::__sender<__id<_Sender>, _Attrs>>{
+            static_cast<_Sender&&>(__sndr_), static_cast<_Attrs&&>(_clsr.__attrs_)};
+        }
+      };
+
+      template <class _Attrs>
+      STDEXEC_ATTRIBUTE((host, device)) auto operator()(_Attrs __attrs_) const {
+        return __closure<_Attrs>{static_cast<_Attrs&&>(__attrs_)};
+      }
+    };
+  } // namespace __write_attrs
+
+  inline constexpr __write_attrs::__write_attrs_t write_attrs{};
+
 } // namespace exec
 
 STDEXEC_PRAGMA_POP()
