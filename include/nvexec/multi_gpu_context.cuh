@@ -20,9 +20,6 @@
 
 #include "../stdexec/execution.hpp"
 
-#include <concepts>
-#include <utility>
-
 #include "stream_context.cuh"
 
 STDEXEC_PRAGMA_PUSH()
@@ -30,30 +27,33 @@ STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nvexec {
   namespace _strm {
-    template <sender Sender, std::integral Shape, class Fun>
-    using multi_gpu_bulk_sender_th =
-      stdexec::__t<multi_gpu_bulk_sender_t<stdexec::__id<__decay_t<Sender>>, Shape, Fun>>;
-
-    struct multi_gpu_stream_scheduler {
+    struct multi_gpu_stream_scheduler : private stream_scheduler_env {
       using __t = multi_gpu_stream_scheduler;
       using __id = multi_gpu_stream_scheduler;
-      friend stream_context;
 
-      template <sender Sender>
-      using schedule_from_sender_th =
-        stdexec::__t<schedule_from_sender_t<stream_scheduler, stdexec::__id<__decay_t<Sender>>>>;
+      multi_gpu_stream_scheduler(int num_devices, context_state_t context_state)
+        : num_devices_(num_devices)
+        , context_state_(context_state) {
+      }
 
-      template <class RId>
+      auto operator==(const multi_gpu_stream_scheduler& other) const noexcept -> bool {
+        return context_state_.hub_ == other.context_state_.hub_;
+      }
+
+      [[nodiscard]]
+      STDEXEC_ATTRIBUTE((host, device)) auto schedule() const noexcept {
+        return sender_t{num_devices_, context_state_};
+      }
+
+      using stream_scheduler_env::query;
+
+     private:
+      template <class ReceiverId>
       struct operation_state_t : stream_op_state_base {
-        using R = stdexec::__t<RId>;
+        using Receiver = stdexec::__t<ReceiverId>;
 
-        R rec_;
-        cudaStream_t stream_{nullptr};
-        cudaError_t status_{cudaSuccess};
-
-        template <__decays_to<R> Receiver>
-        operation_state_t(Receiver&& rec)
-          : rec_(static_cast<Receiver&&>(rec)) {
+        explicit operation_state_t(Receiver rcvr)
+          : rcvr_(static_cast<Receiver&&>(rcvr)) {
           status_ = STDEXEC_DBG_ERR(cudaStreamCreate(&stream_));
         }
 
@@ -61,177 +61,78 @@ namespace nvexec {
           STDEXEC_DBG_ERR(cudaStreamDestroy(stream_));
         }
 
+        [[nodiscard]]
         auto get_stream() -> cudaStream_t {
           return stream_;
         }
 
         void start() & noexcept {
-          if constexpr (stream_receiver<R>) {
+          if constexpr (stream_receiver<Receiver>) {
             if (status_ == cudaSuccess) {
-              stdexec::set_value(static_cast<R&&>(rec_));
+              stdexec::set_value(static_cast<Receiver&&>(rcvr_));
             } else {
-              stdexec::set_error(static_cast<R&&>(rec_), std::move(status_));
+              stdexec::set_error(static_cast<Receiver&&>(rcvr_), std::move(status_));
             }
           } else {
             if (status_ == cudaSuccess) {
-              continuation_kernel<<<1, 1, 0, stream_>>>(std::move(rec_), stdexec::set_value);
+              continuation_kernel<<<1, 1, 0, stream_>>>(std::move(rcvr_), stdexec::set_value);
             } else {
               continuation_kernel<<<1, 1, 0, stream_>>>(
-                std::move(rec_), stdexec::set_error, std::move(status_));
+                std::move(rcvr_), stdexec::set_error, std::move(status_));
             }
           }
         }
+
+       private:
+        friend stream_context;
+
+        Receiver rcvr_;
+        cudaStream_t stream_{};
+        cudaError_t status_{cudaSuccess};
       };
 
       struct sender_t : stream_sender_base {
+        using __t = sender_t;
+        using __id = sender_t;
 
+        using completion_signatures =
+          stdexec::completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
+
+        STDEXEC_ATTRIBUTE((host, device)) explicit sender_t(int num_devices, context_state_t context_state) noexcept
+          : env_{.num_devices_ = num_devices, .context_state_ = context_state} {
+        }
+
+        template <class Receiver>
+        [[nodiscard]]
+        auto connect(Receiver rcvr) const & noexcept(__nothrow_move_constructible<Receiver>) //
+          -> operation_state_t<stdexec::__id<Receiver>> {
+          return operation_state_t<stdexec::__id<Receiver>>(static_cast<Receiver&&>(rcvr));
+        }
+
+        [[nodiscard]]
+        auto get_env() const noexcept -> decltype(auto) {
+          return (env_);
+        }
+
+       private:
         struct env {
+          using __t = env;
+          using __id = env;
+
           int num_devices_;
           context_state_t context_state_;
 
           template <class CPO>
+          [[nodiscard]]
           auto query(get_completion_scheduler_t<CPO>) const noexcept -> multi_gpu_stream_scheduler {
             return multi_gpu_stream_scheduler{num_devices_, context_state_};
           }
         };
 
-        using completion_signatures =
-          completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
-
-        template <class R>
-        auto connect(R rec) const & noexcept(__nothrow_move_constructible<R>) //
-          -> operation_state_t<stdexec::__id<__decay_t<R>>> {
-          return operation_state_t<stdexec::__id<__decay_t<R>>>(static_cast<R&&>(rec));
-        }
-
-        [[nodiscard]]
-        auto get_env() const noexcept -> const env& {
-          return env_;
-        }
-
-        sender_t(int num_devices, context_state_t context_state) noexcept
-          : env_{.num_devices_ = num_devices, .context_state_ = context_state} {
-        }
-
         env env_;
       };
 
-      template <sender S>
-      STDEXEC_MEMFN_DECL(schedule_from_sender_th<S> schedule_from)(
-        this const multi_gpu_stream_scheduler& sch,
-        S&& sndr) //
-        noexcept {
-        return schedule_from_sender_th<S>(sch.context_state_, static_cast<S&&>(sndr));
-      }
-
-      template <sender S, std::integral Shape, class Fn>
-      STDEXEC_MEMFN_DECL(multi_gpu_bulk_sender_th<S, Shape, Fn> bulk)(
-        this const multi_gpu_stream_scheduler& sch, //
-        S&& sndr,                                   //
-        Shape shape,                                //
-        Fn fun)                                     //
-        noexcept {
-        return multi_gpu_bulk_sender_th<S, Shape, Fn>{
-          {}, sch.num_devices_, static_cast<S&&>(sndr), shape, static_cast<Fn&&>(fun)};
-      }
-
-      template <sender S, class Fn>
-      STDEXEC_MEMFN_DECL(then_sender_th<S, Fn> then)(
-        this const multi_gpu_stream_scheduler& sch,
-        S&& sndr,
-        Fn fun) //
-        noexcept {
-        return then_sender_th<S, Fn>{{}, static_cast<S&&>(sndr), static_cast<Fn&&>(fun)};
-      }
-
-      template <__one_of<let_value_t, let_stopped_t, let_error_t> Let, sender S, class Fn>
-      friend auto tag_invoke(Let, const multi_gpu_stream_scheduler& sch, S&& sndr, Fn fun) noexcept
-        -> let_xxx_th<Let, S, Fn> {
-        return let_xxx_th<Let, S, Fn>{{}, static_cast<S&&>(sndr), static_cast<Fn&&>(fun)};
-      }
-
-      template <sender S, class Fn>
-      STDEXEC_MEMFN_DECL(upon_error_sender_th<S, Fn> upon_error)(
-        this const multi_gpu_stream_scheduler& sch,
-        S&& sndr,
-        Fn fun) noexcept {
-        return upon_error_sender_th<S, Fn>{{}, static_cast<S&&>(sndr), static_cast<Fn&&>(fun)};
-      }
-
-      template <sender S, class Fn>
-      STDEXEC_MEMFN_DECL(upon_stopped_sender_th<S, Fn> upon_stopped)(
-        this const multi_gpu_stream_scheduler& sch,
-        S&& sndr,
-        Fn fun) noexcept {
-        return upon_stopped_sender_th<S, Fn>{{}, static_cast<S&&>(sndr), static_cast<Fn&&>(fun)};
-      }
-
-      template <stream_completing_sender... Senders>
-      STDEXEC_MEMFN_DECL(auto transfer_when_all)(
-        this const multi_gpu_stream_scheduler& sch, //
-        Senders&&... sndrs) noexcept {
-        return transfer_when_all_sender_th<multi_gpu_stream_scheduler, Senders...>(
-          sch.context_state_, static_cast<Senders&&>(sndrs)...);
-      }
-
-      template <stream_completing_sender... Senders>
-      STDEXEC_MEMFN_DECL(auto transfer_when_all_with_variant)(
-        this const multi_gpu_stream_scheduler& sch, //
-        Senders&&... sndrs) noexcept {
-        return transfer_when_all_sender_th<
-          multi_gpu_stream_scheduler,
-          __result_of<into_variant, Senders>...>(
-          sch.context_state_, into_variant(static_cast<Senders&&>(sndrs))...);
-      }
-
-      template <sender S, scheduler Sch>
-      STDEXEC_MEMFN_DECL(auto continues_on)(
-        this const multi_gpu_stream_scheduler& sch, //
-        S&& sndr,                                   //
-        Sch&& scheduler) noexcept {
-        return schedule_from(
-          static_cast<Sch&&>(scheduler),
-          continues_on_sender_th<S>(sch.context_state_, static_cast<S&&>(sndr)));
-      }
-
-      template <sender S>
-      STDEXEC_MEMFN_DECL(
-        split_sender_th<S> split)(this const multi_gpu_stream_scheduler& sch, S&& sndr) noexcept {
-        return split_sender_th<S>(static_cast<S&&>(sndr), sch.context_state_);
-      }
-
-      template <sender S>
-      STDEXEC_MEMFN_DECL(ensure_started_th<S> ensure_started)(
-        this const multi_gpu_stream_scheduler& sch,
-        S&& sndr) //
-        noexcept {
-        return ensure_started_th<S>(static_cast<S&&>(sndr), sch.context_state_);
-      }
-
-      [[nodiscard]]
-      auto schedule() const noexcept -> sender_t {
-        return {num_devices_, context_state_};
-      }
-
-      template <sender S>
-      STDEXEC_MEMFN_DECL(auto sync_wait)(this const multi_gpu_stream_scheduler& self, S&& sndr) {
-        return _sync_wait::sync_wait_t{}(self.context_state_, static_cast<S&&>(sndr));
-      }
-
-      [[nodiscard]]
-      auto query(get_forward_progress_guarantee_t) const noexcept -> forward_progress_guarantee {
-        return forward_progress_guarantee::weakly_parallel;
-      }
-
-      auto operator==(const multi_gpu_stream_scheduler& other) const noexcept -> bool {
-        return context_state_.hub_ == other.context_state_.hub_;
-      }
-
-      multi_gpu_stream_scheduler(int num_devices, context_state_t context_state)
-        : num_devices_(num_devices)
-        , context_state_(context_state) {
-      }
-
+     public:
       // private: TODO
       int num_devices_{};
       context_state_t context_state_;
@@ -241,23 +142,8 @@ namespace nvexec {
   using _strm::multi_gpu_stream_scheduler;
 
   struct multi_gpu_stream_context {
-    int num_devices_{};
-
-    _strm::resource_storage<_strm::pinned_resource> pinned_resource_{};
-    _strm::resource_storage<_strm::managed_resource> managed_resource_{};
-    _strm::stream_pools_t stream_pools_{};
-
-    int dev_id_{};
-    _strm::queue::task_hub_t hub_;
-
-    static auto get_device() -> int {
-      int dev_id{};
-      cudaGetDevice(&dev_id);
-      return dev_id;
-    }
-
     multi_gpu_stream_context()
-      : dev_id_(get_device())
+      : dev_id_(_get_device())
       , hub_(dev_id_, pinned_resource_.get()) {
       // TODO Manage errors
       cudaGetDeviceCount(&num_devices_);
@@ -278,6 +164,7 @@ namespace nvexec {
       cudaSetDevice(dev_id_);
     }
 
+    [[nodiscard]]
     auto get_scheduler(stream_priority priority = stream_priority::normal)
       -> multi_gpu_stream_scheduler {
       return {
@@ -285,6 +172,22 @@ namespace nvexec {
         _strm::context_state_t(
           pinned_resource_.get(), managed_resource_.get(), &stream_pools_, &hub_, priority)};
     }
+
+   private:
+    static auto _get_device() -> int {
+      int dev_id{};
+      cudaGetDevice(&dev_id);
+      return dev_id;
+    }
+
+    int num_devices_{};
+
+    _strm::resource_storage<_strm::pinned_resource> pinned_resource_{};
+    _strm::resource_storage<_strm::managed_resource> managed_resource_{};
+    _strm::stream_pools_t stream_pools_{};
+
+    int dev_id_{};
+    _strm::queue::task_hub_t hub_;
   };
 } // namespace nvexec
 

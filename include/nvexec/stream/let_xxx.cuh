@@ -271,6 +271,26 @@ namespace nvexec::_strm {
       _Fun __fun_;
     };
   };
+
+  template <class Set>
+  struct _transform_let_xxx_sender {
+    template <class Fun, stream_completing_sender Sender>
+    auto operator()(__ignore, Fun fn, Sender&& sndr) const {
+      using __sender_t = __t<let_sender_t<__id<__decay_t<Sender>>, Fun, Set>>;
+      return __sender_t{{}, static_cast<Sender&&>(sndr), static_cast<Fun&&>(fn)};
+    }
+  };
+
+  template <>
+  struct transform_sender_for<stdexec::let_value_t> : _transform_let_xxx_sender<set_value_t> { };
+
+  template <>
+  struct transform_sender_for<stdexec::let_error_t> : _transform_let_xxx_sender<set_error_t> { };
+
+  template <>
+  struct transform_sender_for<stdexec::let_stopped_t>
+    : _transform_let_xxx_sender<set_stopped_t> { };
+
 } // namespace nvexec::_strm
 
 namespace stdexec::__detail {

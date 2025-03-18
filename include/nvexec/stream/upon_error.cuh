@@ -194,6 +194,15 @@ namespace nvexec::_strm {
       }
     };
   };
+
+  template <>
+  struct transform_sender_for<stdexec::upon_error_t> {
+    template <class Fn, stream_completing_sender Sender>
+    auto operator()(__ignore, Fn fun, Sender&& sndr) const {
+      using _sender_t = __t<upon_error_sender_t<__id<__decay_t<Sender>>, Fn>>;
+      return _sender_t{{}, static_cast<Sender&&>(sndr), static_cast<Fn&&>(fun)};
+    }
+  };
 } // namespace nvexec::_strm
 
 namespace stdexec::__detail {
