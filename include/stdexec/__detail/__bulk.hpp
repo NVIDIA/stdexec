@@ -40,14 +40,74 @@ namespace stdexec {
       "In stdexec::bulk(Sender, Policy, Shape, Function)..."_mstr;
     using __on_not_callable = __callable_error<__bulk_context>;
 
-    template <class _Shape, class _Fun>
+    //! Wrapper for a policy object.
+    //!
+    //! If we wrap a standard execution policy, we don't store anything, as we know the type.
+    //! Stores the execution policy object if it's a non-standard one.
+    //! Provides a way to query the execution policy object.
+    template <class _Pol>
+    struct __policy_wrapper {
+      _Pol __pol_;
+
+      /*implicit*/ __policy_wrapper(_Pol __pol)
+        : __pol_{__pol} {
+      }
+
+      const _Pol& __get() const noexcept {
+        return __pol_;
+      }
+    };
+
+    template <>
+    struct __policy_wrapper<sequenced_policy> {
+      /*implicit*/ __policy_wrapper(sequenced_policy) {
+      }
+
+      const sequenced_policy& __get() const noexcept {
+        return seq;
+      }
+    };
+
+    template <>
+    struct __policy_wrapper<parallel_policy> {
+      /*implicit*/ __policy_wrapper(const parallel_policy&) {
+      }
+
+      const parallel_policy& __get() const noexcept {
+        return par;
+      }
+    };
+
+    template <>
+    struct __policy_wrapper<parallel_unsequenced_policy> {
+      /*implicit*/ __policy_wrapper(const parallel_unsequenced_policy&) {
+      }
+
+      const parallel_unsequenced_policy& __get() const noexcept {
+        return par_unseq;
+      }
+    };
+
+    template <>
+    struct __policy_wrapper<unsequenced_policy> {
+      /*implicit*/ __policy_wrapper(const unsequenced_policy&) {
+      }
+
+      const unsequenced_policy& __get() const noexcept {
+        return unseq;
+      }
+    };
+
+    template <class _Pol, class _Shape, class _Fun>
     struct __data {
+      STDEXEC_ATTRIBUTE((no_unique_address)) __policy_wrapper<_Pol> __pol_;
       _Shape __shape_;
       STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
-      static constexpr auto __mbrs_ = __mliterals<&__data::__shape_, &__data::__fun_>();
+      static constexpr auto __mbrs_ =
+        __mliterals<&__data::__pol_, &__data::__shape_, &__data::__fun_>();
     };
-    template <class _Shape, class _Fun>
-    __data(_Shape, _Fun) -> __data<_Shape, _Fun>;
+    template <class _Pol, class _Shape, class _Fun>
+    __data(_Pol, _Shape, _Fun) -> __data<_Pol, _Shape, _Fun>;
 
     template <class _Ty>
     using __decay_ref = __decay_t<_Ty>&;
@@ -79,7 +139,7 @@ namespace stdexec {
         return stdexec::transform_sender(
           __domain,
           __make_sexpr<bulk_t>(
-            __data{__shape, static_cast<_Fun&&>(__fun)}, static_cast<_Sender&&>(__sndr)));
+            __data{__pol, __shape, static_cast<_Fun&&>(__fun)}, static_cast<_Sender&&>(__sndr)));
       }
 
       template <typename _Policy, integral _Shape, copy_constructible _Fun>
@@ -94,6 +154,22 @@ namespace stdexec {
           {}
         };
       }
+
+      // This describes how to use the pieces of a bulk sender to find
+      // legacy customizations of the bulk algorithm.
+      using _Sender = __1;
+      using _Pol = __nth_member<0>(__0);
+      using _Shape = __nth_member<1>(__0);
+      using _Fun = __nth_member<2>(__0);
+      using __legacy_customizations_t = __types<
+        tag_invoke_t(
+          bulk_t,
+          get_completion_scheduler_t<set_value_t>(get_env_t(_Sender&)),
+          _Sender,
+          _Pol,
+          _Shape,
+          _Fun),
+        tag_invoke_t(bulk_t, _Sender, _Pol, _Shape, _Fun)>;
     };
 
     struct __bulk_impl : __sexpr_defaults {

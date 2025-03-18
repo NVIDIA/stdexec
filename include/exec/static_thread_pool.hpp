@@ -237,7 +237,8 @@ namespace exec {
       struct transform_bulk {
         template <class Data, class Sender>
         auto operator()(bulk_t, Data&& data, Sender&& sndr) {
-          auto [shape, fun] = static_cast<Data&&>(data);
+          auto [pol, shape, fun] = static_cast<Data&&>(data);
+          // TODO: handle non-par execution policies
           return bulk_sender_t<Sender, decltype(shape), decltype(fun)>{
             pool_, static_cast<Sender&&>(sndr), shape, std::move(fun)};
         }

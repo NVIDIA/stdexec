@@ -36,34 +36,36 @@ namespace stdexec {
 
 #else
 
+  struct __hidden_construction {};
+
   struct sequenced_policy {
-    constexpr sequenced_policy() = default;
+    constexpr explicit sequenced_policy(__hidden_construction) {};
     sequenced_policy(const sequenced_policy&) = delete;
     sequenced_policy& operator=(const sequenced_policy&) = delete;
   };
 
   struct parallel_policy {
-    constexpr parallel_policy() = default;
+    constexpr explicit parallel_policy(__hidden_construction) {};
     parallel_policy(const parallel_policy&) = delete;
     parallel_policy& operator=(const parallel_policy&) = delete;
   };
 
   struct parallel_unsequenced_policy {
-    constexpr parallel_unsequenced_policy() = default;
+    constexpr explicit parallel_unsequenced_policy(__hidden_construction) {};
     parallel_unsequenced_policy(const parallel_unsequenced_policy&) = delete;
     parallel_unsequenced_policy& operator=(const parallel_unsequenced_policy&) = delete;
   };
 
   struct unsequenced_policy {
-    constexpr unsequenced_policy() = default;
+    constexpr explicit unsequenced_policy(__hidden_construction) {};
     unsequenced_policy(const unsequenced_policy&) = delete;
     unsequenced_policy& operator=(const unsequenced_policy&) = delete;
   };
 
-  inline constexpr sequenced_policy seq{};
-  inline constexpr parallel_policy par{};
-  inline constexpr parallel_unsequenced_policy par_unseq{};
-  inline constexpr unsequenced_policy unseq{};
+  inline constexpr sequenced_policy seq{__hidden_construction{}};
+  inline constexpr parallel_policy par{__hidden_construction{}};
+  inline constexpr parallel_unsequenced_policy par_unseq{__hidden_construction{}};
+  inline constexpr unsequenced_policy unseq{__hidden_construction{}};
 
   template <typename>
   inline constexpr bool is_execution_policy_v = false;
