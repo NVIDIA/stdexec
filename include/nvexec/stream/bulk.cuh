@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
@@ -25,7 +28,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+namespace nvexec::_strm {
 
   namespace _bulk {
     template <int BlockThreads, class... As, std::integral Shape, class Fun>
@@ -81,6 +84,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           op_state_.propagate_completion_signal(set_stopped_t());
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> Env {
           return op_state_.make_env();
         }
@@ -169,8 +173,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         operation_t<CvrefSenderId, ReceiverId, Shape, Fun>& op_state_;
 
-        static std::pair<Shape, Shape>
-          even_share(Shape n, std::size_t rank, std::size_t size) noexcept {
+        static auto even_share(Shape n, std::size_t rank, std::size_t size) noexcept //
+          -> std::pair<Shape, Shape> {
           const auto avg_per_thread = n / size;
           const auto n_big_share = avg_per_thread + 1;
           const auto big_shares = n % size;
@@ -249,6 +253,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           op_state_.propagate_completion_signal(set_stopped_t());
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> env_of_t<Receiver> {
           return stdexec::get_env(op_state_.rcvr_);
         }
@@ -325,10 +330,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     };
   } // namespace multi_gpu_bulk
 
-  template <class SenderId, std::integral Shape, class Fun>
+  template <class SenderId, class Shape, class Fun>
   struct multi_gpu_bulk_sender_t {
     using sender_concept = stdexec::sender_t;
     using Sender = stdexec::__t<SenderId>;
+    static_assert(std::integral<Shape>);
 
     struct __t : stream_sender_base {
       using __id = multi_gpu_bulk_sender_t;
@@ -376,18 +382,17 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
     };
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+} // namespace nvexec::_strm
 
 namespace stdexec::__detail {
   template <class SenderId, class Shape, class Fun>
-  inline constexpr __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::bulk_sender_t<__name_of<__t<SenderId>>, Shape, Fun>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::bulk_sender_t<SenderId, Shape, Fun>>{};
+  inline constexpr __mconst<nvexec::_strm::bulk_sender_t<__name_of<__t<SenderId>>, Shape, Fun>>
+    __name_of_v<nvexec::_strm::bulk_sender_t<SenderId, Shape, Fun>>{};
 
   template <class SenderId, class Shape, class Fun>
   inline constexpr __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::multi_gpu_bulk_sender_t<__name_of<__t<SenderId>>, Shape, Fun>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::multi_gpu_bulk_sender_t<SenderId, Shape, Fun>>{};
+    nvexec::_strm::multi_gpu_bulk_sender_t<__name_of<__t<SenderId>>, Shape, Fun>>
+    __name_of_v<nvexec::_strm::multi_gpu_bulk_sender_t<SenderId, Shape, Fun>>{};
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

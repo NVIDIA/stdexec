@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "stdexec/__detail/__config.hpp"
@@ -25,9 +28,9 @@
 #include <string_view>
 #include <memory>
 #include <vector>
-#include <string.h>
+#include <cstring>
 
-#include <math.h>
+#include <cmath>
 
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
 #  define STDEXEC_STDERR
@@ -89,7 +92,7 @@ struct fields_accessor {
 
   float *base_ptr;
 
-  STDEXEC_ATTRIBUTE((nodiscard, host, device)) float *get(field_id id) const {
+  STDEXEC_ATTRIBUTE((nodiscard, host, device)) auto get(field_id id) const -> float * {
     return base_ptr + static_cast<int>(id) * cells;
   }
 };
@@ -116,8 +119,15 @@ struct grid_t {
   }
 
   [[nodiscard]]
-  fields_accessor accessor() const {
-    return {height / n, width / n, width, height, n, cells, fields_.get()};
+  auto accessor() const -> fields_accessor {
+    return {
+      .dx = height / n,
+      .dy = width / n,
+      .width = width,
+      .height = height,
+      .n = n,
+      .cells = cells,
+      .base_ptr = fields_.get()};
   }
 };
 
@@ -129,7 +139,7 @@ STDEXEC_ATTRIBUTE((host, device)) inline bool
   return ((x - object_x) * (x - object_x) + (y - object_y) * (y - object_y) <= os2);
 }
 
-inline float calculate_dt(float dx, float dy) {
+inline auto calculate_dt(float dx, float dy) -> float {
   const float cfl = 0.3;
   return cfl * std::min(dx, dy) / C0;
 }
@@ -177,8 +187,8 @@ struct grid_initializer_t {
   }
 };
 
-inline grid_initializer_t grid_initializer(float dt, fields_accessor accessor) {
-  return {dt, accessor};
+inline auto grid_initializer(float dt, fields_accessor accessor) -> grid_initializer_t {
+  return {.dt = dt, .accessor = accessor};
 }
 
 STDEXEC_ATTRIBUTE((host, device)) inline std::size_t right_nid(std::size_t cell_id, std::size_t col, std::size_t N) {
@@ -216,7 +226,7 @@ struct h_field_calculator_t {
   }
 };
 
-inline h_field_calculator_t update_h(fields_accessor accessor) {
+inline auto update_h(fields_accessor accessor) -> h_field_calculator_t {
   return {accessor};
 }
 
@@ -226,11 +236,11 @@ struct e_field_calculator_t {
   fields_accessor accessor;
   std::size_t source_position;
 
-  STDEXEC_ATTRIBUTE((nodiscard, host, device)) float gaussian_pulse(float t, float t_0, float tau) const {
+  STDEXEC_ATTRIBUTE((nodiscard, host, device)) auto gaussian_pulse(float t, float t_0, float tau) const -> float {
     return exp(-(((t - t_0) / tau) * (t - t_0) / tau));
   }
 
-  STDEXEC_ATTRIBUTE((nodiscard, host, device)) float calculate_source(float t, float frequency) const {
+  STDEXEC_ATTRIBUTE((nodiscard, host, device)) auto calculate_source(float t, float frequency) const -> float {
     const float tau = 0.5f / frequency;
     const float t_0 = 6.0f * tau;
     return gaussian_pulse(t, t_0, tau);
@@ -264,9 +274,9 @@ struct e_field_calculator_t {
   }
 };
 
-inline e_field_calculator_t update_e(float *time, float dt, fields_accessor accessor) {
+inline auto update_e(float *time, float dt, fields_accessor accessor) -> e_field_calculator_t {
   std::size_t source_position = accessor.n / 2 + (accessor.n * (accessor.n / 2));
-  return {dt, time, accessor, source_position};
+  return {.dt = dt, .time = time, .accessor = accessor, .source_position = source_position};
 }
 
 class result_dumper_t {
@@ -358,7 +368,7 @@ class result_dumper_t {
   }
 };
 
-inline result_dumper_t dump_vtk(bool write_results, fields_accessor accessor) {
+inline auto dump_vtk(bool write_results, fields_accessor accessor) -> result_dumper_t {
   return {write_results, accessor};
 }
 
@@ -371,12 +381,12 @@ class time_storage_t {
   }
 
   [[nodiscard]]
-  float *get() const {
+  auto get() const -> float * {
     return time_.get();
   }
 };
 
-std::string bin_name(int node_id) {
+auto bin_name(int node_id) -> std::string {
   return "out_" + std::to_string(node_id) + ".bin";
 }
 
@@ -418,17 +428,17 @@ void report_performance(
   report_performance(cells, iterations, method, elapsed);
 }
 
-bool contains(std::string_view str, char c) {
+auto contains(std::string_view str, char c) -> bool {
   return str.find(c) != std::string_view::npos;
 }
 
-std::pair<std::string_view, std::string_view> split(std::string_view str, char by = '=') {
+auto split(std::string_view str, char by = '=') -> std::pair<std::string_view, std::string_view> {
   auto it = str.find(by);
   return std::make_pair(str.substr(0, it), str.substr(it + 1, str.size() - it - 1));
 }
 
 [[nodiscard]]
-std::map<std::string_view, std::size_t> parse_cmd(int argc, char *argv[]) {
+auto parse_cmd(int argc, char *argv[]) -> std::map<std::string_view, std::size_t> {
   std::map<std::string_view, std::size_t> params;
   const std::vector<std::string_view> args(argv + 1, argv + argc);
 
@@ -453,10 +463,10 @@ std::map<std::string_view, std::size_t> parse_cmd(int argc, char *argv[]) {
 }
 
 [[nodiscard]]
-std::size_t value(
+auto value(
   const std::map<std::string_view, std::size_t> &params,
   std::string_view name,
-  std::size_t default_value = 0) {
+  std::size_t default_value = 0) -> std::size_t {
   if (params.count(name)) {
     return params.at(name);
   }

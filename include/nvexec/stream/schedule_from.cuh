@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
@@ -27,7 +30,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+namespace nvexec::_strm {
 
   namespace _sched_from {
 
@@ -65,7 +68,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             // a kernel and construct the temporary storage on the device to avoid managed
             // memory movements. Otherwise, we construct the temporary storage on the host
             // and prefetch it to the device.
-            storage_t* storage = static_cast<storage_t*>(operation_state_.temp_storage_);
+            auto* storage = static_cast<storage_t*>(operation_state_.temp_storage_);
             constexpr bool construct_on_device = trivially_copyable<__decay_t<As>...>;
 
             if constexpr (!construct_on_device) {
@@ -140,6 +143,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           complete(set_stopped_t());
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> Env {
           return operation_state_.make_env();
         }
@@ -154,6 +158,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return stdexec::connect(static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr));
       }
 
+      [[nodiscard]]
       auto get_env() const noexcept -> env_of_t<const Sender&> {
         // TODO - this code is not exercised by any test
         return stdexec::get_env(sndr_);
@@ -186,7 +191,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       context_state_t context_state_;
 
       template <class _Tag>
-      Scheduler query(get_completion_scheduler_t<_Tag>) const noexcept {
+      auto query(get_completion_scheduler_t<_Tag>) const noexcept -> Scheduler {
         return {context_state_};
       }
     };
@@ -237,13 +242,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
     };
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+} // namespace nvexec::_strm
 
 namespace stdexec::__detail {
   template <class _Scheduler, class _SenderId>
-  extern __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::schedule_from_sender_t<_Scheduler, __name_of<__t<_SenderId>>>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::schedule_from_sender_t<_Scheduler, _SenderId>>;
+  extern __mconst<nvexec::_strm::schedule_from_sender_t<_Scheduler, __name_of<__t<_SenderId>>>>
+    __name_of_v<nvexec::_strm::schedule_from_sender_t<_Scheduler, _SenderId>>;
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

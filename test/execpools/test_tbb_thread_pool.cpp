@@ -28,15 +28,13 @@
 
 #include <execpools/tbb/tbb_thread_pool.hpp>
 
-#include <tbbexec/tbb_thread_pool.hpp>
-
 namespace ex = stdexec;
 
 namespace {
 
   template <ex::scheduler Sched = inline_scheduler>
   inline auto _with_scheduler(Sched sched = {}) {
-    return exec::write(stdexec::prop{ex::get_scheduler, std::move(sched)});
+    return exec::write_env(stdexec::prop{ex::get_scheduler, std::move(sched)});
   }
 
   namespace {

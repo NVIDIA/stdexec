@@ -56,7 +56,9 @@ namespace stdexec {
   struct __types;
 
   template <class... _Ts>
-  concept __typename = requires { typename __types<_Ts...>; };
+  concept __typename = requires { //
+    typename __types<_Ts...>;     // NOLINT
+  };
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   template <class _Ap, class _Bp>

@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
@@ -29,7 +32,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nvexec {
-  namespace STDEXEC_STREAM_DETAIL_NS {
+  namespace _strm {
     struct launch_params {
       std::size_t grid_size = 1;
       std::size_t block_size = 1;
@@ -80,6 +83,7 @@ namespace nvexec {
             op_state_.propagate_completion_signal(set_stopped_t());
           }
 
+          [[nodiscard]]
           auto get_env() const noexcept -> typename operation_state_base_t<ReceiverId>::env_t {
             return op_state_.make_env();
           }
@@ -158,12 +162,13 @@ namespace nvexec {
       using sender_t = stdexec::__t<launch_sender_t<stdexec::__id<__decay_t<Sender>>, Fun>>;
 
       template <sender Sender, __movable_value Fun>
-      sender_t<Sender, Fun> operator()(Sender&& sndr, Fun&& fun) const {
+      auto operator()(Sender&& sndr, Fun&& fun) const -> sender_t<Sender, Fun> {
         return {{}, static_cast<Sender&&>(sndr), static_cast<Fun&&>(fun), {}};
       }
 
       template <sender Sender, __movable_value Fun>
-      sender_t<Sender, Fun> operator()(Sender&& sndr, launch_params params, Fun&& fun) const {
+      auto
+        operator()(Sender&& sndr, launch_params params, Fun&& fun) const -> sender_t<Sender, Fun> {
         return {{}, static_cast<Sender&&>(sndr), static_cast<Fun&&>(fun), params};
       }
 
@@ -183,17 +188,16 @@ namespace nvexec {
       }
     };
 
-  } // namespace STDEXEC_STREAM_DETAIL_NS
+  } // namespace _strm
 
-  inline constexpr STDEXEC_STREAM_DETAIL_NS::launch_t launch{};
+  inline constexpr _strm::launch_t launch{};
 
 } // namespace nvexec
 
 namespace stdexec::__detail {
   template <class SenderId, class Fun>
-  inline constexpr __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::launch_sender_t<__name_of<__t<SenderId>>, Fun>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::launch_sender_t<SenderId, Fun>>{};
+  inline constexpr __mconst<nvexec::_strm::launch_sender_t<__name_of<__t<SenderId>>, Fun>>
+    __name_of_v<nvexec::_strm::launch_sender_t<SenderId, Fun>>{};
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

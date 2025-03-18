@@ -43,7 +43,7 @@ namespace stdexec {
     template <class _Tag, class _Env>
     using __query_failed_error = //
       __mexception<              //
-        _NOT_CALLABLE_<"In stdexec::read()..."_mstr, __query_failed_diag>,
+        _NOT_CALLABLE_<"In stdexec::read_env()..."_mstr, __query_failed_diag>,
         _WITH_QUERY_<_Tag>,
         _WITH_ENVIRONMENT_<_Env>>;
 
@@ -83,6 +83,10 @@ namespace stdexec {
       using __completions_t =
         __minvoke<__mtry_catch_q<__read::__completions_t, __q<__query_failed_error>>, _Tag, _Env>;
 
+      static constexpr auto get_attrs = [](__ignore) noexcept {
+        return prop{__is_scheduler_affine_t{}, std::true_type{}};
+      };
+
       static constexpr auto get_completion_signatures = //
         []<class _Self, class _Env>(const _Self&, _Env&&) noexcept
         -> __completions_t<__data_of<_Self>, _Env> {
@@ -118,6 +122,7 @@ namespace stdexec {
     };
   } // namespace __read
 
+  [[deprecated("read has been renamed to read_env")]]
   inline constexpr __read::__read_env_t read{};
   inline constexpr __read::__read_env_t read_env{};
 

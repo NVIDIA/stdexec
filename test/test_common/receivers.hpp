@@ -307,7 +307,8 @@ namespace {
     Env env_;
   };
 
-  inline std::pair<const std::type_info&, std::string> to_comparable(std::exception_ptr eptr) {
+  inline auto to_comparable(std::exception_ptr eptr) //
+    -> std::pair<const std::type_info&, std::string> {
     try {
       std::rethrow_exception(eptr);
     } catch (const std::exception& e) {
@@ -318,8 +319,8 @@ namespace {
   }
 
   template <class T>
-  inline const T& to_comparable(const T& value) {
-    return value;
+  inline auto to_comparable(const T& value) -> const T& {
+    return value; // NOLINT
   }
 
   template <class T = std::exception_ptr, class Env = empty_env>
@@ -509,7 +510,7 @@ namespace {
   };
 
   template <class F>
-  fun_receiver<F> make_fun_receiver(F f) {
+  auto make_fun_receiver(F f) -> fun_receiver<F> {
     return fun_receiver<F>{std::forward<F>(f)};
   }
 

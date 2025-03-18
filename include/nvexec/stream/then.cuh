@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
@@ -30,7 +33,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+namespace nvexec::_strm {
 
   namespace _then {
     template <class... As, class Fun>
@@ -76,7 +79,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             }
           } else {
             using decayed_result_t = __decay_t<result_t>;
-            decayed_result_t* d_result = static_cast<decayed_result_t*>(op_state.temp_storage_);
+            auto* d_result = static_cast<decayed_result_t*>(op_state.temp_storage_);
             kernel_with_result<As&&...>
               <<<1, 1, 0, stream>>>(std::move(f_), d_result, static_cast<As&&>(as)...);
             op_state.defer_temp_storage_destruction(d_result);
@@ -209,13 +212,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
     };
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+} // namespace nvexec::_strm
 
 namespace stdexec::__detail {
   template <class SenderId, class Fun>
-  inline constexpr __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::then_sender_t<__name_of<__t<SenderId>>, Fun>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::then_sender_t<SenderId, Fun>>{};
+  inline constexpr __mconst<nvexec::_strm::then_sender_t<__name_of<__t<SenderId>>, Fun>>
+    __name_of_v<nvexec::_strm::then_sender_t<SenderId, Fun>>{};
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

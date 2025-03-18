@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
@@ -27,7 +30,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+namespace nvexec::_strm {
   namespace let_xxx {
     template <class... As, class Fun, class ResultSenderT>
     __launch_bounds__(1) __global__
@@ -115,8 +118,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           using op_state_t = __minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
 
           cudaStream_t stream = __op_state_->get_stream();
-          result_sender_t* result_sender =
-            static_cast<result_sender_t*>(__op_state_->temp_storage_);
+          auto* result_sender = static_cast<result_sender_t*>(__op_state_->temp_storage_);
           kernel_with_result<_As&&...><<<1, 1, 0, stream>>>(
             std::move(__op_state_->__fun_), result_sender, static_cast<_As&&>(__as)...);
 
@@ -269,13 +271,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       _Fun __fun_;
     };
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+} // namespace nvexec::_strm
 
 namespace stdexec::__detail {
   template <class SenderId, class Fun, class Set>
-  inline constexpr __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::let_sender_t<__name_of<__t<SenderId>>, Fun, Set>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::let_sender_t<SenderId, Fun, Set>>{};
+  inline constexpr __mconst<nvexec::_strm::let_sender_t<__name_of<__t<SenderId>>, Fun, Set>>
+    __name_of_v<nvexec::_strm::let_sender_t<SenderId, Fun, Set>>{};
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

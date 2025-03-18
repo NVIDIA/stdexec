@@ -1,11 +1,5 @@
 # https://clangd.llvm.org/config
 
-# Apply a config conditionally to all C files
-If:
-  PathMatch: .*\.(c|h)$
-
----
-
 # Apply a config conditionally to all C++ files except those in the
 # include/execpools directory which need platform-dependent headers
 If:
@@ -17,6 +11,7 @@ If:
 # Apply a config conditionally to all CUDA files
 If:
   PathMatch: .*\.cuh?$
+  PathExclude: examples/nvexec/.*
 CompileFlags:
   Add:
     # Allow variadic CUDA functions
@@ -35,7 +30,7 @@ CompileFlags:
 
 # Use clang++ in CUDA mode to provide intellisense for files with `nvexec` in their path
 If:
-  PathMatch: (include|examples|test)/nvexec.*
+  PathMatch: [include/nvexec/.*, test/nvexec/.*]
 CompileFlags:
   Compiler: clang++
   Add:
@@ -43,6 +38,7 @@ CompileFlags:
     - "cuda"
     - "-std=gnu++20"
     - "-Wno-unknown-cuda-version"
+    - "--cuda-host-only"
 
 ---
 
@@ -50,10 +46,12 @@ CompileFlags:
 CompileFlags:
   CompilationDatabase: .
   Add:
+    - "-DLIBCUDACXX_ENABLE_EXPERIMENTAL_MEMORY_RESOURCE"
     # report all errors
     - "-ferror-limit=0"
     - "-fmacro-backtrace-limit=0"
     - "-ftemplate-backtrace-limit=0"
+    - "-std=gnu++20"
   Remove:
     - "-stdpar*"
     # strip CUDA fatbin args
@@ -74,6 +72,7 @@ CompileFlags:
     - "--expt-relaxed-constexpr"
     - "-forward-unknown-to-host-compiler"
     - "-Werror=cross-execution-space-call"
+    - "-e1000"
 Diagnostics:
   Suppress:
     - "variadic_device_fn"
