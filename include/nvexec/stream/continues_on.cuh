@@ -170,6 +170,24 @@ namespace nvexec::_strm {
       }
     };
   };
+
+  template <>
+  struct transform_sender_for<stdexec::continues_on_t> {
+    template <class Sender>
+    using _current_scheduler_t =
+      __result_of<get_completion_scheduler<set_value_t>, env_of_t<Sender>>;
+
+    template <class Sched, class Sender>
+      requires gpu_stream_scheduler<_current_scheduler_t<Sender>>
+    auto operator()(__ignore, Sched sched, Sender&& sndr) const {
+      using _sender_t = __t<continues_on_sender_t<__id<__decay_t<Sender>>>>;
+      auto stream_sched = get_completion_scheduler<set_value_t>(get_env(sndr));
+      return schedule_from(
+        static_cast<Sched&&>(sched),
+        _sender_t{stream_sched.context_state_, static_cast<Sender&&>(sndr)});
+    }
+  };
+
 } // namespace nvexec::_strm
 
 namespace stdexec::__detail {

@@ -242,6 +242,16 @@ namespace nvexec::_strm {
       }
     };
   };
+
+  template <>
+  struct transform_sender_for<stdexec::schedule_from_t> {
+    template <gpu_stream_scheduler Sched, class Sender>
+    auto operator()(__ignore, Sched sched, Sender&& sndr) const {
+      using __sender_t =
+        stdexec::__t<schedule_from_sender_t<stream_scheduler, __id<__decay_t<Sender>>>>;
+      return __sender_t{sched.context_state_, static_cast<Sender&&>(sndr)};
+    }
+  };
 } // namespace nvexec::_strm
 
 namespace stdexec::__detail {

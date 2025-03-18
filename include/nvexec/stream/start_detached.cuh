@@ -21,22 +21,40 @@
 #include <exception>
 
 #include "common.cuh"
+#include "submit.cuh"
 
-namespace nvexec::_strm::_start_detached {
+namespace nvexec::_strm {
+  namespace _start_detached {
+    template <class Env>
+    struct detached_receiver_t : stream_receiver_base {
+      STDEXEC_ATTRIBUTE((no_unique_address)) Env env_;
 
-  struct detached_receiver_t : stream_receiver_base {
-    template <class... _Args>
-    void set_value(_Args&&...) noexcept {
-    }
+      template <class... _Args>
+      void set_value(_Args&&...) noexcept {
+      }
 
-    template <class _Error>
-    [[noreturn]]
-    void set_error(_Error&&) noexcept {
-      std::terminate();
-    }
+      template <class _Error>
+      [[noreturn]]
+      void set_error(_Error&&) noexcept {
+        std::terminate();
+      }
 
-    void set_stopped() noexcept {
+      void set_stopped() noexcept {
+      }
+
+      auto get_env() const noexcept -> const Env& {
+        return env_;
+      }
+    };
+
+  } // namespace _start_detached
+
+  template <>
+  struct apply_sender_for<start_detached_t> {
+    template <class Sender, class Env = __root_env>
+    void operator()(Sender&& sndr, Env&& env = {}) const {
+      using _receiver_t = _start_detached::detached_receiver_t<__decay_t<Env>>;
+      _submit::submit_t{}(static_cast<Sender&&>(sndr), _receiver_t{{}, static_cast<Env&&>(env)});
     }
   };
-
-} // namespace nvexec::_strm::_start_detached
+} // namespace nvexec::_strm

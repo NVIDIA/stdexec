@@ -473,6 +473,29 @@ namespace nvexec::_strm {
       __tuple_for<stdexec::__t<SenderIds>...> sndrs_;
     };
   };
+
+  template <>
+  struct transform_sender_for<stdexec::when_all_t> {
+    template <stream_completing_sender... Senders>
+    auto operator()(__ignore, __ignore, Senders&&... sndrs) const {
+      using __sender_t =
+        __t<when_all_sender_t<false, stream_scheduler, __id<__decay_t<Senders>>...>>;
+      return __sender_t{
+        context_state_t{nullptr, nullptr, nullptr, nullptr},
+        static_cast<Senders&&>(sndrs)...
+      };
+    }
+  };
+
+  template <>
+  struct transform_sender_for<stdexec::transfer_when_all_t> {
+    template <gpu_stream_scheduler Scheduler, stream_completing_sender... Senders>
+    auto operator()(__ignore, Scheduler sched, Senders&&... sndrs) const {
+      using __sender_t =
+        __t<when_all_sender_t<true, stream_scheduler, __id<__decay_t<Senders>>...>>;
+      return __sender_t{sched.context_state_, static_cast<Senders&&>(sndrs)...};
+    }
+  };
 } // namespace nvexec::_strm
 
 namespace stdexec::__detail {
