@@ -187,7 +187,7 @@ namespace stdexec {
   STDEXEC_PRAGMA_PUSH()
   STDEXEC_PRAGMA_IGNORE_MSVC(4293)
 
-  constexpr std::size_t __mpow2(std::size_t __size) noexcept {
+  constexpr auto __mpow2(std::size_t __size) noexcept -> std::size_t {
     --__size;
     __size |= __size >> 1;
     __size |= __size >> 2;
@@ -216,8 +216,7 @@ namespace stdexec {
     }
 #else
     template <std::size_t _Ny>
-    constexpr __mstring(const char (&__str)[_Ny], int = 0) noexcept
-      : __what_{} {
+    constexpr __mstring(const char (&__str)[_Ny], int = 0) noexcept {
       for (auto __i = 0ull; char __ch: __str) {
         __what_[__i++] = __ch;
       }
@@ -255,7 +254,7 @@ namespace stdexec {
       return (_Len < _OtherLen) ? std::strong_ordering::less : std::strong_ordering::greater;
     }
 
-    char __what_[_Len];
+    char __what_[_Len]{};
   };
 
   template <std::size_t _Len>
@@ -1130,7 +1129,7 @@ namespace stdexec {
   template <std::size_t _Np>
   struct __nth_pack_element_t {
     template <class... _Ts>
-    STDEXEC_ATTRIBUTE((always_inline)) constexpr decltype(auto) operator()(_Ts &&...__ts) const noexcept {
+    STDEXEC_ATTRIBUTE((always_inline)) constexpr auto operator()(_Ts &&...__ts) const noexcept -> decltype(auto) {
       static_assert(_Np < sizeof...(_Ts));
       return static_cast<_Ts...[_Np] &&>(__ts...[_Np]);
     }
@@ -1175,7 +1174,7 @@ namespace stdexec {
   template <std::size_t _Np>
   struct __nth_member {
     template <class _Ty>
-    STDEXEC_ATTRIBUTE((always_inline)) constexpr decltype(auto) operator()(_Ty &&__ty) const noexcept {
+    STDEXEC_ATTRIBUTE((always_inline)) constexpr auto operator()(_Ty &&__ty) const noexcept -> decltype(auto) {
       return static_cast<_Ty &&>(__ty).*(__ty.__mbrs_.template __nth<_Np>());
     }
   };

@@ -87,12 +87,13 @@ struct RunThread {
 };
 
 struct my_numa_distribution : public exec::default_numa_policy {
-  int thread_index_to_node(std::size_t index) const noexcept {
+  [[nodiscard]]
+  auto thread_index_to_node(std::size_t index) const noexcept -> int {
     return exec::default_numa_policy::thread_index_to_node(2 * index);
   }
 };
 
-int main(int argc, char** argv) {
+auto main(int argc, char** argv) -> int {
   my_numa_distribution numa{};
   my_main<exec::static_thread_pool, RunThread>(argc, argv, numa);
 }

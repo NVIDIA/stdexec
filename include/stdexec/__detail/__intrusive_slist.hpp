@@ -74,7 +74,7 @@ namespace stdexec {
       }
 
       [[nodiscard]]
-      _Item* remove(_Item* __item) noexcept {
+      auto remove(_Item* __item) noexcept -> _Item* {
         STDEXEC_ASSERT(__item != nullptr);
         if (__head_ == __item) {
           return pop_front();

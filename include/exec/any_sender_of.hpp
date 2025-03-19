@@ -82,7 +82,8 @@ namespace exec {
     struct __query_vfun_fn<_EnvProvider, true> {
       template <class _Tag, class _Ret, class... _As>
         requires __callable<_Tag, env_of_t<const _EnvProvider&>, _As...>
-      constexpr _Ret (*operator()(_Tag (*)(_Ret (*)(_As...))) const noexcept)(void*, _As...) {
+      constexpr auto
+        operator()(_Tag (*)(_Ret (*)(_As...))) const noexcept -> _Ret (*)(void*, _As...) {
         return +[](void* __env_provider, _As... __as) -> _Ret {
           return _Tag{}(
             stdexec::get_env(*static_cast<const _EnvProvider*>(__env_provider)),
@@ -92,8 +93,8 @@ namespace exec {
 
       template <class _Tag, class _Ret, class... _As>
         requires __callable<_Tag, env_of_t<const _EnvProvider&>, _As...>
-      constexpr _Ret (*operator()(_Tag (*)(_Ret (*)(_As...) noexcept))
-                        const noexcept)(void*, _As...) noexcept {
+      constexpr auto operator()(_Tag (*)(_Ret (*)(_As...) noexcept)) const noexcept
+        -> _Ret (*)(void*, _As...) noexcept {
         return +[](void* __env_provider, _As... __as) noexcept -> _Ret {
           static_assert(__nothrow_callable<_Tag, const env_of_t<_EnvProvider>&, _As...>);
           return _Tag{}(
@@ -107,7 +108,8 @@ namespace exec {
     struct __query_vfun_fn<_Queryable, false> {
       template <class _Tag, class _Ret, class... _As>
         requires __callable<_Tag, const _Queryable&, _As...>
-      constexpr _Ret (*operator()(_Tag (*)(_Ret (*)(_As...))) const noexcept)(void*, _As...) {
+      constexpr auto
+        operator()(_Tag (*)(_Ret (*)(_As...))) const noexcept -> _Ret (*)(void*, _As...) {
         return +[](void* __queryable, _As... __as) -> _Ret {
           return _Tag{}(*static_cast<const _Queryable*>(__queryable), static_cast<_As&&>(__as)...);
         };
@@ -115,8 +117,8 @@ namespace exec {
 
       template <class _Tag, class _Ret, class... _As>
         requires __callable<_Tag, const _Queryable&, _As...>
-      constexpr _Ret (*operator()(_Tag (*)(_Ret (*)(_As...) noexcept))
-                        const noexcept)(void*, _As...) noexcept {
+      constexpr auto operator()(_Tag (*)(_Ret (*)(_As...) noexcept)) const noexcept
+        -> _Ret (*)(void*, _As...) noexcept {
         return +[](void* __env_provider, _As... __as) noexcept -> _Ret {
           static_assert(__nothrow_callable<_Tag, const _Queryable&, _As...>);
           return _Tag{}(
@@ -152,7 +154,8 @@ namespace exec {
     struct __storage_vfun_fn {
       template <class _Tag, class... _As>
         requires __callable<_Tag, __mtype<_Tp>, _Storage&, _As...>
-      constexpr void (*operator()(_Tag (*)(void (*)(_As...))) const noexcept)(void*, _As...) {
+      constexpr auto
+        operator()(_Tag (*)(void (*)(_As...))) const noexcept -> void (*)(void*, _As...) {
         return +[](void* __storage, _As... __as) -> void {
           return _Tag{}(
             __mtype<_Tp>{}, *static_cast<_Storage*>(__storage), static_cast<_As&&>(__as)...);
@@ -161,8 +164,8 @@ namespace exec {
 
       template <class _Tag, class... _As>
         requires __callable<_Tag, __mtype<_Tp>, _Storage&, _As...>
-      constexpr void (*operator()(_Tag (*)(void (*)(_As...) noexcept))
-                        const noexcept)(void*, _As...) noexcept {
+      constexpr auto operator()(_Tag (*)(void (*)(_As...) noexcept)) const noexcept
+        -> void (*)(void*, _As...) noexcept {
         return +[](void* __storage, _As... __as) noexcept -> void {
           static_assert(__nothrow_callable<_Tag, __mtype<_Tp>, _Storage&, _As...>);
           return _Tag{}(
@@ -324,7 +327,7 @@ namespace exec {
         template <class _Tp, class... _As>
         void __construct_small(_As&&... __args) {
           static_assert(sizeof(_Tp) <= __buffer_size && alignof(_Tp) <= __alignment);
-          _Tp* __pointer = static_cast<_Tp*>(static_cast<void*>(&__buffer_[0]));
+          _Tp* __pointer = reinterpret_cast<_Tp*>(&__buffer_[0]);
           using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
           _Alloc __alloc{__allocator_};
           std::allocator_traits<_Alloc>::construct(
@@ -480,7 +483,7 @@ namespace exec {
       template <class _Tp, class... _As>
       void __construct_small(_As&&... __args) {
         static_assert(sizeof(_Tp) <= __buffer_size && alignof(_Tp) <= __alignment);
-        _Tp* __pointer = static_cast<_Tp*>(static_cast<void*>(&__buffer_[0]));
+        _Tp* __pointer = reinterpret_cast<_Tp*>(&__buffer_[0]);
         using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
         _Alloc __alloc{__allocator_};
         std::allocator_traits<_Alloc>::construct(__alloc, __pointer, static_cast<_As&&>(__args)...);
@@ -658,6 +661,7 @@ namespace exec {
             return (*__vtable_)(_Tag{}, __rcvr_, static_cast<_As&&>(__as)...);
           }
 
+          [[nodiscard]]
           auto query(get_stop_token_t) const noexcept -> inplace_stop_token {
             return __token_;
           }
@@ -1052,8 +1056,8 @@ namespace exec {
 
       __scheduler(__scheduler&&) noexcept = default;
       __scheduler(const __scheduler&) noexcept = default;
-      __scheduler& operator=(__scheduler&&) noexcept = default;
-      __scheduler& operator=(const __scheduler&) noexcept = default;
+      auto operator=(__scheduler&&) noexcept -> __scheduler& = default;
+      auto operator=(const __scheduler&) noexcept -> __scheduler& = default;
 
       using __sender_t = _ScheduleSender;
 

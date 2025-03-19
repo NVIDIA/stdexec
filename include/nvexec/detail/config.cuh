@@ -25,14 +25,6 @@
 #  error The NVIDIA schedulers and utilities require CUDA support
 #endif
 
-// clang-tidy struggles with the CUDA-specific function annotations
-#ifdef STDEXEC_CLANG_TIDY
-#  define __launch_bounds__(...)
-#  define __host__
-#  define __device__
-#  define __global__
-#endif
-
 namespace nvexec::_strm {
   using namespace stdexec;
 } // namespace nvexec::_strm

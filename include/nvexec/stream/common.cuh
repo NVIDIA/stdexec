@@ -51,7 +51,7 @@ namespace nvexec {
     device
   };
 
-#if defined(__clang__) && defined(__CUDA__) && !defined(STDEXEC_CLANG_TIDY)
+#if defined(__clang__) && defined(__CUDA__) && !defined(STDEXEC_CLANG_TIDY_INVOKED)
   __host__ inline auto get_device_type() noexcept -> device_type {
     return device_type::host;
   }
@@ -98,7 +98,8 @@ namespace nvexec {
       int least{};
       int greatest{};
 
-      if (cudaError_t status = STDEXEC_DBG_ERR(cudaDeviceGetStreamPriorityRange(&least, &greatest));
+      if (cudaError_t status =
+            STDEXEC_LOG_CUDA_API(cudaDeviceGetStreamPriorityRange(&least, &greatest));
           status != cudaSuccess) {
         return std::make_pair(0, status);
       }
@@ -129,7 +130,7 @@ namespace nvexec {
           cudaError_t status{cudaSuccess};
 
           if (priority == stream_priority::normal) {
-            status = STDEXEC_DBG_ERR(cudaStreamCreate(&stream));
+            status = STDEXEC_LOG_CUDA_API(cudaStreamCreate(&stream));
           } else {
             int cuda_priority{};
             std::tie(cuda_priority, status) = get_stream_priority(priority);
@@ -138,7 +139,7 @@ namespace nvexec {
               return std::make_pair(cudaStream_t{}, status);
             }
 
-            status = STDEXEC_DBG_ERR(
+            status = STDEXEC_LOG_CUDA_API(
               cudaStreamCreateWithPriority(&stream, cudaStreamDefault, cuda_priority));
           }
 
@@ -229,7 +230,7 @@ namespace nvexec {
 
     struct stream_receiver_base {
       using receiver_concept = stdexec::receiver_t;
-      constexpr static std::size_t memory_allocation_size = 0;
+      static constexpr std::size_t memory_allocation_size = 0;
     };
 
     struct stream_env_base {
@@ -267,7 +268,7 @@ namespace nvexec {
 
       ~stream_provider_t() {
         if (own_stream_) {
-          cudaStream_t stream = own_stream_.value();
+          cudaStream_t stream = *own_stream_;
 
           if (!cemetery_.empty()) {
             for (auto& f: cemetery_) {
@@ -473,7 +474,7 @@ namespace nvexec {
 
         this->free_ = [](task_base_t* t) noexcept {
           continuation_task_t& self = *static_cast<continuation_task_t*>(t);
-          STDEXEC_DBG_ERR(cudaFreeAsync(self.atom_next_, self.stream_));
+          STDEXEC_ASSERT_CUDA_API(cudaFreeAsync(self.atom_next_, self.stream_));
           self.pinned_resource_->deallocate(
             t, sizeof(continuation_task_t), std::alignment_of_v<continuation_task_t>);
         };
@@ -481,10 +482,10 @@ namespace nvexec {
         this->next_ = nullptr;
 
         constexpr std::size_t ptr_size = sizeof(this->atom_next_);
-        status_ = STDEXEC_DBG_ERR(cudaMallocAsync(&this->atom_next_, ptr_size, stream_));
+        status_ = STDEXEC_LOG_CUDA_API(cudaMallocAsync(&this->atom_next_, ptr_size, stream_));
 
         if (status_ == cudaSuccess) {
-          status_ = STDEXEC_DBG_ERR(cudaMemsetAsync(this->atom_next_, 0, ptr_size, stream_));
+          status_ = STDEXEC_LOG_CUDA_API(cudaMemsetAsync(this->atom_next_, 0, ptr_size, stream_));
         }
       }
     };
@@ -693,18 +694,20 @@ namespace nvexec {
           : base_t(static_cast<outer_receiver_t&&>(out_receiver), context_state)
           , storage_(
               make_host<variant_t>(this->stream_provider_.status_, context_state.pinned_resource_))
-          , task_(make_host<task_t>(
-                    this->stream_provider_.status_,
-                    context_state.pinned_resource_,
-                    receiver_provider(*this),
-                    storage_.get(),
-                    this->get_stream(),
-                    context_state.pinned_resource_)
-                    .release())
-          , env_(make_host<env_t>(
-              this->stream_provider_.status_,
-              context_state.pinned_resource_,
-              this->make_env()))
+          , task_(
+              make_host<task_t>(
+                this->stream_provider_.status_,
+                context_state.pinned_resource_,
+                receiver_provider(*this),
+                storage_.get(),
+                this->get_stream(),
+                context_state.pinned_resource_)
+                .release())
+          , env_(
+              make_host<env_t>(
+                this->stream_provider_.status_,
+                context_state.pinned_resource_,
+                this->make_env()))
           , inner_op_{connect(
               static_cast<sender_t&&>(sender),
               stream_enqueue_receiver_t{

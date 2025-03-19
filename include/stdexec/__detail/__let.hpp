@@ -42,10 +42,11 @@ namespace stdexec {
     // have a completion scheduler.
     struct __unknown_scheduler {
       struct __env {
-        static constexpr bool query(__is_scheduler_affine_t) noexcept {
+        static constexpr auto query(__is_scheduler_affine_t) noexcept -> bool {
           return true;
         }
 
+        [[nodiscard]]
         constexpr auto query(get_completion_scheduler_t<set_value_t>) const noexcept {
           return __unknown_scheduler{};
         }
@@ -54,16 +55,18 @@ namespace stdexec {
       struct __sender {
         using sender_concept = sender_t;
 
+        [[nodiscard]]
         constexpr auto get_env() const noexcept -> __env {
-          return __env();
+          return {};
         }
       };
 
+      [[nodiscard]]
       auto schedule() const noexcept {
         return __sender();
       }
 
-      bool operator==(const __unknown_scheduler&) const noexcept = default;
+      auto operator==(const __unknown_scheduler&) const noexcept -> bool = default;
     };
 
     inline constexpr auto __get_rcvr = [](auto& __op_state) noexcept -> decltype(auto) {

@@ -116,12 +116,14 @@ namespace {
     struct sender : ex::schedule_result_t<inline_scheduler> {
       struct env {
         template <class Tag>
-        custom_scheduler query(ex::get_completion_scheduler_t<Tag>) const noexcept {
+        [[nodiscard]] [[nodiscard]] [[nodiscard]]
+        auto query(ex::get_completion_scheduler_t<Tag>) const noexcept -> custom_scheduler {
           return {};
         }
       };
 
-      env get_env() const noexcept {
+      [[nodiscard]]
+      auto get_env() const noexcept -> env {
         return {};
       }
     };
@@ -133,15 +135,17 @@ namespace {
       }
     };
 
-    domain query(ex::get_domain_t) const noexcept {
+    [[nodiscard]]
+    auto query(ex::get_domain_t) const noexcept -> domain {
       return {};
     }
 
-    sender schedule() const noexcept {
+    [[nodiscard]]
+    auto schedule() const noexcept -> sender {
       return {};
     }
 
-    bool operator==(const custom_scheduler&) const = default;
+    auto operator==(const custom_scheduler&) const -> bool = default;
   };
 
   TEST_CASE("start_detached can be customized on sender", "[consumers][start_detached]") {
@@ -165,15 +169,17 @@ namespace {
   struct counting_resource : std::pmr::memory_resource {
     counting_resource() = default;
 
-    std::size_t get_count() const noexcept {
+    [[nodiscard]]
+    auto get_count() const noexcept -> std::size_t {
       return count;
     }
 
-    std::size_t get_alive() const noexcept {
+    [[nodiscard]]
+    auto get_alive() const noexcept -> std::size_t {
       return alive;
     }
    private:
-    void* do_allocate(std::size_t bytes, std::size_t alignment) override {
+    auto do_allocate(std::size_t bytes, std::size_t alignment) -> void* override {
       ++count;
       ++alive;
       return std::pmr::new_delete_resource()->allocate(bytes, alignment);
@@ -184,7 +190,8 @@ namespace {
       return std::pmr::new_delete_resource()->deallocate(p, bytes, alignment);
     }
 
-    bool do_is_equal(const memory_resource& other) const noexcept override {
+    [[nodiscard]]
+    auto do_is_equal(const memory_resource& other) const noexcept -> bool override {
       return this == &other;
     }
 

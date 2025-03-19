@@ -28,7 +28,7 @@ struct __uuid {
   std::uint64_t __parts1;
   std::uint64_t __parts2;
 
-  friend bool operator==(__uuid, __uuid) noexcept = default;
+  friend auto operator==(__uuid, __uuid) noexcept -> bool = default;
 };
 
 namespace exec::system_context_replaceability {
@@ -64,7 +64,7 @@ namespace exec::system_context_replaceability {
 
   /// Query the system context for an interface of type `_Interface`.
   template <__queryable_interface _Interface>
-  extern std::shared_ptr<_Interface> query_system_context();
+  extern auto query_system_context() -> std::shared_ptr<_Interface>;
 
   /// The type of a factory that can create interfaces of type `_Interface`.
   template <__queryable_interface _Interface>
@@ -72,8 +72,9 @@ namespace exec::system_context_replaceability {
 
   /// Sets the factory that creates the system context backend for an interface of type `_Interface`.
   template <__queryable_interface _Interface>
-  extern __system_context_backend_factory<_Interface>
-    set_system_context_backend_factory(__system_context_backend_factory<_Interface> __new_factory);
+  extern auto
+    set_system_context_backend_factory(__system_context_backend_factory<_Interface> __new_factory)
+      -> __system_context_backend_factory<_Interface>;
 
   /// Interface for completing a sender operation. Backend will call frontend though this interface
   /// for completing the `schedule` and `schedule_bulk` operations.
@@ -81,7 +82,7 @@ namespace exec::system_context_replaceability {
     virtual ~receiver() = default;
 
    protected:
-    virtual bool __query_env(__uuid, void*) noexcept = 0;
+    virtual auto __query_env(__uuid, void*) noexcept -> bool = 0;
 
    public:
     /// Called when the system scheduler completes successfully.
@@ -93,7 +94,7 @@ namespace exec::system_context_replaceability {
 
     /// Query the receiver for a property of type `_P`.
     template <typename _P>
-    std::optional<std::decay_t<_P>> try_query() noexcept {
+    auto try_query() noexcept -> std::optional<std::decay_t<_P>> {
       if constexpr (__runtime_property<_P>) {
         std::decay_t<_P> __p;
         bool __success =

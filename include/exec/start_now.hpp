@@ -101,7 +101,7 @@ namespace exec {
         }
 
         // Forward all receiever queries.
-        decltype(auto) get_env() const noexcept {
+        auto get_env() const noexcept -> decltype(auto) {
           return (__stg_->__env_);
         }
       };
@@ -184,11 +184,12 @@ namespace exec {
         __op_state_.for_each(stdexec::start, __op_state_);
       }
 
-      bool request_stop() noexcept {
+      auto request_stop() noexcept -> bool {
         return this->__source_.request_stop();
       }
 
-      stdexec::inplace_stop_token get_token() const noexcept {
+      [[nodiscard]]
+      auto get_token() const noexcept -> stdexec::inplace_stop_token {
         return this->__source_.get_token();
       }
 

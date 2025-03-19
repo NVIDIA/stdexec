@@ -16,6 +16,7 @@
 
 #include <exec/when_any.hpp>
 #include <exec/single_thread_context.hpp>
+#include <numbers>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/senders.hpp>
@@ -131,7 +132,7 @@ namespace {
       move_throws(move_throws&&) noexcept(false) {
       }
 
-      move_throws& operator=(move_throws&&) noexcept(false) {
+      auto operator=(move_throws&&) noexcept(false) -> move_throws& {
         return *this;
       }
     };
@@ -177,7 +178,7 @@ namespace {
                     set_error_t(std::exception_ptr)>>);
 
     auto mulitple_senders = exec::when_any(
-      ex::just(3.1415),
+      ex::just(std::numbers::pi),
       ex::just(std::string()),
       ex::just(std::string()),
       ex::just() | ex::then([] { return 42; }),
@@ -212,7 +213,7 @@ namespace {
       set_error_t(std::exception_ptr&&)>;
 
     template <class Receiver>
-    friend dup_op<Receiver> tag_invoke(connect_t, dup_sender, Receiver rec) noexcept {
+    friend auto tag_invoke(connect_t, dup_sender, Receiver rec) noexcept -> dup_op<Receiver> {
       return {static_cast<Receiver&&>(rec)};
     }
   };

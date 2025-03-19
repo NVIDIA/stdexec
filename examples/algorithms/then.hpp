@@ -92,6 +92,6 @@ struct _then_sender {
 };
 
 template <stdexec::sender S, class F>
-stdexec::sender auto then(S s, F f) {
+auto then(S s, F f) -> stdexec::sender auto {
   return _then_sender<S, F>{static_cast<S&&>(s), static_cast<F&&>(f)};
 }

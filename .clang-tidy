@@ -1,21 +1,23 @@
 ---
-Checks:          'clang-diagnostic-*,clang-analyzer-*,-*,bugprone-*,modernize-*,-bugprone-reserved-identifier,-bugprone-unchecked-optional-access,-bugprone-macro-parentheses,-bugprone-easily-swappable-parameters'
+Checks:          'clang-diagnostic-*,clang-analyzer-*,-*,bugprone-*,modernize-*,-bugprone-reserved-identifier,-bugprone-unchecked-optional-access,-bugprone-macro-parentheses,-bugprone-easily-swappable-parameters,-bugprone-dynamic-static-initializers,-modernize-avoid-c-arrays'
 WarningsAsErrors: ''
 HeaderFileExtensions:
   - ''
   - h
-  - hh
   - hpp
-  - hxx
   - cuh
 ImplementationFileExtensions:
   - c
-  - cc
   - cpp
-  - cxx
-HeaderFilterRegex: ''
+  - cu
+HeaderFilterRegex: '^.*[.](h|hpp|cuh)$'
+ExcludeHeaderFilterRegex: '^.*__system_context_default_impl_entry[.]hpp$'
 FormatStyle:     none
 User:            eniebler
+ExtraArgsBefore: [
+  '-DSTDEXEC_SYSTEM_CONTEXT_HEADER_ONLY=1',
+  '-DSTDEXEC_CLANG_TIDY_INVOKED=1',
+]
 CheckOptions:
   bugprone-argument-comment.CommentFloatLiterals: '0'
   bugprone-argument-comment.CommentUserDefinedLiterals: '0'

@@ -116,7 +116,7 @@ namespace exec {
         }
       }
 
-      static ::io_uring_params __init_params(unsigned __flags) noexcept {
+      static auto __init_params(unsigned __flags) noexcept -> ::io_uring_params {
         ::io_uring_params __params{};
         __params.flags = __flags;
         return __params;
@@ -231,10 +231,9 @@ namespace exec {
           } else {
             __op->__vtable_->__submit_(__op, __sqe);
 #    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
-            if (__is_stopped && __sqe.opcode != IORING_OP_ASYNC_CANCEL) {
-#    else
-            if (__is_stopped) {
+            __is_stopped = __is_stopped && __sqe.opcode != IORING_OP_ASYNC_CANCEL;
 #    endif
+            if (__is_stopped) {
               __stop(__op);
             } else {
               __sqe.user_data = bit_cast<__u64>(__op);
@@ -362,9 +361,18 @@ namespace exec {
         , __wakeup_operation_{this, __eventfd_} {
       }
 
-      void wakeup() {
+      auto try_wakeup() noexcept -> std::error_code {
         std::uint64_t __wakeup = 1;
-        __throw_error_code_if(::write(__eventfd_, &__wakeup, sizeof(__wakeup)) == -1, errno);
+        if (::write(__eventfd_, &__wakeup, sizeof(__wakeup)) == -1) {
+          return {errno, std::system_category()};
+        }
+        return {};
+      }
+
+      void wakeup() {
+        if (auto __ec = try_wakeup()) {
+          throw std::system_error{__ec};
+        }
       }
 
       /// @brief Resets the io context to its initial state.
@@ -377,9 +385,9 @@ namespace exec {
         __stop_source_.emplace();
       }
 
-      void request_stop() {
+      auto request_stop() noexcept -> std::error_code {
         __stop_source_->request_stop();
-        wakeup();
+        return try_wakeup();
       }
 
       auto stop_requested() const noexcept -> bool {
@@ -433,7 +441,7 @@ namespace exec {
         __n_total_submitted_ -= __completion_queue_.complete();
         STDEXEC_ASSERT(
           0 <= __n_total_submitted_
-          && __n_total_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
+          && std::cmp_less_equal(__n_total_submitted_, __params_.cq_entries));
         __u32 __max_submissions = __params_.cq_entries - static_cast<__u32>(__n_total_submitted_);
         __pending_.append(__requests_.pop_all_reversed());
         __submission_result __result = __submission_queue_.submit(
@@ -442,7 +450,7 @@ namespace exec {
           __stop_source_->stop_requested());
         __n_total_submitted_ += __result.__n_submitted;
         __n_newly_submitted_ += __result.__n_submitted;
-        STDEXEC_ASSERT(__n_total_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
+        STDEXEC_ASSERT(std::cmp_less_equal(__n_total_submitted_, __params_.cq_entries));
         __pending_ = static_cast<__task_queue&&>(__result.__pending);
         while (!__result.__ready.empty()) {
           __n_total_submitted_ -=
@@ -456,7 +464,7 @@ namespace exec {
             __stop_source_->stop_requested());
           __n_total_submitted_ += __result.__n_submitted;
           __n_newly_submitted_ += __result.__n_submitted;
-          STDEXEC_ASSERT(__n_total_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
+          STDEXEC_ASSERT(std::cmp_less_equal(__n_total_submitted_, __params_.cq_entries));
           __pending_ = static_cast<__task_queue&&>(__result.__pending);
         }
       }
@@ -495,7 +503,7 @@ namespace exec {
           constexpr int __min_complete = 1;
           STDEXEC_ASSERT(
             0 <= __n_total_submitted_
-            && __n_total_submitted_ <= static_cast<std::ptrdiff_t>(__params_.cq_entries));
+            && std::cmp_less_equal(__n_total_submitted_, __params_.cq_entries));
           int rc = __io_uring_enter(
             __ring_fd_,
             static_cast<unsigned>(__n_newly_submitted_),
@@ -539,7 +547,9 @@ namespace exec {
         __context& __context_;
 
         void operator()() const noexcept {
-          __context_.request_stop();
+          if (auto __ec = __context_.request_stop()) {
+            std::terminate();
+          }
         }
       };
 
@@ -551,8 +561,8 @@ namespace exec {
         __context& __context_;
         until __mode_;
 
-        using __on_stopped_callback = typename stdexec::stop_token_of_t<
-          stdexec::env_of_t<_Rcvr&>>::template callback_type<__on_stop>;
+        using __on_stopped_callback = stdexec::
+          stop_callback_for_t<stdexec::stop_token_of_t<stdexec::env_of_t<_Rcvr&>>, __on_stop>;
 
         void start() & noexcept {
           std::optional<__on_stopped_callback> __callback(
@@ -703,7 +713,9 @@ namespace exec {
       void start() & noexcept {
         __context& __context = __base_.context();
         if (__context.submit(this)) {
-          __context.wakeup();
+          if (auto __ec = __context.try_wakeup()) {
+            std::terminate(); // TODO: handle error
+          }
         }
       }
 
@@ -1023,11 +1035,14 @@ namespace exec {
         }
 
         void complete(const ::io_uring_cqe& __cqe) noexcept {
+          bool const __success =
 #    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
-          if (__cqe.res == -ETIME || __cqe.res == 0) {
+            __cqe.res == -ETIME || __cqe.res == 0
 #    else
-          if (__cqe.res == sizeof(std::uint64_t)) {
+            __cqe.res == sizeof(std::uint64_t)
 #    endif
+            ;
+          if (__success) {
             stdexec::set_value(static_cast<_Receiver&&>(this->__receiver_));
           } else {
             STDEXEC_ASSERT(__cqe.res < 0);
@@ -1089,10 +1104,12 @@ namespace exec {
           : __env_{__env} {
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> __schedule_env {
           return __env_;
         }
 
+        [[nodiscard]]
         auto get_completion_signatures(stdexec::__ignore = {}) const noexcept -> __completion_sigs {
           return {};
         }
@@ -1119,6 +1136,7 @@ namespace exec {
         __schedule_env __env_;
         std::chrono::nanoseconds __duration_;
 
+        [[nodiscard]]
         auto get_env() const noexcept -> __schedule_env {
           return __env_;
         }
@@ -1137,6 +1155,7 @@ namespace exec {
         }
       };
 
+      [[nodiscard]]
       auto schedule() const -> __schedule_sender {
         return __schedule_sender{__schedule_env{__context_}};
       }

@@ -410,6 +410,7 @@ namespace execpools {
       using __id = scheduler;
       auto operator==(const scheduler&) const -> bool = default;
 
+      [[nodiscard]]
       constexpr auto query(stdexec::get_forward_progress_guarantee_t) const noexcept
         -> stdexec::forward_progress_guarantee {
         return forward_progress_guarantee();

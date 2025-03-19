@@ -42,7 +42,8 @@ namespace {
   TEST_CASE("when_all simple example", "[adaptors][when_all]") {
     auto snd = ex::when_all(ex::just(3), ex::just(0.1415));
     auto snd1 = std::move(snd) | ex::then([](int x, double y) { return x + y; });
-    auto op = ex::connect(std::move(snd1), expect_value_receiver{3.1415});
+    auto op = ex::connect(
+      std::move(snd1), expect_value_receiver{3.1415}); // NOLINT(modernize-use-std-numbers)
     ex::start(op);
   }
 

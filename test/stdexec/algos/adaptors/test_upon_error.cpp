@@ -86,7 +86,7 @@ namespace {
       ex::set_error_t(Error3)>;
 
     template <typename R>
-    friend oper<R> tag_invoke(ex::connect_t, many_error_sender, R&& r) {
+    friend auto tag_invoke(ex::connect_t, many_error_sender, R&& r) -> oper<R> {
       return {{}, static_cast<R&&>(r)};
     }
   };

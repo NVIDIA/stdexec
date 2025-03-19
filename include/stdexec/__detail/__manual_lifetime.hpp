@@ -30,12 +30,10 @@ namespace stdexec {
    public:
     //! Constructor does nothing: It's on you to call `__construct(...)` or `__construct_from(...)`
     //! if you want the `_Ty`'s lifetime to begin.
-    constexpr __manual_lifetime() noexcept {
-    }
+    constexpr __manual_lifetime() noexcept = default;
 
     //! Destructor does nothing: It's on you to call `__destroy()` if you mean to.
-    constexpr ~__manual_lifetime() {
-    }
+    constexpr ~__manual_lifetime() = default;
 
     __manual_lifetime(const __manual_lifetime&) = delete;
     auto operator=(const __manual_lifetime&) -> __manual_lifetime& = delete;

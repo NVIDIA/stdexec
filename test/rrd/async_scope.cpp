@@ -109,7 +109,7 @@ struct async_scope_request_stop : rl::test_suite<async_scope_request_stop<test_c
   }
 };
 
-int main() {
+auto main() -> int {
   rl::test_params p;
   p.iteration_count = 100000;
   p.execution_depth_limit = 10000;

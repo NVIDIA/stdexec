@@ -18,7 +18,6 @@
 
 #include "../memory_mapped_region.hpp"
 
-#include <cstdint>
 #include <utility>
 #include <sys/mman.h>
 

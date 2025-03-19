@@ -31,6 +31,7 @@ namespace {
     using receiver_concept = stdexec::receiver_t;
     Receiver rcvr;
 
+    [[nodiscard]]
     auto get_env() const noexcept -> stdexec::env_of_t<Receiver> {
       return stdexec::get_env(rcvr);
     }
@@ -71,8 +72,8 @@ namespace {
     using receiver_concept = stdexec::receiver_t;
 
     template <class Item>
-    friend ignore_all_sender<stdexec::__decay_t<Item>>
-      tag_invoke(exec::set_next_t, ignore_all_receiver&, Item&& item) noexcept {
+    friend auto tag_invoke(exec::set_next_t, ignore_all_receiver&, Item&& item) noexcept
+      -> ignore_all_sender<stdexec::__decay_t<Item>> {
       return {static_cast<Item&&>(item)};
     }
 

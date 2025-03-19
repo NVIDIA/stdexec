@@ -44,12 +44,12 @@ struct fail_some {
   };
 
   template <class R>
-  friend op<R> tag_invoke(stdexec::connect_t, fail_some, R r) {
+  friend auto tag_invoke(stdexec::connect_t, fail_some, R r) -> op<R> {
     return {std::move(r)};
   }
 };
 
-int main() {
+auto main() -> int {
   auto x = retry(fail_some{});
   // prints:
   //   fail!

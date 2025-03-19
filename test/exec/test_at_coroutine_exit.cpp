@@ -35,7 +35,7 @@ namespace {
     return stop;
   }
 
-  task<void> test_one_cleanup_action(int& result) {
+  auto test_one_cleanup_action(int& result) -> task<void> {
     ++result;
     co_await at_coroutine_exit([&result]() -> task<void> {
       result *= 2;
@@ -44,131 +44,7 @@ namespace {
     ++result;
   }
 
-  task<void> test_two_cleanup_actions(int& result) {
-    ++result;
-    co_await at_coroutine_exit([&result]() -> task<void> {
-      result *= 2;
-      co_return;
-    });
-    co_await at_coroutine_exit([&result]() -> task<void> {
-      result *= result;
-      co_return;
-    });
-    ++result;
-  }
-
-  task<void> test_on_stopped_two_cleanup_actions_with_stop(int& result) {
-    ++result;
-    co_await on_coroutine_stopped([&result]() -> task<void> {
-      result *= 2;
-      co_return;
-    });
-    co_await on_coroutine_stopped([&result]() -> task<void> {
-      result *= result;
-      co_return;
-    });
-    ++result;
-    co_await stop();
-  }
-
-  task<void> test_one_cleanup_action_with_stop(int& result) {
-    ++result;
-    co_await at_coroutine_exit([&result]() -> task<void> {
-      result *= 2;
-      co_return;
-    });
-    co_await stop();
-    ++result;
-  }
-
-  task<void> test_on_succeeded_one_cleanup_action(int& result) {
-    ++result;
-    co_await on_coroutine_succeeded([&result]() -> task<void> {
-      result *= 3;
-      co_return;
-    });
-    ++result;
-  }
-
-  task<void> test_on_succeeded_one_cleanup_action_with_stop(int& result) {
-    ++result;
-    co_await on_coroutine_succeeded([&result]() -> task<void> {
-      result *= 3;
-      co_return;
-    });
-    co_await stop();
-    ++result;
-  }
-
-  task<void> test_on_succeeded_one_cleanup_action_with_error(int& result) {
-    ++result;
-    co_await on_coroutine_succeeded([&result]() -> task<void> {
-      result *= 3;
-      co_return;
-    });
-    throw 42;
-    ++result;
-  }
-
-  task<void> test_on_stopped_one_cleanup_action(int& result) {
-    ++result;
-    co_await on_coroutine_stopped([&result]() -> task<void> {
-      result *= 3;
-      co_return;
-    });
-    ++result;
-  }
-
-  task<void> test_on_stopped_one_cleanup_action_with_stop(int& result) {
-    ++result;
-    co_await on_coroutine_stopped([&result]() -> task<void> {
-      result *= 3;
-      co_return;
-    });
-    co_await stop();
-    ++result;
-  }
-
-  task<void> test_on_stopped_one_cleanup_action_with_error(int& result) {
-    ++result;
-    co_await on_coroutine_stopped([&result]() -> task<void> {
-      result *= 3;
-      co_return;
-    });
-    throw 42;
-    ++result;
-  }
-
-  task<void> test_on_failed_one_cleanup_action(int& result) {
-    ++result;
-    co_await on_coroutine_failed([&result]() -> task<void> {
-      result *= 3;
-      co_return;
-    });
-    ++result;
-  }
-
-  task<void> test_on_failed_one_cleanup_action_with_stop(int& result) {
-    ++result;
-    co_await on_coroutine_failed([&result]() -> task<void> {
-      result *= 3;
-      co_return;
-    });
-    co_await stop();
-    ++result;
-  }
-
-  task<void> test_on_failed_one_cleanup_action_with_error(int& result) {
-    ++result;
-    co_await on_coroutine_failed([&result]() -> task<void> {
-      result *= 3;
-      co_return;
-    });
-    throw 42;
-    ++result;
-  }
-
-  task<void> test_two_cleanup_actions_with_stop(int& result) {
+  auto test_two_cleanup_actions(int& result) -> task<void> {
     ++result;
     co_await at_coroutine_exit([&result]() -> task<void> {
       result *= 2;
@@ -178,23 +54,147 @@ namespace {
       result *= result;
       co_return;
     });
+    ++result;
+  }
+
+  auto test_on_stopped_two_cleanup_actions_with_stop(int& result) -> task<void> {
+    ++result;
+    co_await on_coroutine_stopped([&result]() -> task<void> {
+      result *= 2;
+      co_return;
+    });
+    co_await on_coroutine_stopped([&result]() -> task<void> {
+      result *= result;
+      co_return;
+    });
+    ++result;
+    co_await stop();
+  }
+
+  auto test_one_cleanup_action_with_stop(int& result) -> task<void> {
+    ++result;
+    co_await at_coroutine_exit([&result]() -> task<void> {
+      result *= 2;
+      co_return;
+    });
     co_await stop();
     ++result;
   }
 
-  task<void> test_sender_cleanup_action(int& result) {
+  auto test_on_succeeded_one_cleanup_action(int& result) -> task<void> {
+    ++result;
+    co_await on_coroutine_succeeded([&result]() -> task<void> {
+      result *= 3;
+      co_return;
+    });
+    ++result;
+  }
+
+  auto test_on_succeeded_one_cleanup_action_with_stop(int& result) -> task<void> {
+    ++result;
+    co_await on_coroutine_succeeded([&result]() -> task<void> {
+      result *= 3;
+      co_return;
+    });
+    co_await stop();
+    ++result;
+  }
+
+  auto test_on_succeeded_one_cleanup_action_with_error(int& result) -> task<void> {
+    ++result;
+    co_await on_coroutine_succeeded([&result]() -> task<void> {
+      result *= 3;
+      co_return;
+    });
+    throw 42;
+    ++result;
+  }
+
+  auto test_on_stopped_one_cleanup_action(int& result) -> task<void> {
+    ++result;
+    co_await on_coroutine_stopped([&result]() -> task<void> {
+      result *= 3;
+      co_return;
+    });
+    ++result;
+  }
+
+  auto test_on_stopped_one_cleanup_action_with_stop(int& result) -> task<void> {
+    ++result;
+    co_await on_coroutine_stopped([&result]() -> task<void> {
+      result *= 3;
+      co_return;
+    });
+    co_await stop();
+    ++result;
+  }
+
+  auto test_on_stopped_one_cleanup_action_with_error(int& result) -> task<void> {
+    ++result;
+    co_await on_coroutine_stopped([&result]() -> task<void> {
+      result *= 3;
+      co_return;
+    });
+    throw 42;
+    ++result;
+  }
+
+  auto test_on_failed_one_cleanup_action(int& result) -> task<void> {
+    ++result;
+    co_await on_coroutine_failed([&result]() -> task<void> {
+      result *= 3;
+      co_return;
+    });
+    ++result;
+  }
+
+  auto test_on_failed_one_cleanup_action_with_stop(int& result) -> task<void> {
+    ++result;
+    co_await on_coroutine_failed([&result]() -> task<void> {
+      result *= 3;
+      co_return;
+    });
+    co_await stop();
+    ++result;
+  }
+
+  auto test_on_failed_one_cleanup_action_with_error(int& result) -> task<void> {
+    ++result;
+    co_await on_coroutine_failed([&result]() -> task<void> {
+      result *= 3;
+      co_return;
+    });
+    throw 42;
+    ++result;
+  }
+
+  auto test_two_cleanup_actions_with_stop(int& result) -> task<void> {
+    ++result;
+    co_await at_coroutine_exit([&result]() -> task<void> {
+      result *= 2;
+      co_return;
+    });
+    co_await at_coroutine_exit([&result]() -> task<void> {
+      result *= result;
+      co_return;
+    });
+    co_await stop();
+    ++result;
+  }
+
+  auto test_sender_cleanup_action(int& result) -> task<void> {
     co_await at_coroutine_exit([&result] {
       return stdexec::just() | stdexec::then([&result] { ++result; });
     });
   }
 
-  task<void> test_stateful_cleanup_action(int& result, int arg) {
+  auto test_stateful_cleanup_action(int& result, int arg) -> task<void> {
     co_await at_coroutine_exit([arg, &result] {
       return stdexec::just() | stdexec::then([arg, &result] { result += arg; });
     });
   }
 
-  task<void> test_mutable_stateful_cleanup_action(int& result) {
+  auto test_mutable_stateful_cleanup_action(int& result) -> task<void> {
     auto&& [i] = co_await at_coroutine_exit(
       [&result](int&& i) -> task<void> {
         result += i;
@@ -205,7 +205,7 @@ namespace {
     i *= i;
   }
 
-  task<void> test_on_succeeded_mutable_stateful_cleanup_action(int& result) {
+  auto test_on_succeeded_mutable_stateful_cleanup_action(int& result) -> task<void> {
     auto&& [i] = co_await on_coroutine_succeeded(
       [&result](int&& i) -> task<void> {
         result += i;
@@ -216,7 +216,7 @@ namespace {
     i *= i;
   }
 
-  task<void> with_continuation(int& result, task<void> next) {
+  auto with_continuation(int& result, task<void> next) -> task<void> {
     co_await std::move(next);
     result *= 3;
   }

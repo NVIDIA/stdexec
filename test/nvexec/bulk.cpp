@@ -169,13 +169,13 @@ namespace {
     const int nelems = 10;
     cudaMallocManaged(&inout, nelems * sizeof(double));
 
-    auto task =
-      stdexec::transfer_just(ctx.get_scheduler(), cuda::std::span<double>{inout, nelems})
-      | stdexec::bulk(nelems, [](std::size_t i, cuda::std::span<double> out) { out[i] = i; })
-      | stdexec::let_value([](cuda::std::span<double> out) { return stdexec::just(out); })
-      | stdexec::bulk(nelems, [](std::size_t i, cuda::std::span<double> out) {
-          out[i] = 2.0 * out[i];
-        });
+    auto task = stdexec::transfer_just(ctx.get_scheduler(), cuda::std::span<double>{inout, nelems})
+              | stdexec::bulk(
+                  nelems, [](std::size_t i, cuda::std::span<double> out) { out[i] = (double) i; })
+              | stdexec::let_value([](cuda::std::span<double> out) { return stdexec::just(out); })
+              | stdexec::bulk(nelems, [](std::size_t i, cuda::std::span<double> out) {
+                  out[i] = 2.0 * out[i];
+                });
 
     stdexec::sync_wait(std::move(task)).value();
 

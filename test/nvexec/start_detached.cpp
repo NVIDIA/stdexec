@@ -24,8 +24,8 @@ namespace {
 
     int* host_flag{};
     int* device_flag{};
-    THROW_ON_CUDA_ERROR(cudaMallocHost(&host_flag, sizeof(int)));
-    THROW_ON_CUDA_ERROR(cudaMallocHost(&device_flag, sizeof(int)));
+    STDEXEC_TRY_CUDA_API(cudaMallocHost(&host_flag, sizeof(int)));
+    STDEXEC_TRY_CUDA_API(cudaMallocHost(&device_flag, sizeof(int)));
     *host_flag = *device_flag = 0;
 
     auto snd = ex::schedule(stream_ctx.get_scheduler()) //
@@ -54,7 +54,7 @@ namespace {
 
     REQUIRE(device_flag_ref.load(cuda::memory_order_relaxed) > 0);
 
-    THROW_ON_CUDA_ERROR(cudaFreeHost(host_flag));
-    THROW_ON_CUDA_ERROR(cudaFreeHost(device_flag));
+    STDEXEC_TRY_CUDA_API(cudaFreeHost(host_flag));
+    STDEXEC_TRY_CUDA_API(cudaFreeHost(device_flag));
   }
 } // namespace

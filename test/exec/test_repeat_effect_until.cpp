@@ -58,7 +58,7 @@ namespace {
     };
 
     template <receiver_of<completion_signatures> Receiver>
-    friend operation<Receiver> tag_invoke(connect_t, boolean_sender self, Receiver rcvr) {
+    friend auto tag_invoke(connect_t, boolean_sender self, Receiver rcvr) -> operation<Receiver> {
       return {static_cast<Receiver &&>(rcvr), --*self.counter_};
     }
 

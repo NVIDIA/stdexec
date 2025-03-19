@@ -60,11 +60,13 @@ namespace exec {
           return stdexec::connect(stdexec::schedule(__sched), static_cast<_Receiver&&>(__rcvr));
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept {
           return stdexec::prop{get_completion_scheduler<set_value_t>, __scheduler()};
         }
       };
 
+      [[nodiscard]]
       auto schedule() const noexcept -> __sender {
         return {};
       }

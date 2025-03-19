@@ -33,7 +33,7 @@ namespace {
   template <scope_t Scope>
   struct cpo_t {
     using sender_concept = stdexec::sender_t;
-    constexpr static scope_t scope = Scope;
+    static constexpr scope_t scope = Scope;
 
     using completion_signatures = ex::completion_signatures< //
       ex::set_value_t(),                                     //
@@ -64,7 +64,7 @@ namespace {
 
     struct env_t {
       template <stdexec::__one_of<ex::set_value_t, CompletionSignals...> Tag>
-      scheduler_t query(ex::get_completion_scheduler_t<Tag>) const noexcept {
+      auto query(ex::get_completion_scheduler_t<Tag>) const noexcept -> scheduler_t {
         return {};
       }
     };
@@ -78,7 +78,7 @@ namespace {
         ex::set_error_t(std::exception_ptr),                   //
         ex::set_stopped_t()>;
 
-      env_t get_env() const noexcept {
+      auto get_env() const noexcept -> env_t {
         return {};
       }
     };
@@ -88,10 +88,10 @@ namespace {
       return cpo_t<scope_t::scheduler>{};
     }
 
-    sender_t schedule() const noexcept {
+    auto schedule() const noexcept -> sender_t {
       return sender_t{};
     }
 
-    bool operator==(const scheduler_t&) const noexcept = default;
+    auto operator==(const scheduler_t&) const noexcept -> bool = default;
   };
 } // namespace

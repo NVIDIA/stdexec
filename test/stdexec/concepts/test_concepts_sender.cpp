@@ -53,20 +53,20 @@ namespace {
 
 #if !STDEXEC_STD_NO_COROUTINES()
   struct awaiter {
-    bool await_ready();
+    auto await_ready() -> bool;
     void await_suspend(__coro::coroutine_handle<>);
     void await_resume();
   };
 
   struct awaitable {
-    friend awaiter operator co_await(awaitable) {
+    friend auto operator co_await(awaitable) -> awaiter {
       return {};
     }
   };
 
   struct as_awaitable {
     template <class Promise>
-    friend awaitable tag_invoke(ex::as_awaitable_t, as_awaitable, Promise&) {
+    friend auto tag_invoke(ex::as_awaitable_t, as_awaitable, Promise&) -> awaitable {
       return {};
     }
   };
@@ -93,7 +93,7 @@ namespace {
       ex::set_error_t(std::exception_ptr),                   //
       ex::set_stopped_t()>;
 
-    friend oper tag_invoke(ex::connect_t, my_sender0, empty_recv::recv0&&) {
+    friend auto tag_invoke(ex::connect_t, my_sender0, empty_recv::recv0&&) -> oper {
       return {};
     }
   };
@@ -103,7 +103,7 @@ namespace {
     using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
     template <class Receiver>
-    oper connect(Receiver) {
+    auto connect(Receiver) -> oper {
       return {};
     }
   };
@@ -148,7 +148,7 @@ namespace {
       ex::set_error_t(std::exception_ptr),                   //
       ex::set_stopped_t()>;
 
-    friend oper tag_invoke(ex::connect_t, my_sender_int, empty_recv::recv_int&&) {
+    friend auto tag_invoke(ex::connect_t, my_sender_int, empty_recv::recv_int&&) -> oper {
       return {};
     }
   };
@@ -202,7 +202,7 @@ namespace {
       ex::set_value_t(short, long),                          //
       ex::set_error_t(std::exception_ptr)>;
 
-    friend oper tag_invoke(ex::connect_t, multival_sender, empty_recv::recv_int&&) {
+    friend auto tag_invoke(ex::connect_t, multival_sender, empty_recv::recv_int&&) -> oper {
       return {};
     }
   };
@@ -223,7 +223,7 @@ namespace {
       ex::set_error_t(std::exception_ptr),                   //
       ex::set_error_t(int)>;
 
-    friend oper tag_invoke(ex::connect_t, ec_sender, empty_recv::recv_int&&) {
+    friend auto tag_invoke(ex::connect_t, ec_sender, empty_recv::recv_int&&) -> oper {
       return {};
     }
   };
@@ -244,7 +244,7 @@ namespace {
       ex::set_error_t(std::exception_ptr),                   //
       ex::set_stopped_t()>;
 
-    friend oper tag_invoke(ex::connect_t, my_r5_sender0, empty_recv::recv0&&) {
+    friend auto tag_invoke(ex::connect_t, my_r5_sender0, empty_recv::recv0&&) -> oper {
       return {};
     }
   };
@@ -268,22 +268,22 @@ namespace {
   struct sender_of_tag { };
 
   template <class T>
-  not_a_sender_tag test_subsumption(T&&) {
+  auto test_subsumption(T&&) -> not_a_sender_tag {
     return {};
   }
 
   template <ex::sender T>
-  sender_tag test_subsumption(T&&) {
+  auto test_subsumption(T&&) -> sender_tag {
     return {};
   }
 
   template <ex::sender_in<empty_env> T>
-  sender_env_tag test_subsumption(T&&) {
+  auto test_subsumption(T&&) -> sender_env_tag {
     return {};
   }
 
   template <ex::sender_of<ex::set_value_t(), empty_env> T>
-  sender_of_tag test_subsumption(T&&) {
+  auto test_subsumption(T&&) -> sender_of_tag {
     return {};
   }
 

@@ -59,7 +59,7 @@ namespace exec {
       Tp time_point{};
       std::size_t counter{};
 
-      friend bool operator<(const when_type& lhs, const when_type& rhs) noexcept {
+      friend auto operator<(const when_type& lhs, const when_type& rhs) noexcept -> bool {
         return lhs.time_point < rhs.time_point
             || (!(rhs.time_point < lhs.time_point) && lhs.counter < rhs.counter);
       }
@@ -118,7 +118,7 @@ namespace exec {
       run_thread_.join();
     }
 
-    timed_thread_scheduler get_scheduler() noexcept;
+    auto get_scheduler() noexcept -> timed_thread_scheduler;
 
    private:
     template <class Rcvr>
@@ -133,12 +133,12 @@ namespace exec {
       while (true) {
         while (command_type* op = command_queue_.pop_front()) {
           if (op->command_ == command_type::command_type::schedule) {
-            task_type* task = static_cast<task_type*>(op);
+            auto* task = static_cast<task_type*>(op);
             task->when_ = _time_thrd_sched::when_type{task->time_point_, submission_counter_++};
             heap_.insert(task);
           } else {
             STDEXEC_ASSERT(op->command_ == command_type::command_type::stop);
-            stop_type* stop_op = static_cast<stop_type*>(op);
+            auto* stop_op = static_cast<stop_type*>(op);
             if (heap_.erase(stop_op->target_)) {
               stop_op->target_->set_stopped_(stop_op->target_);
             }
@@ -325,6 +325,7 @@ namespace exec {
         , time_point_{time_point} {
       }
 
+      [[nodiscard]]
       auto get_env() const noexcept {
         return stdexec::prop{
           stdexec::get_completion_scheduler<stdexec::set_value_t>,
@@ -338,7 +339,8 @@ namespace exec {
       }
 
      private:
-      timed_thread_scheduler get_scheduler() const noexcept;
+      [[nodiscard]]
+      auto get_scheduler() const noexcept -> timed_thread_scheduler;
 
       timed_thread_context* context_;
       std::chrono::steady_clock::time_point time_point_;
@@ -358,6 +360,7 @@ namespace exec {
       return schedule_at{*self.context_, tp};
     }
 
+    [[nodiscard]]
     auto schedule() const noexcept -> schedule_at {
       return exec::schedule_at(*this, time_point());
     }
@@ -368,7 +371,7 @@ namespace exec {
     timed_thread_context* context_;
   };
 
-  inline timed_thread_scheduler timed_thread_context::get_scheduler() noexcept {
+  inline auto timed_thread_context::get_scheduler() noexcept -> timed_thread_scheduler {
     return timed_thread_scheduler{*this};
   }
 } // namespace exec

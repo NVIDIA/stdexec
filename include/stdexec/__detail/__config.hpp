@@ -460,5 +460,26 @@ namespace stdexec {
 #  define STDEXEC_ENABLE_EXTRA_TYPE_CHECKING() 1
 #endif
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// clang-tidy struggles with the CUDA function annotations
+#if STDEXEC_CLANG() && STDEXEC_CUDA() && defined(STDEXEC_CLANG_TIDY_INVOKED)
+#  include <cuda_runtime_api.h> // IWYU pragma: keep
+#  if !defined(__launch_bounds__)
+#    define __launch_bounds__(...)
+#  endif
+
+#  if !defined(__host__)
+#    define __host__
+#  endif
+
+#  if !defined(__device__)
+#    define __device__
+#  endif
+
+#  if !defined(__global__)
+#    define __global__
+#  endif
+#endif
+
 namespace stdexec {
 }

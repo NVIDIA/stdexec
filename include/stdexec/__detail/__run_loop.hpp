@@ -129,6 +129,7 @@ namespace stdexec {
           run_loop* const __loop_;
 
          public:
+          [[nodiscard]]
           auto get_env() const noexcept -> __env {
             return __env{__loop_};
           }
@@ -152,12 +153,14 @@ namespace stdexec {
           return __schedule_task{__loop_};
         }
 
+        [[nodiscard]]
         auto query(get_forward_progress_guarantee_t) const noexcept
           -> stdexec::forward_progress_guarantee {
           return stdexec::forward_progress_guarantee::parallel;
         }
 
         // BUGBUG NOT TO SPEC
+        [[nodiscard]]
         auto query(execute_may_block_caller_t) const noexcept -> bool {
           return false;
         }

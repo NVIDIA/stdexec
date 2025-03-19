@@ -49,7 +49,7 @@ namespace {
       : thread_(std::move(other.thread_)) {
     }
 
-    jthread& operator=(jthread&& other) noexcept {
+    auto operator=(jthread&& other) noexcept -> jthread& {
       thread_ = std::move(other.thread_);
       return *this;
     }
@@ -60,7 +60,8 @@ namespace {
       }
     }
 
-    std::thread::id get_id() const noexcept {
+    [[nodiscard]]
+    auto get_id() const noexcept -> std::thread::id {
       return thread_.get_id();
     }
   };

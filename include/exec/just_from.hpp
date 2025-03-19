@@ -33,7 +33,7 @@ namespace exec {
   } // namespace detail
 
   template <class JustTag>
-  struct _just_from {
+  struct _just_from { // NOLINT(bugprone-crtp-constructor-accessibility)
    private:
     friend JustTag;
     using _set_tag_t = decltype(detail::_just_from(static_cast<JustTag*>(nullptr)));

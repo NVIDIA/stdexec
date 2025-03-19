@@ -72,7 +72,7 @@ enum class obj_type {
   cancelled,
 };
 
-const char* as_string(obj_type t) {
+auto as_string(obj_type t) -> const char* {
   switch (t) {
   case obj_type::human:
     return "human";
@@ -103,7 +103,7 @@ struct image {
 };
 
 // Extract the image from the HTTP request
-image extract_image(http_request req) {
+auto extract_image(http_request req) -> image {
   // TODO: make upon_error work before enabling this
   // if (req.body_.empty())
   //   throw std::invalid_argument("no image found");
@@ -111,46 +111,46 @@ image extract_image(http_request req) {
 }
 
 // Classify the image received
-classification_result do_classify(image img) {
+auto do_classify(image img) -> classification_result {
   if (img.image_data_ == "human")
-    return {obj_type::human, 93};
+    return {.type_ = obj_type::human, .accuracy_ = 93};
   else if (img.image_data_ == "cat")
-    return {obj_type::cat, 97};
+    return {.type_ = obj_type::cat, .accuracy_ = 97};
   if (img.image_data_ == "dog")
-    return {obj_type::dog, 92};
+    return {.type_ = obj_type::dog, .accuracy_ = 92};
   if (img.image_data_ == "bird")
-    return {obj_type::bird, 96};
-  return {obj_type::unknown, 0};
+    return {.type_ = obj_type::bird, .accuracy_ = 96};
+  return {.type_ = obj_type::unknown, .accuracy_ = 0};
 }
 
 // Check for errors and transform them into classification result
-classification_result on_classification_error(std::exception_ptr) {
-  return {obj_type::general_error, 100, {}};
+auto on_classification_error(std::exception_ptr) -> classification_result {
+  return {.type_ = obj_type::general_error, .accuracy_ = 100, .details_ = {}};
 }
 
 // Check for cancellation and transform it into classification result
-classification_result on_classification_cancelled() {
-  return {obj_type::cancelled, 100};
+auto on_classification_cancelled() -> classification_result {
+  return {.type_ = obj_type::cancelled, .accuracy_ = 100};
 }
 
 // Convert the classification result into an HTTP response
-http_response to_response(classification_result res) {
+auto to_response(classification_result res) -> http_response {
   if (res.type_ == obj_type::general_error)
     // Send a 500 response back if we have a general error
-    return {500, res.details_};
+    return {.status_code_ = 500, .body_ = res.details_};
   else if (res.type_ == obj_type::cancelled) {
     // Send a 503 response back if the computation is cancelled
-    return {503, "cancelled"};
+    return {.status_code_ = 503, .body_ = "cancelled"};
   } else {
     // Send a success response back, with the object type, accuracy and details
     std::ostringstream oss;
     oss << as_string(res.type_) << " (" << res.accuracy_ << ")\n" << res.details_;
-    return {200, oss.str()};
+    return {.status_code_ = 200, .body_ = oss.str()};
   }
 }
 
 // Handler for the "classify" request type
-ex::sender auto handle_classify_request(const http_request& req) {
+auto handle_classify_request(const http_request& req) -> ex::sender auto {
   return
     // start with the input buffer
     ex::just(req)
@@ -169,7 +169,7 @@ ex::sender auto handle_classify_request(const http_request& req) {
     ;
 }
 
-int main() {
+auto main() -> int {
   // Create a thread pool and get a scheduler from it
   exec::async_scope scope;
   exec::static_thread_pool pool{8};
@@ -187,7 +187,7 @@ int main() {
       body = "dog";
     else if (i % 7 == 0)
       body = "bird";
-    http_request req{"/classify", {}, body};
+    http_request req{.url_ = "/classify", .headers_ = {}, .body_ = body};
 
     // The handler for the "classify" requests
     ex::sender auto snd = handle_classify_request(req);

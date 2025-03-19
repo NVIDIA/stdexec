@@ -20,7 +20,7 @@
 
 namespace ex = stdexec;
 
-int main() {
+auto main() -> int {
   ex::sender auto snd = ex::just(42) | exec::repeat_n(10);
   // build error: _INVALID_ARGUMENT_TO_REPEAT_N_
   stdexec::sync_wait(std::move(snd));

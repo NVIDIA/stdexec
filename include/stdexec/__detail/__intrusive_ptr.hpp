@@ -36,12 +36,12 @@ namespace stdexec {
       enum struct __bits : std::size_t {
       };
 
-      friend constexpr std::size_t __count(__bits __b) noexcept {
+      friend constexpr auto __count(__bits __b) noexcept -> std::size_t {
         return static_cast<std::size_t>(__b) / __ref_count_increment;
       }
 
       template <std::size_t _Bit>
-      friend constexpr bool __bit(__bits __b) noexcept {
+      friend constexpr auto __bit(__bits __b) noexcept -> bool {
         static_assert(_Bit < _ReservedBits, "Bit index out of range");
         return (static_cast<std::size_t>(__b) & (1ul << _Bit)) != 0;
       }
@@ -63,15 +63,16 @@ namespace stdexec {
      private:
       using __bits_t = typename __count_and_bits<_ReservedBits>::__bits;
       friend _Ty;
-      __bits_t __inc_ref() noexcept;
-      __bits_t __dec_ref() noexcept;
+      auto __inc_ref() noexcept -> __bits_t;
+      auto __dec_ref() noexcept -> __bits_t;
 
       template <std::size_t _Bit>
-      bool __is_set() const noexcept;
+      [[nodiscard]]
+      auto __is_set() const noexcept -> bool;
       template <std::size_t _Bit>
-      __bits_t __set_bit() noexcept;
+      auto __set_bit() noexcept -> __bits_t;
       template <std::size_t _Bit>
-      __bits_t __clear_bit() noexcept;
+      auto __clear_bit() noexcept -> __bits_t;
     };
 
     STDEXEC_PRAGMA_PUSH()
@@ -101,12 +102,12 @@ namespace stdexec {
         return *reinterpret_cast<_Ty*>(__value_);
       }
 
-      __bits_t __inc_ref_() noexcept {
+      auto __inc_ref_() noexcept -> __bits_t {
         auto __old = __ref_count_.fetch_add(__ref_count_increment, std::memory_order_relaxed);
         return static_cast<__bits_t>(__old);
       }
 
-      __bits_t __dec_ref_() noexcept {
+      auto __dec_ref_() noexcept -> __bits_t {
         auto __old = __ref_count_.fetch_sub(__ref_count_increment, std::memory_order_acq_rel);
         if (__count(static_cast<__bits_t>(__old)) == 1) {
           delete this;
@@ -117,13 +118,13 @@ namespace stdexec {
       // Returns true if the bit was set, false if it was already set.
       template <std::size_t _Bit>
       [[nodiscard]]
-      bool __is_set_() const noexcept {
+      auto __is_set_() const noexcept -> bool {
         auto __old = __ref_count_.load(std::memory_order_relaxed);
         return __bit<_Bit>(static_cast<__bits_t>(__old));
       }
 
       template <std::size_t _Bit>
-      __bits_t __set_bit_() noexcept {
+      auto __set_bit_() noexcept -> __bits_t {
         static_assert(_Bit < _ReservedBits, "Bit index out of range");
         constexpr std::size_t __mask = 1ul << _Bit;
         auto __old = __ref_count_.fetch_or(__mask, std::memory_order_acq_rel);
@@ -132,7 +133,7 @@ namespace stdexec {
 
       // Returns true if the bit was cleared, false if it was already cleared.
       template <std::size_t _Bit>
-      __bits_t __clear_bit_() noexcept {
+      auto __clear_bit_() noexcept -> __bits_t {
         static_assert(_Bit < _ReservedBits, "Bit index out of range");
         constexpr std::size_t __mask = 1ul << _Bit;
         auto __old = __ref_count_.fetch_and(~__mask, std::memory_order_acq_rel);
@@ -171,7 +172,7 @@ namespace stdexec {
       // For use when types want to take over manual control of the reference count.
       // Very unsafe, but useful for implementing custom reference counting.
       [[nodiscard]]
-      __enable_intrusive_t* __release_() noexcept {
+      auto __release_() noexcept -> __enable_intrusive_t* {
         auto* __data = std::exchange(__data_, nullptr);
         return __data ? &__c_upcast<__enable_intrusive_t>(__data->__value()) : nullptr;
       }
@@ -267,14 +268,16 @@ namespace stdexec {
     }
 
     template <class _Ty, std::size_t _ReservedBits>
-    __bits_t<_ReservedBits> __enable_intrusive_from_this<_Ty, _ReservedBits>::__inc_ref() noexcept {
+    auto __enable_intrusive_from_this<_Ty, _ReservedBits>::__inc_ref() noexcept
+      -> __ptr::__bits_t<_ReservedBits> {
       auto* __data =
         reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
       return __data->__inc_ref_();
     }
 
     template <class _Ty, std::size_t _ReservedBits>
-    __bits_t<_ReservedBits> __enable_intrusive_from_this<_Ty, _ReservedBits>::__dec_ref() noexcept {
+    auto __enable_intrusive_from_this<_Ty, _ReservedBits>::__dec_ref() noexcept
+      -> __ptr::__bits_t<_ReservedBits> {
 
       auto* __data =
         reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
@@ -283,7 +286,7 @@ namespace stdexec {
 
     template <class _Ty, std::size_t _ReservedBits>
     template <std::size_t _Bit>
-    bool __enable_intrusive_from_this<_Ty, _ReservedBits>::__is_set() const noexcept {
+    auto __enable_intrusive_from_this<_Ty, _ReservedBits>::__is_set() const noexcept -> bool {
       auto* __data =
         reinterpret_cast<const __control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
       return __data->template __is_set_<_Bit>();
@@ -291,7 +294,8 @@ namespace stdexec {
 
     template <class _Ty, std::size_t _ReservedBits>
     template <std::size_t _Bit>
-    __bits_t<_ReservedBits> __enable_intrusive_from_this<_Ty, _ReservedBits>::__set_bit() noexcept {
+    auto __enable_intrusive_from_this<_Ty, _ReservedBits>::__set_bit() noexcept
+      -> __ptr::__bits_t<_ReservedBits> {
       auto* __data =
         reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
       return __data->template __set_bit_<_Bit>();
@@ -299,8 +303,8 @@ namespace stdexec {
 
     template <class _Ty, std::size_t _ReservedBits>
     template <std::size_t _Bit>
-    __bits_t<_ReservedBits>
-      __enable_intrusive_from_this<_Ty, _ReservedBits>::__clear_bit() noexcept {
+    auto __enable_intrusive_from_this<_Ty, _ReservedBits>::__clear_bit() noexcept
+      -> __ptr::__bits_t<_ReservedBits> {
       auto* __data =
         reinterpret_cast<__control_block<_Ty, _ReservedBits>*>(&__c_downcast<_Ty>(*this));
       return __data->template __clear_bit_<_Bit>();

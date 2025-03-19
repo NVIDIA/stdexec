@@ -40,7 +40,7 @@ namespace nvexec::_strm {
     template <class T>
     void operator()(T* ptr) {
       // ptr->~T();
-      STDEXEC_DBG_ERR(::cudaFree(ptr));
+      STDEXEC_ASSERT_CUDA_API(::cudaFree(ptr));
     }
   };
 
@@ -53,16 +53,17 @@ namespace nvexec::_strm {
 
     if (status == cudaSuccess) {
       T* ptr = nullptr;
-      if (status = STDEXEC_DBG_ERR(::cudaMalloc(&ptr, sizeof(T))); status == cudaSuccess) {
+      if (status = STDEXEC_LOG_CUDA_API(::cudaMalloc(reinterpret_cast<void**>(&ptr), sizeof(T)));
+          status == cudaSuccess) {
         try {
           T h(static_cast<As&&>(as)...);
-          status = STDEXEC_DBG_ERR(::cudaMemcpy(ptr, &h, sizeof(T), cudaMemcpyHostToDevice));
+          status = STDEXEC_LOG_CUDA_API(::cudaMemcpy(ptr, &h, sizeof(T), cudaMemcpyHostToDevice));
           if (status == cudaSuccess) {
             return device_ptr<T>(ptr);
           }
         } catch (...) {
           status = cudaErrorUnknown;
-          STDEXEC_DBG_ERR(::cudaFree(ptr));
+          STDEXEC_ASSERT_CUDA_API(::cudaFree(ptr));
         }
       }
     }
@@ -127,7 +128,7 @@ namespace nvexec::_strm {
     auto do_allocate(const std::size_t bytes, const std::size_t /* alignment */) -> void* override {
       void* ret;
 
-      if (cudaError_t status = STDEXEC_DBG_ERR(cudaMallocHost(&ret, bytes));
+      if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaMallocHost(&ret, bytes));
           status != cudaSuccess) {
         throw std::bad_alloc();
       }
@@ -137,7 +138,7 @@ namespace nvexec::_strm {
 
     void do_deallocate(void* ptr, const std::size_t /* bytes */, const std::size_t /* alignment */)
       override {
-      STDEXEC_DBG_ERR(cudaFreeHost(ptr));
+      STDEXEC_ASSERT_CUDA_API(cudaFreeHost(ptr));
     }
 
     [[nodiscard]]
@@ -152,7 +153,8 @@ namespace nvexec::_strm {
     auto do_allocate(const std::size_t bytes, const std::size_t /* alignment */) -> void* override {
       void* ret;
 
-      if (cudaError_t status = STDEXEC_DBG_ERR(cudaMalloc(&ret, bytes)); status != cudaSuccess) {
+      if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaMalloc(&ret, bytes));
+          status != cudaSuccess) {
         throw std::bad_alloc();
       }
 
@@ -161,7 +163,7 @@ namespace nvexec::_strm {
 
     void do_deallocate(void* ptr, const std::size_t /* bytes */, const std::size_t /* alignment */)
       override {
-      STDEXEC_DBG_ERR(cudaFree(ptr));
+      STDEXEC_ASSERT_CUDA_API(cudaFree(ptr));
     }
 
     [[nodiscard]]
@@ -174,7 +176,7 @@ namespace nvexec::_strm {
     auto do_allocate(const std::size_t bytes, const std::size_t /* alignment */) -> void* override {
       void* ret;
 
-      if (cudaError_t status = STDEXEC_DBG_ERR(cudaMallocManaged(&ret, bytes));
+      if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaMallocManaged(&ret, bytes));
           status != cudaSuccess) {
         throw std::bad_alloc();
       }
@@ -184,7 +186,7 @@ namespace nvexec::_strm {
 
     void do_deallocate(void* ptr, const std::size_t /* bytes */, const std::size_t /* alignment */)
       override {
-      STDEXEC_DBG_ERR(cudaFree(ptr));
+      STDEXEC_ASSERT_CUDA_API(cudaFree(ptr));
     }
 
     [[nodiscard]]
@@ -260,7 +262,7 @@ namespace nvexec::_strm {
   };
 
   struct synchronized_pool_resource : std::pmr::memory_resource {
-    constexpr static std::size_t block_alignment = 256;
+    static constexpr std::size_t block_alignment = 256;
 
     struct block_descriptor_t {
       static constexpr unsigned int min_bin = 3;
