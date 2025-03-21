@@ -59,7 +59,9 @@ namespace exec {
       template <class... Ts>
         requires stdexec::__sigs::__is_compl_sig<_set_tag_t(Ts...)>
       auto operator()(Ts&&... ts) const noexcept //
-        -> stdexec::completion_signatures<_set_tag_t(Ts...)>;
+        -> stdexec::completion_signatures<_set_tag_t(Ts...)> {
+        return {};
+      }
     };
 
     template <class Rcvr>

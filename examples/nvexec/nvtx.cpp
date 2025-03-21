@@ -22,7 +22,7 @@
 
 namespace ex = stdexec;
 
-int main() {
+auto main() -> int {
   nvexec::stream_context stream_ctx{};
   auto snd = ex::schedule(stream_ctx.get_scheduler()) //
            | nvexec::nvtx::push("manual push")

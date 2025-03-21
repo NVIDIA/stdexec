@@ -24,7 +24,7 @@
 
 namespace ex = stdexec;
 
-int main() {
+auto main() -> int {
   const int n = 2 * 1024;
   thrust::device_vector<float> input(n, 1.0f);
   float* first = thrust::raw_pointer_cast(input.data());

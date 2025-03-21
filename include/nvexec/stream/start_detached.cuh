@@ -13,13 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include <exception>
 
 #include "common.cuh"
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_start_detached {
+namespace nvexec::_strm::_start_detached {
 
   struct detached_receiver_t : stream_receiver_base {
     template <class... _Args>
@@ -36,4 +39,4 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_start_detached {
     }
   };
 
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS::_start_detached
+} // namespace nvexec::_strm::_start_detached

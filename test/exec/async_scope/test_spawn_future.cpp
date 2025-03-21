@@ -1,6 +1,7 @@
 #include <catch2/catch.hpp>
 #include <exec/async_scope.hpp>
 #include <exec/env.hpp>
+#include <exec/just_from.hpp>
 #include <exec/static_thread_pool.hpp>
 #include "test_common/schedulers.hpp"
 #include "test_common/receivers.hpp"
@@ -148,7 +149,9 @@ namespace {
     };
 
     ex::sender auto snd =
-      scope.spawn_future(ex::starts_on(pool.get_scheduler(), ex::just(throwing_copy())));
+      scope.spawn_future(ex::starts_on(pool.get_scheduler(), exec::just_from([](auto sink) {
+                                         return sink(throwing_copy());
+                                       })));
     try {
       sync_wait(std::move(snd));
       FAIL("Exceptions should have been thrown");

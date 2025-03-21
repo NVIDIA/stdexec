@@ -129,7 +129,7 @@ namespace stdexec {
           _Receiver& __rcvr,
           _Tag,
           _Args&&... __args) noexcept -> void {
-        if constexpr (std::same_as<_Tag, set_value_t>) {
+        if constexpr (same_as<_Tag, set_value_t>) {
           // Intercept set_value and dispatch to the bulk operation.
           using __shape_t = decltype(__state.__shape_);
           if constexpr (noexcept(__state.__fun_(__shape_t{}, __args...))) {

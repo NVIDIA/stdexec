@@ -1,9 +1,8 @@
 #include <cstdlib>
-#include <atomic>
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
-#include "nvexec/detail/cuda_atomic.cuh"
+#include "nvexec/detail/cuda_atomic.cuh" // IWYU pragma: keep
 #include "nvexec/stream/common.cuh"
 #include "nvexec/stream_context.cuh"
 #include "common.cuh"

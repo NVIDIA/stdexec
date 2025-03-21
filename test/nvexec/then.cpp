@@ -243,7 +243,7 @@ namespace {
         diff(-1);
       }
 
-      __host__ int alive() {
+      __host__ auto alive() -> int {
         int d_counter{};
         cudaMemcpy(&d_counter, d_counter_, sizeof(int), cudaMemcpyDeviceToHost);
         return *h_counter_ + d_counter;
@@ -252,7 +252,7 @@ namespace {
       friend tracer_storage_t;
     };
 
-    handle_t get() {
+    auto get() -> handle_t {
       return handle_t{h_counter_, d_counter_};
     }
   };

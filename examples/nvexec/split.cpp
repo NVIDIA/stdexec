@@ -21,7 +21,7 @@
 
 namespace ex = stdexec;
 
-int main() {
+auto main() -> int {
   using nvexec::is_on_gpu;
 
   nvexec::stream_context stream_ctx{};
