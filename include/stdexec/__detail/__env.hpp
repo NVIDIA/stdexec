@@ -379,19 +379,23 @@ namespace stdexec {
       // return a reference to the first child env for which
       // __queryable<_Envs, _Query, _Args...> is true.
       template <class _Query, class... _Args>
-      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto __get_1st() const noexcept -> decltype(auto) {
+      STDEXEC_ATTRIBUTE((always_inline)) static constexpr auto __get_1st(const env& __self) noexcept -> decltype(auto) {
         // NOLINTNEXTLINE (modernize-avoid-c-arrays)
         constexpr bool __flags[] = {__queryable<_Envs, _Query, _Args...>...};
         constexpr std::size_t __idx = __pos_of(__flags, __flags + sizeof...(_Envs));
-        return __tup_.template __get<__idx>(__tup_);
+        return __self.__tup_.template __get<__idx>(__self.__tup_);
       }
 
       template <class _Query, class... _Args>
+      using __1st_env_t = decltype(env::__get_1st<_Query, _Args...>(__declval<const env&>()));
+
+      template <class _Query, class... _Args>
         requires(__queryable<_Envs, _Query, _Args...> || ...)
-      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto query(_Query __q, _Args&&... __args) const
-        noexcept(__nothrow_queryable<decltype(__get_1st<_Query, _Args...>()), _Query, _Args...>)
+      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto query(_Query __q, _Args&&... __args) const //
+        noexcept(__nothrow_queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>)
           -> decltype(auto) {
-        return tag_invoke(__q, __get_1st<_Query, _Args...>(), static_cast<_Args&&>(__args)...);
+        return tag_invoke(
+          __q, env::__get_1st<_Query, _Args...>(*this), static_cast<_Args&&>(__args)...);
       }
 
       auto operator=(const env&) -> env& = delete;
@@ -409,20 +413,24 @@ namespace stdexec {
       // return a reference to the first child env for which
       // __queryable<_Envs, _Query, _Args...> is true.
       template <class _Query, class... _Args>
-      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto __get_1st() const noexcept -> decltype(auto) {
+      STDEXEC_ATTRIBUTE((always_inline)) static constexpr auto __get_1st(const env& __self) noexcept -> decltype(auto) {
         if constexpr (__queryable<_Env0, _Query, _Args...>) {
-          return (__env0_);
+          return (__self.__env0_);
         } else {
-          return (__env1_);
+          return (__self.__env1_);
         }
       }
 
       template <class _Query, class... _Args>
+      using __1st_env_t = decltype(env::__get_1st<_Query, _Args...>(__declval<const env&>()));
+
+      template <class _Query, class... _Args>
         requires __queryable<_Env0, _Query, _Args...> || __queryable<_Env1, _Query, _Args...>
       STDEXEC_ATTRIBUTE((always_inline)) constexpr auto query(_Query __q, _Args&&... __args) const
-        noexcept(__nothrow_queryable<decltype(__get_1st<_Query, _Args...>()), _Query, _Args...>)
+        noexcept(__nothrow_queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>)
           -> decltype(auto) {
-        return tag_invoke(__q, __get_1st<_Query, _Args...>(), static_cast<_Args&&>(__args)...);
+        return tag_invoke(
+          __q, env::__get_1st<_Query, _Args...>(*this), static_cast<_Args&&>(__args)...);
       }
 
       auto operator=(const env&) -> env& = delete;

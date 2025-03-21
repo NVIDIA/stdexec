@@ -73,6 +73,8 @@ namespace nvexec {
 namespace nvexec {
   struct stream_context;
 
+  struct stream_domain;
+
   namespace _strm {
 
 #if STDEXEC_HAS_BUILTIN(__is_reference)
@@ -83,6 +85,14 @@ namespace nvexec {
     concept trivially_copyable =
       ((STDEXEC_IS_TRIVIALLY_COPYABLE(Ts) || std::is_reference_v<Ts>) && ...);
 #endif
+
+    // Used by stream_domain to late-customize senders for execution
+    // on the stream_scheduler.
+    template <class Tag, class... Env>
+    struct transform_sender_for;
+
+    template <class Tag>
+    struct apply_sender_for;
 
     inline auto get_stream_priority(stream_priority priority) -> std::pair<int, cudaError_t> {
       int least{};
@@ -201,6 +211,17 @@ namespace nvexec {
     };
 
     struct stream_scheduler;
+    struct multi_gpu_stream_scheduler;
+
+    template <class Sender, class Shape, class Fn>
+    struct multi_gpu_bulk_sender_t;
+
+    template <class Scheduler>
+    concept gpu_stream_scheduler =
+      scheduler<Scheduler> && derived_from<__domain_of_t<Scheduler>, stream_domain>
+      && requires(Scheduler sched) {
+           { sched.context_state_ } -> __decays_to<context_state_t>;
+         };
 
     struct stream_sender_base {
       using sender_concept = stdexec::sender_t;
@@ -749,11 +770,7 @@ namespace nvexec {
     template <class S>
     concept stream_completing_sender = //
       sender<S> &&                     //
-      requires(const S& sndr) {
-        {
-          get_completion_scheduler<set_value_t>(get_env(sndr)).context_state_
-        } -> __decays_to<context_state_t>;
-      };
+      gpu_stream_scheduler<__result_of<get_completion_scheduler<set_value_t>, env_of_t<S>>>;
 
     template <class R>
     concept receiver_with_stream_env = //

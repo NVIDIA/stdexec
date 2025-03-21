@@ -382,6 +382,27 @@ namespace nvexec::_strm {
       }
     };
   };
+
+  template <>
+  struct transform_sender_for<stdexec::bulk_t> {
+    template <class Data, stream_completing_sender Sender>
+    auto operator()(__ignore, Data data, Sender&& sndr) const {
+      auto [shape, fun] = static_cast<Data&&>(data);
+      using Shape = decltype(shape);
+      using Fn = decltype(fun);
+      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
+      if constexpr (same_as<decltype(sched), stream_scheduler>) {
+        // Use the bulk sender for a single GPU
+        using _sender_t = __t<bulk_sender_t<__id<__decay_t<Sender>>, Shape, Fn>>;
+        return _sender_t{{}, static_cast<Sender&&>(sndr), shape, static_cast<Fn&&>(fun)};
+      } else {
+        // Use the bulk sender for a multiple GPUs
+        using _sender_t = __t<multi_gpu_bulk_sender_t<__id<__decay_t<Sender>>, Shape, Fn>>;
+        return _sender_t{
+          {}, sched.num_devices_, static_cast<Sender&&>(sndr), shape, static_cast<Fn&&>(fun)};
+      }
+    }
+  };
 } // namespace nvexec::_strm
 
 namespace stdexec::__detail {
