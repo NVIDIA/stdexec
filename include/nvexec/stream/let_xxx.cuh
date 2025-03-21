@@ -107,7 +107,7 @@ namespace nvexec::_strm {
       struct __t : public stream_receiver_base {
         using __id = __receiver_;
 
-        constexpr static std::size_t memory_allocation_size =
+        static constexpr std::size_t memory_allocation_size =
           __v<__max_sender_size<_Sender, _PropagateReceiver, _Fun, _Let>>;
 
         template <__one_of<_Let> _Tag, class... _As>
@@ -122,7 +122,7 @@ namespace nvexec::_strm {
           kernel_with_result<_As&&...><<<1, 1, 0, stream>>>(
             std::move(__op_state_->__fun_), result_sender, static_cast<_As&&>(__as)...);
 
-          if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
+          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(stream));
               status == cudaSuccess) {
             __op_state_->defer_temp_storage_destruction(result_sender);
             auto& __op = __op_state_->__op_state3_.template emplace<op_state_t>(__emplace_from{[&] {

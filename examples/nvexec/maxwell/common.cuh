@@ -21,7 +21,6 @@
 #include "stdexec/__detail/__config.hpp"
 #include <map>
 #include <chrono>
-#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <charconv>
@@ -44,7 +43,7 @@ struct deleter_t {
   void operator()(T *ptr) {
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
     if (on_gpu) {
-      STDEXEC_DBG_ERR(cudaFree(ptr));
+      STDEXEC_ASSERT_CUDA_API(cudaFree(ptr));
     } else
 #endif
     {
@@ -54,12 +53,12 @@ struct deleter_t {
 };
 
 template <class T>
-STDEXEC_ATTRIBUTE((host, device)) inline std::unique_ptr<T, deleter_t> allocate_on(bool gpu, std::size_t elements = 1) {
+STDEXEC_ATTRIBUTE((host, device)) inline auto allocate_on(bool gpu, std::size_t elements = 1) -> std::unique_ptr<T, deleter_t> {
   T *ptr{};
 
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
   if (gpu) {
-    STDEXEC_DBG_ERR(cudaMallocManaged(&ptr, elements * sizeof(T)));
+    STDEXEC_TRY_CUDA_API(cudaMallocManaged(&ptr, elements * sizeof(T)));
   } else
 #endif
   {
@@ -121,8 +120,8 @@ struct grid_t {
   [[nodiscard]]
   auto accessor() const -> fields_accessor {
     return {
-      .dx = height / n,
-      .dy = width / n,
+      .dx = height / static_cast<float>(n),
+      .dy = width / static_cast<float>(n),
       .width = width,
       .height = height,
       .n = n,
@@ -133,8 +132,8 @@ struct grid_t {
 
 constexpr float C0 = 299792458.0f; // Speed of light [metres per second]
 
-STDEXEC_ATTRIBUTE((host, device)) inline bool
-  is_circle_part(float x, float y, float object_x, float object_y, float object_size) {
+STDEXEC_ATTRIBUTE((host, device)) inline auto
+  is_circle_part(float x, float y, float object_x, float object_y, float object_size) -> bool {
   const float os2 = object_size * object_size;
   return ((x - object_x) * (x - object_x) + (y - object_y) * (y - object_y) <= os2);
 }
@@ -158,8 +157,8 @@ struct grid_initializer_t {
     const float x = static_cast<float>(column) * accessor.dx;
     const float y = static_cast<float>(row) * accessor.dy;
 
-    const float soil_y = accessor.width / 2.2;
-    const float object_y = soil_y - 22.0;
+    const float soil_y = accessor.width / 2.2f;
+    const float object_y = soil_y - 22.0f;
     const float object_size = 3.0;
     const float soil_er_hr = 1.3;
 
@@ -191,19 +190,19 @@ inline auto grid_initializer(float dt, fields_accessor accessor) -> grid_initial
   return {.dt = dt, .accessor = accessor};
 }
 
-STDEXEC_ATTRIBUTE((host, device)) inline std::size_t right_nid(std::size_t cell_id, std::size_t col, std::size_t N) {
+STDEXEC_ATTRIBUTE((host, device)) inline auto right_nid(std::size_t cell_id, std::size_t col, std::size_t N) -> std::size_t {
   return col == N - 1 ? cell_id - (N - 1) : cell_id + 1;
 }
 
-STDEXEC_ATTRIBUTE((host, device)) inline std::size_t left_nid(std::size_t cell_id, std::size_t col, std::size_t N) {
+STDEXEC_ATTRIBUTE((host, device)) inline auto left_nid(std::size_t cell_id, std::size_t col, std::size_t N) -> std::size_t {
   return col == 0 ? cell_id + N - 1 : cell_id - 1;
 }
 
-STDEXEC_ATTRIBUTE((host, device)) inline std::size_t bottom_nid(std::size_t cell_id, std::size_t row, std::size_t N) {
+STDEXEC_ATTRIBUTE((host, device)) inline auto bottom_nid(std::size_t cell_id, std::size_t row, std::size_t N) -> std::size_t {
   return row == 0 ? cell_id + N * (N - 1) : cell_id - N;
 }
 
-STDEXEC_ATTRIBUTE((host, device)) inline std::size_t top_nid(std::size_t cell_id, std::size_t row, std::size_t N) {
+STDEXEC_ATTRIBUTE((host, device)) inline auto top_nid(std::size_t cell_id, std::size_t row, std::size_t N) -> std::size_t {
   return row == N - 1 ? cell_id - N * (N - 1) : cell_id + N;
 }
 
@@ -237,7 +236,7 @@ struct e_field_calculator_t {
   std::size_t source_position;
 
   STDEXEC_ATTRIBUTE((nodiscard, host, device)) auto gaussian_pulse(float t, float t_0, float tau) const -> float {
-    return exp(-(((t - t_0) / tau) * (t - t_0) / tau));
+    return static_cast<float>(exp(-(((t - t_0) / tau) * (t - t_0) / tau)));
   }
 
   STDEXEC_ATTRIBUTE((nodiscard, host, device)) auto calculate_source(float t, float frequency) const -> float {
@@ -403,7 +402,7 @@ void report_performance(
   std::string_view method,
   double elapsed) {
   // Assume perfect locality
-  const std::size_t memory_accesses_per_cell = 6 * 2; // 8 + 9;
+  const std::size_t memory_accesses_per_cell = 6ul * 2; // 8 + 9;
   const std::size_t memory_accesses = iterations * cells * memory_accesses_per_cell;
   const std::size_t bytes_accessed = memory_accesses * sizeof(float);
 

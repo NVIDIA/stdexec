@@ -29,7 +29,7 @@ namespace {
   } foo{};
 
   constexpr struct Bar {
-    friend constexpr bool tag_invoke(stdexec::forwarding_query_t, const Bar&) noexcept {
+    friend constexpr auto tag_invoke(stdexec::forwarding_query_t, const Bar&) noexcept -> bool {
       return true;
     }
 

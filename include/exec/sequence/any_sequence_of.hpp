@@ -29,7 +29,7 @@ namespace exec {
         using __return_sigs = completion_signatures<set_value_t(), set_stopped_t()>;
         using __void_sender = typename any_receiver_ref<__return_sigs>::template any_sender<>;
         using __item_sender = typename any_receiver_ref<_Sigs>::template any_sender<>;
-        __void_sender (*__fn_)(void*, __item_sender&&);
+        __void_sender (*__fn_)(void*, __item_sender&&) noexcept;
       };
 
       template <class _Rcvr>
@@ -41,7 +41,8 @@ namespace exec {
         using __item_sender = typename any_receiver_ref<_Sigs>::template any_sender<>;
 
         template <__valid_completion_signatures _Sigs>
-        constexpr __void_sender (*operator()(_Sigs*) const)(void*, __item_sender<_Sigs>&&) {
+        constexpr auto operator()(_Sigs*) const //
+          -> __void_sender (*)(void*, __item_sender<_Sigs>&&) noexcept {
           return +[](void* __rcvr, __item_sender<_Sigs>&& __sndr) noexcept -> __void_sender {
             return __void_sender{
               set_next(*static_cast<_Rcvr*>(__rcvr), static_cast<__item_sender<_Sigs>&&>(__sndr))};

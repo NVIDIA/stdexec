@@ -15,6 +15,7 @@
  */
 
 #include <catch2/catch.hpp>
+#include <numbers>
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/senders.hpp>
@@ -87,7 +88,7 @@ namespace {
     "[adaptors][stopped_as_optional]") {
     check_val_types<ex::__mset<pack<std::optional<int>>>>(ex::just(23) | ex::stopped_as_optional());
     check_val_types<ex::__mset<pack<std::optional<double>>>>(
-      ex::just(3.1415) | ex::stopped_as_optional());
+      ex::just(std::numbers::pi) | ex::stopped_as_optional());
   }
 
   TEST_CASE(

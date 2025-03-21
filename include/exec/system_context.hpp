@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <utility>
+
 #include "stdexec/execution.hpp"
 #include "__detail/__system_context_replaceability_api.hpp"
 
@@ -44,7 +46,7 @@ namespace exec {
         : __rcvr_{std::forward<_Rcvr>(__rcvr)} {
       }
 
-      bool __query_env(__uuid __id, void* __dest) noexcept override {
+      auto __query_env(__uuid __id, void* __dest) noexcept -> bool override {
         using system_context_replaceability::__runtime_property_helper;
         using __StopToken = decltype(stdexec::get_stop_token(stdexec::get_env(__rcvr_)));
         if constexpr (std::is_same_v<stdexec::inplace_stop_token, __StopToken>) {
@@ -86,7 +88,7 @@ namespace exec {
   class system_bulk_sender;
 
   /// Returns a scheduler that can add work to the underlying execution context.
-  system_scheduler get_system_scheduler();
+  auto get_system_scheduler() -> system_scheduler;
 
   /// The execution domain of the system_scheduler, used for the purposes of customizing
   /// sender algorithms such as `bulk`.
@@ -120,17 +122,17 @@ namespace exec {
     struct __aligned_storage {
       alignas(_Align) unsigned char __data_[_Size];
 
-      system_context_replaceability::storage __as_storage() noexcept {
+      auto __as_storage() noexcept -> system_context_replaceability::storage {
         return {__data_, _Size};
       }
 
       template <class _T>
-      _T& __as() noexcept {
+      auto __as() noexcept -> _T& {
         static_assert(alignof(_T) <= _Align);
         return *reinterpret_cast<_T*>(__data_);
       }
 
-      void* __as_ptr() noexcept {
+      auto __as_ptr() noexcept -> void* {
         return __data_;
       }
     };
@@ -178,8 +180,8 @@ namespace exec {
 
       __system_op(const __system_op&) = delete;
       __system_op(__system_op&&) = delete;
-      __system_op& operator=(const __system_op&) = delete;
-      __system_op& operator=(__system_op&&) = delete;
+      auto operator=(const __system_op&) -> __system_op& = delete;
+      auto operator=(__system_op&&) -> __system_op& = delete;
 
       /// Starts the work stored in `this`.
       void start() & noexcept {
@@ -219,10 +221,11 @@ namespace exec {
 
     /// Implementation detail. Constructs the sender to wrap `__impl`.
     explicit system_sender(__detail::__system_scheduler_ptr __impl)
-      : __scheduler_{__impl} {
+      : __scheduler_{std::move(__impl)} {
     }
 
     /// Gets the environment of this sender.
+    [[nodiscard]]
     auto get_env() const noexcept -> __detail::__system_scheduler_env {
       return {__scheduler_};
     }
@@ -251,7 +254,7 @@ namespace exec {
     system_scheduler() = delete;
 
     /// Returns `true` iff `*this` refers to the same scheduler as the argument.
-    bool operator==(const system_scheduler&) const noexcept = default;
+    auto operator==(const system_scheduler&) const noexcept -> bool = default;
 
     /// Implementation detail. Constructs the scheduler to wrap `__impl`.
     explicit system_scheduler(__detail::__system_scheduler_ptr&& __impl)
@@ -259,16 +262,19 @@ namespace exec {
     }
 
     /// Returns the forward progress guarantee of `this`.
+    [[nodiscard]]
     auto query(stdexec::get_forward_progress_guarantee_t) const noexcept
       -> stdexec::forward_progress_guarantee;
 
     /// Returns the execution domain of `this`.
+    [[nodiscard]]
     auto query(stdexec::get_domain_t) const noexcept -> system_scheduler_domain {
       return {};
     }
 
     /// Schedules new work, returning the sender that signals the start of the work.
-    system_sender schedule() const noexcept {
+    [[nodiscard]]
+    auto schedule() const noexcept -> system_sender {
       return system_sender{__impl_};
     }
 
@@ -314,7 +320,7 @@ namespace exec {
           std::tuple<stdexec::__decay_t<_As>...>{std::move(__as)...};
       }
 
-      bool __query_env(__uuid __id, void* __dest) noexcept override {
+      auto __query_env(__uuid __id, void* __dest) noexcept -> bool override {
         auto __state = reinterpret_cast<_BulkState*>(this);
         using system_context_replaceability::__runtime_property_helper;
         using __StopToken = decltype(stdexec::get_stop_token(stdexec::get_env(__state->__rcvr_)));
@@ -468,8 +474,8 @@ namespace exec {
       __aligned_storage<_PreallocatedSize, _PreallocatedAlign> __preallocated_;
 
       /// Destroys the inner operation state object, and returns the preallocated storage for it to be used by the backend.
-      static system_context_replaceability::storage
-        __prepare_storage_for_backend_impl(__bulk_state_base_t* __base) {
+      static auto __prepare_storage_for_backend_impl(__bulk_state_base_t* __base)
+        -> system_context_replaceability::storage {
         auto* __self = static_cast<__system_bulk_op*>(__base);
         // We don't need anymore the storage for the previous operation state.
         __self->__preallocated_.template __as<__inner_op_state>().~__inner_op_state();
@@ -497,8 +503,8 @@ namespace exec {
 
       __system_bulk_op(const __system_bulk_op&) = delete;
       __system_bulk_op(__system_bulk_op&&) = delete;
-      __system_bulk_op& operator=(const __system_bulk_op&) = delete;
-      __system_bulk_op& operator=(__system_bulk_op&&) = delete;
+      auto operator=(const __system_bulk_op&) -> __system_bulk_op& = delete;
+      auto operator=(__system_bulk_op&&) -> __system_bulk_op& = delete;
 
       /// Starts the work stored in `*this`.
       void start() & noexcept {
@@ -534,6 +540,7 @@ namespace exec {
     }
 
     /// Gets the environment of this sender.
+    [[nodiscard]]
     auto get_env() const noexcept -> __detail::__system_scheduler_env {
       return {__scheduler_};
     }
@@ -572,11 +579,11 @@ namespace exec {
 
   // Add an indirection to the instantiation of `query_system_context<_Interface>`.
   template <typename _Interface>
-  std::shared_ptr<_Interface> __query_system_context_interface() {
+  auto __query_system_context_interface() -> std::shared_ptr<_Interface> {
     return system_context_replaceability::query_system_context<_Interface>();
   }
 
-  inline system_scheduler get_system_scheduler() {
+  inline auto get_system_scheduler() -> system_scheduler {
     auto __impl =
       __query_system_context_interface<system_context_replaceability::system_scheduler>();
     if (!__impl) {

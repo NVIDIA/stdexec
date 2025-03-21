@@ -50,7 +50,7 @@ namespace nvexec {
           cudaStream_t stream = self.op_state_.get_stream();
 
           // `range` is produced asynchronously, so we need to wait for it to be ready
-          if (status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream)); status != cudaSuccess) {
+          if (status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(stream)); status != cudaSuccess) {
             self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             return;
           }
@@ -66,7 +66,7 @@ namespace nvexec {
 
           std::size_t num_items = std::distance(first, last);
 
-          if (status = STDEXEC_DBG_ERR(
+          if (status = STDEXEC_LOG_CUDA_API(
                 cub::DeviceReduce::Reduce(
                   d_temp_storage,
                   temp_storage_size,
@@ -81,14 +81,14 @@ namespace nvexec {
             return;
           }
 
-          if (status = STDEXEC_DBG_ERR( //
+          if (status = STDEXEC_LOG_CUDA_API( //
                 cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
               status != cudaSuccess) {
             self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             return;
           }
 
-          if (status = STDEXEC_DBG_ERR(
+          if (status = STDEXEC_LOG_CUDA_API(
                 cub::DeviceReduce::Reduce(
                   d_temp_storage,
                   temp_storage_size,
@@ -103,7 +103,7 @@ namespace nvexec {
             return;
           }
 
-          status = STDEXEC_DBG_ERR(cudaFreeAsync(d_temp_storage, stream));
+          status = STDEXEC_LOG_CUDA_API(cudaFreeAsync(d_temp_storage, stream));
           self.op_state_.defer_temp_storage_destruction(d_out);
 
           if (status == cudaSuccess) {

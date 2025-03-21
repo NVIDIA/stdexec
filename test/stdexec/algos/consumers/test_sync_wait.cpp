@@ -203,8 +203,8 @@ namespace {
 
   using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
 
-  optional<tuple<std::string>>
-    tag_invoke(decltype(sync_wait), inline_scheduler, my_string_sender_t&& s) {
+  auto tag_invoke(decltype(sync_wait), inline_scheduler, my_string_sender_t&& s)
+    -> optional<tuple<std::string>> {
     std::string res;
     auto op = ex::connect(std::move(s), expect_value_receiver_ex{res});
     ex::start(op);
@@ -231,7 +231,7 @@ namespace {
     }
   };
 
-  optional<tuple<std::string>> tag_invoke(decltype(sync_wait), my_other_string_sender_t s) {
+  auto tag_invoke(decltype(sync_wait), my_other_string_sender_t s) -> optional<tuple<std::string>> {
     CHECK(s.str_ == "hello");
     return {std::string{"ciao"}};
   }
@@ -274,10 +274,11 @@ namespace {
   using my_transfered_multi_value_sender_t =
     decltype(ex::continues_on(my_multi_value_sender_t{}, inline_scheduler{}));
 
-  optional<std::variant<std::tuple<std::string>, std::tuple<int>>> tag_invoke(
+  auto tag_invoke(
     decltype(sync_wait_with_variant),
     inline_scheduler,
-    my_transfered_multi_value_sender_t&& s) {
+    my_transfered_multi_value_sender_t&& s)
+    -> optional<std::variant<std::tuple<std::string>, std::tuple<int>>> {
     std::string res;
     auto op = ex::connect(std::move(s), expect_value_receiver_ex{res});
     ex::start(op);
@@ -287,8 +288,8 @@ namespace {
     return {res};
   }
 
-  optional<std::variant<std::tuple<std::string>, std::tuple<int>>>
-    tag_invoke(decltype(sync_wait_with_variant), my_multi_value_sender_t s) {
+  auto tag_invoke(decltype(sync_wait_with_variant), my_multi_value_sender_t s)
+    -> optional<std::variant<std::tuple<std::string>, std::tuple<int>>> {
     CHECK(s.str_ == "hello_multi");
     return {std::string{"ciao_multi"}};
   }

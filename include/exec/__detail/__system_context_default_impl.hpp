@@ -22,7 +22,6 @@
 #  include "exec/libdispatch_queue.hpp"
 #endif
 
-#include <thread>
 #include <atomic>
 
 namespace exec::__system_context_default_impl {
@@ -104,7 +103,7 @@ namespace exec::__system_context_default_impl {
   };
 
   /// Ensure that `__storage` is aligned to `__alignment`. Shrinks the storage, if needed, to match desired alignment.
-  inline storage __ensure_alignment(storage __storage, size_t __alignment) noexcept {
+  inline auto __ensure_alignment(storage __storage, size_t __alignment) noexcept -> storage {
     auto __pn = reinterpret_cast<uintptr_t>(__storage.__data);
     if (__pn % __alignment == 0) {
       return __storage;
@@ -126,8 +125,8 @@ namespace exec::__system_context_default_impl {
     bool __on_heap_;
 
     /// Try to construct the operation in the preallocated memory if it fits, otherwise allocate a new operation.
-    static __operation*
-      __construct_maybe_alloc(storage __storage, receiver* __completion, _Sender __sndr) {
+    static auto __construct_maybe_alloc(storage __storage, receiver* __completion, _Sender __sndr)
+      -> __operation* {
       __storage = __ensure_alignment(__storage, alignof(__operation));
       if (__storage.__data == nullptr || __storage.__size < sizeof(__operation)) {
         return new __operation(std::move(__sndr), __completion, true);
@@ -217,7 +216,7 @@ namespace exec::__system_context_default_impl {
   template <typename _Interface, typename _Impl>
   struct __instance_data {
     /// Gets the current instance; if there is no instance, uses the current factory to create one.
-    std::shared_ptr<_Interface> __get_current_instance() {
+    auto __get_current_instance() -> std::shared_ptr<_Interface> {
       // If we have a valid instance, return it.
       __acquire_instance_lock();
       auto __r = __instance_;
@@ -238,8 +237,8 @@ namespace exec::__system_context_default_impl {
     }
 
     /// Set `__new_factory` as the new factory for `_Interface` and return the old one.
-    __system_context_backend_factory<_Interface>
-      __set_backend_factory(__system_context_backend_factory<_Interface> __new_factory) {
+    auto
+      __set_backend_factory(__system_context_backend_factory<_Interface> __new_factory) -> __system_context_backend_factory<_Interface> {
       // Replace the factory, keeping track of the old one.
       auto __old_factory = __factory_.exchange(__new_factory);
       // Create a new instance with the new factory.

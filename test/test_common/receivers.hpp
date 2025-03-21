@@ -100,7 +100,7 @@ namespace {
     using receiver_concept = stdexec::receiver_t;
     base_expect_receiver() = default;
 
-    ~base_expect_receiver() {
+    ~base_expect_receiver() { // NOLINT(modernize-use-equals-default)
       CHECK(called_.load());
     }
 
@@ -113,13 +113,13 @@ namespace {
       , env_(std::move(other.env_)) {
     }
 
-    base_expect_receiver& operator=(base_expect_receiver&& other) = delete;
+    auto operator=(base_expect_receiver&& other) -> base_expect_receiver& = delete;
 
     void set_called() {
       called_.store(true);
     }
 
-    _Env get_env() const noexcept {
+    auto get_env() const noexcept -> _Env {
       return env_;
     }
   };
@@ -244,7 +244,7 @@ namespace {
       FAIL_CHECK("set_error called on expect_value_receiver_ex");
     }
 
-    Env get_env() const noexcept {
+    auto get_env() const noexcept -> Env {
       return env_;
     }
   };
@@ -298,7 +298,7 @@ namespace {
       FAIL_CHECK("set_error called on expect_stopped_receiver_ex");
     }
 
-    Env get_env() const noexcept {
+    auto get_env() const noexcept -> Env {
       return env_;
     }
 
@@ -342,7 +342,7 @@ namespace {
       , error_() {
     }
 
-    expect_error_receiver& operator=(expect_error_receiver&& other) noexcept {
+    auto operator=(expect_error_receiver&& other) noexcept -> expect_error_receiver& {
       base_expect_receiver<Env>::operator=(std::move(other));
       error_.reset();
       return *this;
@@ -404,7 +404,7 @@ namespace {
       *value_ = std::move(value);
     }
 
-    Env get_env() const noexcept {
+    auto get_env() const noexcept -> Env {
       return env_;
     }
 

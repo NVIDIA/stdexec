@@ -18,30 +18,12 @@
 
 #pragma once
 
+#include "../../include/stdexec/execution.hpp"
+#include "../../include/nvexec/detail/throw_on_cuda_error.cuh"
+
 #include <algorithm>
-#include <stdexec/execution.hpp>
-#include <stdexcept>
 #include <cstdio>
 #include <cstdlib>
-
-namespace nvexec {
-
-  inline void throw_on_cuda_error(cudaError_t error, char const * file_name, int line) {
-    // Clear the global CUDA error state which may have been set by the last
-    // call. Otherwise, errors may "leak" to unrelated calls.
-    cudaGetLastError();
-
-    if (error != cudaSuccess) {
-      throw std::runtime_error(
-        std::string("CUDA Error: ") + file_name + ":" + std::to_string(line) + ": "
-        + cudaGetErrorName(error) + ": " + cudaGetErrorString(error));
-    }
-  }
-
-#define THROW_ON_CUDA_ERROR(...)                                                                   \
-  ::nvexec::throw_on_cuda_error(__VA_ARGS__, __FILE__, __LINE__);                                  \
-  /**/
-} // namespace nvexec
 
 namespace {
 
@@ -79,18 +61,18 @@ namespace {
     }
 
     flags_storage_t() {
-      THROW_ON_CUDA_ERROR(cudaMallocManaged(&flags_, sizeof(int) * N));
-      THROW_ON_CUDA_ERROR(cudaMemset(flags_, 0, sizeof(int) * N));
+      STDEXEC_TRY_CUDA_API(cudaMallocManaged(&flags_, sizeof(int) * N));
+      STDEXEC_TRY_CUDA_API(cudaMemset(flags_, 0, sizeof(int) * N));
     }
 
     ~flags_storage_t() {
-      THROW_ON_CUDA_ERROR(cudaFree(flags_));
+      STDEXEC_ASSERT_CUDA_API(cudaFree(flags_));
       flags_ = nullptr;
     }
 
     auto is_set_n_times(int n) -> bool {
       int host_flags[N]; // NOLINT
-      THROW_ON_CUDA_ERROR(cudaMemcpy(host_flags, flags_, sizeof(int) * N, cudaMemcpyDeviceToHost));
+      STDEXEC_TRY_CUDA_API(cudaMemcpy(host_flags, flags_, sizeof(int) * N, cudaMemcpyDeviceToHost));
 
       return std::count(host_flags, host_flags + N, n) == N;
     }

@@ -206,18 +206,16 @@ namespace {
   }
 
   struct move_checker {
-    bool valid;
+    bool valid{true};
 
-    move_checker() noexcept
-      : valid(true) {
-    }
+    move_checker() noexcept = default;
 
     move_checker(const move_checker& other) noexcept {
       REQUIRE(other.valid);
       valid = true;
     }
 
-    move_checker& operator=(const move_checker& other) noexcept {
+    auto operator=(const move_checker& other) noexcept -> move_checker& {
       REQUIRE(other.valid);
       valid = true;
       return *this;
@@ -228,7 +226,7 @@ namespace {
       valid = true;
     }
 
-    move_checker& operator=(move_checker&& other) noexcept {
+    auto operator=(move_checker&& other) noexcept -> move_checker& {
       other.valid = false;
       valid = true;
       return *this;
@@ -251,26 +249,28 @@ namespace {
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <typename R>
-      friend oper<R> tag_invoke(ex::connect_t, my_sender, R&& r) {
+      friend auto tag_invoke(ex::connect_t, my_sender, R&& r) -> oper<R> {
         return {{}, static_cast<R&&>(r)};
       }
 
+      [[nodiscard]]
       auto get_env() const noexcept -> scheduler_env<move_checking_inline_scheduler> {
         return {};
       }
     };
 
-    my_sender schedule() const noexcept {
+    [[nodiscard]]
+    auto schedule() const noexcept -> my_sender {
       return {};
     }
 
-    friend bool
-      operator==(move_checking_inline_scheduler, move_checking_inline_scheduler) noexcept {
+    friend auto
+      operator==(move_checking_inline_scheduler, move_checking_inline_scheduler) noexcept -> bool {
       return true;
     }
 
-    friend bool
-      operator!=(move_checking_inline_scheduler, move_checking_inline_scheduler) noexcept {
+    friend auto
+      operator!=(move_checking_inline_scheduler, move_checking_inline_scheduler) noexcept -> bool {
       return false;
     }
 

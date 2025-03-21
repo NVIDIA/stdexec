@@ -36,27 +36,29 @@ namespace {
         ex::completion_signatures<ex::set_value_t(), ex::set_error_t(std::exception_ptr)>;
 
       template <typename R>
-      friend operation_state tag_invoke(ex::connect_t, sender, R&&) {
+      friend auto tag_invoke(ex::connect_t, sender, R&&) -> operation_state {
         return {};
       }
 
       struct env {
         template <stdexec::__completion_tag Tag>
-        uncustomized_scheduler query(ex::get_completion_scheduler_t<Tag>) const noexcept {
+        auto query(ex::get_completion_scheduler_t<Tag>) const noexcept -> uncustomized_scheduler {
           return {};
         }
       };
 
-      env get_env() const noexcept {
+      [[nodiscard]]
+      auto get_env() const noexcept -> env {
         return {};
       }
     };
 
-    sender schedule() const noexcept {
+    [[nodiscard]]
+    auto schedule() const noexcept -> sender {
       return {};
     }
 
-    bool operator==(const uncustomized_scheduler&) const noexcept = default;
+    auto operator==(const uncustomized_scheduler&) const noexcept -> bool = default;
   };
 
   template <ex::forward_progress_guarantee fpg>
@@ -72,34 +74,36 @@ namespace {
         ex::completion_signatures<ex::set_value_t(), ex::set_error_t(std::exception_ptr)>;
 
       template <typename R>
-      friend operation_state tag_invoke(ex::connect_t, sender, R&&) {
+      friend auto tag_invoke(ex::connect_t, sender, R&&) -> operation_state {
         return {};
       }
 
       struct env {
         template <stdexec::__completion_tag Tag>
-        customized_scheduler query(ex::get_completion_scheduler_t<Tag>) const noexcept {
+        auto query(ex::get_completion_scheduler_t<Tag>) const noexcept -> customized_scheduler {
           return {};
         }
       };
 
-      env get_env() const noexcept {
+      auto get_env() const noexcept -> env {
         return {};
       }
     };
 
-    sender schedule() const {
+    [[nodiscard]]
+    auto schedule() const -> sender {
       return {};
     }
 
-    friend bool operator==(customized_scheduler, customized_scheduler) noexcept {
+    friend auto operator==(customized_scheduler, customized_scheduler) noexcept -> bool {
       return true;
     }
 
-    friend bool operator!=(customized_scheduler, customized_scheduler) noexcept {
+    friend auto operator!=(customized_scheduler, customized_scheduler) noexcept -> bool {
       return false;
     }
 
+    [[nodiscard]]
     constexpr auto
       query(ex::get_forward_progress_guarantee_t) const noexcept -> ex::forward_progress_guarantee {
       return fpg;

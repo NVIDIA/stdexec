@@ -73,13 +73,13 @@ namespace nvexec::_strm::queue {
       this->execute_ = [](task_base_t* t) noexcept {
       };
       this->free_ = [](task_base_t* t) noexcept {
-        STDEXEC_DBG_ERR(cudaFree(static_cast<void*>(t->atom_next_)));
+        STDEXEC_ASSERT_CUDA_API(cudaFree(static_cast<void*>(t->atom_next_)));
       };
       this->next_ = nullptr;
 
       constexpr std::size_t ptr_size = sizeof(this->atom_next_);
-      STDEXEC_DBG_ERR(cudaMalloc(&this->atom_next_, ptr_size));
-      STDEXEC_DBG_ERR(cudaMemset(static_cast<void*>(this->atom_next_), 0, ptr_size));
+      STDEXEC_TRY_CUDA_API(cudaMalloc(reinterpret_cast<void**>(&this->atom_next_), ptr_size));
+      STDEXEC_TRY_CUDA_API(cudaMemset(static_cast<void*>(this->atom_next_), 0, ptr_size));
     }
   };
 

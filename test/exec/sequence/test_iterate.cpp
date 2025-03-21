@@ -32,6 +32,7 @@ namespace {
     Receiver rcvr;
     int* sum_;
 
+    [[nodiscard]]
     auto get_env() const noexcept -> stdexec::env_of_t<Receiver> {
       return stdexec::get_env(rcvr);
     }
@@ -78,8 +79,8 @@ namespace {
     Env env_{};
 
     template <class Item>
-    friend sum_sender<stdexec::__decay_t<Item>>
-      tag_invoke(exec::set_next_t, sum_receiver& self, Item&& item) noexcept {
+    friend auto tag_invoke(exec::set_next_t, sum_receiver& self, Item&& item) noexcept
+      -> sum_sender<stdexec::__decay_t<Item>> {
       return {static_cast<Item&&>(item), &self.sum_};
     }
 
@@ -92,7 +93,8 @@ namespace {
     void set_error(std::exception_ptr) noexcept {
     }
 
-    Env get_env() const noexcept {
+    [[nodiscard]]
+    auto get_env() const noexcept -> Env {
       return env_;
     }
   };
@@ -103,7 +105,7 @@ namespace {
     auto iterate = exec::iterate(std::views::all(array));
     STATIC_REQUIRE(exec::sequence_sender_in<decltype(iterate), stdexec::empty_env>);
     STATIC_REQUIRE(stdexec::sender_expr_for<decltype(iterate), exec::iterate_t>);
-    auto op = exec::subscribe(iterate, sum_receiver<>{sum});
+    auto op = exec::subscribe(iterate, sum_receiver<>{.sum_ = sum});
     stdexec::start(op);
     CHECK(sum == (42 + 43 + 44));
   }
@@ -126,7 +128,7 @@ namespace {
     auto env = exec::make_env(stdexec::prop{stdexec::get_domain, my_domain{}});
     using Env = decltype(env);
     int sum = 0;
-    auto op = exec::subscribe(iterate, sum_receiver<Env>{sum, env});
+    auto op = exec::subscribe(iterate, sum_receiver<Env>{.sum_ = sum, .env_ = env});
     stdexec::start(op);
     CHECK(sum == (42 + 43 + 44 + 1));
   }

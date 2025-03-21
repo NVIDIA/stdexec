@@ -41,12 +41,13 @@ struct noop_receiver {
   void set_stopped() noexcept {
   }
 
+  [[nodiscard]]
   auto get_env() const & noexcept {
     return stdexec::prop{get_stop_token, stdexec::never_stop_token{}};
   }
 };
 
-int main() {
+auto main() -> int {
   exec::static_thread_pool ctx{1};
   exec::async_scope scope;
 

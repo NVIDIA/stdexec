@@ -115,7 +115,7 @@ namespace {
       return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
     }
 
-    Env get_env() const noexcept {
+    auto get_env() const noexcept -> Env {
       return env_;
     }
   };
@@ -189,8 +189,9 @@ namespace {
       : x(x) {
     }
 
-    friend bool
-      operator==(non_default_constructible const & lhs, non_default_constructible const & rhs) {
+    friend auto
+      operator==(non_default_constructible const & lhs, non_default_constructible const & rhs)
+        -> bool {
       return lhs.x == rhs.x;
     }
   };

@@ -32,6 +32,7 @@ namespace stdexec {
 
         void set_error(std::exception_ptr) noexcept;
         void set_stopped() noexcept;
+        [[nodiscard]]
         auto get_env() const noexcept -> empty_env;
       };
     } // namespace __no
@@ -50,15 +51,15 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((no_unique_address)) _Base __base_;
 
      protected:
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) _Base& base() & noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) auto base() & noexcept -> _Base& {
         return __base_;
       }
 
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) const _Base& base() const & noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) auto base() const & noexcept -> const _Base& {
         return __base_;
       }
 
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) _Base&& base() && noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) auto base() && noexcept -> _Base&& {
         return static_cast<_Base&&>(__base_);
       }
     };

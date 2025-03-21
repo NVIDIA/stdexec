@@ -117,6 +117,7 @@ namespace stdexec {
           __state_->__loop_.finish();
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> __env {
           return __env{&__state_->__loop_};
         }

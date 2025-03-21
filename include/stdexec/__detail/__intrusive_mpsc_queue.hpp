@@ -38,12 +38,12 @@ namespace stdexec {
 
     void push_back_nil() {
       __nil_.store(nullptr, std::memory_order_relaxed);
-      _Node* __prev = static_cast<_Node*>(__back_.exchange(&__nil_, std::memory_order_acq_rel));
+      auto* __prev = static_cast<_Node*>(__back_.exchange(&__nil_, std::memory_order_acq_rel));
       (__prev->*_Next).store(&__nil_, std::memory_order_release);
     }
 
    public:
-    bool push_back(_Node* __new_node) noexcept {
+    auto push_back(_Node* __new_node) noexcept -> bool {
       (__new_node->*_Next).store(nullptr, std::memory_order_relaxed);
       void* __prev_back = __back_.exchange(__new_node, std::memory_order_acq_rel);
       bool __is_nil = __prev_back == static_cast<void*>(&__nil_);
@@ -55,7 +55,7 @@ namespace stdexec {
       return __is_nil;
     }
 
-    _Node* pop_front() noexcept {
+    auto pop_front() noexcept -> _Node* {
       if (__front_ == static_cast<void*>(&__nil_)) {
         _Node* __next = __nil_.load(std::memory_order_acquire);
         if (!__next) {
@@ -63,7 +63,7 @@ namespace stdexec {
         }
         __front_ = __next;
       }
-      _Node* __front = static_cast<_Node*>(__front_);
+      auto* __front = static_cast<_Node*>(__front_);
       void* __next = (__front->*_Next).load(std::memory_order_acquire);
       if (__next) {
         __front_ = __next;

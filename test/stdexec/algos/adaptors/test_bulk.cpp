@@ -95,8 +95,8 @@ namespace {
     auto op = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
 
-    for (int i = 0; i < n; i++) {
-      CHECK(counter[i] == 1);
+    for (int i: counter) {
+      CHECK(i == 1);
     }
   }
 
@@ -109,8 +109,8 @@ namespace {
     auto op = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
 
-    for (int i = 0; i < n; i++) {
-      CHECK(counter[i] == 1);
+    for (int i: counter) {
+      CHECK(i == 1);
     }
   }
 
@@ -122,8 +122,8 @@ namespace {
     auto op = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
 
-    for (int i = 0; i < n; i++) {
-      CHECK(counter[i] == 1);
+    for (int i: counter) {
+      CHECK(i == 1);
     }
   }
 
@@ -141,8 +141,8 @@ namespace {
     auto op = ex::connect(std::move(snd), expect_value_receiver{magic_number});
     ex::start(op);
 
-    for (int i = 0; i < n; i++) {
-      CHECK(counter[i] == 1);
+    for (int i: counter) {
+      CHECK(i == 1);
     }
   }
 
@@ -306,8 +306,7 @@ namespace {
       stdexec::sync_wait(std::move(snd));
 
       // All the work should not have run on the same thread
-      const std::size_t actual =
-        static_cast<std::size_t>(std::count(tids.begin(), tids.end(), tids[0]));
+      const auto actual = static_cast<std::size_t>(std::count(tids.begin(), tids.end(), tids[0]));
       const std::size_t wrong = tids.size();
 
       CHECK(actual != wrong);
@@ -331,8 +330,7 @@ namespace {
       stdexec::sync_wait(stdexec::starts_on(sch, std::move(snd)));
 
       // All the work should not have run on the same thread
-      const std::size_t actual =
-        static_cast<std::size_t>(std::count(tids.begin(), tids.end(), tids[0]));
+      const auto actual = static_cast<std::size_t>(std::count(tids.begin(), tids.end(), tids[0]));
       const std::size_t wrong = tids.size();
 
       CHECK(actual != wrong);

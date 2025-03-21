@@ -15,7 +15,8 @@
  */
 #pragma once
 
-#define STDEXEC_STRINGIZE(_ARG)   #_ARG
+#define STDEXEC_STRINGIZE_(...)   #__VA_ARGS__
+#define STDEXEC_STRINGIZE(...)    STDEXEC_STRINGIZE_(__VA_ARGS__)
 
 #define STDEXEC_CAT_(_XP, ...)    _XP##__VA_ARGS__
 #define STDEXEC_CAT(_XP, ...)     STDEXEC_CAT_(_XP, __VA_ARGS__)
@@ -31,8 +32,8 @@
 #define STDEXEC_IIF_EVAL(_MACRO, ...) _MACRO(__VA_ARGS__)
 
 #define STDEXEC_COMPL(_B)             STDEXEC_COMPL_CAT(STDEXEC_COMPL_, _B)
-#define STDEXEC_COMPL_0               1
-#define STDEXEC_COMPL_1               0
+#define STDEXEC_COMPL_0               1 // NOLINT(modernize-macro-to-enum)
+#define STDEXEC_COMPL_1               0 // NOLINT(modernize-macro-to-enum)
 #define STDEXEC_COMPL_CAT(_XP, ...)   _XP##__VA_ARGS__
 
 #define STDEXEC_COUNT(...)                                                                         \

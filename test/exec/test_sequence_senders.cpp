@@ -39,7 +39,7 @@ namespace {
     using completion_signatures = stdexec::completion_signatures<_Sigs...>;
 
     template <class R>
-    friend nop_operation tag_invoke(connect_t, some_sender_of, R&&) {
+    friend auto tag_invoke(connect_t, some_sender_of, R&&) -> nop_operation {
       return {};
     }
   };
@@ -98,7 +98,7 @@ namespace {
     using receiver_concept = stdexec::receiver_t;
 
     template <sender_to<test_receiver<_Sigs...>> _Item>
-    friend _Item tag_invoke(set_next_t, next_receiver&, _Item&& __item) noexcept {
+    friend auto tag_invoke(set_next_t, next_receiver&, _Item&& __item) noexcept -> _Item {
       return __item;
     }
 
@@ -130,7 +130,7 @@ namespace {
     using item_types = exec::item_types<some_sender_of<_Sigs...>>;
 
     template <receiver R>
-    friend nop_operation tag_invoke(subscribe_t, some_sequence_sender_of self, R&& rcvr);
+    friend auto tag_invoke(subscribe_t, some_sequence_sender_of self, R&& rcvr) -> nop_operation;
   };
 
   TEST_CASE("sequence_senders - Test for subscribe", "[sequence_senders]") {

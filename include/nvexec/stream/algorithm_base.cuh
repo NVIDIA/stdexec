@@ -70,7 +70,7 @@ namespace nvexec::_strm::__algo_range_init_fun {
      public:
       using __id = receiver_t;
 
-      constexpr static ::std::size_t memory_allocation_size = max_result_size::value;
+      static constexpr ::std::size_t memory_allocation_size = max_result_size::value;
 
       template <class Range>
       void set_value(Range&& range) noexcept {

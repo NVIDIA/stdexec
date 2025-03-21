@@ -41,7 +41,8 @@ namespace exec_old {
   // even_share(     11,      2,         3); // -> [8, 11) -> 3 items
   // ```
   template <class Shape>
-  static std::pair<Shape, Shape> even_share(Shape n, std::size_t rank, std::size_t size) noexcept {
+  static auto
+    even_share(Shape n, std::size_t rank, std::size_t size) noexcept -> std::pair<Shape, Shape> {
     const auto avg_per_thread = n / size;
     const auto n_big_share = avg_per_thread + 1;
     const auto big_shares = n % size;
@@ -145,14 +146,16 @@ namespace exec_old {
     struct scheduler {
       using __t = scheduler;
       using __id = scheduler;
-      bool operator==(const scheduler&) const = default;
+      auto operator==(const scheduler&) const -> bool = default;
 
+      [[nodiscard]]
       auto query(stdexec::get_forward_progress_guarantee_t) const noexcept
         -> stdexec::forward_progress_guarantee {
         return stdexec::forward_progress_guarantee::parallel;
       }
 
-      domain query(stdexec::get_domain_t) const noexcept {
+      [[nodiscard]]
+      auto query(stdexec::get_domain_t) const noexcept -> domain {
         return {};
       }
 
@@ -184,8 +187,8 @@ namespace exec_old {
           static_thread_pool& pool_;
 
           template <class CPO>
-          static_thread_pool::scheduler
-            query(stdexec::get_completion_scheduler_t<CPO>) const noexcept {
+          auto query(stdexec::get_completion_scheduler_t<CPO>) const noexcept
+            -> static_thread_pool::scheduler {
             return static_thread_pool::scheduler{pool_};
           }
         };
@@ -199,7 +202,8 @@ namespace exec_old {
         static_thread_pool& pool_;
 
        public:
-        env get_env() const noexcept {
+        [[nodiscard]]
+        auto get_env() const noexcept -> env {
           return env{pool_};
         }
       };
@@ -213,27 +217,29 @@ namespace exec_old {
       static_thread_pool* pool_;
 
      public:
-      sender schedule() const noexcept {
+      [[nodiscard]]
+      auto schedule() const noexcept -> sender {
         return sender{*pool_};
       }
     };
 
-    scheduler get_scheduler() noexcept {
+    auto get_scheduler() noexcept -> scheduler {
       return scheduler{*this};
     }
 
     void request_stop() noexcept;
 
-    std::uint32_t available_parallelism() const {
+    [[nodiscard]]
+    auto available_parallelism() const -> std::uint32_t {
       return threadCount_;
     }
 
    private:
     class thread_state {
      public:
-      task_base* try_pop();
-      task_base* pop();
-      bool try_push(task_base* task);
+      auto try_pop() -> task_base*;
+      auto pop() -> task_base*;
+      auto try_push(task_base* task) -> bool;
       void push(task_base* task);
       void request_stop();
 
@@ -324,7 +330,7 @@ namespace exec_old {
   }
 
   inline void static_thread_pool::enqueue(task_base* task) noexcept {
-    const std::uint32_t threadCount = static_cast<std::uint32_t>(threads_.size());
+    const auto threadCount = static_cast<std::uint32_t>(threads_.size());
     const std::uint32_t startIndex =
       nextThread_.fetch_add(1, std::memory_order_relaxed) % threadCount;
 
@@ -348,7 +354,7 @@ namespace exec_old {
     }
   }
 
-  inline task_base* static_thread_pool::thread_state::try_pop() {
+  inline auto static_thread_pool::thread_state::try_pop() -> task_base* {
     std::unique_lock lk{mut_, std::try_to_lock};
     if (!lk || queue_.empty()) {
       return nullptr;
@@ -356,7 +362,7 @@ namespace exec_old {
     return queue_.pop_front();
   }
 
-  inline task_base* static_thread_pool::thread_state::pop() {
+  inline auto static_thread_pool::thread_state::pop() -> task_base* {
     std::unique_lock lk{mut_};
     while (queue_.empty()) {
       if (stopRequested_) {
@@ -367,7 +373,7 @@ namespace exec_old {
     return queue_.pop_front();
   }
 
-  inline bool static_thread_pool::thread_state::try_push(task_base* task) {
+  inline auto static_thread_pool::thread_state::try_push(task_base* task) -> bool {
     std::unique_lock lk{mut_, std::try_to_lock};
     if (!lk) {
       return false;
@@ -471,7 +477,7 @@ namespace exec_old {
     template <stdexec::__decays_to<bulk_sender> Self, stdexec::receiver Receiver>
       requires stdexec::
         receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-      friend bulk_op_state_t<Self, Receiver>                     //
+      friend auto                                                //
       tag_invoke(stdexec::connect_t, Self&& self, Receiver rcvr) //
       noexcept(stdexec::__nothrow_constructible_from<
                bulk_op_state_t<Self, Receiver>,
@@ -479,7 +485,7 @@ namespace exec_old {
                Shape,
                Fun,
                Sender,
-               Receiver>) {
+               Receiver>) -> bulk_op_state_t<Self, Receiver> {
       return bulk_op_state_t<Self, Receiver>{
         self.pool_,
         self.shape_,
@@ -578,7 +584,8 @@ namespace exec_old {
     std::exception_ptr exception_;
     std::vector<bulk_task> tasks_;
 
-    std::uint32_t num_agents_required() const {
+    [[nodiscard]]
+    auto num_agents_required() const -> std::uint32_t {
       return std::min(shape_, static_cast<Shape>(pool_.available_parallelism()));
     }
 

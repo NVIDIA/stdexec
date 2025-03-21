@@ -84,6 +84,6 @@ struct RunThread {
   }
 };
 
-int main(int argc, char** argv) {
+auto main(int argc, char** argv) -> int {
   my_main<execpools::tbb_thread_pool, RunThread>(argc, argv);
 }

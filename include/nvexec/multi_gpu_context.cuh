@@ -54,11 +54,11 @@ namespace nvexec {
 
         explicit operation_state_t(Receiver rcvr)
           : rcvr_(static_cast<Receiver&&>(rcvr)) {
-          status_ = STDEXEC_DBG_ERR(cudaStreamCreate(&stream_));
+          status_ = STDEXEC_LOG_CUDA_API(cudaStreamCreate(&stream_));
         }
 
         ~operation_state_t() {
-          STDEXEC_DBG_ERR(cudaStreamDestroy(stream_));
+          STDEXEC_ASSERT_CUDA_API(cudaStreamDestroy(stream_));
         }
 
         [[nodiscard]]

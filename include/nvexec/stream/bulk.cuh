@@ -28,8 +28,12 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::_strm {
+#if defined(STDEXEC_CLANGD_INVOKED) && STDEXEC_CLANG() && STDEXEC_CUDA()
+// clangd doesn't understand CUDA's new/delete operators
+__host__ auto operator new[](std::size_t) -> void*;
+#endif
 
+namespace nvexec::_strm {
   namespace _bulk {
     template <int BlockThreads, class... As, std::integral Shape, class Fun>
     __launch_bounds__(BlockThreads) __global__ void kernel(Shape shape, Fun fn, As... as) {
@@ -68,7 +72,8 @@ namespace nvexec::_strm {
               <<<grid_blocks, block_threads, 0, stream>>>(shape_, std::move(f_), as...);
           }
 
-          if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
+          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
+              status == cudaSuccess) {
             op_state.propagate_completion_signal(stdexec::set_value, static_cast<As&&>(as)...);
           } else {
             op_state.propagate_completion_signal(stdexec::set_error, std::move(status));
@@ -237,7 +242,8 @@ namespace nvexec::_strm {
             }
           }
 
-          if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
+          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
+              status == cudaSuccess) {
             op_state_.propagate_completion_signal(stdexec::set_value, static_cast<As&&>(as)...);
           } else {
             op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
@@ -300,11 +306,11 @@ namespace nvexec::_strm {
         , ready_to_complete_(new cudaEvent_t[num_devices_]) {
         // TODO Manage errors
         cudaGetDevice(&current_device_);
-        cudaEventCreate(&ready_to_launch_, cudaEventDisableTiming);
+        cudaEventCreateWithFlags(&ready_to_launch_, cudaEventDisableTiming);
         for (int dev = 0; dev < num_devices_; dev++) {
           cudaSetDevice(dev);
           cudaStreamCreate(streams_.get() + dev);
-          cudaEventCreate(ready_to_complete_.get() + dev, cudaEventDisableTiming);
+          cudaEventCreateWithFlags(ready_to_complete_.get() + dev, cudaEventDisableTiming);
         }
         cudaSetDevice(current_device_);
       }

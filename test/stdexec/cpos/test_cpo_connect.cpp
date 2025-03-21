@@ -44,7 +44,7 @@ namespace {
     int value_{0};
 
     template <class R>
-    friend op_state<R> tag_invoke(ex::connect_t, my_sender&& s, R&& r) {
+    friend auto tag_invoke(ex::connect_t, my_sender&& s, R&& r) -> op_state<R> {
       return {{}, s.value_, static_cast<R&&>(r)};
     }
   };
@@ -56,7 +56,7 @@ namespace {
     int value_{0};
 
     template <class R> // accept any type here
-    friend op_state<R> tag_invoke(ex::connect_t, my_sender_unconstrained&& s, R&& r) {
+    friend auto tag_invoke(ex::connect_t, my_sender_unconstrained&& s, R&& r) -> op_state<R> {
       return {{}, s.value_, static_cast<R&&>(r)};
     }
   };
@@ -76,8 +76,8 @@ namespace {
     using receiver_concept = stdexec::receiver_t;
     bool* called_;
 
-    friend inline op_state<strange_receiver>
-      tag_invoke(ex::connect_t, my_sender, strange_receiver self) {
+    friend inline auto
+      tag_invoke(ex::connect_t, my_sender, strange_receiver self) -> op_state<strange_receiver> {
       *self.called_ = true;
       // NOLINTNEXTLINE
       return {{}, 19, std::move(self)};

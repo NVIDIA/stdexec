@@ -66,7 +66,7 @@ namespace nvexec {
             kernel<As&...><<<p.grid_size, p.block_size, p.shared_memory, stream>>>(
               std::move(fun_), stream, as...);
 
-            if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
+            if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
                 status == cudaSuccess) {
               op_state_.propagate_completion_signal(stdexec::set_value, static_cast<As&&>(as)...);
             } else {

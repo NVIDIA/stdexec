@@ -93,7 +93,7 @@ namespace {
 
     using item_types = exec::item_types<Item>;
 
-    friend sequence_op tag_invoke(exec::subscribe_t, sequence, stdexec::__ignore) noexcept {
+    friend auto tag_invoke(exec::subscribe_t, sequence, stdexec::__ignore) noexcept -> sequence_op {
       return sequence_op{};
     }
   };

@@ -94,6 +94,6 @@ struct RunThread {
   }
 };
 
-int main(int argc, char** argv) {
+auto main(int argc, char** argv) -> int {
   my_main<exec::static_thread_pool, RunThread>(argc, argv);
 }

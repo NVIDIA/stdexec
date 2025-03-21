@@ -232,6 +232,7 @@ namespace repeat_n_detail {
       stdexec::set_stopped(std::move(op_state_.rcvr_));
     }
 
+    [[nodiscard]]
     auto get_env() const noexcept -> stdexec::env_of_t<Receiver> {
       return stdexec::get_env(op_state_.rcvr_);
     }
@@ -275,6 +276,7 @@ namespace repeat_n_detail {
       stdexec::set_stopped(std::move(op_state_.rcvr_));
     }
 
+    [[nodiscard]]
     auto get_env() const noexcept -> stdexec::env_of_t<Receiver> {
       return stdexec::get_env(op_state_.rcvr_);
     }

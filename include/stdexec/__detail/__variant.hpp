@@ -50,11 +50,11 @@ namespace stdexec {
         STDEXEC_ASSERT(false);
       }
 
-      STDEXEC_ATTRIBUTE((host, device)) static constexpr std::size_t index() noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) static constexpr auto index() noexcept -> std::size_t {
         return __variant_npos;
       }
 
-      STDEXEC_ATTRIBUTE((host, device)) static constexpr bool is_valueless() noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) static constexpr auto is_valueless() noexcept -> bool {
         return true;
       }
     };
@@ -80,28 +80,30 @@ namespace stdexec {
       // immovable:
       __variant(__variant &&) = delete;
 
-      STDEXEC_ATTRIBUTE((host, device)) __variant() noexcept {
-      }
+      STDEXEC_ATTRIBUTE((host, device)) __variant() noexcept = default;
 
       STDEXEC_ATTRIBUTE((host, device)) ~__variant() {
         __destroy();
       }
 
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) void *__get_ptr() noexcept {
+      [[nodiscard]]
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) auto __get_ptr() noexcept -> void * {
         return __storage_;
       }
 
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) std::size_t index() const noexcept {
+      [[nodiscard]]
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) auto index() const noexcept -> std::size_t {
         return __index_;
       }
 
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) bool is_valueless() const noexcept {
+      [[nodiscard]]
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) auto is_valueless() const noexcept -> bool {
         return __index_ == __variant_npos;
       }
 
       template <class _Ty, class... _As>
-      STDEXEC_ATTRIBUTE((host, device)) _Ty &emplace(_As &&...__as) //
-        noexcept(__nothrow_constructible_from<_Ty, _As...>) {
+      STDEXEC_ATTRIBUTE((host, device)) auto emplace(_As &&...__as) //
+        noexcept(__nothrow_constructible_from<_Ty, _As...>) -> _Ty & {
         constexpr std::size_t __new_index = stdexec::__index_of<_Ty, _Ts...>();
         static_assert(__new_index != __variant_npos, "Type not in variant");
 
@@ -112,8 +114,8 @@ namespace stdexec {
       }
 
       template <std::size_t _Ny, class... _As>
-      STDEXEC_ATTRIBUTE((host, device)) __at<_Ny> &emplace(_As &&...__as) //
-        noexcept(__nothrow_constructible_from<__at<_Ny>, _As...>) {
+      STDEXEC_ATTRIBUTE((host, device)) auto emplace(_As &&...__as) //
+        noexcept(__nothrow_constructible_from<__at<_Ny>, _As...>) -> __at<_Ny> & {
         static_assert(_Ny < sizeof...(_Ts), "variant index is too large");
 
         __destroy();
@@ -123,8 +125,8 @@ namespace stdexec {
       }
 
       template <std::size_t _Ny, class _Fn, class... _As>
-      STDEXEC_ATTRIBUTE((host, device)) __at<_Ny> &emplace_from_at(_Fn &&__fn, _As &&...__as) //
-        noexcept(__nothrow_callable<_Fn, _As...>) {
+      STDEXEC_ATTRIBUTE((host, device)) auto emplace_from_at(_Fn &&__fn, _As &&...__as) //
+        noexcept(__nothrow_callable<_Fn, _As...>) -> __at<_Ny> & {
         static_assert(
           __same_as<__call_result_t<_Fn, _As...>, __at<_Ny>>,
           "callable does not return the correct type");
@@ -157,19 +159,19 @@ namespace stdexec {
       }
 
       template <std::size_t _Ny>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) decltype(auto) get() && noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) auto get() && noexcept -> decltype(auto) {
         STDEXEC_ASSERT(_Ny == __index_);
         return static_cast<__at<_Ny> &&>(*reinterpret_cast<__at<_Ny> *>(__storage_));
       }
 
       template <std::size_t _Ny>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) decltype(auto) get() & noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) auto get() & noexcept -> decltype(auto) {
         STDEXEC_ASSERT(_Ny == __index_);
         return *reinterpret_cast<__at<_Ny> *>(__storage_);
       }
 
       template <std::size_t _Ny>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) decltype(auto) get() const & noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) auto get() const & noexcept -> decltype(auto) {
         STDEXEC_ASSERT(_Ny == __index_);
         return *reinterpret_cast<const __at<_Ny> *>(__storage_);
       }

@@ -48,12 +48,12 @@ namespace exec {
     union _storage {
       _storage() noexcept = default;
 
-      template <class Ty>
+      template <stdexec::__not_decays_to<_storage> Ty>
       explicit _storage(Ty&& value)
         : ptr{new stdexec::__decay_t<Ty>{static_cast<Ty&&>(value)}} {
       }
 
-      template <class Ty>
+      template <stdexec::__not_decays_to<_storage> Ty>
         requires(_is_small<stdexec::__decay_t<Ty>>::value)
       explicit _storage(Ty&& value) noexcept(stdexec::__nothrow_decay_copyable<Ty>)
         : buf{} {
@@ -143,13 +143,13 @@ namespace exec {
 
     template <class NumaPolicy>
     STDEXEC_NUMA_VTABLE_INLINE constexpr _vtable _vtable_for_v = {
-      _vtable_for<NumaPolicy>::_move,
-      _vtable_for<NumaPolicy>::_copy,
-      _vtable_for<NumaPolicy>::_destroy,
-      _vtable_for<NumaPolicy>::_num_nodes,
-      _vtable_for<NumaPolicy>::_num_cpus,
-      _vtable_for<NumaPolicy>::_bind_to_node,
-      _vtable_for<NumaPolicy>::_thread_index_to_node};
+      .move = _vtable_for<NumaPolicy>::_move,
+      .copy = _vtable_for<NumaPolicy>::_copy,
+      .destroy = _vtable_for<NumaPolicy>::_destroy,
+      .num_nodes = _vtable_for<NumaPolicy>::_num_nodes,
+      .num_cpus = _vtable_for<NumaPolicy>::_num_cpus,
+      .bind_to_node = _vtable_for<NumaPolicy>::_bind_to_node,
+      .thread_index_to_node = _vtable_for<NumaPolicy>::_thread_index_to_node};
   } // namespace _numa
 
   struct numa_policy {
@@ -180,36 +180,42 @@ namespace exec {
       vtable_->destroy(&storage_);
     }
 
+    [[nodiscard]]
     auto num_nodes() const noexcept -> std::size_t {
       return vtable_->num_nodes(&storage_);
     }
 
+    [[nodiscard]]
     auto num_cpus(int node) const noexcept -> std::size_t {
       return vtable_->num_cpus(&storage_, node);
     }
 
-    auto bind_to_node(int node) const noexcept -> int {
+    auto bind_to_node(int node) const noexcept -> int { // NOLINT(modernize-use-nodiscard)
       return vtable_->bind_to_node(&storage_, node);
     }
 
+    [[nodiscard]]
     auto thread_index_to_node(std::size_t index) const noexcept -> int {
       return vtable_->thread_index_to_node(&storage_, index);
     }
   };
 
   struct no_numa_policy {
+    [[nodiscard]]
     auto num_nodes() const noexcept -> std::size_t {
       return 1;
     }
 
+    [[nodiscard]]
     auto num_cpus(int) const noexcept -> std::size_t {
       return std::thread::hardware_concurrency();
     }
 
-    auto bind_to_node(int) const noexcept -> int {
+    auto bind_to_node(int) const noexcept -> int { // NOLINT(modernize-use-nodiscard)
       return 0;
     }
 
+    [[nodiscard]]
     auto thread_index_to_node(std::size_t) const noexcept -> int {
       return 0;
     }

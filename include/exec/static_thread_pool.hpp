@@ -32,6 +32,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <compare>
 #include <condition_variable>
 #include <cstdint>
 #include <exception>
@@ -255,7 +256,7 @@ namespace exec {
       };
 #endif
 
-      static unsigned int _hardware_concurrency() noexcept {
+      static auto _hardware_concurrency() noexcept -> unsigned int {
         unsigned int n = std::thread::hardware_concurrency();
         return n == 0 ? 1 : n;
       }
@@ -347,8 +348,9 @@ namespace exec {
           using completion_signatures =
             stdexec::completion_signatures<set_value_t(), set_stopped_t()>;
 
+          [[nodiscard]]
           auto get_env() const noexcept -> env {
-            return env{pool_, queue_};
+            return env{.pool_ = pool_, .queue_ = queue_};
           }
 
           template <receiver Receiver>
@@ -420,10 +422,12 @@ namespace exec {
           return _sender{*pool_, queue_, thread_idx_, *nodemask_};
         }
 
+        [[nodiscard]]
         auto query(get_forward_progress_guarantee_t) const noexcept -> forward_progress_guarantee {
           return forward_progress_guarantee::parallel;
         }
 
+        [[nodiscard]]
         auto query(get_domain_t) const noexcept -> domain {
           return {};
         }
@@ -633,10 +637,16 @@ namespace exec {
         int numa_node;
         std::size_t thread_index;
 
-        friend auto operator<(
+        friend auto operator==(
           const thread_index_by_numa_node& lhs,
           const thread_index_by_numa_node& rhs) noexcept -> bool {
-          return lhs.numa_node < rhs.numa_node;
+          return lhs.numa_node == rhs.numa_node;
+        }
+
+        friend auto operator<=>(
+          const thread_index_by_numa_node& lhs,
+          const thread_index_by_numa_node& rhs) noexcept -> std::strong_ordering {
+          return lhs.numa_node <=> rhs.numa_node;
         }
       };
 
@@ -669,9 +679,11 @@ namespace exec {
       for (std::uint32_t index = 0; index < threadCount; ++index) {
         threadStates_[index].emplace(this, index, params, numa_);
         threadIndexByNumaNode_.push_back(
-          thread_index_by_numa_node{threadStates_[index]->numa_node(), index});
+          thread_index_by_numa_node{
+            .numa_node = threadStates_[index]->numa_node(), .thread_index = index});
       }
 
+      // NOLINTNEXTLINE(modernize-use-ranges) we still support platforms without the std::ranges algorithms
       std::sort(threadIndexByNumaNode_.begin(), threadIndexByNumaNode_.end());
       std::vector<workstealing_victim> victims{};
       for (auto& state: threadStates_) {
@@ -705,6 +717,7 @@ namespace exec {
     }
 
     inline void static_thread_pool_::run(std::uint32_t threadIndex) noexcept {
+      // NOLINTNEXTLINE(bugprone-unused-return-value)
       numa_.bind_to_node(threadStates_[threadIndex]->numa_node());
       STDEXEC_ASSERT(threadIndex < threadCount_);
       while (true) {
@@ -730,7 +743,8 @@ namespace exec {
     }
 
     inline auto static_thread_pool_::num_threads(int numa) const noexcept -> std::size_t {
-      thread_index_by_numa_node key{numa, 0};
+      thread_index_by_numa_node key{.numa_node = numa, .thread_index = 0};
+      // NOLINTNEXTLINE(modernize-use-ranges) we still support platforms without the std::ranges algorithms
       auto it = std::lower_bound(threadIndexByNumaNode_.begin(), threadIndexByNumaNode_.end(), key);
       if (it == threadIndexByNumaNode_.end()) {
         return 0;
@@ -756,7 +770,8 @@ namespace exec {
     inline auto
       static_thread_pool_::get_thread_index(int nodeIndex, std::size_t threadIndex) const noexcept
       -> std::size_t {
-      thread_index_by_numa_node key{nodeIndex, 0};
+      thread_index_by_numa_node key{.numa_node = nodeIndex, .thread_index = 0};
+      // NOLINTNEXTLINE(modernize-use-ranges) we still support platforms without the std::ranges algorithms
       auto it = std::lower_bound(threadIndexByNumaNode_.begin(), threadIndexByNumaNode_.end(), key);
       STDEXEC_ASSERT(it != threadIndexByNumaNode_.end());
       std::advance(it, threadIndex);
@@ -869,7 +884,7 @@ namespace exec {
 
     inline auto static_thread_pool_::thread_state::try_remote()
       -> static_thread_pool_::thread_state::pop_result {
-      pop_result result{nullptr, index_};
+      pop_result result{.task = nullptr, .queueIndex = index_};
       __intrusive_queue<&task_base::next> remotes = pool_->remotes_.pop_all_reversed(index_);
       pending_queue_.append(std::move(remotes));
       if (!pending_queue_.empty()) {
@@ -882,7 +897,7 @@ namespace exec {
 
     inline auto static_thread_pool_::thread_state::try_pop()
       -> static_thread_pool_::thread_state::pop_result {
-      pop_result result{nullptr, index_};
+      pop_result result{.task = nullptr, .queueIndex = index_};
       result.task = local_queue_.pop_back();
       if (result.task) [[likely]] {
         return result;
@@ -893,13 +908,13 @@ namespace exec {
     inline auto static_thread_pool_::thread_state::try_steal(std::span<workstealing_victim> victims)
       -> static_thread_pool_::thread_state::pop_result {
       if (victims.empty()) {
-        return {nullptr, index_};
+        return {.task = nullptr, .queueIndex = index_};
       }
       std::uniform_int_distribution<std::uint32_t> dist(
         0, static_cast<std::uint32_t>(victims.size() - 1));
       std::uint32_t victimIndex = dist(rng_);
       auto& v = victims[victimIndex];
-      return {v.try_steal(), v.index()};
+      return {.task = v.try_steal(), .queueIndex = v.index()};
     }
 
     inline auto static_thread_pool_::thread_state::try_steal_near()
