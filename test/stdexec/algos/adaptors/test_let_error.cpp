@@ -235,14 +235,12 @@ namespace {
   }
 
   struct int_err_transform {
-    using my_res_t = decltype(fallible_just{0});
-
-    auto operator()(std::exception_ptr ep) const -> my_res_t {
+    auto operator()(std::exception_ptr ep) const -> fallible_just<int> {
       std::rethrow_exception(ep);
-      return {};
+      return fallible_just{0};
     }
 
-    auto operator()(int x) const -> my_res_t {
+    auto operator()(int x) const -> fallible_just<int> {
       return fallible_just{x * 2 - 1};
     }
   };
