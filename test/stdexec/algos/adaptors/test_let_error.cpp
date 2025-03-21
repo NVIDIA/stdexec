@@ -354,7 +354,7 @@ namespace {
   TEST_CASE("let_error can be customized", "[adaptors][let_error]") {
     // The customization will return a different value
     auto snd = ex::just(std::string{"hello"})
-             | exec::write_attrs(ex::prop(ex::get_domain, let_error_test_domain{}))
+             | exec::write_attrs(ex::prop{ex::get_domain, let_error_test_domain{}})
              | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
     wait_for_value(std::move(snd), std::string{"what error?"});
   }

@@ -318,7 +318,7 @@ namespace {
   TEST_CASE("let_value can be customized", "[adaptors][let_value]") {
     // The customization will return a different value
     auto snd = ex::just(std::string{"hello"})
-             | exec::write_attrs(ex::prop(ex::get_domain, let_value_test_domain{}))
+             | exec::write_attrs(ex::prop{ex::get_domain, let_value_test_domain{}})
              | ex::let_value([](std::string& x) { return ex::just(x + ", world"); });
     wait_for_value(std::move(snd), std::string{"hallo"});
   }

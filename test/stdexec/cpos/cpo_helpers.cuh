@@ -59,7 +59,7 @@ namespace {
       ex::set_stopped_t()>;
 
     auto get_env() const noexcept {
-      return ex::prop(ex::get_domain, cpo_sender_domain{});
+      return ex::prop{ex::get_domain, cpo_sender_domain{}};
     }
   };
 

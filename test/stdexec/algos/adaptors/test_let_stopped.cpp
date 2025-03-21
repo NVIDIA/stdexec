@@ -224,7 +224,7 @@ namespace {
   TEST_CASE("let_stopped can be customized", "[adaptors][let_stopped]") {
     // The customization will return a different stopped
     auto snd = ex::just(std::string{"hello"})
-             | exec::write_attrs(ex::prop(ex::get_domain, let_stopped_test_domain{}))
+             | exec::write_attrs(ex::prop{ex::get_domain, let_stopped_test_domain{}})
              | ex::let_stopped([] { return ex::just(std::string{"stopped"}); });
     wait_for_value(std::move(snd), std::string{"Don't stop me now"});
   }

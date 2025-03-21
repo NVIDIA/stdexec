@@ -233,7 +233,7 @@ namespace {
   TEST_CASE("sync_wait can be customized without scheduler", "[consumers][sync_wait]") {
     // The customization will return a different value
     auto snd = ex::just(std::string{"hello"})
-             | exec::write_attrs(ex::prop(ex::get_domain, sync_wait_test_domain{}));
+             | exec::write_attrs(ex::prop{ex::get_domain, sync_wait_test_domain{}});
     auto res = ex::sync_wait(std::move(snd));
     STATIC_REQUIRE(std::same_as<decltype(res), sync_wait_test_domain::single_result_t>);
     CHECK(res.has_value());
@@ -260,7 +260,7 @@ namespace {
     // The customization will return a different value
     auto snd = fallible_just(std::string{"hello_multi"}) //
              | ex::let_error(always(ex::just(42)))       //
-             | exec::write_attrs(ex::prop(ex::get_domain, sync_wait_test_domain{}));
+             | exec::write_attrs(ex::prop{ex::get_domain, sync_wait_test_domain{}});
     auto res = ex::sync_wait_with_variant(std::move(snd));
     STATIC_REQUIRE(std::same_as<decltype(res), sync_wait_test_domain::multi_result_t>);
     CHECK(res.has_value());

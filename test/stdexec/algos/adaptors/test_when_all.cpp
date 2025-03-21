@@ -321,8 +321,8 @@ namespace {
 
   TEST_CASE("when_all propagates domain from children", "[adaptors][when_all]") {
     auto snd = ex::when_all( //
-      ex::just(13) | exec::write_attrs(ex::prop(ex::get_domain, test_domain1{})), //
-      ex::just(3.14) | exec::write_attrs(ex::prop(ex::get_domain, test_domain2{})) //
+      ex::just(13) | exec::write_attrs(ex::prop{ex::get_domain, test_domain1{}}), //
+      ex::just(3.14) | exec::write_attrs(ex::prop{ex::get_domain, test_domain2{}}) //
     );
     auto env = ex::get_env(snd);
     auto domain = ex::get_domain(env);

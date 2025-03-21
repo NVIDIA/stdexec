@@ -111,7 +111,7 @@ namespace {
 
     [[nodiscard]]
     auto get_env() const noexcept {
-      return ex::prop(ex::get_domain, domain{});
+      return ex::prop{ex::get_domain, domain{}};
     }
 
     template <class Receiver>
@@ -129,7 +129,7 @@ namespace {
 
       [[nodiscard]]
       auto get_env() const noexcept {
-        return ex::prop(ex::get_completion_scheduler<ex::set_value_t>, custom_scheduler{called});
+        return ex::prop{ex::get_completion_scheduler<ex::set_value_t>, custom_scheduler{called}};
       }
 
       struct noop {
