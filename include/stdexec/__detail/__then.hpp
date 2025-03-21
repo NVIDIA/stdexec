@@ -56,16 +56,6 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Fun __fun) const -> __binder_back<then_t, _Fun> {
         return {{static_cast<_Fun&&>(__fun)}, {}, {}};
       }
-
-      using _Sender = __1;
-      using _Fun = __0;
-      using __legacy_customizations_t = __types<
-        tag_invoke_t(
-          then_t,
-          get_completion_scheduler_t<set_value_t>(get_env_t(_Sender&)),
-          _Sender,
-          _Fun),
-        tag_invoke_t(then_t, _Sender, _Fun)>;
     };
 
     struct __then_impl : __sexpr_defaults {

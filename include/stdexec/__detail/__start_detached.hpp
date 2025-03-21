@@ -84,14 +84,6 @@ namespace stdexec {
           __as_root_env(static_cast<_Env&&>(__env)));
       }
 
-      using _Sender = __0;
-      using __legacy_customizations_t = __types<
-        tag_invoke_t(
-          start_detached_t,
-          get_completion_scheduler_t<set_value_t>(get_env_t(const _Sender&)),
-          _Sender),
-        tag_invoke_t(start_detached_t, _Sender)>;
-
       template <class _Sender, class _Env = __root_env>
         requires sender_to<_Sender, __detached_receiver_t<_Env>>
       void apply_sender(_Sender&& __sndr, _Env&& __env = {}) const {

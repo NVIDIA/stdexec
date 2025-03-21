@@ -55,15 +55,6 @@ namespace stdexec {
         return {{}, {}, {}};
       }
 
-      using _Sender = __1;
-      using __legacy_customizations_t = //
-        __types<
-          tag_invoke_t(
-            ensure_started_t,
-            get_completion_scheduler_t<set_value_t>(get_env_t(const _Sender&)),
-            _Sender),
-          tag_invoke_t(ensure_started_t, _Sender)>;
-
       template <class _CvrefSender, class _Env>
       using __receiver_t = __t<__meval<__receiver, __cvref_id<_CvrefSender>, __id<_Env>>>;
 

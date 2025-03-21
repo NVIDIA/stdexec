@@ -21,7 +21,7 @@ namespace {
 
   TEST_CASE("split is customizable", "[cpo][cpo_split]") {
     SECTION("by free standing sender") {
-      free_standing_sender_t<ex::split_t> snd{};
+      cpo_test_sender_t<ex::split_t> snd{};
 
       {
         constexpr scope_t scope = decltype(ex::split(snd))::scope;
@@ -35,7 +35,7 @@ namespace {
     }
 
     SECTION("by completion scheduler") {
-      scheduler_t<ex::split_t>::sender_t snd{};
+      cpo_test_scheduler_t<ex::split_t>::sender_t snd{};
 
       {
         constexpr scope_t scope = decltype(ex::split(snd))::scope;

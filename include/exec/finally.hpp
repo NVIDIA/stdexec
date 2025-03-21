@@ -285,9 +285,9 @@ namespace exec {
 
     struct finally_t {
       template <sender _Initial, sender _Final>
-        requires __domain::__has_common_domain<_Initial, _Final>
+        requires __has_common_domain<_Initial, _Final>
       auto operator()(_Initial&& __initial, _Final&& __final) const {
-        using _Domain = __domain::__common_domain_t<_Initial, _Final>;
+        using _Domain = __common_domain_t<_Initial, _Final>;
         return stdexec::transform_sender(
           _Domain(),
           __make_sexpr<finally_t>(

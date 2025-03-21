@@ -32,7 +32,7 @@ namespace exec {
       STDEXEC_ATTRIBUTE((nodiscard, host, device)) auto operator()(Sndr sndr) const -> Sndr;
 
       template <class... Sndrs>
-        requires(sizeof...(Sndrs) > 1) && stdexec::__domain::__has_common_domain<Sndrs...>
+        requires(sizeof...(Sndrs) > 1) && stdexec::__has_common_domain<Sndrs...>
       STDEXEC_ATTRIBUTE((nodiscard, host, device)) auto operator()(Sndrs... sndrs) const -> _sndr<Sndrs...>;
     };
 
@@ -198,7 +198,7 @@ namespace exec {
     }
 
     template <class... Sndrs>
-      requires(sizeof...(Sndrs) > 1) && stdexec::__domain::__has_common_domain<Sndrs...>
+      requires(sizeof...(Sndrs) > 1) && stdexec::__has_common_domain<Sndrs...>
     STDEXEC_ATTRIBUTE((host, device)) auto sequence_t::operator()(Sndrs... sndrs) const -> _sndr<Sndrs...> {
       return _sndr<Sndrs...>{{}, {}, {static_cast<Sndrs&&>(sndrs)...}};
     }

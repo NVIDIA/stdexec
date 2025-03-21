@@ -181,35 +181,31 @@ namespace {
   }
 
   // Return a different sender when we invoke this custom defined then implementation
-  using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
-
-  template <class Fun>
-  auto tag_invoke(ex::then_t, inline_scheduler, my_string_sender_t, Fun) {
-    return ex::just(std::string{"hallo"});
-  }
-
-  TEST_CASE("then can be customized early", "[adaptors][then]") {
-    // The customization will return a different value
-    auto snd = ex::transfer_just(inline_scheduler{}, std::string{"hello"}) //
-             | ex::then([](std::string x) { return x + ", world"; });
-    wait_for_value(std::move(snd), std::string{"hallo"});
-  }
-
-  struct my_domain {
-    template <ex::sender_expr_for<ex::then_t> Sender, class... Env>
-    static auto transform_sender(Sender, const Env&...) {
-      return ex::just(std::string{"hallo"});
+  struct then_test_domain {
+    template <class Sender, class... Env>
+      requires std::same_as<ex::tag_of_t<Sender>, ex::then_t>
+    static auto transform_sender(Sender&& sndr, Env&&...) {
+      return ex::just(std::string{"ciao"});
     }
   };
 
+  TEST_CASE("then can be customized early", "[adaptors][then]") {
+    // The customization will return a different value
+    basic_inline_scheduler<then_test_domain> sched;
+    auto snd = ex::just(std::string{"hello"}) //
+             | ex::continues_on(sched)        //
+             | ex::then([](std::string x) { return x + ", world"; });
+    wait_for_value(std::move(snd), std::string{"ciao"});
+  }
+
   TEST_CASE("then can be customized late", "[adaptors][then]") {
     // The customization will return a different value
-    basic_inline_scheduler<my_domain> sched;
+    basic_inline_scheduler<then_test_domain> sched;
     auto snd = ex::just(std::string{"hello"})
              | exec::on(
                  sched, //
                  ex::then([](std::string x) { return x + ", world"; }))
              | exec::write_env(stdexec::prop{ex::get_scheduler, inline_scheduler()});
-    wait_for_value(std::move(snd), std::string{"hallo"});
+    wait_for_value(std::move(snd), std::string{"ciao"});
   }
 } // namespace

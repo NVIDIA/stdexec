@@ -24,7 +24,7 @@ namespace {
     };
 
     SECTION("by free standing sender") {
-      free_standing_sender_t<ex::upon_stopped_t> snd{};
+      cpo_test_sender_t<ex::upon_stopped_t> snd{};
 
       {
         constexpr scope_t scope = decltype(snd | ex::upon_stopped(f))::scope;
@@ -38,7 +38,7 @@ namespace {
     }
 
     SECTION("by completion scheduler") {
-      scheduler_t<ex::upon_stopped_t, ex::set_stopped_t>::sender_t snd{};
+      cpo_test_scheduler_t<ex::upon_stopped_t, ex::set_stopped_t>::sender_t snd{};
 
       {
         constexpr scope_t scope = decltype(snd | ex::upon_stopped(f))::scope;

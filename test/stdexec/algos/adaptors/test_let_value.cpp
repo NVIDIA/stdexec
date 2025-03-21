@@ -20,6 +20,9 @@
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <exec/env.hpp>
+
+#include <chrono> // IWYU pragma: keep for chrono_literals
 
 namespace ex = stdexec;
 
@@ -304,16 +307,18 @@ namespace {
   }
 
   // Return a different sender when we invoke this custom defined let_value implementation
-  using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
-
-  template <typename Fun>
-  auto tag_invoke(ex::let_value_t, inline_scheduler, my_string_sender_t, Fun) {
-    return ex::just(std::string{"hallo"});
-  }
+  struct let_value_test_domain {
+    template <class Sender>
+      requires std::same_as<ex::tag_of_t<Sender>, ex::let_value_t>
+    static auto transform_sender(Sender&&) {
+      return ex::just(std::string{"hallo"});
+    }
+  };
 
   TEST_CASE("let_value can be customized", "[adaptors][let_value]") {
     // The customization will return a different value
-    auto snd = ex::transfer_just(inline_scheduler{}, std::string{"hello"}) //
+    auto snd = ex::just(std::string{"hello"})
+             | exec::write_attrs(ex::prop{ex::get_domain, let_value_test_domain{}})
              | ex::let_value([](std::string& x) { return ex::just(x + ", world"); });
     wait_for_value(std::move(snd), std::string{"hallo"});
   }

@@ -161,10 +161,6 @@ namespace stdexec {
           __make_sexpr<schedule_from_t>(
             static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr)));
       }
-
-      using _Sched = __0;
-      using _Sender = __1;
-      using __legacy_customizations_t = __types<tag_invoke_t(schedule_from_t, _Sched, _Sender)>;
     };
 
     struct __schedule_from_impl : __sexpr_defaults {

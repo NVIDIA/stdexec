@@ -1,5 +1,5 @@
 .. =============================================================================
-..  Copyright 2023 NVIDIA Corporation
+..  Copyright 2025 NVIDIA Corporation
 .. 
 ..  Licensed under the Apache License, Version 2.0 (the "License");
 ..  you may not use this file except in compliance with the License.
@@ -14,32 +14,22 @@
 ..  limitations under the License.
 .. =============================================================================
 
-Welcome to ``stdexec``
-======================
+User's Guide
+============
 
-``stdexec`` is the reference implementation for `P2300 <https://wg21.link/P2300>`_,  the
-``std::execution`` proposal to the C++ standard library which will bring to C++26 a standard
-async programming model.
+This section will eventually contain a user's guide for ``stdexec`` that describes what the library
+is, the high-level concepts on which it is based, and how to use it.
 
-It provides:
+TODO
 
-* TODO
 
-.. toctree::
-  :maxdepth: 2
-  :caption: Contents:
-
-  reference/index
-
-  user/index
-
-  developer/index
-
-.. .. toctree: :
-..   :maxdepth: 1
-
-..  versions
-
-Indices and tables
+Essential concepts
 ------------------
-* :ref:`genindex`
+
+* Execution Contexts
+* Senders
+* Schedulers
+* Sender Algorithms
+    * Sender Factories
+    * Sender Adaptors
+    * Sender Consumers

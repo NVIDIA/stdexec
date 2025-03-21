@@ -16,6 +16,7 @@
 
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
+#include <exec/env.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
@@ -310,76 +311,22 @@ namespace {
     );
   }
 
-  struct my_string_sender_t {
-    std::string str_;
-
-    using sender_concept = stdexec::sender_t;
-    using completion_signatures =
-      ex::completion_signatures_of_t<decltype(ex::just(std::string{})), empty_env>;
-
-    template <class Recv>
-    friend auto tag_invoke(ex::connect_t, my_string_sender_t&& self, Recv&& recv) {
-      return ex::connect(ex::just(std::move(self.str_)), std::forward<Recv>(recv));
-    }
-
-    template <class Recv>
-    friend auto tag_invoke(ex::connect_t, const my_string_sender_t& self, Recv&& recv) {
-      return ex::connect(ex::just(self.str_), std::forward<Recv>(recv));
-    }
-  };
-
-  auto tag_invoke(ex::when_all_t, my_string_sender_t, my_string_sender_t) {
-    // Return a different sender when we invoke this custom defined when_all implementation
-    return ex::just(std::string{"first program"});
-  }
-
-  TEST_CASE("when_all can be customized", "[adaptors][when_all]") {
-    // The customization will return a different value
-    auto snd = ex::when_all(                     //
-      my_string_sender_t{std::string{"hello,"}}, //
-      my_string_sender_t{std::string{" world!"}} //
-    );
-    wait_for_value(std::move(snd), std::string{"first program"});
-  }
-
-  auto tag_invoke(ex::when_all_with_variant_t, my_string_sender_t, my_string_sender_t) {
-    // Return a different sender when we invoke this custom defined when_all_with_variant implementation
-    return ex::just(std::string{"first program"});
-  }
-
-  TEST_CASE("when_all_with_variant can be customized", "[adaptors][when_all]") {
-    // The customization will return a different value
-    auto snd = ex::when_all_with_variant(        //
-      my_string_sender_t{std::string{"hello,"}}, //
-      my_string_sender_t{std::string{" world!"}} //
-    );
-    wait_for_value(std::move(snd), std::string{"first program"});
-  }
-
-  // There is no way for ADL to find the following overload. This test is broken and needs to be
-  // rewritten using a custom domain.
-  //
-  // using my_string_variant_sender_t = decltype(ex::into_variant(my_string_sender_t{std::string{}}));
-  //
-  // auto tag_invoke(ex::when_all_t, my_string_variant_sender_t, my_string_variant_sender_t) {
-  //   // Return a different sender when we invoke this custom defined when_all implementation
-  //   return ex::just(std::string{"first program"});
-  // }
-
-  // TEST_CASE(
-  //   "when_all_with_variant take into account when_all customizations",
-  //   "[adaptors][when_all]") {
-  //   // when_all_with_variant must be using the `when_all` implementation that allows customizations
-  //   // The customization will return a different value
-  //   auto snd = ex::when_all_with_variant(        //
-  //     my_string_sender_t{std::string{"hello,"}}, //
-  //     my_string_sender_t{std::string{" world!"}} //
-  //   );
-  //   wait_for_value(std::move(snd), std::string{"first program"});
-  // }
-
   TEST_CASE("when_all returns empty env", "[adaptors][when_all]") {
     check_env_type<ex::empty_env>(ex::when_all(ex::just(), ex::just()));
+  }
+
+  struct test_domain1 { };
+
+  struct test_domain2 : test_domain1 { };
+
+  TEST_CASE("when_all propagates domain from children", "[adaptors][when_all]") {
+    auto snd = ex::when_all( //
+      ex::just(13) | exec::write_attrs(ex::prop{ex::get_domain, test_domain1{}}), //
+      ex::just(3.14) | exec::write_attrs(ex::prop{ex::get_domain, test_domain2{}}) //
+    );
+    auto env = ex::get_env(snd);
+    auto domain = ex::get_domain(env);
+    STATIC_REQUIRE(std::same_as<decltype(domain), test_domain1>);
   }
 
   namespace {

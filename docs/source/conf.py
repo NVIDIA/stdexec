@@ -23,7 +23,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'stdexec'
-copyright = '2023, NVIDIA Corporation'
+copyright = '2025, NVIDIA Corporation'
 author = 'NVIDIA Corporation'
 release = 'dev'
 
