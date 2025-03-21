@@ -88,20 +88,6 @@ namespace stdexec {
           {}
         };
       }
-
-      // This describes how to use the pieces of a bulk sender to find
-      // legacy customizations of the bulk algorithm.
-      using _Sender = __1;
-      using _Shape = __nth_member<0>(__0);
-      using _Fun = __nth_member<1>(__0);
-      using __legacy_customizations_t = __types<
-        tag_invoke_t(
-          bulk_t,
-          get_completion_scheduler_t<set_value_t>(get_env_t(_Sender&)),
-          _Sender,
-          _Shape,
-          _Fun),
-        tag_invoke_t(bulk_t, _Sender, _Shape, _Fun)>;
     };
 
     struct __bulk_impl : __sexpr_defaults {

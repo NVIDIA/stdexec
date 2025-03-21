@@ -25,7 +25,7 @@ namespace {
     };
 
     SECTION("by free standing sender") {
-      free_standing_sender_t<ex::bulk_t> snd{};
+      cpo_test_sender_t<ex::bulk_t> snd{};
 
       {
         constexpr scope_t scope = decltype(snd | ex::bulk(n, f))::scope;
@@ -39,7 +39,7 @@ namespace {
     }
 
     SECTION("by completion scheduler") {
-      scheduler_t<ex::bulk_t>::sender_t snd{};
+      cpo_test_scheduler_t<ex::bulk_t>::sender_t snd{};
 
       {
         constexpr scope_t scope = decltype(snd | ex::bulk(n, f))::scope;

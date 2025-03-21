@@ -227,15 +227,6 @@ namespace stdexec {
         -> std::optional<std::tuple<int>> = delete;
 #endif
 
-      using _Sender = __0;
-      using __legacy_customizations_t = __types<
-        // For legacy reasons:
-        tag_invoke_t(
-          sync_wait_t,
-          get_completion_scheduler_t<set_value_t>(get_env_t(const _Sender&)),
-          _Sender),
-        tag_invoke_t(sync_wait_t, _Sender)>;
-
       // clang-format off
       /// @brief Synchronously wait for the result of a sender, blocking the
       ///         current thread.
@@ -316,15 +307,6 @@ namespace stdexec {
       auto operator()(_Sender&&, [[maybe_unused]] _Error __diagnostic = {}) const
         -> std::optional<std::tuple<std::variant<std::tuple<>>>> = delete;
 #endif
-
-      using _Sender = __0;
-      using __legacy_customizations_t = __types<
-        // For legacy reasons:
-        tag_invoke_t(
-          sync_wait_with_variant_t,
-          get_completion_scheduler_t<set_value_t>(get_env_t(const _Sender&)),
-          _Sender),
-        tag_invoke_t(sync_wait_with_variant_t, _Sender)>;
 
       template <class _Sender>
         requires __callable<sync_wait_t, __result_of<into_variant, _Sender>>

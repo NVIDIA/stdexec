@@ -26,7 +26,6 @@
 #include "__meta.hpp"
 #include "__schedulers.hpp"
 #include "__senders_core.hpp"
-#include "__tag_invoke.hpp"
 #include "__transform_sender.hpp"
 #include "__utility.hpp"
 
@@ -50,10 +49,6 @@ namespace stdexec {
   // [execution.senders.adaptors.starts_on]
   namespace __starts_on_ns {
     struct starts_on_t {
-      using _Sender = __1;
-      using _Scheduler = __0;
-      using __legacy_customizations_t = __types<tag_invoke_t(starts_on_t, _Scheduler, _Sender)>;
-
       template <scheduler _Scheduler, sender _Sender>
       auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto {
         auto __domain = query_or(get_domain, __sched, default_domain());

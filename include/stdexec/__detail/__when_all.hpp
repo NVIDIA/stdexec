@@ -240,15 +240,10 @@ namespace stdexec {
     using __mk_state_fn_t = decltype(__when_all::__mk_state_fn(__declval<_Env>()));
 
     struct when_all_t {
-      // Used by the default_domain to find legacy customizations:
-      using _Sender = __1;
-      using __legacy_customizations_t = //
-        __types<tag_invoke_t(when_all_t, _Sender...)>;
-
       template <sender... _Senders>
-        requires __domain::__has_common_domain<_Senders...>
+        requires __has_common_domain<_Senders...>
       auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto {
-        auto __domain = __domain::__common_domain_t<_Senders...>();
+        auto __domain = __common_domain_t<_Senders...>();
         return stdexec::transform_sender(
           __domain, __make_sexpr<when_all_t>(__(), static_cast<_Senders&&>(__sndrs)...));
       }
@@ -266,7 +261,7 @@ namespace stdexec {
 
       static constexpr auto get_attrs = //
         []<class... _Child>(__ignore, const _Child&...) noexcept {
-          using _Domain = __domain::__common_domain_t<_Child...>;
+          using _Domain = __common_domain_t<_Child...>;
           if constexpr (__same_as<_Domain, default_domain>) {
             return env();
           } else {
@@ -387,14 +382,10 @@ namespace stdexec {
     };
 
     struct when_all_with_variant_t {
-      using _Sender = __1;
-      using __legacy_customizations_t = //
-        __types<tag_invoke_t(when_all_with_variant_t, _Sender...)>;
-
       template <sender... _Senders>
-        requires __domain::__has_common_domain<_Senders...>
+        requires __has_common_domain<_Senders...>
       auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto {
-        auto __domain = __domain::__common_domain_t<_Senders...>();
+        auto __domain = __common_domain_t<_Senders...>();
         return stdexec::transform_sender(
           __domain,
           __make_sexpr<when_all_with_variant_t>(__(), static_cast<_Senders&&>(__sndrs)...));
@@ -416,7 +407,7 @@ namespace stdexec {
     struct __when_all_with_variant_impl : __sexpr_defaults {
       static constexpr auto get_attrs = //
         []<class... _Child>(__ignore, const _Child&...) noexcept {
-          using _Domain = __domain::__common_domain_t<_Child...>;
+          using _Domain = __common_domain_t<_Child...>;
           if constexpr (same_as<_Domain, default_domain>) {
             return env();
           } else {
@@ -433,13 +424,8 @@ namespace stdexec {
     };
 
     struct transfer_when_all_t {
-      using _Sched = __0;
-      using _Sender = __1;
-      using __legacy_customizations_t = //
-        __types<tag_invoke_t(transfer_when_all_t, _Sched, _Sender...)>;
-
       template <scheduler _Scheduler, sender... _Senders>
-        requires __domain::__has_common_domain<_Senders...>
+        requires __has_common_domain<_Senders...>
       auto
         operator()(_Scheduler __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto {
         auto __domain = query_or(get_domain, __sched, default_domain());
@@ -478,13 +464,8 @@ namespace stdexec {
     };
 
     struct transfer_when_all_with_variant_t {
-      using _Sched = __0;
-      using _Sender = __1;
-      using __legacy_customizations_t = //
-        __types<tag_invoke_t(transfer_when_all_with_variant_t, _Sched, _Sender...)>;
-
       template <scheduler _Scheduler, sender... _Senders>
-        requires __domain::__has_common_domain<_Senders...>
+        requires __has_common_domain<_Senders...>
       auto
         operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto {
         auto __domain = query_or(get_domain, __sched, default_domain());
