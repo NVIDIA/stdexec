@@ -29,7 +29,7 @@ namespace {
     op_except() = default;
     op_except(op_except&&) = delete;
 
-    friend void tag_invoke(ex::start_t, op_except&) {
+    void start() & {
     }
   };
 
@@ -37,7 +37,7 @@ namespace {
     op_noexcept() = default;
     op_noexcept(op_noexcept&&) = delete;
 
-    friend void tag_invoke(ex::start_t, op_noexcept&) noexcept {
+    void start() & noexcept {
     }
   };
 

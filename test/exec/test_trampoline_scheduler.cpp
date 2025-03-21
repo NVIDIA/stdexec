@@ -43,11 +43,11 @@ namespace {
       Receiver rcvr_;
       int counter_;
 
-      friend void tag_invoke(start_t, operation& self) noexcept {
-        if (self.counter_ == 0) {
-          stdexec::set_value(static_cast<Receiver&&>(self.rcvr_));
+      void start() & noexcept {
+        if (counter_ == 0) {
+          stdexec::set_value(static_cast<Receiver&&>(rcvr_));
         } else {
-          stdexec::set_error(static_cast<Receiver&&>(self.rcvr_), try_again{});
+          stdexec::set_error(static_cast<Receiver&&>(rcvr_), try_again{});
         }
       }
     };

@@ -63,8 +63,8 @@ namespace {
   struct oper : immovable {
     R recv_;
 
-    friend void tag_invoke(ex::start_t, oper& self) noexcept {
-      ex::set_value(static_cast<R&&>(self.recv_), 0);
+    void start() & noexcept {
+      ex::set_value(static_cast<R&&>(recv_), 0);
     }
   };
 

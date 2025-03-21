@@ -208,8 +208,8 @@ namespace {
 
         inner_op_state_t inner_op_;
 
-        friend void tag_invoke(stdexec::start_t, __t& op) noexcept {
-          stdexec::start(op.inner_op_);
+        void start() & noexcept {
+          stdexec::start(inner_op_);
         }
 
         __t(Sender&& sender, Receiver&& receiver)

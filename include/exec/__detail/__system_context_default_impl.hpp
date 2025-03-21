@@ -136,7 +136,7 @@ namespace exec::__system_context_default_impl {
     }
 
     //! Starts the operation that will schedule work on the system scheduler.
-    void start() noexcept {
+    void start() & noexcept {
       stdexec::start(__inner_op_);
     }
 

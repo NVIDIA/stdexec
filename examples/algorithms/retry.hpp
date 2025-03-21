@@ -101,8 +101,8 @@ struct _op {
     }
   }
 
-  friend void tag_invoke(stdexec::start_t, _op& o) noexcept {
-    stdexec::start(*o.o_);
+  void start() & noexcept {
+    stdexec::start(*o_);
   }
 };
 
