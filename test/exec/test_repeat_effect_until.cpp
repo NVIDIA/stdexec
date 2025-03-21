@@ -30,7 +30,6 @@
 #include <catch2/catch.hpp>
 
 #include <memory>
-#include <type_traits>
 #include <utility>
 
 using namespace stdexec;
@@ -48,11 +47,11 @@ namespace {
       Receiver rcvr_;
       int counter_;
 
-      friend void tag_invoke(start_t, operation &self) noexcept {
-        if (self.counter_ == 0) {
-          stdexec::set_value(static_cast<Receiver &&>(self.rcvr_), true);
+      void start() & noexcept {
+        if (counter_ == 0) {
+          stdexec::set_value(static_cast<Receiver &&>(rcvr_), true);
         } else {
-          stdexec::set_value(static_cast<Receiver &&>(self.rcvr_), false);
+          stdexec::set_value(static_cast<Receiver &&>(rcvr_), false);
         }
       }
     };

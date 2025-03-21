@@ -25,16 +25,8 @@ namespace {
   struct my_oper : immovable {
     bool started_{false};
 
-    friend void tag_invoke(ex::start_t, my_oper& self) noexcept {
-      self.started_ = true;
-    }
-  };
-
-  struct op_value /*: immovable*/ { // Intentionally movable!
-    bool* started_;
-
-    friend void tag_invoke(ex::start_t, op_value self) noexcept {
-      *self.started_ = true;
+    void start() noexcept {
+      started_ = true;
     }
   };
 
@@ -44,8 +36,8 @@ namespace {
   struct op_rvalref : immovable {
     bool* started_;
 
-    friend void tag_invoke(ex::start_t, op_rvalref&& self) noexcept {
-      *self.started_ = true;
+    void start() && noexcept {
+      *started_ = true;
     }
   };
   STDEXEC_PRAGMA_POP()
@@ -53,16 +45,16 @@ namespace {
   struct op_ref : immovable {
     bool* started_;
 
-    friend void tag_invoke(ex::start_t, op_ref& self) noexcept {
-      *self.started_ = true;
+    void start() & noexcept {
+      *started_ = true;
     }
   };
 
   struct op_cref : immovable {
     bool* started_;
 
-    friend void tag_invoke(ex::start_t, const op_cref& self) noexcept {
-      *self.started_ = true;
+    void start() const noexcept {
+      *started_ = true;
     }
   };
 
@@ -70,14 +62,6 @@ namespace {
     my_oper op;
     ex::start(op);
     REQUIRE(op.started_);
-  }
-
-  TEST_CASE("can call start on an oper with plain value type", "[cpo][cpo_start]") {
-    static_assert(!std::invocable<ex::start_t, op_value>, "cannot call start on op_value");
-    bool started{false};
-    op_value op{/*{},*/ &started};
-    ex::start(op);
-    REQUIRE(started);
   }
 
   TEST_CASE("can call start on an oper with r-value ref type", "[cpo][cpo_start]") {

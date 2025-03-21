@@ -126,7 +126,7 @@ namespace exec {
         , __rcvr_(static_cast<_Receiver&&>(__rcvr)) {
       }
 
-      void start() noexcept {
+      void start() & noexcept {
         const __joiner* expected = &__empty_joiner_;
         if (!__stg_->__joiner_.compare_exchange_strong(expected, this)) {
           join();

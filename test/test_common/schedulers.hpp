@@ -78,18 +78,18 @@ namespace {
 
       oper(oper&&) = delete;
 
-      friend void tag_invoke(ex::start_t, oper& self) noexcept {
+      void start() & noexcept {
         // Enqueue another command to the list of all commands
         // The scheduler will start this, whenever start_next() is called
-        std::unique_lock lock{self.data_->mutex_};
-        self.data_->all_commands_.emplace_back([&self]() {
-          if (ex::get_stop_token(ex::get_env(self.receiver_)).stop_requested()) {
-            ex::set_stopped(static_cast<R&&>(self.receiver_));
+        std::unique_lock lock{data_->mutex_};
+        data_->all_commands_.emplace_back([this]() {
+          if (ex::get_stop_token(ex::get_env(receiver_)).stop_requested()) {
+            ex::set_stopped(static_cast<R&&>(receiver_));
           } else {
-            ex::set_value(static_cast<R&&>(self.receiver_));
+            ex::set_value(static_cast<R&&>(receiver_));
           }
         });
-        self.data_->cv_.notify_all();
+        data_->cv_.notify_all();
       }
     };
 
@@ -200,8 +200,8 @@ namespace {
     struct oper : immovable {
       R recv_;
 
-      friend void tag_invoke(ex::start_t, oper& self) noexcept {
-        ex::set_value(static_cast<R&&>(self.recv_));
+      void start() & noexcept {
+        ex::set_value(static_cast<R&&>(recv_));
       }
     };
 
@@ -258,8 +258,8 @@ namespace {
       R recv_;
       E err_;
 
-      friend void tag_invoke(ex::start_t, oper& self) noexcept {
-        ex::set_error(static_cast<R&&>(self.recv_), static_cast<E&&>(self.err_));
+      void start() & noexcept {
+        ex::set_error(static_cast<R&&>(recv_), static_cast<E&&>(err_));
       }
     };
 

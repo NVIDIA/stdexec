@@ -50,7 +50,7 @@ namespace {
     struct op {
       using operation_state_concept = ex::operation_state_t;
 
-      void start() noexcept {
+      void start() & noexcept {
       }
     };
 

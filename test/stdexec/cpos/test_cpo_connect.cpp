@@ -32,8 +32,8 @@ namespace {
     int val_;
     R recv_;
 
-    friend void tag_invoke(ex::start_t, op_state& self) noexcept {
-      ex::set_value(static_cast<R&&>(self.recv_), static_cast<int>(self.val_));
+    void start() & noexcept {
+      ex::set_value(static_cast<R&&>(recv_), static_cast<int>(val_));
     }
   };
 
@@ -70,36 +70,6 @@ namespace {
   TEST_CASE("cannot connect sender with invalid receiver", "[cpo][cpo_connect]") {
     static_assert(ex::sender<my_sender_unconstrained>);
     REQUIRE_FALSE(ex::sender_to<my_sender_unconstrained, int>);
-  }
-
-  struct strange_receiver {
-    using receiver_concept = stdexec::receiver_t;
-    bool* called_;
-
-    friend inline auto
-      tag_invoke(ex::connect_t, my_sender, strange_receiver self) -> op_state<strange_receiver> {
-      *self.called_ = true;
-      // NOLINTNEXTLINE
-      return {{}, 19, std::move(self)};
-    }
-
-    void set_value(int val) noexcept {
-      REQUIRE(val == 19);
-    }
-
-    void set_stopped() noexcept {
-    }
-
-    void set_error(std::exception_ptr) noexcept {
-    }
-  };
-
-  TEST_CASE("connect can be defined in the receiver", "[cpo][cpo_connect]") {
-    static_assert(ex::sender_to<my_sender, strange_receiver>);
-    bool called{false};
-    auto op = ex::connect(my_sender{10}, strange_receiver{&called});
-    ex::start(op);
-    REQUIRE(called);
   }
 
   TEST_CASE("tag types can be deduced from ex::connect", "[cpo][cpo_connect]") {

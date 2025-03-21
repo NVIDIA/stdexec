@@ -49,17 +49,17 @@ struct fib_s {
     long n;
     Scheduler sched;
 
-    friend void tag_invoke(stdexec::start_t, operation& self) noexcept {
-      if (self.n < self.cutoff) {
-        stdexec::set_value(static_cast<Receiver&&>(self.rcvr_), serial_fib(self.n));
+    void start() & noexcept {
+      if (n < cutoff) {
+        stdexec::set_value(static_cast<Receiver&&>(rcvr_), serial_fib(n));
       } else {
         auto mkchild = [&](long n) {
-          return stdexec::starts_on(self.sched, fib_sender(fib_s{self.cutoff, n, self.sched}));
+          return stdexec::starts_on(sched, fib_sender(fib_s{cutoff, n, sched}));
         };
 
         stdexec::start_detached(
-          stdexec::when_all(mkchild(self.n - 1), mkchild(self.n - 2))
-          | stdexec::then([rcvr = static_cast<Receiver&&>(self.rcvr_)](long a, long b) mutable {
+          stdexec::when_all(mkchild(n - 1), mkchild(n - 2))
+          | stdexec::then([rcvr = static_cast<Receiver&&>(rcvr_)](long a, long b) mutable {
               stdexec::set_value(static_cast<Receiver&&>(rcvr), a + b);
             }));
       }
