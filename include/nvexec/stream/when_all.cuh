@@ -115,7 +115,8 @@ namespace nvexec::_strm {
     inline constexpr auto _sync_op = []<class OpT>(OpT& op) noexcept {
       if constexpr (STDEXEC_IS_BASE_OF(stream_op_state_base, OpT)) {
         if (op.stream_provider_.status_ == cudaSuccess) {
-          op.stream_provider_.status_ = STDEXEC_DBG_ERR(cudaStreamSynchronize(op.get_stream()));
+          op.stream_provider_.status_ =
+            STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(op.get_stream()));
         }
       }
     };
@@ -269,9 +270,9 @@ namespace nvexec::_strm {
             if constexpr (stream_receiver<Receiver>) {
               auto env = stdexec::get_env(rcvr_);
               stream_provider_t* stream_provider = get_stream_provider(env);
-              cudaStream_t stream = stream_provider->own_stream_.value();
+              cudaStream_t stream = *stream_provider->own_stream_;
 
-              for (int i = 0; i < sizeof...(SenderIds); i++) {
+              for (int i = 0; i < sizeof...(SenderIds); ++i) {
                 if (status_ == cudaSuccess) {
                   status_ = events_[i].try_wait(stream);
                 }
@@ -289,7 +290,7 @@ namespace nvexec::_strm {
               if constexpr (__v<sends_values<Completions>>) {
                 // All child operations completed successfully:
                 values_->apply(
-                  [this]<class... Tuples>(Tuples&&... value_tupls) -> void {
+                  [this]<class... Tuples>(Tuples&&... value_tupls) noexcept -> void {
                     __tup::__cat_apply(
                       __mk_completion_fn(stdexec::set_value, rcvr_),
                       static_cast<Tuples&&>(value_tupls)...);
@@ -329,11 +330,11 @@ namespace nvexec::_strm {
           , stream_providers_{operation_t::get_stream_providers(when_all)}
           , child_states_{
               operation_t::connect_children_(this, static_cast<WhenAll&&>(when_all), Indices{})} {
-          status_ = STDEXEC_DBG_ERR(cudaMallocManaged(&values_, sizeof(child_values_tuple_t)));
+          status_ = STDEXEC_LOG_CUDA_API(cudaMallocManaged(&values_, sizeof(child_values_tuple_t)));
         }
 
         ~operation_t() {
-          STDEXEC_DBG_ERR(cudaFree(values_));
+          STDEXEC_ASSERT_CUDA_API(cudaFree(values_));
         }
 
         STDEXEC_IMMOVABLE(operation_t);

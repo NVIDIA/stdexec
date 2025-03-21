@@ -27,11 +27,7 @@
 namespace nvexec::detail {
   struct cuda_event {
     cuda_event() {
-      if (auto status =
-            STDEXEC_DBG_ERR(::cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
-          status != cudaSuccess) {
-        throw cuda_error(status, "cudaEventCreate");
-      }
+      STDEXEC_TRY_CUDA_API(::cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
     }
 
     cuda_event(cuda_event&& other) noexcept
@@ -40,7 +36,7 @@ namespace nvexec::detail {
 
     ~cuda_event() {
       if (event_ != nullptr) {
-        STDEXEC_DBG_ERR(::cudaEventDestroy(event_));
+        STDEXEC_ASSERT_CUDA_API(::cudaEventDestroy(event_));
       }
     }
 
@@ -50,11 +46,11 @@ namespace nvexec::detail {
     }
 
     auto try_record(cudaStream_t stream) noexcept -> cudaError_t {
-      return STDEXEC_DBG_ERR(::cudaEventRecord(event_, stream));
+      return STDEXEC_LOG_CUDA_API(::cudaEventRecord(event_, stream));
     }
 
     auto try_wait(cudaStream_t stream) noexcept -> cudaError_t {
-      return STDEXEC_DBG_ERR(::cudaStreamWaitEvent(stream, event_, 0));
+      return STDEXEC_LOG_CUDA_API(::cudaStreamWaitEvent(stream, event_, 0));
     }
 
    private:

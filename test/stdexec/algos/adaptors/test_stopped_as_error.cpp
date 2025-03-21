@@ -15,6 +15,7 @@
  */
 
 #include <catch2/catch.hpp>
+#include <numbers>
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
@@ -96,7 +97,7 @@ namespace {
     inline_scheduler sched;
     check_val_types<ex::__mset<pack<int>>>(ex::transfer_just(sched, 23) | ex::stopped_as_error(-1));
     check_val_types<ex::__mset<pack<double>>>(
-      ex::transfer_just(sched, 3.1415) | ex::stopped_as_error(-1));
+      ex::transfer_just(sched, std::numbers::pi) | ex::stopped_as_error(-1));
   }
 
   TEST_CASE("stopped_as_error keeps error_types from input sender", "[adaptors][stopped_as_error]") {

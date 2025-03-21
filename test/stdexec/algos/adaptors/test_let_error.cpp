@@ -168,7 +168,7 @@ namespace {
       rhs.p_called_ = nullptr;
     }
 
-    my_type& operator=(my_type&& rhs) {
+    auto operator=(my_type&& rhs) -> my_type& {
       if (p_called_)
         *p_called_ = true;
       p_called_ = rhs.p_called_;
@@ -236,12 +236,12 @@ namespace {
   struct int_err_transform {
     using my_res_t = decltype(fallible_just{0});
 
-    my_res_t operator()(std::exception_ptr ep) const {
+    auto operator()(std::exception_ptr ep) const -> my_res_t {
       std::rethrow_exception(ep);
       return {};
     }
 
-    my_res_t operator()(int x) const {
+    auto operator()(int x) const -> my_res_t {
       return fallible_just{x * 2 - 1};
     }
   };

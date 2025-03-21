@@ -23,7 +23,8 @@ namespace ex = stdexec;
 namespace {
 
   struct my_forwarding_query_t {
-    constexpr bool query(ex::forwarding_query_t) const noexcept {
+    [[nodiscard]]
+    constexpr auto query(ex::forwarding_query_t) const noexcept -> bool {
       return true;
     }
   };

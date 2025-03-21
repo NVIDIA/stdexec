@@ -84,7 +84,8 @@ namespace nvexec::_strm {
           cudaPointerAttributes attributes{};
           if (cudaError_t err = cudaPointerGetAttributes(&attributes, ptr); err == cudaSuccess) {
             if (attributes.type == cudaMemoryTypeManaged) {
-              STDEXEC_DBG_ERR(
+              [[maybe_unused]]
+              auto _ign = STDEXEC_LOG_CUDA_API(
                 cudaMemPrefetchAsync(ptr, sizeof(decay_type), cudaCpuDeviceId, stream));
             }
           }
@@ -98,10 +99,10 @@ namespace nvexec::_strm {
             cudaStream_t stream = state_->stream_;
 
             if constexpr (sizeof...(As)) {
-              if (STDEXEC_DBG_ERR(cudaGetDevice(&dev_id)) == cudaSuccess) {
+              if (STDEXEC_LOG_CUDA_API(cudaGetDevice(&dev_id)) == cudaSuccess) {
                 int concurrent_managed_access{};
                 if (
-                  STDEXEC_DBG_ERR(cudaDeviceGetAttribute(
+                  STDEXEC_LOG_CUDA_API(cudaDeviceGetAttribute(
                     &concurrent_managed_access, cudaDevAttrConcurrentManagedAccess, dev_id))
                   == cudaSuccess) {
                   // Avoid launching the destruction kernel if the memory targeting host
@@ -110,7 +111,7 @@ namespace nvexec::_strm {
               }
             }
 
-            if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
+            if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(stream));
                 status == cudaSuccess) {
               state_->data_.template emplace<1>(static_cast<As&&>(as)...);
             } else {
@@ -124,7 +125,7 @@ namespace nvexec::_strm {
 
         template <class Error>
         void set_error(Error err) noexcept {
-          if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(state_->stream_));
+          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(state_->stream_));
               status == cudaSuccess) {
             set_error_(static_cast<Error&&>(err));
           } else {
@@ -133,7 +134,7 @@ namespace nvexec::_strm {
         }
 
         void set_stopped() noexcept {
-          if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(state_->stream_));
+          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(state_->stream_));
               status == cudaSuccess) {
             state_->data_.template emplace<3>(set_stopped_t());
           } else {

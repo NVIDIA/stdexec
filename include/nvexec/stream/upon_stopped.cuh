@@ -63,7 +63,7 @@ namespace nvexec::_strm {
        public:
         using __id = receiver_t;
 
-        constexpr static std::size_t memory_allocation_size = size_of_<result_t>;
+        static constexpr std::size_t memory_allocation_size = size_of_<result_t>;
 
         template <class... _As>
         void set_value(_As&&... __as) noexcept {
@@ -81,7 +81,7 @@ namespace nvexec::_strm {
 
           if constexpr (does_not_return_a_value) {
             kernel<<<1, 1, 0, stream>>>(std::move(f_));
-            if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
+            if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
                 status == cudaSuccess) {
               op_state_.propagate_completion_signal(stdexec::set_value);
             } else {
@@ -91,7 +91,7 @@ namespace nvexec::_strm {
             using decayed_result_t = __decay_t<result_t>;
             auto* d_result = static_cast<decayed_result_t*>(op_state_.temp_storage_);
             kernel_with_result<<<1, 1, 0, stream>>>(std::move(f_), d_result);
-            if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
+            if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
                 status == cudaSuccess) {
               op_state_.defer_temp_storage_destruction(d_result);
               op_state_.propagate_completion_signal(stdexec::set_value, *d_result);

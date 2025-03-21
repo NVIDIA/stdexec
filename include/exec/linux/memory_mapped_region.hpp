@@ -17,7 +17,6 @@
 #pragma once
 
 #include <cstddef>
-#include <cstdint>
 
 namespace exec {
   class memory_mapped_region {

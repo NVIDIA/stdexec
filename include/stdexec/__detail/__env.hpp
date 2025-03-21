@@ -357,7 +357,7 @@ namespace stdexec {
 
       STDEXEC_ATTRIBUTE((no_unique_address)) _Value __value;
 
-      STDEXEC_ATTRIBUTE((nodiscard)) constexpr const _Value& query(_Query) const noexcept {
+      STDEXEC_ATTRIBUTE((nodiscard)) constexpr auto query(_Query) const noexcept -> const _Value& {
         return __value;
       }
 
@@ -461,7 +461,7 @@ namespace stdexec {
         return __value_;
       }
 
-      __with& operator=(const __with&) = delete;
+      auto operator=(const __with&) -> __with& = delete;
     };
 
     template <class _Value, class _Tag, class... _Tags>
@@ -494,7 +494,7 @@ namespace stdexec {
           return tag_invoke(_Tag(), __env_);
         }
 
-        __t& operator=(const __t&) = delete;
+        auto operator=(const __t&) -> __t& = delete;
       };
     };
 
@@ -539,7 +539,7 @@ namespace stdexec {
           return tag_invoke(_Key(), __env_);
         }
 
-        __t& operator=(const __t&) = delete;
+        auto operator=(const __t&) -> __t& = delete;
       };
     };
 
@@ -573,7 +573,7 @@ namespace stdexec {
         return __fun_(_Tag());
       }
 
-      __from& operator=(const __from&) = delete;
+      auto operator=(const __from&) -> __from& = delete;
     };
 
     template <class _Fun>

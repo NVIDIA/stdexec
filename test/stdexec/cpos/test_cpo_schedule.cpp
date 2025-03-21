@@ -36,11 +36,12 @@ namespace {
   };
 
   struct my_scheduler {
-    my_sender schedule() const noexcept {
+    [[nodiscard]]
+    auto schedule() const noexcept -> my_sender {
       return my_sender{true};
     }
 
-    bool operator==(const my_scheduler&) const noexcept = default;
+    auto operator==(const my_scheduler&) const noexcept -> bool = default;
   };
 
   TEST_CASE("can call schedule on an appropriate type", "[cpo][cpo_schedule]") {

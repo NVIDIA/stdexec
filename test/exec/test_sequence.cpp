@@ -25,13 +25,11 @@
 
 namespace {
   struct big {
-    std::unique_ptr<int[]> p;
+    std::unique_ptr<int[]> p{new int[1000]};
 
-    big()
-      : p(new int[1000]) {
-    }
+    big() = default;
 
-    bool operator==(const big&) const noexcept {
+    auto operator==(const big&) const noexcept -> bool {
       return true;
     }
   };
@@ -39,7 +37,8 @@ namespace {
   struct connect_exception : std::exception {
     connect_exception() = default;
 
-    const char* what() const noexcept override {
+    [[nodiscard]]
+    auto what() const noexcept -> const char* override {
       return "connect";
     }
   };
@@ -55,7 +54,8 @@ namespace {
       }
     };
 
-    op connect(ex::__ignore) const {
+    [[nodiscard]]
+    auto connect(ex::__ignore) const -> op {
       throw connect_exception{};
     }
   };

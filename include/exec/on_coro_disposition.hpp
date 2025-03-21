@@ -122,6 +122,7 @@ namespace exec {
       struct __env {
         const __promise& __promise_;
 
+        [[nodiscard]]
         auto query(get_scheduler_t) const noexcept -> __any_scheduler {
           return __promise_.__scheduler_;
         }

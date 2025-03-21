@@ -50,7 +50,7 @@ namespace nvexec::_strm {
         using __id = receiver_t;
         using storage_t = variant_storage_t<Sender, Env>;
 
-        constexpr static std::size_t memory_allocation_size = sizeof(storage_t);
+        static constexpr std::size_t memory_allocation_size = sizeof(storage_t);
 
         operation_state_base_t<ReceiverId>& operation_state_;
 
@@ -77,14 +77,14 @@ namespace nvexec::_strm {
             }
 
             int dev_id{};
-            if (cudaError_t status = STDEXEC_DBG_ERR(cudaGetDevice(&dev_id));
+            if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaGetDevice(&dev_id));
                 status != cudaSuccess) {
               operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
               return;
             }
 
             int concurrent_managed_access{};
-            if (cudaError_t status = STDEXEC_DBG_ERR(cudaDeviceGetAttribute(
+            if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaDeviceGetAttribute(
                   &concurrent_managed_access, cudaDevAttrConcurrentManagedAccess, dev_id));
                 status != cudaSuccess) {
               operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
@@ -94,7 +94,7 @@ namespace nvexec::_strm {
             cudaStream_t stream = operation_state_.get_stream();
 
             if (concurrent_managed_access) {
-              if (cudaError_t status = STDEXEC_DBG_ERR(
+              if (cudaError_t status = STDEXEC_LOG_CUDA_API(
                     cudaMemPrefetchAsync(storage, sizeof(storage_t), dev_id, stream));
                   status != cudaSuccess) {
                 operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
@@ -105,7 +105,7 @@ namespace nvexec::_strm {
             if constexpr (construct_on_device) {
               kernel<Tag, storage_t, __decay_t<As>...><<<1, 1, 0, stream>>>(storage, as...);
 
-              if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
+              if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
                   status != cudaSuccess) {
                 operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
                 return;

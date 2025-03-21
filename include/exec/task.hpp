@@ -66,7 +66,7 @@ namespace exec {
       };
 
     template <class _ParentPromise>
-    constexpr bool __check_parent_promise_has_scheduler() noexcept {
+    constexpr auto __check_parent_promise_has_scheduler() noexcept -> bool {
       static_assert(
         __indirect_scheduler_provider<_ParentPromise>,
         "exec::task<T> cannot be co_await-ed in a coroutine that "
@@ -121,12 +121,14 @@ namespace exec {
         : __scheduler_{static_cast<_Scheduler&&>(__scheduler)} {
       }
 
+      [[nodiscard]]
       auto query(get_scheduler_t) const noexcept -> const __any_scheduler&
         requires(__with_scheduler)
       {
         return __scheduler_;
       }
 
+      [[nodiscard]]
       auto query(get_stop_token_t) const noexcept -> inplace_stop_token {
         return __stop_token_;
       }

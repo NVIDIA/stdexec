@@ -28,7 +28,8 @@ namespace {
   template <class Scheduler>
   struct default_env {
     template <typename CPO>
-    Scheduler query(ex::get_completion_scheduler_t<CPO>) const noexcept {
+    [[nodiscard]] [[nodiscard]] [[nodiscard]]
+    auto query(ex::get_completion_scheduler_t<CPO>) const noexcept -> Scheduler {
       return {};
     }
   };
@@ -41,20 +42,22 @@ namespace {
         ex::set_error_t(std::exception_ptr),                   //
         ex::set_stopped_t()>;
 
-      default_env<my_scheduler> get_env() const noexcept {
+      [[nodiscard]]
+      auto get_env() const noexcept -> default_env<my_scheduler> {
         return {};
       }
     };
 
-    my_sender schedule() const {
+    [[nodiscard]]
+    auto schedule() const -> my_sender {
       return {};
     }
 
-    friend bool operator==(my_scheduler, my_scheduler) noexcept {
+    friend auto operator==(my_scheduler, my_scheduler) noexcept -> bool {
       return true;
     }
 
-    friend bool operator!=(my_scheduler, my_scheduler) noexcept {
+    friend auto operator!=(my_scheduler, my_scheduler) noexcept -> bool {
       return false;
     }
   };
@@ -81,21 +84,23 @@ namespace {
         ex::set_error_t(std::exception_ptr),                   //
         ex::set_stopped_t()>;
 
-      default_env<my_scheduler_except> get_env() const noexcept {
+      [[nodiscard]]
+      auto get_env() const noexcept -> default_env<my_scheduler_except> {
         return {};
       }
     };
 
-    my_sender schedule() const {
+    [[nodiscard]]
+    auto schedule() const -> my_sender {
       throw std::logic_error("err");
       return {};
     }
 
-    friend bool operator==(my_scheduler_except, my_scheduler_except) noexcept {
+    friend auto operator==(my_scheduler_except, my_scheduler_except) noexcept -> bool {
       return true;
     }
 
-    friend bool operator!=(my_scheduler_except, my_scheduler_except) noexcept {
+    friend auto operator!=(my_scheduler_except, my_scheduler_except) noexcept -> bool {
       return false;
     }
   };
@@ -112,12 +117,14 @@ namespace {
         ex::set_error_t(std::exception_ptr),                   //
         ex::set_stopped_t()>;
 
-      default_env<noeq_sched> get_env() const noexcept {
+      [[nodiscard]]
+      auto get_env() const noexcept -> default_env<noeq_sched> {
         return {};
       }
     };
 
-    my_sender schedule() const {
+    [[nodiscard]]
+    auto schedule() const -> my_sender {
       return {};
     }
   };
@@ -135,27 +142,29 @@ namespace {
         ex::set_stopped_t()>;
 
       struct env {
-        friend sched_no_completion tag_invoke(             //
+        friend auto tag_invoke(             //
           ex::get_completion_scheduler_t<ex::set_error_t>, //
-          const env&) noexcept {
+          const env&) noexcept -> sched_no_completion {
           return {};
         }
       };
 
-      env get_env() const noexcept {
+      [[nodiscard]]
+      auto get_env() const noexcept -> env {
         return {};
       }
     };
 
-    my_sender schedule() const {
+    [[nodiscard]]
+    auto schedule() const -> my_sender {
       return {};
     }
 
-    friend bool operator==(sched_no_completion, sched_no_completion) noexcept {
+    friend auto operator==(sched_no_completion, sched_no_completion) noexcept -> bool {
       return true;
     }
 
-    friend bool operator!=(sched_no_completion, sched_no_completion) noexcept {
+    friend auto operator!=(sched_no_completion, sched_no_completion) noexcept -> bool {
       return false;
     }
   };

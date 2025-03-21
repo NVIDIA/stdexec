@@ -75,7 +75,7 @@ namespace {
   TEST_CASE("let_value can be used with multiple parameters", "[adaptors][let_value]") {
     auto snd = ex::just(3, 0.1415)
              | ex::let_value([](int& x, double y) { return ex::just(x + y); });
-    wait_for_value(std::move(snd), 3.1415);
+    wait_for_value(std::move(snd), 3.1415); // NOLINT(modernize-use-std-numbers)
   }
 
   TEST_CASE("let_value can be used to change the sender", "[adaptors][let_value]") {
@@ -85,7 +85,7 @@ namespace {
     ex::start(op);
   }
 
-  bool is_prime(int x) {
+  auto is_prime(int x) -> bool {
     if (x > 2 && (x % 2 == 0))
       return false;
     int d = 3;
@@ -189,7 +189,7 @@ namespace {
         rhs.p_called_ = nullptr;
       }
 
-      my_type& operator=(my_type&& rhs) {
+      auto operator=(my_type&& rhs) -> my_type& {
         if (p_called_)
           *p_called_ = true;
         p_called_ = rhs.p_called_;

@@ -156,9 +156,9 @@ TEST_CASE("simple bulk task on system context", "[types][system_scheduler]") {
 
   ex::sync_wait(std::move(bulk_snd));
 
-  for (size_t i = 0; i < num_tasks; ++i) {
-    REQUIRE(pool_ids[i] != std::thread::id{});
-    REQUIRE(this_id != pool_ids[i]);
+  for (auto pool_id: pool_ids) {
+    REQUIRE(pool_id != std::thread::id{});
+    REQUIRE(this_id != pool_id);
   }
   (void) bulk_snd;
 }
@@ -204,7 +204,8 @@ struct my_parallel_scheduler_backend_impl
 
   my_parallel_scheduler_backend_impl() = default;
 
-  int num_schedules() const {
+  [[nodiscard]]
+  auto num_schedules() const -> int {
     return count_schedules_;
   }
 

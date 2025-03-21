@@ -27,10 +27,11 @@
 #include <memory>
 #include <span>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #if __has_include(<memory_resource>)
-#  include <memory_resource>
+#  include <memory_resource> // IWYU pragma: keep
 namespace pmr = std::pmr;
 #else
 #  define STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE 1
@@ -41,15 +42,15 @@ struct statistics {
   double ops_per_sec;
 };
 
-statistics compute_perf(
+auto compute_perf(
   std::chrono::steady_clock::time_point start,
   std::chrono::steady_clock::time_point end,
-  std::size_t total_scheds) {
+  std::size_t total_scheds) -> statistics {
   auto dur = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
   auto dur_ms = std::chrono::duration_cast<std::chrono::milliseconds>(dur);
   auto dur_dbl = std::chrono::duration_cast<std::chrono::duration<double>>(dur);
   double ops_per_sec = static_cast<double>(total_scheds) / dur_dbl.count();
-  return {dur_ms, ops_per_sec};
+  return {.total_time_ms = dur_ms, .ops_per_sec = ops_per_sec};
 }
 
 struct statistics_all {
@@ -61,12 +62,12 @@ struct statistics_all {
   double stddev;
 };
 
-statistics_all compute_perf(
+auto compute_perf(
   std::span<const std::chrono::steady_clock::time_point> start,
   std::span<const std::chrono::steady_clock::time_point> end,
   std::size_t i0,
   std::size_t i,
-  std::size_t total_scheds) {
+  std::size_t total_scheds) -> statistics_all {
   double average = 0.0;
   double max = 0.0;
   double min = std::numeric_limits<double>::max();
@@ -85,7 +86,13 @@ statistics_all compute_perf(
   variance /= static_cast<double>(i + 1 - i0);
   double stddev = std::sqrt(variance);
   auto stats = compute_perf(start[i], end[i], total_scheds);
-  statistics_all all{stats.total_time_ms, stats.ops_per_sec, average, max, min, stddev};
+  statistics_all all{
+    .total_time_ms = stats.total_time_ms,
+    .ops_per_sec = stats.ops_per_sec,
+    .average = average,
+    .max = max,
+    .min = min,
+    .stddev = stddev};
   return all;
 }
 
@@ -119,15 +126,15 @@ void my_main(int argc, char** argv, exec::numa_policy policy = exec::get_numa_po
   std::atomic<bool> stop{false};
 #ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
   std::size_t buffer_size = 2000 << 20;
-  for (std::size_t i = 0; i < static_cast<std::size_t>(nthreads); ++i) {
+  for (std::size_t i = 0; std::cmp_less(i, nthreads); ++i) {
     exec::numa_allocator<char> alloc(policy.thread_index_to_node(i));
     buffers.push_back(
       std::unique_ptr<char, numa_deleter>{
-        alloc.allocate(buffer_size), numa_deleter{buffer_size, alloc}
+        alloc.allocate(buffer_size), numa_deleter{.size_ = buffer_size, .allocator_ = alloc}
     });
   }
 #endif
-  for (std::size_t i = 0; i < static_cast<std::size_t>(nthreads); ++i) {
+  for (std::size_t i = 0; std::cmp_less(i, nthreads); ++i) {
     threads.emplace_back(
       RunThread{},
       std::ref(*pool),

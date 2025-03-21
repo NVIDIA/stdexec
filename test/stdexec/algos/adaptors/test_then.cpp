@@ -65,12 +65,12 @@ namespace {
 
   TEST_CASE("then can be used to change the value type", "[adaptors][then]") {
     auto snd = ex::just(3) | ex::then([](int x) -> double { return x + 0.1415; });
-    wait_for_value(std::move(snd), 3.1415);
+    wait_for_value(std::move(snd), 3.1415); // NOLINT(modernize-use-std-numbers)
   }
 
   TEST_CASE("then can be used with multiple parameters", "[adaptors][then]") {
     auto snd = ex::just(3, 0.1415) | ex::then([](int x, double y) -> double { return x + y; });
-    wait_for_value(std::move(snd), 3.1415);
+    wait_for_value(std::move(snd), 3.1415); // NOLINT(modernize-use-std-numbers)
   }
 
   TEST_CASE("then can throw, and set_error will be called", "[adaptors][then]") {

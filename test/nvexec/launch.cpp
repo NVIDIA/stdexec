@@ -33,7 +33,7 @@ namespace ex = stdexec;
 using nvexec::is_on_gpu;
 
 namespace { namespace {
-  constexpr std::size_t N = 2 * 1024;
+  constexpr std::size_t N = 2ul * 1024;
   constexpr std::size_t THREAD_BLOCK_SIZE = 128u;
   constexpr std::size_t NUM_BLOCKS = (N + THREAD_BLOCK_SIZE - 1) / THREAD_BLOCK_SIZE;
 
@@ -62,7 +62,7 @@ namespace { namespace {
              | nvexec::launch(                    //
                  {.grid_size=NUM_BLOCKS, .block_size=THREAD_BLOCK_SIZE}, //
                  [flags](cudaStream_t stm, int* first, int* last) -> void {
-                   const int32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+                   const size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
                    const ptrdiff_t size = last - first;
 
                    // this should be executing on the GPU

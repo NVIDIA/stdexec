@@ -670,10 +670,12 @@ namespace exec {
     struct __spawn_env_ {
       inplace_stop_token __token_;
 
+      [[nodiscard]]
       auto query(get_stop_token_t) const noexcept -> inplace_stop_token {
         return __token_;
       }
 
+      [[nodiscard]]
       auto query(get_scheduler_t) const noexcept -> __inln::__scheduler {
         return {};
       }

@@ -36,9 +36,8 @@ namespace stdexec {
   namespace __domain {
     struct __transform_env {
       template <class _Domain, class _Sender, class _Env>
-      STDEXEC_ATTRIBUTE((always_inline))
-      /*constexpr*/ decltype(auto)
-        operator()(_Domain __dom, _Sender&& __sndr, _Env&& __env) const noexcept {
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Domain __dom, _Sender&& __sndr, _Env&& __env) const noexcept //
+        -> decltype(auto) {
         if constexpr (__domain::__has_transform_env<_Domain, _Sender, _Env>) {
           return __dom.transform_env(static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env));
         } else {
@@ -50,7 +49,7 @@ namespace stdexec {
 
     struct __transform_sender_1 {
       template <class _Domain, class _Sender, class... _Env>
-      STDEXEC_ATTRIBUTE((always_inline)) static constexpr bool __is_nothrow() noexcept {
+      STDEXEC_ATTRIBUTE((always_inline)) static constexpr auto __is_nothrow() noexcept -> bool {
         if constexpr (__domain::__has_transform_sender<_Domain, _Sender, _Env...>) {
           return noexcept(__declval<_Domain&>().transform_sender(
             __declval<_Sender>(), __declval<const _Env&>()...));
@@ -62,10 +61,8 @@ namespace stdexec {
       }
 
       template <class _Domain, class _Sender, class... _Env>
-      STDEXEC_ATTRIBUTE((always_inline))
-      /*constexpr*/ decltype(auto)
-        operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const
-        noexcept(__is_nothrow<_Domain, _Sender, const _Env&...>()) {
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const
+        noexcept(__is_nothrow<_Domain, _Sender, const _Env&...>()) -> decltype(auto) {
         if constexpr (__domain::__has_transform_sender<_Domain, _Sender, _Env...>) {
           return __dom.transform_sender(static_cast<_Sender&&>(__sndr), __env...);
         } else {
@@ -79,10 +76,9 @@ namespace stdexec {
 
     struct __transform_sender {
       template <class _Self = __transform_sender, class _Domain, class _Sender, class... _Env>
-      STDEXEC_ATTRIBUTE((always_inline))
-      /*constexpr*/ decltype(auto)
-        operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const
-        noexcept(__nothrow_callable<__transform_sender_1, _Domain, _Sender, const _Env&...>) {
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const
+        noexcept(__nothrow_callable<__transform_sender_1, _Domain, _Sender, const _Env&...>)
+          -> decltype(auto) {
         using _Sender2 = __call_result_t<__transform_sender_1, _Domain, _Sender, const _Env&...>;
         // If the transformation doesn't change the sender's type, then do not
         // apply the transform recursively.
@@ -104,7 +100,7 @@ namespace stdexec {
       // the sender with the requested domain.
       template <class _Domain, sender_expr _Sender, class _Env>
         requires same_as<__early_domain_of_t<_Sender>, dependent_domain>
-      /*constexpr*/ auto operator()(_Domain __dom, _Sender&& __sndr, const _Env& __env) const
+      auto operator()(_Domain __dom, _Sender&& __sndr, const _Env& __env) const
         noexcept(noexcept(__transform_sender()(
           __dom,
           dependent_domain().transform_sender(static_cast<_Sender&&>(__sndr), __env),
@@ -193,9 +189,8 @@ namespace stdexec {
   inline constexpr struct apply_sender_t {
     template <class _Domain, class _Tag, class _Sender, class... _Args>
       requires __has_implementation_for<_Tag, _Domain, _Sender, _Args...>
-    STDEXEC_ATTRIBUTE((always_inline))
-    /*constexpr*/ decltype(auto)
-      operator()(_Domain __dom, _Tag, _Sender&& __sndr, _Args&&... __args) const {
+    STDEXEC_ATTRIBUTE((always_inline)) auto
+      operator()(_Domain __dom, _Tag, _Sender&& __sndr, _Args&&... __args) const -> decltype(auto) {
       if constexpr (__domain::__has_apply_sender<_Domain, _Tag, _Sender, _Args...>) {
         return __dom.apply_sender(
           _Tag(), static_cast<_Sender&&>(__sndr), static_cast<_Args&&>(__args)...);

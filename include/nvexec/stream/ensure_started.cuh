@@ -78,7 +78,7 @@ namespace nvexec::_strm {
             copy_kernel<Tag, As&&...>
               <<<1, 1, 0, stream>>>(shared_state_->data_, static_cast<As&&>(as)...);
             shared_state_->stream_provider_.status_ =
-              STDEXEC_DBG_ERR(cudaEventRecord(shared_state_->event_, stream));
+              STDEXEC_LOG_CUDA_API(cudaEventRecord(shared_state_->event_, stream));
           } else {
             using tuple_t = decayed_tuple<Tag, As...>;
             shared_state_->index_ = SharedState::variant_t::template index_of<tuple_t>::value;
@@ -122,7 +122,8 @@ namespace nvexec::_strm {
       T* ptr{};
 
       if (status == cudaSuccess) {
-        if (status = STDEXEC_DBG_ERR(cudaMallocManaged(&ptr, sizeof(T))); status == cudaSuccess) {
+        status = STDEXEC_LOG_CUDA_API(cudaMallocManaged(&ptr, sizeof(T)));
+        if (status == cudaSuccess) {
           new (ptr) T();
           return ptr;
         }
@@ -172,7 +173,7 @@ namespace nvexec::_strm {
         , op_state2_(connect(static_cast<Sender&&>(sndr), inner_receiver_t{*this})) {
         if (stream_provider_.status_ == cudaSuccess) {
           stream_provider_.status_ =
-            STDEXEC_DBG_ERR(cudaEventCreate(&event_, cudaEventDisableTiming));
+            STDEXEC_LOG_CUDA_API(cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
         }
 
         stdexec::start(op_state2_);
@@ -202,12 +203,12 @@ namespace nvexec::_strm {
       ~sh_state_t() {
         if (stream_provider_.status_ == cudaSuccess) {
           if constexpr (stream_sender<Sender, env_t>) {
-            STDEXEC_DBG_ERR(cudaEventDestroy(event_));
+            STDEXEC_ASSERT_CUDA_API(cudaEventDestroy(event_));
           }
         }
 
         if (data_) {
-          STDEXEC_DBG_ERR(cudaFree(data_));
+          STDEXEC_ASSERT_CUDA_API(cudaFree(data_));
         }
       }
 
@@ -278,7 +279,7 @@ namespace nvexec::_strm {
 
           if (status == cudaSuccess) {
             if constexpr (stream_sender<Sender, env_t>) {
-              status = STDEXEC_DBG_ERR(
+              status = STDEXEC_LOG_CUDA_API(
                 cudaStreamWaitEvent(op->get_stream(), op->shared_state_->event_, 0));
             }
 

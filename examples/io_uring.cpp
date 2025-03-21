@@ -27,7 +27,7 @@
 
 #include <iostream>
 
-int main() {
+auto main() -> int {
   exec::io_uring_context context;
   exec::io_uring_context context2;
   std::thread io_thread{[&] {

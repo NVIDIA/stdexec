@@ -42,8 +42,8 @@ namespace {
 
 namespace exec::system_context_replaceability {
   // Should replace the function defined in __system_context_default_impl.hpp
-  std::shared_ptr<exec::system_context_replaceability::parallel_scheduler_backend>
-    query_parallel_scheduler_backend() {
+  auto query_parallel_scheduler_backend()
+    -> std::shared_ptr<exec::system_context_replaceability::parallel_scheduler_backend> {
     return std::make_shared<my_parallel_scheduler_backend_impl>();
   }
 } // namespace exec::system_context_replaceability

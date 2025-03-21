@@ -54,9 +54,9 @@ namespace {
     }
 
     movable(movable&&) = default;
-    bool operator==(const movable&) const noexcept = default;
+    auto operator==(const movable&) const noexcept -> bool = default;
 
-    int value() {
+    auto value() -> int {
       return value_;
     } // silence warning of unused private field
    private:
@@ -70,16 +70,13 @@ namespace {
     potentially_throwing(potentially_throwing&&) noexcept(false) {
     }
 
-    potentially_throwing(const potentially_throwing&) noexcept(false) {
-    }
+    potentially_throwing(const potentially_throwing&) noexcept(false) = default;
 
-    potentially_throwing& operator=(potentially_throwing&&) noexcept(false) {
+    auto operator=(potentially_throwing&&) noexcept(false) -> potentially_throwing& {
       return *this;
     }
 
-    potentially_throwing& operator=(const potentially_throwing&) noexcept(false) {
-      return *this;
-    }
+    auto operator=(const potentially_throwing&) noexcept(false) -> potentially_throwing& = default;
   };
 
   //! Used for debugging, to generate errors to the console

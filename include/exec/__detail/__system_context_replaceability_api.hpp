@@ -30,7 +30,7 @@ struct __uuid {
   std::uint64_t __parts1;
   std::uint64_t __parts2;
 
-  friend bool operator==(__uuid, __uuid) noexcept = default;
+  friend auto operator==(__uuid, __uuid) noexcept -> bool = default;
 };
 
 namespace exec::system_context_replaceability {
@@ -68,7 +68,7 @@ namespace exec::system_context_replaceability {
 
   /// Get the backend for the parallel scheduler.
   /// Users might replace this function.
-  std::shared_ptr<parallel_scheduler_backend> query_parallel_scheduler_backend();
+  auto query_parallel_scheduler_backend() -> std::shared_ptr<parallel_scheduler_backend>;
 
   /// The type of a factory that can create `parallel_scheduler_backend` instances.
   /// Out of spec.
@@ -77,8 +77,8 @@ namespace exec::system_context_replaceability {
   /// Set a factory for the parallel scheduler backend.
   /// Can be used to replace the parallel scheduler at runtime.
   /// Out of spec.
-  __parallel_scheduler_backend_factory
-    set_parallel_scheduler_backend(__parallel_scheduler_backend_factory __new_factory);
+  auto set_parallel_scheduler_backend(__parallel_scheduler_backend_factory __new_factory)
+    -> __parallel_scheduler_backend_factory;
 
   /// Interface for completing a sender operation. Backend will call frontend though this interface
   /// for completing the `schedule` and `schedule_bulk` operations.
@@ -86,7 +86,7 @@ namespace exec::system_context_replaceability {
     virtual ~receiver() = default;
 
    protected:
-    virtual bool __query_env(__uuid, void*) noexcept = 0;
+    virtual auto __query_env(__uuid, void*) noexcept -> bool = 0;
 
    public:
     /// Called when the system scheduler completes successfully.
@@ -98,7 +98,7 @@ namespace exec::system_context_replaceability {
 
     /// Query the receiver for a property of type `_P`.
     template <typename _P>
-    std::optional<std::decay_t<_P>> try_query() noexcept {
+    auto try_query() noexcept -> std::optional<std::decay_t<_P>> {
       if constexpr (__runtime_property<_P>) {
         std::decay_t<_P> __p;
         bool __success =

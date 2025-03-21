@@ -48,7 +48,7 @@ void run_std(
 
   const std::size_t n_threads = std::thread::hardware_concurrency();
   std::vector<std::thread> threads(n_threads);
-  std::barrier barrier(n_threads);
+  std::barrier barrier(static_cast<std::ptrdiff_t>(n_threads));
 
   std::vector<std::chrono::system_clock::time_point> begins(n_threads);
   std::vector<std::chrono::system_clock::time_point> ends(n_threads);

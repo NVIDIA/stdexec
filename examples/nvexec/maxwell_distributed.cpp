@@ -36,7 +36,7 @@ static auto even_share(std::size_t n, std::size_t rank, std::size_t size) noexce
 template <class T>
 auto device_alloc(std::size_t elements = 1) -> std::unique_ptr<T, deleter_t> {
   T *ptr{};
-  STDEXEC_DBG_ERR(cudaMalloc(&ptr, elements * sizeof(T)));
+  STDEXEC_TRY_CUDA_API(cudaMalloc(reinterpret_cast<void **>(&ptr), elements * sizeof(T)));
   return std::unique_ptr<T, deleter_t>(ptr, deleter_t{true});
 }
 

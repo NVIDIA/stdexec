@@ -143,8 +143,8 @@ namespace stdexec {
 
     // Called without the environment during eager customization
     template <class _Sender>
-    STDEXEC_ATTRIBUTE((always_inline)) decltype(auto) transform_sender(_Sender&& __sndr) const
-      noexcept(__domain::__is_nothrow_transform_sender<_Sender>()) {
+    STDEXEC_ATTRIBUTE((always_inline)) auto transform_sender(_Sender&& __sndr) const
+      noexcept(__domain::__is_nothrow_transform_sender<_Sender>()) -> decltype(auto) {
       // Look for a legacy customization for the given tag, and if found, apply it.
       if constexpr (__callable<__sexpr_apply_t, _Sender, __domain::__legacy_customization>) {
         return stdexec::__sexpr_apply(
@@ -158,8 +158,8 @@ namespace stdexec {
 
     // Called with an environment during lazy customization
     template <class _Sender, class _Env>
-    STDEXEC_ATTRIBUTE((always_inline)) decltype(auto) transform_sender(_Sender&& __sndr, const _Env& __env) const
-      noexcept(__domain::__is_nothrow_transform_sender<_Sender, _Env>()) {
+    STDEXEC_ATTRIBUTE((always_inline)) auto transform_sender(_Sender&& __sndr, const _Env& __env) const
+      noexcept(__domain::__is_nothrow_transform_sender<_Sender, _Env>()) -> decltype(auto) {
       if constexpr (__domain::__has_default_transform_sender<_Sender, _Env>) {
         return tag_of_t<_Sender>().transform_sender(static_cast<_Sender&&>(__sndr), __env);
       } else {
@@ -170,7 +170,7 @@ namespace stdexec {
     template <class _Tag, class _Sender, class... _Args>
       requires __domain::__has_legacy_c11n<_Tag, _Sender, _Args...>
             || __domain::__has_apply_sender<_Tag, _Sender, _Args...>
-    STDEXEC_ATTRIBUTE((always_inline)) decltype(auto) apply_sender(_Tag, _Sender&& __sndr, _Args&&... __args) const {
+    STDEXEC_ATTRIBUTE((always_inline)) auto apply_sender(_Tag, _Sender&& __sndr, _Args&&... __args) const -> decltype(auto) {
       // Look for a legacy customization for the given tag, and if found, apply it.
       if constexpr (__domain::__has_legacy_c11n<_Tag, _Sender, _Args...>) {
         return __domain::__legacy_c11n_fn<_Tag, _Sender, _Args...>()(
@@ -252,8 +252,8 @@ namespace stdexec {
     // defined in __transform_sender.hpp
     template <sender_expr _Sender, class _Env>
       requires same_as<__early_domain_of_t<_Sender>, dependent_domain>
-    STDEXEC_ATTRIBUTE((always_inline)) decltype(auto) transform_sender(_Sender&& __sndr, const _Env& __env) const
-      noexcept(__is_nothrow_transform_sender<_Sender, _Env>());
+    STDEXEC_ATTRIBUTE((always_inline)) auto transform_sender(_Sender&& __sndr, const _Env& __env) const
+      noexcept(__is_nothrow_transform_sender<_Sender, _Env>()) -> decltype(auto);
   };
 
   namespace __domain {

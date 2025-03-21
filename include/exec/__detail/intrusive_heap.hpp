@@ -125,11 +125,11 @@ namespace exec {
       top_down_heapify(root_);
     }
 
-    Node* front() const noexcept {
+    auto front() const noexcept -> Node* {
       return root_;
     }
 
-    bool erase(Node* node) noexcept {
+    auto erase(Node* node) noexcept -> bool {
       if (node->*Prev == nullptr && node != root_) {
         // node is not in the heap
         return false;
@@ -200,7 +200,7 @@ namespace exec {
       }
     }
 
-    Node* iterate_to_parent_of(std::size_t pos) noexcept {
+    auto iterate_to_parent_of(std::size_t pos) noexcept -> Node* {
       std::size_t index = detail::bit_ceil(pos);
       if (index > pos) {
         index /= 4;
@@ -219,11 +219,11 @@ namespace exec {
       return node;
     }
 
-    Node* iterate_to_parent_of_end() noexcept {
+    auto iterate_to_parent_of_end() noexcept -> Node* {
       return iterate_to_parent_of(size_ + 1);
     }
 
-    Node* iterate_to_back() noexcept {
+    auto iterate_to_back() noexcept -> Node* {
       Node* parent = iterate_to_parent_of(size_);
       STDEXEC_ASSERT(parent->*Left != nullptr);
       if (parent->*Right) {

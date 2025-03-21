@@ -15,6 +15,7 @@
  */
 
 #include <catch2/catch.hpp>
+#include <numbers>
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/senders.hpp>
@@ -108,7 +109,7 @@ namespace {
     check_val_types<ex::__mset<pack<std::variant<std::tuple<int>>>>>(
       ex::just(23) | ex::into_variant());
     check_val_types<ex::__mset<pack<std::variant<std::tuple<double>>>>>(
-      ex::just(3.1415) | ex::into_variant());
+      ex::just(std::numbers::pi) | ex::into_variant());
 
     check_val_types<ex::__mset<pack<std::variant<std::tuple<int, double>>>>>(
       ex::just(3, 0.1415) | ex::into_variant());
