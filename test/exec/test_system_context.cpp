@@ -280,7 +280,7 @@ TEST_CASE(
 
 TEST_CASE("empty environment always returns nullopt for any query", "[types][system_scheduler]") {
   struct my_receiver : scr::receiver {
-    bool __query_env(__uuid, void*) noexcept override {
+    auto __query_env(__uuid, void*) noexcept -> bool override {
       return false;
     }
 
@@ -303,7 +303,7 @@ TEST_CASE("empty environment always returns nullopt for any query", "[types][sys
 
 TEST_CASE("environment with a stop token can expose its stop token", "[types][system_scheduler]") {
   struct my_receiver : scr::receiver {
-    bool __query_env(__uuid uuid, void* dest) noexcept override {
+    auto __query_env(__uuid uuid, void* dest) noexcept -> bool override {
       if (
         uuid
         == scr::__runtime_property_helper<stdexec::inplace_stop_token>::__property_identifier) {

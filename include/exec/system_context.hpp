@@ -111,6 +111,7 @@ namespace exec {
     struct __parallel_scheduler_env {
       /// Returns the system scheduler as the completion scheduler for `set_value_t`.
       template <stdexec::__one_of<stdexec::set_value_t> _Tag>
+      [[nodiscard]]
       auto query(stdexec::get_completion_scheduler_t<_Tag>) const noexcept {
         return __detail::__make_parallel_scheduler_from(_Tag(), __scheduler_);
       }
@@ -222,7 +223,7 @@ namespace exec {
 
     /// Implementation detail. Constructs the sender to wrap `__impl`.
     explicit __parallel_sender(__detail::__backend_ptr __impl)
-      : __scheduler_{__impl} {
+      : __scheduler_{std::move(__impl)} {
     }
 
     /// Gets the environment of this sender.
@@ -232,8 +233,9 @@ namespace exec {
     }
 
     /// Value completion happens on the parallel scheduler.
-    parallel_scheduler
-      query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept;
+    [[nodiscard]]
+    auto query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept
+      -> parallel_scheduler;
 
     /// Connects `__self` to `__rcvr`, returning the operation state containing the work to be done.
     template <stdexec::receiver _Rcvr>
@@ -450,6 +452,7 @@ namespace exec {
       }
 
       /// Gets the environment of this receiver; returns the environment of the connected receiver.
+      [[nodiscard]]
       auto get_env() const noexcept -> decltype(auto) {
         return stdexec::get_env(__state_.__rcvr_);
       }
@@ -593,8 +596,14 @@ namespace exec {
     return parallel_scheduler{std::move(__impl)};
   }
 
-  inline parallel_scheduler __parallel_sender::query(
-    stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept {
+  [[deprecated("get_system_scheduler has been renamed get_parallel_scheduler")]]
+  inline auto get_system_scheduler() -> parallel_scheduler {
+    return get_parallel_scheduler();
+  }
+
+  inline auto __parallel_sender::query(
+    stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept
+    -> parallel_scheduler {
     return __detail::__make_parallel_scheduler_from(stdexec::set_value_t{}, __scheduler_);
   }
 

@@ -94,7 +94,8 @@ namespace exec::__system_context_default_impl {
       __r->set_stopped();
     }
 
-    decltype(auto) get_env() const noexcept {
+    [[nodiscard]]
+    auto get_env() const noexcept -> decltype(auto) {
       auto __o = __r_->try_query<stdexec::inplace_stop_token>();
       stdexec::inplace_stop_token __st = __o ? *__o : stdexec::inplace_stop_token{};
       return stdexec::prop{stdexec::get_stop_token, __st};
@@ -260,7 +261,7 @@ namespace exec::__system_context_default_impl {
     std::atomic<__parallel_scheduler_backend_factory> __factory_{__default_factory};
 
     /// The default factory returns an instance of `_Impl`.
-    static std::shared_ptr<_Interface> __default_factory() {
+    static auto __default_factory() -> std::shared_ptr<_Interface> {
       return std::make_shared<_Impl>();
     }
 
