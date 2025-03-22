@@ -19,8 +19,8 @@ namespace {
     struct operation {
       Receiver rcvr_;
 
-      friend void tag_invoke(ex::start_t, operation& self) noexcept {
-        ex::set_value(std::move(self.rcvr_));
+      void start() & noexcept {
+        ex::set_value(std::move(rcvr_));
       }
     };
 

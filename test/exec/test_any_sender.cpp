@@ -32,23 +32,23 @@ namespace {
   ///////////////////////////////////////////////////////////////////////////////
   //                                                             any_receiver_ref
 
-  struct tag_t : stdexec::__query<tag_t> {
+  struct get_address_t : stdexec::__query<get_address_t> {
     template <class T>
     // BUGBUG ambiguous!
-      requires stdexec::tag_invocable<tag_t, T>
-    auto operator()(T&& t) const noexcept(stdexec::nothrow_tag_invocable<tag_t, T>)
-      -> stdexec::tag_invoke_result_t<tag_t, T> {
+      requires stdexec::tag_invocable<get_address_t, T>
+    auto operator()(T&& t) const noexcept(stdexec::nothrow_tag_invocable<get_address_t, T>)
+      -> stdexec::tag_invoke_result_t<get_address_t, T> {
       return stdexec::tag_invoke(*this, static_cast<T&&>(t));
     }
   };
 
-  inline constexpr tag_t get_address;
+  inline constexpr get_address_t get_address;
 
   struct env {
     const void* object_{nullptr};
     inplace_stop_token token_{};
 
-    friend auto tag_invoke(tag_t, env e) noexcept -> const void* {
+    friend auto tag_invoke(get_address_t, const env& e) noexcept -> const void* {
       return e.object_;
     }
 
@@ -690,8 +690,8 @@ namespace {
     struct operation : immovable {
       R recv_;
 
-      friend void tag_invoke(ex::start_t, operation& self) noexcept {
-        ex::set_value(static_cast<R&&>(self.recv_));
+      void start() & noexcept {
+        ex::set_value(static_cast<R&&>(recv_));
       }
     };
 

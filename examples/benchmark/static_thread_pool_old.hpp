@@ -107,7 +107,7 @@ namespace exec_old {
     struct bulk_receiver;
 
     template <class CvrefSenderId, class ReceiverId, std::integral Shape, class Fun>
-    struct bulk_op_state;
+    class bulk_op_state;
 
     struct transform_bulk {
       template <class Data, class Sender>
@@ -430,8 +430,9 @@ namespace exec_old {
       pool_.enqueue(op);
     }
 
-    friend void tag_invoke(stdexec::start_t, operation& op) noexcept {
-      op.enqueue_(&op);
+   public:
+    void start() & noexcept {
+      enqueue_(this);
     }
   };
 
@@ -660,7 +661,7 @@ namespace exec_old {
   };
 
   template <class CvrefSenderId, class ReceiverId, std::integral Shape, class Fun>
-  struct static_thread_pool::bulk_op_state {
+  class static_thread_pool::bulk_op_state {
     using CvrefSender = stdexec::__cvref_t<CvrefSenderId>;
     using Receiver = stdexec::__t<ReceiverId>;
 
@@ -676,13 +677,9 @@ namespace exec_old {
     using inner_op_state = stdexec::connect_result_t<CvrefSender, bulk_rcvr>;
 
     shared_state shared_state_;
-
     inner_op_state inner_op_;
 
-    friend void tag_invoke(stdexec::start_t, bulk_op_state& op) noexcept {
-      stdexec::start(op.inner_op_);
-    }
-
+    public:
     bulk_op_state(
       static_thread_pool& pool,
       Shape shape,
@@ -691,6 +688,10 @@ namespace exec_old {
       Receiver receiver)
       : shared_state_(pool, static_cast<Receiver&&>(receiver), shape, fn)
       , inner_op_{stdexec::connect(static_cast<CvrefSender&&>(sender), bulk_rcvr{shared_state_})} {
+    }
+
+    void start() & noexcept {
+      stdexec::start(inner_op_);
     }
   };
 

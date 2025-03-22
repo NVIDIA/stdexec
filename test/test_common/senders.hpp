@@ -30,7 +30,7 @@ namespace {
     using completion_signatures = ex::completion_signatures<Sigs...>;
 
     struct operation {
-      friend void tag_invoke(ex::start_t, operation&) noexcept {
+      void start() & noexcept {
       }
     };
 
@@ -52,13 +52,13 @@ namespace {
       std::tuple<Values...> values_;
       Receiver rcvr_;
 
-      friend void tag_invoke(ex::start_t, operation& self) noexcept {
+      void start() & noexcept {
         try {
           std::apply(
-            [&](Values&... ts) { ex::set_value(std::move(self.rcvr_), std::move(ts)...); },
-            self.values_);
+            [&](Values&... ts) { ex::set_value(std::move(rcvr_), std::move(ts)...); },
+            values_);
         } catch (...) {
-          ex::set_error(std::move(self.rcvr_), std::current_exception());
+          ex::set_error(std::move(rcvr_), std::current_exception());
         }
       }
     };
@@ -102,10 +102,10 @@ namespace {
       std::tuple<Values...> values_;
       Receiver rcvr_;
 
-      friend void tag_invoke(ex::start_t, operation& self) noexcept {
+      void start() & noexcept {
         std::apply(
-          [&](Values&... ts) { ex::set_value(std::move(self.rcvr_), std::move(ts)...); },
-          self.values_);
+          [&](Values&... ts) { ex::set_value(std::move(rcvr_), std::move(ts)...); },
+          values_);
       }
     };
 
@@ -161,15 +161,15 @@ namespace {
         typename ex::stop_token_of_t<ex::env_of_t<Receiver>&>::template callback_type<on_stopped>;
       std::optional<callback_t> on_stop_{};
 
-      friend void tag_invoke(ex::start_t, operation& self) noexcept {
-        if (self.condition_) {
-          ex::set_value(std::move(self.rcvr_));
+      void start() & noexcept {
+        if (condition_) {
+          ex::set_value(std::move(rcvr_));
         } else {
-          self.on_stop_.emplace(ex::get_stop_token(ex::get_env(self.rcvr_)), on_stopped{self});
+          on_stop_.emplace(ex::get_stop_token(ex::get_env(rcvr_)), on_stopped{*this});
           state_t expected = state_t::construction;
-          if (!self.state_.compare_exchange_strong(
+          if (!state_.compare_exchange_strong(
                 expected, state_t::emplaced, std::memory_order_acq_rel)) {
-            ex::set_stopped(std::move(self.rcvr_));
+            ex::set_stopped(std::move(rcvr_));
           }
         }
       }

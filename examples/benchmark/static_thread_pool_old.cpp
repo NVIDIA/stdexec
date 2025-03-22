@@ -17,6 +17,8 @@
 #include "./common.hpp"
 #include "./static_thread_pool_old.hpp"
 
+#include <utility> // IWYU pragma: keep for std::ignore
+
 struct RunThread {
   void operator()(
     exec_old::static_thread_pool& pool,
@@ -29,7 +31,7 @@ struct RunThread {
     std::atomic<bool>& stop,
     exec::numa_policy numa) {
     int numa_node = numa.thread_index_to_node(tid);
-    numa.bind_to_node(numa_node);
+    std::ignore = numa.bind_to_node(numa_node);
     auto scheduler = pool.get_scheduler();
     std::mutex mut;
     std::condition_variable cv;

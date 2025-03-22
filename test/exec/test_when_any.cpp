@@ -199,9 +199,9 @@ namespace {
   struct dup_op {
     Receiver rec;
 
-    friend void tag_invoke(start_t, dup_op& self) noexcept {
+    void start() & noexcept {
       stdexec::set_error(
-        static_cast<Receiver&&>(self.rec), std::make_exception_ptr(std::runtime_error("dup")));
+        static_cast<Receiver&&>(rec), std::make_exception_ptr(std::runtime_error("dup")));
     }
   };
 
