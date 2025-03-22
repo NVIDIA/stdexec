@@ -20,9 +20,11 @@
 #include "stdexec/__detail/__execution_fwd.hpp"
 
 #include <cstdint>
+#include <cstddef>
 #include <exception>
 #include <optional>
 #include <memory>
+#include <span>
 
 struct __uuid {
   std::uint64_t __parts1;
@@ -62,19 +64,21 @@ namespace exec::system_context_replaceability {
   template <typename _T>
   concept __runtime_property = __runtime_property_helper<_T>::__is_property;
 
-  /// Query the system context for an interface of type `_Interface`.
-  template <__queryable_interface _Interface>
-  extern auto query_system_context() -> std::shared_ptr<_Interface>;
+  struct parallel_scheduler_backend;
 
-  /// The type of a factory that can create interfaces of type `_Interface`.
-  template <__queryable_interface _Interface>
-  using __system_context_backend_factory = std::shared_ptr<_Interface> (*)();
+  /// Get the backend for the parallel scheduler.
+  /// Users might replace this function.
+  auto query_parallel_scheduler_backend() -> std::shared_ptr<parallel_scheduler_backend>;
 
-  /// Sets the factory that creates the system context backend for an interface of type `_Interface`.
-  template <__queryable_interface _Interface>
-  extern auto
-    set_system_context_backend_factory(__system_context_backend_factory<_Interface> __new_factory)
-      -> __system_context_backend_factory<_Interface>;
+  /// The type of a factory that can create `parallel_scheduler_backend` instances.
+  /// Out of spec.
+  using __parallel_scheduler_backend_factory = std::shared_ptr<parallel_scheduler_backend> (*)();
+
+  /// Set a factory for the parallel scheduler backend.
+  /// Can be used to replace the parallel scheduler at runtime.
+  /// Out of spec.
+  auto set_parallel_scheduler_backend(__parallel_scheduler_backend_factory __new_factory)
+    -> __parallel_scheduler_backend_factory;
 
   /// Interface for completing a sender operation. Backend will call frontend though this interface
   /// for completing the `schedule` and `schedule_bulk` operations.
@@ -109,29 +113,24 @@ namespace exec::system_context_replaceability {
   /// Receiver for bulk sheduling operations.
   struct bulk_item_receiver : receiver {
     /// Called for each item of a bulk operation, possible on different threads.
-    virtual void start(std::uint32_t) noexcept = 0;
+    virtual void execute(std::uint32_t) noexcept = 0;
   };
 
-  /// Describes a storage space.
-  /// Used to pass preallocated storage from the frontend to the backend.
-  struct storage {
-    void* __data;
-    std::uint32_t __size;
-  };
-
-  /// Interface for the system scheduler
-  struct system_scheduler {
+  /// Interface for the parallel scheduler backend.
+  struct parallel_scheduler_backend {
     static constexpr __uuid __interface_identifier{0x5ee9202498c4bd4f, 0xa1df2508ffcd9d7e};
 
-    virtual ~system_scheduler() = default;
+    virtual ~parallel_scheduler_backend() = default;
 
-    /// Schedule work on system scheduler, calling `__r` when done and using `__s` for preallocated
+    /// Schedule work on parallel scheduler, calling `__r` when done and using `__s` for preallocated
     /// memory.
-    virtual void schedule(storage __s, receiver* __r) noexcept = 0;
-    /// Schedule bulk work of size `__n` on system scheduler, calling `__r` for each item and then
+    virtual void schedule(std::span<std::byte> __s, receiver& __r) noexcept = 0;
+    /// Schedule bulk work of size `__n` on parallel scheduler, calling `__r` for each item and then
     /// when done, and using `__s` for preallocated memory.
-    virtual void
-      bulk_schedule(std::uint32_t __n, storage __s, bulk_item_receiver* __r) noexcept = 0;
+    virtual void bulk_schedule(
+      std::uint32_t __n,
+      std::span<std::byte> __s,
+      bulk_item_receiver& __r) noexcept = 0;
   };
 
 } // namespace exec::system_context_replaceability
