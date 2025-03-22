@@ -23,8 +23,8 @@ namespace {
     const auto f = [](std::exception_ptr) {
     };
 
-    SECTION("by free standing sender") {
-      free_standing_sender_t<ex::upon_error_t> snd{};
+    SECTION("by sender domain") {
+      cpo_test_sender_t<ex::upon_error_t> snd{};
 
       {
         constexpr scope_t scope = decltype(snd | ex::upon_error(f))::scope;
@@ -37,8 +37,8 @@ namespace {
       }
     }
 
-    SECTION("by completion scheduler") {
-      scheduler_t<ex::upon_error_t, ex::set_error_t>::sender_t snd{};
+    SECTION("by completion scheduler domain") {
+      cpo_test_scheduler_t<ex::upon_error_t, ex::set_error_t>::sender_t snd{};
 
       {
         constexpr scope_t scope = decltype(snd | ex::upon_error(f))::scope;

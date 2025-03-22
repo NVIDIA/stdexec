@@ -42,10 +42,13 @@ namespace {
 
   template <class... Values>
   struct fallible_just {
-    std::tuple<Values...> values_;
     using sender_concept = stdexec::sender_t;
     using completion_signatures =
       ex::completion_signatures<ex::set_value_t(Values...), ex::set_error_t(std::exception_ptr)>;
+
+    explicit fallible_just(Values... values)
+      : values_(std::move(values)...) {
+    }
 
     template <class Receiver>
     struct operation : immovable {
@@ -68,6 +71,8 @@ namespace {
       -> operation<std::decay_t<Receiver>> {
       return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
     }
+
+    std::tuple<Values...> values_;
   };
 
   template <class... Values>

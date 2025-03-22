@@ -41,30 +41,43 @@ namespace {
       ex::set_stopped_t()>;
   };
 
+  struct cpo_sender_domain {
+    template <class Sender>
+    static auto transform_sender(Sender&&) noexcept {
+      return cpo_t<scope_t::free_standing>{};
+    }
+  };
+
   template <class CPO>
-  struct free_standing_sender_t {
+  struct cpo_test_sender_t {
     using sender_concept = stdexec::sender_t;
-    using __id = free_standing_sender_t;
-    using __t = free_standing_sender_t;
+    using __id = cpo_test_sender_t;
+    using __t = cpo_test_sender_t;
     using completion_signatures = ex::completion_signatures< //
       ex::set_value_t(),                                     //
       ex::set_error_t(std::exception_ptr),                   //
       ex::set_stopped_t()>;
 
-    template <class... Ts>
-    friend auto tag_invoke(CPO, const free_standing_sender_t&, Ts&&...) noexcept {
-      return cpo_t<scope_t::free_standing>{};
+    auto get_env() const noexcept {
+      return ex::prop{ex::get_domain, cpo_sender_domain{}};
+    }
+  };
+
+  struct cpo_scheduler_domain {
+    template <class Sender>
+    static auto transform_sender(Sender&&) noexcept {
+      return cpo_t<scope_t::scheduler>{};
     }
   };
 
   template <class CPO, class... CompletionSignals>
-  struct scheduler_t {
-    using __id = scheduler_t;
-    using __t = scheduler_t;
+  struct cpo_test_scheduler_t {
+    using __id = cpo_test_scheduler_t;
+    using __t = cpo_test_scheduler_t;
 
     struct env_t {
       template <stdexec::__one_of<ex::set_value_t, CompletionSignals...> Tag>
-      auto query(ex::get_completion_scheduler_t<Tag>) const noexcept -> scheduler_t {
+      auto query(ex::get_completion_scheduler_t<Tag>) const noexcept -> cpo_test_scheduler_t {
         return {};
       }
     };
@@ -83,15 +96,14 @@ namespace {
       }
     };
 
-    template <class... Ts>
-    friend auto tag_invoke(CPO, const scheduler_t&, Ts&&...) noexcept {
-      return cpo_t<scope_t::scheduler>{};
+    auto query(ex::get_domain_t) const noexcept {
+      return cpo_scheduler_domain{};
     }
 
     auto schedule() const noexcept -> sender_t {
       return sender_t{};
     }
 
-    auto operator==(const scheduler_t&) const noexcept -> bool = default;
+    auto operator==(const cpo_test_scheduler_t&) const noexcept -> bool = default;
   };
 } // namespace

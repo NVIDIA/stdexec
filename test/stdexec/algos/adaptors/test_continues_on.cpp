@@ -20,8 +20,9 @@
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <exec/env.hpp>
 
-#include <chrono>
+#include <chrono> // IWYU pragma: keep for chrono_literals
 
 namespace ex = stdexec;
 
@@ -213,73 +214,30 @@ namespace {
     check_sends_stopped<true>(ex::continues_on(ex::just(3), sched3));
   }
 
-  struct val_type1 {
+  struct value_type {
     int val_;
   };
 
-  struct val_type2 {
-    int val_;
+  template <class Sender>
+  using value_type_of_t =
+    ex::value_types_of_t<Sender, ex::env<>, std::type_identity_t, std::type_identity_t>;
+
+  struct continues_on_test_domain {
+    template <class Sender>
+      requires std::same_as<value_type_of_t<Sender>, value_type>
+    static auto transform_sender(Sender&&) {
+      return ex::just(value_type{53});
+    }
   };
 
-  struct val_type3 {
-    int val_;
-  };
-
-  using just_val1_sender_t = decltype(ex::just(val_type1{0}));
-  using just_val2_sender_t = decltype(ex::just(val_type2{0}));
-  using just_val3_sender_t = decltype(ex::transfer_just(impulse_scheduler{}, val_type3{0}));
-
-  // Customization of continues_on
-  // Return a different sender when we invoke this custom defined continues_on implementation
-  auto tag_invoke(decltype(ex::continues_on), just_val1_sender_t, inline_scheduler) {
-    return ex::just(val_type1{53});
-  }
-
-  // Customization of schedule_from
-  // Return a different sender when we invoke this custom defined continues_on implementation
-  auto tag_invoke(decltype(ex::schedule_from), inline_scheduler, just_val2_sender_t) {
-    return ex::just(val_type2{59});
-  }
-
-  // Customization of continues_on with scheduler
-  // Return a different sender when we invoke this custom defined continues_on implementation
-  auto tag_invoke(
-    decltype(ex::continues_on),
-    impulse_scheduler /*sched_src*/,
-    just_val3_sender_t,
-    inline_scheduler sched_dest) {
-    return ex::transfer_just(sched_dest, val_type3{61});
-  }
-
-  TEST_CASE("continues_on can be customized", "[adaptors][continues_on]") {
+  TEST_CASE("continues_on can be customized early", "[adaptors][continues_on]") {
     // The customization will return a different value
-    auto snd = ex::continues_on(ex::just(val_type1{1}), inline_scheduler{});
-    val_type1 res{0};
+    basic_inline_scheduler<continues_on_test_domain> sched;
+    auto snd = ex::continues_on(ex::just(value_type{1}), sched);
+    value_type res{0};
     auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
     ex::start(op);
     REQUIRE(res.val_ == 53);
-  }
-
-  TEST_CASE("continues_on follows schedule_from customization", "[adaptors][continues_on]") {
-    // The schedule_from customization will return a different value
-    auto snd = ex::continues_on(ex::just(val_type2{2}), inline_scheduler{});
-    val_type2 res{0};
-    auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
-    ex::start(op);
-    REQUIRE(res.val_ == 59);
-  }
-
-  TEST_CASE("continues_on can be customized with two schedulers", "[adaptors][continues_on]") {
-    // The customization will return a different value
-    ex::scheduler auto sched_src = impulse_scheduler{};
-    ex::scheduler auto sched_dest = inline_scheduler{};
-    auto snd = ex::transfer_just(sched_src, val_type3{1}) //
-             | ex::continues_on(sched_dest);
-    val_type3 res{0};
-    auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
-    ex::start(op);
-    // we are not using impulse_scheduler anymore, so the value should be available
-    REQUIRE(res.val_ == 61);
   }
 
   struct test_domain_A {

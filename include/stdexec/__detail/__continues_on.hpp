@@ -27,7 +27,6 @@
 #include "__sender_introspection.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders_core.hpp"
-#include "__tag_invoke.hpp"
 #include "__transform_sender.hpp"
 
 namespace stdexec {
@@ -56,18 +55,6 @@ namespace stdexec {
         -> __binder_back<continues_on_t, _Scheduler> {
         return {{static_cast<_Scheduler&&>(__sched)}, {}, {}};
       }
-
-      //////////////////////////////////////////////////////////////////////////////////////////////
-      using _Sched = __0;
-      using _Sender = __1;
-      using __legacy_customizations_t = //
-        __types<
-          tag_invoke_t(
-            continues_on_t,
-            get_completion_scheduler_t<set_value_t>(get_env_t(const _Sender&)),
-            _Sender,
-            _Sched),
-          tag_invoke_t(continues_on_t, _Sender, _Sched)>;
 
       static auto __transform_sender_fn() {
         return [&]<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
