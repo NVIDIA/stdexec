@@ -991,4 +991,27 @@ namespace {
     wait_for_value(std::move(snd), std::string{"hijacked"});
     REQUIRE_FALSE(called);
   }
+
+  struct my_domain2 {
+    template <ex::sender_expr_for<ex::bulk_t> Sender, class... Env>
+    static auto transform_sender(Sender, const Env&...) {
+      return ex::just(std::string{"hijacked"});
+    }
+  };
+
+  TEST_CASE("bulk can be customized, independently of bulk_chunked", "[adaptors][then]") {
+    bool called{false};
+    // The customization will return a different value
+    basic_inline_scheduler<my_domain2> sched;
+    auto snd = ex::just(std::string{"hello"}) | ex::continues_on(sched)
+             | ex::bulk(ex::par, 1, [&called](int, std::string x) { called = true; });
+    wait_for_value(std::move(snd), std::string{"hijacked"});
+    REQUIRE_FALSE(called);
+
+    // bulk_chunked will still use the default implementation
+    auto snd2 = ex::just(std::string{"hello"}) | ex::continues_on(sched)
+              | ex::bulk_chunked(ex::par, 1, [&called](int, int, std::string x) { called = true; });
+    wait_for_value(std::move(snd2), std::string{"hello"});
+    REQUIRE(called);
+  }
 } // namespace
