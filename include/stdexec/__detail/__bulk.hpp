@@ -210,7 +210,34 @@ namespace stdexec {
         tag_invoke_t(_AlgoTag, _Sender, _Pol, _Shape, _Fun)>;
     };
 
-    struct bulk_t : __generic_bulk_t<bulk_t> { };
+    struct bulk_t : __generic_bulk_t<bulk_t> {
+      template <class _Env>
+      static auto __transform_sender_fn(const _Env&) {
+        return [&]<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
+          using __shape_t = std::remove_cvref_t<decltype(__data.__shape_)>;
+          auto __new_f = [__func = std::move(__data.__fun_)](
+                           __shape_t __begin,
+                           __shape_t __end,
+                           auto&&... __vs) mutable //
+            noexcept(noexcept(__data.__fun_(__begin++, __vs...))) {
+              while (__begin != __end)
+                __func(__begin++, __vs...);
+            };
+
+          // Lower `bulk` to `bulk_chunked`. If `bulk_chunked` is customized, we will see the customization.
+          return bulk_chunked(
+            static_cast<_Child&&>(__child),
+            __data.__pol_.__get(),
+            __data.__shape_,
+            std::move(__new_f));
+        };
+      }
+
+      template <class _Sender, class _Env>
+      static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
+        return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn(__env));
+      }
+    };
 
     struct bulk_chunked_t : __generic_bulk_t<bulk_chunked_t> { };
 
@@ -350,33 +377,7 @@ namespace stdexec {
     };
 
     struct __bulk_impl : __bulk_impl_base<bulk_t> {
-      //! This implements the core default behavior for `bulk`:
-      //! This is implemented in terms of `bulk_chunked`.
-      static constexpr auto complete = //
-        []<class _Tag, class _State, class _Receiver, class... _Args>(
-          __ignore,
-          _State& __state,
-          _Receiver& __rcvr,
-          _Tag,
-          _Args&&... __args) noexcept -> void {
-        if constexpr (std::same_as<_Tag, set_value_t>) {
-          using __shape_t = decltype(__state.__shape_);
-
-          constexpr bool __nothrow = noexcept(__state.__fun_(__state.__shape_, __args...));
-          auto __new_f =
-            [__func = std::move(__state.__fun_)](
-              __shape_t __begin, __shape_t __end, auto&&... __vs) mutable noexcept(__nothrow) {
-              while (__begin != __end)
-                __func(__begin++, __vs...);
-            };
-
-          auto __chunked_data = __data{__state.__pol_, __state.__shape_, std::move(__new_f)};
-          __bulk_chunked_impl::complete(
-            _Tag(), __chunked_data, __rcvr, _Tag(), std::forward<_Args>(__args)...);
-        } else {
-          _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
-        }
-      };
+      // Implementation is handled by lowering to `bulk_chunked` in `transform_sender`.
     };
   } // namespace __bulk
 

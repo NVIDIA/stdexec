@@ -979,17 +979,16 @@ namespace {
     }
   };
 
-  // TODO: fix this test
-  // TEST_CASE("customizing bulk_chunked also changes the behavior of bulk", "[adaptors][then]") {
-  //   bool called{false};
-  //   // The customization will return a different value
-  //   basic_inline_scheduler<my_domain> sched;
-  //   auto snd = ex::just(std::string{"hello"})
-  //            | exec::on(
-  //                sched, //
-  //                ex::bulk(ex::par, 1, [&called](int, std::string x) { called = true; }))
-  //            | exec::write(stdexec::prop{ex::get_scheduler, inline_scheduler()});
-  //   wait_for_value(std::move(snd), std::string{"hijacked"});
-  //   REQUIRE_FALSE(called);
-  // }
+  TEST_CASE("late customizing bulk_chunked also changes the behavior of bulk", "[adaptors][then]") {
+    bool called{false};
+    // The customization will return a different value
+    basic_inline_scheduler<my_domain> sched;
+    auto snd = ex::just(std::string{"hello"})
+             | exec::on(
+                 sched, //
+                 ex::bulk(ex::par, 1, [&called](int, std::string x) { called = true; }))
+             | exec::write(stdexec::prop{ex::get_scheduler, inline_scheduler()});
+    wait_for_value(std::move(snd), std::string{"hijacked"});
+    REQUIRE_FALSE(called);
+  }
 } // namespace
