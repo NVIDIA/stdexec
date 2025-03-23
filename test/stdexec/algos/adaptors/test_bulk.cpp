@@ -49,11 +49,11 @@ namespace {
     (void) snd;
   }
 
-  // TEST_CASE("bulk_chunked returns a sender", "[adaptors][bulk]") {
-  //   auto snd = ex::bulk_chunked(ex::just(19), 8, [](int, int, int) { });
-  //   static_assert(ex::sender<decltype(snd)>);
-  //   (void) snd;
-  // }
+  TEST_CASE("bulk_chunked returns a sender", "[adaptors][bulk]") {
+    auto snd = ex::bulk_chunked(ex::just(19), ex::par, 8, [](int, int, int) { });
+    static_assert(ex::sender<decltype(snd)>);
+    (void) snd;
+  }
 
   TEST_CASE("bulk_unchunked returns a sender", "[adaptors][bulk]") {
     auto snd = ex::bulk_unchunked(ex::just(19), 8, [](int, int) { });

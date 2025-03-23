@@ -36,14 +36,9 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.bulk]
   namespace __bulk {
-    inline constexpr __mstring __bulk_context =
-      "In stdexec::bulk(Sender, Policy, Shape, Function)..."_mstr;
-    inline constexpr __mstring __bulk_chunked_context =
-      "In stdexec::bulk_chunked(Sender, Policy, Shape, Function)..."_mstr;
-    inline constexpr __mstring __bulk_unchunked_context =
-      "In stdexec::bulk_unchunked(Sender, Shape, Function)..."_mstr;
-    using __on_not_callable = __callable_error<__bulk_context>;
-    using __on_not_callable2 = __callable_error<__bulk_chunked_context>;
+    struct bulk_t;
+    struct bulk_chunked_t;
+    struct bulk_unchunked_t;
 
     //! Wrapper for a policy object.
     //!
@@ -65,7 +60,7 @@ namespace stdexec {
 
     template <>
     struct __policy_wrapper<sequenced_policy> {
-      /*implicit*/ __policy_wrapper(sequenced_policy) {
+      /*implicit*/ __policy_wrapper(const sequenced_policy&) {
       }
 
       const sequenced_policy& __get() const noexcept {
@@ -114,50 +109,65 @@ namespace stdexec {
     template <class _Pol, class _Shape, class _Fun>
     __data(_Pol, _Shape, _Fun) -> __data<_Pol, _Shape, _Fun>;
 
+    template <class _AlgoTag>
+    struct __bulk_traits;
+
+    template <>
+    struct __bulk_traits<bulk_t> {
+      using __on_not_callable =
+        __callable_error<"In stdexec::bulk(Sender, Policy, Shape, Function)..."_mstr>;
+
+      // Curried function, after passing the required indices.
+      template <class _Fun, class _Shape>
+      using __fun_curried =
+        __mbind_front<__mtry_catch_q<__nothrow_invocable_t, __on_not_callable>, _Fun, _Shape>;
+    };
+
+    template <>
+    struct __bulk_traits<bulk_chunked_t> {
+      using __on_not_callable =
+        __callable_error<"In stdexec::bulk_chunked(Sender, Policy, Shape, Function)..."_mstr>;
+
+      // Curried function, after passing the required indices.
+      template <class _Fun, class _Shape>
+      using __fun_curried =
+        __mbind_front<__mtry_catch_q<__nothrow_invocable_t, __on_not_callable>, _Fun, _Shape, _Shape>;
+    };
+
+    template <>
+    struct __bulk_traits<bulk_unchunked_t> {
+      using __on_not_callable =
+        __callable_error<"In stdexec::bulk_unchunked(Sender, Shape, Function)..."_mstr>;
+
+      // Curried function, after passing the required indices.
+      template <class _Fun, class _Shape>
+      using __fun_curried =
+        __mbind_front<__mtry_catch_q<__nothrow_invocable_t, __on_not_callable>, _Fun, _Shape>;
+    };
+
     template <class _Ty>
     using __decay_ref = __decay_t<_Ty>&;
 
-    template <class _Catch, class _Fun, class _Shape, class _CvrefSender, class... _Env>
+    template <class _AlgoTag, class _Fun, class _Shape, class _CvrefSender, class... _Env>
     using __with_error_invoke_t = //
       __if<
         __value_types_t<
           __completion_signatures_of_t<_CvrefSender, _Env...>,
           __mtransform<
             __q<__decay_ref>,
-            __mbind_front<__mtry_catch_q<__nothrow_invocable_t, _Catch>, _Fun, _Shape>>,
+            typename __bulk_traits<_AlgoTag>::template __fun_curried<_Fun, _Shape>>,
           __q<__mand>>,
         completion_signatures<>,
         __eptr_completion>;
-    template <class _Catch, class _Fun, class _Shape, class _CvrefSender, class... _Env>
-    using __with_error_invoke2_t = //
-          __if<
-            __value_types_t<
-              __completion_signatures_of_t<_CvrefSender, _Env...>,
-              __mtransform<
-                __q<__decay_ref>,
-                __mbind_front<__mtry_catch_q<__nothrow_invocable_t, _Catch>, _Fun, _Shape, _Shape>>,
-              __q<__mand>>,
-            completion_signatures<>,
-            __eptr_completion>;
-    
-    template <class _Fun, class _Shape, class _CvrefSender, class... _Env>
+
+
+    template <class _AlgoTag, class _Fun, class _Shape, class _CvrefSender, class... _Env>
     using __completion_signatures = //
       transform_completion_signatures<
         __completion_signatures_of_t<_CvrefSender, _Env...>,
-        __with_error_invoke_t<__on_not_callable, _Fun, _Shape, _CvrefSender, _Env...>>;
+        __with_error_invoke_t<_AlgoTag, _Fun, _Shape, _CvrefSender, _Env...>>;
 
-        template <class _Fun, class _Shape, class _CvrefSender, class... _Env>
-    using __completion_signatures2 = //
-        transform_completion_signatures<
-          __completion_signatures_of_t<_CvrefSender, _Env...>,
-          __with_error_invoke2_t<__on_not_callable2, _Fun, _Shape, _Shape, _CvrefSender, _Env...>>;
-      // TODO (now): use tag to provide appropriate error message
-
-    struct bulk_t;
-    struct bulk_chunked_t;
-    struct bulk_unchunked_t;
-
-    template <class _Tag>
+    template <class _AlgoTag>
     struct __generic_bulk_t {
       template <sender _Sender, typename _Policy, integral _Shape, copy_constructible _Fun>
         requires is_execution_policy_v<std::remove_cvref_t<_Policy>>
@@ -166,14 +176,14 @@ namespace stdexec {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
           __domain,
-          __make_sexpr<_Tag>(
+          __make_sexpr<_AlgoTag>(
             __data{__pol, __shape, static_cast<_Fun&&>(__fun)}, static_cast<_Sender&&>(__sndr)));
       }
 
       template <typename _Policy, integral _Shape, copy_constructible _Fun>
         requires is_execution_policy_v<std::remove_cvref_t<_Policy>>
       STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Policy&& __pol, _Shape __shape, _Fun __fun) const
-        -> __binder_back<_Tag, _Policy, _Shape, _Fun> {
+        -> __binder_back<_AlgoTag, _Policy, _Shape, _Fun> {
         return {
           {static_cast<_Policy&&>(__pol),
            static_cast<_Shape&&>(__shape),
@@ -191,13 +201,13 @@ namespace stdexec {
       using _Fun = __nth_member<2>(__0);
       using __legacy_customizations_t = __types<
         tag_invoke_t(
-          _Tag,
+          _AlgoTag,
           get_completion_scheduler_t<set_value_t>(get_env_t(_Sender&)),
           _Sender,
           _Pol,
           _Shape,
           _Fun),
-        tag_invoke_t(_Tag, _Sender, _Pol, _Shape, _Fun)>;
+        tag_invoke_t(_AlgoTag, _Sender, _Pol, _Shape, _Fun)>;
     };
 
     struct bulk_t : __generic_bulk_t<bulk_t> { };
@@ -240,39 +250,30 @@ namespace stdexec {
         tag_invoke_t(bulk_unchunked_t, _Sender, _Shape, _Fun)>;
     };
 
-    struct __bulk_base_impl : __sexpr_defaults {
+    template <class _AlgoTag>
+    struct __bulk_impl_base : __sexpr_defaults {
       template <class _Sender>
       using __fun_t = decltype(__decay_t<__data_of<_Sender>>::__fun_);
 
       template <class _Sender>
       using __shape_t = decltype(__decay_t<__data_of<_Sender>>::__shape_);
 
-      static constexpr auto get_completion_signatures = //
-        []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
-        -> __completion_signatures<__fun_t<_Sender>, __shape_t<_Sender>, __child_of<_Sender>, _Env...> {
+      static constexpr auto get_completion_signatures =                 //
+        []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept //
+        -> __completion_signatures<
+          _AlgoTag,
+          __fun_t<_Sender>,
+          __shape_t<_Sender>,
+          __child_of<_Sender>,
+          _Env...> {
         static_assert(sender_expr_for<_Sender, bulk_t>);
         return {};
       };
     };
 
-    struct __bulk_base2_impl : __sexpr_defaults {
-      template <class _Sender>
-      using __fun_t = decltype(__decay_t<__data_of<_Sender>>::__fun_);
-
-      template <class _Sender>
-      using __shape_t = decltype(__decay_t<__data_of<_Sender>>::__shape_);
-
-      static constexpr auto get_completion_signatures = //
-        []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
-        -> __completion_signatures2<__fun_t<_Sender>, __shape_t<_Sender>, __child_of<_Sender>, _Env...> {
-        static_assert(sender_expr_for<_Sender, bulk_t>);
-        return {};
-      };
-    };
-
-    struct __bulk_chunked_impl : __bulk_base2_impl {
-      //! This implements the core default behavior for `bulk`:
-      //! When setting value, it loops over the shape and invokes the function.
+    struct __bulk_chunked_impl : __bulk_impl_base<bulk_chunked_t> {
+      //! This implements the core default behavior for `bulk_chunked`:
+      //! When setting value, it calls the function with the entire range.
       //! Note: This is not done in parallel. That is customized by the scheduler.
       //! See, e.g., static_thread_pool::bulk_receiver::__t.
       static constexpr auto complete = //
@@ -303,11 +304,11 @@ namespace stdexec {
       };
     };
 
-    struct __bulk_unchunked_impl : __bulk_base_impl {
-      //! This implements the core default behavior for `bulk`:
+    struct __bulk_unchunked_impl : __bulk_impl_base<bulk_unchunked_t> {
+      //! This implements the core default behavior for `bulk_unchunked`:
       //! When setting value, it loops over the shape and invokes the function.
-      //! Note: This is not done in parallel. That is customized by the scheduler.
-      //! See, e.g., static_thread_pool::bulk_receiver::__t.
+      //! Note: This is not done in concurrently. That is customized by the scheduler.
+      //! Calling it on a scheduler that is not concurrent is an error.
       static constexpr auto complete = //
         []<class _Tag, class _State, class _Receiver, class... _Args>(
           __ignore,
@@ -348,11 +349,9 @@ namespace stdexec {
       };
     };
 
-    struct __bulk_impl : __bulk_base_impl {
+    struct __bulk_impl : __bulk_impl_base<bulk_t> {
       //! This implements the core default behavior for `bulk`:
-      //! When setting value, it loops over the shape and invokes the function.
-      //! Note: This is not done in parallel. That is customized by the scheduler.
-      //! See, e.g., static_thread_pool::bulk_receiver::__t.
+      //! This is implemented in terms of `bulk_chunked`.
       static constexpr auto complete = //
         []<class _Tag, class _State, class _Receiver, class... _Args>(
           __ignore,
