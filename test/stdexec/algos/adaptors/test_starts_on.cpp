@@ -21,7 +21,7 @@
 #include <test_common/type_helpers.hpp>
 #include <exec/static_thread_pool.hpp>
 
-#include <chrono>
+#include <chrono> // IWYU pragma: keep for std::chrono_literals
 
 namespace ex = stdexec;
 
@@ -190,15 +190,17 @@ namespace {
   }
 
   // Return a different sender when we invoke this custom defined starts_on implementation
-  using just_string_sender_t = decltype(ex::just(std::string{}));
-
-  auto tag_invoke(decltype(ex::starts_on), inline_scheduler, just_string_sender_t) {
-    return ex::just(std::string{"Hello, world!"});
-  }
+  struct starts_on_test_domain {
+    template <class Sender>
+    static auto transform_sender(Sender&&) {
+      return ex::just(std::string{"Hello, world!"});
+    }
+  };
 
   TEST_CASE("starts_on can be customized", "[adaptors][starts_on]") {
     // The customization will return a different value
-    auto snd = ex::starts_on(inline_scheduler{}, ex::just(std::string{"world"}));
+    basic_inline_scheduler<starts_on_test_domain> sched;
+    auto snd = ex::starts_on(sched, ex::just(std::string{"world"}));
     std::string res;
     auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
     ex::start(op);

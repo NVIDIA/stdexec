@@ -27,7 +27,6 @@
 #include "__schedulers.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
-#include "__tag_invoke.hpp"
 #include "__transform_sender.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__variant.hpp"
@@ -283,12 +282,12 @@ namespace stdexec {
       // context on which it was started (e.g., just(42)). In this case, the domain of the
       // scheduler is the domain of the sender.
       template <class... _Senders>
-      using __common_domain_t = //
-        __domain::__common_domain_t<
+      using __common_domain = //
+        __common_domain_t<
           __if_c<__is_scheduler_affine<_Senders>, schedule_result_t<_Sched>, _Senders>...>;
 
       template <class... _Senders>
-      using __f = __mcall<__mtry_catch_q<__common_domain_t, __error_fn>, _Senders...>;
+      using __f = __mcall<__mtry_catch_q<__common_domain, __error_fn>, _Senders...>;
     };
 
     // Compute all the domains of all the result senders and make sure they're all the same
@@ -426,16 +425,6 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Fun __fun) const -> __binder_back<__let_t, _Fun> {
         return {{static_cast<_Fun&&>(__fun)}, {}, {}};
       }
-
-      using _Sender = __1;
-      using _Function = __0;
-      using __legacy_customizations_t = __types<
-        tag_invoke_t(
-          __let_t,
-          get_completion_scheduler_t<set_value_t>(get_env_t(const _Sender&)),
-          _Sender,
-          _Function),
-        tag_invoke_t(__let_t, _Sender, _Function)>;
 
       template <sender_expr_for<__let_t<_Set>> _Sender, class _Env>
       static auto transform_env(_Sender&& __sndr, const _Env& __env) -> decltype(auto) {

@@ -21,8 +21,9 @@
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <exec/env.hpp>
 
-#include <chrono>
+#include <chrono> // IWYU pragma: keep for chrono_literals
 
 namespace ex = stdexec;
 
@@ -234,14 +235,12 @@ namespace {
   }
 
   struct int_err_transform {
-    using my_res_t = decltype(fallible_just{0});
-
-    auto operator()(std::exception_ptr ep) const -> my_res_t {
+    auto operator()(std::exception_ptr ep) const -> fallible_just<int> {
       std::rethrow_exception(ep);
-      return {};
+      return fallible_just{0};
     }
 
-    auto operator()(int x) const -> my_res_t {
+    auto operator()(int x) const -> fallible_just<int> {
       return fallible_just{x * 2 - 1};
     }
   };
@@ -342,16 +341,18 @@ namespace {
   }
 
   // Return a different sender when we invoke this custom defined let_error implementation
-  using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
-
-  template <typename Fun>
-  auto tag_invoke(ex::let_error_t, inline_scheduler, my_string_sender_t, Fun) {
-    return ex::just(std::string{"what error?"});
-  }
+  struct let_error_test_domain {
+    template <class Sender>
+      requires std::same_as<ex::tag_of_t<Sender>, ex::let_error_t>
+    static auto transform_sender(Sender&&) {
+      return ex::just(std::string{"what error?"});
+    }
+  };
 
   TEST_CASE("let_error can be customized", "[adaptors][let_error]") {
     // The customization will return a different value
-    auto snd = ex::transfer_just(inline_scheduler{}, std::string{"hello"}) //
+    auto snd = ex::just(std::string{"hello"})
+             | exec::write_attrs(ex::prop{ex::get_domain, let_error_test_domain{}})
              | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
     wait_for_value(std::move(snd), std::string{"what error?"});
   }

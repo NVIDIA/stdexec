@@ -19,8 +19,9 @@
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
+#include <exec/env.hpp>
 
-#include <chrono>
+#include <chrono> // IWYU pragma: keep for chrono_literals
 
 namespace ex = stdexec;
 
@@ -212,16 +213,18 @@ namespace {
   }
 
   // Return a different sender when we invoke this custom defined let_stopped implementation
-  using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
-
-  template <typename Fun>
-  auto tag_invoke(ex::let_stopped_t, inline_scheduler, my_string_sender_t, Fun) {
-    return ex::just(std::string{"Don't stop me now"});
-  }
+  struct let_stopped_test_domain {
+    template <class Sender>
+      requires std::same_as<ex::tag_of_t<Sender>, ex::let_stopped_t>
+    static auto transform_sender(Sender&&) {
+      return ex::just(std::string{"Don't stop me now"});
+    }
+  };
 
   TEST_CASE("let_stopped can be customized", "[adaptors][let_stopped]") {
-    // The customization will return a different value
-    auto snd = ex::transfer_just(inline_scheduler{}, std::string{"hello"}) //
+    // The customization will return a different stopped
+    auto snd = ex::just(std::string{"hello"})
+             | exec::write_attrs(ex::prop{ex::get_domain, let_stopped_test_domain{}})
              | ex::let_stopped([] { return ex::just(std::string{"stopped"}); });
     wait_for_value(std::move(snd), std::string{"Don't stop me now"});
   }

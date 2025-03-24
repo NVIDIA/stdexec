@@ -21,7 +21,7 @@ Concepts
 Sender Factories
 ----------------
 
-.. doxygenvariable:: stdexec::__write
+.. doxygenvariable:: stdexec::read_env
 
 Sender Adaptors
 ---------------
@@ -36,8 +36,4 @@ Sender Consumers
 
 Utilities
 ---------
-
-.. doxygenfunction:: stdexec::__write
-   :project: stdexec
-   :outline:
 
