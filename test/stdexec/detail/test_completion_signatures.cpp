@@ -122,9 +122,9 @@ namespace {
     using set_error_f = ex::__q<set_error_sig>;
     using tr = ex::__mtransform<set_error_f>;
 
-    using sig_eptr = ex::__error_types_of_t<snd_eptr_t, ex::empty_env, tr>;
-    using sig_ec = ex::__error_types_of_t<snd_ec_t, ex::empty_env, tr>;
-    using sig_str = ex::__error_types_of_t<snd_str_t, ex::empty_env, tr>;
+    using sig_eptr = ex::__error_types_of_t<snd_eptr_t, ex::env<>, tr>;
+    using sig_ec = ex::__error_types_of_t<snd_ec_t, ex::env<>, tr>;
+    using sig_str = ex::__error_types_of_t<snd_str_t, ex::env<>, tr>;
 
     static_assert(is_same_v<sig_eptr, ex::__types<ex::set_error_t(exception_ptr)>>);
     static_assert(is_same_v<sig_ec, ex::__types<ex::set_error_t(error_code)>>);
@@ -176,7 +176,7 @@ namespace {
   }
 
   TEST_CASE(
-    "transform_completion_signatures_of with empty_env can replicate the completion signatures of "
+    "transform_completion_signatures_of with ex::env<> can replicate the completion signatures of "
     "input "
     "senders",
     "[detail][completion_signatures]") {
@@ -186,11 +186,11 @@ namespace {
     using snd_ec_t = decltype(ex::just_error(error_code{}));
     using snd_stopped_t = decltype(ex::just_stopped());
 
-    using cs_int = ex::transform_completion_signatures_of<snd_int_t, ex::empty_env>;
-    using cs_double_char = ex::transform_completion_signatures_of<snd_double_char_t, ex::empty_env>;
-    using cs_eptr = ex::transform_completion_signatures_of<snd_eptr_t, ex::empty_env>;
-    using cs_ec = ex::transform_completion_signatures_of<snd_ec_t, ex::empty_env>;
-    using cs_stopped = ex::transform_completion_signatures_of<snd_stopped_t, ex::empty_env>;
+    using cs_int = ex::transform_completion_signatures_of<snd_int_t, ex::env<>>;
+    using cs_double_char = ex::transform_completion_signatures_of<snd_double_char_t, ex::env<>>;
+    using cs_eptr = ex::transform_completion_signatures_of<snd_eptr_t, ex::env<>>;
+    using cs_ec = ex::transform_completion_signatures_of<snd_ec_t, ex::env<>>;
+    using cs_stopped = ex::transform_completion_signatures_of<snd_stopped_t, ex::env<>>;
 
     expect_val_types<cs_int, ex::__types<int>>();
     expect_val_types<cs_double_char, ex::__types<double, char>>();
@@ -211,7 +211,7 @@ namespace {
     using snd_double_t = decltype(ex::just_error(std::exception_ptr{}));
     using cs_with_ec = ex::transform_completion_signatures_of<
       snd_double_t,
-      ex::empty_env,
+      ex::env<>,
       ex::completion_signatures<ex::set_error_t(error_code)>>;
 
     expect_val_types<cs_with_ec>();
@@ -224,7 +224,7 @@ namespace {
     using snd_double_t = decltype(ex::just(3.14));
     using cs_with_ec = ex::transform_completion_signatures_of<
       snd_double_t,
-      ex::empty_env,
+      ex::env<>,
       ex::completion_signatures<ex::set_error_t(exception_ptr)>>;
 
     // exception_ptr appears only once
@@ -237,7 +237,7 @@ namespace {
     using snd_double_t = decltype(ex::just(3.14));
     using cs = ex::transform_completion_signatures_of<
       snd_double_t,
-      ex::empty_env,
+      ex::env<>,
       ex::completion_signatures< //
         ex::set_value_t(int),    //
         ex::set_value_t(double)  //
@@ -259,7 +259,7 @@ namespace {
     using snd_double_t = decltype(ex::just(3.14));
     using cs = ex::transform_completion_signatures_of<
       snd_double_t,
-      ex::empty_env,
+      ex::env<>,
       ex::completion_signatures< //
         ex::set_value_t(int),    //
         ex::set_value_t(double)  //
@@ -278,7 +278,7 @@ namespace {
     using snd_eptr_t = decltype(ex::just_error(std::exception_ptr{}));
     using cs = ex::transform_completion_signatures_of<
       snd_eptr_t,
-      ex::empty_env,
+      ex::env<>,
       ex::completion_signatures<       //
         ex::set_error_t(error_code)    //
         >,                             //
@@ -293,7 +293,7 @@ namespace {
   TEST_CASE("error_types_of_t can be used to get error types", "[detail][completion_signatures]") {
     using snd_t = decltype(ex::when_all(
       ex::just_error(std::error_code{}), ex::just_error(std::exception_ptr{})));
-    using actual_t = ex::error_types_of_t<snd_t, ex::empty_env, ex::__mset>;
+    using actual_t = ex::error_types_of_t<snd_t, ex::env<>, ex::__mset>;
     using expected_t = ex::__mset<std::error_code, std::exception_ptr>;
     static_assert(ex::__mset_eq<actual_t, expected_t>);
   }
@@ -305,7 +305,7 @@ namespace {
 
     using snd_t = decltype(ex::when_all(
       ex::just_error(std::error_code{}), ex::just_error(std::exception_ptr{})));
-    using actual_t = ex::error_types_of_t<snd_t, ex::empty_env, tr::__f>;
+    using actual_t = ex::error_types_of_t<snd_t, ex::env<>, tr::__f>;
     using expected_t = ex::__mset<optional<std::error_code>, optional<std::exception_ptr>>;
     static_assert(ex::__mset_eq<actual_t, expected_t>);
   }

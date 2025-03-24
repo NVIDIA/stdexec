@@ -58,8 +58,7 @@ namespace {
       void start() & noexcept {
         try {
           std::apply(
-            [&](Values&... ts) { ex::set_value(std::move(rcvr_), std::move(ts)...); },
-            values_);
+            [&](Values&... ts) { ex::set_value(std::move(rcvr_), std::move(ts)...); }, values_);
         } catch (...) {
           ex::set_error(std::move(rcvr_), std::current_exception());
         }
@@ -109,8 +108,7 @@ namespace {
 
       void start() & noexcept {
         std::apply(
-          [&](Values&... ts) { ex::set_value(std::move(rcvr_), std::move(ts)...); },
-          values_);
+          [&](Values&... ts) { ex::set_value(std::move(rcvr_), std::move(ts)...); }, values_);
       }
     };
 

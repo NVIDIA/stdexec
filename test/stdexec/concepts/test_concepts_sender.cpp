@@ -119,14 +119,14 @@ namespace {
 
   TEST_CASE("type w/ proper types, is a sender", "[concepts][sender]") {
     STATIC_REQUIRE(ex::sender<my_sender0>);
-    STATIC_REQUIRE(ex::sender_in<my_sender0, empty_env>);
+    STATIC_REQUIRE(ex::sender_in<my_sender0, ex::env<>>);
 
     STATIC_REQUIRE(ex::sender_of<my_sender0, ex::set_value_t()>);
     STATIC_REQUIRE(ex::sender_of<my_sender0, ex::set_error_t(std::exception_ptr)>);
     STATIC_REQUIRE(ex::sender_of<my_sender0, ex::set_stopped_t()>);
-    STATIC_REQUIRE(ex::sender_of<my_sender0, ex::set_value_t(), empty_env>);
-    STATIC_REQUIRE(ex::sender_of<my_sender0, ex::set_error_t(std::exception_ptr), empty_env>);
-    STATIC_REQUIRE(ex::sender_of<my_sender0, ex::set_stopped_t(), empty_env>);
+    STATIC_REQUIRE(ex::sender_of<my_sender0, ex::set_value_t(), ex::env<>>);
+    STATIC_REQUIRE(ex::sender_of<my_sender0, ex::set_error_t(std::exception_ptr), ex::env<>>);
+    STATIC_REQUIRE(ex::sender_of<my_sender0, ex::set_stopped_t(), ex::env<>>);
   }
 
   TEST_CASE(
@@ -155,9 +155,9 @@ namespace {
 
   TEST_CASE("my_sender_int is a sender", "[concepts][sender]") {
     STATIC_REQUIRE(ex::sender<my_sender_int>);
-    STATIC_REQUIRE(ex::sender_in<my_sender_int, empty_env>);
+    STATIC_REQUIRE(ex::sender_in<my_sender_int, ex::env<>>);
     STATIC_REQUIRE(ex::sender_of<my_sender_int, ex::set_value_t(int)>);
-    STATIC_REQUIRE(ex::sender_of<my_sender_int, ex::set_value_t(int), empty_env>);
+    STATIC_REQUIRE(ex::sender_of<my_sender_int, ex::set_value_t(int), ex::env<>>);
   }
 
   TEST_CASE(
@@ -253,7 +253,7 @@ namespace {
     ex::get_env(my_r5_sender0{});
     static_assert(ex::sender<my_r5_sender0>);
     static_assert(std::same_as<
-                  decltype(ex::get_completion_signatures(my_r5_sender0{}, ex::empty_env{})),
+                  decltype(ex::get_completion_signatures(my_r5_sender0{}, ex::env<>{})),
                   my_r5_sender0::completion_signatures>);
   }
 
@@ -277,12 +277,12 @@ namespace {
     return {};
   }
 
-  template <ex::sender_in<empty_env> T>
+  template <ex::sender_in<ex::env<>> T>
   auto test_subsumption(T&&) -> sender_env_tag {
     return {};
   }
 
-  template <ex::sender_of<ex::set_value_t(), empty_env> T>
+  template <ex::sender_of<ex::set_value_t(), ex::env<>> T>
   auto test_subsumption(T&&) -> sender_of_tag {
     return {};
   }

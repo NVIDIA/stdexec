@@ -23,7 +23,7 @@
 // struct recv_no_set_value {
 //   friend void tag_invoke(ex::set_stopped_t, recv_no_set_value) noexcept {}
 //   friend void tag_invoke(ex::set_error_t, recv_no_set_value, std::exception_ptr) noexcept {}
-//   friend empty_env tag_invoke(ex::get_env_t, const recv_no_set_value&) noexcept {
+//   friend ex::env<> tag_invoke(ex::get_env_t, const recv_no_set_value&) noexcept {
 //     return {};
 //   }
 // };
@@ -32,7 +32,7 @@
 //   friend void tag_invoke(ex::set_value_t, recv_set_value_except) {}
 //   friend void tag_invoke(ex::set_stopped_t, recv_set_value_except) noexcept {}
 //   friend void tag_invoke(ex::set_error_t, recv_set_value_except, std::exception_ptr) noexcept {}
-//   friend empty_env tag_invoke(ex::get_env_t, const recv_set_value_except&) noexcept {
+//   friend ex::env<> tag_invoke(ex::get_env_t, const recv_set_value_except&) noexcept {
 //     return {};
 //   }
 // };
@@ -41,7 +41,7 @@
 //   friend void tag_invoke(ex::set_value_t, recv_set_value_noexcept) noexcept {}
 //   friend void tag_invoke(ex::set_stopped_t, recv_set_value_noexcept) noexcept {}
 //   friend void tag_invoke(ex::set_error_t, recv_set_value_noexcept, std::exception_ptr) noexcept
-//   {} friend empty_env tag_invoke(ex::get_env_t, const recv_set_value_noexcept&) noexcept {
+//   {} friend ex::env<> tag_invoke(ex::get_env_t, const recv_set_value_noexcept&) noexcept {
 //     return {};
 //   }
 // };
@@ -52,7 +52,7 @@
 //   friend void tag_invoke(ex::set_error_t, recv_set_error_except, std::exception_ptr) {
 //     throw std::logic_error{"err"};
 //   }
-//   friend empty_env tag_invoke(ex::get_env_t, const recv_set_error_except&) noexcept {
+//   friend ex::env<> tag_invoke(ex::get_env_t, const recv_set_error_except&) noexcept {
 //     return {};
 //   }
 // };
@@ -60,7 +60,7 @@
 //   friend void tag_invoke(ex::set_value_t, recv_set_stopped_except) noexcept {}
 //   friend void tag_invoke(ex::set_stopped_t, recv_set_stopped_except) { throw
 //   std::logic_error{"err"}; } friend void tag_invoke(ex::set_error_t, recv_set_stopped_except,
-//   std::exception_ptr) noexcept {} friend empty_env tag_invoke(ex::get_env_t, const
+//   std::exception_ptr) noexcept {} friend ex::env<> tag_invoke(ex::get_env_t, const
 //   recv_set_stopped_except&) noexcept {
 //     return {};
 //   }
@@ -77,7 +77,7 @@
 //   friend void tag_invoke(ex::set_value_t, recv_non_movable) noexcept {}
 //   friend void tag_invoke(ex::set_stopped_t, recv_non_movable) noexcept {}
 //   friend void tag_invoke(ex::set_error_t, recv_non_movable, std::exception_ptr) noexcept {}
-//   friend empty_env tag_invoke(ex::get_env_t, const recv_non_movable&) noexcept {
+//   friend ex::env<> tag_invoke(ex::get_env_t, const recv_non_movable&) noexcept {
 //     return {};
 //   }
 // };
@@ -93,8 +93,8 @@
 //   REQUIRE(ex::receiver<recv_int_ec, std::error_code>);
 //   REQUIRE(ex::receiver<expect_void_receiver>);
 //   REQUIRE(ex::receiver<expect_void_receiver_ex>);
-//   REQUIRE(ex::receiver<expect_value_receiver<empty_env, int>>);
-//   REQUIRE(ex::receiver<expect_value_receiver<empty_env, double>>);
+//   REQUIRE(ex::receiver<expect_value_receiver<ex::env<>, int>>);
+//   REQUIRE(ex::receiver<expect_value_receiver<ex::env<>, double>>);
 //   REQUIRE(ex::receiver<expect_stopped_receiver>);
 //   REQUIRE(ex::receiver<expect_stopped_receiver_ex>);
 //   REQUIRE(ex::receiver<expect_error_receiver>);
@@ -111,8 +111,8 @@
 //   REQUIRE(ex::receiver_of<recv_int_ec, int>);
 //   REQUIRE(ex::receiver_of<expect_void_receiver>);
 //   REQUIRE(ex::receiver_of<expect_void_receiver_ex>);
-//   REQUIRE(ex::receiver_of<expect_value_receiver<empty_env, int>, int>);
-//   REQUIRE(ex::receiver_of<expect_value_receiver<empty_env, double>, double>);
+//   REQUIRE(ex::receiver_of<expect_value_receiver<ex::env<>, int>, int>);
+//   REQUIRE(ex::receiver_of<expect_value_receiver<ex::env<>, double>, double>);
 //   REQUIRE(ex::receiver_of<expect_stopped_receiver, char>);
 //   REQUIRE(ex::receiver_of<expect_stopped_receiver_ex, char>);
 //   REQUIRE(ex::receiver_of<expect_error_receiver, char>);

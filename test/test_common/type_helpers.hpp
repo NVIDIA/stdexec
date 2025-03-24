@@ -87,11 +87,8 @@ namespace {
   template <class... Ts>
   struct pack { };
 
-  //! Used as a default empty context
-  using ex::empty_env;
-
   //! Check that the value_types of a sender matches the expected type
-  template <class ExpectedValType, class Env = empty_env, class S>
+  template <class ExpectedValType, class Env = ex::env<>, class S>
   inline void check_val_types(S) {
     using actual_t = ex::value_types_of_t<S, Env, pack, ex::__mset>;
     static_assert(ex::__mset_eq<actual_t, ExpectedValType>);
@@ -105,14 +102,14 @@ namespace {
   }
 
   //! Check that the error_types of a sender matches the expected type
-  template <class ExpectedValType, class Env = empty_env, class S>
+  template <class ExpectedValType, class Env = ex::env<>, class S>
   inline void check_err_types(S) {
     using actual_t = ex::error_types_of_t<S, Env, ex::__mset>;
     static_assert(ex::__mset_eq<actual_t, ExpectedValType>);
   }
 
   //! Check that the sends_stopped of a sender matches the expected value
-  template <bool Expected, class Env = empty_env, class S>
+  template <bool Expected, class Env = ex::env<>, class S>
   inline void check_sends_stopped(S) {
     constexpr bool actual = ex::sends_stopped<S, Env>;
     static_assert(actual == Expected);

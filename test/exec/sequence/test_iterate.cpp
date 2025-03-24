@@ -71,7 +71,7 @@ namespace {
     }
   };
 
-  template <class Env = stdexec::empty_env>
+  template <class Env = stdexec::env<>>
   struct sum_receiver {
     using receiver_concept = stdexec::receiver_t;
 
@@ -103,7 +103,7 @@ namespace {
     std::array<int, 3> array{42, 43, 44};
     int sum = 0;
     auto iterate = exec::iterate(std::views::all(array));
-    STATIC_REQUIRE(exec::sequence_sender_in<decltype(iterate), stdexec::empty_env>);
+    STATIC_REQUIRE(exec::sequence_sender_in<decltype(iterate), stdexec::env<>>);
     STATIC_REQUIRE(stdexec::sender_expr_for<decltype(iterate), exec::iterate_t>);
     auto op = exec::subscribe(iterate, sum_receiver<>{.sum_ = sum});
     stdexec::start(op);
@@ -123,7 +123,7 @@ namespace {
   TEST_CASE("iterate - sum up an array with custom domain", "[sequence_senders][iterate]") {
     std::array<int, 3> array{42, 43, 44};
     auto iterate = exec::iterate(std::views::all(array));
-    STATIC_REQUIRE(exec::sequence_sender_in<decltype(iterate), stdexec::empty_env>);
+    STATIC_REQUIRE(exec::sequence_sender_in<decltype(iterate), stdexec::env<>>);
     STATIC_REQUIRE(stdexec::sender_expr_for<decltype(iterate), exec::iterate_t>);
     auto env = exec::make_env(stdexec::prop{stdexec::get_domain, my_domain{}});
     using Env = decltype(env);

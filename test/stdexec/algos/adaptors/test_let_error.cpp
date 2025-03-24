@@ -39,7 +39,7 @@ namespace {
 
   TEST_CASE("let_error with environment returns a sender", "[adaptors][let_error]") {
     auto snd = ex::let_error(ex::just(), [](std::exception_ptr) { return ex::just(); });
-    static_assert(ex::sender_in<decltype(snd), empty_env>);
+    static_assert(ex::sender_in<decltype(snd), ex::env<>>);
     (void) snd;
   }
 

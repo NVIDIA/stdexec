@@ -145,7 +145,7 @@ namespace {
   void test_awaitable_sender2() {
     static_assert(!ex::sender<awaitable_sender_2>);
     static_assert(!sender_with_env<awaitable_sender_2>);
-    static_assert(!ex::sender_in<awaitable_sender_2, ex::empty_env>);
+    static_assert(!ex::sender_in<awaitable_sender_2, ex::env<>>);
 
     static_assert(!ex::__awaitable<awaitable_sender_2>);
     static_assert(ex::__awaitable<awaitable_sender_2, promise<__coro::suspend_always>>);
@@ -156,7 +156,7 @@ namespace {
   void test_awaitable_sender3() {
     static_assert(!ex::sender<awaitable_sender_3>);
     static_assert(!sender_with_env<awaitable_sender_3>);
-    static_assert(!ex::sender_in<awaitable_sender_3, ex::empty_env>);
+    static_assert(!ex::sender_in<awaitable_sender_3, ex::env<>>);
 
     static_assert(ex::__awaiter<awaiter>);
     static_assert(!ex::__awaitable<awaitable_sender_3>);
@@ -169,19 +169,19 @@ namespace {
   void test_awaitable_sender4(Signatures*) {
     static_assert(ex::sender<awaitable_sender_4>);
     static_assert(sender_with_env<awaitable_sender_4>);
-    static_assert(ex::sender_in<awaitable_sender_4, ex::empty_env>);
+    static_assert(ex::sender_in<awaitable_sender_4, ex::env<>>);
 
     static_assert(ex::__awaiter<awaiter>);
     static_assert(!ex::__awaitable<awaitable_sender_4>);
     static_assert(ex::__awaitable<awaitable_sender_4, promise<awaiter>>);
-    static_assert(ex::__awaitable<awaitable_sender_4, ex::__env::__promise<ex::empty_env>>);
+    static_assert(ex::__awaitable<awaitable_sender_4, ex::__env::__promise<ex::env<>>>);
 
     static_assert(!ex::__sigs::__with_member_alias<awaitable_sender_4>);
 
     static_assert(!ex::__sigs::__with_member_alias<awaitable_sender_4>);
 
     static_assert(
-      std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_4, ex::empty_env>, Signatures>);
+      std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_4, ex::env<>>, Signatures>);
   }
 
   struct connect_awaitable_promise : ex::with_awaitable_senders<connect_awaitable_promise> { };
@@ -191,17 +191,17 @@ namespace {
     static_assert(ex::sender<awaitable_sender_5>);
     static_assert(sender_with_env<awaitable_sender_5>);
     static_assert(!ex::sender_in<awaitable_sender_5>);
-    static_assert(ex::sender_in<awaitable_sender_5, ex::empty_env>);
+    static_assert(ex::sender_in<awaitable_sender_5, ex::env<>>);
 
     static_assert(ex::__awaiter<awaiter>);
     static_assert(!ex::__awaitable<awaitable_sender_5>);
     static_assert(ex::__awaitable<awaitable_sender_5, promise<awaiter>>);
-    static_assert(ex::__awaitable<awaitable_sender_5, ex::__env::__promise<ex::empty_env>>);
+    static_assert(ex::__awaitable<awaitable_sender_5, ex::__env::__promise<ex::env<>>>);
 
     static_assert(!ex::__sigs::__with_member_alias<awaitable_sender_5>);
 
     static_assert(
-      std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_5, ex::empty_env>, Signatures>);
+      std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_5, ex::env<>>, Signatures>);
   }
 
   template <typename Error, typename... Values>
@@ -241,9 +241,9 @@ namespace {
   };
 
   TEST_CASE("get_env for awaitables", "[sndtraits][awaitables]") {
-    check_env_type<ex::empty_env>(awaitable_sender_1<awaiter>{});
-    check_env_type<ex::empty_env>(awaitable_sender_2{});
-    check_env_type<ex::empty_env>(awaitable_sender_3{});
+    check_env_type<ex::env<>>(awaitable_sender_1<awaiter>{});
+    check_env_type<ex::env<>>(awaitable_sender_2{});
+    check_env_type<ex::env<>>(awaitable_sender_3{});
     check_env_type<awaitable_env>(awaitable_with_get_env<awaiter>{});
   }
 
@@ -253,7 +253,7 @@ namespace {
     ex::sender auto snd = ex::when_all(ex::then(ex::schedule(sch), []() { }));
 
     using _Awaitable = decltype(snd);
-    using _Promise = ex::__env::__promise<ex::empty_env>;
+    using _Promise = ex::__env::__promise<ex::env<>>;
     static_assert(!ex::__awaitable<_Awaitable, _Promise>);
   }
 } // namespace

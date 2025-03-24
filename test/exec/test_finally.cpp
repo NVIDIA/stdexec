@@ -30,10 +30,10 @@ namespace {
 
   TEST_CASE("finally is a sender in empty env", "[adaptors][finally]") {
     auto s = exec::finally(just(), just());
-    STATIC_REQUIRE(sender_in<decltype(s), empty_env>);
+    STATIC_REQUIRE(sender_in<decltype(s), ex::env<>>);
     STATIC_REQUIRE(
       set_equivalent<
-        completion_signatures_of_t<decltype(s), empty_env>,
+        completion_signatures_of_t<decltype(s), ex::env<>>,
         completion_signatures<set_error_t(std::exception_ptr), set_value_t()>>);
   }
 
@@ -42,7 +42,7 @@ namespace {
     auto s = exec::finally(just(), just() | then([&called]() noexcept { called = true; }));
     STATIC_REQUIRE(
       set_equivalent<
-        completion_signatures_of_t<decltype(s), empty_env>,
+        completion_signatures_of_t<decltype(s), ex::env<>>,
         completion_signatures<set_error_t(std::exception_ptr), set_value_t()>>);
     sync_wait(s);
     CHECK(called);
@@ -53,7 +53,7 @@ namespace {
     auto s = exec::finally(just(42), just() | then([&called]() noexcept { called = true; }));
     STATIC_REQUIRE(
       set_equivalent<
-        completion_signatures_of_t<decltype(s), empty_env>,
+        completion_signatures_of_t<decltype(s), ex::env<>>,
         completion_signatures<set_error_t(std::exception_ptr), set_value_t(int)>>);
     auto [i] = *sync_wait(s);
     CHECK(called);
@@ -68,7 +68,7 @@ namespace {
       just() | then([&called]() noexcept { called = true; }));
     STATIC_REQUIRE(
       set_equivalent<
-        completion_signatures_of_t<decltype(s), empty_env>,
+        completion_signatures_of_t<decltype(s), ex::env<>>,
         completion_signatures<set_error_t(std::exception_ptr), set_value_t(int)>>);
     CHECK_THROWS_AS(sync_wait(s), int);
     CHECK(called);
@@ -78,7 +78,7 @@ namespace {
     auto s = exec::finally(just(), just_error(42));
     STATIC_REQUIRE(
       set_equivalent<
-        completion_signatures_of_t<decltype(s), empty_env>,
+        completion_signatures_of_t<decltype(s), ex::env<>>,
         completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_error_t(int)>>);
   }
 
@@ -86,7 +86,7 @@ namespace {
     auto s = exec::finally(just(), just_stopped());
     STATIC_REQUIRE(
       set_equivalent<
-        completion_signatures_of_t<decltype(s), empty_env>,
+        completion_signatures_of_t<decltype(s), ex::env<>>,
         completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>>);
   }
 } // namespace

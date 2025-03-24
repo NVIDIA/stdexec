@@ -76,7 +76,7 @@ namespace stdexec::__any_ {
     _GetEnv{},
     _GetReceiver{}};
 
-  template <class _Sigs, class _Env = empty_env>
+  template <class _Sigs, class _Env = env<>>
   class __receiver_ref {
    public:
     using receiver_concept = receiver_t;

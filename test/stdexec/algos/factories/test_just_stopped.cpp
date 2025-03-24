@@ -35,7 +35,7 @@ namespace {
 
   TEST_CASE("just_stopped returns a typed sender", "[factories][just_stopped]") {
     using t = decltype(ex::just_stopped());
-    static_assert(ex::sender_in<t, empty_env>, "ex::just_stopped must return a sender");
+    static_assert(ex::sender_in<t, ex::env<>>, "ex::just_stopped must return a sender");
   }
 
   TEST_CASE("value types are properly set for just_stopped", "[factories][just_stopped]") {

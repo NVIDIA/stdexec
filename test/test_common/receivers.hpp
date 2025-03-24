@@ -91,7 +91,7 @@ namespace {
 
   } // namespace empty_recv
 
-  template <class _Env = empty_env>
+  template <class _Env = ex::env<>>
   class base_expect_receiver {
     std::atomic<bool> called_{false};
     _Env env_{};
@@ -124,7 +124,7 @@ namespace {
     }
   };
 
-  template <class _Env = empty_env>
+  template <class _Env = ex::env<>>
   struct expect_void_receiver : base_expect_receiver<_Env> {
     expect_void_receiver() = default;
 
@@ -176,7 +176,7 @@ namespace {
 
   struct env_tag { };
 
-  template <class Env = empty_env, class... Ts>
+  template <class Env = ex::env<>, class... Ts>
   struct expect_value_receiver : base_expect_receiver<Env> {
     explicit(sizeof...(Ts) != 1) expect_value_receiver(Ts... vals)
       : values_(std::move(vals)...) {
@@ -210,7 +210,7 @@ namespace {
     std::tuple<Ts...> values_;
   };
 
-  template <class T, class Env = empty_env>
+  template <class T, class Env = ex::env<>>
   class expect_value_receiver_ex {
     T* dest_;
     Env env_{};
@@ -249,7 +249,7 @@ namespace {
     }
   };
 
-  template <class Env = empty_env>
+  template <class Env = ex::env<>>
   struct expect_stopped_receiver : base_expect_receiver<Env> {
     expect_stopped_receiver() = default;
 
@@ -271,7 +271,7 @@ namespace {
     }
   };
 
-  template <class Env = empty_env>
+  template <class Env = ex::env<>>
   struct expect_stopped_receiver_ex {
     using receiver_concept = stdexec::receiver_t;
 
@@ -323,7 +323,7 @@ namespace {
     return value; // NOLINT
   }
 
-  template <class T = std::exception_ptr, class Env = empty_env>
+  template <class T = std::exception_ptr, class Env = ex::env<>>
   struct expect_error_receiver : base_expect_receiver<Env> {
     expect_error_receiver() = default;
 
@@ -373,7 +373,7 @@ namespace {
     std::optional<T> error_;
   };
 
-  template <class T, class Env = empty_env>
+  template <class T, class Env = ex::env<>>
   struct expect_error_receiver_ex {
     using receiver_concept = stdexec::receiver_t;
 
