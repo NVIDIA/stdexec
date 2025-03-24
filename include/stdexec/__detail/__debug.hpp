@@ -173,10 +173,10 @@ namespace stdexec {
     // understand where in a chain of senders the problem is occurring.
     //
     // ```c++
-    // template <class _Sigs, class _Env = empty_env, class _Sender>
+    // template <class _Sigs, class _Env = env<>, class _Sender>
     //   void __debug_sender(_Sender&& __sndr, _Env = {});
     //
-    // template <class _Env = empty_env, class _Sender>
+    // template <class _Env = env<>, class _Sender>
     //   void __debug_sender(_Sender&& __sndr, _Env = {});
     // ```
     //
@@ -205,7 +205,7 @@ namespace stdexec {
     // At least with clang, this gives me a nice backtrace, at the bottom of
     // which is the faulty `tag_invoke` overload with a mention of the
     // constraint that failed.
-    template <class _Sigs, class _Env = empty_env, class _Sender>
+    template <class _Sigs, class _Env = env<>, class _Sender>
     void __debug_sender(_Sender&& __sndr, const _Env& = {}) {
       if constexpr (!__is_debug_env<_Env>) {
         if (sizeof(_Sender) == ~0u) { // never true
@@ -220,7 +220,7 @@ namespace stdexec {
       }
     }
 
-    template <class _Env = empty_env, class _Sender>
+    template <class _Env = env<>, class _Sender>
     void __debug_sender(_Sender&& __sndr, const _Env& = {}) {
       if constexpr (!__is_debug_env<_Env>) {
         if (sizeof(_Sender) == ~0ul) { // never true

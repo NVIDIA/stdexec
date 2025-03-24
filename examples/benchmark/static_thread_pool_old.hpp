@@ -679,7 +679,7 @@ namespace exec_old {
     shared_state shared_state_;
     inner_op_state inner_op_;
 
-    public:
+   public:
     bulk_op_state(
       static_thread_pool& pool,
       Shape shape,

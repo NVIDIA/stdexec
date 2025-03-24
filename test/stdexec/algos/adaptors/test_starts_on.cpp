@@ -41,7 +41,7 @@ namespace {
 
   TEST_CASE("starts_on with environment returns a sender", "[adaptors][starts_on]") {
     auto snd = ex::starts_on(inline_scheduler{}, ex::just(13));
-    static_assert(ex::sender_in<decltype(snd), empty_env>);
+    static_assert(ex::sender_in<decltype(snd), ex::env<>>);
     (void) snd;
   }
 

@@ -34,7 +34,7 @@ namespace {
 
   TEST_CASE("then with environment returns a sender", "[adaptors][then]") {
     auto snd = ex::then(ex::just(), [] { });
-    static_assert(ex::sender_in<decltype(snd), empty_env>);
+    static_assert(ex::sender_in<decltype(snd), ex::env<>>);
     (void) snd;
   }
 

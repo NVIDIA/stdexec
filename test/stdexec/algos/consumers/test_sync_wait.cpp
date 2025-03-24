@@ -276,7 +276,6 @@ namespace {
     static_assert(
       std::is_same_v<
         std::tuple<>,
-        ex::
-          value_types_of_t<decltype(ex::just()), ex::empty_env, decayed_tuple, std::type_identity_t>>);
+        ex::value_types_of_t<decltype(ex::just()), ex::env<>, decayed_tuple, std::type_identity_t>>);
   }
 } // namespace

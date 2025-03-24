@@ -31,7 +31,7 @@ namespace {
 
   TEST_CASE("transfer_just with environment returns a sender", "[factories][transfer_just]") {
     auto snd = ex::transfer_just(inline_scheduler{}, 13);
-    static_assert(ex::sender_in<decltype(snd), empty_env>);
+    static_assert(ex::sender_in<decltype(snd), ex::env<>>);
     (void) snd;
   }
 

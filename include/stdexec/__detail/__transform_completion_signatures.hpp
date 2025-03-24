@@ -352,7 +352,7 @@ namespace stdexec {
 
   template <
     class _Sndr,
-    class _Env = empty_env,
+    class _Env = env<>,
     class _MoreSigs = completion_signatures<>,
     template <class...> class _ValueTransform = __sigs::__default_set_value,
     template <class...> class _ErrorTransform = __sigs::__default_set_error,
@@ -375,7 +375,7 @@ namespace stdexec {
 
   template <                                                    //
     class _Sender,                                              //
-    class _Env = empty_env,                                     //
+    class _Env = env<>,                                     //
     class _More = completion_signatures<>,                      //
     class _SetValue = __qq<__sigs::__default_set_value>,        //
     class _SetError = __qq<__sigs::__default_set_error>,        //
@@ -413,7 +413,7 @@ namespace stdexec {
 
   template <                                                           //
     class _Sender,                                                     //
-    class _Env = empty_env,                                            //
+    class _Env = env<>,                                            //
     class _Sigs = completion_signatures<>,                             //
     template <class...> class _SetValue = __sigs::__default_set_value, //
     template <class...> class _SetError = __sigs::__default_set_error, //
@@ -430,7 +430,7 @@ namespace stdexec {
 
   template <                                 //
     class _Sender,                           //
-    class _Env = empty_env,                  //
+    class _Env = env<>,                  //
     class _Tuple = __q<__decayed_std_tuple>, //
     class _Variant = __q<__std_variant>>
   using __value_types_of_t = //
@@ -439,17 +439,17 @@ namespace stdexec {
   template <class _Sigs, class _Variant = __q<__std_variant>>
   using __error_types_t = __gather_completions<set_error_t, _Sigs, __q<__midentity>, _Variant>;
 
-  template <class _Sender, class _Env = empty_env, class _Variant = __q<__std_variant>>
+  template <class _Sender, class _Env = env<>, class _Variant = __q<__std_variant>>
   using __error_types_of_t = __error_types_t<__completion_signatures_of_t<_Sender, _Env>, _Variant>;
 
   template <                                                //
     class _Sender,                                          //
-    class _Env = empty_env,                                 //
+    class _Env = env<>,                                 //
     template <class...> class _Tuple = __decayed_std_tuple, //
     template <class...> class _Variant = __std_variant>
   using value_types_of_t = __value_types_of_t<_Sender, _Env, __q<_Tuple>, __q<_Variant>>;
 
-  template <class _Sender, class _Env = empty_env, template <class...> class _Variant = __std_variant>
+  template <class _Sender, class _Env = env<>, template <class...> class _Variant = __std_variant>
   using error_types_of_t = __error_types_of_t<_Sender, _Env, __q<_Variant>>;
 
   template <class _Tag, class _Sender, class... _Env>

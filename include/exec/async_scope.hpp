@@ -775,7 +775,7 @@ namespace exec {
         return nest_result_t<_Constrained>{&__impl_, static_cast<_Constrained&&>(__c)};
       }
 
-      template <__movable_value _Env = empty_env, sender_in<__spawn_env_t<_Env>> _Sender>
+      template <__movable_value _Env = env<>, sender_in<__spawn_env_t<_Env>> _Sender>
         requires sender_to<nest_result_t<_Sender>, __spawn_receiver_t<_Env>>
       void spawn(_Sender&& __sndr, _Env __env = {}) {
         using __op_t = __spawn_operation_t<nest_result_t<_Sender>, _Env>;
@@ -786,7 +786,7 @@ namespace exec {
           new __op_t{nest(static_cast<_Sender&&>(__sndr)), static_cast<_Env&&>(__env), &__impl_}));
       }
 
-      template <__movable_value _Env = empty_env, sender_in<__env_t<_Env>> _Sender>
+      template <__movable_value _Env = env<>, sender_in<__env_t<_Env>> _Sender>
       auto spawn_future(_Sender&& __sndr, _Env __env = {}) -> __future_t<_Sender, _Env> {
         using __state_t = __future_state<nest_result_t<_Sender>, _Env>;
         auto __state = std::make_unique<__state_t>(

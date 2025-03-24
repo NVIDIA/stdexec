@@ -35,7 +35,7 @@ namespace {
     using Snd = decltype(snd);
     static_assert(ex::enable_sender<Snd>);
     static_assert(ex::sender<Snd>);
-    static_assert(ex::same_as<ex::env_of_t<Snd>, empty_env>);
+    static_assert(ex::same_as<ex::env_of_t<Snd>, ex::env<>>);
     (void) snd;
   }
 
@@ -43,8 +43,8 @@ namespace {
     auto snd = ex::split(ex::just(19));
     using Snd = decltype(snd);
     static_assert(ex::enable_sender<Snd>);
-    static_assert(ex::sender_in<Snd, empty_env>);
-    static_assert(ex::same_as<ex::env_of_t<Snd>, empty_env>);
+    static_assert(ex::sender_in<Snd, ex::env<>>);
+    static_assert(ex::same_as<ex::env_of_t<Snd>, ex::env<>>);
     (void) snd;
   }
 
@@ -88,7 +88,7 @@ namespace {
   TEST_CASE("split passes lvalue references", "[adaptors][split]") {
     auto split = ex::split(ex::just(42));
     using split_t = decltype(split);
-    using value_t = ex::value_types_of_t<split_t, ex::empty_env, pack, ex::__mmake_set>;
+    using value_t = ex::value_types_of_t<split_t, ex::env<>, pack, ex::__mmake_set>;
     static_assert(ex::__mset_eq<value_t, ex::__mset<pack<const int&>>>);
 
     auto then = split //
@@ -110,7 +110,7 @@ namespace {
     SECTION("of exception_ptr type") {
       auto split = ex::split(ex::just_error(std::exception_ptr{}));
       using split_t = decltype(split);
-      using error_t = ex::error_types_of_t<split_t, ex::empty_env, ex::__mmake_set>;
+      using error_t = ex::error_types_of_t<split_t, ex::env<>, ex::__mmake_set>;
       static_assert(ex::__mset_eq<error_t, ex::__mset<const std::exception_ptr&>>);
 
       auto op = ex::connect(split, expect_error_receiver{});
@@ -121,7 +121,7 @@ namespace {
     SECTION("of any type") {
       auto split = ex::split(ex::just_error(42));
       using split_t = decltype(split);
-      using error_t = ex::error_types_of_t<split_t, ex::empty_env, ex::__mmake_set>;
+      using error_t = ex::error_types_of_t<split_t, ex::env<>, ex::__mmake_set>;
       static_assert(ex::__mset_eq<error_t, ex::__mset<const std::exception_ptr&, const int&>>);
 
       auto op = ex::connect(split, expect_error_receiver<int>{});
@@ -132,7 +132,7 @@ namespace {
   TEST_CASE("split forwards stop signal", "[adaptors][split]") {
     auto split = ex::split(ex::just_stopped());
     using split_t = decltype(split);
-    static_assert(ex::sends_stopped<split_t, ex::empty_env>);
+    static_assert(ex::sends_stopped<split_t, ex::env<>>);
 
     auto op = ex::connect(split, expect_stopped_receiver{});
     ex::start(op);
@@ -400,7 +400,7 @@ namespace {
 
     SECTION("lvalue split copyable sender") {
       auto multishot = ex::split(ex::just(copy_and_movable_type{0}));
-      ex::get_completion_signatures(multishot, ex::empty_env{});
+      ex::get_completion_signatures(multishot, ex::env<>{});
       auto snd = multishot | ex::then([](const copy_and_movable_type&) { });
 
       REQUIRE(!ex::sender_of<decltype(multishot), ex::set_value_t(copy_and_movable_type)>);
@@ -528,7 +528,7 @@ namespace {
     using Snd = decltype(snd2);
     static_assert(ex::enable_sender<Snd>);
     static_assert(ex::sender<Snd>);
-    static_assert(ex::same_as<ex::env_of_t<Snd>, empty_env>);
+    static_assert(ex::same_as<ex::env_of_t<Snd>, ex::env<>>);
     (void) snd1;
     (void) snd2;
   }

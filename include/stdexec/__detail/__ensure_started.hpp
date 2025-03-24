@@ -36,7 +36,7 @@ namespace stdexec {
     struct __ensure_started_t { };
 
     struct ensure_started_t {
-      template <sender _Sender, class _Env = empty_env>
+      template <sender _Sender, class _Env = env<>>
         requires sender_in<_Sender, _Env> && __decay_copyable<env_of_t<_Sender>>
       [[nodiscard]]
       auto operator()(_Sender&& __sndr, _Env&& __env = {}) const -> __well_formed_sender auto {
@@ -91,7 +91,7 @@ namespace stdexec {
     static constexpr auto get_completion_signatures = //
       []<class _Sender>(_Sender&&) noexcept           //
       -> __completion_signatures_of_t<                //
-        transform_sender_result_t<default_domain, _Sender, empty_env>> {
+        transform_sender_result_t<default_domain, _Sender, env<>>> {
     };
   };
 } // namespace stdexec

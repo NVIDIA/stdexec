@@ -57,7 +57,7 @@ namespace stdexec {
       };
     };
 
-    template <class _Env = empty_env>
+    template <class _Env = env<>>
     using __detached_receiver_t = __t<__detached_receiver<__id<__decay_t<_Env>>>>;
 
     struct start_detached_t {
