@@ -1023,6 +1023,81 @@ namespace {
     ex::sync_wait(std::move(s));
   }
 
+  template <class Sched, class Policy>
+  int number_of_threads_in_bulk(Sched sch, const Policy& policy, int n) {
+    std::vector<std::thread::id> tids(n);
+    auto fun = [&tids](std::size_t idx) {
+      tids[idx] = std::this_thread::get_id();
+      std::this_thread::sleep_for(std::chrono::milliseconds{10});
+    };
+
+    auto snd = ex::just()            //
+             | ex::continues_on(sch) //
+             | ex::bulk(policy, tids.size(), fun);
+    stdexec::sync_wait(std::move(snd));
+
+    std::sort(tids.begin(), tids.end());
+    return static_cast<int>(std::unique(tids.begin(), tids.end()) - tids.begin());
+  }
+
+  TEST_CASE(
+    "static thread pool execute bulk work in accordance with the execution policy",
+    "[adaptors][bulk]") {
+    exec::static_thread_pool pool{4};
+    ex::scheduler auto sch = pool.get_scheduler();
+
+    SECTION("seq execution policy") {
+      REQUIRE(number_of_threads_in_bulk(sch, ex::seq, 42) == 1);
+    }
+    SECTION("unseq execution policy") {
+      REQUIRE(number_of_threads_in_bulk(sch, ex::unseq, 42) == 1);
+    }
+    SECTION("par execution policy") {
+      REQUIRE(number_of_threads_in_bulk(sch, ex::par, 42) > 1);
+    }
+    SECTION("par_unseq execution policy") {
+      REQUIRE(number_of_threads_in_bulk(sch, ex::par_unseq, 42) > 1);
+    }
+  }
+
+  template <class Sched, class Policy>
+  int number_of_threads_in_bulk_chunked(Sched sch, const Policy& policy, int n) {
+    std::vector<std::thread::id> tids(n);
+    auto fun = [&tids](std::size_t b, std::size_t e) {
+      while (b < e)
+        tids[b++] = std::this_thread::get_id();
+      std::this_thread::sleep_for(std::chrono::milliseconds{10});
+    };
+
+    auto snd = ex::just()            //
+             | ex::continues_on(sch) //
+             | ex::bulk_chunked(policy, tids.size(), fun);
+    stdexec::sync_wait(std::move(snd));
+
+    std::sort(tids.begin(), tids.end());
+    return static_cast<int>(std::unique(tids.begin(), tids.end()) - tids.begin());
+  }
+
+  TEST_CASE(
+    "static thread pool execute bulk_chunked work in accordance with the execution policy",
+    "[adaptors][bulk]") {
+    exec::static_thread_pool pool{4};
+    ex::scheduler auto sch = pool.get_scheduler();
+
+    SECTION("seq execution policy") {
+      REQUIRE(number_of_threads_in_bulk_chunked(sch, ex::seq, 42) == 1);
+    }
+    SECTION("unseq execution policy") {
+      REQUIRE(number_of_threads_in_bulk_chunked(sch, ex::unseq, 42) == 1);
+    }
+    SECTION("par execution policy") {
+      REQUIRE(number_of_threads_in_bulk_chunked(sch, ex::par, 42) > 1);
+    }
+    SECTION("par_unseq execution policy") {
+      REQUIRE(number_of_threads_in_bulk_chunked(sch, ex::par_unseq, 42) > 1);
+    }
+  }
+
   struct my_domain {
     template <ex::sender_expr_for<ex::bulk_chunked_t> Sender, class... Env>
     static auto transform_sender(Sender, const Env&...) {
