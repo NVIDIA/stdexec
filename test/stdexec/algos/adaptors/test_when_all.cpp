@@ -36,7 +36,7 @@ namespace {
 
   TEST_CASE("when_all with environment returns a sender", "[adaptors][when_all]") {
     auto snd = ex::when_all(ex::just(3), ex::just(0.1415));
-    static_assert(ex::sender_in<decltype(snd), empty_env>);
+    static_assert(ex::sender_in<decltype(snd), ex::env<>>);
     (void) snd;
   }
 
@@ -312,7 +312,7 @@ namespace {
   }
 
   TEST_CASE("when_all returns empty env", "[adaptors][when_all]") {
-    check_env_type<ex::empty_env>(ex::when_all(ex::just(), ex::just()));
+    check_env_type<ex::env<>>(ex::when_all(ex::just(), ex::just()));
   }
 
   struct test_domain1 { };

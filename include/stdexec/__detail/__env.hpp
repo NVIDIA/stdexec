@@ -512,7 +512,7 @@ namespace stdexec {
         }
       }
 
-      auto operator()(empty_env) const -> empty_env {
+      auto operator()(env<>) const -> env<> {
         return {};
       }
     };
@@ -581,17 +581,17 @@ namespace stdexec {
     __from(_Fun) -> __from<_Fun>;
 
     struct __join_fn {
-      auto operator()(empty_env, empty_env) const noexcept -> empty_env {
+      auto operator()(env<>, env<>) const noexcept -> env<> {
         return {};
       }
 
       template <class _Env>
-      auto operator()(_Env&& __env, empty_env = {}) const noexcept -> _Env {
+      auto operator()(_Env&& __env, env<> = {}) const noexcept -> _Env {
         return static_cast<_Env&&>(__env);
       }
 
       template <class _Env>
-      auto operator()(empty_env, _Env&& __env) const noexcept -> decltype(auto) {
+      auto operator()(env<>, _Env&& __env) const noexcept -> decltype(auto) {
         return __fwd_fn()(static_cast<_Env&&>(__env));
       }
 
@@ -621,10 +621,6 @@ namespace stdexec {
     using __as_root_env_t = __result_of<__as_root_env, _Env>;
   } // namespace __env
 
-  using __env::prop;
-  using __env::env;
-  using empty_env = env<>;
-
   /////////////////////////////////////////////////////////////////////////////
   namespace __get_env {
     // For getting an execution environment from a receiver or the attributes from a sender.
@@ -646,7 +642,7 @@ namespace stdexec {
       }
 
       template <class _EnvProvider>
-      constexpr auto operator()(const _EnvProvider&) const noexcept -> empty_env {
+      constexpr auto operator()(const _EnvProvider&) const noexcept -> env<> {
         return {};
       }
     };

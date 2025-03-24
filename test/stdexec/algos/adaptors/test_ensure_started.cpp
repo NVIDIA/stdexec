@@ -335,7 +335,7 @@ namespace {
     using Snd = decltype(snd2);
     static_assert(ex::enable_sender<Snd>);
     static_assert(ex::sender<Snd>);
-    static_assert(ex::same_as<ex::env_of_t<Snd>, empty_env>);
+    static_assert(ex::same_as<ex::env_of_t<Snd>, ex::env<>>);
     (void) snd1;
     (void) snd2;
   }

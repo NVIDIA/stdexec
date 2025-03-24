@@ -95,7 +95,7 @@ namespace stdexec {
         if constexpr (sizeof...(__child) == 1) {
           return __env::__fwd_fn()(stdexec::get_env(__child...));
         } else {
-          return empty_env();
+          return env<>();
         }
       };
 

@@ -211,7 +211,7 @@ namespace stdexec {
       []<class _Sender>(_Sender&&) noexcept           //
       -> __merror_or_t<                               //
         __completion_signatures_of_t<                 //
-          transform_sender_result_t<default_domain, _Sender, empty_env>>,
+          transform_sender_result_t<default_domain, _Sender, env<>>>,
         dependent_completions> {
       return {};
     };

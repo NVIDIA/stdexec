@@ -39,7 +39,7 @@ namespace exec {
     concept __all_contained_in = __v<__mall_contained_in<_Needles, _Haystack>>;
 
     // This concept checks if a given sender satisfies the requirements to be returned from `set_next`.
-    template <class _Sender, class _Env = empty_env>
+    template <class _Sender, class _Env = env<>>
     concept next_sender =      //
       sender_in<_Sender, _Env> //
       && __all_contained_in<
@@ -180,7 +180,7 @@ namespace exec {
         }
       }
 
-      template <class _Sender, class _Env = empty_env>
+      template <class _Sender, class _Env = env<>>
       constexpr auto
         operator()(_Sender&&, _Env&& = {}) const noexcept -> decltype(__impl<_Sender, _Env>()()) {
         return {};

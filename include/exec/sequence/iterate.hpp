@@ -204,7 +204,7 @@ namespace exec {
         return {};
       }
 
-      static auto get_env(__ignore) noexcept -> empty_env {
+      static auto get_env(__ignore) noexcept -> env<> {
         return {};
       }
     };

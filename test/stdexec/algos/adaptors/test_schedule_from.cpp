@@ -37,7 +37,7 @@ namespace {
 
   TEST_CASE("schedule_from with environment returns a sender", "[adaptors][schedule_from]") {
     auto snd = ex::schedule_from(inline_scheduler{}, ex::just(13));
-    static_assert(ex::sender_in<decltype(snd), empty_env>);
+    static_assert(ex::sender_in<decltype(snd), ex::env<>>);
     (void) snd;
   }
 

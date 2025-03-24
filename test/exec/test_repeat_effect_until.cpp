@@ -74,7 +74,7 @@ namespace {
     "repeat_effect_until with environment returns a sender",
     "[adaptors][repeat_effect_until]") {
     auto snd = exec::repeat_effect_until(just() | then([] { return true; }));
-    static_assert(ex::sender_in<decltype(snd), empty_env>);
+    static_assert(ex::sender_in<decltype(snd), ex::env<>>);
     (void) snd;
   }
 
