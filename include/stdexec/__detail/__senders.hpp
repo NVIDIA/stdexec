@@ -70,7 +70,7 @@ namespace stdexec {
 
     template <class _Sender, class... _Env>
     concept __with_legacy_tag_invoke = //
-      (sizeof...(_Env) == 0) && tag_invocable<get_completion_signatures_t, _Sender, empty_env>;
+      (sizeof...(_Env) == 0) && tag_invocable<get_completion_signatures_t, _Sender, env<>>;
 
     template <class _Sender>
     using __member_alias_t = //
@@ -104,7 +104,7 @@ namespace stdexec {
           return static_cast<_Result (*)()>(nullptr);
         } else if constexpr (__with_legacy_tag_invoke<_TfxSender, _Env...>) {
           // This branch is strictly for backwards compatibility
-          using _Result = tag_invoke_result_t<get_completion_signatures_t, _Sender, empty_env>;
+          using _Result = tag_invoke_result_t<get_completion_signatures_t, _Sender, env<>>;
           return static_cast<_Result (*)()>(nullptr);
           // [WAR] The explicit cast to bool below is to work around a bug in nvc++ (nvbug#4707793)
         } else if constexpr (bool(__awaitable<_TfxSender, __env::__promise<_Env>...>)) {
@@ -304,7 +304,7 @@ namespace stdexec {
   template <class _Sig>
   using __tag_of_sig_t = decltype(stdexec::__tag_of_sig_(static_cast<_Sig*>(nullptr)));
 
-  template <class _Sender, class _SetSig, class _Env = empty_env>
+  template <class _Sender, class _SetSig, class _Env = env<>>
   concept sender_of =        //
     sender_in<_Sender, _Env> //
     && same_as<
@@ -320,7 +320,7 @@ namespace stdexec {
     requires false
   using __nofail_t = _Error;
 
-  template <class _Sender, class _Env = empty_env>
+  template <class _Sender, class _Env = env<>>
   concept __nofail_sender = sender_in<_Sender, _Env> && requires {
     typename __gather_completion_signatures<
       __completion_signatures_of_t<_Sender, _Env>,

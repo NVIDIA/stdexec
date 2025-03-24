@@ -38,7 +38,7 @@ namespace stdexec {
     concept __enable_sender = //
       derived_from<typename _Sender::sender_concept, sender_t>
       || requires { typename _Sender::is_sender; } // NOT TO SPEC back compat
-      || __awaitable<_Sender, __env::__promise<empty_env>>;
+      || __awaitable<_Sender, __env::__promise<env<>>>;
   } // namespace __detail
 
   template <class _Sender>

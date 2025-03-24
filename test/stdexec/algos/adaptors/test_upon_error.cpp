@@ -32,7 +32,7 @@ namespace {
 
   TEST_CASE("upon_error with environment returns a sender", "[adaptors][upon_error]") {
     auto snd = ex::upon_error(ex::just_error(std::exception_ptr{}), [](std::exception_ptr) { });
-    static_assert(ex::sender_in<decltype(snd), empty_env>);
+    static_assert(ex::sender_in<decltype(snd), ex::env<>>);
     (void) snd;
   }
 
@@ -55,7 +55,7 @@ namespace {
 
     using S = decltype(snd);
     static_assert(ex::sender<S>);
-    using completion_sigs = decltype(ex::get_completion_signatures(snd, ex::empty_env{}));
+    using completion_sigs = decltype(ex::get_completion_signatures(snd, ex::env<>{}));
     static_assert(ex::__mset_eq<ex::__mset<ex::set_value_t()>, completion_sigs>);
   }
 
@@ -104,7 +104,7 @@ namespace {
 
       using S = decltype(s);
       static_assert(ex::sender<S>);
-      using completion_sigs = decltype(ex::get_completion_signatures(s, ex::empty_env{}));
+      using completion_sigs = decltype(ex::get_completion_signatures(s, ex::env<>{}));
       static_assert(ex::__mset_eq<
                     ex::__mset<
                       ex::set_error_t(std::exception_ptr),
@@ -119,7 +119,7 @@ namespace {
 
       using S = decltype(s);
       static_assert(ex::sender<S>);
-      using completion_sigs = decltype(ex::get_completion_signatures(s, ex::empty_env{}));
+      using completion_sigs = decltype(ex::get_completion_signatures(s, ex::env<>{}));
       static_assert(ex::__mset_eq<
                     ex::__mset<ex::set_error_t(std::exception_ptr), ex::set_value_t(int)>,
                     completion_sigs>);
@@ -131,7 +131,7 @@ namespace {
 
       using S = decltype(s);
       static_assert(ex::sender<S>);
-      using completion_sigs = decltype(ex::get_completion_signatures(s, ex::empty_env{}));
+      using completion_sigs = decltype(ex::get_completion_signatures(s, ex::env<>{}));
       static_assert(
         ex::__mset_eq<
           ex::

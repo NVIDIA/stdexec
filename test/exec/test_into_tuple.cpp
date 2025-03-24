@@ -31,17 +31,17 @@ namespace {
 
   TEST_CASE("into_tuple is a sender in empty env", "[adaptors][into_tuple]") {
     using void_sender = result_of_t<exec::into_tuple, a_sender_of<set_value_t()>>;
-    STATIC_REQUIRE(sender_in<void_sender, empty_env>);
+    STATIC_REQUIRE(sender_in<void_sender, ex::env<>>);
     STATIC_REQUIRE(
       set_equivalent<
-        completion_signatures_of_t<void_sender, empty_env>,
+        completion_signatures_of_t<void_sender, ex::env<>>,
         completion_signatures<set_error_t(std::exception_ptr), set_value_t(std::tuple<>)>>);
 
     using ints_sender = result_of_t<exec::into_tuple, a_sender_of<set_value_t(int&, int)>>;
-    STATIC_REQUIRE(sender_in<ints_sender, empty_env>);
+    STATIC_REQUIRE(sender_in<ints_sender, ex::env<>>);
     STATIC_REQUIRE(
       set_equivalent<
-        completion_signatures_of_t<ints_sender, empty_env>,
+        completion_signatures_of_t<ints_sender, ex::env<>>,
         completion_signatures<set_error_t(std::exception_ptr), set_value_t(std::tuple<int, int>)>>);
   }
 
@@ -50,14 +50,14 @@ namespace {
     "[adaptors][into_tuple]") {
     using error_sender =
       result_of_t<exec::into_tuple, a_sender_of<set_error_t(std::exception_ptr)>>;
-    STATIC_REQUIRE_FALSE(sender_in<error_sender, empty_env>);
+    STATIC_REQUIRE_FALSE(sender_in<error_sender, ex::env<>>);
 
     using stopped_sender = result_of_t<exec::into_tuple, a_sender_of<set_stopped_t()>>;
-    STATIC_REQUIRE_FALSE(sender_in<stopped_sender, empty_env>);
+    STATIC_REQUIRE_FALSE(sender_in<stopped_sender, ex::env<>>);
 
     using multi_value_sender =
       result_of_t<exec::into_tuple, a_sender_of<set_value_t(), set_value_t(int)>>;
-    STATIC_REQUIRE_FALSE(sender_in<multi_value_sender, empty_env>);
+    STATIC_REQUIRE_FALSE(sender_in<multi_value_sender, ex::env<>>);
   }
 
   TEST_CASE("trivial into_tuple example works", "[adaptors][into_tuple]") {

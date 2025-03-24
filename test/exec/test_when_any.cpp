@@ -38,7 +38,7 @@ namespace {
 
   TEST_CASE("when_any with environment returns a sender", "[adaptors][when_any]") {
     auto snd = exec::when_any(ex::just(3), ex::just(0.1415));
-    static_assert(ex::sender_in<decltype(snd), empty_env>);
+    static_assert(ex::sender_in<decltype(snd), ex::env<>>);
     (void) snd;
   }
 

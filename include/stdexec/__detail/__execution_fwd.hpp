@@ -60,7 +60,7 @@ namespace stdexec {
 
   using __env::prop;
   using __env::env;
-  using empty_env = env<>;
+  using empty_env [[deprecated("stdexec::empty_env is now spelled stdexec::env<>")]] = env<>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __get_env {

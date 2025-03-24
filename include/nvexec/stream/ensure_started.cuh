@@ -348,7 +348,7 @@ namespace nvexec::_strm {
       Sender sndr_;
       __intrusive_ptr<sh_state_> shared_state_;
 
-      template <receiver Receiver, class Env = empty_env>
+      template <receiver Receiver, class Env = env<>>
         requires receiver_of<Receiver, completion_signatures_of_t<__t, Env>>
       auto connect(Receiver rcvr) && noexcept(__nothrow_move_constructible<Receiver>) //
         -> operation_t<Receiver> {

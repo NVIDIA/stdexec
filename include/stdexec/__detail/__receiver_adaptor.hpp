@@ -33,7 +33,7 @@ namespace stdexec {
         void set_error(std::exception_ptr) noexcept;
         void set_stopped() noexcept;
         [[nodiscard]]
-        auto get_env() const noexcept -> empty_env;
+        auto get_env() const noexcept -> env<>;
       };
     } // namespace __no
 

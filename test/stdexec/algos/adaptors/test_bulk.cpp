@@ -82,19 +82,19 @@ namespace {
 
   TEST_CASE("bulk with environment returns a sender", "[adaptors][bulk]") {
     auto snd = ex::bulk(ex::just(19), ex::par, 8, [](int, int) { });
-    static_assert(ex::sender_in<decltype(snd), empty_env>);
+    static_assert(ex::sender_in<decltype(snd), ex::env<>>);
     (void) snd;
   }
 
   TEST_CASE("bulk_chunked with environment returns a sender", "[adaptors][bulk]") {
     auto snd = ex::bulk_chunked(ex::just(19), ex::par, 8, [](int, int, int) { });
-    static_assert(ex::sender_in<decltype(snd), empty_env>);
+    static_assert(ex::sender_in<decltype(snd), ex::env<>>);
     (void) snd;
   }
 
   TEST_CASE("bulk_unchunked with environment returns a sender", "[adaptors][bulk]") {
     auto snd = ex::bulk_unchunked(ex::just(19), 8, [](int, int) { });
-    static_assert(ex::sender_in<decltype(snd), empty_env>);
+    static_assert(ex::sender_in<decltype(snd), ex::env<>>);
     (void) snd;
   }
 

@@ -36,7 +36,7 @@ namespace {
     "stopped_as_optional with environment returns a sender",
     "[adaptors][stopped_as_optional]") {
     auto snd = ex::stopped_as_optional(ex::just(11));
-    static_assert(ex::sender_in<decltype(snd), empty_env>);
+    static_assert(ex::sender_in<decltype(snd), ex::env<>>);
     (void) snd;
   }
 
