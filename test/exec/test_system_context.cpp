@@ -35,40 +35,40 @@ namespace ex = stdexec;
 namespace scr = exec::system_context_replaceability;
 
 TEST_CASE("system_context can return a scheduler", "[types][system_scheduler]") {
-  auto sched = exec::get_system_scheduler();
+  auto sched = exec::get_parallel_scheduler();
   STATIC_REQUIRE(ex::scheduler<decltype(sched)>);
 }
 
 TEST_CASE("system scheduler is not default constructible", "[types][system_scheduler]") {
-  auto sched = exec::get_system_scheduler();
+  auto sched = exec::get_parallel_scheduler();
   using sched_t = decltype(sched);
   STATIC_REQUIRE(!std::is_default_constructible_v<sched_t>);
   STATIC_REQUIRE(std::is_destructible_v<sched_t>);
 }
 
 TEST_CASE("system scheduler is copyable and movable", "[types][system_scheduler]") {
-  auto sched = exec::get_system_scheduler();
+  auto sched = exec::get_parallel_scheduler();
   using sched_t = decltype(sched);
   STATIC_REQUIRE(std::is_copy_constructible_v<sched_t>);
   STATIC_REQUIRE(std::is_move_constructible_v<sched_t>);
 }
 
 TEST_CASE("a copied scheduler is equal to the original", "[types][system_scheduler]") {
-  auto sched1 = exec::get_system_scheduler();
+  auto sched1 = exec::get_parallel_scheduler();
   auto sched2 = sched1;
   REQUIRE(sched1 == sched2);
 }
 
 TEST_CASE(
-  "two schedulers obtained from get_system_scheduler() are equal",
+  "two schedulers obtained from get_parallel_scheduler() are equal",
   "[types][system_scheduler]") {
-  auto sched1 = exec::get_system_scheduler();
-  auto sched2 = exec::get_system_scheduler();
+  auto sched1 = exec::get_parallel_scheduler();
+  auto sched2 = exec::get_parallel_scheduler();
   REQUIRE(sched1 == sched2);
 }
 
 TEST_CASE("system scheduler can produce a sender", "[types][system_scheduler]") {
-  auto snd = ex::schedule(exec::get_system_scheduler());
+  auto snd = ex::schedule(exec::get_parallel_scheduler());
   using sender_t = decltype(snd);
 
   STATIC_REQUIRE(ex::sender<sender_t>);
@@ -77,7 +77,7 @@ TEST_CASE("system scheduler can produce a sender", "[types][system_scheduler]") 
 }
 
 TEST_CASE("trivial schedule task on system context", "[types][system_scheduler]") {
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
   ex::sync_wait(ex::schedule(sched));
 }
@@ -85,7 +85,7 @@ TEST_CASE("trivial schedule task on system context", "[types][system_scheduler]"
 TEST_CASE("simple schedule task on system context", "[types][system_scheduler]") {
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
   auto snd = ex::then(ex::schedule(sched), [&] { pool_id = std::this_thread::get_id(); });
 
@@ -97,12 +97,12 @@ TEST_CASE("simple schedule task on system context", "[types][system_scheduler]")
 }
 
 TEST_CASE("simple schedule forward progress guarantee", "[types][system_scheduler]") {
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
   REQUIRE(ex::get_forward_progress_guarantee(sched) == ex::forward_progress_guarantee::parallel);
 }
 
 TEST_CASE("get_completion_scheduler", "[types][system_scheduler]") {
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
   REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::schedule(sched))) == sched);
 }
 
@@ -110,7 +110,7 @@ TEST_CASE("simple chain task on system context", "[types][system_scheduler]") {
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};
   std::thread::id pool_id2{};
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
   auto snd = ex::then(ex::schedule(sched), [&] { pool_id = std::this_thread::get_id(); });
   auto snd2 = ex::then(std::move(snd), [&] { pool_id2 = std::this_thread::get_id(); });
@@ -125,7 +125,7 @@ TEST_CASE("simple chain task on system context", "[types][system_scheduler]") {
 }
 
 TEST_CASE("checks stop_token before starting the work", "[types][system_scheduler]") {
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
   exec::async_scope scope;
   scope.request_stop();
@@ -148,7 +148,7 @@ TEST_CASE("simple bulk task on system context", "[types][system_scheduler]") {
   std::thread::id this_id = std::this_thread::get_id();
   constexpr size_t num_tasks = 16;
   std::thread::id pool_ids[num_tasks];
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
   auto bulk_snd = ex::bulk(ex::schedule(sched), num_tasks, [&](unsigned long id) {
     pool_ids[id] = std::this_thread::get_id();
@@ -169,7 +169,7 @@ TEST_CASE("simple bulk chaining on system context", "[types][system_scheduler]")
   std::thread::id pool_id{};
   std::thread::id propagated_pool_ids[num_tasks];
   std::thread::id pool_ids[num_tasks];
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
   auto snd = ex::then(ex::schedule(sched), [&] {
     pool_id = std::this_thread::get_id();
@@ -198,17 +198,18 @@ TEST_CASE("simple bulk chaining on system context", "[types][system_scheduler]")
   CHECK(std::get<0>(res.value()) == pool_id);
 }
 
-struct my_system_scheduler_impl : exec::__system_context_default_impl::__system_scheduler_impl {
-  using base_t = exec::__system_context_default_impl::__system_scheduler_impl;
+struct my_parallel_scheduler_backend_impl
+  : exec::__system_context_default_impl::__parallel_scheduler_backend_impl {
+  using base_t = exec::__system_context_default_impl::__parallel_scheduler_backend_impl;
 
-  my_system_scheduler_impl() = default;
+  my_parallel_scheduler_backend_impl() = default;
 
   [[nodiscard]]
   auto num_schedules() const -> int {
     return count_schedules_;
   }
 
-  void schedule(scr::storage __s, scr::receiver* __r) noexcept override {
+  void schedule(std::span<std::byte> __s, scr::receiver& __r) noexcept override {
     count_schedules_++;
     base_t::schedule(__s, __r);
   }
@@ -218,28 +219,31 @@ struct my_system_scheduler_impl : exec::__system_context_default_impl::__system_
   int count_schedules_ = 0;
 };
 
-struct my_inline_scheduler_impl : scr::system_scheduler {
-  void schedule(scr::storage s, scr::receiver* r) noexcept override {
-    r->set_value();
+struct my_inline_scheduler_backend_impl : scr::parallel_scheduler_backend {
+  void schedule(std::span<std::byte> s, scr::receiver& r) noexcept override {
+    r.set_value();
   }
 
-  void bulk_schedule(uint32_t count, scr::storage s, scr::bulk_item_receiver* r) noexcept override {
+  void bulk_schedule(uint32_t count, std::span<std::byte> s, scr::bulk_item_receiver& r) noexcept
+    override {
     for (uint32_t i = 0; i < count; ++i)
-      r->start(i);
-    r->set_value();
+      r.execute(i);
+    r.set_value();
   }
 };
 
 TEST_CASE(
   "can change the implementation of system context at runtime",
   "[types][system_scheduler]") {
-  static auto my_scheduler_backend = std::make_shared<my_system_scheduler_impl>();
-  auto old_factory = scr::set_system_context_backend_factory<scr::system_scheduler>(
-    []() -> std::shared_ptr<scr::system_scheduler> { return my_scheduler_backend; });
+  static auto my_scheduler_backend = std::make_shared<my_parallel_scheduler_backend_impl>();
+  auto old_factory =
+    scr::set_parallel_scheduler_backend([]() -> std::shared_ptr<scr::parallel_scheduler_backend> {
+      return my_scheduler_backend;
+    });
 
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
   auto snd = ex::then(ex::schedule(sched), [&] { pool_id = std::this_thread::get_id(); });
 
@@ -250,20 +254,20 @@ TEST_CASE(
   REQUIRE(pool_id != std::thread::id{});
   REQUIRE(this_id != pool_id);
 
-  (void) scr::set_system_context_backend_factory<scr::system_scheduler>(old_factory);
+  (void) scr::set_parallel_scheduler_backend(old_factory);
 }
 
 TEST_CASE(
   "can change the implementation of system context at runtime, with an inline scheduler",
   "[types][system_scheduler]") {
-  auto old_factory = scr::set_system_context_backend_factory<scr::system_scheduler>(
-    []() -> std::shared_ptr<scr::system_scheduler> {
-      return std::make_shared<my_inline_scheduler_impl>();
+  auto old_factory =
+    scr::set_parallel_scheduler_backend([]() -> std::shared_ptr<scr::parallel_scheduler_backend> {
+      return std::make_shared<my_inline_scheduler_backend_impl>();
     });
 
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
   auto snd = ex::then(ex::schedule(sched), [&] { pool_id = std::this_thread::get_id(); });
 
@@ -271,12 +275,12 @@ TEST_CASE(
 
   REQUIRE(this_id == pool_id);
 
-  (void) scr::set_system_context_backend_factory<scr::system_scheduler>(old_factory);
+  (void) scr::set_parallel_scheduler_backend(old_factory);
 }
 
 TEST_CASE("empty environment always returns nullopt for any query", "[types][system_scheduler]") {
   struct my_receiver : scr::receiver {
-    bool __query_env(__uuid, void*) noexcept override {
+    auto __query_env(__uuid, void*) noexcept -> bool override {
       return false;
     }
 
@@ -299,7 +303,7 @@ TEST_CASE("empty environment always returns nullopt for any query", "[types][sys
 
 TEST_CASE("environment with a stop token can expose its stop token", "[types][system_scheduler]") {
   struct my_receiver : scr::receiver {
-    bool __query_env(__uuid uuid, void* dest) noexcept override {
+    auto __query_env(__uuid uuid, void* dest) noexcept -> bool override {
       if (
         uuid
         == scr::__runtime_property_helper<stdexec::inplace_stop_token>::__property_identifier) {
