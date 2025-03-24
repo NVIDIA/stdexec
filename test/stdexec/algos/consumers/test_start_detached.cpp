@@ -21,7 +21,7 @@
 #include <exec/static_thread_pool.hpp>
 #include <exec/env.hpp>
 
-#include <chrono>
+#include <chrono> // IWYU pragma: keep for std::chrono_literals
 
 #if STDEXEC_HAS_STD_MEMORY_RESOURCE()
 #  include <memory_resource>
@@ -94,54 +94,79 @@ namespace {
 
   struct custom_sender {
     using sender_concept = stdexec::sender_t;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
     bool* called;
 
+    struct domain {
+      template <class Sender, class... Env>
+      static void apply_sender(ex::start_detached_t, Sender self, Env&&...) {
+        *self.called = true;
+      }
+    };
+
+    struct noop {
+      void start() & noexcept {
+      }
+    };
+
+    [[nodiscard]]
+    auto get_env() const noexcept {
+      return ex::prop{ex::get_domain, domain{}};
+    }
+
     template <class Receiver>
-    friend auto tag_invoke(ex::connect_t, custom_sender, Receiver&& rcvr) {
-      return ex::connect(ex::schedule(inline_scheduler{}), static_cast<Receiver&&>(rcvr));
-    }
-
-    template <class Env>
-    auto get_completion_signatures(Env&&) const noexcept
-      -> ex::completion_signatures<ex::set_value_t()> {
-      return {};
-    }
-
-    friend void tag_invoke(ex::start_detached_t, custom_sender sndr) {
-      *sndr.called = true;
+    auto connect(Receiver&&) const -> noop {
+      static_assert(sizeof(Receiver) == 0);
+      FAIL("this should not be called");
+      return noop{};
     }
   };
 
   struct custom_scheduler {
-    struct sender : ex::schedule_result_t<inline_scheduler> {
-      struct env {
-        template <class Tag>
-        custom_scheduler query(ex::get_completion_scheduler_t<Tag>) const noexcept {
-          return {};
+    struct sender {
+      using sender_concept = ex::sender_t;
+      using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+      [[nodiscard]]
+      auto get_env() const noexcept {
+        return ex::prop{ex::get_completion_scheduler<ex::set_value_t>, custom_scheduler{called}};
+      }
+
+      struct noop {
+        void start() & noexcept {
         }
       };
 
-      env get_env() const noexcept {
-        return {};
+      template <class Receiver>
+      auto connect(Receiver&&) const {
+        FAIL("this should not be called");
+        return noop{};
       }
+
+      bool* called{};
     };
 
     struct domain {
       template <class Sender, class Env>
-      void apply_sender(ex::start_detached_t, Sender, Env) const {
-        // drop the sender on the floor
+      void apply_sender(ex::start_detached_t, Sender, const Env& env) const {
+        custom_scheduler sched = ex::get_scheduler(env);
+        *sched.called = true;
       }
     };
 
-    domain query(ex::get_domain_t) const noexcept {
+    [[nodiscard]]
+    auto query(ex::get_domain_t) const noexcept -> domain {
       return {};
     }
 
-    sender schedule() const noexcept {
+    [[nodiscard]]
+    auto schedule() const noexcept -> sender {
       return {};
     }
 
-    bool operator==(const custom_scheduler&) const = default;
+    auto operator==(const custom_scheduler&) const -> bool = default;
+
+    bool* called{};
   };
 
   TEST_CASE("start_detached can be customized on sender", "[consumers][start_detached]") {
@@ -153,10 +178,8 @@ namespace {
   // NOT TO SPEC
   TEST_CASE("start_detached can be customized on scheduler", "[consumers][start_detached]") {
     bool called = false;
-    ex::start_detached(
-      ex::just() | ex::then([&] { called = true; }),
-      exec::make_env(stdexec::prop{ex::get_scheduler, custom_scheduler{}}));
-    CHECK_FALSE(called);
+    ex::start_detached(ex::just(), stdexec::prop{ex::get_scheduler, custom_scheduler{&called}});
+    CHECK(called);
   }
 
 #if STDEXEC_HAS_STD_MEMORY_RESOURCE()                                                              \
@@ -165,15 +188,17 @@ namespace {
   struct counting_resource : std::pmr::memory_resource {
     counting_resource() = default;
 
-    std::size_t get_count() const noexcept {
+    [[nodiscard]]
+    auto get_count() const noexcept -> std::size_t {
       return count;
     }
 
-    std::size_t get_alive() const noexcept {
+    [[nodiscard]]
+    auto get_alive() const noexcept -> std::size_t {
       return alive;
     }
    private:
-    void* do_allocate(std::size_t bytes, std::size_t alignment) override {
+    auto do_allocate(std::size_t bytes, std::size_t alignment) -> void* override {
       ++count;
       ++alive;
       return std::pmr::new_delete_resource()->allocate(bytes, alignment);
@@ -184,7 +209,8 @@ namespace {
       return std::pmr::new_delete_resource()->deallocate(p, bytes, alignment);
     }
 
-    bool do_is_equal(const memory_resource& other) const noexcept override {
+    [[nodiscard]]
+    auto do_is_equal(const memory_resource& other) const noexcept -> bool override {
       return this == &other;
     }
 

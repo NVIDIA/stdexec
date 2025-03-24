@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 #include "__basic_sender.hpp"
 #include "__completion_signatures.hpp"
@@ -33,6 +33,10 @@ namespace stdexec {
     template <class _JustTag>
     struct __impl : __sexpr_defaults {
       using __tag_t = typename _JustTag::__tag_t;
+
+      static constexpr auto get_attrs = [](__ignore) noexcept {
+        return prop{__is_scheduler_affine_t{}, std::true_type{}};
+      };
 
       static constexpr auto get_completion_signatures =
         []<class _Sender>(_Sender&&, auto&&...) noexcept {

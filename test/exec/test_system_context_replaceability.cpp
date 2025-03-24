@@ -20,45 +20,40 @@
 #include <exec/__detail/__system_context_default_impl.hpp>
 
 namespace ex = stdexec;
+namespace scr = exec::system_context_replaceability;
 
 namespace {
 
   static int count_schedules = 0;
 
-  struct my_system_scheduler_impl : exec::__system_context_default_impl::__system_scheduler_impl {
-    using base_t = exec::__system_context_default_impl::__system_scheduler_impl;
+  struct my_parallel_scheduler_backend_impl
+    : exec::__system_context_default_impl::__parallel_scheduler_backend_impl {
+    using base_t = exec::__system_context_default_impl::__parallel_scheduler_backend_impl;
 
-    my_system_scheduler_impl() = default;
+    my_parallel_scheduler_backend_impl() = default;
 
-    void schedule(
-      exec::__system_context_default_impl::storage __s,
-      exec::__system_context_default_impl::receiver* __r) noexcept override {
+    void schedule(std::span<std::byte> __s, scr::receiver& __r) noexcept override {
       count_schedules++;
       base_t::schedule(__s, __r);
     }
   };
 
-  void* my_query_system_context_interface(__uuid id) noexcept {
-    if (id == exec::__system_context_default_impl::system_scheduler::__interface_identifier) {
-      static my_system_scheduler_impl instance;
-      return &instance;
-    }
-    return nullptr;
-  }
-
 } // namespace
 
-// Should replace the function defined in __system_context_default_impl.hpp
-extern STDEXEC_ATTRIBUTE((weak)) void* __query_system_context_interface(const __uuid& id) noexcept {
-  return my_query_system_context_interface(id);
-}
+namespace exec::system_context_replaceability {
+  // Should replace the function defined in __system_context_default_impl.hpp
+  auto query_parallel_scheduler_backend()
+    -> std::shared_ptr<exec::system_context_replaceability::parallel_scheduler_backend> {
+    return std::make_shared<my_parallel_scheduler_backend_impl>();
+  }
+} // namespace exec::system_context_replaceability
 
 TEST_CASE(
   "Check that we are using a replaced system context (with weak linking)",
   "[system_scheduler][replaceability]") {
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};
-  exec::system_scheduler sched = exec::get_system_scheduler();
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
   auto snd = ex::then(ex::schedule(sched), [&] { pool_id = std::this_thread::get_id(); });
 

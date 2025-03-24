@@ -39,15 +39,15 @@ namespace {
 
   template <typename Awaiter>
   struct promise {
-    __coro::coroutine_handle<promise> get_return_object() {
+    auto get_return_object() -> __coro::coroutine_handle<promise> {
       return {__coro::coroutine_handle<promise>::from_promise(*this)};
     }
 
-    __coro::suspend_always initial_suspend() noexcept {
+    auto initial_suspend() noexcept -> __coro::suspend_always {
       return {};
     }
 
-    __coro::suspend_always final_suspend() noexcept {
+    auto final_suspend() noexcept -> __coro::suspend_always {
       return {};
     }
 
@@ -64,22 +64,22 @@ namespace {
   };
 
   struct awaiter {
-    bool await_ready() {
+    auto await_ready() -> bool {
       return true;
     }
 
-    bool await_suspend(__coro::coroutine_handle<>) {
+    auto await_suspend(__coro::coroutine_handle<>) -> bool {
       return false;
     }
 
-    bool await_resume() {
+    auto await_resume() -> bool {
       return false;
     }
   };
 
   struct invalid_awaiter {
-    bool await_ready();
-    bool await_suspend(__coro::coroutine_handle<>);
+    auto await_ready() -> bool;
+    auto await_suspend(__coro::coroutine_handle<>) -> bool;
     //void await_resume();
   };
 
@@ -88,7 +88,7 @@ namespace {
 
   template <typename Awaiter>
   struct awaitable_sender_1 {
-    Awaiter operator co_await() {
+    auto operator co_await() -> Awaiter {
       return {};
     }
   };
@@ -97,7 +97,7 @@ namespace {
     using promise_type = promise<__coro::suspend_always>;
 
    private:
-    friend invalid_awaiter operator co_await(awaitable_sender_2) {
+    friend auto operator co_await(awaitable_sender_2) -> invalid_awaiter {
       return {};
     }
   };
@@ -106,7 +106,7 @@ namespace {
     using promise_type = promise<awaiter>;
 
    private:
-    friend invalid_awaiter operator co_await(awaitable_sender_3) {
+    friend auto operator co_await(awaitable_sender_3) -> invalid_awaiter {
       return {};
     }
   };
@@ -118,7 +118,7 @@ namespace {
 
    private:
     template <class Promise>
-    friend awaiter tag_invoke(ex::as_awaitable_t, awaitable_sender_4, Promise&) {
+    friend auto tag_invoke(ex::as_awaitable_t, awaitable_sender_4, Promise&) -> awaiter {
       return {};
     }
   };
@@ -126,7 +126,7 @@ namespace {
   struct awaitable_sender_5 {
    private:
     template <class Promise>
-    friend awaiter tag_invoke(ex::as_awaitable_t, awaitable_sender_5, Promise&) {
+    friend auto tag_invoke(ex::as_awaitable_t, awaitable_sender_5, Promise&) -> awaiter {
       return {};
     }
   };
@@ -232,9 +232,10 @@ namespace {
 
   template <typename Awaiter>
   struct awaitable_with_get_env {
-    Awaiter operator co_await();
+    auto operator co_await() -> Awaiter;
 
-    awaitable_env get_env() const noexcept {
+    [[nodiscard]]
+    auto get_env() const noexcept -> awaitable_env {
       return {};
     }
   };

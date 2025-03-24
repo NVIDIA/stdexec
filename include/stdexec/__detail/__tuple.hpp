@@ -46,7 +46,8 @@ namespace stdexec {
 
     template <class _Ty>
     concept __empty = //
-      STDEXEC_IS_EMPTY(_Ty) && STDEXEC_IS_TRIVIALLY_CONSTRUCTIBLE(_Ty);
+      STDEXEC_IS_EMPTY(_Ty) && STDEXEC_IS_TRIVIALLY_CONSTRUCTIBLE(_Ty)
+      && STDEXEC_IS_TRIVIALLY_COPYABLE(_Ty);
 
     template <__empty _Ty>
     inline _Ty __value{};
@@ -62,46 +63,121 @@ namespace stdexec {
       static constexpr _Ty &__value = __tup::__value<_Ty>;
     };
 
+    template <std::size_t _Idx, class _Ty>
+    STDEXEC_ATTRIBUTE((host, device, always_inline)) constexpr auto __get(__box<_Ty, _Idx> &&__self) noexcept -> _Ty && {
+      return static_cast<_Ty &&>(__self.__value);
+    }
+
+    template <std::size_t _Idx, class _Ty>
+    STDEXEC_ATTRIBUTE((host, device, always_inline)) constexpr auto __get(__box<_Ty, _Idx> &__self) noexcept -> _Ty & {
+      return __self.__value;
+    }
+
+    template <std::size_t _Idx, class _Ty>
+    STDEXEC_ATTRIBUTE((host, device, always_inline)) constexpr auto __get(const __box<_Ty, _Idx> &__self) noexcept -> const _Ty & {
+      return __self.__value;
+    }
+
     template <auto _Idx, class... _Ts>
     struct __tuple;
 
     template <std::size_t... _Is, __indices<_Is...> _Idx, class... _Ts>
+      requires(sizeof...(_Ts) - 1 > 3) // intentional unsigned wrap-around for sizeof...(Ts) is zero
     struct __tuple<_Idx, _Ts...> : __box<_Ts, _Is>... {
       template <class... _Us>
-      static __tuple __convert_from(__tuple<_Idx, _Us...> &&__tup) {
+      static auto __convert_from(__tuple<_Idx, _Us...> &&__tup) -> __tuple {
         return __tuple{
           {static_cast<_Us &&>(__tup.STDEXEC_CWG1835_TEMPLATE __box<_Us, _Is>::__value)}...};
       }
 
       template <class... _Us>
-      static __tuple __convert_from(__tuple<_Idx, _Us...> const &__tup) {
+      static auto __convert_from(__tuple<_Idx, _Us...> const &__tup) -> __tuple {
         return __tuple{{__tup.STDEXEC_CWG1835_TEMPLATE __box<_Us, _Is>::__value}...};
       }
 
-      template <class _Fn, class _Self, class... _Us>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) static auto apply(_Fn &&__fn, _Self &&__self, _Us &&...__us) //
-        noexcept(noexcept(static_cast<_Fn &&>(__fn)(
-          static_cast<_Us &&>(__us)...,
-          static_cast<_Self &&>(__self).STDEXEC_CWG1835_TEMPLATE __box<_Ts, _Is>::__value...)))
-          -> decltype(static_cast<_Fn &&>(__fn)(
-            static_cast<_Us &&>(__us)...,
-            static_cast<_Self &&>(__self).STDEXEC_CWG1835_TEMPLATE __box<_Ts, _Is>::__value...)) {
-        return static_cast<_Fn &&>(__fn)(
-          static_cast<_Us &&>(__us)...,
-          static_cast<_Self &&>(__self).STDEXEC_CWG1835_TEMPLATE __box<_Ts, _Is>::__value...);
+      template <std::size_t _Np, class _Self>
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) static auto __get(_Self &&__self) noexcept //
+        -> decltype(__tup::__get<_Np>(static_cast<_Self &&>(__self))) {
+        return __tup::__get<_Np>(static_cast<_Self &&>(__self));
       }
 
+      // clang-format off
       template <class _Fn, class _Self, class... _Us>
-        requires(__callable<_Fn, _Us..., __copy_cvref_t<_Self, _Ts>> && ...)
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) static auto for_each(_Fn &&__fn, _Self &&__self, _Us &&...__us) //
-        noexcept((__nothrow_callable<_Fn, _Us..., __copy_cvref_t<_Self, _Ts>> && ...)) -> void {
-        return (
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) static auto apply(_Fn &&__fn, _Self &&__self, _Us &&...__us) //
+        STDEXEC_AUTO_RETURN(
           static_cast<_Fn &&>(__fn)(
             static_cast<_Us &&>(__us)...,
-            static_cast<_Self &&>(__self).STDEXEC_CWG1835_TEMPLATE __box<_Ts, _Is>::__value),
-          ...);
-      }
+            static_cast<_Self &&>(__self).STDEXEC_CWG1835_TEMPLATE __box<_Ts, _Is>::__value...))
+
+      template <class _Fn, class _Self, class... _Us>
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) static auto for_each(_Fn &&__fn, _Self &&__self) //
+        STDEXEC_AUTO_RETURN(
+          (static_cast<void>(
+             __fn(static_cast<_Self &&>(__self).STDEXEC_CWG1835_TEMPLATE __box<_Ts, _Is>::__value)),
+           ...))
+      // clang-format on
     };
+
+    // unroll the tuple implementation for up to 4 elements
+
+#define STDEXEC_TPARAM_DEFN(_N)             , class _T##_N
+#define STDEXEC_TPARAM_USE(_N)              , _T##_N
+#define STDEXEC_TPARAM_OTHER_DEFN(_N)       , class _U##_N
+#define STDEXEC_TPARAM_OTHER_USE(_N)        , _U##_N
+#define STDEXEC_TUPLE_ELEM_DEFN(_N)         _T##_N __elem##_N;
+#define STDEXEC_TUPLE_ELEM_USE(_N)          , static_cast<_Self &&>(__self).__elem##_N
+#define STDEXEC_TUPLE_OTHER_ELEM_RVALUE(_N) , static_cast<_U##_N &&>(__tup.__elem##_N)
+#define STDEXEC_TUPLE_OTHER_ELEM_LVALUE(_N) , __tup.__elem##_N
+#define STDEXEC_TUPLE_FOR_EACH_ELEM(_N)                                                            \
+  , static_cast<void>(static_cast<_Fn &&>(__fn)(__self.__elem##_N))
+#define STDEXEC_TUPLE_GET_ELEM(_N)                                                                 \
+  if constexpr (_Np == _N)                                                                         \
+    return (static_cast<_Self &&>(__self).__elem##_N);                                             \
+  else
+
+    // clang-format off
+#define STDEXEC_TUPLE_DEFN(_N)                                                                     \
+  template <std::size_t... _Is, __indices<_Is...> _Idx STDEXEC_REPEAT(_N, STDEXEC_TPARAM_DEFN)>    \
+  struct __tuple<_Idx STDEXEC_REPEAT(_N, STDEXEC_TPARAM_USE)> {                                    \
+    STDEXEC_REPEAT(_N, STDEXEC_TUPLE_ELEM_DEFN)                                                    \
+                                                                                                   \
+    template <STDEXEC_EVAL(STDEXEC_TAIL, STDEXEC_REPEAT(_N, STDEXEC_TPARAM_OTHER_DEFN))>           \
+    static auto __convert_from(__tuple<_Idx STDEXEC_REPEAT(_N, STDEXEC_TPARAM_OTHER_USE)> &&__tup) \
+      -> __tuple {                                                                                 \
+      return __tuple{                                                                              \
+        STDEXEC_EVAL(STDEXEC_TAIL, STDEXEC_REPEAT(_N, STDEXEC_TUPLE_OTHER_ELEM_RVALUE))};          \
+    }                                                                                              \
+                                                                                                   \
+    template <STDEXEC_EVAL(STDEXEC_TAIL, STDEXEC_REPEAT(_N, STDEXEC_TPARAM_OTHER_DEFN))>           \
+    static auto __convert_from(                                                                    \
+      __tuple<_Idx STDEXEC_REPEAT(_N, STDEXEC_TPARAM_OTHER_USE)> const &__tup) -> __tuple {        \
+      return __tuple{                                                                              \
+        STDEXEC_EVAL(STDEXEC_TAIL, STDEXEC_REPEAT(_N, STDEXEC_TUPLE_OTHER_ELEM_LVALUE))};          \
+    }                                                                                              \
+                                                                                                   \
+    template <std::size_t _Np, class _Self>                                                        \
+    STDEXEC_ATTRIBUTE((host, device, always_inline))                                               \
+    static auto __get(_Self &&__self) noexcept -> decltype(auto) requires(_Np < _N) {              \
+      STDEXEC_REPEAT(_N, STDEXEC_TUPLE_GET_ELEM);                                                  \
+    }                                                                                              \
+                                                                                                   \
+    template <class _Fn, class _Self, class... _Us>                                                \
+    STDEXEC_ATTRIBUTE((host, device, always_inline))                                               \
+    static auto apply(_Fn &&__fn, _Self &&__self, _Us &&...__us) STDEXEC_AUTO_RETURN(              \
+      static_cast<_Fn &&>(__fn)(static_cast<_Us &&>(__us)...                                       \
+        STDEXEC_REPEAT(_N, STDEXEC_TUPLE_ELEM_USE)))                                               \
+                                                                                                   \
+    template <class _Fn, class _Self>                                                              \
+    STDEXEC_ATTRIBUTE((host, device, always_inline))                                               \
+    static auto for_each(_Fn &&__fn, _Self &&__self) STDEXEC_AUTO_RETURN(                          \
+      STDEXEC_EVAL(STDEXEC_TAIL, STDEXEC_REPEAT(_N, STDEXEC_TUPLE_FOR_EACH_ELEM)))                 \
+  };
+    // clang-format on
+
+    STDEXEC_TUPLE_DEFN(1)
+    STDEXEC_TUPLE_DEFN(2)
+    STDEXEC_TUPLE_DEFN(3)
+    STDEXEC_TUPLE_DEFN(4)
 
     template <class... _Ts>
     STDEXEC_ATTRIBUTE((host, device)) __tuple(_Ts...) -> __tuple<__indices_for<_Ts...>{}, _Ts...>;
@@ -127,25 +203,10 @@ namespace stdexec {
     };
 #endif
 
-    template <std::size_t _Idx, class _Ty>
-    STDEXEC_ATTRIBUTE((host, device, always_inline)) constexpr _Ty &&get(__box<_Ty, _Idx> &&__self) noexcept {
-      return static_cast<_Ty &&>(__self.__value);
-    }
-
-    template <std::size_t _Idx, class _Ty>
-    STDEXEC_ATTRIBUTE((host, device, always_inline)) constexpr _Ty &get(__box<_Ty, _Idx> &__self) noexcept {
-      return __self.__value;
-    }
-
-    template <std::size_t _Idx, class _Ty>
-    STDEXEC_ATTRIBUTE((host, device, always_inline)) constexpr const _Ty &get(const __box<_Ty, _Idx> &__self) noexcept {
-      return __self.__value;
-    }
-
     template <class _Fn, class _Tuple>
     STDEXEC_ATTRIBUTE((host, device, always_inline)) auto operator<<(_Tuple &&__tup, _Fn __fn) noexcept(__nothrow_move_constructible<_Fn>) {
       return
-        [&__tup, __fn]<class... _Us>(_Us &&...__us) //
+        [&__tup, __fn = static_cast<_Fn &&>(__fn)]<class... _Us>(_Us &&...__us) //
         noexcept(__nothrow_applicable<_Fn, _Tuple, _Us...>)
           -> __apply_result_t<_Fn, _Tuple, _Us...> {
           return __tup.apply(__fn, static_cast<_Tuple &&>(__tup), static_cast<_Us &&>(__us)...);
@@ -153,16 +214,13 @@ namespace stdexec {
     }
 
     template <class _Fn, class... _Tuples>
-    auto __cat_apply(_Fn __fn, _Tuples &&...__tups)                          //
-      noexcept(noexcept((static_cast<_Tuples &&>(__tups) << ... << __fn)())) //
-      -> decltype((static_cast<_Tuples &&>(__tups) << ... << __fn)()) {
-      return (static_cast<_Tuples &&>(__tups) << ... << __fn)();
-    }
+    auto __cat_apply(_Fn __fn, _Tuples &&...__tups)
+      STDEXEC_AUTO_RETURN((static_cast<_Tuples &&>(__tups) << ... << __fn)())
 
-    STDEXEC_PRAGMA_PUSH()
-    STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+        STDEXEC_PRAGMA_PUSH() //
+      STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
-    inline constexpr struct __mktuple_t {
+        inline constexpr struct __mktuple_t {
       template <class... _Ts>
       STDEXEC_ATTRIBUTE((host, device, always_inline)) auto
         operator()(_Ts &&...__ts) const noexcept(noexcept(__tuple{static_cast<_Ts &&>(__ts)...}))
@@ -172,7 +230,6 @@ namespace stdexec {
     } __mktuple{};
 
     STDEXEC_PRAGMA_POP()
-
   } // namespace __tup
 
   using __tup::__tuple;

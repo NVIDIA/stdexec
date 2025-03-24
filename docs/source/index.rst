@@ -17,9 +17,12 @@
 Welcome to ``stdexec``
 ======================
 
-``stdexec`` is the reference implementation for P2300, the ``std::execution`` proposal to the C++ standard library.
+``stdexec`` is the reference implementation for `P2300 <https://wg21.link/P2300>`_,  the
+``std::execution`` proposal to the C++ standard library which will bring to C++26 a standard
+async programming model.
 
 It provides:
+
 * TODO
 
 .. toctree::
@@ -28,9 +31,9 @@ It provides:
 
   reference/index
 
-.. user/index
-.. developer/index
+  user/index
 
+  developer/index
 
 .. .. toctree: :
 ..   :maxdepth: 1

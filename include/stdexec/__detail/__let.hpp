@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
@@ -27,7 +27,6 @@
 #include "__schedulers.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
-#include "__tag_invoke.hpp"
 #include "__transform_sender.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__variant.hpp"
@@ -42,10 +41,11 @@ namespace stdexec {
     // have a completion scheduler.
     struct __unknown_scheduler {
       struct __env {
-        static constexpr bool query(__is_scheduler_affine_t) noexcept {
+        static constexpr auto query(__is_scheduler_affine_t) noexcept -> bool {
           return true;
         }
 
+        [[nodiscard]]
         constexpr auto query(get_completion_scheduler_t<set_value_t>) const noexcept {
           return __unknown_scheduler{};
         }
@@ -54,16 +54,18 @@ namespace stdexec {
       struct __sender {
         using sender_concept = sender_t;
 
+        [[nodiscard]]
         constexpr auto get_env() const noexcept -> __env {
-          return __env();
+          return {};
         }
       };
 
+      [[nodiscard]]
       auto schedule() const noexcept {
         return __sender();
       }
 
-      bool operator==(const __unknown_scheduler&) const noexcept = default;
+      auto operator==(const __unknown_scheduler&) const noexcept -> bool = default;
     };
 
     inline constexpr auto __get_rcvr = [](auto& __op_state) noexcept -> decltype(auto) {
@@ -269,25 +271,33 @@ namespace stdexec {
         __in_which_let_msg<_Set>,
         "The senders returned by Function do not all share a common domain"_mstr>;
 
-    template <class _Set>
+    template <class _Set, class _Sched>
     struct __try_common_domain_fn {
       struct __error_fn {
         template <class... _Senders>
         using __f = __mexception<__no_common_domain_t<_Set>, _WITH_SENDERS_<_Senders...>>;
       };
 
+      // If a sender is "scheduler affine", then it will complete on the same execution
+      // context on which it was started (e.g., just(42)). In this case, the domain of the
+      // scheduler is the domain of the sender.
       template <class... _Senders>
-      using __f = __mcall<__mtry_catch_q<__domain::__common_domain_t, __error_fn>, _Senders...>;
+      using __common_domain = //
+        __common_domain_t<
+          __if_c<__is_scheduler_affine<_Senders>, schedule_result_t<_Sched>, _Senders>...>;
+
+      template <class... _Senders>
+      using __f = __mcall<__mtry_catch_q<__common_domain, __error_fn>, _Senders...>;
     };
 
     // Compute all the domains of all the result senders and make sure they're all the same
-    template <class _Set, class _Child, class _Fun, class _Env, class _Sched>
+    template <class _Set, class _Child, class _Fun, class _Sched, class... _Env>
     using __result_domain_t = //
       __gather_completions<
         _Set,
-        __completion_signatures_of_t<_Child, _Env>,
-        __result_sender_fn<_Set, _Fun, _Sched, _Env>,
-        __try_common_domain_fn<_Set>>;
+        __completion_signatures_of_t<_Child, _Env...>,
+        __result_sender_fn<_Set, _Fun, _Sched, _Env...>,
+        __try_common_domain_fn<_Set, _Sched>>;
 
     template <class _LetTag, class _Env>
     auto __mk_transform_env_fn(_Env&& __env) noexcept {
@@ -320,7 +330,7 @@ namespace stdexec {
           return __completions_t();
         } else {
           using _Sched = __completion_sched<_Child, _Set>;
-          using _Domain = __result_domain_t<_Set, _Child, _Fun, _Env, _Sched>;
+          using _Domain = __result_domain_t<_Set, _Child, _Fun, _Sched, _Env>;
 
           if constexpr (__merror<_Domain>) {
             return _Domain();
@@ -341,6 +351,7 @@ namespace stdexec {
     //! the sender factory function, `_Fun`, and passing its result to a receiver.
     template <class _Receiver, class _Fun, class _Set, class _Sched>
     struct __op_state_for {
+      static_assert(!std::is_reference_v<_Sched>);
       template <class... _Args>
       using __f = __op_state_t<
         __mcall<__result_sender_fn<_Set, _Fun, _Sched, env_of_t<_Receiver>>, _Args...>,
@@ -415,16 +426,6 @@ namespace stdexec {
         return {{static_cast<_Fun&&>(__fun)}, {}, {}};
       }
 
-      using _Sender = __1;
-      using _Function = __0;
-      using __legacy_customizations_t = __types<
-        tag_invoke_t(
-          __let_t,
-          get_completion_scheduler_t<set_value_t>(get_env_t(const _Sender&)),
-          _Sender,
-          _Function),
-        tag_invoke_t(__let_t, _Sender, _Function)>;
-
       template <sender_expr_for<__let_t<_Set>> _Sender, class _Env>
       static auto transform_env(_Sender&& __sndr, const _Env& __env) -> decltype(auto) {
         return __sexpr_apply(
@@ -442,8 +443,19 @@ namespace stdexec {
     template <class _Set, class _Domain>
     struct __let_impl : __sexpr_defaults {
       static constexpr auto get_attrs = //
-        []<class _Child>(__ignore, const _Child& __child) noexcept {
-          return __env::__join(prop{get_domain, _Domain()}, stdexec::get_env(__child));
+        []<class _Fun, class _Child>(const _Fun&, const _Child& __child) noexcept {
+          if constexpr (!same_as<_Domain, dependent_domain>) {
+            return __env::__join(prop{get_domain, _Domain()}, stdexec::get_env(__child));
+          } else {
+            using _Sched = __completion_sched<_Child, _Set>;
+            using _Domain2 = __result_domain_t<_Set, _Child, _Fun, _Sched>;
+
+            if constexpr (__merror<_Domain2>) {
+              return __env::__join(prop{get_domain, dependent_domain()}, stdexec::get_env(__child));
+            } else {
+              return __env::__join(prop{get_domain, _Domain2()}, stdexec::get_env(__child));
+            }
+          }
         };
 
       static constexpr auto get_completion_signatures = //
@@ -458,7 +470,7 @@ namespace stdexec {
           static_assert(sender_expr_for<_Sender, __let_t<_Set, _Domain>>);
           using _Fun = __data_of<_Sender>;
           using _Child = __child_of<_Sender>;
-          using _Sched = __completion_sched<_Child, _Set>;
+          using _Sched = __decay_t<__completion_sched<_Child, _Set>>;
           using __mk_let_state = __mbind_front_q<__let_state, _Receiver, _Fun, _Set, _Sched>;
 
           using __let_state_t = __gather_completions_of<

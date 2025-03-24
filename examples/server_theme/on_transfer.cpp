@@ -56,12 +56,13 @@ struct sync_stream {
   std::unique_lock<std::mutex> lock_{s_mtx_};
 
   template <class T>
-  friend sync_stream&& operator<<(sync_stream&& self, const T& value) {
+  friend auto operator<<(sync_stream&& self, const T& value) -> sync_stream&& {
     self.sout_ << value;
     return std::move(self);
   }
 
-  friend sync_stream&& operator<<(sync_stream&& self, std::ostream& (*manip)(std::ostream&) ) {
+  friend auto
+    operator<<(sync_stream&& self, std::ostream& (*manip)(std::ostream&) ) -> sync_stream&& {
     self.sout_ << manip;
     return std::move(self);
   }
@@ -69,7 +70,7 @@ struct sync_stream {
 
 std::mutex sync_stream::s_mtx_{};
 
-size_t legacy_read_from_socket(int, char* buffer, size_t buffer_len) {
+auto legacy_read_from_socket(int, char* buffer, size_t buffer_len) -> size_t {
   const char fake_data[] = "Hello, world!";
   size_t sz = sizeof(fake_data) - 1;
   size_t count = std::min(sz, buffer_len);
@@ -78,10 +79,11 @@ size_t legacy_read_from_socket(int, char* buffer, size_t buffer_len) {
 }
 
 void process_read_data(const char* read_data, size_t read_len) {
-  sync_stream{std::cout} << "Processing '" << std::string_view{read_data, read_len} << "'\n";
+  sync_stream{.sout_ = std::cout} << "Processing '" << std::string_view{read_data, read_len}
+                                  << "'\n";
 }
 
-int main() {
+auto main() -> int {
   // Create a thread pool and get a scheduler from it
   exec::static_thread_pool work_pool{8};
   ex::scheduler auto work_sched = work_pool.get_scheduler();

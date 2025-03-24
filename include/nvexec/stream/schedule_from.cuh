@@ -13,10 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
-#include <type_traits>
+#include <cstddef>
+#include <utility>
+
+#include <cuda/std/tuple>
 
 #include "common.cuh"
 #include "../detail/variant.cuh"
@@ -24,7 +30,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+namespace nvexec::_strm {
 
   namespace _sched_from {
 
@@ -44,7 +50,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         using __id = receiver_t;
         using storage_t = variant_storage_t<Sender, Env>;
 
-        constexpr static std::size_t memory_allocation_size = sizeof(storage_t);
+        static constexpr std::size_t memory_allocation_size = sizeof(storage_t);
 
         operation_state_base_t<ReceiverId>& operation_state_;
 
@@ -62,7 +68,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             // a kernel and construct the temporary storage on the device to avoid managed
             // memory movements. Otherwise, we construct the temporary storage on the host
             // and prefetch it to the device.
-            storage_t* storage = static_cast<storage_t*>(operation_state_.temp_storage_);
+            auto* storage = static_cast<storage_t*>(operation_state_.temp_storage_);
             constexpr bool construct_on_device = trivially_copyable<__decay_t<As>...>;
 
             if constexpr (!construct_on_device) {
@@ -71,14 +77,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             }
 
             int dev_id{};
-            if (cudaError_t status = STDEXEC_DBG_ERR(cudaGetDevice(&dev_id));
+            if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaGetDevice(&dev_id));
                 status != cudaSuccess) {
               operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
               return;
             }
 
             int concurrent_managed_access{};
-            if (cudaError_t status = STDEXEC_DBG_ERR(cudaDeviceGetAttribute(
+            if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaDeviceGetAttribute(
                   &concurrent_managed_access, cudaDevAttrConcurrentManagedAccess, dev_id));
                 status != cudaSuccess) {
               operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
@@ -88,7 +94,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             cudaStream_t stream = operation_state_.get_stream();
 
             if (concurrent_managed_access) {
-              if (cudaError_t status = STDEXEC_DBG_ERR(
+              if (cudaError_t status = STDEXEC_LOG_CUDA_API(
                     cudaMemPrefetchAsync(storage, sizeof(storage_t), dev_id, stream));
                   status != cudaSuccess) {
                 operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
@@ -99,7 +105,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             if constexpr (construct_on_device) {
               kernel<Tag, storage_t, __decay_t<As>...><<<1, 1, 0, stream>>>(storage, as...);
 
-              if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
+              if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
                   status != cudaSuccess) {
                 operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
                 return;
@@ -137,6 +143,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           complete(set_stopped_t());
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> Env {
           return operation_state_.make_env();
         }
@@ -151,6 +158,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         return stdexec::connect(static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr));
       }
 
+      [[nodiscard]]
       auto get_env() const noexcept -> env_of_t<const Sender&> {
         // TODO - this code is not exercised by any test
         return stdexec::get_env(sndr_);
@@ -183,7 +191,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       context_state_t context_state_;
 
       template <class _Tag>
-      Scheduler query(get_completion_scheduler_t<_Tag>) const noexcept {
+      auto query(get_completion_scheduler_t<_Tag>) const noexcept -> Scheduler {
         return {context_state_};
       }
     };
@@ -234,13 +242,22 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
     };
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+
+  template <>
+  struct transform_sender_for<stdexec::schedule_from_t> {
+    template <gpu_stream_scheduler Sched, class Sender>
+    auto operator()(__ignore, Sched sched, Sender&& sndr) const {
+      using __sender_t =
+        stdexec::__t<schedule_from_sender_t<stream_scheduler, __id<__decay_t<Sender>>>>;
+      return __sender_t{sched.context_state_, static_cast<Sender&&>(sndr)};
+    }
+  };
+} // namespace nvexec::_strm
 
 namespace stdexec::__detail {
   template <class _Scheduler, class _SenderId>
-  extern __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::schedule_from_sender_t<_Scheduler, __name_of<__t<_SenderId>>>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::schedule_from_sender_t<_Scheduler, _SenderId>>;
+  extern __mconst<nvexec::_strm::schedule_from_sender_t<_Scheduler, __name_of<__t<_SenderId>>>>
+    __name_of_v<nvexec::_strm::schedule_from_sender_t<_Scheduler, _SenderId>>;
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

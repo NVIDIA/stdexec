@@ -32,27 +32,27 @@ namespace {
   ///////////////////////////////////////////////////////////////////////////////
   //                                                             any_receiver_ref
 
-  struct tag_t : stdexec::__query<tag_t> {
+  struct get_address_t : stdexec::__query<get_address_t> {
     template <class T>
     // BUGBUG ambiguous!
-      requires stdexec::tag_invocable<tag_t, T>
-    auto operator()(T&& t) const noexcept(stdexec::nothrow_tag_invocable<tag_t, T>)
-      -> stdexec::tag_invoke_result_t<tag_t, T> {
+      requires stdexec::tag_invocable<get_address_t, T>
+    auto operator()(T&& t) const noexcept(stdexec::nothrow_tag_invocable<get_address_t, T>)
+      -> stdexec::tag_invoke_result_t<get_address_t, T> {
       return stdexec::tag_invoke(*this, static_cast<T&&>(t));
     }
   };
 
-  inline constexpr tag_t get_address;
+  inline constexpr get_address_t get_address;
 
   struct env {
     const void* object_{nullptr};
     inplace_stop_token token_{};
 
-    friend const void* tag_invoke(tag_t, env e) noexcept {
+    friend auto tag_invoke(get_address_t, const env& e) noexcept -> const void* {
       return e.object_;
     }
 
-    friend inplace_stop_token tag_invoke(get_stop_token_t, const env& e) noexcept {
+    friend auto tag_invoke(get_stop_token_t, const env& e) noexcept -> inplace_stop_token {
       return e.token_;
     }
   };
@@ -74,8 +74,9 @@ namespace {
       value_ = set_stopped_t();
     }
 
-    env get_env() const noexcept {
-      return {static_cast<const void*>(this)};
+    [[nodiscard]]
+    auto get_env() const noexcept -> env {
+      return {.object_ = static_cast<const void*>(this)};
     }
   };
 
@@ -167,8 +168,8 @@ namespace {
   struct empty_vtable_t {
    private:
     template <class T>
-    friend empty_vtable_t*
-      tag_invoke(__any::__create_vtable_t, __mtype<empty_vtable_t>, __mtype<T>) noexcept {
+    friend auto tag_invoke(__any::__create_vtable_t, __mtype<empty_vtable_t>, __mtype<T>) noexcept
+      -> empty_vtable_t* {
       static empty_vtable_t vtable{};
       return &vtable;
     }
@@ -188,8 +189,8 @@ namespace {
     CHECK(s1.__get_object_pointer() == nullptr);
     CHECK(s2.__get_object_pointer() != nullptr);
     // Test SBO
-    std::intptr_t obj_ptr = reinterpret_cast<std::intptr_t>(s2.__get_object_pointer());
-    std::intptr_t s2_ptr = reinterpret_cast<std::intptr_t>(&s2);
+    auto obj_ptr = reinterpret_cast<std::intptr_t>(s2.__get_object_pointer());
+    auto s2_ptr = reinterpret_cast<std::intptr_t>(&s2);
     CHECK(std::abs(s2_ptr - obj_ptr) < std::intptr_t(sizeof(any_unique)));
 
     s1 = std::move(s2);
@@ -210,7 +211,7 @@ namespace {
       move_throws(move_throws&&) noexcept(false) {
       }
 
-      move_throws& operator=(move_throws&&) noexcept(false) {
+      auto operator=(move_throws&&) noexcept(false) -> move_throws& {
         return *this;
       }
     };
@@ -226,8 +227,8 @@ namespace {
     CHECK(s1.__get_object_pointer() == nullptr);
     CHECK(s2.__get_object_pointer() != nullptr);
     // Test SBO
-    std::intptr_t obj_ptr = reinterpret_cast<std::intptr_t>(s2.__get_object_pointer());
-    std::intptr_t s2_ptr = reinterpret_cast<std::intptr_t>(&s2);
+    auto obj_ptr = reinterpret_cast<std::intptr_t>(s2.__get_object_pointer());
+    auto s2_ptr = reinterpret_cast<std::intptr_t>(&s2);
     CHECK(std::abs(s2_ptr - obj_ptr) >= std::intptr_t(sizeof(any_unique)));
 
     s1 = std::move(s2);
@@ -259,9 +260,10 @@ namespace {
   TEST_CASE("sync_wait works on any_sender_of", "[types][any_sender]") {
     int value = 0;
     any_sender_of<set_value_t()> sender = just(42) | then([&](int v) noexcept { value = v; });
-    CHECK(std::same_as<
-          completion_signatures_of_t<any_sender_of<set_value_t()>>,
-          completion_signatures<set_value_t()>>);
+    CHECK(
+      std::same_as<
+        completion_signatures_of_t<any_sender_of<set_value_t()>>,
+        completion_signatures<set_value_t()>>);
     sync_wait(std::move(sender));
     CHECK(value == 42);
   }
@@ -275,9 +277,10 @@ namespace {
 
   TEST_CASE("sync_wait returns value", "[types][any_sender]") {
     any_sender_of<set_value_t(int)> sender = just(21) | then([&](int v) noexcept { return 2 * v; });
-    CHECK(std::same_as<
-          completion_signatures_of_t<any_sender_of<set_value_t(int)>>,
-          completion_signatures<set_value_t(int)>>);
+    CHECK(
+      std::same_as<
+        completion_signatures_of_t<any_sender_of<set_value_t(int)>>,
+        completion_signatures<set_value_t(int)>>);
     auto [value1] = *sync_wait(std::move(sender));
     CHECK(value1 == 42);
   }
@@ -367,15 +370,15 @@ namespace {
     template <class>
     using callback_type = __callback_type;
 
-    static std::true_type stop_requested() noexcept {
+    static auto stop_requested() noexcept -> std::true_type {
       return {};
     }
 
-    static std::true_type stop_possible() noexcept {
+    static auto stop_possible() noexcept -> std::true_type {
       return {};
     }
 
-    bool operator==(const stopped_token&) const noexcept = default;
+    auto operator==(const stopped_token&) const noexcept -> bool = default;
   };
 
   template <class Token>
@@ -388,7 +391,7 @@ namespace {
   struct stopped_receiver_env {
     const stopped_receiver_base<Token>* receiver_;
 
-    friend Token tag_invoke(get_stop_token_t, const stopped_receiver_env& env) noexcept {
+    friend auto tag_invoke(get_stop_token_t, const stopped_receiver_env& env) noexcept -> Token {
       return env.receiver_->stop_token_;
     }
   };
@@ -411,7 +414,8 @@ namespace {
       CHECK(expect_stop_);
     }
 
-    stopped_receiver_env<Token> get_env() const noexcept {
+    [[nodiscard]]
+    auto get_env() const noexcept -> stopped_receiver_env<Token> {
       return {this};
     }
   };
@@ -679,15 +683,15 @@ namespace {
       --count;
     }
 
-    bool operator==(const counting_scheduler&) const noexcept = default;
+    auto operator==(const counting_scheduler&) const noexcept -> bool = default;
 
    private:
     template <class R>
     struct operation : immovable {
       R recv_;
 
-      friend void tag_invoke(ex::start_t, operation& self) noexcept {
-        ex::set_value(static_cast<R&&>(self.recv_));
+      void start() & noexcept {
+        ex::set_value(static_cast<R&&>(recv_));
       }
     };
 
@@ -699,22 +703,25 @@ namespace {
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <ex::receiver R>
-      friend operation<R> tag_invoke(ex::connect_t, sender, R r) {
+      friend auto tag_invoke(ex::connect_t, sender, R r) -> operation<R> {
         return {{}, static_cast<R&&>(r)};
       }
 
+      [[nodiscard]]
       auto query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept
         -> counting_scheduler {
         return {};
       }
 
+      [[nodiscard]]
       auto get_env() const noexcept -> const sender& {
         return *this;
       }
     };
 
    public:
-    sender schedule() const noexcept {
+    [[nodiscard]]
+    auto schedule() const noexcept -> sender {
       return {};
     }
   };

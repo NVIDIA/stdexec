@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
 #include "__concepts.hpp"
@@ -40,7 +40,7 @@ namespace stdexec {
 
       template <class _Scheduler>
         requires tag_invocable<schedule_t, _Scheduler>
-      STDEXEC_ATTRIBUTE((host, device)) auto operator()(_Scheduler&& __sched) const
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) auto operator()(_Scheduler&& __sched) const
         noexcept(nothrow_tag_invocable<schedule_t, _Scheduler>) {
         static_assert(sender<tag_invoke_result_t<schedule_t, _Scheduler>>);
         return tag_invoke(schedule_t{}, static_cast<_Scheduler&&>(__sched));
@@ -58,14 +58,15 @@ namespace stdexec {
   template <class _Scheduler>
   concept __has_schedule = //
     requires(_Scheduler&& __sched) {
-      { schedule(static_cast<_Scheduler&&>(__sched)) } -> sender;
+      { schedule(static_cast<_Scheduler &&>(__sched)) } -> sender;
     };
 
   template <class _Scheduler>
   concept __sender_has_completion_scheduler = requires(_Scheduler&& __sched) {
     {
       stdexec::__decay_copy(
-        get_completion_scheduler<set_value_t>(get_env(schedule(static_cast<_Scheduler&&>(__sched)))))
+        get_completion_scheduler<set_value_t>(
+          get_env(schedule(static_cast<_Scheduler &&>(__sched)))))
     } -> same_as<__decay_t<_Scheduler>>;
   };
 

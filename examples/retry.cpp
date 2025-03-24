@@ -31,25 +31,25 @@ struct fail_some {
   struct op {
     R r_;
 
-    friend void tag_invoke(stdexec::start_t, op& self) noexcept {
+    void start() & noexcept {
       static int i = 0;
       if (++i < 3) {
         std::printf("fail!\n");
-        stdexec::set_error(std::move(self.r_), std::exception_ptr{});
+        stdexec::set_error(std::move(r_), std::exception_ptr{});
       } else {
         std::printf("success!\n");
-        stdexec::set_value(std::move(self.r_), 42);
+        stdexec::set_value(std::move(r_), 42);
       }
     }
   };
 
   template <class R>
-  friend op<R> tag_invoke(stdexec::connect_t, fail_some, R r) {
+  friend auto tag_invoke(stdexec::connect_t, fail_some, R r) -> op<R> {
     return {std::move(r)};
   }
 };
 
-int main() {
+auto main() -> int {
   auto x = retry(fail_some{});
   // prints:
   //   fail!

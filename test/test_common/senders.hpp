@@ -30,7 +30,7 @@ namespace {
     using completion_signatures = ex::completion_signatures<Sigs...>;
 
     struct operation {
-      friend void tag_invoke(ex::start_t, operation&) noexcept {
+      void start() & noexcept {
       }
     };
 
@@ -42,23 +42,26 @@ namespace {
 
   template <class... Values>
   struct fallible_just {
-    std::tuple<Values...> values_;
     using sender_concept = stdexec::sender_t;
     using completion_signatures =
       ex::completion_signatures<ex::set_value_t(Values...), ex::set_error_t(std::exception_ptr)>;
+
+    explicit fallible_just(Values... values)
+      : values_(std::move(values)...) {
+    }
 
     template <class Receiver>
     struct operation : immovable {
       std::tuple<Values...> values_;
       Receiver rcvr_;
 
-      friend void tag_invoke(ex::start_t, operation& self) noexcept {
+      void start() & noexcept {
         try {
           std::apply(
-            [&](Values&... ts) { ex::set_value(std::move(self.rcvr_), std::move(ts)...); },
-            self.values_);
+            [&](Values&... ts) { ex::set_value(std::move(rcvr_), std::move(ts)...); },
+            values_);
         } catch (...) {
-          ex::set_error(std::move(self.rcvr_), std::current_exception());
+          ex::set_error(std::move(rcvr_), std::current_exception());
         }
       }
     };
@@ -68,13 +71,28 @@ namespace {
       -> operation<std::decay_t<Receiver>> {
       return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
     }
+
+    std::tuple<Values...> values_;
   };
 
   template <class... Values>
   fallible_just(Values...) -> fallible_just<Values...>;
 
+  inline constexpr struct value_query_t : ex::forwarding_query_t {
+    template <class Env>
+    [[nodiscard]]
+    auto operator()(Env const & env) const noexcept -> decltype(env.query(*this)) {
+      return env.query(*this);
+    }
+  } value_query;
+
   struct value_env {
-    int value;
+    int value{};
+
+    [[nodiscard]]
+    auto query(value_query_t) const noexcept -> int {
+      return value;
+    }
   };
 
   template <class Env, class... Values>
@@ -89,10 +107,10 @@ namespace {
       std::tuple<Values...> values_;
       Receiver rcvr_;
 
-      friend void tag_invoke(ex::start_t, operation& self) noexcept {
+      void start() & noexcept {
         std::apply(
-          [&](Values&... ts) { ex::set_value(std::move(self.rcvr_), std::move(ts)...); },
-          self.values_);
+          [&](Values&... ts) { ex::set_value(std::move(rcvr_), std::move(ts)...); },
+          values_);
       }
     };
 
@@ -102,7 +120,7 @@ namespace {
       return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
     }
 
-    Env get_env() const noexcept {
+    auto get_env() const noexcept -> Env {
       return env_;
     }
   };
@@ -148,15 +166,15 @@ namespace {
         typename ex::stop_token_of_t<ex::env_of_t<Receiver>&>::template callback_type<on_stopped>;
       std::optional<callback_t> on_stop_{};
 
-      friend void tag_invoke(ex::start_t, operation& self) noexcept {
-        if (self.condition_) {
-          ex::set_value(std::move(self.rcvr_));
+      void start() & noexcept {
+        if (condition_) {
+          ex::set_value(std::move(rcvr_));
         } else {
-          self.on_stop_.emplace(ex::get_stop_token(ex::get_env(self.rcvr_)), on_stopped{self});
+          on_stop_.emplace(ex::get_stop_token(ex::get_env(rcvr_)), on_stopped{*this});
           state_t expected = state_t::construction;
-          if (!self.state_.compare_exchange_strong(
+          if (!state_.compare_exchange_strong(
                 expected, state_t::emplaced, std::memory_order_acq_rel)) {
-            ex::set_stopped(std::move(self.rcvr_));
+            ex::set_stopped(std::move(rcvr_));
           }
         }
       }
@@ -176,8 +194,9 @@ namespace {
       : x(x) {
     }
 
-    friend bool
-      operator==(non_default_constructible const & lhs, non_default_constructible const & rhs) {
+    friend auto
+      operator==(non_default_constructible const & lhs, non_default_constructible const & rhs)
+        -> bool {
       return lhs.x == rhs.x;
     }
   };

@@ -13,25 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
 #include <type_traits>
-#include <ranges>
 
 #include <cuda/std/type_traits>
 
 #include <cub/device/device_reduce.cuh>
 
 #include "algorithm_base.cuh"
-#include "common.cuh"
 #include "../detail/throw_on_cuda_error.cuh"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace nvexec {
-  namespace STDEXEC_STREAM_DETAIL_NS {
+  namespace _strm {
     namespace reduce_ {
       template <class SenderId, class ReceiverId, class InitT, class Fun>
       struct receiver_t
@@ -49,13 +50,13 @@ namespace nvexec {
           cudaStream_t stream = self.op_state_.get_stream();
 
           // `range` is produced asynchronously, so we need to wait for it to be ready
-          if (status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream)); status != cudaSuccess) {
+          if (status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(stream)); status != cudaSuccess) {
             self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             return;
           }
 
           using value_t = result_t<Range>;
-          value_t* d_out = static_cast<value_t*>(self.op_state_.temp_storage_);
+          auto* d_out = static_cast<value_t*>(self.op_state_.temp_storage_);
 
           void* d_temp_storage{};
           std::size_t temp_storage_size{};
@@ -65,7 +66,7 @@ namespace nvexec {
 
           std::size_t num_items = std::distance(first, last);
 
-          if (status = STDEXEC_DBG_ERR(
+          if (status = STDEXEC_LOG_CUDA_API(
                 cub::DeviceReduce::Reduce(
                   d_temp_storage,
                   temp_storage_size,
@@ -80,14 +81,14 @@ namespace nvexec {
             return;
           }
 
-          if (status = STDEXEC_DBG_ERR( //
+          if (status = STDEXEC_LOG_CUDA_API( //
                 cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
               status != cudaSuccess) {
             self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
             return;
           }
 
-          if (status = STDEXEC_DBG_ERR(
+          if (status = STDEXEC_LOG_CUDA_API(
                 cub::DeviceReduce::Reduce(
                   d_temp_storage,
                   temp_storage_size,
@@ -102,7 +103,7 @@ namespace nvexec {
             return;
           }
 
-          status = STDEXEC_DBG_ERR(cudaFreeAsync(d_temp_storage, stream));
+          status = STDEXEC_LOG_CUDA_API(cudaFreeAsync(d_temp_storage, stream));
           self.op_state_.defer_temp_storage_destruction(d_out);
 
           if (status == cudaSuccess) {
@@ -134,7 +135,7 @@ namespace nvexec {
         stdexec::__t<reduce_::sender_t<stdexec::__id<__decay_t<Sender>>, InitT, Fun>>;
 
       template <sender Sender, __movable_value InitT, __movable_value Fun = cuda::std::plus<>>
-      __sender<Sender, InitT, Fun> operator()(Sender&& sndr, InitT init, Fun fun) const {
+      auto operator()(Sender&& sndr, InitT init, Fun fun) const -> __sender<Sender, InitT, Fun> {
         return __sender<Sender, InitT, Fun>{
           {}, static_cast<Sender&&>(sndr), static_cast<InitT&&>(init), static_cast<Fun&&>(fun)};
       }
@@ -148,16 +149,15 @@ namespace nvexec {
         };
       }
     };
-  } // namespace STDEXEC_STREAM_DETAIL_NS
+  } // namespace _strm
 
-  inline constexpr STDEXEC_STREAM_DETAIL_NS::reduce_t reduce{};
+  inline constexpr _strm::reduce_t reduce{};
 } // namespace nvexec
 
 namespace stdexec::__detail {
   template <class SenderId, class Init, class Fun>
-  extern __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::reduce_::sender_t<__name_of<__t<SenderId>>, Init, Fun>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::reduce_::sender_t<SenderId, Init, Fun>>;
+  extern __mconst<nvexec::_strm::reduce_::sender_t<__name_of<__t<SenderId>>, Init, Fun>>
+    __name_of_v<nvexec::_strm::reduce_::sender_t<SenderId, Init, Fun>>;
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

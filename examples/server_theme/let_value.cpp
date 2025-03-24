@@ -67,12 +67,12 @@ struct http_response {
 
 // Returns a sender that yields an http_request object for an incoming request
 template <ex::scheduler S>
-ex::sender auto schedule_request_start(S sched, int idx) {
+auto schedule_request_start(S sched, int idx) -> ex::sender auto {
   // app-specific-details: building of the http_request object
   auto url = std::string("/query?image_idx=") + std::to_string(idx);
   if (idx == 7)
     url.clear(); // fake invalid request
-  http_request req{std::move(url), {}, {}};
+  http_request req{.url_ = std::move(url), .headers_ = {}, .body_ = {}};
   std::cout << "HTTP request " << idx << " arrived\n";
 
   // Return a sender for the incoming http_request
@@ -80,14 +80,14 @@ ex::sender auto schedule_request_start(S sched, int idx) {
 }
 
 // Sends a response back to the client; yields a void signal on success
-ex::sender auto send_response(const http_response& resp) {
+auto send_response(const http_response& resp) -> ex::sender auto {
   std::cout << "Sending back response: " << resp.status_code_ << "\n";
   // Signal that we are done successfully
   return ex::just();
 }
 
 // Validate that the HTTP request is well-formed
-ex::sender auto validate_request(const http_request& req) {
+auto validate_request(const http_request& req) -> ex::sender auto {
   std::cout << "validating request " << req.url_ << "\n";
   if (req.url_.empty())
     throw std::invalid_argument("No URL");
@@ -95,31 +95,31 @@ ex::sender auto validate_request(const http_request& req) {
 }
 
 // Handle the request; main application logic
-ex::sender auto handle_request(const http_request& req) {
+auto handle_request(const http_request& req) -> ex::sender auto {
   std::cout << "handling request " << req.url_ << "\n";
   //...
-  return ex::just(http_response{200, "image details"});
+  return ex::just(http_response{.status_code_ = 200, .body_ = "image details"});
 }
 
 // Transforms server errors into responses to be sent to the client
-ex::sender auto error_to_response(std::exception_ptr err) {
+auto error_to_response(std::exception_ptr err) -> ex::sender auto {
   try {
     std::rethrow_exception(err);
   } catch (const std::invalid_argument& e) {
-    return ex::just(http_response{404, e.what()});
+    return ex::just(http_response{.status_code_ = 404, .body_ = e.what()});
   } catch (const std::exception& e) {
-    return ex::just(http_response{500, e.what()});
+    return ex::just(http_response{.status_code_ = 500, .body_ = e.what()});
   } catch (...) {
-    return ex::just(http_response{500, "Unknown server error"});
+    return ex::just(http_response{.status_code_ = 500, .body_ = "Unknown server error"});
   }
 }
 
 // Transforms cancellation of the server into responses to be sent to the client
-ex::sender auto stopped_to_response() {
-  return ex::just(http_response{503, "Service temporarily unavailable"});
+auto stopped_to_response() -> ex::sender auto {
+  return ex::just(http_response{.status_code_ = 503, .body_ = "Service temporarily unavailable"});
 }
 
-int main() {
+auto main() -> int {
   // Create a thread pool and get a scheduler from it
   exec::static_thread_pool pool{8};
   ex::scheduler auto sched = pool.get_scheduler();

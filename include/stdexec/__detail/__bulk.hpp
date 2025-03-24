@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
@@ -88,20 +88,6 @@ namespace stdexec {
           {}
         };
       }
-
-      // This describes how to use the pieces of a bulk sender to find
-      // legacy customizations of the bulk algorithm.
-      using _Sender = __1;
-      using _Shape = __nth_member<0>(__0);
-      using _Fun = __nth_member<1>(__0);
-      using __legacy_customizations_t = __types<
-        tag_invoke_t(
-          bulk_t,
-          get_completion_scheduler_t<set_value_t>(get_env_t(_Sender&)),
-          _Sender,
-          _Shape,
-          _Fun),
-        tag_invoke_t(bulk_t, _Sender, _Shape, _Fun)>;
     };
 
     struct __bulk_impl : __sexpr_defaults {
@@ -129,7 +115,7 @@ namespace stdexec {
           _Receiver& __rcvr,
           _Tag,
           _Args&&... __args) noexcept -> void {
-        if constexpr (std::same_as<_Tag, set_value_t>) {
+        if constexpr (same_as<_Tag, set_value_t>) {
           // Intercept set_value and dispatch to the bulk operation.
           using __shape_t = decltype(__state.__shape_);
           if constexpr (noexcept(__state.__fun_(__shape_t{}, __args...))) {

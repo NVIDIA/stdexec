@@ -21,7 +21,7 @@ namespace ex = stdexec;
 
 struct not_a_bool { };
 
-int main() {
+auto main() -> int {
   ex::sender auto snd = ex::just(not_a_bool()) | exec::repeat_effect_until();
   // build error: _INVALID_ARGUMENT_TO_REPEAT_EFFECT_UNTIL_
   stdexec::sync_wait(std::move(snd));

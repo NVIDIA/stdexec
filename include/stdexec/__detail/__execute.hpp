@@ -15,14 +15,13 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 #include "__concepts.hpp"
 #include "__receivers.hpp"
 #include "__senders.hpp"
 #include "__schedulers.hpp"
 #include "__submit.hpp"
-#include "__tag_invoke.hpp"
 #include "__transform_sender.hpp"
 
 #include <exception>
@@ -54,17 +53,9 @@ namespace stdexec {
       template <scheduler _Scheduler, class _Fun>
         requires __callable<_Fun&> && move_constructible<_Fun>
       void operator()(_Scheduler&& __sched, _Fun __fun) const noexcept(false) {
-        // Look for a legacy customization
-        if constexpr (tag_invocable<execute_t, _Scheduler, _Fun>) {
-          tag_invoke(execute_t{}, static_cast<_Scheduler&&>(__sched), static_cast<_Fun&&>(__fun));
-        } else {
-          auto __domain = query_or(get_domain, __sched, default_domain());
-          stdexec::apply_sender(
-            __domain,
-            *this,
-            schedule(static_cast<_Scheduler&&>(__sched)),
-            static_cast<_Fun&&>(__fun));
-        }
+        auto __domain = query_or(get_domain, __sched, default_domain());
+        stdexec::apply_sender(
+          __domain, *this, schedule(static_cast<_Scheduler&&>(__sched)), static_cast<_Fun&&>(__fun));
       }
 
       template <sender_of<set_value_t()> _Sender, class _Fun>

@@ -35,15 +35,15 @@ namespace {
   thread_local int __thread_id = 0;
 
   // This is a work-around for apple clang bugs in Release mode
-  STDEXEC_APPLE_CLANG([[clang::optnone]]) int get_id() {
+  STDEXEC_APPLE_CLANG([[clang::optnone]]) auto get_id() -> int {
     return __thread_id;
   }
 
-  task<void> test_stickiness_for_two_single_thread_contexts_nested(
+  auto test_stickiness_for_two_single_thread_contexts_nested(
     scheduler auto scheduler1,
     scheduler auto,
     auto id1,
-    auto id2) {
+    auto id2) -> task<void> {
     CHECK(get_id() == id2);                       // This task is started in context2
     co_await schedule(scheduler1);                // Try to schedule in context1
     CHECK(get_id() == id2);                       // But this task is still in context2
@@ -51,11 +51,11 @@ namespace {
     CHECK(get_id() == id1);                       // Now we are in context1
   } // Reschedules back to context2
 
-  task<void> test_stickiness_for_two_single_thread_contexts_(
+  auto test_stickiness_for_two_single_thread_contexts_(
     auto scheduler1,
     auto scheduler2,
     auto id1,
-    auto id2) {
+    auto id2) -> task<void> {
     CHECK(get_id() == id1);        // This task is start in context1
     co_await schedule(scheduler2); // Try to schedule in context2
     CHECK(get_id() == id1);        // But this task is still in context1
@@ -69,11 +69,11 @@ namespace {
     CHECK(get_id() == id2); // Child task is done, we are still in context2
   } // Reschedules back to context1
 
-  task<void> test_stickiness_for_two_single_thread_contexts_with_sender_(
+  auto test_stickiness_for_two_single_thread_contexts_with_sender_(
     auto scheduler1,
     auto scheduler2,
     auto id1,
-    auto id2) {
+    auto id2) -> task<void> {
     co_await reschedule_coroutine_on(scheduler2); // Transition to context2
     CHECK(get_id() == id2);                       // Now we are in context2
     // Child task inherits context2
@@ -82,22 +82,22 @@ namespace {
       | then([&] { CHECK(get_id() == id2); }));
   }
 
-  task<void> test_stickiness_for_two_single_thread_contexts(
+  auto test_stickiness_for_two_single_thread_contexts(
     auto scheduler1,
     auto scheduler2,
     auto id1,
-    auto id2) {
+    auto id2) -> task<void> {
     co_await reschedule_coroutine_on(scheduler1);
     CHECK(get_id() == id1);
     co_await test_stickiness_for_two_single_thread_contexts_(scheduler1, scheduler2, id1, id2);
     CHECK(get_id() == id1);
   }
 
-  task<void> test_stickiness_for_two_single_thread_contexts_with_sender(
+  auto test_stickiness_for_two_single_thread_contexts_with_sender(
     auto scheduler1,
     auto scheduler2,
     auto id1,
-    auto id2) {
+    auto id2) -> task<void> {
     co_await reschedule_coroutine_on(scheduler1);
     CHECK(get_id() == id1);
     co_await test_stickiness_for_two_single_thread_contexts_with_sender_(
@@ -181,23 +181,23 @@ namespace {
   }
 
   namespace {
-    task<void> test_stick_on_main_nested(
+    auto test_stick_on_main_nested(
       scheduler auto sched1,
       scheduler auto,
       auto id_main_thread,
       [[maybe_unused]] auto id1,
-      [[maybe_unused]] auto id2) {
+      [[maybe_unused]] auto id2) -> task<void> {
       CHECK(get_id() == id_main_thread);
       co_await schedule(sched1);
       CHECK(get_id() == id_main_thread);
     }
 
-    task<void> test_stick_on_main(
+    auto test_stick_on_main(
       scheduler auto sched1,
       scheduler auto sched2,
       auto id_main_thread,
       [[maybe_unused]] auto id1,
-      [[maybe_unused]] auto id2) {
+      [[maybe_unused]] auto id2) -> task<void> {
       CHECK(get_id() == id_main_thread);
       co_await schedule(sched1);
       CHECK(get_id() == id_main_thread);
@@ -223,7 +223,7 @@ namespace {
     sync_wait(std::move(t));
   }
 
-  exec::task<void> check_stop_possible() {
+  auto check_stop_possible() -> exec::task<void> {
     auto stop_token = co_await stdexec::get_stop_token();
     CHECK(stop_token.stop_possible());
   }

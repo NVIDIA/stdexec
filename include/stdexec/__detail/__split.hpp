@@ -15,20 +15,17 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__concepts.hpp"
-#include "__intrusive_ptr.hpp"
 #include "__meta.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
 #include "__shared.hpp"
 #include "__transform_sender.hpp"
 #include "__type_traits.hpp"
-
-#include <utility>
 
 namespace stdexec {
   ////////////////////////////////////////////////////////////////////////////
@@ -51,15 +48,6 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline)) auto operator()() const noexcept -> __binder_back<split_t> {
         return {{}, {}, {}};
       }
-
-      using _Sender = __1;
-      using __legacy_customizations_t = //
-        __types<
-          tag_invoke_t(
-            split_t,
-            get_completion_scheduler_t<set_value_t>(get_env_t(const _Sender&)),
-            _Sender),
-          tag_invoke_t(split_t, _Sender)>;
 
       template <class _CvrefSender, class _Env>
       using __receiver_t = __t<__meval<__receiver, __cvref_id<_CvrefSender>, __id<_Env>>>;

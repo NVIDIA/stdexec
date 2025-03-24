@@ -4,7 +4,7 @@
 #include "nvexec/stream_context.cuh"
 #include "common.cuh"
 
-#include <span>
+#include <cuda/std/span>
 
 namespace ex = stdexec;
 
@@ -14,7 +14,7 @@ namespace {
 
   TEST_CASE("nvexec bulk returns a sender", "[cuda][stream][adaptors][bulk]") {
     nvexec::stream_context stream_ctx{};
-    auto snd = ex::bulk(ex::schedule(stream_ctx.get_scheduler()), 42, [] { });
+    auto snd = ex::bulk(ex::schedule(stream_ctx.get_scheduler()), 42, [](int) { });
     STATIC_REQUIRE(ex::sender<decltype(snd)>);
     (void) snd;
   }
@@ -169,11 +169,13 @@ namespace {
     const int nelems = 10;
     cudaMallocManaged(&inout, nelems * sizeof(double));
 
-    auto task =
-      stdexec::transfer_just(ctx.get_scheduler(), std::span<double>{inout, nelems})
-      | stdexec::bulk(nelems, [](std::size_t i, std::span<double> out) { out[i] = i; })
-      | stdexec::let_value([](std::span<double> out) { return stdexec::just(out); })
-      | stdexec::bulk(nelems, [](std::size_t i, std::span<double> out) { out[i] = 2.0 * out[i]; });
+    auto task = stdexec::transfer_just(ctx.get_scheduler(), cuda::std::span<double>{inout, nelems})
+              | stdexec::bulk(
+                  nelems, [](std::size_t i, cuda::std::span<double> out) { out[i] = (double) i; })
+              | stdexec::let_value([](cuda::std::span<double> out) { return stdexec::just(out); })
+              | stdexec::bulk(nelems, [](std::size_t i, cuda::std::span<double> out) {
+                  out[i] = 2.0 * out[i];
+                });
 
     stdexec::sync_wait(std::move(task)).value();
 

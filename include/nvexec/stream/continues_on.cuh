@@ -13,14 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
-#include <type_traits>
+#include <utility>
+
+#include "../detail/cuda_atomic.cuh" // IWYU pragma: keep
 
 #include "common.cuh"
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+namespace nvexec::_strm {
 
   namespace _continues_on {
     template <class CvrefSenderId, class ReceiverId>
@@ -50,6 +55,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             stdexec::set_stopped(std::move(op_state_.rcvr_));
           }
 
+          [[nodiscard]]
           auto get_env() const noexcept -> Env {
             return op_state_.make_env();
           }
@@ -164,11 +170,28 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
     };
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+
+  template <>
+  struct transform_sender_for<stdexec::continues_on_t> {
+    template <class Sender>
+    using _current_scheduler_t =
+      __result_of<get_completion_scheduler<set_value_t>, env_of_t<Sender>>;
+
+    template <class Sched, class Sender>
+      requires gpu_stream_scheduler<_current_scheduler_t<Sender>>
+    auto operator()(__ignore, Sched sched, Sender&& sndr) const {
+      using _sender_t = __t<continues_on_sender_t<__id<__decay_t<Sender>>>>;
+      auto stream_sched = get_completion_scheduler<set_value_t>(get_env(sndr));
+      return schedule_from(
+        static_cast<Sched&&>(sched),
+        _sender_t{stream_sched.context_state_, static_cast<Sender&&>(sndr)});
+    }
+  };
+
+} // namespace nvexec::_strm
 
 namespace stdexec::__detail {
   template <class SenderId>
-  inline constexpr __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::continues_on_sender_t<__name_of<__t<SenderId>>>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::continues_on_sender_t<SenderId>>{};
+  inline constexpr __mconst<nvexec::_strm::continues_on_sender_t<__name_of<__t<SenderId>>>>
+    __name_of_v<nvexec::_strm::continues_on_sender_t<SenderId>>{};
 } // namespace stdexec::__detail

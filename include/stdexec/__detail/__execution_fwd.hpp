@@ -15,10 +15,12 @@
  */
 #pragma once
 
-#include "__config.hpp" // IWYU pragma: keep
+#include "__config.hpp"
 #include "__meta.hpp"
 #include "__concepts.hpp"
 #include "__type_traits.hpp"
+
+// IWYU pragma: always_keep
 
 namespace stdexec {
   struct __none_such;
@@ -82,28 +84,27 @@ namespace stdexec {
     struct forwarding_query_t;
     struct execute_may_block_caller_t;
     struct get_forward_progress_guarantee_t;
-    struct __has_algorithm_customizations_t;
     struct get_scheduler_t;
     struct get_delegation_scheduler_t;
     struct get_allocator_t;
     struct get_stop_token_t;
     template <__completion_tag _CPO>
     struct get_completion_scheduler_t;
+    struct get_domain_t;
   } // namespace __queries
 
   using __queries::forwarding_query_t;
   using __queries::execute_may_block_caller_t;
-  using __queries::__has_algorithm_customizations_t;
   using __queries::get_forward_progress_guarantee_t;
   using __queries::get_allocator_t;
   using __queries::get_scheduler_t;
   using __queries::get_delegation_scheduler_t;
   using __queries::get_stop_token_t;
   using __queries::get_completion_scheduler_t;
+  using __queries::get_domain_t;
 
   extern const forwarding_query_t forwarding_query;
   extern const execute_may_block_caller_t execute_may_block_caller;
-  extern const __has_algorithm_customizations_t __has_algorithm_customizations;
   extern const get_forward_progress_guarantee_t get_forward_progress_guarantee;
   extern const get_scheduler_t get_scheduler;
   extern const get_delegation_scheduler_t get_delegation_scheduler;
@@ -111,6 +112,7 @@ namespace stdexec {
   extern const get_stop_token_t get_stop_token;
   template <__completion_tag _CPO>
   extern const get_completion_scheduler_t<_CPO> get_completion_scheduler;
+  extern const get_domain_t get_domain;
 
   struct never_stop_token;
   class inplace_stop_source;
@@ -128,6 +130,9 @@ namespace stdexec {
   template <class _Sender, class _CPO>
   using __completion_scheduler_for =
     __call_result_t<get_completion_scheduler_t<_CPO>, env_of_t<const _Sender&>>;
+
+  template <class _Env>
+  using __domain_of_t = __decay_t<__call_result_t<get_domain_t, _Env>>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __sigs {
@@ -207,6 +212,13 @@ namespace stdexec {
   extern const starts_on_t start_on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  namespace __schfr {
+    struct schedule_from_t;
+  } // namespace __schfr
+
+  using __schfr::schedule_from_t;
+  extern const schedule_from_t schedule_from;
+
   namespace __continues_on {
     struct continues_on_t;
   } // namespace __continues_on

@@ -20,8 +20,9 @@
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <exec/env.hpp>
 
-#include <chrono>
+#include <chrono> // IWYU pragma: keep for chrono_literals
 
 namespace ex = stdexec;
 
@@ -77,7 +78,7 @@ namespace {
   TEST_CASE("let_value can be used with multiple parameters", "[adaptors][let_value]") {
     auto snd = ex::just(3, 0.1415)
              | ex::let_value([](int& x, double y) { return ex::just(x + y); });
-    wait_for_value(std::move(snd), 3.1415);
+    wait_for_value(std::move(snd), 3.1415); // NOLINT(modernize-use-std-numbers)
   }
 
   TEST_CASE("let_value can be used to change the sender", "[adaptors][let_value]") {
@@ -87,7 +88,7 @@ namespace {
     ex::start(op);
   }
 
-  bool is_prime(int x) {
+  auto is_prime(int x) -> bool {
     if (x > 2 && (x % 2 == 0))
       return false;
     int d = 3;
@@ -191,7 +192,7 @@ namespace {
         rhs.p_called_ = nullptr;
       }
 
-      my_type& operator=(my_type&& rhs) {
+      auto operator=(my_type&& rhs) -> my_type& {
         if (p_called_)
           *p_called_ = true;
         p_called_ = rhs.p_called_;
@@ -306,16 +307,18 @@ namespace {
   }
 
   // Return a different sender when we invoke this custom defined let_value implementation
-  using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
-
-  template <typename Fun>
-  auto tag_invoke(ex::let_value_t, inline_scheduler, my_string_sender_t, Fun) {
-    return ex::just(std::string{"hallo"});
-  }
+  struct let_value_test_domain {
+    template <class Sender>
+      requires std::same_as<ex::tag_of_t<Sender>, ex::let_value_t>
+    static auto transform_sender(Sender&&) {
+      return ex::just(std::string{"hallo"});
+    }
+  };
 
   TEST_CASE("let_value can be customized", "[adaptors][let_value]") {
     // The customization will return a different value
-    auto snd = ex::transfer_just(inline_scheduler{}, std::string{"hello"}) //
+    auto snd = ex::just(std::string{"hello"})
+             | exec::write_attrs(ex::prop{ex::get_domain, let_value_test_domain{}})
              | ex::let_value([](std::string& x) { return ex::just(x + ", world"); });
     wait_for_value(std::move(snd), std::string{"hallo"});
   }

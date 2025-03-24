@@ -13,10 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
+#include <atomic>
+#include <optional>
 #include <type_traits>
+#include <utility>
+
+#include <cuda/std/tuple>
 
 #include "../detail/throw_on_cuda_error.cuh"
 #include "common.cuh"
@@ -24,7 +32,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+namespace nvexec::_strm {
   namespace _ensure_started {
     template <class Tag, class... As, class Variant>
     __launch_bounds__(1) __global__ void copy_kernel(Variant* var, As... as) {
@@ -70,7 +78,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             copy_kernel<Tag, As&&...>
               <<<1, 1, 0, stream>>>(shared_state_->data_, static_cast<As&&>(as)...);
             shared_state_->stream_provider_.status_ =
-              STDEXEC_DBG_ERR(cudaEventRecord(shared_state_->event_, stream));
+              STDEXEC_LOG_CUDA_API(cudaEventRecord(shared_state_->event_, stream));
           } else {
             using tuple_t = decayed_tuple<Tag, As...>;
             shared_state_->index_ = SharedState::variant_t::template index_of<tuple_t>::value;
@@ -97,6 +105,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           shared_state_.reset();
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> env_t {
           return shared_state_->make_env();
         }
@@ -109,11 +118,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     };
 
     template <class T>
-    T* malloc_managed(cudaError_t& status) {
+    auto malloc_managed(cudaError_t& status) -> T* {
       T* ptr{};
 
       if (status == cudaSuccess) {
-        if (status = STDEXEC_DBG_ERR(cudaMallocManaged(&ptr, sizeof(T))); status == cudaSuccess) {
+        status = STDEXEC_LOG_CUDA_API(cudaMallocManaged(&ptr, sizeof(T)));
+        if (status == cudaSuccess) {
           new (ptr) T();
           return ptr;
         }
@@ -149,7 +159,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       std::atomic<void*> op_state1_;
       inner_op_state_t op_state2_;
 
-      env_t make_env() const noexcept {
+      auto make_env() const noexcept -> env_t {
         return _ensure_started::__make_env(
           stop_source_, &const_cast<stream_provider_t&>(stream_provider_));
       }
@@ -163,7 +173,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         , op_state2_(connect(static_cast<Sender&&>(sndr), inner_receiver_t{*this})) {
         if (stream_provider_.status_ == cudaSuccess) {
           stream_provider_.status_ =
-            STDEXEC_DBG_ERR(cudaEventCreate(&event_, cudaEventDisableTiming));
+            STDEXEC_LOG_CUDA_API(cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
         }
 
         stdexec::start(op_state2_);
@@ -193,12 +203,12 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       ~sh_state_t() {
         if (stream_provider_.status_ == cudaSuccess) {
           if constexpr (stream_sender<Sender, env_t>) {
-            STDEXEC_DBG_ERR(cudaEventDestroy(event_));
+            STDEXEC_ASSERT_CUDA_API(cudaEventDestroy(event_));
           }
         }
 
         if (data_) {
-          STDEXEC_DBG_ERR(cudaFree(data_));
+          STDEXEC_ASSERT_CUDA_API(cudaFree(data_));
         }
       }
 
@@ -269,7 +279,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           if (status == cudaSuccess) {
             if constexpr (stream_sender<Sender, env_t>) {
-              status = STDEXEC_DBG_ERR(
+              status = STDEXEC_LOG_CUDA_API(
                 cudaStreamWaitEvent(op->get_stream(), op->shared_state_->event_, 0));
             }
 
@@ -381,13 +391,24 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       __t(__t&&) = default;
     };
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+
+  template <>
+  struct transform_sender_for<ensure_started_t> {
+    template <class Sender>
+    using _sender_t = __t<ensure_started_sender_t<__id<__decay_t<Sender>>>>;
+
+    template <class Env, stream_completing_sender Sender>
+    auto operator()(__ignore, Env&& /*env*/, Sender&& sndr) const -> _sender_t<Sender> {
+      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
+      return _sender_t<Sender>{sched.context_state_, static_cast<Sender&&>(sndr)};
+    }
+  };
+} // namespace nvexec::_strm
 
 namespace stdexec::__detail {
   template <class SenderId>
-  inline constexpr __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::ensure_started_sender_t<__name_of<__t<SenderId>>>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::ensure_started_sender_t<SenderId>>{};
+  inline constexpr __mconst<nvexec::_strm::ensure_started_sender_t<__name_of<__t<SenderId>>>>
+    __name_of_v<nvexec::_strm::ensure_started_sender_t<SenderId>>{};
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

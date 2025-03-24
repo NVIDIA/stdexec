@@ -65,12 +65,12 @@ namespace {
 
   TEST_CASE("then can be used to change the value type", "[adaptors][then]") {
     auto snd = ex::just(3) | ex::then([](int x) -> double { return x + 0.1415; });
-    wait_for_value(std::move(snd), 3.1415);
+    wait_for_value(std::move(snd), 3.1415); // NOLINT(modernize-use-std-numbers)
   }
 
   TEST_CASE("then can be used with multiple parameters", "[adaptors][then]") {
     auto snd = ex::just(3, 0.1415) | ex::then([](int x, double y) -> double { return x + y; });
-    wait_for_value(std::move(snd), 3.1415);
+    wait_for_value(std::move(snd), 3.1415); // NOLINT(modernize-use-std-numbers)
   }
 
   TEST_CASE("then can throw, and set_error will be called", "[adaptors][then]") {
@@ -134,15 +134,15 @@ namespace {
 
   TEST_CASE("then forwards env", "[adaptors][then]") {
     SECTION("returns env by value") {
-      auto snd = just_with_env<value_env, int>{value_env{100}, {0}} | ex::then([](int) { });
-      static_assert(std::same_as<decltype(ex::get_env(snd)), value_env>);
-      CHECK(ex::get_env(snd).value == 100);
+      auto snd = just_with_env<value_env, int>{.env_ = value_env{100}, .values_ = {0}}
+               | ex::then([](int) { });
+      CHECK(value_query(ex::get_env(snd)) == 100);
     }
 
     SECTION("returns env by reference") {
-      auto snd = just_with_env<const value_env&, int>{value_env{100}, {0}} | ex::then([](int) { });
-      static_assert(std::same_as<decltype(ex::get_env(snd)), const value_env&>);
-      CHECK(ex::get_env(snd).value == 100);
+      auto snd = just_with_env<const value_env&, int>{.env_ = value_env{100}, .values_ = {0}}
+               | ex::then([](int) { });
+      CHECK(value_query(ex::get_env(snd)) == 100);
     }
   }
 
@@ -181,35 +181,31 @@ namespace {
   }
 
   // Return a different sender when we invoke this custom defined then implementation
-  using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
-
-  template <class Fun>
-  auto tag_invoke(ex::then_t, inline_scheduler, my_string_sender_t, Fun) {
-    return ex::just(std::string{"hallo"});
-  }
-
-  TEST_CASE("then can be customized early", "[adaptors][then]") {
-    // The customization will return a different value
-    auto snd = ex::transfer_just(inline_scheduler{}, std::string{"hello"}) //
-             | ex::then([](std::string x) { return x + ", world"; });
-    wait_for_value(std::move(snd), std::string{"hallo"});
-  }
-
-  struct my_domain {
-    template <ex::sender_expr_for<ex::then_t> Sender, class... Env>
-    static auto transform_sender(Sender, const Env&...) {
-      return ex::just(std::string{"hallo"});
+  struct then_test_domain {
+    template <class Sender, class... Env>
+      requires std::same_as<ex::tag_of_t<Sender>, ex::then_t>
+    static auto transform_sender(Sender&& sndr, Env&&...) {
+      return ex::just(std::string{"ciao"});
     }
   };
 
+  TEST_CASE("then can be customized early", "[adaptors][then]") {
+    // The customization will return a different value
+    basic_inline_scheduler<then_test_domain> sched;
+    auto snd = ex::just(std::string{"hello"}) //
+             | ex::continues_on(sched)        //
+             | ex::then([](std::string x) { return x + ", world"; });
+    wait_for_value(std::move(snd), std::string{"ciao"});
+  }
+
   TEST_CASE("then can be customized late", "[adaptors][then]") {
     // The customization will return a different value
-    basic_inline_scheduler<my_domain> sched;
+    basic_inline_scheduler<then_test_domain> sched;
     auto snd = ex::just(std::string{"hello"})
              | exec::on(
                  sched, //
                  ex::then([](std::string x) { return x + ", world"; }))
-             | exec::write(stdexec::prop{ex::get_scheduler, inline_scheduler()});
-    wait_for_value(std::move(snd), std::string{"hallo"});
+             | exec::write_env(stdexec::prop{ex::get_scheduler, inline_scheduler()});
+    wait_for_value(std::move(snd), std::string{"ciao"});
   }
 } // namespace

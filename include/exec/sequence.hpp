@@ -19,6 +19,9 @@
 #include <stdexec/__detail/__tuple.hpp>
 #include <stdexec/__detail/__variant.hpp>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+
 namespace exec {
   namespace _seq {
     template <class... Sndrs>
@@ -26,11 +29,11 @@ namespace exec {
 
     struct sequence_t {
       template <class Sndr>
-      STDEXEC_ATTRIBUTE((nodiscard, host, device)) Sndr operator()(Sndr sndr) const;
+      STDEXEC_ATTRIBUTE((nodiscard, host, device)) auto operator()(Sndr sndr) const -> Sndr;
 
       template <class... Sndrs>
-        requires(sizeof...(Sndrs) > 1) && stdexec::__domain::__has_common_domain<Sndrs...>
-      STDEXEC_ATTRIBUTE((nodiscard, host, device)) _sndr<Sndrs...> operator()(Sndrs... sndrs) const;
+        requires(sizeof...(Sndrs) > 1) && stdexec::__has_common_domain<Sndrs...>
+      STDEXEC_ATTRIBUTE((nodiscard, host, device)) auto operator()(Sndrs... sndrs) const -> _sndr<Sndrs...>;
     };
 
     template <class Rcvr, class OpStateId, class Index>
@@ -54,7 +57,7 @@ namespace exec {
       }
 
       // TODO: use the predecessor's completion scheduler as the current scheduler here.
-      STDEXEC_ATTRIBUTE((host, device)) stdexec::env_of_t<Rcvr> get_env() const noexcept {
+      STDEXEC_ATTRIBUTE((host, device)) auto get_env() const noexcept -> stdexec::env_of_t<Rcvr> {
         return stdexec::get_env(_opstate->_rcvr);
       }
     };
@@ -89,14 +92,14 @@ namespace exec {
       STDEXEC_ATTRIBUTE((host, device)) explicit _opstate(Rcvr&& rcvr, CvrefSndrs&& sndrs)
         : _rcvr{static_cast<Rcvr&&>(rcvr)}
         , _sndrs{_senders_tuple_t::__convert_from(static_cast<CvrefSndrs&&>(sndrs))}
-        // move all but the first sender into the opstate.
-        , _ops{} {
+      // move all but the first sender into the opstate.
+      {
         // Below, it looks like we are using `sndrs` after it has been moved from. This is not the
         // case. `sndrs` is moved into a tuple type that has `__ignore` for the first element. The
         // result is that the first sender in `sndrs` is not moved from, but the rest are.
         _ops.template emplace_from_at<0>(
           stdexec::connect,
-          stdexec::__tup::get<0>(static_cast<CvrefSndrs&&>(sndrs)),
+          sndrs.template __get<0>(static_cast<CvrefSndrs&&>(sndrs)),
           _rcvr_t<0>{this});
       }
 
@@ -107,7 +110,7 @@ namespace exec {
           if constexpr (Idx == sizeof...(Sndrs) + 1) {
             stdexec::set_value(static_cast<Rcvr&&>(_rcvr), static_cast<Args&&>(args)...);
           } else {
-            auto& sndr = stdexec::__tup::get<Idx>(_sndrs);
+            auto& sndr = _sndrs.template __get<Idx>(_sndrs);
             auto& op = _ops.template emplace_from_at<Idx>(
               stdexec::connect, std::move(sndr), _rcvr_t<Idx>{this});
             stdexec::start(op);
@@ -123,7 +126,7 @@ namespace exec {
 
       Rcvr _rcvr;
       _senders_tuple_t _sndrs;
-      _ops_variant_t _ops;
+      _ops_variant_t _ops{};
     };
 
     // The completions of the sequence sender are the error and stopped completions of all the
@@ -190,14 +193,14 @@ namespace exec {
     };
 
     template <class Sndr>
-    STDEXEC_ATTRIBUTE((host, device)) Sndr sequence_t::operator()(Sndr sndr) const {
+    STDEXEC_ATTRIBUTE((host, device)) auto sequence_t::operator()(Sndr sndr) const -> Sndr {
       return sndr;
     }
 
     template <class... Sndrs>
-      requires(sizeof...(Sndrs) > 1) && stdexec::__domain::__has_common_domain<Sndrs...>
-    STDEXEC_ATTRIBUTE((host, device)) _sndr<Sndrs...> sequence_t::operator()(Sndrs... sndrs) const {
-      return _sndr<Sndrs...>{{}, {}, {{static_cast<Sndrs&&>(sndrs)}...}};
+      requires(sizeof...(Sndrs) > 1) && stdexec::__has_common_domain<Sndrs...>
+    STDEXEC_ATTRIBUTE((host, device)) auto sequence_t::operator()(Sndrs... sndrs) const -> _sndr<Sndrs...> {
+      return _sndr<Sndrs...>{{}, {}, {static_cast<Sndrs&&>(sndrs)...}};
     }
   } // namespace _seq
 
@@ -215,3 +218,5 @@ namespace std {
     using type = stdexec::__m_at_c<I, exec::sequence_t, stdexec::__, Sndrs...>;
   };
 } // namespace std
+
+STDEXEC_PRAGMA_POP()

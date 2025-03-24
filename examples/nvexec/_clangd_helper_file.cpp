@@ -28,5 +28,5 @@
 // than those in the parent (for example, if the subdirectory has a CMakeList.txt that defines additional executables).
 // This ensures clangd provides useful intellisense for headers in any subdirectory with a CMakeList.txt.
 
-int main(void) {
+auto main() -> int {
 }

@@ -13,11 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "cuda_fwd.cuh"
 
-#include <cuda/atomic>
+#include <cuda/atomic> // IWYU pragma: export
 
 #if STDEXEC_LIBCUDACXX_NEEDS_ATOMIC_WORAROUND()
 _LIBCUDACXX_BEGIN_NAMESPACE_STD

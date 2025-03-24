@@ -43,17 +43,17 @@ namespace {
       Receiver rcvr_;
       int counter_;
 
-      friend void tag_invoke(start_t, operation& self) noexcept {
-        if (self.counter_ == 0) {
-          stdexec::set_value(static_cast<Receiver&&>(self.rcvr_));
+      void start() & noexcept {
+        if (counter_ == 0) {
+          stdexec::set_value(static_cast<Receiver&&>(rcvr_));
         } else {
-          stdexec::set_error(static_cast<Receiver&&>(self.rcvr_), try_again{});
+          stdexec::set_error(static_cast<Receiver&&>(rcvr_), try_again{});
         }
       }
     };
 
     template <receiver_of<completion_signatures> Receiver>
-    friend operation<Receiver> tag_invoke(connect_t, fails_alot self, Receiver rcvr) {
+    friend auto tag_invoke(connect_t, fails_alot self, Receiver rcvr) -> operation<Receiver> {
       return {static_cast<Receiver&&>(rcvr), --*self.counter_};
     }
 

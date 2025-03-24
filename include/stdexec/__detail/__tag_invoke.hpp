@@ -25,7 +25,7 @@ namespace stdexec::__std_concepts {
   template <class _Fun, class... _As>
   concept invocable = //
     requires(_Fun&& __f, _As&&... __as) {
-      std::invoke(static_cast<_Fun&&>(__f), static_cast<_As&&>(__as)...);
+      std::invoke(static_cast<_Fun &&>(__f), static_cast<_As &&>(__as)...);
     };
 #endif
 } // namespace stdexec::__std_concepts
@@ -42,7 +42,8 @@ namespace stdexec {
     // For handling queryables with a static constexpr query member function:
     template <class _Tag, class _Env>
       requires true // so this overload is preferred over the one below
-    STDEXEC_ATTRIBUTE((always_inline)) constexpr auto tag_invoke(_Tag, const _Env&) noexcept -> __mconstant<_Env::query(_Tag())> {
+    STDEXEC_ATTRIBUTE((
+      always_inline)) constexpr auto tag_invoke(_Tag, const _Env&) noexcept -> __mconstant<_Env::query(_Tag())> {
       return {};
     }
 
@@ -59,14 +60,15 @@ namespace stdexec {
     template <class _Tag, class... _Args>
     concept tag_invocable = //
       requires(_Tag __tag, _Args&&... __args) {
-        tag_invoke(static_cast<_Tag&&>(__tag), static_cast<_Args&&>(__args)...);
+        tag_invoke(static_cast<_Tag &&>(__tag), static_cast<_Args &&>(__args)...);
       };
 
     template <class _Ret, class _Tag, class... _Args>
     concept __tag_invocable_r = //
       requires(_Tag __tag, _Args&&... __args) {
         {
-          static_cast<_Ret>(tag_invoke(static_cast<_Tag&&>(__tag), static_cast<_Args&&>(__args)...))
+          static_cast<_Ret>(
+            tag_invoke(static_cast<_Tag &&>(__tag), static_cast<_Args &&>(__args)...))
         };
       };
 
@@ -75,7 +77,7 @@ namespace stdexec {
     concept nothrow_tag_invocable =
       tag_invocable<_Tag, _Args...> && //
       requires(_Tag __tag, _Args&&... __args) {
-        { tag_invoke(static_cast<_Tag&&>(__tag), static_cast<_Args&&>(__args)...) } noexcept;
+        { tag_invoke(static_cast<_Tag &&>(__tag), static_cast<_Args &&>(__args)...) } noexcept;
       };
 
     template <class _Tag, class... _Args>

@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
@@ -25,10 +25,8 @@
 #include "__env.hpp"
 #include "__just.hpp"
 #include "__meta.hpp"
-#include "__schedule_from.hpp"
 #include "__schedulers.hpp"
 #include "__sender_introspection.hpp"
-#include "__tag_invoke.hpp"
 #include "__transform_sender.hpp"
 #include "__tuple.hpp"
 
@@ -39,13 +37,6 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.transfer_just]
   namespace __transfer_just {
-    // This is a helper for finding legacy cusutomizations of transfer_just.
-    inline auto __transfer_just_tag_invoke() {
-      return []<class... _Ts>(_Ts&&... __ts) -> tag_invoke_result_t<transfer_just_t, _Ts...> {
-        return tag_invoke(transfer_just, static_cast<_Ts&&>(__ts)...);
-      };
-    }
-
     template <class _Env>
     auto __make_transform_fn(const _Env&) {
       return [&]<class _Scheduler, class... _Values>(_Scheduler&& __sched, _Values&&... __vals) {
@@ -61,19 +52,7 @@ namespace stdexec {
       };
     }
 
-    struct __legacy_customization_fn {
-      template <class _Data>
-      auto operator()(_Data&& __data) const
-        -> decltype(__data.apply(__transfer_just_tag_invoke(), static_cast<_Data&&>(__data))) {
-        return __data.apply(__transfer_just_tag_invoke(), static_cast<_Data&&>(__data));
-      }
-    };
-
     struct transfer_just_t {
-      using _Data = __0;
-      using __legacy_customizations_t = //
-        __types<__legacy_customization_fn(_Data)>;
-
       template <scheduler _Scheduler, __movable_value... _Values>
       auto
         operator()(_Scheduler&& __sched, _Values&&... __vals) const -> __well_formed_sender auto {
@@ -92,8 +71,7 @@ namespace stdexec {
 
     inline auto __make_env_fn() noexcept {
       return []<class _Scheduler>(const _Scheduler& __sched, const auto&...) noexcept {
-        using _Env = __t<__schfr::__environ<__id<_Scheduler>>>;
-        return _Env{__sched};
+        return __sched_attrs{std::cref(__sched)};
       };
     }
 

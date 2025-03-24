@@ -45,7 +45,8 @@ namespace {
   TEST_CASE("transfer_when_all simple example", "[adaptors][transfer_when_all]") {
     auto snd = ex::transfer_when_all(inline_scheduler{}, ex::just(3), ex::just(0.1415));
     auto snd1 = std::move(snd) | ex::then([](int x, double y) { return x + y; });
-    auto op = ex::connect(std::move(snd1), expect_value_receiver{3.1415});
+    auto op = ex::connect(
+      std::move(snd1), expect_value_receiver{3.1415}); // NOLINT(modernize-use-std-numbers)
     ex::start(op);
   }
 
@@ -107,43 +108,6 @@ namespace {
     );
     wait_for_value(
       std::move(snd), std::variant<std::tuple<int>>{2}, std::variant<std::tuple<double>>{3.14});
-  }
-
-  using my_string_sender_t = decltype(ex::transfer_just(inline_scheduler{}, std::string{}));
-
-  auto
-    tag_invoke(ex::transfer_when_all_t, inline_scheduler, my_string_sender_t, my_string_sender_t) {
-    // Return a different sender when we invoke this custom defined transfer_when_all implementation
-    return ex::just(std::string{"first program"});
-  }
-
-  TEST_CASE("transfer_when_all can be customized", "[adaptors][transfer_when_all]") {
-    // The customization will return a different value
-    auto snd = ex::transfer_when_all(                               //
-      inline_scheduler{},                                           //
-      ex::transfer_just(inline_scheduler{}, std::string{"hello,"}), //
-      ex::transfer_just(inline_scheduler{}, std::string{" world!"}) //
-    );
-    wait_for_value(std::move(snd), std::string{"first program"});
-  }
-
-  auto tag_invoke(
-    ex::transfer_when_all_with_variant_t,
-    inline_scheduler,
-    my_string_sender_t,
-    my_string_sender_t) {
-    // Return a different sender when we invoke this custom defined transfer_when_all_with_variant implementation
-    return ex::just(std::string{"first program"});
-  }
-
-  TEST_CASE("transfer_when_all_with_variant can be customized", "[adaptors][transfer_when_all]") {
-    // The customization will return a different value
-    auto snd = ex::transfer_when_all_with_variant(                  //
-      inline_scheduler{},                                           //
-      ex::transfer_just(inline_scheduler{}, std::string{"hello,"}), //
-      ex::transfer_just(inline_scheduler{}, std::string{" world!"}) //
-    );
-    wait_for_value(std::move(snd), std::string{"first program"});
   }
 
   namespace {

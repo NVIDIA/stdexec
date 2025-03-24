@@ -138,10 +138,12 @@ namespace exec {
           return __operation_t<_Receiver>{static_cast<_Receiver&&>(__rcvr), __max_recursion_depth_};
         }
 
+        [[nodiscard]]
         auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> __scheduler {
           return __scheduler{__max_recursion_depth_};
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> const __schedule_sender& {
           return *this;
         }
@@ -150,6 +152,7 @@ namespace exec {
       };
 
      public:
+      [[nodiscard]]
       auto schedule() const noexcept -> __schedule_sender {
         return __schedule_sender{__max_recursion_depth_};
       }

@@ -65,12 +65,12 @@ struct image {
 };
 
 // Extract the image from the HTTP request
-image extract_image(http_request req) {
+auto extract_image(http_request req) -> image {
   return {req.body_};
 }
 
 // Extract multiple images from the HTTP request
-std::vector<image> extract_images(http_request req) {
+auto extract_images(http_request req) -> std::vector<image> {
   std::vector<image> res;
   size_t last_idx = 0;
   while (last_idx >= std::string::npos) {
@@ -88,41 +88,41 @@ std::vector<image> extract_images(http_request req) {
 }
 
 // Convert the given set of images into the corresponding HTTP response
-http_response img3_to_response(const image& img1, const image& img2, const image& img3) {
+auto img3_to_response(const image& img1, const image& img2, const image& img3) -> http_response {
   std::ostringstream oss;
   oss << img1.image_data_ << ", " << img2.image_data_ << ", " << img3.image_data_ << "\n";
-  return {200, oss.str()};
+  return {.status_code_ = 200, .body_ = oss.str()};
 }
 
 // Convert the given set of images into the corresponding HTTP response
-http_response imgvec_to_response(const std::vector<image>& imgs) {
+auto imgvec_to_response(const std::vector<image>& imgs) -> http_response {
   std::ostringstream oss;
   for (const auto& img: imgs)
     oss << img.image_data_ << "\n";
-  return {200, oss.str()};
+  return {.status_code_ = 200, .body_ = oss.str()};
 }
 
 // Apply the Canny edge detector on the given image
-image apply_canny(const image& img) {
+auto apply_canny(const image& img) -> image {
   return {"canny / " + img.image_data_};
 }
 
 // Apply the Sobel edge detector on the given image
-image apply_sobel(const image& img) {
+auto apply_sobel(const image& img) -> image {
   return {"sobel / " + img.image_data_};
 }
 
 // Apply the Prewitt edge detector on the given image
-image apply_prewitt(const image& img) {
+auto apply_prewitt(const image& img) -> image {
   return {"prewitt / " + img.image_data_};
 }
 
 // Apply blur filter on the given image
-image apply_blur(const image& img) {
+auto apply_blur(const image& img) -> image {
   return {"blur / " + img.image_data_};
 }
 
-ex::sender auto handle_edge_detection_request(const http_request& req) {
+auto handle_edge_detection_request(const http_request& req) -> ex::sender auto {
   // extract the input image from the request
   ex::sender auto in_img_sender = ex::just(req) | ex::then(extract_image);
 
@@ -143,7 +143,7 @@ ex::sender auto handle_edge_detection_request(const http_request& req) {
   // error and cancellation handling is performed outside
 }
 
-ex::sender auto handle_multi_blur_request(const http_request& req) {
+auto handle_multi_blur_request(const http_request& req) -> ex::sender auto {
   return
     // extract the input images from the request
     ex::just(req)
@@ -165,7 +165,7 @@ ex::sender auto handle_multi_blur_request(const http_request& req) {
     ;
 }
 
-int main() {
+auto main() -> int {
   // Create a thread pool and get a scheduler from it
   exec::static_thread_pool pool{8};
   exec::async_scope scope;
@@ -174,7 +174,7 @@ int main() {
   // Fake a couple of edge_detect requests
   for (int i = 0; i < 3; i++) {
     // Create a test request
-    http_request req{"/edge_detect", {}, "scene"};
+    http_request req{.url_ = "/edge_detect", .headers_ = {}, .body_ = "scene"};
 
     // The handler for the /edge_detect requests
     ex::sender auto snd = handle_edge_detection_request(req);
@@ -193,7 +193,7 @@ int main() {
   // Fake a couple of multi_blur requests
   for (int i = 0; i < 3; i++) {
     // Create a test request
-    http_request req{"/multi_blur", {}, "img1\nimg2\nimg3\nimg4\n"};
+    http_request req{.url_ = "/multi_blur", .headers_ = {}, .body_ = "img1\nimg2\nimg3\nimg4\n"};
 
     // The handler for the /edge_detect requests
     ex::sender auto snd = handle_multi_blur_request(req);

@@ -23,8 +23,6 @@
 #include <exec/any_sender_of.hpp>
 #include <exec/static_thread_pool.hpp>
 
-#include <chrono>
-
 namespace ex = stdexec;
 
 using namespace std::chrono_literals;
@@ -211,27 +209,26 @@ namespace {
     check_sends_stopped<true>(ex::schedule_from(sched3, ex::just(3)));
   }
 
-  using just_string_sender_t = decltype(ex::just(std::string{}));
-
-  // Customization of schedule_from
-  // Return a different sender
-  auto tag_invoke(decltype(ex::schedule_from), inline_scheduler, just_string_sender_t) {
-    return ex::just(std::string{"hijacked"});
-  }
+  struct schedule_from_test_domain {
+    template <class Sender>
+    static auto transform_sender(Sender&&) {
+      return ex::just(std::string{"hijacked"});
+    }
+  };
 
   TEST_CASE("schedule_from can be customized", "[adaptors][schedule_from]") {
     // The customization will return a different value
-    auto snd = ex::schedule_from(inline_scheduler{}, ex::just(std::string{"transfer"}));
+    basic_inline_scheduler<schedule_from_test_domain> sched;
+    auto snd = ex::schedule_from(sched, ex::just(std::string{"transfer"}));
     auto op = ex::connect(std::move(snd), expect_value_receiver(std::string{"hijacked"}));
     ex::start(op);
   }
-
 
   template <class... Ts>
   using any_sender_of =
     typename exec::any_receiver_ref<stdexec::completion_signatures<Ts...>>::template any_sender<>;
 
-  TEST_CASE("schedule_from can handle any_sender", "[adaptors][schedule_from]") {
+  TEST_CASE("schedule_from can handle any_sender_of", "[adaptors][schedule_from]") {
     auto snd =
       stdexec::schedule_from(inline_scheduler{}, any_sender_of<ex::set_value_t(int)>(ex::just(3)));
     auto op = ex::connect(std::move(snd), expect_value_receiver(3));

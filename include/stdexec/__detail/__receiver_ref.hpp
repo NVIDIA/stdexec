@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 #include "__completion_signatures.hpp"
 #include "__env.hpp"
@@ -23,7 +23,7 @@
 
 #include <functional>
 
-namespace stdexec { namespace __any_ {
+namespace stdexec::__any_ {
   template <class _Sig>
   struct __rcvr_vfun;
 
@@ -115,4 +115,4 @@ namespace stdexec { namespace __any_ {
     const __receiver_vtable_for<_Sigs, _Env>* __vtable_;
     void* __op_state_;
   };
-}} // namespace stdexec::__any_
+} // namespace stdexec::__any_

@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
 #include "__concepts.hpp"
@@ -28,7 +28,8 @@
 namespace stdexec {
   namespace __opt {
     struct __bad_optional_access : std::exception {
-      const char* what() const noexcept override {
+      [[nodiscard]]
+      auto what() const noexcept -> const char* override {
         return "stdexec::__optional: bad access";
       }
     };
@@ -77,60 +78,61 @@ namespace stdexec {
 
       template <class... _Us>
         requires constructible_from<_Tp, _Us...>
-      _Tp& emplace(_Us&&... __us) noexcept(__nothrow_constructible_from<_Tp, _Us...>) {
+      auto emplace(_Us&&... __us) noexcept(__nothrow_constructible_from<_Tp, _Us...>) -> _Tp& {
         reset(); // sets __has_value to false in case the next line throws
         ::new (&__value) _Tp{static_cast<_Us&&>(__us)...};
         __has_value = true;
         return __value;
       }
 
-      _Tp& value() & {
+      auto value() & -> _Tp& {
         if (!__has_value) {
           throw __bad_optional_access();
         }
         return __value;
       }
 
-      const _Tp& value() const & {
+      auto value() const & -> const _Tp& {
         if (!__has_value) {
           throw __bad_optional_access();
         }
         return __value;
       }
 
-      _Tp&& value() && {
+      auto value() && -> _Tp&& {
         if (!__has_value) {
           throw __bad_optional_access();
         }
         return static_cast<_Tp&&>(__value);
       }
 
-      _Tp& operator*() & noexcept {
+      auto operator*() & noexcept -> _Tp& {
         STDEXEC_ASSERT(__has_value);
         return __value;
       }
 
-      const _Tp& operator*() const & noexcept {
+      auto operator*() const & noexcept -> const _Tp& {
         STDEXEC_ASSERT(__has_value);
         return __value;
       }
 
-      _Tp&& operator*() && noexcept {
+      auto operator*() && noexcept -> _Tp&& {
         STDEXEC_ASSERT(__has_value);
         return static_cast<_Tp&&>(__value);
       }
 
-      _Tp* operator->() & noexcept {
+      auto operator->() & noexcept -> _Tp* {
         STDEXEC_ASSERT(__has_value);
         return &__value;
       }
 
-      const _Tp* operator->() const & noexcept {
+      auto operator->() const & noexcept -> const _Tp* {
         STDEXEC_ASSERT(__has_value);
         return &__value;
       }
 
-      bool has_value() const noexcept {
+      [[nodiscard]]
+      auto has_value() const noexcept -> bool {
         return __has_value;
       }
 

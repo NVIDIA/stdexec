@@ -34,7 +34,7 @@ namespace {
   template <class S>
   struct scheduler_env {
     template <stdexec::__completion_tag Tag>
-    S query(ex::get_completion_scheduler_t<Tag>) const noexcept {
+    auto query(ex::get_completion_scheduler_t<Tag>) const noexcept -> S {
       return {};
     }
   };
@@ -68,33 +68,33 @@ namespace {
 
     template <class R>
     struct oper {
-      data* data_;
+      std::shared_ptr<data> data_;
       R receiver_;
 
-      oper(data* shared_data, R&& recv)
-        : data_(shared_data)
+      oper(std::shared_ptr<data> shared_data, R&& recv)
+        : data_(std::move(shared_data))
         , receiver_(static_cast<R&&>(recv)) {
       }
 
       oper(oper&&) = delete;
 
-      friend void tag_invoke(ex::start_t, oper& self) noexcept {
+      void start() & noexcept {
         // Enqueue another command to the list of all commands
         // The scheduler will start this, whenever start_next() is called
-        std::unique_lock lock{self.data_->mutex_};
-        self.data_->all_commands_.emplace_back([&self]() {
-          if (ex::get_stop_token(ex::get_env(self.receiver_)).stop_requested()) {
-            ex::set_stopped(static_cast<R&&>(self.receiver_));
+        std::unique_lock lock{data_->mutex_};
+        data_->all_commands_.emplace_back([this]() {
+          if (ex::get_stop_token(ex::get_env(receiver_)).stop_requested()) {
+            ex::set_stopped(static_cast<R&&>(receiver_));
           } else {
-            ex::set_value(static_cast<R&&>(self.receiver_));
+            ex::set_value(static_cast<R&&>(receiver_));
           }
         });
-        self.data_->cv_.notify_all();
+        data_->cv_.notify_all();
       }
     };
 
     struct env {
-      data* data_;
+      std::shared_ptr<data> data_;
 
       template <stdexec::__one_of<ex::set_value_t, ex::set_stopped_t> Tag>
       auto query(ex::get_completion_scheduler_t<Tag>) const noexcept {
@@ -110,20 +110,22 @@ namespace {
       using completion_signatures = ex::completion_signatures< //
         ex::set_value_t(),                                     //
         ex::set_stopped_t()>;
-      data* data_;
+
+      env env_;
 
       template <class R>
-      friend oper<std::decay_t<R>> tag_invoke(ex::connect_t, my_sender self, R&& r) {
-        return {self.data_, static_cast<R&&>(r)};
+      friend auto tag_invoke(ex::connect_t, my_sender self, R&& r) -> oper<std::decay_t<R>> {
+        return {self.env_.data_, static_cast<R&&>(r)};
       }
 
-      auto get_env() const noexcept -> env {
-        return env{data_};
+      [[nodiscard]]
+      auto get_env() const noexcept -> const env& {
+        return env_;
       }
     };
 
-    explicit impulse_scheduler(data* shared_data)
-      : shared_data_(shared_data->shared_from_this()) {
+    explicit impulse_scheduler(std::shared_ptr<data> shared_data)
+      : shared_data_(std::move(shared_data)) {
     }
 
    public:
@@ -142,7 +144,7 @@ namespace {
 
     //! Actually start the command from the last started operation_state
     //! Returns immediately if no command registered (i.e., no operation state started)
-    bool try_start_next() {
+    auto try_start_next() -> bool {
       // Wait for a command that we can execute
       std::unique_lock lock{shared_data_->mutex_};
 
@@ -180,11 +182,12 @@ namespace {
       cmd();
     }
 
-    my_sender schedule() const {
-      return my_sender{shared_data_.get()};
+    [[nodiscard]]
+    auto schedule() const -> my_sender {
+      return my_sender{.env_ = {shared_data_}};
     }
 
-    bool operator==(const impulse_scheduler&) const noexcept = default;
+    auto operator==(const impulse_scheduler&) const noexcept -> bool = default;
   };
 
   //! Scheduler that executes everything inline, i.e., on the same thread
@@ -197,8 +200,8 @@ namespace {
     struct oper : immovable {
       R recv_;
 
-      friend void tag_invoke(ex::start_t, oper& self) noexcept {
-        ex::set_value(static_cast<R&&>(self.recv_));
+      void start() & noexcept {
+        ex::set_value(static_cast<R&&>(recv_));
       }
     };
 
@@ -209,7 +212,7 @@ namespace {
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <class R>
-      friend oper<R> tag_invoke(ex::connect_t, my_sender, R r) {
+      friend auto tag_invoke(ex::connect_t, my_sender, R r) -> oper<R> {
         return {{}, static_cast<R&&>(r)};
       }
 
@@ -218,13 +221,13 @@ namespace {
       }
     };
 
-    my_sender schedule() const noexcept {
+    auto schedule() const noexcept -> my_sender {
       return {};
     }
 
-    bool operator==(const basic_inline_scheduler&) const noexcept = default;
+    auto operator==(const basic_inline_scheduler&) const noexcept -> bool = default;
 
-    Domain query(ex::get_domain_t) const noexcept
+    auto query(ex::get_domain_t) const noexcept -> Domain
       requires(!ex::same_as<Domain, void>)
     {
       return Domain();
@@ -255,8 +258,8 @@ namespace {
       R recv_;
       E err_;
 
-      friend void tag_invoke(ex::start_t, oper& self) noexcept {
-        ex::set_error(static_cast<R&&>(self.recv_), static_cast<E&&>(self.err_));
+      void start() & noexcept {
+        ex::set_error(static_cast<R&&>(recv_), static_cast<E&&>(err_));
       }
     };
 
@@ -273,11 +276,11 @@ namespace {
       E err_;
 
       template <class R>
-      friend oper<R> tag_invoke(ex::connect_t, my_sender self, R&& r) {
+      friend auto tag_invoke(ex::connect_t, my_sender self, R&& r) -> oper<R> {
         return {{}, static_cast<R&&>(r), static_cast<E&&>(self.err_)};
       }
 
-      scheduler_env<error_scheduler> get_env() const noexcept {
+      auto get_env() const noexcept -> scheduler_env<error_scheduler> {
         return {};
       }
     };
@@ -285,11 +288,11 @@ namespace {
     E err_{};
 
    public:
-    my_sender schedule() const {
+    auto schedule() const -> my_sender {
       return {err_};
     }
 
-    bool operator==(const error_scheduler&) const noexcept = default;
+    auto operator==(const error_scheduler&) const noexcept -> bool = default;
   };
 
   //! Scheduler that returns a sender that always completes with cancellation.
@@ -316,19 +319,21 @@ namespace {
         ex::set_stopped_t()>;
 
       template <class R>
-      oper<R> connect(R r) const {
+      auto connect(R r) const -> oper<R> {
         return {{}, static_cast<R&&>(r)};
       }
 
-      scheduler_env<stopped_scheduler> get_env() const noexcept {
+      [[nodiscard]]
+      auto get_env() const noexcept -> scheduler_env<stopped_scheduler> {
         return {};
       }
     };
 
-    my_sender schedule() const {
+    [[nodiscard]]
+    auto schedule() const -> my_sender {
       return {};
     }
 
-    bool operator==(const stopped_scheduler&) const noexcept = default;
+    auto operator==(const stopped_scheduler&) const noexcept -> bool = default;
   };
 } // anonymous namespace

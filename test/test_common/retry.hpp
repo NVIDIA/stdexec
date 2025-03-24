@@ -59,11 +59,11 @@ namespace {
   struct _retry_receiver : stdexec::receiver_adaptor<_retry_receiver<S, R>> {
     _op<S, R>* o_;
 
-    R&& base() && noexcept {
+    auto base() && noexcept -> R&& {
       return static_cast<R&&>(o_->r_);
     }
 
-    const R& base() const & noexcept {
+    auto base() const & noexcept -> const R& {
       return o_->r_;
     }
 
@@ -108,8 +108,8 @@ namespace {
       }
     }
 
-    friend void tag_invoke(stdexec::start_t, _op& o) noexcept {
-      stdexec::start(*o.o_);
+    void start() & noexcept {
+      stdexec::start(*o_);
     }
   };
 
@@ -138,7 +138,7 @@ namespace {
     }
 
     template <stdexec::receiver R>
-    friend _op<S, R> tag_invoke(stdexec::connect_t, _retry_sender&& self, R r) {
+    friend auto tag_invoke(stdexec::connect_t, _retry_sender&& self, R r) -> _op<S, R> {
       return {static_cast<S&&>(self.s_), static_cast<R&&>(r)};
     }
 
@@ -148,7 +148,7 @@ namespace {
   };
 
   template <stdexec::sender S>
-  stdexec::sender auto retry(S s) {
+  auto retry(S s) -> stdexec::sender auto {
     return _retry_sender{static_cast<S&&>(s)};
   }
 } // namespace

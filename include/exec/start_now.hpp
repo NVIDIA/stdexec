@@ -27,6 +27,9 @@
 
 #include <atomic>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+
 namespace exec {
   /////////////////////////////////////////////////////////////////////////////
   // NOT TO SPEC: __start_now
@@ -98,7 +101,7 @@ namespace exec {
         }
 
         // Forward all receiever queries.
-        decltype(auto) get_env() const noexcept {
+        auto get_env() const noexcept -> decltype(auto) {
           return (__stg_->__env_);
         }
       };
@@ -123,7 +126,7 @@ namespace exec {
         , __rcvr_(static_cast<_Receiver&&>(__rcvr)) {
       }
 
-      void start() noexcept {
+      void start() & noexcept {
         const __joiner* expected = &__empty_joiner_;
         if (!__stg_->__joiner_.compare_exchange_strong(expected, this)) {
           join();
@@ -174,18 +177,19 @@ namespace exec {
      public:
       __storage(_Env&& __env, _AsyncScope& __scope, stdexec::__cvref_t<_SenderIds>&&... __sndr)
         : __storage_base<_EnvId>(static_cast<_Env&&>(__env), sizeof...(__sndr))
-        , __op_state_{{stdexec::connect(
+        , __op_state_{stdexec::connect(
             __scope.nest(static_cast<stdexec::__cvref_t<_SenderIds>&&>(__sndr)),
-            __receiver_t{this})}...} {
+            __receiver_t{this})...} {
         // Start all of the child operations
         __op_state_.for_each(stdexec::start, __op_state_);
       }
 
-      bool request_stop() noexcept {
+      auto request_stop() noexcept -> bool {
         return this->__source_.request_stop();
       }
 
-      stdexec::inplace_stop_token get_token() const noexcept {
+      [[nodiscard]]
+      auto get_token() const noexcept -> stdexec::inplace_stop_token {
         return this->__source_.get_token();
       }
 
@@ -250,3 +254,5 @@ namespace exec {
   using __start_now_::start_now_t;
   inline constexpr start_now_t start_now{};
 } // namespace exec
+
+STDEXEC_PRAGMA_POP()

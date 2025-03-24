@@ -29,7 +29,7 @@ namespace exec {
         using __return_sigs = completion_signatures<set_value_t(), set_stopped_t()>;
         using __void_sender = typename any_receiver_ref<__return_sigs>::template any_sender<>;
         using __item_sender = typename any_receiver_ref<_Sigs>::template any_sender<>;
-        __void_sender (*__fn_)(void*, __item_sender&&);
+        __void_sender (*__fn_)(void*, __item_sender&&) noexcept;
       };
 
       template <class _Rcvr>
@@ -41,7 +41,8 @@ namespace exec {
         using __item_sender = typename any_receiver_ref<_Sigs>::template any_sender<>;
 
         template <__valid_completion_signatures _Sigs>
-        constexpr __void_sender (*operator()(_Sigs*) const)(void*, __item_sender<_Sigs>&&) {
+        constexpr auto operator()(_Sigs*) const //
+          -> __void_sender (*)(void*, __item_sender<_Sigs>&&) noexcept {
           return +[](void* __rcvr, __item_sender<_Sigs>&& __sndr) noexcept -> __void_sender {
             return __void_sender{
               set_next(*static_cast<_Rcvr*>(__rcvr), static_cast<__item_sender<_Sigs>&&>(__sndr))};
@@ -67,8 +68,8 @@ namespace exec {
           template <class _Rcvr>
             requires sequence_receiver_of<_Rcvr, __item_types>
                   && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
-          STDEXEC_MEMFN_DECL(
-            auto __create_vtable)(this __mtype<__t>, __mtype<_Rcvr>) noexcept -> const __t* {
+          STDEXEC_MEMFN_DECL(auto __create_vtable)(this __mtype<__t>, __mtype<_Rcvr>) noexcept
+            -> const __t* {
             static const __t __vtable_{
               {__rcvr_next_vfun_fn<_Rcvr>{}(static_cast<_NextSigs*>(nullptr))},
               {__any_::__rcvr_vfun_fn(
@@ -182,8 +183,8 @@ namespace exec {
 
         template <class _Sender>
           requires sequence_sender_to<_Sender, __receiver_ref_t>
-        STDEXEC_MEMFN_DECL(
-          auto __create_vtable)(this __mtype<__t>, __mtype<_Sender>) noexcept -> const __t* {
+        STDEXEC_MEMFN_DECL(auto __create_vtable)(this __mtype<__t>, __mtype<_Sender>) noexcept
+          -> const __t* {
           static const __t __vtable_{
             {*__create_vtable(__mtype<__query_vtable_t>{}, __mtype<_Sender>{})},
             [](void* __object_pointer, __receiver_ref_t __receiver)

@@ -34,7 +34,7 @@ namespace {
 
   template <ex::scheduler Sched = inline_scheduler>
   inline auto _with_scheduler(Sched sched = {}) {
-    return exec::write(stdexec::prop{ex::get_scheduler, std::move(sched)});
+    return exec::write_env(stdexec::prop{ex::get_scheduler, std::move(sched)});
   }
 
   namespace {
@@ -42,12 +42,12 @@ namespace {
     // Example adapted from
     // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2300r5.html#example-async-inclusive-scan
     [[nodiscard]]
-    stdexec::sender auto async_inclusive_scan(
-      stdexec::scheduler auto sch,   // 2
-      std::span<const double> input, // 1
-      std::span<double> output,      // 1
-      double init,                   // 1
-      std::size_t tile_count)        // 3
+    auto async_inclusive_scan(
+      stdexec::scheduler auto sch,                    // 2
+      std::span<const double> input,                  // 1
+      std::span<double> output,                       // 1
+      double init,                                    // 1
+      std::size_t tile_count) -> stdexec::sender auto // 3
     {
       using namespace stdexec;
       std::size_t const tile_size = (input.size() + tile_count - 1) / tile_count;

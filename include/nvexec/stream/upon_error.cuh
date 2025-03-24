@@ -13,17 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
+#include <algorithm>
+#include <concepts>
+#include <cstddef>
 #include <type_traits>
+#include <utility>
+
+#include <cuda/std/utility>
 
 #include "common.cuh"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+namespace nvexec::_strm {
 
   namespace _upon_error {
     template <class... As, class Fun>
@@ -49,7 +58,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
        public:
         using __id = receiver_t;
 
-        constexpr static std::size_t memory_allocation_size = MemoryAllocationSize;
+        static constexpr std::size_t memory_allocation_size = MemoryAllocationSize;
 
         template <class... _Args>
         void set_value(_Args&&... __args) noexcept {
@@ -65,7 +74,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
           if constexpr (does_not_return_a_value) {
             kernel<Error&&><<<1, 1, 0, stream>>>(std::move(f_), static_cast<Error&&>(error));
-            if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
+            if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
                 status == cudaSuccess) {
               op_state_.propagate_completion_signal(stdexec::set_value);
             } else {
@@ -73,10 +82,10 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             }
           } else {
             using decayed_result_t = __decay_t<result_t>;
-            decayed_result_t* d_result = static_cast<decayed_result_t*>(op_state_.temp_storage_);
+            auto* d_result = static_cast<decayed_result_t*>(op_state_.temp_storage_);
             kernel_with_result<Error&&>
               <<<1, 1, 0, stream>>>(std::move(f_), d_result, static_cast<Error&&>(error));
-            if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError());
+            if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
                 status == cudaSuccess) {
               op_state_.defer_temp_storage_destruction(d_result);
               op_state_.propagate_completion_signal(stdexec::set_value, std::move(*d_result));
@@ -90,6 +99,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           op_state_.propagate_completion_signal(set_stopped_t());
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> env_t {
           return op_state_.make_env();
         }
@@ -184,13 +194,21 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
     };
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+
+  template <>
+  struct transform_sender_for<stdexec::upon_error_t> {
+    template <class Fn, stream_completing_sender Sender>
+    auto operator()(__ignore, Fn fun, Sender&& sndr) const {
+      using _sender_t = __t<upon_error_sender_t<__id<__decay_t<Sender>>, Fn>>;
+      return _sender_t{{}, static_cast<Sender&&>(sndr), static_cast<Fn&&>(fun)};
+    }
+  };
+} // namespace nvexec::_strm
 
 namespace stdexec::__detail {
   template <class SenderId, class Fun>
-  inline constexpr __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::upon_error_sender_t<__name_of<__t<SenderId>>, Fun>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::upon_error_sender_t<SenderId, Fun>>{};
+  inline constexpr __mconst<nvexec::_strm::upon_error_sender_t<__name_of<__t<SenderId>>, Fun>>
+    __name_of_v<nvexec::_strm::upon_error_sender_t<SenderId, Fun>>{};
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

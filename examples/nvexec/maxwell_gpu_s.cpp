@@ -18,7 +18,7 @@
 #include "maxwell/stdpar.cuh"
 #include "maxwell/cuda.cuh"
 
-int main(int argc, char *argv[]) {
+auto main(int argc, char *argv[]) -> int {
   auto params = parse_cmd(argc, argv);
 
   if (value(params, "help") || value(params, "h")) {

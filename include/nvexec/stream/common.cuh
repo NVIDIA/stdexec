@@ -13,24 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
-#include <stack>
-#include <atomic>
-#include <memory_resource>
 #include "../../stdexec/execution.hpp"
 
 #include <cuda/std/type_traits>
 #include <cuda/std/tuple>
+
 #include <optional>
 #include <type_traits>
+#include <stack>
+#include <memory_resource>
 
 #include "../detail/config.cuh"
-#include "../detail/cuda_atomic.cuh"
+#include "../detail/cuda_atomic.cuh" // IWYU pragma: keep
 #include "../detail/throw_on_cuda_error.cuh"
 #include "../detail/queue.cuh"
 #include "../detail/variant.cuh"
-#include "stdexec/__detail/__config.hpp"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
@@ -49,21 +51,21 @@ namespace nvexec {
     device
   };
 
-#if defined(__clang__) && defined(__CUDA__)
-  __host__ inline device_type get_device_type() noexcept {
+#if defined(__clang__) && defined(__CUDA__) && !defined(STDEXEC_CLANG_TIDY_INVOKED)
+  __host__ inline auto get_device_type() noexcept -> device_type {
     return device_type::host;
   }
 
-  __device__ inline device_type get_device_type() noexcept {
+  __device__ inline auto get_device_type() noexcept -> device_type {
     return device_type::device;
   }
 #else
-  __host__ __device__ inline device_type get_device_type() noexcept {
+  __host__ __device__ inline auto get_device_type() noexcept -> device_type {
     NV_IF_TARGET(NV_IS_HOST, (return device_type::host;), (return device_type::device;));
   }
 #endif
 
-  inline STDEXEC_ATTRIBUTE((host, device)) bool is_on_gpu() noexcept {
+  inline STDEXEC_ATTRIBUTE((host, device)) auto is_on_gpu() noexcept -> bool {
     return get_device_type() == device_type::device;
   }
 } // namespace nvexec
@@ -71,7 +73,9 @@ namespace nvexec {
 namespace nvexec {
   struct stream_context;
 
-  namespace STDEXEC_STREAM_DETAIL_NS {
+  struct stream_domain;
+
+  namespace _strm {
 
 #if STDEXEC_HAS_BUILTIN(__is_reference)
     template <class... Ts>
@@ -82,11 +86,20 @@ namespace nvexec {
       ((STDEXEC_IS_TRIVIALLY_COPYABLE(Ts) || std::is_reference_v<Ts>) && ...);
 #endif
 
-    inline std::pair<int, cudaError_t> get_stream_priority(stream_priority priority) {
+    // Used by stream_domain to late-customize senders for execution
+    // on the stream_scheduler.
+    template <class Tag, class... Env>
+    struct transform_sender_for;
+
+    template <class Tag>
+    struct apply_sender_for;
+
+    inline auto get_stream_priority(stream_priority priority) -> std::pair<int, cudaError_t> {
       int least{};
       int greatest{};
 
-      if (cudaError_t status = STDEXEC_DBG_ERR(cudaDeviceGetStreamPriorityRange(&least, &greatest));
+      if (cudaError_t status =
+            STDEXEC_LOG_CUDA_API(cudaDeviceGetStreamPriorityRange(&least, &greatest));
           status != cudaSuccess) {
         return std::make_pair(0, status);
       }
@@ -107,9 +120,9 @@ namespace nvexec {
      public:
       stream_pool_t() = default;
       stream_pool_t(const stream_pool_t&) = delete;
-      stream_pool_t& operator=(const stream_pool_t&) = delete;
+      auto operator=(const stream_pool_t&) -> stream_pool_t& = delete;
 
-      std::pair<cudaStream_t, cudaError_t> borrow_stream(stream_priority priority) {
+      auto borrow_stream(stream_priority priority) -> std::pair<cudaStream_t, cudaError_t> {
         std::lock_guard<std::mutex> lock(mtx_);
 
         if (streams_.empty()) {
@@ -117,7 +130,7 @@ namespace nvexec {
           cudaError_t status{cudaSuccess};
 
           if (priority == stream_priority::normal) {
-            status = STDEXEC_DBG_ERR(cudaStreamCreate(&stream));
+            status = STDEXEC_LOG_CUDA_API(cudaStreamCreate(&stream));
           } else {
             int cuda_priority{};
             std::tie(cuda_priority, status) = get_stream_priority(priority);
@@ -126,7 +139,7 @@ namespace nvexec {
               return std::make_pair(cudaStream_t{}, status);
             }
 
-            status = STDEXEC_DBG_ERR(
+            status = STDEXEC_LOG_CUDA_API(
               cudaStreamCreateWithPriority(&stream, cudaStreamDefault, cuda_priority));
           }
 
@@ -155,12 +168,12 @@ namespace nvexec {
     class stream_pools_t {
       std::array<stream_pool_t, 3> pools_;
 
-      stream_pool_t& get(stream_priority priority) {
+      auto get(stream_priority priority) -> stream_pool_t& {
         return pools_[static_cast<int>(priority)];
       }
 
      public:
-      std::pair<cudaStream_t, cudaError_t> borrow_stream(stream_priority priority) {
+      auto borrow_stream(stream_priority priority) -> std::pair<cudaStream_t, cudaError_t> {
         return get(priority).borrow_stream(priority);
       }
 
@@ -189,7 +202,7 @@ namespace nvexec {
         , priority_(priority) {
       }
 
-      std::pair<cudaStream_t, cudaError_t> borrow_stream() {
+      auto borrow_stream() -> std::pair<cudaStream_t, cudaError_t> {
         return stream_pools_->borrow_stream(priority_);
       }
 
@@ -199,6 +212,17 @@ namespace nvexec {
     };
 
     struct stream_scheduler;
+    struct multi_gpu_stream_scheduler;
+
+    template <class Sender, class Shape, class Fn>
+    struct multi_gpu_bulk_sender_t;
+
+    template <class Scheduler>
+    concept gpu_stream_scheduler =
+      scheduler<Scheduler> && derived_from<__domain_of_t<Scheduler>, stream_domain>
+      && requires(Scheduler sched) {
+           { sched.context_state_ } -> __decays_to<context_state_t>;
+         };
 
     struct stream_sender_base {
       using sender_concept = stdexec::sender_t;
@@ -206,7 +230,7 @@ namespace nvexec {
 
     struct stream_receiver_base {
       using receiver_concept = stdexec::receiver_t;
-      constexpr static std::size_t memory_allocation_size = 0;
+      static constexpr std::size_t memory_allocation_size = 0;
     };
 
     struct stream_env_base {
@@ -244,7 +268,7 @@ namespace nvexec {
 
       ~stream_provider_t() {
         if (own_stream_) {
-          cudaStream_t stream = own_stream_.value();
+          cudaStream_t stream = *own_stream_;
 
           if (!cemetery_.empty()) {
             for (auto& f: cemetery_) {
@@ -264,7 +288,7 @@ namespace nvexec {
     struct get_stream_provider_t {
       template <class Env>
         requires tag_invocable<get_stream_provider_t, const Env&>
-      stream_provider_t* operator()(const Env& env) const noexcept {
+      auto operator()(const Env& env) const noexcept -> stream_provider_t* {
         return tag_invoke(get_stream_provider_t{}, env);
       }
 
@@ -299,12 +323,12 @@ namespace nvexec {
     struct get_stream_t {
       template <class Env>
         requires __callable<get_stream_provider_t, const Env&>
-      cudaStream_t operator()(const Env& env) const noexcept {
+      auto operator()(const Env& env) const noexcept -> cudaStream_t {
         return get_stream_provider(env)->own_stream_.value();
       }
 
       STDEXEC_ATTRIBUTE((host, device)) auto operator()() const noexcept {
-        return stdexec::read(*this);
+        return stdexec::read_env(*this);
       }
 
       STDEXEC_ATTRIBUTE((host, device)) static constexpr auto query(stdexec::forwarding_query_t) noexcept -> bool {
@@ -320,12 +344,12 @@ namespace nvexec {
 
     template <class BaseEnv>
       requires __callable<get_stream_provider_t, const BaseEnv&>
-    __decay_t<BaseEnv> make_stream_env(BaseEnv&& base_env, stream_provider_t*) noexcept {
+    auto make_stream_env(BaseEnv&& base_env, stream_provider_t*) noexcept -> __decay_t<BaseEnv> {
       return static_cast<BaseEnv&&>(base_env);
     }
 
     template <class BaseEnv>
-    using stream_env = decltype(STDEXEC_STREAM_DETAIL_NS::make_stream_env(
+    using stream_env = decltype(_strm::make_stream_env(
       __declval<BaseEnv>(),
       static_cast<stream_provider_t*>(nullptr)));
 
@@ -335,7 +359,7 @@ namespace nvexec {
         prop{get_stream_provider, stream_provider}, static_cast<BaseEnv&&>(base_env));
     }
     template <class BaseEnv>
-    using terminal_stream_env = decltype(STDEXEC_STREAM_DETAIL_NS::make_terminal_stream_env(
+    using terminal_stream_env = decltype(_strm::make_terminal_stream_env(
       __declval<BaseEnv>(),
       static_cast<stream_provider_t*>(nullptr)));
 
@@ -450,7 +474,7 @@ namespace nvexec {
 
         this->free_ = [](task_base_t* t) noexcept {
           continuation_task_t& self = *static_cast<continuation_task_t*>(t);
-          STDEXEC_DBG_ERR(cudaFreeAsync(self.atom_next_, self.stream_));
+          STDEXEC_ASSERT_CUDA_API(cudaFreeAsync(self.atom_next_, self.stream_));
           self.pinned_resource_->deallocate(
             t, sizeof(continuation_task_t), std::alignment_of_v<continuation_task_t>);
         };
@@ -458,24 +482,17 @@ namespace nvexec {
         this->next_ = nullptr;
 
         constexpr std::size_t ptr_size = sizeof(this->atom_next_);
-        status_ = STDEXEC_DBG_ERR(cudaMallocAsync(&this->atom_next_, ptr_size, stream_));
+        status_ = STDEXEC_LOG_CUDA_API(cudaMallocAsync(&this->atom_next_, ptr_size, stream_));
 
         if (status_ == cudaSuccess) {
-          status_ = STDEXEC_DBG_ERR(cudaMemsetAsync(this->atom_next_, 0, ptr_size, stream_));
+          status_ = STDEXEC_LOG_CUDA_API(cudaMemsetAsync(this->atom_next_, 0, ptr_size, stream_));
         }
       }
     };
 
     template <class Env>
-      requires tag_invocable<get_stream_provider_t, const __decay_t<Env>&>
-    constexpr bool borrows_stream_h() {
-      return true;
-    }
-
-    template <class Env>
-      requires(!tag_invocable<get_stream_provider_t, const __decay_t<Env>>)
-    constexpr bool borrows_stream_h() {
-      return false;
+    constexpr auto borrows_stream_h() -> bool {
+      return __callable<get_stream_provider_t, const Env&>;
     }
 
     template <class OuterReceiverId>
@@ -499,12 +516,13 @@ namespace nvexec {
           , stream_provider_(borrows_stream, context_state) {
         }
 
-        stream_provider_t* get_stream_provider() const {
+        [[nodiscard]]
+        auto get_stream_provider() const -> stream_provider_t* {
           stream_provider_t* stream_provider{};
 
           if constexpr (borrows_stream) {
             const outer_env_t& env = get_env(rcvr_);
-            stream_provider = ::nvexec::STDEXEC_STREAM_DETAIL_NS::get_stream_provider(env);
+            stream_provider = ::nvexec::_strm::get_stream_provider(env);
           } else {
             stream_provider = &const_cast<stream_provider_t&>(stream_provider_);
           }
@@ -512,7 +530,8 @@ namespace nvexec {
           return stream_provider;
         }
 
-        cudaStream_t get_stream() const {
+        [[nodiscard]]
+        auto get_stream() const -> cudaStream_t {
           return get_stream_provider()->own_stream_.value();
         }
 
@@ -548,7 +567,7 @@ namespace nvexec {
           }
         }
 
-        env_t make_env() const noexcept {
+        auto make_env() const noexcept -> env_t {
           return make_stream_env(get_env(rcvr_), get_stream_provider());
         }
 
@@ -738,8 +757,8 @@ namespace nvexec {
         stdexec::__id<OuterReceiver>>;
 
     template <class Sender, class OuterReceiver>
-    exit_operation_state_t<Sender, OuterReceiver>
-      exit_op_state(Sender&& sndr, OuterReceiver&& rcvr, context_state_t context_state) noexcept {
+    auto exit_op_state(Sender&& sndr, OuterReceiver rcvr, context_state_t context_state) noexcept
+      -> exit_operation_state_t<Sender, OuterReceiver> {
       using ReceiverId = stdexec::__id<OuterReceiver>;
       return exit_operation_state_t<Sender, OuterReceiver>(
         static_cast<Sender&&>(sndr),
@@ -754,11 +773,7 @@ namespace nvexec {
     template <class S>
     concept stream_completing_sender = //
       sender<S> &&                     //
-      requires(const S& sndr) {
-        {
-          get_completion_scheduler<set_value_t>(get_env(sndr)).context_state_
-        } -> __decays_to<context_state_t>;
-      };
+      gpu_stream_scheduler<__result_of<get_completion_scheduler<set_value_t>, env_of_t<S>>>;
 
     template <class R>
     concept receiver_with_stream_env = //
@@ -779,11 +794,11 @@ namespace nvexec {
         stdexec::__id<OuterReceiver>>;
 
     template <stream_completing_sender Sender, class OuterReceiver, class ReceiverProvider>
-    stream_op_state_t<Sender, inner_receiver_t<ReceiverProvider, OuterReceiver>, OuterReceiver>
-      stream_op_state(
-        Sender&& sndr,
-        OuterReceiver&& out_receiver,
-        ReceiverProvider receiver_provider) {
+    auto stream_op_state(
+      Sender&& sndr,
+      OuterReceiver&& out_receiver,
+      ReceiverProvider receiver_provider)
+      -> stream_op_state_t<Sender, inner_receiver_t<ReceiverProvider, OuterReceiver>, OuterReceiver> {
       auto sch = get_completion_scheduler<set_value_t>(get_env(sndr));
       context_state_t context_state = sch.context_state_;
 
@@ -798,12 +813,12 @@ namespace nvexec {
     }
 
     template <class Sender, class OuterReceiver, class ReceiverProvider>
-    stream_op_state_t<Sender, inner_receiver_t<ReceiverProvider, OuterReceiver>, OuterReceiver>
-      stream_op_state(
-        Sender&& sndr,
-        OuterReceiver&& out_receiver,
-        ReceiverProvider receiver_provider,
-        context_state_t context_state) {
+    auto stream_op_state(
+      Sender&& sndr,
+      OuterReceiver&& out_receiver,
+      ReceiverProvider receiver_provider,
+      context_state_t context_state)
+      -> stream_op_state_t<Sender, inner_receiver_t<ReceiverProvider, OuterReceiver>, OuterReceiver> {
       return stream_op_state_t<
         Sender,
         inner_receiver_t<ReceiverProvider, OuterReceiver>,
@@ -813,9 +828,9 @@ namespace nvexec {
         receiver_provider,
         context_state);
     }
-  } // namespace STDEXEC_STREAM_DETAIL_NS
+  } // namespace _strm
 
-  inline constexpr STDEXEC_STREAM_DETAIL_NS::get_stream_t get_stream{};
+  inline constexpr _strm::get_stream_t get_stream{};
 } // namespace nvexec
 
 STDEXEC_PRAGMA_POP()

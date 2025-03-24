@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
@@ -20,22 +23,24 @@
 #include <cuda/std/bit>
 
 #include <algorithm>
+#include <cstddef>
 #include <memory_resource>
 #include <new>
-#include <type_traits>
+#include <memory>
 #include <mutex>
 #include <set>
+#include <vector>
 
 #include "config.cuh"
 #include "throw_on_cuda_error.cuh"
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+namespace nvexec::_strm {
 
   struct device_deleter {
     template <class T>
     void operator()(T* ptr) {
       // ptr->~T();
-      STDEXEC_DBG_ERR(::cudaFree(ptr));
+      STDEXEC_ASSERT_CUDA_API(::cudaFree(ptr));
     }
   };
 
@@ -43,21 +48,22 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   using device_ptr = std::unique_ptr<T, device_deleter>;
 
   template <class T, class... As>
-  device_ptr<T> make_device(cudaError_t& status, As&&... as) {
+  auto make_device(cudaError_t& status, As&&... as) -> device_ptr<T> {
     static_assert(STDEXEC_IS_TRIVIALLY_COPYABLE(T));
 
     if (status == cudaSuccess) {
       T* ptr = nullptr;
-      if (status = STDEXEC_DBG_ERR(::cudaMalloc(&ptr, sizeof(T))); status == cudaSuccess) {
+      if (status = STDEXEC_LOG_CUDA_API(::cudaMalloc(reinterpret_cast<void**>(&ptr), sizeof(T)));
+          status == cudaSuccess) {
         try {
           T h(static_cast<As&&>(as)...);
-          status = STDEXEC_DBG_ERR(::cudaMemcpy(ptr, &h, sizeof(T), cudaMemcpyHostToDevice));
+          status = STDEXEC_LOG_CUDA_API(::cudaMemcpy(ptr, &h, sizeof(T), cudaMemcpyHostToDevice));
           if (status == cudaSuccess) {
             return device_ptr<T>(ptr);
           }
         } catch (...) {
           status = cudaErrorUnknown;
-          STDEXEC_DBG_ERR(::cudaFree(ptr));
+          STDEXEC_ASSERT_CUDA_API(::cudaFree(ptr));
         }
       }
     }
@@ -67,7 +73,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   template <class T = void, class A>
     requires same_as<T, void>
-  device_ptr<__decay_t<A>> make_device(cudaError_t& status, A&& t) {
+  auto make_device(cudaError_t& status, A&& t) -> device_ptr<__decay_t<A>> {
     return make_device<__decay_t<A>>(status, static_cast<A&&>(t));
   }
 
@@ -87,7 +93,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   using host_ptr = std::unique_ptr<T, host_deleter<T>>;
 
   template <class T, class... As>
-  host_ptr<T> make_host(cudaError_t& status, std::pmr::memory_resource* resource, As&&... as) {
+  auto
+    make_host(cudaError_t& status, std::pmr::memory_resource* resource, As&&... as) -> host_ptr<T> {
     T* ptr = nullptr;
 
     if (status == cudaSuccess) {
@@ -110,19 +117,18 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   template <class T = void, class A>
     requires same_as<T, void>
-  host_ptr<__decay_t<A>>
-    make_host(cudaError_t& status, std::pmr::memory_resource* resource, A&& t) {
+  auto make_host(cudaError_t& status, std::pmr::memory_resource* resource, A&& t)
+    -> host_ptr<__decay_t<A>> {
     return make_host<__decay_t<A>>(status, resource, static_cast<A&&>(t));
   }
 
   struct pinned_resource : public std::pmr::memory_resource {
-    pinned_resource() noexcept {
-    }
+    pinned_resource() noexcept = default;
 
-    void* do_allocate(const std::size_t bytes, const std::size_t /* alignment */) override {
+    auto do_allocate(const std::size_t bytes, const std::size_t /* alignment */) -> void* override {
       void* ret;
 
-      if (cudaError_t status = STDEXEC_DBG_ERR(cudaMallocHost(&ret, bytes));
+      if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaMallocHost(&ret, bytes));
           status != cudaSuccess) {
         throw std::bad_alloc();
       }
@@ -132,43 +138,22 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     void do_deallocate(void* ptr, const std::size_t /* bytes */, const std::size_t /* alignment */)
       override {
-      STDEXEC_DBG_ERR(cudaFreeHost(ptr));
+      STDEXEC_ASSERT_CUDA_API(cudaFreeHost(ptr));
     }
 
-    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
+    [[nodiscard]]
+    auto do_is_equal(const std::pmr::memory_resource& other) const noexcept -> bool override {
       return this == &other;
     }
   };
 
   struct gpu_resource : public std::pmr::memory_resource {
-    gpu_resource() noexcept {
-    }
+    gpu_resource() noexcept = default;
 
-    void* do_allocate(const std::size_t bytes, const std::size_t /* alignment */) override {
+    auto do_allocate(const std::size_t bytes, const std::size_t /* alignment */) -> void* override {
       void* ret;
 
-      if (cudaError_t status = STDEXEC_DBG_ERR(cudaMalloc(&ret, bytes)); status != cudaSuccess) {
-        throw std::bad_alloc();
-      }
-
-      return ret;
-    }
-
-    void do_deallocate(void* ptr, const std::size_t /* bytes */, const std::size_t /* alignment */)
-      override {
-      STDEXEC_DBG_ERR(cudaFree(ptr));
-    }
-
-    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
-      return this == &other;
-    }
-  };
-
-  struct managed_resource : public std::pmr::memory_resource {
-    void* do_allocate(const std::size_t bytes, const std::size_t /* alignment */) override {
-      void* ret;
-
-      if (cudaError_t status = STDEXEC_DBG_ERR(cudaMallocManaged(&ret, bytes));
+      if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaMalloc(&ret, bytes));
           status != cudaSuccess) {
         throw std::bad_alloc();
       }
@@ -178,10 +163,34 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
     void do_deallocate(void* ptr, const std::size_t /* bytes */, const std::size_t /* alignment */)
       override {
-      STDEXEC_DBG_ERR(cudaFree(ptr));
+      STDEXEC_ASSERT_CUDA_API(cudaFree(ptr));
     }
 
-    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
+    [[nodiscard]]
+    auto do_is_equal(const std::pmr::memory_resource& other) const noexcept -> bool override {
+      return this == &other;
+    }
+  };
+
+  struct managed_resource : public std::pmr::memory_resource {
+    auto do_allocate(const std::size_t bytes, const std::size_t /* alignment */) -> void* override {
+      void* ret;
+
+      if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaMallocManaged(&ret, bytes));
+          status != cudaSuccess) {
+        throw std::bad_alloc();
+      }
+
+      return ret;
+    }
+
+    void do_deallocate(void* ptr, const std::size_t /* bytes */, const std::size_t /* alignment */)
+      override {
+      STDEXEC_ASSERT_CUDA_API(cudaFree(ptr));
+    }
+
+    [[nodiscard]]
+    auto do_is_equal(const std::pmr::memory_resource& other) const noexcept -> bool override {
       return this == &other;
     }
   };
@@ -203,34 +212,35 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     monotonic_buffer_resource(std::size_t bytes, std::pmr::memory_resource* upstream)
       : upstream(upstream)
       , space(std::max(bytes, std::size_t{2})) {
-      block_descriptor_t first_block{upstream->allocate(space, block_alignment), space};
+      block_descriptor_t first_block{
+        .ptr = upstream->allocate(space, block_alignment), .total = space};
       current_ptr = first_block.ptr;
       allocated_blocks.push_back(first_block);
     }
 
-    ~monotonic_buffer_resource() {
+    ~monotonic_buffer_resource() override {
       for (block_descriptor_t& block: allocated_blocks) {
         upstream->deallocate(block.ptr, block.total, block_alignment);
       }
     }
 
-    block_descriptor_t get_current_block() {
+    auto get_current_block() -> block_descriptor_t {
       return allocated_blocks.back();
     }
 
-    std::size_t get_next_space() {
+    auto get_next_space() -> std::size_t {
       const std::size_t last_block_size = get_current_block().total;
       return last_block_size + last_block_size / 2;
     }
 
-    void* do_allocate(const std::size_t bytes, const std::size_t alignment) override {
+    auto do_allocate(const std::size_t bytes, const std::size_t alignment) -> void* override {
       assert(alignment <= block_alignment);
       void* ptr = std::align(alignment, bytes, current_ptr, space);
 
       if (ptr == nullptr) {
         space = std::max(bytes, get_next_space());
         ptr = current_ptr = upstream->allocate(space, block_alignment);
-        allocated_blocks.push_back(block_descriptor_t{current_ptr, space});
+        allocated_blocks.push_back(block_descriptor_t{.ptr = current_ptr, .total = space});
       }
 
       current_ptr = static_cast<char*>(ptr) + bytes;
@@ -245,13 +255,14 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       const std::size_t /* alignment */) override {
     }
 
-    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
+    [[nodiscard]]
+    auto do_is_equal(const std::pmr::memory_resource& other) const noexcept -> bool override {
       return this == &other;
     }
   };
 
   struct synchronized_pool_resource : std::pmr::memory_resource {
-    constexpr static std::size_t block_alignment = 256;
+    static constexpr std::size_t block_alignment = 256;
 
     struct block_descriptor_t {
       static constexpr unsigned int min_bin = 3;
@@ -275,13 +286,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     };
 
     struct ptr_comparator_t {
-      bool operator()(const block_descriptor_t& a, const block_descriptor_t& b) const {
+      auto operator()(const block_descriptor_t& a, const block_descriptor_t& b) const -> bool {
         return a.ptr < b.ptr;
       }
     };
 
     struct size_comparator_t {
-      bool operator()(const block_descriptor_t& a, const block_descriptor_t& b) const {
+      auto operator()(const block_descriptor_t& a, const block_descriptor_t& b) const -> bool {
         return a.bytes < b.bytes;
       }
     };
@@ -301,13 +312,13 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       , live_blocks(ptr_comparator_t{}) {
     }
 
-    void* do_allocate(const std::size_t bytes, const std::size_t alignment) override {
+    auto do_allocate(const std::size_t bytes, const std::size_t alignment) -> void* override {
       assert(alignment <= block_alignment);
 
       std::lock_guard<std::mutex> lock(mutex);
 
       block_descriptor_t search_key{bytes};
-      cached_blocks_t::iterator block_itr = cached_blocks.lower_bound(search_key);
+      auto block_itr = cached_blocks.lower_bound(search_key);
 
       if ((block_itr != cached_blocks.end()) && (block_itr->bin == search_key.bin)) {
         search_key = *block_itr;
@@ -325,7 +336,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       std::lock_guard<std::mutex> lock(mutex);
 
       block_descriptor_t search_key{ptr};
-      busy_blocks_t::iterator block_itr = live_blocks.find(search_key);
+      auto block_itr = live_blocks.find(search_key);
 
       if (block_itr != live_blocks.end()) {
         search_key = *block_itr;
@@ -334,15 +345,16 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
     }
 
-    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
+    [[nodiscard]]
+    auto do_is_equal(const std::pmr::memory_resource& other) const noexcept -> bool override {
       return this == &other;
     }
 
-    ~synchronized_pool_resource() {
+    ~synchronized_pool_resource() override {
       STDEXEC_ASSERT(live_blocks.empty());
 
       while (!cached_blocks.empty()) {
-        cached_blocks_t::iterator begin = cached_blocks.begin();
+        auto begin = cached_blocks.begin();
         upstream->deallocate(begin->ptr, begin->bytes, block_alignment);
         cached_blocks.erase(begin);
       }
@@ -351,19 +363,18 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
   template <class UnderlyingResource>
   class resource_storage {
-    UnderlyingResource underlying_resource_;
+    UnderlyingResource underlying_resource_{};
     monotonic_buffer_resource monotonic_resource_;
     synchronized_pool_resource resource_;
 
    public:
     resource_storage()
-      : underlying_resource_{}
-      , monotonic_resource_{512 * 1024, &underlying_resource_}
+      : monotonic_resource_{512 * 1024, &underlying_resource_}
       , resource_{&monotonic_resource_} {
     }
 
-    std::pmr::memory_resource* get() {
+    auto get() -> std::pmr::memory_resource* {
       return &resource_;
     }
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+} // namespace nvexec::_strm

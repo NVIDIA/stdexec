@@ -45,6 +45,7 @@ namespace {
       ex::set_stopped(std::move(rcvr));
     }
 
+    [[nodiscard]]
     auto get_env() const noexcept {
       return ex::get_env(rcvr);
     }

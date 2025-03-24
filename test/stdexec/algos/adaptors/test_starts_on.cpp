@@ -21,7 +21,7 @@
 #include <test_common/type_helpers.hpp>
 #include <exec/static_thread_pool.hpp>
 
-#include <chrono>
+#include <chrono> // IWYU pragma: keep for std::chrono_literals
 
 namespace ex = stdexec;
 
@@ -190,15 +190,17 @@ namespace {
   }
 
   // Return a different sender when we invoke this custom defined starts_on implementation
-  using just_string_sender_t = decltype(ex::just(std::string{}));
-
-  auto tag_invoke(decltype(ex::starts_on), inline_scheduler, just_string_sender_t) {
-    return ex::just(std::string{"Hello, world!"});
-  }
+  struct starts_on_test_domain {
+    template <class Sender>
+    static auto transform_sender(Sender&&) {
+      return ex::just(std::string{"Hello, world!"});
+    }
+  };
 
   TEST_CASE("starts_on can be customized", "[adaptors][starts_on]") {
     // The customization will return a different value
-    auto snd = ex::starts_on(inline_scheduler{}, ex::just(std::string{"world"}));
+    basic_inline_scheduler<starts_on_test_domain> sched;
+    auto snd = ex::starts_on(sched, ex::just(std::string{"world"}));
     std::string res;
     auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
     ex::start(op);
@@ -206,18 +208,16 @@ namespace {
   }
 
   struct move_checker {
-    bool valid;
+    bool valid{true};
 
-    move_checker() noexcept
-      : valid(true) {
-    }
+    move_checker() noexcept = default;
 
     move_checker(const move_checker& other) noexcept {
       REQUIRE(other.valid);
       valid = true;
     }
 
-    move_checker& operator=(const move_checker& other) noexcept {
+    auto operator=(const move_checker& other) noexcept -> move_checker& {
       REQUIRE(other.valid);
       valid = true;
       return *this;
@@ -228,7 +228,7 @@ namespace {
       valid = true;
     }
 
-    move_checker& operator=(move_checker&& other) noexcept {
+    auto operator=(move_checker&& other) noexcept -> move_checker& {
       other.valid = false;
       valid = true;
       return *this;
@@ -241,8 +241,8 @@ namespace {
     struct oper : immovable {
       R recv_;
 
-      friend void tag_invoke(ex::start_t, oper& self) noexcept {
-        ex::set_value(static_cast<R&&>(self.recv_));
+      void start() & noexcept {
+        ex::set_value(static_cast<R&&>(recv_));
       }
     };
 
@@ -251,26 +251,28 @@ namespace {
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <typename R>
-      friend oper<R> tag_invoke(ex::connect_t, my_sender, R&& r) {
+      friend auto tag_invoke(ex::connect_t, my_sender, R&& r) -> oper<R> {
         return {{}, static_cast<R&&>(r)};
       }
 
+      [[nodiscard]]
       auto get_env() const noexcept -> scheduler_env<move_checking_inline_scheduler> {
         return {};
       }
     };
 
-    my_sender schedule() const noexcept {
+    [[nodiscard]]
+    auto schedule() const noexcept -> my_sender {
       return {};
     }
 
-    friend bool
-      operator==(move_checking_inline_scheduler, move_checking_inline_scheduler) noexcept {
+    friend auto
+      operator==(move_checking_inline_scheduler, move_checking_inline_scheduler) noexcept -> bool {
       return true;
     }
 
-    friend bool
-      operator!=(move_checking_inline_scheduler, move_checking_inline_scheduler) noexcept {
+    friend auto
+      operator!=(move_checking_inline_scheduler, move_checking_inline_scheduler) noexcept -> bool {
       return false;
     }
 

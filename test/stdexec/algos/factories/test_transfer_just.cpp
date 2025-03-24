@@ -185,13 +185,20 @@ namespace {
   }
 
   // Modify the value when we invoke this custom defined transfer_just implementation
-  auto tag_invoke(decltype(ex::transfer_just), inline_scheduler sched, std::string value) {
-    return ex::continues_on(ex::just("Hello, " + value), sched);
-  }
+  struct transfer_just_test_domain {
+    template <class Sender>
+      requires ex::same_as<ex::tag_of_t<Sender>, ex::transfer_just_t>
+    static auto transform_sender(Sender&& sndr) {
+      auto&& [tag, data] = sndr;
+      auto [sched, value] = data;
+      return ex::continues_on(ex::just("Hello, " + value), sched);
+    }
+  };
 
   TEST_CASE("transfer_just can be customized", "[factories][transfer_just]") {
     // The customization will alter the value passed in
-    auto snd = ex::transfer_just(inline_scheduler{}, std::string{"world"});
+    basic_inline_scheduler<transfer_just_test_domain> sched;
+    auto snd = ex::transfer_just(sched, std::string{"world"});
     std::string res;
     auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
     ex::start(op);

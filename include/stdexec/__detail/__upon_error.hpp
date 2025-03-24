@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 #include "__basic_sender.hpp"
 #include "__diagnostics.hpp"
@@ -58,16 +58,6 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Fun __fun) const -> __binder_back<upon_error_t, _Fun> {
         return {{static_cast<_Fun&&>(__fun)}, {}, {}};
       }
-
-      using _Sender = __1;
-      using _Fun = __0;
-      using __legacy_customizations_t = __types<
-        tag_invoke_t(
-          upon_error_t,
-          get_completion_scheduler_t<set_value_t>(get_env_t(_Sender&)),
-          _Sender,
-          _Fun),
-        tag_invoke_t(upon_error_t, _Sender, _Fun)>;
     };
 
     struct __upon_error_impl : __sexpr_defaults {

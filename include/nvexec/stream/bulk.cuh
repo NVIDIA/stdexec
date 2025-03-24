@@ -13,18 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
-#include <type_traits>
+#include <concepts>
+#include <memory>
+#include <utility>
 
 #include "common.cuh"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+#if defined(STDEXEC_CLANGD_INVOKED) && STDEXEC_CLANG() && STDEXEC_CUDA()
+// clangd doesn't understand CUDA's new/delete operators
+__host__ auto operator new[](std::size_t) -> void*;
+#endif
 
+namespace nvexec::_strm {
   namespace _bulk {
     template <int BlockThreads, class... As, std::integral Shape, class Fun>
     __launch_bounds__(BlockThreads) __global__ void kernel(Shape shape, Fun fn, As... as) {
@@ -63,7 +72,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
               <<<grid_blocks, block_threads, 0, stream>>>(shape_, std::move(f_), as...);
           }
 
-          if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
+          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
+              status == cudaSuccess) {
             op_state.propagate_completion_signal(stdexec::set_value, static_cast<As&&>(as)...);
           } else {
             op_state.propagate_completion_signal(stdexec::set_error, std::move(status));
@@ -79,6 +89,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           op_state_.propagate_completion_signal(set_stopped_t());
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> Env {
           return op_state_.make_env();
         }
@@ -167,8 +178,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
 
         operation_t<CvrefSenderId, ReceiverId, Shape, Fun>& op_state_;
 
-        static std::pair<Shape, Shape>
-          even_share(Shape n, std::size_t rank, std::size_t size) noexcept {
+        static auto even_share(Shape n, std::size_t rank, std::size_t size) noexcept //
+          -> std::pair<Shape, Shape> {
           const auto avg_per_thread = n / size;
           const auto n_big_share = avg_per_thread + 1;
           const auto big_shares = n % size;
@@ -231,7 +242,8 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
             }
           }
 
-          if (cudaError_t status = STDEXEC_DBG_ERR(cudaPeekAtLastError()); status == cudaSuccess) {
+          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
+              status == cudaSuccess) {
             op_state_.propagate_completion_signal(stdexec::set_value, static_cast<As&&>(as)...);
           } else {
             op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
@@ -247,6 +259,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           op_state_.propagate_completion_signal(set_stopped_t());
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> env_of_t<Receiver> {
           return stdexec::get_env(op_state_.rcvr_);
         }
@@ -293,11 +306,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
         , ready_to_complete_(new cudaEvent_t[num_devices_]) {
         // TODO Manage errors
         cudaGetDevice(&current_device_);
-        cudaEventCreate(&ready_to_launch_, cudaEventDisableTiming);
+        cudaEventCreateWithFlags(&ready_to_launch_, cudaEventDisableTiming);
         for (int dev = 0; dev < num_devices_; dev++) {
           cudaSetDevice(dev);
           cudaStreamCreate(streams_.get() + dev);
-          cudaEventCreate(ready_to_complete_.get() + dev, cudaEventDisableTiming);
+          cudaEventCreateWithFlags(ready_to_complete_.get() + dev, cudaEventDisableTiming);
         }
         cudaSetDevice(current_device_);
       }
@@ -323,10 +336,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     };
   } // namespace multi_gpu_bulk
 
-  template <class SenderId, std::integral Shape, class Fun>
+  template <class SenderId, class Shape, class Fun>
   struct multi_gpu_bulk_sender_t {
     using sender_concept = stdexec::sender_t;
     using Sender = stdexec::__t<SenderId>;
+    static_assert(std::integral<Shape>);
 
     struct __t : stream_sender_base {
       using __id = multi_gpu_bulk_sender_t;
@@ -374,18 +388,38 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       }
     };
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+
+  template <>
+  struct transform_sender_for<stdexec::bulk_t> {
+    template <class Data, stream_completing_sender Sender>
+    auto operator()(__ignore, Data data, Sender&& sndr) const {
+      auto [shape, fun] = static_cast<Data&&>(data);
+      using Shape = decltype(shape);
+      using Fn = decltype(fun);
+      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
+      if constexpr (same_as<decltype(sched), stream_scheduler>) {
+        // Use the bulk sender for a single GPU
+        using _sender_t = __t<bulk_sender_t<__id<__decay_t<Sender>>, Shape, Fn>>;
+        return _sender_t{{}, static_cast<Sender&&>(sndr), shape, static_cast<Fn&&>(fun)};
+      } else {
+        // Use the bulk sender for a multiple GPUs
+        using _sender_t = __t<multi_gpu_bulk_sender_t<__id<__decay_t<Sender>>, Shape, Fn>>;
+        return _sender_t{
+          {}, sched.num_devices_, static_cast<Sender&&>(sndr), shape, static_cast<Fn&&>(fun)};
+      }
+    }
+  };
+} // namespace nvexec::_strm
 
 namespace stdexec::__detail {
   template <class SenderId, class Shape, class Fun>
-  inline constexpr __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::bulk_sender_t<__name_of<__t<SenderId>>, Shape, Fun>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::bulk_sender_t<SenderId, Shape, Fun>>{};
+  inline constexpr __mconst<nvexec::_strm::bulk_sender_t<__name_of<__t<SenderId>>, Shape, Fun>>
+    __name_of_v<nvexec::_strm::bulk_sender_t<SenderId, Shape, Fun>>{};
 
   template <class SenderId, class Shape, class Fun>
   inline constexpr __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::multi_gpu_bulk_sender_t<__name_of<__t<SenderId>>, Shape, Fun>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::multi_gpu_bulk_sender_t<SenderId, Shape, Fun>>{};
+    nvexec::_strm::multi_gpu_bulk_sender_t<__name_of<__t<SenderId>>, Shape, Fun>>
+    __name_of_v<nvexec::_strm::multi_gpu_bulk_sender_t<SenderId, Shape, Fun>>{};
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

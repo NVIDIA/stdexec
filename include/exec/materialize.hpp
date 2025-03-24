@@ -115,9 +115,9 @@ namespace exec {
 
     struct __materialize_t {
       template <class _Sender>
-      __t<__sender<__id<__decay_t<_Sender>>>>
-        operator()(_Sender&& __sender) const noexcept(__nothrow_decay_copyable<_Sender>) {
-        return {static_cast<_Sender&&>(__sender)};
+      auto operator()(_Sender&& __sndr) const noexcept(__nothrow_decay_copyable<_Sender>)
+        -> __t<__sender<__id<__decay_t<_Sender>>>> {
+        return {static_cast<_Sender&&>(__sndr)};
       }
 
       STDEXEC_ATTRIBUTE((always_inline)) auto operator()() const noexcept -> __binder_back<__materialize_t> {

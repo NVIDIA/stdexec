@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
 #include "__concepts.hpp"
@@ -44,12 +44,17 @@ namespace stdexec {
   // [execution.senders.consumers.sync_wait_with_variant]
   namespace __sync_wait {
     struct __env {
+      using __t = __env;
+      using __id = __env;
+
       run_loop* __loop_ = nullptr;
 
+      [[nodiscard]]
       auto query(get_scheduler_t) const noexcept -> run_loop::__scheduler {
         return __loop_->get_scheduler();
       }
 
+      [[nodiscard]]
       auto query(get_delegation_scheduler_t) const noexcept -> run_loop::__scheduler {
         return __loop_->get_scheduler();
       }
@@ -112,6 +117,7 @@ namespace stdexec {
           __state_->__loop_.finish();
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> __env {
           return __env{&__state_->__loop_};
         }
@@ -210,8 +216,8 @@ namespace stdexec {
         requires __valid_sync_wait_argument<_Sender>
               && __has_implementation_for<sync_wait_t, __early_domain_of_t<_Sender>, _Sender>
       auto operator()(_Sender&& __sndr) const -> std::optional<__value_tuple_for_t<_Sender>> {
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::apply_sender(__domain, *this, static_cast<_Sender&&>(__sndr));
+        using _Domain = __late_domain_of_t<_Sender, __env>;
+        return stdexec::apply_sender(_Domain(), *this, static_cast<_Sender&&>(__sndr));
       }
 
 #if STDEXEC_EDG()
@@ -220,15 +226,6 @@ namespace stdexec {
       auto operator()(_Sender&&, [[maybe_unused]] _Error __diagnostic = {}) const
         -> std::optional<std::tuple<int>> = delete;
 #endif
-
-      using _Sender = __0;
-      using __legacy_customizations_t = __types<
-        // For legacy reasons:
-        tag_invoke_t(
-          sync_wait_t,
-          get_completion_scheduler_t<set_value_t>(get_env_t(const _Sender&)),
-          _Sender),
-        tag_invoke_t(sync_wait_t, _Sender)>;
 
       // clang-format off
       /// @brief Synchronously wait for the result of a sender, blocking the
@@ -299,8 +296,8 @@ namespace stdexec {
         using __variant_t = typename __result_t::value_type;
         static_assert(__is_instance_of<__variant_t, std::variant>);
 
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::apply_sender(__domain, *this, static_cast<_Sender&&>(__sndr));
+        using _Domain = __late_domain_of_t<_Sender, __env>;
+        return stdexec::apply_sender(_Domain(), *this, static_cast<_Sender&&>(__sndr));
       }
 
 #if STDEXEC_EDG()
@@ -310,15 +307,6 @@ namespace stdexec {
       auto operator()(_Sender&&, [[maybe_unused]] _Error __diagnostic = {}) const
         -> std::optional<std::tuple<std::variant<std::tuple<>>>> = delete;
 #endif
-
-      using _Sender = __0;
-      using __legacy_customizations_t = __types<
-        // For legacy reasons:
-        tag_invoke_t(
-          sync_wait_with_variant_t,
-          get_completion_scheduler_t<set_value_t>(get_env_t(const _Sender&)),
-          _Sender),
-        tag_invoke_t(sync_wait_with_variant_t, _Sender)>;
 
       template <class _Sender>
         requires __callable<sync_wait_t, __result_of<into_variant, _Sender>>

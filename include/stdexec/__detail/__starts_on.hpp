@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
 #include "__concepts.hpp"
@@ -26,7 +26,6 @@
 #include "__meta.hpp"
 #include "__schedulers.hpp"
 #include "__senders_core.hpp"
-#include "__tag_invoke.hpp"
 #include "__transform_sender.hpp"
 #include "__utility.hpp"
 
@@ -37,7 +36,7 @@ namespace stdexec {
     struct __always {
       _Ty __val_;
 
-      auto operator()() noexcept -> _Ty {
+      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto operator()() noexcept(__nothrow_constructible_from<_Ty, _Ty>) -> _Ty {
         return static_cast<_Ty&&>(__val_);
       }
     };
@@ -50,10 +49,6 @@ namespace stdexec {
   // [execution.senders.adaptors.starts_on]
   namespace __starts_on_ns {
     struct starts_on_t {
-      using _Sender = __1;
-      using _Scheduler = __0;
-      using __legacy_customizations_t = __types<tag_invoke_t(starts_on_t, _Scheduler, _Sender)>;
-
       template <scheduler _Scheduler, sender _Sender>
       auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto {
         auto __domain = query_or(get_domain, __sched, default_domain());

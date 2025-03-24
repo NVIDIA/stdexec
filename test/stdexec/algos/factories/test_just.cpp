@@ -84,7 +84,8 @@ namespace {
     // Check received value
     std::string res;
     typecat cat{typecat::undefined};
-    auto op = ex::connect(std::move(snd), typecat_receiver<std::string>{&res, &cat});
+    auto op =
+      ex::connect(std::move(snd), typecat_receiver<std::string>{.value_ = &res, .cat_ = &cat});
     ex::start(op);
     CHECK(res == "hello");
     CHECK(cat == typecat::rvalref);
@@ -100,7 +101,8 @@ namespace {
     // Check received value
     std::string res;
     typecat cat{typecat::undefined};
-    auto op = ex::connect(std::move(snd), typecat_receiver<std::string>{&res, &cat});
+    auto op =
+      ex::connect(std::move(snd), typecat_receiver<std::string>{.value_ = &res, .cat_ = &cat});
     ex::start(op);
     CHECK(res == original);
     CHECK(cat == typecat::rvalref);
@@ -116,7 +118,8 @@ namespace {
     // Check received value
     std::string res;
     typecat cat{typecat::undefined};
-    auto op = ex::connect(std::move(snd), typecat_receiver<std::string>{&res, &cat});
+    auto op =
+      ex::connect(std::move(snd), typecat_receiver<std::string>{.value_ = &res, .cat_ = &cat});
     ex::start(op);
     CHECK(res == original);
     CHECK(cat == typecat::rvalref);

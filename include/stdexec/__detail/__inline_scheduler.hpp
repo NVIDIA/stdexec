@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 #include "__basic_sender.hpp"
 #include "__cpo.hpp"
@@ -33,11 +33,11 @@ namespace stdexec {
       using __id = __scheduler;
 
       template <class _Tag = __schedule_t>
-      STDEXEC_ATTRIBUTE((host, device))
-      STDEXEC_MEMFN_DECL(auto schedule)(this __scheduler) {
+      STDEXEC_ATTRIBUTE((host, device)) STDEXEC_MEMFN_DECL(auto schedule)(this __scheduler) {
         return __make_sexpr<_Tag>();
       }
 
+      [[nodiscard]]
       auto query(get_forward_progress_guarantee_t) const noexcept -> forward_progress_guarantee {
         return forward_progress_guarantee::weakly_parallel;
       }
@@ -46,10 +46,11 @@ namespace stdexec {
     };
 
     struct __env {
-      static constexpr bool query(__is_scheduler_affine_t) noexcept {
+      static constexpr auto query(__is_scheduler_affine_t) noexcept -> bool {
         return true;
       }
 
+      [[nodiscard]]
       constexpr auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> __scheduler {
         return {};
       }

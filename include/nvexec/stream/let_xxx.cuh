@@ -13,17 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
-#include <type_traits>
+#include <algorithm>
+#include <cstddef>
+#include <utility>
+
+#include <cuda/std/utility>
 
 #include "common.cuh"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
+namespace nvexec::_strm {
   namespace let_xxx {
     template <class... As, class Fun, class ResultSenderT>
     __launch_bounds__(1) __global__
@@ -100,7 +107,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       struct __t : public stream_receiver_base {
         using __id = __receiver_;
 
-        constexpr static std::size_t memory_allocation_size =
+        static constexpr std::size_t memory_allocation_size =
           __v<__max_sender_size<_Sender, _PropagateReceiver, _Fun, _Let>>;
 
         template <__one_of<_Let> _Tag, class... _As>
@@ -111,12 +118,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
           using op_state_t = __minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
 
           cudaStream_t stream = __op_state_->get_stream();
-          result_sender_t* result_sender =
-            static_cast<result_sender_t*>(__op_state_->temp_storage_);
+          auto* result_sender = static_cast<result_sender_t*>(__op_state_->temp_storage_);
           kernel_with_result<_As&&...><<<1, 1, 0, stream>>>(
             std::move(__op_state_->__fun_), result_sender, static_cast<_As&&>(__as)...);
 
-          if (cudaError_t status = STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
+          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(stream));
               status == cudaSuccess) {
             __op_state_->defer_temp_storage_destruction(result_sender);
             auto& __op = __op_state_->__op_state3_.template emplace<op_state_t>(__emplace_from{[&] {
@@ -265,13 +271,32 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
       _Fun __fun_;
     };
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS
+
+  template <class Set>
+  struct _transform_let_xxx_sender {
+    template <class Fun, stream_completing_sender Sender>
+    auto operator()(__ignore, Fun fn, Sender&& sndr) const {
+      using __sender_t = __t<let_sender_t<__id<__decay_t<Sender>>, Fun, Set>>;
+      return __sender_t{{}, static_cast<Sender&&>(sndr), static_cast<Fun&&>(fn)};
+    }
+  };
+
+  template <>
+  struct transform_sender_for<stdexec::let_value_t> : _transform_let_xxx_sender<set_value_t> { };
+
+  template <>
+  struct transform_sender_for<stdexec::let_error_t> : _transform_let_xxx_sender<set_error_t> { };
+
+  template <>
+  struct transform_sender_for<stdexec::let_stopped_t>
+    : _transform_let_xxx_sender<set_stopped_t> { };
+
+} // namespace nvexec::_strm
 
 namespace stdexec::__detail {
   template <class SenderId, class Fun, class Set>
-  inline constexpr __mconst<
-    nvexec::STDEXEC_STREAM_DETAIL_NS::let_sender_t<__name_of<__t<SenderId>>, Fun, Set>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::let_sender_t<SenderId, Fun, Set>>{};
+  inline constexpr __mconst<nvexec::_strm::let_sender_t<__name_of<__t<SenderId>>, Fun, Set>>
+    __name_of_v<nvexec::_strm::let_sender_t<SenderId, Fun, Set>>{};
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

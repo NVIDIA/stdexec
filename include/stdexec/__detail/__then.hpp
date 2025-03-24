@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 #include "__basic_sender.hpp"
 #include "__diagnostics.hpp"
@@ -56,19 +56,16 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Fun __fun) const -> __binder_back<then_t, _Fun> {
         return {{static_cast<_Fun&&>(__fun)}, {}, {}};
       }
-
-      using _Sender = __1;
-      using _Fun = __0;
-      using __legacy_customizations_t = __types<
-        tag_invoke_t(
-          then_t,
-          get_completion_scheduler_t<set_value_t>(get_env_t(_Sender&)),
-          _Sender,
-          _Fun),
-        tag_invoke_t(then_t, _Sender, _Fun)>;
     };
 
     struct __then_impl : __sexpr_defaults {
+      static constexpr auto get_attrs = //
+        []<class _Child>(__ignore, const _Child& __child) noexcept {
+          return __env::__join(
+            prop{__is_scheduler_affine_t{}, __mbool<__is_scheduler_affine<_Child>>{}},
+            stdexec::get_env(__child));
+        };
+
       static constexpr auto get_completion_signatures = //
         []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
         -> __completions_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...> {

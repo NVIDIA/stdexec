@@ -5,47 +5,34 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "C++ Tests (lldb)",
-            "type": "lldb",
+            "name": "C++ Current Target (lldb-dap)",
+            "type": "lldb-dap",
             "request": "launch",
-            "stdio": null,
             "stopOnEntry": false,
-            "terminal": "console",
-            "console": "internalConsole",
-            "sourceLanguages": ["cpp", "cuda"],
-            "internalConsoleOptions": "neverOpen",
-            "cwd": "${command:cmake.buildDirectory}",
-            "relativePathBase": "${command:cmake.buildDirectory}",
-            "program": "${command:cmake.buildDirectory}/${input:CXX_TEST_SUITE}",
-            "initCommands": ["settings set target.disable-aslr false"],
-            "args": ["-v", "normal", "${input:CXX_TEST_TAGS}"],
-        },
-        {
-            "name": "CUDA Tests (cuda-gdb)",
-            "type": "cuda-gdb",
-            "request": "launch",
-            "stopAtEntry": false,
-            "breakOnLaunch": false,
-            "internalConsoleOptions": "neverOpen",
-            "program": "${command:cmake.buildDirectory}/${input:CUDA_TEST_SUITE}",
-            "cwd": "${command:cmake.buildDirectory}",
-            "args": "-v normal ${input:CUDA_TEST_TAGS}",
-        },
-        {
-            "name": "C++ Current Target (lldb)",
-            "type": "lldb",
-            "request": "launch",
-            "stdio": null,
-            "stopOnEntry": false,
-            "terminal": "console",
-            "console": "internalConsole",
-            "sourceLanguages": ["cpp", "cuda"],
-            "internalConsoleOptions": "neverOpen",
+            "internalConsoleOptions": "openOnFirstSessionStart",
             "cwd": "${command:cmake.launchTargetDirectory}",
-            "relativePathBase": "${command:cmake.launchTargetDirectory}",
             "program": "${command:cmake.launchTargetPath}",
-            "initCommands": ["settings set target.disable-aslr false"],
+            "initCommands": [
+                "settings set target.disable-aslr false"
+            ],
             "args": "${input:CXX_PROGRAM_ARGS}",
+        },
+        {
+            "name": "C++ Tests (lldb-dap)",
+            "type": "lldb-dap",
+            "request": "launch",
+            "stopOnEntry": false,
+            "internalConsoleOptions": "openOnFirstSessionStart",
+            "cwd": "${command:cmake.buildDirectory}",
+            "program": "${command:cmake.buildDirectory}/${input:CXX_TEST_SUITE}",
+            "initCommands": [
+                "settings set target.disable-aslr false"
+            ],
+            "args": [
+                "-v",
+                "normal",
+                "${input:CXX_TEST_TAGS}"
+            ],
         },
         {
             "name": "CUDA Current Target (cuda-gdb)",
@@ -53,13 +40,26 @@
             "request": "launch",
             "stopAtEntry": false,
             "breakOnLaunch": false,
-            "internalConsoleOptions": "neverOpen",
+            "internalConsoleOptions": "openOnFirstSessionStart",
             "program": "${command:cmake.launchTargetPath}",
             "cwd": "${command:cmake.launchTargetDirectory}",
             "args": "${input:CXX_PROGRAM_ARGS}",
         },
+        {
+            "name": "CUDA Tests (cuda-gdb)",
+            "type": "cuda-gdb",
+            "request": "launch",
+            "stopAtEntry": false,
+            "breakOnLaunch": false,
+            "internalConsoleOptions": "openOnSessionStart",
+            "program": "${command:cmake.buildDirectory}/${input:CUDA_TEST_SUITE}",
+            "cwd": "${command:cmake.buildDirectory}",
+            "args": "-v normal ${input:CUDA_TEST_TAGS}",
+        },
     ],
     "inputs": [
+        // These require the Tasks Shell Input extension:
+        // https://marketplace.visualstudio.com/items?itemName=augustocdias.tasks-shell-input
         {
             "id": "CXX_PROGRAM_ARGS",
             "type": "promptString",

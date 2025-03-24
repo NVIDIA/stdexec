@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
@@ -206,5 +206,12 @@ namespace stdexec {
         stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
       }
     }
+  }
+
+  template <class _Tag, class _Receiver>
+  auto __mk_completion_fn(_Tag, _Receiver& __rcvr) noexcept {
+    return [&]<class... _Args>(_Args&&... __args) noexcept {
+      _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
+    };
   }
 } // namespace stdexec

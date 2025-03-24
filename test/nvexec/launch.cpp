@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <algorithm>
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
@@ -32,16 +33,16 @@ namespace ex = stdexec;
 using nvexec::is_on_gpu;
 
 namespace { namespace {
-  constexpr std::size_t N = 2 * 1024;
+  constexpr std::size_t N = 2ul * 1024;
   constexpr std::size_t THREAD_BLOCK_SIZE = 128u;
   constexpr std::size_t NUM_BLOCKS = (N + THREAD_BLOCK_SIZE - 1) / THREAD_BLOCK_SIZE;
 
 #define scaling 2
 
-  int bench() {
+  auto bench() -> int {
     std::vector<int> input(N, 0);
     std::iota(input.begin(), input.end(), 1);
-    std::transform(input.begin(), input.end(), input.begin(), [](int i) { return i * scaling; });
+    std::ranges::transform(input, input.begin(), [](int i) { return i * scaling; });
     return std::accumulate(input.begin(), input.end(), 0);
   }
 
@@ -59,9 +60,9 @@ namespace { namespace {
 
     auto snd = stdexec::transfer_just(stream.get_scheduler(), first, last)
              | nvexec::launch(                    //
-                 {NUM_BLOCKS, THREAD_BLOCK_SIZE}, //
+                 {.grid_size=NUM_BLOCKS, .block_size=THREAD_BLOCK_SIZE}, //
                  [flags](cudaStream_t stm, int* first, int* last) -> void {
-                   const int32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+                   const size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
                    const ptrdiff_t size = last - first;
 
                    // this should be executing on the GPU

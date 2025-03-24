@@ -15,10 +15,18 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 namespace stdexec {
   namespace __detail {
+    // Accessor for the "data" field of a sender
+    struct __get_data {
+      template <class _Data>
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(__ignore, _Data&& __data, auto&&...) const noexcept -> _Data&& {
+        return static_cast<_Data&&>(__data);
+      }
+    };
+
     // A function object that is to senders what std::apply is to tuples:
     struct __sexpr_apply_t {
       template <class _Sender, class _ApplyFn>

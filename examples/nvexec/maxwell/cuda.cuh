@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "common.cuh"
@@ -52,7 +55,7 @@ void run_cuda(
   cudaStreamCreate(&stream);
 
   kernel<block_threads><<<grid_blocks, block_threads, 0, stream>>>(cells, initializer);
-  STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
+  STDEXEC_TRY_CUDA_API(cudaStreamSynchronize(stream));
 
   report_performance(grid.cells, n_iterations, method, [&]() {
     for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
@@ -60,7 +63,7 @@ void run_cuda(
       kernel<block_threads><<<grid_blocks, block_threads, 0, stream>>>(cells, e_updater);
     }
     writer(false);
-    STDEXEC_DBG_ERR(cudaStreamSynchronize(stream));
+    STDEXEC_TRY_CUDA_API(cudaStreamSynchronize(stream));
   });
 
   cudaStreamDestroy(stream);

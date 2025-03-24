@@ -63,8 +63,8 @@ namespace {
   struct oper : immovable {
     R recv_;
 
-    friend void tag_invoke(ex::start_t, oper& self) noexcept {
-      ex::set_value(static_cast<R&&>(self.recv_), 0);
+    void start() & noexcept {
+      ex::set_value(static_cast<R&&>(recv_), 0);
     }
   };
 
@@ -86,7 +86,7 @@ namespace {
       ex::set_error_t(Error3)>;
 
     template <typename R>
-    friend oper<R> tag_invoke(ex::connect_t, many_error_sender, R&& r) {
+    friend auto tag_invoke(ex::connect_t, many_error_sender, R&& r) -> oper<R> {
       return {{}, static_cast<R&&>(r)};
     }
   };

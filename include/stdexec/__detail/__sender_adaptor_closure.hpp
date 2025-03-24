@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp" // IWYU pragma: keep
+#include "__execution_fwd.hpp"
 
 #include "__concepts.hpp"
 #include "__senders_core.hpp"
@@ -52,15 +52,16 @@ namespace stdexec {
 
       template <sender _Sender>
         requires __callable<_T0, _Sender> && __callable<_T1, __call_result_t<_T0, _Sender>>
-      STDEXEC_ATTRIBUTE((always_inline)) __call_result_t<_T1, __call_result_t<_T0, _Sender>> operator()(_Sender&& __sndr) && {
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Sender&& __sndr) && //
+        -> __call_result_t<_T1, __call_result_t<_T0, _Sender>> {
         return static_cast<_T1&&>(__t1_)(static_cast<_T0&&>(__t0_)(static_cast<_Sender&&>(__sndr)));
       }
 
       template <sender _Sender>
         requires __callable<const _T0&, _Sender>
               && __callable<const _T1&, __call_result_t<const _T0&, _Sender>>
-      STDEXEC_ATTRIBUTE((always_inline)) __call_result_t<_T1, __call_result_t<_T0, _Sender>>
-        operator()(_Sender&& __sndr) const & {
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Sender&& __sndr) const & //
+        -> __call_result_t<const _T1&, __call_result_t<const _T0&, _Sender>> {
         return __t1_(__t0_(static_cast<_Sender&&>(__sndr)));
       }
     };
@@ -69,12 +70,14 @@ namespace stdexec {
     struct sender_adaptor_closure { };
 
     template <sender _Sender, __sender_adaptor_closure_for<_Sender> _Closure>
-    STDEXEC_ATTRIBUTE((always_inline)) __call_result_t<_Closure, _Sender> operator|(_Sender&& __sndr, _Closure&& __clsur) {
+    STDEXEC_ATTRIBUTE((always_inline)) auto operator|(_Sender&& __sndr, _Closure&& __clsur) //
+      -> __call_result_t<_Closure, _Sender> {
       return static_cast<_Closure&&>(__clsur)(static_cast<_Sender&&>(__sndr));
     }
 
     template <__sender_adaptor_closure _T0, __sender_adaptor_closure _T1>
-    STDEXEC_ATTRIBUTE((always_inline)) __compose<__decay_t<_T0>, __decay_t<_T1>> operator|(_T0&& __t0, _T1&& __t1) {
+    STDEXEC_ATTRIBUTE((always_inline)) auto operator|(_T0&& __t0, _T1&& __t1) //
+      -> __compose<__decay_t<_T0>, __decay_t<_T1>> {
       return {{}, static_cast<_T0&&>(__t0), static_cast<_T1&&>(__t1)};
     }
 

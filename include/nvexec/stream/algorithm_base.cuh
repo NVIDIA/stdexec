@@ -13,20 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// clang-format Language: Cpp
+
 #pragma once
 
 #include "../../stdexec/execution.hpp"
 #include "../../stdexec/__detail/__ranges.hpp"
-#include <type_traits>
+#include <algorithm>
+#include <cstddef>
 
 #include <cuda/std/type_traits>
 
 #include <cub/device/device_reduce.cuh>
 
 #include "common.cuh"
-#include "../detail/throw_on_cuda_error.cuh"
 
-namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
+namespace nvexec::_strm::__algo_range_init_fun {
   template <class Range, class InitT, class Fun>
   using binary_invoke_result_t = ::cuda::std::decay_t<
     ::cuda::std::invoke_result_t<Fun, stdexec::ranges::range_reference_t<Range>, InitT>>;
@@ -67,7 +70,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
      public:
       using __id = receiver_t;
 
-      constexpr static ::std::size_t memory_allocation_size = max_result_size::value;
+      static constexpr ::std::size_t memory_allocation_size = max_result_size::value;
 
       template <class Range>
       void set_value(Range&& range) noexcept {
@@ -83,6 +86,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
         op_state_.propagate_completion_signal(set_stopped_t());
       }
 
+      [[nodiscard]]
       auto get_env() const noexcept -> env_of_t<Receiver> {
         return stdexec::get_env(op_state_.rcvr_);
       }
@@ -142,12 +146,11 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun {
       }
     };
   };
-} // namespace nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun
+} // namespace nvexec::_strm::__algo_range_init_fun
 
 namespace stdexec::__detail {
   template <class SenderId, class InitT, class Fun, class DerivedSender>
-  extern __mconst<nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun::
+  extern __mconst<nvexec::_strm::__algo_range_init_fun::
                     sender_t<__name_of<__t<SenderId>>, InitT, Fun, __name_of<DerivedSender>>>
-    __name_of_v<nvexec::STDEXEC_STREAM_DETAIL_NS::__algo_range_init_fun::
-                  sender_t<SenderId, InitT, Fun, DerivedSender>>;
+    __name_of_v<nvexec::_strm::__algo_range_init_fun::sender_t<SenderId, InitT, Fun, DerivedSender>>;
 } // namespace stdexec::__detail

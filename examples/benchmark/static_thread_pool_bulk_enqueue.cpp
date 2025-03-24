@@ -45,7 +45,7 @@ struct RunThread {
       auto env = exec::make_env(stdexec::prop{stdexec::get_allocator, alloc});
       auto [start, end] = exec::_pool_::even_share(total_scheds, tid, pool.available_parallelism());
       auto iterate = exec::schedule_all(pool, std::views::iota(start, end))
-                   | exec::ignore_all_values() | exec::write(env);
+                   | exec::ignore_all_values() | exec::write_env(env);
 #  else
       auto [start, end] = exec::_pool_::even_share(total_scheds, tid, pool.available_parallelism());
       auto iterate = exec::schedule_all(pool, std::views::iota(start, end))
@@ -58,12 +58,13 @@ struct RunThread {
 };
 
 struct my_numa_distribution : public exec::default_numa_policy {
-  int thread_index_to_node(std::size_t index) const noexcept {
+  [[nodiscard]]
+  auto thread_index_to_node(std::size_t index) const noexcept -> int {
     return exec::default_numa_policy::thread_index_to_node(2 * index);
   }
 };
 
-int main(int argc, char** argv) {
+auto main(int argc, char** argv) -> int {
   exec::numa_policy numa{my_numa_distribution{}};
   my_main<exec::static_thread_pool, RunThread>(argc, argv, std::move(numa));
 }

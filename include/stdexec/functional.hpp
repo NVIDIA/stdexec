@@ -33,21 +33,23 @@ namespace stdexec {
 
     template <class... _Ts>
       requires __callable<_Fun1, _Ts...> && __callable<_Fun0, __call_result_t<_Fun1, _Ts...>>
-    STDEXEC_ATTRIBUTE((always_inline)) __call_result_t<_Fun0, __call_result_t<_Fun1, _Ts...>> operator()(_Ts&&... __ts) && {
+    STDEXEC_ATTRIBUTE((always_inline)) auto
+      operator()(_Ts&&... __ts) && -> __call_result_t<_Fun0, __call_result_t<_Fun1, _Ts...>> {
       return static_cast<_Fun0&&>(__t0_)(static_cast<_Fun1&&>(__t1_)(static_cast<_Ts&&>(__ts)...));
     }
 
     template <class... _Ts>
       requires __callable<const _Fun1&, _Ts...>
             && __callable<const _Fun0&, __call_result_t<const _Fun1&, _Ts...>>
-    STDEXEC_ATTRIBUTE((always_inline)) __call_result_t<_Fun0, __call_result_t<_Fun1, _Ts...>> operator()(_Ts&&... __ts) const & {
+    STDEXEC_ATTRIBUTE((always_inline)) auto
+      operator()(_Ts&&... __ts) const & -> __call_result_t<_Fun0, __call_result_t<_Fun1, _Ts...>> {
       return __t0_(__t1_(static_cast<_Ts&&>(__ts)...));
     }
   };
 
   inline constexpr struct __compose_t {
     template <class _Fun0, class _Fun1>
-    STDEXEC_ATTRIBUTE((always_inline)) __composed<_Fun0, _Fun1> operator()(_Fun0 __fun0, _Fun1 __fun1) const {
+    STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Fun0 __fun0, _Fun1 __fun1) const -> __composed<_Fun0, _Fun1> {
       return {static_cast<_Fun0&&>(__fun0), static_cast<_Fun1&&>(__fun1)};
     }
   } __compose{};
@@ -171,14 +173,14 @@ namespace stdexec {
   template <class _Fun, class... _As>
   concept __invocable = //
     requires(_Fun&& __f, _As&&... __as) {
-      __invoke(static_cast<_Fun&&>(__f), static_cast<_As&&>(__as)...);
+      __invoke(static_cast<_Fun &&>(__f), static_cast<_As &&>(__as)...);
     };
 
   template <class _Fun, class... _As>
   concept __nothrow_invocable =  //
     __invocable<_Fun, _As...> && //
     requires(_Fun&& __f, _As&&... __as) {
-      { __invoke(static_cast<_Fun&&>(__f), static_cast<_As&&>(__as)...) } noexcept;
+      { __invoke(static_cast<_Fun &&>(__f), static_cast<_As &&>(__as)...) } noexcept;
     };
 
   template <class _Fun, class... _As>

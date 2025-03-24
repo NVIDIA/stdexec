@@ -1,10 +1,11 @@
 #include <catch2/catch.hpp>
 #include <exec/async_scope.hpp>
 #include <exec/env.hpp>
+#include <exec/just_from.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <exec/just_from.hpp>
 #include "test_common/schedulers.hpp"
 #include "test_common/receivers.hpp"
-#include "test_common/type_helpers.hpp"
 
 namespace ex = stdexec;
 using exec::async_scope;
@@ -31,8 +32,8 @@ namespace {
     struct operation {
       Receiver rcvr_;
 
-      friend void tag_invoke(ex::start_t, operation& self) noexcept {
-        ex::set_value(std::move(self.rcvr_));
+      void start() & noexcept {
+        ex::set_value(std::move(rcvr_));
       }
     };
 
@@ -148,7 +149,9 @@ namespace {
     };
 
     ex::sender auto snd =
-      scope.spawn_future(ex::starts_on(pool.get_scheduler(), ex::just(throwing_copy())));
+      scope.spawn_future(ex::starts_on(pool.get_scheduler(), exec::just_from([](auto sink) {
+                                         return sink(throwing_copy());
+                                       })));
     try {
       sync_wait(std::move(snd));
       FAIL("Exceptions should have been thrown");

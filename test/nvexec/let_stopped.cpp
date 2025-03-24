@@ -70,7 +70,9 @@ namespace {
     flags_storage_t flags_storage{};
     auto flags = flags_storage.get();
 
-    auto snd = ex::just_stopped() | ex::continues_on(sch) | a_sender([]() noexcept {})
+    auto snd = ex::just_stopped()         //
+             | ex::continues_on(sch)      //
+             | a_sender([]() noexcept {}) //
              | ex::let_stopped([=] {
                  if (is_on_gpu()) {
                    flags.set();
@@ -78,6 +80,7 @@ namespace {
 
                  return ex::schedule(sch);
                });
+
     stdexec::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());

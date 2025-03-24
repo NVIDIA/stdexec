@@ -74,7 +74,7 @@ namespace stdexec {
     auto operator=(const __move_only&) -> __move_only& = delete;
   };
 
-  inline constexpr std::size_t __umax(std::initializer_list<std::size_t> __il) noexcept {
+  inline constexpr auto __umax(std::initializer_list<std::size_t> __il) noexcept -> std::size_t {
     std::size_t __m = 0;
     for (std::size_t __i: __il) {
       if (__i > __m) {
@@ -84,8 +84,8 @@ namespace stdexec {
     return __m;
   }
 
-  inline constexpr std::size_t
-    __pos_of(const bool* const __first, const bool* const __last) noexcept {
+  inline constexpr auto
+    __pos_of(const bool* const __first, const bool* const __last) noexcept -> std::size_t {
     for (const bool* __where = __first; __where != __last; ++__where) {
       if (*__where) {
         return static_cast<std::size_t>(__where - __first);
@@ -95,7 +95,7 @@ namespace stdexec {
   }
 
   template <class _Ty, class... _Ts>
-  inline constexpr std::size_t __index_of() noexcept {
+  inline constexpr auto __index_of() noexcept -> std::size_t {
     constexpr bool __same[] = {STDEXEC_IS_SAME(_Ty, _Ts)..., false};
     return __pos_of(__same, __same + sizeof...(_Ts));
   }
@@ -137,7 +137,7 @@ namespace stdexec {
   STDEXEC_PRAGMA_POP()
 
   template <class _Ty>
-  _Ty __decay_copy(_Ty) noexcept;
+  auto __decay_copy(_Ty) noexcept -> _Ty;
 
   template <class _Ty>
   struct __indestructible {
@@ -149,11 +149,11 @@ namespace stdexec {
     constexpr ~__indestructible() {
     }
 
-    _Ty& get() noexcept {
+    auto get() noexcept -> _Ty& {
       return __value;
     }
 
-    const _Ty& get() const noexcept {
+    auto get() const noexcept -> const _Ty& {
       return __value;
     }
 

@@ -23,7 +23,7 @@
 #include <exec/any_sender_of.hpp>
 #include <stdexec/execution.hpp>
 
-long serial_fib(long n) {
+auto serial_fib(long n) -> long {
   return n < 2 ? n : serial_fib(n - 1) + serial_fib(n - 2);
 }
 
@@ -49,17 +49,17 @@ struct fib_s {
     long n;
     Scheduler sched;
 
-    friend void tag_invoke(stdexec::start_t, operation& self) noexcept {
-      if (self.n < self.cutoff) {
-        stdexec::set_value(static_cast<Receiver&&>(self.rcvr_), serial_fib(self.n));
+    void start() & noexcept {
+      if (n < cutoff) {
+        stdexec::set_value(static_cast<Receiver&&>(rcvr_), serial_fib(n));
       } else {
         auto mkchild = [&](long n) {
-          return stdexec::starts_on(self.sched, fib_sender(fib_s{self.cutoff, n, self.sched}));
+          return stdexec::starts_on(sched, fib_sender(fib_s{cutoff, n, sched}));
         };
 
         stdexec::start_detached(
-          stdexec::when_all(mkchild(self.n - 1), mkchild(self.n - 2))
-          | stdexec::then([rcvr = static_cast<Receiver&&>(self.rcvr_)](long a, long b) mutable {
+          stdexec::when_all(mkchild(n - 1), mkchild(n - 2))
+          | stdexec::then([rcvr = static_cast<Receiver&&>(rcvr_)](long a, long b) mutable {
               stdexec::set_value(static_cast<Receiver&&>(rcvr), a + b);
             }));
       }
@@ -67,7 +67,7 @@ struct fib_s {
   };
 
   template <stdexec::receiver_of<completion_signatures> Receiver>
-  friend operation<Receiver> tag_invoke(stdexec::connect_t, fib_s self, Receiver rcvr) {
+  friend auto tag_invoke(stdexec::connect_t, fib_s self, Receiver rcvr) -> operation<Receiver> {
     return {static_cast<Receiver&&>(rcvr), self.cutoff, self.n, self.sched};
   }
 };
@@ -82,7 +82,7 @@ auto measure(F&& f) {
   return std::chrono::duration_cast<duration>(std::chrono::steady_clock::now() - start).count();
 }
 
-int main(int argc, char** argv) {
+auto main(int argc, char** argv) -> int {
   if (argc < 5) {
     std::cerr << "Usage: example.benchmark.fibonacci cutoff n nruns {tbb|static}" << std::endl;
     return -1;
