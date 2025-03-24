@@ -195,11 +195,11 @@ namespace exec {
 #endif
 
       template <class Fun, class Shape, class... Args>
-        requires __callable<Fun, Shape, Args&...>
+        requires __callable<Fun, Shape, Shape, Args&...>
       using bulk_non_throwing = //
         __mbool<
           // If function invocation doesn't throw
-          __nothrow_callable<Fun, Shape, Args&...> &&
+          __nothrow_callable<Fun, Shape, Shape, Args&...> &&
       // and emplacing a tuple doesn't throw
 #if STDEXEC_MSVC()
           __bulk_non_throwing<Args...>::__v
@@ -236,7 +236,7 @@ namespace exec {
 
       struct transform_bulk {
         template <class Data, class Sender>
-        auto operator()(bulk_t, Data&& data, Sender&& sndr) {
+        auto operator()(bulk_chunked_t, Data&& data, Sender&& sndr) {
           auto [pol, shape, fun] = static_cast<Data&&>(data);
           // TODO: handle non-par execution policies
           return bulk_sender_t<Sender, decltype(shape), decltype(fun)>{
@@ -265,7 +265,7 @@ namespace exec {
      public:
       struct domain : stdexec::default_domain {
         // For eager customization
-        template <sender_expr_for<bulk_t> Sender>
+        template <sender_expr_for<bulk_chunked_t> Sender>
         auto transform_sender(Sender&& sndr) const noexcept {
           if constexpr (__completes_on<Sender, static_thread_pool_::scheduler>) {
             auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
@@ -279,8 +279,8 @@ namespace exec {
           }
         }
 
-        // transform the generic bulk sender into a parallel thread-pool bulk sender
-        template <sender_expr_for<bulk_t> Sender, class Env>
+        // transform the generic bulk_chunked sender into a parallel thread-pool bulk sender
+        template <sender_expr_for<bulk_chunked_t> Sender, class Env>
         auto transform_sender(Sender&& sndr, const Env& env) const noexcept {
           if constexpr (__completes_on<Sender, static_thread_pool_::scheduler>) {
             auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
@@ -679,9 +679,8 @@ namespace exec {
 
       for (std::uint32_t index = 0; index < threadCount; ++index) {
         threadStates_[index].emplace(this, index, params, numa_);
-        threadIndexByNumaNode_.push_back(
-          thread_index_by_numa_node{
-            .numa_node = threadStates_[index]->numa_node(), .thread_index = index});
+        threadIndexByNumaNode_.push_back(thread_index_by_numa_node{
+          .numa_node = threadStates_[index]->numa_node(), .thread_index = index});
       }
 
       // NOLINTNEXTLINE(modernize-use-ranges) we still support platforms without the std::ranges algorithms
@@ -1158,9 +1157,7 @@ namespace exec {
               // In the case that the shape is much larger than the total number of threads,
               // then each call to computation will call the function many times.
               auto [begin, end] = even_share(sh_state.shape_, tid, total_threads);
-              for (Shape i = begin; i < end; ++i) {
-                sh_state.fun_(i, args...);
-              }
+              sh_state.fun_(begin, end, args...);
             };
 
             auto completion = [&](auto&... args) {

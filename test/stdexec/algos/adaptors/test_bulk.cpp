@@ -892,7 +892,6 @@ namespace {
     }
   }
 
-  // TODO: also add similar tests for bulk_chunked and bulk_unchunked
   TEST_CASE("eager customization of bulk works with static thread pool", "[adaptors][bulk]") {
     exec::static_thread_pool pool{4};
     ex::scheduler auto sch = pool.get_scheduler();
@@ -907,7 +906,6 @@ namespace {
 
       auto snd = ex::just() //
                | ex::continues_on(sch) | ex::bulk(ex::par, tids.size(), fun);
-      CHECK(std::equal_to<void*>()(&snd.pool_, &pool));
       stdexec::sync_wait(std::move(snd));
 
       // All the work should not have run on the same thread
@@ -918,7 +916,34 @@ namespace {
     }
   }
 
-  // TODO: also add similar tests for bulk_chunked and bulk_unchunked
+  TEST_CASE(
+    "eager customization of bulk_chunked works with static thread pool",
+    "[adaptors][bulk]") {
+    exec::static_thread_pool pool{4};
+    ex::scheduler auto sch = pool.get_scheduler();
+
+    SECTION("Without values in the set_value channel") {
+      std::vector<std::thread::id> tids(42);
+
+      auto fun = [&tids](std::size_t b, std::size_t e) {
+        while (b < e) {
+          tids[b++] = std::this_thread::get_id();
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds{10});
+      };
+
+      auto snd = ex::just() //
+               | ex::continues_on(sch) | ex::bulk_chunked(ex::par, tids.size(), fun);
+      stdexec::sync_wait(std::move(snd));
+
+      // All the work should not have run on the same thread
+      const auto actual = static_cast<std::size_t>(std::count(tids.begin(), tids.end(), tids[0]));
+      const std::size_t wrong = tids.size();
+
+      CHECK(actual != wrong);
+    }
+  }
+
   TEST_CASE("lazy customization of bulk works with static thread pool", "[adaptors][bulk]") {
     exec::static_thread_pool pool{4};
     ex::scheduler auto sch = pool.get_scheduler();
@@ -933,6 +958,32 @@ namespace {
 
       auto snd = ex::just() //
                | ex::bulk(ex::par, tids.size(), fun);
+      stdexec::sync_wait(stdexec::starts_on(sch, std::move(snd)));
+
+      // All the work should not have run on the same thread
+      const auto actual = static_cast<std::size_t>(std::count(tids.begin(), tids.end(), tids[0]));
+      const std::size_t wrong = tids.size();
+
+      CHECK(actual != wrong);
+    }
+  }
+
+  TEST_CASE("lazy customization of bulk_chunked works with static thread pool", "[adaptors][bulk]") {
+    exec::static_thread_pool pool{4};
+    ex::scheduler auto sch = pool.get_scheduler();
+
+    SECTION("Without values in the set_value channel") {
+      std::vector<std::thread::id> tids(42);
+
+      auto fun = [&tids](std::size_t b, std::size_t e) {
+        while (b < e) {
+          tids[b++] = std::this_thread::get_id();
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds{10});
+      };
+
+      auto snd = ex::just() //
+               | ex::bulk_chunked(ex::par, tids.size(), fun);
       stdexec::sync_wait(stdexec::starts_on(sch, std::move(snd)));
 
       // All the work should not have run on the same thread
@@ -986,8 +1037,7 @@ namespace {
     auto snd = ex::just(std::string{"hello"})
              | exec::on(
                  sched, //
-                 ex::bulk(ex::par, 1, [&called](int, std::string x) { called = true; }))
-             | exec::write(stdexec::prop{ex::get_scheduler, inline_scheduler()});
+                 ex::bulk(ex::par, 1, [&called](int, std::string x) { called = true; }));
     wait_for_value(std::move(snd), std::string{"hijacked"});
     REQUIRE_FALSE(called);
   }
