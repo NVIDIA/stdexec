@@ -93,34 +93,39 @@ namespace stdexec {
     template <class _Set>
     using __on_not_callable = __callable_error<__in_which_let_msg<_Set>>;
 
-    template <class _Receiver, class _Scheduler>
-    struct __receiver_with_sched {
-      using receiver_concept = receiver_t;
-      _Receiver __rcvr_;
-      _Scheduler __sched_;
+    template <class _ReceiverId, class _SchedulerId>
+    struct __rcvr_sch {
+      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Scheduler = stdexec::__t<_SchedulerId>;
 
-      template <class... _As>
-      void set_value(_As&&... __as) noexcept {
-        stdexec::set_value(static_cast<_Receiver&&>(__rcvr_), static_cast<_As&&>(__as)...);
-      }
+      struct __t {
+        using receiver_concept = receiver_t;
+        using __id = __rcvr_sch;
+        _Receiver __rcvr_;
+        _Scheduler __sched_;
 
-      template <class _Error>
-      void set_error(_Error&& __err) noexcept {
-        stdexec::set_error(static_cast<_Receiver&&>(__rcvr_), static_cast<_Error&&>(__err));
-      }
+        template <class... _As>
+        void set_value(_As&&... __as) noexcept {
+          stdexec::set_value(static_cast<_Receiver&&>(__rcvr_), static_cast<_As&&>(__as)...);
+        }
 
-      void set_stopped() noexcept {
-        stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr_));
-      }
+        template <class _Error>
+        void set_error(_Error&& __err) noexcept {
+          stdexec::set_error(static_cast<_Receiver&&>(__rcvr_), static_cast<_Error&&>(__err));
+        }
 
-      auto get_env() const noexcept {
-        return __env::__join(
-          prop{get_scheduler, __sched_}, __env::__without(stdexec::get_env(__rcvr_), get_domain));
-      }
+        void set_stopped() noexcept {
+          stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+        }
+
+        auto get_env() const noexcept {
+          return __env::__join(__sched_env{__sched_}, stdexec::get_env(__rcvr_));
+        }
+      };
     };
 
     template <class _Receiver, class _Scheduler>
-    __receiver_with_sched(_Receiver, _Scheduler) -> __receiver_with_sched<_Receiver, _Scheduler>;
+    using __receiver_with_sched_t = __t<__rcvr_sch<__id<_Receiver>, __id<_Scheduler>>>;
 
     // If the input sender knows its completion scheduler, make it the current scheduler
     // in the environment seen by the result sender.
@@ -128,9 +133,7 @@ namespace stdexec {
     using __result_env_t = __if_c<
       __is_scheduler_affine<schedule_result_t<_Scheduler>>,
       _Env,
-      __env::__join_t< //
-        prop<get_scheduler_t, _Scheduler>,
-        __env::__without_t<_Env, get_domain_t>>>;
+      __env::__join_t<__sched_env<_Scheduler>, _Env>>;
 
     template <__mstring _Where, __mstring _What>
     struct _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_ { };
@@ -188,7 +191,7 @@ namespace stdexec {
     using __result_receiver_t = __if_c<
       __is_scheduler_affine<schedule_result_t<_Scheduler>>,
       _Receiver,
-      __receiver_with_sched<_Receiver, _Scheduler>>;
+      __receiver_with_sched_t<_Receiver, _Scheduler>>;
 
     template <class _ResultSender, class _Scheduler, class... _Env>
     using __receiver_ref_t = //
@@ -312,8 +315,8 @@ namespace stdexec {
             return (__env);
           } else {
             return __env::__join(
-              prop{get_scheduler, get_completion_scheduler<_Set>(stdexec::get_env(__child))},
-              __env::__without(static_cast<_Env&&>(__env), get_domain));
+              __sched_env{get_completion_scheduler<_Set>(stdexec::get_env(__child))},
+              static_cast<_Env&&>(__env));
           }
         }
       };
@@ -366,6 +369,7 @@ namespace stdexec {
       using __fun_t = _Fun;
       using __sched_t = _Sched;
       using __env_t = __result_env_t<_Sched, env_of_t<_Receiver>>;
+      using __rcvr_t = __receiver_with_sched_t<_Receiver, _Sched>;
       using __result_variant = __variant_for<__monostate, _Tuples...>;
       using __op_state_variant = //
         __variant_for<
@@ -382,7 +386,7 @@ namespace stdexec {
           if constexpr (__is_scheduler_affine<schedule_result_t<_Sched>>) {
             return static_cast<_Receiver&&>(__rcvr);
           } else {
-            return __receiver_with_sched{static_cast<_Receiver&&>(__rcvr), this->__sched_};
+            return __rcvr_t{static_cast<_Receiver&&>(__rcvr), this->__sched_};
           }
         }
       }
@@ -391,8 +395,7 @@ namespace stdexec {
         if constexpr (__is_scheduler_affine<schedule_result_t<_Sched>>) {
           return stdexec::get_env(__rcvr);
         } else {
-          return __env::__join(
-            prop{get_scheduler, __sched_}, __env::__without(stdexec::get_env(__rcvr), get_domain));
+          return __env::__join(__sched_env{__sched_}, stdexec::get_env(__rcvr));
         }
       }
 

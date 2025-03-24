@@ -23,7 +23,6 @@
 #include "__domain.hpp"
 #include "__env.hpp"
 #include "__let.hpp"
-#include "__meta.hpp"
 #include "__schedulers.hpp"
 #include "__senders_core.hpp"
 #include "__transform_sender.hpp"
@@ -61,7 +60,7 @@ namespace stdexec {
       template <class _Env>
       STDEXEC_ATTRIBUTE((always_inline)) static auto __transform_env_fn(_Env&& __env) noexcept {
         return [&](__ignore, auto __sched, __ignore) noexcept {
-          return __detail::__mkenv_sched(static_cast<_Env&&>(__env), __sched);
+          return __env::__join(__sched_env{__sched}, static_cast<_Env&&>(__env));
         };
       }
 
