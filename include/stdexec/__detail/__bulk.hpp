@@ -107,7 +107,7 @@ namespace stdexec {
         __mliterals<&__data::__pol_, &__data::__shape_, &__data::__fun_>();
     };
     template <class _Pol, class _Shape, class _Fun>
-    __data(_Pol, _Shape, _Fun) -> __data<_Pol, _Shape, _Fun>;
+    __data(const _Pol&, _Shape, _Fun) -> __data<_Pol, _Shape, _Fun>;
 
     template <class _AlgoTag>
     struct __bulk_traits;
