@@ -127,7 +127,8 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((always_inline)) static auto __transform_env_fn(_Env&& __env) noexcept {
         return [&]<class _Data>(__ignore, _Data&& __data, __ignore) noexcept -> decltype(auto) {
           if constexpr (scheduler<_Data>) {
-            return __detail::__mkenv_sched(static_cast<_Env&&>(__env), static_cast<_Data&&>(__data));
+            return __env::__join(
+              __sched_env{static_cast<_Data&&>(__data)}, static_cast<_Env&&>(__env));
           } else {
             return static_cast<_Env>(static_cast<_Env&&>(__env));
           }

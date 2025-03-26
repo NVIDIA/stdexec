@@ -17,7 +17,7 @@
 #ifndef STDEXEC_SYSTEM_CONTEXT_REPLACEABILITY_API_H
 #define STDEXEC_SYSTEM_CONTEXT_REPLACEABILITY_API_H
 
-#include "stdexec/__detail/__execution_fwd.hpp"
+#include "../../stdexec/__detail/__execution_fwd.hpp"
 
 #include <cstdint>
 #include <cstddef>
