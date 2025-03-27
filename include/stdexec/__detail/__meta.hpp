@@ -19,7 +19,6 @@
 #include <cassert>
 #include <compare>
 #include <type_traits>
-#include <utility>
 
 #include "__config.hpp"
 #include "__concepts.hpp"
@@ -79,7 +78,7 @@ namespace stdexec {
 
   // nvbugs#4679848 and nvbugs#4668709 also preclude __mconstant from representing a compile-time
   // size_t.
-  enum class __muchar : unsigned char {
+  enum class __u8 : unsigned char {
   };
 
 #if STDEXEC_NVCC() || STDEXEC_EDG()
@@ -90,7 +89,7 @@ namespace stdexec {
   using __msize_t = __mconstant<_Np>;
 #else
   template <std::size_t _Np>
-  using __msize_t = __muchar (*)[_Np + 1]; // +1 to avoid zero-size array
+  using __msize_t = __u8 (*)[_Np + 1]; // +1 to avoid zero-size array
 #endif
 
   //! Metafunction selects the first of two type arguments.
@@ -126,15 +125,13 @@ namespace stdexec {
   inline constexpr auto __v<__mconstant<_Np>> = _Np;
 
   template <std::size_t _Np>
-  inline constexpr std::size_t __v<__muchar (*)[_Np]> = _Np - 1; // see definition of __msize_t
-
-  namespace __pack {
-    template <std::size_t... _Is>
-    struct __t;
-  } // namespace __pack
+  inline constexpr std::size_t __v<__u8 (*)[_Np]> = _Np - 1; // see definition of __msize_t
 
   template <std::size_t... _Is>
-  using __indices = __pack::__t<_Is...> *;
+  struct __iota;
+
+  template <std::size_t... _Is>
+  using __indices = __iota<_Is...> *;
 
 #if STDEXEC_MSVC()
   namespace __pack {
@@ -686,7 +683,7 @@ namespace stdexec {
   };
 
   template <std::size_t... _Ns>
-  struct __muncurry_<__pack::__t<_Ns...> *> {
+  struct __muncurry_<__indices<_Ns...>> {
     template <class _Fn>
     using __f = __minvoke<_Fn, __msize_t<_Ns>...>;
   };
