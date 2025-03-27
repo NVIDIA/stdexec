@@ -104,6 +104,10 @@ if(STDEXEC_ENABLE_CUDA)
     add_subdirectory(nvexec)
 endif()
 
+if(STDEXEC_ENABLE_ASIO)
+    add_subdirectory(asioexec)
+endif()
+
 # build failure tests: tests which parse a source file for an expected error
 # message
 icm_add_build_failure_test(
