@@ -1,4 +1,4 @@
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 #include <asioexec/use_sender.hpp>
 
@@ -15,9 +15,9 @@ namespace {
         auto timer_1 = boost::asio::steady_timer(boost::asio::system_executor(), std::chrono::seconds(5));
         
         // Compose tasks as sender.
-        auto task_0 = timer_0.async_wait(asioexec::use_sender);
+        auto task_0 = timer_0.async_wait(asioexec::use_sender)
                     | stdexec::then([&] { CHECK(std::this_thread::get_id() == main_thread_id); }); // This scope (or "callback") should still run on main thread.
-        auto task_1 = timer_1.async_wait(asioexec::use_sender);
+        auto task_1 = timer_1.async_wait(asioexec::use_sender)
                     | stdexec::then([&] { CHECK(std::this_thread::get_id() == main_thread_id); });
 
          // Parallel launch the 2 tasks.

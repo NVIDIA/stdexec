@@ -3,6 +3,27 @@
 #include <stdexec/execution.hpp>
 #include <boost/asio.hpp>
 
+/* Our Principle: Simple.
+
+ * This PR focuses on minimal-code integration between boost::asio and stdexec.
+
+ * Both stdexec and boost::asio are powerful yet complex async frameworks,
+ * each with their own dedicated expert communities.
+ *
+ * While we could make `asioexec` exhaustively handle every possible case,
+ * optimization, and edge scenario, this implementation intentionally stays
+ * lightweight and transparent. Our goals are:
+ * - Easy to understand.
+ * - Easy to find the code section you want.
+ * - Make it possible to try stdexec networking.
+ * - Follows above, validate some stdexec's core concepts.
+ * - Leaving advanced work to our experienced users.
+ */
+
+/* Updates:
+ * Optimization for stdexec::unstoppable_token is removed after (exclude) 0e6b4a2 for simplicity.
+ */
+
 namespace asioexec {
 
   template <class... Ts>
@@ -97,29 +118,12 @@ namespace asioexec {
       }
     };
 
-    template <stdexec::receiver R>
-    struct operation_state_unstoppable {
-      sender snd;
-      R recv;
-
-      void start() noexcept {
-        try {
-          snd.initiation->initiate([&](Ts... args) {
-            stdexec::set_value(std::move(recv), std::forward<decltype(args)>(args)...);
-          }); // Value channel.
-        } catch (...) {
-          stdexec::set_error(std::move(recv), std::current_exception()); // Error channel.
-        }
-      }
-    };
-
    private:
     struct asio_initiation_base // Type erase some additional type-info of asio_initiation
     {
       virtual ~asio_initiation_base() = default;
       virtual asio_initiation_base &copy() const = 0;
 
-      virtual void initiate(std::function<void(Ts...)>) = 0;
       virtual void initiate(
         boost::asio::
           cancellation_slot_binder<std::function<void(Ts...)>, boost::asio::cancellation_slot>) = 0;
@@ -140,10 +144,6 @@ namespace asioexec {
         return *new asio_initiation(func, args);
       }
 
-      void initiate(std::function<void(Ts...)> token) override {
-        std::apply(func, std::tuple_cat(std::make_tuple(std::move(token)), std::move(args)));
-      }
-
       void initiate(boost::asio::cancellation_slot_binder<
                     std::function<void(Ts...)>,
                     boost::asio::cancellation_slot> token) override {
@@ -157,13 +157,8 @@ namespace asioexec {
 
   template <class... Ts>
   stdexec::operation_state auto sender<Ts...>::connect(stdexec::receiver auto &&recv) {
-    if constexpr (
-      stdexec::stoppable_token<stdexec::stop_token_of_t<stdexec::env_of_t<decltype(recv)>>>)
-      return operation_state<std::decay_t<decltype(recv)>>(
-        std::move(*this), std::forward<decltype(recv)>(recv));
-    else
-      return operation_state_unstoppable<std::decay_t<decltype(recv)>>(
-        std::move(*this), std::forward<decltype(recv)>(recv));
+    return operation_state<std::decay_t<decltype(recv)>>(
+      std::move(*this), std::forward<decltype(recv)>(recv));
   }
 
   struct use_sender_t {
@@ -214,9 +209,6 @@ namespace asioexec {
         requires(
           not std::same_as<std::decay_t<decltype(ex)>, executor_with_default>
           and std::convertible_to<std::decay_t<decltype(ex)>, Executor>)
-        /* this requires-clause should first requires "not std::same_as<ex,*this>", then requires "std::convertible_to<ex,Executor>",
-                 * because "std::convertible_to" depends on itself.
-                 */
         : Executor(ex) {
       }
     };
@@ -258,7 +250,7 @@ namespace boost::asio {
                                     throw boost::system::system_error(ec);
                                   return stdexec::just(std::forward<decltype(args)>(args)...);
                                 })
-                            | stdexec::continues_on(std::forward<decltype(sched)>(sched));
+                            | stdexec::continues_on(std::forward<decltype(sched)>(sched)); // stdexec::continues_on has same effect with boost::asio::bind_executor.
                      else
                        return asioexec::sender<Ts...>(std::forward<decltype(args)>(args)...) 
                             | stdexec::continues_on(std::forward<decltype(sched)>(sched));
@@ -284,7 +276,7 @@ namespace boost::asio {
              | stdexec::let_value([](auto &&sched, auto &&...args) 
                  {
                    return asioexec::sender<Ts...>(std::forward<decltype(args)>(args)...) 
-                        | stdexec::continues_on(std::forward<decltype(sched)>(sched)); 
+                        | stdexec::continues_on(std::forward<decltype(sched)>(sched)); // stdexec::continues_on has same effect with boost::asio::bind_executor.
                  });
       // clang-format on
     }
