@@ -17,7 +17,7 @@
 
 #include <utility>
 
-#include "stdexec/execution.hpp"
+#include "../stdexec/execution.hpp"
 #include "__detail/__system_context_replaceability_api.hpp"
 
 #ifndef STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE

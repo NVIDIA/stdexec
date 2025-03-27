@@ -16,10 +16,11 @@
 #pragma once
 
 #include "__system_context_replaceability_api.hpp"
-#include "stdexec/execution.hpp"
-#include "exec/static_thread_pool.hpp"
+
+#include "../../stdexec/execution.hpp"
+#include "../static_thread_pool.hpp"
 #if STDEXEC_ENABLE_LIBDISPATCH
-#  include "exec/libdispatch_queue.hpp"
+#  include "../libdispatch_queue.hpp" // IWYU pragma: keep
 #endif
 
 #include <atomic>

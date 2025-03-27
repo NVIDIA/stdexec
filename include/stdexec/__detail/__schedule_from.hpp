@@ -111,30 +111,40 @@ namespace stdexec {
     // the source sender completes, the completion information is saved off in the operation state
     // so that when this receiver completes, it can read the completion out of the operation state
     // and forward it to the output receiver after transitioning to the scheduler's context.
-    template <class _Scheduler, class _Sexpr, class _Receiver>
-    struct __receiver2 {
-      using receiver_concept = receiver_t;
+    template <class _SchedulerId, class _SexprId, class _ReceiverId>
+    struct __rcvr2 {
+      using _Scheduler = stdexec::__t<_SchedulerId>;
+      using _Sexpr = stdexec::__t<_SexprId>;
+      using _Receiver = stdexec::__t<_ReceiverId>;
 
-      void set_value() noexcept {
-        __state_->__data_.visit(__schfr::__make_visitor_fn(__state_), __state_->__data_);
-      }
+      struct __t {
+        using receiver_concept = receiver_t;
+        using __id = __rcvr2;
 
-      template <class _Error>
-      void set_error(_Error&& __err) noexcept {
-        stdexec::set_error(
-          static_cast<_Receiver&&>(__state_->__receiver()), static_cast<_Error&&>(__err));
-      }
+        void set_value() noexcept {
+          __state_->__data_.visit(__schfr::__make_visitor_fn(__state_), __state_->__data_);
+        }
 
-      void set_stopped() noexcept {
-        stdexec::set_stopped(static_cast<_Receiver&&>(__state_->__receiver()));
-      }
+        template <class _Error>
+        void set_error(_Error&& __err) noexcept {
+          stdexec::set_error(
+            static_cast<_Receiver&&>(__state_->__receiver()), static_cast<_Error&&>(__err));
+        }
 
-      auto get_env() const noexcept -> env_of_t<_Receiver> {
-        return stdexec::get_env(__state_->__receiver());
-      }
+        void set_stopped() noexcept {
+          stdexec::set_stopped(static_cast<_Receiver&&>(__state_->__receiver()));
+        }
 
-      __state<_Scheduler, _Sexpr, _Receiver>* __state_;
+        auto get_env() const noexcept -> env_of_t<_Receiver> {
+          return stdexec::get_env(__state_->__receiver());
+        }
+
+        __state<_Scheduler, _Sexpr, _Receiver>* __state_;
+      };
     };
+
+    template <class _Scheduler, class _Sexpr, class _Receiver>
+    using __receiver2 = __t<__rcvr2<__id<_Scheduler>, __id<_Sexpr>, __id<_Receiver>>>;
 
     template <class _Scheduler, class _Sexpr, class _Receiver>
     struct __state

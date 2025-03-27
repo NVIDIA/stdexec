@@ -27,7 +27,7 @@
 #    define __has_extension(x) false
 #  endif
 
-#  include "stdexec/execution.hpp"
+#  include "../stdexec/execution.hpp"
 #  include <dispatch/dispatch.h>
 
 namespace exec {
