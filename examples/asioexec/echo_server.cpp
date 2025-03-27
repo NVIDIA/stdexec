@@ -1,7 +1,7 @@
 #include <iostream>
-#include <boost/asio.hpp>
+#include <asioexec/use_sender.hpp>
 #include <exec/static_thread_pool.hpp>
-#include "../use_sender.hpp" // <asioexec/use_sender.hpp>
+#include <boost/asio.hpp>
 
 exec::static_thread_pool thread_pool = exec::static_thread_pool(1);
 
@@ -10,13 +10,14 @@ exec::static_thread_pool thread_pool = exec::static_thread_pool(1);
        -> accept a connection,
        -> move ownership of the connection to the thread_pool (with n worker_thread),
            -> then the n worker_thread will be responsible for echo,
-       -> once connection is not owned by listener_thread, the latter one will go back to listen for another connection
+       -> once connection is not owned by listener_thread, the latter one will go back to listen for another connection.
 */
 
 int main()
 {
     int port = 12345; // Your target port.
 
+    // clang-format off
     auto task = stdexec::just()
               | stdexec::then([&]
                   {
@@ -26,9 +27,8 @@ int main()
               | stdexec::let_value([] (auto&& acceptor) 
                   {
                       return acceptor.async_accept(asioexec::use_sender)
-                           | stdexec::then([] (auto&& ec, auto&& socket)
+                           | stdexec::then([] (auto&& socket)
                                {
-                                   if (ec) throw boost::system::system_error(ec);
                                    std::cout << "Accepted a connection on main-thread " << std::this_thread::get_id() << std::endl; // Excepted: thread_id == main-thread.
                                    return std::move(socket);
                                });
@@ -43,18 +43,12 @@ int main()
                                                       {
                                                           return socket.async_read_some(boost::asio::mutable_buffer(buffer.data(), buffer.size()), asioexec::use_sender); 
                                                       })
-                                                  | stdexec::then([] (auto&& ec, size_t n)
-                                                      {
-                                                          if (ec) throw boost::system::system_error(ec);  
-                                                          return n;
-                                                      })
                                                   | stdexec::let_value([&] (size_t n)
                                                       {
                                                           return boost::asio::async_write(socket, boost::asio::const_buffer(buffer.data(), n), asioexec::use_sender);
                                                       })
-                                                  | stdexec::then([] (auto&& ec, auto&&...)
+                                                  | stdexec::then([] (size_t /*n*/)
                                                       {
-                                                          if (ec) throw boost::system::system_error(ec);  
                                                           std::cout << "Echo some message on thread-pool " << std::this_thread::get_id() << std::endl; // Expected: thread_id == exec::static_thread_pool.thread_id().
                                                       });
                                          });
@@ -62,6 +56,7 @@ int main()
                   })
               | stdexec::upon_error([] (auto&& error) { try { std::rethrow_exception(error); } catch (const std::exception& e) { std::cout << "Error: " << e.what() << std::endl; } })
               | stdexec::upon_stopped([] { std::cout << "Stopped" << std::endl; });
+    // clang-format on
     
     while(true)
         stdexec::sync_wait(task);
