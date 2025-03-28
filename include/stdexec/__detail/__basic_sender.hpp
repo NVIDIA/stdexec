@@ -140,7 +140,7 @@ namespace stdexec {
         };
 
       static constexpr auto get_completion_signatures = //
-        []<class _Sender>(_Sender&& __sndr, __ignore = {}) noexcept {
+        []<class _Sender>(_Sender&& __sndr, auto&&...) noexcept {
           static_assert(
             __mnever<tag_of_t<_Sender>>,
             "No customization of get_completion_signatures for this sender tag type.");
