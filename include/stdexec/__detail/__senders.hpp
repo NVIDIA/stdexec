@@ -30,6 +30,7 @@
 #include "__transform_completion_signatures.hpp"
 #include "__transform_sender.hpp"
 #include "__type_traits.hpp"
+#include <type_traits>
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
@@ -375,6 +376,8 @@ namespace stdexec {
           !__merror<_Completions>,
           "Trying to compute the sender's completion signatures resulted in an error. See the rest "
           "of the compiler diagnostic for clues. Look for the string \"_ERROR_\".");
+        // MSVC needs more encouragement to print the type of the error.
+        STDEXEC_MSVC(_Completions __what = 0;)
       } else {
         static_assert(
           __valid_completion_signatures<_Completions>,
