@@ -421,8 +421,8 @@ auto maxwell_eqs_snr(
            computer,
            repeat_n(
              n_iterations,
-             ex::bulk(accessor.cells, update_h(accessor))
-               | ex::bulk(accessor.cells, update_e(time, dt, accessor))))
+             ex::bulk(ex::par, accessor.cells, update_h(accessor))
+               | ex::bulk(ex::par, accessor.cells, update_e(time, dt, accessor))))
        | ex::then(dump_vtk(write_results, accessor));
 }
 
@@ -436,7 +436,8 @@ void run_snr(
   time_storage_t time{is_gpu_scheduler(computer)};
   fields_accessor accessor = grid.accessor();
 
-  auto init = ex::just() | exec::on(computer, ex::bulk(grid.cells, grid_initializer(dt, accessor)));
+  auto init = ex::just()
+            | exec::on(computer, ex::bulk(ex::par, grid.cells, grid_initializer(dt, accessor)));
   stdexec::sync_wait(init);
 
   auto snd = maxwell_eqs_snr(dt, time.get(), write_vtk, n_iterations, accessor, computer);

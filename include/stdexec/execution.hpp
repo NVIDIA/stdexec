@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include "__detail/__execution_legacy.hpp"
 #include "__detail/__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp

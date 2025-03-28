@@ -100,7 +100,8 @@ namespace exec {
     struct transform_bulk {
       template <class Data, class Sender>
       auto operator()(stdexec::bulk_t, Data &&data, Sender &&sndr) {
-        auto [shape, fun] = std::forward<Data>(data);
+        auto [pol, shape, fun] = std::forward<Data>(data);
+        // TODO: handle non-par execution policies
         return bulk_sender_t<Sender, decltype(shape), decltype(fun)>{
           queue_, std::forward<Sender>(sndr), shape, std::move(fun)};
       }
