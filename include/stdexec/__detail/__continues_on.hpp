@@ -63,7 +63,7 @@ namespace stdexec {
       }
 
       template <class _Sender, class _Env>
-      static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
+      static auto transform_sender(_Sender&& __sndr, const _Env&) {
         return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn());
       }
     };

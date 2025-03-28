@@ -24,8 +24,8 @@
 #include "__tag_invoke.hpp"
 #include "__tuple.hpp"
 
-#include <type_traits>
 #include <functional> // IWYU pragma: keep for unwrap_reference_t
+#include <type_traits>
 #include <utility>
 
 STDEXEC_PRAGMA_PUSH()
@@ -211,7 +211,7 @@ namespace stdexec {
     struct get_domain_t {
       template <class _Ty>
         requires tag_invocable<get_domain_t, const _Ty&>
-      constexpr auto operator()(const _Ty& __ty) const noexcept
+      constexpr auto operator()(const _Ty&) const noexcept
         -> __decay_t<tag_invoke_result_t<get_domain_t, const _Ty&>> {
         static_assert(
           nothrow_tag_invocable<get_domain_t, const _Ty&>,
@@ -361,8 +361,6 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE((nodiscard)) constexpr auto query(_Query) const noexcept -> const _Value& {
         return __value;
       }
-
-      auto operator=(const prop&) -> prop& = delete;
     };
 
     template <class _Query, class _Value>
@@ -398,8 +396,6 @@ namespace stdexec {
         return tag_invoke(
           __q, env::__get_1st<_Query, _Args...>(*this), static_cast<_Args&&>(__args)...);
       }
-
-      auto operator=(const env&) -> env& = delete;
     };
 
     // specialization for two envs to avoid warnings about elided braces
@@ -433,8 +429,6 @@ namespace stdexec {
         return tag_invoke(
           __q, env::__get_1st<_Query, _Args...>(*this), static_cast<_Args&&>(__args)...);
       }
-
-      auto operator=(const env&) -> env& = delete;
     };
 
     template <class... _Envs>
@@ -461,8 +455,6 @@ namespace stdexec {
       auto query(_Key) const noexcept -> const _Value& {
         return __value_;
       }
-
-      auto operator=(const __with&) -> __with& = delete;
     };
 
     template <class _Value, class _Tag, class... _Tags>
@@ -494,8 +486,6 @@ namespace stdexec {
           -> tag_invoke_result_t<_Tag, __cvref_env_t> {
           return tag_invoke(_Tag(), __env_);
         }
-
-        auto operator=(const __t&) -> __t& = delete;
       };
     };
 
@@ -539,8 +529,6 @@ namespace stdexec {
           query(_Key) const noexcept(nothrow_tag_invocable<_Key, __cvref_env_t>) -> decltype(auto) {
           return tag_invoke(_Key(), __env_);
         }
-
-        auto operator=(const __t&) -> __t& = delete;
       };
     };
 
@@ -573,8 +561,6 @@ namespace stdexec {
         -> __call_result_t<const _Fun&, _Tag> {
         return __fun_(_Tag());
       }
-
-      auto operator=(const __from&) -> __from& = delete;
     };
 
     template <class _Fun>

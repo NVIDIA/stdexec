@@ -150,8 +150,8 @@ namespace nvexec {
           using __id = env;
           context_state_t context_state_;
 
-          template <class CPO>
-          auto query(get_completion_scheduler_t<CPO>) const noexcept -> stream_scheduler {
+          [[nodiscard]]
+          auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> stream_scheduler {
             return stream_scheduler{context_state_};
           }
         };
