@@ -24,8 +24,8 @@
 #include "__tag_invoke.hpp"
 #include "__tuple.hpp"
 
-#include <type_traits>
 #include <functional> // IWYU pragma: keep for unwrap_reference_t
+#include <type_traits>
 #include <utility>
 
 STDEXEC_PRAGMA_PUSH()
