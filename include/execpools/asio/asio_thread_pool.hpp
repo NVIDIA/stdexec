@@ -15,7 +15,8 @@ namespace execpools {
    public:
     asio_thread_pool()
       : pool_()
-      , executor_(pool_.executor()) = default;
+      , executor_(pool_.executor()) {
+    }
 
     explicit asio_thread_pool(uint32_t num_threads)
       : pool_(num_threads)

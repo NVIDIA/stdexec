@@ -178,54 +178,60 @@ namespace stdexec {
       _Sender,
       __env>>;
 
-#if STDEXEC_EDG()
-    // It requires some hoop-jumping to get the NVHPC compiler to report a meaningful
-    // diagnostic for SFINAE failures.
-    template <class _Sender>
-    auto __diagnose_error() {
-      if constexpr (!sender_in<_Sender, __env>) {
-        using _Completions = __completion_signatures_of_t<_Sender, __env>;
-        if constexpr (__merror<_Completions>) {
-          return _Completions();
-        } else {
-          constexpr __mstring __diag =
-            "The stdexec::sender_in<Sender, Environment> concept check has failed."_mstr;
-          return __sync_wait_error<__diag, _Sender>();
-        }
-      } else if constexpr (!__valid_sync_wait_argument<_Sender>) {
-        return __sync_wait_error<__too_many_successful_completions_diag, _Sender>();
-      } else if constexpr (!sender_to<_Sender, __sync_receiver_for_t<_Sender>>) {
-        constexpr __mstring __diag =
-          "Failed to connect the given sender to sync_wait's internal receiver. "
-          "The stdexec::connect(Sender, Receiver) expression is ill-formed."_mstr;
-        return __sync_wait_error<__diag, _Sender>();
-      } else {
-        constexpr __mstring __diag = "Unknown concept check failure."_mstr;
-        return __sync_wait_error<__diag, _Sender>();
-      }
-    }
-
-    template <class _Sender>
-    using __error_description_t = decltype(__sync_wait::__diagnose_error<_Sender>());
-#endif
-
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait]
     struct sync_wait_t {
-      template <sender_in<__env> _Sender>
-        requires __valid_sync_wait_argument<_Sender>
-              && __has_implementation_for<sync_wait_t, __early_domain_of_t<_Sender>, _Sender>
-      auto operator()(_Sender&& __sndr) const -> std::optional<__value_tuple_for_t<_Sender>> {
-        using _Domain = __late_domain_of_t<_Sender, __env>;
-        return stdexec::apply_sender(_Domain(), *this, static_cast<_Sender&&>(__sndr));
+      template <class _Sender>
+      auto operator()(_Sender&& __sndr) const {
+        if constexpr (!sender_in<_Sender, __env>) {
+          stdexec::__diagnose_sender_concept_failure<_Sender, __env>();
+        } else {
+          using __domain_t = __late_domain_of_t<_Sender, __env>;
+          constexpr auto __success_completion_count =
+            __v<value_types_of_t<_Sender, __env, __types, __msize::__f>>;
+          static_assert(
+            __success_completion_count != 0,
+            "The argument to stdexec::sync_wait() is a sender that cannot complete successfully. "
+            "stdexec::sync_wait() requires a sender that can complete successfully in exactly one "
+            "way. In other words, the sender's completion signatures must include exactly one "
+            "signature of the form `set_value_t(value-types...)`.");
+          static_assert(
+            __success_completion_count <= 1,
+            "The sender passed to stdexec::sync_wait() can complete successfully in "
+            "more than one way. Use stdexec::sync_wait_with_variant() instead.");
+          if constexpr (1 == __success_completion_count) {
+            using __sync_wait_receiver = __receiver_t<_Sender>;
+            constexpr bool __no_custom_sync_wait = __same_as<__domain_t, default_domain>;
+            if constexpr (__no_custom_sync_wait && sender_to<_Sender, __sync_wait_receiver>) {
+              // using __connect_result = connect_result_t<_Sender, __sync_wait_receiver>;
+              // if constexpr (!operation_state<__connect_result>) {
+              //   static_assert(
+              //     operation_state<__connect_result>,
+              //     "The `connect` member function of the sender passed to stdexec::sync_wait() does "
+              //     "not return an operation state. An operation state is required to have a "
+              //     "no-throw .start() member function.");
+              // } else
+              {
+                // success path, dispatch to the default domain's sync_wait
+                return default_domain().apply_sender(*this, static_cast<_Sender&&>(__sndr));
+              }
+            } else if constexpr (__no_custom_sync_wait) {
+              static_assert(
+                sender_to<_Sender, __sync_wait_receiver>,
+                "The sender passed to stdexec::sync_wait() does not have a .connect(<receiver>) "
+                "member function that accepts sync_wait's receiver.");
+            } else if constexpr (!__has_implementation_for<sync_wait_t, __domain_t, _Sender>) {
+              static_assert(
+                __has_implementation_for<sync_wait_t, __domain_t, _Sender>,
+                "The sender passed to stdexec::sync_wait() has a domain that does not provide a "
+                "usable implementation for sync_wait().");
+            } else {
+              // success path, dispatch to the custom domain's sync_wait
+              return stdexec::apply_sender(__domain_t(), *this, static_cast<_Sender&&>(__sndr));
+            }
+          }
+        }
       }
-
-#if STDEXEC_EDG()
-      // This is needed to get sensible diagnostics from nvc++
-      template <class _Sender, class _Error = __error_description_t<_Sender>>
-      auto operator()(_Sender&&, [[maybe_unused]] _Error __diagnostic = {}) const
-        -> std::optional<std::tuple<int>> = delete;
-#endif
 
       // clang-format off
       /// @brief Synchronously wait for the result of a sender, blocking the
@@ -299,14 +305,6 @@ namespace stdexec {
         using _Domain = __late_domain_of_t<_Sender, __env>;
         return stdexec::apply_sender(_Domain(), *this, static_cast<_Sender&&>(__sndr));
       }
-
-#if STDEXEC_EDG()
-      template <
-        class _Sender,
-        class _Error = __error_description_t<__result_of<into_variant, _Sender>>>
-      auto operator()(_Sender&&, [[maybe_unused]] _Error __diagnostic = {}) const
-        -> std::optional<std::tuple<std::variant<std::tuple<>>>> = delete;
-#endif
 
       template <class _Sender>
         requires __callable<sync_wait_t, __result_of<into_variant, _Sender>>
