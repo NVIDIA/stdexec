@@ -74,6 +74,9 @@ CompileFlags:
     - "-forward-unknown-to-host-compiler"
     - "-Werror=cross-execution-space-call"
     - "-e1000"
+    - -Xtemplight
+    - -profiler
+    - -ignore-system
 Diagnostics:
   Suppress:
     - "variadic_device_fn"
