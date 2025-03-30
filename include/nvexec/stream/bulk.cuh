@@ -393,7 +393,7 @@ namespace nvexec::_strm {
   struct transform_sender_for<stdexec::bulk_t> {
     template <class Data, stream_completing_sender Sender>
     auto operator()(__ignore, Data data, Sender&& sndr) const {
-      auto [shape, fun] = static_cast<Data&&>(data);
+      auto [policy, shape, fun] = static_cast<Data&&>(data);
       using Shape = decltype(shape);
       using Fn = decltype(fun);
       auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
