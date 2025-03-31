@@ -729,9 +729,9 @@ namespace stdexec {
       _Cp<_Cs...> * = nullptr,
       _Dp<_Ds...> * = nullptr,
       _Tail *...__tail)
-      -> decltype(__mconcat_<(sizeof...(_Tail) == 0)>::__f(
+      -> __midentity<decltype(__mconcat_<(sizeof...(_Tail) == 0)>::__f(
         static_cast<__types<_Ts..., _As..., _Bs..., _Cs..., _Ds...> *>(nullptr),
-        __tail...));
+        __tail...))>;
   };
 
   template <>

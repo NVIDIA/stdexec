@@ -525,7 +525,7 @@ option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
 
 # Configure documentation
 if(STDEXEC_BUILD_DOCS)
-    add_subdirectory(docs)
+    add_subdirectory(docs EXCLUDE_FROM_ALL)
 endif()
 
 # Configure test executables
