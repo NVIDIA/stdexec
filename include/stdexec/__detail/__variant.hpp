@@ -22,6 +22,7 @@
 #include <cstddef>
 #include <memory>
 #include <new>
+#include <utility>
 
 /********************************************************************************/
 /* NB: The variant type implemented here default-constructs into the valueless  */
