@@ -306,14 +306,6 @@ namespace stdexec {
         return stdexec::apply_sender(_Domain(), *this, static_cast<_Sender&&>(__sndr));
       }
 
-#if STDEXEC_EDG()
-      template <
-        class _Sender,
-        class _Error = __error_description_t<__result_of<into_variant, _Sender>>>
-      auto operator()(_Sender&&, [[maybe_unused]] _Error __diagnostic = {}) const
-        -> std::optional<std::tuple<std::variant<std::tuple<>>>> = delete;
-#endif
-
       template <class _Sender>
         requires __callable<sync_wait_t, __result_of<into_variant, _Sender>>
       auto apply_sender(_Sender&& __sndr) const -> std::optional<__variant_for_t<_Sender>> {

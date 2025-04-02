@@ -11,7 +11,7 @@ function(import_standalone_asio)
     set(options "")
     set(args TAG VERSION)
     set(multi_args "")
-    cmake_parse_arguments(IMPORT_STANDALONE_ASIO "${options}" "${args}" "${multi_args}")
+    cmake_parse_arguments(IMPORT_STANDALONE_ASIO "${options}" "${args}" "${multi_args}" ${ARGN})
 
     CPMAddPackage("gh:chriskohlhoff/asio#${IMPORT_STANDALONE_ASIO_TAG}@${IMPORT_STANDALONE_ASIO_VERSION}")
 

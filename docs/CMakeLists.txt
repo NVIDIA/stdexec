@@ -23,9 +23,19 @@ file(GLOB_RECURSE STDEXEC_PUBLIC_HEADERS ${STDEXEC_PUBLIC_HEADER_DIR}/*.hpp)
 
 set(DOXYGEN_INPUT_DIR ${PROJECT_SOURCE_DIR}/include)
 set(DOXYGEN_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/build/doxygen)
+set(DOXYGEN_EXCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/execpools)
 set(DOXYGEN_INDEX_FILE ${DOXYGEN_OUTPUT_DIR}/xml/index.xml)
 set(DOXYFILE_IN ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in)
 set(DOXYFILE_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
+set(COMPILATION_DB_PATH ${PROJECT_SOURCE_DIR})
+
+# Find the location of stddef.h
+execute_process(COMMAND echo "#include <stddef.h>"
+                COMMAND c++ -xc -dI -E -
+                COMMAND grep -oP "/usr/.*(?=/stddef\.h)"
+                COMMAND tail -n 1
+                OUTPUT_VARIABLE STDDEF_INCLUDE_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+message(STATUS "<stddef.h> include path: ${STDDEF_INCLUDE_PATH}")
 
 # Replace variables inside @@ with the current values
 configure_file(${DOXYFILE_IN} ${DOXYFILE_OUT} @ONLY)
@@ -61,17 +71,18 @@ add_custom_command(OUTPUT ${SPHINX_INDEX_FILE}
                      ${SPHINX_EXECUTABLE} -b html
                      # Tell Breathe where to find the Doxygen output
                      -Dbreathe_projects.stdexec=${DOXYGEN_OUTPUT_DIR}/xml
-                   ${SPHINX_SOURCE} ${SPHINX_BUILD}
+                     ${SPHINX_SOURCE} ${SPHINX_BUILD}
                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                    DEPENDS
-                   # Other docs files you want to track should go here (or in some variable)
-                   ${STDEXEC_DOCUMENTATION_SOURCE_FILES}
-                   ${DOXYGEN_INDEX_FILE}
+                     # Other docs files you want to track should go here (or in some variable)
+                     ${STDEXEC_DOCUMENTATION_SOURCE_FILES}
+                     ${DOXYGEN_INDEX_FILE}
                    MAIN_DEPENDENCY ${SPHINX_SOURCE}/conf.py
                    COMMENT "Generating documentation with Sphinx")
 
 # Nice named target so we can run the job easily
-add_custom_target(Sphinx ALL DEPENDS ${SPHINX_INDEX_FILE})
+add_custom_target(docs ALL
+                  DEPENDS ${SPHINX_INDEX_FILE})
 
 # Add an install target to install the docs
 install(DIRECTORY ${SPHINX_BUILD} DESTINATION ${CMAKE_INSTALL_DOCDIR})

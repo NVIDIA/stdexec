@@ -416,7 +416,7 @@ set(STDEXEC_ASIO_IMPLEMENTATION "boost" CACHE STRING "boost")
 set_property(CACHE STDEXEC_ASIO_IMPLEMENTATION PROPERTY STRINGS boost standalone)
 
 if(STDEXEC_ENABLE_ASIO)
-    set(STDEXEC_ASIO_USES_ASIO FALSE)
+    set(STDEXEC_ASIO_USES_BOOST FALSE)
     set(STDEXEC_ASIO_USES_STANDALONE FALSE)
 
     include(rapids-find)
@@ -525,7 +525,7 @@ option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
 
 # Configure documentation
 if(STDEXEC_BUILD_DOCS)
-    add_subdirectory(docs)
+    add_subdirectory(docs EXCLUDE_FROM_ALL)
 endif()
 
 # Configure test executables
