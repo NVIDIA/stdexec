@@ -15,10 +15,10 @@
  */
 #pragma once
 
-// This file assumes STDEXEC_SYSTEM_CONTEXT_INLINE is defined before including it.
-// But clang-tidy doesn't know that, so we need to include the header that defines
-// it when clang-tidy is invoked.
-#if defined(STDEXEC_CLANG_TIDY_INVOKED)
+// This file assumes STDEXEC_SYSTEM_CONTEXT_INLINE is defined before including it. But clang-tidy
+// and doxygen don't know that, so we need to include the header that defines it when clang-tidy and
+// doxygen are invoked.
+#if defined(STDEXEC_CLANG_TIDY_INVOKED) || defined(STDEXEC_DOXYGEN_INVOKED)
 #  include "../system_context.hpp" // IWYU pragma: keep
 #endif
 
