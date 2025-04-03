@@ -195,15 +195,6 @@ namespace nvexec::_strm {
 
         return std::move(std::get<1>(state.data_));
       }
-
-#if STDEXEC_EDG()
-      // For reporting better diagnostics with nvc++
-      template <class _Sender, class _Error = stdexec::__sync_wait::__error_description_t<_Sender>>
-      auto operator()(
-        context_state_t context_state,
-        _Sender&&,
-        [[maybe_unused]] _Error __diagnostic = {}) const -> std::optional<std::tuple<int>> = delete;
-#endif
     };
   } // namespace _sync_wait
 

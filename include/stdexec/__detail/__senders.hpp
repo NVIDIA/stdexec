@@ -30,7 +30,6 @@
 #include "__transform_completion_signatures.hpp"
 #include "__transform_sender.hpp"
 #include "__type_traits.hpp"
-#include <type_traits>
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
@@ -38,12 +37,21 @@ namespace stdexec {
   namespace __detail {
     struct __dependent_completions { };
 
+    using dependent_completions = _ERROR_<__detail::__dependent_completions>;
+
     template <class _Completions>
-    concept __well_formed_sender = __valid_completion_signatures<_Completions>
-                                || __same_as<_Completions, _ERROR_<__dependent_completions>>;
+    concept __well_formed_completions_helper =
+      __valid_completion_signatures<_Completions> || __same_as<_Completions, dependent_completions>;
+
+    template <class _Completions>
+    inline constexpr bool __well_formed_completions_v =
+      __well_formed_completions_helper<_Completions>;
+
+    template <class _Completions>
+    concept __well_formed_completions = __well_formed_completions_v<_Completions>;
   } // namespace __detail
 
-  using dependent_completions = _ERROR_<__detail::__dependent_completions>;
+  using __detail::dependent_completions;
 
   namespace __sigs {
     template <class _Sender, class _Env>
@@ -334,7 +342,7 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // early sender type-checking
   template <class _Sender>
-  concept __well_formed_sender = __detail::__well_formed_sender<
+  concept __well_formed_sender = __detail::__well_formed_completions<
     __minvoke<__with_default_q<__completion_signatures_of_t, dependent_completions>, _Sender>>;
 
   // Used to report a meaningful error message when the sender_in<Sndr, Env> concept check fails.
@@ -376,14 +384,16 @@ namespace stdexec {
           !__merror<_Completions>,
           "Trying to compute the sender's completion signatures resulted in an error. See the rest "
           "of the compiler diagnostic for clues. Look for the string \"_ERROR_\".");
-        // MSVC needs more encouragement to print the type of the error.
-        STDEXEC_MSVC(_Completions __what = 0;)
       } else {
         static_assert(
           __valid_completion_signatures<_Completions>,
           "The stdexec::sender_in<Sender, Environment> concept check has failed. This is likely a "
           "bug in the sender implementation.");
       }
+#if STDEXEC_MSVC() || STDEXEC_NVHPC()
+      // MSVC and NVHPC need more encouragement to print the type of the error.
+      _Completions __what = 0;
+#endif
     }
   }
 } // namespace stdexec
