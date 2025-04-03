@@ -23,6 +23,10 @@ Sender Factories
 
 .. doxygenvariable:: stdexec::read_env
 
+.. doxygenstruct:: exec::just_from_t
+
+.. doxygenvariable:: exec::just_from
+
 Sender Adaptors
 ---------------
 
