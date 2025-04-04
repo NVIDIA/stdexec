@@ -88,10 +88,8 @@ namespace distributed {
       , begin(grid_begin)
       , end(grid_end)
       , own_cells(end - begin)
-      , fields_(
-          device_alloc<float>(
-            static_cast<std::size_t>(own_cells + n * 2)
-            * static_cast<int>(field_id::fields_count))) {
+      , fields_(device_alloc<float>(
+          static_cast<std::size_t>(own_cells + n * 2) * static_cast<int>(field_id::fields_count))) {
     }
 
     [[nodiscard]]
@@ -426,7 +424,7 @@ auto main(int argc, char *argv[]) -> int {
 
   stdexec::sync_wait(
     ex::schedule(gpu)
-    | ex::bulk(accessor.own_cells(), distributed::grid_initializer(dt, accessor)));
+    | ex::bulk(ex::par, accessor.own_cells(), distributed::grid_initializer(dt, accessor)));
 
   const int prev_rank = rank == 0 ? size - 1 : rank - 1;
   const int next_rank = rank == (size - 1) ? 0 : rank + 1;
@@ -481,13 +479,13 @@ auto main(int argc, char *argv[]) -> int {
 
   for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
     auto compute_h = ex::when_all(
-      ex::just() | exec::on(gpu, ex::bulk(bulk_cells, bulk_h_update)),
-      ex::just() | exec::on(gpu_with_priority, ex::bulk(border_cells, border_h_update))
+      ex::just() | exec::on(gpu, ex::bulk(ex::par, bulk_cells, bulk_h_update)),
+      ex::just() | exec::on(gpu_with_priority, ex::bulk(ex::par, border_cells, border_h_update))
         | ex::then(exchange_hx));
 
     auto compute_e = ex::when_all(
-      ex::just() | exec::on(gpu, ex::bulk(bulk_cells, bulk_e_update)),
-      ex::just() | exec::on(gpu_with_priority, ex::bulk(border_cells, border_e_update))
+      ex::just() | exec::on(gpu, ex::bulk(ex::par, bulk_cells, bulk_e_update)),
+      ex::just() | exec::on(gpu_with_priority, ex::bulk(ex::par, border_cells, border_e_update))
         | ex::then(exchange_ez));
 
     stdexec::sync_wait(std::move(compute_h));
@@ -497,14 +495,16 @@ auto main(int argc, char *argv[]) -> int {
   write();
 #else
   for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
-    auto compute_h = ex::just()
-                   | exec::on(gpu, ex::bulk(accessor.own_cells(), distributed::update_h(accessor)))
-                   | ex::then(exchange_hx);
+    auto compute_h =
+      ex::just()
+      | exec::on(gpu, ex::bulk(ex::par, accessor.own_cells(), distributed::update_h(accessor)))
+      | ex::then(exchange_hx);
 
     auto compute_e =
       ex::just()
       | exec::on(
-        gpu, ex::bulk(accessor.own_cells(), distributed::update_e(time.get(), dt, accessor)))
+        gpu,
+        ex::bulk(ex::par, accessor.own_cells(), distributed::update_e(time.get(), dt, accessor)))
       | ex::then(exchange_ez);
 
     stdexec::sync_wait(std::move(compute_h));

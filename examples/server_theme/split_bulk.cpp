@@ -155,7 +155,7 @@ auto handle_multi_blur_request(const http_request& req) -> ex::sender auto {
         size_t img_count = imgs.size();
         // return a sender that bulk-processes the image in parallel
         return ex::just(std::move(imgs))
-             | ex::bulk(img_count, [](size_t i, std::vector<image>& imgs) {
+             | ex::bulk(ex::par, img_count, [](size_t i, std::vector<image>& imgs) {
                  imgs[i] = apply_blur(imgs[i]);
                });
       })
