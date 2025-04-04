@@ -73,5 +73,7 @@ pygments_style = "sphinx"
 
 breathe_default_project = "stdexec"
 
-def setup(app):
-    app.add_css_file("params.css")
+highlight_language = "cpp"
+
+# def setup(app):
+#     app.add_css_file("params.css")
