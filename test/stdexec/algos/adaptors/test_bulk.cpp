@@ -200,44 +200,44 @@ namespace {
 
   TEST_CASE("bulk can be used with a function", "[adaptors][bulk]") {
     constexpr int n = 9;
-    static int counter[n]{};
-    std::fill_n(counter, n, 0);
+    static int counter1[n]{};
+    std::fill_n(counter1, n, 0);
 
-    ex::sender auto snd = ex::just() | ex::bulk(ex::par, n, function<int, n, counter>);
+    ex::sender auto snd = ex::just() | ex::bulk(ex::par, n, function<int, n, counter1>);
     auto op = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
 
-    for (int i: counter) {
+    for (int i: counter1) {
       CHECK(i == 1);
     }
   }
 
   TEST_CASE("bulk_chunked can be used with a function", "[adaptors][bulk]") {
     constexpr int n = 9;
-    static int counter[n]{};
-    std::fill_n(counter, n, 0);
+    static int counter2[n]{};
+    std::fill_n(counter2, n, 0);
 
     ex::sender auto snd = ex::just()
-                        | ex::bulk_chunked(ex::par, n, function_range<int, n, counter>);
+                        | ex::bulk_chunked(ex::par, n, function_range<int, n, counter2>);
     auto op = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
 
     for (int i = 0; i < n; i++) {
-      CHECK(counter[i] == 1);
+      CHECK(counter2[i] == 1);
     }
   }
 
   TEST_CASE("bulk_unchunked can be used with a function", "[adaptors][bulk]") {
     constexpr int n = 9;
-    static int counter[n]{};
-    std::fill_n(counter, n, 0);
+    static int counter3[n]{};
+    std::fill_n(counter3, n, 0);
 
-    ex::sender auto snd = ex::just() | ex::bulk_unchunked(n, function<int, n, counter>);
+    ex::sender auto snd = ex::just() | ex::bulk_unchunked(n, function<int, n, counter3>);
     auto op = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
 
     for (int i = 0; i < n; i++) {
-      CHECK(counter[i] == 1);
+      CHECK(counter3[i] == 1);
     }
   }
 
