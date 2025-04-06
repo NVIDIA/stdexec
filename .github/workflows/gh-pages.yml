@@ -42,7 +42,7 @@ jobs:
       run: cmake -B ${{github.workspace}}/build -DSTDEXEC_BUILD_DOCS:BOOL=ON
 
     - name: Build
-      run: cmake --build ${{github.workspace}}/build --target Sphinx
+      run: cmake --build ${{github.workspace}}/build --target docs
 
     - name: Setup Pages
       uses: actions/configure-pages@v4
