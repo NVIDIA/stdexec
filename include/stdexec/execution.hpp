@@ -52,7 +52,6 @@
 #include "__detail/__starts_on.hpp"                       // IWYU pragma: export
 #include "__detail/__stopped_as_error.hpp"                // IWYU pragma: export
 #include "__detail/__stopped_as_optional.hpp"             // IWYU pragma: export
-#include "__detail/__submit.hpp"                          // IWYU pragma: export
 #include "__detail/__sync_wait.hpp"                       // IWYU pragma: export
 #include "__detail/__then.hpp"                            // IWYU pragma: export
 #include "__detail/__transfer_just.hpp"                   // IWYU pragma: export
