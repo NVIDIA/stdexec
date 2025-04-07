@@ -593,12 +593,13 @@ namespace exec {
       __future_state(_Sender __sndr, _Env __env, const __impl* __scope)
         : __future_state_base<_Completions, _Env>(static_cast<_Env&&>(__env), __scope)
         , __op_(
-            stdexec::connect(
+            stdexec::submit(
               static_cast<_Sender&&>(__sndr),
-              __future_receiver_t<_Sender, _Env>{this, __scope})) {
+              __future_receiver_t<_Sender, _Env>{this, __scope},
+              __ignore{})) {
       }
 
-      connect_result_t<_Sender, __future_receiver_t<_Sender, _Env>> __op_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) submit_result_t<_Sender, __future_receiver_t<_Sender, _Env>, __ignore> __op_;
     };
 
     template <class _SenderId, class _EnvId>
@@ -736,14 +737,10 @@ namespace exec {
             [](__spawn_op_base<_EnvId>* __op) {
                 delete static_cast<__t*>(__op);
             }}
-          , __op_(stdexec::connect(static_cast<_Sndr&&>(__sndr), __spawn_receiver_t<_Env>{this})) {
+          , __data_(stdexec::submit(static_cast<_Sndr&&>(__sndr), __spawn_receiver_t<_Env>{this}, __ignore{})) {
         }
 
-        void start() & noexcept {
-          stdexec::start(__op_);
-        }
-
-        connect_result_t<_Sender, __spawn_receiver_t<_Env>> __op_;
+        STDEXEC_ATTRIBUTE((no_unique_address)) submit_result_t<_Sender, __spawn_receiver_t<_Env>, __ignore> __data_;
       };
     };
 
@@ -779,11 +776,11 @@ namespace exec {
         requires sender_to<nest_result_t<_Sender>, __spawn_receiver_t<_Env>>
       void spawn(_Sender&& __sndr, _Env __env = {}) {
         using __op_t = __spawn_operation_t<nest_result_t<_Sender>, _Env>;
-        // start is noexcept so we can assume that the operation will complete
-        // after this, which means we can rely on its self-ownership to ensure
-        // that it is eventually deleted
-        stdexec::start(*(
-          new __op_t{nest(static_cast<_Sender&&>(__sndr)), static_cast<_Env&&>(__env), &__impl_}));
+        // this will connect and start the operation, after which the operation state is
+        // responsible for deleting itself after it completes.
+        [[maybe_unused]]
+        auto* __op =
+          new __op_t{nest(static_cast<_Sender&&>(__sndr)), static_cast<_Env&&>(__env), &__impl_};
       }
 
       template <__movable_value _Env = env<>, sender_in<__env_t<_Env>> _Sender>
@@ -791,7 +788,6 @@ namespace exec {
         using __state_t = __future_state<nest_result_t<_Sender>, _Env>;
         auto __state = std::make_unique<__state_t>(
           nest(static_cast<_Sender&&>(__sndr)), static_cast<_Env&&>(__env), &__impl_);
-        stdexec::start(__state->__op_);
         return __future_t<_Sender, _Env>{std::move(__state)};
       }
 

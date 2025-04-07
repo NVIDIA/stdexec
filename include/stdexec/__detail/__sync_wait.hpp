@@ -27,6 +27,7 @@
 #include "__meta.hpp"
 #include "__senders.hpp"
 #include "__receivers.hpp"
+#include "__submit.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__transform_sender.hpp"
 #include "__run_loop.hpp"
@@ -266,9 +267,11 @@ namespace stdexec {
 
         // Launch the sender with a continuation that will fill in the __result optional or set the
         // exception_ptr in __local_state.
-        auto __op_state =
-          connect(static_cast<_Sender&&>(__sndr), __receiver_t<_Sender>{&__local_state, &__result});
-        stdexec::start(__op_state);
+        [[maybe_unused]]
+        auto __started_op = submit(
+          static_cast<_Sender&&>(__sndr),
+          __receiver_t<_Sender>{&__local_state, &__result},
+          __ignore{});
 
         // Wait for the variant to be filled in.
         __local_state.__loop_.run();

@@ -509,6 +509,15 @@ namespace stdexec {
           static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
       }
 
+      template <__decays_to<__sexpr> _Self, /*receiver*/ class _Receiver>
+      STDEXEC_ATTRIBUTE((always_inline)) static auto submit(_Self&& __self, _Receiver&& __rcvr)        //
+        noexcept(__noexcept_of<__impl<_Self>::submit, _Self, _Receiver>) //
+        -> __msecond<
+          __if_c<__decays_to<_Self, __sexpr>>,
+          __result_of<__impl<_Self>::submit, _Self, _Receiver>> {
+        return __impl<_Self>::submit(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
+      }
+
       template <class _Sender, class _ApplyFn>
       STDEXEC_ATTRIBUTE((always_inline)) static auto apply(_Sender&& __sndr, _ApplyFn&& __fun) //
         noexcept(

@@ -52,6 +52,17 @@ namespace stdexec {
           },
           __state);
       };
+
+      static constexpr auto submit =
+        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept -> void {
+        static_assert(sender_expr_for<_Sender, _JustTag>);
+        auto&& __state = get_state(static_cast<_Sender&&>(__sndr), __rcvr);
+        __state.apply(
+          [&]<class... _Ts>(_Ts&&... __ts) noexcept {
+            __tag_t()(static_cast<_Receiver&&>(__rcvr), static_cast<_Ts&&>(__ts)...);
+          },
+          static_cast<decltype(__state)>(__state));
+      };
     };
 
     struct just_t {

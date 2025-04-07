@@ -28,6 +28,32 @@
 
 namespace nvexec::_strm {
   namespace _start_detached {
+    struct submit_receiver {
+      using receiver_concept = receiver_t;
+      using __t = submit_receiver;
+      using __id = submit_receiver;
+
+      template <class... _As>
+      void set_value(_As&&...) noexcept {
+      }
+
+      template <class _Error>
+      [[noreturn]]
+      void set_error(_Error&&) noexcept {
+        // A detached operation failed. There is noplace for the error to go.
+        // This is unrecoverable, so we terminate.
+        std::terminate();
+      }
+
+      void set_stopped() noexcept {
+      }
+
+      [[nodiscard]]
+      auto get_env() const noexcept -> __root_env {
+        return {};
+      }
+    };
+
     template <class SenderId, class EnvId>
     struct operation {
       using Sender = __cvref_t<SenderId>;
@@ -35,7 +61,7 @@ namespace nvexec::_strm {
 
       explicit operation(Sender&& sndr, Env env)
         : env_(static_cast<Env&&>(env))
-        , op_state_(connect(static_cast<Sender&&>(sndr), receiver{{}, this})) {
+        , op_data_(submit(static_cast<Sender&&>(sndr), receiver{{}, this}, __ignore{})) {
       }
 
       // If the operation state was allocated with a user-provided allocator, then we must
@@ -85,7 +111,7 @@ namespace nvexec::_strm {
       };
 
       STDEXEC_ATTRIBUTE((no_unique_address)) Env env_;
-      connect_result_t<Sender, receiver> op_state_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) submit_result_t<Sender, receiver> op_data_;
     };
   } // namespace _start_detached
 
@@ -94,8 +120,16 @@ namespace nvexec::_strm {
     template <class Sender, class Env = __root_env>
     void operator()(Sender&& sndr, Env&& env = {}) const noexcept(false) {
       using Op = _start_detached::operation<__cvref_id<Sender>, __id<__decay_t<Env>>>;
-      // Use the provided allocator, if any, to allocate the operation state.
-      if constexpr (__callable<get_allocator_t, Env>) {
+
+      // NON-STANDARD
+      if constexpr (
+        __same_as<Env, __root_env>
+        && __same_as<void, submit_result_t<Sender, _start_detached::submit_receiver>>) {
+        // If submit(sndr, rcvr) returns void, then no state needs to be kept alive
+        // for the operation. We can just call submit and return.
+        stdexec::submit(static_cast<Sender&&>(sndr), _start_detached::submit_receiver{});
+      } else if constexpr (__callable<get_allocator_t, Env>) {
+        // Use the provided allocator to allocate the operation state.
         auto alloc = get_allocator(env);
         using Alloc = decltype(alloc);
         using OpAlloc = typename std::allocator_traits<Alloc>::template rebind_alloc<Op>;
@@ -111,12 +145,12 @@ namespace nvexec::_strm {
           op_alloc, op, static_cast<Sender&&>(sndr), static_cast<Env&&>(env));
         // The operation state is now constructed, dismiss the scope guard.
         g.dismiss();
-        // This cannot throw:
-        stdexec::start(op->op_state_);
       } else {
         // The caller did not provide an allocator, so we use the default allocator.
+        [[maybe_unused]]
         Op* op = new Op{static_cast<Sender&&>(sndr), static_cast<Env&&>(env)};
-        start(op->op_state_);
+        // The operation has now started and is responsible for deleting itself when it
+        // completes.
       }
     }
   };
