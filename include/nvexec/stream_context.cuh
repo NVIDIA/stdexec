@@ -27,7 +27,6 @@
 #include "stream/let_xxx.cuh"             // IWYU pragma: export
 #include "stream/schedule_from.cuh"       // IWYU pragma: export
 #include "stream/start_detached.cuh"      // IWYU pragma: export
-#include "stream/submit.cuh"              // IWYU pragma: export
 #include "stream/split.cuh"               // IWYU pragma: export
 #include "stream/then.cuh"                // IWYU pragma: export
 #include "stream/continues_on.cuh"        // IWYU pragma: export

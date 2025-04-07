@@ -17,48 +17,76 @@
 
 #include "__execution_fwd.hpp"
 
+#include <memory>
+
 #include "__meta.hpp"
 #include "__env.hpp"
 #include "__receivers.hpp"
-#include "__submit.hpp"
+#include "__env.hpp"
+#include "__scope.hpp"
 #include "__transform_sender.hpp"
-#include "__type_traits.hpp"
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.consumer.start_detached]
   namespace __start_detached {
-    template <class _EnvId>
-    struct __detached_receiver {
-      using _Env = stdexec::__t<_EnvId>;
+    template <class _SenderId, class _EnvId>
+    struct __operation {
+      using _Sender = __cvref_t<_SenderId>;
+      using _Env = __t<_EnvId>;
 
-      struct __t {
+      explicit __operation(_Sender&& __sndr, _Env __env)
+        : __env_(static_cast<_Env&&>(__env))
+        , __op_state_(connect(static_cast<_Sender&&>(__sndr), __receiver{this})) {
+      }
+
+      static void __destroy_delete(__operation* __self) noexcept {
+        if constexpr (__callable<get_allocator_t, _Env>) {
+          auto __alloc = stdexec::get_allocator(__self->__env_);
+          using _Alloc = decltype(__alloc);
+          using _OpAlloc =
+            typename std::allocator_traits<_Alloc>::template rebind_alloc<__operation>;
+          _OpAlloc __op_alloc{__alloc};
+          std::allocator_traits<_OpAlloc>::destroy(__op_alloc, __self);
+          std::allocator_traits<_OpAlloc>::deallocate(__op_alloc, __self, 1);
+        } else {
+          delete __self;
+        }
+      }
+
+      // The start_detached receiver deletes the operation state.
+      struct __receiver {
         using receiver_concept = receiver_t;
-        using __id = __detached_receiver;
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Env __env_;
+        using __t = __receiver;
+        using __id = __receiver;
 
         template <class... _As>
         void set_value(_As&&...) noexcept {
+          __operation::__destroy_delete(__op_); // NB: invalidates *this
         }
 
         template <class _Error>
         [[noreturn]]
         void set_error(_Error&&) noexcept {
+          // A detached operation failed. There is noplace for the error to go.
+          // This is unrecoverable, so we terminate.
           std::terminate();
         }
 
         void set_stopped() noexcept {
+          __operation::__destroy_delete(__op_); // NB: invalidates *this
         }
 
         auto get_env() const noexcept -> const _Env& {
-          // BUGBUG NOT TO SPEC
-          return __env_;
+          return __op_->__env_;
         }
-      };
-    };
 
-    template <class _Env = env<>>
-    using __detached_receiver_t = __t<__detached_receiver<__id<__decay_t<_Env>>>>;
+        __operation* __op_;
+      };
+
+      STDEXEC_ATTRIBUTE((no_unique_address)) _Env __env_;
+      connect_result_t<_Sender, __receiver> __op_state_;
+    };
 
     struct start_detached_t {
       template <sender_in<__root_env> _Sender>
@@ -84,11 +112,36 @@ namespace stdexec {
           __as_root_env(static_cast<_Env&&>(__env)));
       }
 
+      // Below is the default implementation for `start_detached`.
       template <class _Sender, class _Env = __root_env>
-        requires sender_to<_Sender, __detached_receiver_t<_Env>>
-      void apply_sender(_Sender&& __sndr, _Env&& __env = {}) const {
-        __submit(
-          static_cast<_Sender&&>(__sndr), __detached_receiver_t<_Env>{static_cast<_Env&&>(__env)});
+        requires sender_in<_Sender, __as_root_env_t<_Env>>
+      void apply_sender(_Sender&& __sndr, _Env&& __env = {}) const noexcept(false) {
+        using _Op = __operation<__cvref_id<_Sender>, __id<__decay_t<_Env>>>;
+        // Use the provided allocator, if any, to allocate the operation state.
+        if constexpr (__callable<get_allocator_t, _Env>) {
+          auto __alloc = get_allocator(__env);
+          using _Alloc = decltype(__alloc);
+          using _OpAlloc = typename std::allocator_traits<_Alloc>::template rebind_alloc<_Op>;
+          // We use the allocator to allocate the operation state and also to construct
+          // it.
+          _OpAlloc __op_alloc{__alloc};
+          _Op* __op = std::allocator_traits<_OpAlloc>::allocate(__op_alloc, 1);
+          __scope_guard __g{[__op, &__op_alloc]() noexcept {
+            std::allocator_traits<_OpAlloc>::deallocate(__op_alloc, __op, 1);
+          }};
+          // This can potentially throw. If it does, the scope guard will deallocate the
+          // storage automatically.
+          std::allocator_traits<_OpAlloc>::construct(
+            __op_alloc, __op, static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env));
+          // The operation state is now constructed, dismiss the scope guard.
+          __g.__dismiss();
+          // This cannot throw:
+          stdexec::start(__op->__op_state_);
+        } else {
+          // The caller did not provide an allocator, so we use the default allocator.
+          _Op* __op = new _Op(static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env));
+          start(__op->__op_state_);
+        }
       }
     };
   } // namespace __start_detached
