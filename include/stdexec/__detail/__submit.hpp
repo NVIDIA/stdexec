@@ -34,12 +34,13 @@ namespace stdexec {
     template <class _CvSenderId, class _ReceiverId>
     struct __data {
       using _CvSender = __cvref_t<_CvSenderId>;
-      using _Receiver = __t<_ReceiverId>;
+      using _Receiver = stdexec::__t<_ReceiverId>;
 
       struct __t {
         using operation_state_concept = operation_state_t;
         using __id = __data;
 
+        STDEXEC_IMMOVABLE(__t);
         explicit __t(_CvSender&& __sndr, _Receiver __rcvr) noexcept(
           __nothrow_connectable<_CvSender, _Receiver>)
           : __op_(connect(static_cast<_CvSender&&>(__sndr), static_cast<_Receiver&&>(__rcvr))) {
@@ -63,7 +64,8 @@ namespace stdexec {
     template <class _Sender, class _Receiver, class _Default = __void>
       requires sender_to<_Sender, _Receiver>
     auto operator()(_Sender&& __sndr, _Receiver __rcvr, _Default = {}) const
-      noexcept(__nothrow_connectable<_Sender, _Receiver>) {
+      noexcept(__nothrow_connectable<_Sender, _Receiver>)
+        -> __submit::__op_data<_Sender, _Receiver> {
       return __submit::__op_data<_Sender, _Receiver>{
         static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr)};
     }

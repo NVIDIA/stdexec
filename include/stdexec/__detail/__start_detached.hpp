@@ -58,7 +58,7 @@ namespace stdexec {
     };
 
     template <class _SenderId, class _EnvId>
-    struct __operation {
+    struct __operation : __immovable {
       using _Sender = __cvref_t<_SenderId>;
       using _Env = __t<_EnvId>;
 

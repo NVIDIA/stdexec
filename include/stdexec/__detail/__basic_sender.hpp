@@ -168,7 +168,7 @@ namespace stdexec {
     };
 
     template <class _Sexpr, class _Receiver>
-    struct __state_box {
+    struct __state_box : __immovable {
       using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
       using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
