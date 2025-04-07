@@ -121,14 +121,20 @@ namespace nvexec::_strm {
     void operator()(Sender&& sndr, Env&& env = {}) const noexcept(false) {
       using Op = _start_detached::operation<__cvref_id<Sender>, __id<__decay_t<Env>>>;
 
-      // NON-STANDARD
+#if !STDEXEC_APPLE_CLANG() // There seems to be a codegen bug in apple clang that causes
+                           // `start_detached` to segfault when the code path below is
+                           // taken.
+      // BUGBUG NOT TO SPEC: the use of the non-standard `submit` algorithm here is a
+      // conforming extension.
       if constexpr (
         __same_as<Env, __root_env>
         && __same_as<void, submit_result_t<Sender, _start_detached::submit_receiver>>) {
         // If submit(sndr, rcvr) returns void, then no state needs to be kept alive
         // for the operation. We can just call submit and return.
         stdexec::submit(static_cast<Sender&&>(sndr), _start_detached::submit_receiver{});
-      } else if constexpr (__callable<get_allocator_t, Env>) {
+      } else
+#endif
+        if constexpr (__callable<get_allocator_t, Env>) {
         // Use the provided allocator to allocate the operation state.
         auto alloc = get_allocator(env);
         using Alloc = decltype(alloc);

@@ -70,35 +70,36 @@ namespace stdexec {
         static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr)};
     }
 
-    // // This implementation is used if the sender has a non-static submit member function.
-    // template <class _Sender, class _Receiver, class _Default = __void>
-    //   requires sender_to<_Sender, _Receiver> && __submit::__has_memfn<_Sender, _Receiver>
-    // auto operator()(_Sender&& __sndr, _Receiver __rcvr, [[maybe_unused]] _Default __def = {}) const
-    //   noexcept(noexcept(static_cast<_Sender&&>(__sndr).submit(static_cast<_Receiver&&>(__rcvr)))) {
-    //   using __result_t =
-    //     decltype(static_cast<_Sender&&>(__sndr).submit(static_cast<_Receiver&&>(__rcvr)));
-    //   if constexpr (__same_as<__result_t, void> && !__same_as<_Default, __void>) {
-    //     static_cast<_Sender&&>(__sndr).submit(static_cast<_Receiver&&>(__rcvr));
-    //     return __def;
-    //   } else {
-    //     return static_cast<_Sender&&>(__sndr).submit(static_cast<_Receiver&&>(__rcvr));
-    //   }
-    // }
+    // This implementation is used if the sender has a non-static submit member function.
+    template <class _Sender, class _Receiver, class _Default = __void>
+      requires sender_to<_Sender, _Receiver> && __submit::__has_memfn<_Sender, _Receiver>
+    auto operator()(_Sender&& __sndr, _Receiver __rcvr, [[maybe_unused]] _Default __def = {}) const
+      noexcept(noexcept(static_cast<_Sender&&>(__sndr).submit(static_cast<_Receiver&&>(__rcvr)))) {
+      using __result_t =
+        decltype(static_cast<_Sender&&>(__sndr).submit(static_cast<_Receiver&&>(__rcvr)));
+      if constexpr (__same_as<__result_t, void> && !__same_as<_Default, __void>) {
+        static_cast<_Sender&&>(__sndr).submit(static_cast<_Receiver&&>(__rcvr));
+        return __def;
+      } else {
+        return static_cast<_Sender&&>(__sndr).submit(static_cast<_Receiver&&>(__rcvr));
+      }
+    }
 
-    // // This implementation is used if the sender has a static submit member function.
-    // template <class _Sender, class _Receiver, class _Default = __void>
-    //   requires sender_to<_Sender, _Receiver> && __submit::__has_static_memfn<_Sender, _Receiver>
-    // auto operator()(_Sender&& __sndr, _Receiver __rcvr, [[maybe_unused]] _Default __def = {}) const
-    //   noexcept(noexcept(__sndr.submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr)))) {
-    //   using __result_t =
-    //     decltype(__sndr.submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr)));
-    //   if constexpr (__same_as<__result_t, void> && !__same_as<_Default, __void>) {
-    //     __sndr.submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
-    //     return __def;
-    //   } else {
-    //     return __sndr.submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
-    //   }
-    // }
+    // This implementation is used if the sender has a static submit member function.
+    template <class _Sender, class _Receiver, class _Default = __void>
+      requires sender_to<_Sender, _Receiver> && __submit::__has_static_memfn<_Sender, _Receiver>
+    auto operator()(_Sender&& __sndr, _Receiver __rcvr, [[maybe_unused]] _Default __def = {}) const
+      noexcept(
+        noexcept(__sndr.submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr)))) {
+      using __result_t =
+        decltype(__sndr.submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr)));
+      if constexpr (__same_as<__result_t, void> && !__same_as<_Default, __void>) {
+        __sndr.submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
+        return __def;
+      } else {
+        return __sndr.submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
+      }
+    }
   };
 
   inline constexpr __submit_t submit{};

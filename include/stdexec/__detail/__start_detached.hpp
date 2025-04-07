@@ -145,14 +145,20 @@ namespace stdexec {
       void apply_sender(_Sender&& __sndr, _Env&& __env = {}) const noexcept(false) {
         using _Op = __operation<__cvref_id<_Sender>, __id<__decay_t<_Env>>>;
 
-        // NON-STANDARD
+#if !STDEXEC_APPLE_CLANG() // There seems to be a codegen bug in apple clang that causes
+                           // `start_detached` to segfault when the code path below is
+                           // taken.
+        // BUGBUG NOT TO SPEC: the use of the non-standard `submit` algorithm here is a
+        // conforming extension.
         if constexpr (
           __same_as<_Env, __root_env>
           && __same_as<void, submit_result_t<_Sender, __submit_receiver>>) {
           // If submit(sndr, rcvr) returns void, then no state needs to be kept alive
           // for the operation. We can just call submit and return.
           stdexec::submit(static_cast<_Sender&&>(__sndr), __submit_receiver{});
-        } else if constexpr (__callable<get_allocator_t, _Env>) {
+        } else
+#endif
+          if constexpr (__callable<get_allocator_t, _Env>) {
           // Use the provided allocator if any to allocate the operation state.
           auto __alloc = get_allocator(__env);
           using _Alloc = decltype(__alloc);
