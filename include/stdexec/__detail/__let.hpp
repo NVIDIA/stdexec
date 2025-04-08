@@ -225,10 +225,8 @@ namespace stdexec {
         __result_receiver_t<_Receiver, _Scheduler>>;
 
     template <class _ResultSender, class _Scheduler, class _Receiver>
-    using __submit_result = submit_result_t<
-      _ResultSender,
-      __checked_result_receiver_t<_ResultSender, _Scheduler, _Receiver>,
-      __ignore>;
+    using __submit_result =
+      submit_result<_ResultSender, __checked_result_receiver_t<_ResultSender, _Scheduler, _Receiver>>;
 
     template <class _SetTag, class _Fun, class _Sched, class... _Env>
     struct __transform_signal_fn {
@@ -507,8 +505,10 @@ namespace stdexec {
         // Create a receiver based on the state, the computed sender, and the operation state:
         auto __rcvr2 = __state.__get_result_receiver(__sndr2, __op_state);
         // Connect the sender to the receiver and start it:
-        __state.__storage_.emplace_from(
-          stdexec::submit, std::move(__sndr2), std::move(__rcvr2), __ignore{});
+        using __result_t = decltype(submit_result{std::move(__sndr2), std::move(__rcvr2)});
+        auto& __op =
+          __state.__storage_.template emplace<__result_t>(std::move(__sndr2), std::move(__rcvr2));
+        __op.submit(std::move(__sndr2), std::move(__rcvr2));
       }
 
       template <class _OpState, class... _As>

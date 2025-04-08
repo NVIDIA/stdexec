@@ -590,16 +590,27 @@ namespace exec {
     struct __future_state : __future_state_base<__future_completions_t<_Sender, _Env>, _Env> {
       using _Completions = __future_completions_t<_Sender, _Env>;
 
-      __future_state(_Sender __sndr, _Env __env, const __impl* __scope)
+      __future_state(connect_t, _Sender&& __sndr, _Env __env, const __impl* __scope)
         : __future_state_base<_Completions, _Env>(static_cast<_Env&&>(__env), __scope)
-        , __op_(
-            stdexec::submit(
-              static_cast<_Sender&&>(__sndr),
-              __future_receiver_t<_Sender, _Env>{this, __scope},
-              __ignore{})) {
+        , __op_(static_cast<_Sender&&>(__sndr), __future_receiver_t<_Sender, _Env>{this, __scope}) {
       }
 
-      STDEXEC_ATTRIBUTE((no_unique_address)) submit_result_t<_Sender, __future_receiver_t<_Sender, _Env>, __ignore> __op_;
+      __future_state(_Sender __sndr, _Env __env, const __impl* __scope)
+        : __future_state(
+            connect,
+            static_cast<_Sender&&>(__sndr),
+            static_cast<_Env&&>(__env),
+            __scope) {
+        // If the operation completes synchronously, then the following line will cause
+        // the destruction of *this, which is not a problem because we used a delegating
+        // constructor, so *this is considered fully constructed.
+        __op_.submit(
+          static_cast<_Sender&&>(__sndr), __future_receiver_t<_Sender, _Env>{this, __scope});
+      }
+
+      STDEXEC_ATTRIBUTE((no_unique_address)) [[]] //
+        submit_result<_Sender, __future_receiver_t<_Sender, _Env>>
+          __op_{};
     };
 
     template <class _SenderId, class _EnvId>
@@ -730,17 +741,26 @@ namespace exec {
       using _Sender = stdexec::__t<_SenderId>;
 
       struct __t : __spawn_op_base<_EnvId> {
-        template <__decays_to<_Sender> _Sndr>
-        __t(_Sndr&& __sndr, _Env __env, const __impl* __scope)
+        __t(connect_t, _Sender&& __sndr, _Env __env, const __impl* __scope)
           : __spawn_op_base<_EnvId>{__env::__join(static_cast<_Env&&>(__env),
             __spawn_env_{__scope->__stop_source_.get_token()}),
             [](__spawn_op_base<_EnvId>* __op) {
                 delete static_cast<__t*>(__op);
             }}
-          , __data_(stdexec::submit(static_cast<_Sndr&&>(__sndr), __spawn_receiver_t<_Env>{this}, __ignore{})) {
+          , __data_(static_cast<_Sender&&>(__sndr), __spawn_receiver_t<_Env>{this}) {
         }
 
-        STDEXEC_ATTRIBUTE((no_unique_address)) submit_result_t<_Sender, __spawn_receiver_t<_Env>, __ignore> __data_;
+        __t(_Sender __sndr, _Env __env, const __impl* __scope)
+          : __t(connect, static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env), __scope) {
+          // If the operation completes synchronously, then the following line will cause
+          // the destruction of *this, which is not a problem because we used a delegating
+          // constructor, so *this is considered fully constructed.
+          __data_.submit(static_cast<_Sender&&>(__sndr), __spawn_receiver_t<_Env>{this});
+        }
+
+        STDEXEC_ATTRIBUTE((no_unique_address)) [[]] //
+          submit_result<_Sender, __spawn_receiver_t<_Env>>
+            __data_;
       };
     };
 

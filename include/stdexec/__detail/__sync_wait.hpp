@@ -268,10 +268,9 @@ namespace stdexec {
         // Launch the sender with a continuation that will fill in the __result optional or set the
         // exception_ptr in __local_state.
         [[maybe_unused]]
-        auto __started_op = submit(
-          static_cast<_Sender&&>(__sndr),
-          __receiver_t<_Sender>{&__local_state, &__result},
-          __ignore{});
+        auto __op = stdexec::connect(
+          static_cast<_Sender&&>(__sndr), __receiver_t<_Sender>{&__local_state, &__result});
+        stdexec::start(__op);
 
         // Wait for the variant to be filled in.
         __local_state.__loop_.run();

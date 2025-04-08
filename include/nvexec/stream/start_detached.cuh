@@ -59,9 +59,17 @@ namespace nvexec::_strm {
       using Sender = __cvref_t<SenderId>;
       using Env = __t<EnvId>;
 
-      explicit operation(Sender&& sndr, Env env)
+      explicit operation(connect_t, Sender&& sndr, Env env)
         : env_(static_cast<Env&&>(env))
-        , op_data_(submit(static_cast<Sender&&>(sndr), receiver{{}, this}, __ignore{})) {
+        , op_data_(static_cast<Sender&&>(sndr), receiver{{}, this}) {
+      }
+
+      explicit operation(Sender&& sndr, Env env)
+        : operation(static_cast<Sender&&>(sndr), static_cast<Env&&>(env)) {
+        // If the operation completes synchronously, then the following line will cause
+        // the destruction of *this, which is not a problem because we used a delegating
+        // constructor, so *this is considered fully constructed.
+        op_data_.submit(static_cast<Sender&&>(sndr), receiver{{}, this});
       }
 
       // If the operation state was allocated with a user-provided allocator, then we must
@@ -111,8 +119,12 @@ namespace nvexec::_strm {
       };
 
       STDEXEC_ATTRIBUTE((no_unique_address)) Env env_;
-      STDEXEC_ATTRIBUTE((no_unique_address)) submit_result_t<Sender, receiver> op_data_;
+      STDEXEC_ATTRIBUTE((no_unique_address)) submit_result<Sender, receiver> op_data_;
     };
+
+    template <class Sender, class Env>
+    concept _use_submit = __submittable<Sender, submit_receiver> && __same_as<Env, __root_env>
+                        && __same_as<void, __submit_result_t<Sender, submit_receiver>>;
   } // namespace _start_detached
 
   template <>
@@ -126,12 +138,10 @@ namespace nvexec::_strm {
                            // taken.
       // BUGBUG NOT TO SPEC: the use of the non-standard `submit` algorithm here is a
       // conforming extension.
-      if constexpr (
-        __same_as<Env, __root_env>
-        && __same_as<void, submit_result_t<Sender, _start_detached::submit_receiver>>) {
+      if constexpr (_start_detached::_use_submit<Sender, Env>) {
         // If submit(sndr, rcvr) returns void, then no state needs to be kept alive
         // for the operation. We can just call submit and return.
-        stdexec::submit(static_cast<Sender&&>(sndr), _start_detached::submit_receiver{});
+        stdexec::__submit::__submit(static_cast<Sender&&>(sndr), _start_detached::submit_receiver{});
       } else
 #endif
         if constexpr (__callable<get_allocator_t, Env>) {
