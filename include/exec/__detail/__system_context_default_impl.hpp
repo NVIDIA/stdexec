@@ -185,6 +185,7 @@ namespace exec::__system_context_default_impl {
 
     using __bulk_schedule_operation_t = __operation<decltype(stdexec::bulk(
       stdexec::schedule(std::declval<__pool_scheduler_t>()),
+      stdexec::par,
       std::declval<uint32_t>(),
       std::declval<__bulk_functor>()))>;
 
@@ -205,8 +206,8 @@ namespace exec::__system_context_default_impl {
       std::span<std::byte> __storage,
       bulk_item_receiver& __r) noexcept override {
       try {
-        auto __sndr =
-          stdexec::bulk(stdexec::schedule(__pool_scheduler_), __size, __bulk_functor{&__r});
+        auto __sndr = stdexec::bulk(
+          stdexec::schedule(__pool_scheduler_), stdexec::par, __size, __bulk_functor{&__r});
         auto __os =
           __bulk_schedule_operation_t::__construct_maybe_alloc(__storage, &__r, std::move(__sndr));
         __os->start();

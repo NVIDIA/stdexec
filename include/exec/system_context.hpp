@@ -615,7 +615,8 @@ namespace exec {
   struct __transform_parallel_bulk_sender {
     template <class _Data, class _Previous>
     auto operator()(stdexec::bulk_t, _Data&& __data, _Previous&& __previous) const noexcept {
-      auto [__shape, __fn] = static_cast<_Data&&>(__data);
+      auto [__pol, __shape, __fn] = static_cast<_Data&&>(__data);
+      // TODO: handle non-par execution policies
       return __parallel_bulk_sender<_Previous, decltype(__shape), decltype(__fn)>{
         __sched_, static_cast<_Previous&&>(__previous), __shape, std::move(__fn)};
     }

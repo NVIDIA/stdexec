@@ -50,8 +50,8 @@ namespace {
     auto add = [](auto const & data) {
       return std::accumulate(std::begin(data), std::end(data), 0);
     };
-    auto sender = stdexec::transfer_just(sch, std::move(data)) //
-                | stdexec::bulk(size, expensive_computation)   //
+    auto sender = stdexec::transfer_just(sch, std::move(data))             //
+                | stdexec::bulk(stdexec::par, size, expensive_computation) //
                 | stdexec::then(add);
 
     auto completion_scheduler =
@@ -76,8 +76,8 @@ namespace {
     auto add = [](auto const & data) {
       return std::accumulate(std::begin(data), std::end(data), 0);
     };
-    auto sender = stdexec::transfer_just(sch, std::move(data)) //
-                | stdexec::bulk(size, expensive_computation)   //
+    auto sender = stdexec::transfer_just(sch, std::move(data))             //
+                | stdexec::bulk(stdexec::par, size, expensive_computation) //
                 | stdexec::then(add);
 
 

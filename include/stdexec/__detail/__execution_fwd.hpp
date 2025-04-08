@@ -245,10 +245,16 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __bulk {
     struct bulk_t;
+    struct bulk_chunked_t;
+    struct bulk_unchunked_t;
   } // namespace __bulk
 
   using __bulk::bulk_t;
+  using __bulk::bulk_chunked_t;
+  using __bulk::bulk_unchunked_t;
   extern const bulk_t bulk;
+  extern const bulk_chunked_t bulk_chunked;
+  extern const bulk_unchunked_t bulk_unchunked;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __split {
