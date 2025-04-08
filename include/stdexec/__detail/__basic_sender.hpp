@@ -168,7 +168,7 @@ namespace stdexec {
     };
 
     template <class _Sexpr, class _Receiver>
-    struct __state_box {
+    struct __state_box : __immovable {
       using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
       using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
@@ -507,6 +507,15 @@ namespace stdexec {
           __result_of<__impl<_Self>::connect, _Self, _Receiver>> {
         return __impl<_Self>::connect(
           static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
+      }
+
+      template <__decays_to<__sexpr> _Self, /*receiver*/ class _Receiver>
+      STDEXEC_ATTRIBUTE((always_inline)) static auto submit(_Self&& __self, _Receiver&& __rcvr)        //
+        noexcept(__noexcept_of<__impl<_Self>::submit, _Self, _Receiver>) //
+        -> __msecond<
+          __if_c<__decays_to<_Self, __sexpr>>,
+          __result_of<__impl<_Self>::submit, _Self, _Receiver>> {
+        return __impl<_Self>::submit(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
       }
 
       template <class _Sender, class _ApplyFn>

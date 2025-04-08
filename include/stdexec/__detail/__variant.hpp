@@ -18,6 +18,7 @@
 #include "__meta.hpp"
 #include "__type_traits.hpp"
 #include "__utility.hpp"
+#include "__scope.hpp"
 
 #include <cstddef>
 #include <memory>
@@ -40,6 +41,13 @@ namespace stdexec {
   struct __monostate { };
 
   namespace __var {
+    STDEXEC_ATTRIBUTE((host, device)) inline auto __mk_index_guard(std::size_t &__index, std::size_t __new) noexcept {
+      __index = __new;
+      return __scope_guard{[&__index]() noexcept {
+        __index = __variant_npos;
+      }};
+    }
+
     template <auto _Idx, class... _Ts>
     class __variant;
 
@@ -102,6 +110,19 @@ namespace stdexec {
         return __index_ == __variant_npos;
       }
 
+      // The following emplace functions must take great care to avoid use-after-free bugs.
+      // If the object being constructed calls `start` on a newly created operation state
+      // (as does the object returned from `submit`), and if `start` completes inline, it
+      // could cause the destruction of the outer operation state that owns *this. The
+      // function below uses the following pattern to avoid this:
+      // 1. Store the new index in __index_.
+      // 2. Create a scope guard that will reset __index_ to __variant_npos if the
+      //    constructor throws.
+      // 3. Construct the new object in the storage, which may cause the invalidation of
+      //    *this. The emplace function must not access any members of *this after this point.
+      // 4. Dismiss the scope guard, which will leave __index_ set to the new index.
+      // 5. Return a reference to the new object -- which may be invalid! Calling code
+      //    must be aware of the danger.
       template <class _Ty, class... _As>
       STDEXEC_ATTRIBUTE((host, device)) auto emplace(_As &&...__as) //
         noexcept(__nothrow_constructible_from<_Ty, _As...>) -> _Ty & {
@@ -109,9 +130,10 @@ namespace stdexec {
         static_assert(__new_index != __variant_npos, "Type not in variant");
 
         __destroy();
-        ::new (__storage_) _Ty{static_cast<_As &&>(__as)...};
-        __index_ = __new_index;
-        return *std::launder(reinterpret_cast<_Ty *>(__storage_));
+        auto __sg = __mk_index_guard(__index_, __new_index);
+        auto *__p = ::new (__storage_) _Ty{static_cast<_As &&>(__as)...};
+        __sg.__dismiss();
+        return *std::launder(__p);
       }
 
       template <std::size_t _Ny, class... _As>
@@ -120,9 +142,10 @@ namespace stdexec {
         static_assert(_Ny < sizeof...(_Ts), "variant index is too large");
 
         __destroy();
-        ::new (__storage_) __at<_Ny>{static_cast<_As &&>(__as)...};
-        __index_ = _Ny;
-        return *std::launder(reinterpret_cast<__at<_Ny> *>(__storage_));
+        auto __sg = __mk_index_guard(__index_, _Ny);
+        auto *__p = ::new (__storage_) __at<_Ny>{static_cast<_As &&>(__as)...};
+        __sg.__dismiss();
+        return *std::launder(__p);
       }
 
       template <std::size_t _Ny, class _Fn, class... _As>
@@ -133,9 +156,11 @@ namespace stdexec {
           "callable does not return the correct type");
 
         __destroy();
-        ::new (__storage_) __at<_Ny>(static_cast<_Fn &&>(__fn)(static_cast<_As &&>(__as)...));
-        __index_ = _Ny;
-        return *std::launder(reinterpret_cast<__at<_Ny> *>(__storage_));
+        auto __sg = __mk_index_guard(__index_, _Ny);
+        auto *__p = ::new (__storage_)
+          __at<_Ny>(static_cast<_Fn &&>(__fn)(static_cast<_As &&>(__as)...));
+        __sg.__dismiss();
+        return *std::launder(__p);
       }
 
       template <class _Fn, class... _As>
