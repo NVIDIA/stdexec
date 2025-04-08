@@ -65,7 +65,7 @@ namespace nvexec::_strm {
       }
 
       explicit operation(Sender&& sndr, Env env)
-        : operation(static_cast<Sender&&>(sndr), static_cast<Env&&>(env)) {
+        : operation(connect, static_cast<Sender&&>(sndr), static_cast<Env&&>(env)) {
         // If the operation completes synchronously, then the following line will cause
         // the destruction of *this, which is not a problem because we used a delegating
         // constructor, so *this is considered fully constructed.
