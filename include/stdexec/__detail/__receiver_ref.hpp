@@ -18,7 +18,6 @@
 #include "__execution_fwd.hpp"
 
 #include "__completion_signatures.hpp"
-#include "__env.hpp"
 #include "__receivers.hpp"
 
 #include <functional>

@@ -21,34 +21,14 @@
 #include "__receivers.hpp"
 #include "__senders.hpp"
 #include "__schedulers.hpp"
-#include "__submit.hpp"
+#include "__start_detached.hpp"
+#include "__then.hpp"
 #include "__transform_sender.hpp"
-
-#include <exception>
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.execute]
   namespace __execute_ {
-    template <class _Fun>
-    struct __as_receiver {
-      using receiver_concept = receiver_t;
-      _Fun __fun_;
-
-      void set_value() noexcept {
-        // terminates on exception:
-        __fun_();
-      }
-
-      [[noreturn]]
-      void set_error(std::exception_ptr) noexcept {
-        std::terminate();
-      }
-
-      void set_stopped() noexcept {
-      }
-    };
-
     struct execute_t {
       template <scheduler _Scheduler, class _Fun>
         requires __callable<_Fun&> && move_constructible<_Fun>
@@ -61,7 +41,7 @@ namespace stdexec {
       template <sender_of<set_value_t()> _Sender, class _Fun>
         requires __callable<_Fun&> && move_constructible<_Fun>
       void apply_sender(_Sender&& __sndr, _Fun __fun) const noexcept(false) {
-        __submit(static_cast<_Sender&&>(__sndr), __as_receiver<_Fun>{static_cast<_Fun&&>(__fun)});
+        start_detached(then(static_cast<_Sender&&>(__sndr), static_cast<_Fun&&>(__fun)));
       }
     };
   } // namespace __execute_

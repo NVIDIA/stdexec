@@ -134,6 +134,18 @@ namespace exec {
         noexcept(stdexec::__nothrow_decay_copyable<Rcvr, Fn const &>) -> _opstate<Rcvr, Fn> {
         return _opstate<Rcvr, Fn>{static_cast<Rcvr&&>(rcvr), _fn};
       }
+
+      template <class Rcvr>
+      STDEXEC_ATTRIBUTE((host, device)) auto submit(Rcvr rcvr) && noexcept -> void {
+        auto op = static_cast<_sndr_base&&>(*this).connect(static_cast<Rcvr&&>(rcvr));
+        stdexec::start(op);
+      }
+
+      template <class Rcvr>
+      STDEXEC_ATTRIBUTE((host, device)) auto submit(Rcvr rcvr) const & noexcept -> void {
+        auto op = this->connect(static_cast<Rcvr&&>(rcvr));
+        stdexec::start(op);
+      }
     };
 
     template <class Fn, class Tag = JustTag>

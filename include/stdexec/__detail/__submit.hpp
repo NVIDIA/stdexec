@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 NVIDIA Corporation
+ * Copyright (c) 2021-2025 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -17,126 +17,174 @@
 
 #include "__execution_fwd.hpp"
 
-#include "__concepts.hpp"
-#include "__env.hpp"
-#include "__receivers.hpp"
+#include "__manual_lifetime.hpp"
+#include "__operation_states.hpp"
+#include "__optional.hpp"
 #include "__senders.hpp"
-#include "__meta.hpp"
 #include "__type_traits.hpp"
 
-#include <memory>
-
 namespace stdexec {
-  namespace {
-    inline constexpr auto __ref = []<class _Ty>(_Ty& __ty) noexcept {
-      return [__ty = &__ty]() noexcept -> decltype(auto) {
-        return (*__ty);
-      };
-    };
-  } // namespace
+  namespace __submit {
+    template <class _Sender, class _Receiver>
+    concept __has_memfn =
+      requires(_Sender&& (*__sndr)(), _Receiver&& (*__rcvr)()) { __sndr().submit(__rcvr()); };
 
-  template <class _Ty>
-  using __ref_t = decltype(__ref(__declval<_Ty&>()));
-
-  /////////////////////////////////////////////////////////////////////////////
-  // NOT TO SPEC: __submit
-  namespace __submit_ {
-    template <class _OpRef>
-    struct __receiver {
-      using receiver_concept = receiver_t;
-      using __t = __receiver;
-      using __id = __receiver;
-
-      using _Operation = __decay_t<__call_result_t<_OpRef>>;
-      using _Receiver = stdexec::__t<__mapply<__q<__msecond>, _Operation>>;
-
-      _OpRef __opref_;
-
-      void __delete_op() noexcept {
-        _Operation* __op = &__opref_();
-        if constexpr (__callable<get_allocator_t, env_of_t<_Receiver>>) {
-          auto&& __env = stdexec::get_env(__op->__rcvr_);
-          auto __alloc = stdexec::get_allocator(__env);
-          using _Alloc = decltype(__alloc);
-          using _OpAlloc =
-            typename std::allocator_traits<_Alloc>::template rebind_alloc<_Operation>;
-          _OpAlloc __op_alloc{__alloc};
-          std::allocator_traits<_OpAlloc>::destroy(__op_alloc, __op);
-          std::allocator_traits<_OpAlloc>::deallocate(__op_alloc, __op, 1);
-        } else {
-          delete __op;
-        }
-      }
-
-      // Forward all the receiver ops, and delete the operation state.
-      template <class... _As>
-      void set_value(_As&&... __as) noexcept {
-        stdexec::set_value(
-          static_cast<_Receiver&&>(__opref_().__rcvr_), static_cast<_As&&>(__as)...);
-        __delete_op();
-      }
-
-      template <class _Error>
-      void set_error(_Error&& __err) noexcept {
-        stdexec::set_error(
-          static_cast<_Receiver&&>(__opref_().__rcvr_), static_cast<_Error&&>(__err));
-        __delete_op();
-      }
-
-      void set_stopped() noexcept {
-        stdexec::set_stopped(__opref_().__rcvr_);
-        __delete_op();
-      }
-
-      // Forward all receiever queries.
-      auto get_env() const noexcept -> env_of_t<_Receiver&> {
-        return stdexec::get_env(__opref_().__rcvr_);
-      }
+    template <class _Sender, class _Receiver>
+    concept __has_static_memfn = requires(_Sender&& (*__sndr)(), _Receiver&& (*__rcvr)()) {
+      __decay_t<_Sender>::submit(__sndr(), __rcvr());
     };
 
-    template <class _SenderId, class _ReceiverId>
-    struct __operation {
-      using _Sender = stdexec::__t<_SenderId>;
-      using _Receiver = stdexec::__t<_ReceiverId>;
-      using __receiver_t = __receiver<__ref_t<__operation>>;
-
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
-      connect_result_t<_Sender, __receiver_t> __op_state_;
-
-      __operation(_Sender&& __sndr, _Receiver __rcvr)
-        : __rcvr_(static_cast<_Receiver&&>(__rcvr))
-        , __op_state_(connect(static_cast<_Sender&&>(__sndr), __receiver_t{__ref(*this)})) {
-      }
-    };
-
+    // submit is a combination of connect and start. it is customizable for times when it
+    // can be done more efficiently than by calling connect and start directly.
     struct __submit_t {
-      template <receiver _Receiver, sender_to<_Receiver> _Sender>
-      void operator()(_Sender&& __sndr, _Receiver __rcvr) const noexcept(false) {
-        if constexpr (__callable<get_allocator_t, env_of_t<_Receiver>>) {
-          auto&& __env = get_env(__rcvr);
-          auto __alloc = get_allocator(__env);
-          using _Alloc = decltype(__alloc);
-          using _Op = __operation<__id<_Sender>, __id<_Receiver>>;
-          using _OpAlloc = typename std::allocator_traits<_Alloc>::template rebind_alloc<_Op>;
-          _OpAlloc __op_alloc{__alloc};
-          auto __op = std::allocator_traits<_OpAlloc>::allocate(__op_alloc, 1);
-          try {
-            std::allocator_traits<_OpAlloc>::construct(
-              __op_alloc, __op, static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
-            stdexec::start(__op->__op_state_);
-          } catch (...) {
-            std::allocator_traits<_OpAlloc>::deallocate(__op_alloc, __op, 1);
-            throw;
-          }
+      struct __void { };
+
+      // This implementation is used if the sender has a non-static submit member function.
+      template <class _Sender, class _Receiver, class _Default = __void>
+        requires sender_to<_Sender, _Receiver> && __submit::__has_memfn<_Sender, _Receiver>
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) auto
+        operator()(_Sender&& __sndr, _Receiver __rcvr, [[maybe_unused]] _Default __def = {}) const
+        noexcept(noexcept(static_cast<_Sender&&>(__sndr).submit(static_cast<_Receiver&&>(__rcvr)))) {
+        using __result_t =
+          decltype(static_cast<_Sender&&>(__sndr).submit(static_cast<_Receiver&&>(__rcvr)));
+        if constexpr (__same_as<__result_t, void> && !__same_as<_Default, __void>) {
+          static_cast<_Sender&&>(__sndr).submit(static_cast<_Receiver&&>(__rcvr));
+          return __def;
         } else {
-          start((new __operation<__id<_Sender>, __id<_Receiver>>{
-                   static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr)})
-                  ->__op_state_);
+          return static_cast<_Sender&&>(__sndr).submit(static_cast<_Receiver&&>(__rcvr));
+        }
+      }
+
+      // This implementation is used if the sender has a static submit member function.
+      template <class _Sender, class _Receiver, class _Default = __void>
+        requires sender_to<_Sender, _Receiver> && __submit::__has_static_memfn<_Sender, _Receiver>
+      STDEXEC_ATTRIBUTE((host, device, always_inline)) auto
+        operator()(_Sender&& __sndr, _Receiver __rcvr, [[maybe_unused]] _Default __def = {}) const
+        noexcept(noexcept(
+          __sndr.submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr)))) {
+        using __result_t =
+          decltype(__sndr.submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr)));
+        if constexpr (__same_as<__result_t, void> && !__same_as<_Default, __void>) {
+          __sndr.submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
+          return __def;
+        } else {
+          return __sndr.submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
         }
       }
     };
-  } // namespace __submit_
 
-  using __submit_::__submit_t;
-  inline constexpr __submit_t __submit{};
+    inline constexpr __submit_t __submit{};
+  } // namespace __submit
+
+  template <class _Sender, class _Receiver, class _Default = __submit::__submit_t::__void>
+  using __submit_result_t = __call_result_t<__submit::__submit_t, _Sender, _Receiver, _Default>;
+
+  template <class _Sender, class _Receiver>
+  concept __submittable = requires(_Sender&& __sndr, _Receiver&& __rcvr) {
+    __submit::__submit(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr));
+  };
+
+  template <class _Sender, class _Receiver>
+  concept __nothrow_submittable =
+    __submittable<_Sender, _Receiver> && requires(_Sender&& __sndr, _Receiver&& __rcvr) {
+      {
+        __submit::__submit(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr))
+      } noexcept;
+    };
+
+  enum class __submit_result_kind {
+    __connect,
+    __submit,
+    __submit_void,
+    __submit_nothrow,
+  };
+
+  template <class _Sender, class _Receiver>
+  constexpr auto __get_submit_result_kind() noexcept -> __submit_result_kind {
+    if constexpr (__submittable<_Sender, _Receiver>) {
+      using __result_t = __submit_result_t<_Sender, _Receiver>;
+      constexpr std::size_t __opstate_size = sizeof(connect_result_t<_Sender, _Receiver>);
+
+      if constexpr (std::is_void_v<__result_t>) {
+        return __submit_result_kind::__submit_void;
+      } else if constexpr (__nothrow_submittable<_Sender, _Receiver>) {
+        return __opstate_size > sizeof(__result_t) ? __submit_result_kind::__submit_nothrow
+                                                   : __submit_result_kind::__connect;
+      } else {
+        return __opstate_size > sizeof(__optional<__result_t>) ? __submit_result_kind::__submit
+                                                               : __submit_result_kind::__connect;
+      }
+    }
+    return __submit_result_kind::__connect;
+  }
+
+  template <
+    class _Sender,
+    class _Receiver,
+    __submit_result_kind _Kind = __get_submit_result_kind<_Sender, _Receiver>()>
+  struct submit_result {
+    using __result_t = connect_result_t<_Sender, _Receiver>;
+
+    explicit submit_result(_Sender&& __sndr, _Receiver&& __rcvr) noexcept(
+      __nothrow_connectable<_Sender, _Receiver>)
+      : __result_(connect(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr))) {
+    }
+
+    void submit(_Sender&& __sndr, _Receiver&&) noexcept {
+      stdexec::start(__result_);
+    }
+
+    __result_t __result_;
+  };
+
+  template <class _Sender, class _Receiver>
+  struct submit_result<_Sender, _Receiver, __submit_result_kind::__submit> {
+    using __result_t = __submit_result_t<_Sender, _Receiver>;
+
+    submit_result(_Sender&&, _Receiver&&) noexcept {
+    }
+
+    void submit(_Sender&& __sndr, _Receiver&& __rcvr) {
+      __result_.__emplace_from(
+        __submit::__submit, static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
+    }
+
+    __optional<__result_t> __result_;
+  };
+
+  template <class _Sender, class _Receiver>
+  struct submit_result<_Sender, _Receiver, __submit_result_kind::__submit_void> {
+    using __result_t = __submit_result_t<_Sender, _Receiver>;
+
+    explicit submit_result(_Sender&&, _Receiver&&) noexcept {
+    }
+
+    void submit(_Sender&& __sndr, _Receiver&& __rcvr) noexcept(
+      __nothrow_submittable<_Sender, _Receiver>) {
+      __submit::__submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
+    }
+  };
+
+  template <class _Sender, class _Receiver>
+  struct submit_result<_Sender, _Receiver, __submit_result_kind::__submit_nothrow> {
+    using __result_t = __submit_result_t<_Sender, _Receiver>;
+
+    submit_result(_Sender&&, _Receiver&&) noexcept {
+    }
+
+    void submit(_Sender&& __sndr, _Receiver&& __rcvr) noexcept {
+      __result_.__construct_from(
+        __submit::__submit, static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
+    }
+
+    ~submit_result() {
+      __result_.__destroy();
+    }
+
+    __manual_lifetime<__result_t> __result_;
+  };
+
+  template <class _Sender, class _Receiver>
+  submit_result(_Sender&&, _Receiver) -> submit_result<_Sender, _Receiver>;
+
 } // namespace stdexec

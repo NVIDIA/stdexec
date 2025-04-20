@@ -27,6 +27,7 @@
 #include "__schedulers.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
+#include "__submit.hpp"
 #include "__transform_sender.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__variant.hpp"
@@ -224,9 +225,8 @@ namespace stdexec {
         __result_receiver_t<_Receiver, _Scheduler>>;
 
     template <class _ResultSender, class _Scheduler, class _Receiver>
-    using __op_state_t = connect_result_t<
-      _ResultSender,
-      __checked_result_receiver_t<_ResultSender, _Scheduler, _Receiver>>;
+    using __submit_result =
+      submit_result<_ResultSender, __checked_result_receiver_t<_ResultSender, _Scheduler, _Receiver>>;
 
     template <class _SetTag, class _Fun, class _Sched, class... _Env>
     struct __transform_signal_fn {
@@ -353,10 +353,11 @@ namespace stdexec {
     //! Metafunction creating the operation state needed to connect the result of calling
     //! the sender factory function, `_Fun`, and passing its result to a receiver.
     template <class _Receiver, class _Fun, class _Set, class _Sched>
-    struct __op_state_for {
-      static_assert(!std::is_reference_v<_Sched>);
+    struct __submit_datum_for {
+      // compute the result of calling submit with the result of executing _Fun
+      // with _Args. if the result is void, substitute with __ignore.
       template <class... _Args>
-      using __f = __op_state_t<
+      using __f = __submit_result<
         __mcall<__result_sender_fn<_Set, _Fun, _Sched, env_of_t<_Receiver>>, _Args...>,
         _Sched,
         _Receiver>;
@@ -371,10 +372,10 @@ namespace stdexec {
       using __env_t = __result_env_t<_Sched, env_of_t<_Receiver>>;
       using __rcvr_t = __receiver_with_sched_t<_Receiver, _Sched>;
       using __result_variant = __variant_for<__monostate, _Tuples...>;
-      using __op_state_variant = //
+      using __submit_variant = //
         __variant_for<
           __monostate,
-          __mapply<__op_state_for<_Receiver, _Fun, _Set, _Sched>, _Tuples>...>;
+          __mapply<__submit_datum_for<_Receiver, _Fun, _Set, _Sched>, _Tuples>...>;
 
       template <class _ResultSender, class _OpState>
       auto __get_result_receiver(const _ResultSender&, _OpState& __op_state) -> decltype(auto) {
@@ -407,7 +408,7 @@ namespace stdexec {
       __result_variant __args_{};
       //! Variant type for holding the operation state from connecting
       //! the function result to the downstream receiver:
-      __op_state_variant __op_state3_{};
+      __submit_variant __storage_{};
     };
 
     //! Implementation of the `let_*_t` types, where `_Set` is, e.g., `set_value_t` for `let_value`.
@@ -493,8 +494,8 @@ namespace stdexec {
         };
 
       //! Helper function to actually invoke the function to produce `let_*`'s sender,
-      //! connect it to the downstream receiver, and start it.
-      //! This is the heart of `let_*`.
+      //! connect it to the downstream receiver, and start it. This is the heart of
+      //! `let_*`.
       template <class _State, class _OpState, class... _As>
       static void __bind_(_State& __state, _OpState& __op_state, _As&&... __as) {
         // Store the passed-in (received) args:
@@ -504,9 +505,10 @@ namespace stdexec {
         // Create a receiver based on the state, the computed sender, and the operation state:
         auto __rcvr2 = __state.__get_result_receiver(__sndr2, __op_state);
         // Connect the sender to the receiver and start it:
-        auto& __op2 = __state.__op_state3_.emplace_from(
-          stdexec::connect, std::move(__sndr2), std::move(__rcvr2));
-        stdexec::start(__op2);
+        using __result_t = decltype(submit_result{std::move(__sndr2), std::move(__rcvr2)});
+        auto& __op =
+          __state.__storage_.template emplace<__result_t>(std::move(__sndr2), std::move(__rcvr2));
+        __op.submit(std::move(__sndr2), std::move(__rcvr2));
       }
 
       template <class _OpState, class... _As>
