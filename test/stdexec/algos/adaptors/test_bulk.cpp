@@ -148,6 +148,8 @@ namespace {
     error_scheduler sched2{};
     error_scheduler<int> sched3{43};
 
+#if !STDEXEC_MSVC()
+    // MSVCBUG https://developercommunity.visualstudio.com/t/noexcept-expression-in-lambda-template-n/10718680
     check_err_types<ex::__mset<>>( //
       ex::transfer_just(sched1) | ex::bulk(ex::par, n, [](int) noexcept { }));
     check_err_types<ex::__mset<std::exception_ptr>>( //
@@ -158,6 +160,7 @@ namespace {
       ex::transfer_just(sched3) | ex::bulk(ex::par, n, [](int) noexcept { }));
     check_err_types<ex::__mset<std::exception_ptr, int>>( //
       ex::transfer_just(sched3) | ex::bulk(ex::par, n, [](int) { throw std::logic_error{"err"}; }));
+#endif
   }
 
   TEST_CASE("bulk_chunked keeps error_types from input sender", "[adaptors][bulk]") {

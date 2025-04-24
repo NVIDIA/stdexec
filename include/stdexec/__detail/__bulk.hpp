@@ -219,10 +219,14 @@ namespace stdexec {
                            __shape_t __begin,
                            __shape_t __end,
                            auto&&... __vs) mutable //
-            noexcept(noexcept(__data.__fun_(__begin++, __vs...))) {
-              while (__begin != __end)
-                __func(__begin++, __vs...);
-            };
+#if !STDEXEC_MSVC()
+            // MSVCBUG https://developercommunity.visualstudio.com/t/noexcept-expression-in-lambda-template-n/10718680
+            noexcept(noexcept(__data.__fun_(__begin++, __vs...)))
+#endif
+          {
+            while (__begin != __end)
+              __func(__begin++, __vs...);
+          };
 
           // Lower `bulk` to `bulk_chunked`. If `bulk_chunked` is customized, we will see the customization.
           return bulk_chunked(
