@@ -192,22 +192,6 @@ namespace stdexec {
           {}
         };
       }
-
-      // This describes how to use the pieces of a bulk sender to find
-      // legacy customizations of the bulk algorithm.
-      using _Sender = __1;
-      using _Pol = __nth_member<0>(__0);
-      using _Shape = __nth_member<1>(__0);
-      using _Fun = __nth_member<2>(__0);
-      using __legacy_customizations_t = __types<
-        tag_invoke_t(
-          _AlgoTag,
-          get_completion_scheduler_t<set_value_t>(get_env_t(_Sender&)),
-          _Sender,
-          _Pol,
-          _Shape,
-          _Fun),
-        tag_invoke_t(_AlgoTag, _Sender, _Pol, _Shape, _Fun)>;
     };
 
     struct bulk_t : __generic_bulk_t<bulk_t> {
@@ -241,6 +225,23 @@ namespace stdexec {
       static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
         return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn(__env));
       }
+      using __generic_bulk_t<bulk_t>::operator();
+
+      template <sender _Sender, integral _Shape, copy_constructible _Fun>
+      [[deprecated("The bulk algorithm now requires an execution policy such as stdexec::par as an argument.")]]
+      STDEXEC_ATTRIBUTE((host, device)) auto operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const {
+        return (*this)(
+          static_cast<_Sender&&>(__sndr),
+          par,
+          static_cast<_Shape&&>(__shape),
+          static_cast<_Fun&&>(__fun));
+      }
+
+      template <integral _Shape, copy_constructible _Fun>
+      [[deprecated("The bulk algorithm now requires an execution policy such as stdexec::par as an argument.")]]
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Shape __shape, _Fun __fun) const {
+        return (*this)(static_cast<_Shape&&>(__shape), static_cast<_Fun&&>(__fun));
+      }
     };
 
     struct bulk_chunked_t : __generic_bulk_t<bulk_chunked_t> { };
@@ -265,20 +266,6 @@ namespace stdexec {
           {}
         };
       }
-
-      // This describes how to use the pieces of a bulk sender to find
-      // legacy customizations of the bulk algorithm.
-      using _Sender = __1;
-      using _Shape = __nth_member<1>(__0);
-      using _Fun = __nth_member<2>(__0);
-      using __legacy_customizations_t = __types<
-        tag_invoke_t(
-          bulk_unchunked_t,
-          get_completion_scheduler_t<set_value_t>(get_env_t(_Sender&)),
-          _Sender,
-          _Shape,
-          _Fun),
-        tag_invoke_t(bulk_unchunked_t, _Sender, _Shape, _Fun)>;
     };
 
     template <class _AlgoTag>
