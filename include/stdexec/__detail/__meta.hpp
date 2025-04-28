@@ -1041,11 +1041,17 @@ namespace stdexec {
 // C++23 pack indexing is disabled for clang because of
 // https://github.com/llvm/llvm-project/issues/116105
 #if defined(__cpp_pack_indexing) && !STDEXEC_CLANG()
+  template <bool>
+  struct __m_at_ {
+    template <class _Np, class... _Ts>
+    using __f = _Ts...[__v<_Np>];
+  };
+
   template <class _Np, class... _Ts>
-  using __m_at = _Ts...[__v<_Np>];
+  using __m_at = __minvoke<__m_at_<__v<_Np> == ~0ul>, _Np, _Ts...>;
 
   template <std::size_t _Np, class... _Ts>
-  using __m_at_c = _Ts...[_Np];
+  using __m_at_c = __minvoke<__m_at_<_Np == ~0ul>, __msize_t<_Np>, _Ts...>;
 #elif STDEXEC_HAS_BUILTIN(__type_pack_element)
   template <bool>
   struct __m_at_ {
