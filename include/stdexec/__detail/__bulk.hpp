@@ -192,6 +192,22 @@ namespace stdexec {
           {}
         };
       }
+
+      template <sender _Sender, integral _Shape, copy_constructible _Fun>
+      [[deprecated("The bulk algorithm now requires an execution policy such as stdexec::par as an argument.")]]
+      STDEXEC_ATTRIBUTE((host, device)) auto operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const {
+        return (*this)(
+          static_cast<_Sender&&>(__sndr),
+          par,
+          static_cast<_Shape&&>(__shape),
+          static_cast<_Fun&&>(__fun));
+      }
+
+      template <integral _Shape, copy_constructible _Fun>
+      [[deprecated("The bulk algorithm now requires an execution policy such as stdexec::par as an argument.")]]
+      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Shape __shape, _Fun __fun) const {
+        return (*this)(static_cast<_Shape&&>(__shape), static_cast<_Fun&&>(__fun));
+      }
     };
 
     struct bulk_t : __generic_bulk_t<bulk_t> {
@@ -224,23 +240,6 @@ namespace stdexec {
       template <class _Sender, class _Env>
       static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
         return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn(__env));
-      }
-      using __generic_bulk_t<bulk_t>::operator();
-
-      template <sender _Sender, integral _Shape, copy_constructible _Fun>
-      [[deprecated("The bulk algorithm now requires an execution policy such as stdexec::par as an argument.")]]
-      STDEXEC_ATTRIBUTE((host, device)) auto operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const {
-        return (*this)(
-          static_cast<_Sender&&>(__sndr),
-          par,
-          static_cast<_Shape&&>(__shape),
-          static_cast<_Fun&&>(__fun));
-      }
-
-      template <integral _Shape, copy_constructible _Fun>
-      [[deprecated("The bulk algorithm now requires an execution policy such as stdexec::par as an argument.")]]
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Shape __shape, _Fun __fun) const {
-        return (*this)(static_cast<_Shape&&>(__shape), static_cast<_Fun&&>(__fun));
       }
     };
 
