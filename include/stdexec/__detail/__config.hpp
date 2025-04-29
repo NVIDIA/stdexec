@@ -402,6 +402,12 @@ namespace stdexec {
 #  define STDEXEC_HAS_STD_MEMORY_RESOURCE() 0
 #endif
 
+#if STDEXEC_HAS_FEATURE(__cpp_lib_execution)
+#  define STDEXEC_HAS_EXECUTION_POLICY() 1
+#else
+#  define STDEXEC_HAS_EXECUTION_POLICY() 0
+#endif
+
 #ifdef STDEXEC_ASSERT
 #  error "Redefinition of STDEXEC_ASSERT is not permitted. Define STDEXEC_ASSERT_FN instead."
 #endif

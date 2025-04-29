@@ -39,13 +39,13 @@ auto main() -> int {
     };
   };
 
-  auto fork = ex::schedule(sch) | ex::bulk(4, bulk_fn(0)) | ex::split();
+  auto fork = ex::schedule(sch) | ex::bulk(ex::par, 4, bulk_fn(0)) | ex::split();
 
   auto snd = ex::transfer_when_all(
                sch,
-               fork | ex::bulk(4, bulk_fn(1)),
+               fork | ex::bulk(ex::par, 4, bulk_fn(1)),
                fork | ex::then(then_fn(1)),
-               fork | ex::bulk(4, bulk_fn(2)))
+               fork | ex::bulk(ex::par, 4, bulk_fn(2)))
            | ex::then(then_fn(2));
 
   stdexec::sync_wait(std::move(snd));
