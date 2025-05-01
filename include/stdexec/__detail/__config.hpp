@@ -418,7 +418,9 @@ namespace stdexec {
 #  define STDEXEC_HAS_STD_MEMORY_RESOURCE() 0
 #endif
 
-#if STDEXEC_HAS_FEATURE(__cpp_lib_execution)
+#if defined(__cpp_lib_execution)
+#  define STDEXEC_HAS_EXECUTION_POLICY() 0
+#elif STDEXEC_HAS_FEATURE(__cpp_lib_execution)
 #  define STDEXEC_HAS_EXECUTION_POLICY() 1
 #else
 #  define STDEXEC_HAS_EXECUTION_POLICY() 0
