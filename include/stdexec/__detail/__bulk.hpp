@@ -206,7 +206,7 @@ namespace stdexec {
       template <integral _Shape, copy_constructible _Fun>
       [[deprecated("The bulk algorithm now requires an execution policy such as stdexec::par as an argument.")]]
       STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Shape __shape, _Fun __fun) const {
-        return (*this)(static_cast<_Shape&&>(__shape), static_cast<_Fun&&>(__fun));
+        return (*this)(par, static_cast<_Shape&&>(__shape), static_cast<_Fun&&>(__fun));
       }
     };
 
