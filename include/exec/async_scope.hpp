@@ -71,10 +71,9 @@ namespace exec {
 
         explicit __t(const __impl* __scope, _Constrained&& __sndr, _Receiver __rcvr)
           : __task{{}, __scope, __notify_waiter}
-          , __op_(
-              stdexec::connect(
-                static_cast<_Constrained&&>(__sndr),
-                static_cast<_Receiver&&>(__rcvr))) {
+          , __op_(stdexec::connect(
+              static_cast<_Constrained&&>(__sndr),
+              static_cast<_Receiver&&>(__rcvr))) {
         }
 
         void start() & noexcept {
@@ -597,7 +596,7 @@ namespace exec {
 
       __future_state(_Sender __sndr, _Env __env, const __impl* __scope)
         : __future_state(
-            connect,
+            stdexec::connect,
             static_cast<_Sender&&>(__sndr),
             static_cast<_Env&&>(__env),
             __scope) {
@@ -751,7 +750,11 @@ namespace exec {
         }
 
         __t(_Sender __sndr, _Env __env, const __impl* __scope)
-          : __t(connect, static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env), __scope) {
+          : __t(
+              stdexec::connect,
+              static_cast<_Sender&&>(__sndr),
+              static_cast<_Env&&>(__env),
+              __scope) {
           // If the operation completes synchronously, then the following line will cause
           // the destruction of *this, which is not a problem because we used a delegating
           // constructor, so *this is considered fully constructed.
