@@ -121,7 +121,7 @@ namespace stdexec {
   template <class _Tp, _Tp _Ip>
   inline constexpr _Tp __v<std::integral_constant<_Tp, _Ip>> = _Ip;
 
-  // `decltype(_Np)` instead of `auto` to work around NVHPC/EDG bug.
+  // `__mtypeof<_Np>` instead of `auto` to work around NVHPC/EDG bug.
   template <auto _Np>
   inline constexpr __mtypeof<_Np> __v<__mconstant<_Np>> = _Np;
 
