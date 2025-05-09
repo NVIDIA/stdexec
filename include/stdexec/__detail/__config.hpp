@@ -360,9 +360,10 @@ namespace stdexec {
 #  define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&) = delete
 #endif
 
-// BUG (gcc PR93711): copy elision fails when initializing a
-// [[no_unique_address]] field from a function returning an object
-// of class type by value
+// BUG (gcc#98995): copy elision fails when initializing a [[no_unique_address]] field
+// from a function returning an object of class type by value.
+//
+// See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=98995
 #if STDEXEC_GCC()
 #  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
 #else
