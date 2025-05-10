@@ -27,7 +27,8 @@ namespace execpools {
 
     [[nodiscard]]
     auto available_parallelism() const -> std::uint32_t {
-      return asio_impl::query(executor_, asio_impl::execution::occupancy);
+      return static_cast<std::uint32_t>(
+        asio_impl::query(executor_, asio_impl::execution::occupancy));
     }
    private:
     [[nodiscard]]

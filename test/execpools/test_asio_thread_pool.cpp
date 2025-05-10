@@ -18,6 +18,7 @@
 #include <catch2/catch.hpp>
 
 #include <span>
+#include <numeric>
 
 #include <stdexec/execution.hpp>
 
