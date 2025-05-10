@@ -433,6 +433,13 @@ if(STDEXEC_ENABLE_ASIO)
     set(STDEXEC_ASIO_CONFIG_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/include/execpools/asio)
     configure_file(include/execpools/asio/asio_config.hpp.in ${STDEXEC_ASIO_CONFIG_FILE_PATH}/asio_config.hpp)
 
+    set(ASIOEXEC_USES_BOOST ${STDEXEC_ASIO_USES_BOOST})
+    set(ASIOEXEC_USES_STANDALONE ${STDEXEC_ASIO_USES_STANDALONE})
+
+    file(GLOB_RECURSE asioexec_sources include/asioexec/*.hpp)
+    set(ASIOEXEC_ASIO_CONFIG_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/include/asioexec)
+    configure_file(include/asioexec/asio_config.hpp.in ${ASIOEXEC_ASIO_CONFIG_FILE_PATH}/asio_config.hpp)
+
     if(${STDEXEC_ASIO_USES_BOOST})
       set(BOOST_ENABLE_COMPATIBILITY_TARGETS TRUE)
       rapids_cpm_find(Boost 1.86.0
@@ -449,6 +456,16 @@ if(STDEXEC_ENABLE_ASIO)
           STDEXEC::stdexec
           Boost::boost
       )
+
+      add_library(asioexec_boost INTERFACE ${asioexec_sources})
+      list(APPEND stdexec_export_targets asioexec_boost)
+      add_library(STDEXEC::asioexec_boost ALIAS asioexec_boost)
+
+      target_link_libraries(asioexec_boost
+          INTERFACE
+          STDEXEC::stdexec
+          Boost::boost
+      )
     elseif(${STDEXEC_ASIO_USES_STANDALONE})
       include(cmake/import_standalone_asio.cmake)
       import_standalone_asio(
@@ -460,6 +477,16 @@ if(STDEXEC_ENABLE_ASIO)
       add_library(STDEXEC::asio_pool ALIAS stdexec_asio_pool)
 
       target_link_libraries(stdexec_asio_pool
+          INTERFACE
+          STDEXEC::stdexec
+          asio
+      )
+
+      add_library(asioexec_asio INTERFACE ${asioexec_sources})
+      list(APPEND stdexec_export_targets asioexec_asio)
+      add_library(STDEXEC::asioexec_asio ALIAS asioexec_asio)
+
+      target_link_libraries(asioexec_asio
           INTERFACE
           STDEXEC::stdexec
           asio

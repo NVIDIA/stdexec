@@ -67,6 +67,8 @@ jobs:
             -DCMAKE_BUILD_TYPE=${{ matrix.build }} \
             -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}" \
             -DSTDEXEC_ENABLE_TBB:BOOL=${{ !contains(matrix.cxxflags, '-fsanitize') }} \
+            -DSTDEXEC_ENABLE_ASIO:BOOL=TRUE \
+            -DSTDEXEC_ASIO_IMPLEMENTATION:STRING=boost \
             ;
 
           # Compile
@@ -148,6 +150,8 @@ jobs:
           cmake -S. -Bbuild -GNinja \
             -DCMAKE_BUILD_TYPE=${{ matrix.build }} \
             -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} \
+            -DSTDEXEC_ENABLE_ASIO:BOOL=TRUE \
+            -DSTDEXEC_ASIO_IMPLEMENTATION:STRING=boost \
             -DCMAKE_CXX_STANDARD=20
           cmake --build build/ -v
           cd build

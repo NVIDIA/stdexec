@@ -1,0 +1,50 @@
+/*
+ * SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ *                         Copyright (c) 2025 Robert Leahy. All rights reserved.
+ * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+ *
+ * Licensed under the Apache License, Version 2.0 with LLVM Exceptions (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * https://llvm.org/LICENSE.txt
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#pragma once
+
+#cmakedefine01 ASIOEXEC_USES_STANDALONE
+#cmakedefine01 ASIOEXEC_USES_BOOST
+
+#if ASIOEXEC_USES_BOOST
+#  include <boost/asio.hpp>
+#  include <boost/system/errc.hpp>
+#  include <boost/system/error_code.hpp>
+#  include <boost/system/system_error.hpp>
+#  define ASIOEXEC_ASIO_NAMESPACE boost::asio
+#elif ASIOEXEC_USES_STANDALONE
+#  include <system_error>
+#  include <asio.hpp>
+#  define ASIOEXEC_ASIO_NAMESPACE asio
+#endif
+
+namespace asioexec {
+#if ASIOEXEC_USES_BOOST
+  namespace asio_impl = ::boost::asio;
+  using error_code = ::boost::system::error_code;
+  using error_condition = ::boost::system::error_condition;
+  namespace errc = ::boost::system::errc;
+  using system_error = ::boost::system::system_error;
+#elif ASIOEXEC_USES_STANDALONE
+  namespace asio_impl = ::asio;
+  using error_code = std::error_code;
+  using error_condition = std::error_condition;
+  using errc = std::errc;
+  using system_error = std::system_error;
+#endif
+}
