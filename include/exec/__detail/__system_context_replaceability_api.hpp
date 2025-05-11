@@ -113,7 +113,7 @@ namespace exec::system_context_replaceability {
   /// Receiver for bulk sheduling operations.
   struct bulk_item_receiver : receiver {
     /// Called for each item of a bulk operation, possible on different threads.
-    virtual void execute(std::uint32_t) noexcept = 0;
+    virtual void execute(std::uint32_t, std::uint32_t) noexcept = 0;
   };
 
   /// Interface for the parallel scheduler backend.
@@ -125,9 +125,15 @@ namespace exec::system_context_replaceability {
     /// Schedule work on parallel scheduler, calling `__r` when done and using `__s` for preallocated
     /// memory.
     virtual void schedule(std::span<std::byte> __s, receiver& __r) noexcept = 0;
-    /// Schedule bulk work of size `__n` on parallel scheduler, calling `__r` for each item and then
-    /// when done, and using `__s` for preallocated memory.
-    virtual void bulk_schedule(
+    /// Schedule bulk work of size `__n` on parallel scheduler, calling `__r` for different
+    /// subranges of [0, __n), and using `__s` for preallocated memory.
+    virtual void schedule_bulk_chunked(
+      std::uint32_t __n,
+      std::span<std::byte> __s,
+      bulk_item_receiver& __r) noexcept = 0;
+    /// Schedule bulk work of size `__n` on parallel scheduler, calling `__r` for each item, and
+    /// using `__s` for preallocated memory.
+    virtual void schedule_bulk_unchunked(
       std::uint32_t __n,
       std::span<std::byte> __s,
       bulk_item_receiver& __r) noexcept = 0;

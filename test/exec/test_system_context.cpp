@@ -160,7 +160,6 @@ TEST_CASE("simple bulk task on system context", "[types][system_scheduler]") {
     REQUIRE(pool_id != std::thread::id{});
     REQUIRE(this_id != pool_id);
   }
-  (void) bulk_snd;
 }
 
 TEST_CASE("simple bulk chaining on system context", "[types][system_scheduler]") {
@@ -198,6 +197,97 @@ TEST_CASE("simple bulk chaining on system context", "[types][system_scheduler]")
   CHECK(std::get<0>(res.value()) == pool_id);
 }
 
+TEST_CASE("simple bulk_chunked task on system context", "[types][system_scheduler]") {
+  std::thread::id this_id = std::this_thread::get_id();
+  constexpr size_t num_tasks = 16;
+  std::thread::id pool_ids[num_tasks];
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
+
+  auto bulk_snd = ex::bulk_chunked(
+    ex::schedule(sched), ex::par, num_tasks, [&](unsigned long b, unsigned long e) {
+      for (unsigned long id = b; id < e; ++id)
+        pool_ids[id] = std::this_thread::get_id();
+    });
+
+  ex::sync_wait(std::move(bulk_snd));
+
+  for (auto pool_id: pool_ids) {
+    REQUIRE(pool_id != std::thread::id{});
+    REQUIRE(this_id != pool_id);
+  }
+}
+
+TEST_CASE("simple bulk_unchunked task on system context", "[types][system_scheduler]") {
+  std::thread::id this_id = std::this_thread::get_id();
+  constexpr size_t num_tasks = 16;
+  std::thread::id pool_ids[num_tasks];
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
+
+  auto bulk_snd = ex::bulk_unchunked(ex::schedule(sched), num_tasks, [&](unsigned long id) {
+    pool_ids[id] = std::this_thread::get_id();
+  });
+
+  ex::sync_wait(std::move(bulk_snd));
+
+  for (auto pool_id: pool_ids) {
+    REQUIRE(pool_id != std::thread::id{});
+    REQUIRE(this_id != pool_id);
+  }
+}
+
+TEST_CASE("bulk_chunked on parallel_scheduler performs chunking", "[types][system_scheduler]") {
+  bool has_chunking = false;
+
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
+  auto bulk_snd =
+    ex::bulk_chunked(ex::schedule(sched), ex::par, 10'000, [&](unsigned long b, unsigned long e) {
+      if (e - b > 1) {
+        has_chunking = true;
+      }
+    });
+  ex::sync_wait(std::move(bulk_snd));
+
+  REQUIRE(has_chunking);
+}
+
+TEST_CASE(
+  "bulk_chunked on parallel_scheduler covers the entire range",
+  "[types][system_scheduler]") {
+  constexpr size_t num_tasks = 200;
+  bool covered[num_tasks];
+
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
+  auto bulk_snd = ex::bulk_chunked(
+    ex::schedule(sched), ex::par, num_tasks, [&](unsigned long b, unsigned long e) {
+      for (auto i = b; i < e; ++i) {
+        covered[i] = true;
+      }
+    });
+  ex::sync_wait(std::move(bulk_snd));
+
+  for (size_t i = 0; i < num_tasks; ++i) {
+    REQUIRE(covered[i]);
+  }
+}
+
+TEST_CASE(
+  "bulk_chunked with seq on parallel_scheduler doesn't do chunking",
+  "[types][system_scheduler]") {
+  constexpr size_t num_tasks = 200;
+  std::atomic<int> execution_count = 0;
+
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
+  auto bulk_snd =
+    ex::bulk_chunked(ex::schedule(sched), ex::seq, num_tasks, [&](size_t b, size_t e) {
+      REQUIRE(b == 0);
+      REQUIRE(e == num_tasks);
+      execution_count++;
+    });
+  ex::sync_wait(std::move(bulk_snd));
+
+  REQUIRE(execution_count.load() == 1);
+}
+
 struct my_parallel_scheduler_backend_impl
   : exec::__system_context_default_impl::__parallel_scheduler_backend_impl {
   using base_t = exec::__system_context_default_impl::__parallel_scheduler_backend_impl;
@@ -224,10 +314,20 @@ struct my_inline_scheduler_backend_impl : scr::parallel_scheduler_backend {
     r.set_value();
   }
 
-  void bulk_schedule(uint32_t count, std::span<std::byte> s, scr::bulk_item_receiver& r) noexcept
-    override {
+  void schedule_bulk_chunked(
+    uint32_t count,
+    std::span<std::byte> s,
+    scr::bulk_item_receiver& r) noexcept override {
+    r.execute(0, count);
+    r.set_value();
+  }
+
+  void schedule_bulk_unchunked(
+    uint32_t count,
+    std::span<std::byte> s,
+    scr::bulk_item_receiver& r) noexcept override {
     for (uint32_t i = 0; i < count; ++i)
-      r.execute(i);
+      r.execute(i, i + 1);
     r.set_value();
   }
 };

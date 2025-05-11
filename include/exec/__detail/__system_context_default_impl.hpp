@@ -52,7 +52,7 @@ namespace exec::__system_context_default_impl {
   - __recv::__op_ (__operation*) -- 8
   - __operation::__inner_op_ (stdexec::connect_result_t<_Sender, __recv<_Sender>>) -- 128 (when connected with an empty receiver & fun)
   - __operation::__on_heap_ (bool) -- optimized away
-  - __bulk_functor::__r_ (bulk_item_receiver*) - 8
+  - __bulk_unchunked_functor::__r_ (bulk_item_receiver*) - 8
   ---------------------
   Total: 152; extra 24 bytes compared to internal operation state.
 
@@ -159,35 +159,81 @@ namespace exec::__system_context_default_impl {
     }
   };
 
+  template <typename _T>
+  concept __has_available_paralellism = requires(_T __pool) {
+    { __pool.available_parallelism() } -> std::integral;
+  };
+
   template <typename _BaseSchedulerContext>
   struct __generic_impl : parallel_scheduler_backend {
     __generic_impl()
-      : __pool_scheduler_(__pool_.get_scheduler()) {
+      : __pool_scheduler_(__pool_.get_scheduler())
+      , __available_parallelism_(0) {
+      // If the pool exposes the available parallelism, use it to determine the chunk size.
+      if constexpr (__has_available_paralellism<_BaseSchedulerContext>) {
+        __available_parallelism_ = static_cast<uint32_t>(__pool_.available_parallelism());
+      } else {
+        __available_parallelism_ = std::thread::hardware_concurrency();
+      }
     }
    private:
     using __pool_scheduler_t = decltype(std::declval<_BaseSchedulerContext>().get_scheduler());
 
-    /// The underlying thread pool.
+    //! The underlying thread pool.
     _BaseSchedulerContext __pool_;
+    //! The scheduler to use for starting work in our pool.
     __pool_scheduler_t __pool_scheduler_;
+    //! The available parallelism of the pool, used to determine the chunk size.
+    //! Use a value of 0 to disable chunking.
+    uint32_t __available_parallelism_;
 
-    //! Functor called by the `bulk` operation; sends a `start` signal to the frontend.
-    struct __bulk_functor {
+    //! Helper class that maps from a chunk index to the start and end of the chunk.
+    struct __chunker {
+      uint32_t __chunk_size_;
+      uint32_t __max_size_;
+
+      uint32_t __begin(uint32_t __chunk_index) const noexcept {
+        return __chunk_index * __chunk_size_;
+      }
+
+      uint32_t __end(uint32_t __chunk_index) const noexcept {
+        return std::min(__begin(__chunk_index + 1), __max_size_);
+      }
+    };
+
+    //! Functor called by the `bulk_chunked` operation; sends a `execute` signal to the frontend.
+    struct __bulk_chunked_functor {
+      bulk_item_receiver* __r_;
+      __chunker __chunker_;
+
+      void operator()(unsigned long __idx) const noexcept {
+        auto __chunk_index = static_cast<uint32_t>(__idx);
+        __r_->execute(__chunker_.__begin(__chunk_index), __chunker_.__end(__chunk_index));
+      }
+    };
+
+    //! Functor called by the `bulk_unchunked` operation; sends a `execute` signal to the frontend.
+    struct __bulk_unchunked_functor {
       bulk_item_receiver* __r_;
 
       void operator()(unsigned long __idx) const noexcept {
-        __r_->execute(static_cast<uint32_t>(__idx));
+        __r_->execute(static_cast<uint32_t>(__idx), static_cast<uint32_t>(__idx + 1));
       }
     };
 
     using __schedule_operation_t =
       __operation<decltype(stdexec::schedule(std::declval<__pool_scheduler_t>()))>;
 
-    using __bulk_schedule_operation_t = __operation<decltype(stdexec::bulk(
+    using __schedule_bulk_chunked_operation_t = __operation<decltype(stdexec::bulk(
       stdexec::schedule(std::declval<__pool_scheduler_t>()),
       stdexec::par,
       std::declval<uint32_t>(),
-      std::declval<__bulk_functor>()))>;
+      std::declval<__bulk_chunked_functor>()))>;
+    using __schedule_bulk_unchunked_operation_t = __operation<decltype(stdexec::bulk(
+      stdexec::schedule(std::declval<__pool_scheduler_t>()),
+      stdexec::par,
+      std::declval<uint32_t>(),
+      std::declval<__bulk_unchunked_functor>()))>;
 
    public:
     void schedule(std::span<std::byte> __storage, receiver& __r) noexcept override {
@@ -201,15 +247,46 @@ namespace exec::__system_context_default_impl {
       }
     }
 
-    void bulk_schedule(
+    void schedule_bulk_chunked(
+      uint32_t __size,
+      std::span<std::byte> __storage,
+      bulk_item_receiver& __r) noexcept override {
+      try {
+        // Determine the chunking size based on the ratio between the given size and the number of workers in our pool.
+        // Aim at having 2 chunks per worker.
+        uint32_t __chunk_size =
+          (__available_parallelism_ > 0 && __size > 3 * __available_parallelism_)
+            ? __size / __available_parallelism_ / 2
+            : 1;
+        uint32_t __num_chunks = (__size + __chunk_size - 1) / __chunk_size;
+
+        auto __sndr = stdexec::bulk(
+          stdexec::schedule(__pool_scheduler_),
+          stdexec::par,
+          __num_chunks,
+          __bulk_chunked_functor{
+            &__r, __chunker{__chunk_size, __size}
+        });
+        auto __os = __schedule_bulk_chunked_operation_t::__construct_maybe_alloc(
+          __storage, &__r, std::move(__sndr));
+        __os->start();
+      } catch (std::exception& __e) {
+        __r.set_error(std::current_exception());
+      }
+    }
+
+    void schedule_bulk_unchunked(
       uint32_t __size,
       std::span<std::byte> __storage,
       bulk_item_receiver& __r) noexcept override {
       try {
         auto __sndr = stdexec::bulk(
-          stdexec::schedule(__pool_scheduler_), stdexec::par, __size, __bulk_functor{&__r});
-        auto __os =
-          __bulk_schedule_operation_t::__construct_maybe_alloc(__storage, &__r, std::move(__sndr));
+          stdexec::schedule(__pool_scheduler_),
+          stdexec::par,
+          __size,
+          __bulk_unchunked_functor{&__r});
+        auto __os = __schedule_bulk_unchunked_operation_t::__construct_maybe_alloc(
+          __storage, &__r, std::move(__sndr));
         __os->start();
       } catch (std::exception& __e) {
         __r.set_error(std::current_exception());
