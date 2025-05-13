@@ -236,7 +236,7 @@ TEST_CASE("simple bulk_unchunked task on system context", "[types][system_schedu
 }
 
 TEST_CASE("bulk_chunked on parallel_scheduler performs chunking", "[types][system_scheduler]") {
-  bool has_chunking = false;
+  std::atomic<bool> has_chunking = false;
 
   exec::parallel_scheduler sched = exec::get_parallel_scheduler();
   auto bulk_snd =
@@ -247,7 +247,7 @@ TEST_CASE("bulk_chunked on parallel_scheduler performs chunking", "[types][syste
     });
   ex::sync_wait(std::move(bulk_snd));
 
-  REQUIRE(has_chunking);
+  REQUIRE(has_chunking.load());
 }
 
 TEST_CASE(
