@@ -175,7 +175,7 @@ namespace {
     const auto current_thread_id = std::this_thread::get_id();
 
     execpools::asio_thread_pool pool{1ul};
-    asioexec::asio_impl::system_timer timer{pool.executor()};
+    asioexec::asio_impl::system_timer timer{pool.get_executor()};
     const auto [other_thread_id] =
       stdexec::sync_wait(timer.async_wait(asioexec::use_sender) | stdexec::then([](auto&&...) {
                            return std::this_thread::get_id();
@@ -184,6 +184,6 @@ namespace {
     REQUIRE(current_thread_id != other_thread_id);
 
     // demo to access underlying execution context
-    asioexec::asio_impl::query(pool.executor(), asioexec::asio_impl::execution::context_t{}).stop();
+    asioexec::asio_impl::query(pool.get_executor(), asioexec::asio_impl::execution::context_t{}).stop();
   }
 } // namespace

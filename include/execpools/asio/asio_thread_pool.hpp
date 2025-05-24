@@ -32,7 +32,7 @@ namespace execpools {
     }
 
     [[nodiscard]]
-    auto executor() const {
+    auto get_executor() const {
       return executor_;
     }
 
