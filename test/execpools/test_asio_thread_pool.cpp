@@ -29,6 +29,8 @@
 
 #include <execpools/asio/asio_thread_pool.hpp>
 
+#include <asioexec/use_sender.hpp>
+
 namespace ex = stdexec;
 
 namespace {
@@ -167,5 +169,21 @@ namespace {
     STATIC_REQUIRE(std::is_same_v<decltype(value), std::span<double>>);
     REQUIRE(value.data() == output.data());
     CHECK(output == std::array{1.0, 3.0, 2.0, 0.0});
+  }
+
+  TEST_CASE("asiothreadpool with asioexec interoperability") {
+    const auto current_thread_id = std::this_thread::get_id();
+
+    execpools::asio_thread_pool pool{1ul};
+    asioexec::asio_impl::system_timer timer{pool.get_executor()};
+    const auto [other_thread_id] =
+      stdexec::sync_wait(timer.async_wait(asioexec::use_sender) | stdexec::then([](auto&&...) {
+                           return std::this_thread::get_id();
+                         }))
+        .value();
+    REQUIRE(current_thread_id != other_thread_id);
+
+    // demo to access underlying execution context
+    asioexec::asio_impl::query(pool.get_executor(), asioexec::asio_impl::execution::context_t{}).stop();
   }
 } // namespace
