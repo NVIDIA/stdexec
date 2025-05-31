@@ -45,7 +45,7 @@ namespace nvexec {
         using result_t = typename __algo_range_init_fun::binary_invoke_result_t<Range, InitT, Fun>;
 
         template <class Range>
-        static void set_value_impl(base::__t&& self, Range&& range) noexcept {
+        static void set_value_impl(typename base::__t&& self, Range&& range) noexcept {
           cudaError_t status{cudaSuccess};
           cudaStream_t stream = self.op_state_.get_stream();
 
