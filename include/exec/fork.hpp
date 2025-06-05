@@ -55,7 +55,7 @@ namespace exec {
       stdexec::__tuple_for<stdexec::set_error_t, ::std::exception_ptr>>;
 
     template <class Completions>
-    using _variant_t = stdexec::__mset_insert<
+    using _variant_t = typename stdexec::__mset_insert<
       stdexec::__for_each_completion_signature<Completions, stdexec::__decayed_tuple, stdexec::__mset>,
       _maybe_eptr_completion_t<Completions>>::template rebind<stdexec::__variant_for>;
 
