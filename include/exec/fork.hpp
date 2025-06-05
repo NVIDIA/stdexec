@@ -66,9 +66,6 @@ namespace exec {
       }
     };
 
-    template <>
-    struct _env_t<stdexec::__none_such> { };
-
     template <class Tag, class... Args>
     using _cref_sig_t = Tag(const Args&...);
 
@@ -222,6 +219,9 @@ namespace exec {
       return {{static_cast<Closures&&>(closures)...}};
     }
   };
+
+  template <>
+  struct fork_t::_env_t<stdexec::__none_such> { };
 
   template <class Sndr, class... Closures>
   struct fork_t::_sndr_t {
