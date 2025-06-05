@@ -113,6 +113,13 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+#if defined(__has_attribute)
+#  define STDEXEC_HAS_ATTRIBUTE(...) __has_attribute(__VA_ARGS__)
+#else
+#  define STDEXEC_HAS_ATTRIBUTE(...) 0
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 #if STDEXEC_CLANG() && STDEXEC_CUDA()
 #  define STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __host__ __device__
 #else
@@ -138,8 +145,8 @@ namespace __coro = std::experimental;
 //
 //   STDEXEC_ATTRIBUTE((attr1, attr2, ...))
 //   void foo() { ... }
-#define STDEXEC_ATTRIBUTE(_XP) STDEXEC_FOR_EACH(STDEXEC_ATTR, STDEXEC_EXPAND _XP)
-#define STDEXEC_ATTR(_ATTR)                                                                        \
+#define STDEXEC_ATTRIBUTE(_XP) STDEXEC_FOR_EACH(STDEXEC__ATTRIBUTE_DETAIL, STDEXEC_EXPAND _XP)
+#define STDEXEC__ATTRIBUTE_DETAIL(_ATTR)                                                           \
   STDEXEC_CAT(STDEXEC_ATTR_WHICH_, STDEXEC_CHECK(STDEXEC_CAT(STDEXEC_ATTR_, _ATTR)))(_ATTR)
 
 // unknown attributes are treated like C++-style attributes
@@ -195,6 +202,14 @@ namespace __coro = std::experimental;
 #endif
 #define STDEXEC_ATTR_weak     STDEXEC_PROBE(~, 5)
 #define STDEXEC_ATTR___weak__ STDEXEC_PROBE(~, 5)
+
+#if STDEXEC_HAS_ATTRIBUTE(__preferred_name__)
+#  define STDEXEC_ATTR_WHICH_6(_ATTR) __attribute__((_ATTR))
+#else
+#  define STDEXEC_ATTR_WHICH_6(_ATTR) /*nothing*/
+#endif
+#define STDEXEC_ATTR_preferred_name     STDEXEC_PROBE(~, 6)
+#define STDEXEC_ATTR___preferred_name__ STDEXEC_PROBE(~, 6)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // warning push/pop portability macros

@@ -59,7 +59,7 @@
 namespace stdexec::__shared {
   template <class _BaseEnv>
   using __env_t = //
-    __env::__join_t<
+    __join_env_t<
       prop<get_stop_token_t, inplace_stop_token>,
       _BaseEnv>; // BUGBUG NOT TO SPEC
 

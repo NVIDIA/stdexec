@@ -23,7 +23,6 @@
 #include "__debug.hpp" // IWYU pragma: keep
 #include "__senders_core.hpp"
 #include "__meta.hpp"
-#include "__transform_completion_signatures.hpp" // IWYU pragma: keep for __eptr_completion_if
 
 #include <exception>
 #include <tuple>
@@ -515,4 +514,12 @@ namespace stdexec {
   using __set_value_invoke_t = //
     completion_signatures<
       __minvoke<__mremove<void, __qf<set_value_t>>, __invoke_result_t<_Fun, _Args...>>>;
+
+  template <class _Completions>
+  using __decay_copyable_results_t = //
+    __for_each_completion_signature<_Completions, __decay_copyable_t, __mand_t>;
+
+  template <class _Completions>
+  using __nothrow_decay_copyable_results_t = //
+    __for_each_completion_signature<_Completions, __nothrow_decay_copyable_t, __mand_t>;
 } // namespace stdexec

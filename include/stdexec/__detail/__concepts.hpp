@@ -288,7 +288,13 @@ namespace stdexec {
   concept __decay_copyable = (constructible_from<__decay_t<_Ts>, _Ts> && ...);
 
   template <class... _Ts>
+  using __decay_copyable_t = __mbool<__decay_copyable<_Ts...>>;
+
+  template <class... _Ts>
   concept __nothrow_decay_copyable = (__nothrow_constructible_from<__decay_t<_Ts>, _Ts> && ...);
+
+  template <class... _Ts>
+  using __nothrow_decay_copyable_t = __mbool<__nothrow_decay_copyable<_Ts...>>;
 
   template <class _Ty, class _Up>
   concept __decays_to_derived_from = derived_from<__decay_t<_Ty>, _Up>;

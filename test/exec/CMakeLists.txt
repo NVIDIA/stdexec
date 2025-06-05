@@ -46,6 +46,7 @@ set(exec_test_sources
     test_sequence.cpp
     test_static_thread_pool.cpp
     test_just_from.cpp
+    test_fork.cpp
     sequence/test_any_sequence_of.cpp
     sequence/test_empty_sequence.cpp
     sequence/test_ignore_all_values.cpp
