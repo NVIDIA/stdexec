@@ -135,7 +135,7 @@ To further simplify obtaining and including `stdexec` in your CMake project, we 
 
 Complete example:
 ```
-cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.25.0 FATAL_ERROR)
 
 project(stdexecExample)
 
