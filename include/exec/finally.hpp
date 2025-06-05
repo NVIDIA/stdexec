@@ -314,8 +314,8 @@ namespace exec {
     };
   } // namespace __final
 
-  using __final ::finally_t;
-  inline constexpr __final ::finally_t finally{};
+  using __final::finally_t;
+  inline constexpr __final::finally_t finally{};
 } // namespace exec
 
 namespace stdexec {

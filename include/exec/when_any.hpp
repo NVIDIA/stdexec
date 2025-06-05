@@ -37,7 +37,7 @@ namespace exec {
     };
 
     template <class _BaseEnv>
-    using __env_t = __env::__join_t<prop<get_stop_token_t, inplace_stop_token>, _BaseEnv>;
+    using __env_t = __join_env_t<prop<get_stop_token_t, inplace_stop_token>, _BaseEnv>;
 
     template <class... _Ts>
     using __nothrow_decay_copyable_and_move_constructible_t = __mbool<(

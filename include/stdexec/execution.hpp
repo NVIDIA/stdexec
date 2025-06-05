@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 NVIDIA Corporation
+ * Copyright (c) 2025 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -15,7 +15,6 @@
  */
 #pragma once
 
-#include "__detail/__execution_legacy.hpp"
 #include "__detail/__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
@@ -31,6 +30,7 @@
 #include "__detail/__ensure_started.hpp"                  // IWYU pragma: export
 #include "__detail/__env.hpp"                             // IWYU pragma: export
 #include "__detail/__execute.hpp"                         // IWYU pragma: export
+#include "__detail/__execution_legacy.hpp"                // IWYU pragma: export
 #include "__detail/__inline_scheduler.hpp"                // IWYU pragma: export
 #include "__detail/__into_variant.hpp"                    // IWYU pragma: export
 #include "__detail/__intrusive_ptr.hpp"                   // IWYU pragma: export
@@ -43,6 +43,7 @@
 #include "__detail/__read_env.hpp"                        // IWYU pragma: export
 #include "__detail/__receivers.hpp"                       // IWYU pragma: export
 #include "__detail/__receiver_adaptor.hpp"                // IWYU pragma: export
+#include "__detail/__receiver_ref.hpp"                    // IWYU pragma: export
 #include "__detail/__run_loop.hpp"                        // IWYU pragma: export
 #include "__detail/__schedule_from.hpp"                   // IWYU pragma: export
 #include "__detail/__schedulers.hpp"                      // IWYU pragma: export

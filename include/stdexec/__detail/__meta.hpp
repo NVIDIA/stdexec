@@ -64,18 +64,6 @@ namespace stdexec {
     }
   };
 
-  // Because of nvc++ nvbugs#4679848, we can't make __mbool a simple alias for __mconstant,
-  // and because of nvc++ nvbugs#4668709 it can't be a simple alias for std::bool_constant,
-  // either. :-(
-  // template <bool _Bp>
-  // using __mbool = __mconstant<_Bp>;
-
-  template <bool _Bp>
-  struct __mbool : std::bool_constant<_Bp> { };
-
-  using __mtrue = __mbool<true>;
-  using __mfalse = __mbool<false>;
-
   // nvbugs#4679848 and nvbugs#4668709 also preclude __mconstant from representing a compile-time
   // size_t.
   enum class __u8 : unsigned char {
@@ -1186,14 +1174,22 @@ namespace stdexec {
   template <class _Set, class... _Ty>
   concept __mset_contains = (STDEXEC_IS_BASE_OF(__mtype<_Ty>, _Set) && ...);
 
+  struct __mset_nil;
+
   namespace __set {
     template <class... _Ts>
-    struct __inherit { };
+    struct __inherit : __mtype<__mset_nil> {
+      template <template <class...> class _Fn>
+      using rebind = _Fn<_Ts...>;
+    };
 
     template <class _Ty, class... _Ts>
     struct __inherit<_Ty, _Ts...>
       : __mtype<_Ty>
-      , __inherit<_Ts...> { };
+      , __inherit<_Ts...> {
+      template <template <class...> class _Fn>
+      using rebind = _Fn<_Ty, _Ts...>;
+    };
 
     template <class... _Set>
     auto operator+(__inherit<_Set...> &) -> __inherit<_Set...>;

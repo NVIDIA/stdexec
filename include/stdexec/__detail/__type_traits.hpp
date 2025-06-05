@@ -18,6 +18,7 @@
 #include "__config.hpp"
 
 #include <type_traits> // IWYU pragma: keep
+#include <utility>     // IWYU pragma: keep
 
 namespace stdexec {
 
@@ -201,4 +202,17 @@ namespace stdexec {
   };
   template <class _Ty>
   using __cref_t = decltype(__cref_fn{}(__declval<_Ty>()));
+
+  // Because of nvc++ nvbugs#4679848, we can't make __mbool a simple alias for __mconstant,
+  // and because of nvc++ nvbugs#4668709 it can't be a simple alias for std::bool_constant,
+  // either. :-(
+  // template <bool _Bp>
+  // using __mbool = __mconstant<_Bp>;
+
+  template <bool _Bp>
+  struct __mbool : std::bool_constant<_Bp> { };
+
+  using __mtrue = __mbool<true>;
+  using __mfalse = __mbool<false>;
+
 } // namespace stdexec

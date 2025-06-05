@@ -23,7 +23,7 @@
 #include "__domain.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
-#include "__receiver_ref.hpp" // IWYU pragma: keep for __any::__receiver_ref
+#include "__any_receiver_ref.hpp" // IWYU pragma: keep for __any::__receiver_ref
 #include "__schedulers.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
@@ -134,7 +134,7 @@ namespace stdexec {
     using __result_env_t = __if_c<
       __is_scheduler_affine<schedule_result_t<_Scheduler>>,
       _Env,
-      __env::__join_t<__sched_env<_Scheduler>, _Env>>;
+      __join_env_t<__sched_env<_Scheduler>, _Env>>;
 
     template <__mstring _Where, __mstring _What>
     struct _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_ { };

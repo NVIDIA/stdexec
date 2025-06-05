@@ -693,7 +693,7 @@ namespace exec {
     };
 
     template <class _Env>
-    using __spawn_env_t = __env::__join_t<_Env, __spawn_env_>;
+    using __spawn_env_t = __join_env_t<_Env, __spawn_env_>;
 
     template <class _EnvId>
     struct __spawn_op_base {

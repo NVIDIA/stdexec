@@ -507,6 +507,9 @@ namespace stdexec {
       }
     };
 
+    template <class _Env>
+    using __fwd_env_t = __call_result_t<__fwd_fn, _Env>;
+
     template <class _EnvId, class _Tag>
     struct __without_ {
       using _Env = __cvref_t<_EnvId>;
@@ -583,7 +586,7 @@ namespace stdexec {
 
       template <class _First, class _Second>
       auto operator()(_First&& __first, _Second&& __second) const noexcept
-        -> env<_First, __call_result_t<__fwd_fn, _Second>> {
+        -> env<_First, __fwd_env_t<_Second>> {
         return {static_cast<_First&&>(__first), __fwd_fn()(static_cast<_Second&&>(__second))};
       }
     };
@@ -591,12 +594,12 @@ namespace stdexec {
     inline constexpr __join_fn __join{};
 
     template <class _First, class... _Second>
-    using __join_t = __result_of<__join, _First, _Second...>;
+    using __join_env_t = __result_of<__join, _First, _Second...>;
 
     struct __as_root_env_fn {
       template <class _Env>
       constexpr auto operator()(_Env __env) const noexcept
-        -> __join_t<__root_env, std::unwrap_reference_t<_Env>> {
+        -> __join_env_t<__root_env, std::unwrap_reference_t<_Env>> {
         return __join(__root_env{}, static_cast<std::unwrap_reference_t<_Env>&&>(__env));
       }
     };
@@ -606,6 +609,9 @@ namespace stdexec {
     template <class _Env>
     using __as_root_env_t = __result_of<__as_root_env, _Env>;
   } // namespace __env
+
+  using __env::__join_env_t;
+  using __env::__fwd_env_t;
 
   /////////////////////////////////////////////////////////////////////////////
   namespace __get_env {

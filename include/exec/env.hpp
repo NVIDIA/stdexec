@@ -46,7 +46,7 @@ namespace exec {
         stdexec::__nothrow_move_constructible _Base,
         stdexec::__nothrow_move_constructible _Env>
       auto operator()(_Base&& __base, _Env&& __env) const noexcept
-        -> stdexec::__env::__join_t<_Env, _Base> {
+        -> stdexec::__join_env_t<_Env, _Base> {
         return stdexec::__env::__join(static_cast<_Env&&>(__env), static_cast<_Base&&>(__base));
       }
 
@@ -158,7 +158,7 @@ namespace exec {
         _Sender __sndr_;
         _Attrs __attrs_;
 
-        auto get_env() const noexcept -> __env::__join_t<const _Attrs&, env_of_t<_Sender>> {
+        auto get_env() const noexcept -> __join_env_t<const _Attrs&, env_of_t<_Sender>> {
           return stdexec::__env::__join(__attrs_, stdexec::get_env(__sndr_));
         }
 

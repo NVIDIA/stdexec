@@ -824,7 +824,7 @@ namespace exec {
     };
 
     template <class _Env>
-    using __env_t = __env::__join_t<prop<get_stop_token_t, inplace_stop_token>, _Env>;
+    using __env_t = __join_env_t<prop<get_stop_token_t, inplace_stop_token>, _Env>;
 
     template <class _ReceiverId>
     struct __stoppable_receiver {
