@@ -30,6 +30,12 @@ namespace execpools {
       return static_cast<std::uint32_t>(
         asio_impl::query(executor_, asio_impl::execution::occupancy));
     }
+
+    [[nodiscard]]
+    auto get_executor() const {
+      return executor_;
+    }
+
    private:
     [[nodiscard]]
     static constexpr auto forward_progress_guarantee() -> stdexec::forward_progress_guarantee {
