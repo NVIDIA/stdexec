@@ -41,7 +41,8 @@ namespace stdexec {
 
       template <class _Receiver, class... _As>
         requires __set_value_member<_Receiver, _As...>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) friend void tag_invoke(set_value_t, _Receiver&& __rcvr, _As&&... __as) noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
+      friend void tag_invoke(set_value_t, _Receiver&& __rcvr, _As&&... __as) noexcept {
         static_assert(
           noexcept(static_cast<_Receiver&&>(__rcvr).set_value(static_cast<_As&&>(__as)...)),
           "set_value member functions must be noexcept");
@@ -55,7 +56,8 @@ namespace stdexec {
 
       template <class _Receiver, class... _As>
         requires tag_invocable<set_value_t, _Receiver, _As...>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) void operator()(_Receiver&& __rcvr, _As&&... __as) const noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
+      void operator()(_Receiver&& __rcvr, _As&&... __as) const noexcept {
         static_assert(nothrow_tag_invocable<set_value_t, _Receiver, _As...>);
         (void) tag_invoke(
           stdexec::set_value_t{}, static_cast<_Receiver&&>(__rcvr), static_cast<_As&&>(__as)...);
@@ -74,7 +76,8 @@ namespace stdexec {
 
       template <class _Receiver, class _Error>
         requires __set_error_member<_Receiver, _Error>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) friend void tag_invoke(set_error_t, _Receiver&& __rcvr, _Error&& __err) noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
+      friend void tag_invoke(set_error_t, _Receiver&& __rcvr, _Error&& __err) noexcept {
         static_assert(
           noexcept(static_cast<_Receiver&&>(__rcvr).set_error(static_cast<_Error&&>(__err))),
           "set_error member functions must be noexcept");
@@ -88,7 +91,8 @@ namespace stdexec {
 
       template <class _Receiver, class _Error>
         requires tag_invocable<set_error_t, _Receiver, _Error>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) void operator()(_Receiver&& __rcvr, _Error&& __err) const noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
+      void operator()(_Receiver&& __rcvr, _Error&& __err) const noexcept {
         static_assert(nothrow_tag_invocable<set_error_t, _Receiver, _Error>);
         (void) tag_invoke(
           stdexec::set_error_t{}, static_cast<_Receiver&&>(__rcvr), static_cast<_Error&&>(__err));
@@ -107,7 +111,8 @@ namespace stdexec {
 
       template <class _Receiver>
         requires __set_stopped_member<_Receiver>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) friend void tag_invoke(set_stopped_t, _Receiver&& __rcvr) noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
+      friend void tag_invoke(set_stopped_t, _Receiver&& __rcvr) noexcept {
         static_assert(
           noexcept(static_cast<_Receiver&&>(__rcvr).set_stopped()),
           "set_stopped member functions must be noexcept");
@@ -119,7 +124,8 @@ namespace stdexec {
 
       template <class _Receiver>
         requires tag_invocable<set_stopped_t, _Receiver>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) void operator()(_Receiver&& __rcvr) const noexcept {
+      STDEXEC_ATTRIBUTE((host, device, always_inline))
+      void operator()(_Receiver&& __rcvr) const noexcept {
         static_assert(nothrow_tag_invocable<set_stopped_t, _Receiver>);
         (void) tag_invoke(stdexec::set_stopped_t{}, static_cast<_Receiver&&>(__rcvr));
       }
@@ -185,9 +191,10 @@ namespace stdexec {
     receiver_of<_Receiver, __completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
 
   /// A utility for calling set_value with the result of a function invocation:
-  template <bool _CanThrow = false, class _Receiver, class _Fun, class... _As>
-  void __set_value_invoke(_Receiver&& __rcvr, _Fun&& __fun, _As&&... __as) noexcept(!_CanThrow) {
-    if constexpr (_CanThrow || __nothrow_invocable<_Fun, _As...>) {
+  template <class _Receiver, class _Fun, class... _As>
+  STDEXEC_ATTRIBUTE((host, device))
+  void __set_value_invoke(_Receiver&& __rcvr, _Fun&& __fun, _As&&... __as) noexcept {
+    STDEXEC_TRY {
       if constexpr (same_as<void, __invoke_result_t<_Fun, _As...>>) {
         __invoke(static_cast<_Fun&&>(__fun), static_cast<_As&&>(__as)...);
         stdexec::set_value(static_cast<_Receiver&&>(__rcvr));
@@ -196,16 +203,11 @@ namespace stdexec {
           static_cast<_Receiver&&>(__rcvr),
           __invoke(static_cast<_Fun&&>(__fun), static_cast<_As&&>(__as)...));
       }
-    } else {
-      try {
-        stdexec::__set_value_invoke<true>(
-          static_cast<_Receiver&&>(__rcvr),
-          static_cast<_Fun&&>(__fun),
-          static_cast<_As&&>(__as)...);
-      } catch (...) {
-        stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
-      }
     }
+    STDEXEC_CATCH(...)( //
+      if constexpr (!__nothrow_invocable<_Fun, _As...>) {
+        stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
+      })
   }
 
   template <class _Tag, class _Receiver>
