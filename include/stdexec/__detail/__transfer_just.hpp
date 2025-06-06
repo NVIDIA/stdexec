@@ -69,8 +69,9 @@ namespace stdexec {
       }
     };
 
-    inline auto __make_env_fn() noexcept {
+    inline auto __make_attrs_fn() noexcept {
       return []<class _Scheduler>(const _Scheduler& __sched, const auto&...) noexcept {
+        static_assert(scheduler<_Scheduler>, "transfer_just requires a scheduler");
         return __sched_attrs{std::cref(__sched)};
       };
     }
@@ -78,7 +79,7 @@ namespace stdexec {
     struct __transfer_just_impl : __sexpr_defaults {
       static constexpr auto get_attrs = //
         []<class _Data>(const _Data& __data) noexcept {
-          return __data.apply(__make_env_fn(), __data);
+          return __data.apply(__make_attrs_fn(), __data);
         };
 
       static constexpr auto get_completion_signatures = //

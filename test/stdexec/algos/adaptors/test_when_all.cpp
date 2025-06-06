@@ -381,11 +381,11 @@ namespace {
       using scheduler = basic_inline_scheduler<domain>;
 
       auto snd = ex::starts_on(
-        scheduler(),
-        ex::when_all(      //
-          ex::just(3),     //
-          ex::just(0.1415) //
-          ));
+          scheduler(),
+          ex::when_all(      //
+            ex::just(3),     //
+            ex::just(0.1415) //
+            ));
       wait_for_value(std::move(snd), std::string{"hello world"});
     }
   }

@@ -116,9 +116,10 @@ namespace nvexec::_strm {
     };
   } // namespace _continues_on
 
-  template <class SenderId>
+  template <class Scheduler, class SenderId>
   struct continues_on_sender_t {
     using Sender = stdexec::__t<SenderId>;
+    using LateDomain = __detail::__early_domain_of_t<Sender, __none_such>;
 
     struct __t : stream_sender_base {
       using __id = continues_on_sender_t;
@@ -128,6 +129,7 @@ namespace nvexec::_strm {
         stdexec::__t<
           _continues_on::operation_state_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>>>;
 
+      Scheduler sched_;
       context_state_t context_state_;
       Sender sndr_;
 
@@ -155,17 +157,18 @@ namespace nvexec::_strm {
       }
 
       template <__decays_to<__t> Self, class... Env>
-      static auto
-        get_completion_signatures(Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
+      static auto get_completion_signatures(Self&&, Env&&...) //
+        -> _completion_signatures_t<Self, Env...> {
         return {};
       }
 
-      auto get_env() const noexcept -> env_of_t<const Sender&> {
-        return stdexec::get_env(sndr_);
+      auto get_env() const noexcept -> __sched_attrs<Scheduler, LateDomain> {
+        return {sched_, {}};
       }
 
-      __t(context_state_t context_state, Sender sndr)
-        : context_state_(context_state)
+      __t(Scheduler sched, context_state_t context_state, Sender sndr)
+        : sched_(sched)
+        , context_state_(context_state)
         , sndr_{static_cast<Sender&&>(sndr)} {
       }
     };
@@ -180,18 +183,18 @@ namespace nvexec::_strm {
     template <class Sched, class Sender>
       requires gpu_stream_scheduler<_current_scheduler_t<Sender>>
     auto operator()(__ignore, Sched sched, Sender&& sndr) const {
-      using _sender_t = __t<continues_on_sender_t<__id<__decay_t<Sender>>>>;
+      using _sender_t = __t<continues_on_sender_t<Sched, __id<__decay_t<Sender>>>>;
       auto stream_sched = get_completion_scheduler<set_value_t>(get_env(sndr));
       return schedule_from(
         static_cast<Sched&&>(sched),
-        _sender_t{stream_sched.context_state_, static_cast<Sender&&>(sndr)});
+        _sender_t{sched, stream_sched.context_state_, static_cast<Sender&&>(sndr)});
     }
   };
 
 } // namespace nvexec::_strm
 
 namespace stdexec::__detail {
-  template <class SenderId>
-  inline constexpr __mconst<nvexec::_strm::continues_on_sender_t<__name_of<__t<SenderId>>>>
-    __name_of_v<nvexec::_strm::continues_on_sender_t<SenderId>>{};
+  template <class Scheduler, class SenderId>
+  inline constexpr __mconst<nvexec::_strm::continues_on_sender_t<Scheduler, __name_of<__t<SenderId>>>>
+    __name_of_v<nvexec::_strm::continues_on_sender_t<Scheduler, SenderId>>{};
 } // namespace stdexec::__detail
