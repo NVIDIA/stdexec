@@ -17,6 +17,7 @@
 #pragma once
 
 #include "__detail/__stop_token.hpp" // IWYU pragma: export
+#include "__detail/__utility.hpp"
 
 #include <version>
 #include <cstdint>
@@ -80,7 +81,7 @@ namespace stdexec {
   struct never_stop_token {
    private:
     struct __callback_type {
-      explicit __callback_type(never_stop_token, auto&&) noexcept {
+      explicit __callback_type(never_stop_token, __ignore) noexcept {
       }
     };
    public:
