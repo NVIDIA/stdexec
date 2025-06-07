@@ -44,11 +44,10 @@ namespace exec {
         template <same_as<set_next_t> _SetNext, same_as<__t> _Self, class _Item>
           requires __callable<_Adaptor&, _Item>
                 && __callable<exec::set_next_t, _Receiver&, __call_result_t<_Adaptor&, _Item>>
-        friend auto tag_invoke(_SetNext, _Self& __self, _Item&& __item) //
-          noexcept(
-            __nothrow_callable<_SetNext, _Receiver&, __call_result_t<_Adaptor&, _Item>> //
-            && __nothrow_callable<_Adaptor&, _Item>)
-            -> next_sender_of_t<_Receiver, __call_result_t<_Adaptor&, _Item>> {
+        friend auto tag_invoke(_SetNext, _Self& __self, _Item&& __item) noexcept(
+          __nothrow_callable<_SetNext, _Receiver&, __call_result_t<_Adaptor&, _Item>>
+          && __nothrow_callable<_Adaptor&, _Item>)
+          -> next_sender_of_t<_Receiver, __call_result_t<_Adaptor&, _Item>> {
           return exec::set_next(
             __self.__op_->__receiver_, __self.__op_->__adaptor_(static_cast<_Item&&>(__item)));
         }
@@ -87,7 +86,8 @@ namespace exec {
         __t(_Sender&& __sndr, _Receiver __rcvr, _Adaptor __adaptor)
           : __operation_base<
               _Receiver,
-              _Adaptor>{static_cast<_Receiver&&>(__rcvr), static_cast<_Adaptor&&>(__adaptor)}
+              _Adaptor
+            >{static_cast<_Receiver&&>(__rcvr), static_cast<_Adaptor&&>(__adaptor)}
           , __op_{exec::subscribe(
               static_cast<_Sender&&>(__sndr),
               stdexec::__t<__receiver<_ReceiverId, _Adaptor>>{this})} {
@@ -104,11 +104,10 @@ namespace exec {
       _Receiver& __rcvr_;
 
       template <class _Adaptor, class _Sequence>
-      auto operator()(__ignore, _Adaptor __adaptor, _Sequence&& __sequence) //
-        noexcept(
-          __nothrow_decay_copyable<_Adaptor> && __nothrow_decay_copyable<_Sequence>
-          && __nothrow_move_constructible<_Receiver>)
-          -> __t<__operation<_Sequence, __id<_Receiver>, _Adaptor>> {
+      auto operator()(__ignore, _Adaptor __adaptor, _Sequence&& __sequence) noexcept(
+        __nothrow_decay_copyable<_Adaptor> && __nothrow_decay_copyable<_Sequence>
+        && __nothrow_move_constructible<_Receiver>)
+        -> __t<__operation<_Sequence, __id<_Receiver>, _Adaptor>> {
         return {
           static_cast<_Sequence&&>(__sequence),
           static_cast<_Receiver&&>(__rcvr_),
@@ -123,19 +122,18 @@ namespace exec {
     struct _WITH_ITEM_SENDER_ { };
 
     template <class _Adaptor, class _Item>
-    auto __try_call(_Item*) //
-      -> stdexec::__mexception<
-        _NOT_CALLABLE_ADAPTOR_<_Adaptor&>,
-        _WITH_ITEM_SENDER_<stdexec::__name_of<_Item>>>;
+    auto __try_call(_Item*) -> stdexec::__mexception<
+      _NOT_CALLABLE_ADAPTOR_<_Adaptor&>,
+      _WITH_ITEM_SENDER_<stdexec::__name_of<_Item>>
+    >;
 
     template <class _Adaptor, class _Item>
       requires stdexec::__callable<_Adaptor&, _Item>
     auto __try_call(_Item*) -> stdexec::__msuccess;
 
     template <class _Adaptor, class... _Items>
-    auto __try_calls(item_types<_Items...>*) //
-      -> decltype((
-        stdexec::__msuccess() && ... && __try_call<_Adaptor>(static_cast<_Items*>(nullptr))));
+    auto __try_calls(item_types<_Items...>*) -> decltype((
+      stdexec::__msuccess() && ... && __try_call<_Adaptor>(static_cast<_Items*>(nullptr))));
 
     template <class _Adaptor, class _Items>
     concept __callabale_adaptor_for = requires(_Items* __items) {
@@ -144,16 +142,15 @@ namespace exec {
 
     struct transform_each_t {
       template <sender _Sequence, __sender_adaptor_closure _Adaptor>
-      auto operator()(_Sequence&& __sndr, _Adaptor&& __adaptor) const //
-        noexcept(
-          __nothrow_decay_copyable<_Sequence> //
-          && __nothrow_decay_copyable<_Adaptor>) {
+      auto operator()(_Sequence&& __sndr, _Adaptor&& __adaptor) const
+        noexcept(__nothrow_decay_copyable<_Sequence> && __nothrow_decay_copyable<_Adaptor>) {
         return make_sequence_expr<transform_each_t>(
           static_cast<_Adaptor&&>(__adaptor), static_cast<_Sequence&&>(__sndr));
       }
 
       template <class _Adaptor>
-      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto
+      STDEXEC_ATTRIBUTE(always_inline)
+      constexpr auto
         operator()(_Adaptor __adaptor) const noexcept -> __binder_back<transform_each_t, _Adaptor> {
         return {{static_cast<_Adaptor&&>(__adaptor)}, {}, {}};
       }
@@ -171,8 +168,10 @@ namespace exec {
       using __item_types_t = stdexec::__mapply<
         stdexec::__mtransform<
           stdexec::__mbind_front_q<__call_result_t, __data_of<_Self>&>,
-          stdexec::__munique<stdexec::__q<item_types>>>,
-        item_types_of_t<__child_of<_Self>, _Env...>>;
+          stdexec::__munique<stdexec::__q<item_types>>
+        >,
+        item_types_of_t<__child_of<_Self>, _Env...>
+      >;
 
       template <sender_expr_for<transform_each_t> _Self, class _Env>
       static auto get_item_types(_Self&&, _Env&&) noexcept -> __item_types_t<_Self, _Env> {
@@ -188,10 +187,11 @@ namespace exec {
       template <sender_expr_for<transform_each_t> _Self, receiver _Receiver>
         requires __callabale_adaptor_for<
                    __data_of<_Self>,
-                   item_types_of_t<__child_of<_Self>, env_of_t<_Receiver>>>
+                   item_types_of_t<__child_of<_Self>, env_of_t<_Receiver>>
+                 >
               && sequence_receiver_of<_Receiver, __item_types_t<_Self, env_of_t<_Receiver>>>
               && sequence_sender_to<__child_of<_Self>, __receiver_t<_Self, _Receiver>>
-      static auto subscribe(_Self&& __self, _Receiver __rcvr) //
+      static auto subscribe(_Self&& __self, _Receiver __rcvr)
         noexcept(__nothrow_callable<__sexpr_apply_t, _Self, __subscribe_fn<_Receiver>>)
           -> __call_result_t<__sexpr_apply_t, _Self, __subscribe_fn<_Receiver>> {
         return __sexpr_apply(static_cast<_Self&&>(__self), __subscribe_fn<_Receiver>{__rcvr});

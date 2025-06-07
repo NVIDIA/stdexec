@@ -69,8 +69,7 @@ namespace {
 
   TEST_CASE("ensure_started single value early", "[adaptors][ensure_started]") {
     bool called{false};
-    auto snd1 = ex::just() //
-              | ex::then([&] {
+    auto snd1 = ex::just() | ex::then([&] {
                   called = true;
                   return 42;
                 });
@@ -84,8 +83,7 @@ namespace {
   TEST_CASE("ensure_started single value late", "[adaptors][ensure_started]") {
     impulse_scheduler sch;
     bool called{false};
-    auto snd1 = ex::starts_on(sch, ex::just()) //
-              | ex::then([&] {
+    auto snd1 = ex::starts_on(sch, ex::just()) | ex::then([&] {
                   called = true;
                   return 42;
                 });
@@ -214,11 +212,11 @@ namespace {
     impulse_scheduler sch;
     int count = 0;
     bool called{false};
-    auto snd =
-      ex::let_value(
-        ex::just() | ex::then([&] { ++count; }), [=] { return ex::starts_on(sch, ex::just(19)); })
-      | exec::write_env(stdexec::prop{ex::get_stop_token, stop_source.get_token()})
-      | ex::ensure_started();
+    auto snd = ex::let_value(
+                 ex::just() | ex::then([&] { ++count; }),
+                 [=] { return ex::starts_on(sch, ex::just(19)); })
+             | exec::write_env(stdexec::prop{ex::get_stop_token, stop_source.get_token()})
+             | ex::ensure_started();
     CHECK(count == 1);
     auto op = ex::connect(std::move(snd), expect_stopped_receiver_ex{called});
     // request stop before the source yields a value
@@ -234,8 +232,7 @@ namespace {
     "[adaptors][ensure_started]") {
     stdexec::inplace_stop_source stop_source;
     int count = 0;
-    auto snd = ex::just() //
-             | ex::then([&] {
+    auto snd = ex::just() | ex::then([&] {
                  ++count;
                  return 42;
                })

@@ -23,10 +23,9 @@ namespace stdexec::__std_concepts {
   using std::invocable;
 #else
   template <class _Fun, class... _As>
-  concept invocable = //
-    requires(_Fun&& __f, _As&&... __as) {
-      std::invoke(static_cast<_Fun &&>(__f), static_cast<_As &&>(__as)...);
-    };
+  concept invocable = requires(_Fun&& __f, _As&&... __as) {
+    std::invoke(static_cast<_Fun &&>(__f), static_cast<_As &&>(__as)...);
+  };
 #endif
 } // namespace stdexec::__std_concepts
 
@@ -42,14 +41,15 @@ namespace stdexec {
     // For handling queryables with a static constexpr query member function:
     template <class _Tag, class _Env>
       requires true // so this overload is preferred over the one below
-    STDEXEC_ATTRIBUTE((
-      always_inline)) constexpr auto tag_invoke(_Tag, const _Env&) noexcept -> __mconstant<_Env::query(_Tag())> {
+    STDEXEC_ATTRIBUTE(always_inline) constexpr auto tag_invoke(_Tag, const _Env&) noexcept
+      -> __mconstant<_Env::query(_Tag())> {
       return {};
     }
 
     // For handling queryables with a query member function:
     template <class _Tag, class _Env>
-    STDEXEC_ATTRIBUTE((always_inline)) constexpr auto tag_invoke(_Tag, const _Env& __env) noexcept(noexcept(__env.query(_Tag())))
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr auto tag_invoke(_Tag, const _Env& __env) noexcept(noexcept(__env.query(_Tag())))
       -> decltype(__env.query(_Tag())) {
       return __env.query(_Tag());
     }
@@ -58,25 +58,21 @@ namespace stdexec {
     // std::invoke is more expensive at compile time than necessary,
     // and results in diagnostics that are more verbose than necessary.
     template <class _Tag, class... _Args>
-    concept tag_invocable = //
-      requires(_Tag __tag, _Args&&... __args) {
-        tag_invoke(static_cast<_Tag &&>(__tag), static_cast<_Args &&>(__args)...);
-      };
+    concept tag_invocable = requires(_Tag __tag, _Args&&... __args) {
+      tag_invoke(static_cast<_Tag &&>(__tag), static_cast<_Args &&>(__args)...);
+    };
 
     template <class _Ret, class _Tag, class... _Args>
-    concept __tag_invocable_r = //
-      requires(_Tag __tag, _Args&&... __args) {
-        {
-          static_cast<_Ret>(
-            tag_invoke(static_cast<_Tag &&>(__tag), static_cast<_Args &&>(__args)...))
-        };
+    concept __tag_invocable_r = requires(_Tag __tag, _Args&&... __args) {
+      {
+        static_cast<_Ret>(tag_invoke(static_cast<_Tag &&>(__tag), static_cast<_Args &&>(__args)...))
       };
+    };
 
     // NOT TO SPEC: nothrow_tag_invocable subsumes tag_invocable
     template <class _Tag, class... _Args>
     concept nothrow_tag_invocable =
-      tag_invocable<_Tag, _Args...> && //
-      requires(_Tag __tag, _Args&&... __args) {
+      tag_invocable<_Tag, _Args...> && requires(_Tag __tag, _Args&&... __args) {
         { tag_invoke(static_cast<_Tag &&>(__tag), static_cast<_Args &&>(__args)...) } noexcept;
       };
 
@@ -95,7 +91,8 @@ namespace stdexec {
     struct tag_invoke_t {
       template <class _Tag, class... _Args>
         requires tag_invocable<_Tag, _Args...>
-      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto operator()(_Tag __tag, _Args&&... __args) const
+      STDEXEC_ATTRIBUTE(always_inline)
+      constexpr auto operator()(_Tag __tag, _Args&&... __args) const
         noexcept(nothrow_tag_invocable<_Tag, _Args...>) -> tag_invoke_result_t<_Tag, _Args...> {
         return tag_invoke(static_cast<_Tag&&>(__tag), static_cast<_Args&&>(__args)...);
       }

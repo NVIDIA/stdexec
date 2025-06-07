@@ -34,7 +34,8 @@ namespace {
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<decltype(sndr), env<>>,
-        completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>>);
+        completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>
+      >);
   }
 
   TEST_CASE("fork broadcasts results to multiple continuations", "[adaptors][fork]") {
@@ -43,7 +44,8 @@ namespace {
       return completion_signatures<
         set_value_t(int),
         set_value_t(int, int),
-        set_value_t(int, int, int)>{};
+        set_value_t(int, int, int)
+      >{};
     };
     auto sndr = exec::fork(
       exec::just_from(fn),
@@ -63,7 +65,8 @@ namespace {
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<decltype(sndr), env<>>,
-        completion_signatures<set_value_t(int, int), set_error_t(std::exception_ptr), set_stopped_t()>>);
+        completion_signatures<set_value_t(int, int), set_error_t(std::exception_ptr), set_stopped_t()>
+      >);
 
     auto [i1, i2] = sync_wait(sndr).value();
     CHECK(i1 == 42);

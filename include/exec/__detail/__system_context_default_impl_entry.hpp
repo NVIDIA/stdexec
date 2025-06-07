@@ -28,7 +28,7 @@
 
 #include "__system_context_default_impl.hpp" // IWYU pragma: keep
 
-#define __STDEXEC_SYSTEM_CONTEXT_API extern STDEXEC_SYSTEM_CONTEXT_INLINE STDEXEC_ATTRIBUTE((weak))
+#define __STDEXEC_SYSTEM_CONTEXT_API extern STDEXEC_SYSTEM_CONTEXT_INLINE STDEXEC_ATTRIBUTE(weak)
 
 namespace exec::system_context_replaceability {
 

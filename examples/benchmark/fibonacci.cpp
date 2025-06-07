@@ -115,9 +115,8 @@ auto main(int argc, char** argv) -> int {
     auto snd = std::visit(
       [&](auto&& pool) { return fib_sender(fib_s{cutoff, n, pool.get_scheduler()}); }, pool);
 
-    auto time = measure<std::chrono::milliseconds>([&] {
-      std::tie(result) = stdexec::sync_wait(std::move(snd)).value();
-    });
+    auto time = measure<std::chrono::milliseconds>(
+      [&] { std::tie(result) = stdexec::sync_wait(std::move(snd)).value(); });
     times.push_back(static_cast<unsigned int>(time));
   }
 

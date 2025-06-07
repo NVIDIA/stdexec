@@ -39,8 +39,7 @@ namespace {
 
   TEST_CASE("into_variant simple example", "[adaptors][into_variant]") {
     bool called{false};
-    auto snd = ex::into_variant(ex::just(11)) //
-             | ex::then([&](std::variant<std::tuple<int>> x) {
+    auto snd = ex::into_variant(ex::just(11)) | ex::then([&](std::variant<std::tuple<int>> x) {
                  called = true;
                  CHECK(std::get<0>(std::get<0>(x)) == 11);
                });
@@ -65,9 +64,9 @@ namespace {
   TEST_CASE(
     "into_variant with senders that have multiple alternatives",
     "[adaptors][into_variant]") {
-    ex::sender auto in_snd =
-      fallible_just{13} //
-      | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
+    ex::sender auto in_snd = fallible_just{13} | ex::let_error([](std::exception_ptr) {
+                               return ex::just(std::string{"err"});
+                             });
     check_val_types<ex::__mset<pack<int>, pack<std::string>>>(in_snd);
 
     ex::sender auto snd = std::move(in_snd) | ex::into_variant();
@@ -76,8 +75,7 @@ namespace {
   }
 
   TEST_CASE("into_variant can be used with just_error", "[adaptors][into_variant]") {
-    ex::sender auto snd = ex::just_error(std::string{"err"}) //
-                        | ex::into_variant();
+    ex::sender auto snd = ex::just_error(std::string{"err"}) | ex::into_variant();
     auto op = ex::connect(std::move(snd), expect_error_receiver{std::string{"err"}});
     ex::start(op);
   }
@@ -115,8 +113,8 @@ namespace {
       ex::just(3, 0.1415) | ex::into_variant());
 
     check_val_types<ex::__mset<pack<std::variant<std::tuple<int>, std::tuple<std::string>>>>>(
-      fallible_just{13}                                                                //
-      | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); }) //
+      fallible_just{13}
+      | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); })
       // sender here can send either `int` or `std::string`
       | ex::into_variant());
   }
@@ -125,23 +123,17 @@ namespace {
     inline_scheduler sched1{};
     error_scheduler sched2{};
 
-    check_err_types<ex::__mset<std::exception_ptr>>( //
-      ex::transfer_just(sched1) | ex::into_variant());
-    check_err_types<ex::__mset<std::exception_ptr>>( //
-      ex::transfer_just(sched2) | ex::into_variant());
-    check_err_types<ex::__mset<std::exception_ptr, int>>( //
-      ex::just_error(-1) | ex::into_variant());
+    check_err_types<ex::__mset<std::exception_ptr>>(ex::transfer_just(sched1) | ex::into_variant());
+    check_err_types<ex::__mset<std::exception_ptr>>(ex::transfer_just(sched2) | ex::into_variant());
+    check_err_types<ex::__mset<std::exception_ptr, int>>(ex::just_error(-1) | ex::into_variant());
   }
 
   TEST_CASE("into_variant keeps sends_stopped from input sender", "[adaptors][into_variant]") {
     inline_scheduler sched1{};
     error_scheduler sched2{};
 
-    check_sends_stopped<false>( //
-      ex::transfer_just(sched1) | ex::into_variant());
-    check_sends_stopped<true>( //
-      ex::transfer_just(sched2) | ex::into_variant());
-    check_sends_stopped<true>( //
-      ex::just_stopped() | ex::into_variant());
+    check_sends_stopped<false>(ex::transfer_just(sched1) | ex::into_variant());
+    check_sends_stopped<true>(ex::transfer_just(sched2) | ex::into_variant());
+    check_sends_stopped<true>(ex::just_stopped() | ex::into_variant());
   }
 } // namespace

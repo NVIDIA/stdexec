@@ -26,10 +26,10 @@ using namespace stdexec::tags;
 template <class R, class F>
 class _then_receiver : public stdexec::receiver_adaptor<_then_receiver<R, F>, R> {
   template <class... As>
-  using _completions = //
-    stdexec::completion_signatures<
-      stdexec::set_value_t(std::invoke_result_t<F, As...>),
-      stdexec::set_error_t(std::exception_ptr)>;
+  using _completions = stdexec::completion_signatures<
+    stdexec::set_value_t(std::invoke_result_t<F, As...>),
+    stdexec::set_error_t(std::exception_ptr)
+  >;
 
  public:
   _then_receiver(R r, F f)
@@ -66,12 +66,12 @@ struct _then_sender {
     stdexec::completion_signatures<stdexec::set_value_t(std::invoke_result_t<F, Args...>)>;
 
   template <class Env>
-  using _completions_t = //
-    stdexec::transform_completion_signatures_of<
-      S,
-      Env,
-      stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
-      _set_value_t>;
+  using _completions_t = stdexec::transform_completion_signatures_of<
+    S,
+    Env,
+    stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
+    _set_value_t
+  >;
 
   template <class Env>
   auto get_completion_signatures(Env&&) && -> _completions_t<Env> {

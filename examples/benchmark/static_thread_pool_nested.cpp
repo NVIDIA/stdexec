@@ -46,45 +46,39 @@ struct RunThread {
       std::size_t scheds = end - start;
       std::atomic<std::size_t> counter{scheds};
       auto env = exec::make_env(stdexec::prop{stdexec::get_allocator, alloc});
-      stdexec::sync_wait(
-        stdexec::schedule(scheduler) //
-        | stdexec::then([&] {
-            auto nested_scheduler = pool.get_scheduler();
-            while (scheds) {
-              stdexec::start_detached(              //
-                stdexec::schedule(nested_scheduler) //
-                  | stdexec::then([&] {
-                      auto prev = counter.fetch_sub(1);
-                      if (prev == 1) {
-                        std::lock_guard lock{mut};
-                        cv.notify_one();
-                      }
-                    }),
-                env);
-              --scheds;
-            }
-          }));
+      stdexec::sync_wait(stdexec::schedule(scheduler) | stdexec::then([&] {
+                           auto nested_scheduler = pool.get_scheduler();
+                           while (scheds) {
+                             stdexec::start_detached(
+                               stdexec::schedule(nested_scheduler) | stdexec::then([&] {
+                                 auto prev = counter.fetch_sub(1);
+                                 if (prev == 1) {
+                                   std::lock_guard lock{mut};
+                                   cv.notify_one();
+                                 }
+                               }),
+                               env);
+                             --scheds;
+                           }
+                         }));
 #else
       auto [start, end] = exec::_pool_::even_share(total_scheds, tid, pool.available_parallelism());
       std::size_t scheds = end - start;
       std::atomic<std::size_t> counter{scheds};
-      stdexec::sync_wait(
-        stdexec::schedule(scheduler) //
-        | stdexec::then([&] {
-            auto nested_scheduler = pool.get_scheduler();
-            while (scheds) {
-              stdexec::start_detached(              //
-                stdexec::schedule(nested_scheduler) //
-                | stdexec::then([&] {
-                    auto prev = counter.fetch_sub(1);
-                    if (prev == 1) {
-                      std::lock_guard lock{mut};
-                      cv.notify_one();
-                    }
-                  }));
-              --scheds;
-            }
-          }));
+      stdexec::sync_wait(stdexec::schedule(scheduler) | stdexec::then([&] {
+                           auto nested_scheduler = pool.get_scheduler();
+                           while (scheds) {
+                             stdexec::start_detached(
+                               stdexec::schedule(nested_scheduler) | stdexec::then([&] {
+                                 auto prev = counter.fetch_sub(1);
+                                 if (prev == 1) {
+                                   std::lock_guard lock{mut};
+                                   cv.notify_one();
+                                 }
+                               }));
+                             --scheds;
+                           }
+                         }));
 #endif
       std::unique_lock lock{mut};
       cv.wait(lock, [&] { return counter.load() == 0; });

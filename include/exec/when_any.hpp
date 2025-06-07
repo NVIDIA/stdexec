@@ -55,11 +55,11 @@ namespace exec {
     template <class... _Env>
     struct __completions_fn {
       template <class... _CvrefSenders>
-      using __all_value_args_nothrow_decay_copyable = //
-        __mand_t<__value_types_t<
-          __completion_signatures_of_t<_CvrefSenders, _Env...>,
-          __qq<__nothrow_decay_copyable_and_move_constructible_t>,
-          __qq<__mand_t>>...>;
+      using __all_value_args_nothrow_decay_copyable = __mand_t<__value_types_t<
+        __completion_signatures_of_t<_CvrefSenders, _Env...>,
+        __qq<__nothrow_decay_copyable_and_move_constructible_t>,
+        __qq<__mand_t>
+      >...>;
 
       template <class... _CvrefSenders>
       using __f = __mtry_q<__concat_completion_signatures>::__f<
@@ -70,15 +70,17 @@ namespace exec {
           __as_rvalues,
           __as_error,
           set_stopped_t (*)(),
-          __completion_signature_ptrs>...>;
+          __completion_signature_ptrs
+        >...
+      >;
     };
 
     template <class _Env, class... _CvrefSenders>
-    using __result_type_t = //
-      __for_each_completion_signature<
-        __minvoke<__completions_fn<_Env>, _CvrefSenders...>,
-        __decayed_tuple,
-        __uniqued_variant_for>;
+    using __result_type_t = __for_each_completion_signature<
+      __minvoke<__completions_fn<_Env>, _CvrefSenders...>,
+      __decayed_tuple,
+      __uniqued_variant_for
+    >;
 
     template <class _Receiver>
     auto __make_visitor_fn(_Receiver& __rcvr) noexcept {
@@ -191,7 +193,7 @@ namespace exec {
       using __receiver_t = stdexec::__t<__receiver<_Receiver, __result_t>>;
       using __op_base_t = __op_base<_Receiver, __result_t>;
 
-      static constexpr bool __nothrow_construct = //
+      static constexpr bool __nothrow_construct =
         __nothrow_move_constructible<_Receiver>
         && (__nothrow_connectable<__cvref_t<_CvrefSenderIds>, __receiver_t> && ...);
 
@@ -203,8 +205,8 @@ namespace exec {
         __t(_SenderTuple&& __senders, _Receiver&& __rcvr) noexcept(__nothrow_construct)
           : __op_base_t{static_cast<_Receiver&&>(__rcvr), sizeof...(_CvrefSenderIds)}
           , __ops_{__senders.apply(
-              [this]<class... _Senders>(_Senders&&... __sndrs) noexcept(__nothrow_construct)
-                -> __opstate_tuple {
+              [this]<class... _Senders>(_Senders&&... __sndrs) noexcept(
+                __nothrow_construct) -> __opstate_tuple {
                 return __opstate_tuple{
                   stdexec::connect(static_cast<_Senders&&>(__sndrs), __receiver_t{this})...};
               },
@@ -239,10 +241,10 @@ namespace exec {
       using __op_t = stdexec::__t<__op<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>>;
 
       template <class _Self, class... _Env>
-      using __completions_t = //
-        __minvoke<
-          __when_any::__completions_fn<_Env...>,
-          __copy_cvref_t<_Self, stdexec::__t<_SenderIds>>...>;
+      using __completions_t = __minvoke<
+        __when_any::__completions_fn<_Env...>,
+        __copy_cvref_t<_Self, stdexec::__t<_SenderIds>>...
+      >;
 
       class __t {
        public:
@@ -251,17 +253,18 @@ namespace exec {
         using __senders_tuple = __tuple_for<stdexec::__t<_SenderIds>...>;
 
         template <__not_decays_to<__t>... _Senders>
-        explicit(sizeof...(_Senders) == 1)
-          __t(_Senders&&... __senders) noexcept((__nothrow_decay_copyable<_Senders> && ...))
+        explicit(sizeof...(_Senders) == 1) __t(_Senders&&... __senders)
+          noexcept((__nothrow_decay_copyable<_Senders> && ...))
           : __senders_{static_cast<_Senders&&>(__senders)...} {
         }
 
         template <__decays_to<__t> _Self, receiver _Receiver>
-        static auto connect(_Self&& __self, _Receiver __rcvr) //
-          noexcept(__nothrow_constructible_from<
-                   __op_t<_Self, _Receiver>,
-                   __copy_cvref_t<_Self, __senders_tuple>,
-                   _Receiver>) -> __op_t<_Self, _Receiver> {
+        static auto
+          connect(_Self&& __self, _Receiver __rcvr) noexcept(__nothrow_constructible_from<
+                                                             __op_t<_Self, _Receiver>,
+                                                             __copy_cvref_t<_Self, __senders_tuple>,
+                                                             _Receiver
+          >) -> __op_t<_Self, _Receiver> {
           return __op_t<_Self, _Receiver>{
             static_cast<_Self&&>(__self).__senders_, static_cast<_Receiver&&>(__rcvr)};
         }

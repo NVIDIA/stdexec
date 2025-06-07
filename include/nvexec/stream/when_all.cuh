@@ -90,7 +90,7 @@ namespace nvexec::_strm {
     template <class... Env, class... Senders>
       requires(valid_child_sender<Senders, Env...> && ...)
     struct completions<__types<Env...>, Senders...> {
-      using non_values = //
+      using non_values =
         __meval<
           __concat_completion_signatures,
           completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
@@ -98,14 +98,14 @@ namespace nvexec::_strm {
             __completion_signatures_of_t<Senders, Env...>,
             completion_signatures<>,
             __mconst<completion_signatures<>>::__f>...>;
-      using values = //
+      using values =
         __minvoke<
           __mconcat<__qf<set_value_t>>,
           __value_types_t<
             __completion_signatures_of_t<Senders, Env...>,
             __q<__types>,
             __msingle_or<__types<>>>...>;
-      using __t = //
+      using __t =
         __if_c<
           (__sends<set_value_t, Senders, Env...> && ...),
           __minvoke<__mpush_back<__q<completion_signatures>>, non_values, values>,
@@ -172,13 +172,13 @@ namespace nvexec::_strm {
       env env_;
 
       template <class Cvref, class... Env>
-      using completion_sigs = //
+      using completion_sigs =
         stdexec::__t<_when_all::completions<
           __types<_when_all::env_t<Env>...>,
           __copy_cvref_t<Cvref, stdexec::__t<SenderIds>>...>>;
 
       template <class Completions>
-      using sends_values = //
+      using sends_values =
         __gather_completion_signatures<
           Completions,
           set_value_t,
@@ -195,7 +195,7 @@ namespace nvexec::_strm {
         using Receiver = stdexec::__t<__decay_t<CvrefReceiverId>>;
         using SenderId = __m_at_c<Index, SenderIds...>;
         using Completions = completion_sigs<env_of_t<Receiver>, CvrefReceiverId>;
-        using Env = //
+        using Env =
           make_terminal_stream_env_t<
             exec::make_env_t<env_of_t<Receiver>, stdexec::prop<get_stop_token_t, inplace_stop_token>>>;
 
@@ -207,16 +207,16 @@ namespace nvexec::_strm {
           using __id = receiver_t;
 
           template <class... Values>
-          STDEXEC_ATTRIBUTE((always_inline)) void set_value(Values&&... vals) && noexcept {
+          STDEXEC_ATTRIBUTE(always_inline) void set_value(Values&&... vals) && noexcept {
             op_state_->template _set_value<Index>(static_cast<Values&&>(vals)...);
           }
 
           template <class Error>
-          STDEXEC_ATTRIBUTE((always_inline)) void set_error(Error&& err) && noexcept {
+          STDEXEC_ATTRIBUTE(always_inline) void set_error(Error&& err) && noexcept {
             op_state_->_set_error(static_cast<Error&&>(err));
           }
 
-          STDEXEC_ATTRIBUTE((always_inline)) void set_stopped() && noexcept {
+          STDEXEC_ATTRIBUTE(always_inline) void set_stopped() && noexcept {
             op_state_->_set_stopped();
           }
 
@@ -437,7 +437,7 @@ namespace nvexec::_strm {
         }
 
         // tuple<tuple<Vs1...>, tuple<Vs2...>, ...>
-        using child_values_tuple_t = //
+        using child_values_tuple_t =
           __if<
             sends_values<Completions>,
             __minvoke<
@@ -449,7 +449,7 @@ namespace nvexec::_strm {
                 __msingle_or<void>>...>,
             __>;
 
-        using errors_variant_t = //
+        using errors_variant_t =
           error_types_of_t<
             stdexec::__t<when_all_sender_t>,
             _when_all::env_t<Env>,

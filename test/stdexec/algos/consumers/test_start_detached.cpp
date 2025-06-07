@@ -79,7 +79,7 @@ namespace {
     std::atomic<bool> called{false};
     {
       // lunch some work on the thread pool
-      ex::sender auto snd = ex::transfer_just(pool.get_scheduler()) //
+      ex::sender auto snd = ex::transfer_just(pool.get_scheduler())
                           | ex::then([&] { called.store(true); });
       ex::start_detached(std::move(snd));
     }

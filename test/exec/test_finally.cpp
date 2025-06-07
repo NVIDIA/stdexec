@@ -34,7 +34,8 @@ namespace {
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<decltype(s), ex::env<>>,
-        completion_signatures<set_error_t(std::exception_ptr), set_value_t()>>);
+        completion_signatures<set_error_t(std::exception_ptr), set_value_t()>
+      >);
   }
 
   TEST_CASE("finally executes the final action", "[adaptors][finally]") {
@@ -43,7 +44,8 @@ namespace {
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<decltype(s), ex::env<>>,
-        completion_signatures<set_error_t(std::exception_ptr), set_value_t()>>);
+        completion_signatures<set_error_t(std::exception_ptr), set_value_t()>
+      >);
     sync_wait(s);
     CHECK(called);
   }
@@ -54,7 +56,8 @@ namespace {
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<decltype(s), ex::env<>>,
-        completion_signatures<set_error_t(std::exception_ptr), set_value_t(int)>>);
+        completion_signatures<set_error_t(std::exception_ptr), set_value_t(int)>
+      >);
     auto [i] = *sync_wait(s);
     CHECK(called);
     CHECK(i == 42);
@@ -69,7 +72,8 @@ namespace {
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<decltype(s), ex::env<>>,
-        completion_signatures<set_error_t(std::exception_ptr), set_value_t(int)>>);
+        completion_signatures<set_error_t(std::exception_ptr), set_value_t(int)>
+      >);
     CHECK_THROWS_AS(sync_wait(s), int);
     CHECK(called);
   }
@@ -79,7 +83,8 @@ namespace {
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<decltype(s), ex::env<>>,
-        completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_error_t(int)>>);
+        completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_error_t(int)>
+      >);
   }
 
   TEST_CASE("finally includes the stopped signal of the final action", "[adaptors][finally]") {
@@ -87,6 +92,7 @@ namespace {
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<decltype(s), ex::env<>>,
-        completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>>);
+        completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>
+      >);
   }
 } // namespace

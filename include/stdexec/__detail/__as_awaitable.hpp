@@ -83,17 +83,17 @@ namespace stdexec {
         using __id = __receiver;
 
         void set_stopped() noexcept {
-          auto __continuation =
-            __coro::coroutine_handle<_Promise>::from_address(this->__continuation_.address());
-          __coro::coroutine_handle<> __stopped_continuation =
-            __continuation.promise().unhandled_stopped();
+          auto __continuation = __coro::coroutine_handle<_Promise>::from_address(
+            this->__continuation_.address());
+          __coro::coroutine_handle<> __stopped_continuation = __continuation.promise()
+                                                                .unhandled_stopped();
           __stopped_continuation.resume();
         }
 
         // Forward get_env query to the coroutine promise
         auto get_env() const noexcept -> env_of_t<_Promise&> {
-          auto __continuation =
-            __coro::coroutine_handle<_Promise>::from_address(this->__continuation_.address());
+          auto __continuation = __coro::coroutine_handle<_Promise>::from_address(
+            this->__continuation_.address());
           return stdexec::get_env(__continuation.promise());
         }
       };
@@ -116,7 +116,8 @@ namespace stdexec {
 
     template <class _Sender, class _Promise>
     using __value_t = __decay_t<
-      __value_types_of_t<_Sender, env_of_t<_Promise&>, __q<__single_value>, __msingle_or<void>>>;
+      __value_types_of_t<_Sender, env_of_t<_Promise&>, __q<__single_value>, __msingle_or<void>>
+    >;
 
     template <class _Sender, class _Promise>
     using __receiver_t = __t<__receiver<__id<_Promise>, __value_t<_Sender, _Promise>>>;
@@ -155,7 +156,7 @@ namespace stdexec {
       using __value = __value_t<_Sender, _Promise>;
 
       struct __t : __sender_awaitable_base<__value> {
-        __t(_Sender&& sndr, __coro::coroutine_handle<_Promise> __hcoro) //
+        __t(_Sender&& sndr, __coro::coroutine_handle<_Promise> __hcoro)
           noexcept(__nothrow_connectable<_Sender, __receiver>)
           : __op_state_(connect(
               static_cast<_Sender&&>(sndr),
@@ -178,10 +179,10 @@ namespace stdexec {
     using __sender_awaitable_t = __t<__sender_awaitable<__id<_Promise>, __id<_Sender>>>;
 
     template <class _Sender, class _Promise>
-    concept __awaitable_sender = sender_in<_Sender, env_of_t<_Promise&>> &&             //
-                                 __mvalid<__value_t, _Sender, _Promise> &&              //
-                                 sender_to<_Sender, __receiver_t<_Sender, _Promise>> && //
-                                 requires(_Promise& __promise) {
+    concept __awaitable_sender = sender_in<_Sender, env_of_t<_Promise&>>
+                              && __mvalid<__value_t, _Sender, _Promise>
+                              && sender_to<_Sender, __receiver_t<_Sender, _Promise>>
+                              && requires(_Promise& __promise) {
                                    {
                                      __promise.unhandled_stopped()
                                    } -> convertible_to<__coro::coroutine_handle<>>;

@@ -28,8 +28,7 @@ namespace {
     STDEXEC_TRY_CUDA_API(cudaMallocHost(&device_flag, sizeof(int)));
     *host_flag = *device_flag = 0;
 
-    auto snd = ex::schedule(stream_ctx.get_scheduler()) //
-             | ex::then([=] {
+    auto snd = ex::schedule(stream_ctx.get_scheduler()) | ex::then([=] {
                  if (is_on_gpu()) {
                    cuda::atomic_ref<int, cuda::thread_scope_system> host_flag_ref(*host_flag);
                    cuda::atomic_ref<int, cuda::thread_scope_system> device_flag_ref(*device_flag);

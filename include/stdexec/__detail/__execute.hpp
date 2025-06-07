@@ -35,7 +35,10 @@ namespace stdexec {
       void operator()(_Scheduler&& __sched, _Fun __fun) const noexcept(false) {
         auto __domain = query_or(get_domain, __sched, default_domain());
         stdexec::apply_sender(
-          __domain, *this, schedule(static_cast<_Scheduler&&>(__sched)), static_cast<_Fun&&>(__fun));
+          __domain,
+          *this,
+          schedule(static_cast<_Scheduler&&>(__sched)),
+          static_cast<_Fun&&>(__fun));
       }
 
       template <sender_of<set_value_t()> _Sender, class _Fun>

@@ -114,8 +114,7 @@ namespace {
   }
 
   TEST_CASE("sync_wait doesn't accept multi-variant senders", "[consumers][sync_wait]") {
-    ex::sender auto snd = fallible_just{13} //
-                        | ex::let_error(always(ex::just(std::string{"err"})));
+    ex::sender auto snd = fallible_just{13} | ex::let_error(always(ex::just(std::string{"err"})));
     check_val_types<ex::__mset<pack<int>, pack<std::string>>>(snd);
     // static_assert(!std::invocable<ex::sync_wait_t, decltype(snd)>);
   }
@@ -185,11 +184,10 @@ namespace {
 
     exec::static_thread_pool pool{3};
     ex::scheduler auto sched = pool.get_scheduler();
-    ex::sender auto snd = ex::when_all(               //
-       ex::transfer_just(sched, 2) | ex::then(square), //
-       ex::transfer_just(sched, 3) | ex::then(square), //
-       ex::transfer_just(sched, 5) | ex::then(square)  //
-     );
+    ex::sender auto snd = ex::when_all(
+      ex::transfer_just(sched, 2) | ex::then(square),
+      ex::transfer_just(sched, 3) | ex::then(square),
+      ex::transfer_just(sched, 5) | ex::then(square));
     std::optional<std::tuple<int, int, int>> res = ex::sync_wait(std::move(snd));
     CHECK(res.has_value());
     CHECK(std::get<0>(res.value()) == 4);
@@ -206,7 +204,8 @@ namespace {
     template <class Sender>
       requires std::same_as<
         ex::value_types_of_t<Sender, ex::env<>, std::type_identity_t, std::type_identity_t>,
-        std::string>
+        std::string
+      >
     static auto apply_sender(ex::sync_wait_t, Sender&&) -> single_result_t {
       return {std::string{"ciao"}};
     }
@@ -214,7 +213,8 @@ namespace {
     template <class Sender>
       requires ex::__mset_eq<
         ex::value_types_of_t<Sender, ex::env<>, std::type_identity_t, ex::__mmake_set>,
-        ex::__mset<std::string, int>>
+        ex::__mset<std::string, int>
+      >
     static auto apply_sender(ex::sync_wait_with_variant_t, Sender&&) -> multi_result_t {
       return {std::string{"ciao_multi"}};
     }
@@ -232,8 +232,7 @@ namespace {
 
   TEST_CASE("sync_wait_with_variant can be customized", "[consumers][sync_wait_with_variant]") {
     // The customization will return a different value
-    auto snd = fallible_just(std::string{"hello_multi"}) //
-             | ex::let_error(always(ex::just(42)))       //
+    auto snd = fallible_just(std::string{"hello_multi"}) | ex::let_error(always(ex::just(42)))
              | exec::write_attrs(ex::prop{ex::get_domain_late, sync_wait_test_domain{}});
     auto res = ex::sync_wait_with_variant(std::move(snd));
     STATIC_REQUIRE(std::same_as<decltype(res), sync_wait_test_domain::multi_result_t>);
@@ -250,6 +249,7 @@ namespace {
     static_assert(
       std::is_same_v<
         std::tuple<>,
-        ex::value_types_of_t<decltype(ex::just()), ex::env<>, decayed_tuple, std::type_identity_t>>);
+        ex::value_types_of_t<decltype(ex::just()), ex::env<>, decayed_tuple, std::type_identity_t>
+      >);
   }
 } // namespace

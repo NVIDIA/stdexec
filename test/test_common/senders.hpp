@@ -151,8 +151,8 @@ namespace {
 
         void operator()() noexcept {
           state_t expected = self_.state_.load(std::memory_order_relaxed);
-          while (!self_.state_.compare_exchange_weak(
-            expected, state_t::stopped, std::memory_order_acq_rel))
+          while (!self_.state_
+                    .compare_exchange_weak(expected, state_t::stopped, std::memory_order_acq_rel))
             ;
           if (expected == state_t::emplaced) {
             ex::set_stopped(std::move(self_.rcvr_));
@@ -170,8 +170,8 @@ namespace {
         } else {
           on_stop_.emplace(ex::get_stop_token(ex::get_env(rcvr_)), on_stopped{*this});
           state_t expected = state_t::construction;
-          if (!state_.compare_exchange_strong(
-                expected, state_t::emplaced, std::memory_order_acq_rel)) {
+          if (!state_
+                 .compare_exchange_strong(expected, state_t::emplaced, std::memory_order_acq_rel)) {
             ex::set_stopped(std::move(rcvr_));
           }
         }

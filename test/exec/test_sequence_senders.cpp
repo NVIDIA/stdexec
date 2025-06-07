@@ -50,11 +50,13 @@ namespace {
     STATIC_REQUIRE(
       same_as<
         completion_signatures_of_t<some_sender_of<set_value_t()>>,
-        completion_signatures<set_value_t()>>);
+        completion_signatures<set_value_t()>
+      >);
     STATIC_REQUIRE(
       same_as<
         completion_signatures_of_t<some_sender_of<set_value_t(int)>>,
-        completion_signatures<set_value_t(int)>>);
+        completion_signatures<set_value_t(int)>
+      >);
   }
 
   template <__completion_signature... _Sigs>
@@ -90,7 +92,8 @@ namespace {
     STATIC_REQUIRE_FALSE(
       sender_to<
         some_sender_of<set_value_t(int), set_stopped_t()>,
-        test_receiver<set_value_t(), set_stopped_t()>>);
+        test_receiver<set_value_t(), set_stopped_t()>
+      >);
   }
 
   template <__completion_signature... _Sigs>

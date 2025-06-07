@@ -36,10 +36,20 @@ namespace nvexec {
     namespace reduce_ {
       template <class SenderId, class ReceiverId, class InitT, class Fun>
       struct receiver_t
-        : public __algo_range_init_fun::
-            receiver_t<SenderId, ReceiverId, InitT, Fun, receiver_t<SenderId, ReceiverId, InitT, Fun>> {
-        using base = __algo_range_init_fun::
-          receiver_t<SenderId, ReceiverId, InitT, Fun, receiver_t<SenderId, ReceiverId, InitT, Fun>>;
+        : public __algo_range_init_fun::receiver_t<
+            SenderId,
+            ReceiverId,
+            InitT,
+            Fun,
+            receiver_t<SenderId, ReceiverId, InitT, Fun>
+          > {
+        using base = __algo_range_init_fun::receiver_t<
+          SenderId,
+          ReceiverId,
+          InitT,
+          Fun,
+          receiver_t<SenderId, ReceiverId, InitT, Fun>
+        >;
 
         template <class Range>
         using result_t = typename __algo_range_init_fun::binary_invoke_result_t<Range, InitT, Fun>;
@@ -81,7 +91,7 @@ namespace nvexec {
             return;
           }
 
-          if (status = STDEXEC_LOG_CUDA_API( //
+          if (status = STDEXEC_LOG_CUDA_API(
                 cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
               status != cudaSuccess) {
             self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
@@ -116,8 +126,12 @@ namespace nvexec {
 
       template <class SenderId, class InitT, class Fun>
       struct sender_t
-        : public __algo_range_init_fun::
-            sender_t<SenderId, InitT, Fun, sender_t<SenderId, InitT, Fun>> {
+        : public __algo_range_init_fun::sender_t<
+            SenderId,
+            InitT,
+            Fun,
+            sender_t<SenderId, InitT, Fun>
+          > {
         template <class Receiver>
         using receiver_t =
           stdexec::__t<reduce_::receiver_t<SenderId, stdexec::__id<Receiver>, InitT, Fun>>;
@@ -125,7 +139,8 @@ namespace nvexec {
         template <class Range>
         using _set_value_t = completion_signatures<set_value_t(
           ::std::add_lvalue_reference_t<
-            typename __algo_range_init_fun::binary_invoke_result_t<Range, InitT, Fun>>)>;
+            typename __algo_range_init_fun::binary_invoke_result_t<Range, InitT, Fun>
+          >)>;
       };
     } // namespace reduce_
 
@@ -141,7 +156,8 @@ namespace nvexec {
       }
 
       template <class InitT, class Fun = cuda::std::plus<>>
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(InitT init, Fun fun = {}) const -> __binder_back<reduce_t, InitT, Fun> {
+      STDEXEC_ATTRIBUTE(always_inline)
+      auto operator()(InitT init, Fun fun = {}) const -> __binder_back<reduce_t, InitT, Fun> {
         return {
           {static_cast<InitT&&>(init), static_cast<Fun&&>(fun)},
           {},

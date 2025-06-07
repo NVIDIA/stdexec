@@ -119,8 +119,8 @@ namespace stdexec {
         __operation* __op_;
       };
 
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Env __env_;
-      STDEXEC_ATTRIBUTE((no_unique_address)) submit_result<_Sender, __receiver> __op_data_;
+      STDEXEC_ATTRIBUTE(no_unique_address) _Env __env_;
+      STDEXEC_ATTRIBUTE(no_unique_address) submit_result<_Sender, __receiver> __op_data_;
     };
 
     template <class _Sender, class _Env>
@@ -133,7 +133,8 @@ namespace stdexec {
           apply_sender_t,
           __late_domain_of_t<_Sender, __root_env, __early_domain_of_t<_Sender>>,
           start_detached_t,
-          _Sender>
+          _Sender
+        >
       void operator()(_Sender&& __sndr) const {
         auto __domain = __get_late_domain(__sndr, __root_env{}, __get_early_domain(__sndr));
         stdexec::apply_sender(__domain, *this, static_cast<_Sender&&>(__sndr));
@@ -145,7 +146,8 @@ namespace stdexec {
           __late_domain_of_t<_Sender, __as_root_env_t<_Env>, __early_domain_of_t<_Sender>>,
           start_detached_t,
           _Sender,
-          __as_root_env_t<_Env>>
+          __as_root_env_t<_Env>
+        >
       void operator()(_Sender&& __sndr, _Env&& __env) const {
         auto __env2 = __as_root_env(static_cast<_Env&&>(__env));
         auto __domain = __get_late_domain(__sndr, __env2, __get_early_domain(__sndr));

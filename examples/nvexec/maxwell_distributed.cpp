@@ -88,8 +88,10 @@ namespace distributed {
       , begin(grid_begin)
       , end(grid_end)
       , own_cells(end - begin)
-      , fields_(device_alloc<float>(
-          static_cast<std::size_t>(own_cells + n * 2) * static_cast<int>(field_id::fields_count))) {
+      , fields_(
+          device_alloc<float>(
+            static_cast<std::size_t>(own_cells + n * 2)
+            * static_cast<int>(field_id::fields_count))) {
     }
 
     [[nodiscard]]
@@ -201,7 +203,11 @@ namespace distributed {
     }
 
    public:
-    result_dumper_t(bool write_results, int rank, std::size_t &report_step, fields_accessor accessor)
+    result_dumper_t(
+      bool write_results,
+      int rank,
+      std::size_t &report_step,
+      fields_accessor accessor)
       : write_results_(write_results)
       , rank_(rank)
       , report_step_(report_step)
@@ -411,8 +417,8 @@ auto main(int argc, char *argv[]) -> int {
 
   nvexec::stream_context stream_context{};
   nvexec::stream_scheduler gpu = stream_context.get_scheduler(nvexec::stream_priority::low);
-  nvexec::stream_scheduler gpu_with_priority =
-    stream_context.get_scheduler(nvexec::stream_priority::high);
+  nvexec::stream_scheduler gpu_with_priority = stream_context
+                                                 .get_scheduler(nvexec::stream_priority::high);
 
   time_storage_t time{true /* on gpu */};
 

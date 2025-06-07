@@ -38,8 +38,8 @@ namespace stdexec {
      protected:
       using __execute_fn_t = void(__inplace_stop_callback_base*) noexcept;
 
-      explicit __inplace_stop_callback_base( //
-        const inplace_stop_source* __source, //
+      explicit __inplace_stop_callback_base(
+        const inplace_stop_source* __source,
         __execute_fn_t* __execute) noexcept
         : __source_(__source)
         , __execute_(__execute) {
@@ -200,9 +200,7 @@ namespace stdexec {
    public:
     template <class _Fun2>
       requires constructible_from<_Fun, _Fun2>
-    explicit inplace_stop_callback(
-      inplace_stop_token __token,
-      _Fun2&& __fun) //
+    explicit inplace_stop_callback(inplace_stop_token __token, _Fun2&& __fun)
       noexcept(__nothrow_constructible_from<_Fun, _Fun2>)
       : __stok::__inplace_stop_callback_base(
           __token.__source_,
@@ -221,7 +219,7 @@ namespace stdexec {
       std::move(static_cast<inplace_stop_callback*>(cb)->__fun_)();
     }
 
-    STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
+    STDEXEC_ATTRIBUTE(no_unique_address) _Fun __fun_;
   };
 
   namespace __stok {
@@ -377,9 +375,8 @@ namespace stdexec {
   using in_place_stop_token
     [[deprecated("in_place_stop_token has been renamed inplace_stop_token")]] = inplace_stop_token;
 
-  using in_place_stop_source
-    [[deprecated("in_place_stop_token has been renamed inplace_stop_source")]] =
-      inplace_stop_source;
+  using in_place_stop_source [[deprecated(
+    "in_place_stop_token has been renamed inplace_stop_source")]] = inplace_stop_source;
 
   template <class _Fun>
   using in_place_stop_callback

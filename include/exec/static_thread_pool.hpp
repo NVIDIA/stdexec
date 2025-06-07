@@ -196,20 +196,26 @@ namespace exec {
 
       template <class Fun, class Shape, class... Args>
         requires __callable<Fun, Shape, Shape, Args&...>
-      using bulk_non_throwing = //
-        __mbool<
-          // If function invocation doesn't throw
-          __nothrow_callable<Fun, Shape, Shape, Args&...> &&
+      using bulk_non_throwing = __mbool<
+        // If function invocation doesn't throw
+        __nothrow_callable<Fun, Shape, Shape, Args&...> &&
       // and emplacing a tuple doesn't throw
 #if STDEXEC_MSVC()
-          __bulk_non_throwing<Args...>::__v
+        __bulk_non_throwing<Args...>::__v
 #else
-          noexcept(__decayed_std_tuple<Args...>(std::declval<Args>()...))
+        noexcept(__decayed_std_tuple<Args...>(std::declval<Args>()...))
 #endif
-          // there's no need to advertise completion with `exception_ptr`
-          >;
+        // there's no need to advertise completion with `exception_ptr`
+      >;
 
-      template <class CvrefSender, class Receiver, bool parallelize, class Shape, class Fun, bool MayThrow>
+      template <
+        class CvrefSender,
+        class Receiver,
+        bool parallelize,
+        class Shape,
+        class Fun,
+        bool MayThrow
+      >
       struct bulk_shared_state;
 
       template <
@@ -218,18 +224,33 @@ namespace exec {
         bool parallelize,
         class Shape,
         class Fun,
-        bool MayThrow>
+        bool MayThrow
+      >
       struct bulk_receiver {
         using CvrefSender = __cvref_t<CvrefSenderId>;
         using Receiver = stdexec::__t<ReceiverId>;
         struct __t;
       };
 
-      template <class CvrefSender, class Receiver, bool parallelize, class Shape, class Fun, bool MayThrow>
+      template <
+        class CvrefSender,
+        class Receiver,
+        bool parallelize,
+        class Shape,
+        class Fun,
+        bool MayThrow
+      >
       using bulk_receiver_t = __t<
-        bulk_receiver<__cvref_id<CvrefSender>, __id<Receiver>, parallelize, Shape, Fun, MayThrow>>;
+        bulk_receiver<__cvref_id<CvrefSender>, __id<Receiver>, parallelize, Shape, Fun, MayThrow>
+      >;
 
-      template <class CvrefSenderId, class ReceiverId, bool parallelize, std::integral Shape, class Fun>
+      template <
+        class CvrefSenderId,
+        class ReceiverId,
+        bool parallelize,
+        std::integral Shape,
+        class Fun
+      >
       struct bulk_op_state {
         using CvrefSender = stdexec::__cvref_t<CvrefSenderId>;
         using Receiver = stdexec::__t<ReceiverId>;
@@ -238,7 +259,8 @@ namespace exec {
 
       template <class Sender, class Receiver, bool parallelize, std::integral Shape, class Fun>
       using bulk_op_state_t = __t<
-        bulk_op_state<__id<__decay_t<Sender>>, __id<__decay_t<Receiver>>, parallelize, Shape, Fun>>;
+        bulk_op_state<__id<__decay_t<Sender>>, __id<__decay_t<Receiver>>, parallelize, Shape, Fun>
+      >;
 
       struct transform_bulk {
         template <class Data, class Sender>
@@ -297,7 +319,7 @@ namespace exec {
             auto sched = stdexec::get_scheduler(env);
             return __sexpr_apply(static_cast<Sender&&>(sndr), transform_bulk{*sched.pool_});
           } else {
-            static_assert( //
+            static_assert(
               __starts_on<Sender, static_thread_pool_::scheduler, Env>
                 || __completes_on<Sender, static_thread_pool_::scheduler>,
               "No static_thread_pool_ instance can be found in the sender's or receiver's "
@@ -689,8 +711,9 @@ namespace exec {
 
       for (std::uint32_t index = 0; index < threadCount; ++index) {
         threadStates_[index].emplace(this, index, params, numa_);
-        threadIndexByNumaNode_.push_back(thread_index_by_numa_node{
-          .numa_node = threadStates_[index]->numa_node(), .thread_index = index});
+        threadIndexByNumaNode_.push_back(
+          thread_index_by_numa_node{
+            .numa_node = threadStates_[index]->numa_node(), .thread_index = index});
       }
 
       // NOLINTNEXTLINE(modernize-use-ranges) we still support platforms without the std::ranges algorithms
@@ -955,8 +978,8 @@ namespace exec {
 
     // wakeup a worker thread and maintain the invariant that we always one active thief as long as a potential victim is awake
     inline void static_thread_pool_::thread_state::clear_sleeping() {
-      const std::uint32_t numActive =
-        pool_->numActive_.fetch_add(1u << 16u, std::memory_order_relaxed);
+      const std::uint32_t numActive = pool_->numActive_
+                                        .fetch_add(1u << 16u, std::memory_order_relaxed);
       if (numActive == 0) {
         notify_one_sleeping();
       }
@@ -1122,40 +1145,41 @@ namespace exec {
       Fun fun_;
 
       template <class Sender, class... Env>
-      using with_error_invoke_t = //
-        __if_c<
-          __v<__value_types_t<
-            __completion_signatures_of_t<Sender, Env...>,
-            __mbind_front_q<bulk_non_throwing, Fun, Shape>,
-            __q<__mand>>>,
-          completion_signatures<>,
-          __eptr_completion>;
+      using with_error_invoke_t = __if_c<
+        __v<__value_types_t<
+          __completion_signatures_of_t<Sender, Env...>,
+          __mbind_front_q<bulk_non_throwing, Fun, Shape>,
+          __q<__mand>
+        >>,
+        completion_signatures<>,
+        __eptr_completion
+      >;
 
       template <class... Tys>
       using set_value_t = completion_signatures<set_value_t(stdexec::__decay_t<Tys>...)>;
 
       template <class Self, class... Env>
-      using __completions_t = //
-        stdexec::transform_completion_signatures<
-          __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-          with_error_invoke_t<__copy_cvref_t<Self, Sender>, Env...>,
-          set_value_t>;
+      using __completions_t = stdexec::transform_completion_signatures<
+        __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
+        with_error_invoke_t<__copy_cvref_t<Self, Sender>, Env...>,
+        set_value_t
+      >;
 
       template <class Self, class Receiver>
-      using bulk_op_state_t = //
-        stdexec::__t<
-          bulk_op_state<__cvref_id<Self, Sender>, stdexec::__id<Receiver>, parallelize, Shape, Fun>>;
+      using bulk_op_state_t = stdexec::__t<
+        bulk_op_state<__cvref_id<Self, Sender>, stdexec::__id<Receiver>, parallelize, Shape, Fun>
+      >;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, __completions_t<Self, env_of_t<Receiver>>>
-      static auto connect(Self&& self, Receiver rcvr) //
-        noexcept(__nothrow_constructible_from<
-                 bulk_op_state_t<Self, Receiver>,
-                 static_thread_pool_&,
-                 Shape,
-                 Fun,
-                 Sender,
-                 Receiver>) -> bulk_op_state_t<Self, Receiver> {
+      static auto connect(Self&& self, Receiver rcvr) noexcept(__nothrow_constructible_from<
+                                                               bulk_op_state_t<Self, Receiver>,
+                                                               static_thread_pool_&,
+                                                               Shape,
+                                                               Fun,
+                                                               Sender,
+                                                               Receiver
+      >) -> bulk_op_state_t<Self, Receiver> {
         return bulk_op_state_t<Self, Receiver>{
           self.pool_,
           self.shape_,
@@ -1175,7 +1199,14 @@ namespace exec {
     };
 
     //! The customized operation state for `stdexec::bulk` operations
-    template <class CvrefSender, class Receiver, bool parallelize, class Shape, class Fun, bool MayThrow>
+    template <
+      class CvrefSender,
+      class Receiver,
+      bool parallelize,
+      class Shape,
+      class Fun,
+      bool MayThrow
+    >
     struct static_thread_pool_::bulk_shared_state {
       //! The actual `bulk_task` holds a pointer to the shared state
       //! and its `__execute` function reads from that shared state.
@@ -1237,12 +1268,12 @@ namespace exec {
         }
       };
 
-      using variant_t = //
-        __value_types_of_t<
-          CvrefSender,
-          env_of_t<Receiver>,
-          __q<__decayed_std_tuple>,
-          __q<__nullable_std_variant>>;
+      using variant_t = __value_types_of_t<
+        CvrefSender,
+        env_of_t<Receiver>,
+        __q<__decayed_std_tuple>,
+        __q<__nullable_std_variant>
+      >;
 
       variant_t data_;
       static_thread_pool_& pool_;
@@ -1299,9 +1330,16 @@ namespace exec {
       bool parallelize,
       class Shape,
       class Fun,
-      bool MayThrow>
-    struct static_thread_pool_::
-      bulk_receiver<CvrefSenderId, ReceiverId, parallelize, Shape, Fun, MayThrow>::__t {
+      bool MayThrow
+    >
+    struct static_thread_pool_::bulk_receiver<
+      CvrefSenderId,
+      ReceiverId,
+      parallelize,
+      Shape,
+      Fun,
+      MayThrow
+    >::__t {
       using __id = bulk_receiver;
       using receiver_concept = receiver_t;
 
@@ -1311,8 +1349,8 @@ namespace exec {
       shared_state& shared_state_;
 
       void enqueue() noexcept {
-        shared_state_.pool_.bulk_enqueue(
-          shared_state_.tasks_.data(), shared_state_.num_agents_required());
+        shared_state_.pool_
+          .bulk_enqueue(shared_state_.tasks_.data(), shared_state_.num_agents_required());
       }
 
       template <class... As>
@@ -1334,9 +1372,8 @@ namespace exec {
         if (state.shape_) {
           enqueue();
         } else {
-          state.apply([&](auto&... args) {
-            stdexec::set_value(std::move(state.rcvr_), std::move(args)...);
-          });
+          state.apply(
+            [&](auto&... args) { stdexec::set_value(std::move(state.rcvr_), std::move(args)...); });
         }
       }
 
@@ -1357,16 +1394,21 @@ namespace exec {
     };
 
     template <class CvrefSenderId, class ReceiverId, bool parallelize, std::integral Shape, class Fun>
-    struct static_thread_pool_::bulk_op_state<CvrefSenderId, ReceiverId, parallelize, Shape, Fun>::
-      __t {
+    struct static_thread_pool_::bulk_op_state<
+      CvrefSenderId,
+      ReceiverId,
+      parallelize,
+      Shape,
+      Fun
+    >::__t {
       using __id = bulk_op_state;
 
-      static constexpr bool may_throw = //
-        !__v<__value_types_of_t<
-          CvrefSender,
-          env_of_t<Receiver>,
-          __mbind_front_q<bulk_non_throwing, Fun, Shape>,
-          __q<__mand>>>;
+      static constexpr bool may_throw = !__v<__value_types_of_t<
+        CvrefSender,
+        env_of_t<Receiver>,
+        __mbind_front_q<bulk_non_throwing, Fun, Shape>,
+        __q<__mand>
+      >>;
 
       using bulk_rcvr = bulk_receiver_t<CvrefSender, Receiver, parallelize, Shape, Fun, may_throw>;
       using shared_state =
@@ -1537,7 +1579,8 @@ namespace exec {
           using ItemOperation = connect_result_t<NextSender, NextReceiver>;
 
           using ItemAllocator = typename std::allocator_traits<Allocator>::template rebind_alloc<
-            stdexec::__manual_lifetime<ItemOperation>>;
+            stdexec::__manual_lifetime<ItemOperation>
+          >;
 
           std::vector<__manual_lifetime<ItemOperation>, ItemAllocator> items_;
 
@@ -1547,7 +1590,8 @@ namespace exec {
           __t(Range range, static_thread_pool_& pool, Receiver rcvr)
             : operation_base_with_receiver<
                 Range,
-                Receiver>{std::move(range), pool, static_cast<Receiver&&>(rcvr)}
+                Receiver
+              >{std::move(range), pool, static_cast<Receiver&&>(rcvr)}
             , items_(std::ranges::size(this->range_), ItemAllocator(get_allocator(this->rcvr_))) {
           }
 
@@ -1608,8 +1652,11 @@ namespace exec {
 
         using sender_concept = sequence_sender_t;
 
-        using completion_signatures = stdexec::
-          completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
+        using completion_signatures = stdexec::completion_signatures<
+          set_value_t(),
+          set_error_t(std::exception_ptr),
+          set_stopped_t()
+        >;
 
         using item_types = exec::item_types<stdexec::__t<item_sender<Range>>>;
 

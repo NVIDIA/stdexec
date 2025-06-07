@@ -60,7 +60,8 @@ namespace {
 
     template <
       stdexec::__decays_to<ignore_all_sender> Self,
-      stdexec::receiver_of<completion_signatures> Receiver>
+      stdexec::receiver_of<completion_signatures> Receiver
+    >
     friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver rcvr) noexcept {
       return stdexec::connect(
         static_cast<Self&&>(self).item_,
@@ -94,7 +95,8 @@ namespace {
     STATIC_REQUIRE(
       stdexec::constructible_from<
         exec::any_sequence_receiver_ref<Completions>::any_sender<>,
-        decltype(exec::empty_sequence())>);
+        decltype(exec::empty_sequence())
+      >);
     exec::any_sequence_receiver_ref<Completions>::any_sender<> any_sequence =
       exec::empty_sequence();
     auto op = exec::subscribe(std::move(any_sequence), ignore_all_receiver{});
@@ -106,7 +108,8 @@ namespace {
     STATIC_REQUIRE(
       stdexec::constructible_from<
         exec::any_sequence_receiver_ref<Completions>::any_sender<>,
-        decltype(stdexec::just(42))>);
+        decltype(stdexec::just(42))
+      >);
     exec::any_sequence_receiver_ref<Completions>::any_sender<> any_sequence = stdexec::just(42);
     auto op = exec::subscribe(std::move(any_sequence), ignore_all_receiver{});
     stdexec::start(op);
@@ -118,11 +121,13 @@ namespace {
     STATIC_REQUIRE_FALSE(
       stdexec::constructible_from<
         exec::any_sequence_receiver_ref<CompletionsFalse>::any_sender<>,
-        decltype(stdexec::just())>);
+        decltype(stdexec::just())
+      >);
     STATIC_REQUIRE(
       stdexec::constructible_from<
         exec::any_sequence_receiver_ref<Completions>::any_sender<>,
-        decltype(stdexec::just())>);
+        decltype(stdexec::just())
+      >);
     exec::any_sequence_receiver_ref<Completions>::any_sender<> any_sequence = stdexec::just();
     auto op = exec::subscribe(std::move(any_sequence), ignore_all_receiver{});
     stdexec::start(op);
@@ -136,7 +141,8 @@ namespace {
     STATIC_REQUIRE(
       stdexec::same_as<
         env_t,
-        stdexec::__t<exec::__any::__sender_env<Completions, stdexec::__types<>, stdexec::__types<>>>>);
+        stdexec::__t<exec::__any::__sender_env<Completions, stdexec::__types<>, stdexec::__types<>>>
+      >);
   }
 } // namespace
 

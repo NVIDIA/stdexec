@@ -142,22 +142,14 @@ namespace {
     bool cancelled1{false};
     bool cancelled2{false};
 
-    scope.spawn(
-      ex::starts_on(
-        sch,
-        ex::just() //
-          | ex::let_stopped([&] {
-              cancelled1 = true;
-              return ex::just();
-            })));
-    scope.spawn(
-      ex::starts_on(
-        sch,
-        ex::just() //
-          | ex::let_stopped([&] {
-              cancelled2 = true;
-              return ex::just();
-            })));
+    scope.spawn(ex::starts_on(sch, ex::just() | ex::let_stopped([&] {
+                                     cancelled1 = true;
+                                     return ex::just();
+                                   })));
+    scope.spawn(ex::starts_on(sch, ex::just() | ex::let_stopped([&] {
+                                     cancelled2 = true;
+                                     return ex::just();
+                                   })));
 
     // TODO: reenable this
     // REQUIRE(P2519::__scope::op_count(scope) == 2);

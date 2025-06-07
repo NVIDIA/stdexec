@@ -68,7 +68,8 @@ namespace {
         ex::__copy_cvref_t<Self, Sndr>,
         Env,
         ex::completion_signatures<set_value_t(Env)>,
-        ex::__mconst<ex::completion_signatures<>>>{};
+        ex::__mconst<ex::completion_signatures<>>
+      >{};
     }
   };
 

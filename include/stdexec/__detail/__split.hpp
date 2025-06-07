@@ -45,7 +45,9 @@ namespace stdexec {
           __make_sexpr<split_t>(static_cast<_Env&&>(__env), static_cast<_Sender&&>(__sndr)));
       }
 
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()() const noexcept -> __binder_back<split_t> {
+      STDEXEC_ATTRIBUTE(always_inline)
+
+      auto operator()() const noexcept -> __binder_back<split_t> {
         return {{}, {}, {}};
       }
 
@@ -78,10 +80,8 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<split_t> : __sexpr_defaults {
-    static constexpr auto get_completion_signatures = //
-      []<class _Sender>(_Sender&&) noexcept           //
-      -> __completion_signatures_of_t<                //
-        transform_sender_result_t<default_domain, _Sender, env<>>> {
+    static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
+      -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
     };
   };
 } // namespace stdexec

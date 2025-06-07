@@ -41,21 +41,24 @@ namespace stdexec {
 
       template <class _Receiver, class... _As>
         requires __set_value_member<_Receiver, _As...>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) friend void tag_invoke(set_value_t, _Receiver&& __rcvr, _As&&... __as) noexcept {
+      STDEXEC_ATTRIBUTE(host, device, always_inline)
+      friend void tag_invoke(set_value_t, _Receiver&& __rcvr, _As&&... __as) noexcept {
         static_assert(
           noexcept(static_cast<_Receiver&&>(__rcvr).set_value(static_cast<_As&&>(__as)...)),
           "set_value member functions must be noexcept");
         static_assert(
           __same_as<
             decltype(static_cast<_Receiver&&>(__rcvr).set_value(static_cast<_As&&>(__as)...)),
-            void>,
+            void
+          >,
           "set_value member functions must return void");
         static_cast<_Receiver&&>(__rcvr).set_value(static_cast<_As&&>(__as)...);
       }
 
       template <class _Receiver, class... _As>
         requires tag_invocable<set_value_t, _Receiver, _As...>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) void operator()(_Receiver&& __rcvr, _As&&... __as) const noexcept {
+      STDEXEC_ATTRIBUTE(host, device, always_inline)
+      void operator()(_Receiver&& __rcvr, _As&&... __as) const noexcept {
         static_assert(nothrow_tag_invocable<set_value_t, _Receiver, _As...>);
         (void) tag_invoke(
           stdexec::set_value_t{}, static_cast<_Receiver&&>(__rcvr), static_cast<_As&&>(__as)...);
@@ -74,21 +77,24 @@ namespace stdexec {
 
       template <class _Receiver, class _Error>
         requires __set_error_member<_Receiver, _Error>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) friend void tag_invoke(set_error_t, _Receiver&& __rcvr, _Error&& __err) noexcept {
+      STDEXEC_ATTRIBUTE(host, device, always_inline)
+      friend void tag_invoke(set_error_t, _Receiver&& __rcvr, _Error&& __err) noexcept {
         static_assert(
           noexcept(static_cast<_Receiver&&>(__rcvr).set_error(static_cast<_Error&&>(__err))),
           "set_error member functions must be noexcept");
         static_assert(
           __same_as<
             decltype(static_cast<_Receiver&&>(__rcvr).set_error(static_cast<_Error&&>(__err))),
-            void>,
+            void
+          >,
           "set_error member functions must return void");
         static_cast<_Receiver&&>(__rcvr).set_error(static_cast<_Error&&>(__err));
       }
 
       template <class _Receiver, class _Error>
         requires tag_invocable<set_error_t, _Receiver, _Error>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) void operator()(_Receiver&& __rcvr, _Error&& __err) const noexcept {
+      STDEXEC_ATTRIBUTE(host, device, always_inline)
+      void operator()(_Receiver&& __rcvr, _Error&& __err) const noexcept {
         static_assert(nothrow_tag_invocable<set_error_t, _Receiver, _Error>);
         (void) tag_invoke(
           stdexec::set_error_t{}, static_cast<_Receiver&&>(__rcvr), static_cast<_Error&&>(__err));
@@ -96,7 +102,7 @@ namespace stdexec {
     };
 
     template <class _Receiver>
-    concept __set_stopped_member = requires(_Receiver&& __rcvr) { //
+    concept __set_stopped_member = requires(_Receiver&& __rcvr) {
       static_cast<_Receiver &&>(__rcvr).set_stopped();
     };
 
@@ -107,7 +113,8 @@ namespace stdexec {
 
       template <class _Receiver>
         requires __set_stopped_member<_Receiver>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) friend void tag_invoke(set_stopped_t, _Receiver&& __rcvr) noexcept {
+      STDEXEC_ATTRIBUTE(host, device, always_inline)
+      friend void tag_invoke(set_stopped_t, _Receiver&& __rcvr) noexcept {
         static_assert(
           noexcept(static_cast<_Receiver&&>(__rcvr).set_stopped()),
           "set_stopped member functions must be noexcept");
@@ -119,7 +126,8 @@ namespace stdexec {
 
       template <class _Receiver>
         requires tag_invocable<set_stopped_t, _Receiver>
-      STDEXEC_ATTRIBUTE((host, device, always_inline)) void operator()(_Receiver&& __rcvr) const noexcept {
+      STDEXEC_ATTRIBUTE(host, device, always_inline)
+      void operator()(_Receiver&& __rcvr) const noexcept {
         static_assert(nothrow_tag_invocable<set_stopped_t, _Receiver>);
         (void) tag_invoke(stdexec::set_stopped_t{}, static_cast<_Receiver&&>(__rcvr));
       }
@@ -139,9 +147,9 @@ namespace stdexec {
 
   namespace __detail {
     template <class _Receiver>
-    concept __enable_receiver =                                          //
-      (STDEXEC_EDG(requires { typename _Receiver::receiver_concept; }&&) //
-       derived_from<typename _Receiver::receiver_concept, receiver_t>)
+    concept __enable_receiver =
+      (STDEXEC_EDG(requires { typename _Receiver::receiver_concept; }&&)
+         derived_from<typename _Receiver::receiver_concept, receiver_t>)
       || requires { typename _Receiver::is_receiver; } // back-compat, NOT TO SPEC
       || STDEXEC_IS_BASE_OF(receiver_t, _Receiver);    // NOT TO SPEC, for receiver_adaptor
   } // namespace __detail
@@ -150,11 +158,10 @@ namespace stdexec {
   inline constexpr bool enable_receiver = __detail::__enable_receiver<_Receiver>; // NOT TO SPEC
 
   template <class _Receiver>
-  concept receiver =                             //
-    enable_receiver<__decay_t<_Receiver>>        //
-    && environment_provider<__cref_t<_Receiver>> //
-    && move_constructible<__decay_t<_Receiver>>  //
-    && constructible_from<__decay_t<_Receiver>, _Receiver>;
+  concept receiver = enable_receiver<__decay_t<_Receiver>>
+                  && environment_provider<__cref_t<_Receiver>>
+                  && move_constructible<__decay_t<_Receiver>>
+                  && constructible_from<__decay_t<_Receiver>, _Receiver>;
 
   namespace __detail {
     template <class _Receiver, class _Tag, class... _Args>
@@ -166,19 +173,16 @@ namespace stdexec {
     auto __try_completion(_Tag (*)(_Args...)) -> __msuccess;
 
     template <class _Receiver, class... _Sigs>
-    auto __try_completions(completion_signatures<_Sigs...>*) //
-      -> decltype((
-        __msuccess(),
-        ...,
-        __detail::__try_completion<_Receiver>(static_cast<_Sigs*>(nullptr))));
+    auto __try_completions(completion_signatures<_Sigs...>*) -> decltype((
+      __msuccess(),
+      ...,
+      __detail::__try_completion<_Receiver>(static_cast<_Sigs*>(nullptr))));
   } // namespace __detail
 
   template <class _Receiver, class _Completions>
-  concept receiver_of =    //
-    receiver<_Receiver> && //
-    requires(_Completions* __completions) {
-      { __detail::__try_completions<__decay_t<_Receiver>>(__completions) } -> __ok;
-    };
+  concept receiver_of = receiver<_Receiver> && requires(_Completions* __completions) {
+    { __detail::__try_completions<__decay_t<_Receiver>>(__completions) } -> __ok;
+  };
 
   template <class _Receiver, class _Sender>
   concept __receiver_from =
@@ -186,7 +190,8 @@ namespace stdexec {
 
   /// A utility for calling set_value with the result of a function invocation:
   template <class _Receiver, class _Fun, class... _As>
-  STDEXEC_ATTRIBUTE((host, device)) void __set_value_invoke(_Receiver&& __rcvr, _Fun&& __fun, _As&&... __as) noexcept {
+  STDEXEC_ATTRIBUTE(host, device)
+  void __set_value_invoke(_Receiver&& __rcvr, _Fun&& __fun, _As&&... __as) noexcept {
     STDEXEC_TRY {
       if constexpr (same_as<void, __invoke_result_t<_Fun, _As...>>) {
         __invoke(static_cast<_Fun&&>(__fun), static_cast<_As&&>(__as)...);
@@ -197,10 +202,9 @@ namespace stdexec {
           __invoke(static_cast<_Fun&&>(__fun), static_cast<_As&&>(__as)...));
       }
     }
-    STDEXEC_CATCH(...)( //
-      if constexpr (!__nothrow_invocable<_Fun, _As...>) {
-        stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
-      })
+    STDEXEC_CATCH(...)(if constexpr (!__nothrow_invocable<_Fun, _As...>) {
+      stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
+    })
   }
 
   template <class _Tag, class _Receiver>

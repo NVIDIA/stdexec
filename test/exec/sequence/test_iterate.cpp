@@ -63,7 +63,8 @@ namespace {
 
     template <
       stdexec::__decays_to<sum_sender> Self,
-      stdexec::receiver_of<completion_signatures> Receiver>
+      stdexec::receiver_of<completion_signatures> Receiver
+    >
     friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver rcvr) noexcept {
       return stdexec::connect(
         static_cast<Self&&>(self).item_,

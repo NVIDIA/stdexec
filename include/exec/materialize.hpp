@@ -79,7 +79,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-        static auto connect(_Self&& __self, _Receiver __receiver) //
+        static auto connect(_Self&& __self, _Receiver __receiver)
           noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
             -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
           return stdexec::connect(
@@ -94,17 +94,17 @@ namespace exec {
         using __materialize_error = completion_signatures<set_value_t(set_error_t, _Err)>;
 
         template <class _Self, class... _Env>
-        using __completions_t = //
-          __transform_completion_signatures<
-            __completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...>,
-            __materialize_value,
-            __materialize_error,
-            completion_signatures<set_value_t(set_stopped_t)>,
-            __mconcat<__qq<completion_signatures>>::__f>;
+        using __completions_t = __transform_completion_signatures<
+          __completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...>,
+          __materialize_value,
+          __materialize_error,
+          completion_signatures<set_value_t(set_stopped_t)>,
+          __mconcat<__qq<completion_signatures>>::__f
+        >;
 
         template <__decays_to<__t> _Self, class... _Env>
-        static auto get_completion_signatures(_Self&&, _Env&&...) //
-          -> __completions_t<_Self, _Env...> {
+        static auto
+          get_completion_signatures(_Self&&, _Env&&...) -> __completions_t<_Self, _Env...> {
           return {};
         }
 
@@ -120,7 +120,9 @@ namespace exec {
         return {static_cast<_Sender&&>(__sndr)};
       }
 
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()() const noexcept -> __binder_back<__materialize_t> {
+      STDEXEC_ATTRIBUTE(always_inline)
+
+      auto operator()() const noexcept -> __binder_back<__materialize_t> {
         return {{}, {}, {}};
       }
     };
@@ -187,7 +189,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-        static auto connect(_Self&& __self, _Receiver __receiver) //
+        static auto connect(_Self&& __self, _Receiver __receiver)
           noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
             -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
           return stdexec::connect(
@@ -200,15 +202,15 @@ namespace exec {
         using __dematerialize_value = completion_signatures<__decay_t<_Tag>(_Args...)>;
 
         template <class _Self, class... _Env>
-        using __completions_t = //
-          transform_completion_signatures<
-            __completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...>,
-            completion_signatures<>,
-            __mtry_q<__dematerialize_value>::template __f>;
+        using __completions_t = transform_completion_signatures<
+          __completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...>,
+          completion_signatures<>,
+          __mtry_q<__dematerialize_value>::template __f
+        >;
 
         template <__decays_to<__t> _Self, class... _Env>
-        static auto get_completion_signatures(_Self&&, _Env&&...) //
-          -> __completions_t<_Self, _Env...> {
+        static auto
+          get_completion_signatures(_Self&&, _Env&&...) -> __completions_t<_Self, _Env...> {
           return {};
         }
 
@@ -227,7 +229,9 @@ namespace exec {
         return __sender_t<_Sender>(static_cast<_Sender&&>(__sndr));
       }
 
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()() const noexcept -> __binder_back<__dematerialize_t> {
+      STDEXEC_ATTRIBUTE(always_inline)
+
+      auto operator()() const noexcept -> __binder_back<__dematerialize_t> {
         return {{}, {}, {}};
       }
     };

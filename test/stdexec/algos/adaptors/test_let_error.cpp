@@ -84,36 +84,35 @@ namespace {
   }
 
   TEST_CASE("let_error can be used to produce values (error to value)", "[adaptors][let_error]") {
-    ex::sender auto snd =
-      ex::just()                                                                       //
-      | ex::then([]() -> std::string { throw std::logic_error{"error description"}; }) //
-      | ex::let_error([](std::exception_ptr eptr) {
-          try {
-            std::rethrow_exception(eptr);
-          } catch (const std::exception& e) {
-            return ex::just(std::string{e.what()});
-          }
-        });
+    ex::sender auto snd = ex::just() | ex::then([]() -> std::string {
+                            throw std::logic_error{"error description"};
+                          })
+                        | ex::let_error([](std::exception_ptr eptr) {
+                            try {
+                              std::rethrow_exception(eptr);
+                            } catch (const std::exception& e) {
+                              return ex::just(std::string{e.what()});
+                            }
+                          });
     wait_for_value(std::move(snd), std::string{"error description"});
     (void) snd;
   }
 
   TEST_CASE("let_error can be used to transform errors", "[adaptors][let_error]") {
-    ex::sender auto snd =
-      ex::just_error(1) //
-      | ex::let_error([](int error_code) -> decltype(ex::just_error(std::exception_ptr{})) {
-          char buf[20];
-          std::snprintf(buf, 20, "%d", error_code);
-          throw std::logic_error(buf);
-        });
+    ex::sender auto snd = ex::just_error(1)
+                        | ex::let_error(
+                            [](int error_code) -> decltype(ex::just_error(std::exception_ptr{})) {
+                              char buf[20];
+                              std::snprintf(buf, 20, "%d", error_code);
+                              throw std::logic_error(buf);
+                            });
 
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
   }
 
   TEST_CASE("let_error can throw, and yield a different error type", "[adaptors][let_error]") {
-    auto snd = ex::just_error(13) //
-             | ex::let_error([](int x) {
+    auto snd = ex::just_error(13) | ex::let_error([](int x) {
                  if (x % 2 == 0)
                    throw std::logic_error{"err"};
                  return ex::just_error(x);
@@ -123,7 +122,7 @@ namespace {
   }
 
   TEST_CASE("let_error can be used with just_stopped", "[adaptors][let_error]") {
-    ex::sender auto snd = ex::just_stopped() //
+    ex::sender auto snd = ex::just_stopped()
                         | ex::let_error([](std::exception_ptr) { return ex::just(17); });
     auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
     ex::start(op);
@@ -132,8 +131,7 @@ namespace {
   TEST_CASE("let_error function is not called on regular flow", "[adaptors][let_error]") {
     bool called{false};
     error_scheduler sched;
-    ex::sender auto snd = ex::just()                  //
-                        | ex::then([] { return 13; }) //
+    ex::sender auto snd = ex::just() | ex::then([] { return 13; })
                         | ex::let_error([&](std::exception_ptr) {
                             called = true;
                             return ex::just(0);
@@ -146,8 +144,7 @@ namespace {
   TEST_CASE("let_error function is not called when cancelled", "[adaptors][let_error]") {
     bool called{false};
     stopped_scheduler sched;
-    ex::sender auto snd = ex::transfer_just(sched, 13) //
-                        | ex::let_error([&](std::exception_ptr) {
+    ex::sender auto snd = ex::transfer_just(sched, 13) | ex::let_error([&](std::exception_ptr) {
                             called = true;
                             return ex::just(0);
                           });
@@ -185,7 +182,7 @@ namespace {
 
   TEST_CASE("let_error of just_error with custom type", "[adaptors][let_error]") {
     bool param_destructed{false};
-    ex::sender auto snd = ex::just_error(my_type(&param_destructed)) //
+    ex::sender auto snd = ex::just_error(my_type(&param_destructed))
                         | ex::let_error([&](const my_type&) { return ex::just(13); });
 
     {
@@ -206,7 +203,7 @@ namespace {
     impulse_scheduler sched;
 
     ex::sender auto s1 = ex::just_error(my_type(&param_destructed));
-    ex::sender auto snd = ex::just_error(my_type(&param_destructed)) //
+    ex::sender auto snd = ex::just_error(my_type(&param_destructed))
                         | ex::let_error([&](const my_type&) {
                             CHECK_FALSE(param_destructed);
                             fun_called = true;
@@ -250,9 +247,8 @@ namespace {
     std::atomic<bool> called{false};
     {
       // lunch some work on the thread pool
-      ex::sender auto snd = ex::starts_on(pool.get_scheduler(), ex::just_error(7)) //
-                          | ex::let_error(int_err_transform{})                     //
-                          | ex::then([&](auto x) -> void {
+      ex::sender auto snd = ex::starts_on(pool.get_scheduler(), ex::just_error(7))
+                          | ex::let_error(int_err_transform{}) | ex::then([&](auto x) -> void {
                               CHECK(x == 13);
                               called.store(true);
                             });
@@ -271,13 +267,11 @@ namespace {
     "let_error has the values_type from the input sender if returning error",
     "[adaptors][let_error]") {
     check_val_types<ex::__mset<pack<int>>>(
-      fallible_just{7} //
-      | ex::let_error([](std::exception_ptr) { return ex::just_error(0); }));
+      fallible_just{7} | ex::let_error([](std::exception_ptr) { return ex::just_error(0); }));
     check_val_types<ex::__mset<pack<double>>>(
-      fallible_just{3.14} //
-      | ex::let_error([](std::exception_ptr) { return ex::just_error(0); }));
+      fallible_just{3.14} | ex::let_error([](std::exception_ptr) { return ex::just_error(0); }));
     check_val_types<ex::__mset<pack<std::string>>>(
-      fallible_just{std::string{"hello"}} //
+      fallible_just{std::string{"hello"}}
       | ex::let_error([](std::exception_ptr) { return ex::just_error(0); }));
   }
 
@@ -285,13 +279,11 @@ namespace {
     "let_error adds to values_type the value types of the returned sender",
     "[adaptors][let_error]") {
     check_val_types<ex::__mset<pack<int>>>(
-      fallible_just{1} //
-      | ex::let_error([](std::exception_ptr) { return ex::just(11); }));
+      fallible_just{1} | ex::let_error([](std::exception_ptr) { return ex::just(11); }));
     check_val_types<ex::__mset<pack<int>, pack<double>>>(
-      fallible_just{1} //
-      | ex::let_error([](std::exception_ptr) { return ex::just(3.14); }));
+      fallible_just{1} | ex::let_error([](std::exception_ptr) { return ex::just(3.14); }));
     check_val_types<ex::__mset<pack<int>, pack<std::string>>>(
-      fallible_just{1} //
+      fallible_just{1}
       | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"hello"}); }));
   }
 
@@ -303,27 +295,25 @@ namespace {
     error_scheduler<int> sched3{43};
 
     // Returning ex::just_error
-    check_err_types<ex::__mset<>>( //
-      ex::transfer_just(sched1)    //
+    check_err_types<ex::__mset<>>(ex::transfer_just(sched1) | ex::let_error([](std::exception_ptr) {
+                                    return ex::just_error(std::string{"err"});
+                                  }));
+    check_err_types<ex::__mset<std::exception_ptr, std::string>>(
+      ex::transfer_just(sched2)
       | ex::let_error([](std::exception_ptr) { return ex::just_error(std::string{"err"}); }));
-    check_err_types<ex::__mset<std::exception_ptr, std::string>>( //
-      ex::transfer_just(sched2)                                   //
-      | ex::let_error([](std::exception_ptr) { return ex::just_error(std::string{"err"}); }));
-    check_err_types<ex::__mset<std::exception_ptr, std::string>>( //
-      ex::transfer_just(sched3)                                   //
+    check_err_types<ex::__mset<std::exception_ptr, std::string>>(
+      ex::transfer_just(sched3)
       | ex::let_error([](stdexec::__one_of<int, std::exception_ptr> auto) {
           return ex::just_error(std::string{"err"});
         }));
 
     // Returning ex::just
-    check_err_types<ex::__mset<>>( //
-      ex::transfer_just(sched1)    //
-      | ex::let_error([](std::exception_ptr) { return ex::just(); }));
-    check_err_types<ex::__mset<std::exception_ptr>>( //
-      ex::transfer_just(sched2)                      //
-      | ex::let_error([](std::exception_ptr) { return ex::just(); }));
-    check_err_types<ex::__mset<std::exception_ptr>>( //
-      ex::transfer_just(sched3)                      //
+    check_err_types<ex::__mset<>>(
+      ex::transfer_just(sched1) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
+    check_err_types<ex::__mset<std::exception_ptr>>(
+      ex::transfer_just(sched2) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
+    check_err_types<ex::__mset<std::exception_ptr>>(
+      ex::transfer_just(sched3)
       | ex::let_error([](stdexec::__one_of<int, std::exception_ptr> auto) { return ex::just(); }));
   }
 
@@ -332,11 +322,11 @@ namespace {
     error_scheduler sched2{};
     stopped_scheduler sched3{};
 
-    check_sends_stopped<false>( //
+    check_sends_stopped<false>(
       ex::transfer_just(sched1) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
-    check_sends_stopped<true>( //
+    check_sends_stopped<true>(
       ex::transfer_just(sched2) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
-    check_sends_stopped<true>( //
+    check_sends_stopped<true>(
       ex::transfer_just(sched3) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
   }
 

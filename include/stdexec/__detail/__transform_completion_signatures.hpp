@@ -55,12 +55,12 @@ namespace stdexec {
   };
 
   template <class... _Ts>
-  using __std_variant = //
-    __minvoke_if_c<
-      sizeof...(_Ts) != 0,
-      __mtransform<__q1<__decay_t>, __munique<__qq<std::variant>>>,
-      __mconst<__not_a_variant>,
-      _Ts...>;
+  using __std_variant = __minvoke_if_c<
+    sizeof...(_Ts) != 0,
+    __mtransform<__q1<__decay_t>, __munique<__qq<std::variant>>>,
+    __mconst<__not_a_variant>,
+    _Ts...
+  >;
 
   template <class... _Ts>
   using __nullable_std_variant =
@@ -90,16 +90,16 @@ namespace stdexec {
         __sigs::__normalize_sig(static_cast<_Sigs *>(nullptr))...));
 
     template <class _Completions>
-    using __normalize_completions_t =
-      decltype(__sigs::__normalize_completions(static_cast<_Completions *>(nullptr)));
+    using __normalize_completions_t = decltype(__sigs::__normalize_completions(
+      static_cast<_Completions *>(nullptr)));
   } // namespace __sigs
 
   template <class... _SigPtrs>
-  using __completion_signature_ptrs = //
-    decltype(__sigs::__repack_completions(static_cast<_SigPtrs>(nullptr)...));
+  using __completion_signature_ptrs = decltype(__sigs::__repack_completions(
+    static_cast<_SigPtrs>(nullptr)...));
 
   template <class... _Sigs>
-  using __concat_completion_signatures = //
+  using __concat_completion_signatures =
     __mconcat<__qq<completion_signatures>>::__f<__mconcat<__qq<__mmake_set>>::__f<_Sigs...>>;
 
   namespace __sigs {
@@ -115,7 +115,8 @@ namespace stdexec {
       template <class...> class _Variant,
       class... _More,
       class _What,
-      class... _With>
+      class... _With
+    >
     auto
       __for_each_completion_signature_fn(_ERROR_<_What, _With...> **) -> _ERROR_<_What, _With...>;
 
@@ -123,7 +124,8 @@ namespace stdexec {
       template <class...> class _Tuple,
       template <class...> class _Variant,
       class... _More,
-      class... _Sigs>
+      class... _Sigs
+    >
     auto __for_each_completion_signature_fn(completion_signatures<_Sigs...> **)
       -> _Variant<__for_each_sig_t<_Sigs, _Tuple>..., _More...>;
   } // namespace __sigs
@@ -132,7 +134,8 @@ namespace stdexec {
     class _Sigs,
     template <class...> class _Tuple,
     template <class...> class _Variant,
-    class... _More>
+    class... _More
+  >
   using __for_each_completion_signature =
     decltype(__sigs::__for_each_completion_signature_fn<_Tuple, _Variant, _More...>(
       static_cast<_Sigs **>(nullptr)));
@@ -143,14 +146,16 @@ namespace stdexec {
       template <class...> class _SetVal,
       template <class...> class _SetErr,
       class _SetStp,
-      class... _Values>
+      class... _Values
+    >
     auto __transform_sig(set_value_t (*)(_Values...)) -> _SetVal<_Values...>;
 
     template <
       template <class...> class _SetVal,
       template <class...> class _SetErr,
       class _SetStp,
-      class _Error>
+      class _Error
+    >
     auto __transform_sig(set_error_t (*)(_Error)) -> _SetErr<_Error>;
 
     template <template <class...> class _SetVal, template <class...> class _SetErr, class _SetStp>
@@ -160,9 +165,10 @@ namespace stdexec {
       class _Sig,
       template <class...> class _SetVal,
       template <class...> class _SetErr,
-      class _SetStp>
-    using __transform_sig_t =
-      decltype(__sigs::__transform_sig<_SetVal, _SetErr, _SetStp>(static_cast<_Sig *>(nullptr)));
+      class _SetStp
+    >
+    using __transform_sig_t = decltype(__sigs::__transform_sig<_SetVal, _SetErr, _SetStp>(
+      static_cast<_Sig *>(nullptr)));
 
     template <
       template <class...> class _SetVal,
@@ -171,7 +177,8 @@ namespace stdexec {
       template <class...> class _Variant,
       class... _More,
       class _What,
-      class... _With>
+      class... _With
+    >
     auto __transform_sigs_fn(_ERROR_<_What, _With...> **) -> _ERROR_<_What, _With...>;
 
     template <
@@ -180,8 +187,9 @@ namespace stdexec {
       class _SetStp,
       template <class...> class _Variant,
       class... _More,
-      class... _Sigs>
-    auto __transform_sigs_fn(completion_signatures<_Sigs...> **) //
+      class... _Sigs
+    >
+    auto __transform_sigs_fn(completion_signatures<_Sigs...> **)
       -> _Variant<__transform_sig_t<_Sigs, _SetVal, _SetErr, _SetStp>..., _More...>;
   } // namespace __sigs
 
@@ -191,8 +199,9 @@ namespace stdexec {
     template <class...> class _SetErr,
     class _SetStp,
     template <class...> class _Variant,
-    class... _More>
-  using __transform_completion_signatures = //
+    class... _More
+  >
+  using __transform_completion_signatures =
     decltype(__sigs::__transform_sigs_fn<_SetVal, _SetErr, _SetStp, _Variant, _More...>(
       static_cast<_Sigs **>(nullptr)));
 
@@ -208,14 +217,16 @@ namespace stdexec {
         template <class...> class _Then,
         template <class...> class _Else,
         template <class...> class _Variant,
-        class... _More>
+        class... _More
+      >
       using __f = __transform_completion_signatures<
         _Sigs,
         _Then,
         __mbind_front_q<_Else, set_error_t>::template __f,
         _Else<set_stopped_t>,
         _Variant,
-        _More...>;
+        _More...
+      >;
     };
 
     template <>
@@ -225,14 +236,16 @@ namespace stdexec {
         template <class...> class _Then,
         template <class...> class _Else,
         template <class...> class _Variant,
-        class... _More>
+        class... _More
+      >
       using __f = __transform_completion_signatures<
         _Sigs,
         __mbind_front_q<_Else, set_value_t>::template __f,
         _Then,
         _Else<set_stopped_t>,
         _Variant,
-        _More...>;
+        _More...
+      >;
     };
 
     template <>
@@ -242,14 +255,16 @@ namespace stdexec {
         template <class...> class _Then,
         template <class...> class _Else,
         template <class...> class _Variant,
-        class... _More>
+        class... _More
+      >
       using __f = __transform_completion_signatures<
         _Sigs,
         __mbind_front_q<_Else, set_value_t>::template __f,
         __mbind_front_q<_Else, set_error_t>::template __f,
         _Then<>,
         _Variant,
-        _More...>;
+        _More...
+      >;
     };
 
     template <class... _Values>
@@ -268,24 +283,26 @@ namespace stdexec {
     template <class...> class _Then,
     template <class...> class _Else,
     template <class...> class _Variant,
-    class... _More>
+    class... _More
+  >
   using __gather_completion_signatures = typename __sigs::__gather_sigs_fn<
-    _WantedTag>::template __f<_Sigs, _Then, _Else, _Variant, _More...>;
+    _WantedTag
+  >::template __f<_Sigs, _Then, _Else, _Variant, _More...>;
 
   /////////////////////////////////////////////////////////////////////////////
   // transform_completion_signatures
   // ==========================
-  //
+
   // `transform_completion_signatures` takes a sender, and environment, and a bunch of other
   // template arguments for munging the completion signatures of a sender in interesting ways.
-  //
+
   //  ```c++
   //  template <class... Args>
   //    using __default_set_value = completion_signatures<set_value_t(Args...)>;
-  //
+
   //  template <class Err>
   //    using __default_set_error = completion_signatures<set_error_t(Err)>;
-  //
+
   //  template <
   //    class Completions,
   //    class AdditionalSigs = completion_signatures<>,
@@ -295,43 +312,43 @@ namespace stdexec {
   //  using transform_completion_signatures =
   //    completion_signatures< ... >;
   //  ```
-  //
+
   //  * `SetValue` : an alias template that accepts a set of value types and returns an instance of
   //    `completion_signatures`.
-  //
+
   //  * `SetError` : an alias template that accepts an error types and returns a an instance of
   //    `completion_signatures`.
-  //
+
   //  * `SetStopped` : an instantiation of `completion_signatures` with a list of completion
   //    signatures `Sigs...` to the added to the list if the sender can complete with a stopped
   //    signal.
-  //
+
   //  * `AdditionalSigs` : an instantiation of `completion_signatures` with a list of completion
   //    signatures `Sigs...` to the added to the list unconditionally.
-  //
+
   //  `transform_completion_signatures` does the following:
-  //
+
   //  * Let `VCs...` be a pack of the `completion_signatures` types in the `__typelist` named by
   //    `value_types_of_t<Sndr, Env, SetValue, __typelist>`, and let `Vs...` be the concatenation of
   //    the packs that are template arguments to each `completion_signature` in `VCs...`.
-  //
+
   //  * Let `ECs...` be a pack of the `completion_signatures` types in the `__typelist` named by
   //    `error_types_of_t<Sndr, Env, __errorlist>`, where `__errorlist` is an alias template such
   //    that `__errorlist<Ts...>` names `__typelist<SetError<Ts>...>`, and let `Es...` be the
   //    concatenation of the packs that are the template arguments to each `completion_signature` in
   //    `ECs...`.
-  //
+
   //  * Let `Ss...` be an empty pack if `sends_stopped<Sndr, Env>` is `false`; otherwise, a pack
   //    containing the template arguments of the `completion_signatures` instantiation named by
   //    `SetStopped`.
-  //
+
   //  * Let `MoreSigs...` be a pack of the template arguments of the `completion_signatures`
   //    instantiation named by `AdditionalSigs`.
-  //
+
   //  Then `transform_completion_signatures<Completions, AdditionalSigs, SetValue, SetError,
   //  SendsStopped>` names the type `completion_signatures< Sigs... >` where `Sigs...` is the unique
   //  set of types in `[Vs..., Es..., Ss..., MoreSigs...]`.
-  //
+
   //  If any of the above type computations are ill-formed, `transform_completion_signatures<Sndr,
   //  Env, AdditionalSigs, SetValue, SetError, SendsStopped>` is ill-formed.
   template <
@@ -339,15 +356,16 @@ namespace stdexec {
     class _MoreSigs = completion_signatures<>,
     template <class...> class _ValueTransform = __sigs::__default_set_value,
     template <class...> class _ErrorTransform = __sigs::__default_set_error,
-    class _StoppedSigs = completion_signatures<set_stopped_t()>>
-  using transform_completion_signatures = //
-    __transform_completion_signatures<
-      _Sigs,
-      _ValueTransform,
-      _ErrorTransform,
-      _StoppedSigs,
-      __mtry_q<__concat_completion_signatures>::__f,
-      _MoreSigs>;
+    class _StoppedSigs = completion_signatures<set_stopped_t()>
+  >
+  using transform_completion_signatures = __transform_completion_signatures<
+    _Sigs,
+    _ValueTransform,
+    _ErrorTransform,
+    _StoppedSigs,
+    __mtry_q<__concat_completion_signatures>::__f,
+    _MoreSigs
+  >;
 
   template <
     class _Sndr,
@@ -355,14 +373,15 @@ namespace stdexec {
     class _MoreSigs = completion_signatures<>,
     template <class...> class _ValueTransform = __sigs::__default_set_value,
     template <class...> class _ErrorTransform = __sigs::__default_set_error,
-    class _StoppedSigs = completion_signatures<set_stopped_t()>>
-  using transform_completion_signatures_of = //
-    transform_completion_signatures<
-      completion_signatures_of_t<_Sndr, _Env>,
-      _MoreSigs,
-      _ValueTransform,
-      _ErrorTransform,
-      _StoppedSigs>;
+    class _StoppedSigs = completion_signatures<set_stopped_t()>
+  >
+  using transform_completion_signatures_of = transform_completion_signatures<
+    completion_signatures_of_t<_Sndr, _Env>,
+    _MoreSigs,
+    _ValueTransform,
+    _ErrorTransform,
+    _StoppedSigs
+  >;
 
   using __eptr_completion = completion_signatures<set_error_t(std::exception_ptr)>;
 
@@ -372,67 +391,61 @@ namespace stdexec {
   template <bool _NoExcept>
   using __eptr_completion_if = __eptr_completion_if_t<__mbool<_NoExcept>>;
 
-  template <                                                    //
-    class _Sender,                                              //
-    class _Env = env<>,                                     //
-    class _More = completion_signatures<>,                      //
-    class _SetValue = __qq<__sigs::__default_set_value>,        //
-    class _SetError = __qq<__sigs::__default_set_error>,        //
-    class _SetStopped = completion_signatures<set_stopped_t()>> //
-  using __try_make_completion_signatures =                      //
-    __transform_completion_signatures<
-      __completion_signatures_of_t<_Sender, _Env>,
-      _SetValue::template __f,
-      _SetError::template __f,
-      _SetStopped,
-      __mtry_q<__concat_completion_signatures>::__f,
-      _More>;
-
   template <
-    class _SetTag,
-    class _Completions,
-    class _Tuple,
-    class _Variant>
-  using __gather_completions = //
-    __gather_completion_signatures<
-      _Completions,
-      _SetTag,
-      __mcompose_q<__types, _Tuple::template __f>::template __f,
-      __mconst<__types<>>::__f,
-      __mconcat<_Variant>::template __f>;
-
-  template <
-    class _SetTag,
     class _Sender,
-    class _Env,
-    class _Tuple,
-    class _Variant>
-  using __gather_completions_of = //
+    class _Env = env<>,
+    class _More = completion_signatures<>,
+    class _SetValue = __qq<__sigs::__default_set_value>,
+    class _SetError = __qq<__sigs::__default_set_error>,
+    class _SetStopped = completion_signatures<set_stopped_t()>
+  >
+  using __try_make_completion_signatures = __transform_completion_signatures<
+    __completion_signatures_of_t<_Sender, _Env>,
+    _SetValue::template __f,
+    _SetError::template __f,
+    _SetStopped,
+    __mtry_q<__concat_completion_signatures>::__f,
+    _More
+  >;
+
+  template <class _SetTag, class _Completions, class _Tuple, class _Variant>
+  using __gather_completions = __gather_completion_signatures<
+    _Completions,
+    _SetTag,
+    __mcompose_q<__types, _Tuple::template __f>::template __f,
+    __mconst<__types<>>::__f,
+    __mconcat<_Variant>::template __f
+  >;
+
+  template <class _SetTag, class _Sender, class _Env, class _Tuple, class _Variant>
+  using __gather_completions_of =
     __gather_completions<_SetTag, __completion_signatures_of_t<_Sender, _Env>, _Tuple, _Variant>;
 
-  template <                                                           //
-    class _Sender,                                                     //
-    class _Env = env<>,                                            //
-    class _Sigs = completion_signatures<>,                             //
-    template <class...> class _SetValue = __sigs::__default_set_value, //
-    template <class...> class _SetError = __sigs::__default_set_error, //
-    class _SetStopped = completion_signatures<set_stopped_t()>>
+  template <
+    class _Sender,
+    class _Env = env<>,
+    class _Sigs = completion_signatures<>,
+    template <class...> class _SetValue = __sigs::__default_set_value,
+    template <class...> class _SetError = __sigs::__default_set_error,
+    class _SetStopped = completion_signatures<set_stopped_t()>
+  >
   using make_completion_signatures =
     transform_completion_signatures_of<_Sender, _Env, _Sigs, _SetValue, _SetError, _SetStopped>;
 
-  template <                                 //
-    class _Sigs,                             //
-    class _Tuple = __q<__decayed_std_tuple>, //
-    class _Variant = __q<__std_variant>>
-  using __value_types_t = //
-    __gather_completions<set_value_t, _Sigs, _Tuple, _Variant>;
+  template <
+    class _Sigs,
+    class _Tuple = __q<__decayed_std_tuple>,
+    class _Variant = __q<__std_variant>
+  >
+  using __value_types_t = __gather_completions<set_value_t, _Sigs, _Tuple, _Variant>;
 
-  template <                                 //
-    class _Sender,                           //
-    class _Env = env<>,                  //
-    class _Tuple = __q<__decayed_std_tuple>, //
-    class _Variant = __q<__std_variant>>
-  using __value_types_of_t = //
+  template <
+    class _Sender,
+    class _Env = env<>,
+    class _Tuple = __q<__decayed_std_tuple>,
+    class _Variant = __q<__std_variant>
+  >
+  using __value_types_of_t =
     __value_types_t<__completion_signatures_of_t<_Sender, _Env>, _Tuple, _Variant>;
 
   template <class _Sigs, class _Variant = __q<__std_variant>>
@@ -441,56 +454,55 @@ namespace stdexec {
   template <class _Sender, class _Env = env<>, class _Variant = __q<__std_variant>>
   using __error_types_of_t = __error_types_t<__completion_signatures_of_t<_Sender, _Env>, _Variant>;
 
-  template <                                                //
-    class _Sender,                                          //
-    class _Env = env<>,                                 //
-    template <class...> class _Tuple = __decayed_std_tuple, //
-    template <class...> class _Variant = __std_variant>
+  template <
+    class _Sender,
+    class _Env = env<>,
+    template <class...> class _Tuple = __decayed_std_tuple,
+    template <class...> class _Variant = __std_variant
+  >
   using value_types_of_t = __value_types_of_t<_Sender, _Env, __q<_Tuple>, __q<_Variant>>;
 
   template <class _Sender, class _Env = env<>, template <class...> class _Variant = __std_variant>
   using error_types_of_t = __error_types_of_t<_Sender, _Env, __q<_Variant>>;
 
   template <class _Tag, class _Sender, class... _Env>
-  using __count_of = //
-    __gather_completion_signatures<
-      __completion_signatures_of_t<_Sender, _Env...>,
-      _Tag,
-      __mconst<__msize_t<1>>::__f,
-      __mconst<__msize_t<0>>::__f,
-      __mplus_t>;
+  using __count_of = __gather_completion_signatures<
+    __completion_signatures_of_t<_Sender, _Env...>,
+    _Tag,
+    __mconst<__msize_t<1>>::__f,
+    __mconst<__msize_t<0>>::__f,
+    __mplus_t
+  >;
 
   template <class _Tag, class _Sender, class... _Env>
     requires sender_in<_Sender, _Env...>
-  inline constexpr bool __sends = //
-    __v<__gather_completion_signatures<
-      __completion_signatures_of_t<_Sender, _Env...>,
-      _Tag,
-      __mconst<__mtrue>::__f,
-      __mconst<__mfalse>::__f,
-      __mor_t>>;
+  inline constexpr bool __sends = __v<__gather_completion_signatures<
+    __completion_signatures_of_t<_Sender, _Env...>,
+    _Tag,
+    __mconst<__mtrue>::__f,
+    __mconst<__mfalse>::__f,
+    __mor_t
+  >>;
 
   template <class _Sender, class... _Env>
-  concept sends_stopped = //
-    sender_in<_Sender, _Env...> && __sends<set_stopped_t, _Sender, _Env...>;
+  concept sends_stopped = sender_in<_Sender, _Env...> && __sends<set_stopped_t, _Sender, _Env...>;
 
   template <class _Sender, class... _Env>
   using __single_sender_value_t =
     __value_types_t<__completion_signatures_of_t<_Sender, _Env...>, __q<__msingle>, __q<__msingle>>;
 
   template <class _Sender, class... _Env>
-  concept __single_value_sender =  //
-    sender_in<_Sender, _Env...> && //
-    requires { typename __single_sender_value_t<_Sender, _Env...>; };
+  concept __single_value_sender = sender_in<_Sender, _Env...>
+                               && requires { typename __single_sender_value_t<_Sender, _Env...>; };
 
   template <class _Sender, class... _Env>
   using __single_value_variant_sender_t =
     __value_types_t<__completion_signatures_of_t<_Sender, _Env...>, __qq<__types>, __q<__msingle>>;
 
   template <class _Sender, class... _Env>
-  concept __single_value_variant_sender = //
-    sender_in<_Sender, _Env...> &&        //
-    requires { typename __single_value_variant_sender_t<_Sender, _Env...>; };
+  concept __single_value_variant_sender = sender_in<_Sender, _Env...> && requires {
+    typename __single_value_variant_sender_t<_Sender, _Env...>;
+  };
 
   // The following utilities are needed fairly often:
   template <class _Fun, class... _Args>
@@ -498,28 +510,29 @@ namespace stdexec {
   using __nothrow_invocable_t = __mbool<__nothrow_invocable<_Fun, _Args...>>;
 
   template <class _Catch, class _Tag, class _Fun, class _Sender, class... _Env>
-  using __with_error_invoke_t = //
-    __if<
-      __gather_completion_signatures<
-        __completion_signatures_of_t<_Sender, _Env...>,
-        _Tag,
-        __mbind_front<__mtry_catch_q<__nothrow_invocable_t, _Catch>, _Fun>::template __f,
-        __mconst<__mbool<true>>::__f,
-        __mand>,
-      completion_signatures<>,
-      __eptr_completion>;
+  using __with_error_invoke_t = __if<
+    __gather_completion_signatures<
+      __completion_signatures_of_t<_Sender, _Env...>,
+      _Tag,
+      __mbind_front<__mtry_catch_q<__nothrow_invocable_t, _Catch>, _Fun>::template __f,
+      __mconst<__mbool<true>>::__f,
+      __mand
+    >,
+    completion_signatures<>,
+    __eptr_completion
+  >;
 
   template <class _Fun, class... _Args>
     requires __invocable<_Fun, _Args...>
-  using __set_value_invoke_t = //
-    completion_signatures<
-      __minvoke<__mremove<void, __qf<set_value_t>>, __invoke_result_t<_Fun, _Args...>>>;
+  using __set_value_invoke_t = completion_signatures<
+    __minvoke<__mremove<void, __qf<set_value_t>>, __invoke_result_t<_Fun, _Args...>>
+  >;
 
   template <class _Completions>
-  using __decay_copyable_results_t = //
+  using __decay_copyable_results_t =
     __for_each_completion_signature<_Completions, __decay_copyable_t, __mand_t>;
 
   template <class _Completions>
-  using __nothrow_decay_copyable_results_t = //
+  using __nothrow_decay_copyable_results_t =
     __for_each_completion_signature<_Completions, __nothrow_decay_copyable_t, __mand_t>;
 } // namespace stdexec

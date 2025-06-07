@@ -94,9 +94,7 @@ namespace {
     _op(_op&&) = delete;
 
     auto _connect() noexcept {
-      return _conv{[this] {
-        return stdexec::connect(s_, _retry_receiver<S, R>{this});
-      }};
+      return _conv{[this] { return stdexec::connect(s_, _retry_receiver<S, R>{this}); }};
     }
 
     void _retry() noexcept {
@@ -133,7 +131,8 @@ namespace {
       Env,
       stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
       _value,
-      _error> {
+      _error
+    > {
       return {};
     }
 

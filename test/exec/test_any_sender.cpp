@@ -92,7 +92,8 @@ namespace {
     CHECK(!std::is_constructible_v<any_receiver_ref<Sigs>, sink_receiver&&>);
     CHECK(!std::is_constructible_v<
           any_receiver_ref<completion_signatures<set_value_t()>>,
-          const sink_receiver&>);
+          const sink_receiver&
+    >);
   }
 
   TEST_CASE("any_receiver_ref is queryable", "[types][any_sender]") {
@@ -263,7 +264,8 @@ namespace {
     CHECK(
       std::same_as<
         completion_signatures_of_t<any_sender_of<set_value_t()>>,
-        completion_signatures<set_value_t()>>);
+        completion_signatures<set_value_t()>
+      >);
     sync_wait(std::move(sender));
     CHECK(value == 42);
   }
@@ -280,7 +282,8 @@ namespace {
     CHECK(
       std::same_as<
         completion_signatures_of_t<any_sender_of<set_value_t(int)>>,
-        completion_signatures<set_value_t(int)>>);
+        completion_signatures<set_value_t(int)>
+      >);
     auto [value1] = *sync_wait(std::move(sender));
     CHECK(value1 == 42);
   }
@@ -425,7 +428,8 @@ namespace {
 
   static_assert(receiver_of<
                 stopped_receiver<inplace_stop_token>,
-                completion_signatures<set_value_t(int), set_stopped_t()>>);
+                completion_signatures<set_value_t(int), set_stopped_t()>
+  >);
 
   TEST_CASE("any_sender - does connect with stop token", "[types][any_sender]") {
     using stoppable_sender = any_sender_of<set_value_t(int), set_stopped_t()>;
@@ -505,8 +509,8 @@ namespace {
 
     auto sched = schedule(scheduler);
     static_assert(sender<decltype(sched)>);
-    std::same_as<my_scheduler<>> auto get_sched =
-      get_completion_scheduler<set_value_t>(get_env(sched));
+    std::same_as<my_scheduler<>> auto get_sched = get_completion_scheduler<set_value_t>(
+      get_env(sched));
     CHECK(get_sched == scheduler);
 
     bool called = false;
@@ -524,8 +528,8 @@ namespace {
 
     auto sched = schedule(scheduler);
     static_assert(sender<decltype(sched)>);
-    std::same_as<my_scheduler2> auto get_sched =
-      get_completion_scheduler<set_value_t>(get_env(sched));
+    std::same_as<my_scheduler2> auto get_sched = get_completion_scheduler<set_value_t>(
+      get_env(sched));
     CHECK(get_sched == scheduler);
 
     CHECK(
@@ -569,10 +573,9 @@ namespace {
   TEST_CASE(
     "User-defined completion_scheduler<set_value_t> is ignored",
     "[types][any_scheduler][any_sender]") {
-    using not_scheduler_t =                                                 //
-      any_receiver_ref<completion_signatures<set_value_t()>>                //
-      ::any_sender<get_completion_scheduler<set_value_t>.signature<void()>> //
-      ::any_scheduler<>;
+    using not_scheduler_t = any_receiver_ref<completion_signatures<set_value_t()>>::any_sender<
+      get_completion_scheduler<set_value_t>.signature<void()>
+    >::any_scheduler<>;
     CHECK(scheduler<not_scheduler_t>);
   }
 
@@ -587,8 +590,8 @@ namespace {
 
     auto sched = schedule(scheduler);
     static_assert(sender<decltype(sched)>);
-    std::same_as<stoppable_scheduler<>> auto get_sched =
-      get_completion_scheduler<set_value_t>(get_env(sched));
+    std::same_as<stoppable_scheduler<>> auto get_sched = get_completion_scheduler<set_value_t>(
+      get_env(sched));
     CHECK(get_sched == scheduler);
 
     bool called = false;
@@ -607,8 +610,8 @@ namespace {
 
     auto sched = schedule(scheduler);
     static_assert(sender<decltype(sched)>);
-    std::same_as<my_scheduler> auto get_sched =
-      get_completion_scheduler<set_value_t>(get_env(sched));
+    std::same_as<my_scheduler> auto get_sched = get_completion_scheduler<set_value_t>(
+      get_env(sched));
     CHECK(get_sched == scheduler);
 
     CHECK(

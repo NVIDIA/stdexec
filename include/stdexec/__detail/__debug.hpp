@@ -77,17 +77,21 @@ namespace stdexec {
     struct __valid_completions {
       template <class... _Args>
         requires __one_of<set_value_t (*)(_Args&&...), _Sigs...>
-      STDEXEC_ATTRIBUTE((host, device)) void set_value(_Args&&...) noexcept {
+      STDEXEC_ATTRIBUTE(host, device)
+      void set_value(_Args&&...) noexcept {
         STDEXEC_TERMINATE();
       }
 
       template <class _Error>
         requires __one_of<set_error_t (*)(_Error&&), _Sigs...>
-      STDEXEC_ATTRIBUTE((host, device)) void set_error(_Error&&) noexcept {
+      STDEXEC_ATTRIBUTE(host, device)
+      void set_error(_Error&&) noexcept {
         STDEXEC_TERMINATE();
       }
 
-      STDEXEC_ATTRIBUTE((host, device)) void set_stopped() noexcept
+      STDEXEC_ATTRIBUTE(host, device)
+
+      void set_stopped() noexcept
         requires __one_of<set_stopped_t (*)(), _Sigs...>
       {
         STDEXEC_TERMINATE();
@@ -102,13 +106,13 @@ namespace stdexec {
     };
 
     template <class _CvrefSenderId, class _Env, class... _Sigs>
-    struct __debug_receiver<_CvrefSenderId, _Env, completion_signatures<_Sigs...>> //
+    struct __debug_receiver<_CvrefSenderId, _Env, completion_signatures<_Sigs...>>
       : __valid_completions<__normalize_sig_t<_Sigs>...> {
       using __t = __debug_receiver;
       using __id = __debug_receiver;
       using receiver_concept = receiver_t;
 
-      STDEXEC_ATTRIBUTE((host, device)) auto get_env() const noexcept -> __debug_env_t<_Env> {
+      STDEXEC_ATTRIBUTE(host, device) auto get_env() const noexcept -> __debug_env_t<_Env> {
         STDEXEC_TERMINATE();
       }
     };
@@ -128,8 +132,7 @@ namespace stdexec {
     [[deprecated(
       "The sender claims to send a particular set of completions,"
       " but in actual fact it completes with a result that is not"
-      " one of the declared completion signatures.")]]
-    STDEXEC_ATTRIBUTE((host, device)) void _ATTENTION_() noexcept {
+      " one of the declared completion signatures.")]] STDEXEC_ATTRIBUTE(host, device) void _ATTENTION_() noexcept {
     }
 
     template <class _Sig>
@@ -141,19 +144,20 @@ namespace stdexec {
         __t(__debug_receiver<_CvrefSenderId, _Env, completion_signatures<_Sigs...>>&&) noexcept {
           using _SenderId = __decay_t<_CvrefSenderId>;
           using _Sender = stdexec::__t<_SenderId>;
-          using _What = //
-            _WARNING_<  //
-              _COMPLETION_SIGNATURES_MISMATCH_,
-              _COMPLETION_SIGNATURE_<_Sig>,
-              _IS_NOT_ONE_OF_<_Sigs...>,
-              _SIGNAL_SENT_BY_SENDER_<__name_of<_Sender>>>;
+          using _What = _WARNING_<
+            _COMPLETION_SIGNATURES_MISMATCH_,
+            _COMPLETION_SIGNATURE_<_Sig>,
+            _IS_NOT_ONE_OF_<_Sigs...>,
+            _SIGNAL_SENT_BY_SENDER_<__name_of<_Sender>>
+          >;
           __debug::_ATTENTION_<_What>();
         }
       };
     };
 
     template <__completion_tag _Tag, class... _Args>
-    STDEXEC_ATTRIBUTE((host, device)) void tag_invoke(_Tag, __t<__invalid_completion<_Tag(_Args...)>>, _Args&&...) noexcept {
+    STDEXEC_ATTRIBUTE(host, device)
+    void tag_invoke(_Tag, __t<__invalid_completion<_Tag(_Args...)>>, _Args&&...) noexcept {
     }
 
     struct __debug_operation {
@@ -164,35 +168,35 @@ namespace stdexec {
     ////////////////////////////////////////////////////////////////////////////
     // `__debug_sender`
     // ===============
-    //
+
     // Understanding why a particular sender doesn't connect to a particular
     // receiver is nigh impossible in the current design due to limitations in
     // how the compiler reports overload resolution failure in the presence of
     // constraints. `__debug_sender` is a utility to assist with the process. It
     // gives you the deep template instantiation backtrace that you need to
     // understand where in a chain of senders the problem is occurring.
-    //
+
     // ```c++
     // template <class _Sigs, class _Env = env<>, class _Sender>
     //   void __debug_sender(_Sender&& __sndr, _Env = {});
-    //
+
     // template <class _Env = env<>, class _Sender>
     //   void __debug_sender(_Sender&& __sndr, _Env = {});
     // ```
-    //
+
     // **Usage:**
-    //
+
     // To find out where in a chain of senders a sender is failing to connect
     // to a receiver, pass it to `__debug_sender`, optionally with an
     // environment argument; e.g. `__debug_sender(sndr [, env])`
-    //
+
     // To find out why a sender will not connect to a receiver of a particular
     // signature, specify the set of completion signatures as an explicit template
     // argument that names an instantiation of `completion_signatures`; e.g.:
     // `__debug_sender<completion_signatures<set_value_t(int)>>(sndr [, env])`.
-    //
+
     // **How it works:**
-    //
+
     // The `__debug_sender` function `connect`'s the sender to a
     // `__debug_receiver`, whose environment is augmented with a special
     // `__is_debug_env_t` query. An additional fall-back overload is added to
@@ -201,7 +205,7 @@ namespace stdexec {
     // looks for a `tag_invoke(connect_t...)` overload for the input sender and
     // receiver. This will recurse until it hits the `tag_invoke` call that is
     // causing the failure.
-    //
+
     // At least with clang, this gives me a nice backtrace, at the bottom of
     // which is the faulty `tag_invoke` overload with a mention of the
     // constraint that failed.

@@ -39,23 +39,29 @@ namespace {
       detail::use_sender::completion_signatures<completion_signatures<
         set_value_t(std::error_code),
         set_stopped_t(),
-        set_error_t(std::exception_ptr)>>,
-      completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>>);
+        set_error_t(std::exception_ptr)
+      >>,
+      completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>
+    >);
   static_assert(
     set_equivalent<
       detail::use_sender::completion_signatures<completion_signatures<
         set_value_t(error_code),
         set_stopped_t(),
-        set_error_t(std::exception_ptr)>>,
-      completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>>);
+        set_error_t(std::exception_ptr)
+      >>,
+      completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>
+    >);
   static_assert(
     set_equivalent<
       detail::use_sender::completion_signatures<completion_signatures<
         set_value_t(error_code, int),
         set_value_t(int),
         set_stopped_t(),
-        set_error_t(std::exception_ptr)>>,
-      completion_signatures<set_value_t(int), set_stopped_t(), set_error_t(std::exception_ptr)>>);
+        set_error_t(std::exception_ptr)
+      >>,
+      completion_signatures<set_value_t(int), set_stopped_t(), set_error_t(std::exception_ptr)>
+    >);
 
   TEST_CASE(
     "Asio-based asynchronous operation ends with set_stopped when "
@@ -79,11 +85,13 @@ namespace {
     static_assert(
       set_equivalent<
         ::stdexec::completion_signatures_of_t<decltype(sender), ::stdexec::env<>>,
-        completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>>);
+        completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>
+      >);
     static_assert(
       set_equivalent<
         ::stdexec::completion_signatures_of_t<const decltype(sender)&, ::stdexec::env<>>,
-        completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>>);
+        completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>
+      >);
     CHECK(!ctx.poll());
     CHECK(ctx.stopped());
     ctx.restart();

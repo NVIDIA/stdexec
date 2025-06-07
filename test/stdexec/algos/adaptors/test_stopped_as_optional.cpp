@@ -62,9 +62,9 @@ namespace {
   TEST_CASE(
     "stopped_as_optional shall not work with senders that have multiple alternatives",
     "[adaptors][stopped_as_optional]") {
-    ex::sender auto in_snd =
-      fallible_just{13} //
-      | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
+    ex::sender auto in_snd = fallible_just{13} | ex::let_error([](std::exception_ptr) {
+                               return ex::just(std::string{"err"});
+                             });
     check_val_types<ex::__mset<pack<int>, pack<std::string>>>(in_snd);
     auto snd = std::move(in_snd) | ex::stopped_as_optional();
     static_assert(!ex::sender_to<decltype(snd), expect_error_receiver<>>);
@@ -98,12 +98,12 @@ namespace {
     error_scheduler sched2{};
     error_scheduler<int> sched3{-1};
 
-    check_err_types<ex::__mset<std::exception_ptr>>( //
+    check_err_types<ex::__mset<std::exception_ptr>>(
       ex::transfer_just(sched1, 11) | ex::stopped_as_optional());
-    check_err_types<ex::__mset<std::exception_ptr>>( //
+    check_err_types<ex::__mset<std::exception_ptr>>(
       ex::transfer_just(sched2, 13) | ex::stopped_as_optional());
 
-    check_err_types<ex::__mset<std::exception_ptr, int>>( //
+    check_err_types<ex::__mset<std::exception_ptr, int>>(
       ex::transfer_just(sched3, 13) | ex::stopped_as_optional());
   }
 
@@ -114,11 +114,8 @@ namespace {
     error_scheduler sched2{};
     stopped_scheduler sched3{};
 
-    check_sends_stopped<false>( //
-      ex::transfer_just(sched1, 1) | ex::stopped_as_optional());
-    check_sends_stopped<false>( //
-      ex::transfer_just(sched2, 2) | ex::stopped_as_optional());
-    check_sends_stopped<false>( //
-      ex::transfer_just(sched3, 3) | ex::stopped_as_optional());
+    check_sends_stopped<false>(ex::transfer_just(sched1, 1) | ex::stopped_as_optional());
+    check_sends_stopped<false>(ex::transfer_just(sched2, 2) | ex::stopped_as_optional());
+    check_sends_stopped<false>(ex::transfer_just(sched3, 3) | ex::stopped_as_optional());
   }
 } // namespace

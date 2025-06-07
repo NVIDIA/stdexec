@@ -31,11 +31,7 @@ namespace ex = stdexec;
 namespace {
 
   template <class Sender>
-  concept sender_with_env =     //
-    ex::sender<Sender> &&       //
-    requires(const Sender& s) { //
-      ex::get_env(s);
-    };
+  concept sender_with_env = ex::sender<Sender> && requires(const Sender& s) { ex::get_env(s); };
 
   template <typename Awaiter>
   struct promise {
@@ -205,13 +201,17 @@ namespace {
   }
 
   template <typename Error, typename... Values>
-  auto signature_error_values(Error, Values...) -> ex::
-    completion_signatures<ex::set_value_t(Values...), ex::set_error_t(Error), ex::set_stopped_t()>* {
+  auto signature_error_values(Error, Values...) -> ex::completion_signatures<
+    ex::set_value_t(Values...),
+    ex::set_error_t(Error),
+    ex::set_stopped_t()
+  >* {
     return {};
   }
 
   TEST_CASE("get completion_signatures for awaitables", "[sndtraits][awaitables]") {
-    ::test_awaitable_sender1(signature_error_values(std::exception_ptr()), __coro::suspend_always{});
+    ::test_awaitable_sender1(
+      signature_error_values(std::exception_ptr()), __coro::suspend_always{});
     ::test_awaitable_sender1(
       signature_error_values(
         std::exception_ptr(), ex::__await_result_t<awaitable_sender_1<awaiter>>()),

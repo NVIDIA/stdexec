@@ -152,7 +152,7 @@ namespace stdexec {
   extern const get_completion_signatures_t get_completion_signatures;
 
   template <class _Sender, class... _Env>
-  using __completion_signatures_of_t = //
+  using __completion_signatures_of_t =
     __call_result_t<get_completion_signatures_t, _Sender, _Env...>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////

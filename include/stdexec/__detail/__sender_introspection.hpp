@@ -22,7 +22,8 @@ namespace stdexec {
     // Accessor for the "data" field of a sender
     struct __get_data {
       template <class _Data>
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(__ignore, _Data&& __data, auto&&...) const noexcept -> _Data&& {
+      STDEXEC_ATTRIBUTE(always_inline)
+      auto operator()(__ignore, _Data&& __data, auto&&...) const noexcept -> _Data&& {
         return static_cast<_Data&&>(__data);
       }
     };
@@ -30,11 +31,13 @@ namespace stdexec {
     // A function object that is to senders what std::apply is to tuples:
     struct __sexpr_apply_t {
       template <class _Sender, class _ApplyFn>
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Sender&& __sndr, _ApplyFn&& __fun) const //
-        noexcept(
-          noexcept(__sndr.apply(static_cast<_Sender&&>(__sndr), static_cast<_ApplyFn&&>(__fun)))) //
-        -> decltype(__sndr.apply(static_cast<_Sender&&>(__sndr), static_cast<_ApplyFn&&>(__fun))) {
-        return __sndr.apply(static_cast<_Sender&&>(__sndr), static_cast<_ApplyFn&&>(__fun)); //
+      STDEXEC_ATTRIBUTE(always_inline)
+      auto operator()(_Sender&& __sndr, _ApplyFn&& __fun) const
+        noexcept(noexcept(__sndr
+                            .apply(static_cast<_Sender&&>(__sndr), static_cast<_ApplyFn&&>(__fun))))
+          -> decltype(__sndr
+                        .apply(static_cast<_Sender&&>(__sndr), static_cast<_ApplyFn&&>(__fun))) {
+        return __sndr.apply(static_cast<_Sender&&>(__sndr), static_cast<_ApplyFn&&>(__fun));
       }
     };
 
@@ -78,8 +81,7 @@ namespace stdexec {
   using __data_of = typename __detail::__desc_of<_Sender>::__data;
 
   template <class _Sender, class _Continuation = __q<__types>>
-  using __children_of = //
-    __mapply<_Continuation, typename __detail::__desc_of<_Sender>::__children>;
+  using __children_of = __mapply<_Continuation, typename __detail::__desc_of<_Sender>::__children>;
 
   template <class _Ny, class _Sender>
   using __nth_child_of = __children_of<_Sender, __mbind_front_q<__m_at, _Ny>>;
@@ -101,10 +103,8 @@ namespace stdexec {
   };
 
   template <class _Sender>
-  concept sender_expr = //
-    __mvalid<tag_of_t, _Sender>;
+  concept sender_expr = __mvalid<tag_of_t, _Sender>;
 
   template <class _Sender, class _Tag>
-  concept sender_expr_for = //
-    sender_expr<_Sender> && same_as<tag_of_t<_Sender>, _Tag>;
+  concept sender_expr_for = sender_expr<_Sender> && same_as<tag_of_t<_Sender>, _Tag>;
 } // namespace stdexec

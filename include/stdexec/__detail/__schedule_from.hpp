@@ -47,11 +47,11 @@ namespace stdexec {
     //        ...
     //   >
     template <class _CvrefSender, class _Env>
-    using __results_of = //
-      __for_each_completion_signature<
-        __completion_signatures_of_t<_CvrefSender, _Env>,
-        __decayed_tuple,
-        __munique<__qq<stdexec::__variant_for>>::__f>;
+    using __results_of = __for_each_completion_signature<
+      __completion_signatures_of_t<_CvrefSender, _Env>,
+      __decayed_tuple,
+      __munique<__qq<stdexec::__variant_for>>::__f
+    >;
 
     template <class... _Values>
     using __decay_value_sig = set_value_t (*)(__decay_t<_Values>...);
@@ -60,18 +60,20 @@ namespace stdexec {
     using __decay_error_sig = set_error_t (*)(__decay_t<_Error>);
 
     template <class _Scheduler, class _Completions, class... _Env>
-    using __completions_impl_t = //
-      __mtry_q<__concat_completion_signatures>::__f<
-        __transform_completion_signatures<
-          _Completions,
-          __decay_value_sig,
-          __decay_error_sig,
-          set_stopped_t (*)(),
-          __completion_signature_ptrs>,
-        transform_completion_signatures<
-          __completion_signatures_of_t<schedule_result_t<_Scheduler>, _Env...>,
-          __eptr_completion_if_t<__nothrow_decay_copyable_results_t<_Completions>>,
-          __mconst<completion_signatures<>>::__f>>;
+    using __completions_impl_t = __mtry_q<__concat_completion_signatures>::__f<
+      __transform_completion_signatures<
+        _Completions,
+        __decay_value_sig,
+        __decay_error_sig,
+        set_stopped_t (*)(),
+        __completion_signature_ptrs
+      >,
+      transform_completion_signatures<
+        __completion_signatures_of_t<schedule_result_t<_Scheduler>, _Env...>,
+        __eptr_completion_if_t<__nothrow_decay_copyable_results_t<_Completions>>,
+        __mconst<completion_signatures<>>::__f
+      >
+    >;
 
     template <class _Scheduler, class _CvrefSender, class... _Env>
     using __completions_t =
@@ -81,7 +83,8 @@ namespace stdexec {
     struct __state;
 
     template <class _State>
-    STDEXEC_ATTRIBUTE((always_inline)) auto __make_visitor_fn(_State* __state) noexcept {
+    STDEXEC_ATTRIBUTE(always_inline)
+    auto __make_visitor_fn(_State* __state) noexcept {
       return [__state]<class _Tup>(_Tup& __tupl) noexcept -> void {
         __tupl.apply(
           [&]<class... _Args>(auto __tag, _Args&... __args) noexcept -> void {
@@ -162,14 +165,14 @@ namespace stdexec {
       using __scheduler_t =
         __decay_t<__call_result_t<get_completion_scheduler_t<set_value_t>, env_of_t<_Sender>>>;
 
-      static constexpr auto get_attrs = //
-        []<class _Data, class _Child>(const _Data& __data, const _Child& __child) noexcept {
-          auto __domain = query_or(get_domain, __data, default_domain{});
-          return __env::__join(
-            __sched_attrs{std::cref(__data), __domain}, stdexec::get_env(__child));
-        };
+      static constexpr auto get_attrs = []<class _Data, class _Child>(
+                                          const _Data& __data,
+                                          const _Child& __child) noexcept {
+        auto __domain = query_or(get_domain, __data, default_domain{});
+        return __env::__join(__sched_attrs{std::cref(__data), __domain}, stdexec::get_env(__child));
+      };
 
-      static constexpr auto get_completion_signatures = //
+      static constexpr auto get_completion_signatures =
         []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
         -> __completions_t<__scheduler_t<_Sender>, __child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, schedule_from_t>);
@@ -184,7 +187,7 @@ namespace stdexec {
           return __state<_Scheduler, _Sender, _Receiver>{__sched};
         };
 
-      static constexpr auto complete = //
+      static constexpr auto complete =
         []<class _State, class _Receiver, class _Tag, class... _Args>(
           __ignore,
           _State& __state,

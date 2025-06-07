@@ -99,10 +99,7 @@ namespace stdexec {
   template <__mstring _Context>
   struct __callable_error {
     template <class _Fun, class... _Args>
-    using __f =     //
-      __mexception< //
-        _NOT_CALLABLE_<_Context>,
-        _WITH_FUNCTION_<_Fun>,
-        _WITH_ARGUMENTS_<_Args...>>;
+    using __f =
+      __mexception<_NOT_CALLABLE_<_Context>, _WITH_FUNCTION_<_Fun>, _WITH_ARGUMENTS_<_Args...>>;
   };
 } // namespace stdexec

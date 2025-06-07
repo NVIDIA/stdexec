@@ -70,10 +70,8 @@ namespace stdexec::__any_ {
   };
 
   template <class _OpState, class _GetEnv, class _GetReceiver, class _Env, class _Sigs>
-  inline constexpr __receiver_vtable_for<_Sigs, _Env> __receiver_vtable_for_v{
-    static_cast<_OpState*>(nullptr),
-    _GetEnv{},
-    _GetReceiver{}};
+  inline constexpr __receiver_vtable_for<_Sigs, _Env>
+    __receiver_vtable_for_v{static_cast<_OpState*>(nullptr), _GetEnv{}, _GetReceiver{}};
 
   template <class _Sigs, class _Env = env<>>
   class __receiver_ref {

@@ -93,24 +93,28 @@ namespace {
   // `stopped_as_error` is implemented in terms of `let_error`, so the tests for `let_error` cover
   // more ground.
 
-  TEST_CASE("stopped_as_error keeps values_type from input sender", "[adaptors][stopped_as_error]") {
+  TEST_CASE(
+    "stopped_as_error keeps values_type from input sender",
+    "[adaptors][stopped_as_error]") {
     inline_scheduler sched;
     check_val_types<ex::__mset<pack<int>>>(ex::transfer_just(sched, 23) | ex::stopped_as_error(-1));
     check_val_types<ex::__mset<pack<double>>>(
       ex::transfer_just(sched, std::numbers::pi) | ex::stopped_as_error(-1));
   }
 
-  TEST_CASE("stopped_as_error keeps error_types from input sender", "[adaptors][stopped_as_error]") {
+  TEST_CASE(
+    "stopped_as_error keeps error_types from input sender",
+    "[adaptors][stopped_as_error]") {
     inline_scheduler sched1{};
     error_scheduler sched2{};
     error_scheduler<int> sched3{-1};
 
-    check_err_types<ex::__mset<>>( //
+    check_err_types<ex::__mset<>>(
       ex::transfer_just(sched1, 11) | ex::stopped_as_error(std::exception_ptr{}));
-    check_err_types<ex::__mset<std::exception_ptr>>( //
+    check_err_types<ex::__mset<std::exception_ptr>>(
       ex::transfer_just(sched2, 13) | ex::stopped_as_error(std::exception_ptr{}));
 
-    check_err_types<ex::__mset<int, std::exception_ptr>>( //
+    check_err_types<ex::__mset<int, std::exception_ptr>>(
       ex::transfer_just(sched3, 13) | ex::stopped_as_error(std::exception_ptr{}));
   }
 
@@ -119,17 +123,14 @@ namespace {
     error_scheduler sched2{};
     error_scheduler<int> sched3{-1};
 
-    check_err_types<ex::__mset<>>( //
-      ex::transfer_just(sched1, 11) | ex::stopped_as_error(-1));
-    check_err_types<ex::__mset<std::exception_ptr, int>>( //
+    check_err_types<ex::__mset<>>(ex::transfer_just(sched1, 11) | ex::stopped_as_error(-1));
+    check_err_types<ex::__mset<std::exception_ptr, int>>(
       ex::transfer_just(sched2, 13) | ex::stopped_as_error(-1));
 
-    check_err_types<ex::__mset<int>>( //
-      ex::transfer_just(sched3, 13) | ex::stopped_as_error(-1));
+    check_err_types<ex::__mset<int>>(ex::transfer_just(sched3, 13) | ex::stopped_as_error(-1));
 
-    check_err_types<ex::__mset<>>(  //
-      ex::transfer_just(sched1, 11) //
-      | ex::stopped_as_error(-1)    //
+    check_err_types<ex::__mset<>>(
+      ex::transfer_just(sched1, 11) | ex::stopped_as_error(-1)
       | ex::stopped_as_error(std::string{"err"}));
   }
 
@@ -138,11 +139,8 @@ namespace {
     error_scheduler sched2{};
     stopped_scheduler sched3{};
 
-    check_sends_stopped<false>( //
-      ex::transfer_just(sched1, 1) | ex::stopped_as_error(-1));
-    check_sends_stopped<false>( //
-      ex::transfer_just(sched2, 2) | ex::stopped_as_error(-1));
-    check_sends_stopped<false>( //
-      ex::transfer_just(sched3, 3) | ex::stopped_as_error(-1));
+    check_sends_stopped<false>(ex::transfer_just(sched1, 1) | ex::stopped_as_error(-1));
+    check_sends_stopped<false>(ex::transfer_just(sched2, 2) | ex::stopped_as_error(-1));
+    check_sends_stopped<false>(ex::transfer_just(sched3, 3) | ex::stopped_as_error(-1));
   }
 } // namespace

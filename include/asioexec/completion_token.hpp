@@ -39,7 +39,7 @@ namespace asioexec {
     //  values will actually be sent. This means that one or more conversions may be
     //  required to actually send the values correctly which may throw and which
     //  therefore must occur before the call to ::stdexec::set_value.
-    //
+
     //  The technique used to achieve this is to utilize an unevaluated call against
     //  overload_set to determine the matching Asio signature. Then
     //  completion_token::convert is used to transform the values actually sent by
@@ -68,9 +68,7 @@ namespace asioexec {
     };
 
     template <typename T, typename U>
-      requires
-        std::is_same_v<T&&, U&&> ||
-        std::is_convertible_v<U&&, T&&>
+      requires std::is_same_v<T&&, U&&> || std::is_convertible_v<U&&, T&&>
     constexpr T&& convert(U&& u) noexcept {
       return static_cast<U&&>(u);
     }
@@ -108,7 +106,8 @@ namespace asioexec {
     using completion_signatures = ::stdexec::completion_signatures<
       typename signature<Signatures>::type...,
       ::stdexec::set_error_t(std::exception_ptr),
-      ::stdexec::set_stopped_t()>;
+      ::stdexec::set_stopped_t()
+    >;
 
     struct stop_callback {
       constexpr explicit stop_callback(asio_impl::cancellation_signal& signal) noexcept
@@ -132,8 +131,8 @@ namespace asioexec {
       template <typename T>
         requires std::constructible_from<Receiver, T>
       explicit operation_state_base(T&& t) noexcept(
-        std::is_nothrow_constructible_v<Receiver, T>&&
-          std::is_nothrow_default_constructible_v<asio_impl::cancellation_signal>)
+        std::is_nothrow_constructible_v<Receiver, T>
+        && std::is_nothrow_default_constructible_v<asio_impl::cancellation_signal>)
         : r_(static_cast<T&&>(t)) {
       }
 
@@ -208,7 +207,8 @@ namespace asioexec {
      protected:
       std::optional<::stdexec::stop_callback_for_t<
         ::stdexec::stop_token_of_t<::stdexec::env_of_t<Receiver>>,
-        stop_callback>>
+        stop_callback
+      >>
         callback_;
     };
 
@@ -290,8 +290,8 @@ namespace asioexec {
         requires std::constructible_from<base_, T> && std::constructible_from<Initiation, U>
                 && std::constructible_from<Args, V>
       explicit operation_state(T&& t, U&& u, V&& v) noexcept(
-        std::is_nothrow_constructible_v<base_, T>&& std::is_nothrow_constructible_v<Initiation, U>&&
-          std::is_nothrow_constructible_v<Args, V>)
+        std::is_nothrow_constructible_v<base_, T> && std::is_nothrow_constructible_v<Initiation, U>
+        && std::is_nothrow_constructible_v<Args, V>)
         : base_(static_cast<T&&>(t))
         , init_(static_cast<U&&>(u))
         , args_(static_cast<V&&>(v)) {
@@ -334,8 +334,8 @@ namespace asioexec {
         requires std::constructible_from<Initiation, T>
                 && std::constructible_from<args_type_, Us...>
       explicit constexpr sender(T&& t, Us&&... us) noexcept(
-        std::is_nothrow_constructible_v<Initiation, T>&&
-          std::is_nothrow_constructible_v<args_type_, Us...>)
+        std::is_nothrow_constructible_v<Initiation, T>
+        && std::is_nothrow_constructible_v<args_type_, Us...>)
         : init_(static_cast<T&&>(t))
         , args_(static_cast<Us&&>(us)...) {
       }
@@ -357,13 +357,15 @@ namespace asioexec {
       template <typename Receiver>
         requires ::stdexec::receiver_of<
           std::remove_cvref_t<Receiver>,
-          ::stdexec::completion_signatures_of_t<const sender&, ::stdexec::env_of_t<Receiver>>>
+          ::stdexec::completion_signatures_of_t<const sender&, ::stdexec::env_of_t<Receiver>>
+        >
       constexpr auto connect(Receiver&& receiver) const & noexcept(
         std::is_nothrow_constructible_v<
           operation_state<Signatures, std::remove_cvref_t<Receiver>, Initiation, args_type_>,
           Receiver,
           const Initiation&,
-          const args_type_&>) {
+          const args_type_&
+        >) {
         return operation_state<Signatures, std::remove_cvref_t<Receiver>, Initiation, args_type_>(
           static_cast<Receiver&&>(receiver), init_, args_);
       }
@@ -371,13 +373,15 @@ namespace asioexec {
       template <typename Receiver>
         requires ::stdexec::receiver_of<
           std::remove_cvref_t<Receiver>,
-          ::stdexec::completion_signatures_of_t<sender, ::stdexec::env_of_t<Receiver>>>
+          ::stdexec::completion_signatures_of_t<sender, ::stdexec::env_of_t<Receiver>>
+        >
       constexpr auto connect(Receiver&& receiver) && noexcept(
         std::is_nothrow_constructible_v<
           operation_state<Signatures, std::remove_cvref_t<Receiver>, Initiation, args_type_>,
           Receiver,
           Initiation,
-          args_type_>) {
+          args_type_
+        >) {
         return operation_state<Signatures, std::remove_cvref_t<Receiver>, Initiation, args_type_>(
           static_cast<Receiver&&>(receiver),
           static_cast<Initiation&&>(init_),
@@ -409,16 +413,16 @@ namespace asioexec {
 
       template <typename Query>
         requires requires {
-                   asio_impl::query(std::declval<const Executor&>(), std::declval<const Query&>());
-                 }
+          asio_impl::query(std::declval<const Executor&>(), std::declval<const Query&>());
+        }
       constexpr decltype(auto) query(const Query& q) const noexcept {
         return asio_impl::query(ex_, q);
       }
 
       template <typename... Args>
         requires requires {
-                   asio_impl::prefer(std::declval<const Executor&>(), std::declval<Args>()...);
-                 }
+          asio_impl::prefer(std::declval<const Executor&>(), std::declval<Args>()...);
+        }
       constexpr decltype(auto) prefer(Args&&... args) const noexcept {
         const auto ex = asio_impl::prefer(ex_, static_cast<Args&&>(args)...);
         return executor<Signatures, Receiver, std::remove_cvref_t<decltype(ex)>>(self_, ex);
@@ -426,8 +430,8 @@ namespace asioexec {
 
       template <typename... Args>
         requires requires {
-                   asio_impl::require(std::declval<const Executor&>(), std::declval<Args>()...);
-                 }
+          asio_impl::require(std::declval<const Executor&>(), std::declval<Args>()...);
+        }
       constexpr decltype(auto) require(Args&&... args) const noexcept {
         const auto ex = asio_impl::require(ex_, static_cast<Args&&>(args)...);
         return executor<Signatures, Receiver, std::remove_cvref_t<decltype(ex)>>(self_, ex);
@@ -452,26 +456,24 @@ namespace asioexec {
 
       template <typename F, typename A>
         requires requires {
-                   std::declval<const Executor&>().dispatch(
-                     std::declval<F>(), std::declval<const A&>());
-                 }
+          std::declval<const Executor&>().dispatch(std::declval<F>(), std::declval<const A&>());
+        }
       constexpr void dispatch(F&& f, const A& a) const noexcept {
         self_.run_([&]() { ex_.dispatch(wrap_(static_cast<F&&>(f)), a); });
       }
 
       template <typename F, typename A>
         requires requires {
-                   std::declval<const Executor&>().post(std::declval<F>(), std::declval<const A&>());
-                 }
+          std::declval<const Executor&>().post(std::declval<F>(), std::declval<const A&>());
+        }
       constexpr void post(F&& f, const A& a) const noexcept {
         self_.run_([&]() { ex_.post(wrap_(static_cast<F&&>(f)), a); });
       }
 
       template <typename F, typename A>
         requires requires {
-                   std::declval<const Executor&>().defer(
-                     std::declval<F>(), std::declval<const A&>());
-                 }
+          std::declval<const Executor&>().defer(std::declval<F>(), std::declval<const A&>());
+        }
       constexpr void defer(F&& f, const A& a) const noexcept {
         self_.run_([&]() { ex_.defer(wrap_(static_cast<F&&>(f)), a); });
       }
@@ -501,14 +503,16 @@ namespace ASIOEXEC_ASIO_NAMESPACE {
       return ::asioexec::detail::completion_token::sender<
         ::asioexec::detail::completion_token::completion_signatures<Signatures...>,
         std::remove_cvref_t<Initiation>,
-        Args...>(static_cast<Initiation&&>(i), static_cast<Args&&>(args)...);
+        Args...
+      >(static_cast<Initiation&&>(i), static_cast<Args&&>(args)...);
     }
   };
 
   template <typename Signatures, typename Receiver, typename Executor>
   struct associated_executor<
     ::asioexec::detail::completion_token::completion_handler<Signatures, Receiver>,
-    Executor> {
+    Executor
+  > {
     using type = ::asioexec::detail::completion_token::executor<Signatures, Receiver, Executor>;
 
     static type get(
@@ -522,9 +526,10 @@ namespace ASIOEXEC_ASIO_NAMESPACE {
     requires requires(const Receiver& r) { ::stdexec::get_allocator(::stdexec::get_env(r)); }
   struct associated_allocator<
     ::asioexec::detail::completion_token::completion_handler<Signatures, Receiver>,
-    Allocator> {
-    using type = std::remove_cvref_t<
-      decltype(::stdexec::get_allocator(::stdexec::get_env(std::declval<const Receiver&>())))>;
+    Allocator
+  > {
+    using type = std::remove_cvref_t<decltype(::stdexec::get_allocator(
+      ::stdexec::get_env(std::declval<const Receiver&>())))>;
 
     static type get(
       const ::asioexec::detail::completion_token::completion_handler<Signatures, Receiver>& h,

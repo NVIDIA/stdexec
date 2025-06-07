@@ -135,7 +135,7 @@ namespace stdexec {
   } // namespace __pack
 
   template <std::size_t _Np>
-  using __make_indices = //
+  using __make_indices =
     decltype(__pack::__mkidx<__make_integer_seq<__pack::__idx, std::size_t, _Np>>);
 #elif STDEXEC_HAS_BUILTIN(__make_integer_seq)
   namespace __pack {
@@ -330,9 +330,7 @@ namespace stdexec {
   // nvc++ does not. So we memoize the type computations by
   // indirecting through a class template specialization.
   template <template <class...> class _Fn, class... _Args>
-  using __meval__ =                //
-    typename __i<_Ok<_Args...>>    //
-    ::template __g<_Fn, _Args...>; //
+  using __meval__ = typename __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
 
   template <template <class...> class _Fn, class... _Args>
   struct __meval_ { };
@@ -347,10 +345,8 @@ namespace stdexec {
   using __meval = __t<__meval_<_Fn, _Args...>>;
 
   template <class _Fn, class... _Args>
-  using __minvoke__ =                     //
-    typename __i<_Ok<_Args...>, _Ok<_Fn>> //
-    ::template __f<_Fn>                   //
-    ::template __f<_Args...>;             //
+  using __minvoke__ =
+    typename __i<_Ok<_Args...>, _Ok<_Fn>>::template __f<_Fn>::template __f<_Args...>;
 
   template <class _Fn, class... _Args>
   struct __minvoke_ { };
@@ -367,18 +363,14 @@ namespace stdexec {
 #else
 
   template <template <class...> class _Fn, class... _Args>
-  using __meval =                  //
-    typename __i<_Ok<_Args...>>    //
-    ::template __g<_Fn, _Args...>; //
+  using __meval = typename __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
 
   //! Metafunction invocation
   //! Given a metafunction, `_Fn`, and args.
   //! We expect `_Fn::__f` to be type alias template "implementing" the metafunction `_Fn`.
   template <class _Fn, class... _Args>
-  using __minvoke =                       //
-    typename __i<_Ok<_Args...>, _Ok<_Fn>> //
-    ::template __f<_Fn>                   //
-    ::template __f<_Args...>;             //
+  using __minvoke =
+    typename __i<_Ok<_Args...>, _Ok<_Fn>>::template __f<_Fn>::template __f<_Args...>;
 
 #endif
 
@@ -710,7 +702,8 @@ namespace stdexec {
       class... _Cs,
       template <class...> class _Dp = __types,
       class... _Ds,
-      class... _Tail>
+      class... _Tail
+    >
     static auto __f(
       __types<_Ts...> *,
       _Ap<_As...> *,
@@ -734,7 +727,8 @@ namespace stdexec {
     template <class... _Args>
     using __f = __mapply<
       _Continuation,
-      decltype(__mconcat_<(sizeof...(_Args) == 0)>::__f({}, static_cast<_Args *>(nullptr)...))>;
+      decltype(__mconcat_<(sizeof...(_Args) == 0)>::__f({}, static_cast<_Args *>(nullptr)...))
+    >;
   };
 
   struct __msize {
@@ -799,17 +793,19 @@ namespace stdexec {
   template <class _Old, class _Continuation = __q<__types>>
   struct __mremove {
     template <class... _Args>
-    using __f = //
-      __minvoke<
-        __mconcat<_Continuation>,
-        __if_c<__same_as<_Args, _Old>, __types<>, __types<_Args>>...>;
+    using __f = __minvoke<
+      __mconcat<_Continuation>,
+      __if_c<__same_as<_Args, _Old>, __types<>, __types<_Args>>...
+    >;
   };
 
   template <class _Pred, class _Continuation = __q<__types>>
   struct __mremove_if {
     template <class... _Args>
-    using __f = //
-      __minvoke<__mconcat<_Continuation>, __if<__minvoke<_Pred, _Args>, __types<>, __types<_Args>>...>;
+    using __f = __minvoke<
+      __mconcat<_Continuation>,
+      __if<__minvoke<_Pred, _Args>, __types<>, __types<_Args>>...
+    >;
   };
 
   template <class _Return>
@@ -926,17 +922,17 @@ namespace stdexec {
         _Fn,
         _Continuation,
         __mapply<__qq<__types>, _List1>,
-        __mapply<__qq<__types>, _List2>> { };
+        __mapply<__qq<__types>, _List2>
+      > { };
 
-  template <             //
-    class _Fn,           //
-    class _Continuation, //
-    template <class...>
-    class _Cp,
-    class... _Cs, //
-    template <class...>
-    class _Dp,
-    class... _Ds>
+  template <
+    class _Fn,
+    class _Continuation,
+    template <class...> class _Cp,
+    class... _Cs,
+    template <class...> class _Dp,
+    class... _Ds
+  >
     requires requires { typename __minvoke<_Continuation, __minvoke<_Fn, _Cs, _Ds>...>; }
   struct __mzip_with2_<_Fn, _Continuation, _Cp<_Cs...>, _Dp<_Ds...>> {
     using __t = __minvoke<_Continuation, __minvoke<_Fn, _Cs, _Ds>...>;
@@ -951,13 +947,14 @@ namespace stdexec {
   template <bool>
   struct __mfind_if_ {
     template <class _Fn, class _Continuation, class _Head, class... _Tail>
-    using __f = //
-      __minvoke<
-        __if_c<
-          __v<__minvoke<_Fn, _Head>>,
-          __mbind_front<_Continuation, _Head>,
-          __mbind_front<__mfind_if_<(sizeof...(_Tail) != 0)>, _Fn, _Continuation>>,
-        _Tail...>;
+    using __f = __minvoke<
+      __if_c<
+        __v<__minvoke<_Fn, _Head>>,
+        __mbind_front<_Continuation, _Head>,
+        __mbind_front<__mfind_if_<(sizeof...(_Tail) != 0)>, _Fn, _Continuation>
+      >,
+      _Tail...
+    >;
   };
 
   template <>
@@ -1121,7 +1118,8 @@ namespace stdexec {
   template <std::size_t _Np>
   struct __nth_pack_element_t {
     template <class... _Ts>
-    STDEXEC_ATTRIBUTE((always_inline)) constexpr auto operator()(_Ts &&...__ts) const noexcept -> decltype(auto) {
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr auto operator()(_Ts &&...__ts) const noexcept -> decltype(auto) {
       static_assert(_Np < sizeof...(_Ts));
       return static_cast<_Ts...[_Np] &&>(__ts...[_Np]);
     }
@@ -1132,7 +1130,8 @@ namespace stdexec {
   template <class... _Ignore>
   struct __nth_pack_element_impl {
     template <class _Ty, class... _Us>
-    STDEXEC_ATTRIBUTE((always_inline)) constexpr _Ty &&operator()(_Ignore..., _Ty &&__t, _Us &&...) const noexcept {
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr _Ty &&operator()(_Ignore..., _Ty &&__t, _Us &&...) const noexcept {
       return static_cast<decltype(__t) &&>(__t);
     }
   };
@@ -1140,12 +1139,14 @@ namespace stdexec {
   template <std::size_t _Np>
   struct __nth_pack_element_t {
     template <std::size_t... _Is>
-    STDEXEC_ATTRIBUTE((always_inline)) static constexpr auto __impl(__indices<_Is...>) noexcept {
+    STDEXEC_ATTRIBUTE(always_inline)
+    static constexpr auto __impl(__indices<_Is...>) noexcept {
       return __nth_pack_element_impl<__ignore_t<_Is>...>();
     }
 
     template <class... _Ts>
-    STDEXEC_ATTRIBUTE((always_inline)) constexpr decltype(auto) operator()(_Ts &&...__ts) const noexcept {
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr decltype(auto) operator()(_Ts &&...__ts) const noexcept {
       static_assert(_Np < sizeof...(_Ts));
       return __impl(__make_indices<_Np>())(static_cast<_Ts &&>(__ts)...);
     }
@@ -1158,7 +1159,8 @@ namespace stdexec {
   template <auto... _Vs>
   struct __mliterals {
     template <std::size_t _Np>
-    STDEXEC_ATTRIBUTE((always_inline)) static constexpr auto __nth() noexcept {
+    STDEXEC_ATTRIBUTE(always_inline)
+    static constexpr auto __nth() noexcept {
       return stdexec::__nth_pack_element<_Np>(_Vs...);
     }
   };
@@ -1166,7 +1168,8 @@ namespace stdexec {
   template <std::size_t _Np>
   struct __nth_member {
     template <class _Ty>
-    STDEXEC_ATTRIBUTE((always_inline)) constexpr auto operator()(_Ty &&__ty) const noexcept -> decltype(auto) {
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr auto operator()(_Ty &&__ty) const noexcept -> decltype(auto) {
       return static_cast<_Ty &&>(__ty).*(__ty.__mbrs_.template __nth<_Np>());
     }
   };
@@ -1195,16 +1198,15 @@ namespace stdexec {
     auto operator+(__inherit<_Set...> &) -> __inherit<_Set...>;
 
     template <class... _Set, class _Ty>
-    auto operator%(__inherit<_Set...> &, __mtype<_Ty> &) //
-      -> __if_c<                                         //
-        __mset_contains<__inherit<_Set...>, _Ty>,
-        __inherit<_Set...>,
-        __inherit<_Ty, _Set...>> &;
+    auto operator%(__inherit<_Set...> &, __mtype<_Ty> &) -> __if_c<
+      __mset_contains<__inherit<_Set...>, _Ty>,
+      __inherit<_Set...>,
+      __inherit<_Ty, _Set...>
+    > &;
 
     template <class _ExpectedSet, class... _Ts>
-    concept __mset_eq =                                           //
-      (sizeof...(_Ts) == __v<__mapply<__msize, _ExpectedSet>>) && //
-      __mset_contains<_ExpectedSet, _Ts...>;
+    concept __mset_eq = (sizeof...(_Ts) == __v<__mapply<__msize, _ExpectedSet>>)
+                     && __mset_contains<_ExpectedSet, _Ts...>;
 
     template <class _ExpectedSet>
     struct __eq {

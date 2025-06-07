@@ -101,10 +101,10 @@ namespace {
   }
 
   TEST_CASE("transfer_when_all_with_variant basic example", "[adaptors][transfer_when_all]") {
-    ex::sender auto snd = ex::transfer_when_all_with_variant( //
-      inline_scheduler{},                                     //
-      ex::just(2),                                            //
-      ex::just(3.14)                                          //
+    ex::sender auto snd = ex::transfer_when_all_with_variant(
+      inline_scheduler{},
+      ex::just(2),
+      ex::just(3.14)
     );
     wait_for_value(
       std::move(snd), std::variant<std::tuple<int>>{2}, std::variant<std::tuple<double>>{3.14});
@@ -136,10 +136,10 @@ namespace {
       using domain = basic_domain<ex::transfer_when_all_t, customize::none, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::transfer_when_all( //
+      auto snd = ex::transfer_when_all(
         scheduler(),
-        ex::just(3),     //
-        ex::just(0.1415) //
+        ex::just(3),
+        ex::just(0.1415)
       );
       static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_t>);
       [[maybe_unused]]
@@ -150,10 +150,10 @@ namespace {
       using domain = basic_domain<ex::transfer_when_all_t, customize::early, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::transfer_when_all( //
-        scheduler(),                    //
-        ex::just(3),                    //
-        ex::just(0.1415)                //
+      auto snd = ex::transfer_when_all(
+        scheduler(),
+        ex::just(3),
+        ex::just(0.1415)
       );
       static_assert(ex::sender_expr_for<decltype(snd), ex::just_t>);
       wait_for_value(std::move(snd), std::string{"hello world"});
@@ -165,10 +165,10 @@ namespace {
 
       auto snd = ex::starts_on(
         scheduler(),
-        ex::transfer_when_all( //
-          inline_scheduler(),  //
-          ex::just(3),         //
-          ex::just(0.1415)     //
+        ex::transfer_when_all(
+          inline_scheduler(),
+          ex::just(3),
+          ex::just(0.1415)
           ));
       wait_for_value(std::move(snd), std::string{"hello world"});
     }
@@ -185,10 +185,10 @@ namespace {
       using domain = basic_domain<ex::transfer_when_all_with_variant_t, customize::none, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::transfer_when_all_with_variant( //
-        scheduler(),                                 //
-        ex::just(3),                                 //
-        ex::just(0.1415)                             //
+      auto snd = ex::transfer_when_all_with_variant(
+        scheduler(),
+        ex::just(3),
+        ex::just(0.1415)
       );
       static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_with_variant_t>);
       [[maybe_unused]]
@@ -199,10 +199,10 @@ namespace {
       using domain = basic_domain<ex::transfer_when_all_with_variant_t, customize::early, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::transfer_when_all_with_variant( //
+      auto snd = ex::transfer_when_all_with_variant(
         scheduler(),
-        ex::just(3),     //
-        ex::just(0.1415) //
+        ex::just(3),
+        ex::just(0.1415)
       );
       static_assert(ex::sender_expr_for<decltype(snd), ex::just_t>);
       wait_for_value(std::move(snd), std::string{"hello world"});
@@ -213,11 +213,11 @@ namespace {
       using scheduler = basic_inline_scheduler<domain>;
 
       auto snd = ex::starts_on(
-        scheduler(),                        //
-        ex::transfer_when_all_with_variant( //
-        inline_scheduler(),                 //
-          ex::just(3),                      //
-          ex::just(0.1415)                  //
+        scheduler(),
+        ex::transfer_when_all_with_variant(
+        inline_scheduler(),
+          ex::just(3),
+          ex::just(0.1415)
           ));
       wait_for_value(std::move(snd), std::string{"hello world"});
     }
@@ -234,10 +234,10 @@ namespace {
       using domain = basic_domain<ex::transfer_when_all_t, customize::none, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::transfer_when_all_with_variant( //
-        scheduler(),                                 //
-        ex::just(3),                                 //
-        ex::just(0.1415)                             //
+      auto snd = ex::transfer_when_all_with_variant(
+        scheduler(),
+        ex::just(3),
+        ex::just(0.1415)
       );
       static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_with_variant_t>);
       [[maybe_unused]]
@@ -248,10 +248,10 @@ namespace {
       using domain = basic_domain<ex::transfer_when_all_t, customize::early, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::transfer_when_all_with_variant( //
-        scheduler(),                                 //
-        ex::just(3),                                 //
-        ex::just(0.1415)                             //
+      auto snd = ex::transfer_when_all_with_variant(
+        scheduler(),
+        ex::just(3),
+        ex::just(0.1415)
       );
       static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_with_variant_t>);
       wait_for_value(std::move(snd), std::string{"hello world"});
@@ -262,11 +262,11 @@ namespace {
       using scheduler = basic_inline_scheduler<domain>;
 
       auto snd = ex::starts_on(
-        scheduler(),                        //
-        ex::transfer_when_all_with_variant( //
-          inline_scheduler(),               //
-          ex::just(3),                      //
-          ex::just(0.1415)                  //
+        scheduler(),
+        ex::transfer_when_all_with_variant(
+          inline_scheduler(),
+          ex::just(3),
+          ex::just(0.1415)
           ));
       wait_for_value(std::move(snd), std::string{"hello world"});
     }

@@ -35,8 +35,7 @@ namespace {
     "exec::on transitions back to the receiver's scheduler when completing with a value",
     "[adaptors][exec::on]") {
     bool called{false};
-    auto snd_base = ex::just() //
-                  | ex::then([&]() -> int {
+    auto snd_base = ex::just() | ex::then([&]() -> int {
                       called = true;
                       return 19;
                     });
@@ -69,8 +68,7 @@ namespace {
     "exec::on transitions back to the receiver's scheduler when completing with an error",
     "[adaptors][exec::on]") {
     bool called{false};
-    auto snd_base = ex::just() //
-                  | ex::let_value([&]() {
+    auto snd_base = ex::just() | ex::let_value([&]() {
                       called = true;
                       return ex::just_error(19);
                     });
@@ -103,8 +101,7 @@ namespace {
     "inner on transitions back to outer on's scheduler when completing with a value",
     "[adaptors][exec::on]") {
     bool called{false};
-    auto snd_base = ex::just() //
-                  | ex::then([&]() -> int {
+    auto snd_base = ex::just() | ex::then([&]() -> int {
                       called = true;
                       return 19;
                     });
@@ -155,8 +152,7 @@ namespace {
     "inner on transitions back to outer on's scheduler when completing with an error",
     "[adaptors][exec::on]") {
     bool called{false};
-    auto snd_base = ex::just() //
-                  | ex::let_value([&]() {
+    auto snd_base = ex::just() | ex::let_value([&]() {
                       called = true;
                       return ex::just_error(19);
                     });

@@ -35,12 +35,14 @@ namespace stdexec {
       }
 
       template <class _Env>
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Env __env) const -> __binder_back<__write_env_t, _Env> {
+      STDEXEC_ATTRIBUTE(always_inline)
+      auto operator()(_Env __env) const -> __binder_back<__write_env_t, _Env> {
         return {{static_cast<_Env&&>(__env)}, {}, {}};
       }
 
       template <class _Env>
-      STDEXEC_ATTRIBUTE((always_inline)) static auto __transform_env_fn(_Env&& __env) noexcept {
+      STDEXEC_ATTRIBUTE(always_inline)
+      static auto __transform_env_fn(_Env&& __env) noexcept {
         return [&](__ignore, const auto& __state, __ignore) noexcept {
           return __env::__join(__state, static_cast<_Env&&>(__env));
         };
@@ -53,23 +55,23 @@ namespace stdexec {
     };
 
     struct __write_env_impl : __sexpr_defaults {
-      static constexpr auto get_attrs = //
-        []<class _Child>(__ignore, const _Child& __child) noexcept {
-          return __env::__join(
-            prop{__is_scheduler_affine_t{}, __mbool<__is_scheduler_affine<_Child>>{}},
-            stdexec::get_env(__child));
-        };
+      static constexpr auto get_attrs = []<class _Child>(__ignore, const _Child& __child) noexcept {
+        return __env::__join(
+          prop{__is_scheduler_affine_t{}, __mbool<__is_scheduler_affine<_Child>>{}},
+          stdexec::get_env(__child));
+      };
 
-      static constexpr auto get_env = //
+      static constexpr auto get_env =
         [](__ignore, const auto& __state, const auto& __rcvr) noexcept {
           return __env::__join(__state, stdexec::get_env(__rcvr));
         };
 
-      static constexpr auto get_completion_signatures = //
+      static constexpr auto get_completion_signatures =
         []<class _Self, class... _Env>(_Self&&, _Env&&...) noexcept
         -> __completion_signatures_of_t<
           __child_of<_Self>,
-          __meval<__join_env_t, const __decay_t<__data_of<_Self>>&, _Env...>> {
+          __meval<__join_env_t, const __decay_t<__data_of<_Self>>&, _Env...>
+        > {
         static_assert(sender_expr_for<_Self, __write_env_t>);
         return {};
       };

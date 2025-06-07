@@ -70,8 +70,7 @@ namespace {
     "starts_on calls the given sender when the scheduler dictates",
     "[adaptors][starts_on]") {
     bool called{false};
-    auto snd_base = ex::just() //
-                  | ex::then([&]() -> int {
+    auto snd_base = ex::just() | ex::then([&]() -> int {
                       called = true;
                       return 19;
                     });
@@ -98,7 +97,7 @@ namespace {
     std::atomic<bool> called{false};
     {
       // lunch some work on the thread pool
-      ex::sender auto snd = ex::starts_on(pool.get_scheduler(), ex::just()) //
+      ex::sender auto snd = ex::starts_on(pool.get_scheduler(), ex::just())
                           | ex::then([&] { called.store(true); });
       ex::start_detached(std::move(snd));
     }
@@ -281,8 +280,7 @@ namespace {
 
   TEST_CASE("starts_on does not reference a moved-from scheduler", "[adaptors][starts_on]") {
     move_checking_inline_scheduler is;
-    ex::sender auto snd = ex::starts_on(is, ex::just()) //
-                        | ex::then([] { });
+    ex::sender auto snd = ex::starts_on(is, ex::just()) | ex::then([] { });
     ex::sync_wait(std::move(snd));
   }
 } // namespace

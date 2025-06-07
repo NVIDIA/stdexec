@@ -43,7 +43,7 @@ namespace nvexec::_strm {
     using __decay_ref = __decay_t<Tp>&;
 
     template <class Fun>
-    using __result_sender_fn = //
+    using __result_sender_fn =
       __mtransform<__q<__decay_ref>, __mbind_front_q<__call_result_t, Fun>>;
 
     template <class... Sizes>
@@ -61,20 +61,20 @@ namespace nvexec::_strm {
       template <class... As>
       using __sender_size_for_t = stdexec::__t<__sender_size_for_<As...>>;
 
-      static constexpr std::size_t value = //
-        __v<__gather_completions_of<
-          SetTag,
-          Sender,
-          env_of_t<PropagateReceiver>,
-          __q<__sender_size_for_t>,
-          __q<max_in_pack>>>;
+      static constexpr std::size_t value = __v<__gather_completions_of<
+        SetTag,
+        Sender,
+        env_of_t<PropagateReceiver>,
+        __q<__sender_size_for_t>,
+        __q<max_in_pack>
+      >>;
     };
 
     template <class Receiver, class Fun>
-    using op_state_for = //
-      __mcompose<
-        __mbind_back_q<connect_result_t, stdexec::__t<propagate_receiver_t<stdexec::__id<Receiver>>>>,
-        __result_sender_fn<Fun>>;
+    using op_state_for = __mcompose<
+      __mbind_back_q<connect_result_t, stdexec::__t<propagate_receiver_t<stdexec::__id<Receiver>>>>,
+      __result_sender_fn<Fun>
+    >;
 
     template <class Set, class Sig>
     struct __tfx_signal_ {
@@ -85,10 +85,10 @@ namespace nvexec::_strm {
     template <class Set, class... Args>
     struct __tfx_signal_<Set, Set(Args...)> {
       template <class Fun, class... StreamEnv>
-      using __f = //
-        transform_completion_signatures<
-          __completion_signatures_of_t<__minvoke<__result_sender_fn<Fun>, Args...>, StreamEnv...>,
-          completion_signatures<set_error_t(cudaError_t)>>;
+      using __f = transform_completion_signatures<
+        __completion_signatures_of_t<__minvoke<__result_sender_fn<Fun>, Args...>, StreamEnv...>,
+        completion_signatures<set_error_t(cudaError_t)>
+      >;
     };
 
     template <class Sig, class Fun, class Set, class... StreamEnv>
@@ -162,30 +162,30 @@ namespace nvexec::_strm {
           return op_state_->make_env();
         }
 
-        using op_state_variant_t = //
-          __minvoke<
-            __mtransform<__muncurry<op_state_for<Receiver, Fun>>, __qq<__nullable_std_variant>>,
-            Tuples...>;
+        using op_state_variant_t = __minvoke<
+          __mtransform<__muncurry<op_state_for<Receiver, Fun>>, __qq<__nullable_std_variant>>,
+          Tuples...
+        >;
 
         operation<SenderId, ReceiverId, Fun, Let>* op_state_;
       };
     };
 
     template <class SenderId, class ReceiverId, class Fun, class Let>
-    using __receiver = //
-      stdexec::__t<__gather_completions_of<
-        Let,
-        stdexec::__t<SenderId>,
-        stream_env<env_of_t<stdexec::__t<ReceiverId>>>,
-        __q<__decayed_std_tuple>,
-        __munique<__mbind_front_q<_receiver_, SenderId, ReceiverId, Fun, Let>>>>;
+    using __receiver = stdexec::__t<__gather_completions_of<
+      Let,
+      stdexec::__t<SenderId>,
+      stream_env<env_of_t<stdexec::__t<ReceiverId>>>,
+      __q<__decayed_std_tuple>,
+      __munique<__mbind_front_q<_receiver_, SenderId, ReceiverId, Fun, Let>>
+    >>;
 
     template <class SenderId, class ReceiverId, class Fun, class Let>
-    using operation_base = //
-      operation_state_t<
-        SenderId,
-        stdexec::__id<__receiver<SenderId, ReceiverId, Fun, Let>>,
-        ReceiverId>;
+    using operation_base = operation_state_t<
+      SenderId,
+      stdexec::__id<__receiver<SenderId, ReceiverId, Fun, Let>>,
+      ReceiverId
+    >;
 
     template <class SenderId, class ReceiverId, class Fun, class Let>
     struct operation : operation_base<SenderId, ReceiverId, Fun, Let> {
@@ -222,34 +222,34 @@ namespace nvexec::_strm {
       using __id = let_sender_t;
 
       template <class Self, class Receiver>
-      using operation_t = //
-        let_xxx::operation<
-          stdexec::__id<__copy_cvref_t<Self, Sender>>,
-          stdexec::__id<__decay_t<Receiver>>,
-          Fun,
-          Set>;
+      using operation_t = let_xxx::operation<
+        stdexec::__id<__copy_cvref_t<Self, Sender>>,
+        stdexec::__id<__decay_t<Receiver>>,
+        Fun,
+        Set
+      >;
       template <class Self, class Receiver>
-      using _receiver_t = //
-        stdexec::__t<let_xxx::__receiver<
-          stdexec::__id<__copy_cvref_t<Self, Sender>>,
-          stdexec::__id<__decay_t<Receiver>>,
-          Fun,
-          Set>>;
+      using _receiver_t = stdexec::__t<let_xxx::__receiver<
+        stdexec::__id<__copy_cvref_t<Self, Sender>>,
+        stdexec::__id<__decay_t<Receiver>>,
+        Fun,
+        Set
+      >>;
 
       template <class Sender, class... Env>
-      using __completions = //
-        __mapply<
-          __mtransform<
-            __mbind_back_q<let_xxx::__tfx_signal_t, Fun, Set, Env...>,
-            __mtry_q<__concat_completion_signatures>>,
-          __completion_signatures_of_t<Sender, Env...>>;
+      using __completions = __mapply<
+        __mtransform<
+          __mbind_back_q<let_xxx::__tfx_signal_t, Fun, Set, Env...>,
+          __mtry_q<__concat_completion_signatures>
+        >,
+        __completion_signatures_of_t<Sender, Env...>
+      >;
 
       template <__decays_to<__t> Self, receiver Receiver>
-        requires receiver_of<                         //
-                   Receiver,                          //
-                   __completions<                     //
-                     __copy_cvref_t<Self, Sender>,    //
-                     stream_env<env_of_t<Receiver>>>> //
+        requires receiver_of<
+          Receiver,
+          __completions<__copy_cvref_t<Self, Sender>, stream_env<env_of_t<Receiver>>>
+        >
       static auto connect(Self&& self, Receiver rcvr) -> operation_t<Self, Receiver> {
         return operation_t<Self, Receiver>{
           static_cast<Self&&>(self).sndr_,

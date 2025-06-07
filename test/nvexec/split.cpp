@@ -20,8 +20,8 @@ namespace {
   TEST_CASE("nvexec split works", "[cuda][stream][adaptors][split]") {
     nvexec::stream_context stream_ctx{};
 
-    auto fork = ex::schedule(stream_ctx.get_scheduler()) //
-              | ex::then([=] { return is_on_gpu(); }) | ex::split();
+    auto fork = ex::schedule(stream_ctx.get_scheduler()) | ex::then([=] { return is_on_gpu(); })
+              | ex::split();
 
     auto b1 = fork | ex::then([](bool on_gpu) { return on_gpu * 24; });
     auto b2 = fork | ex::then([](bool on_gpu) { return on_gpu * 42; });
@@ -39,9 +39,7 @@ namespace {
     flags_storage_t flags_storage{};
     auto flags = flags_storage.get();
 
-    auto snd = ex::schedule(stream_ctx.get_scheduler()) //
-             | ex::split()                              //
-             | a_sender([=]() noexcept {
+    auto snd = ex::schedule(stream_ctx.get_scheduler()) | ex::split() | a_sender([=]() noexcept {
                  if (is_on_gpu()) {
                    flags.set();
                  }
@@ -58,14 +56,12 @@ namespace {
       flags_storage_t<2> flags_storage{};
       auto flags = flags_storage.get();
 
-      auto snd = ex::schedule(stream_ctx.get_scheduler()) //
-               | a_sender([flags] {
+      auto snd = ex::schedule(stream_ctx.get_scheduler()) | a_sender([flags] {
                    if (is_on_gpu()) {
                      flags.set(1);
                    }
                  })
-               | ex::split() //
-               | ex::then([flags] {
+               | ex::split() | ex::then([flags] {
                    if (is_on_gpu()) {
                      flags.set(0);
                    }
@@ -80,7 +76,7 @@ namespace {
       flags_storage_t flags_storage{};
       auto flags = flags_storage.get();
 
-      auto snd = ex::schedule(stream_ctx.get_scheduler()) //
+      auto snd = ex::schedule(stream_ctx.get_scheduler())
                | a_sender([]() -> bool { return is_on_gpu(); }) | ex::split()
                | ex::then([flags](bool a_sender_was_on_gpu) {
                    if (a_sender_was_on_gpu && is_on_gpu()) {

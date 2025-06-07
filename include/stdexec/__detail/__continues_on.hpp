@@ -36,7 +36,7 @@ namespace stdexec {
     using __scheduler_t = __result_of<get_completion_scheduler<set_value_t>, _Env>;
 
     template <class _Sender>
-    using __lowered_t = //
+    using __lowered_t =
       __result_of<schedule_from, __scheduler_t<__data_of<_Sender>>, __child_of<_Sender>>;
 
     struct continues_on_t {
@@ -50,8 +50,8 @@ namespace stdexec {
       }
 
       template <scheduler _Scheduler>
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Scheduler __sched) const //
-        -> __binder_back<continues_on_t, _Scheduler> {
+      STDEXEC_ATTRIBUTE(always_inline)
+      auto operator()(_Scheduler __sched) const -> __binder_back<continues_on_t, _Scheduler> {
         return {{static_cast<_Scheduler&&>(__sched)}, {}, {}};
       }
 
@@ -68,18 +68,16 @@ namespace stdexec {
     };
 
     struct __continues_on_impl : __sexpr_defaults {
-      static constexpr auto get_attrs = //
-        []<class _Data, class _Child>(const _Data& __data, const _Child& __child) noexcept
-        -> decltype(auto) {
+      static constexpr auto get_attrs = []<class _Data, class _Child>(
+                                          const _Data& __data,
+                                          const _Child& __child) noexcept -> decltype(auto) {
         using __domain_t = __detail::__early_domain_of_t<_Child, __none_such>;
         return __env::__join(
           __sched_attrs{std::cref(__data), __domain_t{}}, stdexec::get_env(__child));
       };
 
-      static constexpr auto get_completion_signatures = //
-        []<class _Sender>(_Sender&&) noexcept           //
-        -> __completion_signatures_of_t<                //
-          transform_sender_result_t<default_domain, _Sender, env<>>> {
+      static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
+        -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
         return {};
       };
     };

@@ -33,7 +33,7 @@ namespace stdexec {
   struct __ignore {
     __ignore() = default;
 
-    STDEXEC_ATTRIBUTE((always_inline)) constexpr __ignore(auto&&...) noexcept {
+    STDEXEC_ATTRIBUTE(always_inline) constexpr __ignore(auto&&...) noexcept {
     }
   };
 
@@ -104,7 +104,8 @@ namespace stdexec {
     template <class _Cpcvref>
     struct __forward_like_fn {
       template <class _Uy>
-      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto operator()(_Uy&& __uy) const noexcept -> auto&& {
+      STDEXEC_ATTRIBUTE(always_inline)
+      constexpr auto operator()(_Uy&& __uy) const noexcept -> auto&& {
         return static_cast<typename _Cpcvref::template __f<std::remove_reference_t<_Uy>>>(__uy);
       }
     };
@@ -118,7 +119,8 @@ namespace stdexec {
 
   // A derived-to-base cast that works even when the base is not accessible from derived.
   template <class _Tp, class _Up>
-  STDEXEC_ATTRIBUTE((host, device)) auto __c_upcast(_Up&& u) noexcept -> __copy_cvref_t<_Up&&, _Tp>
+  STDEXEC_ATTRIBUTE(host, device)
+  auto __c_upcast(_Up&& u) noexcept -> __copy_cvref_t<_Up&&, _Tp>
     requires __decays_to<_Tp, _Tp>
   {
     static_assert(STDEXEC_IS_BASE_OF(_Tp, __decay_t<_Up>));
@@ -127,7 +129,8 @@ namespace stdexec {
 
   // A base-to-derived cast that works even when the base is not accessible from derived.
   template <class _Tp, class _Up>
-  STDEXEC_ATTRIBUTE((host, device)) auto __c_downcast(_Up&& u) noexcept -> __copy_cvref_t<_Up&&, _Tp>
+  STDEXEC_ATTRIBUTE(host, device)
+  auto __c_downcast(_Up&& u) noexcept -> __copy_cvref_t<_Up&&, _Tp>
     requires __decays_to<_Tp, _Tp>
   {
     static_assert(STDEXEC_IS_BASE_OF(__decay_t<_Up>, _Tp));

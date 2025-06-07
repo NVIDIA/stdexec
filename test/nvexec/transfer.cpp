@@ -42,15 +42,13 @@ namespace {
     exec::inline_scheduler cpu{};
     nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
 
-    auto snd = ex::schedule(cpu) //
-             | ex::then([=] {
+    auto snd = ex::schedule(cpu) | ex::then([=] {
                  if (!is_on_gpu()) {
                    return 1;
                  }
                  return 0;
                })
-             | ex::continues_on(gpu) //
-             | ex::then([=](int val) -> int {
+             | ex::continues_on(gpu) | ex::then([=](int val) -> int {
                  if (is_on_gpu() && val == 1) {
                    return 2;
                  }
@@ -67,15 +65,13 @@ namespace {
     exec::inline_scheduler cpu{};
     nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
 
-    auto snd = ex::schedule(gpu) //
-             | ex::then([=] {
+    auto snd = ex::schedule(gpu) | ex::then([=] {
                  if (is_on_gpu()) {
                    return 1;
                  }
                  return 0;
                })
-             | ex::continues_on(cpu) //
-             | ex::then([=](int val) -> int {
+             | ex::continues_on(cpu) | ex::then([=](int val) -> int {
                  if (!is_on_gpu() && val == 1) {
                    return 2;
                  }
@@ -90,8 +86,7 @@ namespace {
     nvexec::stream_context stream_ctx{};
     nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
 
-    auto snd = ex::transfer_just(gpu, 42) //
-             | ex::then([=](auto i) {
+    auto snd = ex::transfer_just(gpu, 42) | ex::then([=](auto i) {
                  if (is_on_gpu() && i == 42) {
                    return true;
                  }
@@ -106,8 +101,7 @@ namespace {
     nvexec::stream_context stream_ctx{};
     nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
 
-    auto snd = ex::transfer_just(gpu, move_only_t{42}) //
-             | ex::then([=](move_only_t&& val) noexcept {
+    auto snd = ex::transfer_just(gpu, move_only_t{42}) | ex::then([=](move_only_t&& val) noexcept {
                  if (is_on_gpu() && val.contains(42)) {
                    return true;
                  }

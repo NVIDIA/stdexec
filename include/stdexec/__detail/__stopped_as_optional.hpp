@@ -43,7 +43,9 @@ namespace stdexec {
         return __make_sexpr<stopped_as_optional_t>(__(), static_cast<_Sender&&>(__sndr));
       }
 
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()() const noexcept -> __binder_back<stopped_as_optional_t> {
+      STDEXEC_ATTRIBUTE(always_inline)
+
+      auto operator()() const noexcept -> __binder_back<stopped_as_optional_t> {
         return {{}, {}, {}};
       }
     };
@@ -56,7 +58,7 @@ namespace stdexec {
       template <class _Ty>
       using __set_error_t = completion_signatures<set_error_t(_Ty)>;
 
-      static constexpr auto get_completion_signatures = //
+      static constexpr auto get_completion_signatures =
         []<class _Self, class... _Env>(_Self&&, _Env&&...) noexcept
         requires __mvalid<__completion_signatures_of_t, __child_of<_Self>, _Env...>
       {
@@ -70,23 +72,25 @@ namespace stdexec {
             completion_signatures<set_error_t(std::exception_ptr)>,
             __set_value_t,
             __set_error_t,
-            completion_signatures<>>();
+            completion_signatures<>
+          >();
         } else {
           return _ERROR_<
             _WHAT_<>(_SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_ONE_ARGUMENT_),
             _IN_ALGORITHM_(stopped_as_optional_t),
-            _WITH_SENDER_<__child_of<_Self>>>();
+            _WITH_SENDER_<__child_of<_Self>>
+          >();
         }
       };
 
-      static constexpr auto get_state = //
+      static constexpr auto get_state =
         []<class _Self, class _Receiver>(_Self&&, _Receiver&) noexcept {
           static_assert(sender_expr_for<_Self, stopped_as_optional_t>);
           using _Value = __decay_t<__single_sender_value_t<__child_of<_Self>, env_of_t<_Receiver>>>;
           return __mtype<_Value>();
         };
 
-      static constexpr auto complete = //
+      static constexpr auto complete =
         []<class _State, class _Receiver, class _Tag, class... _Args>(
           __ignore,
           _State&,

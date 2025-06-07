@@ -150,45 +150,46 @@ namespace nvexec::_strm {
         template <class... _As>
         using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
 
-        static constexpr std::size_t value = //
-          __v<__gather_completions_of<
-            set_value_t,
-            Sender,
-            env_of_t<Receiver>,
-            __q<result_size_for_t>,
-            __q<max_in_pack>>>;
+        static constexpr std::size_t value = __v<__gather_completions_of<
+          set_value_t,
+          Sender,
+          env_of_t<Receiver>,
+          __q<result_size_for_t>,
+          __q<max_in_pack>
+        >>;
       };
 
       template <class Receiver>
-      using receiver_t = //
-        stdexec::__t<
-          _then::receiver_t<max_result_size<Receiver>::value, stdexec::__id<Receiver>, Fun>>;
+      using receiver_t = stdexec::__t<
+        _then::receiver_t<max_result_size<Receiver>::value, stdexec::__id<Receiver>, Fun>
+      >;
 
       template <class _Error>
       using _set_error_t = completion_signatures<set_error_t(_Error)>;
 
       template <class Self, class... Env>
-      using __error_completions_t = //
-        __meval<
-          __concat_completion_signatures,
-          __with_error_invoke_t<
-            __callable_error<"In nvexec::then(Sender, Function)..."_mstr>,
-            set_value_t,
-            Fun,
-            __copy_cvref_t<Self, Sender>,
-            Env...>,
-          completion_signatures<set_error_t(cudaError_t)>>;
+      using __error_completions_t = __meval<
+        __concat_completion_signatures,
+        __with_error_invoke_t<
+          __callable_error<"In nvexec::then(Sender, Function)..."_mstr>,
+          set_value_t,
+          Fun,
+          __copy_cvref_t<Self, Sender>,
+          Env...
+        >,
+        completion_signatures<set_error_t(cudaError_t)>
+      >;
 
       template <class... As>
       using _set_value_t = __set_value_invoke_t<Fun, As...>;
 
       template <class Self, class... Env>
-      using _completion_signatures_t = //
-        transform_completion_signatures<
-          __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-          __error_completions_t<Self, Env...>,
-          _set_value_t,
-          _set_error_t>;
+      using _completion_signatures_t = transform_completion_signatures<
+        __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
+        __error_completions_t<Self, Env...>,
+        _set_value_t,
+        _set_error_t
+      >;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>

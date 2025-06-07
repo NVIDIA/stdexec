@@ -44,8 +44,10 @@ namespace exec {
       transform_completion_signatures<
         __completion_signatures_of_t<_FinalSender, _Env...>,
         completion_signatures<set_error_t(std::exception_ptr)>,
-        __mconst<completion_signatures<>>::__f>, // swallow the final sender's value completions
-      __as_rvalues>;
+        __mconst<completion_signatures<>>::__f
+      >, // swallow the final sender's value completions
+      __as_rvalues
+    >;
 
     template <class _Receiver>
     struct __applier {
@@ -157,7 +159,8 @@ namespace exec {
         template <class... _As>
         void set_value(_As&&... __as) noexcept {
           try {
-            __op_->__store_result_and_start_next_op(stdexec::set_value, static_cast<_As&&>(__as)...);
+            __op_
+              ->__store_result_and_start_next_op(stdexec::set_value, static_cast<_As&&>(__as)...);
           } catch (...) {
             stdexec::set_error(
               static_cast<_Receiver&&>(__op_->__receiver_), std::current_exception());
@@ -167,8 +170,8 @@ namespace exec {
         template <class _Error>
         void set_error(_Error&& __err) noexcept {
           try {
-            __op_->__store_result_and_start_next_op(
-              stdexec::set_error, static_cast<_Error&&>(__err));
+            __op_
+              ->__store_result_and_start_next_op(stdexec::set_error, static_cast<_Error&&>(__err));
           } catch (...) {
             stdexec::set_error(
               static_cast<_Receiver&&>(__op_->__receiver_), std::current_exception());
@@ -244,7 +247,8 @@ namespace exec {
 
       template <class _Self, class _Receiver>
       using __op_t = stdexec::__t<
-        __operation_state<__cvref_id<_Self, _InitialSender>, __id<_FinalSender>, __id<_Receiver>>>;
+        __operation_state<__cvref_id<_Self, _InitialSender>, __id<_FinalSender>, __id<_Receiver>>
+      >;
 
       class __t {
         _InitialSender __initial_sndr_;
@@ -255,7 +259,7 @@ namespace exec {
         using sender_concept = stdexec::sender_t;
 
         template <__decays_to<_InitialSender> _Initial, __decays_to<_FinalSender> _Final>
-        __t(_Initial&& __initial, _Final&& __final) //
+        __t(_Initial&& __initial, _Final&& __final)
           noexcept(__nothrow_decay_copyable<_Initial> && __nothrow_decay_copyable<_Final>)
           : __initial_sndr_{static_cast<_Initial&&>(__initial)}
           , __final_sndr_{static_cast<_Final&&>(__final)} {
@@ -295,7 +299,8 @@ namespace exec {
       }
 
       template <sender _Final>
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Final&& __final) const -> __binder_back<finally_t, __decay_t<_Final>> {
+      STDEXEC_ATTRIBUTE(always_inline)
+      auto operator()(_Final&& __final) const -> __binder_back<finally_t, __decay_t<_Final>> {
         return {{static_cast<_Final&&>(__final)}, {}, {}};
       }
 
@@ -321,10 +326,8 @@ namespace exec {
 namespace stdexec {
   template <>
   struct __sexpr_impl<exec::finally_t> : __sexpr_defaults {
-    static constexpr auto get_completion_signatures = //
-      []<class _Sender>(_Sender&&) noexcept           //
-      -> __completion_signatures_of_t<                //
-        transform_sender_result_t<default_domain, _Sender, env<>>> {
+    static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
+      -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
     };
   };
 } // namespace stdexec

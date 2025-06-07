@@ -65,7 +65,8 @@ namespace {
     co_await reschedule_coroutine_on(scheduler2); // Transition to context2
     CHECK(get_id() == id2);                       // Now we are in context2
     // Child task inherits context2
-    co_await test_stickiness_for_two_single_thread_contexts_nested(scheduler1, scheduler2, id1, id2);
+    co_await test_stickiness_for_two_single_thread_contexts_nested(
+      scheduler1, scheduler2, id1, id2);
     CHECK(get_id() == id2); // Child task is done, we are still in context2
   } // Reschedules back to context1
 
@@ -164,7 +165,8 @@ namespace {
     auto id2 = 2;
     auto t = starts_on(
       scheduler1,
-      test_stickiness_for_two_single_thread_contexts_with_sender_(scheduler1, scheduler2, id1, id2));
+      test_stickiness_for_two_single_thread_contexts_with_sender_(
+        scheduler1, scheduler2, id1, id2));
     sync_wait(std::move(t) | then([&] { CHECK(get_id() == id1); }));
   }
 

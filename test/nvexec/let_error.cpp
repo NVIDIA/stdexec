@@ -26,16 +26,15 @@ namespace {
     flags_storage_t flags_storage{};
     auto flags = flags_storage.get();
 
-    auto snd =                                       //
-      ex::just_error(42)                             //
-      | ex::continues_on(stream_ctx.get_scheduler()) //
-      | ex::let_error([=](int err) {
-          if (is_on_gpu() && err == 42) {
-            flags.set();
-          }
+    auto snd = ex::just_error(42) | ex::continues_on(stream_ctx.get_scheduler())
+             | ex::let_error([=](int err) {
+                 if (is_on_gpu() && err == 42) {
+                   flags.set();
+                 }
 
-          return ex::just() | exec::write_attrs(ex::prop{ex::get_domain, nvexec::stream_domain()});
-        });
+                 return ex::just()
+                      | exec::write_attrs(ex::prop{ex::get_domain, nvexec::stream_domain()});
+               });
     stdexec::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
@@ -49,8 +48,7 @@ namespace {
     flags_storage_t<2> flags_storage{};
     auto flags = flags_storage.get();
 
-    auto snd = ex::just_error(42)                           //
-             | ex::continues_on(stream_ctx.get_scheduler()) //
+    auto snd = ex::just_error(42) | ex::continues_on(stream_ctx.get_scheduler())
              | ex::let_error([flags](int err) {
                  if (is_on_gpu() && err == 42) {
                    flags.set(0);
@@ -75,9 +73,8 @@ namespace {
     flags_storage_t flags_storage{};
     auto flags = flags_storage.get();
 
-    auto snd = ex::just_error(42) | ex::continues_on(stream_ctx.get_scheduler()) //
-             | a_sender([]() noexcept {})                                        //
-             | ex::let_error([=](int err) {
+    auto snd = ex::just_error(42) | ex::continues_on(stream_ctx.get_scheduler())
+             | a_sender([]() noexcept {}) | ex::let_error([=](int err) {
                  if (is_on_gpu() && err == 42) {
                    flags.set();
                  }

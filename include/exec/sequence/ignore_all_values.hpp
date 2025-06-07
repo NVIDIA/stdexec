@@ -45,7 +45,8 @@ namespace exec {
       void __emplace(_Args&&... __args) noexcept {
         int __expected = 0;
         if (__emplaced_.compare_exchange_strong(__expected, 1, std::memory_order_relaxed)) {
-          __result_.template emplace<__decayed_std_tuple<_Args...>>(static_cast<_Args&&>(__args)...);
+          __result_
+            .template emplace<__decayed_std_tuple<_Args...>>(static_cast<_Args&&>(__args)...);
           __emplaced_.store(2, std::memory_order_release);
         }
       }
@@ -74,7 +75,7 @@ namespace exec {
 
     template <class _ItemReceiver, class _ResultVariant>
     struct __item_operation_base {
-      STDEXEC_ATTRIBUTE((no_unique_address)) _ItemReceiver __receiver_;
+      STDEXEC_ATTRIBUTE(no_unique_address) _ItemReceiver __receiver_;
       __result_type<_ResultVariant>* __result_;
     };
 
@@ -96,7 +97,8 @@ namespace exec {
                      _ResultVariant,
                      __decayed_std_tuple<set_error_t, _Error>,
                      set_error_t,
-                     _Error>
+                     _Error
+                   >
                 && __callable<stdexec::set_stopped_t, _ItemReceiver>
         void set_error(_Error&& __error) noexcept {
           // store error and signal stop
@@ -108,7 +110,8 @@ namespace exec {
           requires __variant_emplaceable<
                      _ResultVariant,
                      __decayed_std_tuple<set_stopped_t>,
-                     set_stopped_t>
+                     set_stopped_t
+                   >
                 && __callable<set_stopped_t, _ItemReceiver>
         {
           // stop without error
@@ -131,9 +134,10 @@ namespace exec {
         using __id = __item_operation;
         connect_result_t<_Sender, __item_receiver_t> __op_;
 
-        __t(__result_type<_ResultVariant>* __parent, _Sender&& __sndr, _ItemReceiver __rcvr) noexcept(
-          __nothrow_decay_copyable<_ItemReceiver>
-          && __nothrow_connectable<_Sender, __item_receiver_t>)
+        __t(__result_type<_ResultVariant>* __parent, _Sender&& __sndr, _ItemReceiver __rcvr)
+          noexcept(
+            __nothrow_decay_copyable<_ItemReceiver>
+            && __nothrow_connectable<_Sender, __item_receiver_t>)
           : __base_type{static_cast<_ItemReceiver&&>(__rcvr), __parent}
           , __op_{stdexec::connect(static_cast<_Sender&&>(__sndr), __item_receiver_t{this})} {
         }
@@ -174,7 +178,7 @@ namespace exec {
 
     template <class _Receiver, class _ResultVariant>
     struct __operation_base : __result_type<_ResultVariant> {
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __receiver_;
+      STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __receiver_;
     };
 
     template <class _ReceiverId, class _ResultVariant>
@@ -187,7 +191,7 @@ namespace exec {
         __operation_base<_Receiver, _ResultVariant>* __op_;
 
         template <same_as<__t> _Self, sender _Item>
-        STDEXEC_MEMFN_DECL(auto set_next)(this _Self& __self, _Item&& __item) //
+        STDEXEC_MEMFN_DECL(auto set_next)(this _Self& __self, _Item&& __item)
           noexcept(__nothrow_decay_copyable<_Item>)
             -> stdexec::__t<__item_sender<__decay_t<_Item>, _ResultVariant>> {
           return {static_cast<_Item&&>(__item), __self.__op_};
@@ -214,17 +218,17 @@ namespace exec {
     };
 
     template <class _Tag>
-    using __result_tuple_fn = //
+    using __result_tuple_fn =
       __mcompose_q<__types, __mbind_front_q<__decayed_std_tuple, _Tag>::template __f>;
 
     template <class _Sigs>
-    using __result_variant_ = //
-      __transform_completion_signatures<
-        _Sigs,
-        __mconst<__types<>>::__f,
-        __mcompose_q<__types, __mbind_front_q<__decayed_std_tuple, set_error_t>::__f>::__f,
-        __types<std::tuple<set_stopped_t>>,
-        __mconcat<__qq<__nullable_std_variant>>::__f>;
+    using __result_variant_ = __transform_completion_signatures<
+      _Sigs,
+      __mconst<__types<>>::__f,
+      __mcompose_q<__types, __mbind_front_q<__decayed_std_tuple, set_error_t>::__f>::__f,
+      __types<std::tuple<set_stopped_t>>,
+      __mconcat<__qq<__nullable_std_variant>>::__f
+    >;
 
     template <class _Sender, class _Env>
     using __result_variant_t =
@@ -274,7 +278,7 @@ namespace exec {
       template <class _Child>
         requires receiver_of<_Receiver, __completion_sigs<_Child>>
               && sequence_sender_to<_Child, __receiver_t<_Child>>
-      auto operator()(__ignore, __ignore, _Child&& __child) //
+      auto operator()(__ignore, __ignore, _Child&& __child)
         noexcept(__nothrow_constructible_from<__operation_t<_Child>, _Child, _Receiver>)
           -> __operation_t<_Child> {
         return {static_cast<_Child&&>(__child), static_cast<_Receiver&&>(__rcvr_)};
@@ -289,7 +293,9 @@ namespace exec {
           __domain, __make_sexpr<ignore_all_values_t>(__(), static_cast<_Sender&&>(__sndr)));
       }
 
-      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto operator()() const noexcept -> __binder_back<ignore_all_values_t> {
+      STDEXEC_ATTRIBUTE(always_inline)
+
+      constexpr auto operator()() const noexcept -> __binder_back<ignore_all_values_t> {
         return {{}, {}, {}};
       }
     };
@@ -298,7 +304,7 @@ namespace exec {
       template <class _Sequence, class... _Env>
       using __completion_sigs = __sequence_completion_signatures_of_t<_Sequence, _Env...>;
 
-      static constexpr auto get_completion_signatures = //
+      static constexpr auto get_completion_signatures =
         []<class _Sender, class... _Env>(_Sender&&, _Env&&...)
         -> __completion_sigs<__child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
@@ -311,12 +317,15 @@ namespace exec {
       template <class _Child, class _Receiver>
       using __receiver_t = __t<__receiver<__id<_Receiver>, _ResultVariant<_Child, _Receiver>>>;
 
-      static constexpr auto connect =                                             //
-        []<class _Sender, receiver _Receiver>(_Sender&& __sndr, _Receiver __rcvr) //
-        noexcept(__nothrow_callable<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>)
+      static constexpr auto connect =
+        []<class _Sender, receiver _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(
+          __nothrow_callable<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>)
         -> __call_result_t<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>
         requires receiver_of<_Receiver, __completion_sigs<__child_of<_Sender>, env_of_t<_Receiver>>>
-              && sequence_sender_to<__child_of<_Sender>, __receiver_t<__child_of<_Sender>, _Receiver>>
+              && sequence_sender_to<
+                   __child_of<_Sender>,
+                   __receiver_t<__child_of<_Sender>, _Receiver>
+              >
       {
         static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
         return __sexpr_apply(static_cast<_Sender&&>(__sndr), __connect_fn<_Receiver>{__rcvr});

@@ -134,7 +134,7 @@ namespace stdexec {
 
         template <class _Awaitable>
           requires tag_invocable<as_awaitable_t, _Awaitable, __t&>
-        auto await_transform(_Awaitable&& __awaitable) //
+        auto await_transform(_Awaitable&& __awaitable)
           noexcept(nothrow_tag_invocable<as_awaitable_t, _Awaitable, __t&>)
             -> tag_invoke_result_t<as_awaitable_t, _Awaitable, __t&> {
           return tag_invoke(as_awaitable, static_cast<_Awaitable&&>(__awaitable), *this);
@@ -208,7 +208,7 @@ namespace stdexec {
       }
 
       template <receiver _Receiver, class _Awaitable>
-      using __completions_t = //
+      using __completions_t =
         completion_signatures<
           __minvoke< // set_value_t() or set_value_t(T)
             __mremove<void, __qf<set_value_t>>,

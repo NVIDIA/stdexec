@@ -38,28 +38,27 @@ namespace exec {
     friend JustTag;
     using _set_tag_t = decltype(detail::_just_from(static_cast<JustTag*>(nullptr)));
 
-    using _diag_t = //
-      stdexec::__if_c<
-        STDEXEC_IS_SAME(_set_tag_t, stdexec::set_error_t),
-        AN_ERROR_COMPLETION_MUST_HAVE_EXACTLY_ONE_ERROR_ARGUMENT,
-        A_STOPPED_COMPLETION_MUST_HAVE_NO_ARGUMENTS>;
+    using _diag_t = stdexec::__if_c<
+      STDEXEC_IS_SAME(_set_tag_t, stdexec::set_error_t),
+      AN_ERROR_COMPLETION_MUST_HAVE_EXACTLY_ONE_ERROR_ARGUMENT,
+      A_STOPPED_COMPLETION_MUST_HAVE_NO_ARGUMENTS
+    >;
 
     template <class... Ts>
-    using _error_t = //
-      stdexec::_ERROR_<
-        stdexec::_WHAT_<>(_diag_t),
-        stdexec::_WHERE_(stdexec::_IN_ALGORITHM_, JustTag),
-        stdexec::_WITH_COMPLETION_SIGNATURE_<_set_tag_t(Ts...)>>;
+    using _error_t = stdexec::_ERROR_<
+      stdexec::_WHAT_<>(_diag_t),
+      stdexec::_WHERE_(stdexec::_IN_ALGORITHM_, JustTag),
+      stdexec::_WITH_COMPLETION_SIGNATURE_<_set_tag_t(Ts...)>
+    >;
 
     struct _probe_fn {
       template <class... Ts>
-      auto operator()(Ts&&... ts) const noexcept //
-        -> _error_t<Ts...>;
+      auto operator()(Ts&&... ts) const noexcept -> _error_t<Ts...>;
 
       template <class... Ts>
         requires stdexec::__sigs::__is_compl_sig<_set_tag_t(Ts...)>
-      auto operator()(Ts&&... ts) const noexcept //
-        -> stdexec::completion_signatures<_set_tag_t(Ts...)> {
+      auto
+        operator()(Ts&&... ts) const noexcept -> stdexec::completion_signatures<_set_tag_t(Ts...)> {
         return {};
       }
     };
@@ -69,7 +68,8 @@ namespace exec {
       Rcvr& _rcvr;
 
       template <class... Ts>
-      STDEXEC_ATTRIBUTE((always_inline, host, device)) void operator()(Ts&&... ts) const noexcept {
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      void operator()(Ts&&... ts) const noexcept {
         _set_tag_t()(static_cast<Rcvr&&>(_rcvr), static_cast<Ts&&>(ts)...);
       }
     };
@@ -81,7 +81,7 @@ namespace exec {
       Rcvr _rcvr;
       Fn _fn;
 
-      STDEXEC_ATTRIBUTE((host, device)) void start() & noexcept {
+      STDEXEC_ATTRIBUTE(host, device) void start() & noexcept {
         if constexpr (stdexec::__nothrow_callable<Fn, _complete_fn<Rcvr>>) {
           static_cast<Fn&&>(_fn)(_complete_fn<Rcvr>{_rcvr});
         } else {
@@ -101,48 +101,52 @@ namespace exec {
 
     struct _throw_completions {
       template <class Fn>
-      using __f =                                //
-        stdexec::__concat_completion_signatures< //
-          stdexec::__call_result_t<Fn, _probe_fn>,
-          stdexec::__eptr_completion>;
+      using __f = stdexec::__concat_completion_signatures<
+        stdexec::__call_result_t<Fn, _probe_fn>,
+        stdexec::__eptr_completion
+      >;
     };
 
     template <class Fn>
-    using _completions =       //
-      stdexec::__minvoke_if_c< //
-        stdexec::__nothrow_callable<Fn, _probe_fn>,
-        _nothrow_completions,
-        _throw_completions,
-        Fn>;
+    using _completions = stdexec::__minvoke_if_c<
+      stdexec::__nothrow_callable<Fn, _probe_fn>,
+      _nothrow_completions,
+      _throw_completions,
+      Fn
+    >;
 
     template <class Fn>
     struct _sndr_base {
       using sender_concept = stdexec::sender_t;
       using completion_signatures = _completions<Fn>;
 
-      STDEXEC_ATTRIBUTE((no_unique_address)) JustTag _tag;
+      STDEXEC_ATTRIBUTE(no_unique_address) JustTag _tag;
       Fn _fn;
 
       template <class Rcvr>
-      STDEXEC_ATTRIBUTE((host, device)) auto connect(Rcvr rcvr) && //
-        noexcept(stdexec::__nothrow_decay_copyable<Rcvr, Fn>) -> _opstate<Rcvr, Fn> {
+      STDEXEC_ATTRIBUTE(host, device)
+      auto connect(Rcvr rcvr) && noexcept(stdexec::__nothrow_decay_copyable<Rcvr, Fn>)
+        -> _opstate<Rcvr, Fn> {
         return _opstate<Rcvr, Fn>{static_cast<Rcvr&&>(rcvr), static_cast<Fn&&>(_fn)};
       }
 
       template <class Rcvr>
-      STDEXEC_ATTRIBUTE((host, device)) auto connect(Rcvr rcvr) const & //
-        noexcept(stdexec::__nothrow_decay_copyable<Rcvr, Fn const &>) -> _opstate<Rcvr, Fn> {
+      STDEXEC_ATTRIBUTE(host, device)
+      auto connect(Rcvr rcvr) const & noexcept(stdexec::__nothrow_decay_copyable<Rcvr, Fn const &>)
+        -> _opstate<Rcvr, Fn> {
         return _opstate<Rcvr, Fn>{static_cast<Rcvr&&>(rcvr), _fn};
       }
 
       template <class Rcvr>
-      STDEXEC_ATTRIBUTE((host, device)) auto submit(Rcvr rcvr) && noexcept -> void {
+      STDEXEC_ATTRIBUTE(host, device)
+      auto submit(Rcvr rcvr) && noexcept -> void {
         auto op = static_cast<_sndr_base&&>(*this).connect(static_cast<Rcvr&&>(rcvr));
         stdexec::start(op);
       }
 
       template <class Rcvr>
-      STDEXEC_ATTRIBUTE((host, device)) auto submit(Rcvr rcvr) const & noexcept -> void {
+      STDEXEC_ATTRIBUTE(host, device)
+      auto submit(Rcvr rcvr) const & noexcept -> void {
         auto op = this->connect(static_cast<Rcvr&&>(rcvr));
         stdexec::start(op);
       }
@@ -153,7 +157,8 @@ namespace exec {
 
    public:
     template <class Fn>
-    STDEXEC_ATTRIBUTE((always_inline, host, device)) auto operator()(Fn fn) const noexcept {
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    auto operator()(Fn fn) const noexcept {
       if constexpr (stdexec::__callable<Fn, _probe_fn>) {
         using _completions = stdexec::__call_result_t<Fn, _probe_fn>;
         static_assert(

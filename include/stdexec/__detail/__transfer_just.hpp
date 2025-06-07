@@ -77,15 +77,12 @@ namespace stdexec {
     }
 
     struct __transfer_just_impl : __sexpr_defaults {
-      static constexpr auto get_attrs = //
-        []<class _Data>(const _Data& __data) noexcept {
-          return __data.apply(__make_attrs_fn(), __data);
-        };
+      static constexpr auto get_attrs = []<class _Data>(const _Data& __data) noexcept {
+        return __data.apply(__make_attrs_fn(), __data);
+      };
 
-      static constexpr auto get_completion_signatures = //
-        []<class _Sender>(_Sender&&) noexcept           //
-        -> __completion_signatures_of_t<                //
-          transform_sender_result_t<default_domain, _Sender, env<>>> {
+      static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
+        -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
       };
     };
   } // namespace __transfer_just

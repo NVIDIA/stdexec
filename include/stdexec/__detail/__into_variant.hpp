@@ -48,11 +48,11 @@ namespace stdexec {
       completion_signatures<set_value_t(_Variant), set_error_t(std::exception_ptr)>;
 
     template <class _Sender, class... _Env>
-    using __completions = //
-      transform_completion_signatures<
-        __completion_signatures_of_t<_Sender, _Env...>,
-        __meval<__variant_completions, __variant_t<_Sender, _Env...>>,
-        __mconst<completion_signatures<>>::__f>;
+    using __completions = transform_completion_signatures<
+      __completion_signatures_of_t<_Sender, _Env...>,
+      __meval<__variant_completions, __variant_t<_Sender, _Env...>>,
+      __mconst<completion_signatures<>>::__f
+    >;
 
     struct into_variant_t {
       template <sender _Sender>
@@ -62,19 +62,21 @@ namespace stdexec {
           __domain, __make_sexpr<into_variant_t>(__(), static_cast<_Sender&&>(__sndr)));
       }
 
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()() const noexcept -> __binder_back<into_variant_t> {
+      STDEXEC_ATTRIBUTE(always_inline)
+
+      auto operator()() const noexcept -> __binder_back<into_variant_t> {
         return {{}, {}, {}};
       }
     };
 
     struct __into_variant_impl : __sexpr_defaults {
-      static constexpr auto get_state = //
+      static constexpr auto get_state =
         []<class _Self, class _Receiver>(_Self&&, _Receiver&) noexcept {
           using __variant_t = value_types_of_t<__child_of<_Self>, env_of_t<_Receiver>>;
           return __mtype<__variant_t>();
         };
 
-      static constexpr auto complete = //
+      static constexpr auto complete =
         []<class _State, class _Receiver, class _Tag, class... _Args>(
           __ignore,
           _State,
@@ -95,8 +97,8 @@ namespace stdexec {
         }
       };
 
-      static constexpr auto get_completion_signatures =             //
-        []<class _Self, class... _Env>(_Self&&, _Env&&...) noexcept //
+      static constexpr auto get_completion_signatures =
+        []<class _Self, class... _Env>(_Self&&, _Env&&...) noexcept
         -> __completions<__child_of<_Self>, _Env...> {
         static_assert(sender_expr_for<_Self, into_variant_t>);
         return {};

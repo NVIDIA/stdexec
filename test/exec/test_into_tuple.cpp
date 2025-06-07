@@ -35,14 +35,16 @@ namespace {
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<void_sender, ex::env<>>,
-        completion_signatures<set_error_t(std::exception_ptr), set_value_t(std::tuple<>)>>);
+        completion_signatures<set_error_t(std::exception_ptr), set_value_t(std::tuple<>)>
+      >);
 
     using ints_sender = result_of_t<exec::into_tuple, a_sender_of<set_value_t(int&, int)>>;
     STATIC_REQUIRE(sender_in<ints_sender, ex::env<>>);
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<ints_sender, ex::env<>>,
-        completion_signatures<set_error_t(std::exception_ptr), set_value_t(std::tuple<int, int>)>>);
+        completion_signatures<set_error_t(std::exception_ptr), set_value_t(std::tuple<int, int>)>
+      >);
   }
 
   TEST_CASE(

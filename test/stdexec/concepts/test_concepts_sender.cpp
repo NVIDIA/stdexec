@@ -88,10 +88,11 @@ namespace {
 
   struct my_sender0 {
     using sender_concept = stdexec::sender_t;
-    using completion_signatures = ex::completion_signatures< //
-      ex::set_value_t(),                                     //
-      ex::set_error_t(std::exception_ptr),                   //
-      ex::set_stopped_t()>;
+    using completion_signatures = ex::completion_signatures<
+      ex::set_value_t(),
+      ex::set_error_t(std::exception_ptr),
+      ex::set_stopped_t()
+    >;
 
     friend auto tag_invoke(ex::connect_t, my_sender0, empty_recv::recv0&&) -> oper {
       return {};
@@ -143,10 +144,11 @@ namespace {
 
   struct my_sender_int {
     using sender_concept = stdexec::sender_t;
-    using completion_signatures = ex::completion_signatures< //
-      ex::set_value_t(int),                                  //
-      ex::set_error_t(std::exception_ptr),                   //
-      ex::set_stopped_t()>;
+    using completion_signatures = ex::completion_signatures<
+      ex::set_value_t(int),
+      ex::set_error_t(std::exception_ptr),
+      ex::set_stopped_t()
+    >;
 
     friend auto tag_invoke(ex::connect_t, my_sender_int, empty_recv::recv_int&&) -> oper {
       return {};
@@ -197,10 +199,11 @@ namespace {
 
   struct multival_sender {
     using sender_concept = stdexec::sender_t;
-    using completion_signatures = ex::completion_signatures< //
-      ex::set_value_t(int, double),                          //
-      ex::set_value_t(short, long),                          //
-      ex::set_error_t(std::exception_ptr)>;
+    using completion_signatures = ex::completion_signatures<
+      ex::set_value_t(int, double),
+      ex::set_value_t(short, long),
+      ex::set_error_t(std::exception_ptr)
+    >;
 
     friend auto tag_invoke(ex::connect_t, multival_sender, empty_recv::recv_int&&) -> oper {
       return {};
@@ -218,10 +221,11 @@ namespace {
 
   struct ec_sender {
     using sender_concept = stdexec::sender_t;
-    using completion_signatures = ex::completion_signatures< //
-      ex::set_value_t(),                                     //
-      ex::set_error_t(std::exception_ptr),                   //
-      ex::set_error_t(int)>;
+    using completion_signatures = ex::completion_signatures<
+      ex::set_value_t(),
+      ex::set_error_t(std::exception_ptr),
+      ex::set_error_t(int)
+    >;
 
     friend auto tag_invoke(ex::connect_t, ec_sender, empty_recv::recv_int&&) -> oper {
       return {};
@@ -239,10 +243,11 @@ namespace {
 
   struct my_r5_sender0 {
     using sender_concept = stdexec::sender_t;
-    using completion_signatures = ex::completion_signatures< //
-      ex::set_value_t(),                                     //
-      ex::set_error_t(std::exception_ptr),                   //
-      ex::set_stopped_t()>;
+    using completion_signatures = ex::completion_signatures<
+      ex::set_value_t(),
+      ex::set_error_t(std::exception_ptr),
+      ex::set_stopped_t()
+    >;
 
     friend auto tag_invoke(ex::connect_t, my_r5_sender0, empty_recv::recv0&&) -> oper {
       return {};
@@ -254,7 +259,8 @@ namespace {
     static_assert(ex::sender<my_r5_sender0>);
     static_assert(std::same_as<
                   decltype(ex::get_completion_signatures(my_r5_sender0{}, ex::env<>{})),
-                  my_r5_sender0::completion_signatures>);
+                  my_r5_sender0::completion_signatures
+    >);
   }
 
 #if !STDEXEC_NVHPC()

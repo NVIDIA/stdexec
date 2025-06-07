@@ -36,32 +36,34 @@ namespace stdexec {
   namespace __detail {
     struct __transform_env {
       template <class _Domain, class _Sender, class _Env>
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Domain __dom, _Sender&& __sndr, _Env&& __env) const noexcept //
-        -> decltype(auto) {
+      STDEXEC_ATTRIBUTE(always_inline)
+      auto
+        operator()(_Domain __dom, _Sender&& __sndr, _Env&& __env) const noexcept -> decltype(auto) {
         if constexpr (__detail::__has_transform_env<_Domain, _Sender, _Env>) {
           return __dom.transform_env(static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env));
         } else {
-          return default_domain().transform_env(
-            static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env));
+          return default_domain()
+            .transform_env(static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env));
         }
       }
     };
 
     struct __transform_sender_1 {
       template <class _Domain, class _Sender, class... _Env>
-      STDEXEC_ATTRIBUTE((always_inline)) static constexpr auto __is_nothrow() noexcept -> bool {
+      STDEXEC_ATTRIBUTE(always_inline)
+      static constexpr auto __is_nothrow() noexcept -> bool {
         if constexpr (__detail::__has_transform_sender<_Domain, _Sender, _Env...>) {
-          return noexcept(__declval<_Domain&>().transform_sender(
-            __declval<_Sender>(), __declval<const _Env&>()...));
+          return noexcept(__declval<_Domain&>()
+                            .transform_sender(__declval<_Sender>(), __declval<const _Env&>()...));
         } else {
-          return //
-            noexcept(
-              default_domain().transform_sender(__declval<_Sender>(), __declval<const _Env&>()...));
+          return noexcept(default_domain()
+                            .transform_sender(__declval<_Sender>(), __declval<const _Env&>()...));
         }
       }
 
       template <class _Domain, class _Sender, class... _Env>
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const
+      STDEXEC_ATTRIBUTE(always_inline)
+      auto operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const
         noexcept(__is_nothrow<_Domain, _Sender, const _Env&...>()) -> decltype(auto) {
         if constexpr (__detail::__has_transform_sender<_Domain, _Sender, _Env...>) {
           return __dom.transform_sender(static_cast<_Sender&&>(__sndr), __env...);
@@ -76,7 +78,8 @@ namespace stdexec {
 
     struct __transform_sender {
       template <class _Self = __transform_sender, class _Domain, class _Sender, class... _Env>
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const
+      STDEXEC_ATTRIBUTE(always_inline)
+      auto operator()(_Domain __dom, _Sender&& __sndr, const _Env&... __env) const
         noexcept(__nothrow_callable<__transform_sender_1, _Domain, _Sender, const _Env&...>)
           -> decltype(auto) {
         using _Sender2 = __call_result_t<__transform_sender_1, _Domain, _Sender, const _Env&...>;
@@ -189,14 +192,15 @@ namespace stdexec {
   inline constexpr struct apply_sender_t {
     template <class _Domain, class _Tag, class _Sender, class... _Args>
       requires __has_implementation_for<_Tag, _Domain, _Sender, _Args...>
-    STDEXEC_ATTRIBUTE((always_inline)) auto
+    STDEXEC_ATTRIBUTE(always_inline)
+    auto
       operator()(_Domain __dom, _Tag, _Sender&& __sndr, _Args&&... __args) const -> decltype(auto) {
       if constexpr (__detail::__has_apply_sender<_Domain, _Tag, _Sender, _Args...>) {
-        return __dom.apply_sender(
-          _Tag(), static_cast<_Sender&&>(__sndr), static_cast<_Args&&>(__args)...);
+        return __dom
+          .apply_sender(_Tag(), static_cast<_Sender&&>(__sndr), static_cast<_Args&&>(__args)...);
       } else {
-        return default_domain().apply_sender(
-          _Tag(), static_cast<_Sender&&>(__sndr), static_cast<_Args&&>(__args)...);
+        return default_domain()
+          .apply_sender(_Tag(), static_cast<_Sender&&>(__sndr), static_cast<_Args&&>(__args)...);
       }
     }
   } apply_sender{};

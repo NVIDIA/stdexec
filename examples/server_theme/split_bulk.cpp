@@ -132,11 +132,10 @@ auto handle_edge_detection_request(const http_request& req) -> ex::sender auto {
 
   // Apply the three methods of edge detection on the same input image, in parallel.
   // Then, join the results and generate the HTTP response
-  return ex::when_all(                              //
-           multi_shot_img | ex::then(apply_canny),  //
-           multi_shot_img | ex::then(apply_sobel),  //
-           multi_shot_img | ex::then(apply_prewitt) //
-           )
+  return ex::when_all(
+           multi_shot_img | ex::then(apply_canny),
+           multi_shot_img | ex::then(apply_sobel),
+           multi_shot_img | ex::then(apply_prewitt))
        |
          // transform the resulting 3 images into an HTTP response
          ex::then(img3_to_response);
@@ -180,8 +179,7 @@ auto main() -> int {
     ex::sender auto snd = handle_edge_detection_request(req);
 
     // Pack this into a simplified flow and execute it asynchronously
-    ex::sender auto action = std::move(snd) //
-                           | ex::then([](http_response resp) {
+    ex::sender auto action = std::move(snd) | ex::then([](http_response resp) {
                                std::ostringstream oss;
                                oss << "Sending response: " << resp.status_code_ << " / "
                                    << resp.body_ << "\n";
@@ -199,8 +197,7 @@ auto main() -> int {
     ex::sender auto snd = handle_multi_blur_request(req);
 
     // Pack this into a simplified flow and execute it asynchronously
-    ex::sender auto action = std::move(snd) //
-                           | ex::then([](http_response resp) {
+    ex::sender auto action = std::move(snd) | ex::then([](http_response resp) {
                                std::ostringstream oss;
                                oss << "Sending response: " << resp.status_code_ << " / "
                                    << resp.body_ << "\n";

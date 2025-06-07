@@ -62,24 +62,24 @@ namespace {
 
   TEST_CASE("repeat_n works with with zero repetitions", "[adaptors][repeat_n]") {
     std::size_t count = 0;
-    ex::sender auto snd = just() //
-                        | then([&count] { ++count; }) | exec::repeat_n(0) | then([] { return 1; });
+    ex::sender auto snd = just() | then([&count] { ++count; }) | exec::repeat_n(0)
+                        | then([] { return 1; });
     wait_for_value(std::move(snd), 1);
     CHECK(count == 0);
   }
 
   TEST_CASE("repeat_n works with a single repetition", "[adaptors][repeat_n]") {
     std::size_t count = 0;
-    ex::sender auto snd = just() //
-                        | then([&count] { ++count; }) | exec::repeat_n(1) | then([] { return 1; });
+    ex::sender auto snd = just() | then([&count] { ++count; }) | exec::repeat_n(1)
+                        | then([] { return 1; });
     wait_for_value(std::move(snd), 1);
     CHECK(count == 1);
   }
 
   TEST_CASE("repeat_n works with multiple repetitions", "[adaptors][repeat_n]") {
     std::size_t count = 0;
-    ex::sender auto snd = just() //
-                        | then([&count] { ++count; }) | exec::repeat_n(3) | then([] { return 1; });
+    ex::sender auto snd = just() | then([&count] { ++count; }) | exec::repeat_n(3)
+                        | then([] { return 1; });
     wait_for_value(std::move(snd), 1);
     CHECK(count == 3);
   }
@@ -124,10 +124,9 @@ namespace {
   TEST_CASE("repeat_n works when changing threads", "[adaptors][repeat_n]") {
     exec::static_thread_pool pool{2};
     bool called{false};
-    sender auto snd = exec::on(
-      pool.get_scheduler(), //
-      ex::just()            //
-        | ex::then([&] { called = true; }) | exec::repeat_n(10));
+    sender auto snd = exec::on(pool.get_scheduler(), ex::just() | ex::then([&] {
+                                                       called = true;
+                                                     }) | exec::repeat_n(10));
     stdexec::sync_wait(std::move(snd));
     REQUIRE(called);
   }

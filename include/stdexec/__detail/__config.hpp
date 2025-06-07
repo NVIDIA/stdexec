@@ -143,9 +143,9 @@ namespace __coro = std::experimental;
 // For portably declaring attributes on functions and types
 //   Usage:
 //
-//   STDEXEC_ATTRIBUTE((attr1, attr2, ...))
+//   STDEXEC_ATTRIBUTE(attr1, attr2, ...)
 //   void foo() { ... }
-#define STDEXEC_ATTRIBUTE(_XP) STDEXEC_FOR_EACH(STDEXEC__ATTRIBUTE_DETAIL, STDEXEC_EXPAND _XP)
+#define STDEXEC_ATTRIBUTE(...) STDEXEC_FOR_EACH(STDEXEC__ATTRIBUTE_DETAIL, __VA_ARGS__)
 #define STDEXEC__ATTRIBUTE_DETAIL(_ATTR)                                                           \
   STDEXEC_CAT(STDEXEC_ATTR_WHICH_, STDEXEC_CHECK(STDEXEC_CAT(STDEXEC_ATTR_, _ATTR)))(_ATTR)
 
@@ -382,7 +382,7 @@ namespace stdexec {
 #if STDEXEC_GCC()
 #  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
 #else
-#  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS STDEXEC_ATTRIBUTE((no_unique_address))
+#  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS STDEXEC_ATTRIBUTE(no_unique_address)
 #endif
 
 #if STDEXEC_NVHPC()
@@ -490,7 +490,7 @@ namespace stdexec {
 
 // We need to treat host and device separately
 #if STDEXEC_CUDA() && defined(__CUDA_ARCH__) && !STDEXEC_NVHPC()
-#  define STDEXEC_GLOBAL_CONSTANT STDEXEC_ATTRIBUTE((device)) constexpr
+#  define STDEXEC_GLOBAL_CONSTANT STDEXEC_ATTRIBUTE(device) constexpr
 #else
 #  define STDEXEC_GLOBAL_CONSTANT inline constexpr
 #endif

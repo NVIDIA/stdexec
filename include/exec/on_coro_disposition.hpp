@@ -30,17 +30,17 @@ namespace exec {
   namespace __on_coro_disp {
     using namespace stdexec;
 
-    using __any_scheduler =                                                      //
-      any_receiver_ref<                                                          //
-        completion_signatures<set_error_t(std::exception_ptr), set_stopped_t()>> //
-      ::any_sender<>::any_scheduler<>;
+    using __any_scheduler = any_receiver_ref<
+      completion_signatures<set_error_t(std::exception_ptr), set_stopped_t()>
+    >::any_sender<>::any_scheduler<>;
 
     template <class _Promise>
-    concept __promise_with_disposition =              //
-      __at_coro_exit::__has_continuation<_Promise> && //
-      requires(_Promise& __promise) {
-        { __promise.disposition() } -> convertible_to<task_disposition>;
-      };
+    concept __promise_with_disposition = __at_coro_exit::__has_continuation<_Promise>
+                                      && requires(_Promise& __promise) {
+                                           {
+                                             __promise.disposition()
+                                           } -> convertible_to<task_disposition>;
+                                         };
 
     struct __get_disposition {
       task_disposition __disposition_;
@@ -52,8 +52,7 @@ namespace exec {
       template <class _Promise>
       auto await_suspend(__coro::coroutine_handle<_Promise> __h) noexcept -> bool {
         auto& __promise = __h.promise();
-        __disposition_ = //
-          __promise.__get_disposition_callback_(__promise.__parent_.address());
+        __disposition_ = __promise.__get_disposition_callback_(__promise.__parent_.address());
         return false;
       }
 
@@ -85,12 +84,11 @@ namespace exec {
       template <__promise_with_disposition _Promise>
       auto await_suspend(__coro::coroutine_handle<_Promise> __parent) noexcept -> bool {
         __coro_.promise().__parent_ = __parent;
-        __coro_.promise().__get_disposition_callback_ = //
-          [](void* __parent) noexcept {
-            _Promise& __promise =
-              __coro::coroutine_handle<_Promise>::from_address(__parent).promise();
-            return __promise.disposition();
-          };
+        __coro_.promise().__get_disposition_callback_ = [](void* __parent) noexcept {
+          _Promise& __promise = __coro::coroutine_handle<_Promise>::from_address(__parent)
+                                  .promise();
+          return __promise.disposition();
+        };
         __coro_.promise().__scheduler_ = get_scheduler(get_env(__parent.promise()));
         __coro_.promise().set_continuation(__parent.promise().continuation());
         __parent.promise().set_continuation(__coro_);

@@ -29,10 +29,9 @@ namespace exec {
   namespace __at_coro_exit {
     using namespace stdexec;
 
-    using __any_scheduler =                                                      //
-      any_receiver_ref<                                                          //
-        completion_signatures<set_error_t(std::exception_ptr), set_stopped_t()>> //
-      ::any_sender<>::any_scheduler<>;
+    using __any_scheduler = any_receiver_ref<
+      completion_signatures<set_error_t(std::exception_ptr), set_stopped_t()>
+    >::any_sender<>::any_scheduler<>;
 
     struct __die_on_stop_t {
       template <class _Receiver>
@@ -72,10 +71,10 @@ namespace exec {
       template <class _Sender>
       struct __sender_id {
         template <class... _Env>
-        using __completion_signatures = //
-          __mapply<
-            __mremove<set_stopped_t(), __q<completion_signatures>>,
-            __completion_signatures_of_t<_Sender, _Env...>>;
+        using __completion_signatures = __mapply<
+          __mremove<set_stopped_t(), __q<completion_signatures>>,
+          __completion_signatures_of_t<_Sender, _Env...>
+        >;
 
         struct __t {
           using __id = __sender_id;
@@ -120,11 +119,10 @@ namespace exec {
     inline constexpr __die_on_stop_t __die_on_stop;
 
     template <class _Promise>
-    concept __has_continuation = //
-      requires(_Promise& __promise, __continuation_handle<> __c) {
-        { __promise.continuation() } -> convertible_to<__continuation_handle<>>;
-        { __promise.set_continuation(__c) };
-      };
+    concept __has_continuation = requires(_Promise& __promise, __continuation_handle<> __c) {
+      { __promise.continuation() } -> convertible_to<__continuation_handle<>>;
+      { __promise.set_continuation(__c) };
+    };
 
     template <class... _Ts>
     class [[nodiscard]] __task {

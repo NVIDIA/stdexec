@@ -122,11 +122,11 @@ namespace nvexec::_strm {
       using _set_value_t = completion_signatures<set_value_t(Tys...)>;
 
       template <class Self, class... Env>
-      using _completion_signatures_t = //
-        transform_completion_signatures<
-          __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-          _set_error_t,
-          _set_value_t>;
+      using _completion_signatures_t = transform_completion_signatures<
+        __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
+        _set_error_t,
+        _set_value_t
+      >;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
@@ -137,7 +137,8 @@ namespace nvexec::_strm {
           static_cast<Receiver&&>(rcvr),
           [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
             -> receiver_t<Receiver> {
-            return receiver_t<Receiver>(self.shape_, static_cast<Fun&&>(self.fun_), stream_provider);
+            return receiver_t<Receiver>(
+              self.shape_, static_cast<Fun&&>(self.fun_), stream_provider);
           });
       }
 
@@ -178,7 +179,7 @@ namespace nvexec::_strm {
 
         operation_t<CvrefSenderId, ReceiverId, Shape, Fun>& op_state_;
 
-        static auto even_share(Shape n, std::size_t rank, std::size_t size) noexcept //
+        static auto even_share(Shape n, std::size_t rank, std::size_t size) noexcept
           -> std::pair<Shape, Shape> {
           const auto avg_per_thread = n / size;
           const auto n_big_share = avg_per_thread + 1;
@@ -355,26 +356,33 @@ namespace nvexec::_strm {
       using _set_value_t = completion_signatures<set_value_t(Tys...)>;
 
       template <class Self, class... Env>
-      using _completion_signatures_t = //
-        transform_completion_signatures<
-          __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-          _set_error_t,
-          _set_value_t>;
+      using _completion_signatures_t = transform_completion_signatures<
+        __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
+        _set_error_t,
+        _set_value_t
+      >;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-      static auto connect(Self&& self, Receiver&& rcvr) //
-        -> multi_gpu_bulk::operation_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun> {
+      static auto connect(Self&& self, Receiver&& rcvr) -> multi_gpu_bulk::operation_t<
+        __cvref_id<Self, Sender>,
+        stdexec::__id<Receiver>,
+        Shape,
+        Fun
+      > {
         auto sch = stdexec::get_completion_scheduler<set_value_t>(stdexec::get_env(self.sndr_));
         context_state_t context_state = sch.context_state_;
-        return multi_gpu_bulk::
-          operation_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun>(
-            self.num_devices_,
-            static_cast<Self&&>(self).sndr_,
-            static_cast<Receiver&&>(rcvr),
-            self.shape_,
-            self.fun_,
-            context_state);
+        return multi_gpu_bulk::operation_t<
+          __cvref_id<Self, Sender>,
+          stdexec::__id<Receiver>,
+          Shape,
+          Fun
+        >(self.num_devices_,
+          static_cast<Self&&>(self).sndr_,
+          static_cast<Receiver&&>(rcvr),
+          self.shape_,
+          self.fun_,
+          context_state);
       }
 
       template <__decays_to<__t> Self, class... Env>
@@ -418,7 +426,8 @@ namespace stdexec::__detail {
 
   template <class SenderId, class Shape, class Fun>
   inline constexpr __mconst<
-    nvexec::_strm::multi_gpu_bulk_sender_t<__name_of<__t<SenderId>>, Shape, Fun>>
+    nvexec::_strm::multi_gpu_bulk_sender_t<__name_of<__t<SenderId>>, Shape, Fun>
+  >
     __name_of_v<nvexec::_strm::multi_gpu_bulk_sender_t<SenderId, Shape, Fun>>{};
 } // namespace stdexec::__detail
 

@@ -147,30 +147,30 @@ namespace nvexec::_strm {
         template <class... _As>
         using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
 
-        static constexpr std::size_t value = //
-          __v<__gather_completions_of<
-            set_error_t,
-            Sender,
-            env_of_t<Receiver>,
-            __q<result_size_for_t>,
-            __q<max_in_pack>>>;
+        static constexpr std::size_t value = __v<__gather_completions_of<
+          set_error_t,
+          Sender,
+          env_of_t<Receiver>,
+          __q<result_size_for_t>,
+          __q<max_in_pack>
+        >>;
       };
 
       template <class Receiver>
-      using receiver_t = //
-        stdexec::__t<
-          _upon_error::receiver_t<max_result_size<Receiver>::value, stdexec::__id<Receiver>, Fun>>;
+      using receiver_t = stdexec::__t<
+        _upon_error::receiver_t<max_result_size<Receiver>::value, stdexec::__id<Receiver>, Fun>
+      >;
 
       template <class Error>
       using _set_error_t = __set_value_invoke_t<Fun, Error>;
 
       template <class Self, class... Env>
-      using completion_signatures = //
-        transform_completion_signatures<
-          __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-          completion_signatures<set_error_t(cudaError_t)>,
-          __sigs::__default_set_value,
-          _set_error_t>;
+      using completion_signatures = transform_completion_signatures<
+        __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
+        completion_signatures<set_error_t(cudaError_t)>,
+        __sigs::__default_set_value,
+        _set_error_t
+      >;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>

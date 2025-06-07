@@ -57,8 +57,10 @@ namespace asioexec {
       using receiver_concept = ::stdexec::receiver_t;
 
       constexpr void set_stopped() && noexcept
-        requires ::stdexec::
-          receiver_of<Receiver, ::stdexec::completion_signatures<::stdexec::set_stopped_t()>>
+        requires ::stdexec::receiver_of<
+          Receiver,
+          ::stdexec::completion_signatures<::stdexec::set_stopped_t()>
+        >
       {
         ::stdexec::set_stopped(static_cast<Receiver&&>(r_));
       }
@@ -66,7 +68,8 @@ namespace asioexec {
       void set_error(std::exception_ptr ex) && noexcept
         requires ::stdexec::receiver_of<
           Receiver,
-          ::stdexec::completion_signatures<::stdexec::set_error_t(std::exception_ptr)>>
+          ::stdexec::completion_signatures<::stdexec::set_error_t(std::exception_ptr)>
+        >
       {
         ::stdexec::set_error(static_cast<Receiver&&>(r_), std::move(ex));
       }
@@ -78,7 +81,9 @@ namespace asioexec {
                    ::stdexec::completion_signatures<
                      ::stdexec::set_value_t(Args...),
                      ::stdexec::set_error_t(std::exception_ptr),
-                     ::stdexec::set_stopped_t()>>
+                     ::stdexec::set_stopped_t()
+                   >
+              >
       void set_value(T&& t, Args&&... args) && noexcept {
         if (!t) {
           ::stdexec::set_value(static_cast<Receiver&&>(r_), static_cast<Args&&>(args)...);
@@ -105,9 +110,11 @@ namespace asioexec {
       }
 
       template <typename... Args>
-        requires ::stdexec::
-          receiver_of<Receiver, ::stdexec::completion_signatures<::stdexec::set_value_t(Args...)>>
-        constexpr void set_value(Args&&... args) && noexcept {
+        requires ::stdexec::receiver_of<
+          Receiver,
+          ::stdexec::completion_signatures<::stdexec::set_value_t(Args...)>
+        >
+      constexpr void set_value(Args&&... args) && noexcept {
         ::stdexec::set_value(static_cast<Receiver&&>(r_), static_cast<Args&&>(args)...);
       }
 
@@ -136,7 +143,8 @@ namespace asioexec {
     using completion_signatures = ::stdexec::transform_completion_signatures<
       Signatures,
       ::stdexec::completion_signatures<>,
-      transform_set_value_t>;
+      transform_set_value_t
+    >;
 
     template <typename Sender>
     struct sender {
@@ -163,7 +171,8 @@ namespace asioexec {
       template <typename Receiver>
         requires ::stdexec::sender_to<const Sender&, receiver<Receiver>>
       constexpr auto connect(Receiver r) const & noexcept(
-        std::is_nothrow_constructible_v<receiver<Receiver>, Receiver>&& noexcept(
+        std::is_nothrow_constructible_v<receiver<Receiver>, Receiver>
+        && noexcept(
           ::stdexec::connect(std::declval<const Sender&>(), std::declval<receiver<Receiver>>()))) {
         return ::stdexec::connect(s_, receiver<Receiver>(static_cast<Receiver&&>(r)));
       }
@@ -171,7 +180,8 @@ namespace asioexec {
       template <typename Receiver>
         requires ::stdexec::sender_to<Sender, receiver<Receiver>>
       constexpr auto connect(Receiver r) && noexcept(
-        std::is_nothrow_constructible_v<receiver<Receiver>, Receiver>&& noexcept(
+        std::is_nothrow_constructible_v<receiver<Receiver>, Receiver>
+        && noexcept(
           ::stdexec::connect(std::declval<Sender>(), std::declval<receiver<Receiver>>()))) {
         return ::stdexec::connect(
           static_cast<Sender&&>(s_), receiver<Receiver>(static_cast<Receiver&&>(r)));
@@ -200,7 +210,9 @@ namespace ASIOEXEC_ASIO_NAMESPACE {
       initiate(Initiation&& i, const ::asioexec::use_sender_t&, Args&&... args) {
       return ::asioexec::detail::use_sender::sender(
         async_result<::asioexec::completion_token_t, Signatures...>::initiate(
-          static_cast<Initiation&&>(i), ::asioexec::completion_token, static_cast<Args&&>(args)...));
+          static_cast<Initiation&&>(i),
+          ::asioexec::completion_token,
+          static_cast<Args&&>(args)...));
     }
   };
 
