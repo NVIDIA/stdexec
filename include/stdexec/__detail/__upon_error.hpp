@@ -37,12 +37,12 @@ namespace stdexec {
     using __on_not_callable = __callable_error<__upon_error_context>;
 
     template <class _Fun, class _CvrefSender, class... _Env>
-    using __completion_signatures_t = //
-      transform_completion_signatures<
-        __completion_signatures_of_t<_CvrefSender, _Env...>,
-        __with_error_invoke_t<__on_not_callable, set_error_t, _Fun, _CvrefSender, _Env...>,
-        __sigs::__default_set_value,
-        __mbind_front<__mtry_catch_q<__set_value_invoke_t, __on_not_callable>, _Fun>::template __f>;
+    using __completion_signatures_t = transform_completion_signatures<
+      __completion_signatures_of_t<_CvrefSender, _Env...>,
+      __with_error_invoke_t<__on_not_callable, set_error_t, _Fun, _CvrefSender, _Env...>,
+      __sigs::__default_set_value,
+      __mbind_front<__mtry_catch_q<__set_value_invoke_t, __on_not_callable>, _Fun>::template __f
+    >;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     struct upon_error_t {
@@ -55,20 +55,21 @@ namespace stdexec {
       }
 
       template <__movable_value _Fun>
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Fun __fun) const -> __binder_back<upon_error_t, _Fun> {
+      STDEXEC_ATTRIBUTE(always_inline)
+      auto operator()(_Fun __fun) const -> __binder_back<upon_error_t, _Fun> {
         return {{static_cast<_Fun&&>(__fun)}, {}, {}};
       }
     };
 
     struct __upon_error_impl : __sexpr_defaults {
-      static constexpr auto get_completion_signatures = //
+      static constexpr auto get_completion_signatures =
         []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
         -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, upon_error_t>);
         return {};
       };
 
-      static constexpr auto complete = //
+      static constexpr auto complete =
         []<class _Tag, class _State, class _Receiver, class... _Args>(
           __ignore,
           _State& __state,

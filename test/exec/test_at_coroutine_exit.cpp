@@ -183,9 +183,8 @@ namespace {
   }
 
   auto test_sender_cleanup_action(int& result) -> task<void> {
-    co_await at_coroutine_exit([&result] {
-      return stdexec::just() | stdexec::then([&result] { ++result; });
-    });
+    co_await at_coroutine_exit(
+      [&result] { return stdexec::just() | stdexec::then([&result] { ++result; }); });
   }
 
   auto test_stateful_cleanup_action(int& result, int arg) -> task<void> {
@@ -423,7 +422,9 @@ namespace {
     test_throw_in_cleanup_action_causes_death(result);
   }
 
-  TEST_CASE("ThrowInCleanupActionDuringExceptionUnwindCallsTerminate", "[task][at_coroutine_exit]") {
+  TEST_CASE(
+    "ThrowInCleanupActionDuringExceptionUnwindCallsTerminate",
+    "[task][at_coroutine_exit]") {
     int result = 0;
     test_throw_in_cleanup_action_during_exception_unwind_causes_death(result);
   }

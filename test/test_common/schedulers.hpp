@@ -107,9 +107,8 @@ namespace {
       using __t = my_sender;
 
       using sender_concept = stdexec::sender_t;
-      using completion_signatures = ex::completion_signatures< //
-        ex::set_value_t(),                                     //
-        ex::set_stopped_t()>;
+      using completion_signatures =
+        ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
 
       env env_;
 
@@ -268,10 +267,8 @@ namespace {
       using __t = my_sender;
 
       using sender_concept = stdexec::sender_t;
-      using completion_signatures = ex::completion_signatures< //
-        ex::set_value_t(),                                     //
-        ex::set_error_t(E),
-        ex::set_stopped_t()>;
+      using completion_signatures =
+        ex::completion_signatures<ex::set_value_t(), ex::set_error_t(E), ex::set_stopped_t()>;
 
       E err_;
 
@@ -314,9 +311,8 @@ namespace {
       using __t = my_sender;
 
       using sender_concept = stdexec::sender_t;
-      using completion_signatures = ex::completion_signatures< //
-        ex::set_value_t(),                                     //
-        ex::set_stopped_t()>;
+      using completion_signatures =
+        ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
 
       template <class R>
       auto connect(R r) const -> oper<R> {

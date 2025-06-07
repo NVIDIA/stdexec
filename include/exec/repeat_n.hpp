@@ -80,8 +80,11 @@ namespace exec {
 
     template <class _Sender, class _Receiver>
     struct __repeat_n_state
-      : stdexec::
-          __enable_receiver_from_this<_Sender, _Receiver, __repeat_n_state<_Sender, _Receiver>> {
+      : stdexec::__enable_receiver_from_this<
+          _Sender,
+          _Receiver,
+          __repeat_n_state<_Sender, _Receiver>
+        > {
       using __child_count_pair_t = __decay_t<__data_of<_Sender>>;
       using __child_t = decltype(__child_count_pair_t::__child_);
       using __receiver_t = stdexec::__t<__receiver<__id<_Sender>, __id<_Receiver>>>;
@@ -155,47 +158,49 @@ namespace exec {
 
     template <
       __mstring _Where = "In repeat_n: "_mstr,
-      __mstring _What = "The input sender must be a sender of void"_mstr>
+      __mstring _What = "The input sender must be a sender of void"_mstr
+    >
     struct _INVALID_ARGUMENT_TO_REPEAT_N_ { };
 
     template <class _Sender, class... _Args>
-    using __values_t = //
+    using __values_t =
       // There's something funny going on with __if_c here. Use std::conditional_t instead. :-(
       std::conditional_t<
         (sizeof...(_Args) == 0),
         completion_signatures<>,
-        __mexception<_INVALID_ARGUMENT_TO_REPEAT_N_<>, _WITH_SENDER_<_Sender>>>;
+        __mexception<_INVALID_ARGUMENT_TO_REPEAT_N_<>, _WITH_SENDER_<_Sender>>
+      >;
 
     template <class _Error>
     using __error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
     template <class _Pair, class... _Env>
-    using __completions_t = //
+    using __completions_t = stdexec::transform_completion_signatures<
+      __completion_signatures_of_t<decltype(__decay_t<_Pair>::__child_) &, _Env...>,
       stdexec::transform_completion_signatures<
-        __completion_signatures_of_t<decltype(__decay_t<_Pair>::__child_) &, _Env...>,
-        stdexec::transform_completion_signatures<
-          __completion_signatures_of_t<stdexec::schedule_result_t<exec::trampoline_scheduler>, _Env...>,
-          __eptr_completion,
-          __sigs::__default_set_value,
-          __error_t>,
-        __mbind_front_q<__values_t, decltype(__decay_t<_Pair>::__child_)>::template __f,
-        __error_t>;
+        __completion_signatures_of_t<stdexec::schedule_result_t<exec::trampoline_scheduler>, _Env...>,
+        __eptr_completion,
+        __sigs::__default_set_value,
+        __error_t
+      >,
+      __mbind_front_q<__values_t, decltype(__decay_t<_Pair>::__child_)>::template __f,
+      __error_t
+    >;
 
     struct __repeat_n_tag { };
 
     struct __repeat_n_impl : __sexpr_defaults {
-      static constexpr auto get_completion_signatures = //
+      static constexpr auto get_completion_signatures =
         []<class _Sender, class... _Env>(_Sender &&, _Env &&...) noexcept {
           return __completions_t<__data_of<_Sender>, _Env...>{};
         };
 
-      static constexpr auto get_state = //
+      static constexpr auto get_state =
         []<class _Sender, class _Receiver>(_Sender &&__sndr, _Receiver &__rcvr) {
           return __repeat_n_state{static_cast<_Sender &&>(__sndr), __rcvr};
         };
 
-      static constexpr auto start = //
-        [](auto &__state, __ignore) noexcept -> void {
+      static constexpr auto start = [](auto &__state, __ignore) noexcept -> void {
         __state.__start();
       };
     };
@@ -208,7 +213,9 @@ namespace exec {
           __domain, __make_sexpr<repeat_n_t>(__count, static_cast<_Sender &&>(__sndr)));
       }
 
-      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto
+      STDEXEC_ATTRIBUTE(always_inline)
+
+      constexpr auto
         operator()(std::size_t __count) const -> __binder_back<repeat_n_t, std::size_t> {
         return {{__count}, {}, {}};
       }
@@ -234,10 +241,8 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<exec::repeat_n_t> : __sexpr_defaults {
-    static constexpr auto get_completion_signatures = //
-      []<class _Sender>(_Sender &&) noexcept          //
-      -> __completion_signatures_of_t<                //
-        transform_sender_result_t<default_domain, _Sender, env<>>> {
+    static constexpr auto get_completion_signatures = []<class _Sender>(_Sender &&) noexcept
+      -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
     };
   };
 } // namespace stdexec

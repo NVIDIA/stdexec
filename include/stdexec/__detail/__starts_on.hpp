@@ -35,7 +35,9 @@ namespace stdexec {
     struct __always {
       _Ty __val_;
 
-      STDEXEC_ATTRIBUTE((always_inline)) constexpr auto operator()() noexcept(__nothrow_constructible_from<_Ty, _Ty>) -> _Ty {
+      STDEXEC_ATTRIBUTE(always_inline)
+
+      constexpr auto operator()() noexcept(__nothrow_constructible_from<_Ty, _Ty>) -> _Ty {
         return static_cast<_Ty&&>(__val_);
       }
     };
@@ -58,7 +60,8 @@ namespace stdexec {
       }
 
       template <class _Env>
-      STDEXEC_ATTRIBUTE((always_inline)) static auto __transform_env_fn(_Env&& __env) noexcept {
+      STDEXEC_ATTRIBUTE(always_inline)
+      static auto __transform_env_fn(_Env&& __env) noexcept {
         return [&](__ignore, auto __sched, __ignore) noexcept {
           return __env::__join(__sched_env{__sched}, static_cast<_Env&&>(__env));
         };
@@ -92,10 +95,8 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<starts_on_t> : __sexpr_defaults {
-    static constexpr auto get_completion_signatures = //
-      []<class _Sender>(_Sender&&) noexcept           //
-      -> __completion_signatures_of_t<                //
-        transform_sender_result_t<default_domain, _Sender, env<>>> {
+    static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
+      -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
       return {};
     };
   };

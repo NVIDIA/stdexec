@@ -94,8 +94,8 @@ namespace {
       == stdexec::forward_progress_guarantee::parallel);
     bool called{false};
     // launch some work on the thread pool
-    ex::sender auto snd = ex::starts_on(pool_sched, ex::just()) //
-                        | ex::then([&] { called = true; }) | _with_scheduler();
+    ex::sender auto snd = ex::starts_on(pool_sched, ex::just()) | ex::then([&] { called = true; })
+                        | _with_scheduler();
     stdexec::sync_wait(std::move(snd));
     // the work should be executed
     REQUIRE(called);
@@ -142,12 +142,14 @@ namespace {
     execpools::asio_thread_pool taskflow_pool;
     exec::static_thread_pool other_pool(1ul);
     {
-      CHECK_THROWS(stdexec::sync_wait(
-        starts_on(taskflow_pool.get_scheduler(), just(0))
-        | then([](auto) { throw std::exception(); })));
-      CHECK_THROWS(stdexec::sync_wait(
-        starts_on(other_pool.get_scheduler(), just(0))
-        | then([](auto) { throw std::exception(); })));
+      CHECK_THROWS(
+        stdexec::sync_wait(starts_on(taskflow_pool.get_scheduler(), just(0)) | then([](auto) {
+                             throw std::exception();
+                           })));
+      CHECK_THROWS(
+        stdexec::sync_wait(starts_on(other_pool.get_scheduler(), just(0)) | then([](auto) {
+                             throw std::exception();
+                           })));
     }
     // Ensure it still works normally after exceptions:
     {
@@ -164,8 +166,9 @@ namespace {
     const auto input = std::array{1.0, 2.0, -1.0, -2.0};
     std::remove_const_t<decltype(input)> output;
     execpools::asio_thread_pool pool{2ul};
-    auto [value] =
-      stdexec::sync_wait(async_inclusive_scan(pool.get_scheduler(), input, output, 0.0, 4)).value();
+    auto [value] = stdexec::sync_wait(
+                     async_inclusive_scan(pool.get_scheduler(), input, output, 0.0, 4))
+                     .value();
     STATIC_REQUIRE(std::is_same_v<decltype(value), std::span<double>>);
     REQUIRE(value.data() == output.data());
     CHECK(output == std::array{1.0, 3.0, 2.0, 0.0});
@@ -176,14 +179,15 @@ namespace {
 
     execpools::asio_thread_pool pool{1ul};
     asioexec::asio_impl::system_timer timer{pool.get_executor()};
-    const auto [other_thread_id] =
-      stdexec::sync_wait(timer.async_wait(asioexec::use_sender) | stdexec::then([](auto&&...) {
-                           return std::this_thread::get_id();
-                         }))
-        .value();
+    const auto [other_thread_id] = stdexec::sync_wait(
+                                     timer.async_wait(asioexec::use_sender)
+                                     | stdexec::then(
+                                       [](auto&&...) { return std::this_thread::get_id(); }))
+                                     .value();
     REQUIRE(current_thread_id != other_thread_id);
 
     // demo to access underlying execution context
-    asioexec::asio_impl::query(pool.get_executor(), asioexec::asio_impl::execution::context_t{}).stop();
+    asioexec::asio_impl::query(pool.get_executor(), asioexec::asio_impl::execution::context_t{})
+      .stop();
   }
 } // namespace

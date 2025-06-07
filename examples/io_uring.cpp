@@ -30,12 +30,8 @@
 auto main() -> int {
   exec::io_uring_context context;
   exec::io_uring_context context2;
-  std::thread io_thread{[&] {
-    context.run_until_stopped();
-  }};
-  std::thread io_thread2{[&] {
-    context2.run_until_stopped();
-  }};
+  std::thread io_thread{[&] { context.run_until_stopped(); }};
+  std::thread io_thread2{[&] { context2.run_until_stopped(); }};
   auto scheduler = context.get_scheduler();
   auto scheduler2 = context2.get_scheduler();
   using namespace std::chrono_literals;
@@ -65,20 +61,10 @@ auto main() -> int {
       exec::finally(exec::schedule_after(scheduler, 4s), stdexec::just() | stdexec::then([&] {
                                                            context2.request_stop();
                                                          })),
-      exec::schedule_after(scheduler, 10s)    //
-        | stdexec::then([] {                  //
-            std::cout << "Hello, world!\n";   //
-          })                                  //
-        | stdexec::upon_stopped([] {          //
-            std::cout << "Hello, stopped.\n"; //
-          }),                                 //
-      exec::schedule_after(scheduler2, 10s)   //
-        | stdexec::then([] {                  //
-            std::cout << "Hello, world!\n";   //
-          })                                  //
-        | stdexec::upon_stopped([] {          //
-            std::cout << "Hello, stopped.\n"; //
-          })));                               //
+      exec::schedule_after(scheduler, 10s) | stdexec::then([] { std::cout << "Hello, world!\n"; })
+        | stdexec::upon_stopped([] { std::cout << "Hello, stopped.\n"; }),
+      exec::schedule_after(scheduler2, 10s) | stdexec::then([] { std::cout << "Hello, world!\n"; })
+        | stdexec::upon_stopped([] { std::cout << "Hello, stopped.\n"; })));
   io_thread.join();
   io_thread2.join();
 
@@ -93,9 +79,7 @@ auto main() -> int {
     | stdexec::upon_stopped([] { std::cout << "The context is stopped!\n"; }));
 
   context.reset();
-  io_thread = std::thread{[&] {
-    context.run_until_stopped();
-  }};
+  io_thread = std::thread{[&] { context.run_until_stopped(); }};
 
   while (!context.is_running())
     ;

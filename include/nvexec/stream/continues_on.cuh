@@ -105,7 +105,11 @@ namespace nvexec::_strm {
           , env_(make_host(this->status_, context_state_.pinned_resource_, this->make_env()))
           , inner_op_{connect(
               static_cast<Sender&&>(sender),
-              enqueue_receiver{env_.get(), storage_.get(), task_, context_state_.hub_->producer()})} {
+              enqueue_receiver{
+                env_.get(),
+                storage_.get(),
+                task_,
+                context_state_.hub_->producer()})} {
           if (this->status_ == cudaSuccess) {
             this->status_ = task_->status_;
           }
@@ -125,9 +129,9 @@ namespace nvexec::_strm {
       using __id = continues_on_sender_t;
 
       template <class Self, class Receiver>
-      using op_state_th = //
-        stdexec::__t<
-          _continues_on::operation_state_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>>>;
+      using op_state_th = stdexec::__t<
+        _continues_on::operation_state_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>>
+      >;
 
       Scheduler sched_;
       context_state_t context_state_;
@@ -140,14 +144,12 @@ namespace nvexec::_strm {
       using _set_error_t = completion_signatures<set_error_t(stdexec::__decay_t<Ty>)>;
 
       template <class Self, class... Env>
-      using _completion_signatures_t = //
-        transform_completion_signatures<
-          __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-          completion_signatures< //
-            set_stopped_t(),
-            set_error_t(cudaError_t)>,
-          _set_value_t,
-          _set_error_t>;
+      using _completion_signatures_t = transform_completion_signatures<
+        __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
+        completion_signatures<set_stopped_t(), set_error_t(cudaError_t)>,
+        _set_value_t,
+        _set_error_t
+      >;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
@@ -157,8 +159,8 @@ namespace nvexec::_strm {
       }
 
       template <__decays_to<__t> Self, class... Env>
-      static auto get_completion_signatures(Self&&, Env&&...) //
-        -> _completion_signatures_t<Self, Env...> {
+      static auto
+        get_completion_signatures(Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
         return {};
       }
 
@@ -195,6 +197,8 @@ namespace nvexec::_strm {
 
 namespace stdexec::__detail {
   template <class Scheduler, class SenderId>
-  inline constexpr __mconst<nvexec::_strm::continues_on_sender_t<Scheduler, __name_of<__t<SenderId>>>>
+  inline constexpr __mconst<
+    nvexec::_strm::continues_on_sender_t<Scheduler, __name_of<__t<SenderId>>>
+  >
     __name_of_v<nvexec::_strm::continues_on_sender_t<Scheduler, SenderId>>{};
 } // namespace stdexec::__detail

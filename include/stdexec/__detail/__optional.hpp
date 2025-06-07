@@ -37,9 +37,7 @@ namespace stdexec {
 
     inline auto __mk_has_value_guard(bool& __has_value) noexcept {
       __has_value = true;
-      return __scope_guard{[&]() noexcept {
-        __has_value = false;
-      }};
+      return __scope_guard{[&]() noexcept { __has_value = false; }};
     }
 
     inline constexpr struct __nullopt_t {
@@ -72,8 +70,8 @@ namespace stdexec {
 
       template <class... _Us>
         requires constructible_from<_Tp, _Us...>
-      __optional(std::in_place_t, _Us&&... __us) noexcept(
-        __nothrow_constructible_from<_Tp, _Us...>) {
+      __optional(std::in_place_t, _Us&&... __us)
+        noexcept(__nothrow_constructible_from<_Tp, _Us...>) {
         emplace(static_cast<_Us&&>(__us)...);
       }
 

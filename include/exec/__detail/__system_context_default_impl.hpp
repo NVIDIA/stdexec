@@ -127,9 +127,10 @@ namespace exec::__system_context_default_impl {
     bool __on_heap_;
 
     /// Try to construct the operation in the preallocated memory if it fits, otherwise allocate a new operation.
-    static auto
-      __construct_maybe_alloc(std::span<std::byte> __storage, receiver* __completion, _Sender __sndr)
-        -> __operation* {
+    static auto __construct_maybe_alloc(
+      std::span<std::byte> __storage,
+      receiver* __completion,
+      _Sender __sndr) -> __operation* {
       __storage = __ensure_alignment(__storage, alignof(__operation));
       if (__storage.data() == nullptr || __storage.size() < sizeof(__operation)) {
         return new __operation(std::move(__sndr), __completion, true);
@@ -254,10 +255,10 @@ namespace exec::__system_context_default_impl {
       try {
         // Determine the chunking size based on the ratio between the given size and the number of workers in our pool.
         // Aim at having 2 chunks per worker.
-        uint32_t __chunk_size =
-          (__available_parallelism_ > 0 && __size > 3 * __available_parallelism_)
-            ? __size / __available_parallelism_ / 2
-            : 1;
+        uint32_t __chunk_size = (__available_parallelism_ > 0
+                                 && __size > 3 * __available_parallelism_)
+                                ? __size / __available_parallelism_ / 2
+                                : 1;
         uint32_t __num_chunks = (__size + __chunk_size - 1) / __chunk_size;
 
         auto __sndr = stdexec::bulk(

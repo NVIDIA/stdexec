@@ -100,9 +100,9 @@ namespace stdexec {
 
     template <class _Pol, class _Shape, class _Fun>
     struct __data {
-      STDEXEC_ATTRIBUTE((no_unique_address)) __policy_wrapper<_Pol> __pol_;
+      STDEXEC_ATTRIBUTE(no_unique_address) __policy_wrapper<_Pol> __pol_;
       _Shape __shape_;
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
+      STDEXEC_ATTRIBUTE(no_unique_address) _Fun __fun_;
       static constexpr auto __mbrs_ =
         __mliterals<&__data::__pol_, &__data::__shape_, &__data::__fun_>();
     };
@@ -130,8 +130,12 @@ namespace stdexec {
 
       // Curried function, after passing the required indices.
       template <class _Fun, class _Shape>
-      using __fun_curried =
-        __mbind_front<__mtry_catch_q<__nothrow_invocable_t, __on_not_callable>, _Fun, _Shape, _Shape>;
+      using __fun_curried = __mbind_front<
+        __mtry_catch_q<__nothrow_invocable_t, __on_not_callable>,
+        _Fun,
+        _Shape,
+        _Shape
+      >;
     };
 
     template <>
@@ -149,29 +153,32 @@ namespace stdexec {
     using __decay_ref = __decay_t<_Ty>&;
 
     template <class _AlgoTag, class _Fun, class _Shape, class _CvrefSender, class... _Env>
-    using __with_error_invoke_t = //
-      __if<
-        __value_types_t<
-          __completion_signatures_of_t<_CvrefSender, _Env...>,
-          __mtransform<
-            __q<__decay_ref>,
-            typename __bulk_traits<_AlgoTag>::template __fun_curried<_Fun, _Shape>>,
-          __q<__mand>>,
-        completion_signatures<>,
-        __eptr_completion>;
+    using __with_error_invoke_t = __if<
+      __value_types_t<
+        __completion_signatures_of_t<_CvrefSender, _Env...>,
+        __mtransform<
+          __q<__decay_ref>,
+          typename __bulk_traits<_AlgoTag>::template __fun_curried<_Fun, _Shape>
+        >,
+        __q<__mand>
+      >,
+      completion_signatures<>,
+      __eptr_completion
+    >;
 
 
     template <class _AlgoTag, class _Fun, class _Shape, class _CvrefSender, class... _Env>
-    using __completion_signatures = //
-      transform_completion_signatures<
-        __completion_signatures_of_t<_CvrefSender, _Env...>,
-        __with_error_invoke_t<_AlgoTag, _Fun, _Shape, _CvrefSender, _Env...>>;
+    using __completion_signatures = transform_completion_signatures<
+      __completion_signatures_of_t<_CvrefSender, _Env...>,
+      __with_error_invoke_t<_AlgoTag, _Fun, _Shape, _CvrefSender, _Env...>
+    >;
 
     template <class _AlgoTag>
     struct __generic_bulk_t {
       template <sender _Sender, typename _Policy, integral _Shape, copy_constructible _Fun>
         requires is_execution_policy_v<std::remove_cvref_t<_Policy>>
-      STDEXEC_ATTRIBUTE((host, device)) auto operator()(_Sender&& __sndr, _Policy&& __pol, _Shape __shape, _Fun __fun) const
+      STDEXEC_ATTRIBUTE(host, device)
+      auto operator()(_Sender&& __sndr, _Policy&& __pol, _Shape __shape, _Fun __fun) const
         -> __well_formed_sender auto {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
@@ -182,7 +189,8 @@ namespace stdexec {
 
       template <typename _Policy, integral _Shape, copy_constructible _Fun>
         requires is_execution_policy_v<std::remove_cvref_t<_Policy>>
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Policy&& __pol, _Shape __shape, _Fun __fun) const
+      STDEXEC_ATTRIBUTE(always_inline)
+      auto operator()(_Policy&& __pol, _Shape __shape, _Fun __fun) const
         -> __binder_back<_AlgoTag, _Policy, _Shape, _Fun> {
         return {
           {static_cast<_Policy&&>(__pol),
@@ -194,8 +202,11 @@ namespace stdexec {
       }
 
       template <sender _Sender, integral _Shape, copy_constructible _Fun>
-      [[deprecated("The bulk algorithm now requires an execution policy such as stdexec::par as an argument.")]]
-      STDEXEC_ATTRIBUTE((host, device)) auto operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const {
+      [[deprecated(
+        "The bulk algorithm now requires an execution policy such as stdexec::par as an "
+        "argument.")]]
+      STDEXEC_ATTRIBUTE(host, device) auto
+        operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const {
         return (*this)(
           static_cast<_Sender&&>(__sndr),
           par,
@@ -204,8 +215,10 @@ namespace stdexec {
       }
 
       template <integral _Shape, copy_constructible _Fun>
-      [[deprecated("The bulk algorithm now requires an execution policy such as stdexec::par as an argument.")]]
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Shape __shape, _Fun __fun) const {
+      [[deprecated(
+        "The bulk algorithm now requires an execution policy such as stdexec::par as an "
+        "argument.")]]
+      STDEXEC_ATTRIBUTE(always_inline) auto operator()(_Shape __shape, _Fun __fun) const {
         return (*this)(par, static_cast<_Shape&&>(__shape), static_cast<_Fun&&>(__fun));
       }
     };
@@ -215,10 +228,9 @@ namespace stdexec {
       static auto __transform_sender_fn(const _Env&) {
         return [&]<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
           using __shape_t = std::remove_cvref_t<decltype(__data.__shape_)>;
-          auto __new_f = [__func = std::move(__data.__fun_)](
-                           __shape_t __begin,
-                           __shape_t __end,
-                           auto&&... __vs) mutable //
+          auto __new_f =
+            [__func = std::move(
+               __data.__fun_)](__shape_t __begin, __shape_t __end, auto&&... __vs) mutable
 #if !STDEXEC_MSVC()
             // MSVCBUG https://developercommunity.visualstudio.com/t/noexcept-expression-in-lambda-template-n/10718680
             noexcept(noexcept(__data.__fun_(__begin++, __vs...)))
@@ -247,8 +259,9 @@ namespace stdexec {
 
     struct bulk_unchunked_t {
       template <sender _Sender, integral _Shape, copy_constructible _Fun>
-      STDEXEC_ATTRIBUTE((host, device)) auto operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const
-        -> __well_formed_sender auto {
+      STDEXEC_ATTRIBUTE(host, device)
+      auto operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const -> __well_formed_sender
+        auto {
         auto __domain = __get_early_domain(__sndr);
         return stdexec::transform_sender(
           __domain,
@@ -257,7 +270,8 @@ namespace stdexec {
       }
 
       template <integral _Shape, copy_constructible _Fun>
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Shape __shape, _Fun __fun) const
+      STDEXEC_ATTRIBUTE(always_inline)
+      auto operator()(_Shape __shape, _Fun __fun) const
         -> __binder_back<bulk_unchunked_t, _Shape, _Fun> {
         return {
           {static_cast<_Shape&&>(__shape), static_cast<_Fun&&>(__fun)},
@@ -275,14 +289,14 @@ namespace stdexec {
       template <class _Sender>
       using __shape_t = decltype(__decay_t<__data_of<_Sender>>::__shape_);
 
-      static constexpr auto get_completion_signatures =                 //
-        []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept //
-        -> __completion_signatures<
-          _AlgoTag,
-          __fun_t<_Sender>,
-          __shape_t<_Sender>,
-          __child_of<_Sender>,
-          _Env...> {
+      static constexpr auto get_completion_signatures =
+        []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept -> __completion_signatures<
+                                                                          _AlgoTag,
+                                                                          __fun_t<_Sender>,
+                                                                          __shape_t<_Sender>,
+                                                                          __child_of<_Sender>,
+                                                                          _Env...
+                                                                        > {
         static_assert(sender_expr_for<_Sender, bulk_t>);
         return {};
       };
@@ -293,7 +307,7 @@ namespace stdexec {
       //! When setting value, it calls the function with the entire range.
       //! Note: This is not done in parallel. That is customized by the scheduler.
       //! See, e.g., static_thread_pool::bulk_receiver::__t.
-      static constexpr auto complete = //
+      static constexpr auto complete =
         []<class _Tag, class _State, class _Receiver, class... _Args>(
           __ignore,
           _State& __state,
@@ -326,7 +340,7 @@ namespace stdexec {
       //! When setting value, it loops over the shape and invokes the function.
       //! Note: This is not done in concurrently. That is customized by the scheduler.
       //! Calling it on a scheduler that is not concurrent is an error.
-      static constexpr auto complete = //
+      static constexpr auto complete =
         []<class _Tag, class _State, class _Receiver, class... _Args>(
           __ignore,
           _State& __state,
@@ -336,8 +350,9 @@ namespace stdexec {
         if constexpr (std::same_as<_Tag, set_value_t>) {
           // Intercept set_value and dispatch to the bulk operation.
           using __shape_t = decltype(__state.__shape_);
-          constexpr bool __scheduler_available =
-            requires { get_completion_scheduler<set_value_t>(get_env(__rcvr)); };
+          constexpr bool __scheduler_available = requires {
+            get_completion_scheduler<set_value_t>(get_env(__rcvr));
+          };
           if constexpr (__scheduler_available) {
             // This default implementation doesn't run a scheduler with concurrent progres guarantees.
             constexpr auto __guarantee = get_forward_progress_guarantee(

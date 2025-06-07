@@ -84,8 +84,7 @@ namespace {
     "continues_on calls the given sender when the scheduler dictates",
     "[adaptors][continues_on]") {
     bool called{false};
-    auto snd_base = ex::just() //
-                  | ex::then([&]() -> int {
+    auto snd_base = ex::just() | ex::then([&]() -> int {
                       called = true;
                       return 19;
                     });
@@ -113,7 +112,7 @@ namespace {
     std::atomic<bool> called{false};
     {
       // lunch some work on the thread pool
-      ex::sender auto snd = ex::continues_on(ex::just(), pool.get_scheduler()) //
+      ex::sender auto snd = ex::continues_on(ex::just(), pool.get_scheduler())
                           | ex::then([&] { called.store(true); });
       ex::start_detached(std::move(snd));
     }
@@ -204,7 +203,9 @@ namespace {
       ex::continues_on(ex::just(potentially_throwing{}), sched));
   }
 
-  TEST_CASE("continues_on keeps sends_stopped from scheduler's sender", "[adaptors][continues_on]") {
+  TEST_CASE(
+    "continues_on keeps sends_stopped from scheduler's sender",
+    "[adaptors][continues_on]") {
     inline_scheduler sched1{};
     error_scheduler sched2{};
     stopped_scheduler sched3{};

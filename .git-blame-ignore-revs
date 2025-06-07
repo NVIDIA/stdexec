@@ -24,3 +24,6 @@ ab2a3baef655db23fb7ec11ce7ec49575bbd2807
 
 # Reformat everything with clang-format-20
 aee392a046a26ae2340849fe98e38332d9537397
+
+# Tweak some clang-format settings and eformat everything with clang-format-21
+8a63d46aabca368c867c715e40ebc0a2f3c48e1c

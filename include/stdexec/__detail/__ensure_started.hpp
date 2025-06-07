@@ -52,7 +52,9 @@ namespace stdexec {
         }
       }
 
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()() const noexcept -> __binder_back<ensure_started_t> {
+      STDEXEC_ATTRIBUTE(always_inline)
+
+      auto operator()() const noexcept -> __binder_back<ensure_started_t> {
         return {{}, {}, {}};
       }
 
@@ -89,10 +91,8 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<ensure_started_t> : __sexpr_defaults {
-    static constexpr auto get_completion_signatures = //
-      []<class _Sender>(_Sender&&) noexcept           //
-      -> __completion_signatures_of_t<                //
-        transform_sender_result_t<default_domain, _Sender, env<>>> {
+    static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
+      -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
     };
   };
 } // namespace stdexec

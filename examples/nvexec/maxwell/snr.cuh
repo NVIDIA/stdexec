@@ -78,8 +78,8 @@ namespace nvexec::_strm::repeat_n {
       }
 
       auto sch = stdexec::get_scheduler(stdexec::get_env(op_state_.rcvr_));
-      inner_op_state_t& inner_op_state =
-        op_state_.inner_op_state_.emplace(stdexec::__emplace_from{[&]() noexcept {
+      inner_op_state_t& inner_op_state = op_state_.inner_op_state_.emplace(
+        stdexec::__emplace_from{[&]() noexcept {
           return ex::connect(ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
         }});
 
@@ -116,9 +116,10 @@ namespace nvexec::_strm::repeat_n {
 
       if (op_state_.n_) {
         auto sch = stdexec::get_scheduler(stdexec::get_env(op_state_.rcvr_));
-        inner_op_state_t& inner_op_state =
-          op_state_.inner_op_state_.emplace(stdexec::__emplace_from{[&]() noexcept {
-            return ex::connect(ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
+        inner_op_state_t& inner_op_state = op_state_.inner_op_state_.emplace(
+          stdexec::__emplace_from{[&]() noexcept {
+            return ex::connect(
+              ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
           }});
 
         ex::start(inner_op_state);
@@ -166,7 +167,8 @@ namespace nvexec::_strm::repeat_n {
     void start() & noexcept {
       if (this->stream_provider_.status_ != cudaSuccess) {
         // Couldn't allocate memory for operation state, complete with error
-        this->propagate_completion_signal(stdexec::set_error, std::move(this->stream_provider_.status_));
+        this->propagate_completion_signal(
+          stdexec::set_error, std::move(this->stream_provider_.status_));
       } else {
         if (n_) {
           stdexec::start(*pred_op_state_);
@@ -215,8 +217,8 @@ namespace repeat_n_detail {
       }
 
       auto sch = stdexec::get_scheduler(stdexec::get_env(op_state_.rcvr_));
-      inner_op_state_t& inner_op_state =
-        op_state_.inner_op_state_.emplace(stdexec::__emplace_from{[&]() noexcept {
+      inner_op_state_t& inner_op_state = op_state_.inner_op_state_.emplace(
+        stdexec::__emplace_from{[&]() noexcept {
           return ex::connect(ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
         }});
 
@@ -256,9 +258,10 @@ namespace repeat_n_detail {
 
       if (op_state_.n_) {
         auto sch = stdexec::get_scheduler(stdexec::get_env(op_state_.rcvr_));
-        inner_op_state_t& inner_op_state =
-          op_state_.inner_op_state_.emplace(stdexec::__emplace_from{[&]() noexcept {
-            return ex::connect(ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
+        inner_op_state_t& inner_op_state = op_state_.inner_op_state_.emplace(
+          stdexec::__emplace_from{[&]() noexcept {
+            return ex::connect(
+              ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
           }});
 
         ex::start(inner_op_state);
@@ -331,16 +334,15 @@ namespace repeat_n_detail {
     using Sender = stdexec::__t<SenderId>;
     using sender_concept = stdexec::sender_t;
 
-    using completion_signatures = //
-      stdexec::completion_signatures<
-        stdexec::set_value_t(),
-        stdexec::set_stopped_t(),
-        stdexec::set_error_t(std::exception_ptr)
+    using completion_signatures = stdexec::completion_signatures<
+      stdexec::set_value_t(),
+      stdexec::set_stopped_t(),
+      stdexec::set_error_t(std::exception_ptr)
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
-          ,
-        stdexec::set_error_t(cudaError_t)
+        ,
+      stdexec::set_error_t(cudaError_t)
 #endif
-        >;
+    >;
 
     Sender sender_;
     Closure closure_;

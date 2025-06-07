@@ -32,7 +32,8 @@
 namespace nvexec::_strm::__algo_range_init_fun {
   template <class Range, class InitT, class Fun>
   using binary_invoke_result_t = ::cuda::std::decay_t<
-    ::cuda::std::invoke_result_t<Fun, stdexec::ranges::range_reference_t<Range>, InitT>>;
+    ::cuda::std::invoke_result_t<Fun, stdexec::ranges::range_reference_t<Range>, InitT>
+  >;
 
   template <class SenderId, class ReceiverId, class InitT, class Fun, class DerivedReceiver>
   struct receiver_t {
@@ -54,18 +55,18 @@ namespace nvexec::_strm::__algo_range_init_fun {
         template <class... _As>
         using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
 
-        static constexpr ::std::size_t value = //
-          __v<__gather_completions_of<
-            set_value_t,
-            Sender,
-            env_of_t<Receiver>,
-            __q<result_size_for_t>,
-            __q<max_in_pack>>>;
+        static constexpr ::std::size_t value = __v<__gather_completions_of<
+          set_value_t,
+          Sender,
+          env_of_t<Receiver>,
+          __q<result_size_for_t>,
+          __q<max_in_pack>
+        >>;
       };
 
       operation_state_base_t<ReceiverId>& op_state_;
-      STDEXEC_ATTRIBUTE((no_unique_address)) InitT init_;
-      STDEXEC_ATTRIBUTE((no_unique_address)) Fun fun_;
+      STDEXEC_ATTRIBUTE(no_unique_address) InitT init_;
+      STDEXEC_ATTRIBUTE(no_unique_address) Fun fun_;
 
      public:
       using __id = receiver_t;
@@ -112,15 +113,15 @@ namespace nvexec::_strm::__algo_range_init_fun {
       using _set_value_t = typename DerivedSender::template _set_value_t<Range>;
 
       Sender sndr_;
-      STDEXEC_ATTRIBUTE((no_unique_address)) InitT init_;
-      STDEXEC_ATTRIBUTE((no_unique_address)) Fun fun_;
+      STDEXEC_ATTRIBUTE(no_unique_address) InitT init_;
+      STDEXEC_ATTRIBUTE(no_unique_address) Fun fun_;
 
       template <class Self, class... Env>
-      using completion_signatures = //
-        stdexec::transform_completion_signatures<
-          __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-          completion_signatures<set_error_t(cudaError_t)>,
-          __mtry_q<_set_value_t>::template __f>;
+      using completion_signatures = stdexec::transform_completion_signatures<
+        __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
+        completion_signatures<set_error_t(cudaError_t)>,
+        __mtry_q<_set_value_t>::template __f
+      >;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
@@ -150,7 +151,11 @@ namespace nvexec::_strm::__algo_range_init_fun {
 
 namespace stdexec::__detail {
   template <class SenderId, class InitT, class Fun, class DerivedSender>
-  extern __mconst<nvexec::_strm::__algo_range_init_fun::
-                    sender_t<__name_of<__t<SenderId>>, InitT, Fun, __name_of<DerivedSender>>>
+  extern __mconst<nvexec::_strm::__algo_range_init_fun::sender_t<
+    __name_of<__t<SenderId>>,
+    InitT,
+    Fun,
+    __name_of<DerivedSender>
+  >>
     __name_of_v<nvexec::_strm::__algo_range_init_fun::sender_t<SenderId, InitT, Fun, DerivedSender>>;
 } // namespace stdexec::__detail

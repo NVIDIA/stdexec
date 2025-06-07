@@ -49,15 +49,14 @@ struct RunThread {
       std::atomic<std::size_t> counter{scheds};
       auto env = exec::make_env(stdexec::prop{stdexec::get_allocator, alloc});
       while (scheds) {
-        stdexec::start_detached(       //
-          stdexec::schedule(scheduler) //
-            | stdexec::then([&] {
-                auto prev = counter.fetch_sub(1);
-                if (prev == 1) {
-                  std::lock_guard lock{mut};
-                  cv.notify_one();
-                }
-              }),
+        stdexec::start_detached(
+          stdexec::schedule(scheduler) | stdexec::then([&] {
+            auto prev = counter.fetch_sub(1);
+            if (prev == 1) {
+              std::lock_guard lock{mut};
+              cv.notify_one();
+            }
+          }),
           env);
         --scheds;
       }
@@ -66,15 +65,13 @@ struct RunThread {
       std::size_t scheds = end - start;
       std::atomic<std::size_t> counter{scheds};
       while (scheds) {
-        stdexec::start_detached(       //
-          stdexec::schedule(scheduler) //
-          | stdexec::then([&] {
-              auto prev = counter.fetch_sub(1);
-              if (prev == 1) {
-                std::lock_guard lock{mut};
-                cv.notify_one();
-              }
-            }));
+        stdexec::start_detached(stdexec::schedule(scheduler) | stdexec::then([&] {
+                                  auto prev = counter.fetch_sub(1);
+                                  if (prev == 1) {
+                                    std::lock_guard lock{mut};
+                                    cv.notify_one();
+                                  }
+                                }));
         --scheds;
       }
 #endif

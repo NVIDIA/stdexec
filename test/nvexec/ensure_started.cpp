@@ -19,13 +19,11 @@ namespace {
     flags_storage_t flags_storage{};
     auto flags = flags_storage.get();
 
-    auto snd = ex::ensure_started(
-      ex::schedule(stream_ctx.get_scheduler()) //
-      | ex::then([=] {
-          if (is_on_gpu()) {
-            flags.set();
-          }
-        }));
+    auto snd = ex::ensure_started(ex::schedule(stream_ctx.get_scheduler()) | ex::then([=] {
+                                    if (is_on_gpu()) {
+                                      flags.set();
+                                    }
+                                  }));
     cudaDeviceSynchronize();
 
     REQUIRE(flags_storage.all_set_once());
@@ -55,13 +53,11 @@ namespace {
     flags_storage_t<2> flags_storage{};
     auto flags = flags_storage.get();
 
-    auto snd = ex::ensure_started(
-                 ex::schedule(stream_ctx.get_scheduler()) //
-                 | ex::then([flags] {
-                     if (is_on_gpu()) {
-                       flags.set(0);
-                     }
-                   }))
+    auto snd = ex::ensure_started(ex::schedule(stream_ctx.get_scheduler()) | ex::then([flags] {
+                                    if (is_on_gpu()) {
+                                      flags.set(0);
+                                    }
+                                  }))
              | a_sender([flags] {
                  if (is_on_gpu()) {
                    flags.set(1);
@@ -80,13 +76,11 @@ namespace {
       flags_storage_t<2> flags_storage{};
       auto flags = flags_storage.get();
 
-      auto snd = ex::ensure_started(
-                   ex::schedule(stream_ctx.get_scheduler()) //
-                   | a_sender([flags] {
-                       if (is_on_gpu()) {
-                         flags.set(1);
-                       }
-                     }))
+      auto snd = ex::ensure_started(ex::schedule(stream_ctx.get_scheduler()) | a_sender([flags] {
+                                      if (is_on_gpu()) {
+                                        flags.set(1);
+                                      }
+                                    }))
                | ex::then([flags] {
                    if (is_on_gpu()) {
                      flags.set(0);
@@ -103,7 +97,7 @@ namespace {
       auto flags = flags_storage.get();
 
       auto snd = ex::ensure_started(
-                   ex::schedule(stream_ctx.get_scheduler()) //
+                   ex::schedule(stream_ctx.get_scheduler())
                    | a_sender([]() -> bool { return is_on_gpu(); }))
                | ex::then([flags](bool a_sender_was_on_gpu) {
                    if (a_sender_was_on_gpu && is_on_gpu()) {

@@ -129,18 +129,19 @@ namespace nvexec::_strm {
       using receiver_t = stdexec::__t<_upon_stopped::receiver_t<stdexec::__id<Receiver>, Fun>>;
 
       template <class Self, class... Env>
-      using completion_signatures = //
-        transform_completion_signatures<
-          __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-          __with_error_invoke_t<
-            __callable_error<"In nvexec::upon_stopped(Sender, Function)..."_mstr>,
-            set_stopped_t,
-            Fun,
-            __copy_cvref_t<Self, Sender>,
-            Env...>,
-          __sigs::__default_set_value,
-          __sigs::__default_set_error,
-          __set_value_invoke_t<Fun>>;
+      using completion_signatures = transform_completion_signatures<
+        __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
+        __with_error_invoke_t<
+          __callable_error<"In nvexec::upon_stopped(Sender, Function)..."_mstr>,
+          set_stopped_t,
+          Fun,
+          __copy_cvref_t<Self, Sender>,
+          Env...
+        >,
+        __sigs::__default_set_value,
+        __sigs::__default_set_error,
+        __set_value_invoke_t<Fun>
+      >;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>

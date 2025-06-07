@@ -48,7 +48,8 @@ namespace exec {
     mutable __captures_t __impl_;
 
     template <class _Tag, class _Data, class... _Child>
-    STDEXEC_ATTRIBUTE((host, device)) explicit __seqexpr(_Tag, _Data&& __data, _Child&&... __child)
+    STDEXEC_ATTRIBUTE(host, device)
+    explicit __seqexpr(_Tag, _Data&& __data, _Child&&... __child)
       : __impl_(
           stdexec::__detail::__captures(
             _Tag(),
@@ -63,55 +64,61 @@ namespace exec {
     }
 
     template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
-    static auto get_completion_signatures(_Self&& __self, _Env&&... __env) //
+    static auto get_completion_signatures(_Self&& __self, _Env&&... __env)
       -> decltype(__self.__tag().get_completion_signatures(
         static_cast<_Self&&>(__self),
         static_cast<_Env&&>(__env)...)) {
       return {};
     }
 
-    template <stdexec::same_as<get_item_types_t> _Tag, stdexec::__decays_to<__seqexpr> _Self, class _Env>
-    friend auto tag_invoke(_Tag, _Self&& __self, _Env&& __env) //
-      -> stdexec::__msecond<
-        stdexec::__if_c<stdexec::same_as<_Tag, get_item_types_t>>,
-        decltype(__self.__tag()
-                   .get_item_types(static_cast<_Self&&>(__self), static_cast<_Env&&>(__env)))> {
+    template <
+      stdexec::same_as<get_item_types_t> _Tag,
+      stdexec::__decays_to<__seqexpr> _Self,
+      class _Env
+    >
+    friend auto tag_invoke(_Tag, _Self&& __self, _Env&& __env) -> stdexec::__msecond<
+      stdexec::__if_c<stdexec::same_as<_Tag, get_item_types_t>>,
+      decltype(__self.__tag()
+                 .get_item_types(static_cast<_Self&&>(__self), static_cast<_Env&&>(__env)))
+    > {
       return {};
     }
 
     template <
       stdexec::same_as<subscribe_t> _Tag,
       stdexec::__decays_to<__seqexpr> _Self,
-      /*receiver*/ class _Receiver>
-    friend auto tag_invoke(_Tag, _Self&& __self, _Receiver&& __rcvr) //
-      noexcept(noexcept(__self.__tag().subscribe(
-        static_cast<_Self&&>(__self),
-        static_cast<_Receiver&&>(__rcvr)))) //
+      /*receiver*/ class _Receiver
+    >
+    friend auto tag_invoke(_Tag, _Self&& __self, _Receiver&& __rcvr) noexcept(noexcept(
+      __self.__tag().subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr))))
       -> stdexec::__msecond<
         stdexec::__if_c<stdexec::same_as<_Tag, subscribe_t>>,
         decltype(__self.__tag()
-                   .subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr)))> {
+                   .subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr)))
+      > {
       return __tag_t::subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
     }
 
     template <class _Sender, class _ApplyFn>
-    static auto apply(_Sender&& __sndr, _ApplyFn&& __fun) //
-      noexcept(stdexec::__nothrow_callable<
-               stdexec::__detail::__impl_of<_Sender>,
-               stdexec::__copy_cvref_fn<_Sender>,
-               _ApplyFn>) //
-      -> stdexec::__call_result_t<
-        stdexec::__detail::__impl_of<_Sender>,
-        stdexec::__copy_cvref_fn<_Sender>,
-        _ApplyFn> { //
-      return static_cast<_Sender&&>(__sndr).__impl_(
-        stdexec::__copy_cvref_fn<_Sender>(), static_cast<_ApplyFn&&>(__fun)); //
+    static auto
+      apply(_Sender&& __sndr, _ApplyFn&& __fun) noexcept(stdexec::__nothrow_callable<
+                                                         stdexec::__detail::__impl_of<_Sender>,
+                                                         stdexec::__copy_cvref_fn<_Sender>,
+                                                         _ApplyFn
+      >)
+        -> stdexec::__call_result_t<
+          stdexec::__detail::__impl_of<_Sender>,
+          stdexec::__copy_cvref_fn<_Sender>,
+          _ApplyFn
+        > {
+      return static_cast<_Sender&&>(__sndr)
+        .__impl_(stdexec::__copy_cvref_fn<_Sender>(), static_cast<_ApplyFn&&>(__fun));
     }
   };
 
   template <class _Tag, class _Data, class... _Child>
-  STDEXEC_ATTRIBUTE((host, device)) __seqexpr(_Tag, _Data, _Child...)
-    -> __seqexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
+  STDEXEC_ATTRIBUTE(host, device)
+  __seqexpr(_Tag, _Data, _Child...) -> __seqexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
 
   template <class _Tag, class _Data, class... _Child>
   using __seqexpr_t = __seqexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;

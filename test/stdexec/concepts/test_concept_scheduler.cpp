@@ -37,10 +37,11 @@ namespace {
   struct my_scheduler {
     struct my_sender {
       using sender_concept = stdexec::sender_t;
-      using completion_signatures = ex::completion_signatures< //
-        ex::set_value_t(),                                     //
-        ex::set_error_t(std::exception_ptr),                   //
-        ex::set_stopped_t()>;
+      using completion_signatures = ex::completion_signatures<
+        ex::set_value_t(),
+        ex::set_error_t(std::exception_ptr),
+        ex::set_stopped_t()
+      >;
 
       [[nodiscard]]
       auto get_env() const noexcept -> default_env<my_scheduler> {
@@ -79,10 +80,11 @@ namespace {
   struct my_scheduler_except {
     struct my_sender {
       using sender_concept = stdexec::sender_t;
-      using completion_signatures = ex::completion_signatures< //
-        ex::set_value_t(),                                     //
-        ex::set_error_t(std::exception_ptr),                   //
-        ex::set_stopped_t()>;
+      using completion_signatures = ex::completion_signatures<
+        ex::set_value_t(),
+        ex::set_error_t(std::exception_ptr),
+        ex::set_stopped_t()
+      >;
 
       [[nodiscard]]
       auto get_env() const noexcept -> default_env<my_scheduler_except> {
@@ -112,10 +114,11 @@ namespace {
   struct noeq_sched {
     struct my_sender {
       using sender_concept = stdexec::sender_t;
-      using completion_signatures = ex::completion_signatures< //
-        ex::set_value_t(),                                     //
-        ex::set_error_t(std::exception_ptr),                   //
-        ex::set_stopped_t()>;
+      using completion_signatures = ex::completion_signatures<
+        ex::set_value_t(),
+        ex::set_error_t(std::exception_ptr),
+        ex::set_stopped_t()
+      >;
 
       [[nodiscard]]
       auto get_env() const noexcept -> default_env<noeq_sched> {
@@ -136,15 +139,15 @@ namespace {
   struct sched_no_completion {
     struct my_sender {
       using sender_concept = stdexec::sender_t;
-      using completion_signatures = ex::completion_signatures< //
-        ex::set_value_t(),                                     //
-        ex::set_error_t(std::exception_ptr),                   //
-        ex::set_stopped_t()>;
+      using completion_signatures = ex::completion_signatures<
+        ex::set_value_t(),
+        ex::set_error_t(std::exception_ptr),
+        ex::set_stopped_t()
+      >;
 
       struct env {
-        friend auto tag_invoke(             //
-          ex::get_completion_scheduler_t<ex::set_error_t>, //
-          const env&) noexcept -> sched_no_completion {
+        friend auto tag_invoke(ex::get_completion_scheduler_t<ex::set_error_t>, const env&) noexcept
+          -> sched_no_completion {
           return {};
         }
       };

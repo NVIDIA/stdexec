@@ -110,7 +110,7 @@ namespace {
     };
 
     template <class Sender, class Receiver>
-    using _operation_state_t = //
+    using _operation_state_t =
       stdexec::__t<operation_state<stdexec::__cvref_id<Sender>, stdexec::__id<Receiver>>>;
 
     template <class ReceiverId, class Fun>
@@ -129,7 +129,8 @@ namespace {
 
         template <class... As>
           requires std::invocable<Fun, As...>
-        STDEXEC_ATTRIBUTE((host, device)) void set_value(As&&... as) && noexcept {
+        STDEXEC_ATTRIBUTE(host, device)
+        void set_value(As&&... as) && noexcept {
           using result_t = std::invoke_result_t<Fun, As...>;
 
           if constexpr (std::is_same_v<void, result_t>) {
@@ -166,16 +167,16 @@ namespace {
           _operation_state_t<stdexec::__copy_cvref_t<Self, Sender>, _receiver_t<Receiver, Fun>>;
 
         template <class Self, class... Env>
-        using __completions_t = //
-          stdexec::transform_completion_signatures<
-            stdexec::__completion_signatures_of_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
-            stdexec::completion_signatures<>,
-            stdexec::__mbind_front_q<stdexec::__set_value_invoke_t, Fun>::template __f>;
+        using __completions_t = stdexec::transform_completion_signatures<
+          stdexec::__completion_signatures_of_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
+          stdexec::completion_signatures<>,
+          stdexec::__mbind_front_q<stdexec::__set_value_invoke_t, Fun>::template __f
+        >;
 
         template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
           requires stdexec::receiver_of<Receiver, __completions_t<Self, stdexec::env_of_t<Receiver>>>
-        friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) //
-          -> op_t<Self, Receiver> {
+        friend auto
+          tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) -> op_t<Self, Receiver> {
           return op_t<Self, Receiver>(
             static_cast<Self&&>(self).sndr_,
             _receiver_t<Receiver, Fun>(static_cast<Receiver&&>(rcvr), self.fun_));
@@ -220,7 +221,7 @@ namespace {
     };
 
     template <class Sender, class Receiver>
-    using _operation_state_t = //
+    using _operation_state_t =
       stdexec::__t<operation_state<stdexec::__cvref_id<Sender>, stdexec::__id<Receiver>>>;
 
     template <class SenderId>
@@ -237,7 +238,7 @@ namespace {
         using op_t = _operation_state_t<stdexec::__copy_cvref_t<Self, Sender>, Receiver>;
 
         template <class Self, class... Env>
-        using _completions_t = //
+        using _completions_t =
           stdexec::__completion_signatures_of_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>;
 
         template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>

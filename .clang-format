@@ -15,6 +15,7 @@ AlignOperands: AlignAfterOperator
 AlignTrailingComments: true
 AllowAllArgumentsOnNextLine: true
 AllowAllParametersOfDeclarationOnNextLine: false
+AllowBreakBeforeNoexceptSpecifier: OnlyWithParen
 AllowShortBlocksOnASingleLine: Never
 AllowShortCaseLabelsOnASingleLine: false
 AllowShortEnumsOnASingleLine: false
@@ -55,6 +56,7 @@ BraceWrapping:
   SplitEmptyNamespace: false
 BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeConceptDeclarations: true
+BreakBeforeTemplateCloser: true
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: BeforeComma
 BreakInheritanceList: BeforeComma
@@ -84,23 +86,25 @@ LambdaBodyIndentation: Signature
 LineEnding: LF
 Macros: [
   'STDEXEC_MEMFN_DECL(...)=__VA_ARGS__',
-  'STDEXEC_ATTRIBUTE(X)=[[]]',
+  'STDEXEC_ATTRIBUTE(...)=__attribute__((__VA_ARGS__))',
   'STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS=[[no_unique_address]]',
   'STDEXEC_MISSING_MEMBER(X,Y)=true',
   'STDEXEC_DEFINE_MEMBER(X)=void foo() {}',
-  'STDEXEC_AUTO_RETURN(...)=->decltype(auto){ return __VA_ARGS__; }',
+  'STDEXEC_AUTO_RETURN(...)=->decltype(auto){ return __VA_ARGS__; }'
 ]
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: All
 PackConstructorInitializers: Never
-PenaltyBreakAssignment: 10
-PenaltyBreakBeforeFirstCallParameter: 64
+PenaltyBreakAssignment: 100
+PenaltyBreakBeforeFirstCallParameter: 100
+PenaltyBreakBeforeMemberAccess: 0
 PenaltyBreakComment: 0
 PenaltyBreakFirstLessLess: 0
-PenaltyBreakOpenParenthesis: 80
-PenaltyBreakString: 10
-PenaltyBreakTemplateDeclaration: 0
-PenaltyExcessCharacter: 100
+PenaltyBreakOpenParenthesis: 0
+PenaltyBreakScopeResolution: 0x7FFFFFFF
+PenaltyBreakString: 0
+PenaltyBreakTemplateDeclaration: 100
+PenaltyExcessCharacter: 500
 PenaltyIndentedWhitespace: 0
 PenaltyReturnTypeOnItsOwnLine: 0
 PointerAlignment: Left

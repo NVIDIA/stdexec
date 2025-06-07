@@ -60,12 +60,10 @@ namespace {
   TEST_CASE("split executes predecessor sender once", "[adaptors][split]") {
     SECTION("when parameters are passed") {
       int counter{};
-      auto snd = ex::split(
-        ex::just() //
-        | ex::then([&] {
-            counter++;
-            return counter;
-          }));
+      auto snd = ex::split(ex::just() | ex::then([&] {
+                             counter++;
+                             return counter;
+                           }));
       auto op1 = ex::connect(snd, expect_value_receiver{1});
       auto op2 = ex::connect(snd, expect_value_receiver{1});
       REQUIRE(counter == 0);
@@ -91,8 +89,7 @@ namespace {
     using value_t = ex::value_types_of_t<split_t, ex::env<>, pack, ex::__mmake_set>;
     static_assert(ex::__mset_eq<value_t, ex::__mset<pack<const int&>>>);
 
-    auto then = split //
-              | ex::then([](const int& cval) {
+    auto then = split | ex::then([](const int& cval) {
                   int& val = const_cast<int&>(cval);
                   const int prev_val = val;
                   val /= 2;
@@ -168,12 +165,10 @@ namespace {
     ex::inplace_stop_source ssource;
     bool called = false;
     int counter{};
-    auto split = ex::split(
-      ex::just() //
-      | ex::then([&] {
-          called = true;
-          return 7;
-        }));
+    auto split = ex::split(ex::just() | ex::then([&] {
+                             called = true;
+                             return 7;
+                           }));
     auto sndr = exec::write_env(
       ex::upon_stopped(
         std::move(split),
@@ -198,14 +193,10 @@ namespace {
     ex::inplace_stop_source ssource;
     bool called = false;
     int counter{};
-    auto split = ex::split(
-      ex::starts_on(
-        sched,
-        ex::just() //
-          | ex::then([&] {
-              called = true;
-              return 7;
-            })));
+    auto split = ex::split(ex::starts_on(sched, ex::just() | ex::then([&] {
+                                                  called = true;
+                                                  return 7;
+                                                })));
     auto sndr = exec::write_env(
       ex::upon_stopped(
         std::move(split),
@@ -240,12 +231,10 @@ namespace {
     ex::inplace_stop_source ssource;
     bool called = false;
     int counter{};
-    auto split = ex::split(
-      ex::just() //
-      | ex::then([&] {
-          called = true;
-          return 7;
-        }));
+    auto split = ex::split(ex::just() | ex::then([&] {
+                             called = true;
+                             return 7;
+                           }));
     auto sndr1 = ex::starts_on(
       sched,
       ex::upon_stopped(
@@ -283,8 +272,7 @@ namespace {
 
   TEST_CASE("split forwards results from a different thread", "[adaptors][split]") {
     exec::static_thread_pool pool{1};
-    auto split = ex::schedule(pool.get_scheduler()) //
-               | ex::then([] {
+    auto split = ex::schedule(pool.get_scheduler()) | ex::then([] {
                    std::this_thread::sleep_for(1ms);
                    return 42;
                  })
@@ -322,9 +310,9 @@ namespace {
         inline_scheduler scheduler{};
 
         std::this_thread::sleep_for(delays[tid]);
-        auto [val] =
-          ex::sync_wait(split | ex::continues_on(scheduler) | ex::then([](int v) { return v; }))
-            .value();
+        auto [val] = ex::sync_wait(
+                       split | ex::continues_on(scheduler) | ex::then([](int v) { return v; }))
+                       .value();
         thread_results[tid] = val;
       });
     }
@@ -335,8 +323,8 @@ namespace {
   }
 
   TEST_CASE("split can be an rvalue", "[adaptors][split]") {
-    auto [val] =
-      ex::sync_wait(ex::just(42) | ex::split() | ex::then([](int v) { return v; })).value();
+    auto [val] = ex::sync_wait(ex::just(42) | ex::split() | ex::then([](int v) { return v; }))
+                   .value();
 
     REQUIRE(val == 42);
   }
@@ -420,8 +408,7 @@ namespace {
     move_only_type,
     copy_and_movable_type) {
     int called = 0;
-    auto multishot = ex::just(TestType(10)) //
-                   | ex::then([&](TestType obj) {
+    auto multishot = ex::just(TestType(10)) | ex::then([&](TestType obj) {
                        ++called;
                        return TestType(obj.val + 1);
                      })
@@ -449,12 +436,10 @@ namespace {
 
   TEST_CASE("split into when_all", "[adaptors][split]") {
     int counter{};
-    auto snd = ex::split(
-      ex::just() //
-      | ex::then([&] {
-          counter++;
-          return counter;
-        }));
+    auto snd = ex::split(ex::just() | ex::then([&] {
+                           counter++;
+                           return counter;
+                         }));
     auto wa = ex::when_all(snd | ex::then([](auto) { return 10; }), snd | ex::then([](auto) {
                                                                       return 20;
                                                                     }));
@@ -469,20 +454,16 @@ namespace {
     auto split_1 = ex::just(42) | ex::split();
     auto split_2 = split_1 | ex::split();
 
-    auto [v1] = ex::sync_wait(
-                  split_1 //
-                  | ex::then([](const int& cv) {
-                      int& v = const_cast<int&>(cv);
-                      return v = 1;
-                    }))
+    auto [v1] = ex::sync_wait(split_1 | ex::then([](const int& cv) {
+                                int& v = const_cast<int&>(cv);
+                                return v = 1;
+                              }))
                   .value();
 
-    auto [v2] = ex::sync_wait(
-                  split_2 //
-                  | ex::then([](const int& cv) {
-                      int& v = const_cast<int&>(cv);
-                      return v = 2;
-                    }))
+    auto [v2] = ex::sync_wait(split_2 | ex::then([](const int& cv) {
+                                int& v = const_cast<int&>(cv);
+                                return v = 2;
+                              }))
                   .value();
 
     auto [v3] = ex::sync_wait(split_1).value();

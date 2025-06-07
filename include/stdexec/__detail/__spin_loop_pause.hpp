@@ -26,7 +26,7 @@
 #    include <intrin.h>
 #  endif
 namespace stdexec {
-  STDEXEC_ATTRIBUTE((always_inline)) static void __spin_loop_pause() noexcept {
+  STDEXEC_ATTRIBUTE(always_inline) static void __spin_loop_pause() noexcept {
 #  if STDEXEC_MSVC_HEADERS()
     _mm_pause();
 #  else
@@ -36,7 +36,7 @@ namespace stdexec {
 } // namespace stdexec
 #elif defined(__arm__) || defined(__aarch64__) || defined(_M_ARM64)
 namespace stdexec {
-  STDEXEC_ATTRIBUTE((always_inline)) static void __spin_loop_pause() noexcept {
+  STDEXEC_ATTRIBUTE(always_inline) static void __spin_loop_pause() noexcept {
 #  if (                                                                                            \
     defined(__ARM_ARCH_6K__) || defined(__ARM_ARCH_6Z__) || defined(__ARM_ARCH_6ZK__)              \
     || defined(__ARM_ARCH_6T2__) || defined(__ARM_ARCH_7__) || defined(__ARM_ARCH_7A__)            \
@@ -52,7 +52,7 @@ namespace stdexec {
 } // namespace stdexec
 #else
 namespace stdexec {
-  STDEXEC_ATTRIBUTE((always_inline)) static void __spin_loop_pause() noexcept {
+  STDEXEC_ATTRIBUTE(always_inline) static void __spin_loop_pause() noexcept {
   }
 } // namespace stdexec
 #endif

@@ -56,7 +56,7 @@ namespace stdexec {
         using __id = __operation;
 
         run_loop* __loop_;
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
+        STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __rcvr_;
 
         static void __execute_impl(__task* __p) noexcept {
           auto& __rcvr = static_cast<__t*>(__p)->__rcvr_;
@@ -96,8 +96,11 @@ namespace stdexec {
           using __t = __schedule_task;
           using __id = __schedule_task;
           using sender_concept = sender_t;
-          using completion_signatures = stdexec::
-            completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
+          using completion_signatures = stdexec::completion_signatures<
+            set_value_t(),
+            set_error_t(std::exception_ptr),
+            set_stopped_t()
+          >;
 
           template <class _Receiver>
           using __operation = stdexec::__t<__operation<stdexec::__id<_Receiver>>>;

@@ -42,21 +42,19 @@ namespace stdexec {
       "The current execution environment doesn't have a value for the given query."_mstr;
 
     template <class _Tag, class _Env>
-    using __query_failed_error = //
-      __mexception<              //
-        _NOT_CALLABLE_<"In stdexec::read_env()..."_mstr, __query_failed_diag>,
-        _WITH_QUERY_<_Tag>,
-        _WITH_ENVIRONMENT_<_Env>>;
+    using __query_failed_error = __mexception<
+      _NOT_CALLABLE_<"In stdexec::read_env()..."_mstr, __query_failed_diag>,
+      _WITH_QUERY_<_Tag>,
+      _WITH_ENVIRONMENT_<_Env>
+    >;
 
     template <class _Tag, class _Env>
       requires __callable<_Tag, _Env>
-    using __completions_t = //
-      __if_c<
-        __nothrow_callable<_Tag, _Env>,
-        completion_signatures<set_value_t(__call_result_t<_Tag, _Env>)>,
-        completion_signatures<
-          set_value_t(__call_result_t<_Tag, _Env>),
-          set_error_t(std::exception_ptr)>>;
+    using __completions_t = __if_c<
+      __nothrow_callable<_Tag, _Env>,
+      completion_signatures<set_value_t(__call_result_t<_Tag, _Env>)>,
+      completion_signatures<set_value_t(__call_result_t<_Tag, _Env>), set_error_t(std::exception_ptr)>
+    >;
 
     template <class _Tag, class _Ty>
     struct __state {
@@ -88,20 +86,20 @@ namespace stdexec {
         return prop{__is_scheduler_affine_t{}, std::true_type{}};
       };
 
-      static constexpr auto get_completion_signatures = //
+      static constexpr auto get_completion_signatures =
         []<class _Self, class _Env>(const _Self&, _Env&&) noexcept
         -> __completions_t<__data_of<_Self>, _Env> {
         return {};
       };
 
-      static constexpr auto get_state = //
+      static constexpr auto get_state =
         []<class _Self, class _Receiver>(const _Self&, _Receiver&) noexcept {
           using __query = __data_of<_Self>;
           using __result = __call_result_t<__query, env_of_t<_Receiver>>;
           return __state<__query, __result>();
         };
 
-      static constexpr auto start = //
+      static constexpr auto start =
         []<class _State, class _Receiver>(_State& __state, _Receiver& __rcvr) noexcept -> void {
         using __query = typename _State::__query;
         using __result = typename _State::__result;
@@ -121,7 +119,7 @@ namespace stdexec {
         }
       };
 
-      static constexpr auto submit = //
+      static constexpr auto submit =
         []<class _Sender, class _Receiver>(const _Sender& __sndr, _Receiver __rcvr) noexcept
         requires std::is_reference_v<__call_result_t<__data_of<_Sender>, env_of_t<_Receiver>>>
       {

@@ -69,23 +69,29 @@ namespace {
     }
 
     constexpr void set_stopped() && noexcept
-      requires ::stdexec::
-        receiver_of<Receiver, ::stdexec::completion_signatures<::stdexec::set_stopped_t()>>
+      requires ::stdexec::receiver_of<
+        Receiver,
+        ::stdexec::completion_signatures<::stdexec::set_stopped_t()>
+      >
     {
       complete_(::stdexec::set_stopped);
     }
 
     template <typename T>
-      requires ::stdexec::
-        receiver_of<Receiver, ::stdexec::completion_signatures<::stdexec::set_error_t(T)>>
-      constexpr void set_error(T&& t) && noexcept {
+      requires ::stdexec::receiver_of<
+        Receiver,
+        ::stdexec::completion_signatures<::stdexec::set_error_t(T)>
+      >
+    constexpr void set_error(T&& t) && noexcept {
       complete_(::stdexec::set_error, std::forward<T>(t));
     }
 
     template <typename... Args>
-      requires ::stdexec::
-        receiver_of<Receiver, ::stdexec::completion_signatures<::stdexec::set_value_t(Args...)>>
-      constexpr void set_value(Args&&... args) && noexcept {
+      requires ::stdexec::receiver_of<
+        Receiver,
+        ::stdexec::completion_signatures<::stdexec::set_value_t(Args...)>
+      >
+    constexpr void set_value(Args&&... args) && noexcept {
       complete_(::stdexec::set_value, std::forward<Args>(args)...);
     }
 
@@ -102,7 +108,9 @@ namespace {
    public:
     constexpr explicit connect_shared_operation_state(Sender&& s, Receiver&& r)
       : op_(
-        ::stdexec::connect(std::forward<Sender>(s), receiver_(std::forward<Receiver>(r), self_))) {
+          ::stdexec::connect(
+            std::forward<Sender>(s),
+            receiver_(std::forward<Receiver>(r), self_))) {
     }
 
     void start(std::shared_ptr<connect_shared_operation_state>&& ptr) & noexcept {
@@ -150,7 +158,9 @@ namespace {
                   completion_signatures<
                     set_stopped_t(),
                     set_error_t(std::exception_ptr),
-                    set_value_t(error_code)>>);
+                    set_value_t(error_code)
+                  >
+    >);
     CHECK(!ctx.poll());
     CHECK(ctx.stopped());
     ctx.restart();
@@ -243,8 +253,8 @@ namespace {
     "[asioexec][completion_token]") {
     bool stopped = false;
     expect_stopped_receiver_ex r(stopped);
-    using sender_type =
-      decltype(std::declval<asio_impl::system_timer&>().async_wait(completion_token));
+    using sender_type = decltype(std::declval<asio_impl::system_timer&>()
+                                   .async_wait(completion_token));
     using operation_state_type = connect_result_t<sender_type, decltype(r)>;
     std::optional<operation_state_type> op;
     {
@@ -398,7 +408,7 @@ namespace {
     "set_stopped is sent immediately",
     "[asioexec][completion_token]") {
     const auto initiating_function = [&](auto&& token) {
-      return asio_impl::async_initiate<decltype(token), void()>([](auto&&) noexcept {}, token);
+      return asio_impl::async_initiate<decltype(token), void()>([](auto&&) noexcept { }, token);
     };
     start_shared(connect_shared(initiating_function(completion_token), expect_stopped_receiver{}));
   }
@@ -500,7 +510,7 @@ namespace {
     const auto initiating_function = [&](auto&& token) {
       return asio_impl::async_initiate<decltype(token), void()>(
         [&](auto&& h) {
-          asio_impl::post(ctx.get_executor(), [h = std::move(h)]() noexcept {});
+          asio_impl::post(ctx.get_executor(), [h = std::move(h)]() noexcept { });
           throw std::logic_error("Test");
         },
         token);
@@ -527,14 +537,14 @@ namespace {
       const auto initiating_function = [&](auto&& token) {
         return asio_impl::async_initiate<decltype(token), void()>(
           [&](auto&& h) {
-            auto ptr =
-              std::make_shared<std::remove_cvref_t<decltype(h)>>(std::forward<decltype(h)>(h));
+            auto ptr = std::make_shared<std::remove_cvref_t<decltype(h)>>(
+              std::forward<decltype(h)>(h));
             const auto ex = asio_impl::get_associated_executor(*ptr, ctx.get_executor());
             if (u) {
               asio_impl::post(ex, [ptr]() { throw std::logic_error("Test"); });
-              asio_impl::post(ex, [ptr = std::move(ptr)]() noexcept {});
+              asio_impl::post(ex, [ptr = std::move(ptr)]() noexcept { });
             } else {
-              asio_impl::post(ex, [ptr]() noexcept {});
+              asio_impl::post(ex, [ptr]() noexcept { });
               asio_impl::post(ex, [ptr = std::move(ptr)]() { throw std::logic_error("Test"); });
             }
           },
@@ -652,7 +662,7 @@ namespace {
     "appropriately passed through",
     "[asioexec][completion_token]") {
     const auto initiating_function = [](const bool rvalue, auto&& token) {
-      return asio_impl::async_initiate<decltype(token), void(std::mutex &&), void(std::mutex&)>(
+      return asio_impl::async_initiate<decltype(token), void(std::mutex&&), void(std::mutex&)>(
         [rvalue](auto&& h) {
           std::mutex m;
           if (rvalue) {
@@ -682,7 +692,7 @@ namespace {
     "appropriately passed through even if the lvalue is sent mutable",
     "[asioexec][completion_token]") {
     const auto initiating_function = [](const bool rvalue, auto&& token) {
-      return asio_impl::async_initiate<decltype(token), void(std::mutex &&), void(const std::mutex&)>(
+      return asio_impl::async_initiate<decltype(token), void(std::mutex&&), void(const std::mutex&)>(
         [rvalue](auto&& h) {
           std::mutex m;
           if (rvalue) {

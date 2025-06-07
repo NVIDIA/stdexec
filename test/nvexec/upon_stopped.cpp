@@ -25,8 +25,8 @@ namespace {
     flags_storage_t flags_storage{};
     auto flags = flags_storage.get();
 
-    auto snd = ex::just_stopped() //
-             | ex::continues_on(stream_ctx.get_scheduler()) | ex::upon_stopped([=] {
+    auto snd = ex::just_stopped() | ex::continues_on(stream_ctx.get_scheduler())
+             | ex::upon_stopped([=] {
                  if (is_on_gpu()) {
                    flags.set();
                  }

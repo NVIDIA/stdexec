@@ -71,9 +71,10 @@ namespace exec {
 
         explicit __t(const __impl* __scope, _Constrained&& __sndr, _Receiver __rcvr)
           : __task{{}, __scope, __notify_waiter}
-          , __op_(stdexec::connect(
-              static_cast<_Constrained&&>(__sndr),
-              static_cast<_Receiver&&>(__rcvr))) {
+          , __op_(
+              stdexec::connect(
+                static_cast<_Constrained&&>(__sndr),
+                static_cast<_Receiver&&>(__rcvr))) {
         }
 
         void start() & noexcept {
@@ -113,8 +114,8 @@ namespace exec {
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Constrained>, _Receiver>
         [[nodiscard]]
-        static auto connect(_Self&& __self, _Receiver __rcvr) //
-          -> __when_empty_op_t<_Self, _Receiver> {
+        static auto
+          connect(_Self&& __self, _Receiver __rcvr) -> __when_empty_op_t<_Self, _Receiver> {
           return __when_empty_op_t<_Self, _Receiver>{
             __self.__scope_, static_cast<_Self&&>(__self).__c_, static_cast<_Receiver&&>(__rcvr)};
         }
@@ -126,7 +127,7 @@ namespace exec {
         }
 
         const __impl* __scope_;
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Constrained __c_;
+        STDEXEC_ATTRIBUTE(no_unique_address) _Constrained __c_;
       };
     };
 
@@ -139,7 +140,7 @@ namespace exec {
     struct __nest_op_base : __immovable {
       using _Receiver = stdexec::__t<_ReceiverId>;
       const __impl* __scope_;
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
+      STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __rcvr_;
     };
 
     template <class _ReceiverId>
@@ -242,7 +243,7 @@ namespace exec {
         using sender_concept = stdexec::sender_t;
 
         const __impl* __scope_;
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Constrained __c_;
+        STDEXEC_ATTRIBUTE(no_unique_address) _Constrained __c_;
 
         template <class _Receiver>
         using __nest_operation_t =
@@ -351,9 +352,10 @@ namespace exec {
           }
         }
 
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver __rcvr_;
+        STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __rcvr_;
         std::unique_ptr<__future_state<_Sender, _Env>> __state_;
-        STDEXEC_ATTRIBUTE((no_unique_address)) stdexec::__optional<__forward_consumer> __forward_consumer_;
+        STDEXEC_ATTRIBUTE(no_unique_address)
+        stdexec::__optional<__forward_consumer> __forward_consumer_;
 
        public:
         using __id = __future_op;
@@ -368,8 +370,8 @@ namespace exec {
               return;
             }
             __raw_state->__no_future_ = std::move(__state_);
-            __raw_state->__step_from_to_(
-              __guard, __future_step::__future, __future_step::__no_future);
+            __raw_state
+              ->__step_from_to_(__guard, __future_step::__future, __future_step::__no_future);
           }
         }
 
@@ -421,8 +423,8 @@ namespace exec {
     auto __completion_as_tuple_(_Tag (*)(_Ts...)) -> std::tuple<_Tag, _Ts...>;
 
     template <class _Fn>
-    using __completion_as_tuple_t =
-      decltype(__scope::__completion_as_tuple_(static_cast<_Fn*>(nullptr)));
+    using __completion_as_tuple_t = decltype(__scope::__completion_as_tuple_(
+      static_cast<_Fn*>(nullptr)));
 #endif
 
     template <class... _Ts>
@@ -432,19 +434,19 @@ namespace exec {
     using __decay_error_t = completion_signatures<set_error_t(__decay_t<_Ty>)>;
 
     template <class _Sender, class _Env>
-    using __future_completions_t = //
-      transform_completion_signatures_of<
-        _Sender,
-        __env_t<_Env>,
-        completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr)>,
-        __decay_values_t,
-        __decay_error_t>;
+    using __future_completions_t = transform_completion_signatures_of<
+      _Sender,
+      __env_t<_Env>,
+      completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr)>,
+      __decay_values_t,
+      __decay_error_t
+    >;
 
     template <class _Completions>
-    using __completions_as_variant = //
-      __mapply<
-        __mtransform<__q<__completion_as_tuple_t>, __mbind_front_q<std::variant, std::monostate>>,
-        _Completions>;
+    using __completions_as_variant = __mapply<
+      __mtransform<__q<__completion_as_tuple_t>, __mbind_front_q<std::variant, std::monostate>>,
+      _Completions
+    >;
 
     template <class _Ty>
     struct __dynamic_delete {
@@ -607,9 +609,8 @@ namespace exec {
           static_cast<_Sender&&>(__sndr), __future_receiver_t<_Sender, _Env>{this, __scope});
       }
 
-      STDEXEC_ATTRIBUTE((no_unique_address)) [[]] //
-        submit_result<_Sender, __future_receiver_t<_Sender, _Env>>
-          __op_{};
+      STDEXEC_ATTRIBUTE(no_unique_address)
+      submit_result<_Sender, __future_receiver_t<_Sender, _Env>> __op_{};
     };
 
     template <class _SenderId, class _EnvId>
@@ -642,8 +643,8 @@ namespace exec {
               return;
             }
             __raw_state->__no_future_ = std::move(__state_);
-            __raw_state->__step_from_to_(
-              __guard, __future_step::__future, __future_step::__no_future);
+            __raw_state
+              ->__step_from_to_(__guard, __future_step::__future, __future_step::__no_future);
           }
         }
 
@@ -741,11 +742,12 @@ namespace exec {
 
       struct __t : __spawn_op_base<_EnvId> {
         __t(connect_t, _Sender&& __sndr, _Env __env, const __impl* __scope)
-          : __spawn_op_base<_EnvId>{__env::__join(static_cast<_Env&&>(__env),
-            __spawn_env_{__scope->__stop_source_.get_token()}),
-            [](__spawn_op_base<_EnvId>* __op) {
-                delete static_cast<__t*>(__op);
-            }}
+          : __spawn_op_base<
+              _EnvId
+            >{__env::__join(
+                static_cast<_Env&&>(__env),
+                __spawn_env_{__scope->__stop_source_.get_token()}),
+              [](__spawn_op_base<_EnvId>* __op) { delete static_cast<__t*>(__op); }}
           , __data_(static_cast<_Sender&&>(__sndr), __spawn_receiver_t<_Env>{this}) {
         }
 
@@ -761,9 +763,8 @@ namespace exec {
           __data_.submit(static_cast<_Sender&&>(__sndr), __spawn_receiver_t<_Env>{this});
         }
 
-        STDEXEC_ATTRIBUTE((no_unique_address)) [[]] //
-          submit_result<_Sender, __spawn_receiver_t<_Env>>
-            __data_;
+        STDEXEC_ATTRIBUTE(no_unique_address)
+        submit_result<_Sender, __spawn_receiver_t<_Env>> __data_;
       };
     };
 
@@ -834,6 +835,6 @@ namespace exec {
   using __scope::async_scope;
 
   template <class _AsyncScope, class _Sender>
-  using nest_result_t =
-    decltype(stdexec::__declval<_AsyncScope&>().nest(stdexec::__declval<_Sender&&>()));
+  using nest_result_t = decltype(stdexec::__declval<_AsyncScope&>()
+                                   .nest(stdexec::__declval<_Sender&&>()));
 } // namespace exec

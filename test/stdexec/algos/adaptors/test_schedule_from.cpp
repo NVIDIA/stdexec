@@ -68,8 +68,7 @@ namespace {
     "schedule_from calls the given sender when the scheduler dictates",
     "[adaptors][schedule_from]") {
     bool called{false};
-    auto snd_base = ex::just() //
-                  | ex::then([&]() -> int {
+    auto snd_base = ex::just() | ex::then([&]() -> int {
                       called = true;
                       return 19;
                     });
@@ -97,7 +96,7 @@ namespace {
     std::atomic<bool> called{false};
     {
       // lunch some work on the thread pool
-      ex::sender auto snd = ex::schedule_from(pool.get_scheduler(), ex::just()) //
+      ex::sender auto snd = ex::schedule_from(pool.get_scheduler(), ex::just())
                           | ex::then([&] { called.store(true); });
       ex::start_detached(std::move(snd));
     }
@@ -178,7 +177,9 @@ namespace {
       ex::schedule_from(sched, ex::just(3, 0.14, std::string{"pi"})));
   }
 
-  TEST_CASE("schedule_from keeps error_types from scheduler's sender", "[adaptors][schedule_from]") {
+  TEST_CASE(
+    "schedule_from keeps error_types from scheduler's sender",
+    "[adaptors][schedule_from]") {
     inline_scheduler sched1{};
     error_scheduler sched2{};
     error_scheduler<int> sched3{43};

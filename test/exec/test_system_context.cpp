@@ -336,10 +336,8 @@ TEST_CASE(
   "can change the implementation of system context at runtime",
   "[types][system_scheduler]") {
   static auto my_scheduler_backend = std::make_shared<my_parallel_scheduler_backend_impl>();
-  auto old_factory =
-    scr::set_parallel_scheduler_backend([]() -> std::shared_ptr<scr::parallel_scheduler_backend> {
-      return my_scheduler_backend;
-    });
+  auto old_factory = scr::set_parallel_scheduler_backend(
+    []() -> std::shared_ptr<scr::parallel_scheduler_backend> { return my_scheduler_backend; });
 
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};
@@ -360,8 +358,8 @@ TEST_CASE(
 TEST_CASE(
   "can change the implementation of system context at runtime, with an inline scheduler",
   "[types][system_scheduler]") {
-  auto old_factory =
-    scr::set_parallel_scheduler_backend([]() -> std::shared_ptr<scr::parallel_scheduler_backend> {
+  auto old_factory = scr::set_parallel_scheduler_backend(
+    []() -> std::shared_ptr<scr::parallel_scheduler_backend> {
       return std::make_shared<my_inline_scheduler_backend_impl>();
     });
 

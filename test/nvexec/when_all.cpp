@@ -26,13 +26,13 @@ namespace {
     auto flags = flags_storage.get();
 
     auto snd = ex::when_all(
-      ex::schedule(stream_ctx.get_scheduler()) //
+      ex::schedule(stream_ctx.get_scheduler())
         | ex::then([=] {
             if (is_on_gpu()) {
               flags.set(0);
             }
           }),
-      ex::schedule(stream_ctx.get_scheduler()) //
+      ex::schedule(stream_ctx.get_scheduler())
         | ex::then([=] {
             if (is_on_gpu()) {
               flags.set(1);

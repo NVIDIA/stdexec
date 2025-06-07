@@ -66,8 +66,12 @@ namespace stdexec {
 
     // What should sync_wait(just_stopped()) return?
     template <class _Sender, class _Continuation>
-    using __sync_wait_result_impl = //
-      __value_types_of_t<_Sender, __env, __mtransform<__q<__decay_t>, _Continuation>, __q<__msingle>>;
+    using __sync_wait_result_impl = __value_types_of_t<
+      _Sender,
+      __env,
+      __mtransform<__q<__decay_t>, _Continuation>,
+      __q<__msingle>
+    >;
 
     template <class _Sender>
     using __sync_wait_result_t = __mtry_eval<__sync_wait_result_impl, _Sender, __qq<std::tuple>>;
@@ -149,8 +153,7 @@ namespace stdexec {
     template <class _Sender>
     using __variant_for_t = __t<__variant_for<_Sender>>;
 
-    inline constexpr __mstring __sync_wait_context_diag = //
-      "In stdexec::sync_wait()..."_mstr;
+    inline constexpr __mstring __sync_wait_context_diag = "In stdexec::sync_wait()..."_mstr;
     inline constexpr __mstring __too_many_successful_completions_diag =
       "The argument to stdexec::sync_wait() is a sender that can complete successfully in more "
       "than one way. Use stdexec::sync_wait_with_variant() instead."_mstr;
@@ -166,7 +169,8 @@ namespace stdexec {
     using __sync_wait_error = __mexception<
       __invalid_argument_to_sync_wait<_Diagnostic>,
       _WITH_SENDER_<_Sender>,
-      _WITH_ENVIRONMENT_<_Env>>;
+      _WITH_ENVIRONMENT_<_Env>
+    >;
 
     template <class _Sender, class>
     using __too_many_successful_completions_error =
@@ -176,7 +180,8 @@ namespace stdexec {
     concept __valid_sync_wait_argument = __ok<__minvoke<
       __mtry_catch_q<__single_value_variant_sender_t, __q<__too_many_successful_completions_error>>,
       _Sender,
-      __env>>;
+      __env
+    >>;
 
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait]
@@ -293,13 +298,15 @@ namespace stdexec {
           apply_sender_t,
           __early_domain_of_t<_Sender>,
           sync_wait_with_variant_t,
-          _Sender>
+          _Sender
+        >
       auto operator()(_Sender&& __sndr) const -> decltype(auto) {
         using __result_t = __call_result_t<
           apply_sender_t,
           __early_domain_of_t<_Sender>,
           sync_wait_with_variant_t,
-          _Sender>;
+          _Sender
+        >;
         static_assert(__is_instance_of<__result_t, std::optional>);
         using __variant_t = typename __result_t::value_type;
         static_assert(__is_instance_of<__variant_t, std::variant>);

@@ -160,8 +160,8 @@ namespace exec {
         lock.unlock();
         if (stop_requested) {
           std::ptrdiff_t expected = 0;
-          while (!n_submissions_in_flight_.compare_exchange_weak(
-            expected, context_closed, std::memory_order_relaxed)) {
+          while (!n_submissions_in_flight_
+                    .compare_exchange_weak(expected, context_closed, std::memory_order_relaxed)) {
             stdexec::__spin_loop_pause();
             expected = 0;
           }
@@ -185,8 +185,8 @@ namespace exec {
           STDEXEC_ASSERT(op->command_ == command_type::command_type::stop);
           static_cast<stop_type*>(op)->set_value_(op);
         }
-        n_submissions_in_flight_.compare_exchange_strong(
-          n, context_closed, std::memory_order_relaxed);
+        n_submissions_in_flight_
+          .compare_exchange_strong(n, context_closed, std::memory_order_relaxed);
         return;
       }
       if (command_queue_.push_back(op)) {
@@ -210,7 +210,8 @@ namespace exec {
       &task_type::when_,
       &task_type::prev_,
       &task_type::left_,
-      &task_type::right_>
+      &task_type::right_
+    >
       heap_;
     std::atomic<std::ptrdiff_t> n_submissions_in_flight_{0};
     std::mutex ready_mutex_;
@@ -266,8 +267,8 @@ namespace exec {
       }
 
       void start() & noexcept {
-        stop_callback_.emplace(
-          stdexec::get_stop_token(stdexec::get_env(receiver_)), on_stopped_t{*this});
+        stop_callback_
+          .emplace(stdexec::get_stop_token(stdexec::get_env(receiver_)), on_stopped_t{*this});
         int expected = 0;
         if (ref_count_.compare_exchange_strong(expected, 1, std::memory_order_relaxed)) {
           schedule_this();
@@ -291,7 +292,8 @@ namespace exec {
       };
 
       using callback_type = typename stdexec::stop_token_of_t<
-        stdexec::env_of_t<Receiver>>::template callback_type<on_stopped_t>;
+        stdexec::env_of_t<Receiver>
+      >::template callback_type<on_stopped_t>;
 
       void request_stop() noexcept {
         if (ref_count_.fetch_add(1, std::memory_order_relaxed) == 1) {

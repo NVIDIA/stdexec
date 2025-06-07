@@ -31,10 +31,8 @@ namespace stdexec {
 
   template <class _Token>
   concept stoppable_token =
-    __nothrow_copy_constructible<_Token>    //
-    && __nothrow_move_constructible<_Token> //
-    && equality_comparable<_Token>          //
-    && requires(const _Token& __token) {
+    __nothrow_copy_constructible<_Token> && __nothrow_move_constructible<_Token>
+    && equality_comparable<_Token> && requires(const _Token& __token) {
          { __token.stop_requested() } noexcept -> __boolean_testable_;
          { __token.stop_possible() } noexcept -> __boolean_testable_;
     // workaround ICE in appleclang 13.1
@@ -45,16 +43,13 @@ namespace stdexec {
 
   template <class _Token, typename _Callback, typename _Initializer = _Callback>
   concept stoppable_token_for =
-    stoppable_token<_Token>  //
-    && __callable<_Callback> //
+    stoppable_token<_Token> && __callable<_Callback>
     && requires { typename stop_callback_for_t<_Token, _Callback>; }
     && constructible_from<_Callback, _Initializer>
     && constructible_from<stop_callback_for_t<_Token, _Callback>, const _Token&, _Initializer>;
 
   template <class _Token>
-  concept unstoppable_token =  //
-    stoppable_token<_Token> && //
-    requires {
-      { _Token::stop_possible() } -> __boolean_testable_;
-    } && (!_Token::stop_possible());
+  concept unstoppable_token = stoppable_token<_Token> && requires {
+    { _Token::stop_possible() } -> __boolean_testable_;
+  } && (!_Token::stop_possible());
 } // namespace stdexec

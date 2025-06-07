@@ -51,34 +51,27 @@ namespace {
   }
 
   TEST_CASE("when_any completes with only one sender", "[adaptors][when_any]") {
-    ex::sender auto snd = exec::when_any(               //
-      completes_if{false} | ex::then([] { return 1; }), //
-      completes_if{true} | ex::then([] { return 42; })  //
-    );
+    ex::sender auto snd = exec::when_any(
+      completes_if{false} | ex::then([] { return 1; }),
+      completes_if{true} | ex::then([] { return 42; }));
     wait_for_value(std::move(snd), 42);
 
-    ex::sender auto snd2 = exec::when_any(              //
-      completes_if{true} | ex::then([] { return 1; }),  //
-      completes_if{false} | ex::then([] { return 42; }) //
-    );
+    ex::sender auto snd2 = exec::when_any(
+      completes_if{true} | ex::then([] { return 1; }),
+      completes_if{false} | ex::then([] { return 42; }));
     wait_for_value(std::move(snd2), 1);
   }
 
   TEST_CASE("when_any with move-only types", "[adaptors][when_any]") {
-    ex::sender auto snd = exec::when_any( //
-      completes_if{false} | ex::then([] { return movable(1); }),
-      ex::just(movable(42)) //
-    );
+    ex::sender auto snd = exec::when_any(
+      completes_if{false} | ex::then([] { return movable(1); }), ex::just(movable(42)));
     wait_for_value(std::move(snd), movable(42));
   }
 
   TEST_CASE("when_any forwards stop signal", "[adaptors][when_any]") {
     stopped_scheduler stop;
     int result = 42;
-    ex::sender auto snd = exec::when_any(        //
-                            completes_if{false}, //
-                            ex::schedule(stop)   //
-                            )
+    ex::sender auto snd = exec::when_any(completes_if{false}, ex::schedule(stop))
                         | ex::then([&result] { result += 1; });
     ex::sync_wait(std::move(snd));
     REQUIRE(result == 42);
@@ -141,32 +134,37 @@ namespace {
     static_assert(sender<decltype(just)>);
     static_assert(set_equivalent<
                   completion_signatures_of_t<decltype(just)>,
-                  completion_signatures<set_value_t(), set_stopped_t()>>);
+                  completion_signatures<set_value_t(), set_stopped_t()>
+    >);
 
     auto just_string = exec::when_any(ex::just(std::string("foo")));
     static_assert(sender<decltype(just_string)>);
     static_assert(set_equivalent<
                   completion_signatures_of_t<decltype(just_string)>,
-                  completion_signatures<set_value_t(std::string), set_stopped_t()>>);
+                  completion_signatures<set_value_t(std::string), set_stopped_t()>
+    >);
 
     auto just_stopped = exec::when_any(ex::just_stopped());
     static_assert(sender<decltype(just_stopped)>);
     static_assert(set_equivalent<
                   completion_signatures_of_t<decltype(just_stopped)>,
-                  completion_signatures<set_stopped_t()>>);
+                  completion_signatures<set_stopped_t()>
+    >);
 
     auto just_then = exec::when_any(ex::just() | ex::then([] { return 42; }));
     static_assert(sender<decltype(just_then)>);
     static_assert(
       set_equivalent<
         completion_signatures_of_t<decltype(just_then)>,
-        completion_signatures<set_value_t(int), set_stopped_t(), set_error_t(std::exception_ptr)>>);
+        completion_signatures<set_value_t(int), set_stopped_t(), set_error_t(std::exception_ptr)>
+      >);
 
     auto just_then_noexcept = exec::when_any(ex::just() | ex::then([]() noexcept { return 42; }));
     static_assert(sender<decltype(just_then_noexcept)>);
     static_assert(set_equivalent<
                   completion_signatures_of_t<decltype(just_then_noexcept)>,
-                  completion_signatures<set_value_t(int), set_stopped_t()>>);
+                  completion_signatures<set_value_t(int), set_stopped_t()>
+    >);
 
     auto just_move_throws = exec::when_any(ex::just(move_throws{}));
     static_assert(sender<decltype(just_move_throws)>);
@@ -175,7 +173,9 @@ namespace {
                   completion_signatures<
                     set_value_t(move_throws),
                     set_stopped_t(),
-                    set_error_t(std::exception_ptr)>>);
+                    set_error_t(std::exception_ptr)
+                  >
+    >);
 
     auto mulitple_senders = exec::when_any(
       ex::just(std::numbers::pi),
@@ -191,7 +191,9 @@ namespace {
                     set_value_t(std::string),
                     set_value_t(int),
                     set_stopped_t(),
-                    set_error_t(std::exception_ptr)>>);
+                    set_error_t(std::exception_ptr)
+                  >
+    >);
     // wait_for_value(std::move(snd), movable(42));
   }
 
@@ -210,7 +212,8 @@ namespace {
     using completion_signatures = stdexec::completion_signatures<
       set_value_t(),
       set_error_t(std::exception_ptr),
-      set_error_t(std::exception_ptr&&)>;
+      set_error_t(std::exception_ptr&&)
+    >;
 
     template <class Receiver>
     friend auto tag_invoke(connect_t, dup_sender, Receiver rec) noexcept -> dup_op<Receiver> {

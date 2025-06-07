@@ -25,11 +25,12 @@ namespace exec {
     template <
       __mstring _Where = "In reschedule() ..."_mstr,
       __mstring _What =
-        "The execution environment does not have a current scheduler on which to reschedule."_mstr>
+        "The execution environment does not have a current scheduler on which to reschedule."_mstr
+    >
     struct _INVALID_RESCHEDULE_NO_SCHEDULER_ { };
 
     template <class _Env>
-    using __no_scheduler_error = //
+    using __no_scheduler_error =
       __mexception<_INVALID_RESCHEDULE_NO_SCHEDULER_<>, _WITH_ENVIRONMENT_<_Env>>;
 
     template <class _Env>

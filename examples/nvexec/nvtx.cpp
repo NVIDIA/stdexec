@@ -24,9 +24,9 @@ namespace ex = stdexec;
 
 auto main() -> int {
   nvexec::stream_context stream_ctx{};
-  auto snd = ex::schedule(stream_ctx.get_scheduler()) //
+  auto snd = ex::schedule(stream_ctx.get_scheduler())
            | nvexec::nvtx::push("manual push")
-           | nvexec::nvtx::scoped("scope", ex::then([] { printf("hello!\n"); }) //
+           | nvexec::nvtx::scoped("scope", ex::then([] { printf("hello!\n"); })
                                          | ex::then([] { printf("bye!\n"); }))
            | nvexec::nvtx::pop();
   stdexec::sync_wait(std::move(snd));

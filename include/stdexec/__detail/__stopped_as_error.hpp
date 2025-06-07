@@ -39,7 +39,8 @@ namespace stdexec {
       }
 
       template <__movable_value _Error>
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Error __err) const -> __binder_back<stopped_as_error_t, _Error> {
+      STDEXEC_ATTRIBUTE(always_inline)
+      auto operator()(_Error __err) const -> __binder_back<stopped_as_error_t, _Error> {
         return {{static_cast<_Error&&>(__err)}, {}, {}};
       }
     };

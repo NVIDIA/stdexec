@@ -41,7 +41,7 @@ namespace nvexec {
       }
 
       [[nodiscard]]
-      STDEXEC_ATTRIBUTE((host, device)) auto schedule() const noexcept {
+      STDEXEC_ATTRIBUTE(host, device) auto schedule() const noexcept {
         return sender_t{num_devices_, context_state_};
       }
 
@@ -98,13 +98,15 @@ namespace nvexec {
         using completion_signatures =
           stdexec::completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
 
-        STDEXEC_ATTRIBUTE((host, device)) explicit sender_t(int num_devices, context_state_t context_state) noexcept
+        STDEXEC_ATTRIBUTE(host, device)
+
+        explicit sender_t(int num_devices, context_state_t context_state) noexcept
           : env_{.num_devices_ = num_devices, .context_state_ = context_state} {
         }
 
         template <class Receiver>
         [[nodiscard]]
-        auto connect(Receiver rcvr) const & noexcept(__nothrow_move_constructible<Receiver>) //
+        auto connect(Receiver rcvr) const & noexcept(__nothrow_move_constructible<Receiver>)
           -> operation_state_t<stdexec::__id<Receiver>> {
           return operation_state_t<stdexec::__id<Receiver>>(static_cast<Receiver&&>(rcvr));
         }

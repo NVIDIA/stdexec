@@ -41,8 +41,8 @@ namespace exec {
         using __item_sender = typename any_receiver_ref<_Sigs>::template any_sender<>;
 
         template <__valid_completion_signatures _Sigs>
-        constexpr auto operator()(_Sigs*) const //
-          -> __void_sender (*)(void*, __item_sender<_Sigs>&&) noexcept {
+        constexpr auto
+          operator()(_Sigs*) const -> __void_sender (*)(void*, __item_sender<_Sigs>&&) noexcept {
           return +[](void* __rcvr, __item_sender<_Sigs>&& __sndr) noexcept -> __void_sender {
             return __void_sender{
               set_next(*static_cast<_Rcvr*>(__rcvr), static_cast<__item_sender<_Sigs>&&>(__sndr))};
@@ -93,7 +93,7 @@ namespace exec {
 
           template <class _Tag, class... _As>
             requires __callable<const __vtable_t&, _Tag, void*, _As...>
-          auto query(_Tag, _As&&... __as) const //
+          auto query(_Tag, _As&&... __as) const
             noexcept(__nothrow_callable<const __vtable_t&, _Tag, void*, _As...>)
               -> __call_result_t<const __vtable_t&, _Tag, void*, _As...> {
             return (*__vtable_)(_Tag(), __rcvr_, static_cast<_As&&>(__as)...);
@@ -140,22 +140,22 @@ namespace exec {
 
           // set_value_t() is always valid for a sequence
           void set_value() noexcept {
-            (*static_cast<const __vfun<set_value_t()>*>(__env_.__vtable_)->__complete_)(
-              __env_.__rcvr_);
+            (*static_cast<const __vfun<set_value_t()>*>(__env_.__vtable_)->__complete_)(__env_
+                                                                                          .__rcvr_);
           }
 
           template <class Error>
             requires __v<__mapply<__mcontains<set_error_t(Error)>, __sigs>>
           void set_error(Error&& __error) noexcept {
-            (*static_cast<const __vfun<set_error_t(Error)>*>(__env_.__vtable_)->__complete_)(
-              __env_.__rcvr_, static_cast<Error&&>(__error));
+            (*static_cast<const __vfun<set_error_t(Error)>*>(__env_.__vtable_)
+                ->__complete_)(__env_.__rcvr_, static_cast<Error&&>(__error));
           }
 
           void set_stopped() noexcept
             requires __v<__mapply<__mcontains<set_stopped_t()>, __sigs>>
           {
-            (*static_cast<const __vfun<set_stopped_t()>*>(__env_.__vtable_)->__complete_)(
-              __env_.__rcvr_);
+            (*static_cast<const __vfun<set_stopped_t()>*>(__env_.__vtable_)
+                ->__complete_)(__env_.__rcvr_);
           }
 
           auto get_env() const noexcept -> const __env_t& {
@@ -219,7 +219,7 @@ namespace exec {
 
         template <class _Tag, class... _As>
           requires __callable<const __query_vtable_t&, _Tag, void*, _As...>
-        auto query(_Tag, _As&&... __as) const //
+        auto query(_Tag, _As&&... __as) const
           noexcept(__nothrow_callable<const __query_vtable_t&, _Tag, void*, _As...>)
             -> __call_result_t<const __query_vtable_t&, _Tag, void*, _As...> {
           return __vtable_->queries()(_Tag(), __sender_, static_cast<_As&&>(__as)...);
@@ -255,8 +255,8 @@ namespace exec {
         }
 
         auto __connect(__receiver_ref_t __receiver) -> __immovable_operation_storage {
-          return __storage_.__get_vtable()->subscribe_(
-            __storage_.__get_object_pointer(), __receiver);
+          return __storage_.__get_vtable()
+            ->subscribe_(__storage_.__get_object_pointer(), __receiver);
         }
 
         __unique_storage_t<__vtable_t> __storage_;
@@ -334,9 +334,11 @@ namespace exec {
   template <class _Completions, auto... _ReceiverQueries>
   template <auto... _SenderQueries>
   class any_sequence_receiver_ref<_Completions, _ReceiverQueries...>::any_sender {
-    using __sender_base = stdexec::__t<
-      __any::
-        __sequence_sender<_Completions, queries<_SenderQueries...>, queries<_ReceiverQueries...>>>;
+    using __sender_base = stdexec::__t<__any::__sequence_sender<
+      _Completions,
+      queries<_SenderQueries...>,
+      queries<_ReceiverQueries...>
+    >>;
     __sender_base __sender_;
 
    public:
@@ -348,7 +350,7 @@ namespace exec {
 
     template <stdexec::__not_decays_to<any_sender> _Sender>
       requires stdexec::sender_in<_Sender, __env_t> && sequence_sender_to<_Sender, __receiver_base>
-    any_sender(_Sender&& __sender) //
+    any_sender(_Sender&& __sender)
       noexcept(stdexec::__nothrow_constructible_from<__sender_base, _Sender>)
       : __sender_(static_cast<_Sender&&>(__sender)) {
     }

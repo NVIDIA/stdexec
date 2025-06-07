@@ -67,10 +67,10 @@ namespace exec {
 
     template <class Fun, class Shape, class... Args>
       requires stdexec::__callable<Fun, Shape, Args &...>
-    using bulk_non_throwing = //
-      stdexec::__mbool<
-        stdexec::__nothrow_callable<Fun, Shape, Args &...>
-        && noexcept(stdexec::__decayed_std_tuple<Args...>(std::declval<Args>()...))>;
+    using bulk_non_throwing = stdexec::__mbool<
+      stdexec::__nothrow_callable<Fun, Shape, Args &...>
+      && noexcept(stdexec::__decayed_std_tuple<Args...>(std::declval<Args>()...))
+    >;
 
     template <class CvrefSenderId, class ReceiverId, class Shape, class Fun, bool MayThrow>
     struct bulk_receiver {
@@ -81,7 +81,8 @@ namespace exec {
 
     template <class CvrefSender, class Receiver, class Shape, class Fun, bool MayThrow>
     using bulk_receiver_t = stdexec::__t<
-      bulk_receiver<stdexec::__cvref_id<CvrefSender>, stdexec::__id<Receiver>, Shape, Fun, MayThrow>>;
+      bulk_receiver<stdexec::__cvref_id<CvrefSender>, stdexec::__id<Receiver>, Shape, Fun, MayThrow>
+    >;
 
     template <class CvrefSenderId, class ReceiverId, std::integral Shape, class Fun>
     struct bulk_op_state {
@@ -95,7 +96,8 @@ namespace exec {
       stdexec::__id<stdexec::__decay_t<Sender>>,
       stdexec::__id<stdexec::__decay_t<Receiver>>,
       Shape,
-      Fun>>;
+      Fun
+    >>;
 
     struct transform_bulk {
       template <class Data, class Sender>
@@ -120,8 +122,8 @@ namespace exec {
       template <stdexec::sender_expr_for<stdexec::bulk_t> Sender>
       auto transform_sender(Sender &&sndr) const noexcept {
         if constexpr (stdexec::__completes_on<Sender, libdispatch_scheduler>) {
-          auto sched =
-            stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
+          auto sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
+            stdexec::get_env(sndr));
           return stdexec::__sexpr_apply(
             std::forward<Sender>(sndr), __libdispatch_bulk::transform_bulk{*sched.queue_});
         } else {
@@ -138,8 +140,8 @@ namespace exec {
       template <stdexec::sender_expr_for<stdexec::bulk_t> Sender, class Env>
       auto transform_sender(Sender &&sndr, const Env &env) const noexcept {
         if constexpr (stdexec::__completes_on<Sender, libdispatch_scheduler>) {
-          auto sched =
-            stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
+          auto sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
+            stdexec::get_env(sndr));
           return stdexec::__sexpr_apply(
             std::forward<Sender>(sndr), __libdispatch_bulk::transform_bulk{*sched.queue_});
         } else if constexpr (stdexec::__starts_on<Sender, libdispatch_scheduler, Env>) {
@@ -147,7 +149,7 @@ namespace exec {
           return stdexec::__sexpr_apply(
             std::forward<Sender>(sndr), __libdispatch_bulk::transform_bulk{*sched.queue_});
         } else {
-          static_assert( //
+          static_assert(
             stdexec::__starts_on<Sender, libdispatch_scheduler, Env>
               || stdexec::__completes_on<Sender, libdispatch_scheduler>,
             "No libdispatch_queue instance can be found in the sender's or "
@@ -166,8 +168,7 @@ namespace exec {
         stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
 
       template <stdexec::receiver Receiver>
-      auto connect(Receiver r) const //
-        -> __libdispatch_details::operation<stdexec::__id<Receiver>> {
+      auto connect(Receiver r) const -> __libdispatch_details::operation<stdexec::__id<Receiver>> {
         return __libdispatch_details::operation<stdexec::__id<Receiver>>(queue, std::move(r));
       }
 
@@ -265,41 +266,43 @@ namespace exec {
     Fun fun_;
 
     template <class Sender, class... Env>
-    using with_error_invoke_t = //
-      stdexec::__if_c<
-        stdexec::__v<stdexec::__value_types_t<
-          stdexec::__completion_signatures_of_t<Sender, Env...>,
-          stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
-          stdexec::__q<stdexec::__mand>>>,
-        stdexec::completion_signatures<>,
-        stdexec::__eptr_completion>;
+    using with_error_invoke_t = stdexec::__if_c<
+      stdexec::__v<stdexec::__value_types_t<
+        stdexec::__completion_signatures_of_t<Sender, Env...>,
+        stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
+        stdexec::__q<stdexec::__mand>
+      >>,
+      stdexec::completion_signatures<>,
+      stdexec::__eptr_completion
+    >;
 
     template <class... Tys>
     using set_value_t =
       stdexec::completion_signatures<stdexec::set_value_t(stdexec::__decay_t<Tys>...)>;
 
     template <class Self, class... Env>
-    using __completions_t = //
-      stdexec::transform_completion_signatures<
-        stdexec::__completion_signatures_of_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
-        with_error_invoke_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
-        set_value_t>;
+    using __completions_t = stdexec::transform_completion_signatures<
+      stdexec::__completion_signatures_of_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
+      with_error_invoke_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
+      set_value_t
+    >;
 
     template <class Self, class Receiver>
-    using bulk_op_state_t = //
-      stdexec::__t<
-        bulk_op_state<stdexec::__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun>>;
+    using bulk_op_state_t = stdexec::__t<
+      bulk_op_state<stdexec::__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun>
+    >;
 
     template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
       requires stdexec::receiver_of<Receiver, __completions_t<Self, stdexec::env_of_t<Receiver>>>
-    static bulk_op_state_t<Self, Receiver> connect(Self &&self, Receiver rcvr) //
-      noexcept(stdexec::__nothrow_constructible_from<
-               bulk_op_state_t<Self, Receiver>,
-               libdispatch_queue &,
-               Shape,
-               Fun,
-               Sender,
-               Receiver>) {
+    static bulk_op_state_t<Self, Receiver>
+      connect(Self &&self, Receiver rcvr) noexcept(stdexec::__nothrow_constructible_from<
+                                                   bulk_op_state_t<Self, Receiver>,
+                                                   libdispatch_queue &,
+                                                   Shape,
+                                                   Fun,
+                                                   Sender,
+                                                   Receiver
+      >) {
       return bulk_op_state_t<Self, Receiver>{
         self.queue_,
         self.shape_,
@@ -377,12 +380,12 @@ namespace exec {
       }
     };
 
-    using variant_t = //
-      stdexec::__value_types_of_t<
-        CvrefSender,
-        stdexec::env_of_t<Receiver>,
-        stdexec::__q<stdexec::__decayed_std_tuple>,
-        stdexec::__q<stdexec::__std_variant>>;
+    using variant_t = stdexec::__value_types_of_t<
+      CvrefSender,
+      stdexec::env_of_t<Receiver>,
+      stdexec::__q<stdexec::__decayed_std_tuple>,
+      stdexec::__q<stdexec::__std_variant>
+    >;
 
     variant_t data_;
     Receiver rcvr_;
@@ -473,12 +476,12 @@ namespace exec {
   struct __libdispatch_bulk::bulk_op_state<CvrefSenderId, ReceiverId, Shape, Fun>::__t {
     using __id = bulk_op_state;
 
-    static constexpr bool may_throw = //
-      !stdexec::__v<stdexec::__value_types_of_t<
-        CvrefSender,
-        stdexec::env_of_t<Receiver>,
-        stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
-        stdexec::__q<stdexec::__mand>>>;
+    static constexpr bool may_throw = !stdexec::__v<stdexec::__value_types_of_t<
+      CvrefSender,
+      stdexec::env_of_t<Receiver>,
+      stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
+      stdexec::__q<stdexec::__mand>
+    >>;
 
     using bulk_rcvr = bulk_receiver_t<CvrefSender, Receiver, Shape, Fun, may_throw>;
     using shared_state = bulk_shared_state<CvrefSender, Receiver, Shape, Fun, may_throw>;

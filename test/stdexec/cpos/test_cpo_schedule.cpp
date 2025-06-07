@@ -27,10 +27,11 @@ namespace {
 
   struct my_sender {
     using sender_concept = stdexec::sender_t;
-    using completion_signatures = ex::completion_signatures< //
-      ex::set_value_t(),                                     //
-      ex::set_error_t(std::exception_ptr),                   //
-      ex::set_stopped_t()>;
+    using completion_signatures = ex::completion_signatures<
+      ex::set_value_t(),
+      ex::set_error_t(std::exception_ptr),
+      ex::set_stopped_t()
+    >;
 
     bool from_scheduler_{false};
   };

@@ -51,8 +51,8 @@ namespace {
 
     // Non-blocking call
     {
-      ex::sender auto snd =
-        scope.spawn_future(ex::starts_on(sch, ex::just() | ex::then([&] { executed = true; })));
+      ex::sender auto snd = scope.spawn_future(
+        ex::starts_on(sch, ex::just() | ex::then([&] { executed = true; })));
       (void) snd;
     }
     REQUIRE_FALSE(executed);
@@ -70,8 +70,8 @@ namespace {
     async_scope scope;
 
     // Non-blocking call
-    ex::sender auto snd =
-      scope.spawn_future(ex::starts_on(sch, ex::just() | ex::then([&] { executed1 = true; })));
+    ex::sender auto snd = scope.spawn_future(
+      ex::starts_on(sch, ex::just() | ex::then([&] { executed1 = true; })));
     auto op = ex::connect(std::move(snd), expect_void_receiver_ex{executed2});
     ex::start(op);
     REQUIRE_FALSE(executed1);
@@ -92,8 +92,8 @@ namespace {
     async_scope scope;
 
     // Non-blocking call
-    ex::sender auto snd =
-      scope.spawn_future(ex::starts_on(sch, ex::just() | ex::then([&] { executed = true; })));
+    ex::sender auto snd = scope.spawn_future(
+      ex::starts_on(sch, ex::just() | ex::then([&] { executed = true; })));
     ex::sender auto snd2 = std::move(snd) | ex::then([&] { REQUIRE(executed); });
     // Execute the given work
     sch.start_next();
@@ -125,8 +125,8 @@ namespace {
 
     // Non-blocking call; simply ignore the returned sender
     {
-      ex::sender auto snd =
-        scope.spawn_future(ex::starts_on(sch, ex::just() | ex::then([&] { executed = true; })));
+      ex::sender auto snd = scope.spawn_future(
+        ex::starts_on(sch, ex::just() | ex::then([&] { executed = true; })));
       (void) snd;
     }
     REQUIRE_FALSE(executed);
@@ -148,10 +148,10 @@ namespace {
       }
     };
 
-    ex::sender auto snd =
-      scope.spawn_future(ex::starts_on(pool.get_scheduler(), exec::just_from([](auto sink) {
-                                         return sink(throwing_copy());
-                                       })));
+    ex::sender auto snd = scope.spawn_future(
+      ex::starts_on(pool.get_scheduler(), exec::just_from([](auto sink) {
+                      return sink(throwing_copy());
+                    })));
     try {
       sync_wait(std::move(snd));
       FAIL("Exceptions should have been thrown");
@@ -170,8 +170,8 @@ namespace {
     async_scope scope;
 
     // Non-blocking call; simply ignore the returned sender
-    ex::sender auto snd =
-      scope.spawn_future(ex::starts_on(sch, ex::just() | ex::then([&] { executed = true; })));
+    ex::sender auto snd = scope.spawn_future(
+      ex::starts_on(sch, ex::just() | ex::then([&] { executed = true; })));
     auto op = ex::connect(std::move(snd), expect_void_receiver_ex{executed2});
     REQUIRE_FALSE(executed);
     REQUIRE_FALSE(executed2);
@@ -204,8 +204,8 @@ namespace {
     bool executed2{false};
     async_scope scope;
 
-    ex::sender auto snd =
-      scope.spawn_future(ex::starts_on(sch, ex::just() | ex::then([&] { executed = true; })));
+    ex::sender auto snd = scope.spawn_future(
+      ex::starts_on(sch, ex::just() | ex::then([&] { executed = true; })));
     REQUIRE_FALSE(executed);
     // Execute the work given to spawn_future
     sch.start_next();
@@ -223,9 +223,8 @@ namespace {
     "[async_scope][spawn_future]") {
     async_scope scope;
     try {
-      ex::sender auto snd = scope.spawn_future(throwing_sender{} | ex::then([&] {
-                                                 FAIL("work should not be executed");
-                                               }));
+      ex::sender auto snd = scope.spawn_future(
+        throwing_sender{} | ex::then([&] { FAIL("work should not be executed"); }));
       (void) snd;
       FAIL("Exceptions should have been thrown");
     } catch (const std::logic_error& e) {
@@ -250,8 +249,8 @@ namespace {
 
     // Non-blocking call
     {
-      ex::sender auto snd =
-        scope.spawn_future(ex::starts_on(sch, ex::just() | ex::then([&] { executed = true; })));
+      ex::sender auto snd = scope.spawn_future(
+        ex::starts_on(sch, ex::just() | ex::then([&] { executed = true; })));
       (void) snd;
     }
     REQUIRE_FALSE(executed);
@@ -291,14 +290,14 @@ namespace {
     //     size_t num_expected_ops = i + 1;
     //     REQUIRE(P2519::__scope::op_count(scope) == num_expected_ops);
     // }
-    //
+
     // // Now execute the operations
     // for (std::size_t i = 0; i < num_oper; i++) {
     //     sch.start_next();
     //     size_t num_expected_ops = num_oper - i - 1;
     //     REQUIRE(P2519::__scope::op_count(scope) == num_expected_ops);
     // }
-    //
+
     // // The scope is empty after all the operations are executed
     // REQUIRE(P2519::__scope::empty(scope));
     // REQUIRE(num_executed == num_oper);
@@ -316,22 +315,16 @@ namespace {
     bool cancelled2{false};
 
     {
-      ex::sender auto snd1 = scope.spawn_future(
-        ex::starts_on(
-          sch,
-          ex::just() //
-            | ex::let_stopped([&] {
-                cancelled1 = true;
-                return ex::just();
-              })));
-      ex::sender auto snd2 = scope.spawn_future(
-        ex::starts_on(
-          sch,
-          ex::just() //
-            | ex::let_stopped([&] {
-                cancelled2 = true;
-                return ex::just();
-              })));
+      ex::sender auto snd1 = scope
+                               .spawn_future(ex::starts_on(sch, ex::just() | ex::let_stopped([&] {
+                                                                  cancelled1 = true;
+                                                                  return ex::just();
+                                                                })));
+      ex::sender auto snd2 = scope
+                               .spawn_future(ex::starts_on(sch, ex::just() | ex::let_stopped([&] {
+                                                                  cancelled2 = true;
+                                                                  return ex::just();
+                                                                })));
       (void) snd1;
       (void) snd2;
     }
@@ -362,8 +355,9 @@ namespace {
   }
 
   template <typename S>
-  concept is_spawn_future_worthy = //
-    requires(async_scope& scope, S&& snd) { scope.spawn_future(std::move(snd)); };
+  concept is_spawn_future_worthy = requires(async_scope& scope, S&& snd) {
+    scope.spawn_future(std::move(snd));
+  };
 
   TEST_CASE("spawn_future accepts void senders", "[async_scope][spawn_future]") {
     static_assert(is_spawn_future_worthy<decltype(ex::just())>);
@@ -399,14 +393,14 @@ namespace {
     // TODO: make this work
     // ex::sender auto snd = scope.spawn_future(ex::starts_on(sch, ex::just_stopped()));
     // (void)snd;
-    //
+
     // // The scope is now non-empty
     // REQUIRE_FALSE(P2519::__scope::empty(scope));
     // REQUIRE(P2519::__scope::op_count(scope) == 1);
-    //
+
     // // Run the operation on the scheduler; blocking call
     // sch.start_next();
-    //
+
     // // Now the scope should again be empty
     // REQUIRE(P2519::__scope::empty(scope));
 

@@ -37,13 +37,13 @@ namespace stdexec {
     using __on_not_callable = __callable_error<__upon_stopped_context>;
 
     template <class _Fun, class _CvrefSender, class... _Env>
-    using __completion_signatures_t = //
-      transform_completion_signatures<
-        __completion_signatures_of_t<_CvrefSender, _Env...>,
-        __with_error_invoke_t<__on_not_callable, set_stopped_t, _Fun, _CvrefSender, _Env...>,
-        __sigs::__default_set_value,
-        __sigs::__default_set_error,
-        __set_value_invoke_t<_Fun>>;
+    using __completion_signatures_t = transform_completion_signatures<
+      __completion_signatures_of_t<_CvrefSender, _Env...>,
+      __with_error_invoke_t<__on_not_callable, set_stopped_t, _Fun, _CvrefSender, _Env...>,
+      __sigs::__default_set_value,
+      __sigs::__default_set_error,
+      __set_value_invoke_t<_Fun>
+    >;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     struct upon_stopped_t {
@@ -58,20 +58,21 @@ namespace stdexec {
 
       template <__movable_value _Fun>
         requires __callable<_Fun>
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Fun __fun) const -> __binder_back<upon_stopped_t, _Fun> {
+      STDEXEC_ATTRIBUTE(always_inline)
+      auto operator()(_Fun __fun) const -> __binder_back<upon_stopped_t, _Fun> {
         return {{static_cast<_Fun&&>(__fun)}, {}, {}};
       }
     };
 
     struct __upon_stopped_impl : __sexpr_defaults {
-      static constexpr auto get_completion_signatures = //
+      static constexpr auto get_completion_signatures =
         []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
         -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, upon_stopped_t>);
         return {};
       };
 
-      static constexpr auto complete = //
+      static constexpr auto complete =
         []<class _Tag, class _State, class _Receiver, class... _Args>(
           __ignore,
           _State& __state,

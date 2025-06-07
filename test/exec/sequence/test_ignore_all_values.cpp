@@ -29,7 +29,8 @@ namespace {
     STATIC_REQUIRE(
       stdexec::same_as<
         stdexec::completion_signatures<stdexec::set_value_t()>,
-        stdexec::completion_signatures_of_t<Sender, stdexec::env<>>>);
+        stdexec::completion_signatures_of_t<Sender, stdexec::env<>>
+      >);
     STATIC_REQUIRE(stdexec::sender_expr_for<Sender, exec::ignore_all_values_t>);
     CHECK(stdexec::sync_wait(sndr));
   }
@@ -41,7 +42,8 @@ namespace {
     STATIC_REQUIRE(
       stdexec::same_as<
         stdexec::completion_signatures<stdexec::set_value_t()>,
-        stdexec::completion_signatures_of_t<Sender, stdexec::env<>>>);
+        stdexec::completion_signatures_of_t<Sender, stdexec::env<>>
+      >);
     CHECK(stdexec::sync_wait(sndr));
   }
 
@@ -52,7 +54,8 @@ namespace {
     STATIC_REQUIRE(
       stdexec::same_as<
         stdexec::completion_signatures<stdexec::set_value_t()>,
-        stdexec::completion_signatures_of_t<Sender, stdexec::env<>>>);
+        stdexec::completion_signatures_of_t<Sender, stdexec::env<>>
+      >);
     CHECK(stdexec::sync_wait(sndr));
   }
 
@@ -63,7 +66,8 @@ namespace {
     STATIC_REQUIRE(
       stdexec::__mset_eq<
         stdexec::__mset<stdexec::set_value_t(), stdexec::set_stopped_t()>,
-        stdexec::completion_signatures_of_t<Sender, stdexec::env<>>>);
+        stdexec::completion_signatures_of_t<Sender, stdexec::env<>>
+      >);
     CHECK_FALSE(stdexec::sync_wait(sndr));
   }
 
@@ -75,7 +79,8 @@ namespace {
     STATIC_REQUIRE(
       stdexec::__mset_eq<
         stdexec::__mset<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>,
-        stdexec::completion_signatures_of_t<Sender, stdexec::env<>>>);
+        stdexec::completion_signatures_of_t<Sender, stdexec::env<>>
+      >);
     CHECK_THROWS(stdexec::sync_wait(sndr));
   }
 
@@ -99,15 +104,16 @@ namespace {
   };
 
   TEST_CASE("ignore_all_values - Merge error and stop signatures from sequence and items") {
-    using just_t =
-      decltype(stdexec::just_error(std::make_exception_ptr(std::runtime_error("test"))));
+    using just_t = decltype(stdexec::just_error(
+      std::make_exception_ptr(std::runtime_error("test"))));
     sequence<just_t> seq;
     auto ignore = exec::ignore_all_values(seq);
     using ActualSigs = stdexec::completion_signatures_of_t<decltype(ignore), stdexec::env<>>;
     using ExpectedSigs = stdexec::__mset<
       stdexec::set_value_t(),
       stdexec::set_error_t(int),
-      stdexec::set_error_t(std::exception_ptr)>;
+      stdexec::set_error_t(std::exception_ptr)
+    >;
     STATIC_REQUIRE(stdexec::__mset_eq<ExpectedSigs, ActualSigs>);
   }
 } // namespace

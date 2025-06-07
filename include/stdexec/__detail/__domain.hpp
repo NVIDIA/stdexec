@@ -45,9 +45,8 @@ namespace stdexec {
       };
 
     template <class _Sender, class... _Env>
-    concept __has_default_transform_sender = //
-      sender_expr<_Sender>                   //
-      && __has_transform_sender<tag_of_t<_Sender>, _Sender, _Env...>;
+    concept __has_default_transform_sender =
+      sender_expr<_Sender> && __has_transform_sender<tag_of_t<_Sender>, _Sender, _Env...>;
 
     template <class _DomainOrTag, class _Sender, class... _Env>
     using __transform_sender_result_t =
@@ -59,9 +58,8 @@ namespace stdexec {
     };
 
     template <class _Sender, class _Env>
-    concept __has_default_transform_env = //
-      sender_expr<_Sender>                //
-      && __has_transform_env<tag_of_t<_Sender>, _Sender, _Env>;
+    concept __has_default_transform_env = sender_expr<_Sender>
+                                       && __has_transform_env<tag_of_t<_Sender>, _Sender, _Env>;
 
     template <class _DomainOrTag, class _Sender, class _Env>
     using __transform_env_result_t =
@@ -93,10 +91,12 @@ namespace stdexec {
       : __mdefer_<
           __mtransform<
             __mbind_front_q<__completion_domain_for, _Env>,
-            __mremove<__none_such, __munique<__msingle_or<__none_such>>>>,
+            __mremove<__none_such, __munique<__msingle_or<__none_such>>>
+          >,
           set_value_t,
           set_error_t,
-          set_stopped_t> { };
+          set_stopped_t
+        > { };
 
     template <class _Sender>
     using __completion_domain_or_none = __t<__completion_domain_or_none_<env_of_t<_Sender>>>;
@@ -160,7 +160,11 @@ namespace stdexec {
     using __late_domain_of_t = __call_result_t<__get_late_domain_t, _Sender, _Env, _Default>;
 
     struct __common_domain_fn {
-      template <class _Default = default_domain, class _Dependent = dependent_domain, class... _Domains>
+      template <
+        class _Default = default_domain,
+        class _Dependent = dependent_domain,
+        class... _Domains
+      >
       static auto __common_domain(_Domains...) noexcept {
         if constexpr (sizeof...(_Domains) == 0) {
           return _Default();
@@ -182,14 +186,16 @@ namespace stdexec {
   struct default_domain {
     template <class _Sender, class... _Env>
       requires __detail::__has_default_transform_sender<_Sender, _Env...>
-    STDEXEC_ATTRIBUTE((always_inline)) auto transform_sender(_Sender&& __sndr, _Env&&... __env) const
+    STDEXEC_ATTRIBUTE(always_inline)
+    auto transform_sender(_Sender&& __sndr, _Env&&... __env) const
       noexcept(__detail::__has_nothrow_transform_sender<tag_of_t<_Sender>, _Sender, _Env...>)
         -> __detail::__transform_sender_result_t<tag_of_t<_Sender>, _Sender, _Env...> {
       return tag_of_t<_Sender>().transform_sender(static_cast<_Sender&&>(__sndr), __env...);
     }
 
     template <class _Sender, class... _Env>
-    STDEXEC_ATTRIBUTE((always_inline)) auto transform_sender(_Sender&& __sndr, _Env&&...) const
+    STDEXEC_ATTRIBUTE(always_inline)
+    auto transform_sender(_Sender&& __sndr, _Env&&...) const
       noexcept(__nothrow_constructible_from<_Sender, _Sender>) -> _Sender {
       return static_cast<_Sender>(static_cast<_Sender&&>(__sndr));
     }
@@ -198,8 +204,8 @@ namespace stdexec {
       requires __detail::__has_default_transform_env<_Sender, _Env>
     auto transform_env(_Sender&& __sndr, _Env&& __env) const noexcept
       -> __detail::__transform_env_result_t<tag_of_t<_Sender>, _Sender, _Env> {
-      return tag_of_t<_Sender>().transform_env(
-        static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env));
+      return tag_of_t<_Sender>()
+        .transform_env(static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env));
     }
 
     template <class _Env>
@@ -209,7 +215,8 @@ namespace stdexec {
 
     template <class _Tag, class... _Args>
       requires __detail::__has_apply_sender<_Tag, _Args...>
-    STDEXEC_ATTRIBUTE((always_inline)) auto apply_sender(_Tag, _Args&&... __args) const //
+    STDEXEC_ATTRIBUTE(always_inline)
+    auto apply_sender(_Tag, _Args&&... __args) const
       -> __detail::__apply_sender_result_t<_Tag, _Args...> {
       return _Tag().apply_sender(static_cast<_Args&&>(__args)...);
     }
@@ -230,7 +237,8 @@ namespace stdexec {
     // defined in __transform_sender.hpp
     template <sender_expr _Sender, class _Env>
       requires same_as<__early_domain_of_t<_Sender>, dependent_domain>
-    STDEXEC_ATTRIBUTE((always_inline)) auto transform_sender(_Sender&& __sndr, const _Env& __env) const
+    STDEXEC_ATTRIBUTE(always_inline)
+    auto transform_sender(_Sender&& __sndr, const _Env& __env) const
       noexcept(__is_nothrow_transform_sender<_Sender, _Env>()) -> decltype(auto);
   };
 

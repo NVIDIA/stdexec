@@ -153,14 +153,10 @@ namespace {
   TEST_CASE("repeat_effect_until works when changing threads", "[adaptors][repeat_effect_until]") {
     exec::static_thread_pool pool{2};
     bool called{false};
-    sender auto snd = exec::on(
-      pool.get_scheduler(), //
-      ex::just()            //
-        | ex::then([&] {
-            called = true;
-            return called;
-          })
-        | exec::repeat_effect_until());
+    sender auto snd = exec::on(pool.get_scheduler(), ex::just() | ex::then([&] {
+                                                       called = true;
+                                                       return called;
+                                                     }) | exec::repeat_effect_until());
     stdexec::sync_wait(std::move(snd));
 
     REQUIRE(called);

@@ -27,8 +27,8 @@ struct drop_async_scope_future : rl::test_suite<drop_async_scope_future, 1> {
     std::atomic_bool produced{false};
     ex::sender auto begin = ex::schedule(sch);
     {
-      ex::sender auto ftr =
-        scope.spawn_future(begin | stdexec::then([&]() { produced.store(true); }));
+      ex::sender auto ftr = scope
+                              .spawn_future(begin | stdexec::then([&]() { produced.store(true); }));
       (void) ftr;
     }
     stdexec::sync_wait(scope.on_empty() | stdexec::then([&]() { RL_ASSERT(produced.load()); }));
@@ -45,8 +45,8 @@ struct attach_async_scope_future : rl::test_suite<attach_async_scope_future, 1> 
     exec::async_scope scope;
     std::atomic_bool produced{false};
     ex::sender auto begin = ex::schedule(sch);
-    ex::sender auto ftr =
-      scope.spawn_future(begin | stdexec::then([&]() { produced.store(true); }));
+    ex::sender auto ftr = scope
+                            .spawn_future(begin | stdexec::then([&]() { produced.store(true); }));
     ex::sender auto ftr_then = std::move(ftr) | stdexec::then([&] { RL_ASSERT(produced.load()); });
     stdexec::sync_wait(stdexec::when_all(scope.on_empty(), std::move(ftr_then)));
   }

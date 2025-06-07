@@ -49,34 +49,34 @@ namespace {
   }
 
   TEST_CASE("when_all returning two values can we waited on", "[adaptors][when_all]") {
-    ex::sender auto snd = ex::when_all( //
-      ex::just(2),                      //
-      ex::just(3)                       //
+    ex::sender auto snd = ex::when_all(
+      ex::just(2),
+      ex::just(3)
     );
     wait_for_value(std::move(snd), 2, 3);
   }
 
   TEST_CASE("when_all with 5 senders", "[adaptors][when_all]") {
-    ex::sender auto snd = ex::when_all( //
-      ex::just(2),                      //
-      ex::just(3),                      //
-      ex::just(5),                      //
-      ex::just(7),                      //
-      ex::just(11)                      //
+    ex::sender auto snd = ex::when_all(
+      ex::just(2),
+      ex::just(3),
+      ex::just(5),
+      ex::just(7),
+      ex::just(11)
     );
     wait_for_value(std::move(snd), 2, 3, 5, 7, 11);
   }
 
   TEST_CASE("when_all with just one sender", "[adaptors][when_all]") {
-    ex::sender auto snd = ex::when_all( //
-      ex::just(2)                       //
+    ex::sender auto snd = ex::when_all(
+      ex::just(2)
     );
     wait_for_value(std::move(snd), 2);
   }
 
   TEST_CASE("when_all with move-only types", "[adaptors][when_all]") {
-    ex::sender auto snd = ex::when_all( //
-      ex::just(movable(2))              //
+    ex::sender auto snd = ex::when_all(
+      ex::just(movable(2))
     );
     wait_for_value(std::move(snd), movable(2));
   }
@@ -87,26 +87,26 @@ namespace {
   }
 
   TEST_CASE("when_all when one sender sends void", "[adaptors][when_all]") {
-    ex::sender auto snd = ex::when_all( //
-      ex::just(2),                      //
-      ex::just()                        //
+    ex::sender auto snd = ex::when_all(
+      ex::just(2),
+      ex::just()
     );
     wait_for_value(std::move(snd), 2);
   }
 
   TEST_CASE("when_all_with_variant basic example", "[adaptors][when_all]") {
-    ex::sender auto snd = ex::when_all_with_variant( //
-      ex::just(2),                                   //
-      ex::just(3.14)                                 //
+    ex::sender auto snd = ex::when_all_with_variant(
+      ex::just(2),
+      ex::just(3.14)
     );
     wait_for_value(
       std::move(snd), std::variant<std::tuple<int>>{2}, std::variant<std::tuple<double>>{3.14});
   }
 
   TEST_CASE("when_all_with_variant with same type", "[adaptors][when_all]") {
-    ex::sender auto snd = ex::when_all_with_variant( //
-      ex::just(2),                                   //
-      ex::just(3)                                    //
+    ex::sender auto snd = ex::when_all_with_variant(
+      ex::just(2),
+      ex::just(3)
     );
     wait_for_value(
       std::move(snd), std::variant<std::tuple<int>>{2}, std::variant<std::tuple<int>>{3});
@@ -120,12 +120,12 @@ namespace {
   TEST_CASE("when_all completes when children complete", "[adaptors][when_all]") {
     impulse_scheduler sched;
     bool called{false};
-    ex::sender auto snd =             //
-      ex::when_all(                   //
-        ex::transfer_just(sched, 11), //
-        ex::transfer_just(sched, 13), //
-        ex::transfer_just(sched, 17)  //
-        )                             //
+    ex::sender auto snd =
+      ex::when_all(
+        ex::transfer_just(sched, 11),
+        ex::transfer_just(sched, 13),
+        ex::transfer_just(sched, 17)
+        )
       | ex::then([&](int a, int b, int c) {
           called = true;
           return a + b + c;
@@ -143,10 +143,10 @@ namespace {
   }
 
   TEST_CASE("when_all can be used with just_*", "[adaptors][when_all]") {
-    ex::sender auto snd = ex::when_all(     //
-      ex::just(2),                          //
-      ex::just_error(std::exception_ptr{}), //
-      ex::just_stopped()                    //
+    ex::sender auto snd = ex::when_all(
+      ex::just(2),
+      ex::just_error(std::exception_ptr{}),
+      ex::just_stopped()
     );
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
@@ -156,10 +156,10 @@ namespace {
     "when_all terminates with error if one child terminates with error",
     "[adaptors][when_all]") {
     error_scheduler sched;
-    ex::sender auto snd = ex::when_all( //
-      ex::just(2),                      //
-      ex::transfer_just(sched, 5),      //
-      ex::just(7)                       //
+    ex::sender auto snd = ex::when_all(
+      ex::just(2),
+      ex::transfer_just(sched, 5),
+      ex::just(7)
     );
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
@@ -167,10 +167,10 @@ namespace {
 
   TEST_CASE("when_all terminates with stopped if one child is cancelled", "[adaptors][when_all]") {
     stopped_scheduler sched;
-    ex::sender auto snd = ex::when_all( //
-      ex::just(2),                      //
-      ex::transfer_just(sched, 5),      //
-      ex::just(7)                       //
+    ex::sender auto snd = ex::when_all(
+      ex::just(2),
+      ex::transfer_just(sched, 5),
+      ex::just(7)
     );
     auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
     ex::start(op);
@@ -182,15 +182,15 @@ namespace {
     bool called1{false};
     bool called3{false};
     bool cancelled{false};
-    ex::sender auto snd = ex::when_all(                                     //
-      ex::starts_on(sched, ex::just()) | ex::then([&] { called1 = true; }), //
-      ex::starts_on(sched, ex::transfer_just(err_sched, 5)),                //
-      ex::starts_on(sched, ex::just())                                      //
-        | ex::then([&] { called3 = true; })                                 //
+    ex::sender auto snd = ex::when_all(
+      ex::starts_on(sched, ex::just()) | ex::then([&] { called1 = true; }),
+      ex::starts_on(sched, ex::transfer_just(err_sched, 5)),
+      ex::starts_on(sched, ex::just())
+        | ex::then([&] { called3 = true; })
         | ex::let_stopped([&] {
             cancelled = true;
             return ex::just();
-          }) //
+          })
     );
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
@@ -212,15 +212,15 @@ namespace {
     bool called1{false};
     bool called3{false};
     bool cancelled{false};
-    ex::sender auto snd = ex::when_all(                                     //
-      ex::starts_on(sched, ex::just()) | ex::then([&] { called1 = true; }), //
-      ex::starts_on(sched, ex::transfer_just(stopped_sched, 5)),            //
-      ex::starts_on(sched, ex::just())                                      //
-        | ex::then([&] { called3 = true; })                                 //
+    ex::sender auto snd = ex::when_all(
+      ex::starts_on(sched, ex::just()) | ex::then([&] { called1 = true; }),
+      ex::starts_on(sched, ex::transfer_just(stopped_sched, 5)),
+      ex::starts_on(sched, ex::just())
+        | ex::then([&] { called3 = true; })
         | ex::let_stopped([&] {
             cancelled = true;
             return ex::just();
-          }) //
+          })
     );
     auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
     ex::start(op);
@@ -246,29 +246,29 @@ namespace {
     check_val_types<ex::__mset<pack<>>>(ex::when_all(ex::just()));
 
     check_val_types<ex::__mset<pack<int, double>>>(ex::when_all(ex::just(3), ex::just(0.14)));
-    check_val_types<ex::__mset<pack<int, double, int, double>>>( //
-      ex::when_all(                                              //
-        ex::just(3),                                             //
-        ex::just(0.14),                                          //
-        ex::just(1, 0.4142)                                      //
-        )                                                        //
+    check_val_types<ex::__mset<pack<int, double, int, double>>>(
+      ex::when_all(
+        ex::just(3),
+        ex::just(0.14),
+        ex::just(1, 0.4142)
+        )
     );
 
     // if one child returns void, then the value is simply missing
-    check_val_types<ex::__mset<pack<int, double>>>( //
-      ex::when_all(                                 //
-        ex::just(3),                                //
-        ex::just(),                                 //
-        ex::just(0.14)                              //
-        )                                           //
+    check_val_types<ex::__mset<pack<int, double>>>(
+      ex::when_all(
+        ex::just(3),
+        ex::just(),
+        ex::just(0.14)
+        )
     );
 
     // if children send references, they get decayed
-    check_val_types<ex::__mset<pack<int, double>>>( //
-      ex::when_all(                                 //
-        ex::split(ex::just(3)),                     //
-        ex::split(ex::just(0.14))                   //
-        )                                           //
+    check_val_types<ex::__mset<pack<int, double>>>(
+      ex::when_all(
+        ex::split(ex::just(3)),
+        ex::split(ex::just(0.14))
+        )
     );
   }
 
@@ -279,20 +279,20 @@ namespace {
     check_err_types<ex::__mset<>>(ex::when_all(ex::just()));
 
     check_err_types<ex::__mset<int, double>>(ex::when_all(ex::just_error(3), ex::just_error(0.14)));
-    check_err_types<ex::__mset<int, double, std::string>>( //
-      ex::when_all(                                        //
-        ex::just_error(3),                                 //
-        ex::just_error(0.14),                              //
-        ex::just_error(std::string{"err"})                 //
-        )                                                  //
+    check_err_types<ex::__mset<int, double, std::string>>(
+      ex::when_all(
+        ex::just_error(3),
+        ex::just_error(0.14),
+        ex::just_error(std::string{"err"})
+        )
     );
 
-    check_err_types<ex::__mset<std::exception_ptr>>( //
-      ex::when_all(                                  //
-        ex::just(13),                                //
-        ex::just_error(std::exception_ptr{}),        //
-        ex::just_stopped()                           //
-        )                                            //
+    check_err_types<ex::__mset<std::exception_ptr>>(
+      ex::when_all(
+        ex::just(13),
+        ex::just_error(std::exception_ptr{}),
+        ex::just_stopped()
+        )
     );
   }
 
@@ -302,12 +302,12 @@ namespace {
     check_sends_stopped<true>(ex::when_all(ex::just_stopped()));
 
     check_sends_stopped<true>(ex::when_all(ex::just(3), ex::just(0.14)));
-    check_sends_stopped<true>( //
-      ex::when_all(            //
-        ex::just(3),           //
-        ex::just_error(-1),    //
-        ex::just_stopped()     //
-        )                      //
+    check_sends_stopped<true>(
+      ex::when_all(
+        ex::just(3),
+        ex::just_error(-1),
+        ex::just_stopped()
+        )
     );
   }
 
@@ -320,9 +320,9 @@ namespace {
   struct test_domain2 : test_domain1 { };
 
   TEST_CASE("when_all propagates domain from children", "[adaptors][when_all]") {
-    auto snd = ex::when_all( //
-      ex::just(13) | exec::write_attrs(ex::prop{ex::get_domain, test_domain1{}}), //
-      ex::just(3.14) | exec::write_attrs(ex::prop{ex::get_domain, test_domain2{}}) //
+    auto snd = ex::when_all(
+      ex::just(13) | exec::write_attrs(ex::prop{ex::get_domain, test_domain1{}}),
+      ex::just(3.14) | exec::write_attrs(ex::prop{ex::get_domain, test_domain2{}})
     );
     auto env = ex::get_env(snd);
     auto domain = ex::get_domain(env);
@@ -355,9 +355,9 @@ namespace {
       using domain = basic_domain<ex::when_all_t, customize::none, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::when_all(                 //
-        ex::transfer_just(scheduler(), 3),     //
-        ex::transfer_just(scheduler(), 0.1415) //
+      auto snd = ex::when_all(
+        ex::transfer_just(scheduler(), 3),
+        ex::transfer_just(scheduler(), 0.1415)
       );
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_t>);
       [[maybe_unused]]
@@ -368,9 +368,9 @@ namespace {
       using domain = basic_domain<ex::when_all_t, customize::early, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::when_all(                 //
-        ex::transfer_just(scheduler(), 3),     //
-        ex::transfer_just(scheduler(), 0.1415) //
+      auto snd = ex::when_all(
+        ex::transfer_just(scheduler(), 3),
+        ex::transfer_just(scheduler(), 0.1415)
       );
       static_assert(ex::sender_expr_for<decltype(snd), ex::just_t>);
       wait_for_value(std::move(snd), std::string{"hello world"});
@@ -382,9 +382,9 @@ namespace {
 
       auto snd = ex::starts_on(
           scheduler(),
-          ex::when_all(      //
-            ex::just(3),     //
-            ex::just(0.1415) //
+          ex::when_all(
+            ex::just(3),
+            ex::just(0.1415)
             ));
       wait_for_value(std::move(snd), std::string{"hello world"});
     }
@@ -399,9 +399,9 @@ namespace {
       using domain = basic_domain<ex::when_all_with_variant_t, customize::none, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::when_all_with_variant(    //
-        ex::transfer_just(scheduler(), 3),     //
-        ex::transfer_just(scheduler(), 0.1415) //
+      auto snd = ex::when_all_with_variant(
+        ex::transfer_just(scheduler(), 3),
+        ex::transfer_just(scheduler(), 0.1415)
       );
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_with_variant_t>);
       [[maybe_unused]]
@@ -412,9 +412,9 @@ namespace {
       using domain = basic_domain<ex::when_all_with_variant_t, customize::early, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::when_all_with_variant(    //
-        ex::transfer_just(scheduler(), 3),     //
-        ex::transfer_just(scheduler(), 0.1415) //
+      auto snd = ex::when_all_with_variant(
+        ex::transfer_just(scheduler(), 3),
+        ex::transfer_just(scheduler(), 0.1415)
       );
       static_assert(ex::sender_expr_for<decltype(snd), ex::just_t>);
       wait_for_value(std::move(snd), std::string{"hello world"});
@@ -426,9 +426,9 @@ namespace {
 
       auto snd = ex::starts_on(
         scheduler(),
-        ex::when_all_with_variant( //
-          ex::just(3),             //
-          ex::just(0.1415)         //
+        ex::when_all_with_variant(
+          ex::just(3),
+          ex::just(0.1415)
           ));
       wait_for_value(std::move(snd), std::string{"hello world"});
     }
@@ -443,9 +443,9 @@ namespace {
       using domain = basic_domain<ex::when_all_t, customize::none, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::when_all_with_variant(    //
-        ex::transfer_just(scheduler(), 3),     //
-        ex::transfer_just(scheduler(), 0.1415) //
+      auto snd = ex::when_all_with_variant(
+        ex::transfer_just(scheduler(), 3),
+        ex::transfer_just(scheduler(), 0.1415)
       );
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_with_variant_t>);
       [[maybe_unused]]
@@ -456,9 +456,9 @@ namespace {
       using domain = basic_domain<ex::when_all_t, customize::early, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd = ex::when_all_with_variant(    //
-        ex::transfer_just(scheduler(), 3),     //
-        ex::transfer_just(scheduler(), 0.1415) //
+      auto snd = ex::when_all_with_variant(
+        ex::transfer_just(scheduler(), 3),
+        ex::transfer_just(scheduler(), 0.1415)
       );
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_with_variant_t>);
       wait_for_value(std::move(snd), std::string{"hello world"});
@@ -470,9 +470,9 @@ namespace {
 
       auto snd = ex::starts_on(
         scheduler(),
-        ex::when_all_with_variant( //
-          ex::just(3),             //
-          ex::just(0.1415)         //
+        ex::when_all_with_variant(
+          ex::just(3),
+          ex::just(0.1415)
           ));
       wait_for_value(std::move(snd), std::string{"hello world"});
     }

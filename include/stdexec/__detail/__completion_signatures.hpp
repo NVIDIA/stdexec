@@ -43,10 +43,10 @@ namespace stdexec {
   struct completion_signatures { };
 
   template <class _Completions>
-  concept __valid_completion_signatures = //
-    __same_as<__ok_t<_Completions>, __msuccess> && __sigs::__is_completion_signatures<_Completions>;
+  concept __valid_completion_signatures = __same_as<__ok_t<_Completions>, __msuccess>
+                                       && __sigs::__is_completion_signatures<_Completions>;
 
   template <class _Sender, class... _Env>
-  using __unrecognized_sender_error = //
+  using __unrecognized_sender_error =
     __mexception<_UNRECOGNIZED_SENDER_TYPE_<>, _WITH_SENDER_<_Sender>, _WITH_ENVIRONMENT_<_Env>...>;
 } // namespace stdexec

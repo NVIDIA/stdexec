@@ -41,8 +41,9 @@ namespace exec::system_context_replaceability {
 
   /// Concept for a queryable interface. Ensures that the interface has a `__interface_identifier` member.
   template <typename _T>
-  concept __queryable_interface =
-    requires() { typename __check_constexpr_uuid<_T::__interface_identifier>; };
+  concept __queryable_interface = requires() {
+    typename __check_constexpr_uuid<_T::__interface_identifier>;
+  };
 
   /// The details for making `_T` a runtime property.
   template <typename _T>

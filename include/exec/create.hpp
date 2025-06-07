@@ -31,8 +31,8 @@ namespace exec {
 
     template <class _Receiver, class _Args>
     struct __context {
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Receiver receiver;
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Args args;
+      STDEXEC_ATTRIBUTE(no_unique_address) _Receiver receiver;
+      STDEXEC_ATTRIBUTE(no_unique_address) _Args args;
     };
 
     template <class _ReceiverId, class _Fun, class _ArgsId>
@@ -44,14 +44,13 @@ namespace exec {
       struct __t : stdexec::__immovable {
         using __id = __operation;
 
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Context __ctx_;
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Fun __fun_;
-        STDEXEC_ATTRIBUTE((no_unique_address)) _State __state_{};
+        STDEXEC_ATTRIBUTE(no_unique_address) _Context __ctx_;
+        STDEXEC_ATTRIBUTE(no_unique_address) _Fun __fun_;
+        STDEXEC_ATTRIBUTE(no_unique_address) _State __state_ { };
 
         void start() & noexcept {
-          __state_.emplace(__emplace_from{[&]() noexcept {
-            return static_cast<_Fun&&>(__fun_)(__ctx_);
-          }});
+          __state_.emplace(
+            __emplace_from{[&]() noexcept { return static_cast<_Fun&&>(__fun_)(__ctx_); }});
         }
       };
     };
@@ -103,5 +102,6 @@ namespace exec {
   inline constexpr __create::__create_t<_Sigs...> create<_Sigs...>{};
 
   template <stdexec::__completion_signature... _Sigs>
-  inline constexpr __create::__create_t<_Sigs...> create<stdexec::completion_signatures<_Sigs...>>{};
+  inline constexpr __create::__create_t<_Sigs...>
+    create<stdexec::completion_signatures<_Sigs...>>{};
 } // namespace exec

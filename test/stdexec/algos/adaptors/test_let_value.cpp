@@ -118,11 +118,7 @@ namespace {
         throw std::logic_error("not prime");
       return ex::just(x);
     };
-    ex::sender auto snd = ex::just(13)      //
-                        | ex::let_value(f1) //
-                        | ex::let_value(f2) //
-                        | ex::let_value(f3) //
-      ;
+    ex::sender auto snd = ex::just(13) | ex::let_value(f1) | ex::let_value(f2) | ex::let_value(f3);
     wait_for_value(std::move(snd), 29);
     CHECK(called1);
     CHECK(called2);
@@ -130,14 +126,14 @@ namespace {
   }
 
   TEST_CASE("let_value can throw, and set_error will be called", "[adaptors][let_value]") {
-    auto snd = ex::just(13) //
+    auto snd = ex::just(13)
              | ex::let_value([](int&) -> decltype(ex::just(0)) { throw std::logic_error{"err"}; });
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
   }
 
   TEST_CASE("let_value can be used with just_error", "[adaptors][let_value]") {
-    ex::sender auto snd = ex::just_error(std::string{"err"}) //
+    ex::sender auto snd = ex::just_error(std::string{"err"})
                         | ex::let_value([]() { return ex::just(17); });
     auto op = ex::connect(std::move(snd), expect_error_receiver{std::string{"err"}});
     ex::start(op);
@@ -152,8 +148,7 @@ namespace {
   TEST_CASE("let_value function is not called on error", "[adaptors][let_value]") {
     bool called{false};
     error_scheduler sched;
-    ex::sender auto snd = ex::transfer_just(sched, 13) //
-                        | ex::let_value([&](int& x) {
+    ex::sender auto snd = ex::transfer_just(sched, 13) | ex::let_value([&](int& x) {
                             called = true;
                             return ex::just(x + 5);
                           });
@@ -165,8 +160,7 @@ namespace {
   TEST_CASE("let_value function is not called when cancelled", "[adaptors][let_value]") {
     bool called{false};
     stopped_scheduler sched;
-    ex::sender auto snd = ex::transfer_just(sched, 13) //
-                        | ex::let_value([&](int& x) {
+    ex::sender auto snd = ex::transfer_just(sched, 13) | ex::let_value([&](int& x) {
                             called = true;
                             return ex::just(x + 5);
                           });
@@ -210,8 +204,7 @@ namespace {
     bool fun_called{false};
     impulse_scheduler sched;
 
-    ex::sender auto snd = ex::just(my_type(&param_destructed)) //
-                        | ex::let_value([&](const my_type&) {
+    ex::sender auto snd = ex::just(my_type(&param_destructed)) | ex::let_value([&](const my_type&) {
                             CHECK_FALSE(param_destructed);
                             fun_called = true;
                             return ex::transfer_just(sched, 13);
@@ -244,8 +237,8 @@ namespace {
     std::atomic<bool> called{false};
     {
       // lunch some work on the thread pool
-      ex::sender auto snd = ex::transfer_just(pool.get_scheduler(), 7)                //
-                          | ex::let_value([](int& x) { return ex::just(x * 2 - 1); }) //
+      ex::sender auto snd = ex::transfer_just(pool.get_scheduler(), 7)
+                          | ex::let_value([](int& x) { return ex::just(x * 2 - 1); })
                           | ex::then([&](int x) {
                               CHECK(x == 13);
                               called.store(true);
@@ -265,12 +258,10 @@ namespace {
     "let_value has the values_type corresponding to the given values",
     "[adaptors][let_value]") {
     check_val_types<ex::__mset<pack<int>>>(ex::just() | ex::let_value([] { return ex::just(7); }));
-    check_val_types<ex::__mset<pack<double>>>(ex::just() | ex::let_value([] {
-                                                return ex::just(3.14);
-                                              }));
-    check_val_types<ex::__mset<pack<std::string>>>(ex::just() | ex::let_value([] {
-                                                     return ex::just(std::string{"hello"});
-                                                   }));
+    check_val_types<ex::__mset<pack<double>>>(
+      ex::just() | ex::let_value([] { return ex::just(3.14); }));
+    check_val_types<ex::__mset<pack<std::string>>>(
+      ex::just() | ex::let_value([] { return ex::just(std::string{"hello"}); }));
   }
 
   TEST_CASE("let_value keeps error_types from input sender", "[adaptors][let_value]") {
@@ -278,18 +269,18 @@ namespace {
     error_scheduler sched2{};
     error_scheduler<int> sched3{43};
 
-    check_err_types<ex::__mset<std::exception_ptr>>( //
+    check_err_types<ex::__mset<std::exception_ptr>>(
       ex::transfer_just(sched1) | ex::let_value([] { return ex::just(); }));
-    check_err_types<ex::__mset<std::exception_ptr>>( //
+    check_err_types<ex::__mset<std::exception_ptr>>(
       ex::transfer_just(sched2) | ex::let_value([] { return ex::just(); }));
-    check_err_types<ex::__mset<int, std::exception_ptr>>( //
+    check_err_types<ex::__mset<int, std::exception_ptr>>(
       ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
 
-    check_err_types<ex::__mset<>>( //
+    check_err_types<ex::__mset<>>(
       ex::transfer_just(sched1) | ex::let_value([]() noexcept { return ex::just(); }));
-    check_err_types<ex::__mset<std::exception_ptr>>( //
+    check_err_types<ex::__mset<std::exception_ptr>>(
       ex::transfer_just(sched2) | ex::let_value([]() noexcept { return ex::just(); }));
-    check_err_types<ex::__mset<int>>( //
+    check_err_types<ex::__mset<int>>(
       ex::transfer_just(sched3) | ex::let_value([]() noexcept { return ex::just(); }));
   }
 
@@ -298,12 +289,10 @@ namespace {
     error_scheduler sched2{};
     stopped_scheduler sched3{};
 
-    check_sends_stopped<false>( //
+    check_sends_stopped<false>(
       ex::transfer_just(sched1) | ex::let_value([] { return ex::just(); }));
-    check_sends_stopped<true>( //
-      ex::transfer_just(sched2) | ex::let_value([] { return ex::just(); }));
-    check_sends_stopped<true>( //
-      ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
+    check_sends_stopped<true>(ex::transfer_just(sched2) | ex::let_value([] { return ex::just(); }));
+    check_sends_stopped<true>(ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
   }
 
   // Return a different sender when we invoke this custom defined let_value implementation
@@ -324,12 +313,8 @@ namespace {
   }
 
   TEST_CASE("let_value can nest", "[adaptors][let_value]") {
-    auto work = ex::just(2)                  //
-              | ex::let_value([](int x) {    //
-                  return ex::just()          //
-                       | ex::let_value([=] { //
-                           return ex::just(x);
-                         });
+    auto work = ex::just(2) | ex::let_value([](int x) {
+                  return ex::just() | ex::let_value([=] { return ex::just(x); });
                 });
     wait_for_value(std::move(work), 2);
   }

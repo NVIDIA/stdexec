@@ -171,7 +171,8 @@ namespace exec {
       using __nested_t = nest_result_t<_AsyncScope, _Sender>;
 
       stdexec::__tuple_for<
-        stdexec::connect_result_t<__nested_t<stdexec::__cvref_t<_SenderIds>>, __receiver_t>...>
+        stdexec::connect_result_t<__nested_t<stdexec::__cvref_t<_SenderIds>>, __receiver_t>...
+      >
         __op_state_;
 
      public:
@@ -207,11 +208,11 @@ namespace exec {
       template <
         stdexec::queryable _Env,
         exec::__scope::__async_scope _AsyncScope,
-        stdexec::sender... _Sender>
-      auto operator()(_Env __env, _AsyncScope& __scope, _Sender&&... __sndr) const //
-        noexcept(
-          stdexec::__nothrow_move_constructible<std::unwrap_reference_t<_Env>>
-          && (stdexec::__nothrow_move_constructible<_Sender> && ...)) {
+        stdexec::sender... _Sender
+      >
+      auto operator()(_Env __env, _AsyncScope& __scope, _Sender&&... __sndr) const noexcept(
+        stdexec::__nothrow_move_constructible<std::unwrap_reference_t<_Env>>
+        && (stdexec::__nothrow_move_constructible<_Sender> && ...)) {
         using __local_env_t = stdexec::__as_root_env_t<std::unwrap_reference_t<_Env>>;
         static_assert(
           !stdexec::sender<_Env>,

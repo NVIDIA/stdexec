@@ -117,14 +117,14 @@ namespace {
     "[cuda][stream][adaptors][transfer_when_all_with_variant]") {
     nvexec::stream_context stream_ctx{};
     auto gpu = stream_ctx.get_scheduler();
-    ex::sender auto snd = ex::transfer_when_all_with_variant( //
-      gpu,                                                    //
-      ex::just(2),                                            //
-      ex::just(3.14)                                          //
+    ex::sender auto snd = ex::transfer_when_all_with_variant(
+      gpu,
+      ex::just(2),
+      ex::just(3.14)
     );
     wait_for_value(
-      std::move(snd),                   //
-      std::variant<std::tuple<int>>{2}, //
+      std::move(snd),
+      std::variant<std::tuple<int>>{2},
       std::variant<std::tuple<double>>{3.14});
   }
 } // namespace

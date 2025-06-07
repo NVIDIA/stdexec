@@ -35,43 +35,36 @@ namespace stdexec {
 
   namespace __detail {
     template <class _Sender>
-    concept __enable_sender = //
-      derived_from<typename _Sender::sender_concept, sender_t>
-      || requires { typename _Sender::is_sender; } // NOT TO SPEC back compat
-      || __awaitable<_Sender, __env::__promise<env<>>>;
+    concept __enable_sender = derived_from<typename _Sender::sender_concept, sender_t>
+                           || requires { typename _Sender::is_sender; } // NOT TO SPEC back compat
+                           || __awaitable<_Sender, __env::__promise<env<>>>;
   } // namespace __detail
 
   template <class _Sender>
   inline constexpr bool enable_sender = __detail::__enable_sender<_Sender>;
 
   template <class _Sender>
-  concept sender =                                        //
-    enable_sender<__decay_t<_Sender>>                     //
-    && environment_provider<__cref_t<_Sender>>            //
-    && __detail::__consistent_completion_domains<_Sender> //
-    && move_constructible<__decay_t<_Sender>>             //
-    && constructible_from<__decay_t<_Sender>, _Sender>;
+  concept sender = enable_sender<__decay_t<_Sender>> && environment_provider<__cref_t<_Sender>>
+                && __detail::__consistent_completion_domains<_Sender>
+                && move_constructible<__decay_t<_Sender>>
+                && constructible_from<__decay_t<_Sender>, _Sender>;
 
   template <class _Sender, class... _Env>
   concept sender_in =
-    (sizeof...(_Env) <= 1) //
-    && sender<_Sender>     //
-    && requires(_Sender&& __sndr, _Env&&... __env) {
-         {
-           get_completion_signatures(static_cast<_Sender &&>(__sndr), static_cast<_Env &&>(__env)...)
-         } -> __valid_completion_signatures;
-       };
+    (sizeof...(_Env) <= 1) && sender<_Sender> && requires(_Sender&& __sndr, _Env&&... __env) {
+      {
+        get_completion_signatures(static_cast<_Sender &&>(__sndr), static_cast<_Env &&>(__env)...)
+      } -> __valid_completion_signatures;
+    };
 
   /////////////////////////////////////////////////////////////////////////////
   // [exec.snd]
   template <class _Sender, class _Receiver>
-  concept sender_to =                          //
-    receiver<_Receiver>                        //
-    && sender_in<_Sender, env_of_t<_Receiver>> //
-    && __receiver_from<_Receiver, _Sender>     //
-    && requires(_Sender&& __sndr, _Receiver&& __rcvr) {
-         connect(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr));
-       };
+  concept sender_to = receiver<_Receiver> && sender_in<_Sender, env_of_t<_Receiver>>
+                   && __receiver_from<_Receiver, _Sender>
+                   && requires(_Sender&& __sndr, _Receiver&& __rcvr) {
+                        connect(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr));
+                      };
 
   template <class _Sender, class _Receiver>
   using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;

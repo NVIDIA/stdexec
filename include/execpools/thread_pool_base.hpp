@@ -90,7 +90,7 @@ namespace execpools {
         // and emplacing a tuple doesn't throw
         noexcept(stdexec::__decayed_std_tuple<Args...>(std::declval<Args>()...))
         // there's no need to advertise completion with `exception_ptr`
-        >;
+      >;
 
       template <class CvrefSender, class Receiver, class Shape, class Fun, bool MayThrow>
       struct bulk_shared_state : task_base {
@@ -98,7 +98,8 @@ namespace execpools {
           CvrefSender,
           stdexec::env_of_t<Receiver>,
           stdexec::__q<stdexec::__decayed_std_tuple>,
-          stdexec::__q<stdexec::__std_variant>>;
+          stdexec::__q<stdexec::__std_variant>
+        >;
 
         variant_t data_;
         DerivedPoolType& pool_;
@@ -278,7 +279,8 @@ namespace execpools {
             CvrefSender,
             stdexec::env_of_t<Receiver>,
             stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
-            stdexec::__q<stdexec::__mand>>>;
+            stdexec::__q<stdexec::__mand>
+          >>;
 
           using bulk_rcvr =
             stdexec::__t<bulk_receiver<CvrefSenderId, ReceiverId, Shape, Fun, may_throw>>;
@@ -322,8 +324,10 @@ namespace execpools {
             stdexec::__completion_signatures_of_t<Sender, Env...>,
             stdexec::__mtransform<
               stdexec::__q1<__decay_ref>,
-              stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>>,
-            stdexec::__q<stdexec::__mand>>>;
+              stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>
+            >,
+            stdexec::__q<stdexec::__mand>
+          >>;
 
           template <class... Tys>
           using _set_value_t =
@@ -333,23 +337,28 @@ namespace execpools {
           using completion_signatures = stdexec::transform_completion_signatures<
             stdexec::__completion_signatures_of_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
             _with_error_invoke_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
-            _set_value_t>;
+            _set_value_t
+          >;
 
           template <class Self, class Receiver>
           using bulk_op_state_t = stdexec::__t<
-            bulk_op_state<stdexec::__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun>>;
+            bulk_op_state<stdexec::__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun>
+          >;
 
           template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
-            requires stdexec::
-              receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
-            static auto connect(Self&& self, Receiver rcvr) //
-            noexcept(stdexec::__nothrow_constructible_from<
-                     bulk_op_state_t<Self, Receiver>,
-                     DerivedPoolType&,
-                     Shape,
-                     Fun,
-                     Sender,
-                     Receiver>) -> bulk_op_state_t<Self, Receiver> {
+            requires stdexec::receiver_of<
+              Receiver,
+              completion_signatures<Self, stdexec::env_of_t<Receiver>>
+            >
+          static auto
+            connect(Self&& self, Receiver rcvr) noexcept(stdexec::__nothrow_constructible_from<
+                                                         bulk_op_state_t<Self, Receiver>,
+                                                         DerivedPoolType&,
+                                                         Shape,
+                                                         Fun,
+                                                         Sender,
+                                                         Receiver
+            >) -> bulk_op_state_t<Self, Receiver> {
             return bulk_op_state_t<Self, Receiver>{
               self.pool_,
               self.shape_,
@@ -454,16 +463,16 @@ namespace execpools {
     explicit __t(PoolType& pool, Receiver rcvr)
       : pool_(pool)
       , rcvr_(std::move(rcvr)) {
-      this->__execute =
-        [](task_base* t, std::uint32_t /* tid What is this needed for? */) noexcept {
-          auto& op = *static_cast<__t*>(t);
-          auto stoken = stdexec::get_stop_token(stdexec::get_env(op.rcvr_));
-          if (stoken.stop_requested()) {
-            stdexec::set_stopped(std::move(op.rcvr_));
-          } else {
-            stdexec::set_value(std::move(op.rcvr_));
-          }
-        };
+      this
+        ->__execute = [](task_base* t, std::uint32_t /* tid What is this needed for? */) noexcept {
+        auto& op = *static_cast<__t*>(t);
+        auto stoken = stdexec::get_stop_token(stdexec::get_env(op.rcvr_));
+        if (stoken.stop_requested()) {
+          stdexec::set_stopped(std::move(op.rcvr_));
+        } else {
+          stdexec::set_value(std::move(op.rcvr_));
+        }
+      };
     }
 
     void enqueue() noexcept {

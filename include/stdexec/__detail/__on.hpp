@@ -48,7 +48,8 @@ namespace stdexec {
     template <
       __mstring _Context = __on_context,
       __mstring _Diagnostic = __no_scheduler_diag,
-      __mstring _Details = __no_scheduler_details>
+      __mstring _Details = __no_scheduler_details
+    >
     struct _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_ { };
 
     struct on_t;
@@ -62,7 +63,8 @@ namespace stdexec {
         return __mexception<
           _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_<>,
           _WITH_SENDER_<_Sender>,
-          _WITH_ENVIRONMENT_<_Env>>{};
+          _WITH_ENVIRONMENT_<_Env>
+        >{};
       }
     };
 
@@ -115,7 +117,8 @@ namespace stdexec {
       }
 
       template <scheduler _Scheduler, __sender_adaptor_closure _Closure>
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Scheduler&& __sched, _Closure&& __clsur) const {
+      STDEXEC_ATTRIBUTE(always_inline)
+      auto operator()(_Scheduler&& __sched, _Closure&& __clsur) const {
         return __binder_back<on_t, __decay_t<_Scheduler>, __decay_t<_Closure>>{
           {{static_cast<_Scheduler&&>(__sched)}, {static_cast<_Closure&&>(__clsur)}},
           {},
@@ -124,7 +127,8 @@ namespace stdexec {
       }
 
       template <class _Env>
-      STDEXEC_ATTRIBUTE((always_inline)) static auto __transform_env_fn(_Env&& __env) noexcept {
+      STDEXEC_ATTRIBUTE(always_inline)
+      static auto __transform_env_fn(_Env&& __env) noexcept {
         return [&]<class _Data>(__ignore, _Data&& __data, __ignore) noexcept -> decltype(auto) {
           if constexpr (scheduler<_Data>) {
             return __env::__join(
@@ -136,7 +140,8 @@ namespace stdexec {
       }
 
       template <class _Env>
-      STDEXEC_ATTRIBUTE((always_inline)) static auto __transform_sender_fn(const _Env& __env) noexcept {
+      STDEXEC_ATTRIBUTE(always_inline)
+      static auto __transform_sender_fn(const _Env& __env) noexcept {
         return [&]<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
           if constexpr (scheduler<_Data>) {
             // This branch handles the case where `on` was called like `on(sch, snd)`
@@ -164,12 +169,10 @@ namespace stdexec {
               return __none_such{};
             } else {
               auto&& [__sched, __clsur] = static_cast<_Data&&>(__data);
-              return __write_env(                                                       //
-                continues_on(                                                           //
-                  __forward_like<_Data>(__clsur)(                                       //
-                    continues_on(                                                       //
-                      __write_env(static_cast<_Child&&>(__child), __with_sched{__old}), //
-                      __sched)),                                                        //
+              return __write_env(
+                continues_on(
+                  __forward_like<_Data>(__clsur)(continues_on(
+                    __write_env(static_cast<_Child&&>(__child), __with_sched{__old}), __sched)),
                   __old),
                 __with_sched{__sched});
             }
@@ -178,12 +181,14 @@ namespace stdexec {
       }
 
       template <class _Sender, class _Env>
-      STDEXEC_ATTRIBUTE((always_inline)) static auto transform_env(const _Sender& __sndr, _Env&& __env) noexcept {
+      STDEXEC_ATTRIBUTE(always_inline)
+      static auto transform_env(const _Sender& __sndr, _Env&& __env) noexcept {
         return __sexpr_apply(__sndr, __transform_env_fn(static_cast<_Env&&>(__env)));
       }
 
       template <class _Sender, class _Env>
-      STDEXEC_ATTRIBUTE((always_inline)) static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
+      STDEXEC_ATTRIBUTE(always_inline)
+      static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
         auto __tfx_sndr_fn = __transform_sender_fn(__env);
         using _TfxSndrFn = decltype(__tfx_sndr_fn);
         using _NewSndr = __sexpr_apply_result_t<_Sender, _TfxSndrFn>;
@@ -207,12 +212,11 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<v2::on_t> : __sexpr_defaults {
-    static constexpr auto get_completion_signatures = //
-      []<class _Sender>(_Sender&&) noexcept           //
-      -> __merror_or_t<                               //
-        __completion_signatures_of_t<                 //
-          transform_sender_result_t<default_domain, _Sender, env<>>>,
-        dependent_completions> {
+    static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
+      -> __merror_or_t<
+        __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>>,
+        dependent_completions
+      > {
       return {};
     };
   };

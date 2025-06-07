@@ -231,9 +231,7 @@ namespace exec {
     if (!cpus) {
       return 0;
     }
-    scope_guard sg{[&]() noexcept {
-      ::numa_free_cpumask(cpus);
-    }};
+    scope_guard sg{[&]() noexcept { ::numa_free_cpumask(cpus); }};
     int rc = ::numa_node_to_cpus(node, cpus);
     if (rc < 0) {
       return 0;
@@ -272,9 +270,7 @@ namespace exec {
       if (!nodes) {
         return -1;
       }
-      scope_guard sg{[&]() noexcept {
-        ::numa_free_nodemask(nodes);
-      }};
+      scope_guard sg{[&]() noexcept { ::numa_free_nodemask(nodes); }};
       ::numa_bitmask_setbit(nodes, node);
       ::numa_bind(nodes);
       return 0;

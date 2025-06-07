@@ -44,7 +44,8 @@ namespace exec {
     struct __make_env_t {
       template <
         stdexec::__nothrow_move_constructible _Base,
-        stdexec::__nothrow_move_constructible _Env>
+        stdexec::__nothrow_move_constructible _Env
+      >
       auto operator()(_Base&& __base, _Env&& __env) const noexcept
         -> stdexec::__join_env_t<_Env, _Base> {
         return stdexec::__env::__join(static_cast<_Env&&>(__env), static_cast<_Base&&>(__base));
@@ -77,7 +78,7 @@ namespace exec {
       struct __t : __immovable {
         using __id = __operation;
 
-        STDEXEC_ATTRIBUTE((no_unique_address)) _Default __default_;
+        STDEXEC_ATTRIBUTE(no_unique_address) _Default __default_;
         _Receiver __rcvr_;
 
         void start() & noexcept {
@@ -104,7 +105,7 @@ namespace exec {
       using __id = __sender;
       using __t = __sender;
       using sender_concept = stdexec::sender_t;
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Default __default_;
+      STDEXEC_ATTRIBUTE(no_unique_address) _Default __default_;
 
       template <class _Env>
       using __value_t =
@@ -118,7 +119,7 @@ namespace exec {
 
       template <__decays_to<__sender> _Self, class _Receiver>
         requires receiver_of<_Receiver, __completions_t<env_of_t<_Receiver>>>
-      static auto connect(_Self&& __self, _Receiver __rcvr) //
+      static auto connect(_Self&& __self, _Receiver __rcvr)
         noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
           -> __operation_t<_Tag, __default_t<env_of_t<_Receiver>>, _Receiver> {
         return {{}, static_cast<_Self&&>(__self).__default_, static_cast<_Receiver&&>(__rcvr)};
@@ -179,8 +180,9 @@ namespace exec {
 
     struct __write_attrs_t {
       template <class _Sender, class _Attrs>
-      STDEXEC_ATTRIBUTE((host, device)) auto operator()(_Sender snd, _Attrs __attrs_) const //
-        -> __write_attrs::__sender<_Sender, _Attrs> {
+      STDEXEC_ATTRIBUTE(host, device)
+      auto
+        operator()(_Sender snd, _Attrs __attrs_) const -> __write_attrs::__sender<_Sender, _Attrs> {
         return __t<__write_attrs::__sender<__id<_Sender>, _Attrs>>{
           static_cast<_Sender&&>(snd), static_cast<_Attrs&&>(__attrs_)};
       }
@@ -190,14 +192,16 @@ namespace exec {
         _Attrs __attrs_;
 
         template <class _Sender>
-        STDEXEC_ATTRIBUTE((host, device)) friend auto operator|(_Sender __sndr_, __closure _clsr) {
+        STDEXEC_ATTRIBUTE(host, device)
+        friend auto operator|(_Sender __sndr_, __closure _clsr) {
           return __t<__write_attrs::__sender<__id<_Sender>, _Attrs>>{
             static_cast<_Sender&&>(__sndr_), static_cast<_Attrs&&>(_clsr.__attrs_)};
         }
       };
 
       template <class _Attrs>
-      STDEXEC_ATTRIBUTE((host, device)) auto operator()(_Attrs __attrs_) const {
+      STDEXEC_ATTRIBUTE(host, device)
+      auto operator()(_Attrs __attrs_) const {
         return __closure<_Attrs>{static_cast<_Attrs&&>(__attrs_)};
       }
     };

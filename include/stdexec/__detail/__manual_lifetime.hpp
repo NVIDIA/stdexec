@@ -44,9 +44,8 @@ namespace stdexec {
     //! Construct the `_Ty` in place.
     //! There are no safeties guarding against the case that there's already one there.
     template <class... _Args>
-    auto
-      __construct(_Args&&... __args) noexcept(stdexec::__nothrow_constructible_from<_Ty, _Args...>)
-        -> _Ty& {
+    auto __construct(_Args&&... __args)
+      noexcept(stdexec::__nothrow_constructible_from<_Ty, _Args...>) -> _Ty& {
       // Use placement new instead of std::construct_at to support aggregate initialization with
       // brace elision.
       return *std::launder(::new (static_cast<void*>(__buffer_))

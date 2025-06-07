@@ -174,12 +174,10 @@ namespace nvexec::_strm {
     };
 
     template <class... _Ty>
-    using value_completions_t = //
-      completion_signatures<set_value_t(__decay_t<_Ty>...)>;
+    using value_completions_t = completion_signatures<set_value_t(__decay_t<_Ty>...)>;
 
     template <class _Ty>
-    using error_completions_t = //
-      completion_signatures<set_error_t(__decay_t<_Ty>)>;
+    using error_completions_t = completion_signatures<set_error_t(__decay_t<_Ty>)>;
   } // namespace _sched_from
 
   template <class Scheduler, class SenderId>
@@ -195,16 +193,16 @@ namespace nvexec::_strm {
       source_sender_th sndr_;
 
       template <class Self, class Receiver>
-      using receiver_t = //
+      using receiver_t =
         stdexec::__t<_sched_from::receiver_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>>>;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires sender_to<__copy_cvref_t<Self, source_sender_th>, Receiver>
-      static auto connect(Self&& self, Receiver rcvr) //
-        -> stream_op_state_t<
-          __copy_cvref_t<Self, source_sender_th>,
-          receiver_t<Self, Receiver>,
-          Receiver> {
+      static auto connect(Self&& self, Receiver rcvr) -> stream_op_state_t<
+        __copy_cvref_t<Self, source_sender_th>,
+        receiver_t<Self, Receiver>,
+        Receiver
+      > {
         auto receiver_factory =
           [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
           -> receiver_t<Self, Receiver> {
@@ -223,12 +221,12 @@ namespace nvexec::_strm {
       }
 
       template <__decays_to<__t> _Self, class... _Env>
-      static auto get_completion_signatures(_Self&&, _Env&&...) //
-        -> transform_completion_signatures<
-          __completion_signatures_of_t<__copy_cvref_t<_Self, Sender>, _Env...>,
-          completion_signatures<set_error_t(cudaError_t)>,
-          _sched_from::value_completions_t,
-          _sched_from::error_completions_t> {
+      static auto get_completion_signatures(_Self&&, _Env&&...) -> transform_completion_signatures<
+        __completion_signatures_of_t<__copy_cvref_t<_Self, Sender>, _Env...>,
+        completion_signatures<set_error_t(cudaError_t)>,
+        _sched_from::value_completions_t,
+        _sched_from::error_completions_t
+      > {
         return {};
       }
 

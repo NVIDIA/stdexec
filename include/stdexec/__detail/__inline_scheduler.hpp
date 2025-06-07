@@ -33,7 +33,8 @@ namespace stdexec {
       using __id = __scheduler;
 
       template <class _Tag = __schedule_t>
-      STDEXEC_ATTRIBUTE((host, device)) STDEXEC_MEMFN_DECL(auto schedule)(this __scheduler) {
+      STDEXEC_ATTRIBUTE(host, device)
+      STDEXEC_MEMFN_DECL(auto schedule)(this __scheduler) {
         return __make_sexpr<_Tag>();
       }
 
@@ -59,17 +60,16 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<__inln::__schedule_t> : __sexpr_defaults {
-    static constexpr auto get_attrs = //
-      [](__ignore) noexcept {
-        return __inln::__env();
-      };
+    static constexpr auto get_attrs = [](__ignore) noexcept {
+      return __inln::__env();
+    };
 
-    static constexpr auto get_completion_signatures = //
+    static constexpr auto get_completion_signatures =
       [](__ignore, __ignore = {}) noexcept -> completion_signatures<set_value_t()> {
       return {};
     };
 
-    static constexpr auto start = //
+    static constexpr auto start =
       []<class _Receiver>(__ignore, _Receiver& __rcvr) noexcept -> void {
       stdexec::set_value(static_cast<_Receiver&&>(__rcvr));
     };

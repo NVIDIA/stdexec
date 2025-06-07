@@ -293,8 +293,7 @@ namespace {
       *executed_ = true;
     }
 
-    void set_error(std::exception_ptr) //
-      noexcept {
+    void set_error(std::exception_ptr) noexcept {
       FAIL_CHECK("set_error called on expect_stopped_receiver_ex");
     }
 
@@ -307,8 +306,8 @@ namespace {
     Env env_;
   };
 
-  inline auto to_comparable(std::exception_ptr eptr) //
-    -> std::pair<const std::type_info&, std::string> {
+  inline auto
+    to_comparable(std::exception_ptr eptr) -> std::pair<const std::type_info&, std::string> {
     try {
       std::rethrow_exception(eptr);
     } catch (const std::exception& e) {

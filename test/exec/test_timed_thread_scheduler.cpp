@@ -108,9 +108,8 @@ namespace {
     auto deadline = now + std::chrono::milliseconds(100);
     auto t0 = std::chrono::steady_clock::now();
     for (int i = 0; i < ntimers; ++i) {
-      scope.spawn(                             //
-        exec::schedule_at(scheduler, deadline) //
-        | stdexec::then([&counter] { ++counter; }));
+      scope
+        .spawn(exec::schedule_at(scheduler, deadline) | stdexec::then([&counter] { ++counter; }));
     }
     CHECK(stdexec::sync_wait(scope.on_empty()));
     auto t1 = std::chrono::steady_clock::now();

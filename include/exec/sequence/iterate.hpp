@@ -37,8 +37,8 @@ namespace exec {
 
     template <class _Iterator, class _Sentinel>
     struct __operation_base {
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Iterator __iterator_;
-      STDEXEC_ATTRIBUTE((no_unique_address)) _Sentinel __sentinel_;
+      STDEXEC_ATTRIBUTE(no_unique_address) _Iterator __iterator_;
+      STDEXEC_ATTRIBUTE(no_unique_address) _Sentinel __sentinel_;
     };
 
     template <class _Range>
@@ -49,7 +49,7 @@ namespace exec {
     struct __item_operation {
       struct __t {
         using __id = __item_operation;
-        STDEXEC_ATTRIBUTE((no_unique_address)) _ItemRcvr __rcvr_;
+        STDEXEC_ATTRIBUTE(no_unique_address) _ItemRcvr __rcvr_;
         __operation_base<_Iterator, _Sentinel>* __parent_;
 
         void start() & noexcept {
@@ -152,8 +152,8 @@ namespace exec {
       using __operation_t = __t<__operation<__decay_t<_Range>, _ReceiverId>>;
 
       template <class _Range>
-      auto operator()(__ignore, _Range&& __range) //
-        noexcept(__nothrow_move_constructible<_Receiver>) -> __operation_t<_Range> {
+      auto operator()(__ignore, _Range&& __range) noexcept(__nothrow_move_constructible<_Receiver>)
+        -> __operation_t<_Range> {
         return {
           {std::ranges::begin(__range), std::ranges::end(__range)},
           static_cast<_Receiver&&>(__rcvr_)
@@ -185,9 +185,10 @@ namespace exec {
 
       template <
         sender_expr_for<iterate_t> _SeqExpr,
-        sequence_receiver_of<item_types<_ItemSender<_SeqExpr>>> _Receiver>
+        sequence_receiver_of<item_types<_ItemSender<_SeqExpr>>> _Receiver
+      >
         requires sender_to<_NextSender<_SeqExpr, _Receiver>, _NextReceiver<_SeqExpr, _Receiver>>
-      static auto subscribe(_SeqExpr&& __seq, _Receiver __rcvr) //
+      static auto subscribe(_SeqExpr&& __seq, _Receiver __rcvr)
         noexcept(__nothrow_callable<__sexpr_apply_t, _SeqExpr, __subscribe_fn<_Receiver>>)
           -> __call_result_t<__sexpr_apply_t, _SeqExpr, __subscribe_fn<_Receiver>> {
         return __sexpr_apply(static_cast<_SeqExpr&&>(__seq), __subscribe_fn<_Receiver>{__rcvr});

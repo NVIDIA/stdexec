@@ -48,22 +48,17 @@ namespace exec {
     static_assert(scheduler<__any_scheduler>);
 
     template <class _Ty>
-    concept __stop_token_provider = //
-      requires(const _Ty& t) {      //
-        get_stop_token(t);
-      };
+    concept __stop_token_provider = requires(const _Ty& t) { get_stop_token(t); };
 
     template <class _Ty>
-    concept __indirect_stop_token_provider = //
-      requires(const _Ty& t) {
-        { get_env(t) } -> __stop_token_provider;
-      };
+    concept __indirect_stop_token_provider = requires(const _Ty& t) {
+      { get_env(t) } -> __stop_token_provider;
+    };
 
     template <class _Ty>
-    concept __indirect_scheduler_provider = //
-      requires(const _Ty& t) {
-        { get_env(t) } -> __scheduler_provider;
-      };
+    concept __indirect_scheduler_provider = requires(const _Ty& t) {
+      { get_env(t) } -> __scheduler_provider;
+    };
 
     template <class _ParentPromise>
     constexpr auto __check_parent_promise_has_scheduler() noexcept -> bool {
@@ -102,8 +97,8 @@ namespace exec {
 
       static constexpr bool __with_scheduler = _SchedulerAffinity == __scheduler_affinity::__sticky;
 
-      STDEXEC_ATTRIBUTE((no_unique_address)) __if_c<__with_scheduler, __any_scheduler, __ignore> //
-        __scheduler_{exec::inline_scheduler{}};
+      STDEXEC_ATTRIBUTE(no_unique_address)
+      __if_c<__with_scheduler, __any_scheduler, __ignore> __scheduler_{exec::inline_scheduler{}};
       inplace_stop_token __stop_token_;
 
      public:
@@ -190,8 +185,11 @@ namespace exec {
         : __stop_callback_{
             get_stop_token(get_env(__parent)),
             __forward_stop_request{__stop_source_}} {
-        static_assert(
-          std::is_nothrow_constructible_v<__stop_callback_t, __stop_token_t, __forward_stop_request>);
+        static_assert(std::is_nothrow_constructible_v<
+                      __stop_callback_t,
+                      __stop_token_t,
+                      __forward_stop_request
+        >);
         __self.__stop_token_ = __stop_source_.get_token();
       }
 
@@ -247,8 +245,8 @@ namespace exec {
         if constexpr (std::same_as<__stop_token_t, inplace_stop_token>) {
           __self.__stop_token_ = get_stop_token(get_env(__parent));
         } else if (auto __token = get_stop_token(get_env(__parent)); __token.stop_possible()) {
-          __stop_callback_.emplace<__stop_callback_t>(
-            std::move(__token), __forward_stop_request{__stop_source_});
+          __stop_callback_
+            .emplace<__stop_callback_t>(std::move(__token), __forward_stop_request{__stop_source_});
           __self.__stop_token_ = __stop_source_.get_token();
         }
       }
@@ -258,9 +256,8 @@ namespace exec {
     };
 
     template <class _Promise, class _ParentPromise = void>
-    using awaiter_context_t =                //
-      typename __decay_t<env_of_t<_Promise>> //
-      ::template awaiter_context_t<_Promise, _ParentPromise>;
+    using awaiter_context_t =
+      typename __decay_t<env_of_t<_Promise>>::template awaiter_context_t<_Promise, _ParentPromise>;
 
     ////////////////////////////////////////////////////////////////////////////////
     // In a base class so it can be specialized when _Ty is void:
@@ -444,9 +441,7 @@ namespace exec {
 
         auto await_resume() -> _Ty {
           __context_.reset();
-          scope_guard __on_exit{[this]() noexcept {
-            std::exchange(__coro_, {}).destroy();
-          }};
+          scope_guard __on_exit{[this]() noexcept { std::exchange(__coro_, {}).destroy(); }};
           if (__coro_.promise().__data_.index() == 1)
             std::rethrow_exception(std::move(__coro_.promise().__data_.template get<1>()));
           if constexpr (!std::is_void_v<_Ty>)
@@ -460,7 +455,8 @@ namespace exec {
         requires constructible_from<
           awaiter_context_t<__promise, _ParentPromise>,
           __promise_context_t&,
-          _ParentPromise&>
+          _ParentPromise&
+        >
       STDEXEC_MEMFN_DECL(auto as_awaitable)(this basic_task&& __self, _ParentPromise&) noexcept
         -> __task_awaitable<_ParentPromise> {
         return __task_awaitable<_ParentPromise>{std::exchange(__self.__coro_, {})};
@@ -482,7 +478,7 @@ namespace exec {
       // Specify basic_task's completion signatures
       //   This is only necessary when basic_task is not generally awaitable
       //   owing to constraints imposed by its _Context parameter.
-      using __task_traits_t = //
+      using __task_traits_t =
         completion_signatures<__set_value_sig_t, set_error_t(std::exception_ptr), set_stopped_t()>;
 
       auto get_completion_signatures(__ignore = {}) const -> __task_traits_t {

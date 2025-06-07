@@ -113,7 +113,7 @@ namespace {
 
     // start an on_empty() sender
     bool is_empty{false};
-    ex::sender auto snd = ex::starts_on(inline_scheduler{}, scope.on_empty()) //
+    ex::sender auto snd = ex::starts_on(inline_scheduler{}, scope.on_empty())
                         | ex::then([&] { is_empty = true; });
     auto op = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
@@ -146,7 +146,7 @@ namespace {
     async_scope scope;
 
     bool is_empty1{false};
-    ex::sender auto snd = ex::starts_on(inline_scheduler{}, scope.on_empty()) //
+    ex::sender auto snd = ex::starts_on(inline_scheduler{}, scope.on_empty())
                         | ex::then([&] { is_empty1 = true; });
     auto op = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
@@ -155,13 +155,11 @@ namespace {
     // cancel & add work
     scope.request_stop();
     bool work_executed{false};
-    scope.spawn(
-      ex::starts_on(sch, ex::just()) //
-      | ex::upon_stopped([&] { work_executed = true; }));
+    scope.spawn(ex::starts_on(sch, ex::just()) | ex::upon_stopped([&] { work_executed = true; }));
     // note that we don't tell impulse sender to start the work
 
     bool is_empty2{false};
-    ex::sender auto snd2 = ex::starts_on(inline_scheduler{}, scope.on_empty()) //
+    ex::sender auto snd2 = ex::starts_on(inline_scheduler{}, scope.on_empty())
                          | ex::then([&] { is_empty2 = true; });
     auto op2 = ex::connect(std::move(snd2), expect_void_receiver{});
     ex::start(op2);

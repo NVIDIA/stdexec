@@ -70,8 +70,7 @@ namespace {
     auto flags = flags_storage.get();
 
     auto snd = ex::just_error(42) | ex::continues_on(stream_ctx.get_scheduler())
-             | a_sender([=]() noexcept {}) //
-             | ex::upon_error([=](int err) noexcept {
+             | a_sender([=]() noexcept {}) | ex::upon_error([=](int err) noexcept {
                  if (is_on_gpu() && err == 42) {
                    flags.set();
                  }

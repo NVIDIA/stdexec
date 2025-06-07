@@ -76,8 +76,7 @@ namespace {
 
   TEST_CASE("exec::on calls the given sender when the scheduler dictates", "[adaptors][exec::on]") {
     bool called{false};
-    auto snd_base = ex::just() //
-                  | ex::then([&]() -> int {
+    auto snd_base = ex::just() | ex::then([&]() -> int {
                       called = true;
                       return 19;
                     });
@@ -104,7 +103,7 @@ namespace {
     exec::static_thread_pool pool{2};
     bool called{false};
     // launch some work on the thread pool
-    ex::sender auto snd = exec::on(pool.get_scheduler(), ex::just()) //
+    ex::sender auto snd = exec::on(pool.get_scheduler(), ex::just())
                         | ex::then([&] { called = true; }) | _with_scheduler();
     stdexec::sync_wait(std::move(snd));
     // the work should be executed

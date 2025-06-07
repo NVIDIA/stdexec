@@ -41,7 +41,7 @@ auto main() -> int {
 
   auto fork = ex::schedule(sch) | ex::then(then_fn(0)) | ex::split();
 
-  auto snd = ex::transfer_when_all( //
+  auto snd = ex::transfer_when_all(
                sch,
                fork | ex::bulk(ex::par, 4, bulk_fn(1)),
                fork | ex::then(then_fn(1)),

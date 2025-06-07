@@ -57,11 +57,8 @@ namespace {
     using tr = ex::__mtransform<set_value_f, ex::__q<ex::__types>>;
 
     using res = ex::__minvoke<tr, int, double, string>;
-    using expected = ex::__types< //
-      ex::set_value_t(int),       //
-      ex::set_value_t(double),    //
-      ex::set_value_t(string)     //
-      >;
+    using expected =
+      ex::__types<ex::set_value_t(int), ex::set_value_t(double), ex::set_value_t(string)>;
     static_assert(is_same_v<res, expected>);
   }
 
@@ -73,11 +70,11 @@ namespace {
     using tr = ex::__mtransform<set_error_f, ex::__q<ex::__types>>;
 
     using res = ex::__minvoke<tr, exception_ptr, error_code, string>;
-    using expected = ex::__types<     //
-      ex::set_error_t(exception_ptr), //
-      ex::set_error_t(error_code),    //
-      ex::set_error_t(string)         //
-      >;
+    using expected = ex::__types<
+      ex::set_error_t(exception_ptr),
+      ex::set_error_t(error_code),
+      ex::set_error_t(string)
+    >;
     static_assert(is_same_v<res, expected>);
   }
 
@@ -89,9 +86,7 @@ namespace {
     using tr = ex::__mtransform<set_error_f, ex::__q<ex::__types>>;
 
     using res = ex::__minvoke<tr, exception_ptr>;
-    using expected = ex::__types<    //
-      ex::set_error_t(exception_ptr) //
-      >;
+    using expected = ex::__types<ex::set_error_t(exception_ptr)>;
     static_assert(is_same_v<res, expected>);
   }
 
@@ -114,7 +109,9 @@ namespace {
     static_assert(is_same_v<err_types_tr_just, variant<exception_ptr>>);
   }
 
-  TEST_CASE("__error_types_of_t can also transform error types", "[detail][completion_signatures]") {
+  TEST_CASE(
+    "__error_types_of_t can also transform error types",
+    "[detail][completion_signatures]") {
     using snd_eptr_t = decltype(ex::just_error(exception_ptr{}));
     using snd_ec_t = decltype(ex::just_error(error_code{}));
     using snd_str_t = decltype(ex::just_error(std::string{}));
@@ -212,7 +209,8 @@ namespace {
     using cs_with_ec = ex::transform_completion_signatures_of<
       snd_double_t,
       ex::env<>,
-      ex::completion_signatures<ex::set_error_t(error_code)>>;
+      ex::completion_signatures<ex::set_error_t(error_code)>
+    >;
 
     expect_val_types<cs_with_ec>();
     expect_err_types<cs_with_ec, error_code, exception_ptr>();
@@ -225,7 +223,8 @@ namespace {
     using cs_with_ec = ex::transform_completion_signatures_of<
       snd_double_t,
       ex::env<>,
-      ex::completion_signatures<ex::set_error_t(exception_ptr)>>;
+      ex::completion_signatures<ex::set_error_t(exception_ptr)>
+    >;
 
     // exception_ptr appears only once
     expect_err_types<cs_with_ec, exception_ptr>();
@@ -238,10 +237,8 @@ namespace {
     using cs = ex::transform_completion_signatures_of<
       snd_double_t,
       ex::env<>,
-      ex::completion_signatures< //
-        ex::set_value_t(int),    //
-        ex::set_value_t(double)  //
-        >>;
+      ex::completion_signatures<ex::set_value_t(int), ex::set_value_t(double)>
+    >;
 
     // will add int, double will appear only once
     expect_val_types<cs, ex::__types<int>, ex::__types<double>>();
@@ -260,12 +257,9 @@ namespace {
     using cs = ex::transform_completion_signatures_of<
       snd_double_t,
       ex::env<>,
-      ex::completion_signatures< //
-        ex::set_value_t(int),    //
-        ex::set_value_t(double)  //
-        >,                       //
-      add_int_set_value_sig      //
-      >;
+      ex::completion_signatures<ex::set_value_t(int), ex::set_value_t(double)>,
+      add_int_set_value_sig
+    >;
 
     // will transform the original "double" into <string, double>
     // then will add the other "int" and "double"
@@ -279,11 +273,10 @@ namespace {
     using cs = ex::transform_completion_signatures_of<
       snd_eptr_t,
       ex::env<>,
-      ex::completion_signatures<       //
-        ex::set_error_t(error_code)    //
-        >,                             //
-      ex::__sigs::__default_set_value, //
-      optional_set_error_sig>;
+      ex::completion_signatures<ex::set_error_t(error_code)>,
+      ex::__sigs::__default_set_value,
+      optional_set_error_sig
+    >;
 
     // will transform the original "exception_ptr" into optional<exception_ptr>
     // then will add the other "error_code" as specified in the additional signatures

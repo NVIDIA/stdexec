@@ -36,11 +36,11 @@ namespace stdexec {
     using __on_not_callable = __callable_error<__then_context>;
 
     template <class _Fun, class _CvrefSender, class... _Env>
-    using __completions_t = //
-      transform_completion_signatures<
-        __completion_signatures_of_t<_CvrefSender, _Env...>,
-        __with_error_invoke_t<__on_not_callable, set_value_t, _Fun, _CvrefSender, _Env...>,
-        __mbind_front<__mtry_catch_q<__set_value_invoke_t, __on_not_callable>, _Fun>::template __f>;
+    using __completions_t = transform_completion_signatures<
+      __completion_signatures_of_t<_CvrefSender, _Env...>,
+      __with_error_invoke_t<__on_not_callable, set_value_t, _Fun, _CvrefSender, _Env...>,
+      __mbind_front<__mtry_catch_q<__set_value_invoke_t, __on_not_callable>, _Fun>::template __f
+    >;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     struct then_t {
@@ -53,20 +53,20 @@ namespace stdexec {
       }
 
       template <__movable_value _Fun>
-      STDEXEC_ATTRIBUTE((always_inline)) auto operator()(_Fun __fun) const -> __binder_back<then_t, _Fun> {
+      STDEXEC_ATTRIBUTE(always_inline)
+      auto operator()(_Fun __fun) const -> __binder_back<then_t, _Fun> {
         return {{static_cast<_Fun&&>(__fun)}, {}, {}};
       }
     };
 
     struct __then_impl : __sexpr_defaults {
-      static constexpr auto get_attrs = //
-        []<class _Child>(__ignore, const _Child& __child) noexcept {
-          return __env::__join(
-            prop{__is_scheduler_affine_t{}, __mbool<__is_scheduler_affine<_Child>>{}},
-            stdexec::get_env(__child));
-        };
+      static constexpr auto get_attrs = []<class _Child>(__ignore, const _Child& __child) noexcept {
+        return __env::__join(
+          prop{__is_scheduler_affine_t{}, __mbool<__is_scheduler_affine<_Child>>{}},
+          stdexec::get_env(__child));
+      };
 
-      static constexpr auto get_completion_signatures = //
+      static constexpr auto get_completion_signatures =
         []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
         -> __completions_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, then_t>);
@@ -75,7 +75,8 @@ namespace stdexec {
 
       struct __complete_fn {
         template <class _Tag, class _State, class _Receiver, class... _Args>
-        STDEXEC_ATTRIBUTE((host, device)) void operator()(__ignore, _State& __state, _Receiver& __rcvr, _Tag, _Args&&... __args)
+        STDEXEC_ATTRIBUTE(host, device)
+        void operator()(__ignore, _State& __state, _Receiver& __rcvr, _Tag, _Args&&... __args)
           const noexcept {
           if constexpr (__same_as<_Tag, set_value_t>) {
             stdexec::__set_value_invoke(

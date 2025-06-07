@@ -83,7 +83,8 @@ namespace {
       AdditionalCompletions...,
       ex::set_error_t(Error1),
       ex::set_error_t(Error2),
-      ex::set_error_t(Error3)>;
+      ex::set_error_t(Error3)
+    >;
 
     template <typename R>
     friend auto tag_invoke(ex::connect_t, many_error_sender, R&& r) -> oper<R> {
@@ -110,8 +111,10 @@ namespace {
                       ex::set_error_t(std::exception_ptr),
                       ex::set_value_t(Error1),
                       ex::set_value_t(Error2),
-                      ex::set_value_t(Error4)>,
-                    completion_sigs>);
+                      ex::set_value_t(Error4)
+                    >,
+                    completion_sigs
+      >);
     }
 
     {
@@ -122,7 +125,8 @@ namespace {
       using completion_sigs = decltype(ex::get_completion_signatures(s, ex::env<>{}));
       static_assert(ex::__mset_eq<
                     ex::__mset<ex::set_error_t(std::exception_ptr), ex::set_value_t(int)>,
-                    completion_sigs>);
+                    completion_sigs
+      >);
     }
 
     {
@@ -132,11 +136,14 @@ namespace {
       using S = decltype(s);
       static_assert(ex::sender<S>);
       using completion_sigs = decltype(ex::get_completion_signatures(s, ex::env<>{}));
-      static_assert(
-        ex::__mset_eq<
-          ex::
-            __mset<ex::set_error_t(std::exception_ptr), ex::set_value_t(double), ex::set_value_t(int)>,
-          completion_sigs>);
+      static_assert(ex::__mset_eq<
+                    ex::__mset<
+                      ex::set_error_t(std::exception_ptr),
+                      ex::set_value_t(double),
+                      ex::set_value_t(int)
+                    >,
+                    completion_sigs
+      >);
     }
   }
 } // namespace
