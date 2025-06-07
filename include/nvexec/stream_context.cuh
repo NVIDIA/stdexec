@@ -41,34 +41,14 @@
 #include "detail/throw_on_cuda_error.cuh" // IWYU pragma: export
 
 namespace nvexec {
-  // The stream_domain is how the stream scheduler customizes the sender algorithms. All of the
-  // algorithms use the current scheduler's domain to transform senders before starting them.
-  struct stream_domain : stdexec::default_domain {
-    template <stdexec::sender_expr Sender, class Tag = stdexec::tag_of_t<Sender>, class... Env>
-      requires stdexec::
-        __callable<stdexec::__sexpr_apply_t, Sender, _strm::transform_sender_for<Tag, Env...>>
-      static auto transform_sender(Sender&& sndr, const Env&... env) {
-      return stdexec::__sexpr_apply(
-        static_cast<Sender&&>(sndr), _strm::transform_sender_for<Tag, Env...>{env...});
-    }
-
-    template <class Tag, stdexec::sender Sender, class... Args>
-      requires stdexec::__callable<_strm::apply_sender_for<Tag>, Sender, Args...>
-    static auto apply_sender(Tag, Sender&& sndr, Args&&... args) {
-      return _strm::apply_sender_for<Tag>{}(
-        static_cast<Sender&&>(sndr), static_cast<Args&&>(args)...);
-    }
-  };
-
   namespace _strm {
     struct stream_scheduler_env {
-      [[nodiscard]]
-      static auto query(get_forward_progress_guarantee_t) noexcept -> forward_progress_guarantee {
+      STDEXEC_ATTRIBUTE((nodiscard)) static auto query(get_forward_progress_guarantee_t) noexcept //
+        -> forward_progress_guarantee {
         return forward_progress_guarantee::weakly_parallel;
       }
 
-      [[nodiscard]]
-      static auto query(get_domain_t) noexcept -> stream_domain {
+      STDEXEC_ATTRIBUTE((nodiscard)) constexpr auto query(get_domain_t) const noexcept -> stream_domain {
         return {};
       }
     };
@@ -85,8 +65,7 @@ namespace nvexec {
         return context_state_.hub_ == other.context_state_.hub_;
       }
 
-      [[nodiscard]]
-      STDEXEC_ATTRIBUTE((host, device)) auto schedule() const noexcept {
+      STDEXEC_ATTRIBUTE((nodiscard, host, device)) auto schedule() const noexcept {
         return sender_t{context_state_};
       }
 
@@ -125,9 +104,7 @@ namespace nvexec {
         using completion_signatures =
           stdexec::completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
 
-        STDEXEC_ATTRIBUTE((host, device))
-
-          explicit sender_t(context_state_t context_state) noexcept
+        STDEXEC_ATTRIBUTE((host, device)) explicit sender_t(context_state_t context_state) noexcept
           : env_{context_state} {
         }
 
@@ -138,8 +115,7 @@ namespace nvexec {
             static_cast<Receiver&&>(rcvr), env_.context_state_);
         }
 
-        [[nodiscard]]
-        auto get_env() const noexcept -> decltype(auto) {
+        STDEXEC_ATTRIBUTE((nodiscard)) auto get_env() const noexcept -> decltype(auto) {
           return (env_);
         }
 
@@ -149,8 +125,8 @@ namespace nvexec {
           using __id = env;
           context_state_t context_state_;
 
-          [[nodiscard]]
-          auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> stream_scheduler {
+          STDEXEC_ATTRIBUTE((nodiscard)) auto
+            query(get_completion_scheduler_t<set_value_t>) const noexcept -> stream_scheduler {
             return stream_scheduler{context_state_};
           }
         };

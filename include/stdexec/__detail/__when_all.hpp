@@ -451,8 +451,10 @@ namespace stdexec {
 
     struct __transfer_when_all_impl : __sexpr_defaults {
       static constexpr auto get_attrs = //
-        []<class _Data>(const _Data& __data, const auto&...) noexcept {
-          return __sched_attrs{std::cref(__data)};
+        []<class _Scheduler, class... _Child>(const _Scheduler& __sched, const _Child&...) noexcept {
+          using __sndr_t = __call_result_t<when_all_t, _Child...>;
+          using __domain_t = __detail::__early_domain_of_t<__sndr_t, __none_such>;
+          return __sched_attrs{std::cref(__sched), __domain_t{}};
         };
 
       static constexpr auto get_completion_signatures = //
@@ -490,8 +492,10 @@ namespace stdexec {
 
     struct __transfer_when_all_with_variant_impl : __sexpr_defaults {
       static constexpr auto get_attrs = //
-        []<class _Data>(const _Data& __data, const auto&...) noexcept {
-          return __sched_attrs{std::cref(__data)};
+        []<class _Scheduler, class... _Child>(const _Scheduler& __sched, const _Child&...) noexcept {
+          using __sndr_t = __call_result_t<when_all_with_variant_t, _Child...>;
+          using __domain_t = __detail::__early_domain_of_t<__sndr_t, __none_such>;
+          return __sched_attrs{std::cref(__sched), __domain_t{}};
         };
 
       static constexpr auto get_completion_signatures = //

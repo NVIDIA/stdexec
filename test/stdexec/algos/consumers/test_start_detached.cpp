@@ -94,6 +94,8 @@ namespace {
 
   struct custom_sender {
     using sender_concept = stdexec::sender_t;
+    using __t = custom_sender;
+    using __id = custom_sender;
     using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
     bool* called;
 
@@ -111,7 +113,7 @@ namespace {
 
     [[nodiscard]]
     auto get_env() const noexcept {
-      return ex::prop{ex::get_domain, domain{}};
+      return ex::prop{ex::get_domain_late, domain{}};
     }
 
     template <class Receiver>

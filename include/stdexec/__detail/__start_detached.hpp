@@ -129,26 +129,27 @@ namespace stdexec {
 
     struct start_detached_t {
       template <sender_in<__root_env> _Sender>
-        requires __callable<apply_sender_t, __early_domain_of_t<_Sender>, start_detached_t, _Sender>
+        requires __callable<
+          apply_sender_t,
+          __late_domain_of_t<_Sender, __root_env, __early_domain_of_t<_Sender>>,
+          start_detached_t,
+          _Sender>
       void operator()(_Sender&& __sndr) const {
-        auto __domain = __get_early_domain(__sndr);
+        auto __domain = __get_late_domain(__sndr, __root_env{}, __get_early_domain(__sndr));
         stdexec::apply_sender(__domain, *this, static_cast<_Sender&&>(__sndr));
       }
 
       template <class _Env, sender_in<__as_root_env_t<_Env>> _Sender>
         requires __callable<
           apply_sender_t,
-          __late_domain_of_t<_Sender, __as_root_env_t<_Env>>,
+          __late_domain_of_t<_Sender, __as_root_env_t<_Env>, __early_domain_of_t<_Sender>>,
           start_detached_t,
           _Sender,
           __as_root_env_t<_Env>>
       void operator()(_Sender&& __sndr, _Env&& __env) const {
-        auto __domain = __get_late_domain(__sndr, __env);
-        stdexec::apply_sender(
-          __domain,
-          *this,
-          static_cast<_Sender&&>(__sndr),
-          __as_root_env(static_cast<_Env&&>(__env)));
+        auto __env2 = __as_root_env(static_cast<_Env&&>(__env));
+        auto __domain = __get_late_domain(__sndr, __env2, __get_early_domain(__sndr));
+        stdexec::apply_sender(__domain, *this, static_cast<_Sender&&>(__sndr), __env2);
       }
 
       // Below is the default implementation for `start_detached`.

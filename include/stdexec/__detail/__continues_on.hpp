@@ -71,7 +71,9 @@ namespace stdexec {
       static constexpr auto get_attrs = //
         []<class _Data, class _Child>(const _Data& __data, const _Child& __child) noexcept
         -> decltype(auto) {
-        return __env::__join(__sched_attrs{std::cref(__data)}, stdexec::get_env(__child));
+        using __domain_t = __detail::__early_domain_of_t<_Child, __none_such>;
+        return __env::__join(
+          __sched_attrs{std::cref(__data), __domain_t{}}, stdexec::get_env(__child));
       };
 
       static constexpr auto get_completion_signatures = //

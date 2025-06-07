@@ -48,6 +48,18 @@ namespace {
     }
   };
 
+  struct cpo_sender_attrs_t {
+    [[nodiscard]]
+    auto query(ex::get_domain_t) const noexcept {
+      return cpo_sender_domain{};
+    }
+
+    [[nodiscard]]
+    auto query(ex::get_domain_late_t) const noexcept {
+      return cpo_sender_domain{};
+    }
+  };
+
   template <class CPO>
   struct cpo_test_sender_t {
     using sender_concept = stdexec::sender_t;
@@ -59,7 +71,7 @@ namespace {
       ex::set_stopped_t()>;
 
     auto get_env() const noexcept {
-      return ex::prop{ex::get_domain, cpo_sender_domain{}};
+      return cpo_sender_attrs_t{};
     }
   };
 

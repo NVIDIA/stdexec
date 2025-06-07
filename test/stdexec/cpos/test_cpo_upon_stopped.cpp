@@ -36,20 +36,5 @@ namespace {
         STATIC_REQUIRE(scope == scope_t::free_standing);
       }
     }
-
-    SECTION("by completion scheduler") {
-      cpo_test_scheduler_t<ex::upon_stopped_t, ex::set_stopped_t>::sender_t snd{};
-
-      {
-        constexpr scope_t scope = decltype(snd | ex::upon_stopped(f))::scope;
-        STATIC_REQUIRE(scope == scope_t::scheduler);
-      }
-
-      {
-        ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(snd));
-        constexpr scope_t scope = decltype(ex::upon_stopped(snd, f))::scope;
-        STATIC_REQUIRE(scope == scope_t::scheduler);
-      }
-    }
   }
 } // namespace

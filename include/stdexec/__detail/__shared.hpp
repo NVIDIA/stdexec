@@ -77,6 +77,10 @@ namespace stdexec::__shared {
   struct __local_state_base : __immovable {
     using __notify_fn = void(__local_state_base*) noexcept;
 
+    void __notify() noexcept {
+      __notify_(this);
+    }
+
     __notify_fn* __notify_{};
     __local_state_base* __next_{};
   };
@@ -173,12 +177,12 @@ namespace stdexec::__shared {
       using __id = __receiver;
 
       template <class... _As>
-        STDEXEC_ATTRIBUTE((always_inline)) void set_value(_As&&... __as) noexcept {
+      STDEXEC_ATTRIBUTE((always_inline)) void set_value(_As&&... __as) noexcept {
         __sh_state_->__complete(set_value_t(), static_cast<_As&&>(__as)...);
       }
 
       template <class _Error>
-        STDEXEC_ATTRIBUTE((always_inline)) void set_error(_Error&& __err) noexcept {
+      STDEXEC_ATTRIBUTE((always_inline)) void set_error(_Error&& __err) noexcept {
         __sh_state_->__complete(set_error_t(), static_cast<_Error&&>(__err));
       }
 
@@ -194,11 +198,6 @@ namespace stdexec::__shared {
       __shared_state<_CvrefSender, _Env>* __sh_state_;
     };
   };
-
-  inline auto __get_tombstone() noexcept -> __local_state_base* {
-    static constinit __local_state_base __tombstone_{{}, nullptr, nullptr};
-    return &__tombstone_;
-  }
 
   //! Heap-allocatable shared state for things like `stdexec::split`.
   template <class _CvrefSender, class _Env>
@@ -223,6 +222,7 @@ namespace stdexec::__shared {
     connect_result_t<_CvrefSender, __receiver_t> __shared_op_;
     std::atomic_flag __started_{};
     std::atomic<std::size_t> __ref_count_{2};
+    __local_state_base __tombstone_{};
 
     // Let a "consumer" be either a split/ensure_started sender, or an operation
     // state created by connecting a split/ensure_started sender to a receiver.
@@ -297,10 +297,10 @@ namespace stdexec::__shared {
     template <class _StopToken>
     auto __try_add_waiter(__local_state_base* __waiter, _StopToken __stok) noexcept -> bool {
       std::unique_lock __lock{__mutex_};
-      if (__waiters_.front() == __get_tombstone()) {
+      if (__waiters_.front() == &__tombstone_) {
         // The work has already completed. Notify the waiter immediately.
         __lock.unlock();
-        __waiter->__notify_(__waiter);
+        __waiter->__notify();
         return true;
       } else if (__stok.stop_requested()) {
         // Stop has been requested. Do not add the waiter.
@@ -330,7 +330,7 @@ namespace stdexec::__shared {
     /// @brief This is called when the shared async operation completes.
     /// @post __waiters_ is set to a known "tombstone" value.
     void __notify_waiters() noexcept {
-      __waiters_list_t __waiters_copy{__get_tombstone()};
+      __waiters_list_t __waiters_copy{&__tombstone_};
 
       // Set the waiters list to a known "tombstone" value that we can check later.
       {
@@ -338,7 +338,7 @@ namespace stdexec::__shared {
         __waiters_.swap(__waiters_copy);
       }
 
-      STDEXEC_ASSERT(__waiters_copy.front() != __get_tombstone());
+      STDEXEC_ASSERT(__waiters_copy.front() != &__tombstone_);
       for (auto __itr = __waiters_copy.begin(); __itr != __waiters_copy.end();) {
         __local_state_base* __item = *__itr;
 
@@ -346,7 +346,7 @@ namespace stdexec::__shared {
         // triggering *__item to be destructed on another thread, and the intrusive slist's
         // iterator increment relies on __item.
         ++__itr;
-        __item->__notify_(__item);
+        __item->__notify();
       }
 
       // Set the "is running" bit in the ref count to zero. Delete the shared state if the

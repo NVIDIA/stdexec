@@ -36,16 +36,20 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace stdexec {
-  inline constexpr std::size_t __variant_npos = ~0UL;
+#if STDEXEC_NVHPC()
+  enum __variant_npos_t : std::size_t {
+    __variant_npos = ~0UL
+  };
+#else
+  STDEXEC_GLOBAL_CONSTANT std::size_t __variant_npos = ~0UL;
+#endif
 
   struct __monostate { };
 
   namespace __var {
     STDEXEC_ATTRIBUTE((host, device)) inline auto __mk_index_guard(std::size_t &__index, std::size_t __new) noexcept {
       __index = __new;
-      return __scope_guard{[&__index]() noexcept {
-        __index = __variant_npos;
-      }};
+      return __scope_guard{[&__index]() noexcept { __index = __variant_npos; }};
     }
 
     template <auto _Idx, class... _Ts>
