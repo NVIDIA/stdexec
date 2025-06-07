@@ -40,9 +40,7 @@ namespace nvexec::_strm {
       const inplace_stop_source& stop_source,
       stream_provider_t* stream_provider) noexcept {
       return make_stream_env(
-        __env::__from{[&](get_stop_token_t) noexcept {
-          return stop_source.get_token();
-        }},
+        __env::__from{[&](get_stop_token_t) noexcept { return stop_source.get_token(); }},
         stream_provider);
     }
 
@@ -358,9 +356,8 @@ namespace nvexec::_strm {
         return operation_t<Receiver>{static_cast<Receiver&&>(rcvr), shared_state_};
       }
 
-      [[nodiscard]]
-      auto get_env() const noexcept -> env_of_t<const Sender&> {
-        return stdexec::get_env(sndr_);
+      auto get_env() const noexcept -> stream_sender_attrs<Sender> {
+        return {&sndr_};
       }
 
       explicit __t(context_state_t context_state, Sender sndr)

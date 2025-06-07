@@ -68,12 +68,39 @@ namespace nvexec {
   inline STDEXEC_ATTRIBUTE((host, device)) auto is_on_gpu() noexcept -> bool {
     return get_device_type() == device_type::device;
   }
+
+  namespace _strm {
+    // Used by stream_domain to late-customize senders for execution
+    // on the stream_scheduler.
+    template <class Tag, class... Env>
+    struct transform_sender_for;
+
+    template <class Tag>
+    struct apply_sender_for;
+  } // namespace _strm
 } // namespace nvexec
 
 namespace nvexec {
   struct stream_context;
 
-  struct stream_domain;
+  // The stream_domain is how the stream scheduler customizes the sender algorithms. All of the
+  // algorithms use the current scheduler's domain to transform senders before starting them.
+  struct stream_domain : stdexec::default_domain {
+    template <stdexec::sender_expr Sender, class Tag = stdexec::tag_of_t<Sender>, class... Env>
+      requires stdexec::
+        __callable<stdexec::__sexpr_apply_t, Sender, _strm::transform_sender_for<Tag, Env...>>
+      static auto transform_sender(Sender&& sndr, const Env&... env) {
+      return stdexec::__sexpr_apply(
+        static_cast<Sender&&>(sndr), _strm::transform_sender_for<Tag, Env...>{env...});
+    }
+
+    template <class Tag, stdexec::sender Sender, class... Args>
+      requires stdexec::__callable<_strm::apply_sender_for<Tag>, Sender, Args...>
+    static auto apply_sender(Tag, Sender&& sndr, Args&&... args) {
+      return _strm::apply_sender_for<Tag>{}(
+        static_cast<Sender&&>(sndr), static_cast<Args&&>(args)...);
+    }
+  };
 
   namespace _strm {
 
@@ -85,14 +112,6 @@ namespace nvexec {
     concept trivially_copyable =
       ((STDEXEC_IS_TRIVIALLY_COPYABLE(Ts) || std::is_reference_v<Ts>) && ...);
 #endif
-
-    // Used by stream_domain to late-customize senders for execution
-    // on the stream_scheduler.
-    template <class Tag, class... Env>
-    struct transform_sender_for;
-
-    template <class Tag>
-    struct apply_sender_for;
 
     inline auto get_stream_priority(stream_priority priority) -> std::pair<int, cudaError_t> {
       int least{};
@@ -334,6 +353,26 @@ namespace nvexec {
       STDEXEC_ATTRIBUTE((host, device)) static constexpr auto query(stdexec::forwarding_query_t) noexcept -> bool {
         return true;
       }
+    };
+
+    template <class Sender>
+    struct stream_sender_attrs {
+      using __t = stream_sender_attrs;
+      using __id = stream_sender_attrs;
+
+      STDEXEC_ATTRIBUTE((nodiscard)) constexpr auto query(get_domain_late_t) const noexcept -> stream_domain {
+        return {};
+      }
+
+      template <__forwarding_query Query>
+        requires __env::__queryable<env_of_t<Sender>, Query>
+      STDEXEC_ATTRIBUTE((nodiscard)) constexpr auto query(Query) const //
+        noexcept(__env::__nothrow_queryable<env_of_t<Sender>, Query>)
+          -> __env::__query_result_t<env_of_t<Sender>, Query> {
+        return stdexec::get_env(*child_).query(Query{});
+      }
+
+      const Sender* child_{};
     };
 
     template <class BaseEnv>

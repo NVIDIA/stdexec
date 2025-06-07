@@ -39,7 +39,7 @@ namespace stdexec {
       template <sender _Sender, class _Env = env<>>
         requires sender_in<_Sender, _Env> && __decay_copyable<env_of_t<_Sender>>
       auto operator()(_Sender&& __sndr, _Env&& __env = {}) const -> __well_formed_sender auto {
-        auto __domain = __get_late_domain(__sndr, __env);
+        auto __domain = __get_late_domain(__sndr, __env, __get_early_domain(__sndr));
         return stdexec::transform_sender(
           __domain,
           __make_sexpr<split_t>(static_cast<_Env&&>(__env), static_cast<_Sender&&>(__sndr)));

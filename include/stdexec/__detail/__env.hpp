@@ -227,6 +227,25 @@ namespace stdexec {
       }
     };
 
+    struct get_domain_late_t {
+      template <class _Ty>
+        requires tag_invocable<get_domain_late_t, const _Ty&>
+      constexpr auto operator()(const _Ty&) const noexcept
+        -> __decay_t<tag_invoke_result_t<get_domain_late_t, const _Ty&>> {
+        static_assert(
+          nothrow_tag_invocable<get_domain_late_t, const _Ty&>,
+          "Customizations of get_domain_late must be noexcept.");
+        static_assert(
+          __class<__decay_t<tag_invoke_result_t<get_domain_late_t, const _Ty&>>>,
+          "Customizations of get_domain_late must return a class type.");
+        return {};
+      }
+
+      static constexpr auto query(forwarding_query_t) noexcept -> bool {
+        return false;
+      }
+    };
+
     struct __is_scheduler_affine_t {
       template <class _Env>
       constexpr auto operator()(const _Env&) const noexcept {
@@ -280,6 +299,7 @@ namespace stdexec {
   using __queries::get_stop_token_t;
   using __queries::get_completion_scheduler_t;
   using __queries::get_domain_t;
+  using __queries::get_domain_late_t;
   using __queries::__is_scheduler_affine_t;
   using __queries::__root_t;
   using __queries::__root_env;
@@ -312,6 +332,7 @@ namespace stdexec {
   concept __forwarding_query = forwarding_query(_Tag{});
 
   inline constexpr get_domain_t get_domain{};
+  inline constexpr get_domain_late_t get_domain_late{};
 
   template <class _Tag, class _Queryable, class _Default>
   using __query_result_or_t = __call_result_t<query_or_t, _Tag, _Queryable, _Default>;
@@ -649,30 +670,34 @@ namespace stdexec {
       { get_env(std::as_const(__ep)) } -> queryable;
     };
 
-  template <class _Scheduler>
+  template <class _Scheduler, class _LateDomain = __none_such>
   struct __sched_attrs {
     using __t = __sched_attrs;
     using __id = __sched_attrs;
 
     using __scheduler_t = __decay_t<_Scheduler>;
+    using __sched_domain_t = __query_result_or_t<get_domain_t, __scheduler_t, default_domain>;
     _Scheduler __sched_;
+    STDEXEC_ATTRIBUTE((no_unique_address)) _LateDomain __late_domain_;
 
     auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> __scheduler_t {
       return __sched_;
     }
 
-    auto query(get_completion_scheduler_t<set_stopped_t>) const noexcept -> __scheduler_t {
-      return __sched_;
+    constexpr auto query(get_domain_t) const noexcept -> __sched_domain_t {
+      return {};
     }
 
-    template <class _Sched = _Scheduler>
-    auto query(get_domain_t) const noexcept -> __domain_of_t<_Sched> {
-      return get_domain(__sched_);
+    constexpr auto query(get_domain_late_t) const noexcept -> _LateDomain
+      requires(!same_as<_LateDomain, __none_such>)
+    {
+      return {};
     }
   };
 
-  template <class _Scheduler>
-  __sched_attrs(_Scheduler) -> __sched_attrs<std::unwrap_reference_t<_Scheduler>>;
+  template <class _Scheduler, class _LateDomain = __none_such>
+  __sched_attrs(_Scheduler, _LateDomain = {})
+    -> __sched_attrs<std::unwrap_reference_t<_Scheduler>, _LateDomain>;
 
   template <class _Scheduler>
   struct __sched_env {

@@ -33,19 +33,5 @@ namespace {
         STATIC_REQUIRE(scope == scope_t::free_standing);
       }
     }
-
-    SECTION("by completion scheduler") {
-      cpo_test_scheduler_t<ex::split_t>::sender_t snd{};
-
-      {
-        constexpr scope_t scope = decltype(ex::split(snd))::scope;
-        STATIC_REQUIRE(scope == scope_t::scheduler);
-      }
-
-      {
-        constexpr scope_t scope = decltype(snd | ex::split())::scope;
-        STATIC_REQUIRE(scope == scope_t::scheduler);
-      }
-    }
   }
 } // namespace

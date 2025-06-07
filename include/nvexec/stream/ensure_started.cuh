@@ -45,9 +45,7 @@ namespace nvexec::_strm {
       const inplace_stop_source& stop_source,
       stream_provider_t* stream_provider) noexcept {
       return make_stream_env(
-        __env::__from{[&](get_stop_token_t) noexcept {
-          return stop_source.get_token();
-        }},
+        __env::__from{[&](get_stop_token_t) noexcept { return stop_source.get_token(); }},
         stream_provider);
     }
 
@@ -355,8 +353,8 @@ namespace nvexec::_strm {
         return operation_t<Receiver>{static_cast<Receiver&&>(rcvr), std::move(shared_state_)};
       }
 
-      auto get_env() const noexcept -> env_of_t<const Sender&> {
-        return stdexec::get_env(sndr_);
+      auto get_env() const noexcept -> stream_sender_attrs<Sender> {
+        return {&sndr_};
       }
 
       template <class... Tys>
@@ -398,7 +396,7 @@ namespace nvexec::_strm {
     using _sender_t = __t<ensure_started_sender_t<__id<__decay_t<Sender>>>>;
 
     template <class Env, stream_completing_sender Sender>
-    auto operator()(__ignore, Env&& /*env*/, Sender&& sndr) const -> _sender_t<Sender> {
+    auto operator()(__ignore, Env&&, Sender&& sndr) const -> _sender_t<Sender> {
       auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
       return _sender_t<Sender>{sched.context_state_, static_cast<Sender&&>(sndr)};
     }

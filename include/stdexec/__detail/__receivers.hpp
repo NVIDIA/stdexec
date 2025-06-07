@@ -185,9 +185,9 @@ namespace stdexec {
     receiver_of<_Receiver, __completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
 
   /// A utility for calling set_value with the result of a function invocation:
-  template <bool _CanThrow = false, class _Receiver, class _Fun, class... _As>
-  void __set_value_invoke(_Receiver&& __rcvr, _Fun&& __fun, _As&&... __as) noexcept(!_CanThrow) {
-    if constexpr (_CanThrow || __nothrow_invocable<_Fun, _As...>) {
+  template <class _Receiver, class _Fun, class... _As>
+  STDEXEC_ATTRIBUTE((host, device)) void __set_value_invoke(_Receiver&& __rcvr, _Fun&& __fun, _As&&... __as) noexcept {
+    STDEXEC_TRY {
       if constexpr (same_as<void, __invoke_result_t<_Fun, _As...>>) {
         __invoke(static_cast<_Fun&&>(__fun), static_cast<_As&&>(__as)...);
         stdexec::set_value(static_cast<_Receiver&&>(__rcvr));
@@ -196,16 +196,11 @@ namespace stdexec {
           static_cast<_Receiver&&>(__rcvr),
           __invoke(static_cast<_Fun&&>(__fun), static_cast<_As&&>(__as)...));
       }
-    } else {
-      try {
-        stdexec::__set_value_invoke<true>(
-          static_cast<_Receiver&&>(__rcvr),
-          static_cast<_Fun&&>(__fun),
-          static_cast<_As&&>(__as)...);
-      } catch (...) {
-        stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
-      }
     }
+    STDEXEC_CATCH(...)( //
+      if constexpr (!__nothrow_invocable<_Fun, _As...>) {
+        stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
+      })
   }
 
   template <class _Tag, class _Receiver>

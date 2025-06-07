@@ -255,7 +255,7 @@ namespace {
   };
 
   TEST_CASE(
-    "continues_on late customization is passed on the destination scheduler",
+    "continues_on late customization is passed on the receiver's scheduler",
     "[adaptors][continues_on]") {
     // The customization will return a different value
     ex::scheduler auto sched_A = basic_inline_scheduler<test_domain_A>{};
@@ -264,6 +264,6 @@ namespace {
     std::string res;
     auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
     ex::start(op);
-    REQUIRE(res == "goodbye");
+    REQUIRE(res == "hello");
   }
 } // namespace

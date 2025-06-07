@@ -43,7 +43,8 @@ namespace stdexec {
         if constexpr (sender_expr_for<_Sender, __ensure_started_t>) {
           return static_cast<_Sender&&>(__sndr);
         } else {
-          auto __domain = __get_late_domain(__sndr, __env);
+          auto __early_domain = __get_early_domain(__sndr);
+          auto __domain = __get_late_domain(__sndr, __env, __early_domain);
           return stdexec::transform_sender(
             __domain,
             __make_sexpr<ensure_started_t>(

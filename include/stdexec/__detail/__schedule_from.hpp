@@ -164,7 +164,9 @@ namespace stdexec {
 
       static constexpr auto get_attrs = //
         []<class _Data, class _Child>(const _Data& __data, const _Child& __child) noexcept {
-          return __env::__join(__sched_attrs{std::cref(__data)}, stdexec::get_env(__child));
+          auto __domain = query_or(get_domain, __data, default_domain{});
+          return __env::__join(
+            __sched_attrs{std::cref(__data), __domain}, stdexec::get_env(__child));
         };
 
       static constexpr auto get_completion_signatures = //

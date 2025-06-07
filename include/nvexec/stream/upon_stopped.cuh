@@ -159,8 +159,8 @@ namespace nvexec::_strm {
         return {};
       }
 
-      auto get_env() const noexcept -> env_of_t<const Sender&> {
-        return stdexec::get_env(sndr_);
+      auto get_env() const noexcept -> stream_sender_attrs<Sender> {
+        return {&sndr_};
       }
     };
   };

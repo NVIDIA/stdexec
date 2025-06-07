@@ -39,236 +39,236 @@ namespace nvexec::_strm {
       new (result) ResultSenderT(::cuda::std::move(fn)(static_cast<As&&>(as)...));
     }
 
-    template <class _Tp>
-    using __decay_ref = __decay_t<_Tp>&;
+    template <class Tp>
+    using __decay_ref = __decay_t<Tp>&;
 
-    template <class _Fun>
+    template <class Fun>
     using __result_sender_fn = //
-      __mtransform<__q<__decay_ref>, __mbind_front_q<__call_result_t, _Fun>>;
+      __mtransform<__q<__decay_ref>, __mbind_front_q<__call_result_t, Fun>>;
 
     template <class... Sizes>
     struct max_in_pack {
       static constexpr std::size_t value = std::max({std::size_t{}, __v<Sizes>...});
     };
 
-    template <class _Sender, class _PropagateReceiver, class _Fun, class _SetTag>
-      requires sender_in<_Sender, env_of_t<_PropagateReceiver>>
+    template <class Sender, class PropagateReceiver, class Fun, class SetTag>
+      requires sender_in<Sender, env_of_t<PropagateReceiver>>
     struct __max_sender_size {
-      template <class... _As>
+      template <class... As>
       struct __sender_size_for_ {
-        using __t = __msize_t<sizeof(__minvoke<__result_sender_fn<_Fun>, _As...>)>;
+        using __t = __msize_t<sizeof(__minvoke<__result_sender_fn<Fun>, As...>)>;
       };
-      template <class... _As>
-      using __sender_size_for_t = stdexec::__t<__sender_size_for_<_As...>>;
+      template <class... As>
+      using __sender_size_for_t = stdexec::__t<__sender_size_for_<As...>>;
 
       static constexpr std::size_t value = //
         __v<__gather_completions_of<
-          _SetTag,
-          _Sender,
-          env_of_t<_PropagateReceiver>,
+          SetTag,
+          Sender,
+          env_of_t<PropagateReceiver>,
           __q<__sender_size_for_t>,
           __q<max_in_pack>>>;
     };
 
-    template <class _Receiver, class _Fun>
-    using __op_state_for = //
+    template <class Receiver, class Fun>
+    using op_state_for = //
       __mcompose<
-        __mbind_back_q<connect_result_t, stdexec::__t<propagate_receiver_t<stdexec::__id<_Receiver>>>>,
-        __result_sender_fn<_Fun>>;
+        __mbind_back_q<connect_result_t, stdexec::__t<propagate_receiver_t<stdexec::__id<Receiver>>>>,
+        __result_sender_fn<Fun>>;
 
-    template <class _Set, class _Sig>
+    template <class Set, class Sig>
     struct __tfx_signal_ {
       template <class, class...>
-      using __f = completion_signatures<_Sig>;
+      using __f = completion_signatures<Sig>;
     };
 
-    template <class _Set, class... _Args>
-    struct __tfx_signal_<_Set, _Set(_Args...)> {
-      template <class _Fun, class... _StreamEnv>
+    template <class Set, class... Args>
+    struct __tfx_signal_<Set, Set(Args...)> {
+      template <class Fun, class... StreamEnv>
       using __f = //
         transform_completion_signatures<
-          __completion_signatures_of_t<__minvoke<__result_sender_fn<_Fun>, _Args...>, _StreamEnv...>,
+          __completion_signatures_of_t<__minvoke<__result_sender_fn<Fun>, Args...>, StreamEnv...>,
           completion_signatures<set_error_t(cudaError_t)>>;
     };
 
-    template <class _Sig, class _Fun, class _Set, class... _StreamEnv>
-    using __tfx_signal_t = __minvoke<__tfx_signal_<_Set, _Sig>, _Fun, _StreamEnv...>;
+    template <class Sig, class Fun, class Set, class... StreamEnv>
+    using __tfx_signal_t = __minvoke<__tfx_signal_<Set, Sig>, Fun, StreamEnv...>;
 
-    template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
-    struct __operation;
+    template <class SenderId, class ReceiverId, class Fun, class Let>
+    struct operation;
 
-    template <class _SenderId, class _ReceiverId, class _Fun, class _Let, class... _Tuples>
-    struct __receiver_ {
-      using _Sender = stdexec::__t<_SenderId>;
-      using _Receiver = stdexec::__t<_ReceiverId>;
-      using _PropagateReceiver = stdexec::__t<propagate_receiver_t<_ReceiverId>>;
-      using _Env = typename operation_state_base_t<_ReceiverId>::env_t;
+    template <class SenderId, class ReceiverId, class Fun, class Let, class... Tuples>
+    struct _receiver_ {
+      using Sender = stdexec::__t<SenderId>;
+      using Receiver = stdexec::__t<ReceiverId>;
+      using PropagateReceiver = stdexec::__t<propagate_receiver_t<ReceiverId>>;
+      using Env = typename operation_state_base_t<ReceiverId>::env_t;
 
       struct __t : public stream_receiver_base {
-        using __id = __receiver_;
+        using __id = _receiver_;
 
         static constexpr std::size_t memory_allocation_size =
-          __v<__max_sender_size<_Sender, _PropagateReceiver, _Fun, _Let>>;
+          __v<__max_sender_size<Sender, PropagateReceiver, Fun, Let>>;
 
-        template <__one_of<_Let> _Tag, class... _As>
-          requires __minvocable<__result_sender_fn<_Fun>, _As...>
-                && sender_to<__minvoke<__result_sender_fn<_Fun>, _As...>, _PropagateReceiver>
-        void __complete(_Tag, _As&&... __as) noexcept {
-          using result_sender_t = __minvoke<__result_sender_fn<_Fun>, _As...>;
-          using op_state_t = __minvoke<__op_state_for<_Receiver, _Fun>, _As...>;
+        template <__one_of<Let> Tag, class... As>
+          requires __minvocable<__result_sender_fn<Fun>, As...>
+                && sender_to<__minvoke<__result_sender_fn<Fun>, As...>, PropagateReceiver>
+        void _complete(Tag, As&&... __as) noexcept {
+          using result_sender_t = __minvoke<__result_sender_fn<Fun>, As...>;
+          using op_state_t = __minvoke<op_state_for<Receiver, Fun>, As...>;
 
-          cudaStream_t stream = __op_state_->get_stream();
-          auto* result_sender = static_cast<result_sender_t*>(__op_state_->temp_storage_);
-          kernel_with_result<_As&&...><<<1, 1, 0, stream>>>(
-            std::move(__op_state_->__fun_), result_sender, static_cast<_As&&>(__as)...);
+          cudaStream_t stream = op_state_->get_stream();
+          auto* result_sender = static_cast<result_sender_t*>(op_state_->temp_storage_);
+          kernel_with_result<As&&...><<<1, 1, 0, stream>>>(
+            std::move(op_state_->fun_), result_sender, static_cast<As&&>(__as)...);
 
           if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(stream));
               status == cudaSuccess) {
-            __op_state_->defer_temp_storage_destruction(result_sender);
-            auto& __op = __op_state_->__op_state3_.template emplace<op_state_t>(__emplace_from{[&] {
+            op_state_->defer_temp_storage_destruction(result_sender);
+            auto& op = op_state_->op_state3_.template emplace<op_state_t>(__emplace_from{[&] {
               return connect(
                 std::move(*result_sender),
-                stdexec::__t<propagate_receiver_t<_ReceiverId>>{
-                  {}, static_cast<operation_state_base_t<_ReceiverId>&>(*__op_state_)});
+                stdexec::__t<propagate_receiver_t<ReceiverId>>{
+                  {}, static_cast<operation_state_base_t<ReceiverId>&>(*op_state_)});
             }});
-            stdexec::start(__op);
+            stdexec::start(op);
           } else {
-            __op_state_->propagate_completion_signal(stdexec::set_error, std::move(status));
+            op_state_->propagate_completion_signal(stdexec::set_error, std::move(status));
           }
         }
 
-        template <class _Tag, class... _As>
-          requires __none_of<_Tag, _Let> && __callable<_Tag, _Receiver, _As...>
-        void __complete(_Tag, _As&&... __as) noexcept {
-          static_assert(__nothrow_callable<_Tag, _Receiver, _As...>);
-          __op_state_->propagate_completion_signal(_Tag(), static_cast<_As&&>(__as)...);
+        template <class Tag, class... As>
+          requires __none_of<Tag, Let> && __callable<Tag, Receiver, As...>
+        void _complete(Tag, As&&... __as) noexcept {
+          static_assert(__nothrow_callable<Tag, Receiver, As...>);
+          op_state_->propagate_completion_signal(Tag(), static_cast<As&&>(__as)...);
         }
 
-        template <class... _Args>
-        void set_value(_Args&&... __args) noexcept {
-          __complete(set_value_t(), static_cast<_Args&&>(__args)...);
+        template <class... Args>
+        void set_value(Args&&... __args) noexcept {
+          _complete(set_value_t(), static_cast<Args&&>(__args)...);
         }
 
-        template <class _Error>
-        void set_error(_Error&& __err) noexcept {
-          __complete(set_error_t(), static_cast<_Error&&>(__err));
+        template <class Error>
+        void set_error(Error&& __err) noexcept {
+          _complete(set_error_t(), static_cast<Error&&>(__err));
         }
 
         void set_stopped() noexcept {
-          __complete(set_stopped_t());
+          _complete(set_stopped_t());
         }
 
-        auto get_env() const noexcept -> _Env {
-          return __op_state_->make_env();
+        auto get_env() const noexcept -> Env {
+          return op_state_->make_env();
         }
 
-        using __op_state_variant_t = //
+        using op_state_variant_t = //
           __minvoke<
-            __mtransform<__muncurry<__op_state_for<_Receiver, _Fun>>, __qq<__nullable_std_variant>>,
-            _Tuples...>;
+            __mtransform<__muncurry<op_state_for<Receiver, Fun>>, __qq<__nullable_std_variant>>,
+            Tuples...>;
 
-        __operation<_SenderId, _ReceiverId, _Fun, _Let>* __op_state_;
+        operation<SenderId, ReceiverId, Fun, Let>* op_state_;
       };
     };
 
-    template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
+    template <class SenderId, class ReceiverId, class Fun, class Let>
     using __receiver = //
       stdexec::__t<__gather_completions_of<
-        _Let,
-        stdexec::__t<_SenderId>,
-        stream_env<env_of_t<stdexec::__t<_ReceiverId>>>,
+        Let,
+        stdexec::__t<SenderId>,
+        stream_env<env_of_t<stdexec::__t<ReceiverId>>>,
         __q<__decayed_std_tuple>,
-        __munique<__mbind_front_q<__receiver_, _SenderId, _ReceiverId, _Fun, _Let>>>>;
+        __munique<__mbind_front_q<_receiver_, SenderId, ReceiverId, Fun, Let>>>>;
 
-    template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
-    using __operation_base = //
+    template <class SenderId, class ReceiverId, class Fun, class Let>
+    using operation_base = //
       operation_state_t<
-        _SenderId,
-        stdexec::__id<__receiver<_SenderId, _ReceiverId, _Fun, _Let>>,
-        _ReceiverId>;
+        SenderId,
+        stdexec::__id<__receiver<SenderId, ReceiverId, Fun, Let>>,
+        ReceiverId>;
 
-    template <class _SenderId, class _ReceiverId, class _Fun, class _Let>
-    struct __operation : __operation_base<_SenderId, _ReceiverId, _Fun, _Let> {
-      using _Sender = stdexec::__t<_SenderId>;
-      using _Receiver = stdexec::__t<_ReceiverId>;
-      using __receiver_t = __receiver<_SenderId, _ReceiverId, _Fun, _Let>;
-      using __op_state_variant_t = typename __receiver_t::__op_state_variant_t;
+    template <class SenderId, class ReceiverId, class Fun, class Let>
+    struct operation : operation_base<SenderId, ReceiverId, Fun, Let> {
+      using Sender = stdexec::__t<SenderId>;
+      using Receiver = stdexec::__t<ReceiverId>;
+      using _receiver_t = __receiver<SenderId, ReceiverId, Fun, Let>;
+      using op_state_variant_t = typename _receiver_t::op_state_variant_t;
 
-      template <class _Receiver2>
-      __operation(_Sender&& __sndr, _Receiver2&& __rcvr, _Fun __fun)
-        : __operation_base<_SenderId, _ReceiverId, _Fun, _Let>(
-            static_cast<_Sender&&>(__sndr),
-            static_cast<_Receiver2&&>(__rcvr),
-            [this](operation_state_base_t<stdexec::__id<_Receiver2>>&) -> __receiver_t {
-              return __receiver_t{{}, this};
+      template <class Receiver2>
+      operation(Sender&& sndr, Receiver2&& rcvr, Fun fun)
+        : operation_base<SenderId, ReceiverId, Fun, Let>(
+            static_cast<Sender&&>(sndr),
+            static_cast<Receiver2&&>(rcvr),
+            [this](operation_state_base_t<stdexec::__id<Receiver2>>&) -> _receiver_t {
+              return _receiver_t{{}, this};
             },
-            get_completion_scheduler<set_value_t>(get_env(__sndr)).context_state_)
-        , __fun_(static_cast<_Fun&&>(__fun)) {
+            get_completion_scheduler<set_value_t>(get_env(sndr)).context_state_)
+        , fun_(static_cast<Fun&&>(fun)) {
       }
 
-      STDEXEC_IMMOVABLE(__operation);
+      STDEXEC_IMMOVABLE(operation);
 
-      _Fun __fun_;
+      Fun fun_;
 
-      __op_state_variant_t __op_state3_;
+      op_state_variant_t op_state3_;
     };
   } // namespace let_xxx
 
-  template <class _SenderId, class _Fun, class _Set>
+  template <class SenderId, class Fun, class Set>
   struct let_sender_t {
-    using _Sender = stdexec::__t<_SenderId>;
+    using Sender = stdexec::__t<SenderId>;
 
     struct __t : stream_sender_base {
       using __id = let_sender_t;
 
-      template <class _Self, class _Receiver>
-      using __operation_t = //
-        let_xxx::__operation<
-          stdexec::__id<__copy_cvref_t<_Self, _Sender>>,
-          stdexec::__id<__decay_t<_Receiver>>,
-          _Fun,
-          _Set>;
-      template <class _Self, class _Receiver>
-      using __receiver_t = //
+      template <class Self, class Receiver>
+      using operation_t = //
+        let_xxx::operation<
+          stdexec::__id<__copy_cvref_t<Self, Sender>>,
+          stdexec::__id<__decay_t<Receiver>>,
+          Fun,
+          Set>;
+      template <class Self, class Receiver>
+      using _receiver_t = //
         stdexec::__t<let_xxx::__receiver<
-          stdexec::__id<__copy_cvref_t<_Self, _Sender>>,
-          stdexec::__id<__decay_t<_Receiver>>,
-          _Fun,
-          _Set>>;
+          stdexec::__id<__copy_cvref_t<Self, Sender>>,
+          stdexec::__id<__decay_t<Receiver>>,
+          Fun,
+          Set>>;
 
-      template <class _Sender, class... _Env>
+      template <class Sender, class... Env>
       using __completions = //
         __mapply<
           __mtransform<
-            __mbind_back_q<let_xxx::__tfx_signal_t, _Fun, _Set, _Env...>,
+            __mbind_back_q<let_xxx::__tfx_signal_t, Fun, Set, Env...>,
             __mtry_q<__concat_completion_signatures>>,
-          __completion_signatures_of_t<_Sender, _Env...>>;
+          __completion_signatures_of_t<Sender, Env...>>;
 
-      template <__decays_to<__t> _Self, receiver _Receiver>
-        requires receiver_of<                          //
-                   _Receiver,                          //
-                   __completions<                      //
-                     __copy_cvref_t<_Self, _Sender>,   //
-                     stream_env<env_of_t<_Receiver>>>> //
-      static auto connect(_Self&& __self, _Receiver __rcvr) -> __operation_t<_Self, _Receiver> {
-        return __operation_t<_Self, _Receiver>{
-          static_cast<_Self&&>(__self).__sndr_,
-          static_cast<_Receiver&&>(__rcvr),
-          static_cast<_Self&&>(__self).__fun_};
+      template <__decays_to<__t> Self, receiver Receiver>
+        requires receiver_of<                         //
+                   Receiver,                          //
+                   __completions<                     //
+                     __copy_cvref_t<Self, Sender>,    //
+                     stream_env<env_of_t<Receiver>>>> //
+      static auto connect(Self&& self, Receiver rcvr) -> operation_t<Self, Receiver> {
+        return operation_t<Self, Receiver>{
+          static_cast<Self&&>(self).sndr_,
+          static_cast<Receiver&&>(rcvr),
+          static_cast<Self&&>(self).fun_};
       }
 
-      auto get_env() const noexcept -> env_of_t<const _Sender&> {
-        return stdexec::get_env(__sndr_);
+      auto get_env() const noexcept -> stream_sender_attrs<Sender> {
+        return {&sndr_};
       }
 
-      template <__decays_to<__t> _Self, class... _Env>
-      static auto get_completion_signatures(_Self&&, _Env&&...)
-        -> __completions<__copy_cvref_t<_Self, _Sender>, stream_env<_Env>...> {
+      template <__decays_to<__t> Self, class... Env>
+      static auto get_completion_signatures(Self&&, Env&&...)
+        -> __completions<__copy_cvref_t<Self, Sender>, stream_env<Env>...> {
         return {};
       }
 
-      _Sender __sndr_;
-      _Fun __fun_;
+      Sender sndr_;
+      Fun fun_;
     };
   };
 

@@ -122,7 +122,7 @@ namespace nvexec::_strm {
     };
   } // namespace _when_all
 
-  template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
+  template <class WhenAllTag, class Scheduler, class... SenderIds>
   struct when_all_sender_t {
     struct type;
     using __t = type;
@@ -131,11 +131,32 @@ namespace nvexec::_strm {
      private:
       struct env {
         context_state_t context_state_;
+        using sched_domain_t = __query_result_or_t<get_domain_t, Scheduler, default_domain>;
 
-        template <__one_of<set_value_t, set_stopped_t> _Tag>
-          requires WithCompletionScheduler
-        auto query(get_completion_scheduler_t<_Tag>) const noexcept -> Scheduler {
+        auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> Scheduler
+          requires stdexec::__same_as<WhenAllTag, transfer_when_all_t>
+        {
           return Scheduler(context_state_);
+        }
+
+        constexpr auto query(get_domain_t) const noexcept {
+          if constexpr (stdexec::__same_as<WhenAllTag, transfer_when_all_t>) {
+            return sched_domain_t{};
+          } else {
+            static_assert(
+              sizeof...(SenderIds) == 0
+              || stdexec::__same_as<stream_domain, __common_domain_t<stdexec::__t<SenderIds>...>>);
+            return stream_domain{};
+          }
+        }
+
+        constexpr auto query(get_domain_late_t) const noexcept
+          requires stdexec::__same_as<WhenAllTag, transfer_when_all_t>
+        {
+          static_assert(
+            sizeof...(SenderIds) == 0
+            || stdexec::__same_as<stream_domain, __common_domain_t<stdexec::__t<SenderIds>...>>);
+          return stream_domain{};
         }
       };
      public:
@@ -480,7 +501,7 @@ namespace nvexec::_strm {
     template <stream_completing_sender... Senders>
     auto operator()(__ignore, __ignore, Senders&&... sndrs) const {
       using __sender_t =
-        __t<when_all_sender_t<false, stream_scheduler, __id<__decay_t<Senders>>...>>;
+        __t<when_all_sender_t<stdexec::when_all_t, stream_scheduler, __id<__decay_t<Senders>>...>>;
       return __sender_t{
         context_state_t{nullptr, nullptr, nullptr, nullptr},
         static_cast<Senders&&>(sndrs)...
@@ -492,18 +513,18 @@ namespace nvexec::_strm {
   struct transform_sender_for<stdexec::transfer_when_all_t> {
     template <gpu_stream_scheduler Scheduler, stream_completing_sender... Senders>
     auto operator()(__ignore, Scheduler sched, Senders&&... sndrs) const {
-      using __sender_t =
-        __t<when_all_sender_t<true, stream_scheduler, __id<__decay_t<Senders>>...>>;
+      using __sender_t = __t<
+        when_all_sender_t<stdexec::transfer_when_all_t, stream_scheduler, __id<__decay_t<Senders>>...>>;
       return __sender_t{sched.context_state_, static_cast<Senders&&>(sndrs)...};
     }
   };
 } // namespace nvexec::_strm
 
 namespace stdexec::__detail {
-  template <bool WithCompletionScheduler, class Scheduler, class... SenderIds>
+  template <class WhenAllTag, class Scheduler, class... SenderIds>
   inline constexpr __mconst<
-    nvexec::_strm::when_all_sender_t<WithCompletionScheduler, Scheduler, __name_of<__t<SenderIds>>...>>
-    __name_of_v<nvexec::_strm::when_all_sender_t<WithCompletionScheduler, Scheduler, SenderIds...>>{};
+    nvexec::_strm::when_all_sender_t<WhenAllTag, Scheduler, __name_of<__t<SenderIds>>...>>
+    __name_of_v<nvexec::_strm::when_all_sender_t<WhenAllTag, Scheduler, SenderIds...>>{};
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

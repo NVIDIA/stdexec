@@ -118,13 +118,13 @@ namespace stdexec {
     //! c) `default_domain()`
     struct __get_early_domain_t {
       template <class _Sender, class _Default = default_domain>
-      auto operator()(const _Sender&, _Default __def = {}) const noexcept {
+      auto operator()(const _Sender&, _Default = {}) const noexcept {
         if constexpr (__callable<get_domain_t, env_of_t<_Sender>>) {
           return __domain_of_t<env_of_t<_Sender>>();
         } else if constexpr (__has_completion_domain<_Sender>) {
           return __completion_domain_of<_Sender>();
         } else {
-          return __def;
+          return _Default();
         }
       }
     };
@@ -135,20 +135,17 @@ namespace stdexec {
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //! Function object implementing `get-domain-late(snd)`
     struct __get_late_domain_t {
-      // When connect is looking for a customization, it first checks the sender's domain. If the
-      // sender knows the domain in which it completes, then that is where the subsequent task will
-      // execute. Otherwise, look to the receiver for late-bound information about the current
-      // execution context.
+      // When connect is looking for a customization, it first checks if the sender has a
+      // late domain override. If so, that is the domain that is used to transform the
+      // sender. Otherwise, look to the receiver for information about where the resulting
+      // operation state will be started.
       template <class _Sender, class _Env, class _Default = default_domain>
-      auto operator()(const _Sender& __sndr, const _Env& __env) const noexcept {
-        // The schedule_from algorithm is the exception to the rule. It ignores the domain of the
-        // predecessor, and dispatches based on the domain of the scheduler to which execution is
-        // being transferred.
-        if constexpr (sender_expr_for<_Sender, schedule_from_t>) {
-          return query_or(get_domain, __sexpr_apply(__sndr, __detail::__get_data()), _Default());
-        } else if constexpr (
-          !same_as<dependent_domain, __early_domain_of_t<_Sender, dependent_domain>>) {
-          return __get_early_domain_t{}(__sndr);
+      auto operator()(const _Sender& __sndr, const _Env& __env, _Default = {}) const noexcept {
+        // The schedule_from algorithm is the exception to the rule. It ignores the domain
+        // of the predecessor, and dispatches based on the domain of the scheduler to
+        // which execution is being transferred.
+        if constexpr (__callable<get_domain_late_t, env_of_t<_Sender>>) {
+          return get_domain_late(get_env(__sndr));
         } else if constexpr (__callable<get_domain_t, const _Env&>) {
           return get_domain(__env);
         } else if constexpr (__callable<__composed<get_domain_t, get_scheduler_t>, const _Env&>) {
@@ -159,8 +156,8 @@ namespace stdexec {
       }
     };
 
-    template <class _Sender, class _Env>
-    using __late_domain_of_t = __call_result_t<__get_late_domain_t, _Sender, _Env>;
+    template <class _Sender, class _Env, class _Default = default_domain>
+    using __late_domain_of_t = __call_result_t<__get_late_domain_t, _Sender, _Env, _Default>;
 
     struct __common_domain_fn {
       template <class _Default = default_domain, class _Dependent = dependent_domain, class... _Domains>

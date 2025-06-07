@@ -126,10 +126,6 @@ namespace {
       ex::sender auto snd = ex::schedule(sched) | ex::then([] { });
       REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd)) == sched);
     }
-    SECTION("for stop channel") {
-      ex::sender auto snd = ex::just_stopped() | ex::continues_on(sched) | ex::then([] { });
-      REQUIRE(ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(snd)) == sched);
-    }
   }
 
   TEST_CASE("then forwards env", "[adaptors][then]") {
