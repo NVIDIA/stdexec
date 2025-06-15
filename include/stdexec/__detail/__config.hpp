@@ -523,19 +523,31 @@ namespace stdexec {
 #  include <cuda_runtime_api.h>
 #endif
 
+// The following macros are used to conditionally compile exception handling code. They
+// are used in the same way as `try` and `catch` blocks, but they allow for different
+// behavior based on whether exceptions are enabled or not, and whether the code is being
+// compiled for device or not.
+//
+// Usage:
+//   STDEXEC_TRY({
+//     ...                            // Code that may throw an exception
+//   })
+//   STDEXEC_CATCH((cuda_error& e) {  // Handle CUDA exceptions
+//     ...
+//   })
+//   STDEXEC_CATCH((...) {            // Handle any other exceptions
+//     ...
+//   })
 // clang-format off
 #if STDEXEC_NO_EXCEPTIONS() || (STDEXEC_CUDA_COMPILATION() && defined(__CUDA_ARCH__))
-#  define STDEXEC_TRY
-#  define STDEXEC_CATCH(...) STDEXEC_CATCH_I
-#  define STDEXEC_CATCH_I(...)
+#  define STDEXEC_TRY(...) { __VA_ARGS__ }
+#  define STDEXEC_CATCH(...)
 #elif STDEXEC_CUDA_COMPILATION() && STDEXEC_NVHPC()
-#  define STDEXEC_TRY if target (nv::target::is_host) { try
-#  define STDEXEC_CATCH(...) catch(__VA_ARGS__) STDEXEC_CATCH_I
-#  define STDEXEC_CATCH_I(...) { __VA_ARGS__ } } else { __VA_ARGS__ }
+#  define STDEXEC_TRY(...) if target (nv::target::is_device) { __VA_ARGS__ } else try { __VA_ARGS__ }
+#  define STDEXEC_CATCH(...) catch __VA_ARGS__
 #else
-#  define STDEXEC_TRY try
-#  define STDEXEC_CATCH(...) catch(__VA_ARGS__) STDEXEC_CATCH_I
-#  define STDEXEC_CATCH_I(...) { __VA_ARGS__ }
+#  define STDEXEC_TRY(...) try { __VA_ARGS__ }
+#  define STDEXEC_CATCH(...) catch __VA_ARGS__
 #endif
 // clang-format on
 
