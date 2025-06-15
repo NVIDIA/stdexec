@@ -90,7 +90,9 @@ Macros: [
   'STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS=[[no_unique_address]]',
   'STDEXEC_MISSING_MEMBER(X,Y)=true',
   'STDEXEC_DEFINE_MEMBER(X)=void foo() {}',
-  'STDEXEC_AUTO_RETURN(...)=->decltype(auto){ return __VA_ARGS__; }'
+  'STDEXEC_AUTO_RETURN(...)=->decltype(auto){ return __VA_ARGS__; }',
+  'STDEXEC_TRY(...)=try { __VA_ARGS__ }',
+  'STDEXEC_CATCH(...)=catch __VA_ARGS__',
 ]
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: All

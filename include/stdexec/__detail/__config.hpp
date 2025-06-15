@@ -530,24 +530,27 @@ namespace stdexec {
 //
 // Usage:
 //   STDEXEC_TRY({
-//     ...                            // Code that may throw an exception
+//     ...                                     // Code that may throw an exception
 //   })
-//   STDEXEC_CATCH((cuda_error& e) {  // Handle CUDA exceptions
+//   STDEXEC_CATCH_FALLTHRU((cuda_error& e) {  // Handle CUDA exceptions
 //     ...
 //   })
-//   STDEXEC_CATCH((...) {            // Handle any other exceptions
+//   STDEXEC_CATCH((...) {                     // Handle any other exceptions
 //     ...
 //   })
 // clang-format off
 #if STDEXEC_NO_EXCEPTIONS() || (STDEXEC_CUDA_COMPILATION() && defined(__CUDA_ARCH__))
 #  define STDEXEC_TRY(...) { __VA_ARGS__ }
 #  define STDEXEC_CATCH(...)
+#  define STDEXEC_CATCH_FALLTHRU(...)
 #elif STDEXEC_CUDA_COMPILATION() && STDEXEC_NVHPC()
-#  define STDEXEC_TRY(...) if target (nv::target::is_device) { __VA_ARGS__ } else try { __VA_ARGS__ }
-#  define STDEXEC_CATCH(...) catch __VA_ARGS__
+#  define STDEXEC_TRY(...) if target (nv::target::is_device) { __VA_ARGS__ } else { try { __VA_ARGS__ }
+#  define STDEXEC_CATCH(...) catch __VA_ARGS__ }
+#  define STDEXEC_CATCH_FALLTHRU(...) catch __VA_ARGS__
 #else
 #  define STDEXEC_TRY(...) try { __VA_ARGS__ }
 #  define STDEXEC_CATCH(...) catch __VA_ARGS__
+#  define STDEXEC_CATCH_FALLTHRU(...) catch __VA_ARGS__
 #endif
 // clang-format on
 
