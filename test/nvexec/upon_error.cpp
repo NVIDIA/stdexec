@@ -38,7 +38,7 @@ namespace {
   }
 
   TEST_CASE(
-    "upon_error can preceed a sender without values",
+    "nvexec upon_error can preceed a sender without values",
     "[cuda][stream][adaptors][upon_error]") {
     nvexec::stream_context stream_ctx{};
 
@@ -62,7 +62,7 @@ namespace {
   }
 
   TEST_CASE(
-    "upon_error can succeed a sender without values",
+    "nvexec upon_error can succeed a sender without values",
     "[cuda][stream][adaptors][upon_error]") {
     nvexec::stream_context stream_ctx{};
 
