@@ -71,7 +71,7 @@ namespace exec {
         stdexec::set_stopped(std::forward<_Rcvr>(__rcvr_));
       }
 
-      [[no_unique_address]]
+      STDEXEC_ATTRIBUTE(no_unique_address)
       _Rcvr __rcvr_;
     };
 
@@ -412,10 +412,10 @@ namespace exec {
         __forward_args_helper_t)]{};
 
       /// The function to be executed to perform the bulk work.
-      [[no_unique_address]]
+      STDEXEC_ATTRIBUTE(no_unique_address)
       _Fn __fun_;
       /// The receiver object that receives completion from the work described by the sender.
-      [[no_unique_address]]
+      STDEXEC_ATTRIBUTE(no_unique_address)
       _Rcvr __rcvr_;
 
       /// Function that prepares the preallocated storage for calling the backend.
@@ -630,7 +630,7 @@ namespace exec {
     /// The size of the bulk operation.
     _Size __size_;
     /// The function to be executed to perform the bulk work.
-    [[no_unique_address]]
+    STDEXEC_ATTRIBUTE(no_unique_address)
     _Fn __fun_;
   };
 

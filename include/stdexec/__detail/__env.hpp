@@ -678,7 +678,7 @@ namespace stdexec {
     using __scheduler_t = __decay_t<_Scheduler>;
     using __sched_domain_t = __query_result_or_t<get_domain_t, __scheduler_t, default_domain>;
     _Scheduler __sched_;
-    STDEXEC_ATTRIBUTE(no_unique_address) _LateDomain __late_domain_;
+    STDEXEC_ATTRIBUTE(no_unique_address) _LateDomain __late_domain_{};
 
     auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> __scheduler_t {
       return __sched_;

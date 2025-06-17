@@ -120,7 +120,7 @@ namespace stdexec {
       };
 
       static constexpr auto submit =
-        []<class _Sender, class _Receiver>(const _Sender& __sndr, _Receiver __rcvr) noexcept
+        []<class _Sender, class _Receiver>(const _Sender&, _Receiver __rcvr) noexcept
         requires std::is_reference_v<__call_result_t<__data_of<_Sender>, env_of_t<_Receiver>>>
       {
         static_assert(sender_expr_for<_Sender, __read_env_t>);
