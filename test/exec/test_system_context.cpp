@@ -15,8 +15,6 @@
  */
 
 #include <thread>
-#include <iostream>
-#include <chrono>
 
 #define STDEXEC_SYSTEM_CONTEXT_HEADER_ONLY 1
 
@@ -310,13 +308,13 @@ struct my_parallel_scheduler_backend_impl
 };
 
 struct my_inline_scheduler_backend_impl : scr::parallel_scheduler_backend {
-  void schedule(std::span<std::byte> s, scr::receiver& r) noexcept override {
+  void schedule(std::span<std::byte>, scr::receiver& r) noexcept override {
     r.set_value();
   }
 
   void schedule_bulk_chunked(
     uint32_t count,
-    std::span<std::byte> s,
+    std::span<std::byte>,
     scr::bulk_item_receiver& r) noexcept override {
     r.execute(0, count);
     r.set_value();
@@ -324,7 +322,7 @@ struct my_inline_scheduler_backend_impl : scr::parallel_scheduler_backend {
 
   void schedule_bulk_unchunked(
     uint32_t count,
-    std::span<std::byte> s,
+    std::span<std::byte>,
     scr::bulk_item_receiver& r) noexcept override {
     for (uint32_t i = 0; i < count; ++i)
       r.execute(i, i + 1);

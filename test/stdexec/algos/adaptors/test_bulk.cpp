@@ -1103,7 +1103,7 @@ namespace {
     // The customization will return a different value
     basic_inline_scheduler<my_domain> sched;
     auto snd = ex::just(std::string{"hello"})
-             | exec::on(sched, ex::bulk(ex::par, 1, [&called](int, std::string x) {
+             | exec::on(sched, ex::bulk(ex::par, 1, [&called](int, std::string) {
                           called = true;
                         }));
     wait_for_value(std::move(snd), std::string{"hijacked"});
@@ -1122,13 +1122,13 @@ namespace {
     // The customization will return a different value
     basic_inline_scheduler<my_domain2> sched;
     auto snd = ex::just(std::string{"hello"}) | ex::continues_on(sched)
-             | ex::bulk(ex::par, 1, [&called](int, std::string x) { called = true; });
+             | ex::bulk(ex::par, 1, [&called](int, std::string) { called = true; });
     wait_for_value(std::move(snd), std::string{"hijacked"});
     REQUIRE_FALSE(called);
 
     // bulk_chunked will still use the default implementation
     auto snd2 = ex::just(std::string{"hello"}) | ex::continues_on(sched)
-              | ex::bulk_chunked(ex::par, 1, [&called](int, int, std::string x) { called = true; });
+              | ex::bulk_chunked(ex::par, 1, [&called](int, int, std::string) { called = true; });
     wait_for_value(std::move(snd2), std::string{"hello"});
     REQUIRE(called);
   }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "exec/fork.hpp"
+#include "exec/fork_join.hpp"
 #include "exec/just_from.hpp"
 #include "test_common/type_helpers.hpp"
 
@@ -23,13 +23,13 @@
 using namespace stdexec;
 
 namespace {
-  TEST_CASE("fork is a sender", "[adaptors][fork]") {
-    auto sndr = exec::fork(just(), then([] { }));
+  TEST_CASE("fork_join is a sender", "[adaptors][fork_join]") {
+    auto sndr = exec::fork_join(just(), then([] { }));
     STATIC_REQUIRE(sender<decltype(sndr)>);
   }
 
-  TEST_CASE("fork is a sender in empty env", "[adaptors][fork]") {
-    auto sndr = exec::fork(just(), then([] { }));
+  TEST_CASE("fork_join is a sender in empty env", "[adaptors][fork_join]") {
+    auto sndr = exec::fork_join(just(), then([] { }));
     STATIC_REQUIRE(sender_in<decltype(sndr), env<>>);
     STATIC_REQUIRE(
       set_equivalent<
@@ -38,7 +38,7 @@ namespace {
       >);
   }
 
-  TEST_CASE("fork broadcasts results to multiple continuations", "[adaptors][fork]") {
+  TEST_CASE("fork_join broadcasts results to multiple continuations", "[adaptors][fork_join]") {
     auto fn = [](auto sink) {
       sink(42);
       return completion_signatures<
@@ -47,7 +47,7 @@ namespace {
         set_value_t(int, int, int)
       >{};
     };
-    auto sndr = exec::fork(
+    auto sndr = exec::fork_join(
       exec::just_from(fn),
       then([](auto&&... is) {
         CHECK(sizeof...(is) == 1);
