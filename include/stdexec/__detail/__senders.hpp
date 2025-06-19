@@ -265,6 +265,10 @@ namespace stdexec {
       auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
         noexcept(__nothrow_callable<__select_impl_t<_Sender, _Receiver>>)
           -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
+
+        static_assert(sender_in<_Sender, env_of_t<_Receiver>>);
+        static_assert(__receiver_from<_Receiver, _Sender>);
+
         using _TfxSender = __tfx_sender<_Sender, _Receiver>;
         auto&& __env = get_env(__rcvr);
         auto __domain = __get_late_domain(__sndr, __env);
