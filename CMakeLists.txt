@@ -67,9 +67,7 @@ message(STATUS "Build date       : ${STDEXEC_BUILD_DATE}")
 message(STATUS "Build year       : ${STDEXEC_BUILD_YEAR}")
 message(STATUS)
 
-set(INTEGRATE_CLANG_TOOLING ${STDEXEC_INTEGRATE_CLANG_TOOLING})
-
-if (INTEGRATE_CLANG_TOOLING)
+if (STDEXEC_IS_TOP_LEVEL)
   # Integrate with LLVM/clang tooling
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/clangd_compile_info.cmake)
 endif()
@@ -554,7 +552,6 @@ option(STDEXEC_ENABLE_IO_URING_TESTS "Enable io_uring tests" ${STDEXEC_FOUND_IO_
 
 option(STDEXEC_BUILD_DOCS "Build stdexec documentation" OFF)
 option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
-option(STDEXEC_INTEGRATE_CLANG_TOOLING "Integrate with clang tooling" ON)
 
 # Configure documentation
 if(STDEXEC_BUILD_DOCS)
