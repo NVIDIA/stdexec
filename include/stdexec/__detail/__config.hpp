@@ -541,9 +541,7 @@ namespace stdexec {
 #if STDEXEC_NO_EXCEPTIONS()
 #  define STDEXEC_TRY if constexpr (true)
 #  define STDEXEC_CATCH(...)                                                                       \
-    else if constexpr (__VA_ARGS__ = ::stdexec::_catch_any_lvalue{}; true) {                       \
-    }                                                                                              \
-    else
+    else if constexpr (__VA_ARGS__ = ::stdexec::_catch_any_lvalue{}; false)
 #  define STDEXEC_CATCH_ALL                                                                        \
     else if constexpr (true) {                                                                     \
     }                                                                                              \
