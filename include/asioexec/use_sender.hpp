@@ -39,9 +39,10 @@ namespace asioexec {
     std::exception_ptr to_exception_ptr(T t) noexcept {
       using exception_type =
         std::conditional_t<std::is_same_v<T, std::error_code>, std::system_error, system_error>;
-      try {
+      STDEXEC_TRY {
         return std::make_exception_ptr(exception_type(static_cast<T&&>(t)));
-      } catch (...) {
+      }
+      STDEXEC_CATCH_ALL {
         return std::current_exception();
       }
     }

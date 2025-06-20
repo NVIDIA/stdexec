@@ -53,49 +53,56 @@ namespace {
   TEST_CASE("sync_wait rethrows received exception", "[consumers][sync_wait]") {
     // Generate an exception pointer object
     std::exception_ptr eptr;
-    try {
+    STDEXEC_TRY {
       throw std::logic_error("err");
-    } catch (...) {
+    }
+    STDEXEC_CATCH_ALL {
       eptr = std::current_exception();
     }
 
     // Ensure that ex::sync_wait will rethrow the error
-    try {
+    STDEXEC_TRY {
       error_scheduler<std::exception_ptr> sched{eptr};
       ex::sync_wait(ex::transfer_just(sched, 19));
       FAIL("exception not thrown?");
-    } catch (const std::logic_error& e) {
+    }
+    STDEXEC_CATCH(const std::logic_error& e) {
       CHECK(std::string{e.what()} == "err");
-    } catch (...) {
+    }
+    STDEXEC_CATCH_ALL {
       FAIL("invalid exception received");
     }
   }
 
   TEST_CASE("sync_wait handling error_code errors", "[consumers][sync_wait]") {
-    try {
+    STDEXEC_TRY {
       error_scheduler<std::error_code> sched{
         std::make_error_code(std::errc::argument_out_of_domain)};
       ex::sender auto snd = ex::transfer_just(sched, 19);
       static_assert(std::invocable<ex::sync_wait_t, decltype(snd)>);
       ex::sync_wait(std::move(snd)); // doesn't work
       FAIL("expecting exception to be thrown");
-    } catch (const std::system_error& e) {
+    }
+    STDEXEC_CATCH(const std::system_error& e) {
       CHECK(e.code() == std::errc::argument_out_of_domain);
-    } catch (...) {
+    }
+    STDEXEC_CATCH_ALL {
       FAIL("expecting std::system_error exception to be thrown");
     }
   }
 
   TEST_CASE("sync_wait handling non-exception errors", "[consumers][sync_wait]") {
-    try {
+    STDEXEC_TRY {
       error_scheduler<std::string> sched{std::string{"err"}};
       ex::sender auto snd = ex::transfer_just(sched, 19);
       static_assert(std::invocable<ex::sync_wait_t, decltype(snd)>);
       ex::sync_wait(std::move(snd)); // doesn't work
       FAIL("expecting exception to be thrown");
-    } catch (const std::string& e) {
+    }
+    STDEXEC_CATCH(const std::string& e) {
       CHECK(e == "err");
-    } catch (...) {
+    }
+    STDEXEC_CATCH_ALL {
       FAIL("expecting std::string exception to be thrown");
     }
   }

@@ -124,9 +124,10 @@ namespace exec {
           if constexpr ((__nothrow_decay_copyable<_Args> && ...)) {
             __result_.template emplace<__result_t>(_Tag{}, static_cast<_Args&&>(__args)...);
           } else {
-            try {
+            STDEXEC_TRY {
               __result_.template emplace<__result_t>(_Tag{}, static_cast<_Args&&>(__args)...);
-            } catch (...) {
+            }
+            STDEXEC_CATCH_ALL {
               using __error_t = __tuple_for<set_error_t, std::exception_ptr>;
               __result_.template emplace<__error_t>(set_error_t{}, std::current_exception());
             }

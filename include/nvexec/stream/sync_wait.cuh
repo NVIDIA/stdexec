@@ -94,7 +94,7 @@ namespace nvexec::_strm {
         template <class... As>
         void set_value(As&&... as) noexcept {
           static_assert(std::constructible_from<sync_wait_result_t<Sender>, As...>);
-          try {
+          STDEXEC_TRY {
             int dev_id{};
             cudaStream_t stream = state_->stream_;
 
@@ -118,7 +118,8 @@ namespace nvexec::_strm {
               set_error_(status);
             }
             loop_->finish();
-          } catch (...) {
+          }
+          STDEXEC_CATCH_ALL {
             set_error_(std::current_exception());
           }
         }

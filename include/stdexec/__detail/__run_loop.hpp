@@ -60,13 +60,14 @@ namespace stdexec {
 
         static void __execute_impl(__task* __p) noexcept {
           auto& __rcvr = static_cast<__t*>(__p)->__rcvr_;
-          try {
+          STDEXEC_TRY {
             if (stdexec::get_stop_token(stdexec::get_env(__rcvr)).stop_requested()) {
               stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr));
             } else {
               stdexec::set_value(static_cast<_Receiver&&>(__rcvr));
             }
-          } catch (...) {
+          }
+          STDEXEC_CATCH_ALL {
             stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
           }
         }
@@ -189,9 +190,10 @@ namespace stdexec {
 
     template <class _ReceiverId>
     inline void __operation<_ReceiverId>::__t::start() & noexcept {
-      try {
+      STDEXEC_TRY {
         __loop_->__push_back_(this);
-      } catch (...) {
+      }
+      STDEXEC_CATCH_ALL {
         stdexec::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
       }
     }

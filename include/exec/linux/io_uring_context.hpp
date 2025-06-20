@@ -570,13 +570,14 @@ namespace exec {
             std::in_place,
             stdexec::get_stop_token(stdexec::get_env(__rcvr_)),
             __on_stop{__context_});
-          try {
+          STDEXEC_TRY {
             if (__mode_ == until::stopped) {
               __context_.run_until_stopped();
             } else {
               __context_.run_until_empty();
             }
-          } catch (...) {
+          }
+          STDEXEC_CATCH_ALL {
             __callback.reset();
             stdexec::set_error(static_cast<_Rcvr&&>(__rcvr_), std::current_exception());
           }

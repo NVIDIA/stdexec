@@ -173,9 +173,10 @@ namespace execpools {
             };
 
             if constexpr (MayThrow) {
-              try {
+              STDEXEC_TRY {
                 self.apply(computation);
-              } catch (...) {
+              }
+              STDEXEC_CATCH_ALL {
                 std::uint32_t expected = total_threads;
 
                 if (self.thread_with_exception_.compare_exchange_strong(
@@ -233,9 +234,10 @@ namespace execpools {
             shared_state& state = shared_state_;
 
             if constexpr (MayThrow) {
-              try {
+              STDEXEC_TRY {
                 state.data_.template emplace<tuple_t>(static_cast<As&&>(as)...);
-              } catch (...) {
+              }
+              STDEXEC_CATCH_ALL {
                 stdexec::set_error(std::move(state.rcvr_), std::current_exception());
               }
             } else {

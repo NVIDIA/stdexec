@@ -322,10 +322,11 @@ namespace stdexec {
             __state.__fun_(static_cast<__shape_t>(0), __state.__shape_, __args...);
             _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
           } else {
-            try {
+            STDEXEC_TRY {
               __state.__fun_(static_cast<__shape_t>(0), __state.__shape_, __args...);
               _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
-            } catch (...) {
+            }
+            STDEXEC_CATCH_ALL {
               stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
             }
           }
@@ -366,12 +367,13 @@ namespace stdexec {
             }
             _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
           } else {
-            try {
+            STDEXEC_TRY {
               for (__shape_t __i{}; __i != __state.__shape_; ++__i) {
                 __state.__fun_(__i, __args...);
               }
               _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
-            } catch (...) {
+            }
+            STDEXEC_CATCH_ALL {
               stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
             }
           }

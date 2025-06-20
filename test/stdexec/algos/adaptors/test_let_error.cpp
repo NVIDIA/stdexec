@@ -88,9 +88,10 @@ namespace {
                             throw std::logic_error{"error description"};
                           })
                         | ex::let_error([](std::exception_ptr eptr) {
-                            try {
+                            STDEXEC_TRY {
                               std::rethrow_exception(eptr);
-                            } catch (const std::exception& e) {
+                            }
+                            STDEXEC_CATCH(const std::exception& e) {
                               return ex::just(std::string{e.what()});
                             }
                           });

@@ -59,12 +59,14 @@ namespace {
     "spawn will propagate exceptions encountered during op creation",
     "[async_scope][spawn]") {
     async_scope scope;
-    try {
+    STDEXEC_TRY {
       scope.spawn(throwing_sender{} | ex::then([&] { FAIL("work should not be executed"); }));
       FAIL("Exceptions should have been thrown");
-    } catch (const std::logic_error& e) {
+    }
+    STDEXEC_CATCH(const std::logic_error& e) {
       SUCCEED("correct exception caught");
-    } catch (...) {
+    }
+    STDEXEC_CATCH_ALL {
       FAIL("invalid exception caught");
     }
   }

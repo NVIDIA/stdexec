@@ -192,7 +192,7 @@ namespace stdexec {
   template <class _Receiver, class _Fun, class... _As>
   STDEXEC_ATTRIBUTE(host, device)
   void __set_value_invoke(_Receiver&& __rcvr, _Fun&& __fun, _As&&... __as) noexcept {
-    STDEXEC_TRY({
+    STDEXEC_TRY {
       if constexpr (same_as<void, __invoke_result_t<_Fun, _As...>>) {
         __invoke(static_cast<_Fun&&>(__fun), static_cast<_As&&>(__as)...);
         stdexec::set_value(static_cast<_Receiver&&>(__rcvr));
@@ -201,12 +201,12 @@ namespace stdexec {
           static_cast<_Receiver&&>(__rcvr),
           __invoke(static_cast<_Fun&&>(__fun), static_cast<_As&&>(__as)...));
       }
-    })
-    STDEXEC_CATCH((...) { //
+    }
+    STDEXEC_CATCH_ALL {
       if constexpr (!__nothrow_invocable<_Fun, _As...>) {
         stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
       }
-    })
+    }
   }
 
   template <class _Tag, class _Receiver>

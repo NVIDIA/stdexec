@@ -266,10 +266,11 @@ namespace {
       count += 8;
     }(count);
 
-    try {
+    STDEXEC_TRY {
       stdexec::sync_wait(std::move(work));
       CHECK(false);
-    } catch (const std::runtime_error& e) {
+    }
+    STDEXEC_CATCH(const std::runtime_error& e) {
       CHECK(std::string_view(e.what()) == "on noes");
     }
     CHECK(count == 3);

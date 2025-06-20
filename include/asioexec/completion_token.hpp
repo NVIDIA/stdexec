@@ -194,9 +194,10 @@ namespace asioexec {
       template <typename F>
       void run_(F&& f) noexcept {
         const frame_ frame(*this);
-        try {
+        STDEXEC_TRY {
           static_cast<F&&>(f)();
-        } catch (...) {
+        }
+        STDEXEC_CATCH_ALL {
           STDEXEC_ASSERT(frame);
           //  Do not overwrite the first exception encountered
           if (!ex_) {
@@ -255,10 +256,11 @@ namespace asioexec {
         if (self_->ex_) {
           ::stdexec::set_error(static_cast<Receiver&&>(self_->r_), std::move(self_->ex_));
         } else {
-          try {
+          STDEXEC_TRY {
             completion_token::set_value<Signatures>(
               static_cast<Receiver&&>(self_->r_), static_cast<Args&&>(args)...);
-          } catch (...) {
+          }
+          STDEXEC_CATCH_ALL {
             ::stdexec::set_error(static_cast<Receiver&&>(self_->r_), std::current_exception());
           }
         }
@@ -299,7 +301,7 @@ namespace asioexec {
 
       void start() & noexcept {
         const typename base_::frame_ frame(*this);
-        try {
+        STDEXEC_TRY {
           std::apply(
             [&](auto&&... args) {
               std::invoke(
@@ -308,7 +310,8 @@ namespace asioexec {
                 static_cast<decltype(args)&&>(args)...);
             },
             std::move(args_));
-        } catch (...) {
+        }
+        STDEXEC_CATCH_ALL {
           if (!base_::ex_) {
             base_::ex_ = std::current_exception();
           }
