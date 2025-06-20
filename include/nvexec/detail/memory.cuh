@@ -55,13 +55,14 @@ namespace nvexec::_strm {
       T* ptr = nullptr;
       if (status = STDEXEC_LOG_CUDA_API(::cudaMalloc(reinterpret_cast<void**>(&ptr), sizeof(T)));
           status == cudaSuccess) {
-        try {
+        STDEXEC_TRY {
           T h(static_cast<As&&>(as)...);
           status = STDEXEC_LOG_CUDA_API(::cudaMemcpy(ptr, &h, sizeof(T), cudaMemcpyHostToDevice));
           if (status == cudaSuccess) {
             return device_ptr<T>(ptr);
           }
-        } catch (...) {
+        }
+        STDEXEC_CATCH_ALL {
           status = cudaErrorUnknown;
           STDEXEC_ASSERT_CUDA_API(::cudaFree(ptr));
         }
@@ -98,11 +99,12 @@ namespace nvexec::_strm {
     T* ptr = nullptr;
 
     if (status == cudaSuccess) {
-      try {
+      STDEXEC_TRY {
         ptr = static_cast<T*>(resource->allocate(sizeof(T), alignof(T)));
         ::new (static_cast<void*>(ptr)) T(static_cast<As&&>(as)...);
         return host_ptr<T>(ptr, {resource});
-      } catch (...) {
+      }
+      STDEXEC_CATCH_ALL {
         if (ptr) {
           status = cudaErrorUnknown;
           resource->deallocate(ptr, sizeof(T), alignof(T));

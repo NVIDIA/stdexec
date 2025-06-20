@@ -152,10 +152,11 @@ namespace {
       ex::starts_on(pool.get_scheduler(), exec::just_from([](auto sink) {
                       return sink(throwing_copy());
                     })));
-    try {
+    STDEXEC_TRY {
       sync_wait(std::move(snd));
       FAIL("Exceptions should have been thrown");
-    } catch (const std::logic_error& e) {
+    }
+    STDEXEC_CATCH(const std::logic_error& e) {
       SUCCEED("correct exception caught");
     }
     sync_wait(scope.on_empty());
@@ -222,14 +223,16 @@ namespace {
     "spawn_future will propagate exceptions encountered during op creation",
     "[async_scope][spawn_future]") {
     async_scope scope;
-    try {
+    STDEXEC_TRY {
       ex::sender auto snd = scope.spawn_future(
         throwing_sender{} | ex::then([&] { FAIL("work should not be executed"); }));
       (void) snd;
       FAIL("Exceptions should have been thrown");
-    } catch (const std::logic_error& e) {
+    }
+    STDEXEC_CATCH(const std::logic_error& e) {
       SUCCEED("correct exception caught");
-    } catch (...) {
+    }
+    STDEXEC_CATCH_ALL {
       FAIL("invalid exception caught");
     }
     expect_empty(scope);

@@ -71,6 +71,9 @@ EmptyLineAfterAccessModifier: Never
 EmptyLineBeforeAccessModifier: Leave
 ExperimentalAutoDetectBinPacking: true
 FixNamespaceComments: true
+IfMacros: [
+  STDEXEC_CATCH'
+]
 IncludeBlocks: Preserve
 IndentAccessModifiers: false
 IndentCaseBlocks: false
@@ -91,8 +94,6 @@ Macros: [
   'STDEXEC_MISSING_MEMBER(X,Y)=true',
   'STDEXEC_DEFINE_MEMBER(X)=void foo() {}',
   'STDEXEC_AUTO_RETURN(...)=->decltype(auto){ return __VA_ARGS__; }',
-  'STDEXEC_TRY(...)=try { __VA_ARGS__ }',
-  'STDEXEC_CATCH(...)=catch __VA_ARGS__',
 ]
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: All

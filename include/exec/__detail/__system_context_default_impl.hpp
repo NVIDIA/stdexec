@@ -238,12 +238,13 @@ namespace exec::__system_context_default_impl {
 
    public:
     void schedule(std::span<std::byte> __storage, receiver& __r) noexcept override {
-      try {
+      STDEXEC_TRY {
         auto __sndr = stdexec::schedule(__pool_scheduler_);
         auto __os =
           __schedule_operation_t::__construct_maybe_alloc(__storage, &__r, std::move(__sndr));
         __os->start();
-      } catch (std::exception& __e) {
+      }
+      STDEXEC_CATCH(std::exception & __e) {
         __r.set_error(std::current_exception());
       }
     }
@@ -252,7 +253,7 @@ namespace exec::__system_context_default_impl {
       uint32_t __size,
       std::span<std::byte> __storage,
       bulk_item_receiver& __r) noexcept override {
-      try {
+      STDEXEC_TRY {
         // Determine the chunking size based on the ratio between the given size and the number of workers in our pool.
         // Aim at having 2 chunks per worker.
         uint32_t __chunk_size = (__available_parallelism_ > 0
@@ -271,7 +272,8 @@ namespace exec::__system_context_default_impl {
         auto __os = __schedule_bulk_chunked_operation_t::__construct_maybe_alloc(
           __storage, &__r, std::move(__sndr));
         __os->start();
-      } catch (std::exception& __e) {
+      }
+      STDEXEC_CATCH(std::exception & __e) {
         __r.set_error(std::current_exception());
       }
     }
@@ -280,7 +282,7 @@ namespace exec::__system_context_default_impl {
       uint32_t __size,
       std::span<std::byte> __storage,
       bulk_item_receiver& __r) noexcept override {
-      try {
+      STDEXEC_TRY {
         auto __sndr = stdexec::bulk(
           stdexec::schedule(__pool_scheduler_),
           stdexec::par,
@@ -289,7 +291,8 @@ namespace exec::__system_context_default_impl {
         auto __os = __schedule_bulk_unchunked_operation_t::__construct_maybe_alloc(
           __storage, &__r, std::move(__sndr));
         __os->start();
-      } catch (std::exception& __e) {
+      }
+      STDEXEC_CATCH(std::exception & __e) {
         __r.set_error(std::current_exception());
       }
     }

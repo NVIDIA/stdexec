@@ -28,7 +28,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-#if defined(STDEXEC_CLANGD_INVOKED) && STDEXEC_CLANG() && STDEXEC_CUDA()
+#if defined(STDEXEC_CLANGD_INVOKED) && STDEXEC_CLANG() && STDEXEC_CUDA_COMPILATION()
 // clangd doesn't understand CUDA's new/delete operators
 __host__ auto operator new[](std::size_t) -> void*;
 #endif

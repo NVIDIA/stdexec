@@ -135,7 +135,8 @@ namespace exec {
       using _env_t = stdexec::__call_result_t<stdexec::__env::__fwd_fn, stdexec::env_of_t<Rcvr>>;
       using _child_completions_t = stdexec::__completion_signatures_of_t<Sndr, _env_t>;
       using _domain_t = stdexec::__early_domain_of_t<Sndr, stdexec::__none_such>;
-      using _when_all_sndr_t = fork_join_t::_when_all_sndr_t<_child_completions_t, Closures, _domain_t>;
+      using _when_all_sndr_t =
+        fork_join_t::_when_all_sndr_t<_child_completions_t, Closures, _domain_t>;
       using _child_opstate_t =
         stdexec::connect_result_t<Sndr, stdexec::__rcvr_ref_t<_opstate_t, _env_t>>;
       using _fork_opstate_t =
@@ -173,10 +174,11 @@ namespace exec {
       template <class Tag, class... Args>
       STDEXEC_ATTRIBUTE(host, device)
       void _complete(Tag, Args&&... args) noexcept {
-        try {
+        STDEXEC_TRY {
           using _tuple_t = stdexec::__decayed_tuple<Tag, Args...>;
           _cache_.template emplace<_tuple_t>(Tag{}, static_cast<Args&&>(args)...);
-        } catch (...) {
+        }
+        STDEXEC_CATCH_ALL {
           if constexpr (!stdexec::__nothrow_decay_copyable<Args...>) {
             using _tuple_t = stdexec::__tuple_for<stdexec::set_error_t, ::std::exception_ptr>;
             _cache_._results_

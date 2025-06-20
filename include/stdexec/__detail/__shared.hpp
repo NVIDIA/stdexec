@@ -318,10 +318,11 @@ namespace stdexec::__shared {
     /// @post __waiters_ is set to a known "tombstone" value.
     template <class _Tag, class... _As>
     void __complete(_Tag, _As&&... __as) noexcept {
-      try {
+      STDEXEC_TRY {
         using __tuple_t = __decayed_tuple<_Tag, _As...>;
         __results_.template emplace<__tuple_t>(_Tag(), static_cast<_As&&>(__as)...);
-      } catch (...) {
+      }
+      STDEXEC_CATCH_ALL {
         using __tuple_t = __decayed_tuple<set_error_t, std::exception_ptr>;
         __results_.template emplace<__tuple_t>(set_error, std::current_exception());
       }

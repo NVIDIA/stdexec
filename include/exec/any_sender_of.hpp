@@ -341,10 +341,11 @@ namespace exec {
           using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
           _Alloc __alloc{__allocator_};
           _Tp* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
-          try {
+          STDEXEC_TRY {
             std::allocator_traits<_Alloc>::construct(
               __alloc, __pointer, static_cast<_As&&>(__args)...);
-          } catch (...) {
+          }
+          STDEXEC_CATCH_ALL {
             std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
             throw;
           }
@@ -505,10 +506,11 @@ namespace exec {
         using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
         _Alloc __alloc{__allocator_};
         _Tp* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
-        try {
+        STDEXEC_TRY {
           std::allocator_traits<_Alloc>::construct(
             __alloc, __pointer, static_cast<_As&&>(__args)...);
-        } catch (...) {
+        }
+        STDEXEC_CATCH_ALL {
           std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
           throw;
         }

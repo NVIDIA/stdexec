@@ -727,12 +727,13 @@ namespace exec {
       }
       threads_.reserve(threadCount);
 
-      try {
+      STDEXEC_TRY {
         numActive_.store(threadCount << 16u, std::memory_order_relaxed);
         for (std::uint32_t i = 0; i < threadCount; ++i) {
           threads_.emplace_back([this, i] { run(i); });
         }
-      } catch (...) {
+      }
+      STDEXEC_CATCH_ALL {
         request_stop();
         join();
         throw;
@@ -1232,9 +1233,10 @@ namespace exec {
             };
 
             if constexpr (MayThrow) {
-              try {
+              STDEXEC_TRY {
                 sh_state.apply(computation);
-              } catch (...) {
+              }
+              STDEXEC_CATCH_ALL {
                 std::uint32_t expected = total_threads;
 
                 if (sh_state.thread_with_exception_.compare_exchange_strong(
@@ -1360,9 +1362,10 @@ namespace exec {
         shared_state& state = shared_state_;
 
         if constexpr (MayThrow) {
-          try {
+          STDEXEC_TRY {
             state.data_.template emplace<tuple_t>(static_cast<As&&>(as)...);
-          } catch (...) {
+          }
+          STDEXEC_CATCH_ALL {
             stdexec::set_error(std::move(state.rcvr_), std::current_exception());
           }
         } else {

@@ -79,12 +79,16 @@ namespace stdexec {
       __mstring _Context = "In stdexec::when_all()..."_mstr,
       __mstring _Diagnostic =
         "The given sender can complete successfully in more that one way. "
-        "Use stdexec::when_all_with_variant() instead."_mstr>
+        "Use stdexec::when_all_with_variant() instead."_mstr
+    >
     struct _INVALID_WHEN_ALL_ARGUMENT_;
 
     template <class _Sender, class... _Env>
-    using __too_many_value_completions_error =
-      __mexception<_INVALID_WHEN_ALL_ARGUMENT_<>, _WITH_SENDER_<_Sender>, _WITH_ENVIRONMENT_<_Env>...>;
+    using __too_many_value_completions_error = __mexception<
+      _INVALID_WHEN_ALL_ARGUMENT_<>,
+      _WITH_SENDER_<_Sender>,
+      _WITH_ENVIRONMENT_<_Env>...
+    >;
 
     template <class... _Args>
     using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Args> && ...)>;
@@ -93,11 +97,11 @@ namespace stdexec {
     using __set_error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
     template <class _Sender, class... _Env>
-    using __nothrow_decay_copyable_results =
-      __for_each_completion_signature<
-        __completion_signatures_of_t<_Sender, _Env...>,
-        __all_nothrow_decay_copyable,
-        __mand_t>;
+    using __nothrow_decay_copyable_results = __for_each_completion_signature<
+      __completion_signatures_of_t<_Sender, _Env...>,
+      __all_nothrow_decay_copyable,
+      __mand_t
+    >;
 
     template <class... _Env>
     struct __completions_t {
@@ -107,36 +111,42 @@ namespace stdexec {
 
       template <class _Sender, class _ValueTuple, class... _Rest>
       using __value_tuple_t = __minvoke<
-        __if_c<(0 == sizeof...(_Rest)), __mconst<_ValueTuple>, __q<__too_many_value_completions_error>>,
+        __if_c<
+          (0 == sizeof...(_Rest)),
+          __mconst<_ValueTuple>,
+          __q<__too_many_value_completions_error>
+        >,
         _Sender,
-        _Env...>;
+        _Env...
+      >;
 
       template <class _Sender>
-      using __single_values_of_t =
-        __value_types_t<
-          __completion_signatures_of_t<_Sender, _Env...>,
-          __mtransform<__q<__decay_t>, __q<__types>>,
-          __mbind_front_q<__value_tuple_t, _Sender>>;
+      using __single_values_of_t = __value_types_t<
+        __completion_signatures_of_t<_Sender, _Env...>,
+        __mtransform<__q<__decay_t>, __q<__types>>,
+        __mbind_front_q<__value_tuple_t, _Sender>
+      >;
 
       template <class... _Senders>
-      using __set_values_sig_t =
-        __meval<
-          completion_signatures,
-          __minvoke<__mconcat<__qf<set_value_t>>, __single_values_of_t<_Senders>...>>;
+      using __set_values_sig_t = __meval<
+        completion_signatures,
+        __minvoke<__mconcat<__qf<set_value_t>>, __single_values_of_t<_Senders>...>
+      >;
 
       template <class... _Senders>
-      using __f =
-        __meval<
-          __concat_completion_signatures,
-          __meval<__eptr_completion_if_t, __all_nothrow_decay_copyable_results<_Senders...>>,
-          completion_signatures<set_stopped_t()>,
-          __minvoke<__with_default<__qq<__set_values_sig_t>, completion_signatures<>>, _Senders...>,
-          __transform_completion_signatures<
-            __completion_signatures_of_t<_Senders, _Env...>,
-            __mconst<completion_signatures<>>::__f,
-            __set_error_t,
-            completion_signatures<>,
-            __concat_completion_signatures>...>;
+      using __f = __meval<
+        __concat_completion_signatures,
+        __meval<__eptr_completion_if_t, __all_nothrow_decay_copyable_results<_Senders...>>,
+        completion_signatures<set_stopped_t()>,
+        __minvoke<__with_default<__qq<__set_values_sig_t>, completion_signatures<>>, _Senders...>,
+        __transform_completion_signatures<
+          __completion_signatures_of_t<_Senders, _Env...>,
+          __mconst<completion_signatures<>>::__f,
+          __set_error_t,
+          completion_signatures<>,
+          __concat_completion_signatures
+        >...
+      >;
     };
 
     template <class _Receiver, class _ValuesTuple>
@@ -156,23 +166,25 @@ namespace stdexec {
     template <class _Env, __max1_sender<__env_t<_Env>>... _Senders>
     struct __traits {
       // tuple<optional<tuple<Vs1...>>, optional<tuple<Vs2...>>, ...>
-      using __values_tuple =
-        __minvoke<
-          __with_default<
-            __mtransform<__mbind_front_q<__values_opt_tuple_t, _Env>, __q<__tuple_for>>,
-            __ignore>,
-          _Senders...>;
+      using __values_tuple = __minvoke<
+        __with_default<
+          __mtransform<__mbind_front_q<__values_opt_tuple_t, _Env>, __q<__tuple_for>>,
+          __ignore
+        >,
+        _Senders...
+      >;
 
       using __collect_errors = __mbind_front_q<__mset_insert, __mset<>>;
 
-      using __errors_list =
-        __minvoke<
-          __mconcat<>,
-          __if<
-            __mand<__nothrow_decay_copyable_results<_Senders, _Env>...>,
-            __types<>,
-            __types<std::exception_ptr>>,
-          __error_types_of_t<_Senders, __env_t<_Env>, __q<__types>>...>;
+      using __errors_list = __minvoke<
+        __mconcat<>,
+        __if<
+          __mand<__nothrow_decay_copyable_results<_Senders, _Env>...>,
+          __types<>,
+          __types<std::exception_ptr>
+        >,
+        __error_types_of_t<_Senders, __env_t<_Env>, __q<__types>>...
+      >;
 
       using __errors_variant = __mapply<__q<__uniqued_variant_for>, __errors_list>;
     };
@@ -221,7 +233,7 @@ namespace stdexec {
       // Could be non-atomic here and atomic_ref everywhere except __completion_fn
       std::atomic<__state_t> __state_{__started};
       _ErrorsVariant __errors_{};
-      STDEXEC_ATTRIBUTE(no_unique_address) _ValuesTuple __values_{};
+      STDEXEC_ATTRIBUTE(no_unique_address) _ValuesTuple __values_ { };
       __optional<__stop_callback_t> __on_stop_{};
     };
 
@@ -254,20 +266,20 @@ namespace stdexec {
       using __error_t = __mexception<
         _INVALID_ARGUMENTS_TO_WHEN_ALL_,
         __children_of<_Self, __q<_WITH_SENDERS_>>,
-        _WITH_ENVIRONMENT_<_Env>>;
+        _WITH_ENVIRONMENT_<_Env>
+      >;
 
       template <class _Self, class... _Env>
       using __completions = __children_of<_Self, __completions_t<__env_t<_Env>...>>;
 
-      static constexpr auto get_attrs =
-        []<class... _Child>(__ignore, const _Child&...) noexcept {
-          using _Domain = __common_domain_t<_Child...>;
-          if constexpr (__same_as<_Domain, default_domain>) {
-            return env();
-          } else {
-            return prop{get_domain, _Domain()};
-          }
-        };
+      static constexpr auto get_attrs = []<class... _Child>(__ignore, const _Child&...) noexcept {
+        using _Domain = __common_domain_t<_Child...>;
+        if constexpr (__same_as<_Domain, default_domain>) {
+          return env();
+        } else {
+          return prop{get_domain, _Domain()};
+        }
+      };
 
       static constexpr auto get_completion_signatures =
         []<class _Self, class... _Env>(_Self&&, _Env&&...) noexcept {
@@ -279,8 +291,7 @@ namespace stdexec {
         []<class _State, class _Receiver>(
           __ignore,
           _State& __state,
-          const _Receiver& __rcvr) noexcept
-        -> __env_t<env_of_t<const _Receiver&>> {
+          const _Receiver& __rcvr) noexcept -> __env_t<env_of_t<const _Receiver&>> {
         return __mkenv(stdexec::get_env(__rcvr), __state.__stop_source_);
       };
 
@@ -291,11 +302,10 @@ namespace stdexec {
           static_cast<_Self&&>(__self), __when_all::__mk_state_fn(stdexec::get_env(__rcvr)));
       };
 
-      static constexpr auto start =
-        []<class _State, class _Receiver, class... _Operations>(
-          _State& __state,
-          _Receiver& __rcvr,
-          _Operations&... __child_ops) noexcept -> void {
+      static constexpr auto start = []<class _State, class _Receiver, class... _Operations>(
+                                      _State& __state,
+                                      _Receiver& __rcvr,
+                                      _Operations&... __child_ops) noexcept -> void {
         // register stop callback:
         __state.__on_stop_.emplace(
           get_stop_token(stdexec::get_env(__rcvr)), __on_stop_request{__state.__stop_source_});
@@ -327,9 +337,10 @@ namespace stdexec {
           if constexpr (__nothrow_decay_copyable<_Error>) {
             __state.__errors_.template emplace<__decay_t<_Error>>(static_cast<_Error&&>(__err));
           } else {
-            try {
+            STDEXEC_TRY {
               __state.__errors_.template emplace<__decay_t<_Error>>(static_cast<_Error&&>(__err));
-            } catch (...) {
+            }
+            STDEXEC_CATCH_ALL {
               __state.__errors_.template emplace<std::exception_ptr>(std::current_exception());
             }
           }
@@ -368,9 +379,10 @@ namespace stdexec {
             if constexpr ((__nothrow_decay_copyable<_Args> && ...)) {
               __opt_values.emplace(_Tuple{static_cast<_Args&&>(__args)...});
             } else {
-              try {
+              STDEXEC_TRY {
                 __opt_values.emplace(_Tuple{static_cast<_Args&&>(__args)...});
-              } catch (...) {
+              }
+              STDEXEC_CATCH_ALL {
                 __set_error(__state, __rcvr, std::current_exception());
               }
             }
@@ -405,20 +417,17 @@ namespace stdexec {
     };
 
     struct __when_all_with_variant_impl : __sexpr_defaults {
-      static constexpr auto get_attrs =
-        []<class... _Child>(__ignore, const _Child&...) noexcept {
-          using _Domain = __common_domain_t<_Child...>;
-          if constexpr (same_as<_Domain, default_domain>) {
-            return env();
-          } else {
-            return prop{get_domain, _Domain()};
-          }
-        };
+      static constexpr auto get_attrs = []<class... _Child>(__ignore, const _Child&...) noexcept {
+        using _Domain = __common_domain_t<_Child...>;
+        if constexpr (same_as<_Domain, default_domain>) {
+          return env();
+        } else {
+          return prop{get_domain, _Domain()};
+        }
+      };
 
-      static constexpr auto get_completion_signatures =
-        []<class _Sender>(_Sender&&) noexcept
-        -> __completion_signatures_of_t<
-          transform_sender_result_t<default_domain, _Sender, env<>>> {
+      static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
+        -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
         return {};
       };
     };
@@ -450,15 +459,15 @@ namespace stdexec {
     };
 
     struct __transfer_when_all_impl : __sexpr_defaults {
-      static constexpr auto get_attrs =
-        []<class _Scheduler, class... _Child>(const _Scheduler& __sched, const _Child&...) noexcept {
-          using __sndr_t = __call_result_t<when_all_t, _Child...>;
-          using __domain_t = __detail::__early_domain_of_t<__sndr_t, __none_such>;
-          return __sched_attrs{std::cref(__sched), __domain_t{}};
-        };
+      static constexpr auto get_attrs = []<class _Scheduler, class... _Child>(
+                                          const _Scheduler& __sched,
+                                          const _Child&...) noexcept {
+        using __sndr_t = __call_result_t<when_all_t, _Child...>;
+        using __domain_t = __detail::__early_domain_of_t<__sndr_t, __none_such>;
+        return __sched_attrs{std::cref(__sched), __domain_t{}};
+      };
 
-      static constexpr auto get_completion_signatures =
-        []<class _Sender>(_Sender&&) noexcept
+      static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
         -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
         return {};
       };
@@ -491,17 +500,16 @@ namespace stdexec {
     };
 
     struct __transfer_when_all_with_variant_impl : __sexpr_defaults {
-      static constexpr auto get_attrs =
-        []<class _Scheduler, class... _Child>(const _Scheduler& __sched, const _Child&...) noexcept {
-          using __sndr_t = __call_result_t<when_all_with_variant_t, _Child...>;
-          using __domain_t = __detail::__early_domain_of_t<__sndr_t, __none_such>;
-          return __sched_attrs{std::cref(__sched), __domain_t{}};
-        };
+      static constexpr auto get_attrs = []<class _Scheduler, class... _Child>(
+                                          const _Scheduler& __sched,
+                                          const _Child&...) noexcept {
+        using __sndr_t = __call_result_t<when_all_with_variant_t, _Child...>;
+        using __domain_t = __detail::__early_domain_of_t<__sndr_t, __none_such>;
+        return __sched_attrs{std::cref(__sched), __domain_t{}};
+      };
 
-      static constexpr auto get_completion_signatures =
-        []<class _Sender>(_Sender&&) noexcept
-        -> __completion_signatures_of_t<
-          transform_sender_result_t<default_domain, _Sender, env<>>> {
+      static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
+        -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
         return {};
       };
     };

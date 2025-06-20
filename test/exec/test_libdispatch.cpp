@@ -79,10 +79,11 @@ namespace {
                 | stdexec::bulk(stdexec::par, size, expensive_computation) | stdexec::then(add);
 
 
-    try {
+    STDEXEC_TRY {
       stdexec::sync_wait(sender);
       CHECK(false);
-    } catch (int e) {
+    }
+    STDEXEC_CATCH(int e) {
       CHECK(e == 999);
     }
   }

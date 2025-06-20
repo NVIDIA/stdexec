@@ -137,14 +137,15 @@ namespace exec {
         STDEXEC_ASSERT(__pair_.__count_ > 0);
         __child_op_.__destroy(); // ... because this could potentially invalidate them.
         if constexpr (same_as<_Tag, set_value_t>) {
-          try {
+          STDEXEC_TRY {
             if (--__pair_.__count_ == 0) {
               stdexec::set_value(static_cast<_Receiver &&>(this->__receiver()));
             } else {
               __connect();
               stdexec::start(__child_op_.__get());
             }
-          } catch (...) {
+          }
+          STDEXEC_CATCH_ALL {
             stdexec::set_error(
               static_cast<_Receiver &&>(this->__receiver()), std::current_exception());
           }

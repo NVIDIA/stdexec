@@ -98,10 +98,11 @@ namespace {
     }
 
     void _retry() noexcept {
-      try {
+      STDEXEC_TRY {
         o_.emplace(_connect()); // potentially throwing
         stdexec::start(*o_);
-      } catch (...) {
+      }
+      STDEXEC_CATCH_ALL {
         stdexec::set_error(static_cast<R&&>(r_), std::current_exception());
       }
     }

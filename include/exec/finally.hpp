@@ -96,13 +96,14 @@ namespace exec {
               __visitor<_Receiver>{static_cast<_Receiver&&>(__op_->__receiver_)},
               static_cast<_ResultType&&>(__result));
           } else {
-            try {
+            STDEXEC_TRY {
               _ResultType __result = static_cast<_ResultType&&>(__op_->__result_.__get());
               __op_->__result_.__destroy();
               std::visit(
                 __visitor<_Receiver>{static_cast<_Receiver&&>(__op_->__receiver_)},
                 static_cast<_ResultType&&>(__result));
-            } catch (...) {
+            }
+            STDEXEC_CATCH_ALL {
               stdexec::set_error(
                 static_cast<_Receiver&&>(__op_->__receiver_), std::current_exception());
             }
@@ -158,10 +159,11 @@ namespace exec {
 
         template <class... _As>
         void set_value(_As&&... __as) noexcept {
-          try {
+          STDEXEC_TRY {
             __op_
               ->__store_result_and_start_next_op(stdexec::set_value, static_cast<_As&&>(__as)...);
-          } catch (...) {
+          }
+          STDEXEC_CATCH_ALL {
             stdexec::set_error(
               static_cast<_Receiver&&>(__op_->__receiver_), std::current_exception());
           }
@@ -169,19 +171,21 @@ namespace exec {
 
         template <class _Error>
         void set_error(_Error&& __err) noexcept {
-          try {
+          STDEXEC_TRY {
             __op_
               ->__store_result_and_start_next_op(stdexec::set_error, static_cast<_Error&&>(__err));
-          } catch (...) {
+          }
+          STDEXEC_CATCH_ALL {
             stdexec::set_error(
               static_cast<_Receiver&&>(__op_->__receiver_), std::current_exception());
           }
         }
 
         void set_stopped() noexcept {
-          try {
+          STDEXEC_TRY {
             __op_->__store_result_and_start_next_op(stdexec::set_stopped);
-          } catch (...) {
+          }
+          STDEXEC_CATCH_ALL {
             stdexec::set_error(
               static_cast<_Receiver&&>(__op_->__receiver_), std::current_exception());
           }

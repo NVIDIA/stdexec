@@ -57,8 +57,7 @@ namespace exec {
 
       template <class... Ts>
         requires stdexec::__sigs::__is_compl_sig<_set_tag_t(Ts...)>
-      auto
-        operator()(Ts&&...) const noexcept -> stdexec::completion_signatures<_set_tag_t(Ts...)> {
+      auto operator()(Ts&&...) const noexcept -> stdexec::completion_signatures<_set_tag_t(Ts...)> {
         return {};
       }
     };
@@ -85,9 +84,10 @@ namespace exec {
         if constexpr (stdexec::__nothrow_callable<Fn, _complete_fn<Rcvr>>) {
           static_cast<Fn&&>(_fn)(_complete_fn<Rcvr>{_rcvr});
         } else {
-          try {
+          STDEXEC_TRY {
             static_cast<Fn&&>(_fn)(_complete_fn<Rcvr>{_rcvr});
-          } catch (...) {
+          }
+          STDEXEC_CATCH_ALL {
             stdexec::set_error(static_cast<Rcvr&&>(_rcvr), std::current_exception());
           }
         }
