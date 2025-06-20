@@ -224,17 +224,17 @@ namespace stdexec {
       }
     };
 
-    struct get_domain_late_t {
+    struct get_domain_override_t {
       template <class _Ty>
-        requires tag_invocable<get_domain_late_t, const _Ty&>
+        requires tag_invocable<get_domain_override_t, const _Ty&>
       constexpr auto operator()(const _Ty&) const noexcept
-        -> __decay_t<tag_invoke_result_t<get_domain_late_t, const _Ty&>> {
+        -> __decay_t<tag_invoke_result_t<get_domain_override_t, const _Ty&>> {
         static_assert(
-          nothrow_tag_invocable<get_domain_late_t, const _Ty&>,
-          "Customizations of get_domain_late must be noexcept.");
+          nothrow_tag_invocable<get_domain_override_t, const _Ty&>,
+          "Customizations of get_domain_override must be noexcept.");
         static_assert(
-          __class<__decay_t<tag_invoke_result_t<get_domain_late_t, const _Ty&>>>,
-          "Customizations of get_domain_late must return a class type.");
+          __class<__decay_t<tag_invoke_result_t<get_domain_override_t, const _Ty&>>>,
+          "Customizations of get_domain_override must return a class type.");
         return {};
       }
 
@@ -296,7 +296,7 @@ namespace stdexec {
   using __queries::get_stop_token_t;
   using __queries::get_completion_scheduler_t;
   using __queries::get_domain_t;
-  using __queries::get_domain_late_t;
+  using __queries::get_domain_override_t;
   using __queries::__is_scheduler_affine_t;
   using __queries::__root_t;
   using __queries::__root_env;
@@ -329,7 +329,7 @@ namespace stdexec {
   concept __forwarding_query = forwarding_query(_Tag{});
 
   inline constexpr get_domain_t get_domain{};
-  inline constexpr get_domain_late_t get_domain_late{};
+  inline constexpr get_domain_override_t get_domain_override{};
 
   template <class _Tag, class _Queryable, class _Default>
   using __query_result_or_t = __call_result_t<query_or_t, _Tag, _Queryable, _Default>;
@@ -688,7 +688,7 @@ namespace stdexec {
       return {};
     }
 
-    constexpr auto query(get_domain_late_t) const noexcept -> _LateDomain
+    constexpr auto query(get_domain_override_t) const noexcept -> _LateDomain
       requires(!same_as<_LateDomain, __none_such>)
     {
       return {};
