@@ -113,7 +113,7 @@ namespace {
 
     [[nodiscard]]
     auto get_env() const noexcept {
-      return ex::prop{ex::get_domain_late, domain{}};
+      return ex::prop{ex::get_domain_override, domain{}};
     }
 
     template <class Receiver>

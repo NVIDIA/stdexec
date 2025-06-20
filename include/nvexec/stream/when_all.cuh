@@ -150,7 +150,7 @@ namespace nvexec::_strm {
           }
         }
 
-        constexpr auto query(get_domain_late_t) const noexcept
+        constexpr auto query(get_domain_override_t) const noexcept
           requires stdexec::__same_as<WhenAllTag, transfer_when_all_t>
         {
           static_assert(
