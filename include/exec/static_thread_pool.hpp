@@ -736,7 +736,7 @@ namespace exec {
       STDEXEC_CATCH_ALL {
         request_stop();
         join();
-        throw;
+        STDEXEC_THROW();
       }
     }
 

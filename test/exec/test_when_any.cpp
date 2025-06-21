@@ -221,7 +221,9 @@ namespace {
     }
   };
 
+#if !STDEXEC_STD_NO_EXCEPTIONS()
   TEST_CASE("when_any - with duplicate completions", "[adaptors][when_any]") {
     REQUIRE_THROWS(stdexec::sync_wait(exec::when_any(dup_sender{})));
   }
+#endif // !STDEXEC_STD_NO_EXCEPTIONS()
 } // namespace

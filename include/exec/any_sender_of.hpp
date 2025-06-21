@@ -347,7 +347,7 @@ namespace exec {
           }
           STDEXEC_CATCH_ALL {
             std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
-            throw;
+            STDEXEC_THROW();
           }
           __object_pointer_ = __pointer;
         }
@@ -512,7 +512,7 @@ namespace exec {
         }
         STDEXEC_CATCH_ALL {
           std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
-          throw;
+          STDEXEC_THROW();
         }
         __object_pointer_ = __pointer;
       }

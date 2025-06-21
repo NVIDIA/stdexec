@@ -23,6 +23,7 @@ namespace {
     loop.run();
   }
 
+#if !STDEXEC_STD_NO_EXCEPTIONS()
   //! Sender that throws exception when connected
   struct throwing_sender {
     using sender_concept = stdexec::sender_t;
@@ -43,6 +44,7 @@ namespace {
       throw std::logic_error("cannot connect");
     }
   };
+#endif // !STDEXEC_STD_NO_EXCEPTIONS()
 
   TEST_CASE("spawn_future will execute its work", "[async_scope][spawn_future]") {
     impulse_scheduler sch;
@@ -136,6 +138,7 @@ namespace {
     expect_empty(scope);
   }
 
+#if !STDEXEC_STD_NO_EXCEPTIONS()
   TEST_CASE("spawn_future with throwing copy", "[async_scope][spawn_future]") {
     async_scope scope;
     exec::static_thread_pool pool{2};
@@ -161,6 +164,7 @@ namespace {
     }
     sync_wait(scope.on_empty());
   }
+#endif // !STDEXEC_STD_NO_EXCEPTIONS()
 
   TEST_CASE(
     "spawn_future returned sender can be connected but not started",
@@ -218,7 +222,7 @@ namespace {
     expect_empty(scope);
   }
 
-#if !NO_TESTS_WITH_EXCEPTIONS
+#if !STDEXEC_STD_NO_EXCEPTIONS()
   TEST_CASE(
     "spawn_future will propagate exceptions encountered during op creation",
     "[async_scope][spawn_future]") {
@@ -237,7 +241,7 @@ namespace {
     }
     expect_empty(scope);
   }
-#endif
+#endif // !STDEXEC_STD_NO_EXCEPTIONS()
 
   TEST_CASE(
     "TODO: spawn_future will keep the scope non-empty until the work is executed",

@@ -109,13 +109,7 @@ namespace {
   }
 
   TEST_CASE("can call set_error on a receiver", "[cpo][cpo_receiver]") {
-    std::exception_ptr ex;
-    STDEXEC_TRY {
-      throw std::bad_alloc{};
-    }
-    STDEXEC_CATCH_ALL {
-      ex = std::current_exception();
-    }
+    std::exception_ptr ex = std::make_exception_ptr(std::bad_alloc{});
     ex::set_error(expect_error_receiver{}, ex);
   }
 

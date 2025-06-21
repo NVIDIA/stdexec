@@ -71,6 +71,7 @@ namespace {
     CHECK_FALSE(stdexec::sync_wait(sndr));
   }
 
+#if !STDEXEC_STD_NO_EXCEPTIONS()
   TEST_CASE("ignore_all_values - ignore just_error()", "[sequence_senders][ignore_all_values]") {
     auto sndr = exec::ignore_all_values(
       stdexec::just_error(std::make_exception_ptr(std::runtime_error("test"))));
@@ -83,6 +84,7 @@ namespace {
       >);
     CHECK_THROWS(stdexec::sync_wait(sndr));
   }
+#endif // !STDEXEC_STD_NO_EXCEPTIONS()
 
   struct sequence_op {
     void start() & noexcept {

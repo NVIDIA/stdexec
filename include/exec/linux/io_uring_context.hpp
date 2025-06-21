@@ -62,7 +62,7 @@ namespace exec {
 
     inline void __throw_error_code_if(bool __cond, int __ec) {
       if (__cond) {
-        throw std::system_error(__ec, std::system_category());
+        STDEXEC_THROW(std::system_error(__ec, std::system_category()));
       }
     }
 
@@ -371,14 +371,15 @@ namespace exec {
 
       void wakeup() {
         if (auto __ec = try_wakeup()) {
-          throw std::system_error{__ec};
+          STDEXEC_THROW(std::system_error{__ec});
         }
       }
 
       /// @brief Resets the io context to its initial state.
       void reset() {
         if (__is_running_.load(std::memory_order_relaxed) || __n_total_submitted_ > 0) {
-          throw std::runtime_error("exec::io_uring_context::reset() called on a running context");
+          STDEXEC_THROW(
+            std::runtime_error("exec::io_uring_context::reset() called on a running context"));
         }
         __n_submissions_in_flight_.store(0, std::memory_order_relaxed);
         __stop_source_.reset();
@@ -474,7 +475,8 @@ namespace exec {
         // Only one thread of execution is allowed to drive the io context.
         if (!__is_running_
                .compare_exchange_strong(expected_running, true, std::memory_order_relaxed)) {
-          throw std::runtime_error("exec::io_uring_context::run() called on a running context");
+          STDEXEC_THROW(
+            std::runtime_error("exec::io_uring_context::run() called on a running context"));
         } else {
           // Check whether we restart the context after a context-wide stop.
           // We have to reset the stop source in this case.

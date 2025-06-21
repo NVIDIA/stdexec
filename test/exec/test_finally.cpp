@@ -63,6 +63,7 @@ namespace {
     CHECK(i == 42);
   }
 
+#if !STDEXEC_STD_NO_EXCEPTIONS()
   TEST_CASE("finally does not execute the final action and throws integer", "[adaptors][finally]") {
     bool called = false;
 
@@ -77,6 +78,7 @@ namespace {
     CHECK_THROWS_AS(sync_wait(s), int);
     CHECK(called);
   }
+#endif // !STDEXEC_STD_NO_EXCEPTIONS()
 
   TEST_CASE("finally includes the error types of the final action", "[adaptors][finally]") {
     auto s = exec::finally(just(), just_error(42));

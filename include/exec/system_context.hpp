@@ -637,7 +637,7 @@ namespace exec {
   inline auto get_parallel_scheduler() -> parallel_scheduler {
     auto __impl = system_context_replaceability::query_parallel_scheduler_backend();
     if (!__impl) {
-      throw std::runtime_error{"No system context implementation found"};
+      STDEXEC_THROW(std::runtime_error{"No system context implementation found"});
     }
     return parallel_scheduler{std::move(__impl)};
   }

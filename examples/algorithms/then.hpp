@@ -41,10 +41,11 @@ class _then_receiver : public stdexec::receiver_adaptor<_then_receiver<R, F>, R>
   template <class... As>
     requires stdexec::receiver_of<R, _completions<As...>>
   void set_value(As&&... as) && noexcept {
-    try {
+    STDEXEC_TRY {
       stdexec::set_value(
         std::move(*this).base(), std::invoke(static_cast<F&&>(f_), static_cast<As&&>(as)...));
-    } catch (...) {
+    }
+    STDEXEC_CATCH_ALL {
       stdexec::set_error(std::move(*this).base(), std::current_exception());
     }
   }

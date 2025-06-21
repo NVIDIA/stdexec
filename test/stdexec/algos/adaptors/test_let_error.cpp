@@ -83,6 +83,7 @@ namespace {
     stdexec::sync_wait(std::move(snd));
   }
 
+#if !STDEXEC_STD_NO_EXCEPTIONS()
   TEST_CASE("let_error can be used to produce values (error to value)", "[adaptors][let_error]") {
     ex::sender auto snd = ex::just() | ex::then([]() -> std::string {
                             throw std::logic_error{"error description"};
@@ -121,6 +122,7 @@ namespace {
     auto op = ex::connect(std::move(snd), expect_error_receiver{13});
     ex::start(op);
   }
+#endif // !STDEXEC_STD_NO_EXCEPTIONS()
 
   TEST_CASE("let_error can be used with just_stopped", "[adaptors][let_error]") {
     ex::sender auto snd = ex::just_stopped()

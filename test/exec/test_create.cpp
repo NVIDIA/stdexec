@@ -69,10 +69,15 @@ namespace {
       });
     }(1, 2);
 
+#if STDEXEC_STD_NO_EXCEPTIONS()
+    auto [res] = stdexec::sync_wait(std::move(snd)).value();
+    CHECK(res == 3);
+#else
     REQUIRE_NOTHROW([&] {
       auto [res] = stdexec::sync_wait(std::move(snd)).value();
       CHECK(res == 3);
     }());
+#endif
   }
 
   TEST_CASE_METHOD(

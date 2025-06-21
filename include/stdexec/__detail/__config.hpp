@@ -38,6 +38,7 @@
 #endif
 
 #include <cassert>
+#include <cstdlib>
 #include <type_traits> // IWYU pragma: keep
 
 // When used with no arguments, these macros expand to 1 if the current
@@ -483,11 +484,11 @@ namespace stdexec {
 #endif
 
 #if STDEXEC_CUDA_COMPILATION() && defined(__CUDA_ARCH__)
-#  define STDEXEC_NO_EXCEPTIONS() 1
+#  define STDEXEC_STD_NO_EXCEPTIONS() 1
 #elif STDEXEC_MSVC()
-#  define STDEXEC_NO_EXCEPTIONS() (_HAS_EXCEPTIONS == 0) || (_CPPUNWIND == 0)
+#  define STDEXEC_STD_NO_EXCEPTIONS() (_HAS_EXCEPTIONS == 0) || (_CPPUNWIND == 0)
 #else
-#  define STDEXEC_NO_EXCEPTIONS() (__EXCEPTIONS == 0)
+#  define STDEXEC_STD_NO_EXCEPTIONS() (__EXCEPTIONS == 0)
 #endif
 
 // We need to treat host and device separately
@@ -538,18 +539,20 @@ namespace stdexec {
 //   {
 //     printf("unknown error\n");
 //   }
-#if STDEXEC_NO_EXCEPTIONS()
+#if STDEXEC_STD_NO_EXCEPTIONS()
 #  define STDEXEC_TRY if constexpr (true)
 #  define STDEXEC_CATCH(...)                                                                       \
-    else if constexpr (__VA_ARGS__ = ::stdexec::_catch_any_lvalue{}; false)
+    else if constexpr ([[maybe_unused]] __VA_ARGS__ = ::stdexec::_catch_any_lvalue{}; false)
 #  define STDEXEC_CATCH_ALL                                                                        \
     else if constexpr (true) {                                                                     \
     }                                                                                              \
     else
+#  define STDEXEC_THROW(...) ::stdexec::__terminate()
 #else
-#  define STDEXEC_TRY       try
-#  define STDEXEC_CATCH     catch
-#  define STDEXEC_CATCH_ALL STDEXEC_CATCH(...)
+#  define STDEXEC_TRY        try
+#  define STDEXEC_CATCH      catch
+#  define STDEXEC_CATCH_ALL  STDEXEC_CATCH(...)
+#  define STDEXEC_THROW(...) throw __VA_ARGS__
 #endif
 
 namespace stdexec {
@@ -559,6 +562,14 @@ namespace stdexec {
     STDEXEC_ATTRIBUTE(host, device)
     operator _Tp&() const noexcept;
   };
+
+  STDEXEC_ATTRIBUTE(noreturn, host, device)
+
+  inline void __terminate() noexcept {
+    STDEXEC_IF_HOST(::exit(-1))
+    STDEXEC_IF_DEVICE(__trap())
+    STDEXEC_UNREACHABLE();
+  }
 } // namespace stdexec
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
