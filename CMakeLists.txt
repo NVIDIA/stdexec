@@ -67,8 +67,10 @@ message(STATUS "Build date       : ${STDEXEC_BUILD_DATE}")
 message(STATUS "Build year       : ${STDEXEC_BUILD_YEAR}")
 message(STATUS)
 
-# Integrate with LLVM/clang tooling
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/clangd_compile_info.cmake)
+if (STDEXEC_IS_TOP_LEVEL)
+  # Integrate with LLVM/clang tooling
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/clangd_compile_info.cmake)
+endif()
 
 # Write the version header
 rapids_cmake_write_version_file(include/stdexec_version_config.hpp)
