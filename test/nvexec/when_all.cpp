@@ -26,18 +26,16 @@ namespace {
     auto flags = flags_storage.get();
 
     auto snd = ex::when_all(
-      ex::schedule(stream_ctx.get_scheduler())
-        | ex::then([=] {
-            if (is_on_gpu()) {
-              flags.set(0);
-            }
-          }),
-      ex::schedule(stream_ctx.get_scheduler())
-        | ex::then([=] {
-            if (is_on_gpu()) {
-              flags.set(1);
-            }
-          }));
+      ex::schedule(stream_ctx.get_scheduler()) | ex::then([=] {
+        if (is_on_gpu()) {
+          flags.set(0);
+        }
+      }),
+      ex::schedule(stream_ctx.get_scheduler()) | ex::then([=] {
+        if (is_on_gpu()) {
+          flags.set(1);
+        }
+      }));
     stdexec::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());

@@ -274,14 +274,15 @@ namespace exec_old {
 
     threads_.reserve(threadCount);
 
-    try {
+    STDEXEC_TRY {
       for (std::uint32_t i = 0; i < threadCount; ++i) {
         threads_.emplace_back([this, i] { run(i); });
       }
-    } catch (...) {
+    }
+    STDEXEC_CATCH_ALL {
       request_stop();
       join();
-      throw;
+      STDEXEC_THROW();
     }
   }
 

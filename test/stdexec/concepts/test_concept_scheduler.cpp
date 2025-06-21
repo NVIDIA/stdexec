@@ -94,7 +94,7 @@ namespace {
 
     [[nodiscard]]
     auto schedule() const -> my_sender {
-      throw std::logic_error("err");
+      STDEXEC_THROW(std::logic_error("err"));
       return {};
     }
 

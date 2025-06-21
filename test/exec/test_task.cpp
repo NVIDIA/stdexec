@@ -254,6 +254,7 @@ namespace {
     CHECK(count == 3);
   }
 
+#  if !STDEXEC_STD_NO_EXCEPTIONS()
   TEST_CASE("task - can error early", "[types][task]") {
     int count = 0;
     auto work = [](int& count) -> exec::task<void> {
@@ -266,16 +267,15 @@ namespace {
       count += 8;
     }(count);
 
-    STDEXEC_TRY {
+    try {
       stdexec::sync_wait(std::move(work));
       CHECK(false);
-    }
-    STDEXEC_CATCH(const std::runtime_error& e) {
+    } catch (const std::runtime_error& e) {
       CHECK(std::string_view(e.what()) == "on noes");
     }
     CHECK(count == 3);
   }
-
+#  endif // !STDEXEC_STD_NO_EXCEPTIONS()
 } // namespace
 
 #endif

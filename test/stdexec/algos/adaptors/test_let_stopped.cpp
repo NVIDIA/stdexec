@@ -74,12 +74,14 @@ namespace {
     wait_for_value(std::move(snd), std::string{"cancelled"});
   }
 
+#if !STDEXEC_STD_NO_EXCEPTIONS()
   TEST_CASE("let_stopped can throw, calling set_error", "[adaptors][let_stopped]") {
     auto snd = ex::just_stopped()
              | ex::let_stopped([]() -> decltype(ex::just(0)) { throw std::logic_error{"err"}; });
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
   }
+#endif // !STDEXEC_STD_NO_EXCEPTIONS()
 
   TEST_CASE("let_stopped can be used with just_error", "[adaptors][let_stopped]") {
     ex::sender auto snd = ex::just_error(1) | ex::let_stopped([] { return ex::just(17); });

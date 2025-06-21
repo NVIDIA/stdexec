@@ -56,7 +56,7 @@ namespace {
 
     [[nodiscard]]
     auto connect(ex::__ignore) const -> op {
-      throw connect_exception{};
+      STDEXEC_THROW(connect_exception{});
     }
   };
 } // namespace
@@ -131,9 +131,11 @@ TEST_CASE("sequence with two arguments works", "[sequence]") {
   }
 }
 
+#if !STDEXEC_STD_NO_EXCEPTIONS()
 TEST_CASE("sequence with sender with throwing connect", "[sequence]") {
   auto err = std::make_exception_ptr(connect_exception{});
   auto sndr = exec::sequence(ex::just(big{}), throwing_connect{}, ex::just(big{}, 42));
   auto op = ex::connect(std::move(sndr), expect_error_receiver{err});
   ex::start(op);
 }
+#endif // !STDEXEC_STD_NO_EXCEPTIONS()

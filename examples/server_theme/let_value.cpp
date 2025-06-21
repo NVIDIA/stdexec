@@ -52,6 +52,7 @@
 // Use a thread pool
 #include "exec/static_thread_pool.hpp"
 
+#if !STDEXEC_STD_NO_EXCEPTIONS()
 namespace ex = stdexec;
 
 struct http_request {
@@ -151,3 +152,11 @@ auto main() -> int {
 
   return 0;
 }
+
+#else
+
+int main() {
+  std::cout << "This example requires C++ exceptions to be enabled.\n";
+  return 0;
+}
+#endif // !STDEXEC_STD_NO_EXCEPTIONS()
