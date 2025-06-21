@@ -446,7 +446,7 @@ namespace exec {
       }
 
       __t(const __t& __other)
-        requires(_Copyable)
+        requires(_Copyable) : __vtable_(__other.__vtable_)
       {
         (*__other.__vtable_)(__copy_construct, this, __other);
       }
@@ -461,7 +461,7 @@ namespace exec {
         return *this;
       }
 
-      __t(__t&& __other) noexcept {
+      __t(__t&& __other) noexcept : __vtable_(__other.__vtable_) {
         (*__other.__vtable_)(__move_construct, this, static_cast<__t&&>(__other));
       }
 

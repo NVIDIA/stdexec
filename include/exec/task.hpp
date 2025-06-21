@@ -320,16 +320,16 @@ namespace exec {
 
      private:
       struct __final_awaitable {
-        static constexpr auto await_ready() noexcept -> bool {
+        constexpr auto await_ready() noexcept -> bool {
           return false;
         }
 
-        static auto await_suspend(__coro::coroutine_handle<__promise> __h) noexcept
+        auto await_suspend(__coro::coroutine_handle<__promise> __h) noexcept
           -> __coro::coroutine_handle<> {
           return __h.promise().continuation().handle();
         }
 
-        static void await_resume() noexcept {
+        void await_resume() noexcept {
         }
       };
 
@@ -369,6 +369,7 @@ namespace exec {
           this->__data_.template emplace<1>(std::current_exception());
         }
 
+#ifndef __clang_analyzer__
         template <sender _Awaitable>
           requires __scheduler_provider<_Context>
         auto await_transform(_Awaitable&& __awaitable) noexcept -> decltype(auto) {
@@ -396,6 +397,7 @@ namespace exec {
           __context_->set_scheduler(__box.__sched_);
           return as_awaitable(schedule(__box.__sched_), *this);
         }
+#endif
 
         template <class _Awaitable>
         auto await_transform(_Awaitable&& __awaitable) noexcept -> decltype(auto) {
