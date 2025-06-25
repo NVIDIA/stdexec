@@ -233,6 +233,26 @@ TEST_CASE("simple bulk_unchunked task on system context", "[types][system_schedu
   }
 }
 
+TEST_CASE("bulk_unchunked with seq will run everything on one thread", "[types][system_scheduler]") {
+  std::thread::id this_id = std::this_thread::get_id();
+  constexpr size_t num_tasks = 16;
+  std::thread::id pool_ids[num_tasks];
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
+
+  auto bulk_snd = ex::bulk_unchunked(ex::schedule(sched), ex::seq, num_tasks, [&](unsigned long id) {
+    pool_ids[id] = std::this_thread::get_id();
+    std::this_thread::sleep_for(std::chrono::milliseconds{1});
+  });
+
+  ex::sync_wait(std::move(bulk_snd));
+
+  for (auto pool_id: pool_ids) {
+    REQUIRE(pool_id != std::thread::id{});
+    REQUIRE(this_id != pool_id);
+    REQUIRE(pool_id == pool_ids[0]); // All should be the same
+  }
+}
+
 TEST_CASE("bulk_chunked on parallel_scheduler performs chunking", "[types][system_scheduler]") {
   std::atomic<bool> has_chunking = false;
 
