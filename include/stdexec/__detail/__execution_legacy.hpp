@@ -56,16 +56,9 @@ namespace stdexec {
     parallel_unsequenced_policy& operator=(const parallel_unsequenced_policy&) = delete;
   };
 
-  struct unsequenced_policy {
-    constexpr explicit unsequenced_policy(__hidden_construction) { };
-    unsequenced_policy(const unsequenced_policy&) = delete;
-    unsequenced_policy& operator=(const unsequenced_policy&) = delete;
-  };
-
   inline constexpr sequenced_policy seq{__hidden_construction{}};
   inline constexpr parallel_policy par{__hidden_construction{}};
   inline constexpr parallel_unsequenced_policy par_unseq{__hidden_construction{}};
-  inline constexpr unsequenced_policy unseq{__hidden_construction{}};
 
   template <typename>
   inline constexpr bool is_execution_policy_v = false;
@@ -79,11 +72,35 @@ namespace stdexec {
   template <>
   inline constexpr bool is_execution_policy_v<parallel_unsequenced_policy> = true;
 
-  template <>
-  inline constexpr bool is_execution_policy_v<unsequenced_policy> = true;
-
   template <class _T>
   struct is_execution_policy : std::bool_constant<is_execution_policy_v<_T>> { };
 
 #endif
+
+#if STDEXEC_HAS_UNSEQUENCED_EXECUTION_POLICY()
+
+  using unsequenced_policy = std::execution::unsequenced_policy;
+
+  using unseq = std::execution::unseq;
+
+#else
+
+#if STDEXEC_HAS_EXECUTION_POLICY()
+  // already defined above
+  struct __hidden_construction { };
+#endif
+
+  struct unsequenced_policy {
+    constexpr explicit unsequenced_policy(__hidden_construction) { };
+    unsequenced_policy(const unsequenced_policy&) = delete;
+    unsequenced_policy& operator=(const unsequenced_policy&) = delete;
+  };
+
+  inline constexpr unsequenced_policy unseq{__hidden_construction{}};
+
+  template <>
+  inline constexpr bool is_execution_policy_v<unsequenced_policy> = true;
+
+#endif
+
 } // namespace stdexec
