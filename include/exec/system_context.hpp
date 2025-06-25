@@ -374,9 +374,16 @@ namespace exec {
         auto __state = reinterpret_cast<_BulkState*>(this);
         if constexpr (_BulkState::__is_unchunked) {
           (void) __end; // not used
-          std::apply(
-            [&](auto&&... __args) { __state->__fun_(__begin, __args...); },
-            *reinterpret_cast<std::tuple<_As...>*>(__base_t::__arguments_data_));
+          // If we are not parallelizing, we need to run all the iterations sequentially.
+          uint32_t __increments = 1;
+          if constexpr (!_BulkState::__parallelize) {
+            __increments = __state->__size_;
+          }
+          for (uint32_t __i = __begin; __i < __begin + __increments; __i++) {
+            std::apply(
+              [&](auto&&... __args) { __state->__fun_(__i, __args...); },
+              *reinterpret_cast<std::tuple<_As...>*>(__base_t::__arguments_data_));
+          }
         } else {
           // If we are not parallelizing, we need to pass the entire range to the functor.
           if constexpr (!_BulkState::__parallelize) {
@@ -464,7 +471,8 @@ namespace exec {
         // Schedule the bulk work on the system scheduler.
         // This will invoke `execute` on our receiver multiple times, and then a completion signal (e.g., `set_value`).
         if constexpr (_BulkState::__is_unchunked) {
-          __scheduler->schedule_bulk_unchunked(__size, __storage, *__r);
+          __scheduler
+            ->schedule_bulk_unchunked(_BulkState::__parallelize ? __size : 1, __storage, *__r);
         } else {
           __scheduler
             ->schedule_bulk_chunked(_BulkState::__parallelize ? __size : 1, __storage, *__r);
@@ -677,9 +685,17 @@ namespace exec {
     template <class _Data, class _Previous>
     auto
       operator()(stdexec::bulk_unchunked_t, _Data&& __data, _Previous&& __previous) const noexcept {
-      auto [__unused_pol, __shape, __fn] = static_cast<_Data&&>(__data);
-      return __parallel_bulk_sender<true, _Previous, decltype(__shape), decltype(__fn), true>{
-        __sched_, static_cast<_Previous&&>(__previous), __shape, std::move(__fn)};
+      auto [__pol, __shape, __fn] = static_cast<_Data&&>(__data);
+      using __policy_t = std::remove_cvref_t<decltype(__pol.__get())>;
+      constexpr bool __parallelize = std::same_as<__policy_t, stdexec::parallel_policy>
+                                  || std::same_as<__policy_t, stdexec::parallel_unsequenced_policy>;
+      return __parallel_bulk_sender<
+        true,
+        _Previous,
+        decltype(__shape),
+        decltype(__fn),
+        __parallelize
+      >{__sched_, static_cast<_Previous&&>(__previous), __shape, std::move(__fn)};
     }
 
     parallel_scheduler __sched_;
