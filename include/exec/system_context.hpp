@@ -98,7 +98,8 @@ namespace exec {
   /// The execution domain of the parallel_scheduler, used for the purposes of customizing
   /// sender algorithms such as `bulk_chunked` and `bulk_unchunked`.
   struct __parallel_scheduler_domain : stdexec::default_domain {
-    /// Schedules new bulk chunked work.
+    template <__bulk_chunked_or_unchunked _Sender>
+    auto transform_sender(_Sender&& __sndr) const noexcept;
     template <__bulk_chunked_or_unchunked _Sender, class _Env>
     auto transform_sender(_Sender&& __sndr, const _Env& __env) const noexcept;
   };
@@ -706,6 +707,22 @@ namespace exec {
     using sender_concept = stdexec::sender_t;
   };
 
+  template <__bulk_chunked_or_unchunked _Sender>
+  auto __parallel_scheduler_domain::transform_sender(_Sender&& __sndr)
+    const noexcept {
+    if constexpr (stdexec::__completes_on<_Sender, parallel_scheduler>) {
+      auto __sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
+        stdexec::get_env(__sndr));
+      return stdexec::__sexpr_apply(
+        static_cast<_Sender&&>(__sndr), __transform_parallel_bulk_sender{__sched});
+    } else {
+      static_assert(
+        stdexec::__completes_on<_Sender, parallel_scheduler>,
+        "No parallel_scheduler instance can be found in the sender's "
+        "environment on which to schedule bulk work.");
+      return __not_a_sender<stdexec::__name_of<_Sender>>();
+    }
+  }
   template <__bulk_chunked_or_unchunked _Sender, class _Env>
   auto __parallel_scheduler_domain::transform_sender(_Sender&& __sndr, const _Env& __env)
     const noexcept {
