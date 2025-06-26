@@ -320,16 +320,16 @@ namespace exec {
 
      private:
       struct __final_awaitable {
-        constexpr auto await_ready() noexcept -> bool {
+        static constexpr auto await_ready() noexcept -> bool {
           return false;
         }
 
-        auto await_suspend(__coro::coroutine_handle<__promise> __h) noexcept
+        static auto await_suspend(__coro::coroutine_handle<__promise> __h) noexcept
           -> __coro::coroutine_handle<> {
           return __h.promise().continuation().handle();
         }
 
-        void await_resume() noexcept {
+        static void await_resume() noexcept {
         }
       };
 
