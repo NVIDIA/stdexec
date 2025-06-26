@@ -53,8 +53,9 @@ namespace exec {
         __operation_base<_Iterator, _Sentinel>* __parent_;
 
         void start() & noexcept {
-          stdexec::set_value(static_cast<_ItemRcvr&&>(__rcvr_), *__parent_->__iterator_);
-          ++__parent_->__iterator_;
+          auto& __iter = __parent_->__iterator_;
+          stdexec::set_value(static_cast<_ItemRcvr&&>(__rcvr_), *__iter);
+          ++__iter;
         }
       };
     };
