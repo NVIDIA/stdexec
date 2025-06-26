@@ -53,7 +53,8 @@ namespace exec {
         __operation_base<_Iterator, _Sentinel>* __parent_;
 
         void start() & noexcept {
-          stdexec::set_value(static_cast<_ItemRcvr&&>(__rcvr_), *__parent_->__iterator_++);
+          stdexec::set_value(static_cast<_ItemRcvr&&>(__rcvr_), *__parent_->__iterator_);
+          ++__parent_->__iterator_;
         }
       };
     };
@@ -125,7 +126,6 @@ namespace exec {
         if (this->__iterator_ == this->__sentinel_) {
           stdexec::set_value(static_cast<_Receiver&&>(__rcvr_));
         } else {
-
           try {
             stdexec::start(__op_.emplace(__emplace_from{[&] {
               return stdexec::connect(
