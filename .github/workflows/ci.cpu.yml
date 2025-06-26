@@ -6,6 +6,7 @@ on:
       - main
       - "member-function-customization"
       - "pull-request/[0-9]+"
+      - "test-ci*"
 
 concurrency:
   group: ${{ github.workflow }}-on-${{ github.event_name }}-from-${{ github.ref_name }}
