@@ -17,6 +17,10 @@
 
 #include "__config.hpp"
 
+#if STDEXEC_HAS_EXECUTION_POLICY()
+#include <execution>
+#endif
+
 namespace stdexec {
 
 #if STDEXEC_HAS_EXECUTION_POLICY()
@@ -24,15 +28,13 @@ namespace stdexec {
   using sequenced_policy = std::execution::sequenced_policy;
   using parallel_policy = std::execution::parallel_policy;
   using parallel_unsequenced_policy = std::execution::parallel_unsequenced_policy;
-  using unsequenced_policy = std::execution::unsequenced_policy;
 
-  using seq = std::execution::seq;
-  using par = std::execution::par;
-  using par_unseq = std::execution::par_unseq;
-  using unseq = std::execution::unseq;
+  constexpr auto seq = std::execution::seq;
+  constexpr auto par = std::execution::par;
+  constexpr auto par_unseq = std::execution::par_unseq;
 
-  using std::execution::is_execution_policy_v;
-  using std::execution::is_execution_policy;
+  using std::is_execution_policy_v;
+  using std::is_execution_policy;
 
 #else
 
@@ -81,7 +83,7 @@ namespace stdexec {
 
   using unsequenced_policy = std::execution::unsequenced_policy;
 
-  using unseq = std::execution::unseq;
+  constexpr auto unseq = std::execution::unseq;
 
 #else
 
