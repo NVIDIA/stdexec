@@ -56,7 +56,7 @@ namespace {
     }
 
     [[nodiscard]]
-    auto query(ex::get_domain_late_t) const noexcept {
+    auto query(ex::get_domain_override_t) const noexcept {
       return cpo_sender_domain{};
     }
   };

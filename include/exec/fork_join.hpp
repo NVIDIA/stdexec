@@ -23,7 +23,7 @@
 namespace exec {
   struct PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE { };
 
-  struct fork_t {
+  struct fork_join_t {
     template <class Sndr, class... Closures>
     struct _sndr_t;
 
@@ -135,12 +135,13 @@ namespace exec {
       using _env_t = stdexec::__call_result_t<stdexec::__env::__fwd_fn, stdexec::env_of_t<Rcvr>>;
       using _child_completions_t = stdexec::__completion_signatures_of_t<Sndr, _env_t>;
       using _domain_t = stdexec::__early_domain_of_t<Sndr, stdexec::__none_such>;
-      using _when_all_sndr_t = fork_t::_when_all_sndr_t<_child_completions_t, Closures, _domain_t>;
+      using _when_all_sndr_t =
+        fork_join_t::_when_all_sndr_t<_child_completions_t, Closures, _domain_t>;
       using _child_opstate_t =
         stdexec::connect_result_t<Sndr, stdexec::__rcvr_ref_t<_opstate_t, _env_t>>;
       using _fork_opstate_t =
         stdexec::connect_result_t<_when_all_sndr_t, stdexec::__rcvr_ref_t<Rcvr>>;
-      using _cache_sndr_t = fork_t::_cache_sndr_t<_variant_t<_child_completions_t>, _domain_t>;
+      using _cache_sndr_t = fork_join_t::_cache_sndr_t<_variant_t<_child_completions_t>, _domain_t>;
 
       STDEXEC_ATTRIBUTE(host, device)
 
@@ -173,10 +174,11 @@ namespace exec {
       template <class Tag, class... Args>
       STDEXEC_ATTRIBUTE(host, device)
       void _complete(Tag, Args&&... args) noexcept {
-        try {
+        STDEXEC_TRY {
           using _tuple_t = stdexec::__decayed_tuple<Tag, Args...>;
           _cache_.template emplace<_tuple_t>(Tag{}, static_cast<Args&&>(args)...);
-        } catch (...) {
+        }
+        STDEXEC_CATCH_ALL {
           if constexpr (!stdexec::__nothrow_decay_copyable<Args...>) {
             using _tuple_t = stdexec::__tuple_for<stdexec::set_error_t, ::std::exception_ptr>;
             _cache_._results_
@@ -246,10 +248,10 @@ namespace exec {
   };
 
   template <>
-  struct fork_t::_env_t<stdexec::__none_such> { };
+  struct fork_join_t::_env_t<stdexec::__none_such> { };
 
   template <class Sndr, class... Closures>
-  struct fork_t::_sndr_t {
+  struct fork_join_t::_sndr_t {
     using sender_concept = stdexec::sender_t;
     using _closures_t = stdexec::__tuple_for<Closures...>;
 
@@ -267,7 +269,7 @@ namespace exec {
       } else if constexpr (!__decay_copyable_results_t::value) {
         return _ERROR_<
           _WHAT_<>(PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE),
-          _IN_ALGORITHM_(exec::fork_t)
+          _IN_ALGORITHM_(exec::fork_join_t)
         >();
       } else {
         using _sndr_t = _when_all_sndr_t<_child_completions_t, _closures_t, _domain_t>;
@@ -297,10 +299,10 @@ namespace exec {
       return stdexec::__env::__fwd_fn{}(stdexec::get_env(sndr_));
     }
 
-    STDEXEC_ATTRIBUTE(no_unique_address) fork_t _tag_;
+    STDEXEC_ATTRIBUTE(no_unique_address) fork_join_t _tag_;
     stdexec::__tuple_for<Closures...> _closures_;
     Sndr sndr_;
   };
 
-  inline constexpr fork_t fork{};
+  inline constexpr fork_join_t fork_join{};
 } // namespace exec

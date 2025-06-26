@@ -126,13 +126,14 @@ namespace exec {
         if (this->__iterator_ == this->__sentinel_) {
           stdexec::set_value(static_cast<_Receiver&&>(__rcvr_));
         } else {
-          try {
+          STDEXEC_TRY {
             stdexec::start(__op_.emplace(__emplace_from{[&] {
               return stdexec::connect(
                 exec::set_next(__rcvr_, stdexec::starts_on(__scheduler_, __sender_t<_Range>{this})),
                 __next_receiver_t{this});
             }}));
-          } catch (...) {
+          }
+          STDEXEC_CATCH_ALL {
             stdexec::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
           }
         }

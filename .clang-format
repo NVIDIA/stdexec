@@ -71,6 +71,9 @@ EmptyLineAfterAccessModifier: Never
 EmptyLineBeforeAccessModifier: Leave
 ExperimentalAutoDetectBinPacking: true
 FixNamespaceComments: true
+IfMacros: [
+  STDEXEC_CATCH'
+]
 IncludeBlocks: Preserve
 IndentAccessModifiers: false
 IndentCaseBlocks: false
@@ -90,7 +93,7 @@ Macros: [
   'STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS=[[no_unique_address]]',
   'STDEXEC_MISSING_MEMBER(X,Y)=true',
   'STDEXEC_DEFINE_MEMBER(X)=void foo() {}',
-  'STDEXEC_AUTO_RETURN(...)=->decltype(auto){ return __VA_ARGS__; }'
+  'STDEXEC_AUTO_RETURN(...)=->decltype(auto){ return __VA_ARGS__; }',
 ]
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: All
@@ -149,6 +152,10 @@ SpacesInConditionalStatement: false
 SpacesInContainerLiterals: true
 SpacesInParentheses: false
 Standard: c++20
+StatementMacros: [
+  'STDEXEC_IF_HOST',
+  'STDEXEC_IF_DEVICE',
+]
 TabWidth: 0
 TypenameMacros: []
 UseTab: Never

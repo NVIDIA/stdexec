@@ -71,7 +71,7 @@ namespace exec {
         stdexec::set_stopped(std::forward<_Rcvr>(__rcvr_));
       }
 
-      [[no_unique_address]]
+      STDEXEC_ATTRIBUTE(no_unique_address)
       _Rcvr __rcvr_;
     };
 
@@ -98,7 +98,8 @@ namespace exec {
   /// The execution domain of the parallel_scheduler, used for the purposes of customizing
   /// sender algorithms such as `bulk_chunked` and `bulk_unchunked`.
   struct __parallel_scheduler_domain : stdexec::default_domain {
-    /// Schedules new bulk chunked work.
+    template <__bulk_chunked_or_unchunked _Sender>
+    auto transform_sender(_Sender&& __sndr) const noexcept;
     template <__bulk_chunked_or_unchunked _Sender, class _Env>
     auto transform_sender(_Sender&& __sndr, const _Env& __env) const noexcept;
   };
@@ -374,9 +375,16 @@ namespace exec {
         auto __state = reinterpret_cast<_BulkState*>(this);
         if constexpr (_BulkState::__is_unchunked) {
           (void) __end; // not used
-          std::apply(
-            [&](auto&&... __args) { __state->__fun_(__begin, __args...); },
-            *reinterpret_cast<std::tuple<_As...>*>(__base_t::__arguments_data_));
+          // If we are not parallelizing, we need to run all the iterations sequentially.
+          uint32_t __increments = 1;
+          if constexpr (!_BulkState::__parallelize) {
+            __increments = __state->__size_;
+          }
+          for (uint32_t __i = __begin; __i < __begin + __increments; __i++) {
+            std::apply(
+              [&](auto&&... __args) { __state->__fun_(__i, __args...); },
+              *reinterpret_cast<std::tuple<_As...>*>(__base_t::__arguments_data_));
+          }
         } else {
           // If we are not parallelizing, we need to pass the entire range to the functor.
           if constexpr (!_BulkState::__parallelize) {
@@ -412,10 +420,10 @@ namespace exec {
         __forward_args_helper_t)]{};
 
       /// The function to be executed to perform the bulk work.
-      [[no_unique_address]]
+      STDEXEC_ATTRIBUTE(no_unique_address)
       _Fn __fun_;
       /// The receiver object that receives completion from the work described by the sender.
-      [[no_unique_address]]
+      STDEXEC_ATTRIBUTE(no_unique_address)
       _Rcvr __rcvr_;
 
       /// Function that prepares the preallocated storage for calling the backend.
@@ -464,7 +472,8 @@ namespace exec {
         // Schedule the bulk work on the system scheduler.
         // This will invoke `execute` on our receiver multiple times, and then a completion signal (e.g., `set_value`).
         if constexpr (_BulkState::__is_unchunked) {
-          __scheduler->schedule_bulk_unchunked(__size, __storage, *__r);
+          __scheduler
+            ->schedule_bulk_unchunked(_BulkState::__parallelize ? __size : 1, __storage, *__r);
         } else {
           __scheduler
             ->schedule_bulk_chunked(_BulkState::__parallelize ? __size : 1, __storage, *__r);
@@ -630,14 +639,14 @@ namespace exec {
     /// The size of the bulk operation.
     _Size __size_;
     /// The function to be executed to perform the bulk work.
-    [[no_unique_address]]
+    STDEXEC_ATTRIBUTE(no_unique_address)
     _Fn __fun_;
   };
 
   inline auto get_parallel_scheduler() -> parallel_scheduler {
     auto __impl = system_context_replaceability::query_parallel_scheduler_backend();
     if (!__impl) {
-      throw std::runtime_error{"No system context implementation found"};
+      STDEXEC_THROW(std::runtime_error{"No system context implementation found"});
     }
     return parallel_scheduler{std::move(__impl)};
   }
@@ -677,9 +686,17 @@ namespace exec {
     template <class _Data, class _Previous>
     auto
       operator()(stdexec::bulk_unchunked_t, _Data&& __data, _Previous&& __previous) const noexcept {
-      auto [__unused_pol, __shape, __fn] = static_cast<_Data&&>(__data);
-      return __parallel_bulk_sender<true, _Previous, decltype(__shape), decltype(__fn), true>{
-        __sched_, static_cast<_Previous&&>(__previous), __shape, std::move(__fn)};
+      auto [__pol, __shape, __fn] = static_cast<_Data&&>(__data);
+      using __policy_t = std::remove_cvref_t<decltype(__pol.__get())>;
+      constexpr bool __parallelize = std::same_as<__policy_t, stdexec::parallel_policy>
+                                  || std::same_as<__policy_t, stdexec::parallel_unsequenced_policy>;
+      return __parallel_bulk_sender<
+        true,
+        _Previous,
+        decltype(__shape),
+        decltype(__fn),
+        __parallelize
+      >{__sched_, static_cast<_Previous&&>(__previous), __shape, std::move(__fn)};
     }
 
     parallel_scheduler __sched_;
@@ -690,6 +707,22 @@ namespace exec {
     using sender_concept = stdexec::sender_t;
   };
 
+  template <__bulk_chunked_or_unchunked _Sender>
+  auto __parallel_scheduler_domain::transform_sender(_Sender&& __sndr)
+    const noexcept {
+    if constexpr (stdexec::__completes_on<_Sender, parallel_scheduler>) {
+      auto __sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
+        stdexec::get_env(__sndr));
+      return stdexec::__sexpr_apply(
+        static_cast<_Sender&&>(__sndr), __transform_parallel_bulk_sender{__sched});
+    } else {
+      static_assert(
+        stdexec::__completes_on<_Sender, parallel_scheduler>,
+        "No parallel_scheduler instance can be found in the sender's "
+        "environment on which to schedule bulk work.");
+      return __not_a_sender<stdexec::__name_of<_Sender>>();
+    }
+  }
   template <__bulk_chunked_or_unchunked _Sender, class _Env>
   auto __parallel_scheduler_domain::transform_sender(_Sender&& __sndr, const _Env& __env)
     const noexcept {

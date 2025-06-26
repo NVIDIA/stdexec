@@ -27,7 +27,7 @@ namespace {
     template <class Receiver>
     friend auto tag_invoke(ex::connect_t, throwing_sender&&, Receiver&&)
       -> operation<std::decay_t<Receiver>> {
-      throw std::logic_error("cannot connect");
+      STDEXEC_THROW(std::logic_error("cannot connect"));
     }
   };
 
@@ -54,21 +54,23 @@ namespace {
     REQUIRE(executed);
   }
 
-#if !NO_TESTS_WITH_EXCEPTIONS
+#if !STDEXEC_STD_NO_EXCEPTIONS()
   TEST_CASE(
     "spawn will propagate exceptions encountered during op creation",
     "[async_scope][spawn]") {
     async_scope scope;
-    try {
+    STDEXEC_TRY {
       scope.spawn(throwing_sender{} | ex::then([&] { FAIL("work should not be executed"); }));
       FAIL("Exceptions should have been thrown");
-    } catch (const std::logic_error& e) {
+    }
+    STDEXEC_CATCH(const std::logic_error& e) {
       SUCCEED("correct exception caught");
-    } catch (...) {
+    }
+    STDEXEC_CATCH_ALL {
       FAIL("invalid exception caught");
     }
   }
-#endif
+#endif // !STDEXEC_STD_NO_EXCEPTIONS()
 
   TEST_CASE(
     "TODO: spawn will keep the scope non-empty until the work is executed",

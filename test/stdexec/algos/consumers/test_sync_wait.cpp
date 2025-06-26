@@ -50,6 +50,7 @@ namespace {
     CHECK(std::get<1>(res.value()) == 0.1415);
   }
 
+#if !STDEXEC_STD_NO_EXCEPTIONS()
   TEST_CASE("sync_wait rethrows received exception", "[consumers][sync_wait]") {
     // Generate an exception pointer object
     std::exception_ptr eptr;
@@ -99,6 +100,7 @@ namespace {
       FAIL("expecting std::string exception to be thrown");
     }
   }
+#endif // !STDEXEC_STD_NO_EXCEPTIONS()
 
   TEST_CASE("sync_wait returns empty optional on cancellation", "[consumers][sync_wait]") {
     stopped_scheduler sched;
@@ -223,7 +225,7 @@ namespace {
   TEST_CASE("sync_wait can be customized", "[consumers][sync_wait]") {
     // The customization will return a different value
     auto snd = ex::just(std::string{"hello"})
-             | exec::write_attrs(ex::prop{ex::get_domain_late, sync_wait_test_domain{}});
+             | exec::write_attrs(ex::prop{ex::get_domain_override, sync_wait_test_domain{}});
     auto res = ex::sync_wait(std::move(snd));
     STATIC_REQUIRE(std::same_as<decltype(res), sync_wait_test_domain::single_result_t>);
     CHECK(res.has_value());
@@ -233,7 +235,7 @@ namespace {
   TEST_CASE("sync_wait_with_variant can be customized", "[consumers][sync_wait_with_variant]") {
     // The customization will return a different value
     auto snd = fallible_just(std::string{"hello_multi"}) | ex::let_error(always(ex::just(42)))
-             | exec::write_attrs(ex::prop{ex::get_domain_late, sync_wait_test_domain{}});
+             | exec::write_attrs(ex::prop{ex::get_domain_override, sync_wait_test_domain{}});
     auto res = ex::sync_wait_with_variant(std::move(snd));
     STATIC_REQUIRE(std::same_as<decltype(res), sync_wait_test_domain::multi_result_t>);
     CHECK(res.has_value());

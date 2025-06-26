@@ -197,14 +197,16 @@ namespace stdexec {
         __invoke(static_cast<_Fun&&>(__fun), static_cast<_As&&>(__as)...);
         stdexec::set_value(static_cast<_Receiver&&>(__rcvr));
       } else {
-        set_value(
+        stdexec::set_value(
           static_cast<_Receiver&&>(__rcvr),
           __invoke(static_cast<_Fun&&>(__fun), static_cast<_As&&>(__as)...));
       }
     }
-    STDEXEC_CATCH(...)(if constexpr (!__nothrow_invocable<_Fun, _As...>) {
-      stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
-    })
+    STDEXEC_CATCH_ALL {
+      if constexpr (!__nothrow_invocable<_Fun, _As...>) {
+        stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
+      }
+    }
   }
 
   template <class _Tag, class _Receiver>

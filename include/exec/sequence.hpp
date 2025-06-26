@@ -114,7 +114,7 @@ namespace exec {
       template <class Index, class... Args>
       STDEXEC_ATTRIBUTE(host, device)
       void _set_value(Index, [[maybe_unused]] Args&&... args) noexcept {
-        try {
+        STDEXEC_TRY {
           constexpr size_t Idx = stdexec::__v<Index> + 1;
           if constexpr (Idx == sizeof...(Sndrs) + 1) {
             stdexec::set_value(static_cast<Rcvr&&>(_rcvr), static_cast<Args&&>(args)...);
@@ -124,7 +124,8 @@ namespace exec {
               stdexec::connect, std::move(sndr), _rcvr_t<Idx>{this});
             stdexec::start(op);
           }
-        } catch (...) {
+        }
+        STDEXEC_CATCH_ALL {
           stdexec::set_error(static_cast<Rcvr&&>(_rcvr), std::current_exception());
         }
       }

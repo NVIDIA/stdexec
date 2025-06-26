@@ -313,7 +313,7 @@ namespace exec {
           typename stop_token_of_t<env_of_t<_Receiver>>::template callback_type<__forward_stopped>;
 
         void __complete_() noexcept {
-          try {
+          STDEXEC_TRY {
             __forward_consumer_.reset();
             auto __state = std::move(__state_);
             STDEXEC_ASSERT(__state != nullptr);
@@ -346,7 +346,8 @@ namespace exec {
                 },
                 __state->__data_);
             }
-          } catch (...) {
+          }
+          STDEXEC_CATCH_ALL {
 
             stdexec::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
           }
@@ -389,7 +390,7 @@ namespace exec {
         }
 
         void start() & noexcept {
-          try {
+          STDEXEC_TRY {
             if (!!__state_) {
               std::unique_lock __guard{__state_->__mutex_};
               if (__state_->__data_.index() != 0) {
@@ -399,7 +400,8 @@ namespace exec {
                 __state_->__subscribers_.push_back(this);
               }
             }
-          } catch (...) {
+          }
+          STDEXEC_CATCH_ALL {
             stdexec::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
           }
         }
@@ -545,10 +547,11 @@ namespace exec {
         template <class _Tag, class... _As>
         void __save_completion(_Tag, _As&&... __as) noexcept {
           auto& __state = *__state_;
-          try {
+          STDEXEC_TRY {
             using _Tuple = __decayed_std_tuple<_Tag, _As...>;
             __state.__data_.template emplace<_Tuple>(_Tag(), static_cast<_As&&>(__as)...);
-          } catch (...) {
+          }
+          STDEXEC_CATCH_ALL {
             using _Tuple = std::tuple<set_error_t, std::exception_ptr>;
             __state.__data_.template emplace<_Tuple>(set_error_t(), std::current_exception());
           }

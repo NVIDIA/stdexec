@@ -39,7 +39,7 @@ namespace {
   }
 
   TEST_CASE(
-    "let_stopped can preceed a sender without values",
+    "nvexec let_stopped can preceed a sender without values",
     "[cuda][stream][adaptors][let_stopped]") {
     nvexec::stream_context stream_ctx{};
 

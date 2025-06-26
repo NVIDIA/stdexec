@@ -133,6 +133,7 @@ namespace {
     CHECK(k == 5);
   }
 
+#if !STDEXEC_STD_NO_EXCEPTIONS()
   TEST_CASE("tbb_thread_pool exceptions") {
     // I know tbb::task_groups do cancellation with exceptions, which leaves them in a not-restartable
     // state. We'd better have it act normally here.
@@ -159,6 +160,7 @@ namespace {
       CHECK(tbb_result == other_result);
     }
   }
+#endif // !STDEXEC_STD_NO_EXCEPTIONS()
 
   TEST_CASE("tbb_thread_pool async_inclusive_scan") {
     const auto input = std::array{1.0, 2.0, -1.0, -2.0};

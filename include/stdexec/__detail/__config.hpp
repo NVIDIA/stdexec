@@ -38,7 +38,9 @@
 #endif
 
 #include <cassert>
+#include <cstdlib>
 #include <type_traits> // IWYU pragma: keep
+#include <utility> // IWYU pragma: keep for std::unreachable
 
 // When used with no arguments, these macros expand to 1 if the current
 // compiler corresponds to the macro name; 0, otherwise. When used with arguments,
@@ -107,9 +109,9 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #if defined(__CUDACC__) || STDEXEC_NVHPC()
-#  define STDEXEC_CUDA(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#  define STDEXEC_CUDA_COMPILATION(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #else
-#  define STDEXEC_CUDA(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#  define STDEXEC_CUDA_COMPILATION(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -120,7 +122,7 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-#if STDEXEC_CLANG() && STDEXEC_CUDA()
+#if STDEXEC_CLANG() && STDEXEC_CUDA_COMPILATION()
 #  define STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __host__ __device__
 #else
 #  define STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
@@ -388,7 +390,7 @@ namespace stdexec {
 #if STDEXEC_NVHPC()
 #  include <nv/target>
 #  define STDEXEC_TERMINATE() NV_IF_TARGET(NV_IS_HOST, (std::terminate();), (__trap();)) void()
-#elif STDEXEC_CLANG() && STDEXEC_CUDA() && defined(__CUDA_ARCH__)
+#elif STDEXEC_CLANG() && STDEXEC_CUDA_COMPILATION() && defined(__CUDA_ARCH__)
 #  define STDEXEC_TERMINATE()                                                                      \
     __trap();                                                                                      \
     __builtin_unreachable()
@@ -482,23 +484,19 @@ namespace stdexec {
 #  define STDEXEC_ENABLE_EXTRA_TYPE_CHECKING() 1
 #endif
 
-#if STDEXEC_MSVC()
-#  define STDEXEC_NO_EXCEPTIONS() (_HAS_EXCEPTIONS == 0) || (_CPPUNWIND == 0)
+#if STDEXEC_CUDA_COMPILATION() && defined(__CUDA_ARCH__)
+#  define STDEXEC_STD_NO_EXCEPTIONS() 1
+#elif STDEXEC_MSVC()
+#  define STDEXEC_STD_NO_EXCEPTIONS() (_HAS_EXCEPTIONS == 0) || (_CPPUNWIND == 0)
 #else
-#  define STDEXEC_NO_EXCEPTIONS() (__EXCEPTIONS == 0)
+#  define STDEXEC_STD_NO_EXCEPTIONS() (__EXCEPTIONS == 0)
 #endif
 
 // We need to treat host and device separately
-#if STDEXEC_CUDA() && defined(__CUDA_ARCH__) && !STDEXEC_NVHPC()
+#if STDEXEC_CUDA_COMPILATION() && defined(__CUDA_ARCH__) && !STDEXEC_NVHPC()
 #  define STDEXEC_GLOBAL_CONSTANT STDEXEC_ATTRIBUTE(device) constexpr
 #else
 #  define STDEXEC_GLOBAL_CONSTANT inline constexpr
-#endif
-
-#if defined(__CUDACC__) || STDEXEC_NVHPC()
-#  define STDEXEC_CUDA_COMPILATION() 1
-#else
-#  define STDEXEC_CUDA_COMPILATION() 0
 #endif
 
 #if STDEXEC_CUDA_COMPILATION() || __has_include(<cuda_runtime_api.h>)
@@ -518,30 +516,66 @@ namespace stdexec {
 #endif
 // clang-format on
 
-// CUDA compilers preinclude cuda_runtime.h, so we need to include it here to get the CUDART_VERSION macro
+// CUDA compilers preinclude cuda_runtime.h, but if we're not compiling for CUDA then we
+// need to include it ourselves.
 #if STDEXEC_HAS_CTK() && !STDEXEC_CUDA_COMPILATION()
 #  include <cuda_runtime_api.h>
 #endif
 
-// clang-format off
-#if STDEXEC_NO_EXCEPTIONS() || (STDEXEC_CUDA_COMPILATION() && defined(__CUDA_ARCH__))
-#  define STDEXEC_TRY
-#  define STDEXEC_CATCH(...) STDEXEC_CATCH_I
-#  define STDEXEC_CATCH_I(...)
-#elif STDEXEC_CUDA_COMPILATION() && STDEXEC_NVHPC()
-#  define STDEXEC_TRY if target (nv::target::is_host) { try
-#  define STDEXEC_CATCH(...) catch(__VA_ARGS__) STDEXEC_CATCH_I
-#  define STDEXEC_CATCH_I(...) { __VA_ARGS__ } } else { __VA_ARGS__ }
+// The following macros are used to conditionally compile exception handling code. They
+// are used in the same way as `try` and `catch`, but they allow for different behavior
+// based on whether exceptions are enabled or not, and whether the code is being compiled
+// for device or not.
+//
+// Usage:
+//   STDEXEC_TRY
+//   {
+//     can_throw();               // Code that may throw an exception
+//   }
+//   STDEXEC_CATCH (cuda_error& e)  // Handle CUDA exceptions
+//   {
+//     printf("CUDA error: %s\n", e.what());
+//   }
+//   STDEXEC_CATCH_ALL              // Handle any other exceptions
+//   {
+//     printf("unknown error\n");
+//   }
+#if STDEXEC_STD_NO_EXCEPTIONS()
+#  define STDEXEC_TRY if constexpr (true)
+#  define STDEXEC_CATCH(...)                                                                       \
+    else if constexpr ([[maybe_unused]] __VA_ARGS__ = ::stdexec::_catch_any_lvalue{}; false)
+#  define STDEXEC_CATCH_ALL                                                                        \
+    else if constexpr (true) {                                                                     \
+    }                                                                                              \
+    else
+#  define STDEXEC_THROW(...) ::stdexec::__terminate()
 #else
-#  define STDEXEC_TRY try
-#  define STDEXEC_CATCH(...) catch(__VA_ARGS__) STDEXEC_CATCH_I
-#  define STDEXEC_CATCH_I(...) { __VA_ARGS__ }
+#  define STDEXEC_TRY        try
+#  define STDEXEC_CATCH      catch
+#  define STDEXEC_CATCH_ALL  STDEXEC_CATCH(...)
+#  define STDEXEC_THROW(...) throw __VA_ARGS__
 #endif
-// clang-format on
+
+namespace stdexec {
+  // Used by the STDEXEC_CATCH macro to provide a stub initialization of the exception object.
+  struct _catch_any_lvalue {
+    template <class _Tp>
+    STDEXEC_ATTRIBUTE(host, device)
+    operator _Tp&() const noexcept;
+  };
+
+  STDEXEC_ATTRIBUTE(noreturn, host, device)
+
+  inline void __terminate() noexcept {
+    STDEXEC_IF_HOST(::exit(-1))
+    STDEXEC_IF_DEVICE(__trap())
+    STDEXEC_UNREACHABLE();
+  }
+} // namespace stdexec
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // clang-tidy struggles with the CUDA function annotations
-#if STDEXEC_CLANG() && STDEXEC_CUDA() && defined(STDEXEC_CLANG_TIDY_INVOKED)
+#if STDEXEC_CLANG() && STDEXEC_CUDA_COMPILATION() && defined(STDEXEC_CLANG_TIDY_INVOKED)
 #  include <cuda_runtime_api.h> // IWYU pragma: keep
 #  if !defined(__launch_bounds__)
 #    define __launch_bounds__(...)

@@ -254,6 +254,7 @@ namespace {
     CHECK(count == 3);
   }
 
+#  if !STDEXEC_STD_NO_EXCEPTIONS()
   TEST_CASE("task - can error early", "[types][task]") {
     int count = 0;
     auto work = [](int& count) -> exec::task<void> {
@@ -274,7 +275,7 @@ namespace {
     }
     CHECK(count == 3);
   }
-
+#  endif // !STDEXEC_STD_NO_EXCEPTIONS()
 } // namespace
 
 #endif

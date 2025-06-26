@@ -370,7 +370,7 @@ namespace nvexec {
 
       STDEXEC_ATTRIBUTE(nodiscard)
 
-      constexpr auto query(get_domain_late_t) const noexcept -> stream_domain {
+      constexpr auto query(get_domain_override_t) const noexcept -> stream_domain {
         return {};
       }
 
@@ -708,10 +708,11 @@ namespace nvexec {
 
           if constexpr (stream_receiver<inner_receiver_t>) {
             if (inner_receiver_t::memory_allocation_size) {
-              try {
+              STDEXEC_TRY {
                 this->temp_storage_ = this->context_state_.managed_resource_
                                         ->allocate(inner_receiver_t::memory_allocation_size);
-              } catch (...) {
+              }
+              STDEXEC_CATCH_ALL {
                 this->propagate_completion_signal(stdexec::set_error, cudaErrorMemoryAllocation);
                 return;
               }

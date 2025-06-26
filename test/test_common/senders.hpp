@@ -56,10 +56,11 @@ namespace {
       Receiver rcvr_;
 
       void start() & noexcept {
-        try {
+        STDEXEC_TRY {
           std::apply(
             [&](Values&... ts) { ex::set_value(std::move(rcvr_), std::move(ts)...); }, values_);
-        } catch (...) {
+        }
+        STDEXEC_CATCH_ALL {
           ex::set_error(std::move(rcvr_), std::current_exception());
         }
       }

@@ -141,7 +141,7 @@ namespace stdexec {
     template <>
     struct __bulk_traits<bulk_unchunked_t> {
       using __on_not_callable =
-        __callable_error<"In stdexec::bulk_unchunked(Sender, Shape, Function)..."_mstr>;
+        __callable_error<"In stdexec::bulk_unchunked(Sender, Policy, Shape, Function)..."_mstr>;
 
       // Curried function, after passing the required indices.
       template <class _Fun, class _Shape>
@@ -256,30 +256,7 @@ namespace stdexec {
     };
 
     struct bulk_chunked_t : __generic_bulk_t<bulk_chunked_t> { };
-
-    struct bulk_unchunked_t {
-      template <sender _Sender, integral _Shape, copy_constructible _Fun>
-      STDEXEC_ATTRIBUTE(host, device)
-      auto operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const -> __well_formed_sender
-        auto {
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::transform_sender(
-          __domain,
-          __make_sexpr<bulk_unchunked_t>(
-            __data{par, __shape, static_cast<_Fun&&>(__fun)}, static_cast<_Sender&&>(__sndr)));
-      }
-
-      template <integral _Shape, copy_constructible _Fun>
-      STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(_Shape __shape, _Fun __fun) const
-        -> __binder_back<bulk_unchunked_t, _Shape, _Fun> {
-        return {
-          {static_cast<_Shape&&>(__shape), static_cast<_Fun&&>(__fun)},
-          {},
-          {}
-        };
-      }
-    };
+    struct bulk_unchunked_t : __generic_bulk_t<bulk_unchunked_t> { };
 
     template <class _AlgoTag>
     struct __bulk_impl_base : __sexpr_defaults {
@@ -322,10 +299,11 @@ namespace stdexec {
             __state.__fun_(static_cast<__shape_t>(0), __state.__shape_, __args...);
             _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
           } else {
-            try {
+            STDEXEC_TRY {
               __state.__fun_(static_cast<__shape_t>(0), __state.__shape_, __args...);
               _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
-            } catch (...) {
+            }
+            STDEXEC_CATCH_ALL {
               stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
             }
           }
@@ -339,7 +317,6 @@ namespace stdexec {
       //! This implements the core default behavior for `bulk_unchunked`:
       //! When setting value, it loops over the shape and invokes the function.
       //! Note: This is not done in concurrently. That is customized by the scheduler.
-      //! Calling it on a scheduler that is not concurrent is an error.
       static constexpr auto complete =
         []<class _Tag, class _State, class _Receiver, class... _Args>(
           __ignore,
@@ -348,17 +325,7 @@ namespace stdexec {
           _Tag,
           _Args&&... __args) noexcept -> void {
         if constexpr (std::same_as<_Tag, set_value_t>) {
-          // Intercept set_value and dispatch to the bulk operation.
           using __shape_t = decltype(__state.__shape_);
-          constexpr bool __scheduler_available = requires {
-            get_completion_scheduler<set_value_t>(get_env(__rcvr));
-          };
-          if constexpr (__scheduler_available) {
-            // This default implementation doesn't run a scheduler with concurrent progres guarantees.
-            constexpr auto __guarantee = get_forward_progress_guarantee(
-              get_completion_scheduler<set_value_t>(get_env(__rcvr)));
-            static_assert(__guarantee != forward_progress_guarantee::concurrent);
-          }
           if constexpr (noexcept(__state.__fun_(__shape_t{}, __args...))) {
             // The noexcept version that doesn't need try/catch:
             for (__shape_t __i{}; __i != __state.__shape_; ++__i) {
@@ -366,12 +333,13 @@ namespace stdexec {
             }
             _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
           } else {
-            try {
+            STDEXEC_TRY {
               for (__shape_t __i{}; __i != __state.__shape_; ++__i) {
                 __state.__fun_(__i, __args...);
               }
               _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
-            } catch (...) {
+            }
+            STDEXEC_CATCH_ALL {
               stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
             }
           }

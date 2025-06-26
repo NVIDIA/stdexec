@@ -59,6 +59,11 @@ namespace stdexec {
         return __loop_->get_scheduler();
       }
 
+      [[nodiscard]]
+      constexpr auto query(__root_t) const noexcept -> bool {
+        return true;
+      }
+
       // static constexpr auto query(__debug::__is_debug_env_t) noexcept -> bool {
       //   return true;
       // }
@@ -96,9 +101,10 @@ namespace stdexec {
         template <class... _As>
           requires constructible_from<std::tuple<_Values...>, _As...>
         void set_value(_As&&... __as) noexcept {
-          try {
+          STDEXEC_TRY {
             __values_->emplace(static_cast<_As&&>(__as)...);
-          } catch (...) {
+          }
+          STDEXEC_CATCH_ALL {
             __state_->__eptr_ = std::current_exception();
           }
           __state_->__loop_.finish();

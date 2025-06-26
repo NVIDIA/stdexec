@@ -421,9 +421,10 @@ namespace {
     thread()
       : g_(ctx_.get_executor())
       , t_([&]() noexcept {
-        try {
+        STDEXEC_TRY {
           ctx_.run();
-        } catch (...) {
+        }
+        STDEXEC_CATCH_ALL {
           FAIL("Exception thrown in background thread");
         }
       }) {

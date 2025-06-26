@@ -52,10 +52,11 @@ namespace stdexec {
       template <class... _Us>
         requires constructible_from<__value_or_void_t<_Value>, _Us...>
       void set_value(_Us&&... __us) noexcept {
-        try {
+        STDEXEC_TRY {
           __result_->template emplace<1>(static_cast<_Us&&>(__us)...);
           __continuation_.resume();
-        } catch (...) {
+        }
+        STDEXEC_CATCH_ALL {
           stdexec::set_error(static_cast<__receiver_base&&>(*this), std::current_exception());
         }
       }

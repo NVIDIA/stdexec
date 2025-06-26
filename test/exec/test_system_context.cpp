@@ -15,8 +15,6 @@
  */
 
 #include <thread>
-#include <iostream>
-#include <chrono>
 
 #define STDEXEC_SYSTEM_CONTEXT_HEADER_ONLY 1
 
@@ -223,7 +221,7 @@ TEST_CASE("simple bulk_unchunked task on system context", "[types][system_schedu
   std::thread::id pool_ids[num_tasks];
   exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
-  auto bulk_snd = ex::bulk_unchunked(ex::schedule(sched), num_tasks, [&](unsigned long id) {
+  auto bulk_snd = ex::bulk_unchunked(ex::schedule(sched), ex::par, num_tasks, [&](unsigned long id) {
     pool_ids[id] = std::this_thread::get_id();
   });
 
@@ -232,6 +230,26 @@ TEST_CASE("simple bulk_unchunked task on system context", "[types][system_schedu
   for (auto pool_id: pool_ids) {
     REQUIRE(pool_id != std::thread::id{});
     REQUIRE(this_id != pool_id);
+  }
+}
+
+TEST_CASE("bulk_unchunked with seq will run everything on one thread", "[types][system_scheduler]") {
+  std::thread::id this_id = std::this_thread::get_id();
+  constexpr size_t num_tasks = 16;
+  std::thread::id pool_ids[num_tasks];
+  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
+
+  auto bulk_snd = ex::bulk_unchunked(ex::schedule(sched), ex::seq, num_tasks, [&](unsigned long id) {
+    pool_ids[id] = std::this_thread::get_id();
+    std::this_thread::sleep_for(std::chrono::milliseconds{1});
+  });
+
+  ex::sync_wait(std::move(bulk_snd));
+
+  for (auto pool_id: pool_ids) {
+    REQUIRE(pool_id != std::thread::id{});
+    REQUIRE(this_id != pool_id);
+    REQUIRE(pool_id == pool_ids[0]); // All should be the same
   }
 }
 
@@ -310,21 +328,20 @@ struct my_parallel_scheduler_backend_impl
 };
 
 struct my_inline_scheduler_backend_impl : scr::parallel_scheduler_backend {
-  void schedule(std::span<std::byte> s, scr::receiver& r) noexcept override {
+  void schedule(std::span<std::byte>, scr::receiver& r) noexcept override {
     r.set_value();
   }
 
-  void schedule_bulk_chunked(
-    uint32_t count,
-    std::span<std::byte> s,
-    scr::bulk_item_receiver& r) noexcept override {
+  void
+    schedule_bulk_chunked(uint32_t count, std::span<std::byte>, scr::bulk_item_receiver& r) noexcept
+    override {
     r.execute(0, count);
     r.set_value();
   }
 
   void schedule_bulk_unchunked(
     uint32_t count,
-    std::span<std::byte> s,
+    std::span<std::byte>,
     scr::bulk_item_receiver& r) noexcept override {
     for (uint32_t i = 0; i < count; ++i)
       r.execute(i, i + 1);

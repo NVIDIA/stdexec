@@ -308,11 +308,13 @@ namespace {
 
   inline auto
     to_comparable(std::exception_ptr eptr) -> std::pair<const std::type_info&, std::string> {
-    try {
+    STDEXEC_TRY {
       std::rethrow_exception(eptr);
-    } catch (const std::exception& e) {
+    }
+    STDEXEC_CATCH(const std::exception& e) {
       return {typeid(e), e.what()};
-    } catch (...) {
+    }
+    STDEXEC_CATCH_ALL {
       return {typeid(void), "<unknown>"};
     }
   }
@@ -486,9 +488,10 @@ namespace {
 
     template <class... Ts>
     void set_value(Ts... vals) noexcept {
-      try {
+      STDEXEC_TRY {
         std::move(f_)(static_cast<Ts&&>(vals)...);
-      } catch (...) {
+      }
+      STDEXEC_CATCH_ALL {
         ex::set_error(std::move(*this), std::current_exception());
       }
     }
@@ -498,11 +501,12 @@ namespace {
     }
 
     void set_error(std::exception_ptr eptr) noexcept {
-      try {
+      STDEXEC_TRY {
         if (eptr)
           std::rethrow_exception(eptr);
         FAIL("Empty exception thrown");
-      } catch (const std::exception& e) {
+      }
+      STDEXEC_CATCH(const std::exception& e) {
         FAIL("Exception thrown: " << e.what());
       }
     }

@@ -71,10 +71,11 @@ struct async_scope_future_set_result : rl::test_suite<async_scope_future_set_res
     ex::sender auto begin = ex::schedule(sch);
     ex::sender auto ftr = scope.spawn_future(begin | stdexec::then([] { return throwing_copy(); }));
     bool threw = false;
-    try {
+    STDEXEC_TRY {
       stdexec::sync_wait(std::move(ftr));
       RL_ASSERT(false);
-    } catch (const std::logic_error&) {
+    }
+    STDEXEC_CATCH(const std::logic_error&) {
       threw = true;
     }
     RL_ASSERT(threw);

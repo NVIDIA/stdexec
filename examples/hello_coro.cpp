@@ -41,11 +41,12 @@ auto async_stop_token() -> exec::task<std::optional<stdexec::inplace_stop_token>
 }
 
 auto main() -> int {
-  try {
+  STDEXEC_TRY {
     // Awaitables are implicitly senders:
     auto [i] = stdexec::sync_wait(async_answer2(just(42), just())).value();
     std::cout << "The answer is " << i.value() << '\n';
-  } catch (std::exception& e) {
+  }
+  STDEXEC_CATCH(const std::exception& e) {
     std::cout << e.what() << '\n';
   }
 }
