@@ -312,10 +312,25 @@ if(STDEXEC_ENABLE_CUDA)
     target_compile_features(nvexec INTERFACE cuda_std_20)
     target_link_libraries(nvexec INTERFACE STDEXEC::stdexec)
 
+    set(_gpus)
+    foreach(_arch IN LISTS CMAKE_CUDA_ARCHITECTURES)
+      if(_arch MATCHES "-real")
+        string(REPLACE "-real" "" _arch "${_arch}")
+        string(PREPEND _arch "cc")
+      elseif(_arch MATCHES "-virtual")
+        string(REPLACE "-virtual" "" _arch "${_arch}")
+        string(PREPEND _arch "cc")
+      elseif(_arch MATCHES "^[0-9]+$")
+        string(PREPEND _arch "cc")
+      endif()
+      list(APPEND _gpus "${_arch}")
+    endforeach()
+    list(JOIN _gpus "," _gpus)
+
     target_compile_options(nvexec INTERFACE
-      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=cc${CMAKE_CUDA_ARCHITECTURES}>)
+      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=${_gpus}>)
     target_link_options(nvexec INTERFACE
-      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=cc${CMAKE_CUDA_ARCHITECTURES}>)
+      $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=${_gpus}>)
 
     install(TARGETS nvexec
         EXPORT stdexec-exports

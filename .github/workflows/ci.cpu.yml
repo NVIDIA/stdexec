@@ -20,15 +20,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "CPU (clang 13, Debug, ubuntu 20.04)",       build: "Debug",   tag: llvm13-cuda12.6-ubuntu20.04, cxxflags: "-stdlib=libc++" }
-          - { name: "CPU (clang 13, Release, ubuntu 20.04)",     build: "Release", tag: llvm13-cuda12.6-ubuntu20.04, cxxflags: "-stdlib=libc++" }
-          - { name: "CPU (gcc 11, Debug, ubuntu 22.04)",         build: "Debug",   tag: gcc11-cuda12.6-ubuntu22.04,  cxxflags: "", }
-          - { name: "CPU (gcc 11, Release, ubuntu 22.04)",       build: "Release", tag: gcc11-cuda12.6-ubuntu22.04,  cxxflags: "", }
-          - { name: "CPU (gcc 11, Release, ubuntu 22.04, TSAN)", build: "Release", tag: gcc11-cuda12.6-ubuntu22.04,  cxxflags: "-fsanitize=thread" }
-          - { name: "CPU (gcc 11, Release, ubuntu 22.04, ASAN)", build: "Release", tag: gcc11-cuda12.6-ubuntu22.04,  cxxflags: "-fsanitize=address" }
+          - { name: "CPU (clang 14, Debug)",       build: "Debug",   tag: llvm14-cuda12.9, cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (clang 14, Release)",     build: "Release", tag: llvm14-cuda12.9, cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (gcc 11, Debug)",         build: "Debug",   tag: gcc11-cuda12.9,  cxxflags: "", }
+          - { name: "CPU (gcc 11, Release)",       build: "Release", tag: gcc11-cuda12.9,  cxxflags: "", }
+          - { name: "CPU (gcc 11, Release, TSAN)", build: "Release", tag: gcc11-cuda12.9,  cxxflags: "-fsanitize=thread" }
+          - { name: "CPU (gcc 11, Release, ASAN)", build: "Release", tag: gcc11-cuda12.9,  cxxflags: "-fsanitize=address" }
     container:
       options: -u root
-      image: rapidsai/devcontainers:24.12-cpp-${{matrix.tag}}
+      image: rapidsai/devcontainers:25.08-cpp-${{ matrix.tag }}
       env:
         SCCACHE_REGION: "us-east-2"
         SCCACHE_BUCKET: "rapids-sccache-devs"
@@ -111,8 +111,8 @@ jobs:
       - name: Build and test CPU schedulers (Windows)
         shell: pwsh
         run: |
-          docker pull rapidsai/devcontainers:24.12-cuda12.6-cl14.39-windows2022
-          docker run --isolation=process -v "$(pwd):C:/stdexec" rapidsai/devcontainers:24.12-cuda12.6-cl14.39-windows2022 powershell C:/stdexec/.github/workflows/test-windows.ps1 -Compiler '${{ matrix.compiler }}' -Config '${{ matrix.build }}'
+          docker pull rapidsai/devcontainers:25.08-cuda12.9-cl14.43
+          docker run --isolation=process -v "$(pwd):C:/stdexec" rapidsai/devcontainers:25.08-cuda12.9-cl14.43 powershell C:/stdexec/.github/workflows/test-windows.ps1 -Compiler '${{ matrix.compiler }}' -Config '${{ matrix.build }}'
 
   ci-cpu-windows:
     runs-on: windows-latest
