@@ -383,10 +383,13 @@ if (STDEXEC_ENABLE_TBB)
       FILES ${tbbpool_headers}
     )
 
+    target_link_libraries(STDEXEC::stdexec INTERFACE
+        TBB::tbb
+        )
+
     target_link_libraries(tbbpool
         INTERFACE
         STDEXEC::stdexec
-        TBB::tbb
         )
 
     install(TARGETS tbbpool
