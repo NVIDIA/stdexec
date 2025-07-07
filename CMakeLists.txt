@@ -379,6 +379,7 @@ if (STDEXEC_ENABLE_TBB)
     include(rapids-find)
     rapids_find_package(
         TBB REQUIRED
+        COMPONENTS tbb
         BUILD_EXPORT_SET stdexec-exports
         INSTALL_EXPORT_SET stdexec-exports
     )
@@ -397,10 +398,13 @@ if (STDEXEC_ENABLE_TBB)
       FILES ${tbbpool_headers}
     )
 
+    target_link_libraries(stdexec INTERFACE
+        TBB::tbb
+        )
+
     target_link_libraries(tbbpool
         INTERFACE
         STDEXEC::stdexec
-        TBB::tbb
         )
 
     install(TARGETS tbbpool
