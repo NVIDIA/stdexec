@@ -338,11 +338,11 @@ namespace exec::__system_context_default_impl {
       return __old_factory;
     }
 
-   private:
     std::atomic<bool> __instance_locked_{false};
     std::shared_ptr<_Interface> __instance_{nullptr};
     std::atomic<__parallel_scheduler_backend_factory> __factory_{__default_factory};
 
+   private:
     /// The default factory returns an instance of `_Impl`.
     static auto __default_factory() -> std::shared_ptr<_Interface> {
       return std::make_shared<_Impl>();
