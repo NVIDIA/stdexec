@@ -301,6 +301,10 @@ namespace exec::__system_context_default_impl {
   /// Keeps track of the backends for the system context interfaces.
   template <typename _Interface, typename _Impl>
   struct __instance_data {
+    // work around for https://gcc.gnu.org/bugzilla/show_bug.cgi?id=119652
+    constexpr __instance_data() noexcept // NOLINT(modernize-use-equals-default)
+    {}
+
     /// Gets the current instance; if there is no instance, uses the current factory to create one.
     auto __get_current_instance() -> std::shared_ptr<_Interface> {
       // If we have a valid instance, return it.
@@ -338,16 +342,11 @@ namespace exec::__system_context_default_impl {
       return __old_factory;
     }
 
-    // work around for https://gcc.gnu.org/bugzilla/show_bug.cgi?id=119652
-#if !STDEXEC_GCC() || __GNUC__ != 14
    private:
-#endif // !STDEXEC_GCC() || __GNUC__ != 14
-
     std::atomic<bool> __instance_locked_{false};
     std::shared_ptr<_Interface> __instance_{nullptr};
     std::atomic<__parallel_scheduler_backend_factory> __factory_{__default_factory};
 
-   private:
     /// The default factory returns an instance of `_Impl`.
     static auto __default_factory() -> std::shared_ptr<_Interface> {
       return std::make_shared<_Impl>();
