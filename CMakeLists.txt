@@ -364,6 +364,7 @@ if (STDEXEC_ENABLE_TBB)
     include(rapids-find)
     rapids_find_package(
         TBB REQUIRED
+        COMPONENTS tbb
         BUILD_EXPORT_SET stdexec-exports
         INSTALL_EXPORT_SET stdexec-exports
     )
