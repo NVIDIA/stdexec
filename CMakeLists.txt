@@ -383,7 +383,7 @@ if (STDEXEC_ENABLE_TBB)
       FILES ${tbbpool_headers}
     )
 
-    target_link_libraries(STDEXEC::stdexec INTERFACE
+    target_link_libraries(stdexec INTERFACE
         TBB::tbb
         )
 
