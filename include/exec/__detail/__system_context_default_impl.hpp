@@ -338,6 +338,11 @@ namespace exec::__system_context_default_impl {
       return __old_factory;
     }
 
+    // work around for https://gcc.gnu.org/bugzilla/show_bug.cgi?id=119652
+#if !STDEXEC_GCC() || __GNUC__ != 14
+   private:
+#endif // !STDEXEC_GCC() || __GNUC__ != 14
+
     std::atomic<bool> __instance_locked_{false};
     std::shared_ptr<_Interface> __instance_{nullptr};
     std::atomic<__parallel_scheduler_backend_factory> __factory_{__default_factory};
