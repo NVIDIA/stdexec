@@ -67,7 +67,7 @@ jobs:
           # Configure
           cmake -S . -B build -GNinja \
             -DSTDEXEC_ENABLE_CUDA=ON \
-            -DSTDEXEC_ENABLE_IO_URING_TESTS=OFF \
+            -DSTDEXEC_ENABLE_IO_URING=OFF \
             -DCMAKE_BUILD_TYPE=${{ matrix.build }} \
             -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
             -DCMAKE_CUDA_COMPILER=${{ matrix.cxx }} \
