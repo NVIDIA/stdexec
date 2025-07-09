@@ -718,4 +718,15 @@ namespace {
     CHECK(lvalue_kind == value_category_receiver::kind::const_lvalue);
   }
 
+  TEST_CASE(
+    "Lvalue invocation of the completion handler is supported (for compatibility with Boost.Beast "
+    "perhaps among others)",
+    "[asioexec][completion_token]") {
+    const auto initiating_function = [](auto&& token) {
+      return asio_impl::async_initiate<decltype(token), void()>([](auto&& h) { h(); }, token);
+    };
+    auto op = ::stdexec::connect(initiating_function(completion_token), expect_value_receiver{});
+    ::stdexec::start(op);
+  }
+
 } // namespace

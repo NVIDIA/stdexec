@@ -244,7 +244,7 @@ namespace asioexec {
       }
 
       template <typename... Args>
-      void operator()(Args&&... args) && noexcept {
+      void operator()(Args&&... args) noexcept {
         STDEXEC_ASSERT(self_);
         {
           const std::lock_guard l(self_->m_);
