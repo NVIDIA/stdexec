@@ -18,9 +18,12 @@
 #include "__system_context_replaceability_api.hpp"
 
 #include "../../stdexec/execution.hpp"
-#include "../static_thread_pool.hpp"
 #if STDEXEC_ENABLE_LIBDISPATCH
 #  include "../libdispatch_queue.hpp" // IWYU pragma: keep
+#elif STDEXEC_ENABLE_IO_URING
+#  include "../linux/io_uring_context.hpp" // IWYU pragma: keep
+#else
+#  include "../static_thread_pool.hpp" // IWYU pragma: keep
 #endif
 
 #include <atomic>
@@ -365,6 +368,8 @@ namespace exec::__system_context_default_impl {
 
 #if STDEXEC_ENABLE_LIBDISPATCH
   using __parallel_scheduler_backend_impl = __generic_impl<exec::libdispatch_queue>;
+#elif STDEXEC_ENABLE_IO_URING
+  using __parallel_scheduler_backend_impl = __generic_impl<exec::io_uring_context>;
 #else
   using __parallel_scheduler_backend_impl = __generic_impl<exec::static_thread_pool>;
 #endif

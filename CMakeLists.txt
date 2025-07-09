@@ -520,7 +520,7 @@ endif()
 include(CheckIncludeFileCXX)
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   CHECK_INCLUDE_FILE_CXX("dispatch/dispatch.h" STDEXEC_FOUND_LIBDISPATCH)
-  option(STDEXEC_ENABLE_LIBDISPATCH "Enable the tests for the Grand Central Dispatch scheduler" ${STDEXEC_FOUND_LIBDISPATCH})
+  option(STDEXEC_ENABLE_LIBDISPATCH "Enable use of the Grand Central Dispatch scheduler" ${STDEXEC_FOUND_LIBDISPATCH})
   target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_LIBDISPATCH)
 endif()
 
@@ -567,7 +567,7 @@ else()
     "
     STDEXEC_FOUND_IO_URING)
 endif()
-option(STDEXEC_ENABLE_IO_URING_TESTS "Enable io_uring tests" ${STDEXEC_FOUND_IO_URING})
+option(STDEXEC_ENABLE_IO_URING "Enable the use of the io_uring scheduler on Linux" ${STDEXEC_FOUND_IO_URING})
 
 option(STDEXEC_BUILD_DOCS "Build stdexec documentation" OFF)
 option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
