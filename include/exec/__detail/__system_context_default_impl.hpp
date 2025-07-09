@@ -22,6 +22,8 @@
 #  include "../libdispatch_queue.hpp" // IWYU pragma: keep
 #elif STDEXEC_ENABLE_IO_URING
 #  include "../linux/io_uring_context.hpp" // IWYU pragma: keep
+#elif STDEXEC_ENABLE_WINDOWS_THREAD_POOL
+#  include "../windows/windows_thread_pool.hpp" // IWYU pragma: keep
 #else
 #  include "../static_thread_pool.hpp" // IWYU pragma: keep
 #endif
@@ -201,7 +203,7 @@ namespace exec::__system_context_default_impl {
       }
 
       uint32_t __end(uint32_t __chunk_index) const noexcept {
-        return std::min(__begin(__chunk_index + 1), __max_size_);
+        return (std::min)(__begin(__chunk_index + 1), __max_size_);
       }
     };
 
@@ -370,6 +372,8 @@ namespace exec::__system_context_default_impl {
   using __parallel_scheduler_backend_impl = __generic_impl<exec::libdispatch_queue>;
 #elif STDEXEC_ENABLE_IO_URING
   using __parallel_scheduler_backend_impl = __generic_impl<exec::io_uring_context>;
+#elif STDEXEC_ENABLE_WINDOWS_THREAD_POOL
+  using __parallel_scheduler_backend_impl = __generic_impl<exec::windows_thread_pool>;
 #else
   using __parallel_scheduler_backend_impl = __generic_impl<exec::static_thread_pool>;
 #endif

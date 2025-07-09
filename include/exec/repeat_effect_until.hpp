@@ -24,12 +24,11 @@
 #include "trampoline_scheduler.hpp"
 
 #include <atomic>
-#include <concepts>
 #include <exception>
 #include <type_traits>
 
 namespace exec {
-  namespace __repeat_effect_until {
+  namespace __repeat_effect {
     using namespace stdexec;
 
     template <class _Sender, class _Receiver>
@@ -66,7 +65,6 @@ namespace exec {
     };
 
     STDEXEC_PRAGMA_PUSH()
-
     STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
 
     template <class _Sender, class _Receiver>
@@ -173,6 +171,7 @@ namespace exec {
       __error_t
     >;
 
+    struct __repeat_effect_tag { };
     struct __repeat_effect_until_tag { };
 
     struct __repeat_effect_until_impl : __sexpr_defaults {
@@ -214,22 +213,55 @@ namespace exec {
           });
       }
     };
-  } // namespace __repeat_effect_until
 
-  using __repeat_effect_until::repeat_effect_until_t;
+    struct repeat_effect_t {
+      struct _never {
+        template <class... _Args>
+        STDEXEC_ATTRIBUTE(host, device, always_inline)
+        constexpr auto operator()(_Args &&...) const noexcept -> bool{
+          return false;
+        }
+      };
+
+      template <sender _Sender>
+      auto operator()(_Sender &&__sndr) const {
+        auto __domain = __get_early_domain(__sndr);
+        return stdexec::transform_sender(
+          __domain, __make_sexpr<repeat_effect_t>({}, static_cast<_Sender &&>(__sndr)));
+      }
+
+      STDEXEC_ATTRIBUTE(always_inline)
+      constexpr auto operator()() const -> __binder_back<repeat_effect_t> {
+        return {{}, {}, {}};
+      }
+
+      template <class _Sender>
+      auto transform_sender(_Sender &&__sndr, __ignore) {
+        return __sexpr_apply(
+          static_cast<_Sender &&>(__sndr), []<class _Child>(__ignore, __ignore, _Child __child) {
+            return repeat_effect_until_t{}(stdexec::then(std::move(__child)), _never{});
+          });
+      }
+    };
+  } // namespace __repeat_effect
+
+  using __repeat_effect::repeat_effect_until_t;
   inline constexpr repeat_effect_until_t repeat_effect_until{};
+
+  using __repeat_effect::repeat_effect_t;
+  inline constexpr repeat_effect_t repeat_effect{};
 } // namespace exec
 
 namespace stdexec {
   template <>
-  struct __sexpr_impl<exec::__repeat_effect_until::__repeat_effect_until_tag>
-    : exec::__repeat_effect_until::__repeat_effect_until_impl { }; // namespace stdexec
+  struct __sexpr_impl<exec::__repeat_effect::__repeat_effect_until_tag>
+    : exec::__repeat_effect::__repeat_effect_until_impl { }; // namespace stdexec
 
   template <>
   struct __sexpr_impl<exec::repeat_effect_until_t> : __sexpr_defaults {
     static constexpr auto get_completion_signatures =
       []<class _Sender>(
-        _Sender &&) noexcept -> exec::__repeat_effect_until::__completions_t<__data_of<_Sender>> {
+        _Sender &&) noexcept -> exec::__repeat_effect::__completions_t<__data_of<_Sender>> {
       return {};
     };
   };
