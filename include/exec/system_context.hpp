@@ -378,7 +378,7 @@ namespace exec {
           // If we are not parallelizing, we need to run all the iterations sequentially.
           uint32_t __increments = 1;
           if constexpr (!_BulkState::__parallelize) {
-            __increments = __state->__size_;
+            __increments = static_cast<uint32_t>(__state->__size_);
           }
           for (uint32_t __i = __begin; __i < __begin + __increments; __i++) {
             std::apply(
@@ -389,7 +389,7 @@ namespace exec {
           // If we are not parallelizing, we need to pass the entire range to the functor.
           if constexpr (!_BulkState::__parallelize) {
             __begin = 0;
-            __end = __state->__size_;
+            __end = static_cast<uint32_t>(__state->__size_);
           }
           std::apply(
             [&](auto&&... __args) { __state->__fun_(__begin, __end, __args...); },

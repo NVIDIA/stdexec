@@ -41,6 +41,7 @@ set(exec_test_sources
     test_at_coroutine_exit.cpp
     test_materialize.cpp
     $<$<BOOL:${STDEXEC_ENABLE_IO_URING}>:test_io_uring_context.cpp>
+    $<$<BOOL:${STDEXEC_ENABLE_WINDOWS_THREAD_POOL}>:test_windows_thread_pool_context.cpp>
     test_trampoline_scheduler.cpp
     test_sequence_senders.cpp
     test_sequence.cpp

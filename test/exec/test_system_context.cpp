@@ -148,7 +148,7 @@ TEST_CASE("simple bulk task on system context", "[types][system_scheduler]") {
   std::thread::id pool_ids[num_tasks];
   exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
-  auto bulk_snd = ex::bulk(ex::schedule(sched), ex::par, num_tasks, [&](unsigned long id) {
+  auto bulk_snd = ex::bulk(ex::schedule(sched), ex::par, num_tasks, [&](size_t id) {
     pool_ids[id] = std::this_thread::get_id();
   });
 
@@ -174,7 +174,7 @@ TEST_CASE("simple bulk chaining on system context", "[types][system_scheduler]")
   });
 
   auto bulk_snd = ex::bulk(
-    std::move(snd), ex::par, num_tasks, [&](unsigned long id, std::thread::id propagated_pool_id) {
+    std::move(snd), ex::par, num_tasks, [&](size_t id, std::thread::id propagated_pool_id) {
       propagated_pool_ids[id] = propagated_pool_id;
       pool_ids[id] = std::this_thread::get_id();
     });
@@ -239,7 +239,7 @@ TEST_CASE("bulk_unchunked with seq will run everything on one thread", "[types][
   std::thread::id pool_ids[num_tasks];
   exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
-  auto bulk_snd = ex::bulk_unchunked(ex::schedule(sched), ex::seq, num_tasks, [&](unsigned long id) {
+  auto bulk_snd = ex::bulk_unchunked(ex::schedule(sched), ex::seq, num_tasks, [&](size_t id) {
     pool_ids[id] = std::this_thread::get_id();
     std::this_thread::sleep_for(std::chrono::milliseconds{1});
   });
@@ -258,7 +258,7 @@ TEST_CASE("bulk_chunked on parallel_scheduler performs chunking", "[types][syste
 
   exec::parallel_scheduler sched = exec::get_parallel_scheduler();
   auto bulk_snd =
-    ex::bulk_chunked(ex::schedule(sched), ex::par, 10'000, [&](unsigned long b, unsigned long e) {
+    ex::bulk_chunked(ex::schedule(sched), ex::par, 10'000, [&](int b, int e) {
       if (e - b > 1) {
         has_chunking = true;
       }
@@ -276,7 +276,7 @@ TEST_CASE(
 
   exec::parallel_scheduler sched = exec::get_parallel_scheduler();
   auto bulk_snd = ex::bulk_chunked(
-    ex::schedule(sched), ex::par, num_tasks, [&](unsigned long b, unsigned long e) {
+    ex::schedule(sched), ex::par, num_tasks, [&](size_t b, size_t e) {
       for (auto i = b; i < e; ++i) {
         covered[i] = true;
       }

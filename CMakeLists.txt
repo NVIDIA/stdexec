@@ -524,6 +524,12 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_LIBDISPATCH)
 endif()
 
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  CHECK_INCLUDE_FILE_CXX("windows.h" STDEXEC_FOUND_WINDOWS_HEADER)
+  option(STDEXEC_ENABLE_WINDOWS_THREAD_POOL "Enable use of the Windows Thread Pool scheduler" ${STDEXEC_FOUND_WINDOWS_HEADER})
+  target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_WINDOWS_THREAD_POOL)
+endif()
+
 option (STDEXEC_ENABLE_NUMA "Enable NUMA affinity for static_thread_pool" OFF)
 if (STDEXEC_ENABLE_NUMA)
   find_package(numa REQUIRED)
