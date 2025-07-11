@@ -71,31 +71,18 @@ namespace exec {
       return {};
     }
 
-    template <
-      stdexec::same_as<get_item_types_t> _Tag,
-      stdexec::__decays_to<__seqexpr> _Self,
-      class _Env
-    >
-    friend auto tag_invoke(_Tag, _Self&& __self, _Env&& __env) -> stdexec::__msecond<
-      stdexec::__if_c<stdexec::same_as<_Tag, get_item_types_t>>,
-      decltype(__self.__tag()
-                 .get_item_types(static_cast<_Self&&>(__self), static_cast<_Env&&>(__env)))
-    > {
+    template <stdexec::__decays_to<__seqexpr> _Self, class _Env>
+    STDEXEC_MEMFN_DECL(auto get_item_types)(this _Self&& __self, _Env&& __env)
+      -> decltype(__self.__tag()
+                    .get_item_types(static_cast<_Self&&>(__self), static_cast<_Env&&>(__env))) {
       return {};
     }
 
-    template <
-      stdexec::same_as<subscribe_t> _Tag,
-      stdexec::__decays_to<__seqexpr> _Self,
-      /*receiver*/ class _Receiver
-    >
-    friend auto tag_invoke(_Tag, _Self&& __self, _Receiver&& __rcvr) noexcept(noexcept(
+    template <stdexec::__decays_to<__seqexpr> _Self, stdexec::receiver _Receiver>
+    STDEXEC_MEMFN_DECL(auto subscribe)(this _Self&& __self, _Receiver&& __rcvr) noexcept(noexcept(
       __self.__tag().subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr))))
-      -> stdexec::__msecond<
-        stdexec::__if_c<stdexec::same_as<_Tag, subscribe_t>>,
-        decltype(__self.__tag()
-                   .subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr)))
-      > {
+      -> decltype(__self.__tag()
+                    .subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr))) {
       return __tag_t::subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
     }
 
@@ -104,13 +91,11 @@ namespace exec {
       apply(_Sender&& __sndr, _ApplyFn&& __fun) noexcept(stdexec::__nothrow_callable<
                                                          stdexec::__detail::__impl_of<_Sender>,
                                                          stdexec::__copy_cvref_fn<_Sender>,
-                                                         _ApplyFn
-      >)
+                                                         _ApplyFn>)
         -> stdexec::__call_result_t<
           stdexec::__detail::__impl_of<_Sender>,
           stdexec::__copy_cvref_fn<_Sender>,
-          _ApplyFn
-        > {
+          _ApplyFn> {
       return static_cast<_Sender&&>(__sndr)
         .__impl_(stdexec::__copy_cvref_fn<_Sender>(), static_cast<_ApplyFn&&>(__fun));
     }

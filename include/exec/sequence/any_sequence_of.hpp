@@ -300,15 +300,13 @@ namespace exec {
       return stdexec::get_env(__receiver_);
     }
 
-   private:
-    STDEXEC_MEMFN_FRIEND(set_value);
-    STDEXEC_MEMFN_FRIEND(set_error);
-    STDEXEC_MEMFN_FRIEND(set_stopped);
-
-    template <std::same_as<__t> _Self, stdexec::sender _Sender>
-      requires stdexec::__callable<set_next_t, _Self&, _Sender>
-    STDEXEC_MEMFN_DECL(auto set_next)(this _Self& __self, _Sender&& __sender) {
-      return exec::set_next(__self.__receiver_, static_cast<_Sender&&>(__sender));
+    template <stdexec::sender _Item>
+      requires stdexec::__callable<set_next_t, __receiver_base&, _Item>
+    [[nodiscard]]
+    auto set_next(_Item&& __item) & noexcept(
+      stdexec::__nothrow_callable<set_next_t, __receiver_base&, _Item>)
+      -> stdexec::__call_result_t<set_next_t, __receiver_base&, _Item> {
+      return exec::set_next(__receiver_, static_cast<_Item&&>(__item));
     }
 
     void set_value() noexcept
@@ -337,8 +335,7 @@ namespace exec {
     using __sender_base = stdexec::__t<__any::__sequence_sender<
       _Completions,
       queries<_SenderQueries...>,
-      queries<_ReceiverQueries...>
-    >>;
+      queries<_ReceiverQueries...>>>;
     __sender_base __sender_;
 
    public:

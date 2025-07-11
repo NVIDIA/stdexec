@@ -43,8 +43,7 @@ namespace exec {
     concept next_sender = sender_in<_Sender, _Env>
                        && __all_contained_in<
                             completion_signatures_of_t<_Sender, _Env>,
-                            completion_signatures<set_value_t(), set_stopped_t()>
-                       >;
+                            completion_signatures<set_value_t(), set_stopped_t()>>;
 
     // This is a sequence-receiver CPO that is used to apply algorithms on an input sender and it
     // returns a next-sender. `set_next` is usually called in a context where a sender will be
@@ -52,6 +51,13 @@ namespace exec {
     // is allowed to throw an excpetion, which needs to be handled by a calling sequence-operation.
     // The returned object is a sender that can complete with `set_value_t()` or `set_stopped_t()`.
     struct set_next_t {
+      template <__same_as<set_next_t> _Self, receiver _Receiver, sender _Item>
+      friend auto tag_invoke(_Self, _Receiver& __rcvr, _Item&& __item)
+        noexcept(noexcept(__rcvr.set_next(static_cast<_Item&&>(__item))))
+          -> decltype(__rcvr.set_next(static_cast<_Item&&>(__item))) {
+        return __rcvr.set_next(static_cast<_Item&&>(__item));
+      }
+
       template <receiver _Receiver, sender _Item>
         requires tag_invocable<set_next_t, _Receiver&, _Item>
       auto operator()(_Receiver& __rcvr, _Item&& __item) const
@@ -148,6 +154,12 @@ namespace exec {
     concept __with_member_alias = __mvalid<__member_alias_t, _Sender, _Env>;
 
     struct get_item_types_t {
+      template <__same_as<get_item_types_t> _Self, class _Sender, class _Env>
+      friend auto tag_invoke(_Self, _Sender&& __sndr, _Env&& __env) noexcept
+        -> decltype(static_cast<_Sender&&>(__sndr).get_item_types(static_cast<_Env&&>(__env))) {
+        return {};
+      }
+
       template <class _Sender, class _Env>
       static auto __impl() {
         static_assert(sizeof(_Sender), "Incomplete type used with get_item_types");
@@ -173,15 +185,14 @@ namespace exec {
           using _Result = __mexception<
             _UNRECOGNIZED_SENDER_TYPE_<>,
             _WITH_SENDER_<_Sender>,
-            _WITH_ENVIRONMENT_<_Env>
-          >;
+            _WITH_ENVIRONMENT_<_Env>>;
           return static_cast<_Result (*)()>(nullptr);
         }
       }
 
       template <class _Sender, class _Env = env<>>
-      constexpr auto
-        operator()(_Sender&&, _Env&& = {}) const noexcept -> decltype(__impl<_Sender, _Env>()()) {
+      constexpr auto operator()(_Sender&&, _Env&& = {}) const noexcept //
+        -> decltype(__impl<_Sender, _Env>()()) {
         return {};
       }
     };
@@ -217,8 +228,7 @@ namespace exec {
   template <class _Receiver, class _Item>
   auto __try_item(_Item*) -> stdexec::__mexception<
     _MISSING_SET_NEXT_OVERLOAD_FOR_ITEM_<_Item>,
-    _WITH_RECEIVER_<_Receiver>
-  >;
+    _WITH_RECEIVER_<_Receiver>>;
 
   template <class _Receiver, class _Item>
     requires stdexec::__callable<set_next_t, _Receiver&, _Item>
@@ -245,22 +255,19 @@ namespace exec {
     stdexec::__mconst<stdexec::completion_signatures<stdexec::set_value_t()>>::__f,
     stdexec::__sigs::__default_set_error,
     stdexec::completion_signatures<stdexec::set_stopped_t()>,
-    stdexec::__concat_completion_signatures
-  >;
+    stdexec::__concat_completion_signatures>;
 
   template <class _Sender, class... _Env>
   using __item_completion_signatures = stdexec::transform_completion_signatures<
     stdexec::__completion_signatures_of_t<_Sender, _Env...>,
     stdexec::completion_signatures<stdexec::set_value_t()>,
-    stdexec::__mconst<stdexec::completion_signatures<>>::__f
-  >;
+    stdexec::__mconst<stdexec::completion_signatures<>>::__f>;
 
   template <class _Sequence, class... _Env>
   using __sequence_completion_signatures = stdexec::transform_completion_signatures<
     stdexec::__completion_signatures_of_t<_Sequence, _Env...>,
     stdexec::completion_signatures<stdexec::set_value_t()>,
-    stdexec::__mconst<stdexec::completion_signatures<>>::__f
-  >;
+    stdexec::__mconst<stdexec::completion_signatures<>>::__f>;
 
   template <class _Sequence, class... _Env>
   using __sequence_completion_signatures_of_t = stdexec::__mapply<
@@ -268,27 +275,21 @@ namespace exec {
       stdexec::__mbind_back_q<__item_completion_signatures, _Env...>,
       stdexec::__mbind_back<
         stdexec::__mtry_q<stdexec::__concat_completion_signatures>,
-        __sequence_completion_signatures<_Sequence, _Env...>
-      >
-    >,
-    item_types_of_t<_Sequence, _Env...>
-  >;
+        __sequence_completion_signatures<_Sequence, _Env...>>>,
+    item_types_of_t<_Sequence, _Env...>>;
 
   template <class _Receiver, class _Sender>
   concept sequence_receiver_from = stdexec::receiver<_Receiver>
                                 && stdexec::sender_in<_Sender, stdexec::env_of_t<_Receiver>>
                                 && sequence_receiver_of<
                                      _Receiver,
-                                     item_types_of_t<_Sender, stdexec::env_of_t<_Receiver>>
-                                >
+                                     item_types_of_t<_Sender, stdexec::env_of_t<_Receiver>>>
                                 && ((sequence_sender_in<_Sender, stdexec::env_of_t<_Receiver>>
                                      && stdexec::receiver_of<
                                        _Receiver,
                                        stdexec::completion_signatures_of_t<
                                          _Sender,
-                                         stdexec::env_of_t<_Receiver>
-                                       >
-                                     >)
+                                         stdexec::env_of_t<_Receiver>>>)
                                     || (!sequence_sender_in<_Sender, stdexec::env_of_t<_Receiver>> && stdexec::__receiver_from<__sequence_sndr::__stopped_means_break_t<_Receiver>, next_sender_of_t<_Receiver, _Sender>>) );
 
   namespace __sequence_sndr {
@@ -298,8 +299,7 @@ namespace exec {
     using __single_sender_completion_sigs = __if_c<
       unstoppable_token<stop_token_of_t<_Env>>,
       completion_signatures<set_value_t()>,
-      completion_signatures<set_value_t(), set_stopped_t()>
-    >;
+      completion_signatures<set_value_t(), set_stopped_t()>>;
 
     template <class _Sender, class _Receiver>
     concept __next_connectable =
@@ -318,6 +318,14 @@ namespace exec {
       template <class _Sender, class _Receiver>
       using __tfx_sndr = __tfx_sender<_Sender, env_of_t<_Receiver>>;
 
+      template <__same_as<subscribe_t> _Self, stdexec::sender _Sender, stdexec::receiver _Receiver>
+      friend auto tag_invoke(_Self, _Sender&& __sndr, _Receiver&& __rcvr)
+        noexcept(noexcept(static_cast<_Sender&&>(__sndr)
+                            .subscribe(static_cast<_Receiver&&>(__rcvr))))
+          -> decltype(static_cast<_Sender&&>(__sndr).subscribe(static_cast<_Receiver&&>(__rcvr))) {
+        return static_cast<_Sender&&>(__sndr).subscribe(static_cast<_Receiver&&>(__rcvr));
+      }
+
       template <class _Sender, class _Receiver>
       static constexpr auto __select_impl() noexcept {
         using _Domain = __late_domain_of_t<_Sender, env_of_t<_Receiver&>>;
@@ -327,12 +335,10 @@ namespace exec {
         if constexpr (__next_connectable<_TfxSender, _Receiver>) {
           using _Result = connect_result_t<
             next_sender_of_t<_Receiver, _TfxSender>,
-            __stopped_means_break_t<_Receiver>
-          >;
+            __stopped_means_break_t<_Receiver>>;
           constexpr bool _Nothrow = __nothrow_connectable<
             next_sender_of_t<_Receiver, _TfxSender>,
-            __stopped_means_break_t<_Receiver>
-          >;
+            __stopped_means_break_t<_Receiver>>;
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
         } else if constexpr (__subscribeable_with_tag_invoke<_TfxSender, _Receiver>) {
           using _Result = tag_invoke_result_t<subscribe_t, _TfxSender, _Receiver>;
@@ -361,8 +367,7 @@ namespace exec {
           static_assert(
             operation_state<connect_result_t<
               next_sender_of_t<_Receiver, _TfxSender>,
-              __stopped_means_break_t<_Receiver>
-            >>,
+              __stopped_means_break_t<_Receiver>>>,
             "stdexec::connect(sender, receiver) must return a type that "
             "satisfies the operation_state concept");
           next_sender_of_t<_Receiver, _TfxSender> __next =
@@ -422,8 +427,7 @@ namespace exec {
   template <class _Receiver>
   concept __stoppable_receiver = stdexec::__callable<stdexec::set_value_t, _Receiver>
                               && (stdexec::unstoppable_token<
-                                    stdexec::stop_token_of_t<stdexec::env_of_t<_Receiver>>
-                                  >
+                                    stdexec::stop_token_of_t<stdexec::env_of_t<_Receiver>>>
                                   || stdexec::__callable<stdexec::set_stopped_t, _Receiver>);
 
   template <class _Receiver>
