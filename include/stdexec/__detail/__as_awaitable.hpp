@@ -117,8 +117,7 @@ namespace stdexec {
 
     template <class _Sender, class _Promise>
     using __value_t = __decay_t<
-      __value_types_of_t<_Sender, env_of_t<_Promise&>, __q<__single_value>, __msingle_or<void>>
-    >;
+      __value_types_of_t<_Sender, env_of_t<_Promise&>, __q<__single_value>, __msingle_or<void>>>;
 
     template <class _Sender, class _Promise>
     using __receiver_t = __t<__receiver<__id<_Promise>, __value_t<_Sender, _Promise>>>;
@@ -199,6 +198,14 @@ namespace stdexec {
     };
 
     struct as_awaitable_t {
+      template <__same_as<as_awaitable_t> _Self, class _Tp, class _Promise>
+      STDEXEC_ATTRIBUTE(always_inline)
+      friend auto tag_invoke(_Self, _Tp&& __t, _Promise& __promise)
+        noexcept(noexcept(static_cast<_Tp&&>(__t).as_awaitable(__promise)))
+          -> decltype(static_cast<_Tp&&>(__t).as_awaitable(__promise)) {
+        return static_cast<_Tp&&>(__t).as_awaitable(__promise);
+      }
+
       template <class _Tp, class _Promise>
       static constexpr auto __select_impl_() noexcept {
         if constexpr (tag_invocable<as_awaitable_t, _Tp, _Promise&>) {

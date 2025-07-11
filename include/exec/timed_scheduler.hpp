@@ -34,6 +34,13 @@ namespace exec {
                          };
 
     struct now_t {
+      template <__same_as<now_t> _Self, class _Scheduler>
+      STDEXEC_ATTRIBUTE(always_inline)
+      friend auto tag_invoke(_Self, _Scheduler&& __sched) noexcept(noexcept(__sched.now()))
+        -> decltype(__sched.now()) {
+        return __sched.now();
+      }
+
       template <class _Scheduler>
         requires tag_invocable<now_t, const _Scheduler&>
       auto operator()(const _Scheduler& __sched) const
@@ -79,45 +86,50 @@ namespace exec {
                                      && stdexec::tag_invocable<
                                           schedule_after_t,
                                           _TimedScheduler,
-                                          const duration_of_t<_TimedScheduler>&
-                                     >;
+                                          const duration_of_t<_TimedScheduler>&>;
 
   template <__has_custom_schedule_after _TimedScheduler>
   using __custom_schedule_after_sender_t = stdexec::tag_invoke_result_t<
     schedule_after_t,
     _TimedScheduler,
-    const duration_of_t<_TimedScheduler>&
-  >;
+    const duration_of_t<_TimedScheduler>&>;
 
   template <class _TimedScheduler>
   concept __has_custom_schedule_at = __timed_scheduler<_TimedScheduler>
                                   && stdexec::tag_invocable<
                                        schedule_at_t,
                                        _TimedScheduler,
-                                       const time_point_of_t<_TimedScheduler>&
-                                  >;
+                                       const time_point_of_t<_TimedScheduler>&>;
 
   template <__has_custom_schedule_at _TimedScheduler>
   using __custom_schedule_at_sender_t = stdexec::tag_invoke_result_t<
     schedule_at_t,
     _TimedScheduler,
-    const time_point_of_t<_TimedScheduler>&
-  >;
+    const time_point_of_t<_TimedScheduler>&>;
 
   namespace __schedule_after {
     using namespace stdexec;
 
     struct schedule_after_t {
+      template <__same_as<schedule_after_t> _Self, class _Scheduler>
+      STDEXEC_ATTRIBUTE(always_inline)
+      friend auto tag_invoke(
+        _Self,
+        _Scheduler&& __sched,
+        const duration_of_t<_Scheduler>& __duration)
+        noexcept(noexcept(__sched.schedule_after(__duration)))
+          -> decltype(__sched.schedule_after(__duration)) {
+        return __sched.schedule_after(__duration);
+      }
+
       template <class _Scheduler>
         requires __has_custom_schedule_after<_Scheduler>
       auto operator()(_Scheduler&& __sched, const duration_of_t<_Scheduler>& __duration) const
-
-
         noexcept(stdexec::nothrow_tag_invocable<
                  schedule_after_t,
                  _Scheduler,
-                 const duration_of_t<_Scheduler>&
-        >) -> __custom_schedule_after_sender_t<_Scheduler> {
+                 const duration_of_t<_Scheduler>&>)
+          -> __custom_schedule_after_sender_t<_Scheduler> {
         static_assert(sender<__custom_schedule_after_sender_t<_Scheduler>>);
         return tag_invoke(schedule_after, static_cast<_Scheduler&&>(__sched), __duration);
       }
@@ -130,11 +142,12 @@ namespace exec {
         // TODO get_completion_scheduler<set_value_t>
         return stdexec::let_value(
           stdexec::just(),
-          [__sched, __duration]() noexcept(stdexec::__nothrow_callable<
-                                           schedule_at_t,
-                                           _Scheduler,
-                                           const time_point_of_t<_Scheduler>&
-          >&& stdexec::__nothrow_callable<now_t, const _Scheduler&>) {
+          [__sched, __duration]() noexcept(
+            stdexec::__nothrow_callable<
+              schedule_at_t,
+              _Scheduler,
+              const time_point_of_t<_Scheduler>&>&&
+              stdexec::__nothrow_callable<now_t, const _Scheduler&>) {
             return schedule_at(__sched, now(__sched) + __duration);
           });
       }
@@ -147,16 +160,24 @@ namespace exec {
     using namespace stdexec;
 
     struct schedule_at_t {
+      template <__same_as<schedule_at_t> _Self, class _Scheduler>
+      STDEXEC_ATTRIBUTE(always_inline)
+      friend auto tag_invoke(
+        _Self,
+        _Scheduler&& __sched,
+        const time_point_of_t<_Scheduler>& __time_point)
+        noexcept(noexcept(__sched.schedule_at(__time_point)))
+          -> decltype(__sched.schedule_at(__time_point)) {
+        return __sched.schedule_at(__time_point);
+      }
+
       template <class _Scheduler>
         requires __has_custom_schedule_at<_Scheduler>
       auto operator()(_Scheduler&& __sched, const time_point_of_t<_Scheduler>& __time_point) const
-
-
         noexcept(stdexec::nothrow_tag_invocable<
                  schedule_at_t,
                  _Scheduler,
-                 const time_point_of_t<_Scheduler>&
-        >) -> __custom_schedule_at_sender_t<_Scheduler> {
+                 const time_point_of_t<_Scheduler>&>) -> __custom_schedule_at_sender_t<_Scheduler> {
         static_assert(sender<__custom_schedule_at_sender_t<_Scheduler>>);
         return tag_invoke(schedule_at, static_cast<_Scheduler&&>(__sched), __time_point);
       }
@@ -169,11 +190,12 @@ namespace exec {
         // TODO get_completion_scheduler<set_value_t>
         return stdexec::let_value(
           stdexec::just(),
-          [__sched, __time_point]() noexcept(stdexec::__nothrow_callable<
-                                             schedule_after_t,
-                                             _Scheduler,
-                                             const duration_of_t<_Scheduler>&
-          >&& stdexec::__nothrow_callable<now_t, const _Scheduler&>) {
+          [__sched, __time_point]() noexcept(
+            stdexec::__nothrow_callable<
+              schedule_after_t,
+              _Scheduler,
+              const duration_of_t<_Scheduler>&>&&
+              stdexec::__nothrow_callable<now_t, const _Scheduler&>) {
             return schedule_after(__sched, __time_point - now(__sched));
           });
       }

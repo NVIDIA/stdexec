@@ -188,8 +188,7 @@ namespace exec {
         static_assert(std::is_nothrow_constructible_v<
                       __stop_callback_t,
                       __stop_token_t,
-                      __forward_stop_request
-        >);
+                      __forward_stop_request>);
         __self.__stop_token_ = __stop_source_.get_token();
       }
 
@@ -375,7 +374,7 @@ namespace exec {
         auto await_transform(_Awaitable&& __awaitable) noexcept -> decltype(auto) {
           // TODO: If we have a complete-where-it-starts query then we can optimize
           // this to avoid the reschedule
-          return as_awaitable(
+          return stdexec::as_awaitable(
             continues_on(static_cast<_Awaitable&&>(__awaitable), get_scheduler(*__context_)),
             *this);
         }
@@ -395,7 +394,7 @@ namespace exec {
             (void) __cleanup_task.await_resume();
           }
           __context_->set_scheduler(__box.__sched_);
-          return as_awaitable(schedule(__box.__sched_), *this);
+          return stdexec::as_awaitable(schedule(__box.__sched_), *this);
         }
 #endif
 
@@ -443,7 +442,9 @@ namespace exec {
 
         auto await_resume() -> _Ty {
           __context_.reset();
-          scope_guard __on_exit{[this]() noexcept { std::exchange(__coro_, {}).destroy(); }};
+          scope_guard __on_exit{[this]() noexcept {
+            std::exchange(__coro_, {}).destroy();
+          }};
           if (__coro_.promise().__data_.index() == 1)
             std::rethrow_exception(std::move(__coro_.promise().__data_.template get<1>()));
           if constexpr (!std::is_void_v<_Ty>)
@@ -457,11 +458,9 @@ namespace exec {
         requires constructible_from<
           awaiter_context_t<__promise, _ParentPromise>,
           __promise_context_t&,
-          _ParentPromise&
-        >
-      STDEXEC_MEMFN_DECL(auto as_awaitable)(this basic_task&& __self, _ParentPromise&) noexcept
-        -> __task_awaitable<_ParentPromise> {
-        return __task_awaitable<_ParentPromise>{std::exchange(__self.__coro_, {})};
+          _ParentPromise&>
+      auto as_awaitable(_ParentPromise&) && noexcept -> __task_awaitable<_ParentPromise> {
+        return __task_awaitable<_ParentPromise>{std::exchange(__coro_, {})};
       }
 
       // Make this task generally awaitable:

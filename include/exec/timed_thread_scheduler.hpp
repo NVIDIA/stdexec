@@ -210,8 +210,7 @@ namespace exec {
       &task_type::when_,
       &task_type::prev_,
       &task_type::left_,
-      &task_type::right_
-    >
+      &task_type::right_>
       heap_;
     std::atomic<std::ptrdiff_t> n_submissions_in_flight_{0};
     std::mutex ready_mutex_;
@@ -292,8 +291,7 @@ namespace exec {
       };
 
       using callback_type = typename stdexec::stop_token_of_t<
-        stdexec::env_of_t<Receiver>
-      >::template callback_type<on_stopped_t>;
+        stdexec::env_of_t<Receiver>>::template callback_type<on_stopped_t>;
 
       void request_stop() noexcept {
         if (ref_count_.fetch_add(1, std::memory_order_relaxed) == 1) {
@@ -314,13 +312,13 @@ namespace exec {
     using time_point = std::chrono::steady_clock::time_point;
     using duration = std::chrono::steady_clock::duration;
 
-    class schedule_at {
+    class schedule_at_sender {
      public:
       using sender_concept = stdexec::sender_t;
       using completion_signatures =
         stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
 
-      schedule_at(
+      schedule_at_sender(
         timed_thread_context& context,
         std::chrono::steady_clock::time_point time_point) noexcept
         : context_{&context}
@@ -352,19 +350,19 @@ namespace exec {
       : context_{&context} {
     }
 
-    STDEXEC_MEMFN_DECL(auto now)(this const timed_thread_scheduler&) noexcept -> time_point {
+    [[nodiscard]]
+    static auto now() noexcept -> time_point {
       return std::chrono::steady_clock::now();
     }
 
-    STDEXEC_MEMFN_DECL(
-      auto schedule_at)(this const timed_thread_scheduler& self, time_point tp) noexcept
-      -> schedule_at {
-      return schedule_at{*self.context_, tp};
+    [[nodiscard]]
+    auto schedule_at(time_point tp) const noexcept -> schedule_at_sender {
+      return schedule_at_sender{*context_, tp};
     }
 
     [[nodiscard]]
-    auto schedule() const noexcept -> schedule_at {
-      return exec::schedule_at(*this, time_point());
+    auto schedule() const noexcept -> schedule_at_sender {
+      return schedule_at(time_point());
     }
 
     auto operator==(const timed_thread_scheduler&) const noexcept -> bool = default;
