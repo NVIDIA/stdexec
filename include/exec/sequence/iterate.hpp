@@ -25,7 +25,6 @@
 #  include "../sequence_senders.hpp"
 #  include "../__detail/__basic_sequence.hpp"
 
-#  include "../env.hpp"
 #  include "../trampoline_scheduler.hpp"
 
 #  include <exception>
@@ -186,8 +185,7 @@ namespace exec {
 
       template <
         sender_expr_for<iterate_t> _SeqExpr,
-        sequence_receiver_of<item_types<_ItemSender<_SeqExpr>>> _Receiver
-      >
+        sequence_receiver_of<item_types<_ItemSender<_SeqExpr>>> _Receiver>
         requires sender_to<_NextSender<_SeqExpr, _Receiver>, _NextReceiver<_SeqExpr, _Receiver>>
       static auto subscribe(_SeqExpr&& __seq, _Receiver __rcvr)
         noexcept(__nothrow_callable<__sexpr_apply_t, _SeqExpr, __subscribe_fn<_Receiver>>)
@@ -201,8 +199,8 @@ namespace exec {
       }
 
       template <sender_expr_for<iterate_t> _Sequence>
-      static auto
-        get_item_types(_Sequence&&, __ignore) noexcept -> item_types<_ItemSender<_Sequence>> {
+      static auto get_item_types(_Sequence&&, __ignore) noexcept //
+        -> item_types<_ItemSender<_Sequence>> {
         return {};
       }
 

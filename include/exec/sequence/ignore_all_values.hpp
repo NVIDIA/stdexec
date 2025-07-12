@@ -97,8 +97,7 @@ namespace exec {
                      _ResultVariant,
                      __decayed_std_tuple<set_error_t, _Error>,
                      set_error_t,
-                     _Error
-                   >
+                     _Error>
                 && __callable<stdexec::set_stopped_t, _ItemReceiver>
         void set_error(_Error&& __error) noexcept {
           // store error and signal stop
@@ -110,8 +109,7 @@ namespace exec {
           requires __variant_emplaceable<
                      _ResultVariant,
                      __decayed_std_tuple<set_stopped_t>,
-                     set_stopped_t
-                   >
+                     set_stopped_t>
                 && __callable<set_stopped_t, _ItemReceiver>
         {
           // stop without error
@@ -190,11 +188,11 @@ namespace exec {
         using receiver_concept = stdexec::receiver_t;
         __operation_base<_Receiver, _ResultVariant>* __op_;
 
-        template <same_as<__t> _Self, sender _Item>
-        STDEXEC_MEMFN_DECL(auto set_next)(this _Self& __self, _Item&& __item)
-          noexcept(__nothrow_decay_copyable<_Item>)
-            -> stdexec::__t<__item_sender<__decay_t<_Item>, _ResultVariant>> {
-          return {static_cast<_Item&&>(__item), __self.__op_};
+        template <sender _Item>
+        [[nodiscard]]
+        auto set_next(_Item&& __item) & noexcept(__nothrow_decay_copyable<_Item>)
+          -> stdexec::__t<__item_sender<__decay_t<_Item>, _ResultVariant>> {
+          return {static_cast<_Item&&>(__item), __op_};
         }
 
         void set_value() noexcept {
@@ -227,8 +225,7 @@ namespace exec {
       __mconst<__types<>>::__f,
       __mcompose_q<__types, __mbind_front_q<__decayed_std_tuple, set_error_t>::__f>::__f,
       __types<std::tuple<set_stopped_t>>,
-      __mconcat<__qq<__nullable_std_variant>>::__f
-    >;
+      __mconcat<__qq<__nullable_std_variant>>::__f>;
 
     template <class _Sender, class _Env>
     using __result_variant_t =
@@ -324,8 +321,7 @@ namespace exec {
         requires receiver_of<_Receiver, __completion_sigs<__child_of<_Sender>, env_of_t<_Receiver>>>
               && sequence_sender_to<
                    __child_of<_Sender>,
-                   __receiver_t<__child_of<_Sender>, _Receiver>
-              >
+                   __receiver_t<__child_of<_Sender>, _Receiver>>
       {
         static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
         return __sexpr_apply(static_cast<_Sender&&>(__sndr), __connect_fn<_Receiver>{__rcvr});
