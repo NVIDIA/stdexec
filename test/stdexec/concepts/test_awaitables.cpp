@@ -19,8 +19,6 @@
 
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/coroutine.hpp>
-#include <tuple>
-#include <variant>
 
 #include <test_common/type_helpers.hpp>
 

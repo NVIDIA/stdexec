@@ -283,6 +283,7 @@ namespace stdexec {
 
   template <class _What, class... _With>
   struct _ERROR_ {
+    using __what_t = _What;
     auto operator,(__msuccess) const noexcept -> _ERROR_;
   };
 
