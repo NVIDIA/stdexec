@@ -105,6 +105,17 @@ namespace stdexec {
         return *std::launder(__p);
       }
 
+      template <class _Fn, class... _Args>
+        requires same_as<_Tp, __call_result_t<_Fn>>
+      auto __emplace_from(_Fn&& __f, _Args&&... __args) noexcept(__nothrow_callable<_Fn, _Args...>) -> _Tp& {
+        reset();
+        auto __sg = __mk_has_value_guard(__has_value_);
+        auto* __p = ::new (static_cast<void*>(std::addressof(__value_)))
+          _Tp(static_cast<_Fn&&>(__f)(static_cast<_Args&&>(__args)...));
+        __sg.__dismiss();
+        return *std::launder(__p);
+      }
+
       auto value() & -> _Tp& {
         if (!__has_value_) {
           throw __bad_optional_access();

@@ -18,11 +18,11 @@
 #include "__execution_fwd.hpp"
 
 #include "__concepts.hpp"
+#include "__completion_signatures.hpp"
 #include "__diagnostics.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
 #include "__senders_core.hpp"
-#include "__tag_invoke.hpp"
 
 #include <exception> // IWYU pragma: keep for std::terminate
 
@@ -35,16 +35,16 @@ namespace stdexec {
         return true;
       }
       template <class _Env>
-        requires tag_invocable<__is_debug_env_t, const _Env&>
-      auto operator()(const _Env&) const noexcept
-        -> tag_invoke_result_t<__is_debug_env_t, const _Env&>;
+        requires __env::__queryable<_Env, __is_debug_env_t>
+      auto
+        operator()(const _Env&) const noexcept -> __env::__query_result_t<_Env, __is_debug_env_t>;
     };
 
     template <class _Env>
     using __debug_env_t = env<prop<__is_debug_env_t, bool>, _Env>;
 
     template <class _Env>
-    concept __is_debug_env = tag_invocable<__is_debug_env_t, _Env>;
+    concept __is_debug_env = __callable<__is_debug_env_t, _Env>;
 
     struct __completion_signatures { };
 
@@ -148,8 +148,7 @@ namespace stdexec {
             _COMPLETION_SIGNATURES_MISMATCH_,
             _COMPLETION_SIGNATURE_<_Sig>,
             _IS_NOT_ONE_OF_<_Sigs...>,
-            _SIGNAL_SENT_BY_SENDER_<__name_of<_Sender>>
-          >;
+            _SIGNAL_SENT_BY_SENDER_<__name_of<_Sender>>>;
           __debug::_ATTENTION_<_What>();
         }
       };
@@ -212,14 +211,18 @@ namespace stdexec {
     template <class _Sigs, class _Env = env<>, class _Sender>
     void __debug_sender(_Sender&& __sndr, const _Env& = {}) {
       if constexpr (!__is_debug_env<_Env>) {
-        if (sizeof(_Sender) == ~0u) { // never true
+        if constexpr (sender_in<_Sender, _Env>) {
           using _Receiver = __debug_receiver<__cvref_id<_Sender>, _Env, _Sigs>;
           using _Operation = connect_result_t<_Sender, _Receiver>;
           //static_assert(receiver_of<_Receiver, _Sigs>);
           if constexpr (!same_as<_Operation, __debug_operation>) {
-            auto __op = connect(static_cast<_Sender&&>(__sndr), _Receiver{});
-            stdexec::start(__op);
+            if (sizeof(_Sender) == ~0u) { // never true
+              auto __op = connect(static_cast<_Sender&&>(__sndr), _Receiver{});
+              stdexec::start(__op);
+            }
           }
+        } else {
+          stdexec::__diagnose_sender_concept_failure<_Sender, _Env>();
         }
       }
     }
@@ -227,17 +230,21 @@ namespace stdexec {
     template <class _Env = env<>, class _Sender>
     void __debug_sender(_Sender&& __sndr, const _Env& = {}) {
       if constexpr (!__is_debug_env<_Env>) {
-        if (sizeof(_Sender) == ~0ul) { // never true
+        if constexpr (sender_in<_Sender, _Env>) {
           using _Sigs = __completion_signatures_of_t<_Sender, __debug_env_t<_Env>>;
+          using _Receiver = __debug_receiver<__cvref_id<_Sender>, _Env, _Sigs>;
           if constexpr (!same_as<_Sigs, __debug::__completion_signatures>) {
-            using _Receiver = __debug_receiver<__cvref_id<_Sender>, _Env, _Sigs>;
             using _Operation = connect_result_t<_Sender, _Receiver>;
             //static_assert(receiver_of<_Receiver, _Sigs>);
             if constexpr (!same_as<_Operation, __debug_operation>) {
-              auto __op = connect(static_cast<_Sender&&>(__sndr), _Receiver{});
-              stdexec::start(__op);
+              if (sizeof(_Sender) == ~0ul) { // never true
+                auto __op = connect(static_cast<_Sender&&>(__sndr), _Receiver{});
+                stdexec::start(__op);
+              }
             }
           }
+        } else {
+          __diagnose_sender_concept_failure<_Sender, _Env>();
         }
       }
     }

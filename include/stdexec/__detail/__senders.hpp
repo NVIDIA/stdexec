@@ -27,6 +27,7 @@
 #include "__operation_states.hpp"
 #include "__receivers.hpp"
 #include "__senders_core.hpp"
+#include "__tag_invoke.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__transform_sender.hpp"
 #include "__type_traits.hpp"
@@ -119,8 +120,7 @@ namespace stdexec {
             // set_value_t() or set_value_t(T)
             __minvoke<__mremove<void, __qf<set_value_t>>, _AwaitResult>,
             set_error_t(std::exception_ptr),
-            set_stopped_t()
-          >;
+            set_stopped_t()>;
           return static_cast<_Result (*)()>(nullptr);
         } else if constexpr (sizeof...(_Env) == 0) {
           // It's possible this is a dependent sender.
@@ -135,8 +135,7 @@ namespace stdexec {
           using _Result = __mexception<
             _UNRECOGNIZED_SENDER_TYPE_<>,
             _WITH_SENDER_<_Sender>,
-            _WITH_ENVIRONMENT_<_Env>...
-          >;
+            _WITH_ENVIRONMENT_<_Env>...>;
           return static_cast<_Result (*)()>(nullptr);
         }
       }
@@ -159,11 +158,11 @@ namespace stdexec {
   // [execution.senders.connect]
   namespace __connect {
     template <class _Sender, class _Receiver>
-    using __tfx_sender = transform_sender_result_t<
+    using __tfx_sender = __mmemoize_q<
+      transform_sender_result_t,
       __late_domain_of_t<_Sender, env_of_t<_Receiver>>,
       _Sender,
-      env_of_t<_Receiver>
-    >;
+      env_of_t<_Receiver>>;
 
     template <class _Sender, class _Receiver>
     using __member_result_t = decltype(__declval<_Sender>().connect(__declval<_Receiver>()));
@@ -189,16 +188,16 @@ namespace stdexec {
     };
 
     struct connect_t {
-      template <class _Sender, class _Env>
-      static constexpr auto __check_signatures() -> bool {
-        if constexpr (sender_in<_Sender, _Env>) {
+      template <class _Sender, class _Receiver>
+        requires sender_in<_Sender, env_of_t<_Receiver>> && __receiver_from<_Receiver, _Sender>
+      STDEXEC_ATTRIBUTE(always_inline)
+      static constexpr auto __type_check_arguments() -> bool {
+        if constexpr (sender_in<_Sender, env_of_t<_Receiver>>) {
           // Instantiate __debug_sender via completion_signatures_of_t to check that the actual
           // completions match the expected completions.
-
-          // Instantiate completion_signatures_of_t only if sender_in is true to workaround Clang
-          // not implementing CWG#2369 yet (connect() does not have a constraint for _Sender
-          // satisfying sender_in).
-          using __checked_signatures [[maybe_unused]] = completion_signatures_of_t<_Sender, _Env>;
+          using __checked_signatures [[maybe_unused]] = completion_signatures_of_t<_Sender, env_of_t<_Receiver>>;
+        } else {
+          __diagnose_sender_concept_failure<_Sender, env_of_t<_Receiver>>();
         }
         return true;
       }
@@ -214,7 +213,7 @@ namespace stdexec {
         static_assert(
           receiver<_Receiver>, "The second argument to stdexec::connect must be a receiver");
 #if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
-        static_assert(__check_signatures<_TfxSender, env_of_t<_Receiver>>());
+        static_assert(__type_check_arguments<_TfxSender, _Receiver>());
 #endif
 
         if constexpr (__with_static_member<_TfxSender, _Receiver>) {
@@ -292,10 +291,7 @@ namespace stdexec {
         } else {
           // This should generate an instantiation backtrace that contains useful
           // debugging information.
-          using __tag_invoke::tag_invoke;
-          tag_invoke(
-            *this,
-            transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env),
+          return transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env).connect(
             static_cast<_Receiver&&>(__rcvr));
         }
       }
@@ -325,9 +321,7 @@ namespace stdexec {
                           _Sender,
                           _Env,
                           __mcompose_q<__types, __qf<__tag_of_sig_t<_SetSig>>::template __f>,
-                          __mconcat<__qq<__types>>
-                        >
-                   >;
+                          __mconcat<__qq<__types>>>>;
 
   template <class _Error>
     requires false
@@ -340,65 +334,12 @@ namespace stdexec {
       set_error_t,
       __nofail_t,
       __sigs::__default_completion,
-      __types
-    >;
+      __types>;
   };
 
   /////////////////////////////////////////////////////////////////////////////
   // early sender type-checking
   template <class _Sender>
   concept __well_formed_sender = __detail::__well_formed_completions<
-    __minvoke<__with_default_q<__completion_signatures_of_t, dependent_completions>, _Sender>
-  >;
-
-  // Used to report a meaningful error message when the sender_in<Sndr, Env> concept check fails.
-  template <class _Sender, class... _Env>
-  auto __diagnose_sender_concept_failure() {
-    if constexpr (!enable_sender<_Sender>) {
-      static_assert(
-        enable_sender<_Sender>,
-        "The given type is not a sender because stdexec::enable_sender<Sender> is false. Either "
-        "give the type a nested ::sender_concept typedef that is an alias for stdexec::sender_t, "
-        "or else specialize the stdexec::enable_sender boolean trait for this type to true.");
-    } else if constexpr (!__detail::__consistent_completion_domains<_Sender>) {
-      static_assert(
-        __detail::__consistent_completion_domains<_Sender>,
-        "The completion schedulers of the sender do not have consistent domains. This is likely a "
-        "bug in the sender implementation.");
-    } else if constexpr (!move_constructible<__decay_t<_Sender>>) {
-      static_assert(
-        move_constructible<__decay_t<_Sender>>, "The sender type is not move-constructible.");
-    } else if constexpr (!constructible_from<__decay_t<_Sender>, _Sender>) {
-      static_assert(
-        constructible_from<__decay_t<_Sender>, _Sender>,
-        "The sender cannot be decay-copied. Did you forget a std::move?");
-    } else {
-      using _Completions = __completion_signatures_of_t<_Sender, _Env...>;
-      if constexpr (__same_as<_Completions, __unrecognized_sender_error<_Sender, _Env...>>) {
-        static_assert(
-          __mnever<_Completions>,
-          "The sender type was not able to report its completion signatures when asked. This is "
-          "either because it lacks the necessary member functions, or because the member functions "
-          "were ill-formed.\n\nA sender can declare its completion signatures in one of two ways:\n"
-          "  1. By defining a nested type alias named `completion_signatures` that is a\n"
-          "     specialization of stdexec::completion_signatures<...>.\n"
-          "  2. By defining a member function named `get_completion_signatures` that returns a\n"
-          "     specialization of stdexec::completion_signatures<...>.");
-      } else if constexpr (__merror<_Completions>) {
-        static_assert(
-          !__merror<_Completions>,
-          "Trying to compute the sender's completion signatures resulted in an error. See the rest "
-          "of the compiler diagnostic for clues. Look for the string \"_ERROR_\".");
-      } else {
-        static_assert(
-          __valid_completion_signatures<_Completions>,
-          "The stdexec::sender_in<Sender, Environment> concept check has failed. This is likely a "
-          "bug in the sender implementation.");
-      }
-#if STDEXEC_MSVC() || STDEXEC_NVHPC()
-      // MSVC and NVHPC need more encouragement to print the type of the error.
-      _Completions __what = 0;
-#endif
-    }
-  }
+    __minvoke<__with_default_q<__completion_signatures_of_t, dependent_completions>, _Sender>>;
 } // namespace stdexec

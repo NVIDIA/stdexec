@@ -131,31 +131,31 @@ namespace exec {
             : __env_{__create_vtable(__mtype<__vtable_t>{}, __mtype<_Rcvr>{}), &__rcvr} {
           }
 
-          template <same_as<set_next_t> _SetNext, same_as<__t> _Self, class _Sender>
+          template <same_as<__t> _Self, class _Sender>
             requires constructible_from<__item_sender, _Sender>
-          friend auto tag_invoke(_SetNext, _Self& __self, _Sender&& __sndr) -> __void_sender {
-            return (*static_cast<const __rcvr_next_vfun<__next_sigs>*>(__self.__env_.__vtable_)
-                       ->__fn_)(__self.__env_.__rcvr_, static_cast<_Sender&&>(__sndr));
+          STDEXEC_MEMFN_DECL(auto set_next)(this _Self& __self, _Sender&& __sndr) -> __void_sender {
+            const __rcvr_next_vfun<__next_sigs>* __vfun = __self.__env_.__vtable_;
+            return __vfun->__fn_(__self.__env_.__rcvr_, static_cast<_Sender&&>(__sndr));
           }
 
           // set_value_t() is always valid for a sequence
           void set_value() noexcept {
-            (*static_cast<const __vfun<set_value_t()>*>(__env_.__vtable_)->__complete_)(__env_
-                                                                                          .__rcvr_);
+            const __vfun<set_value_t()>& __vfun = *__env_.__vtable_;
+            __vfun(__env_.__rcvr_, set_value_t());
           }
 
           template <class Error>
             requires __v<__mapply<__mcontains<set_error_t(Error)>, __sigs>>
           void set_error(Error&& __error) noexcept {
-            (*static_cast<const __vfun<set_error_t(Error)>*>(__env_.__vtable_)
-                ->__complete_)(__env_.__rcvr_, static_cast<Error&&>(__error));
+            const __vfun<set_error_t(Error)>& __vfun = *__env_.__vtable_;
+            __vfun(__env_.__rcvr_, set_error_t(), static_cast<Error&&>(__error));
           }
 
           void set_stopped() noexcept
             requires __v<__mapply<__mcontains<set_stopped_t()>, __sigs>>
           {
-            (*static_cast<const __vfun<set_stopped_t()>*>(__env_.__vtable_)
-                ->__complete_)(__env_.__rcvr_);
+            const __vfun<set_stopped_t()>& __vfun = *__env_.__vtable_;
+            __vfun(__env_.__rcvr_, set_stopped_t());
           }
 
           auto get_env() const noexcept -> const __env_t& {

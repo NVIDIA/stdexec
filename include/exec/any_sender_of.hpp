@@ -16,6 +16,7 @@
 #pragma once
 
 #include "../stdexec/execution.hpp"
+#include "../stdexec/__detail/__any_receiver_ref.hpp"
 
 #include "sequence_senders.hpp"
 
@@ -610,7 +611,6 @@ namespace exec {
     template <class _Query>
     concept __is_not_stop_token_query = !__is_stop_token_query<_Query>;
 
-
     template <class _Query>
     using __is_not_stop_token_query_v = __mbool<__is_not_stop_token_query<_Query>>;
 
@@ -625,12 +625,23 @@ namespace exec {
 
       template <class... _Sigs, class... _Queries>
       struct __vtable<completion_signatures<_Sigs...>, _Queries...> {
-        class __t
-          : public __any_::__rcvr_vfun<_Sigs>...
-          , public __query_vfun<_Queries>... {
-         public:
+        struct __t
+          : __overload<__any_::__rcvr_vfun<_Sigs>...>
+          , __query_vfun<_Queries>... {
           using __query_vfun<_Queries>::operator()...;
-          using __any_::__rcvr_vfun<_Sigs>::operator()...;
+
+          template <class _Tag, class... _As>
+            requires __one_of<_Tag(_As...), _Sigs...>
+                  || __callable<__overload<__any_::__rcvr_vfun<_Sigs>...>, void*, _Tag, _As...>
+          void operator()(void* __rcvr, _Tag, _As&&... __as) const noexcept {
+            if constexpr (__one_of<_Tag(_As...), _Sigs...>) {
+              const __any_::__rcvr_vfun<_Tag(_As...)>& __vfun = *this;
+              __vfun(__rcvr, _Tag(), static_cast<_As&&>(__as)...);
+            } else {
+              const __overload<__any_::__rcvr_vfun<_Sigs>...>& __vfun = *this;
+              __vfun(__rcvr, _Tag(), static_cast<_As&&>(__as)...);
+            }
+          }
 
          private:
           template <class _Rcvr>
@@ -639,8 +650,8 @@ namespace exec {
           STDEXEC_MEMFN_DECL(auto __create_vtable)(this __mtype<__t>, __mtype<_Rcvr>) noexcept
             -> const __t* {
             static const __t __vtable_{
-              {__any_::__rcvr_vfun_fn(
-                static_cast<_Rcvr*>(nullptr), static_cast<_Sigs*>(nullptr))}...,
+              {{__any_::__rcvr_vfun_fn(
+                static_cast<_Rcvr*>(nullptr), static_cast<_Sigs*>(nullptr))}...},
               {__query_vfun_fn<_Rcvr>{}(static_cast<_Queries>(nullptr))}...};
             return &__vtable_;
           }
@@ -652,7 +663,6 @@ namespace exec {
       struct __ref<completion_signatures<_Sigs...>, _Queries...> {
 #if !STDEXEC_MSVC()
         // MSVCBUG https://developercommunity.visualstudio.com/t/Private-member-inaccessible-when-used-in/10448363
-
        private:
 #endif
         using __vtable_t = stdexec::__t<__vtable<completion_signatures<_Sigs...>, _Queries...>>;
@@ -765,23 +775,35 @@ namespace exec {
 
         template <class... _As>
           requires __one_of<set_value_t(_As...), _Sigs...>
+                || __callable<__overload<__any_::__rcvr_vfun<_Sigs>...>, void*, set_value_t, _As...>
         void set_value(_As&&... __as) noexcept {
-          const __any_::__rcvr_vfun<set_value_t(_As...)>* __vfun = __env_.__vtable_;
-          (*__vfun->__complete_)(__env_.__rcvr_, static_cast<_As&&>(__as)...);
+          if constexpr (__one_of<set_value_t(_As...), _Sigs...>) {
+            const __any_::__rcvr_vfun<set_value_t(_As...)>& __vfun = *__env_.__vtable_;
+            __vfun(__env_.__rcvr_, set_value_t(), static_cast<_As&&>(__as)...);
+          } else {
+            const __overload<__any_::__rcvr_vfun<_Sigs>...>& __vfun = *__env_.__vtable_;
+            __vfun(__env_.__rcvr_, set_value_t(), static_cast<_As&&>(__as)...);
+          }
         }
 
         template <class _Error>
           requires __one_of<set_error_t(_Error), _Sigs...>
+                || __callable<__overload<__any_::__rcvr_vfun<_Sigs>...>, void*, set_error_t, _Error>
         void set_error(_Error&& __err) noexcept {
-          const __any_::__rcvr_vfun<set_error_t(_Error)>* __vfun = __env_.__vtable_;
-          (*__vfun->__complete_)(__env_.__rcvr_, static_cast<_Error&&>(__err));
+          if constexpr (__one_of<set_error_t(_Error), _Sigs...>) {
+            const __any_::__rcvr_vfun<set_error_t(_Error)>& __vfun = *__env_.__vtable_;
+            __vfun(__env_.__rcvr_, set_error_t(), static_cast<_Error&&>(__err));
+          } else {
+            const __overload<__any_::__rcvr_vfun<_Sigs>...>& __vfun = *__env_.__vtable_;
+            __vfun(__env_.__rcvr_, set_error_t(), static_cast<_Error&&>(__err));
+          }
         }
 
         void set_stopped() noexcept
           requires __one_of<set_stopped_t(), _Sigs...>
         {
-          const __any_::__rcvr_vfun<set_stopped_t()>* __vfun = __env_.__vtable_;
-          (*__vfun->__complete_)(__env_.__rcvr_);
+          const __any_::__rcvr_vfun<set_stopped_t()>& __vfun = *__env_.__vtable_;
+          __vfun(__env_.__rcvr_, set_stopped_t());
         }
 
         auto get_env() const noexcept -> const __env_t& {
@@ -813,7 +835,7 @@ namespace exec {
       __immovable_storage_t<__operation_vtable, std::allocator<std::byte>, 6 * sizeof(void*)>;
 
     template <class _Sigs, class _Queries>
-    using __receiver_ref = __mapply<__mbind_front<__q<__rec::__ref>, _Sigs>, _Queries>;
+    using __receiver_ref = __mapply<__mbind_front_q<__rec::__ref, _Sigs>, _Queries>;
 
     struct __on_stop_t {
       stdexec::inplace_stop_source& __source_;

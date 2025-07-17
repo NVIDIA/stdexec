@@ -124,9 +124,6 @@ namespace stdexec {
     using __detail::__transform_dependent_sender::operator();
   } transform_sender{};
 
-  template <class _Domain, class _Sender, class... _Env>
-  using transform_sender_result_t = __call_result_t<transform_sender_t, _Domain, _Sender, _Env...>;
-
   inline constexpr __detail::__transform_env transform_env{};
 
   struct _CHILD_SENDERS_WITH_DIFFERENT_DOMAINS_ { };

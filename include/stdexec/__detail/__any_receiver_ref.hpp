@@ -62,7 +62,12 @@ namespace stdexec::__any_ {
       , __do_get_env{&__s_get_env<_OpState, _GetEnv>} {
     }
 
-    using __rcvr_vfun<_Sigs>::operator()...;
+    template <class _Tag, class... _Args>
+      requires __one_of<_Tag(_Args...), _Sigs...>
+    void operator()(void* __obj, _Tag, _Args&&... __args) const noexcept {
+      const __rcvr_vfun<_Tag(_Args...)>& __vfun = *this;
+      __vfun(__obj, _Tag{}, static_cast<_Args&&>(__args)...);
+    }
 
     auto __get_env(const void* __op_state) const noexcept -> _Env {
       return __do_get_env(__op_state);

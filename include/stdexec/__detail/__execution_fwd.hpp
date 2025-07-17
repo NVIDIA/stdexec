@@ -172,6 +172,8 @@ namespace stdexec {
   extern const bool enable_sender;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  struct operation_state_t;
+
   namespace __start {
     struct start_t;
   } // namespace __start
@@ -194,6 +196,13 @@ namespace stdexec {
 
   using __as_awaitable::as_awaitable_t;
   extern const as_awaitable_t as_awaitable;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  struct transform_sender_t;
+  extern const transform_sender_t transform_sender;
+
+  template <class _Domain, class _Sender, class... _Env>
+  using transform_sender_result_t = __call_result_t<transform_sender_t, _Domain, _Sender, _Env...>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __starts_on_ns {
