@@ -31,7 +31,6 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(probable_guiding_friend)
 STDEXEC_PRAGMA_IGNORE_EDG(type_qualifiers_ignored_on_reference)
-STDEXEC_PRAGMA_IGNORE_MSVC(5046) // Symbol involving type with internal linkage not defined
 
 namespace stdexec {
   // [exec.queries.queryable]
@@ -367,7 +366,9 @@ namespace stdexec {
     template<class ValueType>
     struct __prop_like {
       template <class _Query>
-      STDEXEC_ATTRIBUTE(nodiscard) constexpr auto query(_Query) const noexcept -> const ValueType&;
+      STDEXEC_ATTRIBUTE(nodiscard) constexpr auto query(_Query) const noexcept -> const ValueType& {
+        STDEXEC_TERMINATE();
+      }
     };
 
     // A singleton environment from a query/value pair
