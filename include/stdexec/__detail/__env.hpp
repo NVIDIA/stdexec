@@ -24,6 +24,7 @@
 #include "__tag_invoke.hpp"
 #include "__tuple.hpp"
 
+#include <exception>  // IWYU pragma: keep for std::terminate
 #include <functional> // IWYU pragma: keep for unwrap_reference_t
 #include <type_traits>
 #include <utility>
@@ -363,11 +364,22 @@ namespace stdexec {
     template <class _Env, class _Query, class... _Args>
     using __query_result_t = tag_invoke_result_t<_Query, const _Env&, _Args...>;
 
+    template <class ValueType>
+    struct __prop_like {
+      template <class _Query>
+      STDEXEC_ATTRIBUTE(nodiscard)
+      constexpr auto query(_Query) const noexcept -> const ValueType& {
+        STDEXEC_TERMINATE();
+      }
+    };
+
     // A singleton environment from a query/value pair
     template <class _Query, class _Value>
     struct prop {
       using __t = prop;
       using __id = prop;
+
+      static_assert(__callable<_Query, __prop_like<_Value>>);
 
       STDEXEC_ATTRIBUTE(no_unique_address) _Query __query;
 
