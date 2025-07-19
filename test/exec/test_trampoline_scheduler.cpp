@@ -17,26 +17,23 @@
 
 #include "../../include/exec/trampoline_scheduler.hpp"
 
-#include "../../include/exec/on.hpp"
-#include "../test_common/require_terminate.hpp"
 #include "../test_common/retry.hpp"
 
 #include <catch2/catch.hpp>
-#include <exception>
 #include <memory>
 
-using namespace stdexec;
+namespace ex = stdexec;
 
 namespace {
 
   struct try_again { };
 
   struct fails_alot {
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = ex::sender_t;
     using __t = fails_alot;
     using __id = fails_alot;
     using completion_signatures =
-      stdexec::completion_signatures<set_value_t(), set_error_t(try_again)>;
+      ex::completion_signatures<ex::set_value_t(), ex::set_error_t(try_again)>;
 
     template <class Receiver>
     struct operation {
@@ -45,15 +42,15 @@ namespace {
 
       void start() & noexcept {
         if (counter_ == 0) {
-          stdexec::set_value(static_cast<Receiver&&>(rcvr_));
+          ex::set_value(static_cast<Receiver&&>(rcvr_));
         } else {
-          stdexec::set_error(static_cast<Receiver&&>(rcvr_), try_again{});
+          ex::set_error(static_cast<Receiver&&>(rcvr_), try_again{});
         }
       }
     };
 
-    template <receiver_of<completion_signatures> Receiver>
-    friend auto tag_invoke(connect_t, fails_alot self, Receiver rcvr) -> operation<Receiver> {
+    template <ex::receiver_of<completion_signatures> Receiver>
+    friend auto tag_invoke(ex::connect_t, fails_alot self, Receiver rcvr) -> operation<Receiver> {
       return {static_cast<Receiver&&>(rcvr), --*self.counter_};
     }
 
@@ -74,11 +71,10 @@ namespace {
     "running deeply recursing algo on trampoline_scheduler doesn't blow the stack",
     "[schedulers][trampoline_scheduler]") {
 
-    using stdexec::__sync_wait::__env;
     exec::trampoline_scheduler sched;
-    stdexec::run_loop loop;
+    ex::run_loop loop;
 
-    auto recurse_deeply = retry(exec::on(sched, fails_alot{}));
-    sync_wait(std::move(recurse_deeply));
+    auto recurse_deeply = retry(ex::on(sched, fails_alot{}));
+    ex::sync_wait(std::move(recurse_deeply));
   }
 } // namespace

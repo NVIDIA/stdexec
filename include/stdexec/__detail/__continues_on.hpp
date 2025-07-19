@@ -86,11 +86,18 @@ namespace stdexec {
   using __continues_on::continues_on_t;
   inline constexpr continues_on_t continues_on{};
 
+  // Backward compatibility:
   using transfer_t = continues_on_t;
   inline constexpr continues_on_t transfer{};
 
   using continue_on_t = continues_on_t;
   inline constexpr continues_on_t continue_on{};
+
+  namespace v2 {
+    using continue_on_t [[deprecated("use stdexec::continues_on_t instead")]] = stdexec::continues_on_t;
+    [[deprecated("use stdexec::continues_on instead")]]
+    inline constexpr stdexec::continues_on_t const& continue_on = stdexec::continues_on;
+  } // namespace v2
 
   template <>
   struct __sexpr_impl<continues_on_t> : __continues_on::__continues_on_impl { };

@@ -124,7 +124,7 @@ namespace {
   TEST_CASE("repeat_n works when changing threads", "[adaptors][repeat_n]") {
     exec::static_thread_pool pool{2};
     bool called{false};
-    sender auto snd = exec::on(pool.get_scheduler(), ex::just() | ex::then([&] {
+    sender auto snd = stdexec::on(pool.get_scheduler(), ex::just() | ex::then([&] {
                                                        called = true;
                                                      }) | exec::repeat_n(10));
     stdexec::sync_wait(std::move(snd));

@@ -86,42 +86,42 @@ namespace {
 
   static const auto probe_env = probe_env_t{};
 
-  static const auto env = exec::make_env(stdexec::prop{ex::get_scheduler, inline_scheduler{}});
+  static const auto env = exec::make_env(ex::prop{ex::get_scheduler, inline_scheduler{}});
 
-  TEST_CASE("Can pass exec::on sender to start_detached", "[adaptors][exec::on]") {
-    ex::start_detached(exec::on(inline_scheduler{}, ex::just()), env);
+  TEST_CASE("Can pass stdexec::on sender to start_detached", "[adaptors][stdexec::on]") {
+    ex::start_detached(ex::on(inline_scheduler{}, ex::just()), env);
   }
 
-  TEST_CASE("Can pass exec::on sender to split", "[adaptors][exec::on]") {
-    auto snd = ex::split(exec::on(inline_scheduler{}, ex::just()), env);
+  TEST_CASE("Can pass stdexec::on sender to split", "[adaptors][stdexec::on]") {
+    auto snd = ex::split(ex::on(inline_scheduler{}, ex::just()), env);
     (void) snd;
   }
 
-  TEST_CASE("Can pass exec::on sender to ensure_started", "[adaptors][exec::on]") {
-    auto snd = ex::ensure_started(exec::on(inline_scheduler{}, ex::just()), env);
+  TEST_CASE("Can pass stdexec::on sender to ensure_started", "[adaptors][stdexec::on]") {
+    auto snd = ex::ensure_started(ex::on(inline_scheduler{}, ex::just()), env);
     (void) snd;
   }
 
-  TEST_CASE("Can pass exec::on sender to async_scope::spawn", "[adaptors][exec::on]") {
+  TEST_CASE("Can pass stdexec::on sender to async_scope::spawn", "[adaptors][stdexec::on]") {
     exec::async_scope scope;
     impulse_scheduler sched;
-    scope.spawn(exec::on(sched, ex::just()), env);
+    scope.spawn(ex::on(sched, ex::just()), env);
     sched.start_next();
     ex::sync_wait(scope.on_empty());
   }
 
-  TEST_CASE("Can pass exec::on sender to async_scope::spawn_future", "[adaptors][exec::on]") {
+  TEST_CASE("Can pass stdexec::on sender to async_scope::spawn_future", "[adaptors][stdexec::on]") {
     exec::async_scope scope;
     impulse_scheduler sched;
-    auto fut = scope.spawn_future(exec::on(sched, ex::just(42)), env);
+    auto fut = scope.spawn_future(ex::on(sched, ex::just(42)), env);
     sched.start_next();
     auto [i] = ex::sync_wait(std::move(fut)).value();
     CHECK(i == 42);
     ex::sync_wait(scope.on_empty());
   }
 
-  TEST_CASE("exec::on updates the current scheduler in the receiver", "[adaptors][exec::on]") {
-    auto snd = ex::get_scheduler() | exec::on(inline_scheduler{}, probe_env())
+  TEST_CASE("stdexec::on updates the current scheduler in the receiver", "[adaptors][stdexec::on]") {
+    auto snd = ex::get_scheduler() | ex::on(inline_scheduler{}, probe_env())
              | ex::then([]<class Env>(Env) noexcept {
                  using Sched = ex::__call_result_t<ex::get_scheduler_t, Env>;
                  static_assert(ex::same_as<Sched, inline_scheduler>);
