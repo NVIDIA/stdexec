@@ -28,7 +28,6 @@
 #include <catch2/catch.hpp>
 #include <test_common/receivers.hpp>
 
-
 namespace ex = stdexec;
 namespace scr = exec::system_context_replaceability;
 

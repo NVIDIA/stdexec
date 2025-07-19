@@ -40,7 +40,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <type_traits> // IWYU pragma: keep
-#include <utility> // IWYU pragma: keep for std::unreachable
+#include <utility>     // IWYU pragma: keep for std::unreachable
 
 // When used with no arguments, these macros expand to 1 if the current
 // compiler corresponds to the macro name; 0, otherwise. When used with arguments,
