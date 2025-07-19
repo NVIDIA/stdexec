@@ -60,6 +60,7 @@ set(SPHINX_INDEX_FILE ${SPHINX_BUILD}/index.html)
 
 file(GLOB_RECURSE
      STDEXEC_DOCUMENTATION_SOURCE_FILES
+     CONFIGURE_DEPENDS
      ${SPHINX_SOURCE}/*.rst ${SPHINX_SOURCE}/*.md)
 
 # Only regenerate Sphinx when:

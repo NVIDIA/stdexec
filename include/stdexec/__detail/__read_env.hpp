@@ -26,7 +26,7 @@
 #include "__optional.hpp"
 #include "__meta.hpp"
 #include "__receivers.hpp"
-#include "__submit.hpp"
+#include "__submit.hpp" // IWYU pragma: keep
 
 #include <exception>
 
@@ -70,10 +70,10 @@ namespace stdexec {
       using __result = _Ty;
     };
 
-    struct __read_env_t {
+    struct read_env_t {
       template <class _Tag>
       constexpr auto operator()(_Tag) const noexcept {
-        return __make_sexpr<__read_env_t>(_Tag());
+        return __make_sexpr<read_env_t>(_Tag());
       }
     };
 
@@ -123,7 +123,7 @@ namespace stdexec {
         []<class _Sender, class _Receiver>(const _Sender&, _Receiver __rcvr) noexcept
         requires std::is_reference_v<__call_result_t<__data_of<_Sender>, env_of_t<_Receiver>>>
       {
-        static_assert(sender_expr_for<_Sender, __read_env_t>);
+        static_assert(sender_expr_for<_Sender, read_env_t>);
         using __query = __data_of<_Sender>;
         stdexec::__set_value_invoke(
           static_cast<_Receiver&&>(__rcvr), __query(), stdexec::get_env(__rcvr));
@@ -131,12 +131,13 @@ namespace stdexec {
     };
   } // namespace __read
 
+  using __read::read_env_t;
   [[deprecated("read has been renamed to read_env")]]
-  inline constexpr __read::__read_env_t read{};
-  inline constexpr __read::__read_env_t read_env{};
+  inline constexpr read_env_t read{};
+  inline constexpr read_env_t read_env{};
 
   template <>
-  struct __sexpr_impl<__read::__read_env_t> : __read::__read_env_impl { };
+  struct __sexpr_impl<__read::read_env_t> : __read::__read_env_impl { };
 
   namespace __queries {
     template <class _Tag>

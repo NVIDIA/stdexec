@@ -22,6 +22,8 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
+import os
+
 project = 'stdexec'
 copyright = '2025, NVIDIA Corporation'
 author = 'NVIDIA Corporation'
@@ -75,5 +77,6 @@ breathe_default_project = "stdexec"
 
 highlight_language = "cpp"
 
-# def setup(app):
-#     app.add_css_file("params.css")
+def setup(app):
+    print(os.path.join(app.srcdir, "style.css"))
+    app.add_css_file(os.path.join(app.srcdir, "style.css"))
