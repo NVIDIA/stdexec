@@ -21,6 +21,8 @@
 #include "common.cuh"
 #include "stdexec/execution.hpp"
 
+namespace ex = stdexec;
+
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
 #  include "nvexec/detail/throw_on_cuda_error.cuh"
 #  include <nvexec/stream_context.cuh>
@@ -39,7 +41,7 @@ namespace nvexec {
     struct stream_op_state_base { };
   } // namespace detail
 
-  inline bool is_on_gpu() {
+  inline auto is_on_gpu() -> bool {
     return false;
   }
 } // namespace nvexec
