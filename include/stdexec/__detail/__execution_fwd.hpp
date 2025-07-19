@@ -212,10 +212,6 @@ namespace stdexec {
   using __starts_on_ns::starts_on_t;
   extern const starts_on_t starts_on;
 
-  using on_t [[deprecated("on_t has been renamed starts_on_t")]] = starts_on_t;
-  [[deprecated("on has been renamed starts_on")]]
-  extern const starts_on_t on;
-
   using start_on_t [[deprecated("start_on_t has been renamed starts_on_t")]] = starts_on_t;
   [[deprecated("start_on has been renamed starts_on")]]
   extern const starts_on_t start_on;
@@ -284,13 +280,12 @@ namespace stdexec {
   extern const ensure_started_t ensure_started;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __on_v2 {
+  namespace __on {
     struct on_t;
-  } // namespace __on_v2
+  } // namespace __on
 
-  namespace v2 {
-    using __on_v2::on_t;
-  } // namespace v2
+  using __on::on_t;
+  extern const on_t on;
 
   namespace __detail {
     struct __sexpr_apply_t;

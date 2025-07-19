@@ -6,7 +6,6 @@
 #include <exec/static_thread_pool.hpp>
 #include <exec/single_thread_context.hpp>
 
-#include <optional>
 #include <stdexcept>
 
 using rl::nvar;
@@ -27,11 +26,10 @@ struct drop_async_scope_future : rl::test_suite<drop_async_scope_future, 1> {
     std::atomic_bool produced{false};
     ex::sender auto begin = ex::schedule(sch);
     {
-      ex::sender auto ftr = scope
-                              .spawn_future(begin | stdexec::then([&]() { produced.store(true); }));
+      ex::sender auto ftr = scope.spawn_future(begin | ex::then([&]() { produced.store(true); }));
       (void) ftr;
     }
-    stdexec::sync_wait(scope.on_empty() | stdexec::then([&]() { RL_ASSERT(produced.load()); }));
+    ex::sync_wait(scope.on_empty() | ex::then([&]() { RL_ASSERT(produced.load()); }));
   }
 };
 
@@ -45,10 +43,9 @@ struct attach_async_scope_future : rl::test_suite<attach_async_scope_future, 1> 
     exec::async_scope scope;
     std::atomic_bool produced{false};
     ex::sender auto begin = ex::schedule(sch);
-    ex::sender auto ftr = scope
-                            .spawn_future(begin | stdexec::then([&]() { produced.store(true); }));
-    ex::sender auto ftr_then = std::move(ftr) | stdexec::then([&] { RL_ASSERT(produced.load()); });
-    stdexec::sync_wait(stdexec::when_all(scope.on_empty(), std::move(ftr_then)));
+    ex::sender auto ftr = scope.spawn_future(begin | ex::then([&]() { produced.store(true); }));
+    ex::sender auto ftr_then = std::move(ftr) | ex::then([&] { RL_ASSERT(produced.load()); });
+    ex::sync_wait(ex::when_all(scope.on_empty(), std::move(ftr_then)));
   }
 };
 
@@ -69,17 +66,17 @@ struct async_scope_future_set_result : rl::test_suite<async_scope_future_set_res
 
     exec::async_scope scope;
     ex::sender auto begin = ex::schedule(sch);
-    ex::sender auto ftr = scope.spawn_future(begin | stdexec::then([] { return throwing_copy(); }));
+    ex::sender auto ftr = scope.spawn_future(begin | ex::then([] { return throwing_copy(); }));
     bool threw = false;
     STDEXEC_TRY {
-      stdexec::sync_wait(std::move(ftr));
+      ex::sync_wait(std::move(ftr));
       RL_ASSERT(false);
     }
     STDEXEC_CATCH(const std::logic_error&) {
       threw = true;
     }
     RL_ASSERT(threw);
-    stdexec::sync_wait(scope.on_empty());
+    ex::sync_wait(scope.on_empty());
   }
 };
 
@@ -96,7 +93,7 @@ struct async_scope_request_stop : rl::test_suite<async_scope_request_stop<test_c
       ex::sender auto begin = ex::schedule(sch);
       ex::sender auto ftr = scope.spawn_future(scope.spawn_future(begin));
       scope.request_stop();
-      stdexec::sync_wait(ex::when_all(scope.on_empty(), std::move(ftr)));
+      ex::sync_wait(ex::when_all(scope.on_empty(), std::move(ftr)));
     } else {
       exec::async_scope scope;
       ex::sender auto begin = ex::schedule(sch);
@@ -105,7 +102,7 @@ struct async_scope_request_stop : rl::test_suite<async_scope_request_stop<test_c
         ex::sender auto ftr = scope.spawn_future(scope.spawn_future(begin));
       }
       scope.request_stop();
-      stdexec::sync_wait(scope.on_empty());
+      ex::sync_wait(scope.on_empty());
     }
   }
 };

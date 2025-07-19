@@ -190,7 +190,7 @@ namespace {
     // The customization will return a different value
     basic_inline_scheduler<then_test_domain> sched;
     auto snd = ex::just(std::string{"hello"})
-             | exec::on(sched, ex::then([](std::string x) { return x + ", world"; }))
+             | ex::on(sched, ex::then([](std::string x) { return x + ", world"; }))
              | exec::write_env(stdexec::prop{ex::get_scheduler, inline_scheduler()});
     wait_for_value(std::move(snd), std::string{"ciao"});
   }

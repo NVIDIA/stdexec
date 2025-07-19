@@ -26,9 +26,6 @@ set(exec_test_sources
     test_env.cpp
     test_finally.cpp
     test_into_tuple.cpp
-    test_on.cpp
-    test_on2.cpp
-    test_on3.cpp
     test_repeat_effect_until.cpp
     test_repeat_n.cpp
     async_scope/test_dtor.cpp

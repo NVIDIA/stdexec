@@ -32,10 +32,10 @@ namespace {
   void expect_empty(exec::async_scope& scope) {
     ex::run_loop loop;
     ex::scheduler auto sch = loop.get_scheduler();
-    CHECK_FALSE(stdexec::execute_may_block_caller(sch));
+    CHECK_FALSE(ex::execute_may_block_caller(sch));
     auto op = ex::connect(
       ex::then(scope.on_empty(), [&]() { loop.finish(); }),
-      expect_void_receiver{exec::make_env(stdexec::prop{ex::get_scheduler, sch})});
+      expect_void_receiver{exec::make_env(ex::prop{ex::get_scheduler, sch})});
     ex::start(op);
     loop.run();
   }
@@ -54,7 +54,7 @@ namespace {
       exec::async_scope scope;
       ex::sender auto begin = ex::schedule(sch);
       scope.spawn(begin);
-      stdexec::sync_wait(scope.on_empty());
+      ex::sync_wait(scope.on_empty());
       expect_empty(scope);
     }
 
@@ -65,7 +65,7 @@ namespace {
         ex::sender auto nst = scope.nest(begin);
         (void) nst;
       }
-      stdexec::sync_wait(scope.on_empty());
+      ex::sync_wait(scope.on_empty());
       expect_empty(scope);
     }
 
@@ -75,7 +75,7 @@ namespace {
       ex::sender auto nst = scope.nest(begin);
       auto op = ex::connect(std::move(nst), expect_void_receiver{});
       ex::start(op);
-      stdexec::sync_wait(scope.on_empty());
+      ex::sync_wait(scope.on_empty());
       expect_empty(scope);
     }
 
@@ -85,11 +85,11 @@ namespace {
       std::atomic_bool produced{false};
       ex::sender auto begin = ex::schedule(sch);
       {
-        ex::sender auto ftr = scope.spawn_future(begin | stdexec::then([&]() { produced = true; }));
+        ex::sender auto ftr = scope.spawn_future(begin | ex::then([&]() { produced = true; }));
         (void) ftr;
       }
-      stdexec::sync_wait(
-        scope.on_empty() | stdexec::then([&]() { STDEXEC_ASSERT(produced.load()); }));
+      ex::sync_wait(
+        scope.on_empty() | ex::then([&]() { STDEXEC_ASSERT(produced.load()); }));
       expect_empty(scope);
     }
 
@@ -98,12 +98,12 @@ namespace {
       exec::async_scope scope;
       std::atomic_bool produced{false};
       ex::sender auto begin = ex::schedule(sch);
-      ex::sender auto ftr = scope.spawn_future(begin | stdexec::then([&]() { produced = true; }));
-      stdexec::sync_wait(
-        scope.on_empty() | stdexec::then([&]() { STDEXEC_ASSERT(produced.load()); }));
+      ex::sender auto ftr = scope.spawn_future(begin | ex::then([&]() { produced = true; }));
+      ex::sync_wait(
+        scope.on_empty() | ex::then([&]() { STDEXEC_ASSERT(produced.load()); }));
       auto op = ex::connect(std::move(ftr), expect_void_receiver{});
       ex::start(op);
-      stdexec::sync_wait(scope.on_empty());
+      ex::sync_wait(scope.on_empty());
       expect_empty(scope);
     }
 
@@ -113,7 +113,7 @@ namespace {
       ex::sender auto begin = ex::schedule(sch);
       ex::sender auto ftr = scope.spawn_future(scope.spawn_future(begin));
       scope.request_stop();
-      stdexec::sync_wait(ex::when_all(scope.on_empty(), std::move(ftr)));
+      ex::sync_wait(ex::when_all(scope.on_empty(), std::move(ftr)));
       // Verify the program finishes without crashing
     }
   }

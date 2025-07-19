@@ -428,7 +428,7 @@ auto main(int argc, char *argv[]) -> int {
     };
   };
 
-  stdexec::sync_wait(
+  ex::sync_wait(
     ex::schedule(gpu)
     | ex::bulk(ex::par, accessor.own_cells(), distributed::grid_initializer(dt, accessor)));
 
@@ -485,17 +485,17 @@ auto main(int argc, char *argv[]) -> int {
 
   for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
     auto compute_h = ex::when_all(
-      ex::just() | exec::on(gpu, ex::bulk(ex::par, bulk_cells, bulk_h_update)),
-      ex::just() | exec::on(gpu_with_priority, ex::bulk(ex::par, border_cells, border_h_update))
+      ex::just() | ex::on(gpu, ex::bulk(ex::par, bulk_cells, bulk_h_update)),
+      ex::just() | ex::on(gpu_with_priority, ex::bulk(ex::par, border_cells, border_h_update))
         | ex::then(exchange_hx));
 
     auto compute_e = ex::when_all(
-      ex::just() | exec::on(gpu, ex::bulk(ex::par, bulk_cells, bulk_e_update)),
-      ex::just() | exec::on(gpu_with_priority, ex::bulk(ex::par, border_cells, border_e_update))
+      ex::just() | ex::on(gpu, ex::bulk(ex::par, bulk_cells, bulk_e_update)),
+      ex::just() | ex::on(gpu_with_priority, ex::bulk(ex::par, border_cells, border_e_update))
         | ex::then(exchange_ez));
 
-    stdexec::sync_wait(std::move(compute_h));
-    stdexec::sync_wait(std::move(compute_e));
+    ex::sync_wait(std::move(compute_h));
+    ex::sync_wait(std::move(compute_e));
   }
 
   write();
@@ -503,18 +503,18 @@ auto main(int argc, char *argv[]) -> int {
   for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
     auto compute_h =
       ex::just()
-      | exec::on(gpu, ex::bulk(ex::par, accessor.own_cells(), distributed::update_h(accessor)))
+      | ex::on(gpu, ex::bulk(ex::par, accessor.own_cells(), distributed::update_h(accessor)))
       | ex::then(exchange_hx);
 
     auto compute_e =
       ex::just()
-      | exec::on(
+      | ex::on(
         gpu,
         ex::bulk(ex::par, accessor.own_cells(), distributed::update_e(time.get(), dt, accessor)))
       | ex::then(exchange_ez);
 
-    stdexec::sync_wait(std::move(compute_h));
-    stdexec::sync_wait(std::move(compute_e));
+    ex::sync_wait(std::move(compute_h));
+    ex::sync_wait(std::move(compute_e));
   }
 
   write();

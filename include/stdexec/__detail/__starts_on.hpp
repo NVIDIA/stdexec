@@ -76,7 +76,7 @@ namespace stdexec {
       static auto transform_sender(_Sender&& __sndr, const _Env&) {
         return __sexpr_apply(
           static_cast<_Sender&&>(__sndr),
-          []<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
+          []<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) -> auto {
             // This is the heart of starts_on: It uses `let_value` to schedule `__child` on the given scheduler:
             return let_value(schedule(__data), __detail::__always{static_cast<_Child&&>(__child)});
           });
@@ -86,9 +86,6 @@ namespace stdexec {
 
   using __starts_on_ns::starts_on_t;
   inline constexpr starts_on_t starts_on{};
-
-  using on_t = starts_on_t;
-  inline constexpr starts_on_t on{};
 
   using start_on_t = starts_on_t;
   inline constexpr starts_on_t start_on{};

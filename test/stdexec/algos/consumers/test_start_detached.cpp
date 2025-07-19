@@ -93,7 +93,7 @@ namespace {
   }
 
   struct custom_sender {
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = ex::sender_t;
     using __t = custom_sender;
     using __id = custom_sender;
     using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
@@ -180,7 +180,7 @@ namespace {
   // NOT TO SPEC
   TEST_CASE("start_detached can be customized on scheduler", "[consumers][start_detached]") {
     bool called = false;
-    ex::start_detached(ex::just(), stdexec::prop{ex::get_scheduler, custom_scheduler{&called}});
+    ex::start_detached(ex::just(), ex::prop{ex::get_scheduler, custom_scheduler{&called}});
     CHECK(called);
   }
 
@@ -226,35 +226,35 @@ namespace {
     std::pmr::polymorphic_allocator<std::byte> alloc(&res);
     ex::start_detached(
       ex::just() | ex::then([&] { called = true; }),
-      exec::make_env(stdexec::prop{ex::get_allocator, alloc}));
+      exec::make_env(ex::prop{ex::get_allocator, alloc}));
     CHECK(called);
     CHECK(res.get_count() == 1);
     CHECK(res.get_alive() == 0);
   }
 #endif
 
-  TEST_CASE("exec::on can be passed to start_detached", "[adaptors][exec::on]") {
+  TEST_CASE("ex::on can be passed to start_detached", "[adaptors][ex::on]") {
     ex::run_loop loop;
     auto sch = loop.get_scheduler();
     auto snd = ex::get_scheduler() | ex::let_value([](auto sched) {
                  static_assert(ex::same_as<decltype(sched), ex::run_loop::__scheduler>);
                  return ex::starts_on(sched, ex::just());
                });
-    ex::start_detached(ex::v2::on(sch, std::move(snd)));
+    ex::start_detached(ex::on(sch, std::move(snd)));
     loop.finish();
     loop.run();
   }
 
   struct env { };
 
-  TEST_CASE("exec::on can be passed to start_detached with env", "[adaptors][exec::on]") {
+  TEST_CASE("ex::on can be passed to start_detached with env", "[adaptors][ex::on]") {
     ex::run_loop loop;
     auto sch = loop.get_scheduler();
     auto snd = ex::get_scheduler() | ex::let_value([](auto sched) {
                  static_assert(ex::same_as<decltype(sched), ex::run_loop::__scheduler>);
                  return ex::starts_on(sched, ex::just());
                });
-    ex::start_detached(ex::v2::on(sch, std::move(snd)), env{});
+    ex::start_detached(ex::on(sch, std::move(snd)), env{});
     loop.finish();
     loop.run();
   }

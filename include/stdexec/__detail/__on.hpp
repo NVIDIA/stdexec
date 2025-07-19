@@ -38,7 +38,7 @@
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.on]
-  namespace __on_v2 {
+  namespace __on {
     inline constexpr __mstring __on_context = "In stdexec::on(Scheduler, Sender)..."_mstr;
     inline constexpr __mstring __no_scheduler_diag =
       "stdexec::on() requires a scheduler to transition back to."_mstr;
@@ -200,18 +200,19 @@ namespace stdexec {
         }
       }
     };
-  } // namespace __on_v2
+  } // namespace __on
+
+  using __on::on_t;
+  inline constexpr on_t on{};
 
   namespace v2 {
-    using __on_v2::on_t;
-    inline constexpr on_t on{};
-
-    using continue_on_t = v2::on_t;
-    inline constexpr continue_on_t continue_on{}; // for back-compat
+    using on_t [[deprecated("use stdexec::on_t instead")]] = stdexec::on_t;
+    [[deprecated("use stdexec::on instead")]]
+    inline constexpr stdexec::on_t const& on = stdexec::on;
   } // namespace v2
 
   template <>
-  struct __sexpr_impl<v2::on_t> : __sexpr_defaults {
+  struct __sexpr_impl<on_t> : __sexpr_defaults {
     static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
       -> __merror_or_t<
         __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>>,

@@ -85,7 +85,7 @@ namespace {
   } // namespace
 
   TEST_CASE(
-    "exec::on works when changing threads with execpools::asio_thread_pool",
+    "stdexec::on works when changing threads with execpools::asio_thread_pool",
     "[adaptors][exec::starts_on]") {
     execpools::asio_thread_pool pool;
     auto pool_sched = pool.get_scheduler();

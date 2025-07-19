@@ -445,8 +445,9 @@ namespace {
     auto snd =
       ex::just(std::move(vals))
       | ex::bulk_chunked(ex::par, n, [&](std::size_t b, std::size_t e, std::vector<int>& vals) {
-          while (b < e)
-            vals[b++] = static_cast<int>(b);
+          for (;b < e; ++b) {
+            vals[b] = static_cast<int>(b);
+          }
         });
     auto op = ex::connect(std::move(snd), expect_value_receiver{vals_expected});
     ex::start(op);
@@ -596,7 +597,7 @@ namespace {
         auto snd = ex::transfer_just(sch)
                  | ex::bulk(ex::par, n, [&counter](std::size_t idx) { counter[idx] = 0; })
                  | ex::bulk(ex::par, n, [&counter](std::size_t idx) { counter[idx]++; });
-        stdexec::sync_wait(std::move(snd));
+        ex::sync_wait(std::move(snd));
 
         const std::size_t actual = static_cast<std::size_t>(
           std::count(counter.begin(), counter.end(), 1));
@@ -624,7 +625,7 @@ namespace {
                        counter[idx]++;
                      }
                    });
-        auto [val] = stdexec::sync_wait(std::move(snd)).value();
+        auto [val] = ex::sync_wait(std::move(snd)).value();
 
         CHECK(val == 42);
 
@@ -649,7 +650,7 @@ namespace {
             n,
             [](std::size_t idx, std::vector<int>& vals) { vals[idx] = static_cast<int>(idx); })
           | ex::bulk(ex::par, n, [](std::size_t idx, std::vector<int>& vals) { ++vals[idx]; });
-        auto [vals_actual] = stdexec::sync_wait(std::move(snd)).value();
+        auto [vals_actual] = ex::sync_wait(std::move(snd)).value();
 
         CHECK(vals_actual == vals_expected);
       }
@@ -661,7 +662,7 @@ namespace {
       auto snd = ex::transfer_just(sch)
                | ex::bulk(ex::par, n, [](int) { throw std::runtime_error("bulk"); });
 
-      CHECK_THROWS_AS(stdexec::sync_wait(std::move(snd)), std::runtime_error);
+      CHECK_THROWS_AS(ex::sync_wait(std::move(snd)), std::runtime_error);
     }
 #endif // !STDEXEC_STD_NO_EXCEPTIONS()
 
@@ -670,13 +671,13 @@ namespace {
       std::vector<int> counters_1(n, 0);
       std::vector<int> counters_2(n, 0);
 
-      stdexec::sender auto snd = stdexec::when_all(
-        stdexec::schedule(sch)
-          | stdexec::bulk(ex::par, n, [&](std::size_t id) { counters_1[id]++; }),
-        stdexec::schedule(sch)
-          | stdexec::bulk(ex::par, n, [&](std::size_t id) { counters_2[id]++; }));
+      ex::sender auto snd = ex::when_all(
+        ex::schedule(sch)
+          | ex::bulk(ex::par, n, [&](std::size_t id) { counters_1[id]++; }),
+        ex::schedule(sch)
+          | ex::bulk(ex::par, n, [&](std::size_t id) { counters_2[id]++; }));
 
-      stdexec::sync_wait(std::move(snd));
+      ex::sync_wait(std::move(snd));
 
       CHECK(std::count(counters_1.begin(), counters_1.end(), 1) == static_cast<int>(n));
       CHECK(std::count(counters_2.begin(), counters_2.end(), 1) == static_cast<int>(n));
@@ -703,7 +704,7 @@ namespace {
                      while (b < e)
                        counter[b++]++;
                    });
-        stdexec::sync_wait(std::move(snd));
+        ex::sync_wait(std::move(snd));
 
         const std::size_t actual = static_cast<std::size_t>(
           std::count(counter.begin(), counter.end(), 1));
@@ -733,7 +734,7 @@ namespace {
                          counter[b++]++;
                      }
                    });
-        auto [val] = stdexec::sync_wait(std::move(snd)).value();
+        auto [val] = ex::sync_wait(std::move(snd)).value();
 
         CHECK(val == 42);
 
@@ -766,7 +767,7 @@ namespace {
               while (b < e)
                 ++vals[b++];
             });
-        auto [vals_actual] = stdexec::sync_wait(std::move(snd)).value();
+        auto [vals_actual] = ex::sync_wait(std::move(snd)).value();
 
         CHECK(vals_actual == vals_expected);
       }
@@ -779,7 +780,7 @@ namespace {
                    throw std::runtime_error("bulk_chunked");
                  });
 
-      CHECK_THROWS_AS(stdexec::sync_wait(std::move(snd)), std::runtime_error);
+      CHECK_THROWS_AS(ex::sync_wait(std::move(snd)), std::runtime_error);
     }
 #endif // !STDEXEC_STD_NO_EXCEPTIONS()
 
@@ -788,22 +789,22 @@ namespace {
       std::vector<int> counters_1(n, 0);
       std::vector<int> counters_2(n, 0);
 
-      stdexec::sender auto snd = stdexec::when_all(
-        stdexec::schedule(sch)
-          | stdexec::bulk_chunked(
+      ex::sender auto snd = ex::when_all(
+        ex::schedule(sch)
+          | ex::bulk_chunked(
             ex::par,
             n,
             [&](std::size_t b, std::size_t e) {
               while (b < e)
                 counters_1[b++]++;
             }),
-        stdexec::schedule(sch)
-          | stdexec::bulk_chunked(ex::par, n, [&](std::size_t b, std::size_t e) {
+        ex::schedule(sch)
+          | ex::bulk_chunked(ex::par, n, [&](std::size_t b, std::size_t e) {
               while (b < e)
                 counters_2[b++]++;
             }));
 
-      stdexec::sync_wait(std::move(snd));
+      ex::sync_wait(std::move(snd));
 
       CHECK(std::count(counters_1.begin(), counters_1.end(), 1) == static_cast<int>(n));
       CHECK(std::count(counters_2.begin(), counters_2.end(), 1) == static_cast<int>(n));
@@ -821,7 +822,7 @@ namespace {
         auto snd = ex::transfer_just(sch)
                  | ex::bulk_unchunked(ex::par, n, [&counter](std::size_t idx) { counter[idx] = 0; })
                  | ex::bulk_unchunked(ex::par, n, [&counter](std::size_t idx) { counter[idx]++; });
-        stdexec::sync_wait(std::move(snd));
+        ex::sync_wait(std::move(snd));
 
         const std::size_t actual = static_cast<std::size_t>(
           std::count(counter.begin(), counter.end(), 1));
@@ -848,7 +849,7 @@ namespace {
                        counter[idx]++;
                      }
                    });
-        auto [val] = stdexec::sync_wait(std::move(snd)).value();
+        auto [val] = ex::sync_wait(std::move(snd)).value();
 
         CHECK(val == 42);
 
@@ -871,7 +872,7 @@ namespace {
           | ex::bulk_unchunked(ex::par, 
             n, [](std::size_t idx, std::vector<int>& vals) { vals[idx] = static_cast<int>(idx); })
           | ex::bulk_unchunked(ex::par, n, [](std::size_t idx, std::vector<int>& vals) { ++vals[idx]; });
-        auto [vals_actual] = stdexec::sync_wait(std::move(snd)).value();
+        auto [vals_actual] = ex::sync_wait(std::move(snd)).value();
 
         CHECK(vals_actual == vals_expected);
       }
@@ -883,7 +884,7 @@ namespace {
       auto snd = ex::transfer_just(sch)
                | ex::bulk_unchunked(ex::par, n, [](int) { throw std::runtime_error("bulk_unchunked"); });
 
-      CHECK_THROWS_AS(stdexec::sync_wait(std::move(snd)), std::runtime_error);
+      CHECK_THROWS_AS(ex::sync_wait(std::move(snd)), std::runtime_error);
     }
 #endif // !STDEXEC_STD_NO_EXCEPTIONS()
 
@@ -892,13 +893,13 @@ namespace {
       std::vector<int> counters_1(n, 0);
       std::vector<int> counters_2(n, 0);
 
-      stdexec::sender auto snd = stdexec::when_all(
-        stdexec::schedule(sch)
-          | stdexec::bulk_unchunked(ex::par, n, [&](std::size_t id) { counters_1[id]++; }),
-        stdexec::schedule(sch)
-          | stdexec::bulk_unchunked(ex::par, n, [&](std::size_t id) { counters_2[id]++; }));
+      ex::sender auto snd = ex::when_all(
+        ex::schedule(sch)
+          | ex::bulk_unchunked(ex::par, n, [&](std::size_t id) { counters_1[id]++; }),
+        ex::schedule(sch)
+          | ex::bulk_unchunked(ex::par, n, [&](std::size_t id) { counters_2[id]++; }));
 
-      stdexec::sync_wait(std::move(snd));
+      ex::sync_wait(std::move(snd));
 
       CHECK(std::count(counters_1.begin(), counters_1.end(), 1) == static_cast<int>(n));
       CHECK(std::count(counters_2.begin(), counters_2.end(), 1) == static_cast<int>(n));
@@ -918,7 +919,7 @@ namespace {
       };
 
       auto snd = ex::just() | ex::continues_on(sch) | ex::bulk(ex::par, tids.size(), fun);
-      stdexec::sync_wait(std::move(snd));
+      ex::sync_wait(std::move(snd));
 
       // All the work should not have run on the same thread
       const auto actual = static_cast<std::size_t>(std::count(tids.begin(), tids.end(), tids[0]));
@@ -945,7 +946,7 @@ namespace {
       };
 
       auto snd = ex::just() | ex::continues_on(sch) | ex::bulk_chunked(ex::par, tids.size(), fun);
-      stdexec::sync_wait(std::move(snd));
+      ex::sync_wait(std::move(snd));
 
       // All the work should not have run on the same thread
       const auto actual = static_cast<std::size_t>(std::count(tids.begin(), tids.end(), tids[0]));
@@ -968,7 +969,7 @@ namespace {
       };
 
       auto snd = ex::just() | ex::bulk(ex::par, tids.size(), fun);
-      stdexec::sync_wait(stdexec::starts_on(sch, std::move(snd)));
+      ex::sync_wait(ex::starts_on(sch, std::move(snd)));
 
       // All the work should not have run on the same thread
       const auto actual = static_cast<std::size_t>(std::count(tids.begin(), tids.end(), tids[0]));
@@ -995,7 +996,7 @@ namespace {
       };
 
       auto snd = ex::just() | ex::bulk_chunked(ex::par, tids.size(), fun);
-      stdexec::sync_wait(stdexec::starts_on(sch, std::move(snd)));
+      ex::sync_wait(ex::starts_on(sch, std::move(snd)));
 
       // All the work should not have run on the same thread
       const auto actual = static_cast<std::size_t>(std::count(tids.begin(), tids.end(), tids[0]));
@@ -1043,7 +1044,7 @@ namespace {
     };
 
     auto snd = ex::just() | ex::continues_on(sch) | ex::bulk(policy, tids.size(), fun);
-    stdexec::sync_wait(std::move(snd));
+    ex::sync_wait(std::move(snd));
 
     std::sort(tids.begin(), tids.end());
     return static_cast<int>(std::unique(tids.begin(), tids.end()) - tids.begin());
@@ -1079,7 +1080,7 @@ namespace {
     };
 
     auto snd = ex::just() | ex::continues_on(sch) | ex::bulk_chunked(policy, tids.size(), fun);
-    stdexec::sync_wait(std::move(snd));
+    ex::sync_wait(std::move(snd));
 
     std::sort(tids.begin(), tids.end());
     return static_cast<int>(std::unique(tids.begin(), tids.end()) - tids.begin());
@@ -1117,7 +1118,7 @@ namespace {
     // The customization will return a different value
     basic_inline_scheduler<my_domain> sched;
     auto snd = ex::just(std::string{"hello"})
-             | exec::on(sched, ex::bulk(ex::par, 1, [&called](int, std::string) {
+             | ex::on(sched, ex::bulk(ex::par, 1, [&called](int, std::string) {
                           called = true;
                         }));
     wait_for_value(std::move(snd), std::string{"hijacked"});

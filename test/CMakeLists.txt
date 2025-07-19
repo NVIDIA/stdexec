@@ -36,6 +36,9 @@ set(stdexec_test_sources
     stdexec/algos/factories/test_just_stopped.cpp
     stdexec/algos/factories/test_read.cpp
     stdexec/algos/adaptors/test_starts_on.cpp
+    stdexec/algos/adaptors/test_on.cpp
+    stdexec/algos/adaptors/test_on2.cpp
+    stdexec/algos/adaptors/test_on3.cpp
     stdexec/algos/adaptors/test_continues_on.cpp
     stdexec/algos/adaptors/test_schedule_from.cpp
     stdexec/algos/adaptors/test_then.cpp

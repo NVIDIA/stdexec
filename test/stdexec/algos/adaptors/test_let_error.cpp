@@ -306,7 +306,7 @@ namespace {
       | ex::let_error([](std::exception_ptr) { return ex::just_error(std::string{"err"}); }));
     check_err_types<ex::__mset<std::exception_ptr, std::string>>(
       ex::transfer_just(sched3)
-      | ex::let_error([](stdexec::__one_of<int, std::exception_ptr> auto) {
+      | ex::let_error([](ex::__one_of<int, std::exception_ptr> auto) {
           return ex::just_error(std::string{"err"});
         }));
 
@@ -317,7 +317,7 @@ namespace {
       ex::transfer_just(sched2) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
     check_err_types<ex::__mset<std::exception_ptr>>(
       ex::transfer_just(sched3)
-      | ex::let_error([](stdexec::__one_of<int, std::exception_ptr> auto) { return ex::just(); }));
+      | ex::let_error([](ex::__one_of<int, std::exception_ptr> auto) { return ex::just(); }));
   }
 
   TEST_CASE("let_error keeps sends_stopped from input sender", "[adaptors][let_error]") {
