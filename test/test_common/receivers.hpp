@@ -487,7 +487,7 @@ namespace {
     F f_;
 
     template <class... Ts>
-    void set_value(Ts... vals) noexcept {
+    void set_value(Ts&&... vals) noexcept {
       STDEXEC_TRY {
         std::move(f_)(static_cast<Ts&&>(vals)...);
       }

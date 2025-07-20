@@ -19,6 +19,10 @@
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 
+#include <cstddef>
+#include <stdexcept>
+#include <utility>
+
 namespace ex = stdexec;
 
 namespace {
@@ -123,5 +127,56 @@ namespace {
     ex::start(op);
     CHECK(res == original);
     CHECK(cat == typecat::rvalref);
+  }
+
+  TEST_CASE("just works with types with throwing move", "[factories][just]") {
+    struct throwing_move {
+      explicit throwing_move(std::size_t& throws_after) noexcept : throws_after_(throws_after) {}
+      throwing_move(throwing_move&& other)
+        : throws_after_(other.throws_after_)
+      {
+        if (throws_after_) {
+          --throws_after_;
+        } else {
+          throw std::runtime_error("Throwing as requested");
+        }
+      }
+    private:
+      std::size_t& throws_after_;
+    };
+    std::size_t throws_after = 0;
+    const auto repeat_until_succeeds = [&](auto f) noexcept -> decltype(auto) {
+      struct guard {
+        ~guard() noexcept {
+          CHECK(threw);
+        }
+        bool threw{false};
+      };
+      guard g;
+      for (;;) {
+        auto orig = throws_after;
+        try {
+          return f();
+        } catch (...) {
+          g.threw = true;
+          ++orig;
+          throws_after = orig;
+        }
+      }
+    };
+    auto sender = repeat_until_succeeds([&]() {
+      return ::stdexec::just(throwing_move(throws_after));
+    });
+    CHECK(throws_after == 0);
+    std::size_t invoked = 0;
+    auto op = repeat_until_succeeds([&]() {
+      return ::stdexec::connect(
+        std::move(sender),
+        make_fun_receiver([&](throwing_move&&) noexcept { ++invoked; }));
+    });
+    CHECK(throws_after == 0);
+    CHECK(invoked == 0);
+    ::stdexec::start(op);
+    CHECK(invoked == 1);
   }
 } // namespace
