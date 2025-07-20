@@ -228,7 +228,7 @@ namespace stdexec {
 
       __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr) noexcept(
         __nothrow_decay_copyable<_Receiver>
-        && __noexcept_of<__sexpr_impl<__tag_t>::get_state, _Sexpr, _Receiver&>)
+        && noexcept(__state_t(__sexpr_impl<__tag_t>::get_state(static_cast<_Sexpr&&>(__sndr), __rcvr_))))
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
         , __state_(__sexpr_impl<__tag_t>::get_state(static_cast<_Sexpr&&>(__sndr), __rcvr_)) {
       }
