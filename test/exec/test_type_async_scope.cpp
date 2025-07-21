@@ -18,9 +18,7 @@
 
 #include <stdexec/execution.hpp>
 #include <exec/async_scope.hpp>
-
-#include "exec/env.hpp"
-#include "exec/static_thread_pool.hpp"
+#include <exec/static_thread_pool.hpp>
 
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
@@ -34,8 +32,12 @@ namespace {
     ex::scheduler auto sch = loop.get_scheduler();
     CHECK_FALSE(ex::execute_may_block_caller(sch));
     auto op = ex::connect(
-      ex::then(scope.on_empty(), [&]() { loop.finish(); }),
-      expect_void_receiver{exec::make_env(ex::prop{ex::get_scheduler, sch})});
+      ex::then(
+        scope.on_empty(),
+        [&]() {
+          loop.finish();
+    }),
+      expect_void_receiver{ex::prop{ex::get_scheduler, sch}});
     ex::start(op);
     loop.run();
   }
@@ -88,8 +90,7 @@ namespace {
         ex::sender auto ftr = scope.spawn_future(begin | ex::then([&]() { produced = true; }));
         (void) ftr;
       }
-      ex::sync_wait(
-        scope.on_empty() | ex::then([&]() { STDEXEC_ASSERT(produced.load()); }));
+      ex::sync_wait(scope.on_empty() | ex::then([&]() { STDEXEC_ASSERT(produced.load()); }));
       expect_empty(scope);
     }
 
@@ -99,8 +100,7 @@ namespace {
       std::atomic_bool produced{false};
       ex::sender auto begin = ex::schedule(sch);
       ex::sender auto ftr = scope.spawn_future(begin | ex::then([&]() { produced = true; }));
-      ex::sync_wait(
-        scope.on_empty() | ex::then([&]() { STDEXEC_ASSERT(produced.load()); }));
+      ex::sync_wait(scope.on_empty() | ex::then([&]() { STDEXEC_ASSERT(produced.load()); }));
       auto op = ex::connect(std::move(ftr), expect_void_receiver{});
       ex::start(op);
       ex::sync_wait(scope.on_empty());

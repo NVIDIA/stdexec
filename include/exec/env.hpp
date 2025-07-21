@@ -142,9 +142,10 @@ namespace exec {
 
   inline constexpr __read_with_default::__read_with_default_t read_with_default{};
 
-  [[deprecated("exec::write has been renamed to exec::write_env")]]
-  inline constexpr stdexec::__write_::__write_env_t write{};
-  inline constexpr stdexec::__write_::__write_env_t write_env{};
+  [[deprecated("exec::write has been renamed to stdexec::write_env")]]
+  inline constexpr stdexec::__write::write_env_t write{};
+  [[deprecated("write_env has been moved to the stdexec:: namespace")]]
+  inline constexpr stdexec::__write::write_env_t write_env{};
 
   namespace __write_attrs {
     using namespace stdexec;

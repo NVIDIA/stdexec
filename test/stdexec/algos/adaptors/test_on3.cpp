@@ -86,7 +86,7 @@ namespace {
 
   static const auto probe_env = probe_env_t{};
 
-  static const auto env = exec::make_env(ex::prop{ex::get_scheduler, inline_scheduler{}});
+  static const auto env = ex::prop{ex::get_scheduler, inline_scheduler{}};
 
   TEST_CASE("Can pass stdexec::on sender to start_detached", "[adaptors][stdexec::on]") {
     ex::start_detached(ex::on(inline_scheduler{}, ex::just()), env);
@@ -120,7 +120,9 @@ namespace {
     ex::sync_wait(scope.on_empty());
   }
 
-  TEST_CASE("stdexec::on updates the current scheduler in the receiver", "[adaptors][stdexec::on]") {
+  TEST_CASE(
+    "stdexec::on updates the current scheduler in the receiver",
+    "[adaptors][stdexec::on]") {
     auto snd = ex::get_scheduler() | ex::on(inline_scheduler{}, probe_env())
              | ex::then([]<class Env>(Env) noexcept {
                  using Sched = ex::__call_result_t<ex::get_scheduler_t, Env>;

@@ -63,6 +63,7 @@
 #include "__detail/__type_traits.hpp"                     // IWYU pragma: export
 #include "__detail/__upon_error.hpp"                      // IWYU pragma: export
 #include "__detail/__upon_stopped.hpp"                    // IWYU pragma: export
+#include "__detail/__unstoppable.hpp"                     // IWYU pragma: export
 #include "__detail/__utility.hpp"                         // IWYU pragma: export
 #include "__detail/__when_all.hpp"                        // IWYU pragma: export
 #include "__detail/__with_awaitable_senders.hpp"          // IWYU pragma: export

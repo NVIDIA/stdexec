@@ -18,7 +18,6 @@
 #include <stdexec/execution.hpp>
 #include <exec/async_scope.hpp>
 
-#include "exec/env.hpp"
 #include "exec/static_thread_pool.hpp"
 
 #include <cstdio>

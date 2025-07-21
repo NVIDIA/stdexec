@@ -1,6 +1,5 @@
 #include <catch2/catch.hpp>
 #include <exec/async_scope.hpp>
-#include <exec/env.hpp>
 #include <exec/just_from.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <exec/just_from.hpp>
@@ -9,16 +8,20 @@
 
 namespace ex = stdexec;
 using exec::async_scope;
-using stdexec::sync_wait;
+using ex::sync_wait;
 
 namespace {
   void expect_empty(exec::async_scope& scope) {
     ex::run_loop loop;
     ex::scheduler auto sch = loop.get_scheduler();
-    CHECK_FALSE(stdexec::execute_may_block_caller(sch));
+    CHECK_FALSE(ex::execute_may_block_caller(sch));
     auto op = ex::connect(
-      ex::then(scope.on_empty(), [&]() { loop.finish(); }),
-      expect_void_receiver{exec::make_env(stdexec::prop{ex::get_scheduler, sch})});
+      ex::then(
+        scope.on_empty(),
+        [&]() {
+          loop.finish();
+    }),
+      expect_void_receiver{ex::prop{ex::get_scheduler, sch}});
     ex::start(op);
     loop.run();
   }
@@ -26,7 +29,7 @@ namespace {
 #if !STDEXEC_STD_NO_EXCEPTIONS()
   //! Sender that throws exception when connected
   struct throwing_sender {
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = ex::sender_t;
     using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
     template <class Receiver>

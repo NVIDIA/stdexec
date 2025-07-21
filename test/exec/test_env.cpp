@@ -41,7 +41,7 @@ namespace {
   } bar{};
 
   TEST_CASE("Test make_env works", "[env]") {
-    auto e = exec::make_env(stdexec::prop{foo, 42});
+    auto e = stdexec::prop{foo, 42};
     CHECK(foo(e) == 42);
 
     auto e2 = exec::make_env(e, stdexec::prop{bar, 43});

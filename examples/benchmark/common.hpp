@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <exec/env.hpp>
 #include <exec/__detail/__numa.hpp>
 #include <exec/static_thread_pool.hpp>
 

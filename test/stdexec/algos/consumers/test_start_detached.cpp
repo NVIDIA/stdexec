@@ -19,7 +19,7 @@
 #include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
 #include <exec/static_thread_pool.hpp>
-#include <exec/env.hpp>
+// #include <exec/env.hpp>
 
 #include <chrono> // IWYU pragma: keep for std::chrono_literals
 
@@ -225,8 +225,7 @@ namespace {
     counting_resource res;
     std::pmr::polymorphic_allocator<std::byte> alloc(&res);
     ex::start_detached(
-      ex::just() | ex::then([&] { called = true; }),
-      exec::make_env(ex::prop{ex::get_allocator, alloc}));
+      ex::just() | ex::then([&] { called = true; }), ex::prop{ex::get_allocator, alloc});
     CHECK(called);
     CHECK(res.get_count() == 1);
     CHECK(res.get_alive() == 0);

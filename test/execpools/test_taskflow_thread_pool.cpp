@@ -23,7 +23,6 @@
 
 #include <test_common/schedulers.hpp>
 #include <exec/on.hpp>
-#include <exec/env.hpp>
 #include <exec/inline_scheduler.hpp>
 
 #include <execpools/taskflow/taskflow_thread_pool.hpp>
@@ -34,7 +33,7 @@ namespace {
 
   template <ex::scheduler Sched = inline_scheduler>
   inline auto _with_scheduler(Sched sched = {}) {
-    return exec::write_env(stdexec::prop{ex::get_scheduler, std::move(sched)});
+    return ex::write_env(ex::prop{ex::get_scheduler, std::move(sched)});
   }
 
   namespace {

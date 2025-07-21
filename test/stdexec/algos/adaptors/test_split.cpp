@@ -21,7 +21,6 @@
 #include <test_common/senders.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
-#include <exec/env.hpp>
 #include <exec/static_thread_pool.hpp>
 
 namespace ex = stdexec;
@@ -141,14 +140,14 @@ namespace {
     bool called = false;
     int counter{};
     auto split = ex::split(ex::just() | ex::then([&] { called = true; }));
-    auto sndr = exec::write_env(
+    auto sndr = ex::write_env(
       ex::upon_stopped(
         std::move(split),
         [&] {
           ++counter;
           return 42;
         }),
-      stdexec::prop{ex::get_stop_token, ssource.get_token()});
+      ex::prop{ex::get_stop_token, ssource.get_token()});
     auto op1 = ex::connect(sndr, expect_value_receiver{42});
     auto op2 = ex::connect(std::move(sndr), expect_value_receiver{42});
     ssource.request_stop();
@@ -169,14 +168,14 @@ namespace {
                              called = true;
                              return 7;
                            }));
-    auto sndr = exec::write_env(
+    auto sndr = ex::write_env(
       ex::upon_stopped(
         std::move(split),
         [&] {
           ++counter;
           return 42;
         }),
-      stdexec::prop{ex::get_stop_token, ssource.get_token()});
+      ex::prop{ex::get_stop_token, ssource.get_token()});
     auto op1 = ex::connect(sndr, expect_value_receiver{7});
     auto op2 = ex::connect(sndr, expect_value_receiver{42});
     REQUIRE(counter == 0);
@@ -197,14 +196,14 @@ namespace {
                                                   called = true;
                                                   return 7;
                                                 })));
-    auto sndr = exec::write_env(
+    auto sndr = ex::write_env(
       ex::upon_stopped(
         std::move(split),
         [&] {
           ++counter;
           return 42;
         }),
-      stdexec::prop{ex::get_stop_token, ssource.get_token()});
+      ex::prop{ex::get_stop_token, ssource.get_token()});
     auto op1 = ex::connect(sndr, expect_value_receiver{42});
     auto op2 = ex::connect(std::move(sndr), expect_value_receiver{42});
     REQUIRE(counter == 0);
@@ -238,11 +237,11 @@ namespace {
     auto sndr1 = ex::starts_on(
       sched,
       ex::upon_stopped(
-        exec::write_env(split, stdexec::prop{ex::get_stop_token, ssource.get_token()}), [&] {
+        ex::write_env(split, ex::prop{ex::get_stop_token, ssource.get_token()}), [&] {
           ++counter;
           return 42;
         }));
-    auto sndr2 = exec::write_env(
+    auto sndr2 = ex::write_env(
       ex::starts_on(
         sched,
         ex::upon_stopped(
@@ -251,7 +250,7 @@ namespace {
             ++counter;
             return 42;
           })),
-      stdexec::prop{ex::get_stop_token, ssource.get_token()});
+      ex::prop{ex::get_stop_token, ssource.get_token()});
     auto op1 = ex::connect(std::move(sndr1), expect_value_receiver{7});
     auto op2 = ex::connect(std::move(sndr2), expect_stopped_receiver{});
     REQUIRE(counter == 0);

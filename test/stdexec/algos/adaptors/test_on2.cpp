@@ -20,7 +20,6 @@
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
 #include <exec/on.hpp>
-#include <exec/env.hpp>
 
 namespace ex = stdexec;
 
@@ -28,12 +27,12 @@ namespace {
 
   template <ex::scheduler Sched = inline_scheduler>
   inline auto _with_scheduler(Sched sched = {}) {
-    return exec::write_env(ex::prop{ex::get_scheduler, std::move(sched)});
+    return ex::write_env(ex::prop{ex::get_scheduler, std::move(sched)});
   }
 
   TEST_CASE(
     "stdexec::on transitions back to the receiver's scheduler when completing with a value",
-    "[adaptors][stdexec::on]") {
+    "[adaptors][on]") {
     bool called{false};
     auto snd_base = ex::just() | ex::then([&]() -> int {
                       called = true;
@@ -66,7 +65,7 @@ namespace {
 
   TEST_CASE(
     "stdexec::on transitions back to the receiver's scheduler when completing with an error",
-    "[adaptors][stdexec::on]") {
+    "[adaptors][on]") {
     bool called{false};
     auto snd_base = ex::just() | ex::let_value([&]() {
                       called = true;
@@ -98,8 +97,8 @@ namespace {
   }
 
   TEST_CASE(
-    "inner on transitions back to outer on's scheduler when completing with a value",
-    "[adaptors][stdexec::on]") {
+    "inner stdexec::on transitions back to outer on's scheduler when completing with a value",
+    "[adaptors][on]") {
     bool called{false};
     auto snd_base = ex::just() | ex::then([&]() -> int {
                       called = true;
@@ -149,8 +148,8 @@ namespace {
   }
 
   TEST_CASE(
-    "inner on transitions back to outer on's scheduler when completing with an error",
-    "[adaptors][stdexec::on]") {
+    "inner stdexec::on transitions back to outer on's scheduler when completing with an error",
+    "[adaptors][on]") {
     bool called{false};
     auto snd_base = ex::just() | ex::let_value([&]() {
                       called = true;
@@ -200,8 +199,9 @@ namespace {
   }
 
   TEST_CASE(
-    "ex::on(closure) transitions onto and back off of the scheduler when completing with a value",
-    "[adaptors][stdexec::on]") {
+    "stdexec::on(closure) transitions onto and back off of the scheduler when completing with a "
+    "value",
+    "[adaptors][on]") {
     bool called{false};
     auto closure = ex::then([&]() -> int {
       called = true;
@@ -233,9 +233,9 @@ namespace {
   }
 
   TEST_CASE(
-    "ex::on(closure) transitions onto and back off of the scheduler when completing with "
+    "stdexec::on(closure) transitions onto and back off of the scheduler when completing with "
     "an error",
-    "[adaptors][stdexec::on]") {
+    "[adaptors][on]") {
     bool called{false};
     auto closure = ex::let_value([&]() {
       called = true;
@@ -267,8 +267,9 @@ namespace {
   }
 
   TEST_CASE(
-    "inner on(closure) transitions back to outer on's scheduler when completing with a value",
-    "[adaptors][stdexec::on]") {
+    "inner stdexec::on(closure) transitions back to outer on's scheduler when completing with a "
+    "value",
+    "[adaptors][on]") {
     bool called{false};
     auto closure = ex::then([&](int i) -> int {
       called = true;
@@ -319,8 +320,9 @@ namespace {
   }
 
   TEST_CASE(
-    "inner on(closure) transitions back to outer on's scheduler when completing with an error",
-    "[adaptors][stdexec::on]") {
+    "inner stdexec::on(closure) transitions back to outer on's scheduler when completing with an "
+    "error",
+    "[adaptors][on]") {
     bool called{false};
     auto closure = ex::let_value([&](int i) {
       called = true;

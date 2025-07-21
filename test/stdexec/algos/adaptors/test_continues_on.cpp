@@ -20,7 +20,6 @@
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 #include <exec/static_thread_pool.hpp>
-#include <exec/env.hpp>
 
 #include <chrono> // IWYU pragma: keep for chrono_literals
 
