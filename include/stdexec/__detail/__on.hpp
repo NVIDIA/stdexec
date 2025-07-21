@@ -169,10 +169,10 @@ namespace stdexec {
               return __none_such{};
             } else {
               auto&& [__sched, __clsur] = static_cast<_Data&&>(__data);
-              return __write_env(
+              return write_env(
                 continues_on(
                   __forward_like<_Data>(__clsur)(continues_on(
-                    __write_env(static_cast<_Child&&>(__child), __with_sched{__old}), __sched)),
+                    write_env(static_cast<_Child&&>(__child), __with_sched{__old}), __sched)),
                   __old),
                 __with_sched{__sched});
             }
@@ -208,7 +208,7 @@ namespace stdexec {
   namespace v2 {
     using on_t [[deprecated("use stdexec::on_t instead")]] = stdexec::on_t;
     [[deprecated("use stdexec::on instead")]]
-    inline constexpr stdexec::on_t const& on = stdexec::on;
+    inline constexpr stdexec::on_t const & on = stdexec::on;
   } // namespace v2
 
   template <>

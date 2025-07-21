@@ -17,7 +17,6 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include <exec/on.hpp>
-#include <exec/env.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/senders.hpp>
@@ -55,7 +54,7 @@ namespace {
 
   TEST_CASE("then returning void can we waited on", "[adaptors][then]") {
     ex::sender auto snd = ex::just() | ex::then([] { });
-    stdexec::sync_wait(std::move(snd));
+    ex::sync_wait(std::move(snd));
   }
 
   TEST_CASE("then can be used to transform the value", "[adaptors][then]") {
@@ -191,7 +190,7 @@ namespace {
     basic_inline_scheduler<then_test_domain> sched;
     auto snd = ex::just(std::string{"hello"})
              | ex::on(sched, ex::then([](std::string x) { return x + ", world"; }))
-             | exec::write_env(stdexec::prop{ex::get_scheduler, inline_scheduler()});
+             | ex::write_env(ex::prop{ex::get_scheduler, inline_scheduler()});
     wait_for_value(std::move(snd), std::string{"ciao"});
   }
 } // namespace

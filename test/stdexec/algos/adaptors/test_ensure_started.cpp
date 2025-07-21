@@ -19,7 +19,6 @@
 
 #include <stdexec/execution.hpp>
 #include <exec/async_scope.hpp>
-#include <exec/env.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
@@ -35,7 +34,7 @@ namespace {
     (void) snd;
   }
 
-  static const auto env = exec::make_env(stdexec::prop{ex::get_scheduler, inline_scheduler{}});
+  static const auto env = ex::prop{ex::get_scheduler, inline_scheduler{}};
 
   TEST_CASE("ensure_started with environment returns a sender", "[adaptors][ensure_started]") {
     auto snd = ex::ensure_started(ex::just(19), env);
@@ -190,11 +189,11 @@ namespace {
   TEST_CASE(
     "stopping ensure_started before the source completes calls set_stopped",
     "[adaptors][ensure_started]") {
-    stdexec::inplace_stop_source stop_source;
+    ex::inplace_stop_source stop_source;
     impulse_scheduler sch;
     bool called{false};
     auto snd = ex::starts_on(sch, ex::just(19))
-             | exec::write_env(stdexec::prop{ex::get_stop_token, stop_source.get_token()})
+             | ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()})
              | ex::ensure_started();
     auto op = ex::connect(std::move(snd), expect_stopped_receiver_ex{called});
     ex::start(op);
@@ -208,14 +207,14 @@ namespace {
   TEST_CASE(
     "stopping ensure_started before the lazy opstate is started calls set_stopped",
     "[adaptors][ensure_started]") {
-    stdexec::inplace_stop_source stop_source;
+    ex::inplace_stop_source stop_source;
     impulse_scheduler sch;
     int count = 0;
     bool called{false};
     auto snd = ex::let_value(
                  ex::just() | ex::then([&] { ++count; }),
                  [=] { return ex::starts_on(sch, ex::just(19)); })
-             | exec::write_env(stdexec::prop{ex::get_stop_token, stop_source.get_token()})
+             | ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()})
              | ex::ensure_started();
     CHECK(count == 1);
     auto op = ex::connect(std::move(snd), expect_stopped_receiver_ex{called});
@@ -230,13 +229,13 @@ namespace {
   TEST_CASE(
     "stopping ensure_started after the task has already completed doesn't change the result",
     "[adaptors][ensure_started]") {
-    stdexec::inplace_stop_source stop_source;
+    ex::inplace_stop_source stop_source;
     int count = 0;
     auto snd = ex::just() | ex::then([&] {
                  ++count;
                  return 42;
                })
-             | exec::write_env(stdexec::prop{ex::get_stop_token, stop_source.get_token()})
+             | ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()})
              | ex::ensure_started();
     CHECK(count == 1);
     auto op = ex::connect(std::move(snd), expect_value_receiver{42});
@@ -308,7 +307,7 @@ namespace {
   }
 
   struct my_sender {
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = ex::sender_t;
     using is_sender = void;
 
     using completion_signatures = ex::completion_signatures_of_t<decltype(ex::just())>;
@@ -327,8 +326,8 @@ namespace {
   TEST_CASE("ensure_started accepts a custom sender", "[adaptors][ensure_started]") {
     auto snd1 = my_sender();
     auto snd2 = ex::ensure_started(std::move(snd1));
-    static_assert(stdexec::__well_formed_sender<decltype(snd1)>);
-    static_assert(stdexec::__well_formed_sender<decltype(snd2)>);
+    static_assert(ex::__well_formed_sender<decltype(snd1)>);
+    static_assert(ex::__well_formed_sender<decltype(snd2)>);
     using Snd = decltype(snd2);
     static_assert(ex::enable_sender<Snd>);
     static_assert(ex::sender<Snd>);

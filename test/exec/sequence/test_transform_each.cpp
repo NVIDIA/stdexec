@@ -23,7 +23,6 @@
 #include "exec/sequence/ignore_all_values.hpp"
 #include <catch2/catch.hpp>
 
-#include <exec/env.hpp>
 #include <exec/on.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
@@ -49,8 +48,9 @@ namespace {
     "transform_each - transform sender applies adaptor to no elements",
     "[sequence_senders][transform_each][empty_sequence]") {
     int counter = 0;
-    auto transformed = exec::transform_each(
-      exec::empty_sequence(), ex::then([&counter]() noexcept { ++counter; }));
+    auto transformed = exec::transform_each(exec::empty_sequence(), ex::then([&counter]() noexcept {
+                                              ++counter;
+                                            }));
     auto op = exec::subscribe(transformed, next_rcvr{});
     ex::start(op);
     CHECK(counter == 0);
@@ -60,8 +60,9 @@ namespace {
     "transform_each - transform sender applies adaptor to a sender",
     "[sequence_senders][transform_each]") {
     int value = 0;
-    auto transformed = exec::transform_each(
-      ex::just(42), ex::then([&value](int x) noexcept { value = x; }));
+    auto transformed = exec::transform_each(ex::just(42), ex::then([&value](int x) noexcept {
+                                              value = x;
+                                            }));
     auto op = exec::subscribe(transformed, next_rcvr{});
     ex::start(op);
     CHECK(value == 42);
@@ -71,9 +72,7 @@ namespace {
     "transform_each - transform sender applies adaptor to a sender and ignores all values",
     "[sequence_senders][transform_each][ignore_all_values]") {
     int value = 0;
-    auto transformed = exec::transform_each(ex::just(42), ex::then([&value](int x) {
-                                              value = x;
-                                            }))
+    auto transformed = exec::transform_each(ex::just(42), ex::then([&value](int x) { value = x; }))
                      | exec::ignore_all_values();
     ex::sync_wait(transformed);
     CHECK(value == 42);
@@ -108,7 +107,7 @@ namespace {
     basic_inline_scheduler<my_domain> sched;
     int result = 0;
     auto start = ex::just(std::string{"hello"});
-    auto with_scheduler = exec::write_env(ex::prop{ex::get_scheduler, inline_scheduler()});
+    auto with_scheduler = ex::write_env(ex::prop{ex::get_scheduler, inline_scheduler()});
     auto adaptor = ex::on(sched, ex::then([](std::string x) { return x + ", world"; }))
                  | with_scheduler;
     auto snd = start | exec::transform_each(adaptor)

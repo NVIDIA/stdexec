@@ -90,33 +90,35 @@ namespace nvexec::_strm {
     template <class... Env, class... Senders>
       requires(valid_child_sender<Senders, Env...> && ...)
     struct completions<__types<Env...>, Senders...> {
-      using non_values =
-        __meval<
-          __concat_completion_signatures,
-          completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
-          transform_completion_signatures<
-            __completion_signatures_of_t<Senders, Env...>,
-            completion_signatures<>,
-            __mconst<completion_signatures<>>::__f>...>;
-      using values =
-        __minvoke<
-          __mconcat<__qf<set_value_t>>,
-          __value_types_t<
-            __completion_signatures_of_t<Senders, Env...>,
-            __q<__types>,
-            __msingle_or<__types<>>>...>;
-      using __t =
-        __if_c<
-          (__sends<set_value_t, Senders, Env...> && ...),
-          __minvoke<__mpush_back<__q<completion_signatures>>, non_values, values>,
-          non_values>;
+      using non_values = __meval<
+        __concat_completion_signatures,
+        completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
+        transform_completion_signatures<
+          __completion_signatures_of_t<Senders, Env...>,
+          completion_signatures<>,
+          __mconst<completion_signatures<>>::__f
+        >...
+      >;
+      using values = __minvoke<
+        __mconcat<__qf<set_value_t>>,
+        __value_types_t<
+          __completion_signatures_of_t<Senders, Env...>,
+          __q<__types>,
+          __msingle_or<__types<>>
+        >...
+      >;
+      using __t = __if_c<
+        (__sends<set_value_t, Senders, Env...> && ...),
+        __minvoke<__mpush_back<__q<completion_signatures>>, non_values, values>,
+        non_values
+      >;
     };
 
     inline constexpr auto _sync_op = []<class OpT>(OpT& op) noexcept {
       if constexpr (STDEXEC_IS_BASE_OF(stream_op_state_base, OpT)) {
         if (op.stream_provider_.status_ == cudaSuccess) {
-          op.stream_provider_.status_ =
-            STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(op.get_stream()));
+          op.stream_provider_
+            .status_ = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(op.get_stream()));
         }
       }
     };
@@ -172,19 +174,19 @@ namespace nvexec::_strm {
       env env_;
 
       template <class Cvref, class... Env>
-      using completion_sigs =
-        stdexec::__t<_when_all::completions<
-          __types<_when_all::env_t<Env>...>,
-          __copy_cvref_t<Cvref, stdexec::__t<SenderIds>>...>>;
+      using completion_sigs = stdexec::__t<_when_all::completions<
+        __types<_when_all::env_t<Env>...>,
+        __copy_cvref_t<Cvref, stdexec::__t<SenderIds>>...
+      >>;
 
       template <class Completions>
-      using sends_values =
-        __gather_completion_signatures<
-          Completions,
-          set_value_t,
-          __mconst<__mbool<true>>::__f,
-          __mconst<__mbool<false>>::__f,
-          __mor_t>;
+      using sends_values = __gather_completion_signatures<
+        Completions,
+        set_value_t,
+        __mconst<__mbool<true>>::__f,
+        __mconst<__mbool<false>>::__f,
+        __mor_t
+      >;
 
       template <class CvrefReceiverId>
       struct operation_t;
@@ -195,9 +197,9 @@ namespace nvexec::_strm {
         using Receiver = stdexec::__t<__decay_t<CvrefReceiverId>>;
         using SenderId = __m_at_c<Index, SenderIds...>;
         using Completions = completion_sigs<env_of_t<Receiver>, CvrefReceiverId>;
-        using Env =
-          make_terminal_stream_env_t<
-            exec::make_env_t<env_of_t<Receiver>, stdexec::prop<get_stop_token_t, inplace_stop_token>>>;
+        using Env = make_terminal_stream_env_t<
+          stdexec::env<stdexec::prop<get_stop_token_t, inplace_stop_token>, env_of_t<Receiver>>
+        >;
 
         struct type;
         using __t = type;
@@ -207,12 +209,14 @@ namespace nvexec::_strm {
           using __id = receiver_t;
 
           template <class... Values>
-          STDEXEC_ATTRIBUTE(always_inline) void set_value(Values&&... vals) && noexcept {
+          STDEXEC_ATTRIBUTE(always_inline)
+          void set_value(Values&&... vals) && noexcept {
             op_state_->template _set_value<Index>(static_cast<Values&&>(vals)...);
           }
 
           template <class Error>
-          STDEXEC_ATTRIBUTE(always_inline) void set_error(Error&& err) && noexcept {
+          STDEXEC_ATTRIBUTE(always_inline)
+          void set_error(Error&& err) && noexcept {
             op_state_->_set_error(static_cast<Error&&>(err));
           }
 
@@ -222,13 +226,12 @@ namespace nvexec::_strm {
 
           [[nodiscard]]
           auto get_env() const noexcept -> Env {
-            auto env = make_terminal_stream_env(
-              exec::make_env(
-                stdexec::get_env(op_state_->rcvr_),
-                stdexec::prop{get_stop_token, op_state_->stop_source_.get_token()}),
+            return make_terminal_stream_env(
+              stdexec::env{
+                stdexec::prop{get_stop_token, op_state_->stop_source_.get_token()},
+                stdexec::get_env(op_state_->rcvr_)
+            },
               &const_cast<stream_provider_t&>(op_state_->stream_providers_[Index]));
-
-            return env;
           }
 
           operation_t<CvrefReceiverId>* op_state_;
@@ -245,7 +248,8 @@ namespace nvexec::_strm {
         template <class SenderId, std::size_t Index>
         using child_op_state_t = exit_operation_state_t<
           __copy_cvref_t<WhenAll, stdexec::__t<SenderId>>,
-          stdexec::__t<receiver_t<CvrefReceiverId, Index>>>;
+          stdexec::__t<receiver_t<CvrefReceiverId, Index>>
+        >;
 
         using Indices = __indices_for<SenderIds...>;
 
@@ -437,23 +441,25 @@ namespace nvexec::_strm {
         }
 
         // tuple<tuple<Vs1...>, tuple<Vs2...>, ...>
-        using child_values_tuple_t =
-          __if<
-            sends_values<Completions>,
-            __minvoke<
-              __qq<__tuple_for>,
-              __value_types_of_t<
-                stdexec::__t<SenderIds>,
-                _when_all::env_t<Env>,
-                __qq<__decayed_tuple>,
-                __msingle_or<void>>...>,
-            __>;
+        using child_values_tuple_t = __if<
+          sends_values<Completions>,
+          __minvoke<
+            __qq<__tuple_for>,
+            __value_types_of_t<
+              stdexec::__t<SenderIds>,
+              _when_all::env_t<Env>,
+              __qq<__decayed_tuple>,
+              __msingle_or<void>
+            >...
+          >,
+          __
+        >;
 
-        using errors_variant_t =
-          error_types_of_t<
-            stdexec::__t<when_all_sender_t>,
-            _when_all::env_t<Env>,
-            __uniqued_variant_for>;
+        using errors_variant_t = error_types_of_t<
+          stdexec::__t<when_all_sender_t>,
+          _when_all::env_t<Env>,
+          __uniqued_variant_for
+        >;
 
         Receiver rcvr_;
         cudaError_t status_{cudaSuccess};
@@ -513,8 +519,11 @@ namespace nvexec::_strm {
   struct transform_sender_for<stdexec::transfer_when_all_t> {
     template <gpu_stream_scheduler Scheduler, stream_completing_sender... Senders>
     auto operator()(__ignore, Scheduler sched, Senders&&... sndrs) const {
-      using __sender_t = __t<
-        when_all_sender_t<stdexec::transfer_when_all_t, stream_scheduler, __id<__decay_t<Senders>>...>>;
+      using __sender_t = __t<when_all_sender_t<
+        stdexec::transfer_when_all_t,
+        stream_scheduler,
+        __id<__decay_t<Senders>>...
+      >>;
       return __sender_t{sched.context_state_, static_cast<Senders&&>(sndrs)...};
     }
   };
@@ -523,7 +532,8 @@ namespace nvexec::_strm {
 namespace stdexec::__detail {
   template <class WhenAllTag, class Scheduler, class... SenderIds>
   inline constexpr __mconst<
-    nvexec::_strm::when_all_sender_t<WhenAllTag, Scheduler, __name_of<__t<SenderIds>>...>>
+    nvexec::_strm::when_all_sender_t<WhenAllTag, Scheduler, __name_of<__t<SenderIds>>...>
+  >
     __name_of_v<nvexec::_strm::when_all_sender_t<WhenAllTag, Scheduler, SenderIds...>>{};
 } // namespace stdexec::__detail
 

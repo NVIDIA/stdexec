@@ -45,7 +45,7 @@ struct RunThread {
       auto [start, end] = exec_old::even_share(total_scheds, tid, pool.available_parallelism());
       std::size_t scheds = end - start;
       std::atomic<std::size_t> counter{scheds};
-      auto env = exec::make_env(stdexec::prop{stdexec::get_allocator, alloc});
+      auto env = stdexec::prop{stdexec::get_allocator, alloc};
       stdexec::sync_wait(stdexec::schedule(scheduler) | stdexec::then([&] {
                            while (scheds) {
                              stdexec::start_detached(

@@ -26,30 +26,30 @@
 namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __write adaptor
-  namespace __write_ {
-    struct __write_env_t {
+  namespace __write {
+    struct write_env_t {
       template <sender _Sender, class _Env>
-      auto operator()(_Sender&& __sndr, _Env __env) const {
-        return __make_sexpr<__write_env_t>(
+      constexpr auto operator()(_Sender&& __sndr, _Env __env) const {
+        return __make_sexpr<write_env_t>(
           static_cast<_Env&&>(__env), static_cast<_Sender&&>(__sndr));
       }
 
       template <class _Env>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(_Env __env) const -> __binder_back<__write_env_t, _Env> {
+      constexpr auto operator()(_Env __env) const -> __binder_back<write_env_t, _Env> {
         return {{static_cast<_Env&&>(__env)}, {}, {}};
       }
 
       template <class _Env>
       STDEXEC_ATTRIBUTE(always_inline)
-      static auto __transform_env_fn(_Env&& __env) noexcept {
+      static constexpr auto __transform_env_fn(_Env&& __env) noexcept {
         return [&](__ignore, const auto& __state, __ignore) noexcept {
           return __env::__join(__state, static_cast<_Env&&>(__env));
         };
       }
 
-      template <sender_expr_for<__write_env_t> _Self, class _Env>
-      static auto transform_env(const _Self& __self, _Env&& __env) noexcept {
+      template <sender_expr_for<write_env_t> _Self, class _Env>
+      static constexpr auto transform_env(const _Self& __self, _Env&& __env) noexcept {
         return __sexpr_apply(__self, __transform_env_fn(static_cast<_Env&&>(__env)));
       }
     };
@@ -72,16 +72,15 @@ namespace stdexec {
           __child_of<_Self>,
           __meval<__join_env_t, const __decay_t<__data_of<_Self>>&, _Env...>
         > {
-        static_assert(sender_expr_for<_Self, __write_env_t>);
+        static_assert(sender_expr_for<_Self, write_env_t>);
         return {};
       };
     };
-  } // namespace __write_
+  } // namespace __write
 
-  using __write_::__write_env_t;
-  inline constexpr __write_env_t __write{};
-  inline constexpr __write_env_t __write_env{};
+  using __write::write_env_t;
+  inline constexpr write_env_t write_env{};
 
   template <>
-  struct __sexpr_impl<__write_env_t> : __write_::__write_env_impl { };
+  struct __sexpr_impl<write_env_t> : __write::__write_env_impl { };
 } // namespace stdexec
