@@ -126,7 +126,20 @@ namespace exec {
     };
 
     struct schedule_after_t : __schedule_after_base_t {
+#if !STDEXEC_CLANG() || (__clang_major__ >= 16)
       using __schedule_after_base_t::operator();
+#else
+      // clang prior to 16 is not able to find the correct overload in the
+      // __schedule_after_base_t class.
+      template <class _Scheduler>
+        requires __callable<__schedule_after_base_t, _Scheduler, const duration_of_t<_Scheduler>&>
+      auto operator()(_Scheduler&& __sched, const duration_of_t<_Scheduler>& __time_point) const
+        noexcept(
+          __nothrow_callable<__schedule_after_base_t, _Scheduler, const duration_of_t<_Scheduler>&>)
+          -> __call_result_t<__schedule_after_base_t, _Scheduler, const duration_of_t<_Scheduler>&> {
+        return __schedule_after_base_t{}(static_cast<_Scheduler&&>(__sched), __time_point);
+      }
+#endif
 
       template <class _Scheduler>
         requires(!__callable<__schedule_after_base_t, _Scheduler, const duration_of_t<_Scheduler>&>)
@@ -138,7 +151,7 @@ namespace exec {
         return let_value(
           just(),
           [__sched, __duration]() noexcept(
-            __nothrow_callable<schedule_at_t, _Scheduler, const time_point_of_t<_Scheduler>&>&&
+            __nothrow_callable<schedule_at_t, _Scheduler, time_point_of_t<_Scheduler>>&&
               __nothrow_callable<now_t, const _Scheduler&>) {
             return schedule_at(__sched, now(__sched) + __duration);
           });
@@ -185,7 +198,20 @@ namespace exec {
     };
 
     struct schedule_at_t : __schedule_at_base_t {
+#if !STDEXEC_CLANG() || (__clang_major__ >= 16)
       using __schedule_at_base_t::operator();
+#else
+      // clang prior to 16 is not able to find the correct overload in the
+      // __schedule_at_base_t class.
+      template <class _Scheduler>
+        requires __callable<__schedule_at_base_t, _Scheduler, const time_point_of_t<_Scheduler>&>
+      auto operator()(_Scheduler&& __sched, const time_point_of_t<_Scheduler>& __time_point) const
+        noexcept(
+          __nothrow_callable<__schedule_at_base_t, _Scheduler, const time_point_of_t<_Scheduler>&>)
+          -> __call_result_t<__schedule_at_base_t, _Scheduler, const time_point_of_t<_Scheduler>&> {
+        return __schedule_at_base_t{}(static_cast<_Scheduler&&>(__sched), __time_point);
+      }
+#endif
 
       template <class _Scheduler>
         requires(!__callable<__schedule_at_base_t, _Scheduler, const time_point_of_t<_Scheduler>&>)
