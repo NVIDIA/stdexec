@@ -221,24 +221,6 @@ namespace {
     REQUIRE(val == INT_MAX);
   }
 
-  TEST_CASE("set_value can be called through tag_invoke", "[cpo][cpo_receiver]") {
-    int val = 0;
-    tag_invoke(stdexec::set_value, recv_value{&val}, 10);
-    REQUIRE(val == 10);
-  }
-
-  TEST_CASE("set_error can be called through tag_invoke", "[cpo][cpo_receiver]") {
-    int val = 0;
-    tag_invoke(stdexec::set_error, recv_value{&val}, 10);
-    REQUIRE(val == -10);
-  }
-
-  TEST_CASE("set_stopped can be called through tag_invoke", "[cpo][cpo_receiver]") {
-    int val = 0;
-    tag_invoke(stdexec::set_stopped, recv_value{&val});
-    REQUIRE(val == INT_MAX);
-  }
-
   TEST_CASE(
     "tag types can be deduced from set_value, set_error and set_stopped",
     "[cpo][cpo_receiver]") {

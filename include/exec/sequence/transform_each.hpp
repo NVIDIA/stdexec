@@ -41,15 +41,15 @@ namespace exec {
         using __id = __receiver;
         __operation_base<_Receiver, _Adaptor>* __op_;
 
-        template <same_as<set_next_t> _SetNext, same_as<__t> _Self, class _Item>
+        template <class _Item>
           requires __callable<_Adaptor&, _Item>
                 && __callable<exec::set_next_t, _Receiver&, __call_result_t<_Adaptor&, _Item>>
-        friend auto tag_invoke(_SetNext, _Self& __self, _Item&& __item) noexcept(
-          __nothrow_callable<_SetNext, _Receiver&, __call_result_t<_Adaptor&, _Item>>
+        auto set_next(_Item&& __item) & noexcept(
+          __nothrow_callable<set_next_t, _Receiver&, __call_result_t<_Adaptor&, _Item>>
           && __nothrow_callable<_Adaptor&, _Item>)
           -> next_sender_of_t<_Receiver, __call_result_t<_Adaptor&, _Item>> {
           return exec::set_next(
-            __self.__op_->__receiver_, __self.__op_->__adaptor_(static_cast<_Item&&>(__item)));
+            __op_->__receiver_, __op_->__adaptor_(static_cast<_Item&&>(__item)));
         }
 
         void set_value() noexcept {

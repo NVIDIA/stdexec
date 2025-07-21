@@ -1079,17 +1079,15 @@ namespace exec {
      public:
       __context* __context_;
 
-      friend auto operator==(const __scheduler& __lhs, const __scheduler& __rhs) -> bool = default;
+      auto operator==(const __scheduler&) const -> bool = default;
 
-      class __schedule_env {
-       public:
-        __context* __context_;
-       private:
-        friend auto tag_invoke(
-          stdexec::get_completion_scheduler_t<stdexec::set_value_t>,
-          const __schedule_env& __env) noexcept -> __scheduler {
-          return __scheduler{__env.__context_};
+      struct __schedule_env {
+        [[nodiscard]] auto
+          query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept -> __scheduler {
+          return __scheduler{__context_};
         }
+
+        __context* __context_;
       };
 
       class __schedule_sender {
@@ -1164,25 +1162,22 @@ namespace exec {
         return __schedule_sender{__schedule_env{__context_}};
       }
 
-      friend auto tag_invoke(exec::now_t, const __scheduler&) noexcept
-        -> std::chrono::time_point<std::chrono::steady_clock> {
+      [[nodiscard]]
+      auto now() const noexcept -> std::chrono::time_point<std::chrono::steady_clock> {
         return std::chrono::steady_clock::now();
       }
 
-      friend auto tag_invoke(
-        exec::schedule_after_t,
-        const __scheduler& __sched,
-        std::chrono::nanoseconds __duration) -> __schedule_after_sender {
-        return __schedule_after_sender{.__env_ = {__sched.__context_}, .__duration_ = __duration};
+      [[nodiscard]]
+      auto schedule_after(std::chrono::nanoseconds __duration) const -> __schedule_after_sender {
+        return __schedule_after_sender{.__env_ = {__context_}, .__duration_ = __duration};
       }
 
       template <class _Clock, class _Duration>
-      friend auto tag_invoke(
-        exec::schedule_at_t,
-        const __scheduler& __sched,
-        const std::chrono::time_point<_Clock, _Duration>& __time_point) -> __schedule_after_sender {
+      [[nodiscard]]
+      auto schedule_at(const std::chrono::time_point<_Clock, _Duration>& __time_point) const
+        -> __schedule_after_sender {
         auto __duration = __time_point - _Clock::now();
-        return __schedule_after_sender{.__env_ = {__sched.__context_}, .__duration_ = __duration};
+        return __schedule_after_sender{.__env_ = {__context_}, .__duration_ = __duration};
       }
     };
 
@@ -1194,6 +1189,9 @@ namespace exec {
   using __io_uring::until;
   using io_uring_context = __io_uring::__context;
   using io_uring_scheduler = __io_uring::__scheduler;
+
+  static_assert(__timed_scheduler<io_uring_scheduler>);
+
 } // namespace exec
 
 #  endif // if __has_include(<linux/verison.h>)

@@ -189,6 +189,8 @@ namespace stdexec {
   using __sched::schedule_t;
   extern const schedule_t schedule;
 
+  struct scheduler_t;
+
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __as_awaitable {
     struct as_awaitable_t;

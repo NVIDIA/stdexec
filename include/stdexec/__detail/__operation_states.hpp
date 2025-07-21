@@ -30,20 +30,24 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
   namespace __start {
+    template <class _Op>
+    concept __has_start = requires(_Op &__op) { __op.start(); };
+
     struct start_t {
-      template <__same_as<start_t> _Self, class _OpState>
+      template <class _Op>
+        requires __has_start<_Op>
       STDEXEC_ATTRIBUTE(always_inline)
-      friend auto tag_invoke(_Self, _OpState& __op) noexcept -> decltype(__op.start()) {
+      void operator()(_Op &__op) const noexcept {
         static_assert(noexcept(__op.start()), "start() members must be noexcept");
         static_assert(__same_as<decltype(__op.start()), void>, "start() members must return void");
         __op.start();
       }
 
       template <class _Op>
-        requires tag_invocable<start_t, _Op&>
+        requires(!__has_start<_Op>) && tag_invocable<start_t, _Op &>
       STDEXEC_ATTRIBUTE(always_inline)
-      void operator()(_Op& __op) const noexcept {
-        static_assert(nothrow_tag_invocable<start_t, _Op&>);
+      void operator()(_Op &__op) const noexcept {
+        static_assert(nothrow_tag_invocable<start_t, _Op &>);
         (void) tag_invoke(start_t{}, __op);
       }
     };
@@ -56,5 +60,5 @@ namespace stdexec {
   // [execution.op_state]
   template <class _Op>
   concept operation_state = destructible<_Op> && std::is_object_v<_Op>
-                         && requires(_Op& __op) { stdexec::start(__op); };
+                         && requires(_Op &__op) { stdexec::start(__op); };
 } // namespace stdexec

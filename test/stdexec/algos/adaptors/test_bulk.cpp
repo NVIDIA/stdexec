@@ -17,7 +17,6 @@
 
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
-#include <exec/on.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/senders.hpp>
@@ -139,7 +138,8 @@ namespace {
     check_val_types<ex::__mset<pack<double>>>(
       ex::just(4.2) | ex::bulk_unchunked(ex::par, n, [](int, double) { }));
     check_val_types<ex::__mset<pack<double, std::string>>>(
-      ex::just(4.2, std::string{}) | ex::bulk_unchunked(ex::par, n, [](int, double, std::string) { }));
+      ex::just(4.2, std::string{})
+      | ex::bulk_unchunked(ex::par, n, [](int, double, std::string) { }));
   }
 
   TEST_CASE("bulk keeps error_types from input sender", "[adaptors][bulk]") {
@@ -445,7 +445,7 @@ namespace {
     auto snd =
       ex::just(std::move(vals))
       | ex::bulk_chunked(ex::par, n, [&](std::size_t b, std::size_t e, std::vector<int>& vals) {
-          for (;b < e; ++b) {
+          for (; b < e; ++b) {
             vals[b] = static_cast<int>(b);
           }
         });
@@ -494,8 +494,9 @@ namespace {
     constexpr int magic_number = 42;
     constexpr int n = 2;
 
-    auto snd = ex::just(magic_number)
-             | ex::bulk_unchunked(ex::par, n, [](int, int) { return function_object_t<int>{nullptr}; });
+    auto snd = ex::just(magic_number) | ex::bulk_unchunked(ex::par, n, [](int, int) {
+                 return function_object_t<int>{nullptr};
+               });
 
     auto op = ex::connect(std::move(snd), expect_value_receiver{magic_number});
     ex::start(op);
@@ -672,10 +673,8 @@ namespace {
       std::vector<int> counters_2(n, 0);
 
       ex::sender auto snd = ex::when_all(
-        ex::schedule(sch)
-          | ex::bulk(ex::par, n, [&](std::size_t id) { counters_1[id]++; }),
-        ex::schedule(sch)
-          | ex::bulk(ex::par, n, [&](std::size_t id) { counters_2[id]++; }));
+        ex::schedule(sch) | ex::bulk(ex::par, n, [&](std::size_t id) { counters_1[id]++; }),
+        ex::schedule(sch) | ex::bulk(ex::par, n, [&](std::size_t id) { counters_2[id]++; }));
 
       ex::sync_wait(std::move(snd));
 
@@ -798,11 +797,10 @@ namespace {
               while (b < e)
                 counters_1[b++]++;
             }),
-        ex::schedule(sch)
-          | ex::bulk_chunked(ex::par, n, [&](std::size_t b, std::size_t e) {
-              while (b < e)
-                counters_2[b++]++;
-            }));
+        ex::schedule(sch) | ex::bulk_chunked(ex::par, n, [&](std::size_t b, std::size_t e) {
+          while (b < e)
+            counters_2[b++]++;
+        }));
 
       ex::sync_wait(std::move(snd));
 
@@ -837,7 +835,8 @@ namespace {
         std::vector<int> counter(n, 42);
 
         auto snd = ex::transfer_just(sch, 42)
-                 | ex::bulk_unchunked(ex::par, 
+                 | ex::bulk_unchunked(
+                     ex::par,
                      n,
                      [&counter](std::size_t idx, int val) {
                        if (val == 42) {
@@ -867,11 +866,16 @@ namespace {
         std::vector<int> vals_expected(n);
         std::iota(vals_expected.begin(), vals_expected.end(), 1);
 
-        auto snd =
-          ex::transfer_just(sch, std::move(vals))
-          | ex::bulk_unchunked(ex::par, 
-            n, [](std::size_t idx, std::vector<int>& vals) { vals[idx] = static_cast<int>(idx); })
-          | ex::bulk_unchunked(ex::par, n, [](std::size_t idx, std::vector<int>& vals) { ++vals[idx]; });
+        auto snd = ex::transfer_just(sch, std::move(vals))
+                 | ex::bulk_unchunked(
+                     ex::par,
+                     n,
+                     [](std::size_t idx, std::vector<int>& vals) {
+                       vals[idx] = static_cast<int>(idx);
+                     })
+                 | ex::bulk_unchunked(ex::par, n, [](std::size_t idx, std::vector<int>& vals) {
+                     ++vals[idx];
+                   });
         auto [vals_actual] = ex::sync_wait(std::move(snd)).value();
 
         CHECK(vals_actual == vals_expected);
@@ -881,8 +885,9 @@ namespace {
 #if !STDEXEC_STD_NO_EXCEPTIONS()
     SECTION("With exception") {
       constexpr int n = 9;
-      auto snd = ex::transfer_just(sch)
-               | ex::bulk_unchunked(ex::par, n, [](int) { throw std::runtime_error("bulk_unchunked"); });
+      auto snd = ex::transfer_just(sch) | ex::bulk_unchunked(ex::par, n, [](int) {
+                   throw std::runtime_error("bulk_unchunked");
+                 });
 
       CHECK_THROWS_AS(ex::sync_wait(std::move(snd)), std::runtime_error);
     }
@@ -1118,9 +1123,7 @@ namespace {
     // The customization will return a different value
     basic_inline_scheduler<my_domain> sched;
     auto snd = ex::just(std::string{"hello"})
-             | ex::on(sched, ex::bulk(ex::par, 1, [&called](int, std::string) {
-                          called = true;
-                        }));
+             | ex::on(sched, ex::bulk(ex::par, 1, [&called](int, std::string) { called = true; }));
     wait_for_value(std::move(snd), std::string{"hijacked"});
     REQUIRE_FALSE(called);
   }

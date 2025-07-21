@@ -21,9 +21,9 @@
 #include "__completion_signatures.hpp"
 #include "__concepts.hpp"
 #include "__config.hpp"
+#include "__env.hpp"
 #include "__meta.hpp"
 #include "__receivers.hpp"
-#include "__tag_invoke.hpp"
 
 #include <exception>
 #include <utility>
@@ -101,7 +101,9 @@ namespace stdexec {
     struct __promise {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
-      struct __t : __promise_base {
+      struct __t
+        : __promise_base
+        , __env::__with_await_transform<__t> {
         using __id = __promise;
 
 #  if STDEXEC_EDG()
@@ -125,19 +127,6 @@ namespace stdexec {
         auto get_return_object() noexcept -> stdexec::__t<__operation<_ReceiverId>> {
           return stdexec::__t<__operation<_ReceiverId>>{
             __coro::coroutine_handle<__t>::from_promise(*this)};
-        }
-
-        template <class _Awaitable>
-        auto await_transform(_Awaitable&& __awaitable) noexcept -> _Awaitable&& {
-          return static_cast<_Awaitable&&>(__awaitable);
-        }
-
-        template <class _Awaitable>
-          requires tag_invocable<as_awaitable_t, _Awaitable, __t&>
-        auto await_transform(_Awaitable&& __awaitable)
-          noexcept(nothrow_tag_invocable<as_awaitable_t, _Awaitable, __t&>)
-            -> tag_invoke_result_t<as_awaitable_t, _Awaitable, __t&> {
-          return tag_invoke(as_awaitable, static_cast<_Awaitable&&>(__awaitable), *this);
         }
 
         // Pass through the get_env receiver query

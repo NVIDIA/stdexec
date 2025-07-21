@@ -120,7 +120,8 @@ namespace stdexec {
             // set_value_t() or set_value_t(T)
             __minvoke<__mremove<void, __qf<set_value_t>>, _AwaitResult>,
             set_error_t(std::exception_ptr),
-            set_stopped_t()>;
+            set_stopped_t()
+          >;
           return static_cast<_Result (*)()>(nullptr);
         } else if constexpr (sizeof...(_Env) == 0) {
           // It's possible this is a dependent sender.
@@ -135,7 +136,8 @@ namespace stdexec {
           using _Result = __mexception<
             _UNRECOGNIZED_SENDER_TYPE_<>,
             _WITH_SENDER_<_Sender>,
-            _WITH_ENVIRONMENT_<_Env>...>;
+            _WITH_ENVIRONMENT_<_Env>...
+          >;
           return static_cast<_Result (*)()>(nullptr);
         }
       }
@@ -162,7 +164,8 @@ namespace stdexec {
       transform_sender_result_t,
       __late_domain_of_t<_Sender, env_of_t<_Receiver>>,
       _Sender,
-      env_of_t<_Receiver>>;
+      env_of_t<_Receiver>
+    >;
 
     template <class _Sender, class _Receiver>
     using __member_result_t = decltype(__declval<_Sender>().connect(__declval<_Receiver>()));
@@ -195,7 +198,8 @@ namespace stdexec {
         if constexpr (sender_in<_Sender, env_of_t<_Receiver>>) {
           // Instantiate __debug_sender via completion_signatures_of_t to check that the actual
           // completions match the expected completions.
-          using __checked_signatures [[maybe_unused]] = completion_signatures_of_t<_Sender, env_of_t<_Receiver>>;
+          using __checked_signatures
+            [[maybe_unused]] = completion_signatures_of_t<_Sender, env_of_t<_Receiver>>;
         } else {
           __diagnose_sender_concept_failure<_Sender, env_of_t<_Receiver>>();
         }
@@ -276,7 +280,7 @@ namespace stdexec {
           auto&& __tfx_sndr = transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env);
           return __tfx_sndr
             .connect(static_cast<_TfxSender&&>(__tfx_sndr), static_cast<_Receiver&&>(__rcvr));
-        } else if constexpr (__with_member<_TfxSender, _Receiver>) {
+        } else if constexpr (__with_member<_TfxSender, _Receiver>) { // NOLINT(bugprone-branch-clone)
           return transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env)
             .connect(static_cast<_Receiver&&>(__rcvr));
         } else if constexpr (__with_tag_invoke<_TfxSender, _Receiver>) {
@@ -291,8 +295,8 @@ namespace stdexec {
         } else {
           // This should generate an instantiation backtrace that contains useful
           // debugging information.
-          return transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env).connect(
-            static_cast<_Receiver&&>(__rcvr));
+          return transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env)
+            .connect(static_cast<_Receiver&&>(__rcvr));
         }
       }
 
@@ -321,7 +325,9 @@ namespace stdexec {
                           _Sender,
                           _Env,
                           __mcompose_q<__types, __qf<__tag_of_sig_t<_SetSig>>::template __f>,
-                          __mconcat<__qq<__types>>>>;
+                          __mconcat<__qq<__types>>
+                        >
+                   >;
 
   template <class _Error>
     requires false
@@ -334,12 +340,14 @@ namespace stdexec {
       set_error_t,
       __nofail_t,
       __sigs::__default_completion,
-      __types>;
+      __types
+    >;
   };
 
   /////////////////////////////////////////////////////////////////////////////
   // early sender type-checking
   template <class _Sender>
   concept __well_formed_sender = __detail::__well_formed_completions<
-    __minvoke<__with_default_q<__completion_signatures_of_t, dependent_completions>, _Sender>>;
+    __minvoke<__with_default_q<__completion_signatures_of_t, dependent_completions>, _Sender>
+  >;
 } // namespace stdexec

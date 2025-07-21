@@ -336,22 +336,38 @@ namespace stdexec {
   using __query_result_or_t = __call_result_t<query_or_t, _Tag, _Queryable, _Default>;
 
   namespace __env {
-    // To be kept in sync with the promise type used in __connect_awaitable
-    template <class _Env>
-    struct __promise {
+    template <class _Tp, class _Promise>
+    concept __has_as_awaitable_member = requires(_Tp&& __t, _Promise& __promise) {
+      static_cast<_Tp &&>(__t).as_awaitable(__promise);
+    };
+
+    template <class _Promise>
+    struct __with_await_transform {
       template <class _Ty>
       auto await_transform(_Ty&& __value) noexcept -> _Ty&& {
         return static_cast<_Ty&&>(__value);
       }
 
       template <class _Ty>
-        requires tag_invocable<as_awaitable_t, _Ty, __promise&>
+        requires __has_as_awaitable_member<_Ty, _Promise&>
       auto await_transform(_Ty&& __value)
-        noexcept(nothrow_tag_invocable<as_awaitable_t, _Ty, __promise&>)
-          -> tag_invoke_result_t<as_awaitable_t, _Ty, __promise&> {
-        return tag_invoke(as_awaitable, static_cast<_Ty&&>(__value), *this);
+        noexcept(noexcept(__declval<_Ty>().as_awaitable(__declval<_Promise&>())))
+          -> decltype(__declval<_Ty>().as_awaitable(__declval<_Promise&>())) {
+        return static_cast<_Ty&&>(__value).as_awaitable(static_cast<_Promise&>(*this));
       }
 
+      template <class _Ty>
+        requires(!__has_as_awaitable_member<_Ty, _Promise&>)
+             && tag_invocable<as_awaitable_t, _Ty, _Promise&>
+      auto await_transform(_Ty&& __value)
+        noexcept(nothrow_tag_invocable<as_awaitable_t, _Ty, _Promise&>)
+          -> tag_invoke_result_t<as_awaitable_t, _Ty, _Promise&> {
+        return tag_invoke(as_awaitable, static_cast<_Ty&&>(__value), static_cast<_Promise&>(*this));
+      }
+    };
+
+    template <class _Env>
+    struct __promise : __with_await_transform<__promise<_Env>> {
       auto get_env() const noexcept -> const _Env&;
     };
 
@@ -647,18 +663,25 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   namespace __get_env {
+    template <class _EnvProvider>
+    concept __has_get_env = requires(const _EnvProvider& __env_provider) {
+      __env_provider.get_env();
+    };
+
     // For getting an execution environment from a receiver or the attributes from a sender.
     struct get_env_t {
-      template <__same_as<get_env_t> _Self, class _EnvProvider>
+      template <class _EnvProvider>
+        requires __has_get_env<_EnvProvider>
       STDEXEC_ATTRIBUTE(always_inline)
-      friend auto tag_invoke(_Self, const _EnvProvider& __env_provider) noexcept
+      constexpr auto operator()(const _EnvProvider& __env_provider) const noexcept
         -> decltype(__env_provider.get_env()) {
+        static_assert(queryable<decltype(__env_provider.get_env())>);
         static_assert(noexcept(__env_provider.get_env()), "get_env() members must be noexcept");
         return __env_provider.get_env();
       }
 
       template <class _EnvProvider>
-        requires tag_invocable<get_env_t, const _EnvProvider&>
+        requires(!__has_get_env<_EnvProvider>) && tag_invocable<get_env_t, const _EnvProvider&>
       STDEXEC_ATTRIBUTE(always_inline)
       constexpr auto operator()(const _EnvProvider& __env_provider) const noexcept
         -> tag_invoke_result_t<get_env_t, const _EnvProvider&> {

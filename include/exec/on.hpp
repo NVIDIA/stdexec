@@ -23,5 +23,5 @@ namespace exec {
   using on_t [[deprecated("on_t has been moved to the stdexec:: namespace")]] = stdexec::on_t;
 
   [[deprecated("on has been moved to the stdexec:: namespace")]]
-  inline constexpr on_t const& on = stdexec::on;
+  inline constexpr stdexec::on_t const & on = stdexec::on;
 } // namespace exec

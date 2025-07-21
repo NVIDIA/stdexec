@@ -335,7 +335,8 @@ namespace exec {
     using __sender_base = stdexec::__t<__any::__sequence_sender<
       _Completions,
       queries<_SenderQueries...>,
-      queries<_ReceiverQueries...>>>;
+      queries<_ReceiverQueries...>
+    >>;
     __sender_base __sender_;
 
    public:
@@ -352,11 +353,9 @@ namespace exec {
       : __sender_(static_cast<_Sender&&>(__sender)) {
     }
 
-    template <stdexec::same_as<__t> _Self, sequence_receiver_of<item_types> _Rcvr>
-    friend auto tag_invoke(exec::subscribe_t, _Self&& __self, _Rcvr __rcvr)
-      -> subscribe_result_t<__sender_base, _Rcvr> {
-      return exec::subscribe(
-        static_cast<__sender_base&&>(__self.__sender_), static_cast<_Rcvr&&>(__rcvr));
+    template <sequence_receiver_of<item_types> _Rcvr>
+    auto subscribe(_Rcvr __rcvr) && -> subscribe_result_t<__sender_base, _Rcvr> {
+      return exec::subscribe(static_cast<__sender_base&&>(__sender_), static_cast<_Rcvr&&>(__rcvr));
     }
 
     auto get_env() const noexcept -> stdexec::env_of_t<__sender_base> {

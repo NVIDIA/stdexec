@@ -24,8 +24,6 @@
 
 #  include <catch2/catch.hpp>
 
-#  include <thread>
-
 using namespace exec;
 using namespace stdexec;
 

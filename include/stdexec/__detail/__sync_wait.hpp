@@ -64,9 +64,9 @@ namespace stdexec {
         return true;
       }
 
-      // static constexpr auto query(__debug::__is_debug_env_t) noexcept -> bool {
-      //   return true;
-      // }
+      static constexpr auto query(__debug::__is_debug_env_t) noexcept -> bool {
+        return true;
+      }
     };
 
     // What should sync_wait(just_stopped()) return?

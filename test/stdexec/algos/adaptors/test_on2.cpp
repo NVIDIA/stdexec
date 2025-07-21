@@ -19,7 +19,6 @@
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
-#include <exec/on.hpp>
 
 namespace ex = stdexec;
 
