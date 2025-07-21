@@ -22,7 +22,6 @@
 #include <stdexec/execution.hpp>
 
 #include <test_common/schedulers.hpp>
-#include <exec/on.hpp>
 #include <exec/inline_scheduler.hpp>
 
 #include <execpools/tbb/tbb_thread_pool.hpp>
@@ -89,7 +88,7 @@ namespace {
       ex::get_forward_progress_guarantee(pool_sched) == ex::forward_progress_guarantee::parallel);
     bool called{false};
     // launch some work on the thread pool
-    ex::sender auto snd = ex::starts_on(pool_sched, ex::just()) | ex::then([&] { called = true; })
+    ex::sender auto snd = ex::on(pool_sched, ex::just()) | ex::then([&] { called = true; })
                         | _with_scheduler();
     ex::sync_wait(std::move(snd));
     // the work should be executed

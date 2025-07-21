@@ -17,12 +17,9 @@
 
 #include <catch2/catch.hpp>
 
-#include <span>
-
 #include <stdexec/execution.hpp>
 
 #include <test_common/schedulers.hpp>
-#include <exec/on.hpp>
 #include <exec/inline_scheduler.hpp>
 
 #include <execpools/taskflow/taskflow_thread_pool.hpp>

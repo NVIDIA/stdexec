@@ -117,7 +117,8 @@ namespace stdexec {
 
     template <class _Sender, class _Promise>
     using __value_t = __decay_t<
-      __value_types_of_t<_Sender, env_of_t<_Promise&>, __q<__single_value>, __msingle_or<void>>>;
+      __value_types_of_t<_Sender, env_of_t<_Promise&>, __q<__single_value>, __msingle_or<void>>
+    >;
 
     template <class _Sender, class _Promise>
     using __receiver_t = __t<__receiver<__id<_Promise>, __value_t<_Sender, _Promise>>>;
@@ -197,18 +198,19 @@ namespace stdexec {
       auto unhandled_stopped() noexcept -> __coro::coroutine_handle<>;
     };
 
-    struct as_awaitable_t {
-      template <__same_as<as_awaitable_t> _Self, class _Tp, class _Promise>
-      STDEXEC_ATTRIBUTE(always_inline)
-      friend auto tag_invoke(_Self, _Tp&& __t, _Promise& __promise)
-        noexcept(noexcept(static_cast<_Tp&&>(__t).as_awaitable(__promise)))
-          -> decltype(static_cast<_Tp&&>(__t).as_awaitable(__promise)) {
-        return static_cast<_Tp&&>(__t).as_awaitable(__promise);
-      }
+    template <class _Tp, class _Promise>
+    concept __has_as_awaitable_member = requires(_Tp&& __t, _Promise& __promise) {
+      static_cast<_Tp &&>(__t).as_awaitable(__promise);
+    };
 
+    struct as_awaitable_t {
       template <class _Tp, class _Promise>
       static constexpr auto __select_impl_() noexcept {
-        if constexpr (tag_invocable<as_awaitable_t, _Tp, _Promise&>) {
+        if constexpr (__has_as_awaitable_member<_Tp, _Promise>) {
+          using _Result = decltype(__declval<_Tp>().as_awaitable(__declval<_Promise&>()));
+          constexpr bool _Nothrow = noexcept(__declval<_Tp>().as_awaitable(__declval<_Promise&>()));
+          return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
+        } else if constexpr (tag_invocable<as_awaitable_t, _Tp, _Promise&>) {
           using _Result = tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>;
           constexpr bool _Nothrow = nothrow_tag_invocable<as_awaitable_t, _Tp, _Promise&>;
           return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
@@ -234,7 +236,11 @@ namespace stdexec {
       auto operator()(_Tp&& __t, _Promise& __promise) const
         noexcept(__nothrow_callable<__select_impl_t<_Tp, _Promise>>)
           -> __call_result_t<__select_impl_t<_Tp, _Promise>> {
-        if constexpr (tag_invocable<as_awaitable_t, _Tp, _Promise&>) {
+        if constexpr (__has_as_awaitable_member<_Tp, _Promise>) {
+          using _Result = decltype(static_cast<_Tp&&>(__t).as_awaitable(__promise));
+          static_assert(__awaitable<_Result, _Promise>);
+          return static_cast<_Tp&&>(__t).as_awaitable(__promise);
+        } else if constexpr (tag_invocable<as_awaitable_t, _Tp, _Promise&>) {
           using _Result = tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>;
           static_assert(__awaitable<_Result, _Promise>);
           return tag_invoke(*this, static_cast<_Tp&&>(__t), __promise);

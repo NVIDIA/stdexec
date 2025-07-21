@@ -27,10 +27,16 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.schedule]
   namespace __sched {
+    template <class _Scheduler>
+    concept __has_schedule_member = requires(_Scheduler&& __sched) {
+      static_cast<_Scheduler &&>(__sched).schedule();
+    };
+
     struct schedule_t {
-      template <__same_as<schedule_t> _Self, class _Scheduler>
+      template <class _Scheduler>
+        requires __has_schedule_member<_Scheduler>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      friend auto tag_invoke(_Self, _Scheduler&& __sched)
+      auto operator()(_Scheduler&& __sched) const
         noexcept(noexcept(static_cast<_Scheduler&&>(__sched).schedule()))
           -> decltype(static_cast<_Scheduler&&>(__sched).schedule()) {
         static_assert(
@@ -40,12 +46,13 @@ namespace stdexec {
       }
 
       template <class _Scheduler>
-        requires tag_invocable<schedule_t, _Scheduler>
+        requires(!__has_schedule_member<_Scheduler>) && tag_invocable<schedule_t, _Scheduler>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
       auto operator()(_Scheduler&& __sched) const
-        noexcept(nothrow_tag_invocable<schedule_t, _Scheduler>) {
+        noexcept(nothrow_tag_invocable<schedule_t, _Scheduler>)
+          -> tag_invoke_result_t<schedule_t, _Scheduler> {
         static_assert(sender<tag_invoke_result_t<schedule_t, _Scheduler>>);
-        return tag_invoke(schedule_t{}, static_cast<_Scheduler&&>(__sched));
+        return tag_invoke(*this, static_cast<_Scheduler&&>(__sched));
       }
 
       static constexpr auto query(forwarding_query_t) noexcept -> bool {
@@ -56,6 +63,8 @@ namespace stdexec {
 
   using __sched::schedule_t;
   inline constexpr schedule_t schedule{};
+
+  struct scheduler_t { };
 
   template <class _Scheduler>
   concept __has_schedule = requires(_Scheduler&& __sched) {

@@ -1456,7 +1456,7 @@ namespace exec {
         __intrusive_queue<&task_base::next> tasks_{};
         std::size_t tasks_size_{};
         std::atomic<std::size_t> countdown_{std::ranges::size(range_)};
-      }; // namespace schedule_all_
+      };
 
       template <class Range, class ItemReceiverId>
       struct item_operation {
@@ -1645,8 +1645,6 @@ namespace exec {
 
       template <class Range>
       class sequence<Range>::__t {
-        using item_sender_t = stdexec::__t<item_sender<Range>>;
-
         Range range_;
         static_thread_pool_* pool_;
 
@@ -1668,11 +1666,17 @@ namespace exec {
           , pool_(&pool) {
         }
 
-       private:
-        template <__decays_to<__t> Self, exec::sequence_receiver_of<item_types> Receiver>
-        friend auto tag_invoke(exec::subscribe_t, Self&& self, Receiver rcvr) noexcept
+        template <exec::sequence_receiver_of<item_types> Receiver>
+        auto subscribe(Receiver rcvr) && noexcept
           -> stdexec::__t<operation<Range, stdexec::__id<Receiver>>> {
-          return {static_cast<Range&&>(self.range_), *self.pool_, static_cast<Receiver&&>(rcvr)};
+          return {static_cast<Range&&>(range_), *pool_, static_cast<Receiver&&>(rcvr)};
+        }
+
+        template <exec::sequence_receiver_of<item_types> Receiver>
+          requires __decay_copyable<Range const&>
+        auto subscribe(Receiver rcvr) const & noexcept
+          -> stdexec::__t<operation<Range, stdexec::__id<Receiver>>> {
+          return {range_, *pool_, static_cast<Receiver&&>(rcvr)};
         }
       };
     } // namespace schedule_all_

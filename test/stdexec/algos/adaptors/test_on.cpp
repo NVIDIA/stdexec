@@ -19,7 +19,6 @@
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
-#include <exec/on.hpp>
 #include <exec/static_thread_pool.hpp>
 
 namespace ex = stdexec;

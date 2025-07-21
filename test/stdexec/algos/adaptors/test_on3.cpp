@@ -18,7 +18,6 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
-#include <exec/on.hpp>
 #include <exec/async_scope.hpp>
 
 namespace ex = stdexec;
