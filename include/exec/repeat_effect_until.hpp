@@ -22,6 +22,7 @@
 #include "../stdexec/__detail/__manual_lifetime.hpp"
 
 #include "trampoline_scheduler.hpp"
+#include "sequence.hpp"
 
 #include <atomic>
 #include <exception>
@@ -77,7 +78,7 @@ namespace exec {
       using __child_t = __decay_t<__data_of<_Sender>>;
       using __receiver_t = stdexec::__t<__receiver<__id<_Sender>, __id<_Receiver>>>;
       using __child_on_sched_sender_t =
-        __result_of<stdexec::starts_on, trampoline_scheduler, __child_t &>;
+        __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, __child_t &>;
       using __child_op_t = stdexec::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
       __child_t __child_;
@@ -103,7 +104,8 @@ namespace exec {
 
       void __connect() {
         __child_op_.__construct_from([this] {
-          return stdexec::connect(stdexec::starts_on(__sched_, __child_), __receiver_t{this});
+          return stdexec::connect(
+            exec::sequence(stdexec::schedule(__sched_), __child_), __receiver_t{this});
         });
       }
 
@@ -172,6 +174,7 @@ namespace exec {
     >;
 
     struct __repeat_effect_tag { };
+
     struct __repeat_effect_until_tag { };
 
     struct __repeat_effect_until_impl : __sexpr_defaults {
@@ -218,7 +221,7 @@ namespace exec {
       struct _never {
         template <class... _Args>
         STDEXEC_ATTRIBUTE(host, device, always_inline)
-        constexpr auto operator()(_Args &&...) const noexcept -> bool{
+        constexpr auto operator()(_Args &&...) const noexcept -> bool {
           return false;
         }
       };
@@ -231,6 +234,7 @@ namespace exec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
+
       constexpr auto operator()() const -> __binder_back<repeat_effect_t> {
         return {{}, {}, {}};
       }
