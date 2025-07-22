@@ -26,6 +26,7 @@
 #  include "../__detail/__basic_sequence.hpp"
 
 #  include "../trampoline_scheduler.hpp"
+#  include "../sequence.hpp"
 
 #  include <exception>
 #  include <ranges>
@@ -110,13 +111,13 @@ namespace exec {
       using _Receiver = stdexec::__t<_ReceiverId>;
       _Receiver __rcvr_;
 
-      using _ItemSender = decltype(stdexec::starts_on(
-        std::declval<trampoline_scheduler&>(),
-        std::declval<__sender_t<_Range>>()));
-
+      using __item_sender_t =
+        __result_of<exec::sequence, schedule_result_t<trampoline_scheduler&>, __sender_t<_Range>>;
       using __next_receiver_t = stdexec::__t<__next_receiver<_Range, _ReceiverId>>;
 
-      std::optional<connect_result_t<next_sender_of_t<_Receiver, _ItemSender>, __next_receiver_t>>
+      std::optional<
+        connect_result_t<next_sender_of_t<_Receiver, __item_sender_t>, __next_receiver_t>
+      >
         __op_{};
       trampoline_scheduler __scheduler_{};
 
@@ -128,7 +129,9 @@ namespace exec {
           STDEXEC_TRY {
             stdexec::start(__op_.emplace(__emplace_from{[&] {
               return stdexec::connect(
-                exec::set_next(__rcvr_, stdexec::starts_on(__scheduler_, __sender_t<_Range>{this})),
+                exec::set_next(
+                  __rcvr_,
+                  exec::sequence(stdexec::schedule(__scheduler_), __sender_t<_Range>{this})),
                 __next_receiver_t{this});
             }}));
           }
@@ -171,21 +174,23 @@ namespace exec {
       using __completion_sigs =
         completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
 
-
       template <class _Sequence>
-      using _ItemSender = decltype(stdexec::starts_on(
-        __declval<trampoline_scheduler&>(),
-        __declval<__sender_t<__data_of<_Sequence>>>()));
+      using __item_sender_t = __result_of<
+        exec::sequence,
+        schedule_result_t<trampoline_scheduler&>,
+        __sender_t<__data_of<_Sequence>>
+      >;
 
       template <class _Sequence, class _Receiver>
       using _NextReceiver = stdexec::__t<__next_receiver<__data_of<_Sequence>, __id<_Receiver>>>;
 
       template <class _Sequence, class _Receiver>
-      using _NextSender = next_sender_of_t<_Receiver, _ItemSender<_Sequence>>;
+      using _NextSender = next_sender_of_t<_Receiver, __item_sender_t<_Sequence>>;
 
       template <
         sender_expr_for<iterate_t> _SeqExpr,
-        sequence_receiver_of<item_types<_ItemSender<_SeqExpr>>> _Receiver>
+        sequence_receiver_of<item_types<__item_sender_t<_SeqExpr>>> _Receiver
+      >
         requires sender_to<_NextSender<_SeqExpr, _Receiver>, _NextReceiver<_SeqExpr, _Receiver>>
       static auto subscribe(_SeqExpr&& __seq, _Receiver __rcvr)
         noexcept(__nothrow_callable<__sexpr_apply_t, _SeqExpr, __subscribe_fn<_Receiver>>)
@@ -200,7 +205,7 @@ namespace exec {
 
       template <sender_expr_for<iterate_t> _Sequence>
       static auto get_item_types(_Sequence&&, __ignore) noexcept //
-        -> item_types<_ItemSender<_Sequence>> {
+        -> item_types<__item_sender_t<_Sequence>> {
         return {};
       }
 

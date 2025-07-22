@@ -740,15 +740,15 @@ namespace stdexec {
     using __id = __sched_env;
 
     using __scheduler_t = __decay_t<_Scheduler>;
+    using __sched_domain_t = __query_result_or_t<get_domain_t, __scheduler_t, default_domain>;
     _Scheduler __sched_;
 
     auto query(get_scheduler_t) const noexcept -> __scheduler_t {
       return __sched_;
     }
 
-    template <class _Sched = _Scheduler>
-    auto query(get_domain_t) const noexcept -> __domain_of_t<_Sched> {
-      return get_domain(__sched_);
+    auto query(get_domain_t) const noexcept -> __sched_domain_t {
+      return {};
     }
   };
 

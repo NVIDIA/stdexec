@@ -22,6 +22,6 @@ namespace ex = stdexec;
 
 auto main() -> int {
   ex::sender auto snd = ex::just(42) | exec::repeat_n(10);
-  // build error: _INVALID_ARGUMENT_TO_REPEAT_N_
+  // build error: _REPEAT_N_EXPECTS_A_SENDER_OF_VOID_
   stdexec::sync_wait(std::move(snd));
 }
