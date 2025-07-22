@@ -78,7 +78,7 @@ namespace exec {
       using __child_t = __decay_t<__data_of<_Sender>>;
       using __receiver_t = stdexec::__t<__receiver<__id<_Sender>, __id<_Receiver>>>;
       using __child_on_sched_sender_t =
-        __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, __child_t &>;
+        __result_of<exec::sequence, schedule_result_t<trampoline_scheduler&>, __child_t &>;
       using __child_op_t = stdexec::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
       __child_t __child_;
