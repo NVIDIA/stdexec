@@ -210,7 +210,8 @@ namespace exec {
       &task_type::when_,
       &task_type::prev_,
       &task_type::left_,
-      &task_type::right_>
+      &task_type::right_
+    >
       heap_;
     std::atomic<std::ptrdiff_t> n_submissions_in_flight_{0};
     std::mutex ready_mutex_;
@@ -291,7 +292,8 @@ namespace exec {
       };
 
       using callback_type = typename stdexec::stop_token_of_t<
-        stdexec::env_of_t<Receiver>>::template callback_type<on_stopped_t>;
+        stdexec::env_of_t<Receiver>
+      >::template callback_type<on_stopped_t>;
 
       void request_stop() noexcept {
         if (ref_count_.fetch_add(1, std::memory_order_relaxed) == 1) {

@@ -94,9 +94,10 @@ namespace stdexec {
   inline constexpr continues_on_t continue_on{};
 
   namespace v2 {
-    using continue_on_t [[deprecated("use stdexec::continues_on_t instead")]] = stdexec::continues_on_t;
+    using continue_on_t
+      [[deprecated("use stdexec::continues_on_t instead")]] = stdexec::continues_on_t;
     [[deprecated("use stdexec::continues_on instead")]]
-    inline constexpr stdexec::continues_on_t const& continue_on = stdexec::continues_on;
+    inline constexpr stdexec::continues_on_t const & continue_on = stdexec::continues_on;
   } // namespace v2
 
   template <>

@@ -1082,8 +1082,9 @@ namespace exec {
       auto operator==(const __scheduler&) const -> bool = default;
 
       struct __schedule_env {
-        [[nodiscard]] auto
-          query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept -> __scheduler {
+        [[nodiscard]]
+        auto query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept
+          -> __scheduler {
           return __scheduler{__context_};
         }
 

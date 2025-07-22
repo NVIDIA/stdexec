@@ -256,6 +256,7 @@ namespace stdexec {
     };
 
     struct bulk_chunked_t : __generic_bulk_t<bulk_chunked_t> { };
+
     struct bulk_unchunked_t : __generic_bulk_t<bulk_unchunked_t> { };
 
     template <class _AlgoTag>

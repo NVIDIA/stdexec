@@ -322,7 +322,7 @@ namespace exec {
             static_assert(
               __starts_on<Sender, static_thread_pool_::scheduler, Env>
                 || __completes_on<Sender, static_thread_pool_::scheduler>,
-              "No static_thread_pool_ instance can be found in the sender's or receiver's "
+              "No static_thread_pool instance can be found in the sender's or receiver's "
               "environment on which to schedule bulk work.");
             return not_a_sender<__name_of<Sender>>();
           }
@@ -1673,7 +1673,7 @@ namespace exec {
         }
 
         template <exec::sequence_receiver_of<item_types> Receiver>
-          requires __decay_copyable<Range const&>
+          requires __decay_copyable<Range const &>
         auto subscribe(Receiver rcvr) const & noexcept
           -> stdexec::__t<operation<Range, stdexec::__id<Receiver>>> {
           return {range_, *pool_, static_cast<Receiver&&>(rcvr)};

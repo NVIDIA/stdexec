@@ -315,7 +315,6 @@ namespace nvexec {
       }
 
       STDEXEC_ATTRIBUTE(host, device)
-
       static constexpr auto query(stdexec::forwarding_query_t) noexcept -> bool {
         return true;
       }
@@ -357,7 +356,6 @@ namespace nvexec {
       }
 
       STDEXEC_ATTRIBUTE(host, device)
-
       static constexpr auto query(stdexec::forwarding_query_t) noexcept -> bool {
         return true;
       }
@@ -369,7 +367,6 @@ namespace nvexec {
       using __id = stream_sender_attrs;
 
       STDEXEC_ATTRIBUTE(nodiscard)
-
       constexpr auto query(get_domain_override_t) const noexcept -> stream_domain {
         return {};
       }
