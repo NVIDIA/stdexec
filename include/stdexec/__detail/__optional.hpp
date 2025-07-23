@@ -119,21 +119,21 @@ namespace stdexec {
 
       auto value() & -> _Tp& {
         if (!__has_value_) {
-          throw __bad_optional_access();
+          STDEXEC_THROW(__bad_optional_access());
         }
         return __value_;
       }
 
       auto value() const & -> const _Tp& {
         if (!__has_value_) {
-          throw __bad_optional_access();
+          STDEXEC_THROW(__bad_optional_access());
         }
         return __value_;
       }
 
       auto value() && -> _Tp&& {
         if (!__has_value_) {
-          throw __bad_optional_access();
+          STDEXEC_THROW(__bad_optional_access());
         }
         return static_cast<_Tp&&>(__value_);
       }
