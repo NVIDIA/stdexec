@@ -124,10 +124,28 @@ namespace {
   TEST_CASE("repeat_n works when changing threads", "[adaptors][repeat_n]") {
     exec::static_thread_pool pool{2};
     bool called{false};
-    sender auto snd = stdexec::on(pool.get_scheduler(), ex::just() | ex::then([&] {
-                                                       called = true;
-                                                     }) | exec::repeat_n(10));
-    stdexec::sync_wait(std::move(snd));
+    sender auto snd = ex::on(pool.get_scheduler(), ex::just() | ex::then([&] {
+                                                     called = true;
+                                                   }) | exec::repeat_n(10));
+    ex::sync_wait(std::move(snd));
     REQUIRE(called);
+  }
+
+  TEST_CASE("repeat_n works with bulk on a static_thread_pool", "[adaptors][repeat_n]") {
+    exec::static_thread_pool pool{2};
+    std::atomic<bool> failed{false};
+    const auto tid = std::this_thread::get_id();
+    bool called{false};
+    sender auto snd =
+      ex::on(pool.get_scheduler(), ex::just() | ex::bulk(ex::par_unseq, 1024, [&](int) noexcept {
+                                     if (tid == std::this_thread::get_id()) {
+                                       failed = true;
+                                     }
+                                   }) | ex::then([&] {
+                                     called = true;
+                                   }) | exec::repeat_n(10));
+    ex::sync_wait(std::move(snd));
+    REQUIRE(called);
+    REQUIRE(!failed.load());
   }
 } // namespace
