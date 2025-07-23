@@ -220,9 +220,10 @@ TEST_CASE("simple bulk_unchunked task on system context", "[types][system_schedu
   std::thread::id pool_ids[num_tasks];
   exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
-  auto bulk_snd = ex::bulk_unchunked(ex::schedule(sched), ex::par, num_tasks, [&](unsigned long id) {
-    pool_ids[id] = std::this_thread::get_id();
-  });
+  auto bulk_snd =
+    ex::bulk_unchunked(ex::schedule(sched), ex::par, num_tasks, [&](unsigned long id) {
+      pool_ids[id] = std::this_thread::get_id();
+    });
 
   ex::sync_wait(std::move(bulk_snd));
 
@@ -232,7 +233,9 @@ TEST_CASE("simple bulk_unchunked task on system context", "[types][system_schedu
   }
 }
 
-TEST_CASE("bulk_unchunked with seq will run everything on one thread", "[types][system_scheduler]") {
+TEST_CASE(
+  "bulk_unchunked with seq will run everything on one thread",
+  "[types][system_scheduler]") {
   std::thread::id this_id = std::this_thread::get_id();
   constexpr size_t num_tasks = 16;
   std::thread::id pool_ids[num_tasks];
@@ -256,12 +259,11 @@ TEST_CASE("bulk_chunked on parallel_scheduler performs chunking", "[types][syste
   std::atomic<bool> has_chunking = false;
 
   exec::parallel_scheduler sched = exec::get_parallel_scheduler();
-  auto bulk_snd =
-    ex::bulk_chunked(ex::schedule(sched), ex::par, 10'000, [&](int b, int e) {
-      if (e - b > 1) {
-        has_chunking = true;
-      }
-    });
+  auto bulk_snd = ex::bulk_chunked(ex::schedule(sched), ex::par, 10'000, [&](int b, int e) {
+    if (e - b > 1) {
+      has_chunking = true;
+    }
+  });
   ex::sync_wait(std::move(bulk_snd));
 
   REQUIRE(has_chunking.load());
@@ -274,8 +276,8 @@ TEST_CASE(
   bool covered[num_tasks];
 
   exec::parallel_scheduler sched = exec::get_parallel_scheduler();
-  auto bulk_snd = ex::bulk_chunked(
-    ex::schedule(sched), ex::par, num_tasks, [&](size_t b, size_t e) {
+  auto bulk_snd =
+    ex::bulk_chunked(ex::schedule(sched), ex::par, num_tasks, [&](size_t b, size_t e) {
       for (auto i = b; i < e; ++i) {
         covered[i] = true;
       }

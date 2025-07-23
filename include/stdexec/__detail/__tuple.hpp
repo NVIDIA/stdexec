@@ -209,7 +209,8 @@ namespace stdexec {
 
     template <class _Fn, class _Tuple>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr auto operator<<(_Tuple &&__tup, _Fn __fn) noexcept(__nothrow_move_constructible<_Fn>) {
+    constexpr auto
+      operator<<(_Tuple &&__tup, _Fn __fn) noexcept(__nothrow_move_constructible<_Fn>) {
       return [&__tup, __fn = static_cast<_Fn &&>(__fn)]<class... _Us>(_Us &&...__us) noexcept(
                __nothrow_applicable<_Fn, _Tuple, _Us...>) -> __apply_result_t<_Fn, _Tuple, _Us...> {
         return __tup.apply(__fn, static_cast<_Tuple &&>(__tup), static_cast<_Us &&>(__us)...);

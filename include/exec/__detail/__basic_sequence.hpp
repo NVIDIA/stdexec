@@ -91,11 +91,13 @@ namespace exec {
       apply(_Sender&& __sndr, _ApplyFn&& __fun) noexcept(stdexec::__nothrow_callable<
                                                          stdexec::__detail::__impl_of<_Sender>,
                                                          stdexec::__copy_cvref_fn<_Sender>,
-                                                         _ApplyFn>)
+                                                         _ApplyFn
+      >)
         -> stdexec::__call_result_t<
           stdexec::__detail::__impl_of<_Sender>,
           stdexec::__copy_cvref_fn<_Sender>,
-          _ApplyFn> {
+          _ApplyFn
+        > {
       return static_cast<_Sender&&>(__sndr)
         .__impl_(stdexec::__copy_cvref_fn<_Sender>(), static_cast<_ApplyFn&&>(__fun));
     }

@@ -36,11 +36,9 @@ TEST_CASE("windows_thread_pool: custom_thread_pool", "[types][windows_thread_poo
 
   auto incrementCountOnTp = stdexec::then(stdexec::schedule(s), [&] { ++count; });
 
-  stdexec::sync_wait(stdexec::when_all(
-      incrementCountOnTp,
-      incrementCountOnTp,
-      incrementCountOnTp,
-      incrementCountOnTp));
+  stdexec::sync_wait(
+    stdexec::when_all(
+      incrementCountOnTp, incrementCountOnTp, incrementCountOnTp, incrementCountOnTp));
 
   REQUIRE(count.load() == 4);
 }
@@ -50,13 +48,16 @@ TEST_CASE("windows_thread_pool: schedule", "[types][windows_thread_pool][schedul
   stdexec::sync_wait(stdexec::schedule(tp.get_scheduler()));
 }
 
-TEST_CASE("windows_thread_pool: schedule_completes_on_a_different_thread", "[types][windows_thread_pool][schedulers]") {
+TEST_CASE(
+  "windows_thread_pool: schedule_completes_on_a_different_thread",
+  "[types][windows_thread_pool][schedulers]") {
   exec::windows_thread_pool tp;
   const auto mainThreadId = std::this_thread::get_id();
   auto [workThreadId] = stdexec::sync_wait(
-      stdexec::then(stdexec::schedule(tp.get_scheduler()), [&]() noexcept {
-        return std::this_thread::get_id();
-      })).value();
+                          stdexec::then(
+                            stdexec::schedule(tp.get_scheduler()),
+                            [&]() noexcept { return std::this_thread::get_id(); }))
+                          .value();
   REQUIRE_FALSE(workThreadId == mainThreadId);
 }
 

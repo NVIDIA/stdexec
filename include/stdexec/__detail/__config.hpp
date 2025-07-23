@@ -426,7 +426,7 @@ namespace stdexec {
 #  define STDEXEC_HAS_EXECUTION_POLICY() 0
 #endif
 
-#if defined(__cpp_lib_execution) && __cpp_lib_execution >= 	201902L
+#if defined(__cpp_lib_execution) && __cpp_lib_execution >= 201902L
 #  define STDEXEC_HAS_UNSEQUENCED_EXECUTION_POLICY() 1
 #else
 #  define STDEXEC_HAS_UNSEQUENCED_EXECUTION_POLICY() 0

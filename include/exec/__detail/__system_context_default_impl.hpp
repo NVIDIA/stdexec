@@ -203,7 +203,7 @@ namespace exec::__system_context_default_impl {
       }
 
       uint32_t __end(uint32_t __chunk_index) const noexcept {
-        return (std::min)(__begin(__chunk_index + 1), __max_size_);
+        return (std::min) (__begin(__chunk_index + 1), __max_size_);
       }
     };
 
@@ -308,7 +308,8 @@ namespace exec::__system_context_default_impl {
   struct __instance_data {
     // work around for https://gcc.gnu.org/bugzilla/show_bug.cgi?id=119652
     constexpr __instance_data() noexcept // NOLINT(modernize-use-equals-default)
-    {}
+    {
+    }
 
     /// Gets the current instance; if there is no instance, uses the current factory to create one.
     auto __get_current_instance() -> std::shared_ptr<_Interface> {

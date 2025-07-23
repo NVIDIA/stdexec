@@ -107,7 +107,8 @@ namespace stdexec {
 
       template <class _Fn, class... _Args>
         requires same_as<_Tp, __call_result_t<_Fn>>
-      auto __emplace_from(_Fn&& __f, _Args&&... __args) noexcept(__nothrow_callable<_Fn, _Args...>) -> _Tp& {
+      auto __emplace_from(_Fn&& __f, _Args&&... __args) noexcept(__nothrow_callable<_Fn, _Args...>)
+        -> _Tp& {
         reset();
         auto __sg = __mk_has_value_guard(__has_value_);
         auto* __p = ::new (static_cast<void*>(std::addressof(__value_)))

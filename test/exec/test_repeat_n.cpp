@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2023 Runner-2019
- * Copyright (c) 2023 NVIDIA Corporation
+ * Copyright (c) 2025 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -16,21 +16,14 @@
  */
 
 #include "exec/repeat_n.hpp"
-#include "exec/on.hpp"
-#include "exec/trampoline_scheduler.hpp"
 #include "exec/static_thread_pool.hpp"
-#include "stdexec/concepts.hpp"
 #include "stdexec/execution.hpp"
-#include <exception>
-#include <system_error>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
-#include <iostream>
 
 #include <catch2/catch.hpp>
-#include <type_traits>
 
 using namespace stdexec;
 
@@ -51,13 +44,13 @@ namespace {
     sender auto source = just(1) | then([](int) { });
     sender auto snd = exec::repeat_n(std::move(source), 10);
     // The receiver checks if we receive the void value
-    auto op = stdexec::connect(std::move(snd), expect_void_receiver{});
-    stdexec::start(op);
+    auto op = ex::connect(std::move(snd), expect_void_receiver{});
+    ex::start(op);
   }
 
   TEST_CASE("simple example for repeat_n", "[adaptors][repeat_n]") {
     sender auto snd = exec::repeat_n(just(), 2);
-    stdexec::sync_wait(std::move(snd));
+    ex::sync_wait(std::move(snd));
   }
 
   TEST_CASE("repeat_n works with with zero repetitions", "[adaptors][repeat_n]") {
@@ -94,7 +87,7 @@ namespace {
                  })
              | exec::repeat_n(10);
     auto op = ex::connect(std::move(snd), expect_error_receiver{std::string("error")});
-    stdexec::start(op);
+    ex::start(op);
     CHECK(count == 1);
   }
 
@@ -108,7 +101,7 @@ namespace {
                  })
              | exec::repeat_n(10);
     auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
-    stdexec::start(op);
+    ex::start(op);
     CHECK(count == 1);
   }
 
@@ -117,7 +110,7 @@ namespace {
     "[adaptors][repeat_n]") {
     int n = 0;
     sender auto snd = exec::repeat_n(just() | then([&n] { ++n; }), 1'000'000);
-    stdexec::sync_wait(std::move(snd));
+    ex::sync_wait(std::move(snd));
     CHECK(n == 1'000'000);
   }
 

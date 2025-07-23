@@ -18,7 +18,7 @@
 #include "__config.hpp"
 
 #if STDEXEC_HAS_EXECUTION_POLICY()
-#include <execution>
+#  include <execution>
 #endif
 
 namespace stdexec {
@@ -87,10 +87,10 @@ namespace stdexec {
 
 #else
 
-#if STDEXEC_HAS_EXECUTION_POLICY()
+#  if STDEXEC_HAS_EXECUTION_POLICY()
   // already defined above
   struct __hidden_construction { };
-#endif
+#  endif
 
   struct unsequenced_policy {
     constexpr explicit unsequenced_policy(__hidden_construction) { };

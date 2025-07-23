@@ -387,9 +387,11 @@ namespace exec::__win32 {
   template <class Rcvr>
   class windows_thread_pool::_cancellable_schedule_op<Rcvr>::type final
     : public windows_thread_pool::cancellable_schedule_op_base<
-        stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>> {
+        stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>
+      > {
     using base = windows_thread_pool::cancellable_schedule_op_base<
-      stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>>;
+      stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>
+    >;
 
    public:
     using __id = _cancellable_schedule_op<Rcvr>;
@@ -409,8 +411,7 @@ namespace exec::__win32 {
     }
 
     void set_stopped_impl() noexcept override {
-      if constexpr (!stdexec::unstoppable_token<
-                      stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>>) {
+      if constexpr (!stdexec::unstoppable_token<stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>>) {
         stdexec::set_stopped(std::move(rcvr_));
       } else {
         STDEXEC_ASSERT(false);
@@ -439,7 +440,8 @@ namespace exec::__win32 {
     using completion_signatures = stdexec::completion_signatures<
       stdexec::set_value_t(),
       stdexec::set_error_t(std::exception_ptr),
-      stdexec::set_stopped_t()>;
+      stdexec::set_stopped_t()
+    >;
     using __id = schedule_sender;
     using __t = schedule_sender;
 
@@ -660,7 +662,8 @@ namespace exec::__win32 {
   template <class Rcvr>
   class windows_thread_pool::_schedule_at_op<Rcvr>::type final
     : public windows_thread_pool::time_schedule_op<
-        stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>> {
+        stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>
+      > {
     using base =
       windows_thread_pool::time_schedule_op<stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>>;
 
@@ -706,7 +709,8 @@ namespace exec::__win32 {
     using completion_signatures = stdexec::completion_signatures<
       stdexec::set_value_t(),
       stdexec::set_error_t(std::exception_ptr),
-      stdexec::set_stopped_t()>;
+      stdexec::set_stopped_t()
+    >;
     using __id = schedule_at_sender;
     using __t = schedule_at_sender;
 
@@ -737,7 +741,8 @@ namespace exec::__win32 {
   template <class Duration, class Rcvr>
   class windows_thread_pool::_schedule_after_op<Duration, Rcvr>::type final
     : public windows_thread_pool::time_schedule_op<
-        stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>> {
+        stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>
+      > {
     using base =
       windows_thread_pool::time_schedule_op<stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>>;
 
@@ -783,7 +788,8 @@ namespace exec::__win32 {
     using completion_signatures = stdexec::completion_signatures<
       stdexec::set_value_t(),
       stdexec::set_error_t(std::exception_ptr),
-      stdexec::set_stopped_t()>;
+      stdexec::set_stopped_t()
+    >;
     using __id = _schedule_after<Duration>;
 
     explicit sender(windows_thread_pool &pool, Duration duration)
