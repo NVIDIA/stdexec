@@ -161,4 +161,22 @@ namespace {
 
     REQUIRE(called);
   }
+
+  TEST_CASE("repeat_effect_until works with bulk on a static_thread_pool", "[adaptors][repeat_n]") {
+    exec::static_thread_pool pool{2};
+    std::atomic<bool> failed{false};
+    const auto tid = std::this_thread::get_id();
+    bool called{false};
+    ex::sender auto snd = stdexec::on(
+      pool.get_scheduler(), ex::just() | ex::bulk(ex::par_unseq, 1024, [&](int index) noexcept {
+                              if (tid == std::this_thread::get_id()) {
+                                failed = true;
+                              }
+                            }) | ex::then([&] {
+                              called = true;
+                              return called;
+                            }) | exec::repeat_effect_until());
+    stdexec::sync_wait(std::move(snd));
+    REQUIRE(called);
+  }
 } // namespace
