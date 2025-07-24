@@ -79,5 +79,4 @@ breathe_default_project = "stdexec"
 highlight_language = "cpp"
 
 def setup(app):
-    print(os.path.join(app.srcdir, "style.css"))
-    app.add_css_file(os.path.join(app.srcdir, "style.css"))
+    app.add_css_file(os.path.join(app.srcdir, "_static/style.css"))
