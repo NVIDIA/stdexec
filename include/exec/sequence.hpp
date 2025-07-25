@@ -15,9 +15,9 @@
  */
 #pragma once
 
-#include <stdexec/execution.hpp>
-#include <stdexec/__detail/__tuple.hpp>
-#include <stdexec/__detail/__variant.hpp>
+#include "../stdexec/execution.hpp"
+#include "../stdexec/__detail/__tuple.hpp"
+#include "../stdexec/__detail/__variant.hpp"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
