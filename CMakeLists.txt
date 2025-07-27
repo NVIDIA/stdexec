@@ -281,10 +281,10 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
     # Unset these if using nvc++
     disable_compiler(LANG CUDA)
 
-    set(_nvhpc_seperate_memory_flags "-gpu=nomanaged")
-    # if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 24.5.0)
-    #     set(_nvhpc_seperate_memory_flags "-gpu=mem:separate")
-    # endif()
+    set(_nvhpc_seperate_memory_flags "-gpu=mem:separate")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 24.5.0)
+        set(_nvhpc_seperate_memory_flags "-gpu=nomanaged")
+    endif()
 endif()
 
 # Support target for examples and tests
