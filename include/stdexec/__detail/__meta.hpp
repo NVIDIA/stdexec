@@ -96,7 +96,7 @@ namespace stdexec {
 
   template <class _Tp>
     requires __typename<__mtypeof<_Tp::value>>
-  inline constexpr auto __v<_Tp> = _Tp::value;
+  inline constexpr __mtypeof<_Tp::value> __v<_Tp> = _Tp::value;
 
   // These specializations exist because instantiating a variable template is cheaper than
   // instantiating a class template.
