@@ -281,20 +281,15 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
     set(STDEXEC_ENABLE_CUDA ON)
     # Unset these if using nvc++
     disable_compiler(LANG CUDA)
-
-    set(_nvhpc_seperate_memory_flags "-gpu=mem:separate")
-    # if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 24.5.0)
-    #     set(_nvhpc_seperate_memory_flags "-gpu=mem:separate")
-    # endif()
 endif()
 
 # Support target for examples and tests
 add_library(nvexec_executable_flags INTERFACE)
 
 target_compile_options(nvexec_executable_flags INTERFACE
-                       $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:${_nvhpc_seperate_memory_flags}>)
+                       $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-gpu=mem:separate>)
 target_link_options(nvexec_executable_flags INTERFACE
-                    $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:${_nvhpc_seperate_memory_flags}>)
+                    $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-gpu=mem:separate>)
 
 if(STDEXEC_ENABLE_CUDA)
     file(GLOB_RECURSE nvexec_headers CONFIGURE_DEPENDS include/nvexec/*.cuh)
