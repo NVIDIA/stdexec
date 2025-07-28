@@ -38,7 +38,6 @@ function(def_example example)
 endfunction()
 
 set(stdexec_examples
-               "example.clangd.helper : _clangd_helper_file.cpp"
                  "example.hello_world : hello_world.cpp"
                   "example.hello_coro : hello_coro.cpp"
                        "example.scope : scope.cpp"

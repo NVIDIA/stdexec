@@ -67,11 +67,6 @@ message(STATUS "Build date       : ${STDEXEC_BUILD_DATE}")
 message(STATUS "Build year       : ${STDEXEC_BUILD_YEAR}")
 message(STATUS)
 
-if (STDEXEC_IS_TOP_LEVEL)
-  # Integrate with LLVM/clang tooling
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/clangd_compile_info.cmake)
-endif()
-
 # Write the version header
 rapids_cmake_write_version_file(include/stdexec_version_config.hpp)
 
@@ -270,9 +265,13 @@ target_compile_options(stdexec_executable_flags INTERFACE
                        -include stdexec/__detail/__force_include.hpp>
                        )
 
-target_compile_definitions(
-  stdexec_executable_flags INTERFACE
-  $<$<NOT:$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>>:STDEXEC_ENABLE_EXTRA_TYPE_CHECKING>)
+if (STDEXEC_IS_TOP_LEVEL)
+  # Integrate with LLVM/clang tooling
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/clangd_compile_info.cmake)
+  add_executable(_clangd_helper_file
+    include/._clangd_helper_file.cpp
+  )
+endif()
 
 # Set up nvexec library
 option(STDEXEC_ENABLE_CUDA "Enable CUDA targets for non-nvc++ compilers" OFF)
