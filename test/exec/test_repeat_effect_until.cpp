@@ -16,10 +16,7 @@
  */
 
 #include "exec/repeat_effect_until.hpp"
-#include "exec/on.hpp"
-#include "exec/trampoline_scheduler.hpp"
 #include "exec/static_thread_pool.hpp"
-#include "stdexec/concepts.hpp"
 #include "stdexec/execution.hpp"
 
 #include <test_common/schedulers.hpp>
@@ -163,7 +160,9 @@ namespace {
     REQUIRE(called);
   }
 
-  TEST_CASE("repeat_effect_until works with bulk on a static_thread_pool", "[adaptors][repeat_n]") {
+  TEST_CASE(
+    "repeat_effect_until works with bulk on a static_thread_pool",
+    "[adaptors][repeat_effect_until]") {
     exec::static_thread_pool pool{2};
     std::atomic<bool> failed{false};
     const auto tid = std::this_thread::get_id();
@@ -179,5 +178,23 @@ namespace {
                             }) | exec::repeat_effect_until());
     stdexec::sync_wait(std::move(snd));
     REQUIRE(called);
+  }
+
+  TEST_CASE("repeat_effect repeats until an error is encountered", "[adaptors][repeat_effect]") {
+    int counter = 0;
+    ex::sender auto snd = exec::repeat_effect(
+      succeed_n_sender(10, ex::set_error, std::string("error")) | ex::then([&] { ++counter; }));
+    auto op = ex::connect(std::move(snd), expect_error_receiver{std::string("error")});
+    ex::start(op);
+    REQUIRE(counter == 10);
+  }
+
+  TEST_CASE("repeat_effect repeats until stopped is encountered", "[adaptors][repeat_effect]") {
+    int counter = 0;
+    ex::sender auto snd = exec::repeat_effect(
+      succeed_n_sender(10, ex::set_stopped) | ex::then([&] { ++counter; }));
+    auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
+    ex::start(op);
+    REQUIRE(counter == 10);
   }
 } // namespace

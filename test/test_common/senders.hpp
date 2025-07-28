@@ -19,6 +19,7 @@
 #include <catch2/catch.hpp>
 #include <test_common/type_helpers.hpp>
 #include <stdexec/execution.hpp>
+#include <memory>
 
 namespace ex = stdexec;
 
@@ -35,8 +36,8 @@ namespace {
     };
 
     template <class Receiver>
-    friend auto tag_invoke(ex::connect_t, a_sender_of, Receiver&&) noexcept {
-      return operation();
+    auto connect(Receiver rcvr) const noexcept {
+      return operation{};
     }
   };
 
@@ -56,20 +57,14 @@ namespace {
       Receiver rcvr_;
 
       void start() & noexcept {
-        STDEXEC_TRY {
-          std::apply(
-            [&](Values&... ts) { ex::set_value(std::move(rcvr_), std::move(ts)...); }, values_);
-        }
-        STDEXEC_CATCH_ALL {
-          ex::set_error(std::move(rcvr_), std::current_exception());
-        }
+        std::apply(
+          [&](Values&... ts) { ex::set_value(std::move(rcvr_), std::move(ts)...); }, values_);
       }
     };
 
     template <class Receiver>
-    friend auto tag_invoke(ex::connect_t, fallible_just&& self, Receiver&& rcvr)
-      -> operation<std::decay_t<Receiver>> {
-      return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
+    auto connect(Receiver rcvr) && -> operation<std::decay_t<Receiver>> {
+      return {{}, std::move(values_), std::forward<Receiver>(rcvr)};
     }
 
     std::tuple<Values...> values_;
@@ -114,9 +109,8 @@ namespace {
     };
 
     template <class Receiver>
-    friend auto tag_invoke(ex::connect_t, just_with_env&& self, Receiver&& rcvr)
-      -> operation<std::decay_t<Receiver>> {
-      return {{}, std::move(self.values_), std::forward<Receiver>(rcvr)};
+    auto connect(Receiver rcvr) && -> operation<Receiver> {
+      return {{}, std::move(values_), std::forward<Receiver>(rcvr)};
     }
 
     auto get_env() const noexcept -> Env {
@@ -180,8 +174,7 @@ namespace {
     };
 
     template <ex::__decays_to<completes_if> Self, class Receiver>
-    friend auto tag_invoke(ex::connect_t, Self&& self, Receiver&& rcvr) noexcept
-      -> operation<std::decay_t<Receiver>> {
+    static auto connect(Self&& self, Receiver rcvr) noexcept -> operation<Receiver> {
       return {self.condition_, std::forward<Receiver>(rcvr)};
     }
   };
@@ -199,4 +192,42 @@ namespace {
       return lhs.x == rhs.x;
     }
   };
+
+  template <class Tag, class... Args>
+  struct succeed_n_sender {
+    using sender_concept = stdexec::sender_t;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t(), Tag(Args...)>;
+
+    explicit succeed_n_sender(int count, Tag, Args... args)
+      : args_(std::move(args)...)
+      , counter_(std::make_shared<std::atomic<int>>(count)) {
+    }
+
+    template <class Receiver>
+    struct operation {
+      void start() noexcept {
+        if (--*counter_ == -1) {
+          std::apply(
+            [&](Args&... args) -> void { Tag{}(std::move(rcvr_), std::move(args)...); }, args_);
+        } else {
+          ex::set_value(std::move(rcvr_));
+        }
+      }
+
+      std::tuple<Args...> args_;
+      std::shared_ptr<std::atomic<int>> counter_;
+      Receiver rcvr_;
+    };
+
+    template <class Receiver>
+    auto connect(Receiver rcvr) const -> operation<Receiver> {
+      return {args_, counter_, std::forward<Receiver>(rcvr)};
+    }
+
+   private:
+    std::tuple<Args...> args_;
+    std::shared_ptr<std::atomic<int>> counter_;
+  };
+
+
 } // namespace
