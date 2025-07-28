@@ -76,7 +76,6 @@ endfunction()
 # CPU examples
 ###############################################################################
 set(nvexec_cpu_examples
-    " example.nvexec.clangd_helper : _clangd_helper_file.cpp"
     "example.nvexec.maxwell_cpu_mt : maxwell_cpu_mt.cpp"
     "example.nvexec.maxwell_cpu_st : maxwell_cpu_st.cpp"
 )
