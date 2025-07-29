@@ -241,10 +241,9 @@ namespace exec {
 
       template <class _Sender>
       auto transform_sender(_Sender &&__sndr, __ignore) {
-        return __sexpr_apply(
-          static_cast<_Sender &&>(__sndr), []<class _Child>(__ignore, __ignore, _Child __child) {
-            return repeat_effect_until_t{}(stdexec::then(std::move(__child)), _never{});
-          });
+        return __sexpr_apply(static_cast<_Sender &&>(__sndr), [](__ignore, __ignore, auto __child) {
+          return repeat_effect_until_t{}(stdexec::then(std::move(__child), _never{}));
+        });
       }
     };
   } // namespace __repeat_effect
