@@ -718,7 +718,7 @@ namespace exec {
       static_assert(
         stdexec::__completes_on<_Sender, parallel_scheduler>,
         "No parallel_scheduler instance can be found in the sender's "
-        "environment on which to schedule bulk work.");
+        "attributes on which to schedule bulk work.");
       return __not_a_sender<stdexec::__name_of<_Sender>>();
     }
   }
@@ -726,20 +726,14 @@ namespace exec {
   template <__bulk_chunked_or_unchunked _Sender, class _Env>
   auto __parallel_scheduler_domain::transform_sender(_Sender&& __sndr, const _Env& __env)
     const noexcept {
-    if constexpr (stdexec::__completes_on<_Sender, parallel_scheduler>) {
-      auto __sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
-        stdexec::get_env(__sndr));
-      return stdexec::__sexpr_apply(
-        static_cast<_Sender&&>(__sndr), __transform_parallel_bulk_sender{__sched});
-    } else if constexpr (stdexec::__starts_on<_Sender, parallel_scheduler, _Env>) {
+    if constexpr (stdexec::__starts_on<_Sender, parallel_scheduler, _Env>) {
       auto __sched = stdexec::get_scheduler(__env);
       return stdexec::__sexpr_apply(
         static_cast<_Sender&&>(__sndr), __transform_parallel_bulk_sender{__sched});
     } else {
       static_assert(
-        stdexec::__starts_on<_Sender, parallel_scheduler, _Env>
-          || stdexec::__completes_on<_Sender, parallel_scheduler>,
-        "No parallel_scheduler instance can be found in the sender's or receiver's "
+        stdexec::__starts_on<_Sender, parallel_scheduler, _Env>,
+        "No parallel_scheduler instance can be found in the receiver's "
         "environment on which to schedule bulk work.");
       return __not_a_sender<stdexec::__name_of<_Sender>>();
     }

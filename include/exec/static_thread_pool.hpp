@@ -303,7 +303,7 @@ namespace exec {
           } else {
             static_assert(
               __completes_on<Sender, static_thread_pool_::scheduler>,
-              "No static_thread_pool_ instance can be found in the sender's environment "
+              "No static_thread_pool instance can be found in the sender's attributes "
               "on which to schedule bulk work.");
             return not_a_sender<__name_of<Sender>>();
           }
@@ -312,17 +312,13 @@ namespace exec {
         // transform the generic bulk_chunked sender into a parallel thread-pool bulk sender
         template <sender_expr_for<bulk_chunked_t> Sender, class Env>
         auto transform_sender(Sender&& sndr, const Env& env) const noexcept {
-          if constexpr (__completes_on<Sender, static_thread_pool_::scheduler>) {
-            auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
-            return __sexpr_apply(static_cast<Sender&&>(sndr), transform_bulk{*sched.pool_});
-          } else if constexpr (__starts_on<Sender, static_thread_pool_::scheduler, Env>) {
+          if constexpr (__starts_on<Sender, static_thread_pool_::scheduler, Env>) {
             auto sched = stdexec::get_scheduler(env);
             return __sexpr_apply(static_cast<Sender&&>(sndr), transform_bulk{*sched.pool_});
           } else {
             static_assert(
-              __starts_on<Sender, static_thread_pool_::scheduler, Env>
-                || __completes_on<Sender, static_thread_pool_::scheduler>,
-              "No static_thread_pool instance can be found in the sender's or receiver's "
+              __starts_on<Sender, static_thread_pool_::scheduler, Env>,
+              "No static_thread_pool instance can be found in the receiver's "
               "environment on which to schedule bulk work.");
             return not_a_sender<__name_of<Sender>>();
           }

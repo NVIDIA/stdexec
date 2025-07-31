@@ -48,12 +48,26 @@ namespace exec {
 
         template <class... _Args>
         void set_value(_Args &&...__args) noexcept {
-          __state_->__complete(set_value_t(), static_cast<_Args &&>(__args)...);
+          STDEXEC_TRY {
+            __state_->__complete(set_value_t(), static_cast<_Args &&>(__args)...);
+          }
+          STDEXEC_CATCH_ALL {
+            if constexpr (!__nothrow_decay_copyable<_Args...>) {
+              __state_->__complete(set_error_t(), std::current_exception());
+            }
+          }
         }
 
         template <class _Error>
         void set_error(_Error &&__err) noexcept {
-          __state_->__complete(set_error_t(), static_cast<_Error &&>(__err));
+          STDEXEC_TRY {
+            __state_->__complete(set_error_t(), static_cast<_Error &&>(__err));
+          }
+          STDEXEC_CATCH_ALL {
+            if constexpr (!__nothrow_decay_copyable<_Error>) {
+              __state_->__complete(set_error_t(), std::current_exception());
+            }
+          }
         }
 
         void set_stopped() noexcept {
