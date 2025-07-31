@@ -398,6 +398,15 @@ namespace stdexec {
 #  define STDEXEC_TERMINATE() std::terminate()
 #endif
 
+// Some compilers turn on pack indexing in pre-C++26 code. We want to use it if it is
+// available. Pack indexing is disabled for clang < 20 because of:
+// https://github.com/llvm/llvm-project/issues/116105
+#if defined(__cpp_pack_indexing) && !STDEXEC_NVCC() && !(STDEXEC_CLANG() && __clang_major__ < 20)
+#  define STDEXEC_HAS_PACK_INDEXING() 1
+#else // ^^^ has pack indexing ^^^ / vvv no pack indexing vvv
+#  define STDEXEC_HAS_PACK_INDEXING() 0
+#endif // no pack indexing
+
 #if STDEXEC_HAS_FEATURE(thread_sanitizer) || defined(__SANITIZE_THREAD__)
 #  define STDEXEC_TSAN(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #else
