@@ -129,9 +129,8 @@ namespace exec {
         } else {
           static_assert(
             stdexec::__completes_on<Sender, libdispatch_scheduler>,
-            "No libdispatch_queue instance can be found in the "
-            "sender's environment "
-            "on which to schedule bulk work.");
+            "No libdispatch_queue instance can be found in the sender's "
+            "attributes on which to schedule bulk work.");
           return __libdispatch_details::not_a_sender<stdexec::__name_of<Sender>>();
         }
       }
@@ -139,21 +138,14 @@ namespace exec {
       // transform the generic bulk sender into a parallel libdispatch bulk sender
       template <stdexec::sender_expr_for<stdexec::bulk_t> Sender, class Env>
       auto transform_sender(Sender &&sndr, const Env &env) const noexcept {
-        if constexpr (stdexec::__completes_on<Sender, libdispatch_scheduler>) {
-          auto sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
-            stdexec::get_env(sndr));
-          return stdexec::__sexpr_apply(
-            std::forward<Sender>(sndr), __libdispatch_bulk::transform_bulk{*sched.queue_});
-        } else if constexpr (stdexec::__starts_on<Sender, libdispatch_scheduler, Env>) {
+        if constexpr (stdexec::__starts_on<Sender, libdispatch_scheduler, Env>) {
           auto sched = stdexec::get_scheduler(env);
           return stdexec::__sexpr_apply(
             std::forward<Sender>(sndr), __libdispatch_bulk::transform_bulk{*sched.queue_});
         } else {
           static_assert(
-            stdexec::__starts_on<Sender, libdispatch_scheduler, Env>
-              || stdexec::__completes_on<Sender, libdispatch_scheduler>,
-            "No libdispatch_queue instance can be found in the sender's or "
-            "receiver's "
+            stdexec::__starts_on<Sender, libdispatch_scheduler, Env>,
+            "No libdispatch_queue instance can be found in the receiver's "
             "environment on which to schedule bulk work.");
           return __libdispatch_details::not_a_sender<stdexec::__name_of<Sender>>();
         }
