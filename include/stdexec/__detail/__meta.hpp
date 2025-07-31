@@ -1025,9 +1025,10 @@ namespace stdexec {
     using __f = __mor<__minvoke<_Fn, _Args>...>;
   };
 
-// C++23 pack indexing is disabled for clang because of
-// https://github.com/llvm/llvm-project/issues/116105
-#if defined(__cpp_pack_indexing) && !STDEXEC_CLANG()
+#if STDEXEC_HAS_PACK_INDEXING()
+  STDEXEC_PRAGMA_PUSH()
+  STDEXEC_PRAGMA_IGNORE_GNU("-Wc++26-extensions")
+
   template <bool>
   struct __m_at_ {
     template <class _Np, class... _Ts>
@@ -1039,6 +1040,8 @@ namespace stdexec {
 
   template <std::size_t _Np, class... _Ts>
   using __m_at_c = __minvoke<__m_at_<_Np == ~0ul>, __msize_t<_Np>, _Ts...>;
+
+  STDEXEC_PRAGMA_POP()
 #elif STDEXEC_HAS_BUILTIN(__type_pack_element)
   template <bool>
   struct __m_at_ {
