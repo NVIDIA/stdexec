@@ -41,7 +41,7 @@ namespace stdexec {
     // A dummy scheduler that is used by the metaprogramming below when the input sender doesn't
     // have a completion scheduler.
     struct __unknown_scheduler {
-      struct __env {
+      struct __attrs {
         static constexpr auto query(__is_scheduler_affine_t) noexcept -> bool {
           return true;
         }
@@ -56,7 +56,7 @@ namespace stdexec {
         using sender_concept = sender_t;
 
         [[nodiscard]]
-        constexpr auto get_env() const noexcept -> __env {
+        constexpr auto get_env() const noexcept -> __attrs {
           return {};
         }
       };

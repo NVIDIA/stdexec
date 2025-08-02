@@ -23,6 +23,9 @@
 
 namespace ex = stdexec;
 
+// Check that the `then` algorithm is correctly forwarding the __is_scheduler_affine query
+static_assert(ex::__is_scheduler_affine<decltype(ex::just() | ex::then([] { }))>);
+
 namespace {
   TEST_CASE("then returns a sender", "[adaptors][then]") {
     auto snd = ex::then(ex::just(), [] { });

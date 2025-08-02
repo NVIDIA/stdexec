@@ -246,13 +246,13 @@ namespace stdexec {
 
     struct __is_scheduler_affine_t {
       template <class _Env>
-      constexpr auto operator()(const _Env&) const noexcept {
-        if constexpr (tag_invocable<__is_scheduler_affine_t, const _Env&>) {
-          using _Result = __decay_t<tag_invoke_result_t<__is_scheduler_affine_t, const _Env&>>;
-          static_assert(__same_as<decltype(__v<_Result>), const bool>);
-          return _Result();
+      constexpr auto operator()(const _Env& __env) const noexcept {
+        if constexpr (requires { _Env::query(*this); }) {
+          return _Env::query(*this);
+        } else if constexpr (requires { __env.query(*this); }) {
+          return __env.query(*this);
         } else {
-          return std::false_type();
+          return false;
         }
       }
 
@@ -410,6 +410,18 @@ namespace stdexec {
     STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
       prop(_Query, _Value) -> prop<_Query, std::unwrap_reference_t<_Value>>;
 
+    template <class _Query, auto _Value>
+    struct cprop {
+      using __t = cprop;
+      using __id = cprop;
+
+      STDEXEC_ATTRIBUTE(nodiscard)
+
+      static constexpr auto query(_Query) noexcept {
+        return _Value;
+      }
+    };
+
     // utility for joining multiple environments
     template <class... _Envs>
     struct env {
@@ -431,6 +443,23 @@ namespace stdexec {
 
       template <class _Query, class... _Args>
       using __1st_env_t = decltype(env::__get_1st<_Query, _Args...>(__declval<const env&>()));
+
+      // NOT TO SPEC: a static query memfn for those envs that have a static query memfn.
+      // This is useful for constexpr evaluation of queries.
+      template <class _Query, class... _Args>
+        requires(__queryable<_Envs, _Query, _Args...> || ...)
+      STDEXEC_ATTRIBUTE(always_inline)
+      static constexpr auto query(_Query __q, _Args&&... __args)
+        noexcept(__nothrow_queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>)
+          -> decltype(auto)
+        requires requires {
+          std::remove_reference_t<__1st_env_t<_Query, _Args...>>::query(
+            __q, static_cast<_Args &&>(__args)...);
+        }
+      {
+        return std::remove_reference_t<__1st_env_t<_Query, _Args...>>::query(
+          __q, static_cast<_Args&&>(__args)...);
+      }
 
       template <class _Query, class... _Args>
         requires(__queryable<_Envs, _Query, _Args...> || ...)
@@ -466,6 +495,24 @@ namespace stdexec {
 
       template <class _Query, class... _Args>
       using __1st_env_t = decltype(env::__get_1st<_Query, _Args...>(__declval<const env&>()));
+
+      // NOT TO SPEC: a static query memfn for those envs that have a static query memfn.
+      // This is useful for constexpr evaluation of queries.
+      template <class _Query, class... _Args>
+        requires __queryable<_Env0, _Query, _Args...>
+              || __queryable<_Env1, _Query, _Args...>
+                 STDEXEC_ATTRIBUTE(always_inline)
+                 static constexpr auto query(_Query __q, _Args&&... __args)
+                   noexcept(__nothrow_queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>)
+                     -> decltype(auto)
+                   requires requires {
+                     std::remove_reference_t<__1st_env_t<_Query, _Args...>>::query(
+                       __q, static_cast<_Args &&>(__args)...);
+                   }
+      {
+        return std::remove_reference_t<__1st_env_t<_Query, _Args...>>::query(
+          __q, static_cast<_Args&&>(__args)...);
+      }
 
       template <class _Query, class... _Args>
         requires __queryable<_Env0, _Query, _Args...> || __queryable<_Env1, _Query, _Args...>
@@ -765,7 +812,7 @@ namespace stdexec {
 
   template <class _Sender>
   concept __is_scheduler_affine = requires {
-    requires __v<__call_result_t<__is_scheduler_affine_t, env_of_t<_Sender>>>;
+    requires env_of_t<_Sender>::query(__is_scheduler_affine_t{});
   };
 } // namespace stdexec
 

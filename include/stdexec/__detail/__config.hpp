@@ -473,25 +473,7 @@ namespace stdexec {
 #  define STDEXEC_EXPLICIT_THIS(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
 #endif
 
-// Configure extra type checking
-#define STDEXEC_TYPE_CHECKING_ZERO()                                   0
-#define STDEXEC_TYPE_CHECKING_ONE()                                    1
-#define STDEXEC_TYPE_CHECKING_TWO()                                    2
-
-#define STDEXEC_PROBE_TYPE_CHECKING_                                   STDEXEC_TYPE_CHECKING_ONE
-#define STDEXEC_PROBE_TYPE_CHECKING_0                                  STDEXEC_TYPE_CHECKING_ZERO
-#define STDEXEC_PROBE_TYPE_CHECKING_1                                  STDEXEC_TYPE_CHECKING_ONE
-#define STDEXEC_PROBE_TYPE_CHECKING_STDEXEC_ENABLE_EXTRA_TYPE_CHECKING STDEXEC_TYPE_CHECKING_TWO
-
-#define STDEXEC_TYPE_CHECKING_WHICH3(...)                              STDEXEC_PROBE_TYPE_CHECKING_##__VA_ARGS__
-#define STDEXEC_TYPE_CHECKING_WHICH2(...)                              STDEXEC_TYPE_CHECKING_WHICH3(__VA_ARGS__)
-#define STDEXEC_TYPE_CHECKING_WHICH                                    STDEXEC_TYPE_CHECKING_WHICH2(STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
-
-#ifndef STDEXEC_ENABLE_EXTRA_TYPE_CHECKING
-#  define STDEXEC_ENABLE_EXTRA_TYPE_CHECKING() 0
-#elif STDEXEC_TYPE_CHECKING_WHICH() == 2
-// do nothing
-#elif STDEXEC_TYPE_CHECKING_WHICH() == 0
+#if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING == 0
 #  undef STDEXEC_ENABLE_EXTRA_TYPE_CHECKING
 #  define STDEXEC_ENABLE_EXTRA_TYPE_CHECKING() 0
 #else

@@ -88,8 +88,6 @@ namespace exec {
       __sticky
     };
 
-    struct __parent_promise_t { };
-
     template <__scheduler_affinity _SchedulerAffinity = __scheduler_affinity::__sticky>
     class __default_task_context_impl {
       template <class _ParentPromise>
@@ -103,7 +101,7 @@ namespace exec {
 
      public:
       template <class _ParentPromise>
-      explicit __default_task_context_impl(__parent_promise_t, _ParentPromise& __parent) noexcept {
+      explicit __default_task_context_impl(_ParentPromise& __parent) noexcept {
         if constexpr (_SchedulerAffinity == __scheduler_affinity::__sticky) {
           if constexpr (__check_parent_promise_has_scheduler<_ParentPromise>()) {
             __scheduler_ = get_scheduler(get_env(__parent));
@@ -281,6 +279,25 @@ namespace exec {
       __variant_for<__void, std::exception_ptr> __data_{};
     };
 
+    template <class _Sch>
+    struct __just_void {
+      using sender_concept = sender_t;
+      using completion_signatures = completion_signatures<set_value_t()>;
+
+      template <class _Rcvr>
+      [[nodiscard]]
+      static constexpr auto connect(_Rcvr __rcvr) noexcept {
+        return stdexec::connect(just(), static_cast<_Rcvr&&>(__rcvr));
+      }
+
+      [[nodiscard]]
+      constexpr auto get_env() const noexcept {
+        return prop{get_completion_scheduler<set_value_t>, __sch_};
+      }
+
+      _Sch __sch_;
+    };
+
     enum class disposition : unsigned {
       stopped,
       succeeded,
@@ -319,6 +336,8 @@ namespace exec {
       }
 
      private:
+      using __scheduler_t = __query_result_or_t<get_scheduler_t, _Context, inline_scheduler>;
+
       struct __final_awaitable {
         static constexpr auto await_ready() noexcept -> bool {
           return false;
@@ -399,6 +418,11 @@ namespace exec {
         }
 #endif
 
+        template <__sender_adaptor_closure_for<__just_void<__scheduler_t>> _Closure>
+        auto await_transform(_Closure&& __closure) noexcept -> decltype(auto) {
+          return await_transform(static_cast<_Closure&&>(__closure)(__just_void<__scheduler_t>()));
+        }
+
         template <class _Awaitable>
         auto await_transform(_Awaitable&& __awaitable) noexcept -> decltype(auto) {
           return with_awaitable_senders<__promise>::await_transform(
@@ -431,7 +455,7 @@ namespace exec {
         auto await_suspend(__coro::coroutine_handle<_ParentPromise2> __parent) noexcept
           -> __coro::coroutine_handle<> {
           static_assert(__one_of<_ParentPromise, _ParentPromise2, void>);
-          __coro_.promise().__context_.emplace(__parent_promise_t(), __parent.promise());
+          __coro_.promise().__context_.emplace(__parent.promise());
           __context_.emplace(*__coro_.promise().__context_, __parent.promise());
           __coro_.promise().set_continuation(__parent);
           if constexpr (requires { __coro_.promise().stop_requested() ? 0 : 1; }) {

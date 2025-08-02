@@ -54,11 +54,15 @@ namespace stdexec {
     template <class _Query, class _Value>
     struct prop;
 
+    template <class _Query, auto _Value>
+    struct cprop;
+
     template <class... _Envs>
     struct env;
   } // namespace __env
 
   using __env::prop;
+  using __env::cprop;
   using __env::env;
   using empty_env [[deprecated("stdexec::empty_env is now spelled stdexec::env<>")]] = env<>;
 

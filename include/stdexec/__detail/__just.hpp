@@ -34,8 +34,9 @@ namespace stdexec {
     struct __impl : __sexpr_defaults {
       using __tag_t = typename _JustTag::__tag_t;
 
-      static constexpr auto get_attrs = [](__ignore) noexcept {
-        return prop{__is_scheduler_affine_t{}, std::true_type{}};
+      static constexpr auto get_attrs =
+        [](__ignore) noexcept -> cprop<__is_scheduler_affine_t, true> {
+        return {};
       };
 
       static constexpr auto get_completion_signatures =

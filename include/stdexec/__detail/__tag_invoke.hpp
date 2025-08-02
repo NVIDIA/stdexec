@@ -42,8 +42,8 @@ namespace stdexec {
     template <class _Tag, class _Env>
       requires true // so this overload is preferred over the one below
     STDEXEC_ATTRIBUTE(always_inline) constexpr auto tag_invoke(_Tag, const _Env&) noexcept
-      -> __mconstant<_Env::query(_Tag())> {
-      return {};
+      -> decltype(_Env::query(_Tag())) {
+      return _Env::query(_Tag());
     }
 
     // For handling queryables with a query member function:
