@@ -378,6 +378,11 @@ namespace stdexec {
     concept __nothrow_queryable = nothrow_tag_invocable<_Query, const _Env&, _Args...>;
 
     template <class _Env, class _Query, class... _Args>
+    concept __statically_queryable = requires {
+      std::remove_reference_t<_Env>::query(std::declval<_Query>(), std::declval<_Args>()...);
+    };
+
+    template <class _Env, class _Query, class... _Args>
     using __query_result_t = tag_invoke_result_t<_Query, const _Env&, _Args...>;
 
     template <class ValueType>
@@ -457,15 +462,11 @@ namespace stdexec {
       // This is useful for constexpr evaluation of queries.
       template <class _Query, class... _Args>
         requires(__queryable<_Envs, _Query, _Args...> || ...)
+             && __statically_queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline)
       static constexpr auto query(_Query __q, _Args&&... __args)
         noexcept(__nothrow_queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>)
-          -> decltype(auto)
-        requires requires {
-          std::remove_reference_t<__1st_env_t<_Query, _Args...>>::query(
-            __q, static_cast<_Args &&>(__args)...);
-        }
-      {
+          -> decltype(auto) {
         return std::remove_reference_t<__1st_env_t<_Query, _Args...>>::query(
           __q, static_cast<_Args&&>(__args)...);
       }
@@ -508,17 +509,12 @@ namespace stdexec {
       // NOT TO SPEC: a static query memfn for those envs that have a static query memfn.
       // This is useful for constexpr evaluation of queries.
       template <class _Query, class... _Args>
-        requires __queryable<_Env0, _Query, _Args...>
-              || __queryable<_Env1, _Query, _Args...>
-                 STDEXEC_ATTRIBUTE(nodiscard, always_inline)
-                 static constexpr auto query(_Query __q, _Args&&... __args)
-                   noexcept(__nothrow_queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>)
-                     -> decltype(auto)
-                   requires requires {
-                     std::remove_reference_t<__1st_env_t<_Query, _Args...>>::query(
-                       __q, static_cast<_Args &&>(__args)...);
-                   }
-      {
+        requires(__queryable<_Env0, _Query, _Args...> || __queryable<_Env1, _Query, _Args...>)
+             && __statically_queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline)
+      static constexpr auto query(_Query __q, _Args&&... __args)
+        noexcept(__nothrow_queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>)
+          -> decltype(auto) {
         return std::remove_reference_t<__1st_env_t<_Query, _Args...>>::query(
           __q, static_cast<_Args&&>(__args)...);
       }
