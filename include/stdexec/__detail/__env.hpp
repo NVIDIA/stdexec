@@ -817,7 +817,7 @@ namespace stdexec {
 
   template <class _Sender>
   concept __is_scheduler_affine = requires {
-    requires env_of_t<_Sender>::query(__is_scheduler_affine_t{});
+    requires std::remove_reference_t<env_of_t<_Sender>>::query(__is_scheduler_affine_t{});
   };
 } // namespace stdexec
 
