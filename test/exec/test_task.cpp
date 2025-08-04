@@ -22,10 +22,15 @@
 #  include <exec/single_thread_context.hpp>
 #  include <exec/async_scope.hpp>
 
+#  include <test_common/schedulers.hpp>
+
 #  include <catch2/catch.hpp>
+
+#  include <string>
 
 using namespace exec;
 using namespace stdexec;
+using namespace std::string_literals;
 
 namespace {
 
@@ -250,6 +255,39 @@ namespace {
     auto res = stdexec::sync_wait(std::move(work));
     CHECK(!res.has_value());
     CHECK(count == 3);
+  }
+
+  struct test_domain {
+    template <sender_expr_for<then_t> _Sender>
+    static constexpr auto transform_sender(_Sender&& __sndr) noexcept {
+      return just("goodbye"s);
+    }
+  };
+
+  struct test_task_context {
+    constexpr test_task_context(auto&&...) noexcept {
+    }
+
+    template <class _ThisPromise>
+    using promise_context_t = test_task_context;
+
+    template <class, class>
+    using awaiter_context_t = test_task_context;
+
+    static constexpr auto query(get_scheduler_t) noexcept {
+      return basic_inline_scheduler<test_domain>{};
+    }
+  };
+
+  template <class T>
+  using test_task = exec::basic_task<T, test_task_context>;
+
+  TEST_CASE("task - can co_await a sender adaptor closure object", "[types][task]") {
+    auto salutation = []() -> test_task<std::string> {
+      co_return co_await then([] { return "hello"s; });
+    }();
+    auto [msg] = stdexec::sync_wait(std::move(salutation)).value();
+    CHECK(msg == "goodbye"s);
   }
 
 #  if !STDEXEC_STD_NO_EXCEPTIONS()

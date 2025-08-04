@@ -17,7 +17,6 @@
 #pragma once
 
 #include "../../stdexec/__detail/__config.hpp"
-#include "../../stdexec/__detail/__meta.hpp"
 #include "../scope.hpp" // IWYU pragma: keep
 
 #include <algorithm> // IWYU pragma: keep
@@ -27,14 +26,10 @@
 #include <thread>
 #include <utility>
 
-// Work around a bug in the NVHPC compilers prior to version 24.03
-#if STDEXEC_NVHPC()
-#  if STDEXEC_NVHPC_VERSION() <= 2403
-#    define STDEXEC_NUMA_VTABLE_INLINE
-#  endif
-#endif
-
-#ifndef STDEXEC_NUMA_VTABLE_INLINE
+// Work around a bug in the NVHPC compilers prior to version 24.3
+#if STDEXEC_NVHPC() && STDEXEC_NVHPC_VERSION < 24'03
+#  define STDEXEC_NUMA_VTABLE_INLINE
+#else
 #  define STDEXEC_NUMA_VTABLE_INLINE inline
 #endif
 

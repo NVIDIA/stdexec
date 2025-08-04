@@ -39,8 +39,7 @@ namespace stdexec {
   namespace __tup {
     template <class _Ty, std::size_t _Idx>
     struct __box {
-      // See https://github.com/llvm/llvm-project/issues/93563
-      //STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Ty __value;
     };
 

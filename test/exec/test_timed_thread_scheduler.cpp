@@ -22,7 +22,10 @@
 #include <exec/async_scope.hpp>
 #include <exec/when_any.hpp>
 
-#if __GNUC__ > 11 || !defined(__GNUC__) || !defined(__SANITIZE_THREAD__)
+// Avoid a TSAN bug in GCC 11 and earlier
+#if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 12'00 && defined(__SANITIZE_THREAD__)
+// nothing
+#else
 namespace {
   TEST_CASE(
     "timed_thread_scheduler - unused context",

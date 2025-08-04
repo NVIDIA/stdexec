@@ -173,7 +173,7 @@ namespace stdexec {
       }
 
       template <class _Awaitable, class _Receiver>
-#  if STDEXEC_GCC() && (__GNUC__ > 11)
+#  if STDEXEC_GCC() && (STDEXEC_GCC_VERSION >= 12'00)
       __attribute__((__used__))
 #  endif
       static auto __co_impl(_Awaitable __awaitable, _Receiver __rcvr) -> __operation_t<_Receiver> {
