@@ -15,7 +15,7 @@ namespace {
     "nvexec transfer to stream context returns a sender",
     "[cuda][stream][adaptors][transfer]") {
     nvexec::stream_context stream_ctx{};
-    exec::inline_scheduler cpu{};
+    stdexec::inline_scheduler cpu{};
     nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
 
     auto snd = ex::schedule(cpu) | ex::continues_on(gpu);
@@ -28,7 +28,7 @@ namespace {
     "[cuda][stream][adaptors][transfer]") {
     nvexec::stream_context stream_ctx{};
 
-    exec::inline_scheduler cpu{};
+    stdexec::inline_scheduler cpu{};
     nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
 
     auto snd = ex::schedule(gpu) | ex::continues_on(cpu);
@@ -39,7 +39,7 @@ namespace {
   TEST_CASE("nvexec transfer changes context to GPU", "[cuda][stream][adaptors][transfer]") {
     nvexec::stream_context stream_ctx{};
 
-    exec::inline_scheduler cpu{};
+    stdexec::inline_scheduler cpu{};
     nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
 
     auto snd = ex::schedule(cpu) | ex::then([=] {
@@ -62,7 +62,7 @@ namespace {
   TEST_CASE("nvexec transfer changes context from GPU", "[cuda][stream][adaptors][transfer]") {
     nvexec::stream_context stream_ctx{};
 
-    exec::inline_scheduler cpu{};
+    stdexec::inline_scheduler cpu{};
     nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
 
     auto snd = ex::schedule(gpu) | ex::then([=] {
@@ -115,7 +115,7 @@ namespace {
   TEST_CASE("nvexec transfer supports move-only types", "[cuda][stream][adaptors][transfer]") {
     nvexec::stream_context stream_ctx{};
 
-    exec::inline_scheduler cpu{};
+    stdexec::inline_scheduler cpu{};
     nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
 
     auto snd = ex::schedule(gpu) | ex::then([] { return move_only_t{42}; }) | ex::continues_on(cpu)

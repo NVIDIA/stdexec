@@ -146,7 +146,7 @@ namespace stdexec {
           // If __is_root_env<_Env> is true, then this sender has no parent, so there is
           // no need to restore the execution context. We can use the inline scheduler
           // as the scheduler if __env does not have one.
-          using __default_t = __if_c<__is_root_env<_Env>, __inln::__scheduler, __none_such>;
+          using __default_t = __if_c<__is_root_env<_Env>, inline_scheduler, __none_such>;
 
           // If scheduler<_Data> is true, then this sender was created with `on(sch, sndr)`.
           // In that case, the child sender is not a predecessor, so its completion

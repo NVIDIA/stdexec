@@ -691,7 +691,7 @@ namespace exec {
       }
 
       [[nodiscard]]
-      auto query(get_scheduler_t) const noexcept -> __inln::__scheduler {
+      auto query(get_scheduler_t) const noexcept -> stdexec::inline_scheduler {
         return {};
       }
     };

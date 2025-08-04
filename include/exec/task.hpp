@@ -27,7 +27,6 @@
 
 #include "any_sender_of.hpp"
 #include "at_coroutine_exit.hpp"
-#include "inline_scheduler.hpp"
 #include "scope.hpp"
 
 STDEXEC_PRAGMA_PUSH()
@@ -96,7 +95,7 @@ namespace exec {
       static constexpr bool __with_scheduler = _SchedulerAffinity == __scheduler_affinity::__sticky;
 
       STDEXEC_ATTRIBUTE(no_unique_address)
-      __if_c<__with_scheduler, __any_scheduler, __ignore> __scheduler_{exec::inline_scheduler{}};
+      __if_c<__with_scheduler, __any_scheduler, __ignore> __scheduler_{stdexec::inline_scheduler{}};
       inplace_stop_token __stop_token_;
 
      public:
@@ -336,7 +335,7 @@ namespace exec {
       }
 
      private:
-      using __scheduler_t = __query_result_or_t<get_scheduler_t, _Context, inline_scheduler>;
+      using __scheduler_t = __query_result_or_t<get_scheduler_t, _Context, stdexec::inline_scheduler>;
 
       struct __final_awaitable {
         static constexpr auto await_ready() noexcept -> bool {

@@ -237,7 +237,7 @@ namespace exec {
 
         bool __is_unhandled_stopped_{false};
         std::tuple<_Ts&...> __args_{};
-        __any_scheduler __scheduler_{inline_scheduler{}};
+        __any_scheduler __scheduler_{stdexec::inline_scheduler{}};
       };
 
       __coro::coroutine_handle<__promise> __coro_;

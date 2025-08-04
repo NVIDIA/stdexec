@@ -174,8 +174,8 @@ namespace {
   }
 
   TEST_CASE("Use two inline schedulers", "[types][sticky][task]") {
-    scheduler auto scheduler1 = exec::inline_scheduler{};
-    scheduler auto scheduler2 = exec::inline_scheduler{};
+    scheduler auto scheduler1 = stdexec::inline_scheduler{};
+    scheduler auto scheduler2 = stdexec::inline_scheduler{};
     sync_wait(when_all(
       schedule(scheduler1) | then([] { __thread_id = 0; }),
       schedule(scheduler2) | then([] { __thread_id = 0; })));
