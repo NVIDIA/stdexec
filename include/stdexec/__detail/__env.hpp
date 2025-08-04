@@ -378,9 +378,13 @@ namespace stdexec {
     concept __nothrow_queryable = nothrow_tag_invocable<_Query, const _Env&, _Args...>;
 
     template <class _Env, class _Query, class... _Args>
-    concept __statically_queryable = __queryable<_Env, _Query, _Args...> && requires {
-      std::remove_reference_t<_Env>::query(std::declval<_Query>(), std::declval<_Args>()...);
+    concept __statically_queryable_i = requires(_Query __q, _Args&&... __args) {
+      std::remove_reference_t<_Env>::query(__q, static_cast<_Args &&>(__args)...);
     };
+
+    template <class _Env, class _Query, class... _Args>
+    concept __statically_queryable = __queryable<_Env, _Query, _Args...>
+                                  && __statically_queryable_i<_Env, _Query, _Args...>;
 
     template <class _Env, class _Query, class... _Args>
     using __query_result_t = tag_invoke_result_t<_Query, const _Env&, _Args...>;
