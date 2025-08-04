@@ -509,7 +509,7 @@ namespace {
 
   TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {
     static_assert(scheduler<my_scheduler<>>);
-    my_scheduler<> scheduler = exec::inline_scheduler();
+    my_scheduler<> scheduler = stdexec::inline_scheduler();
     my_scheduler<> copied = scheduler;
     CHECK(copied == scheduler);
 
@@ -528,7 +528,7 @@ namespace {
     using my_scheduler2 =
       my_scheduler<get_forward_progress_guarantee.signature<forward_progress_guarantee()>>;
     static_assert(scheduler<my_scheduler2>);
-    my_scheduler2 scheduler = exec::inline_scheduler();
+    my_scheduler2 scheduler = stdexec::inline_scheduler();
     my_scheduler2 copied = scheduler;
     CHECK(copied == scheduler);
 
@@ -540,7 +540,7 @@ namespace {
 
     CHECK(
       get_forward_progress_guarantee(scheduler)
-      == get_forward_progress_guarantee(exec::inline_scheduler()));
+      == get_forward_progress_guarantee(stdexec::inline_scheduler()));
 
     bool called = false;
     sync_wait(std::move(sched) | then([&] { called = true; }));
@@ -634,7 +634,7 @@ namespace {
       any_receiver_ref<completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr)>>;
     using sender_t = receiver_ref::any_sender<>;
     using scheduler_t = sender_t::any_scheduler<>;
-    scheduler_t scheduler = exec::inline_scheduler();
+    scheduler_t scheduler = stdexec::inline_scheduler();
     {
       auto op = connect(schedule(scheduler), expect_void_receiver{});
       stdexec::start(op);
@@ -656,7 +656,7 @@ namespace {
       any_receiver_ref<completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr)>>;
     using sender_t = receiver_ref::any_sender<>;
     using scheduler_t = sender_t::any_scheduler<>;
-    scheduler_t scheduler = exec::inline_scheduler();
+    scheduler_t scheduler = stdexec::inline_scheduler();
     auto sched = schedule(scheduler);
     scheduler = stopped_scheduler();
     {
@@ -744,7 +744,7 @@ namespace {
     using sender_t = receiver_ref::any_sender<>;
     using scheduler_t = sender_t::any_scheduler<>;
     {
-      scheduler_t scheduler = exec::inline_scheduler{};
+      scheduler_t scheduler = stdexec::inline_scheduler{};
       scheduler = counting_scheduler{};
       {
         auto op = connect(schedule(scheduler), expect_value_receiver<>{});

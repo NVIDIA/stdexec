@@ -233,7 +233,7 @@ namespace {
     }
   };
 
-  using inline_scheduler = basic_inline_scheduler<>;
+  using stdexec::inline_scheduler;
 
   //! Scheduler that returns a sender that always completes with error.
   template <class E = std::exception_ptr>

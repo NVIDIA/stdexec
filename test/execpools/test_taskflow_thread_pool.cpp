@@ -110,7 +110,7 @@ namespace {
     // Get a handle to the thread pool:
     auto taskflow_sched = pool.get_scheduler();
 
-    exec::inline_scheduler inline_sched;
+    stdexec::inline_scheduler inline_sched;
 
     using namespace stdexec;
 

@@ -53,7 +53,7 @@ auto main(int argc, char *argv[]) -> int {
   report_header();
 
   if (value(params, "run-inline-scheduler")) {
-    run_snr_on("CPU (snr inline)", exec::inline_scheduler{});
+    run_snr_on("CPU (snr inline)", stdexec::inline_scheduler{});
   }
 
   if (value(params, "run-cpp")) {
