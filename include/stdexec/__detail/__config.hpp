@@ -17,7 +17,7 @@
 
 // IWYU pragma: always_keep
 
-#if __cplusplus < 202002L
+#if __cplusplus < 2020'02L
 #  if defined(_MSC_VER) && !defined(__clang__)
 #    error This library requires the use of C++20. Use /Zc:__cplusplus to enable __cplusplus conformance.
 #  else
@@ -47,76 +47,76 @@
 // they expand to the arguments if if the current compiler corresponds to the
 // macro name; nothing, otherwise.
 #if defined(__NVCC__)
-#  define STDEXEC_NVCC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#  define STDEXEC_NVCC()       1
 #  define STDEXEC_NVCC_VERSION (__CUDACC_VER_MAJOR__ * 100 + __CUDACC_VER_MINOR__)
 #elif defined(__EDG__)
-#  define STDEXEC_EDG(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#  define STDEXEC_EDG()       1
 #  define STDEXEC_EDG_VERSION __EDG_VERSION__
 #  if defined(__NVCOMPILER)
-#    define STDEXEC_NVHPC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#    define STDEXEC_NVHPC()       1
 #    define STDEXEC_NVHPC_VERSION (__NVCOMPILER_MAJOR__ * 100 + __NVCOMPILER_MINOR__)
 #  endif
 #  if defined(__INTELLISENSE__)
-#    define STDEXEC_INTELLISENSE(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
-#    define STDEXEC_MSVC_HEADERS(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#    define STDEXEC_INTELLISENSE() 1
+#    define STDEXEC_MSVC_HEADERS() 1
 #  endif
 #elif defined(__clang__)
-#  define STDEXEC_CLANG(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#  define STDEXEC_CLANG()       1
 #  define STDEXEC_CLANG_VERSION (__clang_major__ * 100 + __clang_minor__)
 #  if defined(_MSC_VER)
-#    define STDEXEC_CLANG_CL(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#    define STDEXEC_CLANG_CL() 1
 #  endif
 #  if defined(__apple_build_version__)
-#    define STDEXEC_APPLE_CLANG(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#    define STDEXEC_APPLE_CLANG()       1
 // Apple clang version is encoded as major * 1000000 + minor * 1000 + patch. We ignore the patch
 // version here, as it is not relevant for the purposes of this library.
 #    define STDEXEC_APPLE_CLANG_VERSION (__apple_build_version__ / 1000)
 #  endif
 #elif defined(__GNUC__)
-#  define STDEXEC_GCC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#  define STDEXEC_GCC()       1
 #  define STDEXEC_GCC_VERSION (__GNUC__ * 100 + __GNUC_MINOR__)
 #elif defined(_MSC_VER)
-#  define STDEXEC_MSVC(...)         STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
-#  define STDEXEC_MSVC_HEADERS(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
-#  define STDEXEC_MSVC_VERSION _MSC_VER
+#  define STDEXEC_MSVC()         1
+#  define STDEXEC_MSVC_HEADERS() 1
+#  define STDEXEC_MSVC_VERSION   _MSC_VER
 #endif
 
 #ifndef STDEXEC_NVCC
-#  define STDEXEC_NVCC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#  define STDEXEC_NVCC() 0
 #endif
 #ifndef STDEXEC_NVHPC
-#  define STDEXEC_NVHPC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#  define STDEXEC_NVHPC() 0
 #endif
 #ifndef STDEXEC_EDG
-#  define STDEXEC_EDG(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#  define STDEXEC_EDG() 0
 #endif
 #ifndef STDEXEC_CLANG
-#  define STDEXEC_CLANG(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#  define STDEXEC_CLANG() 0
 #endif
 #ifndef STDEXEC_CLANG_CL
-#  define STDEXEC_CLANG_CL(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#  define STDEXEC_CLANG_CL() 0
 #endif
 #ifndef STDEXEC_APPLE_CLANG
-#  define STDEXEC_APPLE_CLANG(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#  define STDEXEC_APPLE_CLANG() 0
 #endif
 #ifndef STDEXEC_GCC
-#  define STDEXEC_GCC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#  define STDEXEC_GCC() 0
 #endif
 #ifndef STDEXEC_MSVC
-#  define STDEXEC_MSVC(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#  define STDEXEC_MSVC() 0
 #endif
 #ifndef STDEXEC_MSVC_HEADERS
-#  define STDEXEC_MSVC_HEADERS(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#  define STDEXEC_MSVC_HEADERS() 0
 #endif
 #ifndef STDEXEC_INTELLISENSE
-#  define STDEXEC_INTELLISENSE(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#  define STDEXEC_INTELLISENSE() 0
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #if defined(__CUDACC__) || STDEXEC_NVHPC()
-#  define STDEXEC_CUDA_COMPILATION(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#  define STDEXEC_CUDA_COMPILATION() 1
 #else
-#  define STDEXEC_CUDA_COMPILATION(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#  define STDEXEC_CUDA_COMPILATION() 0
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -134,7 +134,7 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-#if __cpp_impl_coroutine >= 201902 && __cpp_lib_coroutine >= 201902
+#if __cpp_impl_coroutine >= 2019'02 && __cpp_lib_coroutine >= 2019'02
 #  include <coroutine> // IWYU pragma: keep
 #  define STDEXEC_STD_NO_COROUTINES() 0
 namespace __coro = std; // NOLINT(misc-unused-alias-decls)
@@ -185,7 +185,8 @@ namespace __coro = std::experimental;
 #  endif
 #elif STDEXEC_CLANG_CL()
 // clang-cl does not support [[no_unique_address]]: https://reviews.llvm.org/D110485
-#  if STDEXEC_CLANG_VERSION < 18'01 // TODO: Find the version that started supporting [[msvc::no_unique_address]]
+// TODO: Find the version that started supporting [[msvc::no_unique_address]]
+#  if STDEXEC_CLANG_VERSION < 18'01
 #    define STDEXEC_ATTR_WHICH_3(_ATTR) /*nothing*/
 #  else
 #    define STDEXEC_ATTR_WHICH_3(_ATTR) [[msvc::no_unique_address]]
@@ -377,7 +378,7 @@ namespace stdexec {
   inline constexpr bool __same_as_v<_Ap, _Ap> = true;
 } // namespace stdexec
 
-#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L
+#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 2022'02L
 #  define STDEXEC_UNREACHABLE() std::unreachable()
 #elif STDEXEC_HAS_BUILTIN(__builtin_unreachable)
 #  define STDEXEC_UNREACHABLE() __builtin_unreachable()
@@ -420,21 +421,22 @@ namespace stdexec {
 // Some compilers turn on pack indexing in pre-C++26 code. We want to use it if it is
 // available. Pack indexing is disabled for clang < 20 because of:
 // https://github.com/llvm/llvm-project/issues/116105
-#if defined(__cpp_pack_indexing) && !STDEXEC_NVCC() && !(STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 20'00)
-#  define STDEXEC_HAS_PACK_INDEXING() 1
+#if defined(__cpp_pack_indexing) && !STDEXEC_NVCC()                                                \
+  && !(STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 20'00)
+#  define STDEXEC_STD_NO_PACK_INDEXING() 0
 #else // ^^^ has pack indexing ^^^ / vvv no pack indexing vvv
-#  define STDEXEC_HAS_PACK_INDEXING() 0
+#  define STDEXEC_STD_NO_PACK_INDEXING() 1
 #endif // no pack indexing
 
 #if STDEXEC_HAS_FEATURE(thread_sanitizer) || defined(__SANITIZE_THREAD__)
-#  define STDEXEC_TSAN(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#  define STDEXEC_TSAN() 1
 #else
-#  define STDEXEC_TSAN(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#  define STDEXEC_TSAN() 0
 #endif
 
 // Before clang-16, clang did not like libstdc++'s ranges implementation
 #if __has_include(<ranges>) && \
-  (defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L) && \
+  (defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 2019'11L) && \
   (!STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 16'00 || defined(_LIBCPP_VERSION))
 #  define STDEXEC_HAS_STD_RANGES() 1
 #else
@@ -442,19 +444,19 @@ namespace stdexec {
 #endif
 
 #if __has_include(<memory_resource>) && \
-  (defined(__cpp_lib_memory_resource) && __cpp_lib_memory_resource >= 201603L)
+  (defined(__cpp_lib_memory_resource) && __cpp_lib_memory_resource >= 2016'03L)
 #  define STDEXEC_HAS_STD_MEMORY_RESOURCE() 1
 #else
 #  define STDEXEC_HAS_STD_MEMORY_RESOURCE() 0
 #endif
 
-#if defined(__cpp_lib_execution) && __cpp_lib_execution >= 201603L
+#if defined(__cpp_lib_execution) && __cpp_lib_execution >= 2016'03L
 #  define STDEXEC_HAS_EXECUTION_POLICY() 1
 #else
 #  define STDEXEC_HAS_EXECUTION_POLICY() 0
 #endif
 
-#if defined(__cpp_lib_execution) && __cpp_lib_execution >= 201902L
+#if defined(__cpp_lib_execution) && __cpp_lib_execution >= 2019'02L
 #  define STDEXEC_HAS_UNSEQUENCED_EXECUTION_POLICY() 1
 #else
 #  define STDEXEC_HAS_UNSEQUENCED_EXECUTION_POLICY() 0
@@ -486,10 +488,10 @@ namespace stdexec {
 #  define STDEXEC_FRIENDSHIP_IS_LEXICAL() 0
 #endif
 
-#if defined(__cpp_explicit_this_parameter) && (__cpp_explicit_this_parameter >= 202110)
-#  define STDEXEC_EXPLICIT_THIS(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#if defined(__cpp_explicit_this_parameter) && (__cpp_explicit_this_parameter >= 2021'10L)
+#  define STDEXEC_EXPLICIT_THIS() 1
 #else
-#  define STDEXEC_EXPLICIT_THIS(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
+#  define STDEXEC_EXPLICIT_THIS() 0
 #endif
 
 #if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING == 0

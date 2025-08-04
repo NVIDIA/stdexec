@@ -20,7 +20,7 @@
 
 #if __has_include(<bit>)
 #  include <bit>
-#  if __cpp_lib_bit_cast >= 201806L
+#  if __cpp_lib_bit_cast >= 2018'06L
 #    define STDEXEC_HAS_BIT_CAST
 #  endif
 #endif

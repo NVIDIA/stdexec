@@ -25,7 +25,7 @@
 #include <atomic>
 #include <thread>
 
-#if __has_include(<stop_token>) && __cpp_lib_jthread >= 201911
+#if __has_include(<stop_token>) && __cpp_lib_jthread >= 2019'11L
 #  include <stop_token> // IWYU pragma: export
 #endif
 

@@ -97,7 +97,7 @@ namespace exec {
           std::atomic_thread_fence(std::memory_order_release);
           // TSan does not support std::atomic_thread_fence, so we
           // need to use the TSan-specific __tsan_release instead:
-          STDEXEC_TSAN(__tsan_release(&__started_));
+          STDEXEC_WHEN(STDEXEC_TSAN(), __tsan_release(&__started_));
           __child_op_.__destroy();
         }
       }

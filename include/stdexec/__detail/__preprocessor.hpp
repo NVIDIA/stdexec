@@ -88,12 +88,6 @@
 
 #define STDEXEC_TAIL(_, ...)             __VA_ARGS__
 
-// If tail is non-empty, expand to the tail. Otherwise, expand to the head
-#define STDEXEC_HEAD_OR_TAIL(_XP, ...)   STDEXEC_EXPAND __VA_OPT__((__VA_ARGS__) STDEXEC_EAT)(_XP)
-
-// If tail is non-empty, expand to nothing. Otherwise, expand to the head
-#define STDEXEC_HEAD_OR_NULL(_XP, ...)   STDEXEC_EXPAND __VA_OPT__(() STDEXEC_EAT)(_XP)
-
 #define STDEXEC_REPEAT(_N, _MACRO, ...)  STDEXEC_REPEAT_(_N, _MACRO, __VA_ARGS__)
 #define STDEXEC_REPEAT_(_N, _MACRO, ...) STDEXEC_REPEAT_##_N(_MACRO, __VA_ARGS__)
 #define STDEXEC_REPEAT_0(_MACRO, ...)
