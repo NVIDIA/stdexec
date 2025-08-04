@@ -167,8 +167,7 @@ namespace nvexec::_strm::repeat_n {
     void start() & noexcept {
       if (this->stream_provider_.status_ != cudaSuccess) {
         // Couldn't allocate memory for operation state, complete with error
-        this->propagate_completion_signal(
-          ex::set_error, std::move(this->stream_provider_.status_));
+        this->propagate_completion_signal(ex::set_error, std::move(this->stream_provider_.status_));
       } else {
         if (n_) {
           ex::start(*pred_op_state_);
@@ -181,8 +180,7 @@ namespace nvexec::_strm::repeat_n {
     operation_state_t(PredSender&& pred_sender, Closure closure, Receiver&& rcvr, std::size_t n)
       : operation_state_base_t<ReceiverId>(
           static_cast<Receiver&&>(rcvr),
-          ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(pred_sender))
-            .context_state_)
+          ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(pred_sender)).context_state_)
       , pred_sender_{static_cast<PredSender&&>(pred_sender)}
       , closure_(closure)
       , n_(n) {

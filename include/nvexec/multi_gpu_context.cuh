@@ -99,7 +99,6 @@ namespace nvexec {
           stdexec::completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
 
         STDEXEC_ATTRIBUTE(host, device)
-
         explicit sender_t(int num_devices, context_state_t context_state) noexcept
           : env_{.num_devices_ = num_devices, .context_state_ = context_state} {
         }

@@ -46,7 +46,6 @@ namespace stdexec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-
       auto operator()() const noexcept -> __binder_back<split_t> {
         return {{}, {}, {}};
       }

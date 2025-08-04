@@ -44,7 +44,6 @@ namespace nvexec::_strm::queue {
     task_base_t** tail_;
 
     STDEXEC_ATTRIBUTE(host, device)
-
     void operator()(task_base_t* task) {
       atom_task_ref tail_ref(*tail_);
       task_base_t* old_tail = tail_ref.load(::cuda::memory_order_acquire);

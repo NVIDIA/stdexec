@@ -71,7 +71,6 @@ namespace exec {
     template <class Domain>
     struct _env_t {
       STDEXEC_ATTRIBUTE(always_inline, host, device)
-
       static constexpr auto query(stdexec::get_domain_t) noexcept -> Domain {
         return {};
       }
@@ -144,7 +143,6 @@ namespace exec {
       using _cache_sndr_t = fork_join_t::_cache_sndr_t<_variant_t<_child_completions_t>, _domain_t>;
 
       STDEXEC_ATTRIBUTE(host, device)
-
       explicit _opstate_t(Sndr&& sndr, Closures&& closures, Rcvr rcvr) noexcept
         : _rcvr_(static_cast<Rcvr&&>(rcvr))
         , _fork_opstate_(
@@ -206,7 +204,6 @@ namespace exec {
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
-
       constexpr auto get_env() const noexcept -> stdexec::__fwd_env_t<stdexec::env_of_t<Rcvr>> {
         return stdexec::__env::__fwd_fn{}(stdexec::get_env(_rcvr_));
       }
@@ -294,7 +291,6 @@ namespace exec {
     }
 
     STDEXEC_ATTRIBUTE(host, device)
-
     constexpr auto get_env() const noexcept -> stdexec::__fwd_env_t<stdexec::env_of_t<Sndr>> {
       return stdexec::__env::__fwd_fn{}(stdexec::get_env(sndr_));
     }

@@ -48,7 +48,6 @@ namespace stdexec {
 
   namespace __var {
     STDEXEC_ATTRIBUTE(host, device)
-
     inline auto __mk_index_guard(std::size_t &__index, std::size_t __new) noexcept {
       __index = __new;
       return __scope_guard{[&__index]() noexcept { __index = __variant_npos; }};

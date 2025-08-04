@@ -139,7 +139,6 @@ namespace nvexec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-
       auto operator()(std::string name) const -> stdexec::__binder_back<push_t, std::string> {
         return {{std::move(name)}, {}, {}};
       }
@@ -152,7 +151,6 @@ namespace nvexec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-
       auto operator()() const noexcept -> stdexec::__binder_back<pop_t> {
         return {{}, {}, {}};
       }

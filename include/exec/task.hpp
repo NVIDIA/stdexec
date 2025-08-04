@@ -335,7 +335,8 @@ namespace exec {
       }
 
      private:
-      using __scheduler_t = __query_result_or_t<get_scheduler_t, _Context, stdexec::inline_scheduler>;
+      using __scheduler_t =
+        __query_result_or_t<get_scheduler_t, _Context, stdexec::inline_scheduler>;
 
       struct __final_awaitable {
         static constexpr auto await_ready() noexcept -> bool {

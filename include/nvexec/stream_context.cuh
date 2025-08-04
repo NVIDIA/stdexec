@@ -44,13 +44,11 @@ namespace nvexec {
   namespace _strm {
     struct stream_scheduler_env {
       STDEXEC_ATTRIBUTE(nodiscard)
-
       static auto query(get_forward_progress_guarantee_t) noexcept -> forward_progress_guarantee {
         return forward_progress_guarantee::weakly_parallel;
       }
 
       STDEXEC_ATTRIBUTE(nodiscard)
-
       constexpr auto query(get_domain_t) const noexcept -> stream_domain {
         return {};
       }
@@ -108,7 +106,6 @@ namespace nvexec {
           stdexec::completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
 
         STDEXEC_ATTRIBUTE(host, device)
-
         explicit sender_t(context_state_t context_state) noexcept
           : env_{context_state} {
         }
@@ -131,7 +128,6 @@ namespace nvexec {
           context_state_t context_state_;
 
           STDEXEC_ATTRIBUTE(nodiscard)
-
           auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> stream_scheduler {
             return stream_scheduler{context_state_};
           }

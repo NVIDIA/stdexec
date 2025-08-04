@@ -583,7 +583,6 @@ namespace stdexec {
   };
 
   STDEXEC_ATTRIBUTE(noreturn, host, device)
-
   inline void __terminate() noexcept {
     STDEXEC_IF_HOST(::exit(-1))
     STDEXEC_IF_DEVICE(__trap())

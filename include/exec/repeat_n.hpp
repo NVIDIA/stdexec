@@ -104,7 +104,7 @@ namespace exec {
       using __child_t = decltype(__child_count_pair_t::__child_);
       using __receiver_t = stdexec::__t<__receiver<__id<_Sender>, __id<_Receiver>>>;
       using __child_on_sched_sender_t =
-        __result_of<exec::sequence, schedule_result_t<trampoline_scheduler&>, __child_t &>;
+        __result_of<exec::sequence, schedule_result_t<trampoline_scheduler &>, __child_t &>;
       using __child_op_t = stdexec::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
       __child_count_pair<__child_t> __pair_;
@@ -230,7 +230,6 @@ namespace exec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-
       constexpr auto
         operator()(std::size_t __count) const -> __binder_back<repeat_n_t, std::size_t> {
         return {{__count}, {}, {}};

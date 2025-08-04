@@ -121,7 +121,6 @@ namespace exec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-
       auto operator()() const noexcept -> __binder_back<__materialize_t> {
         return {{}, {}, {}};
       }
@@ -230,7 +229,6 @@ namespace exec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-
       auto operator()() const noexcept -> __binder_back<__dematerialize_t> {
         return {{}, {}, {}};
       }

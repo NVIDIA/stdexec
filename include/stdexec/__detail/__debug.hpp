@@ -90,7 +90,6 @@ namespace stdexec {
       }
 
       STDEXEC_ATTRIBUTE(host, device)
-
       void set_stopped() noexcept
         requires __one_of<set_stopped_t (*)(), _Sigs...>
       {

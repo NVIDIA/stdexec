@@ -56,7 +56,6 @@ namespace stdexec {
       }
 
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-
       auto base() const & noexcept -> const _Base& {
         return __base_;
       }

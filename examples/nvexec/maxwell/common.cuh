@@ -134,7 +134,6 @@ struct grid_t {
 constexpr float C0 = 299792458.0f; // Speed of light [metres per second]
 
 STDEXEC_ATTRIBUTE(host, device)
-
 inline auto
   is_circle_part(float x, float y, float object_x, float object_y, float object_size) -> bool {
   const float os2 = object_size * object_size;
@@ -194,25 +193,21 @@ inline auto grid_initializer(float dt, fields_accessor accessor) -> grid_initial
 }
 
 STDEXEC_ATTRIBUTE(host, device)
-
 inline auto right_nid(std::size_t cell_id, std::size_t col, std::size_t N) -> std::size_t {
   return col == N - 1 ? cell_id - (N - 1) : cell_id + 1;
 }
 
 STDEXEC_ATTRIBUTE(host, device)
-
 inline auto left_nid(std::size_t cell_id, std::size_t col, std::size_t N) -> std::size_t {
   return col == 0 ? cell_id + N - 1 : cell_id - 1;
 }
 
 STDEXEC_ATTRIBUTE(host, device)
-
 inline auto bottom_nid(std::size_t cell_id, std::size_t row, std::size_t N) -> std::size_t {
   return row == 0 ? cell_id + N * (N - 1) : cell_id - N;
 }
 
 STDEXEC_ATTRIBUTE(host, device)
-
 inline auto top_nid(std::size_t cell_id, std::size_t row, std::size_t N) -> std::size_t {
   return row == N - 1 ? cell_id - N * (N - 1) : cell_id + N;
 }
@@ -247,13 +242,11 @@ struct e_field_calculator_t {
   std::size_t source_position;
 
   STDEXEC_ATTRIBUTE(nodiscard, host, device)
-
   auto gaussian_pulse(float t, float t_0, float tau) const -> float {
     return static_cast<float>(exp(-(((t - t_0) / tau) * (t - t_0) / tau)));
   }
 
   STDEXEC_ATTRIBUTE(nodiscard, host, device)
-
   auto calculate_source(float t, float frequency) const -> float {
     const float tau = 0.5f / frequency;
     const float t_0 = 6.0f * tau;

@@ -175,7 +175,6 @@ namespace nvexec {
     }
 
     STDEXEC_ATTRIBUTE(host, device)
-
     variant_t()
       requires std::default_initializable<front_t>
     {

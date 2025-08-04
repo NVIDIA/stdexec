@@ -29,7 +29,6 @@ namespace stdexec {
     using receiver_concept = receiver_t;
 
     STDEXEC_ATTRIBUTE(host, device)
-
     explicit constexpr __rcvr_ref(_Rcvr& __rcvr) noexcept
       : __rcvr_{std::addressof(__rcvr)} {
     }

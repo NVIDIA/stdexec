@@ -425,7 +425,6 @@ namespace stdexec {
       using __id = cprop;
 
       STDEXEC_ATTRIBUTE(nodiscard)
-
       static constexpr auto query(_Query) noexcept {
         return _Value;
       }

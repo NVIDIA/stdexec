@@ -117,7 +117,7 @@ RemoveBracesLLVM: false
 ReflowComments: false
 RequiresClausePosition: OwnLine
 IndentRequiresClause: true
-SeparateDefinitionBlocks: Always
+SeparateDefinitionBlocks: Leave
 ShortNamespaceLines: 0
 SortIncludes: Never
 SortUsingDeclarations: false
