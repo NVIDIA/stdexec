@@ -282,7 +282,7 @@ namespace exec {
     template <class _Sch>
     struct __just_void {
       using sender_concept = sender_t;
-      using completion_signatures = completion_signatures<set_value_t()>;
+      using completion_signatures = stdexec::completion_signatures<set_value_t()>;
 
       template <class _Rcvr>
       [[nodiscard]]

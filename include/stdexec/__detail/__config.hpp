@@ -48,10 +48,13 @@
 // macro name; nothing, otherwise.
 #if defined(__NVCC__)
 #  define STDEXEC_NVCC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#  define STDEXEC_NVCC_VERSION (__CUDACC_VER_MAJOR__ * 100 + __CUDACC_VER_MINOR__)
 #elif defined(__EDG__)
 #  define STDEXEC_EDG(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#  define STDEXEC_EDG_VERSION __EDG_VERSION__
 #  if defined(__NVCOMPILER)
 #    define STDEXEC_NVHPC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#    define STDEXEC_NVHPC_VERSION (__NVCOMPILER_MAJOR__ * 100 + __NVCOMPILER_MINOR__)
 #  endif
 #  if defined(__INTELLISENSE__)
 #    define STDEXEC_INTELLISENSE(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
@@ -59,17 +62,23 @@
 #  endif
 #elif defined(__clang__)
 #  define STDEXEC_CLANG(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#  define STDEXEC_CLANG_VERSION (__clang_major__ * 100 + __clang_minor__)
 #  if defined(_MSC_VER)
 #    define STDEXEC_CLANG_CL(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #  endif
 #  if defined(__apple_build_version__)
 #    define STDEXEC_APPLE_CLANG(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+// Apple clang version is encoded as major * 1000000 + minor * 1000 + patch. We ignore the patch
+// version here, as it is not relevant for the purposes of this library.
+#    define STDEXEC_APPLE_CLANG_VERSION (__apple_build_version__ / 1000)
 #  endif
 #elif defined(__GNUC__)
 #  define STDEXEC_GCC(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#  define STDEXEC_GCC_VERSION (__GNUC__ * 100 + __GNUC_MINOR__)
 #elif defined(_MSC_VER)
 #  define STDEXEC_MSVC(...)         STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
 #  define STDEXEC_MSVC_HEADERS(...) STDEXEC_HEAD_OR_TAIL(1, __VA_ARGS__)
+#  define STDEXEC_MSVC_VERSION _MSC_VER
 #endif
 
 #ifndef STDEXEC_NVCC
@@ -101,10 +110,6 @@
 #endif
 #ifndef STDEXEC_INTELLISENSE
 #  define STDEXEC_INTELLISENSE(...) STDEXEC_HEAD_OR_NULL(0, __VA_ARGS__)
-#endif
-
-#if STDEXEC_NVHPC()
-#  define STDEXEC_NVHPC_VERSION() (__NVCOMPILER_MAJOR__ * 100 + __NVCOMPILER_MINOR__)
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -173,13 +178,25 @@ namespace __coro = std::experimental;
 
 #if STDEXEC_NVHPC()
 // NVBUG #4067067: NVHPC does not fully support [[no_unique_address]]
-#  define STDEXEC_ATTR_WHICH_3(_ATTR) /*nothing*/
+#  if STDEXEC_NVHPC_VERSION < 23'05
+#    define STDEXEC_ATTR_WHICH_3(_ATTR) /*nothing*/
+#  else
+#    define STDEXEC_ATTR_WHICH_3(_ATTR) [[no_unique_address]]
+#  endif
+#elif STDEXEC_CLANG_CL()
+// clang-cl does not support [[no_unique_address]]: https://reviews.llvm.org/D110485
+#  if STDEXEC_CLANG_VERSION < 18'01 // TODO: Find the version that started supporting [[msvc::no_unique_address]]
+#    define STDEXEC_ATTR_WHICH_3(_ATTR) /*nothing*/
+#  else
+#    define STDEXEC_ATTR_WHICH_3(_ATTR) [[msvc::no_unique_address]]
+#  endif
 #elif STDEXEC_MSVC()
 // MSVCBUG https://developercommunity.visualstudio.com/t/Incorrect-codegen-when-using-msvc::no_/10452874
-#  define STDEXEC_ATTR_WHICH_3(_ATTR) // [[msvc::no_unique_address]]
-#elif STDEXEC_CLANG_CL()
-// clang-cl does not support: https://reviews.llvm.org/D110485
-#  define STDEXEC_ATTR_WHICH_3(_ATTR) // [[msvc::no_unique_address]]
+#  if STDEXEC_MSVC_VERSION < 19'43
+#    define STDEXEC_ATTR_WHICH_3(_ATTR) /*nothing*/
+#  else
+#    define STDEXEC_ATTR_WHICH_3(_ATTR) [[msvc::no_unique_address]]
+#  endif
 #else
 #  define STDEXEC_ATTR_WHICH_3(_ATTR) [[no_unique_address]]
 #endif
@@ -190,7 +207,7 @@ namespace __coro = std::experimental;
 #elif STDEXEC_CLANG()
 #  define STDEXEC_ATTR_WHICH_4(_ATTR)                                                              \
     __attribute__((__always_inline__, __artificial__, __nodebug__)) inline
-#elif defined(__GNUC__)
+#elif STDEXEC_GCC()
 #  define STDEXEC_ATTR_WHICH_4(_ATTR) __attribute__((__always_inline__, __artificial__)) inline
 #else
 #  define STDEXEC_ATTR_WHICH_4(_ATTR) /*nothing*/
@@ -272,7 +289,7 @@ namespace __coro = std::experimental;
 #  define STDEXEC_IS_TRIVIALLY_COPYABLE(...) std::is_trivially_copyable_v<__VA_ARGS__>
 #endif
 
-#if STDEXEC_HAS_BUILTIN(__is_base_of) || (_MSC_VER >= 1914)
+#if STDEXEC_HAS_BUILTIN(__is_base_of) || (STDEXEC_MSVC_VERSION >= 19'14)
 #  define STDEXEC_IS_BASE_OF(...) __is_base_of(__VA_ARGS__)
 #else
 #  define STDEXEC_IS_BASE_OF(...) std::is_base_of_v<__VA_ARGS__>
@@ -371,17 +388,19 @@ namespace stdexec {
 #endif
 
 // Before gcc-12, gcc really didn't like tuples or variants of immovable types
-#if STDEXEC_GCC() && (__GNUC__ < 12)
+#if STDEXEC_GCC() && (STDEXEC_GCC_VERSION < 12'00)
 #  define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&)
 #else
 #  define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&) = delete
 #endif
 
+#if STDEXEC_GCC()
 // BUG (gcc#98995): copy elision fails when initializing a [[no_unique_address]] field
 // from a function returning an object of class type by value.
-//
 // See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=98995
-#if STDEXEC_GCC()
+#  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+#elif STDEXEC_CLANG() && (__clang_major__ >= 15 && __clang_major__ < 19)
+// See https://github.com/llvm/llvm-project/issues/93563
 #  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
 #else
 #  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS STDEXEC_ATTRIBUTE(no_unique_address)
@@ -401,7 +420,7 @@ namespace stdexec {
 // Some compilers turn on pack indexing in pre-C++26 code. We want to use it if it is
 // available. Pack indexing is disabled for clang < 20 because of:
 // https://github.com/llvm/llvm-project/issues/116105
-#if defined(__cpp_pack_indexing) && !STDEXEC_NVCC() && !(STDEXEC_CLANG() && __clang_major__ < 20)
+#if defined(__cpp_pack_indexing) && !STDEXEC_NVCC() && !(STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 20'00)
 #  define STDEXEC_HAS_PACK_INDEXING() 1
 #else // ^^^ has pack indexing ^^^ / vvv no pack indexing vvv
 #  define STDEXEC_HAS_PACK_INDEXING() 0
@@ -416,7 +435,7 @@ namespace stdexec {
 // Before clang-16, clang did not like libstdc++'s ranges implementation
 #if __has_include(<ranges>) && \
   (defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L) && \
-  (!STDEXEC_CLANG() || __clang_major__ >= 16 || defined(_LIBCPP_VERSION))
+  (!STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 16'00 || defined(_LIBCPP_VERSION))
 #  define STDEXEC_HAS_STD_RANGES() 1
 #else
 #  define STDEXEC_HAS_STD_RANGES() 0
@@ -461,7 +480,7 @@ namespace stdexec {
   }
 
 // GCC 13 implements lexical friendship, but it is incomplete. See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111018
-#if STDEXEC_CLANG() // || (STDEXEC_GCC() && __GNUC__ >= 13)
+#if STDEXEC_CLANG() // || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 13'00)
 #  define STDEXEC_FRIENDSHIP_IS_LEXICAL() 1
 #else
 #  define STDEXEC_FRIENDSHIP_IS_LEXICAL() 0

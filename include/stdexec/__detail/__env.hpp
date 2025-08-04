@@ -424,11 +424,20 @@ namespace stdexec {
 
     // utility for joining multiple environments
     template <class... _Envs>
+    struct env;
+
+    template <>
+    struct env<> {
+      using __t = env;
+      using __id = env;
+    };
+
+    template <class... _Envs>
     struct env {
       using __t = env;
       using __id = env;
 
-      __tuple_for<_Envs...> __tup_;
+      __tuple_for<_Envs..., env<>> __tup_;
 
       // return a reference to the first child env for which
       // __queryable<_Envs, _Query, _Args...> is true.
@@ -436,7 +445,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE(always_inline)
       static constexpr auto __get_1st(const env& __self) noexcept -> decltype(auto) {
         // NOLINTNEXTLINE (modernize-avoid-c-arrays)
-        constexpr bool __flags[] = {__queryable<_Envs, _Query, _Args...>...};
+        constexpr bool __flags[] = {__queryable<_Envs, _Query, _Args...>..., true};
         constexpr std::size_t __idx = __pos_of(__flags, __flags + sizeof...(_Envs));
         return __self.__tup_.template __get<__idx>(__self.__tup_);
       }
@@ -448,7 +457,7 @@ namespace stdexec {
       // This is useful for constexpr evaluation of queries.
       template <class _Query, class... _Args>
         requires(__queryable<_Envs, _Query, _Args...> || ...)
-      STDEXEC_ATTRIBUTE(always_inline)
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline)
       static constexpr auto query(_Query __q, _Args&&... __args)
         noexcept(__nothrow_queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>)
           -> decltype(auto)
@@ -463,7 +472,7 @@ namespace stdexec {
 
       template <class _Query, class... _Args>
         requires(__queryable<_Envs, _Query, _Args...> || ...)
-      STDEXEC_ATTRIBUTE(always_inline)
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline)
       constexpr auto query(_Query __q, _Args&&... __args) const
         noexcept(__nothrow_queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>)
           -> decltype(auto) {
@@ -501,7 +510,7 @@ namespace stdexec {
       template <class _Query, class... _Args>
         requires __queryable<_Env0, _Query, _Args...>
               || __queryable<_Env1, _Query, _Args...>
-                 STDEXEC_ATTRIBUTE(always_inline)
+                 STDEXEC_ATTRIBUTE(nodiscard, always_inline)
                  static constexpr auto query(_Query __q, _Args&&... __args)
                    noexcept(__nothrow_queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>)
                      -> decltype(auto)
@@ -516,7 +525,7 @@ namespace stdexec {
 
       template <class _Query, class... _Args>
         requires __queryable<_Env0, _Query, _Args...> || __queryable<_Env1, _Query, _Args...>
-      STDEXEC_ATTRIBUTE(always_inline)
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline)
       constexpr auto query(_Query __q, _Args&&... __args) const
         noexcept(__nothrow_queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>)
           -> decltype(auto) {
@@ -568,7 +577,7 @@ namespace stdexec {
         using __id = __fwd;
         STDEXEC_ATTRIBUTE(no_unique_address) _Env __env_;
 
-#if STDEXEC_GCC() && __GNUC__ < 12
+#if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 12'00
         using __cvref_env_t = std::add_const_t<_Env>&;
 #else
         using __cvref_env_t = const _Env&;
@@ -613,7 +622,7 @@ namespace stdexec {
         using __id = __without_;
         _Env __env_;
 
-#if STDEXEC_GCC() && __GNUC__ < 12
+#if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 12'00
         using __cvref_env_t = std::add_const_t<_Env>&;
 #else
         using __cvref_env_t = const _Env&;
