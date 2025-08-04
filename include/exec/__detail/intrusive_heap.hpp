@@ -26,7 +26,7 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_partial_spec_arg_list)
 
 namespace exec {
-#if defined(__cpp_lib_int_pow2) && __cpp_lib_int_pow2 >= 202002L
+#if defined(__cpp_lib_int_pow2) && __cpp_lib_int_pow2 >= 2020'02L
   namespace detail {
     using std::bit_ceil;
   } // namespace detail

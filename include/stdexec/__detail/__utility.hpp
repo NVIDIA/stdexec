@@ -174,7 +174,7 @@ namespace stdexec {
   };
 } // namespace stdexec
 
-#if defined(__cpp_auto_cast) && (__cpp_auto_cast >= 202110UL)
+#if defined(__cpp_auto_cast) && (__cpp_auto_cast >= 2021'10L)
 #  define STDEXEC_DECAY_COPY(...) auto(__VA_ARGS__)
 #else
 #  define STDEXEC_DECAY_COPY(...) (true ? (__VA_ARGS__) : stdexec::__decay_copy(__VA_ARGS__))

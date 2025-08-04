@@ -38,7 +38,7 @@ namespace {
   thread_local int __thread_id = 0;
 
   // This is a work-around for apple clang bugs in Release mode
-  STDEXEC_APPLE_CLANG([[clang::optnone]]) auto get_id() -> int {
+  STDEXEC_WHEN(STDEXEC_APPLE_CLANG(), [[clang::optnone]]) auto get_id() -> int {
     return __thread_id;
   }
 

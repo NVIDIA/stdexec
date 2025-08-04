@@ -18,7 +18,7 @@
 
 #include <atomic>
 
-#if __cpp_lib_atomic_ref >= 201806L
+#if __cpp_lib_atomic_ref >= 2018'06L
 template <class T>
 using __atomic_ref = std::atomic_ref<T>;
 #else

@@ -1025,7 +1025,7 @@ namespace stdexec {
     using __f = __mor<__minvoke<_Fn, _Args>...>;
   };
 
-#if STDEXEC_HAS_PACK_INDEXING()
+#if !STDEXEC_STD_NO_PACK_INDEXING()
   STDEXEC_PRAGMA_PUSH()
   STDEXEC_PRAGMA_IGNORE_GNU("-Wc++26-extensions")
 
