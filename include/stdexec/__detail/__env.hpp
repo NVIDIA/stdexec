@@ -476,6 +476,7 @@ namespace stdexec {
 
       template <class _Query, class... _Args>
         requires __queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>
+              && (!__statically_queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>)
       STDEXEC_ATTRIBUTE(nodiscard, always_inline)
       constexpr auto query(_Query __q, _Args&&... __args) const
         noexcept(__nothrow_queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>)
@@ -523,6 +524,7 @@ namespace stdexec {
 
       template <class _Query, class... _Args>
         requires __queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>
+              && (!__statically_queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>)
       STDEXEC_ATTRIBUTE(nodiscard, always_inline)
       constexpr auto query(_Query __q, _Args&&... __args) const
         noexcept(__nothrow_queryable<__1st_env_t<_Query, _Args...>, _Query, _Args...>)
