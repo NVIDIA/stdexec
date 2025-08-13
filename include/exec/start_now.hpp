@@ -89,7 +89,7 @@ namespace exec {
         __storage_base<_EnvId>* __stg_;
 
         template <class... _As>
-        void set_value(_As&&... __as) noexcept {
+        void set_value(_As&&...) noexcept {
           __stg_->__complete();
         }
 

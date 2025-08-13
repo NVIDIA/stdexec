@@ -366,7 +366,7 @@ class result_dumper_t {
     , accessor_(accessor) {
   }
 
-  void operator()(bool update_time = true) const {
+  void operator()(bool /* update_time */ = true) const {
     int rank_ = 0;
     const std::string filename = std::string("output_") + std::to_string(rank_) + "_"
                                + std::to_string(0) + ".vtk";

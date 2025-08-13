@@ -314,7 +314,7 @@ namespace nvexec::_strm {
       , live_blocks(ptr_comparator_t{}) {
     }
 
-    auto do_allocate(const std::size_t bytes, const std::size_t alignment) -> void* override {
+    auto do_allocate(const std::size_t bytes, [[maybe_unused]]const std::size_t alignment) -> void* override {
       assert(alignment <= block_alignment);
 
       std::lock_guard<std::mutex> lock(mutex);

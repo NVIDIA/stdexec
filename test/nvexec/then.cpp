@@ -291,7 +291,7 @@ namespace {
     {
       auto snd = ex::schedule(stream_ctx.get_scheduler())
                | ex::then([handle]() -> tracer_t { return tracer_t{handle}; })
-               | ex::then([](tracer_t &&tracer) {});
+               | ex::then([](tracer_t &&) {});
       stdexec::sync_wait(std::move(snd));
     }
 
