@@ -168,7 +168,7 @@ namespace {
     const auto tid = std::this_thread::get_id();
     bool called{false};
     ex::sender auto snd = stdexec::on(
-      pool.get_scheduler(), ex::just() | ex::bulk(ex::par_unseq, 1024, [&](int index) noexcept {
+      pool.get_scheduler(), ex::just() | ex::bulk(ex::par_unseq, 1024, [&](int) noexcept {
                               if (tid == std::this_thread::get_id()) {
                                 failed = true;
                               }

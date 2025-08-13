@@ -135,7 +135,7 @@ namespace stdexec {
       : __result_(connect(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr))) {
     }
 
-    void submit(_Sender&& __sndr, _Receiver&&) noexcept {
+    void submit(_Sender&&, _Receiver&&) noexcept {
       stdexec::start(__result_);
     }
 
