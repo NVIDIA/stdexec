@@ -259,7 +259,7 @@ namespace {
 
   struct test_domain {
     template <sender_expr_for<then_t> _Sender>
-    static constexpr auto transform_sender(_Sender&& __sndr) noexcept {
+    static constexpr auto transform_sender(_Sender&&) noexcept {
       return just("goodbye"s);
     }
   };
