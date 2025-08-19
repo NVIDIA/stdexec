@@ -21,7 +21,7 @@
 #include "../stdexec/execution.hpp"
 #include "../stdexec/coroutine.hpp"
 #include "task.hpp"
-#include "inline_scheduler.hpp"
+#include "inline_scheduler.hpp" // IWYU pragma: keep
 #include "any_sender_of.hpp"
 
 #include <exception>
