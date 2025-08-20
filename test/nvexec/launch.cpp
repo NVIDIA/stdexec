@@ -61,7 +61,7 @@ namespace { namespace {
     auto snd = stdexec::transfer_just(stream.get_scheduler(), first, last)
              | nvexec::launch(
                  {.grid_size = NUM_BLOCKS, .block_size = THREAD_BLOCK_SIZE},
-                 [flags](cudaStream_t stm, int* first, int* last) -> void {
+                 [flags](cudaStream_t, int* first, int* last) -> void {
                    const size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
                    const ptrdiff_t size = last - first;
 

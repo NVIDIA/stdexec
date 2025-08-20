@@ -68,8 +68,7 @@ namespace nvexec::_strm::queue {
 
   struct root_task_t : task_base_t {
     root_task_t() {
-      this->execute_ = [](task_base_t* t) noexcept {
-      };
+      this->execute_ = [](task_base_t*) noexcept {};
       this->free_ = [](task_base_t* t) noexcept {
         STDEXEC_ASSERT_CUDA_API(cudaFree(static_cast<void*>(t->atom_next_)));
       };

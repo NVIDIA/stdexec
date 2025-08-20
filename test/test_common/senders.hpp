@@ -36,7 +36,7 @@ namespace {
     };
 
     template <class Receiver>
-    auto connect(Receiver rcvr) const noexcept {
+    auto connect(Receiver) const noexcept {
       return operation{};
     }
   };

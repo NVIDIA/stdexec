@@ -65,7 +65,7 @@ namespace nvexec::detail {
   }
 
   [[nodiscard]]
-  inline auto log_on_cuda_error(cudaError_t status, char const * file_name, int line) noexcept
+  inline auto log_on_cuda_error(cudaError_t status, [[maybe_unused]] char const *const file_name, [[maybe_unused]] const int line) noexcept
     -> ::cudaError_t {
     // Clear the global CUDA error state which may have been set by the last
     // call. Otherwise, errors may "leak" to unrelated calls.

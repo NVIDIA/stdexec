@@ -157,8 +157,8 @@ namespace exec {
     struct __default_awaiter_context {
       template <__scheduler_affinity _Affinity>
       explicit __default_awaiter_context(
-        __default_task_context_impl<_Affinity>& __self,
-        _ParentPromise& __parent) noexcept {
+        __default_task_context_impl<_Affinity>&,
+        _ParentPromise&) noexcept {
       }
     };
 
@@ -225,8 +225,8 @@ namespace exec {
     struct __default_awaiter_context<void> {
       template <__scheduler_affinity _Affinity, class _ParentPromise>
       explicit __default_awaiter_context(
-        __default_task_context_impl<_Affinity>& __self,
-        _ParentPromise& __parent) noexcept {
+        __default_task_context_impl<_Affinity>&,
+        _ParentPromise&) noexcept {
       }
 
       template <__scheduler_affinity _Affinity, __indirect_stop_token_provider _ParentPromise>

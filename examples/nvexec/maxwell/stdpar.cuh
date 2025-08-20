@@ -32,7 +32,7 @@
 #include <thrust/iterator/counting_iterator.h>
 
 template <class Policy>
-auto is_gpu_policy(Policy&& policy) -> bool {
+auto is_gpu_policy([[maybe_unused]] Policy&& policy) -> bool {
 #if defined(_NVHPC_CUDA) || defined(__CUDACC__)
   bool* flag{};
   STDEXEC_TRY_CUDA_API(cudaMallocHost(&flag, sizeof(bool)));

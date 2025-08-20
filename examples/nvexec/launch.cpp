@@ -49,7 +49,7 @@ auto main() -> int {
   auto snd = stdexec::transfer_just(stream.get_scheduler(), first, last)
            | nvexec::launch(
                {.grid_size = NUM_BLOCKS, .block_size = THREAD_BLOCK_SIZE},
-               [](cudaStream_t stm, int* first, int* last) {
+               [](cudaStream_t, int* first, int* last) {
                  assert(nvexec::is_on_gpu());
                  int32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
                  if (idx < (last - first)) {
