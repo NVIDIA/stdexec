@@ -119,8 +119,8 @@ namespace exec {
     inline constexpr __die_on_stop_t __die_on_stop;
 
     template <class _Promise>
-    concept __has_continuation = requires(_Promise& __promise, __continuation_handle<> __c) {
-      { __promise.continuation() } -> convertible_to<__continuation_handle<>>;
+    concept __has_continuation = requires(_Promise& __promise, __coroutine_handle<> __c) {
+      { __promise.continuation() } -> convertible_to<__coroutine_handle<>>;
       { __promise.set_continuation(__c) };
     };
 

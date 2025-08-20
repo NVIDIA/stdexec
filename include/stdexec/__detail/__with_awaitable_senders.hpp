@@ -19,6 +19,7 @@
 
 #include "__as_awaitable.hpp"
 #include "__concepts.hpp"
+#include "../coroutine.hpp" // IWYU pragma: keep for __coro::coroutine_handle
 
 #include <exception>
 
@@ -26,16 +27,16 @@ namespace stdexec {
 #if !STDEXEC_STD_NO_COROUTINES()
   namespace __was {
     template <class _Promise = void>
-    class __continuation_handle;
+    class __coroutine_handle;
 
     template <>
-    class __continuation_handle<void> {
+    class __coroutine_handle<void> : __coro::coroutine_handle<> {
      public:
-      __continuation_handle() = default;
+      __coroutine_handle() = default;
 
       template <class _Promise>
-      __continuation_handle(__coro::coroutine_handle<_Promise> __coro) noexcept
-        : __coro_(__coro) {
+      __coroutine_handle(__coro::coroutine_handle<_Promise> __coro) noexcept
+        : __coro::coroutine_handle<>(__coro) {
         if constexpr (requires(_Promise& __promise) { __promise.unhandled_stopped(); }) {
           __stopped_callback_ = [](void* __address) noexcept -> __coro::coroutine_handle<> {
             // This causes the rest of the coroutine (the part after the co_await
@@ -53,43 +54,46 @@ namespace stdexec {
 
       [[nodiscard]]
       auto handle() const noexcept -> __coro::coroutine_handle<> {
-        return __coro_;
+        return *this;
       }
 
       [[nodiscard]]
       auto unhandled_stopped() const noexcept -> __coro::coroutine_handle<> {
-        return __stopped_callback_(__coro_.address());
+        return __stopped_callback_(address());
       }
 
      private:
       using __stopped_callback_t = __coro::coroutine_handle<> (*)(void*) noexcept;
 
-      __coro::coroutine_handle<> __coro_{};
       __stopped_callback_t __stopped_callback_ = [](void*) noexcept -> __coro::coroutine_handle<> {
         std::terminate();
       };
     };
 
     template <class _Promise>
-    class __continuation_handle {
+    class __coroutine_handle : public __coroutine_handle<> {
      public:
-      __continuation_handle() = default;
+      __coroutine_handle() = default;
 
-      __continuation_handle(__coro::coroutine_handle<_Promise> __coro) noexcept
-        : __continuation_{__coro} {
+      __coroutine_handle(__coro::coroutine_handle<_Promise> __coro) noexcept
+        : __coroutine_handle<>{__coro} {
+      }
+
+      static auto from_promise(_Promise& __promise) noexcept -> __coroutine_handle {
+        return __coroutine_handle(__coro::coroutine_handle<_Promise>::from_promise(__promise));
+      }
+
+      auto promise() const noexcept -> _Promise& {
+        return __coro::coroutine_handle<_Promise>::from_address(address()).promise();
       }
 
       auto handle() const noexcept -> __coro::coroutine_handle<_Promise> {
-        return __coro::coroutine_handle<_Promise>::from_address(__continuation_.handle().address());
+        return __coro::coroutine_handle<_Promise>::from_address(address());
       }
 
-      [[nodiscard]]
-      auto unhandled_stopped() const noexcept -> __coro::coroutine_handle<> {
-        return __continuation_.unhandled_stopped();
+      operator __coro::coroutine_handle<_Promise>() const noexcept {
+        return handle();
       }
-
-     private:
-      __continuation_handle<> __continuation_{};
     };
 
     struct __with_awaitable_senders_base {
@@ -99,12 +103,12 @@ namespace stdexec {
         __continuation_ = __hcoro;
       }
 
-      void set_continuation(__continuation_handle<> __continuation) noexcept {
+      void set_continuation(__coroutine_handle<> __continuation) noexcept {
         __continuation_ = __continuation;
       }
 
       [[nodiscard]]
-      auto continuation() const noexcept -> __continuation_handle<> {
+      auto continuation() const noexcept -> __coroutine_handle<> {
         return __continuation_;
       }
 
@@ -113,7 +117,7 @@ namespace stdexec {
       }
 
      private:
-      __continuation_handle<> __continuation_{};
+      __coroutine_handle<> __continuation_{};
     };
 
     template <class _Promise>
@@ -127,6 +131,6 @@ namespace stdexec {
   } // namespace __was
 
   using __was::with_awaitable_senders;
-  using __was::__continuation_handle;
+  using __was::__coroutine_handle;
 #endif
 } // namespace stdexec

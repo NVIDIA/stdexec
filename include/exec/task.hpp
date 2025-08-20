@@ -494,22 +494,6 @@ namespace exec {
         return __task_awaitable<>{std::exchange(__coro_, {})};
       }
 
-      // From the list of types [_Ty], remove any types that are void, and send
-      //   the resulting list to __qf<set_value_t>, which uses the list of types
-      //   as arguments of a function type. In other words, set_value_t() if _Ty
-      //   is void, and set_value_t(_Ty) otherwise.
-      using __set_value_sig_t = __minvoke<__mremove<void, __qf<set_value_t>>, _Ty>;
-
-      // Specify basic_task's completion signatures
-      //   This is only necessary when basic_task is not generally awaitable
-      //   owing to constraints imposed by its _Context parameter.
-      using __task_traits_t =
-        completion_signatures<__set_value_sig_t, set_error_t(std::exception_ptr), set_stopped_t()>;
-
-      auto get_completion_signatures(__ignore = {}) const -> __task_traits_t {
-        return {};
-      }
-
       explicit basic_task(__coro::coroutine_handle<promise_type> __coro) noexcept
         : __coro_(__coro) {
       }
