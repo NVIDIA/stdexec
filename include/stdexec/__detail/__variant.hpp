@@ -83,7 +83,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE(host, device) void __destroy() noexcept {
         auto __index = std::exchange(__index_, __variant_npos);
         if (__variant_npos != __index) {
-          ((_Is == __index ? static_cast<_Ts *>(__get_ptr())->~_Ts() : void(0)), ...);
+          ((_Is == __index ? (void) static_cast<_Ts *>(__get_ptr())->~_Ts() : void(0)), ...);
         }
       }
 
