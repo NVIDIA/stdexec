@@ -18,20 +18,21 @@
 
 #pragma once
 
-#ifdef _CUDA_ATOMIC
-#  error This file must be included before <cuda/atomic> from libcudacxx
-#endif
-
 #include "config.cuh"
 #include <cuda/std/detail/__config>
 
 #if _LIBCUDACXX_STD_VER > 17 && _LIBCUDACXX_CUDA_API_VERSION < 1009000
-#  define STDEXEC_LIBCUDACXX_NEEDS_ATOMIC_WORAROUND() 1
+#  define STDEXEC_LIBCUDACXX_NEEDS_ATOMIC_WORKAROUND() 1
 #else
-#  define STDEXEC_LIBCUDACXX_NEEDS_ATOMIC_WORAROUND() 0
+#  define STDEXEC_LIBCUDACXX_NEEDS_ATOMIC_WORKAROUND() 0
 #endif
 
-#if STDEXEC_LIBCUDACXX_NEEDS_ATOMIC_WORAROUND()
+#if STDEXEC_LIBCUDACXX_NEEDS_ATOMIC_WORKAROUND()
+
+#  ifdef _CUDA_ATOMIC
+#    error This file must be included before <cuda/atomic> from libcudacxx
+#  endif
+
 _LIBCUDACXX_BEGIN_NAMESPACE_STD
 
 enum class memory_order : unsigned int;
@@ -74,4 +75,4 @@ namespace __detail {
 } // namespace __detail
 
 _LIBCUDACXX_END_NAMESPACE_STD
-#endif // STDEXEC_LIBCUDACXX_NEEDS_ATOMIC_WORAROUND()
+#endif // STDEXEC_LIBCUDACXX_NEEDS_ATOMIC_WORKAROUND()
