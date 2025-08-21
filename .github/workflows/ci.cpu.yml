@@ -28,11 +28,13 @@ jobs:
           - { name: "CPU (gcc 11, Release, ASAN)", build: "Release", tag: gcc11-cuda12.9,  cxxflags: "-fsanitize=address" }
     container:
       options: -u root
-      image: rapidsai/devcontainers:25.08-cpp-${{ matrix.tag }}
+      image: rapidsai/devcontainers:25.10-cpp-${{ matrix.tag }}
       env:
-        SCCACHE_REGION: "us-east-2"
         SCCACHE_BUCKET: "rapids-sccache-devs"
+        SCCACHE_REGION: "us-east-2"
         SCCACHE_S3_KEY_PREFIX: "nvidia-stdexec-dev"
+        SCCACHE_SERVER_PORT: "4225"
+        SCCACHE_SERVER_LOG: "sccache=debug"
     permissions:
       id-token: write # This is required for configure-aws-credentials
       contents: read  # This is required for actions/checkout
@@ -46,6 +48,10 @@ jobs:
         with:
           path: stdexec
           persist-credentials: false
+      - name: Setup environment
+        run: |
+          echo "ARTIFACT_PREFIX=${{runner.os}}-${{matrix.tag}}-${{matrix.arch}}" >> "${GITHUB_ENV}"
+          echo "ARTIFACT_SUFFIX=${{github.run_id}}-${{github.run_attempt}}-$RANDOM" >> "${GITHUB_ENV}"
       - if: github.repository_owner == 'NVIDIA'
         name: Get AWS credentials for sccache bucket
         uses: aws-actions/configure-aws-credentials@v4
@@ -56,6 +62,9 @@ jobs:
       - name: Build and test CPU schedulers
         run: |
           set -ex;
+
+          devcontainer-utils-install-sccache --repo rapidsai/sccache --version rapids;
+          devcontainer-utils-start-sccache;
 
           # Copy source folder into ~/stdexec
           cp -r "${GITHUB_WORKSPACE}"/stdexec ~/;
@@ -72,13 +81,20 @@ jobs:
             ;
 
           # Compile
-          cmake --build build -v;
+          cmake --build build -v -j 64;
 
           # Print sccache stats
           sccache -s;
 
           # Tests
           ctest --test-dir build --verbose --output-on-failure --timeout 60;
+      - if: ${{ !cancelled() }}
+        name: Upload sccache logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: sccache-client-logs-${{env.ARTIFACT_PREFIX}}-${{env.ARTIFACT_SUFFIX}}
+          path: /tmp/sccache*.log
+          compression-level: 9
 
   ci-cpu:
     runs-on: ubuntu-latest
@@ -111,8 +127,8 @@ jobs:
       - name: Build and test CPU schedulers (Windows)
         shell: pwsh
         run: |
-          docker pull rapidsai/devcontainers:25.08-cuda12.9-cl14.43
-          docker run --isolation=process -v "$(pwd):C:/stdexec" rapidsai/devcontainers:25.08-cuda12.9-cl14.43 powershell C:/stdexec/.github/workflows/test-windows.ps1 -Compiler '${{ matrix.compiler }}' -Config '${{ matrix.build }}'
+          docker pull rapidsai/devcontainers:25.10-cuda12.9-cl14.43
+          docker run --isolation=process -v "$(pwd):C:/stdexec" rapidsai/devcontainers:25.10-cuda12.9-cl14.43 powershell C:/stdexec/.github/workflows/test-windows.ps1 -Compiler '${{ matrix.compiler }}' -Config '${{ matrix.build }}'
 
   ci-cpu-windows:
     runs-on: windows-latest

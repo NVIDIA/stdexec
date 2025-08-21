@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.25.0)
 
+set(ENV{SCCACHE_NO_DIST_COMPILE} "1")
+
 if(POLICY CMP0135)
   # make the timestamps of ExternalProject_ADD match the download time
   # https://cmake.org/cmake/help/latest/policy/CMP0135.html
@@ -556,29 +558,32 @@ add_library(STDEXEC::system_context ALIAS system_context)
 target_link_libraries(system_context PUBLIC stdexec)
 
 
-if(CMAKE_CROSSCOMPILING)
-  CHECK_INCLUDE_FILE_CXX("linux/io_uring.h" STDEXEC_FOUND_IO_URING)
-else()
-  include(CheckCXXSourceRuns)
-  CHECK_CXX_SOURCE_RUNS(
-    "
-    #include <linux/io_uring.h>
-    #include <sys/syscall.h>
-    #include <unistd.h>
+option(STDEXEC_ENABLE_IO_URING "Enable the use of the io_uring scheduler on Linux" OFF)
 
-    #include <cstdlib>
+if(STDEXEC_ENABLE_IO_URING)
+  if(CMAKE_CROSSCOMPILING)
+    CHECK_INCLUDE_FILE_CXX("linux/io_uring.h" STDEXEC_ENABLE_IO_URING)
+  else()
+    include(CheckCXXSourceRuns)
+    CHECK_CXX_SOURCE_RUNS(
+      "
+      #include <linux/io_uring.h>
+      #include <sys/syscall.h>
+      #include <unistd.h>
 
-    int main()
-    {
-      io_uring_params a = {};
-      return syscall(__NR_io_uring_setup, 1, &a) != -1
-        ? EXIT_SUCCESS
-        : EXIT_FAILURE;
-    }
-    "
-    STDEXEC_FOUND_IO_URING)
+      #include <cstdlib>
+
+      int main()
+      {
+        io_uring_params a = {};
+        return syscall(__NR_io_uring_setup, 1, &a) != -1
+          ? EXIT_SUCCESS
+          : EXIT_FAILURE;
+      }
+      "
+      STDEXEC_ENABLE_IO_URING)
+  endif()
 endif()
-option(STDEXEC_ENABLE_IO_URING "Enable the use of the io_uring scheduler on Linux" ${STDEXEC_FOUND_IO_URING})
 
 option(STDEXEC_BUILD_DOCS "Build stdexec documentation" OFF)
 option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" ON)
