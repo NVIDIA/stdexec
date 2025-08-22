@@ -85,8 +85,7 @@ function(def_cpu_example example)
     add_executable(${target} ${source})
     set_executable_output_name(${target})
     target_link_libraries(${target}
-        PRIVATE nvexec_example
-                stdpar_multicore
+        PRIVATE stdpar_multicore
                 STDEXEC::stdexec
                 stdexec_executable_flags
     )
