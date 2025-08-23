@@ -308,7 +308,9 @@ namespace asioexec {
           if (!base_::ex_) {
             base_::ex_ = std::current_exception();
           }
-          return;
+          //  It's important that we fallthrough here, just because the
+          //  initiating function threw doesn't mean that there's no outstanding
+          //  operations
         }
         //  In the case of an immediate completion *this may already be outside its
         //  lifetime so we can't proceed into the branch
