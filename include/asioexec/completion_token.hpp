@@ -141,7 +141,7 @@ namespace asioexec {
       std::recursive_mutex m_;
       frame_* frames_{nullptr};
       std::exception_ptr ex_;
-      completion_handler<Signatures, Receiver>* h_{nullptr};
+      bool abandoned_{false};
 
       class frame_ {
         operation_state_base& self_;
@@ -161,7 +161,7 @@ namespace asioexec {
           if (l_) {
             STDEXEC_ASSERT(self_.frames_ == this);
             self_.frames_ = prev_;
-            if (!self_.frames_ && !self_.h_) {
+            if (!self_.frames_ && self_.abandoned_) {
               //  We are the last frame and the handler is gone so it's up to us to
               //  finalize the operation
               l_.unlock();
@@ -219,16 +219,10 @@ namespace asioexec {
      public:
       explicit completion_handler(operation_state_base<Signatures, Receiver>& self) noexcept
         : self_(&self) {
-        STDEXEC_ASSERT(!self_->h_);
-        self_->h_ = this;
       }
 
       completion_handler(completion_handler&& other) noexcept
         : self_(std::exchange(other.self_, nullptr)) {
-        if (self_) {
-          const std::lock_guard l(self_->m_);
-          self_->h_ = this;
-        }
       }
 
       completion_handler& operator=(const completion_handler&) = delete;
@@ -239,7 +233,7 @@ namespace asioexec {
           //  it might defer that to the executor frames above us on the call stack
           //  (if any)
           const typename operation_state_base<Signatures, Receiver>::frame_ frame(*self_);
-          self_->h_ = nullptr;
+          self_->abandoned_ = true;
         }
       }
 
