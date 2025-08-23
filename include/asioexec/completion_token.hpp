@@ -153,6 +153,7 @@ namespace asioexec {
               //  We are the last frame and the handler is gone so it's up to us to
               //  finalize the operation
               l_.unlock();
+              self_.callback_.reset();
               if (self_.ex_) {
                 ::stdexec::set_error(static_cast<Receiver&&>(self_.r_), std::move(self_.ex_));
               } else {
@@ -199,8 +200,10 @@ namespace asioexec {
           const std::lock_guard l(self_.m_);
           self_.signal_.emit(asio_impl::cancellation_type::all);
         }
+
         operation_state_base& self_;
       };
+     public:
       std::optional<::stdexec::stop_callback_for_t<
         ::stdexec::stop_token_of_t<::stdexec::env_of_t<Receiver>>,
         on_stop_request_
@@ -242,6 +245,7 @@ namespace asioexec {
           }
           STDEXEC_ASSERT(!self_->frames_);
         }
+        self_->callback_.reset();
         if (self_->ex_) {
           ::stdexec::set_error(static_cast<Receiver&&>(self_->r_), std::move(self_->ex_));
         } else {
