@@ -18,6 +18,7 @@
 
 #include <asioexec/completion_token.hpp>
 
+#include <barrier>
 #include <chrono>
 #include <concepts>
 #include <cstddef>
@@ -727,6 +728,53 @@ namespace {
     };
     auto op = ::stdexec::connect(initiating_function(completion_token), expect_value_receiver{});
     ::stdexec::start(op);
+  }
+
+  TEST_CASE(
+    "Cancellation is delivered thread safely even when emitted thread unsafely",
+    "[asioexec][use_sender]") {
+    bool cancelled = false;
+    bool thread_safe = false;
+    std::mutex m;
+    asio_impl::io_context ctx;
+    std::barrier barrier(2);
+    const auto initiating_function = [&]<typename CompletionToken>(CompletionToken&& token) {
+      return asio_impl::async_initiate<CompletionToken, void()>(
+        [&](auto h) {
+          asio_impl::get_associated_cancellation_slot(h).assign([&](auto&&...) noexcept {
+            const std::unique_lock l(m, std::try_to_lock);
+            thread_safe = bool(l);
+            cancelled = true;
+          });
+          const auto ex = asio_impl::get_associated_executor(h, ctx.get_executor());
+          asio_impl::post(ex, [&, h = std::move(h)]() mutable {
+            auto local = std::move(h);
+            (void) local;
+            const std::lock_guard l(m);
+            barrier.arrive_and_wait();
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+          });
+        },
+        token);
+    };
+    ::stdexec::inplace_stop_source source;
+    auto sender = initiating_function(completion_token);
+    {
+      auto ptr = connect_shared(
+        std::move(sender),
+        expect_stopped_receiver(::stdexec::prop{::stdexec::get_stop_token, source.get_token()}));
+      std::thread t([&]() noexcept {
+        barrier.arrive_and_wait();
+        source.request_stop();
+      });
+      start_shared(std::move(ptr));
+      CHECK(ctx.run() != 0);
+      //  Just in case
+      (void) barrier.arrive();
+      t.join();
+      CHECK(cancelled);
+      CHECK(thread_safe);
+    }
   }
 
 } // namespace
