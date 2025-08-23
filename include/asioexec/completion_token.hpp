@@ -109,18 +109,6 @@ namespace asioexec {
       ::stdexec::set_stopped_t()
     >;
 
-    struct stop_callback {
-      constexpr explicit stop_callback(asio_impl::cancellation_signal& signal) noexcept
-        : signal_(signal) {
-      }
-
-      void operator()() && noexcept {
-        signal_.emit(asio_impl::cancellation_type::partial);
-      }
-     private:
-      asio_impl::cancellation_signal& signal_;
-    };
-
     template <typename, typename>
     class completion_handler;
 
@@ -206,9 +194,16 @@ namespace asioexec {
         }
       }
      protected:
+      struct on_stop_request_ {
+        void operator()() && noexcept {
+          const std::lock_guard l(self_.m_);
+          self_.signal_.emit(asio_impl::cancellation_type::all);
+        }
+        operation_state_base& self_;
+      };
       std::optional<::stdexec::stop_callback_for_t<
         ::stdexec::stop_token_of_t<::stdexec::env_of_t<Receiver>>,
-        stop_callback
+        on_stop_request_
       >>
         callback_;
     };
@@ -316,7 +311,7 @@ namespace asioexec {
         if (frame) {
           base_::callback_.emplace(
             ::stdexec::get_stop_token(::stdexec::get_env(base_::r_)),
-            stop_callback(base_::signal_));
+            typename base_::on_stop_request_{*this});
         }
       }
     };
