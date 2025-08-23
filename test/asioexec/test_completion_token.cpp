@@ -914,4 +914,41 @@ namespace {
     CHECK(!cancelled);
   }
 
+  TEST_CASE(
+    "When the initiating function starts an operation and then throws an exception the operation "
+    "which was started may be cancelled, completion is deferred thereuntil, and the thrown "
+    "exception is sent on the error channel",
+    "[asioexec][use_sender]") {
+    std::exception_ptr ex;
+    ::stdexec::inplace_stop_source source;
+    asio_impl::io_context ctx;
+    asio_impl::system_timer t(ctx);
+    const auto initiating_function = [&]<typename CompletionToken>(CompletionToken&& token) {
+      return asio_impl::async_initiate<CompletionToken, void()>(
+        [&](auto h) {
+          t.expires_after(std::chrono::years(1));
+          const auto ex = asio_impl::get_associated_executor(h, t.get_executor());
+          const auto slot = asio_impl::get_associated_cancellation_slot(h);
+          t.async_wait(asio_impl::bind_executor(
+            ex, asio_impl::bind_cancellation_slot(slot, [h = std::move(h)](auto&&...) mutable {
+              std::move(h)();
+            })));
+          throw std::logic_error("Test");
+        },
+        token);
+    };
+    auto sender = initiating_function(completion_token);
+    auto ptr = connect_shared(
+      std::move(sender),
+      expect_error_receiver_ex(::stdexec::prop{::stdexec::get_stop_token, source.get_token()}, ex));
+    start_shared(std::move(ptr));
+    CHECK(ctx.poll() == 0);
+    CHECK(!ctx.stopped());
+    CHECK(!ex);
+    source.request_stop();
+    CHECK(ctx.poll() != 0);
+    CHECK(ctx.stopped());
+    CHECK(ex);
+  }
+
 } // namespace
