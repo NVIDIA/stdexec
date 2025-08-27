@@ -172,14 +172,14 @@ namespace stdexec {
         using _Domain2 = decltype(__domain2);
 
         if constexpr (same_as<_Domain2, __none_such>) {
-          // gcc failes to expand _Sender2 and substitude it with `_WITH_SENDER<decltype(__sndr2)>`
-          // which is a TU-local entity and is not module-exportable.
-          #if STDEXEC_GCC()
+// gcc failes to expand _Sender2 and substitude it with `_WITH_SENDER<decltype(__sndr2)>`
+// which is a TU-local entity and is not module-exportable.
+#if STDEXEC_GCC()
           return __mexception<_CHILD_SENDERS_WITH_DIFFERENT_DOMAINS_, _Sender2>();
-          #else
+#else
           return __mexception<_CHILD_SENDERS_WITH_DIFFERENT_DOMAINS_, _WITH_SENDER_<_Sender2>>();
-          #endif
-          } else {
+#endif
+        } else {
           return __detail::__transform_sender()(__domain2, std::move(__sndr2), __env);
         }
       });

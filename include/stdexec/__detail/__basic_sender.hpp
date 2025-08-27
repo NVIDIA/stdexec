@@ -39,10 +39,10 @@ namespace stdexec {
     using __impl_of = decltype((__declval<_Sender>().__impl_));
   } // namespace __detail
 
-  template <
-    class _Descriptor
-  >
-  inline constexpr auto __descriptor_fn_v = [] { return _Descriptor(); };
+  template <class _Descriptor>
+  inline constexpr auto __descriptor_fn_v = [] {
+    return _Descriptor();
+  };
 
   template <class _Tag, class _Data, class... _Child>
   inline constexpr auto __descriptor_fn() {
@@ -320,16 +320,16 @@ namespace stdexec {
           -> __call_result_t<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>
           requires __callable<_Fun, _Tag, __minvoke<_Cvref, _Captures>...>
       {
-        #if STDEXEC_NVCC()
+#if STDEXEC_NVCC()
         // The use of decltype(__captures3) here instead of _Captures is a workaround for
         // a codegen bug in nvc++.
         return static_cast<_Fun&&>(
           __fun)(_Tag(), const_cast<__minvoke<_Cvref, decltype(__captures3)>&&>(__captures3)...);
-        #else
+#else
         // We needs to avoid exposure of TU-local `captures3...` when compiling this into modules.
         return static_cast<_Fun&&>(
           __fun)(_Tag(), const_cast<__minvoke<_Cvref, _Captures>&&>(__captures3)...);
-        #endif
+#endif
       };
     }
 
