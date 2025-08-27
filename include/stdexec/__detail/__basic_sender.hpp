@@ -329,7 +329,6 @@ namespace stdexec {
         // We needs to avoid exposure of TU-local `captures3...` when compiling this into modules.
         return static_cast<_Fun&&>(
           __fun)(_Tag(), const_cast<__minvoke<_Cvref, _Captures>&&>(__captures3)...);
-        )
         #endif
       };
     }
