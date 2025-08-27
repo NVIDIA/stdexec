@@ -153,7 +153,7 @@ namespace stdexec::__shared {
       // The split algorithm sends by T const&. ensure_started sends by T&&.
       constexpr bool __is_split = same_as<__split::__split_t, _Tag>;
       using __variant_t = decltype(__self->__sh_state_->__results_);
-      using __cv_variant_t = __if_c<__is_split, const __variant_t&, __variant_t>;
+      using __cv_variant_t = std::conditional_t<__is_split, const __variant_t&, __variant_t>;
 
       __self->__on_stop_.reset();
 
