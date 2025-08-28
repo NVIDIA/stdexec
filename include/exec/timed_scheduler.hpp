@@ -18,6 +18,8 @@
 
 #include "../stdexec/execution.hpp"
 
+#include <chrono>
+
 namespace exec {
   namespace __now {
     using namespace stdexec;
