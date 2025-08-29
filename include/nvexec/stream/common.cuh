@@ -878,9 +878,9 @@ namespace nvexec {
   inline constexpr _strm::get_stream_t get_stream{};
 
 #if CUDART_VERSION >= 13'00'0
-  __host__ cudaError_t cudaMemPrefetchAsync(const void *devPtr, size_t count,
-                                            int dstDevice,
-                                            cudaStream_t stream = 0) {
+  __host__ inline cudaError_t cudaMemPrefetchAsync(const void *devPtr,
+                                                   size_t count, int dstDevice,
+                                                   cudaStream_t stream = 0) {
     return ::cudaMemPrefetchAsync(
         devPtr, count, {.type = cudaMemLocationTypeDevice, .id = dstDevice}, 0,
         stream);
