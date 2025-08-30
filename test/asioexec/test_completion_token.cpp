@@ -42,6 +42,17 @@ using namespace asioexec;
 
 namespace {
 
+  static_assert(
+    noexcept(detail::completion_token::convert<const int&>(std::declval<int&>())));
+  static_assert(
+    noexcept(detail::completion_token::convert<const int>(std::declval<int>())));
+  static_assert(
+    noexcept(detail::completion_token::convert<std::string>(std::declval<std::string>())));
+  static_assert(
+    !noexcept(detail::completion_token::convert<std::string>(std::declval<const std::string&>())));
+  static_assert(
+    !noexcept(detail::completion_token::convert<std::string>(std::declval<const char*>())));
+
   //  connect_shared and start_shared ensure the operation state's lifetime ends
   //  within the completion signal handling of the receiver thereby ensuring any
   //  use of the operation state by the operation after it's sent a completion

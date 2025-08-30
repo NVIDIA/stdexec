@@ -26,6 +26,7 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <version>
 #include <asioexec/as_default_on.hpp>
 #include <asioexec/asio_config.hpp>
 #include <stdexec/execution.hpp>
@@ -69,7 +70,32 @@ namespace asioexec {
     };
 
     template <typename T, typename U>
-      requires std::is_same_v<T&&, U&&> || std::is_convertible_v<U&&, T&&>
+    inline constexpr bool at_least_as_const_qualified_v = std::is_const_v<T> || !std::is_const_v<U>;
+    template <typename T, typename U>
+    inline constexpr bool at_least_as_volatile_qualified_v = std::is_volatile_v<T>
+                                                          || !std::is_volatile_v<U>;
+    template <typename T, typename U>
+    inline constexpr bool at_least_as_qualified_v = at_least_as_const_qualified_v<T, U>
+                                                 && at_least_as_volatile_qualified_v<T, U>;
+
+    template <typename T, typename U>
+      requires
+#ifdef __cpp_lib_reference_from_temporary
+      (std::is_convertible_v<U &&, T &&> && !std::reference_converts_from_temporary_v<T &&, U &&>)
+#else
+      (
+        //  Just using is_base_of_v is insufficient because it always reports false for built-in types
+        (std::is_base_of_v<std::remove_cvref_t<T>, std::remove_cvref_t<U>>
+         || std::is_same_v<std::remove_cvref_t<T>, std::remove_cvref_t<U>>)
+        &&
+        //  The returned type must be at least as cv-qualified as the input type (it can be more cv-qualified)
+        at_least_as_qualified_v<std::remove_reference_t<T>, std::remove_reference_t<U>>
+        && (
+          //  Reference type must agree except...
+          (std::is_lvalue_reference_v<T> == std::is_lvalue_reference_v<T>) ||
+          //  ...special rules for const& which allows rvalues to bind thereto
+          (std::is_lvalue_reference_v<T> && std::is_const_v<std::remove_reference_t<T>>) ))
+#endif
     constexpr T&& convert(U&& u) noexcept {
       return static_cast<U&&>(u);
     }
