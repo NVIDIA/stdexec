@@ -105,8 +105,8 @@ namespace stdexec {
 } // namespace stdexec
 
 ////////////////////////////////////////////////////////////////////////////////
-#define STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE                                                       \
-  R"(((
+#define STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE                                   \
+  R"(
 
 The given type is not a sender because stdexec::enable_sender<Sender> is false. Either:
 
@@ -131,11 +131,11 @@ The given type is not a sender because stdexec::enable_sender<Sender> is false. 
 
      template <>
      inline constexpr bool stdexec::enable_sender<MySender> = true;
-)))"
+)"
 
 ////////////////////////////////////////////////////////////////////////////////
-#define STDEXEC_ERROR_CANNOT_COMPUTE_COMPLETION_SIGNATURES                                         \
-  R"(((
+#define STDEXEC_ERROR_CANNOT_COMPUTE_COMPLETION_SIGNATURES                     \
+  R"(
 
 The sender type was not able to report its completion signatures when asked.
 This is either because it lacks the necessary member function, or because the
@@ -179,18 +179,18 @@ A sender can declare its completion signatures in one of two ways:
        }
        ...
      };
-)))"
+)"
 
 ////////////////////////////////////////////////////////////////////////////////
-#define STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_RETURNED_AN_ERROR                                  \
-  R"(((
+#define STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_RETURNED_AN_ERROR              \
+  R"(
 
 Trying to compute the sender's completion signatures resulted in an error. See
 the rest of the compiler diagnostic for clues. Look for the string "_ERROR_".
-)))"
+)"
 
-#define STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_HAS_INVALID_RETURN_TYPE                            \
-  R"(((
+#define STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_HAS_INVALID_RETURN_TYPE        \
+  R"(
 
 The member function `get_completion_signatures` of the sender returned an
 invalid type.
@@ -214,11 +214,11 @@ A sender's `get_completion_signatures` function must return a specialization of
     }
     ...
   };
-)))"
+)"
 
 ////////////////////////////////////////////////////////////////////////////////
-#define STDEXEC_ERROR_CANNOT_CONNECT_SENDER_TO_RECEIVER                                            \
-  R"(((
+#define STDEXEC_ERROR_CANNOT_CONNECT_SENDER_TO_RECEIVER                        \
+  R"(
 A sender must provide a `connect` member function that takes a receiver as an
 argument and returns an object whose type satisfies `stdexec::operation_state`,
 as shown below:
@@ -251,12 +251,12 @@ as shown below:
 
     ...
   };
-)))"
+)"
 
 ////////////////////////////////////////////////////////////////////////////////
-#define STDEXEC_ERROR_SYNC_WAIT_CANNOT_CONNECT_SENDER_TO_RECEIVER                                  \
-  R"(((
+#define STDEXEC_ERROR_SYNC_WAIT_CANNOT_CONNECT_SENDER_TO_RECEIVER              \
+  R"(
 
 The sender passed to `stdexec::sync_wait()` does not have a `connect`
 member function that accepts sync_wait's receiver.
-)))" STDEXEC_ERROR_CANNOT_CONNECT_SENDER_TO_RECEIVER
+)" STDEXEC_ERROR_CANNOT_CONNECT_SENDER_TO_RECEIVER
