@@ -43,7 +43,7 @@ using namespace asioexec;
 namespace {
 
   //  connect_shared and start_shared ensure the operation state's lifetime ends
-  //  within the completion signal handing of the receiver thereby ensuring any
+  //  within the completion signal handling of the receiver thereby ensuring any
   //  use of the operation state by the operation after it's sent a completion
   //  signal is caught be AddressSanitizer
 
