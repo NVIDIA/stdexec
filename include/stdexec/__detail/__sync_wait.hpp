@@ -64,9 +64,10 @@ namespace stdexec {
         return true;
       }
 
-      static constexpr auto query(__debug::__is_debug_env_t) noexcept -> bool {
-        return true;
-      }
+      // static constexpr auto query(__debug::__is_debug_env_t) noexcept -> bool
+      // {
+      //   return true;
+      // }
     };
 
     // What should sync_wait(just_stopped()) return?
@@ -230,8 +231,7 @@ namespace stdexec {
             } else if constexpr (__no_custom_sync_wait) {
               static_assert(
                 sender_to<_Sender, __sync_wait_receiver>,
-                "The sender passed to stdexec::sync_wait() does not have a .connect(<receiver>) "
-                "member function that accepts sync_wait's receiver.");
+                STDEXEC_ERROR_SYNC_WAIT_CANNOT_CONNECT_SENDER_TO_RECEIVER);
             } else if constexpr (!__has_implementation_for<sync_wait_t, __domain_t, _Sender>) {
               static_assert(
                 __has_implementation_for<sync_wait_t, __domain_t, _Sender>,

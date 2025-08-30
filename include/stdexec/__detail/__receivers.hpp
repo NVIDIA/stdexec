@@ -178,12 +178,12 @@ namespace stdexec {
     auto __try_completions(completion_signatures<_Sigs...> *) -> decltype((
       __msuccess(),
       ...,
-      __detail::__try_completion<_Receiver>(static_cast<_Sigs *>(nullptr))));
+      __detail::__try_completion<__decay_t<_Receiver>>(static_cast<_Sigs *>(nullptr))));
   } // namespace __detail
 
   template <class _Receiver, class _Completions>
   concept receiver_of = receiver<_Receiver> && requires(_Completions *__completions) {
-    { __detail::__try_completions<__decay_t<_Receiver>>(__completions) } -> __ok;
+    { __detail::__try_completions<_Receiver>(__completions) } -> __ok;
   };
 
   template <class _Receiver, class _Sender>

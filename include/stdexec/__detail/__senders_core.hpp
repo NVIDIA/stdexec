@@ -21,6 +21,7 @@
 #include "__awaitable.hpp"
 #include "__completion_signatures.hpp"
 #include "__concepts.hpp"
+#include "__diagnostics.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
 #include "__receivers.hpp"
@@ -51,7 +52,7 @@ namespace stdexec {
 
   template <class _Sender, class... _Env>
   concept sender_in =
-    (sizeof...(_Env) <= 1) && sender<_Sender> && requires(_Sender&& __sndr, _Env&&... __env) {
+    (sizeof...(_Env) <= 1) && sender<_Sender> && requires(_Sender &&__sndr, _Env &&...__env) {
       {
         get_completion_signatures(static_cast<_Sender &&>(__sndr), static_cast<_Env &&>(__env)...)
       } -> __valid_completion_signatures;
@@ -62,26 +63,24 @@ namespace stdexec {
   template <class _Sender, class _Receiver>
   concept sender_to = receiver<_Receiver> && sender_in<_Sender, env_of_t<_Receiver>>
                    && __receiver_from<_Receiver, _Sender>
-                   && requires(_Sender&& __sndr, _Receiver&& __rcvr) {
+                   && requires(_Sender &&__sndr, _Receiver &&__rcvr) {
                         connect(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr));
                       };
 
   template <class _Sender, class _Receiver>
   using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
 
-  // Used to report a meaningful error message when the sender_in<Sndr, Env> concept check fails.
+  // Used to report a meaningful error message when the sender_in<Sndr, Env>
+  // concept check fails.
   template <class _Sender, class... _Env>
   auto __diagnose_sender_concept_failure() {
     if constexpr (!enable_sender<__decay_t<_Sender>>) {
-      static_assert(
-        enable_sender<_Sender>,
-        "The given type is not a sender because stdexec::enable_sender<Sender> is false. Either "
-        "give the type a nested ::sender_concept typedef that is an alias for stdexec::sender_t, "
-        "or else specialize the stdexec::enable_sender boolean trait for this type to true.");
+      static_assert(enable_sender<_Sender>, STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE);
     } else if constexpr (!__detail::__consistent_completion_domains<_Sender>) {
       static_assert(
         __detail::__consistent_completion_domains<_Sender>,
-        "The completion schedulers of the sender do not have consistent domains. This is likely a "
+        "The completion schedulers of the sender do not have "
+        "consistent domains. This is likely a "
         "bug in the sender implementation.");
     } else if constexpr (!move_constructible<__decay_t<_Sender>>) {
       static_assert(
@@ -93,28 +92,18 @@ namespace stdexec {
     } else {
       using _Completions = __completion_signatures_of_t<_Sender, _Env...>;
       if constexpr (__same_as<_Completions, __unrecognized_sender_error<_Sender, _Env...>>) {
-        static_assert(
-          __mnever<_Completions>,
-          "The sender type was not able to report its completion signatures when asked. This is "
-          "either because it lacks the necessary member functions, or because the member functions "
-          "were ill-formed.\n\nA sender can declare its completion signatures in one of two ways:\n"
-          "  1. By defining a nested type alias named `completion_signatures` that is a\n"
-          "     specialization of stdexec::completion_signatures<...>.\n"
-          "  2. By defining a member function named `get_completion_signatures` that returns a\n"
-          "     specialization of stdexec::completion_signatures<...>.");
+        static_assert(__mnever<_Completions>, STDEXEC_ERROR_CANNOT_COMPUTE_COMPLETION_SIGNATURES);
       } else if constexpr (__merror<_Completions>) {
         static_assert(
-          !__merror<_Completions>,
-          "Trying to compute the sender's completion signatures resulted in an error. See the rest "
-          "of the compiler diagnostic for clues. Look for the string \"_ERROR_\".");
+          !__merror<_Completions>, STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_RETURNED_AN_ERROR);
       } else {
         static_assert(
           __valid_completion_signatures<_Completions>,
-          "The stdexec::sender_in<Sender, Environment> concept check has failed. This is likely a "
-          "bug in the sender implementation.");
+          STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_HAS_INVALID_RETURN_TYPE);
       }
 #if STDEXEC_MSVC() || STDEXEC_NVHPC()
-      // MSVC and NVHPC need more encouragement to print the type of the error.
+      // MSVC and NVHPC need more encouragement to print the type of the
+      // error.
       _Completions __what = 0;
 #endif
     }
