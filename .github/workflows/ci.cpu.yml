@@ -50,8 +50,22 @@ jobs:
           persist-credentials: false
       - name: Setup environment
         run: |
-          echo "ARTIFACT_PREFIX=${{runner.os}}-${{matrix.tag}}-${{matrix.arch}}" >> "${GITHUB_ENV}"
+          echo "ARTIFACT_PREFIX=${{runner.os}}-${{matrix.tag}}-amd64" >> "${GITHUB_ENV}"
           echo "ARTIFACT_SUFFIX=${{github.run_id}}-${{github.run_attempt}}-$RANDOM" >> "${GITHUB_ENV}"
+      - id: sccache-preprocessor-cache
+        name: Setup sccache preprocessor cache
+        uses: actions/cache@v4
+        with:
+          path: /home/coder/.cache/sccache/preprocessor
+          restore-keys: sccache-preprocessor-cache-${{env.ARTIFACT_PREFIX}}
+          key: sccache-preprocessor-cache-${{env.ARTIFACT_PREFIX}}-${{env.ARTIFACT_SUFFIX}}
+      - id: sccache-dist-toolchains-cache
+        name: Setup sccache-dist client toolchains cache
+        uses: actions/cache@v4
+        with:
+          path: /home/coder/.cache/sccache-dist-client
+          restore-keys: sccache-toolchains-cache-${{env.ARTIFACT_PREFIX}}
+          key: sccache-toolchains-cache-${{env.ARTIFACT_PREFIX}}-${{env.ARTIFACT_SUFFIX}}
       - if: github.repository_owner == 'NVIDIA'
         name: Get AWS credentials for sccache bucket
         uses: aws-actions/configure-aws-credentials@v4
@@ -60,11 +74,26 @@ jobs:
           role-duration-seconds: 28800 # 8 hours
           role-to-assume: arn:aws:iam::279114543810:role/gha-oidc-NVIDIA
       - name: Build and test CPU schedulers
+        env:
+          NVCC_APPEND_FLAGS: "-t=100"
+          SCCACHE_DIST_URL: "https://amd64.linux.sccache.rapids.nvidia.com"
+          SCCACHE_DIST_CONNECT_TIMEOUT: "30"
+          SCCACHE_DIST_FALLBACK_TO_LOCAL_COMPILE: "true"
+          SCCACHE_DIST_KEEPALIVE_ENABLED: "true"
+          SCCACHE_DIST_KEEPALIVE_INTERVAL: "20"
+          SCCACHE_DIST_KEEPALIVE_TIMEOUT: "600"
+          SCCACHE_DIST_REWRITE_INCLUDES_ONLY: ${{ contains(matrix.tag, 'llvm') && 'true' || 'false' }}
+          SCCACHE_DIST_REQUEST_TIMEOUT: "7140"
+          SCCACHE_IDLE_TIMEOUT: "7200"
         run: |
           set -ex;
 
           devcontainer-utils-install-sccache --repo rapidsai/sccache --version rapids;
-          devcontainer-utils-start-sccache;
+          devcontainer-utils-init-sccache-dist                           \
+              --enable-sccache-dist - <<< "                              \
+              --auth-type 'token'                                        \
+              --auth-token '${{ secrets.STDEXEC_BUILD_CLUSTER_SECRET }}' \
+          ";
 
           # Copy source folder into ~/stdexec
           cp -r "${GITHUB_WORKSPACE}"/stdexec ~/;
@@ -81,13 +110,13 @@ jobs:
             ;
 
           # Compile
-          cmake --build build -v -j 64;
+          cmake --build build -v -j 512;
 
           # Print sccache stats
           sccache -s;
 
           # Tests
-          ctest --test-dir build --verbose --output-on-failure --timeout 60;
+          ctest --test-dir build --verbose --output-on-failure --timeout 300;
       - if: ${{ !cancelled() }}
         name: Upload sccache logs
         uses: actions/upload-artifact@v4
