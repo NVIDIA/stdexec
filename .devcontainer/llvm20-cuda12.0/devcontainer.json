@@ -5,10 +5,26 @@
 
   "initializeCommand": ["/bin/bash", "-c", "mkdir -p .cache/.{aws,cache,config}"],
 
+  "postCreateCommand": [
+    "/bin/bash",
+    "-c",
+    "if test -z \"${DISABLE_SCCACHE:+x}\"; then echo \"export SCCACHE_DIST_URL='https://$(dpkg --print-architecture).$(uname -s | tr '[:upper:]' '[:lower:]').sccache.rapids.nvidia.com'\" >> /home/coder/.bashrc; fi"
+  ],
+
   "containerEnv": {
     "AWS_ROLE_ARN": "arn:aws:iam::279114543810:role/nv-gha-token-sccache-devs",
     "DEVCONTAINER_UTILS_ENABLE_SCCACHE_DIST": "true",
     "HISTFILE": "${containerWorkspaceFolder}/.cache/._bash_history",
+    "NVCC_APPEND_FLAGS": "-t=100",
+    "SCCACHE_DIST_CONNECT_TIMEOUT": "${localEnv:SCCACHE_DIST_CONNECT_TIMEOUT:30}",
+    "SCCACHE_DIST_FALLBACK_TO_LOCAL_COMPILE": "${localEnv:SCCACHE_DIST_FALLBACK_TO_LOCAL_COMPILE:true}",
+    "SCCACHE_DIST_KEEPALIVE_ENABLED": "${localEnv:SCCACHE_DIST_KEEPALIVE_ENABLED:true}",
+    "SCCACHE_DIST_KEEPALIVE_INTERVAL": "${localEnv:SCCACHE_DIST_KEEPALIVE_INTERVAL:20}",
+    "SCCACHE_DIST_KEEPALIVE_TIMEOUT": "${localEnv:SCCACHE_DIST_KEEPALIVE_TIMEOUT:600}",
+    "SCCACHE_DIST_MAX_RETRIES": "${localEnv:SCCACHE_DIST_MAX_RETRIES:2}",
+    "SCCACHE_DIST_REWRITE_INCLUDES_ONLY": "${localEnv:SCCACHE_DIST_REWRITE_INCLUDES_ONLY:true}",
+    "SCCACHE_DIST_REQUEST_TIMEOUT": "${localEnv:SCCACHE_DIST_REQUEST_TIMEOUT:7140}",
+    "SCCACHE_IDLE_TIMEOUT": "${localEnv:SCCACHE_IDLE_TIMEOUT:7200}",
     "SCCACHE_BUCKET": "rapids-sccache-devs",
     "SCCACHE_REGION": "us-east-2",
     "SCCACHE_S3_KEY_PREFIX": "nvidia-stdexec-dev",
