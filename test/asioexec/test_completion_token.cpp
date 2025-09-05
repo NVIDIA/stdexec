@@ -968,4 +968,22 @@ namespace {
     CHECK(ex);
   }
 
+  TEST_CASE(
+    "I/O objects may be transformed to use senders as their default vocabulary with only minimal "
+    "transformations (i.e. no error adaptation)",
+    "[asioexec][completion_token]") {
+    bool invoked = false;
+    asio_impl::io_context ctx;
+    auto t = completion_token.as_default_on(asio_impl::system_timer(ctx));
+    static_assert(
+      std::is_same_v<decltype(t), completion_token_t::as_default_on_t<asio_impl::system_timer>>);
+    t.expires_after(std::chrono::milliseconds(5));
+    auto op = ::stdexec::connect(
+      t.async_wait() | ::stdexec::then([](auto ec) { CHECK(!ec); }),
+      expect_void_receiver_ex(invoked));
+    ::stdexec::start(op);
+    CHECK(ctx.run() != 0);
+    CHECK(ctx.stopped());
+  }
+
 } // namespace
