@@ -53,6 +53,7 @@ CompileFlags:
     - "-ftemplate-backtrace-limit=0"
     - "-std=gnu++20"
     - "-DSTDEXEC_CLANGD_INVOKED"
+    - "-stdlib=libc++"
   Remove:
     - "-stdpar*"
     # strip CUDA fatbin args

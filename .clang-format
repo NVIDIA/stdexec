@@ -72,7 +72,7 @@ EmptyLineBeforeAccessModifier: Leave
 ExperimentalAutoDetectBinPacking: true
 FixNamespaceComments: true
 IfMacros: [
-  STDEXEC_CATCH'
+  'STDEXEC_CATCH'
 ]
 IncludeBlocks: Preserve
 IndentAccessModifiers: false
@@ -88,6 +88,7 @@ KeepEmptyLinesAtTheStartOfBlocks: true
 LambdaBodyIndentation: Signature
 LineEnding: LF
 Macros: [
+  'STDEXEC_CATCH_FALLTHROUGH= ',
   'STDEXEC_MEMFN_DECL(...)=__VA_ARGS__',
   'STDEXEC_ATTRIBUTE(...)=__attribute__((__VA_ARGS__))',
   'STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS=[[no_unique_address]]',

@@ -86,5 +86,8 @@ namespace {
     STDEXEC_CATCH(int e) {
       CHECK(e == 999);
     }
+    STDEXEC_CATCH_ALL {
+      FAIL("invalid exception caught");
+    }
   }
 } // namespace
