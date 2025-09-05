@@ -23,6 +23,7 @@
 #include <system_error>
 #include <type_traits>
 #include <utility>
+#include <asioexec/as_default_on.hpp>
 #include <asioexec/asio_config.hpp>
 #include <asioexec/completion_token.hpp>
 #include <stdexec/execution.hpp>
@@ -196,7 +197,11 @@ namespace asioexec {
 
   } // namespace detail::use_sender
 
-  struct use_sender_t { };
+  struct use_sender_t {
+    static constexpr auto as_default_on = asioexec::as_default_on<use_sender_t>;
+    template <typename IoObject>
+    using as_default_on_t = asioexec::as_default_on_t<use_sender_t, IoObject>;
+  };
 
   inline const use_sender_t use_sender{};
 

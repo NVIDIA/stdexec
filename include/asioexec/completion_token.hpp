@@ -26,6 +26,7 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <asioexec/as_default_on.hpp>
 #include <asioexec/asio_config.hpp>
 #include <stdexec/execution.hpp>
 
@@ -485,7 +486,11 @@ namespace asioexec {
 
   } // namespace detail::completion_token
 
-  struct completion_token_t { };
+  struct completion_token_t {
+    static constexpr auto as_default_on = asioexec::as_default_on<completion_token_t>;
+    template <typename IoObject>
+    using as_default_on_t = asioexec::as_default_on_t<completion_token_t, IoObject>;
+  };
 
   inline const completion_token_t completion_token{};
 
