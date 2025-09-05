@@ -540,6 +540,8 @@ namespace stdexec {
 #  include <cuda_runtime_api.h>
 #endif
 
+// clang-format off
+
 // The following macros are used to conditionally compile exception handling code. They
 // are used in the same way as `try` and `catch`, but they allow for different behavior
 // based on whether exceptions are enabled or not, and whether the code is being compiled
@@ -559,28 +561,28 @@ namespace stdexec {
 //     printf("unknown error\n");
 //   }
 #if STDEXEC_STD_NO_EXCEPTIONS()
-#  define STDEXEC_TRY if constexpr (true)
-#  define STDEXEC_CATCH(...)                                                                       \
-    else if constexpr ([[maybe_unused]] __VA_ARGS__ = ::stdexec::_catch_any_lvalue{}; false)
-#  define STDEXEC_CATCH_ALL                                                                        \
-    else if constexpr (true) {                                                                     \
-    }                                                                                              \
-    else
-#  define STDEXEC_THROW(...) ::stdexec::__terminate()
+#  define STDEXEC_TRY               if constexpr (true) {
+#  define STDEXEC_CATCH(...)        } else if constexpr (__VA_ARGS__ = ::stdexec::__catch_any_lvalue; false) {
+#  define STDEXEC_CATCH_ALL         } else if constexpr (true) {} else
+#  define STDEXEC_THROW(...)        ::stdexec::__terminate()
+#  define STDEXEC_CATCH_FALLTHROUGH } else {}
 #else
-#  define STDEXEC_TRY        try
-#  define STDEXEC_CATCH      catch
-#  define STDEXEC_CATCH_ALL  STDEXEC_CATCH(...)
-#  define STDEXEC_THROW(...) throw __VA_ARGS__
+#  define STDEXEC_TRY               try
+#  define STDEXEC_CATCH             catch
+#  define STDEXEC_CATCH_ALL         catch(...)
+#  define STDEXEC_THROW(...)        throw __VA_ARGS__
+#  define STDEXEC_CATCH_FALLTHROUGH
 #endif
+
+// clang-format on
 
 namespace stdexec {
   // Used by the STDEXEC_CATCH macro to provide a stub initialization of the exception object.
-  struct _catch_any_lvalue {
+  constexpr struct __catch_any_lvalue_t {
     template <class _Tp>
     STDEXEC_ATTRIBUTE(host, device)
     operator _Tp&() const noexcept;
-  };
+  } __catch_any_lvalue{};
 
   STDEXEC_ATTRIBUTE(noreturn, host, device)
   inline void __terminate() noexcept {

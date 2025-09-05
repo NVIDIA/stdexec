@@ -165,6 +165,9 @@ namespace {
     STDEXEC_CATCH(const std::logic_error& e) {
       SUCCEED("correct exception caught");
     }
+    STDEXEC_CATCH_ALL {
+      FAIL("invalid exception caught");
+    }
     sync_wait(scope.on_empty());
   }
 #endif // !STDEXEC_STD_NO_EXCEPTIONS()

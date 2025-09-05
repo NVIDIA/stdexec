@@ -249,7 +249,7 @@ namespace exec::__system_context_default_impl {
           __schedule_operation_t::__construct_maybe_alloc(__storage, &__r, std::move(__sndr));
         __os->start();
       }
-      STDEXEC_CATCH(std::exception & __e) {
+      STDEXEC_CATCH_ALL {
         __r.set_error(std::current_exception());
       }
     }
@@ -278,7 +278,7 @@ namespace exec::__system_context_default_impl {
           __storage, &__r, std::move(__sndr));
         __os->start();
       }
-      STDEXEC_CATCH(std::exception & __e) {
+      STDEXEC_CATCH_ALL {
         __r.set_error(std::current_exception());
       }
     }
@@ -297,7 +297,7 @@ namespace exec::__system_context_default_impl {
           __storage, &__r, std::move(__sndr));
         __os->start();
       }
-      STDEXEC_CATCH(std::exception & __e) {
+      STDEXEC_CATCH_ALL {
         __r.set_error(std::current_exception());
       }
     }
