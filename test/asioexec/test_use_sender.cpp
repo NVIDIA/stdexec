@@ -22,6 +22,7 @@
 #include <exception>
 #include <functional>
 #include <system_error>
+#include <type_traits>
 #include <utility>
 #include <asioexec/asio_config.hpp>
 #include <catch2/catch.hpp>
@@ -232,6 +233,21 @@ namespace {
     start(op);
     REQUIRE(ex);
     CHECK_THROWS_AS(std::rethrow_exception(std::move(ex)), std::system_error);
+  }
+
+  TEST_CASE(
+    "I/O objects may be transformed to use senders as their default vocabulary",
+    "[asioexec][use_sender]") {
+    bool invoked = false;
+    asio_impl::io_context ctx;
+    auto t = use_sender.as_default_on(asio_impl::system_timer(ctx));
+    static_assert(
+      std::is_same_v<decltype(t), use_sender_t::as_default_on_t<asio_impl::system_timer>>);
+    t.expires_after(std::chrono::milliseconds(5));
+    auto op = ::stdexec::connect(t.async_wait(), expect_void_receiver_ex(invoked));
+    ::stdexec::start(op);
+    CHECK(ctx.run() != 0);
+    CHECK(ctx.stopped());
   }
 
 } // namespace
