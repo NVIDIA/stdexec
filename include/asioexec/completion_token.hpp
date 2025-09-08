@@ -26,6 +26,8 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <version>
+#include <asioexec/as_default_on.hpp>
 #include <asioexec/asio_config.hpp>
 #include <stdexec/execution.hpp>
 
@@ -68,7 +70,32 @@ namespace asioexec {
     };
 
     template <typename T, typename U>
-      requires std::is_same_v<T&&, U&&> || std::is_convertible_v<U&&, T&&>
+    inline constexpr bool at_least_as_const_qualified_v = std::is_const_v<T> || !std::is_const_v<U>;
+    template <typename T, typename U>
+    inline constexpr bool at_least_as_volatile_qualified_v = std::is_volatile_v<T>
+                                                          || !std::is_volatile_v<U>;
+    template <typename T, typename U>
+    inline constexpr bool at_least_as_qualified_v = at_least_as_const_qualified_v<T, U>
+                                                 && at_least_as_volatile_qualified_v<T, U>;
+
+    template <typename T, typename U>
+      requires
+#ifdef __cpp_lib_reference_from_temporary
+      (std::is_convertible_v<U &&, T &&> && !std::reference_converts_from_temporary_v<T &&, U &&>)
+#else
+      (
+        //  Just using is_base_of_v is insufficient because it always reports false for built-in types
+        (std::is_base_of_v<std::remove_cvref_t<T>, std::remove_cvref_t<U>>
+         || std::is_same_v<std::remove_cvref_t<T>, std::remove_cvref_t<U>>)
+        &&
+        //  The returned type must be at least as cv-qualified as the input type (it can be more cv-qualified)
+        at_least_as_qualified_v<std::remove_reference_t<T>, std::remove_reference_t<U>>
+        && (
+          //  Reference type must agree except...
+          (std::is_lvalue_reference_v<T> == std::is_lvalue_reference_v<T>) ||
+          //  ...special rules for const& which allows rvalues to bind thereto
+          (std::is_lvalue_reference_v<T> && std::is_const_v<std::remove_reference_t<T>>) ))
+#endif
     constexpr T&& convert(U&& u) noexcept {
       return static_cast<U&&>(u);
     }
@@ -109,18 +136,6 @@ namespace asioexec {
       ::stdexec::set_stopped_t()
     >;
 
-    struct stop_callback {
-      constexpr explicit stop_callback(asio_impl::cancellation_signal& signal) noexcept
-        : signal_(signal) {
-      }
-
-      void operator()() && noexcept {
-        signal_.emit(asio_impl::cancellation_type::partial);
-      }
-     private:
-      asio_impl::cancellation_signal& signal_;
-    };
-
     template <typename, typename>
     class completion_handler;
 
@@ -141,7 +156,7 @@ namespace asioexec {
       std::recursive_mutex m_;
       frame_* frames_{nullptr};
       std::exception_ptr ex_;
-      completion_handler<Signatures, Receiver>* h_{nullptr};
+      bool abandoned_{false};
 
       class frame_ {
         operation_state_base& self_;
@@ -161,10 +176,11 @@ namespace asioexec {
           if (l_) {
             STDEXEC_ASSERT(self_.frames_ == this);
             self_.frames_ = prev_;
-            if (!self_.frames_ && !self_.h_) {
+            if (!self_.frames_ && self_.abandoned_) {
               //  We are the last frame and the handler is gone so it's up to us to
               //  finalize the operation
               l_.unlock();
+              self_.callback_.reset();
               if (self_.ex_) {
                 ::stdexec::set_error(static_cast<Receiver&&>(self_.r_), std::move(self_.ex_));
               } else {
@@ -206,9 +222,18 @@ namespace asioexec {
         }
       }
      protected:
+      struct on_stop_request_ {
+        void operator()() && noexcept {
+          const std::lock_guard l(self_.m_);
+          self_.signal_.emit(asio_impl::cancellation_type::all);
+        }
+
+        operation_state_base& self_;
+      };
+     public:
       std::optional<::stdexec::stop_callback_for_t<
         ::stdexec::stop_token_of_t<::stdexec::env_of_t<Receiver>>,
-        stop_callback
+        on_stop_request_
       >>
         callback_;
     };
@@ -219,16 +244,10 @@ namespace asioexec {
      public:
       explicit completion_handler(operation_state_base<Signatures, Receiver>& self) noexcept
         : self_(&self) {
-        STDEXEC_ASSERT(!self_->h_);
-        self_->h_ = this;
       }
 
       completion_handler(completion_handler&& other) noexcept
         : self_(std::exchange(other.self_, nullptr)) {
-        if (self_) {
-          const std::lock_guard l(self_->m_);
-          self_->h_ = this;
-        }
       }
 
       completion_handler& operator=(const completion_handler&) = delete;
@@ -239,7 +258,7 @@ namespace asioexec {
           //  it might defer that to the executor frames above us on the call stack
           //  (if any)
           const typename operation_state_base<Signatures, Receiver>::frame_ frame(*self_);
-          self_->h_ = nullptr;
+          self_->abandoned_ = true;
         }
       }
 
@@ -253,6 +272,7 @@ namespace asioexec {
           }
           STDEXEC_ASSERT(!self_->frames_);
         }
+        self_->callback_.reset();
         if (self_->ex_) {
           ::stdexec::set_error(static_cast<Receiver&&>(self_->r_), std::move(self_->ex_));
         } else {
@@ -315,14 +335,16 @@ namespace asioexec {
           if (!base_::ex_) {
             base_::ex_ = std::current_exception();
           }
-          return;
+          //  It's important that we fallthrough here, just because the
+          //  initiating function threw doesn't mean that there's no outstanding
+          //  operations
         }
         //  In the case of an immediate completion *this may already be outside its
         //  lifetime so we can't proceed into the branch
         if (frame) {
           base_::callback_.emplace(
             ::stdexec::get_stop_token(::stdexec::get_env(base_::r_)),
-            stop_callback(base_::signal_));
+            typename base_::on_stop_request_{*this});
         }
       }
     };
@@ -490,7 +512,11 @@ namespace asioexec {
 
   } // namespace detail::completion_token
 
-  struct completion_token_t { };
+  struct completion_token_t {
+    static constexpr auto as_default_on = asioexec::as_default_on<completion_token_t>;
+    template <typename IoObject>
+    using as_default_on_t = asioexec::as_default_on_t<completion_token_t, IoObject>;
+  };
 
   inline const completion_token_t completion_token{};
 
