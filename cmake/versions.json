@@ -1,7 +1,7 @@
 {
   "packages" : {
     "CCCL" : {
-      "version" : "2.2.0",
+      "version" : "3.0.1",
       "git_url" : "https://github.com/NVIDIA/cccl.git",
       "git_tag" : "v${version}"
     }
