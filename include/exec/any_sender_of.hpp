@@ -1060,10 +1060,6 @@ namespace exec {
             __storage_.__get_object_pointer(), static_cast<__receiver_ref_t&&>(__receiver));
         }
 
-        explicit operator bool() const noexcept {
-          return __get_object_pointer(__storage_) != nullptr;
-        }
-
         auto get_env() const noexcept -> __env_t {
           return {__storage_.__get_vtable(), __storage_.__get_object_pointer()};
         }
