@@ -17,6 +17,8 @@
 
 #include "../stdexec/execution.hpp"
 #include "../stdexec/__detail/__any_receiver_ref.hpp"
+#include "../stdexec/__detail/__concepts.hpp"
+#include "../stdexec/__detail/__env.hpp"
 #include "../stdexec/__detail/__transform_completion_signatures.hpp"
 
 #include "sequence_senders.hpp"
@@ -612,15 +614,41 @@ namespace exec {
     auto __tag_type(_Tag (*)(_As...) noexcept) -> _Tag;
 
     template <class _Query>
-    concept __is_stop_token_query = requires {
-      { __tag_type(static_cast<_Query>(nullptr)) } -> same_as<get_stop_token_t>;
-    };
+    using __tag_type_t = decltype(__tag_type(static_cast<_Query>(nullptr)));
+
+    template <class _Query>
+    concept __is_stop_token_query = __same_as<__tag_type_t<_Query>, get_stop_token_t>;
 
     template <class _Query>
     concept __is_not_stop_token_query = !__is_stop_token_query<_Query>;
 
     template <class _Query>
-    using __is_not_stop_token_query_v = __mbool<__is_not_stop_token_query<_Query>>;
+    using __is_not_stop_token_query_t = __mbool<__is_not_stop_token_query<_Query>>;
+
+    auto __test_never_stop_token(get_stop_token_t (*)(never_stop_token (*)() noexcept))
+      -> __mbool<true>;
+
+    template <class _Tag, class _Ret, class... _As>
+    auto __test_never_stop_token(_Tag (*)(_Ret (*)(_As...) noexcept)) -> __mbool<false>;
+
+    template <class _Tag, class _Ret, class... _As>
+    auto __test_never_stop_token(_Tag (*)(_Ret (*)(_As...))) -> __mbool<false>;
+
+    template <class _Query>
+    using __is_never_stop_token_query_t = decltype(__test_never_stop_token(
+      static_cast<_Query>(nullptr)));
+
+    template <class _Query>
+    concept __is_never_stop_token_query = __is_never_stop_token_query_t<_Query>::value;
+
+    template <class _Query, class _Env>
+    concept __satisfies_receiver_stop_token_query =
+      __same_as<__decay_t<__env::__query_result_t<_Env, __tag_type_t<_Query>>>, stop_token_of_t<_Env>>;
+
+    template <class _Query, class... _Env>
+    concept __satisfies_receiver_query = !__is_stop_token_query<_Query>
+                                      || __is_never_stop_token_query<_Query>
+                                      || (__satisfies_receiver_stop_token_query<_Query, _Env> || ...);
 
     namespace __rec {
       template <class _Sigs, class... _Queries>
@@ -731,19 +759,6 @@ namespace exec {
         }
       };
 
-      auto __test_never_stop_token(get_stop_token_t (*)(never_stop_token (*)() noexcept))
-        -> __mbool<true>;
-
-      template <class _Tag, class _Ret, class... _As>
-      auto __test_never_stop_token(_Tag (*)(_Ret (*)(_As...) noexcept)) -> __mbool<false>;
-
-      template <class _Tag, class _Ret, class... _As>
-      auto __test_never_stop_token(_Tag (*)(_Ret (*)(_As...))) -> __mbool<false>;
-
-      template <class _Query>
-      using __is_never_stop_token_query = decltype(__test_never_stop_token(
-        static_cast<_Query>(nullptr)));
-
       template <class... _Sigs, class... _Queries>
         requires(__is_stop_token_query<_Queries> || ...)
       struct __ref<completion_signatures<_Sigs...>, _Queries...> {
@@ -753,7 +768,7 @@ namespace exec {
        private:
 #endif
         using _FilteredQueries =
-          __minvoke<__mremove_if<__q<__is_never_stop_token_query>>, _Queries...>;
+          __minvoke<__mremove_if<__q<__is_never_stop_token_query_t>>, _Queries...>;
         using __vtable_t = stdexec::__t<
           __mapply<__mbind_front_q<__vtable, completion_signatures<_Sigs...>>, _FilteredQueries>
         >;
@@ -994,7 +1009,7 @@ namespace exec {
     struct __sender {
       using __receiver_ref_t = __receiver_ref<_Sigs, _ReceiverQueries>;
       static constexpr bool __with_inplace_stop_token =
-        __v<__mapply<__mall_of<__q<__is_not_stop_token_query_v>>, _ReceiverQueries>>;
+        __v<__mapply<__mall_of<__q<__is_not_stop_token_query_t>>, _ReceiverQueries>>;
 
       class __vtable : public __query_vtable<_SenderQueries> {
        public:
@@ -1224,7 +1239,6 @@ namespace exec {
 
      public:
       using sender_concept = stdexec::sender_t;
-      using completion_signatures = typename __sender_base::completion_signatures;
       using __t = any_sender;
       using __id = any_sender;
 
@@ -1233,6 +1247,13 @@ namespace exec {
       any_sender(_Sender&& __sender)
         noexcept(stdexec::__nothrow_constructible_from<__sender_base, _Sender>)
         : __sender_(static_cast<_Sender&&>(__sender)) {
+      }
+
+      template <stdexec::__decays_to<any_sender> _Self, class... _Env>
+      requires(__any::__satisfies_receiver_query<decltype(_ReceiverQueries), _Env ...> && ...)
+      static auto get_completion_signatures(_Self&&, _Env&&...) noexcept ->
+        typename __sender_base::completion_signatures {
+        return {};
       }
 
       template <stdexec::receiver_of<_Completions> _Receiver>
