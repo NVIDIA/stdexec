@@ -56,7 +56,7 @@ namespace stdexec {
       }
 
       static auto __transform_sender_fn() {
-        return [&]<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
+        return []<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
           return schedule_from(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child));
         };
       }

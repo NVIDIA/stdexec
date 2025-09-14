@@ -172,12 +172,14 @@ namespace stdexec {
           } else {
             // This branch handles the case where `on` was called like `sndr | on(sch, clsur)`
             auto&& [__sched, __clsur] = static_cast<_Data&&>(__data);
-            return write_env(
-              continues_on(
-                __forward_like<_Data>(__clsur)(continues_on(
-                  write_env(static_cast<_Child&&>(__child), __with_sched{__old}), __sched)),
-                __old),
-              __with_sched{__sched});
+            return continues_on(
+              write_env(
+                __forward_like<_Data>(__clsur)( //
+                  continues_on(
+                    write_env(static_cast<_Child&&>(__child), __with_sched{__old}), //
+                    __sched)),
+                __with_sched{__sched}),
+              __old);
           }
         };
       }
