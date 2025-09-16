@@ -22,6 +22,7 @@
 #include "__diagnostics.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
+#include "__just.hpp"
 #include "__let.hpp"
 #include "__schedulers.hpp"
 #include "__senders_core.hpp"
@@ -77,7 +78,8 @@ namespace stdexec {
           static_cast<_Sender&&>(__sndr),
           []<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) -> auto {
             // This is the heart of starts_on: It uses `let_value` to schedule `__child` on the given scheduler:
-            return let_value(schedule(__data), __detail::__always{static_cast<_Child&&>(__child)});
+            return let_value(
+              continues_on(just(), __data), __detail::__always{static_cast<_Child&&>(__child)});
           });
       }
     };
