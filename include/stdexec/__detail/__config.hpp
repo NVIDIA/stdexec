@@ -504,7 +504,7 @@ namespace stdexec {
 
 #if STDEXEC_CUDA_COMPILATION() && defined(__CUDA_ARCH__)
 #  define STDEXEC_STD_NO_EXCEPTIONS() 1
-#elif STDEXEC_MSVC()
+#elif STDEXEC_MSVC() || STDEXEC_CLANG_CL()
 #  define STDEXEC_STD_NO_EXCEPTIONS() (_HAS_EXCEPTIONS == 0) || (_CPPUNWIND == 0)
 #else
 #  define STDEXEC_STD_NO_EXCEPTIONS() (__EXCEPTIONS == 0)
