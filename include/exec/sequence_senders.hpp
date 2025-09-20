@@ -227,9 +227,8 @@ namespace exec {
   };
 
   template <class _Sender, class... _Env>
-  concept sequence_sender_in = stdexec::sender_in<_Sender, _Env...>
-                            && has_sequence_item_types<_Sender, _Env...>
-                            && sequence_sender<_Sender, _Env...>;
+  concept sequence_sender_in = sequence_sender<_Sender, _Env...>
+                            && has_sequence_item_types<_Sender, _Env...>;
 
   template <class _Receiver>
   struct _WITH_RECEIVER_ { };
