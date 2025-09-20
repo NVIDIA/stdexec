@@ -142,9 +142,6 @@ namespace exec {
   template <class... _Senders>
   struct item_types { };
 
-  template <class _Tp>
-  concept __has_item_typedef = requires { typename _Tp::item_types; };
-
   /////////////////////////////////////////////////////////////////////////////
   // [execution.sndtraits]
   namespace __sequence_sndr {
