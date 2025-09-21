@@ -21,9 +21,10 @@ endif()
 
 # Fetch rapids-cmake
 if(NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/RAPIDS.cmake)
-  file(DOWNLOAD https://raw.githubusercontent.com/rapidsai/rapids-cmake/branch-24.02/RAPIDS.cmake
+  file(DOWNLOAD https://raw.githubusercontent.com/rapidsai/rapids-cmake/branch-25.10/RAPIDS.cmake
        ${CMAKE_CURRENT_BINARY_DIR}/RAPIDS.cmake)
 endif()
+set(rapids-cmake-version "25.10")
 # Initialize rapids-cmake
 include(${CMAKE_CURRENT_BINARY_DIR}/RAPIDS.cmake)
 # utilities for generating export set package metadata
