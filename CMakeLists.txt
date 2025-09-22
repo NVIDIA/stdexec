@@ -475,13 +475,13 @@ if(STDEXEC_ENABLE_ASIO)
     file(GLOB_RECURSE boost_pool_sources CONFIGURE_DEPENDS include/execpools/asio/*.hpp)
     file(GLOB_RECURSE asioexec_sources CONFIGURE_DEPENDS include/asioexec/*.hpp)
 
-
     if(${STDEXEC_ASIO_USES_BOOST})
-      set(BOOST_ENABLE_COMPATIBILITY_TARGETS TRUE)
-      rapids_cpm_find(Boost 1.86.0
-      CPM_ARGS
-        GITHUB_REPOSITORY boostorg/boost
-        GIT_TAG boost-1.86.0
+      set(BOOST_INCLUDE_LIBRARIES asio system)
+      set(BOOST_VERSION 1.86.0)
+      rapids_cpm_find(Boost ${BOOST_VERSION}
+        CPM_ARGS
+          URL https://github.com/boostorg/boost/releases/download/boost-${BOOST_VERSION}/boost-${BOOST_VERSION}-cmake.tar.xz
+          OPTIONS "BOOST_SKIP_INSTALL_RULES OFF"
       )
 
       add_library(stdexec_boost_pool INTERFACE)
@@ -497,7 +497,10 @@ if(STDEXEC_ENABLE_ASIO)
           FILES ${STDEXEC_ASIO_POOL_CONFIG_HPP}
       )
 
-      target_link_libraries(stdexec_boost_pool INTERFACE STDEXEC::stdexec Boost::boost)
+      target_link_libraries(stdexec_boost_pool INTERFACE
+          STDEXEC::stdexec
+          Boost::asio
+      )
       install(TARGETS stdexec_boost_pool EXPORT stdexec-exports FILE_SET headers)
 
       add_library(asioexec_boost INTERFACE)
@@ -513,7 +516,10 @@ if(STDEXEC_ENABLE_ASIO)
           FILES ${ASIOEXEC_CONFIG_HPP}
       )
 
-      target_link_libraries(asioexec_boost INTERFACE STDEXEC::stdexec Boost::boost)
+      target_link_libraries(asioexec_boost INTERFACE
+          STDEXEC::stdexec
+          Boost::asio
+      )
       install(TARGETS asioexec_boost EXPORT stdexec-exports FILE_SET headers)
 
     elseif(${STDEXEC_ASIO_USES_STANDALONE})
@@ -535,7 +541,10 @@ if(STDEXEC_ENABLE_ASIO)
           FILES ${STDEXEC_ASIO_POOL_CONFIG_HPP}
       )
 
-      target_link_libraries(stdexec_asio_pool INTERFACE STDEXEC::stdexec asio)
+      target_link_libraries(stdexec_asio_pool INTERFACE
+          STDEXEC::stdexec
+          asio
+      )
       install(TARGETS stdexec_asio_pool EXPORT stdexec-exports FILE_SET headers)
 
       add_library(asioexec_asio INTERFACE)
@@ -551,7 +560,10 @@ if(STDEXEC_ENABLE_ASIO)
           FILES ${ASIOEXEC_CONFIG_HPP}
       )
 
-      target_link_libraries(asioexec_asio INTERFACE STDEXEC::stdexec asio)
+      target_link_libraries(asioexec_asio INTERFACE
+          STDEXEC::stdexec
+          asio
+      )
       install(TARGETS asioexec_asio EXPORT stdexec-exports FILE_SET headers)
 
     else()
