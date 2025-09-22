@@ -457,68 +457,115 @@ if(STDEXEC_ENABLE_ASIO)
       message(FATAL_ERROR "Unknown configuration for ASIO implementation: " ${STDEXEC_ASIO_IMPLEMENTATION})
     endif()
 
-    file(GLOB_RECURSE boost_pool_sources include/execpools/asio/*.hpp)
-    set(STDEXEC_ASIO_CONFIG_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/include/execpools/asio)
-    configure_file(include/execpools/asio/asio_config.hpp.in ${STDEXEC_ASIO_CONFIG_FILE_PATH}/asio_config.hpp)
-
     set(ASIOEXEC_USES_BOOST ${STDEXEC_ASIO_USES_BOOST})
     set(ASIOEXEC_USES_STANDALONE ${STDEXEC_ASIO_USES_STANDALONE})
 
-    file(GLOB_RECURSE asioexec_sources include/asioexec/*.hpp)
-    set(ASIOEXEC_ASIO_CONFIG_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/include/asioexec)
-    configure_file(include/asioexec/asio_config.hpp.in ${ASIOEXEC_ASIO_CONFIG_FILE_PATH}/asio_config.hpp)
+    set(STDEXEC_ASIO_POOL_CONFIG_HPP ${CMAKE_CURRENT_BINARY_DIR}/include/execpools/asio/asio_config.hpp)
+    set(ASIOEXEC_CONFIG_HPP ${CMAKE_CURRENT_BINARY_DIR}/include/asioexec/asio_config.hpp)
+
+    configure_file(
+        include/execpools/asio/asio_config.hpp.in
+        ${STDEXEC_ASIO_POOL_CONFIG_HPP}
+    )
+    configure_file(
+        include/asioexec/asio_config.hpp.in
+        ${ASIOEXEC_CONFIG_HPP}
+    )
+
+    file(GLOB_RECURSE boost_pool_sources CONFIGURE_DEPENDS include/execpools/asio/*.hpp)
+    file(GLOB_RECURSE asioexec_sources CONFIGURE_DEPENDS include/asioexec/*.hpp)
 
     if(${STDEXEC_ASIO_USES_BOOST})
-      set(BOOST_ENABLE_COMPATIBILITY_TARGETS TRUE)
-      rapids_cpm_find(Boost 1.86.0
-      CPM_ARGS
-        GITHUB_REPOSITORY boostorg/boost
-        GIT_TAG boost-1.86.0
+      set(BOOST_INCLUDE_LIBRARIES asio system)
+      set(BOOST_VERSION 1.86.0)
+      rapids_cpm_find(Boost ${BOOST_VERSION}
+        CPM_ARGS
+          URL https://github.com/boostorg/boost/releases/download/boost-${BOOST_VERSION}/boost-${BOOST_VERSION}-cmake.tar.xz
+          OPTIONS "BOOST_SKIP_INSTALL_RULES OFF"
       )
-      add_library(stdexec_boost_pool INTERFACE ${boost_pool_sources})
+
+      add_library(stdexec_boost_pool INTERFACE)
       list(APPEND stdexec_export_targets stdexec_boost_pool)
       add_library(STDEXEC::asio_pool ALIAS stdexec_boost_pool)
 
-      target_link_libraries(stdexec_boost_pool
-          INTERFACE
-          STDEXEC::stdexec
-          Boost::boost
+      target_sources(stdexec_boost_pool PUBLIC
+          FILE_SET headers
+          TYPE HEADERS
+          BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
+          FILES ${boost_pool_sources}
+          BASE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/include
+          FILES ${STDEXEC_ASIO_POOL_CONFIG_HPP}
       )
 
-      add_library(asioexec_boost INTERFACE ${asioexec_sources})
+      target_link_libraries(stdexec_boost_pool INTERFACE
+          STDEXEC::stdexec
+          Boost::asio
+      )
+      install(TARGETS stdexec_boost_pool EXPORT stdexec-exports FILE_SET headers)
+
+      add_library(asioexec_boost INTERFACE)
       list(APPEND stdexec_export_targets asioexec_boost)
       add_library(STDEXEC::asioexec_boost ALIAS asioexec_boost)
 
-      target_link_libraries(asioexec_boost
-          INTERFACE
-          STDEXEC::stdexec
-          Boost::boost
+      target_sources(asioexec_boost PUBLIC
+          FILE_SET headers
+          TYPE HEADERS
+          BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
+          FILES ${asioexec_sources}
+          BASE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/include
+          FILES ${ASIOEXEC_CONFIG_HPP}
       )
+
+      target_link_libraries(asioexec_boost INTERFACE
+          STDEXEC::stdexec
+          Boost::asio
+      )
+      install(TARGETS asioexec_boost EXPORT stdexec-exports FILE_SET headers)
+
     elseif(${STDEXEC_ASIO_USES_STANDALONE})
       include(cmake/import_standalone_asio.cmake)
       import_standalone_asio(
         TAG "asio-1-31-0"
         VERSION "1.31.0")
 
-      add_library(stdexec_asio_pool INTERFACE ${boost_pool_sources})
+      add_library(stdexec_asio_pool INTERFACE)
       list(APPEND stdexec_export_targets stdexec_asio_pool)
       add_library(STDEXEC::asio_pool ALIAS stdexec_asio_pool)
 
-      target_link_libraries(stdexec_asio_pool
-          INTERFACE
+      target_sources(stdexec_asio_pool PUBLIC
+          FILE_SET headers
+          TYPE HEADERS
+          BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
+          FILES ${boost_pool_sources}
+          BASE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/include
+          FILES ${STDEXEC_ASIO_POOL_CONFIG_HPP}
+      )
+
+      target_link_libraries(stdexec_asio_pool INTERFACE
           STDEXEC::stdexec
           asio
       )
+      install(TARGETS stdexec_asio_pool EXPORT stdexec-exports FILE_SET headers)
 
-      add_library(asioexec_asio INTERFACE ${asioexec_sources})
+      add_library(asioexec_asio INTERFACE)
       list(APPEND stdexec_export_targets asioexec_asio)
       add_library(STDEXEC::asioexec_asio ALIAS asioexec_asio)
 
-      target_link_libraries(asioexec_asio
-          INTERFACE
+      target_sources(asioexec_asio PUBLIC
+          FILE_SET headers
+          TYPE HEADERS
+          BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
+          FILES ${asioexec_sources}
+          BASE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/include
+          FILES ${ASIOEXEC_CONFIG_HPP}
+      )
+
+      target_link_libraries(asioexec_asio INTERFACE
           STDEXEC::stdexec
           asio
       )
+      install(TARGETS asioexec_asio EXPORT stdexec-exports FILE_SET headers)
+
     else()
       message(FATAL_ERROR "ASIO implementation is not configured")
     endif()
