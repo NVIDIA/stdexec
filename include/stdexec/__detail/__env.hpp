@@ -438,6 +438,8 @@ namespace stdexec {
     struct env<> {
       using __t = env;
       using __id = env;
+
+      auto query() const = delete;
     };
 
     template <class... _Envs>

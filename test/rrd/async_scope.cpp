@@ -75,6 +75,9 @@ struct async_scope_future_set_result : rl::test_suite<async_scope_future_set_res
     STDEXEC_CATCH(const std::logic_error&) {
       threw = true;
     }
+    STDEXEC_CATCH_ALL {
+      RL_ASSERT(false);
+    }
     RL_ASSERT(threw);
     ex::sync_wait(scope.on_empty());
   }

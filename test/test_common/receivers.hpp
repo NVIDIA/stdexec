@@ -509,6 +509,9 @@ namespace {
       STDEXEC_CATCH(const std::exception& e) {
         FAIL("Exception thrown: " << e.what());
       }
+      STDEXEC_CATCH_ALL {
+        FAIL("Exception thrown");
+      }
     }
   };
 

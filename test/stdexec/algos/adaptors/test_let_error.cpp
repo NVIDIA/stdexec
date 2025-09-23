@@ -95,6 +95,7 @@ namespace {
                             STDEXEC_CATCH(const std::exception& e) {
                               return ex::just(std::string{e.what()});
                             }
+                            STDEXEC_CATCH_FALLTHROUGH
                           });
     wait_for_value(std::move(snd), std::string{"error description"});
     (void) snd;

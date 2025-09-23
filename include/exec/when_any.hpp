@@ -36,8 +36,8 @@ namespace exec {
       }
     };
 
-    template <class _BaseEnv>
-    using __env_t = __join_env_t<prop<get_stop_token_t, inplace_stop_token>, _BaseEnv>;
+    template <class _Env>
+    using __env_t = __join_env_t<prop<get_stop_token_t, inplace_stop_token>, _Env>;
 
     template <class... _Ts>
     using __nothrow_decay_copyable_and_move_constructible_t = __mbool<(
@@ -56,7 +56,7 @@ namespace exec {
     struct __completions_fn {
       template <class... _CvrefSenders>
       using __all_value_args_nothrow_decay_copyable = __mand_t<__value_types_t<
-        __completion_signatures_of_t<_CvrefSenders, _Env...>,
+        __completion_signatures_of_t<_CvrefSenders, __env_t<_Env>...>,
         __qq<__nothrow_decay_copyable_and_move_constructible_t>,
         __qq<__mand_t>
       >...>;
@@ -66,7 +66,7 @@ namespace exec {
         __eptr_completion_if_t<__all_value_args_nothrow_decay_copyable<_CvrefSenders...>>,
         completion_signatures<set_stopped_t()>,
         __transform_completion_signatures<
-          __completion_signatures_of_t<_CvrefSenders, _Env...>,
+          __completion_signatures_of_t<_CvrefSenders, __env_t<_Env>...>,
           __as_rvalues,
           __as_error,
           set_stopped_t (*)(),

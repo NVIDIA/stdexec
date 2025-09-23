@@ -46,8 +46,11 @@ auto main() -> int {
     auto [i] = stdexec::sync_wait(async_answer2(just(42), just())).value();
     std::cout << "The answer is " << i.value() << '\n';
   }
-  STDEXEC_CATCH(const std::exception& e) {
-    std::cout << e.what() << '\n';
+  STDEXEC_CATCH(std::exception& e) {
+    std::cerr << "error: " << e.what() << '\n';
+  }
+  STDEXEC_CATCH_ALL {
+    std::cerr << "unknown error\n";
   }
 }
 #else

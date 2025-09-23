@@ -18,6 +18,7 @@
 
 #include <asioexec/completion_token.hpp>
 
+#include <barrier>
 #include <chrono>
 #include <concepts>
 #include <cstddef>
@@ -41,8 +42,19 @@ using namespace asioexec;
 
 namespace {
 
+  static_assert(
+    noexcept(detail::completion_token::convert<const int&>(std::declval<int&>())));
+  static_assert(
+    noexcept(detail::completion_token::convert<const int>(std::declval<int>())));
+  static_assert(
+    noexcept(detail::completion_token::convert<std::string>(std::declval<std::string>())));
+  static_assert(
+    !noexcept(detail::completion_token::convert<std::string>(std::declval<const std::string&>())));
+  static_assert(
+    !noexcept(detail::completion_token::convert<std::string>(std::declval<const char*>())));
+
   //  connect_shared and start_shared ensure the operation state's lifetime ends
-  //  within the completion signal handing of the receiver thereby ensuring any
+  //  within the completion signal handling of the receiver thereby ensuring any
   //  use of the operation state by the operation after it's sent a completion
   //  signal is caught be AddressSanitizer
 
@@ -329,16 +341,33 @@ namespace {
     const Executor& ex,
     std::shared_ptr<void>& ptr,
     CompletionToken&& token) {
+    //  This function is seemingly fragile?
+    //
+    //  In release mode slightly different arrangements produce bizarre outcomes:
+    //
+    //  /root/stdexec/test/asioexec/test_completion_token.cpp:380: FAILED:
+    //    CHECK( !ex )
+    //  with expansion:
+    //    false
+    //
+    //  /root/stdexec/test/asioexec/test_completion_token.cpp:382: FAILED:
+    //    CHECK( ptr.use_count() == 1U )
+    //  with expansion:
+    //    -1564306560 == 1
     using signature_type = void();
     return asio_impl::async_initiate<CompletionToken, signature_type>(
       [&ptr](auto h, const auto& ex) {
         auto local = std::make_shared<decltype(h)>(std::move(h));
         const auto assoc = asio_impl::get_associated_executor(*local, ex);
         ptr = local;
-        asio_impl::post(ex, asio_impl::bind_executor(assoc, [local]() mutable {
-                          local.reset();
-                          throw std::logic_error("Test");
-                        }));
+        asio_impl::post(assoc, [&ptr, local = std::move(local)]() mutable {
+          CHECK(local.use_count() == 2);
+          CHECK(ptr.use_count() == 2);
+          auto cpy = std::move(local);
+          cpy.reset();
+          CHECK(ptr.use_count() == 1);
+          throw std::logic_error("Test");
+        });
       },
       token,
       ex);
@@ -727,6 +756,245 @@ namespace {
     };
     auto op = ::stdexec::connect(initiating_function(completion_token), expect_value_receiver{});
     ::stdexec::start(op);
+  }
+
+  TEST_CASE(
+    "Cancellation is delivered thread safely even when emitted thread unsafely",
+    "[asioexec][use_sender]") {
+    bool cancelled = false;
+    bool thread_safe = false;
+    std::mutex m;
+    asio_impl::io_context ctx;
+    std::barrier barrier(2);
+    const auto initiating_function = [&]<typename CompletionToken>(CompletionToken&& token) {
+      return asio_impl::async_initiate<CompletionToken, void()>(
+        [&](auto h) {
+          asio_impl::get_associated_cancellation_slot(h).assign([&](auto&&...) noexcept {
+            const std::unique_lock l(m, std::try_to_lock);
+            thread_safe = bool(l);
+            cancelled = true;
+          });
+          const auto ex = asio_impl::get_associated_executor(h, ctx.get_executor());
+          asio_impl::post(ex, [&, h = std::move(h)]() mutable {
+            auto local = std::move(h);
+            (void) local;
+            const std::lock_guard l(m);
+            barrier.arrive_and_wait();
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+          });
+        },
+        token);
+    };
+    ::stdexec::inplace_stop_source source;
+    auto sender = initiating_function(completion_token);
+    {
+      auto ptr = connect_shared(
+        std::move(sender),
+        expect_stopped_receiver(::stdexec::prop{::stdexec::get_stop_token, source.get_token()}));
+      std::thread t([&]() noexcept {
+        barrier.arrive_and_wait();
+        source.request_stop();
+      });
+      start_shared(std::move(ptr));
+      CHECK(ctx.run() != 0);
+      //  Just in case
+      (void) barrier.arrive();
+      t.join();
+      CHECK(cancelled);
+      CHECK(thread_safe);
+    }
+  }
+
+  TEST_CASE("Upon completion the stop token is no longer in use", "[asioexec][use_sender]") {
+    bool cancelled = false;
+    ::stdexec::inplace_stop_source source;
+    asio_impl::io_context ctx;
+    const auto initiating_function = [&]<typename CompletionToken>(CompletionToken&& token) {
+      return asio_impl::async_initiate<CompletionToken, void()>(
+        [&](auto h) {
+          asio_impl::get_associated_cancellation_slot(h).assign(
+            [&](auto&&...) noexcept { cancelled = true; });
+          const auto ex = asio_impl::get_associated_executor(h, ctx.get_executor());
+          asio_impl::post(ex, std::move(h));
+        },
+        token);
+    };
+    auto sender = initiating_function(completion_token);
+    auto op = ::stdexec::connect(
+      std::move(sender),
+      expect_void_receiver(::stdexec::prop{::stdexec::get_stop_token, source.get_token()}));
+    ::stdexec::start(op);
+    CHECK(ctx.run() != 0);
+    CHECK(ctx.stopped());
+    CHECK(!cancelled);
+    source.request_stop();
+    CHECK(!cancelled);
+  }
+
+  TEST_CASE("Upon abandonment the stop token is no longer in use", "[asioexec][use_sender]") {
+    bool cancelled = false;
+    ::stdexec::inplace_stop_source source;
+    asio_impl::io_context ctx;
+    const auto initiating_function = [&]<typename CompletionToken>(CompletionToken&& token) {
+      return asio_impl::async_initiate<CompletionToken, void()>(
+        [&](auto h) {
+          asio_impl::get_associated_cancellation_slot(h).assign(
+            [&](auto&&...) noexcept { cancelled = true; });
+          const auto ex = asio_impl::get_associated_executor(h, ctx.get_executor());
+          asio_impl::post(ex, [h = std::move(h)]() mutable {
+            auto local = std::move(h);
+            (void) local;
+          });
+        },
+        token);
+    };
+    auto sender = initiating_function(completion_token);
+    auto op = ::stdexec::connect(
+      std::move(sender),
+      expect_stopped_receiver(::stdexec::prop{::stdexec::get_stop_token, source.get_token()}));
+    ::stdexec::start(op);
+    CHECK(ctx.run() != 0);
+    CHECK(ctx.stopped());
+    CHECK(!cancelled);
+    source.request_stop();
+    CHECK(!cancelled);
+  }
+
+  TEST_CASE(
+    "Upon abandonment within the initiating function the stop token is no longer in use",
+    "[asioexec][use_sender]") {
+    bool cancelled = false;
+    ::stdexec::inplace_stop_source source;
+    asio_impl::io_context ctx;
+    const auto initiating_function = [&]<typename CompletionToken>(CompletionToken&& token) {
+      return asio_impl::async_initiate<CompletionToken, void()>(
+        [&](auto h) {
+          asio_impl::get_associated_cancellation_slot(h).assign(
+            [&](auto&&...) noexcept { cancelled = true; });
+        },
+        token);
+    };
+    auto sender = initiating_function(completion_token);
+    auto op = ::stdexec::connect(
+      std::move(sender),
+      expect_stopped_receiver(::stdexec::prop{::stdexec::get_stop_token, source.get_token()}));
+    ::stdexec::start(op);
+    CHECK(ctx.run() == 0);
+    CHECK(ctx.stopped());
+    CHECK(!cancelled);
+    source.request_stop();
+    CHECK(!cancelled);
+  }
+
+  TEST_CASE("Upon exception the stop token is no longer in use", "[asioexec][use_sender]") {
+    bool cancelled = false;
+    std::exception_ptr ex;
+    ::stdexec::inplace_stop_source source;
+    asio_impl::io_context ctx;
+    const auto initiating_function = [&]<typename CompletionToken>(CompletionToken&& token) {
+      return asio_impl::async_initiate<CompletionToken, void()>(
+        [&](auto h) {
+          asio_impl::get_associated_cancellation_slot(h).assign(
+            [&](auto&&...) noexcept { cancelled = true; });
+          const auto ex = asio_impl::get_associated_executor(h, ctx.get_executor());
+          asio_impl::post(ex, [h = std::move(h)]() mutable { throw std::logic_error("Test"); });
+        },
+        token);
+    };
+    auto sender = initiating_function(completion_token);
+    auto op = ::stdexec::connect(
+      std::move(sender),
+      expect_error_receiver_ex(::stdexec::prop{::stdexec::get_stop_token, source.get_token()}, ex));
+    ::stdexec::start(op);
+    CHECK(!ex);
+    CHECK(ctx.run() != 0);
+    CHECK(ctx.stopped());
+    CHECK(!cancelled);
+    CHECK(ex);
+    source.request_stop();
+    CHECK(!cancelled);
+  }
+
+  TEST_CASE(
+    "Upon exception from the initiating function the stop token is no longer in use",
+    "[asioexec][use_sender]") {
+    bool cancelled = false;
+    std::exception_ptr ex;
+    ::stdexec::inplace_stop_source source;
+    asio_impl::io_context ctx;
+    const auto initiating_function = [&]<typename CompletionToken>(CompletionToken&& token) {
+      return asio_impl::async_initiate<CompletionToken, void()>(
+        [&](auto h) {
+          asio_impl::get_associated_cancellation_slot(h).assign(
+            [&](auto&&...) noexcept { cancelled = true; });
+          throw std::logic_error("Test");
+        },
+        token);
+    };
+    auto sender = initiating_function(completion_token);
+    auto op = ::stdexec::connect(
+      std::move(sender),
+      expect_error_receiver_ex(::stdexec::prop{::stdexec::get_stop_token, source.get_token()}, ex));
+    ::stdexec::start(op);
+    CHECK(ex);
+    CHECK(!cancelled);
+    source.request_stop();
+    CHECK(!cancelled);
+  }
+
+  TEST_CASE(
+    "When the initiating function starts an operation and then throws an exception the operation "
+    "which was started may be cancelled, completion is deferred thereuntil, and the thrown "
+    "exception is sent on the error channel",
+    "[asioexec][use_sender]") {
+    std::exception_ptr ex;
+    ::stdexec::inplace_stop_source source;
+    asio_impl::io_context ctx;
+    asio_impl::system_timer t(ctx);
+    const auto initiating_function = [&]<typename CompletionToken>(CompletionToken&& token) {
+      return asio_impl::async_initiate<CompletionToken, void()>(
+        [&](auto h) {
+          t.expires_after(std::chrono::years(1));
+          const auto ex = asio_impl::get_associated_executor(h, t.get_executor());
+          const auto slot = asio_impl::get_associated_cancellation_slot(h);
+          t.async_wait(asio_impl::bind_executor(
+            ex, asio_impl::bind_cancellation_slot(slot, [h = std::move(h)](auto&&...) mutable {
+              std::move(h)();
+            })));
+          throw std::logic_error("Test");
+        },
+        token);
+    };
+    auto sender = initiating_function(completion_token);
+    auto ptr = connect_shared(
+      std::move(sender),
+      expect_error_receiver_ex(::stdexec::prop{::stdexec::get_stop_token, source.get_token()}, ex));
+    start_shared(std::move(ptr));
+    CHECK(ctx.poll() == 0);
+    CHECK(!ctx.stopped());
+    CHECK(!ex);
+    source.request_stop();
+    CHECK(ctx.poll() != 0);
+    CHECK(ctx.stopped());
+    CHECK(ex);
+  }
+
+  TEST_CASE(
+    "I/O objects may be transformed to use senders as their default vocabulary with only minimal "
+    "transformations (i.e. no error adaptation)",
+    "[asioexec][completion_token]") {
+    bool invoked = false;
+    asio_impl::io_context ctx;
+    auto t = completion_token.as_default_on(asio_impl::system_timer(ctx));
+    static_assert(
+      std::is_same_v<decltype(t), completion_token_t::as_default_on_t<asio_impl::system_timer>>);
+    t.expires_after(std::chrono::milliseconds(5));
+    auto op = ::stdexec::connect(
+      t.async_wait() | ::stdexec::then([](auto ec) { CHECK(!ec); }),
+      expect_void_receiver_ex(invoked));
+    ::stdexec::start(op);
+    CHECK(ctx.run() != 0);
+    CHECK(ctx.stopped());
   }
 
 } // namespace

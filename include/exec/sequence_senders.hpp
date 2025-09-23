@@ -134,16 +134,13 @@ namespace exec {
   template <class _Sender>
   concept __enable_sequence_sender = requires {
     typename _Sender::sender_concept;
-  } && stdexec::same_as<typename _Sender::sender_concept, sequence_sender_t>;
+  } && stdexec::derived_from<typename _Sender::sender_concept, sequence_sender_t>;
 
   template <class _Sender>
   inline constexpr bool enable_sequence_sender = __enable_sequence_sender<_Sender>;
 
   template <class... _Senders>
   struct item_types { };
-
-  template <class _Tp>
-  concept __has_item_typedef = requires { typename _Tp::item_types; };
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.sndtraits]
@@ -230,9 +227,8 @@ namespace exec {
   };
 
   template <class _Sender, class... _Env>
-  concept sequence_sender_in = stdexec::sender_in<_Sender, _Env...>
-                            && has_sequence_item_types<_Sender, _Env...>
-                            && sequence_sender<_Sender, _Env...>;
+  concept sequence_sender_in = sequence_sender<_Sender, _Env...>
+                            && has_sequence_item_types<_Sender, _Env...>;
 
   template <class _Receiver>
   struct _WITH_RECEIVER_ { };

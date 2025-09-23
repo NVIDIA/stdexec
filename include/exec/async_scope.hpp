@@ -21,6 +21,7 @@
 #include "../stdexec/__detail/__optional.hpp"
 #include "env.hpp"
 
+#include <atomic>
 #include <mutex>
 
 namespace exec {
@@ -49,7 +50,7 @@ namespace exec {
     struct __impl {
       inplace_stop_source __stop_source_{};
       mutable std::mutex __lock_{};
-      mutable std::ptrdiff_t __active_ = 0;
+      mutable std::atomic_ptrdiff_t __active_ = 0;
       mutable __intrusive_queue<&__task::__next_> __waiters_{};
 
       ~__impl() {
@@ -78,10 +79,12 @@ namespace exec {
         }
 
         void start() & noexcept {
+          // must get lock before checking __active, or if the __active is drained before
+          // the waiter is queued but after __active is checked, the waiter will never be notified
           std::unique_lock __guard{this->__scope_->__lock_};
           auto& __active = this->__scope_->__active_;
           auto& __waiters = this->__scope_->__waiters_;
-          if (__active != 0) {
+          if (__active.load(std::memory_order_acquire) != 0) {
             __waiters.push_back(this);
             return;
           }
@@ -153,9 +156,9 @@ namespace exec {
         __nest_op_base<_ReceiverId>* __op_;
 
         static void __complete(const __impl* __scope) noexcept {
-          std::unique_lock __guard{__scope->__lock_};
           auto& __active = __scope->__active_;
-          if (--__active == 0) {
+          if (__active.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+            std::unique_lock __guard{__scope->__lock_};
             auto __local_waiters = std::move(__scope->__waiters_);
             __guard.unlock();
             __scope = nullptr;
@@ -225,10 +228,8 @@ namespace exec {
 
         void start() & noexcept {
           STDEXEC_ASSERT(this->__scope_);
-          std::unique_lock __guard{this->__scope_->__lock_};
           auto& __active = this->__scope_->__active_;
-          ++__active;
-          __guard.unlock();
+          __active.fetch_add(1, std::memory_order_relaxed);
           stdexec::start(__op_);
         }
       };
