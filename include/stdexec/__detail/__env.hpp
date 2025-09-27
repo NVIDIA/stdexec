@@ -485,6 +485,7 @@ namespace stdexec {
       // return a reference to the first child env for which
       // __queryable_with<_Envs, _Query, _Args...> is true.
       template <class _Query, class... _Args>
+        requires(__queryable_with<_Envs, _Query, _Args...> || ...)
       STDEXEC_ATTRIBUTE(always_inline)
       static constexpr auto __get_1st(const env& __self) noexcept -> decltype(auto) {
         // NOLINTNEXTLINE (modernize-avoid-c-arrays)
@@ -532,6 +533,8 @@ namespace stdexec {
       // return a reference to the first child env for which
       // __member_queryable_with<_Envs, _Query, _Args...> is true.
       template <class _Query, class... _Args>
+        requires(
+          __queryable_with<_Env0, _Query, _Args...> || __queryable_with<_Env1, _Query, _Args...>)
       STDEXEC_ATTRIBUTE(always_inline)
       static constexpr auto __get_1st(const env& __self) noexcept -> decltype(auto) {
         if constexpr (__queryable_with<_Env0, _Query, _Args...>) {
