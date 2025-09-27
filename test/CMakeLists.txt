@@ -55,6 +55,7 @@ set(stdexec_test_sources
     stdexec/algos/adaptors/test_stopped_as_optional.cpp
     stdexec/algos/adaptors/test_stopped_as_error.cpp
     stdexec/algos/adaptors/test_ensure_started.cpp
+    stdexec/algos/adaptors/test_write_env.cpp
     stdexec/algos/consumers/test_start_detached.cpp
     stdexec/algos/consumers/test_sync_wait.cpp
     stdexec/algos/other/test_execute.cpp

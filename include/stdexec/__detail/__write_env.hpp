@@ -61,10 +61,10 @@ namespace stdexec {
           stdexec::get_env(__child));
       };
 
-      static constexpr auto get_env =
-        [](__ignore, const auto& __state, const auto& __rcvr) noexcept {
-          return __env::__join(__state, stdexec::get_env(__rcvr));
-        };
+      static constexpr auto get_env = [](__ignore, const auto& __state, const auto& __rcvr) noexcept
+        -> decltype(__env::__join(__state, stdexec::get_env(__rcvr))) {
+        return __env::__join(__state, stdexec::get_env(__rcvr));
+      };
 
       static constexpr auto get_completion_signatures =
           []<class _Self, class... _Env>(_Self &&, _Env &&...) noexcept
