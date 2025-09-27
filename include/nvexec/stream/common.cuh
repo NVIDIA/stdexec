@@ -307,13 +307,7 @@ namespace nvexec {
       }
     };
 
-    struct get_stream_provider_t {
-      template <class Env>
-        requires tag_invocable<get_stream_provider_t, const Env&>
-      auto operator()(const Env& env) const noexcept -> stream_provider_t* {
-        return tag_invoke(get_stream_provider_t{}, env);
-      }
-
+    struct get_stream_provider_t : stdexec::__query<get_stream_provider_t> {
       STDEXEC_ATTRIBUTE(host, device)
       static constexpr auto query(stdexec::forwarding_query_t) noexcept -> bool {
         return true;
@@ -372,12 +366,11 @@ namespace nvexec {
       }
 
       template <__forwarding_query Query>
-        requires __env::__queryable<env_of_t<Sender>, Query>
+        requires __queryable_with<env_of_t<Sender>, Query>
       STDEXEC_ATTRIBUTE(nodiscard)
-      constexpr auto query(Query) const
-        noexcept(__env::__nothrow_queryable<env_of_t<Sender>, Query>)
-          -> __env::__query_result_t<env_of_t<Sender>, Query> {
-        return stdexec::get_env(*child_).query(Query{});
+      constexpr auto query(Query) const noexcept(__nothrow_queryable_with<env_of_t<Sender>, Query>)
+        -> __query_result_t<env_of_t<Sender>, Query> {
+        return stdexec::__query<Query>()(stdexec::get_env(*child_));
       }
 
       const Sender* child_{};

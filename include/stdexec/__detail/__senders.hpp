@@ -127,10 +127,10 @@ namespace stdexec {
           // It's possible this is a dependent sender.
           return static_cast<dependent_completions (*)()>(nullptr);
         } else if constexpr ((__is_debug_env<_Env> || ...)) {
-          using __tag_invoke::tag_invoke;
           // This ought to cause a hard error that indicates where the problem is.
-          using _Completions
-            [[maybe_unused]] = tag_invoke_result_t<get_completion_signatures_t, _Sender, _Env...>;
+          using _Completions [[maybe_unused]] =
+            decltype(std::remove_reference_t<_TfxSender>::get_completion_signatures(
+              __declval<_TfxSender>(), __declval<_Env>()...));
           return static_cast<__debug::__completion_signatures (*)()>(nullptr);
         } else {
           using _Result = __mexception<

@@ -30,14 +30,10 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // Some utilities for debugging senders
   namespace __debug {
-    struct __is_debug_env_t {
+    struct __is_debug_env_t : __query<__is_debug_env_t> {
       static constexpr auto query(forwarding_query_t) noexcept -> bool {
         return true;
       }
-      template <class _Env>
-        requires __env::__queryable<_Env, __is_debug_env_t>
-      auto
-        operator()(const _Env&) const noexcept -> __env::__query_result_t<_Env, __is_debug_env_t>;
     };
 
     template <class _Env>
