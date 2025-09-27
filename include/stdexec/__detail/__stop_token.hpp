@@ -52,4 +52,26 @@ namespace stdexec {
   concept unstoppable_token = stoppable_token<_Token> && requires {
     { _Token::stop_possible() } -> __boolean_testable_;
   } && (!_Token::stop_possible());
+
+  // [stoptoken.never], class never_stop_token
+  struct never_stop_token {
+   private:
+    struct __callback_type {
+      explicit __callback_type(never_stop_token, __ignore) noexcept {
+      }
+    };
+   public:
+    template <class>
+    using callback_type = __callback_type;
+
+    static constexpr auto stop_requested() noexcept -> bool {
+      return false;
+    }
+
+    static constexpr auto stop_possible() noexcept -> bool {
+      return false;
+    }
+
+    auto operator==(const never_stop_token&) const noexcept -> bool = default;
+  };
 } // namespace stdexec

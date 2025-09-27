@@ -20,23 +20,15 @@
 
 namespace {
   // Two dummy properties:
-  constexpr struct Foo : stdexec::forwarding_query_t {
-    template <class Env>
-      requires stdexec::tag_invocable<Foo, Env>
-    auto operator()(const Env& e) const {
-      return stdexec::tag_invoke(*this, e);
-    }
+  constexpr struct Foo
+    : stdexec::__query<Foo>
+    , stdexec::forwarding_query_t {
+    using stdexec::__query<Foo>::operator();
   } foo{};
 
-  constexpr struct Bar {
-    friend constexpr auto tag_invoke(stdexec::forwarding_query_t, const Bar&) noexcept -> bool {
+  constexpr struct Bar : stdexec::__query<Bar> {
+    static constexpr auto query(stdexec::forwarding_query_t) noexcept -> bool {
       return true;
-    }
-
-    template <class Env>
-      requires stdexec::tag_invocable<Bar, Env>
-    auto operator()(const Env& e) const {
-      return stdexec::tag_invoke(*this, e);
     }
   } bar{};
 

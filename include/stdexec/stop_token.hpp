@@ -17,7 +17,6 @@
 #pragma once
 
 #include "__detail/__stop_token.hpp" // IWYU pragma: export
-#include "__detail/__utility.hpp"
 
 #include <version>
 #include <cstdint>
@@ -76,28 +75,6 @@ namespace stdexec {
       uint32_t __count_ = 0;
     };
   } // namespace __stok
-
-  // [stoptoken.never], class never_stop_token
-  struct never_stop_token {
-   private:
-    struct __callback_type {
-      explicit __callback_type(never_stop_token, __ignore) noexcept {
-      }
-    };
-   public:
-    template <class>
-    using callback_type = __callback_type;
-
-    static constexpr auto stop_requested() noexcept -> bool {
-      return false;
-    }
-
-    static constexpr auto stop_possible() noexcept -> bool {
-      return false;
-    }
-
-    auto operator==(const never_stop_token&) const noexcept -> bool = default;
-  };
 
   template <class _Callback>
   class inplace_stop_callback;

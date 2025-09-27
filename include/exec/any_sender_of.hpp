@@ -643,7 +643,7 @@ namespace exec {
 
     template <class _Query, class _Env>
     concept __satisfies_receiver_stop_token_query =
-      __same_as<__decay_t<__env::__query_result_t<_Env, __tag_type_t<_Query>>>, stop_token_of_t<_Env>>;
+      __same_as<__decay_t<__query_result_t<_Env, __tag_type_t<_Query>>>, stop_token_of_t<_Env>>;
 
     template <class _Query, class... _Env>
     concept __satisfies_receiver_query = !__is_stop_token_query<_Query>
@@ -1329,10 +1329,10 @@ namespace exec {
         }
 
         template <class _Tag, class... _As>
-          requires stdexec::__env::__queryable<const __scheduler_base&, _Tag, _As...>
+          requires stdexec::__queryable_with<const __scheduler_base&, _Tag, _As...>
         auto query(_Tag, _As&&... __as) const
-          noexcept(stdexec::__env::__nothrow_queryable<const __scheduler_base&, _Tag, _As...>)
-            -> stdexec::__env::__query_result_t<const __scheduler_base&, _Tag, _As...> {
+          noexcept(stdexec::__nothrow_queryable_with<const __scheduler_base&, _Tag, _As...>)
+            -> stdexec::__query_result_t<const __scheduler_base&, _Tag, _As...> {
           return __scheduler_.query(_Tag{}, static_cast<_As&&>(__as)...);
         }
 

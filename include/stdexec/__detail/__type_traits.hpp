@@ -24,8 +24,11 @@ namespace stdexec {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // A very simple std::declval replacement that doesn't handle void
+  template <class _Tp, bool _Noexcept = true>
+  using __declfn = auto (*)() noexcept(_Noexcept) -> _Tp;
+
   template <class _Tp>
-  extern auto (*__declval)() noexcept -> _Tp &&;
+  extern __declfn<_Tp &&> __declval;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __decay_t: An efficient implementation for std::decay

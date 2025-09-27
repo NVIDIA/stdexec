@@ -378,6 +378,9 @@ namespace stdexec {
   template <class _Fn, class... _Args>
   using __mcall = typename _Fn::template __f<_Args...>;
 
+  template <class _Fn, class _Arg>
+  using __mcall1 = typename _Fn::template __f<_Arg>;
+
   struct __disp_q {
     template <class... _Args>
     using __f = __disp<_Args...>;

@@ -16,7 +16,6 @@
 #pragma once
 
 #include "__concepts.hpp"
-#include "__meta.hpp"
 
 namespace stdexec::__std_concepts {
 #if STDEXEC_HAS_STD_CONCEPTS_HEADER()
@@ -37,22 +36,6 @@ namespace stdexec {
   // [func.tag_invoke], tag_invoke
   namespace __tag_invoke {
     void tag_invoke();
-
-    // For handling queryables with a static constexpr query member function:
-    template <class _Tag, class _Env>
-      requires true // so this overload is preferred over the one below
-    STDEXEC_ATTRIBUTE(always_inline) constexpr auto tag_invoke(_Tag, const _Env&) noexcept
-      -> decltype(_Env::query(_Tag())) {
-      return _Env::query(_Tag());
-    }
-
-    // For handling queryables with a query member function:
-    template <class _Tag, class _Env>
-    STDEXEC_ATTRIBUTE(always_inline)
-    constexpr auto tag_invoke(_Tag, const _Env& __env) noexcept(noexcept(__env.query(_Tag())))
-      -> decltype(__env.query(_Tag())) {
-      return __env.query(_Tag());
-    }
 
     // NOT TO SPEC: Don't require tag_invocable to subsume invocable.
     // std::invoke is more expensive at compile time than necessary,
