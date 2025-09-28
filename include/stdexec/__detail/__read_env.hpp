@@ -141,22 +141,26 @@ namespace stdexec {
 
   namespace __queries {
     template <class _Tag>
-    inline auto get_scheduler_t::operator()() const noexcept {
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    constexpr auto get_scheduler_t::operator()() const noexcept {
       return read_env(get_scheduler);
     }
 
     template <class _Tag>
-    inline auto get_delegation_scheduler_t::operator()() const noexcept {
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    constexpr auto get_delegation_scheduler_t::operator()() const noexcept {
       return read_env(get_delegation_scheduler);
     }
 
     template <class _Tag>
-    inline auto get_allocator_t::operator()() const noexcept {
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    constexpr auto get_allocator_t::operator()() const noexcept {
       return read_env(get_allocator);
     }
 
     template <class _Tag>
-    inline auto get_stop_token_t::operator()() const noexcept {
+    //STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    constexpr auto get_stop_token_t::operator()() const noexcept {
       return read_env(get_stop_token);
     }
   } // namespace __queries
