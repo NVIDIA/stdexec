@@ -95,20 +95,23 @@ namespace stdexec {
 
   namespace __queries {
     template <class _Env>
-    inline constexpr void get_scheduler_t::__validate() noexcept {
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    constexpr void get_scheduler_t::__validate() noexcept {
       static_assert(__nothrow_callable<get_scheduler_t, const _Env&>);
       static_assert(scheduler<__call_result_t<get_scheduler_t, const _Env&>>);
     }
 
     template <class _Env>
-    inline constexpr void get_delegation_scheduler_t::__validate() noexcept {
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    constexpr void get_delegation_scheduler_t::__validate() noexcept {
       static_assert(__nothrow_callable<get_delegation_scheduler_t, const _Env&>);
       static_assert(scheduler<__call_result_t<get_delegation_scheduler_t, const _Env&>>);
     }
 
     template <__completion_tag _Tag>
     template <class _Env>
-    inline constexpr void get_completion_scheduler_t<_Tag>::__validate() noexcept {
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    constexpr void get_completion_scheduler_t<_Tag>::__validate() noexcept {
       static_assert(__nothrow_callable<get_completion_scheduler_t<_Tag>, const _Env&>);
       static_assert(scheduler<__call_result_t<get_completion_scheduler_t<_Tag>, const _Env&>>);
     }
