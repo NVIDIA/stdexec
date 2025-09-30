@@ -155,6 +155,22 @@ namespace exec {
     struct __item_types { };
   } // namespace __debug
 
+  namespace __errs {
+    using namespace stdexec;
+    inline constexpr __mstring __unrecognized_sequence_type_diagnostic =
+      "The given type cannot be used as a sequence with the given environment "
+      "because the attempt to compute the item types failed."_mstr;
+  } // namespace __errs
+
+  template <class _Sequence>
+  struct _WITH_SEQUENCE_;
+
+  template <class... _Sequences>
+  struct _WITH_SEQUENCES_;
+
+  template <stdexec::__mstring _Diagnostic = __errs::__unrecognized_sequence_type_diagnostic>
+  struct _UNRECOGNIZED_SEQUENCE_TYPE_;
+
   /////////////////////////////////////////////////////////////////////////////
   // [execution.seqtraits]
   namespace __sequence_sndr {
@@ -163,18 +179,6 @@ namespace exec {
     template <class _Sequence, class... _Env>
     using __item_types_of_t =
       __call_result_t<get_item_types_t, _Sequence, _Env...>;
-
-    namespace __errs {
-      inline constexpr __mstring __unrecognized_sequence_type_diagnostic =
-        "The given type cannot be used as a sequence with the given environment "
-        "because the attempt to compute the item types failed."_mstr;
-    } // namespace __errs
-
-    template <class _Sequence>
-    struct _WITH_SEQUENCE_;
-
-    template <__mstring _Diagnostic = __errs::__unrecognized_sequence_type_diagnostic>
-    struct _UNRECOGNIZED_SEQUENCE_TYPE_;
 
     template <class _Sequence, class... _Env>
     using __unrecognized_sequence_error =
@@ -279,7 +283,7 @@ namespace exec {
   template <class _Sequence, class _Item>
   auto __check_item(_Item*) -> stdexec::__mexception<
     _SEQUENCE_ITEM_IS_NOT_A_WELL_FORMED_SENDER_<_Item>,
-    __sequence_sndr::_WITH_SEQUENCE_<_Sequence>
+    _WITH_SEQUENCE_<_Sequence>
   >;
 
   template <class _Sequence, class _Item>
@@ -297,7 +301,7 @@ namespace exec {
     requires (!stdexec::__merror<_Items>)
   auto __check_items(_Items*) -> stdexec::__mexception<
     _SEQUENCE_GET_ITEM_TYPES_RESULT_IS_NOT_WELL_FORMED_<_Items>,
-    __sequence_sndr::_WITH_SEQUENCE_<_Sequence>
+    _WITH_SEQUENCE_<_Sequence>
   >;
 
   template <class _Sequence, class... _Items>
@@ -317,7 +321,7 @@ namespace exec {
           && (!stdexec::__mvalid<__item_types_of_t, _Sequence>)
   auto __check_sequence(_Sequence*) -> stdexec::__mexception<
     _SEQUENCE_GET_ITEM_TYPES_IS_NOT_WELL_FORMED_,
-    __sequence_sndr::_WITH_SEQUENCE_<_Sequence>
+    _WITH_SEQUENCE_<_Sequence>
   >;
 
   template <class _Sequence>
