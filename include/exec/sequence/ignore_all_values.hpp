@@ -317,7 +317,8 @@ namespace exec {
       static constexpr auto connect =
         []<class _Sender, receiver _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(
           __nothrow_callable<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>)
-        -> __call_result_t<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>> {
+        -> __call_result_t<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>
+      {
         static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
         return __sexpr_apply(static_cast<_Sender&&>(__sndr), __connect_fn<_Receiver>{__rcvr});
       };
