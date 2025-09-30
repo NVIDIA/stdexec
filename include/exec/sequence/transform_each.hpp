@@ -124,25 +124,22 @@ namespace exec {
     struct __try_adaptor_calls_t {
 
       template <class _Item>
-      auto __try_adaptor_for_item(_Item*) -> stdexec::__mexception<
+      auto operator()(_Item*) -> stdexec::__mexception<
         _NOT_CALLABLE_ADAPTOR_<_Adaptor&>,
         _WITH_ITEM_SENDER_<stdexec::__name_of<_Item>>
       >;
 
       template <class _Item>
         requires stdexec::__callable<_Adaptor&, _Item>
-      auto __try_adaptor_for_item(_Item*) -> stdexec::__msuccess;
+      auto operator()(_Item*) -> stdexec::__msuccess;
 
       template <class... _Items>
       auto operator()(item_types<_Items...>*) -> decltype((
-        stdexec::__msuccess(),
-        ...,
-        __try_adaptor_for_item(static_cast<_Items*>(nullptr))));
+        stdexec::__msuccess(), ..., (*this)(static_cast<_Items*>(nullptr))));
     };
 
     template <class _Adaptor, class _Items>
-    using __try_adaptor_calls_result_t =
-      __call_result_t<__try_adaptor_calls_t<stdexec::__decay_t<_Adaptor>>, _Items>;
+    using __try_adaptor_calls_result_t = __call_result_t<__try_adaptor_calls_t<stdexec::__decay_t<_Adaptor>>, _Items>;
 
     template <class _Adaptor, class _Items>
     concept __callable_adaptor_for = requires(_Items* __items) {
@@ -153,7 +150,7 @@ namespace exec {
       template <sender _Sequence, __sender_adaptor_closure _Adaptor>
       auto operator()(_Sequence&& __sndr, _Adaptor&& __adaptor) const
         noexcept(__nothrow_decay_copyable<_Sequence> && __nothrow_decay_copyable<_Adaptor>)
-          -> __well_formed_sequence_sender auto {
+        -> __well_formed_sequence_sender auto {
         return make_sequence_expr<transform_each_t>(
           static_cast<_Adaptor&&>(__adaptor), static_cast<_Sequence&&>(__sndr));
       }
@@ -169,8 +166,8 @@ namespace exec {
       using __completion_sigs_t = __sequence_completion_signatures_of_t<__child_of<_Self>, _Env...>;
 
       template <sender_expr_for<transform_each_t> _Self, class... _Env>
-      static auto get_completion_signatures(_Self&&, _Env&&...) noexcept
-        -> __completion_sigs_t<_Self, _Env...> {
+      static auto
+        get_completion_signatures(_Self&&, _Env&&...) noexcept -> __completion_sigs_t<_Self, _Env...> {
         return {};
       }
 
@@ -183,61 +180,57 @@ namespace exec {
         __item_types_of_t<__child_of<_Self>, _Env...>
       >;
 
-      template <class _Transform>
-      struct _TRANSFORM_EACH_ADAPTOR_INVOCATION_FAILED_ { };
+        template<class _Transform>
+        struct _TRANSFORM_EACH_ADAPTOR_INVOCATION_FAILED_ {};
+
+        template <sender_expr_for<transform_each_t> _Self, class... _Env>
+          requires (!__mvalid<__item_types_t, _Self, _Env...>)
+                && __mvalid<__item_types_of_t, __child_of<_Self>, _Env...>
+                && (!__callable_adaptor_for<
+                   __data_of<_Self>,
+                   __item_types_of_t<__child_of<_Self>, _Env...>
+                 >)
+        static auto get_item_types(_Self&&, _Env&&...) noexcept -> __mexception<
+          _TRANSFORM_EACH_ADAPTOR_INVOCATION_FAILED_<_Self>,
+          __sequence_sndr::_WITH_SEQUENCE_<__child_of<_Self>>,
+          _WITH_ENVIRONMENT_<_Env...>,
+          _WITH_TYPE_<__try_adaptor_calls_result_t<
+            __data_of<_Self>,
+            __item_types_of_t<__child_of<_Self>, _Env...>>>>;
+
+      template<class _Transform>
+      struct _TRANSFORM_EACH_ITEM_TYPES_OF_THE_CHILD_ARE_INVALID_ {};
 
       template <sender_expr_for<transform_each_t> _Self, class... _Env>
-        requires(!__mvalid<__item_types_t, _Self, _Env...>)
-             && __mvalid<__item_types_of_t, __child_of<_Self>, _Env...>
-             && (!__callable_adaptor_for<
-                 __data_of<_Self>,
-                 __item_types_of_t<__child_of<_Self>, _Env...>
-             >)
-      static auto get_item_types(_Self&&, _Env&&...) noexcept -> __mexception<
-        _TRANSFORM_EACH_ADAPTOR_INVOCATION_FAILED_<_Self>,
-        _WITH_SEQUENCE_<__child_of<_Self>>,
-        _WITH_ENVIRONMENT_<_Env...>,
-        _WITH_TYPE_<__try_adaptor_calls_result_t<
-          __data_of<_Self>,
-          __item_types_of_t<__child_of<_Self>, _Env...>
-        >>
-      >;
-
-      template <class _Transform>
-      struct _TRANSFORM_EACH_ITEM_TYPES_OF_THE_CHILD_ARE_INVALID_ { };
-
-      template <sender_expr_for<transform_each_t> _Self, class... _Env>
-        requires(!__mvalid<__item_types_t, _Self, _Env...>)
-             && (!__mvalid<__item_types_of_t, __child_of<_Self>, _Env...>)
+        requires (!__mvalid<__item_types_t, _Self, _Env...>)
+              && (!__mvalid<__item_types_of_t, __child_of<_Self>, _Env...>)
       static auto get_item_types(_Self&&, _Env&&...) noexcept -> __mexception<
         _TRANSFORM_EACH_ITEM_TYPES_OF_THE_CHILD_ARE_INVALID_<_Self>,
-        _WITH_SEQUENCE_<__child_of<_Self>>,
-        _WITH_ENVIRONMENT_<_Env...>
-      >;
+        __sequence_sndr::_WITH_SEQUENCE_<__child_of<_Self>>,
+        _WITH_ENVIRONMENT_<_Env...>>;
 
-      template <class _Transform>
-      struct _TRANSFORM_EACH_ITEM_TYPES_CALCULATION_FAILED_ { };
+      template<class _Transform>
+      struct _TRANSFORM_EACH_ITEM_TYPES_CALCULATION_FAILED_ {};
 
       template <sender_expr_for<transform_each_t> _Self, class... _Env>
-        requires(!__mvalid<__item_types_t, _Self, _Env...>)
-             && __mvalid<__item_types_of_t, __child_of<_Self>, _Env...>
-             && __callable_adaptor_for<
+        requires (!__mvalid<__item_types_t, _Self, _Env...>)
+              && __mvalid<__item_types_of_t, __child_of<_Self>, _Env...>
+              && __callable_adaptor_for<
                   __data_of<_Self>,
                   __item_types_of_t<__child_of<_Self>, _Env...>
-             >
+                >
       static auto get_item_types(_Self&&, _Env&&...) noexcept -> __mexception<
         _TRANSFORM_EACH_ITEM_TYPES_CALCULATION_FAILED_<_Self>,
-        _WITH_SEQUENCE_<__child_of<_Self>>,
-        _WITH_ENVIRONMENT_<_Env...>
-      >;
+        __sequence_sndr::_WITH_SEQUENCE_<__child_of<_Self>>,
+        _WITH_ENVIRONMENT_<_Env...>>;
 
       template <sender_expr_for<transform_each_t> _Self, class... _Env>
         requires __mvalid<__item_types_t, _Self, _Env...>
               && __mvalid<__item_types_of_t, __child_of<_Self>, _Env...>
               && __callable_adaptor_for<
-                   __data_of<_Self>,
-                   __item_types_of_t<__child_of<_Self>, _Env...>
-              >
+                  __data_of<_Self>,
+                  __item_types_of_t<__child_of<_Self>, _Env...>
+                >
       static auto get_item_types(_Self&&, _Env&&...) noexcept -> __item_types_t<_Self, _Env...> {
         return {};
       }
