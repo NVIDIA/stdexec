@@ -192,7 +192,7 @@ namespace exec {
                  >)
         static auto get_item_types(_Self&&, _Env&&...) noexcept -> __mexception<
           _TRANSFORM_EACH_ADAPTOR_INVOCATION_FAILED_<_Self>,
-          __sequence_sndr::_WITH_SEQUENCE_<__child_of<_Self>>,
+          _WITH_SEQUENCE_<__child_of<_Self>>,
           _WITH_ENVIRONMENT_<_Env...>,
           _WITH_TYPE_<__try_adaptor_calls_result_t<
             __data_of<_Self>,
@@ -206,7 +206,7 @@ namespace exec {
               && (!__mvalid<__item_types_of_t, __child_of<_Self>, _Env...>)
       static auto get_item_types(_Self&&, _Env&&...) noexcept -> __mexception<
         _TRANSFORM_EACH_ITEM_TYPES_OF_THE_CHILD_ARE_INVALID_<_Self>,
-        __sequence_sndr::_WITH_SEQUENCE_<__child_of<_Self>>,
+        _WITH_SEQUENCE_<__child_of<_Self>>,
         _WITH_ENVIRONMENT_<_Env...>>;
 
       template<class _Transform>
@@ -221,7 +221,7 @@ namespace exec {
                 >
       static auto get_item_types(_Self&&, _Env&&...) noexcept -> __mexception<
         _TRANSFORM_EACH_ITEM_TYPES_CALCULATION_FAILED_<_Self>,
-        __sequence_sndr::_WITH_SEQUENCE_<__child_of<_Self>>,
+        _WITH_SEQUENCE_<__child_of<_Self>>,
         _WITH_ENVIRONMENT_<_Env...>>;
 
       template <sender_expr_for<transform_each_t> _Self, class... _Env>
