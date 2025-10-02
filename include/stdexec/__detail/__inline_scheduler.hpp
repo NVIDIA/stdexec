@@ -41,8 +41,8 @@ namespace stdexec {
 
     struct __attrs {
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      static constexpr auto query(__is_scheduler_affine_t) noexcept -> bool {
-        return true;
+      static constexpr auto query(get_completion_behavior_t) noexcept {
+        return completion_behavior::inline_completion;
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, host, device)

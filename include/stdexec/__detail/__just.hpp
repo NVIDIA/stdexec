@@ -34,8 +34,8 @@ namespace stdexec {
     struct __impl : __sexpr_defaults {
       using __tag_t = typename _JustTag::__tag_t;
 
-      static constexpr auto get_attrs =
-        [](__ignore) noexcept -> cprop<__is_scheduler_affine_t, true> {
+      static constexpr auto get_attrs = [](__ignore) noexcept
+        -> cprop<get_completion_behavior_t, completion_behavior::inline_completion> {
         return {};
       };
 

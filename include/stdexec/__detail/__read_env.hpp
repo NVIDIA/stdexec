@@ -82,8 +82,8 @@ namespace stdexec {
       using __completions_t =
         __minvoke<__mtry_catch_q<__read::__completions_t, __q<__query_failed_error>>, _Tag, _Env>;
 
-      static constexpr auto get_attrs =
-        [](__ignore) noexcept -> cprop<__is_scheduler_affine_t, true> {
+      static constexpr auto get_attrs = [](__ignore) noexcept
+        -> cprop<get_completion_behavior_t, completion_behavior::inline_completion> {
         return {};
       };
 
