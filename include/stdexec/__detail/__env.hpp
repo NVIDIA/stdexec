@@ -709,17 +709,20 @@ namespace stdexec {
     using __t = __sync_attrs;
     using __id = __sync_attrs;
 
-    static constexpr auto query(__is_scheduler_affine_t) noexcept -> bool {
-      return __is_scheduler_affine<_Sender>;
+    [[nodiscard]]
+    constexpr auto query(__is_scheduler_affine_t) const noexcept {
+      return __mbool<__is_scheduler_affine<_Sender>>();
     }
 
     template <class... _Env>
-    static constexpr auto query(get_completion_behavior_t, const _Env&...) noexcept {
+    [[nodiscard]]
+    constexpr auto query(get_completion_behavior_t, const _Env&...) const noexcept {
       return get_completion_behavior<_Sender, _Env...>();
     }
 
     template <__forwarding_query _Query, class... _Args>
       requires __queryable_with<env_of_t<_Sender>, _Query, _Args...>
+    [[nodiscard]]
     constexpr auto query(_Query, _Args&&... __args) const
       noexcept(__nothrow_queryable_with<env_of_t<_Sender>, _Query, _Args...>)
         -> __query_result_t<env_of_t<_Sender>, _Query, _Args...> {
