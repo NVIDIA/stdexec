@@ -167,7 +167,7 @@ namespace exec {
     struct iterate_t {
       template <std::ranges::forward_range _Range>
         requires __decay_copyable<_Range>
-      auto operator()(_Range&& __range) const {
+      auto operator()(_Range&& __range) const -> __well_formed_sequence_sender auto {
         return make_sequence_expr<iterate_t>(__decay_t<_Range>{static_cast<_Range&&>(__range)});
       }
 

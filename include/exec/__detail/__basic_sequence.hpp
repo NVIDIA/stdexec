@@ -71,35 +71,36 @@ namespace exec {
       return {};
     }
 
-    template <stdexec::__decays_to<__seqexpr> _Self, class _Env>
-    STDEXEC_MEMFN_DECL(auto get_item_types)(this _Self&& __self, _Env&& __env)
-      -> decltype(__self.__tag()
-                    .get_item_types(static_cast<_Self&&>(__self), static_cast<_Env&&>(__env))) {
+    template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
+    static auto get_item_types(_Self&& __self, _Env&&... __env)
+      -> decltype(__self.__tag().get_item_types(
+        static_cast<_Self&&>(__self),
+        static_cast<_Env&&>(__env)...)) {
       return {};
     }
 
     template <stdexec::__decays_to<__seqexpr> _Self, stdexec::receiver _Receiver>
-    STDEXEC_MEMFN_DECL(auto subscribe)(this _Self&& __self, _Receiver&& __rcvr) noexcept(noexcept(
+    static auto subscribe(_Self&& __self, _Receiver&& __rcvr) noexcept(noexcept(
       __self.__tag().subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr))))
       -> decltype(__self.__tag()
                     .subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr))) {
       return __tag_t::subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
     }
 
-    template <class _Sender, class _ApplyFn>
+    template <class _Sequence, class _ApplyFn>
     static auto
-      apply(_Sender&& __sndr, _ApplyFn&& __fun) noexcept(stdexec::__nothrow_callable<
-                                                         stdexec::__detail::__impl_of<_Sender>,
-                                                         stdexec::__copy_cvref_fn<_Sender>,
+      apply(_Sequence&& __sequence, _ApplyFn&& __fun) noexcept(stdexec::__nothrow_callable<
+                                                         stdexec::__detail::__impl_of<_Sequence>,
+                                                         stdexec::__copy_cvref_fn<_Sequence>,
                                                          _ApplyFn
       >)
         -> stdexec::__call_result_t<
-          stdexec::__detail::__impl_of<_Sender>,
-          stdexec::__copy_cvref_fn<_Sender>,
+          stdexec::__detail::__impl_of<_Sequence>,
+          stdexec::__copy_cvref_fn<_Sequence>,
           _ApplyFn
         > {
-      return static_cast<_Sender&&>(__sndr)
-        .__impl_(stdexec::__copy_cvref_fn<_Sender>(), static_cast<_ApplyFn&&>(__fun));
+      return static_cast<_Sequence&&>(__sequence)
+        .__impl_(stdexec::__copy_cvref_fn<_Sequence>(), static_cast<_ApplyFn&&>(__fun));
     }
   };
 
