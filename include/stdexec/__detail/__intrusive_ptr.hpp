@@ -48,7 +48,7 @@ namespace stdexec {
     };
 
     template <std::size_t _ReservedBits>
-    using __bits_t = typename __count_and_bits<_ReservedBits>::__bits;
+    using __bits_t = __count_and_bits<_ReservedBits>::__bits;
 
     template <class _Ty, std::size_t _ReservedBits>
     struct __make_intrusive_t;
@@ -61,7 +61,7 @@ namespace stdexec {
       auto __intrusive_from_this() noexcept -> __intrusive_ptr<_Ty, _ReservedBits>;
       auto __intrusive_from_this() const noexcept -> __intrusive_ptr<const _Ty, _ReservedBits>;
      private:
-      using __bits_t = typename __count_and_bits<_ReservedBits>::__bits;
+      using __bits_t = __count_and_bits<_ReservedBits>::__bits;
       friend _Ty;
       auto __inc_ref() noexcept -> __bits_t;
       auto __dec_ref() noexcept -> __bits_t;
@@ -80,7 +80,7 @@ namespace stdexec {
 
     template <class _Ty, std::size_t _ReservedBits>
     struct __control_block {
-      using __bits_t = typename __count_and_bits<_ReservedBits>::__bits;
+      using __bits_t = __count_and_bits<_ReservedBits>::__bits;
       static constexpr std::size_t __ref_count_increment = 1ul << _ReservedBits;
 
       alignas(_Ty) unsigned char __value_[sizeof(_Ty)];

@@ -291,9 +291,8 @@ namespace exec {
         }
       };
 
-      using callback_type = typename stdexec::stop_token_of_t<
-        stdexec::env_of_t<Receiver>
-      >::template callback_type<on_stopped_t>;
+      using callback_type =
+        stdexec::stop_token_of_t<stdexec::env_of_t<Receiver>>::template callback_type<on_stopped_t>;
 
       void request_stop() noexcept {
         if (ref_count_.fetch_add(1, std::memory_order_relaxed) == 1) {
@@ -335,8 +334,8 @@ namespace exec {
       }
 
       template <class Receiver>
-      auto connect(Receiver receiver) const & noexcept ->
-        typename _time_thrd_sched::timed_thread_schedule_at_op<Receiver>::__t {
+      auto connect(Receiver receiver) const & noexcept
+        -> _time_thrd_sched::timed_thread_schedule_at_op<Receiver>::__t {
         return {*context_, time_point_, std::move(receiver)};
       }
 

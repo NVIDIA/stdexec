@@ -81,7 +81,7 @@ namespace stdexec {
                                     && tag_invocable<get_completion_signatures_t, _Sender, env<>>;
 
     template <class _Sender>
-    using __member_alias_t = typename __decay_t<_Sender>::completion_signatures;
+    using __member_alias_t = __decay_t<_Sender>::completion_signatures;
 
     template <class _Sender>
     concept __with_member_alias = __mvalid<__member_alias_t, _Sender>;
