@@ -285,9 +285,8 @@ namespace stdexec {
     template <class...> class _Variant,
     class... _More
   >
-  using __gather_completion_signatures = typename __sigs::__gather_sigs_fn<
-    _WantedTag
-  >::template __f<_Sigs, _Then, _Else, _Variant, _More...>;
+  using __gather_completion_signatures =
+    __sigs::__gather_sigs_fn<_WantedTag>::template __f<_Sigs, _Then, _Else, _Variant, _More...>;
 
   /////////////////////////////////////////////////////////////////////////////
   // transform_completion_signatures

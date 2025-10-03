@@ -29,7 +29,7 @@ auto serial_fib(long n) -> long {
 
 template <class... Ts>
 using any_sender_of =
-  typename exec::any_receiver_ref<stdexec::completion_signatures<Ts...>>::template any_sender<>;
+  exec::any_receiver_ref<stdexec::completion_signatures<Ts...>>::template any_sender<>;
 
 using fib_sender = any_sender_of<stdexec::set_value_t(long)>;
 

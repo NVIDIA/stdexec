@@ -45,7 +45,7 @@ namespace stdexec {
     };
   } // namespace __tt
   template <class _Ty>
-  using __decay_t = typename __tt::__decay_<sizeof(__tt::__wrap<_Ty> *) == ~0ul>::template __f<_Ty>;
+  using __decay_t = __tt::__decay_<sizeof(__tt::__wrap<_Ty> *) == ~0ul>::template __f<_Ty>;
 
 #elif STDEXEC_EDG()
 
@@ -129,7 +129,7 @@ namespace stdexec {
   } // namespace __tt
 
   template <class _Ty>
-  using __decay_t = typename decltype(__tt::__mdecay<_Ty>)::template __f<_Ty>;
+  using __decay_t = decltype(__tt::__mdecay<_Ty>)::template __f<_Ty>;
 
 #endif
 
@@ -181,7 +181,7 @@ namespace stdexec {
   using __copy_cvref_fn = decltype(__cpcvr<_Tp>);
 
   template <class _From, class _To>
-  using __copy_cvref_t = typename __copy_cvref_fn<_From>::template __f<_To>;
+  using __copy_cvref_t = __copy_cvref_fn<_From>::template __f<_To>;
 
   template <class>
   inline constexpr bool __is_const_ = false;

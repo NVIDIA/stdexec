@@ -420,7 +420,7 @@ namespace exec {
     libdispatch_queue &queue_;
 
     void enqueue() noexcept {
-      using bulk_task = typename shared_state::bulk_task;
+      using bulk_task = shared_state::bulk_task;
       shared_state_.tasks_.reserve(static_cast<std::size_t>(shared_state_.shape_));
       for (Shape i{}; i != shared_state_.shape_; ++i) {
         shared_state_.tasks_.push_back(bulk_task(&shared_state_, i));

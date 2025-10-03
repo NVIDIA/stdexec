@@ -57,8 +57,8 @@ namespace execpools {
           stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
 
         template <class CPO>
-        auto query(stdexec::get_completion_scheduler_t<CPO>) const noexcept ->
-          typename DerivedPoolType::scheduler {
+        auto query(stdexec::get_completion_scheduler_t<CPO>) const noexcept
+          -> DerivedPoolType::scheduler {
           return pool_.get_scheduler();
         }
 

@@ -104,7 +104,7 @@ namespace stdexec {
   };
 
   template <class _Fn>
-  using __arg_type_t = typename __arg_type<_Fn>::type;
+  using __arg_type_t = __arg_type<_Fn>::type;
 
   template <class>
   struct __tag_type;
@@ -115,7 +115,7 @@ namespace stdexec {
   };
 
   template <class _Fn>
-  using __tag_type_t = typename __tag_type<_Fn>::type;
+  using __tag_type_t = __tag_type<_Fn>::type;
 
   namespace tags {
     using stdexec::set_value_t;

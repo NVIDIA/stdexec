@@ -532,8 +532,8 @@ namespace stdexec {
       static void __bind(_OpState& __op_state, _As&&... __as) noexcept {
         using _State = decltype(__op_state.__state_);
         using _Receiver = decltype(__op_state.__rcvr_);
-        using _Fun = typename _State::__fun_t;
-        using _Sched = typename _State::__sched_t;
+        using _Fun = _State::__fun_t;
+        using _Sched = _State::__sched_t;
         using _ResultSender =
           __mcall<__result_sender_fn<_Set, _Fun, _Sched, env_of_t<_Receiver>>, _As...>;
 

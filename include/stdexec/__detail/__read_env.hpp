@@ -102,8 +102,8 @@ namespace stdexec {
 
       static constexpr auto start =
         []<class _State, class _Receiver>(_State& __state, _Receiver& __rcvr) noexcept -> void {
-        using __query = typename _State::__query;
-        using __result = typename _State::__result;
+        using __query = _State::__query;
+        using __result = _State::__result;
         if constexpr (__same_as<__result, __result&&>) {
           // The query returns a reference type; pass it straight through to the receiver.
           stdexec::__set_value_invoke(

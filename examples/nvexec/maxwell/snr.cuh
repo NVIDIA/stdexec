@@ -61,14 +61,14 @@ namespace ex = stdexec;
 namespace nvexec::_strm::repeat_n {
   template <class OpT>
   class receiver_2_t : public stream_receiver_base {
-    using Sender = typename OpT::PredSender;
-    using Receiver = typename OpT::Receiver;
+    using Sender = OpT::PredSender;
+    using Receiver = OpT::Receiver;
 
     OpT& op_state_;
 
    public:
     void set_value() noexcept {
-      using inner_op_state_t = typename OpT::inner_op_state_t;
+      using inner_op_state_t = OpT::inner_op_state_t;
 
       op_state_.i_++;
 
@@ -95,7 +95,7 @@ namespace nvexec::_strm::repeat_n {
       op_state_.propagate_completion_signal(set_stopped_t());
     }
 
-    auto get_env() const noexcept -> typename OpT::env_t {
+    auto get_env() const noexcept -> OpT::env_t {
       return op_state_.make_env();
     }
 
@@ -106,13 +106,13 @@ namespace nvexec::_strm::repeat_n {
 
   template <class OpT>
   class receiver_1_t : public stream_receiver_base {
-    using Receiver = typename OpT::Receiver;
+    using Receiver = OpT::Receiver;
 
     OpT& op_state_;
 
    public:
     void set_value() noexcept {
-      using inner_op_state_t = typename OpT::inner_op_state_t;
+      using inner_op_state_t = OpT::inner_op_state_t;
 
       if (op_state_.n_) {
         auto sch = ex::get_scheduler(ex::get_env(op_state_.rcvr_));
@@ -137,7 +137,7 @@ namespace nvexec::_strm::repeat_n {
       op_state_.propagate_completion_signal(set_stopped_t());
     }
 
-    auto get_env() const noexcept -> typename OpT::env_t {
+    auto get_env() const noexcept -> OpT::env_t {
       return op_state_.make_env();
     }
 
@@ -196,8 +196,8 @@ namespace repeat_n_detail {
 
   template <class OpT>
   class receiver_2_t {
-    using Sender = typename OpT::PredSender;
-    using Receiver = typename OpT::Receiver;
+    using Sender = OpT::PredSender;
+    using Receiver = OpT::Receiver;
 
     OpT& op_state_;
 
@@ -205,7 +205,7 @@ namespace repeat_n_detail {
     using receiver_concept = ex::receiver_t;
 
     void set_value() noexcept {
-      using inner_op_state_t = typename OpT::inner_op_state_t;
+      using inner_op_state_t = OpT::inner_op_state_t;
 
       op_state_.i_++;
 
@@ -244,7 +244,7 @@ namespace repeat_n_detail {
 
   template <class OpT>
   class receiver_1_t {
-    using Receiver = typename OpT::Receiver;
+    using Receiver = OpT::Receiver;
 
     OpT& op_state_;
 
@@ -252,7 +252,7 @@ namespace repeat_n_detail {
     using receiver_concept = ex::receiver_t;
 
     void set_value() noexcept {
-      using inner_op_state_t = typename OpT::inner_op_state_t;
+      using inner_op_state_t = OpT::inner_op_state_t;
 
       if (op_state_.n_) {
         auto sch = ex::get_scheduler(ex::get_env(op_state_.rcvr_));

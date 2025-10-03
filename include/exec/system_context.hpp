@@ -324,7 +324,7 @@ namespace exec {
     template <class _Previous, class _BulkState, class... _As>
     struct __typed_forward_args_receiver : __forward_args_receiver<_Previous> {
       using __base_t = __forward_args_receiver<_Previous>;
-      using __rcvr_t = typename _BulkState::__rcvr_t;
+      using __rcvr_t = _BulkState::__rcvr_t;
 
       /// Stores `__as` in the base class storage, with the right types.
       explicit __typed_forward_args_receiver(_As&&... __as) {
@@ -617,7 +617,7 @@ namespace exec {
       -> __detail::__system_bulk_op<_IsUnchunked, _Previous, _Size, _Fn, _Rcvr, _Parallelize> {
       using __res_t =
         __detail::__system_bulk_op<_IsUnchunked, _Previous, _Size, _Fn, _Rcvr, _Parallelize>;
-      using __receiver_t = typename __res_t::__intermediate_receiver_t;
+      using __receiver_t = __res_t::__intermediate_receiver_t;
       return {std::move(*this), std::move(__rcvr), [this](auto& __op) {
                 // Connect bulk input receiver with the previous operation and store in the operating state.
                 return stdexec::connect(

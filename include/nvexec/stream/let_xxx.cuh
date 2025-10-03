@@ -102,7 +102,7 @@ namespace nvexec::_strm {
       using Sender = stdexec::__t<SenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
       using PropagateReceiver = stdexec::__t<propagate_receiver_t<ReceiverId>>;
-      using Env = typename operation_state_base_t<ReceiverId>::env_t;
+      using Env = operation_state_base_t<ReceiverId>::env_t;
 
       struct __t : public stream_receiver_base {
         using __id = _receiver_;
@@ -192,7 +192,7 @@ namespace nvexec::_strm {
       using Sender = stdexec::__t<SenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
       using _receiver_t = __receiver<SenderId, ReceiverId, Fun, Let>;
-      using op_state_variant_t = typename _receiver_t::op_state_variant_t;
+      using op_state_variant_t = _receiver_t::op_state_variant_t;
 
       template <class Receiver2>
       operation(Sender&& sndr, Receiver2&& rcvr, Fun fun)

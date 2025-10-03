@@ -30,7 +30,7 @@ namespace stdexec {
   //! That is, `typename _Tp::__t`.
   //! See MAINTAINERS.md#class-template-parameters for details.
   template <class _Tp>
-  using __t = typename _Tp::__t;
+  using __t = _Tp::__t;
 
   template <class _Ty>
   struct __mtype {
@@ -331,7 +331,7 @@ namespace stdexec {
   // nvc++ does not. So we memoize the type computations by
   // indirecting through a class template specialization.
   template <template <class...> class _Fn, class... _Args>
-  using __meval__ = typename __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
+  using __meval__ = __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
 
   template <template <class...> class _Fn, class... _Args>
   struct __meval_ { };
@@ -346,8 +346,7 @@ namespace stdexec {
   using __meval = __t<__meval_<_Fn, _Args...>>;
 
   template <class _Fn, class... _Args>
-  using __minvoke__ =
-    typename __i<_Ok<_Args...>, _Ok<_Fn>>::template __f<_Fn>::template __f<_Args...>;
+  using __minvoke__ = __i<_Ok<_Args...>, _Ok<_Fn>>::template __f<_Fn>::template __f<_Args...>;
 
   template <class _Fn, class... _Args>
   struct __minvoke_ { };
@@ -364,22 +363,21 @@ namespace stdexec {
 #else
 
   template <template <class...> class _Fn, class... _Args>
-  using __meval = typename __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
+  using __meval = __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
 
   //! Metafunction invocation
   //! Given a metafunction, `_Fn`, and args.
   //! We expect `_Fn::__f` to be type alias template "implementing" the metafunction `_Fn`.
   template <class _Fn, class... _Args>
-  using __minvoke =
-    typename __i<_Ok<_Args...>, _Ok<_Fn>>::template __f<_Fn>::template __f<_Args...>;
+  using __minvoke = __i<_Ok<_Args...>, _Ok<_Fn>>::template __f<_Fn>::template __f<_Args...>;
 
 #endif
 
   template <class _Fn, class... _Args>
-  using __mcall = typename _Fn::template __f<_Args...>;
+  using __mcall = _Fn::template __f<_Args...>;
 
   template <class _Fn, class _Arg>
-  using __mcall1 = typename _Fn::template __f<_Arg>;
+  using __mcall1 = _Fn::template __f<_Arg>;
 
   struct __disp_q {
     template <class... _Args>
@@ -421,7 +419,7 @@ namespace stdexec {
   template <template <class...> class _Fn>
   struct __q {
     template <class... _Args>
-    using __f = typename __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
+    using __f = __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
   };
 
   template <template <class...> class _Fn>
@@ -688,7 +686,7 @@ namespace stdexec {
   template <class _Fn>
   struct __muncurry {
     template <class _Tp>
-    using __f = typename __muncurry_<_Tp>::template __f<_Fn>;
+    using __f = __muncurry_<_Tp>::template __f<_Fn>;
   };
 
   template <class _Fn, class _List>
@@ -854,7 +852,7 @@ namespace stdexec {
   template <bool = true>
   struct __id_ {
     template <class _Ty>
-    using __f = typename _Ty::__id;
+    using __f = _Ty::__id;
   };
 
   template <>

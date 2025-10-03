@@ -55,7 +55,7 @@ namespace nvexec::_strm {
     struct receiver_t {
       class __t : public stream_receiver_base {
         using result_t = std::invoke_result_t<Fun>;
-        using env_t = typename operation_state_base_t<ReceiverId>::env_t;
+        using env_t = operation_state_base_t<ReceiverId>::env_t;
 
         Fun f_;
         operation_state_base_t<ReceiverId>& op_state_;

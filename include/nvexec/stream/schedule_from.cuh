@@ -44,7 +44,7 @@ namespace nvexec::_strm {
     struct receiver_t {
       using Sender = __cvref_t<CvrefSenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
-      using Env = typename operation_state_base_t<ReceiverId>::env_t;
+      using Env = operation_state_base_t<ReceiverId>::env_t;
 
       struct __t : stream_receiver_base {
         using __id = receiver_t;

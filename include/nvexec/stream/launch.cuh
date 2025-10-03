@@ -84,7 +84,7 @@ namespace nvexec {
           }
 
           [[nodiscard]]
-          auto get_env() const noexcept -> typename operation_state_base_t<ReceiverId>::env_t {
+          auto get_env() const noexcept -> operation_state_base_t<ReceiverId>::env_t {
             return op_state_.make_env();
           }
 

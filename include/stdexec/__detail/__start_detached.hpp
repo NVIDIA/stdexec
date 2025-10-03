@@ -79,8 +79,7 @@ namespace stdexec {
         if constexpr (__callable<get_allocator_t, _Env>) {
           auto __alloc = stdexec::get_allocator(__self->__env_);
           using _Alloc = decltype(__alloc);
-          using _OpAlloc =
-            typename std::allocator_traits<_Alloc>::template rebind_alloc<__operation>;
+          using _OpAlloc = std::allocator_traits<_Alloc>::template rebind_alloc<__operation>;
           _OpAlloc __op_alloc{__alloc};
           std::allocator_traits<_OpAlloc>::destroy(__op_alloc, __self);
           std::allocator_traits<_OpAlloc>::deallocate(__op_alloc, __self, 1);
@@ -175,7 +174,7 @@ namespace stdexec {
           // Use the provided allocator if any to allocate the operation state.
           auto __alloc = get_allocator(__env);
           using _Alloc = decltype(__alloc);
-          using _OpAlloc = typename std::allocator_traits<_Alloc>::template rebind_alloc<_Op>;
+          using _OpAlloc = std::allocator_traits<_Alloc>::template rebind_alloc<_Op>;
           // We use the allocator to allocate the op state and also to construct it.
           _OpAlloc __op_alloc{__alloc};
           _Op* __op = std::allocator_traits<_OpAlloc>::allocate(__op_alloc, 1);

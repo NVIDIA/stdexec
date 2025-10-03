@@ -27,7 +27,7 @@ namespace stdexec {
   } // namespace __stok
 
   template <class _Token, class _Callback>
-  using stop_callback_for_t = typename _Token::template callback_type<_Callback>;
+  using stop_callback_for_t = _Token::template callback_type<_Callback>;
 
   template <class _Token>
   concept stoppable_token =

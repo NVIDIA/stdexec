@@ -311,7 +311,7 @@ namespace exec {
 
       class __t : __subscription {
         using __forward_consumer =
-          typename stop_token_of_t<env_of_t<_Receiver>>::template callback_type<__forward_stopped>;
+          stop_token_of_t<env_of_t<_Receiver>>::template callback_type<__forward_stopped>;
 
         void __complete_() noexcept {
           STDEXEC_TRY {

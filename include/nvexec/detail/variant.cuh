@@ -46,7 +46,7 @@ namespace nvexec {
 
     template <class... As>
       requires(sizeof...(As) > 0)
-    using front = typename front_<As...>::type;
+    using front = front_<As...>::type;
 
     template <class... Ts>
     constexpr auto variadic_max(Ts... as) -> std::size_t {
