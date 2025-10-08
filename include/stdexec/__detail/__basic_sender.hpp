@@ -169,7 +169,7 @@ namespace stdexec {
 
     template <class _Sexpr, class _Receiver>
     struct __state_box : __immovable {
-      using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
+      using __tag_t = __decay_t<_Sexpr>::__tag_t;
       using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
       __state_box(_Sexpr&& __sndr, _Receiver& __rcvr)
@@ -218,7 +218,7 @@ namespace stdexec {
 
     template <class _Sexpr, class _Receiver>
     struct __op_base : __immovable {
-      using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
+      using __tag_t = __decay_t<_Sexpr>::__tag_t;
       using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
@@ -256,7 +256,7 @@ namespace stdexec {
     struct __op_base<_Sexpr, _Receiver>
       : __receiver_box<_Receiver>
       , __state_box<_Sexpr, _Receiver> {
-      using __tag_t = typename __decay_t<_Sexpr>::__tag_t;
+      using __tag_t = __decay_t<_Sexpr>::__tag_t;
       using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
       STDEXEC_IMMOVABLE(__op_base);
@@ -388,10 +388,10 @@ namespace stdexec {
 
   template <class _Sexpr, class _Receiver>
   struct __op_state : __detail::__op_base<_Sexpr, _Receiver> {
-    using __desc_t = typename __decay_t<_Sexpr>::__desc_t;
-    using __tag_t = typename __desc_t::__tag;
-    using __data_t = typename __desc_t::__data;
-    using __state_t = typename __op_state::__state_t;
+    using __desc_t = __decay_t<_Sexpr>::__desc_t;
+    using __tag_t = __desc_t::__tag;
+    using __data_t = __desc_t::__data;
+    using __state_t = __op_state::__op_base::__state_t;
     using __inner_ops_t =
       __result_of<__sexpr_apply, _Sexpr, __detail::__connect_fn<_Sexpr, _Receiver>>;
 
@@ -407,7 +407,7 @@ namespace stdexec {
     }
 
     STDEXEC_ATTRIBUTE(always_inline) void start() & noexcept {
-      using __tag_t = typename __op_state::__tag_t;
+      using __tag_t = __op_state::__tag_t;
       auto&& __rcvr = this->__rcvr();
       __inner_ops_.apply(
         [&](auto&... __ops) noexcept {
@@ -419,7 +419,7 @@ namespace stdexec {
     template <class _Index, class _Tag2, class... _Args>
     STDEXEC_ATTRIBUTE(always_inline)
     void __complete(_Index, _Tag2, _Args&&... __args) noexcept {
-      using __tag_t = typename __op_state::__tag_t;
+      using __tag_t = __op_state::__tag_t;
       auto&& __rcvr = this->__rcvr();
       using _CompleteFn = __mtypeof<__sexpr_impl<__tag_t>::complete>;
       if constexpr (__callable<_CompleteFn, _Index, __op_state&, _Tag2, _Args...>) {
@@ -472,7 +472,7 @@ namespace stdexec {
       using __id = __sexpr;
       using __t = __sexpr;
       using __desc_t = decltype(_DescriptorFn());
-      using __tag_t = typename __desc_t::__tag;
+      using __tag_t = __desc_t::__tag;
       using __captures_t = __minvoke<__desc_t, __q<__detail::__captures_t>>;
 
       mutable __captures_t __impl_;

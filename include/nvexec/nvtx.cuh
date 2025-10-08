@@ -42,7 +42,7 @@ namespace nvexec {
     struct receiver_t {
       class __t : public stream_receiver_base {
         using Receiver = stdexec::__t<ReceiverId>;
-        using Env = typename operation_state_base_t<ReceiverId>::env_t;
+        using Env = operation_state_base_t<ReceiverId>::env_t;
 
         operation_state_base_t<ReceiverId>& op_state_;
         std::string name_;

@@ -154,7 +154,7 @@ namespace exec {
     concept __with_tag_invoke = tag_invocable<get_item_types_t, __tfx_sender<_Sender, _Env>, _Env>;
 
     template <class _Sender, class _Env>
-    using __member_alias_t = typename __decay_t<__tfx_sender<_Sender, _Env>>::item_types;
+    using __member_alias_t = __decay_t<__tfx_sender<_Sender, _Env>>::item_types;
 
     template <class _Sender, class _Env>
     concept __with_member_alias = __mvalid<__member_alias_t, _Sender, _Env>;

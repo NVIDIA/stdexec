@@ -139,7 +139,7 @@ namespace asioexec {
     };
 
     template <typename... Args>
-    using transform_set_value_t = typename transform_set_value<Args...>::type;
+    using transform_set_value_t = transform_set_value<Args...>::type;
 
     template <typename Signatures>
     using completion_signatures = ::stdexec::transform_completion_signatures<

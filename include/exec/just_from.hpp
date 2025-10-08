@@ -153,7 +153,7 @@ namespace exec {
     };
 
     template <class Fn, class Tag = JustTag>
-    using _sndr = typename Tag::template _sndr<Fn>;
+    using _sndr = Tag::template _sndr<Fn>;
 
    public:
     template <class Fn>

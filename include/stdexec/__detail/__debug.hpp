@@ -57,7 +57,7 @@ namespace stdexec {
     };
 
     template <class _Sig>
-    using __normalize_sig_t = typename __normalize_sig<_Sig>::__type;
+    using __normalize_sig_t = __normalize_sig<_Sig>::__type;
 #else
     template <class _Sig>
     extern int __normalize_sig;

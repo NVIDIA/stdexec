@@ -37,7 +37,7 @@ namespace exec {
     using __t = __seqexpr;
     using __id = __seqexpr;
     using __desc_t = decltype(_DescriptorFn());
-    using __tag_t = typename __desc_t::__tag;
+    using __tag_t = __desc_t::__tag;
     using __captures_t =
       stdexec::__minvoke<__desc_t, stdexec::__q<stdexec::__detail::__captures_t>>;
 

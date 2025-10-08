@@ -114,7 +114,7 @@ namespace stdexec {
       template <class _Uy>
       STDEXEC_ATTRIBUTE(always_inline)
       constexpr auto operator()(_Uy&& __uy) const noexcept -> auto&& {
-        return static_cast<typename _Cpcvref::template __f<std::remove_reference_t<_Uy>>>(__uy);
+        return static_cast<_Cpcvref::template __f<std::remove_reference_t<_Uy>>>(__uy);
       }
     };
   } // namespace __detail

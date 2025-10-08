@@ -107,10 +107,10 @@ namespace nvexec::_strm::__algo_range_init_fun {
       using __id = sender_t;
 
       template <class Receiver>
-      using receiver_t = typename DerivedSender::template receiver_t<Receiver>;
+      using receiver_t = DerivedSender::template receiver_t<Receiver>;
 
       template <class Range>
-      using _set_value_t = typename DerivedSender::template _set_value_t<Range>;
+      using _set_value_t = DerivedSender::template _set_value_t<Range>;
 
       Sender sndr_;
       STDEXEC_ATTRIBUTE(no_unique_address) InitT init_;

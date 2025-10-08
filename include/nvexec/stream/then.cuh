@@ -102,7 +102,7 @@ namespace nvexec::_strm {
           op_state_.propagate_completion_signal(set_stopped_t());
         }
 
-        auto get_env() const noexcept -> typename operation_state_base_t<ReceiverId>::env_t {
+        auto get_env() const noexcept -> operation_state_base_t<ReceiverId>::env_t {
           return op_state_.make_env();
         }
 
@@ -136,7 +136,7 @@ namespace nvexec::_strm {
 
       template <class... As>
       struct result_size_for {
-        using __t = typename size_of_<__call_result_t<Fun, As...>>::__t;
+        using __t = size_of_<__call_result_t<Fun, As...>>::__t;
       };
 
       template <class... Sizes>
