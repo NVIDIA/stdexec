@@ -391,7 +391,7 @@ namespace stdexec {
     using __desc_t = __decay_t<_Sexpr>::__desc_t;
     using __tag_t = __desc_t::__tag;
     using __data_t = __desc_t::__data;
-    using __state_t = __op_state::__state_t;
+    using __state_t = __op_state::__op_base::__state_t;
     using __inner_ops_t =
       __result_of<__sexpr_apply, _Sexpr, __detail::__connect_fn<_Sexpr, _Receiver>>;
 
