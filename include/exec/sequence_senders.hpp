@@ -94,10 +94,10 @@ namespace exec {
   using __sequence_sndr::set_next_t;
   inline constexpr set_next_t set_next;
 
-  template <class _Receiver, class _Sequence>
+  template <class _Receiver, class _Sender>
   using next_sender_of_t = decltype(exec::set_next(
     stdexec::__declval<stdexec::__decay_t<_Receiver>&>(),
-    stdexec::__declval<_Sequence>()));
+    stdexec::__declval<_Sender>()));
 
   namespace __sequence_sndr {
 
@@ -660,6 +660,9 @@ namespace exec {
   inline constexpr subscribe_t subscribe{};
 
   using __sequence_sndr::subscribe_result_t;
+
+  template <class _Sequence, class _Receiver>
+  concept __nothrow_subscribable = stdexec::__nothrow_callable<subscribe_t, _Sequence, _Receiver>;
 
   template <class _Sequence, class _Receiver>
   concept sequence_sender_to =
