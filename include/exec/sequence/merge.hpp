@@ -72,7 +72,7 @@ namespace exec {
     struct __merge_each_fn {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
-      template <sender _Item>
+      template <stdexec::sender _Item>
       auto operator()(_Item&& __item, __operation_base<_Receiver>* __op) const noexcept(
         __nothrow_callable<set_next_t, _Receiver&, _Item>)
         -> next_sender_of_t<_Receiver, _Item> {
@@ -131,7 +131,7 @@ namespace exec {
       _Receiver& __rcvr_;
 
       template <class... _Sequences>
-      auto operator()(__ignore, _Sequences... __sequences) noexcept(
+      auto operator()(__ignore, __ignore, _Sequences... __sequences) noexcept(
         (__nothrow_decay_copyable<_Sequences> && ...)
         && __nothrow_move_constructible<_Receiver>)
         -> __t<__operation<__id<_Receiver>, _Sequences...>> {
@@ -148,7 +148,7 @@ namespace exec {
         -> __well_formed_sequence_sender auto {
         auto __domain = __common_domain_t<_Sequences...>();
         return transform_sender(
-          __domain, make_sequence_expr<merge_t>(
+          __domain, make_sequence_expr<merge_t>(__(),
               static_cast<_Sequences&&>(__sequences)...));
       }
 

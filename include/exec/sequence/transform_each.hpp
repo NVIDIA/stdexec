@@ -124,18 +124,18 @@ namespace exec {
     struct __try_adaptor_calls_t {
 
       template <class _Item>
-      auto operator()(_Item*) -> stdexec::__mexception<
+      auto __try_adaptor_for_item(_Item*) -> stdexec::__mexception<
         _NOT_CALLABLE_ADAPTOR_<_Adaptor&>,
         _WITH_ITEM_SENDER_<stdexec::__name_of<_Item>>
       >;
 
       template <class _Item>
         requires stdexec::__callable<_Adaptor&, _Item>
-      auto operator()(_Item*) -> stdexec::__msuccess;
+      auto __try_adaptor_for_item(_Item*) -> stdexec::__msuccess;
 
       template <class... _Items>
       auto operator()(item_types<_Items...>*) -> decltype((
-        stdexec::__msuccess(), ..., (*this)(static_cast<_Items*>(nullptr))));
+        stdexec::__msuccess(), ..., __try_adaptor_for_item(static_cast<_Items*>(nullptr))));
     };
 
     template <class _Adaptor, class _Items>
