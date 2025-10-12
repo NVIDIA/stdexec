@@ -152,9 +152,6 @@ namespace exec {
               static_cast<_Sequences&&>(__sequences)...));
       }
 
-      template <class... _Args>
-      using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Args> && ...)>;
-
       template <class _Error>
       using __set_error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
@@ -168,7 +165,7 @@ namespace exec {
       >;
 
       template <class... _Env>
-      struct __completions_t {
+      struct __completions_fn_t {
 
         template <class... _Sequences>
         using __f = __meval<
@@ -179,15 +176,15 @@ namespace exec {
       };
 
       template <class _Self, class... _Env>
-      using __completions = __children_of<_Self, __completions_t<_Env...>>;
+      using __completions_t = __children_of<_Self, __completions_fn_t<_Env...>>;
 
       template <sender_expr_for<merge_t> _Self, class... _Env>
       static auto get_completion_signatures(_Self&&, _Env&&...) noexcept {
-          return __minvoke<__mtry_catch<__q<__completions>, __q<__error_t>>, _Self, _Env...>();
+          return __minvoke<__mtry_catch<__q<__completions_t>, __q<__error_t>>, _Self, _Env...>();
       }
 
       template <class... _Env>
-      struct __items_t {
+      struct __items_fn_t {
 
         template <class... _Sequences>
         using __f = stdexec::__mapply<
@@ -198,11 +195,11 @@ namespace exec {
       };
 
       template <class _Self, class... _Env>
-      using __items = __children_of<_Self, __items_t<_Env...>>;
+      using __items_t = __children_of<_Self, __items_fn_t<_Env...>>;
 
       template <sender_expr_for<merge_t> _Self, class... _Env>
       static auto get_item_types(_Self&&, _Env&&...) noexcept {
-          return __minvoke<__mtry_catch<__q<__items>, __q<__error_t>>, _Self, _Env...>();
+          return __minvoke<__mtry_catch<__q<__items_t>, __q<__error_t>>, _Self, _Env...>();
       }
 
       template <sender_expr_for<merge_t> _Self, receiver _Receiver>

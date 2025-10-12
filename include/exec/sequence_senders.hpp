@@ -34,16 +34,16 @@ namespace exec {
       using __f = __mand<__mapply<__mcontains<_Needles>, _Haystack>...>;
     };
     template <class _Needles, class _Haystack>
-    using __mall_contained_in = __mapply<__mall_contained_in_impl<_Haystack>, _Needles>;
+    using __mall_contained_in_t = __mapply<__mall_contained_in_impl<_Haystack>, _Needles>;
 
     template <class _Needles, class _Haystack>
-    concept __all_contained_in = __v<__mall_contained_in<_Needles, _Haystack>>;
+    concept __all_contained_in_t = __v<__mall_contained_in_t<_Needles, _Haystack>>;
   } // namespace __sequence_sndr
 
     // This concept checks if a given sender satisfies the requirements to be returned from `set_next`.
   template <class _Sender, class _Env = stdexec::env<>>
   concept next_sender = stdexec::sender_in<_Sender, _Env>
-                      && __sequence_sndr::__all_contained_in<
+                      && __sequence_sndr::__all_contained_in_t<
                           stdexec::completion_signatures_of_t<_Sender, _Env>,
                           stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>
                       >;
@@ -100,7 +100,7 @@ namespace exec {
         using receiver_concept = stdexec::receiver_t;
         using __id = __stopped_means_break;
         using _Receiver = stdexec::__t<_ReceiverId>;
-        using _Token = stop_token_of_t<env_of_t<_Receiver>>;
+        using __token_t = stop_token_of_t<env_of_t<_Receiver>>;
         STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __rcvr_;
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {
@@ -115,9 +115,9 @@ namespace exec {
 
         void set_stopped() noexcept
           requires __callable<set_value_t, _Receiver>
-                && (unstoppable_token<_Token> || __callable<set_stopped_t, _Receiver>)
+                && (unstoppable_token<__token_t> || __callable<set_stopped_t, _Receiver>)
         {
-          if constexpr (unstoppable_token<_Token>) {
+          if constexpr (unstoppable_token<__token_t>) {
             stdexec::set_value(static_cast<_Receiver&&>(__rcvr_));
           } else {
             auto __token = stdexec::get_stop_token(stdexec::get_env(__rcvr_));
@@ -181,7 +181,7 @@ namespace exec {
       __call_result_t<get_item_types_t, _Sequence, _Env...>;
 
     template <class _Sequence, class... _Env>
-    using __unrecognized_sequence_error =
+    using __unrecognized_sequence_error_t =
       __mexception<_UNRECOGNIZED_SEQUENCE_TYPE_<>, _WITH_SEQUENCE_<_Sequence>, _WITH_ENVIRONMENT_<_Env>...>;
 
     template <class _Sequence, class _Env>
@@ -193,14 +193,14 @@ namespace exec {
       _Sequence)::get_item_types(__declval<_Sequence>(), __declval<_Env>()));
 
     template <class _Sequence, class _Env>
-    using __tfx_sequence =
+    using __tfx_sequence_t =
       transform_sender_result_t<__late_domain_of_t<_Sequence, _Env>, _Sequence, _Env>;
 
     template <class _Sequence, class _Env>
-    concept __with_tag_invoke = tag_invocable<get_item_types_t, __tfx_sequence<_Sequence, _Env>, _Env>;
+    concept __with_tag_invoke = tag_invocable<get_item_types_t, __tfx_sequence_t<_Sequence, _Env>, _Env>;
 
     template <class _Sequence, class _Env>
-    using __member_alias_t = typename __decay_t<__tfx_sequence<_Sequence, _Env>>::item_types;
+    using __member_alias_t = typename __decay_t<__tfx_sequence_t<_Sequence, _Env>>::item_types;
 
     template <class _Sequence, class _Env>
     concept __with_member_alias = __mvalid<__member_alias_t, _Sequence, _Env>;
@@ -216,35 +216,35 @@ namespace exec {
       static auto __impl() {
         static_assert(sizeof(_Sequence), "Incomplete type used with get_item_types");
         static_assert(sizeof(_Env), "Incomplete type used with get_item_types");
-        using _TfxSequence = __tfx_sequence<_Sequence, _Env>;
-        if constexpr (__merror<_TfxSequence>) {
+        using __tfx_sequence_t = __tfx_sequence_t<_Sequence, _Env>;
+        if constexpr (__merror<__tfx_sequence_t>) {
           // Computing the type of the transformed sender returned an error type. Propagate it.
-          return static_cast<_TfxSequence (*)()>(nullptr);
-        } else if constexpr (__with_member_alias<_TfxSequence, _Env>) {
-          using _Result = __member_alias_t<_TfxSequence, _Env>;
-          return static_cast<_Result (*)()>(nullptr);
-        } else if constexpr (__with_static_member<_TfxSequence, _Env>) {
-          using _Result = __static_member_result_t<_TfxSequence, _Env>;
-          return static_cast<_Result (*)()>(nullptr);
-        } else if constexpr (__with_member<_TfxSequence, _Env>) {
-          using _Result = decltype(__declval<_TfxSequence>().get_item_types(__declval<_Env>()));
-          return static_cast<_Result (*)()>(nullptr);
-        } else if constexpr (__with_tag_invoke<_TfxSequence, _Env>) {
-          using _Result = tag_invoke_result_t<get_item_types_t, _TfxSequence, _Env>;
-          return static_cast<_Result (*)()>(nullptr);
+          return static_cast<__tfx_sequence_t (*)()>(nullptr);
+        } else if constexpr (__with_member_alias<__tfx_sequence_t, _Env>) {
+          using __result_t = __member_alias_t<__tfx_sequence_t, _Env>;
+          return static_cast<__result_t (*)()>(nullptr);
+        } else if constexpr (__with_static_member<__tfx_sequence_t, _Env>) {
+          using __result_t = __static_member_result_t<__tfx_sequence_t, _Env>;
+          return static_cast<__result_t (*)()>(nullptr);
+        } else if constexpr (__with_member<__tfx_sequence_t, _Env>) {
+          using __result_t = decltype(__declval<__tfx_sequence_t>().get_item_types(__declval<_Env>()));
+          return static_cast<__result_t (*)()>(nullptr);
+        } else if constexpr (__with_tag_invoke<__tfx_sequence_t, _Env>) {
+          using __result_t = tag_invoke_result_t<get_item_types_t, __tfx_sequence_t, _Env>;
+          return static_cast<__result_t (*)()>(nullptr);
         } else if constexpr (
-          sender_in<_TfxSequence, _Env> && !enable_sequence_sender<stdexec::__decay_t<_TfxSequence>>) {
-          using _Result = item_types<stdexec::__decay_t<_TfxSequence>>;
-          return static_cast<_Result (*)()>(nullptr);
+          sender_in<__tfx_sequence_t, _Env> && !enable_sequence_sender<stdexec::__decay_t<__tfx_sequence_t>>) {
+          using __result_t = item_types<stdexec::__decay_t<__tfx_sequence_t>>;
+          return static_cast<__result_t (*)()>(nullptr);
         } else if constexpr (__is_debug_env<_Env>) {
           using __tag_invoke::tag_invoke;
           // This ought to cause a hard error that indicates where the problem is.
-          using _ItemTypes
-            [[maybe_unused]] = tag_invoke_result_t<get_item_types_t, _TfxSequence, _Env>;
+          using __item_types_t
+            [[maybe_unused]] = tag_invoke_result_t<get_item_types_t, __tfx_sequence_t, _Env>;
           return static_cast<__debug::__item_types (*)()>(nullptr);
         } else {
-          using _Result = __unrecognized_sequence_error<_Sequence, _Env>;
-          return static_cast<_Result (*)()>(nullptr);
+          using __result_t = __unrecognized_sequence_error_t<_Sequence, _Env>;
+          return static_cast<__result_t (*)()>(nullptr);
         }
       }
 
@@ -382,14 +382,14 @@ namespace exec {
   >;
 
   template <class _Sender, class... _Env>
-  using __item_completion_signatures = stdexec::transform_completion_signatures<
+  using __item_completion_signatures_t = stdexec::transform_completion_signatures<
     stdexec::__completion_signatures_of_t<_Sender, _Env...>,
     stdexec::completion_signatures<stdexec::set_value_t()>,
     stdexec::__mconst<stdexec::completion_signatures<>>::__f
   >;
 
   template <class _Sequence, class... _Env>
-  using __sequence_completion_signatures = stdexec::transform_completion_signatures<
+  using __sequence_completion_signatures_t = stdexec::transform_completion_signatures<
     stdexec::__completion_signatures_of_t<_Sequence, _Env...>,
     stdexec::completion_signatures<stdexec::set_value_t()>,
     stdexec::__mconst<stdexec::completion_signatures<>>::__f
@@ -398,10 +398,10 @@ namespace exec {
   template <class _Sequence, class... _Env>
   using __sequence_completion_signatures_of_t = stdexec::__mapply<
     stdexec::__mtransform<
-      stdexec::__mbind_back_q<__item_completion_signatures, _Env...>,
+      stdexec::__mbind_back_q<__item_completion_signatures_t, _Env...>,
       stdexec::__mbind_back<
         stdexec::__mtry_q<stdexec::__concat_completion_signatures>,
-        __sequence_completion_signatures<_Sequence, _Env...>
+        __sequence_completion_signatures_t<_Sequence, _Env...>
       >
     >,
     __item_types_of_t<_Sequence, _Env...>
@@ -433,7 +433,7 @@ namespace exec {
     };
 
     template <class _Env>
-    using __single_sender_completion_sigs = __if_c<
+    using __next_sender_completion_sigs_t = __if_c<
       unstoppable_token<stop_token_of_t<_Env>>,
       completion_signatures<set_value_t()>,
       completion_signatures<set_value_t(), set_stopped_t()>
@@ -476,61 +476,61 @@ namespace exec {
 
     struct subscribe_t {
       template <class _Sequence, class _Receiver>
-      using __tfx_sequence = __tfx_sequence<_Sequence, env_of_t<_Receiver>>;
+      using __tfx_sequence_t = __tfx_sequence_t<_Sequence, env_of_t<_Receiver>>;
 
       template <class _Sequence, class _Receiver>
       static constexpr auto __select_impl() noexcept {
-        using _Domain = __late_domain_of_t<_Sequence, env_of_t<_Receiver&>>;
+        using __domain_t = __late_domain_of_t<_Sequence, env_of_t<_Receiver&>>;
         constexpr bool _NothrowTfxSequence =
-          __nothrow_callable<transform_sender_t, _Domain, _Sequence, env_of_t<_Receiver&>>;
-        using _TfxSequence = __tfx_sequence<_Sequence, _Receiver>;
-        if constexpr (__next_connectable<_TfxSequence, _Receiver>) {
-          using _Result = connect_result_t<
-            next_sender_of_t<_Receiver, _TfxSequence>,
+          __nothrow_callable<transform_sender_t, __domain_t, _Sequence, env_of_t<_Receiver&>>;
+        using __tfx_sequence_t = __tfx_sequence_t<_Sequence, _Receiver>;
+        if constexpr (__next_connectable<__tfx_sequence_t, _Receiver>) {
+          using __result_t = connect_result_t<
+            next_sender_of_t<_Receiver, __tfx_sequence_t>,
             __stopped_means_break_t<_Receiver>
           >;
           static_assert(
-            operation_state<_Result>,
+            operation_state<__result_t>,
             "stdexec::connect(sender, receiver) must return a type that "
             "satisfies the operation_state concept");
           constexpr bool _Nothrow = __nothrow_connectable<
-            next_sender_of_t<_Receiver, _TfxSequence>,
+            next_sender_of_t<_Receiver, __tfx_sequence_t>,
             __stopped_means_break_t<_Receiver>
           >;
-          return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
-        } else if constexpr (__subscribable_with_static_member<_TfxSequence, _Receiver>) {
-          using _Result = decltype(STDEXEC_REMOVE_REFERENCE(_TfxSequence)::
-                                    subscribe(__declval<_TfxSequence>(), __declval<_Receiver>()));
+          return static_cast<__result_t (*)() noexcept(_Nothrow)>(nullptr);
+        } else if constexpr (__subscribable_with_static_member<__tfx_sequence_t, _Receiver>) {
+          using __result_t = decltype(STDEXEC_REMOVE_REFERENCE(__tfx_sequence_t)::
+                                    subscribe(__declval<__tfx_sequence_t>(), __declval<_Receiver>()));
           static_assert(
-            operation_state<_Result>,
+            operation_state<__result_t>,
             "Sequence::subscribe(sender, receiver) must return a type that "
             "satisfies the operation_state concept");
           constexpr bool _Nothrow = _NothrowTfxSequence
-                                 && noexcept(STDEXEC_REMOVE_REFERENCE(_TfxSequence)
-                                              ::subscribe(__declval<_TfxSequence>(), __declval<_Receiver>()));
-          return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
-        } else if constexpr (__subscribable_with_member<_TfxSequence, _Receiver>) {
-          using _Result = decltype(__declval<_TfxSequence>().subscribe(__declval<_Receiver>()));
+                                 && noexcept(STDEXEC_REMOVE_REFERENCE(__tfx_sequence_t)
+                                              ::subscribe(__declval<__tfx_sequence_t>(), __declval<_Receiver>()));
+          return static_cast<__result_t (*)() noexcept(_Nothrow)>(nullptr);
+        } else if constexpr (__subscribable_with_member<__tfx_sequence_t, _Receiver>) {
+          using __result_t = decltype(__declval<__tfx_sequence_t>().subscribe(__declval<_Receiver>()));
           static_assert(
-            operation_state<_Result>,
+            operation_state<__result_t>,
             "Sequence::subscribe(sender, receiver) must return a type that "
             "satisfies the operation_state concept");
           constexpr bool _Nothrow = _NothrowTfxSequence
-                                 && noexcept(__declval<_TfxSequence>()
+                                 && noexcept(__declval<__tfx_sequence_t>()
                                                .subscribe(__declval<_Receiver>()));
-          return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
-        } else if constexpr (__subscribable_with_tag_invoke<_TfxSequence, _Receiver>) {
-          using _Result = tag_invoke_result_t<subscribe_t, _TfxSequence, _Receiver>;
+          return static_cast<__result_t (*)() noexcept(_Nothrow)>(nullptr);
+        } else if constexpr (__subscribable_with_tag_invoke<__tfx_sequence_t, _Receiver>) {
+          using __result_t = tag_invoke_result_t<subscribe_t, __tfx_sequence_t, _Receiver>;
           static_assert(
-            operation_state<_Result>,
+            operation_state<__result_t>,
             "exec::subscribe(sender, receiver) must return a type that "
             "satisfies the operation_state concept");
           constexpr bool _Nothrow = _NothrowTfxSequence
-                                 && nothrow_tag_invocable<subscribe_t, _TfxSequence, _Receiver>;
-          return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
+                                 && nothrow_tag_invocable<subscribe_t, __tfx_sequence_t, _Receiver>;
+          return static_cast<__result_t (*)() noexcept(_Nothrow)>(nullptr);
         } else if constexpr (__is_debug_env<env_of_t<_Receiver>>) {
-          using _Result = __debug::__debug_operation;
-          return static_cast<_Result (*)() noexcept(_NothrowTfxSequence)>(nullptr);
+          using __result_t = __debug::__debug_operation;
+          return static_cast<__result_t (*)() noexcept(_NothrowTfxSequence)>(nullptr);
         } else {
           return _NO_USABLE_SUBSCRIBE_CUSTOMIZATION_FOUND_();
         }
@@ -540,53 +540,48 @@ namespace exec {
       using __select_impl_t = decltype(__select_impl<_Sequence, _Receiver>());
 
       template <sender _Sequence, receiver _Receiver>
-        requires __next_connectable<__tfx_sequence<_Sequence, _Receiver>, _Receiver>
-              || __subscribable_with_static_member<__tfx_sequence<_Sequence, _Receiver>, _Receiver>
-              || __subscribable_with_member<__tfx_sequence<_Sequence, _Receiver>, _Receiver>
-              || __subscribable_with_tag_invoke<__tfx_sequence<_Sequence, _Receiver>, _Receiver>
-              || __is_debug_env<env_of_t<_Receiver>>
       auto operator()(_Sequence&& __sequence, _Receiver&& __rcvr) const
         noexcept(__nothrow_callable<__select_impl_t<_Sequence, _Receiver>>)
           -> __call_result_t<__select_impl_t<_Sequence, _Receiver>> {
-        using _TfxSequence = __tfx_sequence<_Sequence, _Receiver>;
+        using __tfx_sequence_t = __tfx_sequence_t<_Sequence, _Receiver>;
         auto&& __env = stdexec::get_env(__rcvr);
         auto __domain = __get_late_domain(__sequence, __env);
-        if constexpr (__next_connectable<_TfxSequence, _Receiver>) {
-          next_sender_of_t<_Receiver, _TfxSequence> __next = set_next(
+        if constexpr (__next_connectable<__tfx_sequence_t, _Receiver>) {
+          next_sender_of_t<_Receiver, __tfx_sequence_t> __next = set_next(
             __rcvr, stdexec::transform_sender(__domain, static_cast<_Sequence&&>(__sequence), __env));
           return stdexec::connect(
-            static_cast<next_sender_of_t<_Receiver, _TfxSequence>&&>(__next),
+            static_cast<next_sender_of_t<_Receiver, __tfx_sequence_t>&&>(__next),
             __stopped_means_break_t<_Receiver>{static_cast<_Receiver&&>(__rcvr)});
           // NOLINTNEXTLINE(bugprone-branch-clone)
-        } else if constexpr (__subscribable_with_static_member<_TfxSequence, _Receiver>) {
+        } else if constexpr (__subscribable_with_static_member<__tfx_sequence_t, _Receiver>) {
           auto&& __tfx_sequence = transform_sender(__domain, static_cast<_Sequence&&>(__sequence), __env);
           return __tfx_sequence
             .subscribe(
-              static_cast<_TfxSequence&&>(__tfx_sequence),
+              static_cast<__tfx_sequence_t&&>(__tfx_sequence),
               static_cast<_Receiver&&>(__rcvr));
-        } else if constexpr (__subscribable_with_member<_TfxSequence, _Receiver>) {
+        } else if constexpr (__subscribable_with_member<__tfx_sequence_t, _Receiver>) {
           return stdexec::transform_sender(__domain, static_cast<_Sequence&&>(__sequence), __env)
             .subscribe(static_cast<_Receiver&&>(__rcvr));
-        } else if constexpr (__subscribable_with_tag_invoke<_TfxSequence, _Receiver>) {
+        } else if constexpr (__subscribable_with_tag_invoke<__tfx_sequence_t, _Receiver>) {
           return stdexec::tag_invoke(
             subscribe_t{},
             stdexec::transform_sender(__domain, static_cast<_Sequence&&>(__sequence), __env),
             static_cast<_Receiver&&>(__rcvr));
-        } else if constexpr (enable_sequence_sender<stdexec::__decay_t<_TfxSequence>>) {
+        } else if constexpr (enable_sequence_sender<stdexec::__decay_t<__tfx_sequence_t>>) {
           // This should generate an instantiate backtrace that contains useful
           // debugging information.
           auto&& __tfx_sequence = transform_sender(__domain, static_cast<_Sequence&&>(__sequence), __env);
           return __tfx_sequence
             .subscribe(
-              static_cast<_TfxSequence&&>(__tfx_sequence),
+              static_cast<__tfx_sequence_t&&>(__tfx_sequence),
               static_cast<_Receiver&&>(__rcvr));
         } else {
           // This should generate an instantiate backtrace that contains useful
           // debugging information.
-          next_sender_of_t<_Receiver, _TfxSequence> __next = set_next(
+          next_sender_of_t<_Receiver, __tfx_sequence_t> __next = set_next(
             __rcvr, stdexec::transform_sender(__domain, static_cast<_Sequence&&>(__sequence), __env));
           return stdexec::connect(
-            static_cast<next_sender_of_t<_Receiver, _TfxSequence>&&>(__next),
+            static_cast<next_sender_of_t<_Receiver, __tfx_sequence_t>&&>(__next),
             __stopped_means_break_t<_Receiver>{static_cast<_Receiver&&>(__rcvr)});
         }
       }
@@ -600,7 +595,7 @@ namespace exec {
     using subscribe_result_t = __call_result_t<subscribe_t, _Sequence, _Receiver>;
   } // namespace __sequence_sndr
 
-  using __sequence_sndr::__single_sender_completion_sigs;
+  using __sequence_sndr::__next_sender_completion_sigs_t;
 
   using __sequence_sndr::subscribe_t;
   inline constexpr subscribe_t subscribe{};
@@ -660,7 +655,7 @@ namespace exec {
     "    template <class... _Env>\n"                                                                 \
     "    auto get_item_types(_Env&&...) -> exec::item_types<\n"                                      \
     "      // This sequence produces void items...\n"                                                \
-    "      stdexec::__call_result_t<stdexec::just_t>,\n"                                             \
+    "      stdexec::__call_result_t<stdexec::just_t>>\n"                                             \
     "    {\n"                                                                                        \
     "    return {};\n"                                                                               \
     "    }\n"                                                                                        \
@@ -687,12 +682,12 @@ namespace exec {
         std::constructible_from<stdexec::__decay_t<_Sequence>, _Sequence>,
         "The sequence cannot be decay-copied. Did you forget a std::move?");
     } else {
-      using _Items = __item_types_of_t<_Sequence, _Env...>;
-      if constexpr (stdexec::__same_as<_Items, __sequence_sndr::__unrecognized_sequence_error<_Sequence, _Env...>>) {
-        static_assert(stdexec::__mnever<_Items>, STDEXEC_ERROR_CANNOT_COMPUTE_COMPLETION_SIGNATURES);
-      } else if constexpr (stdexec::__merror<_Items>) {
+      using __items_t = __item_types_of_t<_Sequence, _Env...>;
+      if constexpr (stdexec::__same_as<__items_t, __sequence_sndr::__unrecognized_sequence_error_t<_Sequence, _Env...>>) {
+        static_assert(stdexec::__mnever<__items_t>, STDEXEC_ERROR_CANNOT_COMPUTE_COMPLETION_SIGNATURES);
+      } else if constexpr (stdexec::__merror<__items_t>) {
         static_assert(
-          !stdexec::__merror<_Items>, STDEXEC_ERROR_GET_ITEM_TYPES_RETURNED_AN_ERROR);
+          !stdexec::__merror<__items_t>, STDEXEC_ERROR_GET_ITEM_TYPES_RETURNED_AN_ERROR);
       } else if constexpr (!__well_formed_item_senders<_Sequence>) {
         static_assert(
           __well_formed_item_senders<_Sequence>,
@@ -745,15 +740,15 @@ namespace exec {
     void __debug_sequence_sender(_Sequence&& __sequence, const _Env& = {}) {
       if constexpr (!__is_debug_env<_Env>) {
         if constexpr (sequence_sender_in<_Sequence, _Env>) {
-          using _Sigs = stdexec::__completion_signatures_of_t<_Sequence, __debug_env_t<_Env>>;
-          using _ItemTypes = __sequence_sndr::__item_types_of_t<_Sequence, __debug_env_t<_Env>>;
-          using _Receiver = __debug_sequence_sender_receiver<stdexec::__cvref_id<_Sequence>, _Env, _Sigs, _ItemTypes>;
-          if constexpr (!std::same_as<_Sigs, __debug::__completion_signatures> || !std::same_as<_ItemTypes, __debug::__item_types>) {
-            using _Operation = exec::subscribe_result_t<_Sequence, _Receiver>;
+          using __sigs_t = stdexec::__completion_signatures_of_t<_Sequence, __debug_env_t<_Env>>;
+          using __item_types_t = __sequence_sndr::__item_types_of_t<_Sequence, __debug_env_t<_Env>>;
+          using __receiver_t = __debug_sequence_sender_receiver<stdexec::__cvref_id<_Sequence>, _Env, __sigs_t, __item_types_t>;
+          if constexpr (!std::same_as<__sigs_t, __debug::__completion_signatures> || !std::same_as<__item_types_t, __debug::__item_types>) {
+            using __operation_t = exec::subscribe_result_t<_Sequence, __receiver_t>;
             //static_assert(receiver_of<_Receiver, _Sigs>);
-            if constexpr (!std::same_as<_Operation, __debug_operation>) {
+            if constexpr (!std::same_as<__operation_t, __debug_operation>) {
               if (sizeof(_Sequence) == ~0ul) { // never true
-                auto __op = subscribe(static_cast<_Sequence&&>(__sequence), _Receiver{});
+                auto __op = subscribe(static_cast<_Sequence&&>(__sequence), __receiver_t{});
                 stdexec::start(__op);
               }
             }
