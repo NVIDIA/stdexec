@@ -22,11 +22,18 @@
 #include "stdexec/__detail/__diagnostics.hpp"
 
 namespace exec {
+  namespace __errs {
+    template <class _Sequence>
+    struct _WITH_SEQUENCE_;
+
+    template <class... _Sequences>
+    struct _WITH_SEQUENCES_;
+  }
   template <class _Sequence>
-  struct _WITH_SEQUENCE_;
+  using _WITH_SEQUENCE_ = __errs::_WITH_SEQUENCE_<stdexec::__name_of<_Sequence>>;
 
   template <class... _Sequences>
-  struct _WITH_SEQUENCES_;
+  using _WITH_SEQUENCES_ = __errs::_WITH_SEQUENCES_<stdexec::__name_of<_Sequences>...>;
 
   struct sequence_sender_t : stdexec::sender_t { };
 
@@ -241,7 +248,7 @@ namespace exec {
           using __tag_invoke::tag_invoke;
           // This ought to cause a hard error that indicates where the problem is.
           using __item_types_t
-            [[maybe_unused]] = tag_invoke_result_t<get_item_types_t, __tfx_sequence_t, _Env>;
+            [[maybe_unused]] =  tag_invoke_result_t<get_item_types_t, __tfx_sequence_t, _Env>;
           return static_cast<__debug::__item_types (*)()>(nullptr);
         } else {
           using __result_t = __unrecognized_sequence_error_t<_Sequence, _Env>;
@@ -435,6 +442,10 @@ namespace exec {
     stdexec::__mconst<stdexec::completion_signatures<>>::__f
   >;
 
+  // __sequence_completion_signatures_of_t
+  // makes a sender look like a sequence with itself as the only item
+  //
+
   template <class _Sequence, class... _Env>
   using __sequence_completion_signatures_of_t = stdexec::__mapply<
     stdexec::__mtransform<
@@ -511,7 +522,7 @@ namespace exec {
           // item_types_of_t to check that the actual completions and item_types
           // match the expected completions and values.
           using __checked_signatures
-            [[maybe_unused]] = completion_signatures_of_t<_Sequence, env_of_t<_Receiver>>;
+            [[maybe_unused]] = __sequence_completion_signatures_of_t<_Sequence, env_of_t<_Receiver>>;
           using __checked_item_types
             [[maybe_unused]] = item_types_of_t<_Sequence, env_of_t<_Receiver>>;
         } else {
@@ -777,7 +788,7 @@ namespace exec {
     } else {
       using __items_t = __item_types_of_t<_Sequence, _Env...>;
       if constexpr (stdexec::__same_as<__items_t, __sequence_sndr::__unrecognized_sequence_error_t<_Sequence, _Env...>>) {
-        static_assert(stdexec::__mnever<__items_t>, STDEXEC_ERROR_CANNOT_COMPUTE_COMPLETION_SIGNATURES);
+        static_assert(stdexec::__mnever<__items_t>, STDEXEC_ERROR_GET_ITEM_TYPES_RETURNED_AN_ERROR);
       } else if constexpr (stdexec::__merror<__items_t>) {
         static_assert(
           !stdexec::__merror<__items_t>, STDEXEC_ERROR_GET_ITEM_TYPES_RETURNED_AN_ERROR);
@@ -833,7 +844,7 @@ namespace exec {
     void __debug_sequence_sender(_Sequence&& __sequence, const _Env&) {
       if constexpr (!__is_debug_env<_Env>) {
         if constexpr (sequence_sender_in<_Sequence, _Env>) {
-          using __sigs_t = stdexec::__completion_signatures_of_t<_Sequence, __debug_env_t<_Env>>;
+          using __sigs_t = __sequence_completion_signatures_of_t<_Sequence, __debug_env_t<_Env>>;
           using __item_types_t = __sequence_sndr::__item_types_of_t<_Sequence, __debug_env_t<_Env>>;
           using __receiver_t = __debug_sequence_sender_receiver<stdexec::__cvref_id<_Sequence>, _Env, __sigs_t, __item_types_t>;
           if constexpr (!std::same_as<__sigs_t, __debug::__completion_signatures> || !std::same_as<__item_types_t, __debug::__item_types>) {
