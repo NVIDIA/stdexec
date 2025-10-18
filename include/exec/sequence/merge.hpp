@@ -157,11 +157,11 @@ namespace exec {
 
       struct _INVALID_ARGUMENTS_TO_MERGE_ { };
 
-      template <class _Self, class _Env>
+      template <class _Self, class... _Env>
       using __error_t = __mexception<
         _INVALID_ARGUMENTS_TO_MERGE_,
         __children_of<_Self, __q<_WITH_SEQUENCES_>>,
-        _WITH_ENVIRONMENT_<_Env>
+        _WITH_ENVIRONMENT_<_Env>...
       >;
 
       template <class... _Env>
