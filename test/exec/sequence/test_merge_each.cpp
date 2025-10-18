@@ -20,27 +20,21 @@
 #include "exec/sequence/merge.hpp"
 #include "exec/sequence/empty_sequence.hpp"
 #include "exec/sequence/iterate.hpp"
+#include "exec/sequence/test_scheduler.hpp"
 #include "exec/sequence_senders.hpp"
-#include "exec/variant_sender.hpp"
-#include "exec/static_thread_pool.hpp"
-#include "exec/timed_thread_scheduler.hpp"
+#include "exec/timed_scheduler.hpp"
 #include "stdexec/__detail/__meta.hpp"
-#include "stdexec/__detail/__read_env.hpp"
+#include "stdexec/__detail/__senders_core.hpp"
 
-#include <stdexcept>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/senders.hpp>
+#include <test_common/sequences.hpp>
 #include <test_common/type_helpers.hpp>
 
 #  include <array>
-#  include <chrono>
-#  include <iomanip>
 
 namespace {
-  using namespace std::chrono_literals;
-  using namespace exec;
-  namespace ex = stdexec;
 
   template <class _A, class _B>
   concept __equivalent = __sequence_sndr::__all_contained_in<_A, _B>
@@ -82,10 +76,6 @@ namespace {
     }
   };
 
-  // a sequence adaptor that applies a function to each item
-  [[maybe_unused]] static constexpr auto then_each = [](auto f) {
-    return exec::transform_each(ex::then(f));
-  };
   // a sequence adaptor that schedules each item to complete
   // on the specified scheduler
   [[maybe_unused]] static constexpr auto continues_each_on = [](auto sched) {
@@ -95,86 +85,12 @@ namespace {
   // on the specified scheduler after the specified duration
   [[maybe_unused]] static constexpr auto delays_each_on = [](auto sched, duration_of_t<decltype(sched)> after) noexcept {
     return exec::transform_each(stdexec::let_value([sched, after](auto&&... vs) noexcept {
-      return sequence(schedule_after(sched, after), stdexec::just(vs...));
+      auto at = sched.now() + after;
+      return sequence(schedule_at(sched, at), stdexec::just(vs...));
     }));
-  };
-  // a sequence adaptor that applies a function to each item
-  // the function must produce a sequence
-  // all the sequences returned from the function are merged
-  [[maybe_unused]] static constexpr auto flat_map = [](auto&& f) {
-    auto map_merge = [](auto&& sequence, auto&& f) noexcept {
-        return merge_each(exec::transform_each(
-          static_cast<decltype(sequence)&&>(sequence),
-          ex::then(static_cast<decltype(f)&&>(f))));
-      };
-    return stdexec::__binder_back<decltype(map_merge), decltype(f)>{{static_cast<decltype(f)&&>(f)}, {}, {}};
-  };
-  // when_all requires a successful completion
-  // however stop_after_on has no successful completion
-  // this uses variant_sender to add a successful completion
-  // (the successful completion will never occur)
-  [[maybe_unused]] static constexpr auto with_void = [](auto&& sender) noexcept
-    -> variant_sender<
-      stdexec::__call_result_t<ex::just_t>,
-      decltype(sender)> {
-    return {static_cast<decltype(sender)&&>(sender)};
-  };
-  // with_stop_token_from adds get_stop_token query, that returns the
-  // token for the provided stop_source, to the receiver env
-  [[maybe_unused]] static constexpr auto with_stop_token_from = [](auto& stop_source) noexcept {
-    return ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()});
-  };
-  // log_start completes with the provided sequence after printing provided string
-  [[maybe_unused]] auto log_start = [](auto sequence, auto message) {
-    return exec::sequence(
-                    ex::read_env(ex::get_stop_token)
-                    | stdexec::then([message](auto&& token) noexcept {
-                      UNSCOPED_INFO(message
-                        << (token.stop_requested() ? ", stop was requested" : ", stop not requested")
-                        << ", on thread id: " << std::this_thread::get_id());
-                    }),
-                    ex::just(sequence));
-  };
-  // log_sequence prints the message when each value in the sequence is emitted
-  [[maybe_unused]] auto log_sequence = [](auto sequence, auto message) {
-    return sequence
-      | then_each([message](auto&& value) mutable noexcept {
-        UNSCOPED_INFO(message << ", on thread id: " << std::this_thread::get_id());
-        return value;
-      });
-  };
-  // emits_stopped completes with set_stopped after printing info
-  [[maybe_unused]] auto emits_stopped = []() {
-    return ex::just()
-      | stdexec::let_value([]() noexcept {
-        UNSCOPED_INFO("emitting stopped, on thread id: " << std::this_thread::get_id());
-        return ex::just_stopped();
-      });
-  };
-  // emits_error completes with set_error(error) after printing info
-  [[maybe_unused]] auto emits_error = [](auto error) {
-    return ex::just()
-      | stdexec::let_value([error]() noexcept {
-        UNSCOPED_INFO(error.what() << ", on thread id: " << std::this_thread::get_id());
-        return ex::just_error(error);
-      });
   };
 
 #if STDEXEC_HAS_STD_RANGES()
-
-  // a sequence of numbers from itoa()
-  [[maybe_unused]] static constexpr auto range = [](auto from, auto to) {
-    return exec::iterate(std::views::iota(from, to));
-  };
-
-  template<ex::sender Sender>
-  struct as_sequence_t : Sender {
-    using sender_concept = sequence_sender_t;
-    using item_types = exec::item_types<Sender>;
-    auto subscribe(auto receiver) {
-      return connect(set_next(receiver, *static_cast<Sender*>(this)), receiver);
-    }
-  };
 
   TEST_CASE(
     "merge_each - merge two sequence senders of no elements",
@@ -338,11 +254,140 @@ namespace {
     CHECK(v.has_value() == true);
   }
 
+
+  TEST_CASE(
+    "merge_each - merge_each of marble sequences",
+    "[sequence_senders][merge_each][merge]") {
+
+    test_context __test{};
+    auto __clock = __test.get_clock();
+    CHECK(test_clock::time_point{0ms} == __clock.now());
+    auto __sequence0 = __test.get_marble_sequence_from(
+      "  0--2|"_mstr);
+    auto __sequence1 = __test.get_marble_sequence_from(
+      "  -1-3   -4|"_mstr);
+    auto expected = get_marbles_from(__clock,
+      "=^01-(23)-4|"_mstr);
+    auto actual = __test.get_marbles_from(merge_each(merge(stdexec::just(__sequence0), stdexec::just(__sequence1))));
+    CHECK(test_clock::time_point{6ms} == __clock.now());
+    CAPTURE(__sequence0.__marbles_);
+    CAPTURE(__sequence1.__marbles_);
+    CHECK(expected == actual);
+  }
+
+  TEST_CASE(
+    "merge_each - merge_each of marble sequences - concat",
+    "[sequence_senders][merge_each][iterate]") {
+
+    test_context __test{};
+    auto __clock = __test.get_clock();
+    CHECK(test_clock::time_point{0ms} == __clock.now());
+    auto __sequence0 = __test.get_marble_sequence_from(
+      "  0--2|"_mstr);
+    auto __sequence1 = __test.get_marble_sequence_from(
+      "      -1-3-4|"_mstr);
+    auto expected = get_marbles_from(__clock,
+      "=^0--2-1-3-4|"_mstr);
+    std::array<_tst_sched::__test_sequence, 2> __sequences{__sequence0, __sequence1};
+    auto actual = __test.get_marbles_from(merge_each(iterate(__test.get_scheduler(), std::views::all(__sequences))));
+    CHECK(test_clock::time_point{10ms} == __clock.now());
+    CAPTURE(__sequence0.__marbles_);
+    CAPTURE(__sequence1.__marbles_);
+    CHECK(expected == actual);
+  }
+
+  TEST_CASE(
+    "merge_each - merge_each of marble sequences with error",
+    "[sequence_senders][merge_each][merge]") {
+
+    test_context __test{};
+    auto __clock = __test.get_clock();
+    CHECK(test_clock::time_point{0ms} == __clock.now());
+    auto __sequence0 = __test.get_marble_sequence_from(
+      "  0--2|"_mstr);
+    auto __sequence1 = __test.get_marble_sequence_from(
+      "  -1-3#-4|"_mstr);
+    auto expected = get_marbles_from(__clock,
+      // TODO FIX set_stopped issued instead of set_error
+      "=^01-(23)#$"_mstr);
+    auto actual = __test.get_marbles_from(merge_each(merge(stdexec::just(__sequence0), stdexec::just(__sequence1))));
+    CHECK(test_clock::time_point{4ms} == __clock.now());
+    CAPTURE(__sequence0.__marbles_);
+    CAPTURE(__sequence1.__marbles_);
+    CHECK(expected == actual);
+  }
+
+
+  TEST_CASE(
+    "merge_each - merge_each of marble sequences with error - concat",
+    "[sequence_senders][merge_each][iterate]") {
+
+    test_context __test{};
+    auto __clock = __test.get_clock();
+    CHECK(test_clock::time_point{0ms} == __clock.now());
+    auto __sequence0 = __test.get_marble_sequence_from(
+      "  0--2|"_mstr);
+    auto __sequence1 = __test.get_marble_sequence_from(
+      "      -1-3#-4|"_mstr);
+    auto expected = get_marbles_from(__clock,
+      // TODO FIX set_stopped issued instead of set_error
+      "=^0--2-1-3#$"_mstr);
+    std::array<_tst_sched::__test_sequence, 2> __sequences{__sequence0, __sequence1};
+    auto actual = __test.get_marbles_from(merge_each(iterate(__test.get_scheduler(), std::views::all(__sequences))));
+    CHECK(test_clock::time_point{8ms} == __clock.now());
+    CAPTURE(__sequence0.__marbles_);
+    CAPTURE(__sequence1.__marbles_);
+    CHECK(expected == actual);
+  }
+
+  TEST_CASE(
+    "merge_each - merge_each of marble sequences with a value stopped",
+    "[sequence_senders][merge_each][merge]") {
+
+    test_context __test{};
+    auto __clock = __test.get_clock();
+    CHECK(test_clock::time_point{0ms} == __clock.now());
+    auto __sequence0 = __test.get_marble_sequence_from(
+      "  0--2|"_mstr);
+    auto __sequence1 = __test.get_marble_sequence_from(
+      "  -1-3.-4|"_mstr);
+    auto expected = get_marbles_from(__clock,
+      // TODO FIX set_stopped issued instead of set_error
+      "=^01-(23).$"_mstr);
+    auto actual = __test.get_marbles_from(merge_each(merge(stdexec::just(__sequence0), stdexec::just(__sequence1))));
+    CHECK(test_clock::time_point{4ms} == __clock.now());
+    CAPTURE(__sequence0.__marbles_);
+    CAPTURE(__sequence1.__marbles_);
+    CHECK(expected == actual);
+  }
+
+  TEST_CASE(
+    "merge_each - merge_each of marble sequences with a value stopped - concat",
+    "[sequence_senders][merge_each][iterate]") {
+
+    test_context __test{};
+    auto __clock = __test.get_clock();
+    CHECK(test_clock::time_point{0ms} == __clock.now());
+    auto __sequence0 = __test.get_marble_sequence_from(
+      "  0--2|"_mstr);
+    auto __sequence1 = __test.get_marble_sequence_from(
+      "      -1-3.-4|"_mstr);
+    auto expected = get_marbles_from(__clock,
+      // TODO FIX set_stopped issued instead of set_error
+      "=^0--2-1-3.$"_mstr);
+    std::array<_tst_sched::__test_sequence, 2> __sequences{__sequence0, __sequence1};
+    auto actual = __test.get_marbles_from(merge_each(iterate(__test.get_scheduler(), std::views::all(__sequences))));
+    CHECK(test_clock::time_point{8ms} == __clock.now());
+    CAPTURE(__sequence0.__marbles_);
+    CAPTURE(__sequence1.__marbles_);
+    CHECK(expected == actual);
+  }
+
 // TODO - fix problem with stopping
 #if 0
   TEST_CASE(
     "merge_each - merge_each sender stops when a nested sequence fails",
-    "[sequence_senders][static_thread_pool][merge_each][merge][iterate]") {
+    "[sequence_senders][merge_each][merge][iterate]") {
 
     auto sequences = merge(
       log_start(range(100, 120), "range 100-120"),

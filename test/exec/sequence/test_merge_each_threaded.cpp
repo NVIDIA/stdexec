@@ -243,7 +243,6 @@ namespace {
 
     // a sequence whose items are sequences
     auto sequences = merge(
-      ex::just(stop_after_on(sched1, 10ms)),     // no items
       ex::just(range(100, 120)),                 // int items
       ex::just(empty_sequence()),                // no items
       ex::just(range(200, 220)),                 // int items
@@ -316,7 +315,6 @@ namespace {
 
     // a sequence whose items are sequences
     auto sequences = merge(
-      ex::just(stop_after_on(sched1, 10ms)),     // no items
       ex::just(range(100, 120)),                 // int items
       ex::just(empty_sequence()),                // no items
       ex::just(range(200, 220)),                 // int items
