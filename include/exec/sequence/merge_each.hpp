@@ -154,7 +154,7 @@ namespace exec {
       ~__operation_base_interface(){}
       virtual void nested_value_started() noexcept = 0;
       virtual void nested_value_complete() noexcept = 0;
-      virtual bool nested_value_fail() noexcept = 0;
+      virtual bool nested_sequence_fail() noexcept = 0;
       virtual void nested_value_break() noexcept = 0;
       virtual void error_complete() noexcept = 0;
 
@@ -175,7 +175,7 @@ namespace exec {
       void store_error(_Error&& __error)
         noexcept(
           __nothrow_callable<decltype(&_ErrorStorage::template emplace<_Error>), _ErrorStorage&, _Error>) {
-        if (this->nested_value_fail()) {
+        if (this->nested_sequence_fail()) {
           // We are the first child to complete with an error, so we must save the error. (Any
           // subsequent errors are ignored.)
           if constexpr (noexcept(__error_storage_->template emplace<_Error>(static_cast<_Error&&>(__error)))) {
@@ -386,7 +386,7 @@ namespace exec {
       void nested_value_complete() noexcept override {
         complete_if_none_active();
       }
-      bool nested_value_fail() noexcept override {
+      bool nested_sequence_fail() noexcept override {
         switch (__completion_.exchange(__completion_t::__error)) {
         case __completion_t::__started:
           // We must request stop. When the previous state is __error or __stopped, then stop has
@@ -491,23 +491,25 @@ namespace exec {
       void set_value(_Results&&... __results) noexcept {
         auto __op = __op_;
         stdexec::set_value(
-          static_cast<_NestedValueReceiver&&>(__nested_value_op_->__receiver_),
-          static_cast<_Results&&>(__results)...);
+          static_cast<_NestedValueReceiver&&>(__nested_value_op_->__receiver_)
+          , static_cast<_Results&&>(__results)...);
         __op->nested_value_complete();
       }
 
       template <class _Error>
       void set_error(_Error&& __error) noexcept {
         auto __op = __op_;
-        stdexec::set_stopped(static_cast<_NestedValueReceiver&&>(__nested_value_op_->__receiver_));
-        __op->store_error(static_cast<_Error&&>(__error));
+        stdexec::set_error(
+          static_cast<_NestedValueReceiver&&>(__nested_value_op_->__receiver_)
+          , static_cast<_Error&&>(__error));
         __op->nested_value_break();
       }
 
       void set_stopped() noexcept {
         auto __op = __op_;
-        stdexec::set_stopped(static_cast<_NestedValueReceiver&&>(__nested_value_op_->__receiver_));
-        __op->nested_value_complete();
+        stdexec::set_stopped(
+          static_cast<_NestedValueReceiver&&>(__nested_value_op_->__receiver_));
+        __op->nested_value_break();
       }
 
       using __env_t = decltype(__op_->env_from(__declval<env_of_t<_NestedValueReceiver>>()));
@@ -565,9 +567,7 @@ namespace exec {
         static auto get_completion_signatures(_Self&&, _Env&&...) noexcept
           -> stdexec::transform_completion_signatures<
                         stdexec::completion_signatures_of_t<_NestedValueSender, _Env...>,
-                        stdexec::completion_signatures<stdexec::set_stopped_t()>,
-                        stdexec::__sigs::__default_set_value,
-                        drop> {
+                        stdexec::completion_signatures<stdexec::set_stopped_t()>> {
           return {};
         }
 
@@ -619,12 +619,14 @@ namespace exec {
         }
 
       void nested_sequence_complete() noexcept override {
+        auto& __op = *__op_;
         stdexec::set_value(static_cast<_NextReceiver&&>(this->__receiver_));
-        __op_->nested_sequence_complete();
+        __op.nested_sequence_complete();
       }
       void nested_sequence_break() noexcept override {
+        auto& __op = *__op_;
         stdexec::set_stopped(static_cast<_NextReceiver&&>(this->__receiver_));
-        __op_->nested_sequence_break();
+        __op.nested_sequence_break();
       }
     };
 
@@ -810,9 +812,7 @@ namespace exec {
               // include errors from senders of the nested sequences
               __error_types<__item_types_of_t<_Sequence, _Env...>, _Env...>,
               // include errors from the nested sequences
-              __error_types<__merge_each::__compute::__nested_sequences<_Sequence, _Env...>, _Env...>,
-              // include errors from all the item type senders of all the nested sequences
-              __error_types<__merge_each::__compute::__all_nested_values<_Sequence, _Env...>, _Env...>
+              __error_types<__merge_each::__compute::__nested_sequences<_Sequence, _Env...>, _Env...>
           >;
 
       //
