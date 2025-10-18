@@ -127,7 +127,8 @@ namespace exec {
     };
   } // namespace __materialize
 
-  inline constexpr __materialize::__materialize_t materialize;
+  using materialize_t = __materialize::__materialize_t;
+  inline constexpr materialize_t materialize;
 
   namespace __dematerialize {
     using namespace stdexec;
@@ -235,5 +236,6 @@ namespace exec {
     };
   } // namespace __dematerialize
 
-  inline constexpr __dematerialize::__dematerialize_t dematerialize;
+  using dematerialize_t = __dematerialize::__dematerialize_t;
+  inline constexpr dematerialize_t dematerialize;
 } // namespace exec
