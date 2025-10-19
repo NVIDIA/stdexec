@@ -32,7 +32,7 @@ namespace nvexec::_strm {
     struct operation_state_t {
       using Sender = __cvref_t<CvrefSenderId>;
       using Receiver = stdexec::__t<ReceiverId>;
-      using Env = typename operation_state_base_t<ReceiverId>::env_t;
+      using Env = operation_state_base_t<ReceiverId>::env_t;
 
       struct __t : operation_state_base_t<ReceiverId> {
         using __id = operation_state_t;

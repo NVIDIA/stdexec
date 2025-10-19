@@ -46,7 +46,7 @@ namespace {
       }
 
       {
-        ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(snd));
+        void(ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(snd)));
         constexpr scope_t scope = decltype(ex::upon_error(snd, f))::scope;
         STATIC_REQUIRE(scope == scope_t::scheduler);
       }

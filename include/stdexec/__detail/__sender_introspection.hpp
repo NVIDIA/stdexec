@@ -75,10 +75,10 @@ namespace stdexec {
   using __sexpr_apply_result_t = __call_result_t<__sexpr_apply_t, _Sender, _ApplyFn>;
 
   template <class _Sender>
-  using tag_of_t = typename __detail::__desc_of<_Sender>::__tag;
+  using tag_of_t = __detail::__desc_of<_Sender>::__tag;
 
   template <class _Sender>
-  using __data_of = typename __detail::__desc_of<_Sender>::__data;
+  using __data_of = __detail::__desc_of<_Sender>::__data;
 
   template <class _Sender, class _Continuation = __q<__types>>
   using __children_of = __mapply<_Continuation, typename __detail::__desc_of<_Sender>::__children>;

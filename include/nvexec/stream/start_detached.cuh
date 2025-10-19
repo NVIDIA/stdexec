@@ -79,7 +79,7 @@ namespace nvexec::_strm {
         if constexpr (__callable<get_allocator_t, Env>) {
           auto alloc = stdexec::get_allocator(self->env_);
           using Alloc = decltype(alloc);
-          using OpAlloc = typename std::allocator_traits<Alloc>::template rebind_alloc<operation>;
+          using OpAlloc = std::allocator_traits<Alloc>::template rebind_alloc<operation>;
           OpAlloc op_alloc{alloc};
           std::allocator_traits<OpAlloc>::destroy(op_alloc, self);
           std::allocator_traits<OpAlloc>::deallocate(op_alloc, self, 1);
@@ -149,7 +149,7 @@ namespace nvexec::_strm {
         // Use the provided allocator to allocate the operation state.
         auto alloc = get_allocator(env);
         using Alloc = decltype(alloc);
-        using OpAlloc = typename std::allocator_traits<Alloc>::template rebind_alloc<Op>;
+        using OpAlloc = std::allocator_traits<Alloc>::template rebind_alloc<Op>;
         // We use the allocator to allocate the operation state and also to construct it.
         OpAlloc op_alloc{alloc};
         Op* op = std::allocator_traits<OpAlloc>::allocate(op_alloc, 1);
