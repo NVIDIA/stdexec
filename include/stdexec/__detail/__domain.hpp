@@ -249,9 +249,6 @@ namespace stdexec {
   concept __has_common_domain = __none_of<__none_such, __common_domain_t<_Senders...>>;
 
   namespace __detail {
-    template <class _Tag>
-    struct get_completion_domain_t;
-
     template <class _Env, class _Tag>
     using __starting_domain =
       __meval_or<__call_result_t, default_domain, get_domain_t, const _Env&>;
@@ -265,109 +262,6 @@ namespace stdexec {
 
     template <class _Sch, class... _Env>
     using __scheduler_domain_t = __decay_t<decltype(__detail::__get_scheduler_domain<_Sch, _Env...>())>;
-
-    //////////////////////////////////////////////////////////////////////////////////////////
-    //! @brief A query type for asking a sender's attributes for the domain on which that
-    //! sender will complete. As with @c get_domain, it is used in tag dispatching to find a
-    //! custom implementation of a sender algorithm.
-    //!
-    //! @tparam _Tag one of set_value_t, set_error_t, or set_stopped_t
-    template <class _Tag>
-    struct get_completion_domain_t {
-      // This function object reads the completion domain from an attribute object or a
-      // scheduler, accounting for the fact that the query member function may or may not
-      // accept an environment.
-      struct __read_query_t {
-        template <class _Attrs>
-          requires __queryable_with<_Attrs, get_completion_domain_t>
-        constexpr auto operator()(const _Attrs& __attrs, __ignore = {}) const noexcept
-          -> __decay_t<__query_result_t<_Attrs, get_completion_domain_t>>;
-
-        template <class _Attrs, class _Env>
-          requires __queryable_with<_Attrs, get_completion_domain_t, const _Env&>
-        constexpr auto operator()(const _Attrs& __attrs, const _Env& __env) const noexcept
-          -> __decay_t<__query_result_t<_Attrs, get_completion_domain_t, const _Env&>>;
-      };
-
-    private:
-      template <class _Attrs, class... _Env, class _Domain>
-      static consteval auto __check_domain(_Domain) noexcept -> _Domain {
-        // Sanity check: if a completion scheduler can be determined, then its domain must match
-        // the domain returned by the attributes.
-        if constexpr (__callable<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>) {
-          using __sch_t = __call_result_t<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>;
-          if constexpr (!__same_as<__sch_t, _Attrs>) // prevent infinite recursion
-          {
-            static_assert(__same_as<_Domain, __scheduler_domain_t<__sch_t, const _Env&...>>,
-                          "the sender claims to complete on a domain that is not the domain of its completion scheduler");
-          }
-        }
-        return {};
-      }
-
-      template <class _Attrs, class... _Env>
-      static constexpr auto __get_domain() noexcept
-      {
-        // If __attrs has a completion domain, then return it:
-        if constexpr (__callable<__read_query_t, const _Attrs&, const _Env&...>)
-        {
-          using __domain_t = __call_result_t<__read_query_t, const _Attrs&, const _Env&...>;
-          return __check_domain<_Attrs, _Env...>(__domain_t{});
-        }
-        // Otherwise, if __attrs has a completion scheduler, we can ask that scheduler for its
-        // completion domain.
-        else if constexpr (__callable<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>)
-        {
-          using __sch_t = __call_result_t<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>;
-
-          if constexpr (__callable<get_domain_t, __sch_t>)
-          {
-            using __domain_t = __call_result_t<get_domain_t, __sch_t>;
-            return __domain_t{};
-          }
-          // Otherwise, if the scheduler's sender indicates that it completes inline, we can ask
-          // the environment for its domain.
-          else if constexpr (__completes_inline<env_of_t<__call_result_t<schedule_t, __sch_t>>, _Env...>
-                            && __callable<get_domain_t, const _Env&...>)
-          {
-            return __call_result_t<get_domain_t, const _Env&...>{};
-          }
-          // Otherwise, if we are asking "late" (with an environment), return the default_domain
-          else if constexpr (sizeof...(_Env) != 0)
-          {
-            return default_domain{};
-          }
-        }
-        // Otherwise, if the attributes indicates that the sender completes inline, we can ask
-        // the environment for its domain.
-        else if constexpr (__completes_inline<_Attrs, _Env...> && __callable<get_domain_t, const _Env&...>)
-        {
-          return __call_result_t<get_domain_t, const _Env&...>{};
-        }
-        // Otherwise, if we are asking "late" (with an environment), return the default_domain
-        else if constexpr (sizeof...(_Env) != 0)
-        {
-          return default_domain{};
-        }
-        // Otherwise, no completion domain can be determined. Return void.
-      }
-
-      template <class _Ty, class... _Us>
-      using __unless_one_of_t = std::enable_if_t<__none_of<_Ty, _Us...>, _Ty>;
-
-      template <class _Attrs, class... _Env>
-      using __result_t = __unless_one_of_t<decltype(__get_domain<_Attrs, _Env...>()), void>;
-
-    public:
-      template <class _Attrs, class... _Env>
-      constexpr auto operator()(const _Attrs&, const _Env&...) const noexcept -> __result_t<_Attrs, _Env...> {
-        return {};
-      }
-
-      static constexpr auto query(forwarding_query_t) noexcept -> bool {
-        return true;
-      }
-    };
 
     constexpr auto __find_pos(bool const* const __begin, bool const* const __end) noexcept -> size_t {
       for (bool const* __where = __begin; __where != __end; ++__where) {
@@ -422,4 +316,124 @@ namespace stdexec {
     template <class _Sender, class _Env>
     using __completing_domain = __call_result_t<__first_callable<get_domain_override_t, get_completion_domain_t<set_value_t>>, env_of_t<_Sender>, const _Env&>;
   } // namespace __detail
+
+  namespace __queries {
+    //////////////////////////////////////////////////////////////////////////////////////////
+    //! @brief A query type for asking a sender's attributes for the domain on which that
+    //! sender will complete. As with @c get_domain, it is used in tag dispatching to find a
+    //! custom implementation of a sender algorithm.
+    //!
+    //! @tparam _Tag one of set_value_t, set_error_t, or set_stopped_t
+    template <__completion_tag _Tag>
+    struct get_completion_domain_t {
+      // This function object reads the completion domain from an attribute object or a
+      // scheduler, accounting for the fact that the query member function may or may not
+      // accept an environment.
+      struct __read_query_t {
+        template <class _Attrs>
+          requires __queryable_with<_Attrs, get_completion_domain_t>
+        constexpr auto operator()(const _Attrs& __attrs, __ignore = {}) const noexcept
+          -> __decay_t<__query_result_t<_Attrs, get_completion_domain_t>>;
+
+        template <class _Attrs, class _Env>
+          requires __queryable_with<_Attrs, get_completion_domain_t, const _Env&>
+        constexpr auto operator()(const _Attrs& __attrs, const _Env& __env) const noexcept
+          -> __decay_t<__query_result_t<_Attrs, get_completion_domain_t, const _Env&>>;
+      };
+
+    private:
+      template <class _Attrs, class... _Env, class _Domain>
+      static consteval auto __check_domain(_Domain) noexcept -> _Domain {
+        // Sanity check: if a completion scheduler can be determined, then its domain must match
+        // the domain returned by the attributes.
+        if constexpr (__callable<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>) {
+          using __sch_t = __call_result_t<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>;
+          if constexpr (!__same_as<__sch_t, _Attrs>) // prevent infinite recursion
+          {
+            static_assert(__same_as<_Domain, __detail::__scheduler_domain_t<__sch_t, const _Env&...>>,
+                          "the sender claims to complete on a domain that is not the domain of its completion scheduler");
+          }
+        }
+        return {};
+      }
+
+      template <class _Attrs, class... _Env>
+      static constexpr auto __get_domain() noexcept
+      {
+        // If __attrs has a completion domain, then return it:
+        if constexpr (__callable<__read_query_t, const _Attrs&, const _Env&...>)
+        {
+          using __domain_t = __call_result_t<__read_query_t, const _Attrs&, const _Env&...>;
+          return __check_domain<_Attrs, _Env...>(__domain_t{});
+        }
+        // Otherwise, if __attrs has a completion scheduler, we can ask that scheduler for its
+        // completion domain.
+        else if constexpr (__callable<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>)
+        {
+          using __sch_t        = __call_result_t<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>;
+          using __read_query_t = typename get_completion_domain_t<set_value_t>::__read_query_t;
+
+          if constexpr (__callable<__read_query_t, __sch_t, const _Env&...>)
+          {
+            using __domain_t = __call_result_t<__read_query_t, __sch_t, const _Env&...>;
+            return __domain_t{};
+          }
+          // Otherwise, if the scheduler's sender indicates that it completes inline, we can ask
+          // the environment for its domain.
+          else if constexpr (__completes_inline<env_of_t<__call_result_t<schedule_t, __sch_t>>, _Env...>
+                            && __callable<get_domain_t, const _Env&...>)
+          {
+            return __call_result_t<get_domain_t, const _Env&...>{};
+          }
+          // Otherwise, if we are asking "late" (with an environment), return the default_domain
+          else if constexpr (sizeof...(_Env) != 0)
+          {
+            return default_domain{};
+          }
+        }
+        // Otherwise, if the attributes indicates that the sender completes inline, we can ask
+        // the environment for its domain.
+        else if constexpr (__completes_inline<_Attrs, _Env...> && __callable<get_domain_t, const _Env&...>)
+        {
+          return __call_result_t<get_domain_t, const _Env&...>{};
+        }
+        // Otherwise, if we are asking "late" (with an environment), return the default_domain
+        else if constexpr (sizeof...(_Env) != 0)
+        {
+          return default_domain{};
+        }
+        // Otherwise, no completion domain can be determined. Return void.
+      }
+
+      template <class _Ty, class... _Us>
+      using __unless_one_of_t = std::enable_if_t<__none_of<_Ty, _Us...>, _Ty>;
+
+      template <class _Attrs, class... _Env>
+      using __result_t = __unless_one_of_t<decltype(__get_domain<_Attrs, _Env...>()), void>;
+
+    public:
+      template <class _Attrs, class... _Env>
+      constexpr auto operator()(const _Attrs&, const _Env&...) const noexcept -> __result_t<_Attrs, _Env...> {
+        return {};
+      }
+
+      static constexpr auto query(forwarding_query_t) noexcept -> bool {
+        return true;
+      }
+    };
+  }
+
+  using __queries::get_completion_domain_t;
+
+#if !STDEXEC_GCC() || defined(__OPTIMIZE_SIZE__)
+  template <__completion_tag _Query>
+  inline constexpr get_completion_domain_t<_Query> get_completion_domain{};
+#else
+  template <>
+  inline constexpr get_completion_domain_t<set_value_t> get_completion_domain<set_value_t>{};
+  template <>
+  inline constexpr get_completion_domain_t<set_error_t> get_completion_domain<set_error_t>{};
+  template <>
+  inline constexpr get_completion_domain_t<set_stopped_t> get_completion_domain<set_stopped_t>{};
+#endif
 } // namespace stdexec

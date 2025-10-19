@@ -458,6 +458,11 @@ namespace exec {
         auto query(get_domain_t) const noexcept -> domain {
           return {};
         }
+
+        [[nodiscard]]
+        auto query(get_completion_domain_t<set_value_t>, __ignore = {}) const noexcept -> domain {
+          return {};
+        }
       };
 
       auto get_scheduler() noexcept -> scheduler {

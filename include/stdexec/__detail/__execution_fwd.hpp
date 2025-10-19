@@ -94,6 +94,8 @@ namespace stdexec {
     struct get_stop_token_t;
     template <__completion_tag _CPO>
     struct get_completion_scheduler_t;
+    template <__completion_tag _CPO>
+    struct get_completion_domain_t;
     struct get_domain_t;
   } // namespace __queries
 
@@ -105,6 +107,7 @@ namespace stdexec {
   using __queries::get_delegation_scheduler_t;
   using __queries::get_stop_token_t;
   using __queries::get_completion_scheduler_t;
+  using __queries::get_completion_domain_t;
   using __queries::get_domain_t;
 
   extern const forwarding_query_t forwarding_query;
@@ -116,6 +119,8 @@ namespace stdexec {
   extern const get_stop_token_t get_stop_token;
   template <__completion_tag _CPO>
   extern const get_completion_scheduler_t<_CPO> get_completion_scheduler;
+  template <__completion_tag _CPO>
+  extern const get_completion_domain_t<_CPO> get_completion_domain;
   extern const get_domain_t get_domain;
 
   struct never_stop_token;
