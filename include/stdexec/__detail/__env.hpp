@@ -641,7 +641,7 @@ namespace stdexec {
     using __sched_domain_t = __query_result_or_t<get_domain_t, __scheduler_t, default_domain>;
 
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> __scheduler_t {
+    constexpr auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept -> __scheduler_t {
       return __sched_;
     }
 

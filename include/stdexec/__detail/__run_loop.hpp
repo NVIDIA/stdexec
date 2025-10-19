@@ -121,7 +121,7 @@ namespace stdexec {
             run_loop* __loop_;
 
             template <class _CPO>
-            auto query(get_completion_scheduler_t<_CPO>) const noexcept -> __scheduler {
+            auto query(get_completion_scheduler_t<_CPO>, __ignore = {}) const noexcept -> __scheduler {
               return __loop_->get_scheduler();
             }
           };

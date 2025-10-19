@@ -359,7 +359,7 @@ namespace exec {
             remote_queue* queue_;
 
             template <class CPO>
-            auto query(get_completion_scheduler_t<CPO>) const noexcept
+            auto query(get_completion_scheduler_t<CPO>, __ignore = {}) const noexcept
               -> static_thread_pool_::scheduler {
               return static_thread_pool_::scheduler{pool_, *queue_};
             }
@@ -1508,7 +1508,7 @@ namespace exec {
           struct env {
             static_thread_pool_* pool_;
 
-            auto query(get_completion_scheduler_t<set_value_t>) noexcept
+            auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) noexcept
               -> static_thread_pool_::scheduler {
               return pool_->get_scheduler();
             }

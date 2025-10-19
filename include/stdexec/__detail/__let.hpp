@@ -47,7 +47,7 @@ namespace stdexec {
         }
 
         [[nodiscard]]
-        constexpr auto query(get_completion_scheduler_t<set_value_t>) const noexcept {
+        constexpr auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept {
           return __unknown_scheduler{};
         }
       };

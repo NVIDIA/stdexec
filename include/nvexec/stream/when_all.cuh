@@ -135,7 +135,7 @@ namespace nvexec::_strm {
         context_state_t context_state_;
         using sched_domain_t = __query_result_or_t<get_domain_t, Scheduler, default_domain>;
 
-        auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> Scheduler
+        auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept -> Scheduler
           requires stdexec::__same_as<WhenAllTag, transfer_when_all_t>
         {
           return Scheduler(context_state_);

@@ -128,7 +128,7 @@ namespace nvexec {
           context_state_t context_state_;
 
           STDEXEC_ATTRIBUTE(nodiscard)
-          auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> stream_scheduler {
+          auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept -> stream_scheduler {
             return stream_scheduler{context_state_};
           }
         };

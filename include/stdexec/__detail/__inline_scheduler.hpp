@@ -46,7 +46,7 @@ namespace stdexec {
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      static constexpr auto query(get_completion_scheduler_t<set_value_t>) noexcept //
+      static constexpr auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) noexcept //
         -> inline_scheduler {
         return {};
       }
