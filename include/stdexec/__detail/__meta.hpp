@@ -889,26 +889,6 @@ namespace stdexec {
   using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
 #endif
 
-  struct __call_or_t {
-    template <class _Fn, class _Default, class... _Args>
-      requires __callable<_Fn, _Args...>
-    constexpr auto operator()(_Fn&& __fn, _Default&&, _Args&&... __args) const
-      noexcept(__nothrow_callable<_Fn, _Args...>) -> __call_result_t<_Fn, _Args...>
-    {
-      return static_cast<_Fn&&>(__fn)(static_cast<_Args&&>(__args)...);
-    }
-
-    template <class _Default, class... _Args>
-    constexpr auto operator()(__ignore, _Default&& __default, _Args&&...) const
-      noexcept(__nothrow_movable_value<_Default>) -> _Default
-    {
-      return static_cast<_Default&&>(__default);
-    }
-  };
-
-  template <class _Fn, class _Default, class... _Args>
-  using __call_result_or_t = __call_result_t<__call_or_t, _Fn, _Default, _Args...>;
-
 // BUGBUG TODO file this bug with nvc++
 #if STDEXEC_EDG()
   template <const auto &_Fun, class... _As>
