@@ -32,7 +32,7 @@ namespace stdexec {
   namespace __just {
     template <class _JustTag>
     struct __impl : __sexpr_defaults {
-      using __tag_t = typename _JustTag::__tag_t;
+      using __tag_t = _JustTag::__tag_t;
 
       static constexpr auto get_attrs = [](__ignore) noexcept
         -> cprop<get_completion_behavior_t, completion_behavior::inline_completion> {

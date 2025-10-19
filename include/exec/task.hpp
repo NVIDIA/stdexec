@@ -169,8 +169,7 @@ namespace exec {
     template <__indirect_stop_token_provider _ParentPromise>
     struct __default_awaiter_context<_ParentPromise> {
       using __stop_token_t = stop_token_of_t<env_of_t<_ParentPromise>>;
-      using __stop_callback_t =
-        typename __stop_token_t::template callback_type<__forward_stop_request>;
+      using __stop_callback_t = __stop_token_t::template callback_type<__forward_stop_request>;
 
       template <__scheduler_affinity _Affinity>
       explicit __default_awaiter_context(
@@ -254,7 +253,7 @@ namespace exec {
 
     template <class _Promise, class _ParentPromise = void>
     using awaiter_context_t =
-      typename __decay_t<env_of_t<_Promise>>::template awaiter_context_t<_Promise, _ParentPromise>;
+      __decay_t<env_of_t<_Promise>>::template awaiter_context_t<_Promise, _ParentPromise>;
 
     ////////////////////////////////////////////////////////////////////////////////
     // In a base class so it can be specialized when _Ty is void:
@@ -352,7 +351,7 @@ namespace exec {
         }
       };
 
-      using __promise_context_t = typename _Context::template promise_context_t<__promise>;
+      using __promise_context_t = _Context::template promise_context_t<__promise>;
 
       struct __promise
         : __promise_base<_Ty>
