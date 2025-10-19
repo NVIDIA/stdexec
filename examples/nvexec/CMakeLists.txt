@@ -103,6 +103,7 @@ endforeach()
 # GPU examples
 ###############################################################################
 set(nvexec_gpu_examples
+    "      example.nvexec.problem : problem.cpp"
     "         example.nvexec.bulk : bulk.cpp"
     "       example.nvexec.reduce : reduce.cpp"
     "        example.nvexec.split : split.cpp"
