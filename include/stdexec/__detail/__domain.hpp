@@ -32,6 +32,9 @@ namespace stdexec {
   struct dependent_domain;
 
   namespace __detail {
+    template <class _Env>
+    using __starting_domain = __call_result_or_t<get_domain_t, default_domain, const _Env&>;
+
     template <class _DomainOrTag, class _Sender, class... _Env>
     concept __has_transform_sender =
       requires(_DomainOrTag __tag, _Sender&& __sender, const _Env&... __env) {
