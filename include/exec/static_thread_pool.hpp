@@ -315,6 +315,11 @@ namespace exec {
           if constexpr (__starts_on<Sender, static_thread_pool_::scheduler, Env>) {
             auto sched = stdexec::get_scheduler(env);
             return __sexpr_apply(static_cast<Sender&&>(sndr), transform_bulk{*sched.pool_});
+          }
+          else if constexpr (__callable<get_completion_scheduler_t<set_value_t>, env_of_t<Sender>>) {
+            auto sched = stdexec::get_completion_scheduler<set_value_t>(get_env(sndr));
+            static_assert(std::is_same_v<decltype(sched), static_thread_pool_::scheduler>);
+            return __sexpr_apply(static_cast<Sender&&>(sndr), transform_bulk{*sched.pool_});
           } else {
             static_assert(
               __starts_on<Sender, static_thread_pool_::scheduler, Env>,

@@ -14,25 +14,77 @@
  * limitations under the License.
  */
 
-#include <nvexec/stream_context.cuh>
 #include <stdexec/execution.hpp>
+#include <exec/static_thread_pool.hpp>
 
+#include <iostream>
 #include <cstdio>
 
 namespace ex = stdexec;
 
-auto main() -> int {
-  using nvexec::is_on_gpu;
+struct receiver_t
+{
+  using receiver_concept = ex::receiver_t;
 
-  // nvexec::stream_context stream_ctx{};
-  // ex::scheduler auto gpu = stream_ctx.get_scheduler();
+  void set_value() && noexcept
+  {
+  }
 
-  auto sndr = ex::then(ex::just(), [] __host__ __device__ {
-    if (is_on_gpu()) {
-      std::printf("GPU!\n");
-    } else {
-      std::printf("CPU!\n");
-    }
+  template <class... As>
+  void set_value(As...) && noexcept
+  {
+  }
+
+  template <class Error>
+  void set_error(Error) && noexcept
+  {
+  }
+
+  void set_stopped() && noexcept
+  {
+  }
+};
+
+template <class Domain>
+void check_if_pool_domain() {
+  using pool_domain = exec::_pool_::static_thread_pool_::domain;
+  static_assert(std::is_same_v<Domain, pool_domain>);
+}
+
+template <class Domain>
+void check_if_inline_domain() {
+  static_assert(std::is_same_v<Domain, ex::default_domain>);
+}
+
+template <class Sender, class Receiver>
+void check_if_starts_inline_and_completes_on_pool(Sender, Receiver) {
+  using receiver_env_t = ex::env_of_t<Receiver>;
+
+  check_if_pool_domain<ex::__detail::__completing_domain<Sender, receiver_env_t>>();
+  check_if_inline_domain<ex::__detail::__starting_domain<Sender, receiver_env_t>>();
+
+  // auto op_state = ex::connect(std::move(sender), std::move(receiver));
+  // op_state.start();
+}
+
+int main() {
+  exec::static_thread_pool pool(3);
+  auto sched = pool.get_scheduler();
+
+  check_if_starts_inline_and_completes_on_pool(ex::schedule(sched), receiver_t{});
+  check_if_starts_inline_and_completes_on_pool(ex::continues_on(ex::just(), sched), receiver_t{});
+  check_if_starts_inline_and_completes_on_pool(ex::let_value(ex::continues_on(ex::just(), sched), []() { return ex::just(); }), receiver_t{});
+
+  std::cout << "main: " << std::this_thread::get_id() << "\n";
+  // auto snd = ex::starts_on(sched, ex::just())
+  auto snd = ex::let_value(ex::continues_on(ex::just(), sched), []() { return ex::just(); }) // starts_on
+           | ex::bulk(ex::par_unseq, 2, [](int i) {
+    std::cout << "   " << i << ": " << std::this_thread::get_id() << "\n";
   });
-  ex::sync_wait(std::move(sndr));
+  ex::sync_wait(snd);
+
+  // fails
+  // check_if_starts_inline_and_completes_on_pool(ex::starts_on(sched, ex::just()), receiver_t{});
+
+  return 0;
 }
