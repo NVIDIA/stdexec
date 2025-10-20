@@ -180,11 +180,8 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE(host, device)
       auto operator()(_Sender&& __sndr, _Policy&& __pol, _Shape __shape, _Fun __fun) const
         -> __well_formed_sender auto {
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::transform_sender(
-          __domain,
-          __make_sexpr<_AlgoTag>(
-            __data{__pol, __shape, static_cast<_Fun&&>(__fun)}, static_cast<_Sender&&>(__sndr)));
+        return __make_sexpr<_AlgoTag>(
+          __data{__pol, __shape, static_cast<_Fun&&>(__fun)}, static_cast<_Sender&&>(__sndr));
       }
 
       template <typename _Policy, integral _Shape, copy_constructible _Fun>
@@ -266,6 +263,12 @@ namespace stdexec {
 
       template <class _Sender>
       using __shape_t = decltype(__decay_t<__data_of<_Sender>>::__shape_);
+
+      // Forward the child sender's environment (which contains completion scheduler)
+      static constexpr auto get_attrs =
+        []<class _Data, class _Child>(const _Data&, const _Child& __child) noexcept {
+          return __env::__fwd_fn()(stdexec::get_env(__child));
+        };
 
       static constexpr auto get_completion_signatures =
         []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept -> __completion_signatures<
@@ -351,7 +354,20 @@ namespace stdexec {
     };
 
     struct __bulk_impl : __bulk_impl_base<bulk_t> {
-      // Implementation is handled by lowering to `bulk_chunked` in `transform_sender`.
+      // Lower bulk_t to bulk_chunked_t so domains can customize it
+      static constexpr auto transform_sender =
+        []<class _Domain, class _Sender, class... _Env>(_Domain __dom, _Sender&& __sndr, const _Env&... __env) {
+          // First lower bulk_t to bulk_chunked_t
+          auto __chunked = __sexpr_apply(
+            static_cast<_Sender&&>(__sndr),
+            []<class _Tag, class _Data, class _Child>(_Tag, _Data&& __data, _Child&& __child) {
+              return __make_sexpr<bulk_chunked_t>(
+                static_cast<_Data&&>(__data),
+                static_cast<_Child&&>(__child));
+            });
+          // Then let the domain transform the chunked version
+          return stdexec::transform_sender(__dom, std::move(__chunked), __env...);
+        };
     };
   } // namespace __bulk
 
