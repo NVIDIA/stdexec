@@ -42,11 +42,7 @@ namespace stdexec {
     struct continues_on_t {
       template <sender _Sender, scheduler _Scheduler>
       auto operator()(_Sender&& __sndr, _Scheduler __sched) const -> __well_formed_sender auto {
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::transform_sender(
-          __domain,
-          __make_sexpr<continues_on_t>(
-            static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr)));
+        return __make_sexpr<continues_on_t>(static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
       }
 
       template <scheduler _Scheduler>

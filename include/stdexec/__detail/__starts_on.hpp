@@ -52,11 +52,7 @@ namespace stdexec {
     struct starts_on_t {
       template <scheduler _Scheduler, sender _Sender>
       auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto {
-        auto __domain = query_or(get_domain, __sched, default_domain());
-        return stdexec::transform_sender(
-          __domain,
-          __make_sexpr<starts_on_t>(
-            static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr)));
+        return __make_sexpr<starts_on_t>(static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
       }
 
       template <class _Env>
