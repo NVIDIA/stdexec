@@ -354,20 +354,7 @@ namespace stdexec {
     };
 
     struct __bulk_impl : __bulk_impl_base<bulk_t> {
-      // Lower bulk_t to bulk_chunked_t so domains can customize it
-      static constexpr auto transform_sender =
-        []<class _Domain, class _Sender, class... _Env>(_Domain __dom, _Sender&& __sndr, const _Env&... __env) {
-          // First lower bulk_t to bulk_chunked_t
-          auto __chunked = __sexpr_apply(
-            static_cast<_Sender&&>(__sndr),
-            []<class _Tag, class _Data, class _Child>(_Tag, _Data&& __data, _Child&& __child) {
-              return __make_sexpr<bulk_chunked_t>(
-                static_cast<_Data&&>(__data),
-                static_cast<_Child&&>(__child));
-            });
-          // Then let the domain transform the chunked version
-          return stdexec::transform_sender(__dom, std::move(__chunked), __env...);
-        };
+      // Implementation is handled by lowering to `bulk_chunked` in the tag's `transform_sender`.
     };
   } // namespace __bulk
 

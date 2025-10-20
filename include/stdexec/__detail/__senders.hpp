@@ -159,11 +159,20 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.connect]
   namespace __connect {
+    // First transformation: completing domain (where the sender completes)
+    template <class _Sender, class _Receiver>
+    using __completing_tfx_sender = transform_sender_result_t<
+      __detail::__completing_domain<_Sender, env_of_t<_Receiver>>,
+      _Sender,
+      env_of_t<_Receiver>
+    >;
+
+    // Second transformation: starting domain (where the operation state starts)
     template <class _Sender, class _Receiver>
     using __tfx_sender = __mmemoize_q<
       transform_sender_result_t,
-      __late_domain_of_t<_Sender, env_of_t<_Receiver>>,
-      _Sender,
+      __detail::__starting_domain<env_of_t<_Receiver>, set_value_t>,
+      __completing_tfx_sender<_Sender, _Receiver>,
       env_of_t<_Receiver>
     >;
 
@@ -213,10 +222,14 @@ namespace stdexec {
 
       template <class _Sender, class _Receiver>
       static constexpr auto __select_impl() noexcept {
-        using _Domain = __late_domain_of_t<_Sender, env_of_t<_Receiver>>;
+        using _CompletingDomain = __detail::__completing_domain<_Sender, env_of_t<_Receiver>>;
+        using _StartingDomain = __detail::__starting_domain<env_of_t<_Receiver>, set_value_t>;
+        using _CompletingTfxSender = __completing_tfx_sender<_Sender, _Receiver>;
         using _TfxSender = __tfx_sender<_Sender, _Receiver>;
+
         constexpr bool _NothrowTfxSender =
-          __nothrow_callable<transform_sender_t, _Domain, _Sender, env_of_t<_Receiver>>;
+          __nothrow_callable<transform_sender_t, _CompletingDomain, _Sender, env_of_t<_Receiver>>
+          && __nothrow_callable<transform_sender_t, _StartingDomain, _CompletingTfxSender, env_of_t<_Receiver>>;
 
         static_assert(sender<_Sender>, "The first argument to stdexec::connect must be a sender");
         static_assert(
@@ -270,29 +283,45 @@ namespace stdexec {
 
         using _TfxSender = __tfx_sender<_Sender, _Receiver>;
         auto&& __env = get_env(__rcvr);
-        auto __domain = __get_late_domain(__sndr, __env);
+
+        // Two-phase transformation per P3826R0
+        // 1. Completing domain transformation (where the sender completes)
+        auto __completing_dom = __detail::__first_callable<get_domain_override_t, get_completion_domain_t<set_value_t>>{
+          std::tuple{get_domain_override_t{}, get_completion_domain_t<set_value_t>{}}}(
+          get_env(__sndr), __env);
+
+        // 2. Starting domain transformation (where the operation state starts)
+        auto __starting_dom = [&]() {
+          if constexpr (__callable<get_domain_t, const env_of_t<_Receiver>&>) {
+            return get_domain(__env);
+          } else {
+            return default_domain{};
+          }
+        }();
 
         if constexpr (__with_static_member<_TfxSender, _Receiver>) {
-          auto&& __tfx_sndr = transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env);
+          auto&& __completing_tfx = transform_sender(__completing_dom, static_cast<_Sender&&>(__sndr), __env);
+          auto&& __tfx_sndr = transform_sender(__starting_dom, static_cast<decltype(__completing_tfx)&&>(__completing_tfx), __env);
           return __tfx_sndr
             .connect(static_cast<_TfxSender&&>(__tfx_sndr), static_cast<_Receiver&&>(__rcvr));
         } else if constexpr (__with_member<_TfxSender, _Receiver>) { // NOLINT(bugprone-branch-clone)
-          return transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env)
-            .connect(static_cast<_Receiver&&>(__rcvr));
+          auto&& __completing_tfx = transform_sender(__completing_dom, static_cast<_Sender&&>(__sndr), __env);
+          auto&& __tfx_sndr = transform_sender(__starting_dom, static_cast<decltype(__completing_tfx)&&>(__completing_tfx), __env);
+          return __tfx_sndr.connect(static_cast<_Receiver&&>(__rcvr));
         } else if constexpr (__with_tag_invoke<_TfxSender, _Receiver>) {
-          return tag_invoke(
-            connect_t(),
-            transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env),
-            static_cast<_Receiver&&>(__rcvr));
+          auto&& __completing_tfx = transform_sender(__completing_dom, static_cast<_Sender&&>(__sndr), __env);
+          auto&& __tfx_sndr = transform_sender(__starting_dom, static_cast<decltype(__completing_tfx)&&>(__completing_tfx), __env);
+          return tag_invoke(connect_t(), __tfx_sndr, static_cast<_Receiver&&>(__rcvr));
         } else if constexpr (__with_co_await<_TfxSender, _Receiver>) {
-          return __connect_awaitable(
-            transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env),
-            static_cast<_Receiver&&>(__rcvr));
+          auto&& __completing_tfx = transform_sender(__completing_dom, static_cast<_Sender&&>(__sndr), __env);
+          auto&& __tfx_sndr = transform_sender(__starting_dom, static_cast<decltype(__completing_tfx)&&>(__completing_tfx), __env);
+          return __connect_awaitable(__tfx_sndr, static_cast<_Receiver&&>(__rcvr));
         } else {
           // This should generate an instantiation backtrace that contains useful
           // debugging information.
-          return transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env)
-            .connect(static_cast<_Receiver&&>(__rcvr));
+          auto&& __completing_tfx = transform_sender(__completing_dom, static_cast<_Sender&&>(__sndr), __env);
+          auto&& __tfx_sndr = transform_sender(__starting_dom, static_cast<decltype(__completing_tfx)&&>(__completing_tfx), __env);
+          return __tfx_sndr.connect(static_cast<_Receiver&&>(__rcvr));
         }
       }
 
