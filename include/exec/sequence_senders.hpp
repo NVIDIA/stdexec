@@ -695,11 +695,6 @@ namespace exec {
       } else {
         stdexec::__diagnose_sender_concept_failure<_Sequence, _Env...>();
       }
-#if STDEXEC_MSVC() || STDEXEC_NVHPC()
-      // MSVC and NVHPC need more encouragement to print the type of the
-      // error.
-      _Completions __what = 0;
-#endif
     }
   }
 
