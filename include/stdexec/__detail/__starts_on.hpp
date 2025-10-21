@@ -102,6 +102,16 @@ namespace stdexec {
       template <class _Sch, class... _Env>
       using __env2_t = decltype(__mk_env2(__declval<_Sch>(), __declval<_Env>()...));
 
+      // Query for completion scheduler
+      template <class _SetTag, class... _Env>
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+      constexpr auto query(get_completion_scheduler_t<_SetTag>, _Env&&...) const noexcept
+        -> _Scheduler
+        requires(__completes_inline<env_of_t<_Child>, __env2_t<_Scheduler, _Env>...>) {
+        // If child completes inline, then starts_on completes on its scheduler
+        return __sched_;
+      }
+
       // Query for completion scheduler - delegates to child's env with augmented environment
       template <class _SetTag, class... _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
@@ -110,7 +120,9 @@ namespace stdexec {
              get_completion_scheduler_t<_SetTag>,
              env_of_t<_Child>,
              __env2_t<_Scheduler, _Env>...
-          > {
+          >
+        requires(!__completes_inline<env_of_t<_Child>, __env2_t<_Scheduler, _Env>...>) {
+        // If child doesn't complete inline, delegate to child's completion scheduler
         return __query(__attr_, __mk_env2(__sched_, static_cast<_Env&&>(__env))...);
       }
 
