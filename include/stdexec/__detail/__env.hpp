@@ -355,7 +355,7 @@ namespace stdexec {
       static_assert(__callable<_Query, __prop_like<_Value>>);
 
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto query(_Query) const noexcept -> const _Value& {
+      constexpr auto query(_Query, auto&&...) const noexcept -> const _Value& {
         return __value;
       }
 
@@ -373,7 +373,7 @@ namespace stdexec {
       using __id = cprop;
 
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      static constexpr auto query(_Query) noexcept {
+      static constexpr auto query(_Query, auto&&...) noexcept {
         return _Value;
       }
     };
