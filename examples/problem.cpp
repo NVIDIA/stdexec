@@ -92,38 +92,12 @@ int main() {
     )
   );
 
-  #if 0
-  static_assert(
-    std::is_same_v<
-      exec::_pool_::static_thread_pool_::domain,
-      decltype(ex::get_completion_domain<ex::set_value_t>(ex::starts_on(sched, ex::just()), ex::get_env(receiver_t{})))
-    >);
-
-  static_assert(
-    std::is_same_v<
-      exec::_pool_::static_thread_pool_::scheduler,
-      decltype(ex::get_completion_scheduler<ex::set_value_t>(ex::starts_on(sched, ex::just()), ex::get_env(receiver_t{})))
-    >);
-  #endif
-
-  #if 0
-  if (sched != ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::starts_on(sched, ex::just())), ex::get_env(receiver_t{}))) {
-    std::cerr << "Error: schedule(sched) does not complete on sched\n";
-    return 1;
-  } else {
-    std::cout << "schedule(sched) completes on sched\n";
-  }
-  #endif
-
-  #if 0
   std::cout << "main: " << std::this_thread::get_id() << "\n";
   auto snd = ex::starts_on(sched, ex::just())
-  // auto snd = ex::let_value(ex::continues_on(ex::just(), sched), []() { return ex::just(); }) // starts_on
            | ex::bulk(ex::par_unseq, 2, [](int i) {
     std::cout << "   " << i << ": " << std::this_thread::get_id() << "\n";
   });
   ex::sync_wait(snd);
-  #endif
 
   return 0;
 }
