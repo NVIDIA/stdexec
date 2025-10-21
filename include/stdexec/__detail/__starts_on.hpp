@@ -126,12 +126,12 @@ namespace stdexec {
         return __query(__attr_, __mk_env2(__sched_, static_cast<_Env&&>(__env))...);
       }
 
-      // Query for completion domain - delegates to child's env with augmented environment
+      // Query for completion domain - calculate type from child's env with augmented environment
       template <class _SetTag, class... _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto query(get_completion_domain_t<_SetTag> __query, _Env&&... __env) const noexcept
+      constexpr auto query(get_completion_domain_t<_SetTag>, _Env&&...) const noexcept
         -> __call_result_t<get_completion_domain_t<_SetTag>, env_of_t<_Child>, __env2_t<_Scheduler, _Env>...> {
-        return __query(__attr_, __mk_env2(__sched_, static_cast<_Env&&>(__env))...);
+        return {};
       }
 
       _Scheduler __sched_;
