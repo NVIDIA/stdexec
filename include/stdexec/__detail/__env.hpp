@@ -294,8 +294,8 @@ namespace stdexec {
   inline constexpr get_domain_t get_domain{};
   inline constexpr get_domain_override_t get_domain_override{};
 
-  template <class _Query, class _Queryable, class _Default>
-  using __query_result_or_t = __call_result_t<query_or_t, _Query, _Queryable, _Default>;
+  template <class _Query, class _Queryable, class _Default, class... _Args>
+  using __query_result_or_t = __call_result_t<query_or_t, _Query, _Queryable, _Default, _Args...>;
 
   namespace __env {
     template <class _Tp, class _Promise>

@@ -89,7 +89,7 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<starts_on_t> : __sexpr_defaults {
-    template <class _Scheduler, class _Attr>
+    template <class _Scheduler, class _Child>
     struct __attrs {
       using __t = __attrs;
       using __id = __attrs;
@@ -102,33 +102,34 @@ namespace stdexec {
       template <class _Sch, class... _Env>
       using __env2_t = decltype(__mk_env2(__declval<_Sch>(), __declval<_Env>()...));
 
+      // Query for completion scheduler - delegates to child's env with augmented environment
       template <class _SetTag, class... _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto query(get_completion_scheduler_t<_SetTag>, _Env&&... __env) const noexcept
+      constexpr auto query(get_completion_scheduler_t<_SetTag> __query, _Env&&... __env) const noexcept
         -> __call_result_t<
              get_completion_scheduler_t<_SetTag>,
-             _Attr,
-             __env2_t<_Scheduler, _Env...>
+             env_of_t<_Child>,
+             __env2_t<_Scheduler, _Env>...
           > {
-            std::printf("hello\n");
-        return get_completion_scheduler<_SetTag>(__attr_, __mk_env2(__sched_, static_cast<_Env&&>(__env))...);
+        return __query(__attr_, __mk_env2(__sched_, static_cast<_Env&&>(__env))...);
       }
 
+      // Query for completion domain - delegates to child's env with augmented environment
       template <class _SetTag, class... _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto query(get_completion_domain_t<_SetTag>, _Env&&...) const noexcept
-        -> __call_result_t<get_completion_domain_t<_SetTag>, _Attr, __env2_t<_Scheduler, _Env>...> {
-        return {};
+      constexpr auto query(get_completion_domain_t<_SetTag> __query, _Env&&... __env) const noexcept
+        -> __call_result_t<get_completion_domain_t<_SetTag>, env_of_t<_Child>, __env2_t<_Scheduler, _Env>...> {
+        return __query(__attr_, __mk_env2(__sched_, static_cast<_Env&&>(__env))...);
       }
 
       _Scheduler __sched_;
-      _Attr __attr_;
+      env_of_t<_Child> __attr_;
     };
 
     static constexpr auto get_attrs = []<class _Data, class _Child>(
                                         const _Data& __data,
                                         const _Child& __child) noexcept -> decltype(auto) {
-      return __attrs<_Data, env_of_t<_Child>>{__data, stdexec::get_env(__child)};
+      return __attrs<_Data, _Child>{__data, stdexec::get_env(__child)};
     };
 
     static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
