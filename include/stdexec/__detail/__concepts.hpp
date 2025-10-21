@@ -264,4 +264,7 @@ namespace stdexec {
 
   template <class _Ty, class _Up>
   concept __decays_to_derived_from = derived_from<__decay_t<_Ty>, _Up>;
+
+  template <class _Ty, class... _Us>
+  using __unless_one_of_t = std::enable_if_t<__none_of<_Ty, _Us...>, _Ty>;
 } // namespace stdexec

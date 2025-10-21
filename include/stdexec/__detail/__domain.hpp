@@ -258,7 +258,7 @@ namespace stdexec {
 
     template <class _Sch, class _Env>
     auto __get_scheduler_domain()
-      -> __meval_or<__call_result_t, get_completion_domain_t<set_value_t>, default_domain, _Sch, _Env>;
+      -> __meval_or<__call_result_t, default_domain, get_completion_domain_t<set_value_t>, _Sch, _Env>;
 
     template <class _Sch, class... _Env>
     using __scheduler_domain_t = __decay_t<decltype(__detail::__get_scheduler_domain<_Sch, _Env...>())>;
@@ -348,9 +348,9 @@ namespace stdexec {
         // the domain returned by the attributes.
         if constexpr (__callable<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>) {
           using __sch_t = __call_result_t<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>;
-          if constexpr (!__same_as<__sch_t, _Attrs>) // prevent infinite recursion
+          if constexpr (!std::is_same_v<__sch_t, _Attrs>) // prevent infinite recursion
           {
-            static_assert(__same_as<_Domain, __detail::__scheduler_domain_t<__sch_t, const _Env&...>>,
+            static_assert(std::is_same_v<_Domain, __detail::__scheduler_domain_t<__sch_t, const _Env&...>>,
                           "the sender claims to complete on a domain that is not the domain of its completion scheduler");
           }
         }
@@ -404,9 +404,6 @@ namespace stdexec {
         }
         // Otherwise, no completion domain can be determined. Return void.
       }
-
-      template <class _Ty, class... _Us>
-      using __unless_one_of_t = std::enable_if_t<__none_of<_Ty, _Us...>, _Ty>;
 
       template <class _Attrs, class... _Env>
       using __result_t = __unless_one_of_t<decltype(__get_domain<_Attrs, _Env...>()), void>;

@@ -146,17 +146,6 @@ namespace stdexec {
       }
     };
 
-    template <__completion_tag _Query>
-    struct get_completion_scheduler_t : __query<get_completion_scheduler_t<_Query>> {
-      template <class _Env>
-      STDEXEC_ATTRIBUTE(always_inline, host, device)
-      static constexpr void __validate() noexcept; // defined in __schedulers.hpp
-
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      static consteval auto query(forwarding_query_t) noexcept -> bool {
-        return true;
-      }
-    };
 
     struct get_domain_t : __query<get_domain_t, __no_default, __q1<__decay_t>> {
       template <class _Env>
@@ -631,64 +620,6 @@ namespace stdexec {
   concept environment_provider = requires(_EnvProvider& __ep) {
     { get_env(std::as_const(__ep)) } -> queryable;
   };
-
-  template <class _Scheduler, class _LateDomain = __none_such>
-  struct __sched_attrs {
-    using __t = __sched_attrs;
-    using __id = __sched_attrs;
-
-    using __scheduler_t = __decay_t<_Scheduler>;
-    using __sched_domain_t = __query_result_or_t<get_domain_t, __scheduler_t, default_domain>;
-
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept -> __scheduler_t {
-      return __sched_;
-    }
-
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto query(get_domain_t) const noexcept -> __sched_domain_t {
-      return {};
-    }
-
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto query(get_domain_override_t) const noexcept -> _LateDomain
-      requires(!same_as<_LateDomain, __none_such>)
-    {
-      return {};
-    }
-
-    _Scheduler __sched_;
-    STDEXEC_ATTRIBUTE(no_unique_address) _LateDomain __late_domain_ { };
-  };
-
-  template <class _Scheduler, class _LateDomain = __none_such>
-  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __sched_attrs(_Scheduler, _LateDomain = {})
-    -> __sched_attrs<std::unwrap_reference_t<_Scheduler>, _LateDomain>;
-
-  template <class _Scheduler>
-  struct __sched_env {
-    using __t = __sched_env;
-    using __id = __sched_env;
-
-    using __scheduler_t = __decay_t<_Scheduler>;
-    using __sched_domain_t = __query_result_or_t<get_domain_t, __scheduler_t, default_domain>;
-
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto query(get_scheduler_t) const noexcept -> __scheduler_t {
-      return __sched_;
-    }
-
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto query(get_domain_t) const noexcept -> __sched_domain_t {
-      return {};
-    }
-
-    _Scheduler __sched_;
-  };
-
-  template <class _Scheduler>
-  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
-    __sched_env(_Scheduler) -> __sched_env<std::unwrap_reference_t<_Scheduler>>;
 
   using __env::__as_root_env_t;
   using __env::__as_root_env;

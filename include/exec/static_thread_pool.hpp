@@ -368,6 +368,12 @@ namespace exec {
               -> static_thread_pool_::scheduler {
               return static_thread_pool_::scheduler{pool_, *queue_};
             }
+
+            template <class CPO>
+            auto query(get_completion_domain_t<CPO>, __ignore = {}) const noexcept
+              -> domain {
+              return {};
+            }
           };
 
          public:
