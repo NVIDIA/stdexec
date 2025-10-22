@@ -60,7 +60,7 @@ namespace {
   };
 
   struct cpo_sender_domain {
-    template <class Sender, class Env>
+    template <class Sender>
     static auto transform_sender(Sender &&) noexcept {
       return cpo_t<scope_t::free_standing>{};
     }

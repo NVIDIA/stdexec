@@ -15,6 +15,7 @@
  */
 
 #include "cpo_helpers.cuh"
+#include "test_common/receivers.hpp"
 #include <catch2/catch.hpp>
 
 namespace {
@@ -22,7 +23,7 @@ namespace {
   TEST_CASE("ensure started is customizable", "[cpo][cpo_ensure_started]") {
     SECTION("by free standing sender") {
       cpo_test_sender_t<ex::ensure_started_t> snd{};
-      constexpr scope_t scope = decltype(ex::ensure_started(snd))::scope;
+      constexpr scope_t scope = decltype(ex::connect(ex::ensure_started(snd), empty_recv::recv0{}))::sender_t::scope;
       STATIC_REQUIRE(scope == scope_t::free_standing);
     }
   }
