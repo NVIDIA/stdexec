@@ -15,6 +15,7 @@
  */
 
 #include "cpo_helpers.cuh"
+#include "test_common/receivers.hpp"
 #include <catch2/catch.hpp>
 
 namespace {
@@ -27,12 +28,12 @@ namespace {
       cpo_test_sender_t<ex::upon_stopped_t> snd{};
 
       {
-        constexpr scope_t scope = decltype(snd | ex::upon_stopped(f))::scope;
+        constexpr scope_t scope = decltype(ex::connect(snd | ex::upon_stopped(f), empty_recv::recv0{}))::sender_t::scope;
         STATIC_REQUIRE(scope == scope_t::free_standing);
       }
 
       {
-        constexpr scope_t scope = decltype(ex::upon_stopped(snd, f))::scope;
+        constexpr scope_t scope = decltype(ex::connect(ex::upon_stopped(snd, f), empty_recv::recv0{}))::sender_t::scope;
         STATIC_REQUIRE(scope == scope_t::free_standing);
       }
     }

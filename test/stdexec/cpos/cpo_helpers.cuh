@@ -82,9 +82,9 @@ namespace {
       return cpo_sender_domain{};
     }
 
+    template <class Tag>
     [[nodiscard]]
-    auto query(ex::get_completion_domain_t<ex::set_value_t>, auto &&...) const noexcept
-      -> cpo_sender_domain {
+    auto query(ex::get_completion_domain_t<Tag>, auto &&...) const noexcept -> cpo_sender_domain {
       return {};
     }
   };
@@ -129,6 +129,11 @@ namespace {
     static auto transform_sender(Sender &&) noexcept {
       return cpo_t<scope_t::scheduler>{};
     }
+
+    template <class Sender, class Env>
+    static auto transform_sender(Sender &&, const Env &) noexcept {
+      return cpo_t<scope_t::scheduler>{};
+    }
   };
 
   template <class CPO, class... CompletionSignals>
@@ -144,7 +149,7 @@ namespace {
 
       template <stdexec::__one_of<ex::set_value_t, CompletionSignals...> Tag>
       auto
-        query(ex::get_completion_domain_t<Tag>, ex::__ignore) const noexcept -> cpo_sender_domain {
+        query(ex::get_completion_domain_t<Tag>, auto &&...) const noexcept -> cpo_scheduler_domain {
         return {};
       }
     };
@@ -164,6 +169,11 @@ namespace {
     };
 
     auto query(ex::get_domain_t) const noexcept {
+      return cpo_scheduler_domain{};
+    }
+
+    template <class Tag>
+    auto query(ex::get_completion_domain_t<Tag>) const noexcept {
       return cpo_scheduler_domain{};
     }
 
