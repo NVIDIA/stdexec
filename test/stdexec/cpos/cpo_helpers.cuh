@@ -38,13 +38,35 @@ namespace {
     using completion_signatures = ex::completion_signatures<
       ex::set_value_t(),
       ex::set_error_t(std::exception_ptr),
-      ex::set_stopped_t()
-    >;
+      ex::set_stopped_t()>;
+
+    template <class Receiver>
+    struct operation_state_t {
+      using sender_t = cpo_t<Scope>;
+      using receiver_t = Receiver;
+
+      receiver_t receiver_;
+
+      void start() & noexcept {
+        ex::set_value(std::move(receiver_));
+      }
+    };
+
+    template <ex::receiver Receiver>
+    friend auto
+      tag_invoke(ex::connect_t, cpo_t, Receiver &&r) noexcept -> operation_state_t<Receiver> {
+      return operation_state_t<Receiver>{r};
+    }
   };
 
   struct cpo_sender_domain {
-    template <class Sender>
-    static auto transform_sender(Sender&&) noexcept {
+    template <class Sender, class Env>
+    static auto transform_sender(Sender &&) noexcept {
+      return cpo_t<scope_t::free_standing>{};
+    }
+
+    template <class Sender, class Env>
+    static auto transform_sender(Sender &&, const Env &) noexcept {
       return cpo_t<scope_t::free_standing>{};
     }
   };
@@ -56,8 +78,14 @@ namespace {
     }
 
     [[nodiscard]]
-    auto query(ex::get_domain_override_t) const noexcept {
+    auto query(ex::get_domain_override_t, auto &&...) const noexcept {
       return cpo_sender_domain{};
+    }
+
+    [[nodiscard]]
+    auto query(ex::get_completion_domain_t<ex::set_value_t>, auto &&...) const noexcept
+      -> cpo_sender_domain {
+      return {};
     }
   };
 
@@ -69,17 +97,36 @@ namespace {
     using completion_signatures = ex::completion_signatures<
       ex::set_value_t(),
       ex::set_error_t(std::exception_ptr),
-      ex::set_stopped_t()
-    >;
+      ex::set_stopped_t()>;
 
     auto get_env() const noexcept {
       return cpo_sender_attrs_t{};
+    }
+
+    template <class Receiver>
+    struct operation_state_t {
+      using operation_state_concept = ex::operation_state_t;
+      using sender_t = cpo_test_sender_t<CPO>;
+      using receiver_t = Receiver;
+
+      sender_t sender_;
+      receiver_t receiver_;
+
+      void start() & noexcept {
+        ex::set_value(std::move(receiver_));
+      }
+    };
+
+    template <ex::receiver Receiver>
+    friend auto tag_invoke(ex::connect_t, cpo_test_sender_t sndr, Receiver &&r) noexcept
+      -> operation_state_t<Receiver> {
+      return operation_state_t<Receiver>{sndr, static_cast<Receiver &&>(r)};
     }
   };
 
   struct cpo_scheduler_domain {
     template <class Sender>
-    static auto transform_sender(Sender&&) noexcept {
+    static auto transform_sender(Sender &&) noexcept {
       return cpo_t<scope_t::scheduler>{};
     }
   };
@@ -94,6 +141,12 @@ namespace {
       auto query(ex::get_completion_scheduler_t<Tag>) const noexcept -> cpo_test_scheduler_t {
         return {};
       }
+
+      template <stdexec::__one_of<ex::set_value_t, CompletionSignals...> Tag>
+      auto
+        query(ex::get_completion_domain_t<Tag>, ex::__ignore) const noexcept -> cpo_sender_domain {
+        return {};
+      }
     };
 
     struct sender_t {
@@ -103,8 +156,7 @@ namespace {
       using completion_signatures = ex::completion_signatures<
         ex::set_value_t(),
         ex::set_error_t(std::exception_ptr),
-        ex::set_stopped_t()
-      >;
+        ex::set_stopped_t()>;
 
       auto get_env() const noexcept -> env_t {
         return {};
@@ -119,6 +171,6 @@ namespace {
       return sender_t{};
     }
 
-    auto operator==(const cpo_test_scheduler_t&) const noexcept -> bool = default;
+    auto operator==(const cpo_test_scheduler_t &) const noexcept -> bool = default;
   };
 } // namespace
