@@ -44,7 +44,7 @@ namespace {
     int value_{0};
 
     template <class R>
-    friend auto tag_invoke(ex::connect_t, my_sender&& s, R&& r) -> op_state<R> {
+    friend auto tag_invoke(ex::connect_t, my_sender s, R&& r) -> op_state<R> {
       return {{}, s.value_, static_cast<R&&>(r)};
     }
   };
@@ -56,7 +56,7 @@ namespace {
     int value_{0};
 
     template <class R> // accept any type here
-    friend auto tag_invoke(ex::connect_t, my_sender_unconstrained&& s, R&& r) -> op_state<R> {
+    friend auto tag_invoke(ex::connect_t, my_sender_unconstrained s, R&& r) -> op_state<R> {
       return {{}, s.value_, static_cast<R&&>(r)};
     }
   };
