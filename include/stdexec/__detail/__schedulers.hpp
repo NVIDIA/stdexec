@@ -188,9 +188,12 @@ namespace stdexec {
             }
           }
           else {
+            // TODO sfinae on schedulers being comparable first
+            #if 0
             if constexpr (__callable<__read_query_t, env_of_t<__call_result_t<schedule_t, _Sch>>, const _Env&...>) {
-              STDEXEC_ASSERT(__sch == __read_query_t{}(get_env(__sch.schedule()), __env...));
+              assert(__sch == __read_query_t{}(get_env(__sch.schedule()), __env...));
             }
+            #endif
             return __sch;
           }
         }

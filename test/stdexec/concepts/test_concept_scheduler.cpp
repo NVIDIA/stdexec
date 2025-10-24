@@ -28,8 +28,8 @@ namespace {
   template <class Scheduler>
   struct default_env {
     template <typename CPO>
-    [[nodiscard]] [[nodiscard]] [[nodiscard]]
-    auto query(ex::get_completion_scheduler_t<CPO>) const noexcept -> Scheduler {
+    [[nodiscard]]
+    auto query(ex::get_completion_scheduler_t<CPO>, ex::__ignore = {}) const noexcept -> Scheduler {
       return {};
     }
   };
@@ -48,6 +48,12 @@ namespace {
         return {};
       }
     };
+
+    template <typename CPO>
+    [[nodiscard]]
+    auto query(ex::get_completion_scheduler_t<CPO>, ex::__ignore = {}) const noexcept -> my_scheduler {
+      return {};
+    }
 
     [[nodiscard]]
     auto schedule() const -> my_sender {
