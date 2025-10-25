@@ -190,7 +190,7 @@ namespace {
 
   // Return a different sender when we invoke this custom defined starts_on implementation
   struct starts_on_test_domain {
-    template <class Sender>
+    template <ex::sender_expr_for<ex::starts_on_t> Sender>
     static auto transform_sender(Sender&&) {
       return ex::just(std::string{"Hello, world!"});
     }
