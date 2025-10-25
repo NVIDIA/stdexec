@@ -99,21 +99,15 @@ namespace stdexec {
     struct on_t {
       template <scheduler _Scheduler, sender _Sender>
       auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto {
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::transform_sender(
-          __domain,
-          __make_sexpr<on_t>(static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr)));
+        return __make_sexpr<on_t>(static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
       }
 
       template <sender _Sender, scheduler _Scheduler, __sender_adaptor_closure_for<_Sender> _Closure>
       auto operator()(_Sender&& __sndr, _Scheduler&& __sched, _Closure&& __clsur) const
         -> __well_formed_sender auto {
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::transform_sender(
-          __domain,
-          __make_sexpr<on_t>(
-            __on_data{static_cast<_Scheduler&&>(__sched), static_cast<_Closure&&>(__clsur)},
-            static_cast<_Sender&&>(__sndr)));
+        return __make_sexpr<on_t>(
+          __on_data{static_cast<_Scheduler&&>(__sched), static_cast<_Closure&&>(__clsur)},
+          static_cast<_Sender&&>(__sndr));
       }
 
       template <scheduler _Scheduler, __sender_adaptor_closure _Closure>
