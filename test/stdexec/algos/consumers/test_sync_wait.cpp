@@ -31,8 +31,7 @@ namespace ex = stdexec;
 using namespace std::chrono_literals;
 
 namespace {
-  // TODO(gevtushenko)
-  #if 0
+
   TEST_CASE("sync_wait simple test", "[consumers][sync_wait]") {
     std::optional<std::tuple<int>> res = ex::sync_wait(ex::just(49));
     CHECK(res.has_value());
@@ -255,5 +254,5 @@ namespace {
         ex::value_types_of_t<decltype(ex::just()), ex::env<>, decayed_tuple, std::type_identity_t>
       >);
   }
-  #endif
+
 } // namespace
