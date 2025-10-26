@@ -336,7 +336,7 @@ namespace {
   using my_stoppable_sender_of =
     any_sender_of<set_value_t(Vals)..., set_error_t(std::exception_ptr), set_stopped_t()>;
 
-  // TODO(gevtushenko)
+  // TODO(gevtushenko) - split
 #if 0 && !STDEXEC_STD_NO_EXCEPTIONS()
   TEST_CASE("any_sender uses overload rules for completion signatures", "[types][any_sender]") {
     auto split_sender = split(just(42));
@@ -769,5 +769,5 @@ namespace {
     }
     CHECK(counting_scheduler::count == 0);
   }
-  
+
 } // namespace

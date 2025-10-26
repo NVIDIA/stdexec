@@ -29,7 +29,7 @@ using namespace std::chrono_literals;
 
 namespace {
 
-  // TODO(gevtushenko)
+  // TODO(gevtushenko) - split
   #if 0
   TEST_CASE("split returns a sender", "[adaptors][split]") {
     auto snd = ex::split(ex::just(19));

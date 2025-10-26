@@ -56,7 +56,7 @@ namespace {
     CHECK(called);
   }
 
-  // TODO(gevtushenko)
+  // TODO(gevtushenko) - split
   #if 0
   TEST_CASE("let_error simple example reference", "[adaptors][let_error]") {
     bool called{false};
@@ -249,7 +249,7 @@ namespace {
     }
   };
 
-  // TODO(gevtushenko)
+  // TODO(gevtushenko) - start detached
   #if 0
   TEST_CASE("let_error works when changing threads", "[adaptors][let_error]") {
     exec::static_thread_pool pool{2};

@@ -42,7 +42,7 @@ namespace {
     (void) snd;
   }
 
-  // TODO(gevtushenko)
+  // TODO(gevtushenko) - ensure started
   #if 0
   TEST_CASE("ensure_started void value early", "[adaptors][ensure_started]") {
     bool called{false};
