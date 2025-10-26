@@ -197,9 +197,7 @@ namespace exec {
     struct repeat_effect_until_t {
       template <sender _Sender>
       auto operator()(_Sender &&__sndr) const {
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::transform_sender(
-          __domain, __make_sexpr<repeat_effect_until_t>({}, static_cast<_Sender &&>(__sndr)));
+        return __make_sexpr<repeat_effect_until_t>({}, static_cast<_Sender &&>(__sndr));
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
@@ -227,9 +225,7 @@ namespace exec {
 
       template <sender _Sender>
       auto operator()(_Sender &&__sndr) const {
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::transform_sender(
-          __domain, __make_sexpr<repeat_effect_t>({}, static_cast<_Sender &&>(__sndr)));
+        return __make_sexpr<repeat_effect_t>({}, static_cast<_Sender &&>(__sndr));
       }
 
       STDEXEC_ATTRIBUTE(always_inline)

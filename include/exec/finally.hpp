@@ -295,11 +295,8 @@ namespace exec {
       template <sender _Initial, sender _Final>
         requires __has_common_domain<_Initial, _Final>
       auto operator()(_Initial&& __initial, _Final&& __final) const {
-        using _Domain = __common_domain_t<_Initial, _Final>;
-        return stdexec::transform_sender(
-          _Domain(),
-          __make_sexpr<finally_t>(
-            {}, static_cast<_Initial&&>(__initial), static_cast<_Final&&>(__final)));
+        return __make_sexpr<finally_t>(
+          {}, static_cast<_Initial&&>(__initial), static_cast<_Final&&>(__final));
       }
 
       template <sender _Final>
