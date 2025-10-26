@@ -26,8 +26,6 @@ namespace ex = stdexec;
 
 namespace {
 
-  // TODO(gevtushenko)
-  #if 0
   struct try_again { };
 
   struct fails_alot {
@@ -79,5 +77,5 @@ namespace {
     auto recurse_deeply = retry(ex::on(sched, fails_alot{}));
     ex::sync_wait(std::move(recurse_deeply));
   }
-  #endif
+
 } // namespace
