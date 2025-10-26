@@ -36,14 +36,14 @@ namespace {
 
   static const auto env = ex::prop{ex::get_scheduler, inline_scheduler{}};
 
-  // TODO(gevtushenko)
-  #if 0
   TEST_CASE("ensure_started with environment returns a sender", "[adaptors][ensure_started]") {
     auto snd = ex::ensure_started(ex::just(19), env);
     static_assert(ex::sender_in<decltype(snd), decltype(env)>);
     (void) snd;
   }
 
+  // TODO(gevtushenko)
+  #if 0
   TEST_CASE("ensure_started void value early", "[adaptors][ensure_started]") {
     bool called{false};
     auto snd1 = ex::just() | ex::then([&] { called = true; });
