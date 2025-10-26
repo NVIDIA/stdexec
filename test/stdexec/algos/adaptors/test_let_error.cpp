@@ -343,9 +343,8 @@ namespace {
   #if 0
   // Return a different sender when we invoke this custom defined let_error implementation
   struct let_error_test_domain {
-    template <class Sender>
-      requires std::same_as<ex::tag_of_t<Sender>, ex::let_error_t>
-    static auto transform_sender(Sender&&) {
+    template <ex::sender_expr_for<ex::let_error_t> Sender>
+    static auto transform_sender(Sender&&, auto&&...) {
       return ex::just(std::string{"what error?"});
     }
   };

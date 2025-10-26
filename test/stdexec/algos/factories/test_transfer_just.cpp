@@ -23,8 +23,6 @@
 namespace ex = stdexec;
 
 namespace {
-  // TODO(gevtushenko)
-  #if 0
   TEST_CASE("transfer_just returns a sender", "[factories][transfer_just]") {
     auto snd = ex::transfer_just(inline_scheduler{}, 13);
     static_assert(ex::sender<decltype(snd)>);
@@ -179,9 +177,8 @@ namespace {
 
   // Modify the value when we invoke this custom defined transfer_just implementation
   struct transfer_just_test_domain {
-    template <class Sender>
-      requires ex::same_as<ex::tag_of_t<Sender>, ex::transfer_just_t>
-    static auto transform_sender(Sender&& sndr) {
+    template <ex::sender_expr_for<ex::transfer_just_t> Sender>
+    static auto transform_sender(Sender&& sndr, auto&&...) {
       auto&& [tag, data] = sndr;
       auto [sched, value] = data;
       return ex::continues_on(ex::just("Hello, " + value), sched);
@@ -197,5 +194,4 @@ namespace {
     ex::start(op);
     REQUIRE(res == "Hello, world");
   }
-  #endif
 } // namespace
