@@ -31,10 +31,16 @@ namespace ex = stdexec;
 
 // Put all the test utilities in an anonymous namespace to avoid ODR violations
 namespace {
-  template <class S>
+  template <class S, class Domain = void>
   struct scheduler_env {
     template <stdexec::__completion_tag Tag>
-    auto query(ex::get_completion_scheduler_t<Tag>) const noexcept -> S {
+    auto query(ex::get_completion_scheduler_t<Tag>, ex::__ignore = {}) const noexcept -> S {
+      return {};
+    }
+
+    template <stdexec::__completion_tag Tag, class... Env>
+    auto query(ex::get_completion_domain_t<Tag>, const Env&...) const noexcept -> Domain
+      requires(!ex::same_as<Domain, void>) {
       return {};
     }
   };
@@ -215,7 +221,7 @@ namespace {
         return {{}, static_cast<R&&>(r)};
       }
 
-      auto get_env() const noexcept -> scheduler_env<basic_inline_scheduler> {
+      auto get_env() const noexcept -> scheduler_env<basic_inline_scheduler, Domain> {
         return {};
       }
     };
@@ -230,6 +236,12 @@ namespace {
       requires(!ex::same_as<Domain, void>)
     {
       return Domain();
+    }
+
+    template <ex::__completion_tag Tag, class... Env>
+    auto query(ex::get_completion_domain_t<Tag>, const Env&...) const noexcept -> Domain
+      requires(!ex::same_as<Domain, void>) {
+      return {};
     }
   };
 

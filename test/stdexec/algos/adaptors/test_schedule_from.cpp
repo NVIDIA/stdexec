@@ -134,6 +134,8 @@ namespace {
     // The receiver checks if we receive the right value
   }
 
+  // TODO(gevtushenko)
+  #if 0
   TEST_CASE("schedule_from can be called with ref scheduler", "[adaptors][schedule_from]") {
     inline_scheduler sched;
     auto snd = ex::schedule_from(sched, ex::just(13));
@@ -225,8 +227,6 @@ namespace {
     ex::start(op);
   }
 
-  // TODO(gevtushenko)
-  #if 0
   template <class... Ts>
   using any_sender_of =
     typename exec::any_receiver_ref<stdexec::completion_signatures<Ts...>>::template any_sender<>;

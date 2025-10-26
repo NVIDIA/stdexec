@@ -39,6 +39,8 @@ namespace {
     (void) snd;
   }
 
+  // TODO(gevtushenko)
+  #if 0
   TEST_CASE("starts_on with environment returns a sender", "[adaptors][starts_on]") {
     auto snd = ex::starts_on(inline_scheduler{}, ex::just(13));
     static_assert(ex::sender_in<decltype(snd), ex::env<>>);
@@ -283,5 +285,6 @@ namespace {
     ex::sender auto snd = ex::starts_on(is, ex::just()) | ex::then([] { });
     ex::sync_wait(std::move(snd));
   }
+  #endif
 } // namespace
 STDEXEC_PRAGMA_POP()

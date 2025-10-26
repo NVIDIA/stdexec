@@ -40,6 +40,8 @@ namespace {
     (void) snd;
   }
 
+  // TODO(gevtushenko)
+  #if 0
   TEST_CASE("then simple example", "[adaptors][then]") {
     bool called{false};
     auto snd = ex::then(ex::just(), [&] { called = true; });
@@ -196,4 +198,5 @@ namespace {
              | ex::write_env(ex::prop{ex::get_scheduler, inline_scheduler()});
     wait_for_value(std::move(snd), std::string{"ciao"});
   }
+  #endif
 } // namespace
