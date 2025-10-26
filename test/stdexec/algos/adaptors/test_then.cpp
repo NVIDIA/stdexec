@@ -40,8 +40,6 @@ namespace {
     (void) snd;
   }
 
-  // TODO(gevtushenko)
-  #if 0
   TEST_CASE("then simple example", "[adaptors][then]") {
     bool called{false};
     auto snd = ex::then(ex::just(), [&] { called = true; });
@@ -175,8 +173,7 @@ namespace {
 
   // Return a different sender when we invoke this custom defined then implementation
   struct then_test_domain {
-    template <class Sender, class... Env>
-      requires std::same_as<ex::tag_of_t<Sender>, ex::then_t>
+    template <ex::sender_expr_for<ex::then_t> Sender, class... Env>
     static auto transform_sender(Sender&&, Env&&...) {
       return ex::just(std::string{"ciao"});
     }
@@ -198,5 +195,4 @@ namespace {
              | ex::write_env(ex::prop{ex::get_scheduler, inline_scheduler()});
     wait_for_value(std::move(snd), std::string{"ciao"});
   }
-  #endif
 } // namespace
