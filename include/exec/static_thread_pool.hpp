@@ -1531,7 +1531,7 @@ namespace exec {
           };
 
           auto get_env() const noexcept -> env {
-            return {op_->pool_};
+            return {&op_->pool_};
           }
 
           template <receiver ItemReceiver>
