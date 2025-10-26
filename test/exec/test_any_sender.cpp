@@ -90,8 +90,6 @@ namespace {
     >);
   }
 
-  // TODO(gevtushenko)
-  #if 0
   TEST_CASE("any_receiver_ref is queryable", "[types][any_sender]") {
     using Sigs = completion_signatures<set_value_t(int)>;
     using receiver_ref = any_receiver_ref<Sigs, get_address.signature<const void*()>>;
@@ -338,7 +336,8 @@ namespace {
   using my_stoppable_sender_of =
     any_sender_of<set_value_t(Vals)..., set_error_t(std::exception_ptr), set_stopped_t()>;
 
-#if !STDEXEC_STD_NO_EXCEPTIONS()
+  // TODO(gevtushenko)
+#if 0 && !STDEXEC_STD_NO_EXCEPTIONS()
   TEST_CASE("any_sender uses overload rules for completion signatures", "[types][any_sender]") {
     auto split_sender = split(just(42));
     static_assert(sender_of<decltype(split_sender), set_error_t(const std::exception_ptr&)>);
@@ -770,5 +769,5 @@ namespace {
     }
     CHECK(counting_scheduler::count == 0);
   }
-  #endif
+  
 } // namespace
