@@ -11,8 +11,6 @@ using exec::async_scope;
 using ex::sync_wait;
 
 namespace {
-  // TODO(gevtushenko)
-  #if 0
   void expect_empty(exec::async_scope& scope) {
     ex::run_loop loop;
     ex::scheduler auto sch = loop.get_scheduler();
@@ -473,5 +471,4 @@ namespace {
     // ex::start(op);
     expect_empty(scope);
   }
-  #endif
 } // namespace

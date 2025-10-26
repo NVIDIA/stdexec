@@ -10,8 +10,6 @@ using stdexec::sync_wait;
 
 namespace {
 
-  // TODO(gevtushenko)
-  #if 0
   //! Sender that throws exception when connected
   struct throwing_sender {
     using sender_concept = stdexec::sender_t;
@@ -226,5 +224,4 @@ namespace {
     // TODO: reenable this
     // REQUIRE(P2519::__scope::empty(scope));
   }
-  #endif
 } // namespace

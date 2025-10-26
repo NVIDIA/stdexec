@@ -23,8 +23,6 @@
 using namespace stdexec;
 
 namespace {
-  // TODO(gevtushenko)
-  #if 0
   TEST_CASE("fork_join is a sender", "[adaptors][fork_join]") {
     auto sndr = exec::fork_join(just(), then([] { }));
     STATIC_REQUIRE(sender<decltype(sndr)>);
@@ -74,5 +72,4 @@ namespace {
     CHECK(i1 == 42);
     CHECK(i2 == 42);
   }
-  #endif
 } // namespace
