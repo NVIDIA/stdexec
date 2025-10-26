@@ -111,8 +111,6 @@ namespace {
     CHECK(get_id() == id1);
   }
 
-  // TODO(gevtushenko)
-  #if 0
   TEST_CASE("Test stickiness with two single threads", "[types][sticky][task]") {
     single_thread_context context1;
     single_thread_context context2;
@@ -274,7 +272,7 @@ namespace {
 
   struct test_domain {
     template <sender_expr_for<then_t> _Sender>
-    static constexpr auto transform_sender(_Sender&&) noexcept {
+    static constexpr auto transform_sender(_Sender&&, auto&&...) noexcept {
       return just("goodbye"s);
     }
   };
@@ -327,7 +325,6 @@ namespace {
     CHECK(count == 3);
   }
 #  endif // !STDEXEC_STD_NO_EXCEPTIONS()
-  # endif
 } // namespace
 
 #endif
