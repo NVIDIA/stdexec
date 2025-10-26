@@ -326,6 +326,9 @@ namespace stdexec {
     //! @tparam _Tag one of set_value_t, set_error_t, or set_stopped_t
     template <__completion_tag _Tag>
     struct get_completion_domain_t {
+      template <class Sig>
+      static inline constexpr get_completion_domain_t<_Tag> (*signature)(Sig) = nullptr;
+
       // This function object reads the completion domain from an attribute object or a
       // scheduler, accounting for the fact that the query member function may or may not
       // accept an environment.
