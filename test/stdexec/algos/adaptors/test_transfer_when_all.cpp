@@ -30,8 +30,6 @@ namespace ex = stdexec;
 
 namespace {
 
-  // TODO(gevtushenko)
-  #if 0
   TEST_CASE("transfer_when_all returns a sender", "[adaptors][transfer_when_all]") {
     auto snd = ex::transfer_when_all(inline_scheduler{}, ex::just(3), ex::just(0.1415));
     static_assert(ex::sender<decltype(snd)>);
@@ -143,6 +141,8 @@ namespace {
       domain dom = ex::get_domain(ex::get_env(snd));
     }
 
+  // TODO(gevtushenko)
+  #if 0
     SECTION("early customization") {
       using domain = basic_domain<ex::transfer_when_all_t, customize::early, hello>;
       using scheduler = basic_inline_scheduler<domain>;
@@ -160,8 +160,11 @@ namespace {
         scheduler(), ex::transfer_when_all(inline_scheduler(), ex::just(3), ex::just(0.1415)));
       wait_for_value(std::move(snd), std::string{"hello world"});
     }
+    #endif
   }
 
+  // TODO(gevtushenko)
+  #if 0
   TEST_CASE(
     "transfer_when_all_with_variant works with custom domain",
     "[adaptors][transfer_when_all]") {
