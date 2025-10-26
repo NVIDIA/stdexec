@@ -213,12 +213,9 @@ namespace {
     check_val_types<ex::__mset<pack<int, double>>>(
       ex::when_all(ex::just(3), ex::just(), ex::just(0.14)));
 
-  // TODO(gevtushenko) - split
-  #if 0
     // if children send references, they get decayed
     check_val_types<ex::__mset<pack<int, double>>>(
       ex::when_all(ex::split(ex::just(3)), ex::split(ex::just(0.14))));
-  #endif
   }
 
   TEST_CASE("when_all has the error_types based on the children", "[adaptors][when_all]") {

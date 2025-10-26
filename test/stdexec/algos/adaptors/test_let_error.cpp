@@ -56,8 +56,6 @@ namespace {
     CHECK(called);
   }
 
-  // TODO(gevtushenko) - split
-  #if 0
   TEST_CASE("let_error simple example reference", "[adaptors][let_error]") {
     bool called{false};
     auto snd =
@@ -71,7 +69,6 @@ namespace {
     // we also check that the function was invoked
     CHECK(called);
   }
-  #endif
 
   TEST_CASE("let_error can be piped", "[adaptors][let_error]") {
     ex::sender auto snd = ex::just() | ex::let_error([](std::exception_ptr) { return ex::just(); });
