@@ -28,8 +28,6 @@ namespace ex = stdexec;
 
 namespace {
 
-  // TODO(gevtushenko)
-  #if 0
   TEST_CASE("when_all returns a sender", "[adaptors][when_all]") {
     auto snd = ex::when_all(ex::just(3), ex::just(0.1415));
     static_assert(ex::sender<decltype(snd)>);
@@ -198,6 +196,8 @@ namespace {
     CHECK(cancelled);
   }
 
+  // TODO(gevtushenko)
+  #if 0
   TEST_CASE(
     "when_all has the values_type based on the children, decayed and as rvalue references",
     "[adaptors][when_all]") {
@@ -219,6 +219,7 @@ namespace {
     check_val_types<ex::__mset<pack<int, double>>>(
       ex::when_all(ex::split(ex::just(3)), ex::split(ex::just(0.14))));
   }
+  #endif
 
   TEST_CASE("when_all has the error_types based on the children", "[adaptors][when_all]") {
     check_err_types<ex::__mset<int>>(ex::when_all(ex::just_error(13)));
@@ -271,7 +272,7 @@ namespace {
     struct basic_domain {
       template <ex::sender_expr_for<Tag> Sender, class... Env>
         requires(sizeof...(Env) == C)
-      auto transform_sender(Sender&&, const Env&...) const {
+      auto transform_sender(Sender&&, Env&&...) const {
         return Fun();
       }
     };
@@ -338,6 +339,8 @@ namespace {
       wait_for_value(std::move(snd), std::string{"hello world"});
     }
 
+  // TODO(gevtushenko)
+  #if 0
     SECTION("late customization") {
       using domain = basic_domain<ex::when_all_with_variant_t, customize::late, hello>;
       using scheduler = basic_inline_scheduler<domain>;
@@ -346,6 +349,7 @@ namespace {
         ex::starts_on(scheduler(), ex::when_all_with_variant(ex::just(3), ex::just(0.1415)));
       wait_for_value(std::move(snd), std::string{"hello world"});
     }
+  #endif
   }
 
   TEST_CASE("when_all_with_variant finds when_all customizations", "[adaptors][when_all]") {
@@ -383,5 +387,4 @@ namespace {
       wait_for_value(std::move(snd), std::string{"hello world"});
     }
   }
-  #endif
 } // namespace
