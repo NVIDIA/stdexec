@@ -255,9 +255,7 @@ namespace stdexec {
       template <sender... _Senders>
         requires __has_common_domain<_Senders...>
       auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto {
-        auto __domain = __common_domain_t<_Senders...>();
-        return stdexec::transform_sender(
-          __domain, __make_sexpr<when_all_t>(__(), static_cast<_Senders&&>(__sndrs)...));
+        return __make_sexpr<when_all_t>(__(), static_cast<_Senders&&>(__sndrs)...);
       }
     };
 
@@ -397,10 +395,7 @@ namespace stdexec {
       template <sender... _Senders>
         requires __has_common_domain<_Senders...>
       auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto {
-        auto __domain = __common_domain_t<_Senders...>();
-        return stdexec::transform_sender(
-          __domain,
-          __make_sexpr<when_all_with_variant_t>(__(), static_cast<_Senders&&>(__sndrs)...));
+        return __make_sexpr<when_all_with_variant_t>(__(), static_cast<_Senders&&>(__sndrs)...);
       }
 
       template <class _Sender, class _Env>
@@ -437,11 +432,8 @@ namespace stdexec {
         requires __has_common_domain<_Senders...>
       auto
         operator()(_Scheduler __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto {
-        auto __domain = query_or(get_domain, __sched, default_domain());
-        return stdexec::transform_sender(
-          __domain,
-          __make_sexpr<transfer_when_all_t>(
-            static_cast<_Scheduler&&>(__sched), static_cast<_Senders&&>(__sndrs)...));
+        return __make_sexpr<transfer_when_all_t>(
+          static_cast<_Scheduler&&>(__sched), static_cast<_Senders&&>(__sndrs)...);
       }
 
       template <class _Sender, class _Env>
@@ -478,11 +470,8 @@ namespace stdexec {
         requires __has_common_domain<_Senders...>
       auto
         operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto {
-        auto __domain = query_or(get_domain, __sched, default_domain());
-        return stdexec::transform_sender(
-          __domain,
-          __make_sexpr<transfer_when_all_with_variant_t>(
-            static_cast<_Scheduler&&>(__sched), static_cast<_Senders&&>(__sndrs)...));
+        return __make_sexpr<transfer_when_all_with_variant_t>(
+          static_cast<_Scheduler&&>(__sched), static_cast<_Senders&&>(__sndrs)...);
       }
 
       template <class _Sender, class _Env>
