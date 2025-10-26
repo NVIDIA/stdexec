@@ -17,7 +17,8 @@
 #include "./common.hpp"
 #include <exec/static_thread_pool.hpp>
 
-#if STDEXEC_HAS_STD_RANGES()
+// TODO(gevtushenko)
+#if 0 && STDEXEC_HAS_STD_RANGES()
 #  include <ranges>
 #  include <exec/sequence/ignore_all_values.hpp>
 

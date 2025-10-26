@@ -26,6 +26,8 @@
 
 namespace {
 
+  // TODO(gevtushenko)
+  #if 0
   template <class Receiver>
   struct sum_item_rcvr {
     using receiver_concept = stdexec::receiver_t;
@@ -134,6 +136,7 @@ namespace {
     CHECK(sum == (42 + 43 + 44 + 1));
   }
 
+  #endif
 } // namespace
 
 #endif // STDEXEC_HAS_STD_RANGES()

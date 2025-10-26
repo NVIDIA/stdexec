@@ -18,7 +18,8 @@
 // Pull in the reference implementation of P2300:
 #include <stdexec/execution.hpp>
 
-#if !STDEXEC_STD_NO_COROUTINES() && !STDEXEC_NVHPC()
+// TODO(gevtushenko)
+#if 0 && !STDEXEC_STD_NO_COROUTINES() && !STDEXEC_NVHPC()
 #  include <exec/task.hpp>
 
 using namespace stdexec;
@@ -57,3 +58,4 @@ auto main() -> int {
 int main() {
 }
 #endif
+

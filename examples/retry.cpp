@@ -52,6 +52,8 @@ struct fail_some {
 };
 
 auto main() -> int {
+  // TODO(gevtushenko)
+  #if 0
   auto x = retry(fail_some{});
   // prints:
   //   fail!
@@ -59,4 +61,5 @@ auto main() -> int {
   //   success!
   auto [a] = stdexec::sync_wait(std::move(x)).value();
   (void) a;
+  #endif
 }

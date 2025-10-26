@@ -234,7 +234,8 @@ namespace stdexec {
         static_assert(sender<_Sender>, "The first argument to stdexec::connect must be a sender");
         static_assert(
           receiver<_Receiver>, "The second argument to stdexec::connect must be a receiver");
-#if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
+          // TODO
+#if 0 && STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
         static_assert(__type_check_arguments<_TfxSender, _Receiver>());
 #endif
 

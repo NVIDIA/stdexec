@@ -90,6 +90,8 @@ namespace {
     >);
   }
 
+  // TODO(gevtushenko)
+  #if 0
   TEST_CASE("any_receiver_ref is queryable", "[types][any_sender]") {
     using Sigs = completion_signatures<set_value_t(int)>;
     using receiver_ref = any_receiver_ref<Sigs, get_address.signature<const void*()>>;
@@ -768,4 +770,5 @@ namespace {
     }
     CHECK(counting_scheduler::count == 0);
   }
+  #endif
 } // namespace

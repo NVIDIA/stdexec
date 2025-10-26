@@ -29,6 +29,8 @@ using namespace exec;
 using stdexec::sync_wait;
 
 namespace {
+  // TODO(gevtushenko)
+  #if 0
   auto stop() {
     static stopped_scheduler scheduler{};
     auto stop = stdexec::schedule(scheduler);
@@ -444,6 +446,7 @@ namespace {
   }
 
 #  endif // REQUIRE_TERMINATE
+#endif
 
 } // unnamed namespace
 

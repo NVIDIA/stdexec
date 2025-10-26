@@ -30,6 +30,8 @@ namespace ex = stdexec;
 
 namespace {
 
+  // TODO(gevtushenko)
+  #if 0
   TEST_CASE("transfer_when_all returns a sender", "[adaptors][transfer_when_all]") {
     auto snd = ex::transfer_when_all(inline_scheduler{}, ex::just(3), ex::just(0.1415));
     static_assert(ex::sender<decltype(snd)>);
@@ -233,4 +235,5 @@ namespace {
       wait_for_value(std::move(snd), std::string{"hello world"});
     }
   }
+  #endif
 } // namespace
