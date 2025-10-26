@@ -42,8 +42,6 @@ namespace {
     (void) snd;
   }
 
-  // TODO(gevtushenko) - ensure started
-  #if 0
   TEST_CASE("ensure_started void value early", "[adaptors][ensure_started]") {
     bool called{false};
     auto snd1 = ex::just() | ex::then([&] { called = true; });
@@ -337,5 +335,5 @@ namespace {
     (void) snd1;
     (void) snd2;
   }
-  #endif
+
 } // namespace
