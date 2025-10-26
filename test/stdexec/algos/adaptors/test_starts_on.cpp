@@ -39,8 +39,6 @@ namespace {
     (void) snd;
   }
 
-  // TODO(gevtushenko)
-  #if 0
   TEST_CASE("starts_on with environment returns a sender", "[adaptors][starts_on]") {
     auto snd = ex::starts_on(inline_scheduler{}, ex::just(13));
     static_assert(ex::sender_in<decltype(snd), ex::env<>>);
@@ -193,7 +191,7 @@ namespace {
   // Return a different sender when we invoke this custom defined starts_on implementation
   struct starts_on_test_domain {
     template <ex::sender_expr_for<ex::starts_on_t> Sender>
-    static auto transform_sender(Sender&&) {
+    static auto transform_sender(Sender&&, const auto&...) {
       return ex::just(std::string{"Hello, world!"});
     }
   };
@@ -285,6 +283,5 @@ namespace {
     ex::sender auto snd = ex::starts_on(is, ex::just()) | ex::then([] { });
     ex::sync_wait(std::move(snd));
   }
-  #endif
 } // namespace
 STDEXEC_PRAGMA_POP()
