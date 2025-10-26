@@ -23,8 +23,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Example code:
 auto main() -> int {
-  // TODO(gevtushenko)
-  #if 0
   auto x = then(stdexec::just(42), [](int i) {
     std::printf("Got: %d\n", i);
     return i;
@@ -34,5 +32,4 @@ auto main() -> int {
   //   Got: 42
   auto [a] = stdexec::sync_wait(std::move(x)).value();
   (void) a;
-  #endif
 }

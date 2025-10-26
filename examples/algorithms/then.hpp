@@ -82,9 +82,9 @@ struct _then_sender {
   // Connect:
   template <stdexec::receiver R>
     requires stdexec::sender_to<S, _then_receiver<R, F>>
-  auto connect(R r) && {
+  auto connect(R r) const & {
     return stdexec::connect(
-      static_cast<S&&>(s_), _then_receiver<R, F>{static_cast<R&&>(r), static_cast<F&&>(f_)});
+      s_, _then_receiver<R, F>{static_cast<R&&>(r), f_});
   }
 
   auto get_env() const noexcept -> decltype(auto) {
