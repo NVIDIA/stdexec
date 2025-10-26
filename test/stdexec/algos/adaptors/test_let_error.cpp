@@ -339,8 +339,6 @@ namespace {
       ex::transfer_just(sched3) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
   }
 
-  // TODO(gevtushenko)
-  #if 0
   // Return a different sender when we invoke this custom defined let_error implementation
   struct let_error_test_domain {
     template <ex::sender_expr_for<ex::let_error_t> Sender>
@@ -350,11 +348,12 @@ namespace {
   };
 
   TEST_CASE("let_error can be customized", "[adaptors][let_error]") {
+    basic_inline_scheduler<let_error_test_domain> sched;
+
     // The customization will return a different value
     auto snd = ex::just(std::string{"hello"})
-             | exec::write_attrs(ex::prop{ex::get_domain, let_error_test_domain{}})
+             | ex::continues_on(sched)
              | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
     wait_for_value(std::move(snd), std::string{"what error?"});
   }
-  #endif
 } // namespace

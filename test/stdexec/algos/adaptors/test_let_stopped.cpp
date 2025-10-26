@@ -194,8 +194,6 @@ namespace {
       ex::transfer_just(sched3) | ex::let_stopped([] { return ex::just_stopped(); }));
   }
 
-  // TODO(gevtushenko)
-  #if 0
   // Return a different sender when we invoke this custom defined let_stopped implementation
   struct let_stopped_test_domain {
     template <ex::sender_expr_for<ex::let_stopped_t> Sender>
@@ -205,11 +203,12 @@ namespace {
   };
 
   TEST_CASE("let_stopped can be customized", "[adaptors][let_stopped]") {
+    basic_inline_scheduler<let_stopped_test_domain> sched;
+
     // The customization will return a different stopped
     auto snd = ex::just(std::string{"hello"})
-             | exec::write_attrs(ex::prop{ex::get_domain, let_stopped_test_domain{}})
+             | ex::continues_on(sched)
              | ex::let_stopped([] { return ex::just(std::string{"stopped"}); });
     wait_for_value(std::move(snd), std::string{"Don't stop me now"});
   }
-  #endif
 } // namespace

@@ -306,16 +306,15 @@ namespace {
     }
   };
 
-  // TODO(gevtushenko)
-  #if 0
   TEST_CASE("let_value can be customized", "[adaptors][let_value]") {
+    basic_inline_scheduler<let_value_test_domain> sched;
+
     // The customization will return a different value
     auto snd = ex::just(std::string{"hello"})
-             | exec::write_attrs(ex::prop{ex::get_domain, let_value_test_domain{}})
+             | ex::continues_on(sched)
              | ex::let_value([](std::string& x) { return ex::just(x + ", world"); });
     wait_for_value(std::move(snd), std::string{"hallo"});
   }
-  #endif
 
   TEST_CASE("let_value can nest", "[adaptors][let_value]") {
     auto work = ex::just(2) | ex::let_value([](int x) {
