@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "stdexec/__detail/__sender_introspection.hpp"
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -193,17 +194,16 @@ namespace {
       ex::transfer_just(sched3) | ex::let_stopped([] { return ex::just_stopped(); }));
   }
 
+  // TODO(gevtushenko)
+  #if 0
   // Return a different sender when we invoke this custom defined let_stopped implementation
   struct let_stopped_test_domain {
-    template <class Sender>
-      requires std::same_as<ex::tag_of_t<Sender>, ex::let_stopped_t>
-    static auto transform_sender(Sender&&) {
+    template <ex::sender_expr_for<ex::let_stopped_t> Sender>
+    static auto transform_sender(Sender&&, auto&&...) {
       return ex::just(std::string{"Don't stop me now"});
     }
   };
 
-  // TODO(gevtushenko)
-  #if 0
   TEST_CASE("let_stopped can be customized", "[adaptors][let_stopped]") {
     // The customization will return a different stopped
     auto snd = ex::just(std::string{"hello"})
