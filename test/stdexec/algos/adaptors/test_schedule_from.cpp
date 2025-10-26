@@ -211,14 +211,12 @@ namespace {
   }
 
   struct schedule_from_test_domain {
-    template <class Sender>
-    static auto transform_sender(Sender&&) {
+    template <ex::sender_expr_for<ex::schedule_from_t> Sender>
+    static auto transform_sender(Sender&&, const auto&...) {
       return ex::just(std::string{"hijacked"});
     }
   };
 
-  // TODO(gevtushenko)
-  #if 0
   TEST_CASE("schedule_from can be customized", "[adaptors][schedule_from]") {
     // The customization will return a different value
     basic_inline_scheduler<schedule_from_test_domain> sched;
@@ -227,6 +225,8 @@ namespace {
     ex::start(op);
   }
 
+  // TODO(gevtushenko)
+  #if 0
   template <class... Ts>
   using any_sender_of =
     typename exec::any_receiver_ref<stdexec::completion_signatures<Ts...>>::template any_sender<>;
