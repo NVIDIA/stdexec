@@ -35,8 +35,6 @@ namespace {
     (void) snd;
   }
 
-  // TODO(gevtushenko)
-  #if 0
   TEST_CASE("continues_on with environment returns a sender", "[adaptors][continues_on]") {
     auto snd = ex::continues_on(ex::just(13), inline_scheduler{});
     static_assert(ex::sender_in<decltype(snd), ex::env<>>);
@@ -225,9 +223,8 @@ namespace {
     ex::value_types_of_t<Sender, ex::env<>, std::type_identity_t, std::type_identity_t>;
 
   struct continues_on_test_domain {
-    template <class Sender>
-      requires std::same_as<value_type_of_t<Sender>, value_type>
-    static auto transform_sender(Sender&&) {
+    template <ex::sender_expr_for<ex::continues_on_t> Sender>
+    static auto transform_sender(Sender&&, const auto&...) {
       return ex::just(value_type{53});
     }
   };
@@ -242,6 +239,8 @@ namespace {
     REQUIRE(res.val_ == 53);
   }
 
+  // TODO(gevtushenko)
+  #if 0
   struct test_domain_A {
     template <ex::sender_expr_for<ex::continues_on_t> Sender, class Env>
     auto transform_sender(Sender&&, Env&&) const {
