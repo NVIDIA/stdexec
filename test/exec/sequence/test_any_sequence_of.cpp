@@ -25,8 +25,7 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-function")
 
 namespace {
-  // TODO(gevtushenko)
-  #if 0
+
   template <class Receiver>
   struct ignore_all_item_rcvr {
     using receiver_concept = stdexec::receiver_t;
@@ -145,7 +144,7 @@ namespace {
         stdexec::__t<exec::__any::__sender_env<Completions, stdexec::__types<>, stdexec::__types<>>>
       >);
   }
-  #endif
+
 } // namespace
 
 STDEXEC_PRAGMA_POP()
