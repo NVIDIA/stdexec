@@ -303,26 +303,26 @@ namespace stdexec {
         if constexpr (__with_static_member<_TfxSender, _Receiver>) {
           auto&& __completing_tfx = transform_sender(__completing_dom, static_cast<_Sender&&>(__sndr), __env);
           auto&& __tfx_sndr = transform_sender(__starting_dom, static_cast<decltype(__completing_tfx)&&>(__completing_tfx), __env);
-          return __tfx_sndr
+          return static_cast<_TfxSender&&>(__tfx_sndr)
             .connect(static_cast<_TfxSender&&>(__tfx_sndr), static_cast<_Receiver&&>(__rcvr));
         } else if constexpr (__with_member<_TfxSender, _Receiver>) { // NOLINT(bugprone-branch-clone)
           auto&& __completing_tfx = transform_sender(__completing_dom, static_cast<_Sender&&>(__sndr), __env);
           auto&& __tfx_sndr = transform_sender(__starting_dom, static_cast<decltype(__completing_tfx)&&>(__completing_tfx), __env);
-          return __tfx_sndr.connect(static_cast<_Receiver&&>(__rcvr));
+          return static_cast<_TfxSender&&>(__tfx_sndr).connect(static_cast<_Receiver&&>(__rcvr));
         } else if constexpr (__with_tag_invoke<_TfxSender, _Receiver>) {
           auto&& __completing_tfx = transform_sender(__completing_dom, static_cast<_Sender&&>(__sndr), __env);
           auto&& __tfx_sndr = transform_sender(__starting_dom, static_cast<decltype(__completing_tfx)&&>(__completing_tfx), __env);
-          return tag_invoke(connect_t(), __tfx_sndr, static_cast<_Receiver&&>(__rcvr));
+          return tag_invoke(connect_t(), static_cast<_TfxSender&&>(__tfx_sndr), static_cast<_Receiver&&>(__rcvr));
         } else if constexpr (__with_co_await<_TfxSender, _Receiver>) {
           auto&& __completing_tfx = transform_sender(__completing_dom, static_cast<_Sender&&>(__sndr), __env);
           auto&& __tfx_sndr = transform_sender(__starting_dom, static_cast<decltype(__completing_tfx)&&>(__completing_tfx), __env);
-          return __connect_awaitable(__tfx_sndr, static_cast<_Receiver&&>(__rcvr));
+          return __connect_awaitable(static_cast<_TfxSender&&>(__tfx_sndr), static_cast<_Receiver&&>(__rcvr));
         } else {
           // This should generate an instantiation backtrace that contains useful
           // debugging information.
           auto&& __completing_tfx = transform_sender(__completing_dom, static_cast<_Sender&&>(__sndr), __env);
           auto&& __tfx_sndr = transform_sender(__starting_dom, static_cast<decltype(__completing_tfx)&&>(__completing_tfx), __env);
-          return __tfx_sndr.connect(static_cast<_Receiver&&>(__rcvr));
+          return static_cast<_TfxSender&&>(__tfx_sndr).connect(static_cast<_Receiver&&>(__rcvr));
         }
       }
 
