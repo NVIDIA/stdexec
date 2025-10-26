@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "stdexec/__detail/__let.hpp"
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -299,9 +300,8 @@ namespace {
 
   // Return a different sender when we invoke this custom defined let_value implementation
   struct let_value_test_domain {
-    template <class Sender>
-      requires std::same_as<ex::tag_of_t<Sender>, ex::let_value_t>
-    static auto transform_sender(Sender&&) {
+    template <ex::sender_expr_for<ex::let_value_t> Sender>
+    static auto transform_sender(Sender&&, auto&&...) {
       return ex::just(std::string{"hallo"});
     }
   };
