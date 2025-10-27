@@ -249,17 +249,17 @@ namespace {
 
   struct test_domain2 : test_domain1 { };
 
-  // TODO(gevtushenko)
-  #if 0
   TEST_CASE("when_all propagates domain from children", "[adaptors][when_all]") {
+    basic_inline_scheduler<test_domain1> sched1;
+    basic_inline_scheduler<test_domain2> sched2;
+
     auto snd = ex::when_all(
-      ex::just(13) | exec::write_attrs(ex::prop{ex::get_domain, test_domain1{}}),
-      ex::just(3.14) | exec::write_attrs(ex::prop{ex::get_domain, test_domain2{}}));
+      ex::starts_on(sched1, ex::just(13)),
+      ex::starts_on(sched2, ex::just(3.14)));
     auto env = ex::get_env(snd);
-    auto domain = ex::get_domain(env);
+    auto domain = ex::get_completion_domain<ex::set_value_t>(env);
     STATIC_REQUIRE(std::same_as<decltype(domain), test_domain1>);
   }
-  #endif
 
   namespace {
     enum customize : std::size_t {
