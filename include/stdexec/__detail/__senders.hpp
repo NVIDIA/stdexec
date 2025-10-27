@@ -31,6 +31,7 @@
 #include "__transform_completion_signatures.hpp"
 #include "__transform_sender.hpp"
 #include "__type_traits.hpp"
+#include "stdexec/__detail/__domain.hpp"
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
@@ -57,7 +58,14 @@ namespace stdexec {
   namespace __sigs {
     template <class _Sender, class _Env>
     using __tfx_sender =
-      transform_sender_result_t<__late_domain_of_t<_Sender, _Env>, _Sender, _Env>;
+      transform_sender_result_t<
+        __detail::__completing_domain<_Sender, _Env>,
+        transform_sender_result_t<
+          __detail::__starting_domain<_Env, set_value_t>,
+          _Sender,
+          _Env
+        >,
+        _Env>;
 
     template <class _Sender, class... _Env>
     using __member_result_t = decltype(__declval<_Sender>()
