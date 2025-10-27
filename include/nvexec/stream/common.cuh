@@ -409,11 +409,19 @@ namespace nvexec {
     template <class BaseEnv>
     using make_terminal_stream_env_t = terminal_stream_env<BaseEnv>;
 
+    template <class Sender, class Env>
+    using tfx_sender =
+      transform_sender_result_t<
+        __detail::__completing_domain<Sender, Env>,
+        transform_sender_result_t<
+          __detail::__starting_domain<Env, set_value_t>,
+          Sender,
+          Env
+        >,
+        Env>;
+
     template <class S, class E>
-    concept stream_sender = sender_in<S, E>
-                         && STDEXEC_IS_BASE_OF(
-                              stream_sender_base,
-                              __decay_t<transform_sender_result_t<__late_domain_of_t<S, E>, S, E>>);
+    concept stream_sender = sender_in<S, E> && STDEXEC_IS_BASE_OF(stream_sender_base, __decay_t<tfx_sender<S, E>>);
 
     template <class R>
     concept stream_receiver = receiver<R> && STDEXEC_IS_BASE_OF(stream_receiver_base, __decay_t<R>);

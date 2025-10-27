@@ -262,7 +262,7 @@ namespace stdexec {
     };
   } // namespace __queries
 
-  template <class _Scheduler, class _LateDomain = __none_such>
+  template <class _Scheduler, class _Domain = __none_such>
   struct __sched_attrs {
     using __t = __sched_attrs;
     using __id = __sched_attrs;
@@ -281,14 +281,14 @@ namespace stdexec {
     }
 
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto query(get_domain_override_t) const noexcept -> _LateDomain
-      requires(!same_as<_LateDomain, __none_such>)
+    constexpr auto query(get_domain_override_t) const noexcept -> _Domain
+      requires(!same_as<_Domain, __none_such>)
     {
       return {};
     }
 
     _Scheduler __sched_;
-    STDEXEC_ATTRIBUTE(no_unique_address) _LateDomain __late_domain_ { };
+    STDEXEC_ATTRIBUTE(no_unique_address) _Domain __late_domain_ { };
   };
 
   template <class _Scheduler, class _LateDomain = __none_such>

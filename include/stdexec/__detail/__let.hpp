@@ -352,7 +352,7 @@ namespace stdexec {
           if constexpr (__merror<_Domain>) {
             return _Domain();
           } else if constexpr (same_as<_Domain, dependent_domain>) {
-            using _Domain2 = __late_domain_of_t<_Child, _Env>;
+            using _Domain2 = __detail::__completing_domain<_Child, _Env>;
             return __make_sexpr<__let_t<_Set, _Domain2>>(
               static_cast<_Fun&&>(__fun), static_cast<_Child&&>(__child));
           } else {

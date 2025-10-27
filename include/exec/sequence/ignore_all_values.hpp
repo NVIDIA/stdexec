@@ -288,9 +288,7 @@ namespace exec {
     struct ignore_all_values_t {
       template <sender _Sender>
       auto operator()(_Sender&& __sndr) const {
-        auto __domain = __get_early_domain(static_cast<_Sender&&>(__sndr));
-        return transform_sender(
-          __domain, __make_sexpr<ignore_all_values_t>(__(), static_cast<_Sender&&>(__sndr)));
+        return __make_sexpr<ignore_all_values_t>(__(), static_cast<_Sender&&>(__sndr));
       }
 
       STDEXEC_ATTRIBUTE(always_inline)

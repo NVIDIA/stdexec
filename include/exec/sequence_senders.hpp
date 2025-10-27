@@ -148,7 +148,14 @@ namespace exec {
     struct get_item_types_t;
     template <class _Sender, class _Env>
     using __tfx_sender =
-      transform_sender_result_t<__late_domain_of_t<_Sender, _Env>, _Sender, _Env>;
+      transform_sender_result_t<
+        __detail::__completing_domain<_Sender, _Env>,
+        transform_sender_result_t<
+          __detail::__starting_domain<_Env, set_value_t>,
+          _Sender,
+          _Env
+        >,
+        _Env>;
 
     template <class _Sender, class _Env>
     concept __with_tag_invoke = tag_invocable<get_item_types_t, __tfx_sender<_Sender, _Env>, _Env>;
@@ -353,7 +360,7 @@ namespace exec {
 
       template <class _Sender, class _Receiver>
       static constexpr auto __select_impl() noexcept {
-        using _Domain = __late_domain_of_t<_Sender, env_of_t<_Receiver&>>;
+        using _Domain = __detail::__completing_domain<_Sender, env_of_t<_Receiver&>>;
         constexpr bool _NothrowTfxSender =
           __nothrow_callable<transform_sender_t, _Domain, _Sender, env_of_t<_Receiver&>>;
         using _TfxSender = __tfx_sndr<_Sender, _Receiver>;
