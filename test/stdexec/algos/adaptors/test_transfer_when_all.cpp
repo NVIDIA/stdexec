@@ -138,7 +138,7 @@ namespace {
       auto snd = ex::transfer_when_all(scheduler(), ex::just(3), ex::just(0.1415));
       static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_t>);
       [[maybe_unused]]
-      domain dom = ex::get_domain(ex::get_env(snd));
+      domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd));
     }
 
   // TODO(gevtushenko)

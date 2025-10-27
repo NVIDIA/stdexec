@@ -270,31 +270,12 @@ namespace stdexec {
       template <class _Self, class... _Env>
       using __completions = __children_of<_Self, __completions_t<__env_t<_Env>...>>;
 
-      template <class _Domain>
-      struct __attrs {
-        using __t = __attrs;
-        using __id = __attrs;
-
-        STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-        constexpr auto query(get_completion_domain_t<set_value_t>) const noexcept -> _Domain {
-          return {};
-        }
-
-        // TODO(gevtushenko): the only thing that should have `get_domain_t` is a receiver's env, so should go to 0
-        #if 1
-        STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-        constexpr auto query(get_domain_t) const noexcept -> _Domain {
-          return {};
-        }
-        #endif
-      };
-
       static constexpr auto get_attrs = []<class... _Child>(__ignore, const _Child&...) noexcept {
         using _Domain = __common_domain_t<_Child...>;
         if constexpr (__same_as<_Domain, default_domain>) {
           return env();
         } else {
-          return __attrs<_Domain>{};
+          return prop{get_completion_domain<set_value_t>, _Domain()};
         }
       };
 

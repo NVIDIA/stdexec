@@ -270,30 +270,17 @@ namespace stdexec {
     using __scheduler_t = __decay_t<_Scheduler>;
     using __sched_domain_t = __query_result_or_t<get_completion_domain_t<set_value_t>, __scheduler_t, default_domain>;
 
-    // TODO(gevtushenko): `get_completion_scheduler_t` only on sender's attr or convenience for schedulers
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept -> __scheduler_t {
       return __sched_;
     }
 
-    // TODO(gevtushenko): the only thing that should have `get_completion_domain_t` is sender's attrs or convenience for schedulers, should go to 1
-    #if 0
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto query(get_completion_domain_t<set_value_t>) const noexcept -> __sched_domain_t
     {
       return {};
     }
-    #endif
 
-    // TODO(gevtushenko): the only thing that should have `get_domain_t` is a receiver's env, so should go to 0
-    #if 1
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto query(get_domain_t) const noexcept -> __sched_domain_t {
-      return {};
-    }
-    #endif
-
-    // TODO(gevtushenko): the only thing that should have `get_domain_override_t` is a sender's attrs
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto query(get_domain_override_t) const noexcept -> _Domain
       requires(!same_as<_Domain, __none_such>)
