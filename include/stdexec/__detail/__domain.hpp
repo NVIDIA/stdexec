@@ -155,6 +155,10 @@ namespace stdexec {
       }
 
       auto operator()(__ignore, __ignore, const auto&... __sndrs) const noexcept {
+        // TODO(gevtushenko): should be the one bellow:
+        // return __common_domain(get_completion_domain<set_value_t>(__sndrs)...);
+        // if someone cannot answer the query, ignore them
+        // if they can - everyone should return the common domain
         return __common_domain(__get_early_domain_t{}(__sndrs)...);
       }
     };
