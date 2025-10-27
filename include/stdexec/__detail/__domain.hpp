@@ -244,7 +244,8 @@ namespace stdexec {
       __meval_or<__call_result_t, default_domain, get_domain_t, const _Env&>;
 
     template <class _Sch>
-    auto __get_scheduler_domain() -> __call_result_t<get_completion_domain_t<set_value_t>, _Sch>;
+    auto __get_scheduler_domain()
+      -> __meval_or<__call_result_t, default_domain, get_completion_domain_t<set_value_t>, _Sch>;
 
     template <class _Sch, class _Env>
     auto __get_scheduler_domain()
@@ -337,11 +338,13 @@ namespace stdexec {
     private:
       template <class _Attrs, class... _Env, class _Domain>
       static consteval auto __check_domain(_Domain) noexcept -> _Domain {
-        // Sanity check: if a completion scheduler can be determined, then its domain must match
-        // the domain returned by the attributes.
-        if constexpr (__callable<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>) {
-          using __sch_t = __call_result_t<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>;
-          if constexpr (!std::is_same_v<__sch_t, _Attrs>) // prevent infinite recursion
+        // Sanity check: if a completion scheduler can be determined from the attributes
+        // (not the environment), then its domain must match the domain returned by the attributes.
+        if constexpr (__callable<get_completion_scheduler_t<_Tag>, const _Attrs&>) {
+          using __sch_t = __call_result_t<get_completion_scheduler_t<_Tag>, const _Attrs&>;
+          // Skip check if the "scheduler" is the same as the domain or the attributes
+          // (this can happen with __prop_like which answers any query with the same type)
+          if constexpr (!std::is_same_v<__sch_t, _Attrs> && !std::is_same_v<__sch_t, _Domain>)
           {
             static_assert(std::is_same_v<_Domain, __detail::__scheduler_domain_t<__sch_t, const _Env&...>>,
                           "the sender claims to complete on a domain that is not the domain of its completion scheduler");
