@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "stdexec/__detail/__env.hpp"
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -158,6 +159,18 @@ namespace {
 
     [[nodiscard]]
     auto query(ex::get_domain_t) const noexcept -> domain {
+      return {};
+    }
+
+    template <ex::__completion_tag Tag>
+    [[nodiscard]]
+    auto query(ex::get_completion_scheduler_t<Tag>, ex::__ignore = {}) const noexcept -> custom_scheduler {
+      return *this;
+    }
+
+    template <ex::__completion_tag Tag>
+    [[nodiscard]]
+    auto query(ex::get_completion_domain_t<Tag>, ex::__ignore = {}) const noexcept -> domain {
       return {};
     }
 
