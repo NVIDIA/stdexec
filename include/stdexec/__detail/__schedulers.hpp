@@ -288,7 +288,7 @@ namespace stdexec {
     }
 
     _Scheduler __sched_;
-    STDEXEC_ATTRIBUTE(no_unique_address) _Domain __late_domain_ { };
+    STDEXEC_ATTRIBUTE(no_unique_address) _Domain __domain_ { };
   };
 
   template <class _Scheduler, class _LateDomain = __none_such>

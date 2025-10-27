@@ -415,32 +415,43 @@ namespace exec {
           -> __call_result_t<__select_impl_t<_Sender, _Receiver>> {
         using _TfxSender = __tfx_sndr<_Sender, _Receiver>;
         auto&& __env = stdexec::get_env(__rcvr);
-        auto __domain = __get_late_domain(__sndr, __env);
+
+        // Two-phase transformation per P3826R0
+        // 1. Completing domain transformation (where the sender completes)
+        auto __completing_dom = stdexec::__detail::__first_callable<stdexec::get_domain_override_t, stdexec::get_completion_domain_t<stdexec::set_value_t>>{
+          std::tuple{stdexec::get_domain_override_t{}, stdexec::get_completion_domain_t<stdexec::set_value_t>{}}}(
+          get_env(__sndr), __env);
+
+        // 2. Starting domain transformation (where the operation state starts)
+        auto __starting_dom = [&]() {
+          if constexpr (__callable<stdexec::get_domain_t, const stdexec::env_of_t<_Receiver>&>) {
+            return stdexec::get_domain(__env);
+          } else {
+            return stdexec::default_domain{};
+          }
+        }();
+
+        auto&& __completing_tfx = stdexec::transform_sender(__completing_dom, static_cast<_Sender&&>(__sndr), __env);
+        auto&& __tfx_sndr = stdexec::transform_sender(__starting_dom, static_cast<decltype(__completing_tfx)&&>(__completing_tfx), __env);
+
         if constexpr (__next_connectable<_TfxSender, _Receiver>) {
-          next_sender_of_t<_Receiver, _TfxSender> __next = set_next(
-            __rcvr, stdexec::transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env));
+          next_sender_of_t<_Receiver, _TfxSender> __next = set_next(__rcvr, static_cast<_TfxSender&&>(__tfx_sndr));
           return stdexec::connect(
             static_cast<next_sender_of_t<_Receiver, _TfxSender>&&>(__next),
             __stopped_means_break_t<_Receiver>{static_cast<_Receiver&&>(__rcvr)});
           // NOLINTNEXTLINE(bugprone-branch-clone)
         } else if constexpr (__subscribeable_with_member<_TfxSender, _Receiver>) {
-          return stdexec::transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env)
-            .subscribe(static_cast<_Receiver&&>(__rcvr));
+          return static_cast<_TfxSender&&>(__tfx_sndr).subscribe(static_cast<_Receiver&&>(__rcvr));
         } else if constexpr (__subscribeable_with_tag_invoke<_TfxSender, _Receiver>) {
-          return stdexec::tag_invoke(
-            subscribe_t{},
-            stdexec::transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env),
-            static_cast<_Receiver&&>(__rcvr));
+          return stdexec::tag_invoke(subscribe_t{}, static_cast<_TfxSender&&>(__tfx_sndr), static_cast<_Receiver&&>(__rcvr));
         } else if constexpr (enable_sequence_sender<stdexec::__decay_t<_TfxSender>>) {
           // This should generate an instantiate backtrace that contains useful
           // debugging information.
-          return stdexec::transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env)
-            .subscribe(static_cast<_Receiver&&>(__rcvr));
+          return static_cast<_TfxSender&&>(__tfx_sndr).subscribe(static_cast<_Receiver&&>(__rcvr));
         } else {
           // This should generate an instantiate backtrace that contains useful
           // debugging information.
-          next_sender_of_t<_Receiver, _TfxSender> __next = set_next(
-            __rcvr, stdexec::transform_sender(__domain, static_cast<_Sender&&>(__sndr), __env));
+          next_sender_of_t<_Receiver, _TfxSender> __next = set_next(__rcvr, static_cast<_TfxSender&&>(__tfx_sndr));
           return stdexec::connect(
             static_cast<next_sender_of_t<_Receiver, _TfxSender>&&>(__next),
             __stopped_means_break_t<_Receiver>{static_cast<_Receiver&&>(__rcvr)});

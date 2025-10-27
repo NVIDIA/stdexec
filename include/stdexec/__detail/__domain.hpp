@@ -136,33 +136,6 @@ namespace stdexec {
     template <class _Sender, class _Default = default_domain>
     using __early_domain_of_t = __call_result_t<__get_early_domain_t, _Sender, _Default>;
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    //! Function object implementing `get-domain-late(snd)`
-    struct __get_late_domain_t {
-      // When connect is looking for a customization, it first checks if the sender has a
-      // late domain override. If so, that is the domain that is used to transform the
-      // sender. Otherwise, look to the receiver for information about where the resulting
-      // operation state will be started.
-      template <class _Sender, class _Env, class _Default = default_domain>
-      auto operator()(const _Sender& __sndr, const _Env& __env, _Default = {}) const noexcept {
-        // The schedule_from algorithm is the exception to the rule. It ignores the domain
-        // of the predecessor, and dispatches based on the domain of the scheduler to
-        // which execution is being transferred.
-        if constexpr (__callable<get_domain_override_t, env_of_t<_Sender>>) {
-          return get_domain_override(get_env(__sndr));
-        } else if constexpr (__callable<get_domain_t, const _Env&>) {
-          return get_domain(__env);
-        } else if constexpr (__callable<__composed<get_domain_t, get_scheduler_t>, const _Env&>) {
-          return get_domain(get_scheduler(__env));
-        } else {
-          return _Default();
-        }
-      }
-    };
-
-    template <class _Sender, class _Env, class _Default = default_domain>
-    using __late_domain_of_t = __call_result_t<__get_late_domain_t, _Sender, _Env, _Default>;
-
     struct __common_domain_fn {
       template <
         class _Default = default_domain,
@@ -227,9 +200,7 @@ namespace stdexec {
   };
 
   inline constexpr __detail::__get_early_domain_t __get_early_domain{};
-  inline constexpr __detail::__get_late_domain_t __get_late_domain{};
   using __detail::__early_domain_of_t;
-  using __detail::__late_domain_of_t;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // dependent_domain
