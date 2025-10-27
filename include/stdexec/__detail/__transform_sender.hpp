@@ -97,6 +97,7 @@ namespace stdexec {
       }
     };
 
+    /*
     struct __transform_dependent_sender {
       // If we are doing a lazy customization of a type whose domain is value-dependent (e.g.,
       // let_value), first transform the sender to determine the domain. Then continue transforming
@@ -113,21 +114,24 @@ namespace stdexec {
           __dom, dependent_domain().transform_sender(static_cast<_Sender&&>(__sndr), __env), __env);
       }
     };
+    */
   } // namespace __detail
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.transform_sender]
   inline constexpr struct transform_sender_t
-    : __detail::__transform_sender
-    , __detail::__transform_dependent_sender {
+    : __detail::__transform_sender {
+    // , __detail::__transform_dependent_sender {
     using __detail::__transform_sender::operator();
-    using __detail::__transform_dependent_sender::operator();
+    // using __detail::__transform_dependent_sender::operator();
   } transform_sender{};
 
   inline constexpr __detail::__transform_env transform_env{};
 
   struct _CHILD_SENDERS_WITH_DIFFERENT_DOMAINS_ { };
 
+
+  /*
   template <class _Sender, class _Env>
   constexpr auto dependent_domain::__is_nothrow_transform_sender() noexcept -> bool {
     using _Env2 = __call_result_t<__detail::__transform_env, dependent_domain&, _Sender, _Env>;
@@ -149,7 +153,9 @@ namespace stdexec {
         return __mbool<__first_transform_is_nothrow && __second_transform_is_nothrow>();
       }))>;
   }
+      */
 
+      /*
   template <sender_expr _Sender, class _Env>
     requires same_as<__early_domain_of_t<_Sender>, dependent_domain>
   auto dependent_domain::transform_sender(_Sender&& __sndr, const _Env& __env) const
@@ -177,6 +183,7 @@ namespace stdexec {
         }
       });
   }
+      */
 
   /////////////////////////////////////////////////////////////////////////////
   template <class _Tag, class _Domain, class _Sender, class... _Args>

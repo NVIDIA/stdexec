@@ -449,12 +449,16 @@ namespace stdexec {
           static_cast<_Sender&&>(__sndr), __mk_transform_env_fn<__let_t<_Set>>(__env));
       }
 
+      // TODO(gevtushenko): dependent_domain is going away
+      /*
       template <sender_expr_for<__let_t<_Set>> _Sender, class _Env>
         requires same_as<__early_domain_of_t<_Sender>, dependent_domain>
+        // requires same_as<__detail::__completing_domain<_Sender, env<>>, dependent_domain>
       static auto transform_sender(_Sender&& __sndr, const _Env& __env) -> decltype(auto) {
         return __sexpr_apply(
           static_cast<_Sender&&>(__sndr), __mk_transform_sender_fn<__let_t<_Set>>(__env));
       }
+      */
     };
 
     template <class _Set, class _Domain>
