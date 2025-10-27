@@ -114,7 +114,7 @@ namespace {
 
     [[nodiscard]]
     auto get_env() const noexcept {
-      return ex::prop{ex::get_domain_override, domain{}};
+      return ex::prop{ex::get_completion_domain<ex::set_value_t>, domain{}};
     }
 
     template <class Receiver>
@@ -184,14 +184,11 @@ namespace {
     bool* called{};
   };
 
-  // TODO(gevtushenko)
-  #if 0
   TEST_CASE("start_detached can be customized on sender", "[consumers][start_detached]") {
     bool called = false;
     ex::start_detached(custom_sender{&called});
     CHECK(called);
   }
-  #endif
 
   // NOT TO SPEC
   TEST_CASE("start_detached can be customized on scheduler", "[consumers][start_detached]") {
