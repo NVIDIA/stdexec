@@ -67,12 +67,12 @@ namespace stdexec {
       static constexpr auto get_attrs = []<class _Data, class _Child>(
                                           const _Data& __data,
                                           const _Child& __child) noexcept -> decltype(auto) {
-        using __domain_t = __detail::__early_domain_of_t<_Child, __none_such>;
+        using __domain_t = __detail::__completing_domain<_Child, env<>>;
         return __env::__join(
           __sched_attrs{std::cref(__data), __domain_t{}}, stdexec::get_env(__child));
       };
 
-      static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
+      static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&, __ignore = {}) noexcept
         -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
         return {};
       };
