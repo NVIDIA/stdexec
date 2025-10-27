@@ -198,8 +198,7 @@ namespace stdexec {
         if constexpr (!sender_in<_Sender, __env>) {
           stdexec::__diagnose_sender_concept_failure<_Sender, __env>();
         } else {
-          using __early_domain_t = __early_domain_of_t<_Sender>;
-          using __domain_t = __late_domain_of_t<_Sender, __env, __early_domain_t>;
+          using __domain_t = __detail::__completion_domain_of_t<set_value_t, _Sender, __env>;
           constexpr auto __success_completion_count =
             __v<value_types_of_t<_Sender, __env, __types, __msize::__f>>;
           static_assert(
@@ -302,14 +301,14 @@ namespace stdexec {
       template <sender_in<__env> _Sender>
         requires __callable<
           apply_sender_t,
-          __early_domain_of_t<_Sender>,
+          __detail::__completion_domain_of_t<set_value_t, _Sender, __env>,
           sync_wait_with_variant_t,
           _Sender
         >
       auto operator()(_Sender&& __sndr) const -> decltype(auto) {
         using __result_t = __call_result_t<
           apply_sender_t,
-          __early_domain_of_t<_Sender>,
+          __detail::__completion_domain_of_t<set_value_t, _Sender, __env>,
           sync_wait_with_variant_t,
           _Sender
         >;
@@ -317,7 +316,7 @@ namespace stdexec {
         using __variant_t = typename __result_t::value_type;
         static_assert(__is_instance_of<__variant_t, std::variant>);
 
-        using _Domain = __late_domain_of_t<_Sender, __env>;
+        using _Domain = __detail::__completion_domain_of_t<set_value_t, _Sender, __env>;
         return stdexec::apply_sender(_Domain(), *this, static_cast<_Sender&&>(__sndr));
       }
 

@@ -246,8 +246,6 @@ namespace {
     }
   };
 
-  // TODO(gevtushenko) - start detached
-  #if 0
   TEST_CASE("let_error works when changing threads", "[adaptors][let_error]") {
     exec::static_thread_pool pool{2};
     std::atomic<bool> called{false};
@@ -268,7 +266,6 @@ namespace {
     // the work should be executed
     REQUIRE(called);
   }
-  #endif
 
   TEST_CASE(
     "let_error has the values_type from the input sender if returning error",
