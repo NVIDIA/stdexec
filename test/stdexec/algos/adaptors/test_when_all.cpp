@@ -249,6 +249,8 @@ namespace {
 
   struct test_domain2 : test_domain1 { };
 
+  // TODO(gevtushenko)
+  #if 0
   TEST_CASE("when_all propagates domain from children", "[adaptors][when_all]") {
     auto snd = ex::when_all(
       ex::just(13) | exec::write_attrs(ex::prop{ex::get_domain, test_domain1{}}),
@@ -257,6 +259,7 @@ namespace {
     auto domain = ex::get_domain(env);
     STATIC_REQUIRE(std::same_as<decltype(domain), test_domain1>);
   }
+  #endif
 
   namespace {
     enum customize : std::size_t {

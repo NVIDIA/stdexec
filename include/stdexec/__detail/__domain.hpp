@@ -29,7 +29,6 @@
 namespace stdexec {
 
   struct default_domain;
-  struct dependent_domain;
 
   namespace __detail {
     template <class _DomainOrTag, class _Sender, class... _Env>
@@ -135,33 +134,6 @@ namespace stdexec {
 
     template <class _Sender, class _Default = default_domain>
     using __early_domain_of_t = __call_result_t<__get_early_domain_t, _Sender, _Default>;
-
-    struct __common_domain_fn {
-      template <
-        class _Default = default_domain,
-        class _Dependent = dependent_domain,
-        class... _Domains
-      >
-      static auto __common_domain(_Domains...) noexcept {
-        if constexpr (sizeof...(_Domains) == 0) {
-          return _Default();
-        } else if constexpr (__one_of<_Dependent, _Domains...>) {
-          return _Dependent();
-        } else if constexpr (stdexec::__mvalid<std::common_type_t, _Domains...>) {
-          return std::common_type_t<_Domains...>();
-        } else {
-          return __none_such();
-        }
-      }
-
-      auto operator()(__ignore, __ignore, const auto&... __sndrs) const noexcept {
-        // TODO(gevtushenko): should be the one bellow:
-        // return __common_domain(get_completion_domain<set_value_t>(__sndrs)...);
-        // if someone cannot answer the query, ignore them
-        // if they can - everyone should return the common domain
-        return __common_domain(__get_early_domain_t{}(__sndrs)...);
-      }
-    };
   } // namespace __detail
 
   struct default_domain {
@@ -206,20 +178,59 @@ namespace stdexec {
   inline constexpr __detail::__get_early_domain_t __get_early_domain{};
   using __detail::__early_domain_of_t;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  // dependent_domain
-  struct dependent_domain {
-    // defined in __transform_sender.hpp
-    template <class _Sender, class _Env>
-    static constexpr auto __is_nothrow_transform_sender() noexcept -> bool;
+  namespace __detail {
+    struct __common_domain_fn {
+      struct __none_t{};
 
-    // defined in __transform_sender.hpp
-    template <sender_expr _Sender, class _Env>
-      requires same_as<__early_domain_of_t<_Sender>, dependent_domain>
-    STDEXEC_ATTRIBUTE(always_inline)
-    auto transform_sender(_Sender&& __sndr, const _Env& __env) const
-      noexcept(__is_nothrow_transform_sender<_Sender, _Env>()) -> decltype(auto);
-  };
+      template <class... _Domains>
+      static auto __common_domain(_Domains...) noexcept {
+        if constexpr (sizeof...(_Domains) == 0) {
+          return default_domain{};
+        } else if constexpr (stdexec::__mvalid<std::common_type_t, _Domains...>) {
+          return std::common_type_t<_Domains...>();
+        } else {
+          return __none_such();
+        }
+      }
+
+    private:
+      // Helper: returns a single-element tuple if domain is valid, empty tuple otherwise
+      template <class _Domain>
+      static constexpr auto __maybe_tuple(_Domain __d) noexcept {
+        if constexpr (same_as<_Domain, __none_t>) {
+          return std::tuple<>{};
+        } else {
+          return std::tuple<_Domain>{__d};
+        }
+      }
+
+      // Helper: filters out __none_such values and calls __common_domain with the rest
+      template <class... _Domains>
+      static constexpr auto __filter_and_common(_Domains... __doms) noexcept {
+        auto __valid = std::tuple_cat(__maybe_tuple(__doms)...);
+        return std::apply([]<class... _Valid>(_Valid... __v) {
+          return __common_domain(__v...);
+        }, __valid);
+      }
+
+      // Helper: tries to get completion domain, returns __none_such if not available
+      template <class _Sndr>
+      static constexpr auto __try_get_domain(const _Sndr& __sndr) noexcept {
+        if constexpr (__callable<get_completion_domain_t<set_value_t>, env_of_t<_Sndr>>) {
+          return get_completion_domain<set_value_t>(get_env(__sndr));
+        } else {
+          return __none_t{};
+        }
+      }
+
+    public:
+      auto operator()(__ignore, __ignore, const auto&... __sndrs) const noexcept {
+        // Query each sender for its completion domain, filter out those that can't answer,
+        // then compute the common domain of the remaining ones
+        return __filter_and_common(__try_get_domain(__sndrs)...);
+      }
+    };
+  } // namespace __detail
 
   template <class... _Senders>
   using __common_domain_t = __call_result_t<__detail::__common_domain_fn, int, int, _Senders...>;

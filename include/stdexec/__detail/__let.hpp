@@ -31,6 +31,7 @@
 #include "__transform_sender.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__variant.hpp"
+#include "stdexec/__detail/__utility.hpp"
 
 #include <exception>
 
@@ -77,7 +78,7 @@ namespace stdexec {
       return __op_state.__state_.__get_env(__op_state.__rcvr_);
     };
 
-    template <class _Set, class _Domain = dependent_domain>
+    template <class _Set, class _Domain = __none_such>
     struct __let_t;
 
     template <class _Set>
@@ -351,10 +352,6 @@ namespace stdexec {
 
           if constexpr (__merror<_Domain>) {
             return _Domain();
-          } else if constexpr (same_as<_Domain, dependent_domain>) {
-            using _Domain2 = __detail::__completing_domain<_Child, _Env>;
-            return __make_sexpr<__let_t<_Set, _Domain2>>(
-              static_cast<_Fun&&>(__fun), static_cast<_Child&&>(__child));
           } else {
             static_assert(!same_as<_Domain, __unknown_scheduler>);
             return __make_sexpr<__let_t<_Set, _Domain>>(
@@ -448,35 +445,13 @@ namespace stdexec {
         return __sexpr_apply(
           static_cast<_Sender&&>(__sndr), __mk_transform_env_fn<__let_t<_Set>>(__env));
       }
-
-      // TODO(gevtushenko): dependent_domain is going away
-      /*
-      template <sender_expr_for<__let_t<_Set>> _Sender, class _Env>
-        requires same_as<__early_domain_of_t<_Sender>, dependent_domain>
-        // requires same_as<__detail::__completing_domain<_Sender, env<>>, dependent_domain>
-      static auto transform_sender(_Sender&& __sndr, const _Env& __env) -> decltype(auto) {
-        return __sexpr_apply(
-          static_cast<_Sender&&>(__sndr), __mk_transform_sender_fn<__let_t<_Set>>(__env));
-      }
-      */
     };
 
     template <class _Set, class _Domain>
     struct __let_impl : __sexpr_defaults {
       static constexpr auto get_attrs =
         []<class _Fun, class _Child>(const _Fun&, const _Child& __child) noexcept {
-          if constexpr (!same_as<_Domain, dependent_domain>) {
-            return __env::__join(prop{get_domain, _Domain()}, stdexec::get_env(__child));
-          } else {
-            using _Sched = __completion_sched<_Child, _Set>;
-            using _Domain2 = __result_domain_t<_Set, _Child, _Fun, _Sched>;
-
-            if constexpr (__merror<_Domain2>) {
-              return __env::__join(prop{get_domain, dependent_domain()}, stdexec::get_env(__child));
-            } else {
-              return __env::__join(prop{get_domain, _Domain2()}, stdexec::get_env(__child));
-            }
-          }
+          return __env::__join(prop{get_domain, _Domain()}, stdexec::get_env(__child));
         };
 
       static constexpr auto get_completion_signatures =
