@@ -119,29 +119,6 @@ namespace stdexec {
       get_completion_domain_t<_Tag>,
       env_of_t<_Sndr>,
       const _Env&...>;
-
-    // TODO(gevtushenko) - remove
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    //! Function object implementing `get-domain-early(snd)`
-    //! from [exec.snd.general] item 3.9. It is the first well-formed expression of
-    //! a) `get_domain(get_env(sndr))`
-    //! b) `completion-domain(sndr)`
-    //! c) `default_domain()`
-    struct __get_early_domain_t {
-      template <class _Sender, class _Default = default_domain>
-      auto operator()(const _Sender&, _Default = {}) const noexcept {
-        if constexpr (__callable<get_domain_t, env_of_t<_Sender>>) {
-          return __domain_of_t<env_of_t<_Sender>>();
-        } else if constexpr (__has_completion_domain<_Sender>) {
-          return __completion_domain_of<_Sender>();
-        } else {
-          return _Default();
-        }
-      }
-    };
-
-    template <class _Sender, class _Default = default_domain>
-    using __early_domain_of_t = __call_result_t<__get_early_domain_t, _Sender, _Default>;
   } // namespace __detail
 
   struct default_domain {
@@ -182,9 +159,6 @@ namespace stdexec {
       return _Tag().apply_sender(static_cast<_Args&&>(__args)...);
     }
   };
-
-  inline constexpr __detail::__get_early_domain_t __get_early_domain{};
-  using __detail::__early_domain_of_t;
 
   namespace __detail {
     struct __common_domain_fn {

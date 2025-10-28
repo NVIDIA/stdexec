@@ -123,7 +123,7 @@ namespace nvexec::_strm {
   template <class Scheduler, class SenderId>
   struct continues_on_sender_t {
     using Sender = stdexec::__t<SenderId>;
-    using LateDomain = __detail::__early_domain_of_t<Sender, __none_such>;
+    using LateDomain = __detail::__completion_domain_or_none_t<set_error_t, Sender>;
 
     struct __t : stream_sender_base {
       using __id = continues_on_sender_t;

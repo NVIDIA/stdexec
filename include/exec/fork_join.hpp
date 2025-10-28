@@ -133,7 +133,7 @@ namespace exec {
       using operation_state_concept = stdexec::operation_state_t;
       using _env_t = stdexec::__call_result_t<stdexec::__env::__fwd_fn, stdexec::env_of_t<Rcvr>>;
       using _child_completions_t = stdexec::__completion_signatures_of_t<Sndr, _env_t>;
-      using _domain_t = stdexec::__early_domain_of_t<Sndr, stdexec::__none_such>;
+      using _domain_t = stdexec::__detail::__completion_domain_or_none_t<stdexec::set_value_t, Sndr>;
       using _when_all_sndr_t =
         fork_join_t::_when_all_sndr_t<_child_completions_t, Closures, _domain_t>;
       using _child_opstate_t =
@@ -256,7 +256,7 @@ namespace exec {
     STDEXEC_ATTRIBUTE(host, device)
     static auto get_completion_signatures(Self&&, Env&&...) noexcept {
       using namespace stdexec;
-      using _domain_t = __early_domain_of_t<Sndr, __none_such>;
+      using _domain_t = __detail::__completion_domain_or_none_t<set_value_t, Sndr, Env...>;
       using _child_t = __copy_cvref_t<Self, Sndr>;
       using _child_completions_t = __completion_signatures_of_t<_child_t, __fwd_env_t<Env>...>;
       using __decay_copyable_results_t = stdexec::__decay_copyable_results_t<_child_completions_t>;
