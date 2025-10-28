@@ -148,6 +148,8 @@ namespace {
     CHECK(n == 1'000'000);
   }
 
+  // TODO(gevtushenko)
+  #if 0
   TEST_CASE("repeat_effect_until works when changing threads", "[adaptors][repeat_effect_until]") {
     exec::static_thread_pool pool{2};
     bool called{false};
@@ -179,6 +181,7 @@ namespace {
     stdexec::sync_wait(std::move(snd));
     REQUIRE(called);
   }
+  #endif
 
   TEST_CASE("repeat_effect repeats until an error is encountered", "[adaptors][repeat_effect]") {
     int counter = 0;

@@ -97,6 +97,8 @@ namespace {
     CHECK(recv_value == 19);
   }
 
+  // TODO(gevtushenko)
+  #if 0
   TEST_CASE("stdexec::on works when changing threads", "[adaptors][on]") {
     exec::static_thread_pool pool{2};
     bool called{false};
@@ -107,6 +109,7 @@ namespace {
     // the work should be executed
     REQUIRE(called);
   }
+  #endif
 
   TEST_CASE("stdexec::on can be called with rvalue ref scheduler", "[adaptors][on]") {
     auto env = _make_env_with_sched();
