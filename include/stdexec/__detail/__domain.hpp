@@ -112,6 +112,14 @@ namespace stdexec {
     template <class _Tag, class _Sndr, class... _Env>
     using __completion_domain_of_t = __call_result_t<get_completion_domain_t<_Tag>, env_of_t<_Sndr>, const _Env&...>;
 
+    template <class _Tag, class _Sndr, class... _Env>
+    using __completion_domain_or_none_t = __meval_or<
+      __call_result_t,
+      __none_such,
+      get_completion_domain_t<_Tag>,
+      env_of_t<_Sndr>,
+      const _Env&...>;
+
     // TODO(gevtushenko) - remove
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //! Function object implementing `get-domain-early(snd)`

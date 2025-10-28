@@ -455,7 +455,7 @@ namespace stdexec {
                                           const _Scheduler& __sched,
                                           const _Child&...) noexcept {
         using __sndr_t = __call_result_t<when_all_t, _Child...>;
-        using __domain_t = __detail::__early_domain_of_t<__sndr_t, __none_such>;
+        using __domain_t = __detail::__completion_domain_or_none_t<set_value_t, __sndr_t>;
         return __sched_attrs{std::cref(__sched), __domain_t{}};
       };
 
@@ -493,7 +493,7 @@ namespace stdexec {
                                           const _Scheduler& __sched,
                                           const _Child&...) noexcept {
         using __sndr_t = __call_result_t<when_all_with_variant_t, _Child...>;
-        using __domain_t = __detail::__early_domain_of_t<__sndr_t, __none_such>;
+        using __domain_t = __detail::__completion_domain_or_none_t<set_value_t, __sndr_t>;
         return __sched_attrs{std::cref(__sched), __domain_t{}};
       };
 
