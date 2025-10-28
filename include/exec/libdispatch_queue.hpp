@@ -142,6 +142,11 @@ namespace exec {
           auto sched = stdexec::get_scheduler(env);
           return stdexec::__sexpr_apply(
             std::forward<Sender>(sndr), __libdispatch_bulk::transform_bulk{*sched.queue_});
+        } else if constexpr (stdexec::__callable<stdexec::get_completion_scheduler_t<stdexec::set_value_t>, stdexec::env_of_t<Sender>>) {
+          auto sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr));
+          static_assert(std::is_same_v<decltype(sched), libdispatch_scheduler>);
+          return stdexec::__sexpr_apply(
+            std::forward<Sender>(sndr), __libdispatch_bulk::transform_bulk{*sched.queue_});
         } else {
           static_assert(
             stdexec::__starts_on<Sender, libdispatch_scheduler, Env>,
@@ -171,6 +176,11 @@ namespace exec {
         libdispatch_scheduler query(stdexec::get_completion_scheduler_t<CPO>) const noexcept {
           return libdispatch_scheduler{queue};
         }
+
+        template <typename CPO>
+        domain query(stdexec::get_completion_domain_t<CPO>) const noexcept {
+          return {};
+        }
       };
 
       STDEXEC_MEMFN_FRIEND(get_env);
@@ -187,6 +197,16 @@ namespace exec {
     }
 
     auto query(stdexec::get_domain_t) const noexcept -> domain {
+      return {};
+    }
+
+    template <typename CPO>
+    libdispatch_scheduler query(stdexec::get_completion_scheduler_t<CPO>) const noexcept {
+      return *this;
+    }
+
+    template <typename CPO>
+    domain query(stdexec::get_completion_domain_t<CPO>) const noexcept {
       return {};
     }
 
