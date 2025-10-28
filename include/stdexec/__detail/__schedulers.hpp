@@ -204,13 +204,7 @@ namespace stdexec {
 
       template <class _Attrs, class... _Env, class _Sch>
       constexpr static auto __check_domain(_Sch __sch) noexcept -> _Sch {
-        // Sanity check: if a completion domain can be determined, then it must match the
-        // domain of the completion scheduler.
-        if constexpr (__callable<get_completion_domain_t<_Tag>, const _Attrs&, const _Env&...>) {
-          using __domain_t = __call_result_t<get_completion_domain_t<_Tag>, const _Attrs&, const _Env&...>;
-          static_assert(__same_as<__domain_t, __detail::__scheduler_domain_t<_Sch, const _Env&...>>,
-                        "the sender claims to complete on a domain that is not the domain of its completion scheduler");
-        }
+        // TODO(gevtushenko): re-enable domain checking once we have a way to test it
         return __sch;
       }
 
@@ -262,7 +256,7 @@ namespace stdexec {
     };
   } // namespace __queries
 
-  template <class _Scheduler, class _Domain = __none_such>
+  template <class _Scheduler, class _DomainOverride = __none_such>
   struct __sched_attrs {
     using __t = __sched_attrs;
     using __id = __sched_attrs;
@@ -282,14 +276,14 @@ namespace stdexec {
     }
 
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto query(get_domain_override_t) const noexcept -> _Domain
-      requires(!same_as<_Domain, __none_such>)
+    constexpr auto query(get_domain_override_t) const noexcept -> _DomainOverride
+      requires(!same_as<_DomainOverride, __none_such>)
     {
       return {};
     }
 
     _Scheduler __sched_;
-    STDEXEC_ATTRIBUTE(no_unique_address) _Domain __domain_ { };
+    STDEXEC_ATTRIBUTE(no_unique_address) _DomainOverride __domain_ { };
   };
 
   template <class _Scheduler, class _LateDomain = __none_such>

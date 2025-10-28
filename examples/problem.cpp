@@ -99,5 +99,7 @@ int main() {
   });
   ex::sync_wait(snd);
 
+  // ex::get_completion_domain<ex::set_value_t>(stdexec::inline_scheduler{});
+
   return 0;
 }

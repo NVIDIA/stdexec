@@ -114,8 +114,6 @@ namespace {
     CHECK(n == 1'000'000);
   }
 
-  // TODO(gevtushenko)
-  #if 0
   TEST_CASE("repeat_n works when changing threads", "[adaptors][repeat_n]") {
     exec::static_thread_pool pool{2};
     bool called{false};
@@ -143,5 +141,4 @@ namespace {
     REQUIRE(called);
     REQUIRE(!failed.load());
   }
-  #endif
 } // namespace

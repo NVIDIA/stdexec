@@ -466,13 +466,13 @@ namespace exec {
         }
 
         [[nodiscard]]
-        auto query(get_domain_t) const noexcept -> domain {
+        auto query(get_completion_domain_t<set_value_t>, __ignore = {}) const noexcept -> domain {
           return {};
         }
 
         [[nodiscard]]
-        auto query(get_completion_domain_t<set_value_t>, __ignore = {}) const noexcept -> domain {
-          return {};
+        auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept -> scheduler {
+          return scheduler{*this};
         }
       };
 
