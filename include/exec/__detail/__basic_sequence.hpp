@@ -73,9 +73,8 @@ namespace exec {
 
     template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
     static auto get_item_types(_Self&& __self, _Env&&... __env)
-      -> decltype(__self.__tag().get_item_types(
-        static_cast<_Self&&>(__self),
-        static_cast<_Env&&>(__env)...)) {
+      -> decltype(__self.__tag()
+                    .get_item_types(static_cast<_Self&&>(__self), static_cast<_Env&&>(__env)...)) {
       return {};
     }
 
@@ -88,11 +87,11 @@ namespace exec {
     }
 
     template <class _Sequence, class _ApplyFn>
-    static auto
-      apply(_Sequence&& __sequence, _ApplyFn&& __fun) noexcept(stdexec::__nothrow_callable<
-                                                         stdexec::__detail::__impl_of<_Sequence>,
-                                                         stdexec::__copy_cvref_fn<_Sequence>,
-                                                         _ApplyFn
+    static auto apply(_Sequence&& __sequence, _ApplyFn&& __fun)
+      noexcept(stdexec::__nothrow_callable<
+               stdexec::__detail::__impl_of<_Sequence>,
+               stdexec::__copy_cvref_fn<_Sequence>,
+               _ApplyFn
       >)
         -> stdexec::__call_result_t<
           stdexec::__detail::__impl_of<_Sequence>,
