@@ -22,11 +22,18 @@
 #include "stdexec/__detail/__diagnostics.hpp"
 
 namespace exec {
+  namespace __errs {
+    template <class _Sequence>
+    struct _WITH_SEQUENCE_;
+
+    template <class... _Sequences>
+    struct _WITH_SEQUENCES_;
+  }
   template <class _Sequence>
-  struct _WITH_SEQUENCE_;
+  using _WITH_SEQUENCE_ = __errs::_WITH_SEQUENCE_<stdexec::__name_of<_Sequence>>;
 
   template <class... _Sequences>
-  struct _WITH_SEQUENCES_;
+  using _WITH_SEQUENCES_ = __errs::_WITH_SEQUENCES_<stdexec::__name_of<_Sequences>...>;
 
   struct sequence_sender_t : stdexec::sender_t { };
 
@@ -785,13 +792,13 @@ namespace exec {
         static_assert(
           __well_formed_item_senders<_Sequence>,
           STDEXEC_ERROR_GET_ITEM_TYPES_HAS_INVALID_RETURN_TYPE);
-      } else {
-        stdexec::__diagnose_sender_concept_failure<_Sequence, _Env...>();
+      //} else {
+      //  stdexec::__diagnose_sender_concept_failure<_Sequence, _Env...>();
       }
 #if STDEXEC_MSVC() || STDEXEC_NVHPC()
       // MSVC and NVHPC need more encouragement to print the type of the
       // error.
-      _Completions __what = 0;
+//      _Completions __what = 0;
 #endif
     }
   }
