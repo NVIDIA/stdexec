@@ -24,7 +24,7 @@
 #include "exec/sequence.hpp"
 #include "exec/sequence_senders.hpp"
 #include "exec/trampoline_scheduler.hpp"
-#include "exec/static_thread_pool.hpp"
+#include "exec/single_thread_context.hpp"
 #include "stdexec/__detail/__just.hpp"
 #include "stdexec/__detail/__meta.hpp"
 #include "stdexec/__detail/__continues_on.hpp"
@@ -169,13 +169,13 @@ struct null_receiver {
     "merge - merge sender merges all items from multiple threads",
     "[sequence_senders][static_thread_pool][merge][iterate]") {
 
-    exec::static_thread_pool ctx0{1};
+    exec::single_thread_context ctx0;
     ex::scheduler auto sched0 = ctx0.get_scheduler();
-    exec::static_thread_pool ctx1{1};
+    exec::single_thread_context ctx1;
     ex::scheduler auto sched1 = ctx1.get_scheduler();
-    exec::static_thread_pool ctx2{1};
+    exec::single_thread_context ctx2;
     ex::scheduler auto sched2 = ctx2.get_scheduler();
-    exec::static_thread_pool ctx3{1};
+    exec::single_thread_context ctx3;
     ex::scheduler auto sched3 = ctx3.get_scheduler();
 
     auto range = [](auto from, auto to) {
