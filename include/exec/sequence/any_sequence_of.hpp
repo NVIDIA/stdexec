@@ -27,18 +27,18 @@ namespace exec {
       template <__valid_completion_signatures _Sigs>
       struct __rcvr_next_vfun {
         using __return_sigs = completion_signatures<set_value_t(), set_stopped_t()>;
-        using __void_sender = typename any_receiver_ref<__return_sigs>::template any_sender<>;
-        using __item_sender = typename any_receiver_ref<_Sigs>::template any_sender<>;
+        using __void_sender = any_receiver_ref<__return_sigs>::template any_sender<>;
+        using __item_sender = any_receiver_ref<_Sigs>::template any_sender<>;
         __void_sender (*__fn_)(void*, __item_sender&&) noexcept;
       };
 
       template <class _Rcvr>
       struct __rcvr_next_vfun_fn {
         using __return_sigs = completion_signatures<set_value_t(), set_stopped_t()>;
-        using __void_sender = typename any_receiver_ref<__return_sigs>::template any_sender<>;
+        using __void_sender = any_receiver_ref<__return_sigs>::template any_sender<>;
 
         template <class _Sigs>
-        using __item_sender = typename any_receiver_ref<_Sigs>::template any_sender<>;
+        using __item_sender = any_receiver_ref<_Sigs>::template any_sender<>;
 
         template <__valid_completion_signatures _Sigs>
         constexpr auto
@@ -55,7 +55,7 @@ namespace exec {
 
       template <class _NextSigs, class... _Sigs, class... _Queries>
       struct __next_vtable<_NextSigs, completion_signatures<_Sigs...>, _Queries...> {
-        using __item_sender = typename any_receiver_ref<_NextSigs>::template any_sender<>;
+        using __item_sender = any_receiver_ref<_NextSigs>::template any_sender<>;
         using __item_types = item_types<__item_sender>;
 
         struct __t
@@ -108,10 +108,10 @@ namespace exec {
       struct __receiver_ref<completion_signatures<_Sigs...>, _Queries...> {
         struct __t {
           using __return_sigs = completion_signatures<set_value_t(), set_stopped_t()>;
-          using __void_sender = typename any_receiver_ref<__return_sigs>::template any_sender<>;
+          using __void_sender = any_receiver_ref<__return_sigs>::template any_sender<>;
           using __next_sigs = completion_signatures<_Sigs...>;
           using __sigs = __to_sequence_completions_t<__next_sigs>;
-          using __item_sender = typename any_receiver_ref<__next_sigs>::template any_sender<>;
+          using __item_sender = any_receiver_ref<__next_sigs>::template any_sender<>;
           using __item_types = item_types<__item_sender>;
 
           using __vtable_t = stdexec::__t<__next_vtable<__next_sigs, __sigs, _Queries...>>;
@@ -233,7 +233,7 @@ namespace exec {
       using __vtable_t = stdexec::__t<__sender_vtable<_Sigs, _SenderQueries, _ReceiverQueries>>;
 
       using __sigs = __to_sequence_completions_t<_Sigs>;
-      using __item_sender = typename any_receiver_ref<_Sigs>::template any_sender<>;
+      using __item_sender = any_receiver_ref<_Sigs>::template any_sender<>;
 
       class __t {
        public:
@@ -343,8 +343,8 @@ namespace exec {
     using __id = any_sender;
     using __t = any_sender;
     using sender_concept = sequence_sender_t;
-    using completion_signatures = typename __sender_base::completion_signatures;
-    using item_types = typename __sender_base::item_types;
+    using completion_signatures = __sender_base::completion_signatures;
+    using item_types = __sender_base::item_types;
 
     template <stdexec::__not_decays_to<any_sender> _Sender>
       requires stdexec::sender_in<_Sender, __env_t> && sequence_sender_to<_Sender, __receiver_base>

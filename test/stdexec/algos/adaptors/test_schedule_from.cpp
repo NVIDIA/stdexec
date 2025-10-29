@@ -227,7 +227,7 @@ namespace {
 
   template <class... Ts>
   using any_sender_of =
-    typename exec::any_receiver_ref<stdexec::completion_signatures<Ts...>>::template any_sender<>;
+    exec::any_receiver_ref<stdexec::completion_signatures<Ts...>>::template any_sender<>;
 
   TEST_CASE("schedule_from can handle any_sender_of", "[adaptors][schedule_from]") {
     auto snd =

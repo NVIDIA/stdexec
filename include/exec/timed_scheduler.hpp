@@ -26,7 +26,7 @@ namespace exec {
 
     template <class _Tp>
     concept time_point = regular<_Tp> && totally_ordered<_Tp>
-                      && requires(_Tp __tp, const _Tp __ctp, typename _Tp::duration __dur) {
+                      && requires(_Tp __tp, const _Tp __ctp, _Tp::duration __dur) {
                            { __ctp + __dur } -> same_as<_Tp>;
                            { __dur + __ctp } -> same_as<_Tp>;
                            { __ctp - __dur } -> same_as<_Tp>;
@@ -71,7 +71,7 @@ namespace exec {
   using time_point_of_t = decltype(now(stdexec::__declval<_TimedScheduler>()));
 
   template <__timed_scheduler _TimedScheduler>
-  using duration_of_t = typename stdexec::__decay_t<time_point_of_t<_TimedScheduler>>::duration;
+  using duration_of_t = stdexec::__decay_t<time_point_of_t<_TimedScheduler>>::duration;
 
   namespace __schedule_after {
     struct __schedule_after_base_t;

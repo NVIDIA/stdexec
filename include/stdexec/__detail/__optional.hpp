@@ -106,7 +106,7 @@ namespace stdexec {
       }
 
       template <class _Fn, class... _Args>
-        requires same_as<_Tp, __call_result_t<_Fn>>
+        requires same_as<_Tp, __call_result_t<_Fn, _Args...>>
       auto __emplace_from(_Fn&& __f, _Args&&... __args) noexcept(__nothrow_callable<_Fn, _Args...>)
         -> _Tp& {
         reset();

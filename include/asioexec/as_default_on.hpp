@@ -27,9 +27,10 @@ namespace asioexec {
 
   template <typename CompletionToken, typename IoObject>
   using as_default_on_t =
-    typename std::remove_cvref_t<IoObject>::template rebind_executor<executor_with_default<
+    std::remove_cvref_t<IoObject>::template rebind_executor<executor_with_default<
       std::remove_cvref_t<decltype(std::declval<IoObject&>().get_executor())>,
-      CompletionToken>>::other;
+      CompletionToken
+    >>::other;
 
   namespace detail::as_default_on {
 
