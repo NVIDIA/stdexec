@@ -164,7 +164,7 @@ namespace stdexec {
       static constexpr auto get_attrs = []<class _Data, class _Child>(
                                           const _Data& __data,
                                           const _Child& __child) noexcept {
-        auto __domain = query_or(get_domain, __data, default_domain{});
+        auto __domain = get_completion_domain<set_value_t>(__data, env<>{});
         return __env::__join(__sched_attrs{std::cref(__data), __domain}, stdexec::get_env(__child));
       };
 
@@ -178,7 +178,7 @@ namespace stdexec {
       static constexpr auto get_state =
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&) {
           static_assert(sender_expr_for<_Sender, schedule_from_t>);
-          auto __sched = get_completion_scheduler<set_value_t>(stdexec::get_env(__sndr));
+          auto __sched = get_completion_scheduler<set_value_t>(stdexec::get_env(__sndr), env<>{});
           using _Scheduler = decltype(__sched);
           return __state<_Scheduler, _Sender, _Receiver>{__sched};
         };

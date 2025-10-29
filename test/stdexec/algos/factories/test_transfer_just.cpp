@@ -163,15 +163,15 @@ namespace {
     stopped_scheduler sched3{};
 
     REQUIRE(
-      ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched1, 1)))
+      ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched1, 1)), ex::env<>{})
       == sched1);
 
     REQUIRE(
-      ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched2, 2)))
+      ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched2, 2)), ex::env<>{})
       == sched2);
 
     REQUIRE(
-      ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched3, 3)))
+      ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched3, 3)), ex::env<>{})
       == sched3);
   }
 
