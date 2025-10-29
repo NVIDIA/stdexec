@@ -145,8 +145,8 @@ namespace stdexec {
     };
 
     static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
-      // -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
-      -> __completion_signatures_of_t<_Sender> {
+      // TODO(gevtushenko) why default domain? should it get env?
+      -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
       return {};
     };
   };
