@@ -37,14 +37,14 @@ namespace exec {
     using __mall_contained_in_t = __mapply<__mall_contained_in_impl<_Haystack>, _Needles>;
 
     template <class _Needles, class _Haystack>
-    concept __all_contained_in_t = __v<__mall_contained_in_t<_Needles, _Haystack>>;
+    concept __all_contained_in = __v<__mall_contained_in_t<_Needles, _Haystack>>;
   } // namespace __sequence_sndr
 
   // This concept checks if a given sender satisfies the requirements to be returned from `set_next`.
   template <class _Sender, class _Env = stdexec::env<>>
   concept next_sender =
     stdexec::sender_in<_Sender, _Env>
-    && __sequence_sndr::__all_contained_in_t<
+    && __sequence_sndr::__all_contained_in<
       stdexec::completion_signatures_of_t<_Sender, _Env>,
       stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>
     >;
