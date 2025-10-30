@@ -85,11 +85,11 @@ namespace stdexec {
     // Of the completion schedulers that are known, they must all have compatible
     // domains. This computes that domain, or else returns __none_such if there
     // are no completion schedulers or if they don't specify a domain.
-    template <class _Env>
+    template <class... _Env>
     struct __completion_domain_or_none_
       : __mdefer_<
           __mtransform<
-            __mbind_front_q<__completion_domain_for, _Env>,
+            __mbind_front_q<__completion_domain_for, _Env...>,
             __mremove<__none_such, __munique<__msingle_or<__none_such>>>
           >,
           set_value_t,
@@ -97,8 +97,8 @@ namespace stdexec {
           set_stopped_t
         > { };
 
-    template <class _Sender>
-    using __completion_domain_or_none = __t<__completion_domain_or_none_<env_of_t<_Sender>>>;
+    template <class _Sender, class... _Env>
+    using __completion_domain_or_none = __t<__completion_domain_or_none_<env_of_t<_Sender>, _Env...>>;
 
     template <class _Sender>
     concept __consistent_completion_domains = __mvalid<__completion_domain_or_none, _Sender>;
@@ -285,8 +285,8 @@ namespace stdexec {
       std::tuple<_Fns...> __fns_;
     };
 
-    template <class _Sender, class _Env>
-    using __completing_domain = __call_result_t<__first_callable<get_domain_override_t, get_completion_domain_t<set_value_t>>, env_of_t<_Sender>, const _Env&>;
+    template <class _Sender, class... _Env>
+    using __completing_domain = __call_result_t<__first_callable<get_domain_override_t, get_completion_domain_t<set_value_t>>, env_of_t<_Sender>, const _Env&...>;
   } // namespace __detail
 
   namespace __queries {
@@ -316,10 +316,24 @@ namespace stdexec {
           -> __decay_t<__query_result_t<_Attrs, get_completion_domain_t, const _Env&>>;
       };
 
-      private:
+    private:
       template <class _Attrs, class... _Env, class _Domain>
       static consteval auto __check_domain(_Domain) noexcept -> _Domain {
-        // TODO(gevtushenko): re-enable domain checking once we have a way to test it
+        // TODO(gevtushenko):
+        #if 0
+        // Sanity check: if a completion scheduler can be determined from the attributes
+        // (not the environment), then its domain must match the domain returned by the attributes.
+        if constexpr (__callable<get_completion_scheduler_t<_Tag>, const _Attrs&>) {
+          using __sch_t = __call_result_t<get_completion_scheduler_t<_Tag>, const _Attrs&>;
+          // Skip check if the "scheduler" is the same as the domain or the attributes
+          // (this can happen with __prop_like which answers any query with the same type)
+          if constexpr (!std::is_same_v<__sch_t, _Attrs> && !std::is_same_v<__sch_t, _Domain>)
+          {
+            static_assert(std::is_same_v<_Domain, __detail::__scheduler_domain_t<__sch_t, const _Env&...>>,
+                          "the sender claims to complete on a domain that is not the domain of its completion scheduler");
+          }
+        }
+        #endif
         return {};
       }
 

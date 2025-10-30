@@ -1,3 +1,4 @@
+#define STDEXEC_ENABLE_EXTRA_TYPE_CHECKING 1
 /*
  * Copyright (c) 2025 NVIDIA Corporation
  *
@@ -72,6 +73,49 @@ void print(T) {
   std::cout << __PRETTY_FUNCTION__ << "\n";
 }
 
+template <class T, class Env = ex::env<>>
+struct expect_value_receiver_ex {
+  T dest_;
+  Env env_{};
+
+  using receiver_concept = stdexec::receiver_t;
+
+  explicit expect_value_receiver_ex(T dest)
+    : dest_(dest) {
+  }
+
+  expect_value_receiver_ex(Env env, T dest)
+    : dest_(dest)
+    , env_(std::move(env)) {
+  }
+
+  void set_value(T val) noexcept {
+    dest_ = val;
+  }
+
+  template <class... Ts>
+  void set_value(Ts...) noexcept {
+    std::cerr << "set_value called with wrong value types on expect_value_receiver_ex\n";
+  }
+
+  void set_stopped() noexcept {
+    std::cerr << "set_stopped called on expect_value_receiver_ex\n";
+  }
+
+  void set_error(std::exception_ptr) noexcept {
+    std::cerr << "set_error called on expect_value_receiver_ex\n";
+  }
+
+  auto get_env() const noexcept -> Env {
+    return env_;
+  }
+};
+
+  template <ex::scheduler Sched = ex::inline_scheduler>
+  inline auto _with_scheduler(Sched sched = {}) {
+    return ex::write_env(ex::prop{ex::get_scheduler, std::move(sched)});
+  }
+
 int main() {
   exec::static_thread_pool pool(3);
   auto sched = pool.get_scheduler();
@@ -83,6 +127,7 @@ int main() {
   // fails
   // check_if_starts_inline_and_completes_on_pool(ex::starts_on(sched, ex::just()), receiver_t{});
 
+  #if 1
   print(
     ex::get_completion_domain<ex::set_value_t>(
       ex::get_env(
@@ -98,8 +143,14 @@ int main() {
     std::cout << "   " << i << ": " << std::this_thread::get_id() << "\n";
   });
   ex::sync_wait(snd);
+  #else
 
-  // ex::get_completion_domain<ex::set_value_t>(stdexec::inline_scheduler{});
+  bool called{false};
+  // launch some work on the thread pool
+  ex::sender auto snd = ex::on(pool.get_scheduler(), ex::just())
+                      | ex::then([&] { called = true; });
+  ex::sync_wait(std::move(snd));
+  #endif
 
   return 0;
 }

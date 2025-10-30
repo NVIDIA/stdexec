@@ -191,7 +191,7 @@ namespace stdexec {
             }
           }
           else {
-            // TODO sfinae on schedulers being comparable first
+            // TODO(gevtushenko) sfinae on schedulers being comparable first
             #if 0
             if constexpr (__callable<__read_query_t, env_of_t<__call_result_t<schedule_t, _Sch>>, const _Env&...>) {
               assert(__sch == __read_query_t{}(get_env(__sch.schedule()), __env...));
@@ -204,7 +204,15 @@ namespace stdexec {
 
       template <class _Attrs, class... _Env, class _Sch>
       constexpr static auto __check_domain(_Sch __sch) noexcept -> _Sch {
-        // TODO(gevtushenko): re-enable domain checking once we have a way to test it
+        // TODO(gevtushenko)
+        /*
+        if constexpr (__callable<get_completion_domain_t<_Tag>, const _Attrs&, const _Env&...>)
+        {
+          using __domain_t = __call_result_t<get_completion_domain_t<_Tag>, const _Attrs&, const _Env&...>;
+          static_assert(__same_as<__domain_t, __detail::__scheduler_domain_t<_Sch, const _Env&...>>,
+                        "the sender claims to complete on a domain that is not the domain of its completion scheduler");
+        }
+                        */
         return __sch;
       }
 
@@ -256,7 +264,12 @@ namespace stdexec {
     };
   } // namespace __queries
 
-  template <class _Scheduler, class _DomainOverride = __none_such>
+  struct __sink {
+    template <class... _Envs>
+    using __t = void;
+  };
+
+  template <class _Scheduler, class _DomainOverride = __sink>
   struct __sched_attrs {
     using __t = __sched_attrs;
     using __id = __sched_attrs;
@@ -275,9 +288,11 @@ namespace stdexec {
       return {};
     }
 
+    template <class... _Env>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto query(get_domain_override_t) const noexcept -> _DomainOverride
-      requires(!same_as<_DomainOverride, __none_such>)
+    constexpr auto query(get_domain_override_t, _Env&&...) const noexcept 
+      -> typename _DomainOverride::template __t<_Env...>
+      requires(!same_as<_DomainOverride, __sink>)
     {
       return {};
     }
@@ -286,7 +301,7 @@ namespace stdexec {
     STDEXEC_ATTRIBUTE(no_unique_address) _DomainOverride __domain_ { };
   };
 
-  template <class _Scheduler, class _LateDomain = __none_such>
+  template <class _Scheduler, class _LateDomain = __sink>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __sched_attrs(_Scheduler, _LateDomain = {})
     -> __sched_attrs<std::unwrap_reference_t<_Scheduler>, _LateDomain>;
 
