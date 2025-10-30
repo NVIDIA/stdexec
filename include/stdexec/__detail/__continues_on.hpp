@@ -78,8 +78,8 @@ namespace stdexec {
           __sched_attrs{std::cref(__data), __domain_t{}}, stdexec::get_env(__child));
       };
 
-      static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&, __ignore = {}) noexcept
-        -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
+      static constexpr auto get_completion_signatures = []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
+        -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, _Env...>> {
         return {};
       };
     };

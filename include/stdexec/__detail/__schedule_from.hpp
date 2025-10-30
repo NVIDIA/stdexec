@@ -157,9 +157,9 @@ namespace stdexec {
     };
 
     struct __schedule_from_impl : __sexpr_defaults {
-      template <class _Sender>
+      template <class _Sender, class... _Env>
       using __scheduler_t =
-        __decay_t<__call_result_t<get_completion_scheduler_t<set_value_t>, env_of_t<_Sender>>>;
+        __decay_t<__call_result_t<get_completion_scheduler_t<set_value_t>, env_of_t<_Sender>, _Env...>>;
 
       template <class _Sched>
       struct __domain {
@@ -176,15 +176,17 @@ namespace stdexec {
 
       static constexpr auto get_completion_signatures =
         []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
-        -> __completions_t<__scheduler_t<_Sender>, __child_of<_Sender>, _Env...> {
+        -> __completions_t<__scheduler_t<_Sender, _Env...>, __child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, schedule_from_t>);
         return {};
       };
 
       static constexpr auto get_state =
-        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&) {
+        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver& __rcvr) {
           static_assert(sender_expr_for<_Sender, schedule_from_t>);
-          auto __sched = get_completion_scheduler<set_value_t>(stdexec::get_env(__sndr), env<>{});
+          // TODO(gevtushenko): should we pass receiver's env here?
+          auto __sched = get_completion_scheduler<set_value_t>(stdexec::get_env(__sndr), stdexec::get_env(__rcvr));
+          // auto __sched = get_completion_scheduler<set_value_t>(stdexec::get_env(__sndr), env<>{});
           using _Scheduler = decltype(__sched);
           return __state<_Scheduler, _Sender, _Receiver>{__sched};
         };
