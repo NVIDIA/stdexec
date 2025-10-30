@@ -86,10 +86,22 @@ namespace stdexec {
       auto query(get_scheduler_t) const noexcept -> _Scheduler {
         return __sched_;
       }
+      
+      template <__completion_tag _Tag, class... _Envs>
+      auto query(get_completion_scheduler_t<_Tag>, _Envs&&...) const noexcept -> _Scheduler {
+        return __sched_;
+      }
 
       auto query(get_domain_t) const noexcept {
         return query_or(get_domain, __sched_, default_domain());
       }
+
+      template <__completion_tag _Tag, class... _Envs>
+      auto query(get_completion_domain_t<_Tag>, _Envs&&...) const noexcept 
+        -> __call_result_t<get_completion_domain_t<_Tag>, _Scheduler, _Envs...> {
+        return {};
+      }
+
     };
 
     template <class _Scheduler>
