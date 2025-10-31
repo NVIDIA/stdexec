@@ -17,8 +17,8 @@
 #pragma once
 
 #include "../stdexec/execution.hpp"
-#include "stdexec/__detail/__concepts.hpp"
-#include "stdexec/__detail/__meta.hpp"
+#include "../stdexec/__detail/__concepts.hpp"
+#include "../stdexec/__detail/__meta.hpp"
 
 namespace exec {
   struct sequence_sender_t : stdexec::sender_t { };
