@@ -34,7 +34,7 @@ namespace {
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<decltype(sndr), env<>>,
-        completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>
+        completion_signatures<set_value_t(), set_error_t(std::exception_ptr)>
       >);
   }
 
@@ -65,7 +65,7 @@ namespace {
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<decltype(sndr), env<>>,
-        completion_signatures<set_value_t(int, int), set_error_t(std::exception_ptr), set_stopped_t()>
+        completion_signatures<set_value_t(int, int), set_error_t(std::exception_ptr)>
       >);
 
     auto [i1, i2] = sync_wait(sndr).value();
