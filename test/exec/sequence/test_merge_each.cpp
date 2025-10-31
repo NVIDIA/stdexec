@@ -99,7 +99,7 @@ namespace {
   // on the specified scheduler after the specified duration
   [[maybe_unused]]
   static constexpr auto delays_each_on =
-    [](auto sched, duration_of_t<decltype(sched)> after) noexcept {
+    []<class Sched>(Sched sched, duration_of_t<Sched> after) noexcept {
       auto delay_value = []<class Value>(Value&& value, Sched sched, duration_of_t<Sched> after) {
         return sequence(schedule_after(sched, after), static_cast<Value&&>(value));
       };
