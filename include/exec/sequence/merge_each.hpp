@@ -727,15 +727,21 @@ namespace exec {
 
       template <class _Sequence, class _Sender, class... _Env>
       struct __arg_of_t {
+
         template <class... _Args>
-        using __f = stdexec::__meval<
-          stdexec::__if_c<
-            sizeof...(_Args) == 1 && (has_sequence_item_types<_Args, _Env...> && ...),
-            stdexec::__q<stdexec::__types>,
-            __value_completions_error<_Sequence, _Sender, _Env...>
-          >::template __f,
-          _Args...
+        static constexpr bool __valid_args = sizeof...(_Args) == 1
+                                          && (has_sequence_item_types<_Args, _Env...> && ...
+                                              && true);
+
+        template <class... _Args>
+        using __checked_eval_t = stdexec::__if_c<
+          __valid_args<_Args...>,
+          stdexec::__types<_Args...>,
+          __value_completions_error<_Sequence, _Sender, _Env...>
         >;
+
+        template <class... _Args>
+        using __f = __checked_eval_t<_Args...>;
       };
 
       template <class _Sequence, class _Sender, class... _Env>

@@ -243,8 +243,7 @@ namespace {
   //                                                                any_sender
 
   template <class... Ts>
-  using any_sender_of =
-    typename any_receiver_ref<completion_signatures<Ts...>>::template any_sender<>;
+  using any_sender_of = any_receiver_ref<completion_signatures<Ts...>>::template any_sender<>;
 
   TEST_CASE("any sender is a sender", "[types][any_sender]") {
     CHECK(stdexec::sender<any_sender_of<set_value_t()>>);
@@ -520,7 +519,7 @@ namespace {
   //                                                                any_scheduler
 
   template <auto... Queries>
-  using my_scheduler = typename any_sender_of<>::any_scheduler<Queries...>;
+  using my_scheduler = any_sender_of<>::any_scheduler<Queries...>;
 
   TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {
     static_assert(scheduler<my_scheduler<>>);

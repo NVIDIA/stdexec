@@ -88,13 +88,19 @@ namespace {
   // on the specified scheduler after the specified duration
   [[maybe_unused]]
   static constexpr auto delays_each_on =
-    [](auto sched, duration_of_t<decltype(sched)> after) noexcept {
-      return exec::transform_each(stdexec::let_value([sched, after](auto&&... vs) noexcept {
-        auto at = sched.now() + after;
-        return sequence(schedule_at(sched, at), stdexec::just(vs...));
-      }));
+    []<class Sched>(Sched sched, duration_of_t<Sched> after) noexcept {
+      auto delay_value = []<class Value>(Value&& value, Sched sched, duration_of_t<Sched> after) {
+        return sequence(schedule_after(sched, after), static_cast<Value&&>(value));
+      };
+      auto delay_adaptor =
+        stdexec::__binder_back<decltype(delay_value), Sched, duration_of_t<Sched>>{
+          {sched, after},
+          {},
+          {}
+      };
+      return exec::transform_each(delay_adaptor);
     };
-
+    
 #if STDEXEC_HAS_STD_RANGES()
 
   TEST_CASE(

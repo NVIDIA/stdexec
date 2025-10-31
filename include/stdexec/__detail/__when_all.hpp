@@ -137,13 +137,12 @@ namespace stdexec {
       using __f = __meval<
         __concat_completion_signatures,
         __meval<__eptr_completion_if_t, __all_nothrow_decay_copyable_results<_Senders...>>,
-        completion_signatures<set_stopped_t()>,
         __minvoke<__with_default<__qq<__set_values_sig_t>, completion_signatures<>>, _Senders...>,
         __transform_completion_signatures<
           __completion_signatures_of_t<_Senders, _Env...>,
           __mconst<completion_signatures<>>::__f,
           __set_error_t,
-          completion_signatures<>,
+          completion_signatures<set_stopped_t()>,
           __concat_completion_signatures
         >...
       >;
@@ -191,7 +190,7 @@ namespace stdexec {
 
     struct _INVALID_ARGUMENTS_TO_WHEN_ALL_ { };
 
-    template <class _ErrorsVariant, class _ValuesTuple, class _StopToken>
+    template <class _ErrorsVariant, class _ValuesTuple, class _StopToken, bool _SendsStopped>
     struct __when_all_state {
       using __stop_callback_t = stop_callback_for_t<_StopToken, __on_stop_request>;
 
@@ -222,7 +221,11 @@ namespace stdexec {
           }
           break;
         case __stopped:
-          stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr));
+          if constexpr (_SendsStopped) {
+            stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr));
+          } else {
+            STDEXEC_UNREACHABLE();
+          }
           break;
         default:;
         }
@@ -241,9 +244,13 @@ namespace stdexec {
     static auto __mk_state_fn(const _Env&) noexcept {
       return []<__max1_sender<__env_t<_Env>>... _Child>(__ignore, __ignore, _Child&&...) {
         using _Traits = __traits<_Env, _Child...>;
-        using _ErrorsVariant = typename _Traits::__errors_variant;
-        using _ValuesTuple = typename _Traits::__values_tuple;
-        using _State = __when_all_state<_ErrorsVariant, _ValuesTuple, stop_token_of_t<_Env>>;
+        using _ErrorsVariant = _Traits::__errors_variant;
+        using _ValuesTuple = _Traits::__values_tuple;
+        using _State = __when_all_state<
+          _ErrorsVariant,
+          _ValuesTuple,
+          stop_token_of_t<_Env>,
+          (sends_stopped<_Child, _Env> || ...)>;
         return _State{sizeof...(_Child)};
       };
     }
@@ -309,15 +316,9 @@ namespace stdexec {
         // register stop callback:
         __state.__on_stop_.emplace(
           get_stop_token(stdexec::get_env(__rcvr)), __on_stop_request{__state.__stop_source_});
-        if (__state.__stop_source_.stop_requested()) {
-          // Stop has already been requested. Don't bother starting
-          // the child operations.
-          stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr));
-        } else {
-          (stdexec::start(__child_ops), ...);
-          if constexpr (sizeof...(__child_ops) == 0) {
-            __state.__complete(__rcvr);
-          }
+        (stdexec::start(__child_ops), ...);
+        if constexpr (sizeof...(__child_ops) == 0) {
+          __state.__complete(__rcvr);
         }
       };
 

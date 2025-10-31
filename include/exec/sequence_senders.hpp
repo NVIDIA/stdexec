@@ -211,7 +211,7 @@ namespace exec {
       tag_invocable<get_item_types_t, __tfx_sequence_t<_Sequence, _Env>, _Env>;
 
     template <class _Sequence, class _Env>
-    using __member_alias_t = typename __decay_t<__tfx_sequence_t<_Sequence, _Env>>::item_types;
+    using __member_alias_t = __decay_t<__tfx_sequence_t<_Sequence, _Env>>::item_types;
 
     template <class _Sequence, class _Env>
     concept __with_member_alias = __mvalid<__member_alias_t, _Sequence, _Env>;
@@ -813,13 +813,13 @@ namespace exec {
         static_assert(
           __well_formed_item_senders<_Sequence>,
           STDEXEC_ERROR_GET_ITEM_TYPES_HAS_INVALID_RETURN_TYPE);
-      } else {
-        stdexec::__diagnose_sender_concept_failure<_Sequence, _Env...>();
+        //} else {
+        //  stdexec::__diagnose_sender_concept_failure<_Sequence, _Env...>();
       }
 #if STDEXEC_MSVC() || STDEXEC_NVHPC()
       // MSVC and NVHPC need more encouragement to print the type of the
       // error.
-      _Completions __what = 0;
+//      _Completions __what = 0;
 #endif
     }
   }

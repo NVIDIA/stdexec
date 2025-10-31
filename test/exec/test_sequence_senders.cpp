@@ -133,7 +133,9 @@ namespace {
     using item_types = exec::item_types<some_sender_of<_Sigs...>>;
 
     template <receiver R>
-    friend auto tag_invoke(subscribe_t, some_sequence_sender_of , R&& ) -> nop_operation { return {}; }
+    friend auto tag_invoke(subscribe_t, some_sequence_sender_of, R&&) -> nop_operation {
+      return {};
+    }
   };
 
   TEST_CASE("sequence_senders - Test for subscribe", "[sequence_senders]") {

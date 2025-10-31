@@ -22,7 +22,7 @@
 #include "exec/sequence/iterate.hpp"
 #include "exec/sequence_senders.hpp"
 #include "exec/variant_sender.hpp"
-#include "exec/static_thread_pool.hpp"
+#include "exec/single_thread_context.hpp"
 #include "exec/timed_thread_scheduler.hpp"
 #include "stdexec/__detail/__meta.hpp"
 #include "stdexec/__detail/__read_env.hpp"
@@ -99,10 +99,17 @@ namespace {
   // on the specified scheduler after the specified duration
   [[maybe_unused]]
   static constexpr auto delays_each_on =
-    [](auto sched, duration_of_t<decltype(sched)> after) noexcept {
-      return exec::transform_each(stdexec::let_value([sched, after](auto&&... vs) noexcept {
-        return sequence(schedule_after(sched, after), stdexec::just(vs...));
-      }));
+    []<class Sched>(Sched sched, duration_of_t<Sched> after) noexcept {
+      auto delay_value = []<class Value>(Value&& value, Sched sched, duration_of_t<Sched> after) {
+        return sequence(schedule_after(sched, after), static_cast<Value&&>(value));
+      };
+      auto delay_adaptor =
+        stdexec::__binder_back<decltype(delay_value), Sched, duration_of_t<Sched>>{
+          {sched, after},
+          {},
+          {}
+      };
+      return exec::transform_each(delay_adaptor);
     };
   // a sequence adaptor that applies a function to each item
   // the function must produce a sequence
@@ -187,13 +194,13 @@ namespace {
 
   TEST_CASE(
     "merge_each - merge_each sender merges all items from multiple threads",
-    "[sequence_senders][static_thread_pool][merge_each][merge][iterate]") {
+    "[sequence_senders][single_thread_context][merge_each][merge][iterate]") {
 
-    exec::static_thread_pool ctx0{1};
+    exec::single_thread_context ctx0;
     ex::scheduler auto sched0 = ctx0.get_scheduler();
-    exec::static_thread_pool ctx1{1};
+    exec::single_thread_context ctx1;
     ex::scheduler auto sched1 = ctx1.get_scheduler();
-    exec::static_thread_pool ctx2{1};
+    exec::single_thread_context ctx2;
     ex::scheduler auto sched2 = ctx2.get_scheduler();
 
     auto sequences = merge(
@@ -218,9 +225,9 @@ namespace {
   TEST_CASE(
     "merge_each - merge_each sender stops on failed item while merging all items from multiple "
     "threads",
-    "[sequence_senders][static_thread_pool][merge_each][merge][iterate]") {
+    "[sequence_senders][single_thread_context][merge_each][merge][iterate]") {
 
-    exec::static_thread_pool ctx0{1};
+    exec::single_thread_context ctx0;
     ex::scheduler auto sched0 = ctx0.get_scheduler();
     exec::timed_thread_context ctx1;
     ex::scheduler auto sched1 = ctx1.get_scheduler();
@@ -290,9 +297,9 @@ namespace {
 
   TEST_CASE(
     "merge_each - merge_each sender stops while merging all items from multiple threads",
-    "[sequence_senders][static_thread_pool][merge_each][merge][iterate]") {
+    "[sequence_senders][single_thread_context][merge_each][merge][iterate]") {
 
-    exec::static_thread_pool ctx0{1};
+    exec::single_thread_context ctx0;
     ex::scheduler auto sched0 = ctx0.get_scheduler();
     exec::timed_thread_context ctx1;
     ex::scheduler auto sched1 = ctx1.get_scheduler();

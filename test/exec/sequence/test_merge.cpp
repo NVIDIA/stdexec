@@ -24,7 +24,7 @@
 #include "exec/sequence.hpp"
 #include "exec/sequence_senders.hpp"
 #include "exec/trampoline_scheduler.hpp"
-#include "exec/static_thread_pool.hpp"
+#include "exec/single_thread_context.hpp"
 #include "stdexec/__detail/__just.hpp"
 #include "stdexec/__detail/__meta.hpp"
 #include "stdexec/__detail/__continues_on.hpp"
@@ -41,41 +41,44 @@
 
 namespace {
 
-struct null_receiver {
-  using __id = null_receiver;
-  using __t = null_receiver;
-  using receiver_concept = ex::receiver_t;
+  struct null_receiver {
+    using __id = null_receiver;
+    using __t = null_receiver;
+    using receiver_concept = ex::receiver_t;
 
-  void set_value() noexcept {
-  }
+    void set_value() noexcept {
+    }
 
-  template <class _Error>
-  void set_error(_Error&& ) noexcept {
-  }
+    template <class _Error>
+    void set_error(_Error&&) noexcept {
+    }
 
-  void set_stopped() noexcept {
-  }
+    void set_stopped() noexcept {
+    }
 
-  [[nodiscard]]
-  auto get_env() const noexcept -> ex::env<> {
-    return {};
-  }
+    [[nodiscard]]
+    auto get_env() const noexcept -> ex::env<> {
+      return {};
+    }
 
-  struct ignore_values_fn_t {
-    template<class... _Vs>
-    void operator()(_Vs&&...) const noexcept {}
+    struct ignore_values_fn_t {
+      template <class... _Vs>
+      void operator()(_Vs&&...) const noexcept {
+      }
+    };
+
+    template <ex::sender _Item>
+    [[nodiscard]]
+    auto set_next(_Item&& __item) & noexcept(ex::__nothrow_decay_copyable<_Item>)
+      -> stdexec::__call_result_t<
+        stdexec::upon_error_t,
+        stdexec::__call_result_t<stdexec::then_t, _Item, ignore_values_fn_t>,
+        ignore_values_fn_t
+      > {
+      return stdexec::upon_error(
+        stdexec::then(static_cast<_Item&&>(__item), ignore_values_fn_t{}), ignore_values_fn_t{});
+    }
   };
-
-  template <ex::sender _Item>
-  [[nodiscard]]
-  auto set_next(_Item&& __item) & noexcept(ex::__nothrow_decay_copyable<_Item>)
-    -> stdexec::__call_result_t<stdexec::upon_error_t,
-          stdexec::__call_result_t<stdexec::then_t,
-            _Item, ignore_values_fn_t>,
-          ignore_values_fn_t> {
-    return stdexec::upon_error(stdexec::then(static_cast<_Item&&>(__item), ignore_values_fn_t{}), ignore_values_fn_t{});
-  }
-};
 
   TEST_CASE(
     "merge - merge two sequence senders of no elements",
@@ -91,15 +94,14 @@ struct null_receiver {
     "merge - merge three sequence senders of no elements",
     "[sequence_senders][merge][empty_sequence]") {
     int counter = 0;
-    auto merged = exec::merge(exec::empty_sequence(), exec::empty_sequence(), exec::empty_sequence());
+    auto merged =
+      exec::merge(exec::empty_sequence(), exec::empty_sequence(), exec::empty_sequence());
     auto op = exec::subscribe(merged, null_receiver{});
     ex::start(op);
     CHECK(counter == 0);
   }
 
-  TEST_CASE(
-    "merge - merge sender of 2 senders",
-    "[sequence_senders][merge]") {
+  TEST_CASE("merge - merge sender of 2 senders", "[sequence_senders][merge]") {
     int value = 0;
     int count = 0;
     auto merged = exec::merge(ex::just(84), ex::just(-42));
@@ -131,9 +133,7 @@ struct null_receiver {
   }
 
 #if STDEXEC_HAS_STD_RANGES()
-  TEST_CASE(
-    "merge - merge sender merges all items",
-    "[sequence_senders][merge][iterate]") {
+  TEST_CASE("merge - merge sender merges all items", "[sequence_senders][merge][iterate]") {
     auto range = [](auto from, auto to) {
       return exec::iterate(std::views::iota(from, to));
     };
@@ -149,17 +149,16 @@ struct null_receiver {
     std::ptrdiff_t max = 0;
     auto sum = exec::merge(range(100, 120), range(200, 220), range(300, 320))
              | then_each([&total, &count, &max](int x) noexcept {
-                  std::ptrdiff_t current = 0;
-                  current = std::abs(reinterpret_cast<char*>(&current) - reinterpret_cast<char*>(&max));
-                  max = current > max ? current : max;
-                  UNSCOPED_INFO("item: " << x << ", stack size: " << current);
-                  total += x;
-                  ++count;
-                });
+                 std::ptrdiff_t current = 0;
+                 current = std::abs(
+                   reinterpret_cast<char*>(&current) - reinterpret_cast<char*>(&max));
+                 max = current > max ? current : max;
+                 UNSCOPED_INFO("item: " << x << ", stack size: " << current);
+                 total += x;
+                 ++count;
+               });
     // this causes both iterate sequences to use the same trampoline.
-    ex::sync_wait(exec::sequence(
-          stdexec::schedule(sched),
-          exec::ignore_all_values(sum)));
+    ex::sync_wait(exec::sequence(stdexec::schedule(sched), exec::ignore_all_values(sum)));
     UNSCOPED_INFO("max stack size: " << max);
     CHECK(total == 12570);
     CHECK(count == 60);
@@ -169,13 +168,13 @@ struct null_receiver {
     "merge - merge sender merges all items from multiple threads",
     "[sequence_senders][static_thread_pool][merge][iterate]") {
 
-    exec::static_thread_pool ctx0{1};
+    exec::single_thread_context ctx0;
     ex::scheduler auto sched0 = ctx0.get_scheduler();
-    exec::static_thread_pool ctx1{1};
+    exec::single_thread_context ctx1;
     ex::scheduler auto sched1 = ctx1.get_scheduler();
-    exec::static_thread_pool ctx2{1};
+    exec::single_thread_context ctx2;
     ex::scheduler auto sched2 = ctx2.get_scheduler();
-    exec::static_thread_pool ctx3{1};
+    exec::single_thread_context ctx3;
     ex::scheduler auto sched3 = ctx3.get_scheduler();
 
     auto range = [](auto from, auto to) {
@@ -194,25 +193,22 @@ struct null_receiver {
                  range(200, 220) | continues_each_on(sched1),
                  range(300, 320) | continues_each_on(sched2))
              | then_each([](int x) noexcept {
-                  // runs on sched0 and sched1 and sched2 in parallel.
-                  // access to shared data would need to be protected
-                  return std::make_tuple(x, std::this_thread::get_id());
-                })
-             | continues_each_on(sched3)
-             | then_each([&total, &count](auto v) {
-                  // runs only on sched3, which is a strand (a static
-                  // pool with one thread)
-                  // it is safe to use shared data here
-                  auto [x, id] = v;
-                  total += x;
-                  ++count;
-                  UNSCOPED_INFO("item: " << x
-                    << ", from thread id: " << id
-                    << ", on thread id: " << std::this_thread::get_id());
-                });
-    ex::sync_wait(exec::sequence(
-          ex::schedule(sched3),
-          exec::ignore_all_values(sum)));
+                 // runs on sched0 and sched1 and sched2 in parallel.
+                 // access to shared data would need to be protected
+                 return std::make_tuple(x, std::this_thread::get_id());
+               })
+             | continues_each_on(sched3) | then_each([&total, &count](auto v) {
+                 // runs only on sched3, which is a strand (a static
+                 // pool with one thread)
+                 // it is safe to use shared data here
+                 auto [x, id] = v;
+                 total += x;
+                 ++count;
+                 UNSCOPED_INFO(
+                   "item: " << x << ", from thread id: " << id
+                            << ", on thread id: " << std::this_thread::get_id());
+               });
+    ex::sync_wait(exec::sequence(ex::schedule(sched3), exec::ignore_all_values(sum)));
     CHECK(total == 12570);
     CHECK(count == 60);
   }
@@ -234,11 +230,13 @@ struct null_receiver {
     auto with_scheduler = ex::write_env(ex::prop{ex::get_scheduler, inline_scheduler()});
     auto adaptor = ex::on(sched, ex::then([](std::string x) { return x + ", world"; }))
                  | with_scheduler;
-    auto snd = exec::merge(
-                       start | exec::transform_each(adaptor),
-                       start | exec::transform_each(adaptor))
-             | exec::transform_each(ex::then([&](int x) { result += x; ++count; }))
-             | exec::ignore_all_values();
+    auto snd =
+      exec::merge(start | exec::transform_each(adaptor), start | exec::transform_each(adaptor))
+      | exec::transform_each(ex::then([&](int x) {
+          result += x;
+          ++count;
+        }))
+      | exec::ignore_all_values();
     ex::sync_wait(snd);
     CHECK(result == 42);
     CHECK(count == 2);
