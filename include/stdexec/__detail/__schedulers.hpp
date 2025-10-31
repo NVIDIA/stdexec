@@ -205,14 +205,14 @@ namespace stdexec {
       template <class _Attrs, class... _Env, class _Sch>
       constexpr static auto __check_domain(_Sch __sch) noexcept -> _Sch {
         // TODO(gevtushenko)
-        /*
+        #if 0
         if constexpr (__callable<get_completion_domain_t<_Tag>, const _Attrs&, const _Env&...>)
         {
           using __domain_t = __call_result_t<get_completion_domain_t<_Tag>, const _Attrs&, const _Env&...>;
-          static_assert(__same_as<__domain_t, __detail::__scheduler_domain_t<_Sch, const _Env&...>>,
+          static_assert(std::is_same_v<__domain_t, __detail::__scheduler_domain_t<_Sch, const _Env&...>>,
                         "the sender claims to complete on a domain that is not the domain of its completion scheduler");
         }
-                        */
+        #endif
         return __sch;
       }
 

@@ -412,7 +412,7 @@ namespace nvexec {
     template <class Sender, class Env>
     using tfx_sender =
       transform_sender_result_t<
-        __detail::__completing_domain<Sender, Env>,
+        __detail::__completing_domain<set_value_t, Sender, Env>,
         transform_sender_result_t<
           __detail::__starting_domain<Env, set_value_t>,
           Sender,

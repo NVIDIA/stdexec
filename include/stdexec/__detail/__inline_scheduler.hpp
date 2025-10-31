@@ -40,6 +40,7 @@ namespace stdexec {
     };
 
     struct __attrs {
+      // TODO(gevtushenko): make completion behavior a template over channel + optional env param
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
       static constexpr auto query(get_completion_behavior_t) noexcept {
         return completion_behavior::inline_completion;

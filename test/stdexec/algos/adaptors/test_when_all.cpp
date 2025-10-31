@@ -257,7 +257,7 @@ namespace {
       ex::starts_on(sched1, ex::just(13)),
       ex::starts_on(sched2, ex::just(3.14)));
     auto env = ex::get_env(snd);
-    auto domain = ex::get_completion_domain<ex::set_value_t>(env);
+    auto domain = ex::get_completion_domain<ex::set_value_t>(env, ex::env<>{});
     STATIC_REQUIRE(std::same_as<decltype(domain), test_domain1>);
   }
 

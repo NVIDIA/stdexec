@@ -59,7 +59,7 @@ namespace stdexec {
     template <class _Sender, class _Env>
     using __tfx_sender =
       transform_sender_result_t<
-        __detail::__completing_domain<_Sender, _Env>,
+        __detail::__completing_domain<set_value_t, _Sender, _Env>,
         transform_sender_result_t<
           __detail::__starting_domain<_Env, set_value_t>,
           _Sender,
@@ -170,7 +170,7 @@ namespace stdexec {
     // First transformation: completing domain (where the sender completes)
     template <class _Sender, class _Receiver>
     using __completing_tfx_sender = transform_sender_result_t<
-      __detail::__completing_domain<_Sender, env_of_t<_Receiver>>,
+      __detail::__completing_domain<set_value_t, _Sender, env_of_t<_Receiver>>,
       _Sender,
       env_of_t<_Receiver>
     >;
@@ -230,7 +230,7 @@ namespace stdexec {
 
       template <class _Sender, class _Receiver>
       static constexpr auto __select_impl() noexcept {
-        using _CompletingDomain = __detail::__completing_domain<_Sender, env_of_t<_Receiver>>;
+        using _CompletingDomain = __detail::__completing_domain<set_value_t, _Sender, env_of_t<_Receiver>>;
         using _StartingDomain = __detail::__starting_domain<env_of_t<_Receiver>, set_value_t>;
         using _CompletingTfxSender = __completing_tfx_sender<_Sender, _Receiver>;
         using _TfxSender = __tfx_sender<_Sender, _Receiver>;

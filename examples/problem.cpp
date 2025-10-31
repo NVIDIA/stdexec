@@ -61,7 +61,7 @@ template <class Sender, class Receiver>
 void check_if_starts_inline_and_completes_on_pool(Sender, Receiver) {
   using receiver_env_t = ex::env_of_t<Receiver>;
 
-  check_if_pool_domain<ex::__detail::__completing_domain<Sender, receiver_env_t>>();
+  check_if_pool_domain<ex::__detail::__completing_domain<ex::set_value_t, Sender, receiver_env_t>>();
   check_if_inline_domain<ex::__detail::__starting_domain<Sender, receiver_env_t>>();
 
   // auto op_state = ex::connect(std::move(sender), std::move(receiver));
@@ -127,7 +127,7 @@ int main() {
   // fails
   // check_if_starts_inline_and_completes_on_pool(ex::starts_on(sched, ex::just()), receiver_t{});
 
-  #if 1
+  #if 0
   print(
     ex::get_completion_domain<ex::set_value_t>(
       ex::get_env(
@@ -147,8 +147,10 @@ int main() {
 
   bool called{false};
   // launch some work on the thread pool
-  ex::sender auto snd = ex::on(pool.get_scheduler(), ex::just())
-                      | ex::then([&] { called = true; });
+  ex::sender auto snd = 
+      ex::starts_on(sched, ex::just()) 
+    //  ex::just() | ex::continues_on(sched) | ex::let_value([]() { return ex::just(); }) 
+    | ex::continues_on(ex::inline_scheduler{});
   ex::sync_wait(std::move(snd));
   #endif
 

@@ -27,6 +27,7 @@
 #include "__sender_adaptor_closure.hpp"
 #include "__senders_core.hpp"
 #include "__transform_sender.hpp"
+#include "stdexec/__detail/__receivers.hpp"
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
@@ -66,7 +67,7 @@ namespace stdexec {
     template <class _Sndr>
     struct __domain {
       template <class... _Envs>
-      using __t = __detail::__completing_domain<_Sndr, _Envs...>;
+      using __t = __detail::__completing_domain<set_value_t, _Sndr, _Envs...>;
     };
 
     struct __continues_on_impl : __sexpr_defaults {
