@@ -161,17 +161,11 @@ namespace stdexec {
       using __scheduler_t =
         __decay_t<__call_result_t<get_completion_scheduler_t<set_value_t>, env_of_t<_Sender>, _Env...>>;
 
-      template <class _Sched>
-      struct __domain {
-        template <class... _Envs>
-        using __t = __call_result_t<get_completion_domain_t<set_value_t>, _Sched, _Envs...>;
-      };
-
       static constexpr auto get_attrs = []<class _Data, class _Child>(
                                           const _Data& __data,
                                           const _Child& __child) noexcept {
         // TODO(gevtushenko): should we pass receiver's env here?
-        return __env::__join(__sched_attrs{std::cref(__data), __domain<_Data>{}}, stdexec::get_env(__child));
+        return __env::__join(__sched_attrs{std::cref(__data)}, stdexec::get_env(__child));
       };
 
       static constexpr auto get_completion_signatures =

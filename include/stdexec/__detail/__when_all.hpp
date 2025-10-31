@@ -451,18 +451,10 @@ namespace stdexec {
     };
 
     struct __transfer_when_all_impl : __sexpr_defaults {
-      template <class _Sndr>
-      struct __domain {
-        template <class... _Envs>
-        using __t = __detail::__completion_domain_or_none<set_value_t, _Sndr, _Envs...>;
-      };
-
       static constexpr auto get_attrs = []<class _Scheduler, class... _Child>(
                                           const _Scheduler& __sched,
                                           const _Child&...) noexcept {
-        using __sndr_t = __call_result_t<when_all_t, _Child...>;
-        using __domain_t = __domain<__sndr_t>;
-        return __sched_attrs{std::cref(__sched), __domain_t{}};
+        return __sched_attrs{std::cref(__sched)};
       };
 
       static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
@@ -504,9 +496,7 @@ namespace stdexec {
       static constexpr auto get_attrs = []<class _Scheduler, class... _Child>(
                                           const _Scheduler& __sched,
                                           const _Child&...) noexcept {
-        using __sndr_t = __call_result_t<when_all_with_variant_t, _Child...>;
-        using __domain_t = __domain<__sndr_t>;
-        return __sched_attrs{std::cref(__sched), __domain_t{}};
+        return __sched_attrs{std::cref(__sched)};
       };
 
       static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept

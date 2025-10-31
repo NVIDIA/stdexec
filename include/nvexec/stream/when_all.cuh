@@ -151,15 +151,6 @@ namespace nvexec::_strm {
             return stream_domain{};
           }
         }
-
-        constexpr auto query(get_domain_override_t) const noexcept
-          requires stdexec::__same_as<WhenAllTag, transfer_when_all_t>
-        {
-          static_assert(
-            sizeof...(SenderIds) == 0
-            || stdexec::__same_as<stream_domain, __common_domain_t<stdexec::__t<SenderIds>...>>);
-          return stream_domain{};
-        }
       };
      public:
       using __id = when_all_sender_t;

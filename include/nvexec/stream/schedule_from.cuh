@@ -183,7 +183,6 @@ namespace nvexec::_strm {
   template <class Scheduler, class SenderId>
   struct schedule_from_sender_t {
     using Sender = stdexec::__t<SenderId>;
-    using LateDomain = __query_result_or_t<get_domain_t, Scheduler, default_domain>;
     using source_sender_th = _sched_from::source_sender_t<Sender>;
 
     struct __t : stream_sender_base {
@@ -216,7 +215,7 @@ namespace nvexec::_strm {
           self.sched_.context_state_);
       }
 
-      auto get_env() const noexcept -> __sched_attrs<Scheduler, LateDomain> {
+      auto get_env() const noexcept -> __sched_attrs<Scheduler> {
         return {sched_, {}};
       }
 

@@ -286,7 +286,7 @@ namespace stdexec {
     };
 
     template <class _Tag, class _Sender, class... _Env>
-    using __completing_domain = __call_result_t<__first_callable<get_domain_override_t, get_completion_domain_t<_Tag>>, env_of_t<_Sender>, const _Env&...>;
+    using __completing_domain = __call_result_t<get_completion_domain_t<_Tag>, env_of_t<_Sender>, const _Env&...>;
   } // namespace __detail
 
   namespace __queries {

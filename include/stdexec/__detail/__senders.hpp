@@ -295,9 +295,7 @@ namespace stdexec {
 
         // Two-phase transformation per P3826R0
         // 1. Completing domain transformation (where the sender completes)
-        auto __completing_dom = __detail::__first_callable<get_domain_override_t, get_completion_domain_t<set_value_t>>{
-          std::tuple{get_domain_override_t{}, get_completion_domain_t<set_value_t>{}}}(
-          get_env(__sndr), __env);
+        auto __completing_dom = get_completion_domain<set_value_t>(get_env(__sndr), __env);
 
         // 2. Starting domain transformation (where the operation state starts)
         auto __starting_dom = [&]() {

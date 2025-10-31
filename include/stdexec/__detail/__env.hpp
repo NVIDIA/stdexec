@@ -165,24 +165,6 @@ namespace stdexec {
       }
     };
 
-    struct get_domain_override_t : __query<get_domain_override_t, __no_default, __q1<__decay_t>> {
-      template <class _Env>
-      STDEXEC_ATTRIBUTE(always_inline, host, device)
-      static constexpr void __validate() noexcept {
-        static_assert(
-          __nothrow_callable<get_domain_override_t, const _Env&>,
-          "Customizations of get_domain_override must be noexcept.");
-        static_assert(
-          __class<__call_result_t<get_domain_override_t, const _Env&>>,
-          "Customizations of get_domain_override must return a class type.");
-      }
-
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      static consteval auto query(forwarding_query_t) noexcept -> bool {
-        return false;
-      }
-    };
-
     struct __is_scheduler_affine_t {
       template <class _Result>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
@@ -264,7 +246,6 @@ namespace stdexec {
   using __queries::get_stop_token_t;
   using __queries::get_completion_scheduler_t;
   using __queries::get_domain_t;
-  using __queries::get_domain_override_t;
   using __queries::__is_scheduler_affine_t;
   using __queries::__root_t;
   using __queries::__root_env;
@@ -292,7 +273,6 @@ namespace stdexec {
 #endif
 
   inline constexpr get_domain_t get_domain{};
-  inline constexpr get_domain_override_t get_domain_override{};
 
   template <class _Query, class _Queryable, class _Default, class... _Args>
   using __query_result_or_t = __call_result_t<query_or_t, _Query, _Queryable, _Default, _Args...>;

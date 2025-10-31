@@ -360,11 +360,6 @@ namespace nvexec {
       using __t = stream_sender_attrs;
       using __id = stream_sender_attrs;
 
-      STDEXEC_ATTRIBUTE(nodiscard)
-      constexpr auto query(get_domain_override_t) const noexcept -> stream_domain {
-        return {};
-      }
-
       template <__forwarding_query Query>
         requires __queryable_with<env_of_t<Sender>, Query>
       STDEXEC_ATTRIBUTE(nodiscard)

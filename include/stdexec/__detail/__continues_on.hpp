@@ -64,19 +64,12 @@ namespace stdexec {
       }
     };
 
-    template <class _Sndr>
-    struct __domain {
-      template <class... _Envs>
-      using __t = __detail::__completing_domain<set_value_t, _Sndr, _Envs...>;
-    };
-
     struct __continues_on_impl : __sexpr_defaults {
       static constexpr auto get_attrs = []<class _Data, class _Child>(
                                           const _Data& __data,
                                           const _Child& __child) noexcept -> decltype(auto) {
-        using __domain_t = __domain<_Child>;
         return __env::__join(
-          __sched_attrs{std::cref(__data), __domain_t{}}, stdexec::get_env(__child));
+          __sched_attrs{std::cref(__data)}, stdexec::get_env(__child));
       };
 
       static constexpr auto get_completion_signatures = []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept

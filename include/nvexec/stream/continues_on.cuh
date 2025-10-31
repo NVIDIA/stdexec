@@ -124,11 +124,6 @@ namespace nvexec::_strm {
   struct continues_on_sender_t {
     using Sender = stdexec::__t<SenderId>;
 
-    struct __domain {
-      template <class... _Envs>
-      using __t = __detail::__completion_domain_or_none_t<set_value_t, Sender, _Envs...>;
-    };
-
     struct __t : stream_sender_base {
       using __id = continues_on_sender_t;
 
@@ -168,7 +163,7 @@ namespace nvexec::_strm {
         return {};
       }
 
-      auto get_env() const noexcept -> __sched_attrs<Scheduler, __domain> {
+      auto get_env() const noexcept -> __sched_attrs<Scheduler> {
         return {sched_, {}};
       }
 

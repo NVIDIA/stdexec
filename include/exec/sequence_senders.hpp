@@ -419,9 +419,7 @@ namespace exec {
 
         // Two-phase transformation per P3826R0
         // 1. Completing domain transformation (where the sender completes)
-        auto __completing_dom = stdexec::__detail::__first_callable<stdexec::get_domain_override_t, stdexec::get_completion_domain_t<stdexec::set_value_t>>{
-          std::tuple{stdexec::get_domain_override_t{}, stdexec::get_completion_domain_t<stdexec::set_value_t>{}}}(
-          get_env(__sndr), __env);
+        auto __completing_dom = stdexec::get_completion_domain<stdexec::set_value_t>(get_env(__sndr), __env);
 
         // 2. Starting domain transformation (where the operation state starts)
         auto __starting_dom = [&]() {

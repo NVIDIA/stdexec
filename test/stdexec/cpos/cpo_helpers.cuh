@@ -77,11 +77,6 @@ namespace {
       return cpo_sender_domain{};
     }
 
-    [[nodiscard]]
-    auto query(ex::get_domain_override_t, auto &&...) const noexcept {
-      return cpo_sender_domain{};
-    }
-
     template <class Tag>
     [[nodiscard]]
     auto query(ex::get_completion_domain_t<Tag>, auto &&...) const noexcept -> cpo_sender_domain {

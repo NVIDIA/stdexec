@@ -264,12 +264,7 @@ namespace stdexec {
     };
   } // namespace __queries
 
-  struct __sink {
-    template <class... _Envs>
-    using __t = void;
-  };
-
-  template <class _Scheduler, class _DomainOverride = __sink>
+  template <class _Scheduler>
   struct __sched_attrs {
     using __t = __sched_attrs;
     using __id = __sched_attrs;
@@ -288,22 +283,12 @@ namespace stdexec {
       return {};
     }
 
-    template <class... _Env>
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto query(get_domain_override_t, _Env&&...) const noexcept 
-      -> typename _DomainOverride::template __t<_Env...>
-      requires(!same_as<_DomainOverride, __sink>)
-    {
-      return {};
-    }
-
     _Scheduler __sched_;
-    STDEXEC_ATTRIBUTE(no_unique_address) _DomainOverride __domain_ { };
   };
 
-  template <class _Scheduler, class _LateDomain = __sink>
-  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __sched_attrs(_Scheduler, _LateDomain = {})
-    -> __sched_attrs<std::unwrap_reference_t<_Scheduler>, _LateDomain>;
+  template <class _Scheduler>
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __sched_attrs(_Scheduler)
+    -> __sched_attrs<std::unwrap_reference_t<_Scheduler>>;
 
   template <class _Scheduler>
   struct __sched_env {
