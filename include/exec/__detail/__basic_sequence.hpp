@@ -80,16 +80,14 @@ namespace exec {
       }
     };
     template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
-      requires
-        (stdexec::__is_debug_env<_Env> || ... || false)
-        || (!stdexec::__callable<get_completion_signatures_sfinae, _Self, _Env...>)
+      requires(stdexec::__is_debug_env<_Env> || ... || false)
+           || (!stdexec::__callable<get_completion_signatures_sfinae, _Self, _Env...>)
     static auto get_completion_signatures(_Self&& __self, _Env&&... __env) {
-      return __self.__tag().get_completion_signatures(
-        static_cast<_Self&&>(__self),
-        static_cast<_Env&&>(__env)...);
+      return __self.__tag()
+        .get_completion_signatures(static_cast<_Self&&>(__self), static_cast<_Env&&>(__env)...);
     }
     template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
-      requires (!stdexec::__is_debug_env<_Env> && ... && true)
+      requires(!stdexec::__is_debug_env<_Env> && ... && true)
     static auto get_completion_signatures(_Self&& __self, _Env&&... __env)
       -> decltype(__self.__tag().get_completion_signatures(
         static_cast<_Self&&>(__self),
@@ -102,28 +100,25 @@ namespace exec {
     // trailing return-type when it is valid
     struct get_item_types_sfinae {
       template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
-      auto operator()(_Self&& __self, _Env&&... __env) const
-      -> decltype(__self.__tag().get_item_types(
-        static_cast<_Self&&>(__self),
-        static_cast<_Env&&>(__env)...)) {
+      auto
+        operator()(_Self&& __self, _Env&&... __env) const -> decltype(__self.__tag().get_item_types(
+          static_cast<_Self&&>(__self),
+          static_cast<_Env&&>(__env)...)) {
         return {};
       }
     };
     template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
-      requires
-        (stdexec::__is_debug_env<_Env> || ... || false)
-        || (!stdexec::__callable<get_item_types_sfinae, _Self, _Env...>)
+      requires(stdexec::__is_debug_env<_Env> || ... || false)
+           || (!stdexec::__callable<get_item_types_sfinae, _Self, _Env...>)
     static auto get_item_types(_Self&& __self, _Env&&... __env) {
-      return __self.__tag().get_item_types(
-        static_cast<_Self&&>(__self),
-        static_cast<_Env&&>(__env)...);
+      return __self.__tag()
+        .get_item_types(static_cast<_Self&&>(__self), static_cast<_Env&&>(__env)...);
     }
     template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
-      requires (!stdexec::__is_debug_env<_Env> && ... && true)
+      requires(!stdexec::__is_debug_env<_Env> && ... && true)
     static auto get_item_types(_Self&& __self, _Env&&... __env)
-      -> decltype(__self.__tag().get_item_types(
-        static_cast<_Self&&>(__self),
-        static_cast<_Env&&>(__env)...)) {
+      -> decltype(__self.__tag()
+                    .get_item_types(static_cast<_Self&&>(__self), static_cast<_Env&&>(__env)...)) {
       return {};
     }
 
@@ -140,15 +135,14 @@ namespace exec {
       }
     };
     template <stdexec::__decays_to<__seqexpr> _Self, stdexec::receiver _Receiver>
-      requires
-        stdexec::__is_debug_env<stdexec::env_of_t<_Receiver>>
-        || (!stdexec::__callable<subscribe_sfinae, _Self, _Receiver>)
+      requires stdexec::__is_debug_env<stdexec::env_of_t<_Receiver>>
+            || (!stdexec::__callable<subscribe_sfinae, _Self, _Receiver>)
     static auto subscribe(_Self&& __self, _Receiver&& __rcvr) noexcept(noexcept(
       __self.__tag().subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr)))) {
       return __tag_t::subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
     }
     template <stdexec::__decays_to<__seqexpr> _Self, stdexec::receiver _Receiver>
-      requires (!stdexec::__is_debug_env<stdexec::env_of_t<_Receiver>>)
+      requires(!stdexec::__is_debug_env<stdexec::env_of_t<_Receiver>>)
     static auto subscribe(_Self&& __self, _Receiver&& __rcvr) noexcept(noexcept(
       __self.__tag().subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr))))
       -> decltype(__self.__tag()
@@ -157,11 +151,11 @@ namespace exec {
     }
 
     template <class _Sequence, class _ApplyFn>
-    static auto
-      apply(_Sequence&& __sequence, _ApplyFn&& __fun) noexcept(stdexec::__nothrow_callable<
-                                                         stdexec::__detail::__impl_of<_Sequence>,
-                                                         stdexec::__copy_cvref_fn<_Sequence>,
-                                                         _ApplyFn
+    static auto apply(_Sequence&& __sequence, _ApplyFn&& __fun)
+      noexcept(stdexec::__nothrow_callable<
+               stdexec::__detail::__impl_of<_Sequence>,
+               stdexec::__copy_cvref_fn<_Sequence>,
+               _ApplyFn
       >)
         -> stdexec::__call_result_t<
           stdexec::__detail::__impl_of<_Sequence>,

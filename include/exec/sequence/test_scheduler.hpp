@@ -111,43 +111,45 @@ namespace exec {
   // fast in real-time
   //
 
-  struct test_clock
-  {
-      using duration = std::chrono::milliseconds;
-      using rep = duration::rep;
-      using period = duration::period;
-      using time_point = std::chrono::time_point<test_clock>;
-      [[maybe_unused]] static const bool is_steady = false;
+  struct test_clock {
+    using duration = std::chrono::milliseconds;
+    using rep = duration::rep;
+    using period = duration::period;
+    using time_point = std::chrono::time_point<test_clock>;
+    [[maybe_unused]]
+    static const bool is_steady = false;
 
-      const test_clock_context* __context_;
+    const test_clock_context* __context_;
 
-      [[maybe_unused, nodiscard]] time_point now() const noexcept;
+    [[maybe_unused, nodiscard]]
+    time_point now() const noexcept;
   };
 
-  struct test_clock_context
-  {
-      using duration = typename test_clock::duration;
-      using rep = duration::rep;
-      using period = duration::period;
-      using time_point = typename test_clock::time_point;
-      [[maybe_unused]] static const bool is_steady = test_clock::is_steady;
+  struct test_clock_context {
+    using duration = typename test_clock::duration;
+    using rep = duration::rep;
+    using period = duration::period;
+    using time_point = typename test_clock::time_point;
+    [[maybe_unused]]
+    static const bool is_steady = test_clock::is_steady;
 
-      time_point __now_{};
+    time_point __now_{};
 
-      [[maybe_unused, nodiscard]] time_point now() const noexcept {
-        return __now_;
-      }
+    [[maybe_unused, nodiscard]]
+    time_point now() const noexcept {
+      return __now_;
+    }
 
-      auto advance_now_to(time_point __new_now) noexcept -> time_point {
-        time_point __old_now = __now_;
-        __now_ = __new_now;
-        return __old_now;
-      }
-      auto advance_now_by(duration __by) noexcept -> time_point {
-        time_point __old_now = __now_;
-        __now_ += __by;
-        return __old_now;
-      }
+    auto advance_now_to(time_point __new_now) noexcept -> time_point {
+      time_point __old_now = __now_;
+      __now_ = __new_now;
+      return __old_now;
+    }
+    auto advance_now_by(duration __by) noexcept -> time_point {
+      time_point __old_now = __now_;
+      __now_ += __by;
+      return __old_now;
+    }
   };
 
   inline typename test_clock::time_point test_clock::now() const noexcept {
@@ -262,17 +264,17 @@ namespace exec {
     auto now() const noexcept -> time_point;
 
     // parse a marble diagram into a set of marbles
-    template<std::size_t _Len>
+    template <std::size_t _Len>
     auto get_marbles_from(stdexec::__mstring<_Len> __diagram) noexcept
       -> std::vector<marble_t<test_clock>> {
-        return exec::get_marbles_from(get_clock(), __diagram);
-      }
+      return exec::get_marbles_from(get_clock(), __diagram);
+    }
 
     // record the results of a sequence-sender as a set of marbles
-    template<class _Sequence>
+    template <class _Sequence>
     auto get_marbles_from(
-      _Sequence&& __sequence
-      , typename test_clock::duration __stop_after = std::chrono::milliseconds(1000)) noexcept
+      _Sequence&& __sequence,
+      typename test_clock::duration __stop_after = std::chrono::milliseconds(1000)) noexcept
       -> std::vector<marble_t<test_clock>>;
 
 
@@ -283,7 +285,7 @@ namespace exec {
 
     // parse a marble diagram into a set of marbles and return a sequence
     // sender that will emit those marbles
-    template<std::size_t _Len>
+    template <std::size_t _Len>
     auto get_marble_sequence_from(stdexec::__mstring<_Len> __diagram) noexcept
       -> _tst_sched::__test_sequence;
 
@@ -324,7 +326,7 @@ namespace exec {
       std::ptrdiff_t expected = 0;
       while (!n_submissions_in_flight_
                 .compare_exchange_weak(expected, context_closed, std::memory_order_relaxed)
-              && expected > 0) {
+             && expected > 0) {
         expected = 0;
       }
       task_type* op = heap_.front();
@@ -409,15 +411,11 @@ namespace exec {
 
   namespace _tst_sched {
     template <class Receiver>
-    class test_schedule_at_op<Receiver>::__t
-      : _tst_sched::test_schedule_operation_base {
+    class test_schedule_at_op<Receiver>::__t : _tst_sched::test_schedule_operation_base {
      public:
       using __id = test_schedule_at_op;
 
-      __t(
-        test_context& context,
-        test_clock::time_point time_point,
-        Receiver receiver) noexcept
+      __t(test_context& context, test_clock::time_point time_point, Receiver receiver) noexcept
         : _tst_sched::test_schedule_operation_base{
             time_point,
             [](_tst_sched::test_operation_base* op) noexcept {
@@ -506,9 +504,7 @@ namespace exec {
       using completion_signatures =
         stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
 
-      schedule_at_sender(
-        test_context& context,
-        test_clock::time_point time_point) noexcept
+      schedule_at_sender(test_context& context, test_clock::time_point time_point) noexcept
         : context_{&context}
         , time_point_{time_point} {
       }
@@ -516,8 +512,7 @@ namespace exec {
       [[nodiscard]]
       auto get_env() const noexcept {
         return stdexec::prop{
-          stdexec::get_completion_scheduler<stdexec::set_value_t>,
-          test_scheduler{*context_}};
+          stdexec::get_completion_scheduler<stdexec::set_value_t>, test_scheduler{*context_}};
       }
 
       template <class Receiver>
@@ -594,16 +589,19 @@ namespace exec {
       }
 
       using env_t = decltype(stdexec::__env::__join(
-          stdexec::prop{stdexec::get_scheduler, stdexec::__declval<test_scheduler>()},
-          stdexec::prop{stdexec::get_stop_token, stdexec::__declval<stdexec::inplace_stop_token&>()}));
-      [[nodiscard]] auto get_env() const noexcept -> env_t {
+        stdexec::prop{stdexec::get_scheduler, stdexec::__declval<test_scheduler>()},
+        stdexec::prop{
+          stdexec::get_stop_token,
+          stdexec::__declval<stdexec::inplace_stop_token&>()}));
+      [[nodiscard]]
+      auto get_env() const noexcept -> env_t {
         return stdexec::__env::__join(
           stdexec::prop{stdexec::get_scheduler, __context_->get_scheduler()},
           stdexec::prop{stdexec::get_stop_token, __stop_source_->get_token()});
       }
     };
 
-    template<class _ReceiverId>
+    template <class _ReceiverId>
     struct __next_receiver {
       using __t = __next_receiver;
       using __id = __next_receiver;
@@ -615,13 +613,14 @@ namespace exec {
 
       void set_value() noexcept {
       }
-      template<class _Error>
+      template <class _Error>
       void set_error(_Error&&) noexcept {
       }
       void set_stopped() noexcept {
       }
 
-      [[nodiscard]] auto get_env() const noexcept -> stdexec::env_of_t<_Receiver> {
+      [[nodiscard]]
+      auto get_env() const noexcept -> stdexec::env_of_t<_Receiver> {
         return stdexec::get_env(*__receiver_);
       }
     };
@@ -630,80 +629,87 @@ namespace exec {
     // __proxy.. are a hammer to workaround a type handling bug in clang 19
     //
 
-    template<class _Base, auto _Fn>
+    template <class _Base, auto _Fn>
     struct __proxy_fn {
-      template<class _Derived, class... _Args>
+      template <class _Derived, class... _Args>
         requires stdexec::__decays_to_derived_from<_Base, _Derived>
       auto operator()(_Derived&& __derived, _Args&&... __args) const
-        noexcept(
-          stdexec::__nothrow_callable<decltype(_Fn), stdexec::__copy_cvref_t<_Derived, _Base>, _Args...>)
-        ->   stdexec::__call_result_t<decltype(_Fn), stdexec::__copy_cvref_t<_Derived, _Base>, _Args...> {
+        noexcept(stdexec::__nothrow_callable<
+                 decltype(_Fn),
+                 stdexec::__copy_cvref_t<_Derived, _Base>,
+                 _Args...
+        >)
+          -> stdexec::__call_result_t<
+            decltype(_Fn),
+            stdexec::__copy_cvref_t<_Derived, _Base>,
+            _Args...
+          > {
         return _Fn(
-          static_cast<stdexec::__copy_cvref_t<_Derived, _Base>&&>(__derived)
-          , static_cast<_Args&&>(__args)...);
+          static_cast<stdexec::__copy_cvref_t<_Derived, _Base>&&>(__derived),
+          static_cast<_Args&&>(__args)...);
       };
     };
 
-    template<class _SenderId, class _Receiver>
+    template <class _SenderId, class _Receiver>
     struct __proxy_operation {
       using _Sender = stdexec::__t<_SenderId>;
       static_assert(stdexec::__callable<stdexec::connect_t, _Sender, _Receiver>);
       using __operation_t = stdexec::connect_result_t<_Sender, _Receiver>;
-      using  __t [[maybe_unused]] = __proxy_operation;
+      using __t [[maybe_unused]] = __proxy_operation;
       using __id [[maybe_unused]] = __proxy_operation;
 
       __operation_t __op_;
 
-      __proxy_operation([[maybe_unused]] _Sender&& __sender, [[maybe_unused]] _Receiver&& __receiver)
-        noexcept(stdexec::__nothrow_connectable<_Sender, _Receiver>)
-        : __op_{
-          stdexec::connect(
-            static_cast<_Sender&&>(__sender)
-            , static_cast<_Receiver&&>(__receiver))
-        }
-        {}
+      __proxy_operation(
+        [[maybe_unused]] _Sender&& __sender,
+        [[maybe_unused]]
+        _Receiver&& __receiver) noexcept(stdexec::__nothrow_connectable<_Sender, _Receiver>)
+        : __op_{stdexec::connect(
+            static_cast<_Sender&&>(__sender),
+            static_cast<_Receiver&&>(__receiver))} {
+      }
 
       void start() noexcept {
         stdexec::start(__op_);
       }
     };
 
-    template<class _SenderId>
+    template <class _SenderId>
     struct __proxy_sender {
       using _Sender = stdexec::__t<_SenderId>;
-      using  __t [[maybe_unused]] = __proxy_sender;
+      using __t [[maybe_unused]] = __proxy_sender;
       using __id [[maybe_unused]] = __proxy_sender;
       using sender_concept = typename _Sender::sender_concept;
 
       _Sender __sender_;
 
-      explicit __proxy_sender(_Sender __sender) : __sender_{__sender} {}
+      explicit __proxy_sender(_Sender __sender)
+        : __sender_{__sender} {
+      }
 
       static constexpr auto get_completion_signatures =
-        []<stdexec::__decays_to<__proxy_sender> _Self, class... _Env>
-          (_Self&&, _Env&&...)
-            noexcept(stdexec::__nothrow_callable<
-              stdexec::get_completion_signatures_t,
-                stdexec::__copy_cvref_t<_Self, _Sender>
-                , _Env...>)
-            -> stdexec::completion_signatures_of_t<
-                stdexec::__copy_cvref_t<_Self, _Sender>
-                , _Env...> {
-            return {};
-        };
+        []<stdexec::__decays_to<__proxy_sender> _Self, class... _Env>(_Self&&, _Env&&...) noexcept(
+          stdexec::__nothrow_callable<
+            stdexec::get_completion_signatures_t,
+            stdexec::__copy_cvref_t<_Self, _Sender>,
+            _Env...
+          >)
+        -> stdexec::completion_signatures_of_t<stdexec::__copy_cvref_t<_Self, _Sender>, _Env...> {
+        return {};
+      };
 
-      template<class _Receiver>
+      template <class _Receiver>
       using __operation_t = __proxy_operation<_SenderId, _Receiver>;
 
       static constexpr auto connect =
-        []<stdexec::__decays_to<__proxy_sender> _Self, class _Receiver>
-          (_Self&& __self, _Receiver&& __receiver)
-            noexcept(stdexec::__nothrow_connectable<_Sender, _Receiver>)
-            -> __operation_t<_Receiver> {
-            return __operation_t<_Receiver>{
-              static_cast<stdexec::__copy_cvref_t<_Self, _Sender>&&>(__self.__sender_)
-              , static_cast<_Receiver&&>(__receiver)};
-        };
+        []<stdexec::__decays_to<__proxy_sender> _Self, class _Receiver>(
+          _Self&& __self,
+          _Receiver&& __receiver) noexcept(stdexec::__nothrow_connectable<_Sender, _Receiver>)
+        -> __operation_t<_Receiver> {
+        return __operation_t<_Receiver>{
+          static_cast<stdexec::__copy_cvref_t<_Self, _Sender>&&>(__self.__sender_),
+          static_cast<_Receiver&&>(__receiver)};
+      };
     };
 
     //
@@ -722,7 +728,7 @@ namespace exec {
       }
     };
 
-    template<class _ReceiverId>
+    template <class _ReceiverId>
     struct __test_sequence_operation : __test_sequence_operation_base {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
@@ -746,66 +752,68 @@ namespace exec {
           __self_->request_stop();
           if (__self.__active_ops_ == 0) {
             if (!__self.__end_marble_) {
-              __self.__requested_stop_marble_.visit_sequence_receiver(static_cast<_Receiver&&>(__self.__receiver_));
+              __self.__requested_stop_marble_
+                .visit_sequence_receiver(static_cast<_Receiver&&>(__self.__receiver_));
             }
           }
         }
       };
 
       using __stop_callback_t = stdexec::stop_callback_for_t<
-                      stdexec::stop_token_of_t<stdexec::env_of_t<_Receiver>>
-                      , __stop_callback_fn_t>;
+        stdexec::stop_token_of_t<stdexec::env_of_t<_Receiver>>,
+        __stop_callback_fn_t
+      >;
 
       std::optional<__stop_callback_t> __on_stop_;
 
-      template<class _Completion>
-      static auto __schedule_at(__test_sequence_operation& __self, __marble_t& __marble, _Completion&& __completion) noexcept {
+      template <class _Completion>
+      static auto __schedule_at(
+        __test_sequence_operation& __self,
+        __marble_t& __marble,
+        _Completion&& __completion) noexcept {
         return stdexec::write_env(
-                  // schedule the marble completion at the specified frame
-                  exec::sequence(
-                    exec::schedule_at(__self.__context_->get_scheduler(), __marble.frame())
-                    , static_cast<_Completion&&>(__completion)),
-                  stdexec::prop{stdexec::get_stop_token, __self.__stop_source_.get_token()})
-                | exec::finally(
-                  stdexec::just()
-                  | stdexec::then([&__self, &__marble]() noexcept {
-                    // after each completion, update the __test_sequence_operation state
-                    STDEXEC_ASSERT(__self.__active_ops_ > 0);
-                    if (
-                      __marble.error_notification()
-                      || __marble.stopped_notification()
-                      || __marble.sequence_error()
-                      || __marble.sequence_stopped()
-                      || __marble.sequence_end()) {
-                      // these marbles trigger the whole sequence
-                      // to complete with no more items
-                      if (!__self.__end_marble_) {
-                        // set as the end marble
-                        // this determines the signal that will be used to
-                        // complete the sequence after all remaining active
-                        // operations have completed
-                        __self.__end_marble_ = &__marble;
-                      }
-                      // cancel all pending ops
-                      __self.request_stop();
-                    }
-                    if (--__self.__active_ops_ == 0) {
-                      // all ops are complete,
-                      if (!!__self.__end_marble_) {
-                        __self.__on_stop_.reset();
-                        __self.__end_marble_->visit_sequence_receiver(static_cast<_Receiver&&>(__self.__receiver_));
-                      }
-                      // else this sequence never completes -
-                      // this sequence must be stopped externally
-                    }
-                  }));
+                 // schedule the marble completion at the specified frame
+                 exec::sequence(
+                   exec::schedule_at(__self.__context_->get_scheduler(), __marble.frame()),
+                   static_cast<_Completion&&>(__completion)),
+                 stdexec::prop{stdexec::get_stop_token, __self.__stop_source_.get_token()})
+             | exec::finally(stdexec::just() | stdexec::then([&__self, &__marble]() noexcept {
+                               // after each completion, update the __test_sequence_operation state
+                               STDEXEC_ASSERT(__self.__active_ops_ > 0);
+                               if (
+                                 __marble.error_notification() || __marble.stopped_notification()
+                                 || __marble.sequence_error() || __marble.sequence_stopped()
+                                 || __marble.sequence_end()) {
+                                 // these marbles trigger the whole sequence
+                                 // to complete with no more items
+                                 if (!__self.__end_marble_) {
+                                   // set as the end marble
+                                   // this determines the signal that will be used to
+                                   // complete the sequence after all remaining active
+                                   // operations have completed
+                                   __self.__end_marble_ = &__marble;
+                                 }
+                                 // cancel all pending ops
+                                 __self.request_stop();
+                               }
+                               if (--__self.__active_ops_ == 0) {
+                                 // all ops are complete,
+                                 if (!!__self.__end_marble_) {
+                                   __self.__on_stop_.reset();
+                                   __self.__end_marble_->visit_sequence_receiver(
+                                     static_cast<_Receiver&&>(__self.__receiver_));
+                                 }
+                                 // else this sequence never completes -
+                                 // this sequence must be stopped externally
+                               }
+                             }));
       }
       using __receiver_t = __next_receiver<_ReceiverId>;
-      static auto __schedule_marble(__test_sequence_operation& __self, __marble_t& __marble) noexcept {
-        using __next_sender_t = decltype(
-                      __schedule_at(__self, __marble, exec::set_next(__self.__receiver_, __marble.visit_sender())));
-        using __end_sender_t = decltype(
-                      __schedule_at(__self, __marble, stdexec::just()));
+      static auto
+        __schedule_marble(__test_sequence_operation& __self, __marble_t& __marble) noexcept {
+        using __next_sender_t = decltype(__schedule_at(
+          __self, __marble, exec::set_next(__self.__receiver_, __marble.visit_sender())));
+        using __end_sender_t = decltype(__schedule_at(__self, __marble, stdexec::just()));
         struct __next_sender_id {
           using __t = __next_sender_t;
         };
@@ -822,26 +830,27 @@ namespace exec {
 
         using __result_t = variant_sender<__next_sender_proxy_t, __end_sender_proxy_t>;
         if (__marble.__notification_.has_value()) {
-          return __result_t{__next_sender_proxy_t{{
-            __schedule_at(__self, __marble, exec::set_next(__self.__receiver_, __marble.visit_sender()))}}};
+          return __result_t{__next_sender_proxy_t{{__schedule_at(
+            __self, __marble, exec::set_next(__self.__receiver_, __marble.visit_sender()))}}};
         } else {
-          return __result_t{__end_sender_proxy_t{{
-            __schedule_at(__self, __marble, stdexec::just())}}};
+          return __result_t{
+            __end_sender_proxy_t{{__schedule_at(__self, __marble, stdexec::just())}}};
         }
       }
 
       using __scheduled_marble_t = stdexec::__call_result_t<
-        decltype(&__schedule_marble)
-          , __test_sequence_operation&
-          , __marble_t&>;
+        decltype(&__schedule_marble),
+        __test_sequence_operation&,
+        __marble_t&
+      >;
       using __marble_op_t = stdexec::connect_result_t<__scheduled_marble_t, __receiver_t>;
 
       std::deque<stdexec::__optional<__marble_op_t>> __marble_ops_{};
 
       __test_sequence_operation(
-        std::vector<__marble_t> __marbles
-        , test_context* __context
-        , _Receiver&& __receiver) noexcept
+        std::vector<__marble_t> __marbles,
+        test_context* __context,
+        _Receiver&& __receiver) noexcept
         : __test_sequence_operation_base{__context}
         , __marbles_{static_cast<std::vector<__marble_t>&&>(__marbles)}
         , __receiver_{static_cast<_Receiver&&>(__receiver)} {
@@ -849,21 +858,17 @@ namespace exec {
 
       void start() noexcept {
         __on_stop_.emplace(
-          stdexec::get_stop_token(stdexec::get_env(__receiver_))
-          , __stop_callback_fn_t{this}
-        );
-        for(auto& __marble : __marbles_) {
+          stdexec::get_stop_token(stdexec::get_env(__receiver_)), __stop_callback_fn_t{this});
+        for (auto& __marble: __marbles_) {
           __marble.set_origin_frame(__context_->now());
           auto& __op = __marble_ops_.emplace_back();
-          __op.__emplace_from([this, &__marble](){
-            return stdexec::connect(
-              __schedule_marble(*this, __marble)
-              , __receiver_t{&__receiver_});
+          __op.__emplace_from([this, &__marble]() {
+            return stdexec::connect(__schedule_marble(*this, __marble), __receiver_t{&__receiver_});
           });
         }
 
         __active_ops_ = __marble_ops_.size();
-        for(auto& __op : __marble_ops_) {
+        for (auto& __op: __marble_ops_) {
           stdexec::start(__op.value());
         }
       }
@@ -881,38 +886,37 @@ namespace exec {
       std::vector<marble_t> __marbles_;
 
       template <stdexec::__decays_to<__test_sequence> _Self, class... _Env>
-      static auto get_item_types(_Self&&, _Env&&...) noexcept
-        -> item_types<marble_sender_t> {
+      static auto get_item_types(_Self&&, _Env&&...) noexcept -> item_types<marble_sender_t> {
         return {};
       }
 
       template <stdexec::__decays_to<__test_sequence> _Self, class... _Env>
-      static auto get_completion_signatures(_Self&&, _Env&&...) noexcept
-        -> stdexec::completion_signatures<
-                      stdexec::set_value_t()
-                      , stdexec::set_error_t(std::error_code)
-                      , stdexec::set_error_t(std::exception_ptr)
-                      , stdexec::set_stopped_t()>{
-                      return {};
-                    }
+      static auto
+        get_completion_signatures(_Self&&, _Env&&...) noexcept -> stdexec::completion_signatures<
+          stdexec::set_value_t(),
+          stdexec::set_error_t(std::error_code),
+          stdexec::set_error_t(std::exception_ptr),
+          stdexec::set_stopped_t()
+        > {
+        return {};
+      }
 
       static constexpr auto subscribe =
-        []<stdexec::__decays_to<__test_sequence> _Sequence, stdexec::receiver _Receiver>
-        (_Sequence&& __sequence, _Receiver __receiver) noexcept
-          -> __test_sequence_operation<stdexec::__id<_Receiver>> {
-          return {
-            static_cast<_Sequence&&>(__sequence).__marbles_
-            , static_cast<_Sequence&&>(__sequence).__context_
-            , static_cast<_Receiver&&>(__receiver)};
-        };
+        []<stdexec::__decays_to<__test_sequence> _Sequence, stdexec::receiver _Receiver>(
+          _Sequence&& __sequence,
+          _Receiver __receiver) noexcept -> __test_sequence_operation<stdexec::__id<_Receiver>> {
+        return {
+          static_cast<_Sequence&&>(__sequence).__marbles_,
+          static_cast<_Sequence&&>(__sequence).__context_,
+          static_cast<_Receiver&&>(__receiver)};
+      };
     };
   } // namespace _tst_sched
 
-  template<class _Sequence>
+  template <class _Sequence>
   inline auto test_context::get_marbles_from(
-      _Sequence&& __sequence
-      , typename test_clock::duration __stop_after) noexcept
-    -> std::vector<marble_t<test_clock>> {
+    _Sequence&& __sequence,
+    typename test_clock::duration __stop_after) noexcept -> std::vector<marble_t<test_clock>> {
 
     std::vector<marble_t<test_clock>> __recording;
     stdexec::inplace_stop_source __source;
@@ -924,18 +928,17 @@ namespace exec {
         exec::sequence(
           // schedule connect and start of the sequence being recorded
           // on the test scheduler
-          exec::schedule_at(get_scheduler(), __clock.now())
-          , record_marbles(
-            &__recording
-            , __clock
-            , static_cast<_Sequence&&>(__sequence))
+          exec::schedule_at(get_scheduler(), __clock.now()),
+          record_marbles(&__recording, __clock, static_cast<_Sequence&&>(__sequence))
           // always complete with set_stopped to prevent the following
           // scheduled request_stop from affecting the clock
-          , stdexec::just_stopped())
+          ,
+          stdexec::just_stopped())
         // this is used to stop a 'never' sequence
-        , exec::schedule_at(get_scheduler(), __clock.now() + __stop_after)
-          | stdexec::then([&__source]() noexcept { __source.request_stop(); }))
-      , _tst_sched::__recording_receiver{this, &__source});
+        ,
+        exec::schedule_at(get_scheduler(), __clock.now() + __stop_after)
+          | stdexec::then([&__source]() noexcept { __source.request_stop(); })),
+      _tst_sched::__recording_receiver{this, &__source});
     stdexec::start(__op);
 
     // dispatch the test context queues
@@ -944,14 +947,15 @@ namespace exec {
     return __recording;
   }
 
-  inline auto test_context::get_marble_sequence_from(std::vector<marble_t<test_clock>> __marbles) noexcept
+  inline auto
+    test_context::get_marble_sequence_from(std::vector<marble_t<test_clock>> __marbles) noexcept
     -> _tst_sched::__test_sequence {
-      return {this, static_cast<std::vector<marble_t<test_clock>>&&>(__marbles)};
-    }
+    return {this, static_cast<std::vector<marble_t<test_clock>>&&>(__marbles)};
+  }
 
-  template<std::size_t _Len>
+  template <std::size_t _Len>
   inline auto test_context::get_marble_sequence_from(stdexec::__mstring<_Len> __diagram) noexcept
     -> _tst_sched::__test_sequence {
-      return get_marble_sequence_from(get_marbles_from(__diagram));
-    }
+    return get_marble_sequence_from(get_marbles_from(__diagram));
+  }
 } // namespace exec

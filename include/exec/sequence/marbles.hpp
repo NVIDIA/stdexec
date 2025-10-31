@@ -96,11 +96,9 @@ namespace exec {
         return __c_;
       }
 
-      friend auto operator==(
-        const __value_t& __lhs,
-        const __value_t& __rhs) noexcept -> bool {
-          return __lhs.__c_ == __rhs.__c_;
-        }
+      friend auto operator==(const __value_t& __lhs, const __value_t& __rhs) noexcept -> bool {
+        return __lhs.__c_ == __rhs.__c_;
+      }
 
       friend std::string to_string(const __value_t& __self) noexcept {
         using std::to_string;
@@ -121,42 +119,55 @@ namespace exec {
     };
 
     struct sequence_start_t {
-      operator marble_selector_t() const noexcept { return marble_selector_t::sequence_start; }
+      operator marble_selector_t() const noexcept {
+        return marble_selector_t::sequence_start;
+      }
     };
     static constexpr inline sequence_start_t sequence_start;
 
     struct sequence_connect_t {
-      operator marble_selector_t() const noexcept { return marble_selector_t::sequence_connect; }
+      operator marble_selector_t() const noexcept {
+        return marble_selector_t::sequence_connect;
+      }
     };
     static constexpr inline sequence_connect_t sequence_connect;
 
     struct sequence_end_t {
-      operator marble_selector_t() const noexcept { return marble_selector_t::sequence_value; }
+      operator marble_selector_t() const noexcept {
+        return marble_selector_t::sequence_value;
+      }
     };
     static constexpr inline sequence_end_t sequence_end;
 
     struct sequence_error_t {
-      operator marble_selector_t() const noexcept { return marble_selector_t::sequence_error; }
+      operator marble_selector_t() const noexcept {
+        return marble_selector_t::sequence_error;
+      }
     };
     static constexpr inline sequence_error_t sequence_error;
 
     struct sequence_stopped_t {
-      operator marble_selector_t() const noexcept { return marble_selector_t::sequence_stopped; }
+      operator marble_selector_t() const noexcept {
+        return marble_selector_t::sequence_stopped;
+      }
     };
     static constexpr inline sequence_stopped_t sequence_stopped;
 
     struct request_stop_t {
-      operator marble_selector_t() const noexcept { return marble_selector_t::request_stop; }
+      operator marble_selector_t() const noexcept {
+        return marble_selector_t::request_stop;
+      }
     };
     static constexpr inline request_stop_t request_stop;
 
     using __completion_signatures_t = completion_signatures<
-      set_value_t(__value_t)
-      , set_error_t(std::error_code)
-      , set_error_t(std::exception_ptr)
-      , set_stopped_t()>;
+      set_value_t(__value_t),
+      set_error_t(std::error_code),
+      set_error_t(std::exception_ptr),
+      set_stopped_t()
+    >;
 
-    template<class _Clock>
+    template <class _Clock>
     struct marble_t {
       using __frame_t = typename _Clock::time_point;
       using __duration_t = typename _Clock::duration;
@@ -173,31 +184,31 @@ namespace exec {
         : __at_{__at}
         , __selector_{selector::notification}
         , __notification_{} {
-          __notification_.emplace(__tag, __error);
+        __notification_.emplace(__tag, __error);
       }
       marble_t(__frame_t __at, set_error_t __tag, std::exception_ptr __ex) noexcept
         : __at_{__at}
         , __selector_{selector::notification}
         , __notification_{} {
-          __notification_.emplace(__tag, __ex);
+        __notification_.emplace(__tag, __ex);
       }
       marble_t(__frame_t __at, set_value_t __tag, char __c) noexcept
         : __at_{__at}
         , __selector_{selector::notification}
         , __notification_{} {
-          __notification_.emplace(__tag, __value_t{__c});
+        __notification_.emplace(__tag, __value_t{__c});
       }
       marble_t(__frame_t __at, set_value_t __tag, __value_t __v) noexcept
         : __at_{__at}
         , __selector_{selector::notification}
         , __notification_{} {
-          __notification_.emplace(__tag, __v);
+        __notification_.emplace(__tag, __v);
       }
       marble_t(__frame_t __at, set_stopped_t __tag) noexcept
         : __at_{__at}
         , __selector_{selector::notification}
         , __notification_{} {
-          __notification_.emplace(__tag);
+        __notification_.emplace(__tag);
       }
       marble_t(__frame_t __at, sequence_start_t __tag) noexcept
         : __at_{__at}
@@ -235,14 +246,14 @@ namespace exec {
         , __notification_{} {
       }
 
-      template<class _Fn>
+      template <class _Fn>
       void visit(_Fn&& __fn) noexcept {
         if (__notification_.has_value()) {
           __notification_->visit(static_cast<_Fn&&>(__fn));
         }
       }
 
-      template<class _Receiver>
+      template <class _Receiver>
       void visit_receiver(_Receiver&& __receiver) noexcept {
         if (__selector_ == selector::notification) {
           __notification_->visit_receiver(static_cast<_Receiver&&>(__receiver));
@@ -251,67 +262,76 @@ namespace exec {
         }
       }
 
-      template<class _Receiver>
+      template <class _Receiver>
       void visit_sequence_receiver(_Receiver&& __receiver) noexcept {
         switch (__selector_) {
-          case selector::sequence_value: {
+        case selector::sequence_value: {
+          stdexec::set_value(static_cast<_Receiver&&>(__receiver));
+          break;
+        }
+        case selector::sequence_error: {
+          stdexec::set_error(static_cast<_Receiver&&>(__receiver), std::exception_ptr{});
+          break;
+        }
+        case selector::notification: {
+          if (value_notification()) {
             stdexec::set_value(static_cast<_Receiver&&>(__receiver));
             break;
           }
-          case selector::sequence_error: {
-            stdexec::set_error(static_cast<_Receiver&&>(__receiver), std::exception_ptr{});
-            break;
-          }
-          case selector::notification: {
-            if (value_notification()) {
-              stdexec::set_value(static_cast<_Receiver&&>(__receiver));
-              break;
-            }
-          }
+        }
           [[fallthrough]];
-          case selector::request_stop:
+        case selector::request_stop:
           [[fallthrough]];
-          case selector::sequence_stopped:
+        case selector::sequence_stopped:
           [[fallthrough]];
-          case selector::sequence_connect:
+        case selector::sequence_connect:
           [[fallthrough]];
-          case selector::sequence_start:
+        case selector::sequence_start:
           [[fallthrough]];
-          case selector::frame_only:
+        case selector::frame_only:
           [[fallthrough]];
-          default: {
-            stdexec::set_stopped(static_cast<_Receiver&&>(__receiver));
-            break;
-          }
+        default: {
+          stdexec::set_stopped(static_cast<_Receiver&&>(__receiver));
+          break;
+        }
         };
       }
 
-      [[nodiscard]] auto visit_sender() noexcept -> __marble_sender_t {
+      [[nodiscard]]
+      auto visit_sender() noexcept -> __marble_sender_t {
         return __notification_->visit_sender();
       }
 
-      [[nodiscard]] bool sequence_end() const noexcept {
+      [[nodiscard]]
+      bool sequence_end() const noexcept {
         return __selector_ == selector::sequence_value;
       }
-      [[nodiscard]] bool sequence_error() const noexcept {
+      [[nodiscard]]
+      bool sequence_error() const noexcept {
         return __selector_ == selector::sequence_error;
       }
-      [[nodiscard]] bool sequence_stopped() const noexcept {
+      [[nodiscard]]
+      bool sequence_stopped() const noexcept {
         return __selector_ == selector::sequence_stopped;
       }
-      [[nodiscard]] bool request_stop() const noexcept {
+      [[nodiscard]]
+      bool request_stop() const noexcept {
         return __selector_ == selector::request_stop;
       }
-      [[nodiscard]] bool value_notification() const noexcept {
+      [[nodiscard]]
+      bool value_notification() const noexcept {
         return __notification_.has_value() && __notification_->value();
       }
-      [[nodiscard]] bool error_notification() const noexcept {
+      [[nodiscard]]
+      bool error_notification() const noexcept {
         return __notification_.has_value() && __notification_->error();
       }
-      [[nodiscard]] bool stopped_notification() const noexcept {
+      [[nodiscard]]
+      bool stopped_notification() const noexcept {
         return __notification_.has_value() && __notification_->stopped();
       }
-      [[nodiscard]] __frame_t frame() const noexcept {
+      [[nodiscard]]
+      __frame_t frame() const noexcept {
         return __at_;
       }
       __frame_t shift_frame_by(__duration_t __by) noexcept {
@@ -325,69 +345,69 @@ namespace exec {
         return __old_frame;
       }
 
-      friend auto operator==(
-        const marble_t& __lhs,
-        const marble_t& __rhs) noexcept -> bool {
-          return std::chrono::duration_cast<std::chrono::milliseconds>(__lhs.__at_.time_since_epoch())
-            == std::chrono::duration_cast<std::chrono::milliseconds>(__rhs.__at_.time_since_epoch())
+      friend auto operator==(const marble_t& __lhs, const marble_t& __rhs) noexcept -> bool {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(__lhs.__at_.time_since_epoch())
+              == std::chrono::duration_cast<std::chrono::milliseconds>(__rhs.__at_
+                                                                         .time_since_epoch())
             && __lhs.__selector_ == __rhs.__selector_
             && __lhs.__notification_.has_value() == __rhs.__notification_.has_value()
             && (__lhs.__notification_.has_value() && __rhs.__notification_.has_value()
-              ? __lhs.__notification_.value() == __rhs.__notification_.value()
-              : true);
-        }
+                  ? __lhs.__notification_.value() == __rhs.__notification_.value()
+                  : true);
+      }
 
       friend std::string to_string(const marble_t& __self) noexcept {
         using std::to_string;
         std::string __result;
         switch (__self.__selector_) {
-          case selector::frame_only: {
-            __result = "frame";
-            break;
-          }
-          case selector::notification: {
-            __result = to_string(__self.__notification_.value());
-            break;
-          }
-          case selector::request_stop: {
-            __result = to_string(__marbles::request_stop) + "()";
-            break;
-          }
-          case selector::sequence_start: {
-            __result = to_string(__marbles::sequence_start) + "()";
-            break;
-          }
-          case selector::sequence_connect: {
-            __result = to_string(__marbles::sequence_connect) + "()";
-            break;
-          }
-          case selector::sequence_value: {
-            __result = to_string(__marbles::sequence_end) + "()";
-            break;
-          }
-          case selector::sequence_error: {
-            __result = to_string(__marbles::sequence_error) + "()";
-            break;
-          }
-          case selector::sequence_stopped: {
-            __result = to_string(__marbles::sequence_stopped) + "()";
-            break;
-          }
-          default: {
-            return {"uninitialized-marble"};
-          }
+        case selector::frame_only: {
+          __result = "frame";
+          break;
+        }
+        case selector::notification: {
+          __result = to_string(__self.__notification_.value());
+          break;
+        }
+        case selector::request_stop: {
+          __result = to_string(__marbles::request_stop) + "()";
+          break;
+        }
+        case selector::sequence_start: {
+          __result = to_string(__marbles::sequence_start) + "()";
+          break;
+        }
+        case selector::sequence_connect: {
+          __result = to_string(__marbles::sequence_connect) + "()";
+          break;
+        }
+        case selector::sequence_value: {
+          __result = to_string(__marbles::sequence_end) + "()";
+          break;
+        }
+        case selector::sequence_error: {
+          __result = to_string(__marbles::sequence_error) + "()";
+          break;
+        }
+        case selector::sequence_stopped: {
+          __result = to_string(__marbles::sequence_stopped) + "()";
+          break;
+        }
+        default: {
+          return {"uninitialized-marble"};
+        }
         };
-        return
-          __result
-          + "@"
-          + to_string(std::chrono::duration_cast<std::chrono::milliseconds>(__self.__at_.time_since_epoch()).count())
-          + "ms";
+        return __result + "@"
+             + to_string(
+                 std::chrono::duration_cast<std::chrono::milliseconds>(__self.__at_
+                                                                         .time_since_epoch())
+                   .count())
+             + "ms";
       }
     };
 
     struct get_marbles_from_t {
 
-      template<class _Clock, std::size_t _Len>
+      template <class _Clock, std::size_t _Len>
       constexpr auto operator()(_Clock __clock, __mstring<_Len> __diagram) const noexcept
         -> std::vector<marble_t<_Clock>> {
         using __frame_t = typename _Clock::time_point;
@@ -406,127 +426,128 @@ namespace exec {
           __remaining = __remaining.subspan(__skip);
         };
         auto __push = [&](auto __tag, auto... __args) noexcept {
-            __marbles.emplace_back(
-              __group_start_frame == __frame_t{-1ms} ? __frame : __group_start_frame
-              , __tag, __args...);
+          __marbles.emplace_back(
+            __group_start_frame == __frame_t{-1ms} ? __frame : __group_start_frame,
+            __tag,
+            __args...);
         };
-        while(!__remaining.empty()) {
+        while (!__remaining.empty()) {
           __frame_t __next_frame{__frame};
-          auto __advance_frame_by = [&__next_frame, &__group_start_frame](__duration_t __by) noexcept {
-            __next_frame += __group_start_frame == __frame_t{-1ms}
-              ? __by
-              : 0ms;
+          auto __advance_frame_by = [&__next_frame,
+                                     &__group_start_frame](__duration_t __by) noexcept {
+            __next_frame += __group_start_frame == __frame_t{-1ms} ? __by : 0ms;
           };
           switch (__remaining.front()) {
-            case '-': {
-              __advance_frame_by(1ms);
-              __consume_first(1);
-              break;
-            }
-            case '(': {
-              __group_start_frame = __frame;
-              __consume_first(1);
-              break;
-            }
-            case ')': {
-              __group_start_frame = __frame_t{-1ms};
-              __advance_frame_by(1ms);
-              __consume_first(1);
-              break;
-            }
-            case '|': {
-              __push(sequence_end);
-              __consume_first(1);
-              break;
-            }
-            case '=': {
-              __push(sequence_connect);
-              __consume_first(1);
-              break;
-            }
-            case '^': {
-              __push(sequence_start);
-              __consume_first(1);
-              break;
-            }
-            case '$': {
-              __push(sequence_stopped);
-              __consume_first(1);
-              break;
-            }
-            case '?': {
-              __push(request_stop);
-              __consume_first(1);
-              break;
-            }
-            case '#': {
-              __push(set_error, std::make_error_code(std::errc::interrupted));
-              __consume_first(1);
-              break;
-            }
-            case '.': {
-              __push(set_stopped);
-              __consume_first(1);
-              break;
-            }
-            default: {
-              long __consumed_in_default = 0;
-              if (__whole.begin() == __remaining.begin() || !!std::isspace(__remaining.front())) {
-                if (!!std::isspace(__remaining.front())) {
-                  __consume_first(1);
-                  ++__consumed_in_default;
-                }
-                // try to consume a duration at first char or after ' ' char.
-                if (!!std::isdigit(__remaining.front())) {
-                  auto __valid_duration_suffix = [](auto c) noexcept {
-                    return c == 'm' || c == 's';
-                  };
-                  auto __suffix_begin = std::ranges::find_if(__remaining, __valid_duration_suffix);
-                  bool __all_digits = std::all_of(
-                    __remaining.begin()
-                    , __suffix_begin
-                    , [](auto c){ return std::isdigit(c); });
-                  if (
-                    __suffix_begin != __remaining.end()
-                    && __suffix_begin - __remaining.begin() > 0
-                    && __all_digits) {
-                    long __to_consume = __suffix_begin - __remaining.begin();
-                    long __duration = std::atol(__remaining.data());
-                    if (std::ranges::equal(__remaining.subspan(__to_consume, 3), __make_span("ms "_mstr))) {
-                      __to_consume += 2;
-                    } else if (std::ranges::equal(__remaining.subspan(__to_consume, 2), __make_span("s "_mstr))) {
-                      __duration *= 1000;
-                      __to_consume += 1;
-                    } else if (std::ranges::equal(__remaining.subspan(__to_consume, 2), __make_span("m "_mstr))) {
-                      __duration = __duration * 1000 * 60;
-                      __to_consume += 1;
-                    } else {
-                      __duration = -1;
-                      __to_consume = 0;
-                      //fallthrough
-                    }
-                    if (__duration >= 0 && __to_consume > 0) {
-                      __advance_frame_by(std::chrono::milliseconds(__duration));
-                      __consume_first(__to_consume);
-                      __consumed_in_default += __to_consume;
-                      break;
-                    }
+          case '-': {
+            __advance_frame_by(1ms);
+            __consume_first(1);
+            break;
+          }
+          case '(': {
+            __group_start_frame = __frame;
+            __consume_first(1);
+            break;
+          }
+          case ')': {
+            __group_start_frame = __frame_t{-1ms};
+            __advance_frame_by(1ms);
+            __consume_first(1);
+            break;
+          }
+          case '|': {
+            __push(sequence_end);
+            __consume_first(1);
+            break;
+          }
+          case '=': {
+            __push(sequence_connect);
+            __consume_first(1);
+            break;
+          }
+          case '^': {
+            __push(sequence_start);
+            __consume_first(1);
+            break;
+          }
+          case '$': {
+            __push(sequence_stopped);
+            __consume_first(1);
+            break;
+          }
+          case '?': {
+            __push(request_stop);
+            __consume_first(1);
+            break;
+          }
+          case '#': {
+            __push(set_error, std::make_error_code(std::errc::interrupted));
+            __consume_first(1);
+            break;
+          }
+          case '.': {
+            __push(set_stopped);
+            __consume_first(1);
+            break;
+          }
+          default: {
+            long __consumed_in_default = 0;
+            if (__whole.begin() == __remaining.begin() || !!std::isspace(__remaining.front())) {
+              if (!!std::isspace(__remaining.front())) {
+                __consume_first(1);
+                ++__consumed_in_default;
+              }
+              // try to consume a duration at first char or after ' ' char.
+              if (!!std::isdigit(__remaining.front())) {
+                auto __valid_duration_suffix = [](auto c) noexcept {
+                  return c == 'm' || c == 's';
+                };
+                auto __suffix_begin = std::ranges::find_if(__remaining, __valid_duration_suffix);
+                bool __all_digits = std::all_of(__remaining.begin(), __suffix_begin, [](auto c) {
+                  return std::isdigit(c);
+                });
+                if (
+                  __suffix_begin != __remaining.end() && __suffix_begin - __remaining.begin() > 0
+                  && __all_digits) {
+                  long __to_consume = __suffix_begin - __remaining.begin();
+                  long __duration = std::atol(__remaining.data());
+                  if (std::ranges::equal(
+                        __remaining.subspan(__to_consume, 3), __make_span("ms "_mstr))) {
+                    __to_consume += 2;
+                  } else if (std::ranges::equal(
+                               __remaining.subspan(__to_consume, 2), __make_span("s "_mstr))) {
+                    __duration *= 1000;
+                    __to_consume += 1;
+                  } else if (std::ranges::equal(
+                               __remaining.subspan(__to_consume, 2), __make_span("m "_mstr))) {
+                    __duration = __duration * 1000 * 60;
+                    __to_consume += 1;
+                  } else {
+                    __duration = -1;
+                    __to_consume = 0;
+                    //fallthrough
+                  }
+                  if (__duration >= 0 && __to_consume > 0) {
+                    __advance_frame_by(std::chrono::milliseconds(__duration));
+                    __consume_first(__to_consume);
+                    __consumed_in_default += __to_consume;
+                    break;
                   }
                 }
               }
-              if (!!std::isalnum(__remaining.front())) {
-                __advance_frame_by(1ms);
-                __push(set_value, __remaining.front());
-                __consume_first(1);
-                ++__consumed_in_default;
-                break;
-              }
-              if (__consumed_in_default == 0) {
-                // parsing error
-                return __marbles;
-              }
+            }
+            if (!!std::isalnum(__remaining.front())) {
+              __advance_frame_by(1ms);
+              __push(set_value, __remaining.front());
+              __consume_first(1);
+              ++__consumed_in_default;
               break;
             }
+            if (__consumed_in_default == 0) {
+              // parsing error
+              return __marbles;
+            }
+            break;
+          }
           };
           __frame = __next_frame;
         }
@@ -544,15 +565,17 @@ namespace exec {
       std::vector<marble_t<_Clock>>* __recording_;
       _Receiver* __receiver_;
 
-      template<class... _Args>
+      template <class... _Args>
       void set_value(_Args&&... __args) noexcept {
-        __recording_->emplace_back(__clock_.now(), stdexec::set_value, static_cast<_Args&&>(__args)...);
+        __recording_
+          ->emplace_back(__clock_.now(), stdexec::set_value, static_cast<_Args&&>(__args)...);
         stdexec::set_value(static_cast<_Receiver>(*__receiver_));
       }
 
-      template<class _Error>
+      template <class _Error>
       void set_error(_Error&& __error) noexcept {
-        __recording_->emplace_back(__clock_.now(), stdexec::set_error, static_cast<_Error&&>(__error));
+        __recording_
+          ->emplace_back(__clock_.now(), stdexec::set_error, static_cast<_Error&&>(__error));
         stdexec::set_stopped(static_cast<_Receiver>(*__receiver_));
       }
 
@@ -580,12 +603,18 @@ namespace exec {
         std::vector<marble_t<_Clock>>* __recording_;
         stdexec::connect_result_t<_Value, __receiver_t> __op_;
 
-        __t(_Value&& __value, _Receiver&& __receiver, _Clock __clock, std::vector<marble_t<_Clock>>* __recording) noexcept
+        __t(
+          _Value&& __value,
+          _Receiver&& __receiver,
+          _Clock __clock,
+          std::vector<marble_t<_Clock>>* __recording) noexcept
           : __receiver_{static_cast<_Receiver&&>(__receiver)}
           , __clock_{__clock}
           , __recording_(__recording)
-          , __op_{stdexec::connect(static_cast<_Value&&>(__value), __receiver_t{__clock_, __recording_, &__receiver_})}
-          {}
+          , __op_{stdexec::connect(
+              static_cast<_Value&&>(__value),
+              __receiver_t{__clock_, __recording_, &__receiver_})} {
+        }
 
         void start() & noexcept {
           stdexec::start(__op_);
@@ -593,14 +622,15 @@ namespace exec {
       };
     };
 
-    template<class _Value, class _Clock>
+    template <class _Value, class _Clock>
     struct __value_sender {
       struct __t {
         using __id = __value_sender;
         using sender_concept = stdexec::sender_t;
 
         template <class _Receiver>
-        using __value_operation_t = stdexec::__t<__value_operation<_Value, stdexec::__id<_Receiver>, _Clock>>;
+        using __value_operation_t =
+          stdexec::__t<__value_operation<_Value, stdexec::__id<_Receiver>, _Clock>>;
 
         _Clock __clock_;
         std::vector<marble_t<_Clock>>* __recording_;
@@ -615,10 +645,11 @@ namespace exec {
         template <std::same_as<__t> _Self, receiver _Receiver>
         static auto connect(_Self&& __self, _Receiver&& __rcvr)
           noexcept(__nothrow_move_constructible<_Receiver>) {
-          return __value_operation_t<_Receiver>{static_cast<_Value&&>(__self.__value_),
-                  static_cast<_Receiver&&>(__rcvr),
-                  __self.__clock_,
-                  __self.__recording_};
+          return __value_operation_t<_Receiver>{
+            static_cast<_Value&&>(__self.__value_),
+            static_cast<_Receiver&&>(__rcvr),
+            __self.__clock_,
+            __self.__recording_};
         }
       };
     };
@@ -639,14 +670,8 @@ namespace exec {
       using __receiver_t = __value_receiver<_Receiver, _Clock>;
 
       template <stdexec::sender _Value>
-      auto set_next(_Value&& __value)
-        noexcept
-         -> next_sender auto {
-        return __value_sender_t<_Value>{
-                                __clock_,
-                                __recording_,
-                                static_cast<_Value&&>(__value)
-                              };
+      auto set_next(_Value&& __value) noexcept -> next_sender auto {
+        return __value_sender_t<_Value>{__clock_, __recording_, static_cast<_Value&&>(__value)};
       }
 
       void set_value() noexcept {
@@ -654,8 +679,8 @@ namespace exec {
         stdexec::set_value(static_cast<_Receiver&&>(*__receiver_));
       }
 
-      template<class _Error>
-      void set_error(_Error&& ) noexcept {
+      template <class _Error>
+      void set_error(_Error&&) noexcept {
         __recording_->emplace_back(__clock_.now(), sequence_error);
         stdexec::set_value(static_cast<_Receiver&&>(*__receiver_));
       }
@@ -684,14 +709,18 @@ namespace exec {
         std::vector<marble_t<_Clock>>* __recording_;
         exec::subscribe_result_t<_Sequence, __receiver_t> __op_;
 
-        __t(_Sequence&& __sequence, _Receiver&& __receiver, _Clock __clock, std::vector<marble_t<_Clock>>* __recording) noexcept
+        __t(
+          _Sequence&& __sequence,
+          _Receiver&& __receiver,
+          _Clock __clock,
+          std::vector<marble_t<_Clock>>* __recording) noexcept
           : __receiver_{static_cast<_Receiver&&>(__receiver)}
           , __clock_{__clock}
           , __recording_(__recording)
           , __op_{exec::subscribe(
-                          static_cast<_Sequence&&>(__sequence)
-                          , __receiver_t{__clock_, __recording_, &__receiver_})}
-          {}
+              static_cast<_Sequence&&>(__sequence),
+              __receiver_t{__clock_, __recording_, &__receiver_})} {
+        }
 
         void start() & noexcept {
           __recording_->emplace_back(__clock_.now(), sequence_start);
@@ -706,39 +735,41 @@ namespace exec {
 
       using __receiver_id_t = __id<_Receiver>;
 
-      template<class _Child>
+      template <class _Child>
       using __operation_t = __t<__operation<_Child, __receiver_id_t, _Clock>>;
 
       template <class _Data, class _Child>
       auto operator()(__ignore, _Data&& __data, _Child&& __child)
         noexcept(__nothrow_constructible_from<
-          __operation_t<_Child>
-            , _Child
-            , _Receiver
-            , _Clock
-            , std::vector<marble_t<_Clock>>*>)
-          -> __operation_t<_Child> {
+                 __operation_t<_Child>,
+                 _Child,
+                 _Receiver,
+                 _Clock,
+                 std::vector<marble_t<_Clock>>*
+        >) -> __operation_t<_Child> {
         auto [__recording, __clock] = static_cast<_Data&&>(__data);
         __recording->emplace_back(__clock.now(), sequence_connect);
-        return {static_cast<_Child&&>(__child),
-                static_cast<_Receiver&&>(__rcvr_),
-                __clock,
-                __recording};
+        return {
+          static_cast<_Child&&>(__child), static_cast<_Receiver&&>(__rcvr_), __clock, __recording};
       }
     };
 
     struct record_marbles_t {
-      template<class _Sequence, class _Clock>
-      auto operator()(std::vector<marble_t<_Clock>>* __recording, _Clock __clock, _Sequence&& __sequence) const
-        {//-> __well_formed_sender auto {
+      template <class _Sequence, class _Clock>
+      auto operator()(
+        std::vector<marble_t<_Clock>>* __recording,
+        _Clock __clock,
+        _Sequence&& __sequence) const { //-> __well_formed_sender auto {
         auto __domain = __get_early_domain(static_cast<_Sequence&&>(__sequence));
         return transform_sender(
-          __domain, __make_sexpr<record_marbles_t>(
-            __decayed_tuple<std::vector<marble_t<_Clock>>*, _Clock>{__recording, __clock}
-            , static_cast<_Sequence&&>(__sequence)));
+          __domain,
+          __make_sexpr<record_marbles_t>(
+            __decayed_tuple<std::vector<marble_t<_Clock>>*, _Clock>{__recording, __clock},
+            static_cast<_Sequence&&>(__sequence)));
       }
-      template<class _Sequence, class _Clock>
-      std::vector<marble_t<_Clock>> operator()(_Clock __clock, _Sequence&& __sequence) const noexcept {
+      template <class _Sequence, class _Clock>
+      std::vector<marble_t<_Clock>>
+        operator()(_Clock __clock, _Sequence&& __sequence) const noexcept {
         std::vector<marble_t<_Clock>> __recording;
         auto __recorder = (*this)(&__recording, __clock, static_cast<_Sequence&&>(__sequence));
         stdexec::sync_wait(__recorder);
@@ -748,28 +779,26 @@ namespace exec {
 
     struct __record_marbles_impl : __sexpr_defaults {
 
-      template<class _Self>
+      template <class _Self>
       using __clock_of_t = __mapply<__q<__mback>, __data_of<STDEXEC_REMOVE_REFERENCE(_Self)>>;
 
-      static constexpr auto get_completion_signatures = []
-        <sender_expr_for<record_marbles_t> _Sender, class... _Env>
-        (_Sender&&, _Env&&...) noexcept
-          -> completion_signatures<set_value_t()> {
-          return {};
-        };
+      static constexpr auto get_completion_signatures =
+        []<sender_expr_for<record_marbles_t> _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
+        -> completion_signatures<set_value_t()> {
+        return {};
+      };
 
-      static constexpr auto connect = []
-        <sender_expr_for<record_marbles_t> _Self, receiver _Receiver>
-        (_Self&& __self, _Receiver&& __rcvr)
-          noexcept(__nothrow_callable<__sexpr_apply_t, _Self, __connect_fn<__clock_of_t<_Self>, _Receiver>>)
-            -> __call_result_t<__sexpr_apply_t, _Self, __connect_fn<__clock_of_t<_Self>, _Receiver>> {
-          return __sexpr_apply(
-            static_cast<_Self&&>(__self)
-            , __connect_fn<__clock_of_t<_Self>, _Receiver>{static_cast<_Receiver&&>(__rcvr)});
-        };
+      static constexpr auto connect =
+        []<sender_expr_for<record_marbles_t> _Self, receiver _Receiver>(_Self&& __self, _Receiver&& __rcvr) noexcept(
+          __nothrow_callable<__sexpr_apply_t, _Self, __connect_fn<__clock_of_t<_Self>, _Receiver>>)
+        -> __call_result_t<__sexpr_apply_t, _Self, __connect_fn<__clock_of_t<_Self>, _Receiver>> {
+        return __sexpr_apply(
+          static_cast<_Self&&>(__self),
+          __connect_fn<__clock_of_t<_Self>, _Receiver>{static_cast<_Receiver&&>(__rcvr)});
+      };
     };
 
-  } // __marbles
+  } // namespace __marbles
 
   using sequence_start_t = __marbles::sequence_start_t;
   static constexpr inline auto sequence_start = sequence_start_t{};
@@ -789,7 +818,7 @@ namespace exec {
   using request_stop_t = __marbles::request_stop_t;
   static constexpr inline auto request_stop = request_stop_t{};
 
-  template<class _Clock>
+  template <class _Clock>
   using marble_t = __marbles::marble_t<_Clock>;
 
   using get_marbles_from_t = __marbles::get_marbles_from_t;
@@ -807,6 +836,5 @@ namespace exec {
 
 namespace stdexec {
   template <>
-  struct __sexpr_impl<exec::record_marbles_t>
-    : exec::__marbles::__record_marbles_impl { };
+  struct __sexpr_impl<exec::record_marbles_t> : exec::__marbles::__record_marbles_impl { };
 } // namespace stdexec

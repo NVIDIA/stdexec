@@ -30,29 +30,28 @@
 
 namespace {
 
-  struct __clock_t
-  {
-      using duration = std::chrono::milliseconds;
-      using rep = duration::rep;
-      using period = duration::period;
-      using time_point = std::chrono::time_point<__clock_t >;
-      [[maybe_unused]] static const bool is_steady = true;
+  struct __clock_t {
+    using duration = std::chrono::milliseconds;
+    using rep = duration::rep;
+    using period = duration::period;
+    using time_point = std::chrono::time_point<__clock_t>;
+    [[maybe_unused]]
+    static const bool is_steady = true;
 
-      time_point __now_{};
+    time_point __now_{};
 
-      [[maybe_unused]] time_point now() noexcept {
-        return __now_;
-      }
+    [[maybe_unused]]
+    time_point now() noexcept {
+      return __now_;
+    }
   };
 
   using __marble_t = exec::marble_t<__clock_t>;
   using __marbles_t = std::vector<__marble_t>;
 
-# if STDEXEC_HAS_STD_RANGES()
+#if STDEXEC_HAS_STD_RANGES()
 
-  TEST_CASE(
-  "marbles - parse empty diagram",
-  "[sequence_senders][marbles]") {
+  TEST_CASE("marbles - parse empty diagram", "[sequence_senders][marbles]") {
     __clock_t __clock{};
     auto marbles = get_marbles_from(__clock, ""_mstr);
     auto expected = __marbles_t{};
@@ -60,9 +59,7 @@ namespace {
     CHECK(expected == marbles);
   }
 
-  TEST_CASE(
-  "marbles - parse never diagram",
-  "[sequence_senders][marbles]") {
+  TEST_CASE("marbles - parse never diagram", "[sequence_senders][marbles]") {
     __clock_t __clock{};
     auto marbles = get_marbles_from(__clock, "--"_mstr);
     auto expected = __marbles_t{};
@@ -70,9 +67,7 @@ namespace {
     CHECK(expected == marbles);
   }
 
-  TEST_CASE(
-  "marbles - parse never with values diagram",
-  "[sequence_senders][marbles]") {
+  TEST_CASE("marbles - parse never with values diagram", "[sequence_senders][marbles]") {
     __clock_t __clock{};
     auto marbles = get_marbles_from(__clock, "-a-b-"_mstr);
     auto expected = __marbles_t{
@@ -83,9 +78,7 @@ namespace {
     CHECK(expected == marbles);
   }
 
-  TEST_CASE(
-  "marbles - parse values diagram",
-  "[sequence_senders][marbles]") {
+  TEST_CASE("marbles - parse values diagram", "[sequence_senders][marbles]") {
     __clock_t __clock{};
     auto marbles = get_marbles_from(__clock, "-a-b-|"_mstr);
     auto expected = __marbles_t{
@@ -97,9 +90,7 @@ namespace {
     CHECK(expected == marbles);
   }
 
-  TEST_CASE(
-  "marbles - parse values with skip ms diagram",
-  "[sequence_senders][marbles]") {
+  TEST_CASE("marbles - parse values with skip ms diagram", "[sequence_senders][marbles]") {
     __clock_t __clock{};
     auto marbles = get_marbles_from(__clock, "-a- 20ms b-|"_mstr);
     auto expected = __marbles_t{
@@ -111,9 +102,7 @@ namespace {
     CHECK(expected == marbles);
   }
 
-  TEST_CASE(
-  "marbles - parse values with skip s diagram",
-  "[sequence_senders][marbles]") {
+  TEST_CASE("marbles - parse values with skip s diagram", "[sequence_senders][marbles]") {
     __clock_t __clock{};
     auto marbles = get_marbles_from(__clock, "-a- 2s b-|"_mstr);
     auto expected = __marbles_t{
@@ -125,9 +114,7 @@ namespace {
     CHECK(expected == marbles);
   }
 
-  TEST_CASE(
-  "marbles - parse values with skip m diagram",
-  "[sequence_senders][marbles]") {
+  TEST_CASE("marbles - parse values with skip m diagram", "[sequence_senders][marbles]") {
     __clock_t __clock{};
     auto marbles = get_marbles_from(__clock, "-a- 2m b-|"_mstr);
     auto expected = __marbles_t{
@@ -139,9 +126,7 @@ namespace {
     CHECK(expected == marbles);
   }
 
-  TEST_CASE(
-  "marbles - parse values with skip first diagram",
-  "[sequence_senders][marbles]") {
+  TEST_CASE("marbles - parse values with skip first diagram", "[sequence_senders][marbles]") {
     __clock_t __clock{};
     auto marbles = get_marbles_from(__clock, "20ms -a-b-|"_mstr);
     auto expected = __marbles_t{
@@ -153,31 +138,25 @@ namespace {
     CHECK(expected == marbles);
   }
 
-  TEST_CASE(
-  "marbles - record marbles of empty_sequence",
-  "[sequence_senders][marbles]") {
+  TEST_CASE("marbles - record marbles of empty_sequence", "[sequence_senders][marbles]") {
     __clock_t __clock{};
     auto actual = record_marbles(__clock, empty_sequence());
     auto expected = get_marbles_from(__clock, "=^|"_mstr);
     CHECK(expected == actual);
   }
 
-  TEST_CASE(
-  "marbles - record marbles of range",
-  "[sequence_senders][marbles]") {
+  TEST_CASE("marbles - record marbles of range", "[sequence_senders][marbles]") {
     __clock_t __clock{};
     auto actual = record_marbles(__clock, range('0', '3'));
     auto expected = get_marbles_from(__clock, "=^(012|)"_mstr);
     CHECK(expected == actual);
   }
 
-  TEST_CASE(
-  "marbles - record marbles of merged ranges",
-  "[sequence_senders][marbles]") {
+  TEST_CASE("marbles - record marbles of merged ranges", "[sequence_senders][marbles]") {
     __clock_t __clock{};
     auto actual = record_marbles(__clock, merge(range('0', '2'), range('2', '4')));
     auto expected = get_marbles_from(__clock, "=^(0123|)"_mstr);
     CHECK(expected == actual);
   }
-# endif // STDEXEC_HAS_STD_RANGES()
+#endif // STDEXEC_HAS_STD_RANGES()
 } // namespace

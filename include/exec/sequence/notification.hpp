@@ -78,10 +78,10 @@ namespace exec {
       std::variant
     >;
 
-    template<class _CompletionSignatures>
+    template <class _CompletionSignatures>
     struct __notification_sender;
 
-    template<class _CompletionSignatures>
+    template <class _CompletionSignatures>
     struct notification_t {
       using __notification_t = __notification_storage_t<_CompletionSignatures>;
       using __notification_sender_t = stdexec::__t<__notification_sender<_CompletionSignatures>>;
@@ -89,96 +89,107 @@ namespace exec {
       __notification_t __notification_{};
 
       template <class _Notification>
-      using __tag_of_t = stdexec::__mapply<stdexec::__q<stdexec::__mfront>, STDEXEC_REMOVE_REFERENCE(_Notification)>;
+      using __tag_of_t =
+        stdexec::__mapply<stdexec::__q<stdexec::__mfront>, STDEXEC_REMOVE_REFERENCE(_Notification)>;
 
-      template<class _Tag, class... _Args>
-      notification_t(_Tag __tag, _Args&&... __args)
-        noexcept(
-          noexcept(
-            __notification_.template emplace<__decayed_tuple<_Tag, STDEXEC_REMOVE_REFERENCE(_Args)...>>(
-              __tag,
-              static_cast<_Args&&>(__args)...))) {
-          __notification_.template emplace<__decayed_tuple<_Tag, STDEXEC_REMOVE_REFERENCE(_Args)...>>(__tag, static_cast<_Args&&>(__args)...);
-        }
+      template <class _Tag, class... _Args>
+      notification_t(_Tag __tag, _Args&&... __args) noexcept(noexcept(
+        __notification_.template emplace<__decayed_tuple<_Tag, STDEXEC_REMOVE_REFERENCE(_Args)...>>(
+          __tag,
+          static_cast<_Args&&>(__args)...))) {
+        __notification_.template emplace<__decayed_tuple<_Tag, STDEXEC_REMOVE_REFERENCE(_Args)...>>(
+          __tag, static_cast<_Args&&>(__args)...);
+      }
 
-      template<class _Fn>
+      template <class _Fn>
       auto visit(_Fn&& __fn) const noexcept {
         return std::visit(
           [&__fn](auto&& __tuple) noexcept {
-            return __tuple.apply([&__fn](auto __tag, auto&&... __args) noexcept {
-              return static_cast<_Fn&&>(__fn)(__tag, __args...);
-            }
-            , __tuple);
-          }
-          , __notification_);
+            return __tuple.apply(
+              [&__fn](auto __tag, auto&&... __args) noexcept {
+                return static_cast<_Fn&&>(__fn)(__tag, __args...);
+              },
+              __tuple);
+          },
+          __notification_);
       }
-      template<class _Receiver>
+      template <class _Receiver>
       void visit_receiver(_Receiver&& __receiver) noexcept {
         std::visit(
           [&__receiver](auto&& __tuple) noexcept {
-            __tuple.apply([&__receiver](auto __tag, auto&&... __args) noexcept {
-              __tag(static_cast<_Receiver&&>(__receiver), static_cast<decltype(__args)&&>(__args)...);
-            }
-            , static_cast<decltype(__tuple)&&>(__tuple));
-          }
-          , static_cast<__notification_t&&>(__notification_));
+            __tuple.apply(
+              [&__receiver](auto __tag, auto&&... __args) noexcept {
+                __tag(
+                  static_cast<_Receiver&&>(__receiver), static_cast<decltype(__args)&&>(__args)...);
+              },
+              static_cast<decltype(__tuple)&&>(__tuple));
+          },
+          static_cast<__notification_t&&>(__notification_));
       }
       auto visit_sender() noexcept -> __notification_sender_t;
 
-      [[nodiscard]] bool value() const noexcept {
+      [[nodiscard]]
+      bool value() const noexcept {
         return std::visit(
-            []<class _Tuple>(const _Tuple&) noexcept {
-              return stdexec::__decays_to<stdexec::set_value_t, __tag_of_t<_Tuple>>;
-            }
-            , __notification_);
+          []<class _Tuple>(const _Tuple&) noexcept {
+            return stdexec::__decays_to<stdexec::set_value_t, __tag_of_t<_Tuple>>;
+          },
+          __notification_);
       }
-      [[nodiscard]] bool error() const noexcept {
+      [[nodiscard]]
+      bool error() const noexcept {
         return std::visit(
-            []<class _Tuple>(const _Tuple&) noexcept {
-              return stdexec::__decays_to<stdexec::set_error_t, __tag_of_t<_Tuple>>;
-            }
-            , __notification_);
+          []<class _Tuple>(const _Tuple&) noexcept {
+            return stdexec::__decays_to<stdexec::set_error_t, __tag_of_t<_Tuple>>;
+          },
+          __notification_);
       }
-      [[nodiscard]] bool stopped() const noexcept {
+      [[nodiscard]]
+      bool stopped() const noexcept {
         return std::visit(
-            []<class _Tuple>(const _Tuple&) noexcept {
-              return stdexec::__decays_to<stdexec::set_stopped_t, __tag_of_t<_Tuple>>;
-            }
-            , __notification_);
+          []<class _Tuple>(const _Tuple&) noexcept {
+            return stdexec::__decays_to<stdexec::set_stopped_t, __tag_of_t<_Tuple>>;
+          },
+          __notification_);
       }
 
-      friend auto operator==(
-        const notification_t& __lhs,
-        const notification_t& __rhs) noexcept -> bool {
-          return std::visit(
-            []<class _Lhs, class _Rhs>(const _Lhs& __lhs, const _Rhs& __rhs) noexcept {
-              if constexpr (
-                !std::same_as<__tag_of_t<_Lhs>, __tag_of_t<_Rhs>>
-                || stdexec::__v<stdexec::__mapply<stdexec::__msize, _Lhs>> != stdexec::__v<stdexec::__mapply<stdexec::__msize, _Rhs>>) {
-                return false;
-              } else {
-                return __lhs.apply([&__rhs]<class _LTag, class... _LArgs>(_LTag, const _LArgs&... __l_args){
-                  return __rhs.apply([&]<class _RTag, class... _RArgs>(_RTag, const _RArgs&... __r_args){
-                    if constexpr ((std::equality_comparable_with<const _LArgs&, const _RArgs&> && ... && true)) {
-                      return ((__l_args == __r_args) && ... && true);
-                    } else {
-                      return false;
-                    }
-                  }
-                  , __rhs);
-                }
-                , __lhs);
-              }
+      friend auto
+        operator==(const notification_t& __lhs, const notification_t& __rhs) noexcept -> bool {
+        return std::visit(
+          []<class _Lhs, class _Rhs>(const _Lhs& __lhs, const _Rhs& __rhs) noexcept {
+            if constexpr (
+              !std::same_as<__tag_of_t<_Lhs>, __tag_of_t<_Rhs>>
+              || stdexec::__v<stdexec::__mapply<stdexec::__msize, _Lhs>>
+                   != stdexec::__v<stdexec::__mapply<stdexec::__msize, _Rhs>>) {
+              return false;
+            } else {
+              return __lhs.apply(
+                [&__rhs]<class _LTag, class... _LArgs>(_LTag, const _LArgs&... __l_args) {
+                  return __rhs.apply(
+                    [&]<class _RTag, class... _RArgs>(_RTag, const _RArgs&... __r_args) {
+                      if constexpr ((std::equality_comparable_with<const _LArgs&, const _RArgs&>
+                                     && ... && true)) {
+                        return ((__l_args == __r_args) && ... && true);
+                      } else {
+                        return false;
+                      }
+                    },
+                    __rhs);
+                },
+                __lhs);
             }
-            , __lhs.__notification_, __rhs.__notification_);
+          },
+          __lhs.__notification_,
+          __rhs.__notification_);
       }
 
       friend std::string to_string(const notification_t& __self) noexcept {
         using std::to_string;
-        return __self.visit([](auto __tag, const auto&... __args){
-              int count = 0;
-              return to_string(__tag) + "(" + (((count++ > 0 ? ", " : "") + to_string(__args)) + ... + std::string{}) + ")";
-            });
+        return __self.visit([](auto __tag, const auto&... __args) {
+          int count = 0;
+          return to_string(__tag) + "("
+               + (((count++ > 0 ? ", " : "") + to_string(__args)) + ... + std::string{}) + ")";
+        });
       }
     };
 
@@ -199,42 +210,42 @@ namespace exec {
       };
     };
 
-    template<class _CompletionSignatures>
+    template <class _CompletionSignatures>
     struct __notification_sender {
       using __notification_t = notification_t<_CompletionSignatures>;
       struct __t {
         using __id = __notification_sender;
         using sender_concept = stdexec::sender_t;
 
-        template<class _ReceiverId>
-        using __notification_op_t = stdexec::__t<__notification_op<_ReceiverId, _CompletionSignatures>>;
+        template <class _ReceiverId>
+        using __notification_op_t =
+          stdexec::__t<__notification_op<_ReceiverId, _CompletionSignatures>>;
 
         __notification_t* __notification_;
 
         template <stdexec::__decays_to<__t> _Self, class... _Env>
-        static auto get_completion_signatures(_Self&&, _Env&&...) noexcept
-          -> _CompletionSignatures {
+        static auto
+          get_completion_signatures(_Self&&, _Env&&...) noexcept -> _CompletionSignatures {
           return {};
         }
 
         template <std::same_as<__t> _Self, receiver _Receiver>
         static auto connect(_Self&& __self, _Receiver&& __rcvr)
           noexcept(__nothrow_move_constructible<_Receiver>)
-          -> __notification_op_t<stdexec::__id<_Receiver>> {
-          return {static_cast<_Receiver&&>(__rcvr),
-                  __self.__notification_};
+            -> __notification_op_t<stdexec::__id<_Receiver>> {
+          return {static_cast<_Receiver&&>(__rcvr), __self.__notification_};
         }
       };
     };
 
-    template<class _CompletionSignatures>
+    template <class _CompletionSignatures>
     auto notification_t<_CompletionSignatures>::visit_sender() noexcept
       -> notification_t<_CompletionSignatures>::__notification_sender_t {
       return {this};
     }
 
   } // namespace __notification
-  template<class _CompletionSignatures>
+  template <class _CompletionSignatures>
   using notification_t = __notification::notification_t<_CompletionSignatures>;
 
   namespace __notification {
