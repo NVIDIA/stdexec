@@ -78,8 +78,9 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////
   // get_completion_behavior: A sender can define this attribute to describe the sender's
   // completion behavior
+  template <class _Tag>
   struct get_completion_behavior_t
-    : __query<get_completion_behavior_t, completion_behavior::unknown, __q1<__decay_t>> {
+    : __query<get_completion_behavior_t<_Tag>, completion_behavior::unknown, __q1<__decay_t>> {
     template <class _Attrs, class... _Env>
     STDEXEC_ATTRIBUTE(always_inline, host, device)
     static constexpr void __validate() noexcept {
@@ -136,16 +137,16 @@ namespace stdexec {
 
   constexpr min_t min{};
 
-  template <class _Attrs, class... _Env>
+  template <class _Tag, class _Attrs, class... _Env>
   concept __completes_inline =
-    (__call_result_t<get_completion_behavior_t, const _Attrs&, const _Env&...>{}
+    (__call_result_t<get_completion_behavior_t<_Tag>, const _Attrs&, const _Env&...>{}
      == completion_behavior::inline_completion);
 
-  template <class _Sndr, class... _Env>
+  template <class _Tag, class _Sndr, class... _Env>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
   consteval auto get_completion_behavior() noexcept {
     using __behavior_t =
-      __call_result_t<get_completion_behavior_t, env_of_t<_Sndr>, const _Env&...>;
+      __call_result_t<get_completion_behavior_t<_Tag>, env_of_t<_Sndr>, const _Env&...>;
     return __behavior_t{};
   }
 

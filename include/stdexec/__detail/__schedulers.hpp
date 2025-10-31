@@ -229,7 +229,7 @@ namespace stdexec {
         // Otherwise, if __attrs indicates that its sender completes inline, then we can ask
         // the environment for the current scheduler and return that (after checking the
         // scheduler for _its_ completion scheduler).
-        else if constexpr (__completes_inline<_Attrs, _Env...> && __callable<get_scheduler_t, const _Env&...>)
+        else if constexpr (__completes_inline<_Tag, _Attrs, _Env...> && __callable<get_scheduler_t, const _Env&...>)
         {
           return __declfn<decltype(__recurse_query_t{}(
             get_scheduler(__declval<_Env>()...), __hide_scheduler{__declval<_Env>()}...))>{};
@@ -318,7 +318,7 @@ namespace stdexec {
   struct __mk_sch_env_t {
     template <class _Sch, class... _Env>
     constexpr auto operator()([[maybe_unused]] _Sch __sch, const _Env&... __env) const noexcept {
-      if constexpr (__completes_inline<env_of_t<schedule_result_t<_Sch>>, _Env...>
+      if constexpr (__completes_inline<set_value_t, env_of_t<schedule_result_t<_Sch>>, _Env...>
                     && (__callable<get_scheduler_t, const _Env&> || ...))
       {
         return __sched_env{get_scheduler(__env)...};

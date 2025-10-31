@@ -360,7 +360,7 @@ namespace stdexec {
           }
           // Otherwise, if the scheduler's sender indicates that it completes inline, we can ask
           // the environment for its domain.
-          else if constexpr (__completes_inline<env_of_t<__call_result_t<schedule_t, __sch_t>>, _Env...>
+          else if constexpr (__completes_inline<_Tag, env_of_t<__call_result_t<schedule_t, __sch_t>>, _Env...>
                             && __callable<get_domain_t, const _Env&...>)
           {
             return __call_result_t<get_domain_t, const _Env&...>{};
@@ -373,7 +373,7 @@ namespace stdexec {
         }
         // Otherwise, if the attributes indicates that the sender completes inline, we can ask
         // the environment for its domain.
-        else if constexpr (__completes_inline<_Attrs, _Env...> && __callable<get_domain_t, const _Env&...>)
+        else if constexpr (__completes_inline<_Tag, _Attrs, _Env...> && __callable<get_domain_t, const _Env&...>)
         {
           return __call_result_t<get_domain_t, const _Env&...>{};
         }
