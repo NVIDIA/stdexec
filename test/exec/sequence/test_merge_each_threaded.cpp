@@ -290,9 +290,8 @@ namespace {
               return count;
             }))));
 
+    CAPTURE(count < 40, count > 4);
     CHECK(v.has_value() == false);
-    CHECK(count < 40);
-    CHECK(count > 4);
   }
 
   TEST_CASE(
@@ -362,9 +361,8 @@ namespace {
               return count;
             }))));
 
+    CAPTURE(count < 40, count > 4);
     CHECK(v.has_value() == false);
-    CHECK(count < 40);
-    CHECK(count > 4);
   }
 
 #endif // STDEXEC_HAS_STD_RANGES()

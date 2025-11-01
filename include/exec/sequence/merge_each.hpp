@@ -436,7 +436,7 @@ namespace exec {
                 && __nothrow_connectable<__error_next_sender_t, __error_next_receiver_t>) {
                 auto __next_sender = exec::set_next(__receiver_, __error_sender_t{this});
                 auto __next_receiver = __error_next_receiver_t{
-                  this, __env_fn{&__receiver_, &__nested_stop_}
+                  this, __env_fn_t{&__receiver_, &__nested_stop_}
                 };
                 __error_op_.__emplace_from([&]() {
                   return stdexec::connect(
@@ -448,7 +448,7 @@ namespace exec {
                 STDEXEC_TRY {
                   auto __next_sender = exec::set_next(__receiver_, __error_sender_t{this});
                   auto __next_receiver = __error_next_receiver_t{
-                    this, __env_fn{&__receiver_, &__nested_stop_}
+                    this, __env_fn_t{&__receiver_, &__nested_stop_}
                   };
                   __error_op_.__emplace_from([&]() {
                     return stdexec::connect(
