@@ -43,11 +43,17 @@ namespace {
   // on the specified scheduler after the specified duration
   [[maybe_unused]]
   static constexpr auto delays_each_on =
-    [](auto sched, duration_of_t<decltype(sched)> after) noexcept {
-      return exec::transform_each(stdexec::let_value([sched, after](auto&&... vs) noexcept {
-        auto at = sched.now() + after;
-        return sequence(schedule_at(sched, at), stdexec::just(vs...));
-      }));
+    []<class Sched>(Sched sched, duration_of_t<Sched> after) noexcept {
+      auto delay_value = []<class Value>(Value&& value, Sched sched, duration_of_t<Sched> after) {
+        return sequence(schedule_after(sched, after), static_cast<Value&&>(value));
+      };
+      auto delay_adaptor =
+        stdexec::__binder_back<decltype(delay_value), Sched, duration_of_t<Sched>>{
+          {sched, after},
+          {},
+          {}
+      };
+      return exec::transform_each(delay_adaptor);
     };
 
   using __marble_t = exec::marble_t<test_clock>;
@@ -115,7 +121,7 @@ namespace {
     CHECK(test_clock::time_point{0ms} == __clock.now());
     auto __sequence = __test.get_marble_sequence_from("  -0-"_mstr);
     auto expected = get_marbles_from(__clock, "=^-5 998ms $"_mstr);
-    auto actual = __test.get_marbles_from(__sequence | then_each([](char c) { return c + 5; }));
+    auto actual = __test.get_marbles_from(__sequence | then_each([](char c) noexcept -> char { return c + 5; }));
     CHECK(test_clock::time_point{1000ms} == __clock.now());
     CAPTURE(__sequence.__marbles_);
     CHECK(expected == actual);
@@ -129,7 +135,7 @@ namespace {
     CHECK(test_clock::time_point{0ms} == __clock.now());
     auto __sequence = __test.get_marble_sequence_from("  -0--#"_mstr);
     auto expected = get_marbles_from(__clock, "=^-5--#$"_mstr);
-    auto actual = __test.get_marbles_from(__sequence | then_each([](char c) { return c + 5; }));
+    auto actual = __test.get_marbles_from(__sequence | then_each([](char c) noexcept -> char { return c + 5; }));
     CHECK(test_clock::time_point{4ms} == __clock.now());
     CAPTURE(__sequence.__marbles_);
     CHECK(expected == actual);
@@ -143,7 +149,7 @@ namespace {
     CHECK(test_clock::time_point{0ms} == __clock.now());
     auto __sequence = __test.get_marble_sequence_from("  -0--#--1|"_mstr);
     auto expected = get_marbles_from(__clock, "=^-5--#$"_mstr);
-    auto actual = __test.get_marbles_from(__sequence | then_each([](char c) { return c + 5; }));
+    auto actual = __test.get_marbles_from(__sequence | then_each([](char c) noexcept -> char { return c + 5; }));
     CHECK(test_clock::time_point{4ms} == __clock.now());
     CAPTURE(__sequence.__marbles_);
     CHECK(expected == actual);
@@ -157,7 +163,7 @@ namespace {
     CHECK(test_clock::time_point{0ms} == __clock.now());
     auto __sequence = __test.get_marble_sequence_from("  -0--."_mstr);
     auto expected = get_marbles_from(__clock, "=^-5--.$"_mstr);
-    auto actual = __test.get_marbles_from(__sequence | then_each([](char c) { return c + 5; }));
+    auto actual = __test.get_marbles_from(__sequence | then_each([](char c) noexcept -> char { return c + 5; }));
     CHECK(test_clock::time_point{4ms} == __clock.now());
     CAPTURE(__sequence.__marbles_);
     CHECK(expected == actual);
@@ -171,7 +177,7 @@ namespace {
     CHECK(test_clock::time_point{0ms} == __clock.now());
     auto __sequence = __test.get_marble_sequence_from("  -0--.--1|"_mstr);
     auto expected = get_marbles_from(__clock, "=^-5--.$"_mstr);
-    auto actual = __test.get_marbles_from(__sequence | then_each([](char c) { return c + 5; }));
+    auto actual = __test.get_marbles_from(__sequence | then_each([](char c) noexcept -> char { return c + 5; }));
     CHECK(test_clock::time_point{4ms} == __clock.now());
     CAPTURE(__sequence.__marbles_);
     CHECK(expected == actual);
@@ -185,7 +191,7 @@ namespace {
     CHECK(test_clock::time_point{0ms} == __clock.now());
     auto __sequence = __test.get_marble_sequence_from("  -0--1---2|"_mstr);
     auto expected = get_marbles_from(__clock, "=^-5--6---7|"_mstr);
-    auto actual = __test.get_marbles_from(__sequence | then_each([](char c) { return c + 5; }));
+    auto actual = __test.get_marbles_from(__sequence | then_each([](char c) noexcept -> char { return c + 5; }));
     CHECK(test_clock::time_point{9ms} == __clock.now());
     CAPTURE(__sequence.__marbles_);
     CHECK(expected == actual);
