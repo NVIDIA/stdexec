@@ -102,15 +102,17 @@ namespace exec {
       bool stop_requested() const noexcept {
         if constexpr (!unstoppable_token<__stop_token_t>) {
           return __stop_source_.stop_requested();
+        } else {
+          return false;
         }
-        return false;
       }
 
       bool request_stop() noexcept {
         if constexpr (!unstoppable_token<__stop_token_t>) {
           return __stop_source_.request_stop();
+        } else {
+          return false;
         }
-        return false;
       }
 
       inplace_stop_token get_token() const & noexcept {
