@@ -18,11 +18,45 @@
 
 #include "../../stdexec/concepts.hpp"
 #include "../../stdexec/execution.hpp"
+#include "exec/sequence_senders.hpp"
 #include "stdexec/__detail/__concepts.hpp"
 #include "stdexec/__detail/__config.hpp"
 #include "stdexec/__detail/__tuple.hpp"
 #include <concepts>
 #include <string>
+#include <exception>
+#include <system_error>
+
+namespace std {
+  inline std::string to_string(const std::error_code __error) noexcept {
+    return __error.message();
+  }
+  inline std::string to_string(const std::exception_ptr __ex) noexcept {
+    try {
+      std::rethrow_exception(__ex);
+    } catch (const std::exception& __ex) {
+      return __ex.what();
+    }
+  }
+} // namespace std
+
+namespace stdexec::__rcvrs {
+  inline std::string to_string(set_value_t) noexcept {
+    return {"set_value"};
+  }
+  inline std::string to_string(set_error_t) noexcept {
+    return {"set_error"};
+  }
+  inline std::string to_string(set_stopped_t) noexcept {
+    return {"set_stopped"};
+  }
+} // namespace stdexec::__rcvrs
+
+namespace exec::__sequence_sender {
+  inline std::string to_string(set_next_t) noexcept {
+    return {"set_next"};
+  }
+} // namespace exec::__sequence_sender
 
 namespace exec {
   namespace __notification {

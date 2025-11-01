@@ -898,7 +898,7 @@ namespace exec {
     void __test_sequence_operation<_ReceiverId>::start() noexcept {
       this->__on_stop_.emplace(
         stdexec::get_stop_token(stdexec::get_env(this->__receiver_)),
-        __part_t::__stop_callback_fn_t(this));
+        typename __part_t::__stop_callback_fn_t(this));
       for (auto& __marble: this->__marbles_) {
         __marble.set_origin_frame(this->__context_->now());
         auto& __op = __marble_ops_.emplace_back();

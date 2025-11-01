@@ -25,37 +25,6 @@
 
 #include <catch2/catch.hpp>
 
-namespace std {
-  inline std::string to_string(const std::error_code __error) noexcept {
-    return __error.message();
-  }
-  inline std::string to_string(const std::exception_ptr __ex) noexcept {
-    try {
-      std::rethrow_exception(__ex);
-    } catch (const std::exception& __ex) {
-      return __ex.what();
-    }
-  }
-} // namespace std
-
-namespace stdexec::__rcvrs {
-  inline std::string to_string(set_value_t) noexcept {
-    return {"set_value"};
-  }
-  inline std::string to_string(set_error_t) noexcept {
-    return {"set_error"};
-  }
-  inline std::string to_string(set_stopped_t) noexcept {
-    return {"set_stopped"};
-  }
-} // namespace stdexec::__rcvrs
-
-namespace exec::__sequence_sender {
-  inline std::string to_string(set_next_t) noexcept {
-    return {"set_next"};
-  }
-} // namespace exec::__sequence_sender
-
 namespace Catch {
   template <class _Clock, class _Duration>
   struct StringMaker<std::chrono::time_point<_Clock, _Duration>> {
