@@ -859,8 +859,8 @@ namespace exec {
       }
     };
 
-    template <class _Env = stdexec::env<>, class _Sequence>
-    void __debug_sequence_sender(_Sequence&& __sequence, const _Env& = {}) {
+    template <class _Env, class _Sequence>
+    void __debug_sequence_sender(_Sequence&& __sequence, const _Env&) {
       if constexpr (!__is_debug_env<_Env>) {
         if constexpr (sequence_sender_in<_Sequence, _Env>) {
           using __sigs_t = stdexec::__completion_signatures_of_t<_Sequence, __debug_env_t<_Env>>;
