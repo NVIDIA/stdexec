@@ -56,27 +56,6 @@ namespace exec::__sequence_sender {
   }
 } // namespace exec::__sequence_sender
 
-namespace exec::__marbles {
-  inline std::string to_string(sequence_start_t) noexcept {
-    return {"sequence_start"};
-  }
-  inline std::string to_string(sequence_connect_t) noexcept {
-    return {"sequence_connect"};
-  }
-  inline std::string to_string(sequence_end_t) noexcept {
-    return {"sequence_end"};
-  }
-  inline std::string to_string(sequence_error_t) noexcept {
-    return {"sequence_error"};
-  }
-  inline std::string to_string(sequence_stopped_t) noexcept {
-    return {"sequence_stopped"};
-  }
-  inline std::string to_string(request_stop_t) noexcept {
-    return {"request_stop"};
-  }
-} // namespace exec::__marbles
-
 namespace Catch {
   template <class _Clock, class _Duration>
   struct StringMaker<std::chrono::time_point<_Clock, _Duration>> {

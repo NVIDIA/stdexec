@@ -22,6 +22,7 @@
 #include "stdexec/__detail/__config.hpp"
 #include "stdexec/__detail/__tuple.hpp"
 #include <concepts>
+#include <string>
 
 namespace exec {
   namespace __notification {
@@ -116,13 +117,13 @@ namespace exec {
       template <class _Receiver>
       void visit_receiver(_Receiver&& __receiver) noexcept {
         std::visit(
-          [&__receiver](auto&& __tuple) noexcept {
+          [&__receiver]<class _Tuple>(_Tuple&& __tuple) noexcept {
             __tuple.apply(
-              [&__receiver](auto __tag, auto&&... __args) noexcept {
+              [&__receiver]<class _Tag, class... _Args>(_Tag __tag, _Args&&... __args) noexcept {
                 __tag(
-                  static_cast<_Receiver&&>(__receiver), static_cast<decltype(__args)&&>(__args)...);
+                  static_cast<_Receiver&&>(__receiver), static_cast<_Args&&>(__args)...);
               },
-              static_cast<decltype(__tuple)&&>(__tuple));
+              static_cast<_Tuple&&>(__tuple));
           },
           static_cast<__notification_t&&>(__notification_));
       }
@@ -156,25 +157,31 @@ namespace exec {
       friend auto
         operator==(const notification_t& __lhs, const notification_t& __rhs) noexcept -> bool {
         return std::visit(
-          []<class _Lhs, class _Rhs>(const _Lhs& __lhs, const _Rhs& __rhs) noexcept {
+          []<class _Lhs, class _Rhs>(const _Lhs& __lhs, const _Rhs& __rhs) noexcept -> bool {
+            using __lhs_tag_t = notification_t::__tag_of_t<_Lhs>;
+            using __rhs_tag_t = notification_t::__tag_of_t<_Rhs>;
             if constexpr (
-              !std::same_as<__tag_of_t<_Lhs>, __tag_of_t<_Rhs>>
+              !std::same_as<__lhs_tag_t, __rhs_tag_t>
               || stdexec::__v<stdexec::__mapply<stdexec::__msize, _Lhs>>
                    != stdexec::__v<stdexec::__mapply<stdexec::__msize, _Rhs>>) {
               return false;
             } else {
               return __lhs.apply(
-                [&__rhs]<class _LTag, class... _LArgs>(_LTag, const _LArgs&... __l_args) {
-                  return __rhs.apply(
-                    [&]<class _RTag, class... _RArgs>(_RTag, const _RArgs&... __r_args) {
-                      if constexpr ((std::equality_comparable_with<const _LArgs&, const _RArgs&>
-                                     && ... && true)) {
-                        return ((__l_args == __r_args) && ... && true);
-                      } else {
-                        return false;
-                      }
-                    },
-                    __rhs);
+                [&__lhs,
+                 &__rhs]<class _LTag, class... _LArgs>(_LTag, const _LArgs&...) noexcept -> bool {
+                  return [&__lhs, &__rhs]<std::size_t... _Is>(__indices<_Is...>) {
+                    if constexpr ((std::equality_comparable_with<
+                                     const decltype(_Lhs::template __get<_Is+1>(__lhs))&,
+                                     const decltype(_Rhs::template __get<_Is+1>(__rhs))&
+                                   >
+                                   && ... && true)) {
+                      return (
+                        ((_Lhs::template __get<_Is+1>(__lhs)) == (_Rhs::template __get<_Is+1>(__rhs)))
+                        && ... && true);
+                    } else {
+                      return false;
+                    }
+                  }(__indices_for<_LArgs...>{});
                 },
                 __lhs);
             }

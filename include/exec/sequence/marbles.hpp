@@ -100,9 +100,9 @@ namespace exec {
         return __lhs.__c_ == __rhs.__c_;
       }
 
-      friend std::string to_string(const __value_t& __self) noexcept {
-        using std::to_string;
-        return "'" + std::string{1, __self.__c_} + "'";
+      friend inline std::string to_string(const __value_t& __self) noexcept {
+        const char __result[4] = {'\'', __self.__c_, '\'', '\0'};
+        return __result;
       }
     };
 
@@ -122,12 +122,18 @@ namespace exec {
       operator marble_selector_t() const noexcept {
         return marble_selector_t::sequence_start;
       }
+      friend inline std::string to_string(sequence_start_t) noexcept {
+        return {"sequence_start"};
+      }
     };
     static constexpr inline sequence_start_t sequence_start;
 
     struct sequence_connect_t {
       operator marble_selector_t() const noexcept {
         return marble_selector_t::sequence_connect;
+      }
+      friend inline std::string to_string(sequence_connect_t) noexcept {
+        return {"sequence_connect"};
       }
     };
     static constexpr inline sequence_connect_t sequence_connect;
@@ -136,12 +142,18 @@ namespace exec {
       operator marble_selector_t() const noexcept {
         return marble_selector_t::sequence_value;
       }
+      friend inline std::string to_string(sequence_end_t) noexcept {
+        return {"sequence_end"};
+      }
     };
     static constexpr inline sequence_end_t sequence_end;
 
     struct sequence_error_t {
       operator marble_selector_t() const noexcept {
         return marble_selector_t::sequence_error;
+      }
+      friend inline std::string to_string(sequence_error_t) noexcept {
+        return {"sequence_error"};
       }
     };
     static constexpr inline sequence_error_t sequence_error;
@@ -150,12 +162,18 @@ namespace exec {
       operator marble_selector_t() const noexcept {
         return marble_selector_t::sequence_stopped;
       }
+      friend inline std::string to_string(sequence_stopped_t) noexcept {
+        return {"sequence_stopped"};
+      }
     };
     static constexpr inline sequence_stopped_t sequence_stopped;
 
     struct request_stop_t {
       operator marble_selector_t() const noexcept {
         return marble_selector_t::request_stop;
+      }
+      friend inline std::string to_string(request_stop_t) noexcept {
+        return {"request_stop"};
       }
     };
     static constexpr inline request_stop_t request_stop;
@@ -490,8 +508,11 @@ namespace exec {
             break;
           }
           default: {
-            long __consumed_in_default = 0;
-            if (__whole.begin() == __remaining.begin() || !!std::isspace(__remaining.front())) {
+            // use auto and math to derive the difference type
+            auto __consumed_in_default = __remaining.begin() - __remaining.begin();
+            if (
+              std::addressof(*__whole.begin()) == std::addressof(*__remaining.begin())
+              || !!std::isspace(__remaining.front())) {
               if (!!std::isspace(__remaining.front())) {
                 __consume_first(1);
                 ++__consumed_in_default;
@@ -508,7 +529,7 @@ namespace exec {
                 if (
                   __suffix_begin != __remaining.end() && __suffix_begin - __remaining.begin() > 0
                   && __all_digits) {
-                  long __to_consume = __suffix_begin - __remaining.begin();
+                  auto __to_consume = __suffix_begin - __remaining.begin();
                   long __duration = std::atol(__remaining.data());
                   if (std::ranges::equal(
                         __remaining.subspan(__to_consume, 3), __make_span("ms "_mstr))) {
@@ -800,6 +821,8 @@ namespace exec {
 
   } // namespace __marbles
 
+  using __value_t = __marbles::__value_t;
+
   using sequence_start_t = __marbles::sequence_start_t;
   static constexpr inline auto sequence_start = sequence_start_t{};
 
@@ -829,9 +852,6 @@ namespace exec {
 
   static constexpr inline auto record_marbles = record_marbles_t{};
 
-  namespace __marbles {
-
-  }
 } // namespace exec
 
 namespace stdexec {
