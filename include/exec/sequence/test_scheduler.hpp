@@ -22,7 +22,6 @@
 #include "../__detail/intrusive_heap.hpp"
 
 #include "../../stdexec/__detail/__intrusive_mpsc_queue.hpp"
-#include "exec/finally.hpp"
 #include "exec/sequence.hpp"
 #include "exec/sequence_senders.hpp"
 #include "exec/variant_sender.hpp"
@@ -729,22 +728,23 @@ namespace exec {
     };
 
     template <class _ReceiverId>
-    struct __test_sequence_operation : __test_sequence_operation_base {
+    struct __test_sequence_operation_part : __test_sequence_operation_base {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
       using __marble_t = marble_t<test_clock>;
       using __marble_sender_t = __marble_t::__marble_sender_t;
       using __time_point_t = typename test_scheduler::time_point;
+      using __receiver_t = __next_receiver<_ReceiverId>;
 
       std::vector<__marble_t> __marbles_;
       _Receiver __receiver_;
       __marble_t* __end_marble_{nullptr};
-      int __active_ops_ = 0;
+      std::size_t __active_ops_ = 0;
 
       __marble_t __requested_stop_marble_{__time_point_t{}, sequence_stopped};
 
       struct __stop_callback_fn_t {
-        __test_sequence_operation* __self_;
+        __test_sequence_operation_part* __self_;
         void operator()() const noexcept {
           auto& __self = *__self_;
           __self.__requested_stop_marble_.set_origin_frame(__self.__context_->now());
@@ -766,88 +766,7 @@ namespace exec {
 
       std::optional<__stop_callback_t> __on_stop_;
 
-      template <class _Completion>
-      static auto __schedule_at(
-        __test_sequence_operation& __self,
-        __marble_t& __marble,
-        _Completion&& __completion) noexcept {
-        return stdexec::write_env(
-                 // schedule the marble completion at the specified frame
-                 exec::sequence(
-                   exec::schedule_at(__self.__context_->get_scheduler(), __marble.frame()),
-                   static_cast<_Completion&&>(__completion)),
-                 stdexec::prop{stdexec::get_stop_token, __self.__stop_source_.get_token()})
-             | exec::finally(stdexec::just() | stdexec::then([&__self, &__marble]() noexcept {
-                               // after each completion, update the __test_sequence_operation state
-                               STDEXEC_ASSERT(__self.__active_ops_ > 0);
-                               if (
-                                 __marble.error_notification() || __marble.stopped_notification()
-                                 || __marble.sequence_error() || __marble.sequence_stopped()
-                                 || __marble.sequence_end()) {
-                                 // these marbles trigger the whole sequence
-                                 // to complete with no more items
-                                 if (!__self.__end_marble_) {
-                                   // set as the end marble
-                                   // this determines the signal that will be used to
-                                   // complete the sequence after all remaining active
-                                   // operations have completed
-                                   __self.__end_marble_ = &__marble;
-                                 }
-                                 // cancel all pending ops
-                                 __self.request_stop();
-                               }
-                               if (--__self.__active_ops_ == 0) {
-                                 // all ops are complete,
-                                 if (!!__self.__end_marble_) {
-                                   __self.__on_stop_.reset();
-                                   __self.__end_marble_->visit_sequence_receiver(
-                                     static_cast<_Receiver&&>(__self.__receiver_));
-                                 }
-                                 // else this sequence never completes -
-                                 // this sequence must be stopped externally
-                               }
-                             }));
-      }
-      using __receiver_t = __next_receiver<_ReceiverId>;
-      static auto
-        __schedule_marble(__test_sequence_operation& __self, __marble_t& __marble) noexcept {
-        using __next_sender_t = decltype(__schedule_at(
-          __self, __marble, exec::set_next(__self.__receiver_, __marble.visit_sender())));
-        using __end_sender_t = decltype(__schedule_at(__self, __marble, stdexec::just()));
-        struct __next_sender_id {
-          using __t = __next_sender_t;
-        };
-        struct __end_sender_id {
-          using __t = __end_sender_t;
-        };
-
-        // WORKAROUND clang 19 would fail to compile the construction of the variant_sender.
-        // It was unable to find the matching value in the variant that would be constructed.
-        // __proxy_sender is a hammer to force the types to look different enough to
-        // distinguish which variant value to construct
-        using __next_sender_proxy_t = __proxy_sender<__next_sender_id>;
-        using __end_sender_proxy_t = __proxy_sender<__end_sender_id>;
-
-        using __result_t = variant_sender<__next_sender_proxy_t, __end_sender_proxy_t>;
-        if (__marble.__notification_.has_value()) {
-          return __result_t{__next_sender_proxy_t{{__schedule_at(
-            __self, __marble, exec::set_next(__self.__receiver_, __marble.visit_sender()))}}};
-        } else {
-          return __result_t{
-            __end_sender_proxy_t{{__schedule_at(__self, __marble, stdexec::just())}}};
-        }
-      }
-
-      using __scheduled_marble_t = stdexec::__call_result_t<
-        decltype(&__schedule_marble),
-        __test_sequence_operation&,
-        __marble_t&
-      >;
-      using __marble_op_t = stdexec::connect_result_t<__scheduled_marble_t, __receiver_t>;
-
-      std::deque<stdexec::__optional<__marble_op_t>> __marble_ops_{};
-
-      __test_sequence_operation(
+      __test_sequence_operation_part(
         std::vector<__marble_t> __marbles,
         test_context* __context,
         _Receiver&& __receiver) noexcept
@@ -856,23 +775,144 @@ namespace exec {
         , __receiver_{static_cast<_Receiver&&>(__receiver)} {
       }
 
-      void start() noexcept {
-        __on_stop_.emplace(
-          stdexec::get_stop_token(stdexec::get_env(__receiver_)), __stop_callback_fn_t{this});
-        for (auto& __marble: __marbles_) {
-          __marble.set_origin_frame(__context_->now());
-          auto& __op = __marble_ops_.emplace_back();
-          __op.__emplace_from([this, &__marble]() {
-            return stdexec::connect(__schedule_marble(*this, __marble), __receiver_t{&__receiver_});
-          });
-        }
-
-        __active_ops_ = __marble_ops_.size();
-        for (auto& __op: __marble_ops_) {
-          stdexec::start(__op.value());
-        }
-      }
+      template <class _Completion>
+      static auto __schedule_at(
+        __test_sequence_operation_part& __self,
+        __marble_t& __marble,
+        _Completion&& __completion) noexcept;
+      static auto
+        __schedule_marble(__test_sequence_operation_part& __self, __marble_t& __marble) noexcept;
     };
+
+    template <class _ReceiverId>
+    struct __test_sequence_operation : __test_sequence_operation_part<_ReceiverId> {
+      using __part_t = __test_sequence_operation_part<_ReceiverId>;
+
+      using _Receiver = stdexec::__t<_ReceiverId>;
+
+      using __marble_t = typename __part_t::__marble_t;
+      using __marble_sender_t = typename __part_t::__marble_sender_t;
+      using __time_point_t = typename __part_t::__time_point_t;
+      using __receiver_t = typename __part_t::__receiver_t;
+
+      using __scheduled_marble_t =
+        stdexec::__call_result_t<decltype(&__part_t::__schedule_marble), __part_t&, __marble_t&>;
+      using __marble_op_t = stdexec::connect_result_t<__scheduled_marble_t, __receiver_t>;
+
+      std::deque<stdexec::__optional<__marble_op_t>> __marble_ops_{};
+
+      __test_sequence_operation(
+        std::vector<__marble_t> __marbles,
+        test_context* __context,
+        _Receiver&& __receiver) noexcept
+        : __part_t{
+            static_cast<std::vector<__marble_t>&&>(__marbles),
+            __context,
+            static_cast<_Receiver&&>(__receiver)} {
+      }
+
+      void start() noexcept;
+    };
+
+    template <class _ReceiverId>
+    template <class _Completion>
+    auto __test_sequence_operation_part<_ReceiverId>::__schedule_at(
+      __test_sequence_operation_part<_ReceiverId>& __self,
+      marble_t<test_clock>& __marble,
+      _Completion&& __completion) noexcept {
+      return stdexec::write_env(
+               // schedule the marble completion at the specified frame
+               exec::sequence(
+                 exec::schedule_at(__self.__context_->get_scheduler(), __marble.frame()),
+                 static_cast<_Completion&&>(__completion)),
+               stdexec::prop{stdexec::get_stop_token, __self.__stop_source_.get_token()})
+           | stdexec::upon_error([](auto&&) noexcept {}) | stdexec::upon_stopped([]() noexcept {})
+           | stdexec::then([&__self, &__marble]() noexcept {
+               // after each completion, update the __test_sequence_operation_part state
+               STDEXEC_ASSERT(__self.__active_ops_ > 0);
+               if (
+                 __marble.error_notification() || __marble.stopped_notification()
+                 || __marble.sequence_error() || __marble.sequence_stopped()
+                 || __marble.sequence_end()) {
+                 // these marbles trigger the whole sequence
+                 // to complete with no more items
+                 if (!__self.__end_marble_) {
+                   // set as the end marble
+                   // this determines the signal that will be used to
+                   // complete the sequence after all remaining active
+                   // operations have completed
+                   __self.__end_marble_ = &__marble;
+                 }
+                 // cancel all pending ops
+                 __self.request_stop();
+               }
+               if (--__self.__active_ops_ == 0) {
+                 // all ops are complete,
+                 if (!!__self.__end_marble_) {
+                   __self.__on_stop_.reset();
+                   __self.__end_marble_
+                     ->visit_sequence_receiver(static_cast<_Receiver&&>(__self.__receiver_));
+                 }
+                 // else this sequence never completes -
+                 // this sequence must be stopped externally
+               }
+             });
+    }
+
+    template <class _ReceiverId>
+    auto __test_sequence_operation_part<_ReceiverId>::__schedule_marble(
+      __test_sequence_operation_part<_ReceiverId>& __self,
+      marble_t<test_clock>& __marble) noexcept {
+
+      using __next_t = decltype(exec::set_next(__self.__receiver_, __marble.visit_sender()));
+      using __next_sender_t =
+        decltype(__schedule_at(__self, __marble, stdexec::__declval<__next_t>()));
+      using __end_sender_t = decltype(__schedule_at(__self, __marble, stdexec::just()));
+      struct __next_sender_id {
+        using __t = __next_sender_t;
+      };
+      struct __end_sender_id {
+        using __t = __end_sender_t;
+      };
+
+      // WORKAROUND clang 19 would fail to compile the construction of the variant_sender.
+      // It was unable to find the matching value in the variant that would be constructed.
+      // __proxy_sender is a hammer to force the types to look different enough to
+      // distinguish which variant value to construct
+      using __next_sender_proxy_t = __proxy_sender<__next_sender_id>;
+      using __end_sender_proxy_t = __proxy_sender<__end_sender_id>;
+
+      using __result_t = variant_sender<__next_sender_proxy_t, __end_sender_proxy_t>;
+      if (__marble.__notification_.has_value()) {
+
+        auto __next = exec::set_next(__self.__receiver_, __marble.visit_sender());
+        __next_sender_proxy_t __scheduled(
+          __schedule_at(__self, __marble, static_cast<__next_t&&>(__next)));
+        return __result_t{__scheduled};
+      } else {
+        return __result_t{__end_sender_proxy_t{{__schedule_at(__self, __marble, stdexec::just())}}};
+      }
+    }
+
+    template <class _ReceiverId>
+    void __test_sequence_operation<_ReceiverId>::start() noexcept {
+      this->__on_stop_.emplace(
+        stdexec::get_stop_token(stdexec::get_env(this->__receiver_)),
+        __part_t::__stop_callback_fn_t(this));
+      for (auto& __marble: this->__marbles_) {
+        __marble.set_origin_frame(this->__context_->now());
+        auto& __op = __marble_ops_.emplace_back();
+        __op.__emplace_from([this, &__marble]() {
+          return stdexec::connect(
+            __part_t::__schedule_marble(*this, __marble), __receiver_t{&this->__receiver_});
+        });
+      }
+
+      this->__active_ops_ = this->__marble_ops_.size();
+      for (auto& __op: this->__marble_ops_) {
+        stdexec::start(__op.value());
+      }
+    }
 
     struct __test_sequence {
       using __t = __test_sequence;
