@@ -47,10 +47,14 @@ namespace stdexec {
         return completion_behavior::inline_completion;
       }
 
+      template <class _Env = env<>>
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      static constexpr auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) noexcept //
-        -> inline_scheduler {
-        return {};
+      static constexpr auto query(get_completion_scheduler_t<set_value_t>, _Env&& env = {}) noexcept { //
+        if constexpr (__callable<get_scheduler_t, _Env>) {
+          return get_scheduler(static_cast<_Env&&>(env));
+        } else {
+          return inline_scheduler{};
+        }
       }
     };
 

@@ -216,7 +216,7 @@ namespace nvexec::_strm {
       }
 
       auto get_env() const noexcept -> __sched_attrs<Scheduler> {
-        return {sched_, {}};
+        return {sched_};
       }
 
       template <__decays_to<__t> _Self, class... _Env>

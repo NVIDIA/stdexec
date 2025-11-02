@@ -317,6 +317,12 @@ namespace stdexec {
       };
 
     private:
+      template <class _Sch, class... _Env, class _Domain>
+      static consteval auto __check_domain_(_Domain) noexcept {
+        static_assert(std::is_same_v<_Domain, __detail::__scheduler_domain_t<_Sch, const _Env&...>>,
+                      "the sender claims to complete on a domain that is not the domain of its completion scheduler");
+      }
+
       template <class _Attrs, class... _Env, class _Domain>
       static consteval auto __check_domain(_Domain) noexcept -> _Domain {
         // TODO(gevtushenko):
@@ -329,8 +335,7 @@ namespace stdexec {
           // (this can happen with __prop_like which answers any query with the same type)
           if constexpr (!std::is_same_v<__sch_t, _Attrs>)
           {
-            static_assert(std::is_same_v<_Domain, __detail::__scheduler_domain_t<__sch_t, const _Env&...>>,
-                          "the sender claims to complete on a domain that is not the domain of its completion scheduler");
+            __check_domain_<__sch_t, _Env...>(_Domain{});
           }
         }
         #endif
