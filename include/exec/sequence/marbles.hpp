@@ -431,14 +431,15 @@ namespace exec {
         using __frame_t = typename _Clock::time_point;
         using __duration_t = typename _Clock::duration;
 
-        constexpr auto __make_span = []<std::size_t _LenB>(__mstring<_LenB>&& __string) noexcept {
-          return std::span<char>{__string.__what_, _LenB - 1};
-        };
+        constexpr auto __make_span =
+          []<std::size_t _LenB>(const __mstring<_LenB>& __string) noexcept {
+            return std::span<const char>{__string.__what_, _LenB - 1};
+          };
 
         std::vector<marble_t<_Clock>> __marbles;
         __frame_t __group_start_frame{-1ms};
         __frame_t __frame = __clock.now();
-        auto __whole = __make_span(std::move(__diagram));
+        auto __whole = __make_span(__diagram);
         auto __remaining = __whole;
         auto __consume_first = [&__remaining](std::size_t __skip) noexcept {
           __remaining = __remaining.subspan(__skip);
@@ -531,15 +532,18 @@ namespace exec {
                   && __all_digits) {
                   auto __to_consume = __suffix_begin - __remaining.begin();
                   long __duration = std::atol(__remaining.data());
-                  if (std::ranges::equal(
-                        __remaining.subspan(__to_consume, 3), __make_span("ms "_mstr))) {
+                  const auto __ms_str = "ms "_mstr;
+                  const auto __ms = __make_span(__ms_str);
+                  const auto __s_str = "s "_mstr;
+                  const auto __s = __make_span(__s_str);
+                  const auto __m_str = "m "_mstr;
+                  const auto __m = __make_span(__m_str);
+                  if (std::ranges::equal(__remaining.subspan(__to_consume, 3), __ms)) {
                     __to_consume += 2;
-                  } else if (std::ranges::equal(
-                               __remaining.subspan(__to_consume, 2), __make_span("s "_mstr))) {
+                  } else if (std::ranges::equal(__remaining.subspan(__to_consume, 2), __s)) {
                     __duration *= 1000;
                     __to_consume += 1;
-                  } else if (std::ranges::equal(
-                               __remaining.subspan(__to_consume, 2), __make_span("m "_mstr))) {
+                  } else if (std::ranges::equal(__remaining.subspan(__to_consume, 2), __m)) {
                     __duration = __duration * 1000 * 60;
                     __to_consume += 1;
                   } else {

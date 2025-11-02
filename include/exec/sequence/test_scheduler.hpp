@@ -826,7 +826,7 @@ namespace exec {
                  exec::schedule_at(__self.__context_->get_scheduler(), __marble.frame()),
                  static_cast<_Completion&&>(__completion)),
                stdexec::prop{stdexec::get_stop_token, __self.__stop_source_.get_token()})
-           | stdexec::upon_error([](auto&&) noexcept {}) | stdexec::upon_stopped([]() noexcept {})
+           | stdexec::upon_error([](auto&&) noexcept { }) | stdexec::upon_stopped([]() noexcept { })
            | stdexec::then([&__self, &__marble]() noexcept {
                // after each completion, update the __test_sequence_operation_part state
                STDEXEC_ASSERT(__self.__active_ops_ > 0);
@@ -869,10 +869,10 @@ namespace exec {
         decltype(__schedule_at(__self, __marble, stdexec::__declval<__next_t>()));
       using __end_sender_t = decltype(__schedule_at(__self, __marble, stdexec::just()));
       struct __next_sender_id {
-        using __t = __next_sender_t;
+        using __t [[maybe_unused]] = __next_sender_t;
       };
       struct __end_sender_id {
-        using __t = __end_sender_t;
+        using __t [[maybe_unused]] = __end_sender_t;
       };
 
       // WORKAROUND clang 19 would fail to compile the construction of the variant_sender.
@@ -919,14 +919,14 @@ namespace exec {
       using __id = __test_sequence;
       using sender_concept = exec::sequence_sender_t;
 
-      using marble_t = marble_t<test_clock>;
-      using marble_sender_t = marble_t::__marble_sender_t;
+      using __marble_t = marble_t<test_clock>;
+      using __marble_sender_t = __marble_t::__marble_sender_t;
 
       test_context* __context_;
-      std::vector<marble_t> __marbles_;
+      std::vector<__marble_t> __marbles_;
 
       template <stdexec::__decays_to<__test_sequence> _Self, class... _Env>
-      static auto get_item_types(_Self&&, _Env&&...) noexcept -> item_types<marble_sender_t> {
+      static auto get_item_types(_Self&&, _Env&&...) noexcept -> item_types<__marble_sender_t> {
         return {};
       }
 
