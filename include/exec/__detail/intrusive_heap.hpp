@@ -18,8 +18,8 @@
 
 #include "../../stdexec/__detail/__config.hpp"
 
-#include <cstddef>
 #include <bit>
+#include <cstddef>
 #include <utility>
 
 STDEXEC_PRAGMA_PUSH()
@@ -55,6 +55,11 @@ namespace exec {
 #  endif
 #endif
 
+  namespace detail {
+    static inline std::size_t path_bit_mask(std::size_t n) noexcept {
+      return std::bit_ceil(n + 1) >> 2;
+    }
+  } // namespace detail
   template <class Node, class KeyT, auto Key, auto Prev, auto Left, auto Right>
   class intrusive_heap;
 
@@ -69,61 +74,75 @@ namespace exec {
   class intrusive_heap<Node, KeyT, Key, Prev, Left, Right> {
    public:
     void insert(Node* node) noexcept {
-      node->*Prev = nullptr;
-      node->*Left = nullptr;
-      node->*Right = nullptr;
-      if (root_ == nullptr) {
-        root_ = node;
-        size_ = 1;
-        return;
+      size_++;
+      Node** cur_ptr = &root_;
+      Node* cur = root_;
+      Node* parent = nullptr;
+
+      auto path = size_;
+      auto path_mask = detail::path_bit_mask(size_);
+      while (path_mask) {
+        if (node->*Key < cur->*Key) {
+          node->*Prev = parent;
+          cur->*Prev = node;
+          do { // Replace one by one until reaching the bottom.
+            node->*Right = cur->*Right;
+            node->*Left = cur->*Left;
+            *cur_ptr = node;
+            if (path_mask & path) {
+              cur_ptr = &(node->*Right);
+              if (cur->*Left != nullptr) {
+                cur->*Left->*Prev = node;
+              }
+            } else {
+              cur_ptr = &(node->*Left);
+              if (cur->*Right != nullptr) {
+                cur->*Right->*Prev = node;
+              }
+            }
+            node = cur;
+            cur = *cur_ptr;
+            path_mask >>= 1;
+          } while (path_mask);
+
+          *cur_ptr = node;
+          node->*Right = nullptr;
+          node->*Left = nullptr;
+          return;
+        }
+        if (path_mask & path) {
+          cur_ptr = &(cur->*Right);
+        } else {
+          cur_ptr = &(cur->*Left);
+        }
+        parent = cur;
+        cur = *cur_ptr;
+        path_mask >>= 1;
       }
-      Node* parent = iterate_to_parent_of_end();
-      STDEXEC_ASSERT(parent);
-      STDEXEC_ASSERT(parent->*Left == nullptr || parent->*Right == nullptr);
-      if (parent->*Left == nullptr) {
-        parent->*Left = node;
-      } else {
-        STDEXEC_ASSERT(parent->*Right == nullptr);
-        parent->*Right = node;
-      }
+
+      *cur_ptr = node;
       node->*Prev = parent;
-      size_ += 1;
-      bottom_up_heapify(node);
+      node->*Right = nullptr;
+      node->*Left = nullptr;
     }
 
     void pop_front() noexcept {
-      if (size_ == 0) {
-        return;
-      }
-      if (size_ == 1) {
+      if (size_ <= 1) [[unlikely]] {
         root_ = nullptr;
         size_ = 0;
         return;
       }
-      Node* leaf = iterate_to_back();
-      STDEXEC_ASSERT(leaf);
-      STDEXEC_ASSERT(leaf->*Left == nullptr && leaf->*Right == nullptr);
+      Node* cur = remove_last_leaf(&root_, size_);
+      Node* top = root_;
+      // Replace the top.
+      cur->*Right = top->*Right;
+      cur->*Left = top->*Left;
+      root_ = cur;
 
-      if (leaf->*Prev->*Left == leaf) {
-        STDEXEC_ASSERT(leaf->*Prev->*Right == nullptr);
-        leaf->*Prev->*Left = nullptr;
-      } else {
-        STDEXEC_ASSERT(leaf->*Prev->*Left != nullptr);
-        leaf->*Prev->*Right = nullptr;
-      }
-      size_ -= 1;
-      leaf->*Prev = nullptr;
-      leaf->*Left = std::exchange(root_->*Left, nullptr);
-      leaf->*Right = std::exchange(root_->*Right, nullptr);
-      if (leaf->*Left) {
-        leaf->*Left->*Prev = leaf;
-      }
-      if (leaf->*Right) {
-        leaf->*Right->*Prev = leaf;
-      }
-      STDEXEC_ASSERT(root_->*Prev == nullptr);
-      root_ = leaf;
-      top_down_heapify(root_);
+      size_--;
+      shift_down(root_, &root_, nullptr);
+      root_->*Prev = nullptr;
+      return;
     }
 
     auto front() const noexcept -> Node* {
@@ -135,10 +154,36 @@ namespace exec {
         // node is not in the heap
         return false;
       }
-      node->*Key = KeyT{}; // TODO: set min value
-      bottom_up_heapify(node);
-      STDEXEC_ASSERT(node == front());
-      pop_front();
+      Node* cur = remove_last_leaf(&root_, size_);
+      size_--;
+      if (cur == node) [[unlikely]] { // Remove the last leaf?
+        node->*Prev = nullptr;        // Make node erasure-aware.
+        return true;
+      }
+      // Replace the node.
+      cur->*Right = node->*Right;
+      cur->*Left = node->*Left;
+      Node** cur_ptr;
+      Node* parent = node->*Prev;
+      if (parent != nullptr) {
+        if (parent->*Right == node) {
+          cur_ptr = &(parent->*Right);
+        } else {
+          cur_ptr = &(parent->*Left);
+        }
+        *cur_ptr = cur;
+        if (cur->*Key < parent->*Key) {
+          shift_up(cur, parent);
+          node->*Prev = nullptr; // Make node erasure-aware.
+          return true;
+        }
+      } else {
+        cur_ptr = &root_;
+        *cur_ptr = cur;
+      }
+      shift_down(cur, cur_ptr, parent);
+      (*cur_ptr)->*Prev = parent;
+      node->*Prev = nullptr; // Make node erasure-aware.
       return true;
     }
 
@@ -146,91 +191,110 @@ namespace exec {
     Node* root_ = nullptr;
     std::size_t size_ = 0;
 
-    void swap_parent_child(Node* parent, Node* child) {
+    static inline void swap_with_right_child(Node* parent, Node* child) noexcept {
+      parent->*Right = child->*Right;
+      child->*Right = parent;
+
+      Node* t = parent->*Left;
+      parent->*Left = child->*Left;
+      child->*Left = t;
+    }
+
+    static inline void swap_with_left_child(Node* parent, Node* child) noexcept {
+      Node* t = parent->*Right;
+      parent->*Right = child->*Right;
+      child->*Right = t;
+
+      parent->*Left = child->*Left;
+      child->*Left = parent;
+    }
+
+    static inline void shift_up(Node* cur, Node* parent) noexcept {
+      Node* sentinel = nullptr;
+      Node** child0_parent_ptr = (cur->*Left != nullptr) ? &(cur->*Left->*Prev) : &sentinel;
+      Node** child1_parent_ptr = (cur->*Right != nullptr) ? &(cur->*Right->*Prev) : &sentinel;
+
+      *child1_parent_ptr = parent;
       Node* grand_parent = parent->*Prev;
-      if (grand_parent) {
-        if (grand_parent->*Left == parent) {
-          grand_parent->*Left = child;
+      do {
+        *child0_parent_ptr = parent;
+        if (parent->*Right == cur) {
+          child0_parent_ptr = &(parent->*Left->*Prev);
+          swap_with_right_child(parent, cur);
         } else {
-          grand_parent->*Right = child;
+          child0_parent_ptr = &(parent->*Right->*Prev);
+          swap_with_left_child(parent, cur);
         }
-      } else {
-        root_ = child;
-      }
-      child->*Prev = grand_parent;
-      if (parent->*Right == child) {
-        parent->*Right = std::exchange(child->*Right, parent);
-        std::swap(parent->*Left, child->*Left);
-      } else {
-        parent->*Left = std::exchange(child->*Left, parent);
-        std::swap(parent->*Right, child->*Right);
-      }
-      if (parent->*Left) {
-        parent->*Left->*Prev = parent;
-      }
-      if (parent->*Right) {
-        parent->*Right->*Prev = parent;
-      }
-      if (child->*Left) {
-        child->*Left->*Prev = child;
-      }
-      if (child->*Right) {
-        child->*Right->*Prev = child;
-      }
-    }
-
-    void bottom_up_heapify(Node* node) noexcept {
-      while (node->*Prev && !(node->*Prev->*Key < node->*Key)) {
-        swap_parent_child(node->*Prev, node);
-      }
-    }
-
-    void top_down_heapify(Node* parent) noexcept {
-      while (parent->*Left) {
-        Node* left = parent->*Left;
-        Node* right = parent->*Right;
-        Node* child = left;
-        if (right && right->*Key < left->*Key) {
-          child = right;
-        }
-        if (child->*Key < parent->*Key) {
-          swap_parent_child(parent, child);
+        child1_parent_ptr = &(parent->*Prev);
+        // The last leaf node won't be shifted above the top node，so the grand_parent won't be null.
+        // if (grand_parent != nullptr) {
+        if (grand_parent->*Right == parent) {
+          grand_parent->*Right = cur;
         } else {
-          break;
+          grand_parent->*Left = cur;
         }
-      }
+        // }
+        parent = grand_parent;
+        grand_parent = parent->*Prev;
+      } while (cur->*Key < parent->*Key);
+      *child0_parent_ptr = cur;
+      *child1_parent_ptr = cur;
+      cur->*Prev = parent;
     }
 
-    auto iterate_to_parent_of(std::size_t pos) noexcept -> Node* {
-      std::size_t index = detail::bit_ceil(pos);
-      if (index > pos) {
-        index /= 4;
-      } else {
-        index /= 2;
-      }
-      Node* node = root_;
-      while (index > 1) {
-        if (pos & index) {
-          node = node->*Right;
+    static inline void shift_down(Node* cur, Node** cur_ptr, Node* parent) noexcept {
+      Node* right = cur->*Right;
+      Node* left = cur->*Left;
+      while (left != nullptr) {
+        if ((right != nullptr) && (right->*Key < left->*Key)) {
+          if (right->*Key < cur->*Key) {
+            swap_with_right_child(cur, right);
+            parent = right;
+            left->*Prev = right;
+            *cur_ptr = right;
+            cur_ptr = &(right->*Right);
+          } else {
+            right->*Prev = cur;
+            left->*Prev = cur;
+            break;
+          }
         } else {
-          node = node->*Left;
+          if (left->*Key < cur->*Key) {
+            swap_with_left_child(cur, left);
+            parent = left;
+            if (right != nullptr) [[likely]] {
+              right->*Prev = left;
+            }
+            *cur_ptr = left;
+            cur_ptr = &(left->*Left);
+          } else {
+            if (right != nullptr) [[likely]] {
+              right->*Prev = cur;
+            }
+            left->*Prev = cur;
+            break;
+          }
         }
-        index /= 2;
+        left = cur->*Left;
+        right = cur->*Right;
       }
-      return node;
+      cur->*Prev = parent;
     }
 
-    auto iterate_to_parent_of_end() noexcept -> Node* {
-      return iterate_to_parent_of(size_ + 1);
-    }
-
-    auto iterate_to_back() noexcept -> Node* {
-      Node* parent = iterate_to_parent_of(size_);
-      STDEXEC_ASSERT(parent->*Left != nullptr);
-      if (parent->*Right) {
-        return parent->*Right;
+    static inline Node* remove_last_leaf(Node** cur_ptr, std::size_t path) noexcept {
+      auto path_mask = detail::path_bit_mask(path);
+      Node* cur = *cur_ptr;
+      while (path_mask) {
+        if (path_mask & path) {
+          cur_ptr = &(cur->*Right);
+        } else {
+          cur_ptr = &(cur->*Left);
+        }
+        cur = *cur_ptr;
+        path_mask >>= 1;
       }
-      return parent->*Left;
+      *cur_ptr = nullptr;
+      return cur;
     }
   };
 } // namespace exec
