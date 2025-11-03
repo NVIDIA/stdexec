@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2024 Maikel Nadolski
+ * Copyright (c) 2025 TypeCombinator
  * Copyright (c) 2024 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
@@ -57,9 +58,10 @@ namespace exec {
 
   namespace detail {
     static inline std::size_t path_bit_mask(std::size_t n) noexcept {
-      return std::bit_ceil(n + 1) >> 2;
+      return detail::bit_ceil(n + 1) >> 2;
     }
   } // namespace detail
+
   template <class Node, class KeyT, auto Key, auto Prev, auto Left, auto Right>
   class intrusive_heap;
 
