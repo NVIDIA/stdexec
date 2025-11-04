@@ -142,7 +142,7 @@ namespace exec {
       root_ = cur;
 
       size_--;
-      shift_down(root_, &root_, nullptr);
+      sift_down(root_, &root_, nullptr);
       root_->*Prev = nullptr;
       return;
     }
@@ -175,7 +175,7 @@ namespace exec {
         }
         *cur_ptr = cur;
         if (cur->*Key < parent->*Key) {
-          shift_up(cur, parent);
+          sift_up(cur, parent);
           node->*Prev = nullptr; // Make node erasure-aware.
           return true;
         }
@@ -183,7 +183,7 @@ namespace exec {
         cur_ptr = &root_;
         *cur_ptr = cur;
       }
-      shift_down(cur, cur_ptr, parent);
+      sift_down(cur, cur_ptr, parent);
       (*cur_ptr)->*Prev = parent;
       node->*Prev = nullptr; // Make node erasure-aware.
       return true;
@@ -211,7 +211,7 @@ namespace exec {
       child->*Left = parent;
     }
 
-    static inline void shift_up(Node* cur, Node* parent) noexcept {
+    static inline void sift_up(Node* cur, Node* parent) noexcept {
       Node* sentinel = nullptr;
       Node** child0_parent_ptr = (cur->*Left != nullptr) ? &(cur->*Left->*Prev) : &sentinel;
       Node** child1_parent_ptr = (cur->*Right != nullptr) ? &(cur->*Right->*Prev) : &sentinel;
@@ -228,7 +228,7 @@ namespace exec {
           swap_with_left_child(parent, cur);
         }
         child1_parent_ptr = &(parent->*Prev);
-        // The last leaf node won't be shifted above the top node，so the grand_parent won't be null.
+        // The last leaf node won't percolate up beyond the top node，so the grand_parent won't be null.
         // if (grand_parent != nullptr) {
         if (grand_parent->*Right == parent) {
           grand_parent->*Right = cur;
@@ -244,7 +244,7 @@ namespace exec {
       cur->*Prev = parent;
     }
 
-    static inline void shift_down(Node* cur, Node** cur_ptr, Node* parent) noexcept {
+    static inline void sift_down(Node* cur, Node** cur_ptr, Node* parent) noexcept {
       Node* right = cur->*Right;
       Node* left = cur->*Left;
       while (left != nullptr) {
