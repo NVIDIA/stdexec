@@ -211,7 +211,6 @@ namespace {
     auto merged = merge_each(sequences);
     using merged_t = decltype(merged);
 
-
     STATIC_REQUIRE(ex::__ok<item_types_of_t<merged_t>>);
     STATIC_REQUIRE(ex::__ok<stdexec::completion_signatures_of_t<merged_t>>);
 

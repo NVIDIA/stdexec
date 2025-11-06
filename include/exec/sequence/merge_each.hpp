@@ -260,6 +260,10 @@ namespace exec {
       };
     };
 
+    template <class _ErrorStorage>
+    using __error_sender_t =
+      __minvoke<__mtry_q<stdexec::__t>, __minvoke<__mtry_q<__error_sender>, _ErrorStorage>>;
+
     template <class _ErrorStorage, class _EnvFn>
     struct __error_next_receiver {
       using __t = __error_next_receiver;
@@ -305,7 +309,7 @@ namespace exec {
       using __error_storage_t = _ErrorStorage;
       using __interface_t = __operation_base_interface<__error_storage_t>;
 
-      using __error_sender_t = __t<__error_sender<__error_storage_t>>;
+      using __error_sender_t = __merge_each::__error_sender_t<__error_storage_t>;
       using __error_next_sender_t = next_sender_of_t<_Receiver&, __error_sender_t>;
       using __env_fn_t = __env_fn<_Receiver>;
       using __error_next_receiver_t = __error_next_receiver<_ErrorStorage, __env_fn_t>;
@@ -526,7 +530,12 @@ namespace exec {
       }
     };
 
-    template <class _NestedValueSender, class _NestedValueReceiverId, class _ErrorStorage>
+    template <
+      class _NestedValueSender,
+      class _NestedValueReceiverId,
+      class _ErrorStorage,
+      class _NestedValueOp
+    >
     struct __nested_value_op {
       using _NestedValueReceiver = stdexec::__t<_NestedValueReceiverId>;
       using __base_t = __nested_value_operation_base<_NestedValueReceiver>;
@@ -561,6 +570,22 @@ namespace exec {
       };
     };
 
+    template <class _NestedValueSender, class _NestedValueReceiverId, class _ErrorStorage>
+    using __nested_value_op_t = __minvoke<
+      __mtry_q<stdexec::__t>,
+      __minvoke<
+        __mtry_q<__nested_value_op>,
+        _NestedValueSender,
+        _NestedValueReceiverId,
+        _ErrorStorage,
+        __minvoke<
+          __mtry_q<stdexec::connect_result_t>,
+          _NestedValueSender,
+          __receive_nested_value<_NestedValueReceiverId, _ErrorStorage>
+        >
+      >
+    >;
+
     template <class _NestedValueSender, class _ErrorStorage>
     struct __nested_value_sender {
       using __operation_base_interface_t = __operation_base_interface<_ErrorStorage>;
@@ -569,11 +594,12 @@ namespace exec {
         using __id = __nested_value_sender;
         using sender_concept = stdexec::sender_t;
 
-        template <class _NestedValueReceiverId>
-        using __nested_value_op_t =
-          stdexec::__t<__nested_value_op<_NestedValueSender, _NestedValueReceiverId, _ErrorStorage>>;
-        template <class _NestedValueReceiverId>
-        using __receiver = __receive_nested_value<_NestedValueReceiverId, _ErrorStorage>;
+        template <class _NestedValueReceiver>
+        using __nested_value_op_t = __merge_each::__nested_value_op_t<
+          _NestedValueSender,
+          stdexec::__id<_NestedValueReceiver>,
+          _ErrorStorage
+        >;
 
         _NestedValueSender __nested_value_;
         __operation_base_interface_t* __op_;
@@ -592,18 +618,28 @@ namespace exec {
         template <std::same_as<__t> _Self, receiver _NestedValueReceiver>
         static auto connect(_Self&& __self, _NestedValueReceiver&& __rcvr)
           noexcept(__nothrow_constructible_from<
-                   __nested_value_op_t<stdexec::__id<_NestedValueReceiver>>,
+                   __nested_value_op_t<_NestedValueReceiver>,
                    _NestedValueReceiver,
                    _NestedValueSender,
                    __operation_base_interface_t*
-          >) -> __nested_value_op_t<stdexec::__id<_NestedValueReceiver>> {
-          return {
-            static_cast<_NestedValueReceiver&&>(__rcvr),
-            static_cast<_NestedValueSender&&>(__self.__nested_value_),
-            __self.__op_};
+          >) -> __nested_value_op_t<_NestedValueReceiver> {
+          if constexpr (__ok<__nested_value_op_t<_NestedValueReceiver>>) {
+            return {
+              static_cast<_NestedValueReceiver&&>(__rcvr),
+              static_cast<_NestedValueSender&&>(__self.__nested_value_),
+              __self.__op_};
+          } else {
+            return {};
+          }
         }
       };
     };
+
+    template <class _NestedValue, class _ErrorStorage>
+    using __nested_value_sender_t = __minvoke<
+      __mtry_q<stdexec::__t>,
+      __minvoke<__mtry_q<__nested_value_sender>, _NestedValue, _ErrorStorage>
+    >;
 
     //
     // __next_.. is returned from set_next. Unlike the rest of the
@@ -670,16 +706,18 @@ namespace exec {
       _OperationBase* __op_;
 
       using __error_storage_t = typename _OperationBase::__error_storage_t;
-      template <stdexec::sender _NestedValue>
-      using __nested_value_sender_t =
-        stdexec::__t<__nested_value_sender<_NestedValue, __error_storage_t>>;
 
-      template <stdexec::sender _NestedValue>
+      template <class _NestedValue>
+      using __nested_value_sender_t =
+        __merge_each::__nested_value_sender_t<_NestedValue, __error_storage_t>;
+
+
+      template <class _NestedValue>
       auto set_next(_NestedValue&& __nested_value) noexcept(__nothrow_callable<
                                                             exec::set_next_t,
                                                             decltype(__op_->__receiver_),
                                                             __nested_value_sender_t<_NestedValue>
-      >) -> next_sender auto {
+      >) {
         return exec::set_next(
           __op_->__receiver_,
           __nested_value_sender_t<_NestedValue>{
@@ -705,6 +743,9 @@ namespace exec {
         return __op_->__nested_stop_.env_from(__op_->__receiver_);
       }
     };
+
+    template <class _OperationBase>
+    using __receive_nested_values_t = __minvoke<__mtry_q<__receive_nested_values>, _OperationBase>;
 
     struct _INVALID_ARGUMENT_TO_MERGE_WITH_REQUIRES_A_SEQUENCE_OF_SEQUENCES_ { };
 
@@ -737,37 +778,32 @@ namespace exec {
         template <class... _Args>
         using __checked_eval_t = stdexec::__if_c<
           __valid_args<_Args...>,
-          stdexec::__types<_Args...>,
+          __mconst<stdexec::__types<_Args...>>,
           __value_completions_error<_Sequence, _Sender, _Env...>
         >;
 
         template <class... _Args>
-        using __f = __checked_eval_t<_Args...>;
+        using __f = __minvoke<__checked_eval_t<_Args...>, _Args...>;
       };
 
       template <class _Sequence, class _Sender, class... _Env>
       struct __gather_sequences_t {
-        template <class...>
+        template <class _Completions>
         using __f = stdexec::__gather_completion_signatures<
-          stdexec::completion_signatures_of_t<_Sender, _Env...>,
+          _Completions,
           stdexec::set_value_t,
           // if set_value
           __arg_of_t<_Sequence, _Sender, _Env...>::template __f,
           // else remove
           stdexec::__mconst<stdexec::__types<>>::__f,
           // concat to __types result
-          stdexec::__mtry_q<stdexec::__mconcat<stdexec::__qq<stdexec::__types>>::template __f>::__f
+          __mtry<stdexec::__mconcat<stdexec::__qq<stdexec::__types>>>::template __f
         >;
       };
 
       template <class _Sequence, class _Sender, class... _Env>
-      using __nested_sequences_from_item_type_t = stdexec::__mapply<
-        stdexec::__if_c<
-          stdexec::__mvalid<stdexec::completion_signatures_of_t, _Sender, _Env...>
-            && stdexec::__mvalid<__gather_sequences_t<_Sequence, _Sender, _Env...>::template __f>,
-          __gather_sequences_t<_Sequence, _Sender, _Env...>,
-          __value_completions_error<_Sequence, _Sender, _Env...>
-        >,
+      using __nested_sequences_from_item_type_t = stdexec::__minvoke<
+        __mtry<__gather_sequences_t<_Sequence, _Sender, _Env...>>,
         stdexec::__completion_signatures_of_t<_Sender, _Env...>
       >;
 
@@ -775,18 +811,20 @@ namespace exec {
       struct __nested_sequences_t {
 
         template <class... _Senders>
-        using __f = stdexec::__mapply<
-          stdexec::__munique<stdexec::__q<__types>>,
+        using __f = __mtry_q<__mapply>::__f<
+          __mtry<stdexec::__munique<stdexec::__q<__types>>>,
           stdexec::__minvoke<
-            stdexec::__mconcat<stdexec::__qq<__types>>,
-            __nested_sequences_from_item_type_t<_Sequence, _Senders, _Env...>...
+            __mtry<stdexec::__mconcat<stdexec::__qq<__types>>>,
+            __minvoke<__mtry_q<__nested_sequences_from_item_type_t>, _Sequence, _Senders, _Env...>...
           >
         >;
       };
 
       template <class _Sequence, class... _Env>
-      using __nested_sequences =
-        __mapply<__nested_sequences_t<_Sequence, _Env...>, __item_types_of_t<_Sequence, _Env...>>;
+      using __nested_sequences = __mtry_q<__mapply>::__f<
+        __mtry<__nested_sequences_t<_Sequence, _Env...>>,
+        __item_types_of_t<_Sequence, _Env...>
+      >;
 
       //
       // __all_nested_values extracts the types of all the nested value senders.
@@ -803,8 +841,9 @@ namespace exec {
       };
 
       template <class _Sequence, class... _Env>
-      using __all_nested_values =
-        __mapply<__all_nested_values_t<_Env...>, __nested_sequences<_Sequence, _Env...>>;
+      using __all_nested_values = __mtry_q<
+        __mapply
+      >::__f<__mtry<__all_nested_values_t<_Env...>>, __nested_sequences<_Sequence, _Env...>>;
 
       //
       // __error_types extracts the types of all the errors emitted by all the senders in the list.
@@ -817,10 +856,10 @@ namespace exec {
       };
 
       template <class _Senders, class... _Env>
-      using __error_types = stdexec::__mapply<
+      using __error_types = __mtry_q<__mapply>::__f<
         stdexec::__mtransform<
           __error_types_t<_Env...>,
-          stdexec::__mconcat<stdexec::__qq<stdexec::__types>>
+          __mtry<stdexec::__mconcat<stdexec::__qq<stdexec::__types>>>
         >,
         _Senders
       >;
@@ -836,7 +875,7 @@ namespace exec {
 
       template <class _Sequence, class... _Env>
       using __errors = stdexec::__minvoke<
-        stdexec::__mconcat<stdexec::__qq<stdexec::__types>>,
+        __mtry<stdexec::__mconcat<stdexec::__qq<stdexec::__types>>>,
         // always include std::exception_ptr
         stdexec::__types<std::exception_ptr>,
         // include errors from senders of the nested sequences
@@ -856,33 +895,29 @@ namespace exec {
 
       template <class _Sequence, class... _Env>
       using __error_variant =
-        stdexec::__mapply<__q<stdexec::__uniqued_variant_for>, __errors<_Sequence, _Env...>>;
+        __mtry_q<__mapply>::__f<__q<stdexec::__uniqued_variant_for>, __errors<_Sequence, _Env...>>;
 
       //
       // __nested_values extracts the types of all the nested value senders and
       // builds the item_types list for the merge_each sequence sender.
       //
 
-      template <class _NestedValueSender, class _ErrorStorage>
-      using __nested_value_sender_t =
-        stdexec::__t<__nested_value_sender<_NestedValueSender, _ErrorStorage>>;
-
       template <class _ErrorStorage, class... _Env>
       struct __nested_values_t {
 
         template <class... _AllItems>
-        using __f = stdexec::__mapply<
-          stdexec::__munique<stdexec::__q<item_types>>,
-          stdexec::__types<
-            __nested_value_sender_t<_AllItems, _ErrorStorage>...,
-            __t<__error_sender<_ErrorStorage>>
+        using __f = __mtry_q<__mapply>::__f<
+          __mtry<__munique<stdexec::__q<item_types>>>,
+          __mtry_q<__types>::__f<
+            __merge_each::__nested_value_sender_t<_AllItems, _ErrorStorage>...,
+            __merge_each::__error_sender_t<_ErrorStorage>
           >
         >;
       };
 
       template <class _Sequence, class... _Env>
-      using __nested_values = stdexec::__mapply<
-        __nested_values_t<__error_variant<_Sequence, _Env...>, _Env...>,
+      using __nested_values = __mtry_q<__mapply>::__f<
+        __mtry_q<__nested_values_t>::__f<__error_variant<_Sequence, _Env...>, _Env...>,
         __all_nested_values<_Sequence, _Env...>
       >;
 
@@ -892,23 +927,31 @@ namespace exec {
       //
 
       template <class _OperationBase>
-      struct __nested_sequence_op_t {
+      struct __nested_sequence_op_mfn {
         template <class _Sequence>
-        using __f = subscribe_result_t<_Sequence, __receive_nested_values<_OperationBase>>;
+        using __f = __minvoke<
+          __mtry_q<subscribe_result_t>,
+          _Sequence,
+          __receive_nested_values_t<_OperationBase>
+        >;
       };
 
+      template <class _Sequence, class _OperationBase>
+      using __nested_sequence_op_t = __minvoke<__nested_sequence_op_mfn<_OperationBase>, _Sequence>;
+
       template <class _Sequence, class _Receiver>
-      using __operation_base_t = __operation_base<
+      using __operation_base_t = __minvoke<
+        __mtry_q<__operation_base>,
         _Receiver,
         __error_variant<_Sequence, __env_with_inplace_stop_token_result_t<env_of_t<_Receiver>>>
       >;
 
       template <class _Sequence, class _Receiver>
-      using __nested_sequence_ops_variant = stdexec::__mapply<
-        stdexec::__mtransform<
-          __nested_sequence_op_t<__operation_base_t<_Sequence, _Receiver>>,
+      using __nested_sequence_ops_variant = __mtry_q<__mapply>::__f<
+        __mtry<stdexec::__mtransform<
+          __nested_sequence_op_mfn<__operation_base_t<_Sequence, _Receiver>>,
           stdexec::__qq<stdexec::__uniqued_variant_for>
-        >,
+        >>,
         __merge_each::__compute::__nested_sequences<
           _Sequence,
           __env_with_inplace_stop_token_result_t<stdexec::env_of_t<_Receiver>>
@@ -937,30 +980,30 @@ namespace exec {
 
       template <class _NestedSequence>
       auto set_value(_NestedSequence&& __sequence) noexcept {
-        using __nested_op_t =
-          subscribe_result_t<_NestedSequence, __receive_nested_values<_OperationBase>>;
+        using __receiver_t = __receive_nested_values_t<_OperationBase>;
+        using __nested_op_t = __compute::__nested_sequence_op_t<_NestedSequence, _OperationBase>;
         if constexpr (
-          __nothrow_subscribable<_NestedSequence, __receive_nested_values<_OperationBase>>
+          __nothrow_subscribable<_NestedSequence, __receiver_t>
           && stdexec::__nothrow_constructible_from<_NestedSeqOp, __nested_op_t>) {
           auto& __nested_seq_op = __next_seq_op_->__nested_seq_op_.emplace_from(
-            [](_NestedSequence __sequence, __receive_nested_values<_OperationBase> __receiver) {
+            [](_NestedSequence __sequence, __receiver_t __receiver) noexcept -> __nested_op_t {
               return subscribe(
                 static_cast<_NestedSequence&&>(__sequence),
-                static_cast<__receive_nested_values<_OperationBase>&&>(__receiver));
+                static_cast<__receiver_t&&>(__receiver));
             },
             static_cast<_NestedSequence&&>(__sequence),
-            __receive_nested_values<_OperationBase>{__next_seq_op_, __op_});
+            __receiver_t{__next_seq_op_, __op_});
           stdexec::start(__nested_seq_op);
         } else {
           STDEXEC_TRY {
             auto& __nested_seq_op = __next_seq_op_->__nested_seq_op_.emplace_from(
-              [](_NestedSequence __sequence, __receive_nested_values<_OperationBase> __receiver) {
+              [](_NestedSequence __sequence, __receiver_t __receiver) -> __nested_op_t {
                 return subscribe(
                   static_cast<_NestedSequence&&>(__sequence),
-                  static_cast<__receive_nested_values<_OperationBase>&&>(__receiver));
+                  static_cast<__receiver_t&&>(__receiver));
               },
               static_cast<_NestedSequence&&>(__sequence),
-              __receive_nested_values<_OperationBase>{__next_seq_op_, __op_});
+              __receiver_t{__next_seq_op_, __op_});
             stdexec::start(__nested_seq_op);
           }
           STDEXEC_CATCH_ALL {
@@ -1107,14 +1150,10 @@ namespace exec {
       }
     };
 
-
-    template <class _ReceiverId, class _Sequence>
+    template <class _ReceiverId, class _Sequence, class _ErrorStorage>
     struct __operation {
       using _Receiver = stdexec::__t<_ReceiverId>;
-      using __error_storage_t = __compute::__error_variant<
-        _Sequence,
-        __env_with_inplace_stop_token_result_t<env_of_t<_Receiver>>
-      >;
+      using __error_storage_t = _ErrorStorage;
       using __base_t = __operation_base<_Receiver, __error_storage_t>;
       struct __t : __base_t {
         using __id = __operation;
@@ -1146,29 +1185,36 @@ namespace exec {
       };
     };
 
+    template <class _Receiver, class _Sequence>
+    using __operation_t = __minvoke<
+      __mtry_q<__t>,
+      __minvoke<
+        __mtry_q<__operation>,
+        __id<_Receiver>,
+        _Sequence,
+        __compute::__error_variant<
+          _Sequence,
+          __env_with_inplace_stop_token_result_t<env_of_t<_Receiver>>
+        >
+      >
+    >;
+
+
     template <class _Receiver>
     struct __subscribe_fn {
       _Receiver& __rcvr_;
 
       template <class _Sequence>
-      auto operator()(__ignore, __ignore, _Sequence __sequence)
-        noexcept(__nothrow_constructible_from<
-                 __t<__operation<__id<_Receiver>, _Sequence>>,
-                 _Receiver,
-                 _Sequence
-        >) -> __t<__operation<__id<_Receiver>, _Sequence>> {
-        return {static_cast<_Receiver&&>(__rcvr_), static_cast<_Sequence&&>(__sequence)};
+      auto operator()(__ignore, __ignore, _Sequence __sequence) noexcept(
+        __nothrow_constructible_from<__operation_t<_Receiver, _Sequence>, _Receiver, _Sequence>)
+        -> __operation_t<_Receiver, _Sequence> {
+        if constexpr (__ok<__operation_t<_Receiver, _Sequence>>) {
+          return {static_cast<_Receiver&&>(__rcvr_), static_cast<_Sequence&&>(__sequence)};
+        } else {
+          return {};
+        }
       }
     };
-
-    struct _INVALID_ARGUMENTS_TO_MERGE_EACH_ { };
-
-    template <class _Self, class... _Env>
-    using __argument_error_t = __mexception<
-      _INVALID_ARGUMENTS_TO_MERGE_EACH_,
-      _WITH_SEQUENCE_<__child_of<_Self>>,
-      _WITH_ENVIRONMENT_<_Env>...
-    >;
 
     //
     // merge_each is a sequence adaptor that takes a sequence of nested
@@ -1196,8 +1242,7 @@ namespace exec {
 
       template <sender_expr_for<merge_each_t> _Self, class... _Env>
       static auto get_item_types(_Self&&, _Env&&...) noexcept {
-        return __minvoke<
-          __mtry_catch<__q<__compute::__nested_values>, __q<__argument_error_t>>,
+        return __compute::__nested_values<
           __child_of<_Self>,
           __env_with_inplace_stop_token_result_t<_Env...>
         >();
@@ -1207,8 +1252,8 @@ namespace exec {
       struct __completions_t {
 
         template <class... _Sequences>
-        using __f = __meval<
-          __concat_completion_signatures,
+        using __f = __minvoke<
+          __mtry_q<__concat_completion_signatures>,
           completion_signatures<set_stopped_t()>,
           completion_signatures_of_t<__child_of<_Self>, _Env>,
           completion_signatures_of_t<_Sequences, _Env>...
@@ -1216,15 +1261,15 @@ namespace exec {
       };
 
       template <class _Self, class... _Env>
-      using __completions = __mapply<
-        __completions_t<_Self, _Env...>,
+      using __completions = __mtry_q<__mapply>::__f<
+        __mtry<__completions_t<_Self, _Env...>>,
         __compute::__nested_sequences<__child_of<_Self>, _Env...>
       >;
 
       template <sender_expr_for<merge_each_t> _Self, class... _Env>
       static auto get_completion_signatures(_Self&&, _Env&&...) noexcept {
         return __minvoke<
-          __mtry_catch<__q<__completions>, __q<__argument_error_t>>,
+          __mtry_q<__completions>,
           _Self,
           __env_with_inplace_stop_token_result_t<_Env...>
         >{};
