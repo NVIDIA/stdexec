@@ -108,7 +108,8 @@ namespace exec {
           } while (path_mask);
 
           *cur_ptr = node;
-          node->*Right = nullptr;
+          // The right child node of the last node on the path is always null.
+          // node->*Right = nullptr;
           node->*Left = nullptr;
           return;
         }
