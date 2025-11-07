@@ -21,6 +21,54 @@
 #include "stdexec/__detail/__meta.hpp"
 #include "stdexec/__detail/__diagnostics.hpp"
 
+////////////////////////////////////////////////////////////////////////////////
+#define STDEXEC_ERROR_SEQUENCE_SENDER_DEFINITION                                                   \
+  "A sequence sender must provide a `subscribe` member function that takes a receiver as an\n"     \
+  "argument and returns an object whose type satisfies `stdexec::operation_state`,\n"              \
+  "as shown below:\n"                                                                              \
+  "\n"                                                                                             \
+  "  class MySequenceSender\n"                                                                     \
+  "  {\n"                                                                                          \
+  "  public:\n"                                                                                    \
+  "    using sender_concept        = exec::sequence_sender_t;\n"                                   \
+  "    using item_types            = exec::item_types<>;\n"                                        \
+  "    using completion_signatures = stdexec::completion_signatures<stdexec::set_value_t()>;\n"    \
+  "\n"                                                                                             \
+  "    template <class Receiver>\n"                                                                \
+  "    struct MyOpState\n"                                                                         \
+  "    {\n"                                                                                        \
+  "      using operation_state_concept = stdexec::operation_state_t;\n"                            \
+  "\n"                                                                                             \
+  "      void start() noexcept\n"                                                                  \
+  "      {\n"                                                                                      \
+  "        // Start the operation, which will eventually complete and send its\n"                  \
+  "        // result to rcvr_;\n"                                                                  \
+  "      }\n"                                                                                      \
+  "\n"                                                                                             \
+  "      Receiver rcvr_;\n"                                                                        \
+  "    };\n"                                                                                       \
+  "\n"                                                                                             \
+  "    template <stdexec::receiver Receiver>\n"                                                    \
+  "    auto subscribe(Receiver rcvr) -> MyOpState<Receiver>\n"                                     \
+  "    {\n"                                                                                        \
+  "      return MyOpState<Receiver>{std::move(rcvr)};\n"                                           \
+  "    }\n"                                                                                        \
+  "\n"                                                                                             \
+  "    ...\n"                                                                                      \
+  "  };\n"
+
+////////////////////////////////////////////////////////////////////////////////
+#define STDEXEC_ERROR_CANNOT_SUBSCRIBE_SEQUENCE_TO_RECEIVER                                        \
+  "\n"                                                                                             \
+  "FAILURE: No usable subscribe customization was found.\n"                                        \
+  "\n" STDEXEC_ERROR_SEQUENCE_SENDER_DEFINITION
+
+////////////////////////////////////////////////////////////////////////////////
+#define STDEXEC_ERROR_SUBSCRIBE_DOES_NOT_RETURN_OPERATION_STATE                                    \
+  "\n"                                                                                             \
+  "FAILURE: The subscribe customization did not return an `stdexec::operation_state`.\n"           \
+  "\n" STDEXEC_ERROR_SEQUENCE_SENDER_DEFINITION
+
 namespace exec {
   namespace __errs {
     template <class _Sequence>
@@ -540,6 +588,12 @@ namespace exec {
       template <class _Sequence, class _Receiver>
       using __tfx_sequence_t = __tfx_sequence_t<_Sequence, env_of_t<_Receiver>>;
 
+      template <class _OpState>
+      static constexpr void __check_operation_state() noexcept {
+        static_assert(
+          operation_state<_OpState>, STDEXEC_ERROR_SUBSCRIBE_DOES_NOT_RETURN_OPERATION_STATE);
+      }
+
       template <class _Sequence, class _Receiver>
       static constexpr auto __select_impl() noexcept {
         using __domain_t = __late_domain_of_t<_Sequence, env_of_t<_Receiver>>;
@@ -561,10 +615,7 @@ namespace exec {
             next_sender_of_t<_Receiver, __tfx_sequence_t>,
             __stopped_means_break_t<_Receiver>
           >;
-          static_assert(
-            operation_state<__result_t>,
-            "stdexec::connect(sender, receiver) must return a type that "
-            "satisfies the operation_state concept");
+          __check_operation_state<__result_t>();
           constexpr bool _Nothrow = __nothrow_connectable<
             next_sender_of_t<_Receiver, __tfx_sequence_t>,
             __stopped_means_break_t<_Receiver>
@@ -573,10 +624,7 @@ namespace exec {
         } else if constexpr (__subscribable_with_static_member<__tfx_sequence_t, _Receiver>) {
           using __result_t = decltype(STDEXEC_REMOVE_REFERENCE(
             __tfx_sequence_t)::subscribe(__declval<__tfx_sequence_t>(), __declval<_Receiver>()));
-          static_assert(
-            operation_state<__result_t>,
-            "Sequence::subscribe(sender, receiver) must return a type that "
-            "satisfies the operation_state concept");
+          __check_operation_state<__result_t>();
           constexpr bool _Nothrow = _NothrowTfxSequence
                                  && noexcept(STDEXEC_REMOVE_REFERENCE(__tfx_sequence_t)::subscribe(
                                    __declval<__tfx_sequence_t>(), __declval<_Receiver>()));
@@ -584,20 +632,14 @@ namespace exec {
         } else if constexpr (__subscribable_with_member<__tfx_sequence_t, _Receiver>) {
           using __result_t = decltype(__declval<__tfx_sequence_t>()
                                         .subscribe(__declval<_Receiver>()));
-          static_assert(
-            operation_state<__result_t>,
-            "Sequence::subscribe(sender, receiver) must return a type that "
-            "satisfies the operation_state concept");
+          __check_operation_state<__result_t>();
           constexpr bool _Nothrow = _NothrowTfxSequence
                                  && noexcept(__declval<__tfx_sequence_t>()
                                                .subscribe(__declval<_Receiver>()));
           return static_cast<__result_t (*)() noexcept(_Nothrow)>(nullptr);
         } else if constexpr (__subscribable_with_tag_invoke<__tfx_sequence_t, _Receiver>) {
           using __result_t = tag_invoke_result_t<subscribe_t, __tfx_sequence_t, _Receiver>;
-          static_assert(
-            operation_state<__result_t>,
-            "exec::subscribe(sender, receiver) must return a type that "
-            "satisfies the operation_state concept");
+          __check_operation_state<__result_t>();
           constexpr bool _Nothrow = _NothrowTfxSequence
                                  && nothrow_tag_invocable<subscribe_t, __tfx_sequence_t, _Receiver>;
           return static_cast<__result_t (*)() noexcept(_Nothrow)>(nullptr);
@@ -605,6 +647,9 @@ namespace exec {
           using __result_t = __debug::__debug_operation;
           return static_cast<__result_t (*)() noexcept(_NothrowTfxSequence)>(nullptr);
         } else {
+          static_assert(
+            __subscribable_with_static_member<__tfx_sequence_t, _Receiver>,
+            STDEXEC_ERROR_CANNOT_SUBSCRIBE_SEQUENCE_TO_RECEIVER);
           return _NO_USABLE_SUBSCRIBE_CUSTOMIZATION_FOUND_();
         }
       }
