@@ -108,8 +108,8 @@ namespace exec {
           } while (path_mask);
 
           *cur_ptr = node;
-          // The right child node of the last node on the path is always null.
-          // node->*Right = nullptr;
+          // The right child of the last node on the path is always null.
+          STDEXEC_ASSERT(node->*Right == nullptr);
           node->*Left = nullptr;
           return;
         }
@@ -135,6 +135,7 @@ namespace exec {
         size_ = 0;
         return;
       }
+      STDEXEC_ASSERT(root_ != nullptr);
       Node* cur = remove_last_leaf(&root_, size_);
       Node* top = root_;
       // Replace the top.
@@ -157,6 +158,8 @@ namespace exec {
         // node is not in the heap
         return false;
       }
+      STDEXEC_ASSERT(root_ != nullptr);
+      STDEXEC_ASSERT(size_ != 0);
       Node* cur = remove_last_leaf(&root_, size_);
       size_--;
       if (cur == node) [[unlikely]] { // Remove the last leaf?
@@ -230,13 +233,11 @@ namespace exec {
         }
         child1_parent_ptr = &(parent->*Prev);
         // The last leaf node won't percolate up beyond the top node，so the grand_parent won't be null.
-        // if (grand_parent != nullptr) {
         if (grand_parent->*Right == parent) {
           grand_parent->*Right = cur;
         } else {
           grand_parent->*Left = cur;
         }
-        // }
         parent = grand_parent;
         grand_parent = parent->*Prev;
       } while (cur->*Key < parent->*Key);
