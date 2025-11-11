@@ -45,14 +45,6 @@ namespace nvexec::_strm {
       stopped
     };
 
-    struct on_stop_requested {
-      inplace_stop_source& stop_source_;
-
-      void operator()() noexcept {
-        stop_source_.request_stop();
-      }
-    };
-
     template <class Env>
     using env_t = exec::make_env_t<Env, stdexec::prop<get_stop_token_t, inplace_stop_token>>;
 
@@ -367,7 +359,7 @@ namespace nvexec::_strm {
         void start() & noexcept {
           // register stop callback:
           auto tok = stdexec::get_stop_token(stdexec::get_env(rcvr_));
-          on_stop_.emplace(std::move(tok), _when_all::on_stop_requested{stop_source_});
+          on_stop_.emplace(std::move(tok), __forward_stop_request{stop_source_});
           if (stop_source_.stop_requested()) {
             // Stop has already been requested. Don't bother starting
             // the child operations.
@@ -476,7 +468,7 @@ namespace nvexec::_strm {
         inplace_stop_source stop_source_{};
 
         using stop_callback_t =
-          stop_callback_for_t<stop_token_of_t<env_of_t<Receiver>&>, _when_all::on_stop_requested>;
+          stop_callback_for_t<stop_token_of_t<env_of_t<Receiver>&>, __forward_stop_request>;
         std::optional<stop_callback_t> on_stop_{};
       };
 

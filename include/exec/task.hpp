@@ -68,14 +68,6 @@ namespace exec {
       return __indirect_scheduler_provider<_ParentPromise>;
     }
 
-    struct __forward_stop_request {
-      inplace_stop_source& __stop_source_;
-
-      void operator()() noexcept {
-        __stop_source_.request_stop();
-      }
-    };
-
     template <class _ParentPromise>
     struct __default_awaiter_context;
 
