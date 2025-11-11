@@ -17,7 +17,7 @@ namespace {
   struct minimum {
     template <class T1, class T2>
     constexpr auto
-      operator()(const T1& lhs, const T2& rhs) const -> _CUDA_VSTD::common_type_t<T1, T2> {
+      operator()(const T1& lhs, const T2& rhs) const -> ::cuda::std::common_type_t<T1, T2> {
       return (lhs < rhs) ? lhs : rhs;
     }
   };
