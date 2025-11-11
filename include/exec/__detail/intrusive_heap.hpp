@@ -88,22 +88,24 @@ namespace exec {
           node->*Prev = parent;
           cur->*Prev = node;
           do { // Replace one by one until reaching the bottom.
-            node->*Right = cur->*Right;
-            node->*Left = cur->*Left;
             *cur_ptr = node;
             if (path_mask & path) {
+              node->*Left = cur->*Left;
               cur_ptr = &(node->*Right);
-              if (cur->*Left != nullptr) {
+              if (cur->*Left != nullptr) [[likely]] {
                 cur->*Left->*Prev = node;
               }
+              node = cur;
+              cur = cur->*Right;
             } else {
+              node->*Right = cur->*Right;
               cur_ptr = &(node->*Left);
-              if (cur->*Right != nullptr) {
+              if (cur->*Right != nullptr) [[likely]] {
                 cur->*Right->*Prev = node;
               }
+              node = cur;
+              cur = cur->*Left;
             }
-            node = cur;
-            cur = *cur_ptr;
             path_mask >>= 1;
           } while (path_mask);
 
