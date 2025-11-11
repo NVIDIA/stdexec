@@ -87,11 +87,11 @@ namespace exec {
         if (node->*Key < cur->*Key) {
           node->*Prev = parent;
           cur->*Prev = node;
+          *cur_ptr = node;
           do { // Replace one by one until reaching the bottom.
-            *cur_ptr = node;
             if (path_mask & path) {
+              node->*Right = cur;
               node->*Left = cur->*Left;
-              cur_ptr = &(node->*Right);
               if (cur->*Left != nullptr) [[likely]] {
                 cur->*Left->*Prev = node;
               }
@@ -99,7 +99,7 @@ namespace exec {
               cur = cur->*Right;
             } else {
               node->*Right = cur->*Right;
-              cur_ptr = &(node->*Left);
+              node->*Left = cur;
               if (cur->*Right != nullptr) [[likely]] {
                 cur->*Right->*Prev = node;
               }
@@ -109,7 +109,6 @@ namespace exec {
             path_mask >>= 1;
           } while (path_mask);
 
-          *cur_ptr = node;
           // The right child of the last node on the path is always null.
           STDEXEC_ASSERT(node->*Right == nullptr);
           node->*Left = nullptr;
