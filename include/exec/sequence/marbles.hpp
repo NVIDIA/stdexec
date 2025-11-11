@@ -24,13 +24,13 @@
 #include "../sequence_senders.hpp"
 
 #include "./notification.hpp"
-#include "exec/timed_scheduler.hpp"
-#include "stdexec/__detail/__completion_signatures.hpp"
-#include "stdexec/__detail/__config.hpp"
-#include "stdexec/__detail/__execution_fwd.hpp"
-#include "stdexec/__detail/__operation_states.hpp"
-#include "stdexec/__detail/__sender_introspection.hpp"
-#include "stdexec/__detail/__tuple.hpp"
+#include "../timed_scheduler.hpp"
+#include "../../stdexec/__detail/__completion_signatures.hpp"
+#include "../../stdexec/__detail/__config.hpp"
+#include "../../stdexec/__detail/__execution_fwd.hpp"
+#include "../../stdexec/__detail/__operation_states.hpp"
+#include "../../stdexec/__detail/__sender_introspection.hpp"
+#include "../../stdexec/__detail/__tuple.hpp"
 
 #include <chrono>
 #include <ios>

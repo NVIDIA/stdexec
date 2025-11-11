@@ -18,10 +18,10 @@
 
 #include "../../stdexec/concepts.hpp"
 #include "../../stdexec/execution.hpp"
-#include "exec/sequence_senders.hpp"
-#include "stdexec/__detail/__concepts.hpp"
-#include "stdexec/__detail/__config.hpp"
-#include "stdexec/__detail/__tuple.hpp"
+#include "../sequence_senders.hpp"
+#include "../../stdexec/__detail/__concepts.hpp"
+#include "../../stdexec/__detail/__config.hpp"
+#include "../../stdexec/__detail/__tuple.hpp"
 #include <concepts>
 #include <string>
 #include <exception>

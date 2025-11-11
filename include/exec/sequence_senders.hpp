@@ -17,9 +17,9 @@
 #pragma once
 
 #include "../stdexec/execution.hpp"
-#include "stdexec/__detail/__concepts.hpp"
-#include "stdexec/__detail/__meta.hpp"
-#include "stdexec/__detail/__diagnostics.hpp"
+#include "../stdexec/__detail/__concepts.hpp"
+#include "../stdexec/__detail/__meta.hpp"
+#include "../stdexec/__detail/__diagnostics.hpp"
 
 ////////////////////////////////////////////////////////////////////////////////
 #define STDEXEC_ERROR_SEQUENCE_SENDER_DEFINITION                                                   \

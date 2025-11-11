@@ -23,17 +23,17 @@
 #include "../sequence_senders.hpp"
 
 #include "../__detail/__basic_sequence.hpp"
-#include "stdexec/__detail/__concepts.hpp"
-#include "stdexec/__detail/__config.hpp"
-#include "stdexec/__detail/__diagnostics.hpp"
-#include "stdexec/__detail/__execution_fwd.hpp"
-#include "stdexec/__detail/__meta.hpp"
-#include "stdexec/__detail/__sender_introspection.hpp"
-#include "stdexec/__detail/__senders_core.hpp"
-#include "stdexec/__detail/__stop_token.hpp"
-#include "stdexec/__detail/__transform_completion_signatures.hpp"
-#include "stdexec/__detail/__unstoppable.hpp"
-#include "stdexec/__detail/__variant.hpp"
+#include "../../stdexec/__detail/__concepts.hpp"
+#include "../../stdexec/__detail/__config.hpp"
+#include "../../stdexec/__detail/__diagnostics.hpp"
+#include "../../stdexec/__detail/__execution_fwd.hpp"
+#include "../../stdexec/__detail/__meta.hpp"
+#include "../../stdexec/__detail/__sender_introspection.hpp"
+#include "../../stdexec/__detail/__senders_core.hpp"
+#include "../../stdexec/__detail/__stop_token.hpp"
+#include "../../stdexec/__detail/__transform_completion_signatures.hpp"
+#include "../../stdexec/__detail/__unstoppable.hpp"
+#include "../../stdexec/__detail/__variant.hpp"
 
 #include <atomic>
 

@@ -21,9 +21,9 @@
 #include "../../stdexec/__detail/__basic_sender.hpp"
 
 #include "../sequence_senders.hpp"
-#include "stdexec/__detail/__completion_signatures.hpp"
-#include "stdexec/__detail/__concepts.hpp"
-#include "stdexec/__detail/__debug.hpp"
+#include "../../stdexec/__detail/__completion_signatures.hpp"
+#include "../../stdexec/__detail/__concepts.hpp"
+#include "../../stdexec/__detail/__debug.hpp"
 #include <type_traits>
 
 namespace exec {

@@ -17,10 +17,10 @@
 #pragma once
 
 #include "../../stdexec/__detail/__config.hpp"
-#include "stdexec/__detail/__concepts.hpp"
-#include "stdexec/__detail/__env.hpp"
-#include "stdexec/__detail/__sender_introspection.hpp"
-#include "stdexec/__detail/__tuple.hpp"
+#include "../../stdexec/__detail/__concepts.hpp"
+#include "../../stdexec/__detail/__env.hpp"
+#include "../../stdexec/__detail/__sender_introspection.hpp"
+#include "../../stdexec/__detail/__tuple.hpp"
 
 #if STDEXEC_HAS_STD_RANGES()
 

@@ -17,24 +17,24 @@
 
 #pragma once
 
-#include "../timed_scheduler.hpp"
+#include "../../stdexec/__detail/__completion_signatures.hpp"
+#include "../../stdexec/__detail/__concepts.hpp"
+#include "../../stdexec/__detail/__execution_fwd.hpp"
+#include "../../stdexec/__detail/__intrusive_mpsc_queue.hpp"
+#include "../../stdexec/__detail/__meta.hpp"
+#include "../../stdexec/__detail/__receivers.hpp"
+#include "../../stdexec/__detail/__senders.hpp"
+#include "../../stdexec/__detail/__senders_core.hpp"
+#include "../../stdexec/__detail/__stop_token.hpp"
+#include "../../stdexec/__detail/__transform_completion_signatures.hpp"
+#include "../../stdexec/__detail/__type_traits.hpp"
+
 #include "./marbles.hpp"
 #include "../__detail/intrusive_heap.hpp"
-
-#include "../../stdexec/__detail/__intrusive_mpsc_queue.hpp"
-#include "exec/sequence.hpp"
-#include "exec/sequence_senders.hpp"
-#include "exec/variant_sender.hpp"
-#include "stdexec/__detail/__completion_signatures.hpp"
-#include "stdexec/__detail/__concepts.hpp"
-#include "stdexec/__detail/__execution_fwd.hpp"
-#include "stdexec/__detail/__meta.hpp"
-#include "stdexec/__detail/__receivers.hpp"
-#include "stdexec/__detail/__senders.hpp"
-#include "stdexec/__detail/__senders_core.hpp"
-#include "stdexec/__detail/__stop_token.hpp"
-#include "stdexec/__detail/__transform_completion_signatures.hpp"
-#include "stdexec/__detail/__type_traits.hpp"
+#include "../sequence.hpp"
+#include "../sequence_senders.hpp"
+#include "../timed_scheduler.hpp"
+#include "../variant_sender.hpp"
 
 #include <chrono>
 #include <cstddef>
