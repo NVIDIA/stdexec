@@ -92,9 +92,7 @@ namespace exec {
             if (path_mask & path) {
               node->*Right = cur;
               node->*Left = cur->*Left;
-              if (cur->*Left != nullptr) [[likely]] {
-                cur->*Left->*Prev = node;
-              }
+              cur->*Left->*Prev = node;
               node = cur;
               cur = cur->*Right;
             } else {
