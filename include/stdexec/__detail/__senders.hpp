@@ -192,7 +192,6 @@ namespace stdexec {
 
     struct connect_t {
       template <class _Sender, class _Receiver>
-        requires sender_in<_Sender, env_of_t<_Receiver>> && __receiver_from<_Receiver, _Sender>
       STDEXEC_ATTRIBUTE(always_inline)
       static constexpr auto __type_check_arguments() -> bool {
         if constexpr (sender_in<_Sender, env_of_t<_Receiver>>) {
