@@ -52,14 +52,6 @@ namespace stdexec {
       __stopped
     };
 
-    struct __on_stop_request {
-      inplace_stop_source& __stop_source_;
-
-      void operator()() noexcept {
-        __stop_source_.request_stop();
-      }
-    };
-
     template <class _Env>
     auto __mkenv(_Env&& __env, const inplace_stop_source& __stop_source) noexcept {
       return __env::__join(
@@ -192,7 +184,7 @@ namespace stdexec {
 
     template <class _ErrorsVariant, class _ValuesTuple, class _StopToken, bool _SendsStopped>
     struct __when_all_state {
-      using __stop_callback_t = stop_callback_for_t<_StopToken, __on_stop_request>;
+      using __stop_callback_t = stop_callback_for_t<_StopToken, __forward_stop_request>;
 
       template <class _Receiver>
       void __arrive(_Receiver& __rcvr) noexcept {
@@ -315,7 +307,7 @@ namespace stdexec {
                                       _Operations&... __child_ops) noexcept -> void {
         // register stop callback:
         __state.__on_stop_.emplace(
-          get_stop_token(stdexec::get_env(__rcvr)), __on_stop_request{__state.__stop_source_});
+          get_stop_token(stdexec::get_env(__rcvr)), __forward_stop_request{__state.__stop_source_});
         (stdexec::start(__child_ops), ...);
         if constexpr (sizeof...(__child_ops) == 0) {
           __state.__complete(__rcvr);

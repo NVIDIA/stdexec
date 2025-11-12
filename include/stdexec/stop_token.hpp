@@ -350,6 +350,14 @@ namespace stdexec {
     }
   }
 
+  struct __forward_stop_request {
+    void operator()() const noexcept {
+      __stop_source_.request_stop();
+    }
+
+    inplace_stop_source& __stop_source_;
+  };
+
   using in_place_stop_token
     [[deprecated("in_place_stop_token has been renamed inplace_stop_token")]] = inplace_stop_token;
 
