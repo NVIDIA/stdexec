@@ -333,7 +333,7 @@ namespace exec {
         void __construct_small(_As&&... __args) {
           static_assert(sizeof(_Tp) <= __buffer_size && alignof(_Tp) <= __alignment);
           _Tp* __pointer = reinterpret_cast<_Tp*>(&__buffer_[0]);
-          using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
+          using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
           _Alloc __alloc{__allocator_};
           std::allocator_traits<_Alloc>::construct(
             __alloc, __pointer, static_cast<_As&&>(__args)...);
@@ -342,7 +342,7 @@ namespace exec {
 
         template <class _Tp, class... _As>
         void __construct_large(_As&&... __args) {
-          using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
+          using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
           _Alloc __alloc{__allocator_};
           _Tp* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
           STDEXEC_TRY {
@@ -361,7 +361,7 @@ namespace exec {
           if (!__self.__object_pointer_) {
             return;
           }
-          using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
+          using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
           _Alloc __alloc{__self.__allocator_};
           _Tp* __pointer = static_cast<_Tp*>(std::exchange(__self.__object_pointer_, nullptr));
           std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
@@ -500,7 +500,7 @@ namespace exec {
       void __construct_small(_As&&... __args) {
         static_assert(sizeof(_Tp) <= __buffer_size && alignof(_Tp) <= __alignment);
         _Tp* __pointer = reinterpret_cast<_Tp*>(&__buffer_[0]);
-        using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
+        using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
         _Alloc __alloc{__allocator_};
         std::allocator_traits<_Alloc>::construct(__alloc, __pointer, static_cast<_As&&>(__args)...);
         __object_pointer_ = __pointer;
@@ -508,7 +508,7 @@ namespace exec {
 
       template <class _Tp, class... _As>
       void __construct_large(_As&&... __args) {
-        using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
+        using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
         _Alloc __alloc{__allocator_};
         _Tp* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
         STDEXEC_TRY {
@@ -527,7 +527,7 @@ namespace exec {
         if (!__self.__object_pointer_) {
           return;
         }
-        using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
+        using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
         _Alloc __alloc{__self.__allocator_};
         _Tp* __pointer = static_cast<_Tp*>(std::exchange(__self.__object_pointer_, nullptr));
         std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
@@ -546,7 +546,7 @@ namespace exec {
         if constexpr (__is_small<_Tp>) {
           _Tp& __other_object = *__pointer;
           __self.template __construct_small<_Tp>(static_cast<_Tp&&>(__other_object));
-          using _Alloc = typename std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
+          using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
           _Alloc __alloc{__self.__allocator_};
           std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
         } else {
@@ -643,7 +643,7 @@ namespace exec {
 
     template <class _Query, class _Env>
     concept __satisfies_receiver_stop_token_query =
-      __same_as<__decay_t<__env::__query_result_t<_Env, __tag_type_t<_Query>>>, stop_token_of_t<_Env>>;
+      __same_as<__decay_t<__query_result_t<_Env, __tag_type_t<_Query>>>, stop_token_of_t<_Env>>;
 
     template <class _Query, class... _Env>
     concept __satisfies_receiver_query = !__is_stop_token_query<_Query>
@@ -861,21 +861,13 @@ namespace exec {
     template <class _Sigs, class _Queries>
     using __receiver_ref = __mapply<__mbind_front_q<__rec::__ref, _Sigs>, _Queries>;
 
-    struct __on_stop_t {
-      stdexec::inplace_stop_source& __source_;
-
-      void operator()() const noexcept {
-        __source_.request_stop();
-      }
-    };
-
     template <class _Receiver>
     struct __operation_base {
       STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __rcvr_;
       stdexec::inplace_stop_source __stop_source_{};
       using __stop_callback = typename stdexec::stop_token_of_t<
         stdexec::env_of_t<_Receiver>
-      >::template callback_type<__on_stop_t>;
+      >::template callback_type<__forward_stop_request>;
       std::optional<__stop_callback> __on_stop_{};
     };
 
@@ -950,7 +942,7 @@ namespace exec {
         void start() & noexcept {
           this->__on_stop_.emplace(
             stdexec::get_stop_token(stdexec::get_env(this->__rcvr_)),
-            __on_stop_t{this->__stop_source_});
+            __forward_stop_request{this->__stop_source_});
           STDEXEC_ASSERT(__storage_.__get_vtable()->__start_);
           __storage_.__get_vtable()->__start_(__storage_.__get_object_pointer());
         }
@@ -1250,9 +1242,9 @@ namespace exec {
       }
 
       template <stdexec::__decays_to<any_sender> _Self, class... _Env>
-      requires(__any::__satisfies_receiver_query<decltype(_ReceiverQueries), _Env ...> && ...)
-      static auto get_completion_signatures(_Self&&, _Env&&...) noexcept ->
-        typename __sender_base::completion_signatures {
+        requires(__any::__satisfies_receiver_query<decltype(_ReceiverQueries), _Env...> && ...)
+      static auto get_completion_signatures(_Self&&, _Env&&...) noexcept
+        -> __sender_base::completion_signatures {
         return {};
       }
 
@@ -1298,10 +1290,10 @@ namespace exec {
           stdexec::get_completion_scheduler<stdexec::set_value_t>.signature<any_scheduler() noexcept>;
         template <class... _Queries>
         using __schedule_sender_fn =
-          typename __schedule_receiver::template any_sender<__any_scheduler_noexcept_signature>;
+          __schedule_receiver::template any_sender<__any_scheduler_noexcept_signature>;
 #else
         template <class... _Queries>
-        using __schedule_sender_fn = typename __schedule_receiver::template any_sender<
+        using __schedule_sender_fn = __schedule_receiver::template any_sender<
           stdexec::get_completion_scheduler<stdexec::set_value_t>.template signature<any_scheduler() noexcept>
         >;
 #endif
@@ -1329,10 +1321,10 @@ namespace exec {
         }
 
         template <class _Tag, class... _As>
-          requires stdexec::__env::__queryable<const __scheduler_base&, _Tag, _As...>
+          requires stdexec::__queryable_with<const __scheduler_base&, _Tag, _As...>
         auto query(_Tag, _As&&... __as) const
-          noexcept(stdexec::__env::__nothrow_queryable<const __scheduler_base&, _Tag, _As...>)
-            -> stdexec::__env::__query_result_t<const __scheduler_base&, _Tag, _As...> {
+          noexcept(stdexec::__nothrow_queryable_with<const __scheduler_base&, _Tag, _As...>)
+            -> stdexec::__query_result_t<const __scheduler_base&, _Tag, _As...> {
           return __scheduler_.query(_Tag{}, static_cast<_As&&>(__as)...);
         }
 

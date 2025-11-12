@@ -34,15 +34,7 @@ namespace {
   ///////////////////////////////////////////////////////////////////////////////
   //                                                             any_receiver_ref
 
-  struct get_address_t : stdexec::__query<get_address_t> {
-    template <class T>
-    // BUGBUG ambiguous!
-      requires stdexec::tag_invocable<get_address_t, T>
-    auto operator()(T&& t) const noexcept(stdexec::nothrow_tag_invocable<get_address_t, T>)
-      -> stdexec::tag_invoke_result_t<get_address_t, T> {
-      return stdexec::tag_invoke(*this, static_cast<T&&>(t));
-    }
-  };
+  struct get_address_t : stdexec::__query<get_address_t> { };
 
   inline constexpr get_address_t get_address;
 
@@ -251,8 +243,7 @@ namespace {
   //                                                                any_sender
 
   template <class... Ts>
-  using any_sender_of =
-    typename any_receiver_ref<completion_signatures<Ts...>>::template any_sender<>;
+  using any_sender_of = any_receiver_ref<completion_signatures<Ts...>>::template any_sender<>;
 
   TEST_CASE("any sender is a sender", "[types][any_sender]") {
     CHECK(stdexec::sender<any_sender_of<set_value_t()>>);
@@ -528,7 +519,7 @@ namespace {
   //                                                                any_scheduler
 
   template <auto... Queries>
-  using my_scheduler = typename any_sender_of<>::any_scheduler<Queries...>;
+  using my_scheduler = any_sender_of<>::any_scheduler<Queries...>;
 
   TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {
     static_assert(scheduler<my_scheduler<>>);
@@ -549,7 +540,7 @@ namespace {
 
   TEST_CASE("queryable any_scheduler with inline_scheduler", "[types][any_sender]") {
     using my_scheduler2 =
-      my_scheduler<get_forward_progress_guarantee.signature<forward_progress_guarantee()>>;
+      my_scheduler<get_forward_progress_guarantee.signature<forward_progress_guarantee() noexcept>>;
     static_assert(scheduler<my_scheduler2>);
     my_scheduler2 scheduler = stdexec::inline_scheduler();
     my_scheduler2 copied = scheduler;
@@ -629,8 +620,8 @@ namespace {
   }
 
   TEST_CASE("queryable any_scheduler with static_thread_pool", "[types][any_sender]") {
-    using my_scheduler =
-      stoppable_scheduler<get_forward_progress_guarantee.signature<forward_progress_guarantee()>>;
+    using my_scheduler = stoppable_scheduler<get_forward_progress_guarantee
+                                               .signature<forward_progress_guarantee() noexcept>>;
 
     exec::static_thread_pool pool(1);
     my_scheduler scheduler = pool.get_scheduler();

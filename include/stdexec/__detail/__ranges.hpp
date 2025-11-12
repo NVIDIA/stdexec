@@ -104,7 +104,7 @@ namespace stdexec::ranges {
   using range_reference_t = decltype(*begin((__declval<_Range>())));
 
   template <class _Range>
-  using range_value_t = typename std::iterator_traits<iterator_t<_Range>>::value_type;
+  using range_value_t = std::iterator_traits<iterator_t<_Range>>::value_type;
 
 } // namespace stdexec::ranges
 

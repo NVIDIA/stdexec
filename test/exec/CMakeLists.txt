@@ -50,11 +50,15 @@ set(exec_test_sources
     sequence/test_ignore_all_values.cpp
     sequence/test_iterate.cpp
     sequence/test_transform_each.cpp
+    sequence/test_merge.cpp
+    sequence/test_merge_each.cpp
+    sequence/test_merge_each_threaded.cpp
     $<$<BOOL:${STDEXEC_ENABLE_TBB}>:../execpools/test_tbb_thread_pool.cpp>
     $<$<BOOL:${STDEXEC_ENABLE_TASKFLOW}>:../execpools/test_taskflow_thread_pool.cpp>
     $<$<BOOL:${STDEXEC_ENABLE_ASIO}>:../execpools/test_asio_thread_pool.cpp>
     test_system_context.cpp
     $<$<BOOL:${STDEXEC_ENABLE_LIBDISPATCH}>:test_libdispatch.cpp>
+    test_unless_stop_requested.cpp
     )
 
 add_executable(test.exec ${exec_test_sources})

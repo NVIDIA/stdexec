@@ -95,32 +95,25 @@ namespace stdexec {
 
   namespace __queries {
     template <class _Env>
-      requires tag_invocable<get_scheduler_t, const _Env&>
-    inline auto get_scheduler_t::operator()(const _Env& __env) const noexcept
-      -> tag_invoke_result_t<get_scheduler_t, const _Env&> {
-      static_assert(nothrow_tag_invocable<get_scheduler_t, const _Env&>);
-      static_assert(scheduler<tag_invoke_result_t<get_scheduler_t, const _Env&>>);
-      return tag_invoke(get_scheduler_t{}, __env);
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    constexpr void get_scheduler_t::__validate() noexcept {
+      static_assert(__nothrow_callable<get_scheduler_t, const _Env&>);
+      static_assert(scheduler<__call_result_t<get_scheduler_t, const _Env&>>);
     }
 
     template <class _Env>
-      requires tag_invocable<get_delegation_scheduler_t, const _Env&>
-    inline auto get_delegation_scheduler_t::operator()(const _Env& __env) const noexcept
-      -> tag_invoke_result_t<get_delegation_scheduler_t, const _Env&> {
-      static_assert(nothrow_tag_invocable<get_delegation_scheduler_t, const _Env&>);
-      static_assert(scheduler<tag_invoke_result_t<get_delegation_scheduler_t, const _Env&>>);
-      return tag_invoke(get_delegation_scheduler_t{}, __env);
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    constexpr void get_delegation_scheduler_t::__validate() noexcept {
+      static_assert(__nothrow_callable<get_delegation_scheduler_t, const _Env&>);
+      static_assert(scheduler<__call_result_t<get_delegation_scheduler_t, const _Env&>>);
     }
 
     template <__completion_tag _Tag>
-    template <__has_completion_scheduler_for<_Tag> _Env>
-    auto get_completion_scheduler_t<_Tag>::operator()(const _Env& __env) const noexcept
-      -> tag_invoke_result_t<get_completion_scheduler_t<_Tag>, const _Env&> {
-      static_assert(
-        nothrow_tag_invocable<get_completion_scheduler_t<_Tag>, const _Env&>,
-        "get_completion_scheduler<_Tag> should be noexcept");
-      static_assert(scheduler<tag_invoke_result_t<get_completion_scheduler_t<_Tag>, const _Env&>>);
-      return tag_invoke(*this, __env);
+    template <class _Env>
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    constexpr void get_completion_scheduler_t<_Tag>::__validate() noexcept {
+      static_assert(__nothrow_callable<get_completion_scheduler_t<_Tag>, const _Env&>);
+      static_assert(scheduler<__call_result_t<get_completion_scheduler_t<_Tag>, const _Env&>>);
     }
   } // namespace __queries
 } // namespace stdexec

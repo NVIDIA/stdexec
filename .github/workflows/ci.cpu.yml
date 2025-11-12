@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - "member-function-customization"
       - "pull-request/[0-9]+"
 
 concurrency:
@@ -20,12 +19,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "CPU (clang 14, Debug)",       build: "Debug",   tag: llvm14-cuda12.9, cxxflags: "-stdlib=libc++" }
-          - { name: "CPU (clang 14, Release)",     build: "Release", tag: llvm14-cuda12.9, cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (clang 16, Debug)",       build: "Debug",   tag: llvm16-cuda12.9, cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (clang 16, Release)",     build: "Release", tag: llvm16-cuda12.9, cxxflags: "-stdlib=libc++" }
           - { name: "CPU (gcc 11, Debug)",         build: "Debug",   tag: gcc11-cuda12.9,  cxxflags: "", }
           - { name: "CPU (gcc 11, Release)",       build: "Release", tag: gcc11-cuda12.9,  cxxflags: "", }
-          - { name: "CPU (gcc 11, Release, TSAN)", build: "Release", tag: gcc11-cuda12.9,  cxxflags: "-fsanitize=thread" }
           - { name: "CPU (gcc 11, Release, ASAN)", build: "Release", tag: gcc11-cuda12.9,  cxxflags: "-fsanitize=address" }
+          - { name: "CPU (gcc 12, Release, TSAN)", build: "Release", tag: gcc12-cuda12.9,  cxxflags: "-fsanitize=thread" }
     container:
       options: -u root
       image: rapidsai/devcontainers:25.10-cpp-${{ matrix.tag }}
@@ -168,7 +167,7 @@ jobs:
       - run: echo "CI (CPU) (Windows) success"
 
   build-cpu-macos:
-    runs-on: macos-14-large
+    runs-on: macos-15-large
     name: macos-${{ matrix.name }}
     strategy:
       fail-fast: false

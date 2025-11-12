@@ -221,9 +221,6 @@ endif()
 
 add_library(STDEXEC::stdexec ALIAS stdexec)
 
-# Don't require building everything when installing
-set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY ON)
-
 # Support target for examples and tests
 add_library(stdexec_executable_flags INTERFACE)
 

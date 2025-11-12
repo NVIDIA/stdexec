@@ -61,9 +61,7 @@ namespace stdexec {
 
     struct __then_impl : __sexpr_defaults {
       static constexpr auto get_attrs = []<class _Child>(__ignore, const _Child& __child) noexcept {
-        return __env::__join(
-          cprop<__is_scheduler_affine_t, __is_scheduler_affine<_Child>>{},
-          stdexec::get_env(__child));
+        return __sync_attrs{__child};
       };
 
       static constexpr auto get_completion_signatures =

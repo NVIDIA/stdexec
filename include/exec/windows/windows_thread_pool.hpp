@@ -49,7 +49,7 @@ namespace exec::__win32 {
       class type;
     };
     template <class Rcvr>
-    using schedule_op = typename _schedule_op<Rcvr>::type;
+    using schedule_op = _schedule_op<Rcvr>::type;
 
     template <class StopToken>
     struct _cancellable_schedule_op_base {
@@ -57,7 +57,7 @@ namespace exec::__win32 {
       using __t = type;
     };
     template <class StopToken>
-    using cancellable_schedule_op_base = typename _cancellable_schedule_op_base<StopToken>::type;
+    using cancellable_schedule_op_base = _cancellable_schedule_op_base<StopToken>::type;
 
     template <class Rcvr>
     struct _cancellable_schedule_op {
@@ -65,7 +65,7 @@ namespace exec::__win32 {
       using __t = type;
     };
     template <class Rcvr>
-    using cancellable_schedule_op = typename _cancellable_schedule_op<Rcvr>::type;
+    using cancellable_schedule_op = _cancellable_schedule_op<Rcvr>::type;
 
     template <class StopToken>
     struct _time_schedule_op {
@@ -73,7 +73,7 @@ namespace exec::__win32 {
       using __t = type;
     };
     template <class StopToken>
-    using time_schedule_op = typename _time_schedule_op<StopToken>::type;
+    using time_schedule_op = _time_schedule_op<StopToken>::type;
 
     template <class Rcvr>
     struct _schedule_at_op {
@@ -81,7 +81,7 @@ namespace exec::__win32 {
       using __t = type;
     };
     template <class Rcvr>
-    using schedule_at_op = typename _schedule_at_op<Rcvr>::type;
+    using schedule_at_op = _schedule_at_op<Rcvr>::type;
 
     template <class Duration, class Rcvr>
     struct _schedule_after_op {
@@ -89,7 +89,7 @@ namespace exec::__win32 {
       using __t = type;
     };
     template <class Duration, class Rcvr>
-    using schedule_after_op = typename _schedule_after_op<Duration, Rcvr>::type;
+    using schedule_after_op = _schedule_after_op<Duration, Rcvr>::type;
 
     class schedule_at_sender;
 
@@ -99,7 +99,7 @@ namespace exec::__win32 {
       using __t = sender;
     };
     template <class Duration>
-    using schedule_after_sender = typename _schedule_after<Duration>::sender;
+    using schedule_after_sender = _schedule_after<Duration>::sender;
 
     using clock_type = filetime_clock;
 

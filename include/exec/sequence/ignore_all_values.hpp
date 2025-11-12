@@ -25,12 +25,12 @@
 namespace exec {
   template <class _Variant, class _Type, class... _Args>
   concept __variant_emplaceable = requires(_Variant& __v, _Args&&... __args) {
-    __v.template emplace<_Type>(static_cast<_Args &&>(__args)...);
+    __v.template emplace<_Type>(static_cast<_Args&&>(__args)...);
   };
 
   template <class _Variant, class _Type, class... _Args>
   concept __nothrow_variant_emplaceable = requires(_Variant& __v, _Args&&... __args) {
-    { __v.template emplace<_Type>(static_cast<_Args &&>(__args)...) } noexcept;
+    { __v.template emplace<_Type>(static_cast<_Args&&>(__args)...) } noexcept;
   };
 
   namespace __ignore_all_values {
@@ -276,8 +276,6 @@ namespace exec {
       using __completion_sigs = __sequence_completion_signatures_of_t<_Child, _Env>;
 
       template <class _Child>
-        requires receiver_of<_Receiver, __completion_sigs<_Child>>
-              && sequence_sender_to<_Child, __receiver_t<_Child>>
       auto operator()(__ignore, __ignore, _Child&& __child)
         noexcept(__nothrow_constructible_from<__operation_t<_Child>, _Child, _Receiver>)
           -> __operation_t<_Child> {
@@ -287,7 +285,7 @@ namespace exec {
 
     struct ignore_all_values_t {
       template <sender _Sender>
-      auto operator()(_Sender&& __sndr) const {
+      auto operator()(_Sender&& __sndr) const -> __well_formed_sender auto {
         auto __domain = __get_early_domain(static_cast<_Sender&&>(__sndr));
         return transform_sender(
           __domain, __make_sexpr<ignore_all_values_t>(__(), static_cast<_Sender&&>(__sndr)));
@@ -319,13 +317,7 @@ namespace exec {
       static constexpr auto connect =
         []<class _Sender, receiver _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(
           __nothrow_callable<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>)
-        -> __call_result_t<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>
-        requires receiver_of<_Receiver, __completion_sigs<__child_of<_Sender>, env_of_t<_Receiver>>>
-              && sequence_sender_to<
-                   __child_of<_Sender>,
-                   __receiver_t<__child_of<_Sender>, _Receiver>
-              >
-      {
+        -> __call_result_t<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>> {
         static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
         return __sexpr_apply(static_cast<_Sender&&>(__sndr), __connect_fn<_Receiver>{__rcvr});
       };
