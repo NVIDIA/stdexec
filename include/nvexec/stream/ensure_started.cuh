@@ -232,17 +232,9 @@ namespace nvexec::_strm {
         using Sender = stdexec::__t<SenderId>;
         using Receiver = stdexec::__t<ReceiverId>;
 
-        struct on_stop_requested {
-          inplace_stop_source& stop_source_;
-
-          void operator()() noexcept {
-            stop_source_.request_stop();
-          }
-        };
-
-        using on_stop = std::optional<
-          typename stop_token_of_t<env_of_t<Receiver>&>::template callback_type<on_stop_requested>
-        >;
+        using on_stop = std::optional<typename stop_token_of_t<
+          env_of_t<Receiver>&
+        >::template callback_type<__forward_stop_request>>;
 
         on_stop on_stop_{};
         __intrusive_ptr<sh_state_t<Sender>> shared_state_;
@@ -307,7 +299,7 @@ namespace nvexec::_strm {
             // register stop callback:
             on_stop_.emplace(
               get_stop_token(stdexec::get_env(this->rcvr_)),
-              on_stop_requested{shared_state->stop_source_});
+              __forward_stop_request{shared_state->stop_source_});
             // Check if the stop_source has requested cancellation
             if (shared_state->stop_source_.stop_requested()) {
               // Stop has already been requested. Don't bother starting

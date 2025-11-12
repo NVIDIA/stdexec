@@ -861,20 +861,13 @@ namespace exec {
     template <class _Sigs, class _Queries>
     using __receiver_ref = __mapply<__mbind_front_q<__rec::__ref, _Sigs>, _Queries>;
 
-    struct __on_stop_t {
-      stdexec::inplace_stop_source& __source_;
-
-      void operator()() const noexcept {
-        __source_.request_stop();
-      }
-    };
-
     template <class _Receiver>
     struct __operation_base {
       STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __rcvr_;
       stdexec::inplace_stop_source __stop_source_{};
-      using __stop_callback =
-        stdexec::stop_token_of_t<stdexec::env_of_t<_Receiver>>::template callback_type<__on_stop_t>;
+      using __stop_callback = typename stdexec::stop_token_of_t<
+        stdexec::env_of_t<_Receiver>
+      >::template callback_type<__forward_stop_request>;
       std::optional<__stop_callback> __on_stop_{};
     };
 
@@ -949,7 +942,7 @@ namespace exec {
         void start() & noexcept {
           this->__on_stop_.emplace(
             stdexec::get_stop_token(stdexec::get_env(this->__rcvr_)),
-            __on_stop_t{this->__stop_source_});
+            __forward_stop_request{this->__stop_source_});
           STDEXEC_ASSERT(__storage_.__get_vtable()->__start_);
           __storage_.__get_vtable()->__start_(__storage_.__get_object_pointer());
         }
