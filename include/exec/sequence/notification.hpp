@@ -125,15 +125,14 @@ namespace exec {
 
       template <class _Notification>
       using __tag_of_t =
-        stdexec::__mapply<stdexec::__q<stdexec::__mfront>, STDEXEC_REMOVE_REFERENCE(_Notification)>;
+        stdexec::__mapply<stdexec::__q<stdexec::__mfront>, __decay_t<_Notification>>;
 
       template <class _Tag, class... _Args>
-      notification_t(_Tag __tag, _Args&&... __args) noexcept(noexcept(
-        __notification_.template emplace<__decayed_tuple<_Tag, STDEXEC_REMOVE_REFERENCE(_Args)...>>(
-          __tag,
-          static_cast<_Args&&>(__args)...))) {
-        __notification_.template emplace<__decayed_tuple<_Tag, STDEXEC_REMOVE_REFERENCE(_Args)...>>(
-          __tag, static_cast<_Args&&>(__args)...);
+      notification_t(_Tag __tag, _Args&&... __args)
+        noexcept(noexcept(__notification_.template emplace<__decayed_tuple<_Tag, _Args...>>(
+          __decayed_tuple<_Tag, _Args...>{__tag, static_cast<_Args&&>(__args)...}))) {
+        __notification_.template emplace<__decayed_tuple<_Tag, _Args...>>(
+          __decayed_tuple<_Tag, _Args...>{__tag, static_cast<_Args&&>(__args)...});
       }
 
       template <class _Fn>
@@ -190,10 +189,11 @@ namespace exec {
 
       friend auto
         operator==(const notification_t& __lhs, const notification_t& __rhs) noexcept -> bool {
+        using __self_t = notification_t;
         return std::visit(
           []<class _Lhs, class _Rhs>(const _Lhs& __lhs, const _Rhs& __rhs) noexcept -> bool {
-            using __lhs_tag_t = notification_t::__tag_of_t<_Lhs>;
-            using __rhs_tag_t = notification_t::__tag_of_t<_Rhs>;
+            using __lhs_tag_t = __self_t::__tag_of_t<_Lhs>;
+            using __rhs_tag_t = __self_t::__tag_of_t<_Rhs>;
             if constexpr (
               !std::same_as<__lhs_tag_t, __rhs_tag_t>
               || stdexec::__v<stdexec::__mapply<stdexec::__msize, _Lhs>>
