@@ -28,7 +28,6 @@
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
 #include "__submit.hpp"
-#include "__transform_sender.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__variant.hpp"
 #include "stdexec/__detail/__utility.hpp"
@@ -39,36 +38,36 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////
   // [exec.let]
   namespace __let {
-    // A dummy scheduler that is used by the metaprogramming below when the input sender doesn't
-    // have a completion scheduler.
-    struct __unknown_scheduler {
-      struct __attrs {
-        static constexpr auto query(__is_scheduler_affine_t) noexcept -> bool {
-          return true;
-        }
+    // // A dummy scheduler that is used by the metaprogramming below when the input sender doesn't
+    // // have a completion scheduler.
+    // struct __unknown_scheduler {
+    //   struct __attrs {
+    //     static constexpr auto query(__is_scheduler_affine_t) noexcept -> bool {
+    //       return true;
+    //     }
 
-        [[nodiscard]]
-        constexpr auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept {
-          return __unknown_scheduler{};
-        }
-      };
+    //     [[nodiscard]]
+    //     constexpr auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept {
+    //       return __unknown_scheduler{};
+    //     }
+    //   };
 
-      struct __sender {
-        using sender_concept = sender_t;
+    //   struct __sender {
+    //     using sender_concept = sender_t;
 
-        [[nodiscard]]
-        constexpr auto get_env() const noexcept -> __attrs {
-          return {};
-        }
-      };
+    //     [[nodiscard]]
+    //     constexpr auto get_env() const noexcept -> __attrs {
+    //       return {};
+    //     }
+    //   };
 
-      [[nodiscard]]
-      auto schedule() const noexcept {
-        return __sender();
-      }
+    //   [[nodiscard]]
+    //   auto schedule() const noexcept {
+    //     return __sender();
+    //   }
 
-      auto operator==(const __unknown_scheduler&) const noexcept -> bool = default;
-    };
+    //   auto operator==(const __unknown_scheduler&) const noexcept -> bool = default;
+    // };
 
     inline constexpr auto __get_rcvr = [](auto& __op_state) noexcept -> decltype(auto) {
       return (__op_state.__rcvr_);
@@ -78,7 +77,7 @@ namespace stdexec {
       return __op_state.__state_.__get_env(__op_state.__rcvr_);
     };
 
-    template <class _Set, class _Domain = __none_such>
+    template <class _Set>
     struct __let_t;
 
     template <class _Set>
@@ -95,16 +94,43 @@ namespace stdexec {
     template <class _Set>
     using __on_not_callable = __callable_error<__in_which_let_msg<_Set>>;
 
-    template <class _ReceiverId, class _SchedulerId>
-    struct __rcvr_sch {
+    // This environment is part of the receiver used to connect the secondary sender.
+    template <class _SetTag, class _Attrs, class... _Env>
+    constexpr auto __mk_env2(const _Attrs& __attrs, const _Env&... __env) noexcept {
+      if constexpr (__callable<
+                      get_completion_scheduler_t<_SetTag>,
+                      const _Attrs&,
+                      __fwd_env_t<const _Env&>...
+                    >) {
+        return __mk_sch_env(
+          get_completion_scheduler<_SetTag>(__attrs, __fwd_env(__env)...), __fwd_env(__env)...);
+      } else if constexpr (
+        __callable<get_completion_domain_t<_SetTag>, const _Attrs&, __fwd_env_t<const _Env&>...>) {
+        using __domain_t = __call_result_t<
+          get_completion_domain_t<_SetTag>,
+          const _Attrs&,
+          __fwd_env_t<const _Env&>...
+        >;
+        return prop{get_domain, __domain_t{}};
+      } else {
+        return env{};
+      }
+    }
+
+    template <class _SetTag, class _Attrs, class... _Env>
+    using __env2_t = decltype(__let::__mk_env2<_SetTag>(__declval<_Attrs>(), __declval<_Env>()...));
+
+    template <class _SetTag, class _Attrs, class _Env>
+    using __result_env_t = __join_env_t<__env2_t<_SetTag, _Attrs, _Env>, _Env>;
+
+    template <class _ReceiverId, class _Env2Id>
+    struct __rcvr_env {
       using _Receiver = stdexec::__t<_ReceiverId>;
-      using _Scheduler = stdexec::__t<_SchedulerId>;
+      using _Env2 = stdexec::__t<_Env2Id>;
 
       struct __t {
         using receiver_concept = receiver_t;
-        using __id = __rcvr_sch;
-        _Receiver __rcvr_;
-        _Scheduler __sched_;
+        using __id = __rcvr_env;
 
         template <class... _As>
         void set_value(_As&&... __as) noexcept {
@@ -121,28 +147,22 @@ namespace stdexec {
         }
 
         auto get_env() const noexcept {
-          return __env::__join(__sched_env{__sched_}, stdexec::get_env(__rcvr_));
+          return __env::__join(__env_, stdexec::get_env(__rcvr_));
         }
+
+        _Receiver __rcvr_;
+        const _Env2& __env_;
       };
     };
 
-    template <class _Receiver, class _Scheduler>
-    using __receiver_with_sched_t = __t<__rcvr_sch<__id<_Receiver>, __id<_Scheduler>>>;
-
-    // If the input sender knows its completion scheduler, make it the current scheduler
-    // in the environment seen by the result sender.
-    template <class _Scheduler, class _Env>
-    using __result_env_t = __if_c<
-      __is_scheduler_affine<schedule_result_t<_Scheduler>>,
-      _Env,
-      __join_env_t<__sched_env<_Scheduler>, _Env>
-    >;
+    template <class _Receiver, class _Env2>
+    using __receiver_with_env_t = __t<__rcvr_env<__id<_Receiver>, __id<_Env2>>>;
 
     template <__mstring _Where, __mstring _What>
     struct _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_ { };
 
 #if STDEXEC_EDG()
-    template <class _Sender, class _Set, class... _Env>
+    template <class _Sender, class _Set, class... _JoinEnv2>
     struct __bad_result_sender_ {
       using __t = __mexception<
         _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_<
@@ -150,104 +170,104 @@ namespace stdexec {
           "The function must return a valid sender for the current environment"_mstr
         >,
         _WITH_SENDER_<_Sender>,
-        _WITH_ENVIRONMENT_<_Env>...
+        _WITH_ENVIRONMENT_<_JoinEnv2>...
       >;
     };
-    template <class _Sender, class _Set, class... _Env>
-    using __bad_result_sender = __t<__bad_result_sender_<_Sender, _Set, _Env...>>;
+    template <class _Sender, class _Set, class... _JoinEnv2>
+    using __bad_result_sender = __t<__bad_result_sender_<_Sender, _Set, _JoinEnv2...>>;
 #else
-    template <class _Sender, class _Set, class... _Env>
+    template <class _Sender, class _Set, class... _JoinEnv2>
     using __bad_result_sender = __mexception<
       _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_<
         __in_which_let_msg<_Set>,
         "The function must return a valid sender for the current environment"_mstr
       >,
       _WITH_SENDER_<_Sender>,
-      _WITH_ENVIRONMENT_<_Env>...
+      _WITH_ENVIRONMENT_<_JoinEnv2>...
     >;
 #endif
 
-    template <class _Sender, class... _Env>
-    concept __potentially_valid_sender_in = sender_in<_Sender, _Env...>
-                                         || (sender<_Sender> && (sizeof...(_Env) == 0));
+    template <class _Sender, class... _JoinEnv2>
+    concept __potentially_valid_sender_in = sender_in<_Sender, _JoinEnv2...>
+                                         || (sender<_Sender> && (sizeof...(_JoinEnv2) == 0));
 
-    template <class _Set, class _Sender, class... _Env>
+    template <class _Set, class _Sender, class... _JoinEnv2>
     using __ensure_sender = __minvoke_if_c<
-      __potentially_valid_sender_in<_Sender, _Env...>,
-      __q<__midentity>,
-      __mbind_back_q<__bad_result_sender, _Set, _Env...>,
+      __potentially_valid_sender_in<_Sender, _JoinEnv2...>,
+      __q1<__midentity>,
+      __mbind_back_q<__bad_result_sender, _Set, _JoinEnv2...>,
       _Sender
     >;
 
     // A metafunction that computes the result sender type for a given set of argument types
-    template <class _Set, class _Fun, class _Sched, class... _Env>
+    template <class _Set, class _Fun, class... _JoinEnv2>
     struct __result_sender_fn {
       template <class... _Args>
       using __f = __meval<
         __ensure_sender,
         _Set,
         __mcall<__mtry_catch_q<__call_result_t, __on_not_callable<_Set>>, _Fun, __decay_t<_Args>&...>,
-        __result_env_t<_Sched, _Env>...
+        _JoinEnv2...
       >;
     };
 
     // The receiver that gets connected to the result sender is the input receiver,
     // possibly augmented with the input sender's completion scheduler (which is
     // where the result sender will be started).
-    template <class _Receiver, class _Scheduler>
-    using __result_receiver_t = __if_c<
-      __is_scheduler_affine<schedule_result_t<_Scheduler>>,
-      _Receiver,
-      __receiver_with_sched_t<_Receiver, _Scheduler>
-    >;
+    template <class _Receiver, class _Env2>
+    using __result_receiver_t = // __if_c<
+      // __is_scheduler_affine<schedule_result_t<_Scheduler>>,
+      // _Receiver,
+      __receiver_with_env_t<_Receiver, _Env2>
+      //>
+      ;
 
-    template <class _ResultSender, class _Scheduler, class... _Env>
-    using __receiver_ref_t = __meval<
-      __any_::__receiver_ref,
-      __completion_signatures_of_t<_ResultSender, __result_env_t<_Scheduler, _Env>...>,
-      __result_env_t<_Scheduler, _Env>...
-    >;
+    // template <class _ResultSender, class _Scheduler, class... _Env>
+    // using __receiver_ref_t = __meval<
+    //   __any_::__receiver_ref,
+    //   __completion_signatures_of_t<_ResultSender, __result_env_t<_Scheduler, _Env>...>,
+    //   __result_env_t<_Scheduler, _Env>...
+    // >;
 
-    template <class _ResultSender, class _Scheduler, class _Receiver>
-    concept __needs_receiver_ref =
-      __nothrow_connectable<
-        _ResultSender,
-        __receiver_ref_t<_ResultSender, _Scheduler, env_of_t<_Receiver>>
-      >
-      && !__nothrow_connectable<_ResultSender, __result_receiver_t<_Receiver, _Scheduler>>;
+    // template <class _ResultSender, class _Scheduler, class _Receiver>
+    // concept __needs_receiver_ref =
+    //   __nothrow_connectable<
+    //     _ResultSender,
+    //     __receiver_ref_t<_ResultSender, _Scheduler, env_of_t<_Receiver>>
+    //   >
+    //   && !__nothrow_connectable<_ResultSender, __result_receiver_t<_Receiver, _Scheduler>>;
 
-    template <class _Sender, class _Receiver>
-    using __nothrow_connectable_t = __mbool<__nothrow_connectable<_Sender, _Receiver>>;
+    // template <class _Sender, class _Receiver>
+    // using __nothrow_connectable_t = __mbool<__nothrow_connectable<_Sender, _Receiver>>;
 
-    template <class _ResultSender, class _Scheduler, class... _Env>
-    using __nothrow_connectable_receiver_ref_t = __meval<
-      __nothrow_connectable_t,
-      _ResultSender,
-      __receiver_ref_t<_ResultSender, _Scheduler, _Env...>
-    >;
+    // template <class _ResultSender, class _Scheduler, class... _Env>
+    // using __nothrow_connectable_receiver_ref_t = __meval<
+    //   __nothrow_connectable_t,
+    //   _ResultSender,
+    //   __receiver_ref_t<_ResultSender, _Scheduler, _Env...>
+    // >;
 
-    template <class _ResultSender, class _Scheduler, class _Receiver>
-    using __checked_result_receiver_t = __if_c<
-      __needs_receiver_ref<_ResultSender, _Scheduler, _Receiver>,
-      __receiver_ref_t<_ResultSender, _Scheduler, env_of_t<_Receiver>>,
-      __result_receiver_t<_Receiver, _Scheduler>
-    >;
+    template <class _ResultSender, class _Env2, class _Receiver>
+    using __checked_result_receiver_t = // __if_c<
+      // __needs_receiver_ref<_ResultSender, _Env2, _Receiver>,
+      // __receiver_ref_t<_ResultSender, _Env2, env_of_t<_Receiver>>,
+      __result_receiver_t<_Receiver, _Env2>
+      //>
+      ;
 
-    template <class _ResultSender, class _Scheduler, class _Receiver>
-    using __submit_result = submit_result<
-      _ResultSender,
-      __checked_result_receiver_t<_ResultSender, _Scheduler, _Receiver>
-    >;
+    template <class _ResultSender, class _Env2, class _Receiver>
+    using __submit_result =
+      submit_result<_ResultSender, __checked_result_receiver_t<_ResultSender, _Env2, _Receiver>>;
 
-    template <class _SetTag, class _Fun, class _Sched, class... _Env>
+    template <class _SetTag, class _Fun, class _JoinEnv2>
     struct __transform_signal_fn {
       template <class... _Args>
-      using __nothrow_connect = __mand<
-        __mbool<(__nothrow_decay_copyable<_Args> && ...) && __nothrow_callable<_Fun, _Args...>>,
-        __nothrow_connectable_receiver_ref_t<
-          __mcall<__result_sender_fn<_SetTag, _Fun, _Sched, _Env...>, _Args...>,
-          _Sched,
-          _Env...
+      using __nothrow_connect = __mbool<
+        __nothrow_decay_copyable<_Args...> //
+        && __nothrow_callable<_Fun, __decay_t<_Args>&...>
+        && __nothrow_connectable<
+          __mcall<__result_sender_fn<_SetTag, _Fun, _JoinEnv2>, _Args...>,
+          __receiver_archetype<_JoinEnv2>
         >
       >;
 
@@ -255,26 +275,25 @@ namespace stdexec {
       using __f = __mcall<
         __mtry_q<__concat_completion_signatures>,
         __completion_signatures_of_t<
-          __mcall<__result_sender_fn<_SetTag, _Fun, _Sched, _Env...>, _Args...>,
-          __result_env_t<_Sched, _Env>...
+          __mcall<__result_sender_fn<_SetTag, _Fun, _JoinEnv2>, _Args...>,
+          _JoinEnv2
         >,
-        __eptr_completion_if_t<__nothrow_connect<_Args...>>
+        __eptr_completion_unless_t<__nothrow_connect<_Args...>>
       >;
     };
 
-    template <class _Sender, class _Set>
-    using __completion_sched =
-      __query_result_or_t<get_completion_scheduler_t<_Set>, env_of_t<_Sender>, __unknown_scheduler>;
+    // template <class _Sender, class _Set, class... _Env>
+    // using __completion_sched_t =
+    //   __call_result_t<get_completion_scheduler_t<_Set>, env_of_t<_Sender>, _Env...>;
 
-    template <class _LetTag, class _Fun, class _CvrefSender, class... _Env>
+    template <class _LetTag, class _Fun, class _CvrefSender, class _Env>
     using __completions = __gather_completion_signatures<
-      __completion_signatures_of_t<_CvrefSender, _Env...>,
+      __completion_signatures_of_t<_CvrefSender, _Env>,
       __t<_LetTag>,
       __transform_signal_fn<
         __t<_LetTag>,
         _Fun,
-        __completion_sched<_CvrefSender, __t<_LetTag>>,
-        _Env...
+        __result_env_t<__t<_LetTag>, env_of_t<_CvrefSender>, _Env>
       >::template __f,
       __sigs::__default_completion,
       __mtry_q<__concat_completion_signatures>::__f
@@ -289,133 +308,105 @@ namespace stdexec {
       "The senders returned by Function do not all share a common domain"_mstr
     >;
 
-    template <class _Set, class _Sched>
+    template <class _Set, class... _Env>
     struct __try_common_domain_fn {
       struct __error_fn {
         template <class... _Senders>
         using __f = __mexception<__no_common_domain_t<_Set>, _WITH_SENDERS_<_Senders...>>;
       };
 
-      // If a sender is "scheduler affine", then it will complete on the same execution
-      // context on which it was started (e.g., just(42)). In this case, the domain of the
-      // scheduler is the domain of the sender.
+      // TODO(ericniebler): this needs to be updated:
       template <class... _Senders>
-      using __common_domain = __common_domain_t<
-        __if_c<__is_scheduler_affine<_Senders>, schedule_result_t<_Sched>, _Senders>...
+      using __f = __mcall<
+        __mtry_catch_q<__common_domain_t, __error_fn>,
+        __compl_domain_t<_Set, _Senders, _Env...>...
       >;
-
-      template <class... _Senders>
-      using __f = __mcall<__mtry_catch_q<__common_domain, __error_fn>, _Senders...>;
     };
 
     // Compute all the domains of all the result senders and make sure they're all the same
-    template <class _Set, class _Child, class _Fun, class _Sched, class... _Env>
+    template <class _Set, class _Child, class _Fun, class _Env>
     using __result_domain_t = __gather_completions<
       _Set,
-      __completion_signatures_of_t<_Child, _Env...>,
-      __result_sender_fn<_Set, _Fun, _Sched, _Env...>,
-      __try_common_domain_fn<_Set, _Sched>
+      __completion_signatures_of_t<_Child, _Env>,
+      __result_sender_fn<_Set, _Fun, __result_env_t<_Set, env_of_t<_Child>, _Env>>,
+      __try_common_domain_fn<_Set, _Env>
     >;
 
-    template <class _LetTag, class _Env>
-    auto __mk_transform_env_fn(_Env&& __env) noexcept {
-      using _Set = __t<_LetTag>;
-      return [&]<class _Fun, class _Child>(__ignore, _Fun&&, _Child&& __child) -> decltype(auto) {
-        using __completions_t = __completion_signatures_of_t<_Child, _Env>;
-        if constexpr (__merror<__completions_t>) {
-          return __completions_t();
-        } else {
-          using _Scheduler = __completion_sched<_Child, _Set>;
-          if constexpr (__is_scheduler_affine<schedule_result_t<_Scheduler>>) {
-            return (__env);
-          } else {
-            return __env::__join(
-              __sched_env{get_completion_scheduler<_Set>(stdexec::get_env(__child))},
-              static_cast<_Env&&>(__env));
-          }
-        }
-      };
-    }
-
-    template <class _LetTag, class _Env>
-    auto __mk_transform_sender_fn(_Env&&) noexcept {
-      using _Set = __t<_LetTag>;
-
-      return []<class _Fun, class _Child>(__ignore, _Fun&& __fun, _Child&& __child) {
-        using __completions_t = __completion_signatures_of_t<_Child, _Env>;
-
-        if constexpr (__merror<__completions_t>) {
-          return __completions_t();
-        } else {
-          using _Sched = __completion_sched<_Child, _Set>;
-          using _Domain = __result_domain_t<_Set, _Child, _Fun, _Sched, _Env>;
-
-          if constexpr (__merror<_Domain>) {
-            return _Domain();
-          } else {
-            static_assert(!same_as<_Domain, __unknown_scheduler>);
-            return __make_sexpr<__let_t<_Set, _Domain>>(
-              static_cast<_Fun&&>(__fun), static_cast<_Child&&>(__child));
-          }
-        }
-      };
-    }
+    // template <class _LetTag, class _Env>
+    // auto __mk_transform_env_fn(_Env&& __env) noexcept {
+    //   using _Set = __t<_LetTag>;
+    //   return [&]<class _Fun, class _Child>(__ignore, _Fun&&, _Child&& __child) -> decltype(auto) {
+    //     using __completions_t = __completion_signatures_of_t<_Child, _Env>;
+    //     if constexpr (__merror<__completions_t>) {
+    //       return __completions_t();
+    //     } else {
+    //       using _Scheduler = __completion_sched_t<_Child, _Set>;
+    //       if constexpr (__is_scheduler_affine<schedule_result_t<_Scheduler>>) {
+    //         return (__env);
+    //       } else {
+    //         return __env::__join(
+    //           __sched_env{get_completion_scheduler<_Set>(stdexec::get_env(__child), __env)},
+    //           static_cast<_Env&&>(__env));
+    //       }
+    //     }
+    //   };
+    // }
 
     //! Metafunction creating the operation state needed to connect the result of calling
     //! the sender factory function, `_Fun`, and passing its result to a receiver.
-    template <class _Receiver, class _Fun, class _Set, class _Sched>
+    template <class _Receiver, class _Fun, class _Set, class _Env2>
     struct __submit_datum_for {
       // compute the result of calling submit with the result of executing _Fun
       // with _Args. if the result is void, substitute with __ignore.
       template <class... _Args>
       using __f = __submit_result<
-        __mcall<__result_sender_fn<_Set, _Fun, _Sched, env_of_t<_Receiver>>, _Args...>,
-        _Sched,
+        __mcall<__result_sender_fn<_Set, _Fun, __join_env_t<_Env2, env_of_t<_Receiver>>>, _Args...>,
+        _Env2,
         _Receiver
       >;
     };
 
     //! The core of the operation state for `let_*`.
     //! This gets bundled up into a larger operation state (`__detail::__op_state<...>`).
-    template <class _Receiver, class _Fun, class _Set, class _Sched, class... _Tuples>
+    template <class _Receiver, class _Fun, class _Set, class _Env2, class... _Tuples>
     struct __let_state {
       using __fun_t = _Fun;
-      using __sched_t = _Sched;
-      using __env_t = __result_env_t<_Sched, env_of_t<_Receiver>>;
-      using __rcvr_t = __receiver_with_sched_t<_Receiver, _Sched>;
+      using __env2_t = _Env2;
+      using __env_t = __join_env_t<_Env2, env_of_t<_Receiver>>;
+      using __rcvr_t = __receiver_with_env_t<_Receiver, _Env2>;
       using __result_variant = __variant_for<__monostate, _Tuples...>;
       using __submit_variant = __variant_for<
         __monostate,
-        __mapply<__submit_datum_for<_Receiver, _Fun, _Set, _Sched>, _Tuples>...
+        __mapply<__submit_datum_for<_Receiver, _Fun, _Set, _Env2>, _Tuples>...
       >;
 
       template <class _ResultSender, class _OpState>
       auto __get_result_receiver(const _ResultSender&, _OpState& __op_state) -> decltype(auto) {
-        if constexpr (__needs_receiver_ref<_ResultSender, _Sched, _Receiver>) {
-          using __receiver_ref = __receiver_ref_t<_ResultSender, _Sched, env_of_t<_Receiver>>;
-          return __receiver_ref{__op_state, __let::__get_env, __let::__get_rcvr};
-        } else {
-          _Receiver& __rcvr = __op_state.__rcvr_;
-          if constexpr (__is_scheduler_affine<schedule_result_t<_Sched>>) {
-            return static_cast<_Receiver&&>(__rcvr);
-          } else {
-            return __rcvr_t{static_cast<_Receiver&&>(__rcvr), this->__sched_};
-          }
-        }
+        // if constexpr (__needs_receiver_ref<_ResultSender, _Sched, _Receiver>) {
+        //   using __receiver_ref = __receiver_ref_t<_ResultSender, _Sched, env_of_t<_Receiver>>;
+        //   return __receiver_ref{__op_state, __let::__get_env, __let::__get_rcvr};
+        // } else {
+        _Receiver& __rcvr = __op_state.__rcvr_;
+        // if constexpr (__is_scheduler_affine<schedule_result_t<_Sched>>) {
+        //   return static_cast<_Receiver&&>(__rcvr);
+        // } else {
+        return __rcvr_t{static_cast<_Receiver&&>(__rcvr), __env2_};
+        // }
+        // }
       }
 
       auto __get_env(const _Receiver& __rcvr) const noexcept -> __env_t {
-        if constexpr (__is_scheduler_affine<schedule_result_t<_Sched>>) {
-          return stdexec::get_env(__rcvr);
-        } else {
-          return __env::__join(__sched_env{__sched_}, stdexec::get_env(__rcvr));
-        }
+        // if constexpr (__is_scheduler_affine<schedule_result_t<_Sched>>) {
+        //   return stdexec::get_env(__rcvr);
+        // } else {
+        return __env::__join(__env2_, stdexec::get_env(__rcvr));
+        // }
       }
 
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Fun __fun_;
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-      _Sched __sched_;
+      _Env2 __env2_;
       //! Variant to hold the results passed from upstream before passing them to the function:
       __result_variant __args_{};
       //! Variant type for holding the operation state from connecting
@@ -424,9 +415,8 @@ namespace stdexec {
     };
 
     //! Implementation of the `let_*_t` types, where `_Set` is, e.g., `set_value_t` for `let_value`.
-    template <class _Set, class _Domain>
+    template <class _Set>
     struct __let_t {
-      using __domain_t = _Domain;
       using __t = _Set;
 
       template <sender _Sender, __movable_value _Fun>
@@ -440,34 +430,37 @@ namespace stdexec {
         return {{static_cast<_Fun&&>(__fun)}, {}, {}};
       }
 
-      template <sender_expr_for<__let_t<_Set>> _Sender, class _Env>
-      static auto transform_env(_Sender&& __sndr, const _Env& __env) -> decltype(auto) {
-        return __sexpr_apply(
-          static_cast<_Sender&&>(__sndr), __mk_transform_env_fn<__let_t<_Set>>(__env));
-      }
+      // template <sender_expr_for<__let_t<_Set>> _Sender, class _Env>
+      // static auto transform_env(_Sender&& __sndr, const _Env& __env) -> decltype(auto) {
+      //   return __sexpr_apply(
+      //     static_cast<_Sender&&>(__sndr), __mk_transform_env_fn<__let_t<_Set>>(__env));
+      // }
     };
 
-    template <class _Set, class _Domain>
+    template <class _Set>
     struct __let_impl : __sexpr_defaults {
       static constexpr auto get_attrs =
         []<class _Fun, class _Child>(const _Fun&, const _Child& __child) noexcept {
-          return __env::__join(prop{get_domain, _Domain()}, stdexec::get_env(__child));
+          //return __env::__join(prop{get_domain, _Domain()}, stdexec::get_env(__child));
+          // TODO(ericniebler): this needs to be updated:
+          return stdexec::get_env(__child);
         };
 
       static constexpr auto get_completion_signatures =
-        []<class _Self, class... _Env>(_Self&&, _Env&&...) noexcept
-        -> __completions<__let_t<_Set, _Domain>, __data_of<_Self>, __child_of<_Self>, _Env...> {
-        static_assert(sender_expr_for<_Self, __let_t<_Set, _Domain>>);
+        []<class _Self, class _Env>(_Self&&, _Env&&...) noexcept
+        -> __completions<__let_t<_Set>, __data_of<_Self>, __child_of<_Self>, _Env> {
+        static_assert(sender_expr_for<_Self, __let_t<_Set>>);
         return {};
       };
 
       static constexpr auto get_state =
-        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&) {
-          static_assert(sender_expr_for<_Sender, __let_t<_Set, _Domain>>);
+        []<class _Sender, class _Receiver>(_Sender&& __sndr, const _Receiver& __rcvr) {
+          static_assert(sender_expr_for<_Sender, __let_t<_Set>>);
           using _Fun = __data_of<_Sender>;
           using _Child = __child_of<_Sender>;
-          using _Sched = __decay_t<__completion_sched<_Child, _Set>>;
-          using __mk_let_state = __mbind_front_q<__let_state, _Receiver, _Fun, _Set, _Sched>;
+          // using _Sched = __decay_t<__completion_sched_t<_Child, _Set, env_of_t<const _Receiver&>>>;
+          using _Env2 = __env2_t<_Set, env_of_t<const _Child&>, env_of_t<const _Receiver&>>;
+          using __mk_let_state = __mbind_front_q<__let_state, _Receiver, _Fun, _Set, _Env2>;
 
           using __let_state_t = __gather_completions_of<
             _Set,
@@ -480,9 +473,10 @@ namespace stdexec {
           return __sndr.apply(
             static_cast<_Sender&&>(__sndr),
             [&]<class _Fn, class _Child>(__ignore, _Fn&& __fn, _Child&& __child) {
-              _Sched __sched = query_or(
-                get_completion_scheduler<_Set>, stdexec::get_env(__child), __unknown_scheduler());
-              return __let_state_t{static_cast<_Fn&&>(__fn), __sched};
+              // TODO(ericniebler): this needs a fallback
+              _Env2 __env2 =
+                __let::__mk_env2<_Set>(stdexec::get_env(__child), stdexec::get_env(__rcvr));
+              return __let_state_t{static_cast<_Fn&&>(__fn), static_cast<_Env2&&>(__env2)};
             });
         };
 
@@ -509,16 +503,16 @@ namespace stdexec {
         using _State = decltype(__op_state.__state_);
         using _Receiver = decltype(__op_state.__rcvr_);
         using _Fun = typename _State::__fun_t;
-        using _Sched = typename _State::__sched_t;
-        using _ResultSender =
-          __mcall<__result_sender_fn<_Set, _Fun, _Sched, env_of_t<_Receiver>>, _As...>;
+        using _Env2 = typename _State::__env2_t;
+        using _JoinEnv2 = __join_env_t<_Env2, env_of_t<_Receiver>>;
+        using _ResultSender = __mcall<__result_sender_fn<_Set, _Fun, _JoinEnv2>, _As...>;
 
         _State& __state = __op_state.__state_;
         _Receiver& __rcvr = __op_state.__rcvr_;
 
         if constexpr (
           (__nothrow_decay_copyable<_As> && ...) && __nothrow_callable<_Fun, _As...>
-          && __v<__nothrow_connectable_receiver_ref_t<_ResultSender, _Sched, env_of_t<_Receiver>>>) {
+          && __nothrow_connectable<_ResultSender, __result_receiver_t<_Receiver, _Env2>>) {
           __bind_(__state, __op_state, static_cast<_As&&>(__as)...);
         } else {
           STDEXEC_TRY {
@@ -557,6 +551,6 @@ namespace stdexec {
   using let_stopped_t = __let::__let_t<set_stopped_t>;
   inline constexpr let_stopped_t let_stopped{};
 
-  template <class _Set, class _Domain>
-  struct __sexpr_impl<__let::__let_t<_Set, _Domain>> : __let::__let_impl<_Set, _Domain> { };
+  template <class _Set>
+  struct __sexpr_impl<__let::__let_t<_Set>> : __let::__let_impl<_Set> { };
 } // namespace stdexec

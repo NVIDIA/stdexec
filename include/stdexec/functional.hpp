@@ -208,7 +208,7 @@ namespace stdexec {
     }
 
     template <class _Tup>
-    using __tuple_indices = __make_indices<std::tuple_size<std::remove_cvref_t<_Tup>>::value>;
+    using __tuple_indices = __make_indices<std::tuple_size_v<std::remove_cvref_t<_Tup>>>;
 
     template <class _Fn, class _Tup>
     using __result_t =
@@ -240,4 +240,27 @@ namespace stdexec {
   };
 
   inline constexpr __apply_t __apply{};
+
+  template <class _Fn, class _Default>
+  struct __with_default : _Fn {
+    STDEXEC_ATTRIBUTE(host, device, always_inline)
+    constexpr __with_default(_Fn __fn, _Default __default)
+      noexcept(__nothrow_move_constructible<_Fn>)
+      : _Fn(static_cast<_Fn&&>(__fn))
+      , __default_(static_cast<_Default&&>(__default)) {
+    }
+
+    using _Fn::operator();
+
+    template <class... _As>
+      requires(!__callable<const _Fn&, _As...>)
+    STDEXEC_ATTRIBUTE(host, device, always_inline)
+    constexpr auto
+      operator()(_As&&...) const noexcept(__nothrow_copy_constructible<_Default>) -> _Default {
+      return __default_;
+    }
+
+    _Default __default_{};
+  };
+
 } // namespace stdexec

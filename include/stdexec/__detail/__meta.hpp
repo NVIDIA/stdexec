@@ -578,16 +578,16 @@ namespace stdexec {
   };
 
   template <class _Fn, class _Default>
-  using __with_default = __mtry_catch<_Fn, __mconst<_Default>>;
+  using __mwith_default = __mtry_catch<_Fn, __mconst<_Default>>;
 
   template <template <class...> class _Fn, class _Default>
-  using __with_default_q = __mtry_catch_q<_Fn, __mconst<_Default>>;
+  using __mwith_default_q = __mtry_catch_q<_Fn, __mconst<_Default>>;
 
   template <class _Fn, class _Default, class... _Args>
-  using __minvoke_or = __minvoke<__with_default<_Fn, _Default>, _Args...>;
+  using __minvoke_or = __minvoke<__mwith_default<_Fn, _Default>, _Args...>;
 
   template <template <class...> class _Fn, class _Default, class... _Args>
-  using __meval_or = __minvoke<__with_default_q<_Fn, _Default>, _Args...>;
+  using __meval_or = __minvoke<__mwith_default_q<_Fn, _Default>, _Args...>;
 
   template <template <class...> class _Fn>
   struct __mtry_eval_ {
@@ -888,6 +888,10 @@ namespace stdexec {
   template <class _Fun, class... _As>
   using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
 #endif
+
+  template <class _Fun, class _Default, class... _As>
+  using __call_result_or_t =
+    __mcall<__mtry_catch_q<__call_result_t, __mconst<_Default>>, _Fun, _As...>;
 
 // BUGBUG TODO file this bug with nvc++
 #if STDEXEC_EDG()

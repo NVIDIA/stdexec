@@ -26,7 +26,6 @@
 #include "__let.hpp"
 #include "__schedulers.hpp"
 #include "__senders_core.hpp"
-#include "__transform_sender.hpp"
 #include "__utility.hpp"
 
 namespace stdexec {

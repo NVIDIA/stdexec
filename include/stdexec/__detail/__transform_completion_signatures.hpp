@@ -386,10 +386,10 @@ namespace stdexec {
   using __eptr_completion = completion_signatures<set_error_t(std::exception_ptr)>;
 
   template <class _NoExcept>
-  using __eptr_completion_if_t = __if<_NoExcept, completion_signatures<>, __eptr_completion>;
+  using __eptr_completion_unless_t = __if<_NoExcept, completion_signatures<>, __eptr_completion>;
 
   template <bool _NoExcept>
-  using __eptr_completion_if = __eptr_completion_if_t<__mbool<_NoExcept>>;
+  using __eptr_completion_unless = __eptr_completion_unless_t<__mbool<_NoExcept>>;
 
   template <
     class _Sender,

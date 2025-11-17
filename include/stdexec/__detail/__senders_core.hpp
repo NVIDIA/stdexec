@@ -22,7 +22,6 @@
 #include "__completion_signatures.hpp"
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
-#include "__domain.hpp"
 #include "__env.hpp"
 #include "__receivers.hpp"
 #include "__type_traits.hpp"
@@ -45,8 +44,9 @@ namespace stdexec {
   inline constexpr bool enable_sender = __detail::__enable_sender<_Sender>;
 
   template <class _Sender>
-  concept sender = enable_sender<__decay_t<_Sender>> && environment_provider<__cref_t<_Sender>>
-                && __detail::__consistent_completion_domains<_Sender>
+  concept sender = enable_sender<__decay_t<_Sender>> //
+                && environment_provider<__cref_t<_Sender>>
+                //&& __detail::__consistent_completion_domains<_Sender>
                 && move_constructible<__decay_t<_Sender>>
                 && constructible_from<__decay_t<_Sender>, _Sender>;
 
@@ -61,8 +61,9 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [exec.snd]
   template <class _Sender, class _Receiver>
-  concept sender_to = receiver<_Receiver> && sender_in<_Sender, env_of_t<_Receiver>>
-                   && __receiver_from<_Receiver, _Sender>
+  concept sender_to = receiver<_Receiver>                     //
+                   && sender_in<_Sender, env_of_t<_Receiver>> //
+                   && __receiver_from<_Receiver, _Sender>     //
                    && requires(_Sender &&__sndr, _Receiver &&__rcvr) {
                         connect(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr));
                       };
@@ -70,18 +71,23 @@ namespace stdexec {
   template <class _Sender, class _Receiver>
   using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
 
+  template <class _Sender, class _Receiver>
+  concept __nothrow_connectable = sender<_Sender> //
+                               && receiver<_Receiver>
+                               && __nothrow_callable<connect_t, _Sender, _Receiver>;
+
   // Used to report a meaningful error message when the sender_in<Sndr, Env>
   // concept check fails.
   template <class _Sender, class... _Env>
   auto __diagnose_sender_concept_failure() {
     if constexpr (!enable_sender<__decay_t<_Sender>>) {
       static_assert(enable_sender<_Sender>, STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE);
-    } else if constexpr (!__detail::__consistent_completion_domains<_Sender>) {
-      static_assert(
-        __detail::__consistent_completion_domains<_Sender>,
-        "The completion schedulers of the sender do not have "
-        "consistent domains. This is likely a "
-        "bug in the sender implementation.");
+      // } else if constexpr (!__detail::__consistent_completion_domains<_Sender>) {
+      //   static_assert(
+      //     __detail::__consistent_completion_domains<_Sender>,
+      //     "The completion schedulers of the sender do not have "
+      //     "consistent domains. This is likely a "
+      //     "bug in the sender implementation.");
     } else if constexpr (!move_constructible<__decay_t<_Sender>>) {
       static_assert(
         move_constructible<__decay_t<_Sender>>, "The sender type is not move-constructible.");

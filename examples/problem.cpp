@@ -145,6 +145,7 @@ int main() {
   ex::sync_wait(snd);
   #else
 
+  [[maybe_unused]]
   bool called{false};
   // launch some work on the thread pool
   ex::sender auto snd = 

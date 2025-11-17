@@ -20,7 +20,6 @@
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__concepts.hpp"
-#include "__domain.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
 #include "__operation_states.hpp"
@@ -28,7 +27,7 @@
 #include "__schedulers.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__tuple.hpp"
-#include "__variant.hpp"
+#include "__variant.hpp" // IWYU pragma: keep for __variant_for
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
@@ -70,7 +69,7 @@ namespace stdexec {
       >,
       transform_completion_signatures<
         __completion_signatures_of_t<schedule_result_t<_Scheduler>, _Env...>,
-        __eptr_completion_if_t<__nothrow_decay_copyable_results_t<_Completions>>,
+        __eptr_completion_unless_t<__nothrow_decay_copyable_results_t<_Completions>>,
         __mconst<completion_signatures<>>::__f
       >
     >;

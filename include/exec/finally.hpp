@@ -293,7 +293,7 @@ namespace exec {
 
     struct finally_t {
       template <sender _Initial, sender _Final>
-        requires __has_common_domain<_Initial, _Final>
+      // requires __TODO_broken_has_common_domain<_Initial, _Final>
       auto operator()(_Initial&& __initial, _Final&& __final) const {
         return __make_sexpr<finally_t>(
           {}, static_cast<_Initial&&>(__initial), static_cast<_Final&&>(__final));

@@ -330,10 +330,6 @@ namespace {
       : completed_{completed} {
     }
 
-    bad_receiver(bad_receiver&& other) noexcept(false)
-      : completed_(other.completed_) {
-    }
-
     void set_value() noexcept {
       completed_ = true;
     }

@@ -63,7 +63,7 @@ namespace exec {
 
       template <class... _CvrefSenders>
       using __f = __mtry_q<__concat_completion_signatures>::__f<
-        __eptr_completion_if_t<__all_value_args_nothrow_decay_copyable<_CvrefSenders...>>,
+        __eptr_completion_unless_t<__all_value_args_nothrow_decay_copyable<_CvrefSenders...>>,
         completion_signatures<set_stopped_t()>,
         __transform_completion_signatures<
           __completion_signatures_of_t<_CvrefSenders, __env_t<_Env>...>,

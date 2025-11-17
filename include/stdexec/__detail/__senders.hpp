@@ -240,8 +240,13 @@ namespace stdexec {
           && __nothrow_callable<transform_sender_t, _StartingDomain, _CompletingTfxSender, env_of_t<_Receiver>>;
 
         static_assert(sender<_Sender>, "The first argument to stdexec::connect must be a sender");
-        static_assert(
-          receiver<_Receiver>, "The second argument to stdexec::connect must be a receiver");
+        if constexpr (!receiver<_Receiver>) {
+          static_assert(
+            __nothrow_move_constructible<__decay_t<_Receiver>>,
+            "Receivers must be nothrow move constructible");
+          static_assert(
+            receiver<_Receiver>, "The second argument to stdexec::connect must be a receiver");
+        }
 
 #if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
         static_assert(__type_check_arguments<_TfxSender, _Receiver>());
@@ -380,6 +385,6 @@ namespace stdexec {
   // early sender type-checking
   template <class _Sender>
   concept __well_formed_sender = __detail::__well_formed_completions<
-    __minvoke<__with_default_q<__completion_signatures_of_t, dependent_completions>, _Sender>
+    __minvoke<__mwith_default_q<__completion_signatures_of_t, dependent_completions>, _Sender>
   >;
 } // namespace stdexec

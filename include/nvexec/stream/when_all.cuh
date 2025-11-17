@@ -19,7 +19,6 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
-#include "../../exec/env.hpp"
 
 #include <array>
 #include <atomic>
@@ -54,7 +53,7 @@ namespace nvexec::_strm {
     };
 
     template <class Env>
-    using env_t = exec::make_env_t<Env, stdexec::prop<get_stop_token_t, inplace_stop_token>>;
+    using env_t = stdexec::env<stdexec::prop<get_stop_token_t, inplace_stop_token>, Env>;
 
     template <class Sender, class... Env>
     concept valid_child_sender = sender_in<Sender, Env...> && requires {
@@ -131,7 +130,7 @@ namespace nvexec::_strm {
 
     struct type : stream_sender_base {
      private:
-      struct env {
+      struct attrs {
         context_state_t context_state_;
         using sched_domain_t = __query_result_or_t<get_domain_t, Scheduler, default_domain>;
 
@@ -141,13 +140,19 @@ namespace nvexec::_strm {
           return Scheduler(context_state_);
         }
 
-        constexpr auto query(get_domain_t) const noexcept {
+        template <class... _Env>
+        constexpr auto query(get_completion_domain_t<set_value_t>, const _Env&...) const noexcept {
           if constexpr (stdexec::__same_as<WhenAllTag, transfer_when_all_t>) {
             return sched_domain_t{};
           } else {
             static_assert(
               sizeof...(SenderIds) == 0
-              || stdexec::__same_as<stream_domain, __common_domain_t<stdexec::__t<SenderIds>...>>);
+              || stdexec::__same_as<
+                stream_domain,
+                __common_domain_t<
+                  stdexec::__compl_domain_t<set_value_t, stdexec::__t<SenderIds>, _Env...>...
+                >
+              >);
             return stream_domain{};
           }
         }
@@ -157,12 +162,12 @@ namespace nvexec::_strm {
 
       template <class... Sndrs>
       explicit type(context_state_t context_state, Sndrs&&... __sndrs)
-        : env_{context_state}
+        : attrs_{context_state}
         , sndrs_{static_cast<Sndrs&&>(__sndrs)...} {
       }
 
      private:
-      env env_;
+      attrs attrs_;
 
       template <class Cvref, class... Env>
       using completion_sigs = stdexec::__t<_when_all::completions<
@@ -484,8 +489,8 @@ namespace nvexec::_strm {
       }
 
       [[nodiscard]]
-      auto get_env() const noexcept -> const env& {
-        return env_;
+      auto get_env() const noexcept -> const attrs& {
+        return attrs_;
       }
 
      private:

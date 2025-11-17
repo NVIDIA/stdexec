@@ -129,16 +129,8 @@ namespace stdexec {
   template <class _Fn>
   class inplace_stop_callback;
 
-  template <class _Tp>
-  using stop_token_of_t = __decay_t<__call_result_t<get_stop_token_t, _Tp>>;
-
-  template <class _Sender, class _CPO>
-  concept __has_completion_scheduler =
-    __callable<get_completion_scheduler_t<_CPO>, env_of_t<const _Sender&>>;
-
-  template <class _Sender, class _CPO>
-  using __completion_scheduler_for =
-    __call_result_t<get_completion_scheduler_t<_CPO>, env_of_t<const _Sender&>>;
+  template <class _Env>
+  using stop_token_of_t = __decay_t<__call_result_t<get_stop_token_t, _Env>>;
 
   template <class _Env>
   using __domain_of_t = __decay_t<__call_result_t<get_domain_t, _Env>>;
@@ -171,9 +163,6 @@ namespace stdexec {
 
   using __connect::connect_t;
   extern const connect_t connect;
-
-  template <class _Sender, class _Receiver>
-  concept __nothrow_connectable = __nothrow_callable<connect_t, _Sender, _Receiver>;
 
   struct sender_t;
 

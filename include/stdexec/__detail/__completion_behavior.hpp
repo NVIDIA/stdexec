@@ -34,7 +34,7 @@ namespace stdexec {
       unknown, ///< The completion behavior is unknown.
       asynchronous, ///< The operation's completion will not happen on the calling thread before `start()`
                     ///< returns.
-      synchronous, ///< The operation's completion happens-before the return of `start()`.
+      asynchronous_affine, ///< Like asynchronous, but completes where it starts.
       inline_completion ///< The operation completes synchronously within `start()` on the same thread that called
                         ///< `start()`.
     };
@@ -50,7 +50,7 @@ namespace stdexec {
 
     using __unknown_t = __constant_t<completion_behavior::unknown>;
     using __asynchronous_t = __constant_t<completion_behavior::asynchronous>;
-    using __synchronous_t = __constant_t<completion_behavior::synchronous>;
+    using __asynchronous_affine_t = __constant_t<completion_behavior::asynchronous_affine>;
     using __inline_completion_t = __constant_t<completion_behavior::inline_completion>;
   } // namespace __completion_behavior
 
@@ -66,12 +66,12 @@ namespace stdexec {
    public:
     struct unknown_t : __completion_behavior::__unknown_t { };
     struct asynchronous_t : __completion_behavior::__asynchronous_t { };
-    struct synchronous_t : __completion_behavior::__synchronous_t { };
+    struct asynchronous_affine_t : __completion_behavior::__asynchronous_affine_t { };
     struct inline_completion_t : __completion_behavior::__inline_completion_t { };
 
     static constexpr unknown_t unknown{};
     static constexpr asynchronous_t asynchronous{};
-    static constexpr synchronous_t synchronous{};
+    static constexpr asynchronous_affine_t asynchronous_affine{};
     static constexpr inline_completion_t inline_completion{};
   };
 
@@ -126,8 +126,8 @@ namespace stdexec {
         return completion_behavior::unknown;
       } else if constexpr (__behavior == completion_behavior::asynchronous) {
         return completion_behavior::asynchronous;
-      } else if constexpr (__behavior == completion_behavior::synchronous) {
-        return completion_behavior::synchronous;
+      } else if constexpr (__behavior == completion_behavior::asynchronous_affine) {
+        return completion_behavior::asynchronous_affine;
       } else if constexpr (__behavior == completion_behavior::inline_completion) {
         return completion_behavior::inline_completion;
       }

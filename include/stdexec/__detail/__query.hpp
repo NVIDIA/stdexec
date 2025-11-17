@@ -66,13 +66,16 @@ namespace stdexec {
 
   template <class _Query, class _Transform>
   struct __query<_Query, __no_default, _Transform> {
-    template <class Sig>
-    static inline constexpr _Query (*signature)(Sig) = nullptr;
+    using __t = _Query;
+    using __id = _Query;
+
+    template <class _Sig>
+    static inline constexpr _Query (*signature)(_Sig) = nullptr;
 
     // Query with a .query member function:
     template <class _Qy = _Query, class _Env, class... _Args>
       requires __member_queryable_with<const _Env&, _Qy, _Args...>
-    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto operator()(const _Env& __env, _Args&&... __args) const
       noexcept(__nothrow_member_queryable_with<_Env, _Qy, _Args...>)
         -> __mcall1<_Transform, __member_query_result_t<_Env, _Qy, _Args...>> {
@@ -84,10 +87,10 @@ namespace stdexec {
 
     // Query with tag_invoke (legacy):
     template <class _Qy = _Query, class _Env, class... _Args>
-      requires(!__member_queryable_with<const _Env&, _Qy, _Args...>)
-           && tag_invocable<_Qy, const _Env&, _Args...>
-    STDEXEC_ATTRIBUTE(always_inline, host, device)
-    constexpr auto operator()(const _Env& __env, _Args&&... __args) const
+      requires tag_invocable<_Qy, const _Env&, _Args...>
+    // [[deprecated("the use of tag_invoke for queries is deprecated")]]
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device) constexpr auto
+      operator()(const _Env& __env, _Args&&... __args) const
       noexcept(nothrow_tag_invocable<_Qy, const _Env&, _Args...>)
         -> __mcall1<_Transform, tag_invoke_result_t<_Qy, const _Env&, _Args...>> {
       if constexpr (__has_validation<_Query, _Env, _Args...>) {

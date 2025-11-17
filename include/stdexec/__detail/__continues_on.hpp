@@ -26,7 +26,6 @@
 #include "__sender_introspection.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders_core.hpp"
-#include "__transform_sender.hpp"
 #include "stdexec/__detail/__receivers.hpp"
 
 namespace stdexec {

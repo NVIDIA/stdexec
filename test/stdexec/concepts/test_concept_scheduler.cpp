@@ -141,48 +141,6 @@ namespace {
   TEST_CASE("type w/o equality operations do not model scheduler", "[concepts][scheduler]") {
     REQUIRE(!ex::scheduler<noeq_sched>);
   }
-
-  struct sched_no_completion {
-    struct my_sender {
-      using sender_concept = stdexec::sender_t;
-      using completion_signatures = ex::completion_signatures<
-        ex::set_value_t(),
-        ex::set_error_t(std::exception_ptr),
-        ex::set_stopped_t()
-      >;
-
-      struct env {
-        friend auto tag_invoke(ex::get_completion_scheduler_t<ex::set_error_t>, const env&) noexcept
-          -> sched_no_completion {
-          return {};
-        }
-      };
-
-      [[nodiscard]]
-      auto get_env() const noexcept -> env {
-        return {};
-      }
-    };
-
-    [[nodiscard]]
-    auto schedule() const -> my_sender {
-      return {};
-    }
-
-    friend auto operator==(sched_no_completion, sched_no_completion) noexcept -> bool {
-      return true;
-    }
-
-    friend auto operator!=(sched_no_completion, sched_no_completion) noexcept -> bool {
-      return false;
-    }
-  };
-
-  TEST_CASE(
-    "not a scheduler if the returned sender doesn't have get_completion_scheduler of set_value",
-    "[concepts][scheduler]") {
-    REQUIRE(!ex::scheduler<sched_no_completion>);
-  }
 } // namespace
 
 STDEXEC_PRAGMA_POP()

@@ -95,7 +95,7 @@ namespace stdexec {
       static constexpr auto get_attrs =
         [](__ignore, const auto&... __child) noexcept -> decltype(auto) {
         if constexpr (sizeof...(__child) == 1) {
-          return __env::__fwd_fn()(stdexec::get_env(__child...));
+          return __fwd_env(stdexec::get_env(__child...));
         } else {
           return env<>();
         }

@@ -61,6 +61,9 @@ namespace stdexec {
   template <class _Ap, class _Bp>
   concept __same_as = STDEXEC_IS_SAME(_Ap, _Bp);
 
+  template <class _Ap, class _Bp>
+  concept __not_same_as = !STDEXEC_IS_SAME(_Ap, _Bp);
+
   // Handy concepts
   template <class _Ty, class _Up>
   concept __decays_to = __same_as<__decay_t<_Ty>, _Up>;

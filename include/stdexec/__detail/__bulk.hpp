@@ -267,7 +267,7 @@ namespace stdexec {
       // Forward the child sender's environment (which contains completion scheduler)
       static constexpr auto get_attrs =
         []<class _Data, class _Child>(const _Data&, const _Child& __child) noexcept {
-          return __env::__fwd_fn()(stdexec::get_env(__child));
+          return __fwd_env(stdexec::get_env(__child));
         };
 
       static constexpr auto get_completion_signatures =

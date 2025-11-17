@@ -18,13 +18,10 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__basic_sender.hpp"
 #include "__concepts.hpp"
-#include "__diagnostics.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
-#include "__sender_introspection.hpp"
 #include "__type_traits.hpp"
 
 STDEXEC_PRAGMA_PUSH()
@@ -103,6 +100,9 @@ namespace stdexec {
   // [execution.transform_sender]
   inline constexpr transform_sender_t transform_sender{};
 
+  [[deprecated(
+    "stdexec::transform_env has been deemed unnecessary. Please reach out to the stdexec "
+    "maintainers if you believe otherwise.")]]
   inline constexpr __detail::__transform_env transform_env{};
 
   struct _CHILD_SENDERS_WITH_DIFFERENT_DOMAINS_ { };
