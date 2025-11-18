@@ -38,10 +38,10 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////
   // [exec.let]
   namespace __let {
-    template <class _Set>
+    template <class _SetTag>
     struct __let_t;
 
-    template <class _Set>
+    template <class _SetTag>
     inline constexpr __mstring __in_which_let_msg{"In stdexec::let_value(Sender, Function)..."};
 
     template <>
@@ -52,8 +52,8 @@ namespace stdexec {
     inline constexpr __mstring __in_which_let_msg<set_stopped_t>{
       "In stdexec::let_stopped(Sender, Function)..."};
 
-    template <class _Set>
-    using __on_not_callable = __callable_error<__in_which_let_msg<_Set>>;
+    template <class _SetTag>
+    using __on_not_callable = __callable_error<__in_which_let_msg<_SetTag>>;
 
     // This environment is part of the receiver used to connect the secondary sender.
     template <class _SetTag, class _Attrs, class... _Env>
@@ -123,24 +123,24 @@ namespace stdexec {
     struct _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_ { };
 
 #if STDEXEC_EDG()
-    template <class _Sender, class _Set, class... _JoinEnv2>
+    template <class _Sender, class _SetTag, class... _JoinEnv2>
     struct __bad_result_sender_ {
       using __t = __mexception<
         _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_<
-          __in_which_let_msg<_Set>,
+          __in_which_let_msg<_SetTag>,
           "The function must return a valid sender for the current environment"_mstr
         >,
         _WITH_SENDER_<_Sender>,
         _WITH_ENVIRONMENT_<_JoinEnv2>...
       >;
     };
-    template <class _Sender, class _Set, class... _JoinEnv2>
-    using __bad_result_sender = __t<__bad_result_sender_<_Sender, _Set, _JoinEnv2...>>;
+    template <class _Sender, class _SetTag, class... _JoinEnv2>
+    using __bad_result_sender = __t<__bad_result_sender_<_Sender, _SetTag, _JoinEnv2...>>;
 #else
-    template <class _Sender, class _Set, class... _JoinEnv2>
+    template <class _Sender, class _SetTag, class... _JoinEnv2>
     using __bad_result_sender = __mexception<
       _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_<
-        __in_which_let_msg<_Set>,
+        __in_which_let_msg<_SetTag>,
         "The function must return a valid sender for the current environment"_mstr
       >,
       _WITH_SENDER_<_Sender>,
@@ -152,22 +152,26 @@ namespace stdexec {
     concept __potentially_valid_sender_in = sender_in<_Sender, _JoinEnv2...>
                                          || (sender<_Sender> && (sizeof...(_JoinEnv2) == 0));
 
-    template <class _Set, class _Sender, class... _JoinEnv2>
+    template <class _SetTag, class _Sender, class... _JoinEnv2>
     using __ensure_sender = __minvoke_if_c<
       __potentially_valid_sender_in<_Sender, _JoinEnv2...>,
       __q1<__midentity>,
-      __mbind_back_q<__bad_result_sender, _Set, _JoinEnv2...>,
+      __mbind_back_q<__bad_result_sender, _SetTag, _JoinEnv2...>,
       _Sender
     >;
 
     // A metafunction that computes the result sender type for a given set of argument types
-    template <class _Set, class _Fun, class... _JoinEnv2>
+    template <class _SetTag, class _Fun, class... _JoinEnv2>
     struct __result_sender_fn {
       template <class... _Args>
       using __f = __meval<
         __ensure_sender,
-        _Set,
-        __mcall<__mtry_catch_q<__call_result_t, __on_not_callable<_Set>>, _Fun, __decay_t<_Args>&...>,
+        _SetTag,
+        __mcall<
+          __mtry_catch_q<__call_result_t, __on_not_callable<_SetTag>>,
+          _Fun,
+          __decay_t<_Args>&...
+        >,
         _JoinEnv2...
       >;
     };
@@ -224,45 +228,48 @@ namespace stdexec {
     template <__mstring _Where, __mstring _What>
     struct _NO_COMMON_DOMAIN_ { };
 
-    template <class _Set>
+    template <class _SetTag>
     using __no_common_domain_t = _NO_COMMON_DOMAIN_<
-      __in_which_let_msg<_Set>,
+      __in_which_let_msg<_SetTag>,
       "The senders returned by Function do not all share a common domain"_mstr
     >;
 
-    template <class _Set, class... _Env>
+    template <class _SetTag, class... _Env>
     struct __try_common_domain_fn {
       struct __error_fn {
         template <class... _Senders>
-        using __f = __mexception<__no_common_domain_t<_Set>, _WITH_SENDERS_<_Senders...>>;
+        using __f = __mexception<__no_common_domain_t<_SetTag>, _WITH_SENDERS_<_Senders...>>;
       };
 
       // TODO(ericniebler): this needs to be updated:
       template <class... _Senders>
       using __f = __mcall<
         __mtry_catch_q<__common_domain_t, __error_fn>,
-        __compl_domain_t<_Set, _Senders, _Env...>...
+        __compl_domain_t<_SetTag, _Senders, _Env...>...
       >;
     };
 
     // Compute all the domains of all the result senders and make sure they're all the same
-    template <class _Set, class _Child, class _Fun, class _Env>
+    template <class _SetTag, class _Child, class _Fun, class _Env>
     using __result_domain_t = __gather_completions<
-      _Set,
+      _SetTag,
       __completion_signatures_of_t<_Child, _Env>,
-      __result_sender_fn<_Set, _Fun, __result_env_t<_Set, env_of_t<_Child>, _Env>>,
-      __try_common_domain_fn<_Set, _Env>
+      __result_sender_fn<_SetTag, _Fun, __result_env_t<_SetTag, env_of_t<_Child>, _Env>>,
+      __try_common_domain_fn<_SetTag, _Env>
     >;
 
     //! Metafunction creating the operation state needed to connect the result of calling
     //! the sender factory function, `_Fun`, and passing its result to a receiver.
-    template <class _Receiver, class _Fun, class _Set, class _Env2>
+    template <class _Receiver, class _Fun, class _SetTag, class _Env2>
     struct __submit_datum_for {
       // compute the result of calling submit with the result of executing _Fun
       // with _Args. if the result is void, substitute with __ignore.
       template <class... _Args>
       using __f = __submit_result<
-        __mcall<__result_sender_fn<_Set, _Fun, __join_env_t<_Env2, env_of_t<_Receiver>>>, _Args...>,
+        __mcall<
+          __result_sender_fn<_SetTag, _Fun, __join_env_t<_Env2, env_of_t<_Receiver>>>,
+          _Args...
+        >,
         _Env2,
         _Receiver
       >;
@@ -270,7 +277,7 @@ namespace stdexec {
 
     //! The core of the operation state for `let_*`.
     //! This gets bundled up into a larger operation state (`__detail::__op_state<...>`).
-    template <class _Receiver, class _Fun, class _Set, class _Env2, class... _Tuples>
+    template <class _Receiver, class _Fun, class _SetTag, class _Env2, class... _Tuples>
     struct __let_state {
       using __fun_t = _Fun;
       using __env2_t = _Env2;
@@ -279,7 +286,7 @@ namespace stdexec {
       using __result_variant = __variant_for<__monostate, _Tuples...>;
       using __submit_variant = __variant_for<
         __monostate,
-        __mapply<__submit_datum_for<_Receiver, _Fun, _Set, _Env2>, _Tuples>...
+        __mapply<__submit_datum_for<_Receiver, _Fun, _SetTag, _Env2>, _Tuples>...
       >;
 
       template <class _ResultSender, class _OpState>
@@ -298,14 +305,15 @@ namespace stdexec {
       __submit_variant __storage_{};
     };
 
-    //! Implementation of the `let_*_t` types, where `_Set` is, e.g., `set_value_t` for `let_value`.
-    template <class _Set>
+    //! Implementation of the `let_*_t` types, where `_SetTag` is, e.g., `set_value_t` for `let_value`.
+    template <class _SetTag>
     struct __let_t {
-      using __t = _Set;
+      using __t = _SetTag;
 
       template <sender _Sender, __movable_value _Fun>
       auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto {
-        return __make_sexpr<__let_t<_Set>>(static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr));
+        return __make_sexpr<__let_t<_SetTag>>(
+          static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr));
       }
 
       template <class _Fun>
@@ -315,7 +323,7 @@ namespace stdexec {
       }
     };
 
-    template <class _Set>
+    template <class _SetTag>
     struct __let_impl : __sexpr_defaults {
       static constexpr auto get_attrs =
         []<class _Fun, class _Child>(const _Fun&, const _Child& __child) noexcept {
@@ -326,21 +334,21 @@ namespace stdexec {
 
       static constexpr auto get_completion_signatures =
         []<class _Self, class _Env>(_Self&&, _Env&&...) noexcept
-        -> __completions_t<__let_t<_Set>, __data_of<_Self>, __child_of<_Self>, _Env> {
-        static_assert(sender_expr_for<_Self, __let_t<_Set>>);
+        -> __completions_t<__let_t<_SetTag>, __data_of<_Self>, __child_of<_Self>, _Env> {
+        static_assert(sender_expr_for<_Self, __let_t<_SetTag>>);
         return {};
       };
 
       static constexpr auto get_state =
         []<class _Sender, class _Receiver>(_Sender&& __sndr, const _Receiver& __rcvr) {
-          static_assert(sender_expr_for<_Sender, __let_t<_Set>>);
+          static_assert(sender_expr_for<_Sender, __let_t<_SetTag>>);
           using _Fun = __data_of<_Sender>;
           using _Child = __child_of<_Sender>;
-          using _Env2 = __env2_t<_Set, env_of_t<const _Child&>, env_of_t<const _Receiver&>>;
-          using __mk_let_state = __mbind_front_q<__let_state, _Receiver, _Fun, _Set, _Env2>;
+          using _Env2 = __env2_t<_SetTag, env_of_t<const _Child&>, env_of_t<const _Receiver&>>;
+          using __mk_let_state = __mbind_front_q<__let_state, _Receiver, _Fun, _SetTag, _Env2>;
 
           using __let_state_t = __gather_completions_of<
-            _Set,
+            _SetTag,
             _Child,
             env_of_t<_Receiver>,
             __q<__decayed_tuple>,
@@ -352,7 +360,7 @@ namespace stdexec {
             [&]<class _Fn, class _Child>(__ignore, _Fn&& __fn, _Child&& __child) {
               // TODO(ericniebler): this needs a fallback
               _Env2 __env2 =
-                __let::__mk_env2<_Set>(stdexec::get_env(__child), stdexec::get_env(__rcvr));
+                __let::__mk_env2<_SetTag>(stdexec::get_env(__child), stdexec::get_env(__rcvr));
               return __let_state_t{static_cast<_Fn&&>(__fn), static_cast<_Env2&&>(__env2)};
             });
         };
@@ -382,7 +390,7 @@ namespace stdexec {
         using _Fun = typename _State::__fun_t;
         using _Env2 = typename _State::__env2_t;
         using _JoinEnv2 = __join_env_t<_Env2, env_of_t<_Receiver>>;
-        using _ResultSender = __mcall<__result_sender_fn<_Set, _Fun, _JoinEnv2>, _As...>;
+        using _ResultSender = __mcall<__result_sender_fn<_SetTag, _Fun, _JoinEnv2>, _As...>;
 
         _State& __state = __op_state.__state_;
         _Receiver& __rcvr = __op_state.__rcvr_;
@@ -407,7 +415,7 @@ namespace stdexec {
                                          _OpState& __op_state,
                                          _Tag,
                                          _As&&... __as) noexcept -> void {
-        if constexpr (__same_as<_Tag, _Set>) {
+        if constexpr (__same_as<_Tag, _SetTag>) {
           // Intercept the channel of interest to compute the sender and connect it:
           __bind(__op_state, static_cast<_As&&>(__as)...);
         } else {
@@ -428,6 +436,6 @@ namespace stdexec {
   using let_stopped_t = __let::__let_t<set_stopped_t>;
   inline constexpr let_stopped_t let_stopped{};
 
-  template <class _Set>
-  struct __sexpr_impl<__let::__let_t<_Set>> : __let::__let_impl<_Set> { };
+  template <class _SetTag>
+  struct __sexpr_impl<__let::__let_t<_SetTag>> : __let::__let_impl<_SetTag> { };
 } // namespace stdexec

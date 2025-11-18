@@ -273,6 +273,7 @@ namespace stdexec {
       }
     };
 
+    // A when_all with no senders completes inline with no values.
     template <>
     struct __attrs<> {
       [[nodiscard]]
@@ -302,6 +303,7 @@ namespace stdexec {
 
     struct when_all_t {
       template <sender... _Senders>
+      // TODO(ericniebler):
       // requires __TODO_broken_has_common_domain<_Senders...>
       auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto {
         return __make_sexpr<when_all_t>(__(), static_cast<_Senders&&>(__sndrs)...);

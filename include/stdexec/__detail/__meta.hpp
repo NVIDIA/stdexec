@@ -840,7 +840,7 @@ namespace stdexec {
   concept __has_id = requires { typename _Ty::__id; };
 
   //! Identity mapping `_Ty` to itself.
-  //! That is, `std::is_same_v<T, typename _Id<T>::__t>`.
+  //! That is, `__same_as<T, typename _Id<T>::__t>`.
   template <class _Ty>
   struct _Id {
     using __t = _Ty;

@@ -423,7 +423,7 @@ namespace stdexec {
       template <class _Sch, class... _Env, class _Domain>
       static consteval auto __check_domain_(_Domain) noexcept {
         static_assert(
-          std::is_same_v<_Domain, __detail::__scheduler_domain_t<_Sch, const _Env&...>>,
+          __same_as<_Domain, __detail::__scheduler_domain_t<_Sch, const _Env&...>>,
           "the sender claims to complete on a domain that is not the domain of its completion "
           "scheduler");
       }
@@ -436,8 +436,7 @@ namespace stdexec {
           using __sch_t = __call_result_t<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>;
           // Skip check if the "scheduler" is the same as the domain or the attributes
           // (this can happen with __prop_like which answers any query with the same type)
-          if constexpr (!std::is_same_v<__sch_t, _Attrs>)
-          {
+          if constexpr (!__same_as<__sch_t, _Attrs>) {
             __check_domain_<__sch_t, _Env...>(_Domain{});
           }
         }
