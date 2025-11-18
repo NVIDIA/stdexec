@@ -37,7 +37,7 @@
 
 #include "../stop_token.hpp"
 
-#include <atomic>
+#include "__atomic.hpp"
 #include <exception>
 
 namespace stdexec {
@@ -208,7 +208,7 @@ namespace stdexec {
         // Stop callback is no longer needed. Destroy it.
         __on_stop_.reset();
         // All child operations have completed and arrived at the barrier.
-        switch (__state_.load(std::memory_order_relaxed)) {
+        switch (__state_.load(__std::memory_order_relaxed)) {
         case __started:
           if constexpr (!same_as<_ValuesTuple, __ignore>) {
             // All child operations completed successfully:
@@ -229,10 +229,10 @@ namespace stdexec {
         }
       }
 
-      std::atomic<std::size_t> __count_;
+      __std::atomic<std::size_t> __count_;
       inplace_stop_source __stop_source_{};
       // Could be non-atomic here and atomic_ref everywhere except __completion_fn
-      std::atomic<__state_t> __state_{__started};
+      __std::atomic<__state_t> __state_{__started};
       _ErrorsVariant __errors_{};
       STDEXEC_ATTRIBUTE(no_unique_address) _ValuesTuple __values_ { };
       __optional<__stop_callback_t> __on_stop_{};

@@ -249,7 +249,7 @@ namespace {
     ex::run_loop loop;
     auto sch = loop.get_scheduler();
     auto snd = ex::get_scheduler() | ex::let_value([](auto sched) {
-                 static_assert(ex::same_as<decltype(sched), ex::run_loop::__scheduler>);
+                 static_assert(ex::same_as<decltype(sched), ex::run_loop::scheduler>);
                  return ex::starts_on(sched, ex::just());
                });
     ex::start_detached(ex::on(sch, std::move(snd)));
@@ -263,7 +263,7 @@ namespace {
     ex::run_loop loop;
     auto sch = loop.get_scheduler();
     auto snd = ex::get_scheduler() | ex::let_value([](auto sched) {
-                 static_assert(ex::same_as<decltype(sched), ex::run_loop::__scheduler>);
+                 static_assert(ex::same_as<decltype(sched), ex::run_loop::scheduler>);
                  return ex::starts_on(sched, ex::just());
                });
     ex::start_detached(ex::on(sch, std::move(snd)), env{});

@@ -72,7 +72,7 @@ namespace nvexec {
   namespace _strm {
     // Used by stream_domain to late-customize senders for execution
     // on the stream_scheduler.
-    template <class Tag, class... Env>
+    template <class Tag, class Env>
     struct transform_sender_for;
 
     template <class Tag>
@@ -86,15 +86,15 @@ namespace nvexec {
   // The stream_domain is how the stream scheduler customizes the sender algorithms. All of the
   // algorithms use the current scheduler's domain to transform senders before starting them.
   struct stream_domain : stdexec::default_domain {
-    template <stdexec::sender_expr Sender, class Tag = stdexec::tag_of_t<Sender>, class... Env>
+    template <stdexec::sender_expr Sender, class Tag = stdexec::tag_of_t<Sender>, class Env>
       requires stdexec::__callable<
         stdexec::__sexpr_apply_t,
         Sender,
-        _strm::transform_sender_for<Tag, Env...>
+        _strm::transform_sender_for<Tag, Env>
       >
-    static auto transform_sender(Sender&& sndr, const Env&... env) {
+    static auto transform_sender(Sender&& sndr, const Env& env) {
       return stdexec::__sexpr_apply(
-        static_cast<Sender&&>(sndr), _strm::transform_sender_for<Tag, Env...>{env...});
+        static_cast<Sender&&>(sndr), _strm::transform_sender_for<Tag, Env>{env});
     }
 
     template <class Tag, stdexec::sender Sender, class... Args>
@@ -239,12 +239,13 @@ namespace nvexec {
     template <class Sender, class Shape, class Fn>
     struct multi_gpu_bulk_sender_t;
 
-    template <class Scheduler>
-    concept gpu_stream_scheduler = scheduler<Scheduler>
-                                && derived_from<__domain_of_t<Scheduler>, stream_domain>
-                                && requires(Scheduler sched) {
-                                     { sched.context_state_ } -> __decays_to<context_state_t>;
-                                   };
+    template <class Scheduler, class Env>
+    concept gpu_stream_scheduler =
+      scheduler<Scheduler>
+      && derived_from<__result_of<get_completion_domain<set_value_t>, Scheduler, Env>, stream_domain>
+      && requires(Scheduler sched) {
+           { sched.context_state_ } -> __decays_to<context_state_t>;
+         };
 
     struct stream_sender_base {
       using sender_concept = stdexec::sender_t;
@@ -813,10 +814,10 @@ namespace nvexec {
         context_state);
     }
 
-    template <class S>
+    template <class S, class E>
     concept stream_completing_sender =
       sender<S>
-      && gpu_stream_scheduler<__result_of<get_completion_scheduler<set_value_t>, env_of_t<S>>>;
+      && gpu_stream_scheduler<__result_of<get_completion_scheduler<set_value_t>, env_of_t<S>, E>, E>;
 
     template <class R>
     concept receiver_with_stream_env = receiver<R> && requires(const R& rcvr) {
@@ -834,13 +835,14 @@ namespace nvexec {
       stdexec::__id<OuterReceiver>
     >;
 
-    template <stream_completing_sender Sender, class OuterReceiver, class ReceiverProvider>
+    template <class Sender, class OuterReceiver, class ReceiverProvider>
+      requires stream_completing_sender<Sender, env_of_t<OuterReceiver>>
     auto stream_op_state(
       Sender&& sndr,
       OuterReceiver&& out_receiver,
       ReceiverProvider receiver_provider)
       -> stream_op_state_t<Sender, inner_receiver_t<ReceiverProvider, OuterReceiver>, OuterReceiver> {
-      auto sch = get_completion_scheduler<set_value_t>(get_env(sndr));
+      auto sch = get_completion_scheduler<set_value_t>(get_env(sndr), get_env(out_receiver));
       context_state_t context_state = sch.context_state_;
 
       return stream_op_state_t<

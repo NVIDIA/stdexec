@@ -54,19 +54,6 @@ namespace stdexec {
     using __transform_sender_result_t =
       decltype(_DomainOrTag{}.transform_sender(__declval<_Sender>(), __declval<const _Env&>()...));
 
-    template <class _DomainOrTag, class _Sender, class _Env>
-    concept __has_transform_env = requires(_DomainOrTag __tag, _Sender&& __sender, _Env&& __env) {
-      __tag.transform_env(static_cast<_Sender&&>(__sender), static_cast<_Env&&>(__env));
-    };
-
-    template <class _Sender, class _Env>
-    concept __has_default_transform_env = sender_expr<_Sender>
-                                       && __has_transform_env<tag_of_t<_Sender>, _Sender, _Env>;
-
-    template <class _DomainOrTag, class _Sender, class _Env>
-    using __transform_env_result_t =
-      decltype(_DomainOrTag{}.transform_env(__declval<_Sender>(), __declval<_Env>()));
-
     template <class _DomainOrTag, class... _Args>
     concept __has_apply_sender = requires(_DomainOrTag __tag, _Args&&... __args) {
       __tag.apply_sender(static_cast<_Args&&>(__args)...);
@@ -149,19 +136,6 @@ namespace stdexec {
     auto transform_sender(_Sender&& __sndr, _Env&&...) const
       noexcept(__nothrow_constructible_from<_Sender, _Sender>) -> _Sender {
       return static_cast<_Sender>(static_cast<_Sender&&>(__sndr));
-    }
-
-    template <class _Sender, class _Env>
-      requires __detail::__has_default_transform_env<_Sender, _Env>
-    auto transform_env(_Sender&& __sndr, _Env&& __env) const noexcept
-      -> __detail::__transform_env_result_t<tag_of_t<_Sender>, _Sender, _Env> {
-      return tag_of_t<_Sender>()
-        .transform_env(static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env));
-    }
-
-    template <class _Env>
-    auto transform_env(__ignore, _Env&& __env) const noexcept -> _Env {
-      return static_cast<_Env>(static_cast<_Env&&>(__env));
     }
 
     template <class _Tag, class... _Args>

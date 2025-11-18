@@ -263,4 +263,8 @@ namespace stdexec {
     _Default __default_{};
   };
 
+  template <class _Fn, class _Default>
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+    __with_default(_Fn, _Default) -> __with_default<_Fn, _Default>;
+
 } // namespace stdexec

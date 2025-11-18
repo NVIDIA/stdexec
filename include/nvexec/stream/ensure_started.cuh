@@ -391,23 +391,25 @@ namespace nvexec::_strm {
     };
   };
 
-  template <>
-  struct transform_sender_for<ensure_started_t> {
+  template <class Env>
+  struct transform_sender_for<ensure_started_t, Env> {
     template <class Sender>
     using _sender_t = __t<ensure_started_sender_t<__id<__decay_t<Sender>>>>;
 
-    template <class Env, stream_completing_sender Sender>
+    template <class Env, stream_completing_sender<Env> Sender>
     auto operator()(__ignore, Env&&, Sender&& sndr) const -> _sender_t<Sender> {
-      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
+      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), env_);
       return _sender_t<Sender>{sched.context_state_, static_cast<Sender&&>(sndr)};
     }
+
+    const Env& env_;
   };
 } // namespace nvexec::_strm
 
 namespace stdexec::__detail {
   template <class SenderId>
-  inline constexpr __mconst<nvexec::_strm::ensure_started_sender_t<__name_of<__t<SenderId>>>>
-    __name_of_v<nvexec::_strm::ensure_started_sender_t<SenderId>>{};
+  extern __mconst<nvexec::_strm::ensure_started_sender_t<__name_of<__t<SenderId>>>>
+    __name_of_v<nvexec::_strm::ensure_started_sender_t<SenderId>>;
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

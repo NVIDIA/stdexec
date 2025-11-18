@@ -214,13 +214,15 @@ namespace nvexec::_strm {
     };
   };
 
-  template <>
-  struct transform_sender_for<stdexec::then_t> {
-    template <class Fn, stream_completing_sender Sender>
+  template <class Env>
+  struct transform_sender_for<stdexec::then_t, Env> {
+    template <class Fn, stream_completing_sender<Env> Sender>
     auto operator()(__ignore, Fn fun, Sender&& sndr) const {
       using _sender_t = __t<then_sender_t<__id<__decay_t<Sender>>, Fn>>;
       return _sender_t{{}, static_cast<Sender&&>(sndr), static_cast<Fn&&>(fun)};
     }
+
+    const Env& env_;
   };
 } // namespace nvexec::_strm
 

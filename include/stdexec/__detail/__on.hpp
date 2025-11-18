@@ -75,37 +75,6 @@ namespace stdexec {
     template <class _Scheduler, class _Closure>
     __on_data(_Scheduler, _Closure) -> __on_data<_Scheduler, _Closure>;
 
-    template <class _Scheduler>
-    struct __with_sched {
-      using __t = __with_sched;
-      using __id = __with_sched;
-
-      _Scheduler __sched_;
-
-      auto query(get_scheduler_t) const noexcept -> _Scheduler {
-        return __sched_;
-      }
-      
-      template <__completion_tag _Tag, class... _Envs>
-      auto query(get_completion_scheduler_t<_Tag>, _Envs&&...) const noexcept -> _Scheduler {
-        return __sched_;
-      }
-
-      auto query(get_domain_t) const noexcept {
-        return query_or(get_domain, __sched_, default_domain());
-      }
-
-      template <__completion_tag _Tag, class... _Envs>
-      auto query(get_completion_domain_t<_Tag>, _Envs&&...) const noexcept 
-        -> __call_result_t<get_completion_domain_t<_Tag>, _Scheduler, _Envs...> {
-        return {};
-      }
-
-    };
-
-    template <class _Scheduler>
-    __with_sched(_Scheduler) -> __with_sched<_Scheduler>;
-
     ////////////////////////////////////////////////////////////////////////////////////////////////
     struct on_t {
       template <scheduler _Scheduler, sender _Sender>
@@ -131,80 +100,67 @@ namespace stdexec {
         };
       }
 
-      template <class _Env>
-      STDEXEC_ATTRIBUTE(always_inline)
-      static auto __transform_env_fn(_Env&& __env) noexcept {
-        return [&]<class _Data>(__ignore, _Data&& __data, __ignore) noexcept -> decltype(auto) {
-          if constexpr (scheduler<_Data>) {
-            return __env::__join(
-              __sched_env{static_cast<_Data&&>(__data)}, static_cast<_Env&&>(__env));
-          } else {
-            return static_cast<_Env>(static_cast<_Env&&>(__env));
-          }
-        };
-      }
+      template <class _Error>
+      struct __not_a_sender {
+        using sender_concept = sender_t;
+        static auto get_completion_signatures(const __not_a_sender&) noexcept -> _Error {
+          return {};
+        }
+      };
 
-      template <class _Env>
+      template <class _Error>
+      struct __not_a_scheduler {
+        using scheduler_concept = scheduler_t;
+        bool operator==(const __not_a_scheduler&) const noexcept = default;
+
+        __not_a_sender<_Error> schedule() const noexcept {
+          return __not_a_sender<_Error>{};
+        }
+      };
+
+      template <class _Sender, class _Env>
       STDEXEC_ATTRIBUTE(always_inline)
       static auto __transform_sender_fn(const _Env& __env) noexcept {
         return [&]<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
           // If __is_root_env<_Env> is true, then this sender has no parent, so there is
           // no need to restore the execution context. We can use the inline scheduler
           // as the scheduler if __env does not have one.
-          using __default_t = __if_c<__is_root_env<_Env>, inline_scheduler, __none_such>;
+          using __fallback_scheduler_t = __if_c<
+            __is_root_env<_Env>,
+            inline_scheduler,
+            __not_a_scheduler<__no_scheduler_in_environment<_Sender, _Env>>
+          >;
 
-          // If scheduler<_Data> is true, then this sender was created with `on(sch, sndr)`.
-          // In that case, the child sender is not a predecessor, so its completion
-          // scheduler is not the one we want to restore. If scheduler<_Data> is false,
-          // then this sender was created with `sndr | on(sch, clsur)`. The child sender
-          // *is* a predecessor, so we can use its completion scheduler to restore the
-          // execution context.
-          using __query_t =
-            __if_c<scheduler<_Data>, __none_such, get_completion_scheduler_t<set_value_t>>;
+          if constexpr (scheduler<_Data>) {
+            // This branch handles the case where `on` was called like `on(sch, sndr)`. In
+            // this case, we find the old scheduler by looking in the receiver's
+            // environment.
+            auto __old = query_or(get_scheduler, __env, __fallback_scheduler_t());
 
-          // Fetch the scheduler on which this operation will be started, and to which
-          // execution should be restored:
-          auto __old =
-            query_or(__query_t{}, get_env(__child), query_or(get_scheduler, __env, __default_t{}));
-
-          if constexpr (__same_as<decltype(__old), __none_such>) {
-            return __none_such{};
-          } else if constexpr (scheduler<_Data>) {
-            // This branch handles the case where `on` was called like `on(sch, sndr)`
             return continues_on(
               starts_on(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)),
               static_cast<decltype(__old)&&>(__old));
           } else {
-            // This branch handles the case where `on` was called like `sndr | on(sch, clsur)`
-            auto&& [__sched, __clsur] = static_cast<_Data&&>(__data);
-            return write_env(
-              continues_on(
-                __forward_like<_Data>(__clsur)(continues_on(
-                  write_env(static_cast<_Child&&>(__child), __with_sched{__old}), __sched)),
-                __old),
-              __with_sched{__sched});
+            // This branch handles the case where `on` was called like `sndr | on(sch,
+            // clsur)`. In this case, __child is a predecessor sender, so the scheduler we
+            // want to restore is the completion scheduler of __child.
+            auto __old = __with_default{
+              get_completion_scheduler<set_value_t>,
+              __fallback_scheduler_t()}(get_env(__child), __env);
+
+            auto& [__sched, __clsur] = __data;
+
+            return continues_on(
+              __forward_like<_Data>(__clsur)(continues_on(static_cast<_Child&&>(__child), __sched)),
+              __old);
           }
         };
       }
 
       template <class _Sender, class _Env>
       STDEXEC_ATTRIBUTE(always_inline)
-      static auto transform_env(const _Sender& __sndr, _Env&& __env) noexcept {
-        return __sexpr_apply(__sndr, __transform_env_fn(static_cast<_Env&&>(__env)));
-      }
-
-      template <class _Sender, class _Env>
-      STDEXEC_ATTRIBUTE(always_inline)
       static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
-        auto __tfx_sndr_fn = __transform_sender_fn(__env);
-        using _TfxSndrFn = decltype(__tfx_sndr_fn);
-        using _NewSndr = __sexpr_apply_result_t<_Sender, _TfxSndrFn>;
-        if constexpr (__same_as<_NewSndr, __none_such>) {
-          return __no_scheduler_in_environment<_Sender, _Env>{};
-        } else {
-          return __sexpr_apply(
-            static_cast<_Sender&&>(__sndr), static_cast<_TfxSndrFn&&>(__tfx_sndr_fn));
-        }
+        return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn<_Sender>(__env));
       }
     };
   } // namespace __on
@@ -220,11 +176,9 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<on_t> : __sexpr_defaults {
-    static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
-      -> __merror_or_t<
-        __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>>,
-        dependent_completions
-      > {
+    static constexpr auto get_completion_signatures =
+      []<class _Sender, class _Env>(_Sender&&, const _Env&) noexcept
+      -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, _Env>> {
       return {};
     };
   };

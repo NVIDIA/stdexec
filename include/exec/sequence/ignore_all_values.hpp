@@ -20,7 +20,7 @@
 #include "../../stdexec/execution.hpp"
 #include "../sequence_senders.hpp"
 
-#include <atomic>
+#include "../../stdexec/__detail/__atomic.hpp"
 
 namespace exec {
   template <class _Variant, class _Type, class... _Args>
@@ -39,21 +39,21 @@ namespace exec {
     template <class _ResultVariant>
     struct __result_type {
       _ResultVariant __result_{};
-      std::atomic<int> __emplaced_{0};
+      __std::atomic<int> __emplaced_{0};
 
       template <class... _Args>
       void __emplace(_Args&&... __args) noexcept {
         int __expected = 0;
-        if (__emplaced_.compare_exchange_strong(__expected, 1, std::memory_order_relaxed)) {
+        if (__emplaced_.compare_exchange_strong(__expected, 1, __std::memory_order_relaxed)) {
           __result_
             .template emplace<__decayed_std_tuple<_Args...>>(static_cast<_Args&&>(__args)...);
-          __emplaced_.store(2, std::memory_order_release);
+          __emplaced_.store(2, __std::memory_order_release);
         }
       }
 
       template <class _Receiver>
       void __visit_result(_Receiver&& __rcvr) noexcept {
-        int __is_emplaced = __emplaced_.load(std::memory_order_acquire);
+        int __is_emplaced = __emplaced_.load(__std::memory_order_acquire);
         if (__is_emplaced == 0) {
           stdexec::set_value(static_cast<_Receiver&&>(__rcvr));
           return;

@@ -21,7 +21,7 @@
 #include "../stdexec/__detail/__optional.hpp"
 #include "env.hpp"
 
-#include <atomic>
+#include "../stdexec/__detail/__atomic.hpp"
 #include <mutex>
 
 namespace exec {
@@ -50,7 +50,7 @@ namespace exec {
     struct __impl {
       inplace_stop_source __stop_source_{};
       mutable std::mutex __lock_{};
-      mutable std::atomic_ptrdiff_t __active_ = 0;
+      mutable __std::atomic_ptrdiff_t __active_ = 0;
       mutable __intrusive_queue<&__task::__next_> __waiters_{};
 
       ~__impl() {
@@ -84,7 +84,7 @@ namespace exec {
           std::unique_lock __guard{this->__scope_->__lock_};
           auto& __active = this->__scope_->__active_;
           auto& __waiters = this->__scope_->__waiters_;
-          if (__active.load(std::memory_order_acquire) != 0) {
+          if (__active.load(__std::memory_order_acquire) != 0) {
             __waiters.push_back(this);
             return;
           }
@@ -157,7 +157,7 @@ namespace exec {
 
         static void __complete(const __impl* __scope) noexcept {
           auto& __active = __scope->__active_;
-          if (__active.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+          if (__active.fetch_sub(1, __std::memory_order_acq_rel) == 1) {
             std::unique_lock __guard{__scope->__lock_};
             auto __local_waiters = std::move(__scope->__waiters_);
             __guard.unlock();
@@ -229,7 +229,7 @@ namespace exec {
         void start() & noexcept {
           STDEXEC_ASSERT(this->__scope_);
           auto& __active = this->__scope_->__active_;
-          __active.fetch_add(1, std::memory_order_relaxed);
+          __active.fetch_add(1, __std::memory_order_relaxed);
           stdexec::start(__op_);
         }
       };

@@ -54,19 +54,6 @@ namespace stdexec {
         return __make_sexpr<starts_on_t>(static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
       }
 
-      template <class _Env>
-      STDEXEC_ATTRIBUTE(always_inline)
-      static auto __transform_env_fn(_Env&& __env) noexcept {
-        return [&](__ignore, auto __sched, __ignore) noexcept {
-          return env(__sched_env{__sched}, static_cast<_Env&&>(__env));
-        };
-      }
-
-      template <class _Sender, class _Env>
-      static auto transform_env(const _Sender& __sndr, _Env&& __env) noexcept {
-        return __sexpr_apply(__sndr, __transform_env_fn(static_cast<_Env&&>(__env)));
-      }
-
       template <class _Sender, class _Env>
       static auto transform_sender(_Sender&& __sndr, const _Env&) {
         return __sexpr_apply(

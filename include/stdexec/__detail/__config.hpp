@@ -160,7 +160,7 @@ namespace __coro = std::experimental;
 #define STDEXEC_ATTR_WHICH_0(_ATTR) [[_ATTR]]
 
 // custom handling for specific attribute types
-#ifdef __CUDACC__
+#if defined(__CUDACC__) && !STDEXEC_NVHPC()
 #  define STDEXEC_ATTR_WHICH_1(_ATTR) __host__
 #else
 #  define STDEXEC_ATTR_WHICH_1(_ATTR)
@@ -168,7 +168,7 @@ namespace __coro = std::experimental;
 #define STDEXEC_ATTR_host     STDEXEC_PROBE(~, 1)
 #define STDEXEC_ATTR___host__ STDEXEC_PROBE(~, 1)
 
-#ifdef __CUDACC__
+#if defined(__CUDACC__) && !STDEXEC_NVHPC()
 #  define STDEXEC_ATTR_WHICH_2(_ATTR) __device__
 #else
 #  define STDEXEC_ATTR_WHICH_2(_ATTR)

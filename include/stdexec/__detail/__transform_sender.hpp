@@ -31,20 +31,6 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.transform_sender]
   namespace __detail {
-    struct __transform_env {
-      template <class _Domain, class _Sender, class _Env>
-      STDEXEC_ATTRIBUTE(always_inline)
-      auto
-        operator()(_Domain __dom, _Sender&& __sndr, _Env&& __env) const noexcept -> decltype(auto) {
-        if constexpr (__detail::__has_transform_env<_Domain, _Sender, _Env>) {
-          return __dom.transform_env(static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env));
-        } else {
-          return default_domain()
-            .transform_env(static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env));
-        }
-      }
-    };
-
     struct __transform_sender_1 {
       template <class _Domain, class _Sender, class... _Env>
       STDEXEC_ATTRIBUTE(always_inline)
@@ -99,11 +85,6 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.transform_sender]
   inline constexpr transform_sender_t transform_sender{};
-
-  [[deprecated(
-    "stdexec::transform_env has been deemed unnecessary. Please reach out to the stdexec "
-    "maintainers if you believe otherwise.")]]
-  inline constexpr __detail::__transform_env transform_env{};
 
   struct _CHILD_SENDERS_WITH_DIFFERENT_DOMAINS_ { };
 

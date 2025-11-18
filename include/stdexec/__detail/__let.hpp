@@ -38,45 +38,6 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////
   // [exec.let]
   namespace __let {
-    // // A dummy scheduler that is used by the metaprogramming below when the input sender doesn't
-    // // have a completion scheduler.
-    // struct __unknown_scheduler {
-    //   struct __attrs {
-    //     static constexpr auto query(__is_scheduler_affine_t) noexcept -> bool {
-    //       return true;
-    //     }
-
-    //     [[nodiscard]]
-    //     constexpr auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept {
-    //       return __unknown_scheduler{};
-    //     }
-    //   };
-
-    //   struct __sender {
-    //     using sender_concept = sender_t;
-
-    //     [[nodiscard]]
-    //     constexpr auto get_env() const noexcept -> __attrs {
-    //       return {};
-    //     }
-    //   };
-
-    //   [[nodiscard]]
-    //   auto schedule() const noexcept {
-    //     return __sender();
-    //   }
-
-    //   auto operator==(const __unknown_scheduler&) const noexcept -> bool = default;
-    // };
-
-    inline constexpr auto __get_rcvr = [](auto& __op_state) noexcept -> decltype(auto) {
-      return (__op_state.__rcvr_);
-    };
-
-    inline constexpr auto __get_env = [](auto& __op_state) noexcept -> decltype(auto) {
-      return __op_state.__state_.__get_env(__op_state.__rcvr_);
-    };
-
     template <class _Set>
     struct __let_t;
 
@@ -215,45 +176,10 @@ namespace stdexec {
     // possibly augmented with the input sender's completion scheduler (which is
     // where the result sender will be started).
     template <class _Receiver, class _Env2>
-    using __result_receiver_t = // __if_c<
-      // __is_scheduler_affine<schedule_result_t<_Scheduler>>,
-      // _Receiver,
-      __receiver_with_env_t<_Receiver, _Env2>
-      //>
-      ;
-
-    // template <class _ResultSender, class _Scheduler, class... _Env>
-    // using __receiver_ref_t = __meval<
-    //   __any_::__receiver_ref,
-    //   __completion_signatures_of_t<_ResultSender, __result_env_t<_Scheduler, _Env>...>,
-    //   __result_env_t<_Scheduler, _Env>...
-    // >;
-
-    // template <class _ResultSender, class _Scheduler, class _Receiver>
-    // concept __needs_receiver_ref =
-    //   __nothrow_connectable<
-    //     _ResultSender,
-    //     __receiver_ref_t<_ResultSender, _Scheduler, env_of_t<_Receiver>>
-    //   >
-    //   && !__nothrow_connectable<_ResultSender, __result_receiver_t<_Receiver, _Scheduler>>;
-
-    // template <class _Sender, class _Receiver>
-    // using __nothrow_connectable_t = __mbool<__nothrow_connectable<_Sender, _Receiver>>;
-
-    // template <class _ResultSender, class _Scheduler, class... _Env>
-    // using __nothrow_connectable_receiver_ref_t = __meval<
-    //   __nothrow_connectable_t,
-    //   _ResultSender,
-    //   __receiver_ref_t<_ResultSender, _Scheduler, _Env...>
-    // >;
+    using __result_receiver_t = __receiver_with_env_t<_Receiver, _Env2>;
 
     template <class _ResultSender, class _Env2, class _Receiver>
-    using __checked_result_receiver_t = // __if_c<
-      // __needs_receiver_ref<_ResultSender, _Env2, _Receiver>,
-      // __receiver_ref_t<_ResultSender, _Env2, env_of_t<_Receiver>>,
-      __result_receiver_t<_Receiver, _Env2>
-      //>
-      ;
+    using __checked_result_receiver_t = __result_receiver_t<_Receiver, _Env2>;
 
     template <class _ResultSender, class _Env2, class _Receiver>
     using __submit_result =
@@ -282,12 +208,8 @@ namespace stdexec {
       >;
     };
 
-    // template <class _Sender, class _Set, class... _Env>
-    // using __completion_sched_t =
-    //   __call_result_t<get_completion_scheduler_t<_Set>, env_of_t<_Sender>, _Env...>;
-
     template <class _LetTag, class _Fun, class _CvrefSender, class _Env>
-    using __completions = __gather_completion_signatures<
+    using __completions_t = __gather_completion_signatures<
       __completion_signatures_of_t<_CvrefSender, _Env>,
       __t<_LetTag>,
       __transform_signal_fn<
@@ -332,26 +254,6 @@ namespace stdexec {
       __try_common_domain_fn<_Set, _Env>
     >;
 
-    // template <class _LetTag, class _Env>
-    // auto __mk_transform_env_fn(_Env&& __env) noexcept {
-    //   using _Set = __t<_LetTag>;
-    //   return [&]<class _Fun, class _Child>(__ignore, _Fun&&, _Child&& __child) -> decltype(auto) {
-    //     using __completions_t = __completion_signatures_of_t<_Child, _Env>;
-    //     if constexpr (__merror<__completions_t>) {
-    //       return __completions_t();
-    //     } else {
-    //       using _Scheduler = __completion_sched_t<_Child, _Set>;
-    //       if constexpr (__is_scheduler_affine<schedule_result_t<_Scheduler>>) {
-    //         return (__env);
-    //       } else {
-    //         return __env::__join(
-    //           __sched_env{get_completion_scheduler<_Set>(stdexec::get_env(__child), __env)},
-    //           static_cast<_Env&&>(__env));
-    //       }
-    //     }
-    //   };
-    // }
-
     //! Metafunction creating the operation state needed to connect the result of calling
     //! the sender factory function, `_Fun`, and passing its result to a receiver.
     template <class _Receiver, class _Fun, class _Set, class _Env2>
@@ -382,25 +284,7 @@ namespace stdexec {
 
       template <class _ResultSender, class _OpState>
       auto __get_result_receiver(const _ResultSender&, _OpState& __op_state) -> decltype(auto) {
-        // if constexpr (__needs_receiver_ref<_ResultSender, _Sched, _Receiver>) {
-        //   using __receiver_ref = __receiver_ref_t<_ResultSender, _Sched, env_of_t<_Receiver>>;
-        //   return __receiver_ref{__op_state, __let::__get_env, __let::__get_rcvr};
-        // } else {
-        _Receiver& __rcvr = __op_state.__rcvr_;
-        // if constexpr (__is_scheduler_affine<schedule_result_t<_Sched>>) {
-        //   return static_cast<_Receiver&&>(__rcvr);
-        // } else {
-        return __rcvr_t{static_cast<_Receiver&&>(__rcvr), __env2_};
-        // }
-        // }
-      }
-
-      auto __get_env(const _Receiver& __rcvr) const noexcept -> __env_t {
-        // if constexpr (__is_scheduler_affine<schedule_result_t<_Sched>>) {
-        //   return stdexec::get_env(__rcvr);
-        // } else {
-        return __env::__join(__env2_, stdexec::get_env(__rcvr));
-        // }
+        return __rcvr_t{static_cast<_Receiver&&>(__op_state.__rcvr_), __env2_};
       }
 
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
@@ -429,12 +313,6 @@ namespace stdexec {
       auto operator()(_Fun __fun) const -> __binder_back<__let_t, _Fun> {
         return {{static_cast<_Fun&&>(__fun)}, {}, {}};
       }
-
-      // template <sender_expr_for<__let_t<_Set>> _Sender, class _Env>
-      // static auto transform_env(_Sender&& __sndr, const _Env& __env) -> decltype(auto) {
-      //   return __sexpr_apply(
-      //     static_cast<_Sender&&>(__sndr), __mk_transform_env_fn<__let_t<_Set>>(__env));
-      // }
     };
 
     template <class _Set>
@@ -448,7 +326,7 @@ namespace stdexec {
 
       static constexpr auto get_completion_signatures =
         []<class _Self, class _Env>(_Self&&, _Env&&...) noexcept
-        -> __completions<__let_t<_Set>, __data_of<_Self>, __child_of<_Self>, _Env> {
+        -> __completions_t<__let_t<_Set>, __data_of<_Self>, __child_of<_Self>, _Env> {
         static_assert(sender_expr_for<_Self, __let_t<_Set>>);
         return {};
       };
@@ -458,7 +336,6 @@ namespace stdexec {
           static_assert(sender_expr_for<_Sender, __let_t<_Set>>);
           using _Fun = __data_of<_Sender>;
           using _Child = __child_of<_Sender>;
-          // using _Sched = __decay_t<__completion_sched_t<_Child, _Set, env_of_t<const _Receiver&>>>;
           using _Env2 = __env2_t<_Set, env_of_t<const _Child&>, env_of_t<const _Receiver&>>;
           using __mk_let_state = __mbind_front_q<__let_state, _Receiver, _Fun, _Set, _Env2>;
 

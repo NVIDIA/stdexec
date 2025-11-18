@@ -50,12 +50,12 @@ namespace stdexec {
       run_loop* __loop_ = nullptr;
 
       [[nodiscard]]
-      auto query(get_scheduler_t) const noexcept -> run_loop::__scheduler {
+      auto query(get_scheduler_t) const noexcept -> run_loop::scheduler {
         return __loop_->get_scheduler();
       }
 
       [[nodiscard]]
-      auto query(get_delegation_scheduler_t) const noexcept -> run_loop::__scheduler {
+      auto query(get_delegation_scheduler_t) const noexcept -> run_loop::scheduler {
         return __loop_->get_scheduler();
       }
 

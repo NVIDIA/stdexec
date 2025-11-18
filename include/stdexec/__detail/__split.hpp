@@ -41,8 +41,7 @@ namespace stdexec {
       auto operator()(_Sender&& __sndr, _Env&& __env = {}) const -> __well_formed_sender auto {
         using __domain_t = __detail::__completion_domain_of_t<set_value_t, _Sender, _Env>;
         return stdexec::transform_sender(
-          __domain_t{},
-          __make_sexpr<split_t>(static_cast<_Env&&>(__env), static_cast<_Sender&&>(__sndr)));
+          __domain_t{}, __make_sexpr<split_t>(__env, static_cast<_Sender&&>(__sndr)), __env);
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
@@ -53,17 +52,17 @@ namespace stdexec {
       template <class _CvrefSender, class _Env>
       using __receiver_t = __t<__meval<__receiver, __cvref_id<_CvrefSender>, __id<_Env>>>;
 
-      template <class _Sender>
-      static auto transform_sender(_Sender&& __sndr) {
+      template <class _Sender, class _Env>
+      static auto transform_sender(_Sender&& __sndr, const _Env&) {
         using _Receiver = __receiver_t<__child_of<_Sender>, __decay_t<__data_of<_Sender>>>;
         static_assert(sender_to<__child_of<_Sender>, _Receiver>);
 
         return __sexpr_apply(
           static_cast<_Sender&&>(__sndr),
-          [&]<class _Env, class _Child>(__ignore, _Env&& __env, _Child&& __child) {
+          [&]<class _Env2, class _Child>(__ignore, _Env2&& __env, _Child&& __child) {
             // The shared state starts life with a ref-count of one.
             auto* __sh_state =
-              new __shared_state{static_cast<_Child&&>(__child), static_cast<_Env&&>(__env)};
+              new __shared_state{static_cast<_Child&&>(__child), static_cast<_Env2&&>(__env)};
 
             return __make_sexpr<__split_t>(__box{__split_t(), __sh_state});
           });

@@ -107,9 +107,9 @@ namespace exec {
       std::optional<__on_stop> __on_stop_{};
 
       // If this hits true, we store the result
-      std::atomic<bool> __emplaced_{false};
+      __std::atomic<bool> __emplaced_{false};
       // If this hits zero, we forward any result to the receiver
-      std::atomic<std::size_t> __count_{};
+      __std::atomic<std::size_t> __count_{};
 
       _Receiver __rcvr_;
       _ResultVariant __result_{};
@@ -119,7 +119,7 @@ namespace exec {
         using __result_t = __decayed_tuple<_Tag, _Args...>;
         bool __expect = false;
         if (__emplaced_.compare_exchange_strong(
-              __expect, true, std::memory_order_relaxed, std::memory_order_relaxed)) {
+              __expect, true, __std::memory_order_relaxed, __std::memory_order_relaxed)) {
           // This emplacement can happen only once
           if constexpr ((__nothrow_decay_copyable<_Args> && ...)) {
             __result_.template emplace<__result_t>(_Tag{}, static_cast<_Args&&>(__args)...);
@@ -137,7 +137,7 @@ namespace exec {
         }
         // make __result_ emplacement visible when __count_ goes from one to zero
         // This relies on the fact that each sender will call notify() at most once
-        if (__count_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+        if (__count_.fetch_sub(1, __std::memory_order_acq_rel) == 1) {
           __on_stop_.reset();
           auto stop_token = get_stop_token(get_env(__rcvr_));
           if (stop_token.stop_requested()) {

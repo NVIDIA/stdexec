@@ -16,49 +16,54 @@
  */
 #pragma once
 
-#include <atomic>
+#include "../../stdexec/__detail/__atomic.hpp"
 
-#if __cpp_lib_atomic_ref >= 2018'06L
-template <class T>
-using __atomic_ref = std::atomic_ref<T>;
+namespace exec {
+
+#if __cpp_lib_atomic_ref >= 2018'06L || STDEXEC_HAS_CUDA_STD_ATOMIC()
+  template <class T>
+  using __atomic_ref = stdexec::__std::atomic_ref<T>;
 #else
 #  include <concepts>
 
-// clang-12 does not know about std::atomic_ref yet
-// Here we implement only what we need
-template <std::integral _Ty>
-class __atomic_ref {
-  _Ty* __ptr_;
+  // clang-12 does not know about __std::atomic_ref yet
+  // Here we implement only what we need
+  template <std::integral _Ty>
+  class __atomic_ref {
+    _Ty* __ptr_;
 
-  static constexpr int __map_memory_order(std::memory_order __order) {
-    constexpr int __map[] = {
-      __ATOMIC_RELAXED,
-      __ATOMIC_CONSUME,
-      __ATOMIC_ACQUIRE,
-      __ATOMIC_RELEASE,
-      __ATOMIC_ACQ_REL,
-      __ATOMIC_SEQ_CST,
-    };
-    return __map[static_cast<int>(__order)];
-  }
+    static constexpr int __map_memory_order(__std::memory_order __order) {
+      constexpr int __map[] = {
+        __ATOMIC_RELAXED,
+        __ATOMIC_CONSUME,
+        __ATOMIC_ACQUIRE,
+        __ATOMIC_RELEASE,
+        __ATOMIC_ACQ_REL,
+        __ATOMIC_SEQ_CST,
+      };
+      return __map[static_cast<int>(__order)];
+    }
 
- public:
-  __atomic_ref(_Ty& __ref) noexcept
-    : __ptr_(&__ref) {
-  }
+   public:
+    __atomic_ref(_Ty& __ref) noexcept
+      : __ptr_(&__ref) {
+    }
 
-  __atomic_ref(const __atomic_ref&) = delete;
-  __atomic_ref& operator=(const __atomic_ref&) = delete;
+    __atomic_ref(const __atomic_ref&) = delete;
+    __atomic_ref& operator=(const __atomic_ref&) = delete;
 
-  __atomic_ref(__atomic_ref&&) = delete;
-  __atomic_ref& operator=(__atomic_ref&&) = delete;
+    __atomic_ref(__atomic_ref&&) = delete;
+    __atomic_ref& operator=(__atomic_ref&&) = delete;
 
-  _Ty load(std::memory_order __order = std::memory_order_seq_cst) const noexcept {
-    return __atomic_load_n(__ptr_, __map_memory_order(__order));
-  }
+    _Ty load(__std::memory_order __order = __std::memory_order_seq_cst) const noexcept {
+      return __atomic_load_n(__ptr_, __map_memory_order(__order));
+    }
 
-  void store(_Ty __desired, std::memory_order __order = std::memory_order_seq_cst) noexcept {
-    __atomic_store_n(__ptr_, __desired, __map_memory_order(__order));
-  }
-};
+    void store(_Ty __desired, __std::memory_order __order = __std::memory_order_seq_cst) noexcept {
+      __atomic_store_n(__ptr_, __desired, __map_memory_order(__order));
+    }
+  };
+
 #endif
+
+} // namespace exec

@@ -164,7 +164,7 @@ namespace nvexec::_strm {
       }
 
       auto get_env() const noexcept -> __sched_attrs<Scheduler> {
-        return {sched_, {}};
+        return {sched_};
       }
 
       __t(Scheduler sched, context_state_t context_state, Sender sndr)
@@ -175,21 +175,22 @@ namespace nvexec::_strm {
     };
   };
 
-  template <>
-  struct transform_sender_for<stdexec::continues_on_t> {
+  template <class Env>
+  struct transform_sender_for<stdexec::continues_on_t, Env> {
     template <class Sender>
     using _current_scheduler_t =
-      __result_of<get_completion_scheduler<set_value_t>, env_of_t<Sender>>;
+      __result_of<get_completion_scheduler<set_value_t>, env_of_t<Sender>, const Env&>;
 
-    template <class Sched, class Sender>
-      requires gpu_stream_scheduler<_current_scheduler_t<Sender>>
+    template <class Sched, stream_completing_sender<Env> Sender>
     auto operator()(__ignore, Sched sched, Sender&& sndr) const {
       using _sender_t = __t<continues_on_sender_t<Sched, __id<__decay_t<Sender>>>>;
-      auto stream_sched = get_completion_scheduler<set_value_t>(get_env(sndr));
+      auto stream_sched = get_completion_scheduler<set_value_t>(get_env(sndr), env_);
       return schedule_from(
         static_cast<Sched&&>(sched),
         _sender_t{sched, stream_sched.context_state_, static_cast<Sender&&>(sndr)});
     }
+
+    const Env& env_;
   };
 
 } // namespace nvexec::_strm

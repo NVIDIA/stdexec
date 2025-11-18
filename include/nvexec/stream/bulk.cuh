@@ -370,7 +370,8 @@ namespace nvexec::_strm {
         Shape,
         Fun
       > {
-        auto sch = stdexec::get_completion_scheduler<set_value_t>(stdexec::get_env(self.sndr_));
+        auto sch = stdexec::get_completion_scheduler<set_value_t>(
+          stdexec::get_env(self.sndr_), stdexec::get_env(rcvr));
         context_state_t context_state = sch.context_state_;
         return multi_gpu_bulk::operation_t<
           __cvref_id<Self, Sender>,
@@ -397,14 +398,14 @@ namespace nvexec::_strm {
     };
   };
 
-  template <>
-  struct transform_sender_for<stdexec::bulk_t> {
-    template <class Data, stream_completing_sender Sender>
+  template <class Env>
+  struct transform_sender_for<stdexec::bulk_t, Env> {
+    template <class Data, stream_completing_sender<Env> Sender>
     auto operator()(__ignore, Data data, Sender&& sndr) const {
       auto [policy, shape, fun] = static_cast<Data&&>(data);
       using Shape = decltype(shape);
       using Fn = decltype(fun);
-      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
+      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), env_);
       if constexpr (same_as<decltype(sched), stream_scheduler>) {
         // Use the bulk sender for a single GPU
         using _sender_t = __t<bulk_sender_t<__id<__decay_t<Sender>>, Shape, Fn>>;
@@ -416,6 +417,8 @@ namespace nvexec::_strm {
           {}, sched.num_devices_, static_cast<Sender&&>(sndr), shape, static_cast<Fn&&>(fun)};
       }
     }
+
+    const Env& env_;
   };
 } // namespace nvexec::_strm
 
