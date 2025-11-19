@@ -49,7 +49,8 @@ namespace nvexec::_strm {
       static_cast<stream_provider_t*>(nullptr)));
 
     template <class Tag, class... As, class Variant>
-    __launch_bounds__(1) __global__ void copy_kernel(Variant* var, As... as) {
+    STDEXEC_ATTRIBUTE(launch_bounds(1))
+    __global__ void copy_kernel(Variant* var, As... as) {
       static_assert(trivially_copyable<As...>);
       using tuple_t = decayed_tuple<Tag, As...>;
       var->template emplace<tuple_t>(Tag(), static_cast<As&&>(as)...);

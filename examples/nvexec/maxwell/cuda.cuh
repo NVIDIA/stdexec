@@ -25,7 +25,8 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 template <int BlockThreads, class Action>
-__launch_bounds__(BlockThreads) __global__ void kernel(std::size_t cells, Action action) {
+STDEXEC_ATTRIBUTE(launch_bounds(BlockThreads))
+__global__ void kernel(std::size_t cells, Action action) {
   std::size_t cell_id = threadIdx.x + blockIdx.x * BlockThreads;
 
   if (cell_id < cells) {

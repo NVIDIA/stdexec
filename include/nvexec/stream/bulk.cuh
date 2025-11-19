@@ -36,7 +36,8 @@ __host__ auto operator new[](std::size_t) -> void*;
 namespace nvexec::_strm {
   namespace _bulk {
     template <int BlockThreads, class... As, std::integral Shape, class Fun>
-    __launch_bounds__(BlockThreads) __global__ void kernel(Shape shape, Fun fn, As... as) {
+    STDEXEC_ATTRIBUTE(launch_bounds(BlockThreads))
+    __global__ void kernel(Shape shape, Fun fn, As... as) {
       static_assert(trivially_copyable<Shape, Fun, As...>);
       const int tid = static_cast<int>(threadIdx.x + blockIdx.x * blockDim.x);
 
@@ -156,8 +157,8 @@ namespace nvexec::_strm {
 
   namespace multi_gpu_bulk {
     template <int BlockThreads, class... As, std::integral Shape, class Fun>
-    __launch_bounds__(BlockThreads) __global__
-      void kernel(Shape begin, Shape end, Fun fn, As... as) {
+    STDEXEC_ATTRIBUTE(launch_bounds(BlockThreads))
+    __global__ void kernel(Shape begin, Shape end, Fun fn, As... as) {
       static_assert(trivially_copyable<Shape, Fun, As...>);
       const Shape i = begin + static_cast<Shape>(threadIdx.x + blockIdx.x * blockDim.x);
 

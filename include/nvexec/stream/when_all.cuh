@@ -81,7 +81,8 @@ namespace nvexec::_strm {
     };
 
     template <class... As, class TupleT>
-    __launch_bounds__(1) __global__ void copy_kernel(TupleT* tpl, As... as) {
+    STDEXEC_ATTRIBUTE(launch_bounds(1))
+    __global__ void copy_kernel(TupleT* tpl, As... as) {
       static_assert(trivially_copyable<As...>);
       *tpl = __decayed_tuple<As...>{static_cast<As&&>(as)...};
     }

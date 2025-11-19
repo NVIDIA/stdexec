@@ -273,6 +273,19 @@ namespace stdexec {
       }
     };
 
+    template <>
+    struct __attrs<> {
+      [[nodiscard]]
+      constexpr auto query(get_completion_behavior_t<set_value_t>) const noexcept {
+        return completion_behavior::inline_completion;
+      }
+
+      [[nodiscard]]
+      constexpr auto query(get_completion_behavior_t<set_stopped_t>) const noexcept {
+        return completion_behavior::inline_completion;
+      }
+    };
+
     template <class _Env>
     static auto __mk_state_fn(const _Env&) noexcept {
       return []<__max1_sender<__env_t<_Env>>... _Child>(__ignore, __ignore, _Child&&...) {

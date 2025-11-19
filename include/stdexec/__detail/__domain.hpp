@@ -425,8 +425,6 @@ namespace stdexec {
 
       template <class _Attrs, class... _Env, class _Domain>
       static consteval auto __check_domain(_Domain) noexcept -> _Domain {
-// TODO(gevtushenko):
-#if 0
         // Sanity check: if a completion scheduler can be determined from the attributes
         // (not the environment), then its domain must match the domain returned by the attributes.
         if constexpr (__callable<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>) {
@@ -438,7 +436,6 @@ namespace stdexec {
             __check_domain_<__sch_t, _Env...>(_Domain{});
           }
         }
-#endif
         return {};
       }
 

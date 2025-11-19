@@ -295,22 +295,11 @@ namespace stdexec {
       auto get_env() const noexcept -> const _Env&;
     };
 
-    template <class ValueType>
-    struct __prop_like {
-      template <class _Query>
-      STDEXEC_ATTRIBUTE(noreturn, nodiscard, host, device)
-      constexpr auto query(_Query) const noexcept -> const ValueType& {
-        STDEXEC_TERMINATE();
-      }
-    };
-
     // A singleton environment from a query/value pair
     template <class _Query, class _Value>
     struct prop {
       using __t = prop;
       using __id = prop;
-
-      static_assert(__callable<_Query, __prop_like<_Value>>);
 
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto query(_Query, auto&&...) const noexcept -> const _Value& {
@@ -319,6 +308,16 @@ namespace stdexec {
 
       STDEXEC_ATTRIBUTE(no_unique_address) _Query __query;
       STDEXEC_ATTRIBUTE(no_unique_address) _Value __value;
+
+     private:
+      struct __prop_like {
+        STDEXEC_ATTRIBUTE(noreturn, nodiscard, host, device)
+        constexpr auto query(_Query) const noexcept -> const _Value& {
+          STDEXEC_TERMINATE();
+        }
+      };
+
+      static_assert(__callable<_Query, __prop_like>);
     };
 
     template <class _Query, class _Value>

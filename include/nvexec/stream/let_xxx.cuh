@@ -33,8 +33,8 @@ STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 namespace nvexec::_strm {
   namespace let_xxx {
     template <class... As, class Fun, class ResultSenderT>
-    __launch_bounds__(1) __global__
-      void kernel_with_result(Fun fn, ResultSenderT* result, As... as) {
+    STDEXEC_ATTRIBUTE(launch_bounds(1))
+    __global__ void kernel_with_result(Fun fn, ResultSenderT* result, As... as) {
       static_assert(trivially_copyable<Fun, As...>);
       new (result) ResultSenderT(::cuda::std::move(fn)(static_cast<As&&>(as)...));
     }

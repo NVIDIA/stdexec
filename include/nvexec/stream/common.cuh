@@ -261,7 +261,8 @@ namespace nvexec {
     };
 
     template <class T>
-    __launch_bounds__(1) __global__ void destructor_kernel(T* obj) {
+    STDEXEC_ATTRIBUTE(launch_bounds(1))
+    __global__ void destructor_kernel(T* obj) {
       obj->~T();
     }
 
@@ -479,7 +480,8 @@ namespace nvexec {
     };
 
     template <class Receiver, class... As, class Tag>
-    __launch_bounds__(1) __global__ void continuation_kernel(Receiver rcvr, Tag, As... as) {
+    STDEXEC_ATTRIBUTE(launch_bounds(1))
+    __global__ void continuation_kernel(Receiver rcvr, Tag, As... as) {
       static_assert(trivially_copyable<Receiver, Tag, As...>);
       Tag()(::cuda::std::move(rcvr), static_cast<As&&>(as)...);
     }

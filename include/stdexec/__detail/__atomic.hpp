@@ -21,7 +21,7 @@
 #  include <cuda/std/atomic>
 #  define STDEXEC_HAS_CUDA_STD_ATOMIC() 1
 #else
-#  include "__atomic.hpp"
+#  include <atomic>
 #  define STDEXEC_HAS_CUDA_STD_ATOMIC() 0
 #endif
 

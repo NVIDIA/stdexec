@@ -35,7 +35,8 @@ namespace nvexec::_strm {
   namespace _sched_from {
 
     template <class Tag, class Storage, class... As>
-    __launch_bounds__(1) __global__ void kernel(Storage* storage, As... as) {
+    STDEXEC_ATTRIBUTE(launch_bounds(1))
+    __global__ void kernel(Storage* storage, As... as) {
       ::new (storage) Storage();
       storage->template emplace<decayed_tuple<Tag, As...>>(Tag(), static_cast<As&&>(as)...);
     }
