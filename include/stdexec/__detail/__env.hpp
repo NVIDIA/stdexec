@@ -165,7 +165,7 @@ namespace stdexec {
       template <class _Attrs, class... _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       consteval auto operator()() const noexcept -> bool {
-        return __completes_inline<set_value_t, _Attrs, const _Env&...>;
+        return __completes_where_it_starts<set_value_t, _Attrs, const _Env&...>;
       }
 
       template <__queryable_with<__is_scheduler_affine_t> _Attrs, class... _Env>

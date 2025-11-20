@@ -694,6 +694,9 @@ namespace stdexec {
   template <class _Fn, class _List>
   using __mapply = __minvoke<__muncurry<_Fn>, _List>;
 
+  template <template <class...> class _Fn, class _List>
+  using __mapply_q = __minvoke<__muncurry<__q<_Fn>>, _List>;
+
   template <bool>
   struct __mconcat_ {
     template <

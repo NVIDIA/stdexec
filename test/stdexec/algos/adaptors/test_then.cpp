@@ -120,7 +120,8 @@ namespace {
   }
 
   TEST_CASE("then advertises completion schedulers", "[adaptors][then]") {
-    inline_scheduler sched{};
+    ex::run_loop loop;
+    auto sched = loop.get_scheduler();
 
     SECTION("for value channel") {
       ex::sender auto snd = ex::schedule(sched) | ex::then([] { });

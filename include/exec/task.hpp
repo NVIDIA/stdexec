@@ -392,11 +392,16 @@ namespace exec {
         template <sender _Awaitable>
           requires __scheduler_provider<_Context>
         auto await_transform(_Awaitable&& __awaitable) noexcept -> decltype(auto) {
-          // TODO: If we have a complete-where-it-starts query then we can optimize
-          // this to avoid the reschedule
-          return stdexec::as_awaitable(
-            continues_on(static_cast<_Awaitable&&>(__awaitable), get_scheduler(*__context_)),
-            *this);
+          if constexpr (__completes_where_it_starts<
+                          set_value_t,
+                          env_of_t<_Awaitable>,
+                          __promise_context_t&>) {
+            return stdexec::as_awaitable(static_cast<_Awaitable&&>(__awaitable), *this);
+          } else {
+            return stdexec::as_awaitable(
+              continues_on(static_cast<_Awaitable&&>(__awaitable), get_scheduler(*__context_)),
+              *this);
+          }
         }
 
         template <class _Scheduler>
@@ -478,12 +483,12 @@ namespace exec {
      public:
       // Make this task awaitable within a particular context:
       template <class _ParentPromise>
-        requires constructible_from<
-          awaiter_context_t<__promise, _ParentPromise>,
-          __promise_context_t&,
-          _ParentPromise&
-        >
-      auto as_awaitable(_ParentPromise&) && noexcept -> __task_awaitable<_ParentPromise> {
+      // requires constructible_from<
+      //   awaiter_context_t<__promise, _ParentPromise>,
+      //   __promise_context_t&,
+      //   _ParentPromise&
+      // >
+      auto as_awaitable(_ParentPromise&) && noexcept { //-> __task_awaitable<_ParentPromise> {
         return __task_awaitable<_ParentPromise>{std::exchange(__coro_, {})};
       }
 

@@ -1099,8 +1099,8 @@ namespace exec {
                                       && alignof(_Ty) <= alignof(std::max_align_t);
 
      public:
-      template <class _Scheduler>
-        requires(!__decays_to<_Scheduler, __scheduler>) && scheduler<_Scheduler>
+      template <__not_decays_to<__scheduler> _Scheduler>
+        requires scheduler<_Scheduler>
       __scheduler(_Scheduler&& __scheduler)
         : __storage_{static_cast<_Scheduler&&>(__scheduler)} {
         static_assert(
@@ -1184,6 +1184,13 @@ namespace exec {
 
       __copyable_storage_t<__vtable, __buffer_size> __storage_{};
     };
+
+    template <class _Tag>
+    struct __ret_equals_to {
+      template <class _Sig>
+      using __f = stdexec::__mbool<
+        STDEXEC_IS_SAME(_Tag, decltype(__tag_of_sig_(static_cast<_Sig>(nullptr))))>;
+    };
   } // namespace __any
 
   template <auto... _Sigs>
@@ -1245,12 +1252,11 @@ namespace exec {
       template <stdexec::__not_decays_to<any_sender> _Sender>
         requires stdexec::sender_to<_Sender, __receiver_base>
       any_sender(_Sender&& __sender)
-        noexcept(stdexec::__nothrow_constructible_from<__sender_base, _Sender>)
         : __sender_(static_cast<_Sender&&>(__sender)) {
       }
 
-      template <stdexec::__decays_to<any_sender> _Self, class... _Env>
-      requires(__any::__satisfies_receiver_query<decltype(_ReceiverQueries), _Env ...> && ...)
+      template <stdexec::convertible_to<const any_sender&> _Self, class... _Env>
+        requires(__any::__satisfies_receiver_query<decltype(_ReceiverQueries), _Env...> && ...)
       static auto get_completion_signatures(_Self&&, _Env&&...) noexcept ->
         typename __sender_base::completion_signatures {
         return {};
@@ -1274,42 +1280,38 @@ namespace exec {
         >;
         using __schedule_receiver = any_receiver_ref<__schedule_completions, _ReceiverQueries...>;
 
-        template <typename _Tag, typename _Sig>
-        static auto __ret_fn(_Tag (*const)(_Sig)) -> _Tag;
+        template <class _BaseSender>
+        struct __schedule_sender : _BaseSender {
+          __schedule_sender(any_scheduler __sch, _BaseSender&& __sender)
+            : _BaseSender(static_cast<_BaseSender&&>(__sender))
+            , __sch_(static_cast<any_scheduler&&>(__sch)) {
+          }
 
-        template <class _Tag>
-        struct __ret_equals_to {
-          template <class _Sig>
-          using __f =
-            stdexec::__mbool<STDEXEC_IS_SAME(_Tag, decltype(__ret_fn(static_cast<_Sig>(nullptr))))>;
+          [[nodiscard]]
+          auto get_env() const noexcept {
+            return stdexec::__env::__join(
+              stdexec::prop{stdexec::get_completion_scheduler<stdexec::set_value_t>, __sch_},
+              stdexec::get_env(static_cast<const _BaseSender&>(*this)));
+          }
+
+         private:
+          any_scheduler __sch_;
         };
 
-        using __schedule_sender_queries = stdexec::__minvoke<
+        template <class... _ScheduleSenderQueries>
+        using __any_sender_t =
+          typename __schedule_receiver::template any_sender<_ScheduleSenderQueries{}...>;
+
+        using __schedule_sender_base_t = stdexec::__minvoke<
           stdexec::__mremove_if<
-            __ret_equals_to<stdexec::get_completion_scheduler_t<stdexec::set_value_t>>
-          >,
-          decltype(_SenderQueries)...
-        >;
+            __any::__ret_equals_to<stdexec::get_completion_scheduler_t<stdexec::set_value_t>>,
+            stdexec::__q<__any_sender_t>>,
+          decltype(_SenderQueries)...>;
 
-#if STDEXEC_MSVC()
-        // MSVCBUG https://developercommunity.visualstudio.com/t/ICE-and-non-ICE-bug-in-NTTP-argument-w/10361081
-
-        static constexpr auto __any_scheduler_noexcept_signature =
-          stdexec::get_completion_scheduler<stdexec::set_value_t>.signature<any_scheduler() noexcept>;
-        template <class... _Queries>
-        using __schedule_sender_fn =
-          typename __schedule_receiver::template any_sender<__any_scheduler_noexcept_signature>;
-#else
-        template <class... _Queries>
-        using __schedule_sender_fn = typename __schedule_receiver::template any_sender<
-          stdexec::get_completion_scheduler<stdexec::set_value_t>.template signature<any_scheduler() noexcept>
-        >;
-#endif
-        using __schedule_sender =
-          stdexec::__mapply<stdexec::__q<__schedule_sender_fn>, __schedule_sender_queries>;
+        using __schedule_sender_t = __schedule_sender<__schedule_sender_base_t>;
 
         using __scheduler_base =
-          __any::__scheduler<__schedule_sender, queries<_SchedulerQueries...>>;
+          __any::__scheduler<__schedule_sender_base_t, queries<_SchedulerQueries...>>;
 
         __scheduler_base __scheduler_;
 
@@ -1324,8 +1326,8 @@ namespace exec {
           : __scheduler_{static_cast<_Scheduler&&>(__scheduler)} {
         }
 
-        auto schedule() const noexcept -> __schedule_sender {
-          return __scheduler_.schedule();
+        auto schedule() const noexcept -> __schedule_sender_t {
+          return __schedule_sender_t(*this, __scheduler_.schedule());
         }
 
         template <class _Tag, class... _As>

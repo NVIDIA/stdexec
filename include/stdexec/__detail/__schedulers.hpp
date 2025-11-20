@@ -68,12 +68,7 @@ namespace stdexec {
   struct scheduler_t { };
 
   template <class _Scheduler>
-  concept __has_schedule = requires(_Scheduler&& __sched) {
-    { schedule(static_cast<_Scheduler&&>(__sched)) } -> sender;
-  };
-
-  template <class _Scheduler>
-  concept scheduler = __has_schedule<_Scheduler> //
+  concept scheduler = __callable<schedule_t, _Scheduler> //
                    && equality_comparable<__decay_t<_Scheduler>>
                    && copy_constructible<__decay_t<_Scheduler>>
                    && std::is_nothrow_move_constructible_v<__decay_t<_Scheduler>>;

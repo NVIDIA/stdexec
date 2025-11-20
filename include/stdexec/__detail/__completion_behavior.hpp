@@ -24,7 +24,6 @@
 #include "__query.hpp"
 #include "__meta.hpp"
 #include "__execution_fwd.hpp"
-#include "__type_traits.hpp"
 
 namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////
@@ -79,8 +78,43 @@ namespace stdexec {
   // get_completion_behavior: A sender can define this attribute to describe the sender's
   // completion behavior
   template <class _Tag>
-  struct get_completion_behavior_t
-    : __query<get_completion_behavior_t<_Tag>, completion_behavior::unknown, __q1<__decay_t>> {
+  struct get_completion_behavior_t {
+    using __t = get_completion_behavior_t;
+    using __id = get_completion_behavior_t;
+
+    template <class _Sig>
+    static inline constexpr get_completion_behavior_t (*signature)(_Sig) = nullptr;
+
+    // Query with a .query member function:
+    template <class _Qy = get_completion_behavior_t, class _Attrs>
+      requires __member_queryable_with<const _Attrs&, _Qy>
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    constexpr auto operator()(const _Attrs& __attrs, __ignore = {}) const noexcept
+      -> __query_result_t<_Attrs, _Qy> {
+      __validate<_Attrs>();
+      return __attrs.query(_Qy());
+    }
+
+    template <class _Qy = get_completion_behavior_t, class _Attrs, class _Env>
+      requires __member_queryable_with<const _Attrs&, _Qy, _Env>
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    constexpr auto operator()(const _Attrs& __attrs, const _Env& __env) const noexcept
+      -> __query_result_t<_Attrs, _Qy, _Env> {
+      __validate<_Attrs, _Env>();
+      return __attrs.query(_Qy(), __env);
+    }
+
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    constexpr auto operator()(__ignore, __ignore = {}) const noexcept {
+      return completion_behavior::unknown;
+    }
+
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    static constexpr auto query(forwarding_query_t) noexcept -> bool {
+      return true;
+    }
+
+   private:
     template <class _Attrs, class... _Env>
     STDEXEC_ATTRIBUTE(always_inline, host, device)
     static constexpr void __validate() noexcept {
@@ -94,11 +128,6 @@ namespace stdexec {
         >,
         "The get_completion_behavior query must return one of the static member variables in "
         "execution::completion_behavior.");
-    }
-
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    static constexpr auto query(forwarding_query_t) noexcept -> bool {
-      return true;
     }
   };
 
@@ -141,6 +170,11 @@ namespace stdexec {
   concept __completes_inline =
     (__call_result_t<get_completion_behavior_t<_Tag>, const _Attrs&, const _Env&...>{}
      == completion_behavior::inline_completion);
+
+  template <class _Tag, class _Attrs, class... _Env>
+  concept __completes_where_it_starts =
+    (__call_result_t<get_completion_behavior_t<_Tag>, const _Attrs&, const _Env&...>{}
+     >= completion_behavior::asynchronous_affine);
 
   template <class _Tag, class _Sndr, class... _Env>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)

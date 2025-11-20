@@ -29,9 +29,9 @@ namespace exec {
   namespace __at_coro_exit {
     using namespace stdexec;
 
-    using __any_scheduler = any_receiver_ref<
-      completion_signatures<set_error_t(std::exception_ptr), set_stopped_t()>
-    >::any_sender<>::any_scheduler<>;
+    using __any_scheduler_t = any_receiver_ref<completion_signatures<
+      set_error_t(std::exception_ptr),
+      set_stopped_t()>>::any_sender<>::any_scheduler<>;
 
     struct __die_on_stop_t {
       template <class _Receiver>
@@ -183,7 +183,7 @@ namespace exec {
         const __promise& __promise_;
 
         [[nodiscard]]
-        auto query(get_scheduler_t) const noexcept -> __any_scheduler {
+        auto query(get_scheduler_t) const noexcept -> __any_scheduler_t {
           return __promise_.__scheduler_;
         }
       };
@@ -237,7 +237,7 @@ namespace exec {
 
         bool __is_unhandled_stopped_{false};
         std::tuple<_Ts&...> __args_{};
-        __any_scheduler __scheduler_{stdexec::inline_scheduler{}};
+        __any_scheduler_t __scheduler_{stdexec::inline_scheduler{}};
       };
 
       __coro::coroutine_handle<__promise> __coro_;
