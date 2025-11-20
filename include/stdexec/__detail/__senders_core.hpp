@@ -79,7 +79,7 @@ namespace stdexec {
   // Used to report a meaningful error message when the sender_in<Sndr, Env>
   // concept check fails.
   template <class _Sender, class... _Env>
-  auto __diagnose_sender_concept_failure() {
+  constexpr void __diagnose_sender_concept_failure() noexcept {
     if constexpr (!enable_sender<__decay_t<_Sender>>) {
       static_assert(enable_sender<_Sender>, STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE);
       // } else if constexpr (!__detail::__consistent_completion_domains<_Sender>) {
