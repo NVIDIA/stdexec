@@ -434,24 +434,22 @@ namespace stdexec {
 
   template <
     class _Sigs,
-    class _Tuple = __q<__decayed_std_tuple>,
-    class _Variant = __q<__std_variant>
-  >
+    class _Tuple = __qq<__decayed_std_tuple>,
+    class _Variant = __qq<__std_variant>>
   using __value_types_t = __gather_completions<set_value_t, _Sigs, _Tuple, _Variant>;
 
   template <
     class _Sender,
     class _Env = env<>,
-    class _Tuple = __q<__decayed_std_tuple>,
-    class _Variant = __q<__std_variant>
-  >
+    class _Tuple = __qq<__decayed_std_tuple>,
+    class _Variant = __qq<__std_variant>>
   using __value_types_of_t =
     __value_types_t<__completion_signatures_of_t<_Sender, _Env>, _Tuple, _Variant>;
 
-  template <class _Sigs, class _Variant = __q<__std_variant>>
+  template <class _Sigs, class _Variant = __qq<__std_variant>>
   using __error_types_t = __gather_completions<set_error_t, _Sigs, __q<__midentity>, _Variant>;
 
-  template <class _Sender, class _Env = env<>, class _Variant = __q<__std_variant>>
+  template <class _Sender, class _Env = env<>, class _Variant = __qq<__std_variant>>
   using __error_types_of_t = __error_types_t<__completion_signatures_of_t<_Sender, _Env>, _Variant>;
 
   template <
@@ -475,21 +473,25 @@ namespace stdexec {
   >;
 
   template <class _Tag, class _Sender, class... _Env>
-    requires sender_in<_Sender, _Env...>
-  inline constexpr bool __sends = __v<__gather_completion_signatures<
+  concept __sends = sender_in<_Sender, _Env...>
+                 && __v<__gather_completion_signatures<
+                   __completion_signatures_of_t<_Sender, _Env...>,
+                   _Tag,
+                   __mconst<__mtrue>::__f,
+                   __mconst<__mfalse>::__f,
+                   __mor_t>>;
+
+  template <class _Tag, class _Sender, class... _Env>
+  concept __never_sends = sender_in<_Sender, _Env...> && !__sends<_Tag, _Sender, _Env...>;
+
+  template <class _Sender, class... _Env>
+  concept sends_stopped = __sends<set_stopped_t, _Sender, _Env...>;
+
+  template <class _Sender, class... _Env>
+  using __single_sender_value_t = __value_types_t<
     __completion_signatures_of_t<_Sender, _Env...>,
-    _Tag,
-    __mconst<__mtrue>::__f,
-    __mconst<__mfalse>::__f,
-    __mor_t
-  >>;
-
-  template <class _Sender, class... _Env>
-  concept sends_stopped = sender_in<_Sender, _Env...> && __sends<set_stopped_t, _Sender, _Env...>;
-
-  template <class _Sender, class... _Env>
-  using __single_sender_value_t =
-    __value_types_t<__completion_signatures_of_t<_Sender, _Env...>, __q<__msingle>, __q<__msingle>>;
+    __qq<__msingle>,
+    __qq<__msingle>>;
 
   template <class _Sender, class... _Env>
   concept __single_value_sender = sender_in<_Sender, _Env...>
@@ -497,7 +499,7 @@ namespace stdexec {
 
   template <class _Sender, class... _Env>
   using __single_value_variant_sender_t =
-    __value_types_t<__completion_signatures_of_t<_Sender, _Env...>, __qq<__types>, __q<__msingle>>;
+    __value_types_t<__completion_signatures_of_t<_Sender, _Env...>, __qq<__types>, __qq<__msingle>>;
 
   template <class _Sender, class... _Env>
   concept __single_value_variant_sender = sender_in<_Sender, _Env...> && requires {

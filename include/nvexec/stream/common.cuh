@@ -548,12 +548,8 @@ namespace nvexec {
 
       struct __t : stream_op_state_base {
         using __id = operation_state_base_;
+        using operation_state_concept = stdexec::operation_state_t;
         using env_t = make_stream_env_t<outer_env_t>;
-
-        context_state_t context_state_;
-        void* temp_storage_{nullptr};
-        outer_receiver_t rcvr_;
-        stream_provider_t stream_provider_;
 
         __t(outer_receiver_t rcvr, context_state_t context_state)
           : context_state_(context_state)
@@ -637,6 +633,11 @@ namespace nvexec {
                 static_cast<outer_receiver_t&&>(rcvr_), Tag(), static_cast<As&&>(as)...);
           }
         }
+
+        context_state_t context_state_;
+        void* temp_storage_{nullptr};
+        outer_receiver_t rcvr_;
+        stream_provider_t stream_provider_;
       };
     };
 

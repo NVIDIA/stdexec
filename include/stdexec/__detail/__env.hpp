@@ -564,9 +564,8 @@ namespace stdexec {
         return tag_invoke(*this, __env_provider);
       }
 
-      template <class _EnvProvider>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto operator()(const _EnvProvider&) const noexcept -> env<> {
+      constexpr auto operator()(__ignore) const noexcept -> env<> {
         return {};
       }
     };

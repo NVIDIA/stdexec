@@ -165,4 +165,15 @@ namespace stdexec {
 
   template <class _Tag>
   concept __forwarding_query = forwarding_query(_Tag{});
+
+  //////////////////////////////////////////////////////////////////////////////////////////
+  // __is_completion_query
+  template <class _Query>
+  inline constexpr bool __is_completion_query = false;
+  template <class _Tag>
+  inline constexpr bool __is_completion_query<get_completion_domain_t<_Tag>> = true;
+  template <class _Tag>
+  inline constexpr bool __is_completion_query<get_completion_scheduler_t<_Tag>> = true;
+  template <class _Tag>
+  inline constexpr bool __is_completion_query<get_completion_behavior_t<_Tag>> = true;
 } // namespace stdexec

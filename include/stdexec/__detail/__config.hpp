@@ -232,12 +232,14 @@ namespace __coro = std::experimental;
 #define STDEXEC_ATTR___preferred_name__ STDEXEC_PROBE(~, 6)
 
 #if defined(__launch_bounds__) && !STDEXEC_NVHPC()
-#  define STDEXEC_ATTR_WHICH_7(_ATTR) __launch_bounds__
+#  define STDEXEC_ATTR_WHICH_7(_ATTR) STDEXEC_CAT(STDEXEC_ATTR_NORMALIZE_, _ATTR)
 #else
-#  define STDEXEC_ATTR_WHICH_7(_ATTR) STDEXEC_PP_EAT
+#  define STDEXEC_ATTR_WHICH_7(_ATTR)
 #endif
-#define STDEXEC_ATTR_launch_bounds(...)     STDEXEC_PROBE(~, 7)(__VA_ARGS__)
-#define STDEXEC_ATTR___launch_bounds__(...) STDEXEC_PROBE(~, 7)(__VA_ARGS__)
+#define STDEXEC_ATTR_NORMALIZE_launch_bounds(...)     __launch_bounds__(__VA_ARGS__)
+#define STDEXEC_ATTR_NORMALIZE___launch_bounds__(...) __launch_bounds__(__VA_ARGS__)
+#define STDEXEC_ATTR_launch_bounds(...)               STDEXEC_PROBE(~, 7)
+#define STDEXEC_ATTR___launch_bounds__(...)           STDEXEC_PROBE(~, 7)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // warning push/pop portability macros

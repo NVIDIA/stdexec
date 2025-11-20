@@ -33,6 +33,15 @@ namespace stdexec {
 
   struct default_domain;
 
+  struct __not_a_domain {
+    __not_a_domain() = default;
+
+    template <__not_same_as<__not_a_domain> _Domain>
+    STDEXEC_ATTRIBUTE(host, device, always_inline)
+    constexpr __not_a_domain(_Domain) noexcept {
+    }
+  };
+
   namespace __detail {
     template <class _DomainOrTag, class _Sender, class... _Env>
     concept __has_transform_sender =
@@ -65,31 +74,28 @@ namespace stdexec {
     ////////////////////////////////////////////////////////////////////////////////////////////////
     template <class _Attrs, class _Tag>
     using __completion_scheduler_for =
-      __meval_or<__call_result_t, __none_such, get_completion_scheduler_t<_Tag>, _Attrs>;
+      __meval_or<__call_result_t, __not_a_domain, get_completion_scheduler_t<_Tag>, _Attrs>;
 
     template <class _Attrs, class _Tag>
     using __completion_domain_for = __meval_or<
       __call_result_t,
-      __none_such,
+      __not_a_domain,
       get_domain_t,
-      __completion_scheduler_for<_Attrs, _Tag>
-    >;
+      __completion_scheduler_for<_Attrs, _Tag>>;
 
     // Check the value, error, and stopped channels for completion schedulers.
     // Of the completion schedulers that are known, they must all have compatible
-    // domains. This computes that domain, or else returns __none_such if there
+    // domains. This computes that domain, or else returns __not_a_domain if there
     // are no completion schedulers or if they don't specify a domain.
     template <class... _Env>
     struct __TODO_broken_completion_domain_or_none_
       : __mdefer_<
           __mtransform<
             __mbind_front_q<__completion_domain_for, _Env...>,
-            __mremove<__none_such, __munique<__msingle_or<__none_such>>>
-          >,
+            __mremove<__not_a_domain, __munique<__msingle_or<__not_a_domain>>>>,
           set_value_t,
           set_error_t,
-          set_stopped_t
-        > { };
+          set_stopped_t> { };
 
     template <class _Sender, class... _Env>
     using __TODO_broken_completion_domain_or_none =
@@ -101,12 +107,12 @@ namespace stdexec {
 
     template <class _Sender>
     concept __has_completion_domain =
-      (!same_as<__TODO_broken_completion_domain_or_none<_Sender>, __none_such>);
+      (!same_as<__TODO_broken_completion_domain_or_none<_Sender>, __not_a_domain>);
 
     template <__has_completion_domain _Sender>
     using __completion_domain_of = __TODO_broken_completion_domain_or_none<_Sender>;
 
-    // TODO: audit all uses of __completion_domain_of_t.
+    // TODO(ericniebler): audit all uses of __completion_domain_of_t.
     template <class _Tag, class _Sender, class... _Env>
     using __completion_domain_of_t =
       __call_result_t<get_completion_domain_t<_Tag>, env_of_t<_Sender>, const _Env&...>;
@@ -114,11 +120,10 @@ namespace stdexec {
     template <class _Tag, class _Sender, class... _Env>
     using __TODO_broken_completion_domain_or_none_t = __meval_or<
       __call_result_t,
-      __none_such,
+      __not_a_domain,
       get_completion_domain_t<_Tag>,
       env_of_t<_Sender>,
-      const _Env&...
-    >;
+      const _Env&...>;
   } // namespace __detail
 
   struct default_domain {

@@ -19,7 +19,6 @@
 
 #include "__basic_sender.hpp"
 #include "__diagnostics.hpp"
-#include "__domain.hpp"
 #include "__meta.hpp"
 #include "__senders_core.hpp"
 #include "__sender_adaptor_closure.hpp"

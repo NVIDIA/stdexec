@@ -520,7 +520,7 @@ namespace {
   //                                                                any_scheduler
 
   template <auto... Queries>
-  using my_scheduler = typename any_sender_of<>::any_scheduler<Queries...>;
+  using my_scheduler = any_sender_of<>::any_scheduler<Queries...>;
 
   TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]") {
     static_assert(scheduler<my_scheduler<>>);
@@ -528,14 +528,14 @@ namespace {
     my_scheduler<> copied = scheduler;
     CHECK(copied == scheduler);
 
-    auto sched = schedule(scheduler);
-    static_assert(sender<decltype(sched)>);
+    auto sndr = schedule(scheduler);
+    static_assert(sender<decltype(sndr)>);
     std::same_as<my_scheduler<>> auto get_sched = get_completion_scheduler<set_value_t>(
-      get_env(sched));
+      get_env(sndr));
     CHECK(get_sched == scheduler);
 
     bool called = false;
-    sync_wait(std::move(sched) | then([&] { called = true; }));
+    sync_wait(std::move(sndr) | then([&] { called = true; }));
     CHECK(called);
   }
 

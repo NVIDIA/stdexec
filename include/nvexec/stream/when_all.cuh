@@ -133,7 +133,12 @@ namespace nvexec::_strm {
      private:
       struct attrs {
         context_state_t context_state_;
-        using sched_domain_t = __query_result_or_t<get_domain_t, Scheduler, default_domain>;
+        template <class... Env>
+        using sched_domain_t = __call_result_or_t<
+          get_completion_domain_t<set_value_t>,
+          indeterminate_domain<>,
+          Scheduler,
+          Env...>;
 
         auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept -> Scheduler
           requires stdexec::__same_as<WhenAllTag, transfer_when_all_t>
@@ -141,19 +146,17 @@ namespace nvexec::_strm {
           return Scheduler(context_state_);
         }
 
-        template <class... _Env>
-        constexpr auto query(get_completion_domain_t<set_value_t>, const _Env&...) const noexcept {
+        template <class... Env>
+        constexpr auto query(get_completion_domain_t<set_value_t>, const Env&...) const noexcept {
           if constexpr (stdexec::__same_as<WhenAllTag, transfer_when_all_t>) {
-            return sched_domain_t{};
+            return sched_domain_t<Env...>{};
           } else {
             static_assert(
               sizeof...(SenderIds) == 0
               || stdexec::__same_as<
                 stream_domain,
                 __common_domain_t<
-                  stdexec::__compl_domain_t<set_value_t, stdexec::__t<SenderIds>, _Env...>...
-                >
-              >);
+                  stdexec::__compl_domain_t<set_value_t, stdexec::__t<SenderIds>, Env...>...>>);
             return stream_domain{};
           }
         }

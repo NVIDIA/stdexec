@@ -246,7 +246,7 @@ namespace exec {
   };
 
   template <>
-  struct fork_join_t::_env_t<stdexec::__none_such> { };
+  struct fork_join_t::_env_t<stdexec::__not_a_domain> { };
 
   template <class Sndr, class... Closures>
   struct fork_join_t::_sndr_t {

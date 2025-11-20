@@ -96,6 +96,8 @@ namespace stdexec {
     struct get_completion_scheduler_t;
     template <__completion_tag _CPO>
     struct get_completion_domain_t;
+    template <__completion_tag _CPO>
+    struct get_completion_behavior_t;
     struct get_domain_t;
   } // namespace __queries
 
@@ -108,6 +110,7 @@ namespace stdexec {
   using __queries::get_stop_token_t;
   using __queries::get_completion_scheduler_t;
   using __queries::get_completion_domain_t;
+  using __queries::get_completion_behavior_t;
   using __queries::get_domain_t;
 
   extern const forwarding_query_t forwarding_query;
@@ -122,6 +125,10 @@ namespace stdexec {
   template <__completion_tag _CPO>
   extern const get_completion_domain_t<_CPO> get_completion_domain;
   extern const get_domain_t get_domain;
+
+  template <class _Tag, class _Sndr, class... _Env>
+  STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+  consteval auto get_completion_behavior() noexcept;
 
   struct never_stop_token;
   class inplace_stop_source;
@@ -224,20 +231,29 @@ namespace stdexec {
   using __schfr::schedule_from_t;
   extern const schedule_from_t schedule_from;
 
-  namespace __continues_on {
+  namespace __trnsfr {
     struct continues_on_t;
-  } // namespace __continues_on
+  } // namespace __trnsfr
 
-  using __continues_on::continues_on_t;
+  using __trnsfr::continues_on_t;
   extern const continues_on_t continues_on;
 
+  // Backward compatibility:
   using transfer_t [[deprecated("transfer_t has been renamed continues_on_t")]] = continues_on_t;
   [[deprecated("transfer has been renamed continues_on")]]
-  extern const continues_on_t transfer;
+  inline constexpr const continues_on_t& transfer = continues_on;
 
-  using continue_t [[deprecated("continue_on_t has been renamed continues_on_t")]] = continues_on_t;
-  [[deprecated("continue_on has been renamed continues_on")]]
-  extern const continues_on_t continue_on;
+  // Backward compatibility:
+  namespace v2 {
+    using continue_on_t
+      [[deprecated("continue_on_t has been renamed continues_on_t")]] = continues_on_t;
+    [[deprecated("continue_on has been renamed continues_on")]]
+    inline constexpr const continues_on_t& continue_on = continues_on;
+  } // namespace v2
+
+  // Backward compatibility:
+  using v2::continue_on_t;
+  using v2::continue_on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __transfer_just {
