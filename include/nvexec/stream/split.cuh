@@ -58,27 +58,27 @@ namespace nvexec::_strm {
 
     template <class SenderId, class SharedState>
     struct receiver_t {
-      class __t : public stream_receiver_base {
-        using Sender = stdexec::__t<SenderId>;
-
-        SharedState& sh_state_;
-
-       public:
+      struct __t : stream_receiver_base {
         using __id = receiver_t;
+
+        explicit __t(SharedState& sh_state_t) noexcept
+          : sh_state_(sh_state_t) {
+        }
 
         template <class Tag, class... As>
         void set_result(Tag, As&&... as) noexcept {
+          using tuple_t = decayed_tuple<Tag, As...>;
+          using variant_t = typename SharedState::variant_t;
+
           if constexpr (stream_sender<Sender, env_t>) {
             cudaStream_t stream = sh_state_.op_state2_.get_stream();
-            using tuple_t = decayed_tuple<Tag, As...>;
-            sh_state_.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+            sh_state_.index_ = __v<__mapply<__mfind_i<tuple_t>, variant_t>>;
             copy_kernel<Tag, As&&...>
               <<<1, 1, 0, stream>>>(sh_state_.data_, static_cast<As&&>(as)...);
             sh_state_.stream_provider_
               .status_ = STDEXEC_LOG_CUDA_API(cudaEventRecord(sh_state_.event_, stream));
           } else {
-            using tuple_t = decayed_tuple<Tag, As...>;
-            sh_state_.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+            sh_state_.index_ = __v<__mapply<__mfind_i<tuple_t>, variant_t>>;
           }
         }
 
@@ -104,9 +104,9 @@ namespace nvexec::_strm {
           return sh_state_.make_env();
         }
 
-        explicit __t(SharedState& sh_state_t) noexcept
-          : sh_state_(sh_state_t) {
-        }
+       private:
+        using Sender = stdexec::__t<SenderId>;
+        SharedState& sh_state_;
       };
     };
 
@@ -270,7 +270,7 @@ namespace nvexec::_strm {
                 cudaStreamWaitEvent(op->get_stream(), op->shared_state_->event_, 0));
             }
 
-            visit(
+            nvexec::visit(
               [&](auto& tupl) noexcept -> void {
                 ::cuda::std::apply(
                   [&]<class Tag, class... As>(Tag, const As&... args) noexcept -> void {

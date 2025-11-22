@@ -326,6 +326,7 @@ namespace nvexec {
     };
 
     template <class... Ts>
+    // using _nullable_variant_t = stdexec::__variant_for<::cuda::std::tuple<set_noop>, Ts...>;
     using _nullable_variant_t = variant_t<::cuda::std::tuple<set_noop>, Ts...>;
 
     template <class... Ts>
@@ -506,7 +507,7 @@ namespace nvexec {
         this->execute_ = [](task_base_t* t) noexcept {
           continuation_task_t& self = *static_cast<continuation_task_t*>(t);
 
-          visit(
+          nvexec::visit(
             [&self](auto& tpl) noexcept {
               ::cuda::std::apply(
                 [&self]<class Tag, class... As>(Tag, As&... as) noexcept {

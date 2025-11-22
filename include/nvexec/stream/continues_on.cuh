@@ -117,9 +117,9 @@ namespace nvexec::_strm {
 
             operation_state_.defer_temp_storage_destruction(storage);
 
-            unsigned int index = storage_t::template index_of<tuple_t>::value;
+            unsigned int index = __v<__mapply<__mfind_i<tuple_t>, storage_t>>;
 
-            visit(
+            nvexec::visit(
               [&](auto& tpl) noexcept {
                 ::cuda::std::apply(
                   [&]<class Tag2, class... Bs>(Tag2, Bs&... tas) noexcept {

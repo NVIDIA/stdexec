@@ -823,14 +823,18 @@ namespace stdexec {
 
   template <class _Ty, class...>
   using __mfront_ = _Ty;
+
   template <class... _As>
   using __mfront = __meval<__mfront_, _As...>;
+
   template <class... _As>
     requires(sizeof...(_As) == 1)
   using __msingle = __mfront<_As...>;
+
   template <class _Default, class... _As>
     requires(sizeof...(_As) <= 1)
   using __msingle_or_ = __mfront<_As..., _Default>;
+
   template <class _Default>
   using __msingle_or = __mbind_front_q<__msingle_or_, _Default>;
 
@@ -953,6 +957,35 @@ namespace stdexec {
   struct __mzip_with2 {
     template <class _Cp, class _Dp>
     using __f = __t<__mzip_with2_<_Fn, _Continuation, _Cp, _Dp>>;
+  };
+
+  template <bool>
+  struct __mfind_ {
+    template <class _Needle, class _Continuation, class _Head, class... _Tail>
+    using __f = __minvoke<
+      __if_c<
+        __same_as<_Needle, _Head>,
+        __mbind_front<_Continuation, _Head>,
+        __mbind_front<__mfind_<(sizeof...(_Tail) != 0)>, _Needle, _Continuation>>,
+      _Tail...>;
+  };
+
+  template <>
+  struct __mfind_<false> {
+    template <class _Needle, class _Continuation>
+    using __f = __minvoke<_Continuation>;
+  };
+
+  template <class _Needle, class _Continuation = __q<__types>>
+  struct __mfind {
+    template <class... _Args>
+    using __f = __minvoke<__mfind_<(sizeof...(_Args) != 0)>, _Needle, _Continuation, _Args...>;
+  };
+
+  template <class _Needle>
+  struct __mfind_i {
+    template <class... _Args>
+    using __f = __msize_t<(sizeof...(_Args) - __v<__minvoke<__mfind<_Needle, __msize>, _Args...>>)>;
   };
 
   template <bool>

@@ -70,17 +70,18 @@ namespace nvexec::_strm {
 
         template <class Tag, class... As>
         void _set_result(Tag, As&&... as) noexcept {
+          using tuple_t = decayed_tuple<Tag, As...>;
+          using variant_t = typename SharedState::variant_t;
+
           if constexpr (stream_sender<Sender, env_t>) {
             cudaStream_t stream = shared_state_->stream_provider_.own_stream_.value();
-            using tuple_t = decayed_tuple<Tag, As...>;
-            shared_state_->index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+            shared_state_->index_ = __v<__mapply<__mfind_i<tuple_t>, variant_t>>;
             copy_kernel<Tag, As&&...>
               <<<1, 1, 0, stream>>>(shared_state_->data_, static_cast<As&&>(as)...);
             shared_state_->stream_provider_
               .status_ = STDEXEC_LOG_CUDA_API(cudaEventRecord(shared_state_->event_, stream));
           } else {
-            using tuple_t = decayed_tuple<Tag, As...>;
-            shared_state_->index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+            shared_state_->index_ = __v<__mapply<__mfind_i<tuple_t>, variant_t>>;
           }
         }
 
@@ -282,7 +283,7 @@ namespace nvexec::_strm {
                 cudaStreamWaitEvent(op->get_stream(), op->shared_state_->event_, 0));
             }
 
-            visit(
+            nvexec::visit(
               [&](auto& tupl) noexcept -> void {
                 ::cuda::std::apply(
                   [&]<class Tag, class... As>(Tag, As&... args) noexcept -> void {
