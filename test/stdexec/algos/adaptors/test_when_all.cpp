@@ -232,12 +232,14 @@ namespace {
       ex::when_all(ex::just(13), ex::just_error(std::exception_ptr{}), ex::just_stopped()));
   }
 
-  TEST_CASE("when_all has the sends_stopped == true", "[adaptors][when_all]") {
-    check_sends_stopped<true>(ex::when_all(ex::just(13)));
-    check_sends_stopped<true>(ex::when_all(ex::just_error(-1)));
+  TEST_CASE(
+    "when_all has sends_stopped == true if and only if at least one child sends stopped",
+    "[adaptors][when_all]") {
+    check_sends_stopped<false>(ex::when_all(ex::just(13)));
+    check_sends_stopped<false>(ex::when_all(ex::just_error(-1)));
     check_sends_stopped<true>(ex::when_all(ex::just_stopped()));
 
-    check_sends_stopped<true>(ex::when_all(ex::just(3), ex::just(0.14)));
+    check_sends_stopped<false>(ex::when_all(ex::just(3), ex::just(0.14)));
     check_sends_stopped<true>(ex::when_all(ex::just(3), ex::just_error(-1), ex::just_stopped()));
   }
 
@@ -388,5 +390,20 @@ namespace {
         ex::starts_on(scheduler(), ex::when_all_with_variant(ex::just(3), ex::just(0.1415)));
       wait_for_value(std::move(snd), std::string{"hello world"});
     }
+  }
+
+  TEST_CASE("when_all defers stop handling to its children", "[adaptors][when_all]") {
+    ex::inplace_stop_source source;
+    source.request_stop();
+    auto snd = ex::when_all(ex::just(), ex::just());
+    static_assert(set_equivalent<
+                  ex::completion_signatures_of_t<decltype(snd), ex::env<>>,
+                  ex::completion_signatures<ex::set_value_t()>>);
+    auto env = ex::prop(ex::get_stop_token, source.get_token());
+    static_assert(set_equivalent<
+                  ex::completion_signatures_of_t<decltype(snd), decltype(env)>,
+                  ex::completion_signatures<ex::set_value_t()>>);
+    auto op = ex::connect(snd, expect_void_receiver{});
+    ex::start(op);
   }
 } // namespace

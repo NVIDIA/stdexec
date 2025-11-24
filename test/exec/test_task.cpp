@@ -265,6 +265,7 @@ namespace {
           []() -> exec::task<void> {
             auto token = co_await stdexec::get_stop_token();
             assert(!token.stop_possible());
+            (void)token;
           }(),
           stdexec::prop{stdexec::get_stop_token, stdexec::never_stop_token{}});
     }());

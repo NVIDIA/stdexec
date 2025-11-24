@@ -28,14 +28,6 @@ namespace exec {
   namespace __when_any {
     using namespace stdexec;
 
-    struct __on_stop_requested {
-      inplace_stop_source& __stop_source_;
-
-      void operator()() noexcept {
-        __stop_source_.request_stop();
-      }
-    };
-
     template <class _Env>
     using __env_t = __join_env_t<prop<get_stop_token_t, inplace_stop_token>, _Env>;
 
@@ -101,7 +93,7 @@ namespace exec {
       }
 
       using __on_stop =
-        stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>&>, __on_stop_requested>;
+        stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>&>, __forward_stop_request>;
 
       inplace_stop_source __stop_source_{};
       std::optional<__on_stop> __on_stop_{};
@@ -216,7 +208,7 @@ namespace exec {
 
         void start() & noexcept {
           this->__on_stop_.emplace(
-            get_stop_token(get_env(this->__rcvr_)), __on_stop_requested{this->__stop_source_});
+            get_stop_token(get_env(this->__rcvr_)), __forward_stop_request{this->__stop_source_});
           if (this->__stop_source_.stop_requested()) {
             stdexec::set_stopped(static_cast<_Receiver&&>(this->__rcvr_));
           } else {

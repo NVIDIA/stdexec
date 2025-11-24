@@ -235,7 +235,7 @@ namespace stdexec {
     template <class... _Domains>
     using __indeterminate_domain_t = __if_c<
       sizeof...(_Domains) == 1,
-      decltype((_Domains(), ...)),
+      decltype((__(), ..., _Domains())),
       indeterminate_domain<_Domains...>
     >;
 

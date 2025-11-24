@@ -93,10 +93,11 @@ namespace stdexec {
         }
       }
 
+     public:
+
       template <std::size_t _Ny>
       using __at = __m_at_c<_Ny, _Ts...>;
 
-     public:
       // immovable:
       __variant(__variant &&) = delete;
 

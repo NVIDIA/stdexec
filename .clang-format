@@ -56,7 +56,7 @@ BraceWrapping:
   SplitEmptyNamespace: false
 BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeConceptDeclarations: true
-# BreakBeforeTemplateCloser: true
+BreakBeforeTemplateCloser: true
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: BeforeComma
 BreakInheritanceList: BeforeComma

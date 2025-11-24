@@ -84,7 +84,7 @@ namespace exec::bwos {
 
    private:
     template <class Sp>
-    using allocator_of_t = typename std::allocator_traits<Allocator>::template rebind_alloc<Sp>;
+    using allocator_of_t = std::allocator_traits<Allocator>::template rebind_alloc<Sp>;
 
     struct block_type {
       explicit block_type(std::size_t block_size, Allocator allocator = Allocator());
@@ -330,8 +330,8 @@ namespace exec::bwos {
   }
 
   template <class Tp, class Allocator>
-  auto lifo_queue<Tp, Allocator>::block_type::operator=(const block_type &other) ->
-    typename lifo_queue<Tp, Allocator>::block_type & {
+  auto lifo_queue<Tp, Allocator>::block_type::operator=(const block_type &other)
+    -> lifo_queue<Tp, Allocator>::block_type & {
     head_.store(
       other.head_.load(stdexec::__std::memory_order_relaxed), stdexec::__std::memory_order_relaxed);
     tail_.store(
@@ -362,8 +362,8 @@ namespace exec::bwos {
   }
 
   template <class Tp, class Allocator>
-  auto lifo_queue<Tp, Allocator>::block_type::operator=(block_type &&other) noexcept ->
-    typename lifo_queue<Tp, Allocator>::block_type & {
+  auto lifo_queue<Tp, Allocator>::block_type::operator=(block_type &&other) noexcept
+    -> lifo_queue<Tp, Allocator>::block_type & {
     head_.store(
       other.head_.load(stdexec::__std::memory_order_relaxed), stdexec::__std::memory_order_relaxed);
     tail_.store(

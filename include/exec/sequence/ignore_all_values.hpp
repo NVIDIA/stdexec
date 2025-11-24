@@ -276,8 +276,6 @@ namespace exec {
       using __completion_sigs = __sequence_completion_signatures_of_t<_Child, _Env>;
 
       template <class _Child>
-        requires receiver_of<_Receiver, __completion_sigs<_Child>>
-              && sequence_sender_to<_Child, __receiver_t<_Child>>
       auto operator()(__ignore, __ignore, _Child&& __child)
         noexcept(__nothrow_constructible_from<__operation_t<_Child>, _Child, _Receiver>)
           -> __operation_t<_Child> {
@@ -317,13 +315,7 @@ namespace exec {
       static constexpr auto connect =
         []<class _Sender, receiver _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(
           __nothrow_callable<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>)
-        -> __call_result_t<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>>
-        requires receiver_of<_Receiver, __completion_sigs<__child_of<_Sender>, env_of_t<_Receiver>>>
-              && sequence_sender_to<
-                   __child_of<_Sender>,
-                   __receiver_t<__child_of<_Sender>, _Receiver>
-              >
-      {
+        -> __call_result_t<__sexpr_apply_t, _Sender, __connect_fn<_Receiver>> {
         static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
         return __sexpr_apply(static_cast<_Sender&&>(__sndr), __connect_fn<_Receiver>{__rcvr});
       };

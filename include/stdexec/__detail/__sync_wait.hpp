@@ -313,7 +313,7 @@ namespace stdexec {
           _Sender
         >;
         static_assert(__is_instance_of<__result_t, std::optional>);
-        using __variant_t = typename __result_t::value_type;
+        using __variant_t = __result_t::value_type;
         static_assert(__is_instance_of<__variant_t, std::variant>);
 
         using _Domain = __detail::__completion_domain_of_t<set_value_t, _Sender, __env>;

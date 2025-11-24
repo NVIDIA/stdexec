@@ -79,7 +79,7 @@ namespace stdexec {
   // Used to report a meaningful error message when the sender_in<Sndr, Env>
   // concept check fails.
   template <class _Sender, class... _Env>
-  constexpr void __diagnose_sender_concept_failure() noexcept {
+  static constexpr auto __diagnose_sender_concept_failure() noexcept {
     if constexpr (!enable_sender<__decay_t<_Sender>>) {
       static_assert(enable_sender<_Sender>, STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE);
       // } else if constexpr (!__detail::__consistent_completion_domains<_Sender>) {
@@ -93,7 +93,7 @@ namespace stdexec {
         move_constructible<__decay_t<_Sender>>, "The sender type is not move-constructible.");
     } else if constexpr (!constructible_from<__decay_t<_Sender>, _Sender>) {
       static_assert(
-        constructible_from<__decay_t<_Sender>, _Sender>,
+        __decay_copyable<_Sender>,
         "The sender cannot be decay-copied. Did you forget a std::move?");
     } else {
       using _Completions = __completion_signatures_of_t<_Sender, _Env...>;

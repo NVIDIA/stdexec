@@ -156,7 +156,7 @@ namespace {
       };
 
       using callback_t =
-        typename ex::stop_token_of_t<ex::env_of_t<Receiver>&>::template callback_type<on_stopped>;
+        ex::stop_token_of_t<ex::env_of_t<Receiver>&>::template callback_type<on_stopped>;
       std::optional<callback_t> on_stop_{};
 
       void start() & noexcept {

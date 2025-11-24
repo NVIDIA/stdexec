@@ -91,7 +91,7 @@ function(def_cpu_example example)
     )
     set_source_files_properties(${source} PROPERTIES LANGUAGE ${_lang_cxx})
     if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        target_link_options(${target} PRIVATE -lc++abi -ltbb)
+        target_link_options(${target} PRIVATE -lc++abi)
     endif()
 endfunction()
 
