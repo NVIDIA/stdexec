@@ -34,7 +34,9 @@ namespace stdexec {
     template <class... _Ts>
       requires __callable<_Fun1, _Ts...> && __callable<_Fun0, __call_result_t<_Fun1, _Ts...>>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    auto operator()(_Ts&&... __ts) && -> __call_result_t<_Fun0, __call_result_t<_Fun1, _Ts...>> {
+    auto operator()(_Ts&&... __ts) && noexcept(
+      __callable<_Fun1, _Ts...> && __callable<_Fun0, __call_result_t<_Fun1, _Ts...>>)
+      -> __call_result_t<_Fun0, __call_result_t<_Fun1, _Ts...>> {
       return static_cast<_Fun0&&>(__t0_)(static_cast<_Fun1&&>(__t1_)(static_cast<_Ts&&>(__ts)...));
     }
 
@@ -42,8 +44,10 @@ namespace stdexec {
       requires __callable<const _Fun1&, _Ts...>
             && __callable<const _Fun0&, __call_result_t<const _Fun1&, _Ts...>>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    auto
-      operator()(_Ts&&... __ts) const & -> __call_result_t<_Fun0, __call_result_t<_Fun1, _Ts...>> {
+    auto operator()(_Ts&&... __ts) const & noexcept(
+      __callable<const _Fun1&, _Ts...>
+      && __callable<const _Fun0&, __call_result_t<const _Fun1&, _Ts...>>)
+      -> __call_result_t<_Fun0, __call_result_t<_Fun1, _Ts...>> {
       return __t0_(__t1_(static_cast<_Ts&&>(__ts)...));
     }
   };
@@ -51,7 +55,8 @@ namespace stdexec {
   inline constexpr struct __compose_t {
     template <class _Fun0, class _Fun1>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    auto operator()(_Fun0 __fun0, _Fun1 __fun1) const -> __composed<_Fun0, _Fun1> {
+    auto operator()(_Fun0 __fun0, _Fun1 __fun1) const
+      noexcept(__nothrow_move_constructible<_Fun0, _Fun1>) -> __composed<_Fun0, _Fun1> {
       return {static_cast<_Fun0&&>(__fun0), static_cast<_Fun1&&>(__fun1)};
     }
   } __compose{};

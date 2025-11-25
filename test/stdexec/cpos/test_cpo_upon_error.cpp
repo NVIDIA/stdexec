@@ -24,20 +24,6 @@ namespace {
     const auto f = [](std::exception_ptr) {
     };
 
-    SECTION("by sender domain") {
-      cpo_test_sender_t<ex::upon_error_t> snd{};
-
-      {
-        constexpr scope_t scope = decltype(ex::connect(snd | ex::upon_error(f), empty_recv::recv0{}))::sender_t::scope;
-        STATIC_REQUIRE(scope == scope_t::free_standing);
-      }
-
-      {
-        constexpr scope_t scope = decltype(ex::connect(ex::upon_error(snd, f), empty_recv::recv0{}))::sender_t::scope;
-        STATIC_REQUIRE(scope == scope_t::free_standing);
-      }
-    }
-
     SECTION("by completion scheduler domain") {
       cpo_test_scheduler_t<ex::upon_error_t, ex::set_error_t>::sender_t snd{};
 

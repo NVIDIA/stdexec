@@ -17,6 +17,7 @@
 #pragma once
 
 #include "__detail/__atomic.hpp"
+#include "__detail/__query.hpp"
 #include "__detail/__stop_token.hpp" // IWYU pragma: export
 
 #include <version>
@@ -357,6 +358,33 @@ namespace stdexec {
 
     inplace_stop_source& __stop_source_;
   };
+
+  namespace __queries {
+    using __get_stop_token_t = __query<get_stop_token_t, never_stop_token{}, __q1<__decay_t>>;
+
+    struct get_stop_token_t : __get_stop_token_t {
+      using __get_stop_token_t::operator();
+
+      template <class _Query = get_stop_token_t>
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+      constexpr auto operator()() const noexcept; // defined in __read_env.hpp
+
+      template <class _Env>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr void __validate() noexcept {
+        static_assert(__nothrow_callable<get_stop_token_t, const _Env&>);
+        static_assert(stoppable_token<__call_result_t<get_stop_token_t, const _Env&>>);
+      }
+
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+      static consteval auto query(forwarding_query_t) noexcept -> bool {
+        return true;
+      }
+    };
+  } // namespace __queries
+
+  using __queries::get_stop_token_t;
+  inline constexpr get_stop_token_t get_stop_token{};
 
   using in_place_stop_token
     [[deprecated("in_place_stop_token has been renamed inplace_stop_token")]] = inplace_stop_token;

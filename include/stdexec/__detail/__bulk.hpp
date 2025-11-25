@@ -21,12 +21,10 @@
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__diagnostics.hpp"
-#include "__domain.hpp"
 #include "__meta.hpp"
 #include "__senders_core.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__transform_completion_signatures.hpp"
-#include "__transform_sender.hpp"
 #include "__senders.hpp" // IWYU pragma: keep for __well_formed_sender
 
 STDEXEC_PRAGMA_PUSH()
@@ -247,7 +245,7 @@ namespace stdexec {
       }
 
       template <class _Sender, class _Env>
-      static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
+      static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env& __env) {
         return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn(__env));
       }
     };

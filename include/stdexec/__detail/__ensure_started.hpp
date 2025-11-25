@@ -43,11 +43,8 @@ namespace stdexec {
         if constexpr (sender_expr_for<_Sender, __ensure_started_t>) {
           return static_cast<_Sender&&>(__sndr);
         } else {
-          using __domain_t = __detail::__completion_domain_of_t<set_value_t, _Sender, _Env>;
           return stdexec::transform_sender(
-            __domain_t{},
-            __make_sexpr<ensure_started_t>(__env, static_cast<_Sender&&>(__sndr)),
-            __env);
+            __make_sexpr<ensure_started_t>(__env, static_cast<_Sender&&>(__sndr)), __env);
         }
       }
 
@@ -60,13 +57,15 @@ namespace stdexec {
       using __receiver_t = __t<__meval<__receiver, __cvref_id<_CvrefSender>, __id<_Env>>>;
 
       template <class _Sender, class _Env>
-      static auto transform_sender(_Sender&& __sndr, const _Env&) {
+      static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env&) {
         using _Receiver = __receiver_t<__child_of<_Sender>, __decay_t<__data_of<_Sender>>>;
         static_assert(sender_to<__child_of<_Sender>, _Receiver>);
 
         return __sexpr_apply(
           static_cast<_Sender&&>(__sndr),
           [&]<class _Env2, class _Child>(__ignore, _Env2&& __env, _Child&& __child) {
+            // TODO(ericniebler): should we join the env passed to ensure_started with the
+            // env of the receiver?
             // The shared state starts life with a ref-count of one.
             auto* __sh_state =
               new __shared_state{static_cast<_Child&&>(__child), static_cast<_Env2&&>(__env)};
@@ -89,8 +88,9 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<ensure_started_t> : __sexpr_defaults {
-    static constexpr auto get_completion_signatures = []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
-      -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, _Env...>> {
+    static constexpr auto get_completion_signatures =
+      []<class _Sender, class... _Env>(_Sender&&, const _Env&...) noexcept
+      -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env...>, _Env...> {
     };
   };
 } // namespace stdexec

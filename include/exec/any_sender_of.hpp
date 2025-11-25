@@ -1237,7 +1237,7 @@ namespace exec {
         : __sender_(static_cast<_Sender&&>(__sender)) {
       }
 
-      template <stdexec::convertible_to<const any_sender&> _Self, class... _Env>
+      template <stdexec::__decays_to_derived_from<any_sender> _Self, class... _Env>
         requires(__any::__satisfies_receiver_query<decltype(_ReceiverQueries), _Env...> && ...)
       static auto get_completion_signatures(_Self&&, _Env&&...) noexcept
         -> __sender_base::completion_signatures {

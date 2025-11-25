@@ -17,20 +17,26 @@
 
 #pragma once
 
-#include "./timed_scheduler.hpp"
-#include "./__detail/intrusive_heap.hpp"
+#include "timed_scheduler.hpp" // IWYU pragma: keep for schedule_at and schedule_after
+#include "__detail/intrusive_heap.hpp"
 
+#include "../stdexec/__detail/__atomic.hpp"
 #include "../stdexec/__detail/__intrusive_mpsc_queue.hpp"
 #include "../stdexec/__detail/__spin_loop_pause.hpp"
+#include "../stdexec/__detail/__schedulers.hpp"
+#include "../stdexec/__detail/__receivers.hpp"
 
+#include <chrono>
 #include <condition_variable>
+#include <optional>
+#include <limits>
+#include <mutex>
+#include <utility>
 
 namespace exec {
   class timed_thread_scheduler;
 
   namespace _time_thrd_sched {
-    using namespace stdexec::tags;
-
     struct timed_thread_operation_base {
       enum class command_type {
         schedule,
@@ -322,6 +328,16 @@ namespace exec {
       using completion_signatures =
         stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
 
+      struct attrs {
+        [[nodiscard]]
+        auto query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept
+          -> timed_thread_scheduler {
+          return timed_thread_scheduler{*context_};
+        }
+
+        timed_thread_context* context_;
+      };
+
       schedule_at_sender(
         timed_thread_context& context,
         std::chrono::steady_clock::time_point time_point) noexcept
@@ -330,10 +346,8 @@ namespace exec {
       }
 
       [[nodiscard]]
-      auto get_env() const noexcept {
-        return stdexec::prop{
-          stdexec::get_completion_scheduler<stdexec::set_value_t>,
-          timed_thread_scheduler{*context_}};
+      auto get_env() const noexcept -> attrs {
+        return attrs{context_};
       }
 
       template <class Receiver>

@@ -21,7 +21,6 @@
 #include "../../stdexec/execution.hpp"
 
 #include "common.cuh"
-#include "schedule_from.cuh"
 #include "../detail/variant.cuh"
 
 #include <cuda/std/tuple>

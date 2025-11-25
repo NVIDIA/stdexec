@@ -26,7 +26,6 @@ namespace ex = stdexec;
 namespace {
 
   enum class scope_t {
-    free_standing,
     scheduler
   };
 
@@ -58,68 +57,9 @@ namespace {
     }
   };
 
-  struct cpo_sender_domain {
-    template <class Sender>
-    static auto transform_sender(Sender &&) noexcept {
-      return cpo_t<scope_t::free_standing>{};
-    }
-
-    template <class Sender, class Env>
-    static auto transform_sender(Sender &&, const Env &) noexcept {
-      return cpo_t<scope_t::free_standing>{};
-    }
-  };
-
-  struct cpo_sender_attrs_t {
-    template <class Tag>
-    [[nodiscard]]
-    auto query(ex::get_completion_domain_t<Tag>) const noexcept -> cpo_sender_domain {
-      return {};
-    }
-  };
-
-  template <class CPO>
-  struct cpo_test_sender_t {
-    using sender_concept = stdexec::sender_t;
-    using __id = cpo_test_sender_t;
-    using __t = cpo_test_sender_t;
-    using completion_signatures = ex::completion_signatures<
-      ex::set_value_t(),
-      ex::set_error_t(std::exception_ptr),
-      ex::set_stopped_t()>;
-
-    auto get_env() const noexcept {
-      return cpo_sender_attrs_t{};
-    }
-
-    template <class Receiver>
-    struct operation_state_t {
-      using operation_state_concept = ex::operation_state_t;
-      using sender_t = cpo_test_sender_t<CPO>;
-      using receiver_t = Receiver;
-
-      sender_t sender_;
-      receiver_t receiver_;
-
-      void start() & noexcept {
-        ex::set_value(std::move(receiver_));
-      }
-    };
-
-    template <ex::receiver Receiver>
-    auto connect(Receiver r) const noexcept -> operation_state_t<Receiver> {
-      return operation_state_t<Receiver>{*this, static_cast<Receiver &&>(r)};
-    }
-  };
-
   struct cpo_scheduler_domain {
-    template <class Sender>
-    static auto transform_sender(Sender &&) noexcept {
-      return cpo_t<scope_t::scheduler>{};
-    }
-
     template <class Sender, class Env>
-    static auto transform_sender(Sender &&, const Env &) noexcept {
+    static auto transform_sender(stdexec::set_value_t, Sender &&, const Env &) noexcept {
       return cpo_t<scope_t::scheduler>{};
     }
   };

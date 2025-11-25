@@ -30,7 +30,7 @@
 #include "__submit.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__variant.hpp"
-#include "stdexec/__detail/__utility.hpp"
+#include "__utility.hpp"
 
 #include <exception>
 

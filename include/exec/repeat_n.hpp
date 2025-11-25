@@ -234,7 +234,7 @@ namespace exec {
       }
 
       template <class _Sender>
-      auto transform_sender(_Sender &&__sndr, __ignore) {
+      auto transform_sender(set_value_t, _Sender &&__sndr, __ignore) {
         return __sexpr_apply(
           static_cast<_Sender &&>(__sndr),
           []<class _Child>(__ignore, std::size_t __count, _Child __child) {
@@ -254,8 +254,9 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<exec::repeat_n_t> : __sexpr_defaults {
-    static constexpr auto get_completion_signatures = []<class _Sender>(_Sender &&) noexcept
-      -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
+    static constexpr auto get_completion_signatures =
+      []<class _Sender, class... _Env>(_Sender &&, const _Env &...) noexcept
+      -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env...>, _Env...> {
     };
   };
 } // namespace stdexec

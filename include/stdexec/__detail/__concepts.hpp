@@ -247,11 +247,11 @@ namespace stdexec {
   concept __nothrow_constructible_from = constructible_from<_Ty, _As...>
                                       && STDEXEC_IS_NOTHROW_CONSTRUCTIBLE(_Ty, _As...);
 
-  template <class _Ty>
-  concept __nothrow_move_constructible = __nothrow_constructible_from<_Ty, _Ty>;
+  template <class... _Ts>
+  concept __nothrow_move_constructible = (__nothrow_constructible_from<_Ts, _Ts> && ...);
 
-  template <class _Ty>
-  concept __nothrow_copy_constructible = __nothrow_constructible_from<_Ty, const _Ty&>;
+  template <class... _Ts>
+  concept __nothrow_copy_constructible = (__nothrow_constructible_from<_Ts, const _Ts&> && ...);
 
   template <class... _Ts>
   concept __decay_copyable = (constructible_from<__decay_t<_Ts>, _Ts> && ...);

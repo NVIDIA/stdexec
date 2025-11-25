@@ -22,10 +22,10 @@
 #  include <linux/io_uring.h>
 
 #  include "../../stdexec/execution.hpp"
+#  include "../../stdexec/__detail/__atomic.hpp"
 #  include "../timed_scheduler.hpp"
 
 #  include "../__detail/__atomic_intrusive_queue.hpp"
-#  include "../__detail/__atomic_ref.hpp"
 #  include "../__detail/__bit_cast.hpp"
 
 #  include "./safe_file_descriptor.hpp"
@@ -185,8 +185,8 @@ namespace exec {
 
     // This class implements the io_uring submission queue.
     class __submission_queue {
-      __atomic_ref<__u32> __head_;
-      __atomic_ref<__u32> __tail_;
+      stdexec::__std::atomic_ref<__u32> __head_;
+      stdexec::__std::atomic_ref<__u32> __tail_;
       __u32* __array_;
       ::io_uring_sqe* __entries_;
       __u32 __mask_;
@@ -257,8 +257,8 @@ namespace exec {
     };
 
     class __completion_queue {
-      __atomic_ref<__u32> __head_;
-      __atomic_ref<__u32> __tail_;
+      stdexec::__std::atomic_ref<__u32> __head_;
+      stdexec::__std::atomic_ref<__u32> __tail_;
       ::io_uring_cqe* __entries_;
       __u32 __mask_;
      public:

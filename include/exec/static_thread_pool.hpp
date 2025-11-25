@@ -294,53 +294,35 @@ namespace exec {
 
      public:
       struct domain : stdexec::default_domain {
-        // For eager customization
-        template <sender_expr_for<bulk_chunked_t> Sender>
-        auto transform_sender(Sender&& sndr) const noexcept {
-          if constexpr (__completes_on<Sender, static_thread_pool_::scheduler>) {
-            auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
-            return __sexpr_apply(static_cast<Sender&&>(sndr), transform_bulk{*sched.pool_});
-          } else {
-            static_assert(
-              __completes_on<Sender, static_thread_pool_::scheduler>,
-              "No static_thread_pool instance can be found in the sender's attributes "
-              "on which to schedule bulk work.");
-            return not_a_sender<__name_of<Sender>>();
-          }
-        }
-
         // transform the generic bulk_chunked sender into a parallel thread-pool bulk sender
         template <sender_expr_for<bulk_chunked_t> Sender, class Env>
-        auto transform_sender(Sender&& sndr, const Env& env) const noexcept {
-          if constexpr (__starts_on<Sender, static_thread_pool_::scheduler, Env>) {
-            auto sched = stdexec::get_scheduler(env);
-            return __sexpr_apply(static_cast<Sender&&>(sndr), transform_bulk{*sched.pool_});
-          }
-          else if constexpr (__callable<get_completion_scheduler_t<set_value_t>, env_of_t<Sender>>) {
-            auto sched = stdexec::get_completion_scheduler<set_value_t>(get_env(sndr));
+        auto transform_sender(stdexec::set_value_t, Sender&& sndr, const Env& env) const noexcept {
+          if constexpr (__completes_on<Sender, static_thread_pool_::scheduler, Env>) {
+            auto sched = stdexec::get_completion_scheduler<set_value_t>(get_env(sndr), env);
             static_assert(std::is_same_v<decltype(sched), static_thread_pool_::scheduler>);
             return __sexpr_apply(static_cast<Sender&&>(sndr), transform_bulk{*sched.pool_});
           } else {
             static_assert(
-              __starts_on<Sender, static_thread_pool_::scheduler, Env>,
-              "No static_thread_pool instance can be found in the receiver's "
-              "environment on which to schedule bulk work.");
+              __completes_on<Sender, static_thread_pool_::scheduler, Env>,
+              "Unable to dispatch bulk work to the static_thread_pool. The predecessor sender "
+              "is not able to provide a static_thread_pool scheduler.");
             return not_a_sender<__name_of<Sender>>();
           }
         }
 
 #if STDEXEC_HAS_STD_RANGES()
-        template <sender_expr_for<exec::iterate_t> Sender>
-        auto transform_sender(Sender&& sndr) const noexcept {
-          auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
-          return __sexpr_apply(static_cast<Sender&&>(sndr), transform_iterate{*sched.pool_});
-        }
-
         template <sender_expr_for<exec::iterate_t> Sender, class Env>
-          requires __callable<get_scheduler_t, Env>
-        auto transform_sender(Sender&& sndr, const Env& env) const noexcept {
-          auto sched = stdexec::get_scheduler(env);
-          return __sexpr_apply(static_cast<Sender&&>(sndr), transform_iterate{*sched.pool_});
+        auto transform_sender(stdexec::set_value_t, Sender&& sndr, const Env& env) const noexcept {
+          if constexpr (__completes_on<Sender, static_thread_pool_::scheduler, Env>) {
+            auto sched = stdexec::get_scheduler(env);
+            return __sexpr_apply(static_cast<Sender&&>(sndr), transform_iterate{*sched.pool_});
+          } else {
+            static_assert(
+              __completes_on<Sender, static_thread_pool_::scheduler, Env>,
+              "Unable to dispatch the iterate algorithm to the static_thread_pool. The predecessor "
+              "sender is not able to provide a static_thread_pool scheduler.");
+            return not_a_sender<__name_of<Sender>>();
+          }
         }
 #endif
       };

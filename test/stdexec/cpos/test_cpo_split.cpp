@@ -21,17 +21,20 @@
 namespace {
 
   TEST_CASE("split is customizable", "[cpo][cpo_split]") {
-    SECTION("by free standing sender") {
-      cpo_test_sender_t<ex::split_t> snd{};
+    SECTION("by completion scheduler domain") {
+      cpo_test_scheduler_t<ex::split_t>::sender_t snd{};
 
       {
-        constexpr scope_t scope = decltype(ex::connect(ex::split(snd), empty_recv::recv0{}))::sender_t::scope;
-        STATIC_REQUIRE(scope == scope_t::free_standing);
+        constexpr scope_t scope =
+          decltype(ex::connect(ex::split(snd), empty_recv::recv0_ec{}))::sender_t::scope;
+        STATIC_REQUIRE(scope == scope_t::scheduler);
       }
 
       {
-        constexpr scope_t scope = decltype(ex::connect(snd | ex::split(), empty_recv::recv0{}))::sender_t::scope;
-        STATIC_REQUIRE(scope == scope_t::free_standing);
+        void(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd)));
+        constexpr scope_t scope =
+          decltype(ex::connect(snd | ex::split(), empty_recv::recv0_ec{}))::sender_t::scope;
+        STATIC_REQUIRE(scope == scope_t::scheduler);
       }
     }
   }

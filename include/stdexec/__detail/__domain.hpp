@@ -19,7 +19,7 @@
 
 #include "__config.hpp"
 #include "__concepts.hpp"
-#include "__env.hpp"
+#include "__completion_behavior.hpp"
 #include "__sender_introspection.hpp"
 #include "__senders_core.hpp"
 #include "__transform_completion_signatures.hpp"
@@ -43,25 +43,22 @@ namespace stdexec {
   };
 
   namespace __detail {
-    template <class _DomainOrTag, class _Sender, class... _Env>
+    template <class _DomainOrTag, class _OpTag, class _Sender, class... _Env>
     concept __has_transform_sender =
       requires(_DomainOrTag __tag, _Sender&& __sender, const _Env&... __env) {
-        __tag.transform_sender(static_cast<_Sender&&>(__sender), __env...);
+        __tag.transform_sender(_OpTag(), static_cast<_Sender&&>(__sender), __env...);
       };
 
-    template <class _DomainOrTag, class _Sender, class... _Env>
+    template <class _DomainOrTag, class _OpTag, class _Sender, class... _Env>
     concept __has_nothrow_transform_sender =
       requires(_DomainOrTag __tag, _Sender&& __sender, const _Env&... __env) {
-        { __tag.transform_sender(static_cast<_Sender&&>(__sender), __env...) } noexcept;
+        { __tag.transform_sender(_OpTag(), static_cast<_Sender&&>(__sender), __env...) } noexcept;
       };
 
-    template <class _Sender, class... _Env>
-    concept __has_default_transform_sender =
-      sender_expr<_Sender> && __has_transform_sender<tag_of_t<_Sender>, _Sender, _Env...>;
-
-    template <class _DomainOrTag, class _Sender, class... _Env>
+    template <class _DomainOrTag, class _OpTag, class _Sender, class... _Env>
     using __transform_sender_result_t =
-      decltype(_DomainOrTag{}.transform_sender(__declval<_Sender>(), __declval<const _Env&>()...));
+      decltype(_DomainOrTag{}
+                 .transform_sender(_OpTag(), __declval<_Sender>(), __declval<const _Env&>()...));
 
     template <class _DomainOrTag, class... _Args>
     concept __has_apply_sender = requires(_DomainOrTag __tag, _Args&&... __args) {
@@ -83,63 +80,33 @@ namespace stdexec {
       get_domain_t,
       __completion_scheduler_for<_Attrs, _Tag>>;
 
-    // Check the value, error, and stopped channels for completion schedulers.
-    // Of the completion schedulers that are known, they must all have compatible
-    // domains. This computes that domain, or else returns __not_a_domain if there
-    // are no completion schedulers or if they don't specify a domain.
-    template <class... _Env>
-    struct __TODO_broken_completion_domain_or_none_
-      : __mdefer_<
-          __mtransform<
-            __mbind_front_q<__completion_domain_for, _Env...>,
-            __mremove<__not_a_domain, __munique<__msingle_or<__not_a_domain>>>>,
-          set_value_t,
-          set_error_t,
-          set_stopped_t> { };
-
-    template <class _Sender, class... _Env>
-    using __TODO_broken_completion_domain_or_none =
-      __t<__TODO_broken_completion_domain_or_none_<env_of_t<_Sender>, _Env...>>;
-
-    template <class _Sender>
-    concept __consistent_completion_domains =
-      __mvalid<__TODO_broken_completion_domain_or_none, _Sender>;
-
-    template <class _Sender>
-    concept __has_completion_domain =
-      (!same_as<__TODO_broken_completion_domain_or_none<_Sender>, __not_a_domain>);
-
-    template <__has_completion_domain _Sender>
-    using __completion_domain_of = __TODO_broken_completion_domain_or_none<_Sender>;
-
-    // TODO(ericniebler): audit all uses of __completion_domain_of_t.
     template <class _Tag, class _Sender, class... _Env>
     using __completion_domain_of_t =
       __call_result_t<get_completion_domain_t<_Tag>, env_of_t<_Sender>, const _Env&...>;
 
     template <class _Tag, class _Sender, class... _Env>
-    using __TODO_broken_completion_domain_or_none_t = __meval_or<
-      __call_result_t,
-      __not_a_domain,
+    using __try_completion_domain_of_t = __call_result_or_t<
       get_completion_domain_t<_Tag>,
+      __not_a_domain,
       env_of_t<_Sender>,
-      const _Env&...>;
+      const _Env&...
+    >;
   } // namespace __detail
 
   struct default_domain {
-    template <class _Sender, class... _Env>
-      requires __detail::__has_default_transform_sender<_Sender, _Env...>
+    template <class _OpTag, class _Sender, class _Env>
+      requires __detail::__has_transform_sender<tag_of_t<_Sender>, _OpTag, _Sender, _Env>
     STDEXEC_ATTRIBUTE(always_inline)
-    auto transform_sender(_Sender&& __sndr, _Env&&... __env) const
-      noexcept(__detail::__has_nothrow_transform_sender<tag_of_t<_Sender>, _Sender, _Env...>)
-        -> __detail::__transform_sender_result_t<tag_of_t<_Sender>, _Sender, _Env...> {
-      return tag_of_t<_Sender>().transform_sender(static_cast<_Sender&&>(__sndr), __env...);
+    auto transform_sender(_OpTag, _Sender&& __sndr, const _Env& __env) const
+      noexcept(__detail::__has_nothrow_transform_sender<tag_of_t<_Sender>, _OpTag, _Sender, _Env>)
+        -> __detail::__transform_sender_result_t<tag_of_t<_Sender>, _OpTag, _Sender, _Env> {
+      return tag_of_t<_Sender>().transform_sender(_OpTag(), static_cast<_Sender&&>(__sndr), __env);
     }
 
-    template <class _Sender, class... _Env>
+    template <class _OpTag, class _Sender, class _Env>
     STDEXEC_ATTRIBUTE(always_inline)
-    auto transform_sender(_Sender&& __sndr, _Env&&...) const
-      noexcept(__nothrow_constructible_from<_Sender, _Sender>) -> _Sender {
+    auto transform_sender(_OpTag, _Sender&& __sndr, const _Env&) const
+      noexcept(__nothrow_move_constructible<_Sender>) -> _Sender {
       return static_cast<_Sender>(static_cast<_Sender&&>(__sndr));
     }
 
@@ -155,27 +122,16 @@ namespace stdexec {
   //! @brief Concept that checks whether a domain's sender transform behaves like that of
   //! @c default_domain when passed the same arguments. The concept is modeled when either
   //! of the following is
-  // template <class _Domain, class _OpTag, class _Sndr, class _Env>
-  // concept __default_domain_like =
-  //   __same_as<__decay_t<__detail::__transform_sender_result_t<default_domain, _OpTag, _Sndr, _Env>>,
-  //             __decay_t<__mcall<
-  //               __mtry_catch_q<
-  //                 __detail::__transform_sender_result_t,
-  //                 __mconst<__detail::__transform_sender_result_t<default_domain, _OpTag, _Sndr, _Env>>>,
-  //               _Domain,
-  //               _OpTag,
-  //               _Sndr,
-  //               _Env>>>;
-
-  template <class _Domain, class _Sndr, class _Env>
+  template <class _Domain, class _OpTag, class _Sndr, class _Env>
   concept __default_domain_like = __same_as<
-    __decay_t<__detail::__transform_sender_result_t<default_domain, _Sndr, _Env>>,
+    __decay_t<__detail::__transform_sender_result_t<default_domain, _OpTag, _Sndr, _Env>>,
     __decay_t<__mcall<
       __mtry_catch_q<
         __detail::__transform_sender_result_t,
-        __mconst<__detail::__transform_sender_result_t<default_domain, _Sndr, _Env>>
+        __mconst<__detail::__transform_sender_result_t<default_domain, _OpTag, _Sndr, _Env>>
       >,
       _Domain,
+      _OpTag,
       _Sndr,
       _Env
     >>
@@ -200,27 +156,16 @@ namespace stdexec {
     //! @pre Every type in @c _Domains... must behave like @c default_domain when passed the
     //! same arguments. If this check fails, the @c static_assert triggers with: "ERROR:
     //! indeterminate domains: cannot pick an algorithm customization"
-    // template<class _OpTag, class _Sndr, class _Env>
-    //   requires __has_transform_sender<tag_of_t<_Sndr>, _OpTag, _Sndr, _Env>
-    // [[nodiscard]] static constexpr auto transform_sender(_OpTag, _Sndr&& __sndr, const _Env& __env) //
-    //   noexcept(__nothrow_transform_sender<tag_of_t<_Sndr>, _OpTag, _Sndr, _Env>)
-    //     -> __transform_sender_result_t<tag_of_t<_Sndr>, _OpTag, _Sndr, _Env>
-    // {
-    //   static_assert((__default_domain_like<_Domains, _OpTag, _Sndr, _Env> && ...),
-    //                 "ERROR: indeterminate domains: cannot pick an algorithm customization");
-    //   return tag_of_t<_Sndr>{}.transform_sender(_OpTag{}, static_cast<_Sndr&&>(__sndr), __env);
-    // }
-
-    template <class _Sndr, class _Env>
-      requires __detail::__has_transform_sender<tag_of_t<_Sndr>, _Sndr, _Env>
+    template <class _OpTag, class _Sndr, class _Env>
+      requires __detail::__has_transform_sender<tag_of_t<_Sndr>, _OpTag, _Sndr, _Env>
     [[nodiscard]]
-    static constexpr auto transform_sender(_Sndr&& __sndr, const _Env& __env) //
-      noexcept(__detail::__has_nothrow_transform_sender<tag_of_t<_Sndr>, _Sndr, _Env>)
-        -> __detail::__transform_sender_result_t<tag_of_t<_Sndr>, _Sndr, _Env> {
+    static constexpr auto transform_sender(_OpTag, _Sndr&& __sndr, const _Env& __env)
+      noexcept(__detail::__has_nothrow_transform_sender<tag_of_t<_Sndr>, _OpTag, _Sndr, _Env>)
+        -> __detail::__transform_sender_result_t<tag_of_t<_Sndr>, _OpTag, _Sndr, _Env> {
       static_assert(
-        (__default_domain_like<_Domains, _Sndr, _Env> && ...),
+        (__default_domain_like<_Domains, _OpTag, _Sndr, _Env> && ...),
         "ERROR: indeterminate domains: cannot pick an algorithm customization");
-      return tag_of_t<_Sndr>{}.transform_sender(static_cast<_Sndr&&>(__sndr), __env);
+      return tag_of_t<_Sndr>{}.transform_sender(_OpTag{}, static_cast<_Sndr&&>(__sndr), __env);
     }
   };
 
@@ -272,7 +217,7 @@ namespace stdexec {
       // - otherwise, return __not_a_domain (indicating that the
       //   completion domain may only be knowable later, when an env
       //   is available)
-      __if_c<!__sends<_Tag, _Sender>, indeterminate_domain<>, __not_a_domain>,
+      __if_c<__never_sends<_Tag, _Sender>, indeterminate_domain<>, __not_a_domain>,
       env_of_t<_Sender>
     >
       __compl_domain_v<_Tag, _Sender>;
@@ -295,8 +240,12 @@ namespace stdexec {
   concept __has_common_domain = __none_of<__detail::__not_a_domain, __common_domain_t<_Domains...>>;
 
   namespace __detail {
-    template <class _Env, class _Tag>
+    template <class _Env>
     using __starting_domain = __call_result_t<get_domain_t, const _Env&>;
+
+    template <class _Tag, class _Sender, class... _Env>
+    using __completing_domain =
+      __call_result_t<get_completion_domain_t<_Tag>, env_of_t<_Sender>, const _Env&...>;
 
     template <class _Sch, class... _Env>
     using __scheduler_domain_t =
@@ -350,10 +299,6 @@ namespace stdexec {
 
       std::tuple<_Fns...> __fns_;
     };
-
-    template <class _Tag, class _Sender, class... _Env>
-    using __completing_domain =
-      __call_result_t<get_completion_domain_t<_Tag>, env_of_t<_Sender>, const _Env&...>;
   } // namespace __detail
 
   namespace __queries {

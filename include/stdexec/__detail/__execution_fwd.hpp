@@ -208,8 +208,8 @@ namespace stdexec {
   struct transform_sender_t;
   extern const transform_sender_t transform_sender;
 
-  template <class _Domain, class _Sender, class... _Env>
-  using transform_sender_result_t = __call_result_t<transform_sender_t, _Domain, _Sender, _Env...>;
+  template <class _Sender, class... _Env>
+  using transform_sender_result_t = __call_result_t<transform_sender_t, _Sender, _Env...>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __starts_on_ns {

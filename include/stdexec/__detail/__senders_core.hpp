@@ -44,9 +44,8 @@ namespace stdexec {
   inline constexpr bool enable_sender = __detail::__enable_sender<_Sender>;
 
   template <class _Sender>
-  concept sender = enable_sender<__decay_t<_Sender>> //
-                && environment_provider<__cref_t<_Sender>>
-                //&& __detail::__consistent_completion_domains<_Sender>
+  concept sender = enable_sender<__decay_t<_Sender>>       //
+                && environment_provider<__cref_t<_Sender>> //
                 && move_constructible<__decay_t<_Sender>>
                 && constructible_from<__decay_t<_Sender>, _Sender>;
 
@@ -82,12 +81,6 @@ namespace stdexec {
   static constexpr auto __diagnose_sender_concept_failure() noexcept {
     if constexpr (!enable_sender<__decay_t<_Sender>>) {
       static_assert(enable_sender<_Sender>, STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE);
-      // } else if constexpr (!__detail::__consistent_completion_domains<_Sender>) {
-      //   static_assert(
-      //     __detail::__consistent_completion_domains<_Sender>,
-      //     "The completion schedulers of the sender do not have "
-      //     "consistent domains. This is likely a "
-      //     "bug in the sender implementation.");
     } else if constexpr (!move_constructible<__decay_t<_Sender>>) {
       static_assert(
         move_constructible<__decay_t<_Sender>>, "The sender type is not move-constructible.");

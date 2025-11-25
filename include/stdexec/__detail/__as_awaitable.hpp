@@ -21,8 +21,8 @@
 #include "__concepts.hpp"
 #include "__config.hpp"
 #include "__meta.hpp"
-#include "__receivers.hpp"
-#include "__senders.hpp"
+// #include "__receivers.hpp"
+// #include "__senders.hpp"
 #include "__tag_invoke.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__type_traits.hpp"
@@ -205,7 +205,7 @@ namespace stdexec {
 
     struct as_awaitable_t {
       template <class _Tp, class _Promise>
-      static constexpr auto __select_impl_() noexcept {
+      static constexpr auto __get_declfn() noexcept {
         if constexpr (__has_as_awaitable_member<_Tp, _Promise>) {
           using _Result = decltype(__declval<_Tp>().as_awaitable(__declval<_Promise&>()));
           constexpr bool _Nothrow = noexcept(__declval<_Tp>().as_awaitable(__declval<_Promise&>()));
@@ -227,7 +227,7 @@ namespace stdexec {
         }
       }
 
-      template <class _Tp, class _Promise, auto _DeclFn = __select_impl_<_Tp, _Promise>()>
+      template <class _Tp, class _Promise, auto _DeclFn = __get_declfn<_Tp, _Promise>()>
       auto operator()(_Tp&& __t, _Promise& __promise) const noexcept(noexcept(_DeclFn()))
         -> decltype(_DeclFn()) {
         if constexpr (__has_as_awaitable_member<_Tp, _Promise>) {

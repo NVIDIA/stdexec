@@ -115,7 +115,7 @@ namespace exec {
         __result_of<exec::sequence, schedule_result_t<trampoline_scheduler&>, __sender_t<_Range>>;
       using __next_receiver_t = stdexec::__t<__next_receiver<_Range, _ReceiverId>>;
 
-      std::optional<
+      __variant_for<
         connect_result_t<next_sender_of_t<_Receiver, __item_sender_t>, __next_receiver_t>
       >
         __op_{};
@@ -125,15 +125,12 @@ namespace exec {
         if (this->__iterator_ == this->__sentinel_) {
           stdexec::set_value(static_cast<_Receiver&&>(__rcvr_));
         } else {
-
           STDEXEC_TRY {
-            stdexec::start(__op_.emplace(__emplace_from{[&] {
-              return stdexec::connect(
-                exec::set_next(
-                  __rcvr_,
-                  exec::sequence(stdexec::schedule(__scheduler_), __sender_t<_Range>{this})),
-                __next_receiver_t{this});
-            }}));
+            stdexec::start(__op_.emplace_from(
+              stdexec::connect,
+              exec::set_next(
+                __rcvr_, exec::sequence(stdexec::schedule(__scheduler_), __sender_t<_Range>{this})),
+              __next_receiver_t{this}));
           }
           STDEXEC_CATCH_ALL {
             stdexec::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
@@ -216,7 +213,7 @@ namespace exec {
   } // namespace __iterate
 
   using __iterate::iterate_t;
-  inline constexpr iterate_t iterate;
+  inline constexpr iterate_t iterate{};
 } // namespace exec
 
 #endif // STDEXEC_HAS_STD_RANGES()

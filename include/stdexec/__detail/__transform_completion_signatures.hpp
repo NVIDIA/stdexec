@@ -18,6 +18,7 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
+#include "../functional.hpp"
 #include "__completion_signatures.hpp"
 #include "__concepts.hpp"
 #include "__debug.hpp" // IWYU pragma: keep

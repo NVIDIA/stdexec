@@ -19,7 +19,6 @@
 #include <exec/static_thread_pool.hpp>
 
 #include <iostream>
-#include <cstdio>
 
 namespace ex = stdexec;
 
@@ -62,7 +61,7 @@ void check_if_starts_inline_and_completes_on_pool(Sender, Receiver) {
   using receiver_env_t = ex::env_of_t<Receiver>;
 
   check_if_pool_domain<ex::__detail::__completing_domain<ex::set_value_t, Sender, receiver_env_t>>();
-  check_if_inline_domain<ex::__detail::__starting_domain<Sender, receiver_env_t>>();
+  check_if_inline_domain<ex::__detail::__starting_domain<receiver_env_t>>();
 
   // auto op_state = ex::connect(std::move(sender), std::move(receiver));
   // op_state.start();

@@ -216,7 +216,7 @@ namespace {
 
   struct my_domain {
     template <ex::sender_expr_for<ex::then_t> Sender, class Env>
-    static auto transform_sender(Sender&&, const Env&) {
+    static auto transform_sender(stdexec::set_value_t, Sender&&, const Env&) {
       return ex::just(int{21});
     }
   };

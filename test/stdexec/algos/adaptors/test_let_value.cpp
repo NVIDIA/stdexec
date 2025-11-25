@@ -301,7 +301,7 @@ namespace {
   // Return a different sender when we invoke this custom defined let_value implementation
   struct let_value_test_domain {
     template <ex::sender_expr_for<ex::let_value_t> Sender>
-    static auto transform_sender(Sender&&, auto&&...) {
+    static auto transform_sender(stdexec::set_value_t, Sender&&, auto&&...) {
       return ex::just(std::string{"hallo"});
     }
   };

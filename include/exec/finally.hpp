@@ -293,7 +293,6 @@ namespace exec {
 
     struct finally_t {
       template <sender _Initial, sender _Final>
-      // requires __TODO_broken_has_common_domain<_Initial, _Final>
       auto operator()(_Initial&& __initial, _Final&& __final) const {
         return __make_sexpr<finally_t>(
           {}, static_cast<_Initial&&>(__initial), static_cast<_Final&&>(__final));
@@ -306,7 +305,7 @@ namespace exec {
       }
 
       template <class _Sender>
-      static auto transform_sender(_Sender&& __sndr, __ignore) {
+      static auto transform_sender(stdexec::set_value_t, _Sender&& __sndr, __ignore) {
         return __sexpr_apply(
           static_cast<_Sender&&>(__sndr),
           []<class _Initial, class _Final>(
@@ -327,8 +326,9 @@ namespace exec {
 namespace stdexec {
   template <>
   struct __sexpr_impl<exec::finally_t> : __sexpr_defaults {
-    static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
-      -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
+    static constexpr auto get_completion_signatures =
+      []<class _Sender, class... _Env>(_Sender&&, const _Env&...) noexcept
+      -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env...>, _Env...> {
     };
   };
 } // namespace stdexec

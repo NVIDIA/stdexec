@@ -15,15 +15,17 @@
  */
 #pragma once
 
-#include <compare>
-#include <type_traits>
-#include <initializer_list>
+#include "__execution_fwd.hpp"
 
+// include these after __execution_fwd.hpp
 #include "__config.hpp"
 #include "__concepts.hpp"
 #include "__query.hpp"
 #include "__meta.hpp"
-#include "__execution_fwd.hpp"
+#include "__utility.hpp"
+
+#include <compare>
+#include <type_traits>
 
 namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////
@@ -135,22 +137,11 @@ namespace stdexec {
   struct min_t {
     using __completion_behavior_t = __completion_behavior::completion_behavior;
 
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    static constexpr auto __minimum(std::initializer_list<__completion_behavior_t> __cbs) noexcept
-      -> __completion_behavior_t {
-      auto __result = __completion_behavior::completion_behavior::inline_completion;
-      for (auto __cb: __cbs) {
-        if (__cb < __result) {
-          __result = __cb;
-        }
-      }
-      return __result;
-    }
-
     template <__completion_behavior_t... _CBs>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto operator()(completion_behavior::__constant_t<_CBs>...) const noexcept {
-      constexpr auto __behavior = __minimum({_CBs...});
+      constexpr auto __behavior = static_cast<__completion_behavior_t>(
+        stdexec::__umax({static_cast<std::size_t>(_CBs)...}));
 
       if constexpr (__behavior == completion_behavior::unknown) {
         return completion_behavior::unknown;
@@ -184,5 +175,4 @@ namespace stdexec {
       __call_result_t<get_completion_behavior_t<_Tag>, env_of_t<_Sndr>, const _Env&...>;
     return __behavior_t{};
   }
-
 } // namespace stdexec

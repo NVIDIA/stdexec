@@ -206,7 +206,7 @@ namespace exec {
       }
 
       template <class _Sender>
-      auto transform_sender(_Sender &&__sndr, __ignore) {
+      auto transform_sender(stdexec::set_value_t, _Sender &&__sndr, __ignore) {
         return __sexpr_apply(
           static_cast<_Sender &&>(__sndr), []<class _Child>(__ignore, __ignore, _Child __child) {
             return __make_sexpr<__repeat_effect_until_tag>(std::move(__child));
@@ -234,7 +234,7 @@ namespace exec {
       }
 
       template <class _Sender>
-      auto transform_sender(_Sender &&__sndr, __ignore) {
+      auto transform_sender(stdexec::set_value_t, _Sender &&__sndr, __ignore) {
         return __sexpr_apply(static_cast<_Sender &&>(__sndr), [](__ignore, __ignore, auto __child) {
           return repeat_effect_until_t{}(stdexec::then(std::move(__child), _never{}));
         });

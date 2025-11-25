@@ -19,10 +19,8 @@
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
-#include "__concepts.hpp"
 #include "__continues_on.hpp"
 #include "__diagnostics.hpp"
-#include "__domain.hpp"
 #include "__env.hpp"
 #include "__inline_scheduler.hpp"
 #include "__meta.hpp"
@@ -32,7 +30,6 @@
 #include "__sender_introspection.hpp"
 #include "__type_traits.hpp"
 #include "__utility.hpp"
-#include "__write_env.hpp"
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
@@ -159,7 +156,7 @@ namespace stdexec {
 
       template <class _Sender, class _Env>
       STDEXEC_ATTRIBUTE(always_inline)
-      static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
+      static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env& __env) {
         return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn<_Sender>(__env));
       }
     };
@@ -178,7 +175,7 @@ namespace stdexec {
   struct __sexpr_impl<on_t> : __sexpr_defaults {
     static constexpr auto get_completion_signatures =
       []<class _Sender, class _Env>(_Sender&&, const _Env&) noexcept
-      -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, _Env>> {
+      -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env>, _Env> {
       return {};
     };
   };

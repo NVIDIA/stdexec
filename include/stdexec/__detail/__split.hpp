@@ -39,9 +39,8 @@ namespace stdexec {
       template <sender _Sender, class _Env = env<>>
         requires sender_in<_Sender, _Env> && __decay_copyable<env_of_t<_Sender>>
       auto operator()(_Sender&& __sndr, _Env&& __env = {}) const -> __well_formed_sender auto {
-        using __domain_t = __detail::__completion_domain_of_t<set_value_t, _Sender, _Env>;
         return stdexec::transform_sender(
-          __domain_t{}, __make_sexpr<split_t>(__env, static_cast<_Sender&&>(__sndr)), __env);
+          __make_sexpr<split_t>(__env, static_cast<_Sender&&>(__sndr)), __env);
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
@@ -53,7 +52,7 @@ namespace stdexec {
       using __receiver_t = __t<__meval<__receiver, __cvref_id<_CvrefSender>, __id<_Env>>>;
 
       template <class _Sender, class _Env>
-      static auto transform_sender(_Sender&& __sndr, const _Env&) {
+      static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env&) {
         using _Receiver = __receiver_t<__child_of<_Sender>, __decay_t<__data_of<_Sender>>>;
         static_assert(sender_to<__child_of<_Sender>, _Receiver>);
 
@@ -78,8 +77,9 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<split_t> : __sexpr_defaults {
-    static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
-      -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
+    static constexpr auto get_completion_signatures =
+      []<class _Sender, class... _Env>(_Sender&&, const _Env&...) noexcept
+      -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env...>, _Env...> {
     };
   };
 } // namespace stdexec

@@ -92,7 +92,7 @@ namespace nvexec {
         Sender,
         _strm::transform_sender_for<Tag, Env>
       >
-    static auto transform_sender(Sender&& sndr, const Env& env) {
+    static auto transform_sender(stdexec::set_value_t, Sender&& sndr, const Env& env) {
       return stdexec::__sexpr_apply(
         static_cast<Sender&&>(sndr), _strm::transform_sender_for<Tag, Env>{env});
     }
@@ -407,19 +407,11 @@ namespace nvexec {
     template <class BaseEnv>
     using make_terminal_stream_env_t = terminal_stream_env<BaseEnv>;
 
-    template <class Sender, class Env>
-    using tfx_sender =
-      transform_sender_result_t<
-        __detail::__completing_domain<set_value_t, Sender, Env>,
-        transform_sender_result_t<
-          __detail::__starting_domain<Env, set_value_t>,
-          Sender,
-          Env
-        >,
-        Env>;
-
     template <class S, class E>
-    concept stream_sender = sender_in<S, E> && STDEXEC_IS_BASE_OF(stream_sender_base, __decay_t<tfx_sender<S, E>>);
+    concept stream_sender = sender_in<S, E>
+                         && STDEXEC_IS_BASE_OF(
+                              stream_sender_base,
+                              STDEXEC_REMOVE_REFERENCE(stdexec::transform_sender_result_t<S, E>));
 
     template <class R>
     concept stream_receiver = receiver<R> && STDEXEC_IS_BASE_OF(stream_receiver_base, __decay_t<R>);

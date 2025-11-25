@@ -55,7 +55,7 @@ namespace stdexec {
       }
 
       template <class _Sender, class _Env>
-      static auto transform_sender(_Sender&& __sndr, const _Env&) {
+      static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env&) {
         return __sexpr_apply(
           static_cast<_Sender&&>(__sndr),
           []<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) -> auto {
@@ -130,9 +130,9 @@ namespace stdexec {
       return __attrs<_Data, _Child>{__data, stdexec::get_env(__child)};
     };
 
-    static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
-      // TODO(gevtushenko) why default domain? should it get env?
-      -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
+    static constexpr auto get_completion_signatures =
+      []<class _Sender, class... _Env>(_Sender&&, const _Env&...) noexcept
+      -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env...>, _Env...> {
       return {};
     };
   };
