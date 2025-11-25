@@ -345,8 +345,8 @@ namespace exec {
               if (sh_state.task_with_exception_.compare_exchange_strong(
                     expected,
                     static_cast<std::uint32_t>(task_id),
-                    __std::memory_order_relaxed,
-                    __std::memory_order_relaxed)) {
+                    stdexec::__std::memory_order_relaxed,
+                    stdexec::__std::memory_order_relaxed)) {
                 sh_state.exception_ = std::current_exception();
               }
             }
@@ -385,8 +385,8 @@ namespace exec {
     Shape shape_;
     Fun fun_;
 
-    __std::atomic<std::uint32_t> finished_tasks_{0};
-    __std::atomic<std::uint32_t> task_with_exception_{0};
+    stdexec::__std::atomic<std::uint32_t> finished_tasks_{0};
+    stdexec::__std::atomic<std::uint32_t> task_with_exception_{0};
     std::exception_ptr exception_;
     std::vector<bulk_task> tasks_;
 

@@ -25,7 +25,7 @@
 #include <threadpoolapiset.h>
 // clang-format on
 
-#  include "../../stdexec/__detail/__cpo.hpp"
+#  include "../../stdexec/__detail/__atomic.hpp"
 #  include "../../stdexec/__detail/__manual_lifetime.hpp"
 #  include "../../stdexec/__detail/__operation_states.hpp"
 #  include "../../stdexec/__detail/__receivers.hpp"
@@ -193,7 +193,7 @@ namespace exec::__win32 {
       }
 
       if (isStopPossible) {
-        state_ = new (std::nothrow) __std::atomic<std::uint32_t>(not_started);
+        state_ = new (std::nothrow) stdexec::__std::atomic<std::uint32_t>(not_started);
         if (state_ == nullptr) {
           ::CloseThreadpoolWork(work_);
           ::DestroyThreadpoolEnvironment(&environ_);
@@ -379,8 +379,8 @@ namespace exec::__win32 {
 
     PTP_WORK work_;
     TP_CALLBACK_ENVIRON environ_;
-    __std::atomic<std::uint32_t> *state_;
-    stdexec::__manual_lifetime<typename StopToken::template callback_type<stop_requested_callback>>
+    stdexec::__std::atomic<std::uint32_t> *state_;
+    stdexec::__manual_lifetime<stdexec::stop_callback_for_t<StopToken, stop_requested_callback>>
       stopCallback_;
   };
 
@@ -502,7 +502,7 @@ namespace exec::__win32 {
       }
 
       if (isStopPossible) {
-        state_ = new (std::nothrow) __std::atomic<std::uint32_t>{not_started};
+        state_ = new (std::nothrow) stdexec::__std::atomic<std::uint32_t>{not_started};
         if (state_ == nullptr) {
           ::CloseThreadpoolTimer(timer_);
           ::DestroyThreadpoolEnvironment(&environ_);
@@ -652,7 +652,7 @@ namespace exec::__win32 {
 
     PTP_TIMER timer_;
     TP_CALLBACK_ENVIRON environ_;
-    __std::atomic<std::uint32_t> *state_{nullptr};
+    stdexec::__std::atomic<std::uint32_t> *state_{nullptr};
     stdexec::__manual_lifetime<typename StopToken::template callback_type<stop_requested_callback>>
       stopCallback_;
   };

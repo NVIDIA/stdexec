@@ -150,7 +150,7 @@ namespace nvexec {
     STDEXEC_ATTRIBUTE(host, device)
     void construct(As&&... as) {
       ::new (storage_.data_) T(static_cast<As&&>(as)...);
-      index_ = stdexec::__mcall<stdexec::__mfind_i<T>, Ts...>();
+      index_ = stdexec::__v<stdexec::__mcall<stdexec::__mfind_i<T>, Ts...>>;
     }
 
     STDEXEC_ATTRIBUTE(host, device)
