@@ -299,7 +299,7 @@ namespace exec::__win32 {
     }
 
     void request_stop() noexcept {
-      auto prevState = state_->load(__std::memory_order_relaxed);
+      auto prevState = state_->load(stdexec::__std::memory_order_relaxed);
       do {
         STDEXEC_ASSERT((prevState & running_flag) == 0);
         if ((prevState & starting_flag) != 0) {
@@ -595,7 +595,7 @@ namespace exec::__win32 {
     }
 
     void request_stop() noexcept {
-      auto prevState = state_->load(__std::memory_order_relaxed);
+      auto prevState = state_->load(stdexec::__std::memory_order_relaxed);
       do {
         STDEXEC_ASSERT((prevState & running_flag) == 0);
         if ((prevState & starting_flag) != 0) {
