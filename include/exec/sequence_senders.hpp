@@ -150,10 +150,10 @@ namespace exec {
   using __sequence_sndr::set_next_t;
   inline constexpr set_next_t set_next;
 
-  template <class _Receiver, class _Sender>
+  template <class _Receiver, class _Sequence>
   using next_sender_of_t = decltype(exec::set_next(
     stdexec::__declval<stdexec::__decay_t<_Receiver>&>(),
-    stdexec::__declval<_Sender>()));
+    stdexec::__declval<_Sequence>()));
 
   namespace __sequence_sndr {
 
@@ -259,7 +259,7 @@ namespace exec {
       tag_invocable<get_item_types_t, __tfx_sequence_t<_Sequence, _Env>, _Env>;
 
     template <class _Sequence, class _Env>
-    using __member_alias_t = typename __decay_t<__tfx_sequence_t<_Sequence, _Env>>::item_types;
+    using __member_alias_t = __decay_t<__tfx_sequence_t<_Sequence, _Env>>::item_types;
 
     template <class _Sequence, class _Env>
     concept __with_member_alias = __mvalid<__member_alias_t, _Sequence, _Env>;
@@ -494,6 +494,10 @@ namespace exec {
     stdexec::__mconst<stdexec::completion_signatures<>>::__f
   >;
 
+  // __sequence_completion_signatures_of_t
+  // makes a sender look like a sequence with itself as the only item
+  //
+
   template <class _Sequence, class... _Env>
   using __sequence_completion_signatures_of_t = stdexec::__mapply<
     stdexec::__mtransform<
@@ -549,12 +553,12 @@ namespace exec {
                                                    .subscribe(__declval<_Receiver>()));
 
     template <class _Sequence, class _Receiver>
-    concept __subscribable_with_member =
-      __mvalid<__subscribe_member_result_t, _Sequence, _Receiver>;
-
-    template <class _Sequence, class _Receiver>
     using __subscribe_static_member_result_t = decltype(STDEXEC_REMOVE_REFERENCE(
       _Sequence)::subscribe(__declval<_Sequence>(), __declval<_Receiver>()));
+
+    template <class _Sequence, class _Receiver>
+    concept __subscribable_with_member =
+      __mvalid<__subscribe_member_result_t, _Sequence, _Receiver>;
 
     template <class _Sequence, class _Receiver>
     concept __subscribable_with_static_member =
@@ -571,8 +575,8 @@ namespace exec {
           // Instantiate __debug_sender via completion_signatures_of_t and
           // item_types_of_t to check that the actual completions and item_types
           // match the expected completions and values.
-          using __checked_signatures
-            [[maybe_unused]] = completion_signatures_of_t<_Sequence, env_of_t<_Receiver>>;
+          using __checked_signatures [[maybe_unused]] =
+            __sequence_completion_signatures_of_t<_Sequence, env_of_t<_Receiver>>;
           using __checked_item_types
             [[maybe_unused]] = item_types_of_t<_Sequence, env_of_t<_Receiver>>;
         } else {
@@ -759,8 +763,31 @@ namespace exec {
 #define STDEXEC_ERROR_ENABLE_SEQUENCE_SENDER_IS_FALSE                                              \
   "\n"                                                                                             \
   "\n"                                                                                             \
-  "Trying to compute the sequences's item types resulted in an error. See\n"                       \
-  "the rest of the compiler diagnostic for clues. Look for the string \"_ERROR_\".\n"
+  "The given type is not a sequence sender because stdexec::enable_sequence_sender<Sequence>\n"    \
+  "is false. Either:\n"                                                                            \
+  "\n"                                                                                             \
+  "1. Give the type a nested `::sender_concept` type that is an alias for `stdexec::sender_t`,\n"  \
+  "   as in:\n"                                                                                    \
+  "\n"                                                                                             \
+  "     class MySequence\n"                                                                        \
+  "     {\n"                                                                                       \
+  "     public:\n"                                                                                 \
+  "       using sender_concept = exec::sequence_sender_t;\n"                                       \
+  "       ...\n"                                                                                   \
+  "     };\n"                                                                                      \
+  "\n"                                                                                             \
+  "   or,\n"                                                                                       \
+  "\n"                                                                                             \
+  "2. Specialize the `stdexec::enable_sequence_sender` boolean trait for this type to true,\n"     \
+  "as follows:\n"                                                                                  \
+  "\n"                                                                                             \
+  "     class MySequence\n"                                                                        \
+  "     {\n"                                                                                       \
+  "       ...\n"                                                                                   \
+  "     };\n"                                                                                      \
+  "\n"                                                                                             \
+  "     template <>\n"                                                                             \
+  "     inline constexpr bool stdexec::enable_sequence_sender<MySequence> = true;\n"
 
 ////////////////////////////////////////////////////////////////////////////////
 #define STDEXEC_ERROR_GET_ITEM_TYPES_RETURNED_AN_ERROR                                             \
@@ -823,8 +850,7 @@ namespace exec {
                       __items_t,
                       __sequence_sndr::__unrecognized_sequence_error_t<_Sequence, _Env...>
                     >) {
-        static_assert(
-          stdexec::__mnever<__items_t>, STDEXEC_ERROR_CANNOT_COMPUTE_COMPLETION_SIGNATURES);
+        static_assert(stdexec::__mnever<__items_t>, STDEXEC_ERROR_GET_ITEM_TYPES_RETURNED_AN_ERROR);
       } else if constexpr (stdexec::__merror<__items_t>) {
         static_assert(
           !stdexec::__merror<__items_t>, STDEXEC_ERROR_GET_ITEM_TYPES_RETURNED_AN_ERROR);
@@ -835,6 +861,11 @@ namespace exec {
         //} else {
         //  stdexec::__diagnose_sender_concept_failure<_Sequence, _Env...>();
       }
+#if STDEXEC_MSVC() || STDEXEC_NVHPC()
+      // MSVC and NVHPC need more encouragement to print the type of the
+      // error.
+//      _Completions __what = 0;
+#endif
     }
   }
 
@@ -880,7 +911,7 @@ namespace exec {
     void __debug_sequence_sender(_Sequence&& __sequence, const _Env&) {
       if constexpr (!__is_debug_env<_Env>) {
         if constexpr (sequence_sender_in<_Sequence, _Env>) {
-          using __sigs_t = stdexec::__completion_signatures_of_t<_Sequence, __debug_env_t<_Env>>;
+          using __sigs_t = __sequence_completion_signatures_of_t<_Sequence, __debug_env_t<_Env>>;
           using __item_types_t = __sequence_sndr::__item_types_of_t<_Sequence, __debug_env_t<_Env>>;
           using __receiver_t = __debug_sequence_sender_receiver<
             stdexec::__cvref_id<_Sequence>,
