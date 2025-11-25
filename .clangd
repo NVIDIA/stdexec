@@ -30,7 +30,7 @@ CompileFlags:
 
 # Use clang++ in CUDA mode to provide intellisense for files with `nvexec` in their path
 If:
-  PathMatch: [include/nvexec/.*, test/nvexec/.*]
+  PathMatch: [include/nvexec/.*, test/nvexec/.*, examples/nvexec/.*]
 CompileFlags:
   Compiler: clang++
   Add:
