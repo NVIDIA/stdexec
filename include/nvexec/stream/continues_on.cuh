@@ -211,13 +211,14 @@ namespace nvexec::_strm {
       static auto connect(Self&& self, Receiver rcvr) -> stream_op_state_t<
         __copy_cvref_t<Self, source_sender_t>,
         receiver_t<Self, Receiver>,
-        Receiver> {
+        Receiver
+      > {
         auto receiver_factory =
           [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
           -> receiver_t<Self, Receiver> {
           return receiver_t<Self, Receiver>{{}, stream_provider};
         };
-        using cvref_source_sender_t = __copy_cvref_t<Self, source_sender_t>;
+
         return _strm::stream_op_state(
           static_cast<Self&&>(self).sndr_,
           static_cast<Receiver&&>(rcvr),
@@ -234,7 +235,8 @@ namespace nvexec::_strm {
         __completion_signatures_of_t<__copy_cvref_t<_Self, Sender>, _Env...>,
         completion_signatures<set_error_t(cudaError_t)>,
         _trnsfr::value_completions_t,
-        _trnsfr::error_completions_t> {
+        _trnsfr::error_completions_t
+      > {
         return {};
       }
 

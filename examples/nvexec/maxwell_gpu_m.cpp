@@ -15,7 +15,6 @@
  */
 
 #include "maxwell/snr.cuh"
-#include "maxwell/cuda.cuh"
 
 auto main(int argc, char *argv[]) -> int {
   auto params = parse_cmd(argc, argv);

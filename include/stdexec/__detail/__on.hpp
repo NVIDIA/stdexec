@@ -76,7 +76,8 @@ namespace stdexec {
     struct on_t {
       template <scheduler _Scheduler, sender _Sender>
       auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto {
-        return __make_sexpr<on_t>(static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
+        return __make_sexpr<on_t>(
+          static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
       }
 
       template <sender _Sender, scheduler _Scheduler, __sender_adaptor_closure_for<_Sender> _Closure>
@@ -115,6 +116,17 @@ namespace stdexec {
         }
       };
 
+      template <class _Sender, class _OldSched, class _NewSched>
+      static auto __transfer(
+        _Sender&& __sndr,
+        [[maybe_unused]] _OldSched&& __old_sched,
+        _NewSched&& __new_sched) {
+        // return continues_on(
+        //   write_env(static_cast<_Sender&&>(__sndr), __sched_env{__old_sched}),
+        //   static_cast<_NewSched&&>(__new_sched));
+        return continues_on(static_cast<_Sender&&>(__sndr), static_cast<_NewSched&&>(__new_sched));
+      }
+
       template <class _Sender, class _Env>
       STDEXEC_ATTRIBUTE(always_inline)
       static auto __transform_sender_fn(const _Env& __env) noexcept {
@@ -122,7 +134,7 @@ namespace stdexec {
           // If __is_root_env<_Env> is true, then this sender has no parent, so there is
           // no need to restore the execution context. We can use the inline scheduler
           // as the scheduler if __env does not have one.
-          using __fallback_scheduler_t = __if_c<
+          using __end_sched_t = __if_c<
             __is_root_env<_Env>,
             inline_scheduler,
             __not_a_scheduler<__no_scheduler_in_environment<_Sender, _Env>>
@@ -132,7 +144,7 @@ namespace stdexec {
             // This branch handles the case where `on` was called like `on(sch, sndr)`. In
             // this case, we find the old scheduler by looking in the receiver's
             // environment.
-            auto __old = query_or(get_scheduler, __env, __fallback_scheduler_t());
+            auto __old = __with_default{get_scheduler, __end_sched_t()}(__env);
 
             return continues_on(
               starts_on(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)),
@@ -141,15 +153,13 @@ namespace stdexec {
             // This branch handles the case where `on` was called like `sndr | on(sch,
             // clsur)`. In this case, __child is a predecessor sender, so the scheduler we
             // want to restore is the completion scheduler of __child.
-            auto __old = __with_default{
-              get_completion_scheduler<set_value_t>,
-              __fallback_scheduler_t()}(get_env(__child), __env);
+            auto __get_old_sched =
+              __with_default{get_completion_scheduler<set_value_t>, __end_sched_t()};
+            auto __old = __get_old_sched(get_env(__child), __env);
 
             auto& [__sched, __clsur] = __data;
-
-            return continues_on(
-              __forward_like<_Data>(__clsur)(continues_on(static_cast<_Child&&>(__child), __sched)),
-              __old);
+            auto __pred = __transfer(static_cast<_Child&&>(__child), __old, __sched);
+            return __transfer(__forward_like<_Data>(__clsur)(std::move(__pred)), __sched, __old);
           }
         };
       }

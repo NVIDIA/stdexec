@@ -36,7 +36,7 @@ CompileFlags:
   Add:
     - "-x"
     - "cuda"
-    - "-std=gnu++20"
+    - "-std=c++20"
     - "-Wno-unknown-cuda-version"
     - "--cuda-host-only"
 
@@ -51,7 +51,7 @@ CompileFlags:
     - "-ferror-limit=0"
     - "-fmacro-backtrace-limit=0"
     - "-ftemplate-backtrace-limit=0"
-    - "-std=gnu++20"
+    - "-std=c++20"
     - "-DSTDEXEC_CLANGD_INVOKED"
     - "-stdlib=libc++"
   Remove:

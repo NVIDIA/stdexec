@@ -815,11 +815,6 @@ namespace nvexec {
       sender<S>
       && gpu_stream_scheduler<__result_of<get_completion_scheduler<set_value_t>, env_of_t<S>, E>, E>;
 
-    template <class R>
-    concept receiver_with_stream_env = receiver<R> && requires(const R& rcvr) {
-      { get_scheduler(get_env(rcvr)).context_state_ } -> __decays_to<context_state_t>;
-    };
-
     template <class InnerReceiverProvider, class OuterReceiver>
     using inner_receiver_t =
       __call_result_t<InnerReceiverProvider, operation_state_base_t<stdexec::__id<OuterReceiver>>&>;
