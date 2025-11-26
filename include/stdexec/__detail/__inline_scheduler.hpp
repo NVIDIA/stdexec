@@ -17,7 +17,8 @@
 
 #include "__execution_fwd.hpp"
 
-#include "__env.hpp"
+#include "__completion_behavior.hpp"
+#include "__queries.hpp"
 #include "__receivers.hpp"
 #include "__schedulers.hpp"
 

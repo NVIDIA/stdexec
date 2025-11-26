@@ -331,7 +331,7 @@ namespace distributed {
 
     [[nodiscard]]
     __host__ __device__ auto gaussian_pulse(float t, float t_0, float tau) const -> float {
-      return exp(-(((t - t_0) / tau) * (t - t_0) / tau));
+      return std::exp(-(((t - t_0) / tau) * (t - t_0) / tau));
     }
 
     [[nodiscard]]

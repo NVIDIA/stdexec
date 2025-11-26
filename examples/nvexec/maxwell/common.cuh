@@ -20,6 +20,7 @@
 
 #include "stdexec/__detail/__config.hpp"
 
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 
@@ -245,7 +246,7 @@ struct e_field_calculator_t {
 
   STDEXEC_ATTRIBUTE(nodiscard, host, device)
   auto gaussian_pulse(float t, float t_0, float tau) const -> float {
-    return static_cast<float>(exp(-(((t - t_0) / tau) * (t - t_0) / tau)));
+    return static_cast<float>(std::exp(-(((t - t_0) / tau) * (t - t_0) / tau)));
   }
 
   STDEXEC_ATTRIBUTE(nodiscard, host, device)
