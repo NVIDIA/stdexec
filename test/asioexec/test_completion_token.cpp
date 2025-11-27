@@ -997,4 +997,25 @@ namespace {
     CHECK(ctx.stopped());
   }
 
+  TEST_CASE(
+    "Substitution into async_result<completion_token, ...>::initiate is SFINAE-friendly",
+    "[asioexec][completion_token]") {
+    asio_impl::io_context ctx;
+    asio_impl::ip::tcp::socket socket(ctx);
+    asio_impl::streambuf buf;
+    //  With a SFINAE-unfriendly async_result<...>::initiate the below line doesn't compile because there's a hard compilation error trying to consider the async_read overload for dynamic buffers
+    //
+    //  See: https://github.com/NVIDIA/stdexec/issues/1684
+    auto sender = asio_impl::async_read(socket, buf, completion_token);
+    auto op = ::stdexec::connect(
+      std::move(sender) | ::stdexec::then([](const auto ec, const auto bytes_transferred) {
+        CHECK(ec);
+        CHECK(!bytes_transferred);
+      }),
+      expect_void_receiver{});
+    ::stdexec::start(op);
+    CHECK(ctx.run() != 0);
+    CHECK(ctx.stopped());
+  }
+
 } // namespace
