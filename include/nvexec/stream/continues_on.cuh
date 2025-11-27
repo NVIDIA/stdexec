@@ -37,7 +37,7 @@ namespace nvexec::_strm {
 
     template <class Tag, class Storage, class... As>
     STDEXEC_ATTRIBUTE(launch_bounds(1))
-    __global__ void kernel(Storage* storage, As... as) {
+    __global__ void _continues_on_kernel(Storage* storage, As... as) {
       ::new (storage) Storage();
       storage->template emplace<decayed_tuple<Tag, As...>>(Tag(), static_cast<As&&>(as)...);
     }
@@ -67,7 +67,7 @@ namespace nvexec::_strm {
           } else {
             // If there are values in the completion channel, we have to construct
             // the temporary storage. If the values are trivially copyable, we launch
-            // a kernel and construct the temporary storage on the device to avoid managed
+            // a _continues_on_kernel and construct the temporary storage on the device to avoid managed
             // memory movements. Otherwise, we construct the temporary storage on the host
             // and prefetch it to the device.
             auto* storage = static_cast<storage_t*>(operation_state_.temp_storage_);
@@ -105,7 +105,8 @@ namespace nvexec::_strm {
             }
 
             if constexpr (construct_on_device) {
-              kernel<Tag, storage_t, __decay_t<As>...><<<1, 1, 0, stream>>>(storage, as...);
+              _continues_on_kernel<Tag, storage_t, __decay_t<As>...>
+                <<<1, 1, 0, stream>>>(storage, as...);
 
               if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
                   status != cudaSuccess) {
@@ -248,8 +249,9 @@ namespace nvexec::_strm {
 
   template <class Env>
   struct transform_sender_for<stdexec::continues_on_t, Env> {
-    template <gpu_stream_scheduler<Env> Sched, class Sender>
+    template <class Sched, class Sender>
     auto operator()(__ignore, Sched sched, Sender&& sndr) const {
+      static_assert(gpu_stream_scheduler<Sched, Env>);
       using __sender_t = stdexec::__t<continues_on_sender_t<Sched, __id<__decay_t<Sender>>>>;
       return __sender_t{sched, static_cast<Sender&&>(sndr)};
     }

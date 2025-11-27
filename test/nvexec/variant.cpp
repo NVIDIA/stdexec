@@ -65,7 +65,7 @@ namespace {
   }
 
   template <class T, class V>
-  __global__ void kernel(V* v, T alt) {
+  __global__ void _variant_emplace_kernel(V* v, T alt) {
     v->template emplace<T>(alt);
   }
 
@@ -76,12 +76,12 @@ namespace {
 
     REQUIRE(v->index_ == 0);
 
-    kernel<<<1, 1>>>(v, 4.2);
+    _variant_emplace_kernel<<<1, 1>>>(v, 4.2);
     STDEXEC_TRY_CUDA_API(cudaDeviceSynchronize());
 
     visit([](auto alt) { REQUIRE(alt == 4.2); }, *v);
 
-    kernel<<<1, 1>>>(v, 42);
+    _variant_emplace_kernel<<<1, 1>>>(v, 42);
     STDEXEC_TRY_CUDA_API(cudaDeviceSynchronize());
 
     visit([](auto alt) { REQUIRE(alt == 42); }, *v);

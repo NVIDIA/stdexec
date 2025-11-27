@@ -177,8 +177,9 @@ namespace nvexec::_strm {
     using _current_scheduler_t =
       __result_of<get_completion_scheduler<set_value_t>, env_of_t<Sender>, const Env&>;
 
-    template <stream_completing_sender<Env> Sender>
+    template <class Sender>
     auto operator()(__ignore, __ignore, Sender&& sndr) const {
+      static_assert(stream_completing_sender<Sender, Env>);
       using _sender_t = __t<schedule_from_sender_t<__id<__decay_t<Sender>>>>;
       auto stream_sched = get_completion_scheduler<set_value_t>(get_env(sndr), env_);
       return _sender_t{stream_sched.context_state_, static_cast<Sender&&>(sndr)};

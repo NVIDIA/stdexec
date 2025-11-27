@@ -37,7 +37,7 @@ namespace nvexec::_strm {
   namespace _bulk {
     template <int BlockThreads, class... As, std::integral Shape, class Fun>
     STDEXEC_ATTRIBUTE(launch_bounds(BlockThreads))
-    __global__ void kernel(Shape shape, Fun fn, As... as) {
+    __global__ void _bulk_kernel(Shape shape, Fun fn, As... as) {
       static_assert(trivially_copyable<Shape, Fun, As...>);
       const int tid = static_cast<int>(threadIdx.x + blockIdx.x * blockDim.x);
 
@@ -69,7 +69,7 @@ namespace nvexec::_strm {
             cudaStream_t stream = op_state.get_stream();
             constexpr int block_threads = 256;
             const int grid_blocks = (static_cast<int>(shape_) + block_threads - 1) / block_threads;
-            kernel<block_threads, As&...>
+            _bulk_kernel<block_threads, As&...>
               <<<grid_blocks, block_threads, 0, stream>>>(shape_, std::move(f_), as...);
           }
 
@@ -158,7 +158,7 @@ namespace nvexec::_strm {
   namespace multi_gpu_bulk {
     template <int BlockThreads, class... As, std::integral Shape, class Fun>
     STDEXEC_ATTRIBUTE(launch_bounds(BlockThreads))
-    __global__ void kernel(Shape begin, Shape end, Fun fn, As... as) {
+    __global__ void _multi_bulk_kernel(Shape begin, Shape end, Fun fn, As... as) {
       static_assert(trivially_copyable<Shape, Fun, As...>);
       const Shape i = begin + static_cast<Shape>(threadIdx.x + blockIdx.x * blockDim.x);
 
@@ -217,7 +217,7 @@ namespace nvexec::_strm {
                 if (begin < end) {
                   cudaSetDevice(dev);
                   cudaStreamWaitEvent(stream, op_state_.ready_to_launch_, 0);
-                  kernel<block_threads, As&...>
+                  _multi_bulk_kernel<block_threads, As&...>
                     <<<grid_blocks, block_threads, 0, stream>>>(begin, end, f_, as...);
                   cudaEventRecord(op_state_.ready_to_complete_[dev], op_state_.streams_[dev]);
                 }
@@ -232,7 +232,7 @@ namespace nvexec::_strm {
               const int grid_blocks = (shape + block_threads - 1) / block_threads;
 
               if (begin < end) {
-                kernel<block_threads, As&...>
+                _multi_bulk_kernel<block_threads, As&...>
                   <<<grid_blocks, block_threads, 0, baseline_stream>>>(begin, end, f_, as...);
               }
             }

@@ -414,7 +414,8 @@ namespace nvexec {
                               STDEXEC_REMOVE_REFERENCE(stdexec::transform_sender_result_t<S, E>));
 
     template <class R>
-    concept stream_receiver = receiver<R> && STDEXEC_IS_BASE_OF(stream_receiver_base, __decay_t<R>);
+    concept stream_receiver = receiver<R>
+                           && STDEXEC_IS_BASE_OF(stream_receiver_base, STDEXEC_REMOVE_REFERENCE(R));
 
     struct stream_op_state_base { };
 

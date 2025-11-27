@@ -26,7 +26,7 @@ STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 template <int BlockThreads, class Action>
 STDEXEC_ATTRIBUTE(launch_bounds(BlockThreads))
-__global__ void kernel(std::size_t cells, Action action) {
+__global__ void for_each_kernel(std::size_t cells, Action action) {
   std::size_t cell_id = threadIdx.x + blockIdx.x * BlockThreads;
 
   if (cell_id < cells) {
@@ -55,13 +55,13 @@ void run_cuda(
   cudaStream_t stream{};
   cudaStreamCreate(&stream);
 
-  kernel<block_threads><<<grid_blocks, block_threads, 0, stream>>>(cells, initializer);
+  for_each_kernel<block_threads><<<grid_blocks, block_threads, 0, stream>>>(cells, initializer);
   STDEXEC_TRY_CUDA_API(cudaStreamSynchronize(stream));
 
   report_performance(grid.cells, n_iterations, method, [&]() {
     for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
-      kernel<block_threads><<<grid_blocks, block_threads, 0, stream>>>(cells, h_updater);
-      kernel<block_threads><<<grid_blocks, block_threads, 0, stream>>>(cells, e_updater);
+      for_each_kernel<block_threads><<<grid_blocks, block_threads, 0, stream>>>(cells, h_updater);
+      for_each_kernel<block_threads><<<grid_blocks, block_threads, 0, stream>>>(cells, e_updater);
     }
     writer(false);
     STDEXEC_TRY_CUDA_API(cudaStreamSynchronize(stream));

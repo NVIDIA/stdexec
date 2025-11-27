@@ -34,7 +34,7 @@ namespace nvexec::_strm {
   namespace let_xxx {
     template <class... As, class Fun, class ResultSenderT>
     STDEXEC_ATTRIBUTE(launch_bounds(1))
-    __global__ void kernel_with_result(Fun fn, ResultSenderT* result, As... as) {
+    __global__ void _let_xxx_kernel(Fun fn, ResultSenderT* result, As... as) {
       static_assert(trivially_copyable<Fun, As...>);
       new (result) ResultSenderT(::cuda::std::move(fn)(static_cast<As&&>(as)...));
     }
@@ -119,7 +119,7 @@ namespace nvexec::_strm {
 
           cudaStream_t stream = op_state_->get_stream();
           auto* result_sender = static_cast<result_sender_t*>(op_state_->temp_storage_);
-          kernel_with_result<As&&...><<<1, 1, 0, stream>>>(
+          _let_xxx_kernel<As&&...><<<1, 1, 0, stream>>>(
             std::move(op_state_->fun_), result_sender, static_cast<As&&>(__as)...);
 
           if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(stream));

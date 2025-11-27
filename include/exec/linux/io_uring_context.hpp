@@ -17,7 +17,7 @@
 #pragma once
 
 #if !__has_include(<linux/io_uring.h>)
-#  error "io_uring.h not found. Your kernel is probably too old."
+#  error "io_uring.h not found. Your Linux kernel is probably too old."
 #else
 #  include <linux/io_uring.h>
 
@@ -39,7 +39,7 @@
 #    include <linux/version.h>
 
 #    if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
-#      warning "Your kernel is too old to support io_uring with cancellation support."
+#      warning "Your Linux kernel is too old to support io_uring with cancellation support."
 #      include <sys/timerfd.h>
 #    else
 #      define STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
@@ -95,7 +95,7 @@ namespace exec {
       return memory_mapped_region{__ptr, __size};
     }
 
-    // This base class maps the kernel's io_uring data structures into the process.
+    // This base class maps the Linux kernel's io_uring data structures into the process.
     struct __context_base : stdexec::__immovable {
       explicit __context_base(unsigned __entries, unsigned __flags = 0)
         : __params_{__context_base::__init_params(__flags)}

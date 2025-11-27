@@ -38,14 +38,14 @@ namespace nvexec::_strm {
   namespace _then {
     template <class... As, class Fun>
     STDEXEC_ATTRIBUTE(launch_bounds(1))
-    __global__ void kernel(Fun fn, As... as) {
+    __global__ void _then_kernel(Fun fn, As... as) {
       static_assert(trivially_copyable<Fun, As...>);
       ::cuda::std::move(fn)(static_cast<As&&>(as)...);
     }
 
     template <class... As, class Fun, class ResultT>
     STDEXEC_ATTRIBUTE(launch_bounds(1))
-    __global__ void kernel_with_result(Fun fn, ResultT* result, As... as) {
+    __global__ void _then_kernel_with_result(Fun fn, ResultT* result, As... as) {
       static_assert(trivially_copyable<Fun, As...>);
       new (result) ResultT(::cuda::std::move(fn)(static_cast<As&&>(as)...));
     }
@@ -71,7 +71,7 @@ namespace nvexec::_strm {
           cudaStream_t stream = op_state.get_stream();
 
           if constexpr (does_not_return_a_value) {
-            kernel<As&&...><<<1, 1, 0, stream>>>(std::move(f_), static_cast<As&&>(as)...);
+            _then_kernel<As&&...><<<1, 1, 0, stream>>>(std::move(f_), static_cast<As&&>(as)...);
 
             if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
                 status == cudaSuccess) {
@@ -82,7 +82,7 @@ namespace nvexec::_strm {
           } else {
             using decayed_result_t = __decay_t<result_t>;
             auto* d_result = static_cast<decayed_result_t*>(op_state.temp_storage_);
-            kernel_with_result<As&&...>
+            _then_kernel_with_result<As&&...>
               <<<1, 1, 0, stream>>>(std::move(f_), d_result, static_cast<As&&>(as)...);
             op_state.defer_temp_storage_destruction(d_result);
 
