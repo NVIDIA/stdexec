@@ -218,8 +218,12 @@ namespace stdexec {
         // If __attrs has a completion scheduler, then return it (after checking the scheduler
         // for _its_ completion scheduler):
         if constexpr (__callable<__read_query_t, const _Attrs&, const _Env&...>) {
-          return __declfn<decltype(__recurse_query_t{}(
-            __read_query_t{}(__declval<_Attrs>(), __declval<_Env>()...), __declval<_Env>()...))>;
+          using __result_t = __call_result_t<
+            __recurse_query_t,
+            __call_result_t<__read_query_t, const _Attrs&, const _Env&...>,
+            const _Env&...
+          >;
+          return __declfn<__result_t>();
         }
         // Otherwise, if __attrs indicates that its sender completes inline, then we can ask
         // the environment for the current scheduler and return that (after checking the
@@ -227,13 +231,17 @@ namespace stdexec {
         else if constexpr (
           __completes_inline<_Tag, _Attrs, _Env...>
           && (__callable<get_scheduler_t, const _Env&> || ...)) {
-          return __declfn<decltype(__recurse_query_t{}(
-            get_scheduler(__declval<_Env>()...), __hide_scheduler{__declval<_Env>()}...))>;
+          using __result_t = __call_result_t<
+            __recurse_query_t,
+            __call_result_t<get_scheduler_t, const _Env&>...,
+            const _Env&...
+          >;
+          return __declfn<__result_t>();
         }
         // Otherwise, if we are asking a scheduler for a completion scheduler, return the
         // scheduler itself.
         else if constexpr (scheduler<_Attrs> && sizeof...(_Env) != 0) {
-          return __declfn<__decay_t<_Attrs>>;
+          return __declfn<__decay_t<_Attrs>>();
         }
         // Otherwise, no completion scheduler can be determined. Return void.
       }

@@ -209,21 +209,21 @@ namespace stdexec {
         if constexpr (__has_as_awaitable_member<_Tp, _Promise>) {
           using _Result = decltype(__declval<_Tp>().as_awaitable(__declval<_Promise&>()));
           constexpr bool _Nothrow = noexcept(__declval<_Tp>().as_awaitable(__declval<_Promise&>()));
-          return __declfn<_Result, _Nothrow>;
+          return __declfn<_Result, _Nothrow>();
         } else if constexpr (tag_invocable<as_awaitable_t, _Tp, _Promise&>) {
           using _Result = tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>;
           constexpr bool _Nothrow = nothrow_tag_invocable<as_awaitable_t, _Tp, _Promise&>;
-          return __declfn<_Result, _Nothrow>;
+          return __declfn<_Result, _Nothrow>();
           // NOLINTNEXTLINE(bugprone-branch-clone)
         } else if constexpr (__awaitable<_Tp, __unspecified>) { // NOT __awaitable<_Tp, _Promise> !!
-          return __declfn<_Tp&&>;
+          return __declfn<_Tp&&>();
         } else if constexpr (__awaitable_sender<_Tp, _Promise>) {
           using _Result = __sender_awaitable_t<_Promise, _Tp>;
           constexpr bool _Nothrow =
             __nothrow_constructible_from<_Result, _Tp, __coro::coroutine_handle<_Promise>>;
-          return __declfn<_Result, _Nothrow>;
+          return __declfn<_Result, _Nothrow>();
         } else {
-          return __declfn<_Tp&&>;
+          return __declfn<_Tp&&>();
         }
       }
 

@@ -106,7 +106,7 @@ namespace stdexec {
 
       template <class _Attrs, class... _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto operator()(const _Attrs& __attrs, const _Env&... __env) const noexcept {
+      constexpr auto operator()(const _Attrs&, const _Env&...) const noexcept {
         if constexpr (__member_queryable_with<const _Attrs&, get_completion_behavior_t<_Tag>, _Env...>) {
           return __validate<_Attrs, _Env...>();
         }

@@ -38,10 +38,12 @@ namespace stdexec {
     STDEXEC_TERMINATE();
   }
   template <class _Tp, bool _Noexcept = true>
-  inline constexpr __declfn_t<_Tp, _Noexcept> __declfn = &__declfn_<_Tp, _Noexcept>;
+  inline constexpr __declfn_t<_Tp, _Noexcept> __declfn() noexcept {
+    return &__declfn_<_Tp, _Noexcept>;
+  }
 #else
   template <class _Tp, bool _Noexcept = true>
-  extern __declfn_t<_Tp, _Noexcept> __declfn;
+  using __declfn = __declfn_t<_Tp, _Noexcept>;
 #endif
 
   //////////////////////////////////////////////////////////////////////////////////////////////////

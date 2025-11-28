@@ -60,13 +60,13 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
         "example.benchmark.static_thread_pool_bulk_enqueue : benchmark/static_thread_pool_bulk_enqueue.cpp"
  "example.benchmark.static_thread_pool_bulk_enqueue_nested : benchmark/static_thread_pool_bulk_enqueue_nested.cpp"
   )
-endif (LINUX)
+endif ()
 
 if (LINUX)
   set(stdexec_examples ${stdexec_examples}
                     "example.io_uring : io_uring.cpp"
   )
-endif (LINUX)
+endif ()
 
 foreach(example ${stdexec_examples})
     def_example(${example})
