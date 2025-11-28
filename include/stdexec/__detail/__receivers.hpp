@@ -162,7 +162,7 @@ namespace stdexec {
   template <class _Receiver>
   concept receiver = enable_receiver<__decay_t<_Receiver>>
                   && environment_provider<__cref_t<_Receiver>>
-                  && move_constructible<__decay_t<_Receiver>>
+                  && __nothrow_move_constructible<__decay_t<_Receiver>>
                   && constructible_from<__decay_t<_Receiver>, _Receiver>;
 
   namespace __detail {
@@ -217,4 +217,31 @@ namespace stdexec {
       _Tag()(static_cast<_Receiver &&>(__rcvr), static_cast<_Args &&>(__args)...);
     };
   }
+
+  template <class _Env>
+  struct __receiver_archetype {
+    using __t = __receiver_archetype;
+    using __id = __receiver_archetype;
+    using receiver_concept = receiver_t;
+
+    template <class... _Args>
+    STDEXEC_ATTRIBUTE(host, device)
+    void set_value(_Args...) noexcept {
+    }
+
+    template <class _Error>
+    STDEXEC_ATTRIBUTE(host, device)
+    void set_error(_Error) noexcept {
+    }
+
+    STDEXEC_ATTRIBUTE(host, device)
+    void set_stopped() noexcept {
+    }
+
+    STDEXEC_ATTRIBUTE(nodiscard, noreturn, host, device)
+    _Env get_env() const noexcept {
+      STDEXEC_ASSERT(false);
+      STDEXEC_TERMINATE();
+    }
+  };
 } // namespace stdexec

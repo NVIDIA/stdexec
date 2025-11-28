@@ -24,7 +24,7 @@
 #include "trampoline_scheduler.hpp"
 #include "sequence.hpp"
 
-#include <atomic>
+#include "../stdexec/__detail/__atomic.hpp"
 #include <exception>
 #include <type_traits>
 
@@ -82,7 +82,7 @@ namespace exec {
       using __child_op_t = stdexec::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
       __child_t __child_;
-      std::atomic_flag __started_{};
+      __std::atomic_flag __started_{};
       stdexec::__manual_lifetime<__child_op_t> __child_op_;
       trampoline_scheduler __sched_;
 
@@ -93,9 +93,9 @@ namespace exec {
       }
 
       ~__repeat_effect_state() {
-        if (!__started_.test(std::memory_order_acquire)) {
-          std::atomic_thread_fence(std::memory_order_release);
-          // TSan does not support std::atomic_thread_fence, so we
+        if (!__started_.test(__std::memory_order_acquire)) {
+          __std::atomic_thread_fence(__std::memory_order_release);
+          // TSan does not support __std::atomic_thread_fence, so we
           // need to use the TSan-specific __tsan_release instead:
           STDEXEC_WHEN(STDEXEC_TSAN(), __tsan_release(&__started_));
           __child_op_.__destroy();
@@ -111,7 +111,7 @@ namespace exec {
 
       void __start() noexcept {
         const bool __already_started [[maybe_unused]]
-        = __started_.test_and_set(std::memory_order_relaxed);
+        = __started_.test_and_set(__std::memory_order_relaxed);
         STDEXEC_ASSERT(!__already_started);
         stdexec::start(__child_op_.__get());
       }
@@ -197,9 +197,7 @@ namespace exec {
     struct repeat_effect_until_t {
       template <sender _Sender>
       auto operator()(_Sender &&__sndr) const {
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::transform_sender(
-          __domain, __make_sexpr<repeat_effect_until_t>({}, static_cast<_Sender &&>(__sndr)));
+        return __make_sexpr<repeat_effect_until_t>({}, static_cast<_Sender &&>(__sndr));
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
@@ -208,7 +206,7 @@ namespace exec {
       }
 
       template <class _Sender>
-      auto transform_sender(_Sender &&__sndr, __ignore) {
+      auto transform_sender(stdexec::set_value_t, _Sender &&__sndr, __ignore) {
         return __sexpr_apply(
           static_cast<_Sender &&>(__sndr), []<class _Child>(__ignore, __ignore, _Child __child) {
             return __make_sexpr<__repeat_effect_until_tag>(std::move(__child));
@@ -227,9 +225,7 @@ namespace exec {
 
       template <sender _Sender>
       auto operator()(_Sender &&__sndr) const {
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::transform_sender(
-          __domain, __make_sexpr<repeat_effect_t>({}, static_cast<_Sender &&>(__sndr)));
+        return __make_sexpr<repeat_effect_t>({}, static_cast<_Sender &&>(__sndr));
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
@@ -238,7 +234,7 @@ namespace exec {
       }
 
       template <class _Sender>
-      auto transform_sender(_Sender &&__sndr, __ignore) {
+      auto transform_sender(stdexec::set_value_t, _Sender &&__sndr, __ignore) {
         return __sexpr_apply(static_cast<_Sender &&>(__sndr), [](__ignore, __ignore, auto __child) {
           return repeat_effect_until_t{}(stdexec::then(std::move(__child), _never{}));
         });

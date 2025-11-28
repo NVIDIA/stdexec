@@ -31,7 +31,7 @@
 #include "sequence/iterate.hpp"
 
 #include <algorithm>
-#include <atomic>
+#include "../stdexec/__detail/__atomic.hpp"
 #include <compare>
 #include <condition_variable>
 #include <cstdint>
@@ -115,7 +115,7 @@ namespace exec {
 
     struct remote_queue_list {
      private:
-      std::atomic<remote_queue*> head_;
+      __std::atomic<remote_queue*> head_;
       remote_queue* tail_;
       std::size_t nthreads_;
       remote_queue this_remotes_;
@@ -129,7 +129,7 @@ namespace exec {
       }
 
       ~remote_queue_list() noexcept {
-        remote_queue* head = head_.load(std::memory_order_acquire);
+        remote_queue* head = head_.load(__std::memory_order_acquire);
         while (head != tail_) {
           remote_queue* tmp = std::exchange(head, head->next_);
           delete tmp;
@@ -137,7 +137,7 @@ namespace exec {
       }
 
       auto pop_all_reversed(std::size_t tid) noexcept -> __intrusive_queue<&task_base::next> {
-        remote_queue* head = head_.load(std::memory_order_acquire);
+        remote_queue* head = head_.load(__std::memory_order_acquire);
         __intrusive_queue<&task_base::next> tasks{};
         while (head != nullptr) {
           tasks.append(head->queues_[tid].pop_all_reversed());
@@ -148,7 +148,7 @@ namespace exec {
 
       auto get() -> remote_queue* {
         thread_local std::thread::id this_id = std::this_thread::get_id();
-        remote_queue* head = head_.load(std::memory_order_acquire);
+        remote_queue* head = head_.load(__std::memory_order_acquire);
         remote_queue* queue = head;
         while (queue != tail_) {
           if (queue->id_ == this_id) {
@@ -157,7 +157,7 @@ namespace exec {
           queue = queue->next_;
         }
         auto* new_head = new remote_queue{head, nthreads_};
-        while (!head_.compare_exchange_weak(head, new_head, std::memory_order_acq_rel)) {
+        while (!head_.compare_exchange_weak(head, new_head, __std::memory_order_acq_rel)) {
           new_head->next_ = head;
         }
         return new_head;
@@ -294,48 +294,35 @@ namespace exec {
 
      public:
       struct domain : stdexec::default_domain {
-        // For eager customization
-        template <sender_expr_for<bulk_chunked_t> Sender>
-        auto transform_sender(Sender&& sndr) const noexcept {
-          if constexpr (__completes_on<Sender, static_thread_pool_::scheduler>) {
-            auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
-            return __sexpr_apply(static_cast<Sender&&>(sndr), transform_bulk{*sched.pool_});
-          } else {
-            static_assert(
-              __completes_on<Sender, static_thread_pool_::scheduler>,
-              "No static_thread_pool instance can be found in the sender's attributes "
-              "on which to schedule bulk work.");
-            return not_a_sender<__name_of<Sender>>();
-          }
-        }
-
         // transform the generic bulk_chunked sender into a parallel thread-pool bulk sender
         template <sender_expr_for<bulk_chunked_t> Sender, class Env>
-        auto transform_sender(Sender&& sndr, const Env& env) const noexcept {
-          if constexpr (__starts_on<Sender, static_thread_pool_::scheduler, Env>) {
-            auto sched = stdexec::get_scheduler(env);
+        auto transform_sender(stdexec::set_value_t, Sender&& sndr, const Env& env) const noexcept {
+          if constexpr (__completes_on<Sender, static_thread_pool_::scheduler, Env>) {
+            auto sched = stdexec::get_completion_scheduler<set_value_t>(get_env(sndr), env);
+            static_assert(std::is_same_v<decltype(sched), static_thread_pool_::scheduler>);
             return __sexpr_apply(static_cast<Sender&&>(sndr), transform_bulk{*sched.pool_});
           } else {
             static_assert(
-              __starts_on<Sender, static_thread_pool_::scheduler, Env>,
-              "No static_thread_pool instance can be found in the receiver's "
-              "environment on which to schedule bulk work.");
+              __completes_on<Sender, static_thread_pool_::scheduler, Env>,
+              "Unable to dispatch bulk work to the static_thread_pool. The predecessor sender "
+              "is not able to provide a static_thread_pool scheduler.");
             return not_a_sender<__name_of<Sender>>();
           }
         }
 
 #if STDEXEC_HAS_STD_RANGES()
-        template <sender_expr_for<exec::iterate_t> Sender>
-        auto transform_sender(Sender&& sndr) const noexcept {
-          auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
-          return __sexpr_apply(static_cast<Sender&&>(sndr), transform_iterate{*sched.pool_});
-        }
-
         template <sender_expr_for<exec::iterate_t> Sender, class Env>
-          requires __callable<get_scheduler_t, Env>
-        auto transform_sender(Sender&& sndr, const Env& env) const noexcept {
-          auto sched = stdexec::get_scheduler(env);
-          return __sexpr_apply(static_cast<Sender&&>(sndr), transform_iterate{*sched.pool_});
+        auto transform_sender(stdexec::set_value_t, Sender&& sndr, const Env& env) const noexcept {
+          if constexpr (__completes_on<Sender, static_thread_pool_::scheduler, Env>) {
+            auto sched = stdexec::get_scheduler(env);
+            return __sexpr_apply(static_cast<Sender&&>(sndr), transform_iterate{*sched.pool_});
+          } else {
+            static_assert(
+              __completes_on<Sender, static_thread_pool_::scheduler, Env>,
+              "Unable to dispatch the iterate algorithm to the static_thread_pool. The predecessor "
+              "sender is not able to provide a static_thread_pool scheduler.");
+            return not_a_sender<__name_of<Sender>>();
+          }
         }
 #endif
       };
@@ -359,9 +346,15 @@ namespace exec {
             remote_queue* queue_;
 
             template <class CPO>
-            auto query(get_completion_scheduler_t<CPO>) const noexcept
+            auto query(get_completion_scheduler_t<CPO>, __ignore = {}) const noexcept
               -> static_thread_pool_::scheduler {
               return static_thread_pool_::scheduler{pool_, *queue_};
+            }
+
+            template <class CPO>
+            auto query(get_completion_domain_t<CPO>, __ignore = {}) const noexcept
+              -> domain {
+              return {};
             }
           };
 
@@ -455,8 +448,13 @@ namespace exec {
         }
 
         [[nodiscard]]
-        auto query(get_domain_t) const noexcept -> domain {
+        auto query(get_completion_domain_t<set_value_t>, __ignore = {}) const noexcept -> domain {
           return {};
+        }
+
+        [[nodiscard]]
+        auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept -> scheduler {
+          return scheduler{*this};
         }
       };
 
@@ -645,7 +643,7 @@ namespace exec {
         bool stopRequested_{false};
         std::vector<workstealing_victim> near_victims_{};
         std::vector<workstealing_victim> all_victims_{};
-        std::atomic<state> state_;
+        __std::atomic<state> state_;
         static_thread_pool_* pool_;
         xorshift rng_{};
       };
@@ -653,7 +651,7 @@ namespace exec {
       void run(std::uint32_t index) noexcept;
       void join() noexcept;
 
-      alignas(64) std::atomic<std::uint32_t> numActive_{};
+      alignas(64) __std::atomic<std::uint32_t> numActive_{};
       alignas(64) remote_queue_list remotes_;
       std::uint32_t threadCount_;
       std::uint32_t maxSteals_{threadCount_ + 1};
@@ -724,7 +722,7 @@ namespace exec {
       threads_.reserve(threadCount);
 
       STDEXEC_TRY {
-        numActive_.store(threadCount << 16u, std::memory_order_relaxed);
+        numActive_.store(threadCount << 16u, __std::memory_order_relaxed);
         for (std::uint32_t i = 0; i < threadCount; ++i) {
           threads_.emplace_back([this, i] { run(i); });
         }
@@ -970,13 +968,13 @@ namespace exec {
     }
 
     inline void static_thread_pool_::thread_state::set_sleeping() {
-      pool_->numActive_.fetch_sub(1u << 16u, std::memory_order_relaxed);
+      pool_->numActive_.fetch_sub(1u << 16u, __std::memory_order_relaxed);
     }
 
     // wakeup a worker thread and maintain the invariant that we always one active thief as long as a potential victim is awake
     inline void static_thread_pool_::thread_state::clear_sleeping() {
       const std::uint32_t numActive = pool_->numActive_
-                                        .fetch_add(1u << 16u, std::memory_order_relaxed);
+                                        .fetch_add(1u << 16u, __std::memory_order_relaxed);
       if (numActive == 0) {
         notify_one_sleeping();
       }
@@ -984,13 +982,14 @@ namespace exec {
 
     inline void static_thread_pool_::thread_state::set_stealing() {
       const std::uint32_t diff = 1u - (1u << 16u);
-      pool_->numActive_.fetch_add(diff, std::memory_order_relaxed);
+      pool_->numActive_.fetch_add(diff, __std::memory_order_relaxed);
     }
 
     // put a thief to sleep but maintain the invariant that we always have one active thief as long as a potential victim is awake
     inline void static_thread_pool_::thread_state::clear_stealing() {
       constexpr std::uint32_t diff = 1 - (1u << 16u);
-      const std::uint32_t numActive = pool_->numActive_.fetch_sub(diff, std::memory_order_relaxed);
+      const std::uint32_t numActive = pool_->numActive_
+                                        .fetch_sub(diff, __std::memory_order_relaxed);
       const std::uint32_t numVictims = numActive >> 16u;
       const std::uint32_t numThiefs = numActive & 0xffffu;
       if (numThiefs == 1 && numVictims != 0) {
@@ -1040,7 +1039,7 @@ namespace exec {
           return result;
         }
         state expected = state::running;
-        if (state_.compare_exchange_weak(expected, state::sleeping, std::memory_order_relaxed)) {
+        if (state_.compare_exchange_weak(expected, state::sleeping, __std::memory_order_relaxed)) {
           result = try_remote();
           if (result.task) {
             return result;
@@ -1053,14 +1052,14 @@ namespace exec {
         if (lock.owns_lock()) {
           lock.unlock();
         }
-        state_.store(state::running, std::memory_order_relaxed);
+        state_.store(state::running, __std::memory_order_relaxed);
         result = try_pop();
       }
       return result;
     }
 
     inline auto static_thread_pool_::thread_state::notify() -> bool {
-      if (state_.exchange(state::notified, std::memory_order_relaxed) == state::sleeping) {
+      if (state_.exchange(state::notified, __std::memory_order_relaxed) == state::sleeping) {
         {
           std::lock_guard lock{mut_};
         }
@@ -1236,7 +1235,7 @@ namespace exec {
                 std::uint32_t expected = total_threads;
 
                 if (sh_state.thread_with_exception_.compare_exchange_strong(
-                      expected, tid, std::memory_order_relaxed, std::memory_order_relaxed)) {
+                      expected, tid, __std::memory_order_relaxed, __std::memory_order_relaxed)) {
                   sh_state.exception_ = std::current_exception();
                 }
               }
@@ -1279,8 +1278,8 @@ namespace exec {
       Shape shape_;
       Fun fun_;
 
-      std::atomic<std::uint32_t> finished_threads_{0};
-      std::atomic<std::uint32_t> thread_with_exception_{0};
+      __std::atomic<std::uint32_t> finished_threads_{0};
+      __std::atomic<std::uint32_t> thread_with_exception_{0};
       std::exception_ptr exception_;
       std::vector<bulk_task> tasks_;
 
@@ -1451,7 +1450,7 @@ namespace exec {
         bool has_started_{false};
         __intrusive_queue<&task_base::next> tasks_{};
         std::size_t tasks_size_{};
-        std::atomic<std::size_t> countdown_{std::ranges::size(range_)};
+        __std::atomic<std::size_t> countdown_{std::ranges::size(range_)};
       };
 
       template <class Range, class ItemReceiverId>
@@ -1508,14 +1507,14 @@ namespace exec {
           struct env {
             static_thread_pool_* pool_;
 
-            auto query(get_completion_scheduler_t<set_value_t>) noexcept
+            auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) noexcept
               -> static_thread_pool_::scheduler {
               return pool_->get_scheduler();
             }
           };
 
           auto get_env() const noexcept -> env {
-            return {op_->pool_};
+            return {&op_->pool_};
           }
 
           template <receiver ItemReceiver>
@@ -1547,14 +1546,14 @@ namespace exec {
           operation_base_with_receiver<Range, Receiver>* op_;
 
           void set_value() noexcept {
-            std::size_t countdown = op_->countdown_.fetch_sub(1, std::memory_order_relaxed);
+            std::size_t countdown = op_->countdown_.fetch_sub(1, __std::memory_order_relaxed);
             if (countdown == 1) {
               stdexec::set_value(static_cast<Receiver&&>(op_->rcvr_));
             }
           }
 
           void set_stopped() noexcept {
-            std::size_t countdown = op_->countdown_.fetch_sub(1, std::memory_order_relaxed);
+            std::size_t countdown = op_->countdown_.fetch_sub(1, __std::memory_order_relaxed);
             if (countdown == 1) {
               stdexec::set_value(static_cast<Receiver&&>(op_->rcvr_));
             }

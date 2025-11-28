@@ -16,12 +16,13 @@
  */
 #pragma once
 
+#include "__detail/__atomic.hpp"
+#include "__detail/__query.hpp"
 #include "__detail/__stop_token.hpp" // IWYU pragma: export
 
 #include <version>
 #include <cstdint>
 #include <utility>
-#include <atomic>
 #include <thread>
 
 #if __has_include(<stop_token>) && __cpp_lib_jthread >= 2019'11L
@@ -54,7 +55,7 @@ namespace stdexec {
       __inplace_stop_callback_base* __next_ = nullptr;
       __inplace_stop_callback_base** __prev_ptr_ = nullptr;
       bool* __removed_during_callback_ = nullptr;
-      std::atomic<bool> __callback_completed_{false};
+      __std::atomic<bool> __callback_completed_{false};
     };
 
     struct __spin_wait {
@@ -91,7 +92,7 @@ namespace stdexec {
     auto request_stop() noexcept -> bool;
 
     auto stop_requested() const noexcept -> bool {
-      return (__state_.load(std::memory_order_acquire) & __stop_requested_flag_) != 0;
+      return (__state_.load(__std::memory_order_acquire) & __stop_requested_flag_) != 0;
     }
 
    private:
@@ -112,7 +113,7 @@ namespace stdexec {
     static constexpr uint8_t __stop_requested_flag_ = 1;
     static constexpr uint8_t __locked_flag_ = 2;
 
-    mutable std::atomic<uint8_t> __state_{0};
+    mutable __std::atomic<uint8_t> __state_{0};
     mutable __stok::__inplace_stop_callback_base* __callbacks_ = nullptr;
     std::thread::id __notifying_thread_;
   };
@@ -214,7 +215,7 @@ namespace stdexec {
   } // namespace __stok
 
   inline inplace_stop_source::~inplace_stop_source() {
-    STDEXEC_ASSERT((__state_.load(std::memory_order_relaxed) & __locked_flag_) == 0);
+    STDEXEC_ASSERT((__state_.load(__std::memory_order_relaxed) & __locked_flag_) == 0);
     STDEXEC_ASSERT(__callbacks_ == nullptr);
   }
 
@@ -232,7 +233,7 @@ namespace stdexec {
       if (__callbacks_ != nullptr)
         __callbacks_->__prev_ptr_ = &__callbacks_;
 
-      __state_.store(__stop_requested_flag_, std::memory_order_release);
+      __state_.store(__stop_requested_flag_, __std::memory_order_release);
 
       bool __removed_during_callback = false;
       __callbk->__removed_during_callback_ = &__removed_during_callback;
@@ -241,42 +242,42 @@ namespace stdexec {
 
       if (!__removed_during_callback) {
         __callbk->__removed_during_callback_ = nullptr;
-        __callbk->__callback_completed_.store(true, std::memory_order_release);
+        __callbk->__callback_completed_.store(true, __std::memory_order_release);
       }
 
       __lock_();
     }
 
-    __state_.store(__stop_requested_flag_, std::memory_order_release);
+    __state_.store(__stop_requested_flag_, __std::memory_order_release);
     return false;
   }
 
   inline auto inplace_stop_source::__lock_() const noexcept -> uint8_t {
     __stok::__spin_wait __spin;
-    auto __old_state = __state_.load(std::memory_order_relaxed);
+    auto __old_state = __state_.load(__std::memory_order_relaxed);
     do {
       while ((__old_state & __locked_flag_) != 0) {
         __spin.__wait();
-        __old_state = __state_.load(std::memory_order_relaxed);
+        __old_state = __state_.load(__std::memory_order_relaxed);
       }
     } while (!__state_.compare_exchange_weak(
       __old_state,
       __old_state | __locked_flag_,
-      std::memory_order_acquire,
-      std::memory_order_relaxed));
+      __std::memory_order_acquire,
+      __std::memory_order_relaxed));
 
     return __old_state;
   }
 
   inline void inplace_stop_source::__unlock_(uint8_t __old_state) const noexcept {
-    (void) __state_.store(__old_state, std::memory_order_release);
+    (void) __state_.store(__old_state, __std::memory_order_release);
   }
 
   inline auto
     inplace_stop_source::__try_lock_unless_stop_requested_(bool __set_stop_requested) const noexcept
     -> bool {
     __stok::__spin_wait __spin;
-    auto __old_state = __state_.load(std::memory_order_relaxed);
+    auto __old_state = __state_.load(__std::memory_order_relaxed);
     do {
       while (true) {
         if ((__old_state & __stop_requested_flag_) != 0) {
@@ -286,14 +287,14 @@ namespace stdexec {
           break;
         } else {
           __spin.__wait();
-          __old_state = __state_.load(std::memory_order_relaxed);
+          __old_state = __state_.load(__std::memory_order_relaxed);
         }
       }
     } while (!__state_.compare_exchange_weak(
       __old_state,
       __set_stop_requested ? (__locked_flag_ | __stop_requested_flag_) : __locked_flag_,
-      std::memory_order_acq_rel,
-      std::memory_order_relaxed));
+      __std::memory_order_acq_rel,
+      __std::memory_order_relaxed));
 
     // Lock acquired successfully
     return true;
@@ -343,7 +344,7 @@ namespace stdexec {
         // Concurrently executing on another thread.
         // Wait until the other thread finishes executing the callback.
         __stok::__spin_wait __spin;
-        while (!__callbk->__callback_completed_.load(std::memory_order_acquire)) {
+        while (!__callbk->__callback_completed_.load(__std::memory_order_acquire)) {
           __spin.__wait();
         }
       }
@@ -357,6 +358,33 @@ namespace stdexec {
 
     inplace_stop_source& __stop_source_;
   };
+
+  namespace __queries {
+    using __get_stop_token_t = __query<get_stop_token_t, never_stop_token{}, __q1<__decay_t>>;
+
+    struct get_stop_token_t : __get_stop_token_t {
+      using __get_stop_token_t::operator();
+
+      template <class _Query = get_stop_token_t>
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+      constexpr auto operator()() const noexcept; // defined in __read_env.hpp
+
+      template <class _Env>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr void __validate() noexcept {
+        static_assert(__nothrow_callable<get_stop_token_t, const _Env&>);
+        static_assert(stoppable_token<__call_result_t<get_stop_token_t, const _Env&>>);
+      }
+
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+      static consteval auto query(forwarding_query_t) noexcept -> bool {
+        return true;
+      }
+    };
+  } // namespace __queries
+
+  using __queries::get_stop_token_t;
+  inline constexpr get_stop_token_t get_stop_token{};
 
   using in_place_stop_token
     [[deprecated("in_place_stop_token has been renamed inplace_stop_token")]] = inplace_stop_token;

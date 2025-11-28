@@ -61,9 +61,7 @@ namespace exec {
       }
       template <sender _Sender>
       constexpr __well_formed_sender auto operator()(_Sender&& __sndr) const {
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::transform_sender(
-          __domain, __make_sexpr<unless_stop_requested_t>(__(), static_cast<_Sender&&>(__sndr)));
+        return __make_sexpr<unless_stop_requested_t>(__(), static_cast<_Sender&&>(__sndr));
       }
     };
 

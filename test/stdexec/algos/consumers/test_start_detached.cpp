@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "stdexec/__detail/__env.hpp"
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -113,7 +114,7 @@ namespace {
 
     [[nodiscard]]
     auto get_env() const noexcept {
-      return ex::prop{ex::get_domain_override, domain{}};
+      return ex::prop{ex::get_completion_domain<ex::set_value_t>, domain{}};
     }
 
     template <class Receiver>
@@ -158,6 +159,18 @@ namespace {
 
     [[nodiscard]]
     auto query(ex::get_domain_t) const noexcept -> domain {
+      return {};
+    }
+
+    template <ex::__completion_tag Tag>
+    [[nodiscard]]
+    auto query(ex::get_completion_scheduler_t<Tag>, ex::__ignore = {}) const noexcept -> custom_scheduler {
+      return *this;
+    }
+
+    template <ex::__completion_tag Tag>
+    [[nodiscard]]
+    auto query(ex::get_completion_domain_t<Tag>, ex::__ignore = {}) const noexcept -> domain {
       return {};
     }
 
@@ -236,7 +249,7 @@ namespace {
     ex::run_loop loop;
     auto sch = loop.get_scheduler();
     auto snd = ex::get_scheduler() | ex::let_value([](auto sched) {
-                 static_assert(ex::same_as<decltype(sched), ex::run_loop::__scheduler>);
+                 static_assert(ex::same_as<decltype(sched), ex::run_loop::scheduler>);
                  return ex::starts_on(sched, ex::just());
                });
     ex::start_detached(ex::on(sch, std::move(snd)));
@@ -250,7 +263,7 @@ namespace {
     ex::run_loop loop;
     auto sch = loop.get_scheduler();
     auto snd = ex::get_scheduler() | ex::let_value([](auto sched) {
-                 static_assert(ex::same_as<decltype(sched), ex::run_loop::__scheduler>);
+                 static_assert(ex::same_as<decltype(sched), ex::run_loop::scheduler>);
                  return ex::starts_on(sched, ex::just());
                });
     ex::start_detached(ex::on(sch, std::move(snd)), env{});

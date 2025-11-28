@@ -17,6 +17,9 @@
 
 #include "__execution_fwd.hpp"
 
+#include <cstddef>
+#include <exception> // IWYU pragma: keep for std::terminate
+
 namespace stdexec {
   namespace __detail {
     // Accessor for the "data" field of a sender
@@ -48,6 +51,10 @@ namespace stdexec {
       using __data = _Data;
       using __children = __types<_Child...>;
 
+      constexpr auto operator()() const noexcept -> __desc {
+        return __desc{};
+      }
+
       template <class _Fn>
       using __f = __minvoke<_Fn, _Tag, _Data, _Child...>;
     };
@@ -56,7 +63,10 @@ namespace stdexec {
     struct __sexpr_uncurry_fn {
       template <class _Tag, class _Data, class... _Child>
       constexpr auto operator()(_Tag, _Data&&, _Child&&...) const noexcept
-        -> __minvoke<_Fn, _Tag, _Data, _Child...>;
+        -> __minvoke<_Fn, _Tag, _Data, _Child...> {
+        STDEXEC_ASSERT(!"This function should never be called");
+        STDEXEC_TERMINATE();
+      }
     };
 
     template <class _CvrefSender, class _Fn>

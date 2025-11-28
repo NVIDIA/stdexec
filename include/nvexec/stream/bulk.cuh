@@ -36,7 +36,8 @@ __host__ auto operator new[](std::size_t) -> void*;
 namespace nvexec::_strm {
   namespace _bulk {
     template <int BlockThreads, class... As, std::integral Shape, class Fun>
-    __launch_bounds__(BlockThreads) __global__ void kernel(Shape shape, Fun fn, As... as) {
+    STDEXEC_ATTRIBUTE(launch_bounds(BlockThreads))
+    __global__ void _bulk_kernel(Shape shape, Fun fn, As... as) {
       static_assert(trivially_copyable<Shape, Fun, As...>);
       const int tid = static_cast<int>(threadIdx.x + blockIdx.x * blockDim.x);
 
@@ -68,7 +69,7 @@ namespace nvexec::_strm {
             cudaStream_t stream = op_state.get_stream();
             constexpr int block_threads = 256;
             const int grid_blocks = (static_cast<int>(shape_) + block_threads - 1) / block_threads;
-            kernel<block_threads, As&...>
+            _bulk_kernel<block_threads, As&...>
               <<<grid_blocks, block_threads, 0, stream>>>(shape_, std::move(f_), as...);
           }
 
@@ -156,8 +157,8 @@ namespace nvexec::_strm {
 
   namespace multi_gpu_bulk {
     template <int BlockThreads, class... As, std::integral Shape, class Fun>
-    __launch_bounds__(BlockThreads) __global__
-      void kernel(Shape begin, Shape end, Fun fn, As... as) {
+    STDEXEC_ATTRIBUTE(launch_bounds(BlockThreads))
+    __global__ void _multi_bulk_kernel(Shape begin, Shape end, Fun fn, As... as) {
       static_assert(trivially_copyable<Shape, Fun, As...>);
       const Shape i = begin + static_cast<Shape>(threadIdx.x + blockIdx.x * blockDim.x);
 
@@ -216,7 +217,7 @@ namespace nvexec::_strm {
                 if (begin < end) {
                   cudaSetDevice(dev);
                   cudaStreamWaitEvent(stream, op_state_.ready_to_launch_, 0);
-                  kernel<block_threads, As&...>
+                  _multi_bulk_kernel<block_threads, As&...>
                     <<<grid_blocks, block_threads, 0, stream>>>(begin, end, f_, as...);
                   cudaEventRecord(op_state_.ready_to_complete_[dev], op_state_.streams_[dev]);
                 }
@@ -231,7 +232,7 @@ namespace nvexec::_strm {
               const int grid_blocks = (shape + block_threads - 1) / block_threads;
 
               if (begin < end) {
-                kernel<block_threads, As&...>
+                _multi_bulk_kernel<block_threads, As&...>
                   <<<grid_blocks, block_threads, 0, baseline_stream>>>(begin, end, f_, as...);
               }
             }
@@ -370,7 +371,8 @@ namespace nvexec::_strm {
         Shape,
         Fun
       > {
-        auto sch = stdexec::get_completion_scheduler<set_value_t>(stdexec::get_env(self.sndr_));
+        auto sch = stdexec::get_completion_scheduler<set_value_t>(
+          stdexec::get_env(self.sndr_), stdexec::get_env(rcvr));
         context_state_t context_state = sch.context_state_;
         return multi_gpu_bulk::operation_t<
           __cvref_id<Self, Sender>,
@@ -397,14 +399,14 @@ namespace nvexec::_strm {
     };
   };
 
-  template <>
-  struct transform_sender_for<stdexec::bulk_t> {
-    template <class Data, stream_completing_sender Sender>
+  template <class Env>
+  struct transform_sender_for<stdexec::bulk_t, Env> {
+    template <class Data, stream_completing_sender<Env> Sender>
     auto operator()(__ignore, Data data, Sender&& sndr) const {
       auto [policy, shape, fun] = static_cast<Data&&>(data);
       using Shape = decltype(shape);
       using Fn = decltype(fun);
-      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
+      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), env_);
       if constexpr (same_as<decltype(sched), stream_scheduler>) {
         // Use the bulk sender for a single GPU
         using _sender_t = __t<bulk_sender_t<__id<__decay_t<Sender>>, Shape, Fn>>;
@@ -416,6 +418,8 @@ namespace nvexec::_strm {
           {}, sched.num_devices_, static_cast<Sender&&>(sndr), shape, static_cast<Fn&&>(fun)};
       }
     }
+
+    const Env& env_;
   };
 } // namespace nvexec::_strm
 

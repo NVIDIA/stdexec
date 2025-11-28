@@ -15,6 +15,7 @@
  */
 
 #include "cpo_helpers.cuh"
+#include "test_common/receivers.hpp"
 #include <catch2/catch.hpp>
 
 namespace {
@@ -23,17 +24,18 @@ namespace {
     const auto f = []() {
     };
 
-    SECTION("by free standing sender") {
-      cpo_test_sender_t<ex::upon_stopped_t> snd{};
+    SECTION("by completion scheduler domain") {
+      cpo_test_scheduler_t<ex::upon_stopped_t, ex::set_stopped_t>::sender_t snd{};
 
       {
-        constexpr scope_t scope = decltype(snd | ex::upon_stopped(f))::scope;
-        STATIC_REQUIRE(scope == scope_t::free_standing);
+        constexpr scope_t scope = decltype(ex::connect(snd | ex::upon_stopped(f), empty_recv::recv0{}))::sender_t::scope;
+        STATIC_REQUIRE(scope == scope_t::scheduler);
       }
 
       {
-        constexpr scope_t scope = decltype(ex::upon_stopped(snd, f))::scope;
-        STATIC_REQUIRE(scope == scope_t::free_standing);
+        void(ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(snd)));
+        constexpr scope_t scope = decltype(ex::connect(ex::upon_stopped(snd, f), empty_recv::recv0{}))::sender_t::scope;
+        STATIC_REQUIRE(scope == scope_t::scheduler);
       }
     }
   }

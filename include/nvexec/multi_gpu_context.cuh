@@ -125,7 +125,7 @@ namespace nvexec {
 
           template <class CPO>
           [[nodiscard]]
-          auto query(get_completion_scheduler_t<CPO>) const noexcept -> multi_gpu_stream_scheduler {
+          auto query(get_completion_scheduler_t<CPO>, __ignore = {}) const noexcept -> multi_gpu_stream_scheduler {
             return multi_gpu_stream_scheduler{num_devices_, context_state_};
           }
         };

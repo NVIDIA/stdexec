@@ -322,7 +322,7 @@ namespace execpools {
           Fun fun_;
 
           template <class Sender, class... Env>
-          using _with_error_invoke_t = stdexec::__eptr_completion_if_t<stdexec::__value_types_t<
+          using _with_error_invoke_t = stdexec::__eptr_completion_unless_t<stdexec::__value_types_t<
             stdexec::__completion_signatures_of_t<Sender, Env...>,
             stdexec::__mtransform<
               stdexec::__q1<__decay_ref>,

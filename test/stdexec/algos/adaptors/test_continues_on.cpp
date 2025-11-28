@@ -223,9 +223,8 @@ namespace {
     ex::value_types_of_t<Sender, ex::env<>, std::type_identity_t, std::type_identity_t>;
 
   struct continues_on_test_domain {
-    template <class Sender>
-      requires std::same_as<value_type_of_t<Sender>, value_type>
-    static auto transform_sender(Sender&&) {
+    template <ex::sender_expr_for<ex::continues_on_t> Sender>
+    static auto transform_sender(stdexec::set_value_t, Sender&&, const auto&...) {
       return ex::just(value_type{53});
     }
   };
@@ -242,28 +241,30 @@ namespace {
 
   struct test_domain_A {
     template <ex::sender_expr_for<ex::continues_on_t> Sender, class Env>
-    auto transform_sender(Sender&&, Env&&) const {
+    auto transform_sender(stdexec::set_value_t, Sender&&, Env&&) const {
       return ex::just(std::string("hello"));
     }
   };
 
   struct test_domain_B {
     template <ex::sender_expr_for<ex::continues_on_t> Sender, class Env>
-    auto transform_sender(Sender&&, Env&&) const {
+    auto transform_sender(stdexec::set_value_t, Sender&&, Env&&) const {
       return ex::just(std::string("goodbye"));
     }
   };
 
   TEST_CASE(
-    "continues_on late customization is passed on the receiver's scheduler",
+    "continues_on late customization is based on the scheduler's domain",
     "[adaptors][continues_on]") {
     // The customization will return a different value
     ex::scheduler auto sched_A = basic_inline_scheduler<test_domain_A>{};
     ex::scheduler auto sched_B = basic_inline_scheduler<test_domain_B>{};
-    auto snd = ex::starts_on(sched_A, ex::just() | ex::continues_on(sched_B));
+    auto snd = ex::just(std::string("meow")) //
+             | ex::continues_on(sched_A)     //
+             | ex::continues_on(sched_B);
     std::string res;
     auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
     ex::start(op);
-    REQUIRE(res == "hello");
+    REQUIRE(res == "goodbye");
   }
 } // namespace

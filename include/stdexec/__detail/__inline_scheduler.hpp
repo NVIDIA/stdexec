@@ -17,12 +17,21 @@
 
 #include "__execution_fwd.hpp"
 
-#include "__env.hpp"
+#include "__completion_behavior.hpp"
+#include "__queries.hpp"
 #include "__receivers.hpp"
 #include "__schedulers.hpp"
 
 namespace stdexec {
-  struct inline_scheduler {
+  struct __inline_attrs {
+    STDEXEC_ATTRIBUTE(nodiscard, host, device)
+    static constexpr auto query(get_completion_behavior_t<set_value_t>) noexcept {
+      return completion_behavior::inline_completion;
+    }
+    auto operator==(const __inline_attrs&) const noexcept -> bool = default;
+  };
+
+  struct inline_scheduler : __inline_attrs {
    private:
     template <class _Receiver>
     struct __opstate {
@@ -39,19 +48,6 @@ namespace stdexec {
       _Receiver __rcvr_;
     };
 
-    struct __attrs {
-      STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      static constexpr auto query(get_completion_behavior_t) noexcept {
-        return completion_behavior::inline_completion;
-      }
-
-      STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      static constexpr auto query(get_completion_scheduler_t<set_value_t>) noexcept //
-        -> inline_scheduler {
-        return {};
-      }
-    };
-
     struct __sender {
       using __id = __sender;
       using __t = __sender;
@@ -66,7 +62,7 @@ namespace stdexec {
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      static constexpr auto get_env() noexcept -> __attrs {
+      static constexpr auto get_env() noexcept -> __inline_attrs {
         return {};
       }
     };
@@ -76,6 +72,8 @@ namespace stdexec {
     using __id = inline_scheduler;
 
     using scheduler_concept = scheduler_t;
+
+    inline_scheduler() = default;
 
     STDEXEC_ATTRIBUTE(nodiscard, host, device)
     static constexpr auto schedule() noexcept -> __sender {

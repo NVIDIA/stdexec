@@ -57,9 +57,7 @@ namespace stdexec {
     struct into_variant_t {
       template <sender _Sender>
       auto operator()(_Sender&& __sndr) const -> __well_formed_sender auto {
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::transform_sender(
-          __domain, __make_sexpr<into_variant_t>(__(), static_cast<_Sender&&>(__sndr)));
+        return __make_sexpr<into_variant_t>(__(), static_cast<_Sender&&>(__sndr));
       }
 
       STDEXEC_ATTRIBUTE(always_inline)

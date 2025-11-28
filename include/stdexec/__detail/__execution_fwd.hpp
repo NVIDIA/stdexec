@@ -94,6 +94,10 @@ namespace stdexec {
     struct get_stop_token_t;
     template <__completion_tag _CPO>
     struct get_completion_scheduler_t;
+    template <__completion_tag _CPO>
+    struct get_completion_domain_t;
+    template <__completion_tag _CPO>
+    struct get_completion_behavior_t;
     struct get_domain_t;
   } // namespace __queries
 
@@ -105,6 +109,8 @@ namespace stdexec {
   using __queries::get_delegation_scheduler_t;
   using __queries::get_stop_token_t;
   using __queries::get_completion_scheduler_t;
+  using __queries::get_completion_domain_t;
+  using __queries::get_completion_behavior_t;
   using __queries::get_domain_t;
 
   extern const forwarding_query_t forwarding_query;
@@ -116,7 +122,13 @@ namespace stdexec {
   extern const get_stop_token_t get_stop_token;
   template <__completion_tag _CPO>
   extern const get_completion_scheduler_t<_CPO> get_completion_scheduler;
+  template <__completion_tag _CPO>
+  extern const get_completion_domain_t<_CPO> get_completion_domain;
   extern const get_domain_t get_domain;
+
+  template <class _Tag, class _Sndr, class... _Env>
+  STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+  constexpr auto get_completion_behavior() noexcept;
 
   struct never_stop_token;
   class inplace_stop_source;
@@ -124,16 +136,8 @@ namespace stdexec {
   template <class _Fn>
   class inplace_stop_callback;
 
-  template <class _Tp>
-  using stop_token_of_t = __decay_t<__call_result_t<get_stop_token_t, _Tp>>;
-
-  template <class _Sender, class _CPO>
-  concept __has_completion_scheduler =
-    __callable<get_completion_scheduler_t<_CPO>, env_of_t<const _Sender&>>;
-
-  template <class _Sender, class _CPO>
-  using __completion_scheduler_for =
-    __call_result_t<get_completion_scheduler_t<_CPO>, env_of_t<const _Sender&>>;
+  template <class _Env>
+  using stop_token_of_t = __decay_t<__call_result_t<get_stop_token_t, _Env>>;
 
   template <class _Env>
   using __domain_of_t = __decay_t<__call_result_t<get_domain_t, _Env>>;
@@ -166,9 +170,6 @@ namespace stdexec {
 
   using __connect::connect_t;
   extern const connect_t connect;
-
-  template <class _Sender, class _Receiver>
-  concept __nothrow_connectable = __nothrow_callable<connect_t, _Sender, _Receiver>;
 
   struct sender_t;
 
@@ -207,8 +208,8 @@ namespace stdexec {
   struct transform_sender_t;
   extern const transform_sender_t transform_sender;
 
-  template <class _Domain, class _Sender, class... _Env>
-  using transform_sender_result_t = __call_result_t<transform_sender_t, _Domain, _Sender, _Env...>;
+  template <class _Sender, class... _Env>
+  using transform_sender_result_t = __call_result_t<transform_sender_t, _Sender, _Env...>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __starts_on_ns {
@@ -230,20 +231,29 @@ namespace stdexec {
   using __schfr::schedule_from_t;
   extern const schedule_from_t schedule_from;
 
-  namespace __continues_on {
+  namespace __trnsfr {
     struct continues_on_t;
-  } // namespace __continues_on
+  } // namespace __trnsfr
 
-  using __continues_on::continues_on_t;
+  using __trnsfr::continues_on_t;
   extern const continues_on_t continues_on;
 
+  // Backward compatibility:
   using transfer_t [[deprecated("transfer_t has been renamed continues_on_t")]] = continues_on_t;
   [[deprecated("transfer has been renamed continues_on")]]
-  extern const continues_on_t transfer;
+  inline constexpr const continues_on_t& transfer = continues_on;
 
-  using continue_t [[deprecated("continue_on_t has been renamed continues_on_t")]] = continues_on_t;
-  [[deprecated("continue_on has been renamed continues_on")]]
-  extern const continues_on_t continue_on;
+  // Backward compatibility:
+  namespace v2 {
+    using continue_on_t
+      [[deprecated("continue_on_t has been renamed continues_on_t")]] = continues_on_t;
+    [[deprecated("continue_on has been renamed continues_on")]]
+    inline constexpr const continues_on_t& continue_on = continues_on;
+  } // namespace v2
+
+  // Backward compatibility:
+  using v2::continue_on_t;
+  using v2::continue_on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __transfer_just {

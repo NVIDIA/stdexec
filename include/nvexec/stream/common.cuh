@@ -72,7 +72,7 @@ namespace nvexec {
   namespace _strm {
     // Used by stream_domain to late-customize senders for execution
     // on the stream_scheduler.
-    template <class Tag, class... Env>
+    template <class Tag, class Env>
     struct transform_sender_for;
 
     template <class Tag>
@@ -86,15 +86,15 @@ namespace nvexec {
   // The stream_domain is how the stream scheduler customizes the sender algorithms. All of the
   // algorithms use the current scheduler's domain to transform senders before starting them.
   struct stream_domain : stdexec::default_domain {
-    template <stdexec::sender_expr Sender, class Tag = stdexec::tag_of_t<Sender>, class... Env>
+    template <stdexec::sender_expr Sender, class Tag = stdexec::tag_of_t<Sender>, class Env>
       requires stdexec::__callable<
         stdexec::__sexpr_apply_t,
         Sender,
-        _strm::transform_sender_for<Tag, Env...>
+        _strm::transform_sender_for<Tag, Env>
       >
-    static auto transform_sender(Sender&& sndr, const Env&... env) {
+    static auto transform_sender(stdexec::set_value_t, Sender&& sndr, const Env& env) {
       return stdexec::__sexpr_apply(
-        static_cast<Sender&&>(sndr), _strm::transform_sender_for<Tag, Env...>{env...});
+        static_cast<Sender&&>(sndr), _strm::transform_sender_for<Tag, Env>{env});
     }
 
     template <class Tag, stdexec::sender Sender, class... Args>
@@ -239,12 +239,13 @@ namespace nvexec {
     template <class Sender, class Shape, class Fn>
     struct multi_gpu_bulk_sender_t;
 
-    template <class Scheduler>
-    concept gpu_stream_scheduler = scheduler<Scheduler>
-                                && derived_from<__domain_of_t<Scheduler>, stream_domain>
-                                && requires(Scheduler sched) {
-                                     { sched.context_state_ } -> __decays_to<context_state_t>;
-                                   };
+    template <class Scheduler, class Env>
+    concept gpu_stream_scheduler =
+      scheduler<Scheduler>
+      && derived_from<__result_of<get_completion_domain<set_value_t>, Scheduler, Env>, stream_domain>
+      && requires(Scheduler sched) {
+           { sched.context_state_ } -> __decays_to<context_state_t>;
+         };
 
     struct stream_sender_base {
       using sender_concept = stdexec::sender_t;
@@ -260,7 +261,8 @@ namespace nvexec {
     };
 
     template <class T>
-    __launch_bounds__(1) __global__ void destructor_kernel(T* obj) {
+    STDEXEC_ATTRIBUTE(launch_bounds(1))
+    __global__ void destructor_kernel(T* obj) {
       obj->~T();
     }
 
@@ -324,6 +326,7 @@ namespace nvexec {
     };
 
     template <class... Ts>
+    // using _nullable_variant_t = stdexec::__variant_for<::cuda::std::tuple<set_noop>, Ts...>;
     using _nullable_variant_t = variant_t<::cuda::std::tuple<set_noop>, Ts...>;
 
     template <class... Ts>
@@ -359,11 +362,6 @@ namespace nvexec {
     struct stream_sender_attrs {
       using __t = stream_sender_attrs;
       using __id = stream_sender_attrs;
-
-      STDEXEC_ATTRIBUTE(nodiscard)
-      constexpr auto query(get_domain_override_t) const noexcept -> stream_domain {
-        return {};
-      }
 
       template <__forwarding_query Query>
         requires __queryable_with<env_of_t<Sender>, Query>
@@ -413,10 +411,11 @@ namespace nvexec {
     concept stream_sender = sender_in<S, E>
                          && STDEXEC_IS_BASE_OF(
                               stream_sender_base,
-                              __decay_t<transform_sender_result_t<__late_domain_of_t<S, E>, S, E>>);
+                              STDEXEC_REMOVE_REFERENCE(stdexec::transform_sender_result_t<S, E>));
 
     template <class R>
-    concept stream_receiver = receiver<R> && STDEXEC_IS_BASE_OF(stream_receiver_base, __decay_t<R>);
+    concept stream_receiver = receiver<R>
+                           && STDEXEC_IS_BASE_OF(stream_receiver_base, STDEXEC_REMOVE_REFERENCE(R));
 
     struct stream_op_state_base { };
 
@@ -475,7 +474,8 @@ namespace nvexec {
     };
 
     template <class Receiver, class... As, class Tag>
-    __launch_bounds__(1) __global__ void continuation_kernel(Receiver rcvr, Tag, As... as) {
+    STDEXEC_ATTRIBUTE(launch_bounds(1))
+    __global__ void continuation_kernel(Receiver rcvr, Tag, As... as) {
       static_assert(trivially_copyable<Receiver, Tag, As...>);
       Tag()(::cuda::std::move(rcvr), static_cast<As&&>(as)...);
     }
@@ -500,7 +500,7 @@ namespace nvexec {
         this->execute_ = [](task_base_t* t) noexcept {
           continuation_task_t& self = *static_cast<continuation_task_t*>(t);
 
-          visit(
+          nvexec::visit(
             [&self](auto& tpl) noexcept {
               ::cuda::std::apply(
                 [&self]<class Tag, class... As>(Tag, As&... as) noexcept {
@@ -542,12 +542,8 @@ namespace nvexec {
 
       struct __t : stream_op_state_base {
         using __id = operation_state_base_;
+        using operation_state_concept = stdexec::operation_state_t;
         using env_t = make_stream_env_t<outer_env_t>;
-
-        context_state_t context_state_;
-        void* temp_storage_{nullptr};
-        outer_receiver_t rcvr_;
-        stream_provider_t stream_provider_;
 
         __t(outer_receiver_t rcvr, context_state_t context_state)
           : context_state_(context_state)
@@ -631,6 +627,11 @@ namespace nvexec {
                 static_cast<outer_receiver_t&&>(rcvr_), Tag(), static_cast<As&&>(as)...);
           }
         }
+
+        context_state_t context_state_;
+        void* temp_storage_{nullptr};
+        outer_receiver_t rcvr_;
+        stream_provider_t stream_provider_;
       };
     };
 
@@ -810,15 +811,10 @@ namespace nvexec {
         context_state);
     }
 
-    template <class S>
+    template <class S, class E>
     concept stream_completing_sender =
       sender<S>
-      && gpu_stream_scheduler<__result_of<get_completion_scheduler<set_value_t>, env_of_t<S>>>;
-
-    template <class R>
-    concept receiver_with_stream_env = receiver<R> && requires(const R& rcvr) {
-      { get_scheduler(get_env(rcvr)).context_state_ } -> __decays_to<context_state_t>;
-    };
+      && gpu_stream_scheduler<__result_of<get_completion_scheduler<set_value_t>, env_of_t<S>, E>, E>;
 
     template <class InnerReceiverProvider, class OuterReceiver>
     using inner_receiver_t =
@@ -831,13 +827,14 @@ namespace nvexec {
       stdexec::__id<OuterReceiver>
     >;
 
-    template <stream_completing_sender Sender, class OuterReceiver, class ReceiverProvider>
+    template <class Sender, class OuterReceiver, class ReceiverProvider>
+      requires stream_completing_sender<Sender, env_of_t<OuterReceiver>>
     auto stream_op_state(
       Sender&& sndr,
       OuterReceiver&& out_receiver,
       ReceiverProvider receiver_provider)
       -> stream_op_state_t<Sender, inner_receiver_t<ReceiverProvider, OuterReceiver>, OuterReceiver> {
-      auto sch = get_completion_scheduler<set_value_t>(get_env(sndr));
+      auto sch = get_completion_scheduler<set_value_t>(get_env(sndr), get_env(out_receiver));
       context_state_t context_state = sch.context_state_;
 
       return stream_op_state_t<

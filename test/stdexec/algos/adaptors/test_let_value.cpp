@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "stdexec/__detail/__let.hpp"
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -299,17 +300,18 @@ namespace {
 
   // Return a different sender when we invoke this custom defined let_value implementation
   struct let_value_test_domain {
-    template <class Sender>
-      requires std::same_as<ex::tag_of_t<Sender>, ex::let_value_t>
-    static auto transform_sender(Sender&&) {
+    template <ex::sender_expr_for<ex::let_value_t> Sender>
+    static auto transform_sender(stdexec::set_value_t, Sender&&, auto&&...) {
       return ex::just(std::string{"hallo"});
     }
   };
 
   TEST_CASE("let_value can be customized", "[adaptors][let_value]") {
+    basic_inline_scheduler<let_value_test_domain> sched;
+
     // The customization will return a different value
     auto snd = ex::just(std::string{"hello"})
-             | exec::write_attrs(ex::prop{ex::get_domain, let_value_test_domain{}})
+             | ex::continues_on(sched)
              | ex::let_value([](std::string& x) { return ex::just(x + ", world"); });
     wait_for_value(std::move(snd), std::string{"hallo"});
   }
@@ -326,10 +328,6 @@ namespace {
 
     bad_receiver(bool& completed) noexcept
       : completed_{completed} {
-    }
-
-    bad_receiver(bad_receiver&& other) noexcept(false)
-      : completed_(other.completed_) {
     }
 
     void set_value() noexcept {

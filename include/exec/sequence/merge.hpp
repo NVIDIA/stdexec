@@ -134,9 +134,9 @@ namespace exec {
       _Receiver& __rcvr_;
 
       template <class... _Sequences>
-      auto operator()(__ignore, __ignore, _Sequences... __sequences) noexcept(
-        (__nothrow_decay_copyable<_Sequences> && ...) && __nothrow_move_constructible<_Receiver>)
-        -> __t<__operation<__id<_Receiver>, _Sequences...>> {
+      auto operator()(__ignore, __ignore, _Sequences... __sequences)
+        noexcept(__nothrow_decay_copyable<_Sequences...> && __nothrow_move_constructible<_Receiver>)
+          -> __t<__operation<__id<_Receiver>, _Sequences...>> {
         return {static_cast<_Receiver&&>(__rcvr_), static_cast<_Sequences&&>(__sequences)...};
       }
     };
@@ -144,11 +144,8 @@ namespace exec {
     struct merge_t {
       template <class... _Sequences>
       auto operator()(_Sequences&&... __sequences) const
-        noexcept((__nothrow_decay_copyable<_Sequences> && ...)) -> __well_formed_sequence_sender
-        auto {
-        auto __domain = __common_domain_t<_Sequences...>();
-        return transform_sender(
-          __domain, make_sequence_expr<merge_t>(__(), static_cast<_Sequences&&>(__sequences)...));
+        noexcept(__nothrow_decay_copyable<_Sequences...>) -> __well_formed_sequence_sender auto {
+        return make_sequence_expr<merge_t>(__(), static_cast<_Sequences&&>(__sequences)...);
       }
 
       template <class _Error>

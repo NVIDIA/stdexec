@@ -15,16 +15,17 @@
  */
 #pragma once
 
-#include <compare>
-#include <type_traits>
-#include <initializer_list>
+#include "__execution_fwd.hpp"
 
+// include these after __execution_fwd.hpp
 #include "__config.hpp"
 #include "__concepts.hpp"
 #include "__query.hpp"
 #include "__meta.hpp"
-#include "__execution_fwd.hpp"
-#include "__type_traits.hpp"
+#include "__utility.hpp"
+
+#include <compare>
+#include <type_traits>
 
 namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////
@@ -34,7 +35,7 @@ namespace stdexec {
       unknown, ///< The completion behavior is unknown.
       asynchronous, ///< The operation's completion will not happen on the calling thread before `start()`
                     ///< returns.
-      synchronous, ///< The operation's completion happens-before the return of `start()`.
+      asynchronous_affine, ///< Like asynchronous, but completes where it starts.
       inline_completion ///< The operation completes synchronously within `start()` on the same thread that called
                         ///< `start()`.
     };
@@ -50,7 +51,7 @@ namespace stdexec {
 
     using __unknown_t = __constant_t<completion_behavior::unknown>;
     using __asynchronous_t = __constant_t<completion_behavior::asynchronous>;
-    using __synchronous_t = __constant_t<completion_behavior::synchronous>;
+    using __asynchronous_affine_t = __constant_t<completion_behavior::asynchronous_affine>;
     using __inline_completion_t = __constant_t<completion_behavior::inline_completion>;
   } // namespace __completion_behavior
 
@@ -66,67 +67,79 @@ namespace stdexec {
    public:
     struct unknown_t : __completion_behavior::__unknown_t { };
     struct asynchronous_t : __completion_behavior::__asynchronous_t { };
-    struct synchronous_t : __completion_behavior::__synchronous_t { };
+    struct asynchronous_affine_t : __completion_behavior::__asynchronous_affine_t { };
     struct inline_completion_t : __completion_behavior::__inline_completion_t { };
 
     static constexpr unknown_t unknown{};
     static constexpr asynchronous_t asynchronous{};
-    static constexpr synchronous_t synchronous{};
+    static constexpr asynchronous_affine_t asynchronous_affine{};
     static constexpr inline_completion_t inline_completion{};
   };
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // get_completion_behavior: A sender can define this attribute to describe the sender's
   // completion behavior
-  struct get_completion_behavior_t
-    : __query<get_completion_behavior_t, completion_behavior::unknown, __q1<__decay_t>> {
-    template <class _Attrs, class... _Env>
-    STDEXEC_ATTRIBUTE(always_inline, host, device)
-    static constexpr void __validate() noexcept {
-      static_assert(
-        __nothrow_queryable_with<_Attrs, get_completion_behavior_t, _Env...>,
-        "The get_completion_behavior query must be noexcept.");
-      static_assert(
-        convertible_to<
-          __query_result_t<_Attrs, get_completion_behavior_t, _Env...>,
-          __completion_behavior::completion_behavior
-        >,
-        "The get_completion_behavior query must return one of the static member variables in "
-        "execution::completion_behavior.");
-    }
+  namespace __queries {
+    template <__completion_tag _Tag>
+    struct get_completion_behavior_t {
+     private:
+      template <class _Attrs, class... _Env>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __validate() noexcept {
+        using __result_t = __member_query_result_t<_Attrs, get_completion_behavior_t, _Env...>;
+        static_assert(
+          __nothrow_member_queryable_with<_Attrs, get_completion_behavior_t, _Env...>,
+          "The get_completion_behavior query must be noexcept.");
+        static_assert(
+          convertible_to<__result_t, __completion_behavior::completion_behavior>,
+          "The get_completion_behavior query must return one of the static member variables in "
+          "execution::completion_behavior.");
+        return __result_t{};
+      }
 
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    static constexpr auto query(forwarding_query_t) noexcept -> bool {
-      return true;
-    }
-  };
+     public:
+      using __t = get_completion_behavior_t;
+      using __id = get_completion_behavior_t;
+
+      template <class _Sig>
+      static inline constexpr get_completion_behavior_t (*signature)(_Sig) = nullptr;
+
+      template <class _Attrs, class... _Env>
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+      constexpr auto operator()(const _Attrs&, const _Env&...) const noexcept {
+        if constexpr (__member_queryable_with<const _Attrs&, get_completion_behavior_t<_Tag>, _Env...>) {
+          return __validate<_Attrs, _Env...>();
+        }
+        else if constexpr (__member_queryable_with<const _Attrs&, get_completion_behavior_t<_Tag>>) {
+          return __validate<_Attrs>();
+        }
+        else {
+          return completion_behavior::unknown;
+        }
+      }
+
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+      static constexpr auto query(forwarding_query_t) noexcept -> bool {
+        return true;
+      }
+    };
+  } // namespace __queries
 
   struct min_t {
     using __completion_behavior_t = __completion_behavior::completion_behavior;
 
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    static constexpr auto __minimum(std::initializer_list<__completion_behavior_t> __cbs) noexcept
-      -> __completion_behavior_t {
-      auto __result = __completion_behavior::completion_behavior::inline_completion;
-      for (auto __cb: __cbs) {
-        if (__cb < __result) {
-          __result = __cb;
-        }
-      }
-      return __result;
-    }
-
     template <__completion_behavior_t... _CBs>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto operator()(completion_behavior::__constant_t<_CBs>...) const noexcept {
-      constexpr auto __behavior = __minimum({_CBs...});
+      constexpr auto __behavior = static_cast<__completion_behavior_t>(
+        stdexec::__umax({static_cast<std::size_t>(_CBs)...}));
 
       if constexpr (__behavior == completion_behavior::unknown) {
         return completion_behavior::unknown;
       } else if constexpr (__behavior == completion_behavior::asynchronous) {
         return completion_behavior::asynchronous;
-      } else if constexpr (__behavior == completion_behavior::synchronous) {
-        return completion_behavior::synchronous;
+      } else if constexpr (__behavior == completion_behavior::asynchronous_affine) {
+        return completion_behavior::asynchronous_affine;
       } else if constexpr (__behavior == completion_behavior::inline_completion) {
         return completion_behavior::inline_completion;
       }
@@ -136,17 +149,21 @@ namespace stdexec {
 
   constexpr min_t min{};
 
-  template <class _Attrs, class... _Env>
+  template <class _Tag, class _Attrs, class... _Env>
   concept __completes_inline =
-    (__call_result_t<get_completion_behavior_t, const _Attrs&, const _Env&...>{}
+    (__call_result_t<get_completion_behavior_t<_Tag>, const _Attrs&, const _Env&...>{}
      == completion_behavior::inline_completion);
 
-  template <class _Sndr, class... _Env>
+  template <class _Tag, class _Attrs, class... _Env>
+  concept __completes_where_it_starts =
+    (__call_result_t<get_completion_behavior_t<_Tag>, const _Attrs&, const _Env&...>{}
+     >= completion_behavior::asynchronous_affine);
+
+  template <class _Tag, class _Sndr, class... _Env>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-  consteval auto get_completion_behavior() noexcept {
+  constexpr auto get_completion_behavior() noexcept {
     using __behavior_t =
-      __call_result_t<get_completion_behavior_t, env_of_t<_Sndr>, const _Env&...>;
+      __call_result_t<get_completion_behavior_t<_Tag>, env_of_t<_Sndr>, const _Env&...>;
     return __behavior_t{};
   }
-
 } // namespace stdexec

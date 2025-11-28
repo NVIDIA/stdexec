@@ -113,7 +113,7 @@ namespace {
 
   struct my_domain {
     template <stdexec::sender_expr_for<exec::iterate_t> Sender, class _Env>
-    auto transform_sender(Sender&& sender, _Env&&) const noexcept {
+    auto transform_sender(stdexec::start_t, Sender&& sender, _Env&&) const noexcept {
       auto range =
         stdexec::__sexpr_apply(std::forward<Sender>(sender), stdexec::__detail::__get_data{});
       auto sum = std::accumulate(std::ranges::begin(range), std::ranges::end(range), 0);

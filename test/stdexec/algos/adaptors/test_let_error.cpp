@@ -335,18 +335,18 @@ namespace {
 
   // Return a different sender when we invoke this custom defined let_error implementation
   struct let_error_test_domain {
-    template <class Sender>
-      requires std::same_as<ex::tag_of_t<Sender>, ex::let_error_t>
-    static auto transform_sender(Sender&&) {
+    template <ex::sender_expr_for<ex::let_error_t> Sender>
+    static auto transform_sender(stdexec::set_value_t, Sender&&, auto&&...) {
       return ex::just(std::string{"what error?"});
     }
   };
 
   TEST_CASE("let_error can be customized", "[adaptors][let_error]") {
+    basic_inline_scheduler<let_error_test_domain> sched{};
+
     // The customization will return a different value
     auto snd = ex::just(std::string{"hello"})
-             | exec::write_attrs(ex::prop{ex::get_domain, let_error_test_domain{}})
              | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
-    wait_for_value(std::move(snd), std::string{"what error?"});
+    wait_for_value(ex::starts_on(sched, std::move(snd)), std::string{"what error?"});
   }
 } // namespace

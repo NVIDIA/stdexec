@@ -19,198 +19,95 @@
 
 #include "__config.hpp"
 #include "__concepts.hpp"
-#include "__env.hpp"
+#include "__completion_behavior.hpp"
 #include "__sender_introspection.hpp"
+#include "__senders_core.hpp"
+#include "__transform_completion_signatures.hpp"
 #include "__meta.hpp"
 
-#include "../functional.hpp"
 #include "__utility.hpp"
+
+#include <type_traits>
 
 namespace stdexec {
 
   struct default_domain;
-  struct dependent_domain;
+
+  struct __not_a_domain {
+    __not_a_domain() = default;
+
+    template <__not_same_as<__not_a_domain> _Domain>
+    STDEXEC_ATTRIBUTE(host, device, always_inline)
+    constexpr __not_a_domain(_Domain) noexcept {
+    }
+  };
 
   namespace __detail {
-    template <class _DomainOrTag, class _Sender, class... _Env>
+    template <class _DomainOrTag, class _OpTag, class _Sender, class... _Env>
     concept __has_transform_sender =
       requires(_DomainOrTag __tag, _Sender&& __sender, const _Env&... __env) {
-        __tag.transform_sender(static_cast<_Sender &&>(__sender), __env...);
+        __tag.transform_sender(_OpTag(), static_cast<_Sender&&>(__sender), __env...);
       };
 
-    template <class _DomainOrTag, class _Sender, class... _Env>
+    template <class _DomainOrTag, class _OpTag, class _Sender, class... _Env>
     concept __has_nothrow_transform_sender =
       requires(_DomainOrTag __tag, _Sender&& __sender, const _Env&... __env) {
-        { __tag.transform_sender(static_cast<_Sender &&>(__sender), __env...) } noexcept;
+        { __tag.transform_sender(_OpTag(), static_cast<_Sender&&>(__sender), __env...) } noexcept;
       };
 
-    template <class _Sender, class... _Env>
-    concept __has_default_transform_sender =
-      sender_expr<_Sender> && __has_transform_sender<tag_of_t<_Sender>, _Sender, _Env...>;
-
-    template <class _DomainOrTag, class _Sender, class... _Env>
+    template <class _DomainOrTag, class _OpTag, class _Sender, class... _Env>
     using __transform_sender_result_t =
-      decltype(_DomainOrTag{}.transform_sender(__declval<_Sender>(), __declval<const _Env&>()...));
-
-    template <class _DomainOrTag, class _Sender, class _Env>
-    concept __has_transform_env = requires(_DomainOrTag __tag, _Sender&& __sender, _Env&& __env) {
-      __tag.transform_env(static_cast<_Sender &&>(__sender), static_cast<_Env &&>(__env));
-    };
-
-    template <class _Sender, class _Env>
-    concept __has_default_transform_env = sender_expr<_Sender>
-                                       && __has_transform_env<tag_of_t<_Sender>, _Sender, _Env>;
-
-    template <class _DomainOrTag, class _Sender, class _Env>
-    using __transform_env_result_t =
-      decltype(_DomainOrTag{}.transform_env(__declval<_Sender>(), __declval<_Env>()));
+      decltype(_DomainOrTag{}
+                 .transform_sender(_OpTag(), __declval<_Sender>(), __declval<const _Env&>()...));
 
     template <class _DomainOrTag, class... _Args>
     concept __has_apply_sender = requires(_DomainOrTag __tag, _Args&&... __args) {
-      __tag.apply_sender(static_cast<_Args &&>(__args)...);
+      __tag.apply_sender(static_cast<_Args&&>(__args)...);
     };
 
     template <class _Tag, class... _Args>
     using __apply_sender_result_t = decltype(_Tag{}.apply_sender(__declval<_Args>()...));
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    template <class _Env, class _Tag>
+    template <class _Attrs, class _Tag>
     using __completion_scheduler_for =
-      __meval_or<__call_result_t, __none_such, get_completion_scheduler_t<_Tag>, _Env>;
+      __meval_or<__call_result_t, __not_a_domain, get_completion_scheduler_t<_Tag>, _Attrs>;
 
-    template <class _Env, class _Tag>
-    using __completion_domain_for =
-      __meval_or<__call_result_t, __none_such, get_domain_t, __completion_scheduler_for<_Env, _Tag>>;
+    template <class _Attrs, class _Tag>
+    using __completion_domain_for = __meval_or<
+      __call_result_t,
+      __not_a_domain,
+      get_domain_t,
+      __completion_scheduler_for<_Attrs, _Tag>>;
 
-    // Check the value, error, and stopped channels for completion schedulers.
-    // Of the completion schedulers that are known, they must all have compatible
-    // domains. This computes that domain, or else returns __none_such if there
-    // are no completion schedulers or if they don't specify a domain.
-    template <class _Env>
-    struct __completion_domain_or_none_
-      : __mdefer_<
-          __mtransform<
-            __mbind_front_q<__completion_domain_for, _Env>,
-            __mremove<__none_such, __munique<__msingle_or<__none_such>>>
-          >,
-          set_value_t,
-          set_error_t,
-          set_stopped_t
-        > { };
+    template <class _Tag, class _Sender, class... _Env>
+    using __completion_domain_of_t =
+      __call_result_t<get_completion_domain_t<_Tag>, env_of_t<_Sender>, const _Env&...>;
 
-    template <class _Sender>
-    using __completion_domain_or_none = __t<__completion_domain_or_none_<env_of_t<_Sender>>>;
-
-    template <class _Sender>
-    concept __consistent_completion_domains = __mvalid<__completion_domain_or_none, _Sender>;
-
-    template <class _Sender>
-    concept __has_completion_domain = (!same_as<__completion_domain_or_none<_Sender>, __none_such>);
-
-    template <__has_completion_domain _Sender>
-    using __completion_domain_of = __completion_domain_or_none<_Sender>;
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    //! Function object implementing `get-domain-early(snd)`
-    //! from [exec.snd.general] item 3.9. It is the first well-formed expression of
-    //! a) `get_domain(get_env(sndr))`
-    //! b) `completion-domain(sndr)`
-    //! c) `default_domain()`
-    struct __get_early_domain_t {
-      template <class _Sender, class _Default = default_domain>
-      auto operator()(const _Sender&, _Default = {}) const noexcept {
-        if constexpr (__callable<get_domain_t, env_of_t<_Sender>>) {
-          return __domain_of_t<env_of_t<_Sender>>();
-        } else if constexpr (__has_completion_domain<_Sender>) {
-          return __completion_domain_of<_Sender>();
-        } else {
-          return _Default();
-        }
-      }
-    };
-
-    template <class _Sender, class _Default = default_domain>
-    using __early_domain_of_t = __call_result_t<__get_early_domain_t, _Sender, _Default>;
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    //! Function object implementing `get-domain-late(snd)`
-    struct __get_late_domain_t {
-      // When connect is looking for a customization, it first checks if the sender has a
-      // late domain override. If so, that is the domain that is used to transform the
-      // sender. Otherwise, look to the receiver for information about where the resulting
-      // operation state will be started.
-      template <class _Sender, class _Env, class _Default = default_domain>
-      auto operator()(const _Sender& __sndr, const _Env& __env, _Default = {}) const noexcept {
-        // The schedule_from algorithm is the exception to the rule. It ignores the domain
-        // of the predecessor, and dispatches based on the domain of the scheduler to
-        // which execution is being transferred.
-        if constexpr (__callable<get_domain_override_t, env_of_t<_Sender>>) {
-          return get_domain_override(get_env(__sndr));
-        } else if constexpr (__callable<get_domain_t, const _Env&>) {
-          return get_domain(__env);
-        } else if constexpr (__callable<__composed<get_domain_t, get_scheduler_t>, const _Env&>) {
-          return get_domain(get_scheduler(__env));
-        } else {
-          return _Default();
-        }
-      }
-    };
-
-    template <class _Sender, class _Env, class _Default = default_domain>
-    using __late_domain_of_t = __call_result_t<__get_late_domain_t, _Sender, _Env, _Default>;
-
-    struct __common_domain_fn {
-      template <
-        class _Default = default_domain,
-        class _Dependent = dependent_domain,
-        class... _Domains
-      >
-      static auto __common_domain(_Domains...) noexcept {
-        if constexpr (sizeof...(_Domains) == 0) {
-          return _Default();
-        } else if constexpr (__one_of<_Dependent, _Domains...>) {
-          return _Dependent();
-        } else if constexpr (stdexec::__mvalid<std::common_type_t, _Domains...>) {
-          return std::common_type_t<_Domains...>();
-        } else {
-          return __none_such();
-        }
-      }
-
-      auto operator()(__ignore, __ignore, const auto&... __sndrs) const noexcept {
-        return __common_domain(__get_early_domain_t{}(__sndrs)...);
-      }
-    };
+    template <class _Tag, class _Sender, class... _Env>
+    using __try_completion_domain_of_t = __call_result_or_t<
+      get_completion_domain_t<_Tag>,
+      __not_a_domain,
+      env_of_t<_Sender>,
+      const _Env&...
+    >;
   } // namespace __detail
 
   struct default_domain {
-    template <class _Sender, class... _Env>
-      requires __detail::__has_default_transform_sender<_Sender, _Env...>
+    template <class _OpTag, class _Sender, class _Env>
+      requires __detail::__has_transform_sender<tag_of_t<_Sender>, _OpTag, _Sender, _Env>
     STDEXEC_ATTRIBUTE(always_inline)
-    auto transform_sender(_Sender&& __sndr, _Env&&... __env) const
-      noexcept(__detail::__has_nothrow_transform_sender<tag_of_t<_Sender>, _Sender, _Env...>)
-        -> __detail::__transform_sender_result_t<tag_of_t<_Sender>, _Sender, _Env...> {
-      return tag_of_t<_Sender>().transform_sender(static_cast<_Sender&&>(__sndr), __env...);
+    auto transform_sender(_OpTag, _Sender&& __sndr, const _Env& __env) const
+      noexcept(__detail::__has_nothrow_transform_sender<tag_of_t<_Sender>, _OpTag, _Sender, _Env>)
+        -> __detail::__transform_sender_result_t<tag_of_t<_Sender>, _OpTag, _Sender, _Env> {
+      return tag_of_t<_Sender>().transform_sender(_OpTag(), static_cast<_Sender&&>(__sndr), __env);
     }
 
-    template <class _Sender, class... _Env>
+    template <class _OpTag, class _Sender, class _Env>
     STDEXEC_ATTRIBUTE(always_inline)
-    auto transform_sender(_Sender&& __sndr, _Env&&...) const
-      noexcept(__nothrow_constructible_from<_Sender, _Sender>) -> _Sender {
+    auto transform_sender(_OpTag, _Sender&& __sndr, const _Env&) const
+      noexcept(__nothrow_move_constructible<_Sender>) -> _Sender {
       return static_cast<_Sender>(static_cast<_Sender&&>(__sndr));
-    }
-
-    template <class _Sender, class _Env>
-      requires __detail::__has_default_transform_env<_Sender, _Env>
-    auto transform_env(_Sender&& __sndr, _Env&& __env) const noexcept
-      -> __detail::__transform_env_result_t<tag_of_t<_Sender>, _Sender, _Env> {
-      return tag_of_t<_Sender>()
-        .transform_env(static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env));
-    }
-
-    template <class _Env>
-    auto transform_env(__ignore, _Env&& __env) const noexcept -> _Env {
-      return static_cast<_Env>(static_cast<_Env&&>(__env));
     }
 
     template <class _Tag, class... _Args>
@@ -222,29 +119,409 @@ namespace stdexec {
     }
   };
 
-  inline constexpr __detail::__get_early_domain_t __get_early_domain{};
-  inline constexpr __detail::__get_late_domain_t __get_late_domain{};
-  using __detail::__early_domain_of_t;
-  using __detail::__late_domain_of_t;
+  //! @brief Concept that checks whether a domain's sender transform behaves like that of
+  //! @c default_domain when passed the same arguments. The concept is modeled when either
+  //! of the following is
+  template <class _Domain, class _OpTag, class _Sndr, class _Env>
+  concept __default_domain_like = __same_as<
+    __decay_t<__detail::__transform_sender_result_t<default_domain, _OpTag, _Sndr, _Env>>,
+    __decay_t<__mcall<
+      __mtry_catch_q<
+        __detail::__transform_sender_result_t,
+        __mconst<__detail::__transform_sender_result_t<default_domain, _OpTag, _Sndr, _Env>>
+      >,
+      _Domain,
+      _OpTag,
+      _Sndr,
+      _Env
+    >>
+  >;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  // dependent_domain
-  struct dependent_domain {
-    // defined in __transform_sender.hpp
-    template <class _Sender, class _Env>
-    static constexpr auto __is_nothrow_transform_sender() noexcept -> bool;
+  template <class... _Domains>
+  struct indeterminate_domain {
+    indeterminate_domain() = default;
 
-    // defined in __transform_sender.hpp
-    template <sender_expr _Sender, class _Env>
-      requires same_as<__early_domain_of_t<_Sender>, dependent_domain>
-    STDEXEC_ATTRIBUTE(always_inline)
-    auto transform_sender(_Sender&& __sndr, const _Env& __env) const
-      noexcept(__is_nothrow_transform_sender<_Sender, _Env>()) -> decltype(auto);
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr indeterminate_domain(__ignore) noexcept {
+    }
+
+    //! @brief Transforms a sender with an optional environment.
+    //!
+    //! @tparam _OpTag Either start_t or set_value_t.
+    //! @tparam _Sndr The type of the sender.
+    //! @tparam _Env The type of the environment.
+    //! @param __sndr The sender to be transformed.
+    //! @param __env The environment used for the transformation.
+    //! @return `default_domain{}.transform_sender(_OpTag{}, std::forward<_Sndr>(__sndr), __env)`
+    //! @pre Every type in @c _Domains... must behave like @c default_domain when passed the
+    //! same arguments. If this check fails, the @c static_assert triggers with: "ERROR:
+    //! indeterminate domains: cannot pick an algorithm customization"
+    template <class _OpTag, class _Sndr, class _Env>
+      requires __detail::__has_transform_sender<tag_of_t<_Sndr>, _OpTag, _Sndr, _Env>
+    [[nodiscard]]
+    static constexpr auto transform_sender(_OpTag, _Sndr&& __sndr, const _Env& __env)
+      noexcept(__detail::__has_nothrow_transform_sender<tag_of_t<_Sndr>, _OpTag, _Sndr, _Env>)
+        -> __detail::__transform_sender_result_t<tag_of_t<_Sndr>, _OpTag, _Sndr, _Env> {
+      static_assert(
+        (__default_domain_like<_Domains, _OpTag, _Sndr, _Env> && ...),
+        "ERROR: indeterminate domains: cannot pick an algorithm customization");
+      return tag_of_t<_Sndr>{}.transform_sender(_OpTag{}, static_cast<_Sndr&&>(__sndr), __env);
+    }
   };
 
-  template <class... _Senders>
-  using __common_domain_t = __call_result_t<__detail::__common_domain_fn, int, int, _Senders...>;
+  namespace __detail {
+    struct __not_a_domain {
+      __not_a_domain() = default;
 
-  template <class... _Senders>
-  concept __has_common_domain = __none_of<__none_such, __common_domain_t<_Senders...>>;
+      constexpr __not_a_domain(__ignore) noexcept {
+      }
+    };
+
+    template <class... _Domains>
+    using __indeterminate_domain_t = __if_c<
+      sizeof...(_Domains) == 1,
+      decltype((__(), ..., _Domains())),
+      indeterminate_domain<_Domains...>
+    >;
+
+    template <class _DomainSet>
+    using __domain_from_set_t = __mapply<
+      __if_c<
+        __mset_contains<_DomainSet, __not_a_domain>,
+        __mconst<__not_a_domain>,
+        __qq<__indeterminate_domain_t>
+      >,
+      _DomainSet
+    >;
+
+    template <class... _Domains>
+    using __make_domain_t = __domain_from_set_t<__mmake_set<_Domains...>>;
+
+    template <class _Tag, class _Sender, class... _Env>
+      requires sender_in<_Sender, _Env...>
+    extern __call_result_or_t<
+      get_completion_domain_t<_Tag>,
+      indeterminate_domain<>,
+      env_of_t<_Sender>,
+      _Env...
+    >
+      __compl_domain_v;
+
+    template <class _Tag, class _Sender>
+    extern __call_result_or_t<
+      get_completion_domain_t<_Tag>,
+      // If we ask for the completion domain early (without an env)
+      // and it cannot be determined, then:
+      // - if the sender knows it can never complete with _Tag, return
+      //   indeterminate_domain<>
+      // - otherwise, return __not_a_domain (indicating that the
+      //   completion domain may only be knowable later, when an env
+      //   is available)
+      __if_c<__never_sends<_Tag, _Sender>, indeterminate_domain<>, __not_a_domain>,
+      env_of_t<_Sender>
+    >
+      __compl_domain_v<_Tag, _Sender>;
+
+    // Common domain for a set of domains
+    template <class... _Domains>
+    struct __common_domain {
+      using type =
+        __minvoke<__mtry_catch_q<std::common_type_t, __qq<__make_domain_t>>, _Domains...>;
+    };
+  } // namespace __detail
+
+  template <class _Tag, class _Sender, class... _Env>
+  using __compl_domain_t = decltype(__detail::__compl_domain_v<_Tag, _Sender, _Env...>);
+
+  template <class... _Domains>
+  using __common_domain_t = typename __detail::__common_domain<_Domains...>::type;
+
+  template <class... _Domains>
+  concept __has_common_domain = __none_of<__detail::__not_a_domain, __common_domain_t<_Domains...>>;
+
+  namespace __detail {
+    template <class _Env>
+    using __starting_domain = __call_result_t<get_domain_t, const _Env&>;
+
+    template <class _Tag, class _Sender, class... _Env>
+    using __completing_domain =
+      __call_result_t<get_completion_domain_t<_Tag>, env_of_t<_Sender>, const _Env&...>;
+
+    template <class _Sch, class... _Env>
+    using __scheduler_domain_t =
+      __call_result_t<get_completion_domain_t<set_value_t>, _Sch, _Env...>;
+
+    constexpr auto
+      __find_pos(bool const * const __begin, bool const * const __end) noexcept -> size_t {
+      for (bool const * __where = __begin; __where != __end; ++__where) {
+        if (*__where) {
+          return static_cast<size_t>(__where - __begin);
+        }
+      }
+      return __npos;
+    }
+
+    template <class... _Fns>
+    struct __first_callable {
+     private:
+      //! @brief Returns the first function that is callable with a given set of arguments.
+      template <class... _Args, class _Self>
+      static constexpr auto __get_1st(_Self&& __self) noexcept -> decltype(auto) {
+        // NOLINTNEXTLINE (modernize-avoid-c-arrays)
+        constexpr bool __flags[] = {__callable<__copy_cvref_t<_Self, _Fns>, _Args...>..., false};
+        constexpr size_t __idx = __find_pos(__flags, __flags + sizeof...(_Fns));
+        if constexpr (__idx != __npos) {
+          return std::get<__idx>(static_cast<_Self&&>(__self).__fns_);
+        }
+      }
+
+      //! @brief Alias for the type of the first function that is callable with a given set of arguments.
+      template <class _Self, class... _Args>
+      using __1st_fn_t = decltype(__first_callable::__get_1st<_Args...>(__declval<_Self>()));
+
+     public:
+      //! @brief Calls the first function that is callable with a given set of arguments.
+      template <class... _Args>
+      constexpr auto operator()(_Args&&... __args) && noexcept(
+        __nothrow_callable<__1st_fn_t<__first_callable, _Args...>, _Args...>)
+        -> __call_result_t<__1st_fn_t<__first_callable, _Args...>, _Args...> {
+        return __first_callable::__get_1st<_Args...>(static_cast<__first_callable&&>(*this))(
+          static_cast<_Args&&>(__args)...);
+      }
+
+      //! @overload
+      template <class... _Args>
+      constexpr auto operator()(_Args&&... __args) const & noexcept(
+        __nothrow_callable<__1st_fn_t<__first_callable const &, _Args...>, _Args...>)
+        -> __call_result_t<__1st_fn_t<__first_callable const &, _Args...>, _Args...> {
+        return __first_callable::__get_1st<_Args...>(*this)(static_cast<_Args&&>(__args)...);
+      }
+
+      std::tuple<_Fns...> __fns_;
+    };
+  } // namespace __detail
+
+  namespace __queries {
+    //! @brief A wrapper around an environment that hides a set of queries.
+    template <class _Env, class... _Queries>
+    struct __hide_query {
+      explicit constexpr __hide_query(_Env&& __env, _Queries...) noexcept
+        : __env_{static_cast<_Env&&>(__env)} {
+      }
+
+      template <class _Query, class... _As>
+        requires __none_of<_Query, _Queries...> && __queryable_with<_Env, _Query, _As...>
+      constexpr auto operator()(_Query, _As&&... __as) const
+        noexcept(__nothrow_queryable_with<_Env, _Query, _As...>)
+          -> __query_result_t<_Env, _Query, _As...> {
+        return __query<_Query>()(__env_, static_cast<_As&&>(__as)...);
+      }
+
+     private:
+      _Env __env_;
+    };
+
+    template <class _Env, class... _Queries>
+    __hide_query(_Env&&, _Queries...) -> __hide_query<_Env, _Queries...>;
+
+    //! @brief A wrapper around an environment that hides the get_scheduler and get_domain
+    //! queries.
+    template <class _Env>
+    struct __hide_scheduler : __hide_query<_Env, get_scheduler_t, get_domain_t> {
+      explicit constexpr __hide_scheduler(_Env&& __env) noexcept
+        : __hide_query<_Env, get_scheduler_t, get_domain_t>{static_cast<_Env&&>(__env), {}, {}} {
+      }
+    };
+
+    template <class _Env>
+    __hide_scheduler(_Env&&) -> __hide_scheduler<_Env>;
+
+    //////////////////////////////////////////////////////////////////////////////////////////
+    //! @brief A query type for asking a sender's attributes for the domain on which that
+    //! sender will complete. As with @c get_domain, it is used in tag dispatching to find a
+    //! custom implementation of a sender algorithm.
+    //!
+    //! @tparam _Tag one of set_value_t, set_error_t, or set_stopped_t
+    template <__completion_tag _Tag>
+    struct get_completion_domain_t {
+      template <class Sig>
+      static inline constexpr get_completion_domain_t<_Tag> (*signature)(Sig) = nullptr;
+
+      // This function object reads the completion domain from an attribute object or a
+      // scheduler, accounting for the fact that the query member function may or may not
+      // accept an environment.
+      struct __read_query_t {
+        template <class _Attrs>
+          requires __queryable_with<_Attrs, get_completion_domain_t>
+        constexpr auto operator()(const _Attrs&, __ignore = {}) const noexcept {
+          return __decay_t<__query_result_t<_Attrs, get_completion_domain_t>>{};
+        }
+
+        template <class _Attrs, class _Env>
+          requires __queryable_with<_Attrs, get_completion_domain_t, const _Env&>
+        constexpr auto operator()(const _Attrs&, const _Env&) const noexcept {
+          return __decay_t<__query_result_t<_Attrs, get_completion_domain_t, const _Env&>>{};
+        }
+      };
+
+     private:
+      template <class _Sch, class... _Env, class _Domain>
+      static consteval auto __check_domain_(_Domain) noexcept {
+        static_assert(
+          __same_as<_Domain, __detail::__scheduler_domain_t<_Sch, const _Env&...>>,
+          "the sender claims to complete on a domain that is not the domain of its completion "
+          "scheduler");
+      }
+
+      template <class _Attrs, class... _Env, class _Domain>
+      static consteval auto __check_domain(_Domain) noexcept -> _Domain {
+        // Sanity check: if a completion scheduler can be determined from the attributes
+        // (not the environment), then its domain must match the domain returned by the attributes.
+        if constexpr (__callable<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>) {
+          using __sch_t = __call_result_t<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>;
+          // Skip check if the "scheduler" is the same as the domain or the attributes
+          // (this can happen with __prop_like which answers any query with the same type)
+          if constexpr (!__same_as<__sch_t, _Attrs>) {
+            __check_domain_<__sch_t, _Env...>(_Domain{});
+          }
+        }
+        return {};
+      }
+
+      template <class _Attrs, class... _Env>
+      static constexpr auto __get_domain() noexcept {
+        // If __attrs has a completion domain, then return it:
+        if constexpr (__callable<__read_query_t, const _Attrs&, const _Env&...>) {
+          using __domain_t = __call_result_t<__read_query_t, const _Attrs&, const _Env&...>;
+          return __check_domain<_Attrs, _Env...>(__domain_t{});
+        }
+        // Otherwise, if __attrs has a completion scheduler, we can ask that scheduler for its
+        // completion domain.
+        else if constexpr (
+          __callable<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>) {
+          using __sch_t =
+            __call_result_t<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>;
+          using X [[maybe_unused]] = decltype(__declval<__sch_t>().schedule());
+          using __read_query_t = typename get_completion_domain_t<set_value_t>::__read_query_t;
+
+          if constexpr (__callable<__read_query_t, __sch_t, const _Env&...>) {
+            using __domain_t = __call_result_t<__read_query_t, __sch_t, const _Env&...>;
+            return __domain_t{};
+          }
+          // Otherwise, if the scheduler's sender indicates that it completes inline, we can ask
+          // the environment for its domain.
+          else if constexpr (
+            __completes_inline<_Tag, env_of_t<__call_result_t<schedule_t, __sch_t>>, _Env...>
+            && __callable<get_domain_t, const _Env&...>) {
+            return __call_result_t<get_domain_t, const _Env&...>{};
+          }
+          // Otherwise, if we are asking "late" (with an environment), return the default_domain
+          else if constexpr (sizeof...(_Env) != 0) {
+            return default_domain{};
+          }
+        }
+        // Otherwise, if the attributes indicates that the sender completes inline, we can ask
+        // the environment for its domain.
+        else if constexpr (
+          __completes_inline<_Tag, _Attrs, _Env...> && __callable<get_domain_t, const _Env&...>) {
+          return __call_result_t<get_domain_t, const _Env&...>{};
+        }
+        // Otherwise, if we are asking "late" (with an environment), return the default_domain
+        else if constexpr (sizeof...(_Env) != 0) {
+          return default_domain{};
+        }
+        // Otherwise, no completion domain can be determined. Return void.
+      }
+
+      template <class _Attrs, class... _Env>
+      using __result_t = __unless_one_of_t<decltype(__get_domain<_Attrs, _Env...>()), void>;
+
+     public:
+      template <class _Attrs, class... _Env>
+      constexpr auto
+        operator()(const _Attrs&, const _Env&...) const noexcept -> __result_t<_Attrs, _Env...> {
+        return {};
+      }
+
+      static constexpr auto query(forwarding_query_t) noexcept -> bool {
+        return true;
+      }
+    };
+
+    struct get_domain_t {
+      template <class _Sig>
+      static inline constexpr get_domain_t (*signature)(_Sig) = nullptr;
+
+      // Query with a .query member function:
+      template <class _Env>
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+      constexpr auto operator()(const _Env&) const noexcept -> auto {
+        if constexpr (__member_queryable_with<const _Env&, get_domain_t>) {
+          return __decay_t<__member_query_result_t<_Env, get_domain_t>>{};
+        } else if constexpr (__callable<get_scheduler_t, const _Env&>) {
+          using __sch_t = __call_result_t<get_scheduler_t, const _Env&>;
+          using __env_t = __hide_scheduler<const _Env&>;
+          using __cmpl_sch_t =
+            __call_result_t<get_completion_scheduler_t<set_value_t>, __sch_t, __env_t>;
+          return __detail::__scheduler_domain_t<__cmpl_sch_t, __env_t>{};
+        } else {
+          return default_domain{};
+        }
+      }
+
+      // Query with tag_invoke (legacy):
+      template <class _Env>
+        requires tag_invocable<get_domain_t, const _Env&>
+      [[deprecated("use a query member function instead of tag_invoke for queries")]]
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device) //
+        constexpr auto operator()(const _Env&) const noexcept {
+        return __decay_t<tag_invoke_result_t<get_domain_t, const _Env&>>{};
+      }
+
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+      static consteval auto query(forwarding_query_t) noexcept -> bool {
+        return true;
+      }
+    };
+  } // namespace __queries
+
+  using __queries::get_completion_domain_t;
+  using __queries::get_domain_t;
+
+#if !STDEXEC_GCC() || defined(__OPTIMIZE_SIZE__)
+  template <__completion_tag _Query>
+  inline constexpr get_completion_domain_t<_Query> get_completion_domain{};
+#else
+  template <>
+  inline constexpr get_completion_domain_t<set_value_t> get_completion_domain<set_value_t>{};
+  template <>
+  inline constexpr get_completion_domain_t<set_error_t> get_completion_domain<set_error_t>{};
+  template <>
+  inline constexpr get_completion_domain_t<set_stopped_t> get_completion_domain<set_stopped_t>{};
+#endif
+
+  inline constexpr get_domain_t get_domain{};
 } // namespace stdexec
+
+// Specializations of std::common_type for stdexec::indeterminate_domain
+namespace std {
+
+  template <class... _Ds, class _Domain>
+  struct common_type<::stdexec::indeterminate_domain<_Ds...>, _Domain> {
+    using type = ::stdexec::__detail::__make_domain_t<_Ds..., _Domain>;
+  };
+
+  template <class _Domain, class... _Ds>
+  struct common_type<_Domain, ::stdexec::indeterminate_domain<_Ds...>> {
+    using type = ::stdexec::__detail::__make_domain_t<_Ds..., _Domain>;
+  };
+
+  template <class... _As, class... _Bs>
+  struct common_type<
+    ::stdexec::indeterminate_domain<_As...>,
+    ::stdexec::indeterminate_domain<_Bs...>
+  > {
+    using type = ::stdexec::__detail::__make_domain_t<_As..., _Bs...>;
+  };
+
+} // namespace std

@@ -19,7 +19,7 @@
 #include "../../stdexec/__detail/__config.hpp"
 #include "../../stdexec/__detail/__spin_loop_pause.hpp"
 
-#include <atomic>
+#include "../../stdexec/__detail/__atomic.hpp"
 #include <bit>
 #include <cstddef>
 #include <cstdint>
@@ -121,10 +121,12 @@ namespace exec::bwos {
       [[nodiscard]]
       auto block_size() const noexcept -> std::size_t;
 
-      alignas(hardware_destructive_interference_size) std::atomic<std::uint64_t> head_{};
-      alignas(hardware_destructive_interference_size) std::atomic<std::uint64_t> tail_{};
-      alignas(hardware_destructive_interference_size) std::atomic<std::uint64_t> steal_head_{};
-      alignas(hardware_destructive_interference_size) std::atomic<std::uint64_t> steal_tail_{};
+      alignas(hardware_destructive_interference_size) stdexec::__std::atomic<std::uint64_t> head_{};
+      alignas(hardware_destructive_interference_size) stdexec::__std::atomic<std::uint64_t> tail_{};
+      alignas(
+        hardware_destructive_interference_size) stdexec::__std::atomic<std::uint64_t> steal_head_{};
+      alignas(
+        hardware_destructive_interference_size) stdexec::__std::atomic<std::uint64_t> steal_tail_{};
       std::vector<Tp, Allocator> ring_buffer_;
     };
 
@@ -132,8 +134,10 @@ namespace exec::bwos {
     auto advance_steal_index(std::size_t expected_thief_counter) noexcept -> bool;
     auto advance_put_index() noexcept -> bool;
 
-    alignas(hardware_destructive_interference_size) std::atomic<std::size_t> owner_block_{1};
-    alignas(hardware_destructive_interference_size) std::atomic<std::size_t> thief_block_{0};
+    alignas(
+      hardware_destructive_interference_size) stdexec::__std::atomic<std::size_t> owner_block_{1};
+    alignas(
+      hardware_destructive_interference_size) stdexec::__std::atomic<std::size_t> thief_block_{0};
     std::vector<block_type, allocator_of_t<block_type>> blocks_{};
     std::size_t mask_{};
   };
@@ -157,7 +161,7 @@ namespace exec::bwos {
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::pop_back() noexcept -> Tp {
     do {
-      std::size_t owner_index = owner_block_.load(std::memory_order_relaxed) & mask_;
+      std::size_t owner_index = owner_block_.load(stdexec::__std::memory_order_relaxed) & mask_;
       block_type &current_block = blocks_[owner_index];
       auto [ec, value] = current_block.get();
       if (ec == lifo_queue_error_code::success) {
@@ -174,7 +178,7 @@ namespace exec::bwos {
   auto lifo_queue<Tp, Allocator>::steal_front() noexcept -> Tp {
     std::size_t thief = 0;
     do {
-      thief = thief_block_.load(std::memory_order_relaxed);
+      thief = thief_block_.load(stdexec::__std::memory_order_relaxed);
       std::size_t thief_index = thief & mask_;
       block_type &block = blocks_[thief_index];
       fetch_result result = block.steal();
@@ -194,7 +198,7 @@ namespace exec::bwos {
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::push_back(Tp value) noexcept -> bool {
     do {
-      std::size_t owner_index = owner_block_.load(std::memory_order_relaxed) & mask_;
+      std::size_t owner_index = owner_block_.load(stdexec::__std::memory_order_relaxed) & mask_;
       block_type &current_block = blocks_[owner_index];
       auto ec = current_block.put(value);
       if (ec == lifo_queue_error_code::success) {
@@ -208,7 +212,7 @@ namespace exec::bwos {
   template <class Iterator, class Sentinel>
   auto lifo_queue<Tp, Allocator>::push_back(Iterator first, Sentinel last) noexcept -> Iterator {
     do {
-      std::size_t owner_index = owner_block_.load(std::memory_order_relaxed) & mask_;
+      std::size_t owner_index = owner_block_.load(stdexec::__std::memory_order_relaxed) & mask_;
       block_type &current_block = blocks_[owner_index];
       first = current_block.bulk_put(first, last);
     } while (first != last && advance_put_index());
@@ -217,10 +221,10 @@ namespace exec::bwos {
 
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::get_free_capacity() const noexcept -> std::size_t {
-    std::size_t owner_counter = owner_block_.load(std::memory_order_relaxed);
+    std::size_t owner_counter = owner_block_.load(stdexec::__std::memory_order_relaxed);
     std::size_t owner_index = owner_counter & mask_;
     std::size_t local_capacity = blocks_[owner_index].free_capacity();
-    std::size_t thief_counter = thief_block_.load(std::memory_order_relaxed);
+    std::size_t thief_counter = thief_block_.load(stdexec::__std::memory_order_relaxed);
     std::size_t diff = owner_counter - thief_counter;
     std::size_t rest = blocks_.size() - diff - 1;
     return local_capacity + rest * block_size();
@@ -243,19 +247,19 @@ namespace exec::bwos {
 
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::advance_get_index() noexcept -> bool {
-    std::size_t owner_counter = owner_block_.load(std::memory_order_relaxed);
+    std::size_t owner_counter = owner_block_.load(stdexec::__std::memory_order_relaxed);
     std::size_t predecessor = owner_counter - 1ul;
     std::size_t predecessor_index = predecessor & mask_;
     block_type &previous_block = blocks_[predecessor_index];
     takeover_result result = previous_block.takeover();
     if (result.front != result.back) {
-      std::size_t thief_counter = thief_block_.load(std::memory_order_relaxed);
+      std::size_t thief_counter = thief_block_.load(stdexec::__std::memory_order_relaxed);
       if (thief_counter == predecessor) {
         predecessor += blocks_.size();
         thief_counter += blocks_.size() - 1ul;
-        thief_block_.store(thief_counter, std::memory_order_relaxed);
+        thief_block_.store(thief_counter, stdexec::__std::memory_order_relaxed);
       }
-      owner_block_.store(predecessor, std::memory_order_relaxed);
+      owner_block_.store(predecessor, stdexec::__std::memory_order_relaxed);
       return true;
     }
     return false;
@@ -263,9 +267,9 @@ namespace exec::bwos {
 
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::advance_put_index() noexcept -> bool {
-    std::size_t owner_counter = owner_block_.load(std::memory_order_relaxed);
+    std::size_t owner_counter = owner_block_.load(stdexec::__std::memory_order_relaxed);
     std::size_t next_counter = owner_counter + 1ul;
-    std::size_t thief_counter = thief_block_.load(std::memory_order_relaxed);
+    std::size_t thief_counter = thief_block_.load(stdexec::__std::memory_order_relaxed);
     STDEXEC_ASSERT(thief_counter < next_counter);
     if (next_counter - thief_counter >= blocks_.size()) {
       return false;
@@ -278,7 +282,7 @@ namespace exec::bwos {
     std::size_t owner_index = owner_counter & mask_;
     block_type &current_block = blocks_[owner_index];
     current_block.grant();
-    owner_block_.store(next_counter, std::memory_order_relaxed);
+    owner_block_.store(next_counter, stdexec::__std::memory_order_relaxed);
     next_block.reclaim();
     return true;
   }
@@ -291,10 +295,11 @@ namespace exec::bwos {
     std::size_t next_index = next_counter & mask_;
     block_type &next_block = blocks_[next_index];
     if (next_block.is_stealable()) {
-      thief_block_.compare_exchange_strong(thief_counter, next_counter, std::memory_order_relaxed);
+      thief_block_
+        .compare_exchange_strong(thief_counter, next_counter, stdexec::__std::memory_order_relaxed);
       return true;
     }
-    return thief_block_.load(std::memory_order_relaxed) != thief_counter;
+    return thief_block_.load(stdexec::__std::memory_order_relaxed) != thief_counter;
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -312,49 +317,73 @@ namespace exec::bwos {
   template <class Tp, class Allocator>
   lifo_queue<Tp, Allocator>::block_type::block_type(const block_type &other)
     : ring_buffer_(other.ring_buffer_) {
-    head_.store(other.head_.load(std::memory_order_relaxed), std::memory_order_relaxed);
-    tail_.store(other.tail_.load(std::memory_order_relaxed), std::memory_order_relaxed);
-    steal_tail_.store(other.steal_tail_.load(std::memory_order_relaxed), std::memory_order_relaxed);
-    steal_head_.store(other.steal_head_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    head_.store(
+      other.head_.load(stdexec::__std::memory_order_relaxed), stdexec::__std::memory_order_relaxed);
+    tail_.store(
+      other.tail_.load(stdexec::__std::memory_order_relaxed), stdexec::__std::memory_order_relaxed);
+    steal_tail_.store(
+      other.steal_tail_.load(stdexec::__std::memory_order_relaxed),
+      stdexec::__std::memory_order_relaxed);
+    steal_head_.store(
+      other.steal_head_.load(stdexec::__std::memory_order_relaxed),
+      stdexec::__std::memory_order_relaxed);
   }
 
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::block_type::operator=(const block_type &other)
     -> lifo_queue<Tp, Allocator>::block_type & {
-    head_.store(other.head_.load(std::memory_order_relaxed), std::memory_order_relaxed);
-    tail_.store(other.tail_.load(std::memory_order_relaxed), std::memory_order_relaxed);
-    steal_tail_.store(other.steal_tail_.load(std::memory_order_relaxed), std::memory_order_relaxed);
-    steal_head_.store(other.steal_head_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    head_.store(
+      other.head_.load(stdexec::__std::memory_order_relaxed), stdexec::__std::memory_order_relaxed);
+    tail_.store(
+      other.tail_.load(stdexec::__std::memory_order_relaxed), stdexec::__std::memory_order_relaxed);
+    steal_tail_.store(
+      other.steal_tail_.load(stdexec::__std::memory_order_relaxed),
+      stdexec::__std::memory_order_relaxed);
+    steal_head_.store(
+      other.steal_head_.load(stdexec::__std::memory_order_relaxed),
+      stdexec::__std::memory_order_relaxed);
     ring_buffer_ = other.ring_buffer_;
     return *this;
   }
 
   template <class Tp, class Allocator>
   lifo_queue<Tp, Allocator>::block_type::block_type(block_type &&other) noexcept {
-    head_.store(other.head_.load(std::memory_order_relaxed), std::memory_order_relaxed);
-    tail_.store(other.tail_.load(std::memory_order_relaxed), std::memory_order_relaxed);
-    steal_tail_.store(other.steal_tail_.load(std::memory_order_relaxed), std::memory_order_relaxed);
-    steal_head_.store(other.steal_head_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    head_.store(
+      other.head_.load(stdexec::__std::memory_order_relaxed), stdexec::__std::memory_order_relaxed);
+    tail_.store(
+      other.tail_.load(stdexec::__std::memory_order_relaxed), stdexec::__std::memory_order_relaxed);
+    steal_tail_.store(
+      other.steal_tail_.load(stdexec::__std::memory_order_relaxed),
+      stdexec::__std::memory_order_relaxed);
+    steal_head_.store(
+      other.steal_head_.load(stdexec::__std::memory_order_relaxed),
+      stdexec::__std::memory_order_relaxed);
     ring_buffer_ = std::exchange(std::move(other.ring_buffer_), {});
   }
 
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::block_type::operator=(block_type &&other) noexcept
     -> lifo_queue<Tp, Allocator>::block_type & {
-    head_.store(other.head_.load(std::memory_order_relaxed), std::memory_order_relaxed);
-    tail_.store(other.tail_.load(std::memory_order_relaxed), std::memory_order_relaxed);
-    steal_tail_.store(other.steal_tail_.load(std::memory_order_relaxed), std::memory_order_relaxed);
-    steal_head_.store(other.steal_head_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    head_.store(
+      other.head_.load(stdexec::__std::memory_order_relaxed), stdexec::__std::memory_order_relaxed);
+    tail_.store(
+      other.tail_.load(stdexec::__std::memory_order_relaxed), stdexec::__std::memory_order_relaxed);
+    steal_tail_.store(
+      other.steal_tail_.load(stdexec::__std::memory_order_relaxed),
+      stdexec::__std::memory_order_relaxed);
+    steal_head_.store(
+      other.steal_head_.load(stdexec::__std::memory_order_relaxed),
+      stdexec::__std::memory_order_relaxed);
     ring_buffer_ = std::exchange(std::move(other.ring_buffer_), {});
     return *this;
   }
 
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::block_type::put(Tp value) noexcept -> lifo_queue_error_code {
-    std::uint64_t back = tail_.load(std::memory_order_relaxed);
+    std::uint64_t back = tail_.load(stdexec::__std::memory_order_relaxed);
     if (back < block_size()) [[likely]] {
       ring_buffer_[static_cast<std::size_t>(back)] = static_cast<Tp &&>(value);
-      tail_.store(back + 1, std::memory_order_release);
+      tail_.store(back + 1, stdexec::__std::memory_order_release);
       return lifo_queue_error_code::success;
     }
     return lifo_queue_error_code::full;
@@ -364,91 +393,92 @@ namespace exec::bwos {
   template <class Iterator, class Sentinel>
   auto lifo_queue<Tp, Allocator>::block_type::bulk_put(Iterator first, Sentinel last) noexcept
     -> Iterator {
-    std::uint64_t back = tail_.load(std::memory_order_relaxed);
+    std::uint64_t back = tail_.load(stdexec::__std::memory_order_relaxed);
     while (first != last && back < block_size()) {
       ring_buffer_[static_cast<std::size_t>(back)] = static_cast<Tp &&>(*first);
       ++back;
       ++first;
     }
-    tail_.store(back, std::memory_order_release);
+    tail_.store(back, stdexec::__std::memory_order_release);
     return first;
   }
 
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::block_type::get() noexcept -> fetch_result<Tp> {
-    std::uint64_t front = head_.load(std::memory_order_relaxed);
+    std::uint64_t front = head_.load(stdexec::__std::memory_order_relaxed);
     if (front == block_size()) [[unlikely]] {
       return {lifo_queue_error_code::done, nullptr};
     }
-    std::uint64_t back = tail_.load(std::memory_order_relaxed);
+    std::uint64_t back = tail_.load(stdexec::__std::memory_order_relaxed);
     if (front == back) [[unlikely]] {
       return {lifo_queue_error_code::empty, nullptr};
     }
     Tp value = static_cast<Tp &&>(ring_buffer_[static_cast<std::size_t>(back - 1)]);
-    tail_.store(back - 1, std::memory_order_release);
+    tail_.store(back - 1, stdexec::__std::memory_order_release);
     return {lifo_queue_error_code::success, value};
   }
 
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::block_type::steal() noexcept -> fetch_result<Tp> {
-    std::uint64_t spos = steal_tail_.load(std::memory_order_relaxed);
+    std::uint64_t spos = steal_tail_.load(stdexec::__std::memory_order_relaxed);
     fetch_result<Tp> result{};
     if (spos == block_size()) [[unlikely]] {
       result.status = lifo_queue_error_code::done;
       return result;
     }
-    std::uint64_t back = tail_.load(std::memory_order_acquire);
+    std::uint64_t back = tail_.load(stdexec::__std::memory_order_acquire);
     if (spos == back) [[unlikely]] {
       result.status = lifo_queue_error_code::empty;
       return result;
     }
-    if (!steal_tail_.compare_exchange_strong(spos, spos + 1, std::memory_order_relaxed)) {
+    if (!steal_tail_
+           .compare_exchange_strong(spos, spos + 1, stdexec::__std::memory_order_relaxed)) {
       result.status = lifo_queue_error_code::conflict;
       return result;
     }
     result.value = static_cast<Tp &&>(ring_buffer_[static_cast<std::size_t>(spos)]);
-    steal_head_.fetch_add(1, std::memory_order_release);
+    steal_head_.fetch_add(1, stdexec::__std::memory_order_release);
     result.status = lifo_queue_error_code::success;
     return result;
   }
 
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::block_type::takeover() noexcept -> takeover_result {
-    std::uint64_t spos = steal_tail_.exchange(block_size(), std::memory_order_relaxed);
+    std::uint64_t spos = steal_tail_.exchange(block_size(), stdexec::__std::memory_order_relaxed);
     if (spos == block_size()) [[unlikely]] {
       return {
-        .front = static_cast<std::size_t>(head_.load(std::memory_order_relaxed)),
-        .back = static_cast<std::size_t>(tail_.load(std::memory_order_relaxed))};
+        .front = static_cast<std::size_t>(head_.load(stdexec::__std::memory_order_relaxed)),
+        .back = static_cast<std::size_t>(tail_.load(stdexec::__std::memory_order_relaxed))};
     }
-    head_.store(spos, std::memory_order_relaxed);
+    head_.store(spos, stdexec::__std::memory_order_relaxed);
     return {
       .front = static_cast<std::size_t>(spos),
-      .back = static_cast<std::size_t>(tail_.load(std::memory_order_relaxed))};
+      .back = static_cast<std::size_t>(tail_.load(stdexec::__std::memory_order_relaxed))};
   }
 
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::block_type::is_writable() const noexcept -> bool {
     std::uint64_t expected_steal = block_size();
-    std::uint64_t spos = steal_tail_.load(std::memory_order_relaxed);
+    std::uint64_t spos = steal_tail_.load(stdexec::__std::memory_order_relaxed);
     return spos == expected_steal;
   }
 
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::block_type::free_capacity() const noexcept -> std::size_t {
-    std::uint64_t back = tail_.load(std::memory_order_relaxed);
+    std::uint64_t back = tail_.load(stdexec::__std::memory_order_relaxed);
     return block_size() - back;
   }
 
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::block_type::reclaim() noexcept -> bool {
-    std::uint64_t expected_steal_head_ = tail_.load(std::memory_order_relaxed);
-    while (steal_head_.load(std::memory_order_acquire) != expected_steal_head_) {
+    std::uint64_t expected_steal_head_ = tail_.load(stdexec::__std::memory_order_relaxed);
+    while (steal_head_.load(stdexec::__std::memory_order_acquire) != expected_steal_head_) {
       stdexec::__spin_loop_pause();
     }
-    head_.store(0, std::memory_order_relaxed);
-    tail_.store(0, std::memory_order_relaxed);
-    steal_tail_.store(block_size(), std::memory_order_relaxed);
-    steal_head_.store(0, std::memory_order_relaxed);
+    head_.store(0, stdexec::__std::memory_order_relaxed);
+    tail_.store(0, stdexec::__std::memory_order_relaxed);
+    steal_tail_.store(block_size(), stdexec::__std::memory_order_relaxed);
+    steal_head_.store(0, stdexec::__std::memory_order_relaxed);
     return false;
   }
 
@@ -459,12 +489,12 @@ namespace exec::bwos {
 
   template <class Tp, class Allocator>
   void lifo_queue<Tp, Allocator>::block_type::grant() noexcept {
-    std::uint64_t old_head = head_.exchange(block_size(), std::memory_order_relaxed);
-    steal_tail_.store(old_head, std::memory_order_release);
+    std::uint64_t old_head = head_.exchange(block_size(), stdexec::__std::memory_order_relaxed);
+    steal_tail_.store(old_head, stdexec::__std::memory_order_release);
   }
 
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::block_type::is_stealable() const noexcept -> bool {
-    return steal_tail_.load(std::memory_order_acquire) != block_size();
+    return steal_tail_.load(stdexec::__std::memory_order_acquire) != block_size();
   }
 } // namespace exec::bwos

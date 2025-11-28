@@ -576,16 +576,16 @@ namespace stdexec {
   };
 
   template <class _Fn, class _Default>
-  using __with_default = __mtry_catch<_Fn, __mconst<_Default>>;
+  using __mwith_default = __mtry_catch<_Fn, __mconst<_Default>>;
 
   template <template <class...> class _Fn, class _Default>
-  using __with_default_q = __mtry_catch_q<_Fn, __mconst<_Default>>;
+  using __mwith_default_q = __mtry_catch_q<_Fn, __mconst<_Default>>;
 
   template <class _Fn, class _Default, class... _Args>
-  using __minvoke_or = __minvoke<__with_default<_Fn, _Default>, _Args...>;
+  using __minvoke_or = __minvoke<__mwith_default<_Fn, _Default>, _Args...>;
 
   template <template <class...> class _Fn, class _Default, class... _Args>
-  using __meval_or = __minvoke<__with_default_q<_Fn, _Default>, _Args...>;
+  using __meval_or = __minvoke<__mwith_default_q<_Fn, _Default>, _Args...>;
 
   template <template <class...> class _Fn>
   struct __mtry_eval_ {
@@ -691,6 +691,9 @@ namespace stdexec {
 
   template <class _Fn, class _List>
   using __mapply = __minvoke<__muncurry<_Fn>, _List>;
+
+  template <template <class...> class _Fn, class _List>
+  using __mapply_q = __minvoke<__muncurry<__q<_Fn>>, _List>;
 
   template <bool>
   struct __mconcat_ {
@@ -818,14 +821,18 @@ namespace stdexec {
 
   template <class _Ty, class...>
   using __mfront_ = _Ty;
+
   template <class... _As>
   using __mfront = __meval<__mfront_, _As...>;
+
   template <class... _As>
     requires(sizeof...(_As) == 1)
   using __msingle = __mfront<_As...>;
+
   template <class _Default, class... _As>
     requires(sizeof...(_As) <= 1)
   using __msingle_or_ = __mfront<_As..., _Default>;
+
   template <class _Default>
   using __msingle_or = __mbind_front_q<__msingle_or_, _Default>;
 
@@ -835,7 +842,7 @@ namespace stdexec {
   concept __has_id = requires { typename _Ty::__id; };
 
   //! Identity mapping `_Ty` to itself.
-  //! That is, `std::is_same_v<T, typename _Id<T>::__t>`.
+  //! That is, `__same_as<T, typename _Id<T>::__t>`.
   template <class _Ty>
   struct _Id {
     using __t = _Ty;
@@ -886,6 +893,10 @@ namespace stdexec {
   template <class _Fun, class... _As>
   using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
 #endif
+
+  template <class _Fun, class _Default, class... _As>
+  using __call_result_or_t =
+    __mcall<__mtry_catch_q<__call_result_t, __mconst<_Default>>, _Fun, _As...>;
 
 // BUGBUG TODO file this bug with nvc++
 #if STDEXEC_EDG()
@@ -944,6 +955,35 @@ namespace stdexec {
   struct __mzip_with2 {
     template <class _Cp, class _Dp>
     using __f = __t<__mzip_with2_<_Fn, _Continuation, _Cp, _Dp>>;
+  };
+
+  template <bool>
+  struct __mfind_ {
+    template <class _Needle, class _Continuation, class _Head, class... _Tail>
+    using __f = __minvoke<
+      __if_c<
+        __same_as<_Needle, _Head>,
+        __mbind_front<_Continuation, _Head>,
+        __mbind_front<__mfind_<(sizeof...(_Tail) != 0)>, _Needle, _Continuation>>,
+      _Tail...>;
+  };
+
+  template <>
+  struct __mfind_<false> {
+    template <class _Needle, class _Continuation>
+    using __f = __minvoke<_Continuation>;
+  };
+
+  template <class _Needle, class _Continuation = __q<__types>>
+  struct __mfind {
+    template <class... _Args>
+    using __f = __minvoke<__mfind_<(sizeof...(_Args) != 0)>, _Needle, _Continuation, _Args...>;
+  };
+
+  template <class _Needle>
+  struct __mfind_i {
+    template <class... _Args>
+    using __f = __msize_t<(sizeof...(_Args) - __v<__minvoke<__mfind<_Needle, __msize>, _Args...>>)>;
   };
 
   template <bool>

@@ -21,12 +21,10 @@
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__diagnostics.hpp"
-#include "__domain.hpp"
 #include "__meta.hpp"
 #include "__senders_core.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__transform_completion_signatures.hpp"
-#include "__transform_sender.hpp"
 #include "__senders.hpp" // IWYU pragma: keep for __well_formed_sender
 
 STDEXEC_PRAGMA_PUSH()
@@ -180,11 +178,8 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE(host, device)
       auto operator()(_Sender&& __sndr, _Policy&& __pol, _Shape __shape, _Fun __fun) const
         -> __well_formed_sender auto {
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::transform_sender(
-          __domain,
-          __make_sexpr<_AlgoTag>(
-            __data{__pol, __shape, static_cast<_Fun&&>(__fun)}, static_cast<_Sender&&>(__sndr)));
+        return __make_sexpr<_AlgoTag>(
+          __data{__pol, __shape, static_cast<_Fun&&>(__fun)}, static_cast<_Sender&&>(__sndr));
       }
 
       template <typename _Policy, integral _Shape, copy_constructible _Fun>
@@ -250,7 +245,7 @@ namespace stdexec {
       }
 
       template <class _Sender, class _Env>
-      static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
+      static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env& __env) {
         return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn(__env));
       }
     };
@@ -266,6 +261,12 @@ namespace stdexec {
 
       template <class _Sender>
       using __shape_t = decltype(__decay_t<__data_of<_Sender>>::__shape_);
+
+      // Forward the child sender's environment (which contains completion scheduler)
+      static constexpr auto get_attrs =
+        []<class _Data, class _Child>(const _Data&, const _Child& __child) noexcept {
+          return __fwd_env(stdexec::get_env(__child));
+        };
 
       static constexpr auto get_completion_signatures =
         []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept -> __completion_signatures<
@@ -351,7 +352,7 @@ namespace stdexec {
     };
 
     struct __bulk_impl : __bulk_impl_base<bulk_t> {
-      // Implementation is handled by lowering to `bulk_chunked` in `transform_sender`.
+      // Implementation is handled by lowering to `bulk_chunked` in the tag's `transform_sender`.
     };
   } // namespace __bulk
 

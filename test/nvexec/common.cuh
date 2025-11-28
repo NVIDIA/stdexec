@@ -188,7 +188,7 @@ namespace {
         }
 
         auto get_env() const noexcept -> stdexec::__fwd_env_t<stdexec::env_of_t<Sender>> {
-          return stdexec::__env::__fwd_fn{}(stdexec::get_env(sndr_));
+          return stdexec::__fwd_env(stdexec::get_env(sndr_));
         }
       };
     };
@@ -254,7 +254,7 @@ namespace {
         }
 
         auto get_env() const noexcept -> stdexec::__fwd_env_t<stdexec::env_of_t<Sender>> {
-          return stdexec::__env::__fwd_fn{}(stdexec::get_env(sndr_));
+          return stdexec::__fwd_env(stdexec::get_env(sndr_));
         }
       };
     };

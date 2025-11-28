@@ -15,7 +15,7 @@
             "initCommands": [
                 "settings set target.disable-aslr false"
             ],
-            "args": "${input:CXX_PROGRAM_ARGS}",
+            "args": ["${input:CXX_PROGRAM_ARGS}"],
         },
         {
             "name": "C++ Tests (lldb-dap)",
@@ -55,6 +55,17 @@
             "program": "${command:cmake.buildDirectory}/${input:CUDA_TEST_SUITE}",
             "cwd": "${command:cmake.buildDirectory}",
             "args": "-v normal ${input:CUDA_TEST_TAGS}",
+        },
+        {
+            "name": "maxwell_gpu_s (cuda-gdb)",
+            "type": "cuda-gdb",
+            "request": "launch",
+            "stopAtEntry": false,
+            "breakOnLaunch": false,
+            "internalConsoleOptions": "openOnFirstSessionStart",
+            "program": "${command:cmake.buildDirectory}/examples/nvexec/maxwell_gpu_s",
+            "cwd": "${command:cmake.buildDirectory}",
+            "args": ["--iterations=1000", "--N=512", "--run-cuda", "--run-stdpar", "--run-stream-scheduler"],
         },
     ],
     "inputs": [

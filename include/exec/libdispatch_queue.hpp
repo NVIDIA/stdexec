@@ -118,35 +118,20 @@ namespace exec {
     bool operator==(libdispatch_scheduler const &) const = default;
 
     struct domain {
-      // For eager customization
-      template <stdexec::sender_expr_for<stdexec::bulk_t> Sender>
-      auto transform_sender(Sender &&sndr) const noexcept {
-        if constexpr (stdexec::__completes_on<Sender, libdispatch_scheduler>) {
-          auto sched = stdexec::get_completion_scheduler<stdexec::set_value_t>(
-            stdexec::get_env(sndr));
-          return stdexec::__sexpr_apply(
-            std::forward<Sender>(sndr), __libdispatch_bulk::transform_bulk{*sched.queue_});
-        } else {
-          static_assert(
-            stdexec::__completes_on<Sender, libdispatch_scheduler>,
-            "No libdispatch_queue instance can be found in the sender's "
-            "attributes on which to schedule bulk work.");
-          return __libdispatch_details::not_a_sender<stdexec::__name_of<Sender>>();
-        }
-      }
-
       // transform the generic bulk sender into a parallel libdispatch bulk sender
       template <stdexec::sender_expr_for<stdexec::bulk_t> Sender, class Env>
-      auto transform_sender(Sender &&sndr, const Env &env) const noexcept {
-        if constexpr (stdexec::__starts_on<Sender, libdispatch_scheduler, Env>) {
-          auto sched = stdexec::get_scheduler(env);
+      auto transform_sender(stdexec::set_value_t, Sender &&sndr, const Env &env) const noexcept {
+        if constexpr (stdexec::__completes_on<Sender, libdispatch_scheduler, Env>) {
+          auto sched =
+            stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr), env);
+          static_assert(std::is_same_v<decltype(sched), libdispatch_scheduler>);
           return stdexec::__sexpr_apply(
             std::forward<Sender>(sndr), __libdispatch_bulk::transform_bulk{*sched.queue_});
         } else {
           static_assert(
-            stdexec::__starts_on<Sender, libdispatch_scheduler, Env>,
-            "No libdispatch_queue instance can be found in the receiver's "
-            "environment on which to schedule bulk work.");
+            stdexec::__completes_on<Sender, libdispatch_scheduler, Env>,
+            "Unable to dispatch bulk work to the libdispatch_scheduler. The predecessor sender "
+            "is not able to provide a libdispatch scheduler.");
           return __libdispatch_details::not_a_sender<stdexec::__name_of<Sender>>();
         }
       }
@@ -171,6 +156,11 @@ namespace exec {
         libdispatch_scheduler query(stdexec::get_completion_scheduler_t<CPO>) const noexcept {
           return libdispatch_scheduler{queue};
         }
+
+        template <typename CPO>
+        domain query(stdexec::get_completion_domain_t<CPO>) const noexcept {
+          return {};
+        }
       };
 
       STDEXEC_MEMFN_FRIEND(get_env);
@@ -187,6 +177,16 @@ namespace exec {
     }
 
     auto query(stdexec::get_domain_t) const noexcept -> domain {
+      return {};
+    }
+
+    template <typename CPO>
+    libdispatch_scheduler query(stdexec::get_completion_scheduler_t<CPO>) const noexcept {
+      return *this;
+    }
+
+    template <typename CPO>
+    domain query(stdexec::get_completion_domain_t<CPO>) const noexcept {
       return {};
     }
 
@@ -345,8 +345,8 @@ namespace exec {
               if (sh_state.task_with_exception_.compare_exchange_strong(
                     expected,
                     static_cast<std::uint32_t>(task_id),
-                    std::memory_order_relaxed,
-                    std::memory_order_relaxed)) {
+                    stdexec::__std::memory_order_relaxed,
+                    stdexec::__std::memory_order_relaxed)) {
                 sh_state.exception_ = std::current_exception();
               }
             }
@@ -385,8 +385,8 @@ namespace exec {
     Shape shape_;
     Fun fun_;
 
-    std::atomic<std::uint32_t> finished_tasks_{0};
-    std::atomic<std::uint32_t> task_with_exception_{0};
+    stdexec::__std::atomic<std::uint32_t> finished_tasks_{0};
+    stdexec::__std::atomic<std::uint32_t> task_with_exception_{0};
     std::exception_ptr exception_;
     std::vector<bulk_task> tasks_;
 

@@ -18,7 +18,7 @@
 
 #include "../../stdexec/__detail/__intrusive_queue.hpp"
 
-#include <atomic>
+#include "../../stdexec/__detail/__atomic.hpp"
 
 namespace exec {
   template <auto _NextPtr>
@@ -28,11 +28,11 @@ namespace exec {
   class alignas(64) __atomic_intrusive_queue<_NextPtr> {
    public:
     using __node_pointer = _Tp *;
-    using __atomic_node_pointer = std::atomic<_Tp *>;
+    using __atomic_node_pointer = stdexec::__std::atomic<_Tp *>;
 
     [[nodiscard]]
     auto empty() const noexcept -> bool {
-      return __head_.load(std::memory_order_relaxed) == nullptr;
+      return __head_.load(stdexec::__std::memory_order_relaxed) == nullptr;
     }
 
     struct try_push_result {
@@ -41,27 +41,29 @@ namespace exec {
     };
 
     auto try_push_front(__node_pointer t) noexcept -> try_push_result {
-      __node_pointer __old_head = __head_.load(std::memory_order_relaxed);
+      __node_pointer __old_head = __head_.load(stdexec::__std::memory_order_relaxed);
       t->*_NextPtr = __old_head;
       return {
-        __head_.compare_exchange_strong(__old_head, t, std::memory_order_acq_rel),
+        __head_.compare_exchange_strong(__old_head, t, stdexec::__std::memory_order_acq_rel),
         __old_head == nullptr};
     }
 
     auto push_front(__node_pointer t) noexcept -> bool {
-      __node_pointer __old_head = __head_.load(std::memory_order_relaxed);
+      __node_pointer __old_head = __head_.load(stdexec::__std::memory_order_relaxed);
       do {
         t->*_NextPtr = __old_head;
-      } while (!__head_.compare_exchange_weak(__old_head, t, std::memory_order_acq_rel));
+      } while (!__head_.compare_exchange_weak(__old_head, t, stdexec::__std::memory_order_acq_rel));
       return __old_head == nullptr;
     }
 
     void prepend(stdexec::__intrusive_queue<_NextPtr> queue) noexcept {
       __node_pointer __new_head = queue.front();
       __node_pointer __tail = queue.back();
-      __node_pointer __old_head = __head_.load(std::memory_order_relaxed);
+      __node_pointer __old_head = __head_.load(stdexec::__std::memory_order_relaxed);
       __tail->*_NextPtr = __old_head;
-      while (!__head_.compare_exchange_weak(__old_head, __new_head, std::memory_order_acq_rel)) {
+      while (
+        !__head_
+           .compare_exchange_weak(__old_head, __new_head, stdexec::__std::memory_order_acq_rel)) {
         __tail->*_NextPtr = __old_head;
       }
       queue.clear();
@@ -77,8 +79,9 @@ namespace exec {
 
    private:
     auto reset_head() noexcept -> __node_pointer {
-      __node_pointer __old_head = __head_.load(std::memory_order_relaxed);
-      while (!__head_.compare_exchange_weak(__old_head, nullptr, std::memory_order_acq_rel)) {
+      __node_pointer __old_head = __head_.load(stdexec::__std::memory_order_relaxed);
+      while (!__head_
+                .compare_exchange_weak(__old_head, nullptr, stdexec::__std::memory_order_acq_rel)) {
         ;
       }
       return __old_head;

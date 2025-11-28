@@ -108,7 +108,7 @@ namespace {
       : env_(std::move(env)) {
     }
 
-    base_expect_receiver(base_expect_receiver&& other)
+    base_expect_receiver(base_expect_receiver&& other) noexcept
       : called_(other.called_.exchange(true))
       , env_(std::move(other.env_)) {
     }
@@ -338,7 +338,7 @@ namespace {
     }
 
     // these do not move error_ and cannot be defaulted
-    expect_error_receiver(expect_error_receiver&& other)
+    expect_error_receiver(expect_error_receiver&& other) noexcept
       : base_expect_receiver<Env>(std::move(other))
       , error_() {
     }

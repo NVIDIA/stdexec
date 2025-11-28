@@ -29,7 +29,7 @@
 #include <utility> // for tuple_size/tuple_element
 #include <cstddef>
 #include <new> // IWYU pragma: keep for placement new
-#include <type_traits>
+#include <type_traits> // IWYU pragma: keep for is_standard_layout
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
@@ -38,6 +38,9 @@ namespace stdexec {
     template <class _Sender>
     using __impl_of = decltype((__declval<_Sender>().__impl_));
   } // namespace __detail
+
+  // template <class _Descriptor>
+  // inline constexpr auto __descriptor_fn_v = _Descriptor{};
 
   template <
     class _Descriptor,
@@ -95,7 +98,7 @@ namespace stdexec {
       static constexpr auto get_attrs =
         [](__ignore, const auto&... __child) noexcept -> decltype(auto) {
         if constexpr (sizeof...(__child) == 1) {
-          return __env::__fwd_fn()(stdexec::get_env(__child...));
+          return __fwd_env(stdexec::get_env(__child...));
         } else {
           return env<>();
         }
@@ -378,7 +381,7 @@ namespace stdexec {
       }
 
       template <__same_as<__t> _Self = __t>
-      STDEXEC_ATTRIBUTE(always_inline)
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline)
       auto get_env() const noexcept
         -> __detail::__env_type_t<_Self, __tag_t, __index, _Sexpr, _Receiver> {
         return __op_->__get_env(__index());
