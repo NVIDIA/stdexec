@@ -33,7 +33,7 @@ namespace stdexec {
   namespace __completion_behavior {
     enum class completion_behavior : int {
       unknown, ///< The completion behavior is unknown.
-      asynchronous, ///< The operation's completion will not happen on the calling thread before `start()`
+      asynchronous, ///< The operation's completion will not always happen on the calling thread before `start()`
                     ///< returns.
       asynchronous_affine, ///< Like asynchronous, but completes where it starts.
       inline_completion ///< The operation completes synchronously within `start()` on the same thread that called
