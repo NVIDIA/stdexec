@@ -145,7 +145,7 @@ namespace exec {
       }
 
       [[nodiscard]]
-      auto await_ready() const noexcept -> bool {
+      static constexpr auto await_ready() noexcept -> bool {
         return false;
       }
 

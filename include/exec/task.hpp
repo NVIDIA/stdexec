@@ -118,6 +118,15 @@ namespace exec {
       }
 
       [[nodiscard]]
+      constexpr auto query(get_completion_behavior_t<set_value_t>) const noexcept {
+        if constexpr (__with_scheduler) {
+          return completion_behavior::asynchronous_affine;
+        } else {
+          return completion_behavior::unknown;
+        }
+      }
+
+      [[nodiscard]]
       auto stop_requested() const noexcept -> bool {
         return __stop_token_.stop_requested();
       }
@@ -405,7 +414,7 @@ namespace exec {
             auto __cleanup_task = at_coroutine_exit(schedule, std::move(__sched));
             // Insert the cleanup action into the head of the continuation chain by making
             // direct calls to the cleanup task's awaiter member functions. See type
-            // _cleanup_task in at_coroutine_exit.hpp:
+            // __at_coro_exit::__task in at_coroutine_exit.hpp:
             __cleanup_task.await_suspend(__coro::coroutine_handle<__promise>::from_promise(*this));
             (void) __cleanup_task.await_resume();
           }
