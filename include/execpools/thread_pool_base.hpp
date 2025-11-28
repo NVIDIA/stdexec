@@ -42,7 +42,46 @@ namespace execpools {
     template <class DerivedPoolType_, class ReceiverId>
     friend struct operation;
 
+    template <class>
+    struct not_a_sender {
+      using sender_concept = stdexec::sender_t;
+    };
+
    public:
+    struct scheduler;
+
+    struct domain : stdexec::default_domain {
+      using __t = domain;
+      using __id = domain;
+
+      template <stdexec::sender_expr_for<stdexec::bulk_chunked_t> Sender, class Env>
+      static constexpr auto transform_sender(stdexec::set_value_t, Sender&& sndr, const Env& env) {
+        auto& [tag, data, child] = sndr;
+        auto& [pol, shape, fun] = data;
+
+        if constexpr (stdexec::__completes_on<decltype(child), scheduler, Env>) {
+          auto sch =
+            stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(child), env);
+          using sender_t =
+            scheduler::template bulk_sender_t<decltype(child), decltype(shape), decltype(fun)>;
+          return sender_t{
+            *sch.pool_,
+            stdexec::__forward_like<Sender>(child),
+            shape,
+            stdexec::__forward_like<Sender>(fun)};
+        } else {
+          static_assert(
+            stdexec::__completes_on<Sender, scheduler, Env>,
+            "Unable to dispatch bulk work to the static_thread_pool. The predecessor sender "
+            "is not able to provide a static_thread_pool scheduler.");
+          return not_a_sender<stdexec::__name_of<Sender>>();
+        }
+      }
+
+      template <stdexec::sender_expr_for<stdexec::bulk_unchunked_t> Sender, class Env>
+      static constexpr auto transform_sender(stdexec::set_value_t, Sender&& sndr, const Env& env);
+    };
+
     struct scheduler {
      private:
       template <class DerivedPoolType_, class ReceiverId>
@@ -60,6 +99,11 @@ namespace execpools {
         auto query(stdexec::get_completion_scheduler_t<CPO>) const noexcept
           -> DerivedPoolType::scheduler {
           return pool_.get_scheduler();
+        }
+
+        template <class CPO>
+        auto query(stdexec::get_completion_domain_t<CPO>) const noexcept -> domain {
+          return {};
         }
 
         auto get_env() const noexcept -> const sender& {
@@ -111,29 +155,6 @@ namespace execpools {
         std::atomic<std::uint32_t> thread_with_exception_{0};
         std::exception_ptr exception_;
 
-        // Splits `n` into `size` chunks distributing `n % size` evenly between ranks.
-        // Returns `[begin, end)` range in `n` for a given `rank`.
-        // Example:
-        // ```cpp
-        // //         n_items  thread  n_threads
-        // even_share(     11,      0,         3); // -> [0,  4) -> 4 items
-        // even_share(     11,      1,         3); // -> [4,  8) -> 4 items
-        // even_share(     11,      2,         3); // -> [8, 11) -> 3 items
-        // ```
-        static auto even_share(Shape n, std::size_t rank, std::size_t size) noexcept
-          -> std::pair<Shape, Shape> {
-          const auto avg_per_thread = n / size;
-          const auto n_big_share = avg_per_thread + 1;
-          const auto big_shares = n % size;
-          const auto is_big_share = rank < big_shares;
-          const auto begin = is_big_share
-                             ? n_big_share * rank
-                             : n_big_share * big_shares + (rank - big_shares) * avg_per_thread;
-          const auto end = begin + (is_big_share ? n_big_share : avg_per_thread);
-
-          return std::make_pair(begin, end);
-        }
-
         [[nodiscard]]
         auto num_agents_required() const -> std::uint32_t {
           // With work stealing, is std::min necessary, or can we feel free to ask for more agents (tasks)
@@ -162,10 +183,8 @@ namespace execpools {
             auto total_threads = self.num_agents_required();
 
             auto computation = [&](auto&... args) {
-              auto [begin, end] = even_share(self.shape_, tid, total_threads);
-              for (Shape i = begin; i < end; ++i) {
-                self.fun_(i, args...);
-              }
+              auto [begin, end] = exec::_pool_::even_share(self.shape_, tid, total_threads);
+              self.fun_(begin, end, args...);
             };
 
             auto completion = [&](auto&... args) {
@@ -376,10 +395,11 @@ namespace execpools {
           }
 
           template <stdexec::__forwarding_query Tag, class... As>
-            requires stdexec::__callable<Tag, const Sender&, As...>
+            requires stdexec::__queryable_with<stdexec::env_of_t<Sender>, Tag, As...>
           auto query(Tag, As&&... as) const
-            noexcept(stdexec::__nothrow_callable<Tag, const Sender&, As...>) -> decltype(auto) {
-            return Tag()(sndr_, static_cast<As&&>(as)...);
+            noexcept(stdexec::__nothrow_queryable_with<stdexec::env_of_t<Sender>, Tag, As...>)
+              -> decltype(auto) {
+            return stdexec::__query<Tag>()(stdexec::get_env(sndr_), static_cast<As&&>(as)...);
           }
 
           auto get_env() const noexcept -> const __t& {
@@ -391,22 +411,6 @@ namespace execpools {
       template <stdexec::sender Sender, std::integral Shape, class Fun>
       using bulk_sender_t =
         stdexec::__t<bulk_sender<stdexec::__id<stdexec::__decay_t<Sender>>, Shape, Fun>>;
-
-      STDEXEC_MEMFN_FRIEND(bulk);
-
-      template <stdexec::sender S, std::integral Shape, class Fun>
-      STDEXEC_MEMFN_DECL(
-        auto bulk)(this const scheduler& sch, S&& sndr, Shape shape, Fun fun) noexcept
-        -> bulk_sender_t<S, Shape, Fun> {
-        return bulk_sender_t<S, Shape, Fun>{
-          *sch.pool_, static_cast<S&&>(sndr), shape, static_cast<Fun&&>(fun)};
-      }
-
-      [[nodiscard]]
-      constexpr auto
-        forward_progress_guarantee() const noexcept -> stdexec::forward_progress_guarantee {
-        return pool_->forward_progress_guarantee();
-      }
 
       friend thread_pool_base;
 
@@ -421,12 +425,32 @@ namespace execpools {
       using __id = scheduler;
       auto operator==(const scheduler&) const -> bool = default;
 
+
       [[nodiscard]]
       constexpr auto query(stdexec::get_forward_progress_guarantee_t) const noexcept
         -> stdexec::forward_progress_guarantee {
-        return forward_progress_guarantee();
+        return pool_->forward_progress_guarantee();
       }
 
+      template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t> Tag>
+      [[nodiscard]]
+      constexpr auto query(stdexec::get_completion_scheduler_t<Tag>) const noexcept -> scheduler {
+        return *this;
+      }
+
+      template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t> Tag>
+      [[nodiscard]]
+      constexpr auto query(stdexec::get_completion_domain_t<Tag>) const noexcept -> domain {
+        return {};
+      }
+
+      template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t> Tag>
+      [[nodiscard]]
+      constexpr auto query(stdexec::get_completion_behavior_t<Tag>) const noexcept {
+        return stdexec::completion_behavior::asynchronous;
+      }
+
+      [[nodiscard]]
       auto schedule() const noexcept -> sender {
         return sender{*pool_};
       }

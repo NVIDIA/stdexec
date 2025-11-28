@@ -88,6 +88,8 @@ namespace exec {
 
     template <class>
     struct not_a_sender {
+      using __t = not_a_sender;
+      using __id = not_a_sender;
       using sender_concept = sender_t;
     };
 
@@ -1298,9 +1300,9 @@ namespace exec {
       template <class F>
       void apply(F f) {
         std::visit(
-          [&](auto& tupl) -> void {
-            if constexpr (same_as<__decay_t<decltype(tupl)>, std::monostate>) {
-              std::terminate();
+          [&]<class Tuple>(Tuple& tupl) -> void {
+            if constexpr (same_as<Tuple, std::monostate>) {
+              STDEXEC_TERMINATE();
             } else {
               std::apply([&](auto&... args) -> void { f(args...); }, tupl);
             }
@@ -1356,15 +1358,13 @@ namespace exec {
 
         shared_state& state = shared_state_;
 
-        if constexpr (MayThrow) {
-          STDEXEC_TRY {
-            state.data_.template emplace<tuple_t>(static_cast<As&&>(as)...);
-          }
-          STDEXEC_CATCH_ALL {
+        STDEXEC_TRY {
+          state.data_.template emplace<tuple_t>(static_cast<As&&>(as)...);
+        }
+        STDEXEC_CATCH_ALL {
+          if constexpr (MayThrow) {
             stdexec::set_error(std::move(state.rcvr_), std::current_exception());
           }
-        } else {
-          state.data_.template emplace<tuple_t>(static_cast<As&&>(as)...);
         }
 
         if (state.shape_) {

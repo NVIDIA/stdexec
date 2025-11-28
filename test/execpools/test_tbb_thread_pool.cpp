@@ -81,7 +81,7 @@ namespace {
 
   TEST_CASE(
     "ex::on works when changing threads with execpools::tbb_thread_pool",
-    "[adaptors][exec::starts_on]") {
+    "[tbb_thread_pool]") {
     execpools::tbb_thread_pool pool;
     auto pool_sched = pool.get_scheduler();
     CHECK(
@@ -95,7 +95,7 @@ namespace {
     REQUIRE(called);
   }
 
-  TEST_CASE("more tbb_thread_pool") {
+  TEST_CASE("more tbb_thread_pool", "[tbb_thread_pool]") {
 
     auto compute = [](int x) -> int {
       return x + 1;
@@ -116,11 +116,11 @@ namespace {
     using namespace stdexec;
 
     // clang-format off
-  auto work = when_all(
-      starts_on(tbb_sched, just(1))    | then(compute) | then(compute),
-      starts_on(other_sched, just(0))  | then(compute) | continues_on(tbb_sched)   | then(compute),
-      starts_on(inline_sched, just(2)) | then(compute) | continues_on(other_sched) | then(compute) | continues_on(tbb_sched) | then(compute)
-  );
+    auto work = when_all(
+        starts_on(tbb_sched, just(1))    | then(compute) | then(compute),
+        starts_on(other_sched, just(0))  | then(compute) | continues_on(tbb_sched)   | then(compute),
+        starts_on(inline_sched, just(2)) | then(compute) | continues_on(other_sched) | then(compute) | continues_on(tbb_sched) | then(compute)
+    );
     // clang-format on
 
     // Launch the work and wait for the result:
@@ -131,7 +131,7 @@ namespace {
   }
 
 #if !STDEXEC_STD_NO_EXCEPTIONS()
-  TEST_CASE("tbb_thread_pool exceptions") {
+  TEST_CASE("tbb_thread_pool exceptions", "[tbb_thread_pool]") {
     // I know tbb::task_groups do cancellation with exceptions, which leaves them in a not-restartable
     // state. We'd better have it act normally here.
     using namespace stdexec;
@@ -158,7 +158,7 @@ namespace {
   }
 #endif // !STDEXEC_STD_NO_EXCEPTIONS()
 
-  TEST_CASE("tbb_thread_pool async_inclusive_scan") {
+  TEST_CASE("tbb_thread_pool async_inclusive_scan", "[tbb_thread_pool]") {
     const auto input = std::array{1.0, 2.0, -1.0, -2.0};
     std::remove_const_t<decltype(input)> output;
     execpools::tbb_thread_pool pool{2};
