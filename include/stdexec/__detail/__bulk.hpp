@@ -219,34 +219,36 @@ namespace stdexec {
     };
 
     struct bulk_t : __generic_bulk_t<bulk_t> {
-      template <class _Env>
-      static auto __transform_sender_fn(const _Env&) {
-        return [&]<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
-          using __shape_t = std::remove_cvref_t<decltype(__data.__shape_)>;
-          auto __new_f =
-            [__func = std::move(
-               __data.__fun_)](__shape_t __begin, __shape_t __end, auto&&... __vs) mutable
+     private:
+      template <class _Fun>
+      static constexpr auto __mk_chunked_fn(_Fun&& __fun) {
+        return [__fun_ = static_cast<_Fun&&>(
+                  __fun)]<class Shape>(Shape __begin, Shape __end, auto&... __vs) mutable
 #if !STDEXEC_MSVC()
-            // MSVCBUG https://developercommunity.visualstudio.com/t/noexcept-expression-in-lambda-template-n/10718680
-            noexcept(noexcept(__data.__fun_(__begin++, __vs...)))
+          // MSVCBUG https://developercommunity.visualstudio.com/t/noexcept-expression-in-lambda-template-n/10718680
+          noexcept(__nothrow_callable<_Fun&, Shape, decltype(__vs)...>)
 #endif
-          {
-            while (__begin != __end)
-              __func(__begin++, __vs...);
-          };
+        {
+          while (__begin != __end)
+            __fun_(__begin++, __vs...);
+        };
+      }
 
+     public:
+      static auto __transform_sender_fn() noexcept {
+        return []<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
           // Lower `bulk` to `bulk_chunked`. If `bulk_chunked` is customized, we will see the customization.
           return bulk_chunked(
             static_cast<_Child&&>(__child),
             __data.__pol_.__get(),
             __data.__shape_,
-            std::move(__new_f));
+            __mk_chunked_fn(std::move(__data.__fun_)));
         };
       }
 
-      template <class _Sender, class _Env>
-      static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env& __env) {
-        return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn(__env));
+      template <class _Sender>
+      static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
+        return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn());
       }
     };
 
