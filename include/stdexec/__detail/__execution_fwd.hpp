@@ -128,7 +128,7 @@ namespace stdexec {
 
   template <class _Tag, class _Sndr, class... _Env>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-  consteval auto get_completion_behavior() noexcept;
+  constexpr auto get_completion_behavior() noexcept;
 
   struct never_stop_token;
   class inplace_stop_source;

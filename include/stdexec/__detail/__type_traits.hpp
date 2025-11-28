@@ -17,6 +17,7 @@
 
 #include "__config.hpp"
 
+#include <exception>   // IWYU pragma: keep for std::terminate
 #include <type_traits> // IWYU pragma: keep
 #include <utility>     // IWYU pragma: keep
 
@@ -25,10 +26,23 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // A very simple std::declval replacement that doesn't handle void
   template <class _Tp, bool _Noexcept = true>
-  using __declfn = auto (*)() noexcept(_Noexcept) -> _Tp;
+  using __declfn_t = auto (*)() noexcept(_Noexcept) -> _Tp;
 
   template <class _Tp>
-  extern __declfn<_Tp &&> __declval;
+  extern __declfn_t<_Tp &&> __declval;
+
+#if STDEXEC_MSVC()
+  template <class _Tp, bool _Noexcept = true>
+  _Tp __declfn_() noexcept(_Noexcept) {
+    STDEXEC_ASSERT(false && +"__declfn() should never be called" == nullptr);
+    STDEXEC_TERMINATE();
+  }
+  template <class _Tp, bool _Noexcept = true>
+  inline constexpr __declfn_t<_Tp, _Noexcept> __declfn = &__declfn_<_Tp, _Noexcept>;
+#else
+  template <class _Tp, bool _Noexcept = true>
+  extern __declfn_t<_Tp, _Noexcept> __declfn;
+#endif
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __decay_t: An efficient implementation for std::decay

@@ -33,14 +33,14 @@ namespace stdexec {
   template <class _Env, class _Query, class... _Args>
   concept __member_queryable_with =
     queryable<_Env>
-    && requires(const _Env& __env, const _Query& __query, __declfn<_Args&&>... __args) {
+    && requires(const _Env& __env, const _Query& __query, __declfn_t<_Args&&>... __args) {
          { __env.query(__query, __args()...) };
        };
 
   template <class _Env, class _Query, class... _Args>
   concept __nothrow_member_queryable_with =
     __member_queryable_with<_Env, _Query, _Args...>
-    && requires(const _Env& __env, const _Query& __query, __declfn<_Args&&>... __args) {
+    && requires(const _Env& __env, const _Query& __query, __declfn_t<_Args&&>... __args) {
          { __env.query(__query, __args()...) } noexcept;
        };
 

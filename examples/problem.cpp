@@ -67,10 +67,12 @@ void check_if_starts_inline_and_completes_on_pool(Sender, Receiver) {
   // op_state.start();
 }
 
+#if 0
 template <class T>
 void print(T) {
   std::cout << __PRETTY_FUNCTION__ << "\n";
 }
+#endif
 
 template <class T, class Env = ex::env<>>
 struct expect_value_receiver_ex {

@@ -96,23 +96,23 @@ namespace stdexec {
 
         if constexpr (__merror<_TfxSender>) {
           // Computing the type of the transformed sender returned an error type. Propagate it.
-          return __declfn<_TfxSender>();
+          return __declfn<_TfxSender, true>;
         } else if constexpr (__with_member_alias<_TfxSender>) {
           using _Result = __member_alias_t<_TfxSender>;
-          return __declfn<_Result>();
+          return __declfn<_Result>;
         } else if constexpr (__with_static_member<_TfxSender, _Env...>) {
           using _Result = __static_member_result_t<_TfxSender, _Env...>;
-          return __declfn<_Result>();
+          return __declfn<_Result>;
         } else if constexpr (__with_member<_TfxSender, _Env...>) {
           using _Result = __member_result_t<_TfxSender, _Env...>;
-          return __declfn<_Result>();
+          return __declfn<_Result>;
         } else if constexpr (__with_tag_invoke<_TfxSender, _Env...>) {
           using _Result = tag_invoke_result_t<get_completion_signatures_t, _TfxSender, _Env...>;
-          return __declfn<_Result>();
+          return __declfn<_Result>;
         } else if constexpr (__with_legacy_tag_invoke<_TfxSender, _Env...>) {
           // This branch is strictly for backwards compatibility
           using _Result = tag_invoke_result_t<get_completion_signatures_t, _Sender, env<>>;
-          return __declfn<_Result>();
+          return __declfn<_Result>;
           // [WAR] The explicit cast to bool below is to work around a bug in nvc++ (nvbug#4707793)
         } else if constexpr (bool(__awaitable<_TfxSender, __env::__promise<_Env>...>)) {
           using _AwaitResult = __await_result_t<_TfxSender, __env::__promise<_Env>...>;
@@ -122,10 +122,10 @@ namespace stdexec {
             set_error_t(std::exception_ptr),
             set_stopped_t()
           >;
-          return __declfn<_Result>();
+          return __declfn<_Result>;
         } else if constexpr (sizeof...(_Env) == 0) {
           // It's possible this is a dependent sender.
-          return __declfn<dependent_completions>();
+          return __declfn<dependent_completions>;
         } else if constexpr ((__is_debug_env<_Env> || ...)) {
           // This ought to cause a hard error that indicates where the problem is.
           using _Completions [[maybe_unused]] =
@@ -134,7 +134,7 @@ namespace stdexec {
           return static_cast<__debug::__completion_signatures (*)()>(nullptr);
         } else {
           using _Result = __unrecognized_sender_error<_Sender, _Env...>;
-          return __declfn<_Result>();
+          return __declfn<_Result>;
         }
       }
 
@@ -228,26 +228,26 @@ namespace stdexec {
                                  && noexcept(
                                       __declval<_TfxSender>()
                                         .connect(__declval<_TfxSender>(), __declval<_Receiver>()));
-          return __declfn<_Result, _Nothrow>();
+          return __declfn<_Result, _Nothrow>;
         } else if constexpr (__with_member<_TfxSender, _Receiver>) {
           using _Result = __member_result_t<_TfxSender, _Receiver>;
           __check_operation_state<_Result>();
           constexpr bool _Nothrow = _NothrowTfxSender
                                  && noexcept(__declval<_TfxSender>()
                                                .connect(__declval<_Receiver>()));
-          return __declfn<_Result, _Nothrow>();
+          return __declfn<_Result, _Nothrow>;
         } else if constexpr (__with_tag_invoke<_TfxSender, _Receiver>) {
           using _Result = tag_invoke_result_t<connect_t, _TfxSender, _Receiver>;
           __check_operation_state<_Result>();
           constexpr bool _Nothrow = _NothrowTfxSender
                                  && nothrow_tag_invocable<connect_t, _TfxSender, _Receiver>;
-          return __declfn<_Result, _Nothrow>();
+          return __declfn<_Result, _Nothrow>;
         } else if constexpr (__with_co_await<_TfxSender, _Receiver>) {
           using _Result = __call_result_t<__connect_awaitable_t, _TfxSender, _Receiver>;
-          return __declfn<_Result, false>();
+          return __declfn<_Result, false>;
         } else if constexpr (__is_debug_env<env_of_t<_Receiver>>) {
           using _Result = __debug::__debug_operation;
-          return __declfn<_Result, _NothrowTfxSender>();
+          return __declfn<_Result, _NothrowTfxSender>;
         } else {
           return _NO_USABLE_CONNECT_CUSTOMIZATION_FOUND_();
         }

@@ -46,7 +46,7 @@ namespace stdexec {
           __has_nothrow_transform_sender<__domain_t, _OpTag, _Sndr, _Env>;
 
         if constexpr (__same_as<__result_t, _Sndr>) {
-          return __declfn<__result_t, __is_nothrow>();
+          return __declfn<__result_t, __is_nothrow>;
         } else if constexpr (__same_as<_OpTag, start_t>) {
           return __get_declfn<__result_t, _Env, (_Nothrow && __is_nothrow)>();
         } else {

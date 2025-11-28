@@ -82,54 +82,45 @@ namespace stdexec {
   namespace __queries {
     template <__completion_tag _Tag>
     struct get_completion_behavior_t {
+     private:
+      template <class _Attrs, class... _Env>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto __validate() noexcept {
+        using __result_t = __member_query_result_t<_Attrs, get_completion_behavior_t, _Env...>;
+        static_assert(
+          __nothrow_member_queryable_with<_Attrs, get_completion_behavior_t, _Env...>,
+          "The get_completion_behavior query must be noexcept.");
+        static_assert(
+          convertible_to<__result_t, __completion_behavior::completion_behavior>,
+          "The get_completion_behavior query must return one of the static member variables in "
+          "execution::completion_behavior.");
+        return __result_t{};
+      }
+
+     public:
       using __t = get_completion_behavior_t;
       using __id = get_completion_behavior_t;
 
       template <class _Sig>
       static inline constexpr get_completion_behavior_t (*signature)(_Sig) = nullptr;
 
-      // Query with a .query member function:
-      template <class _Qy = get_completion_behavior_t, class _Attrs>
-        requires __member_queryable_with<const _Attrs&, _Qy>
+      template <class _Attrs, class... _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto operator()(const _Attrs& __attrs, __ignore = {}) const noexcept
-        -> __query_result_t<_Attrs, _Qy> {
-        __validate<_Attrs>();
-        return __attrs.query(_Qy());
-      }
-
-      template <class _Qy = get_completion_behavior_t, class _Attrs, class _Env>
-        requires __member_queryable_with<const _Attrs&, _Qy, _Env>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto operator()(const _Attrs& __attrs, const _Env& __env) const noexcept
-        -> __query_result_t<_Attrs, _Qy, _Env> {
-        __validate<_Attrs, _Env>();
-        return __attrs.query(_Qy(), __env);
-      }
-
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto operator()(__ignore, __ignore = {}) const noexcept {
-        return completion_behavior::unknown;
+      constexpr auto operator()(const _Attrs& __attrs, const _Env&... __env) const noexcept {
+        if constexpr (__member_queryable_with<const _Attrs&, get_completion_behavior_t<_Tag>, _Env...>) {
+          return __validate<_Attrs, _Env...>();
+        }
+        else if constexpr (__member_queryable_with<const _Attrs&, get_completion_behavior_t<_Tag>>) {
+          return __validate<_Attrs>();
+        }
+        else {
+          return completion_behavior::unknown;
+        }
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       static constexpr auto query(forwarding_query_t) noexcept -> bool {
         return true;
-      }
-
-     private:
-      template <class _Attrs, class... _Env>
-      STDEXEC_ATTRIBUTE(always_inline, host, device)
-      static constexpr void __validate() noexcept {
-        static_assert(
-          __nothrow_queryable_with<_Attrs, get_completion_behavior_t, _Env...>,
-          "The get_completion_behavior query must be noexcept.");
-        static_assert(
-          convertible_to<
-            __query_result_t<_Attrs, get_completion_behavior_t, _Env...>,
-            __completion_behavior::completion_behavior>,
-          "The get_completion_behavior query must return one of the static member variables in "
-          "execution::completion_behavior.");
       }
     };
   } // namespace __queries
@@ -170,7 +161,7 @@ namespace stdexec {
 
   template <class _Tag, class _Sndr, class... _Env>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-  consteval auto get_completion_behavior() noexcept {
+  constexpr auto get_completion_behavior() noexcept {
     using __behavior_t =
       __call_result_t<get_completion_behavior_t<_Tag>, env_of_t<_Sndr>, const _Env&...>;
     return __behavior_t{};
