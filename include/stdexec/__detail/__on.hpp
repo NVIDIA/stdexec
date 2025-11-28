@@ -69,6 +69,7 @@ namespace stdexec {
       _Scheduler __sched_;
       _Closure __clsur_;
     };
+
     template <class _Scheduler, class _Closure>
     __on_data(_Scheduler, _Closure) -> __on_data<_Scheduler, _Closure>;
 
@@ -117,7 +118,7 @@ namespace stdexec {
       };
 
       template <class _Sender, class _OldSched, class _NewSched>
-      static auto __transfer(
+      static auto __reschedule(
         _Sender&& __sndr,
         [[maybe_unused]] _OldSched&& __old_sched,
         _NewSched&& __new_sched) {
@@ -144,7 +145,7 @@ namespace stdexec {
             // This branch handles the case where `on` was called like `on(sch, sndr)`. In
             // this case, we find the old scheduler by looking in the receiver's
             // environment.
-            auto __old = __with_default{get_scheduler, __end_sched_t()}(__env);
+            const auto __old = __with_default{get_scheduler, __end_sched_t()}(__env);
 
             return continues_on(
               starts_on(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)),
@@ -153,13 +154,16 @@ namespace stdexec {
             // This branch handles the case where `on` was called like `sndr | on(sch,
             // clsur)`. In this case, __child is a predecessor sender, so the scheduler we
             // want to restore is the completion scheduler of __child.
-            auto __get_old_sched =
+            constexpr auto __get_old_sched =
               __with_default{get_completion_scheduler<set_value_t>, __end_sched_t()};
-            auto __old = __get_old_sched(get_env(__child), __env);
+            const auto __old = __get_old_sched(get_env(__child), __env);
 
             auto& [__sched, __clsur] = __data;
-            auto __pred = __transfer(static_cast<_Child&&>(__child), __old, __sched);
-            return __transfer(__forward_like<_Data>(__clsur)(std::move(__pred)), __sched, __old);
+            auto __pred = __reschedule(static_cast<_Child&&>(__child), __old, __sched);
+            return __reschedule(
+              __forward_like<_Data>(__clsur)(std::move(__pred)),
+              std::move(__sched),
+              std::move(__old));
           }
         };
       }
