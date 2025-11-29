@@ -21,7 +21,7 @@
 
 #include "../../stdexec/__detail/__config.hpp" // IWYU pragma: export
 
-#if !defined(_NVHPC_CUDA) && !defined(__CUDACC__)
+#if !STDEXEC_CUDA_COMPILATION()
 #  error The NVIDIA schedulers and utilities require CUDA support
 #endif
 

@@ -420,7 +420,7 @@ namespace stdexec {
 #if STDEXEC_NVHPC()
 #  include <nv/target>
 #  define STDEXEC_TERMINATE() NV_IF_TARGET(NV_IS_HOST, (std::terminate();), (__trap();)) void()
-#elif STDEXEC_CLANG() && STDEXEC_CUDA_COMPILATION() && defined(__CUDA_ARCH__)
+#elif STDEXEC_CLANG() && defined(__CUDA__) && defined(__CUDA_ARCH__)
 #  define STDEXEC_TERMINATE()                                                                      \
     __trap();                                                                                      \
     __builtin_unreachable()
@@ -470,6 +470,12 @@ namespace stdexec {
 #  define STDEXEC_HAS_UNSEQUENCED_EXECUTION_POLICY() 1
 #else
 #  define STDEXEC_HAS_UNSEQUENCED_EXECUTION_POLICY() 0
+#endif
+
+#if defined(__cpp_lib_parallel_algorithm) && __cpp_lib_parallel_algorithm >= 2016'03L
+#  define STDEXEC_HAS_PARALLEL_ALGORITHMS() 1
+#else
+#  define STDEXEC_HAS_PARALLEL_ALGORITHMS() 0
 #endif
 
 #ifdef STDEXEC_ASSERT

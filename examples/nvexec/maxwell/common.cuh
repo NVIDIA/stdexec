@@ -34,7 +34,7 @@
 #include <string_view>
 #include <vector>
 
-#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
+#if STDEXEC_CUDA_COMPILATION()
 #  define STDEXEC_STDERR
 #  include "nvexec/detail/throw_on_cuda_error.cuh"
 #endif
@@ -44,7 +44,7 @@ struct deleter_t {
 
   template <class T>
   void operator()(T *ptr) {
-#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
+#if STDEXEC_CUDA_COMPILATION()
     if (on_gpu) {
       STDEXEC_ASSERT_CUDA_API(cudaFree(ptr));
     } else
@@ -60,7 +60,7 @@ STDEXEC_ATTRIBUTE(host, device)
 inline auto allocate_on(bool gpu, std::size_t elements = 1) -> std::unique_ptr<T, deleter_t> {
   T *ptr{};
 
-#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
+#if STDEXEC_CUDA_COMPILATION()
   if (gpu) {
     STDEXEC_TRY_CUDA_API(cudaMallocManaged(&ptr, elements * sizeof(T)));
   } else

@@ -18,6 +18,7 @@
 #pragma once
 
 #include "../stdexec/execution.hpp"
+#include "../stdexec/__detail/__atomic.hpp"
 #include "../stdexec/__detail/__config.hpp"
 #include "../stdexec/__detail/__intrusive_queue.hpp"
 #include "../stdexec/__detail/__meta.hpp"
@@ -31,7 +32,6 @@
 #include "sequence/iterate.hpp"
 
 #include <algorithm>
-#include "../stdexec/__detail/__atomic.hpp"
 #include <compare>
 #include <condition_variable>
 #include <cstdint>
@@ -299,7 +299,7 @@ namespace exec {
               std::cmp_less_equal(shape, pool_.available_parallelism()) &&
               "bulk_unchunked shape must be less than or equal to the number of threads in the "
               "static_thread_pool");
-              STDEXEC_TERMINATE();
+              std::terminate();
             }
           }
 

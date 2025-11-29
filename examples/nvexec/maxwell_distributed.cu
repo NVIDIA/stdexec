@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 
-#include "maxwell/snr.cuh"
-#include "nvexec/stream_context.cuh"
+#include "maxwell/snr.cuh"           // IWYU pragma: keep
+#include "nvexec/stream_context.cuh" // IWYU pragma: keep
 
-#include <mpi.h>
-#include <vector>
+#if !__has_include(<mpi.h>)
+#  error This example requires MPI to be available
+#else
+#  include <mpi.h>
+#  include <vector>
 
 static auto even_share(std::size_t n, std::size_t rank, std::size_t size) noexcept
   -> std::pair<std::size_t, std::size_t> {
@@ -96,7 +99,17 @@ namespace distributed {
 
     [[nodiscard]]
     auto accessor() const -> fields_accessor {
-      return {height / n, width / n, width, height, n, cells, begin, end, fields_.get()};
+      auto fn = static_cast<float>(n);
+      return {
+        .dx = height / fn,
+        .dy = width / fn,
+        .width = width,
+        .height = height,
+        .n = n,
+        .cells = cells,
+        .begin = begin,
+        .end = end,
+        .base_ptr = fields_.get()};
     }
   };
 
@@ -244,7 +257,7 @@ namespace distributed {
       const float y = static_cast<float>(row) * accessor.dy;
 
       const float soil_y = accessor.width / 2.2;
-      const float object_y = soil_y - 22.0;
+      const float object_y = static_cast<float>(soil_y) - 22.0;
       const float object_size = 3.0;
       const float soil_er_hr = 1.3;
 
@@ -288,12 +301,12 @@ namespace distributed {
   }
 
   __host__ __device__ inline auto
-    bottom_nid(std::size_t cell_id, std::size_t row, std::size_t N) -> std::size_t {
+    bottom_nid(std::size_t cell_id, std::size_t, std::size_t N) -> std::size_t {
     return cell_id - N;
   }
 
   __host__ __device__ inline auto
-    top_nid(std::size_t cell_id, std::size_t row, std::size_t N) -> std::size_t {
+    top_nid(std::size_t cell_id, std::size_t, std::size_t N) -> std::size_t {
     return cell_id + N;
   }
 
@@ -473,7 +486,7 @@ auto main(int argc, char *argv[]) -> int {
   MPI_Barrier(MPI_COMM_WORLD);
   const auto begin = std::chrono::system_clock::now();
 
-#if defined(OVERLAP)
+#  if defined(OVERLAP)
   const std::size_t border_cells = N;
   const std::size_t bulk_cells = accessor.own_cells() - border_cells;
 
@@ -499,7 +512,7 @@ auto main(int argc, char *argv[]) -> int {
   }
 
   write();
-#else
+#  else
   for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
     auto compute_h =
       ex::just()
@@ -518,7 +531,7 @@ auto main(int argc, char *argv[]) -> int {
   }
 
   write();
-#endif
+#  endif
 
   MPI_Barrier(MPI_COMM_WORLD);
   const auto end = std::chrono::system_clock::now();
@@ -536,3 +549,4 @@ auto main(int argc, char *argv[]) -> int {
 
   MPI_Finalize();
 }
+#endif
