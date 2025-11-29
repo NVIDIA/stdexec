@@ -814,7 +814,7 @@ namespace {
     ex::scheduler auto sch = pool.get_scheduler();
 
     SECTION("Without values in the set_value channel") {
-      for (std::size_t n = 0; n < 9u; n++) {
+      for (std::size_t n = 0; n < pool.available_parallelism(); n++) {
         std::vector<int> counter(n, 42);
 
         auto snd = ex::transfer_just(sch)
@@ -831,7 +831,7 @@ namespace {
     }
 
     SECTION("With values in the set_value channel") {
-      for (std::size_t n = 0; n < 9; n++) {
+      for (std::size_t n = 0; n < pool.available_parallelism(); n++) {
         std::vector<int> counter(n, 42);
 
         auto snd = ex::transfer_just(sch, 42)
@@ -861,7 +861,7 @@ namespace {
     }
 
     SECTION("With values in the set_value channel that can be taken by reference") {
-      for (std::size_t n = 0; n < 9; n++) {
+      for (std::size_t n = 0; n < pool.available_parallelism(); n++) {
         std::vector<int> vals(n, 0);
         std::vector<int> vals_expected(n);
         std::iota(vals_expected.begin(), vals_expected.end(), 1);
@@ -884,7 +884,7 @@ namespace {
 
 #if !STDEXEC_STD_NO_EXCEPTIONS()
     SECTION("With exception") {
-      constexpr int n = 9;
+      auto const n = pool.available_parallelism();
       auto snd = ex::transfer_just(sch) | ex::bulk_unchunked(ex::par, n, [](int) {
                    throw std::runtime_error("bulk_unchunked");
                  });
@@ -894,7 +894,7 @@ namespace {
 #endif // !STDEXEC_STD_NO_EXCEPTIONS()
 
     SECTION("With concurrent enqueueing") {
-      constexpr std::size_t n = 4;
+      auto const n = pool.available_parallelism();
       std::vector<int> counters_1(n, 0);
       std::vector<int> counters_2(n, 0);
 

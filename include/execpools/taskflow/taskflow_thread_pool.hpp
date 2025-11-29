@@ -38,7 +38,7 @@ namespace execpools {
     friend struct execpools::operation;
 
     void enqueue(execpools::task_base* task, std::uint32_t tid = 0) noexcept {
-      executor_.silent_async([task, tid] { task->__execute(task, /*tid=*/tid); });
+      executor_.silent_async([task, tid] { task->execute_(task, /*tid=*/tid); });
     }
 
     tf::Executor executor_;
