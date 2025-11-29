@@ -178,7 +178,7 @@ namespace execpools {
           , shape_{shape}
           , fun_{fun}
           , thread_with_exception_{num_agents_required()} {
-          this->__execute = [](task_base* t, std::uint32_t tid) noexcept {
+          this->execute_ = [](task_base* t, std::uint32_t tid) noexcept {
             auto& self = *static_cast<bulk_shared_state*>(t);
             auto total_threads = self.num_agents_required();
 
@@ -489,8 +489,7 @@ namespace execpools {
     explicit __t(PoolType& pool, Receiver rcvr)
       : pool_(pool)
       , rcvr_(std::move(rcvr)) {
-      this
-        ->__execute = [](task_base* t, std::uint32_t /* tid What is this needed for? */) noexcept {
+      this->execute_ = [](task_base* t, std::uint32_t /* tid What is this needed for? */) noexcept {
         auto& op = *static_cast<__t*>(t);
         auto stoken = stdexec::get_stop_token(stdexec::get_env(op.rcvr_));
         if (stoken.stop_requested()) {
