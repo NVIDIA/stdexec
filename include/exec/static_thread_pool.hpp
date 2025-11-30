@@ -931,7 +931,7 @@ namespace exec {
           continue;
         }
         __intrusive_queue<&task_base::next> tmp{};
-        for (auto i = begin; i < end; ++i) {
+        for (auto j = begin; j < end; ++j) {
           tmp.push_back(tasks.pop_front());
         }
         correct_queue->queues_[i].prepend(std::move(tmp));

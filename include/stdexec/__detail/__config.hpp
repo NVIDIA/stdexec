@@ -113,7 +113,7 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-#if defined(__CUDACC__) || STDEXEC_NVHPC()
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 #  define STDEXEC_CUDA_COMPILATION() 1
 #else
 #  define STDEXEC_CUDA_COMPILATION() 0
