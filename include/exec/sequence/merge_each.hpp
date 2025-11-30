@@ -982,31 +982,18 @@ namespace exec {
       auto set_value(_NestedSequence&& __sequence) noexcept {
         using __receiver_t = __receive_nested_values_t<_OperationBase>;
         using __nested_op_t = __compute::__nested_sequence_op_t<_NestedSequence, _OperationBase>;
-        if constexpr (
+        static constexpr bool __is_nothrow =
           __nothrow_subscribable<_NestedSequence, __receiver_t>
-          && stdexec::__nothrow_constructible_from<_NestedSeqOp, __nested_op_t>) {
+          && stdexec::__nothrow_constructible_from<_NestedSeqOp, __nested_op_t>;
+        STDEXEC_TRY {
           auto& __nested_seq_op = __next_seq_op_->__nested_seq_op_.emplace_from(
-            [](_NestedSequence __sequence, __receiver_t __receiver) noexcept -> __nested_op_t {
-              return subscribe(
-                static_cast<_NestedSequence&&>(__sequence),
-                static_cast<__receiver_t&&>(__receiver));
-            },
+            subscribe,
             static_cast<_NestedSequence&&>(__sequence),
             __receiver_t{__next_seq_op_, __op_});
           stdexec::start(__nested_seq_op);
-        } else {
-          STDEXEC_TRY {
-            auto& __nested_seq_op = __next_seq_op_->__nested_seq_op_.emplace_from(
-              [](_NestedSequence __sequence, __receiver_t __receiver) -> __nested_op_t {
-                return subscribe(
-                  static_cast<_NestedSequence&&>(__sequence),
-                  static_cast<__receiver_t&&>(__receiver));
-              },
-              static_cast<_NestedSequence&&>(__sequence),
-              __receiver_t{__next_seq_op_, __op_});
-            stdexec::start(__nested_seq_op);
-          }
-          STDEXEC_CATCH_ALL {
+        }
+        STDEXEC_CATCH_ALL {
+          if constexpr (!__is_nothrow) {
             __op_->store_error(std::current_exception());
             __op_->nested_sequence_break();
           }

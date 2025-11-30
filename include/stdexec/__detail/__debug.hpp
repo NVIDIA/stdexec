@@ -20,9 +20,12 @@
 #include "__concepts.hpp"
 #include "__completion_signatures.hpp"
 #include "__diagnostics.hpp"
-#include "__env.hpp"
 #include "__meta.hpp"
+#include "__query.hpp"
 #include "__senders_core.hpp"
+
+#include <cstdarg>
+#include <cstdio>
 
 #include <exception> // IWYU pragma: keep for std::terminate
 
@@ -248,4 +251,12 @@ namespace stdexec {
 
   using __debug::__is_debug_env;
   using __debug::__debug_sender;
+
+  inline void __debug_printf(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    std::vprintf(fmt, args);
+    std::fflush(stdout);
+    va_end(args);
+  }
 } // namespace stdexec

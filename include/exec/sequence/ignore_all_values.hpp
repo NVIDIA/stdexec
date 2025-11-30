@@ -52,7 +52,11 @@ namespace exec {
       }
 
       template <class _Receiver>
-      void __visit_result(_Receiver&& __rcvr) noexcept {
+#if STDEXEC_NVHPC() && STDEXEC_NVHPC_VERSION <= 25'09
+      // Avoid a codegen issue in NVHPC 25.9 and earlier
+      [[gnu::noinline]]
+#endif
+      void __visit_result(_Receiver __rcvr) noexcept {
         int __is_emplaced = __emplaced_.load(__std::memory_order_acquire);
         if (__is_emplaced == 0) {
           stdexec::set_value(static_cast<_Receiver&&>(__rcvr));
@@ -188,7 +192,13 @@ namespace exec {
       struct __t {
         using __id = __receiver;
         using receiver_concept = stdexec::receiver_t;
-        __operation_base<_Receiver, _ResultVariant>* __op_;
+
+        constexpr explicit __t(__operation_base<_Receiver, _ResultVariant>* __op) noexcept
+          : __op_{__op} {
+        }
+
+        // nvc++ needs this destructor to be defined to avoid a codegen issue
+        STDEXEC_WHEN(STDEXEC_NVHPC(), ~__t(){})
 
         template <sender _Item>
         [[nodiscard]]
@@ -214,6 +224,9 @@ namespace exec {
         auto get_env() const noexcept -> env_of_t<_Receiver> {
           return stdexec::get_env(__op_->__receiver_);
         }
+
+       private:
+        __operation_base<_Receiver, _ResultVariant>* __op_;
       };
     };
 
