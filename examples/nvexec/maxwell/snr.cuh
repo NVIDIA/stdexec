@@ -48,7 +48,6 @@ namespace nvexec {
 
 #include <optional>
 #include <exec/inline_scheduler.hpp>
-#include <exec/static_thread_pool.hpp>
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")

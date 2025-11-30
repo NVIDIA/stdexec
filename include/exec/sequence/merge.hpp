@@ -100,11 +100,10 @@ namespace exec {
     struct __operation {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
-      using merge_each_fn_t = typename __combine::merge_each_fn_t<_ReceiverId>;
+      using merge_each_fn_t = __combine::merge_each_fn_t<_ReceiverId>;
 
       template <class _ReceiverIdDependent>
-      using result_sender_t =
-        typename __combine::result_sender_t<_ReceiverIdDependent, _Sequences...>;
+      using result_sender_t = __combine::result_sender_t<_ReceiverIdDependent, _Sequences...>;
 
       struct __t : __operation_base<_Receiver> {
         using __id = __operation;

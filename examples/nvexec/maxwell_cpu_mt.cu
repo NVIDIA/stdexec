@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-#include <iostream>
-
 #include "maxwell/snr.cuh"
 #include "maxwell/std.cuh"
 #include "maxwell/stdpar.cuh" // IWYU pragma: keep
+
+#include "../../include/exec/static_thread_pool.hpp"
+
+#include <iostream>
 
 auto main(int argc, char *argv[]) -> int {
   auto params = parse_cmd(argc, argv);
