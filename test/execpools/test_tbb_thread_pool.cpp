@@ -29,81 +29,80 @@
 namespace ex = stdexec;
 
 namespace {
+  // Example adapted from
+  // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2300r5.html#example-async-inclusive-scan
+  [[nodiscard]]
+  auto async_inclusive_scan(
+    ex::scheduler auto sch,                    // 2
+    std::span<const double> input,             // 1
+    std::span<double> output,                  // 1
+    double init,                               // 1
+    std::size_t tile_count) -> ex::sender auto // 3
+  {
+    using namespace stdexec;
+    std::size_t const tile_size = (input.size() + tile_count - 1) / tile_count;
 
-  template <ex::scheduler Sched = inline_scheduler>
-  inline auto _with_scheduler(Sched sched = {}) {
-    return ex::write_env(ex::prop{ex::get_scheduler, std::move(sched)});
-  }
+    std::vector<double> partials(tile_count + 1);
+    partials[0] = init;
 
-  namespace {
-
-    // Example adapted from
-    // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2300r5.html#example-async-inclusive-scan
-    [[nodiscard]]
-    auto async_inclusive_scan(
-      ex::scheduler auto sch,                    // 2
-      std::span<const double> input,             // 1
-      std::span<double> output,                  // 1
-      double init,                               // 1
-      std::size_t tile_count) -> ex::sender auto // 3
-    {
-      using namespace stdexec;
-      std::size_t const tile_size = (input.size() + tile_count - 1) / tile_count;
-
-      std::vector<double> partials(tile_count + 1);
-      partials[0] = init;
-
-      // clang-format off
-  return transfer_just(sch, std::move(partials))
-       | bulk(ex::par, tile_count,
+    return transfer_just(sch, std::move(partials)) //
+         | bulk(
+             ex::par,
+             tile_count,
              [=](std::size_t i, std::span<double> partials) {
                auto start = i * tile_size;
                auto end = std::min(input.size(), (i + 1) * tile_size);
                partials[i + 1] = *--std::inclusive_scan(
-                   begin(input) + static_cast<long>(start), begin(input) + static_cast<long>(end), begin(output) + static_cast<long>(start));
-             })
-       | then([](std::vector<double>&& partials) {
-           std::inclusive_scan(begin(partials), end(partials), begin(partials));
-           return std::move(partials);
-         })
-       | bulk(ex::par, tile_count,
+                 begin(input) + static_cast<long>(start),
+                 begin(input) + static_cast<long>(end),
+                 begin(output) + static_cast<long>(start));
+             }) //
+         | then([](std::vector<double>&& partials) {
+             std::inclusive_scan(begin(partials), end(partials), begin(partials));
+             return std::move(partials);
+           }) //
+         | bulk(
+             ex::par,
+             tile_count,
              [=](std::size_t i, std::span<const double> partials) {
                auto start = i * tile_size;
                auto end = std::min(input.size(), (i + 1) * tile_size);
-               std::for_each(begin(output) + static_cast<long>(start), begin(output) + static_cast<long>(end),
-                   [&](double& e) { e = partials[i] + e; });
-             })
-       | then([=](std::vector<double>&&) { return output; });
-      // clang-format on
-    }
+               std::for_each(
+                 begin(output) + static_cast<long>(start),
+                 begin(output) + static_cast<long>(end),
+                 [&](double& e) { e = partials[i] + e; });
+             }) //
+         | then([=](std::vector<double>&&) { return output; });
+  }
 
-  } // namespace
+  TEST_CASE(
+    "execpools::tbb_thread_pool offers the parallel forward progress guarantee",
+    "[tbb_thread_pool]") {
+    execpools::tbb_thread_pool pool;
+    auto pool_sched = pool.get_scheduler();
+    CHECK(
+      ex::get_forward_progress_guarantee(pool_sched) == ex::forward_progress_guarantee::parallel);
+  }
 
   TEST_CASE(
     "ex::on works when changing threads with execpools::tbb_thread_pool",
     "[tbb_thread_pool]") {
     execpools::tbb_thread_pool pool;
     auto pool_sched = pool.get_scheduler();
-    CHECK(
-      ex::get_forward_progress_guarantee(pool_sched) == ex::forward_progress_guarantee::parallel);
     bool called{false};
     // launch some work on the thread pool
-    ex::sender auto snd = ex::on(pool_sched, ex::just()) | ex::then([&] { called = true; })
-                        | _with_scheduler();
+    ex::sender auto snd = ex::on(pool_sched, ex::just()) | ex::then([&] { called = true; });
     ex::sync_wait(std::move(snd));
     // the work should be executed
     REQUIRE(called);
   }
 
   TEST_CASE("more tbb_thread_pool", "[tbb_thread_pool]") {
-
-    auto compute = [](int x) -> int {
-      return x + 1;
-    };
+    using namespace stdexec;
 
     execpools::tbb_thread_pool pool(1);
-
     exec::static_thread_pool other_pool(1);
+    stdexec::inline_scheduler inline_sched;
 
     // Get a handle to the thread pool:
     auto other_sched = other_pool.get_scheduler();
@@ -111,15 +110,15 @@ namespace {
     // Get a handle to the thread pool:
     auto tbb_sched = pool.get_scheduler();
 
-    stdexec::inline_scheduler inline_sched;
-
-    using namespace stdexec;
+    auto compute = [](int x) -> int {
+      return x + 1;
+    };
 
     // clang-format off
     auto work = when_all(
-        starts_on(tbb_sched, just(1))    | then(compute) | then(compute),
-        starts_on(other_sched, just(0))  | then(compute) | continues_on(tbb_sched)   | then(compute),
-        starts_on(inline_sched, just(2)) | then(compute) | continues_on(other_sched) | then(compute) | continues_on(tbb_sched) | then(compute)
+      starts_on(tbb_sched, just(1))    | then(compute) | then(compute),
+      starts_on(other_sched, just(0))  | then(compute) | continues_on(tbb_sched)   | then(compute),
+      starts_on(inline_sched, just(2)) | then(compute) | continues_on(other_sched) | then(compute) | continues_on(tbb_sched) | then(compute)
     );
     // clang-format on
 

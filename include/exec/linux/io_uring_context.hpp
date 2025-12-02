@@ -58,8 +58,6 @@
 
 namespace exec {
   namespace __io_uring {
-    using namespace stdexec::tags;
-
     inline void __throw_error_code_if(bool __cond, int __ec) {
       if (__cond) {
         STDEXEC_THROW(std::system_error(__ec, std::system_category()));
