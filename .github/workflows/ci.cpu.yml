@@ -63,10 +63,11 @@ jobs:
           role-to-assume: arn:aws:iam::279114543810:role/gha-oidc-NVIDIA
       - name: Build and test CPU schedulers
         env:
+          ASAN_OPTIONS: alloc_dealloc_mismatch=0
           NVCC_APPEND_FLAGS: "-t=100"
           SCCACHE_DIST_URL: "https://amd64.linux.sccache.rapids.nvidia.com"
           SCCACHE_DIST_REQUEST_TIMEOUT: "7140"
-          ASAN_OPTIONS: alloc_dealloc_mismatch=0
+          SCCACHE_DIST_REWRITE_INCLUDES_ONLY: ${{ contains(matrix.tag, 'llvm') && 'true' || 'false' }}
           SCCACHE_IDLE_TIMEOUT: "0"
         run: |
           set -ex;
