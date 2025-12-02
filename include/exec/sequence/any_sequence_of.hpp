@@ -68,8 +68,7 @@ namespace exec {
           template <class _Rcvr>
             requires sequence_receiver_of<_Rcvr, __item_types>
                   && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
-          STDEXEC_MEMFN_DECL(auto __create_vtable)(this __mtype<__t>, __mtype<_Rcvr>) noexcept
-            -> const __t* {
+          static auto __create_vtable(__mtype<_Rcvr>) noexcept -> const __t* {
             static const __t __vtable_{
               {__rcvr_next_vfun_fn<_Rcvr>{}(static_cast<_NextSigs*>(nullptr))},
               {__any_::__rcvr_vfun_fn(
@@ -131,11 +130,11 @@ namespace exec {
             : __env_{__create_vtable(__mtype<__vtable_t>{}, __mtype<_Rcvr>{}), &__rcvr} {
           }
 
-          template <same_as<__t> _Self, class _Sender>
+          template <class _Sender>
             requires constructible_from<__item_sender, _Sender>
-          STDEXEC_MEMFN_DECL(auto set_next)(this _Self& __self, _Sender&& __sndr) -> __void_sender {
-            const __rcvr_next_vfun<__next_sigs>* __vfun = __self.__env_.__vtable_;
-            return __vfun->__fn_(__self.__env_.__rcvr_, static_cast<_Sender&&>(__sndr));
+          auto set_next(_Sender&& __sndr) -> __void_sender {
+            const __rcvr_next_vfun<__next_sigs>* __vfun = __env_.__vtable_;
+            return __vfun->__fn_(__env_.__rcvr_, static_cast<_Sender&&>(__sndr));
           }
 
           // set_value_t() is always valid for a sequence
@@ -183,10 +182,9 @@ namespace exec {
 
         template <class _Sender>
           requires sequence_sender_to<_Sender, __receiver_ref_t>
-        STDEXEC_MEMFN_DECL(auto __create_vtable)(this __mtype<__t>, __mtype<_Sender>) noexcept
-          -> const __t* {
+        static auto __create_vtable(__mtype<_Sender>) noexcept -> const __t* {
           static const __t __vtable_{
-            {*__create_vtable(__mtype<__query_vtable_t>{}, __mtype<_Sender>{})},
+            {*__any::__create_vtable(__mtype<__query_vtable_t>{}, __mtype<_Sender>{})},
             [](void* __object_pointer, __receiver_ref_t __receiver)
               -> __immovable_operation_storage {
               _Sender& __sender = *static_cast<_Sender*>(__object_pointer);
@@ -261,10 +259,9 @@ namespace exec {
 
         __unique_storage_t<__vtable_t> __storage_;
 
-        template <same_as<__t> _Self, class _Rcvr>
-        STDEXEC_MEMFN_DECL(auto subscribe)(this _Self&& __self, _Rcvr __rcvr)
-          -> stdexec::__t<__operation<stdexec::__id<_Rcvr>, true>> {
-          return {static_cast<_Self&&>(__self), static_cast<_Rcvr&&>(__rcvr)};
+        template <class _Rcvr>
+        auto subscribe(_Rcvr __rcvr) && -> stdexec::__t<__operation<stdexec::__id<_Rcvr>, true>> {
+          return {static_cast<__t&&>(*this), static_cast<_Rcvr&&>(__rcvr)};
         }
 
         using __env_t = stdexec::__t<__sender_env<_Sigs, _SenderQueries, _ReceiverQueries>>;
