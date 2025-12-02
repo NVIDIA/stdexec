@@ -54,20 +54,6 @@ jobs:
         run: |
           echo "ARTIFACT_PREFIX=${{runner.os}}-${{matrix.tag}}-amd64" >> "${GITHUB_ENV}"
           echo "ARTIFACT_SUFFIX=${{github.run_id}}-${{github.run_attempt}}-$RANDOM" >> "${GITHUB_ENV}"
-      - id: sccache-preprocessor-cache
-        name: Setup sccache preprocessor cache
-        uses: actions/cache@v4
-        with:
-          path: /home/coder/.cache/sccache/preprocessor
-          restore-keys: sccache-preprocessor-cache-${{env.ARTIFACT_PREFIX}}
-          key: sccache-preprocessor-cache-${{env.ARTIFACT_PREFIX}}-${{env.ARTIFACT_SUFFIX}}
-      - id: sccache-dist-toolchains-cache
-        name: Setup sccache-dist client toolchains cache
-        uses: actions/cache@v4
-        with:
-          path: /home/coder/.cache/sccache-dist-client
-          restore-keys: sccache-toolchains-cache-${{env.ARTIFACT_PREFIX}}
-          key: sccache-toolchains-cache-${{env.ARTIFACT_PREFIX}}-${{env.ARTIFACT_SUFFIX}}
       - if: github.repository_owner == 'NVIDIA'
         name: Get AWS credentials for sccache bucket
         uses: aws-actions/configure-aws-credentials@v4
