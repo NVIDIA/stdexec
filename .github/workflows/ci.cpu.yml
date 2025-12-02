@@ -77,15 +77,10 @@ jobs:
         env:
           NVCC_APPEND_FLAGS: "-t=100"
           SCCACHE_DIST_URL: "https://amd64.linux.sccache.rapids.nvidia.com"
-          SCCACHE_DIST_CONNECT_TIMEOUT: "30"
-          SCCACHE_DIST_FALLBACK_TO_LOCAL_COMPILE: "true"
-          SCCACHE_DIST_KEEPALIVE_ENABLED: "true"
-          SCCACHE_DIST_KEEPALIVE_INTERVAL: "20"
-          SCCACHE_DIST_KEEPALIVE_TIMEOUT: "600"
           SCCACHE_DIST_REWRITE_INCLUDES_ONLY: ${{ contains(matrix.tag, 'llvm') && 'true' || 'false' }}
           SCCACHE_DIST_REQUEST_TIMEOUT: "7140"
-          SCCACHE_IDLE_TIMEOUT: "7200"
           ASAN_OPTIONS: alloc_dealloc_mismatch=0
+          SCCACHE_IDLE_TIMEOUT: "0"
         run: |
           set -ex;
 
@@ -117,7 +112,8 @@ jobs:
           sccache -s;
 
           # Tests
-          ctest --test-dir build --verbose --output-on-failure --timeout 300;
+          SCCACHE_NO_CACHE=1 SCCACHE_NO_DIST_COMPILE=1 \
+          ctest --test-dir build --verbose --output-on-failure --timeout 60;
       - if: ${{ !cancelled() }}
         name: Upload sccache logs
         uses: actions/upload-artifact@v4
