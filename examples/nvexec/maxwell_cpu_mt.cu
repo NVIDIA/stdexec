@@ -14,16 +14,13 @@
  * limitations under the License.
  */
 
-#include <iostream>
-
 #include "maxwell/snr.cuh"
 #include "maxwell/std.cuh"
-#include "maxwell/stdpar.cuh"
-#include "maxwell/cpp.cuh"
+#include "maxwell/stdpar.cuh" // IWYU pragma: keep
 
-#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
-#  include "maxwell/cuda.cuh"
-#endif
+#include "../../include/exec/static_thread_pool.hpp"
+
+#include <iostream>
 
 auto main(int argc, char *argv[]) -> int {
   auto params = parse_cmd(argc, argv);
@@ -33,7 +30,7 @@ auto main(int argc, char *argv[]) -> int {
               << "\t--write-vtk\n"
               << "\t--iterations\n"
               << "\t--run-std\n"
-              << "\t--run-stdpar\n"
+              << (STDEXEC_HAS_PARALLEL_ALGORITHMS() ? "\t--run-stdpar\n" : "")
               << "\t--run-thread-pool-scheduler\n"
               << "\t--N\n"
               << std::endl;
@@ -75,14 +72,16 @@ auto main(int argc, char *argv[]) -> int {
     run_std(dt, write_vtk, n_iterations, grid, "CPU (std)");
   }
 
+#if STDEXEC_HAS_PARALLEL_ALGORITHMS()
   if (value(params, "run-stdpar")) {
-    const bool gpu = is_gpu_policy(std::execution::par_unseq);
+    const bool gpu = is_gpu_policy(stdexec::par_unseq);
     std::string_view method = gpu ? "GPU (stdpar)" : "CPU (stdpar)";
     grid_t grid{N, gpu};
 
     auto accessor = grid.accessor();
     auto dt = calculate_dt(accessor.dx, accessor.dy);
 
-    run_stdpar(dt, write_vtk, n_iterations, grid, std::execution::par_unseq, method);
+    run_stdpar(dt, write_vtk, n_iterations, grid, stdexec::par_unseq, method);
   }
+#endif
 }

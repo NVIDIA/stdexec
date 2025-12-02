@@ -18,22 +18,22 @@
 
 #pragma once
 
-#include "common.cuh"
+#include "common.cuh" // IWYU pragma: keep
 
-#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
-#  include "nvexec/stream/common.cuh"
-#  include "nvexec/detail/throw_on_cuda_error.cuh"
-#endif
+#if STDEXEC_HAS_PARALLEL_ALGORITHMS()
 
-#include <ranges>
-#include <algorithm>
-#include <execution>
+#  if STDEXEC_CUDA_COMPILATION()
+#    include "../include/nvexec/stream/common.cuh"
+#    include "../include/nvexec/detail/throw_on_cuda_error.cuh"
+#  endif
 
-#include <thrust/iterator/counting_iterator.h>
+#  include <thrust/iterator/counting_iterator.h>
+
+#  include <algorithm>
 
 template <class Policy>
 auto is_gpu_policy([[maybe_unused]] Policy&& policy) -> bool {
-#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
+#  if STDEXEC_CUDA_COMPILATION()
   bool* flag{};
   STDEXEC_TRY_CUDA_API(cudaMallocHost(&flag, sizeof(bool)));
   std::for_each(policy, flag, flag + 1, [](bool& f) { f = nvexec::is_on_gpu(); });
@@ -74,3 +74,5 @@ void run_stdpar(
     writer();
   });
 }
+
+#endif

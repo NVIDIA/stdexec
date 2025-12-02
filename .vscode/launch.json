@@ -18,20 +18,37 @@
             "args": ["${input:CXX_PROGRAM_ARGS}"],
         },
         {
-            "name": "C++ Tests (lldb-dap)",
+            "name": "Standard C++ Tests (lldb-dap)",
             "type": "lldb-dap",
             "request": "launch",
             "stopOnEntry": false,
             "internalConsoleOptions": "openOnFirstSessionStart",
             "cwd": "${command:cmake.buildDirectory}",
-            "program": "${command:cmake.buildDirectory}/${input:CXX_TEST_SUITE}",
+            "program": "${command:cmake.buildDirectory}/test/test.stdexec",
             "initCommands": [
                 "settings set target.disable-aslr false"
             ],
             "args": [
                 "-v",
                 "normal",
-                "${input:CXX_TEST_TAGS}"
+                "${input:CXX_TEST_TAGS_STDEXEC}"
+            ],
+        },
+        {
+            "name": "Non-standard C++ Tests (lldb-dap)",
+            "type": "lldb-dap",
+            "request": "launch",
+            "stopOnEntry": false,
+            "internalConsoleOptions": "openOnFirstSessionStart",
+            "cwd": "${command:cmake.buildDirectory}",
+            "program": "${command:cmake.buildDirectory}/test/exec/test.exec",
+            "initCommands": [
+                "settings set target.disable-aslr false"
+            ],
+            "args": [
+                "-v",
+                "normal",
+                "${input:CXX_TEST_TAGS_EXEC}"
             ],
         },
         {
@@ -78,14 +95,23 @@
             "description": "Arguments to pass to the program"
         },
         {
-            "id": "CXX_TEST_SUITE",
             "type": "command",
+            "id": "CXX_TEST_TAGS_STDEXEC",
             "command": "shellCommand.execute",
             "args": {
-                "useFirstResult": true,
-                "description": "Path to Test Suite",
+                "description": "Select test tags to filter",
                 "cwd": "${command:cmake.buildDirectory}",
-                "command": "find . -type f -name test.stdexec"
+                "command": "./test/test.stdexec --list-tags | tail -n +2 | head -n -2 | tr -s ' '' ' | cut -d' ' -f3",
+            }
+        },
+        {
+            "type": "command",
+            "id": "CXX_TEST_TAGS_EXEC",
+            "command": "shellCommand.execute",
+            "args": {
+                "description": "Select test tags to filter",
+                "cwd": "${command:cmake.buildDirectory}",
+                "command": "./test/exec/test.exec --list-tags | tail -n +2 | head -n -2 | tr -s ' '' ' | cut -d' ' -f3",
             }
         },
         {
@@ -97,16 +123,6 @@
                 "description": "Path to Test Suite",
                 "cwd": "${command:cmake.buildDirectory}",
                 "command": "find . -type f -name test.nvexec"
-            }
-        },
-        {
-            "type": "command",
-            "id": "CXX_TEST_TAGS",
-            "command": "shellCommand.execute",
-            "args": {
-                "description": "Select test tags to filter",
-                "cwd": "${command:cmake.buildDirectory}",
-                "command": "./${input:CXX_TEST_SUITE} --list-tags | tail -n +2 | head -n -2 | tr -s ' '' ' | cut -d' ' -f3",
             }
         },
         {

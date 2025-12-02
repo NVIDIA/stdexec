@@ -23,7 +23,7 @@
 
 namespace ex = stdexec;
 
-#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
+#if STDEXEC_CUDA_COMPILATION()
 #  include <nvexec/stream_context.cuh>    // IWYU pragma: export
 #  include <nvexec/multi_gpu_context.cuh> // IWYU pragma: export
 #else
@@ -48,7 +48,6 @@ namespace nvexec {
 
 #include <optional>
 #include <exec/inline_scheduler.hpp>
-#include <exec/static_thread_pool.hpp>
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
@@ -227,10 +226,7 @@ namespace repeat_n_detail {
       ex::set_value_t(),
       ex::set_stopped_t(),
       ex::set_error_t(std::exception_ptr)
-      // #  if defined(_NVHPC_CUDA) || defined(__CUDACC__)
-      //         ,
-      //       ex::set_error_t(cudaError_t)
-      // #  endif
+      // STDEXEC_WHEN(STDEXEC_CUDA_COMPILATION(), , ex::set_error_t(cudaError_t))
     >;
 
     template <ex::__decays_to<repeat_n_sender_t> Self, ex::receiver Receiver>
@@ -261,7 +257,7 @@ namespace repeat_n_detail {
   };
 } // namespace repeat_n_detail
 
-#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
+#if STDEXEC_CUDA_COMPILATION()
 // A CUDA stream implementation of repeat_n
 namespace nvexec::_strm {
   namespace repeat_n {
@@ -446,7 +442,7 @@ namespace nvexec::_strm {
   };
 } // namespace nvexec::_strm
 
-#endif // defined(_NVHPC_CUDA) || defined(__CUDACC__)
+#endif // STDEXEC_CUDA_COMPILATION()
 
 template <class SchedulerT>
 [[nodiscard]]

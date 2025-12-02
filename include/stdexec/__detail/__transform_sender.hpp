@@ -126,9 +126,6 @@ namespace stdexec {
 
   inline constexpr transform_sender_t transform_sender{};
 
-
-  struct _CHILD_SENDERS_WITH_DIFFERENT_DOMAINS_ { };
-
   /////////////////////////////////////////////////////////////////////////////
   template <class _Tag, class _Domain, class _Sender, class... _Args>
   concept __has_implementation_for =
