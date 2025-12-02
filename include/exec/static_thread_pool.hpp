@@ -173,21 +173,17 @@ namespace exec {
         class __t;
       };
 
-      template <class BulkTag, bool Parallelize, std::integral Shape, class Fun, class SenderId>
+      template <bool Parallelize, std::integral Shape, class Fun, class SenderId>
       struct _bulk_sender {
         using Sender = stdexec::__t<SenderId>;
         struct __t;
       };
 
-      template <class BulkTag, bool Parallelize, std::integral Shape, class Fun, sender Sender>
-      using _bulk_sender_t =
-        __t<_bulk_sender<BulkTag, Parallelize, Shape, Fun, __id<__decay_t<Sender>>>>;
-
-      template <class BulkTag, class Shape, class Fun>
-      struct _is_nothrow_bulk_fn;
+      template <bool Parallelize, std::integral Shape, class Fun, sender Sender>
+      using _bulk_sender_t = __t<_bulk_sender<Parallelize, Shape, Fun, __id<__decay_t<Sender>>>>;
 
       template <class Shape, class Fun>
-      struct _is_nothrow_bulk_fn<bulk_chunked_t, Shape, Fun> {
+      struct _is_nothrow_bulk_fn {
         template <class... Args>
           requires __callable<Fun, Shape, Shape, __decay_t<Args>&...>
         using __f = __mbool<
@@ -199,21 +195,7 @@ namespace exec {
         >;
       };
 
-      template <class Shape, class Fun>
-      struct _is_nothrow_bulk_fn<bulk_unchunked_t, Shape, Fun> {
-        template <class... Args>
-          requires __callable<Fun, Shape, __decay_t<Args>&...>
-        using __f = __mbool<
-          // If function invocation doesn't throw ...
-          __nothrow_callable<Fun, Shape, __decay_t<Args>&...> &&
-          // ... and decay-copying the arguments doesn't throw ...
-          __nothrow_decay_copyable<Args...>
-          // ... then there is no need to advertise completion with `exception_ptr`
-        >;
-      };
-
       template <
-        class BulkTag,
         bool Parallelize,
         class Shape,
         class Fun,
@@ -224,7 +206,6 @@ namespace exec {
       struct _bulk_shared_state;
 
       template <
-        class BulkTag,
         bool Parallelize,
         class Shape,
         class Fun,
@@ -239,7 +220,6 @@ namespace exec {
       };
 
       template <
-        class BulkTag,
         bool Parallelize,
         class Shape,
         class Fun,
@@ -247,18 +227,11 @@ namespace exec {
         class CvrefSender,
         class Receiver
       >
-      using _bulk_receiver_t = __t<_bulk_receiver<
-        BulkTag,
-        Parallelize,
-        Shape,
-        Fun,
-        MayThrow,
-        __cvref_id<CvrefSender>,
-        __id<Receiver>
-      >>;
+      using _bulk_receiver_t = __t<
+        _bulk_receiver<Parallelize, Shape, Fun, MayThrow, __cvref_id<CvrefSender>, __id<Receiver>>
+      >;
 
       template <
-        class BulkTag,
         bool Parallelize,
         std::integral Shape,
         class Fun,
@@ -271,16 +244,9 @@ namespace exec {
         struct __t;
       };
 
-      template <
-        class Tag,
-        bool Parallelize,
-        std::integral Shape,
-        class Fun,
-        class Sender,
-        class Receiver
-      >
+      template <bool Parallelize, std::integral Shape, class Fun, class Sender, class Receiver>
       using _bulk_opstate_t = __t<
-        _bulk_opstate<Tag, Parallelize, Shape, Fun, __id<__decay_t<Sender>>, __id<__decay_t<Receiver>>>
+        _bulk_opstate<Parallelize, Shape, Fun, __id<__decay_t<Sender>>, __id<__decay_t<Receiver>>>
       >;
 
       struct _transform_bulk {
@@ -291,20 +257,16 @@ namespace exec {
           constexpr bool parallelize = std::same_as<policy_t, parallel_policy>
                                     || std::same_as<policy_t, parallel_unsequenced_policy>;
 
-          // If we are transforming a bulk_unchunked sender, the shape must be less than
-          // or equal to the number of threads.
           if constexpr (__same_as<Tag, bulk_unchunked_t>) {
-            if (std::cmp_greater(shape, pool_.available_parallelism())) {
-              STDEXEC_ASSERT(
-              std::cmp_less_equal(shape, pool_.available_parallelism()) &&
-              "bulk_unchunked shape must be less than or equal to the number of threads in the "
-              "static_thread_pool");
-              std::terminate();
-            }
+            // Turn a bulk_unchunked into a bulk_chunked operation
+            using fun_t = stdexec::__bulk::__as_bulk_chunked_fn<decltype(fun)>;
+            using sender_t = _bulk_sender_t<parallelize, decltype(shape), fun_t, Sender>;
+            return sender_t{pool_, static_cast<Sender&&>(sndr), shape, fun_t(std::move(fun))};
+          } else {
+            using fun_t = decltype(fun);
+            using sender_t = _bulk_sender_t<parallelize, decltype(shape), fun_t, Sender>;
+            return sender_t{pool_, static_cast<Sender&&>(sndr), shape, std::move(fun)};
           }
-
-          return _bulk_sender_t<Tag, parallelize, decltype(shape), decltype(fun), Sender>{
-            pool_, static_cast<Sender&&>(sndr), shape, std::move(fun)};
         }
 
         _static_thread_pool& pool_;
@@ -1167,8 +1129,8 @@ namespace exec {
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
     // What follows is the implementation for parallel bulk execution on _static_thread_pool.
-    template <class BulkTag, bool Parallelize, std::integral Shape, class Fun, class SenderId>
-    struct _static_thread_pool::_bulk_sender<BulkTag, Parallelize, Shape, Fun, SenderId>::__t {
+    template <bool Parallelize, std::integral Shape, class Fun, class SenderId>
+    struct _static_thread_pool::_bulk_sender<Parallelize, Shape, Fun, SenderId>::__t {
       using __id = _bulk_sender;
       using sender_concept = sender_t;
 
@@ -1181,7 +1143,7 @@ namespace exec {
       using _with_error_invoke_t = __if_c<
         __v<__value_types_t<
           __completion_signatures_of_t<Sender, Env...>,
-          _is_nothrow_bulk_fn<BulkTag, Shape, Fun>,
+          _is_nothrow_bulk_fn<Shape, Fun>,
           __q<__mand>
         >>,
         completion_signatures<>,
@@ -1200,7 +1162,7 @@ namespace exec {
 
       template <class Receiver>
       using _bulk_opstate_t =
-        _static_thread_pool::_bulk_opstate_t<BulkTag, Parallelize, Shape, Fun, Sender, Receiver>;
+        _static_thread_pool::_bulk_opstate_t<Parallelize, Shape, Fun, Sender, Receiver>;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completions_t<Self, env_of_t<Receiver>>>
@@ -1232,7 +1194,6 @@ namespace exec {
 
     //! The customized operation state for `stdexec::bulk` operations
     template <
-      class BulkTag,
       bool Parallelize,
       class Shape,
       class Fun,
@@ -1253,16 +1214,11 @@ namespace exec {
             auto total_threads = sh_state.num_agents_required();
 
             auto computation = [&](auto&... args) {
-              if constexpr (__same_as<BulkTag, bulk_chunked_t>) {
-                // Each computation does one or more call to the the bulk function.
-                // In the case that the shape is much larger than the total number of threads,
-                // then each call to computation will call the function many times.
-                auto [begin, end] = even_share(sh_state.shape_, tid, total_threads);
-                sh_state.fun_(begin, end, args...);
-              } else {
-                // Each computation does exactly one call to the bulk function.
-                sh_state.fun_(tid, args...);
-              }
+              // Each computation does one or more call to the the bulk function.
+              // In the case that the shape is much larger than the total number of threads,
+              // then each call to computation will call the function many times.
+              auto [begin, end] = even_share(sh_state.shape_, tid, total_threads);
+              sh_state.fun_(begin, end, args...);
             };
 
             auto completion = [&](auto&... args) {
@@ -1364,7 +1320,6 @@ namespace exec {
 
     //! A customized receiver to allow parallel execution of `stdexec::bulk` operations:
     template <
-      class BulkTag,
       bool Parallelize,
       class Shape,
       class Fun,
@@ -1373,7 +1328,6 @@ namespace exec {
       class ReceiverId
     >
     struct _static_thread_pool::_bulk_receiver<
-      BulkTag,
       Parallelize,
       Shape,
       Fun,
@@ -1385,7 +1339,7 @@ namespace exec {
       using receiver_concept = receiver_t;
 
       using shared_state =
-        _bulk_shared_state<BulkTag, Parallelize, Shape, Fun, MayThrow, CvrefSender, Receiver>;
+        _bulk_shared_state<Parallelize, Shape, Fun, MayThrow, CvrefSender, Receiver>;
 
       shared_state& shared_state_;
 
@@ -1433,16 +1387,8 @@ namespace exec {
       }
     };
 
-    template <
-      class BulkTag,
-      bool Parallelize,
-      std::integral Shape,
-      class Fun,
-      class CvrefSenderId,
-      class ReceiverId
-    >
+    template <bool Parallelize, std::integral Shape, class Fun, class CvrefSenderId, class ReceiverId>
     struct _static_thread_pool::_bulk_opstate<
-      BulkTag,
       Parallelize,
       Shape,
       Fun,
@@ -1454,14 +1400,14 @@ namespace exec {
       static constexpr bool may_throw = !__v<__value_types_of_t<
         CvrefSender,
         env_of_t<Receiver>,
-        _is_nothrow_bulk_fn<BulkTag, Shape, Fun>,
+        _is_nothrow_bulk_fn<Shape, Fun>,
         __q<__mand>
       >>;
 
       using receiver_t =
-        _bulk_receiver_t<BulkTag, Parallelize, Shape, Fun, may_throw, CvrefSender, Receiver>;
+        _bulk_receiver_t<Parallelize, Shape, Fun, may_throw, CvrefSender, Receiver>;
       using shared_state_t =
-        _bulk_shared_state<BulkTag, Parallelize, Shape, Fun, may_throw, CvrefSender, Receiver>;
+        _bulk_shared_state<Parallelize, Shape, Fun, may_throw, CvrefSender, Receiver>;
       using inner_opstate_t = connect_result_t<CvrefSender, receiver_t>;
 
       shared_state_t shared_state_;

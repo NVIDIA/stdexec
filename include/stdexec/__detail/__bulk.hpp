@@ -218,33 +218,34 @@ namespace stdexec {
       }
     };
 
-    struct bulk_t : __generic_bulk_t<bulk_t> {
-     private:
-      template <class _Fun>
-      static constexpr auto __mk_chunked_fn(_Fun&& __fun) {
-        return [__fun_ = static_cast<_Fun&&>(
-                  __fun)]<class Shape>(Shape __begin, Shape __end, auto&... __vs) mutable
-#if !STDEXEC_MSVC()
-          // MSVCBUG https://developercommunity.visualstudio.com/t/noexcept-expression-in-lambda-template-n/10718680
-          noexcept(__nothrow_callable<_Fun&, Shape, decltype(__vs)...>)
-#endif
-        {
-          while (__begin != __end)
-            __fun_(__begin++, __vs...);
-        };
-      }
+    template <class _Fun>
+    struct __as_bulk_chunked_fn {
+      _Fun __fun_;
 
-     public:
-      static auto __transform_sender_fn() noexcept {
-        return []<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
+      template <class _Shape, class... _Args>
+      constexpr void operator()(_Shape __begin, _Shape __end, _Args&... __args)
+        noexcept(__nothrow_callable<_Fun&, _Shape, decltype(__args)...>) {
+        for (; __begin != __end; ++__begin) {
+          __fun_(__begin, __args...);
+        }
+      }
+    };
+
+    template <class _Fun>
+    __as_bulk_chunked_fn(_Fun) -> __as_bulk_chunked_fn<_Fun>;
+
+    struct bulk_t : __generic_bulk_t<bulk_t> {
+      struct __transform_sender_fn {
+        template <class _Data, class _Child>
+        constexpr auto operator()(__ignore, _Data&& __data, _Child&& __child) const {
           // Lower `bulk` to `bulk_chunked`. If `bulk_chunked` is customized, we will see the customization.
           return bulk_chunked(
             static_cast<_Child&&>(__child),
             __data.__pol_.__get(),
             __data.__shape_,
-            __mk_chunked_fn(std::move(__data.__fun_)));
-        };
-      }
+            __as_bulk_chunked_fn(std::move(__data.__fun_)));
+        }
+      };
 
       template <class _Sender>
       static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
