@@ -262,8 +262,8 @@ namespace stdexec {
 
         if constexpr (__with_static_member<_TfxSender, _Receiver>) {
           auto&& __tfx_sndr = transform_sender(static_cast<_Sender&&>(__sndr), __env);
-          return __tfx_sndr
-            .connect(static_cast<_TfxSender&&>(__tfx_sndr), static_cast<_Receiver&&>(__rcvr));
+          return STDEXEC_REMOVE_REFERENCE(_TfxSender)::connect(
+            static_cast<_TfxSender&&>(__tfx_sndr), static_cast<_Receiver&&>(__rcvr));
         } else if constexpr (__with_member<_TfxSender, _Receiver>) { // NOLINT(bugprone-branch-clone)
           auto&& __tfx_sndr = transform_sender(static_cast<_Sender&&>(__sndr), __env);
           return static_cast<_TfxSender&&>(__tfx_sndr).connect(static_cast<_Receiver&&>(__rcvr));
