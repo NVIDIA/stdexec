@@ -14,5 +14,4 @@ callgrind.*
 *.o
 a.out
 *.code-workspace
-sanitizer-ignorelist.txt
 /include/asioexec/asio_config.hpp

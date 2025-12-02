@@ -69,6 +69,7 @@ inline auto allocate_on(bool gpu, std::size_t elements = 1) -> std::unique_ptr<T
     ptr = reinterpret_cast<T *>(malloc(elements * sizeof(T)));
   }
 
+  std::memset(ptr, 0, elements * sizeof(T));
   return std::unique_ptr<T, deleter_t>(ptr, deleter_t{gpu});
 }
 
