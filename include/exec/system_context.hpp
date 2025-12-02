@@ -37,8 +37,6 @@
 
 namespace exec {
   namespace __detail {
-    using namespace stdexec::tags;
-
     /// Allows a frontend receiver of type `_Rcvr` to be passed to the backend.
     template <class _Rcvr>
     struct __receiver_adapter : system_context_replaceability::receiver {

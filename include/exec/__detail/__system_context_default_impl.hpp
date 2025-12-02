@@ -31,7 +31,6 @@
 #include "../../stdexec/__detail/__atomic.hpp"
 
 namespace exec::__system_context_default_impl {
-  using namespace stdexec::tags;
   using system_context_replaceability::receiver;
   using system_context_replaceability::bulk_item_receiver;
   using system_context_replaceability::parallel_scheduler_backend;

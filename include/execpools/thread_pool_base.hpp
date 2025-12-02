@@ -27,8 +27,6 @@ namespace execpools {
   //! and
   //! * template<F> auto execute(F &&f) -> decltype(f())
   //!
-  using namespace stdexec::tags;
-
   template <class PoolType, class ReceiverId>
   struct operation {
     using Receiver = stdexec::__t<ReceiverId>;

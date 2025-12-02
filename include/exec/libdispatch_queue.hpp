@@ -34,8 +34,6 @@ namespace exec {
   struct libdispatch_queue;
 
   namespace __libdispatch_details {
-    using namespace stdexec::tags;
-
     template <class>
     struct not_a_sender {
       using sender_concept = stdexec::sender_t;
@@ -50,8 +48,6 @@ namespace exec {
   } // namespace __libdispatch_details
 
   namespace __libdispatch_bulk {
-    using namespace stdexec::tags;
-
     template <class SenderId, std::integral Shape, class Fun>
     struct bulk_sender {
       using Sender = stdexec::__t<SenderId>;
@@ -162,8 +158,6 @@ namespace exec {
           return {};
         }
       };
-
-      STDEXEC_MEMFN_FRIEND(get_env);
 
       env get_env() const noexcept {
         return env{queue};
