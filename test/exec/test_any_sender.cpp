@@ -163,10 +163,8 @@ namespace {
   //                                                                any.storage
 
   struct empty_vtable_t {
-   private:
     template <class T>
-    friend auto tag_invoke(__any::__create_vtable_t, __mtype<empty_vtable_t>, __mtype<T>) noexcept
-      -> empty_vtable_t* {
+    static auto __create_vtable(__mtype<T>) noexcept -> empty_vtable_t* {
       static empty_vtable_t vtable{};
       return &vtable;
     }

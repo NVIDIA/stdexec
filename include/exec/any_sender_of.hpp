@@ -32,9 +32,8 @@ namespace exec {
 
     struct __create_vtable_t {
       template <class _VTable, class _Tp>
-        requires __tag_invocable_r<const _VTable*, __create_vtable_t, __mtype<_VTable>, __mtype<_Tp>>
       constexpr auto operator()(__mtype<_VTable>, __mtype<_Tp>) const noexcept -> const _VTable* {
-        return stdexec::tag_invoke(__create_vtable_t{}, __mtype<_VTable>{}, __mtype<_Tp>{});
+        return _VTable::__create_vtable(__mtype<_Tp>{});
       }
     };
 
@@ -180,38 +179,34 @@ namespace exec {
 
     struct __delete_t {
       template <class _Storage, class _Tp>
-        requires tag_invocable<__delete_t, __mtype<_Tp>, _Storage&>
       void operator()(__mtype<_Tp>, _Storage& __storage) noexcept {
-        static_assert(nothrow_tag_invocable<__delete_t, __mtype<_Tp>, _Storage&>);
-        stdexec::tag_invoke(__delete_t{}, __mtype<_Tp>{}, __storage);
+        static_assert(noexcept(__storage.__delete(__mtype<_Tp>{})));
+        __storage.__delete(__mtype<_Tp>{});
       }
     };
 
     inline constexpr __delete_t __delete{};
 
-    struct __copy_construct_t {
-      template <class _Storage, class _Tp>
-        requires tag_invocable<__copy_construct_t, __mtype<_Tp>, _Storage&, const _Storage&>
-      void operator()(__mtype<_Tp>, _Storage& __self, const _Storage& __from) noexcept(
-        nothrow_tag_invocable<__copy_construct_t, __mtype<_Tp>, _Storage&, const _Storage&>) {
-        stdexec::tag_invoke(__copy_construct_t{}, __mtype<_Tp>{}, __self, __from);
-      }
-    };
-
-    inline constexpr __copy_construct_t __copy_construct{};
-
     struct __move_construct_t {
       template <class _Storage, class _Tp>
-        requires tag_invocable<__move_construct_t, __mtype<_Tp>, _Storage&, _Storage&&>
       void operator()(__mtype<_Tp>, _Storage& __self, __midentity<_Storage&&> __from) noexcept {
         static_assert(
-          nothrow_tag_invocable<__move_construct_t, __mtype<_Tp>, _Storage&, _Storage&&>);
-        stdexec::tag_invoke(
-          __move_construct_t{}, __mtype<_Tp>{}, __self, static_cast<_Storage&&>(__from));
+          noexcept(__self.__move_construct(__mtype<_Tp>{}, static_cast<_Storage&&>(__from))));
+        __self.__move_construct(__mtype<_Tp>{}, static_cast<_Storage&&>(__from));
       }
     };
 
     inline constexpr __move_construct_t __move_construct{};
+
+    struct __copy_construct_t {
+      template <class _Storage, class _Tp>
+      void operator()(__mtype<_Tp>, _Storage& __self, const _Storage& __from)
+        noexcept(noexcept(__self.__copy_construct(__mtype<_Tp>{}, __from))) {
+        __self.__copy_construct(__mtype<_Tp>{}, __from);
+      }
+    };
+
+    inline constexpr __copy_construct_t __copy_construct{};
 
     template <class _ParentVTable, class... _StorageCPOs>
     struct __storage_vtable;
@@ -311,7 +306,7 @@ namespace exec {
         }
 
         void __reset() noexcept {
-          (*__vtable_)(__delete, this);
+          (*__vtable_)(__any::__delete, this);
           __object_pointer_ = nullptr;
           __vtable_ = __default_storage_vtable(static_cast<__vtable_t*>(nullptr));
         }
@@ -327,6 +322,8 @@ namespace exec {
         }
 
        private:
+        friend struct __any::__delete_t;
+
         template <class _Tp, class... _As>
         void __construct_small(_As&&... __args) {
           static_assert(sizeof(_Tp) <= __buffer_size && alignof(_Tp) <= __alignment);
@@ -355,13 +352,13 @@ namespace exec {
         }
 
         template <class _Tp>
-        STDEXEC_MEMFN_DECL(void __delete)(this __mtype<_Tp>, __t& __self) noexcept {
-          if (!__self.__object_pointer_) {
+        void __delete(__mtype<_Tp>) noexcept {
+          if (!__object_pointer_) {
             return;
           }
           using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
-          _Alloc __alloc{__self.__allocator_};
-          _Tp* __pointer = static_cast<_Tp*>(std::exchange(__self.__object_pointer_, nullptr));
+          _Alloc __alloc{__allocator_};
+          _Tp* __pointer = static_cast<_Tp*>(std::exchange(__object_pointer_, nullptr));
           std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
           if constexpr (!__is_small<_Tp>) {
             std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
@@ -447,7 +444,7 @@ namespace exec {
       __t(const __t& __other)
         requires(_Copyable)
         : __vtable_(__other.__vtable_) {
-        (*__other.__vtable_)(__copy_construct, this, __other);
+        (*__other.__vtable_)(__any::__copy_construct, this, __other);
       }
 
       auto operator=(const __t& __other) -> __t&
@@ -462,12 +459,12 @@ namespace exec {
 
       __t(__t&& __other) noexcept
         : __vtable_(__other.__vtable_) {
-        (*__other.__vtable_)(__move_construct, this, static_cast<__t&&>(__other));
+        (*__other.__vtable_)(__any::__move_construct, this, static_cast<__t&&>(__other));
       }
 
       auto operator=(__t&& __other) noexcept -> __t& {
         __reset();
-        (*__other.__vtable_)(__move_construct, this, static_cast<__t&&>(__other));
+        (*__other.__vtable_)(__any::__move_construct, this, static_cast<__t&&>(__other));
         return *this;
       }
 
@@ -476,7 +473,7 @@ namespace exec {
       }
 
       void __reset() noexcept {
-        (*__vtable_)(__delete, this);
+        (*__vtable_)(__any::__delete, this);
         __object_pointer_ = nullptr;
         __vtable_ = __default_storage_vtable(static_cast<__vtable_t*>(nullptr));
       }
@@ -491,6 +488,10 @@ namespace exec {
       }
 
      private:
+      friend struct __any::__delete_t;
+      friend struct __any::__move_construct_t;
+      friend struct __any::__copy_construct_t;
+
       template <class _Tp, class... _As>
       void __construct_small(_As&&... __args) {
         static_assert(sizeof(_Tp) <= __buffer_size && alignof(_Tp) <= __alignment);
@@ -518,13 +519,13 @@ namespace exec {
       }
 
       template <class _Tp>
-      STDEXEC_MEMFN_DECL(void __delete)(this __mtype<_Tp>, __t& __self) noexcept {
-        if (!__self.__object_pointer_) {
+      void __delete(__mtype<_Tp>) noexcept {
+        if (!__object_pointer_) {
           return;
         }
         using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
-        _Alloc __alloc{__self.__allocator_};
-        _Tp* __pointer = static_cast<_Tp*>(std::exchange(__self.__object_pointer_, nullptr));
+        _Alloc __alloc{__allocator_};
+        _Tp* __pointer = static_cast<_Tp*>(std::exchange(__object_pointer_, nullptr));
         std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
         if constexpr (!__is_small<_Tp>) {
           std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
@@ -532,39 +533,37 @@ namespace exec {
       }
 
       template <class _Tp>
-      STDEXEC_MEMFN_DECL(
-        void __move_construct)(this __mtype<_Tp>, __t& __self, __t&& __other) noexcept {
+      void __move_construct(__mtype<_Tp>, __t&& __other) noexcept {
         if (!__other.__object_pointer_) {
           return;
         }
         _Tp* __pointer = static_cast<_Tp*>(std::exchange(__other.__object_pointer_, nullptr));
         if constexpr (__is_small<_Tp>) {
           _Tp& __other_object = *__pointer;
-          __self.template __construct_small<_Tp>(static_cast<_Tp&&>(__other_object));
+          this->template __construct_small<_Tp>(static_cast<_Tp&&>(__other_object));
           using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
-          _Alloc __alloc{__self.__allocator_};
+          _Alloc __alloc{__allocator_};
           std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
         } else {
-          __self.__object_pointer_ = __pointer;
+          __object_pointer_ = __pointer;
         }
-        __self.__vtable_ = std::exchange(
+        __vtable_ = std::exchange(
           __other.__vtable_, __default_storage_vtable(static_cast<__vtable_t*>(nullptr)));
       }
 
       template <class _Tp>
         requires _Copyable
-      STDEXEC_MEMFN_DECL(
-        void __copy_construct)(this __mtype<_Tp>, __t& __self, const __t& __other) {
+      void __copy_construct(__mtype<_Tp>, const __t& __other) {
         if (!__other.__object_pointer_) {
           return;
         }
         const _Tp& __other_object = *static_cast<const _Tp*>(__other.__object_pointer_);
         if constexpr (__is_small<_Tp>) {
-          __self.template __construct_small<_Tp>(__other_object);
+          this->template __construct_small<_Tp>(__other_object);
         } else {
-          __self.template __construct_large<_Tp>(__other_object);
+          this->template __construct_large<_Tp>(__other_object);
         }
-        __self.__vtable_ = __other.__vtable_;
+        __vtable_ = __other.__vtable_;
       }
 
       const __vtable_t* __vtable_{__default_storage_vtable(static_cast<__vtable_t*>(nullptr))};
@@ -575,9 +574,7 @@ namespace exec {
 
     struct __empty_vtable {
       template <class _Sender>
-      STDEXEC_MEMFN_DECL(
-        auto __create_vtable)(this __mtype<__empty_vtable>, __mtype<_Sender>) noexcept
-        -> const __empty_vtable* {
+      static auto __create_vtable(__mtype<_Sender>) noexcept -> const __empty_vtable* {
         static const __empty_vtable __vtable_{};
         return &__vtable_;
       }
@@ -672,12 +669,10 @@ namespace exec {
             }
           }
 
-         private:
           template <class _Rcvr>
             requires receiver_of<_Rcvr, completion_signatures<_Sigs...>>
                   && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
-          STDEXEC_MEMFN_DECL(auto __create_vtable)(this __mtype<__t>, __mtype<_Rcvr>) noexcept
-            -> const __t* {
+          static auto __create_vtable(__mtype<_Rcvr>) noexcept -> const __t* {
             static const __t __vtable_{
               {{__any_::__rcvr_vfun_fn(
                 static_cast<_Rcvr*>(nullptr), static_cast<_Sigs*>(nullptr))}...},
@@ -832,11 +827,8 @@ namespace exec {
      public:
       void (*__start_)(void*) noexcept;
 
-     private:
       template <class _Op>
-      STDEXEC_MEMFN_DECL(
-        auto __create_vtable)(this __mtype<__operation_vtable>, __mtype<_Op>) noexcept
-        -> const __operation_vtable* {
+      static auto __create_vtable(__mtype<_Op>) noexcept -> const __operation_vtable* {
         static __operation_vtable __vtable{[](void* __object_pointer) noexcept -> void {
           STDEXEC_ASSERT(__object_pointer);
           _Op& __op = *static_cast<_Op*>(__object_pointer);
@@ -977,12 +969,10 @@ namespace exec {
     class __query_vtable<_List<_Queries...>, _IsEnvProvider> : public __query_vfun<_Queries>... {
      public:
       using __query_vfun<_Queries>::operator()...;
-     private:
+
       template <class _Queryable>
         requires(__callable<__query_vfun_fn<_Queryable, _IsEnvProvider>, _Queries> && ...)
-      STDEXEC_MEMFN_DECL(
-        auto __create_vtable)(this __mtype<__query_vtable>, __mtype<_Queryable>) noexcept
-        -> const __query_vtable* {
+      static auto __create_vtable(__mtype<_Queryable>) noexcept -> const __query_vtable* {
         static const __query_vtable __vtable{
           {__query_vfun_fn<_Queryable, _IsEnvProvider>{}(static_cast<_Queries>(nullptr))}...};
         return &__vtable;
@@ -1004,12 +994,12 @@ namespace exec {
         }
 
         __immovable_operation_storage (*__connect_)(void*, __receiver_ref_t);
-       private:
+
         template <sender_to<__receiver_ref_t> _Sender>
-        STDEXEC_MEMFN_DECL(auto __create_vtable)(this __mtype<__vtable>, __mtype<_Sender>) noexcept
-          -> const __vtable* {
+        static auto __create_vtable(__mtype<_Sender>) noexcept -> const __vtable* {
           static const __vtable __vtable_{
-            {*__create_vtable(__mtype<__query_vtable<_SenderQueries>>{}, __mtype<_Sender>{})},
+            {*__any::__create_vtable(
+              __mtype<__query_vtable<_SenderQueries>>{}, __mtype<_Sender>{})},
             [](void* __object_pointer, __receiver_ref_t __receiver)
               -> __immovable_operation_storage {
               _Sender& __sender = *static_cast<_Sender*>(__object_pointer);
@@ -1122,13 +1112,11 @@ namespace exec {
         auto __queries() const noexcept -> const __query_vtable<_SchedulerQueries, false>& {
           return *this;
         }
-       private:
+
         template <scheduler _Scheduler>
-        STDEXEC_MEMFN_DECL(
-          auto __create_vtable)(this __mtype<__vtable>, __mtype<_Scheduler>) noexcept
-          -> const __vtable* {
+        static auto __create_vtable(__mtype<_Scheduler>) noexcept -> const __vtable* {
           static const __vtable __vtable_{
-            {*__create_vtable(
+            {*__any::__create_vtable(
               __mtype<__query_vtable<_SchedulerQueries, false>>{}, __mtype<_Scheduler>{})},
             [](void* __object_pointer) noexcept -> __sender_t {
               const _Scheduler& __scheduler = *static_cast<const _Scheduler*>(__object_pointer);
