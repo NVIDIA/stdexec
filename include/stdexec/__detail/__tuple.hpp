@@ -105,14 +105,16 @@ namespace stdexec {
 
       // clang-format off
       template <class _Fn, class _Self, class... _Us>
-      STDEXEC_ATTRIBUTE(host, device, always_inline) static constexpr auto apply(_Fn &&__fn, _Self &&__self, _Us &&...__us)
+      STDEXEC_ATTRIBUTE(host, device, always_inline)
+      static constexpr auto apply(_Fn &&__fn, _Self &&__self, _Us &&...__us)
         STDEXEC_AUTO_RETURN(
           static_cast<_Fn &&>(__fn)(
             static_cast<_Us &&>(__us)...,
             static_cast<_Self &&>(__self).STDEXEC_CWG1835_TEMPLATE __box<_Ts, _Is>::__value...))
 
       template <class _Fn, class _Self, class... _Us>
-      STDEXEC_ATTRIBUTE(host, device, always_inline) static constexpr auto for_each(_Fn &&__fn, _Self &&__self)
+      STDEXEC_ATTRIBUTE(host, device, always_inline)
+      static constexpr auto for_each(_Fn &&__fn, _Self &&__self)
         STDEXEC_AUTO_RETURN(
           (static_cast<void>(
              __fn(static_cast<_Self &&>(__self).STDEXEC_CWG1835_TEMPLATE __box<_Ts, _Is>::__value)),
@@ -216,22 +218,23 @@ namespace stdexec {
       };
     }
 
+    // clang-format off
     template <class _Fn, class... _Tuples>
     constexpr auto __cat_apply(_Fn __fn, _Tuples &&...__tups)
       STDEXEC_AUTO_RETURN((static_cast<_Tuples &&>(__tups) << ... << __fn)())
 
-        STDEXEC_PRAGMA_PUSH() STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+    STDEXEC_PRAGMA_PUSH()
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
-          inline constexpr struct __mktuple_t {
+    inline constexpr struct __mktuple_t {
       template <class... _Ts>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      auto operator()(_Ts &&...__ts) const noexcept(noexcept(__tuple{static_cast<_Ts &&>(__ts)...}))
-        -> decltype(__tuple{static_cast<_Ts &&>(__ts)...}) {
-        return __tuple{static_cast<_Ts &&>(__ts)...};
-      }
+      auto operator()(_Ts &&...__ts) const
+        STDEXEC_AUTO_RETURN(__tuple{static_cast<_Ts &&>(__ts)...})
     } __mktuple{};
 
     STDEXEC_PRAGMA_POP()
+    // clang-format on
   } // namespace __tup
 
   using __tup::__tuple;

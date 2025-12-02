@@ -35,7 +35,8 @@ STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 namespace nvexec::_strm {
   namespace _ensure_started {
     template <class Tag, class... As, class Variant>
-    __launch_bounds__(1) __global__ void copy_kernel(Variant* var, As... as) {
+    STDEXEC_ATTRIBUTE(launch_bounds(1))
+    __global__ void copy_kernel(Variant* var, As... as) {
       static_assert(trivially_copyable<As...>);
       using tuple_t = decayed_tuple<Tag, As...>;
       var->template emplace<tuple_t>(Tag(), static_cast<As&&>(as)...);
@@ -69,17 +70,18 @@ namespace nvexec::_strm {
 
         template <class Tag, class... As>
         void _set_result(Tag, As&&... as) noexcept {
+          using tuple_t = decayed_tuple<Tag, As...>;
+          using variant_t = typename SharedState::variant_t;
+
           if constexpr (stream_sender<Sender, env_t>) {
             cudaStream_t stream = shared_state_->stream_provider_.own_stream_.value();
-            using tuple_t = decayed_tuple<Tag, As...>;
-            shared_state_->index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+            shared_state_->index_ = __v<__mapply<__mfind_i<tuple_t>, variant_t>>;
             copy_kernel<Tag, As&&...>
               <<<1, 1, 0, stream>>>(shared_state_->data_, static_cast<As&&>(as)...);
             shared_state_->stream_provider_
               .status_ = STDEXEC_LOG_CUDA_API(cudaEventRecord(shared_state_->event_, stream));
           } else {
-            using tuple_t = decayed_tuple<Tag, As...>;
-            shared_state_->index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+            shared_state_->index_ = __v<__mapply<__mfind_i<tuple_t>, variant_t>>;
           }
         }
 
@@ -273,7 +275,7 @@ namespace nvexec::_strm {
                 cudaStreamWaitEvent(op->get_stream(), op->shared_state_->event_, 0));
             }
 
-            visit(
+            nvexec::visit(
               [&](auto& tupl) noexcept -> void {
                 ::cuda::std::apply(
                   [&]<class Tag, class... As>(Tag, As&... args) noexcept -> void {
@@ -383,23 +385,25 @@ namespace nvexec::_strm {
     };
   };
 
-  template <>
-  struct transform_sender_for<ensure_started_t> {
+  template <class Env>
+  struct transform_sender_for<ensure_started_t, Env> {
     template <class Sender>
     using _sender_t = __t<ensure_started_sender_t<__id<__decay_t<Sender>>>>;
 
-    template <class Env, stream_completing_sender Sender>
-    auto operator()(__ignore, Env&&, Sender&& sndr) const -> _sender_t<Sender> {
-      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
+    template <stream_completing_sender<Env> Sender>
+    auto operator()(__ignore, stdexec::__ignore, Sender&& sndr) const -> _sender_t<Sender> {
+      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), env_);
       return _sender_t<Sender>{sched.context_state_, static_cast<Sender&&>(sndr)};
     }
+
+    const Env& env_;
   };
 } // namespace nvexec::_strm
 
 namespace stdexec::__detail {
   template <class SenderId>
-  inline constexpr __mconst<nvexec::_strm::ensure_started_sender_t<__name_of<__t<SenderId>>>>
-    __name_of_v<nvexec::_strm::ensure_started_sender_t<SenderId>>{};
+  extern __mconst<nvexec::_strm::ensure_started_sender_t<__name_of<__t<SenderId>>>>
+    __name_of_v<nvexec::_strm::ensure_started_sender_t<SenderId>>;
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

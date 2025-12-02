@@ -33,8 +33,8 @@ STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 namespace nvexec::_strm {
   namespace let_xxx {
     template <class... As, class Fun, class ResultSenderT>
-    __launch_bounds__(1) __global__
-      void kernel_with_result(Fun fn, ResultSenderT* result, As... as) {
+    STDEXEC_ATTRIBUTE(launch_bounds(1))
+    __global__ void _let_xxx_kernel(Fun fn, ResultSenderT* result, As... as) {
       static_assert(trivially_copyable<Fun, As...>);
       new (result) ResultSenderT(::cuda::std::move(fn)(static_cast<As&&>(as)...));
     }
@@ -119,7 +119,7 @@ namespace nvexec::_strm {
 
           cudaStream_t stream = op_state_->get_stream();
           auto* result_sender = static_cast<result_sender_t*>(op_state_->temp_storage_);
-          kernel_with_result<As&&...><<<1, 1, 0, stream>>>(
+          _let_xxx_kernel<As&&...><<<1, 1, 0, stream>>>(
             std::move(op_state_->fun_), result_sender, static_cast<As&&>(__as)...);
 
           if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(stream));
@@ -202,7 +202,7 @@ namespace nvexec::_strm {
             [this](operation_state_base_t<stdexec::__id<Receiver2>>&) -> _receiver_t {
               return _receiver_t{{}, this};
             },
-            get_completion_scheduler<set_value_t>(get_env(sndr)).context_state_)
+            get_completion_scheduler<set_value_t>(get_env(sndr), get_env(rcvr)).context_state_)
         , fun_(static_cast<Fun&&>(fun)) {
       }
 
@@ -236,13 +236,13 @@ namespace nvexec::_strm {
         Set
       >>;
 
-      template <class Sender, class... Env>
+      template <class Sender, class... StreamEnv>
       using __completions = __mapply<
         __mtransform<
-          __mbind_back_q<let_xxx::__tfx_signal_t, Fun, Set, Env...>,
+          __mbind_back_q<let_xxx::__tfx_signal_t, Fun, Set, StreamEnv...>,
           __mtry_q<__concat_completion_signatures>
         >,
-        __completion_signatures_of_t<Sender, Env...>
+        __completion_signatures_of_t<Sender, StreamEnv...>
       >;
 
       template <__decays_to<__t> Self, receiver Receiver>
@@ -272,25 +272,28 @@ namespace nvexec::_strm {
     };
   };
 
-  template <class Set>
+  template <class Set, class Env>
   struct _transform_let_xxx_sender {
-    template <class Fun, stream_completing_sender Sender>
+    template <class Fun, stream_completing_sender<Env> Sender>
     auto operator()(__ignore, Fun fn, Sender&& sndr) const {
       using __sender_t = __t<let_sender_t<__id<__decay_t<Sender>>, Fun, Set>>;
       return __sender_t{{}, static_cast<Sender&&>(sndr), static_cast<Fun&&>(fn)};
     }
+
+    const Env& env_;
   };
 
-  template <>
-  struct transform_sender_for<stdexec::let_value_t> : _transform_let_xxx_sender<set_value_t> { };
+  template <class Env>
+  struct transform_sender_for<stdexec::let_value_t, Env>
+    : _transform_let_xxx_sender<set_value_t, Env> { };
 
-  template <>
-  struct transform_sender_for<stdexec::let_error_t> : _transform_let_xxx_sender<set_error_t> { };
+  template <class Env>
+  struct transform_sender_for<stdexec::let_error_t, Env>
+    : _transform_let_xxx_sender<set_error_t, Env> { };
 
-  template <>
-  struct transform_sender_for<stdexec::let_stopped_t>
-    : _transform_let_xxx_sender<set_stopped_t> { };
-
+  template <class Env>
+  struct transform_sender_for<stdexec::let_stopped_t, Env>
+    : _transform_let_xxx_sender<set_stopped_t, Env> { };
 } // namespace nvexec::_strm
 
 namespace stdexec::__detail {

@@ -212,6 +212,7 @@ namespace ASIOEXEC_ASIO_NAMESPACE {
   template <typename... Signatures>
   struct async_result<::asioexec::use_sender_t, Signatures...> {
     template <typename Initiation, typename... Args>
+      requires(std::is_constructible_v<std::decay_t<Args>, Args> && ...)
     static constexpr auto
       initiate(Initiation&& i, const ::asioexec::use_sender_t&, Args&&... args) {
       return ::asioexec::detail::use_sender::sender(

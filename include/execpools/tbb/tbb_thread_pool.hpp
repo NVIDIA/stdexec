@@ -50,7 +50,7 @@ namespace execpools {
     friend struct operation;
 
     void enqueue(task_base* task, std::uint32_t tid = 0) noexcept {
-      arena_.enqueue([task, tid] { task->__execute(task, /*tid=*/tid); });
+      arena_.enqueue([task, tid] { task->execute_(task, /*tid=*/tid); });
     }
 
     tbb::task_arena arena_{tbb::task_arena::attach{}};

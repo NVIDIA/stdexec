@@ -48,7 +48,7 @@ namespace execpools {
     friend struct execpools::operation;
 
     void enqueue(execpools::task_base* task, std::uint32_t tid = 0) noexcept {
-      asio_impl::post(pool_, [task, tid] { task->__execute(task, /*tid=*/tid); });
+      asio_impl::post(pool_, [task, tid] { task->execute_(task, /*tid=*/tid); });
     }
 
     asio_impl::thread_pool pool_;

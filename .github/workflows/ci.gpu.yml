@@ -87,6 +87,8 @@ jobs:
           SCCACHE_DIST_REWRITE_INCLUDES_ONLY: ${{ matrix.cxx == 'clang++' && 'true' || 'false' }}
           SCCACHE_DIST_REQUEST_TIMEOUT: "7140"
           SCCACHE_IDLE_TIMEOUT: "7200"
+          SCCACHE_NO_DIST_COMPILE: 1
+          SCCACHE_NO_CACHE: 1
         run: |
           set -e;
 

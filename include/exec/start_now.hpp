@@ -25,7 +25,7 @@
 
 #include "async_scope.hpp"
 
-#include <atomic>
+#include "../stdexec/__detail/__atomic.hpp"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
@@ -60,8 +60,8 @@ namespace exec {
     struct __storage_base : stdexec::__immovable {
       using _Env = stdexec::__t<_EnvId>;
 
-      mutable std::atomic<std::size_t> __pending_;
-      mutable std::atomic<const __joiner*> __joiner_{&__empty_joiner_};
+      mutable stdexec::__std::atomic<std::size_t> __pending_;
+      mutable stdexec::__std::atomic<const __joiner*> __joiner_{&__empty_joiner_};
       stdexec::inplace_stop_source __source_{};
       __env_t<_Env> __env_;
 

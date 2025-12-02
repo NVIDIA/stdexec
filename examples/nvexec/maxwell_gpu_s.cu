@@ -15,7 +15,7 @@
  */
 
 #include "maxwell/snr.cuh"
-#include "maxwell/stdpar.cuh"
+#include "maxwell/stdpar.cuh" // IWYU pragma: keep
 #include "maxwell/cuda.cuh"
 
 auto main(int argc, char *argv[]) -> int {
@@ -25,7 +25,7 @@ auto main(int argc, char *argv[]) -> int {
     std::cout << "Usage: " << argv[0] << " [OPTION]...\n"
               << "\t--write-vtk\n"
               << "\t--iterations\n"
-              << "\t--run-stdpar\n"
+              << (STDEXEC_HAS_PARALLEL_ALGORITHMS() ? "\t--run-stdpar\n" : "") //
               << "\t--run-cuda\n"
               << "\t--run-stream-scheduler\n"
               << "\t--N\n"
@@ -68,14 +68,16 @@ auto main(int argc, char *argv[]) -> int {
     run_snr_on("GPU (snr cuda stream)", stream_ctx.get_scheduler());
   }
 
+#if STDEXEC_HAS_PARALLEL_ALGORITHMS()
   if (value(params, "run-stdpar")) {
-    const bool gpu = is_gpu_policy(std::execution::par_unseq);
+    const bool gpu = is_gpu_policy(stdexec::par_unseq);
     std::string_view method = gpu ? "GPU (stdpar)" : "CPU (stdpar)";
     grid_t grid{N, gpu};
 
     auto accessor = grid.accessor();
     auto dt = calculate_dt(accessor.dx, accessor.dy);
 
-    run_stdpar(dt, write_vtk, n_iterations, grid, std::execution::par_unseq, method);
+    run_stdpar(dt, write_vtk, n_iterations, grid, stdexec::par_unseq, method);
   }
+#endif
 }

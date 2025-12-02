@@ -785,13 +785,11 @@ namespace exec {
         std::vector<marble_t<_Clock>>* __recording,
         _Clock __clock,
         _Sequence&& __sequence) const { //-> __well_formed_sender auto {
-        auto __domain = __get_early_domain(static_cast<_Sequence&&>(__sequence));
-        return transform_sender(
-          __domain,
-          __make_sexpr<record_marbles_t>(
-            __decayed_tuple<std::vector<marble_t<_Clock>>*, _Clock>{__recording, __clock},
-            static_cast<_Sequence&&>(__sequence)));
+        return __make_sexpr<record_marbles_t>(
+          __decayed_tuple<std::vector<marble_t<_Clock>>*, _Clock>{__recording, __clock},
+          static_cast<_Sequence&&>(__sequence));
       }
+
       template <class _Sequence, class _Clock>
       std::vector<marble_t<_Clock>>
         operator()(_Clock __clock, _Sequence&& __sequence) const noexcept {

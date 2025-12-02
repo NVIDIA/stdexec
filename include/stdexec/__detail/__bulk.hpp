@@ -21,12 +21,10 @@
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__diagnostics.hpp"
-#include "__domain.hpp"
 #include "__meta.hpp"
 #include "__senders_core.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__transform_completion_signatures.hpp"
-#include "__transform_sender.hpp"
 #include "__senders.hpp" // IWYU pragma: keep for __well_formed_sender
 
 STDEXEC_PRAGMA_PUSH()
@@ -180,11 +178,8 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE(host, device)
       auto operator()(_Sender&& __sndr, _Policy&& __pol, _Shape __shape, _Fun __fun) const
         -> __well_formed_sender auto {
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::transform_sender(
-          __domain,
-          __make_sexpr<_AlgoTag>(
-            __data{__pol, __shape, static_cast<_Fun&&>(__fun)}, static_cast<_Sender&&>(__sndr)));
+        return __make_sexpr<_AlgoTag>(
+          __data{__pol, __shape, static_cast<_Fun&&>(__fun)}, static_cast<_Sender&&>(__sndr));
       }
 
       template <typename _Policy, integral _Shape, copy_constructible _Fun>
@@ -223,35 +218,38 @@ namespace stdexec {
       }
     };
 
-    struct bulk_t : __generic_bulk_t<bulk_t> {
-      template <class _Env>
-      static auto __transform_sender_fn(const _Env&) {
-        return [&]<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
-          using __shape_t = std::remove_cvref_t<decltype(__data.__shape_)>;
-          auto __new_f =
-            [__func = std::move(
-               __data.__fun_)](__shape_t __begin, __shape_t __end, auto&&... __vs) mutable
-#if !STDEXEC_MSVC()
-            // MSVCBUG https://developercommunity.visualstudio.com/t/noexcept-expression-in-lambda-template-n/10718680
-            noexcept(noexcept(__data.__fun_(__begin++, __vs...)))
-#endif
-          {
-            while (__begin != __end)
-              __func(__begin++, __vs...);
-          };
+    template <class _Fun>
+    struct __as_bulk_chunked_fn {
+      _Fun __fun_;
 
+      template <class _Shape, class... _Args>
+      constexpr void operator()(_Shape __begin, _Shape __end, _Args&... __args)
+        noexcept(__nothrow_callable<_Fun&, _Shape, decltype(__args)...>) {
+        for (; __begin != __end; ++__begin) {
+          __fun_(__begin, __args...);
+        }
+      }
+    };
+
+    template <class _Fun>
+    __as_bulk_chunked_fn(_Fun) -> __as_bulk_chunked_fn<_Fun>;
+
+    struct bulk_t : __generic_bulk_t<bulk_t> {
+      struct __transform_sender_fn {
+        template <class _Data, class _Child>
+        constexpr auto operator()(__ignore, _Data&& __data, _Child&& __child) const {
           // Lower `bulk` to `bulk_chunked`. If `bulk_chunked` is customized, we will see the customization.
           return bulk_chunked(
             static_cast<_Child&&>(__child),
             __data.__pol_.__get(),
             __data.__shape_,
-            std::move(__new_f));
-        };
-      }
+            __as_bulk_chunked_fn(std::move(__data.__fun_)));
+        }
+      };
 
-      template <class _Sender, class _Env>
-      static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
-        return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn(__env));
+      template <class _Sender>
+      static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
+        return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn());
       }
     };
 
@@ -266,6 +264,12 @@ namespace stdexec {
 
       template <class _Sender>
       using __shape_t = decltype(__decay_t<__data_of<_Sender>>::__shape_);
+
+      // Forward the child sender's environment (which contains completion scheduler)
+      static constexpr auto get_attrs =
+        []<class _Data, class _Child>(const _Data&, const _Child& __child) noexcept {
+          return __fwd_env(stdexec::get_env(__child));
+        };
 
       static constexpr auto get_completion_signatures =
         []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept -> __completion_signatures<
@@ -351,7 +355,7 @@ namespace stdexec {
     };
 
     struct __bulk_impl : __bulk_impl_base<bulk_t> {
-      // Implementation is handled by lowering to `bulk_chunked` in `transform_sender`.
+      // Implementation is handled by lowering to `bulk_chunked` in the tag's `transform_sender`.
     };
   } // namespace __bulk
 

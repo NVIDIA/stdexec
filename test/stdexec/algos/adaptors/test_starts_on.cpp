@@ -190,8 +190,8 @@ namespace {
 
   // Return a different sender when we invoke this custom defined starts_on implementation
   struct starts_on_test_domain {
-    template <class Sender>
-    static auto transform_sender(Sender&&) {
+    template <ex::sender_expr_for<ex::starts_on_t> Sender>
+    static auto transform_sender(stdexec::set_value_t, Sender&&, const auto&...) {
       return ex::just(std::string{"Hello, world!"});
     }
   };
@@ -207,8 +207,6 @@ namespace {
   }
 
   struct move_checker {
-    bool valid{true};
-
     move_checker() noexcept = default;
 
     move_checker(const move_checker& other) noexcept {
@@ -232,48 +230,46 @@ namespace {
       valid = true;
       return *this;
     }
+
+   private:
+    bool valid{true};
   };
 
   struct move_checking_inline_scheduler {
-
-    template <typename R>
-    struct oper : immovable {
-      R recv_;
-
-      void start() & noexcept {
-        ex::set_value(static_cast<R&&>(recv_));
-      }
-    };
-
-    struct my_sender {
-      using sender_concept = stdexec::sender_t;
-      using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
-
-      template <typename R>
-      friend auto tag_invoke(ex::connect_t, my_sender, R&& r) -> oper<R> {
-        return {{}, static_cast<R&&>(r)};
-      }
-
-      [[nodiscard]]
-      auto get_env() const noexcept -> scheduler_env<move_checking_inline_scheduler> {
-        return {};
-      }
-    };
-
     [[nodiscard]]
-    auto schedule() const noexcept -> my_sender {
-      return {};
+    auto schedule() const noexcept {
+      return sender{};
     }
 
-    friend auto
-      operator==(move_checking_inline_scheduler, move_checking_inline_scheduler) noexcept -> bool {
+    auto operator==(const move_checking_inline_scheduler&) const noexcept -> bool {
       return true;
     }
 
-    friend auto
-      operator!=(move_checking_inline_scheduler, move_checking_inline_scheduler) noexcept -> bool {
-      return false;
-    }
+   private:
+    template <typename Receiver>
+    struct opstate : immovable {
+      void start() & noexcept {
+        ex::set_value(static_cast<Receiver&&>(rcvr_));
+      }
+
+      Receiver rcvr_;
+    };
+
+    struct sender {
+      using sender_concept = stdexec::sender_t;
+      using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+      template <typename Receiver>
+      [[nodiscard]]
+      auto connect(Receiver rcvr) const -> opstate<Receiver> {
+        return {{}, static_cast<Receiver&&>(rcvr)};
+      }
+
+      [[nodiscard]]
+      auto get_env() const noexcept {
+        return sched_attrs(move_checking_inline_scheduler(), ex::set_value);
+      }
+    };
 
     move_checker mc_;
   };
@@ -284,4 +280,5 @@ namespace {
     ex::sync_wait(std::move(snd));
   }
 } // namespace
+
 STDEXEC_PRAGMA_POP()

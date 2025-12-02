@@ -19,12 +19,10 @@
 
 #include "__basic_sender.hpp"
 #include "__diagnostics.hpp"
-#include "__domain.hpp"
 #include "__meta.hpp"
+#include "__queries.hpp"
 #include "__senders_core.hpp"
 #include "__sender_adaptor_closure.hpp"
-#include "__transform_completion_signatures.hpp"
-#include "__transform_sender.hpp"
 #include "__senders.hpp"
 
 // include these after __execution_fwd.hpp
@@ -46,10 +44,7 @@ namespace stdexec {
     struct then_t {
       template <sender _Sender, __movable_value _Fun>
       auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto {
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::transform_sender(
-          __domain,
-          __make_sexpr<then_t>(static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr)));
+        return __make_sexpr<then_t>(static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr));
       }
 
       template <__movable_value _Fun>

@@ -53,8 +53,9 @@ set(exec_test_sources
     sequence/test_transform_each.cpp
     sequence/test_marbles.cpp
     sequence/test_merge.cpp
-    sequence/test_merge_each.cpp
-    sequence/test_merge_each_threaded.cpp
+    # These tests cause Microsoft's compiler to run out of memory
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:sequence/test_merge_each.cpp>
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:sequence/test_merge_each_threaded.cpp>
     $<$<BOOL:${STDEXEC_ENABLE_TBB}>:../execpools/test_tbb_thread_pool.cpp>
     $<$<BOOL:${STDEXEC_ENABLE_TASKFLOW}>:../execpools/test_taskflow_thread_pool.cpp>
     $<$<BOOL:${STDEXEC_ENABLE_ASIO}>:../execpools/test_asio_thread_pool.cpp>

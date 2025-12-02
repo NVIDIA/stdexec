@@ -23,6 +23,8 @@
 
 namespace stdexec {
 
+  struct __hidden_construction { };
+
 #if STDEXEC_HAS_EXECUTION_POLICY()
 
   using sequenced_policy = std::execution::sequenced_policy;
@@ -37,8 +39,6 @@ namespace stdexec {
   using std::is_execution_policy;
 
 #else
-
-  struct __hidden_construction { };
 
   struct sequenced_policy {
     constexpr explicit sequenced_policy(__hidden_construction) { };
@@ -86,11 +86,6 @@ namespace stdexec {
   constexpr auto unseq = std::execution::unseq;
 
 #else
-
-#  if STDEXEC_HAS_EXECUTION_POLICY()
-  // already defined above
-  struct __hidden_construction { };
-#  endif
 
   struct unsequenced_policy {
     constexpr explicit unsequenced_policy(__hidden_construction) { };

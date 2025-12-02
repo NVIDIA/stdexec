@@ -163,23 +163,22 @@ namespace {
     stopped_scheduler sched3{};
 
     REQUIRE(
-      ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched1, 1)))
+      ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched1, 1)), ex::env<>{})
       == sched1);
 
     REQUIRE(
-      ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched2, 2)))
+      ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched2, 2)), ex::env<>{})
       == sched2);
 
     REQUIRE(
-      ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched3, 3)))
+      ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched3, 3)), ex::env<>{})
       == sched3);
   }
 
   // Modify the value when we invoke this custom defined transfer_just implementation
   struct transfer_just_test_domain {
-    template <class Sender>
-      requires ex::same_as<ex::tag_of_t<Sender>, ex::transfer_just_t>
-    static auto transform_sender(Sender&& sndr) {
+    template <ex::sender_expr_for<ex::transfer_just_t> Sender>
+    static auto transform_sender(stdexec::set_value_t, Sender&& sndr, auto&&...) {
       auto&& [tag, data] = sndr;
       auto [sched, value] = data;
       return ex::continues_on(ex::just("Hello, " + value), sched);

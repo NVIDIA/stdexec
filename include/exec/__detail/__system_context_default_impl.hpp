@@ -28,7 +28,7 @@
 #  include "../static_thread_pool.hpp" // IWYU pragma: keep
 #endif
 
-#include <atomic>
+#include "../../stdexec/__detail/__atomic.hpp"
 
 namespace exec::__system_context_default_impl {
   using namespace stdexec::tags;
@@ -323,7 +323,7 @@ namespace exec::__system_context_default_impl {
 
       // Otherwise, create a new instance using the factory.
       // Note: we are lazy-loading the instance to avoid creating it if it is not needed.
-      auto __new_instance = __factory_.load(std::memory_order_relaxed)();
+      auto __new_instance = __factory_.load(stdexec::__std::memory_order_relaxed)();
 
       // Store the newly created instance.
       __acquire_instance_lock();
@@ -349,9 +349,9 @@ namespace exec::__system_context_default_impl {
     }
 
    private:
-    std::atomic<bool> __instance_locked_{false};
+    stdexec::__std::atomic<bool> __instance_locked_{false};
     std::shared_ptr<_Interface> __instance_{nullptr};
-    std::atomic<__parallel_scheduler_backend_factory> __factory_{__default_factory};
+    stdexec::__std::atomic<__parallel_scheduler_backend_factory> __factory_{__default_factory};
 
     /// The default factory returns an instance of `_Impl`.
     static auto __default_factory() -> std::shared_ptr<_Interface> {
@@ -359,13 +359,13 @@ namespace exec::__system_context_default_impl {
     }
 
     void __acquire_instance_lock() {
-      while (__instance_locked_.exchange(true, std::memory_order_acquire)) {
+      while (__instance_locked_.exchange(true, stdexec::__std::memory_order_acquire)) {
         // Spin until we acquire the lock.
       }
     }
 
     void __release_instance_lock() {
-      __instance_locked_.store(false, std::memory_order_release);
+      __instance_locked_.store(false, stdexec::__std::memory_order_release);
     }
   };
 

@@ -41,7 +41,7 @@ namespace nvexec {
 
     namespace _launch {
       template <class... As, class Fun>
-      __global__ void kernel(Fun fn, cudaStream_t stream, As... as) {
+      __global__ void _launch_kernel(Fun fn, cudaStream_t stream, As... as) {
         static_assert(trivially_copyable<Fun, As...>);
         ::cuda::std::move(fn)(stream, as...);
       }
@@ -63,7 +63,7 @@ namespace nvexec {
           void set_value(As&&... as) noexcept {
             cudaStream_t stream = op_state_.get_stream();
             launch_params p = params_;
-            kernel<As&...><<<p.grid_size, p.block_size, p.shared_memory, stream>>>(
+            _launch_kernel<As&...><<<p.grid_size, p.block_size, p.shared_memory, stream>>>(
               std::move(fun_), stream, as...);
 
             if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());

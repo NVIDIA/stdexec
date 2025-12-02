@@ -25,7 +25,7 @@
 #include <threadpoolapiset.h>
 // clang-format on
 
-#  include "../../stdexec/__detail/__cpo.hpp"
+#  include "../../stdexec/__detail/__atomic.hpp"
 #  include "../../stdexec/__detail/__manual_lifetime.hpp"
 #  include "../../stdexec/__detail/__operation_states.hpp"
 #  include "../../stdexec/__detail/__receivers.hpp"
@@ -193,7 +193,7 @@ namespace exec::__win32 {
       }
 
       if (isStopPossible) {
-        state_ = new (std::nothrow) std::atomic<std::uint32_t>(not_started);
+        state_ = new (std::nothrow) stdexec::__std::atomic<std::uint32_t>(not_started);
         if (state_ == nullptr) {
           ::CloseThreadpoolWork(work_);
           ::DestroyThreadpoolEnvironment(&environ_);
@@ -227,7 +227,8 @@ namespace exec::__win32 {
         // Signal that SubmitThreadpoolWork() has returned and that it is
         // now safe for the stop-request to request cancellation of the
         // work items.
-        const auto prevState = state->fetch_add(submit_complete_flag, std::memory_order_acq_rel);
+        const auto prevState =
+          state->fetch_add(submit_complete_flag, stdexec::__std::memory_order_acq_rel);
         if ((prevState & stop_requested_flag) != 0) {
           // stop was requested before the call to SubmitThreadpoolWork()
           // returned and before the work started executing. It was not
@@ -264,7 +265,7 @@ namespace exec::__win32 {
       auto &op = *static_cast<type *>(workContext);
 
       // Signal that the work callback has started executing.
-      auto prevState = op.state_->fetch_add(starting_flag, std::memory_order_acq_rel);
+      auto prevState = op.state_->fetch_add(starting_flag, stdexec::__std::memory_order_acq_rel);
       if ((prevState & stop_requested_flag) != 0) {
         // request_stop() is already running and is waiting for this callback
         // to finish executing. So we return immediately here without doing
@@ -282,7 +283,7 @@ namespace exec::__win32 {
 
       op.stopCallback_.__destroy();
 
-      prevState = op.state_->fetch_add(running_flag, std::memory_order_acq_rel);
+      prevState = op.state_->fetch_add(running_flag, stdexec::__std::memory_order_acq_rel);
       if (prevState == starting_flag) {
         // start() method has not yet finished submitting the work
         // on another thread and so is still accessing the 'state'.
@@ -298,7 +299,7 @@ namespace exec::__win32 {
     }
 
     void request_stop() noexcept {
-      auto prevState = state_->load(std::memory_order_relaxed);
+      auto prevState = state_->load(stdexec::__std::memory_order_relaxed);
       do {
         STDEXEC_ASSERT((prevState & running_flag) == 0);
         if ((prevState & starting_flag) != 0) {
@@ -310,8 +311,8 @@ namespace exec::__win32 {
       } while (!state_->compare_exchange_weak(
         prevState,
         prevState | stop_requested_flag,
-        std::memory_order_acq_rel,
-        std::memory_order_relaxed));
+        stdexec::__std::memory_order_acq_rel,
+        stdexec::__std::memory_order_relaxed));
 
       STDEXEC_ASSERT((prevState & starting_flag) == 0);
 
@@ -379,8 +380,8 @@ namespace exec::__win32 {
 
     PTP_WORK work_;
     TP_CALLBACK_ENVIRON environ_;
-    std::atomic<std::uint32_t> *state_;
-    stdexec::__manual_lifetime<typename StopToken::template callback_type<stop_requested_callback>>
+    stdexec::__std::atomic<std::uint32_t> *state_;
+    stdexec::__manual_lifetime<stdexec::stop_callback_for_t<StopToken, stop_requested_callback>>
       stopCallback_;
   };
 
@@ -502,7 +503,7 @@ namespace exec::__win32 {
       }
 
       if (isStopPossible) {
-        state_ = new (std::nothrow) std::atomic<std::uint32_t>{not_started};
+        state_ = new (std::nothrow) stdexec::__std::atomic<std::uint32_t>{not_started};
         if (state_ == nullptr) {
           ::CloseThreadpoolTimer(timer_);
           ::DestroyThreadpoolEnvironment(&environ_);
@@ -545,7 +546,8 @@ namespace exec::__win32 {
 
           startTimer();
 
-          const auto prevState = state->fetch_add(submit_complete_flag, std::memory_order_acq_rel);
+          const auto prevState =
+            state->fetch_add(submit_complete_flag, stdexec::__std::memory_order_acq_rel);
           if ((prevState & stop_requested_flag) != 0) {
             complete_with_done();
           } else if ((prevState & running_flag) != 0) {
@@ -577,14 +579,14 @@ namespace exec::__win32 {
       [[maybe_unused]] PTP_TIMER timer) noexcept {
       type &op = *static_cast<type *>(timerContext);
 
-      auto prevState = op.state_->fetch_add(starting_flag, std::memory_order_acq_rel);
+      auto prevState = op.state_->fetch_add(starting_flag, stdexec::__std::memory_order_acq_rel);
       if ((prevState & stop_requested_flag) != 0) {
         return;
       }
 
       op.stopCallback_.__destroy();
 
-      prevState = op.state_->fetch_add(running_flag, std::memory_order_acq_rel);
+      prevState = op.state_->fetch_add(running_flag, stdexec::__std::memory_order_acq_rel);
       if (prevState == starting_flag) {
         op.state_ = nullptr;
       }
@@ -593,7 +595,7 @@ namespace exec::__win32 {
     }
 
     void request_stop() noexcept {
-      auto prevState = state_->load(std::memory_order_relaxed);
+      auto prevState = state_->load(stdexec::__std::memory_order_relaxed);
       do {
         STDEXEC_ASSERT((prevState & running_flag) == 0);
         if ((prevState & starting_flag) != 0) {
@@ -602,8 +604,8 @@ namespace exec::__win32 {
       } while (!state_->compare_exchange_weak(
         prevState,
         prevState | stop_requested_flag,
-        std::memory_order_acq_rel,
-        std::memory_order_relaxed));
+        stdexec::__std::memory_order_acq_rel,
+        stdexec::__std::memory_order_relaxed));
 
       STDEXEC_ASSERT((prevState & starting_flag) == 0);
 
@@ -651,7 +653,7 @@ namespace exec::__win32 {
 
     PTP_TIMER timer_;
     TP_CALLBACK_ENVIRON environ_;
-    std::atomic<std::uint32_t> *state_{nullptr};
+    stdexec::__std::atomic<std::uint32_t> *state_{nullptr};
     stdexec::__manual_lifetime<typename StopToken::template callback_type<stop_requested_callback>>
       stopCallback_;
   };

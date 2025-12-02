@@ -144,6 +144,7 @@ namespace exec {
       __now_ = __new_now;
       return __old_now;
     }
+
     auto advance_now_by(duration __by) noexcept -> time_point {
       time_point __old_now = __now_;
       __now_ += __by;
@@ -155,7 +156,6 @@ namespace exec {
     return __context_->now();
   }
 
-
   namespace _tst_sched {
     using namespace stdexec::tags;
 
@@ -165,6 +165,7 @@ namespace exec {
         schedule,
         stop
       };
+
       enum class location {
         uninitialized,
         inert,
@@ -183,7 +184,7 @@ namespace exec {
         , set_value_{set_value} {
       }
 
-      std::atomic<void*> next_{nullptr};
+      stdexec::__std::atomic<void*> next_{nullptr};
       location location_{location::inert};
       command_type command_;
       void (*set_value_)(test_operation_base*) noexcept;
@@ -391,16 +392,17 @@ namespace exec {
     friend struct _tst_sched::__recording_receiver;
     friend struct _tst_sched::__test_sequence_operation_base;
 
-    stdexec::__intrusive_mpsc_queue<&command_type::next_> command_queue_;
-    intrusive_heap<
+    using heap_t = intrusive_heap<
       task_type,
       _tst_sched::when_type<time_point>,
       &task_type::when_,
       &task_type::prev_,
       &task_type::left_,
       &task_type::right_
-    >
-      heap_;
+    >;
+
+    stdexec::__intrusive_mpsc_queue<&command_type::next_> command_queue_;
+    heap_t heap_;
     std::atomic<std::ptrdiff_t> n_submissions_in_flight_{0};
     bool ready_{false};
     bool stop_requested_{false};

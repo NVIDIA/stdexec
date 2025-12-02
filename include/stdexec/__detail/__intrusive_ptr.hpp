@@ -17,7 +17,7 @@
 
 #include "__concepts.hpp"
 
-#include <atomic>
+#include "__atomic.hpp"
 #include <new> // IWYU pragma: keep for ::new
 #include <cstddef>
 #include <type_traits>
@@ -84,7 +84,7 @@ namespace stdexec {
       static constexpr std::size_t __ref_count_increment = 1ul << _ReservedBits;
 
       alignas(_Ty) unsigned char __value_[sizeof(_Ty)];
-      std::atomic<std::size_t> __ref_count_;
+      __std::atomic<std::size_t> __ref_count_;
 
       template <class... _Us>
       explicit __control_block(_Us&&... __us) noexcept(noexcept(_Ty{__declval<_Us>()...}))
@@ -103,12 +103,12 @@ namespace stdexec {
       }
 
       auto __inc_ref_() noexcept -> __bits_t {
-        auto __old = __ref_count_.fetch_add(__ref_count_increment, std::memory_order_relaxed);
+        auto __old = __ref_count_.fetch_add(__ref_count_increment, __std::memory_order_relaxed);
         return static_cast<__bits_t>(__old);
       }
 
       auto __dec_ref_() noexcept -> __bits_t {
-        auto __old = __ref_count_.fetch_sub(__ref_count_increment, std::memory_order_acq_rel);
+        auto __old = __ref_count_.fetch_sub(__ref_count_increment, __std::memory_order_acq_rel);
         if (__count(static_cast<__bits_t>(__old)) == 1) {
           delete this;
         }
@@ -119,7 +119,7 @@ namespace stdexec {
       template <std::size_t _Bit>
       [[nodiscard]]
       auto __is_set_() const noexcept -> bool {
-        auto __old = __ref_count_.load(std::memory_order_relaxed);
+        auto __old = __ref_count_.load(__std::memory_order_relaxed);
         return __bit<_Bit>(static_cast<__bits_t>(__old));
       }
 
@@ -127,7 +127,7 @@ namespace stdexec {
       auto __set_bit_() noexcept -> __bits_t {
         static_assert(_Bit < _ReservedBits, "Bit index out of range");
         constexpr std::size_t __mask = 1ul << _Bit;
-        auto __old = __ref_count_.fetch_or(__mask, std::memory_order_acq_rel);
+        auto __old = __ref_count_.fetch_or(__mask, __std::memory_order_acq_rel);
         return static_cast<__bits_t>(__old);
       }
 
@@ -136,7 +136,7 @@ namespace stdexec {
       auto __clear_bit_() noexcept -> __bits_t {
         static_assert(_Bit < _ReservedBits, "Bit index out of range");
         constexpr std::size_t __mask = 1ul << _Bit;
-        auto __old = __ref_count_.fetch_and(~__mask, std::memory_order_acq_rel);
+        auto __old = __ref_count_.fetch_and(~__mask, __std::memory_order_acq_rel);
         return static_cast<__bits_t>(__old);
       }
     };

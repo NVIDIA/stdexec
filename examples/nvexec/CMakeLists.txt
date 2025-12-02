@@ -76,8 +76,8 @@ endfunction()
 # CPU examples
 ###############################################################################
 set(nvexec_cpu_examples
-    "example.nvexec.maxwell_cpu_mt : maxwell_cpu_mt.cpp"
-    "example.nvexec.maxwell_cpu_st : maxwell_cpu_st.cpp"
+    "example.nvexec.maxwell_cpu_mt : maxwell_cpu_mt.cu"
+    "example.nvexec.maxwell_cpu_st : maxwell_cpu_st.cu"
 )
 
 function(def_cpu_example example)
@@ -103,13 +103,13 @@ endforeach()
 # GPU examples
 ###############################################################################
 set(nvexec_gpu_examples
-    "         example.nvexec.bulk : bulk.cpp"
-    "       example.nvexec.reduce : reduce.cpp"
-    "        example.nvexec.split : split.cpp"
-    "         example.nvexec.nvtx : nvtx.cpp"
-    "       example.nvexec.launch : launch.cpp"
-    "example.nvexec.maxwell_gpu_s : maxwell_gpu_s.cpp"
-    "example.nvexec.maxwell_gpu_m : maxwell_gpu_m.cpp"
+    "         example.nvexec.bulk : bulk.cu"
+    "       example.nvexec.reduce : reduce.cu"
+    "        example.nvexec.split : split.cu"
+    "         example.nvexec.nvtx : nvtx.cu"
+    "       example.nvexec.launch : launch.cu"
+    "example.nvexec.maxwell_gpu_s : maxwell_gpu_s.cu"
+    "example.nvexec.maxwell_gpu_m : maxwell_gpu_m.cu"
 )
 
 function(def_gpu_example example)
@@ -149,6 +149,6 @@ if((CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC") AND (compiler_name STREQUAL "mpic++"
         set_source_files_properties(${source} PROPERTIES LANGUAGE ${_lang_gpu})
     endfunction()
 
-    def_mpi_example(example.nvexec.maxwell_distributed    maxwell_distributed.cpp)
-    def_mpi_example(example.nvexec.maxwell_distributed_ov maxwell_distributed.cpp OVERLAP)
+    def_mpi_example(example.nvexec.maxwell_distributed    maxwell_distributed.cu)
+    def_mpi_example(example.nvexec.maxwell_distributed_ov maxwell_distributed.cu OVERLAP)
 endif()

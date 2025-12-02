@@ -29,9 +29,9 @@ namespace exec {
   namespace __at_coro_exit {
     using namespace stdexec;
 
-    using __any_scheduler = any_receiver_ref<
-      completion_signatures<set_error_t(std::exception_ptr), set_stopped_t()>
-    >::any_sender<>::any_scheduler<>;
+    using __any_scheduler_t = any_receiver_ref<completion_signatures<
+      set_error_t(std::exception_ptr),
+      set_stopped_t()>>::any_sender<>::any_scheduler<>;
 
     struct __die_on_stop_t {
       template <class _Receiver>
@@ -71,7 +71,7 @@ namespace exec {
       template <class _Sender>
       struct __sender_id {
         template <class... _Env>
-        using __completion_signatures = __mapply<
+        using __completions_t = __mapply<
           __mremove<set_stopped_t(), __q<completion_signatures>>,
           __completion_signatures_of_t<_Sender, _Env...>
         >;
@@ -91,8 +91,8 @@ namespace exec {
               __receiver<_Receiver>{static_cast<_Receiver&&>(__rcvr)});
           }
 
-          template <class... _Env>
-          auto get_completion_signatures(_Env&&...) -> __completion_signatures<_Env...> {
+          template <__same_as<__t> _Self, class... _Env>
+          static auto get_completion_signatures(_Self&&, _Env&&...) -> __completions_t<_Env...> {
             return {};
           }
 
@@ -145,7 +145,7 @@ namespace exec {
       }
 
       [[nodiscard]]
-      auto await_ready() const noexcept -> bool {
+      static constexpr auto await_ready() noexcept -> bool {
         return false;
       }
 
@@ -183,7 +183,7 @@ namespace exec {
         const __promise& __promise_;
 
         [[nodiscard]]
-        auto query(get_scheduler_t) const noexcept -> __any_scheduler {
+        auto query(get_scheduler_t) const noexcept -> __any_scheduler_t {
           return __promise_.__scheduler_;
         }
       };
@@ -237,7 +237,7 @@ namespace exec {
 
         bool __is_unhandled_stopped_{false};
         std::tuple<_Ts&...> __args_{};
-        __any_scheduler __scheduler_{stdexec::inline_scheduler{}};
+        __any_scheduler_t __scheduler_{stdexec::inline_scheduler{}};
       };
 
       __coro::coroutine_handle<__promise> __coro_;

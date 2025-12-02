@@ -39,19 +39,6 @@ namespace stdexec {
       constexpr auto operator()(_Env __env) const -> __binder_back<write_env_t, _Env> {
         return {{static_cast<_Env&&>(__env)}, {}, {}};
       }
-
-      template <class _Env>
-      STDEXEC_ATTRIBUTE(always_inline)
-      static constexpr auto __transform_env_fn(_Env&& __env) noexcept {
-        return [&](__ignore, const auto& __state, __ignore) noexcept {
-          return __env::__join(__state, static_cast<_Env&&>(__env));
-        };
-      }
-
-      template <sender_expr_for<write_env_t> _Self, class _Env>
-      static constexpr auto transform_env(const _Self& __self, _Env&& __env) noexcept {
-        return __sexpr_apply(__self, __transform_env_fn(static_cast<_Env&&>(__env)));
-      }
     };
 
     struct __write_env_impl : __sexpr_defaults {

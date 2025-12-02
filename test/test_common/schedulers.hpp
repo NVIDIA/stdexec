@@ -31,12 +31,19 @@ namespace ex = stdexec;
 
 // Put all the test utilities in an anonymous namespace to avoid ODR violations
 namespace {
-  template <class S>
-  struct scheduler_env {
-    template <stdexec::__completion_tag Tag>
-    auto query(ex::get_completion_scheduler_t<Tag>) const noexcept -> S {
-      return {};
+  template <class Scheduler, ex::__completion_tag... Tags>
+  struct sched_attrs {
+    sched_attrs(Scheduler sched, Tags...)
+      : scheduler_(std::move(sched)) {
     }
+
+    template <ex::__one_of<Tags...> Tag>
+    [[nodiscard]]
+    auto query(ex::get_completion_scheduler_t<Tag>) const noexcept {
+      return scheduler_;
+    }
+
+    Scheduler scheduler_;
   };
 
   //! Scheduler that will send impulses on user's request.
@@ -46,88 +53,6 @@ namespace {
   //! thread-safety to allow it to be run with `sync_wait` (which makes us not control when the
   //! operation_state object is created and started).
   struct impulse_scheduler {
-   private:
-    //! Command type that can store the action of firing up a sender
-    using oper_command_t = std::function<void()>;
-    using cmd_vec_t = std::vector<oper_command_t>;
-
-    struct data : std::enable_shared_from_this<data> {
-      explicit data(int id)
-        : id_(id) {
-      }
-
-      int id_;
-      cmd_vec_t all_commands_;
-      std::mutex mutex_;
-      std::condition_variable cv_;
-    };
-
-    //! That data shared between the operation state and the actual scheduler
-    //! Shared pointer to allow the scheduler to be copied (not the best semantics, but it will do)
-    std::shared_ptr<data> shared_data_{};
-
-    template <class R>
-    struct oper {
-      std::shared_ptr<data> data_;
-      R receiver_;
-
-      oper(std::shared_ptr<data> shared_data, R&& recv)
-        : data_(std::move(shared_data))
-        , receiver_(static_cast<R&&>(recv)) {
-      }
-
-      oper(oper&&) = delete;
-
-      void start() & noexcept {
-        // Enqueue another command to the list of all commands
-        // The scheduler will start this, whenever start_next() is called
-        std::unique_lock lock{data_->mutex_};
-        data_->all_commands_.emplace_back([this]() {
-          if (ex::get_stop_token(ex::get_env(receiver_)).stop_requested()) {
-            ex::set_stopped(static_cast<R&&>(receiver_));
-          } else {
-            ex::set_value(static_cast<R&&>(receiver_));
-          }
-        });
-        data_->cv_.notify_all();
-      }
-    };
-
-    struct env {
-      std::shared_ptr<data> data_;
-
-      template <stdexec::__one_of<ex::set_value_t, ex::set_stopped_t> Tag>
-      auto query(ex::get_completion_scheduler_t<Tag>) const noexcept {
-        return impulse_scheduler{data_};
-      }
-    };
-
-    struct my_sender {
-      using __id = my_sender;
-      using __t = my_sender;
-
-      using sender_concept = stdexec::sender_t;
-      using completion_signatures =
-        ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
-
-      env env_;
-
-      template <class R>
-      friend auto tag_invoke(ex::connect_t, my_sender self, R&& r) -> oper<std::decay_t<R>> {
-        return {self.env_.data_, static_cast<R&&>(r)};
-      }
-
-      [[nodiscard]]
-      auto get_env() const noexcept -> const env& {
-        return env_;
-      }
-    };
-
-    explicit impulse_scheduler(std::shared_ptr<data> shared_data)
-      : shared_data_(std::move(shared_data)) {
-    }
-
-   public:
     using __id = impulse_scheduler;
     using __t = impulse_scheduler;
 
@@ -182,11 +107,83 @@ namespace {
     }
 
     [[nodiscard]]
-    auto schedule() const -> my_sender {
-      return my_sender{.env_ = {shared_data_}};
+    auto schedule() const noexcept {
+      return sender{shared_data_};
     }
 
     auto operator==(const impulse_scheduler&) const noexcept -> bool = default;
+
+   private:
+    //! Command type that can store the action of firing up a sender
+    using oper_command_t = std::function<void()>;
+    using cmd_vec_t = std::vector<oper_command_t>;
+
+    struct data : std::enable_shared_from_this<data> {
+      explicit data(int id)
+        : id_(id) {
+      }
+
+      int id_;
+      cmd_vec_t all_commands_;
+      std::mutex mutex_;
+      std::condition_variable cv_;
+    };
+
+    template <class Receiver>
+    struct opstate {
+      opstate(std::shared_ptr<data> shared_data, Receiver&& recv)
+        : data_(std::move(shared_data))
+        , receiver_(static_cast<Receiver&&>(recv)) {
+      }
+
+      opstate(opstate&&) = delete;
+
+      void start() & noexcept {
+        // Enqueue another command to the list of all commands
+        // The scheduler will start this, whenever start_next() is called
+        std::unique_lock lock{data_->mutex_};
+        data_->all_commands_.emplace_back([this]() {
+          if (ex::get_stop_token(ex::get_env(receiver_)).stop_requested()) {
+            ex::set_stopped(static_cast<Receiver&&>(receiver_));
+          } else {
+            ex::set_value(static_cast<Receiver&&>(receiver_));
+          }
+        });
+        data_->cv_.notify_all();
+      }
+
+      std::shared_ptr<data> data_;
+      Receiver receiver_;
+    };
+
+    struct sender {
+      using __id = sender;
+      using __t = sender;
+
+      using sender_concept = stdexec::sender_t;
+      using completion_signatures =
+        ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
+
+      template <class Receiver>
+      auto connect(Receiver rcvr) const -> opstate<Receiver> {
+        return {data_, static_cast<Receiver&&>(rcvr)};
+      }
+
+      [[nodiscard]]
+      auto get_env() const noexcept {
+        return sched_attrs(impulse_scheduler(data_), ex::set_value, ex::set_stopped);
+      }
+
+      std::shared_ptr<data> data_;
+    };
+
+    explicit impulse_scheduler(std::shared_ptr<data> shared_data) noexcept
+      : shared_data_(std::move(shared_data)) {
+    }
+
+    //! That data shared between the operation state and the actual scheduler
+    //! Shared pointer to allow the scheduler to be copied (not the best semantics, but it will do)
+    std::shared_ptr<data> shared_data_{};
   };
 
   //! Scheduler that executes everything inline, i.e., on the same thread
@@ -195,101 +192,161 @@ namespace {
     using __t = basic_inline_scheduler;
     using __id = basic_inline_scheduler;
 
-    template <class R>
-    struct oper : immovable {
-      R recv_;
-
-      void start() & noexcept {
-        ex::set_value(static_cast<R&&>(recv_));
-      }
-    };
-
-    struct my_sender {
-      using __t = my_sender;
-      using __id = my_sender;
-      using sender_concept = stdexec::sender_t;
-      using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
-
-      template <class R>
-      friend auto tag_invoke(ex::connect_t, my_sender, R r) -> oper<R> {
-        return {{}, static_cast<R&&>(r)};
-      }
-
-      auto get_env() const noexcept -> scheduler_env<basic_inline_scheduler> {
-        return {};
-      }
-    };
-
-    auto schedule() const noexcept -> my_sender {
-      return {};
+    auto schedule() const noexcept {
+      return sender{};
     }
 
     auto operator==(const basic_inline_scheduler&) const noexcept -> bool = default;
 
-    auto query(ex::get_domain_t) const noexcept -> Domain
+    auto query(ex::get_completion_domain_t<ex::set_value_t>) const noexcept -> Domain
       requires(!ex::same_as<Domain, void>)
     {
-      return Domain();
+      return {};
     }
+
+   private:
+    template <class Receiver>
+    struct opstate : immovable {
+      void start() & noexcept {
+        ex::set_value(static_cast<Receiver&&>(rcvr_));
+      }
+
+      Receiver rcvr_;
+    };
+
+    struct sender {
+      using __t = sender;
+      using __id = sender;
+      using sender_concept = stdexec::sender_t;
+      using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+      template <class Receiver>
+      auto connect(Receiver rcvr) const -> opstate<Receiver> {
+        return {{}, static_cast<Receiver&&>(rcvr)};
+      }
+
+      auto get_env() const noexcept {
+        return sched_attrs(basic_inline_scheduler(), ex::set_value);
+      }
+    };
   };
 
   using stdexec::inline_scheduler;
 
+  template <class Type>
+  struct nothrow_copyable_box {
+    using __t = nothrow_copyable_box;
+    using __id = nothrow_copyable_box;
+
+    nothrow_copyable_box() noexcept = default;
+
+    explicit nothrow_copyable_box(Type value)
+      : value_(std::make_shared<Type>(static_cast<Type&&>(value))) {
+    }
+
+    [[nodiscard]]
+    auto value() const noexcept -> const Type& {
+      return *value_;
+    }
+
+    [[nodiscard]]
+    auto operator==(const nothrow_copyable_box& other) const
+      noexcept(noexcept(*value_ == *(other.value_))) -> bool {
+      if (value_ && other.value_) {
+        return *value_ == *(other.value_);
+      }
+      return !value_ && !other.value_;
+    }
+
+   private:
+    std::shared_ptr<const Type> value_{};
+  };
+
+  template <class Type>
+    requires ex::__nothrow_copy_constructible<Type>
+  struct nothrow_copyable_box<Type> {
+    using __t = nothrow_copyable_box;
+    using __id = nothrow_copyable_box;
+
+    nothrow_copyable_box() noexcept = default;
+
+    explicit nothrow_copyable_box(Type value) noexcept(ex::__nothrow_copy_constructible<Type>)
+      : value_(static_cast<Type&&>(value)) {
+    }
+
+    [[nodiscard]]
+    auto value() const noexcept -> const Type& {
+      return value_;
+    }
+
+    [[nodiscard]]
+    auto operator==(const nothrow_copyable_box&) const -> bool = default;
+
+   private:
+    Type value_{};
+  };
+
   //! Scheduler that returns a sender that always completes with error.
-  template <class E = std::exception_ptr>
+  template <class Error = std::exception_ptr>
   struct error_scheduler {
     using __id = error_scheduler;
     using __t = error_scheduler;
 
     error_scheduler() = default;
 
-    error_scheduler(E err)
-      : err_(static_cast<E&&>(err)) {
+    explicit error_scheduler(Error err)
+      : err_(static_cast<Error&&>(err)) {
     }
 
-    error_scheduler(error_scheduler&&) noexcept = default;
-
-    error_scheduler(const error_scheduler&) noexcept = default;
-
-   private:
-    template <class R>
-    struct oper : immovable {
-      R recv_;
-      E err_;
-
-      void start() & noexcept {
-        ex::set_error(static_cast<R&&>(recv_), static_cast<E&&>(err_));
-      }
-    };
-
-    struct my_sender {
-      using __id = my_sender;
-      using __t = my_sender;
-
-      using sender_concept = stdexec::sender_t;
-      using completion_signatures =
-        ex::completion_signatures<ex::set_value_t(), ex::set_error_t(E), ex::set_stopped_t()>;
-
-      E err_;
-
-      template <class R>
-      friend auto tag_invoke(ex::connect_t, my_sender self, R&& r) -> oper<R> {
-        return {{}, static_cast<R&&>(r), static_cast<E&&>(self.err_)};
-      }
-
-      auto get_env() const noexcept -> scheduler_env<error_scheduler> {
-        return {};
-      }
-    };
-
-    E err_{};
-
-   public:
-    auto schedule() const -> my_sender {
-      return {err_};
+    [[nodiscard]]
+    auto schedule() const noexcept {
+      return sender{err_};
     }
 
     auto operator==(const error_scheduler&) const noexcept -> bool = default;
+
+    template <ex::__completion_tag Tag>
+    [[nodiscard]]
+    auto query(ex::get_completion_scheduler_t<Tag>) const noexcept {
+      return *this;
+    }
+
+   private:
+    template <class Receiver>
+    struct opstate : immovable {
+      void start() & noexcept {
+        ex::set_error(static_cast<Receiver&&>(rcvr_), Error(err_.value()));
+      }
+
+      Receiver rcvr_;
+      nothrow_copyable_box<Error> err_;
+    };
+
+    struct sender {
+      using __id = sender;
+      using __t = sender;
+
+      using sender_concept = stdexec::sender_t;
+      using completion_signatures =
+        ex::completion_signatures<ex::set_value_t(), ex::set_error_t(Error), ex::set_stopped_t()>;
+
+      template <class Receiver>
+      auto connect(Receiver rcvr) && -> opstate<Receiver> {
+        return {{}, static_cast<Receiver&&>(rcvr), std::move(err_)};
+      }
+
+      auto get_env() const noexcept {
+        return sched_attrs{error_scheduler(err_), ex::set_value, ex::set_error, ex::set_stopped};
+      }
+
+      nothrow_copyable_box<Error> err_;
+    };
+
+    error_scheduler(nothrow_copyable_box<Error> err) noexcept
+      : err_(static_cast<nothrow_copyable_box<Error>&&>(err)) {
+    }
+
+    nothrow_copyable_box<Error> err_{};
   };
 
   //! Scheduler that returns a sender that always completes with cancellation.
@@ -297,39 +354,40 @@ namespace {
     using __id = stopped_scheduler;
     using __t = stopped_scheduler;
 
-    template <class R>
-    struct oper : immovable {
-      R recv_;
+    [[nodiscard]]
+    auto schedule() const noexcept {
+      return sender{};
+    }
 
+    auto operator==(const stopped_scheduler&) const noexcept -> bool = default;
+
+   private:
+    template <class Receiver>
+    struct opstate : immovable {
       void start() & noexcept {
-        ex::set_stopped(static_cast<R&&>(recv_));
+        ex::set_stopped(static_cast<Receiver&&>(rcvr_));
       }
+
+      Receiver rcvr_;
     };
 
-    struct my_sender {
-      using __id = my_sender;
-      using __t = my_sender;
+    struct sender {
+      using __id = sender;
+      using __t = sender;
 
       using sender_concept = stdexec::sender_t;
       using completion_signatures =
         ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
 
-      template <class R>
-      auto connect(R r) const -> oper<R> {
-        return {{}, static_cast<R&&>(r)};
+      template <class Receiver>
+      auto connect(Receiver rcvr) const -> opstate<Receiver> {
+        return {{}, static_cast<Receiver&&>(rcvr)};
       }
 
       [[nodiscard]]
-      auto get_env() const noexcept -> scheduler_env<stopped_scheduler> {
-        return {};
+      auto get_env() const noexcept {
+        return sched_attrs(stopped_scheduler(), ex::set_value, ex::set_stopped);
       }
     };
-
-    [[nodiscard]]
-    auto schedule() const -> my_sender {
-      return {};
-    }
-
-    auto operator==(const stopped_scheduler&) const noexcept -> bool = default;
   };
 } // anonymous namespace

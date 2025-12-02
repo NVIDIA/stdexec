@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 NVIDIA Corporation
+ * Copyright (c) 2025 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -18,214 +18,280 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
+#include "__atomic_intrusive_queue.hpp"
 #include "__completion_signatures.hpp"
+#include "__domain.hpp"
 #include "__env.hpp"
-#include "__meta.hpp"
 #include "__receivers.hpp"
-#include "__utility.hpp"
+#include "__schedulers.hpp"
 
-#include <condition_variable>
-#include <exception>
-#include <mutex>
-#include <utility>
+#include "__atomic.hpp"
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // run_loop
-  namespace __loop {
-    class run_loop;
+  class __run_loop_base : __immovable {
+   public:
+    __run_loop_base() = default;
+
+    STDEXEC_ATTRIBUTE(host, device) void run() noexcept {
+      // execute work items until the __finishing_ flag is set:
+      while (!__finishing_.load(__std::memory_order_acquire)) {
+        __queue_.wait_for_item();
+        __execute_all();
+      }
+      // drain the queue, taking care to execute any tasks that get added while
+      // executing the remaining tasks:
+      while (__execute_all())
+        ;
+    }
+
+    STDEXEC_ATTRIBUTE(host, device) void finish() noexcept {
+      if (!__finishing_.exchange(true, __std::memory_order_acq_rel)) {
+        // push an empty work item to the queue to wake up the consuming thread
+        // and let it finish:
+        __queue_.push(&__noop_task);
+      }
+    }
 
     struct __task : __immovable {
-      __task* __next_ = this;
+      using __execute_fn_t = void(__task*) noexcept;
 
-      union {
-        __task* __tail_ = nullptr;
-        void (*__execute_)(__task*) noexcept;
-      };
+      __task() = default;
+      STDEXEC_ATTRIBUTE(host, device)
+      explicit __task(__execute_fn_t* __execute_fn) noexcept
+        : __execute_fn_(__execute_fn) {
+      }
 
-      void __execute() noexcept {
-        (*__execute_)(this);
+      STDEXEC_ATTRIBUTE(host, device) void __execute() noexcept {
+        (*__execute_fn_)(this);
+      }
+
+      __execute_fn_t* __execute_fn_ = nullptr;
+      __task* __next_ = nullptr;
+    };
+
+    template <class _Rcvr>
+    struct __opstate_t : __task {
+      __atomic_intrusive_queue<&__task::__next_>* __queue_;
+      _Rcvr __rcvr_;
+
+      STDEXEC_ATTRIBUTE(host, device) static void __execute_impl(__task* __p) noexcept {
+        static_assert(noexcept(get_stop_token(__declval<env_of_t<_Rcvr>>()).stop_requested()));
+        auto& __rcvr = static_cast<__opstate_t*>(__p)->__rcvr_;
+
+        if (get_stop_token(get_env(__rcvr)).stop_requested()) {
+          set_stopped(static_cast<_Rcvr&&>(__rcvr));
+        } else {
+          set_value(static_cast<_Rcvr&&>(__rcvr));
+        }
+      }
+
+      STDEXEC_ATTRIBUTE(host, device)
+      constexpr explicit __opstate_t(
+        __atomic_intrusive_queue<&__task::__next_>* __queue,
+        _Rcvr __rcvr)
+        : __task{&__execute_impl}
+        , __queue_{__queue}
+        , __rcvr_{static_cast<_Rcvr&&>(__rcvr)} {
+      }
+
+      STDEXEC_ATTRIBUTE(host, device) constexpr void start() noexcept {
+        __queue_->push(this);
       }
     };
 
-    template <class _ReceiverId>
-    struct __operation {
-      using _Receiver = stdexec::__t<_ReceiverId>;
+    // Returns true if any tasks were executed.
+    STDEXEC_ATTRIBUTE(host, device) bool __execute_all() noexcept {
+      // Dequeue all tasks at once. This returns an __intrusive_queue.
+      auto __queue = __queue_.pop_all();
 
-      struct __t : __task {
-        using __id = __operation;
+      // Execute all the tasks in the queue.
+      auto __it = __queue.begin();
+      if (__it == __queue.end()) {
+        return false; // No tasks to execute.
+      }
 
-        run_loop* __loop_;
-        STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __rcvr_;
+      do {
+        // Take care to increment the iterator before executing the task,
+        // because __execute() may invalidate the current node.
+        auto __prev = __it++;
+        (*__prev)->__execute();
+      } while (__it != __queue.end());
 
-        static void __execute_impl(__task* __p) noexcept {
-          auto& __rcvr = static_cast<__t*>(__p)->__rcvr_;
-          STDEXEC_TRY {
-            if (stdexec::get_stop_token(stdexec::get_env(__rcvr)).stop_requested()) {
-              stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr));
-            } else {
-              stdexec::set_value(static_cast<_Receiver&&>(__rcvr));
-            }
-          }
-          STDEXEC_CATCH_ALL {
-            stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
-          }
-        }
+      __queue.clear();
+      return true;
+    }
 
-        explicit __t(__task* __tail) noexcept
-          : __task{{}, this, __tail} {
-        }
+    STDEXEC_ATTRIBUTE(host, device) static void __noop_(__task*) noexcept {
+    }
 
-        __t(__task* __next, run_loop* __loop, _Receiver __rcvr)
-          : __task{{}, __next, {}}
-          , __loop_{__loop}
-          , __rcvr_{static_cast<_Receiver&&>(__rcvr)} {
-          __execute_ = &__execute_impl;
-        }
+    __std::atomic<bool> __finishing_{false};
+    __atomic_intrusive_queue<&__task::__next_> __queue_{};
+    __task __noop_task{&__noop_};
+  };
 
-        void start() & noexcept;
-      };
+  template <class _Env>
+  struct basic_run_loop : __run_loop_base {
+   private:
+    struct __attrs_t {
+      STDEXEC_ATTRIBUTE(nodiscard, host, device)
+      constexpr auto query(get_completion_scheduler_t<set_value_t>) const noexcept;
+      STDEXEC_ATTRIBUTE(nodiscard, host, device)
+      constexpr auto query(get_completion_scheduler_t<set_stopped_t>) const noexcept;
+
+      STDEXEC_ATTRIBUTE(nodiscard, host, device)
+      constexpr auto query(get_completion_domain_t<set_value_t>) const noexcept;
+      STDEXEC_ATTRIBUTE(nodiscard, host, device)
+      constexpr auto query(get_completion_domain_t<set_stopped_t>) const noexcept;
+
+      STDEXEC_ATTRIBUTE(nodiscard, host, device)
+      constexpr auto query(get_completion_behavior_t<set_value_t>) const noexcept {
+        return completion_behavior::asynchronous;
+      }
+      STDEXEC_ATTRIBUTE(nodiscard, host, device)
+      constexpr auto query(get_completion_behavior_t<set_stopped_t>) const noexcept {
+        return completion_behavior::asynchronous;
+      }
+
+      STDEXEC_ATTRIBUTE(nodiscard, host, device)
+      constexpr auto query(execute_may_block_caller_t) const noexcept {
+        return false;
+      }
+
+      basic_run_loop* __loop_;
     };
 
-    class run_loop {
-      template <class>
-      friend struct __operation;
+   public:
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr explicit basic_run_loop(_Env __env) noexcept
+      : __env_{static_cast<_Env&&>(__env)} {
+    }
+
+    class scheduler : __attrs_t {
+     private:
+      friend basic_run_loop;
+
+      STDEXEC_ATTRIBUTE(host, device)
+      constexpr explicit scheduler(basic_run_loop* __loop) noexcept
+        : __attrs_t{__loop} {
+      }
+
      public:
-      struct __scheduler {
+      using scheduler_concept = scheduler_t;
+
+      struct __sndr_t {
+        using sender_concept = sender_t;
+
+        template <class _Rcvr>
+        STDEXEC_ATTRIBUTE(nodiscard, host, device)
+        constexpr auto connect(_Rcvr __rcvr) const noexcept -> __opstate_t<_Rcvr> {
+          return __opstate_t<_Rcvr>{&__loop_->__queue_, static_cast<_Rcvr&&>(__rcvr)};
+        }
+
+        template <class _Self>
+        STDEXEC_ATTRIBUTE(nodiscard, host, device)
+        static constexpr auto get_completion_signatures(_Self&&) noexcept {
+          return completion_signatures<set_value_t(), set_stopped_t()>{};
+        }
+
+        STDEXEC_ATTRIBUTE(host, device) constexpr auto get_env() const noexcept -> __attrs_t {
+          return __attrs_t{__loop_};
+        }
+
        private:
-        struct __schedule_task {
-          using __t = __schedule_task;
-          using __id = __schedule_task;
-          using sender_concept = sender_t;
-          using completion_signatures = stdexec::completion_signatures<
-            set_value_t(),
-            set_error_t(std::exception_ptr),
-            set_stopped_t()
-          >;
-
-          template <class _Receiver>
-          using __operation = stdexec::__t<__operation<stdexec::__id<_Receiver>>>;
-
-          template <class _Receiver>
-          auto connect(_Receiver __rcvr) const -> __operation<_Receiver> {
-            return {&__loop_->__head_, __loop_, static_cast<_Receiver&&>(__rcvr)};
-          }
-
-         private:
-          friend __scheduler;
-
-          struct __env {
-            using __t = __env;
-            using __id = __env;
-
-            run_loop* __loop_;
-
-            template <class _CPO>
-            auto query(get_completion_scheduler_t<_CPO>) const noexcept -> __scheduler {
-              return __loop_->get_scheduler();
-            }
-          };
-
-          explicit __schedule_task(run_loop* __loop) noexcept
-            : __loop_(__loop) {
-          }
-
-          run_loop* const __loop_;
-
-         public:
-          [[nodiscard]]
-          auto get_env() const noexcept -> __env {
-            return __env{__loop_};
-          }
-        };
-
-        friend run_loop;
-
-        explicit __scheduler(run_loop* __loop) noexcept
+        friend scheduler;
+        STDEXEC_ATTRIBUTE(host, device)
+        constexpr explicit __sndr_t(basic_run_loop* __loop) noexcept
           : __loop_(__loop) {
         }
 
-        run_loop* __loop_;
-
-       public:
-        using __t = __scheduler;
-        using __id = __scheduler;
-        auto operator==(const __scheduler&) const noexcept -> bool = default;
-
-        [[nodiscard]]
-        auto schedule() const noexcept -> __schedule_task {
-          return __schedule_task{__loop_};
-        }
-
-        [[nodiscard]]
-        auto query(get_forward_progress_guarantee_t) const noexcept
-          -> stdexec::forward_progress_guarantee {
-          return stdexec::forward_progress_guarantee::parallel;
-        }
-
-        // BUGBUG NOT TO SPEC
-        [[nodiscard]]
-        auto query(execute_may_block_caller_t) const noexcept -> bool {
-          return false;
-        }
+        basic_run_loop* __loop_;
       };
 
-      auto get_scheduler() noexcept -> __scheduler {
-        return __scheduler{this};
+      using __scheduler
+        [[deprecated("run_loop::__scheduler has been renamed run_loop::scheduler")]] = scheduler;
+
+      STDEXEC_ATTRIBUTE(nodiscard, host, device)
+      constexpr auto schedule() const noexcept -> __sndr_t {
+        return __sndr_t{this->__loop_};
       }
 
-      void run();
+      using __attrs_t::query;
 
-      void finish();
+      STDEXEC_ATTRIBUTE(nodiscard, host, device)
+      constexpr auto
+        query(get_forward_progress_guarantee_t) const noexcept -> forward_progress_guarantee {
+        return forward_progress_guarantee::parallel;
+      }
 
-     private:
-      void __push_back_(__task* __task);
-      auto __pop_front_() -> __task*;
+      STDEXEC_ATTRIBUTE(nodiscard, host, device)
+      friend constexpr bool operator==(const scheduler& __a, const scheduler& __b) noexcept {
+        return __a.__loop_ == __b.__loop_;
+      }
 
-      std::mutex __mutex_;
-      std::condition_variable __cv_;
-      __task __head_{{}, &__head_, {&__head_}};
-      bool __stop_ = false;
+      STDEXEC_ATTRIBUTE(nodiscard, host, device)
+      friend constexpr bool operator!=(const scheduler& __a, const scheduler& __b) noexcept {
+        return __a.__loop_ != __b.__loop_;
+      }
     };
 
-    template <class _ReceiverId>
-    inline void __operation<_ReceiverId>::__t::start() & noexcept {
-      STDEXEC_TRY {
-        __loop_->__push_back_(this);
-      }
-      STDEXEC_CATCH_ALL {
-        stdexec::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
-      }
+    STDEXEC_ATTRIBUTE(nodiscard, host, device)
+    constexpr auto get_scheduler() noexcept -> scheduler {
+      return scheduler{this};
     }
 
-    inline void run_loop::run() {
-      for (__task* __task; (__task = __pop_front_()) != &__head_;) {
-        __task->__execute();
-      }
+    STDEXEC_ATTRIBUTE(nodiscard, host, device)
+    constexpr auto get_env() const noexcept -> const _Env& {
+      return __env_;
     }
 
-    inline void run_loop::finish() {
-      std::unique_lock __lock{__mutex_};
-      __stop_ = true;
-      __cv_.notify_all();
-    }
+   private:
+    _Env __env_;
+  };
 
-    inline void run_loop::__push_back_(__task* __task) {
-      std::unique_lock __lock{__mutex_};
-      __task->__next_ = &__head_;
-      __head_.__tail_ = __head_.__tail_->__next_ = __task;
-      __cv_.notify_one();
+  // A run_loop with an empty environment. This is a struct instead of a type alias to give
+  // it a simpler type name that is easier to read in diagnostics.
+  struct run_loop : basic_run_loop<env<>> {
+    constexpr run_loop() noexcept
+      : basic_run_loop<env<>>{env{}} {
     }
+  };
 
-    inline auto run_loop::__pop_front_() -> __task* {
-      std::unique_lock __lock{__mutex_};
-      __cv_.wait(__lock, [this] { return __head_.__next_ != &__head_ || __stop_; });
-      if (__head_.__tail_ == __head_.__next_)
-        __head_.__tail_ = &__head_;
-      return std::exchange(__head_.__next_, __head_.__next_->__next_);
+  template <class _Env>
+  STDEXEC_ATTRIBUTE(host, device)
+  constexpr auto basic_run_loop<_Env>::__attrs_t::query(
+    get_completion_scheduler_t<set_value_t>) const noexcept {
+    if constexpr (__callable<get_scheduler_t, _Env&>) {
+      return stdexec::get_scheduler(__loop_->__env_);
+    } else {
+      return scheduler{__loop_};
     }
-  } // namespace __loop
+  }
 
-  // NOT TO SPEC
-  using run_loop = __loop::run_loop;
+  template <class _Env>
+  STDEXEC_ATTRIBUTE(host, device)
+  constexpr auto basic_run_loop<_Env>::__attrs_t::query(
+    get_completion_scheduler_t<set_stopped_t>) const noexcept {
+    return query(get_completion_scheduler<set_value_t>);
+  }
+
+  template <class _Env>
+  STDEXEC_ATTRIBUTE(host, device)
+  constexpr auto basic_run_loop<_Env>::__attrs_t::query(
+    get_completion_domain_t<set_value_t>) const noexcept {
+    if constexpr (__callable<get_domain_t, _Env&>) {
+      return __call_result_t<get_domain_t, _Env&>();
+    } else {
+      return default_domain{};
+    }
+  }
+
+  template <class _Env>
+  STDEXEC_ATTRIBUTE(host, device)
+  constexpr auto basic_run_loop<_Env>::__attrs_t::query(
+    get_completion_domain_t<set_stopped_t>) const noexcept {
+    return query(get_completion_domain<set_value_t>);
+  }
+
 } // namespace stdexec

@@ -182,7 +182,7 @@ namespace exec {
         }
 
         [[nodiscard]]
-        auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> __scheduler {
+        auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept -> __scheduler {
           return __scheduler{__max_recursion_depth_};
         }
 

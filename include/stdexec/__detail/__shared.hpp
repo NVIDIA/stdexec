@@ -30,7 +30,7 @@
 
 #include "../stop_token.hpp"
 
-#include <atomic>
+#include "__atomic.hpp"
 #include <exception>
 #include <mutex>
 #include <type_traits>
@@ -228,8 +228,8 @@ namespace stdexec::__shared {
     std::mutex __mutex_;      // This mutex guards access to __waiters_.
     __waiters_list_t __waiters_{};
     connect_result_t<_CvrefSender, __receiver_t> __shared_op_;
-    std::atomic_flag __started_{};
-    std::atomic<std::size_t> __ref_count_{2};
+    __std::atomic_flag __started_{};
+    __std::atomic<std::size_t> __ref_count_{2};
     __local_state_base __tombstone_{};
 
     // Let a "consumer" be either a split/ensure_started sender, or an operation
@@ -249,25 +249,25 @@ namespace stdexec::__shared {
     }
 
     void __inc_ref() noexcept {
-      __ref_count_.fetch_add(2ul, std::memory_order_relaxed);
+      __ref_count_.fetch_add(2ul, __std::memory_order_relaxed);
     }
 
     void __dec_ref() noexcept {
-      if (2ul == __ref_count_.fetch_sub(2ul, std::memory_order_acq_rel)) {
+      if (2ul == __ref_count_.fetch_sub(2ul, __std::memory_order_acq_rel)) {
         delete this;
       }
     }
 
     auto __set_started() noexcept -> bool {
-      if (__started_.test_and_set(std::memory_order_acq_rel)) {
+      if (__started_.test_and_set(__std::memory_order_acq_rel)) {
         return false; // already started
       }
-      __ref_count_.fetch_add(1ul, std::memory_order_relaxed);
+      __ref_count_.fetch_add(1ul, __std::memory_order_relaxed);
       return true;
     }
 
     void __set_completed() noexcept {
-      if (1ul == __ref_count_.fetch_sub(1ul, std::memory_order_acq_rel)) {
+      if (1ul == __ref_count_.fetch_sub(1ul, __std::memory_order_acq_rel)) {
         delete this;
       }
     }

@@ -21,13 +21,9 @@
 #include "__basic_sender.hpp"
 #include "__concepts.hpp"
 #include "__continues_on.hpp"
-#include "__domain.hpp"
-#include "__env.hpp"
 #include "__just.hpp"
-#include "__meta.hpp"
 #include "__schedulers.hpp"
 #include "__sender_introspection.hpp"
-#include "__transform_sender.hpp"
 #include "__tuple.hpp"
 
 STDEXEC_PRAGMA_PUSH()
@@ -37,18 +33,16 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.transfer_just]
   namespace __transfer_just {
-    template <class _Env>
-    auto __make_transform_fn(const _Env&) {
+    inline auto __make_transform_fn() {
       return [&]<class _Scheduler, class... _Values>(_Scheduler&& __sched, _Values&&... __vals) {
         return continues_on(
           just(static_cast<_Values&&>(__vals)...), static_cast<_Scheduler&&>(__sched));
       };
     }
 
-    template <class _Env>
-    auto __transform_sender_fn(const _Env& __env) {
+    inline auto __transform_sender_fn() {
       return [&]<class _Data>(__ignore, _Data&& __data) {
-        return __data.apply(__make_transform_fn(__env), static_cast<_Data&&>(__data));
+        return __data.apply(__make_transform_fn(), static_cast<_Data&&>(__data));
       };
     }
 
@@ -56,16 +50,13 @@ namespace stdexec {
       template <scheduler _Scheduler, __movable_value... _Values>
       auto
         operator()(_Scheduler&& __sched, _Values&&... __vals) const -> __well_formed_sender auto {
-        auto __domain = query_or(get_domain, __sched, default_domain());
-        return stdexec::transform_sender(
-          __domain,
-          __make_sexpr<transfer_just_t>(
-            __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Values&&>(__vals)...}));
+          return __make_sexpr<transfer_just_t>(
+            __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Values&&>(__vals)...});
       }
 
       template <class _Sender, class _Env>
-      static auto transform_sender(_Sender&& __sndr, const _Env& __env) {
-        return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn(__env));
+      static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env&) {
+        return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn());
       }
     };
 
@@ -81,8 +72,9 @@ namespace stdexec {
         return __data.apply(__make_attrs_fn(), __data);
       };
 
-      static constexpr auto get_completion_signatures = []<class _Sender>(_Sender&&) noexcept
-        -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
+      static constexpr auto get_completion_signatures =
+        []<class _Sender, class... _Env>(_Sender&&, const _Env&...) noexcept
+        -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env...>, _Env...> {
       };
     };
   } // namespace __transfer_just

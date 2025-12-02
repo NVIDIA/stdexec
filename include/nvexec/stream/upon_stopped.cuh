@@ -34,13 +34,15 @@ namespace nvexec::_strm {
 
   namespace _upon_stopped {
     template <class Fun>
-    __launch_bounds__(1) __global__ void kernel(Fun fn) {
+    STDEXEC_ATTRIBUTE(launch_bounds(1))
+    __global__ void _upon_stopped_kernel(Fun fn) {
       static_assert(trivially_copyable<Fun>);
       ::cuda::std::move(fn)();
     }
 
     template <class Fun, class ResultT>
-    __launch_bounds__(1) __global__ void kernel_with_result(Fun fn, ResultT* result) {
+    STDEXEC_ATTRIBUTE(launch_bounds(1))
+    __global__ void _upon_stopped_kernel_with_result(Fun fn, ResultT* result) {
       static_assert(trivially_copyable<Fun>);
       new (result) ResultT(::cuda::std::move(fn)());
     }
@@ -80,7 +82,7 @@ namespace nvexec::_strm {
           cudaStream_t stream = op_state_.get_stream();
 
           if constexpr (does_not_return_a_value) {
-            kernel<<<1, 1, 0, stream>>>(std::move(f_));
+            _upon_stopped_kernel<<<1, 1, 0, stream>>>(std::move(f_));
             if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
                 status == cudaSuccess) {
               op_state_.propagate_completion_signal(stdexec::set_value);
@@ -90,7 +92,7 @@ namespace nvexec::_strm {
           } else {
             using decayed_result_t = __decay_t<result_t>;
             auto* d_result = static_cast<decayed_result_t*>(op_state_.temp_storage_);
-            kernel_with_result<<<1, 1, 0, stream>>>(std::move(f_), d_result);
+            _upon_stopped_kernel_with_result<<<1, 1, 0, stream>>>(std::move(f_), d_result);
             if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
                 status == cudaSuccess) {
               op_state_.defer_temp_storage_destruction(d_result);
@@ -166,13 +168,15 @@ namespace nvexec::_strm {
     };
   };
 
-  template <>
-  struct transform_sender_for<stdexec::upon_stopped_t> {
-    template <class Fn, stream_completing_sender Sender>
+  template <class Env>
+  struct transform_sender_for<stdexec::upon_stopped_t, Env> {
+    template <class Fn, stream_completing_sender<Env> Sender>
     auto operator()(__ignore, Fn fun, Sender&& sndr) const {
       using _sender_t = __t<upon_stopped_sender_t<__id<__decay_t<Sender>>, Fn>>;
       return _sender_t{{}, static_cast<Sender&&>(sndr), static_cast<Fn&&>(fun)};
     }
+
+    const Env& env_;
   };
 } // namespace nvexec::_strm
 

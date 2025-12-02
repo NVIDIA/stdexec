@@ -94,7 +94,7 @@ namespace exec {
 
       template <class _CompletionSignatures>
       using __f = __mtry_q<__concat_completion_signatures>::__f<
-        __eptr_completion_if_t<__all_value_args_nothrow_decay_copyable<_CompletionSignatures>>,
+        __eptr_completion_unless_t<__all_value_args_nothrow_decay_copyable<_CompletionSignatures>>,
         completion_signatures<set_stopped_t()>,
         __transform_completion_signatures<
           _CompletionSignatures,

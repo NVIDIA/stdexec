@@ -202,21 +202,21 @@ namespace stdexec {
       }
 
       template <std::size_t _Ny>
-      STDEXEC_ATTRIBUTE(host, device, always_inline)
+      STDEXEC_ATTRIBUTE(nodiscard, host, device, always_inline)
       auto get() && noexcept -> decltype(auto) {
         STDEXEC_ASSERT(_Ny == __index_);
         return static_cast<__at<_Ny> &&>(*reinterpret_cast<__at<_Ny> *>(__storage_));
       }
 
       template <std::size_t _Ny>
-      STDEXEC_ATTRIBUTE(host, device, always_inline)
+      STDEXEC_ATTRIBUTE(nodiscard, host, device, always_inline)
       auto get() & noexcept -> decltype(auto) {
         STDEXEC_ASSERT(_Ny == __index_);
         return *reinterpret_cast<__at<_Ny> *>(__storage_);
       }
 
       template <std::size_t _Ny>
-      STDEXEC_ATTRIBUTE(host, device, always_inline)
+      STDEXEC_ATTRIBUTE(nodiscard, host, device, always_inline)
       auto get() const & noexcept -> decltype(auto) {
         STDEXEC_ASSERT(_Ny == __index_);
         return *reinterpret_cast<const __at<_Ny> *>(__storage_);

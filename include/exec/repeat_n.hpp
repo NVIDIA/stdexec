@@ -24,7 +24,7 @@
 #include "trampoline_scheduler.hpp"
 #include "sequence.hpp"
 
-#include <atomic>
+#include "../stdexec/__detail/__atomic.hpp"
 #include <cstddef>
 #include <exception>
 #include <type_traits>
@@ -108,7 +108,7 @@ namespace exec {
       using __child_op_t = stdexec::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
       __child_count_pair<__child_t> __pair_;
-      std::atomic_flag __started_{};
+      __std::atomic_flag __started_{};
       stdexec::__manual_lifetime<__child_op_t> __child_op_;
       trampoline_scheduler __sched_;
 
@@ -119,9 +119,9 @@ namespace exec {
       }
 
       ~__repeat_n_state() {
-        if (!__started_.test(std::memory_order_acquire)) {
-          std::atomic_thread_fence(std::memory_order_release);
-          // TSan does not support std::atomic_thread_fence, so we
+        if (!__started_.test(__std::memory_order_acquire)) {
+          __std::atomic_thread_fence(__std::memory_order_release);
+          // TSan does not support __std::atomic_thread_fence, so we
           // need to use the TSan-specific __tsan_release instead:
           STDEXEC_WHEN(STDEXEC_TSAN(), __tsan_release(&__started_));
           __child_op_.__destroy();
@@ -140,7 +140,7 @@ namespace exec {
           stdexec::set_value(static_cast<_Receiver &&>(this->__receiver()));
         } else {
           [[maybe_unused]]
-          const bool __already_started = __started_.test_and_set(std::memory_order_relaxed);
+          const bool __already_started = __started_.test_and_set(__std::memory_order_relaxed);
           STDEXEC_ASSERT(!__already_started);
           stdexec::start(__child_op_.__get());
         }
@@ -224,9 +224,7 @@ namespace exec {
     struct repeat_n_t {
       template <sender _Sender>
       auto operator()(_Sender &&__sndr, std::size_t __count) const {
-        auto __domain = __get_early_domain(__sndr);
-        return stdexec::transform_sender(
-          __domain, __make_sexpr<repeat_n_t>(__count, static_cast<_Sender &&>(__sndr)));
+        return __make_sexpr<repeat_n_t>(__count, static_cast<_Sender &&>(__sndr));
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
@@ -236,7 +234,7 @@ namespace exec {
       }
 
       template <class _Sender>
-      auto transform_sender(_Sender &&__sndr, __ignore) {
+      auto transform_sender(set_value_t, _Sender &&__sndr, __ignore) {
         return __sexpr_apply(
           static_cast<_Sender &&>(__sndr),
           []<class _Child>(__ignore, std::size_t __count, _Child __child) {
@@ -256,8 +254,9 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<exec::repeat_n_t> : __sexpr_defaults {
-    static constexpr auto get_completion_signatures = []<class _Sender>(_Sender &&) noexcept
-      -> __completion_signatures_of_t<transform_sender_result_t<default_domain, _Sender, env<>>> {
+    static constexpr auto get_completion_signatures =
+      []<class _Sender, class... _Env>(_Sender &&, const _Env &...) noexcept
+      -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env...>, _Env...> {
     };
   };
 } // namespace stdexec

@@ -25,7 +25,7 @@ namespace ex = stdexec;
 
 // Check that the `then` algorithm is correctly forwarding the __is_scheduler_affine query
 static_assert(ex::__is_scheduler_affine<decltype(ex::just() | ex::then([] { }))>);
-static_assert(ex::__completes_inline<decltype(ex::get_env(ex::just() | ex::then([] { })))>);
+static_assert(ex::__completes_inline<ex::set_value_t, decltype(ex::get_env(ex::just() | ex::then([] { })))>);
 
 namespace {
   TEST_CASE("then returns a sender", "[adaptors][then]") {
@@ -120,7 +120,8 @@ namespace {
   }
 
   TEST_CASE("then advertises completion schedulers", "[adaptors][then]") {
-    inline_scheduler sched{};
+    ex::run_loop loop;
+    auto sched = loop.get_scheduler();
 
     SECTION("for value channel") {
       ex::sender auto snd = ex::schedule(sched) | ex::then([] { });
@@ -173,9 +174,8 @@ namespace {
 
   // Return a different sender when we invoke this custom defined then implementation
   struct then_test_domain {
-    template <class Sender, class... Env>
-      requires std::same_as<ex::tag_of_t<Sender>, ex::then_t>
-    static auto transform_sender(Sender&&, Env&&...) {
+    template <ex::sender_expr_for<ex::then_t> Sender, class... Env>
+    static auto transform_sender(stdexec::set_value_t, Sender&&, Env&&...) {
       return ex::just(std::string{"ciao"});
     }
   };
