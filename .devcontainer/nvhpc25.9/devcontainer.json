@@ -1,5 +1,5 @@
 {
-  "image": "rapidsai/devcontainers:25.12-cpp-nvhpc25.7",
+  "image": "rapidsai/devcontainers:25.12-cpp-nvhpc25.9",
 
   "hostRequirements": { "gpu": "optional" },
 

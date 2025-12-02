@@ -24,6 +24,8 @@ jobs:
           - { name: "clang 20",   cuda: "12.9", cxx: "clang++", build: "Release", tag: "llvm20-cuda12.9", gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
           - { name: "nvc++ 25.7", cuda: "12.9", cxx: "mpic++",  build: "Release", tag: "nvhpc25.7",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
           - { name: "nvc++ 25.7", cuda: "12.9", cxx: "mpic++",  build: "Debug",   tag: "nvhpc25.7",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "nvc++ 25.9", cuda: "12.9", cxx: "mpic++",  build: "Release", tag: "nvhpc25.9",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "nvc++ 25.9", cuda: "12.9", cxx: "mpic++",  build: "Debug",   tag: "nvhpc25.9",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
     runs-on: linux-${{ matrix.arch }}-gpu-${{ matrix.gpu }}-${{ matrix.driver }}-1
     container:
       options: -u root
