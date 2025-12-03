@@ -1,5 +1,5 @@
 {
-  "image": "rapidsai/devcontainers:26.02-cpp-llvm21-cuda12.9",
+  "image": "rapidsai/devcontainers:26.02-cpp-gcc11-cuda12.9",
 
   "hostRequirements": { "gpu": "optional" },
 
@@ -18,7 +18,7 @@
     "NVCC_APPEND_FLAGS": "-t=100",
     "SCCACHE_DIST_MAX_RETRIES": "${localEnv:SCCACHE_DIST_MAX_RETRIES:2}",
     "SCCACHE_DIST_REQUEST_TIMEOUT": "${localEnv:SCCACHE_DIST_REQUEST_TIMEOUT:7140}",
-    "SCCACHE_DIST_REWRITE_INCLUDES_ONLY": "${localEnv:SCCACHE_DIST_REWRITE_INCLUDES_ONLY:true}",
+    "SCCACHE_DIST_REWRITE_INCLUDES_ONLY": "${localEnv:SCCACHE_DIST_REWRITE_INCLUDES_ONLY:false}",
     "SCCACHE_IDLE_TIMEOUT": "${localEnv:SCCACHE_IDLE_TIMEOUT:0}",
     "SCCACHE_BUCKET": "rapids-sccache-devs",
     "SCCACHE_REGION": "us-east-2",

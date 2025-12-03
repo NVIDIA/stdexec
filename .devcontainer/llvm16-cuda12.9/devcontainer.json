@@ -1,5 +1,5 @@
 {
-  "image": "rapidsai/devcontainers:26.02-cpp-llvm21-cuda12.9",
+  "image": "rapidsai/devcontainers:26.02-cpp-llvm16-cuda12.9",
 
   "hostRequirements": { "gpu": "optional" },
 
