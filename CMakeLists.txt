@@ -27,9 +27,8 @@ endif()
 # - Download and initialize RAPIDS CMake helpers -----------------------------
 
 # Fetch rapids-cmake
-set(rapids-cmake-version 26.02)
 if(NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/RAPIDS.cmake)
-  file(DOWNLOAD https://raw.githubusercontent.com/rapidsai/rapids-cmake/main/RAPIDS.cmake
+  file(DOWNLOAD https://raw.githubusercontent.com/rapidsai/rapids-cmake/branch-24.02/RAPIDS.cmake
        ${CMAKE_CURRENT_BINARY_DIR}/RAPIDS.cmake)
 endif()
 # Initialize rapids-cmake
