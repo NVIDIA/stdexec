@@ -20,8 +20,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "clang 20",   cuda: "12.0", cxx: "clang++", build: "Release", tag: "llvm21-cuda12.0", gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
-          - { name: "clang 20",   cuda: "12.9", cxx: "clang++", build: "Release", tag: "llvm21-cuda12.9", gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "clang 21",   cuda: "12.0", cxx: "clang++", build: "Release", tag: "llvm21-cuda12.0", gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
+          - { name: "clang 21",   cuda: "12.9", cxx: "clang++", build: "Release", tag: "llvm21-cuda12.9", gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
           - { name: "nvc++ 25.7", cuda: "12.9", cxx: "mpic++",  build: "Release", tag: "nvhpc25.7",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
           - { name: "nvc++ 25.7", cuda: "12.9", cxx: "mpic++",  build: "Debug",   tag: "nvhpc25.7",       gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
           - { name: "nvc++ 25.9", cuda: "12.9", cxx: "mpic++",  build: "Release", tag: "nvhpc25.9",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64" }
