@@ -250,22 +250,25 @@ namespace nvexec::_strm {
           Receiver,
           __completions<__copy_cvref_t<Self, Sender>, stream_env<env_of_t<Receiver>>>
         >
-      static auto connect(Self&& self, Receiver rcvr) -> operation_t<Self, Receiver> {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+        -> operation_t<Self, Receiver> {
         return operation_t<Self, Receiver>{
           static_cast<Self&&>(self).sndr_,
           static_cast<Receiver&&>(rcvr),
           static_cast<Self&&>(self).fun_};
       }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
       auto get_env() const noexcept -> stream_sender_attrs<Sender> {
         return {&sndr_};
       }
 
       template <__decays_to<__t> Self, class... Env>
-      static auto get_completion_signatures(Self&&, Env&&...)
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
         -> __completions<__copy_cvref_t<Self, Sender>, stream_env<Env>...> {
         return {};
       }
+      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       Sender sndr_;
       Fun fun_;

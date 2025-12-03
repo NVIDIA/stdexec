@@ -137,7 +137,7 @@ namespace nvexec {
 
         template <__decays_to<__t> Self, receiver Receiver>
           requires receiver_of<Receiver, completions_t<Self, env_of_t<Receiver>>>
-        static auto connect(Self&& self, Receiver rcvr)
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
           -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
           return stream_op_state<__copy_cvref_t<Self, Sender>>(
             static_cast<Self&&>(self).sndr_,
@@ -147,11 +147,13 @@ namespace nvexec {
               return receiver_t<Receiver>(stream_provider, self.fun_, self.params_);
             });
         }
+        STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <__decays_to<__t> Self, class... Env>
-        static auto get_completion_signatures(Self&&, Env&&...) -> completions_t<Self, Env...> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) -> completions_t<Self, Env...> {
           return {};
         }
+      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
         auto get_env() const noexcept -> stream_sender_attrs<Sender> {
           return {&sndr_};

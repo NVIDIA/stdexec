@@ -119,11 +119,12 @@ namespace exec {
 
       template <__decays_to<__sender> _Self, class _Receiver>
         requires receiver_of<_Receiver, __completions_t<env_of_t<_Receiver>>>
-      static constexpr auto connect(_Self&& __self, _Receiver __rcvr)
+      constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
         noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
           -> __operation_t<_Tag, __default_t<env_of_t<_Receiver>>, _Receiver> {
         return {{}, static_cast<_Self&&>(__self).__default_, static_cast<_Receiver&&>(__rcvr)};
       }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <class _Env>
       constexpr auto get_completion_signatures(_Env&&) -> __completions_t<_Env> {
@@ -165,17 +166,20 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class... _Env>
-        static constexpr auto get_completion_signatures(_Self&&, _Env&&...)
+        constexpr STDEXEC_EXPLICIT_THIS_BEGIN(
+          auto get_completion_signatures)(this _Self&&, _Env&&...)
           -> completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...> {
           return {};
         }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_in<__copy_cvref_t<_Self, _Sender>, env_of_t<_Receiver>>
-        static constexpr auto connect(_Self&& __self, _Receiver __rcvr)
+        constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
           -> connect_result_t<__copy_cvref_t<_Self, _Sender>, _Receiver> {
           return stdexec::connect(std::forward<_Self>(__self).__sndr_, std::move(__rcvr));
         }
+        STDEXEC_EXPLICIT_THIS_END(connect)
       };
     };
 

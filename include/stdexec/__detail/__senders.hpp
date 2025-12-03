@@ -64,7 +64,7 @@ namespace stdexec {
 
     template <class _Sender, class... _Env>
     using __static_member_result_t = decltype(STDEXEC_REMOVE_REFERENCE(
-      _Sender)::get_completion_signatures(__declval<_Sender>(), __declval<_Env>()...));
+      _Sender)::static_get_completion_signatures(__declval<_Sender>(), __declval<_Env>()...));
 
     template <class _Sender, class... _Env>
     concept __with_member = __mvalid<__member_result_t, _Sender, _Env...>;
@@ -85,23 +85,24 @@ namespace stdexec {
     template <class _Sender>
     concept __with_member_alias = __mvalid<__member_alias_t, _Sender>;
 
+    /////////////////////////////////////////////////////////////////////////////
+    // get_completion_signatures_t
     struct get_completion_signatures_t {
       template <class _Sender, class... _Env>
+        requires(sizeof...(_Env) <= 1)
       static constexpr auto __get_declfn() noexcept {
         // Compute the type of the transformed sender:
-        static_assert(sizeof...(_Env) <= 1);
-
         using __tfx_fn = __if_c<sizeof...(_Env) == 0, __mconst<_Sender>, __q<__tfx_sender>>;
         using _TfxSender = __minvoke<__tfx_fn, _Sender, _Env...>;
 
         if constexpr (__merror<_TfxSender>) {
           // Computing the type of the transformed sender returned an error type. Propagate it.
-          return __declfn<_TfxSender, true>();
-        } else if constexpr (__with_member_alias<_TfxSender>) {
-          using _Result = __member_alias_t<_TfxSender>;
-          return __declfn<_Result>();
+          return __declfn<_TfxSender>();
         } else if constexpr (__with_static_member<_TfxSender, _Env...>) {
           using _Result = __static_member_result_t<_TfxSender, _Env...>;
+          return __declfn<_Result>();
+        } else if constexpr (__with_member_alias<_TfxSender>) {
+          using _Result = __member_alias_t<_TfxSender>;
           return __declfn<_Result>();
         } else if constexpr (__with_member<_TfxSender, _Env...>) {
           using _Result = __member_result_t<_TfxSender, _Env...>;
@@ -128,9 +129,8 @@ namespace stdexec {
           return __declfn<dependent_completions>();
         } else if constexpr ((__is_debug_env<_Env> || ...)) {
           // This ought to cause a hard error that indicates where the problem is.
-          using _Completions [[maybe_unused]] =
-            decltype(std::remove_reference_t<_TfxSender>::get_completion_signatures(
-              __declval<_TfxSender>(), __declval<_Env>()...));
+          using _Completions [[maybe_unused]] = decltype(STDEXEC_REMOVE_REFERENCE(
+            _TfxSender)::get_completion_signatures(__declval<_TfxSender>(), __declval<_Env>()...));
           return static_cast<__debug::__completion_signatures (*)()>(nullptr);
         } else {
           using _Result = __unrecognized_sender_error<_Sender, _Env...>;
@@ -161,7 +161,7 @@ namespace stdexec {
 
     template <class _Sender, class _Receiver>
     using __static_member_result_t = decltype(STDEXEC_REMOVE_REFERENCE(
-      _Sender)::connect(__declval<_Sender>(), __declval<_Receiver>()));
+      _Sender)::static_connect(__declval<_Sender>(), __declval<_Receiver>()));
 
     template <class _Sender, class _Receiver>
     concept __with_member = __mvalid<__member_result_t, _Sender, _Receiver>;
@@ -179,6 +179,8 @@ namespace stdexec {
       void operator()() const noexcept = delete;
     };
 
+    /////////////////////////////////////////////////////////////////////////////
+    // connect_t
     struct connect_t {
       template <class _Sender, class _Receiver>
       STDEXEC_ATTRIBUTE(always_inline)
@@ -225,9 +227,8 @@ namespace stdexec {
           using _Result = __static_member_result_t<_TfxSender, _Receiver>;
           __check_operation_state<_Result>();
           constexpr bool _Nothrow = _NothrowTfxSender
-                                 && noexcept(
-                                      __declval<_TfxSender>()
-                                        .connect(__declval<_TfxSender>(), __declval<_Receiver>()));
+                                 && noexcept(STDEXEC_REMOVE_REFERENCE(_TfxSender)::static_connect(
+                                   __declval<_TfxSender>(), __declval<_Receiver>()));
           return __declfn<_Result, _Nothrow>();
         } else if constexpr (__with_member<_TfxSender, _Receiver>) {
           using _Result = __member_result_t<_TfxSender, _Receiver>;
@@ -262,7 +263,7 @@ namespace stdexec {
 
         if constexpr (__with_static_member<_TfxSender, _Receiver>) {
           auto&& __tfx_sndr = transform_sender(static_cast<_Sender&&>(__sndr), __env);
-          return STDEXEC_REMOVE_REFERENCE(_TfxSender)::connect(
+          return STDEXEC_REMOVE_REFERENCE(_TfxSender)::static_connect(
             static_cast<_TfxSender&&>(__tfx_sndr), static_cast<_Receiver&&>(__rcvr));
         } else if constexpr (__with_member<_TfxSender, _Receiver>) { // NOLINT(bugprone-branch-clone)
           auto&& __tfx_sndr = transform_sender(static_cast<_Sender&&>(__sndr), __env);

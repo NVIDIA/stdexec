@@ -5,6 +5,7 @@ if(STDEXEC_ENABLE_TASKFLOW)
   CPM_ARGS
     GITHUB_REPOSITORY taskflow/taskflow
     GIT_TAG v3.7.0
+    OPTIONS "TF_BUILD_TESTS OFF"
   )
   file(GLOB_RECURSE taskflow_pool include/execpools/taskflow/*.hpp)
   add_library(taskflow_pool INTERFACE ${taskflowexec_sources})

@@ -140,6 +140,9 @@ namespace exec {
       }
     };
 
+    template <class _Sender, class _Receiver>
+    __repeat_effect_state(_Sender &&, _Receiver &) -> __repeat_effect_state<_Sender, _Receiver>;
+
     STDEXEC_PRAGMA_POP()
 
     template <

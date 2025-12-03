@@ -1096,7 +1096,7 @@ namespace exec {
       };
 
       class __schedule_sender {
-        using __completion_sigs =
+        using __completion_sigs_t =
           stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
 
         __schedule_env __env_;
@@ -1116,11 +1116,12 @@ namespace exec {
         }
 
         [[nodiscard]]
-        auto get_completion_signatures(stdexec::__ignore = {}) const noexcept -> __completion_sigs {
+        auto
+          get_completion_signatures(stdexec::__ignore = {}) const noexcept -> __completion_sigs_t {
           return {};
         }
 
-        template <stdexec::receiver_of<__completion_sigs> _Receiver>
+        template <stdexec::receiver_of<__completion_sigs_t> _Receiver>
         auto connect(_Receiver __receiver)
           const & -> stdexec::__t<__schedule_operation<stdexec::__id<_Receiver>>> {
           return stdexec::__t<__schedule_operation<stdexec::__id<_Receiver>>>(
@@ -1129,7 +1130,7 @@ namespace exec {
       };
 
       class __schedule_after_sender {
-        using __completion_sigs = stdexec::completion_signatures<
+        using __completion_sigs_t = stdexec::completion_signatures<
           stdexec::set_value_t(),
           stdexec::set_error_t(std::exception_ptr),
           stdexec::set_stopped_t()
@@ -1148,13 +1149,13 @@ namespace exec {
           return __env_;
         }
 
-        template <class... _Env>
-        static auto get_completion_signatures(const __schedule_after_sender&, _Env&&...) noexcept
-          -> __completion_sigs {
+        [[nodiscard]]
+        auto
+          get_completion_signatures(stdexec::__ignore = {}) const noexcept -> __completion_sigs_t {
           return {};
         }
 
-        template <stdexec::receiver_of<__completion_sigs> _Receiver>
+        template <stdexec::receiver_of<__completion_sigs_t> _Receiver>
         auto connect(_Receiver __receiver)
           const & -> stdexec::__t<__schedule_after_operation<stdexec::__id<_Receiver>>> {
           return stdexec::__t<__schedule_after_operation<stdexec::__id<_Receiver>>>(

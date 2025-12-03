@@ -46,9 +46,8 @@ namespace exec {
         using completion_signatures = stdexec::completion_signatures<stdexec::set_value_t()>;
         using item_types = exec::item_types<>;
 
-        template <__decays_to<__t> _Self, receiver_of<completion_signatures> _Rcvr>
-        STDEXEC_MEMFN_DECL(auto subscribe)(this _Self&&, _Rcvr __rcvr)
-          noexcept(__nothrow_move_constructible<_Rcvr>) {
+        template <receiver_of<completion_signatures> _Rcvr>
+        auto subscribe(_Rcvr __rcvr) const noexcept {
           return stdexec::__t<__operation<stdexec::__id<_Rcvr>>>{static_cast<_Rcvr&&>(__rcvr)};
         }
       };

@@ -102,9 +102,9 @@ namespace exec {
         const Variant* _results_;
       };
 
-      template <class _Self, class... _Env>
+      template <class... _Env>
       STDEXEC_ATTRIBUTE(host, device)
-      static auto get_completion_signatures(_Self&&, _Env&&...) noexcept {
+      auto get_completion_signatures(_Env&&...) const noexcept {
         return stdexec::__mapply<stdexec::__qq<_cache_sndr_completions_t>, Variant>{};
       }
 
@@ -255,7 +255,7 @@ namespace exec {
 
     template <class Self, class... Env>
     STDEXEC_ATTRIBUTE(host, device)
-    static auto get_completion_signatures(Self&&, Env&&...) noexcept {
+    STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) noexcept {
       using namespace stdexec;
       using _domain_t = __detail::__try_completion_domain_of_t<set_value_t, Sndr, Env...>;
       using _child_t = __copy_cvref_t<Self, Sndr>;
@@ -271,9 +271,10 @@ namespace exec {
         >();
       } else {
         using _sndr_t = _when_all_sndr_t<_child_completions_t, _closures_t, _domain_t>;
-        return completion_signatures_of_t<_sndr_t, __fwd_env_t<Env>...>{};
+        return __completion_signatures_of_t<_sndr_t, __fwd_env_t<Env>...>{};
       }
     }
+    STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
     template <class Rcvr>
     STDEXEC_ATTRIBUTE(host, device)

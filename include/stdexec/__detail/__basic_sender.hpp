@@ -21,6 +21,7 @@
 #include "__diagnostics.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
+#include "__receivers.hpp"
 #include "__senders_core.hpp"
 #include "__sender_introspection.hpp"
 #include "__tuple.hpp"
@@ -67,6 +68,11 @@ namespace stdexec {
   template <class _Tag>
   struct __sexpr_impl;
 
+  namespace __detail {
+    template <class _Sexpr, class _Receiver>
+    struct __connect_fn;
+  } // namespace __detail
+
   template <class _Sexpr, class _Receiver>
   struct __op_state;
 
@@ -74,18 +80,18 @@ namespace stdexec {
   struct __rcvr;
 
   namespace __detail {
-    template <class _Sexpr, class _Receiver>
-    struct __connect_fn;
+    template <class _Ty>
+    using __decay_if_t = decltype(__decay_t<_Ty>(__declfn<_Ty>()()));
 
     template <class _Tag, class _Sexpr, class _Receiver>
     using __state_type_t =
-      __decay_t<__result_of<__sexpr_impl<_Tag>::get_state, _Sexpr, _Receiver&>>;
+      __decay_if_t<__result_of<__sexpr_impl<_Tag>::get_state, _Sexpr, _Receiver&>>;
 
-    template <class _Self, class _Tag, class _Index, class _Sexpr, class _Receiver>
+    template <class _Tag, class _Index, class _Sexpr, class _Receiver>
     using __env_type_t = __result_of<
-      __sexpr_impl<__meval<__msecond, _Self, _Tag>>::get_env,
+      __sexpr_impl<__meval<__msecond, _Index, _Tag>>::get_env,
       _Index,
-      __state_type_t<__meval<__msecond, _Self, _Tag>, _Sexpr, _Receiver>&,
+      __state_type_t<__meval<__msecond, _Index, _Tag>, _Sexpr, _Receiver>&,
       _Receiver&
     >;
 
@@ -117,8 +123,9 @@ namespace stdexec {
 
       static constexpr auto connect =
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-          __nothrow_constructible_from<__op_state<_Sender, _Receiver>, _Sender, _Receiver>)
-        -> __op_state<_Sender, _Receiver>
+          noexcept(__op_state<_Sender, _Receiver>{
+            static_cast<_Sender&&>(__sndr),
+            static_cast<_Receiver&&>(__rcvr)})) -> __op_state<_Sender, _Receiver>
         requires __connectable<_Sender, _Receiver>
       {
         return __op_state<_Sender, _Receiver>{
@@ -282,12 +289,15 @@ namespace stdexec {
       template <std::size_t _Idx>
       using __receiver_t = __t<__rcvr<__id<_Receiver>, _Sexpr, _Idx>>;
 
+      template <std::size_t _Idx>
+      using __env_t = __detail::__env_type_t<tag_of_t<_Sexpr>, __msize_t<_Idx>, _Sexpr, _Receiver>;
+
       __op_state<_Sexpr, _Receiver>* __op_;
 
       struct __impl {
         __op_state<_Sexpr, _Receiver>* __op_;
 
-        template <std::size_t... _Is, class... _Child>
+        template <std::size_t... _Is, sender_to<__receiver_archetype<__env_t<_Is>>>... _Child>
         auto operator()(__indices<_Is...>, _Child&&... __child) const
           noexcept((__nothrow_connectable<_Child, __receiver_t<_Is>> && ...))
             -> __tuple_for<connect_result_t<_Child, __receiver_t<_Is>>...> {
@@ -356,7 +366,7 @@ namespace stdexec {
       using receiver_concept = receiver_t;
       using __id = __rcvr;
 
-      using __index = __msize_t<_Idx>;
+      using __index_t = __msize_t<_Idx>;
       using __parent_op_t = __op_state<_Sexpr, _Receiver>;
       using __tag_t = tag_of_t<_Sexpr>;
 
@@ -367,24 +377,23 @@ namespace stdexec {
       template <class... _Args>
       STDEXEC_ATTRIBUTE(always_inline)
       void set_value(_Args&&... __args) noexcept {
-        __op_->__complete(__index(), stdexec::set_value, static_cast<_Args&&>(__args)...);
+        __op_->__complete(__index_t(), stdexec::set_value, static_cast<_Args&&>(__args)...);
       }
 
       template <class _Error>
       STDEXEC_ATTRIBUTE(always_inline)
       void set_error(_Error&& __err) noexcept {
-        __op_->__complete(__index(), stdexec::set_error, static_cast<_Error&&>(__err));
+        __op_->__complete(__index_t(), stdexec::set_error, static_cast<_Error&&>(__err));
       }
 
       STDEXEC_ATTRIBUTE(always_inline) void set_stopped() noexcept {
-        __op_->__complete(__index(), stdexec::set_stopped);
+        __op_->__complete(__index_t(), stdexec::set_stopped);
       }
 
-      template <__same_as<__t> _Self = __t>
+      template <class _Index = __msize_t<_Idx>>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline)
-      auto get_env() const noexcept
-        -> __detail::__env_type_t<_Self, __tag_t, __index, _Sexpr, _Receiver> {
-        return __op_->__get_env(__index());
+      auto get_env() const noexcept -> __detail::__env_type_t<__tag_t, _Index, _Sexpr, _Receiver> {
+        return __op_->__get_env(__index_t());
       }
     };
   };
@@ -400,7 +409,7 @@ namespace stdexec {
 
     __inner_ops_t __inner_ops_;
 
-    __op_state(_Sexpr&& __sexpr, _Receiver __rcvr) noexcept(
+    explicit __op_state(_Sexpr&& __sexpr, _Receiver __rcvr) noexcept(
       __nothrow_constructible_from<__detail::__op_base<_Sexpr, _Receiver>, _Sexpr, _Receiver>
       && __noexcept_of<__sexpr_apply, _Sexpr, __detail::__connect_fn<_Sexpr, _Receiver>>)
       : __op_state::__op_base{static_cast<_Sexpr&&>(__sexpr), static_cast<_Receiver&&>(__rcvr)}
@@ -436,7 +445,7 @@ namespace stdexec {
     template <class _Index>
     STDEXEC_ATTRIBUTE(always_inline)
     auto __get_env(_Index) const noexcept
-      -> __detail::__env_type_t<_Index, __tag_t, _Index, _Sexpr, _Receiver> {
+      -> __detail::__env_type_t<__tag_t, _Index, _Sexpr, _Receiver> {
       const auto& __rcvr = this->__rcvr();
       return __sexpr_impl<__tag_t>::get_env(_Index(), this->__state(), __rcvr);
     }
@@ -500,32 +509,34 @@ namespace stdexec {
         return __sexpr_apply(*this, __detail::__drop_front(__impl<_Self>::get_attrs));
       }
 
-      template <__decays_to<__sexpr> _Self, class... _Env>
+      template <__decays_to_derived_from<__sexpr> _Self, class... _Env>
       STDEXEC_ATTRIBUTE(always_inline)
-      static auto get_completion_signatures(_Self&&, _Env&&...) noexcept -> __msecond<
-        __if_c<__decays_to<_Self, __sexpr>>,
-        __result_of<__impl<_Self>::get_completion_signatures, _Self, _Env...>
-      > {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...) noexcept
+        -> __msecond<
+          __if_c<__decays_to_derived_from<_Self, __sexpr>>,
+          __result_of<__impl<_Self>::get_completion_signatures, _Self, _Env...>
+        > {
         return {};
       }
+      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
-      // BUGBUG fix receiver constraint here:
-      template <__decays_to<__sexpr> _Self, /*receiver*/ class _Receiver>
+      template <__decays_to_derived_from<__sexpr> _Self, receiver _Receiver>
       STDEXEC_ATTRIBUTE(always_inline)
-      static auto connect(_Self&& __self, _Receiver&& __rcvr)
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver&& __rcvr)
         noexcept(__noexcept_of<__impl<_Self>::connect, _Self, _Receiver>) -> __msecond<
-          __if_c<__decays_to<_Self, __sexpr>>,
+          __if_c<__decays_to_derived_from<_Self, __sexpr>>,
           __result_of<__impl<_Self>::connect, _Self, _Receiver>
         > {
         return __impl<_Self>::connect(
           static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
       }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
-      template <__decays_to<__sexpr> _Self, /*receiver*/ class _Receiver>
+      template <__decays_to_derived_from<__sexpr> _Self, receiver _Receiver>
       STDEXEC_ATTRIBUTE(always_inline)
       static auto submit(_Self&& __self, _Receiver&& __rcvr)
         noexcept(__noexcept_of<__impl<_Self>::submit, _Self, _Receiver>) -> __msecond<
-          __if_c<__decays_to<_Self, __sexpr>>,
+          __if_c<__decays_to_derived_from<_Self, __sexpr>>,
           __result_of<__impl<_Self>::submit, _Self, _Receiver>
         > {
         return __impl<_Self>::submit(
