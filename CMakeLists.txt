@@ -16,12 +16,20 @@ if(POLICY CMP0141)
   set(CMAKE_POLICY_DEFAULT_CMP0141 NEW)
 endif()
 
+if(POLICY CMP0167)
+  # Don't try to use old FindBoost.cmake
+  # https://cmake.org/cmake/help/latest/policy/CMP0167.html
+  cmake_policy(SET CMP0167 NEW)
+  set(CMAKE_POLICY_DEFAULT_CMP0167 NEW)
+endif()
+
 ##############################################################################
 # - Download and initialize RAPIDS CMake helpers -----------------------------
 
 # Fetch rapids-cmake
+set(rapids-cmake-version 26.02)
 if(NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/RAPIDS.cmake)
-  file(DOWNLOAD https://raw.githubusercontent.com/rapidsai/rapids-cmake/branch-24.02/RAPIDS.cmake
+  file(DOWNLOAD https://raw.githubusercontent.com/rapidsai/rapids-cmake/main/RAPIDS.cmake
        ${CMAKE_CURRENT_BINARY_DIR}/RAPIDS.cmake)
 endif()
 # Initialize rapids-cmake
