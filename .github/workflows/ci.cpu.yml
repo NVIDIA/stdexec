@@ -29,14 +29,6 @@ jobs:
     container:
       options: -u root
       image: rapidsai/devcontainers:26.02-cpp-${{ matrix.tag }}
-      env:
-        SCCACHE_BUCKET: "rapids-sccache-devs"
-        SCCACHE_REGION: "us-east-2"
-        SCCACHE_S3_KEY_PREFIX: "nvidia-stdexec-dev"
-        SCCACHE_SERVER_PORT: "4225"
-        SCCACHE_SERVER_LOG: "sccache=debug"
-        SCCACHE_S3_USE_PREPROCESSOR_CACHE_MODE: "true"
-        SCCACHE_S3_PREPROCESSOR_CACHE_KEY_PREFIX: "nvidia-stdexec-dev/preprocessor"
     permissions:
       id-token: write # This is required for configure-aws-credentials
       contents: read  # This is required for actions/checkout
@@ -65,10 +57,17 @@ jobs:
         env:
           ASAN_OPTIONS: alloc_dealloc_mismatch=0
           NVCC_APPEND_FLAGS: "-t=100"
-          SCCACHE_DIST_URL: "https://amd64.linux.sccache.rapids.nvidia.com"
+          SCCACHE_BUCKET: "rapids-sccache-devs"
           SCCACHE_DIST_REQUEST_TIMEOUT: "7140"
           SCCACHE_DIST_REWRITE_INCLUDES_ONLY: ${{ contains(matrix.tag, 'llvm') && 'true' || 'false' }}
+          SCCACHE_DIST_URL: "https://amd64.linux.sccache.rapids.nvidia.com"
           SCCACHE_IDLE_TIMEOUT: "0"
+          SCCACHE_REGION: "us-east-2"
+          SCCACHE_S3_KEY_PREFIX: "nvidia-stdexec-dev"
+          SCCACHE_S3_PREPROCESSOR_CACHE_KEY_PREFIX: "nvidia-stdexec-dev/preprocessor"
+          SCCACHE_S3_USE_PREPROCESSOR_CACHE_MODE: "true"
+          SCCACHE_SERVER_LOG: "sccache=debug"
+          SCCACHE_SERVER_PORT: "4225"
         run: |
           set -ex;
 
