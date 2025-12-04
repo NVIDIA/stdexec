@@ -21,6 +21,10 @@
 #include "../../stdexec/__detail/__basic_sender.hpp"
 
 #include "../sequence_senders.hpp"
+#include "../../stdexec/__detail/__completion_signatures.hpp"
+#include "../../stdexec/__detail/__concepts.hpp"
+#include "../../stdexec/__detail/__debug.hpp"
+#include <type_traits>
 
 namespace exec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -63,7 +67,27 @@ namespace exec {
       return _Self::__tag().get_env(*this);
     }
 
+    // make sure that get_completion_signatures does not SFINAE out
+    // when the trailing return-type is invalid but keep the
+    // trailing return-type when it is valid
+    struct get_completion_signatures_sfinae {
+      template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
+      auto operator()(_Self&& __self, _Env&&... __env) const
+        -> decltype(__self.__tag().get_completion_signatures(
+          static_cast<_Self&&>(__self),
+          static_cast<_Env&&>(__env)...)) {
+        return {};
+      }
+    };
     template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
+      requires(stdexec::__is_debug_env<_Env> || ... || false)
+           || (!stdexec::__callable<get_completion_signatures_sfinae, _Self, _Env...>)
+    static auto get_completion_signatures(_Self&& __self, _Env&&... __env) {
+      return __self.__tag()
+        .get_completion_signatures(static_cast<_Self&&>(__self), static_cast<_Env&&>(__env)...);
+    }
+    template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
+      requires(!stdexec::__is_debug_env<_Env> && ... && true)
     static auto get_completion_signatures(_Self&& __self, _Env&&... __env)
       -> decltype(__self.__tag().get_completion_signatures(
         static_cast<_Self&&>(__self),
@@ -71,14 +95,54 @@ namespace exec {
       return {};
     }
 
+    // make sure that get_item_types does not SFINAE out
+    // when the trailing return-type is invalid but keep the
+    // trailing return-type when it is valid
+    struct get_item_types_sfinae {
+      template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
+      auto
+        operator()(_Self&& __self, _Env&&... __env) const -> decltype(__self.__tag().get_item_types(
+          static_cast<_Self&&>(__self),
+          static_cast<_Env&&>(__env)...)) {
+        return {};
+      }
+    };
     template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
+      requires(stdexec::__is_debug_env<_Env> || ... || false)
+           || (!stdexec::__callable<get_item_types_sfinae, _Self, _Env...>)
+    static auto get_item_types(_Self&& __self, _Env&&... __env) {
+      return __self.__tag()
+        .get_item_types(static_cast<_Self&&>(__self), static_cast<_Env&&>(__env)...);
+    }
+    template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
+      requires(!stdexec::__is_debug_env<_Env> && ... && true)
     static auto get_item_types(_Self&& __self, _Env&&... __env)
       -> decltype(__self.__tag()
                     .get_item_types(static_cast<_Self&&>(__self), static_cast<_Env&&>(__env)...)) {
       return {};
     }
 
+    // make sure that subscribe does not SFINAE out
+    // when the trailing return-type is invalid but keep the
+    // trailing return-type when it is valid
+    struct subscribe_sfinae {
+      template <stdexec::__decays_to<__seqexpr> _Self, stdexec::receiver _Receiver>
+      auto operator()(_Self&& __self, _Receiver&& __rcvr) const noexcept(noexcept(
+        __self.__tag().subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr))))
+        -> decltype(__self.__tag()
+                      .subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr))) {
+        return __tag_t::subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
+      }
+    };
     template <stdexec::__decays_to<__seqexpr> _Self, stdexec::receiver _Receiver>
+      requires stdexec::__is_debug_env<stdexec::env_of_t<_Receiver>>
+            || (!stdexec::__callable<subscribe_sfinae, _Self, _Receiver>)
+    static auto subscribe(_Self&& __self, _Receiver&& __rcvr) noexcept(noexcept(
+      __self.__tag().subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr)))) {
+      return __tag_t::subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
+    }
+    template <stdexec::__decays_to<__seqexpr> _Self, stdexec::receiver _Receiver>
+      requires(!stdexec::__is_debug_env<stdexec::env_of_t<_Receiver>>)
     static auto subscribe(_Self&& __self, _Receiver&& __rcvr) noexcept(noexcept(
       __self.__tag().subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr))))
       -> decltype(__self.__tag()
