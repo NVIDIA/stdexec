@@ -43,14 +43,16 @@ namespace stdexec {
   // template <class _Descriptor>
   // inline constexpr auto __descriptor_fn_v = _Descriptor{};
 
+#if STDEXEC_NVHPC()
   template <
     class _Descriptor,
-    auto _DescriptorFn =
-      [] {
-        return _Descriptor();
-      }
+    auto _DescriptorFn = ([]<class _Desc = _Descriptor>(_Desc __desc = {}) { return __desc; })
   >
   inline constexpr auto __descriptor_fn_v = _DescriptorFn;
+#else
+  template <class _Descriptor, auto _DescriptorFn = ([] { return _Descriptor(); })>
+  inline constexpr auto __descriptor_fn_v = _DescriptorFn;
+#endif
 
   template <class _Tag, class _Data, class... _Child>
   inline constexpr auto __descriptor_fn() {
@@ -80,8 +82,13 @@ namespace stdexec {
   struct __rcvr;
 
   namespace __detail {
-    template <class _Ty>
-    using __decay_if_t = decltype(__decay_t<_Ty>(__declfn<_Ty>()()));
+    // A decay_copyable trait that uses C++17 guaranteed copy elision, so
+    // that __decay_copyable_if<immovable_type> is satisfied.
+    template <class _Ty, class _Uy = __decay_t<_Ty>>
+    concept __decay_copyable_if = requires(__declfn_t<_Ty> __val) { _Uy(__val()); };
+
+    template <__decay_copyable_if _Ty>
+    using __decay_if_t = __decay_t<_Ty>;
 
     template <class _Tag, class _Sexpr, class _Receiver>
     using __state_type_t =
@@ -297,7 +304,8 @@ namespace stdexec {
       struct __impl {
         __op_state<_Sexpr, _Receiver>* __op_;
 
-        template <std::size_t... _Is, sender_to<__receiver_archetype<__env_t<_Is>>>... _Child>
+        template <std::size_t... _Is, class... _Child>
+          requires(sender_to<_Child, __receiver_archetype<__env_t<_Is>>> && ...)
         auto operator()(__indices<_Is...>, _Child&&... __child) const
           noexcept((__nothrow_connectable<_Child, __receiver_t<_Is>> && ...))
             -> __tuple_for<connect_result_t<_Child, __receiver_t<_Is>>...> {
