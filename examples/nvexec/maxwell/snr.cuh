@@ -279,11 +279,10 @@ namespace nvexec::_strm {
           return;
         }
 
-        auto sch = ex::get_scheduler(ex::get_env(op_state_.rcvr_));
         inner_op_state_t& inner_op_state = op_state_.inner_op_state_.emplace(
           ex::__emplace_from{[&]() noexcept {
             return ex::connect(
-              ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
+              op_state_.closure_(ex::schedule(op_state_.scheduler_)), receiver_2_t<OpT>{op_state_});
           }});
 
         ex::start(inner_op_state);
@@ -318,11 +317,11 @@ namespace nvexec::_strm {
         using inner_op_state_t = OpT::inner_op_state_t;
 
         if (op_state_.n_) {
-          auto sch = ex::get_scheduler(ex::get_env(op_state_.rcvr_));
           inner_op_state_t& inner_op_state = op_state_.inner_op_state_.emplace(
             ex::__emplace_from{[&]() noexcept {
               return ex::connect(
-                ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
+                op_state_.closure_(ex::schedule(op_state_.scheduler_)),
+                receiver_2_t<OpT>{op_state_});
             }});
 
           ex::start(inner_op_state);
@@ -353,14 +352,18 @@ namespace nvexec::_strm {
     struct operation_state_t : operation_state_base_t<ReceiverId> {
       using PredSender = ex::__t<PredecessorSenderId>;
       using Receiver = ex::__t<ReceiverId>;
-      using Scheduler = std::invoke_result_t<ex::get_scheduler_t, ex::env_of_t<Receiver>>;
+      using Scheduler = std::invoke_result_t<
+        ex::get_completion_scheduler_t<ex::set_value_t>,
+        ex::env_of_t<PredSender>,
+        ex::env_of_t<Receiver>
+      >;
       using InnerSender = std::invoke_result_t<Closure, ex::schedule_result_t<Scheduler>>;
 
       using predecessor_op_state_t =
         ex::connect_result_t<PredSender, receiver_1_t<operation_state_t>>;
       using inner_op_state_t = ex::connect_result_t<InnerSender, receiver_2_t<operation_state_t>>;
 
-      PredSender pred_sender_;
+      Scheduler scheduler_;
       Closure closure_;
       std::optional<predecessor_op_state_t> pred_op_state_;
       std::optional<inner_op_state_t> inner_op_state_;
@@ -385,11 +388,14 @@ namespace nvexec::_strm {
         : operation_state_base_t<ReceiverId>(
             static_cast<Receiver&&>(rcvr),
             ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(pred_sender)).context_state_)
-        , pred_sender_{static_cast<PredSender&&>(pred_sender)}
+        , scheduler_(
+            ex::get_completion_scheduler<ex::set_value_t>(
+              ex::get_env(pred_sender),
+              ex::get_env(rcvr)))
         , closure_(closure)
         , n_(n) {
         pred_op_state_.emplace(ex::__emplace_from{[&]() noexcept {
-          return ex::connect(static_cast<PredSender&&>(pred_sender_), receiver_1_t{*this});
+          return ex::connect(static_cast<PredSender&&>(pred_sender), receiver_1_t{*this});
         }});
       }
     };
@@ -413,7 +419,10 @@ namespace nvexec::_strm {
       static auto connect(Self&& self, Receiver r)
         -> nvexec::_strm::repeat_n::operation_state_t<SenderId, Closure, ex::__id<Receiver>> {
         return nvexec::_strm::repeat_n::operation_state_t<SenderId, Closure, ex::__id<Receiver>>(
-          static_cast<Sender&&>(self.sender_), self.closure_, static_cast<Receiver&&>(r), self.n_);
+          static_cast<Self&&>(self).sender_,
+          static_cast<Self&&>(self).closure_,
+          static_cast<Receiver&&>(r),
+          self.n_);
       }
 
       [[nodiscard]]
