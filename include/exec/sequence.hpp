@@ -189,16 +189,20 @@ namespace exec {
       template <class Self, class... Env>
         requires(stdexec::__decay_copyable<stdexec::__copy_cvref_t<Self, Sndrs>> && ...)
       STDEXEC_ATTRIBUTE(host, device)
-      static auto get_completion_signatures(Self&&, Env&&...) -> _completions_t<Env...> {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
+        -> _completions_t<Env...> {
         return {};
       }
+      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       template <class Self, class Rcvr>
+        requires(stdexec::__decay_copyable<stdexec::__copy_cvref_t<Self, Sndrs>> && ...)
       STDEXEC_ATTRIBUTE(host, device)
-      static auto connect(Self&& self, Rcvr rcvr) {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Rcvr rcvr) {
         return _opstate<Rcvr, Sndrs...>{
           static_cast<Rcvr&&>(rcvr), static_cast<Self&&>(self)._sndrs};
       }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
       STDEXEC_ATTRIBUTE(no_unique_address, maybe_unused) sequence_t _tag;
       STDEXEC_ATTRIBUTE(no_unique_address, maybe_unused) stdexec::__ignore _ignore;

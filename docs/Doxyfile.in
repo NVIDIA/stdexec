@@ -2371,7 +2371,8 @@ PREDEFINED             =  __cplusplus=202302L \
                           "STDEXEC_SYSTEM_CONTEXT_INLINE=inline" \
                           "STDEXEC_ATTRIBUTE(X)= " \
                           "STDEXEC_AUTO_RETURN(...)=->decltype(auto){ return __VA_ARGS__; }" \
-                          "STDEXEC_MEMFN_DECL(...)=__VA_ARGS__" \
+                          "STDEXEC_EXPLICIT_THIS_BEGIN(...)=__VA_ARGS__" \
+                          "STDEXEC_EXPLICIT_THIS_END(...)= " \
                           "STDEXEC_CLANG()=1" \
                           "STDEXEC_MSVC()=0" \
                           "STDEXEC_GCC()=0" \

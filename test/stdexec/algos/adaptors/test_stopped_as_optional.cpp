@@ -65,7 +65,7 @@ namespace {
     ex::sender auto in_snd = fallible_just{13} | ex::let_error([](std::exception_ptr) {
                                return ex::just(std::string{"err"});
                              });
-    check_val_types<ex::__mset<pack<int>, pack<std::string>>>(in_snd);
+    check_val_types<ex::__mset<pack<int>, pack<std::string>>>(std::move(in_snd));
     auto snd = std::move(in_snd) | ex::stopped_as_optional();
     static_assert(!ex::sender_to<decltype(snd), expect_error_receiver<>>);
   }

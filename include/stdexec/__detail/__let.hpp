@@ -333,29 +333,37 @@ namespace stdexec {
         };
 
       static constexpr auto get_completion_signatures =
-        []<class _Self, class _Env>(_Self&&, _Env&&...) noexcept
-        -> __completions_t<__let_t<_SetTag>, __data_of<_Self>, __child_of<_Self>, _Env> {
-        static_assert(sender_expr_for<_Self, __let_t<_SetTag>>);
-        return {};
-      };
+        []<class _Self, class _Env>(_Self&&, _Env&&...) noexcept {
+          static_assert(sender_expr_for<_Self, __let_t<_SetTag>>);
+          if constexpr (__decay_copyable<_Self>) {
+            using __result_t =
+              __completions_t<__let_t<_SetTag>, __data_of<_Self>, __child_of<_Self>, _Env>;
+            return __result_t{};
+          } else {
+            return __mexception<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_Self>>{};
+          }
+        };
 
       static constexpr auto get_state =
-        []<class _Sender, class _Receiver>(_Sender&& __sndr, const _Receiver& __rcvr) {
-          static_assert(sender_expr_for<_Sender, __let_t<_SetTag>>);
-          using _Fun = __data_of<_Sender>;
-          using _Child = __child_of<_Sender>;
-          using _Env2 = __env2_t<_SetTag, env_of_t<const _Child&>, env_of_t<const _Receiver&>>;
-          using __mk_let_state = __mbind_front_q<__let_state, _Receiver, _Fun, _SetTag, _Env2>;
+        []<class _Receiver, __decay_copyable _Sender>(_Sender&& __sndr, const _Receiver& __rcvr)
+        requires sender_in<__child_of<_Sender>, env_of_t<_Receiver>>
+      {
+        static_assert(sender_expr_for<_Sender, __let_t<_SetTag>>);
+        using _Fun = __decay_t<__data_of<_Sender>>;
+        using _Child = __child_of<_Sender>;
+        using _Env2 = __env2_t<_SetTag, env_of_t<const _Child&>, env_of_t<const _Receiver&>>;
+        using __mk_let_state = __mbind_front_q<__let_state, _Receiver, _Fun, _SetTag, _Env2>;
 
-          using __let_state_t = __gather_completions_of<
-            _SetTag,
-            _Child,
-            env_of_t<_Receiver>,
-            __q<__decayed_tuple>,
-            __mk_let_state
-          >;
+        using __let_state_t = __gather_completions_of<
+          _SetTag,
+          _Child,
+          env_of_t<_Receiver>,
+          __q<__decayed_tuple>,
+          __mk_let_state
+        >;
 
-          return __sndr.apply(
+        return __sndr
+          .apply(
             static_cast<_Sender&&>(__sndr),
             [&]<class _Fn, class _Child>(__ignore, _Fn&& __fn, _Child&& __child) {
               // TODO(ericniebler): this needs a fallback
@@ -363,7 +371,7 @@ namespace stdexec {
                 __let::__mk_env2<_SetTag>(stdexec::get_env(__child), stdexec::get_env(__rcvr));
               return __let_state_t{static_cast<_Fn&&>(__fn), static_cast<_Env2&&>(__env2)};
             });
-        };
+      };
 
       //! Helper function to actually invoke the function to produce `let_*`'s sender,
       //! connect it to the downstream receiver, and start it. This is the heart of

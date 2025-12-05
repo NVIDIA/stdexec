@@ -89,28 +89,28 @@ namespace {
 
   //! Check that the value_types of a sender matches the expected type
   template <class ExpectedValType, class Env = ex::env<>, class S>
-  inline void check_val_types(S) {
+  inline void check_val_types(S&&) {
     using actual_t = ex::value_types_of_t<S, Env, pack, ex::__mset>;
     static_assert(ex::__mset_eq<actual_t, ExpectedValType>);
   }
 
   //! Check that the env of a sender matches the expected type
   template <class ExpectedEnvType, class S>
-  inline void check_env_type(S snd) {
+  inline void check_env_type(S&& snd) {
     using actual_t = decltype(ex::get_env(snd));
     static_assert(ex::same_as<actual_t, ExpectedEnvType>);
   }
 
   //! Check that the error_types of a sender matches the expected type
   template <class ExpectedValType, class Env = ex::env<>, class S>
-  inline void check_err_types(S) {
+  inline void check_err_types(S&&) {
     using actual_t = ex::error_types_of_t<S, Env, ex::__mset>;
     static_assert(ex::__mset_eq<actual_t, ExpectedValType>);
   }
 
   //! Check that the sends_stopped of a sender matches the expected value
   template <bool Expected, class Env = ex::env<>, class S>
-  inline void check_sends_stopped(S) {
+  inline void check_sends_stopped(S&&) {
     constexpr bool actual = ex::sends_stopped<S, Env>;
     static_assert(actual == Expected);
   }

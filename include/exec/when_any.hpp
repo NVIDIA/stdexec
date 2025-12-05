@@ -47,11 +47,14 @@ namespace exec {
     template <class... _Env>
     struct __completions_fn {
       template <class... _CvrefSenders>
-      using __all_value_args_nothrow_decay_copyable = __mand_t<__value_types_t<
-        __completion_signatures_of_t<_CvrefSenders, __env_t<_Env>...>,
-        __qq<__nothrow_decay_copyable_and_move_constructible_t>,
-        __qq<__mand_t>
-      >...>;
+      using __all_value_args_nothrow_decay_copyable = __meval<
+        __mand_t,
+        __value_types_t<
+          __completion_signatures_of_t<_CvrefSenders, __env_t<_Env>...>,
+          __qq<__nothrow_decay_copyable_and_move_constructible_t>,
+          __qq<__mand_t>
+        >...
+      >;
 
       template <class... _CvrefSenders>
       using __f = __mtry_q<__concat_completion_signatures>::__f<
@@ -251,22 +254,36 @@ namespace exec {
           : __senders_{static_cast<_Senders&&>(__senders)...} {
         }
 
-        template <__decays_to<__t> _Self, receiver _Receiver>
-        static auto
-          connect(_Self&& __self, _Receiver __rcvr) noexcept(__nothrow_constructible_from<
-                                                             __op_t<_Self, _Receiver>,
-                                                             __copy_cvref_t<_Self, __senders_tuple>,
-                                                             _Receiver
+        template <__decay_copyable _Self, receiver _Receiver>
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
+          noexcept(__nothrow_constructible_from<
+                   __op_t<_Self, _Receiver>,
+                   __copy_cvref_t<_Self, __senders_tuple>,
+                   _Receiver
           >) -> __op_t<_Self, _Receiver> {
           return __op_t<_Self, _Receiver>{
             static_cast<_Self&&>(__self).__senders_, static_cast<_Receiver&&>(__rcvr)};
         }
+        STDEXEC_EXPLICIT_THIS_END(connect)
 
-        template <__decays_to<__t> _Self, class... _Env>
-        static auto get_completion_signatures(_Self&&, _Env&&...) noexcept
-          -> __completions_t<_Self, _Env...> {
-          return {};
+        template <__decay_copyable _Self, class... _Env>
+        STDEXEC_EXPLICIT_THIS_BEGIN(
+          auto get_completion_signatures)(this _Self&&, const _Env&...) noexcept {
+          return __completions_t<_Self, _Env...>{};
         }
+        template <class _Self, class... _Env>
+        STDEXEC_EXPLICIT_THIS_BEGIN(
+          auto get_completion_signatures)(this _Self&&, const _Env&...) noexcept {
+          static_assert(__decay_copyable<_Self>);
+          static_assert(
+            (__decay_copyable<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>> && ...),
+            "All senders passed to when_any must be copyable.");
+          return __mexception<
+            _SENDER_TYPE_IS_NOT_COPYABLE_,
+            _WITH_SENDERS_<stdexec::__t<_SenderIds>>...
+          >{};
+        }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
        private:
         __senders_tuple __senders_;

@@ -18,6 +18,11 @@
 #include "__config.hpp"
 #include "__execution_fwd.hpp"
 
+#if STDEXEC_MSVC()
+#  pragma deprecated(STDEXEC_CUSTOM)
+#  pragma deprecated(STDEXEC_MEMFN_DECL)
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////
 /// To hook a customization point like stdexec::get_env, first bring the names
 /// in stdexec::tags into scope:
@@ -33,7 +38,7 @@
 ///   return ...;
 /// }
 /// @endcode
-#define STDEXEC_MEMFN_DECL(...)                                                                    \
+#define STDEXEC_MEMFN_DECL_IMPL(...)                                                               \
   friend STDEXEC_EVAL(                                                                             \
     STDEXEC_MEMFN_DECL_TAG_INVOKE, STDEXEC_MEMFN_DECL_WHICH(__VA_ARGS__), __VA_ARGS__)
 
@@ -78,20 +83,19 @@
 
 #define STDEXEC_MEMFN_FRIEND(_TAG)     using STDEXEC_CAT(_TAG, _t) = STDEXEC_CAT(stdexec::_TAG, _t)
 
-#if STDEXEC_MSVC()
-#  pragma deprecated(STDEXEC_CUSTOM)
-#endif
-
 #if STDEXEC_GCC() || (STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 14'00)
 #  define STDEXEC_CUSTOM                                                                           \
-    _Pragma("GCC warning \"STDEXEC_CUSTOM is deprecated; use STDEXEC_MEMFN_DECL instead.\"")       \
-      STDEXEC_MEMFN_DECL
+    _Pragma("GCC warning \"STDEXEC_CUSTOM is deprecated.\"") STDEXEC_MEMFN_DECL_IMPL
+#  define STDEXEC_MEMFN_DECL                                                                       \
+    _Pragma("GCC warning \"STDEXEC_MEMFN_DECL is deprecated.\"") STDEXEC_MEMFN_DECL_IMPL
 #else
-#  define STDEXEC_CUSTOM STDEXEC_MEMFN_DECL
+#  define STDEXEC_CUSTOM     STDEXEC_MEMFN_DECL_IMPL
+#  define STDEXEC_MEMFN_DECL STDEXEC_MEMFN_DECL_IMPL
 #endif
 
 #if STDEXEC_CLANG() && STDEXEC_CLANG_VERSION >= 14'00
-#  pragma clang deprecated(STDEXEC_CUSTOM, "use STDEXEC_MEMFN_DECL instead.")
+#  pragma clang deprecated(STDEXEC_CUSTOM)
+#  pragma clang deprecated(STDEXEC_MEMFN_DECL)
 #endif
 
 namespace stdexec {

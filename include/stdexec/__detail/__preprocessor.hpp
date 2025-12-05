@@ -70,6 +70,8 @@
   STDEXEC_EXPAND(STDEXEC_EXPAND(STDEXEC_EXPAND(STDEXEC_EXPAND(__VA_ARGS__))))                      \
   /**/
 
+#define STDEXEC_LPAREN (
+#define STDEXEC_RPAREN )
 #define STDEXEC_PARENS ()
 #define STDEXEC_FOR_EACH(_MACRO, ...)                                                              \
   __VA_OPT__(STDEXEC_EXPAND_R(STDEXEC_FOR_EACH_HELPER(_MACRO, __VA_ARGS__)))                       \

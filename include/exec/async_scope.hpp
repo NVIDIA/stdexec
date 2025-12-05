@@ -117,17 +117,19 @@ namespace exec {
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Constrained>, _Receiver>
         [[nodiscard]]
-        static auto
-          connect(_Self&& __self, _Receiver __rcvr) -> __when_empty_op_t<_Self, _Receiver> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
+          -> __when_empty_op_t<_Self, _Receiver> {
           return __when_empty_op_t<_Self, _Receiver>{
             __self.__scope_, static_cast<_Self&&>(__self).__c_, static_cast<_Receiver&&>(__rcvr)};
         }
+        STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <__decays_to<__t> _Self, class... _Env>
-        static auto get_completion_signatures(_Self&&, _Env&&...)
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...)
           -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>...> {
           return {};
         }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
         const __impl* __scope_;
         STDEXEC_ATTRIBUTE(no_unique_address) _Constrained __c_;
@@ -256,16 +258,19 @@ namespace exec {
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Constrained>, __nest_receiver_t<_Receiver>>
         [[nodiscard]]
-        static auto connect(_Self&& __self, _Receiver __rcvr) -> __nest_operation_t<_Receiver> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
+          -> __nest_operation_t<_Receiver> {
           return __nest_operation_t<_Receiver>{
             __self.__scope_, static_cast<_Self&&>(__self).__c_, static_cast<_Receiver&&>(__rcvr)};
         }
+        STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <__decays_to<__t> _Self, class... _Env>
-        static auto get_completion_signatures(_Self&&, _Env&&...)
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...)
           -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>...> {
           return {};
         }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
       };
     };
 
@@ -654,15 +659,19 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires receiver_of<_Receiver, __completions_t<_Self>>
-        static auto connect(_Self&& __self, _Receiver __rcvr) -> __future_op_t<_Receiver> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
+          -> __future_op_t<_Receiver> {
           return __future_op_t<_Receiver>{
             static_cast<_Receiver&&>(__rcvr), static_cast<_Self&&>(__self).__state_};
         }
+        STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <__decays_to<__t> _Self, class... _OtherEnv>
-        static auto get_completion_signatures(_Self&&, _OtherEnv&&...) -> __completions_t<_Self> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _OtherEnv&&...)
+          -> __completions_t<_Self> {
           return {};
         }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
        private:
         friend struct async_scope;

@@ -71,7 +71,7 @@ namespace exec {
           requires __callable<_Fun, __context<_Receiver, _Args>&>
                 && constructible_from<_Fun, __copy_cvref_t<_Self, _Fun>>
                 && constructible_from<_Args, __copy_cvref_t<_Self, _Args>>
-        static auto connect(_Self&& __self, _Receiver __rcvr)
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
           -> stdexec::__t<__operation<stdexec::__id<_Receiver>, _Fun, _ArgsId>> {
           static_assert(__nothrow_callable<_Fun, __context<_Receiver, _Args>&>);
           return {
@@ -80,6 +80,7 @@ namespace exec {
             static_cast<_Self&&>(__self).__fun_
           };
         }
+        STDEXEC_EXPLICIT_THIS_END(connect)
       };
     };
 

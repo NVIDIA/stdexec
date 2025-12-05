@@ -44,12 +44,11 @@ namespace {
   template <class... Values>
   struct fallible_just {
     using sender_concept = stdexec::sender_t;
-    using completion_signatures =
-      ex::completion_signatures<ex::set_value_t(Values...), ex::set_error_t(std::exception_ptr)>;
 
     explicit fallible_just(Values... values)
       : values_(std::move(values)...) {
     }
+    fallible_just(fallible_just&&) noexcept = default;
 
     template <class Receiver>
     struct operation : immovable {
@@ -63,8 +62,16 @@ namespace {
     };
 
     template <class Receiver>
-    auto connect(Receiver rcvr) && -> operation<std::decay_t<Receiver>> {
+    auto connect(Receiver rcvr) && -> operation<Receiver> {
       return {{}, std::move(values_), std::forward<Receiver>(rcvr)};
+    }
+
+    template <class... Env>
+    constexpr auto get_completion_signatures(const Env&...) && noexcept {
+      return ex::completion_signatures<
+        ex::set_value_t(Values...),
+        ex::set_error_t(std::exception_ptr)
+      >{};
     }
 
     std::tuple<Values...> values_;
@@ -174,9 +181,11 @@ namespace {
     };
 
     template <ex::__decays_to<completes_if> Self, class Receiver>
-    static auto connect(Self&& self, Receiver rcvr) noexcept -> operation<Receiver> {
+    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr) noexcept
+      -> operation<Receiver> {
       return {self.condition_, std::forward<Receiver>(rcvr)};
     }
+    STDEXEC_EXPLICIT_THIS_END(connect)
   };
 
   struct non_default_constructible {

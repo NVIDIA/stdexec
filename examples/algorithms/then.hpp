@@ -19,8 +19,6 @@
 // Pull in the reference implementation of P2300:
 #include <stdexec/execution.hpp>
 
-using namespace stdexec::tags;
-
 ///////////////////////////////////////////////////////////////////////////////
 // then algorithm:
 template <class R, class F>

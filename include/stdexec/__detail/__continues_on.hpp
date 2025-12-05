@@ -332,13 +332,15 @@ namespace stdexec {
       };
 
       static constexpr auto get_state =
-        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver& __rcvr) {
-          static_assert(sender_expr_for<_Sender, continues_on_t>);
-          auto __sched = get_completion_scheduler<set_value_t>(
-            stdexec::get_env(__sndr), stdexec::get_env(__rcvr));
-          using _Scheduler = decltype(__sched);
-          return __state<_Scheduler, _Sender, _Receiver>{__sched};
-        };
+        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver& __rcvr)
+        requires sender_in<__child_of<_Sender>, env_of_t<_Receiver>>
+      {
+        static_assert(sender_expr_for<_Sender, continues_on_t>);
+        auto __sched =
+          get_completion_scheduler<set_value_t>(stdexec::get_env(__sndr), stdexec::get_env(__rcvr));
+        using _Scheduler = decltype(__sched);
+        return __state<_Scheduler, _Sender, _Receiver>{__sched};
+      };
 
       static constexpr auto complete =
         []<class _State, class _Receiver, class _Tag, class... _Args>(

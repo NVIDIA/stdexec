@@ -505,9 +505,9 @@ namespace stdexec {
 #endif
 
 #if defined(__cpp_explicit_this_parameter) && (__cpp_explicit_this_parameter >= 2021'10L)
-#  define STDEXEC_EXPLICIT_THIS() 1
+#  define STDEXEC_HAS_STD_EXPLICIT_THIS() 1
 #else
-#  define STDEXEC_EXPLICIT_THIS() 0
+#  define STDEXEC_HAS_STD_EXPLICIT_THIS() 0
 #endif
 
 #if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING == 0
@@ -607,6 +607,60 @@ namespace stdexec {
     STDEXEC_UNREACHABLE();
   }
 } // namespace stdexec
+
+///////////////////////////////////////////////////////////////////////////////
+/// To hook a customization point like stdexec::connect, define a member
+/// function like this:
+///
+/// @code
+/// template <same_as<self_t> Self, class Receiver>
+/// STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr) {
+///   return ...;
+/// }
+/// STDEXEC_EXPLICIT_THIS_END(connect)
+/// @endcode
+
+#if STDEXEC_HAS_STD_EXPLICIT_THIS()
+
+#  define STDEXEC_EXPLICIT_THIS_BEGIN(...) __VA_ARGS__
+#  define STDEXEC_EXPLICIT_THIS_END(...)
+
+#else
+
+#  define STDEXEC_EXPLICIT_THIS_BEGIN(...)                                                         \
+    static STDEXEC_EXPAND(STDEXEC_CAT(STDEXEC_EXPLICIT_THIS_MANGLE_, __VA_ARGS__) STDEXEC_RPAREN)  \
+      STDEXEC_LPAREN STDEXEC_EXPLICIT_THIS_ARGS
+
+#  define STDEXEC_EXPLICIT_THIS_ARGS(...)                                                          \
+    STDEXEC_CAT(STDEXEC_EXPLICIT_THIS_EAT_, __VA_ARGS__) STDEXEC_RPAREN
+
+#  define STDEXEC_EXPLICIT_THIS_END(_FN)                                                           \
+    template <class... Ts>                                                                         \
+      STDEXEC_ATTRIBUTE(always_inline)                                                             \
+      auto _FN(Ts&&... ts)                                                                         \
+      && STDEXEC_AUTO_RETURN(                                                                      \
+        decltype(stdexec::__get_self<Ts...>(                                                       \
+          *this))::STDEXEC_CAT(static_, _FN)(std::move(*this), static_cast<Ts&&>(ts)...))          \
+                                                                                                   \
+        template <class... Ts>                                                                     \
+        STDEXEC_ATTRIBUTE(always_inline)                                                           \
+        auto _FN(Ts&&... ts) const & STDEXEC_AUTO_RETURN(                                          \
+          decltype(stdexec::__get_self<Ts...>(                                                     \
+            *this))::STDEXEC_CAT(static_, _FN)(*this, static_cast<Ts&&>(ts)...))
+
+#  define STDEXEC_EXPLICIT_THIS_EAT_this
+#  define STDEXEC_EXPLICIT_THIS_EAT_auto
+#  define STDEXEC_EXPLICIT_THIS_EAT_void
+#  define STDEXEC_EXPLICIT_THIS_MANGLE_auto   auto STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_LPAREN
+#  define STDEXEC_EXPLICIT_THIS_MANGLE_void   void STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_LPAREN
+#  define STDEXEC_EXPLICIT_THIS_MANGLE(_NAME) STDEXEC_CAT(static_, _NAME)
+
+namespace stdexec {
+  template <class... _Ts, class _Self>
+  auto __get_self(const _Self&) -> _Self;
+} // namespace stdexec
+
+#endif // !STDEXEC_HAS_STD_EXPLICIT_THIS()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // clang-tidy struggles with the CUDA function annotations

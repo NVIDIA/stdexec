@@ -23,6 +23,7 @@
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
 #include "__env.hpp"
+// #include "__operation_states.hpp"
 #include "__receivers.hpp"
 #include "__type_traits.hpp"
 
@@ -60,9 +61,12 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [exec.snd]
   template <class _Sender, class _Receiver>
-  concept sender_to = receiver<_Receiver>                     //
-                   && sender_in<_Sender, env_of_t<_Receiver>> //
-                   && __receiver_from<_Receiver, _Sender>     //
+  concept __sender_to = receiver<_Receiver>                     //
+                     && sender_in<_Sender, env_of_t<_Receiver>> //
+                     && __receiver_from<_Receiver, _Sender>;
+
+  template <class _Sender, class _Receiver>
+  concept sender_to = __sender_to<_Sender, _Receiver> //
                    && requires(_Sender &&__sndr, _Receiver &&__rcvr) {
                         connect(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr));
                       };
@@ -71,8 +75,7 @@ namespace stdexec {
   using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
 
   template <class _Sender, class _Receiver>
-  concept __nothrow_connectable = sender<_Sender> //
-                               && receiver<_Receiver>
+  concept __nothrow_connectable = sender_to<_Sender, _Receiver>
                                && __nothrow_callable<connect_t, _Sender, _Receiver>;
 
   // Used to report a meaningful error message when the sender_in<Sndr, Env>

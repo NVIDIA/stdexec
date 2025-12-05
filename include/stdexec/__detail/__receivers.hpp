@@ -226,12 +226,12 @@ namespace stdexec {
 
     template <class... _Args>
     STDEXEC_ATTRIBUTE(host, device)
-    void set_value(_Args...) noexcept {
+    void set_value(_Args &&...) noexcept {
     }
 
     template <class _Error>
     STDEXEC_ATTRIBUTE(host, device)
-    void set_error(_Error) noexcept {
+    void set_error(_Error &&) noexcept {
     }
 
     STDEXEC_ATTRIBUTE(host, device)

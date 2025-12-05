@@ -475,15 +475,17 @@ namespace nvexec::_strm {
 
      public:
       template <__decays_to<type> Self, receiver Receiver>
-      static auto connect(Self&& self, Receiver rcvr)
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
         -> operation_t<__copy_cvref_t<Self, stdexec::__id<Receiver>>> {
         return {static_cast<Self&&>(self), static_cast<Receiver&&>(rcvr)};
       }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<type> Self, class... Env>
-      static auto get_completion_signatures(Self&&, Env&&...) -> completion_sigs<Self, Env...> {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) -> completion_sigs<Self, Env...> {
         return {};
       }
+      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       [[nodiscard]]
       auto get_env() const noexcept -> const attrs& {

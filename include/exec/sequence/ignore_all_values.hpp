@@ -171,12 +171,14 @@ namespace exec {
 
         template <__decays_to<__t> _Self, stdexec::receiver_of<completion_signatures> _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __item_receiver_t<_Receiver>>
-        static auto connect(_Self&& __self, _Receiver __rcvr) -> __operation_t<_Self, _Receiver> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
+          -> __operation_t<_Self, _Receiver> {
           return {
             __self.__parent_,
             static_cast<_Self&&>(__self).__sender_,
             static_cast<_Receiver&&>(__rcvr)};
         }
+        STDEXEC_EXPLICIT_THIS_END(connect)
       };
     };
 
@@ -271,7 +273,7 @@ namespace exec {
 
     template <class _Receiver>
     struct __connect_fn {
-      _Receiver& __rcvr_;
+      _Receiver __rcvr_;
 
       using _ReceiverId = __id<_Receiver>;
       using _Env = env_of_t<_Receiver>;
@@ -295,6 +297,9 @@ namespace exec {
         return {static_cast<_Child&&>(__child), static_cast<_Receiver&&>(__rcvr_)};
       }
     };
+
+    template <class _Receiver>
+    __connect_fn(_Receiver) -> __connect_fn<_Receiver>;
 
     struct ignore_all_values_t {
       template <sender _Sender>
@@ -324,6 +329,18 @@ namespace exec {
 
       template <class _Child, class _Receiver>
       using __receiver_t = __t<__receiver<__id<_Receiver>, _ResultVariant<_Child, _Receiver>>>;
+
+      // static constexpr auto get_state =
+      //   []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver& __rcvr) noexcept(
+      //     __nothrow_callable<__sexpr_apply_t, _Sender, __connect_fn<__rcvr_ref_t<_Receiver>>>)
+      //   -> __call_result_t<__sexpr_apply_t, _Sender, __connect_fn<__rcvr_ref_t<_Receiver>>> {
+      //   static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
+      //   return __sexpr_apply(static_cast<_Sender&&>(__sndr), __connect_fn{__ref_rcvr(__rcvr)});
+      // };
+
+      // static constexpr auto start = [](auto& __state, __ignore, __ignore) noexcept -> void {
+      //   stdexec::start(__state);
+      // };
 
       static constexpr auto connect =
         []<class _Sender, receiver _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(

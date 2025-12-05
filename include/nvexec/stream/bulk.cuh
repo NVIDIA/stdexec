@@ -131,7 +131,7 @@ namespace nvexec::_strm {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-      static auto connect(Self&& self, Receiver rcvr)
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
           static_cast<Self&&>(self).sndr_,
@@ -142,12 +142,13 @@ namespace nvexec::_strm {
               self.shape_, static_cast<Fun&&>(self.fun_), stream_provider);
           });
       }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<__t> Self, class... Env>
-      static auto
-        get_completion_signatures(Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
         return {};
       }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       auto get_env() const noexcept -> stream_sender_attrs<Sender> {
         return {&sndr_};
@@ -365,12 +366,13 @@ namespace nvexec::_strm {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-      static auto connect(Self&& self, Receiver&& rcvr) -> multi_gpu_bulk::operation_t<
-        __cvref_id<Self, Sender>,
-        stdexec::__id<Receiver>,
-        Shape,
-        Fun
-      > {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver&& rcvr)
+        -> multi_gpu_bulk::operation_t<
+          __cvref_id<Self, Sender>,
+          stdexec::__id<Receiver>,
+          Shape,
+          Fun
+        > {
         auto sch = stdexec::get_completion_scheduler<set_value_t>(
           stdexec::get_env(self.sndr_), stdexec::get_env(rcvr));
         context_state_t context_state = sch.context_state_;
@@ -386,12 +388,13 @@ namespace nvexec::_strm {
           self.fun_,
           context_state);
       }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<__t> Self, class... Env>
-      static auto
-        get_completion_signatures(Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
         return {};
       }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       auto get_env() const noexcept -> stream_sender_attrs<Sender> {
         return {&sndr_};

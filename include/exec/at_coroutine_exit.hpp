@@ -92,9 +92,11 @@ namespace exec {
           }
 
           template <__same_as<__t> _Self, class... _Env>
-          static auto get_completion_signatures(_Self&&, _Env&&...) -> __completions_t<_Env...> {
+          STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...)
+            -> __completions_t<_Env...> {
             return {};
           }
+          STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
           auto get_env() const noexcept -> env_of_t<_Sender> {
             return stdexec::get_env(__sender_);

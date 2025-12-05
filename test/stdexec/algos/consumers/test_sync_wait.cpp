@@ -117,7 +117,7 @@ namespace {
 
   TEST_CASE("sync_wait doesn't accept multi-variant senders", "[consumers][sync_wait]") {
     ex::sender auto snd = fallible_just{13} | ex::let_error(always(ex::just(std::string{"err"})));
-    check_val_types<ex::__mset<pack<int>, pack<std::string>>>(snd);
+    check_val_types<ex::__mset<pack<int>, pack<std::string>>>(std::move(snd));
     // static_assert(!std::invocable<ex::sync_wait_t, decltype(snd)>);
   }
 
@@ -125,11 +125,11 @@ namespace {
     "sync_wait_with_variant accepts multi-variant senders",
     "[consumers][sync_wait_with_variant]") {
     ex::sender auto snd = fallible_just{13} | ex::let_error(always(ex::just(std::string{"err"})));
-    check_val_types<ex::__mset<pack<int>, pack<std::string>>>(snd);
+    check_val_types<ex::__mset<pack<int>, pack<std::string>>>(std::move(snd));
     static_assert(std::invocable<ex::sync_wait_with_variant_t, decltype(snd)>);
 
     std::optional<std::tuple<std::variant<std::tuple<int>, std::tuple<std::string>>>> res =
-      ex::sync_wait_with_variant(snd);
+      ex::sync_wait_with_variant(std::move(snd));
 
     CHECK(res.has_value());
     CHECK_TUPLE(std::get<0>(std::get<0>(res.value())) == std::make_tuple(13));

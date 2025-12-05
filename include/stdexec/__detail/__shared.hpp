@@ -210,6 +210,7 @@ namespace stdexec::__shared {
   //! Heap-allocatable shared state for things like `stdexec::split`.
   template <class _CvrefSender, class _Env>
   struct __shared_state {
+    static_assert(__decays_to<_CvrefSender, _CvrefSender>);
     using __receiver_t = __t<__receiver<__cvref_id<_CvrefSender>, __id<_Env>>>;
     using __waiters_list_t = __intrusive_slist<&__local_state_base::__next_>;
 
@@ -368,7 +369,7 @@ namespace stdexec::__shared {
   __shared_state(_CvrefSender&&, _Env) -> __shared_state<_CvrefSender, _Env>;
 
   template <class _Cvref, class _CvrefSender, class _Env>
-  using __make_completions = __try_make_completion_signatures<
+  using __make_completions_t = __try_make_completion_signatures<
     // NOT TO SPEC:
     // See https://github.com/cplusplus/sender-receiver/issues/23
     _CvrefSender,
@@ -390,8 +391,8 @@ namespace stdexec::__shared {
   // denotes an instance of the __shared_state template, which is parameterized on the
   // cvref-qualified sender and the environment.
   template <class _Tag, class _ShState>
-  using __completions =
-    __mapply<__mbind_front_q<__make_completions, __cvref_results_t<_Tag>>, _ShState>;
+  using __completions_t =
+    __mapply<__mbind_front_q<__make_completions_t, __cvref_results_t<_Tag>>, _ShState>;
 
   template <class _CvrefSender, class _Env, bool _Copyable = true>
   struct __box {
@@ -434,12 +435,13 @@ namespace stdexec::__shared {
       []<class _CvrefSender, class _Receiver>(_CvrefSender&& __sndr, _Receiver&) noexcept
       -> __local_state<_CvrefSender, _Receiver> {
       static_assert(sender_expr_for<_CvrefSender, _Tag>);
+      static_assert(__decay_copyable<_CvrefSender>);
       return __local_state<_CvrefSender, _Receiver>{static_cast<_CvrefSender&&>(__sndr)};
     };
 
     static constexpr auto get_completion_signatures =
       []<class _Self>(const _Self&, auto&&...) noexcept
-      -> __completions<_Tag, typename __data_of<_Self>::__sh_state_t> {
+      -> __completions_t<_Tag, typename __data_of<_Self>::__sh_state_t> {
       static_assert(sender_expr_for<_Self, _Tag>);
       return {};
     };

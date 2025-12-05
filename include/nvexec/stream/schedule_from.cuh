@@ -151,16 +151,18 @@ namespace nvexec::_strm {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-      static auto connect(Self&& self, Receiver rcvr) -> op_state_th<Self, Receiver> {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+        -> op_state_th<Self, Receiver> {
         return op_state_th<Self, Receiver>{
           static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr), self.context_state_};
       }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<__t> Self, class... Env>
-      static auto
-        get_completion_signatures(Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
         return {};
       }
+      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       auto get_env() const noexcept -> stdexec::__fwd_env_t<stdexec::env_of_t<Sender>> {
         return stdexec::__fwd_env(stdexec::get_env(sndr_));

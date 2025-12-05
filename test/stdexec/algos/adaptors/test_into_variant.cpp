@@ -68,7 +68,7 @@ namespace {
     ex::sender auto in_snd = fallible_just{13} | ex::let_error([](std::exception_ptr) {
                                return ex::just(std::string{"err"});
                              });
-    check_val_types<ex::__mset<pack<int>, pack<std::string>>>(in_snd);
+    check_val_types<ex::__mset<pack<int>, pack<std::string>>>(std::move(in_snd));
 
     ex::sender auto snd = std::move(in_snd) | ex::into_variant();
     wait_for_value(
