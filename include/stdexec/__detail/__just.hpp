@@ -35,7 +35,10 @@ namespace stdexec {
       using __tag_t = _JustTag::__tag_t;
 
       static constexpr auto get_attrs = [](__ignore) noexcept
-        -> cprop<get_completion_behavior_t, completion_behavior::inline_completion> {
+        -> env<
+            cprop<get_completion_behavior_t<set_value_t>, completion_behavior::inline_completion>,
+            cprop<get_completion_behavior_t<set_stopped_t>, completion_behavior::inline_completion>,
+            cprop<get_completion_behavior_t<set_error_t>, completion_behavior::inline_completion>> {
         return {};
       };
 

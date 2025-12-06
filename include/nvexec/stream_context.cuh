@@ -42,6 +42,8 @@
 
 namespace nvexec {
   namespace _strm {
+    struct stream_scheduler;
+
     struct stream_scheduler_env {
       STDEXEC_ATTRIBUTE(nodiscard)
       static auto query(get_forward_progress_guarantee_t) noexcept -> forward_progress_guarantee {
@@ -49,7 +51,10 @@ namespace nvexec {
       }
 
       STDEXEC_ATTRIBUTE(nodiscard)
-      constexpr auto query(get_domain_t) const noexcept -> stream_domain {
+      auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> stream_scheduler;
+
+      STDEXEC_ATTRIBUTE(nodiscard)
+      constexpr auto query(get_completion_domain_t<set_value_t>) const noexcept -> stream_domain {
         return {};
       }
     };
@@ -128,8 +133,14 @@ namespace nvexec {
           context_state_t context_state_;
 
           STDEXEC_ATTRIBUTE(nodiscard)
-          auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> stream_scheduler {
+          auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept -> stream_scheduler {
             return stream_scheduler{context_state_};
+          }
+
+          STDEXEC_ATTRIBUTE(nodiscard)
+          constexpr auto
+            query(get_completion_domain_t<set_value_t>) const noexcept -> stream_domain {
+            return {};
           }
         };
 
@@ -140,6 +151,12 @@ namespace nvexec {
       // private: TODO
       context_state_t context_state_;
     };
+
+    STDEXEC_ATTRIBUTE(nodiscard)
+    inline auto stream_scheduler_env::query(get_completion_scheduler_t<set_value_t>) const noexcept
+      -> stream_scheduler {
+      return (const stream_scheduler&) *this;
+    }
   } // namespace _strm
 
   using _strm::stream_scheduler;

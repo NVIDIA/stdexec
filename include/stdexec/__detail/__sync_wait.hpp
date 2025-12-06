@@ -50,12 +50,12 @@ namespace stdexec {
       run_loop* __loop_ = nullptr;
 
       [[nodiscard]]
-      auto query(get_scheduler_t) const noexcept -> run_loop::__scheduler {
+      auto query(get_scheduler_t) const noexcept -> run_loop::scheduler {
         return __loop_->get_scheduler();
       }
 
       [[nodiscard]]
-      auto query(get_delegation_scheduler_t) const noexcept -> run_loop::__scheduler {
+      auto query(get_delegation_scheduler_t) const noexcept -> run_loop::scheduler {
         return __loop_->get_scheduler();
       }
 
@@ -198,20 +198,21 @@ namespace stdexec {
         if constexpr (!sender_in<_Sender, __env>) {
           stdexec::__diagnose_sender_concept_failure<_Sender, __env>();
         } else {
-          using __early_domain_t = __early_domain_of_t<_Sender>;
-          using __domain_t = __late_domain_of_t<_Sender, __env, __early_domain_t>;
-          constexpr auto __success_completion_count =
-            __v<value_types_of_t<_Sender, __env, __types, __msize::__f>>;
+          using __domain_t = __detail::__completion_domain_of_t<set_value_t, _Sender, __env>;
+          constexpr auto __success_completion_count = __v<__count_of<set_value_t, _Sender, __env>>;
+
           static_assert(
             __success_completion_count != 0,
             "The argument to stdexec::sync_wait() is a sender that cannot complete successfully. "
             "stdexec::sync_wait() requires a sender that can complete successfully in exactly one "
             "way. In other words, the sender's completion signatures must include exactly one "
             "signature of the form `set_value_t(value-types...)`.");
+
           static_assert(
             __success_completion_count <= 1,
             "The sender passed to stdexec::sync_wait() can complete successfully in "
             "more than one way. Use stdexec::sync_wait_with_variant() instead.");
+
           if constexpr (1 == __success_completion_count) {
             using __sync_wait_receiver = __receiver_t<_Sender>;
             constexpr bool __no_custom_sync_wait = __same_as<__domain_t, default_domain>;
@@ -302,14 +303,14 @@ namespace stdexec {
       template <sender_in<__env> _Sender>
         requires __callable<
           apply_sender_t,
-          __early_domain_of_t<_Sender>,
+          __detail::__completion_domain_of_t<set_value_t, _Sender, __env>,
           sync_wait_with_variant_t,
           _Sender
         >
       auto operator()(_Sender&& __sndr) const -> decltype(auto) {
         using __result_t = __call_result_t<
           apply_sender_t,
-          __early_domain_of_t<_Sender>,
+          __detail::__completion_domain_of_t<set_value_t, _Sender, __env>,
           sync_wait_with_variant_t,
           _Sender
         >;
@@ -317,7 +318,7 @@ namespace stdexec {
         using __variant_t = __result_t::value_type;
         static_assert(__is_instance_of<__variant_t, std::variant>);
 
-        using _Domain = __late_domain_of_t<_Sender, __env>;
+        using _Domain = __detail::__completion_domain_of_t<set_value_t, _Sender, __env>;
         return stdexec::apply_sender(_Domain(), *this, static_cast<_Sender&&>(__sndr));
       }
 

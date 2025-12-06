@@ -52,8 +52,7 @@ namespace stdexec {
     [[nodiscard]]
     STDEXEC_ATTRIBUTE(host, device) auto get_env() const noexcept -> _Env {
       static_assert(
-        std::is_same_v<_Env, env_of_t<_Rcvr>>,
-        "get_env() must return the same type as env_of_t<_Rcvr>");
+        __same_as<_Env, env_of_t<_Rcvr>>, "get_env() must return the same type as env_of_t<_Rcvr>");
       return stdexec::get_env(*__rcvr_);
     }
 
@@ -86,7 +85,7 @@ namespace stdexec {
   template <class _Env = void, class _Rcvr>
   STDEXEC_ATTRIBUTE(nodiscard, host, device)
   constexpr auto __ref_rcvr(_Rcvr& __rcvr) noexcept {
-    if constexpr (std::is_same_v<_Env, void>) {
+    if constexpr (__same_as<_Env, void>) {
       return stdexec::__ref_rcvr<env_of_t<_Rcvr>>(__rcvr);
     } else if constexpr (__is_instance_of<_Rcvr, __rcvr_ref>) {
       return __rcvr;

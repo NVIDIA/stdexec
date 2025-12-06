@@ -100,11 +100,10 @@ namespace exec {
     struct __operation {
       using _Receiver = stdexec::__t<_ReceiverId>;
 
-      using merge_each_fn_t = typename __combine::merge_each_fn_t<_ReceiverId>;
+      using merge_each_fn_t = __combine::merge_each_fn_t<_ReceiverId>;
 
       template <class _ReceiverIdDependent>
-      using result_sender_t =
-        typename __combine::result_sender_t<_ReceiverIdDependent, _Sequences...>;
+      using result_sender_t = __combine::result_sender_t<_ReceiverIdDependent, _Sequences...>;
 
       struct __t : __operation_base<_Receiver> {
         using __id = __operation;
@@ -134,9 +133,9 @@ namespace exec {
       _Receiver& __rcvr_;
 
       template <class... _Sequences>
-      auto operator()(__ignore, __ignore, _Sequences... __sequences) noexcept(
-        (__nothrow_decay_copyable<_Sequences> && ...) && __nothrow_move_constructible<_Receiver>)
-        -> __t<__operation<__id<_Receiver>, _Sequences...>> {
+      auto operator()(__ignore, __ignore, _Sequences... __sequences)
+        noexcept(__nothrow_decay_copyable<_Sequences...> && __nothrow_move_constructible<_Receiver>)
+          -> __t<__operation<__id<_Receiver>, _Sequences...>> {
         return {static_cast<_Receiver&&>(__rcvr_), static_cast<_Sequences&&>(__sequences)...};
       }
     };
@@ -144,11 +143,8 @@ namespace exec {
     struct merge_t {
       template <class... _Sequences>
       auto operator()(_Sequences&&... __sequences) const
-        noexcept((__nothrow_decay_copyable<_Sequences> && ...)) -> __well_formed_sequence_sender
-        auto {
-        auto __domain = __common_domain_t<_Sequences...>();
-        return transform_sender(
-          __domain, make_sequence_expr<merge_t>(__(), static_cast<_Sequences&&>(__sequences)...));
+        noexcept(__nothrow_decay_copyable<_Sequences...>) -> __well_formed_sequence_sender auto {
+        return make_sequence_expr<merge_t>(__(), static_cast<_Sequences&&>(__sequences)...);
       }
 
       template <class _Error>

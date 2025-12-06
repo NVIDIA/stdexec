@@ -61,6 +61,9 @@ namespace stdexec {
   template <class _Ap, class _Bp>
   concept __same_as = STDEXEC_IS_SAME(_Ap, _Bp);
 
+  template <class _Ap, class _Bp>
+  concept __not_same_as = !STDEXEC_IS_SAME(_Ap, _Bp);
+
   // Handy concepts
   template <class _Ty, class _Up>
   concept __decays_to = __same_as<__decay_t<_Ty>, _Up>;
@@ -244,11 +247,11 @@ namespace stdexec {
   concept __nothrow_constructible_from = constructible_from<_Ty, _As...>
                                       && STDEXEC_IS_NOTHROW_CONSTRUCTIBLE(_Ty, _As...);
 
-  template <class _Ty>
-  concept __nothrow_move_constructible = __nothrow_constructible_from<_Ty, _Ty>;
+  template <class... _Ts>
+  concept __nothrow_move_constructible = (__nothrow_constructible_from<_Ts, _Ts> && ...);
 
-  template <class _Ty>
-  concept __nothrow_copy_constructible = __nothrow_constructible_from<_Ty, const _Ty&>;
+  template <class... _Ts>
+  concept __nothrow_copy_constructible = (__nothrow_constructible_from<_Ts, const _Ts&> && ...);
 
   template <class... _Ts>
   concept __decay_copyable = (constructible_from<__decay_t<_Ts>, _Ts> && ...);
@@ -264,4 +267,8 @@ namespace stdexec {
 
   template <class _Ty, class _Up>
   concept __decays_to_derived_from = derived_from<__decay_t<_Ty>, _Up>;
+
+  template <class _Ty, class... _Us>
+    requires __none_of<_Ty, _Us...>
+  using __unless_one_of_t = _Ty;
 } // namespace stdexec

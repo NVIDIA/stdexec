@@ -15,15 +15,27 @@
  */
 
 #include "cpo_helpers.cuh"
+#include "test_common/receivers.hpp"
 #include <catch2/catch.hpp>
 
 namespace {
 
-  TEST_CASE("ensure started is customizable", "[cpo][cpo_ensure_started]") {
-    SECTION("by free standing sender") {
-      cpo_test_sender_t<ex::ensure_started_t> snd{};
-      constexpr scope_t scope = decltype(ex::ensure_started(snd))::scope;
-      STATIC_REQUIRE(scope == scope_t::free_standing);
+  TEST_CASE("ensure_started is customizable", "[cpo][cpo_ensure_started]") {
+    SECTION("by completion scheduler domain") {
+      cpo_test_scheduler_t<ex::ensure_started_t>::sender_t snd{};
+
+      {
+        constexpr scope_t scope = decltype(ex::connect(
+          snd | ex::ensure_started(), empty_recv::recv0_ec{}))::sender_t::scope;
+        STATIC_REQUIRE(scope == scope_t::scheduler);
+      }
+
+      {
+        void(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd)));
+        constexpr scope_t scope =
+          decltype(ex::connect(ex::ensure_started(snd), empty_recv::recv0_ec{}))::sender_t::scope;
+        STATIC_REQUIRE(scope == scope_t::scheduler);
+      }
     }
   }
 } // namespace

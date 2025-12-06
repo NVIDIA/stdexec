@@ -49,7 +49,8 @@ namespace nvexec::_strm {
       static_cast<stream_provider_t*>(nullptr)));
 
     template <class Tag, class... As, class Variant>
-    __launch_bounds__(1) __global__ void copy_kernel(Variant* var, As... as) {
+    STDEXEC_ATTRIBUTE(launch_bounds(1))
+    __global__ void copy_kernel(Variant* var, As... as) {
       static_assert(trivially_copyable<As...>);
       using tuple_t = decayed_tuple<Tag, As...>;
       var->template emplace<tuple_t>(Tag(), static_cast<As&&>(as)...);
@@ -57,27 +58,27 @@ namespace nvexec::_strm {
 
     template <class SenderId, class SharedState>
     struct receiver_t {
-      class __t : public stream_receiver_base {
-        using Sender = stdexec::__t<SenderId>;
-
-        SharedState& sh_state_;
-
-       public:
+      struct __t : stream_receiver_base {
         using __id = receiver_t;
+
+        explicit __t(SharedState& sh_state_t) noexcept
+          : sh_state_(sh_state_t) {
+        }
 
         template <class Tag, class... As>
         void set_result(Tag, As&&... as) noexcept {
+          using tuple_t = decayed_tuple<Tag, As...>;
+          using variant_t = typename SharedState::variant_t;
+
           if constexpr (stream_sender<Sender, env_t>) {
             cudaStream_t stream = sh_state_.op_state2_.get_stream();
-            using tuple_t = decayed_tuple<Tag, As...>;
-            sh_state_.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+            sh_state_.index_ = __v<__mapply<__mfind_i<tuple_t>, variant_t>>;
             copy_kernel<Tag, As&&...>
               <<<1, 1, 0, stream>>>(sh_state_.data_, static_cast<As&&>(as)...);
             sh_state_.stream_provider_
               .status_ = STDEXEC_LOG_CUDA_API(cudaEventRecord(sh_state_.event_, stream));
           } else {
-            using tuple_t = decayed_tuple<Tag, As...>;
-            sh_state_.index_ = SharedState::variant_t::template index_of<tuple_t>::value;
+            sh_state_.index_ = __v<__mapply<__mfind_i<tuple_t>, variant_t>>;
           }
         }
 
@@ -103,9 +104,9 @@ namespace nvexec::_strm {
           return sh_state_.make_env();
         }
 
-        explicit __t(SharedState& sh_state_t) noexcept
-          : sh_state_(sh_state_t) {
-        }
+       private:
+        using Sender = stdexec::__t<SenderId>;
+        SharedState& sh_state_;
       };
     };
 
@@ -261,7 +262,7 @@ namespace nvexec::_strm {
                 cudaStreamWaitEvent(op->get_stream(), op->shared_state_->event_, 0));
             }
 
-            visit(
+            nvexec::visit(
               [&](auto& tupl) noexcept -> void {
                 ::cuda::std::apply(
                   [&]<class Tag, class... As>(Tag, const As&... args) noexcept -> void {
@@ -359,16 +360,18 @@ namespace nvexec::_strm {
     };
   };
 
-  template <>
-  struct transform_sender_for<split_t> {
+  template <class Env>
+  struct transform_sender_for<split_t, Env> {
     template <class Sender>
     using _sender_t = __t<split_sender_t<__id<__decay_t<Sender>>>>;
 
-    template <class Env, stream_completing_sender Sender>
-    auto operator()(__ignore, Env&& /*env*/, Sender&& sndr) const -> _sender_t<Sender> {
-      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
+    template <stream_completing_sender<Env> Sender>
+    auto operator()(__ignore, stdexec::__ignore, Sender&& sndr) const -> _sender_t<Sender> {
+      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), env_);
       return _sender_t<Sender>{sched.context_state_, static_cast<Sender&&>(sndr)};
     }
+
+    const Env& env_;
   };
 } // namespace nvexec::_strm
 

@@ -1,0 +1,72 @@
+{
+  "image": "rapidsai/devcontainers:26.02-cpp-gcc11-cuda12.9",
+
+  "hostRequirements": { "gpu": "optional" },
+
+  "initializeCommand": ["/bin/bash", "-c", "mkdir -p .cache/.{aws,cache,config}"],
+
+  "postCreateCommand": [
+    "/bin/bash",
+    "-c",
+    "if test -z \"${DISABLE_SCCACHE:+x}\"; then echo \"export SCCACHE_DIST_URL='https://$(dpkg --print-architecture).$(uname -s | tr '[:upper:]' '[:lower:]').sccache.rapids.nvidia.com'\" >> /home/coder/.bashrc; fi"
+  ],
+
+  "containerEnv": {
+    "AWS_ROLE_ARN": "arn:aws:iam::279114543810:role/nv-gha-token-sccache-devs",
+    "DEVCONTAINER_UTILS_ENABLE_SCCACHE_DIST": "true",
+    "HISTFILE": "${containerWorkspaceFolder}/.cache/._bash_history",
+    "NVCC_APPEND_FLAGS": "-t=100",
+    "SCCACHE_DIST_MAX_RETRIES": "${localEnv:SCCACHE_DIST_MAX_RETRIES:2}",
+    "SCCACHE_DIST_REQUEST_TIMEOUT": "${localEnv:SCCACHE_DIST_REQUEST_TIMEOUT:7140}",
+    "SCCACHE_IDLE_TIMEOUT": "${localEnv:SCCACHE_IDLE_TIMEOUT:0}",
+    "SCCACHE_BUCKET": "rapids-sccache-devs",
+    "SCCACHE_REGION": "us-east-2",
+    "SCCACHE_S3_KEY_PREFIX": "nvidia-stdexec-dev",
+    "SCCACHE_S3_USE_PREPROCESSOR_CACHE_MODE": "true",
+    "SCCACHE_S3_PREPROCESSOR_CACHE_KEY_PREFIX": "nvidia-stdexec-dev/preprocessor",
+    "SCCACHE_SERVER_PORT": "4225",
+    "SCCACHE_SERVER_LOG": "sccache=debug"
+  },
+
+  "workspaceFolder": "/home/coder/stdexec",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/coder/stdexec,type=bind,consistency=consistent",
+  "mounts": [
+    "source=${localWorkspaceFolder}/.cache/.aws,target=/home/coder/.aws,type=bind,consistency=consistent",
+    "source=${localWorkspaceFolder}/.cache/.cache,target=/home/coder/.cache,type=bind,consistency=consistent",
+    "source=${localWorkspaceFolder}/.cache/.config,target=/home/coder/.config,type=bind,consistency=consistent"
+  ],
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "augustocdias.tasks-shell-input",
+        "ericniebler.erics-build-output-colorizer"
+      ],
+      "settings": {
+        "debug.toolBarLocation": "docked",
+        "editor.hover.delay": 500,
+        "editor.hover.sticky": true,
+        "editor.inlayHints.enabled": "off",
+        "files.autoSave": "off",
+        "files.trimFinalNewlines": true,
+        "files.insertFinalNewline": true,
+        "files.trimTrailingWhitespace": true,
+        "[c]": {
+          "editor.tabSize": 2,
+          "editor.formatOnSave": false,
+          "editor.formatOnSaveMode": "file"
+        },
+        "[cpp]": {
+          "editor.tabSize": 2,
+          "editor.formatOnSave": false,
+          "editor.formatOnSaveMode": "file"
+        },
+        "[cuda-cpp]": {
+          "editor.tabSize": 2,
+          "editor.formatOnSave": false,
+          "editor.formatOnSaveMode": "file"
+        }
+      }
+    }
+  }
+}

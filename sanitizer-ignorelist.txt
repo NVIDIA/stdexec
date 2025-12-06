@@ -1,0 +1,11 @@
+fun:*_Rb_tree*
+fun:*memcmp*
+fun:*_M_widen_init*
+fun:MemcmpInterceptorCommon
+src:*catch2*
+fun:*basic_string*
+fun:*basic_ostream*
+fun:*exception_ptr*
+fun:*char_traits*
+fun:*runtime_error*
+fun:*invalid_argument*

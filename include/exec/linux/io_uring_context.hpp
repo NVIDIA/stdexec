@@ -17,15 +17,15 @@
 #pragma once
 
 #if !__has_include(<linux/io_uring.h>)
-#  error "io_uring.h not found. Your kernel is probably too old."
+#  error "io_uring.h not found. Your Linux kernel is probably too old."
 #else
 #  include <linux/io_uring.h>
 
 #  include "../../stdexec/execution.hpp"
+#  include "../../stdexec/__detail/__atomic.hpp"
 #  include "../timed_scheduler.hpp"
 
 #  include "../__detail/__atomic_intrusive_queue.hpp"
-#  include "../__detail/__atomic_ref.hpp"
 #  include "../__detail/__bit_cast.hpp"
 
 #  include "./safe_file_descriptor.hpp"
@@ -39,7 +39,7 @@
 #    include <linux/version.h>
 
 #    if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
-#      warning "Your kernel is too old to support io_uring with cancellation support."
+#      warning "Your Linux kernel is too old to support io_uring with cancellation support."
 #      include <sys/timerfd.h>
 #    else
 #      define STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
@@ -58,8 +58,6 @@
 
 namespace exec {
   namespace __io_uring {
-    using namespace stdexec::tags;
-
     inline void __throw_error_code_if(bool __cond, int __ec) {
       if (__cond) {
         STDEXEC_THROW(std::system_error(__ec, std::system_category()));
@@ -95,7 +93,7 @@ namespace exec {
       return memory_mapped_region{__ptr, __size};
     }
 
-    // This base class maps the kernel's io_uring data structures into the process.
+    // This base class maps the Linux kernel's io_uring data structures into the process.
     struct __context_base : stdexec::__immovable {
       explicit __context_base(unsigned __entries, unsigned __flags = 0)
         : __params_{__context_base::__init_params(__flags)}
@@ -185,8 +183,8 @@ namespace exec {
 
     // This class implements the io_uring submission queue.
     class __submission_queue {
-      __atomic_ref<__u32> __head_;
-      __atomic_ref<__u32> __tail_;
+      stdexec::__std::atomic_ref<__u32> __head_;
+      stdexec::__std::atomic_ref<__u32> __tail_;
       __u32* __array_;
       ::io_uring_sqe* __entries_;
       __u32 __mask_;
@@ -214,8 +212,8 @@ namespace exec {
       // an io_uring_cqe object with the result field set to -ECANCELED.
       auto submit(__task_queue __tasks, __u32 __max_submissions, bool __is_stopped) noexcept
         -> __submission_result {
-        __u32 __tail = __tail_.load(std::memory_order_relaxed);
-        __u32 __head = __head_.load(std::memory_order_acquire);
+        __u32 __tail = __tail_.load(stdexec::__std::memory_order_relaxed);
+        __u32 __head = __head_.load(stdexec::__std::memory_order_acquire);
         __u32 __current_count = __tail - __head;
         STDEXEC_ASSERT(__current_count <= __n_total_slots_);
         __max_submissions = std::min(__max_submissions, __n_total_slots_ - __current_count);
@@ -243,7 +241,7 @@ namespace exec {
             }
           }
         }
-        __tail_.store(__tail, std::memory_order_release);
+        __tail_.store(__tail, stdexec::__std::memory_order_release);
         while (!__tasks.empty()) {
           __op = __tasks.pop_front();
           if (__op->__vtable_->__ready_(__op)) {
@@ -257,8 +255,8 @@ namespace exec {
     };
 
     class __completion_queue {
-      __atomic_ref<__u32> __head_;
-      __atomic_ref<__u32> __tail_;
+      stdexec::__std::atomic_ref<__u32> __head_;
+      stdexec::__std::atomic_ref<__u32> __tail_;
       ::io_uring_cqe* __entries_;
       __u32 __mask_;
      public:
@@ -276,8 +274,8 @@ namespace exec {
       // The function returns the number of previously submitted completed tasks.
       auto complete(stdexec::__intrusive_queue<&__task::__next_> __ready = __task_queue{}) noexcept
         -> int {
-        __u32 __head = __head_.load(std::memory_order_relaxed);
-        __u32 __tail = __tail_.load(std::memory_order_acquire);
+        __u32 __head = __head_.load(stdexec::__std::memory_order_relaxed);
+        __u32 __tail = __tail_.load(stdexec::__std::memory_order_acquire);
         int __count = 0;
         while (__head != __tail) {
           const __u32 __index = __head & __mask_;
@@ -286,9 +284,9 @@ namespace exec {
           __op->__vtable_->__complete_(__op, __cqe);
           ++__head;
           ++__count;
-          __tail = __tail_.load(std::memory_order_acquire);
+          __tail = __tail_.load(stdexec::__std::memory_order_acquire);
         }
-        __head_.store(__head, std::memory_order_release);
+        __head_.store(__head, stdexec::__std::memory_order_release);
         while (!__ready.empty()) {
           __task* __op = __ready.pop_front();
           ::io_uring_cqe __dummy_cqe{};
@@ -377,11 +375,11 @@ namespace exec {
 
       /// @brief Resets the io context to its initial state.
       void reset() {
-        if (__is_running_.load(std::memory_order_relaxed) || __n_total_submitted_ > 0) {
+        if (__is_running_.load(stdexec::__std::memory_order_relaxed) || __n_total_submitted_ > 0) {
           STDEXEC_THROW(
             std::runtime_error("exec::io_uring_context::reset() called on a running context"));
         }
-        __n_submissions_in_flight_.store(0, std::memory_order_relaxed);
+        __n_submissions_in_flight_.store(0, stdexec::__std::memory_order_relaxed);
         __stop_source_.reset();
         __stop_source_.emplace();
       }
@@ -400,12 +398,12 @@ namespace exec {
       }
 
       auto is_running() const noexcept -> bool {
-        return __is_running_.load(std::memory_order_relaxed);
+        return __is_running_.load(stdexec::__std::memory_order_relaxed);
       }
 
       /// @brief  Breaks out of the run loop of the io context without stopping the context.
       void finish() {
-        __break_loop_.store(true, std::memory_order_release);
+        __break_loop_.store(true, stdexec::__std::memory_order_release);
         wakeup();
       }
 
@@ -421,7 +419,10 @@ namespace exec {
         int __n = 0;
         while (__n != __no_new_submissions
                && !__n_submissions_in_flight_.compare_exchange_weak(
-                 __n, __n + 1, std::memory_order_acquire, std::memory_order_relaxed))
+                 __n,
+                 __n + 1,
+                 stdexec::__std::memory_order_acquire,
+                 stdexec::__std::memory_order_relaxed))
           ;
         if (__n == __no_new_submissions) {
           __stop(__op);
@@ -429,7 +430,8 @@ namespace exec {
         } else {
           __requests_.push_front(__op);
           [[maybe_unused]]
-          int __prev = __n_submissions_in_flight_.fetch_sub(1, std::memory_order_relaxed);
+          int __prev = __n_submissions_in_flight_
+                         .fetch_sub(1, stdexec::__std::memory_order_relaxed);
           STDEXEC_ASSERT(__prev > 0);
           return true;
         }
@@ -473,32 +475,32 @@ namespace exec {
       void run_until_stopped() {
         bool expected_running = false;
         // Only one thread of execution is allowed to drive the io context.
-        if (!__is_running_
-               .compare_exchange_strong(expected_running, true, std::memory_order_relaxed)) {
+        if (!__is_running_.compare_exchange_strong(
+              expected_running, true, stdexec::__std::memory_order_relaxed)) {
           STDEXEC_THROW(
             std::runtime_error("exec::io_uring_context::run() called on a running context"));
         } else {
           // Check whether we restart the context after a context-wide stop.
           // We have to reset the stop source in this case.
-          int __in_flight = __n_submissions_in_flight_.load(std::memory_order_relaxed);
+          int __in_flight = __n_submissions_in_flight_.load(stdexec::__std::memory_order_relaxed);
           if (__in_flight == __no_new_submissions) {
             __stop_source_.emplace();
             // Make emplacement of stop source visible to other threads and open the door for new submissions.
-            __n_submissions_in_flight_.store(0, std::memory_order_release);
+            __n_submissions_in_flight_.store(0, stdexec::__std::memory_order_release);
           } else {
             // This can only happen for the very first pass of run_until_stopped()
             __wakeup_operation_.start();
           }
         }
         scope_guard __not_running{
-          [&]() noexcept { __is_running_.store(false, std::memory_order_relaxed); }};
+          [&]() noexcept { __is_running_.store(false, stdexec::__std::memory_order_relaxed); }};
         __pending_.append(__requests_.pop_all_reversed());
         while (__n_total_submitted_ > 0 || !__pending_.empty()) {
           run_some();
           if (
             __n_total_submitted_ == 0
-            || (__n_total_submitted_ == 1 && __break_loop_.load(std::memory_order_acquire))) {
-            __break_loop_.store(false, std::memory_order_relaxed);
+            || (__n_total_submitted_ == 1 && __break_loop_.load(stdexec::__std::memory_order_acquire))) {
+            __break_loop_.store(false, stdexec::__std::memory_order_relaxed);
             break;
           }
           constexpr int __min_complete = 1;
@@ -525,14 +527,15 @@ namespace exec {
           // try to shutdown the request queue
           int __n_in_flight_expected = 0;
           while (!__n_submissions_in_flight_.compare_exchange_weak(
-            __n_in_flight_expected, __no_new_submissions, std::memory_order_relaxed)) {
+            __n_in_flight_expected, __no_new_submissions, stdexec::__std::memory_order_relaxed)) {
             if (__n_in_flight_expected == __no_new_submissions) {
               break;
             }
             __n_in_flight_expected = 0;
           }
           STDEXEC_ASSERT(
-            __n_submissions_in_flight_.load(std::memory_order_relaxed) == __no_new_submissions);
+            __n_submissions_in_flight_.load(stdexec::__std::memory_order_relaxed)
+            == __no_new_submissions);
           // There could have been requests in flight. Complete all of them
           // and then stop it, finally.
           __pending_.append(__requests_.pop_all_reversed());
@@ -622,7 +625,7 @@ namespace exec {
       }
 
       void run_until_empty() {
-        __break_loop_.store(true, std::memory_order_relaxed);
+        __break_loop_.store(true, stdexec::__std::memory_order_relaxed);
         run_until_stopped();
       }
 
@@ -635,9 +638,9 @@ namespace exec {
       // to this context will be completed by this context.
       static constexpr int __no_new_submissions = -1;
 
-      std::atomic<bool> __is_running_{false};
-      std::atomic<int> __n_submissions_in_flight_{0};
-      std::atomic<bool> __break_loop_{false};
+      stdexec::__std::atomic<bool> __is_running_{false};
+      stdexec::__std::atomic<int> __n_submissions_in_flight_{0};
+      stdexec::__std::atomic<bool> __break_loop_{false};
       std::ptrdiff_t __n_total_submitted_{0};
       std::ptrdiff_t __n_newly_submitted_{0};
       std::optional<stdexec::inplace_stop_source> __stop_source_{std::in_place};
@@ -799,7 +802,7 @@ namespace exec {
         }
 
         void complete(const ::io_uring_cqe&) noexcept {
-          if (__op_->__n_ops_.fetch_sub(1, std::memory_order_relaxed) == 1) {
+          if (__op_->__n_ops_.fetch_sub(1, stdexec::__std::memory_order_relaxed) == 1) {
             __op_->__on_context_stop_.reset();
             __op_->__on_receiver_stop_.reset();
             stdexec::set_stopped((static_cast<_Base&&>(*__op_)).receiver());
@@ -815,7 +818,8 @@ namespace exec {
 
         void start() & noexcept {
           int expected = 1;
-          if (__op_->__n_ops_.compare_exchange_strong(expected, 2, std::memory_order_relaxed)) {
+          if (__op_->__n_ops_
+                .compare_exchange_strong(expected, 2, stdexec::__std::memory_order_relaxed)) {
             if (__op_->context().submit(this)) {
               __op_->context().wakeup();
             }
@@ -880,7 +884,7 @@ namespace exec {
         >::template callback_type<__stop_callback>>;
 
         stdexec::__t<__stop_operation<__impl>> __stop_operation_;
-        std::atomic<int> __n_ops_{0};
+        stdexec::__std::atomic<int> __n_ops_{0};
         __on_context_stop_t __on_context_stop_{};
         __on_receiver_stop_t __on_receiver_stop_{};
 
@@ -911,7 +915,7 @@ namespace exec {
 
         void submit(::io_uring_sqe& __sqe) noexcept {
           [[maybe_unused]]
-          int prev = __n_ops_.fetch_add(1, std::memory_order_relaxed);
+          int prev = __n_ops_.fetch_add(1, stdexec::__std::memory_order_relaxed);
           STDEXEC_ASSERT(prev == 0);
           __context& __context_ = this->__base_.context();
           _Receiver& __receiver = this->__base_.receiver();
@@ -922,7 +926,7 @@ namespace exec {
         }
 
         void complete(const ::io_uring_cqe& __cqe) noexcept {
-          if (__n_ops_.fetch_sub(1, std::memory_order_relaxed) == 1) {
+          if (__n_ops_.fetch_sub(1, stdexec::__std::memory_order_relaxed) == 1) {
             __on_context_stop_.reset();
             __on_receiver_stop_.reset();
             _Receiver& __receiver = this->__base_.receiver();

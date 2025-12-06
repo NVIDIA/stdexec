@@ -196,7 +196,7 @@ TEST_CASE("simple bulk chaining on system context", "[types][system_scheduler]")
 
 TEST_CASE("simple bulk_chunked task on system context", "[types][system_scheduler]") {
   std::thread::id this_id = std::this_thread::get_id();
-  constexpr size_t num_tasks = 16;
+  constexpr unsigned long num_tasks = 16;
   std::thread::id pool_ids[num_tasks];
   exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 

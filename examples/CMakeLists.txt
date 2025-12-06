@@ -38,28 +38,35 @@ function(def_example example)
 endfunction()
 
 set(stdexec_examples
-                 "example.hello_world : hello_world.cpp"
-                  "example.hello_coro : hello_coro.cpp"
-                       "example.scope : scope.cpp"
-                       "example.retry : retry.cpp"
-                        "example.then : then.cpp"
-      "example.server_theme.let_value : server_theme/let_value.cpp"
-    "example.server_theme.on_transfer : server_theme/on_transfer.cpp"
-      "example.server_theme.then_upon : server_theme/then_upon.cpp"
-     "example.server_theme.split_bulk : server_theme/split_bulk.cpp"
-"example.benchmark.static_thread_pool : benchmark/static_thread_pool.cpp"
-"example.benchmark.static_thread_pool_old : benchmark/static_thread_pool_old.cpp"
-"example.benchmark.static_thread_pool_nested : benchmark/static_thread_pool_nested.cpp"
-"example.benchmark.static_thread_pool_nested_old : benchmark/static_thread_pool_nested_old.cpp"
-"example.benchmark.static_thread_pool_bulk_enqueue : benchmark/static_thread_pool_bulk_enqueue.cpp"
-"example.benchmark.static_thread_pool_bulk_enqueue_nested : benchmark/static_thread_pool_bulk_enqueue_nested.cpp"
+                                          "example.problem : problem.cpp"
+                                      "example.hello_world : hello_world.cpp"
+                                       "example.hello_coro : hello_coro.cpp"
+                                            "example.scope : scope.cpp"
+                                            "example.retry : retry.cpp"
+                                             "example.then : then.cpp"
+                           "example.server_theme.let_value : server_theme/let_value.cpp"
+                         "example.server_theme.on_transfer : server_theme/on_transfer.cpp"
+                           "example.server_theme.then_upon : server_theme/then_upon.cpp"
+                          "example.server_theme.split_bulk : server_theme/split_bulk.cpp"
+                     "example.benchmark.static_thread_pool : benchmark/static_thread_pool.cpp"
 )
+
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  # The following examples generate files with names that are too long for Windows.
+  set(stdexec_examples ${stdexec_examples}
+                 "example.benchmark.static_thread_pool_old : benchmark/static_thread_pool_old.cpp"
+              "example.benchmark.static_thread_pool_nested : benchmark/static_thread_pool_nested.cpp"
+          "example.benchmark.static_thread_pool_nested_old : benchmark/static_thread_pool_nested_old.cpp"
+        "example.benchmark.static_thread_pool_bulk_enqueue : benchmark/static_thread_pool_bulk_enqueue.cpp"
+ "example.benchmark.static_thread_pool_bulk_enqueue_nested : benchmark/static_thread_pool_bulk_enqueue_nested.cpp"
+  )
+endif ()
 
 if (LINUX)
   set(stdexec_examples ${stdexec_examples}
                     "example.io_uring : io_uring.cpp"
   )
-endif (LINUX)
+endif ()
 
 foreach(example ${stdexec_examples})
     def_example(${example})

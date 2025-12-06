@@ -19,19 +19,22 @@
 #pragma once
 
 #include "stdexec/__detail/__config.hpp"
-#include <map>
+
+#include <cmath>
+#include <cstdio>
+#include <cstring>
+
+#include <charconv>
 #include <chrono>
 #include <iomanip>
 #include <iostream>
-#include <charconv>
-#include <string_view>
+#include <map>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <vector>
-#include <cstring>
 
-#include <cmath>
-
-#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
+#if STDEXEC_CUDA_COMPILATION()
 #  define STDEXEC_STDERR
 #  include "nvexec/detail/throw_on_cuda_error.cuh"
 #endif
@@ -41,7 +44,7 @@ struct deleter_t {
 
   template <class T>
   void operator()(T *ptr) {
-#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
+#if STDEXEC_CUDA_COMPILATION()
     if (on_gpu) {
       STDEXEC_ASSERT_CUDA_API(cudaFree(ptr));
     } else
@@ -57,7 +60,7 @@ STDEXEC_ATTRIBUTE(host, device)
 inline auto allocate_on(bool gpu, std::size_t elements = 1) -> std::unique_ptr<T, deleter_t> {
   T *ptr{};
 
-#if defined(_NVHPC_CUDA) || defined(__CUDACC__)
+#if STDEXEC_CUDA_COMPILATION()
   if (gpu) {
     STDEXEC_TRY_CUDA_API(cudaMallocManaged(&ptr, elements * sizeof(T)));
   } else
@@ -66,6 +69,7 @@ inline auto allocate_on(bool gpu, std::size_t elements = 1) -> std::unique_ptr<T
     ptr = reinterpret_cast<T *>(malloc(elements * sizeof(T)));
   }
 
+  std::memset(ptr, 0, elements * sizeof(T));
   return std::unique_ptr<T, deleter_t>(ptr, deleter_t{gpu});
 }
 
@@ -243,7 +247,7 @@ struct e_field_calculator_t {
 
   STDEXEC_ATTRIBUTE(nodiscard, host, device)
   auto gaussian_pulse(float t, float t_0, float tau) const -> float {
-    return static_cast<float>(exp(-(((t - t_0) / tau) * (t - t_0) / tau)));
+    return static_cast<float>(std::exp(-(((t - t_0) / tau) * (t - t_0) / tau)));
   }
 
   STDEXEC_ATTRIBUTE(nodiscard, host, device)

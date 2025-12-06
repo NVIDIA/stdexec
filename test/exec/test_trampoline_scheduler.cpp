@@ -77,4 +77,5 @@ namespace {
     auto recurse_deeply = retry(ex::on(sched, fails_alot{}));
     ex::sync_wait(std::move(recurse_deeply));
   }
+
 } // namespace

@@ -335,4 +335,5 @@ namespace {
     (void) snd1;
     (void) snd2;
   }
+
 } // namespace

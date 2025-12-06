@@ -236,7 +236,7 @@ namespace nvexec::_strm {
     }
 
     auto do_allocate(const std::size_t bytes, const std::size_t alignment) -> void* override {
-      assert(alignment <= block_alignment);
+      STDEXEC_ASSERT(alignment <= block_alignment);
       void* ptr = std::align(alignment, bytes, current_ptr, space);
 
       if (ptr == nullptr) {
@@ -314,8 +314,9 @@ namespace nvexec::_strm {
       , live_blocks(ptr_comparator_t{}) {
     }
 
-    auto do_allocate(const std::size_t bytes, [[maybe_unused]]const std::size_t alignment) -> void* override {
-      assert(alignment <= block_alignment);
+    auto do_allocate(const std::size_t bytes, [[maybe_unused]] const std::size_t alignment)
+      -> void* override {
+      STDEXEC_ASSERT(alignment <= block_alignment);
 
       std::lock_guard<std::mutex> lock(mutex);
 

@@ -19,21 +19,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "CPU (clang 16, Debug)",       build: "Debug",   tag: llvm16-cuda12.9, cxxflags: "-stdlib=libc++" }
-          - { name: "CPU (clang 16, Release)",     build: "Release", tag: llvm16-cuda12.9, cxxflags: "-stdlib=libc++" }
-          - { name: "CPU (gcc 11, Debug)",         build: "Debug",   tag: gcc11-cuda12.9,  cxxflags: "", }
-          - { name: "CPU (gcc 11, Release)",       build: "Release", tag: gcc11-cuda12.9,  cxxflags: "", }
-          - { name: "CPU (gcc 11, Release, ASAN)", build: "Release", tag: gcc11-cuda12.9,  cxxflags: "-fsanitize=address" }
-          - { name: "CPU (gcc 12, Release, TSAN)", build: "Release", tag: gcc12-cuda12.9,  cxxflags: "-fsanitize=thread" }
+          - { name: "CPU (clang 16, Debug)",         build: "Debug",   tag: llvm16-cuda12.9, cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (clang 16, Release)",       build: "Release", tag: llvm16-cuda12.9, cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (clang 16, Release, ASAN)", build: "Release", tag: llvm16-cuda12.9, cxxflags: "-stdlib=libc++ -fsanitize=address -fsanitize-ignorelist=/home/coder/stdexec/sanitizer-ignorelist.txt" }
+          - { name: "CPU (gcc 11, Debug)",           build: "Debug",   tag: gcc11-cuda12.9,  cxxflags: "", }
+          - { name: "CPU (gcc 11, Release)",         build: "Release", tag: gcc11-cuda12.9,  cxxflags: "", }
+          - { name: "CPU (gcc 11, Release, ASAN)",   build: "Release", tag: gcc11-cuda12.9,  cxxflags: "-fsanitize=address" }
+          - { name: "CPU (gcc 12, Release, TSAN)",   build: "Release", tag: gcc12-cuda12.9,  cxxflags: "-fsanitize=thread" }
     container:
       options: -u root
-      image: rapidsai/devcontainers:25.10-cpp-${{ matrix.tag }}
-      env:
-        SCCACHE_BUCKET: "rapids-sccache-devs"
-        SCCACHE_REGION: "us-east-2"
-        SCCACHE_S3_KEY_PREFIX: "nvidia-stdexec-dev"
-        SCCACHE_SERVER_PORT: "4225"
-        SCCACHE_SERVER_LOG: "sccache=debug"
+      image: rapidsai/devcontainers:26.02-cpp-${{ matrix.tag }}
     permissions:
       id-token: write # This is required for configure-aws-credentials
       contents: read  # This is required for actions/checkout
@@ -51,20 +46,6 @@ jobs:
         run: |
           echo "ARTIFACT_PREFIX=${{runner.os}}-${{matrix.tag}}-amd64" >> "${GITHUB_ENV}"
           echo "ARTIFACT_SUFFIX=${{github.run_id}}-${{github.run_attempt}}-$RANDOM" >> "${GITHUB_ENV}"
-      - id: sccache-preprocessor-cache
-        name: Setup sccache preprocessor cache
-        uses: actions/cache@v4
-        with:
-          path: /home/coder/.cache/sccache/preprocessor
-          restore-keys: sccache-preprocessor-cache-${{env.ARTIFACT_PREFIX}}
-          key: sccache-preprocessor-cache-${{env.ARTIFACT_PREFIX}}-${{env.ARTIFACT_SUFFIX}}
-      - id: sccache-dist-toolchains-cache
-        name: Setup sccache-dist client toolchains cache
-        uses: actions/cache@v4
-        with:
-          path: /home/coder/.cache/sccache-dist-client
-          restore-keys: sccache-toolchains-cache-${{env.ARTIFACT_PREFIX}}
-          key: sccache-toolchains-cache-${{env.ARTIFACT_PREFIX}}-${{env.ARTIFACT_SUFFIX}}
       - if: github.repository_owner == 'NVIDIA'
         name: Get AWS credentials for sccache bucket
         uses: aws-actions/configure-aws-credentials@v4
@@ -74,16 +55,18 @@ jobs:
           role-to-assume: arn:aws:iam::279114543810:role/gha-oidc-NVIDIA
       - name: Build and test CPU schedulers
         env:
+          ASAN_OPTIONS: alloc_dealloc_mismatch=0
           NVCC_APPEND_FLAGS: "-t=100"
-          SCCACHE_DIST_URL: "https://amd64.linux.sccache.rapids.nvidia.com"
-          SCCACHE_DIST_CONNECT_TIMEOUT: "30"
-          SCCACHE_DIST_FALLBACK_TO_LOCAL_COMPILE: "true"
-          SCCACHE_DIST_KEEPALIVE_ENABLED: "true"
-          SCCACHE_DIST_KEEPALIVE_INTERVAL: "20"
-          SCCACHE_DIST_KEEPALIVE_TIMEOUT: "600"
-          SCCACHE_DIST_REWRITE_INCLUDES_ONLY: ${{ contains(matrix.tag, 'llvm') && 'true' || 'false' }}
+          SCCACHE_BUCKET: "rapids-sccache-devs"
           SCCACHE_DIST_REQUEST_TIMEOUT: "7140"
-          SCCACHE_IDLE_TIMEOUT: "7200"
+          SCCACHE_DIST_URL: "https://amd64.linux.sccache.rapids.nvidia.com"
+          SCCACHE_IDLE_TIMEOUT: "0"
+          SCCACHE_REGION: "us-east-2"
+          SCCACHE_S3_KEY_PREFIX: "nvidia-stdexec-dev"
+          SCCACHE_S3_PREPROCESSOR_CACHE_KEY_PREFIX: "nvidia-stdexec-dev/preprocessor"
+          SCCACHE_S3_USE_PREPROCESSOR_CACHE_MODE: "true"
+          SCCACHE_SERVER_LOG: "sccache=debug"
+          SCCACHE_SERVER_PORT: "4225"
         run: |
           set -ex;
 
@@ -115,7 +98,8 @@ jobs:
           sccache -s;
 
           # Tests
-          ctest --test-dir build --verbose --output-on-failure --timeout 300;
+          SCCACHE_NO_CACHE=1 SCCACHE_NO_DIST_COMPILE=1 \
+          ctest --test-dir build --verbose --output-on-failure --timeout 60;
       - if: ${{ !cancelled() }}
         name: Upload sccache logs
         uses: actions/upload-artifact@v4

@@ -90,7 +90,7 @@ namespace {
                    flags.set(idx);
                  }
                });
-    auto [flags_actual] = stdexec::sync_wait(std::move(snd)).value();
+    [[maybe_unused]] auto [flags_actual] = stdexec::sync_wait(std::move(snd)).value();
 
     REQUIRE(flags_storage.all_set_once());
   }

@@ -113,7 +113,7 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-#if defined(__CUDACC__) || STDEXEC_NVHPC()
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 #  define STDEXEC_CUDA_COMPILATION() 1
 #else
 #  define STDEXEC_CUDA_COMPILATION() 0
@@ -160,7 +160,7 @@ namespace __coro = std::experimental;
 #define STDEXEC_ATTR_WHICH_0(_ATTR) [[_ATTR]]
 
 // custom handling for specific attribute types
-#ifdef __CUDACC__
+#if defined(__CUDACC__) && !STDEXEC_NVHPC()
 #  define STDEXEC_ATTR_WHICH_1(_ATTR) __host__
 #else
 #  define STDEXEC_ATTR_WHICH_1(_ATTR)
@@ -168,7 +168,7 @@ namespace __coro = std::experimental;
 #define STDEXEC_ATTR_host     STDEXEC_PROBE(~, 1)
 #define STDEXEC_ATTR___host__ STDEXEC_PROBE(~, 1)
 
-#ifdef __CUDACC__
+#if defined(__CUDACC__) && !STDEXEC_NVHPC()
 #  define STDEXEC_ATTR_WHICH_2(_ATTR) __device__
 #else
 #  define STDEXEC_ATTR_WHICH_2(_ATTR)
@@ -230,6 +230,16 @@ namespace __coro = std::experimental;
 #endif
 #define STDEXEC_ATTR_preferred_name     STDEXEC_PROBE(~, 6)
 #define STDEXEC_ATTR___preferred_name__ STDEXEC_PROBE(~, 6)
+
+#if defined(__launch_bounds__) && !STDEXEC_NVHPC()
+#  define STDEXEC_ATTR_WHICH_7(_ATTR) STDEXEC_CAT(STDEXEC_ATTR_NORMALIZE_, _ATTR)
+#else
+#  define STDEXEC_ATTR_WHICH_7(_ATTR)
+#endif
+#define STDEXEC_ATTR_NORMALIZE_launch_bounds(...)     __launch_bounds__(__VA_ARGS__)
+#define STDEXEC_ATTR_NORMALIZE___launch_bounds__(...) __launch_bounds__(__VA_ARGS__)
+#define STDEXEC_ATTR_launch_bounds(...)               STDEXEC_PROBE(~, 7)
+#define STDEXEC_ATTR___launch_bounds__(...)           STDEXEC_PROBE(~, 7)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // warning push/pop portability macros
@@ -410,7 +420,7 @@ namespace stdexec {
 #if STDEXEC_NVHPC()
 #  include <nv/target>
 #  define STDEXEC_TERMINATE() NV_IF_TARGET(NV_IS_HOST, (std::terminate();), (__trap();)) void()
-#elif STDEXEC_CLANG() && STDEXEC_CUDA_COMPILATION() && defined(__CUDA_ARCH__)
+#elif STDEXEC_CLANG() && defined(__CUDA__) && defined(__CUDA_ARCH__)
 #  define STDEXEC_TERMINATE()                                                                      \
     __trap();                                                                                      \
     __builtin_unreachable()
@@ -460,6 +470,12 @@ namespace stdexec {
 #  define STDEXEC_HAS_UNSEQUENCED_EXECUTION_POLICY() 1
 #else
 #  define STDEXEC_HAS_UNSEQUENCED_EXECUTION_POLICY() 0
+#endif
+
+#if defined(__cpp_lib_parallel_algorithm) && __cpp_lib_parallel_algorithm >= 2016'03L
+#  define STDEXEC_HAS_PARALLEL_ALGORITHMS() 1
+#else
+#  define STDEXEC_HAS_PARALLEL_ALGORITHMS() 0
 #endif
 
 #ifdef STDEXEC_ASSERT

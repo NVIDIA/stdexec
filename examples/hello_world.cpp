@@ -41,7 +41,7 @@ auto main() -> int {
   std::cout << "Result: " << i << std::endl;
 
   // Sync_wait provides a run_loop scheduler
-  std::tuple<run_loop::__scheduler> t = sync_wait(get_scheduler()).value();
+  std::tuple<run_loop::scheduler> t = sync_wait(get_scheduler()).value();
   (void) t;
 
   auto y = let_value(get_scheduler(), [](auto sched) {

@@ -21,8 +21,8 @@
 #include "__concepts.hpp"
 #include "__config.hpp"
 #include "__meta.hpp"
-#include "__receivers.hpp"
-#include "__senders.hpp"
+// #include "__receivers.hpp"
+// #include "__senders.hpp"
 #include "__tag_invoke.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__type_traits.hpp"
@@ -205,37 +205,31 @@ namespace stdexec {
 
     struct as_awaitable_t {
       template <class _Tp, class _Promise>
-      static constexpr auto __select_impl_() noexcept {
+      static constexpr auto __get_declfn() noexcept {
         if constexpr (__has_as_awaitable_member<_Tp, _Promise>) {
           using _Result = decltype(__declval<_Tp>().as_awaitable(__declval<_Promise&>()));
           constexpr bool _Nothrow = noexcept(__declval<_Tp>().as_awaitable(__declval<_Promise&>()));
-          return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
+          return __declfn<_Result, _Nothrow>();
         } else if constexpr (tag_invocable<as_awaitable_t, _Tp, _Promise&>) {
           using _Result = tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>;
           constexpr bool _Nothrow = nothrow_tag_invocable<as_awaitable_t, _Tp, _Promise&>;
-          return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
+          return __declfn<_Result, _Nothrow>();
           // NOLINTNEXTLINE(bugprone-branch-clone)
         } else if constexpr (__awaitable<_Tp, __unspecified>) { // NOT __awaitable<_Tp, _Promise> !!
-          using _Result = _Tp&&;
-          return static_cast<_Result (*)() noexcept>(nullptr);
+          return __declfn<_Tp&&>();
         } else if constexpr (__awaitable_sender<_Tp, _Promise>) {
           using _Result = __sender_awaitable_t<_Promise, _Tp>;
           constexpr bool _Nothrow =
             __nothrow_constructible_from<_Result, _Tp, __coro::coroutine_handle<_Promise>>;
-          return static_cast<_Result (*)() noexcept(_Nothrow)>(nullptr);
+          return __declfn<_Result, _Nothrow>();
         } else {
-          using _Result = _Tp&&;
-          return static_cast<_Result (*)() noexcept>(nullptr);
+          return __declfn<_Tp&&>();
         }
       }
 
-      template <class _Tp, class _Promise>
-      using __select_impl_t = decltype(__select_impl_<_Tp, _Promise>());
-
-      template <class _Tp, class _Promise>
-      auto operator()(_Tp&& __t, _Promise& __promise) const
-        noexcept(__nothrow_callable<__select_impl_t<_Tp, _Promise>>)
-          -> __call_result_t<__select_impl_t<_Tp, _Promise>> {
+      template <class _Tp, class _Promise, auto _DeclFn = __get_declfn<_Tp, _Promise>()>
+      auto operator()(_Tp&& __t, _Promise& __promise) const noexcept(noexcept(_DeclFn()))
+        -> decltype(_DeclFn()) {
         if constexpr (__has_as_awaitable_member<_Tp, _Promise>) {
           using _Result = decltype(static_cast<_Tp&&>(__t).as_awaitable(__promise));
           static_assert(__awaitable<_Result, _Promise>);

@@ -35,15 +35,15 @@ namespace nvexec::_strm {
       using __t = __env;
       using __id = __env;
 
-      run_loop::__scheduler __sched_;
+      run_loop::scheduler __sched_;
 
       [[nodiscard]]
-      auto query(get_scheduler_t) const noexcept -> run_loop::__scheduler {
+      auto query(get_scheduler_t) const noexcept -> run_loop::scheduler {
         return __sched_;
       }
 
       [[nodiscard]]
-      auto query(get_delegation_scheduler_t) const noexcept -> run_loop::__scheduler {
+      auto query(get_delegation_scheduler_t) const noexcept -> run_loop::scheduler {
         return __sched_;
       }
     };
@@ -201,9 +201,9 @@ namespace nvexec::_strm {
 
   template <>
   struct apply_sender_for<sync_wait_t> {
-    template <stream_completing_sender Sender>
+    template <stream_completing_sender<env<>> Sender>
     auto operator()(Sender&& sndr) const {
-      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr));
+      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), stdexec::env{});
       return _sync_wait::sync_wait_t{}(sched.context_state_, static_cast<Sender&&>(sndr));
     }
   };

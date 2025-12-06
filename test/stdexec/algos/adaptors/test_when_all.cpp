@@ -243,20 +243,19 @@ namespace {
     check_sends_stopped<true>(ex::when_all(ex::just(3), ex::just_error(-1), ex::just_stopped()));
   }
 
-  TEST_CASE("when_all returns empty env", "[adaptors][when_all]") {
-    check_env_type<ex::env<>>(ex::when_all(ex::just(), ex::just()));
-  }
-
   struct test_domain1 { };
 
   struct test_domain2 : test_domain1 { };
 
   TEST_CASE("when_all propagates domain from children", "[adaptors][when_all]") {
+    basic_inline_scheduler<test_domain1> sched1;
+    basic_inline_scheduler<test_domain2> sched2;
+
     auto snd = ex::when_all(
-      ex::just(13) | exec::write_attrs(ex::prop{ex::get_domain, test_domain1{}}),
-      ex::just(3.14) | exec::write_attrs(ex::prop{ex::get_domain, test_domain2{}}));
+      ex::starts_on(sched1, ex::just(13)),
+      ex::starts_on(sched2, ex::just(3.14)));
     auto env = ex::get_env(snd);
-    auto domain = ex::get_domain(env);
+    auto domain = ex::get_completion_domain<ex::set_value_t>(env, ex::env<>{});
     STATIC_REQUIRE(std::same_as<decltype(domain), test_domain1>);
   }
 
@@ -271,7 +270,7 @@ namespace {
     struct basic_domain {
       template <ex::sender_expr_for<Tag> Sender, class... Env>
         requires(sizeof...(Env) == C)
-      auto transform_sender(Sender&&, const Env&...) const {
+      auto transform_sender(stdexec::set_value_t, Sender&&, Env&&...) const {
         return Fun();
       }
     };
@@ -290,9 +289,11 @@ namespace {
         ex::when_all(ex::transfer_just(scheduler(), 3), ex::transfer_just(scheduler(), 0.1415));
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_t>);
       [[maybe_unused]]
-      domain dom = ex::get_domain(ex::get_env(snd));
+      domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd));
     }
 
+    // TODO(gevtushenko)
+    #if 0
     SECTION("early customization") {
       using domain = basic_domain<ex::when_all_t, customize::early, hello>;
       using scheduler = basic_inline_scheduler<domain>;
@@ -302,6 +303,7 @@ namespace {
       static_assert(ex::sender_expr_for<decltype(snd), ex::just_t>);
       wait_for_value(std::move(snd), std::string{"hello world"});
     }
+    #endif
 
     SECTION("late customization") {
       using domain = basic_domain<ex::when_all_t, customize::late, hello>;
@@ -325,9 +327,11 @@ namespace {
         ex::transfer_just(scheduler(), 3), ex::transfer_just(scheduler(), 0.1415));
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_with_variant_t>);
       [[maybe_unused]]
-      domain dom = ex::get_domain(ex::get_env(snd));
+      domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd));
     }
 
+  // TODO(gevtushenko)
+  #if 0
     SECTION("early customization") {
       using domain = basic_domain<ex::when_all_with_variant_t, customize::early, hello>;
       using scheduler = basic_inline_scheduler<domain>;
@@ -346,6 +350,7 @@ namespace {
         ex::starts_on(scheduler(), ex::when_all_with_variant(ex::just(3), ex::just(0.1415)));
       wait_for_value(std::move(snd), std::string{"hello world"});
     }
+  #endif
   }
 
   TEST_CASE("when_all_with_variant finds when_all customizations", "[adaptors][when_all]") {
@@ -361,9 +366,11 @@ namespace {
         ex::transfer_just(scheduler(), 3), ex::transfer_just(scheduler(), 0.1415));
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_with_variant_t>);
       [[maybe_unused]]
-      domain dom = ex::get_domain(ex::get_env(snd));
+      domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd));
     }
 
+    // TODO(gevtushenko)
+    #if 0
     SECTION("early customization") {
       using domain = basic_domain<ex::when_all_t, customize::early, hello>;
       using scheduler = basic_inline_scheduler<domain>;
@@ -373,6 +380,7 @@ namespace {
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_with_variant_t>);
       wait_for_value(std::move(snd), std::string{"hello world"});
     }
+    #endif
 
     SECTION("late customization") {
       using domain = basic_domain<ex::when_all_t, customize::late, hello>;

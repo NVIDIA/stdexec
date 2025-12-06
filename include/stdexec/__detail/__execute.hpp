@@ -33,7 +33,7 @@ namespace stdexec {
       template <scheduler _Scheduler, class _Fun>
         requires __callable<_Fun&> && move_constructible<_Fun>
       void operator()(_Scheduler&& __sched, _Fun __fun) const noexcept(false) {
-        auto __domain = query_or(get_domain, __sched, default_domain());
+        auto __domain = get_domain(__sched);
         stdexec::apply_sender(
           __domain,
           *this,
