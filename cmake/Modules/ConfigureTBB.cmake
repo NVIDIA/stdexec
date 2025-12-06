@@ -10,12 +10,14 @@ rapids_find_package(
 
 # If TBB is available and the stdlib is libstdc++, then a #include of <execution> will
 # pull in TBB headers, creating a link-time dependency on TBB.
-if (TBB_FOUND AND NOT STDEXEC_ENABLE_TBB)
-  include(CheckCXXSymbolExists)
-  check_cxx_symbol_exists(__GLIBCXX__ "ciso646" _glibcxx_version_defined)
-  if (_glibcxx_version_defined)
-    set(STDEXEC_ENABLE_TBB ON)
-    message(STATUS "Enabling TBB support in stdexec because <tbb/tbb.h> is available and libstdc++ is used.")
+if (TBB_FOUND)
+  if (NOT STDEXEC_ENABLE_TBB)
+    include(CheckCXXSymbolExists)
+    check_cxx_symbol_exists(__GLIBCXX__ "ciso646" _glibcxx_version_defined)
+    if (_glibcxx_version_defined)
+      set(STDEXEC_ENABLE_TBB ON)
+      message(STATUS "Enabling TBB support in stdexec because <tbb/tbb.h> is available and libstdc++ is used.")
+    endif()
   endif()
 else()
   set(STDEXEC_ENABLE_TBB OFF)
