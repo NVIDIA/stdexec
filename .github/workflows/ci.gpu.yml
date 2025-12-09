@@ -74,6 +74,8 @@ jobs:
         run: |
           set -ex;
 
+          source /etc/profile
+
           devcontainer-utils-init-sccache-dist                           \
               --enable-sccache-dist - <<< "                              \
               --auth-type 'token'                                        \
