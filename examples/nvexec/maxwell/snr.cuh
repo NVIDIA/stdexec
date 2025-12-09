@@ -28,6 +28,12 @@
 #if STDEXEC_CUDA_COMPILATION()
 #  include <nvexec/stream_context.cuh>    // IWYU pragma: export
 #  include <nvexec/multi_gpu_context.cuh> // IWYU pragma: export
+#else
+namespace nvexec {
+  inline constexpr bool is_on_gpu() noexcept {
+    return false;
+  }
+} // namespace nvexec
 #endif
 
 namespace ex = stdexec;
