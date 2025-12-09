@@ -175,6 +175,7 @@ namespace stdexec {
     template <class _Sender, class _Receiver>
     concept __with_co_await = __callable<__connect_awaitable_t, _Sender, _Receiver>;
 
+    template <class _Sender, class _Receiver>
     struct _NO_USABLE_CONNECT_CUSTOMIZATION_FOUND_ {
       void operator()() const noexcept = delete;
     };
@@ -250,7 +251,10 @@ namespace stdexec {
           using _Result = __debug::__debug_operation;
           return __declfn<_Result, _NothrowTfxSender>();
         } else {
-          return _NO_USABLE_CONNECT_CUSTOMIZATION_FOUND_();
+          return _NO_USABLE_CONNECT_CUSTOMIZATION_FOUND_<
+            _WITH_SENDER_<__name_of<_TfxSender>>,
+            _WITH_RECEIVER_<_Receiver>
+          >();
         }
       }
 
