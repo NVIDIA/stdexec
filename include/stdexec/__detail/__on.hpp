@@ -149,7 +149,7 @@ namespace stdexec {
             // This branch handles the case where `on` was called like `on(sch, sndr)`. In
             // this case, we find the old scheduler by looking in the receiver's
             // environment.
-            const auto __old = __with_default{get_scheduler, __end_sched_t()}(__env);
+            auto __old = __with_default{get_scheduler, __end_sched_t()}(__env);
 
             return continues_on(
               starts_on(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)),
@@ -160,7 +160,7 @@ namespace stdexec {
             // want to restore is the completion scheduler of __child.
             constexpr auto __get_old_sched =
               __with_default{get_completion_scheduler<set_value_t>, __end_sched_t()};
-            const auto __old = __get_old_sched(get_env(__child), __env);
+            auto __old = __get_old_sched(get_env(__child), __env);
 
             auto& [__sched, __clsur] = __data;
             auto __pred = __reschedule(static_cast<_Child&&>(__child), __old, __sched);
