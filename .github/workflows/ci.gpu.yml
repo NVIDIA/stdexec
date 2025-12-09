@@ -72,19 +72,8 @@ jobs:
           SCCACHE_SERVER_LOG: "sccache=debug"
           SCCACHE_SERVER_PORT: "4225"
         run: |
-          set -e;
+          set -ex;
 
-          if test -n "${NVHPC_ROOT:+x}"; then
-            HPCX_INIT="$(find -L "$NVHPC_ROOT"/comm_libs/ -path '*/latest/hpcx-init.sh')";
-            if test -n "${HPCX_INIT:+x}"; then
-              . "$HPCX_INIT";
-              hpcx_load;
-            fi
-          fi
-
-          set -x;
-
-          devcontainer-utils-install-sccache --repo rapidsai/sccache --version rapids;
           devcontainer-utils-init-sccache-dist                           \
               --enable-sccache-dist - <<< "                              \
               --auth-type 'token'                                        \
