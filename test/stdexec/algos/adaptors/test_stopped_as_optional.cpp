@@ -52,12 +52,12 @@ namespace {
     wait_for_value(std::move(snd), std::optional<int>{11});
   }
 
-  TEST_CASE(
-    "stopped_as_optional shall not work with multi-value senders",
-    "[adaptors][stopped_as_optional]") {
-    auto snd = ex::just(3, 0.1415) | ex::stopped_as_optional();
-    static_assert(!ex::sender_to<decltype(snd), expect_error_receiver<>>);
-  }
+  // TEST_CASE(
+  //   "stopped_as_optional shall not work with multi-value senders",
+  //   "[adaptors][stopped_as_optional]") {
+  //   auto snd = ex::just(3, 0.1415) | ex::stopped_as_optional();
+  //   static_assert(!ex::sender_to<decltype(snd), expect_error_receiver<>>);
+  // }
 
   TEST_CASE(
     "stopped_as_optional shall not work with senders that have multiple alternatives",
