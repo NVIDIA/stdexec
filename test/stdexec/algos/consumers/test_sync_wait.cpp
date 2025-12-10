@@ -233,8 +233,8 @@ namespace {
     CHECK(std::get<0>(res.value()) == "ciao");
   }
 
-  // TODO(gevtushenko)
-  #if 0
+  // TODO(ericniebler)
+#if 0
   TEST_CASE("sync_wait_with_variant can be customized", "[consumers][sync_wait_with_variant]") {
     basic_inline_scheduler<sync_wait_test_domain> sched;
 
@@ -247,7 +247,7 @@ namespace {
     CHECK(res.has_value());
     CHECK(std::get<0>(std::get<1>(res.value())) == std::string{"ciao_multi"});
   }
-  #endif
+#endif
 
   template <class... Ts>
   using decayed_tuple = std::tuple<std::decay_t<Ts>...>;

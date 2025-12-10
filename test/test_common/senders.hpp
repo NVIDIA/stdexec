@@ -67,6 +67,22 @@ namespace {
       return {{}, std::move(values_), std::forward<Receiver>(rcvr)};
     }
 
+    struct attrs {
+      [[nodiscard]]
+      auto query(ex::get_completion_behavior_t<ex::set_value_t>) const noexcept {
+        return ex::completion_behavior::inline_completion;
+      }
+      [[nodiscard]]
+      auto query(ex::get_completion_behavior_t<ex::set_error_t>) const noexcept {
+        return ex::completion_behavior::inline_completion;
+      }
+    };
+
+    [[nodiscard]]
+    auto get_attrs() const noexcept -> attrs {
+      return {};
+    }
+
     std::tuple<Values...> values_;
   };
 

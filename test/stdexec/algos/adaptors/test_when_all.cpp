@@ -292,19 +292,6 @@ namespace {
       domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd));
     }
 
-    // TODO(gevtushenko)
-    #if 0
-    SECTION("early customization") {
-      using domain = basic_domain<ex::when_all_t, customize::early, hello>;
-      using scheduler = basic_inline_scheduler<domain>;
-
-      auto snd =
-        ex::when_all(ex::transfer_just(scheduler(), 3), ex::transfer_just(scheduler(), 0.1415));
-      static_assert(ex::sender_expr_for<decltype(snd), ex::just_t>);
-      wait_for_value(std::move(snd), std::string{"hello world"});
-    }
-    #endif
-
     SECTION("late customization") {
       using domain = basic_domain<ex::when_all_t, customize::late, hello>;
       using scheduler = basic_inline_scheduler<domain>;
@@ -330,18 +317,6 @@ namespace {
       domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd));
     }
 
-  // TODO(gevtushenko)
-  #if 0
-    SECTION("early customization") {
-      using domain = basic_domain<ex::when_all_with_variant_t, customize::early, hello>;
-      using scheduler = basic_inline_scheduler<domain>;
-
-      auto snd = ex::when_all_with_variant(
-        ex::transfer_just(scheduler(), 3), ex::transfer_just(scheduler(), 0.1415));
-      static_assert(ex::sender_expr_for<decltype(snd), ex::just_t>);
-      wait_for_value(std::move(snd), std::string{"hello world"});
-    }
-
     SECTION("late customization") {
       using domain = basic_domain<ex::when_all_with_variant_t, customize::late, hello>;
       using scheduler = basic_inline_scheduler<domain>;
@@ -350,7 +325,6 @@ namespace {
         ex::starts_on(scheduler(), ex::when_all_with_variant(ex::just(3), ex::just(0.1415)));
       wait_for_value(std::move(snd), std::string{"hello world"});
     }
-  #endif
   }
 
   TEST_CASE("when_all_with_variant finds when_all customizations", "[adaptors][when_all]") {
@@ -368,19 +342,6 @@ namespace {
       [[maybe_unused]]
       domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd));
     }
-
-    // TODO(gevtushenko)
-    #if 0
-    SECTION("early customization") {
-      using domain = basic_domain<ex::when_all_t, customize::early, hello>;
-      using scheduler = basic_inline_scheduler<domain>;
-
-      auto snd = ex::when_all_with_variant(
-        ex::transfer_just(scheduler(), 3), ex::transfer_just(scheduler(), 0.1415));
-      static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_with_variant_t>);
-      wait_for_value(std::move(snd), std::string{"hello world"});
-    }
-    #endif
 
     SECTION("late customization") {
       using domain = basic_domain<ex::when_all_t, customize::late, hello>;
