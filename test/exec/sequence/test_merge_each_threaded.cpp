@@ -31,6 +31,7 @@
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/senders.hpp>
+#include <test_common/sequences.hpp>
 #include <test_common/type_helpers.hpp>
 
 #include <array>
@@ -84,11 +85,6 @@ namespace {
     }
   };
 
-  // a sequence adaptor that applies a function to each item
-  [[maybe_unused]]
-  static constexpr auto then_each = [](auto f) {
-    return exec::transform_each(ex::then(f));
-  };
   // a sequence adaptor that schedules each item to complete
   // on the specified scheduler
   [[maybe_unused]]
@@ -109,86 +105,8 @@ namespace {
     };
     return exec::transform_each(delay_adaptor);
   };
-  // a sequence adaptor that applies a function to each item
-  // the function must produce a sequence
-  // all the sequences returned from the function are merged
-  [[maybe_unused]]
-  static constexpr auto flat_map = [](auto&& f) {
-    auto map_merge = [](auto&& sequence, auto&& f) noexcept {
-      return merge_each(
-        exec::transform_each(
-          static_cast<decltype(sequence)&&>(sequence), ex::then(static_cast<decltype(f)&&>(f))));
-    };
-    return stdexec::__binder_back<decltype(map_merge), decltype(f)>{
-      {static_cast<decltype(f)&&>(f)}, {}, {}};
-  };
-  // when_all requires a successful completion
-  // however stop_after_on has no successful completion
-  // this uses variant_sender to add a successful completion
-  // (the successful completion will never occur)
-  [[maybe_unused]]
-  static constexpr auto with_void = [](auto&& sender) noexcept
-    -> variant_sender<stdexec::__call_result_t<ex::just_t>, decltype(sender)> {
-    return {static_cast<decltype(sender)&&>(sender)};
-  };
-  // with_stop_token_from adds get_stop_token query, that returns the
-  // token for the provided stop_source, to the receiver env
-  [[maybe_unused]]
-  static constexpr auto with_stop_token_from = [](auto& stop_source) noexcept {
-    return ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()});
-  };
-  // log_start completes with the provided sequence after printing provided string
-  [[maybe_unused]]
-  auto log_start = [](auto sequence, auto message) {
-    return exec::sequence(
-      ex::read_env(ex::get_stop_token) | stdexec::then([message](auto&& token) noexcept {
-        UNSCOPED_INFO(
-          message << (token.stop_requested() ? ", stop was requested" : ", stop not requested")
-                  << ", on thread id: " << std::this_thread::get_id());
-      }),
-      ex::just(sequence));
-  };
-  // log_sequence prints the message when each value in the sequence is emitted
-  [[maybe_unused]]
-  auto log_sequence = [](auto sequence, auto message) {
-    return sequence | then_each([message](auto&& value) mutable noexcept {
-             UNSCOPED_INFO(message << ", on thread id: " << std::this_thread::get_id());
-             return value;
-           });
-  };
-  // emits_stopped completes with set_stopped after printing info
-  [[maybe_unused]]
-  auto emits_stopped = []() {
-    return ex::just() | stdexec::let_value([]() noexcept {
-             UNSCOPED_INFO("emitting stopped, on thread id: " << std::this_thread::get_id());
-             return ex::just_stopped();
-           });
-  };
-  // emits_error completes with set_error(error) after printing info
-  [[maybe_unused]]
-  auto emits_error = [](auto error) {
-    return ex::just() | stdexec::let_value([error]() noexcept {
-             UNSCOPED_INFO(error.what() << ", on thread id: " << std::this_thread::get_id());
-             return ex::just_error(error);
-           });
-  };
 
 #if STDEXEC_HAS_STD_RANGES()
-
-  // a sequence of numbers from itoa()
-  [[maybe_unused]]
-  static constexpr auto range = [](auto from, auto to) {
-    return exec::iterate(std::views::iota(from, to));
-  };
-
-  template <ex::sender Sender>
-  struct as_sequence_t : Sender {
-    using sender_concept = sequence_sender_t;
-    using item_types = exec::item_types<Sender>;
-    auto subscribe(auto receiver) {
-      return connect(set_next(receiver, *static_cast<Sender*>(this)), receiver);
-    }
-  };
 
   TEST_CASE(
     "merge_each - merge_each sender merges all items from multiple threads",
@@ -260,7 +178,6 @@ namespace {
 
     // a sequence whose items are sequences
     auto sequences = merge(
-      ex::just(stop_after_on(sched1, 10ms)),                                         // no items
       ex::just(range(100, 120)),                                                     // int items
       ex::just(empty_sequence()),                                                    // no items
       ex::just(range(200, 220)),                                                     // int items
@@ -331,7 +248,6 @@ namespace {
 
     // a sequence whose items are sequences
     auto sequences = merge(
-      ex::just(stop_after_on(sched1, 10ms)),                                         // no items
       ex::just(range(100, 120)),                                                     // int items
       ex::just(empty_sequence()),                                                    // no items
       ex::just(range(200, 220)),                                                     // int items

@@ -49,7 +49,9 @@ set(exec_test_sources
     sequence/test_empty_sequence.cpp
     sequence/test_ignore_all_values.cpp
     sequence/test_iterate.cpp
+    sequence/test_test_scheduler.cpp
     sequence/test_transform_each.cpp
+    sequence/test_marbles.cpp
     sequence/test_merge.cpp
     # These tests cause Microsoft's compiler to run out of memory
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:sequence/test_merge_each.cpp>

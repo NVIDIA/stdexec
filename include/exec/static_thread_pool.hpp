@@ -274,9 +274,17 @@ namespace exec {
 
 #if STDEXEC_HAS_STD_RANGES()
       struct _transform_iterate {
-        template <class Range>
-        auto operator()(exec::iterate_t, Range&& range) -> __t<schedule_all_::sequence<Range>> {
-          return {static_cast<Range&&>(range), pool_};
+        template <class _Data>
+        using __range_of_t =
+          stdexec::__mapply<stdexec::__q<stdexec::__mback>, STDEXEC_REMOVE_REFERENCE(_Data)>;
+
+        template <class _Data>
+        auto operator()(exec::iterate_t, _Data&& data)
+          -> __t<schedule_all_::sequence<__range_of_t<_Data>>> {
+          return {
+            static_cast<__range_of_t<_Data>&&>(
+              STDEXEC_REMOVE_REFERENCE(_Data)::template __get<1>(data)),
+            pool_};
         }
 
         _static_thread_pool& pool_;
