@@ -149,6 +149,9 @@ namespace stdexec {
 
   constexpr min_t min{};
 
+  template <class... _CBs>
+  using __common_completion_behavior_t = decltype(min(_CBs{}...));
+
   template <class _Tag, class _Attrs, class... _Env>
   concept __completes_inline =
     (__call_result_t<get_completion_behavior_t<_Tag>, const _Attrs&, const _Env&...>{}
