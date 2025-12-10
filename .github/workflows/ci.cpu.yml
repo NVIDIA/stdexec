@@ -68,9 +68,9 @@ jobs:
           SCCACHE_SERVER_LOG: "sccache=debug"
           SCCACHE_SERVER_PORT: "4225"
         run: |
-          set -ex;
-
+          set -e;
           source /etc/profile
+          set -x;
 
           devcontainer-utils-init-sccache-dist                           \
               --enable-sccache-dist - <<< "                              \
