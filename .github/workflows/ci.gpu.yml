@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - "member-function-customization"
       - "pull-request/[0-9]+"
 
 concurrency:
@@ -118,7 +117,6 @@ jobs:
           name: sccache-client-logs-${{env.ARTIFACT_PREFIX}}-${{env.ARTIFACT_SUFFIX}}
           path: /tmp/sccache*.log
           compression-level: 9
-
 
   ci-gpu:
     runs-on: ubuntu-latest

@@ -54,7 +54,7 @@ namespace stdexec {
         return __make_sexpr<starts_on_t>(static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
       }
 
-      template <class _Sender, class _Env>
+      template <__decay_copyable _Sender, class _Env>
       static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env&) {
         return __sexpr_apply(
           static_cast<_Sender&&>(__sndr),
@@ -63,6 +63,11 @@ namespace stdexec {
             return let_value(
               continues_on(just(), __data), __detail::__always{static_cast<_Child&&>(__child)});
           });
+      }
+
+      template <class _Sender, class _Env>
+      static auto transform_sender(set_value_t, _Sender&&, const _Env&) {
+        return _ERROR_<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_Sender>>{};
       }
     };
   } // namespace __starts_on_ns

@@ -64,12 +64,14 @@ namespace exec {
     }
 
     template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
-    static auto get_completion_signatures(_Self&& __self, _Env&&... __env)
+    STDEXEC_EXPLICIT_THIS_BEGIN(
+      auto get_completion_signatures)(this _Self&& __self, _Env&&... __env)
       -> decltype(__self.__tag().get_completion_signatures(
         static_cast<_Self&&>(__self),
         static_cast<_Env&&>(__env)...)) {
       return {};
     }
+    STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
     template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
     static auto get_item_types(_Self&& __self, _Env&&... __env)

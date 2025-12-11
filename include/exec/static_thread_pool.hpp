@@ -1166,14 +1166,15 @@ namespace exec {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completions_t<Self, env_of_t<Receiver>>>
-      static auto connect(Self&& self, Receiver rcvr) noexcept(__nothrow_constructible_from<
-                                                               _bulk_opstate_t<Receiver>,
-                                                               _static_thread_pool&,
-                                                               Shape,
-                                                               Fun,
-                                                               Sender,
-                                                               Receiver
-      >) -> _bulk_opstate_t<Receiver> {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+        noexcept(__nothrow_constructible_from<
+                 _bulk_opstate_t<Receiver>,
+                 _static_thread_pool&,
+                 Shape,
+                 Fun,
+                 Sender,
+                 Receiver
+        >) -> _bulk_opstate_t<Receiver> {
         return _bulk_opstate_t<Receiver>{
           self.pool_,
           self.shape_,
@@ -1181,11 +1182,14 @@ namespace exec {
           static_cast<Self&&>(self).sndr_,
           static_cast<Receiver&&>(rcvr)};
       }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<__t> Self, class... Env>
-      static auto get_completion_signatures(Self&&, Env&&...) -> _completions_t<Self, Env...> {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
+        -> _completions_t<Self, Env...> {
         return {};
       }
+      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       auto get_env() const noexcept -> env_of_t<const Sender&> {
         return stdexec::get_env(sndr_);

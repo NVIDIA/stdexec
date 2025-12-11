@@ -280,15 +280,15 @@ namespace exec {
 
     template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
       requires stdexec::receiver_of<Receiver, __completions_t<Self, stdexec::env_of_t<Receiver>>>
-    static bulk_op_state_t<Self, Receiver>
-      connect(Self &&self, Receiver rcvr) noexcept(stdexec::__nothrow_constructible_from<
-                                                   bulk_op_state_t<Self, Receiver>,
-                                                   libdispatch_queue &,
-                                                   Shape,
-                                                   Fun,
-                                                   Sender,
-                                                   Receiver
-      >) {
+    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self &&self, Receiver rcvr)
+      noexcept(stdexec::__nothrow_constructible_from<
+               bulk_op_state_t<Self, Receiver>,
+               libdispatch_queue &,
+               Shape,
+               Fun,
+               Sender,
+               Receiver
+      >) -> bulk_op_state_t<Self, Receiver> {
       return bulk_op_state_t<Self, Receiver>{
         self.queue_,
         self.shape_,
@@ -296,11 +296,14 @@ namespace exec {
         (std::forward<Self>(self)).sndr_,
         (std::forward<Receiver>(rcvr))};
     }
+    STDEXEC_EXPLICIT_THIS_END(connect)
 
     template <stdexec::__decays_to<__t> Self, class... Env>
-    static auto get_completion_signatures(Self &&, Env &&...) -> __completions_t<Self, Env...> {
+    STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self &&, Env &&...)
+      -> __completions_t<Self, Env...> {
       return {};
     }
+    STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
     auto get_env() const noexcept -> stdexec::env_of_t<const Sender &> {
       return stdexec::get_env(sndr_);

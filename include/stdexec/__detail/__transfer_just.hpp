@@ -34,7 +34,8 @@ namespace stdexec {
   // [execution.senders.transfer_just]
   namespace __transfer_just {
     inline auto __make_transform_fn() {
-      return [&]<class _Scheduler, class... _Values>(_Scheduler&& __sched, _Values&&... __vals) {
+      return [&]<class _Scheduler, __decay_copyable... _Values>(
+               _Scheduler&& __sched, _Values&&... __vals) {
         return continues_on(
           just(static_cast<_Values&&>(__vals)...), static_cast<_Scheduler&&>(__sched));
       };

@@ -342,10 +342,10 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   namespace __get_env {
     template <class _EnvProvider>
-    using __get_env_member_t = decltype(__declval<_EnvProvider>().get_env());
+    using __get_env_member_result_t = decltype(__declval<_EnvProvider>().get_env());
 
     template <class _EnvProvider>
-    concept __has_get_env = __mvalid<__get_env_member_t, _EnvProvider>;
+    concept __has_get_env = requires { typename __get_env_member_result_t<_EnvProvider>; };
 
     // For getting an execution environment from a receiver or the attributes from a sender.
     struct get_env_t {
@@ -354,7 +354,8 @@ namespace stdexec {
       static constexpr auto __get_declfn() noexcept {
         constexpr __declfn_t<_EnvProvider> __env_provider{};
         if constexpr (__has_get_env<_EnvProvider>) {
-          using __result_t = __get_env_member_t<_EnvProvider>;
+          static_assert(__has_get_env<_EnvProvider>);
+          using __result_t = __get_env_member_result_t<_EnvProvider>;
           static_assert(noexcept(__env_provider().get_env()), "get_env() members must be noexcept");
           return __declfn<__result_t>();
         } else if constexpr (tag_invocable<get_env_t, const _EnvProvider&>) {

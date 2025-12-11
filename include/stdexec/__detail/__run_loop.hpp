@@ -189,13 +189,13 @@ namespace stdexec {
           return __opstate_t<_Rcvr>{&__loop_->__queue_, static_cast<_Rcvr&&>(__rcvr)};
         }
 
-        template <class _Self>
         STDEXEC_ATTRIBUTE(nodiscard, host, device)
-        static constexpr auto get_completion_signatures(_Self&&) noexcept {
+        static constexpr auto get_completion_signatures(__ignore) noexcept {
           return completion_signatures<set_value_t(), set_stopped_t()>{};
         }
 
-        STDEXEC_ATTRIBUTE(host, device) constexpr auto get_env() const noexcept -> __attrs_t {
+        STDEXEC_ATTRIBUTE(nodiscard, host, device)
+        constexpr auto get_env() const noexcept -> __attrs_t {
           return __attrs_t{__loop_};
         }
 

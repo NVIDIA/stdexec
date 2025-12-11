@@ -416,7 +416,7 @@ namespace nvexec::_strm {
 
       template <ex::__decays_to<sender_t> Self, ex::receiver Receiver>
         requires(ex::sender_to<Sender, Receiver>)
-      static auto connect(Self&& self, Receiver r)
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver r)
         -> nvexec::_strm::repeat_n::operation_state_t<SenderId, Closure, ex::__id<Receiver>> {
         return nvexec::_strm::repeat_n::operation_state_t<SenderId, Closure, ex::__id<Receiver>>(
           static_cast<Self&&>(self).sender_,
@@ -424,6 +424,7 @@ namespace nvexec::_strm {
           static_cast<Receiver&&>(r),
           self.n_);
       }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
       [[nodiscard]]
       auto get_env() const noexcept -> ex::env_of_t<const Sender&> {

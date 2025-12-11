@@ -20,6 +20,7 @@
 // include these after __execution_fwd.hpp
 #include "__concepts.hpp"
 #include "__sender_adaptor_closure.hpp"
+#include "__senders.hpp"
 #include "__let.hpp"
 #include "__just.hpp"
 
@@ -29,7 +30,7 @@ namespace stdexec {
   namespace __sae {
     struct stopped_as_error_t {
       template <sender _Sender, __movable_value _Error>
-      auto operator()(_Sender&& __sndr, _Error __err) const {
+      auto operator()(_Sender&& __sndr, _Error __err) const -> __well_formed_sender auto {
         return let_stopped(
           static_cast<_Sender&&>(__sndr),
           [__err2 = static_cast<_Error&&>(__err)]() mutable noexcept(

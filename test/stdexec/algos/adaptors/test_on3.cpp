@@ -21,7 +21,6 @@
 #include <exec/async_scope.hpp>
 
 namespace ex = stdexec;
-using namespace ex::tags;
 
 namespace {
   template <class Rcvr>
@@ -56,20 +55,22 @@ namespace {
     Sndr sndr;
 
     template <ex::__decays_to<get_env_sender> Self, ex::receiver Rcvr>
-    static auto connect(Self&& self, Rcvr rcvr) {
+    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Rcvr rcvr) {
       return ex::connect(
         static_cast<Self&&>(self).sndr, get_env_rcvr<Rcvr>{static_cast<Rcvr&&>(rcvr)});
     }
+    STDEXEC_EXPLICIT_THIS_END(connect)
 
     template <ex::__decays_to<get_env_sender> Self, class Env>
-    static auto get_completion_signatures(Self&&, const Env&) {
+    STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, const Env&) {
       return ex::__try_make_completion_signatures<
         ex::__copy_cvref_t<Self, Sndr>,
         Env,
-        ex::completion_signatures<set_value_t(Env)>,
+        ex::completion_signatures<ex::set_value_t(Env)>,
         ex::__mconst<ex::completion_signatures<>>
       >{};
     }
+    STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
   };
 
   struct probe_env_t {

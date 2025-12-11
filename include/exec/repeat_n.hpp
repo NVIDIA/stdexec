@@ -169,6 +169,9 @@ namespace exec {
       }
     };
 
+    template <class _Sender, class _Receiver>
+    __repeat_n_state(_Sender &&, _Receiver &) -> __repeat_n_state<_Sender, _Receiver>;
+
     STDEXEC_PRAGMA_POP()
 
     struct repeat_n_t;

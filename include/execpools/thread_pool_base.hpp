@@ -353,7 +353,7 @@ namespace execpools {
             stdexec::completion_signatures<stdexec::set_value_t(stdexec::__decay_t<Tys>...)>;
 
           template <class Self, class... Env>
-          using completion_signatures = stdexec::transform_completion_signatures<
+          using _completion_signatures_t = stdexec::transform_completion_signatures<
             stdexec::__completion_signatures_of_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
             _with_error_invoke_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
             _set_value_t
@@ -367,16 +367,16 @@ namespace execpools {
           template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
             requires stdexec::receiver_of<
               Receiver,
-              completion_signatures<Self, stdexec::env_of_t<Receiver>>
+              _completion_signatures_t<Self, stdexec::env_of_t<Receiver>>
             >
-          static auto
-            connect(Self&& self, Receiver rcvr) noexcept(stdexec::__nothrow_constructible_from<
-                                                         bulk_op_state_t<Self, Receiver>,
-                                                         DerivedPoolType&,
-                                                         Shape,
-                                                         Fun,
-                                                         Sender,
-                                                         Receiver
+          STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+            noexcept(stdexec::__nothrow_constructible_from<
+                     bulk_op_state_t<Self, Receiver>,
+                     DerivedPoolType&,
+                     Shape,
+                     Fun,
+                     Sender,
+                     Receiver
             >) -> bulk_op_state_t<Self, Receiver> {
             return bulk_op_state_t<Self, Receiver>{
               self.pool_,
@@ -385,12 +385,14 @@ namespace execpools {
               static_cast<Self&&>(self).sndr_,
               static_cast<Receiver&&>(rcvr)};
           }
+          STDEXEC_EXPLICIT_THIS_END(connect)
 
           template <stdexec::__decays_to<__t> Self, class... Env>
-          static auto
-            get_completion_signatures(Self&&, Env&&...) -> completion_signatures<Self, Env...> {
+          STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
+            -> _completion_signatures_t<Self, Env...> {
             return {};
           }
+          STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
           template <stdexec::__forwarding_query Tag, class... As>
             requires stdexec::__queryable_with<stdexec::env_of_t<Sender>, Tag, As...>

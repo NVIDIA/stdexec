@@ -162,21 +162,23 @@ namespace nvexec::_strm {
       }
 
       template <__decays_to<source_sender_t> Self, receiver Receiver>
-      static auto connect(Self&& self, Receiver rcvr)
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
         -> connect_result_t<__copy_cvref_t<Self, schedule_from_sender_t>, Receiver> {
         return stdexec::connect(static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr));
       }
+      STDEXEC_EXPLICIT_THIS_END(connect)
+
+      template <__decays_to<source_sender_t> _Self, class... _Env>
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...)
+        -> __completion_signatures_of_t<__copy_cvref_t<_Self, Sender>, _Env...> {
+        return {};
+      }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       [[nodiscard]]
       auto get_env() const noexcept -> env_of_t<const Sender&> {
         // TODO - this code is not exercised by any test
         return stdexec::get_env(sndr_);
-      }
-
-      template <__decays_to<source_sender_t> _Self, class... _Env>
-      static auto get_completion_signatures(_Self&&, _Env&&...)
-        -> __completion_signatures_of_t<__copy_cvref_t<_Self, Sender>, _Env...> {
-        return {};
       }
 
      private:
@@ -209,11 +211,12 @@ namespace nvexec::_strm {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires sender_to<__copy_cvref_t<Self, source_sender_t>, Receiver>
-      static auto connect(Self&& self, Receiver rcvr) -> stream_op_state_t<
-        __copy_cvref_t<Self, source_sender_t>,
-        receiver_t<Self, Receiver>,
-        Receiver
-      > {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+        -> stream_op_state_t<
+          __copy_cvref_t<Self, source_sender_t>,
+          receiver_t<Self, Receiver>,
+          Receiver
+        > {
         auto receiver_factory =
           [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
           -> receiver_t<Self, Receiver> {
@@ -226,19 +229,22 @@ namespace nvexec::_strm {
           receiver_factory,
           self.sched_.context_state_);
       }
-
-      auto get_env() const noexcept -> __sched_attrs<Scheduler> {
-        return {sched_};
-      }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<__t> _Self, class... _Env>
-      static auto get_completion_signatures(_Self&&, _Env&&...) -> transform_completion_signatures<
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...) -> transform_completion_signatures<
         __completion_signatures_of_t<__copy_cvref_t<_Self, Sender>, _Env...>,
         completion_signatures<set_error_t(cudaError_t)>,
         _trnsfr::value_completions_t,
         _trnsfr::error_completions_t
       > {
         return {};
+      }
+      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
+
+      [[nodiscard]]
+      auto get_env() const noexcept -> __sched_attrs<Scheduler> {
+        return {sched_};
       }
 
      private:
