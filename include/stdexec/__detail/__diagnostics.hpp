@@ -17,6 +17,8 @@
 
 #include "__meta.hpp"
 
+#include <exception> // IWYU pragma: keep for std::exception
+
 namespace stdexec {
   namespace __detail {
     template <class _Ty>
@@ -101,6 +103,104 @@ namespace stdexec {
     template <class _Fun, class... _Args>
     using __f =
       __mexception<_NOT_CALLABLE_<_Context>, _WITH_FUNCTION_<_Fun>, _WITH_ARGUMENTS_<_Args...>>;
+  };
+
+#if __cpp_lib_constexpr_exceptions >= 202502L // constexpr exception types, https://wg21.link/p3378
+
+  using __exception = ::std::exception;
+
+#elif __cpp_constexpr >= 202411L // constexpr virtual functions
+
+  struct __exception {
+    constexpr __exception() noexcept = default;
+    constexpr virtual ~__exception() = default;
+
+    [[nodiscard]]
+    constexpr virtual auto what() const noexcept -> const char* {
+      return "<exception>";
+    }
+  };
+
+#else // no constexpr virtual functions:
+
+  struct __exception {
+    constexpr __exception() noexcept = default;
+
+    [[nodiscard]]
+    constexpr auto what() const noexcept -> const char* {
+      return "<exception>";
+    }
+  };
+
+#endif // __cpp_lib_constexpr_exceptions >= 202502L
+
+  template <class _Derived>
+  struct __compile_time_error : __exception {
+    __compile_time_error() = default; // NOLINT (bugprone-crtp-constructor-accessibility)
+
+    [[nodiscard]]
+    constexpr auto what() const noexcept -> const char* {
+      return static_cast<_Derived const *>(this)->what();
+    }
+  };
+
+  template <class _Data, class... _What>
+  struct __sender_type_check_failure //
+    : __compile_time_error<__sender_type_check_failure<_Data, _What...>> {
+    static_assert(
+      std::is_nothrow_move_constructible_v<_Data>,
+      "The data member of sender_type_check_failure must be nothrow move constructible.");
+
+    constexpr __sender_type_check_failure() noexcept = default;
+
+    constexpr explicit __sender_type_check_failure(_Data data)
+      : __data_(static_cast<_Data&&>(data)) {
+    }
+
+   private:
+    friend struct __compile_time_error<__sender_type_check_failure>;
+
+    [[nodiscard]]
+    constexpr auto what() const noexcept -> const char* {
+      return "This sender is not well-formed. It does not meet the requirements of a sender type.";
+    }
+
+    _Data __data_{};
+  };
+
+  struct dependent_sender_error : __compile_time_error<dependent_sender_error> {
+    constexpr explicit dependent_sender_error(char const * what) noexcept
+      : what_(what) {
+    }
+
+   private:
+    friend struct __compile_time_error<dependent_sender_error>;
+
+    [[nodiscard]]
+    constexpr auto what() const noexcept -> char const * {
+      return what_;
+    }
+
+    char const * what_;
+  };
+
+  template <class _Sndr>
+  struct __dependent_sender_error : dependent_sender_error {
+    constexpr __dependent_sender_error() noexcept
+      : dependent_sender_error{
+          "This sender needs to know its execution environment before it can know how it will "
+          "complete."} {
+    }
+
+    STDEXEC_ATTRIBUTE(host, device) auto operator+() -> __dependent_sender_error;
+
+    template <class Ty>
+    STDEXEC_ATTRIBUTE(host, device)
+    auto operator,(Ty&) -> __dependent_sender_error&;
+
+    template <class... What>
+    STDEXEC_ATTRIBUTE(host, device)
+    auto operator,(stdexec::_ERROR_<What...>&) -> stdexec::_ERROR_<What...>&;
   };
 } // namespace stdexec
 

@@ -26,8 +26,6 @@
 #include "__meta.hpp"
 
 #include <exception>
-#include <tuple>
-#include <variant>
 
 namespace stdexec {
 #if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
@@ -50,25 +48,6 @@ namespace stdexec {
     requires sender_in<_Sender, _Env...>
   using completion_signatures_of_t = __completion_signatures_of_t<_Sender, _Env...>;
 #endif
-
-  struct __not_a_variant {
-    __not_a_variant() = delete;
-  };
-
-  template <class... _Ts>
-  using __std_variant = __minvoke_if_c<
-    sizeof...(_Ts) != 0,
-    __mtransform<__q1<__decay_t>, __munique<__qq<std::variant>>>,
-    __mconst<__not_a_variant>,
-    _Ts...
-  >;
-
-  template <class... _Ts>
-  using __nullable_std_variant =
-    __mcall<__munique<__mbind_front<__qq<std::variant>, std::monostate>>, __decay_t<_Ts>...>;
-
-  template <class... _Ts>
-  using __decayed_std_tuple = __meval<std::tuple, __decay_t<_Ts>...>;
 
   namespace __sigs {
     // The following code is used to normalize completion signatures. "Normalization" means that
@@ -99,10 +78,6 @@ namespace stdexec {
   using __completion_signature_ptrs = decltype(__sigs::__repack_completions(
     static_cast<_SigPtrs>(nullptr)...));
 
-  template <class... _Sigs>
-  using __concat_completion_signatures =
-    __mconcat<__qq<completion_signatures>>::__f<__mconcat<__qq<__mmake_set>>::__f<_Sigs...>>;
-
   namespace __sigs {
     //////////////////////////////////////////////////////////////////////////////////////////////////
     template <template <class...> class _Tuple, class _Tag, class... _Args>
@@ -115,12 +90,9 @@ namespace stdexec {
       template <class...> class _Tuple,
       template <class...> class _Variant,
       class... _More,
-      class _What,
-      class... _With
+      class... _What
     >
-    auto
-      __for_each_completion_signature_fn(_ERROR_<_What, _With...> **) -> _ERROR_<_What, _With...>;
-
+    auto __for_each_completion_signature_fn(_ERROR_<_What...> **) -> _ERROR_<_What...>;
     template <
       template <class...> class _Tuple,
       template <class...> class _Variant,
@@ -177,10 +149,9 @@ namespace stdexec {
       class _SetStp,
       template <class...> class _Variant,
       class... _More,
-      class _What,
-      class... _With
+      class... _What
     >
-    auto __transform_sigs_fn(_ERROR_<_What, _With...> **) -> _ERROR_<_What, _With...>;
+    auto __transform_sigs_fn(_ERROR_<_What...> **) -> _ERROR_<_What...>;
 
     template <
       template <class...> class _SetVal,
@@ -407,104 +378,6 @@ namespace stdexec {
     __mtry_q<__concat_completion_signatures>::__f,
     _More
   >;
-
-  template <class _SetTag, class _Completions, class _Tuple, class _Variant>
-  using __gather_completions = __gather_completion_signatures<
-    _Completions,
-    _SetTag,
-    __mcompose_q<__types, _Tuple::template __f>::template __f,
-    __mconst<__types<>>::__f,
-    __mconcat<_Variant>::template __f
-  >;
-
-  template <class _SetTag, class _Sender, class _Env, class _Tuple, class _Variant>
-  using __gather_completions_of =
-    __gather_completions<_SetTag, __completion_signatures_of_t<_Sender, _Env>, _Tuple, _Variant>;
-
-  template <
-    class _Sender,
-    class _Env = env<>,
-    class _Sigs = completion_signatures<>,
-    template <class...> class _SetValue = __sigs::__default_set_value,
-    template <class...> class _SetError = __sigs::__default_set_error,
-    class _SetStopped = completion_signatures<set_stopped_t()>
-  >
-  using make_completion_signatures =
-    transform_completion_signatures_of<_Sender, _Env, _Sigs, _SetValue, _SetError, _SetStopped>;
-
-  template <
-    class _Sigs,
-    class _Tuple = __qq<__decayed_std_tuple>,
-    class _Variant = __qq<__std_variant>>
-  using __value_types_t = __gather_completions<set_value_t, _Sigs, _Tuple, _Variant>;
-
-  template <
-    class _Sender,
-    class _Env = env<>,
-    class _Tuple = __qq<__decayed_std_tuple>,
-    class _Variant = __qq<__std_variant>>
-  using __value_types_of_t =
-    __value_types_t<__completion_signatures_of_t<_Sender, _Env>, _Tuple, _Variant>;
-
-  template <class _Sigs, class _Variant = __qq<__std_variant>>
-  using __error_types_t = __gather_completions<set_error_t, _Sigs, __q<__midentity>, _Variant>;
-
-  template <class _Sender, class _Env = env<>, class _Variant = __qq<__std_variant>>
-  using __error_types_of_t = __error_types_t<__completion_signatures_of_t<_Sender, _Env>, _Variant>;
-
-  template <
-    class _Sender,
-    class _Env = env<>,
-    template <class...> class _Tuple = __decayed_std_tuple,
-    template <class...> class _Variant = __std_variant
-  >
-  using value_types_of_t = __value_types_of_t<_Sender, _Env, __q<_Tuple>, __q<_Variant>>;
-
-  template <class _Sender, class _Env = env<>, template <class...> class _Variant = __std_variant>
-  using error_types_of_t = __error_types_of_t<_Sender, _Env, __q<_Variant>>;
-
-  template <class _Tag, class _Sender, class... _Env>
-  using __count_of = __gather_completion_signatures<
-    __completion_signatures_of_t<_Sender, _Env...>,
-    _Tag,
-    __mconst<__msize_t<1>>::__f,
-    __mconst<__msize_t<0>>::__f,
-    __mplus_t
-  >;
-
-  template <class _Tag, class _Sender, class... _Env>
-  concept __sends = sender_in<_Sender, _Env...>
-                 && __v<__gather_completion_signatures<
-                   __completion_signatures_of_t<_Sender, _Env...>,
-                   _Tag,
-                   __mconst<__mtrue>::__f,
-                   __mconst<__mfalse>::__f,
-                   __mor_t>>;
-
-  template <class _Tag, class _Sender, class... _Env>
-  concept __never_sends = sender_in<_Sender, _Env...> && !__sends<_Tag, _Sender, _Env...>;
-
-  template <class _Sender, class... _Env>
-  concept sends_stopped = __sends<set_stopped_t, _Sender, _Env...>;
-
-  template <class _Sender, class... _Env>
-  using __single_sender_value_t = __value_types_t<
-    __completion_signatures_of_t<_Sender, _Env...>,
-    __qq<__msingle>,
-    __qq<__msingle>>;
-
-  template <class _Sender, class... _Env>
-  concept __single_value_sender = sender_in<_Sender, _Env...>
-                               && requires { typename __single_sender_value_t<_Sender, _Env...>; };
-
-  template <class _Sender, class... _Env>
-  using __single_value_variant_sender_t =
-    __value_types_t<__completion_signatures_of_t<_Sender, _Env...>, __qq<__types>, __qq<__msingle>>;
-
-  template <class _Sender, class... _Env>
-  concept __single_value_variant_sender = sender_in<_Sender, _Env...> && requires {
-    typename __single_value_variant_sender_t<_Sender, _Env...>;
-  };
 
   // The following utilities are needed fairly often:
   template <class _Fun, class... _Args>

@@ -22,6 +22,7 @@ set(exec_test_sources
     test_timed_thread_scheduler.cpp
     test_variant_sender.cpp
     test_type_async_scope.cpp
+    test_completion_signatures.cpp
     test_create.cpp
     test_env.cpp
     test_finally.cpp

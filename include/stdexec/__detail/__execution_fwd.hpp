@@ -18,12 +18,44 @@
 #include "__config.hpp" // IWYU pragma: export
 #include "__meta.hpp"
 #include "__concepts.hpp"
+#include "__diagnostics.hpp"
 #include "__type_traits.hpp"
 
 // IWYU pragma: always_keep
 
+STDEXEC_NAMESPACE_STD_BEGIN
+struct monostate;
+
+template <class...>
+class variant;
+
+template <class...>
+class tuple;
+STDEXEC_NAMESPACE_STD_END
+
 namespace stdexec {
   struct __none_such;
+
+  namespace __detail {
+    struct __not_a_variant {
+      __not_a_variant() = delete;
+    };
+  } // namespace __detail
+
+  template <class... _Ts>
+  using __std_variant = __minvoke_if_c<
+    sizeof...(_Ts) == 0,
+    __mconst<__detail::__not_a_variant>,
+    __mtransform<__q1<__decay_t>, __munique<__qq<std::variant>>>,
+    _Ts...
+  >;
+
+  template <class... _Ts>
+  using __nullable_std_variant =
+    __mcall<__munique<__mbind_front<__qq<std::variant>, std::monostate>>, __decay_t<_Ts>...>;
+
+  template <class... _Ts>
+  using __decayed_std_tuple = __meval<std::tuple, __decay_t<_Ts>...>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct default_domain;
@@ -159,9 +191,23 @@ namespace stdexec {
   using __sigs::get_completion_signatures_t;
   extern const get_completion_signatures_t get_completion_signatures;
 
+  namespace __detail {
+    template <class _Sender, class... _Env>
+    extern __mexception<
+      _UNRECOGNIZED_SENDER_TYPE_<>,
+      _WITH_SENDER_<_Sender>,
+      _WITH_ENVIRONMENT_<_Env...>
+    >
+      __compl_sigs_of_v;
+
+    template <class _Sender, class... _Env>
+      requires __callable<get_completion_signatures_t, _Sender, _Env...>
+    extern __call_result_t<get_completion_signatures_t, _Sender, _Env...>
+      __compl_sigs_of_v<_Sender, _Env...>;
+  } // namespace __detail
+
   template <class _Sender, class... _Env>
-  using __completion_signatures_of_t =
-    __call_result_t<get_completion_signatures_t, _Sender, _Env...>;
+  using __completion_signatures_of_t = decltype(__detail::__compl_sigs_of_v<_Sender, _Env...>);
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __connect {

@@ -662,6 +662,28 @@ namespace stdexec {
 
 #endif // !STDEXEC_HAS_STD_EXPLICIT_THIS()
 
+// The following macros are used to define a namespace alias for the standard library.
+// It is used when forward-declaring a standard library type or function, which is not
+// portable but sometimes necessary to avoid pulling in a large header when a fwd decl
+// would do.
+#if defined(_LIBCPP_VERSION)
+#  define STDEXEC_NAMESPACE_STD_BEGIN _LIBCPP_BEGIN_NAMESPACE_STD
+#  define STDEXEC_NAMESPACE_STD_END   _LIBCPP_END_NAMESPACE_STD
+#elif defined(__GLIBCXX__)
+#  define STDEXEC_NAMESPACE_STD_BEGIN                                                              \
+    namespace std {                                                                                \
+      _GLIBCXX_BEGIN_NAMESPACE_VERSION
+#  define STDEXEC_NAMESPACE_STD_END                                                                \
+    _GLIBCXX_END_NAMESPACE_VERSION                                                                 \
+    }
+#elif defined(_MSVC_STL_UPDATE)
+#  define STDEXEC_NAMESPACE_STD_BEGIN _STL_BEGIN
+#  define STDEXEC_NAMESPACE_STD_END   _STL_END
+#else
+#  define STDEXEC_NAMESPACE_STD_BEGIN namespace std {
+#  define STDEXEC_NAMESPACE_STD_END   }
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // clang-tidy struggles with the CUDA function annotations
 #if STDEXEC_CLANG() && STDEXEC_CUDA_COMPILATION() && defined(STDEXEC_CLANG_TIDY_INVOKED)

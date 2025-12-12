@@ -78,6 +78,22 @@ namespace stdexec {
   concept __nothrow_connectable = sender_to<_Sender, _Receiver>
                                && __nothrow_callable<connect_t, _Sender, _Receiver>;
 
+  template <class _Tag, class _Sender, class... _Env>
+  concept __sends = sender_in<_Sender, _Env...> && __v<__count_of<_Tag, _Sender, _Env...>> != 0;
+
+  template <class _Tag, class _Sender, class... _Env>
+  concept __never_sends = sender_in<_Sender, _Env...>
+                       && __v<__count_of<_Tag, _Sender, _Env...>> == 0;
+
+  template <class _Sender, class... _Env>
+  concept __single_value_sender = sender_in<_Sender, _Env...>
+                               && requires { typename __single_sender_value_t<_Sender, _Env...>; };
+
+  template <class _Sender, class... _Env>
+  concept __single_value_variant_sender = sender_in<_Sender, _Env...> && requires {
+    typename __single_value_variant_sender_t<_Sender, _Env...>;
+  };
+
   // Used to report a meaningful error message when the sender_in<Sndr, Env>
   // concept check fails.
   template <class _Sender, class... _Env>

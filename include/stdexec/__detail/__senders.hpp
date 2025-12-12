@@ -297,20 +297,26 @@ namespace stdexec {
 
   /////////////////////////////////////////////////////////////////////////////
   // [exec.snd]
-  template <class _Tag, class... _Args>
-  auto __tag_of_sig_(_Tag (*)(_Args...)) -> _Tag;
-  template <class _Sig>
-  using __tag_of_sig_t = decltype(stdexec::__tag_of_sig_(static_cast<_Sig*>(nullptr)));
+  namespace __detail {
+    template <class _Sig>
+    extern __undefined<_Sig> __tag_of_sig_v;
+
+    template <class _Tag, class... _Args>
+    extern _Tag __tag_of_sig_v<_Tag(_Args...)>;
+
+    template <class _Sig>
+    using __tag_of_sig_t = decltype(__tag_of_sig_v<_Sig>);
+  } // namespace __detail
 
   template <class _Sender, class _SetSig, class _Env = env<>>
   concept sender_of = sender_in<_Sender, _Env>
                    && same_as<
                         __types<_SetSig>,
                         __gather_completions_of<
-                          __tag_of_sig_t<_SetSig>,
+                          __detail::__tag_of_sig_t<_SetSig>,
                           _Sender,
                           _Env,
-                          __mcompose_q<__types, __qf<__tag_of_sig_t<_SetSig>>::template __f>,
+                          __mcompose<__qq<__types>, __qf<__detail::__tag_of_sig_t<_SetSig>>>,
                           __mconcat<__qq<__types>>
                         >
                    >;

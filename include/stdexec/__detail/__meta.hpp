@@ -281,23 +281,22 @@ namespace stdexec {
   template <class _What, class... _With>
   struct _WARNING_ { };
 
-  template <class _What, class... _With>
+  template <class... _What>
   struct _ERROR_ {
-    using __what_t = _What;
     auto operator,(__msuccess) const noexcept -> _ERROR_;
   };
 
   template <__mstring... _What>
   struct _WHAT_ { };
 
-  template <class _What, class... _With>
-  using __mexception = _ERROR_<_What, _With...>;
+  template <class... _What>
+  using __mexception = _ERROR_<_What...>;
 
   template <class>
   extern __msuccess __ok_v;
 
-  template <class _What, class... _With>
-  extern _ERROR_<_What, _With...> __ok_v<__mexception<_What, _With...>>;
+  template <class... _What>
+  extern _ERROR_<_What...> __ok_v<__mexception<_What...>>;
 
   template <class _Ty>
   using __ok_t = decltype(__ok_v<_Ty>);
@@ -583,6 +582,9 @@ namespace stdexec {
 
   template <class _Fn, class _Default, class... _Args>
   using __minvoke_or = __minvoke<__mwith_default<_Fn, _Default>, _Args...>;
+
+  template <template <class...> class _Fn, class _Default, class... _Args>
+  using __minvoke_or_q = __minvoke<__mwith_default_q<_Fn, _Default>, _Args...>;
 
   template <template <class...> class _Fn, class _Default, class... _Args>
   using __meval_or = __minvoke<__mwith_default_q<_Fn, _Default>, _Args...>;

@@ -20,12 +20,10 @@
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__concepts.hpp"
-#include "__domain.hpp"
 #include "__meta.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp" // IWYU pragma: keep for __well_formed_sender
 #include "__transform_completion_signatures.hpp"
-#include "__transform_sender.hpp"
 #include "__utility.hpp"
 
 #include <exception>
@@ -41,7 +39,11 @@ namespace stdexec {
     using __into_variant_result_t = value_types_of_t<_Sender, _Env>;
 
     template <class _Sender, class... _Env>
-    using __variant_t = __value_types_t<__completion_signatures_of_t<_Sender, _Env...>>;
+    using __variant_t = __value_types_t<
+      __completion_signatures_of_t<_Sender, _Env...>,
+      __qq<__decayed_std_tuple>,
+      __qq<__std_variant>
+    >;
 
     template <class _Variant>
     using __variant_completions =
