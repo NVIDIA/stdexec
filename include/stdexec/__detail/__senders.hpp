@@ -304,6 +304,9 @@ namespace stdexec {
     template <class _Tag, class... _Args>
     extern _Tag __tag_of_sig_v<_Tag(_Args...)>;
 
+    template <class _Tag, class... _Args>
+    extern _Tag __tag_of_sig_v<_Tag (*)(_Args...)>;
+
     template <class _Sig>
     using __tag_of_sig_t = decltype(__tag_of_sig_v<_Sig>);
   } // namespace __detail

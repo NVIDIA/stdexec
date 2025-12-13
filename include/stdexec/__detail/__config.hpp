@@ -676,9 +676,9 @@ namespace stdexec {
 #  define STDEXEC_NAMESPACE_STD_END                                                                \
     _GLIBCXX_END_NAMESPACE_VERSION                                                                 \
     }
-#elif defined(_MSVC_STL_UPDATE)
-#  define STDEXEC_NAMESPACE_STD_BEGIN _STL_BEGIN
-#  define STDEXEC_NAMESPACE_STD_END   _STL_END
+#elif defined(_MSVC_STL_VERSION)
+#  define STDEXEC_NAMESPACE_STD_BEGIN _STD_BEGIN
+#  define STDEXEC_NAMESPACE_STD_END   _STD_END
 #else
 #  define STDEXEC_NAMESPACE_STD_BEGIN namespace std {
 #  define STDEXEC_NAMESPACE_STD_END   }
