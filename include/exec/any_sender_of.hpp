@@ -17,9 +17,6 @@
 
 #include "../stdexec/execution.hpp"
 #include "../stdexec/__detail/__any_receiver_ref.hpp"
-#include "../stdexec/__detail/__concepts.hpp"
-#include "../stdexec/__detail/__env.hpp"
-#include "../stdexec/__detail/__transform_completion_signatures.hpp"
 
 #include "sequence_senders.hpp"
 
@@ -1159,8 +1156,7 @@ namespace exec {
     template <class _Tag>
     struct __ret_equals_to {
       template <class _Sig>
-      using __f = stdexec::__mbool<
-        STDEXEC_IS_SAME(_Tag, decltype(__tag_of_sig_(static_cast<_Sig>(nullptr))))>;
+      using __f = stdexec::__mbool<STDEXEC_IS_SAME(_Tag, __detail::__tag_of_sig_t<_Sig>)>;
     };
   } // namespace __any
 

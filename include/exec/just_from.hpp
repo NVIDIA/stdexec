@@ -115,6 +115,15 @@ namespace exec {
       Fn
     >;
 
+    template <class... Tags>
+    struct _attrs {
+      template <stdexec::__one_of<Tags...> Tag>
+      [[nodiscard]]
+      constexpr auto query(stdexec::get_completion_behavior_t<Tag>) const noexcept {
+        return stdexec::completion_behavior::inline_completion;
+      }
+    };
+
     template <class Fn>
     struct _sndr_base {
       using sender_concept = stdexec::sender_t;
@@ -135,6 +144,18 @@ namespace exec {
       auto connect(Rcvr rcvr) const & noexcept(stdexec::__nothrow_decay_copyable<Rcvr, Fn const &>)
         -> _opstate<Rcvr, Fn> {
         return _opstate<Rcvr, Fn>{static_cast<Rcvr&&>(rcvr), _fn};
+      }
+
+      [[nodiscard]]
+      constexpr auto get_env() const noexcept {
+        // Extract the tags from the completion signatures and use them to construct the attributes.
+        return stdexec::__mapply<
+          stdexec::__mtransform<
+            stdexec::__q1<stdexec::__detail::__tag_of_sig_t>,
+            stdexec::__munique<stdexec::__qq<_just_from::_attrs>>
+          >,
+          completion_signatures
+        >();
       }
 
       template <class Rcvr>

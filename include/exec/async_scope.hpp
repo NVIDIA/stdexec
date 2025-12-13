@@ -693,6 +693,8 @@ namespace exec {
     ////////////////////////////////////////////////////////////////////////////
     // async_scope::spawn implementation
     struct __spawn_env_ {
+      using __t = __spawn_env_;
+      using __id = __spawn_env_;
       inplace_stop_token __token_;
 
       [[nodiscard]]

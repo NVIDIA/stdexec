@@ -42,12 +42,14 @@ namespace {
     const void* object_{nullptr};
     inplace_stop_token token_{};
 
-    friend auto tag_invoke(get_address_t, const env& e) noexcept -> const void* {
-      return e.object_;
+    [[nodiscard]]
+    auto query(get_address_t) const noexcept -> const void* {
+      return object_;
     }
 
-    friend auto tag_invoke(get_stop_token_t, const env& e) noexcept -> inplace_stop_token {
-      return e.token_;
+    [[nodiscard]]
+    auto query(get_stop_token_t) const noexcept -> inplace_stop_token {
+      return token_;
     }
   };
 

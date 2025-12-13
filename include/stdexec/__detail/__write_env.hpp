@@ -20,6 +20,7 @@
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__env.hpp"
+#include "__queries.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__utility.hpp"
 

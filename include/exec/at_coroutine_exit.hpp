@@ -22,7 +22,6 @@
 
 #include "../stdexec/execution.hpp"
 
-#include "inline_scheduler.hpp"
 #include "any_sender_of.hpp"
 
 namespace exec {

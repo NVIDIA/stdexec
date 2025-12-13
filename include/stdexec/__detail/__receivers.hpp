@@ -27,6 +27,24 @@
 #include <exception>
 
 namespace stdexec {
+  enum class __disposition {
+    __value,
+    __error,
+    __stopped
+  };
+
+  namespace __detail {
+    template <__disposition _Disposition>
+    struct __completion_tag {
+      static constexpr stdexec::__disposition __disposition = _Disposition;
+
+      template <stdexec::__disposition _OtherDisposition>
+      constexpr bool operator==(__completion_tag<_OtherDisposition>) const noexcept {
+        return _Disposition == _OtherDisposition;
+      }
+    };
+  } // namespace __detail
+
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
   namespace __rcvrs {
@@ -35,7 +53,7 @@ namespace stdexec {
       static_cast<_Receiver &&>(__rcvr).set_value(static_cast<_As &&>(__args)...);
     };
 
-    struct set_value_t {
+    struct set_value_t : __detail::__completion_tag<__disposition::__value> {
       template <class _Fn, class... _As>
       using __f = __minvoke<_Fn, _As...>;
 
@@ -70,7 +88,7 @@ namespace stdexec {
       static_cast<_Receiver &&>(__rcvr).set_error(static_cast<_Error &&>(__err));
     };
 
-    struct set_error_t {
+    struct set_error_t : __detail::__completion_tag<__disposition::__error> {
       template <class _Fn, class... _Args>
         requires(sizeof...(_Args) == 1)
       using __f = __minvoke<_Fn, _Args...>;
@@ -106,7 +124,7 @@ namespace stdexec {
       static_cast<_Receiver &&>(__rcvr).set_stopped();
     };
 
-    struct set_stopped_t {
+    struct set_stopped_t : __detail::__completion_tag<__disposition::__stopped> {
       template <class _Fn, class... _Args>
         requires(sizeof...(_Args) == 0)
       using __f = __minvoke<_Fn, _Args...>;

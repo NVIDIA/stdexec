@@ -22,7 +22,6 @@
 #include "__completion_behavior.hpp"
 #include "__sender_introspection.hpp"
 #include "__senders_core.hpp"
-#include "__transform_completion_signatures.hpp"
 #include "__meta.hpp"
 
 #include "__utility.hpp"
