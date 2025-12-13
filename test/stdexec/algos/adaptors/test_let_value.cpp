@@ -24,6 +24,8 @@
 #include <exec/env.hpp>
 
 #include <chrono> // IWYU pragma: keep for chrono_literals
+#include <exception>
+#include <memory>
 
 namespace ex = stdexec;
 
@@ -346,5 +348,42 @@ namespace {
     auto op = ex::connect(std::move(snd), bad_receiver{completed}); // should compile
     ex::start(op);
     CHECK(completed);
+  }
+
+  struct throws_on_connect {
+    using sender_concept = ::stdexec::sender_t;
+    template <typename... Args>
+    static consteval ::stdexec::completion_signatures<::stdexec::set_value_t()>
+      get_completion_signatures(const Args&...) noexcept {
+      return {};
+    }
+    template <typename Receiver>
+    auto connect(Receiver) const
+      -> ::stdexec::connect_result_t<decltype(::stdexec::just()), Receiver> {
+      throw std::logic_error("TEST");
+    }
+  };
+
+  TEST_CASE(
+    "When connecting the successor throws an exception let_value delivers an error completion "
+    "signal to a valid receiver",
+    "[adaptors][let_value]") {
+    struct receiver {
+      using receiver_concept = ::stdexec::receiver_t;
+      std::shared_ptr<int> ptr;
+      void set_value() noexcept {
+        FAIL_CHECK("Operation should end in error");
+      }
+      void set_error(std::exception_ptr ex) noexcept {
+        CHECK(ex);
+        REQUIRE(ptr);
+        *ptr = 5;
+      }
+    };
+    const auto ptr = std::make_shared<int>(0);
+    auto sender = ex::let_value(::stdexec::just(), []() noexcept { return throws_on_connect{}; });
+    auto op = ex::connect(std::move(sender), receiver{ptr});
+    ex::start(op);
+    CHECK(*ptr == 5);
   }
 } // namespace
