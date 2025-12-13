@@ -128,8 +128,18 @@ namespace {
   }
 
   TEST_CASE("let_value can throw, and set_error will be called", "[adaptors][let_value]") {
-    auto snd = ex::just(13)
-             | ex::let_value([](int&) -> decltype(ex::just(0)) { throw std::logic_error{"err"}; });
+    struct invocable {
+      decltype(ex::just(0)) operator()(int&) && {
+        throw std::logic_error{"err"};
+      }
+      decltype(ex::just()) operator()(int&&) && noexcept;
+    };
+    auto snd = ex::just(13) | ex::let_value(invocable{});
+    static_assert(set_equivalent<
+                  ::stdexec::completion_signatures<
+                    ::stdexec::set_value_t(int),
+                    ::stdexec::set_error_t(std::exception_ptr)>,
+                  ::stdexec::completion_signatures_of_t<decltype(snd), ::stdexec::env<>>>);
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
   }

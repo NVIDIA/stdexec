@@ -551,7 +551,7 @@ namespace stdexec {
         _Receiver& __rcvr = __op_state.__rcvr_;
 
         if constexpr (
-          (__nothrow_decay_copyable<_As> && ...) && __nothrow_callable<_Fun, _As...>
+          (__nothrow_decay_copyable<_As> && ...) && __nothrow_callable<_Fun, __decay_t<_As>&...>
           && __nothrow_connectable<_ResultSender, __result_receiver_t<_Receiver, _Env2>>) {
           __bind_(__state, __op_state, static_cast<_As&&>(__as)...);
         } else {
