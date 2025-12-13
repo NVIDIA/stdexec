@@ -396,4 +396,52 @@ namespace {
     ex::start(op);
     CHECK(*ptr == 5);
   }
+
+  TEST_CASE(
+    "let_value destroys the first operation state before invoking the sender factory",
+    "[adaptors][let_value]") {
+    const auto ptr = std::make_shared<int>(5);
+    CHECK(ptr.use_count() == 1);
+    auto first = ex::just() | ex::then([ptr = ptr]() { });
+    CHECK(ptr.use_count() == 2);
+    auto sender = ex::let_value(std::move(first), [&]() {
+      CHECK(ptr.use_count() == 2);
+      return ex::just();
+    });
+    CHECK(ptr.use_count() == 2);
+    auto op = ex::connect(std::move(sender), expect_void_receiver{});
+    CHECK(ptr.use_count() == 2);
+    ex::start(op);
+    CHECK(ptr.use_count() == 1);
+  }
+
+  struct immovable_sender {
+    using sender_concept = ::stdexec::sender_t;
+    template <typename... Args>
+    consteval auto get_completion_signatures(const Args&...) const & noexcept {
+      return ::stdexec::completion_signatures_of_t<decltype(::stdexec::just()), Args...>{};
+    }
+    template <typename Receiver>
+    auto connect(Receiver r) const & noexcept {
+      return ::stdexec::connect(::stdexec::just(), std::move(r));
+    }
+    immovable_sender() = default;
+    immovable_sender(const immovable_sender&) {
+      throw std::logic_error("Unexpected copy");
+    }
+  };
+  static_assert(::stdexec::sender<immovable_sender>);
+  static_assert(::stdexec::sender<const immovable_sender&>);
+  static_assert(::stdexec::sender_in<immovable_sender, ::stdexec::env<>>);
+  static_assert(::stdexec::sender_in<const immovable_sender&, ::stdexec::env<>>);
+
+  TEST_CASE(
+    "If the sender factory returns a reference to a sender that reference is passed to connect",
+    "[adaptors][let_value]") {
+    const immovable_sender s;
+    auto just = ex::just();
+    auto sender = ex::let_value(just, [&]() -> decltype(auto) { return (s); });
+    auto op = ex::connect(sender, expect_void_receiver{});
+    ex::start(op);
+  }
 } // namespace
