@@ -450,6 +450,12 @@ namespace STDEXEC::__std {
 #  define STDEXEC_IS_TRIVIALLY_CONSTRUCTIBLE(...) std::is_trivially_constructible_v<__VA_ARGS__>
 #endif
 
+#if STDEXEC_HAS_BUILTIN(__is_nothrow_assignable) || STDEXEC_MSVC()
+#  define STDEXEC_IS_NOTHROW_ASSIGNABLE(...) __is_nothrow_assignable(__VA_ARGS__)
+#else
+#  define STDEXEC_IS_NOTHROW_ASSIGNABLE(...) std::is_nothrow_assignable_v<__VA_ARGS__>
+#endif
+
 #if STDEXEC_HAS_BUILTIN(__is_empty) || STDEXEC_MSVC()
 #  define STDEXEC_IS_EMPTY(...) __is_empty(__VA_ARGS__)
 #else

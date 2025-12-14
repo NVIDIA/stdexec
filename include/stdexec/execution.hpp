@@ -47,6 +47,7 @@
 #include "__detail/__run_loop.hpp"
 #include "__detail/__schedule_from.hpp"
 #include "__detail/__schedulers.hpp"
+#include "__detail/__scope_concepts.hpp"
 #include "__detail/__sender_adaptor_closure.hpp"
 #include "__detail/__senders.hpp"
 #include "__detail/__split.hpp"
