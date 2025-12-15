@@ -35,6 +35,7 @@
 #include "stream/upon_stopped.cuh"        // IWYU pragma: export
 #include "stream/when_all.cuh"            // IWYU pragma: export
 #include "stream/reduce.cuh"              // IWYU pragma: export
+#include "stream/repeat_n.cuh"            // IWYU pragma: export
 #include "stream/ensure_started.cuh"      // IWYU pragma: export
 #include "stream/common.cuh"              // IWYU pragma: export
 #include "detail/queue.cuh"               // IWYU pragma: export
