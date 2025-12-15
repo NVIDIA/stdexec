@@ -111,7 +111,7 @@ namespace stdexec {
           return __env::__join(__env_, stdexec::get_env(__rcvr_));
         }
 
-        _Receiver __rcvr_;
+        _Receiver& __rcvr_;
         const _Env2& __env_;
       };
     };
@@ -296,7 +296,7 @@ namespace stdexec {
 
       template <class _ResultSender, class _OpState>
       auto __get_result_receiver(const _ResultSender&, _OpState& __op_state) -> decltype(auto) {
-        return __rcvr_t{static_cast<_Receiver&&>(__op_state.__rcvr_), __env2_};
+        return __rcvr_t{__op_state.__rcvr_, __env2_};
       }
 
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
