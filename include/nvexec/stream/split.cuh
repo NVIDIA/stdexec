@@ -377,8 +377,8 @@ namespace nvexec::_strm {
 
 namespace stdexec::__detail {
   template <class SenderId>
-  extern __mconst<nvexec::_strm::split_sender_t<__name_of<__t<SenderId>>>>
-    __name_of_v<nvexec::_strm::split_sender_t<SenderId>>;
+  extern __mconst<nvexec::_strm::split_sender_t<__demangle_t<__t<SenderId>>>>
+    __demangle_v<nvexec::_strm::split_sender_t<SenderId>>;
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

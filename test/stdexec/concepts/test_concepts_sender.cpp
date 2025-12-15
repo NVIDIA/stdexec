@@ -26,7 +26,6 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-function")
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunneeded-internal-declaration")
 
 namespace {
-
   struct not_a_sender { };
 
   TEST_CASE("Sender concept rejects non-sender types", "[concepts][sender]") {

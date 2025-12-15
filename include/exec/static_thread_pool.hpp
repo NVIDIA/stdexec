@@ -48,6 +48,14 @@ namespace exec {
     std::size_t blockSize{8};
   };
 
+  struct CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_STATIC_THREAD_POOL_SCHEDULER;
+  struct BECAUSE_THERE_IS_NO_STATIC_THREAD_POOL_SCHEDULER_IN_THE_ENVIRONMENT;
+  struct ADD_A_CONTINUES_ON_TRANSITION_TO_THE_STATIC_THREAD_POOL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM;
+
+  struct CANNOT_DISPATCH_THE_ITERATE_ALGORITHM_TO_THE_STATIC_THREAD_POOL_SCHEDULER;
+  struct BECAUSE_THERE_IS_NO_STATIC_THREAD_POOL_SCHEDULER_IN_THE_ENVIRONMENT;
+  struct ADD_A_CONTINUES_ON_TRANSITION_TO_THE_STATIC_THREAD_POOL_SCHEDULER_BEFORE_THE_ITERATE_ALGORITHM;
+
   namespace _pool_ {
     using namespace stdexec;
 
@@ -85,13 +93,6 @@ namespace exec {
       };
     } // namespace schedule_all_
 #endif
-
-    template <class>
-    struct not_a_sender {
-      using __t = not_a_sender;
-      using __id = not_a_sender;
-      using sender_concept = sender_t;
-    };
 
     struct task_base {
       task_base* next = nullptr;
@@ -299,11 +300,16 @@ namespace exec {
             static_assert(std::is_same_v<decltype(sched), _static_thread_pool::scheduler>);
             return __sexpr_apply(static_cast<Sender&&>(sndr), _transform_bulk{*sched.pool_});
           } else {
-            static_assert(
-              __completes_on<Sender, _static_thread_pool::scheduler, Env>,
-              "Unable to dispatch bulk work to the static_thread_pool. The predecessor sender "
-              "is not able to provide a static_thread_pool scheduler.");
-            return not_a_sender<__name_of<Sender>>();
+            return stdexec::__not_a_sender<
+              stdexec::_WHAT_<>(
+                CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_STATIC_THREAD_POOL_SCHEDULER),
+              stdexec::_WHY_(BECAUSE_THERE_IS_NO_STATIC_THREAD_POOL_SCHEDULER_IN_THE_ENVIRONMENT),
+              stdexec::_WHERE_(stdexec::_IN_ALGORITHM_, tag_of_t<Sender>),
+              stdexec::_TO_FIX_THIS_ERROR_(
+                ADD_A_CONTINUES_ON_TRANSITION_TO_THE_STATIC_THREAD_POOL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
+              stdexec::_WITH_SENDER_<Sender>,
+              stdexec::_WITH_ENVIRONMENT_<Env>
+            >();
           }
         }
 
@@ -314,11 +320,16 @@ namespace exec {
             auto sched = stdexec::get_scheduler(env);
             return __sexpr_apply(static_cast<Sender&&>(sndr), _transform_iterate{*sched.pool_});
           } else {
-            static_assert(
-              __completes_on<Sender, _static_thread_pool::scheduler, Env>,
-              "Unable to dispatch the iterate algorithm to the static_thread_pool. The predecessor "
-              "sender is not able to provide a static_thread_pool scheduler.");
-            return not_a_sender<__name_of<Sender>>();
+            return stdexec::__not_a_sender<
+              stdexec::_WHAT_<>(
+                CANNOT_DISPATCH_THE_ITERATE_ALGORITHM_TO_THE_STATIC_THREAD_POOL_SCHEDULER),
+              stdexec::_WHY_(BECAUSE_THERE_IS_NO_STATIC_THREAD_POOL_SCHEDULER_IN_THE_ENVIRONMENT),
+              stdexec::_WHERE_(stdexec::_IN_ALGORITHM_, exec::iterate_t),
+              stdexec::_TO_FIX_THIS_ERROR_(
+                ADD_A_CONTINUES_ON_TRANSITION_TO_THE_STATIC_THREAD_POOL_SCHEDULER_BEFORE_THE_ITERATE_ALGORITHM),
+              stdexec::_WITH_SENDER_<Sender>,
+              stdexec::_WITH_ENVIRONMENT_<Env>
+            >();
           }
         }
 #endif

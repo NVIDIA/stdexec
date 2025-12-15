@@ -132,11 +132,11 @@ namespace stdexec::__detail {
   struct __variant_sender_name {
     template <class _Sender>
     using __f = __mapply<
-      __mtransform<__mcompose<__q<__name_of>, __q<__t>>, __q<exec::__variant::__sender>>,
+      __mtransform<__mcompose<__q<__demangle_t>, __q<__t>>, __q<exec::__variant::__sender>>,
       _Sender
     >;
   }; // namespace stdexec::__detail
 
   template <class... _SenderIds>
-  extern __variant_sender_name __name_of_v<exec::__variant::__sender<_SenderIds...>>;
+  extern __variant_sender_name __demangle_v<exec::__variant::__sender<_SenderIds...>>;
 } // namespace stdexec::__detail

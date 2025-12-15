@@ -330,6 +330,10 @@ namespace stdexec {
     get_completion_scheduler<set_stopped_t>{};
 #endif
 
+  template <class _Tag, sender _Sender, class... _Env>
+    requires __sends<_Tag, _Sender, _Env...>
+  using __completion_scheduler_of_t =
+    __call_result_t<get_completion_scheduler_t<_Tag>, env_of_t<_Sender>, const _Env&...>;
 
   // TODO(ericniebler): examine all uses of this struct.
   template <class _Scheduler>

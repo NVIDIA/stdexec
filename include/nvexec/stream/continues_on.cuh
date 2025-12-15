@@ -269,8 +269,8 @@ namespace nvexec::_strm {
 // Decode the sender name for diagnostics:
 namespace stdexec::__detail {
   template <class _Scheduler, class _SenderId>
-  extern __mconst<nvexec::_strm::continues_on_sender_t<_Scheduler, __name_of<__t<_SenderId>>>>
-    __name_of_v<nvexec::_strm::continues_on_sender_t<_Scheduler, _SenderId>>;
+  extern __mconst<nvexec::_strm::continues_on_sender_t<_Scheduler, __demangle_t<__t<_SenderId>>>>
+    __demangle_v<nvexec::_strm::continues_on_sender_t<_Scheduler, _SenderId>>;
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

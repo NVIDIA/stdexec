@@ -31,7 +31,7 @@
 namespace stdexec {
   namespace __detail {
     //! Constant function object always returning `__val_`.
-    template <class _Ty, class = __name_of<__decay_t<_Ty>>>
+    template <class _Ty, class = __demangle_t<__decay_t<_Ty>>>
     struct __always {
       _Ty __val_;
 

@@ -29,8 +29,8 @@
 #include "__senders.hpp"
 #include "__submit.hpp"
 #include "__transform_completion_signatures.hpp"
-#include "__variant.hpp"
 #include "__utility.hpp"
+#include "__variant.hpp"
 
 #include <exception>
 
@@ -122,29 +122,34 @@ namespace stdexec {
     template <__mstring _Where, __mstring _What>
     struct _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_ { };
 
+    template <class...>
+    struct _NESTED_ERROR_;
+
 #if STDEXEC_EDG()
     template <class _Sender, class _SetTag, class... _JoinEnv2>
     struct __bad_result_sender_ {
-      using __t = __mexception<
+      using __t = __not_a_sender<
         _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_<
           __in_which_let_msg<_SetTag>,
           "The function must return a valid sender for the current environment"_mstr
         >,
         _WITH_SENDER_<_Sender>,
-        _WITH_ENVIRONMENT_<_JoinEnv2>...
+        _WITH_ENVIRONMENT_<_JoinEnv2>...,
+        __mapply_q<_NESTED_ERROR_, __completion_signatures_of_t<_Sender, _JoinEnv2...>>
       >;
     };
     template <class _Sender, class _SetTag, class... _JoinEnv2>
     using __bad_result_sender = __t<__bad_result_sender_<_Sender, _SetTag, _JoinEnv2...>>;
 #else
     template <class _Sender, class _SetTag, class... _JoinEnv2>
-    using __bad_result_sender = __mexception<
+    using __bad_result_sender = __not_a_sender<
       _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_<
         __in_which_let_msg<_SetTag>,
         "The function must return a valid sender for the current environment"_mstr
       >,
       _WITH_SENDER_<_Sender>,
-      _WITH_ENVIRONMENT_<_JoinEnv2>...
+      _WITH_ENVIRONMENT_<_JoinEnv2>...,
+      __mapply_q<_NESTED_ERROR_, __completion_signatures_of_t<_Sender, _JoinEnv2...>>
     >;
 #endif
 
@@ -245,7 +250,7 @@ namespace stdexec {
       template <class... _Senders>
       using __f = __mcall<
         __mtry_catch_q<__common_domain_t, __error_fn>,
-        __compl_domain_t<_SetTag, _Senders, _Env...>...
+        __completion_domain_of_t<_SetTag, _Senders, _Env...>...
       >;
     };
 
@@ -305,6 +310,47 @@ namespace stdexec {
       __submit_variant __storage_{};
     };
 
+    // The set_value completions of:
+    //
+    //   * a let_value sender are:
+    //       * the value completions of the secondary senders
+    //
+    //   * a let_error sender are:
+    //       * the value completions of the predecessor sender
+    //       * the value completions of the secondary senders
+    //
+    //   * a let_stopped sender are:
+    //       * the value completions of the predecessor sender
+    //       * the value completions of the secondary sender
+    //
+    // The set_stopped completions of:
+    //
+    //   * a let_value sender are:
+    //       * the stopped completions of the predecessor sender
+    //       * the stopped completions of the secondary senders
+    //
+    //   * a let_error sender are:
+    //       * the stopped completions of the predecessor sender
+    //       * the stopped completions of the secondary senders
+    //
+    //   * a let_stopped sender are:
+    //       * the stopped completions of the secondary senders
+    //
+    // The set_error completions of:
+    //
+    //   * a let_value sender are:
+    //       * the error completions of the predecessor sender
+    //       * the error completions of the secondary senders
+    //       * the value completions of the predecessor sender if decay copying the arguments can throw
+    //
+    //   * a let_error sender are:
+    //       * the error completions of the secondary senders
+    //       * the error completions of the predecessor sender if decay copying the errors can throw
+    //
+    //   * a let_stopped sender are:
+    //       * the error completions of the predecessor sender
+    //       * the error completions of the secondary senders
+
     // A metafunction to check whether the predecessor's completion results are nothrow
     // decay-copyable and whether connecting the secondary sender is nothrow.
     template <class _SetTag, class _Sndr, class _Fn, class _Env>
@@ -348,10 +394,10 @@ namespace stdexec {
     template <class _SetTag, class _Fn, class _Attrs, class... _Env>
     struct __domain_transform_fn {
       using __result_sender_fn =
-        __let::__result_sender_fn<_SetTag, _Fn, _Attrs, __result_env_t<_SetTag, _Attrs, _Env>...>;
+        __let::__result_sender_fn<_SetTag, _Fn, __result_env_t<_SetTag, _Attrs, _Env>...>;
 
       template <class... _As>
-      using __f = __compl_domain_t<
+      using __f = __completion_domain_of_t<
         _SetTag,
         __mcall<__result_sender_fn, _As...>,
         __result_env_t<_SetTag, _Attrs, _Env>...
@@ -368,26 +414,30 @@ namespace stdexec {
       if constexpr (sender_in<_Sndr, _Env...>) {
         using __domain_transform_fn =
           __let::__domain_transform_fn<_SetTag, _Fn, env_of_t<_Sndr>, _Env...>;
-        return __gather_completions<
-          completion_signatures_of_t<_Sndr, _Env...>,
+        return __minvoke_or_q<
+          __gather_completions,
+          indeterminate_domain<>,
           __t<_LetTag>,
+          __completion_signatures_of_t<_Sndr, _Env...>,
           __domain_transform_fn,
           __qq<__common_domain_t>
         >();
       } else {
-        return __not_a_domain{};
+        return indeterminate_domain<>{};
       }
     }
 
     template <class _SetTag, class _SetTag2, class _Sndr, class _Fn, class... _Env>
     using __let_completion_domain_t = __unless_one_of_t<
       decltype(__let::__get_completion_domain<_SetTag, _SetTag2, _Sndr, _Fn, _Env...>()),
-      __not_a_domain
+      indeterminate_domain<>
     >;
 
     template <class _LetTag, class _Sndr, class _Fn>
-    struct __attrs_t {
-      using __set_tag_t = __t<_LetTag>;
+    struct __attrs {
+      using __t = __attrs;
+      using __id = __attrs;
+      using __set_tag_t = stdexec::__t<_LetTag>;
 
       template <class _Tag>
       constexpr auto query(get_completion_scheduler_t<_Tag>) const = delete;
@@ -395,18 +445,20 @@ namespace stdexec {
       template <class... _Env>
       [[nodiscard]]
       constexpr auto query(get_completion_domain_t<__set_tag_t>, const _Env&...) const noexcept
-        -> __let_completion_domain_t<_LetTag, __set_tag_t, _Sndr, _Fn, _Env...> {
+        -> __ensure_valid_domain_t<
+          __let_completion_domain_t<_LetTag, __set_tag_t, _Sndr, _Fn, _Env...>
+        > {
         return {};
       }
 
       template <__one_of<set_error_t, set_stopped_t> _Tag, class... _Env>
         requires(__has_nothrow_completions<__set_tag_t, _Sndr, _Fn, _Env>::value && ...)
       [[nodiscard]]
-      constexpr auto
-        query(get_completion_domain_t<_Tag>, const _Env&...) const noexcept -> __common_domain_t<
-          __compl_domain_t<_Tag, _Sndr, __fwd_env_t<_Env>...>,
+      constexpr auto query(get_completion_domain_t<_Tag>, const _Env&...) const noexcept
+        -> __ensure_valid_domain_t<__common_domain_t<
+          __completion_domain_of_t<_Tag, _Sndr, __fwd_env_t<_Env>...>,
           __let_completion_domain_t<_LetTag, _Tag, _Sndr, _Fn, _Env...>
-        > {
+        >> {
         return {};
       }
 
@@ -414,11 +466,11 @@ namespace stdexec {
         requires(!__has_nothrow_completions<__set_tag_t, _Sndr, _Fn, _Env>::value)
       [[nodiscard]]
       constexpr auto query(get_completion_domain_t<set_error_t>, const _Env&) const noexcept
-        -> __common_domain_t<
-          __compl_domain_t<__set_tag_t, _Sndr, __fwd_env_t<_Env>>,
-          __compl_domain_t<set_error_t, _Sndr, __fwd_env_t<_Env>>,
+        -> __ensure_valid_domain_t<__common_domain_t<
+          __completion_domain_of_t<__set_tag_t, _Sndr, __fwd_env_t<_Env>>,
+          __completion_domain_of_t<set_error_t, _Sndr, __fwd_env_t<_Env>>,
           __let_completion_domain_t<_LetTag, set_error_t, _Sndr, _Fn, _Env>
-        > {
+        >> {
         return {};
       }
 
@@ -439,13 +491,13 @@ namespace stdexec {
           constexpr auto __pred_behavior =
             stdexec::get_completion_behavior<__set_tag_t, _Sndr, __fwd_env_t<_Env>...>();
           constexpr auto __result_behavior = __gather_completions<
-            __completions_t,
             __set_tag_t,
+            __completions_t,
             __transform_fn,
             __qq<__common_completion_behavior_t>
           >();
 
-          return (stdexec::min) (__pred_behavior, __result_behavior);
+          return completion_behavior::weakest(__pred_behavior, __result_behavior);
         } else {
           return completion_behavior::unknown;
         }
@@ -472,12 +524,14 @@ namespace stdexec {
 
     template <class _SetTag>
     struct __let_impl : __sexpr_defaults {
-      static constexpr auto get_attrs =
-        []<class _Fun, class _Child>(const _Fun&, const _Child& __child) noexcept {
-          //return __env::__join(prop{get_domain, _Domain()}, stdexec::get_env(__child));
-          // TODO(ericniebler): this needs to be updated:
-          return stdexec::get_env(__child);
-        };
+      static constexpr auto get_attrs = []<class _Fun, class _Child>(
+                                          const _Fun&,
+                                          [[maybe_unused]]
+                                          const _Child& __child) noexcept {
+        // BUGBUG:
+        return stdexec::get_env(__child);
+        //return __attrs<__let_t<_SetTag>, _Child, _Fun>{};
+      };
 
       static constexpr auto get_completion_signatures =
         []<class _Self, class _Env>(_Self&&, _Env&&...) noexcept {
@@ -509,15 +563,14 @@ namespace stdexec {
           __mk_let_state
         >;
 
-        return __sndr
-          .apply(
-            static_cast<_Sender&&>(__sndr),
-            [&]<class _Fn, class _Child>(__ignore, _Fn&& __fn, _Child&& __child) {
-              // TODO(ericniebler): this needs a fallback
-              _Env2 __env2 =
-                __let::__mk_env2<_SetTag>(stdexec::get_env(__child), stdexec::get_env(__rcvr));
-              return __let_state_t{static_cast<_Fn&&>(__fn), static_cast<_Env2&&>(__env2)};
-            });
+        return __sndr.apply(
+          static_cast<_Sender&&>(__sndr),
+          [&]<class _Fn, class _Child>(__ignore, _Fn&& __fn, _Child&& __child) {
+            // TODO(ericniebler): this needs a fallback
+            _Env2 __env2 =
+              __let::__mk_env2<_SetTag>(stdexec::get_env(__child), stdexec::get_env(__rcvr));
+            return __let_state_t{static_cast<_Fn&&>(__fn), static_cast<_Env2&&>(__env2)};
+          });
       };
 
       //! Helper function to actually invoke the function to produce `let_*`'s sender,
@@ -582,14 +635,9 @@ namespace stdexec {
     };
   } // namespace __let
 
-  using let_value_t = __let::__let_t<set_value_t>;
-  inline constexpr let_value_t let_value{};
-
-  using let_error_t = __let::__let_t<set_error_t>;
-  inline constexpr let_error_t let_error{};
-
-  using let_stopped_t = __let::__let_t<set_stopped_t>;
-  inline constexpr let_stopped_t let_stopped{};
+  inline constexpr auto let_value = let_value_t{};
+  inline constexpr auto let_error = let_error_t{};
+  inline constexpr auto let_stopped = let_stopped_t{};
 
   template <class _SetTag>
   struct __sexpr_impl<__let::__let_t<_SetTag>> : __let::__let_impl<_SetTag> { };

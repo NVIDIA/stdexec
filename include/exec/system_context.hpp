@@ -36,6 +36,10 @@
 // TODO: make these configurable by providing policy to the system context
 
 namespace exec {
+  struct CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_PARALLEL_SCHEDULER;
+  struct BECAUSE_THERE_IS_NO_PARALLEL_SCHEDULER_IN_THE_ENVIRONMENT;
+  struct ADD_A_CONTINUES_ON_TRANSITION_TO_THE_PARALLEL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM;
+
   namespace detail {
     /// Allows a frontend receiver of type `_Rcvr` to be passed to the backend.
     template <class _Rcvr>
@@ -715,11 +719,15 @@ namespace exec {
       return stdexec::__sexpr_apply(
         static_cast<_Sender&&>(__sndr), __transform_parallel_bulk_sender{__sched});
     } else {
-      static_assert(
-        stdexec::__completes_on<_Sender, parallel_scheduler, _Env>,
-        "No parallel_scheduler instance can be found in the receiver's "
-        "environment on which to schedule bulk work.");
-      return __not_a_sender<stdexec::__name_of<_Sender>>();
+      return stdexec::__not_a_sender<
+        stdexec::_WHAT_<>(CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_PARALLEL_SCHEDULER),
+        stdexec::_WHY_(BECAUSE_THERE_IS_NO_PARALLEL_SCHEDULER_IN_THE_ENVIRONMENT),
+        stdexec::_WHERE_(stdexec::_IN_ALGORITHM_, stdexec::tag_of_t<_Sender>),
+        stdexec::_TO_FIX_THIS_ERROR_(
+          ADD_A_CONTINUES_ON_TRANSITION_TO_THE_PARALLEL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
+        stdexec::_WITH_SENDER_<_Sender>,
+        stdexec::_WITH_ENVIRONMENT_<_Env>
+      >();
     }
   }
 } // namespace exec

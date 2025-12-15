@@ -183,8 +183,8 @@ namespace nvexec::_strm {
 
 namespace stdexec::__detail {
   template <class SenderId, class Fun>
-  inline constexpr __mconst<nvexec::_strm::upon_stopped_sender_t<__name_of<__t<SenderId>>, Fun>>
-    __name_of_v<nvexec::_strm::upon_stopped_sender_t<SenderId, Fun>>{};
+  inline constexpr __mconst<nvexec::_strm::upon_stopped_sender_t<__demangle_t<__t<SenderId>>, Fun>>
+    __demangle_v<nvexec::_strm::upon_stopped_sender_t<SenderId, Fun>>{};
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

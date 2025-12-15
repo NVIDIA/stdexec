@@ -79,10 +79,10 @@ namespace exec {
     struct _WITH_SEQUENCES_;
   } // namespace __errs
   template <class _Sequence>
-  using _WITH_SEQUENCE_ = __errs::_WITH_SEQUENCE_<stdexec::__name_of<_Sequence>>;
+  using _WITH_SEQUENCE_ = __errs::_WITH_SEQUENCE_<stdexec::__demangle_t<_Sequence>>;
 
   template <class... _Sequences>
-  using _WITH_SEQUENCES_ = __errs::_WITH_SEQUENCES_<stdexec::__name_of<_Sequences>...>;
+  using _WITH_SEQUENCES_ = __errs::_WITH_SEQUENCES_<stdexec::__demangle_t<_Sequences>...>;
 
   struct sequence_sender_t : stdexec::sender_t { };
 
@@ -589,7 +589,7 @@ namespace exec {
       template <class _Sequence, class _Receiver>
       static constexpr auto __get_declfn() noexcept {
         using __domain_t =
-          stdexec::__detail::__completing_domain<set_value_t, _Sequence, env_of_t<_Receiver&>>;
+          stdexec::__detail::__completing_domain_t<set_value_t, _Sequence, env_of_t<_Receiver&>>;
         constexpr bool __nothrow_tfx_sequence =
           __nothrow_callable<transform_sender_t, __domain_t, _Sequence, env_of_t<_Receiver>>;
         using __tfx_sequence_t = __transform_sender_result_t<_Sequence, _Receiver>;

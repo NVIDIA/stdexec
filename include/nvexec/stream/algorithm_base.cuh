@@ -153,10 +153,12 @@ namespace nvexec::_strm::__algo_range_init_fun {
 namespace stdexec::__detail {
   template <class SenderId, class InitT, class Fun, class DerivedSender>
   extern __mconst<nvexec::_strm::__algo_range_init_fun::sender_t<
-    __name_of<__t<SenderId>>,
+    __demangle_t<__t<SenderId>>,
     InitT,
     Fun,
-    __name_of<DerivedSender>
+    __demangle_t<DerivedSender>
   >>
-    __name_of_v<nvexec::_strm::__algo_range_init_fun::sender_t<SenderId, InitT, Fun, DerivedSender>>;
+    __demangle_v<
+      nvexec::_strm::__algo_range_init_fun::sender_t<SenderId, InitT, Fun, DerivedSender>
+    >;
 } // namespace stdexec::__detail

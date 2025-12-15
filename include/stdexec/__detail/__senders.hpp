@@ -252,7 +252,7 @@ namespace stdexec {
           return __declfn<_Result, _NothrowTfxSender>();
         } else {
           return _NO_USABLE_CONNECT_CUSTOMIZATION_FOUND_<
-            _WITH_SENDER_<__name_of<_TfxSender>>,
+            _WITH_SENDER_<__demangle_t<_TfxSender>>,
             _WITH_RECEIVER_<_Receiver>
           >();
         }

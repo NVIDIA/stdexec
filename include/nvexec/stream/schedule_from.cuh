@@ -194,6 +194,6 @@ namespace nvexec::_strm {
 
 namespace stdexec::__detail {
   template <class SenderId>
-  inline constexpr __mconst<nvexec::_strm::schedule_from_sender_t<__name_of<__t<SenderId>>>>
-    __name_of_v<nvexec::_strm::schedule_from_sender_t<SenderId>>{};
+  inline constexpr __mconst<nvexec::_strm::schedule_from_sender_t<__demangle_t<__t<SenderId>>>>
+    __demangle_v<nvexec::_strm::schedule_from_sender_t<SenderId>>{};
 } // namespace stdexec::__detail
