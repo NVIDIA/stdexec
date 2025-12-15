@@ -31,6 +31,7 @@ set(stdexec_test_sources
     stdexec/concepts/test_concepts_sender.cpp
     stdexec/concepts/test_concepts_stop_tokens.cpp
     stdexec/concepts/test_concepts_scope_association.cpp
+    stdexec/concepts/test_concepts_scope_token.cpp
     stdexec/concepts/test_awaitables.cpp
     stdexec/algos/factories/test_just.cpp
     stdexec/algos/factories/test_transfer_just.cpp

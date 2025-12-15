@@ -18,7 +18,13 @@
 
 #include "__execution_fwd.hpp"
 
+#include "__completion_signatures.hpp"
 #include "__concepts.hpp"
+#include "__operation_states.hpp"
+#include "__receivers.hpp"
+#include "__sender_concepts.hpp"
+
+#include <exception>
 
 namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
@@ -30,4 +36,37 @@ namespace STDEXEC {
                                 { static_cast<bool>(assoc) } noexcept;
                                 { assoc.try_associate() } -> __std::same_as<_Assoc>;
                               };
+
+  namespace __scope_concepts {
+    struct __test_sender {
+      using sender_concept = STDEXEC::sender_t;
+
+      using completion_signatures = STDEXEC::completion_signatures<
+        STDEXEC::set_value_t(int),
+        STDEXEC::set_error_t(std::exception_ptr),
+        STDEXEC::set_stopped_t()
+      >;
+
+      struct __op {
+        using operation_state_concept = STDEXEC::operation_state_t;
+
+        __op() = default;
+        __op(__op&&) = delete;
+
+        void start() & noexcept {
+        }
+      };
+
+      template <class _Receiver>
+      __op connect(_Receiver) {
+        return {};
+      }
+    };
+  } // namespace __scope_concepts
+
+  template <class _Token>
+  concept scope_token = __std::copyable<_Token> && requires(const _Token token) {
+    { token.try_associate() } -> scope_association;
+    { token.wrap(__declval<__scope_concepts::__test_sender>()) } -> sender_in<STDEXEC::env<>>;
+  };
 } // namespace STDEXEC
