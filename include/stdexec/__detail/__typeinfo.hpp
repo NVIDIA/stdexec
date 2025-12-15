@@ -77,7 +77,7 @@ namespace stdexec {
 
   namespace __detail {
     template <class _Ty>
-    inline constexpr __type_info __mtypeid_v{__mnameof<_Ty>.__what_};
+    inline constexpr __type_info __mtypeid_v{__mnameof<_Ty>};
 
     template <class _Ty>
     inline constexpr const __type_info &__mtypeid_v<_Ty const> = __mtypeid_v<_Ty>;

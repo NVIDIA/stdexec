@@ -831,36 +831,26 @@ namespace stdexec {
     constexpr char __type_name_prefix[] = "__xyzzy<";
     constexpr char __type_name_suffix[] = ">::__plugh";
 
-    // Get the type name from the function name by trimming the front and back.
-    template <
-      std::size_t N,
-      std::size_t M = N - sizeof(__type_name_prefix) - sizeof(__type_name_suffix) + 2
-    >
     [[nodiscard]]
-    consteval __mstring<M> __find_pretty_name(__mstring<N> __fun_name) noexcept {
-      const auto __sv = std::string_view(__fun_name.__what_);
+    consteval std::string_view __find_pretty_name(std::string_view __sv) noexcept {
       const auto __beg_pos = __sv.find(__type_name_prefix);
       const auto __end_pos = __sv.rfind(__type_name_suffix);
 
       const auto __start = __beg_pos + sizeof(__type_name_prefix) - 1;
-      const auto __length = __end_pos - __start;
+      const auto __len = __end_pos - __start;
 
-      __mstring<M> __name{};
-      for (std::size_t i = 0; i < __length; ++i)
-        __name.__what_[i] = __fun_name.__what_[__start + i];
-      __name.__what_[__length] = '\0';
-      return __name;
+      return __sv.substr(__start, __len);
     }
 
     template <class T>
     [[nodiscard]]
-    consteval auto __get_pretty_name_helper() noexcept {
-      return __detail::__find_pretty_name(__mstring{STDEXEC_PRETTY_FUNCTION()});
+    consteval std::string_view __get_pretty_name_helper() noexcept {
+      return __detail::__find_pretty_name(std::string_view{STDEXEC_PRETTY_FUNCTION()});
     }
 
     template <class T>
     [[nodiscard]]
-    consteval auto __get_pretty_name() noexcept {
+    consteval std::string_view __get_pretty_name() noexcept {
       return __detail::__get_pretty_name_helper<typename __xyzzy<T>::__plugh>();
     }
   } // namespace __detail
