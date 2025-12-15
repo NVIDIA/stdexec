@@ -685,6 +685,24 @@ namespace stdexec {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+#if STDEXEC_CLANG() && STDEXEC_CUDA_COMPILATION() && !defined(STDEXEC_CLANG_TIDY_INVOKED)
+#  define STDEXEC_HAS_HOST_DEVICE_OVERLOADS() 1
+#else
+#  define STDEXEC_HAS_HOST_DEVICE_OVERLOADS() 0
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+#if defined(_MSC_VER)
+#  if _MSC_VER >= 19'35
+#    define STDEXEC_PRETTY_FUNCTION() __builtin_FUNCSIG()
+#  else
+#    define STDEXEC_PRETTY_FUNCTION() __FUNCSIG__
+#  endif
+#else
+#  define STDEXEC_PRETTY_FUNCTION() __PRETTY_FUNCTION__
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // clang-tidy struggles with the CUDA function annotations
 #if STDEXEC_CLANG() && STDEXEC_CUDA_COMPILATION() && defined(STDEXEC_CLANG_TIDY_INVOKED)
 #  include <cuda_runtime_api.h> // IWYU pragma: keep

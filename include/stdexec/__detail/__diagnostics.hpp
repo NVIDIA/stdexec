@@ -20,20 +20,8 @@
 #include <exception> // IWYU pragma: keep for std::exception
 
 namespace stdexec {
-  namespace __detail {
-    template <class _Ty>
-    extern __q<__midentity> __name_of_v;
-
-    template <class _Ty>
-    using __name_of_fn = decltype(__name_of_v<_Ty>);
-
-    template <class _Ty>
-    using __name_of = __minvoke<__name_of_fn<_Ty>, _Ty>;
-  } // namespace __detail
-
-  // A utility for pretty-printing type names in diagnostics
-  template <class _Ty>
-  using __name_of = __detail::__name_of<_Ty>;
+  struct sender_t;
+  struct scheduler_t;
 
   namespace __errs {
     inline constexpr __mstring __unrecognized_sender_type_diagnostic =
@@ -49,16 +37,18 @@ namespace stdexec {
 
   struct _WHERE_;
 
+  struct _WHY_;
+
   struct _IN_ALGORITHM_;
 
   template <__mstring _Diagnostic = __errs::__unrecognized_sender_type_diagnostic>
   struct _UNRECOGNIZED_SENDER_TYPE_;
 
   template <class _Sender>
-  using _WITH_SENDER_ = __errs::_WITH_SENDER_<__name_of<_Sender>>;
+  using _WITH_SENDER_ = __errs::_WITH_SENDER_<__demangle_t<_Sender>>;
 
   template <class... _Senders>
-  using _WITH_SENDERS_ = __errs::_WITH_SENDERS_<__name_of<_Senders>...>;
+  using _WITH_SENDERS_ = __errs::_WITH_SENDERS_<__demangle_t<_Senders>...>;
 
   template <class _Env>
   struct _WITH_ENVIRONMENT_;
@@ -83,6 +73,8 @@ namespace stdexec {
 
   template <class _Tag>
   struct _WITH_QUERY_;
+
+  struct _TO_FIX_THIS_ERROR_;
 
   struct _SENDER_TYPE_IS_NOT_COPYABLE_;
 
@@ -184,23 +176,55 @@ namespace stdexec {
     char const * what_;
   };
 
-  template <class _Sndr>
-  struct __dependent_sender_error : dependent_sender_error {
-    constexpr __dependent_sender_error() noexcept
-      : dependent_sender_error{
-          "This sender needs to know its execution environment before it can know how it will "
-          "complete."} {
+  namespace __detail {
+    template <class _Sender>
+    struct __dependent_sender_error : dependent_sender_error {
+      constexpr __dependent_sender_error() noexcept
+        : dependent_sender_error{
+            "This sender needs to know its execution environment before it can know how it will "
+            "complete."} {
+      }
+
+      STDEXEC_ATTRIBUTE(host, device) auto operator+() -> __dependent_sender_error;
+
+      template <class Ty>
+      STDEXEC_ATTRIBUTE(host, device)
+      auto operator,(Ty&) -> __dependent_sender_error&;
+
+      template <class... What>
+      STDEXEC_ATTRIBUTE(host, device)
+      auto operator,(stdexec::_ERROR_<What...>&) -> stdexec::_ERROR_<What...>&;
+    };
+  } // namespace __detail
+
+  template <class _Sender>
+  using __dependent_sender_error = __detail::__dependent_sender_error<__demangle_t<_Sender>>;
+
+  template <class _What, class... _With>
+  struct __not_a_sender {
+    using sender_concept = sender_t;
+
+    template <class Self>
+    constexpr auto get_completion_signatures(Self&&) const noexcept {
+      return __mexception<_What, _With...>();
+    }
+  };
+
+  template <class _What, class... _With>
+  struct __not_a_scheduler {
+    using scheduler_concept = scheduler_t;
+
+    auto schedule() noexcept {
+      return __not_a_sender<_What, _With...>{};
     }
 
-    STDEXEC_ATTRIBUTE(host, device) auto operator+() -> __dependent_sender_error;
+    constexpr bool operator==(__not_a_scheduler) const noexcept {
+      return true;
+    }
 
-    template <class Ty>
-    STDEXEC_ATTRIBUTE(host, device)
-    auto operator,(Ty&) -> __dependent_sender_error&;
-
-    template <class... What>
-    STDEXEC_ATTRIBUTE(host, device)
-    auto operator,(stdexec::_ERROR_<What...>&) -> stdexec::_ERROR_<What...>&;
+    constexpr bool operator!=(__not_a_scheduler) const noexcept {
+      return false;
+    }
   };
 } // namespace stdexec
 

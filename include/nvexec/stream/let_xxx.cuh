@@ -301,8 +301,8 @@ namespace nvexec::_strm {
 
 namespace stdexec::__detail {
   template <class SenderId, class Fun, class Set>
-  inline constexpr __mconst<nvexec::_strm::let_sender_t<__name_of<__t<SenderId>>, Fun, Set>>
-    __name_of_v<nvexec::_strm::let_sender_t<SenderId, Fun, Set>>{};
+  inline constexpr __mconst<nvexec::_strm::let_sender_t<__demangle_t<__t<SenderId>>, Fun, Set>>
+    __demangle_v<nvexec::_strm::let_sender_t<SenderId, Fun, Set>>{};
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

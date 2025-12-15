@@ -15,15 +15,16 @@
  */
 #pragma once
 
-#include <cstddef>
-#include <cassert>
-#include <compare>
-#include <type_traits>
-
 #include "__config.hpp"
 #include "__concepts.hpp"
 #include "__type_traits.hpp"
 #include "__utility.hpp"
+
+#include <cstddef>
+#include <cassert>
+#include <compare>
+#include <string_view>
+#include <type_traits>
 
 namespace stdexec {
   //! Convenience metafunction getting the dependant type `__t` out of `_Tp`.
@@ -31,6 +32,9 @@ namespace stdexec {
   //! See MAINTAINERS.md#class-template-parameters for details.
   template <class _Tp>
   using __t = _Tp::__t;
+
+  template <class _Ret, class... _Args>
+  using __fn_t = _Ret(_Args...);
 
   template <class _Ty>
   struct __mtype {
@@ -40,8 +44,14 @@ namespace stdexec {
   template <class...>
   inline constexpr bool __mnever = false;
 
+  namespace __detail {
+    // NB: This variable template is partially specialized for __type_index in __typeinfo.hpp:
+    template <auto _Value>
+    extern __fn_t<decltype(_Value)> *__mtypeof_v;
+  } // namespace __detail
+
   template <auto _Value>
-  using __mtypeof = decltype(_Value);
+  using __mtypeof = decltype(__detail::__mtypeof_v<_Value>());
 
   template <class...>
   struct __types;
@@ -170,26 +180,10 @@ namespace stdexec {
   template <class... _Ts>
   using __indices_for = __make_indices<sizeof...(_Ts)>;
 
-  STDEXEC_PRAGMA_PUSH()
-  STDEXEC_PRAGMA_IGNORE_MSVC(4293)
-
-  constexpr auto __mpow2(std::size_t __size) noexcept -> std::size_t {
-    --__size;
-    __size |= __size >> 1;
-    __size |= __size >> 2;
-    __size |= __size >> 4;
-    __size |= __size >> 8;
-    if constexpr (sizeof(__size) >= 4)
-      __size |= __size >> 16;
-    if constexpr (sizeof(__size) >= 8)
-      __size |= __size >> 32;
-    return ++__size;
-  }
-
-  STDEXEC_PRAGMA_POP()
-
   template <std::size_t _Len>
   struct __mstring {
+    __mstring() = default;
+
 #if STDEXEC_EDG()
     template <std::size_t _Ny, std::size_t... _Is>
     constexpr __mstring(const char (&__str)[_Ny], __indices<_Is...>) noexcept
@@ -197,12 +191,12 @@ namespace stdexec {
     }
 
     template <std::size_t _Ny>
-    constexpr __mstring(const char (&__str)[_Ny], int = 0) noexcept
+    constexpr __mstring(const char (&__str)[_Ny]) noexcept
       : __mstring{__str, __make_indices<_Len>{}} {
     }
 #else
     template <std::size_t _Ny>
-    constexpr __mstring(const char (&__str)[_Ny], int = 0) noexcept {
+    constexpr __mstring(const char (&__str)[_Ny]) noexcept {
       for (auto __i = 0ull; char __ch: __str) {
         __what_[__i++] = __ch;
       }
@@ -246,34 +240,10 @@ namespace stdexec {
   template <std::size_t _Len>
   __mstring(const char (&__str)[_Len]) -> __mstring<_Len>;
 
-  template <std::size_t _Len>
-  __mstring(const char (&__str)[_Len], int) -> __mstring<__mpow2(_Len)>;
-
-  STDEXEC_PRAGMA_PUSH()
-  STDEXEC_PRAGMA_IGNORE_GNU("-Wuser-defined-literals")
-
-  // Use a standard user-defined string literal template
-  template <__mstring _Str>
-  [[deprecated("Use _mstr instead")]]
-  constexpr auto operator""__csz() noexcept -> __mtypeof<_Str> {
-    return _Str;
-  }
-
   // Use a standard user-defined string literal template
   template <__mstring _Str>
   constexpr auto operator""_mstr() noexcept -> __mtypeof<_Str> {
     return _Str;
-  }
-
-  STDEXEC_PRAGMA_POP()
-
-  template <class T>
-  constexpr auto __mnameof() noexcept {
-#if STDEXEC_MSVC()
-    return __mstring{__FUNCSIG__, 0};
-#else
-    return __mstring{__PRETTY_FUNCTION__, 0};
-#endif
   }
 
   using __msuccess = int;
@@ -495,7 +465,7 @@ namespace stdexec {
   struct __mdefer : __mdefer_<_Fn, _Args...> { };
 
   template <class _Fn, class... _Args>
-  using __mmemoize = __t<__mdefer<_Fn, _Args...>>;
+  using __mmemoize = __t<__mdefer_<_Fn, _Args...>>;
 
   template <template <class...> class _Fn, class... _Args>
   using __mmemoize_q = __mmemoize<__q<_Fn>, _Args...>;
@@ -837,6 +807,58 @@ namespace stdexec {
 
   template <class _Default>
   using __msingle_or = __mbind_front_q<__msingle_or_, _Default>;
+
+  namespace __detail {
+    template <class _Ty>
+    extern __q<__midentity> __demangle_v;
+
+    template <class _Ty>
+    using __demangle_fn = decltype(__demangle_v<_Ty>);
+  } // namespace __detail
+
+  // A utility for pretty-printing type names in diagnostics
+  template <class _Ty>
+  using __demangle_t = __minvoke<__detail::__demangle_fn<_Ty>, _Ty>;
+
+  namespace __detail {
+    //////////////////////////////////////////////////////////////////////////////////////////
+    // _pretty_name
+    template <class>
+    struct __xyzzy {
+      struct __plugh { };
+    };
+
+    constexpr char __type_name_prefix[] = "__xyzzy<";
+    constexpr char __type_name_suffix[] = ">::__plugh";
+
+    [[nodiscard]]
+    consteval std::string_view __find_pretty_name(std::string_view __sv) noexcept {
+      const auto __beg_pos = __sv.find(__type_name_prefix);
+      const auto __end_pos = __sv.rfind(__type_name_suffix);
+
+      const auto __start = __beg_pos + sizeof(__type_name_prefix) - 1;
+      const auto __len = __end_pos - __start;
+
+      return __sv.substr(__start, __len);
+    }
+
+    template <class T>
+    [[nodiscard]]
+    consteval std::string_view __get_pretty_name_helper() noexcept {
+      return __detail::__find_pretty_name(std::string_view{STDEXEC_PRETTY_FUNCTION()});
+    }
+
+    template <class T>
+    [[nodiscard]]
+    consteval std::string_view __get_pretty_name() noexcept {
+      return __detail::__get_pretty_name_helper<typename __xyzzy<T>::__plugh>();
+    }
+  } // namespace __detail
+
+  template <class T>
+  inline constexpr auto __mnameof = __detail::__get_pretty_name<__demangle_t<T>>();
+
+  static_assert(__mnameof<int> == "int");
 
   //! A concept checking if `_Ty` has a dependent type `_Ty::__id`.
   //! See MAINTAINERS.md#class-template-parameters.

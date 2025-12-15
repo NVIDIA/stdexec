@@ -60,6 +60,9 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct default_domain;
 
+  template <class...>
+  struct indeterminate_domain;
+
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __rcvrs {
     struct set_value_t;
@@ -322,6 +325,21 @@ namespace stdexec {
   extern const bulk_t bulk;
   extern const bulk_chunked_t bulk_chunked;
   extern const bulk_unchunked_t bulk_unchunked;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  namespace __let {
+    template <class _SetTag>
+    struct __let_t;
+  } // namespace __let
+
+  using let_value_t = __let::__let_t<set_value_t>;
+  extern const let_value_t let_value;
+
+  using let_error_t = __let::__let_t<set_error_t>;
+  extern const let_error_t let_error;
+
+  using let_stopped_t = __let::__let_t<set_stopped_t>;
+  extern const let_stopped_t let_stopped;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __split {

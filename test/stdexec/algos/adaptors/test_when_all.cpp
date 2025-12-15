@@ -289,7 +289,7 @@ namespace {
         ex::when_all(ex::transfer_just(scheduler(), 3), ex::transfer_just(scheduler(), 0.1415));
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_t>);
       [[maybe_unused]]
-      domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd));
+      domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd), ex::env{});
     }
 
     SECTION("late customization") {
@@ -314,7 +314,7 @@ namespace {
         ex::transfer_just(scheduler(), 3), ex::transfer_just(scheduler(), 0.1415));
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_with_variant_t>);
       [[maybe_unused]]
-      domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd));
+      domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd), ex::env{});
     }
 
     SECTION("late customization") {
@@ -340,7 +340,7 @@ namespace {
         ex::transfer_just(scheduler(), 3), ex::transfer_just(scheduler(), 0.1415));
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_with_variant_t>);
       [[maybe_unused]]
-      domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd));
+      domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd), ex::env{});
     }
 
     SECTION("late customization") {

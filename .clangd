@@ -54,6 +54,7 @@ CompileFlags:
     - "-std=c++20"
     - "-DSTDEXEC_CLANGD_INVOKED"
     - "-stdlib=libc++"
+    - "-Wno-unused-local-typedef"
   Remove:
     - "-stdpar*"
     # strip CUDA fatbin args

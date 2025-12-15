@@ -51,7 +51,7 @@ namespace stdexec {
           return __get_declfn<__result_t, _Env, (_Nothrow && __is_nothrow)>();
         } else {
           using __transform_recurse_t =
-            __transform_sender_t<__completing_domain<set_value_t, __result_t, _Env>, set_value_t>;
+            __transform_sender_t<__completing_domain_t<set_value_t, __result_t, _Env>, set_value_t>;
           return __transform_recurse_t::template __get_declfn<
             __result_t,
             _Env,
@@ -81,7 +81,7 @@ namespace stdexec {
             __domain_t().transform_sender(_OpTag(), static_cast<_Sndr&&>(__sndr), __env), __env);
         } else {
           using __transform_recurse_t =
-            __transform_sender_t<__completing_domain<set_value_t, __result_t, _Env>, set_value_t>;
+            __transform_sender_t<__completing_domain_t<set_value_t, __result_t, _Env>, set_value_t>;
           return __transform_recurse_t()(
             __domain_t().transform_sender(_OpTag(), static_cast<_Sndr&&>(__sndr), __env), __env);
         }
@@ -107,9 +107,9 @@ namespace stdexec {
     // 2. Starting domain transformation (where the operation state starts)
     template <class _Sndr, class _Env>
     using __impl_fn_t = __compose<
-      __detail::__transform_sender_t<__detail::__starting_domain<_Env>, start_t>,
+      __detail::__transform_sender_t<__detail::__starting_domain_t<_Env>, start_t>,
       __detail::__transform_sender_t<
-        __detail::__completing_domain<set_value_t, _Sndr, _Env>,
+        __detail::__completing_domain_t<set_value_t, _Sndr, _Env>,
         set_value_t
       >
     >;

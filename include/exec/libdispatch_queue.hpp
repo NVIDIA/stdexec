@@ -34,11 +34,6 @@ namespace exec {
   struct libdispatch_queue;
 
   namespace __libdispatch_details {
-    template <class>
-    struct not_a_sender {
-      using sender_concept = stdexec::sender_t;
-    };
-
     struct task_base {
       void (*execute)(task_base *) noexcept;
     };
@@ -108,6 +103,10 @@ namespace exec {
     };
   } // namespace __libdispatch_bulk
 
+  struct CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_LIBDISPATCH_SCHEDULER;
+  struct BECAUSE_THERE_IS_NO_LIBDISPATCH_SCHEDULER_IN_THE_ENVIRONMENT;
+  struct ADD_A_CONTINUES_ON_TRANSITION_TO_THE_LIBDISPATCH_SCHEDULER_BEFORE_THE_BULK_ALGORITHM;
+
   struct libdispatch_scheduler {
     using __t = libdispatch_scheduler;
     using __id = libdispatch_scheduler;
@@ -124,11 +123,15 @@ namespace exec {
           return stdexec::__sexpr_apply(
             std::forward<Sender>(sndr), __libdispatch_bulk::transform_bulk{*sched.queue_});
         } else {
-          static_assert(
-            stdexec::__completes_on<Sender, libdispatch_scheduler, Env>,
-            "Unable to dispatch bulk work to the libdispatch_scheduler. The predecessor sender "
-            "is not able to provide a libdispatch scheduler.");
-          return __libdispatch_details::not_a_sender<stdexec::__name_of<Sender>>();
+          return stdexec::__not_a_sender<
+            stdexec::_WHAT_<>(CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_LIBDISPATCH_SCHEDULER),
+            stdexec::_WHY_(BECAUSE_THERE_IS_NO_LIBDISPATCH_SCHEDULER_IN_THE_ENVIRONMENT),
+            stdexec::_WHERE_(stdexec::_IN_ALGORITHM_, stdexec::bulk_t),
+            stdexec::_TO_FIX_THIS_ERROR_(
+              ADD_A_CONTINUES_ON_TRANSITION_TO_THE_LIBDISPATCH_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
+            stdexec::_WITH_SENDER_<Sender>,
+            stdexec::_WITH_ENVIRONMENT_<Env>
+          >();
         }
       }
     };

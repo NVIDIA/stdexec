@@ -172,8 +172,8 @@ namespace nvexec {
 
 namespace stdexec::__detail {
   template <class SenderId, class Init, class Fun>
-  extern __mconst<nvexec::_strm::reduce_::sender_t<__name_of<__t<SenderId>>, Init, Fun>>
-    __name_of_v<nvexec::_strm::reduce_::sender_t<SenderId, Init, Fun>>;
+  extern __mconst<nvexec::_strm::reduce_::sender_t<__demangle_t<__t<SenderId>>, Init, Fun>>
+    __demangle_v<nvexec::_strm::reduce_::sender_t<SenderId, Init, Fun>>;
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

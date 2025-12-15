@@ -600,12 +600,12 @@ namespace stdexec {
   template <class _Tag>
   inline constexpr __detail::__make_sexpr_t<_Tag> __make_sexpr{};
 
-  // The __name_of utility defined below is used to pretty-print the type names of
+  // The __demangle_t utility defined below is used to pretty-print the type names of
   // senders in compiler diagnostics.
   namespace __detail {
     struct __basic_sender_name {
       template <class _Tag, class _Data, class... _Child>
-      using __result = __basic_sender<_Tag, _Data, __name_of<_Child>...>;
+      using __result = __basic_sender<_Tag, _Data, __demangle_t<_Child>...>;
 
       template <class _Sender>
       using __f = __minvoke<typename __decay_t<_Sender>::__desc_t, __q<__result>>;
@@ -613,24 +613,24 @@ namespace stdexec {
 
     struct __id_name {
       template <class _Sender>
-      using __f = __name_of<__id<_Sender>>;
+      using __f = __demangle_t<__id<_Sender>>;
     };
 
     template <class _Sender>
-    extern __mcompose<__cplr, __name_of_fn<_Sender>> __name_of_v<_Sender&>;
+    extern __mcompose<__cplr, __demangle_fn<_Sender>> __demangle_v<_Sender&>;
 
     template <class _Sender>
-    extern __mcompose<__cprr, __name_of_fn<_Sender>> __name_of_v<_Sender&&>;
+    extern __mcompose<__cprr, __demangle_fn<_Sender>> __demangle_v<_Sender&&>;
 
     template <class _Sender>
-    extern __mcompose<__cpclr, __name_of_fn<_Sender>> __name_of_v<const _Sender&>;
+    extern __mcompose<__cpclr, __demangle_fn<_Sender>> __demangle_v<const _Sender&>;
 
     template <auto _Descriptor>
-    extern __basic_sender_name __name_of_v<__sexpr<_Descriptor>>;
+    extern __basic_sender_name __demangle_v<__sexpr<_Descriptor>>;
 
     template <__has_id _Sender>
       requires(!same_as<__id<_Sender>, _Sender>)
-    extern __id_name __name_of_v<_Sender>;
+    extern __id_name __demangle_v<_Sender>;
   } // namespace __detail
 } // namespace stdexec
 

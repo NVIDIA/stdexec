@@ -237,7 +237,7 @@ namespace stdexec {
     struct __attrs {
       template <class _Tag, class... _Env>
       using __when_all_domain_t =
-        __common_domain_t<__detail::__completion_domain_of_t<set_value_t, _Senders, _Env...>...>;
+        __common_domain_t<__completion_domain_of_t<set_value_t, _Senders, _Env...>...>;
 
       template <class... _Env>
       [[nodiscard]]
@@ -264,7 +264,8 @@ namespace stdexec {
       template <class _Tag, class... _Env>
       [[nodiscard]]
       constexpr auto query(get_completion_behavior_t<_Tag>, const _Env&...) const noexcept {
-        return (stdexec::min) (stdexec::get_completion_behavior<_Tag, _Senders, _Env...>()...);
+        return completion_behavior::weakest(
+          stdexec::get_completion_behavior<_Tag, _Senders, _Env...>()...);
       }
     };
 

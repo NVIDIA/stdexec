@@ -148,7 +148,9 @@ namespace nvexec::_strm {
               || stdexec::__same_as<
                 stream_domain,
                 __common_domain_t<
-                  stdexec::__compl_domain_t<set_value_t, stdexec::__t<SenderIds>, Env...>...>>);
+                  stdexec::__completion_domain_of_t<set_value_t, stdexec::__t<SenderIds>, Env...>...
+                >
+              >);
             return stream_domain{};
           }
         }
@@ -531,9 +533,9 @@ namespace nvexec::_strm {
 namespace stdexec::__detail {
   template <class WhenAllTag, class Scheduler, class... SenderIds>
   inline constexpr __mconst<
-    nvexec::_strm::when_all_sender_t<WhenAllTag, Scheduler, __name_of<__t<SenderIds>>...>
+    nvexec::_strm::when_all_sender_t<WhenAllTag, Scheduler, __demangle_t<__t<SenderIds>>...>
   >
-    __name_of_v<nvexec::_strm::when_all_sender_t<WhenAllTag, Scheduler, SenderIds...>>{};
+    __demangle_v<nvexec::_strm::when_all_sender_t<WhenAllTag, Scheduler, SenderIds...>>{};
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

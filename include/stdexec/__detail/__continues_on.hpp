@@ -255,8 +255,9 @@ namespace stdexec {
       [[nodiscard]]
       constexpr auto
         query(get_completion_domain_t<_SetTag>, const _Env&...) const noexcept -> __unless_one_of_t<
-          __compl_domain_t<_SetTag, schedule_result_t<_Scheduler>, __fwd_env_t<_Env>...>,
-          __not_a_domain> {
+          __completion_domain_of_t<_SetTag, schedule_result_t<_Scheduler>, __fwd_env_t<_Env>...>,
+          indeterminate_domain<>
+        > {
         return {};
       }
 
@@ -267,9 +268,11 @@ namespace stdexec {
       constexpr auto
         query(get_completion_domain_t<_SetTag>, const _Env&...) const noexcept -> __unless_one_of_t<
           __common_domain_t<
-            __compl_domain_t<_SetTag, _Sender, __fwd_env_t<_Env>...>,
-            __compl_domain_t<_SetTag, schedule_result_t<_Scheduler>, __fwd_env_t<_Env>...>>,
-          __not_a_domain> {
+            __completion_domain_of_t<_SetTag, _Sender, __fwd_env_t<_Env>...>,
+            __completion_domain_of_t<_SetTag, schedule_result_t<_Scheduler>, __fwd_env_t<_Env>...>
+          >,
+          indeterminate_domain<>
+        > {
         return {};
       }
 
@@ -280,10 +283,12 @@ namespace stdexec {
       constexpr auto
         query(get_completion_domain_t<_SetTag>, const _Env&...) const noexcept -> __unless_one_of_t<
           __common_domain_t<
-            __compl_domain_t<_SetTag, _Sender, __fwd_env_t<_Env>...>,
-            __compl_domain_t<_SetTag, schedule_result_t<_Scheduler>, __fwd_env_t<_Env>...>,
-            __compl_domain_t<set_value_t, _Sender, __fwd_env_t<_Env>...>>,
-          __not_a_domain> {
+            __completion_domain_of_t<_SetTag, _Sender, __fwd_env_t<_Env>...>,
+            __completion_domain_of_t<_SetTag, schedule_result_t<_Scheduler>, __fwd_env_t<_Env>...>,
+            __completion_domain_of_t<set_value_t, _Sender, __fwd_env_t<_Env>...>
+          >,
+          indeterminate_domain<>
+        > {
         return {};
       }
 
@@ -299,7 +304,7 @@ namespace stdexec {
           schedule_result_t<_Scheduler>,
           __fwd_env_t<_Env>...>();
         constexpr auto cb_sndr = stdexec::get_completion_behavior<_Tag, _Sender, _Env...>();
-        return (stdexec::min) (cb_sched, cb_sndr);
+        return completion_behavior::weakest(cb_sched, cb_sndr);
       }
 
       //! @brief Forwards other queries to the underlying sender's environment.

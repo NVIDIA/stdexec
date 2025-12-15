@@ -125,7 +125,7 @@ namespace exec {
 
   struct __basic_sequence_sender_name {
     template <class _Tag, class _Data, class... _Child>
-    using __result = __basic_sequence_sender<_Tag, _Data, stdexec::__name_of<_Child>...>;
+    using __result = __basic_sequence_sender<_Tag, _Data, stdexec::__demangle_t<_Child>...>;
 
     template <class _Sender>
     using __f =
@@ -138,5 +138,5 @@ namespace exec {
 
 namespace stdexec::__detail {
   template <auto _DescriptorFn>
-  extern exec::__basic_sequence_sender_name __name_of_v<exec::__seqexpr<_DescriptorFn>>;
+  extern exec::__basic_sequence_sender_name __demangle_v<exec::__seqexpr<_DescriptorFn>>;
 } // namespace stdexec::__detail

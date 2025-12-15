@@ -20,6 +20,10 @@
 #include <exec/static_thread_pool.hpp>
 
 namespace execpools {
+  struct CANNOT_DISPATCH_BULK_ALGORITHM_TO_THE_POOL_SCHEDULER;
+  struct BECAUSE_THERE_IS_NO_POOL_SCHEDULER_IN_THE_ENVIRONMENT;
+  struct ADD_A_CONTINUES_ON_TRANSITION_TO_THE_POOL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM;
+
   //! This is a P2300-style thread pool wrapping base class, which its docs describe as "A class that represents an
   //! explicit, user-managed task scheduler arena."
   //! Once set up, a task arena and it has
@@ -37,13 +41,8 @@ namespace execpools {
 
   template <class DerivedPoolType> // CRTP
   class thread_pool_base {
-    template <class DerivedPoolType_, class ReceiverId>
+    template <class, class>
     friend struct operation;
-
-    template <class>
-    struct not_a_sender {
-      using sender_concept = stdexec::sender_t;
-    };
 
    public:
     struct scheduler;
@@ -68,11 +67,15 @@ namespace execpools {
             shape,
             stdexec::__forward_like<Sender>(fun)};
         } else {
-          static_assert(
-            stdexec::__completes_on<Sender, scheduler, Env>,
-            "Unable to dispatch bulk work to the static_thread_pool. The predecessor sender "
-            "is not able to provide a static_thread_pool scheduler.");
-          return not_a_sender<stdexec::__name_of<Sender>>();
+          return stdexec::__not_a_sender<
+            stdexec::_WHAT_<>(CANNOT_DISPATCH_BULK_ALGORITHM_TO_THE_POOL_SCHEDULER),
+            stdexec::_WHY_(BECAUSE_THERE_IS_NO_POOL_SCHEDULER_IN_THE_ENVIRONMENT),
+            stdexec::_WHERE_(stdexec::_IN_ALGORITHM_, stdexec::tag_of_t<Sender>),
+            stdexec::_TO_FIX_THIS_ERROR_(
+              ADD_A_CONTINUES_ON_TRANSITION_TO_THE_POOL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
+            stdexec::_WITH_SENDER_<Sender>,
+            stdexec::_WITH_ENVIRONMENT_<Env>
+          >();
         }
       }
 
