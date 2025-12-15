@@ -635,9 +635,9 @@ namespace stdexec {
     };
   } // namespace __let
 
-  inline constexpr auto let_value = let_value_t{};
-  inline constexpr auto let_error = let_error_t{};
-  inline constexpr auto let_stopped = let_stopped_t{};
+  inline constexpr let_value_t let_value{};
+  inline constexpr let_error_t let_error{};
+  inline constexpr let_stopped_t let_stopped{};
 
   template <class _SetTag>
   struct __sexpr_impl<__let::__let_t<_SetTag>> : __let::__let_impl<_SetTag> { };
