@@ -212,7 +212,15 @@ namespace exec {
     void __trampoline_state<_Operation>::__drain() noexcept {
       while (__head_ != nullptr) {
         // pop the head of the list
+#if STDEXEC_NVHPC()
+        // there appears to be a codegen bug in nvhpc where the optimizer does not see the
+        // assign to __head_ that happens in the std::exchange call below, causing it to
+        // erroneously optimize away the `if (__head_ != nullptr)` check later on.
+        _Operation* __op = __head_;
+        __head_ = __head_->__next_;
+#else
         _Operation* __op = std::exchange(__head_, __head_->__next_);
+#endif
         __op->__next_ = nullptr;
         __op->__prev_ = nullptr;
         if (__head_ != nullptr) {
