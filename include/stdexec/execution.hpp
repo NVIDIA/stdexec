@@ -19,6 +19,7 @@
 
 // include these after __execution_fwd.hpp
 #include "__detail/__as_awaitable.hpp"                    // IWYU pragma: export
+#include "__detail/__associate.hpp"                       // IWYU pragma: export
 #include "__detail/__basic_sender.hpp"                    // IWYU pragma: export
 #include "__detail/__bulk.hpp"                            // IWYU pragma: export
 #include "__detail/__completion_signatures.hpp"           // IWYU pragma: export
