@@ -48,11 +48,7 @@ namespace stdexec {
 
       static constexpr auto start =
         []<class _State, class _Receiver>(_State& __state, _Receiver& __rcvr) noexcept -> void {
-        __state.apply(
-          [&]<class... _Ts>(_Ts&... __ts) noexcept {
-            __tag_t()(static_cast<_Receiver&&>(__rcvr), static_cast<_Ts&&>(__ts)...);
-          },
-          __state);
+        __state.apply(__tag_t(), static_cast<_State&&>(__state), static_cast<_Receiver&&>(__rcvr));
       };
 
       static constexpr auto submit =
@@ -60,10 +56,7 @@ namespace stdexec {
         static_assert(sender_expr_for<_Sender, _JustTag>);
         auto&& __state = get_state(static_cast<_Sender&&>(__sndr), __rcvr);
         __state.apply(
-          [&]<class... _Ts>(_Ts&&... __ts) noexcept {
-            __tag_t()(static_cast<_Receiver&&>(__rcvr), static_cast<_Ts&&>(__ts)...);
-          },
-          static_cast<decltype(__state)>(__state));
+          __tag_t(), static_cast<decltype(__state)>(__state), static_cast<_Receiver&&>(__rcvr));
       };
     };
 
@@ -72,7 +65,7 @@ namespace stdexec {
 
       template <__movable_value... _Ts>
       STDEXEC_ATTRIBUTE(host, device)
-      auto operator()(_Ts&&... __ts) const noexcept((__nothrow_decay_copyable<_Ts> && ...)) {
+      auto operator()(_Ts&&... __ts) const noexcept(__nothrow_decay_copyable<_Ts...>) {
         return __make_sexpr<just_t>(__tuple{static_cast<_Ts&&>(__ts)...});
       }
     };
