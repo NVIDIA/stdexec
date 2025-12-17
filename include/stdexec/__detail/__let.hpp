@@ -579,9 +579,9 @@ namespace stdexec {
       template <class _State, class _OpState, class... _As>
       static void __bind_(_State& __state, _OpState& __op_state, _As&&... __as) {
         // Store the passed-in (received) args:
-        auto& __args = __state.__args_.emplace_from(__tup::__mktuple, static_cast<_As&&>(__as)...);
+        auto& __args = __state.__args_.emplace_from(__mktuple, static_cast<_As&&>(__as)...);
         // Apply the function to the args to get the sender:
-        auto __sndr2 = __args.apply(std::move(__state.__fun_), __args);
+        auto __sndr2 = stdexec::__apply(std::move(__state.__fun_), __args);
         // Create a receiver based on the state, the computed sender, and the operation state:
         auto __rcvr2 = __state.__get_result_receiver(__sndr2, __op_state);
         // Connect the sender to the receiver and start it:

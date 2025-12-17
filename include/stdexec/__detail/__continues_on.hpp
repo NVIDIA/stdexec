@@ -87,7 +87,7 @@ namespace stdexec {
     STDEXEC_ATTRIBUTE(always_inline)
     auto __make_visitor_fn(_State* __state) noexcept {
       return [__state]<class _Tup>(_Tup& __tupl) noexcept -> void {
-        __tupl.apply(
+        stdexec::__apply(
           [&]<class... _Args>(auto __tag, _Args&... __args) noexcept -> void {
             __tag(std::move(__state->__receiver()), static_cast<_Args&&>(__args)...);
           },
@@ -356,11 +356,11 @@ namespace stdexec {
           _Args&&... __args) noexcept -> void {
         // Write the tag and the args into the operation state so that we can forward the completion
         // from within the scheduler's execution context.
-        if constexpr (__nothrow_callable<__tup::__mktuple_t, _Tag, _Args...>) {
-          __state.__data_.emplace_from(__tup::__mktuple, __tag, static_cast<_Args&&>(__args)...);
+        if constexpr (__nothrow_callable<__mktuple_t, _Tag, _Args...>) {
+          __state.__data_.emplace_from(__mktuple, __tag, static_cast<_Args&&>(__args)...);
         } else {
           STDEXEC_TRY {
-            __state.__data_.emplace_from(__tup::__mktuple, __tag, static_cast<_Args&&>(__args)...);
+            __state.__data_.emplace_from(__mktuple, __tag, static_cast<_Args&&>(__args)...);
           }
           STDEXEC_CATCH_ALL {
             stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());

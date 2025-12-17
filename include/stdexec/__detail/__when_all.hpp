@@ -143,9 +143,9 @@ namespace stdexec {
 
     template <class _Receiver, class _ValuesTuple>
     void __set_values(_Receiver& __rcvr, _ValuesTuple& __values) noexcept {
-      __values.apply(
+      stdexec::__apply(
         [&]<class... OptTuples>(OptTuples&&... __opt_vals) noexcept -> void {
-          __tup::__cat_apply(
+          stdexec::__cat_apply(
             __mk_completion_fn(set_value, __rcvr), *static_cast<OptTuples&&>(__opt_vals)...);
         },
         static_cast<_ValuesTuple&&>(__values));
@@ -160,7 +160,7 @@ namespace stdexec {
       // tuple<optional<tuple<Vs1...>>, optional<tuple<Vs2...>>, ...>
       using __values_tuple = __minvoke<
         __mwith_default<
-          __mtransform<__mbind_front_q<__values_opt_tuple_t, _Env>, __q<__tuple_for>>,
+          __mtransform<__mbind_front_q<__values_opt_tuple_t, _Env>, __q<__tuple>>,
           __ignore
         >,
         _Senders...
@@ -408,7 +408,7 @@ namespace stdexec {
           // We only need to bother recording the completion values
           // if we're not already in the "error" or "stopped" state.
           if (__state.__state_.load() == __started) {
-            auto& __opt_values = _ValuesTuple::template __get<__v<_Index>>(__state.__values_);
+            auto& __opt_values = stdexec::__get<__v<_Index>>(__state.__values_);
             using _Tuple = __decayed_tuple<_Args...>;
             static_assert(
               __same_as<decltype(*__opt_values), _Tuple&>,

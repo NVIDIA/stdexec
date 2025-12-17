@@ -81,7 +81,7 @@ namespace stdexec {
 
     template <class _Fun, class... _As>
     struct __binder_back
-      : __tuple_for<_As...>
+      : __tuple<_As...>
       , sender_adaptor_closure<__binder_back<_Fun, _As...>> {
       STDEXEC_ATTRIBUTE(no_unique_address) _Fun __fun_ { };
 
@@ -121,9 +121,9 @@ namespace stdexec {
       auto operator()(_Sender&& __sndr) && noexcept(__nothrow_callable<_Fun, _Sender, _As...>)
         -> __call_result_t<_Fun, _Sender, _As...> {
 #if STDEXEC_INTELLISENSE()
-        return this->apply(__lambda_rvalue<_Sender>{*this, __sndr}, *this);
+        return stdexec::__apply(__lambda_rvalue<_Sender>{*this, __sndr}, *this);
 #else
-        return this->apply(
+        return stdexec::__apply(
           [&__sndr, this](_As&... __as) noexcept(
             __nothrow_callable<_Fun, _Sender, _As...>) -> __call_result_t<_Fun, _Sender, _As...> {
             return static_cast<_Fun&&>(
@@ -140,9 +140,9 @@ namespace stdexec {
         __nothrow_callable<const _Fun&, _Sender, const _As&...>)
         -> __call_result_t<const _Fun&, _Sender, const _As&...> {
 #if STDEXEC_INTELLISENSE()
-        return this->apply(__lambda_lvalue<_Sender>{*this, __sndr}, *this);
+        return stdexec::__apply(__lambda_lvalue<_Sender>{*this, __sndr}, *this);
 #else
-        return this->apply(
+        return stdexec::__apply(
           [&__sndr, this](const _As&... __as) noexcept(
             __nothrow_callable<const _Fun&, _Sender, const _As&...>)
             -> __call_result_t<const _Fun&, _Sender, const _As&...> {

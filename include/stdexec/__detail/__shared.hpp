@@ -76,7 +76,7 @@ namespace stdexec::__shared {
   template <class _Receiver>
   auto __make_notify_visitor(_Receiver& __rcvr) noexcept {
     return [&]<class _Tuple>(_Tuple&& __tupl) noexcept -> void {
-      __tupl.apply(__notify_fn<_Receiver>{__rcvr}, static_cast<_Tuple&&>(__tupl));
+      stdexec::__apply(__notify_fn<_Receiver>{__rcvr}, static_cast<_Tuple&&>(__tupl));
     };
   }
 
@@ -218,9 +218,9 @@ namespace stdexec::__shared {
       __completion_signatures_of_t<_CvrefSender, _Env>,
       __mbind_front_q<__decayed_tuple, set_value_t>::__f,
       __mbind_front_q<__decayed_tuple, set_error_t>::__f,
-      __tuple_for<set_error_t, std::exception_ptr>,
-      __munique<__mbind_front_q<__variant_for, __tuple_for<set_stopped_t>>>::__f,
-      __tuple_for<set_error_t, std::exception_ptr>
+      __tuple<set_error_t, std::exception_ptr>,
+      __munique<__mbind_front_q<__variant_for, __tuple<set_stopped_t>>>::__f,
+      __tuple<set_error_t, std::exception_ptr>
     >;
 
     inplace_stop_source __stop_source_{};

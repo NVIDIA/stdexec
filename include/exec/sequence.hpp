@@ -66,6 +66,14 @@ namespace exec {
       }
     };
 
+    template <class _Tuple>
+    struct __convert_tuple_fn {
+      template <class... _Ts>
+      STDEXEC_ATTRIBUTE(host, device, always_inline)
+      constexpr auto
+        operator()(_Ts&&... __ts) const STDEXEC_AUTO_RETURN(_Tuple{static_cast<_Ts&&>(__ts)...});
+    };
+
     template <class Rcvr, class... Sndrs>
     struct _opstate;
 
@@ -76,7 +84,7 @@ namespace exec {
       // We will be connecting the first sender in the opstate constructor, so we don't need to
       // store it in the opstate. The use of `stdexec::__ignore` causes the first sender to not
       // be stored.
-      using _senders_tuple_t = stdexec::__tuple_for<stdexec::__ignore, Sndrs...>;
+      using _senders_tuple_t = stdexec::__tuple<stdexec::__ignore, Sndrs...>;
 
       template <size_t Idx>
       using _rcvr_t = _seq::_rcvr<Rcvr, stdexec::__id<_opstate>, stdexec::__msize_t<Idx>>;
@@ -91,7 +99,7 @@ namespace exec {
 
       using _ops_variant_t = stdexec::__minvoke<
         _mk_child_ops_variant_fn,
-        stdexec::__tuple_for<Sndr0, Sndrs...>,
+        stdexec::__tuple<Sndr0, Sndrs...>,
         stdexec::__make_indices<sizeof...(Sndrs) + 1>
       >;
 
@@ -99,16 +107,15 @@ namespace exec {
       STDEXEC_ATTRIBUTE(host, device)
       explicit _opstate(Rcvr&& rcvr, CvrefSndrs&& sndrs)
         : _rcvr{static_cast<Rcvr&&>(rcvr)}
-        , _sndrs{_senders_tuple_t::__convert_from(static_cast<CvrefSndrs&&>(sndrs))}
-      // move all but the first sender into the opstate.
+        , _sndrs{stdexec::__apply(
+            __convert_tuple_fn<_senders_tuple_t>{},
+            static_cast<CvrefSndrs&&>(sndrs))} // move all but the first sender into the opstate.
       {
         // Below, it looks like we are using `sndrs` after it has been moved from. This is not the
         // case. `sndrs` is moved into a tuple type that has `__ignore` for the first element. The
         // result is that the first sender in `sndrs` is not moved from, but the rest are.
         _ops.template emplace_from_at<0>(
-          stdexec::connect,
-          sndrs.template __get<0>(static_cast<CvrefSndrs&&>(sndrs)),
-          _rcvr_t<0>{this});
+          stdexec::connect, stdexec::__get<0>(static_cast<CvrefSndrs&&>(sndrs)), _rcvr_t<0>{this});
       }
 
       template <class Index, class... Args>
@@ -119,7 +126,7 @@ namespace exec {
           if constexpr (Idx == sizeof...(Sndrs) + 1) {
             stdexec::set_value(static_cast<Rcvr&&>(_rcvr), static_cast<Args&&>(args)...);
           } else {
-            auto& sndr = _sndrs.template __get<Idx>(_sndrs);
+            auto& sndr = stdexec::__get<Idx>(_sndrs);
             auto& op = _ops.template emplace_from_at<Idx>(
               stdexec::connect, std::move(sndr), _rcvr_t<Idx>{this});
             stdexec::start(op);
@@ -206,7 +213,7 @@ namespace exec {
 
       STDEXEC_ATTRIBUTE(no_unique_address, maybe_unused) sequence_t _tag;
       STDEXEC_ATTRIBUTE(no_unique_address, maybe_unused) stdexec::__ignore _ignore;
-      stdexec::__tuple_for<Sndrs...> _sndrs;
+      stdexec::__tuple<Sndrs...> _sndrs;
     };
 
     template <class Sndr>
