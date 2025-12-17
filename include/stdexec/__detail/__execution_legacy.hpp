@@ -23,8 +23,6 @@
 
 namespace stdexec {
 
-  struct __hidden_construction { };
-
 #if STDEXEC_HAS_EXECUTION_POLICY()
 
   using sequenced_policy = std::execution::sequenced_policy;
@@ -40,27 +38,13 @@ namespace stdexec {
 
 #else
 
-  struct sequenced_policy {
-    constexpr explicit sequenced_policy(__hidden_construction) { };
-    sequenced_policy(const sequenced_policy&) = delete;
-    sequenced_policy& operator=(const sequenced_policy&) = delete;
-  };
+  struct sequenced_policy { };
+  struct parallel_policy { };
+  struct parallel_unsequenced_policy { };
 
-  struct parallel_policy {
-    constexpr explicit parallel_policy(__hidden_construction) { };
-    parallel_policy(const parallel_policy&) = delete;
-    parallel_policy& operator=(const parallel_policy&) = delete;
-  };
-
-  struct parallel_unsequenced_policy {
-    constexpr explicit parallel_unsequenced_policy(__hidden_construction) { };
-    parallel_unsequenced_policy(const parallel_unsequenced_policy&) = delete;
-    parallel_unsequenced_policy& operator=(const parallel_unsequenced_policy&) = delete;
-  };
-
-  inline constexpr sequenced_policy seq{__hidden_construction{}};
-  inline constexpr parallel_policy par{__hidden_construction{}};
-  inline constexpr parallel_unsequenced_policy par_unseq{__hidden_construction{}};
+  inline constexpr sequenced_policy seq{};
+  inline constexpr parallel_policy par{};
+  inline constexpr parallel_unsequenced_policy par_unseq{};
 
   template <typename>
   inline constexpr bool is_execution_policy_v = false;
@@ -87,13 +71,9 @@ namespace stdexec {
 
 #else
 
-  struct unsequenced_policy {
-    constexpr explicit unsequenced_policy(__hidden_construction) { };
-    unsequenced_policy(const unsequenced_policy&) = delete;
-    unsequenced_policy& operator=(const unsequenced_policy&) = delete;
-  };
+  struct unsequenced_policy { };
 
-  inline constexpr unsequenced_policy unseq{__hidden_construction{}};
+  inline constexpr unsequenced_policy unseq{};
 
   template <>
   inline constexpr bool is_execution_policy_v<unsequenced_policy> = true;

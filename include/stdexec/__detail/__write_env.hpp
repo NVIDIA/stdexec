@@ -37,8 +37,8 @@ namespace stdexec {
 
       template <class _Env>
       STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()(_Env __env) const -> __binder_back<write_env_t, _Env> {
-        return {{static_cast<_Env&&>(__env)}, {}, {}};
+      constexpr auto operator()(_Env __env) const {
+        return __closure(*this, static_cast<_Env&&>(__env));
       }
     };
 

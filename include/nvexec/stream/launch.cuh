@@ -171,29 +171,23 @@ namespace nvexec {
       }
 
       template <sender Sender, __movable_value Fun>
-      auto
-        operator()(Sender&& sndr, launch_params params, Fun&& fun) const -> sender_t<Sender, Fun> {
+      auto operator()(Sender&& sndr, launch_params params, Fun&& fun) const //
+        -> sender_t<Sender, Fun> {
         return {{}, static_cast<Sender&&>(sndr), static_cast<Fun&&>(fun), params};
       }
 
       template <__movable_value Fun>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(Fun&& fun) const -> __binder_back<launch_t, Fun> {
-        return {{static_cast<Fun&&>(fun)}};
+      auto operator()(Fun&& fun) const {
+        return stdexec::__closure(*this, static_cast<Fun&&>(fun));
       }
 
       template <__movable_value Fun>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(launch_params params, Fun&& fun) const
-        -> __binder_back<launch_t, launch_params, Fun> {
-        return {
-          {params, static_cast<Fun&&>(fun)},
-          {},
-          {}
-        };
+      auto operator()(launch_params params, Fun&& fun) const {
+        return stdexec::__closure(*this, params, static_cast<Fun&&>(fun));
       }
     };
-
   } // namespace _strm
 
   inline constexpr _strm::launch_t launch{};

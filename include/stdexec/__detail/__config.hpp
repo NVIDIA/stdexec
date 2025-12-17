@@ -113,6 +113,13 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+#if STDEXEC_MSVC()
+#  define STDEXEC_PRAGMA(_ARG) __pragma(_ARG)
+#else
+#  define STDEXEC_PRAGMA(_ARG) _Pragma(STDEXEC_STRINGIZE(_ARG))
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 #if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 #  define STDEXEC_CUDA_COMPILATION() 1
 #else
@@ -131,6 +138,13 @@
 #  define STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __host__ __device__
 #else
 #  define STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+#if STDEXEC_NVCC()
+#  define STDEXEC_EXEC_CHECK_DISABLE STDEXEC_PRAGMA(nv_exec_check_disable)
+#else
+#  define STDEXEC_EXEC_CHECK_DISABLE
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -241,32 +255,39 @@ namespace __coro = std::experimental;
 #define STDEXEC_ATTR_launch_bounds(...)               STDEXEC_PROBE(~, 7)
 #define STDEXEC_ATTR___launch_bounds__(...)           STDEXEC_PROBE(~, 7)
 
+#if STDEXEC_MSVC() && !STDEXEC_CLANG_CL()
+#  define STDEXEC_ATTR_WHICH_8(_ATTR) __declspec(_ATTR)
+#else
+#  define STDEXEC_ATTR_WHICH_8(_ATTR) /*nothing*/
+#endif
+#define STDEXEC_ATTR_empty_bases STDEXEC_PROBE(~, 8)
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // warning push/pop portability macros
 #if STDEXEC_NVCC()
-#  define STDEXEC_PRAGMA_PUSH()          _Pragma("nv_diagnostic push")
-#  define STDEXEC_PRAGMA_POP()           _Pragma("nv_diagnostic pop")
-#  define STDEXEC_PRAGMA_IGNORE_EDG(...) _Pragma(STDEXEC_STRINGIZE(nv_diag_suppress __VA_ARGS__))
+#  define STDEXEC_PRAGMA_PUSH()          STDEXEC_PRAGMA(nv_diagnostic push)
+#  define STDEXEC_PRAGMA_POP()           STDEXEC_PRAGMA(nv_diagnostic pop)
+#  define STDEXEC_PRAGMA_IGNORE_EDG(...) STDEXEC_PRAGMA(nv_diag_suppress __VA_ARGS__)
 #elif STDEXEC_EDG()
 #  define STDEXEC_PRAGMA_PUSH()                                                                    \
-    _Pragma("diagnostic push") STDEXEC_PRAGMA_IGNORE_EDG(invalid_error_number)                     \
-      STDEXEC_PRAGMA_IGNORE_EDG(invalid_error_tag)
-#  define STDEXEC_PRAGMA_POP()           _Pragma("diagnostic pop")
-#  define STDEXEC_PRAGMA_IGNORE_EDG(...) _Pragma(STDEXEC_STRINGIZE(diag_suppress __VA_ARGS__))
+    STDEXEC_PRAGMA(diagnostic push)                                                                \
+    STDEXEC_PRAGMA_IGNORE_EDG(invalid_error_number) STDEXEC_PRAGMA_IGNORE_EDG(invalid_error_tag)
+#  define STDEXEC_PRAGMA_POP()           STDEXEC_PRAGMA(diagnostic pop)
+#  define STDEXEC_PRAGMA_IGNORE_EDG(...) STDEXEC_PRAGMA(diag_suppress __VA_ARGS__)
 #elif STDEXEC_CLANG() || STDEXEC_GCC()
 #  define STDEXEC_PRAGMA_PUSH()                                                                    \
-    _Pragma("GCC diagnostic push") STDEXEC_PRAGMA_IGNORE_GNU("-Wpragmas")                          \
-      STDEXEC_PRAGMA_IGNORE_GNU("-Wunknown-pragmas")                                               \
-        STDEXEC_PRAGMA_IGNORE_GNU("-Wunknown-warning-option")                                      \
-          STDEXEC_PRAGMA_IGNORE_GNU("-Wunknown-attributes")                                        \
-            STDEXEC_PRAGMA_IGNORE_GNU("-Wattributes")
-#  define STDEXEC_PRAGMA_POP() _Pragma("GCC diagnostic pop")
-#  define STDEXEC_PRAGMA_IGNORE_GNU(...)                                                           \
-    _Pragma(STDEXEC_STRINGIZE(GCC diagnostic ignored __VA_ARGS__))
+    STDEXEC_PRAGMA(GCC diagnostic push)                                                            \
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wpragmas")                                                         \
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wunknown-pragmas")                                                 \
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wunknown-warning-option")                                          \
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wunknown-attributes")                                              \
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wattributes")
+#  define STDEXEC_PRAGMA_POP()           STDEXEC_PRAGMA(GCC diagnostic pop)
+#  define STDEXEC_PRAGMA_IGNORE_GNU(...) STDEXEC_PRAGMA(GCC diagnostic ignored __VA_ARGS__)
 #elif STDEXEC_MSVC()
-#  define STDEXEC_PRAGMA_PUSH()           __pragma(warning(push))
-#  define STDEXEC_PRAGMA_POP()            __pragma(warning(pop))
-#  define STDEXEC_PRAGMA_IGNORE_MSVC(...) __pragma(warning(disable : __VA_ARGS__))
+#  define STDEXEC_PRAGMA_PUSH()           STDEXEC_PRAGMA(warning(push))
+#  define STDEXEC_PRAGMA_POP()            STDEXEC_PRAGMA(warning(pop))
+#  define STDEXEC_PRAGMA_IGNORE_MSVC(...) STDEXEC_PRAGMA(warning(disable : __VA_ARGS__))
 #else
 #  define STDEXEC_PRAGMA_PUSH()
 #  define STDEXEC_PRAGMA_POP()

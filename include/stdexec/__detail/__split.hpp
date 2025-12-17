@@ -44,8 +44,8 @@ namespace stdexec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()() const noexcept -> __binder_back<split_t> {
-        return {{}, {}, {}};
+      auto operator()() const noexcept {
+        return __closure(*this);
       }
 
       template <class _CvrefSender, class _Env>

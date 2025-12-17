@@ -80,7 +80,7 @@ namespace exec {
     template <class _Receiver>
     auto __make_visitor_fn(_Receiver& __rcvr) noexcept {
       return [&__rcvr]<class _Tuple>(_Tuple&& __result) noexcept {
-        __result.apply(
+        stdexec::__apply(
           [&__rcvr]<class... _As>(auto __tag, _As&... __args) noexcept {
             __tag(static_cast<_Receiver&&>(__rcvr), static_cast<_As&&>(__args)...);
           },
@@ -123,7 +123,7 @@ namespace exec {
               __result_.template emplace<__result_t>(_Tag{}, static_cast<_Args&&>(__args)...);
             }
             STDEXEC_CATCH_ALL {
-              using __error_t = __tuple_for<set_error_t, std::exception_ptr>;
+              using __error_t = __tuple<set_error_t, std::exception_ptr>;
               __result_.template emplace<__error_t>(set_error_t{}, std::current_exception());
             }
           }
@@ -195,12 +195,12 @@ namespace exec {
 
       class __t : __op_base_t {
         using __opstate_tuple =
-          __tuple_for<connect_result_t<stdexec::__cvref_t<_CvrefSenderIds>, __receiver_t>...>;
+          __tuple<connect_result_t<stdexec::__cvref_t<_CvrefSenderIds>, __receiver_t>...>;
        public:
         template <class _SenderTuple>
         __t(_SenderTuple&& __senders, _Receiver&& __rcvr) noexcept(__nothrow_construct)
           : __op_base_t{static_cast<_Receiver&&>(__rcvr), sizeof...(_CvrefSenderIds)}
-          , __ops_{__senders.apply(
+          , __ops_{stdexec::__apply(
               [this]<class... _Senders>(_Senders&&... __sndrs) noexcept(
                 __nothrow_construct) -> __opstate_tuple {
                 return __opstate_tuple{
@@ -215,7 +215,7 @@ namespace exec {
           if (this->__stop_source_.stop_requested()) {
             stdexec::set_stopped(static_cast<_Receiver&&>(this->__rcvr_));
           } else {
-            __ops_.for_each(stdexec::start, __ops_);
+            stdexec::__apply(stdexec::__for_each{stdexec::start}, __ops_);
           }
         }
 
@@ -246,7 +246,7 @@ namespace exec {
        public:
         using __id = __sender;
         using sender_concept = stdexec::sender_t;
-        using __senders_tuple = __tuple_for<stdexec::__t<_SenderIds>...>;
+        using __senders_tuple = __tuple<stdexec::__t<_SenderIds>...>;
 
         template <__not_decays_to<__t>... _Senders>
         explicit(sizeof...(_Senders) == 1) __t(_Senders&&... __senders)

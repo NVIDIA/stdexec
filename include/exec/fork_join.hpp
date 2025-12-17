@@ -39,7 +39,7 @@ namespace exec {
       template <class Rcvr, class Tuple>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
       void operator()(Rcvr& rcvr, const Tuple& tupl) const noexcept {
-        tupl.apply(_impl_fn{}, tupl, rcvr);
+        stdexec::__apply(_impl_fn{}, tupl, rcvr);
       }
     };
 
@@ -55,7 +55,7 @@ namespace exec {
     using _maybe_eptr_completion_t = stdexec::__if_c<
       stdexec::__nothrow_decay_copyable_results_t<Completions>::value,
       stdexec::__mset_nil,
-      stdexec::__tuple_for<stdexec::set_error_t, ::std::exception_ptr>
+      stdexec::__tuple<stdexec::set_error_t, ::std::exception_ptr>
     >;
 
     template <class Completions>
@@ -122,7 +122,7 @@ namespace exec {
     };
 
     template <class Completions, class Closures, class Domain>
-    using _when_all_sndr_t = stdexec::__tup::__apply_result_t<
+    using _when_all_sndr_t = stdexec::__apply_result_t<
       _mk_when_all_fn,
       Closures,
       _cache_sndr_t<_variant_t<Completions>, Domain>
@@ -147,7 +147,7 @@ namespace exec {
         : _rcvr_(static_cast<Rcvr&&>(rcvr))
         , _fork_opstate_(
             stdexec::connect(
-              closures.apply(
+              stdexec::__apply(
                 _mk_when_all_fn{},
                 static_cast<Closures&&>(closures),
                 _cache_sndr_t{&_cache_}),
@@ -178,7 +178,7 @@ namespace exec {
         }
         STDEXEC_CATCH_ALL {
           if constexpr (!stdexec::__nothrow_decay_copyable<Args...>) {
-            using _tuple_t = stdexec::__tuple_for<stdexec::set_error_t, ::std::exception_ptr>;
+            using _tuple_t = stdexec::__tuple<stdexec::set_error_t, ::std::exception_ptr>;
             _cache_._results_
               .template emplace<_tuple_t>(stdexec::set_error, ::std::current_exception());
           }
@@ -216,7 +216,7 @@ namespace exec {
 
     template <class... Closures>
     struct _closure_t {
-      using _closures_t = stdexec::__tuple_for<Closures...>;
+      using _closures_t = stdexec::__tuple<Closures...>;
 
       template <class Sndr>
       STDEXEC_ATTRIBUTE(host, device)
@@ -250,7 +250,7 @@ namespace exec {
   template <class Sndr, class... Closures>
   struct fork_join_t::_sndr_t {
     using sender_concept = stdexec::sender_t;
-    using _closures_t = stdexec::__tuple_for<Closures...>;
+    using _closures_t = stdexec::__tuple<Closures...>;
 
     template <class Self, class... Env>
     STDEXEC_ATTRIBUTE(host, device)
@@ -297,7 +297,7 @@ namespace exec {
     }
 
     STDEXEC_ATTRIBUTE(no_unique_address) fork_join_t _tag_;
-    stdexec::__tuple_for<Closures...> _closures_;
+    stdexec::__tuple<Closures...> _closures_;
     Sndr sndr_;
   };
 

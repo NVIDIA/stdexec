@@ -704,11 +704,6 @@ namespace exec {
     parallel_scheduler __sched_;
   };
 
-  template <class _Sender>
-  struct __not_a_sender {
-    using sender_concept = stdexec::sender_t;
-  };
-
   template <__bulk_chunked_or_unchunked _Sender, class _Env>
   auto __parallel_scheduler_domain::transform_sender(
     stdexec::set_value_t,

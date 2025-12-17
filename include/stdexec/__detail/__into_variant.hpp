@@ -63,8 +63,8 @@ namespace stdexec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()() const noexcept -> __binder_back<into_variant_t> {
-        return {{}, {}, {}};
+      auto operator()() const noexcept {
+        return __closure(*this);
       }
     };
 

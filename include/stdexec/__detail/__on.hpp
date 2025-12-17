@@ -94,32 +94,9 @@ namespace stdexec {
       template <scheduler _Scheduler, __sender_adaptor_closure _Closure>
       STDEXEC_ATTRIBUTE(always_inline)
       auto operator()(_Scheduler&& __sched, _Closure&& __clsur) const {
-        return __binder_back<on_t, __decay_t<_Scheduler>, __decay_t<_Closure>>{
-          {{static_cast<_Scheduler&&>(__sched)}, {static_cast<_Closure&&>(__clsur)}},
-          {},
-          {}
-        };
+        return __closure(
+          *this, static_cast<_Scheduler&&>(__sched), static_cast<_Closure&&>(__clsur));
       }
-
-      template <class _Error>
-      struct __not_a_sender {
-        using sender_concept = sender_t;
-        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(
-          this const __not_a_sender&) noexcept -> _Error {
-          return {};
-        }
-        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
-      };
-
-      template <class _Error>
-      struct __not_a_scheduler {
-        using scheduler_concept = scheduler_t;
-        bool operator==(const __not_a_scheduler&) const noexcept = default;
-
-        __not_a_sender<_Error> schedule() const noexcept {
-          return __not_a_sender<_Error>{};
-        }
-      };
 
       template <class _Sender, class _OldSched, class _NewSched>
       static auto __reschedule(

@@ -49,8 +49,8 @@ namespace stdexec {
 
       template <__movable_value _Fun>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(_Fun __fun) const -> __binder_back<then_t, _Fun> {
-        return {{static_cast<_Fun&&>(__fun)}, {}, {}};
+      auto operator()(_Fun __fun) const {
+        return __closure(*this, static_cast<_Fun&&>(__fun));
       }
     };
 

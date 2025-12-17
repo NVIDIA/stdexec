@@ -56,8 +56,8 @@ namespace stdexec {
       template <__movable_value _Fun>
         requires __callable<_Fun>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(_Fun __fun) const -> __binder_back<upon_stopped_t, _Fun> {
-        return {{static_cast<_Fun&&>(__fun)}, {}, {}};
+      auto operator()(_Fun __fun) const noexcept(__nothrow_move_constructible<_Fun>) {
+        return __closure(*this, static_cast<_Fun&&>(__fun));
       }
     };
 

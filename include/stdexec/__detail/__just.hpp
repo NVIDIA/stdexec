@@ -48,14 +48,15 @@ namespace stdexec {
 
       static constexpr auto start =
         []<class _State, class _Receiver>(_State& __state, _Receiver& __rcvr) noexcept -> void {
-        __state.apply(__tag_t(), static_cast<_State&&>(__state), static_cast<_Receiver&&>(__rcvr));
+        stdexec::__apply(
+          __tag_t(), static_cast<_State&&>(__state), static_cast<_Receiver&&>(__rcvr));
       };
 
       static constexpr auto submit =
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept -> void {
         static_assert(sender_expr_for<_Sender, _JustTag>);
         auto&& __state = get_state(static_cast<_Sender&&>(__sndr), __rcvr);
-        __state.apply(
+        stdexec::__apply(
           __tag_t(), static_cast<decltype(__state)>(__state), static_cast<_Receiver&&>(__rcvr));
       };
     };

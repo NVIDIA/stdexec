@@ -101,8 +101,8 @@ namespace exec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()() const noexcept -> __binder_back<into_tuple_t> {
-        return {{}, {}, {}};
+      constexpr auto operator()() const noexcept {
+        return __closure(*this);
       }
     };
   } // namespace __into_tuple

@@ -41,8 +41,8 @@ namespace stdexec {
 
       template <__movable_value _Error>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(_Error __err) const -> __binder_back<stopped_as_error_t, _Error> {
-        return {{static_cast<_Error&&>(__err)}, {}, {}};
+      auto operator()(_Error __err) const noexcept(__nothrow_move_constructible<_Error>) {
+        return __closure(*this, static_cast<_Error&&>(__err));
       }
     };
   } // namespace __sae

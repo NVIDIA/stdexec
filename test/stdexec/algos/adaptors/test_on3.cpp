@@ -80,7 +80,7 @@ namespace {
     }
 
     auto operator()() const {
-      return ex::__binder_back<probe_env_t>{{}, {}, {}};
+      return ex::__closure(*this);
     }
   };
 

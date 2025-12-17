@@ -24,12 +24,12 @@
 
 namespace stdexec {
   // NOT TO SPEC:
-  namespace __closure {
+  namespace __clsur {
     template <__class _Dp>
     struct sender_adaptor_closure;
-  } // namespace __closure
+  } // namespace __clsur
 
-  using __closure::sender_adaptor_closure;
+  using __clsur::sender_adaptor_closure;
 
   template <class _Tp>
   concept __sender_adaptor_closure =
@@ -41,12 +41,9 @@ namespace stdexec {
                                       && __callable<_Tp, __decay_t<_Sender>>
                                       && sender<__call_result_t<_Tp, __decay_t<_Sender>>>;
 
-  namespace __closure {
+  namespace __clsur {
     template <class _T0, class _T1>
     struct __compose : sender_adaptor_closure<__compose<_T0, _T1>> {
-      STDEXEC_ATTRIBUTE(no_unique_address) _T0 __t0_;
-      STDEXEC_ATTRIBUTE(no_unique_address) _T1 __t1_;
-
       template <sender _Sender>
         requires __callable<_T0, _Sender> && __callable<_T1, __call_result_t<_T0, _Sender>>
       STDEXEC_ATTRIBUTE(always_inline)
@@ -62,6 +59,9 @@ namespace stdexec {
         const & -> __call_result_t<const _T1&, __call_result_t<const _T0&, _Sender>> {
         return __t1_(__t0_(static_cast<_Sender&&>(__sndr)));
       }
+
+      STDEXEC_ATTRIBUTE(no_unique_address) _T0 __t0_;
+      STDEXEC_ATTRIBUTE(no_unique_address) _T1 __t1_;
     };
 
     template <__class _Dp>
@@ -79,80 +79,42 @@ namespace stdexec {
       return {{}, static_cast<_T0&&>(__t0), static_cast<_T1&&>(__t1)};
     }
 
-    template <class _Fun, class... _As>
-    struct __binder_back
-      : __tuple_for<_As...>
-      , sender_adaptor_closure<__binder_back<_Fun, _As...>> {
-      STDEXEC_ATTRIBUTE(no_unique_address) _Fun __fun_ { };
-
-#if STDEXEC_INTELLISENSE()
-      // MSVCBUG https://developercommunity.visualstudio.com/t/rejects-valid-EDG-invocation-of-lambda/10786020
-
-      template <class _Sender>
-      struct __lambda_rvalue {
-        __binder_back& __self_;
-        _Sender& __sndr_;
-
-        STDEXEC_ATTRIBUTE(host, device, always_inline)
-        auto operator()(_As&... __as) const noexcept(__nothrow_callable<_Fun, _Sender, _As...>)
-          -> __call_result_t<_Fun, _Sender, _As...> {
-          return static_cast<_Fun&&>(
-            __self_.__fun_)(static_cast<_Sender&&>(__sndr_), static_cast<_As&&>(__as)...);
-        }
-      };
-
-      template <class _Sender>
-      struct __lambda_lvalue {
-        __binder_back const & __self_;
-        _Sender& __sndr_;
-
-        STDEXEC_ATTRIBUTE(host, device, always_inline)
-        auto operator()(const _As&... __as) const
-          noexcept(__nothrow_callable<const _Fun&, _Sender, const _As&...>)
-            -> __call_result_t<const _Fun&, _Sender, const _As&...> {
-          return __self_.__fun_(static_cast<_Sender&&>(__sndr_), __as...);
-        }
-      };
-#endif
-
-      template <sender _Sender>
-        requires __callable<_Fun, _Sender, _As...>
+    template <class _Fn, class... _As>
+    struct __closure : sender_adaptor_closure<__closure<_Fn, _As...>> {
+      template <class _FnFwd = _Fn, class... _AsFwd>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      auto operator()(_Sender&& __sndr) && noexcept(__nothrow_callable<_Fun, _Sender, _As...>)
-        -> __call_result_t<_Fun, _Sender, _As...> {
-#if STDEXEC_INTELLISENSE()
-        return this->apply(__lambda_rvalue<_Sender>{*this, __sndr}, *this);
-#else
-        return this->apply(
-          [&__sndr, this](_As&... __as) noexcept(
-            __nothrow_callable<_Fun, _Sender, _As...>) -> __call_result_t<_Fun, _Sender, _As...> {
-            return static_cast<_Fun&&>(
-              __fun_)(static_cast<_Sender&&>(__sndr), static_cast<_As&&>(__as)...);
-          },
-          *this);
-#endif
+      constexpr explicit __closure(_FnFwd&& __fn, _AsFwd&&... __as)
+        noexcept(__nothrow_move_constructible<_Fn, _As...>)
+        : __fn_{static_cast<_FnFwd&&>(__fn)}
+        , __args_{static_cast<_AsFwd&&>(__as)...} {
       }
 
       template <sender _Sender>
-        requires __callable<const _Fun&, _Sender, const _As&...>
+        requires __callable<_Fn, _Sender, _As...>
+      STDEXEC_ATTRIBUTE(host, device, always_inline)
+      auto operator()(_Sender&& __sndr) && noexcept(__nothrow_callable<_Fn, _Sender, _As...>) {
+        return stdexec::__apply(
+          static_cast<_Fn&&>(__fn_),
+          static_cast<__tuple<_As...>&&>(__args_),
+          static_cast<_Sender&&>(__sndr));
+      }
+
+      template <sender _Sender>
+        requires __callable<const _Fn&, _Sender, const _As&...>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
       auto operator()(_Sender&& __sndr) const & noexcept(
-        __nothrow_callable<const _Fun&, _Sender, const _As&...>)
-        -> __call_result_t<const _Fun&, _Sender, const _As&...> {
-#if STDEXEC_INTELLISENSE()
-        return this->apply(__lambda_lvalue<_Sender>{*this, __sndr}, *this);
-#else
-        return this->apply(
-          [&__sndr, this](const _As&... __as) noexcept(
-            __nothrow_callable<const _Fun&, _Sender, const _As&...>)
-            -> __call_result_t<const _Fun&, _Sender, const _As&...> {
-            return __fun_(static_cast<_Sender&&>(__sndr), __as...);
-          },
-          *this);
-#endif
+        __nothrow_callable<const _Fn&, _Sender, const _As&...>) {
+        return stdexec::__apply(__fn_, __args_, static_cast<_Sender&&>(__sndr));
       }
-    };
-  } // namespace __closure
 
-  using __closure::__binder_back;
+     private:
+      STDEXEC_ATTRIBUTE(no_unique_address) _Fn __fn_;
+      STDEXEC_ATTRIBUTE(no_unique_address) __tuple<_As...> __args_;
+    };
+
+    template <class _Fn, class... _As>
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __closure(_Fn, _As...) -> __closure<_Fn, _As...>;
+  } // namespace __clsur
+
+  using __clsur::__closure;
 } // namespace stdexec
