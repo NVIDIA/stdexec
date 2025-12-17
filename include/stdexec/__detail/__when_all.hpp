@@ -188,7 +188,7 @@ namespace stdexec {
       void operator()() const noexcept {
         // Temporarily increment the count to avoid concurrent/recursive arrivals to
         // pull the rug under our feet. Relaxed memory order is fine here.
-        __state_->__count_.fetch_add(1, std::memory_order_relaxed);
+        __state_->__count_.fetch_add(1, __std::memory_order_relaxed);
 
         __state_t __expected = __started;
         // Transition to the "stopped" state if and only if we're in the
@@ -214,7 +214,7 @@ namespace stdexec {
       >;
 
       void __arrive(_Receiver& __rcvr) noexcept {
-        if (1 == __count_.fetch_sub(1, std::memory_order_acq_rel)) {
+        if (1 == __count_.fetch_sub(1, __std::memory_order_acq_rel)) {
           __complete(__rcvr);
         }
       }
