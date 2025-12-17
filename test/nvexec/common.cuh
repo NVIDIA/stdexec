@@ -286,9 +286,8 @@ namespace {
     }
 
     template <class _Fun>
-    auto operator()(_Fun __fun) const
-      -> stdexec::__binder_back<a_sender_helper_t<a_sender_kind::then>, _Fun> {
-      return {{static_cast<_Fun&&>(__fun)}, {}, {}};
+    auto operator()(_Fun __fun) const {
+      return stdexec::__closure(*this, static_cast<_Fun&&>(__fun));
     };
   };
 
@@ -302,9 +301,8 @@ namespace {
       return receiverless_sender_th<_Sender>{static_cast<_Sender&&>(__sndr)};
     }
 
-    auto
-      operator()() const -> stdexec::__binder_back<a_sender_helper_t<a_sender_kind::receiverless>> {
-      return {{}, {}, {}};
+    auto operator()() const {
+      return stdexec::__closure(*this);
     }
   };
 

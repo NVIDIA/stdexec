@@ -39,10 +39,10 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace stdexec {
-  template <class... _Ts>
-  struct STDEXEC_ATTRIBUTE(empty_bases) __tuple;
-
   namespace __tup {
+    template <class... _Ts>
+    struct STDEXEC_ATTRIBUTE(empty_bases) __tuple;
+
     template <class... _Ts>
     STDEXEC_ATTRIBUTE(nodiscard, host, device)
     auto __tuple_base_fn(__tuple<_Ts...>&&) noexcept -> __tuple<_Ts...>;
@@ -131,197 +131,199 @@ namespace stdexec {
           static_cast<_Self&&>(__self).STDEXEC_CWG1835_TEMPLATE __box<_Ts, _Index>::__value...);
       }
     };
-  } // namespace __tup
 
-  template <class... _Ts>
-  struct __tuple : __tup::__tupl_base<__make_indices<sizeof...(_Ts)>, _Ts...> { };
+    template <class... _Ts>
+    struct __tuple : __tup::__tupl_base<__make_indices<sizeof...(_Ts)>, _Ts...> { };
 
-  template <>
-  struct __tuple<> {
-    static constexpr size_t __size = 0;
-  };
+    template <>
+    struct __tuple<> {
+      static constexpr size_t __size = 0;
+    };
 
-  template <class _Tp0>
-  struct __tuple<_Tp0> {
-    static constexpr size_t __size = 1;
+    template <class _Tp0>
+    struct __tuple<_Tp0> {
+      static constexpr size_t __size = 1;
 
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp0 __val0;
-  };
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp0 __val0;
+    };
 
-  template <class _Tp0, class _Tp1>
-  struct __tuple<_Tp0, _Tp1> {
-    static constexpr size_t __size = 2;
+    template <class _Tp0, class _Tp1>
+    struct __tuple<_Tp0, _Tp1> {
+      static constexpr size_t __size = 2;
 
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp0 __val0;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp1 __val1;
-  };
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp0 __val0;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp1 __val1;
+    };
 
-  template <class _Tp0, class _Tp1, class _Tp2>
-  struct __tuple<_Tp0, _Tp1, _Tp2> {
-    static constexpr size_t __size = 3;
+    template <class _Tp0, class _Tp1, class _Tp2>
+    struct __tuple<_Tp0, _Tp1, _Tp2> {
+      static constexpr size_t __size = 3;
 
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp0 __val0;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp1 __val1;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp2 __val2;
-  };
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp0 __val0;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp1 __val1;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp2 __val2;
+    };
 
-  template <class _Tp0, class _Tp1, class _Tp2, class _Tp3>
-  struct __tuple<_Tp0, _Tp1, _Tp2, _Tp3> {
-    static constexpr size_t __size = 4;
+    template <class _Tp0, class _Tp1, class _Tp2, class _Tp3>
+    struct __tuple<_Tp0, _Tp1, _Tp2, _Tp3> {
+      static constexpr size_t __size = 4;
 
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp0 __val0;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp1 __val1;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp2 __val2;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp3 __val3;
-  };
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp0 __val0;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp1 __val1;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp2 __val2;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp3 __val3;
+    };
 
-  template <class _Tp0, class _Tp1, class _Tp2, class _Tp3, class _Tp4>
-  struct __tuple<_Tp0, _Tp1, _Tp2, _Tp3, _Tp4> {
-    static constexpr size_t __size = 5;
+    template <class _Tp0, class _Tp1, class _Tp2, class _Tp3, class _Tp4>
+    struct __tuple<_Tp0, _Tp1, _Tp2, _Tp3, _Tp4> {
+      static constexpr size_t __size = 5;
 
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp0 __val0;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp1 __val1;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp2 __val2;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp3 __val3;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp4 __val4;
-  };
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp0 __val0;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp1 __val1;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp2 __val2;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp3 __val3;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp4 __val4;
+    };
 
-  template <class _Tp0, class _Tp1, class _Tp2, class _Tp3, class _Tp4, class _Tp5>
-  struct __tuple<_Tp0, _Tp1, _Tp2, _Tp3, _Tp4, _Tp5> {
-    static constexpr size_t __size = 6;
+    template <class _Tp0, class _Tp1, class _Tp2, class _Tp3, class _Tp4, class _Tp5>
+    struct __tuple<_Tp0, _Tp1, _Tp2, _Tp3, _Tp4, _Tp5> {
+      static constexpr size_t __size = 6;
 
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp0 __val0;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp1 __val1;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp2 __val2;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp3 __val3;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp4 __val4;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp5 __val5;
-  };
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp0 __val0;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp1 __val1;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp2 __val2;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp3 __val3;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp4 __val4;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp5 __val5;
+    };
 
-  template <class _Tp0, class _Tp1, class _Tp2, class _Tp3, class _Tp4, class _Tp5, class _Tp6>
-  struct __tuple<_Tp0, _Tp1, _Tp2, _Tp3, _Tp4, _Tp5, _Tp6> {
-    static constexpr size_t __size = 7;
+    template <class _Tp0, class _Tp1, class _Tp2, class _Tp3, class _Tp4, class _Tp5, class _Tp6>
+    struct __tuple<_Tp0, _Tp1, _Tp2, _Tp3, _Tp4, _Tp5, _Tp6> {
+      static constexpr size_t __size = 7;
 
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp0 __val0;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp1 __val1;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp2 __val2;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp3 __val3;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp4 __val4;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp5 __val5;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp6 __val6;
-  };
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp0 __val0;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp1 __val1;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp2 __val2;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp3 __val3;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp4 __val4;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp5 __val5;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp6 __val6;
+    };
 
-  template <
-    class _Tp0,
-    class _Tp1,
-    class _Tp2,
-    class _Tp3,
-    class _Tp4,
-    class _Tp5,
-    class _Tp6,
-    class _Tp7
-  >
-  struct __tuple<_Tp0, _Tp1, _Tp2, _Tp3, _Tp4, _Tp5, _Tp6, _Tp7> {
-    static constexpr size_t __size = 8;
+    template <
+      class _Tp0,
+      class _Tp1,
+      class _Tp2,
+      class _Tp3,
+      class _Tp4,
+      class _Tp5,
+      class _Tp6,
+      class _Tp7
+    >
+    struct __tuple<_Tp0, _Tp1, _Tp2, _Tp3, _Tp4, _Tp5, _Tp6, _Tp7> {
+      static constexpr size_t __size = 8;
 
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp0 __val0;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp1 __val1;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp2 __val2;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp3 __val3;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp4 __val4;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp5 __val5;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp6 __val6;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Tp7 __val7;
-  };
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp0 __val0;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp1 __val1;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp2 __val2;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp3 __val3;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp4 __val4;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp5 __val5;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp6 __val6;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Tp7 __val7;
+    };
 
-  template <class... _Ts>
-  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __tuple(_Ts...) -> __tuple<_Ts...>;
+    template <class... _Ts>
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __tuple(_Ts...) -> __tuple<_Ts...>;
 
 #define STDEXEC_TUPLE_GET(_Idx) , static_cast<_Tuple&&>(__tupl).__val##_Idx
 
-  //
-  // __apply(fn, tuple, extra...)
-  //
-  struct __apply_t {
-    STDEXEC_EXEC_CHECK_DISABLE
-    template <class _Fn, class _Tuple, class... _Us>
-      requires __tup::__applicable_v<_Fn, _Tuple, _Us...>
-    STDEXEC_ATTRIBUTE(always_inline, host, device)
-    constexpr auto operator()(_Fn&& __fn, _Tuple&& __tupl, _Us&&... __us) const
-      noexcept(__tup::__nothrow_applicable_v<_Fn, _Tuple, _Us...>) -> decltype(auto) {
-      constexpr size_t __size = STDEXEC_REMOVE_REFERENCE(_Tuple)::__size;
+    //
+    // __apply(fn, tuple, extra...)
+    //
+    struct __apply_t {
+      STDEXEC_EXEC_CHECK_DISABLE
+      template <class _Fn, class _Tuple, class... _Us>
+        requires __tup::__applicable_v<_Fn, _Tuple, _Us...>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      constexpr auto operator()(_Fn&& __fn, _Tuple&& __tupl, _Us&&... __us) const
+        noexcept(__tup::__nothrow_applicable_v<_Fn, _Tuple, _Us...>) -> decltype(auto) {
+        constexpr size_t __size = STDEXEC_REMOVE_REFERENCE(_Tuple)::__size;
 
-      if constexpr (__size == 0) {
-        return static_cast<_Fn&&>(__fn)(static_cast<_Us&&>(__us)...);
-      } else if constexpr (__size == 1) {
-        return static_cast<_Fn&&>(__fn)(
-          static_cast<_Us&&>(__us)... STDEXEC_REPEAT(1, STDEXEC_TUPLE_GET));
-      } else if constexpr (__size == 2) {
-        return static_cast<_Fn&&>(__fn)(
-          static_cast<_Us&&>(__us)... STDEXEC_REPEAT(2, STDEXEC_TUPLE_GET));
-      } else if constexpr (__size == 3) {
-        return static_cast<_Fn&&>(__fn)(
-          static_cast<_Us&&>(__us)... STDEXEC_REPEAT(3, STDEXEC_TUPLE_GET));
-      } else if constexpr (__size == 4) {
-        return static_cast<_Fn&&>(__fn)(
-          static_cast<_Us&&>(__us)... STDEXEC_REPEAT(4, STDEXEC_TUPLE_GET));
-      } else if constexpr (__size == 5) {
-        return static_cast<_Fn&&>(__fn)(
-          static_cast<_Us&&>(__us)... STDEXEC_REPEAT(5, STDEXEC_TUPLE_GET));
-      } else if constexpr (__size == 6) {
-        return static_cast<_Fn&&>(__fn)(
-          static_cast<_Us&&>(__us)... STDEXEC_REPEAT(6, STDEXEC_TUPLE_GET));
-      } else if constexpr (__size == 7) {
-        return static_cast<_Fn&&>(__fn)(
-          static_cast<_Us&&>(__us)... STDEXEC_REPEAT(7, STDEXEC_TUPLE_GET));
-      } else if constexpr (__size == 8) {
-        return static_cast<_Fn&&>(__fn)(
-          static_cast<_Us&&>(__us)... STDEXEC_REPEAT(8, STDEXEC_TUPLE_GET));
-      } else {
-        return __tupl.__apply(
-          static_cast<_Fn&&>(__fn), static_cast<_Tuple&&>(__tupl), static_cast<_Us&&>(__us)...);
+        if constexpr (__size == 0) {
+          return static_cast<_Fn&&>(__fn)(static_cast<_Us&&>(__us)...);
+        } else if constexpr (__size == 1) {
+          return static_cast<_Fn&&>(__fn)(
+            static_cast<_Us&&>(__us)... STDEXEC_REPEAT(1, STDEXEC_TUPLE_GET));
+        } else if constexpr (__size == 2) {
+          return static_cast<_Fn&&>(__fn)(
+            static_cast<_Us&&>(__us)... STDEXEC_REPEAT(2, STDEXEC_TUPLE_GET));
+        } else if constexpr (__size == 3) {
+          return static_cast<_Fn&&>(__fn)(
+            static_cast<_Us&&>(__us)... STDEXEC_REPEAT(3, STDEXEC_TUPLE_GET));
+        } else if constexpr (__size == 4) {
+          return static_cast<_Fn&&>(__fn)(
+            static_cast<_Us&&>(__us)... STDEXEC_REPEAT(4, STDEXEC_TUPLE_GET));
+        } else if constexpr (__size == 5) {
+          return static_cast<_Fn&&>(__fn)(
+            static_cast<_Us&&>(__us)... STDEXEC_REPEAT(5, STDEXEC_TUPLE_GET));
+        } else if constexpr (__size == 6) {
+          return static_cast<_Fn&&>(__fn)(
+            static_cast<_Us&&>(__us)... STDEXEC_REPEAT(6, STDEXEC_TUPLE_GET));
+        } else if constexpr (__size == 7) {
+          return static_cast<_Fn&&>(__fn)(
+            static_cast<_Us&&>(__us)... STDEXEC_REPEAT(7, STDEXEC_TUPLE_GET));
+        } else if constexpr (__size == 8) {
+          return static_cast<_Fn&&>(__fn)(
+            static_cast<_Us&&>(__us)... STDEXEC_REPEAT(8, STDEXEC_TUPLE_GET));
+        } else {
+          return __tupl.__apply(
+            static_cast<_Fn&&>(__fn), static_cast<_Tuple&&>(__tupl), static_cast<_Us&&>(__us)...);
+        }
       }
-    }
-  };
+    };
 #undef STDEXEC_TUPLE_GET
+  } // namespace __tup
 
-  inline constexpr __apply_t __apply{};
+  using __tup::__tuple;
+
+  inline constexpr __tup::__apply_t __apply{};
 
   template <class _Fn, class _Tuple, class... _Us>
   using __apply_result_t = __result_of<__apply, _Fn, _Tuple, _Us...>;
@@ -394,7 +396,7 @@ namespace stdexec {
   // __tuple_size_v
   //
   template <class _Tuple>
-  extern __undefined<_Tuple> __tuple_size_v;
+  inline constexpr size_t __tuple_size_v = __tuple_size_v<__tup::__tuple_base_t<_Tuple>>;
 
   template <class... _Ts>
   inline constexpr size_t __tuple_size_v<__tuple<_Ts...>> = sizeof...(_Ts);

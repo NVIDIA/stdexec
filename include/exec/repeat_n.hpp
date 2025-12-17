@@ -202,9 +202,8 @@ namespace exec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto
-        operator()(std::size_t __count) const -> __binder_back<repeat_n_t, std::size_t> {
-        return {{__count}, {}, {}};
+      constexpr auto operator()(std::size_t __count) const noexcept {
+        return __closure(*this, __count);
       }
 
       template <class _Sender, bool _NoThrow = __nothrow_decay_copyable<_Sender>>

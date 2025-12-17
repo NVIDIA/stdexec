@@ -82,7 +82,7 @@ namespace exec {
     struct __combine {
       template <class _ReceiverId>
       using merge_each_fn_t =
-        __binder_back<__merge_each_fn<_ReceiverId>, __operation_base<__t<_ReceiverId>>*>;
+        __closure<__merge_each_fn<_ReceiverId>, __operation_base<__t<_ReceiverId>>*>;
 
       template <class _Sequence, class _ReceiverId>
       using transform_sender_t =
@@ -118,7 +118,7 @@ namespace exec {
                 exec::ignore_all_values(
                   exec::transform_each(
                     static_cast<_Sequences&&>(__sequences),
-                    merge_each_fn_t{{this}, {}, {}}))...),
+                    merge_each_fn_t({}, this)))...),
               stdexec::__t<__result_receiver<_ReceiverId>>{this})} {
         }
 
@@ -161,7 +161,6 @@ namespace exec {
 
       template <class... _Env>
       struct __completions_fn_t {
-
         template <class... _Sequences>
         using __f = __meval<
           __concat_completion_signatures,

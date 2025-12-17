@@ -161,8 +161,8 @@ namespace exec {
       template <class _Adaptor>
       STDEXEC_ATTRIBUTE(always_inline)
       constexpr auto
-        operator()(_Adaptor __adaptor) const noexcept -> __binder_back<transform_each_t, _Adaptor> {
-        return {{static_cast<_Adaptor&&>(__adaptor)}, {}, {}};
+        operator()(_Adaptor&& __adaptor) const noexcept(__nothrow_decay_copyable<_Adaptor>) {
+        return __closure(*this, static_cast<_Adaptor&&>(__adaptor));
       }
 
       template <class _Self, class... _Env>

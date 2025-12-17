@@ -204,8 +204,8 @@ namespace exec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()() const -> __binder_back<repeat_effect_until_t> {
-        return {{}, {}, {}};
+      constexpr auto operator()() const {
+        return __closure(*this);
       }
 
       template <class _Sender>
@@ -232,8 +232,8 @@ namespace exec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()() const -> __binder_back<repeat_effect_t> {
-        return {{}, {}, {}};
+      constexpr auto operator()() const {
+        return __closure(*this);
       }
 
       template <class _Sender>

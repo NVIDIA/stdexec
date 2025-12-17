@@ -160,9 +160,8 @@ namespace stdexec {
 
       template <scheduler _Scheduler>
       STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto
-        operator()(_Scheduler __sched) const -> __binder_back<continues_on_t, _Scheduler> {
-        return {{static_cast<_Scheduler&&>(__sched)}, {}, {}};
+      constexpr auto operator()(_Scheduler __sched) const noexcept {
+        return __closure(*this, static_cast<_Scheduler&&>(__sched));
       }
     };
 

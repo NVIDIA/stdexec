@@ -103,11 +103,10 @@ namespace {
       auto delay_value = []<class Value>(Value&& value, Sched sched, duration_of_t<Sched> after) {
         return sequence(schedule_after(sched, after), static_cast<Value&&>(value));
       };
-      auto delay_adaptor =
-        stdexec::__binder_back<decltype(delay_value), Sched, duration_of_t<Sched>>{
-          {sched, after},
-          {},
-          {}
+      auto delay_adaptor = stdexec::__closure<decltype(delay_value), Sched, duration_of_t<Sched>>{
+        {sched, after},
+        {},
+        {}
       };
       return exec::transform_each(delay_adaptor);
     };
@@ -121,7 +120,7 @@ namespace {
         exec::transform_each(
           static_cast<decltype(sequence)&&>(sequence), ex::then(static_cast<decltype(f)&&>(f))));
     };
-    return stdexec::__binder_back<decltype(map_merge), decltype(f)>{
+    return stdexec::__closure<decltype(map_merge), decltype(f)>{
       {static_cast<decltype(f)&&>(f)}, {}, {}};
   };
   // when_all requires a successful completion
