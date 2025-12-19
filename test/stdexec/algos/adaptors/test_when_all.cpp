@@ -17,8 +17,10 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include <exec/env.hpp>
+#include <exec/async_scope.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 
 namespace ex = stdexec;
@@ -366,5 +368,16 @@ namespace {
                   ex::completion_signatures<ex::set_value_t()>>);
     auto op = ex::connect(snd, expect_void_receiver{});
     ex::start(op);
+  }
+
+
+
+  TEST_CASE("when_all handles stop requests from the environment correctly", "[adaptors][when_all") {
+    auto snd = ex::when_all(completes_if(false), completes_if(false));
+
+    exec::async_scope scope;
+    scope.spawn(snd);
+    scope.request_stop();
+    ex::sync_wait(scope.on_empty());
   }
 } // namespace
