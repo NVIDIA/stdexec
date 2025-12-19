@@ -537,9 +537,8 @@ namespace stdexec {
         []<class _Self, class _Env>(_Self&&, _Env&&...) noexcept {
           static_assert(sender_expr_for<_Self, __let_t<_SetTag>>);
           if constexpr (__decay_copyable<_Self>) {
-            using __result_t =
-              __completions_t<__let_t<_SetTag>, __data_of<_Self>, __child_of<_Self>, _Env>;
-            return __result_t{};
+            using __fn_t = __decay_t<__data_of<_Self>>;
+            return __completions_t<__let_t<_SetTag>, __fn_t, __child_of<_Self>, _Env>{};
           } else {
             return __mexception<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_Self>>{};
           }

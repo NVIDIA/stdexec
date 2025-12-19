@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+// This file causes clangd to crash during parsing
+#if !defined(STDEXEC_CLANGD_INVOKED)
+
 #include "maxwell/snr.cuh"           // IWYU pragma: keep
 #include "nvexec/stream_context.cuh" // IWYU pragma: keep
 
@@ -512,7 +515,7 @@ auto main(int argc, char *argv[]) -> int {
   }
 
   write();
-#  else
+#  else // ^^ defined(OVERLAP) ^^ // vv !defined(OVERLAP) vv
   for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
     auto compute_h =
       ex::just()
@@ -531,7 +534,7 @@ auto main(int argc, char *argv[]) -> int {
   }
 
   write();
-#  endif
+#  endif // defined(OVERLAP)
 
   MPI_Barrier(MPI_COMM_WORLD);
   const auto end = std::chrono::system_clock::now();
@@ -550,3 +553,5 @@ auto main(int argc, char *argv[]) -> int {
   MPI_Finalize();
 }
 #endif
+
+#endif // !defined(STDEXEC_CLANGD_INVOKED)

@@ -19,12 +19,10 @@
 
 #include "__basic_sender.hpp"
 #include "__diagnostics.hpp"
-#include "__domain.hpp"
 #include "__meta.hpp"
 #include "__senders_core.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__transform_completion_signatures.hpp"
-#include "__transform_sender.hpp"
 #include "__senders.hpp" // IWYU pragma: keep for __well_formed_sender
 
 // include these after __execution_fwd.hpp

@@ -80,6 +80,7 @@ CompileFlags:
     - -profiler
     - -ignore-system
     - "-fconcepts-diagnostics-depth=*"
+    - "-gopt"
 Diagnostics:
   Suppress:
     - "variadic_device_fn"

@@ -124,18 +124,22 @@ namespace stdexec {
         (__declval<__undefined<__partitions<>>&>() * ... * static_cast<_Sigs*>(nullptr))));
 
     template <class _Completions>
-    using __partitions_of_t = typename _Completions::__partitioned::__t;
+    using __partitions_of_t = _Completions::__partitioned::__t;
   } // namespace __sigs
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // completion signatures type traits
+  template <class _Completions>
+  concept __valid_completion_signatures = __ok<_Completions>
+                                       && __sigs::__is_completion_signatures<_Completions>;
+
   template <
     class _Sigs,
     class _Tuple = __qq<__decayed_std_tuple>,
     class _Variant = __qq<__std_variant>
   >
   using __value_types_t =
-    typename __sigs::__partitions_of_t<_Sigs>::template __value_types<_Tuple, _Variant>;
+    __sigs::__partitions_of_t<_Sigs>::template __value_types<_Tuple, _Variant>;
 
   template <
     class _Sndr,
@@ -157,7 +161,7 @@ namespace stdexec {
 
   template <class _Sigs, class _Variant = __qq<__std_variant>, class _Transform = __q1<__midentity>>
   using __error_types_t =
-    typename __sigs::__partitions_of_t<_Sigs>::template __error_types<_Variant, _Transform>;
+    __sigs::__partitions_of_t<_Sigs>::template __error_types<_Variant, _Transform>;
 
   template <
     class _Sender,
@@ -174,13 +178,14 @@ namespace stdexec {
 
   template <class _Sigs, class _Variant, class _Type = set_stopped_t()>
   using __stopped_types_t =
-    typename __sigs::__partitions_of_t<_Sigs>::template __stopped_types<_Variant, _Type>;
+    __sigs::__partitions_of_t<_Sigs>::template __stopped_types<_Variant, _Type>;
 
-  template <class _Sigs>
+  template <__valid_completion_signatures _Sigs>
   inline constexpr bool __sends_stopped =
     __v<typename __sigs::__partitions_of_t<_Sigs>::__count_stopped> != 0;
 
   template <class _Sndr, class... _Env>
+    requires __valid_completion_signatures<__completion_signatures_of_t<_Sndr, _Env...>>
   inline constexpr bool sends_stopped =
     __sends_stopped<__completion_signatures_of_t<_Sndr, _Env...>>;
 
@@ -395,11 +400,6 @@ namespace stdexec {
   template <class _Sender, class... _Env>
   using __single_value_variant_sender_t =
     __value_types_t<__completion_signatures_of_t<_Sender, _Env...>, __qq<__types>, __qq<__msingle>>;
-
-
-  template <class _Completions>
-  concept __valid_completion_signatures = __same_as<__ok_t<_Completions>, __msuccess>
-                                       && __sigs::__is_completion_signatures<_Completions>;
 
   template <class _Sender, class... _Env>
   using __unrecognized_sender_error =

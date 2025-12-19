@@ -32,7 +32,6 @@
 #include "../../stdexec/__detail/__senders_core.hpp"
 #include "../../stdexec/__detail/__stop_token.hpp"
 #include "../../stdexec/__detail/__transform_completion_signatures.hpp"
-#include "../../stdexec/__detail/__unstoppable.hpp"
 #include "../../stdexec/__detail/__variant.hpp"
 
 #include <atomic>
@@ -240,7 +239,7 @@ namespace exec {
 
         __operation_base_interface_t* __op_;
 
-        template <std::same_as<__t> _Self, class... _Env>
+        template <class _Self, class... _Env>
         STDEXEC_EXPLICIT_THIS_BEGIN(
           auto get_completion_signatures)(this _Self&&, _Env&&...) noexcept
           -> stdexec::__mapply<
@@ -252,8 +251,9 @@ namespace exec {
           > {
           return {};
         }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
-        template <std::same_as<__t> _Self, receiver _ErrorReceiver>
+        template <class _Self, receiver _ErrorReceiver>
         STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _ErrorReceiver&& __rcvr)
           noexcept(__nothrow_move_constructible<_ErrorReceiver>)
             -> __error_op_t<stdexec::__id<_ErrorReceiver>> {
@@ -607,7 +607,7 @@ namespace exec {
         _NestedValueSender __nested_value_;
         __operation_base_interface_t* __op_;
 
-        template <std::same_as<__t> _Self, class... _Env>
+        template <class _Self, class... _Env>
         STDEXEC_EXPLICIT_THIS_BEGIN(
           auto get_completion_signatures)(this _Self&&, _Env&&...) noexcept
           -> stdexec::transform_completion_signatures<
@@ -618,8 +618,9 @@ namespace exec {
           > {
           return {};
         }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
-        template <std::same_as<__t> _Self, receiver _NestedValueReceiver>
+        template <class _Self, receiver _NestedValueReceiver>
         STDEXEC_EXPLICIT_THIS_BEGIN(
           auto connect)(this _Self&& __self, _NestedValueReceiver&& __rcvr)
           noexcept(__nothrow_constructible_from<
@@ -1072,14 +1073,16 @@ namespace exec {
         _OperationBase* __op_;
         _NestedSequenceSender __nested_sequence_;
 
-        template <std::same_as<__t> _Self, class... _Env>
+        template <class _Self, class... _Env>
         STDEXEC_EXPLICIT_THIS_BEGIN(
           auto get_completion_signatures)(this _Self&&, _Env&&...) noexcept
           -> stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()> {
           return {};
         }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
-        template <std::same_as<__t> _Self, receiver _NextReceiver>
+
+        template <class _Self, receiver _NextReceiver>
         STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _NextReceiver&& __rcvr)
           noexcept(__nothrow_constructible_from<
                    __next_sequence_op_t<stdexec::__id<_NextReceiver>>,

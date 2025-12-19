@@ -254,6 +254,20 @@ namespace stdexec {
   template <class... _What>
   struct _ERROR_ {
     auto operator,(__msuccess) const noexcept -> _ERROR_;
+
+    using __t = _ERROR_;
+    using __id = _ERROR_;
+
+    using __partitioned = _ERROR_;
+
+    template <class, class>
+    using __value_types = _ERROR_;
+
+    template <class, class>
+    using __error_types = _ERROR_;
+
+    template <class, class>
+    using __stopped_types = _ERROR_;
   };
 
   template <__mstring... _What>
@@ -810,10 +824,16 @@ namespace stdexec {
 
   namespace __detail {
     template <class _Ty>
-    extern __q<__midentity> __demangle_v;
+    extern __cp __demangle_v;
 
     template <class _Ty>
     using __demangle_fn = decltype(__demangle_v<_Ty>);
+
+    template <class _Ty>
+    extern __mcompose<__cplr, __demangle_fn<_Ty>> __demangle_v<_Ty &>;
+
+    template <class _Ty>
+    extern __mcompose<__cpclr, __demangle_fn<_Ty>> __demangle_v<_Ty const &>;
   } // namespace __detail
 
   // A utility for pretty-printing type names in diagnostics
@@ -822,7 +842,7 @@ namespace stdexec {
 
   namespace __detail {
     //////////////////////////////////////////////////////////////////////////////////////////
-    // _pretty_name
+    // __get_pretty_name
     template <class>
     struct __xyzzy {
       struct __plugh { };
@@ -855,8 +875,10 @@ namespace stdexec {
     }
   } // namespace __detail
 
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  // __mnameof: get the pretty name of a type T as a string_view at compile time
   template <class T>
-  inline constexpr auto __mnameof = __detail::__get_pretty_name<__demangle_t<T>>();
+  inline constexpr std::string_view __mnameof = __detail::__get_pretty_name<__demangle_t<T>>();
 
   static_assert(__mnameof<int> == "int");
 
