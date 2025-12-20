@@ -830,15 +830,12 @@ namespace stdexec {
     using __demangle_fn = decltype(__demangle_v<_Ty>);
 
     template <class _Ty>
-    extern __mcompose<__cplr, __demangle_fn<_Ty>> __demangle_v<_Ty &>;
-
-    template <class _Ty>
-    extern __mcompose<__cpclr, __demangle_fn<_Ty>> __demangle_v<_Ty const &>;
+    using __demangle_t = __minvoke<__demangle_fn<_Ty>, _Ty>;
   } // namespace __detail
 
   // A utility for pretty-printing type names in diagnostics
   template <class _Ty>
-  using __demangle_t = __minvoke<__detail::__demangle_fn<_Ty>, _Ty>;
+  using __demangle_t = __copy_cvref_t<_Ty, __detail::__demangle_t<std::remove_cvref_t<_Ty>>>;
 
   namespace __detail {
     //////////////////////////////////////////////////////////////////////////////////////////

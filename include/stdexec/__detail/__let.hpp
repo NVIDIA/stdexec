@@ -551,7 +551,7 @@ namespace stdexec {
         static_assert(sender_expr_for<_Sender, __let_t<_SetTag>>);
         using _Fun = __decay_t<__data_of<_Sender>>;
         using _Child = __child_of<_Sender>;
-        using _Env2 = __env2_t<_SetTag, env_of_t<const _Child&>, env_of_t<const _Receiver&>>;
+        using _Env2 = __env2_t<_SetTag, env_of_t<_Child>, env_of_t<_Receiver>>;
         using __mk_let_state = __mbind_front_q<__let_state, _Receiver, _Fun, _SetTag, _Env2>;
 
         using __let_state_t = __gather_completions_of<
