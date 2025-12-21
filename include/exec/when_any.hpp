@@ -274,10 +274,6 @@ namespace exec {
         template <class _Self, class... _Env>
         STDEXEC_EXPLICIT_THIS_BEGIN(
           auto get_completion_signatures)(this _Self&&, const _Env&...) noexcept {
-          static_assert(__decay_copyable<_Self>);
-          static_assert(
-            (__decay_copyable<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>> && ...),
-            "All senders passed to when_any must be copyable.");
           return __mexception<
             _SENDER_TYPE_IS_NOT_COPYABLE_,
             _WITH_SENDERS_<stdexec::__t<_SenderIds>>...

@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+// This file causes clangd to crash during parsing
+#if !defined(STDEXEC_CLANGD_INVOKED)
+
 #include "maxwell/snr.cuh"
 #include "maxwell/cpp.cuh"
 
@@ -65,3 +68,5 @@ auto main(int argc, char *argv[]) -> int {
     run_cpp(dt, write_vtk, n_iterations, grid, "CPU (cpp)");
   }
 }
+
+#endif // !defined(STDEXEC_CLANGD_INVOKED)

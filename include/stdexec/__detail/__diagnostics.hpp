@@ -176,29 +176,35 @@ namespace stdexec {
     char const * what_;
   };
 
-  namespace __detail {
-    template <class _Sender>
-    struct __dependent_sender_error : dependent_sender_error {
-      constexpr __dependent_sender_error() noexcept
-        : dependent_sender_error{
-            "This sender needs to know its execution environment before it can know how it will "
-            "complete."} {
-      }
-
-      STDEXEC_ATTRIBUTE(host, device) auto operator+() -> __dependent_sender_error;
-
-      template <class Ty>
-      STDEXEC_ATTRIBUTE(host, device)
-      auto operator,(Ty&) -> __dependent_sender_error&;
-
-      template <class... What>
-      STDEXEC_ATTRIBUTE(host, device)
-      auto operator,(stdexec::_ERROR_<What...>&) -> stdexec::_ERROR_<What...>&;
-    };
-  } // namespace __detail
-
   template <class _Sender>
-  using __dependent_sender_error = __detail::__dependent_sender_error<__demangle_t<_Sender>>;
+  struct __dependent_sender_error : dependent_sender_error {
+    constexpr __dependent_sender_error() noexcept
+      : dependent_sender_error{
+          "This sender needs to know its execution environment before it can know how it will "
+          "complete."} {
+    }
+
+    STDEXEC_ATTRIBUTE(host, device) auto operator+() -> __dependent_sender_error;
+
+    template <class Ty>
+    STDEXEC_ATTRIBUTE(host, device)
+    auto operator,(Ty&) -> __dependent_sender_error&;
+
+    template <class... What>
+    STDEXEC_ATTRIBUTE(host, device)
+    auto operator,(_ERROR_<What...>&) -> _ERROR_<What...>&;
+
+    using __partitioned = __dependent_sender_error;
+
+    template <class, class>
+    using __value_types = __dependent_sender_error;
+
+    template <class, class>
+    using __error_types = __dependent_sender_error;
+
+    template <class, class>
+    using __stopped_types = __dependent_sender_error;
+  };
 
   template <class _What, class... _With>
   struct __not_a_sender {

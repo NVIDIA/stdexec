@@ -161,19 +161,19 @@ namespace nvexec::_strm {
         : sndr_(schedule_from(static_cast<Sender&&>(sndr))) {
       }
 
-      template <__decays_to<source_sender_t> Self, receiver Receiver>
+      template <__decay_copyable Self, receiver Receiver>
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
         -> connect_result_t<__copy_cvref_t<Self, schedule_from_sender_t>, Receiver> {
         return stdexec::connect(static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr));
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
 
-      template <__decays_to<source_sender_t> _Self, class... _Env>
+      template <__decay_copyable _Self, class... _Env>
       STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...)
         -> __completion_signatures_of_t<__copy_cvref_t<_Self, Sender>, _Env...> {
         return {};
       }
-        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
+      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       [[nodiscard]]
       auto get_env() const noexcept -> env_of_t<const Sender&> {

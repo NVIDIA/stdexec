@@ -186,15 +186,15 @@ namespace exec {
         stdexec::__minvoke<stdexec::__mfold_left<void, stdexec::__q2<_fold_fn>>, Sndrs...>;
     };
 
-    template <class... Sndrs>
-    struct _sndr {
+    template <class Sndr0, class... Sndrs>
+    struct _sndr<Sndr0, Sndrs...> {
       using sender_concept = stdexec::sender_t;
 
       template <class... Env>
-      using _completions_t = stdexec::__minvoke<_completions<Env...>, Sndrs...>;
+      using _completions_t = stdexec::__minvoke<_completions<Env...>, Sndr0, Sndrs...>;
 
       template <class Self, class... Env>
-        requires(stdexec::__decay_copyable<stdexec::__copy_cvref_t<Self, Sndrs>> && ...)
+        requires stdexec::__decay_copyable<Self>
       STDEXEC_ATTRIBUTE(host, device)
       STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
         -> _completions_t<Env...> {
@@ -203,17 +203,17 @@ namespace exec {
       STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       template <class Self, class Rcvr>
-        requires(stdexec::__decay_copyable<stdexec::__copy_cvref_t<Self, Sndrs>> && ...)
+        requires stdexec::__decay_copyable<Self>
       STDEXEC_ATTRIBUTE(host, device)
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Rcvr rcvr) {
-        return _opstate<Rcvr, Sndrs...>{
+        return _opstate<Rcvr, stdexec::__copy_cvref_t<Self, Sndr0>, Sndrs...>{
           static_cast<Rcvr&&>(rcvr), static_cast<Self&&>(self)._sndrs};
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       STDEXEC_ATTRIBUTE(no_unique_address, maybe_unused) sequence_t _tag;
       STDEXEC_ATTRIBUTE(no_unique_address, maybe_unused) stdexec::__ignore _ignore;
-      stdexec::__tuple<Sndrs...> _sndrs;
+      stdexec::__tuple<Sndr0, Sndrs...> _sndrs;
     };
 
     template <class Sndr>

@@ -433,9 +433,10 @@ namespace stdexec::__shared {
   struct __shared_impl : __sexpr_defaults {
     static constexpr auto get_state =
       []<class _CvrefSender, class _Receiver>(_CvrefSender&& __sndr, _Receiver&) noexcept
-      -> __local_state<_CvrefSender, _Receiver> {
+      -> __local_state<_CvrefSender, _Receiver>
+      requires __decay_copyable<__data_of<_CvrefSender>>
+    {
       static_assert(sender_expr_for<_CvrefSender, _Tag>);
-      static_assert(__decay_copyable<_CvrefSender>);
       return __local_state<_CvrefSender, _Receiver>{static_cast<_CvrefSender&&>(__sndr)};
     };
 

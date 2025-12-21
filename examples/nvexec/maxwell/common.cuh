@@ -56,7 +56,6 @@ struct deleter_t {
 };
 
 template <class T>
-STDEXEC_ATTRIBUTE(host, device)
 inline auto allocate_on(bool gpu, std::size_t elements = 1) -> std::unique_ptr<T, deleter_t> {
   T *ptr{};
 

@@ -60,6 +60,7 @@ namespace stdexec {
       using __f = __decay(_Ty);
     };
   } // namespace __tt
+
   template <class _Ty>
   using __decay_t = __tt::__decay_<sizeof(__tt::__wrap<_Ty> *) == ~0ul>::template __f<_Ty>;
 
