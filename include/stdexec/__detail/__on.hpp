@@ -28,43 +28,18 @@
 #include "__senders_core.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__sender_introspection.hpp"
-#include "__type_traits.hpp"
 #include "__utility.hpp"
+#include "__write_env.hpp"
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.on]
   namespace __on {
-    inline constexpr __mstring __on_context = "In stdexec::on(Scheduler, Sender)..."_mstr;
-    inline constexpr __mstring __no_scheduler_diag =
-      "stdexec::on() requires a scheduler to transition back to."_mstr;
-    inline constexpr __mstring __no_scheduler_details =
-      "The provided environment lacks a value for the get_scheduler() query."_mstr;
-
-    template <
-      __mstring _Context = __on_context,
-      __mstring _Diagnostic = __no_scheduler_diag,
-      __mstring _Details = __no_scheduler_details
-    >
-    struct _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_ { };
-
     struct on_t;
 
-    template <class _Sender, class _Env>
-    struct __no_scheduler_in_environment {
-      using sender_concept = sender_t;
-
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(
-        this const __no_scheduler_in_environment&,
-        const auto&) noexcept {
-        return __mexception<
-          _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_<>,
-          _WITH_SENDER_<_Sender>,
-          _WITH_ENVIRONMENT_<_Env>
-        >{};
-      }
-      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
-    };
+    struct _CANNOT_RESTORE_THE_EXECUTION_CONTEXT_AFTER_ON;
+    struct _THE_ENVIRONMENT_OF_THE_RECEIVER_DOES_NOT_HAVE_A_SCHEDULER_FOR_ON_TO_RETURN_TO;
+    struct _THE_PREDECESSOR_SENDER_DOES_NOT_KNOW_THE_SCHEDULER_ON_WHICH_IT_COMPLETES;
 
     template <class _Scheduler, class _Closure>
     struct __on_data {
@@ -73,7 +48,8 @@ namespace stdexec {
     };
 
     template <class _Scheduler, class _Closure>
-    __on_data(_Scheduler, _Closure) -> __on_data<_Scheduler, _Closure>;
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __on_data(_Scheduler, _Closure) //
+      ->__on_data<_Scheduler, _Closure>;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     struct on_t {
@@ -99,30 +75,31 @@ namespace stdexec {
       }
 
       template <class _Sender, class _OldSched, class _NewSched>
-      static auto __reschedule(
-        _Sender&& __sndr,
-        [[maybe_unused]] _OldSched&& __old_sched,
-        _NewSched&& __new_sched) {
-        // return continues_on(
-        //   write_env(static_cast<_Sender&&>(__sndr), __sched_env{__old_sched}),
-        //   static_cast<_NewSched&&>(__new_sched));
-        return continues_on(static_cast<_Sender&&>(__sndr), static_cast<_NewSched&&>(__new_sched));
+      static auto __reschedule(_Sender&& __sndr, _OldSched&& __old_sched, _NewSched&& __new_sched) {
+        return continues_on(
+          write_env(static_cast<_Sender&&>(__sndr), __sched_env{__old_sched}),
+          static_cast<_NewSched&&>(__new_sched));
       }
 
       template <class _Sender, class _Env>
       STDEXEC_ATTRIBUTE(always_inline)
       static auto __transform_sender_fn(const _Env& __env) noexcept {
         return [&]<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) {
-          // If __is_root_env<_Env> is true, then this sender has no parent, so there is
-          // no need to restore the execution context. We can use the inline scheduler
-          // as the scheduler if __env does not have one.
-          using __end_sched_t = __if_c<
-            __is_root_env<_Env>,
-            inline_scheduler,
-            __not_a_scheduler<__no_scheduler_in_environment<_Sender, _Env>>
-          >;
 
           if constexpr (scheduler<_Data>) {
+            using __not_a_scheduler = stdexec::__not_a_scheduler<
+              _WHAT_<>(_CANNOT_RESTORE_THE_EXECUTION_CONTEXT_AFTER_ON),
+              _WHY_(_THE_ENVIRONMENT_OF_THE_RECEIVER_DOES_NOT_HAVE_A_SCHEDULER_FOR_ON_TO_RETURN_TO),
+              _WHERE_(_IN_ALGORITHM_, on_t),
+              _WITH_ENVIRONMENT_<_Env>,
+              _WITH_SENDER_<_Child>
+            >;
+
+            // If __is_root_env<_Env> is true, then this sender has no parent, so there is
+            // no need to restore the execution context. We can use the inline scheduler
+            // as the scheduler if __env does not have one.
+            using __end_sched_t = __if_c<__is_root_env<_Env>, inline_scheduler, __not_a_scheduler>;
+
             // This branch handles the case where `on` was called like `on(sch, sndr)`. In
             // this case, we find the old scheduler by looking in the receiver's
             // environment.
@@ -132,6 +109,19 @@ namespace stdexec {
               starts_on(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)),
               static_cast<decltype(__old)&&>(__old));
           } else {
+            using __not_a_scheduler = stdexec::__not_a_scheduler<
+              _WHAT_<>(_CANNOT_RESTORE_THE_EXECUTION_CONTEXT_AFTER_ON),
+              _WHY_(_THE_PREDECESSOR_SENDER_DOES_NOT_KNOW_THE_SCHEDULER_ON_WHICH_IT_COMPLETES),
+              _WHERE_(_IN_ALGORITHM_, on_t),
+              _WITH_SENDER_<_Child>,
+              _WITH_ENVIRONMENT_<_Env>
+            >;
+
+            // If __is_root_env<_Env> is true, then this sender has no parent, so there is
+            // no need to restore the execution context. We can use the inline scheduler
+            // as the scheduler if __env does not have one.
+            using __end_sched_t = __if_c<__is_root_env<_Env>, inline_scheduler, __not_a_scheduler>;
+
             // This branch handles the case where `on` was called like `sndr | on(sch,
             // clsur)`. In this case, __child is a predecessor sender, so the scheduler we
             // want to restore is the completion scheduler of __child.
