@@ -18,6 +18,7 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/scope_tokens.hpp>
 
 #include <concepts>
 #include <memory>
@@ -25,27 +26,6 @@
 namespace ex = STDEXEC;
 
 namespace {
-  struct null_token {
-    struct assoc {
-      constexpr operator bool() const noexcept {
-        return true;
-      }
-
-      constexpr assoc try_associate() const noexcept {
-        return {};
-      }
-    };
-
-    template <ex::sender Sender>
-    constexpr Sender&& wrap(Sender&& sndr) const noexcept {
-      return std::forward<Sender>(sndr);
-    }
-
-    constexpr assoc try_associate() const noexcept {
-      return {};
-    }
-  };
-
   TEST_CASE("associate returns a sender", "[adaptors][associate]") {
     using snd_t = decltype(ex::associate(ex::just(), null_token{}));
 

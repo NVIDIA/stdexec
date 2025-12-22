@@ -51,6 +51,7 @@
 #include "__detail/__scope_concepts.hpp"                  // IWYU pragma: export
 #include "__detail/__sender_adaptor_closure.hpp"          // IWYU pragma: export
 #include "__detail/__senders.hpp"                         // IWYU pragma: export
+#include "__detail/__spawn.hpp"                           // IWYU pragma: export
 #include "__detail/__split.hpp"                           // IWYU pragma: export
 #include "__detail/__start_detached.hpp"                  // IWYU pragma: export
 #include "__detail/__starts_on.hpp"                       // IWYU pragma: export
