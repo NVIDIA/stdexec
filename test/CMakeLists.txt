@@ -63,6 +63,7 @@ set(stdexec_test_sources
     stdexec/algos/adaptors/test_stop_when.cpp
     stdexec/algos/consumers/test_start_detached.cpp
     stdexec/algos/consumers/test_sync_wait.cpp
+    stdexec/algos/consumers/test_spawn.cpp
     stdexec/algos/other/test_execute.cpp
     stdexec/detail/test_any.cpp
     stdexec/detail/test_completion_signatures.cpp

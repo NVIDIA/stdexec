@@ -51,6 +51,7 @@
 #include "__detail/__scope_concepts.hpp"
 #include "__detail/__sender_adaptor_closure.hpp"
 #include "__detail/__senders.hpp"
+#include "__detail/__spawn.hpp"
 #include "__detail/__split.hpp"
 #include "__detail/__start_detached.hpp"
 #include "__detail/__starts_on.hpp"
