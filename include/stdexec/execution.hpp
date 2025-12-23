@@ -25,6 +25,7 @@
 #include "__detail/__completion_signatures.hpp"           // IWYU pragma: export
 #include "__detail/__connect_awaitable.hpp"               // IWYU pragma: export
 #include "__detail/__continues_on.hpp"                    // IWYU pragma: export
+#include "__detail/__counting_scopes.hpp"                 // IWYU pragma: export
 #include "__detail/__cpo.hpp"                             // IWYU pragma: export
 #include "__detail/__debug.hpp"                           // IWYU pragma: export
 #include "__detail/__domain.hpp"                          // IWYU pragma: export
