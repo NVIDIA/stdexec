@@ -212,7 +212,7 @@ namespace stdexec {
       static constexpr auto get_completion_signatures =
         []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
         -> transform_completion_signatures<
-          __completion_signatures_of_t<__wrap_sender_of_t<_Sender>>,
+          __completion_signatures_of_t<__wrap_sender_of_t<_Sender>, _Env...>,
           completion_signatures<set_stopped_t()>
         > {
         static_assert(sender_expr_for<_Sender, associate_t>);
