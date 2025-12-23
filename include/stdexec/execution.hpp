@@ -26,6 +26,7 @@
 #include "__detail/__completion_signatures.hpp"
 #include "__detail/__connect_awaitable.hpp"
 #include "__detail/__continues_on.hpp"
+#include "__detail/__counting_scopes.hpp"
 #include "__detail/__cpo.hpp"
 #include "__detail/__debug.hpp"
 #include "__detail/__domain.hpp"
