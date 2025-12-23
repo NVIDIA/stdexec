@@ -70,6 +70,7 @@ set(stdexec_test_sources
     stdexec/queries/test_env.cpp
     stdexec/queries/test_get_forward_progress_guarantee.cpp
     stdexec/queries/test_forwarding_queries.cpp
+    stdexec/types/test_counting_scopes.cpp
     )
 
 add_library(common_test_settings INTERFACE)
