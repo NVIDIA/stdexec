@@ -300,8 +300,9 @@ namespace stdexec {
           using __submit_t = __submit_result<__sender_t, __env2_t, _Receiver>;
           constexpr bool __nothrow_store = (__nothrow_decay_copyable<_Args> && ...);
           constexpr bool __nothrow_invoke = __nothrow_callable<_Fun, __decay_t<_Args>&...>;
-          constexpr bool __nothrow_submit = noexcept(__storage_.template emplace<__submit_t>(
-            __declval<__sender_t>(), __declval<__second_rcvr_t>()));
+          constexpr bool __nothrow_submit = noexcept(
+            __storage_
+              .template emplace<__submit_t>(__declval<__sender_t>(), __declval<__second_rcvr_t>()));
           STDEXEC_TRY {
             auto& __tuple = __args_.emplace_from(__mktuple, static_cast<_Args&&>(__args)...);
             auto&& __sender = ::stdexec::__apply(static_cast<_Fun&&>(__fun_), __tuple);
@@ -345,7 +346,8 @@ namespace stdexec {
       using __op_state_variant = __variant_for<
         __monostate,
         ::stdexec::connect_result_t<_Sender, __first_rcvr_t>,
-        __mapply<__submit_datum_for<_Receiver, _Fun, _SetTag, __env2_t>, _Tuples>...>;
+        __mapply<__submit_datum_for<_Receiver, _Fun, _SetTag, __env2_t>, _Tuples>...
+      >;
 
       constexpr explicit __let_state(_Sender&& __sender, _Fun __fun, _Receiver& __r) noexcept(
         __nothrow_connectable<_Sender, __first_rcvr_t>
@@ -568,6 +570,9 @@ namespace stdexec {
       _Fun __fun;
     };
 
+    template <class _Sender, class _Fun>
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __data_t(_Sender, _Fun) -> __data_t<_Sender, _Fun>;
+
     template <typename _Sender>
     using __sender_of = decltype((__declval<__data_of<_Sender>>().__sndr));
     template <typename _Sender>
@@ -633,7 +638,8 @@ namespace stdexec {
           _Child,
           env_of_t<_Receiver>,
           __q<__decayed_tuple>,
-          __mk_let_state>;
+          __mk_let_state
+        >;
         auto&& [__tag, __data] = static_cast<_Sender&&>(__sndr);
         return __let_state_t(
           __forward_like<_Sender>(__data).__sndr, __forward_like<_Sender>(__data).__fun, __rcvr);
