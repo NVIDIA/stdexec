@@ -24,6 +24,7 @@
 #include "__receivers.hpp"
 #include "__scope_concepts.hpp"
 #include "__senders_core.hpp"
+#include "__spawn_common.hpp"
 #include "__type_traits.hpp"
 #include "__write_env.hpp"
 
@@ -98,53 +99,6 @@ namespace stdexec {
       __assoc_t __assoc_;
     };
 
-    struct __choose_alloc_fn {
-      template <class _Env, class _SenderEnv>
-        requires __callable<get_allocator_t, _Env>
-      auto operator()(const _Env& __env, const _SenderEnv&) const {
-        return get_allocator(__env);
-      }
-
-      template <class _Env, class _SenderEnv>
-        requires(!__callable<get_allocator_t, const _Env&>)
-             && __callable<get_allocator_t, const _SenderEnv&>
-      auto operator()(const _Env&, const _SenderEnv& __env) const {
-        return get_allocator(__env);
-      }
-
-      template <class _Env, class _SenderEnv>
-        requires(!__callable<get_allocator_t, const _Env&>)
-             && (!__callable<get_allocator_t, const _SenderEnv&>)
-      std::allocator<void> operator()(const _Env&, const _SenderEnv&) const {
-        return std::allocator<void>();
-      }
-    };
-
-    inline constexpr __choose_alloc_fn __choose_alloc{};
-
-    struct __choose_senv_fn {
-      template <class _Env, class _SenderEnv>
-        requires __callable<get_allocator_t, const _Env&>
-      const _Env& operator()(const _Env& __env, const _SenderEnv&) const {
-        return __env;
-      }
-
-      template <class _Env, class _SenderEnv>
-        requires(!__callable<get_allocator_t, const _Env&>)
-             && __callable<get_allocator_t, const _SenderEnv&>
-      auto operator()(const _Env& __env, const _SenderEnv& __sndrEnv) const {
-        return __env::__join(prop(get_allocator, get_allocator(__sndrEnv)), __env);
-      }
-
-      template <class _Env, class _SenderEnv>
-        requires(!__callable<get_allocator_t, const _Env&>)
-             && (!__callable<get_allocator_t, const _SenderEnv&>)
-      const _Env& operator()(const _Env& __env, const _SenderEnv&) const {
-        return __env;
-      }
-    };
-
-    inline constexpr __choose_senv_fn __choose_senv{};
 
     struct spawn_t {
       template <sender _Sender, scope_token _Token>
@@ -157,15 +111,16 @@ namespace stdexec {
         auto wrappedSender = __tkn.wrap(static_cast<_Sender&&>(__sndr));
         auto sndrEnv = get_env(wrappedSender);
 
-        using raw_alloc = decltype(__choose_alloc(__env, sndrEnv));
+        using raw_alloc = decltype(__spawn_common::__choose_alloc(__env, sndrEnv));
 
-        auto senderWithEnv = write_env(std::move(wrappedSender), __choose_senv(__env, sndrEnv));
+        auto senderWithEnv =
+          write_env(std::move(wrappedSender), __spawn_common::__choose_senv(__env, sndrEnv));
 
         using spawn_state_t =
           __spawn_state<raw_alloc, std::remove_cvref_t<_Token>, decltype(senderWithEnv)>;
 
         using traits = std::allocator_traits<raw_alloc>::template rebind_traits<spawn_state_t>;
-        typename traits::allocator_type alloc(__choose_alloc(__env, sndrEnv));
+        typename traits::allocator_type alloc(__spawn_common::__choose_alloc(__env, sndrEnv));
 
         auto* op = traits::allocate(alloc, 1);
 
