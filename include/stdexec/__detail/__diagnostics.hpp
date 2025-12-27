@@ -206,22 +206,22 @@ namespace stdexec {
     using __stopped_types = __dependent_sender_error;
   };
 
-  template <class _What, class... _With>
+  template <class... _What>
   struct __not_a_sender {
     using sender_concept = sender_t;
 
     template <class Self>
     constexpr auto get_completion_signatures(Self&&) const noexcept {
-      return __mexception<_What, _With...>();
+      return __mexception<_What...>();
     }
   };
 
-  template <class _What, class... _With>
+  template <class... _What>
   struct __not_a_scheduler {
     using scheduler_concept = scheduler_t;
 
     auto schedule() noexcept {
-      return __not_a_sender<_What, _With...>{};
+      return __not_a_sender<_What...>{};
     }
 
     constexpr bool operator==(__not_a_scheduler) const noexcept {
