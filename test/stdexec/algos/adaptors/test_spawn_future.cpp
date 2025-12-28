@@ -16,10 +16,10 @@
  */
 
 #include <catch2/catch.hpp>
-#include <stdexec/execution.hpp>
-#include <test_common/scope_tokens.hpp>
-#include <test_common/scope_helpers.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <stdexec/execution.hpp>
+#include <test_common/scope_helpers.hpp>
+#include <test_common/scope_tokens.hpp>
 
 #include <array>
 #include <atomic>
@@ -33,21 +33,22 @@ namespace {
   TEST_CASE("future completion signature calculation works", "[adaptors][spawn_future]") {
     {
       using expected = ex::completion_signatures<ex::set_stopped_t()>;
-      using actual = ex::__spawn_future::__future_completions_t<>;
+      using actual = ex::__spawn_future::__future_completions_t<ex::env<>>;
 
       STATIC_REQUIRE(actual{} == expected{});
     }
 
     {
       using expected = ex::completion_signatures<ex::set_stopped_t(), ex::set_value_t()>;
-      using actual = ex::__spawn_future::__future_completions_t<ex::set_value_t()>;
+      using actual = ex::__spawn_future::__future_completions_t<ex::env<>, ex::set_value_t()>;
 
       STATIC_REQUIRE(actual{} == expected{});
     }
 
     {
       using expected = ex::completion_signatures<ex::set_stopped_t(), ex::set_value_t(std::string)>;
-      using actual = ex::__spawn_future::__future_completions_t<ex::set_value_t(std::string)>;
+      using actual =
+        ex::__spawn_future::__future_completions_t<ex::env<>, ex::set_value_t(std::string)>;
 
       STATIC_REQUIRE(actual{} == expected{});
     }
@@ -59,7 +60,7 @@ namespace {
         ex::set_value_t(std::string)
       >;
       using actual =
-        ex::__spawn_future::__future_completions_t<ex::set_value_t(const std::string&)>;
+        ex::__spawn_future::__future_completions_t<ex::env<>, ex::set_value_t(const std::string&)>;
 
       STATIC_REQUIRE(actual{} == expected{});
     }

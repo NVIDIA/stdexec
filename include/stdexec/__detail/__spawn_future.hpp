@@ -49,8 +49,7 @@ namespace STDEXEC {
     struct __future_sig_fns<_Tag(_Args...)> {
       using __tuple = __decayed_tuple<_Tag, _Args...>;
 
-      static constexpr bool __is_nothrow_storable =
-        (__nothrow_constructible_from<__decay_t<_Args>, _Args> && ...);
+      static constexpr bool __is_nothrow_storable = __nothrow_decay_copyable<_Args...>;
 
       using __decayed_sig = _Tag(__decay_t<_Args>...);
     };
@@ -88,9 +87,36 @@ namespace STDEXEC {
       // [exec.spawn.future] paragraphs 4.1 and 4.2
       __future_variant<__sigs_are_nothrow_storable<_Sigs...>, _Sigs...>::type;
 
-    template <bool _NothrowStorable, class... _Sigs>
+    struct __try_cancelable {
+      __try_cancelable() = default;
+
+      __try_cancelable(__try_cancelable&&) = delete;
+
+      virtual void __try_cancel() noexcept = 0;
+
+     protected:
+      ~__try_cancelable() = default;
+    };
+
+    // this is the stop callback registered by a future (i.e. the result of spawn_future) when it is
+    // connected and started; once registered, it ensures that stop requests delivered to the started
+    // future are forwarded into the spawned work
+    struct __future_stop_callback {
+      __try_cancelable* __self_;
+
+      void operator()() noexcept {
+        __self_->__try_cancel();
+      }
+    };
+
+    template <bool _NothrowSyncWork, class... _Sigs>
     struct __future_completions {
-      // this case handles _NothrowStorable == true
+      // this case handles _NothrowSyncWork == true
+      // this case is applicable when both conditions are true:
+      //  - the results of all possible completions can be decay-copied into the decayed-tuple that
+      //    stores the results for later consumption by the future; and
+      //  - the stop token provided by the future's receiver can no-throw-construct a stop callback
+      //    in the future's operation state
       using type =
         __mcall<__munique<__qq<completion_signatures>>, set_stopped_t(), __decayed_sig<_Sigs>...>;
     };
@@ -105,18 +131,28 @@ namespace STDEXEC {
       >;
     };
 
-    template <class... _Sigs>
-    using __future_completions_t =
-      __future_completions<__sigs_are_nothrow_storable<_Sigs...>, _Sigs...>::type;
+    template <class _Env>
+    inline constexpr bool __stop_callback_is_nothrow_constructible = __nothrow_constructible_from<
+      stop_callback_for_t<stop_token_of_t<_Env>, __future_stop_callback>,
+      stop_token_of_t<_Env>,
+      __future_stop_callback
+    >;
+
+    template <class _Env, class... _Sigs>
+    using __future_completions_t = __future_completions<
+      __stop_callback_is_nothrow_constructible<_Env> && __sigs_are_nothrow_storable<_Sigs...>,
+      _Sigs...
+    >::type;
 
     // [exec.spawn.future] paragraph 3
     template <class _Completions>
     struct __spawn_future_state_base;
 
     template <class... _Sigs>
-    struct __spawn_future_state_base<completion_signatures<_Sigs...>> {
+    struct __spawn_future_state_base<completion_signatures<_Sigs...>> : __try_cancelable {
       using __variant_t = __future_variant_t<_Sigs...>;
-      using __completions_t = __future_completions_t<_Sigs...>;
+      template <class _Env>
+      using __completions_t = __future_completions_t<_Env, _Sigs...>;
 
       __variant_t __result_{__no_init};
 
@@ -124,7 +160,12 @@ namespace STDEXEC {
         __result_.template emplace<std::monostate>();
       }
 
+      __spawn_future_state_base(__spawn_future_state_base&&) = delete;
+
       virtual void __complete() noexcept = 0;
+
+     protected:
+      ~__spawn_future_state_base() = default;
     };
 
     // [exec.spawn.future] paragraph 5
@@ -185,10 +226,10 @@ namespace STDEXEC {
           //
           //     completion_signatures_of_t<__future_spawned_sender<_Sender, _Env>, _Env>
           //
-          // but that's hard to justify--the future-spawned-sender will be connected to a receiver with
-          // an empty environment after all. This code works and seems sensible (neither write_env nor
-          // __stop_when change the completion signatures of their children, other than write_env
-          // modifying the environment for its child, which is exactly what we want).
+          // but that's hard to justify--the future-spawned-sender will be connected to a receiver
+          // with an empty environment after all. This code works and seems sensible (neither
+          // write_env nor __stop_when change the completion signatures of their children, other than
+          // write_env modifying the environment for its child, which is exactly what we want).
           completion_signatures_of_t<_Sender, _Env>
         > {
       using __sigs_t =
@@ -198,6 +239,8 @@ namespace STDEXEC {
       using __receiver_t = __spawn_future_receiver<__sigs_t>;
 
       using __op_t = connect_result_t<__future_spawned_sender<_Sender, _Env>, __receiver_t>;
+
+      using __base = __spawn_future_state_base<completion_signatures_of_t<_Sender, _Env>>;
 
       __spawn_future_state(_Alloc __alloc, _Sender&& __sndr, _Token __token, _Env __env)
         : __alloc_(std::move(__alloc))
@@ -216,80 +259,271 @@ namespace STDEXEC {
       }
 
       void __complete() noexcept override {
-        void* receiver = nullptr;
-        if (__registeredReceiver_
-              .compare_exchange_strong(receiver, this, __std::memory_order_acq_rel)) {
-          // we completed before a receiver was registered
+        // Consider: it'd be nice to eagerly destruct __op_ here; to do that, we'd need to store
+        //           it in an anonymous union, use a scope-guard in the constructor to ensure it
+        //           gets destructed in the event that try_associate() throws, and manually destroy
+        //           it here *before* updating __registeredReceiver_. I'm not sure it would be to
+        //           spec to do that, though.
+
+        // We need acquire-release semantics here to ensure correct synchronization whether we
+        // arrived before or after the consumer. In the case we finish first, we need to store-release
+        // so the consumer can see what we've written; in the case we finish second, we need to
+        // load-acquire so we can see what the consumer has written.
+        void* sentinel = __registeredReceiver_.exchange(this, __std::memory_order_acq_rel);
+
+        if (sentinel == nullptr) { // NOLINT(bugprone-branch-clone)
+          // The producer side has completed first and we've updated __registeredReceiver_ with
+          // (this) to mark things as such; the consumer side is responsible for all further
+          // actions.
           return;
+        } else if (sentinel == this) {
+          // There are two possible histories here; the consumer side either
+          //  1. abandoned the operation without ever starting, or
+          //  2. was started but received a stop request and successfully cancelled before we
+          //     could produce our value.
+          //
+          // In either case, the producer is "too late" and there's nothing to do but clean up.
+          __destroy();
+        } else if (sentinel == (this + 1)) {
+          // The consumer side has been started and a stop request was received before __consume
+          // could be invoked; the producer has also completed before __consume could be invoked
+          // and we've left (this) in place of (this + 1) so, when __consume gets around to
+          // observing __registeredReceiver_, it'll see that the producer has finished and complete
+          // the receiver with the value we produced. This state is similar to the producer having
+          // finished first; by overwriting __registeredReceiver_ with (this), we've erased the
+          // fact that the stop request happened to come in before we did.
+          return;
+        } else {
+          // The producer finished after the consumer register a receiver for us to complete. There
+          // may be an incoming or outstanding stop request that causes __try_start to race with us
+          // but, if so, we don't need to worry about it--invoking __callback_ like this will
+          // eagerly destroy the stop callback, which will either prevent __try_cancel from being
+          // invoked, or will block until it returns. In either case, our call to __callback_ has
+          // "won" and __try_cancel will no-op.
+          __callback_(this, sentinel);
+
+          // Having completed the receiver, we are responsible for cleaning up the allocated state.
+          __destroy();
         }
-
-        assert(receiver != nullptr);
-        // one of __consume or __abandon must have set __callback_ before winning
-        // the race to set __registeredReceiver_
-        assert(__callback_ != nullptr);
-
-        // either __consume registered receiver to be completed by us, or __abandon
-        // has finished invoking __stopSource.request_stop() and we're about to invoke
-        // __destroy through the callback it registered
-        //
-        // we could tell which we're about to do by comparing `receiver` to `this`; if
-        // they're equal then we're about to invoke destroy, otherwise, we're about to
-        // undo the type-erasure of receiver and pass it to __do_consume. we don't check
-        // on the assumption that it's better to do an unconditional indirect call than
-        // a conditional one
-        __callback_(this, receiver);
       }
 
-      template <receiver _Rcvr>
+      // NOTE: _Rcvr is unconstrained because the thing we pass doesn't satisfy receiver
+      template <class _Rcvr>
       void __consume(_Rcvr& __rcvr) noexcept {
+        // Write this before synchronizing with the producer, below.
         __callback_ = [](__spawn_future_state* __self, void* __ptr) noexcept {
           auto& __rcvr = *static_cast<_Rcvr*>(__ptr);
-          __self->__do_consume(__rcvr);
+          if (__self != nullptr) {
+            __self->__do_consume(__rcvr);
+          } else {
+            STDEXEC::set_stopped(std::move(__rcvr));
+          }
         };
 
         void* sentinel = nullptr;
-
         if (__registeredReceiver_.compare_exchange_strong(
-              sentinel, std::addressof(__rcvr), __std::memory_order_acq_rel)) {
+              sentinel,
+              std::addressof(__rcvr),
+              // We need store-release on success to ensure that the future completion of the
+              // producer can see the callback we wrote into __callback_, and we need load-acquire
+              // on failure in case we're about to observe that the producer has already finished
+              // so we can see the result it produced. The success order must be stronger than the
+              // failure order so success has to be acquire-release.
+              __std::memory_order_acq_rel,
+              __std::memory_order_acquire)) {
+          // Since our CAS succeeded, we can conclude that we observed a null __registeredReceiver_
+          // and successfully updated it to point to the receiver. That means the consumer has
+          // successfully registered a receiver and it's up to the producer to complete it when the
+          // result is ready; alternatively, a stop request may arrive leading __try_cancel to try
+          // to complete us eagerly with set_stopped. In either case, __try_cancel and __complete
+          // will negotiate how to complete the future and we have nothing left to do.
           return;
         }
 
-        // if the CAS failed then __complete has already "registered" the sentinel value
-        assert(sentinel == this);
+        if (sentinel == (this + 1)) { // NOTE: we didn't update __registeredReceiver_
+          // __try_cancel ran before both __complete and __consume; now we need to negotiate with
+          // __complete to decide whether it finished in time to consume its output.
+          //
+          // We need acquire-release semantics here. If we succeed in abandoning the operation then
+          // the producer will be responsible for invoking __destroy, which means it needs to see
+          // the write to __callback_, which requires a store-release. IF we fail to abandon the
+          // operation then that means the producer finished in time for us to consume its result,
+          // which means we need a load-acquire to consume it properly.
+          sentinel = __registeredReceiver_.exchange(this, __std::memory_order_acq_rel);
+        }
 
-        __do_consume(__rcvr);
+        if (sentinel == this) {
+          // Either the producer completed before we CAS'd, or it snuck in and completed between
+          // our CAS and our exchange; in either case, we ought to consume its result.
+          __do_consume(__rcvr);
+          __destroy();
+        } else {
+          assert(sentinel == (this + 1));
+          // Our exchange observed the same (this + 1) that the CAS did, which means that the producer
+          // didn't finish in time; also, by setting __registeredReceiver_ to (this), we've marked the
+          // operation as "ready for destruction" by the producer so the current object may already be
+          // destroyed. We must complete with set_stopped.
+          STDEXEC::set_stopped(std::move(__rcvr));
+        }
+      }
+
+      void __try_cancel() noexcept override {
+        // Consider: there's a sense in which we only need to invoke request_stop if we've arrived
+        //           here before the producer has invoked __complete so I wonder whether it's possible
+        //           to avoid invoking request_stop when it's unnecessary. It might be.
+        //
+        //           We *must* invoke request_stop before returning from the function if our CAS
+        //           succeeds (because we arrived before either __complete or __consume), or if the
+        //           CAS fails and reports that the consumer finished first and the later exchange
+        //           observes that the producer still hasn't finished.
+        //
+        //           The most obvious risk to deferring a call to request_stop is that the stop source
+        //           might be destroyed before our invocation. There's also a risk that we get our
+        //           memory ordering wrong; I've learned through analyzing TSAN failures that
+        //           request_stop constitutes a store-release that must be load-acquired before the
+        //           destructor runs so we need to be careful about synchronizing with the final
+        //           owner of this object.
+        //
+        //           It might be safe to invoke request_stop before the early return when the CAS
+        //           succeeds and between a failed CAS and the later exchange. In the first case
+        //           (after a successful CAS), the final owner of the object will be the slower of
+        //           the producer or consumer, which will complete the receiver before destroying the
+        //           operation. Completing the receiver will entail destroying the stop callback that
+        //           has invoked us, which will synchronize with us. In the second case (after a
+        //           failed CAS and before the subsequent exchange), we know that the consumer has
+        //           already finished and it's the producer that will destroy the operation. We'll
+        //           synchronize with the producer either by invoking a store-release before
+        //           completing the receiver, or the producer will complete the receiver and destroy
+        //           the stop callback.
+        //
+        //           Upon further reflection, the above analysis is flawed: invoking request_stop
+        //           after a successful CAS would lead to data races when the consumer successfully
+        //           abandons the operation (i.e. it observes the (this + 1) value and successfully
+        //           replaces it with (this) before completing the receiver with set_stopped). In
+        //           that scenario, the consumer thread would be responsible for destroying the stop
+        //           callback, not the producer thread, and there would be no other store-release
+        //           to publish the writes from request_stop to the producer thread before it runs
+        //           the operation's destructor.
+        //
+        //           Perhaps we can salvage the effort by deferring the request_stop to __complete.
+        //           When our CAS succeeds, we know that we've run before either of the producer or
+        //           consumer, which means a call to __consume is still in the future. If that call
+        //           observes (this + 1) then we know that both __try_cancel and __consume have run
+        //           before __complete, and the consumer is going to try to abandon the producer's
+        //           work. It would be sensible for the consumer to issue the stop request before it
+        //           performs the exchange(this, acq_rel) that is its attempt to so signal and the
+        //           store-release entailed by that exchange would synchronize with the producer as
+        //           required.
+
+        // It feels wasteful to do this when we might not need to but, once we update
+        // __registeredReceiver_ to (this + 1), there's a chance the current object
+        // will be destroyed so it's not safe to defer this.
+        //
+        // This operation constitutes a write that must be published to whichever thread invokes
+        // __destroy.
+        __stopSource_.request_stop();
+
+        // If neither __complete nor __consume has been invoked then mark us as having stop requested.
+        // This only succeeds if stop is requested very early in the process so it's quite unlikely.
+        void* sentinel = nullptr;
+        if (__registeredReceiver_.compare_exchange_strong(
+              sentinel,
+              this + 1,
+              // We need to store-release on success so that whichever of the consumer or producer
+              // ends up invoking __destroy sees the write we performed in request_stop(); we need
+              // load-acquire on failure so we can safely read the value of __callback_ that may have
+              // been written by the consumer.
+              __std::memory_order_acq_rel,
+              __std::memory_order_acquire)) {
+          // We succeeded, meaning that __registeredReceiver_ was nullptr on entry, which signals
+          // that __try_cancel ran before either of __consume or __complete. Leaving (this + 1)
+          // as the sentinel will allow the two forthcoming functions to negotiate how to
+          // complete the overall operation.
+          return;
+        }
+
+        if (sentinel == this) {
+          // __complete has already finished and left a value behind; we should let __consume
+          // consume it.
+          //
+          // We would normally need to perform a store-release here to ensure the consumer sees
+          // the write we performed by invoking request_stop, but we're running inside a stop
+          // callback that the consumer will destroy before destroying this object and destroying
+          // a stop callback is a synchronizing operation so we're good.
+          return;
+        }
+
+        // __consume has registered a receiver and sentinel is its address; the producer may invoke
+        // __complete at any moment, which would ordinarily risk destroying the current object out
+        // from under us but, because we're running in a stop callback, the completion path will
+        // block until we're done before doing that so we're still safe.
+        //
+        // Do two things:
+        //  1. store a copy of __callback_ on the stack so we can use it after the operation is
+        //     destroyed, and
+        //  2. try to mark the operation as abandoned so that the producer can take clean-up
+        //     responsibility.
+
+        const auto receiver = sentinel;
+        auto callback = __callback_;
+
+        // We have already synchronized with the consumer by performing a load-acquire above (and
+        // we know it was the *consumer* we synchronized with because sentinel contains the address
+        // of the receiver it registered), but we haven't yet synchronized with the producer.
+        //
+        // There are two possible futures here:
+        //  1. we mark the operation as abandoned before the producer finishes, or
+        //  2. the producer finishes before we can abandon the operation.
+        //
+        // In the first case, we can synchronize with the producer by performing a store-release on
+        // __registeredReceiver_; when the producer completes, it will load-acquire that value and
+        // clean up.
+        //
+        // In the second case, the producere will complete the registered receiver, which will have
+        // the side effect of destroying the stop callback that we're running inside, which is a
+        // synchronization point with us.
+        //
+        // So, we store-release here in case we're in case 1.
+        sentinel = __registeredReceiver_.exchange(this, __std::memory_order_release);
+
+        if (sentinel == receiver) {
+          // __registeredReceiver_ still contained the value we observed during the CAS, which means
+          // the producer still hadn't updated it to contain (this). This means we succeeded in
+          // marking the operation as abandonded and the producer will destroy it when it completes
+          // (which could happen at any moment); we need to complete the consumer with set_stopped. We
+          // invoke callback (the copy of __callback_ that we put on the stack) with a null
+          // self-pointer to signal that it ought to invoke set_stopped(std::move(*receiver)) without
+          // touching the operation.
+          callback(nullptr, receiver);
+        } else {
+          assert(sentinel == this);
+          // The producer beat us to the punch; it's busy trying to complete and is about to
+          // destroy the operation. Bail out.
+        }
       }
 
       void __abandon() noexcept {
-        // TODO: is relaxed OK when the loaded value isn't nullptr?
-        auto* sentinel = __registeredReceiver_.load(__std::memory_order_relaxed);
+        // We're about to mark the consuming side as complete, at which point the producing side is
+        // free to destroy this object so we can't "optimize" by deferring this stop request
+        __stopSource_.request_stop();
+
+        // We need store-release semantics if we happen to be completing the consumer side before
+        // the producer side has finished because we need to publish the writes committed in the
+        // above call to request_stop for the destructor not to commit a data race. We need
+        // load-acquire semantics if we happen to be second to consume the writes done by the
+        // producer so the destructor can destroy that data without committing a data race. In
+        // combination, we need acquire-release semantics here.
+        void* sentinel = __registeredReceiver_.exchange(this, __std::memory_order_acq_rel);
 
         if (sentinel == nullptr) {
-          // __complete hasn't happened yet
-          __stopSource_.request_stop();
-          __callback_ = [](
-                          __spawn_future_state* __self,
-                          [[maybe_unused]]
-                          void* __sentinel) noexcept {
-            assert(__sentinel == __self);
-            __self->__destroy();
-          };
-
-          if (__registeredReceiver_
-                .compare_exchange_strong(sentinel, this, __std::memory_order_acq_rel)) {
-            // callback registered for later
-            return;
-          }
+          // The producer hadn't finished by the time we marked the consumer as done so we've handed
+          // over clean-up responsibility and have nothing else to do.
+          return;
+        } else {
+          assert(sentinel == this);
+          // The producer side completed before we did so we're responsible for clean-up.
+          __destroy();
         }
-
-        // __complete happened, possibly between the load and CAS
-
-        // the opstate unconditionally calls __abandon, possibly after calling __consume,
-        // so the only thing we know about sentinel here is that it's not nullptr; it could
-        // be either `this` or the address of the receiver that was passed to __consume
-        assert(sentinel != nullptr);
-
-        __destroy();
       }
 
      private:
@@ -299,15 +533,23 @@ namespace STDEXEC {
       inplace_stop_source __stopSource_;
       __op_t __op_;
       __assoc_t __assoc_;
-      // type-erased receiver; three possible values:
+      // Type-erased receiver. Several possible values:
       //   1. `nullptr` means "unset"
-      //   2. `this` means either __complete has been invoked or __abandon has been invoked
-      //   3. any other value means __consume has "registered" its receiver to be completed
+      //   2. `this` means either the producer or consumer is done with the operation and the
+      //      other (whichever hasn't completed yet) is responsible for clean-up
+      //   3. `this` + 1 means that the future has received a stop request and __try_cancel has
+      //      marked the operation so that __complete and __consume can negotiate how to complete
+      //   4. any other value means __consume has "registered" its receiver to be completed
       //      by __complete when it is invoked
       __std::atomic<void*> __registeredReceiver_{nullptr};
-      // type-erased completion callback; the void* will receive the address of the
-      // receiver if we're completing "for real" or `this` if __complete is responsible
-      // for invoking __destroy because __abandon was invoked before __complete was
+      // Type-erased completion callback.
+      //
+      // The void* will receive the address of the receiver, which will need to have its
+      // type unerased. The __spawn_future_state* will receive either `this`, indicating the
+      // callback ought to complete the receive with the value of __result_, which can be
+      // retrieved through the self-pointer, or nullptr, indicating that the receiver should
+      // be completed with set_stopped because the future received and processed a stop request
+      // before the producer could finish.
       void (*__callback_)(__spawn_future_state*, void*) noexcept;
 
       void __destroy() noexcept {
@@ -323,7 +565,8 @@ namespace STDEXEC {
         }
       }
 
-      void __do_consume(receiver auto& __rcvr) noexcept {
+      // NOTE: __rcvr's type is unconstrained because the thing we pass doesn't satisfy receiver
+      void __do_consume(auto& __rcvr) noexcept {
         __visit(
           [&__rcvr](auto&& __tuple) noexcept {
             if constexpr (!__same_as<std::remove_reference_t<decltype(__tuple)>, std::monostate>) {
@@ -390,26 +633,115 @@ namespace STDEXEC {
       }
     };
 
-    struct __spawn_future_impl : __sexpr_defaults {
-      template <class _Sender>
-      using __completions_t =
-        __data_of<std::remove_cvref_t<_Sender>>::element_type::__completions_t;
+    template <class _Sender>
+    struct __future_operation_base {
+      // __data_of<_Sender> is a unique_ptr specialization
+      using __unique_ptr_t = __data_of<std::remove_cvref_t<_Sender>>;
 
-      template <class _Sender, class... _Env>
+      explicit __future_operation_base(__unique_ptr_t&& __future) noexcept
+        : __future_(std::move(__future)) {
+      }
+
+     protected:
+      __unique_ptr_t __future_;
+    };
+
+    template <class _Sender, class _Receiver>
+    struct __future_operation : __future_operation_base<_Sender> {
+      using __base = __future_operation_base<_Sender>;
+
+      __future_operation(__base::__unique_ptr_t&& __future, _Receiver __rcvr) noexcept
+        : __future_operation_base<_Sender>(std::move(__future))
+        , __rcvr_(std::move(__rcvr)) {
+      }
+
+      ~__future_operation() {
+      }
+
+      void __run() noexcept(__stop_callback_is_nothrow_constructible<env_of_t<_Receiver>>) {
+        // this might throw
+        std::construct_at(
+          &__callback_,
+          STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_)),
+          __future_stop_callback{this->__future_.get()});
+
+        // this is no-throw
+        this->__future_.release()->__consume(__innerRcvr_);
+      }
+
+      _Receiver __rcvr_;
+
+     private:
+      struct __receiver {
+        using receiver_concept = STDEXEC::receiver_t;
+
+        template <class... _Ts>
+        void set_value(_Ts&&... __ts) && noexcept {
+          __op_->__complete<STDEXEC::set_value_t>(static_cast<_Ts&&>(__ts)...);
+        }
+
+        template <class _E>
+        void set_error(_E&& __e) && noexcept {
+          __op_->__complete<STDEXEC::set_error_t>(static_cast<_E&&>(__e));
+        }
+
+        void set_stopped() && noexcept {
+          __op_->__complete<STDEXEC::set_stopped_t>();
+        }
+
+        __future_operation* __op_;
+      };
+
+      __receiver __innerRcvr_{this};
+      // __callback_ is left unconstructed until __run() is called; if the constructor invocation
+      // throws then __callback_ is never constructed or destructed at all, otherwise, its destructor
+      // is invoked when the receiver contract is completed in __complete, below.
+      union {
+        typename stop_token_of_t<env_of_t<_Receiver>>::template callback_type<__future_stop_callback>
+          __callback_;
+      };
+
+      template <class _CPO, class... _Ts>
+      void __complete(_Ts&&... __ts) noexcept {
+        std::destroy_at(&__callback_);
+        _CPO{}(std::move(__rcvr_), static_cast<_Ts&&>(__ts)...);
+      }
+    };
+
+    struct __spawn_future_impl : __sexpr_defaults {
+      // __data_of<_Sender> is a unique_ptr specialization
+      template <class _Sender>
+      using __unique_ptr_t = __data_of<std::remove_cvref_t<_Sender>>;
+
+      template <class _Sender>
+      using __spawn_future_state_t = __unique_ptr_t<_Sender>::element_type;
+
+      template <class _Sender, class _Env>
+      using __completions_t = __spawn_future_state_t<_Sender>::template __completions_t<_Env>;
+
+      template <class _Sender, class _Env>
       static consteval auto get_completion_signatures() //
-        -> __completions_t<_Sender> {
+        -> __completions_t<_Sender, _Env> {
         return {};
       };
 
       static constexpr auto get_state =
-        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept /* TODO */ {
-          auto& [__tag, __future] = __sndr;
-          return std::pair{std::move(__future), std::move(__rcvr)};
-        };
+        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept /* TODO */
+        -> __future_operation<std::remove_cvref_t<_Sender>, _Receiver> {
+        auto& [_, __future] = __sndr;
+        return {std::move(__future), std::move(__rcvr)};
+      };
 
       static constexpr auto start = [](auto& __state) noexcept {
-        auto& [__future, __rcvr] = __state;
-        __future->__consume(__rcvr);
+        constexpr bool nothrow = noexcept(__state.__run());
+
+        try {
+          __state.__run();
+        } catch (...) {
+          if constexpr (!nothrow) {
+            STDEXEC::set_error(std::move(__state.__rcvr_), std::current_exception());
+          }
+        }
       };
     };
   } // namespace __spawn_future
