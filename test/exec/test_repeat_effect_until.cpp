@@ -189,11 +189,23 @@ namespace {
     REQUIRE(called);
   }
 
+  template <typename Receiver>
+  struct no_set_value_receiver : Receiver {
+    explicit no_set_value_receiver(Receiver r) noexcept
+      : Receiver(std::move(r)) {
+    }
+    void set_value() && noexcept = delete;
+  };
+
   TEST_CASE("repeat_effect repeats until an error is encountered", "[adaptors][repeat_effect]") {
     int counter = 0;
     ex::sender auto snd = exec::repeat_effect(
       succeed_n_sender(10, ex::set_error, std::string("error")) | ex::then([&] { ++counter; }));
-    auto op = ex::connect(std::move(snd), expect_error_receiver{std::string("error")});
+    static_assert(!all_contained_in<
+                  ex::completion_signatures<ex::set_value_t()>,
+                  ex::completion_signatures_of_t<decltype(snd), ex::env<>>>);
+    auto op = ex::connect(
+      std::move(snd), no_set_value_receiver(expect_error_receiver{std::string("error")}));
     ex::start(op);
     REQUIRE(counter == 10);
   }
@@ -202,7 +214,7 @@ namespace {
     int counter = 0;
     ex::sender auto snd = exec::repeat_effect(
       succeed_n_sender(10, ex::set_stopped) | ex::then([&] { ++counter; }));
-    auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
+    auto op = ex::connect(std::move(snd), no_set_value_receiver(expect_stopped_receiver{}));
     ex::start(op);
     REQUIRE(counter == 10);
   }
