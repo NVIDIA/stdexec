@@ -1018,4 +1018,19 @@ namespace {
     CHECK(ctx.stopped());
   }
 
+  TEST_CASE(
+    "Asio operations which declare completion by value but send a mutable lvalue work",
+    "[asioexec][completion_token]") {
+    const auto initiating_function = [](auto&& token) {
+      return asio_impl::async_initiate<decltype(token), void(int)>(
+        [](auto&& h) {
+          int i = 5;
+          std::forward<decltype(h)>(h)(i);
+        },
+        token);
+    };
+    auto op = ::stdexec::connect(initiating_function(completion_token), expect_value_receiver{5});
+    ::stdexec::start(op);
+  }
+
 } // namespace
