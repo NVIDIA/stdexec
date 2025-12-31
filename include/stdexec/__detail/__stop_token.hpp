@@ -20,6 +20,8 @@
 
 #include "__concepts.hpp"
 
+#include <stop_token>
+
 namespace stdexec {
   namespace __stok {
     template <template <class> class>
@@ -27,7 +29,16 @@ namespace stdexec {
   } // namespace __stok
 
   template <class _Token, class _Callback>
-  using stop_callback_for_t = _Token::template callback_type<_Callback>;
+  struct __stop_callback_for {
+    using __t = _Token::template callback_type<_Callback>;
+  };
+  template <class _Callback>
+  struct __stop_callback_for<std::stop_token, _Callback> {
+    using __t = std::stop_callback<_Callback>;
+  };
+
+  template <class _Token, class _Callback>
+  using stop_callback_for_t = __stop_callback_for<_Token, _Callback>::__t;
 
   template <class _Token>
   concept stoppable_token =
@@ -35,11 +46,14 @@ namespace stdexec {
     && equality_comparable<_Token> && requires(const _Token& __token) {
          { __token.stop_requested() } noexcept -> __boolean_testable_;
          { __token.stop_possible() } noexcept -> __boolean_testable_;
-    // workaround ICE in appleclang 13.1
+       }
+  // workaround ICE in appleclang 13.1
 #if !defined(__clang__)
+       && (__same_as<_Token, std::stop_token> || requires {
          typename __stok::__check_type_alias_exists<_Token::template callback_type>;
+       })
 #endif
-       };
+      ;
 
   template <class _Token, typename _Callback, typename _Initializer = _Callback>
   concept stoppable_token_for =
