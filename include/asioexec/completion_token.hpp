@@ -92,7 +92,7 @@ namespace asioexec {
         at_least_as_qualified_v<std::remove_reference_t<T>, std::remove_reference_t<U>>
         && (
           //  Reference type must agree except...
-          (std::is_lvalue_reference_v<T> == std::is_lvalue_reference_v<T>) ||
+          (std::is_lvalue_reference_v<T> == std::is_lvalue_reference_v<U>) ||
           //  ...special rules for const& which allows rvalues to bind thereto
           (std::is_lvalue_reference_v<T> && std::is_const_v<std::remove_reference_t<T>>) ))
 #endif
