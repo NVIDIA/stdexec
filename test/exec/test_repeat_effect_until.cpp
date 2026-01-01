@@ -26,7 +26,9 @@
 
 #include <catch2/catch.hpp>
 
+#include <limits>
 #include <memory>
+#include <stdexcept>
 #include <utility>
 
 namespace ex = stdexec;
@@ -37,7 +39,8 @@ namespace {
     using sender_concept = ex::sender_t;
     using __t = boolean_sender;
     using __id = boolean_sender;
-    using completion_signatures = ex::completion_signatures<ex::set_value_t(bool)>;
+    using completion_signatures =
+      ex::completion_signatures<ex::set_value_t(bool), ex::set_error_t(const int&)>;
 
     template <class Receiver>
     struct operation {
@@ -88,6 +91,12 @@ namespace {
 
   TEST_CASE("simple example for repeat_effect_until", "[adaptors][repeat_effect_until]") {
     ex::sender auto snd = exec::repeat_effect_until(boolean_sender{});
+    static_assert(all_contained_in<
+                  ex::completion_signatures<ex::set_error_t(const int&)>,
+                  ex::completion_signatures_of_t<decltype(snd), ex::env<>>>);
+    static_assert(!all_contained_in<
+                  ex::completion_signatures<ex::set_error_t(int)>,
+                  ex::completion_signatures_of_t<decltype(snd), ex::env<>>>);
     ex::sync_wait(std::move(snd));
   }
 
@@ -196,5 +205,105 @@ namespace {
     auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
     ex::start(op);
     REQUIRE(counter == 10);
+  }
+
+  TEST_CASE(
+    "repeat_effect works correctly when the child operation sends an error type which throws when "
+    "decay-copied",
+    "[adaptors][repeat_effect]") {
+    struct error_type {
+      explicit error_type(unsigned& throw_after) noexcept
+        : throw_after_(throw_after) {
+      }
+      error_type(const error_type& other)
+        : throw_after_(other.throw_after_) {
+        if (!throw_after_) {
+          throw std::logic_error("TEST");
+        }
+        --throw_after_;
+      }
+      unsigned& throw_after_;
+    };
+    struct receiver {
+      using receiver_concept = ::stdexec::receiver_t;
+      void set_value() && noexcept {
+        FAIL_CHECK("Unexpected value completion signal");
+      }
+      void set_stopped() && noexcept {
+        FAIL_CHECK("Unexpected stopped completion signal");
+      }
+      void set_error(std::exception_ptr) && noexcept {
+        CHECK(!done_);
+      }
+      void set_error(const error_type&) && noexcept {
+        CHECK(!done_);
+        done_ = true;
+      }
+      bool& done_;
+    };
+    unsigned throw_after = 0;
+    bool done = false;
+    do {
+      const auto tmp = throw_after;
+      throw_after = std::numeric_limits<unsigned>::max();
+      auto op =
+        ex::connect(exec::repeat_effect(ex::just_error(error_type(throw_after))), receiver(done));
+      throw_after = tmp;
+      ex::start(op);
+      throw_after = tmp;
+      ++throw_after;
+    } while (!done);
+  }
+
+  TEST_CASE(
+    "repeat_effect_until works correctly when the child operation sends type which throws when "
+    "decay-copied, and when converted to bool, and which is only rvalue convertible to bool",
+    "[adaptors][repeat_effect_until]") {
+    class value_type {
+      void maybe_throw_() const {
+        if (!throw_after_) {
+          throw std::logic_error("TEST");
+        }
+        --throw_after_;
+      }
+     public:
+      explicit value_type(unsigned& throw_after) noexcept
+        : throw_after_(throw_after) {
+      }
+      value_type(const value_type& other)
+        : throw_after_(other.throw_after_) {
+        maybe_throw_();
+      }
+      unsigned& throw_after_;
+      operator bool() && {
+        maybe_throw_();
+        return true;
+      }
+    };
+    struct receiver {
+      using receiver_concept = ::stdexec::receiver_t;
+      void set_value() && noexcept {
+        done_ = true;
+      }
+      void set_stopped() && noexcept {
+        FAIL_CHECK("Unexpected stopped completion signal");
+      }
+      void set_error(std::exception_ptr) && noexcept {
+        CHECK(!done_);
+      }
+      bool& done_;
+    };
+    unsigned throw_after = 0;
+    bool done = false;
+    do {
+      const auto tmp = throw_after;
+      throw_after = std::numeric_limits<unsigned>::max();
+      auto op =
+        ex::connect(exec::repeat_effect_until(ex::just(value_type(throw_after))), receiver(done));
+      throw_after = tmp;
+      ex::start(op);
+      throw_after = tmp;
+      ++throw_after;
+    } while (!done);
   }
 } // namespace
