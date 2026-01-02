@@ -20,7 +20,12 @@
 
 #include "__concepts.hpp"
 
-#include <stop_token>
+STDEXEC_NAMESPACE_STD_BEGIN
+class stop_token;
+
+template <class _Callback>
+class stop_callback;
+STDEXEC_NAMESPACE_STD_END
 
 namespace stdexec {
   namespace __stok {
