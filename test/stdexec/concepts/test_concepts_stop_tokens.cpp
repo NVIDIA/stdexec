@@ -18,7 +18,6 @@
 
 #include <stdexec/execution.hpp>
 
-#include <stop_token>
 #include <type_traits>
 
 namespace {
