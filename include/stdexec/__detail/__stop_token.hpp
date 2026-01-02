@@ -46,7 +46,7 @@ namespace stdexec {
   using stop_callback_for_t = __stop_callback_for<_Token, _Callback>::__t;
 
   template <class _Token>
-  concept stoppable_token =
+  concept __stoppable_token =
     __nothrow_copy_constructible<_Token> && __nothrow_move_constructible<_Token>
     && equality_comparable<_Token> && requires(const _Token& __token) {
          { __token.stop_requested() } noexcept -> __boolean_testable_;
@@ -54,11 +54,19 @@ namespace stdexec {
        }
   // workaround ICE in appleclang 13.1
 #if !defined(__clang__)
-       && (__same_as<_Token, std::stop_token> || requires {
+       && requires {
          typename __stok::__check_type_alias_exists<_Token::template callback_type>;
-       })
+       }
 #endif
       ;
+
+  template <class _Token>
+  concept __stoppable_token_or = __same_as<_Token, std::stop_token> || __stoppable_token<_Token>;
+
+  // The cast to bool below is to make __stoppable_token_or<_Token> an atomic constraint,
+  // hiding the disjunction within it for the sake of better compile-time performance.
+  template <class _Token>
+  concept stoppable_token = bool(__stoppable_token_or<_Token>);
 
   template <class _Token, typename _Callback, typename _Initializer = _Callback>
   concept stoppable_token_for =
