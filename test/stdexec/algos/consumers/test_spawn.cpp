@@ -21,7 +21,6 @@
 #include <test_common/scope_helpers.hpp>
 
 #include <array>
-#include <cstdint>
 #include <memory_resource>
 #include <stdexcept>
 
@@ -114,7 +113,7 @@ namespace {
 
   TEST_CASE("spawn tolerates throwing scope tokens", "[consumers][spawn]") {
     counting_resource rsc;
-    std::pmr::polymorphic_allocator alloc(&rsc);
+    std::pmr::polymorphic_allocator<std::byte> alloc(&rsc);
 
     struct throwing_token : null_token {
       const counting_resource* rsc;
@@ -163,7 +162,7 @@ namespace {
     };
 
     counting_resource rsc;
-    std::pmr::polymorphic_allocator alloc(&rsc);
+    std::pmr::polymorphic_allocator<std::byte> alloc(&rsc);
 
     REQUIRE(rsc.allocated() == 0);
 

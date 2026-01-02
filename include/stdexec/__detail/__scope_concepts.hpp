@@ -20,7 +20,6 @@
 
 #include "__completion_signatures.hpp"
 #include "__concepts.hpp"
-#include "__env.hpp"
 #include "__operation_states.hpp"
 #include "__receivers.hpp"
 #include "__senders_core.hpp"

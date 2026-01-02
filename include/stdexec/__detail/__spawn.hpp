@@ -18,9 +18,7 @@
 
 #include "__execution_fwd.hpp"
 
-#include "__concepts.hpp"
 #include "__env.hpp"
-#include "__queries.hpp"
 #include "__receivers.hpp"
 #include "__scope_concepts.hpp"
 #include "__senders_core.hpp"

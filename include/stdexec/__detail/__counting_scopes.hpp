@@ -18,17 +18,15 @@
 
 #include "__execution_fwd.hpp"
 
+#include "__atomic.hpp"
 #include "__concepts.hpp"
 #include "__env.hpp"
 #include "__receivers.hpp"
 #include "__schedulers.hpp"
 #include "__senders_core.hpp"
-#include "__sender_introspection.hpp"
 #include "__stop_when.hpp"
-#include "__type_traits.hpp"
 #include "../stop_token.hpp"
 
-#include <atomic>
 #include <cstddef>
 #include <exception>
 #include <limits>
@@ -103,15 +101,16 @@ namespace stdexec {
             stdexec::set_value(std::move(__rcvr_));
           }
 
-          template <class E>
-          void set_error(E&& e) && noexcept {
-            stdexec::set_error(std::move(__rcvr_), static_cast<E&&>(e));
+          template <class _Error>
+          void set_error(_Error&& __err) && noexcept {
+            stdexec::set_error(std::move(__rcvr_), static_cast<_Error&&>(__err));
           };
 
           void set_stopped() && noexcept {
             stdexec::set_stopped(std::move(__rcvr_));
           }
 
+          [[nodiscard]]
           decltype(auto) get_env() const noexcept {
             return stdexec::get_env(__rcvr_);
           }
@@ -124,7 +123,7 @@ namespace stdexec {
         _Rcvr& __receiver_;
         __op_t __op_;
 
-        __join_state(__base_scope* __scope, _Rcvr& __rcvr)
+        explicit __join_state(__base_scope* __scope, _Rcvr& __rcvr)
           noexcept(__nothrow_callable<connect_t, __sched_sender, __rcvr_t>)
           : __join_state_base(
               __scope,
@@ -181,6 +180,7 @@ namespace stdexec {
         return __scope_ != nullptr;
       }
 
+      [[nodiscard]]
       __association_t try_associate() const noexcept {
         // [exec.counting.scopes.general] paragraph 5.3
         if (__scope_) {
@@ -240,7 +240,7 @@ namespace stdexec {
         // with all the now-completed associated operations but the scope may be destroyed
         // on yet another thread so we ought to execute a load-acquire to ensure the
         // current thread has properly synchronized.
-        auto bits = __bits_.load(std::memory_order_acquire);
+        auto bits = __bits_.load(__std::memory_order_acquire);
         if (!__destructible(bits)) {
           std::terminate();
         }
@@ -262,7 +262,7 @@ namespace stdexec {
         // any subsequent calls to __try_associate that must fail as a result of
         // this closure; we don't use acquire-release semantics because the caller
         // is *sending* a signal, not receiving one
-        __bits_.fetch_or(__closed, std::memory_order_release);
+        __bits_.fetch_or(__closed, __std::memory_order_release);
       }
 
       bool __try_associate() noexcept {
@@ -288,7 +288,7 @@ namespace stdexec {
         // we might be about to observe that the scope has been closed; we should
         // establish that the closure happened-before this attempt to associate
         // so this needs to be a load-acquire
-        auto oldBits = __bits_.load(std::memory_order_acquire);
+        auto oldBits = __bits_.load(__std::memory_order_acquire);
         std::size_t newBits; //intentionally uninitialized
 
         do {
@@ -315,7 +315,7 @@ namespace stdexec {
           // with the thread that closed the scope if we happen to observe that; it's
           // UB for the on-failure ordering to be weaker than the on-success ordering
           // so we have to use acquire for both.
-          std::memory_order_acquire));
+          __std::memory_order_acquire));
 
         // [exec.simple.counting.mem] paragraph 6
         // Returns: If count was incremented, an object of type assoc-t that is engaged
@@ -363,7 +363,7 @@ namespace stdexec {
 
         // relaxed is sufficient here because the CAS loop we're about to run won't
         // complete until we've synchronized with acquire-release semantics
-        auto oldBits = __bits_.load(std::memory_order_relaxed);
+        auto oldBits = __bits_.load(__std::memory_order_relaxed);
         std::size_t newBits; // intentionally uninitialized
 
         // [exec.simple.counting.mem] paragraph 7
@@ -379,10 +379,10 @@ namespace stdexec {
           // of the just-finished operation to other scope users, and we also need
           // load-acquire semantics in case we're the last associated operation to
           // complete and thus initiate the tear-down of the scope
-          std::memory_order_acq_rel,
+          __std::memory_order_acq_rel,
           // on failure, we're going to immediately try to synchronize again so we
           // can get away with relaxed semantics
-          std::memory_order_relaxed));
+          __std::memory_order_relaxed));
 
         if (__is_joined(newBits)) {
           // [exec.simple.counting.mem] paragraph 8 continued...
@@ -397,7 +397,7 @@ namespace stdexec {
       bool __start_join_sender(__counting_scopes::__join_state_base& __joinOp) noexcept {
         // relaxed is sufficient because the CAS loop below will continue until
         // we've synchronized
-        auto oldBits = __bits_.load(std::memory_order_relaxed);
+        auto oldBits = __bits_.load(__std::memory_order_relaxed);
 
         do {
           // [exec.simple.counting.mem] para (9.1)
@@ -419,10 +419,10 @@ namespace stdexec {
                   // that the scope is closed and consume from all the now-completed
                   // associated operations any updates they made so we need
                   // acquire-release semantics
-                  std::memory_order_acq_rel,
+                  __std::memory_order_acq_rel,
                   // on failure, relaxed is fine because we'll loop back and try
                   // again to synchronize
-                  std::memory_order_relaxed)) {
+                  __std::memory_order_relaxed)) {
               return true;
             }
           }
@@ -450,7 +450,7 @@ namespace stdexec {
                   // completion of any join operation.
                   //
                   // on failure, relaxed is sufficient because we'll loop around and try again
-                  std::memory_order_relaxed)) {
+                  __std::memory_order_relaxed)) {
               return !__register(__joinOp);
             }
           }
@@ -474,7 +474,7 @@ namespace stdexec {
       //   joined             = zero      |                                  __closed
       //
       // INVARIANT: __bits_ = (count << 3) | (state & 7)
-      std::atomic<std::size_t> __bits_{0ul};
+      __std::atomic<std::size_t> __bits_{0ul};
 
       // An intrusive singly-linked list of join-sender operation states;
       // elements of the list have been "registered" to be completed when the
@@ -484,7 +484,7 @@ namespace stdexec {
       // indicates that the last associated operation has been disassociated
       // and any previously-registered join operations have been (or are about
       // to be) completed.
-      std::atomic<void*> __registeredJoinOps_{nullptr};
+      __std::atomic<void*> __registeredJoinOps_{nullptr};
 
       // returns true in the unused and unused-and-closed states; since the bit
       // pattern for joined matches the unused-and-closed bit pattern, returns
@@ -561,7 +561,7 @@ namespace stdexec {
         // observe that the last decrement has already happened; in that case, we need to
         // establish that all of the now-completed associated operations happen-before the
         // completion of this join operation
-        auto* head = __registeredJoinOps_.load(std::memory_order_acquire);
+        auto* head = __registeredJoinOps_.load(__std::memory_order_acquire);
 
         do {
           if (head == this) {
@@ -583,10 +583,10 @@ namespace stdexec {
             // of registered operations with acquire semantics; however, the on-success
             // ordering has to be at least as strong as the on-failure ordering, for
             // which we need acquire semantics, so on-success has to be acquire-release.
-            std::memory_order_acq_rel,
+            __std::memory_order_acq_rel,
             // on failure, we need acquire semantics in case we're about to observe the
             // sentinel value and return early without trying again
-            std::memory_order_acquire));
+            __std::memory_order_acquire));
 
         return true;
       }
@@ -602,7 +602,7 @@ namespace stdexec {
         // need release semantics to ensure that any future join-senders that
         // observe the sentinel value perform that observation with a happens-after
         // relationship with the current update
-        void* waitingOps = __registeredJoinOps_.exchange(this, std::memory_order_acq_rel);
+        void* waitingOps = __registeredJoinOps_.exchange(this, __std::memory_order_acq_rel);
 
         // at this point, waitingOps had better be either nullptr or the address
         // of a join operation waiting to be completed; otherwise, the upcoming
@@ -638,11 +638,13 @@ namespace stdexec {
     // [exec.simple.counting.token]
     struct token {
       template <sender _Sender>
+      [[nodiscard]]
       _Sender&& wrap(_Sender&& __snd) const noexcept {
         // [exec.simple.counting.token] paragraph 1
         return static_cast<_Sender&&>(__snd);
       }
 
+      [[nodiscard]]
       __assoc_t try_associate() const noexcept {
         // [exec.simple.counting.token] paragraph 2
         return __scope_->__try_associate();
@@ -660,6 +662,7 @@ namespace stdexec {
 
     using __counting_scopes::__base_scope::max_associations;
 
+    [[nodiscard]]
     token get_token() noexcept {
       // [exec.simple.counting.mem] paragraph 1
       return token{this};
@@ -668,6 +671,7 @@ namespace stdexec {
     // [exec.simple.counting.mem] paragraphs 2 and 3
     using __counting_scopes::__base_scope::close;
 
+    [[nodiscard]]
     sender auto join() noexcept {
       // [exec.simple.counting.mem] paragraph 4
       return __make_sexpr<__counting_scopes::__scope_join_t>(this);
@@ -697,12 +701,14 @@ namespace stdexec {
 
     struct token {
       template <sender _Sender>
+      [[nodiscard]]
       sender auto wrap(_Sender&& __snd) const
         noexcept(__nothrow_constructible_from<std::remove_cvref_t<_Sender>, _Sender>) {
         // [exec.scope.counting] paragraph 7
         return __stop_when(static_cast<_Sender&&>(__snd), __scope_->__stopSource_.get_token());
       }
 
+      [[nodiscard]]
       __assoc_t try_associate() const noexcept {
         // [exec.scope.counting] paragraph 8
         return __scope_->__try_associate();
@@ -720,6 +726,7 @@ namespace stdexec {
 
     using __counting_scopes::__base_scope::max_associations;
 
+    [[nodiscard]]
     token get_token() noexcept {
       // [exec.scope.counting] paragraph 2
       return token{this};
@@ -727,6 +734,7 @@ namespace stdexec {
 
     using __counting_scopes::__base_scope::close;
 
+    [[nodiscard]]
     sender auto join() noexcept {
       return __make_sexpr<__counting_scopes::__scope_join_t>(this);
     }

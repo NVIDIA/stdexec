@@ -313,7 +313,7 @@ namespace {
             waitingForStopRequest.notify_one();
           };
 
-          using callback_t = decltype(stopToken)::template callback_type<decltype(callback)>;
+          using callback_t = ex::stop_callback_for_t<decltype(stopToken), decltype(callback)>;
 
           callback_t registeredCallback(std::move(stopToken), std::move(callback));
 

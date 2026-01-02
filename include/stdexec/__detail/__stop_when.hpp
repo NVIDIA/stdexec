@@ -18,6 +18,7 @@
 
 #include "__execution_fwd.hpp"
 
+#include "__atomic.hpp"
 #include "__basic_sender.hpp"
 #include "__concepts.hpp"
 #include "__env.hpp"
@@ -25,7 +26,6 @@
 #include "__senders_core.hpp"
 #include "__stop_token.hpp"
 
-#include <atomic>
 #include <type_traits>
 #include <utility>
 
@@ -70,33 +70,18 @@ namespace stdexec {
 
         friend constexpr bool operator==(const __fused_token&, const __fused_token&) = default;
 
+        [[nodiscard]]
         bool stop_requested() const noexcept {
           return __tkn1_.stop_requested() || __tkn2_.stop_requested();
         }
 
+        [[nodiscard]]
         bool stop_possible() const noexcept {
           return __tkn1_.stop_possible() || __tkn2_.stop_possible();
         }
 
         template <class _Fn>
         struct callback_type {
-          struct __cb {
-            callback_type* self;
-
-            void operator()() noexcept {
-              (*self)();
-            }
-          };
-
-          using __cb1_t = _Token1::template callback_type<__cb>;
-          using __cb2_t = _Token2::template callback_type<__cb>;
-
-          _Fn __fn_;
-          [[no_unique_address]]
-          std::atomic<bool> __called_{false};
-          __cb1_t __cb1_;
-          __cb2_t __cb2_;
-
           template <class _C>
             requires constructible_from<_Fn, _C>
           explicit callback_type(__fused_token&& __ftkn, _C&& __fn)
@@ -118,11 +103,27 @@ namespace stdexec {
           callback_type(callback_type&&) = delete;
 
          private:
+          struct __cb {
+            callback_type* self;
+
+            void operator()() noexcept {
+              (*self)();
+            }
+          };
+
+          using __cb1_t = _Token1::template callback_type<__cb>;
+          using __cb2_t = _Token2::template callback_type<__cb>;
+
           void operator()() noexcept {
-            if (!__called_.exchange(true, std::memory_order_relaxed)) {
+            if (!__called_.exchange(true, __std::memory_order_relaxed)) {
               __fn_();
             }
           }
+
+          _Fn __fn_;
+          __std::atomic<bool> __called_{false};
+          __cb1_t __cb1_;
+          __cb2_t __cb2_;
         };
       };
 
@@ -130,6 +131,7 @@ namespace stdexec {
         template <class _SenderToken, class _ReceiverToken>
           requires stoppable_token<std::remove_cvref_t<_SenderToken>>
                 && unstoppable_token<std::remove_cvref_t<_ReceiverToken>>
+        [[nodiscard]]
         std::remove_cvref_t<_SenderToken>
           operator()(_SenderToken&& __sndrToken, _ReceiverToken&&) const noexcept {
           // when the receiver's stop token is unstoppable, the net token is just
@@ -140,6 +142,7 @@ namespace stdexec {
         template <class _SenderToken, class _ReceiverToken>
           requires stoppable_token<std::remove_cvref_t<_SenderToken>>
                 && stoppable_token<std::remove_cvref_t<_ReceiverToken>>
+        [[nodiscard]]
         __fused_token<std::remove_cvref_t<_SenderToken>, std::remove_cvref_t<_ReceiverToken>>
           operator()(_SenderToken&& __sndrToken, _ReceiverToken&& __rcvrToken) const noexcept {
           // when the receiver's stop token is stoppable, the net token must be

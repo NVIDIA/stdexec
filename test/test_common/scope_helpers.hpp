@@ -17,6 +17,8 @@
 
 #include <stdexec/execution.hpp>
 
+#include "test_common/scope_tokens.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <memory_resource>
@@ -64,6 +66,7 @@ namespace {
 
     ~counting_resource() = default;
 
+    [[nodiscard]]
     std::intmax_t allocated() const noexcept {
       return allocated_;
     }
@@ -71,15 +74,16 @@ namespace {
    private:
     void* do_allocate(std::size_t bytes, std::size_t alignment) override {
       auto ret = upstream_.allocate(bytes, alignment);
-      allocated_ += bytes;
+      allocated_ += static_cast<std::intmax_t>(bytes);
       return ret;
     }
 
     void do_deallocate(void* p, std::size_t bytes, std::size_t alignment) override {
-      allocated_ -= bytes;
+      allocated_ -= static_cast<std::intmax_t>(bytes);
       upstream_.deallocate(p, bytes, alignment);
     }
 
+    [[nodiscard]]
     bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
       auto* downCast = dynamic_cast<const counting_resource*>(&other);
       return downCast != nullptr && (upstream_ == downCast->upstream_);
@@ -102,6 +106,7 @@ namespace {
       }
     };
 
+    [[nodiscard]]
     token get_token() const noexcept {
       return token{{}, this};
     }

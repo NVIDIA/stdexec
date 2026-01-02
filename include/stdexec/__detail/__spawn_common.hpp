@@ -24,83 +24,79 @@
 
 #include <memory>
 
-namespace stdexec {
-  ////////////////////////////////////////////////////////////////////////////////////////////////
-  // [exec.spawn] paragraph 9
-  // [exec.spawn.future] paragraph 15
-  //
-  // spawn and spawn_future both have to choose an allocator and an injected environment, and they
-  // do it in the same way; this namespace provides a couple of functions for making those choices
-  namespace __spawn_common {
-    struct __choose_alloc_fn {
-      // [exec.spawn] paragraph 9
-      // [exec.spawn.future] paragraph 15
-      //   (9/15.1) -- if the expression get_allocator(env) is well-formed, then alloc is
-      //               the result of get_allocator(env)
-      template <class _Env, class _SenderEnv>
-        requires __callable<get_allocator_t, _Env>
-      auto operator()(const _Env& __env, const _SenderEnv&) const {
-        return get_allocator(__env);
-      }
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// [exec.spawn] paragraph 9
+// [exec.spawn.future] paragraph 15
+//
+// spawn and spawn_future both have to choose an allocator and an injected environment, and they
+// do it in the same way; this namespace provides a couple of functions for making those choices
+namespace stdexec::__spawn_common {
+  struct __choose_alloc_fn {
+    // [exec.spawn] paragraph 9
+    // [exec.spawn.future] paragraph 15
+    //   (9/15.1) -- if the expression get_allocator(env) is well-formed, then alloc is
+    //               the result of get_allocator(env)
+    template <class _Env, class _Attrs>
+      requires __callable<get_allocator_t, _Env>
+    auto operator()(const _Env& __env, const _Attrs&) const {
+      return get_allocator(__env);
+    }
 
-      // [exec.spawn] paragraph 9
-      // [exec.spawn.future] paragraph 15
-      //   (9/15.2) -- otherwise, if the expression get_allocator(get_env(new_sender)) is
-      //               well-formed, then alloc is the result of get_allocator(get_env(new_sender))
-      template <class _Env, class _SenderEnv>
-        requires(!__callable<get_allocator_t, const _Env&>)
-             && __callable<get_allocator_t, const _SenderEnv&>
-      auto operator()(const _Env&, const _SenderEnv& __env) const {
-        return get_allocator(__env);
-      }
+    // [exec.spawn] paragraph 9
+    // [exec.spawn.future] paragraph 15
+    //   (9/15.2) -- otherwise, if the expression get_allocator(get_env(new_sender)) is
+    //               well-formed, then alloc is the result of get_allocator(get_env(new_sender))
+    template <class _Env, class _Attrs>
+      requires(!__callable<get_allocator_t, const _Env&>)
+           && __callable<get_allocator_t, const _Attrs&>
+    auto operator()(const _Env&, const _Attrs& __attrs) const {
+      return get_allocator(__attrs);
+    }
 
-      // [exec.spawn] paragraph 9
-      // [exec.spawn.future] paragraph 15
-      //   (9/15.3) -- otherwise, alloc is allocator<void>()
-      template <class _Env, class _SenderEnv>
-        requires(!__callable<get_allocator_t, const _Env&>)
-             && (!__callable<get_allocator_t, const _SenderEnv&>)
-      std::allocator<void> operator()(const _Env&, const _SenderEnv&) const {
-        return std::allocator<void>();
-      }
-    };
+    // [exec.spawn] paragraph 9
+    // [exec.spawn.future] paragraph 15
+    //   (9/15.3) -- otherwise, alloc is allocator<void>()
+    template <class _Env, class _Attrs>
+      requires(!__callable<get_allocator_t, const _Env&>)
+           && (!__callable<get_allocator_t, const _Attrs&>)
+    std::allocator<void> operator()(const _Env&, const _Attrs&) const {
+      return {};
+    }
+  };
 
-    inline constexpr __choose_alloc_fn __choose_alloc{};
+  inline constexpr __choose_alloc_fn __choose_alloc{};
 
-    struct __choose_senv_fn {
-      // [exec.spawn] paragraph 9
-      // [exec.spawn.future] paragraph 15
-      //   (9/15.1) -- if the expression get_allocator(env) is well-formed, then ...
-      //               senv is the expression env;
-      template <class _Env, class _SenderEnv>
-        requires __callable<get_allocator_t, const _Env&>
-      const _Env& operator()(const _Env& __env, const _SenderEnv&) const {
-        return __env;
-      }
+  struct __choose_senv_fn {
+    // [exec.spawn] paragraph 9
+    // [exec.spawn.future] paragraph 15
+    //   (9/15.1) -- if the expression get_allocator(env) is well-formed, then ...
+    //               senv is the expression env;
+    template <class _Env, class _Attrs>
+      requires __callable<get_allocator_t, _Env&>
+    _Env operator()(_Env&& __env, _Attrs&&) const {
+      return static_cast<_Env&&>(__env);
+    }
 
-      // [exec.spawn] paragraph 9
-      // [exec.spawn.future] paragraph 15
-      //   (9/15.2) -- otherwise, if the expression get_allocator(get_env(new_sender)) is
-      //               well-formed, then ... senv is the expression
-      //               JOIN-ENV(prop(get_allocator, alloc), env);
-      template <class _Env, class _SenderEnv>
-        requires(!__callable<get_allocator_t, const _Env&>)
-             && __callable<get_allocator_t, const _SenderEnv&>
-      auto operator()(const _Env& __env, const _SenderEnv& __sndrEnv) const {
-        return __env::__join(prop(get_allocator, get_allocator(__sndrEnv)), __env);
-      }
+    // [exec.spawn] paragraph 9
+    // [exec.spawn.future] paragraph 15
+    //   (9/15.2) -- otherwise, if the expression get_allocator(get_env(new_sender)) is
+    //               well-formed, then ... senv is the expression
+    //               JOIN-ENV(prop(get_allocator, alloc), env);
+    template <class _Env, class _Attrs>
+      requires(!__callable<get_allocator_t, _Env&>) && __callable<get_allocator_t, _Attrs&>
+    auto operator()(_Env&& __env, _Attrs&& __attrs) const {
+      return __env::__join(prop(get_allocator, get_allocator(__attrs)), static_cast<_Env&&>(__env));
+    }
 
-      // [exec.spawn] paragraph 9
-      // [exec.spawn.future] paragraph 15
-      //   (9/15.3) -- otherwise, ... senv is the expression env.
-      template <class _Env, class _SenderEnv>
-        requires(!__callable<get_allocator_t, const _Env&>)
-             && (!__callable<get_allocator_t, const _SenderEnv&>)
-      const _Env& operator()(const _Env& __env, const _SenderEnv&) const {
-        return __env;
-      }
-    };
+    // [exec.spawn] paragraph 9
+    // [exec.spawn.future] paragraph 15
+    //   (9/15.3) -- otherwise, ... senv is the expression env.
+    template <class _Env, class _Attrs>
+      requires(!__callable<get_allocator_t, _Env&>) && (!__callable<get_allocator_t, _Attrs&>)
+    _Env operator()(_Env&& __env, _Attrs&&) const {
+      return static_cast<_Env&&>(__env);
+    }
+  };
 
-    inline constexpr __choose_senv_fn __choose_senv{};
-  } // namespace __spawn_common
-} // namespace stdexec
+  inline constexpr __choose_senv_fn __choose_senv{};
+} // namespace stdexec::__spawn_common
