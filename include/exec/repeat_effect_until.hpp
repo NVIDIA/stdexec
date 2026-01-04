@@ -64,6 +64,9 @@ namespace exec {
       };
     };
 
+    template <typename _T, bool _B>
+    concept __compile_time_bool_of = std::remove_cvref_t<_T>::value == _B;
+
     STDEXEC_PRAGMA_PUSH()
     STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
 
@@ -120,10 +123,15 @@ namespace exec {
         if constexpr (same_as<_Tag, set_value_t>) {
           // If the sender completed with true, we're done
           STDEXEC_TRY {
-            const bool __done = (static_cast<bool>(static_cast<_Args &&>(__args)) && ...);
-            if (__done) {
+            if constexpr ((__compile_time_bool_of<_Args, true> && ...)) {
               stdexec::set_value(static_cast<_Receiver &&>(this->__receiver()));
               return;
+            } else if constexpr (!(__compile_time_bool_of<_Args, false> && ...)) {
+              const bool __done = (static_cast<bool>(static_cast<_Args &&>(__args)) && ...);
+              if (__done) {
+                stdexec::set_value(static_cast<_Receiver &&>(this->__receiver()));
+                return;
+              }
             }
             __destroy();
             STDEXEC_TRY {
@@ -163,16 +171,23 @@ namespace exec {
       // There's something funny going on with __if_c here. Use std::conditional_t instead. :-(
       std::conditional_t<
         ((sizeof...(_Args) == 1) && (convertible_to<_Args, bool> && ...)),
-        completion_signatures<>,
+        std::conditional_t<
+          (__compile_time_bool_of<_Args, false> && ...),
+          completion_signatures<>,
+          completion_signatures<set_value_t()>>,
         __mexception<_INVALID_ARGUMENT_TO_REPEAT_EFFECT_UNTIL_<>, _WITH_SENDER_<_Sender>>
       >;
+
+    template <class...>
+    using __delete_set_value_t = completion_signatures<>;
 
     template <class _Sender, class... _Env>
     using __completions_t = stdexec::transform_completion_signatures<
       __completion_signatures_of_t<__decay_t<_Sender> &, _Env...>,
       stdexec::transform_completion_signatures<
         __completion_signatures_of_t<stdexec::schedule_result_t<exec::trampoline_scheduler>, _Env...>,
-        __eptr_completion
+        __eptr_completion,
+        __delete_set_value_t
       >,
       __mbind_front_q<__values_t, _Sender>::template __f
     >;
@@ -222,8 +237,8 @@ namespace exec {
       struct _never {
         template <class... _Args>
         STDEXEC_ATTRIBUTE(host, device, always_inline)
-        constexpr auto operator()(_Args &&...) const noexcept -> bool {
-          return false;
+        constexpr std::false_type operator()(_Args &&...) const noexcept {
+          return {};
         }
       };
 
