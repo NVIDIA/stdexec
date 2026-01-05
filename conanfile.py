@@ -57,4 +57,5 @@ class StdexecPackage(ConanFile):
   def package_info(self):
     self.cpp_info.set_property("cmake_file_name", "P2300")
     self.cpp_info.set_property("cmake_target_name", "P2300::P2300")
+    self.cpp_info.set_property("cmake_target_aliases", ["STDEXEC::stdexec"])
     self.cpp_info.libs = ["system_context"]

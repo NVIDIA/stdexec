@@ -5,6 +5,7 @@ build*/
 !.vscode/launch.json
 .gitattributes
 compile_commands.json
+CMakeUserPresets.json
 /*.cpp
 /*.patch
 /*.diff
