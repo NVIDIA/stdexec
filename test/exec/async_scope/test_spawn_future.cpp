@@ -143,8 +143,12 @@ namespace {
 
 #if !STDEXEC_STD_NO_EXCEPTIONS()
   TEST_CASE("spawn_future with throwing copy", "[async_scope][spawn_future]") {
-    async_scope scope;
-    exec::static_thread_pool pool{2};
+    while(1) {
+    std::optional<exec::static_thread_pool> pool;
+    std::shared_ptr<async_scope> scope;
+    
+    pool.emplace(2);
+    scope = std::make_shared<async_scope>();
 
     struct throwing_copy {
       throwing_copy() = default;
@@ -154,8 +158,8 @@ namespace {
       }
     };
 
-    ex::sender auto snd = scope.spawn_future(
-      ex::starts_on(pool.get_scheduler(), exec::just_from([](auto sink) {
+    ex::sender auto snd = scope->spawn_future(
+      ex::starts_on(pool->get_scheduler(), exec::just_from([](auto sink) {
                       return sink(throwing_copy());
                     })));
     STDEXEC_TRY {
@@ -168,8 +172,12 @@ namespace {
     STDEXEC_CATCH_ALL {
       FAIL("invalid exception caught");
     }
-    sync_wait(scope.on_empty());
+    sync_wait(scope->on_empty());
+    
+    scope.reset();
+    pool.reset();
   }
+}
 #endif // !STDEXEC_STD_NO_EXCEPTIONS()
 
   TEST_CASE(
