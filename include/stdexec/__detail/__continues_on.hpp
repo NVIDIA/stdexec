@@ -261,7 +261,7 @@ namespace stdexec {
       }
 
       //! @overload
-      template <__not_same_as<set_value_t> _SetTag, class... _Env>
+      template <__one_of<set_error_t, set_stopped_t> _SetTag, class... _Env>
         requires(!__has_decay_copy_errors<_SetTag, _Env...>())
       [[nodiscard]]
       constexpr auto

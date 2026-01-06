@@ -129,7 +129,7 @@ namespace stdexec {
     struct get_stop_token_t;
     template <__completion_tag _CPO>
     struct get_completion_scheduler_t;
-    template <__completion_tag _CPO>
+    template <class _CPO = void>
     struct get_completion_domain_t;
     template <__completion_tag _CPO>
     struct get_completion_behavior_t;
@@ -157,7 +157,7 @@ namespace stdexec {
   extern const get_stop_token_t get_stop_token;
   template <__completion_tag _CPO>
   extern const get_completion_scheduler_t<_CPO> get_completion_scheduler;
-  template <__completion_tag _CPO>
+  template <class _CPO>
   extern const get_completion_domain_t<_CPO> get_completion_domain;
   extern const get_domain_t get_domain;
 
