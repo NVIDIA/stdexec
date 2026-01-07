@@ -159,8 +159,8 @@ namespace exec {
 
         static void __complete(const __impl* __scope) noexcept {
           auto& __active = __scope->__active_;
+          std::unique_lock __guard{__scope->__lock_};
           if (__active.fetch_sub(1, __std::memory_order_acq_rel) == 1) {
-            std::unique_lock __guard{__scope->__lock_};
             auto __local_waiters = std::move(__scope->__waiters_);
             __guard.unlock();
             __scope = nullptr;
