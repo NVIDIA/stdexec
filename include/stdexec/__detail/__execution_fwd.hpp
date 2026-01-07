@@ -157,7 +157,7 @@ namespace stdexec {
   extern const get_stop_token_t get_stop_token;
   template <__completion_tag _CPO>
   extern const get_completion_scheduler_t<_CPO> get_completion_scheduler;
-  template <class _CPO>
+  template <class _CPO = void>
   extern const get_completion_domain_t<_CPO> get_completion_domain;
   extern const get_domain_t get_domain;
 
