@@ -371,7 +371,7 @@ namespace stdexec {
 
   namespace __detail {
     template <class _Tag, class _Sigs>
-    extern const std::size_t __count_of;
+    inline constexpr std::size_t __count_of = 0;
 
     template <class _Sigs>
     inline constexpr std::size_t __count_of<set_value_t, _Sigs> =

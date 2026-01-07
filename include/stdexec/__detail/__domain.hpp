@@ -285,7 +285,7 @@ namespace stdexec {
     //! custom implementation of a sender algorithm.
     //!
     //! @tparam _Tag one of set_value_t, set_error_t, or set_stopped_t
-    template <__completion_tag _Tag>
+    template <class _Tag>
     struct get_completion_domain_t {
       template <class Sig>
       static inline constexpr get_completion_domain_t<_Tag> (*signature)(Sig) = nullptr;
@@ -320,13 +320,15 @@ namespace stdexec {
       static consteval auto __check_domain(_Domain) noexcept -> _Domain {
         // Sanity check: if a completion scheduler can be determined from the attributes
         // (not the environment), then its domain must match the domain returned by the attributes.
-        if constexpr (__callable<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>) {
-          using __sch_t =
-            __call_result_t<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>;
-          // Skip check if the "scheduler" is the same as the domain or the attributes
-          // (this can happen with __prop_like which answers any query with the same type)
-          if constexpr (!__same_as<__sch_t, _Attrs>) {
-            __check_domain_<__sch_t, _Env...>(_Domain{});
+        if constexpr (!__same_as<_Tag, void>) {
+          if constexpr (__callable<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>) {
+            using __sch_t =
+              __call_result_t<get_completion_scheduler_t<_Tag>, const _Attrs&, const _Env&...>;
+            // Skip check if the "scheduler" is the same as the domain or the attributes
+            // (this can happen with __prop_like which answers any query with the same type)
+            if constexpr (!__same_as<__sch_t, _Attrs>) {
+              __check_domain_<__sch_t, _Env...>(_Domain{});
+            }
           }
         }
         return {};
@@ -338,6 +340,16 @@ namespace stdexec {
         if constexpr (__callable<__read_query_t, const _Attrs&, const _Env&...>) {
           using __domain_t = __call_result_t<__read_query_t, const _Attrs&, const _Env&...>;
           return __check_domain<_Attrs, _Env...>(__domain_t{});
+          // Otherwise, if _Tag is void, fall back to querying for the set_value_t completion domain:
+        } else if constexpr (__same_as<_Tag, void>) {
+          if constexpr (
+            __callable<get_completion_domain_t<set_value_t>, const _Attrs&, const _Env&...>) {
+            using __domain_t =
+              __call_result_t<get_completion_domain_t<set_value_t>, const _Attrs&, const _Env&...>;
+            return __check_domain<_Attrs, _Env...>(__domain_t{});
+          } else {
+            return void();
+          }
         }
         // Otherwise, if __attrs has a completion scheduler, we can ask that scheduler for its
         // completion domain.
@@ -433,9 +445,11 @@ namespace stdexec {
   using __queries::get_domain_t;
 
 #if !STDEXEC_GCC() || defined(__OPTIMIZE_SIZE__)
-  template <__completion_tag _Query>
-  inline constexpr get_completion_domain_t<_Query> get_completion_domain{};
+  template <class _Tag>
+  inline constexpr get_completion_domain_t<_Tag> get_completion_domain{};
 #else
+  template <>
+  inline constexpr get_completion_domain_t<> get_completion_domain<>{};
   template <>
   inline constexpr get_completion_domain_t<set_value_t> get_completion_domain<set_value_t>{};
   template <>
