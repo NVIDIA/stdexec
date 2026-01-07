@@ -39,7 +39,7 @@ namespace {
     using completion_signatures = stdexec::completion_signatures<_Sigs...>;
 
     template <class R>
-    friend auto tag_invoke(connect_t, some_sender_of, R&&) -> nop_operation {
+    auto connect(R&&) const -> nop_operation {
       return {};
     }
   };
@@ -101,7 +101,7 @@ namespace {
     using receiver_concept = stdexec::receiver_t;
 
     template <sender_to<test_receiver<_Sigs...>> _Item>
-    friend auto tag_invoke(set_next_t, next_receiver&, _Item&& __item) noexcept -> _Item {
+    auto set_next(_Item&& __item) & noexcept -> _Item {
       return __item;
     }
 
@@ -133,7 +133,7 @@ namespace {
     using item_types = exec::item_types<some_sender_of<_Sigs...>>;
 
     template <receiver R>
-    friend auto tag_invoke(subscribe_t, some_sequence_sender_of, R&&) -> nop_operation {
+    auto subscribe(R&&) const -> nop_operation {
       return {};
     }
   };

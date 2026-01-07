@@ -393,8 +393,9 @@ namespace {
   struct stopped_receiver_env {
     const stopped_receiver_base<Token>* receiver_;
 
-    friend auto tag_invoke(get_stop_token_t, const stopped_receiver_env& env) noexcept -> Token {
-      return env.receiver_->stop_token_;
+    [[nodiscard]]
+    auto query(get_stop_token_t) const noexcept -> Token {
+      return receiver_->stop_token_;
     }
   };
 
@@ -726,7 +727,7 @@ namespace {
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <ex::receiver R>
-      friend auto tag_invoke(ex::connect_t, sender, R r) -> operation<R> {
+      auto connect(R r) const -> operation<R> {
         return {{}, static_cast<R&&>(r)};
       }
 

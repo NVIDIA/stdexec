@@ -74,10 +74,7 @@ namespace {
     REQUIRE(ex::sender<decltype(ex::schedule(my_scheduler{}))>);
   }
 
-  struct no_schedule_cpo {
-    friend void tag_invoke(int, no_schedule_cpo) {
-    }
-  };
+  struct no_schedule_cpo { };
 
   TEST_CASE("type without schedule CPO doesn't model scheduler", "[concepts][scheduler]") {
     REQUIRE(!ex::scheduler<no_schedule_cpo>);

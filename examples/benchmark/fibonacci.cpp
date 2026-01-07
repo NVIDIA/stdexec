@@ -67,8 +67,9 @@ struct fib_s {
   };
 
   template <stdexec::receiver_of<completion_signatures> Receiver>
-  friend auto tag_invoke(stdexec::connect_t, fib_s self, Receiver rcvr) -> operation<Receiver> {
-    return {static_cast<Receiver&&>(rcvr), self.cutoff, self.n, self.sched};
+  [[nodiscard]]
+  auto connect(Receiver rcvr) const -> operation<Receiver> {
+    return {static_cast<Receiver&&>(rcvr), cutoff, n, sched};
   }
 };
 

@@ -138,10 +138,26 @@ namespace stdexec {
         }
       }
 
-      // NOT TO SPEC: if we're unable to compute the completion signatures,
-      // return an error type instead of SFINAE.
       template <class _Sender, class... _Env, auto _DeclFn = __get_declfn<_Sender, _Env...>()>
+        requires __callable<__mtypeof<_DeclFn>>
       constexpr auto operator()(_Sender&&, _Env&&...) const noexcept -> decltype(_DeclFn()) {
+        return {};
+      }
+
+      template <class _Sender, auto _DeclFn = __get_declfn<_Sender>()>
+        requires __callable<__mtypeof<_DeclFn>> || __with_legacy_tag_invoke<_Sender>
+      [[deprecated("the use of tag_invoke for get_completion_signatures is deprecated")]]
+      constexpr auto operator()(_Sender&&) const noexcept
+        -> tag_invoke_result_t<get_completion_signatures_t, _Sender> {
+        return {};
+      }
+
+      template <class _Sender, class _Env, auto _DeclFn = __get_declfn<_Sender, _Env>()>
+        requires __callable<__mtypeof<_DeclFn>>
+              || __with_legacy_tag_invoke<__tfx_sender<_Sender, _Env>, _Env>
+      [[deprecated("the use of tag_invoke for get_completion_signatures is deprecated")]]
+      constexpr auto operator()(_Sender&&, _Env&&...) const noexcept
+        -> tag_invoke_result_t<get_completion_signatures_t, __tfx_sender<_Sender, _Env>, _Env> {
         return {};
       }
     };
@@ -238,12 +254,6 @@ namespace stdexec {
                                  && noexcept(__declval<_TfxSender>()
                                                .connect(__declval<_Receiver>()));
           return __declfn<_Result, _Nothrow>();
-        } else if constexpr (__with_tag_invoke<_TfxSender, _Receiver>) {
-          using _Result = tag_invoke_result_t<connect_t, _TfxSender, _Receiver>;
-          __check_operation_state<_Result>();
-          constexpr bool _Nothrow = _NothrowTfxSender
-                                 && nothrow_tag_invocable<connect_t, _TfxSender, _Receiver>;
-          return __declfn<_Result, _Nothrow>();
         } else if constexpr (__with_co_await<_TfxSender, _Receiver>) {
           using _Result = __call_result_t<__connect_awaitable_t, _TfxSender, _Receiver>;
           return __declfn<_Result, false>();
@@ -259,8 +269,9 @@ namespace stdexec {
       }
 
       template <class _Sender, class _Receiver, auto _DeclFn = __get_declfn<_Sender, _Receiver>()>
-      auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const noexcept(noexcept(_DeclFn()))
-        -> decltype(_DeclFn()) {
+        requires __callable<__mtypeof<_DeclFn>>
+      constexpr auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
+        noexcept(noexcept(_DeclFn())) -> decltype(_DeclFn()) {
 
         using _TfxSender = __tfx_sender<_Sender, _Receiver>;
         auto&& __env = get_env(__rcvr);
@@ -272,9 +283,6 @@ namespace stdexec {
         } else if constexpr (__with_member<_TfxSender, _Receiver>) { // NOLINT(bugprone-branch-clone)
           auto&& __tfx_sndr = transform_sender(static_cast<_Sender&&>(__sndr), __env);
           return static_cast<_TfxSender&&>(__tfx_sndr).connect(static_cast<_Receiver&&>(__rcvr));
-        } else if constexpr (__with_tag_invoke<_TfxSender, _Receiver>) {
-          auto&& __tfx_sndr = transform_sender(static_cast<_Sender&&>(__sndr), __env);
-          return tag_invoke(connect_t(), static_cast<_TfxSender&&>(__tfx_sndr), static_cast<_Receiver&&>(__rcvr));
         } else if constexpr (__with_co_await<_TfxSender, _Receiver>) {
           auto&& __tfx_sndr = transform_sender(static_cast<_Sender&&>(__sndr), __env);
           return __connect_awaitable(static_cast<_TfxSender&&>(__tfx_sndr), static_cast<_Receiver&&>(__rcvr));
@@ -284,6 +292,23 @@ namespace stdexec {
           auto&& __tfx_sndr = transform_sender(static_cast<_Sender&&>(__sndr), __env);
           return static_cast<_TfxSender&&>(__tfx_sndr).connect(static_cast<_Receiver&&>(__rcvr));
         }
+      }
+
+      template <class _Sender, class _Receiver, auto _DeclFn = __get_declfn<_Sender, _Receiver>()>
+        requires __callable<__mtypeof<_DeclFn>>
+              || __with_tag_invoke<__tfx_sender<_Sender, _Receiver>, _Receiver>
+      [[deprecated("the use of tag_invoke for connect is deprecated")]]
+      constexpr auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const noexcept(
+        __nothrow_callable<transform_sender_t, _Sender, env_of_t<_Receiver>>
+        && nothrow_tag_invocable<connect_t, __tfx_sender<_Sender, _Receiver>, _Receiver>)
+        -> tag_invoke_result_t<connect_t, __tfx_sender<_Sender, _Receiver>, _Receiver> {
+        using _TfxSender = __tfx_sender<_Sender, _Receiver>;
+        using _Result = tag_invoke_result_t<connect_t, _TfxSender, _Receiver>;
+        __check_operation_state<_Result>();
+        auto&& __env = get_env(__rcvr);
+        auto&& __tfx_sndr = transform_sender(static_cast<_Sender&&>(__sndr), __env);
+        return tag_invoke(
+          connect_t(), static_cast<_TfxSender&&>(__tfx_sndr), static_cast<_Receiver&&>(__rcvr));
       }
 
       static constexpr auto query(forwarding_query_t) noexcept -> bool {

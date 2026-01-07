@@ -210,10 +210,6 @@ namespace stdexec {
           using _Result = decltype(__declval<_Tp>().as_awaitable(__declval<_Promise&>()));
           constexpr bool _Nothrow = noexcept(__declval<_Tp>().as_awaitable(__declval<_Promise&>()));
           return __declfn<_Result, _Nothrow>();
-        } else if constexpr (tag_invocable<as_awaitable_t, _Tp, _Promise&>) {
-          using _Result = tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>;
-          constexpr bool _Nothrow = nothrow_tag_invocable<as_awaitable_t, _Tp, _Promise&>;
-          return __declfn<_Result, _Nothrow>();
           // NOLINTNEXTLINE(bugprone-branch-clone)
         } else if constexpr (__awaitable<_Tp, __unspecified>) { // NOT __awaitable<_Tp, _Promise> !!
           return __declfn<_Tp&&>();
@@ -228,16 +224,13 @@ namespace stdexec {
       }
 
       template <class _Tp, class _Promise, auto _DeclFn = __get_declfn<_Tp, _Promise>()>
+        requires __callable<__mtypeof<_DeclFn>>
       auto operator()(_Tp&& __t, _Promise& __promise) const noexcept(noexcept(_DeclFn()))
         -> decltype(_DeclFn()) {
         if constexpr (__has_as_awaitable_member<_Tp, _Promise>) {
           using _Result = decltype(static_cast<_Tp&&>(__t).as_awaitable(__promise));
           static_assert(__awaitable<_Result, _Promise>);
           return static_cast<_Tp&&>(__t).as_awaitable(__promise);
-        } else if constexpr (tag_invocable<as_awaitable_t, _Tp, _Promise&>) {
-          using _Result = tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>;
-          static_assert(__awaitable<_Result, _Promise>);
-          return tag_invoke(*this, static_cast<_Tp&&>(__t), __promise);
           // NOLINTNEXTLINE(bugprone-branch-clone)
         } else if constexpr (__awaitable<_Tp, __unspecified>) { // NOT __awaitable<_Tp, _Promise> !!
           return static_cast<_Tp&&>(__t);
@@ -247,6 +240,17 @@ namespace stdexec {
         } else {
           return static_cast<_Tp&&>(__t);
         }
+      }
+
+      template <class _Tp, class _Promise, auto _DeclFn = __get_declfn<_Tp, _Promise>()>
+        requires __callable<__mtypeof<_DeclFn>> || tag_invocable<as_awaitable_t, _Tp, _Promise&>
+      [[deprecated("the use of tag_invoke for as_awaitable is deprecated")]]
+      auto operator()(_Tp&& __t, _Promise& __promise) const
+        noexcept(nothrow_tag_invocable<as_awaitable_t, _Tp, _Promise&>)
+          -> tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&> {
+        using _Result = tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>;
+        static_assert(__awaitable<_Result, _Promise>);
+        return tag_invoke(*this, static_cast<_Tp&&>(__t), __promise);
       }
     };
   } // namespace __as_awaitable

@@ -216,7 +216,7 @@ namespace {
     >;
 
     template <class Receiver>
-    friend auto tag_invoke(connect_t, dup_sender, Receiver rec) noexcept -> dup_op<Receiver> {
+    auto connect(Receiver rec) const noexcept -> dup_op<Receiver> {
       return {static_cast<Receiver&&>(rec)};
     }
   };

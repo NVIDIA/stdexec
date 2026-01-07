@@ -34,7 +34,7 @@ namespace {
     using __t = next_rcvr;
     using receiver_concept = ex::receiver_t;
 
-    friend auto tag_invoke(exec::set_next_t, next_rcvr, auto item) {
+    auto set_next(auto item) {
       return item;
     }
 
