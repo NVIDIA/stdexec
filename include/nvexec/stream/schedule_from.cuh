@@ -25,172 +25,191 @@
 
 #include "common.cuh"
 
-namespace nvexec::_strm {
+namespace nvexec {
+  struct CANNOT_DISPATCH_THE_SCHEDULE_FROM_ALGORITHM_TO_THE_CUDA_STREAM_SCHEDULER;
+  struct BECAUSE_THERE_IS_NO_CUDA_STREAM_SCHEDULER_IN_THE_ENVIRONMENT;
+  struct ADD_A_CONTINUES_ON_TRANSITION_TO_THE_CUDA_STREAM_SCHEDULER_BEFORE_THE_SCHEDULE_FROM_ALGORITHM;
 
-  namespace _schfr {
-    template <class CvrefSenderId, class ReceiverId>
-    struct operation_state_t {
-      using Sender = __cvref_t<CvrefSenderId>;
-      using Receiver = stdexec::__t<ReceiverId>;
-      using Env = operation_state_base_t<ReceiverId>::env_t;
+  namespace _strm {
 
-      struct __t : operation_state_base_t<ReceiverId> {
-        struct receiver_t;
-        using __id = operation_state_t;
-        using variant_t = variant_storage_t<Sender, Env>;
-        using task_t = continuation_task_t<receiver_t, variant_t>;
-        using enqueue_receiver =
-          stdexec::__t<stream_enqueue_receiver<stdexec::__cvref_id<Env>, variant_t>>;
-        using inner_op_state_t = connect_result_t<Sender, enqueue_receiver>;
+    namespace _schfr {
+      template <class CvrefSenderId, class ReceiverId>
+      struct operation_state_t {
+        using Sender = __cvref_t<CvrefSenderId>;
+        using Receiver = stdexec::__t<ReceiverId>;
+        using Env = operation_state_base_t<ReceiverId>::env_t;
 
-        struct receiver_t {
-          using receiver_concept = stdexec::receiver_t;
+        struct __t : operation_state_base_t<ReceiverId> {
+          struct receiver_t;
+          using __id = operation_state_t;
+          using variant_t = variant_storage_t<Sender, Env>;
+          using task_t = continuation_task_t<receiver_t, variant_t>;
+          using enqueue_receiver =
+            stdexec::__t<stream_enqueue_receiver<stdexec::__cvref_id<Env>, variant_t>>;
+          using inner_op_state_t = connect_result_t<Sender, enqueue_receiver>;
 
-          template <class... _Args>
-          void set_value(_Args&&... __args) noexcept {
-            stdexec::set_value(std::move(op_state_.rcvr_), static_cast<_Args&&>(__args)...);
+          struct receiver_t {
+            using receiver_concept = stdexec::receiver_t;
+
+            template <class... _Args>
+            void set_value(_Args&&... __args) noexcept {
+              stdexec::set_value(std::move(op_state_.rcvr_), static_cast<_Args&&>(__args)...);
+            }
+
+            template <class _Error>
+            void set_error(_Error&& __err) noexcept {
+              stdexec::set_error(std::move(op_state_.rcvr_), static_cast<_Error&&>(__err));
+            }
+
+            void set_stopped() noexcept {
+              stdexec::set_stopped(std::move(op_state_.rcvr_));
+            }
+
+            [[nodiscard]]
+            auto get_env() const noexcept -> Env {
+              return op_state_.make_env();
+            }
+
+            __t& op_state_;
+          };
+
+          __t(Sender&& sender, Receiver&& rcvr, context_state_t context_state)
+            : operation_state_base_t<ReceiverId>(static_cast<Receiver&&>(rcvr), context_state)
+            , context_state_(context_state)
+            , storage_(make_host<variant_t>(this->status_, context_state.pinned_resource_))
+            , task_(
+                make_host<task_t>(
+                  this->status_,
+                  context_state.pinned_resource_,
+                  receiver_t{*this},
+                  storage_.get(),
+                  this->get_stream(),
+                  context_state.pinned_resource_)
+                  .release())
+            , env_(make_host(this->status_, context_state_.pinned_resource_, this->make_env()))
+            , inner_op_{connect(
+                static_cast<Sender&&>(sender),
+                enqueue_receiver{
+                  env_.get(),
+                  storage_.get(),
+                  task_,
+                  context_state_.hub_->producer()})} {
+            if (this->status_ == cudaSuccess) {
+              this->status_ = task_->status_;
+            }
           }
 
-          template <class _Error>
-          void set_error(_Error&& __err) noexcept {
-            stdexec::set_error(std::move(op_state_.rcvr_), static_cast<_Error&&>(__err));
+          STDEXEC_IMMOVABLE(__t);
+
+          void start() & noexcept {
+            started_.test_and_set(::cuda::std::memory_order::relaxed);
+
+            if (status_ != cudaSuccess) {
+              // Couldn't allocate memory for operation state, complete with error
+              stdexec::set_error(std::move(this->rcvr_), std::move(status_));
+              return;
+            }
+
+            stdexec::start(inner_op_);
           }
 
-          void set_stopped() noexcept {
-            stdexec::set_stopped(std::move(op_state_.rcvr_));
-          }
-
-          [[nodiscard]]
-          auto get_env() const noexcept -> Env {
-            return op_state_.make_env();
-          }
-
-          __t& op_state_;
+          cudaError_t status_{cudaSuccess};
+          context_state_t context_state_;
+          host_ptr<variant_t> storage_;
+          task_t* task_;
+          ::cuda::std::atomic_flag started_{};
+          host_ptr<__decay_t<Env>> env_{};
+          inner_op_state_t inner_op_;
         };
+      };
+    } // namespace _schfr
 
-        __t(Sender&& sender, Receiver&& rcvr, context_state_t context_state)
-          : operation_state_base_t<ReceiverId>(static_cast<Receiver&&>(rcvr), context_state)
-          , context_state_(context_state)
-          , storage_(make_host<variant_t>(this->status_, context_state.pinned_resource_))
-          , task_(
-              make_host<task_t>(
-                this->status_,
-                context_state.pinned_resource_,
-                receiver_t{*this},
-                storage_.get(),
-                this->get_stream(),
-                context_state.pinned_resource_)
-                .release())
-          , env_(make_host(this->status_, context_state_.pinned_resource_, this->make_env()))
-          , inner_op_{connect(
-              static_cast<Sender&&>(sender),
-              enqueue_receiver{
-                env_.get(),
-                storage_.get(),
-                task_,
-                context_state_.hub_->producer()})} {
-          if (this->status_ == cudaSuccess) {
-            this->status_ = task_->status_;
-          }
+    template <class SenderId>
+    struct schedule_from_sender_t {
+      using Sender = stdexec::__t<SenderId>;
+
+      struct __t : stream_sender_base {
+        using __id = schedule_from_sender_t;
+
+        template <class Self, class Receiver>
+        using op_state_th =
+          stdexec::__t<_schfr::operation_state_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>>>;
+
+        template <class... Ts>
+        using _set_value_t = completion_signatures<set_value_t(stdexec::__decay_t<Ts>...)>;
+
+        template <class Ty>
+        using _set_error_t = completion_signatures<set_error_t(stdexec::__decay_t<Ty>)>;
+
+        template <class Self, class... Env>
+        using _completion_signatures_t = transform_completion_signatures<
+          __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
+          completion_signatures<set_stopped_t(), set_error_t(cudaError_t)>,
+          _set_value_t,
+          _set_error_t
+        >;
+
+        __t(context_state_t context_state, Sender sndr)
+          : context_state_(context_state)
+          , sndr_{static_cast<Sender&&>(sndr)} {
         }
 
-        STDEXEC_IMMOVABLE(__t);
+        template <__decays_to<__t> Self, receiver Receiver>
+          requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+          -> op_state_th<Self, Receiver> {
+          return op_state_th<Self, Receiver>{
+            static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr), self.context_state_};
+        }
+        STDEXEC_EXPLICIT_THIS_END(connect)
 
-        void start() & noexcept {
-          started_.test_and_set(::cuda::std::memory_order::relaxed);
+        template <__decays_to<__t> Self, class... Env>
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
+          -> _completion_signatures_t<Self, Env...> {
+          return {};
+        }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
-          if (status_ != cudaSuccess) {
-            // Couldn't allocate memory for operation state, complete with error
-            stdexec::set_error(std::move(this->rcvr_), std::move(status_));
-            return;
-          }
-
-          stdexec::start(inner_op_);
+        auto get_env() const noexcept -> stdexec::__fwd_env_t<stdexec::env_of_t<Sender>> {
+          return stdexec::__fwd_env(stdexec::get_env(sndr_));
         }
 
-        cudaError_t status_{cudaSuccess};
         context_state_t context_state_;
-        host_ptr<variant_t> storage_;
-        task_t* task_;
-        ::cuda::std::atomic_flag started_{};
-        host_ptr<__decay_t<Env>> env_{};
-        inner_op_state_t inner_op_;
+        Sender sndr_;
       };
     };
-  } // namespace _schfr
 
-  template <class SenderId>
-  struct schedule_from_sender_t {
-    using Sender = stdexec::__t<SenderId>;
+    template <class Env>
+    struct transform_sender_for<stdexec::schedule_from_t, Env> {
+      template <class Sender>
+      using _current_scheduler_t =
+        __result_of<get_completion_scheduler<set_value_t>, env_of_t<Sender>, const Env&>;
 
-    struct __t : stream_sender_base {
-      using __id = schedule_from_sender_t;
-
-      template <class Self, class Receiver>
-      using op_state_th =
-        stdexec::__t<_schfr::operation_state_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>>>;
-
-      template <class... Ts>
-      using _set_value_t = completion_signatures<set_value_t(stdexec::__decay_t<Ts>...)>;
-
-      template <class Ty>
-      using _set_error_t = completion_signatures<set_error_t(stdexec::__decay_t<Ty>)>;
-
-      template <class Self, class... Env>
-      using _completion_signatures_t = transform_completion_signatures<
-        __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-        completion_signatures<set_stopped_t(), set_error_t(cudaError_t)>,
-        _set_value_t,
-        _set_error_t
-      >;
-
-      __t(context_state_t context_state, Sender sndr)
-        : context_state_(context_state)
-        , sndr_{static_cast<Sender&&>(sndr)} {
+      template <class Sender>
+      auto operator()(__ignore, __ignore, Sender&& sndr) const {
+        if constexpr (stream_completing_sender<Sender, Env>) {
+          using _sender_t = __t<schedule_from_sender_t<__id<__decay_t<Sender>>>>;
+          auto stream_sched = get_completion_scheduler<set_value_t>(get_env(sndr), env_);
+          return _sender_t{stream_sched.context_state_, static_cast<Sender&&>(sndr)};
+        } else {
+          return stdexec::__not_a_sender<
+            stdexec::_WHAT_<>(
+              CANNOT_DISPATCH_THE_SCHEDULE_FROM_ALGORITHM_TO_THE_CUDA_STREAM_SCHEDULER),
+            stdexec::_WHY_(BECAUSE_THERE_IS_NO_CUDA_STREAM_SCHEDULER_IN_THE_ENVIRONMENT),
+            stdexec::_WHERE_(stdexec::_IN_ALGORITHM_, stdexec::schedule_from_t),
+            // stdexec::_TO_FIX_THIS_ERROR_(
+            //   ADD_A_CONTINUES_ON_TRANSITION_TO_THE_CUDA_STREAM_SCHEDULER_BEFORE_THE_SCHEDULE_FROM_ALGORITHM),
+            stdexec::_WITH_SENDER_<Sender>,
+            stdexec::_WITH_ENVIRONMENT_<Env>
+          >{};
+        }
       }
 
-      template <__decays_to<__t> Self, receiver Receiver>
-        requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
-        -> op_state_th<Self, Receiver> {
-        return op_state_th<Self, Receiver>{
-          static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr), self.context_state_};
-      }
-      STDEXEC_EXPLICIT_THIS_END(connect)
-
-      template <__decays_to<__t> Self, class... Env>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
-        return {};
-      }
-      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
-
-      auto get_env() const noexcept -> stdexec::__fwd_env_t<stdexec::env_of_t<Sender>> {
-        return stdexec::__fwd_env(stdexec::get_env(sndr_));
-      }
-
-      context_state_t context_state_;
-      Sender sndr_;
+      const Env& env_;
     };
-  };
 
-  template <class Env>
-  struct transform_sender_for<stdexec::schedule_from_t, Env> {
-    template <class Sender>
-    using _current_scheduler_t =
-      __result_of<get_completion_scheduler<set_value_t>, env_of_t<Sender>, const Env&>;
-
-    template <class Sender>
-    auto operator()(__ignore, __ignore, Sender&& sndr) const {
-      static_assert(stream_completing_sender<Sender, Env>);
-      using _sender_t = __t<schedule_from_sender_t<__id<__decay_t<Sender>>>>;
-      auto stream_sched = get_completion_scheduler<set_value_t>(get_env(sndr), env_);
-      return _sender_t{stream_sched.context_state_, static_cast<Sender&&>(sndr)};
-    }
-
-    const Env& env_;
-  };
-
-} // namespace nvexec::_strm
+  } // namespace _strm
+} // namespace nvexec
 
 namespace stdexec::__detail {
   template <class SenderId>
