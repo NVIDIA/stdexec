@@ -70,6 +70,7 @@ namespace stdexec {
       }
 
       template <class _Sndr, class _Env, auto _DeclFn = __get_declfn<_Sndr, _Env>()>
+        requires __callable<__mtypeof<_DeclFn>>
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
       constexpr auto operator()(_Sndr&& __sndr, const _Env& __env) const
         noexcept(noexcept(_DeclFn())) -> decltype(_DeclFn()) {

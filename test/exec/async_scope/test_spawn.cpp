@@ -25,8 +25,7 @@ namespace {
     };
 
     template <class Receiver>
-    friend auto tag_invoke(ex::connect_t, throwing_sender&&, Receiver&&)
-      -> operation<std::decay_t<Receiver>> {
+    auto connect(Receiver&&) && -> operation<std::decay_t<Receiver>> {
       STDEXEC_THROW(std::logic_error("cannot connect"));
     }
   };

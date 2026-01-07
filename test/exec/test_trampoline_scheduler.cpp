@@ -50,8 +50,8 @@ namespace {
     };
 
     template <ex::receiver_of<completion_signatures> Receiver>
-    friend auto tag_invoke(ex::connect_t, fails_alot self, Receiver rcvr) -> operation<Receiver> {
-      return {static_cast<Receiver&&>(rcvr), --*self.counter_};
+    auto connect(Receiver rcvr) const -> operation<Receiver> {
+      return {static_cast<Receiver&&>(rcvr), --*counter_};
     }
 
     std::shared_ptr<int> counter_ = std::make_shared<int>(1'000'000);

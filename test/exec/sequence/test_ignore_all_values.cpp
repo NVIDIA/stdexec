@@ -100,7 +100,8 @@ namespace {
 
     using item_types = exec::item_types<Item>;
 
-    friend auto tag_invoke(exec::subscribe_t, sequence, stdexec::__ignore) noexcept -> sequence_op {
+    template <class R>
+    auto subscribe(R&&) const noexcept -> sequence_op {
       return sequence_op{};
     }
   };

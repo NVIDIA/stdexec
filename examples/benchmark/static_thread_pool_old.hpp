@@ -169,18 +169,12 @@ namespace exec_old {
         using completion_signatures =
           stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
 
-       private:
-        template <typename Receiver>
-        auto make_operation_(Receiver r) const -> operation<stdexec::__id<Receiver>> {
+        template <stdexec::receiver Receiver>
+        auto connect(Receiver r) const -> operation<stdexec::__id<Receiver>> {
           return operation<stdexec::__id<Receiver>>{pool_, static_cast<Receiver&&>(r)};
         }
 
-        template <stdexec::receiver Receiver>
-        friend auto tag_invoke(stdexec::connect_t, sender s, Receiver r)
-          -> operation<stdexec::__id<Receiver>> {
-          return s.make_operation_(static_cast<Receiver&&>(r));
-        }
-
+       private:
         struct env {
           static_thread_pool& pool_;
 
@@ -481,7 +475,7 @@ namespace exec_old {
         Receiver,
         completion_signatures<Self, stdexec::env_of_t<Receiver>>
       >
-    friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver rcvr)
+    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
       noexcept(stdexec::__nothrow_constructible_from<
                bulk_op_state_t<Self, Receiver>,
                static_thread_pool&,
@@ -497,6 +491,7 @@ namespace exec_old {
         static_cast<Self&&>(self).sndr_,
         static_cast<Receiver&&>(rcvr)};
     }
+    STDEXEC_EXPLICIT_THIS_END(connect)
 
     template <stdexec::__decays_to<bulk_sender> Self, class Env>
     STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&)

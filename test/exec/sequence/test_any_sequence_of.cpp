@@ -62,19 +62,19 @@ namespace {
       stdexec::__decays_to<ignore_all_sender> Self,
       stdexec::receiver_of<completion_signatures> Receiver
     >
-    friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver rcvr) noexcept {
+    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr) noexcept {
       return stdexec::connect(
         static_cast<Self&&>(self).item_,
         ignore_all_item_rcvr<Receiver>{static_cast<Receiver&&>(rcvr)});
     }
+    STDEXEC_EXPLICIT_THIS_END(connect)
   };
 
   struct ignore_all_receiver {
     using receiver_concept = stdexec::receiver_t;
 
     template <class Item>
-    friend auto tag_invoke(exec::set_next_t, ignore_all_receiver&, Item&& item) noexcept
-      -> ignore_all_sender<stdexec::__decay_t<Item>> {
+    auto set_next(Item&& item) noexcept -> ignore_all_sender<stdexec::__decay_t<Item>> {
       return {static_cast<Item&&>(item)};
     }
 

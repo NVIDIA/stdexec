@@ -349,37 +349,30 @@ namespace stdexec {
 
     // For getting an execution environment from a receiver or the attributes from a sender.
     struct get_env_t {
-     private:
       template <class _EnvProvider>
-      static constexpr auto __get_declfn() noexcept {
-        constexpr __declfn_t<_EnvProvider> __env_provider{};
-        if constexpr (__has_get_env<_EnvProvider>) {
-          static_assert(__has_get_env<_EnvProvider>);
-          using __result_t = __get_env_member_result_t<_EnvProvider>;
-          static_assert(noexcept(__env_provider().get_env()), "get_env() members must be noexcept");
-          return __declfn<__result_t>();
-        } else if constexpr (tag_invocable<get_env_t, const _EnvProvider&>) {
-          using __result_t = tag_invoke_result_t<get_env_t, const _EnvProvider&>;
-          constexpr bool __is_nothrow = nothrow_tag_invocable<get_env_t, const _EnvProvider&>;
-          static_assert(__is_nothrow, "get_env tag_invoke overloads must be noexcept");
-          return __declfn<__result_t>();
-        } else {
-          return __declfn<env<>>();
-        }
+        requires __has_get_env<const _EnvProvider&>
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+      constexpr auto operator()(const _EnvProvider& __env_provider) const noexcept
+        -> __get_env_member_result_t<const _EnvProvider&> {
+        static_assert(noexcept(__env_provider.get_env()), "get_env() members must be noexcept");
+        return __env_provider.get_env();
       }
 
-     public:
-      template <class _EnvProvider, auto _DeclFn = __get_declfn<_EnvProvider>()>
+      template <class _EnvProvider>
+        requires __has_get_env<const _EnvProvider&> || tag_invocable<get_env_t, const _EnvProvider&>
+      [[deprecated("the use of tag_invoke for get_env is deprecated")]]
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device) //
+        constexpr auto operator()(const _EnvProvider& __env_provider) const noexcept
+        -> tag_invoke_result_t<get_env_t, const _EnvProvider&> {
+        static_assert(
+          nothrow_tag_invocable<get_env_t, const _EnvProvider&>,
+          "get_env tag_invoke overloads must be noexcept");
+        return tag_invoke(*this, __env_provider);
+      }
+
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto
-        operator()(const _EnvProvider& __env_provider) const noexcept -> decltype(_DeclFn()) {
-        if constexpr (__has_get_env<_EnvProvider>) {
-          return __env_provider.get_env();
-        } else if constexpr (tag_invocable<get_env_t, const _EnvProvider&>) {
-          return tag_invoke(*this, __env_provider);
-        } else {
-          return env<>{};
-        }
+      constexpr auto operator()(__ignore) const noexcept -> env<> {
+        return {};
       }
     };
   } // namespace __get_env

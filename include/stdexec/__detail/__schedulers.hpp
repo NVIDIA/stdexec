@@ -49,9 +49,10 @@ namespace stdexec {
       }
 
       template <class _Scheduler>
-        requires(!__has_schedule_member<_Scheduler>) && tag_invocable<schedule_t, _Scheduler>
-      STDEXEC_ATTRIBUTE(host, device, always_inline)
-      auto operator()(_Scheduler&& __sched) const
+        requires __has_schedule_member<_Scheduler> || tag_invocable<schedule_t, _Scheduler>
+      [[deprecated("the use of tag_invoke for schedule is deprecated")]]
+      STDEXEC_ATTRIBUTE(host, device, always_inline) //
+        auto operator()(_Scheduler&& __sched) const
         noexcept(nothrow_tag_invocable<schedule_t, _Scheduler>)
           -> tag_invoke_result_t<schedule_t, _Scheduler> {
         static_assert(sender<tag_invoke_result_t<schedule_t, _Scheduler>>);

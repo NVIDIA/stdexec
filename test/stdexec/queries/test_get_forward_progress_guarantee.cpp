@@ -36,7 +36,7 @@ namespace {
         ex::completion_signatures<ex::set_value_t(), ex::set_error_t(std::exception_ptr)>;
 
       template <typename R>
-      friend auto tag_invoke(ex::connect_t, sender, R&&) -> operation_state {
+      auto connect(R&&) const -> operation_state {
         return {};
       }
 
@@ -74,7 +74,7 @@ namespace {
         ex::completion_signatures<ex::set_value_t(), ex::set_error_t(std::exception_ptr)>;
 
       template <typename R>
-      friend auto tag_invoke(ex::connect_t, sender, R&&) -> operation_state {
+      auto connect(R&&) const -> operation_state {
         return {};
       }
 

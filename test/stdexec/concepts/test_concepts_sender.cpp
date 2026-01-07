@@ -51,29 +51,29 @@ namespace {
   }
 
 #if !STDEXEC_STD_NO_COROUTINES()
-  struct awaiter {
+  struct an_awaiter {
     auto await_ready() -> bool;
     void await_suspend(__coro::coroutine_handle<>);
     void await_resume();
   };
 
-  struct awaitable {
-    friend auto operator co_await(awaitable) -> awaiter {
+  struct an_awaitable {
+    friend auto operator co_await(an_awaitable) -> an_awaiter {
       return {};
     }
   };
 
-  struct as_awaitable {
+  struct has_as_awaitable {
     template <class Promise>
-    friend auto tag_invoke(ex::as_awaitable_t, as_awaitable, Promise&) -> awaitable {
+    auto as_awaitable(Promise&) const -> an_awaitable {
       return {};
     }
   };
 
   TEST_CASE("Sender concept accepts awaiters and awaitables", "[concepts][sender]") {
-    STATIC_REQUIRE(ex::sender<awaiter>);
-    STATIC_REQUIRE(ex::sender<awaitable>);
-    STATIC_REQUIRE(ex::sender<as_awaitable>);
+    STATIC_REQUIRE(ex::sender<an_awaiter>);
+    STATIC_REQUIRE(ex::sender<an_awaitable>);
+    STATIC_REQUIRE(ex::sender<has_as_awaitable>);
   }
 #endif
 
@@ -93,7 +93,7 @@ namespace {
       ex::set_stopped_t()
     >;
 
-    friend auto tag_invoke(ex::connect_t, my_sender0, empty_recv::recv0&&) -> oper {
+    auto connect(empty_recv::recv0&&) const -> oper {
       return {};
     }
   };
@@ -149,7 +149,7 @@ namespace {
       ex::set_stopped_t()
     >;
 
-    friend auto tag_invoke(ex::connect_t, my_sender_int, empty_recv::recv_int&&) -> oper {
+    auto connect(empty_recv::recv_int&&) const -> oper {
       return {};
     }
   };
@@ -204,7 +204,7 @@ namespace {
       ex::set_error_t(std::exception_ptr)
     >;
 
-    friend auto tag_invoke(ex::connect_t, multival_sender, empty_recv::recv_int&&) -> oper {
+    auto connect(empty_recv::recv_int&&) const -> oper {
       return {};
     }
   };
@@ -226,7 +226,7 @@ namespace {
       ex::set_error_t(int)
     >;
 
-    friend auto tag_invoke(ex::connect_t, ec_sender, empty_recv::recv_int&&) -> oper {
+    auto connect(empty_recv::recv_int&&) const -> oper {
       return {};
     }
   };
@@ -248,7 +248,7 @@ namespace {
       ex::set_stopped_t()
     >;
 
-    friend auto tag_invoke(ex::connect_t, my_r5_sender0, empty_recv::recv0&&) -> oper {
+    auto connect(empty_recv::recv0&&) const -> oper {
       return {};
     }
   };

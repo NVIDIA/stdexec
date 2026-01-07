@@ -77,9 +77,6 @@ namespace {
     //void await_resume();
   };
 
-  STDEXEC_PRAGMA_PUSH()
-  STDEXEC_PRAGMA_IGNORE_GNU("-Wundefined-internal")
-
   template <typename Awaiter>
   struct awaitable_sender_1 {
     auto operator co_await() -> Awaiter {
@@ -105,22 +102,18 @@ namespace {
     }
   };
 
-  STDEXEC_PRAGMA_POP()
-
   struct awaitable_sender_4 {
     using promise_type = promise<__coro::suspend_always>;
 
-   private:
     template <class Promise>
-    friend auto tag_invoke(ex::as_awaitable_t, awaitable_sender_4, Promise&) -> awaiter {
+    auto as_awaitable(Promise&) const -> awaiter {
       return {};
     }
   };
 
   struct awaitable_sender_5 {
-   private:
     template <class Promise>
-    friend auto tag_invoke(ex::as_awaitable_t, awaitable_sender_5, Promise&) -> awaiter {
+    auto as_awaitable(Promise&) const -> awaiter {
       return {};
     }
   };
